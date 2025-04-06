@@ -1,0 +1,55 @@
+# Arquivos de ambiente e credenciais
+.env
+credentials.json
+*.key
+
+# Diretórios de exportação
+exports/
+logs/
+logs/exceptions/
+
+# Arquivos Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Ambiente virtual
+venv/
+ENV/
+
+# Diretórios específicos da aplicação
+config/
+database/
+*.db
+*.sqlite3
+
+# VS Code
+.vscode/
+.idea/
+
+# Arquivos temporários
+*.log
+*.tmp
+*.swp
+
+# Outros
+.DS_Store
+Thumbs.db .env

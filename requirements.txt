@@ -1,0 +1,24 @@
+# Dependências principais
+MetaTrader5==5.0.45  # API oficial do MetaTrader 5
+pandas==2.0.3        # Manipulação de dados estruturados
+numpy==1.24.4        # Operações numéricas
+matplotlib==3.7.2    # Visualização de dados
+SQLAlchemy==2.0.25  # ORM para banco de dados
+
+# Interface gráfica
+tkinter             # Interface gráfica (geralmente vem com Python)
+ttkthemes==3.2.2    # Temas para tkinter
+Pillow==10.0.0      # Processamento de imagens
+
+# Segurança e configuração
+python-dotenv==1.0.0  # Gerenciamento de variáveis de ambiente
+cryptography==41.0.3  # Criptografia para dados sensíveis
+
+# Exportação e importação
+openpyxl==3.1.2      # Exportação para Excel
+xlsxwriter==3.1.0     # Alternativa para exportação Excel com mais recursos
+
+# Utilitários
+pytz==2023.3         # Suporte a fusos horários
+tzlocal==5.0.1       # Detecção de fuso horário local
+requests==2.31.0     # Requisições HTTP 
