@@ -3,7 +3,12 @@ MetaTrader5==5.0.45  # API oficial do MetaTrader 5
 pandas==2.0.3        # Manipulação de dados estruturados
 numpy==1.24.4        # Operações numéricas
 matplotlib==3.7.2    # Visualização de dados
-SQLAlchemy==2.0.25  # ORM para banco de dados
+SQLAlchemy==2.0.25   # ORM para banco de dados
+scipy==1.15.2        # Funções científicas e estatísticas
+
+# Bibliotecas para indicadores técnicos
+pandas-ta==0.3.14b0   # Indicadores técnicos para pandas
+ta-lib==0.4.28       # Biblioteca de análise técnica (opcional, requer compilação)
 
 # Interface gráfica
 tkinter             # Interface gráfica (geralmente vem com Python)
@@ -11,14 +16,45 @@ ttkthemes==3.2.2    # Temas para tkinter
 Pillow==10.0.0      # Processamento de imagens
 
 # Segurança e configuração
-python-dotenv==1.0.0  # Gerenciamento de variáveis de ambiente
-cryptography==41.0.3  # Criptografia para dados sensíveis
+python-dotenv==1.0.1  # Gerenciamento de variáveis de ambiente
+cryptography==42.0.5  # Criptografia para dados sensíveis
 
 # Exportação e importação
 openpyxl==3.1.2      # Exportação para Excel
-xlsxwriter==3.1.0     # Alternativa para exportação Excel com mais recursos
+xlsxwriter==3.1.9     # Alternativa para exportação Excel com mais recursos
 
 # Utilitários
-pytz==2023.3         # Suporte a fusos horários
+pytz==2024.1         # Suporte a fusos horários
 tzlocal==5.0.1       # Detecção de fuso horário local
 requests==2.31.0     # Requisições HTTP 
+
+# Desenvolvimento e testes
+pytest==7.4.3        # Framework de testes
+black==24.1.1        # Formatador de código
+flake8==7.0.0        # Linter 
+
+# Bibliotecas de suporte
+psutil==5.9.8  # Para monitoramento de recursos do sistema
+tqdm==4.66.2  # Para barras de progresso
+threadpoolctl==3.2.0  # Para controle de threads
+pymysql==1.1.0  # Driver MySQL para SQLAlchemy
+
+# Bibliotecas para interface gráfica
+PyQt5==5.15.10
+pyqtgraph==0.13.3
+
+# Bibliotecas para estatísticas e análise
+statsmodels==0.14.1
+scikit-learn==1.4.0
+
+# Utilitários
+colorama==0.4.6
+rich==13.7.0
+pyyaml==6.0.1
+jsonschema==4.20.0
+
+# Desenvolvimento e teste
+pytest-cov==4.1.0
+pytest-timeout==2.2.0
+isort==5.13.2
+mypy==1.8.0 

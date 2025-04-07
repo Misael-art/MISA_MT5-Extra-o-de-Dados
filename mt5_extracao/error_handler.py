@@ -249,137 +249,166 @@ class ErrorHandler:
             exc_value: Valor/mensagem da exceção
             exc_traceback: Traceback da exceção
         """
-        # Evita handling de KeyboardInterrupt
+        # Ignora KeyboardInterrupt (Ctrl+C)
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
         
-        # Formata a exceção para log
-        exception_text = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+        # Gera um ID único para esta exceção baseado no timestamp
+        exception_id = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         
-        # Gera um ID único para a exceção
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        exception_id = f"{timestamp}_{exc_type.__name__}"
+        # Formata a mensagem de log
+        exception_text = f"Exceção não tratada ({exception_id}):\n"
+        exception_text += "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))
         
-        # Registra a exceção no log
-        self.logger.critical(f"Exceção não tratada ({exception_id}): {exc_value}")
+        # Registra no log
         self.logger.critical(exception_text)
         
-        # Salva detalhes da exceção em arquivo
+        # Salva detalhes em arquivo
         self.save_exception_details(exception_id, exception_text)
         
         # Exibe mensagem para o usuário
-        self.show_error_message(
-            title="Erro Inesperado",
-            message=f"Ocorreu um erro inesperado: {exc_value}\n\n"
-                    f"O erro foi registrado com ID: {exception_id}\n"
-                    f"Consulte os logs para mais detalhes.",
-            details=exception_text
-        )
+        try:
+            error_message = str(exc_value)
+            error_title = f"{self.app_name} - Erro ({exc_type.__name__})"
+            detailed_message = (
+                f"Ocorreu um erro inesperado: {error_message}\n\n"
+                f"O erro foi registrado com ID: {exception_id}\n"
+                f"Consulte os logs para mais informações."
+            )
+            messagebox.showerror(error_title, detailed_message)
+        except Exception:
+            # Se falhar ao exibir a mensagem, apenas registra no log
+            self.logger.error("Não foi possível exibir a mensagem de erro ao usuário")
     
     def save_exception_details(self, exception_id, exception_text):
         """
-        Salva detalhes de uma exceção em arquivo.
+        Salva detalhes completos da exceção em um arquivo.
         
         Args:
-            exception_id (str): Identificador único da exceção
-            exception_text (str): Texto completo da exceção
+            exception_id (str): ID único da exceção
+            exception_text (str): Texto completo da exceção com traceback
         """
         try:
-            # Garante que o diretório existe
-            self.ensure_log_directory()
+            # Garantir que o diretório existe
+            os.makedirs(self.exceptions_dir, exist_ok=True)
             
-            # Cria o arquivo de log da exceção
-            exception_file = self.exceptions_dir / f"{exception_id}.log"
+            # Nome do arquivo baseado no ID da exceção
+            filename = f"exception_{exception_id}.log"
+            error_file = self.exceptions_dir / filename
             
-            with open(exception_file, "w", encoding="utf-8") as f:
-                # Adiciona cabeçalho com informações do sistema
-                f.write(f"=== Relatório de Erro: {self.app_name} ===\n")
-                f.write(f"Data e Hora: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"Sistema Operacional: {sys.platform}\n")
-                f.write(f"Versão Python: {sys.version}\n")
-                f.write("="*50 + "\n\n")
-                
-                # Adiciona o traceback completo
+            # Informações do sistema para diagnóstico
+            system_info = {
+                "Python": sys.version,
+                "Platform": sys.platform,
+                "Time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "App": self.app_name
+            }
+            
+            # Escrever no arquivo
+            with open(error_file, "w", encoding="utf-8") as f:
+                f.write("="*80 + "\n")
+                f.write("INFORMAÇÕES DO SISTEMA:\n")
+                for key, value in system_info.items():
+                    f.write(f"{key}: {value}\n")
+                f.write("="*80 + "\n\n")
                 f.write(exception_text)
-                
-                # Adiciona informações das variáveis de ambiente relevantes
-                f.write("\n\n=== Variáveis de Ambiente Relevantes ===\n")
-                for key, value in os.environ.items():
-                    if key.startswith(("PYTHON", "PATH", "MT5_")):
-                        # Oculta senhas e dados sensíveis
-                        if "PASSWORD" in key or "SENHA" in key or "KEY" in key or "SECRET" in key:
-                            value = "********"
-                        f.write(f"{key}={value}\n")
             
-            self.logger.info(f"Detalhes da exceção salvos em: {exception_file}")
-            
+            self.logger.info(f"Detalhes da exceção salvos em: {error_file}")
         except Exception as e:
-            self.logger.error(f"Não foi possível salvar os detalhes da exceção: {str(e)}")
+            self.logger.error(f"Erro ao salvar detalhes da exceção: {str(e)}")
     
     def handle_mt5_error(self, error_code, operation, symbol="", timeframe=""):
         """
-        Manipula erros específicos do MetaTrader 5.
+        Trata erros específicos do MetaTrader 5 de forma padronizada.
         
         Args:
             error_code (int): Código de erro do MT5
-            operation (str): Operação que causou o erro
-            symbol (str, optional): Símbolo envolvido na operação
-            timeframe (str, optional): Timeframe envolvido na operação
-            
+            operation (str): Operação que estava sendo realizada
+            symbol (str): Símbolo envolvido (opcional)
+            timeframe (str): Timeframe envolvido (opcional)
+        
         Returns:
-            str: Mensagem de erro formatada
+            dict: Informações sobre o erro e ações sugeridas
         """
-        import MetaTrader5 as mt5
+        # Mapeamento de códigos de erro para mensagens e sugestões
+        error_map = {
+            -10003: {
+                "tipo": "Erro de comunicação IPC",
+                "mensagem": "Falha na inicialização da comunicação com o MetaTrader 5",
+                "sugestão": "Reinicie o MetaTrader 5 com privilégios de administrador"
+            },
+            -10000: {
+                "tipo": "Erro de inicialização",
+                "mensagem": "Falha ao inicializar terminal MetaTrader 5",
+                "sugestão": "Verifique se o MetaTrader 5 está instalado corretamente"
+            },
+            -2: {
+                "tipo": "Erro de parâmetros",
+                "mensagem": "Parâmetros inválidos na operação",
+                "sugestão": "Verifique os parâmetros da operação"
+            }
+        }
         
-        # Obtém a descrição do erro
-        error_description = mt5.last_error()
+        # Obter informações do erro ou usar genérico
+        error_info = error_map.get(error_code, {
+            "tipo": "Erro do MetaTrader 5",
+            "mensagem": f"Código de erro: {error_code}",
+            "sugestão": "Consulte a documentação do MetaTrader 5"
+        })
         
-        # Formata os detalhes da operação
-        operation_details = f"Operação: {operation}"
+        # Adicionar detalhes da operação
+        context = operation
         if symbol:
-            operation_details += f", Símbolo: {symbol}"
-        if timeframe:
-            operation_details += f", Timeframe: {timeframe}"
+            context += f" (Símbolo: {symbol}"
+            if timeframe:
+                context += f", Timeframe: {timeframe}"
+            context += ")"
         
-        # Monta a mensagem completa
-        error_message = f"Erro MT5 {error_code}: {error_description}. {operation_details}"
+        error_info["contexto"] = context
         
-        # Registra no log
-        self.logger.error(error_message)
+        # Registrar no log
+        self.logger.error(
+            f"{error_info['tipo']} - {error_info['mensagem']} - {context}"
+        )
         
-        return error_message
+        return error_info
     
     def handle_database_error(self, exception, operation):
         """
-        Manipula erros específicos de banco de dados.
+        Trata erros relacionados ao banco de dados de forma padronizada.
         
         Args:
-            exception (Exception): A exceção de banco de dados
-            operation (str): Operação que causou o erro
+            exception (Exception): A exceção capturada
+            operation (str): Operação que estava sendo realizada
             
         Returns:
-            str: Mensagem de erro formatada
+            dict: Informações sobre o erro e ações sugeridas
         """
-        # Formata a mensagem de erro
-        error_message = f"Erro de banco de dados durante {operation}: {str(exception)}"
+        # Informações sobre o erro
+        error_info = {
+            "tipo": exception.__class__.__name__,
+            "mensagem": str(exception),
+            "contexto": operation,
+            "sugestão": "Verifique a integridade do banco de dados"
+        }
         
-        # Registra no log com detalhes se disponíveis
-        self.logger.error(error_message)
-        self.logger.debug(f"Detalhes da exceção: {traceback.format_exc()}")
+        # Adicionar detalhes específicos para DatabaseError
+        if isinstance(exception, DatabaseError):
+            if hasattr(exception, 'table') and exception.table:
+                error_info["tabela"] = exception.table
+            if hasattr(exception, 'query') and exception.query:
+                error_info["query"] = exception.query
+            if hasattr(exception, 'details') and exception.details:
+                error_info["detalhes"] = exception.details
         
-        # Trata tipos específicos de erros de banco de dados
-        if "no such table" in str(exception).lower():
-            suggestion = "A tabela pode não existir. Verifique se o nome está correto."
-            error_message += f"\nSugestão: {suggestion}"
-        elif "unique constraint" in str(exception).lower():
-            suggestion = "Registro duplicado. Os dados já existem no banco de dados."
-            error_message += f"\nSugestão: {suggestion}"
-        elif "disk" in str(exception).lower() and ("full" in str(exception).lower() or "space" in str(exception).lower()):
-            suggestion = "Possível falta de espaço em disco. Verifique o espaço disponível."
-            error_message += f"\nSugestão: {suggestion}"
+        # Registrar no log
+        log_message = f"{error_info['tipo']} - {error_info['mensagem']} - {operation}"
+        if 'tabela' in error_info:
+            log_message += f" - Tabela: {error_info['tabela']}"
+        self.logger.error(log_message)
         
-        return error_message
+        return error_info
     
     def show_error_message(self, title, message, details=None):
         """
@@ -387,36 +416,40 @@ class ErrorHandler:
         
         Args:
             title (str): Título da mensagem
-            message (str): Mensagem principal
+            message (str): Texto da mensagem
             details (str, optional): Detalhes adicionais
+            
+        Returns:
+            bool: True se a mensagem foi exibida, False em caso contrário
         """
         try:
-            messagebox.showerror(title, message)
-            
-            # Se há detalhes e são extensos, registra no log
-            if details and len(details) > 500:
-                self.logger.debug(f"Detalhes adicionais do erro: {details}")
-        except Exception as e:
-            # Fallback para console se a GUI falhar
-            self.logger.error(f"Não foi possível exibir mensagem de erro: {str(e)}")
-            print(f"\nERRO: {title}\n{message}\n")
+            display_message = message
             if details:
-                print(f"Detalhes: {details}\n")
+                display_message += f"\n\nDetalhes: {details}"
+            
+            messagebox.showerror(title, display_message)
+            return True
+        except Exception as e:
+            self.logger.error(f"Erro ao exibir mensagem de erro: {str(e)}")
+            return False
     
     def show_warning(self, title, message):
         """
         Exibe uma mensagem de aviso para o usuário.
         
         Args:
-            title (str): Título do aviso
-            message (str): Mensagem de aviso
+            title (str): Título da mensagem
+            message (str): Texto da mensagem
+            
+        Returns:
+            bool: True se a mensagem foi exibida, False em caso contrário
         """
         try:
             messagebox.showwarning(title, message)
+            return True
         except Exception as e:
-            # Fallback para console se a GUI falhar
-            self.logger.error(f"Não foi possível exibir mensagem de aviso: {str(e)}")
-            print(f"\nAVISO: {title}\n{message}\n")
+            self.logger.error(f"Erro ao exibir mensagem de aviso: {str(e)}")
+            return False
     
     def show_info(self, title, message):
         """
@@ -424,18 +457,35 @@ class ErrorHandler:
         
         Args:
             title (str): Título da mensagem
-            message (str): Mensagem informativa
+            message (str): Texto da mensagem
+            
+        Returns:
+            bool: True se a mensagem foi exibida, False em caso contrário
         """
         try:
             messagebox.showinfo(title, message)
+            return True
         except Exception as e:
-            # Fallback para console se a GUI falhar
-            self.logger.error(f"Não foi possível exibir mensagem informativa: {str(e)}")
-            print(f"\nINFO: {title}\n{message}\n")
+            self.logger.error(f"Erro ao exibir mensagem informativa: {str(e)}")
+            return False
     
     def install_global_handler(self):
         """
-        Instala este handler como o manipulador global de exceções não tratadas.
+        Instala o manipulador de exceções global para a aplicação.
+        
+        Returns:
+            bool: True se o manipulador foi instalado com sucesso
         """
-        sys.excepthook = self.handle_exception
-        self.logger.info("Handler de exceções globais instalado") 
+        try:
+            # Salvar o manipulador original para referência
+            self.original_excepthook = sys.excepthook
+            
+            # Instalar o novo manipulador
+            sys.excepthook = self.handle_exception
+            
+            # Registrar a instalação no log
+            self.logger.info("Handler de exceções globais instalado")
+            return True
+        except Exception as e:
+            self.logger.error(f"Erro ao instalar handler de exceções: {str(e)}")
+            return False 

@@ -50,25 +50,21 @@ class UIManager:
         self.status_label = None
         self.log_text = None
         self.symbols_listbox = None
-        self.selected_listbox = None
+        self.selected_symbols_listbox = None
         self.start_button = None
         self.stop_button = None
         self.search_var = tk.StringVar() # Variável para busca de símbolos
 
-        # Inicializar variáveis para símbolos com dados
-        self.existing_symbols_map = {}
-        self.symbols_with_data = set()
+        log.info("UIManager inicializado.")
 
         # Adicionar atributos para favoritos
         self.favorites_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "favorites.json")
-        self.favorite_symbols = self.load_favorites() or []
+        self.favorite_symbols = self.load_favorites()
         
         # Configurar diretório de config se não existir
         config_dir = os.path.dirname(self.favorites_file)
         if not os.path.exists(config_dir):
             os.makedirs(config_dir, exist_ok=True)
-
-        log.info("UIManager inicializado.")
 
     def setup_ui(self):
         """Configura a interface do usuário completa."""
@@ -97,10 +93,6 @@ class UIManager:
         # Frame de status
         status_frame = ttk.Frame(top_frame)
         status_frame.pack(side=tk.LEFT, fill=tk.Y)
-        
-        # Label de status geral
-        self.status_label = ttk.Label(status_frame, text="Status: Iniciando...")
-        self.status_label.pack(anchor="w", pady=2)
         
         # Label de status MT5
         mt5_status_frame = ttk.Frame(status_frame)
@@ -138,7 +130,6 @@ class UIManager:
         middle_frame = ttk.Frame(main_frame)
         middle_frame.pack(fill=tk.BOTH, expand=True, pady=5)
         middle_frame.columnconfigure(0, weight=1)
-        middle_frame.columnconfigure(1, weight=0)
         middle_frame.columnconfigure(2, weight=1)
         
         # Frame esquerdo com lista de todos os símbolos
@@ -170,21 +161,9 @@ class UIManager:
         symbols_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.symbols_listbox.config(yscrollcommand=symbols_scrollbar.set)
         
-        # Criar botões para mover entre listas
-        buttons_frame = ttk.Frame(middle_frame)
-        buttons_frame.grid(row=0, column=1, sticky="ns")
-        
-        add_btn = ttk.Button(buttons_frame, text="➡", command=self.add_symbols)
-        add_btn.pack(pady=5)
-        
-        remove_btn = ttk.Button(buttons_frame, text="⬅", command=self.remove_symbols)
-        remove_btn.pack(pady=5)
-        
-        self._botoes_adicionados = True
-        
         # Frame direito (controles e monitoramento)
-        right_frame = ttk.Frame(middle_frame)
-        right_frame.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
+        right_frame = ttk.Frame(main_frame)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Frame para símbolos selecionados
         selected_frame = ttk.LabelFrame(right_frame, text="Símbolos Selecionados")
@@ -282,6 +261,48 @@ class UIManager:
         self.get_history_button = ttk.Button(control_frame, text="Extrair Dados Históricos", command=self.extract_historical_data)
         self.get_history_button.grid(row=1, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
         
+        # Botão para iniciar MT5 como administrador
+        if hasattr(self.app.mt5_connector, 'launch_mt5_as_admin'):
+            admin_frame = ttk.Frame(control_frame)
+            admin_frame.grid(row=2, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+            
+            status_label = ttk.Label(admin_frame, text="Status do MT5:")
+            status_label.pack(side=tk.LEFT, padx=5)
+            
+            # Função para verificar e atualizar status do MT5
+            def check_mt5_admin_status():
+                if not self.app.mt5_connector._is_mt5_running():
+                    status_text = "MT5 não está em execução"
+                    admin_status_label.config(text=status_text, foreground="red")
+                    start_admin_button.config(text="Iniciar MT5 como Admin")
+                    return
+                    
+                if not self.app.mt5_connector.is_mt5_running_as_admin():
+                    status_text = "MT5 em execução SEM privilégios de administrador"
+                    admin_status_label.config(text=status_text, foreground="orange")
+                    start_admin_button.config(text="Reiniciar como Admin")
+                else:
+                    status_text = "MT5 em execução COM privilégios de administrador"
+                    admin_status_label.config(text=status_text, foreground="green")
+                    start_admin_button.config(text="Reiniciar como Admin")
+            
+            # Label que mostra status de admin do MT5
+            admin_status_label = ttk.Label(admin_frame, text="Verificando...", width=40)
+            admin_status_label.pack(side=tk.LEFT, padx=5)
+            
+            # Botão para iniciar/reiniciar como admin
+            start_admin_button = ttk.Button(admin_frame, text="Iniciar MT5 como Admin", 
+                                          command=lambda: self.launch_mt5_as_admin())
+            start_admin_button.pack(side=tk.RIGHT, padx=5)
+            
+            # Verificar status inicial
+            check_mt5_admin_status()
+            
+            # Botão de refresh para verificar status
+            refresh_button = ttk.Button(admin_frame, text="↻", width=3, 
+                                      command=check_mt5_admin_status)
+            refresh_button.pack(side=tk.RIGHT, padx=5)
+
         # Frame para logs e status
         log_frame = ttk.LabelFrame(right_frame, text="Log de Atividades")
         log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
@@ -301,9 +322,6 @@ class UIManager:
         # Inicializar log (usando método do UIManager)
         self.log("Interface gráfica configurada.")
         
-        # Carregar símbolos na lista imediatamente
-        self.filter_symbols()
-        
         # Verificar e carregar dados existentes para destaque visual
         self.load_existing_symbols_data()
 
@@ -322,8 +340,6 @@ class UIManager:
             
             # Lista para mapear entre nomes normalizados e originais
             self.existing_symbols_map = {}
-            # Inicializar symbols_with_data como um conjunto para pesquisa rápida
-            self.symbols_with_data = set()
             
             # Para cada símbolo disponível, verificar se há dados
             for symbol in self.app.symbols:
@@ -332,7 +348,6 @@ class UIManager:
                 
                 if table_name in existing_tables:
                     self.existing_symbols_map[symbol] = table_name
-                    self.symbols_with_data.add(symbol)
             
             log.info(f"Identificados {len(self.existing_symbols_map)} símbolos com dados existentes")
             
@@ -340,13 +355,7 @@ class UIManager:
             self.highlight_symbols_with_data()
         except Exception as e:
             log.error(f"Erro ao verificar símbolos existentes: {e}")
-            log.debug(traceback.format_exc())
-            # Garantir que essas propriedades existam mesmo em caso de erro
-            if not hasattr(self, "existing_symbols_map"):
-                self.existing_symbols_map = {}
-            if not hasattr(self, "symbols_with_data"):
-                self.symbols_with_data = set()
-        
+            
     def highlight_symbols_with_data(self):
         """Destaca símbolos que já possuem dados no banco de dados."""
         if not self.symbols_listbox or not hasattr(self, "symbols_with_data"):
@@ -427,32 +436,18 @@ class UIManager:
         if not hasattr(self, 'symbol_details_content') or not symbol:
             return
             
-        try:
-            # Verificar se o símbolo tem dados existentes
-            has_data = False
-            table_name = None
+        # Verificar se o símbolo tem dados existentes
+        if hasattr(self, 'existing_symbols_map') and symbol in self.existing_symbols_map:
+            table_name = self.existing_symbols_map[symbol]
             
-            if hasattr(self, 'existing_symbols_map'):
-                if symbol in self.existing_symbols_map:
-                    table_name = self.existing_symbols_map[symbol]
-                    has_data = True
-            else:
-                # Se não tiver o mapa, tentar obter o nome da tabela diretamente
-                if self.app.db_manager:
-                    table_name = self.app.db_manager.get_table_name_for_symbol(symbol, "1 minuto")
-                    # Verificar se a tabela existe
-                    if table_name in self.app.db_manager.get_existing_symbols():
-                        has_data = True
-            
-            # Se tem dados, mostrar resumo
-            if has_data and table_name and self.app.db_manager:
-                try:
-                    summary = self.app.db_manager.get_symbol_data_summary(table_name)
+            # Obter resumo dos dados
+            if self.app.db_manager:
+                summary = self.app.db_manager.get_symbol_data_summary(table_name)
+                
+                if summary:
+                    # Formatar texto com informações resumidas
+                    detail_text = f"""Símbolo: {symbol}
                     
-                    if summary:
-                        # Formatar texto com informações resumidas
-                        detail_text = f"""Símbolo: {symbol}
-                        
 Dados Existentes:
 • Período: {summary.get('data_inicio', 'N/A')} até {summary.get('data_fim', 'N/A')}
 • Total de registros: {summary.get('total_registros', 0)}
@@ -465,31 +460,22 @@ Meta Trader 5:
 
 Status: Disponível para coleta e análise
 """
-                        self.symbol_details_content.config(text=detail_text)
-                        self.symbol_details_frame.config(text=f"Detalhes de {symbol} (Dados Existentes)")
-                        return
-                except Exception as e:
-                    log.error(f"Erro ao obter resumo para {symbol}: {e}")
-                    log.debug(traceback.format_exc())
-            
-            # Se não tiver dados ou houver erro, mostrar informações básicas
-            detail_text = f"""Símbolo: {symbol}
+                    self.symbol_details_content.config(text=detail_text)
+                    self.symbol_details_frame.config(text=f"Detalhes de {symbol} (Dados Existentes)")
+                    return
+        
+        # Se não tiver dados ou houver erro, mostrar informações básicas
+        detail_text = f"""Símbolo: {symbol}
 
 Meta Trader 5:
 • Spread: {self.get_symbol_spread(symbol)}
 • Cotação: {self.get_symbol_price(symbol)}
 
-Status: Sem dados no banco. Disponível para coleta.
+Status: Sem dados históricos armazenados
 """
-            self.symbol_details_content.config(text=detail_text)
-            self.symbol_details_frame.config(text=f"Detalhes de {symbol}")
-        except Exception as e:
-            log.error(f"Erro ao atualizar detalhes do símbolo {symbol}: {e}")
-            log.debug(traceback.format_exc())
-            # Em caso de erro, mostrar mensagem simples
-            self.symbol_details_content.config(text=f"Símbolo: {symbol}\n\nErro ao carregar detalhes.")
-            self.symbol_details_frame.config(text=f"Detalhes de {symbol} (Erro)")
-
+        self.symbol_details_content.config(text=detail_text)
+        self.symbol_details_frame.config(text=f"Detalhes de {symbol}")
+        
     def get_symbol_spread(self, symbol):
         """Obtém o spread atual do símbolo via MT5."""
         if (not self.app.mt5_initialized or not self.app.mt5_connector or 
@@ -633,52 +619,28 @@ Status: Sem dados no banco. Disponível para coleta.
         """Filtra a lista de símbolos com base no texto de busca"""
         if not self.symbols_listbox: # Verifica se o widget existe
             return
-            
-        # Primeiro, verificar se temos símbolos disponíveis
-        if not hasattr(self.app, 'symbols') or not self.app.symbols:
-            log.warning("Nenhum símbolo disponível para filtrar")
-            messagebox.showwarning("Aviso", "Nenhum símbolo disponível para exibir.")
-            return
-            
         search_text = self.search_var.get().lower()
         self.symbols_listbox.delete(0, tk.END)
         
         # Primeiro adicionar favoritos
-        favorites_count = 0
         for symbol in self.app.symbols:
             if symbol in self.favorite_symbols and (search_text == '' or search_text in symbol.lower()):
                 self.symbols_listbox.insert(tk.END, f"★ {symbol}")
-                favorites_count += 1
         
         # Depois adicionar o resto dos símbolos
-        other_count = 0
         for symbol in self.app.symbols:
             if symbol not in self.favorite_symbols and (search_text == '' or search_text in symbol.lower()):
                 self.symbols_listbox.insert(tk.END, symbol)
-                other_count += 1
-        
-        log.info(f"Filtro aplicado: {favorites_count} favoritos e {other_count} outros símbolos exibidos")
                 
         # Destacar símbolos com dados existentes
         self.highlight_symbols_with_data()
-        
-        # Se não houver símbolos exibidos, mostrar mensagem
-        if self.symbols_listbox.size() == 0:
-            messagebox.showinfo("Busca", "Nenhum símbolo corresponde ao filtro de busca.")
 
     def add_symbols(self):
         """Adiciona símbolos selecionados à lista de monitoramento"""
         if not self.symbols_listbox or not self.selected_listbox:
-            log.error("Widgets necessários não foram inicializados")
             return
-            
         selected_indices = self.symbols_listbox.curselection()
-        
-        if not selected_indices:
-            messagebox.showinfo("Seleção", "Selecione pelo menos um símbolo para adicionar.")
-            return
-            
-        added_count = 0
+
         for i in selected_indices:
             symbol_text = self.symbols_listbox.get(i)
             # Remove o prefixo de favorito se existir
@@ -695,60 +657,7 @@ Status: Sem dados no banco. Disponível para coleta.
                     self.selected_listbox.insert(tk.END, f"★ {symbol}")
                 else:
                     self.selected_listbox.insert(tk.END, symbol)
-                added_count += 1
-                self.log(f"Símbolo adicionado: {symbol}")
-                
-        if added_count > 0:
-            self.log(f"{added_count} símbolo(s) adicionado(s) à lista de selecionados")
-            # Aplicar destaque para símbolos com dados
-            if hasattr(self, 'symbols_with_data'):
-                for i in range(self.selected_listbox.size()):
-                    symbol_text = self.selected_listbox.get(i)
-                    # Remove o prefixo de favorito se existir
-                    if symbol_text.startswith("★ "):
-                        symbol = symbol_text[2:]
-                    else:
-                        symbol = symbol_text
-                        
-                    if symbol in self.symbols_with_data:
-                        self.selected_listbox.itemconfig(i, {'fg': 'green', 'bg': '#f0f8f0'})
-        else:
-            self.log("Nenhum novo símbolo adicionado (já existem na lista)")
-            
-        # Criar botões para adicionar/remover símbolos se não existirem
-        if not hasattr(self, '_botoes_adicionados') or not self._botoes_adicionados:
-            self._adicionar_botoes_selecao()
-            
-    def _adicionar_botoes_selecao(self):
-        """Adiciona botões para mover símbolos entre as listas"""
-        # Obter o frame do meio que contém as listboxes
-        middle_frame = None
-        for child in self.root.winfo_children():
-            if isinstance(child, ttk.Frame):
-                for grandchild in child.winfo_children():
-                    if isinstance(grandchild, ttk.Frame) and len(grandchild.winfo_children()) >= 3:
-                        middle_frame = grandchild
-                        break
-                if middle_frame:
-                    break
-                    
-        if not middle_frame:
-            log.error("Não foi possível encontrar o frame do meio para adicionar botões")
-            return
-            
-        # Criar frame para os botões
-        buttons_frame = ttk.Frame(middle_frame)
-        buttons_frame.grid(row=0, column=1, sticky="ns")
-        
-        # Botão para adicionar símbolo selecionado
-        add_btn = ttk.Button(buttons_frame, text="➡", command=self.add_symbols)
-        add_btn.pack(pady=5)
-        
-        # Botão para remover símbolo selecionado
-        remove_btn = ttk.Button(buttons_frame, text="⬅", command=self.remove_symbols)
-        remove_btn.pack(pady=5)
-        
-        self._botoes_adicionados = True
+                self.log(f"Símbolo adicionado: {symbol}") # Usa self.log
 
     def remove_symbols(self):
         """Remove símbolos da lista de monitoramento"""
@@ -794,19 +703,10 @@ Status: Sem dados no banco. Disponível para coleta.
 
     def update_status(self, status_text):
         """Atualiza o texto de status principal."""
-        # Sempre registrar o status no log
-        log.info(f"Status: {status_text}")
-        
-        # Atualizar widget apenas se estiver disponível
-        if hasattr(self, 'status_label') and self.status_label:
-            try:
-                self.status_label.config(text=status_text)
-            except Exception as e:
-                log.warning(f"Erro ao atualizar widget de status: {e}")
-                # Não vamos exibir a mensagem de aviso sobre widget ausente, apenas logar
+        if self.status_label:
+            self.status_label.config(text=status_text)
         else:
-            # Apenas registrar para debug
-            log.debug("Widget status_label não disponível para atualização.")
+            log.warning("Tentativa de atualizar status sem widget status_label.")
 
     def toggle_collection_buttons(self, collecting):
         """Habilita/desabilita os botões de iniciar/parar coleta."""
@@ -872,19 +772,19 @@ Status: Sem dados no banco. Disponível para coleta.
             
             # Tentar conexão agressiva se disponível
             if hasattr(self.app.mt5_connector, 'force_connection_check'):
-                log.info("Tentando forçar verificação de conexão...")
-                reconnected = self.app.mt5_connector.force_connection_check(recursion_count=0)
+                self.log("Utilizando verificação agressiva de conexão...")
+                reconnected = self.app.mt5_connector.force_connection_check()
+                if reconnected:
+                    self.app.mt5_initialized = True
+                    self.log("Conexão reestabelecida com sucesso via verificação agressiva!")
+                    self.update_status("Status: MT5 conectado!")
+                else:
+                    # Tentar método normal como fallback
+                    self.log("Verificação agressiva falhou. Tentando método normal...")
+                    reconnected = self.app.mt5_connector.initialize(force_restart=False)
             else:
-                reconnected = False
-            if reconnected:
-                self.app.mt5_initialized = True
-                self.log("Conexão reestabelecida com sucesso via verificação agressiva!")
-                self.update_status("Status: MT5 conectado!")
-            else:
-                # Tentar método normal como fallback
-                self.log("Verificação agressiva falhou. Tentando método normal...")
-                reconnected = self.app.mt5_connector.initialize(force_restart=False, recursion_count=0)
-                
+                # Método normal se o agressivo não estiver disponível
+                reconnected = self.app.mt5_connector.initialize(force_restart=False)
                 
             # Verificar resultado da tentativa de reconexão
             if reconnected or self.app.mt5_connector.is_initialized:
@@ -952,7 +852,7 @@ Status: Sem dados no banco. Disponível para coleta.
                 self.update_status("Status: Reconectando ao MT5...")
                 
                 # Tenta inicializar o MT5
-                if self.app.mt5_connector and self.app.mt5_connector.initialize(recursion_count=0):
+                if self.app.mt5_connector and self.app.mt5_connector.initialize():
                     self.app.mt5_initialized = True
                     status = self.app.mt5_connector.get_connection_status()
                     logging.info(f"Conexão MT5 reestabelecida. Modo: {status.get('mode', 'N/A')}")
@@ -990,7 +890,7 @@ Status: Sem dados no banco. Disponível para coleta.
                             time.sleep(5)
                             
                             # Tentar reconectar
-                            if self.app.mt5_connector.initialize(recursion_count=0):
+                            if self.app.mt5_connector.initialize():
                                 # Verificar novamente se agora está rodando como admin
                                 if self.app.mt5_connector.is_mt5_running_as_admin():
                                     self.log("MT5 reiniciado com permissões de administrador com sucesso.")
@@ -1134,95 +1034,181 @@ Status: Sem dados no banco. Disponível para coleta.
                                              "O MT5 está desconectado. Deseja tentar reconectar para detectar a data mais antiga?")
                 if response:
                     self.log("Tentando reconectar ao MT5...")
-                    if not self.app.mt5_connector.initialize(recursion_count=0):
+                    if not self.app.mt5_connector.initialize():
                         messagebox.showerror("Erro", "Falha ao conectar ao MT5. Não é possível detectar a data mais antiga.")
                         return
                 else:
                     return
             
-            # Modificar interface para indicar processamento
-            status_var.set("Detectando data mais antiga...")
-            detect_button.config(state=tk.DISABLED)
-            cancel_detect_button.grid() # Mostrar botão de cancelar
-            cancel_detect_button.lift()
-            
-            # Criar flag de cancelamento
-            detection_canceled = [False]
-            
-            # Função para cancelar detecção
-            def cancel_detection():
-                detection_canceled[0] = True
-                status_var.set("Detecção cancelada pelo usuário")
-                cancel_detect_button.grid_remove()
-                detect_button.config(state=tk.NORMAL)
-            
-            # Ligar o botão de cancelar à função
-            cancel_detect_button.config(command=cancel_detection)
-            
-            # Lógica de detecção em thread separada
-            def detection_thread():
-                selected_timeframe = timeframe_combo.get()
-                # Obter o valor numérico do timeframe
-                timeframe_index = [tf[0] for tf in self.app.timeframes].index(selected_timeframe)
-                timeframe_value = self.app.timeframes[timeframe_index][1]
-                
-                oldest_dates = {}
-                
-                try:
-                    # Verificar cada símbolo
-                    for symbol in self.app.selected_symbols:
-                        if detection_canceled[0]:
-                            break
-                        
-                        status_var.set(f"Detectando data mais antiga para {symbol}...")
-                        config_window.update_idletasks()
+            # Verificar se o MT5 está rodando como administrador
+            if hasattr(self.app.mt5_connector, 'is_mt5_running_as_admin') and self.app.mt5_connector._is_mt5_running():
+                if not self.app.mt5_connector.is_mt5_running_as_admin():
+                    logging.warning("MT5 está executando sem privilégios de administrador durante detecção de data.")
+                    response = messagebox.askyesno(
+                        "Permissões Insuficientes",
+                        "O MetaTrader 5 está em execução sem permissões de administrador.\n\n"
+                        "Isso pode limitar o acesso a dados históricos e causar falhas na detecção de datas.\n\n"
+                        "Deseja reiniciar o MT5 com privilégios de administrador antes de continuar?",
+                    )
+                    if response:
+                        self.log("Reiniciando MT5 com permissões de administrador...")
+                        status_var.set("Reiniciando MT5 como administrador...")
                         
                         try:
-                            oldest = self.app.mt5_connector.get_oldest_available_date(
-                                symbol, timeframe_value, force_refresh=True
-                            )
-                            
-                            if oldest:
-                                oldest_dates[symbol] = oldest
-                                self.log(f"Data mais antiga para {symbol}: {oldest}")
+                            if self.app.mt5_connector.launch_mt5_as_admin(wait_for_user=False):
+                                # Dar tempo para o MT5 iniciar e tentar reconectar
+                                time.sleep(5)
+                                
+                                # Tentar reconectar
+                                if self.app.mt5_connector.initialize():
+                                    # Verificar novamente se agora está rodando como admin
+                                    if self.app.mt5_connector.is_mt5_running_as_admin():
+                                        self.log("MT5 reiniciado com permissões de administrador com sucesso.")
+                                        status_var.set("MT5 iniciado com permissões de administrador.")
+                                    else:
+                                        self.log("AVISO: MT5 reiniciado, mas ainda sem permissões de administrador.")
+                                        status_var.set("MT5 sem permissões de administrador")
+                                        response = messagebox.askyesno(
+                                            "Permissões Limitadas", 
+                                            "O MT5 foi reiniciado, mas ainda parece estar sem permissões de administrador.\n\n"
+                                            "Isso pode limitar a detecção de datas históricas.\n\n"
+                                            "Deseja continuar mesmo assim?"
+                                        )
+                                        if not response:
+                                            return
+                                else:
+                                    self.log("ERRO: Falha ao reconectar ao MT5 após reinício.")
+                                    messagebox.showerror("Erro de Conexão", "Falha ao reconectar ao MT5 após reinício. A detecção pode falhar.")
                             else:
-                                self.log(f"Não foi possível determinar data mais antiga para {symbol}")
-                        except Exception as e:
-                            self.log(f"Erro ao detectar data para {symbol}: {str(e)}")
-                    
-                    # Se cancelado, não atualiza UI
-                    if detection_canceled[0]:
-                        return
-                        
-                    # Determinar a data mais antiga entre todos os símbolos
-                    if oldest_dates:
-                        global_oldest = min(oldest_dates.values())
-                        formatted_date = global_oldest.strftime('%Y-%m-%d')
-                        
-                        self.log(f"Data mais antiga entre todos os símbolos: {formatted_date}")
-                        status_var.set(f"Data mais antiga detectada: {formatted_date}")
-                        
-                        # Atualizar o campo de data inicial
-                        start_date_entry.delete(0, tk.END)
-                        start_date_entry.insert(0, formatted_date)
+                                self.log("ERRO: Falha ao reiniciar MT5 como administrador.")
+                                messagebox.showerror("Erro", "Não foi possível reiniciar o MT5 com permissões de administrador. A detecção pode falhar.")
+                        except Exception as admin_err:
+                            self.log(f"ERRO: {str(admin_err)}")
+                            logging.error(f"Erro ao tentar reiniciar MT5 como administrador: {traceback.format_exc()}")
+                            messagebox.showerror("Erro", f"Erro ao tentar reiniciar MT5 como administrador: {str(admin_err)}")
+                            return
                     else:
-                        status_var.set("Não foi possível determinar a data mais antiga")
-                except Exception as e:
-                    self.log(f"Erro na detecção de data mais antiga: {str(e)}")
-                    status_var.set(f"Erro: {str(e)}")
+                        # Usuário optou por continuar sem permissões de admin
+                        response = messagebox.askyesno(
+                            "Confirmação", 
+                            "Continuar sem permissões de administrador pode resultar em:\n\n"
+                            "- Falhas na detecção de datas históricas\n"
+                            "- Erros de conexão ao tentar acessar certos símbolos\n"
+                            "- Resultados imprecisos ou incompletos\n\n"
+                            "Tem certeza que deseja continuar?"
+                        )
+                        if not response:
+                            return
+            
+            # Obter timeframe selecionado
+            timeframe_idx = timeframe_combo.current()
+            timeframe_name, timeframe_val = self.app.timeframes[timeframe_idx]
+            
+            # Configurar progresso e interface
+            status_var.set("Iniciando detecção de data mais antiga...")
+            progress_var.set(0)
+            detect_button.config(state=tk.DISABLED)
+            cancel_detect_button.grid()  # Mostrar botão de cancelamento
+            cancel_detect_button.config(state=tk.NORMAL)
+            
+            # Armazenar flag de detecção ativa
+            self.detection_running = True
+            
+            def detection_thread():
+                try:
+                    oldest_dates = []
+                    total_symbols = len(self.app.selected_symbols)
+                    
+                    for i, symbol in enumerate(self.app.selected_symbols):
+                        if not hasattr(self, 'detection_running') or not self.detection_running:
+                            self.root.after_idle(lambda: status_var.set("Detecção cancelada pelo usuário"))
+                            break
+                            
+                        # Dividir em sub-etapas para responsividade da interface
+                        for sub_step in range(4):
+                            if not hasattr(self, 'detection_running') or not self.detection_running:
+                                break
+                                
+                            # Atualizar progresso mais frequentemente
+                            sub_progress = ((i * 4 + sub_step) / (total_symbols * 4)) * 100
+                            sub_msg = f"Analisando {symbol} - etapa {sub_step+1}/4 ({i+1}/{total_symbols})"
+                            
+                            # Thread-safe UI update
+                            self.root.after_idle(lambda p=sub_progress, m=sub_msg: (
+                                progress_var.set(p), 
+                                status_var.set(m)
+                            ))
+                            time.sleep(0.1)  # Pequena pausa para resposta da UI
+                        
+                        # Atualizar progresso principal
+                        progress = ((i + 1) / total_symbols) * 100
+                        msg = f"Detectando data para {symbol} ({i+1}/{total_symbols})"
+                        
+                        # Atualizar UI thread-safe
+                        self.root.after_idle(lambda p=progress, m=msg: (
+                            progress_var.set(p), 
+                            status_var.set(m)
+                        ))
+                        
+                        try:
+                            # Obter data mais antiga
+                            oldest_date = self.app.mt5_connector.get_oldest_available_date(symbol, timeframe_val)
+                            if oldest_date:
+                                oldest_dates.append(oldest_date)
+                                self.log(f"Data mais antiga para {symbol}: {oldest_date.strftime('%Y-%m-%d')}")
+                            else:
+                                self.log(f"Não foi possível detectar data mais antiga para {symbol}")
+                        except Exception as sym_err:
+                            self.log(f"Erro ao detectar data para {symbol}: {sym_err}")
+                            logging.error(f"Erro detalhado para {symbol}: {traceback.format_exc()}")
+                        
+                        # Pequena pausa entre símbolos para não sobrecarregar o MT5
+                        time.sleep(0.2)
+                        
+                    # Processar resultados
+                    if oldest_dates and self.detection_running:
+                        min_date = min(oldest_dates)
+                        date_str = min_date.strftime('%Y-%m-%d')
+                        
+                        # Atualizar UI thread-safe
+                        self.root.after_idle(lambda d=date_str: (
+                            start_date_entry.delete(0, tk.END),
+                            start_date_entry.insert(0, d),
+                            status_var.set(f"Data mais antiga detectada: {d}"),
+                            messagebox.showinfo("Detecção Concluída", f"Data mais antiga encontrada: {d}")
+                        ))
+                    elif self.detection_running:
+                        self.root.after_idle(lambda: (
+                            status_var.set("Nenhuma data antiga encontrada para os símbolos selecionados"),
+                            messagebox.showinfo("Detecção Concluída", "Não foi possível encontrar dados históricos para os símbolos selecionados.")
+                        ))
+                        
+                    error_msg = str(e)
+                    logging.error(f"Erro na detecção de data mais antiga: {error_msg}")
+                    logging.error(traceback.format_exc())
+                    
+                    self.root.after_idle(lambda msg=error_msg: (
+                        status_var.set(f"Erro na detecção: {msg}"),
+                        messagebox.showerror("Erro de Detecção", f"Erro ao detectar data mais antiga: {msg}")
+                    ))
+                
                 finally:
-                    # Restaurar interface
-                    detect_button.config(state=tk.NORMAL)
-                    cancel_detect_button.grid_remove()
+                    self.detection_running = False
+                    # Restaurar UI
+                    self.root.after_idle(lambda: (
+                        detect_button.config(state=tk.NORMAL),
+                        cancel_detect_button.grid_remove()
+                    ))
             
             # Iniciar thread de detecção
-            detection_thread = threading.Thread(target=detection_thread, daemon=True)
-            detection_thread.start()
-        
+            threading.Thread(target=detection_thread, daemon=True).start()
+            
         def cancel_detection():
-            """Não é necessário implementar aqui, uma vez que agora é definido localmente
-            dentro da função detect_oldest_date."""
-            pass
+            if hasattr(self, 'detection_running') and self.detection_running:
+                self.detection_running = False
+                status_var.set("Cancelando detecção...")
+                cancel_detect_button.config(state=tk.DISABLED)
+                self.log("Detecção de data mais antiga cancelada pelo usuário")
         
         # --- Lógica de Extração (será chamada pelo botão) ---
         def start_extraction_logic():
@@ -1257,27 +1243,25 @@ Status: Sem dados no banco. Disponível para coleta.
 
             # Chama a lógica de negócio na app principal
             # Passa os parâmetros obtidos da UI e callbacks para atualizar a UI
-            # Chama a lógica de negócio na nova classe HistoricalExtractor
-            self.app.historical_extractor.extract_data(
+            self.app.start_historical_extraction_logic(
                 symbols=self.app.selected_symbols,
                 timeframe_val=timeframe_val,
-                timeframe_name=timeframe_name, # Passar o nome descritivo
+                timeframe_name=timeframe_name,
                 start_date=start_date,
                 end_date=end_date,
-                # max_bars não é mais um parâmetro direto para extract_data
+                max_bars=max_bars, # Passa max_bars se necessário na lógica
                 include_indicators=include_indicators,
                 overwrite=overwrite,
-                # auto_detect_oldest_date é gerenciado internamente pelo extractor
-                # max_workers pode ser configurado ou padrão
+                auto_detect_oldest_date=auto_detect_var.get(),  # Passar o valor da checkbox
+                # Callbacks para atualizar a UI a partir da thread da app
                 update_progress_callback=lambda p, msg: self.root.after_idle(lambda: (progress_var.set(p), status_var.set(msg))),
-                # Ajustar callback para 3 args (success, failed, canceled)
-                finished_callback=lambda s, f, c: self.root.after_idle(lambda: (extract_button.config(state=tk.NORMAL), cancel_button.config(text="Fechar")))
+                finished_callback=lambda s, f: self.root.after_idle(lambda: (extract_button.config(state=tk.NORMAL), cancel_button.config(text="Fechar")))
             )
 
         def cancel_extraction_logic():
              if extract_button.cget('state') == tk.DISABLED:
                  # Chama a lógica de cancelamento na app principal
-                 self.app.historical_extractor.cancel_extraction()
+                 self.app.cancel_historical_extraction_logic()
                  status_var.set("Cancelando...")
              else:
                  config_window.destroy()
@@ -1302,7 +1286,6 @@ Status: Sem dados no banco. Disponível para coleta.
              return
              
         # Verifica se o MT5 está conectado (caso precise de dados em tempo real)
-        mt5_conectado = False
         if (not self.app.mt5_initialized or not self.app.mt5_connector or 
             not self.app.mt5_connector.is_initialized):
             response = messagebox.askyesno(
@@ -1316,189 +1299,89 @@ Status: Sem dados no banco. Disponível para coleta.
                 self.update_status("Status: Reconectando ao MT5...")
                 
                 # Tenta inicializar o MT5
-                if self.app.mt5_connector and self.app.mt5_connector.initialize(recursion_count=0):
+                if self.app.mt5_connector and self.app.mt5_connector.initialize():
                     self.app.mt5_initialized = True
                     status = self.app.mt5_connector.get_connection_status()
                     logging.info(f"Conexão MT5 reestabelecida. Modo: {status.get('mode', 'N/A')}")
                     self.log(f"MT5 conectado com sucesso. Modo: {status.get('mode', 'N/A')}")
                     self.update_status("Status: MT5 reconectado!")
                     messagebox.showinfo("Conexão MT5", "Conexão com MT5 estabelecida com sucesso.")
-                    mt5_conectado = True
                 else:
                     # Se falhar na reconexão, continua apenas com dados do banco
                     logging.warning("Falha ao reconectar ao MT5. Mostrando apenas dados armazenados.")
                     self.log("AVISO: Falha ao reconectar ao MT5. Mostrando apenas dados armazenados.")
                     self.update_status("Status: Visualizando dados armazenados apenas")
             # Continua mesmo sem MT5 conectado, apenas com dados do banco
-        else:
-            mt5_conectado = True
 
         stats_window = tk.Toplevel(self.root)
         stats_window.title("Estatísticas")
         stats_window.geometry("800x600")
-        
-        # Adicionar barra de status na janela de estatísticas
-        status_frame = ttk.Frame(stats_window)
-        status_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=5)
-        status_label = ttk.Label(status_frame, text="Carregando estatísticas...")
-        status_label.pack(side=tk.LEFT)
-        
-        # Inicializar o notebook antes
+
         notebook = ttk.Notebook(stats_window)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         dados_encontrados = False
-        
-        # Criamos uma função para atualizar dinamicamente o status
-        def update_stats_status(text):
-            status_label.config(text=text)
-            stats_window.update_idletasks()
-        
-        # Processamos cada símbolo
+
         for symbol in self.app.selected_symbols:
             try:
-                update_stats_status(f"Carregando dados para {symbol}...")
-                
-                # Verificar nome da tabela
+                # TODO: Refatorar para usar um método db_manager.get_data(symbol, timeframe, limit)
+                table_name = f"{symbol.lower()}_1min"
+                query_exists = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"
+                query_data = f"SELECT * FROM {table_name} ORDER BY time DESC LIMIT 1000"
+
                 try:
-                    table_name = self.app.db_manager.get_table_name_for_symbol(symbol, "1 minuto")
-                    if not table_name:
-                        self.log(f"Nome de tabela inválido para {symbol}")
-                        update_stats_status(f"Erro: Nome de tabela inválido para {symbol}")
-                        continue
-                except Exception as table_name_error:
-                    self.log(f"Erro ao obter nome da tabela para {symbol}: {str(table_name_error)}")
-                    update_stats_status(f"Erro ao obter nome da tabela para {symbol}")
-                    continue
-                    
-                # Verificar se a tabela existe
-                try:
-                    query_exists = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"
+                    # Usa o engine diretamente (temporário)
                     table_exists = pd.read_sql(query_exists, self.app.db_manager.engine)
                     if table_exists.empty:
                         self.log(f"Tabela {table_name} não existe - sem dados para mostrar estatísticas")
-                        update_stats_status(f"Sem dados para {symbol}")
                         continue
-                except Exception as exists_error:
-                    self.log(f"Erro ao verificar existência da tabela {table_name}: {str(exists_error)}")
-                    update_stats_status(f"Erro ao verificar tabela {symbol}")
-                    continue
-                
-                # Obter dados
-                try:
-                    query_data = f"SELECT * FROM {table_name} ORDER BY time DESC LIMIT 1000"
                     df = pd.read_sql(query_data, self.app.db_manager.engine)
-                    
-                    if df.empty:
-                        self.log(f"Nenhum dado encontrado para {symbol}")
-                        update_stats_status(f"Nenhum dado encontrado para {symbol}")
-                        continue
-                except Exception as data_error:
-                    self.log(f"Erro ao ler dados da tabela {table_name}: {str(data_error)}")
-                    update_stats_status(f"Erro ao ler dados de {symbol}")
+                except Exception as table_error:
+                    self.log(f"Erro ao ler tabela {table_name}: {str(table_error)}")
                     continue
-                
+
+                if df.empty:
+                    self.log(f"Nenhum dado encontrado para {symbol}")
+                    continue
+
                 dados_encontrados = True
-                update_stats_status(f"Processando dados de {symbol}...")
-                
-                # Converter coluna de tempo
-                try:
-                    df['time'] = pd.to_datetime(df['time'])
-                except Exception as e:
-                    self.log(f"Erro ao converter coluna de tempo para {symbol}: {str(e)}")
-                
-                # Criar aba para este símbolo
+                df['time'] = pd.to_datetime(df['time'])
+
                 tab = ttk.Frame(notebook)
                 notebook.add(tab, text=symbol)
-                
-                # Divisão em duas partes: texto e gráfico
-                panel = ttk.PanedWindow(tab, orient=tk.VERTICAL)
-                panel.pack(fill=tk.BOTH, expand=True)
-                
-                # Painel de texto
-                text_frame = ttk.Frame(panel)
-                panel.add(text_frame, weight=1)
-                
-                stats_text = tk.Text(text_frame, height=15, width=60)
+
+                stats_text = tk.Text(tab, height=15, width=60)
                 stats_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-                
-                # Adicionar scrollbar
-                text_scroll = ttk.Scrollbar(text_frame, command=stats_text.yview)
-                text_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-                stats_text.config(yscrollcommand=text_scroll.set)
 
-                # Calcular estatísticas
-                try:
-                    # Obter preço em tempo real se MT5 conectado
-                    preço_atual = "N/A"
-                    if mt5_conectado:
-                        try:
-                            symbol_info = self.app.mt5_connector.get_symbol_info(symbol)
-                            if symbol_info and hasattr(symbol_info, 'last'):
-                                preço_atual = symbol_info.last
-                        except Exception as price_err:
-                            log.warning(f"Erro ao obter preço atual de {symbol}: {price_err}")
-                    
-                    # Usar dados históricos se não conseguiu em tempo real
-                    if preço_atual == "N/A" and not df.empty:
-                        preço_atual = df['close'].iloc[0]
-                    
-                    stats = {
-                        "Intervalo de Datas": f"{df['time'].min().strftime('%Y-%m-%d')} a {df['time'].max().strftime('%Y-%m-%d')}",
-                        "Total de Registros": len(df),
-                        "Preço Atual": preço_atual,
-                        "Preço Máximo": df['high'].max(),
-                        "Preço Mínimo": df['low'].min(),
-                        "Média de Preço (Fechamento)": df['close'].mean(),
-                    }
-                    
-                    # Adicionar estatísticas de indicadores se estiverem disponíveis
-                    for column in ['atr', 'rsi', 'ma_20', 'volume']:
-                        if column in df.columns:
-                            if column == 'atr':
-                                stats["Volatilidade (ATR médio)"] = df['atr'].mean()
-                            elif column == 'rsi':
-                                stats["RSI Atual"] = df['rsi'].iloc[0]
-                            elif column == 'ma_20':
-                                stats["Média Móvel 20 (atual)"] = df['ma_20'].iloc[0]
-                            elif column == 'volume':
-                                stats["Volume Total"] = df['volume'].sum()
-                                stats["Volume Médio"] = df['volume'].mean()
-                    
-                    # Verificar padrões de candle se disponíveis
-                    if 'candle_pattern' in df.columns:
-                        patterns = df['candle_pattern'].value_counts().to_dict()
-                        for pattern, count in patterns.items():
-                            if pattern and pattern != "No Pattern":
-                                stats[f"Padrão {pattern}"] = count
-                except Exception as stats_error:
-                    log.error(f"Erro ao calcular estatísticas para {symbol}: {stats_error}")
-                    log.debug(traceback.format_exc())
-                    stats = {"Erro": f"Falha ao calcular estatísticas: {str(stats_error)}"}
+                # TODO: Mover cálculo de estatísticas para classe/módulo separado?
+                stats = {
+                    "Intervalo de Datas": f"{df['time'].min()} a {df['time'].max()}",
+                    "Total de Registros": len(df),
+                    "Preço Atual": df['close'].iloc[0] if not df.empty else 'N/A',
+                    "Preço Máximo": df['high'].max(),
+                    "Preço Mínimo": df['low'].min(),
+                    "Média de Preço (Fechamento)": df['close'].mean(),
+                    "Volatilidade (ATR médio)": df['atr'].mean() if 'atr' in df.columns else "N/A",
+                    # "Volume Total": df['volume'].sum(), # 'volume' não parece estar no DF padrão
+                    # "Volume Médio": df['volume'].mean(),
+                    "RSI Atual": df['rsi'].iloc[0] if 'rsi' in df.columns and not df.empty else "N/A",
+                }
 
-                # Exibir estatísticas
+                if 'candle_pattern' in df.columns:
+                    pattern_counts = df['candle_pattern'].value_counts().to_dict()
+                    for pattern, count in pattern_counts.items():
+                        if pattern != "No Pattern":
+                            stats[f"Padrão {pattern}"] = count
+
                 stats_text.insert(tk.END, "ESTATÍSTICAS DO SÍMBOLO\n")
                 stats_text.insert(tk.END, "=====================\n\n")
                 for key, value in stats.items():
-                    if isinstance(value, float):
-                        value = f"{value:.5f}"
                     stats_text.insert(tk.END, f"{key}: {value}\n")
-
-                # Painel do gráfico
-                chart_frame = ttk.Frame(panel)
-                panel.add(chart_frame, weight=2)
 
                 # Gráfico (requer matplotlib e FigureCanvasTkAgg)
                 try:
-                    update_stats_status(f"Gerando gráfico para {symbol}...")
-                    
-                    try:
-                        from matplotlib.figure import Figure
-                        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-                    except ImportError:
-                        self.log("Matplotlib não instalado. Gráficos indisponíveis.")
-                        stats_text.insert(tk.END, "\n\nAVISO: Matplotlib não instalado. Gráficos indisponíveis.")
-                        continue
+                    from matplotlib.figure import Figure
+                    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
                     fig = Figure(figsize=(10, 4), dpi=100)
                     ax = fig.add_subplot(111)
@@ -1506,43 +1389,31 @@ Status: Sem dados no banco. Disponível para coleta.
                     plot_df = df.iloc[::-1].copy()
                     plot_df.set_index('time', inplace=True)
 
-                    # Plotando preço de fechamento
                     ax.plot(plot_df.index, plot_df['close'], label='Preço de Fechamento')
-                    
-                    # Adicionar indicadores se disponíveis
-                    for indicator, params in [
-                        ('ma_20', {'label': 'MA 20', 'linestyle': '--', 'color': 'blue'}),
-                        ('bollinger_upper', {'label': 'Bollinger Sup.', 'linestyle': ':', 'color': 'green'}),
-                        ('bollinger_lower', {'label': 'Bollinger Inf.', 'linestyle': ':', 'color': 'red'})
-                    ]:
-                        if indicator in plot_df.columns:
-                            ax.plot(
-                                plot_df.index, 
-                                plot_df[indicator], 
-                                label=params['label'], 
-                                linestyle=params['linestyle'],
-                                color=params['color']
-                            )
+                    if 'ma_20' in plot_df.columns:
+                        ax.plot(plot_df.index, plot_df['ma_20'], label='MA 20', linestyle='--')
+                    if 'bollinger_upper' in plot_df.columns and 'bollinger_lower' in plot_df.columns:
+                        ax.plot(plot_df.index, plot_df['bollinger_upper'], label='Bollinger Sup.', linestyle=':')
+                        ax.plot(plot_df.index, plot_df['bollinger_lower'], label='Bollinger Inf.', linestyle=':')
 
                     ax.set_title(f'Preço de {symbol}')
                     ax.set_ylabel('Preço')
                     ax.legend()
                     fig.autofmt_xdate()
 
-                    canvas = FigureCanvasTkAgg(fig, master=chart_frame)
+                    canvas = FigureCanvasTkAgg(fig, master=tab)
                     canvas.draw()
                     canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+                except ImportError:
+                    log.warning("Matplotlib não instalado. Gráficos não serão exibidos.")
+                    stats_text.insert(tk.END, "\n\nAVISO: Matplotlib não instalado. Gráficos indisponíveis.")
                 except Exception as plot_err:
-                    self.log(f"Erro ao gerar gráfico para {symbol}: {str(plot_err)}")
-                    log.error(f"Erro detalhado no gráfico: {traceback.format_exc()}")
+                    self.log(f"Erro ao gerar gráfico para {symbol}: {plot_err}")
             except Exception as e:
                 self.log(f"Erro ao gerar estatísticas para {symbol}: {str(e)}")
                 logging.error(f"Erro detalhado para {symbol}: {traceback.format_exc()}")
 
-        # Atualização final de status
-        if dados_encontrados:
-            update_stats_status("Estatísticas carregadas com sucesso")
-        else:
+        if not dados_encontrados:
             messagebox.showinfo(
                 "Sem dados",
                 "Não foram encontrados dados para os símbolos selecionados.\n\n"
@@ -1569,6 +1440,8 @@ Status: Sem dados no banco. Disponível para coleta.
             else:
                 self.log("Falha ao tentar iniciar MT5 como administrador.")
                 messagebox.showerror("Erro", "Não foi possível iniciar o MT5 como administrador. Verifique o log para mais detalhes.")
+            log.debug(traceback.format_exc())
+            messagebox.showerror("Erro", f"Erro ao tentar iniciar MT5 como administrador: {str(e)}")
         except Exception as e:
             log.debug(traceback.format_exc())
             messagebox.showerror("Erro", f"Erro ao tentar iniciar MT5 como administrador: {str(e)}")
@@ -1715,7 +1588,6 @@ Status: Sem dados no banco. Disponível para coleta.
                             export_dialog.destroy()
                         else:
                             messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
-                    except Exception as e:
                         messagebox.showerror("Erro", f"Falha ao exportar: {str(e)}")
             
             elif format_type.lower() in ['excel', 'xlsx']:
@@ -1739,7 +1611,6 @@ Status: Sem dados no banco. Disponível para coleta.
                             export_dialog.destroy()
                         else:
                             messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
-                    except Exception as e:
                         messagebox.showerror("Erro", f"Falha ao exportar: {str(e)}")
         
         # Botões
@@ -1901,7 +1772,6 @@ Status: Sem dados no banco. Disponível para coleta.
                         export_dialog.destroy()
                     else:
                         messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
-                except Exception as e:
                     messagebox.showerror("Erro", f"Falha ao exportar: {str(e)}")
         
         # Botões
@@ -1995,20 +1865,20 @@ Status: Sem dados no banco. Disponível para coleta.
                 self.symbols_listbox.insert(i, f"{symbol} ✓")
         
         # Atualizar também os símbolos selecionados, se houver
-        if self.selected_listbox:
-            for i in range(self.selected_listbox.size()):
-                symbol = self.selected_listbox.get(i)
+        if self.selected_symbols_listbox:
+            for i in range(self.selected_symbols_listbox.size()):
+                symbol = self.selected_symbols_listbox.get(i)
                 
                 # Remover marcador existente, se houver
                 if symbol.endswith(" ✓"):
                     symbol = symbol[:-2].strip()
-                    self.selected_listbox.delete(i)
-                    self.selected_listbox.insert(i, symbol)
+                    self.selected_symbols_listbox.delete(i)
+                    self.selected_symbols_listbox.insert(i, symbol)
                 
                 # Verificar se o símbolo (sem marcador) tem dados
                 if symbol.upper() in symbols_with_data:
-                    self.selected_listbox.delete(i)
-                    self.selected_listbox.insert(i, f"{symbol} ✓")
+                    self.selected_symbols_listbox.delete(i)
+                    self.selected_symbols_listbox.insert(i, f"{symbol} ✓")
 
     def load_favorites(self):
         """Carrega a lista de símbolos favoritos do arquivo"""
@@ -2115,83 +1985,6 @@ Status: Sem dados no banco. Disponível para coleta.
         self.search_var.set("")
         self.filter_symbols()
         self.log("Exibindo todos os símbolos")
-
-    def check_mt5_status(self):
-        """Verifica e atualiza o status de conexão do MT5."""
-        try:
-            if not self.app.mt5_connector or not hasattr(self.app.mt5_connector, '_is_mt5_running'):
-                self.update_status("Status: MT5 não inicializado")
-                return
-                
-            # Verificar se o MT5 está em execução
-            is_running = self.app.mt5_connector._is_mt5_running()
-            
-            if not is_running:
-                self.update_status("Status: MT5 não está em execução")
-                self.mt5_status_value.config(text="Desconectado", foreground="red")
-                return
-                
-            # Verificar se está conectado
-            if not self.app.mt5_initialized or not self.app.mt5_connector.is_initialized:
-                self.update_status("Status: MT5 em execução, mas desconectado")
-                self.mt5_status_value.config(text="Desconectado", foreground="orange")
-                
-                # Tentar reconectar
-                response = messagebox.askyesno(
-                    "Reconectar",
-                    "O MT5 está em execução, mas a aplicação não está conectada.\n\nDeseja tentar conectar agora?"
-                )
-                
-                if response:
-                    if self.app.mt5_connector.initialize(recursion_count=0):
-                        self.app.mt5_initialized = True
-                        self.update_status("Status: MT5 conectado com sucesso")
-                        self.mt5_status_value.config(text="Conectado", foreground="green")
-                        
-                        # Verificar modo de administrador
-                        self._check_admin_mode()
-                    else:
-                        self.update_status("Status: Falha ao conectar com MT5")
-                        messagebox.showerror("Erro", "Não foi possível conectar ao MT5. Verifique se o terminal está aberto e funcionando corretamente.")
-                
-                return
-                
-            # Se chegou aqui, está em execução e conectado
-            self.update_status("Status: MT5 conectado")
-            self.mt5_status_value.config(text="Conectado", foreground="green")
-            
-            # Verificar modo de administrador
-            self._check_admin_mode()
-            
-        except Exception as e:
-            log.error(f"Erro ao verificar status do MT5: {e}")
-            self.update_status(f"Erro ao verificar status: {str(e)}")
-            self.mt5_status_value.config(text="Erro", foreground="red")
-    
-    def _check_admin_mode(self):
-        """Verifica se o MT5 está em modo de administrador."""
-        if not hasattr(self.app.mt5_connector, 'is_mt5_running_as_admin'):
-            return
-            
-        try:
-            if self.app.mt5_connector.is_mt5_running_as_admin():
-                self.update_status("Status: MT5 em execução como administrador")
-                messagebox.showinfo("MT5", "O MetaTrader 5 está em execução com privilégios de administrador.")
-            else:
-                self.update_status("Status: MT5 em execução sem privilégios de administrador")
-                
-                response = messagebox.askyesno(
-                    "Permissões limitadas",
-                    "O MetaTrader 5 está em execução sem privilégios de administrador.\n\n"
-                    "Isso pode limitar o acesso a dados históricos.\n\n"
-                    "Deseja reiniciar o MT5 com privilégios de administrador?"
-                )
-                
-                if response:
-                    self.launch_mt5_as_admin()
-        except Exception as e:
-            log.error(f"Erro ao verificar modo de administrador: {e}")
-            self.update_status(f"Erro ao verificar modo de administrador: {str(e)}")
 
 # Exemplo de como seria chamado em app.py (não executar este arquivo diretamente)
 # if __name__ == "__main__":

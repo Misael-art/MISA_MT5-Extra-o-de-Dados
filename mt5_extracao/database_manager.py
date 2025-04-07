@@ -1,8 +1,9 @@
 import os
 import logging
 import pandas as pd
+import numpy as np # <--- ADICIONADO IMPORT
 import traceback
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect # Adicionado inspect
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
@@ -78,9 +79,116 @@ class DatabaseManager:
         """Verifica se a conexão com o banco de dados está ativa."""
         return self.engine is not None
 
+    # Mapeamento de nomes de colunas para tipos SQL (simplificado)
+    # Usado para criar a tabela com todas as colunas possíveis de uma vez
+    _FULL_COLUMN_DEFINITIONS = {
+        "time": "TIMESTAMP PRIMARY KEY",
+        "open": "REAL",
+        "high": "REAL",
+        "low": "REAL",
+        "close": "REAL",
+        "tick_volume": "INTEGER",
+        "spread": "INTEGER",
+        "real_volume": "INTEGER",
+        "rsi": "REAL",
+        "macd_line": "REAL",
+        "macd_signal": "REAL",
+        "macd_histogram": "REAL",
+        "ma_20": "REAL", # Exemplo, pode haver outras MAs
+        "bollinger_upper": "REAL",
+        "bollinger_lower": "REAL",
+        "atr": "REAL",
+        "true_range": "REAL",
+        "var_pct_open_5min": "REAL",
+        "var_pct_close_15min": "REAL",
+        "var_pct_high_30min": "REAL",
+        "var_pct_low_60min": "REAL",
+        "var_pct_open_daily": "REAL",
+        "var_pct_close_prev_day": "REAL",
+        "stoch_k": "REAL",
+        "stoch_d": "REAL",
+        "adx": "REAL",
+        "plus_di": "REAL",
+        "minus_di": "REAL",
+        "cci": "REAL",
+        "fib_0": "REAL",
+        "fib_236": "REAL",
+        "fib_382": "REAL",
+        "fib_500": "REAL",
+        "fib_618": "REAL",
+        "fib_786": "REAL",
+        "fib_1000": "REAL",
+        "fib_1272": "REAL",
+        "fib_1618": "REAL",
+        "skewness": "REAL",
+        "kurtosis": "REAL",
+        "volatility": "REAL",
+        "pattern_doji": "INTEGER",
+        "pattern_hammer": "INTEGER",
+        "pattern_inverted_hammer": "INTEGER",
+        "pattern_bullish_engulfing": "INTEGER",
+        "pattern_bearish_engulfing": "INTEGER",
+        "pattern_morning_star": "INTEGER",
+        "pattern_evening_star": "INTEGER",
+        "volume_obv": "REAL", # Assumindo que análise de volume adiciona estes
+        "volume_cmf": "REAL",
+        "volume_fi": "REAL",
+        "volume_vpt": "REAL",
+        "volume_nvi": "REAL",
+        "volume_pvi": "REAL",
+        "trend_direction": "INTEGER",
+        "trend_strength": "REAL",
+        "trend_duration": "INTEGER",
+        "trend_slope": "REAL",
+        "trend_r_squared": "REAL",
+        "resistance_1": "REAL",
+        "resistance_2": "REAL",
+        "resistance_3": "REAL", # Adicionado R3/S3 por precaução
+        "support_1": "REAL",
+        "support_2": "REAL",
+        "support_3": "REAL",
+        "day_of_week": "INTEGER",
+        "hour_of_day": "INTEGER",
+        "trading_session": "INTEGER", # Assumindo INTEGER
+        "intraday_volatility": "REAL",
+    }
+
+    def _create_table_if_not_exists(self, table_name):
+        """Cria a tabela com o schema completo se ela não existir."""
+        if not self.is_connected():
+            log.error(f"Não é possível criar tabela '{table_name}': Banco de dados não conectado.")
+            return False
+
+        try:
+            with self.engine.connect() as connection:
+                inspector = inspect(self.engine)
+                if not inspector.has_table(table_name):
+                    log.info(f"Tabela '{table_name}' não encontrada. Criando com schema completo...")
+                    column_defs = [f"{name} {sql_type}" for name, sql_type in self._FULL_COLUMN_DEFINITIONS.items()]
+                    # Citar o nome da tabela para segurança
+                    create_sql = f'CREATE TABLE "{table_name}" ({", ".join(column_defs)})'
+                    connection.execute(text(create_sql))
+                    # Adicionar commit explícito após DDL
+                    if hasattr(connection, 'commit'):
+                        connection.commit()
+                    log.info(f"Tabela '{table_name}' criada com sucesso.")
+                    return True
+                else:
+                    # log.debug(f"Tabela '{table_name}' já existe.")
+                    return True # Tabela já existe, sucesso
+        except SQLAlchemyError as e:
+            log.error(f"Erro SQLAlchemy ao criar/verificar tabela '{table_name}': {e}")
+            log.debug(traceback.format_exc())
+            return False
+        except Exception as e:
+            log.error(f"Erro inesperado ao criar/verificar tabela '{table_name}': {e}")
+            log.debug(traceback.format_exc())
+            return False
+
     def save_ohlcv_data(self, symbol, timeframe_name, df):
         """
         Salva ou atualiza dados OHLCV no banco de dados.
+        Garante que a tabela exista com o schema completo antes de salvar.
 
         Args:
             symbol (str): Nome do símbolo (ex: 'WIN$N').
@@ -92,45 +200,69 @@ class DatabaseManager:
             return False
         if df is None or df.empty:
             log.warning(f"DataFrame vazio para {symbol} {timeframe_name}. Nada a salvar.")
+            return True # Considera sucesso, pois não há erro
+
+        table_name = self.get_table_name_for_symbol(symbol, timeframe_name)
+        log.info(f"Preparando para salvar {len(df)} registros para {symbol} ({timeframe_name}) na tabela '{table_name}'...")
+
+        # 1. Garantir que a tabela exista com o schema completo
+        if not self._create_table_if_not_exists(table_name):
+            log.error(f"Falha ao garantir a existência/schema da tabela '{table_name}'. Abortando salvamento.")
             return False
 
-        # Normaliza o nome da tabela (ex: WIN$N_1_minuto -> win_n_1_minuto)
-        # Remove caracteres inválidos e converte para minúsculas
-        table_name = f"{symbol}_{timeframe_name}".lower()
-        table_name = ''.join(c if c.isalnum() else '_' for c in table_name)
-        # Remove múltiplos underscores
-        table_name = '_'.join(filter(None, table_name.split('_')))
-
-        log.info(f"Salvando {len(df)} registros para {symbol} ({timeframe_name}) na tabela '{table_name}'...")
-
+        # 2. Preparar DataFrame para salvar
         try:
-            # Converte tipos de dados para formatos compatíveis com SQLite
             df_converted = df.copy()
-            
-            # Converte inteiros de 64 bits não assinados para inteiros de 32 bits 
-            # (SQLite não suporta inteiros de 64 bits não assinados)
-            if 'tick_volume' in df_converted:
-                df_converted['tick_volume'] = df_converted['tick_volume'].astype('int32')
-            if 'real_volume' in df_converted:
-                df_converted['real_volume'] = df_converted['real_volume'].astype('int32')
-            if 'spread' in df_converted:
-                df_converted['spread'] = df_converted['spread'].astype('int32')
-                
-            # Usa 'replace' para inserir novos dados e sobrescrever existentes (baseado no índice 'time')
-            # Define 'time' como índice para a operação de replace funcionar corretamente
+            # Garantir que 'time' seja datetime
+            if 'time' in df_converted.columns:
+                 df_converted['time'] = pd.to_datetime(df_converted['time'])
+            else:
+                 log.error("DataFrame não contém a coluna 'time'.")
+                 return False
+
+            # Definir 'time' como índice
             df_to_save = df_converted.set_index('time')
 
-            # Salva no banco de dados
-            # if_exists='append' é mais seguro para dados de série temporal para não apagar tudo
-            # Mas 'replace' pode ser útil se quisermos garantir que apenas os dados mais recentes existam
-            # Vamos usar 'append' e garantir a unicidade com um índice ou chave primária depois
-            # TODO: Adicionar tratamento de chave primária (time, symbol) para evitar duplicatas com 'append'
-            df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True)
+            # Remover colunas do DataFrame que NÃO existem na definição completa
+            # Isso evita erros se o cálculo de indicadores gerar colunas inesperadas
+            # Usar os nomes das chaves diretamente, pois removemos as aspas
+            valid_columns = [col for col in self._FULL_COLUMN_DEFINITIONS.keys() if col != 'time'] # Usar nomes diretamente
+            cols_to_drop = [col for col in df_to_save.columns if col not in valid_columns]
+            if cols_to_drop:
+                log.warning(f"Removendo colunas não definidas no schema de '{table_name}': {cols_to_drop}")
+                df_to_save = df_to_save.drop(columns=cols_to_drop)
+
+            # Garantir que colunas FALTANTES no DF (mas presentes no schema) sejam adicionadas com NaN
+            # Isso evita erro no INSERT se um indicador não foi calculado
+            for col_name in self._FULL_COLUMN_DEFINITIONS.keys(): # Iterar diretamente sobre as chaves
+                 if col_name != 'time' and col_name not in df_to_save.columns:
+                      log.debug(f"Adicionando coluna faltante '{col_name}' com NaN ao DataFrame antes de salvar em '{table_name}'.")
+                      df_to_save[col_name] = np.nan # Adiciona com NaN
+
+            # Reordenar colunas do DataFrame para coincidir com a ordem da definição (boa prática)
+            ordered_columns = [col for col in self._FULL_COLUMN_DEFINITIONS.keys() if col != 'time']
+            df_to_save = df_to_save[ordered_columns]
+
+        except Exception as e:
+            log.error(f"Erro ao preparar DataFrame para salvar em '{table_name}': {e}")
+            log.debug(traceback.format_exc())
+            return False
+
+        # 3. Salvar no banco de dados
+        try:
+            log.debug(f"Tentando salvar dados na tabela '{table_name}'...")
+            # Usar 'append'. A chave primária 'time' deve lidar com duplicatas se o SQLite estiver configurado corretamente
+            # ou se a lógica de 'overwrite' for usada antes desta chamada.
+            # Deixar pandas/SQLAlchemy lidar com a citação do nome da tabela
+            df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True, index_label='time')
 
             log.info(f"Dados para {symbol} ({timeframe_name}) salvos com sucesso em '{table_name}'.")
             return True
         except SQLAlchemyError as e:
+            # Log detalhado do erro SQL
             log.error(f"Erro SQLAlchemy ao salvar dados para {symbol} em '{table_name}': {e}")
+            if hasattr(e, 'params'): log.error(f"Parâmetros: {e.params}")
+            if hasattr(e, 'statement'): log.error(f"Statement: {e.statement}")
             log.debug(traceback.format_exc())
             return False
         except Exception as e:
@@ -441,6 +573,152 @@ class DatabaseManager:
         except Exception as e:
             log.error(f"Erro inesperado ao obter resumo de {table_name}: {e}")
             return None
+
+    @with_error_handling(error_type=DatabaseError)
+    def get_recent_data(self, table_name, limit=100):
+        """
+        Obtém os dados mais recentes de uma tabela específica.
+        
+        Args:
+            table_name (str): Nome da tabela
+            limit (int): Número máximo de registros a serem retornados
+            
+        Returns:
+            pandas.DataFrame: DataFrame com os dados mais recentes ou None em caso de erro
+        """
+        if not self.is_connected():
+            log.error(f"Não é possível obter dados recentes de {table_name}: Banco de dados não conectado.")
+            return None
+            
+        try:
+            # Verifica se a tabela existe
+            if self.db_type == 'sqlite':
+                with self.engine.connect() as conn:
+                    result = conn.execute(text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"))
+                    if not result.scalar():
+                        log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
+                        return None
+            
+            # Consulta os dados mais recentes
+            query = f"""
+            SELECT * FROM {table_name}
+            ORDER BY time DESC
+            LIMIT {limit}
+            """
+            
+            df = pd.read_sql_query(query, self.engine)
+            
+            if df.empty:
+                log.warning(f"Nenhum dado encontrado na tabela {table_name}.")
+                return None
+                
+            # Reordena o DataFrame cronologicamente (do mais antigo para o mais recente)
+            df = df.sort_values(by='time').reset_index(drop=True)
+            
+            log.info(f"Obtidos {len(df)} registros recentes da tabela {table_name}.")
+            return df
+            
+        except SQLAlchemyError as e:
+            log.error(f"Erro SQL ao obter dados recentes de {table_name}: {e}")
+            return None
+        except Exception as e:
+            log.error(f"Erro inesperado ao obter dados recentes de {table_name}: {e}")
+            log.debug(traceback.format_exc())
+            return None
+            
+    @with_error_handling(error_type=DatabaseError)
+    def save_data(self, df, table_name, symbol=None):
+        """
+        Salva os dados no banco de dados.
+        
+        Args:
+            df (pandas.DataFrame): DataFrame contendo os dados a serem salvos
+            table_name (str): Nome da tabela
+            symbol (str, optional): Símbolo para fins de log
+            
+        Returns:
+            bool: True se os dados foram salvos com sucesso, False caso contrário
+        """
+        if not self.is_connected():
+            log.error(f"Não é possível salvar dados em {table_name}: Banco de dados não conectado.")
+            return False
+            
+        if df is None or df.empty:
+            symbol_info = f" para {symbol}" if symbol else ""
+            log.warning(f"DataFrame vazio{symbol_info}. Nada a salvar em {table_name}.")
+            return False
+            
+        try:
+            # Converte tipos de dados para formatos compatíveis com SQLite
+            df_to_save = df.copy()
+            
+            # Verifica se 'time' está no DataFrame e converte para tipo correto
+            if 'time' in df_to_save.columns:
+                # Garante que 'time' é datetime
+                df_to_save['time'] = pd.to_datetime(df_to_save['time'])
+                
+                # Define 'time' como índice para a operação funcionar corretamente
+                df_to_save = df_to_save.set_index('time')
+            
+            # Converte inteiros grandes para evitar erros de SQLite
+            for col in df_to_save.select_dtypes(include=['int64', 'uint64']).columns:
+                df_to_save[col] = df_to_save[col].astype('int32')
+            
+            # Salva no banco de dados
+            df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True)
+            
+            symbol_info = f" para {symbol}" if symbol else ""
+            log.info(f"Dados{symbol_info} salvos com sucesso em {table_name} ({len(df)} registros).")
+            return True
+            
+        except SQLAlchemyError as e:
+            symbol_info = f" para {symbol}" if symbol else ""
+            log.error(f"Erro SQL ao salvar dados{symbol_info} em {table_name}: {e}")
+            return False
+        except Exception as e:
+            symbol_info = f" para {symbol}" if symbol else ""
+            log.error(f"Erro inesperado ao salvar dados{symbol_info} em {table_name}: {e}")
+            log.debug(traceback.format_exc())
+            return False
+
+
+    @with_error_handling(error_type=DatabaseError)
+    def delete_data_periodo(self, table_name, start_date, end_date):
+        """
+        Deleta dados de uma tabela dentro de um período específico.
+
+        Args:
+            table_name (str): Nome da tabela normalizado.
+            start_date (datetime): Data inicial do período a ser deletado.
+            end_date (datetime): Data final do período a ser deletado.
+
+        Returns:
+            bool: True se a deleção foi bem-sucedida (ou nenhum dado existia), False caso contrário.
+        """
+        if not self.is_connected():
+            log.error(f"Não é possível deletar dados de {table_name}: Banco de dados não conectado.")
+            return False
+
+        log.info(f"Deletando dados da tabela '{table_name}' entre {start_date} e {end_date}...")
+
+        try:
+            with self.engine.connect() as connection:
+                # Usar transação para garantir atomicidade
+                with connection.begin():
+                    # Construir a query DELETE com parâmetros seguros
+                    query = text(f"DELETE FROM {table_name} WHERE time >= :start AND time <= :end")
+                    result = connection.execute(query, {"start": start_date, "end": end_date})
+                    log.info(f"{result.rowcount} registros deletados da tabela '{table_name}'.")
+            return True
+        except SQLAlchemyError as e:
+            log.error(f"Erro SQLAlchemy ao deletar dados de '{table_name}': {e}")
+            log.debug(traceback.format_exc())
+            # Levanta a exceção para ser capturada pelo decorator @with_error_handling
+            raise DatabaseError(f"Erro SQL ao deletar dados de '{table_name}': {str(e)}", query=str(query))
+        except Exception as e:
+            log.error(f"Erro inesperado ao deletar dados de '{table_name}': {e}")
+            log.debug(traceback.format_exc())
+            raise DatabaseError(f"Erro inesperado ao deletar dados de '{table_name}': {str(e)}")
 
 # Exemplo de uso (para teste)
 if __name__ == "__main__":

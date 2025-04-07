@@ -187,35 +187,35 @@ class IndicatorCalculator:
             df_5min = df.iloc[-5:]
             if len(df_5min) > 0:
                 open_5min = df_5min['open'].iloc[0]
-                df['%_var_open_5min'] = (last_close - open_5min) / open_5min * 100 if open_5min else np.nan
+                df['var_pct_open_5min'] = (last_close - open_5min) / open_5min * 100 if open_5min else np.nan
 
             # Variação vs fechamento dos últimos 15 minutos
             if len(df) >= 15:
                 close_15min = df['close'].iloc[-15]
-                df['%_var_close_15min'] = (last_close - close_15min) / close_15min * 100 if close_15min else np.nan
+                df['var_pct_close_15min'] = (last_close - close_15min) / close_15min * 100 if close_15min else np.nan
 
             # Variação vs máxima dos últimos 30 minutos
             df_30min = df.iloc[-30:]
             if len(df_30min) > 0:
                 high_30min = df_30min['high'].max()
-                df['%_var_high_30min'] = (last_close - high_30min) / high_30min * 100 if high_30min else np.nan
+                df['var_pct_high_30min'] = (last_close - high_30min) / high_30min * 100 if high_30min else np.nan
 
             # Variação vs mínima dos últimos 60 minutos
             df_60min = df.iloc[-60:]
             if len(df_60min) > 0:
                 low_60min = df_60min['low'].min()
-                df['%_var_low_60min'] = (last_close - low_60min) / low_60min * 100 if low_60min else np.nan
+                df['var_pct_low_60min'] = (last_close - low_60min) / low_60min * 100 if low_60min else np.nan
 
             # Variação vs abertura do dia
             today = pd.Timestamp.now().normalize() # Data de hoje sem hora
             df_today = df[df['time'] >= today]
             if not df_today.empty:
                 open_daily = df_today['open'].iloc[0]
-                df['%_var_open_daily'] = (last_close - open_daily) / open_daily * 100 if open_daily else np.nan
+                df['var_pct_open_daily'] = (last_close - open_daily) / open_daily * 100 if open_daily else np.nan
 
             # Variação vs fechamento do dia anterior (requer dados do dia anterior)
             # TODO: Implementar lógica para buscar/usar fechamento do dia anterior se necessário.
-            df['%_var_close_prev_day'] = np.nan
+            df['var_pct_close_prev_day'] = np.nan
 
             log.debug("Cálculo de variações concluído.")
             return df
@@ -260,7 +260,7 @@ if __name__ == "__main__":
     df_with_variations = calculator.calculate_price_variations(df_with_indicators.copy())
     print("\nDataFrame com Variações (últimas 5 linhas):")
     # Seleciona colunas relevantes para visualização
-    variation_cols = [col for col in df_with_variations.columns if col.startswith('%_var')]
+    variation_cols = [col for col in df_with_variations.columns if col.startswith('var_pct')]
     print(df_with_variations[['time', 'close'] + variation_cols].tail().to_string())
 
     log.info("\nTeste do IndicatorCalculator concluído.")

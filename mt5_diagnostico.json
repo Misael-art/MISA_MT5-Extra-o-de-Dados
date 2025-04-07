@@ -1,0 +1,26 @@
+{
+    "sistema": {
+        "os": "Windows",
+        "versao": "10.0.26100",
+        "arquitetura": "64bit",
+        "python": "3.13.2",
+        "executavel": "D:\\Bussines\\Finance\\Banco de dados\\.venv\\Scripts\\python.exe",
+        "ambiente_virtual": true
+    },
+    "dependencias": {
+        "MetaTrader5": true,
+        "pandas": true,
+        "numpy": true,
+        "matplotlib": true,
+        "sqlalchemy": true,
+        "PIL": true,
+        "pandas_ta": true,
+        "psutil": true
+    },
+    "mt5": {
+        "instalado": true,
+        "caminho": "C:\\Program Files\\MetaTrader 5",
+        "inicializado": true
+    },
+    "problemas": []
+}

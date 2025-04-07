@@ -152,13 +152,15 @@ class MT5Connector:
             return False  # Assume que não está rodando em caso de erro
 
     @with_error_handling(error_type=MT5ConnectionError)
-    def initialize(self, mt5_path=None, auto_login=True):
+    def initialize(self, mt5_path=None, auto_login=True, force_restart=False, recursion_count=0):
         """
         Inicializa a conexão com o MetaTrader 5.
         
         Args:
             mt5_path (str, optional): Caminho para o terminal64.exe. Se None, usa config.ini
             auto_login (bool): Se True, tenta fazer login com credenciais (se disponíveis)
+            force_restart (bool): Se True, força reinicialização mesmo se já estiver conectado
+            recursion_count (int): Contador de recursão para evitar chamadas infinitas
             
         Returns:
             bool: True se a inicialização for bem-sucedida
@@ -166,6 +168,11 @@ class MT5Connector:
         Raises:
             MT5ConnectionError: Se não for possível inicializar a conexão
         """
+        # Evitar recursão infinita
+        if recursion_count > 2:  # Limitar a 3 tentativas (0, 1, 2)
+            log.error("Limite de recursão atingido em initialize. Abortando.")
+            return False
+            
         # Verifica se o módulo MT5 está disponível
         if not mt5:
             log.error("Módulo MetaTrader5 não está disponível ou não foi importado corretamente")
@@ -182,18 +189,13 @@ class MT5Connector:
             log.error(f"Caminho configurado para o MT5 não existe: {mt5_path}")
             return False
             
-        # Contador de tentativas
-        attempt = 1
-        max_attempts = 3
-        error_description = ""
-        
         # Verifica se o MT5 já está em execução
         is_running = self._is_mt5_running()
         log.info(f"MT5 está em execução? {is_running}")
         
         # Se não estiver rodando ou forçar reinício, tenta iniciar
         if not is_running:
-            if self._start_mt5_if_not_running():
+            if self._start_mt5_if_not_running(recursion_count):
                 is_running = True
         
         # Verifica se está rodando como administrador (apenas uma vez)
@@ -289,20 +291,155 @@ class MT5Connector:
         self.connection_mode = "Erro de Conexão"
         return False
 
-    def get_symbols(self, group=None):
-        """Encapsula mt5.symbols_get()"""
-        if not self.is_initialized or not mt5:
-            log.warning("Tentativa de obter símbolos sem conexão MT5 inicializada.")
+    def get_symbols(self, group="*"):
+        """
+        Retorna uma lista de objetos de símbolos disponíveis no MT5.
+        Opcionalmente filtrando por grupo.
+        
+        Args:
+            group (str): Grupo de símbolos (ex: "*", "FX*", etc.)
+            
+        Returns:
+            list: Lista de objetos symbol_info ou None em caso de erro
+        """
+        if not self.is_initialized:
+            log.error("MT5 não inicializado ao tentar obter símbolos")
             return None
+            
         try:
-            if group:
-                return mt5.symbols_get(group=group)
-            else:
-                return mt5.symbols_get()
+            log.info(f"Tentando obter símbolos do grupo: '{group}'")
+            symbols = mt5.symbols_get(group)
+            
+            if not symbols or len(symbols) == 0:
+                log.warning(f"Nenhum símbolo retornado para o grupo: '{group}'")
+                
+                # Verificação detalhada do status MT5
+                self._log_mt5_status()
+                
+                # Tentar métodos alternativos para obter símbolos
+                log.info("TENTATIVA ALTERNATIVA 1: Obtendo símbolos sem especificar grupo...")
+                alt_symbols = mt5.symbols_get()
+                if alt_symbols and len(alt_symbols) > 0:
+                    log.info(f"SUCESSO ALTERNATIVO 1: {len(alt_symbols)} símbolos obtidos sem especificar grupo")
+                    return alt_symbols
+                else:
+                    log.warning("FALHA ALTERNATIVA 1: Tentativa de obter símbolos sem grupo também falhou")
+                    
+                # Tentar alguns grupos específicos comuns
+                common_groups = ["FX*", "FOREX*", "Forex*", "CRYPTO*", "Crypto*", "FUTURES*", "Futures*", "*USD*", "B3*", "*Shares*", "*Índices*"]
+                for i, alt_group in enumerate(common_groups):
+                    log.info(f"TENTATIVA ALTERNATIVA {i+2}: Obtendo símbolos do grupo '{alt_group}'...")
+                    alt_symbols = mt5.symbols_get(alt_group)
+                    if alt_symbols and len(alt_symbols) > 0:
+                        log.info(f"SUCESSO ALTERNATIVO {i+2}: Grupo '{alt_group}' retornou {len(alt_symbols)} símbolos")
+                        return alt_symbols
+                    else:
+                        log.warning(f"FALHA ALTERNATIVA {i+2}: Grupo '{alt_group}' não retornou símbolos")
+                
+                # Tentar obter os símbolos visíveis na Market Watch
+                log.info("TENTATIVA ALTERNATIVA MERCADO: Obtendo símbolos visíveis na Market Watch...")
+                watch_symbols = mt5.symbols_get(group="#")
+                if watch_symbols and len(watch_symbols) > 0:
+                    log.info(f"SUCESSO ALTERNATIVO MERCADO: Obtidos {len(watch_symbols)} símbolos da Market Watch")
+                    return watch_symbols
+                else:
+                    log.warning("FALHA ALTERNATIVA MERCADO: Não foi possível obter símbolos da Market Watch")
+                
+                # Último recurso: criar símbolos a partir de uma lista fixa mais abrangente
+                fallback_symbols = [
+                    "EURUSD", "USDJPY", "GBPUSD", "AUDUSD", "USDCAD", "USDCHF", "NZDUSD", 
+                    "EURGBP", "EURJPY", "WIN$N", "WDO$N", "DOL$N", "IND$N", "BTCUSD", 
+                    "PETR4", "VALE3", "ITUB4", "BBDC4", "B3SA3", "ABEV3", "GGBR4"
+                ]
+                log.info("TENTATIVA ÚLTIMA CHANCE: Obtendo informações de símbolos comuns individualmente...")
+                manual_symbols = []
+                for sym in fallback_symbols:
+                    info = mt5.symbol_info(sym)
+                    if info is not None:
+                        manual_symbols.append(info)
+                        log.info(f"Símbolo adicionado manualmente: {sym}")
+                
+                if manual_symbols and len(manual_symbols) > 0:
+                    log.info(f"SUCESSO ÚLTIMA CHANCE: Obtidos {len(manual_symbols)} símbolos pelo método de fallback individual")
+                    return manual_symbols
+                
+                log.error("FALHA CRÍTICA: Todos os métodos para obter símbolos falharam!")
+                
+                # Tentar fornecer informações sobre os erros do MT5
+                last_error = mt5.last_error()
+                if last_error:
+                    log.error(f"Último erro MT5: Código {last_error[0]}, Mensagem: {last_error[1]}")
+                else:
+                    log.error("MT5 não reportou erros específicos, mas falhou em obter símbolos")
+                
+                return None
+            
+            log.info(f"SUCESSO: Obtidos {len(symbols)} símbolos para o grupo: '{group}'")
+            return symbols
+            
         except Exception as e:
-            log.error(f"Erro ao obter símbolos (grupo={group}): {e}")
+            log.error(f"ERRO CRÍTICO ao obter símbolos: {e}")
             log.debug(traceback.format_exc())
             return None
+            
+    def _log_mt5_status(self):
+        """
+        Registra informações detalhadas do status do MT5 para diagnóstico
+        """
+        try:
+            log.info("----- DIAGNÓSTICO MT5 -----")
+            
+            # Total de símbolos
+            total_symbols = mt5.symbols_total()
+            log.info(f"Total de símbolos reportado pelo MT5: {total_symbols}")
+            
+            # Status da terminal_info
+            terminal = mt5.terminal_info()
+            if terminal is not None:
+                log.info(f"Terminal conectado: {terminal.connected}")
+                log.info(f"Caminho do terminal: {terminal.path}")
+                log.info(f"Versão do terminal: {terminal.version}")
+                log.info(f"Modo de operação: {'Permitido' if terminal.trade_allowed else 'Não permitido'}")
+                log.info(f"Comunidade: {'Conectado' if terminal.community_connected else 'Desconectado'}")
+                log.info(f"Sinais: {'Permitido' if terminal.signals_allowed else 'Não permitido'}")
+                
+            else:
+                log.warning("Não foi possível obter informações do terminal")
+                
+            # Status do account_info
+            account = mt5.account_info()
+            if account is not None:
+                log.info(f"Conta logada: {account.login}")
+                log.info(f"Nome da conta: {account.name}")
+                log.info(f"Servidor: {account.server}")
+                log.info(f"Moeda: {account.currency}")
+                log.info(f"Alavancagem: {account.leverage}")
+                log.info(f"Tipo de conta: {account.margin_so_mode}")
+            else:
+                log.warning("Não foi possível obter informações da conta")
+                
+            # Verifica últimos erros
+            last_error = mt5.last_error()
+            if last_error:
+                log.error(f"Último erro MT5: Código {last_error[0]}, Descrição: {last_error[1]}")
+            else:
+                log.info("Sem erros MT5 reportados recentemente")
+                
+            # Verificar estado da conexão
+            if terminal and terminal.connected:
+                # Tentar obter alguns símbolos de forma aleatória para testar
+                sample_symbols = ["EURUSD", "USDJPY", "GBPUSD"]
+                for sym in sample_symbols:
+                    sym_info = mt5.symbol_info(sym)
+                    if sym_info:
+                        log.info(f"Símbolo de teste {sym}: Disponível ({sym_info.visible})")
+                    else:
+                        log.warning(f"Símbolo de teste {sym}: Não disponível")
+                        
+            log.info("----- FIM DIAGNÓSTICO MT5 -----")
+        except Exception as e:
+            log.error(f"Erro ao obter status do MT5: {e}")
+            log.debug(traceback.format_exc())
 
     def get_total_symbols(self):
         """Encapsula mt5.symbols_total()"""
@@ -317,26 +454,69 @@ class MT5Connector:
             log.debug(traceback.format_exc())
             return 0
 
-    def get_symbol_info(self, symbol):
-        """Obtém informações sobre um símbolo."""
-        try:
-            # Aplicar autocorreção ao símbolo antes de buscar informações
-            symbol = self.auto_correct_symbol(symbol)
+    def get_symbol_info(self, symbol, retry_count=0, max_retries=2):
+        """
+        Obtém informações detalhadas sobre um símbolo.
+        
+        Args:
+            symbol (str): Nome do símbolo
+            retry_count (int): Contador de tentativas internas
+            max_retries (int): Número máximo de tentativas
             
-            if not self.initialize():
-                log.warning(f"MT5 não inicializado ao tentar obter info do símbolo {symbol}")
+        Returns:
+            Symbol_Info object ou None em caso de erro
+        """
+        if not self.is_initialized and retry_count == 0:
+            log.warning(f"MT5 não inicializado ao tentar obter informações do símbolo {symbol}. Tentando inicializar...")
+            if not self.initialize(recursion_count=retry_count):
+                log.error(f"Falha ao inicializar MT5 para obter informações do símbolo {symbol}")
+                return None
+        
+        try:
+            # Aplicar autocorreção ao símbolo antes de buscar informações, mas apenas na primeira tentativa
+            if retry_count == 0:
+                original_symbol = symbol
+                symbol = self.auto_correct_symbol(symbol)
+                if original_symbol != symbol:
+                    log.debug(f"Símbolo corrigido: {original_symbol} -> {symbol}")
+                    
+            # Proteção contra símbolos malformados
+            if not symbol or len(symbol) < 1 or len(symbol) > 32:
+                log.error(f"Nome de símbolo inválido: {symbol}")
                 return None
                 
-            info = mt5.symbol_info(symbol)
-            if info is None:
-                log.warning(f"Símbolo {symbol} não encontrado no MT5")
+            # Proteção contra recursão ao tentar obter informação
+            if retry_count > max_retries:
+                log.error(f"Excedido número máximo de tentativas para obter informações do símbolo {symbol}")
                 return None
+            
+            # Tentar obter informações do símbolo
+            log.debug(f"Tentando obter informações do símbolo: {symbol}")
+            symbol_info = mt5.symbol_info(symbol)
+            
+            if not symbol_info:
+                error = mt5.last_error()
+                log.warning(f"Erro ao obter informações do símbolo {symbol}: {error}")
                 
-            return info
+                # Se o erro for por falta de conexão, tentar reinicializar
+                if retry_count < max_retries:
+                    log.info(f"Tentando reinicializar MT5 e buscar símbolo novamente (tentativa {retry_count+1}/{max_retries})")
+                    self.shutdown()
+                    time.sleep(1)
+                    if self.initialize(recursion_count=retry_count):
+                        # Chamada recursiva com incremento do contador
+                        return self.get_symbol_info(symbol, retry_count + 1, max_retries)
+                    else:
+                        log.error(f"Falha ao reinicializar MT5 para nova tentativa do símbolo {symbol}")
+                
+                return None
+            
+            return symbol_info
+            
         except Exception as e:
             log.error(f"Erro ao obter informações do símbolo {symbol}: {e}")
             return None
-            
+
     def get_rates(self, symbol, timeframe, start_pos, count):
         """Encapsula mt5.copy_rates_from_pos()"""
         if not self.is_initialized or not mt5:
@@ -909,7 +1089,8 @@ class MT5Connector:
         # Verifica se o símbolo corrigido existe no MT5
         if self.is_initialized and mt5:
             try:
-                if self.get_symbol_info(corrected) is None:
+                # Usar mt5.symbol_info diretamente para evitar recursão
+                if mt5.symbol_info(corrected) is None:
                     # Tenta variações comuns
                     variations = [
                         corrected + '$',      # Adiciona $
@@ -922,7 +1103,7 @@ class MT5Connector:
                     ]
                     
                     for var in variations:
-                        if self.get_symbol_info(var) is not None:
+                        if mt5.symbol_info(var) is not None:
                             log.info(f"Símbolo corrigido: {symbol} -> {var}")
                             return var
             except Exception as e:
@@ -930,6 +1111,7 @@ class MT5Connector:
                 
         return corrected
             
+    @with_error_handling(error_type=MT5ConnectionError)
     def get_oldest_available_date(self, symbol, timeframe, force_refresh=False, max_cache_age_days=30):
         """
         Detecta a data mais antiga disponível para um símbolo específico.
@@ -937,7 +1119,7 @@ class MT5Connector:
         
         Args:
             symbol (str): Nome do símbolo
-            timeframe (int): Valor do timeframe (ex: mt5.TIMEFRAME_D1)
+            timeframe (int ou str): Valor do timeframe (ex: mt5.TIMEFRAME_D1) ou string (ex: '1d')
             force_refresh (bool): Ignorar cache e forçar nova busca
             max_cache_age_days (int): Idade máxima do cache em dias
             
@@ -948,12 +1130,33 @@ class MT5Connector:
         if not self.is_initialized or not mt5:
             log.warning(f"Tentativa de obter data mais antiga para {symbol} sem conexão MT5 inicializada.")
             return None
+        
+        # Converter o timeframe para o formato do MT5 se for string
+        mt5_timeframe = timeframe
+        if not isinstance(timeframe, int) or timeframe not in [
+            mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
+            mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
+            mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
+            mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
+            mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
+            mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
+        ]:
+            mt5_timeframe = self._convert_timeframe_to_mt5(timeframe)
+            if mt5_timeframe is None:
+                log.error(f"Timeframe inválido: {timeframe}")
+                return None
+            log.debug(f"Timeframe convertido: {timeframe} -> {mt5_timeframe}")
+        
+        # Chave de cache baseada no symbol e timeframe convertido
+        cache_key = f"{symbol}_{mt5_timeframe}"
             
         # Tentar autocorrigir o símbolo
         original_symbol = symbol
         symbol = self.auto_correct_symbol(symbol)
         if original_symbol != symbol:
             log.info(f"Usando símbolo corrigido: {symbol} (original: {original_symbol})")
+            # Atualizar a chave de cache para usar o símbolo corrigido
+            cache_key = f"{symbol}_{mt5_timeframe}"
             
         # Verificar se o símbolo é válido
         if not self.validate_symbol(symbol):
@@ -962,7 +1165,6 @@ class MT5Connector:
             
         # Verificar no cache primeiro se não for forçada atualização
         if not force_refresh:
-            cache_key = f"{symbol}_{timeframe}"
             cache_data = self._load_oldest_dates_cache()
             
             # Verificar se temos dados em cache válidos para este símbolo/timeframe
@@ -1008,7 +1210,7 @@ class MT5Connector:
             oldest_date = None
             found_data = False
             
-            log.info(f"Iniciando detecção de data mais antiga para {symbol} (timeframe {timeframe})")
+            log.info(f"Iniciando detecção de data mais antiga para {symbol} (timeframe {mt5_timeframe})")
             
             # Períodos a tentar, do mais recente para o mais antigo
             periods = [
@@ -1035,8 +1237,8 @@ class MT5Connector:
                 log.info(f"Buscando dados para {symbol} de {period_name} atrás: {search_start.date()} a {search_end.date()}")
                 
                 try:
-                    # Obter dados para este período
-                    df = self.get_rates_range(symbol, timeframe, search_start, search_end)
+                    # Obter dados usando o método mais robusto get_historical_data
+                    df = self.get_historical_data(symbol, mt5_timeframe, start_dt=search_start, end_dt=search_end)
                     
                     if df is not None and not df.empty:
                         log.info(f"Encontrados {len(df)} registros para {symbol} no período de {period_name} atrás")
@@ -1054,7 +1256,7 @@ class MT5Connector:
                         time.sleep(request_delay)
                         
                         log.info(f"Refinando busca para {symbol}: {older_start.date()} a {older_end.date()}")
-                        df_older = self.get_rates_range(symbol, timeframe, older_start, older_end)
+                        df_older = self.get_historical_data(symbol, mt5_timeframe, start_dt=older_start, end_dt=older_end)
                         
                         if df_older is not None and not df_older.empty:
                             log.info(f"Encontrados mais {len(df_older)} registros antigos para {symbol}")
@@ -1072,7 +1274,7 @@ class MT5Connector:
                                     extra_end = extra_start + datetime.timedelta(days=365)
                                     
                                     log.info(f"Busca adicional {step_back} para {symbol}: {extra_start.date()} a {extra_end.date()}")
-                                    df_extra = self.get_rates_range(symbol, timeframe, extra_start, extra_end)
+                                    df_extra = self.get_historical_data(symbol, mt5_timeframe, start_dt=extra_start, end_dt=extra_end)
                                     
                                     if df_extra is not None and not df_extra.empty:
                                         log.info(f"Encontrados mais {len(df_extra)} registros na busca adicional {step_back}")
@@ -1093,12 +1295,11 @@ class MT5Connector:
             # Salvar resultado no cache se encontrou dados
             if found_data and oldest_date:
                 cache_data = self._load_oldest_dates_cache()
-                cache_key = f"{symbol}_{timeframe}"
                 cache_data[cache_key] = oldest_date.isoformat()
                 cache_data[f"{cache_key}_updated"] = datetime.datetime.now().isoformat()
                 self._save_oldest_dates_cache(cache_data)
                 
-                log.info(f"Data mais antiga para {symbol} (timeframe {timeframe}): {oldest_date}")
+                log.info(f"Data mais antiga para {symbol} (timeframe {mt5_timeframe}): {oldest_date}")
                 return oldest_date
             else:
                 log.warning(f"Nenhum dado histórico encontrado para {symbol} em nenhum período testado")
@@ -1109,56 +1310,60 @@ class MT5Connector:
             log.debug(traceback.format_exc())
             return None
 
-    def _start_mt5_if_not_running(self):
+    def _start_mt5_if_not_running(self, recursion_count=0):
         """
-        Inicia o processo do MetaTrader 5 se não estiver rodando.
+        Tenta iniciar o MT5 se não estiver em execução.
         
+        Args:
+            recursion_count (int): Contador de recursão para evitar ciclos infinitos
+            
         Returns:
-            bool: True se MT5 foi iniciado com sucesso ou já estava rodando, False em caso de falha
+            bool: True se o MT5 foi iniciado com sucesso ou já estava em execução
         """
+        # Verificar se o MT5 já está em execução
+        is_running = self._is_mt5_running()
+        if is_running:
+            log.info("MT5 já está em execução.")
+            return True
+            
+        # Se chegou até aqui, precisamos iniciar o MT5
         if not self.mt5_path:
             log.error("Caminho do MT5 não configurado. Impossível iniciar.")
             return False
             
-        # Verifica se o MT5 já está em execução
-        if self._is_mt5_running():
-            log.info("MetaTrader 5 já está em execução.")
-            return True
-            
-        # Caminho para o executável do MT5
-        terminal_exe = os.path.join(self.mt5_path, "terminal64.exe")
-        if not os.path.exists(terminal_exe):
-            log.error(f"Executável terminal64.exe não encontrado em: {terminal_exe}")
-            return False
-            
-        log.info(f"Tentando iniciar MetaTrader 5 de: {terminal_exe}")
-        try:
-            # Inicia o processo normalmente sem privilégios de administrador
-            subprocess.Popen(
-                [terminal_exe], 
-                cwd=self.mt5_path,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-            
-            # Espera até o MT5 iniciar com um timeout
-            started = False
-            for i in range(20):  # Espera até 10 segundos (20*0.5s)
-                if self._is_mt5_running():
-                    started = True
-                    break
-                time.sleep(0.5)
-                
-            if started:
-                log.info("MetaTrader 5 iniciado com sucesso.")
-                time.sleep(2)  # Espera adicional para garantir que MT5 está totalmente carregado
-                return True
+        log.info(f"Tentando iniciar MT5 de: {self.mt5_path}")
+        
+        # Construir caminho para o terminal64.exe
+        exe_path = os.path.join(self.mt5_path, "terminal64.exe")
+        if not os.path.exists(exe_path):
+            # Se não encontrar, verificar se o path já é o executável
+            if os.path.basename(self.mt5_path).lower() == "terminal64.exe":
+                exe_path = self.mt5_path
             else:
-                log.error("MetaTrader 5 não foi iniciado após 10 segundos.")
+                log.error(f"Executável terminal64.exe não encontrado em: {self.mt5_path}")
                 return False
                 
+        # Tentar iniciar o executável
+        try:
+            # Iniciar o processo
+            subprocess.Popen(exe_path)
+            log.info(f"Comando para iniciar MT5 enviado: {exe_path}")
+            
+            # Aguardar inicialização
+            max_wait = 30  # segundos
+            for i in range(max_wait):
+                time.sleep(1)
+                if self._is_mt5_running():
+                    log.info(f"MT5 iniciado com sucesso após {i+1} segundos")
+                    # Removendo a chamada recursiva a initialize para evitar ciclos infinitos
+                    # Apenas retorna sucesso para que o processo de inicialização continue na função chamadora
+                    return True
+                    
+            log.warning(f"MT5 iniciado, mas não detectado após {max_wait} segundos")
+            return False
+            
         except Exception as e:
-            log.error(f"Erro ao iniciar MetaTrader 5: {e}")
-            log.debug(traceback.format_exc())
+            log.error(f"Erro ao iniciar MT5: {e}")
             return False
 
     def _fix_ipc_error(self):
@@ -1201,23 +1406,32 @@ class MT5Connector:
                     # Espera um tempo maior para garantir inicialização completa
                     time.sleep(5)
                     
-                    # Tenta conectar em modo portátil
-                    if mt5.initialize(path=self.mt5_path, timeout=30000, portable=True):
-                        log.info("Conexão estabelecida com sucesso após correção de erro IPC")
+                    # Verifica primeiro se já não está conectado antes de tentar inicializar novamente
+                    if mt5.terminal_info():
+                        log.info("Conexão já estabelecida automaticamente após reinicialização")
+                        return True
                         
-                        # Verifica se a conexão está funcionando obtendo informações básicas
-                        try:
-                            symbols = mt5.symbols_get()
-                            if symbols:
-                                log.info(f"Acesso a {len(symbols)} símbolos confirmado após correção IPC")
-                                return True
-                            else:
-                                log.warning("Não foi possível acessar símbolos após correção de IPC")
-                        except Exception as e:
-                            log.error(f"Erro ao verificar símbolos após correção IPC: {e}")
-                    else:
-                        error = mt5.last_error()
-                        log.error(f"Erro ao conectar mesmo após reinício: {error}")
+                    # Tenta conectar em modo portátil com timeout reduzido para evitar bloqueios longos
+                    try:
+                        # Inicialização com parâmetros específicos para evitar recursão
+                        if mt5.initialize(path=self.mt5_path, timeout=15000, portable=True):
+                            log.info("Conexão estabelecida com sucesso após correção de erro IPC")
+                            
+                            # Verifica se a conexão está funcionando obtendo informações básicas
+                            try:
+                                symbols = mt5.symbols_get()
+                                if symbols:
+                                    log.info(f"Acesso a {len(symbols)} símbolos confirmado após correção IPC")
+                                    return True
+                                else:
+                                    log.warning("Não foi possível acessar símbolos após correção de IPC")
+                            except Exception as e:
+                                log.error(f"Erro ao verificar símbolos após correção IPC: {e}")
+                        else:
+                            error = mt5.last_error()
+                            log.error(f"Erro ao conectar mesmo após reinício: {error}")
+                    except Exception as init_error:
+                        log.error(f"Erro durante tentativa de inicialização após correção IPC: {init_error}")
                 else:
                     log.error("Falha ao reiniciar MT5")
             except Exception as e:
@@ -1341,15 +1555,23 @@ class MT5Connector:
                 log.info("Fechando conexão temporária com MT5 após contagem de símbolos")
                 mt5.shutdown()
                 
-    def force_connection_check(self):
+    def force_connection_check(self, recursion_count=0):
         """
         Realiza uma verificação agressiva da conexão com o MT5 e tenta restabelecer se necessário.
         Esta função é mais invasiva que is_initialized e deve ser usada apenas quando necessário.
         
+        Args:
+            recursion_count (int): Contador de recursão para evitar chamadas infinitas
+            
         Returns:
             bool: True se a conexão for estabelecida com sucesso, False caso contrário
         """
-        log.info("Iniciando verificação agressiva de conexão com MT5...")
+        # Evitar recursão infinita
+        if recursion_count > 2:  # Limitar a 3 tentativas (0, 1, 2)
+            log.error("Limite de recursão atingido em force_connection_check. Abortando.")
+            return False
+            
+        log.info(f"Iniciando verificação agressiva de conexão com MT5... (tentativa {recursion_count + 1}/3)")
         
         # Verifica se o processo do MT5 está em execução
         is_running = self._is_mt5_running()
@@ -1419,6 +1641,353 @@ class MT5Connector:
         log.error("Todas as estratégias de conexão falharam")
         self.is_initialized = False
         return False
+
+    @with_error_handling(error_type=MT5ConnectionError)
+    def get_last_bars(self, symbol, count=1, timeframe='1min'):
+        """
+        Obtém as últimas barras de um símbolo específico.
+        
+        Args:
+            symbol (str): Símbolo para o qual obter as barras
+            count (int): Número de barras a serem obtidas
+            timeframe (str ou int): Timeframe dos dados (ex: '1min', '5min', '1h', '1d') ou valor do timeframe MT5
+            
+        Returns:
+            pandas.DataFrame: DataFrame com os dados das barras ou None em caso de erro
+        """
+        if not self.is_initialized or not mt5:
+            log.warning(f"Tentativa de obter as últimas barras para {symbol} sem conexão MT5 inicializada.")
+            return None
+            
+        try:
+            # Corrigir o símbolo automaticamente
+            original_symbol = symbol
+            symbol = self.auto_correct_symbol(symbol)
+            if original_symbol != symbol:
+                log.info(f"Símbolo corrigido para obter últimas barras: {original_symbol} -> {symbol}")
+            
+            # Converter o timeframe para o formato do MT5
+            mt5_timeframe = timeframe
+            if not isinstance(timeframe, int) or timeframe not in [
+                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
+                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
+                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
+                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
+                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
+                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
+            ]:
+                mt5_timeframe = self._convert_timeframe_to_mt5(timeframe)
+                if mt5_timeframe is None:
+                    log.error(f"Timeframe inválido: {timeframe}")
+                    return None
+                    
+            # Validar símbolo
+            if not self.validate_symbol(symbol):
+                log.warning(f"Símbolo {symbol} inválido ou indisponível para obter últimas barras.")
+                return None
+                
+            # Obter as barras usando copy_rates_from_pos com sistema de retry
+            log.debug(f"Obtendo {count} últimas barras para {symbol} no timeframe {timeframe} ({mt5_timeframe})")
+            
+            # Implementar sistema de retry para robustez
+            max_retries = 3
+            retry_count = 0
+            rates = None
+                
+            while retry_count < max_retries:
+                try:
+                    rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, count)
+                    
+                    # Se obteve dados com sucesso, sai do loop
+                    if rates is not None and len(rates) > 0:
+                        break
+                        
+                    # Se não obteve dados, registra erro e tenta novamente
+                    error = mt5.last_error()
+                    log.warning(f"Tentativa {retry_count+1}/{max_retries}: Falha ao obter últimas barras para {symbol}. Erro MT5: {error}")
+                    
+                    # Esperar antes de tentar novamente
+                    time.sleep(0.5)
+                    retry_count += 1
+                    
+                except Exception as retry_error:
+                    log.warning(f"Tentativa {retry_count+1}/{max_retries}: Exceção ao obter últimas barras para {symbol}: {retry_error}")
+                    time.sleep(0.5)
+                    retry_count += 1
+            
+            # Verificar se conseguiu obter dados após as tentativas
+            if rates is None or len(rates) == 0:
+                error = mt5.last_error()
+                log.warning(f"Nenhum dado retornado para {symbol} no timeframe {timeframe} após {max_retries} tentativas. Erro MT5: {error}")
+                return None
+                
+            # Converter para DataFrame
+            df = pd.DataFrame(rates)
+            
+            # Converter timestamp para datetime
+            df['time'] = pd.to_datetime(df['time'], unit='s')
+            
+            log.debug(f"Obtidas {len(df)} barras para {symbol} no timeframe {timeframe}")
+            return df
+            
+        except Exception as e:
+            log.error(f"Erro ao obter as últimas barras para {symbol}: {e}")
+            log.debug(traceback.format_exc())
+            return None
+
+    def _convert_timeframe_to_mt5(self, timeframe_str):
+        """
+        Converte uma string de timeframe (ex: '1min') ou valor inteiro para o valor correspondente do MT5.
+        
+        Args:
+            timeframe_str (str ou int): String representando o timeframe ou valor inteiro diretamente
+            
+        Returns:
+            int: Valor do timeframe do MT5 ou None se não for possível converter
+        """
+        if not self.is_initialized or not mt5:
+            log.warning("MT5 não inicializado ao tentar converter timeframe")
+            return None
+
+        # Se já for um dos valores numéricos do MT5, retorna diretamente
+        if isinstance(timeframe_str, int):
+            # Verifica se é um dos valores válidos do MT5
+            valid_timeframes = [
+                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
+                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
+                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
+                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
+                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
+                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
+            ]
+            if timeframe_str in valid_timeframes:
+                return timeframe_str
+                
+            # É um inteiro, mas não é um valor direto do MT5, tenta interpretar como minutos
+            log.warning(f"Valor de timeframe {timeframe_str} não é diretamente um valor MT5, tentando interpretar como minutos")
+            # Continua com a conversão abaixo
+
+        # Mapeamento de strings para valores do MT5
+        timeframe_map = {
+            'm1': mt5.TIMEFRAME_M1,
+            'm5': mt5.TIMEFRAME_M5,
+            'm15': mt5.TIMEFRAME_M15,
+            'm30': mt5.TIMEFRAME_M30,
+            'h1': mt5.TIMEFRAME_H1,
+            'h4': mt5.TIMEFRAME_H4,
+            'd1': mt5.TIMEFRAME_D1,
+            'w1': mt5.TIMEFRAME_W1,
+            'mn1': mt5.TIMEFRAME_MN1,
+            # Mais aliases para flexibilidade
+            '1m': mt5.TIMEFRAME_M1,
+            '5m': mt5.TIMEFRAME_M5,
+            '15m': mt5.TIMEFRAME_M15,
+            '30m': mt5.TIMEFRAME_M30,
+            'h': mt5.TIMEFRAME_H1,
+            '4hour': mt5.TIMEFRAME_H4,
+            'day': mt5.TIMEFRAME_D1,
+            'week': mt5.TIMEFRAME_W1,
+            'month': mt5.TIMEFRAME_MN1,
+            # Aliases em português
+            'minuto': mt5.TIMEFRAME_M1,
+            '1min': mt5.TIMEFRAME_M1,
+            '5min': mt5.TIMEFRAME_M5,
+            '15min': mt5.TIMEFRAME_M15,
+            '30min': mt5.TIMEFRAME_M30,
+            'hora': mt5.TIMEFRAME_H1,
+            '4horas': mt5.TIMEFRAME_H4,
+            'dia': mt5.TIMEFRAME_D1,
+            'diario': mt5.TIMEFRAME_D1,
+            'semana': mt5.TIMEFRAME_W1,
+            'semanal': mt5.TIMEFRAME_W1,
+            'mes': mt5.TIMEFRAME_MN1,
+            'mensal': mt5.TIMEFRAME_MN1
+        }
+        
+        # Normaliza a string para lowercase e sem espaços
+        if isinstance(timeframe_str, str):
+            normalized = timeframe_str.lower().replace(' ', '')
+            
+            if normalized in timeframe_map:
+                return timeframe_map[normalized]
+                
+            # Tratar casos como '1', '5', etc.
+            try:
+                # Se for apenas um número, assume que são minutos
+                minutes = int(normalized)
+                if minutes == 1:
+                    return mt5.TIMEFRAME_M1
+                elif minutes == 5:
+                    return mt5.TIMEFRAME_M5
+                elif minutes == 15:
+                    return mt5.TIMEFRAME_M15
+                elif minutes == 30:
+                    return mt5.TIMEFRAME_M30
+                elif minutes == 60:
+                    return mt5.TIMEFRAME_H1
+                elif minutes == 240:
+                    return mt5.TIMEFRAME_H4
+                elif minutes == 1440:
+                    return mt5.TIMEFRAME_D1
+                elif minutes == 10080:
+                    return mt5.TIMEFRAME_W1
+                elif minutes == 43200:
+                    return mt5.TIMEFRAME_MN1
+            except ValueError:
+                # Não é um número puro
+                pass
+        else:
+            # Se não for string nem um valor válido do MT5, tenta interpretar como minutos
+            minutes = int(timeframe_str)
+            if minutes == 1:
+                return mt5.TIMEFRAME_M1
+            elif minutes == 5:
+                return mt5.TIMEFRAME_M5
+            elif minutes == 15:
+                return mt5.TIMEFRAME_M15
+            elif minutes == 30:
+                return mt5.TIMEFRAME_M30
+            elif minutes == 60:
+                return mt5.TIMEFRAME_H1
+            elif minutes == 240:
+                return mt5.TIMEFRAME_H4
+            elif minutes == 1440:
+                return mt5.TIMEFRAME_D1
+            elif minutes == 10080:
+                return mt5.TIMEFRAME_W1
+            elif minutes == 43200:
+                return mt5.TIMEFRAME_MN1
+            
+        log.warning(f"Timeframe não reconhecido: {timeframe_str}, usando padrão TIMEFRAME_M1")
+        return mt5.TIMEFRAME_M1
+
+    @with_error_handling(error_type=MT5ConnectionError)
+    def get_historical_data(self, symbol, timeframe='1min', bars=None, start_dt=None, end_dt=None):
+        """
+        Obtém dados históricos para um símbolo específico.
+        
+        Args:
+            symbol (str): Símbolo para o qual obter os dados históricos
+            timeframe (str ou int): Timeframe dos dados (ex: '1min', '5min', '1h', '1d') ou valor do timeframe MT5
+            bars (int, optional): Número de barras a serem obtidas. Se None, usa start_dt e end_dt.
+            start_dt (datetime, optional): Data inicial para obter dados
+            end_dt (datetime, optional): Data final para obter dados
+            
+        Returns:
+            pandas.DataFrame: DataFrame com os dados históricos ou None em caso de erro
+        """
+        if not self.is_initialized or not mt5:
+            log.warning(f"Tentativa de obter dados históricos para {symbol} sem conexão MT5 inicializada.")
+            return None
+            
+        try:
+            # Corrigir o símbolo automaticamente
+            original_symbol = symbol
+            symbol = self.auto_correct_symbol(symbol)
+            # Log para depuração da correção do símbolo
+            log.debug(f"get_historical_data: Símbolo original='{original_symbol}', Símbolo corrigido='{symbol}'")
+            if original_symbol != symbol:
+                log.info(f"Símbolo corrigido para obter dados históricos: {original_symbol} -> {symbol}")
+            
+            # Converter o timeframe para o formato do MT5
+            mt5_timeframe = timeframe
+            if not isinstance(timeframe, int) or timeframe not in [
+                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
+                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
+                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
+                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
+                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
+                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
+            ]:
+                mt5_timeframe = self._convert_timeframe_to_mt5(timeframe)
+                if mt5_timeframe is None:
+                    log.error(f"Timeframe inválido: {timeframe}")
+                    return None
+            
+            # Validar símbolo
+            if not self.validate_symbol(symbol):
+                log.warning(f"Símbolo {symbol} inválido ou indisponível para obter dados históricos.")
+                return None
+                
+            # Registrar detalhes da solicitação para depuração
+            if bars is not None:
+                log.debug(f"Obtendo {bars} barras históricas para {symbol} no timeframe {timeframe} ({mt5_timeframe})")
+            elif start_dt is not None and end_dt is not None:
+                log.debug(f"Obtendo dados históricos para {symbol} de {start_dt} a {end_dt} no timeframe {timeframe} ({mt5_timeframe})")
+            elif start_dt is not None:
+                log.debug(f"Obtendo dados históricos para {symbol} a partir de {start_dt} no timeframe {timeframe} ({mt5_timeframe})")
+            else:
+                log.debug(f"Obtendo dados históricos padrão para {symbol} no timeframe {timeframe} ({mt5_timeframe})")
+                
+            # Implementar sistema de retry para robustez
+            max_retries = 3
+            retry_count = 0
+            rates = None
+                
+            while retry_count < max_retries:
+                try:
+                    # Determinar o método e parâmetros de obtenção de dados
+                    params_str = "N/A" # Valor padrão
+                    if bars is not None:
+                        # Obter um número específico de barras (mais recentes)
+                        params_str = f"copy_rates_from_pos(symbol='{symbol}', timeframe={mt5_timeframe}, start_pos=0, count={bars})"
+                        log.debug(f"Tentando obter dados via: {params_str}")
+                        rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, bars)
+                    elif start_dt is not None and end_dt is not None:
+                        # Obter dados em um intervalo específico
+                        params_str = f"copy_rates_range(symbol='{symbol}', timeframe={mt5_timeframe}, date_from={start_dt}, date_to={end_dt})"
+                        log.debug(f"Tentando obter dados via: {params_str}")
+                        rates = mt5.copy_rates_range(symbol, mt5_timeframe, start_dt, end_dt)
+                    elif start_dt is not None:
+                        # Obter dados a partir de uma data específica (até o presente)
+                        count = 5000 # Usar o máximo de barras padrão
+                        params_str = f"copy_rates_from(symbol='{symbol}', timeframe={mt5_timeframe}, date_from={start_dt}, count={count})"
+                        log.debug(f"Tentando obter dados via: {params_str}")
+                        rates = mt5.copy_rates_from(symbol, mt5_timeframe, start_dt, count)
+                    else:
+                        # Se nenhum parâmetro específico foi fornecido, usa um número padrão de barras
+                        default_bars = 1000
+                        params_str = f"copy_rates_from_pos(symbol='{symbol}', timeframe={mt5_timeframe}, start_pos=0, count={default_bars})"
+                        log.debug(f"Tentando obter dados via: {params_str}")
+                        rates = mt5.copy_rates_from_pos(symbol, mt5_timeframe, 0, default_bars)
+                    
+                    # Se obteve dados com sucesso, sai do loop
+                    if rates is not None and len(rates) > 0:
+                        break
+                        
+                    # Se não obteve dados, registra erro e tenta novamente
+                    error = mt5.last_error()
+                    log.warning(f"Tentativa {retry_count+1}/{max_retries}: Falha ao obter dados para {symbol} usando {params_str}. Erro MT5: {error}")
+                    
+                    # Esperar antes de tentar novamente
+                    time.sleep(0.5)
+                    retry_count += 1
+                    
+                except Exception as retry_error:
+                    log.warning(f"Tentativa {retry_count+1}/{max_retries}: Exceção ao obter dados para {symbol} usando {params_str}: {retry_error}")
+                    time.sleep(0.5)
+                    retry_count += 1
+            
+            # Verificar se conseguiu obter dados após as tentativas
+            if rates is None or len(rates) == 0:
+                error = mt5.last_error()
+                # Usar params_str da última tentativa
+                log.warning(f"Nenhum dado histórico retornado para {symbol} no timeframe {timeframe} após {max_retries} tentativas (última tentativa com {params_str}). Erro MT5: {error}")
+                return None
+                
+            # Converter para DataFrame
+            df = pd.DataFrame(rates)
+            
+            # Converter timestamp para datetime
+            df['time'] = pd.to_datetime(df['time'], unit='s')
+            
+            log.debug(f"Obtidas {len(df)} barras históricas para {symbol} no timeframe {timeframe}")
+            return df
+            
+        except Exception as e:
+            log.error(f"Erro ao obter dados históricos para {symbol}: {e}")
+            log.debug(traceback.format_exc())
+            return None
 
 # Exemplo de uso (para teste)
 if __name__ == "__main__":

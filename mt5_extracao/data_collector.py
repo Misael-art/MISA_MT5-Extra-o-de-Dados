@@ -4,6 +4,8 @@ import traceback
 from threading import Thread, Lock
 import pandas as pd
 
+from mt5_extracao.enhanced_indicators import EnhancedIndicatorCalculator
+
 # Configuração de logging
 log = logging.getLogger(__name__)
 if not log.handlers:
@@ -49,6 +51,9 @@ class DataCollector:
         # Controle de batch para extração em lotes
         self.batch_size = 1000  # número máximo de registros por lote
         self.parallel_symbols = 1  # número de símbolos processados simultaneamente (a ser implementado)
+
+        # Inicializa o calculador avançado de indicadores
+        self.enhanced_calculator = EnhancedIndicatorCalculator()
 
         log.info("DataCollector inicializado.")
 
@@ -240,56 +245,43 @@ class DataCollector:
         log.info("Thread de coleta finalizada.")
 
     def _fetch_and_save_data(self, symbol):
-        """Obtém dados M1 recentes para um símbolo e salva no banco."""
-        log.debug(f"Processando símbolo: {symbol}")
+        """
+        Recupera dados para o símbolo especificado e salva no banco de dados.
+        
+        Args:
+            symbol: Símbolo para o qual buscar dados
+            
+        Returns:
+            bool: True se os dados foram salvos com sucesso, False caso contrário
+        """
         try:
-            # Inicializa status se não existir
-            if symbol not in self.collection_status:
-                self.collection_status[symbol] = {
-                    'total': 0, 
-                    'success': 0, 
-                    'errors': 0,
-                    'last_time': None,
-                    'last_error': None,
-                    'data_size': 0
-                }
-                
-            # Verifica disponibilidade do símbolo (usando conector)
-            symbol_info = self.connector.get_symbol_info(symbol)
-            if symbol_info is None:
-                self._log_ui(f"Aviso: Símbolo {symbol} inválido ou não disponível.")
-                self.collection_status[symbol]['errors'] += 1
-                self.collection_status[symbol]['last_error'] = "Símbolo inválido ou indisponível"
-                return
+            if not self.connector or not self.connector.is_initialized:
+                 log.error(f"MT5 não inicializado ao tentar coletar dados para {symbol}")
+                 return False
 
-            # Obtém o último candle M1 (ou últimos N candles)
-            # Usaremos copy_rates_from_pos para pegar o último candle fechado
-            # timeframe = mt5.TIMEFRAME_M1 # Obter do conector?
-            timeframe_val = 1 # M1
-            count = 2 # Pega os 2 últimos para garantir que temos o último fechado
-            start_pos = 0
-
-            df = self.connector.get_rates(symbol, timeframe_val, start_pos, count)
+            # Obtém últimas barras do símbolo (retorna as duas últimas)
+            count = 2  # Pega duas barras para garantir que temos o último candle completo
+            df = self.connector.get_last_bars(symbol, count=count, timeframe='1min')
 
             if df is None or df.empty:
                 log.warning(f"Nenhum dado M1 recente retornado para {symbol} via connector.")
                 self.collection_status[symbol]['errors'] += 1
                 self.collection_status[symbol]['last_error'] = "Sem dados retornados do MT5"
-                return
+                return False
 
             # Pega apenas o último candle completo (índice 1 se count=2)
             if len(df) < count:
                  log.warning(f"Menos de {count} candles retornados para {symbol}. Aguardando próximo ciclo.")
                  self.collection_status[symbol]['errors'] += 1
                  self.collection_status[symbol]['last_error'] = f"Dados insuficientes ({len(df)}/{count})"
-                 return
+                 return False
             last_data = df.iloc[-1:].copy() # Pega a última linha como DataFrame
 
             if last_data.empty:
                  log.warning(f"DataFrame da última barra vazio para {symbol}.")
                  self.collection_status[symbol]['errors'] += 1
                  self.collection_status[symbol]['last_error'] = "DataFrame vazio"
-                 return
+                 return False
 
             log.debug(f"Dados obtidos para {symbol}: {last_data['time'].iloc[0]}")
             
@@ -297,55 +289,108 @@ class DataCollector:
             self.collection_status[symbol]['total'] += 1
             self.collection_status[symbol]['last_time'] = last_data['time'].iloc[0]
 
-            # Calcular indicadores e variações (usando indicator_calculator)
+            # Calcular indicadores avançados usando o EnhancedIndicatorCalculator
             try:
-                last_data = self.indicator_calculator.calculate_technical_indicators(last_data)
-                last_data = self.indicator_calculator.calculate_price_variations(last_data) # Variações podem precisar de mais dados
-            except Exception as calc_err:
-                log.error(f"Erro ao calcular indicadores/variações para {symbol}: {calc_err}")
-                self.collection_status[symbol]['last_error'] = f"Erro de cálculo: {str(calc_err)[:50]}..."
-                # Continua mesmo assim? Ou retorna? Por enquanto, continua.
-
-            # Adiciona outras informações úteis se disponíveis
-            try:
-                last_data['spread'] = symbol_info.spread
-                # last_data['last'] = symbol_info.last # 'last' pode não estar no candle fechado
-                # last_data['trading_hours'] = symbol_info.trade_mode
-            except Exception as info_err:
-                log.warning(f"Erro ao obter info adicional (spread, etc.) para {symbol}: {info_err}")
-
-            # Estimar tamanho dos dados coletados (aproximado)
-            try:
-                data_size = last_data.memory_usage(index=True, deep=True).sum()
-                self.collection_status[symbol]['data_size'] += data_size
-            except:
-                pass  # Ignora erros na estimativa de tamanho
-
-            # Salvar no banco de dados (usando db_manager)
-            try:
-                timeframe_name = "1 minuto" # Assumindo M1
-                success = self.db_manager.save_ohlcv_data(symbol, timeframe_name, last_data)
-                if success:
-                    log.debug(f"Dados de {symbol} ({timeframe_name}) salvos para {last_data['time'].iloc[0]}")
-                    self.collection_status[symbol]['success'] += 1
-                    self.collection_status[symbol]['last_error'] = None
+                # Tenta obter dados históricos para cálculos mais precisos
+                historical_data = self._get_historical_context(symbol)
+                
+                if historical_data is not None and not historical_data.empty:
+                    # Concatena o candle atual com os dados históricos
+                    combined_data = pd.concat([historical_data, last_data], ignore_index=True)
+                    
+                    # Calcula todos os indicadores no conjunto combinado
+                    enriched_data = self.enhanced_calculator.calculate_all_indicators(
+                        combined_data,
+                        include_market_context=True,
+                        include_advanced_stats=True,
+                        include_candle_patterns=True,
+                        include_volume_analysis=True,
+                        include_trend_analysis=True,
+                        include_support_resistance=True
+                    )
+                    
+                    # Extrai apenas o último candle com todos os indicadores calculados
+                    last_data_with_indicators = enriched_data.iloc[-1:].copy()
                 else:
-                    self._log_ui(f"Falha ao salvar dados de {symbol} ({timeframe_name})")
-                    self.collection_status[symbol]['last_error'] = "Falha ao salvar no banco"
-            except Exception as db_err:
-                log.error(f"Erro inesperado ao salvar dados para {symbol}: {db_err}")
-                self._log_ui(f"ERRO ao salvar dados de {symbol}")
-                self.collection_status[symbol]['last_error'] = f"Erro de banco: {str(db_err)[:50]}..."
+                    # Fallback para cálculos básicos caso não haja contexto histórico
+                    last_data_with_indicators = self.enhanced_calculator.calculate_technical_indicators(last_data)
+                    last_data_with_indicators = self.enhanced_calculator.calculate_price_variations(last_data_with_indicators)
+            except Exception as calc_err:
+                log.error(f"Erro ao calcular indicadores avançados para {symbol}: {calc_err}")
+                log.debug(traceback.format_exc())
+                self.collection_status[symbol]['last_error'] = f"Erro no cálculo de indicadores: {str(calc_err)[:50]}..."
+                
+                # Tenta usar o calculador básico como fallback
+                try:
+                    last_data_with_indicators = self.indicator_calculator.calculate_technical_indicators(last_data)
+                    last_data_with_indicators = self.indicator_calculator.calculate_price_variations(last_data_with_indicators)
+                except Exception as basic_err:
+                    log.error(f"Erro no fallback para indicadores básicos: {basic_err}")
+                    last_data_with_indicators = last_data  # Usa dados sem indicadores
 
-        except Exception as e:
-            log.error(f"Erro ao processar {symbol} em fetch_and_save_data: {e}")
-            log.debug(traceback.format_exc())
-            self._log_ui(f"ERRO ao processar {symbol}")
-            
-            # Atualizar estatísticas
-            if symbol in self.collection_status:
+            # Salvar no banco de dados
+            try:
+                table_name = self.db_manager.get_table_name_for_symbol(symbol, '1_minuto')
+                saved = self.db_manager.save_data(last_data_with_indicators, table_name, symbol)
+                
+                if saved:
+                    log.debug(f"Dados salvos com sucesso para {symbol} na tabela '{table_name}'.")
+                    self.collection_status[symbol]['success'] += 1
+                    return True
+                else:
+                    log.warning(f"Falha ao salvar dados para {symbol}.")
+                    self.collection_status[symbol]['errors'] += 1
+                    self.collection_status[symbol]['last_error'] = "Erro ao salvar no banco"
+                    return False
+                    
+            except Exception as e:
+                log.error(f"Erro ao salvar dados para {symbol}: {e}")
+                log.debug(traceback.format_exc())
                 self.collection_status[symbol]['errors'] += 1
-                self.collection_status[symbol]['last_error'] = str(e)[:100]
+                self.collection_status[symbol]['last_error'] = f"Erro no banco: {str(e)[:50]}..."
+                return False
+                
+        except Exception as e:
+            log.error(f"Erro não tratado ao coletar dados para {symbol}: {e}")
+            log.debug(traceback.format_exc())
+            self.collection_status[symbol]['errors'] += 1
+            self.collection_status[symbol]['last_error'] = f"Erro geral: {str(e)[:50]}..."
+            return False
+
+    def _get_historical_context(self, symbol, bars=100):
+        """
+        Obtém dados históricos para fornecer contexto para os cálculos de indicadores.
+        
+        Args:
+            symbol: Símbolo para o qual buscar dados históricos
+            bars: Número de barras para contexto histórico
+            
+        Returns:
+            DataFrame com dados históricos ou None se não for possível obter
+        """
+        try:
+            # Tenta obter do banco de dados primeiro (mais eficiente)
+            table_name = self.db_manager.get_table_name_for_symbol(symbol, '1_minuto')
+            recent_data = self.db_manager.get_recent_data(table_name, limit=bars)
+            
+            # Se tiver dados suficientes no banco, usa eles
+            if recent_data is not None and len(recent_data) >= 30:  # Mínimo de 30 barras para contexto
+                return recent_data
+                
+            # Se não houver dados suficientes no banco, busca do MT5
+            historical_data = self.connector.get_historical_data(
+                symbol,
+                timeframe='1min',
+                bars=bars,
+                start_dt=None,  # Sem data específica
+                end_dt=None     # Até o presente
+            )
+            
+            return historical_data
+            
+        except Exception as e:
+            log.warning(f"Não foi possível obter contexto histórico para {symbol}: {e}")
+            return None
 
 # Exemplo de uso (requer instâncias de Connector, DBManager, etc.)
 # if __name__ == "__main__":

@@ -19,7 +19,12 @@ from mt5_extracao.data_collector import DataCollector
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.security import CredentialManager
 from mt5_extracao.error_handler import with_error_handling, ErrorHandler
-
+from mt5_extracao.integrated_services import IntegratedServices
+from mt5_extracao.enhanced_calculation_service import EnhancedCalculationService
+from mt5_extracao.performance_optimizer import PerformanceOptimizer
+from mt5_extracao.historical_extractor import HistoricalExtractor # Adicionado
+from mt5_extracao.external_data_source import ExternalDataSource, DummyExternalSource # Adicionado para Fallback
+from typing import Optional # Adicionado para type hint
 # Garantir que o diretório de logs existe
 os.makedirs("logs", exist_ok=True)
 
@@ -168,6 +173,8 @@ class MT5Extracao:
         self.ui_manager = None
         self.data_collector = None
         self.data_exporter = None  # Novo atributo para o DataExporter
+        self.integrated_services = None  # Novo atributo para os serviços integrados
+        self.historical_extractor = None # Novo atributo para o HistoricalExtractor
         
         # Configurar a janela principal
         self.setup_root_window()
@@ -197,18 +204,49 @@ class MT5Extracao:
             # Tentar conectar ao MT5
             if self.mt5_connector.initialize():
                 logging.info("Conexão com MT5 inicializada com sucesso")
+                self.mt5_initialized = True  # Atualiza o status de inicialização
             else:
                 logging.warning("Falha ao inicializar conexão MT5. Modo: Erro de Conexão")
+                self.mt5_initialized = False  # Garante que o status está como falso em caso de erro
             
             # Inicializar outros componentes
             logging.info("Instanciando IndicatorCalculator...")
-            self.indicator_calculator = IndicatorCalculator(self.mt5_connector)
+            self.indicator_calculator = IndicatorCalculator()
             
             # Carregar lista de símbolos
             self.load_symbols()
             
             # Configurar tipos de timeframes disponíveis
             self.setup_timeframes()
+            
+            # Inicializar serviços avançados integrados se disponíveis
+            try:
+                logging.info("Inicializando serviços avançados de cálculo...")
+                
+                # Obter configurações avançadas ou usar padrões
+                advanced_config = {}
+                if hasattr(self, 'config') and 'advanced' in self.config:
+                    advanced_config = self.config['advanced']
+                
+                # Criar instância do serviço integrado
+                self.integrated_services = IntegratedServices()
+                
+                # Verificar inicialização bem sucedida
+                if self.integrated_services.initialized:
+                    logging.info("Serviços avançados inicializados com sucesso")
+                    
+                    # Iniciar serviço de cálculo
+                    if hasattr(self.integrated_services, 'calculation_service') and self.integrated_services.calculation_service:
+                        self.integrated_services.calculation_service.start()
+                        logging.info("Serviço de cálculo iniciado")
+                else:
+                    logging.warning("Inicialização dos serviços avançados incompleta")
+                    if self.integrated_services.initialization_errors:
+                        logging.warning(f"Erros de inicialização: {', '.join(self.integrated_services.initialization_errors)}")
+            except Exception as e:
+                logging.warning(f"Não foi possível inicializar serviços avançados: {str(e)}")
+                logging.debug(traceback.format_exc())
+                self.integrated_services = None
             
             # Criar o gerenciador de UI
             logging.info("Instanciando UIManager...")
@@ -226,6 +264,45 @@ class MT5Extracao:
             # Inicializar o exportador de dados
             logging.info("Instanciando DataExporter...")
             self.data_exporter = DataExporter(self.db_manager)
+
+            # --- Configuração do Fallback M1 ---
+            external_data_source_instance: Optional[ExternalDataSource] = None
+            try:
+                fallback_enabled = self.config.getboolean('FALLBACK', 'external_source_m1_fallback_enabled', fallback=False)
+                fallback_type = self.config.get('FALLBACK', 'external_source_m1_type', fallback=None)
+
+                if fallback_enabled:
+                    if fallback_type and fallback_type.strip().lower() == 'dummy':
+                        logging.info("Fallback M1 habilitado. Usando DummyExternalSource.")
+                        external_data_source_instance = DummyExternalSource()
+                    # TODO: Adicionar 'elif fallback_type.lower() == 'api_x':' para futuras fontes
+                    else:
+                        logging.warning(f"Fallback M1 habilitado na configuração, mas o tipo '{fallback_type}' não é reconhecido ou está vazio. Fallback permanecerá inativo.")
+                else:
+                    logging.info("Fallback M1 para fontes externas está desabilitado na configuração.")
+            except configparser.Error as cfg_err:
+                 logging.error(f"Erro ao ler configurações de fallback do config.ini: {cfg_err}. Fallback desativado.")
+            except Exception as e:
+                 logging.error(f"Erro inesperado ao configurar fallback: {e}. Fallback desativado.")
+                 logging.debug(traceback.format_exc())
+            # --- Configuração do Chunking Dinâmico ---
+            chunk_config = {
+                'm1': self.config.getint('EXTRACTION', 'chunk_days_m1', fallback=30),
+                'm5_m15': self.config.getint('EXTRACTION', 'chunk_days_m5_m15', fallback=90),
+                'default': self.config.getint('EXTRACTION', 'chunk_days_default', fallback=365)
+            }
+            logging.info(f"Configuração de Chunking lida: M1={chunk_config['m1']}d, M5/M15={chunk_config['m5_m15']}d, Default={chunk_config['default']}d")
+
+            # --- Inicializar o extrator histórico ---
+            logging.info("Instanciando HistoricalExtractor...")
+            self.historical_extractor = HistoricalExtractor(
+                connector=self.mt5_connector,
+                db_manager=self.db_manager,
+                indicator_calculator=self.indicator_calculator,
+                external_source=external_data_source_instance, # Passa a instância (ou None)
+                chunk_config=chunk_config # Passa a configuração de chunking
+            )
+            # REMOVIDA LINHA EXTRA ')'
             
             # Configurar a UI
             self.ui_manager.setup_ui()
@@ -236,6 +313,7 @@ class MT5Extracao:
             # Configure um manipulador de exceção global para encerrar o aplicativo com elegância
             tk.Tk.report_callback_exception = self.handle_uncaught_exception
         
+        # Bloco except alinhado com o try da linha 186
         except Exception as e:
             logging.critical(f"Erro durante a inicialização: {str(e)}")
             logging.critical(traceback.format_exc())
@@ -248,6 +326,7 @@ class MT5Extracao:
         """Carrega configurações e inicializa o DatabaseManager."""
         self.config = configparser.ConfigParser()
         config_path = "config/config.ini"
+        self.config_path = config_path
 
         if not os.path.exists(config_path):
             logging.error("Arquivo de configuração não encontrado")
@@ -639,146 +718,155 @@ class MT5Extracao:
 
     # Método extract_historical_data movido para UIManager
 
-    def start_historical_extraction_logic(self, symbols, timeframe_val, timeframe_name,
-                                          start_date, end_date, max_bars,
-                                          include_indicators, overwrite,
-                                          auto_detect_oldest_date=True,  # Novo parâmetro
-                                          update_progress_callback=None, finished_callback=None):
-        """Inicia a lógica de extração de dados históricos em background."""
-        if not self.mt5_initialized:
-            logging.error("Tentativa de iniciar extração histórica sem MT5 inicializado.")
-            if finished_callback:
-                finished_callback(0, len(symbols)) # Indica falha total
-            return
+#    def start_historical_extraction_logic(self, symbols, timeframe_val, timeframe_name,
+#                                          start_date, end_date, max_bars,
+#                                          include_indicators, overwrite,
+#                                          auto_detect_oldest_date=True,  # Novo parâmetro
+#                                          update_progress_callback=None, finished_callback=None):
+#        """Inicia a lógica de extração de dados históricos em background."""
+#        if not self.mt5_initialized:
+#            logging.error("Tentativa de iniciar extração histórica sem MT5 inicializado.")
+#            if finished_callback:
+#                finished_callback(0, len(symbols)) # Indica falha total
+#            return
+#
+#        if hasattr(self, 'extraction_running') and self.extraction_running:
+#            logging.warning("Tentativa de iniciar extração histórica já em andamento.")
+#            return
+#
+#        logging.info(f"Iniciando extração histórica para {len(symbols)} símbolos...")
+#        self.extraction_running = True
+#
+#        def extraction_thread():
+#            total_symbols = len(symbols)
+#            successful_symbols = 0
+#            failed_symbols = 0
+#
+#            for i, symbol in enumerate(symbols):
+#                if not self.extraction_running:
+#                    logging.info("Extração histórica cancelada pelo usuário.")
+#                    break
+#
+#                progress = (i / total_symbols) * 100
+#                message = f"Extraindo {symbol} ({i+1}/{total_symbols})"
+#                if update_progress_callback:
+#                    update_progress_callback(progress, message)
+#
+#                try:
+#                    # Obter dados históricos usando o conector com o método mais robusto
+#                    df = self.mt5_connector.get_historical_data(
+#                        symbol,
+#                        timeframe_val,
+#                        start_dt=start_date,
+#                        end_dt=end_date
+#                    )
+#
+#                    # Se não encontrou dados e auto-detecção está ativada
+#                    if (df is None or df.empty) and auto_detect_oldest_date:
+#                        msg = f"Sem dados para {symbol} no período solicitado. Tentando detectar data mais antiga..."
+#                        logging.info(msg)
+#                        if update_progress_callback:
+#                            update_progress_callback(progress, msg)
+#
+#                        # Pausa para atualizar a interface
+#                        time.sleep(0.1)
+#
+#                        # Tentar obter data mais antiga
+#                        oldest_date = self.mt5_connector.get_oldest_available_date(symbol, timeframe_val)
+#
+#                        if oldest_date:
+#                            # Usar a data mais antiga detectada, mas manter a data final original
+#                            adjusted_start = oldest_date
+#                            msg = f"Data mais antiga para {symbol}: {adjusted_start}. Ajustando extração..."
+#                            logging.info(msg)
+#                            if update_progress_callback:
+#                                update_progress_callback(progress, msg)
+#
+#                            # Pausa para atualizar a interface
+#                            time.sleep(0.1)
+#
+#                            # Tentar novamente com a data ajustada
+#                            df = self.mt5_connector.get_historical_data(
+#                                symbol,
+#                                timeframe_val,
+#                                start_dt=adjusted_start,
+#                                end_dt=end_date
+#                            )
+#
+#                    if df is None:
+#                        logging.warning(f"Falha ao buscar dados históricos para {symbol} via connector.")
+#                        failed_symbols += 1
+#                        continue
+#
+#                    if df.empty:
+#                        logging.info(f"Sem dados históricos para {symbol} no período selecionado via connector.")
+#                        failed_symbols += 1
+#                        continue
+#
+#                    # O método get_historical_data já converte timestamp para datetime
+#                    # então não precisamos fazer essa conversão
+#
+#                    # Calcular indicadores técnicos se solicitado
+#                    if include_indicators:
+#                        df = self.indicator_calculator.calculate_technical_indicators(df)
+#
+#                    # Obter spread médio (simulação, pode não ser preciso para histórico)
+#                    symbol_info = self.mt5_connector.get_symbol_info(symbol)
+#                    if symbol_info:
+#                        df['spread'] = symbol_info.spread
+#
+#                    # Salvar no banco de dados
+#                    # TODO: Implementar lógica de 'overwrite' no DatabaseManager
+#                    if overwrite:
+#                        logging.info(f"Opção 'Sobrescrever' para {symbol} ({timeframe_name})... (Implementação Pendente)")
+#                        # self.db_manager.delete_data(symbol, timeframe_name, start_date, end_date) # Exemplo
+#
+#                    try:
+#                        success = self.db_manager.save_ohlcv_data(symbol, timeframe_name, df)
+#                        if success:
+#                            logging.info(f"Extraídos e salvos {len(df)} registros de {symbol} ({timeframe_name})")
+#                            successful_symbols += 1
+#                        else:
+#                            logging.warning(f"Falha ao salvar dados históricos de {symbol} ({timeframe_name}) via DB Manager.")
+#                            failed_symbols += 1
+#                    except Exception as db_err:
+#                        logging.error(f"Erro inesperado ao salvar dados históricos de {symbol} ({timeframe_name}): {db_err}")
+#                        logging.debug(traceback.format_exc())
+#                        failed_symbols += 1
+#
+#                except Exception as e:
+#                    logging.error(f"Erro ao extrair dados de {symbol}: {str(e)}")
+#                    logging.error(f"Erro detalhado para {symbol}: {traceback.format_exc()}")
+#                    failed_symbols += 1
+#
+#            # Finalização
+#            final_message = f"Extração concluída. Sucesso: {successful_symbols}, Falhas: {failed_symbols}"
+#            logging.info(final_message)
+#            if update_progress_callback:
+#                update_progress_callback(100, final_message)
+#            if finished_callback:
+#                finished_callback(successful_symbols, failed_symbols)
+#            self.extraction_running = False # Reseta o estado
+#
+#        # Iniciar thread
+#        self.historical_thread = Thread(target=extraction_thread)
+#        self.historical_thread.daemon = True
+#        self.historical_thread.start()
 
-        if hasattr(self, 'extraction_running') and self.extraction_running:
-            logging.warning("Tentativa de iniciar extração histórica já em andamento.")
-            return
-
-        logging.info(f"Iniciando extração histórica para {len(symbols)} símbolos...")
-        self.extraction_running = True
-
-        def extraction_thread():
-            total_symbols = len(symbols)
-            successful_symbols = 0
-            failed_symbols = 0
-
-            for i, symbol in enumerate(symbols):
-                if not self.extraction_running:
-                    logging.info("Extração histórica cancelada pelo usuário.")
-                    break
-
-                progress = (i / total_symbols) * 100
-                message = f"Extraindo {symbol} ({i+1}/{total_symbols})"
-                if update_progress_callback:
-                    update_progress_callback(progress, message)
-
-                try:
-                    # Obter dados históricos usando o conector
-                    df = self.mt5_connector.get_rates_range(symbol, timeframe_val, start_date, end_date)
-                    
-                    # Se não encontrou dados e auto-detecção está ativada
-                    if (df is None or df.empty) and auto_detect_oldest_date:
-                        msg = f"Sem dados para {symbol} no período solicitado. Tentando detectar data mais antiga..."
-                        logging.info(msg)
-                        if update_progress_callback:
-                            update_progress_callback(progress, msg)
-                            
-                        # Pausa para atualizar a interface
-                        time.sleep(0.1)
-                            
-                        # Tentar obter data mais antiga
-                        oldest_date = self.mt5_connector.get_oldest_available_date(symbol, timeframe_val)
-                        
-                        if oldest_date:
-                            # Usar a data mais antiga detectada, mas manter a data final original
-                            adjusted_start = oldest_date
-                            msg = f"Data mais antiga para {symbol}: {adjusted_start}. Ajustando extração..."
-                            logging.info(msg)
-                            if update_progress_callback:
-                                update_progress_callback(progress, msg)
-                                
-                            # Pausa para atualizar a interface
-                            time.sleep(0.1)
-                                
-                            # Tentar novamente com a data ajustada
-                            df = self.mt5_connector.get_rates_range(symbol, timeframe_val, adjusted_start, end_date)
-
-                    if df is None:
-                        logging.warning(f"Falha ao buscar dados históricos para {symbol} via connector.")
-                        failed_symbols += 1
-                        continue
-
-                    if df.empty:
-                        logging.info(f"Sem dados históricos para {symbol} no período selecionado via connector.")
-                        failed_symbols += 1
-                        continue
-
-                    # Converter timestamp para datetime
-                    df['time'] = pd.to_datetime(df['time'], unit='s')
-
-                    # Calcular indicadores técnicos se solicitado
-                    if include_indicators:
-                        df = self.indicator_calculator.calculate_technical_indicators(df)
-
-                    # Calcular percentuais de variação (pode não ser tão útil para histórico longo)
-                    # df = self.indicator_calculator.calculate_price_variations(df)
-
-                    # Obter spread médio (simulação, pode não ser preciso para histórico)
-                    symbol_info = self.mt5_connector.get_symbol_info(symbol)
-                    if symbol_info:
-                        df['spread'] = symbol_info.spread
-
-                    # Salvar no banco de dados
-                    # TODO: Implementar lógica de 'overwrite' no DatabaseManager
-                    if overwrite:
-                        logging.info(f"Opção 'Sobrescrever' para {symbol} ({timeframe_name})... (Implementação Pendente)")
-                        # self.db_manager.delete_data(symbol, timeframe_name, start_date, end_date) # Exemplo
-
-                    try:
-                        success = self.db_manager.save_ohlcv_data(symbol, timeframe_name, df)
-                        if success:
-                            logging.info(f"Extraídos e salvos {len(df)} registros de {symbol} ({timeframe_name})")
-                            successful_symbols += 1
-                        else:
-                            logging.warning(f"Falha ao salvar dados históricos de {symbol} ({timeframe_name}) via DB Manager.")
-                            failed_symbols += 1
-                    except Exception as db_err:
-                        logging.error(f"Erro inesperado ao salvar dados históricos de {symbol} ({timeframe_name}): {db_err}")
-                        logging.debug(traceback.format_exc())
-                        failed_symbols += 1
-
-                except Exception as e:
-                    logging.error(f"Erro ao extrair dados de {symbol}: {str(e)}")
-                    logging.error(f"Erro detalhado para {symbol}: {traceback.format_exc()}")
-                    failed_symbols += 1
-
-            # Finalização
-            final_message = f"Extração concluída. Sucesso: {successful_symbols}, Falhas: {failed_symbols}"
-            logging.info(final_message)
-            if update_progress_callback:
-                update_progress_callback(100, final_message)
-            if finished_callback:
-                finished_callback(successful_symbols, failed_symbols)
-            self.extraction_running = False # Reseta o estado
-
-        # Iniciar thread
-        self.historical_thread = Thread(target=extraction_thread)
-        self.historical_thread.daemon = True
-        self.historical_thread.start()
-
-    def cancel_historical_extraction_logic(self):
-        """Sinaliza para parar a extração histórica em andamento."""
-        if hasattr(self, 'extraction_running') and self.extraction_running:
-            logging.info("Sinalizando cancelamento da extração histórica.")
-            self.extraction_running = False
-        else:
-            logging.warning("Tentativa de cancelar extração histórica que não está em andamento.")
+#    def cancel_historical_extraction_logic(self):
+#        """Sinaliza para parar a extração histórica em andamento."""
+#        if hasattr(self, 'extraction_running') and self.extraction_running:
+#            logging.info("Sinalizando cancelamento da extração histórica.")
+#            self.extraction_running = False
+#        else:
+#            logging.warning("Tentativa de cancelar extração histórica que não está em andamento.")
 
     def setup_root_window(self):
         """Configura a janela principal da aplicação"""
         self.root.title("MT5 Extração de Dados")
-        self.root.geometry("1200x700")
+        
+        # Aumentar o tamanho em 40%
+        self.root.geometry("1680x980")  # 1200 * 1.4 = 1680, 700 * 1.4 = 980
         
         # Configuração para melhor exibição em monitores de alta resolução
         try:
@@ -799,6 +887,7 @@ class MT5Extracao:
         self.start_date = None
         self.end_date = None
         self.selected_symbols = []
+        self.mt5_initialized = False  # Inicialmente, o MT5 não está inicializado
     
     def update_table_info(self):
         """Atualiza informações sobre tabelas existentes no banco de dados"""
@@ -830,28 +919,56 @@ class MT5Extracao:
     
     def handle_uncaught_exception(self, exc_type, exc_value, exc_traceback):
         """
-        Gerencia exceções não capturadas para evitar que a aplicação falhe silenciosamente.
-        
-        Args:
-            exc_type: Tipo da exceção
-            exc_value: Valor/mensagem da exceção
-            exc_traceback: Traceback da exceção
+        Manipulador para exceções não tratadas.
+        Registra o erro e encerra os recursos necessários antes de fechar a aplicação.
         """
-        # Log do erro
-        error_msg = f"EXCEÇÃO NÃO CAPTURADA: {exc_type.__name__}: {exc_value}"
-        logging.critical(error_msg)
-        logging.critical("".join(traceback.format_exception(exc_type, exc_value, exc_traceback)))
+        # Log da exceção
+        logging.critical("Exceção não tratada!")
+        logging.critical(f"Tipo: {exc_type.__name__}")
+        logging.critical(f"Mensagem: {exc_value}")
         
-        # Tentar exibir um messagebox para o usuário
+        # Obter e registrar a pilha de chamadas formatada
+        tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        log_traceback = ''.join(tb_lines)
+        logging.critical(f"Traceback:\n{log_traceback}")
+        
+        # Encerrar conexões e recursos
         try:
-            messagebox.showerror(
-                "Erro Inesperado",
-                f"Ocorreu um erro inesperado: {exc_type.__name__}\n\n{exc_value}\n\n"
-                "Os detalhes foram registrados no log."
-            )
-        except:
-            # Se não conseguir mostrar messagebox, pelo menos print no console
-            print(error_msg)
+            logging.info("Encerrando conexões devido a erro...")
+            
+            # Encerrar serviços integrados
+            if hasattr(self, 'integrated_services') and self.integrated_services:
+                try:
+                    self.integrated_services.shutdown()
+                    logging.info("Serviços avançados encerrados")
+                except Exception as e:
+                    logging.error(f"Erro ao encerrar serviços avançados: {str(e)}")
+            
+            # Encerrar conexão MT5
+            if hasattr(self, 'mt5_connector') and self.mt5_connector:
+                try:
+                    self.mt5_connector.shutdown()
+                    logging.info("Conexão MT5 encerrada")
+                except Exception as e:
+                    logging.error(f"Erro ao encerrar conexão MT5: {str(e)}")
+                
+            # Encerrar conexão DB
+            if hasattr(self, 'db_manager') and self.db_manager:
+                try:
+                    self.db_manager.close()
+                    logging.info("Conexão com banco de dados encerrada")
+                except Exception as e:
+                    logging.error(f"Erro ao encerrar conexão com banco: {str(e)}")
+        except Exception as cleanup_error:
+            logging.critical(f"Erro durante encerramento de emergência: {str(cleanup_error)}")
+        
+        # Mostrar mensagem de erro para o usuário
+        messagebox.showerror("Erro Fatal", 
+                           f"Ocorreu um erro fatal:\n{exc_type.__name__}: {exc_value}\n\n"
+                           "A aplicação será encerrada. Consulte o log para mais detalhes.")
+        
+        # Encerrar a aplicação após um breve delay
+        self.root.after(100, self.root.destroy)
 
 if __name__ == "__main__":
     try:
