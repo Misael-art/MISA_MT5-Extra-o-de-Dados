@@ -10,7 +10,7 @@ Aplicação para extração e armazenamento de dados financeiros do MetaTrader 5
 - **Armazenamento em Banco**: Armazena dados em banco SQLite local, com criação/atualização automática de schema.
 - **Cálculo de Indicadores**: Calcula indicadores técnicos básicos e avançados.
 - **Exportação**: Exporta dados para formatos CSV e Excel.
-- **Gerenciamento de Credenciais**: Armazena credenciais de forma segura (atualmente via `config.ini`).
+- **Gerenciamento de Credenciais**: Credenciais no arquivo `.env` (privado, fora do git).
 - **Interface Gráfica**: Interface amigável para interação com o usuário.
 
 ## Novidades
@@ -22,26 +22,34 @@ Aplicação para extração e armazenamento de dados financeiros do MetaTrader 5
 - **Fallback M1 e Chunking Dinâmico**: Adicionada a capacidade de usar fontes externas como fallback para M1 e configuração dinâmica do tamanho dos blocos de extração.
 - **Correção de Schema DB**: Resolvido problema com nomes de colunas contendo caracteres especiais e garantida a criação de tabelas com schema completo.
 
-## Requisitos
+## Instalação (automática)
 
-- Python 3.8+
-- MetaTrader 5 instalado
-- Bibliotecas listadas em `requirements.txt`
+| Sistema | Como instalar | Como abrir |
+|---|---|---|
+| **Windows 10/11** | Duplo clique em `install.bat` | Atalho **MT5 Extração** na Área de Trabalho ou `run.bat` |
+| **Linux** (Ubuntu, Debian, Fedora, Arch, openSUSE) | `./install.sh` | Menu de aplicativos ou `./run.sh` |
 
-## Instalação
+O instalador baixa e configura o Python, as dependências, o **MetaTrader 5** (no Linux, via Wine,
+com uma ponte para o pacote `MetaTrader5`) e gera `config/config.ini`. Pode ser executado de novo
+a qualquer momento: as etapas prontas são puladas e a sua configuração é preservada.
 
-1. Clone o repositório
-2. Instale as dependências:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Configure o arquivo `config/config.ini` com o caminho do MT5 e, opcionalmente, credenciais e configurações avançadas (veja abaixo).
-## Uso
+Detalhes, opções e solução de problemas: **[docs/instalacao.md](docs/instalacao.md)**.
 
-Execute o aplicativo principal:
+Diagnóstico do ambiente:
 
 ```
-python app.py
+.venv/bin/python -m mt5_extracao.bootstrap doctor      # Linux
+.venv\Scripts\python -m mt5_extracao.bootstrap doctor  # Windows
+```
+
+> No Linux, o instalador deixa o MT5 e a ponte funcionando; o uso da ponte pelo aplicativo
+> é a tarefa T2.1/T2.2 do [plano de trabalho](docs/PLANO_DE_TRABALHO.md).
+
+## Uso
+
+```
+run.bat        # Windows
+./run.sh       # Linux
 ```
 
 ### Extração de Dados
@@ -61,11 +69,12 @@ python app.py
 
 ## Configuração Avançada (`config/config.ini`)
 
-O arquivo `config/config.ini` permite ajustar alguns comportamentos:
+O arquivo é gerado pelo instalador (referência completa em `config/config.ini.example`) e permite ajustar alguns comportamentos:
 
 - **`[MT5]`**:
    - `path`: Caminho para a instalação do MetaTrader 5.
-   - `login`, `password`, `server`: Credenciais (opcional, se não fornecidas, tentará conectar sem login específico).
+   - Credenciais **não** ficam aqui: use `.env` (`MT5_LOGIN`, `MT5_PASSWORD`, `MT5_SERVER`), criado pelo assistente `python -m mt5_extracao.bootstrap configure`.
+- **`[BRIDGE]`** (Linux): `enabled`, `host`, `port`, `wine_python` da ponte RPyC para o MT5 no Wine.
 - **`[DATABASE]`**:
    - `type`: Tipo do banco (atualmente apenas `sqlite`).
    - `path`: Caminho para o arquivo do banco de dados SQLite.
@@ -80,6 +89,10 @@ O arquivo `config/config.ini` permite ajustar alguns comportamentos:
 ## Documentação
 
 Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
+
+- [Instalação automática](docs/instalacao.md)
+- [Roadmap](docs/ROADMAP.md) e [Plano de trabalho detalhado](docs/PLANO_DE_TRABALHO.md)
+- [Regras para agentes/contribuidores](AGENTS.md)
 
 - [Plano de Extração Histórica (Original)](docs/plano_extracao_historica.md)
 - [Plano Fase 2: Fallback M1 e Chunking Dinâmico](docs/plano_fallback_m1.md)

@@ -1,0 +1,36 @@
+# Exemplo de configuração. NÃO é necessário copiar manualmente:
+# os instaladores (install.bat / install.sh) geram config/config.ini
+# executando:  python -m mt5_extracao.bootstrap configure
+#
+# [MT5]       path = pasta com terminal64.exe no sistema (no Linux: dentro do prefixo Wine)
+#             windows_path / wine_prefix = usados apenas no Linux (Wine)
+# [BRIDGE]    ponte RPyC para acessar o MT5 do Wine a partir do Linux
+# [DATABASE]  type = sqlite; path relativo à raiz do projeto
+# [EXTRACTION] tamanho dos blocos (dias) por timeframe
+# [FALLBACK]  fonte externa para M1 (apenas "Dummy" implementado)
+# Credenciais NÃO ficam aqui: use o arquivo .env (veja .env.example).
+
+[MT5]
+path = C:\Program Files\MetaTrader 5
+windows_path = C:\Program Files\MetaTrader 5
+wine_prefix = 
+
+[BRIDGE]
+enabled = false
+host = 127.0.0.1
+port = 18812
+wine_python = 
+
+[DATABASE]
+type = sqlite
+path = database/mt5_data.db
+
+[EXTRACTION]
+chunk_days_m1 = 30
+chunk_days_m5_m15 = 90
+chunk_days_default = 365
+
+[FALLBACK]
+external_source_m1_fallback_enabled = False
+external_source_m1_type = Dummy
+

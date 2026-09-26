@@ -1,7 +1,10 @@
 import os
 import sys
 import subprocess
-import winreg
+try:
+    import winreg  # Somente Windows
+except ImportError:  # Linux/macOS: use ./install.sh
+    winreg = None
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import logging
