@@ -32,7 +32,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ |
 | T1.1 | Upsert no banco (reextrair sem erro/duplicata) | — | ✅ concluída |
 | T1.2 | Salvar por bloco + tabela de controle + retomada | T1.1 | ✅ concluída |
-| T1.3 | Atualização incremental | T1.2 | ⏳ |
+| T1.3 | Atualização incremental | T1.2 | ✅ concluída |
 | T1.4 | M1 via `copy_rates_range` | — | ✅ concluída |
 | T1.5 | Não sobrescrever o spread histórico | — | ✅ concluída |
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ⏳ |
@@ -286,6 +286,10 @@ adicione `connect_args={'timeout': 30}` no `create_engine` do SQLite.
 3. Adicione na aba de extração da UI um botão "Atualizar até agora" que chama `update_symbols` com os símbolos selecionados. Siga o padrão do botão existente que chama `self.app.historical_extractor.extract_data(` em `ui_manager.py`.
 
 **Critérios de aceite:** rodar a atualização 2× seguidas não cria linhas duplicadas; a 2ª traz 0 ou 1 barra nova.
+
+**Implementado:** `extract_data(..., start_dates={símbolo: início})` (opcional) permite um início por símbolo;
+`HistoricalExtractor.TIMEFRAME_MINUTES` dá o tamanho da barra. A última barra do dia pode estar incompleta
+quando a atualização roda durante o pregão; a próxima atualização a corrige (upsert).
 
 **Commit:** `feat(extracao): atualização incremental a partir do último registro`
 

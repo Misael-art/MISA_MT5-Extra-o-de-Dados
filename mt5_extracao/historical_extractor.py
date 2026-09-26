@@ -21,6 +21,11 @@ log = logging.getLogger(__name__)
 WARMUP_BARS = 500
 OHLCV_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
 
+# Minutos por barra, indexado pelo valor numérico oficial das constantes TIMEFRAME_* do MT5
+TIMEFRAME_MINUTES = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 10: 10, 12: 12, 15: 15, 20: 20, 30: 30,
+                     16385: 60, 16386: 120, 16387: 180, 16388: 240, 16390: 360, 16392: 480,
+                     16396: 720, 16408: 1440, 32769: 10080, 49153: 43200}
+
 class HistoricalExtractor:
     """
     Responsável pela extração robusta e eficiente de dados históricos do MT5.
@@ -60,7 +65,8 @@ class HistoricalExtractor:
                      start_date: datetime, end_date: datetime,
                      include_indicators: bool, overwrite: bool,
                      max_workers: int = 4, # Número de workers paralelos
-                     update_progress_callback=None, finished_callback=None):
+                     update_progress_callback=None, finished_callback=None,
+                     start_dates: Optional[dict] = None):
         """
         Inicia a extração de dados históricos em uma thread separada.
 
@@ -73,6 +79,8 @@ class HistoricalExtractor:
             include_indicators: Se True, calcula indicadores técnicos.
             overwrite: Se True, deleta dados existentes antes de salvar.
             max_workers: Número máximo de threads para paralelização por símbolo.
+            start_dates: Opcional, {símbolo: data inicial} que substitui start_date por símbolo
+                         (usado pela atualização incremental).
             update_progress_callback: Função chamada para atualizar o progresso (progresso, mensagem).
             finished_callback: Função chamada ao finalizar (sucesso, falha).
         """
@@ -90,14 +98,14 @@ class HistoricalExtractor:
         extraction_thread = Thread(target=self._run_extraction,
                                    args=(symbols, timeframe_val, timeframe_name, start_date, end_date,
                                          include_indicators, overwrite, max_workers,
-                                         update_progress_callback, finished_callback))
+                                         update_progress_callback, finished_callback, start_dates))
         extraction_thread.daemon = True
         extraction_thread.start()
 
     def _run_extraction(self, symbols: list, timeframe_val: int, timeframe_name: str,
                         start_date: datetime, end_date: datetime,
                         include_indicators: bool, overwrite: bool, max_workers: int,
-                        update_progress_callback=None, finished_callback=None):
+                        update_progress_callback=None, finished_callback=None, start_dates=None):
         """Lógica principal da extração executada na thread."""
         total_symbols = len(symbols)
         successful_symbols = 0
@@ -108,7 +116,8 @@ class HistoricalExtractor:
             # Usar ThreadPoolExecutor para paralelizar por símbolo
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {executor.submit(self._process_symbol, symbol, timeframe_val, timeframe_name,
-                                           start_date, end_date, include_indicators, overwrite): symbol
+                                           (start_dates or {}).get(symbol, start_date), end_date,
+                                           include_indicators, overwrite): symbol
                            for symbol in symbols}
 
                 processed_count = 0
@@ -172,6 +181,32 @@ class HistoricalExtractor:
             with self._lock:
                 self.extraction_running = False
                 self.cancel_requested = False # Resetar estado
+
+    def update_symbols(self, symbols: list, timeframe_val: int, timeframe_name: str,
+                       include_indicators: bool, default_days: int = 30, max_workers: int = 4,
+                       update_progress_callback=None, finished_callback=None, now: Optional[datetime] = None):
+        """
+        Atualização incremental: busca, para cada símbolo, só o que falta desde o último registro
+        salvo até agora (sobreposição de 1 barra, resolvida pelo upsert). Símbolos sem dados
+        começam `default_days` dias atrás. Roda em segundo plano, como extract_data.
+
+        Returns:
+            dict: {símbolo: data inicial usada}
+        """
+        now = now or datetime.now()
+        bar = timedelta(minutes=TIMEFRAME_MINUTES.get(timeframe_val, 1))
+        start_dates = {}
+        for symbol in symbols:
+            table_name = self.db_manager.get_table_name_for_symbol(symbol, timeframe_name)
+            last = self.db_manager.get_last_timestamp(table_name)
+            start_dates[symbol] = (last - bar) if last is not None else now - timedelta(days=default_days)
+            log.info(f"[{symbol}] Atualização a partir de {start_dates[symbol]} (último registro: {last}).")
+        self.extract_data(symbols, timeframe_val, timeframe_name,
+                          start_date=min(start_dates.values()) if start_dates else now,
+                          end_date=now, include_indicators=include_indicators, overwrite=False,
+                          max_workers=max_workers, update_progress_callback=update_progress_callback,
+                          finished_callback=finished_callback, start_dates=start_dates)
+        return start_dates
 
     def _process_symbol(self, symbol: str, timeframe_val: int, timeframe_name: str,
                         start_date: datetime, end_date: datetime,

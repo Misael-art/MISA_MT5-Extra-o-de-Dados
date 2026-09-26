@@ -345,6 +345,14 @@ class DatabaseManager:
                 "WHERE table_name = :t AND status IN ('ok', 'empty')"), {"t": table_name}).fetchall()
         return {(datetime.strptime(a, self._TIME_FMT), datetime.strptime(b, self._TIME_FMT)) for a, b in rows}
 
+    def get_last_timestamp(self, table_name):
+        """Maior valor de time da tabela (datetime) ou None se a tabela não existir ou estiver vazia."""
+        if not self.is_connected() or not inspect(self.engine).has_table(table_name):
+            return None
+        with self.engine.connect() as conn:
+            value = conn.execute(text(f'SELECT MAX(time) FROM "{table_name}"')).scalar()
+        return pd.to_datetime(value).to_pydatetime() if value is not None else None
+
     def get_rows_before(self, table_name, before, limit, columns=None):
         """
         Últimas `limit` linhas com time < `before`, em ordem crescente de tempo.

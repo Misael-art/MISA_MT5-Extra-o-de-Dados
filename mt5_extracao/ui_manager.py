@@ -1274,6 +1274,38 @@ Status: Sem dados no banco. Disponível para coleta.
                 finished_callback=lambda s, f, c: self.root.after_idle(lambda: (extract_button.config(state=tk.NORMAL), cancel_button.config(text="Fechar")))
             )
 
+        # --- Atualização incremental: do último registro salvo até agora ---
+        def update_extraction_logic():
+            try:
+                timeframe_idx = timeframe_combo.current()
+                timeframe_name, timeframe_val = self.app.timeframes[timeframe_idx]
+            except Exception as config_err:
+                messagebox.showerror("Erro de Configuração", f"Erro ao ler o timeframe: {config_err}")
+                return
+            if not self.app.selected_symbols:
+                messagebox.showerror("Erro", "Nenhum símbolo selecionado.")
+                return
+
+            extract_button.config(state=tk.DISABLED)
+            update_button.config(state=tk.DISABLED)
+            cancel_button.config(text="Cancelar")
+            status_var.set("Atualizando a partir do último registro salvo...")
+            progress_var.set(0)
+
+            def finished(s, f, c):
+                extract_button.config(state=tk.NORMAL)
+                update_button.config(state=tk.NORMAL)
+                cancel_button.config(text="Fechar")
+
+            self.app.historical_extractor.update_symbols(
+                symbols=self.app.selected_symbols,
+                timeframe_val=timeframe_val,
+                timeframe_name=timeframe_name,
+                include_indicators=include_indicators_var.get(),
+                update_progress_callback=lambda p, msg: self.root.after_idle(lambda: (progress_var.set(p), status_var.set(msg))),
+                finished_callback=lambda s, f, c: self.root.after_idle(lambda: finished(s, f, c))
+            )
+
         def cancel_extraction_logic():
              if extract_button.cget('state') == tk.DISABLED:
                  # Chama a lógica de cancelamento na app principal
@@ -1287,6 +1319,8 @@ Status: Sem dados no banco. Disponível para coleta.
         buttons_frame.pack(fill=tk.X, pady=5)
         extract_button = ttk.Button(buttons_frame, text="Iniciar Extração", command=start_extraction_logic)
         extract_button.pack(side=tk.LEFT, padx=5)
+        update_button = ttk.Button(buttons_frame, text="Atualizar até agora", command=update_extraction_logic)
+        update_button.pack(side=tk.LEFT, padx=5)
         cancel_button = ttk.Button(buttons_frame, text="Cancelar", command=cancel_extraction_logic)
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
