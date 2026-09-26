@@ -31,7 +31,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
 | T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ |
 | T1.1 | Upsert no banco (reextrair sem erro/duplicata) | — | ✅ concluída |
-| T1.2 | Salvar por bloco + tabela de controle + retomada | T1.1 | ⏳ |
+| T1.2 | Salvar por bloco + tabela de controle + retomada | T1.1 | ✅ concluída |
 | T1.3 | Atualização incremental | T1.2 | ⏳ |
 | T1.4 | M1 via `copy_rates_range` | — | ✅ concluída |
 | T1.5 | Não sobrescrever o spread histórico | — | ✅ concluída |
@@ -246,10 +246,12 @@ execução, pular blocos já concluídos.
    - Em falha definitiva do bloco: `record_block(..., rows=0, status='failed', ...)` e **continue** para o próximo bloco (não use `break`). O símbolo termina como falha se algum bloco falhou.
    - Remova `all_symbol_data` e o `pd.concat` final.
 4. Aquecimento dos indicadores: indicadores com janela (RSI 14, MA 20, etc.) precisam de barras
-   anteriores. Antes de calcular os indicadores do bloco, leia as últimas `WARMUP_BARS = 300`
+   anteriores. Antes de calcular os indicadores do bloco, leia as últimas `WARMUP_BARS = 500`
    linhas da tabela com `time < current_start`
    (`SELECT * FROM "<tabela>" WHERE time < :t ORDER BY time DESC LIMIT 300`), concatene antes do
    bloco, calcule e **descarte** as linhas de aquecimento antes de salvar (filtre `time >= current_start`).
+   (500 e não 300: RSI e MACD usam médias exponenciais; com 300 barras a diferença para o período
+   inteiro fica em ~1e-8, acima da tolerância de aceite.)
 5. Os blocos devem ter limites determinísticos para a retomada funcionar: use sempre
    `block_end = min(current_start + block_delta, end_date)` e
    `current_start = block_end + timedelta(seconds=1)`, como já é feito. Não mude essa aritmética.
@@ -259,6 +261,11 @@ execução, pular blocos já concluídos.
 - [ ] Reexecutar a mesma extração não chama o MT5 para blocos `ok`/`empty` (teste com provedor falso contando chamadas; se T4.3 não existir, use `unittest.mock.MagicMock` no `connector`).
 - [ ] Indicadores do primeiro registro de um bloco são iguais aos obtidos extraindo o período inteiro de uma vez (tolerância `1e-9`).
 - [ ] Uso de memória não cresce com o número de blocos (não há mais acumulação).
+
+**Implementado também:** tabelas internas (prefixo `_`) ficam fora de `get_all_tables`/`get_existing_symbols`;
+`delete_data_periodo` passou a comparar datas no mesmo formato de texto gravado (antes a barra do limite final
+não era apagada). A retomada só pula blocos com **os mesmos limites**; um período total diferente gera outros
+limites e os blocos são buscados de novo (o upsert evita duplicatas).
 
 **Armadilhas:** o `HistoricalExtractor` roda símbolos em paralelo (`ThreadPoolExecutor`). Cada
 símbolo tem sua própria tabela, mas a `_extraction_log` é compartilhada: use `engine.begin()`

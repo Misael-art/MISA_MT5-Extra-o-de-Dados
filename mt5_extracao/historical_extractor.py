@@ -16,6 +16,11 @@ from .external_data_source import ExternalDataSource # Adicionado
 
 log = logging.getLogger(__name__)
 
+# Barras anteriores ao bloco usadas para aquecer indicadores com janela/média exponencial.
+# 500 barras deixam a diferença de RSI/MACD em relação ao período inteiro abaixo de 1e-9.
+WARMUP_BARS = 500
+OHLCV_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
+
 class HistoricalExtractor:
     """
     Responsável pela extração robusta e eficiente de dados históricos do MT5.
@@ -210,16 +215,25 @@ class HistoricalExtractor:
         block_delta = timedelta(days=chunk_days)
         log.info(f"[{symbol}] Usando blocos de {chunk_days} dias para timeframe {timeframe_name}.")
         current_start = start_date
-        all_symbol_data = []
-        symbol_success = True # Assume sucesso até que um bloco falhe
+        table_name = self.db_manager.get_table_name_for_symbol(symbol, timeframe_name)
+        # Retomada: blocos já concluídos em execuções anteriores são pulados (exceto ao sobrescrever)
+        done_blocks = set() if overwrite else self.db_manager.completed_blocks(table_name)
+        failed_blocks = 0
+        total_rows = 0
 
         while current_start < end_date:
             if self.cancel_requested:
                 log.info(f"[{symbol}] Cancelamento solicitado durante processamento de blocos.")
                 return False # Indica falha devido ao cancelamento
 
+            # Os limites dos blocos são determinísticos (necessário para a retomada funcionar)
             block_end = min(current_start + block_delta, end_date)
+            if (current_start, block_end) in done_blocks:
+                log.info(f"[{symbol}] Bloco {current_start} a {block_end} já extraído anteriormente; pulando.")
+                current_start = block_end + timedelta(seconds=1)
+                continue
             log.debug(f"[{symbol}] Processando bloco: {current_start.date()} a {block_end.date()}")
+            source = 'mt5'
 
             # 3. Lógica de Retry com Backoff para buscar o bloco
             max_retries = 3
@@ -273,6 +287,7 @@ class HistoricalExtractor:
                             if expected_cols.issubset(external_block_df.columns):
                                 log.info(f"[{symbol}] Fallback bem-sucedido! Obtido {len(external_block_df)} barras M1 da fonte externa.")
                                 block_df = external_block_df # Usa os dados do fallback
+                                source = self.external_source.__class__.__name__
                             else:
                                 log.warning(f"[{symbol}] Fonte externa ({self.external_source.__class__.__name__}) retornou dados M1, mas colunas esperadas ({expected_cols}) não encontradas. Ignorando fallback.")
                                 block_df = None # Garante que block_df permaneça None
@@ -287,55 +302,65 @@ class HistoricalExtractor:
 
                 # Se ainda for None após tentativa de fallback (ou se não era M1/sem fallback), marca falha definitiva
                 if block_df is None:
-                    log.error(f"[{symbol}] Falha definitiva ao obter bloco {current_start.date()}-{block_end.date()}.")
-                    symbol_success = False
-                    break # Falha em um bloco, interrompe a extração para este símbolo
+                    log.error(f"[{symbol}] Falha definitiva ao obter bloco {current_start.date()}-{block_end.date()}. Seguindo para o próximo bloco.")
+                    self.db_manager.record_block(table_name, current_start, block_end, 0, 'failed', source)
+                    failed_blocks += 1
+                    current_start = block_end + timedelta(seconds=1)
+                    continue
 
-            # Adiciona dados do bloco (se não estiver vazio)
-            if not block_df.empty:
-                all_symbol_data.append(block_df)
+            # 4. Salva o bloco imediatamente (memória constante; uma falha não perde os blocos anteriores)
+            saved_rows = self._save_block(symbol, timeframe_name, table_name, block_df, current_start, include_indicators)
+            if saved_rows is None:
+                self.db_manager.record_block(table_name, current_start, block_end, 0, 'failed', source)
+                failed_blocks += 1
+            else:
+                status = 'ok' if saved_rows else 'empty'
+                self.db_manager.record_block(table_name, current_start, block_end, saved_rows, status, source)
+                total_rows += saved_rows
 
             # Avança para o próximo bloco
             # Adiciona 1 segundo para evitar sobreposição exata se MT5 incluir a data final
             current_start = block_end + timedelta(seconds=1)
 
-        # 4. Consolidação e Salvamento dos Dados do Símbolo (se todos os blocos tiveram sucesso)
-        if symbol_success and all_symbol_data:
-            final_df = pd.concat(all_symbol_data, ignore_index=True)
-            final_df = final_df.drop_duplicates(subset=['time'], keep='first').sort_values(by='time') # Garante unicidade e ordem
-            log.info(f"[{symbol}] Total de {len(final_df)} barras únicas obtidas após concatenação dos blocos.")
+        if failed_blocks:
+            log.error(f"[{symbol}] Extração concluída com {failed_blocks} bloco(s) com falha; {total_rows} barras salvas. "
+                      f"Execute novamente para tentar só os blocos que faltam.")
+            return False
+        log.info(f"[{symbol}] Extração concluída: {total_rows} barras salvas.")
+        return True
 
-            # Calcular indicadores se solicitado
-            if include_indicators:
-                try:
-                    log.debug(f"[{symbol}] Calculando indicadores...")
-                    final_df = self.indicator_calculator.calculate_technical_indicators(final_df)
-                    # O spread de cada barra vem do próprio MT5 (copy_rates_*); não sobrescrever.
-                except Exception as ind_err:
-                    log.error(f"[{symbol}] Erro ao calcular indicadores: {ind_err}")
-                    # Decide se continua sem indicadores ou falha
-                    # Por enquanto, continua sem indicadores
+    def _save_block(self, symbol, timeframe_name, table_name, block_df, block_start, include_indicators):
+        """
+        Calcula indicadores (com aquecimento a partir das barras já salvas) e grava o bloco.
 
-            # Salvar no banco de dados
+        Returns:
+            int | None: número de barras gravadas (0 se o bloco estava vazio) ou None em caso de falha.
+        """
+        if block_df is None or block_df.empty:
+            return 0
+        df = block_df.drop_duplicates(subset=['time'], keep='first').sort_values(by='time').reset_index(drop=True)
+
+        if include_indicators:
             try:
-                log.debug(f"[{symbol}] Salvando {len(final_df)} barras no banco de dados...")
-                # Usar save_ohlcv_data que pode ser mais otimizado
-                saved = self.db_manager.save_ohlcv_data(symbol, timeframe_name, final_df)
-                if saved:
-                    log.info(f"[{symbol}] Dados salvos com sucesso no banco.")
-                    return True # Sucesso para este símbolo
+                # Indicadores com janela (RSI, MA, MACD...) precisam das barras anteriores ao bloco
+                warmup = self.db_manager.get_rows_before(table_name, block_start, WARMUP_BARS, columns=OHLCV_COLUMNS)
+                if warmup is not None and not warmup.empty:
+                    combined = pd.concat([warmup, df[[c for c in df.columns if c in OHLCV_COLUMNS]]],
+                                         ignore_index=True)
                 else:
-                    log.error(f"[{symbol}] Falha ao salvar dados no banco (método save_ohlcv_data retornou False).")
-                    return False # Falha para este símbolo
-            except Exception as db_err:
-                log.error(f"[{symbol}] Erro ao salvar dados no banco: {db_err}")
+                    combined = df
+                combined = self.indicator_calculator.calculate_technical_indicators(combined)
+                # O spread de cada barra vem do próprio MT5 (copy_rates_*); não sobrescrever.
+                df = combined[combined['time'] >= block_start].reset_index(drop=True)
+            except Exception as ind_err:
+                log.error(f"[{symbol}] Erro ao calcular indicadores: {ind_err}. Salvando o bloco sem indicadores.")
                 log.debug(traceback.format_exc())
-                return False # Falha para este símbolo
 
-        elif symbol_success and not all_symbol_data:
-            log.info(f"[{symbol}] Nenhum dado encontrado no período solicitado após processar todos os blocos.")
-            return True # Considera sucesso, pois não houve erro, apenas sem dados
-        else:
-            # Se symbol_success é False, significa que um bloco falhou
-            log.error(f"[{symbol}] Extração falhou devido a erro em um dos blocos.")
-            return False # Falha para este símbolo
+        try:
+            if self.db_manager.save_ohlcv_data(symbol, timeframe_name, df):
+                return len(df)
+            log.error(f"[{symbol}] Falha ao salvar bloco iniciado em {block_start} (save_ohlcv_data retornou False).")
+        except Exception as db_err:
+            log.error(f"[{symbol}] Erro ao salvar bloco iniciado em {block_start}: {db_err}")
+            log.debug(traceback.format_exc())
+        return None

@@ -3,6 +3,7 @@ import logging
 import pandas as pd
 import numpy as np # <--- ADICIONADO IMPORT
 import traceback
+from datetime import datetime
 from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import SQLAlchemyError
@@ -54,10 +55,12 @@ class DatabaseManager:
                     os.makedirs(db_dir)
                     log.info(f"Diretório do banco de dados criado: {db_dir}")
                 connection_string = f'sqlite:///{self.db_path}'
-                self.engine = create_engine(connection_string)
+                # timeout: extrações em paralelo gravam no mesmo arquivo (SQLite serializa escritas)
+                self.engine = create_engine(connection_string, connect_args={'timeout': 30})
                 # Testa a conexão inicial
                 with self.engine.connect() as connection:
                     log.info(f"Conexão com banco de dados SQLite estabelecida: {self.db_path}")
+                self._ensure_control_tables()
             # TODO: Adicionar suporte para outros tipos de banco (PostgreSQL/TimescaleDB)
             # elif self.db_type == 'postgresql':
             #     # connection_string = f'postgresql://user:password@host:port/database'
@@ -301,6 +304,62 @@ class DatabaseManager:
             return False
         return inspector.get_pk_constraint(table_name).get('constrained_columns') == ['time']
 
+    # Tabelas de dados de símbolos; tabelas internas começam com "_" (ex.: _extraction_log)
+    _DATA_TABLES_SQL = ("SELECT name FROM sqlite_master WHERE type='table' "
+                        "AND name NOT LIKE 'sqlite_%' AND substr(name, 1, 1) != '_'")
+
+    # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
+    _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
+
+    def _ensure_control_tables(self):
+        """Cria as tabelas internas de controle, se não existirem."""
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS _extraction_log ("
+                " table_name  TEXT NOT NULL,"
+                " block_start TIMESTAMP NOT NULL,"
+                " block_end   TIMESTAMP NOT NULL,"
+                " rows        INTEGER NOT NULL,"
+                " status      TEXT NOT NULL,"   # 'ok' | 'empty' | 'failed'
+                " source      TEXT NOT NULL,"   # 'mt5' | nome da fonte externa
+                " updated_at  TIMESTAMP NOT NULL,"
+                " PRIMARY KEY (table_name, block_start, block_end))"))
+
+    def record_block(self, table_name, start, end, rows, status, source):
+        """Registra (ou atualiza) o resultado da extração de um bloco."""
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO _extraction_log (table_name, block_start, block_end, rows, status, source, updated_at) "
+                "VALUES (:t, :s, :e, :r, :st, :src, :u) "
+                "ON CONFLICT(table_name, block_start, block_end) DO UPDATE SET "
+                "rows = excluded.rows, status = excluded.status, source = excluded.source, "
+                "updated_at = excluded.updated_at"),
+                {"t": table_name, "s": start.strftime(self._TIME_FMT), "e": end.strftime(self._TIME_FMT),
+                 "r": int(rows), "st": status, "src": source, "u": datetime.now().strftime(self._TIME_FMT)})
+
+    def completed_blocks(self, table_name):
+        """Blocos (inicio, fim) já concluídos (status 'ok' ou 'empty') para a tabela."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT block_start, block_end FROM _extraction_log "
+                "WHERE table_name = :t AND status IN ('ok', 'empty')"), {"t": table_name}).fetchall()
+        return {(datetime.strptime(a, self._TIME_FMT), datetime.strptime(b, self._TIME_FMT)) for a, b in rows}
+
+    def get_rows_before(self, table_name, before, limit, columns=None):
+        """
+        Últimas `limit` linhas com time < `before`, em ordem crescente de tempo.
+        Retorna None se a tabela não existir. Usado para aquecer indicadores entre blocos.
+        """
+        if not inspect(self.engine).has_table(table_name):
+            return None
+        cols = ", ".join(f'"{c}"' for c in columns) if columns else "*"
+        query = text(f'SELECT {cols} FROM "{table_name}" WHERE time < :t ORDER BY time DESC LIMIT :n')
+        with self.engine.connect() as conn:
+            df = pd.read_sql(query, conn, params={"t": before.strftime(self._TIME_FMT), "n": int(limit)})
+        if not df.empty and 'time' in df.columns:
+            df['time'] = pd.to_datetime(df['time'])
+        return df.iloc[::-1].reset_index(drop=True)
+
     def get_existing_symbols(self):
         """
         Retorna uma lista de símbolos que já possuem dados no banco.
@@ -317,7 +376,7 @@ class DatabaseManager:
             with self.engine.connect() as conn:
                 if self.db_type == 'sqlite':
                     # Para SQLite
-                    result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
+                    result = conn.execute(text(self._DATA_TABLES_SQL))
                     tables = [row[0] for row in result]
                 # Adicionar suporte para PostgreSQL depois
                 # elif self.db_type == 'postgresql':
@@ -538,7 +597,7 @@ class DatabaseManager:
         try:
             # Para SQLite
             if self.db_type == 'sqlite':
-                query = "SELECT name FROM sqlite_master WHERE type='table'"
+                query = self._DATA_TABLES_SQL
                 result = pd.read_sql_query(query, self.engine)
                 tables = result['name'].tolist()
                 log.info(f"Encontradas {len(tables)} tabelas no banco de dados.")
@@ -741,7 +800,9 @@ class DatabaseManager:
                 with connection.begin():
                     # Construir a query DELETE com parâmetros seguros
                     query = text(f"DELETE FROM {table_name} WHERE time >= :start AND time <= :end")
-                    result = connection.execute(query, {"start": start_date, "end": end_date})
+                    # Mesmo formato de texto gravado na coluna time (comparação de texto no SQLite)
+                    result = connection.execute(query, {"start": pd.Timestamp(start_date).strftime(self._TIME_FMT),
+                                                        "end": pd.Timestamp(end_date).strftime(self._TIME_FMT)})
                     log.info(f"{result.rowcount} registros deletados da tabela '{table_name}'.")
             return True
         except SQLAlchemyError as e:
