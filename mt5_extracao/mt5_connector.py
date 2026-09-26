@@ -6,7 +6,6 @@ import time
 import traceback
 import datetime
 import pandas as pd
-from tkinter import messagebox  # Temporário? Idealmente, remover dependência da UI.
 import json
 import subprocess
 from pathlib import Path
@@ -21,11 +20,11 @@ from mt5_extracao.error_handler import (
     MT5IPCError
 )
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:
-    logging.error("Módulo MetaTrader5 não encontrado. Instale-o com: pip install MetaTrader5")
-    mt5 = None
+import ntpath
+from mt5_extracao.mt5_backend import get_mt5, RemoteMT5
+
+# Módulo MetaTrader5 local (Windows) ou RemoteMT5 (Linux/ponte); resolvido no primeiro MT5Connector
+mt5 = None
 
 try:
     import psutil
@@ -59,12 +58,41 @@ class MT5Connector:
     """
     Gerencia a conexão com a plataforma MetaTrader 5.
     """
-    def __init__(self, config_path=DEFAULT_CONFIG_PATH):
+    def __init__(self, config_path=DEFAULT_CONFIG_PATH, ask_user=None):
+        """
+        Args:
+            config_path: caminho do config.ini.
+            ask_user: callback opcional (titulo, mensagem) -> bool para perguntas ao usuário.
+                      A interface gráfica passa um diálogo; sem callback a resposta é "não".
+        """
         self.config_path = config_path
+        self.ask_user = ask_user
+        self.mt5_windows_path = None
+        global mt5
+        if mt5 is None:
+            mt5 = get_mt5(config_path)
         self.mt5_path = None
         self.is_initialized = False
         self.connection_mode = "Desconectado" # Ex: Conectado, Compatibilidade, Limitado, Fallback
         self._load_config()
+
+    def last_error(self):
+        """Último erro do MT5 (código, descrição) ou None se o MT5 estiver indisponível."""
+        try:
+            return mt5.last_error() if mt5 is not None else None
+        except Exception as e:
+            return (-1, str(e))
+
+    def _ask_user(self, title, message):
+        """Pergunta sim/não ao usuário pelo callback da interface; sem callback, responde não."""
+        if self.ask_user is None:
+            log.info(f"Sem interface para perguntar '{title}'; assumindo 'não'.")
+            return False
+        try:
+            return bool(self.ask_user(title, message))
+        except Exception as e:
+            log.warning(f"Falha ao perguntar ao usuário ('{title}'): {e}; assumindo 'não'.")
+            return False
 
     def _load_config(self):
         """Carrega o caminho do MT5 do arquivo de configuração."""
@@ -76,6 +104,8 @@ class MT5Connector:
         try:
             config.read(self.config_path)
             self.mt5_path = config.get('MT5', 'path', fallback=None)
+            # No Linux o terminal roda no Wine: mt5.initialize() precisa do caminho C:\...
+            self.mt5_windows_path = config.get('MT5', 'windows_path', fallback='') or None
             if not self.mt5_path:
                 log.error("Caminho do MT5 não definido no arquivo de configuração.")
             elif not os.path.exists(self.mt5_path):
@@ -192,24 +222,33 @@ class MT5Connector:
             log.error(f"Caminho configurado para o MT5 não existe: {mt5_path}")
             return False
             
-        # Verifica se o MT5 já está em execução
-        is_running = self._is_mt5_running()
-        log.info(f"MT5 está em execução? {is_running}")
-        
-        # Se não estiver rodando ou forçar reinício, tenta iniciar
-        if not is_running:
-            if self._start_mt5_if_not_running(recursion_count):
-                is_running = True
+        # Linux (ponte): o terminal roda no Wine e é iniciado pelo próprio mt5.initialize(path=...)
+        remote = isinstance(mt5, RemoteMT5)
+        init_path = (self.mt5_windows_path or mt5_path) if remote else mt5_path
+        path_mod = ntpath if remote else os.path
+
+        if remote:
+            is_running = True
+            log.info(f"MT5 via ponte (Wine); caminho do terminal no Windows: {init_path}")
+        else:
+            # Verifica se o MT5 já está em execução
+            is_running = self._is_mt5_running()
+            log.info(f"MT5 está em execução? {is_running}")
+
+            # Se não estiver rodando ou forçar reinício, tenta iniciar
+            if not is_running:
+                if self._start_mt5_if_not_running(recursion_count):
+                    is_running = True
         
         # Verifica se está rodando como administrador (apenas uma vez)
         if is_running:
             # Lista de estratégias de conexão para tentar
             connection_strategies = [
                 # Estratégia 1: Conexão padrão
-                {"description": "Padrão", "params": {"path": mt5_path, "timeout": 30000}},
+                {"description": "Padrão", "params": {"path": init_path, "timeout": 30000}},
                 
                 # Estratégia 2: Modo portátil
-                {"description": "Portátil", "params": {"path": mt5_path, "timeout": 30000, "portable": True}},
+                {"description": "Portátil", "params": {"path": init_path, "timeout": 30000, "portable": True}},
                 
                 # Estratégia 3: Servidor local
                 {"description": "Servidor local", "params": {"server": "127.0.0.1", "timeout": 30000}},
@@ -218,10 +257,10 @@ class MT5Connector:
                 {"description": "Timeout longo", "params": {"timeout": 60000}},
                 
                 # Estratégia 5: Caminho alternativo (pasta pai)
-                {"description": "Caminho pai", "params": {"path": os.path.dirname(mt5_path), "timeout": 30000}},
+                {"description": "Caminho pai", "params": {"path": path_mod.dirname(init_path), "timeout": 30000}},
                 
                 # Estratégia 6: Caminho direto para terminal64.exe
-                {"description": "Terminal direto", "params": {"path": os.path.join(mt5_path, "terminal64.exe"), "timeout": 30000}}
+                {"description": "Terminal direto", "params": {"path": path_mod.join(init_path, "terminal64.exe"), "timeout": 30000}}
             ]
             
             # Tenta cada estratégia até que uma funcione
@@ -269,7 +308,7 @@ class MT5Connector:
                         log.error(f"Falha na estratégia {strategy['description']}: {error_description}")
                         
                         # Verifica se é o erro IPC específico (código -10003)
-                        if error[0] == -10003 and "IPC initialize failed" in error[1]:
+                        if error[0] == -10003 and "IPC initialize failed" in error[1] and not remote:
                             log.warning("Detectado erro IPC específico. Tentando resolver...")
                             # Tenta corrigir o erro IPC
                             if self._fix_ipc_error():
@@ -818,21 +857,13 @@ class MT5Connector:
                 
             # Está rodando sem permissões adequadas, pergunta se quer fechar
             if wait_for_user:
-                # Importa aqui para evitar dependência circular
-                try:
-                    from tkinter import messagebox
-                    resposta = messagebox.askquestion(
+                if not self._ask_user(
                         "MT5 sem permissões adequadas",
                         "O MetaTrader 5 está em execução, mas sem permissões adequadas. "
                         "Para melhor funcionamento, é recomendável fechá-lo e reabri-lo como administrador.\n\n"
-                        "Deseja fechar o MT5 atual e reabri-lo como administrador?"
-                    )
-                    if resposta != 'yes':
-                        log.info("Usuário optou por não reiniciar o MT5 como administrador.")
-                        return False
-                except ImportError:
-                    # Se não conseguir importar tkinter, continua sem perguntar
-                    pass
+                        "Deseja fechar o MT5 atual e reabri-lo como administrador?"):
+                    log.info("Usuário optou por não reiniciar o MT5 como administrador.")
+                    return False
                         
             # Fecha o MT5 atual usando diversas abordagens
             try:
@@ -876,20 +907,13 @@ class MT5Connector:
             import ctypes
             
             if wait_for_user and not self._is_mt5_running():
-                try:
-                    from tkinter import messagebox
-                    resposta = messagebox.askquestion(
+                if not self._ask_user(
                         "Iniciar MT5 como Administrador",
                         "Para garantir o funcionamento correto, o MetaTrader 5 precisa ser iniciado com permissões "
                         "de administrador.\n\n"
-                        "Deseja iniciar o MT5 como administrador agora?"
-                    )
-                    if resposta != 'yes':
-                        log.info("Usuário optou por não iniciar o MT5 como administrador.")
-                        return False
-                except ImportError:
-                    # Se não conseguir importar tkinter, continua sem perguntar
-                    pass
+                        "Deseja iniciar o MT5 como administrador agora?"):
+                    log.info("Usuário optou por não iniciar o MT5 como administrador.")
+                    return False
             
             # Se já tentou fechar mas ainda está rodando, avisa
             if self._is_mt5_running():

@@ -56,11 +56,10 @@ def verificar_dependencias_criticas():
         except Exception as e:
             logging.error(f"Erro ao instalar psutil: {str(e)}")
 
-    # MetaTrader5 é essencial
-    try:
-        import MetaTrader5
-    except ImportError:
-        dependencias_faltantes.append("MetaTrader5")
+    # MetaTrader5 é essencial: módulo local (Windows) ou ponte RPyC (Linux)
+    from mt5_extracao.mt5_backend import get_mt5
+    if get_mt5("config/config.ini") is None:
+        dependencias_faltantes.append("MetaTrader5 (Windows: pacote MetaTrader5; Linux: ./scripts/mt5-bridge.sh start)")
 
     # Outras dependências críticas
     try:
@@ -89,7 +88,6 @@ try:
     import pandas as pd
     import numpy as np
     from sqlalchemy import create_engine
-    import MetaTrader5 as mt5
 
     # Verificação especial para pandas_ta devido a problemas conhecidos
     try:
@@ -199,7 +197,8 @@ class MT5Extracao:
             
             # Inicializar conexão com MT5
             logging.info("Inicializando conexão MT5 via Connector...")
-            self.mt5_connector = MT5Connector(config_path=self.config_path)
+            self.mt5_connector = MT5Connector(config_path=self.config_path,
+                                              ask_user=lambda t, m: messagebox.askyesno(t, m))
             
             # Tentar conectar ao MT5
             if self.mt5_connector.initialize():
@@ -977,4 +976,7 @@ if __name__ == "__main__":
         root.mainloop()
     finally:
         # Desconectar MT5 ao sair
-        mt5.shutdown()
+        from mt5_extracao.mt5_backend import get_mt5
+        _mt5 = get_mt5("config/config.ini")
+        if _mt5 is not None:
+            _mt5.shutdown()

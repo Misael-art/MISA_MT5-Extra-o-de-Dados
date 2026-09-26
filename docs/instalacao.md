@@ -59,10 +59,10 @@ Opções: `./install.sh --yes --no-mt5 --skip-system-packages --wine-prefix DIR 
 
 Ponte: `./scripts/mt5-bridge.sh start|stop|restart|status|foreground` (log em `logs/mt5_bridge.log`).
 
-> **Estado atual no Linux:** o instalador deixa o MT5, a ponte e o diagnóstico
-> funcionando. O aplicativo em si passa a extrair dados pela ponte quando a
-> tarefa **T2.1/T2.2** do [plano de trabalho](PLANO_DE_TRABALHO.md) for concluída.
-> Até lá, o `app.py` exige o pacote `MetaTrader5` local (somente Windows).
+> **Estado atual no Linux:** o aplicativo acessa o MT5 pela ponte (`mt5_extracao/mt5_backend.py`)
+> sempre que `[BRIDGE] enabled = true`; o `run.sh` inicia a ponte antes de abrir o app. O fluxo está
+> coberto por testes com uma ponte real e um MetaTrader5 simulado; a validação com o terminal real no
+> Wine é a tarefa **T0.3/T2.6** do [plano de trabalho](PLANO_DE_TRABALHO.md).
 
 ## Diagnóstico
 

@@ -1,19 +1,8 @@
 import os
-import sys
-import types
 
 import pytest
 
-from fakes import TIMEFRAMES, FakeMT5
-
-# No Linux o pacote MetaTrader5 não existe. Alguns módulos ainda o importam no topo
-# (até a tarefa T2.2); um módulo com as constantes basta para importá-los nos testes.
-try:
-    import MetaTrader5  # noqa: F401
-except ImportError:
-    _stub = types.ModuleType("MetaTrader5")
-    _stub.__dict__.update(TIMEFRAMES)
-    sys.modules["MetaTrader5"] = _stub
+from fakes import FakeMT5
 
 
 @pytest.fixture

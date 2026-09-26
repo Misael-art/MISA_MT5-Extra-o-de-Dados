@@ -6,13 +6,13 @@ from threading import Thread, Lock
 from typing import Optional # Adicionado
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import MetaTrader5 as mt5 # Adicionado para constantes de timeframe
 
 # Importar componentes necessários (ajustar caminhos se necessário)
 from .mt5_connector import MT5Connector
 from .database_manager import DatabaseManager
 from .indicator_calculator import IndicatorCalculator
 from .external_data_source import ExternalDataSource # Adicionado
+from . import timeframes as mt5  # constantes TIMEFRAME_* sem depender do pacote MetaTrader5
 
 log = logging.getLogger(__name__)
 
@@ -21,10 +21,8 @@ log = logging.getLogger(__name__)
 WARMUP_BARS = 500
 OHLCV_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
 
-# Minutos por barra, indexado pelo valor numérico oficial das constantes TIMEFRAME_* do MT5
-TIMEFRAME_MINUTES = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 10: 10, 12: 12, 15: 15, 20: 20, 30: 30,
-                     16385: 60, 16386: 120, 16387: 180, 16388: 240, 16390: 360, 16392: 480,
-                     16396: 720, 16408: 1440, 32769: 10080, 49153: 43200}
+# Minutos por barra, indexado pelo valor da constante TIMEFRAME_*
+TIMEFRAME_MINUTES = mt5.MINUTES
 
 class HistoricalExtractor:
     """
@@ -294,7 +292,7 @@ class HistoricalExtractor:
                          break # Sucesso, sai do loop de retry
                      else:
                          # Se retornou None, é um erro na API/Conexão
-                         error = self.connector.mt5.last_error() if hasattr(self.connector, 'mt5') else "N/A"
+                         error = self.connector.last_error()
                          log.warning(f"[{symbol}] Tentativa {attempt+1}/{max_retries}: Falha ao obter bloco {current_start.date()}-{block_end.date()}. Erro MT5: {error}")
 
                  except Exception as e:

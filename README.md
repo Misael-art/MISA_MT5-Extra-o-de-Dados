@@ -42,8 +42,8 @@ Diagnóstico do ambiente:
 .venv\Scripts\python -m mt5_extracao.bootstrap doctor  # Windows
 ```
 
-> No Linux, o instalador deixa o MT5 e a ponte funcionando; o uso da ponte pelo aplicativo
-> é a tarefa T2.1/T2.2 do [plano de trabalho](docs/PLANO_DE_TRABALHO.md).
+> No Linux, o aplicativo acessa o MT5 do Wine pela ponte RPyC, iniciada automaticamente pelo `run.sh`.
+> A validação com o terminal real no Wine está pendente (tarefa T0.3/T2.6 do [plano](docs/PLANO_DE_TRABALHO.md)).
 
 ## Uso
 

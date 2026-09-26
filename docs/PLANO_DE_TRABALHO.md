@@ -38,16 +38,16 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ⏳ |
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ⏳ |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ⏳ |
-| T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ⏳ |
-| T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ⏳ |
-| T2.3 | Tirar Tkinter do núcleo | — | ⏳ |
+| T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
+| T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
+| T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
 | T2.4 | Gestão de processos multiplataforma | T2.2 | ⏳ |
-| T2.5 | `initialize()` com `windows_path` no Linux | T2.2 | ⏳ |
+| T2.5 | `initialize()` com `windows_path` no Linux | T2.2 | ✅ concluída (validação com MT5 real: T0.3/T2.6) |
 | T2.6 | Teste de paridade Windows × Linux | T2.5 | ⏳ |
 | T3.1 | CLI `mt5x` | T1.3, T2.2 | ⏳ |
 | T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ⏳ |
 | T3.3 | `pyproject.toml` (substitui `setup.py`) | — | ⏳ |
-| T3.4 | Timeframes como enum próprio | T2.2 | ⏳ |
+| T3.4 | Timeframes como enum próprio | T2.2 | 🔄 `mt5_extracao/timeframes.py` (constantes + minutos) criado; falta o Enum com nomes legíveis |
 | T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ⏳ |
 | T4.2 | Logging centralizado | — | ⏳ |
 | T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | 🔄 `tests/fakes.py` e `conftest.py` criados; falta cobertura ≥ 60% |
@@ -603,6 +603,11 @@ Em `initialize`, nas estratégias que montam `params` com `path`, use `self.mt5_
 `os.path.exists` continuam usando `self.mt5_path`.
 
 **Critérios de aceite:** no Linux com a ponte, `MT5Connector().initialize()` retorna `True` (validação manual).
+
+**Implementado:** com a ponte (`RemoteMT5`), `initialize()` não verifica nem inicia o processo
+`terminal64.exe` no host: o próprio `mt5.initialize(path=C:\...)` inicia o terminal dentro do Wine.
+A correção de IPC (que usa `taskkill`) é pulada nesse modo. Coberto por `tests/test_linux_bridge_e2e.py`
+(ponte RPyC real + MetaTrader5 falso).
 
 ### T2.6 — Teste de paridade Windows × Linux
 
