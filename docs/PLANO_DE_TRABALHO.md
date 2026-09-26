@@ -30,7 +30,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
 | T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ |
-| T1.1 | Upsert no banco (reextrair sem erro/duplicata) | — | ⏳ |
+| T1.1 | Upsert no banco (reextrair sem erro/duplicata) | — | ✅ concluída |
 | T1.2 | Salvar por bloco + tabela de controle + retomada | T1.1 | ⏳ |
 | T1.3 | Atualização incremental | T1.2 | ⏳ |
 | T1.4 | M1 via `copy_rates_range` | — | ⏳ |

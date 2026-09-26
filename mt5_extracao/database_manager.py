@@ -3,7 +3,8 @@ import logging
 import pandas as pd
 import numpy as np # <--- ADICIONADO IMPORT
 import traceback
-from sqlalchemy import create_engine, text, inspect # Adicionado inspect
+from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
@@ -254,7 +255,7 @@ class DatabaseManager:
             # Usar 'append'. A chave primária 'time' deve lidar com duplicatas se o SQLite estiver configurado corretamente
             # ou se a lógica de 'overwrite' for usada antes desta chamada.
             # Deixar pandas/SQLAlchemy lidar com a citação do nome da tabela
-            df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True, index_label='time')
+            self._upsert_dataframe(table_name, df_to_save)
 
             log.info(f"Dados para {symbol} ({timeframe_name}) salvos com sucesso em '{table_name}'.")
             return True
@@ -269,6 +270,36 @@ class DatabaseManager:
             log.error(f"Erro inesperado ao salvar dados para {symbol} em '{table_name}': {e}")
             log.debug(traceback.format_exc())
             return False
+
+    # Limite seguro de linhas por INSERT: SQLite aceita até 32766 parâmetros;
+    # a tabela OHLCV tem ~70 colunas -> 200 linhas = ~14 mil parâmetros.
+    _UPSERT_CHUNK_ROWS = 200
+
+    def _upsert_dataframe(self, table_name, df):
+        """Insere ou atualiza linhas pela chave primária 'time'. df indexado por 'time'."""
+        table = Table(table_name, MetaData(), autoload_with=self.engine)
+        table_cols = [c.name for c in table.columns]
+        data = df.reset_index() if 'time' not in df.columns else df
+        data = data[[c for c in table_cols if c in data.columns]]
+        # NaN -> None (NULL) e Timestamp -> datetime (formato de gravação do SQLAlchemy)
+        data = data.astype(object).where(pd.notna(data), None)
+        records = data.to_dict(orient='records')
+        for r in records:
+            if isinstance(r['time'], pd.Timestamp):
+                r['time'] = r['time'].to_pydatetime()
+        with self.engine.begin() as conn:
+            for i in range(0, len(records), self._UPSERT_CHUNK_ROWS):
+                stmt = sqlite_insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
+                update_cols = {c: stmt.excluded[c] for c in data.columns if c != 'time'}
+                conn.execute(stmt.on_conflict_do_update(index_elements=['time'], set_=update_cols))
+        return len(records)
+
+    def _has_time_primary_key(self, table_name):
+        """True se a tabela existe e sua chave primária é exatamente a coluna 'time'."""
+        inspector = inspect(self.engine)
+        if not inspector.has_table(table_name):
+            return False
+        return inspector.get_pk_constraint(table_name).get('constrained_columns') == ['time']
 
     def get_existing_symbols(self):
         """
@@ -664,8 +695,11 @@ class DatabaseManager:
             for col in df_to_save.select_dtypes(include=['int64', 'uint64']).columns:
                 df_to_save[col] = df_to_save[col].astype('int32')
             
-            # Salva no banco de dados
-            df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True)
+            # Salva no banco de dados (upsert quando a tabela já existe com PK 'time')
+            if self._has_time_primary_key(table_name):
+                self._upsert_dataframe(table_name, df_to_save)
+            else:
+                df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True)
             
             symbol_info = f" para {symbol}" if symbol else ""
             log.info(f"Dados{symbol_info} salvos com sucesso em {table_name} ({len(df)} registros).")
