@@ -85,8 +85,7 @@ def test_bridge_server_check_fails_without_mt5(tmp_path):
     code = subprocess.call([sys.executable, str(REPO / "scripts" / "mt5_bridge_server.py"), "--check"],
                            env=dict(os.environ, PYTHONPATH=""), cwd=str(tmp_path),
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    try:
-        import MetaTrader5  # noqa: F401
-        assert code == 0
-    except ImportError:
-        assert code == 1
+    # Verifica num subprocesso: o conftest injeta um MetaTrader5 falso neste processo
+    has_mt5 = subprocess.call([sys.executable, "-c", "import MetaTrader5"], cwd=str(tmp_path),
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    assert code == (0 if has_mt5 else 1)

@@ -33,8 +33,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.1 | Upsert no banco (reextrair sem erro/duplicata) | — | ✅ concluída |
 | T1.2 | Salvar por bloco + tabela de controle + retomada | T1.1 | ⏳ |
 | T1.3 | Atualização incremental | T1.2 | ⏳ |
-| T1.4 | M1 via `copy_rates_range` | — | ⏳ |
-| T1.5 | Não sobrescrever o spread histórico | — | ⏳ |
+| T1.4 | M1 via `copy_rates_range` | — | ✅ concluída |
+| T1.5 | Não sobrescrever o spread histórico | — | ✅ concluída |
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ⏳ |
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ⏳ |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ⏳ |
@@ -50,7 +50,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T3.4 | Timeframes como enum próprio | T2.2 | ⏳ |
 | T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ⏳ |
 | T4.2 | Logging centralizado | — | ⏳ |
-| T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | ⏳ |
+| T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | 🔄 `tests/fakes.py` e `conftest.py` criados; falta cobertura ≥ 60% |
 | T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ⏳ |
 | T4.5 | Remover módulos "enhanced" não usados | T4.3 | ⏳ |
 | T5.1 | Exportação Parquet / DuckDB | T1.1 | ⏳ |

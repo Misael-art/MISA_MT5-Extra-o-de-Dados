@@ -52,6 +52,9 @@ if not log.handlers:
 
 DEFAULT_CONFIG_PATH = "config/config.ini"
 
+# Colunas devolvidas pelo MT5 em copy_rates_* (usadas para DataFrames vazios)
+RATES_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
+
 class MT5Connector:
     """
     Gerencia a conexão com a plataforma MetaTrader 5.
@@ -1715,6 +1718,12 @@ class MT5Connector:
                     time.sleep(0.5)
                     retry_count += 1
             
+            # Resposta válida porém vazia (fim de semana, feriado, período sem histórico):
+            # não é falha. Devolve um DataFrame vazio para o chamador seguir adiante.
+            if rates is not None and len(rates) == 0:
+                log.info(f"Sem dados no período para {symbol} no timeframe {timeframe} ({params_str}).")
+                return pd.DataFrame(columns=RATES_COLUMNS).astype({'time': 'datetime64[ns]'})
+
             # Verificar se conseguiu obter dados após as tentativas
             if rates is None or len(rates) == 0:
                 error = mt5.last_error()
@@ -1955,9 +1964,13 @@ class MT5Connector:
                     if rates is not None and len(rates) > 0:
                         break
                         
-                    # Se não obteve dados, registra erro e tenta novamente
+                    # Se não obteve dados, registra e tenta novamente (resposta vazia não é erro,
+                    # mas o terminal pode estar baixando o histórico)
                     error = mt5.last_error()
-                    log.warning(f"Tentativa {retry_count+1}/{max_retries}: Falha ao obter dados para {symbol} usando {params_str}. Erro MT5: {error}")
+                    if rates is not None:
+                        log.debug(f"Tentativa {retry_count+1}/{max_retries}: nenhuma barra para {symbol} usando {params_str}.")
+                    else:
+                        log.warning(f"Tentativa {retry_count+1}/{max_retries}: Falha ao obter dados para {symbol} usando {params_str}. Erro MT5: {error}")
                     
                     # Esperar antes de tentar novamente
                     time.sleep(0.5)
@@ -1968,6 +1981,12 @@ class MT5Connector:
                     time.sleep(0.5)
                     retry_count += 1
             
+            # Resposta válida porém vazia (fim de semana, feriado, período sem histórico):
+            # não é falha. Devolve um DataFrame vazio para o chamador seguir adiante.
+            if rates is not None and len(rates) == 0:
+                log.info(f"Sem dados no período para {symbol} no timeframe {timeframe} ({params_str}).")
+                return pd.DataFrame(columns=RATES_COLUMNS).astype({'time': 'datetime64[ns]'})
+
             # Verificar se conseguiu obter dados após as tentativas
             if rates is None or len(rates) == 0:
                 error = mt5.last_error()

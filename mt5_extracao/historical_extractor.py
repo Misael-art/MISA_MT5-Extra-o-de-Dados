@@ -230,33 +230,15 @@ class HistoricalExtractor:
                  if self.cancel_requested: return False # Verifica cancelamento antes de cada tentativa
 
                  try:
-                     # Usar copy_rates_from para M1 (via bars) e copy_rates_range para outros
-                     if timeframe_val == mt5.TIMEFRAME_M1:
-                         # Solicitar um número grande de barras a partir da data inicial
-                         # A API MT5 limitará ao máximo disponível se 200k for excessivo
-                         bars_to_request = 200000
-                         block_df = self.connector.get_historical_data(
-                             symbol,
-                             timeframe_val,
-                             start_dt=current_start,
-                             bars=bars_to_request,
-                             end_dt=None # Força o uso de copy_rates_from ou copy_rates_from_pos
-                         )
-                         # Filtrar dados que podem vir antes de current_start se copy_rates_from_pos for usado
-                         if block_df is not None and not block_df.empty:
-                              block_df = block_df[block_df['time'] >= current_start]
-                         # Filtrar dados que podem vir depois de block_end (menos provável com _from/_from_pos)
-                         if block_df is not None and not block_df.empty:
-                              block_df = block_df[block_df['time'] <= block_end]
-                     else:
-                         # Para outros timeframes, usar o range
-                         block_df = self.connector.get_historical_data(
-                             symbol,
-                             timeframe_val,
-                             start_dt=current_start,
-                             end_dt=block_end,
-                             bars=None
-                         )
+                     # copy_rates_range para todos os timeframes (inclusive M1): traz
+                     # somente as barras do bloco e respeita o limite "Max bars in chart".
+                     block_df = self.connector.get_historical_data(
+                         symbol,
+                         timeframe_val,
+                         start_dt=current_start,
+                         end_dt=block_end,
+                         bars=None
+                     )
 
                      if block_df is not None: # Pode retornar DataFrame vazio se não houver dados, o que não é erro
                          log.debug(f"[{symbol}] Bloco {current_start.date()}-{block_end.date()} obtido com {len(block_df)} barras.")
@@ -328,10 +310,7 @@ class HistoricalExtractor:
                 try:
                     log.debug(f"[{symbol}] Calculando indicadores...")
                     final_df = self.indicator_calculator.calculate_technical_indicators(final_df)
-                    # Adicionar outros cálculos se necessário (ex: spread simulado)
-                    symbol_info = self.connector.get_symbol_info(symbol)
-                    if symbol_info:
-                        final_df['spread'] = symbol_info.spread # Spread atual, não histórico
+                    # O spread de cada barra vem do próprio MT5 (copy_rates_*); não sobrescrever.
                 except Exception as ind_err:
                     log.error(f"[{symbol}] Erro ao calcular indicadores: {ind_err}")
                     # Decide se continua sem indicadores ou falha
