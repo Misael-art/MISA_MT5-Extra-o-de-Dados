@@ -47,7 +47,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T3.1 | CLI `mt5x` | T1.3, T2.2 | ⏳ |
 | T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ⏳ |
 | T3.3 | `pyproject.toml` (substitui `setup.py`) | — | ⏳ |
-| T3.4 | Timeframes como enum próprio | T2.2 | 🔄 `mt5_extracao/timeframes.py` (constantes + minutos) criado; falta o Enum com nomes legíveis |
+| T3.4 | Timeframes como enum próprio | T2.2 | ✅ concluída |
 | T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ⏳ |
 | T4.2 | Logging centralizado | — | ⏳ |
 | T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | 🔄 `tests/fakes.py` e `conftest.py` criados; falta cobertura ≥ 60% |

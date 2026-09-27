@@ -22,6 +22,7 @@ from mt5_extracao.error_handler import (
 
 import ntpath
 from mt5_extracao.mt5_backend import get_mt5, RemoteMT5
+from mt5_extracao import timeframes
 
 # Módulo MetaTrader5 local (Windows) ou RemoteMT5 (Linux/ponte); resolvido no primeiro MT5Connector
 mt5 = None
@@ -649,59 +650,12 @@ class MT5Connector:
             # except:
 
     def get_available_timeframes(self):
-        """Retorna a lista de timeframes disponíveis.
+        """Retorna a lista de timeframes disponíveis como tuplas (nome_legivel, valor_mt5).
 
-        Retorna uma lista de tuplas (nome_legivel, valor_mt5).
-        Usa os valores do módulo mt5 se inicializado, caso contrário, usa padrões.
+        Os valores são sempre as constantes oficiais do MT5 (mt5_extracao.timeframes),
+        estando o terminal conectado ou não.
         """
-        # Valores padrão (caso mt5 não esteja disponível ou inicializado)
-        default_timeframes = [
-            ("1 minuto", 1),
-            ("5 minutos", 5),
-            ("15 minutos", 15),
-            ("30 minutos", 30),
-            ("1 hora", 60),
-            ("4 horas", 240),
-            ("1 dia", 1440),
-            ("1 semana", 10080),
-            ("1 mês", 43200)
-        ]
-
-        if self.is_initialized and mt5:
-            try:
-                # Tenta usar os valores do MT5
-                return [
-                    ("1 minuto", mt5.TIMEFRAME_M1),
-                    ("5 minutos", mt5.TIMEFRAME_M5),
-                    ("15 minutos", mt5.TIMEFRAME_M15),
-                    ("30 minutos", mt5.TIMEFRAME_M30),
-                    ("1 hora", mt5.TIMEFRAME_H1),
-                    ("4 horas", mt5.TIMEFRAME_H4),
-                    ("1 dia", mt5.TIMEFRAME_D1),
-                    ("1 semana", mt5.TIMEFRAME_W1),
-                    ("1 mês", mt5.TIMEFRAME_MN1)
-                ]
-            except AttributeError as e:
-                log.warning(f"Erro ao acessar constantes de timeframe do MT5 ({e}). Usando padrões.")
-                return default_timeframes
-            except Exception as e:
-                 log.error(f"Erro inesperado ao obter timeframes do MT5: {e}")
-                 return default_timeframes
-        else:
-            # Retorna os padrões se não estiver conectado
-            log.info("MT5 não inicializado. Usando timeframes padrão.")
-            return default_timeframes
-
-            #     pass
-            return None
-
-            log.debug(traceback.format_exc())
-            return None
-
-            log.debug(traceback.format_exc())
-            self.is_initialized = False
-            self.connection_mode = "Erro Crítico"
-            return False
+        return [(tf.label, tf.value) for tf in timeframes.MAIN]
 
     def shutdown(self):
         """Encerra a conexão com o MetaTrader 5."""
@@ -1702,14 +1656,7 @@ class MT5Connector:
             
             # Converter o timeframe para o formato do MT5
             mt5_timeframe = timeframe
-            if not isinstance(timeframe, int) or timeframe not in [
-                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
-                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
-                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
-                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
-                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
-                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
-            ]:
+            if not isinstance(timeframe, int) or timeframe not in timeframes.VALUES:
                 mt5_timeframe = self._convert_timeframe_to_mt5(timeframe)
                 if mt5_timeframe is None:
                     log.error(f"Timeframe inválido: {timeframe}")
@@ -1777,129 +1724,20 @@ class MT5Connector:
 
     def _convert_timeframe_to_mt5(self, timeframe_str):
         """
-        Converte uma string de timeframe (ex: '1min') ou valor inteiro para o valor correspondente do MT5.
-        
-        Args:
-            timeframe_str (str ou int): String representando o timeframe ou valor inteiro diretamente
-            
+        Converte um timeframe (valor do MT5, minutos ou texto como '1min', 'M5', '1 hora')
+        para o valor da constante do MT5. Ver mt5_extracao.timeframes.parse.
+
         Returns:
-            int: Valor do timeframe do MT5 ou None se não for possível converter
+            int: Valor do timeframe do MT5 ou None se o MT5 não estiver inicializado
         """
         if not self.is_initialized or not mt5:
             log.warning("MT5 não inicializado ao tentar converter timeframe")
             return None
-
-        # Se já for um dos valores numéricos do MT5, retorna diretamente
-        if isinstance(timeframe_str, int):
-            # Verifica se é um dos valores válidos do MT5
-            valid_timeframes = [
-                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
-                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
-                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
-                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
-                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
-                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
-            ]
-            if timeframe_str in valid_timeframes:
-                return timeframe_str
-                
-            # É um inteiro, mas não é um valor direto do MT5, tenta interpretar como minutos
-            log.warning(f"Valor de timeframe {timeframe_str} não é diretamente um valor MT5, tentando interpretar como minutos")
-            # Continua com a conversão abaixo
-
-        # Mapeamento de strings para valores do MT5
-        timeframe_map = {
-            'm1': mt5.TIMEFRAME_M1,
-            'm5': mt5.TIMEFRAME_M5,
-            'm15': mt5.TIMEFRAME_M15,
-            'm30': mt5.TIMEFRAME_M30,
-            'h1': mt5.TIMEFRAME_H1,
-            'h4': mt5.TIMEFRAME_H4,
-            'd1': mt5.TIMEFRAME_D1,
-            'w1': mt5.TIMEFRAME_W1,
-            'mn1': mt5.TIMEFRAME_MN1,
-            # Mais aliases para flexibilidade
-            '1m': mt5.TIMEFRAME_M1,
-            '5m': mt5.TIMEFRAME_M5,
-            '15m': mt5.TIMEFRAME_M15,
-            '30m': mt5.TIMEFRAME_M30,
-            'h': mt5.TIMEFRAME_H1,
-            '4hour': mt5.TIMEFRAME_H4,
-            'day': mt5.TIMEFRAME_D1,
-            'week': mt5.TIMEFRAME_W1,
-            'month': mt5.TIMEFRAME_MN1,
-            # Aliases em português
-            'minuto': mt5.TIMEFRAME_M1,
-            '1min': mt5.TIMEFRAME_M1,
-            '5min': mt5.TIMEFRAME_M5,
-            '15min': mt5.TIMEFRAME_M15,
-            '30min': mt5.TIMEFRAME_M30,
-            'hora': mt5.TIMEFRAME_H1,
-            '4horas': mt5.TIMEFRAME_H4,
-            'dia': mt5.TIMEFRAME_D1,
-            'diario': mt5.TIMEFRAME_D1,
-            'semana': mt5.TIMEFRAME_W1,
-            'semanal': mt5.TIMEFRAME_W1,
-            'mes': mt5.TIMEFRAME_MN1,
-            'mensal': mt5.TIMEFRAME_MN1
-        }
-        
-        # Normaliza a string para lowercase e sem espaços
-        if isinstance(timeframe_str, str):
-            normalized = timeframe_str.lower().replace(' ', '')
-            
-            if normalized in timeframe_map:
-                return timeframe_map[normalized]
-                
-            # Tratar casos como '1', '5', etc.
-            try:
-                # Se for apenas um número, assume que são minutos
-                minutes = int(normalized)
-                if minutes == 1:
-                    return mt5.TIMEFRAME_M1
-                elif minutes == 5:
-                    return mt5.TIMEFRAME_M5
-                elif minutes == 15:
-                    return mt5.TIMEFRAME_M15
-                elif minutes == 30:
-                    return mt5.TIMEFRAME_M30
-                elif minutes == 60:
-                    return mt5.TIMEFRAME_H1
-                elif minutes == 240:
-                    return mt5.TIMEFRAME_H4
-                elif minutes == 1440:
-                    return mt5.TIMEFRAME_D1
-                elif minutes == 10080:
-                    return mt5.TIMEFRAME_W1
-                elif minutes == 43200:
-                    return mt5.TIMEFRAME_MN1
-            except ValueError:
-                # Não é um número puro
-                pass
-        else:
-            # Se não for string nem um valor válido do MT5, tenta interpretar como minutos
-            minutes = int(timeframe_str)
-            if minutes == 1:
-                return mt5.TIMEFRAME_M1
-            elif minutes == 5:
-                return mt5.TIMEFRAME_M5
-            elif minutes == 15:
-                return mt5.TIMEFRAME_M15
-            elif minutes == 30:
-                return mt5.TIMEFRAME_M30
-            elif minutes == 60:
-                return mt5.TIMEFRAME_H1
-            elif minutes == 240:
-                return mt5.TIMEFRAME_H4
-            elif minutes == 1440:
-                return mt5.TIMEFRAME_D1
-            elif minutes == 10080:
-                return mt5.TIMEFRAME_W1
-            elif minutes == 43200:
-                return mt5.TIMEFRAME_MN1
-            
-        log.warning(f"Timeframe não reconhecido: {timeframe_str}, usando padrão TIMEFRAME_M1")
-        return mt5.TIMEFRAME_M1
+        tf = timeframes.parse(timeframe_str)
+        if tf is None:
+            log.warning(f"Timeframe não reconhecido: {timeframe_str}, usando padrão TIMEFRAME_M1")
+            return timeframes.Timeframe.M1.value
+        return tf.value
 
     @with_error_handling(error_type=MT5ConnectionError)
     def get_historical_data(self, symbol, timeframe='1min', bars=None, start_dt=None, end_dt=None):
@@ -1931,14 +1769,7 @@ class MT5Connector:
             
             # Converter o timeframe para o formato do MT5
             mt5_timeframe = timeframe
-            if not isinstance(timeframe, int) or timeframe not in [
-                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
-                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
-                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
-                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
-                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
-                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
-            ]:
+            if not isinstance(timeframe, int) or timeframe not in timeframes.VALUES:
                 mt5_timeframe = self._convert_timeframe_to_mt5(timeframe)
                 if mt5_timeframe is None:
                     log.error(f"Timeframe inválido: {timeframe}")
