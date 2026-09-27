@@ -48,7 +48,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ✅ concluída (cron e schtasks; systemd não) |
 | T3.3 | `pyproject.toml` (substitui `setup.py`) | — | ✅ concluída |
 | T3.4 | Timeframes como enum próprio | T2.2 | ✅ concluída |
-| T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ⏳ |
+| T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ✅ concluída |
 | T4.2 | Logging centralizado | — | ⏳ |
 | T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | 🔄 `tests/fakes.py` e `conftest.py` criados; falta cobertura ≥ 60% |
 | T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ⏳ |
