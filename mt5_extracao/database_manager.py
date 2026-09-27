@@ -34,16 +34,27 @@ class DatabaseManager:
     """
     Gerencia a conexão e as operações com o banco de dados.
     """
-    def __init__(self, db_type='sqlite', db_path='database/mt5_data.db'):
+    TIME_BASES = ("broker", "utc")
+
+    def __init__(self, db_type='sqlite', db_path='database/mt5_data.db', time_basis='broker',
+                 broker_utc_offset=-3.0):
         """
         Inicializa o gerenciador do banco de dados.
 
         Args:
             db_type (str): Tipo do banco ('sqlite', futuramente 'postgresql', etc.).
             db_path (str): Caminho para o arquivo do banco SQLite ou string de conexão.
+            time_basis (str): 'broker' grava o horário do servidor da corretora como o MT5 devolve
+                              (padrão, comportamento histórico); 'utc' converte para UTC ao gravar.
+            broker_utc_offset (float): fuso da corretora em horas (B3: -3). Usado só com 'utc'.
         """
+        if time_basis not in self.TIME_BASES:
+            raise ValueError(f"time_basis inválido: {time_basis!r} (use 'broker' ou 'utc')")
         self.db_type = db_type
         self.db_path = db_path
+        self.time_basis = time_basis
+        self.broker_utc_offset = float(broker_utc_offset)
+        self._time_basis_checked = False
         self.engine = None
         self._table_lock = threading.Lock()
         self._table_cache = {}
@@ -214,6 +225,10 @@ class DatabaseManager:
         table_name = self.get_table_name_for_symbol(symbol, timeframe_name)
         log.info(f"Preparando para salvar {len(df)} registros para {symbol} ({timeframe_name}) na tabela '{table_name}'...")
 
+        # 0. A base de tempo gravada no banco precisa ser a mesma configurada
+        if not self._check_time_basis():
+            return False
+
         # 1. Garantir que a tabela exista com o schema completo
         if not self._create_table_if_not_exists(table_name):
             log.error(f"Falha ao garantir a existência/schema da tabela '{table_name}'. Abortando salvamento.")
@@ -224,7 +239,7 @@ class DatabaseManager:
             df_converted = df.copy()
             # Garantir que 'time' seja datetime
             if 'time' in df_converted.columns:
-                 df_converted['time'] = pd.to_datetime(df_converted['time'])
+                 df_converted['time'] = self._to_storage(pd.to_datetime(df_converted['time']))
             else:
                  log.error("DataFrame não contém a coluna 'time'.")
                  return False
@@ -316,6 +331,42 @@ class DatabaseManager:
     # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
     _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
 
+    def _to_storage(self, times):
+        """Horário da corretora (como o MT5 devolve) -> horário gravado no banco."""
+        if self.time_basis == "utc":
+            return times - pd.Timedelta(hours=self.broker_utc_offset)
+        return times
+
+    def _from_storage(self, times):
+        """Horário gravado no banco -> horário da corretora."""
+        if self.time_basis == "utc":
+            return times + pd.Timedelta(hours=self.broker_utc_offset)
+        return times
+
+    def get_metadata(self, key):
+        with self.engine.connect() as conn:
+            row = conn.execute(text("SELECT value FROM _metadata WHERE key = :k"), {"k": key}).fetchone()
+        return row[0] if row else None
+
+    def _check_time_basis(self):
+        """
+        Grava a base de tempo na primeira gravação e recusa gravar se o banco já usa outra
+        (misturar horários da corretora e UTC corromperia as séries).
+        """
+        if self._time_basis_checked:
+            return True
+        with self.engine.begin() as conn:
+            row = conn.execute(text("SELECT value FROM _metadata WHERE key = 'time_basis'")).fetchone()
+            if row is None:
+                conn.execute(text("INSERT INTO _metadata (key, value) VALUES ('time_basis', :v)"),
+                             {"v": self.time_basis})
+            elif row[0] != self.time_basis:
+                log.error(f"Este banco grava horários na base '{row[0]}', mas o config.ini pede '{self.time_basis}'. "
+                          f"Nada foi gravado. Ajuste [APP] time_basis = {row[0]} ou use outro arquivo de banco.")
+                return False
+        self._time_basis_checked = True
+        return True
+
     def _ensure_control_tables(self):
         """Cria as tabelas internas de controle, se não existirem."""
         with self.engine.begin() as conn:
@@ -329,6 +380,7 @@ class DatabaseManager:
                 " source      TEXT NOT NULL,"   # 'mt5' | nome da fonte externa
                 " updated_at  TIMESTAMP NOT NULL,"
                 " PRIMARY KEY (table_name, block_start, block_end))"))
+            conn.execute(text("CREATE TABLE IF NOT EXISTS _metadata (key TEXT PRIMARY KEY, value TEXT)"))
             conn.execute(text(
                 "CREATE TABLE IF NOT EXISTS _symbol_tables ("
                 " symbol     TEXT NOT NULL,"
@@ -375,7 +427,7 @@ class DatabaseManager:
             return None
         with self.engine.connect() as conn:
             value = conn.execute(text(f'SELECT MAX(time) FROM "{table_name}"')).scalar()
-        return pd.to_datetime(value).to_pydatetime() if value is not None else None
+        return self._from_storage(pd.to_datetime(value)).to_pydatetime() if value is not None else None
 
     def get_rows_before(self, table_name, before, limit, columns=None):
         """
@@ -387,9 +439,10 @@ class DatabaseManager:
         cols = ", ".join(f'"{c}"' for c in columns) if columns else "*"
         query = text(f'SELECT {cols} FROM "{table_name}" WHERE time < :t ORDER BY time DESC LIMIT :n')
         with self.engine.connect() as conn:
-            df = pd.read_sql(query, conn, params={"t": before.strftime(self._TIME_FMT), "n": int(limit)})
+            df = pd.read_sql(query, conn, params={"t": self._to_storage(pd.Timestamp(before)).strftime(self._TIME_FMT),
+                                                  "n": int(limit)})
         if not df.empty and 'time' in df.columns:
-            df['time'] = pd.to_datetime(df['time'])
+            df['time'] = self._from_storage(pd.to_datetime(df['time']))
         return df.iloc[::-1].reset_index(drop=True)
 
     def get_existing_symbols(self):
@@ -798,8 +851,10 @@ class DatabaseManager:
             
             # Verifica se 'time' está no DataFrame e converte para tipo correto
             if 'time' in df_to_save.columns:
-                # Garante que 'time' é datetime
-                df_to_save['time'] = pd.to_datetime(df_to_save['time'])
+                # Garante que 'time' é datetime (na base de tempo configurada)
+                if not self._check_time_basis():
+                    return False
+                df_to_save['time'] = self._to_storage(pd.to_datetime(df_to_save['time']))
                 
                 # Define 'time' como índice para a operação funcionar corretamente
                 df_to_save = df_to_save.set_index('time')
@@ -855,8 +910,9 @@ class DatabaseManager:
                     # Construir a query DELETE com parâmetros seguros
                     query = text(f"DELETE FROM {table_name} WHERE time >= :start AND time <= :end")
                     # Mesmo formato de texto gravado na coluna time (comparação de texto no SQLite)
-                    result = connection.execute(query, {"start": pd.Timestamp(start_date).strftime(self._TIME_FMT),
-                                                        "end": pd.Timestamp(end_date).strftime(self._TIME_FMT)})
+                    result = connection.execute(query, {
+                        "start": self._to_storage(pd.Timestamp(start_date)).strftime(self._TIME_FMT),
+                        "end": self._to_storage(pd.Timestamp(end_date)).strftime(self._TIME_FMT)})
                     log.info(f"{result.rowcount} registros deletados da tabela '{table_name}'.")
             return True
         except SQLAlchemyError as e:

@@ -308,9 +308,9 @@ class MT5Extracao:
             db_type = self.config.get('DATABASE', 'type', fallback='sqlite')
             db_path = self.config.get('DATABASE', 'path', fallback='database/mt5_data.db')
 
-            # Instanciar DatabaseManager
+            # Instanciar DatabaseManager (inclui a base de tempo de [APP])
             logging.info(f"Instanciando DatabaseManager (Tipo: {db_type}, Path: {db_path})...")
-            self.db_manager = DatabaseManager(db_type=db_type, db_path=db_path)
+            self.db_manager = services.create_db_manager(self.config)
 
             if not self.db_manager.is_connected():
                 logging.error("Falha ao conectar ao banco de dados via DatabaseManager.")

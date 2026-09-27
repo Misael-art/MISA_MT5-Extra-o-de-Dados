@@ -35,7 +35,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.3 | Atualização incremental | T1.2 | ✅ concluída |
 | T1.4 | M1 via `copy_rates_range` | — | ✅ concluída |
 | T1.5 | Não sobrescrever o spread histórico | — | ✅ concluída |
-| T1.6 | Base de tempo (fuso) explícita | T1.1 | ⏳ |
+| T1.6 | Base de tempo (fuso) explícita | T1.1 | ✅ concluída |
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ✅ concluída |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ✅ concluída |
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
@@ -346,6 +346,10 @@ normalmente UTC−3). Hoje o valor é gravado sem nenhuma indicação disso.
 4. Documente em `docs/exportacao_dados.md`.
 
 **Critérios de aceite:** o valor padrão não muda nada nas bases existentes; os testes cobrem os dois modos.
+
+**Implementado:** conversão centralizada em `DatabaseManager._to_storage` / `_from_storage`, aplicada ao gravar
+(`save_ohlcv_data`, `save_data`), ao ler (`get_last_timestamp`, `get_rows_before`) e ao apagar (`delete_data_periodo`),
+de modo que extrator, retomada e atualização continuam trabalhando no horário da corretora.
 
 ### T1.7 — Nomes de tabela sem colisão
 

@@ -29,7 +29,9 @@ def create_db_manager(config: configparser.ConfigParser, db_path: Optional[str] 
     from mt5_extracao.database_manager import DatabaseManager
     db_type = config.get("DATABASE", "type", fallback="sqlite")
     path = db_path or config.get("DATABASE", "path", fallback="database/mt5_data.db")
-    return DatabaseManager(db_type=db_type, db_path=path)
+    return DatabaseManager(db_type=db_type, db_path=path,
+                           time_basis=config.get("APP", "time_basis", fallback="broker").strip().lower(),
+                           broker_utc_offset=config.getfloat("APP", "broker_utc_offset", fallback=-3.0))
 
 
 def create_external_source(config: configparser.ConfigParser):

@@ -68,3 +68,16 @@ Os filtros seguem a sintaxe SQL WHERE. Exemplos:
 ### Problemas com caracteres especiais
 - Use a codificação UTF-8 ao abrir os arquivos CSV em editores de texto
 - Para Excel, os caracteres especiais devem ser tratados automaticamente 
+## Base de tempo da coluna `time`
+
+A coluna `time` é gravada conforme `[APP] time_basis` no `config/config.ini`:
+
+| Valor | Significado |
+|---|---|
+| `broker` (padrão) | Horário do servidor da corretora, exatamente como o MetaTrader 5 devolve. Na B3 isso costuma ser o horário de Brasília (UTC−3). |
+| `utc` | Convertido para UTC ao gravar, usando `[APP] broker_utc_offset` (B3: `-3`). |
+
+A base usada fica registrada no próprio banco (tabela `_metadata`, chave `time_basis`). Se o
+`config.ini` pedir uma base diferente da já gravada, **nada é gravado** e o log explica o motivo:
+misturar as duas bases no mesmo arquivo corromperia as séries. Para trocar de base, use outro arquivo
+de banco (`[DATABASE] path`).

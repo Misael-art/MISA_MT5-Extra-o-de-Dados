@@ -8,7 +8,8 @@
 # [DATABASE]  type = sqlite; path relativo à raiz do projeto
 # [EXTRACTION] tamanho dos blocos (dias) por timeframe
 # [FALLBACK]  fonte externa para M1 (apenas "Dummy" implementado)
-# [APP]       horário do pregão (HH:MM) usado pelo relatório de qualidade (lacunas)
+# [APP]       horário do pregão (HH:MM) usado pelo relatório de qualidade (lacunas);
+#             time_basis: broker (horário da corretora, padrão) ou utc; broker_utc_offset: fuso (B3 = -3)
 # Credenciais NÃO ficam aqui: use o arquivo .env (veja .env.example).
 
 [MT5]
@@ -38,3 +39,5 @@ external_source_m1_type = Dummy
 [APP]
 session_start = 09:00
 session_end = 18:30
+time_basis = broker
+broker_utc_offset = -3
