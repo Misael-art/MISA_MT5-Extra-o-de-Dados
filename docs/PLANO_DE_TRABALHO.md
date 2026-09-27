@@ -36,7 +36,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.4 | M1 via `copy_rates_range` | — | ✅ concluída |
 | T1.5 | Não sobrescrever o spread histórico | — | ✅ concluída |
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ⏳ |
-| T1.7 | Nomes de tabela sem colisão | T1.1 | ⏳ |
+| T1.7 | Nomes de tabela sem colisão | T1.1 | ✅ concluída |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ✅ concluída |
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
 | T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
@@ -361,6 +361,10 @@ normalmente UTC−3). Hoje o valor é gravado sem nenhuma indicação disso.
    mapeamento é criado quando o símbolo for usado). **Não renomeie tabelas existentes.**
 
 **Critérios de aceite:** `WIN$N` e `WIN_N` geram tabelas diferentes; bases antigas continuam lendo as mesmas tabelas.
+
+**Implementado:** a chave do mapeamento usa o timeframe **normalizado** (`1 minuto` e `1_minuto` são o mesmo),
+porque o coletor em tempo real (`data_collector.py`) usa `'1_minuto'` e a interface usa `'1 minuto'`; sem isso o
+mesmo símbolo ganharia duas tabelas.
 
 ### T1.8 — Relatório de qualidade dos dados
 

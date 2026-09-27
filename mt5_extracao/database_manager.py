@@ -2,7 +2,9 @@ import os
 import logging
 import pandas as pd
 import numpy as np # <--- ADICIONADO IMPORT
+import hashlib
 import json
+import threading
 import traceback
 from datetime import datetime
 from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
@@ -43,6 +45,8 @@ class DatabaseManager:
         self.db_type = db_type
         self.db_path = db_path
         self.engine = None
+        self._table_lock = threading.Lock()
+        self._table_cache = {}
         self._connect()
 
     def _connect(self):
@@ -325,6 +329,12 @@ class DatabaseManager:
                 " source      TEXT NOT NULL,"   # 'mt5' | nome da fonte externa
                 " updated_at  TIMESTAMP NOT NULL,"
                 " PRIMARY KEY (table_name, block_start, block_end))"))
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS _symbol_tables ("
+                " symbol     TEXT NOT NULL,"
+                " timeframe  TEXT NOT NULL,"    # timeframe normalizado (ex.: 1_minuto)
+                " table_name TEXT NOT NULL UNIQUE,"
+                " PRIMARY KEY (symbol, timeframe))"))
             # Colunas adicionadas depois (bases antigas recebem via ALTER TABLE)
             cols = {row[1] for row in conn.execute(text("PRAGMA table_info(_extraction_log)"))}
             if "quality_json" not in cols:
@@ -502,24 +512,46 @@ class DatabaseManager:
             log.error(f"Erro inesperado ao obter resumo de {table_name}: {e}")
             return None
     
+    @staticmethod
+    def _normalize_name(text):
+        """Minúsculas; tudo que não é alfanumérico vira '_' (sem '_' repetidos nas pontas/meio)."""
+        text = ''.join(c if c.isalnum() else '_' for c in str(text).lower())
+        return '_'.join(filter(None, text.split('_')))
+
     def get_table_name_for_symbol(self, symbol, timeframe_name):
         """
-        Retorna o nome normalizado da tabela para um símbolo e timeframe.
-        
-        Args:
-            symbol (str): Nome do símbolo (ex: 'WIN$N')
-            timeframe_name (str): Nome do timeframe (ex: '1 minuto')
-            
-        Returns:
-            str: Nome normalizado da tabela
+        Retorna o nome da tabela para um símbolo e timeframe.
+
+        O nome base é o mesmo de sempre (ex.: WIN$N + '1 minuto' -> win_n_1_minuto). Como símbolos
+        diferentes podem gerar o mesmo nome (WIN$N e WIN_N), o par símbolo/timeframe é registrado em
+        _symbol_tables; se o nome base já pertence a outro símbolo, acrescenta-se um sufixo de hash.
+        Tabelas existentes nunca são renomeadas: o primeiro símbolo a usar o nome base fica com ele.
         """
-        # Normaliza o nome da tabela (ex: WIN$N_1_minuto -> win_n_1_minuto)
-        table_name = f"{symbol}_{timeframe_name}".lower()
-        table_name = ''.join(c if c.isalnum() else '_' for c in table_name)
-        # Remove múltiplos underscores
-        table_name = '_'.join(filter(None, table_name.split('_')))
-        return table_name
-    
+        timeframe_key = self._normalize_name(timeframe_name)
+        base = self._normalize_name(f"{symbol}_{timeframe_name}")
+        key = (symbol, timeframe_key)
+        if key in self._table_cache:
+            return self._table_cache[key]
+        if not self.is_connected():
+            return base
+        with self._table_lock:
+            with self.engine.begin() as conn:
+                row = conn.execute(text("SELECT table_name FROM _symbol_tables WHERE symbol = :s AND timeframe = :t"),
+                                   {"s": symbol, "t": timeframe_key}).fetchone()
+                if row:
+                    name = row[0]
+                else:
+                    taken = conn.execute(text("SELECT 1 FROM _symbol_tables WHERE table_name = :n"),
+                                         {"n": base}).fetchone()
+                    name = base
+                    if taken:
+                        name = f"{base}_{hashlib.sha1(symbol.encode('utf-8')).hexdigest()[:6]}"
+                        log.warning(f"Nome de tabela '{base}' já pertence a outro símbolo; '{symbol}' usará '{name}'.")
+                    conn.execute(text("INSERT INTO _symbol_tables (symbol, timeframe, table_name) VALUES (:s, :t, :n)"),
+                                 {"s": symbol, "t": timeframe_key, "n": name})
+            self._table_cache[key] = name
+        return name
+
     def optimize_database(self):
         """
         Executa otimizações no banco de dados para melhorar a performance.
