@@ -282,16 +282,16 @@ class MT5Verificador:
                         logging.error(f"Erro ao instalar {dep}: {str(e2)}")
                         falhas.append(dep)
         
-        # Tenta instalar usando o setup.py se disponível (para o modo de desenvolvimento)
-        if falhas and os.path.exists("setup.py"):
+        # Tenta instalar usando o pyproject.toml se disponível (para o modo de desenvolvimento)
+        if falhas and os.path.exists("pyproject.toml"):
             try:
-                logging.info("Tentando instalar via setup.py (modo de desenvolvimento)...")
+                logging.info("Tentando instalar via pyproject.toml (modo de desenvolvimento)...")
                 subprocess.check_call([sys.executable, "-m", "pip", "install", "-e", "."],
                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 logging.info("✓ Pacote instalado em modo de desenvolvimento")
                 return True
             except subprocess.CalledProcessError as e:
-                logging.error(f"Erro ao instalar via setup.py: {str(e)}")
+                logging.error(f"Erro ao instalar via pyproject.toml: {str(e)}")
         
         return len(dependencias_instaladas) > 0
     
