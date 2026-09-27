@@ -61,7 +61,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T5.6 | Pastas de dados por usuário (`platformdirs`) | T3.3 | ⏳ |
 | T6.1 | Indicadores puros (`strategies/indicators.py`) | — | ✅ concluída |
 | T6.2 | Seis estratégias com interface comum (`gerar_sinais`) | T6.1 | ✅ concluída |
-| T6.3 | Backtester com custos reais e dimensionamento por risco | T6.2 | ⏳ |
+| T6.3 | Backtester com custos reais e dimensionamento por risco | T6.2 | ✅ concluída |
 | T6.4 | Validação: walk-forward, robustez ±20%, Monte Carlo, Filtro C | T6.3 | ⏳ |
 | T6.5 | Especificações do símbolo (`_symbol_specs`) e leitura de OHLCV do banco | T1.1 | ⏳ |
 | T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ⏳ |
@@ -811,7 +811,7 @@ Regras de saída comuns ficam em `ExitRules` (`target_r`, `partial_r`, `partial_
 Vendas são simétricas. **Armadilha:** todo sinal usa apenas dados até a barra atual
 (`shift(1)` nos canais de rompimento); há teste que altera o futuro e compara os sinais.
 
-### T6.3 — Backtester
+### T6.3 — Backtester ✅
 
 `strategies/backtester.py`: `SymbolSpec` (point, tick_size, tick_value, volume_min/step/max,
 spread padrão), `BacktestConfig` (capital, risco por operação = 1%, slippage em pontos,
