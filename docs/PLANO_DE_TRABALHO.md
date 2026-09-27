@@ -59,6 +59,14 @@ Comando de testes padrão (use o Python do `.venv`):
 | T5.4 | Snapshots do book (DOM) | T5.3 | ⏳ |
 | T5.5 | Fonte externa real (importação CSV) | T1.2 | ⏳ |
 | T5.6 | Pastas de dados por usuário (`platformdirs`) | T3.3 | ⏳ |
+| T6.1 | Indicadores puros (`strategies/indicators.py`) | — | ✅ concluída |
+| T6.2 | Seis estratégias com interface comum (`gerar_sinais`) | T6.1 | ⏳ |
+| T6.3 | Backtester com custos reais e dimensionamento por risco | T6.2 | ⏳ |
+| T6.4 | Validação: walk-forward, robustez ±20%, Monte Carlo, Filtro C | T6.3 | ⏳ |
+| T6.5 | Especificações do símbolo (`_symbol_specs`) e leitura de OHLCV do banco | T1.1 | ⏳ |
+| T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ⏳ |
+| T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ⏳ |
+| T6.8 | Documentação `docs/estrategias.md` | T6.7 | ⏳ |
 
 ---
 
@@ -752,6 +760,124 @@ ou integre o que for útil ao `IndicatorCalculator`. Faça **um PR por módulo**
 | T5.4 | Book: `market_book_add` + `market_book_get` em laço (intervalo configurável); tabela `<símbolo>_book` (`time_msc`, `type`, `price`, `volume`) | Coleta por 1 h sem crescer memória |
 | T5.5 | `CsvExternalSource(ExternalDataSource)`: lê CSVs de uma pasta (`[FALLBACK] csv_dir`) com colunas `time,open,high,low,close,real_volume`; tipo `Csv` em `[FALLBACK] external_source_m1_type` e a fábrica em `app.py` (onde hoje escolhe `DummyExternalSource`) | Fallback M1 preenche lacuna a partir do CSV |
 | T5.6 | Pastas de dados por usuário com `platformdirs` (opcional via `[APP] data_dir`). **Migração:** se `database/mt5_data.db` existir no projeto, continue usando-o | Instalações antigas continuam funcionando sem ação do usuário |
+
+---
+
+## Fase 6 — Estratégias, backtest e triagem de ativos
+
+Objetivo: transformar a base em **ferramenta de pesquisa**. Responder, com dados e
+sem promessas, "qual estratégia faz sentido em qual ativo e timeframe agora".
+**Não envia ordens** (fora do escopo, ver ROADMAP). Tudo em `mt5_extracao/strategies/`,
+sem MT5 e sem Tkinter (usa só o banco); testes com séries sintéticas de `tests/market_data.py`.
+
+Pipeline: **Filtro A** (ativo apto, semanal) → **Filtro B** (oportunidade agora, diário)
+→ **Filtro C** (estratégia × ativo × timeframe validada em backtest). Só o que passa
+nos três aparece como "✅ apto" no relatório.
+
+### T6.1 — Indicadores puros ✅
+
+`strategies/indicators.py`: `sma, ema, rma, true_range, atr, rsi, adx (plus_di/minus_di/adx),
+bollinger, keltner, donchian, efficiency_ratio, linreg_slope, linreg_r2, rolling_percentile,
+swing_low, swing_high`. Médias de Wilder = `ewm(alpha=1/n, adjust=False)`.
+**Aceite:** `tests/test_indicators.py` (valores conhecidos + teste de "sem olhar o futuro").
+
+### T6.2 — Seis estratégias com interface comum
+
+Arquivos: `strategies/base.py` (classes `Strategy`, `StrategyInfo`, `ExitRules`, `SIGNAL_COLUMNS`),
+um arquivo por estratégia, `strategies/__init__.py` com o registro `REGISTRY` e `get_strategy(chave, **params)`.
+
+Contrato de `Strategy.gerar_sinais(df) -> DataFrame` (mesmo índice de `df`):
+
+| Coluna | Tipo | Significado |
+|---|---|---|
+| `entry_long`, `entry_short` | bool | Sinal no **fechamento** da barra; o backtester entra na **abertura da próxima** |
+| `exit_long`, `exit_short` | bool | Saída por sinal (executada na abertura da próxima barra) |
+| `stop_long`, `stop_short` | float | Preço do stop se a entrada ocorrer a partir deste sinal |
+| `target_long`, `target_short` | float/NaN | Alvo fixo em preço (NaN = usar `ExitRules.target_r`) |
+| `atr` | float | ATR(14), usado no trailing e na triagem |
+
+Regras de saída comuns ficam em `ExitRules` (`target_r`, `partial_r`, `partial_fraction`,
+`breakeven_after_partial`, `trailing_atr`, `max_bars`, `eod_exit`).
+
+| Chave | Estratégia | Regras |
+|---|---|---|
+| `ema_atr` | Tendência EMA + ATR | Compra no cruzamento EMA20 > EMA50 com close > EMA200; stop 2×ATR; trailing 3×ATR; sai no cruzamento contrário |
+| `donchian` | Donchian / Turtle | Compra no rompimento da máxima de 20; sai no rompimento da mínima de 10; filtro ADX > 20 **ou** ATR > média(ATR, 50); stop 2×ATR |
+| `bb_rsi` | Reversão BB/RSI | ADX < 20, mínima toca a banda inferior (20, 2) e RSI(2) < 10; sai na banda central; stop 1,5×ATR; máx. 10 barras |
+| `orb` | Opening Range Breakout | Faixa = máx./mín. dos primeiros 30 min do dia; compra no fechamento acima da faixa; stop no lado oposto; alvo 1,5× a faixa; uma entrada por dia; **saída obrigatória no fim do dia** |
+| `pullback` | Pullback em momentum | close > EMA200, ADX > 25, RSI(14) estava < 40 e vira para cima; stop abaixo da mínima de 10 barras; alvo 2R; parcial de 50% em 1R e stop no zero a zero |
+| `squeeze` | Squeeze BB/Keltner | Bollinger dentro do Keltner em alguma das últimas 5 barras; rompe a banda de Bollinger a favor do momentum (close − SMA20); stop 1,5×ATR; trailing 2,5×ATR; sai quando o momentum inverte |
+
+Vendas são simétricas. **Armadilha:** todo sinal usa apenas dados até a barra atual
+(`shift(1)` nos canais de rompimento); há teste que altera o futuro e compara os sinais.
+
+### T6.3 — Backtester
+
+`strategies/backtester.py`: `SymbolSpec` (point, tick_size, tick_value, volume_min/step/max,
+spread padrão), `BacktestConfig` (capital, risco por operação = 1%, slippage em pontos,
+comissão por lote por lado), `run_backtest(df, strategy, spec, config, start_index=0) -> BacktestResult`.
+
+Regras (documente qualquer mudança):
+1. Barras do MT5 são **bid**. Compra entra em `open + spread×point + slippage`; venda sai no bid.
+   Spread por barra vem da coluna `spread` (pontos); se não houver, `spec.spread_points`.
+2. Stop e alvo avaliados na barra; se ambos forem tocados na mesma barra, **conta o stop** (pessimista).
+   Gap além do stop executa na abertura.
+3. Lote = `capital × risco / (distância_do_stop / tick_size × tick_value)`, arredondado para baixo
+   no `volume_step`; se ficar abaixo de `volume_min`, a operação é **pulada** e contada em `skipped_min_lot`.
+4. Saídas: stop, alvo, parcial, trailing (atualizado no fechamento), tempo (`max_bars`),
+   fim do dia (`eod_exit`, fecha no fechamento da última barra do dia), sinal, fim dos dados.
+5. Métricas: nº de operações, taxa de acerto, profit factor, payoff, expectativa em R, lucro líquido,
+   retorno %, drawdown máximo % (curva de capital fechada).
+
+### T6.4 — Validação (Filtro C)
+
+`strategies/validation.py`:
+- `walk_forward`: divide em `n_windows + 2` partes; otimiza (grade `param_grid`, objetivo = soma de R)
+  em 2 partes e testa na seguinte; indicadores aquecem com os dados anteriores (`start_index`).
+- `robustness`: cada parâmetro numérico × 0,8 e × 1,2; robusto se **todas** as variantes têm PF > 1.
+- `monte_carlo`: 1000 reamostragens (semente fixa) dos retornos por operação → drawdown máximo no percentil 95.
+- `validate(...)` → veredito com itens: PF fora da amostra > 1,3; ≥ 100 operações fora da amostra;
+  > 50% das janelas positivas; robustez; DD p95 ≤ limite (padrão 20%). Grava em `_strategy_validation`
+  (tabela nova, aditiva).
+
+### T6.5 — Especificações do símbolo e leitura do banco
+
+Tabela `_symbol_specs` (símbolo, point, digits, tick_size, tick_value, volume_min/step/max,
+contract_size, currency_profit, spread, updated_at) preenchida por `mt5x specs` a partir de
+`symbol_info`. Sem especificação, usa-se um padrão genérico e o relatório avisa
+"especificação ausente: rode mt5x specs". `DatabaseManager.load_ohlcv(símbolo, timeframe, início, fim)`.
+
+### T6.6 — Triagem de ativos
+
+`strategies/asset_screener.py`. Configuração em `[SCREENER]` e `[STRATEGY]` (chaves com `fallback=`).
+
+Filtro A (eliminatório; motivo em português para cada reprovação):
+
+| Critério | Corte padrão | Chave |
+|---|---|---|
+| Spread / ATR(14) (medianas das últimas 100 barras) | < 10% | `max_spread_atr` |
+| Liquidez (mediana do volume) | ≥ percentil 30 dos ativos analisados | `min_liquidity_percentile` |
+| Barras com problema (OHLC inválido, lacunas no pregão, gaps > 5×ATR) | < 1% | `max_bad_bars` |
+| Histórico | ≥ 3 anos (D1/H4/H1) ou ≥ 1 ano (intradiário) | `min_years_daily`, `min_years_intraday` |
+| Picos de spread (> 3× a média) | ≤ 2% das barras | `spike_multiple`, `max_spike_share` |
+| Lote para risco de 1% com stop de 2×ATR | ≥ lote mínimo | `[STRATEGY] risk_per_trade` |
+
+Filtro B (score 0–100): regime (ADX > 25 tendência, < 20 lateral), força (inclinação EMA50/ATR, R² de 50 barras),
+volatilidade (percentil do ATR em 100 barras), custo (spread/ATR), eficiência (Kaufman),
+evento (CSV `[SCREENER] events_file` com `time,symbol,impact`: evento de alto impacto nas próximas
+`event_window_hours` horas bloqueia), correlação com a carteira (`[SCREENER] portfolio`, penaliza > 0,7).
+Saída: `Ativo | Válido | Regime | Estratégia sugerida | Score | Observação`.
+
+### T6.7 — CLI, relatório e GUI
+
+`mt5x strategies` (tabela-resumo + "evite no início"), `mt5x specs`, `mt5x backtest`, `mt5x validate`,
+`mt5x screen`, `mt5x report` (HTML autocontido em `exports/`, matriz ativo × estratégia com
+métricas e veredito). GUI: menu "Estratégias" que gera o relatório e abre no navegador.
+
+### T6.8 — Documentação
+
+`docs/estrategias.md` para o usuário final: o que cada filtro faz, como ler o relatório,
+tabela das estratégias, lista "evite no início" e o aviso de que backtest não garante resultado futuro.
 
 ---
 
