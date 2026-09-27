@@ -7,6 +7,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x extract --symbols WIN$N,WDO$N --tf M1 --from 2024-01-01 [--to 2024-06-30] [--indicators]
     mt5x update  --symbols WIN$N --tf M1 [--indicators]
     mt5x export  --table win_n_1_minuto --format csv|excel [--out arquivo]
+    mt5x quality --table win_n_1_minuto [--details]
     mt5x schedule --every 15m --symbols WIN$N --tf M1
 
 Sem o pacote instalado: python -m mt5_extracao.cli ... (ou ./run.sh --cli ... / run.bat --cli ...).
@@ -149,6 +150,26 @@ def cmd_tables(args, ctx):
     return EXIT_OK
 
 
+def cmd_quality(args, ctx):
+    from mt5_extracao import data_quality
+    reports = ctx.db.quality_reports(args.table)
+    if not reports:
+        _print(f"Nenhum relatório de qualidade para '{args.table}' (extraia dados primeiro).")
+        return EXIT_OK
+    problems = 0
+    for block_start, report in reports:
+        flag = "!" if data_quality.has_problems(report) else " "
+        problems += flag == "!"
+        if flag == "!" or args.all:
+            _print(f"{flag} {block_start[:10]}  {data_quality.summarize(report)}")
+            if flag == "!" and args.details:
+                for key in ("invalid_ohlc", "zero_volume", "duplicate_time", "gaps"):
+                    for ex in report[key]["examples"]:
+                        _print(f"      {key}: {ex}")
+    _print(f"\n{len(reports)} bloco(s) verificados, {problems} com problemas.")
+    return EXIT_OK
+
+
 def _extract_common(args):
     return _parse_symbols(args.symbols), _parse_tf(args.tf)
 
@@ -273,6 +294,12 @@ def build_parser():
     add_common(p)
     p.add_argument("--days-if-empty", type=int, default=30, help="dias a buscar para símbolos sem dados (padrão 30)")
     p.set_defaults(func=cmd_update)
+
+    p = sub.add_parser("quality", help="relatório de qualidade dos blocos extraídos de uma tabela")
+    p.add_argument("--table", required=True)
+    p.add_argument("--all", action="store_true", help="mostrar também blocos sem problemas")
+    p.add_argument("--details", action="store_true", help="listar exemplos de cada problema")
+    p.set_defaults(func=cmd_quality)
 
     p = sub.add_parser("export", help="exporta uma tabela")
     p.add_argument("--table", required=True, help="nome da tabela (veja 'mt5x tables')")

@@ -2,6 +2,7 @@ import os
 import logging
 import pandas as pd
 import numpy as np # <--- ADICIONADO IMPORT
+import json
 import traceback
 from datetime import datetime
 from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
@@ -324,18 +325,31 @@ class DatabaseManager:
                 " source      TEXT NOT NULL,"   # 'mt5' | nome da fonte externa
                 " updated_at  TIMESTAMP NOT NULL,"
                 " PRIMARY KEY (table_name, block_start, block_end))"))
+            # Colunas adicionadas depois (bases antigas recebem via ALTER TABLE)
+            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(_extraction_log)"))}
+            if "quality_json" not in cols:
+                conn.execute(text("ALTER TABLE _extraction_log ADD COLUMN quality_json TEXT"))
 
-    def record_block(self, table_name, start, end, rows, status, source):
-        """Registra (ou atualiza) o resultado da extração de um bloco."""
+    def record_block(self, table_name, start, end, rows, status, source, quality=None):
+        """Registra (ou atualiza) o resultado da extração de um bloco (quality: relatório de data_quality)."""
         with self.engine.begin() as conn:
             conn.execute(text(
-                "INSERT INTO _extraction_log (table_name, block_start, block_end, rows, status, source, updated_at) "
-                "VALUES (:t, :s, :e, :r, :st, :src, :u) "
+                "INSERT INTO _extraction_log (table_name, block_start, block_end, rows, status, source, updated_at, "
+                "quality_json) VALUES (:t, :s, :e, :r, :st, :src, :u, :q) "
                 "ON CONFLICT(table_name, block_start, block_end) DO UPDATE SET "
                 "rows = excluded.rows, status = excluded.status, source = excluded.source, "
-                "updated_at = excluded.updated_at"),
+                "updated_at = excluded.updated_at, quality_json = excluded.quality_json"),
                 {"t": table_name, "s": start.strftime(self._TIME_FMT), "e": end.strftime(self._TIME_FMT),
-                 "r": int(rows), "st": status, "src": source, "u": datetime.now().strftime(self._TIME_FMT)})
+                 "r": int(rows), "st": status, "src": source, "u": datetime.now().strftime(self._TIME_FMT),
+                 "q": json.dumps(quality, ensure_ascii=False) if quality is not None else None})
+
+    def quality_reports(self, table_name):
+        """Relatórios de qualidade gravados para a tabela: lista de (block_start, dict)."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT block_start, quality_json FROM _extraction_log "
+                "WHERE table_name = :t AND quality_json IS NOT NULL ORDER BY block_start"), {"t": table_name}).fetchall()
+        return [(a, json.loads(q)) for a, q in rows]
 
     def completed_blocks(self, table_name):
         """Blocos (inicio, fim) já concluídos (status 'ok' ou 'empty') para a tabela."""

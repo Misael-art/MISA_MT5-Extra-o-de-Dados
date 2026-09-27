@@ -13,6 +13,7 @@ from .database_manager import DatabaseManager
 from .indicator_calculator import IndicatorCalculator
 from .external_data_source import ExternalDataSource # Adicionado
 from . import timeframes as mt5  # constantes TIMEFRAME_* sem depender do pacote MetaTrader5
+from . import data_quality
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +32,8 @@ class HistoricalExtractor:
     """
     def __init__(self, connector: MT5Connector, db_manager: DatabaseManager, indicator_calculator: IndicatorCalculator,
                  external_source: Optional[ExternalDataSource] = None,
-                 chunk_config: Optional[dict] = None): # Adicionado chunk_config
+                 chunk_config: Optional[dict] = None, # Adicionado chunk_config
+                 session: tuple = ("09:00", "18:30")):
         """
         Inicializa o extrator histórico.
 
@@ -48,6 +50,8 @@ class HistoricalExtractor:
         self.external_source = external_source
         # Define um chunk_config padrão se não for fornecido
         self.chunk_config = chunk_config or {'m1': 30, 'm5_m15': 90, 'default': 365}
+        # Horário do pregão (HH:MM, HH:MM) usado pelo relatório de qualidade para detectar lacunas
+        self.session = session
         self.extraction_running = False
         self.cancel_requested = False
         self._lock = Lock() # Para controle de estado thread-safe
@@ -342,13 +346,15 @@ class HistoricalExtractor:
                     continue
 
             # 4. Salva o bloco imediatamente (memória constante; uma falha não perde os blocos anteriores)
-            saved_rows = self._save_block(symbol, timeframe_name, table_name, block_df, current_start, include_indicators)
+            saved_rows, quality = self._save_block(symbol, timeframe_name, table_name, block_df, current_start,
+                                                   include_indicators, timeframe_val)
             if saved_rows is None:
                 self.db_manager.record_block(table_name, current_start, block_end, 0, 'failed', source)
                 failed_blocks += 1
             else:
                 status = 'ok' if saved_rows else 'empty'
-                self.db_manager.record_block(table_name, current_start, block_end, saved_rows, status, source)
+                self.db_manager.record_block(table_name, current_start, block_end, saved_rows, status, source,
+                                             quality=quality)
                 total_rows += saved_rows
 
             # Avança para o próximo bloco
@@ -362,15 +368,17 @@ class HistoricalExtractor:
         log.info(f"[{symbol}] Extração concluída: {total_rows} barras salvas.")
         return True
 
-    def _save_block(self, symbol, timeframe_name, table_name, block_df, block_start, include_indicators):
+    def _save_block(self, symbol, timeframe_name, table_name, block_df, block_start, include_indicators,
+                    timeframe_val=None):
         """
-        Calcula indicadores (com aquecimento a partir das barras já salvas) e grava o bloco.
+        Calcula indicadores (com aquecimento a partir das barras já salvas), verifica a qualidade e grava o bloco.
 
         Returns:
-            int | None: número de barras gravadas (0 se o bloco estava vazio) ou None em caso de falha.
+            (int | None, dict | None): barras gravadas (0 se o bloco estava vazio; None em caso de falha)
+            e o relatório de qualidade (mt5_extracao.data_quality).
         """
         if block_df is None or block_df.empty:
-            return 0
+            return 0, None
         df = block_df.drop_duplicates(subset=['time'], keep='first').sort_values(by='time').reset_index(drop=True)
 
         if include_indicators:
@@ -389,11 +397,19 @@ class HistoricalExtractor:
                 log.error(f"[{symbol}] Erro ao calcular indicadores: {ind_err}. Salvando o bloco sem indicadores.")
                 log.debug(traceback.format_exc())
 
+        quality = None
+        try:
+            quality = data_quality.check_quality(df, TIMEFRAME_MINUTES.get(timeframe_val, 1), *self.session)
+            if data_quality.has_problems(quality):
+                log.warning(f"[{symbol}] Qualidade do bloco {block_start:%Y-%m-%d}: {data_quality.summarize(quality)}")
+        except Exception as q_err:
+            log.warning(f"[{symbol}] Não foi possível verificar a qualidade do bloco: {q_err}")
+
         try:
             if self.db_manager.save_ohlcv_data(symbol, timeframe_name, df):
-                return len(df)
+                return len(df), quality
             log.error(f"[{symbol}] Falha ao salvar bloco iniciado em {block_start} (save_ohlcv_data retornou False).")
         except Exception as db_err:
             log.error(f"[{symbol}] Erro ao salvar bloco iniciado em {block_start}: {db_err}")
             log.debug(traceback.format_exc())
-        return None
+        return None, quality

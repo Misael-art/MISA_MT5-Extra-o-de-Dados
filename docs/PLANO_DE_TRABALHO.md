@@ -37,7 +37,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.5 | Não sobrescrever o spread histórico | — | ✅ concluída |
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ⏳ |
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ⏳ |
-| T1.8 | Relatório de qualidade dos dados | T1.2 | ⏳ |
+| T1.8 | Relatório de qualidade dos dados | T1.2 | ✅ concluída |
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
 | T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
@@ -377,6 +377,10 @@ por dia.
 um resumo no log e na `_extraction_log` (coluna nova `quality_json TEXT`).
 
 **Critérios de aceite:** testes com DataFrames sintéticos cobrindo cada verificação.
+
+**Implementado:** `mt5_extracao/data_quality.py`; o relatório de cada bloco fica em `_extraction_log.quality_json`
+(coluna criada com `ALTER TABLE` em bases antigas) e é consultado com `mt5x quality --table <tabela> [--details]`.
+Horário do pregão em `[APP] session_start` / `session_end`.
 
 ---
 

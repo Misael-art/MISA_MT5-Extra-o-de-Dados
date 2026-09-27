@@ -44,6 +44,10 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("external_source_m1_fallback_enabled", "False"),
         ("external_source_m1_type", "Dummy"),
     ])),
+    ("APP", OrderedDict([
+        ("session_start", "09:00"),  # início do pregão (relatório de qualidade: lacunas)
+        ("session_end", "18:30"),    # fim do pregão
+    ])),
 ])
 
 DEFAULT_SYMBOLS = OrderedDict([

@@ -68,4 +68,6 @@ def create_extractor(config, connector, db_manager, indicator_calculator):
         indicator_calculator=indicator_calculator,
         external_source=create_external_source(config),
         chunk_config=chunk_config(config),
+        session=(config.get("APP", "session_start", fallback="09:00"),
+                 config.get("APP", "session_end", fallback="18:30")),
     )

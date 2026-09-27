@@ -92,3 +92,13 @@ def test_schedule_commands_quote_dollar():
 def test_schedule_every_invalid(bad):
     with pytest.raises(ValueError):
         cli.schedule_commands(bad, ["A"], timeframes.Timeframe.M1)
+
+
+def test_quality_command_after_extract(env, capsys):
+    assert cli.main(env + ["extract", "--symbols", "WIN$N", "--tf", "M1",
+                           "--from", "2024-01-02", "--to", "2024-01-03"]) == 0
+    capsys.readouterr()
+    assert cli.main(env + ["quality", "--table", "win_n_1_minuto", "--all"]) == 0
+    out = capsys.readouterr().out
+    assert "2 bloco(s) verificados, 0 com problemas" in out
+    assert "540 barras" in out

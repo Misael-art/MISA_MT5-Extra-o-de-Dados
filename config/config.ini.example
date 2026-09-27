@@ -8,6 +8,7 @@
 # [DATABASE]  type = sqlite; path relativo à raiz do projeto
 # [EXTRACTION] tamanho dos blocos (dias) por timeframe
 # [FALLBACK]  fonte externa para M1 (apenas "Dummy" implementado)
+# [APP]       horário do pregão (HH:MM) usado pelo relatório de qualidade (lacunas)
 # Credenciais NÃO ficam aqui: use o arquivo .env (veja .env.example).
 
 [MT5]
@@ -34,3 +35,6 @@ chunk_days_default = 365
 external_source_m1_fallback_enabled = False
 external_source_m1_type = Dummy
 
+[APP]
+session_start = 09:00
+session_end = 18:30
