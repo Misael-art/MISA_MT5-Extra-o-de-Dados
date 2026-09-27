@@ -64,6 +64,38 @@ Ponte: `./scripts/mt5-bridge.sh start|stop|restart|status|foreground` (log em `l
 > coberto por testes com uma ponte real e um MetaTrader5 simulado; a validação com o terminal real no
 > Wine é a tarefa **T0.3/T2.6** do [plano de trabalho](PLANO_DE_TRABALHO.md).
 
+## Linha de comando (sem interface gráfica)
+
+Tudo o que a interface faz para extração também pode ser feito pela linha de comando, útil em
+servidores e para agendar atualizações. Use pelo lançador do projeto:
+
+```bash
+./run.sh --cli <comando> ...        # Linux
+run.bat --cli <comando> ...         # Windows
+```
+
+| Comando | Exemplo |
+|---|---|
+| Diagnóstico | `./run.sh --cli doctor` |
+| Símbolos do MT5 | `./run.sh --cli symbols --group "*WIN*"` |
+| Tabelas do banco | `./run.sh --cli tables` |
+| Extração histórica | `./run.sh --cli extract --symbols 'WIN$N,WDO$N' --tf M1 --from 2024-01-01 --to 2024-06-30 --indicators` |
+| Atualizar até agora | `./run.sh --cli update --symbols 'WIN$N' --tf M1` |
+| Exportar | `./run.sh --cli export --table win_n_1_minuto --format csv --out win.csv` |
+
+Timeframes aceitos: `M1 M5 M15 M30 H1 H4 D1 W1 MN1` (também `1min`, `1 hora`...). No Linux, coloque
+símbolos com `$` entre aspas simples (`'WIN$N'`). Códigos de saída: 0 sucesso, 1 falha, 2 uso incorreto.
+
+### Agendamento (manter a base atualizada)
+
+```bash
+./run.sh --cli schedule --every 15m --symbols 'WIN$N,WDO$N' --tf M1
+```
+
+O comando **mostra** (não instala) a linha pronta para o `cron` (Linux) ou o comando `schtasks`
+(Windows). Por padrão, das 9h às 18h, de segunda a sexta (`--hours 9-18 --days 1-5`). Revise e cole:
+no Linux, com `crontab -e`; no Windows, no Prompt de Comando. A saída do cron vai para `logs/cron.log`.
+
 ## Diagnóstico
 
 ```bash

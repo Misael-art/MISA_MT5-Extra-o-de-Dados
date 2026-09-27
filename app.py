@@ -22,8 +22,7 @@ from mt5_extracao.error_handler import with_error_handling, ErrorHandler
 from mt5_extracao.integrated_services import IntegratedServices
 from mt5_extracao.enhanced_calculation_service import EnhancedCalculationService
 from mt5_extracao.performance_optimizer import PerformanceOptimizer
-from mt5_extracao.historical_extractor import HistoricalExtractor # Adicionado
-from mt5_extracao.external_data_source import ExternalDataSource, DummyExternalSource # Adicionado para Fallback
+from mt5_extracao import services
 from typing import Optional # Adicionado para type hint
 # Garantir que o diretório de logs existe
 os.makedirs("logs", exist_ok=True)
@@ -264,43 +263,10 @@ class MT5Extracao:
             logging.info("Instanciando DataExporter...")
             self.data_exporter = DataExporter(self.db_manager)
 
-            # --- Configuração do Fallback M1 ---
-            external_data_source_instance: Optional[ExternalDataSource] = None
-            try:
-                fallback_enabled = self.config.getboolean('FALLBACK', 'external_source_m1_fallback_enabled', fallback=False)
-                fallback_type = self.config.get('FALLBACK', 'external_source_m1_type', fallback=None)
-
-                if fallback_enabled:
-                    if fallback_type and fallback_type.strip().lower() == 'dummy':
-                        logging.info("Fallback M1 habilitado. Usando DummyExternalSource.")
-                        external_data_source_instance = DummyExternalSource()
-                    # TODO: Adicionar 'elif fallback_type.lower() == 'api_x':' para futuras fontes
-                    else:
-                        logging.warning(f"Fallback M1 habilitado na configuração, mas o tipo '{fallback_type}' não é reconhecido ou está vazio. Fallback permanecerá inativo.")
-                else:
-                    logging.info("Fallback M1 para fontes externas está desabilitado na configuração.")
-            except configparser.Error as cfg_err:
-                 logging.error(f"Erro ao ler configurações de fallback do config.ini: {cfg_err}. Fallback desativado.")
-            except Exception as e:
-                 logging.error(f"Erro inesperado ao configurar fallback: {e}. Fallback desativado.")
-                 logging.debug(traceback.format_exc())
-            # --- Configuração do Chunking Dinâmico ---
-            chunk_config = {
-                'm1': self.config.getint('EXTRACTION', 'chunk_days_m1', fallback=30),
-                'm5_m15': self.config.getint('EXTRACTION', 'chunk_days_m5_m15', fallback=90),
-                'default': self.config.getint('EXTRACTION', 'chunk_days_default', fallback=365)
-            }
-            logging.info(f"Configuração de Chunking lida: M1={chunk_config['m1']}d, M5/M15={chunk_config['m5_m15']}d, Default={chunk_config['default']}d")
-
-            # --- Inicializar o extrator histórico ---
+            # --- Extrator histórico (fallback M1 e blocos lidos do config.ini) ---
             logging.info("Instanciando HistoricalExtractor...")
-            self.historical_extractor = HistoricalExtractor(
-                connector=self.mt5_connector,
-                db_manager=self.db_manager,
-                indicator_calculator=self.indicator_calculator,
-                external_source=external_data_source_instance, # Passa a instância (ou None)
-                chunk_config=chunk_config # Passa a configuração de chunking
-            )
+            self.historical_extractor = services.create_extractor(
+                self.config, self.mt5_connector, self.db_manager, self.indicator_calculator)
             # REMOVIDA LINHA EXTRA ')'
             
             # Configurar a UI

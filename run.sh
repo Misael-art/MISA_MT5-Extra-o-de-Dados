@@ -13,6 +13,11 @@ if [[ ! -f config/config.ini ]]; then
 fi
 
 # No Linux o MT5 roda no Wine: garante que a ponte esteja ativa
-./scripts/mt5-bridge.sh start || echo "Aviso: ponte MT5 indisponível (veja logs/mt5_bridge.log)."
+./scripts/mt5-bridge.sh start >/dev/null || echo "Aviso: ponte MT5 indisponível (veja logs/mt5_bridge.log)." >&2
 
+# ./run.sh --cli <comando> ...  -> linha de comando (mt5x); sem --cli -> interface gráfica
+if [[ "${1:-}" == "--cli" ]]; then
+    shift
+    exec .venv/bin/python -m mt5_extracao.cli "$@"
+fi
 exec .venv/bin/python app.py "$@"

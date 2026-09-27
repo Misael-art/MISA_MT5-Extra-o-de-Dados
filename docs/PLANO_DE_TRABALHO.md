@@ -44,8 +44,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T2.4 | Gestão de processos multiplataforma | T2.2 | ✅ concluída |
 | T2.5 | `initialize()` com `windows_path` no Linux | T2.2 | ✅ concluída (validação com MT5 real: T0.3/T2.6) |
 | T2.6 | Teste de paridade Windows × Linux | T2.5 | ⏳ |
-| T3.1 | CLI `mt5x` | T1.3, T2.2 | ⏳ |
-| T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ⏳ |
+| T3.1 | CLI `mt5x` | T1.3, T2.2 | ✅ concluída |
+| T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ✅ concluída (cron e schtasks; systemd não) |
 | T3.3 | `pyproject.toml` (substitui `setup.py`) | — | ✅ concluída |
 | T3.4 | Timeframes como enum próprio | T2.2 | ✅ concluída |
 | T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ⏳ |
@@ -644,6 +644,9 @@ Rode no Windows e no Linux, na mesma conta/corretora, e compare com
 `threading.Event` e aguarde com `event.wait()`. Códigos de saída: 0 sucesso, 1 alguma falha, 2 uso incorreto.
 
 **Critérios de aceite:** `mt5x --help` e cada subcomando `--help` funcionam; teste com o provedor falso (T4.3).
+
+**Implementado:** `mt5_extracao/cli.py` (comandos acima + `tables`), `mt5_extracao/services.py` (montagem de
+banco/fonte externa/blocos/extrator compartilhada com o `app.py`), `run.sh --cli` / `run.bat --cli`.
 
 ### T3.2 — Agendamento
 

@@ -52,6 +52,9 @@ run.bat        # Windows
 ./run.sh       # Linux
 ```
 
+Linha de comando (servidores, agendamento): `./run.sh --cli extract --symbols 'WIN$N' --tf M1 --from 2024-01-01`,
+`./run.sh --cli update ...`, `./run.sh --cli schedule --every 15m ...` — veja [docs/instalacao.md](docs/instalacao.md#linha-de-comando-sem-interface-gráfica).
+
 ### Extração de Dados
 
 1. Selecione os símbolos desejados
