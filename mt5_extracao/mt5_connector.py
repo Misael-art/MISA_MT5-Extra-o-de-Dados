@@ -125,15 +125,8 @@ class MT5Connector:
             bool: True se o MT5 está em execução, False caso contrário
         """
         if not psutil:
-            log.warning("psutil não disponível, usando método alternativo para verificar se MT5 está em execução.")
-            try:
-                # Tenta usar o comando tasklist como alternativa
-                result = subprocess.run(["tasklist", "/FI", "IMAGENAME eq terminal64.exe"], 
-                                        capture_output=True, text=True)
-                return "terminal64.exe" in result.stdout
-            except Exception as e:
-                log.error(f"Erro ao verificar processo MT5 via tasklist: {e}")
-                return False  # Assume que não está rodando em caso de erro
+            log.warning("psutil não disponível; não é possível verificar se o MT5 está em execução.")
+            return False
                 
         try:
             # Primeira abordagem: verificar por processo terminal64.exe via psutil
@@ -729,8 +722,39 @@ class MT5Connector:
             "path": self.mt5_path
         }
         
+    def _kill_terminal_processes(self, timeout=10):
+        """
+        Encerra os processos terminal64.exe (terminate e, após `timeout` s, kill).
+        Multiplataforma (psutil). Retorna True se nenhum processo do terminal ficou em execução.
+        """
+        if not psutil:
+            log.warning("psutil não disponível; não é possível encerrar o MT5.")
+            return False
+        procs = []
+        for proc in psutil.process_iter(['name']):
+            try:
+                if (proc.info['name'] or '').lower() == 'terminal64.exe':
+                    proc.terminate()
+                    procs.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        if not procs:
+            return True
+        _, alive = psutil.wait_procs(procs, timeout=timeout)
+        for proc in alive:
+            try:
+                proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        _, alive = psutil.wait_procs(alive, timeout=timeout)
+        if alive:
+            log.warning(f"{len(alive)} processo(s) do MT5 não puderam ser encerrados.")
+        return not alive
+
     def is_admin(self):
-        """Verifica se o programa está sendo executado como administrador."""
+        """Verifica se o programa está sendo executado como administrador (root no Linux)."""
+        if os.name != 'nt':
+            return hasattr(os, 'geteuid') and os.geteuid() == 0
         try:
             import ctypes
             return ctypes.windll.shell32.IsUserAnAdmin() != 0
@@ -839,6 +863,10 @@ class MT5Connector:
         Returns:
             bool: True se o processo foi iniciado, False caso contrário
         """
+        if os.name != 'nt':
+            log.info("No Linux o terminal é iniciado pela ponte (mt5.initialize); nada a fazer aqui.")
+            return False
+
         if not self.mt5_path:
             log.error("Caminho do MT5 não configurado. Impossível iniciar.")
             return False
@@ -865,30 +893,9 @@ class MT5Connector:
                     log.info("Usuário optou por não reiniciar o MT5 como administrador.")
                     return False
                         
-            # Fecha o MT5 atual usando diversas abordagens
+            # Fecha o MT5 atual
             try:
-                killed = False
-                # Abordagem 1: Usando taskkill para garantir que todos os processos sejam encerrados
-                try:
-                    subprocess.run(["taskkill", "/F", "/IM", "terminal64.exe"], 
-                                  capture_output=True, text=True)
-                    killed = True
-                except Exception as e:
-                    log.warning(f"Erro ao encerrar MT5 via taskkill: {e}")
-                
-                # Abordagem 2: Usando psutil caso taskkill falhe
-                if not killed and psutil:
-                    try:
-                        for proc in psutil.process_iter(['name']):
-                            try:
-                                if proc.info['name'] and 'terminal64.exe' in proc.info['name'].lower():
-                                    proc.kill()
-                            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                                continue
-                        killed = True
-                    except Exception as e:
-                        log.warning(f"Erro ao encerrar MT5 via psutil: {e}")
-                
+                killed = self._kill_terminal_processes()
                 if killed:
                     log.info("Processos do MT5 encerrados.")
                     # Espera para garantir que o processo foi encerrado completamente
@@ -1352,6 +1359,10 @@ class MT5Connector:
         if is_running:
             log.info("MT5 já está em execução.")
             return True
+
+        if os.name != 'nt':
+            log.info("No Linux o terminal é iniciado pela ponte (mt5.initialize); não é possível executar o .exe aqui.")
+            return False
             
         # Se chegou até aqui, precisamos iniciar o MT5
         if not self.mt5_path:
@@ -1412,12 +1423,8 @@ class MT5Connector:
             # 2. Tenta encerrar e reiniciar o MT5
             log.info("Encerrando o MT5 para resolver problema de comunicação...")
             try:
-                # Tenta usar taskkill para garantir que o processo termina
-                subprocess.run(["taskkill", "/F", "/IM", "terminal64.exe"], 
-                              capture_output=True, text=True)
-                              
-                # Espera 3 segundos para o processo encerrar
-                time.sleep(3)
+                # Encerra o terminal (psutil: terminate e, se preciso, kill)
+                self._kill_terminal_processes()
                 
                 # Verifica se realmente encerrou
                 if self._is_mt5_running():

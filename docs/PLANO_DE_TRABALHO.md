@@ -41,7 +41,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
 | T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
-| T2.4 | Gestão de processos multiplataforma | T2.2 | ⏳ |
+| T2.4 | Gestão de processos multiplataforma | T2.2 | ✅ concluída |
 | T2.5 | `initialize()` com `windows_path` no Linux | T2.2 | ✅ concluída (validação com MT5 real: T0.3/T2.6) |
 | T2.6 | Teste de paridade Windows × Linux | T2.5 | ⏳ |
 | T3.1 | CLI `mt5x` | T1.3, T2.2 | ⏳ |
