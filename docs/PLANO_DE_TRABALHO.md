@@ -52,7 +52,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T4.2 | Logging centralizado | — | ✅ concluída |
 | T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | ✅ concluída (cobertura: banco 70%, extrator 72%, backend 93%; mínimo de 60% verificado no CI) |
 | T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ⏳ |
-| T4.5 | Remover módulos "enhanced" não usados | T4.3 | ⏳ |
+| T4.5 | Remover módulos "enhanced" não usados | T4.3 | ✅ concluída (3 removidos; 2 mantidos com justificativa) |
 | T5.1 | Exportação Parquet / DuckDB | T1.1 | ⏳ |
 | T5.2 | PostgreSQL / TimescaleDB | T1.1 | ⏳ |
 | T5.3 | Coleta de ticks | T1.2 | ⏳ |
@@ -747,12 +747,22 @@ simulada num bloco.
 Atualize `docs/arquitetura.md` (diagrama com `mt5_backend`, ponte e bootstrap) e o `README.md`
 (estado real das funcionalidades). Remova do README as afirmações que não forem verdade.
 
-### T4.5 — Remover módulos "enhanced" não usados
+### T4.5 — Remover módulos "enhanced" não usados ✅
 
 `integrated_services.py`, `enhanced_calculation_service.py`, `enhanced_indicators.py`,
 `performance_optimizer.py` e `market_data_analyzer.py` somam cerca de 3 mil linhas pouco ligadas ao fluxo.
 **Passos:** com `grep`, liste quem usa cada um. Remova o que não é alcançável a partir de `app.py`/CLI,
 ou integre o que for útil ao `IndicatorCalculator`. Faça **um PR por módulo**.
+
+**Resultado** (um commit por módulo):
+
+| Módulo | Decisão | Motivo |
+|---|---|---|
+| `integrated_services.py` | removido | `app.py` o criava e iniciava threads de cálculo cujos resultados nada consultava |
+| `enhanced_calculation_service.py` | removido | só era usado pelo `IntegratedServices` |
+| `performance_optimizer.py` | removido | só importado, nunca usado |
+| `enhanced_indicators.py` (+ `advanced_indicators.py`) | **mantido** | usado pela coleta em tempo real (`DataCollector`) |
+| `market_data_analyzer.py` | **mantido** | API pública documentada em `docs/indicadores_avancados.md`; sem dependências internas |
 
 ---
 
