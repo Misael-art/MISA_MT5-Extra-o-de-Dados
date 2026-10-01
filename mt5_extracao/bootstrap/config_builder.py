@@ -50,6 +50,28 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("time_basis", "broker"),    # broker = horário da corretora (como o MT5 devolve); utc = converte
         ("broker_utc_offset", "-3"), # fuso da corretora em horas (B3: -3), usado com time_basis = utc
     ])),
+    ("STRATEGY", OrderedDict([       # backtest e validação (mt5x backtest/validate/report)
+        ("initial_equity", "100000"),
+        ("risk_per_trade", "0.01"),      # 1% do capital por operação
+        ("commission_per_lot", "0"),     # por lote e por lado, na moeda da conta
+        ("slippage_points", "0"),
+        ("max_drawdown", "0.20"),        # limite do drawdown p95 do Monte Carlo (Filtro C)
+        ("min_profit_factor", "1.3"),
+        ("min_trades", "100"),
+    ])),
+    ("SCREENER", OrderedDict([       # triagem de ativos (mt5x screen)
+        ("max_spread_atr", "0.10"),
+        ("min_liquidity_percentile", "30"),
+        ("max_bad_bars", "0.01"),
+        ("min_years_daily", "3"),
+        ("min_years_intraday", "1"),
+        ("spike_multiple", "3"),
+        ("max_spike_share", "0.02"),
+        ("max_correlation", "0.7"),
+        ("portfolio", ""),               # símbolos da carteira, separados por vírgula
+        ("events_file", ""),             # CSV time,symbol,impact (opcional)
+        ("event_window_hours", "4"),
+    ])),
 ])
 
 DEFAULT_SYMBOLS = OrderedDict([

@@ -64,7 +64,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.3 | Backtester com custos reais e dimensionamento por risco | T6.2 | ✅ concluída |
 | T6.4 | Validação: walk-forward, robustez ±20%, Monte Carlo, Filtro C | T6.3 | ✅ concluída |
 | T6.5 | Especificações do símbolo (`_symbol_specs`) e leitura de OHLCV do banco | T1.1 | ✅ concluída |
-| T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ⏳ |
+| T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ✅ concluída |
 | T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ⏳ |
 | T6.8 | Documentação `docs/estrategias.md` | T6.7 | ⏳ |
 
@@ -847,7 +847,7 @@ contract_size, currency_profit, spread, updated_at) preenchida por `mt5x specs` 
 `symbol_info`. Sem especificação, usa-se um padrão genérico e o relatório avisa
 "especificação ausente: rode mt5x specs". `DatabaseManager.load_ohlcv(símbolo, timeframe, início, fim)`.
 
-### T6.6 — Triagem de ativos
+### T6.6 — Triagem de ativos ✅
 
 `strategies/asset_screener.py`. Configuração em `[SCREENER]` e `[STRATEGY]` (chaves com `fallback=`).
 
@@ -858,7 +858,7 @@ Filtro A (eliminatório; motivo em português para cada reprovação):
 | Spread / ATR(14) (medianas das últimas 100 barras) | < 10% | `max_spread_atr` |
 | Liquidez (mediana do volume) | ≥ percentil 30 dos ativos analisados | `min_liquidity_percentile` |
 | Barras com problema (OHLC inválido, lacunas no pregão, gaps > 5×ATR) | < 1% | `max_bad_bars` |
-| Histórico | ≥ 3 anos (D1/H4/H1) ou ≥ 1 ano (intradiário) | `min_years_daily`, `min_years_intraday` |
+| Histórico | ≥ 3 anos (H4 e maiores) ou ≥ 1 ano (H1 e menores) | `min_years_daily`, `min_years_intraday` |
 | Picos de spread (> 3× a média) | ≤ 2% das barras | `spike_multiple`, `max_spike_share` |
 | Lote para risco de 1% com stop de 2×ATR | ≥ lote mínimo | `[STRATEGY] risk_per_trade` |
 

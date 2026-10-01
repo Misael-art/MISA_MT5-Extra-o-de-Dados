@@ -41,3 +41,28 @@ session_start = 09:00
 session_end = 18:30
 time_basis = broker
 broker_utc_offset = -3
+
+[STRATEGY]
+# Backtest e validação (mt5x backtest / validate / report)
+initial_equity = 100000
+risk_per_trade = 0.01
+commission_per_lot = 0
+slippage_points = 0
+max_drawdown = 0.20
+min_profit_factor = 1.3
+min_trades = 100
+
+[SCREENER]
+# Triagem de ativos (mt5x screen). portfolio: símbolos separados por vírgula.
+# events_file: CSV opcional com colunas time,symbol,impact (impacto "alto" bloqueia o ativo)
+max_spread_atr = 0.10
+min_liquidity_percentile = 30
+max_bad_bars = 0.01
+min_years_daily = 3
+min_years_intraday = 1
+spike_multiple = 3
+max_spike_share = 0.02
+max_correlation = 0.7
+portfolio = 
+events_file = 
+event_window_hours = 4
