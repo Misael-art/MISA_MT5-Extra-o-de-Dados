@@ -1,29 +1,28 @@
 # MT5 Extração de Dados
 
-Aplicação para extração e armazenamento de dados financeiros do MetaTrader 5.
+Construtor de bases de dados do MetaTrader 5 para **Windows e Linux**: instala sozinho, extrai e
+mantém atualizado o histórico OHLCV (com indicadores) em SQLite, pela interface gráfica ou pela
+linha de comando, e ajuda a pesquisar estratégias sobre a base construída.
 
 ## Funcionalidades
 
-- **Conexão com MT5**: Interface com o MetaTrader 5 para extração de dados.
-- **Coleta de Dados**: Extração de dados em tempo real (ticks) e históricos (OHLCV).
-- **Extração Histórica Robusta**: Módulo `HistoricalExtractor` com busca em blocos (chunking) configurável, retentativas e paralelização. Suporta fallback para fontes externas (configurável) para dados M1.
-- **Armazenamento em Banco**: Armazena dados em banco SQLite local, com criação/atualização automática de schema.
-- **Cálculo de Indicadores**: Calcula indicadores técnicos básicos e avançados.
-- **Exportação**: Exporta dados para formatos CSV e Excel.
-- **Gerenciamento de Credenciais**: Credenciais no arquivo `.env` (privado, fora do git).
-- **Interface Gráfica**: Interface amigável para interação com o usuário.
+- **Instalação automática**: Python, dependências, MetaTrader 5 e configuração inicial (no Linux, MT5 no Wine com uma ponte para o pacote `MetaTrader5`).
+- **Extração histórica confiável**:
+  - busca em blocos, gravando cada bloco assim que chega;
+  - retoma de onde parou e reextrai sem duplicar;
+  - roda vários símbolos em paralelo.
+- **Atualização incremental**: do último registro até agora ("Atualizar até agora" na interface, `mt5x update` agendável via cron/Agendador de Tarefas).
+- **Qualidade dos dados**: relatório por bloco (OHLC inválido, volume zero, duplicatas, lacunas no pregão).
+- **Banco SQLite**:
+  - tabela por símbolo e timeframe, com nomes sem colisão entre símbolos;
+  - base de tempo explícita (horário da corretora ou UTC).
+- **Indicadores técnicos** opcionais na extração e coleta M1 em tempo real.
+- **Exportação** para CSV e Excel (interface ou `mt5x export`).
+- **Credenciais** só no arquivo `.env` (privado, fora do git).
+- **Linha de comando `mt5x`** para servidores e automação; códigos de saída padronizados.
 - **Estratégias e triagem de ativos**: seis estratégias clássicas, backtest com custos reais,
   validação (walk-forward, robustez, Monte Carlo) e triagem de ativos com relatório HTML.
   Veja [docs/estrategias.md](docs/estrategias.md). Não envia ordens.
-
-## Novidades
-
-- **Exportação de Dados**: Nova funcionalidade para exportação de dados para CSV e Excel.
-- **Gerenciamento de Credenciais**: Armazenamento seguro de credenciais via variáveis de ambiente.
-- **Tratamento de Erros**: Sistema robusto de tratamento e registro de erros.
-- **Extração Histórica Aprimorada**: Implementação do `HistoricalExtractor` com chunking, retries e paralelização.
-- **Fallback M1 e Chunking Dinâmico**: Adicionada a capacidade de usar fontes externas como fallback para M1 e configuração dinâmica do tamanho dos blocos de extração.
-- **Correção de Schema DB**: Resolvido problema com nomes de colunas contendo caracteres especiais e garantida a criação de tabelas com schema completo.
 
 ## Instalação (automática)
 
@@ -67,11 +66,10 @@ Linha de comando (servidores, agendamento): `./run.sh --cli extract --symbols 'W
 
 ### Exportação de Dados
 
-1. Acesse o menu "Dados" > "Exportar Dados"
-2. Escolha o formato desejado (CSV ou Excel)
-3. Selecione a tabela a exportar
-4. Adicione filtros (opcional)
-5. Escolha o local para salvar
+1. Acesse o menu "Arquivo" > "Exportar Dados" e escolha CSV ou Excel
+2. Selecione a tabela a exportar
+3. Adicione filtros (opcional, ex.: `time > '2024-01-01'`)
+4. Escolha o local para salvar
 
 ## Configuração Avançada (`config/config.ini`)
 
@@ -91,6 +89,12 @@ O arquivo é gerado pelo instalador (referência completa em `config/config.ini.
    - `chunk_days_m1`: Tamanho do bloco (em dias) para extração M1 (padrão: 30).
    - `chunk_days_m5_m15`: Tamanho do bloco para M5/M15 (padrão: 90).
    - `chunk_days_default`: Tamanho do bloco para outros timeframes (padrão: 365).
+- **`[APP]`**: horário do pregão (`session_start`, `session_end`, usados no relatório de qualidade),
+  `time_basis` (`broker` ou `utc`) e `broker_utc_offset`.
+- **`[STRATEGY]`** e **`[SCREENER]`**: capital, risco, custos e cortes dos filtros de estratégia
+  (veja [docs/estrategias.md](docs/estrategias.md)).
+
+Logs: `logs/mt5_extracao.log` (gira a cada 5 MB).
 
 ## Documentação
 
@@ -103,7 +107,7 @@ Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 
 - [Plano de Extração Histórica (Original)](docs/plano_extracao_historica.md)
 - [Plano Fase 2: Fallback M1 e Chunking Dinâmico](docs/plano_fallback_m1.md)
-- [Arquitetura Geral](docs/arquitetura.md) (Pode precisar de atualização)
+- [Arquitetura](docs/arquitetura.md)
 - [Exportação de Dados](docs/exportacao_dados.md)
 - [Gerenciamento de Credenciais](docs/credenciais.md)
 

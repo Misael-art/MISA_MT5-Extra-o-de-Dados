@@ -51,7 +51,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ✅ concluída |
 | T4.2 | Logging centralizado | — | ✅ concluída |
 | T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | ✅ concluída (cobertura: banco 70%, extrator 72%, backend 93%; mínimo de 60% verificado no CI) |
-| T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ⏳ |
+| T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ✅ concluída |
 | T4.5 | Remover módulos "enhanced" não usados | T4.3 | ✅ concluída (3 removidos; 2 mantidos com justificativa) |
 | T5.1 | Exportação Parquet / DuckDB | T1.1 | ⏳ |
 | T5.2 | PostgreSQL / TimescaleDB | T1.1 | ⏳ |
@@ -742,7 +742,7 @@ simulada num bloco.
 **Critérios de aceite:** cobertura ≥ 60% em `database_manager.py`, `historical_extractor.py` e
 `mt5_backend.py` (`pytest --cov`, adicione `pytest-cov` ao `requirements-dev.txt`).
 
-### T4.4 — Documentação
+### T4.4 — Documentação ✅
 
 Atualize `docs/arquitetura.md` (diagrama com `mt5_backend`, ponte e bootstrap) e o `README.md`
 (estado real das funcionalidades). Remova do README as afirmações que não forem verdade.

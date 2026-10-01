@@ -21,10 +21,10 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | Fase | Objetivo | Tarefas | Depende de | Status |
 |---|---|---|---|---|
 | **F0** Fundação | Instalação automática Win/Linux, configuração inicial, diagnóstico, CI | T0.1–T0.3 | — | T0.1 ✅, T0.2 ✅, T0.3 ⏳ (validação manual) |
-| **F1** Integridade | Reextrair sem erro, retomar extrações, atualização incremental, dados corretos | T1.1–T1.8 | F0 | ⏳ |
-| **F2** Núcleo + Linux | Núcleo sem MetaTrader5/Tkinter no import; o app funciona no Linux via ponte | T2.1–T2.6 | F0 | ⏳ |
-| **F3** CLI e automação | `mt5x extract/update/export/doctor`, agendamento, `pyproject.toml` | T3.1–T3.4 | F1, F2 | ⏳ |
-| **F4** Qualidade | Limpeza de arquivos, logging central, testes com provedor falso, docs | T4.1–T4.5 | F0 (pode ir em paralelo) | ⏳ |
+| **F1** Integridade | Reextrair sem erro, retomar extrações, atualização incremental, dados corretos | T1.1–T1.8 | F0 | ✅ |
+| **F2** Núcleo + Linux | Núcleo sem MetaTrader5/Tkinter no import; o app funciona no Linux via ponte | T2.1–T2.6 | F0 | T2.1–T2.5 ✅, T2.6 ⏳ (paridade com MT5 real) |
+| **F3** CLI e automação | `mt5x extract/update/export/doctor`, agendamento, `pyproject.toml` | T3.1–T3.4 | F1, F2 | ✅ (agendamento: cron e schtasks) |
+| **F4** Qualidade | Limpeza de arquivos, logging central, testes com provedor falso, docs | T4.1–T4.5 | F0 (pode ir em paralelo) | ✅ |
 | **F5** Escala | Parquet/DuckDB, PostgreSQL/TimescaleDB, ticks, book, fonte externa real | T5.1–T5.6 | F1, F3 | ⏳ |
 | **F6** Estratégias | Seis estratégias, backtest com custos, walk-forward/Monte Carlo (Filtro C), triagem de ativos (Filtros A e B), relatório HTML, menu na GUI | T6.1–T6.8 | F1, F3 | ✅ |
 
