@@ -54,6 +54,8 @@ class Context:
 
     def __init__(self, args):
         self.args = args
+        # config/config.ini relativo é procurado também na pasta do projeto (mt5x de qualquer pasta)
+        args.config = services.resolve_config_path(args.config)
         self._config = self._db = self._connector = None
 
     @property

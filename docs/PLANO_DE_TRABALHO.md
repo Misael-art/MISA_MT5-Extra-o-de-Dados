@@ -58,7 +58,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T5.3 | Coleta de ticks | T1.2 | ✅ concluída (CLI `mt5x ticks`; na GUI ainda não) |
 | T5.4 | Snapshots do book (DOM) | T5.3 | ✅ concluída (CLI `mt5x book`) |
 | T5.5 | Fonte externa real (importação CSV) | T1.2 | ✅ concluída |
-| T5.6 | Pastas de dados por usuário (`platformdirs`) | T3.3 | ⏳ |
+| T5.6 | Pastas de dados por usuário (`platformdirs`) | T3.3 | ✅ concluída (sem dependência nova) |
 | T6.1 | Indicadores puros (`strategies/indicators.py`) | — | ✅ concluída |
 | T6.2 | Seis estratégias com interface comum (`gerar_sinais`) | T6.1 | ✅ concluída |
 | T6.3 | Backtester com custos reais e dimensionamento por risco | T6.2 | ✅ concluída |
@@ -775,7 +775,7 @@ ou integre o que for útil ao `IndicatorCalculator`. Faça **um PR por módulo**
 | T5.3 ✅ | Ticks: `copy_ticks_range(symbol, from, to, COPY_TICKS_ALL)` em blocos de 1 dia; tabela `<símbolo>_ticks` com PK `(time_msc, seq)` — **mudança registrada:** o MT5 devolve vários ticks no mesmo milissegundo, e uma PK só em `time_msc` descartaria ticks; `seq` é a ordem dentro do milissegundo. Blocos consecutivos compartilham a borda (a ponte envia segundos inteiros); a PK evita duplicatas. Mesma `_extraction_log` | Retomada funciona como em T1.2 |
 | T5.4 ✅ | Book: `market_book_add` + `market_book_get` em laço (intervalo configurável); tabela `<símbolo>_book` (`time_utc`, `time_msc`, `type`, `price`, `volume`, PK `(time_msc, type, price)`). O MT5 não informa o horário do book: usa-se o relógio do computador em UTC (`book_collector.py`) | Coleta por 1 h sem crescer memória (teste com relógio simulado: no máximo `flush_every` snapshots em memória) |
 | T5.5 ✅ | `CsvExternalSource(ExternalDataSource)` (aceita também a exportação de barras do MT5, separada por tabulação): lê CSVs de uma pasta (`[FALLBACK] csv_dir`) com colunas `time,open,high,low,close,real_volume`; tipo `Csv` em `[FALLBACK] external_source_m1_type` e a fábrica em `app.py` (onde hoje escolhe `DummyExternalSource`) | Fallback M1 preenche lacuna a partir do CSV |
-| T5.6 | Pastas de dados por usuário com `platformdirs` (opcional via `[APP] data_dir`). **Migração:** se `database/mt5_data.db` existir no projeto, continue usando-o | Instalações antigas continuam funcionando sem ação do usuário |
+| T5.6 ✅ | Pastas de dados por usuário (opcional via `[APP] data_dir`: vazio, `auto` ou caminho). **Migração:** se `database/mt5_data.db` existir no projeto, continue usando-o. **Mudanças registradas:** `services.user_data_dir()` usa só a biblioteca padrão (mesmas pastas do `platformdirs`), evitando uma dependência; e caminhos relativos de config/banco passam a valer a partir da pasta do projeto, não do diretório atual (antes, `mt5x` rodado de outra pasta criava um banco vazio ali) | Instalações antigas continuam funcionando sem ação do usuário |
 
 ---
 

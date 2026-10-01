@@ -95,7 +95,9 @@ O arquivo é gerado pelo instalador (referência completa em `config/config.ini.
    - `chunk_days_m5_m15`: Tamanho do bloco para M5/M15 (padrão: 90).
    - `chunk_days_default`: Tamanho do bloco para outros timeframes (padrão: 365).
 - **`[APP]`**: horário do pregão (`session_start`, `session_end`, usados no relatório de qualidade),
-  `time_basis` (`broker` ou `utc`) e `broker_utc_offset`.
+  `time_basis` (`broker` ou `utc`), `broker_utc_offset` e `data_dir` (onde fica o banco: vazio = pasta do
+  projeto; `auto` = pasta de dados do usuário; ou um caminho — um banco que já exista no projeto continua
+  sendo usado). Caminhos relativos valem a partir da pasta do projeto, então o `mt5x` funciona de qualquer pasta.
 - **`[STRATEGY]`** e **`[SCREENER]`**: capital, risco, custos e cortes dos filtros de estratégia
   (veja [docs/estrategias.md](docs/estrategias.md)).
 

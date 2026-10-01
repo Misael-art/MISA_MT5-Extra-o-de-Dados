@@ -50,6 +50,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("session_end", "18:30"),    # fim do pregão
         ("time_basis", "broker"),    # broker = horário da corretora (como o MT5 devolve); utc = converte
         ("broker_utc_offset", "-3"), # fuso da corretora em horas (B3: -3), usado com time_basis = utc
+        ("data_dir", ""),            # vazio = pasta do projeto; auto = pasta de dados do usuário; ou um caminho
     ])),
     ("STRATEGY", OrderedDict([       # backtest e validação (mt5x backtest/validate/report)
         ("initial_equity", "100000"),

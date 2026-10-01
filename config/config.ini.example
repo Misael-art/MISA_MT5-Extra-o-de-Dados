@@ -43,6 +43,10 @@ session_start = 09:00
 session_end = 18:30
 time_basis = broker
 broker_utc_offset = -3
+# Onde fica o banco quando [DATABASE] path é relativo: vazio = pasta do projeto (padrão);
+# auto = pasta de dados do usuário (%LOCALAPPDATA%\mt5-extracao, ~/.local/share/mt5-extracao); ou um caminho.
+# Um banco que já exista na pasta do projeto continua sendo usado.
+data_dir = 
 
 [STRATEGY]
 # Backtest e validação (mt5x backtest / validate / report)
