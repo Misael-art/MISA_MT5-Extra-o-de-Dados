@@ -19,7 +19,6 @@ from mt5_extracao.data_collector import DataCollector
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.security import CredentialManager
 from mt5_extracao.error_handler import with_error_handling, ErrorHandler
-from mt5_extracao.enhanced_calculation_service import EnhancedCalculationService
 from mt5_extracao.performance_optimizer import PerformanceOptimizer
 from mt5_extracao import services
 from typing import Optional # Adicionado para type hint

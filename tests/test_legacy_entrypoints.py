@@ -24,5 +24,5 @@ def test_removed_files():
 
 def test_unused_enhanced_modules_removed():
     """T4.5: módulos sem uso a partir de app.py/CLI foram removidos (um commit por módulo)."""
-    for name in ("integrated_services.py",):
+    for name in ("integrated_services.py", "enhanced_calculation_service.py"):
         assert not (REPO / "mt5_extracao" / name).exists(), name
