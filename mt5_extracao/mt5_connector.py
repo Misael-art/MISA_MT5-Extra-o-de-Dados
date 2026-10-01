@@ -608,6 +608,37 @@ class MT5Connector:
             # try:
             #     mt5.market_book_release(symbol)
 
+    # --- Book de ofertas (coleta contínua; ver book_collector.py) ---------------------
+    def book_subscribe(self, symbol):
+        """market_book_add: assina o book do símbolo. True se o MT5 aceitou."""
+        if not self.is_initialized or not mt5:
+            return False
+        ok = bool(mt5.market_book_add(symbol))
+        if not ok:
+            log.error(f"MT5 recusou o book de {symbol}: {mt5.last_error()} (a corretora oferece book para ele?)")
+        return ok
+
+    def book_snapshot(self, symbol):
+        """market_book_get: lista de dicts {type, price, volume} ou None em caso de falha."""
+        if not self.is_initialized or not mt5:
+            return None
+        try:
+            book = mt5.market_book_get(symbol)
+        except Exception as e:
+            log.error(f"Erro ao ler o book de {symbol}: {e}")
+            return None
+        if book is None:
+            return None
+        return [{"type": int(item.type), "price": float(item.price),
+                 "volume": float(getattr(item, "volume_dbl", 0) or item.volume)} for item in book]
+
+    def book_release(self, symbol):
+        if self.is_initialized and mt5:
+            try:
+                mt5.market_book_release(symbol)
+            except Exception as e:
+                log.debug(f"market_book_release({symbol}): {e}")
+
     def get_rates_range(self, symbol, timeframe, date_from, date_to):
         """Encapsula mt5.copy_rates_range()"""
         if not self.is_initialized or not mt5:

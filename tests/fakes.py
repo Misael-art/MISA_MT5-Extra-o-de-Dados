@@ -27,6 +27,9 @@ MINUTES = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 10: 10, 12: 12, 15: 15, 20: 20, 3
 TICKS_DTYPE = [("time", "<i8"), ("bid", "<f8"), ("ask", "<f8"), ("last", "<f8"), ("volume", "<u8"),
                ("time_msc", "<i8"), ("flags", "<u4"), ("volume_real", "<f8")]
 
+BookInfo = collections.namedtuple("BookInfo", "type price volume volume_dbl")
+BOOK_TYPE_SELL, BOOK_TYPE_BUY = 1, 2
+
 RATES_DTYPE = [("time", "<i8"), ("open", "<f8"), ("high", "<f8"), ("low", "<f8"), ("close", "<f8"),
                ("tick_volume", "<u8"), ("spread", "<i4"), ("real_volume", "<u8")]
 
@@ -159,6 +162,26 @@ class FakeMT5(types.SimpleNamespace):
             for k, offset_ms in enumerate((0, 0, 500)):
                 rows.append((t, p, p + 0.5, p + 0.25 * k, 1 + k, t * 1000 + offset_ms, 6 if k else 2, float(1 + k)))
         return np.array(rows, dtype=TICKS_DTYPE)
+
+    # --- book de ofertas ------------------------------------------------------
+    def market_book_add(self, symbol):
+        self.calls.append(("market_book_add", (symbol,), {}))
+        return symbol in self.symbols
+
+    def market_book_release(self, symbol):
+        self.calls.append(("market_book_release", (symbol,), {}))
+        return True
+
+    def market_book_get(self, symbol):
+        """5 níveis de venda e 5 de compra em torno de 100, mudando a cada chamada."""
+        self.calls.append(("market_book_get", (symbol,), {}))
+        if symbol not in self.symbols:
+            return None
+        n = len(self.calls_named("market_book_get"))
+        mid = 100.0 + (n % 3)
+        sells = [BookInfo(BOOK_TYPE_SELL, mid + 0.5 * k, 10 * k, float(10 * k)) for k in range(5, 0, -1)]
+        buys = [BookInfo(BOOK_TYPE_BUY, mid - 0.5 * k, 10 * k, float(10 * k)) for k in range(1, 6)]
+        return tuple(sells + buys)
 
     def calls_named(self, name):
         return [c for c in self.calls if c[0] == name]

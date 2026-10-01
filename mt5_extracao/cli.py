@@ -7,6 +7,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x extract --symbols WIN$N,WDO$N --tf M1 --from 2024-01-01 [--to 2024-06-30] [--indicators]
     mt5x update  --symbols WIN$N --tf M1 [--indicators]
     mt5x ticks   --symbols WIN$N --from 2024-06-03 [--to 2024-06-07] [--chunk-hours 24]
+    mt5x book    --symbols WIN$N [--interval 1] [--duration 3600]   # snapshots do book (DOM)
     mt5x export  --table win_n_1_minuto --format csv|excel|parquet|duckdb [--out arquivo]
     mt5x quality --table win_n_1_minuto [--details]
     mt5x schedule --every 15m --symbols WIN$N --tf M1
@@ -229,6 +230,26 @@ def cmd_ticks(args, ctx):
     if failed:
         _print("Rode o mesmo comando de novo para buscar só os blocos que falharam.")
     return EXIT_OK if failed == 0 else EXIT_FAIL
+
+
+def cmd_book(args, ctx):
+    from mt5_extracao.book_collector import BookCollector
+    symbols = _parse_symbols(args.symbols)
+    if args.interval <= 0 or (args.duration is not None and args.duration <= 0):
+        raise ValueError("--interval e --duration devem ser maiores que zero")
+    collector = BookCollector(ctx.connector(), ctx.db, interval=args.interval)
+    limit = f"por {args.duration:g} s" if args.duration else "até Ctrl+C"
+    _print(f"Coletando o book de {', '.join(symbols)} a cada {args.interval:g} s, {limit}...")
+    summary = collector.run(symbols, duration=args.duration, progress=_print)
+    ok = True
+    for symbol, r in summary.items():
+        if not r["subscribed"]:
+            _err(f"{symbol}: o MT5 recusou o book (a corretora oferece book para este símbolo?)")
+            ok = False
+            continue
+        _print(f"{symbol}: {r['snapshots']} snapshots, {r['rows']} níveis gravados em {collector.table_name(symbol)}"
+               + (f", {r['failures']} leituras falharam" if r["failures"] else ""))
+    return EXIT_OK if ok else EXIT_FAIL
 
 
 def cmd_export(args, ctx):
@@ -489,6 +510,12 @@ def build_parser():
     p.add_argument("--chunk-hours", type=int, default=24, help="horas por bloco (padrão 24)")
     p.add_argument("--overwrite", action="store_true", help="busca de novo blocos já concluídos")
     p.set_defaults(func=cmd_ticks)
+
+    p = sub.add_parser("book", help="coleta snapshots do book de ofertas (DOM) em intervalos regulares")
+    p.add_argument("--symbols", required=True, help="símbolos separados por vírgula")
+    p.add_argument("--interval", type=float, default=1.0, help="segundos entre snapshots (padrão 1)")
+    p.add_argument("--duration", type=float, help="segundos de coleta (padrão: até Ctrl+C)")
+    p.set_defaults(func=cmd_book)
 
     p = sub.add_parser("quality", help="relatório de qualidade dos blocos extraídos de uma tabela")
     p.add_argument("--table", required=True)

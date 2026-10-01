@@ -112,3 +112,20 @@ def test_ticks_through_bridge(bridge_port, tmp_path, monkeypatch):
             assert c.execute(text("SELECT COUNT(*) FROM win_n_ticks")).scalar() == 121 * 3
     finally:
         mt5_backend.reset()
+
+
+def test_book_through_bridge(bridge_port, tmp_path, monkeypatch):
+    """T5.4: market_book_* (tupla de namedtuples BookInfo) passa pela ponte."""
+    cfg = tmp_path / "config.ini"
+    cfg.write_text(f"[BRIDGE]\nenabled = true\nhost = 127.0.0.1\nport = {bridge_port}\n", encoding="utf-8")
+    mt5_backend.reset()
+    monkeypatch.setattr(connector_module, "mt5", None)
+    try:
+        connector = connector_module.MT5Connector(config_path=str(cfg))
+        connector.is_initialized = True
+        assert connector.book_subscribe("WIN$N")
+        levels = connector.book_snapshot("WIN$N")
+        assert len(levels) == 10 and {l["type"] for l in levels} == {1, 2}
+        connector.book_release("WIN$N")
+    finally:
+        mt5_backend.reset()

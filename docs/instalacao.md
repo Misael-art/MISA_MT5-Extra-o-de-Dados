@@ -82,6 +82,7 @@ run.bat --cli <comando> ...         # Windows
 | Extração histórica | `./run.sh --cli extract --symbols 'WIN$N,WDO$N' --tf M1 --from 2024-01-01 --to 2024-06-30 --indicators` |
 | Atualizar até agora | `./run.sh --cli update --symbols 'WIN$N' --tf M1` |
 | Ticks (bid/ask/last) | `./run.sh --cli ticks --symbols 'WIN$N' --from 2024-06-03 --to 2024-06-07` |
+| Book de ofertas (DOM) | `./run.sh --cli book --symbols 'WIN$N' --interval 1 --duration 3600` (horário do computador, em UTC) |
 | Exportar | `./run.sh --cli export --table win_n_1_minuto --format csv --out win.csv` (também `excel`, `parquet`, `duckdb`) |
 
 Timeframes aceitos: `M1 M5 M15 M30 H1 H4 D1 W1 MN1` (também `1min`, `1 hora`...). No Linux, coloque

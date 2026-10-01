@@ -448,6 +448,25 @@ class DatabaseManager:
                 conn.execute(sql, records[i:i + 500])
         return len(records)
 
+    BOOK_FIELDS = ("time_utc", "time_msc", "type", "price", "volume")
+
+    def save_book(self, table_name, rows):
+        """
+        Grava níveis do book (lista de dicts com BOOK_FIELDS). Chave (time_msc, type, price):
+        horário do coletor em UTC (o MT5 não informa o horário do book). Retorna as linhas gravadas.
+        """
+        if not rows:
+            return 0
+        cols = ", ".join(self.BOOK_FIELDS)
+        params = ", ".join(f":{c}" for c in self.BOOK_FIELDS)
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time_utc TEXT NOT NULL, time_msc INTEGER NOT NULL, '
+                f'type INTEGER NOT NULL, price REAL NOT NULL, volume REAL, PRIMARY KEY (time_msc, type, price))'))
+            conn.execute(text(f'INSERT INTO "{table_name}" ({cols}) VALUES ({params}) '
+                              f'ON CONFLICT(time_msc, type, price) DO UPDATE SET volume = excluded.volume'), rows)
+        return len(rows)
+
     SPEC_FIELDS = ("point", "digits", "tick_size", "tick_value", "volume_min", "volume_step", "volume_max",
                    "contract_size", "currency_profit", "spread")
 
