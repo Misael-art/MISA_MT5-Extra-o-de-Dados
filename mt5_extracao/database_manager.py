@@ -8,7 +8,9 @@ import threading
 import traceback
 from datetime import datetime
 from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
@@ -29,8 +31,9 @@ class DatabaseManager:
         Inicializa o gerenciador do banco de dados.
 
         Args:
-            db_type (str): Tipo do banco ('sqlite', futuramente 'postgresql', etc.).
-            db_path (str): Caminho para o arquivo do banco SQLite ou string de conexão.
+            db_type (str): 'sqlite' ou 'postgresql' (TimescaleDB é usado se a extensão existir).
+            db_path (str): Caminho do arquivo SQLite ou URL SQLAlchemy do PostgreSQL
+                           (ex.: postgresql+psycopg://usuario:senha@host:5432/banco).
             time_basis (str): 'broker' grava o horário do servidor da corretora como o MT5 devolve
                               (padrão, comportamento histórico); 'utc' converte para UTC ao gravar.
             broker_utc_offset (float): fuso da corretora em horas (B3: -3). Usado só com 'utc'.
@@ -49,7 +52,7 @@ class DatabaseManager:
 
     def _connect(self):
         """Estabelece a conexão com o banco de dados."""
-        log.info(f"Configurando conexão com banco de dados: Tipo={self.db_type}, Path={self.db_path}")
+        log.info(f"Configurando conexão com banco de dados: Tipo={self.db_type}, Path={self._safe_location()}")
         try:
             if self.db_type == 'sqlite':
                 # Garante que o diretório do banco existe
@@ -64,12 +67,14 @@ class DatabaseManager:
                 with self.engine.connect() as connection:
                     log.info(f"Conexão com banco de dados SQLite estabelecida: {self.db_path}")
                 self._ensure_control_tables()
-            # TODO: Adicionar suporte para outros tipos de banco (PostgreSQL/TimescaleDB)
-            # elif self.db_type == 'postgresql':
-            #     # connection_string = f'postgresql://user:password@host:port/database'
-            #     # self.engine = create_engine(connection_string)
-            #     log.warning("Suporte a PostgreSQL ainda não implementado.")
-            #     self.engine = None
+            elif self.db_type == 'postgresql':
+                self.engine = create_engine(self.db_path, pool_pre_ping=True)
+                with self.engine.connect() as connection:
+                    self._timescale = bool(connection.execute(text(
+                        "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar())
+                log.info(f"Conexão com PostgreSQL estabelecida: {self._safe_location()}"
+                         + (" (TimescaleDB disponível)" if self._timescale else ""))
+                self._ensure_control_tables()
             else:
                 log.error(f"Tipo de banco de dados não suportado: {self.db_type}")
                 self.engine = None
@@ -81,6 +86,33 @@ class DatabaseManager:
             log.error(f"Erro inesperado ao configurar banco de dados: {e}")
             log.debug(traceback.format_exc())
             self.engine = None
+
+    _timescale = False
+
+    def _safe_location(self):
+        """Caminho/URL para logs, sem a senha."""
+        if self.db_type == 'sqlite':
+            return self.db_path
+        try:
+            return make_url(self.db_path).render_as_string(hide_password=True)
+        except Exception:
+            return "<url inválida>"
+
+    @property
+    def dialect(self):
+        return self.engine.dialect.name if self.engine is not None else self.db_type
+
+    def _data_tables(self):
+        """Tabelas de dados de símbolos (as internas começam com '_')."""
+        names = inspect(self.engine).get_table_names()
+        return sorted(n for n in names if not n.startswith('_') and not n.startswith('sqlite_'))
+
+    @staticmethod
+    def _as_datetime(value):
+        """Horário lido do banco: texto no SQLite, datetime no PostgreSQL."""
+        if isinstance(value, datetime):
+            return value
+        return pd.Timestamp(str(value)).to_pydatetime()
 
     def is_connected(self):
         """Verifica se a conexão com o banco de dados está ativa."""
@@ -94,9 +126,9 @@ class DatabaseManager:
         "high": "REAL",
         "low": "REAL",
         "close": "REAL",
-        "tick_volume": "INTEGER",
+        "tick_volume": "BIGINT",   # BIGINT: no PostgreSQL INTEGER tem 32 bits (no SQLite é igual)
         "spread": "INTEGER",
-        "real_volume": "INTEGER",
+        "real_volume": "BIGINT",
         "rsi": "REAL",
         "macd_line": "REAL",
         "macd_signal": "REAL",
@@ -175,6 +207,10 @@ class DatabaseManager:
                     # Citar o nome da tabela para segurança
                     create_sql = f'CREATE TABLE "{table_name}" ({", ".join(column_defs)})'
                     connection.execute(text(create_sql))
+                    if self._timescale:
+                        # TimescaleDB: particiona por tempo (consultas por período mais rápidas)
+                        connection.execute(text("SELECT create_hypertable(:t, 'time', if_not_exists => TRUE, "
+                                                "migrate_data => TRUE)"), {"t": table_name})
                     # Adicionar commit explícito após DDL
                     if hasattr(connection, 'commit'):
                         connection.commit()
@@ -299,7 +335,8 @@ class DatabaseManager:
                 r['time'] = r['time'].to_pydatetime()
         with self.engine.begin() as conn:
             for i in range(0, len(records), self._UPSERT_CHUNK_ROWS):
-                stmt = sqlite_insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
+                insert = postgresql_insert if self.dialect == 'postgresql' else sqlite_insert
+                stmt = insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
                 update_cols = {c: stmt.excluded[c] for c in data.columns if c != 'time'}
                 conn.execute(stmt.on_conflict_do_update(index_elements=['time'], set_=update_cols))
         return len(records)
@@ -310,10 +347,6 @@ class DatabaseManager:
         if not inspector.has_table(table_name):
             return False
         return inspector.get_pk_constraint(table_name).get('constrained_columns') == ['time']
-
-    # Tabelas de dados de símbolos; tabelas internas começam com "_" (ex.: _extraction_log)
-    _DATA_TABLES_SQL = ("SELECT name FROM sqlite_master WHERE type='table' "
-                        "AND name NOT LIKE 'sqlite_%' AND substr(name, 1, 1) != '_'")
 
     # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
     _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
@@ -380,7 +413,7 @@ class DatabaseManager:
                 " volume_min REAL, volume_step REAL, volume_max REAL, contract_size REAL,"
                 " currency_profit TEXT, spread REAL, updated_at TEXT)"))
             # Colunas adicionadas depois (bases antigas recebem via ALTER TABLE)
-            cols = {row[1] for row in conn.execute(text("PRAGMA table_info(_extraction_log)"))}
+            cols = {c["name"] for c in inspect(conn).get_columns("_extraction_log")}
             if "quality_json" not in cols:
                 conn.execute(text("ALTER TABLE _extraction_log ADD COLUMN quality_json TEXT"))
 
@@ -403,7 +436,7 @@ class DatabaseManager:
             rows = conn.execute(text(
                 "SELECT block_start, quality_json FROM _extraction_log "
                 "WHERE table_name = :t AND quality_json IS NOT NULL ORDER BY block_start"), {"t": table_name}).fetchall()
-        return [(a, json.loads(q)) for a, q in rows]
+        return [(self._as_datetime(a).strftime(self._TIME_FMT), json.loads(q)) for a, q in rows]
 
     def completed_blocks(self, table_name):
         """Blocos (inicio, fim) já concluídos (status 'ok' ou 'empty') para a tabela."""
@@ -411,7 +444,7 @@ class DatabaseManager:
             rows = conn.execute(text(
                 "SELECT block_start, block_end FROM _extraction_log "
                 "WHERE table_name = :t AND status IN ('ok', 'empty')"), {"t": table_name}).fetchall()
-        return {(datetime.strptime(a, self._TIME_FMT), datetime.strptime(b, self._TIME_FMT)) for a, b in rows}
+        return {(self._as_datetime(a), self._as_datetime(b)) for a, b in rows}
 
     TICK_FIELDS = ("time", "time_msc", "seq", "bid", "ask", "last", "volume", "volume_real", "flags")
 
@@ -439,8 +472,8 @@ class DatabaseManager:
         updates = ", ".join(f"{c} = excluded.{c}" for c in self.TICK_FIELDS if c not in ("time_msc", "seq"))
         with self.engine.begin() as conn:
             conn.execute(text(
-                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time TEXT NOT NULL, time_msc INTEGER NOT NULL, '
-                f'seq INTEGER NOT NULL, bid REAL, ask REAL, last REAL, volume INTEGER, volume_real REAL, '
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time TEXT NOT NULL, time_msc BIGINT NOT NULL, '
+                f'seq INTEGER NOT NULL, bid REAL, ask REAL, last REAL, volume BIGINT, volume_real REAL, '
                 f'flags INTEGER, PRIMARY KEY (time_msc, seq))'))
             sql = text(f'INSERT INTO "{table_name}" ({cols}) VALUES ({params}) '
                        f'ON CONFLICT(time_msc, seq) DO UPDATE SET {updates}')
@@ -461,7 +494,7 @@ class DatabaseManager:
         params = ", ".join(f":{c}" for c in self.BOOK_FIELDS)
         with self.engine.begin() as conn:
             conn.execute(text(
-                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time_utc TEXT NOT NULL, time_msc INTEGER NOT NULL, '
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time_utc TEXT NOT NULL, time_msc BIGINT NOT NULL, '
                 f'type INTEGER NOT NULL, price REAL NOT NULL, volume REAL, PRIMARY KEY (time_msc, type, price))'))
             conn.execute(text(f'INSERT INTO "{table_name}" ({cols}) VALUES ({params}) '
                               f'ON CONFLICT(time_msc, type, price) DO UPDATE SET volume = excluded.volume'), rows)
@@ -563,18 +596,7 @@ class DatabaseManager:
             return []
         
         try:
-            # Consulta todas as tabelas no banco de dados SQLite
-            with self.engine.connect() as conn:
-                if self.db_type == 'sqlite':
-                    # Para SQLite
-                    result = conn.execute(text(self._DATA_TABLES_SQL))
-                    tables = [row[0] for row in result]
-                # Adicionar suporte para PostgreSQL depois
-                # elif self.db_type == 'postgresql':
-                #     result = conn.execute(text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema'"))
-                #     tables = [row[0] for row in result]
-                else:
-                    tables = []
+            tables = self._data_tables()
             
             # Filtra apenas tabelas que seguem o padrão de nome de símbolos
             # Assume um padrão como symbol_timeframe (ex: win_n_1_minuto)
@@ -605,11 +627,9 @@ class DatabaseManager:
         try:
             with self.engine.connect() as conn:
                 # Verifica se a tabela existe
-                if self.db_type == 'sqlite':
-                    result = conn.execute(text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"))
-                    if not result.scalar():
-                        log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
-                        return None
+                if not inspect(conn).has_table(table_name):
+                    log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
+                    return None
                 
                 # Informações básicas (contagem, data mais antiga, data mais recente)
                 count_query = f"SELECT COUNT(*) FROM {table_name}"
@@ -629,20 +649,14 @@ class DatabaseManager:
                 max_date_query = f"SELECT MAX(time) FROM {table_name}"
                 result = conn.execute(text(max_date_query))
                 data_fim = result.scalar()
-                # O SQLite devolve o horário como texto: converte (e volta para a base de tempo configurada)
+                # Texto no SQLite, datetime no PostgreSQL: converte (e volta para a base de tempo configurada)
                 data_inicio = self._from_storage(pd.to_datetime(data_inicio)) if data_inicio is not None else None
                 data_fim = self._from_storage(pd.to_datetime(data_fim)) if data_fim is not None else None
                 
                 # Verificar intervalo de tempo (média de tempo entre registros)
-                if total_registros > 1:
-                    # Calcula média de tempo entre registros (para detectar timeframe)
-                    interval_query = f"""
-                    SELECT 
-                        (JULIANDAY(MAX(time)) - JULIANDAY(MIN(time))) * 24 * 60 / (COUNT(*) - 1) as avg_minutes
-                    FROM {table_name}
-                    """
-                    result = conn.execute(text(interval_query))
-                    intervalo_medio_minutos = result.scalar() or 0
+                if total_registros > 1 and data_inicio is not None and data_fim is not None:
+                    # Média de tempo entre registros (para detectar o timeframe)
+                    intervalo_medio_minutos = (data_fim - data_inicio).total_seconds() / 60 / (total_registros - 1)
                 else:
                     intervalo_medio_minutos = 0
                 
@@ -727,32 +741,25 @@ class DatabaseManager:
             
         try:
             with self.engine.connect() as conn:
-                # Executa VACUUM para otimizar espaço (apenas SQLite)
-                if self.db_type == 'sqlite':
-                    log.info("Iniciando otimização de banco de dados (VACUUM)...")
-                    conn.execute(text("VACUUM"))
-                    log.info("Otimização VACUUM concluída.")
-                    
-                    # Cria índices para melhorar a performance de consultas por data
-                    tables = self.get_existing_symbols()
-                    indexed_tables = 0
-                    
-                    for table in tables:
-                        try:
-                            # Verifica se o índice já existe
-                            index_check = conn.execute(text(f"SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='{table}' AND name='idx_{table}_time'"))
-                            if not index_check.scalar():
-                                # Cria índice de tempo para consultas mais rápidas
-                                log.info(f"Criando índice de tempo para a tabela {table}...")
-                                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_{table}_time ON {table} (time)"))
-                                indexed_tables += 1
-                        except Exception as idx_err:
-                            log.warning(f"Erro ao criar índice para {table}: {idx_err}")
-                    
-                    log.info(f"Criados índices para {indexed_tables} tabelas.")
-                    return True
-                    
-                # Lógica para PostgreSQL pode ser adicionada no futuro
+                # VACUUM (SQLite) / VACUUM ANALYZE (PostgreSQL) não rodam dentro de transação
+                conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+                log.info("Iniciando otimização de banco de dados (VACUUM)...")
+                conn.execute(text("VACUUM" if self.dialect == 'sqlite' else "VACUUM ANALYZE"))
+                log.info("Otimização VACUUM concluída.")
+
+                # Cria índices para melhorar a performance de consultas por data
+                indexed_tables = 0
+                for table in self.get_existing_symbols():
+                    try:
+                        existing = {ix["name"] for ix in inspect(conn).get_indexes(table)}
+                        if f"idx_{table}_time" not in existing:
+                            log.info(f"Criando índice de tempo para a tabela {table}...")
+                            conn.execute(text(f'CREATE INDEX IF NOT EXISTS "idx_{table}_time" ON "{table}" (time)'))
+                            indexed_tables += 1
+                    except Exception as idx_err:
+                        log.warning(f"Erro ao criar índice para {table}: {idx_err}")
+
+                log.info(f"Criados índices para {indexed_tables} tabelas.")
                 return True
                 
         except SQLAlchemyError as e:
@@ -811,18 +818,9 @@ class DatabaseManager:
                 return []
                 
         try:
-            # Para SQLite
-            if self.db_type == 'sqlite':
-                query = self._DATA_TABLES_SQL
-                result = pd.read_sql_query(query, self.engine)
-                tables = result['name'].tolist()
-                log.info(f"Encontradas {len(tables)} tabelas no banco de dados.")
-                return tables
-                
-            # Para outros bancos (PostgreSQL, MySQL)
-            # Implementar conforme necessário
-                
-            return []
+            tables = self._data_tables()
+            log.info(f"Encontradas {len(tables)} tabelas no banco de dados.")
+            return tables
         except Exception as e:
             log.error(f"Erro ao listar tabelas: {e}")
             return []
@@ -898,12 +896,9 @@ class DatabaseManager:
             
         try:
             # Verifica se a tabela existe
-            if self.db_type == 'sqlite':
-                with self.engine.connect() as conn:
-                    result = conn.execute(text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"))
-                    if not result.scalar():
-                        log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
-                        return None
+            if not inspect(self.engine).has_table(table_name):
+                log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
+                return None
             
             # Consulta os dados mais recentes
             query = f"""

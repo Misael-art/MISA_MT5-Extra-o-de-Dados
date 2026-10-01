@@ -13,7 +13,7 @@ linha de comando, e ajuda a pesquisar estratégias sobre a base construída.
   - roda vários símbolos em paralelo.
 - **Atualização incremental**: do último registro até agora ("Atualizar até agora" na interface, `mt5x update` agendável via cron/Agendador de Tarefas).
 - **Qualidade dos dados**: relatório por bloco (OHLC inválido, volume zero, duplicatas, lacunas no pregão).
-- **Banco SQLite**:
+- **Banco SQLite** (padrão, um arquivo) **ou PostgreSQL/TimescaleDB** (servidor):
   - tabela por símbolo e timeframe, com nomes sem colisão entre símbolos;
   - base de tempo explícita (horário da corretora ou UTC).
 - **Ticks** (bid/ask/last) em blocos com retomada: `mt5x ticks`, tabela `<símbolo>_ticks`.
@@ -82,8 +82,11 @@ O arquivo é gerado pelo instalador (referência completa em `config/config.ini.
    - Credenciais **não** ficam aqui: use `.env` (`MT5_LOGIN`, `MT5_PASSWORD`, `MT5_SERVER`), criado pelo assistente `python -m mt5_extracao.bootstrap configure`.
 - **`[BRIDGE]`** (Linux): `enabled`, `host`, `port`, `wine_python` da ponte RPyC para o MT5 no Wine.
 - **`[DATABASE]`**:
-   - `type`: Tipo do banco (atualmente apenas `sqlite`).
+   - `type`: `sqlite` (padrão) ou `postgresql`.
    - `path`: Caminho para o arquivo do banco de dados SQLite.
+   - `url`: endereço do PostgreSQL, ex.: `postgresql://usuario@localhost:5432/mt5`. A senha vai em
+     `DB_PASSWORD` no arquivo `.env` (nunca no `config.ini`). Requer o pacote opcional `psycopg`.
+     Se a extensão TimescaleDB estiver instalada no banco, as tabelas de barras viram hypertables.
 - **`[FALLBACK]`**:
    - `external_source_m1_fallback_enabled`: `True` ou `False` para habilitar o fallback para dados M1 se a extração MT5 falhar.
    - `external_source_m1_type`: `Csv` preenche blocos M1 que o MT5 não entregou com arquivos da pasta

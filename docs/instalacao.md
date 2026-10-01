@@ -111,6 +111,24 @@ no Linux, com `crontab -e`; no Windows, no Prompt de Comando. A saída do cron v
 
 Guia completo: [estrategias.md](estrategias.md).
 
+## Banco PostgreSQL / TimescaleDB (opcional)
+
+O padrão é SQLite (um arquivo, nada a instalar). Para bases grandes ou acesso por várias máquinas:
+
+1. Crie o banco no servidor (ex.: `createdb mt5`) e instale o driver: `.venv/bin/pip install "psycopg[binary]"`
+   (o instalador já tenta instalá-lo junto com os opcionais).
+2. Em `config/config.ini`:
+   ```ini
+   [DATABASE]
+   type = postgresql
+   url = postgresql://usuario@localhost:5432/mt5
+   ```
+3. No arquivo `.env`: `DB_PASSWORD=sua_senha` (a senha nunca vai no `config.ini`).
+4. Confira com `./run.sh --cli tables`.
+
+Se a extensão TimescaleDB existir no banco (`CREATE EXTENSION timescaledb;`), as tabelas de barras
+novas são criadas como hypertables automaticamente.
+
 ## Diagnóstico
 
 ```bash

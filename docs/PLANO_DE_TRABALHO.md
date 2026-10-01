@@ -54,7 +54,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ✅ concluída |
 | T4.5 | Remover módulos "enhanced" não usados | T4.3 | ✅ concluída (3 removidos; 2 mantidos com justificativa) |
 | T5.1 | Exportação Parquet / DuckDB | T1.1 | ✅ concluída |
-| T5.2 | PostgreSQL / TimescaleDB | T1.1 | ⏳ |
+| T5.2 | PostgreSQL / TimescaleDB | T1.1 | ✅ concluída (hypertable do TimescaleDB não testada) |
 | T5.3 | Coleta de ticks | T1.2 | ✅ concluída (CLI `mt5x ticks`; na GUI ainda não) |
 | T5.4 | Snapshots do book (DOM) | T5.3 | ✅ concluída (CLI `mt5x book`) |
 | T5.5 | Fonte externa real (importação CSV) | T1.2 | ✅ concluída |
@@ -771,7 +771,7 @@ ou integre o que for útil ao `IndicatorCalculator`. Faça **um PR por módulo**
 | ID | Resumo do que fazer | Aceite |
 |---|---|---|
 | T5.1 ✅ | `DataExporter`: formatos `parquet` (via `pyarrow`, opcional) e `duckdb` (arquivo `.duckdb` com uma tabela por símbolo). Dependências em `requirements-optional.txt` | Exportar 1 milhão de linhas em < 10 s |
-| T5.2 | `DatabaseManager` com `db_type = postgresql`: string de conexão em `[DATABASE] url` e senha no `.env` (`DB_PASSWORD`). Upsert com `sqlalchemy.dialects.postgresql.insert`. Se a extensão TimescaleDB existir, `create_hypertable` na criação da tabela | Testes com `testcontainers` ou serviço `postgres` no CI |
+| T5.2 ✅ | `DatabaseManager` com `db_type = postgresql`: string de conexão em `[DATABASE] url` e senha no `.env` (`DB_PASSWORD`). Upsert com `sqlalchemy.dialects.postgresql.insert`. Se a extensão TimescaleDB existir, `create_hypertable` na criação da tabela. **Registrado:** colunas de 64 bits (`time_msc`, `tick_volume`, `real_volume`) passam a `BIGINT` em tabelas novas (no PostgreSQL `INTEGER` tem 32 bits; no SQLite não muda nada) | Serviço `postgres` no CI (job "Testes PostgreSQL", `tests/test_postgresql.py`) |
 | T5.3 ✅ | Ticks: `copy_ticks_range(symbol, from, to, COPY_TICKS_ALL)` em blocos de 1 dia; tabela `<símbolo>_ticks` com PK `(time_msc, seq)` — **mudança registrada:** o MT5 devolve vários ticks no mesmo milissegundo, e uma PK só em `time_msc` descartaria ticks; `seq` é a ordem dentro do milissegundo. Blocos consecutivos compartilham a borda (a ponte envia segundos inteiros); a PK evita duplicatas. Mesma `_extraction_log` | Retomada funciona como em T1.2 |
 | T5.4 ✅ | Book: `market_book_add` + `market_book_get` em laço (intervalo configurável); tabela `<símbolo>_book` (`time_utc`, `time_msc`, `type`, `price`, `volume`, PK `(time_msc, type, price)`). O MT5 não informa o horário do book: usa-se o relógio do computador em UTC (`book_collector.py`) | Coleta por 1 h sem crescer memória (teste com relógio simulado: no máximo `flush_every` snapshots em memória) |
 | T5.5 ✅ | `CsvExternalSource(ExternalDataSource)` (aceita também a exportação de barras do MT5, separada por tabulação): lê CSVs de uma pasta (`[FALLBACK] csv_dir`) com colunas `time,open,high,low,close,real_volume`; tipo `Csv` em `[FALLBACK] external_source_m1_type` e a fábrica em `app.py` (onde hoje escolhe `DummyExternalSource`) | Fallback M1 preenche lacuna a partir do CSV |

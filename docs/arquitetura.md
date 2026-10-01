@@ -101,7 +101,7 @@ preparam Python, `.venv`, MT5 (no Linux, Wine + Python do Windows + ponte) e cha
   - Pula blocos já concluídos (retomada) e continua depois de falhas.
   - Aquece indicadores com as 500 barras anteriores.
   - `update_symbols` faz a atualização incremental, do último registro até agora.
-- **`DatabaseManager`** (SQLite + SQLAlchemy 2.0)
+- **`DatabaseManager`** (SQLAlchemy 2.0; SQLite por padrão ou PostgreSQL com `[DATABASE] type = postgresql`)
   - Upsert por `time` em lotes de 200 linhas.
   - Horário gravado como texto `%Y-%m-%d %H:%M:%S.%f`, na base de tempo configurada (`broker` ou `utc`), registrada em `_metadata`.
   - Tabelas internas (prefixo `_`) ficam ocultas nas listagens. As mudanças de schema são sempre aditivas.
@@ -149,7 +149,7 @@ Guia do usuário: [estrategias.md](estrategias.md). Resumo técnico:
 |---|---|
 | `[MT5]` | Caminho do terminal (`path`, `windows_path`, `wine_prefix`) |
 | `[BRIDGE]` | Ponte do Linux (`enabled`, `host`, `port`, `wine_python`) |
-| `[DATABASE]` | `type`, `path` |
+| `[DATABASE]` | `type` (`sqlite`/`postgresql`), `path` (SQLite), `url` (PostgreSQL; senha em `DB_PASSWORD` no `.env`) |
 | `[EXTRACTION]` | Tamanho dos blocos por timeframe |
 | `[FALLBACK]` | Fonte externa para lacunas M1 |
 | `[APP]` | Pregão (qualidade), base de tempo e fuso da corretora |

@@ -32,8 +32,9 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("wine_python", ""),     # C:\Python311\python.exe dentro do prefixo
     ])),
     ("DATABASE", OrderedDict([
-        ("type", "sqlite"),
-        ("path", "database/mt5_data.db"),
+        ("type", "sqlite"),               # sqlite ou postgresql
+        ("path", "database/mt5_data.db"),  # arquivo SQLite
+        ("url", ""),                       # PostgreSQL: postgresql://usuario@host:5432/banco (senha: DB_PASSWORD no .env)
     ])),
     ("EXTRACTION", OrderedDict([
         ("chunk_days_m1", "30"),

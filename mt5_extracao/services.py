@@ -85,11 +85,38 @@ def load_config(config_path: str = DEFAULT_CONFIG_PATH) -> configparser.ConfigPa
     return config
 
 
+def database_url(config: configparser.ConfigParser) -> str:
+    """
+    URL do PostgreSQL a partir de [DATABASE] url. A senha vem de DB_PASSWORD (variável de ambiente
+    ou .env do projeto) e nunca do config.ini. Sem driver na URL, usa psycopg (versão 3).
+    """
+    from sqlalchemy.engine import make_url
+    raw = config.get("DATABASE", "url", fallback="").strip()
+    if not raw:
+        raise ValueError("Com [DATABASE] type = postgresql, defina [DATABASE] url, por exemplo: "
+                         "postgresql://usuario@localhost:5432/mt5 (senha em DB_PASSWORD no arquivo .env)")
+    url = make_url(raw)
+    if url.password is not None:
+        log.warning("A senha está em [DATABASE] url no config.ini; mova-a para DB_PASSWORD no arquivo .env.")
+    else:
+        password = os.environ.get("DB_PASSWORD")
+        if password is None:
+            from mt5_extracao.bootstrap.config_builder import read_env_file
+            password = read_env_file(os.path.join(project_root(), ".env")).get("DB_PASSWORD")
+        if password:
+            url = url.set(password=password)
+    if url.drivername == "postgresql":
+        url = url.set(drivername="postgresql+psycopg")
+    return url.render_as_string(hide_password=False)
+
+
 def create_db_manager(config: configparser.ConfigParser, db_path: Optional[str] = None):
     from mt5_extracao.database_manager import DatabaseManager
-    db_type = config.get("DATABASE", "type", fallback="sqlite")
-    path = resolve_db_path(config, db_path) if db_type == "sqlite" else \
-        (db_path or config.get("DATABASE", "path", fallback=DEFAULT_DB_PATH))
+    db_type = config.get("DATABASE", "type", fallback="sqlite").strip().lower()
+    if db_type == "postgresql":
+        path = db_path or database_url(config)
+    else:
+        path = resolve_db_path(config, db_path)
     return DatabaseManager(db_type=db_type, db_path=path,
                            time_basis=config.get("APP", "time_basis", fallback="broker").strip().lower(),
                            broker_utc_offset=config.getfloat("APP", "broker_utc_offset", fallback=-3.0))

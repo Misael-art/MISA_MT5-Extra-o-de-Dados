@@ -6,3 +6,5 @@ pandas-ta
 # pyarrow / duckdb: exportação Parquet e DuckDB (mt5x export --format parquet|duckdb)
 pyarrow
 duckdb
+# psycopg: banco PostgreSQL/TimescaleDB ([DATABASE] type = postgresql)
+psycopg[binary]

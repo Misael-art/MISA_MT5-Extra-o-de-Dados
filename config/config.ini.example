@@ -24,8 +24,11 @@ port = 18812
 wine_python = 
 
 [DATABASE]
+# sqlite (padrão, um arquivo) ou postgresql (servidor; TimescaleDB é usado se a extensão existir)
 type = sqlite
 path = database/mt5_data.db
+# PostgreSQL: postgresql://usuario@localhost:5432/mt5 — a senha vai em DB_PASSWORD no arquivo .env
+url = 
 
 [EXTRACTION]
 chunk_days_m1 = 30
