@@ -6,6 +6,7 @@ import traceback
 import pandas as pd
 import time
 import threading
+import queue
 import os
 from pathlib import Path
 import json
@@ -1644,8 +1645,20 @@ Status: Sem dados no banco. Disponível para coleta.
         help_menu.add_command(label="Documentação", command=self.open_documentation)
         help_menu.add_command(label="Sobre", command=self.show_about)
         
+        # Menu Estratégias (pesquisa com os dados do banco; não envia ordens)
+        strategy_menu = tk.Menu(menu_bar, tearoff=0)
+        strategy_menu.add_command(label="Triagem de ativos (Filtros A e B)...",
+                                  command=lambda: self.open_strategy_dialog("screen"))
+        strategy_menu.add_command(label="Validar estratégias (Filtro C)...",
+                                  command=lambda: self.open_strategy_dialog("validate"))
+        strategy_menu.add_command(label="Gerar relatório e abrir no navegador...",
+                                  command=lambda: self.open_strategy_dialog("report"))
+        strategy_menu.add_separator()
+        strategy_menu.add_command(label="Sobre as estratégias", command=self.show_strategies_info)
+
         # Adicionar menus à barra de menu
         menu_bar.add_cascade(label="Arquivo", menu=file_menu)
+        menu_bar.add_cascade(label="Estratégias", menu=strategy_menu)
         menu_bar.add_cascade(label="Ajuda", menu=help_menu)
         
         # Configurar a barra de menu
@@ -1987,6 +2000,150 @@ Status: Sem dados no banco. Disponível para coleta.
         close_button = ttk.Button(main_frame, text="Fechar", command=about_dialog.destroy)
         close_button.pack(side=tk.BOTTOM, pady=10)
         
+    # --- Estratégias -----------------------------------------------------------------
+
+    def show_strategies_info(self):
+        from mt5_extracao.strategies import AVOID, REGISTRY
+        lines = [f"• {c.info.name} ({c.info.regime}): acerto {c.info.win_rate}, R:R {c.info.reward_risk}, "
+                 f"{', '.join(c.info.timeframes)}" for c in REGISTRY.values()]
+        lines += ["", "Evite no início:"] + [f"• {n}: {why}" for n, why in AVOID]
+        lines += ["", "Backtest não garante resultado futuro. Guia completo: docs/estrategias.md"]
+        messagebox.showinfo("Estratégias", "\n".join(lines))
+
+    def open_strategy_dialog(self, mode):
+        """Diálogo único para triagem, validação e relatório (roda em segundo plano)."""
+        from mt5_extracao import services, timeframes
+        from mt5_extracao.strategies import REGISTRY
+        if not getattr(self.app, "db_manager", None) or not self.app.db_manager.is_connected():
+            messagebox.showerror("Estratégias", "Banco de dados não disponível.")
+            return
+        titles = {"screen": "Triagem de ativos", "validate": "Validar estratégias (Filtro C)",
+                  "report": "Relatório de estratégias"}
+        dialog = tk.Toplevel(self.root)
+        dialog.title(titles[mode])
+        dialog.geometry("820x520")
+        frame = ttk.Frame(dialog, padding=10)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Timeframe:").grid(row=0, column=0, sticky="w")
+        tf_var = tk.StringVar(value="D1")
+        ttk.Combobox(frame, textvariable=tf_var, width=6, state="readonly",
+                     values=[t.name for t in timeframes.MAIN]).grid(row=0, column=1, sticky="w")
+        ttk.Label(frame, text="Símbolos (vazio = todos com dados):").grid(row=1, column=0, sticky="w", pady=4)
+        symbols_var = tk.StringVar(value=",".join(self.app.selected_symbols or []))
+        ttk.Entry(frame, textvariable=symbols_var, width=60).grid(row=1, column=1, columnspan=3, sticky="we")
+
+        strategy_vars = {}
+        if mode in ("validate", "report"):
+            box = ttk.LabelFrame(frame, text="Estratégias a validar" if mode == "validate"
+                                 else "Validar antes de gerar (opcional; pode levar minutos)")
+            box.grid(row=2, column=0, columnspan=4, sticky="we", pady=6)
+            for i, (key, cls) in enumerate(REGISTRY.items()):
+                strategy_vars[key] = tk.BooleanVar(value=(mode == "validate"))
+                ttk.Checkbutton(box, text=cls.info.name, variable=strategy_vars[key]).grid(
+                    row=i // 3, column=i % 3, sticky="w", padx=6)
+
+        status = tk.StringVar(value="Escolha o timeframe e clique em Executar.")
+        ttk.Label(frame, textvariable=status, wraplength=780).grid(row=3, column=0, columnspan=4, sticky="w", pady=4)
+        columns = ("Ativo", "Válido", "Regime", "Estratégia", "Score", "Observação")
+        tree = ttk.Treeview(frame, columns=columns, show="headings", height=12)
+        for col, width in zip(columns, (90, 60, 90, 170, 50, 340)):
+            tree.heading(col, text=col)
+            tree.column(col, width=width, anchor="w")
+        tree.grid(row=4, column=0, columnspan=4, sticky="nsew")
+        frame.rowconfigure(4, weight=1)
+        frame.columnconfigure(3, weight=1)
+        run_button = ttk.Button(frame, text="Executar")
+        run_button.grid(row=0, column=3, sticky="e")
+
+        # A thread de trabalho nunca toca no Tkinter: envia (função, args) para a fila,
+        # que a thread principal esvazia a cada 100 ms.
+        pending = queue.Queue()
+
+        def ui(fn, *args):
+            pending.put((fn, args))
+
+        def poll():
+            if not dialog.winfo_exists():
+                return
+            while True:
+                try:
+                    fn, args = pending.get_nowait()
+                except queue.Empty:
+                    break
+                fn(*args)
+            if "disabled" in run_button.state() or not pending.empty():
+                dialog.after(100, poll)
+
+        def show_rows(rows):
+            tree.delete(*tree.get_children())
+            for r in rows:
+                obs = "; ".join(r["notes"] + r["warnings"] + ([r["validated"]] if r["validated"] else [])) \
+                    if r["valid"] else "; ".join(r["reasons"])
+                tree.insert("", tk.END, values=(r["symbol"], ("⚠" if r["warnings"] else "✅") if r["valid"] else "❌",
+                                                r["regime"], r["strategy_name"] if r["valid"] else "—",
+                                                f"{r['score']:.0f}", obs))
+
+        def show_verdicts(verdicts):
+            tree.delete(*tree.get_children())
+            for v in verdicts:
+                tree.insert("", tk.END, values=(v["symbol"], "✅" if v["approved"] else "❌", "",
+                                                REGISTRY[v["strategy"]].info.name, "", v["status"]))
+
+        def finish(message):
+            status.set(message)
+            run_button.state(["!disabled"])
+
+        def work(tf, symbols, keys):
+            from mt5_extracao.strategies import research
+            progress = lambda msg: ui(status.set, msg)
+            try:
+                config = services.load_config()
+            except FileNotFoundError:
+                config = None
+            try:
+                db = self.app.db_manager
+                symbols = symbols or research.symbols_with_data(db, tf)
+                if not symbols:
+                    ui(finish, f"Nenhum símbolo com dados em {tf.name}. Extraia dados primeiro.")
+                    return
+                if mode == "screen":
+                    rows, missing = research.run_screen(db, symbols, tf, config, progress)
+                    ui(show_rows, rows)
+                    msg = f"{sum(r['valid'] for r in rows)} de {len(rows)} ativo(s) aptos."
+                elif mode == "validate":
+                    verdicts, missing = research.run_validation(db, symbols, tf, keys, config, progress)
+                    ui(show_verdicts, verdicts)
+                    msg = f"{sum(v['approved'] for v in verdicts)} de {len(verdicts)} combinação(ões) aprovada(s)."
+                else:
+                    if keys:
+                        research.run_validation(db, symbols, tf, keys, config, progress)
+                    path, rows, missing = research.build_report(db, symbols, tf, config, progress=progress)
+                    ui(show_rows, rows)
+                    import webbrowser
+                    webbrowser.open(Path(os.path.abspath(path)).as_uri())
+                    msg = f"Relatório salvo em {os.path.abspath(path)} e aberto no navegador."
+                if missing:
+                    msg += " " + research.missing_message(missing, tf)
+                ui(finish, msg)
+            except Exception as e:  # mostrado ao usuário; detalhes no log
+                log.exception("Erro na pesquisa de estratégias")
+                ui(finish, f"Erro: {e}")
+
+        def run():
+            tf = timeframes.parse(tf_var.get())
+            symbols = [x.strip() for x in symbols_var.get().split(",") if x.strip()]
+            keys = [k for k, var in strategy_vars.items() if var.get()]
+            if mode == "validate" and not keys:
+                messagebox.showwarning("Estratégias", "Marque ao menos uma estratégia.", parent=dialog)
+                return
+            run_button.state(["disabled"])
+            status.set("Processando...")
+            threading.Thread(target=work, args=(tf, symbols, keys), daemon=True).start()
+            dialog.after(100, poll)
+
+        run_button.configure(command=run)
+
     def open_documentation(self):
         """Abre a documentação"""
         doc_path = Path("docs/manual.html")

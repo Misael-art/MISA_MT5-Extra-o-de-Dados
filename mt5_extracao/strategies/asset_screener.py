@@ -286,7 +286,8 @@ def screen(data: Dict[str, pd.DataFrame], specs: Dict[str, SymbolSpec], bar_minu
     # Liquidez relativa (precisa de ao menos 3 ativos para fazer sentido)
     liq = pd.Series({r["symbol"]: r["a"]["liquidity"] for r in rows}, dtype=float)
     if liq.notna().sum() >= 3:
-        pct = liq.rank(pct=True, method="max") * 100
+        # 0 = menos líquido, 100 = mais líquido (posição entre os ativos analisados)
+        pct = (liq.rank(method="min") - 1) / (liq.notna().sum() - 1) * 100
         for r in rows:
             p = pct.get(r["symbol"], np.nan)
             ok = bool(np.isfinite(p) and p >= cfg.min_liquidity_percentile)
