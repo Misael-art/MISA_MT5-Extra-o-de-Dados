@@ -49,7 +49,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T3.3 | `pyproject.toml` (substitui `setup.py`) | — | ✅ concluída |
 | T3.4 | Timeframes como enum próprio | T2.2 | ✅ concluída |
 | T4.1 | Remover arquivos mortos e unificar pontos de entrada | T0.1 | ✅ concluída |
-| T4.2 | Logging centralizado | — | ⏳ |
+| T4.2 | Logging centralizado | — | ✅ concluída |
 | T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | 🔄 `tests/fakes.py` e `conftest.py` criados; falta cobertura ≥ 60% |
 | T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ⏳ |
 | T4.5 | Remover módulos "enhanced" não usados | T4.3 | ⏳ |
@@ -712,7 +712,7 @@ minutos por barra. Substitua os mapeamentos espalhados (`MT5Connector._convert_t
 
 **Critérios de aceite:** a raiz tem só: `app.py`, `install.bat`, `install.sh`, `run.bat`, `run.sh`, wrappers, docs e configs.
 
-### T4.2 — Logging centralizado
+### T4.2 — Logging centralizado ✅
 
 **Objetivo:** hoje cada módulo cria `logs/` e seus próprios handlers ao ser importado, o que
 duplica linhas no console e cria pastas no diretório atual.
@@ -721,6 +721,12 @@ duplica linhas no console e cria pastas no diretório atual.
 `RotatingFileHandler` de 5 MB × 5 arquivos e um `StreamHandler`). Remova de **todos** os módulos o
 bloco `if not log.handlers: ...` e o `os.makedirs("logs")`; deixe só `log = logging.getLogger(__name__)`.
 Chame `setup_logging` apenas em `app.py`, na CLI e nos scripts.
+
+**Feito:** `mt5_extracao/logging_setup.py` (`setup_logging`/`teardown_logging`, arquivo único
+`logs/mt5_extracao.log` na pasta do projeto). A CLI grava INFO no arquivo e mostra no console só
+avisos/erros (tudo com `-v`). Exceções mantidas de propósito: `scripts/mt5_bridge_server.py` roda no
+Python do Wine sem o pacote instalado (usa `basicConfig`), e os scripts de `scripts/manual/` são
+diagnósticos avulsos. Os `basicConfig` dentro de `if __name__ == "__main__"` dos módulos também ficam.
 
 ### T4.3 — Provedor MT5 falso + testes
 

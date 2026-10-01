@@ -15,22 +15,9 @@ import json
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.error_handler import with_error_handling, ExportError
 
-# Garantir que o diretório de logs existe
-os.makedirs("logs", exist_ok=True)
 
-# Configuração de logging (pode ser centralizada depois)
+# Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # Adicionar um handler de arquivo
-    fh = logging.FileHandler("logs/ui_manager.log", encoding="utf-8")
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
 
 class UIManager:
     """
@@ -932,7 +919,7 @@ Status: Sem dados no banco. Disponível para coleta.
         log.error(f"Exceção não tratada na UI: {error_msg}") # Usa o logger do UIManager
         messagebox.showerror("Erro Inesperado",
                            f"Ocorreu um erro inesperado na interface:\n{str(exc_value)}\n\n"
-                           "Consulte o arquivo mt5_app.log para mais detalhes.") # Aspas corrigidas
+                           "Consulte logs/mt5_extracao.log para mais detalhes.") # Aspas corrigidas
     def log_error(self, exception, message="Erro"):
         """Registra erro no log e exibe mensagem de erro na UI."""
         error_details = str(exception)

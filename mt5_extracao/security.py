@@ -17,18 +17,6 @@ except ImportError:
 
 # Configuração de logging
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # Adicionar um handler de arquivo
-    os.makedirs("logs", exist_ok=True)
-    fh = logging.FileHandler("logs/security.log", encoding="utf-8")
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
 
 class CredentialManager:
     """

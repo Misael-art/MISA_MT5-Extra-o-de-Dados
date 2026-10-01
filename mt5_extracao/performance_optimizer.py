@@ -11,12 +11,6 @@ from datetime import datetime
 
 # Configuração de logging
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
 
 class PerformanceOptimizer:
     """

@@ -13,22 +13,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
 
-# Garantir que o diretório de logs existe
-os.makedirs("logs", exist_ok=True)
 
-# Configuração de logging (pode ser centralizada depois)
+# Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # Adicionar um handler de arquivo
-    fh = logging.FileHandler("logs/database_manager.log", encoding="utf-8")
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
 
 class DatabaseManager:
     """

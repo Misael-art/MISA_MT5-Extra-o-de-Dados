@@ -24,18 +24,10 @@ from mt5_extracao.enhanced_calculation_service import EnhancedCalculationService
 from mt5_extracao.performance_optimizer import PerformanceOptimizer
 from mt5_extracao import services
 from typing import Optional # Adicionado para type hint
-# Garantir que o diretório de logs existe
-os.makedirs("logs", exist_ok=True)
+from mt5_extracao.logging_setup import setup_logging
 
-# Configuração de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("logs/mt5_app.log", encoding="utf-8"),
-        logging.StreamHandler()
-    ]
-)
+# Logging central: logs/mt5_extracao.log (rotativo) + console
+setup_logging()
 
 # Função para verificar dependências críticas antes de continuar
 def verificar_dependencias_criticas():
@@ -316,7 +308,7 @@ class MT5Extracao:
                 logging.error("Falha ao conectar ao banco de dados via DatabaseManager.")
                 messagebox.showerror("Erro de Banco de Dados",
                                    "Não foi possível conectar ao banco de dados configurado.\n"
-                                   "Verifique as configurações e o log 'mt5_app.log'.")
+                                   "Verifique as configurações e o log 'logs/mt5_extracao.log'.")
                 return False # Indica falha
 
             logging.info("DatabaseManager inicializado com sucesso.")

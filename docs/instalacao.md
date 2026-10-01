@@ -141,4 +141,6 @@ Elas ficam em `.env`, com permissão 600 no Linux, e o arquivo está no `.gitign
 | Arch: falha ao instalar o Wine | Habilite `[multilib]` em `/etc/pacman.conf` |
 | Proxy corporativo | Defina `HTTPS_PROXY` antes de rodar o instalador |
 
-Logs da instalação: `logs/install-windows.log` e `logs/install-linux.log`.
+Logs da instalação: `logs/install-windows.log` e `logs/install-linux.log`. Log do programa (interface e
+linha de comando): `logs/mt5_extracao.log` (gira a cada 5 MB, guarda 5 arquivos). Na linha de comando,
+`-v` também mostra os detalhes no console.

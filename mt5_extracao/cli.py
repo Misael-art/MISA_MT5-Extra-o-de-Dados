@@ -31,6 +31,7 @@ from datetime import datetime
 from pathlib import Path
 
 from mt5_extracao import services, timeframes
+from mt5_extracao.logging_setup import setup_logging, teardown_logging
 
 EXIT_OK, EXIT_FAIL, EXIT_USAGE = 0, 1, 2
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -524,9 +525,8 @@ def main(argv=None):
     _tolerant_streams()
     parser = build_parser()
     args = parser.parse_args(argv)
-    if not args.verbose:
-        # Os módulos do núcleo registram INFO no console; na CLI só avisos e erros
-        logging.disable(logging.INFO)
+    # Arquivo de log sempre completo (INFO); no console só avisos e erros, salvo com -v
+    setup_logging(console_level=logging.INFO if args.verbose else logging.WARNING)
     ctx = Context(args)
     try:
         return args.func(args, ctx)
@@ -540,7 +540,7 @@ def main(argv=None):
         _err("interrompido pelo usuário")
         return EXIT_FAIL
     finally:
-        logging.disable(logging.NOTSET)
+        teardown_logging()
 
 
 if __name__ == "__main__":
