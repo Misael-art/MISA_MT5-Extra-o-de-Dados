@@ -36,7 +36,7 @@ def create_db_manager(config: configparser.ConfigParser, db_path: Optional[str] 
 
 def create_external_source(config: configparser.ConfigParser):
     """Fonte externa para o fallback M1 ([FALLBACK]) ou None."""
-    from mt5_extracao.external_data_source import DummyExternalSource
+    from mt5_extracao.external_data_source import CsvExternalSource, DummyExternalSource
     try:
         enabled = config.getboolean("FALLBACK", "external_source_m1_fallback_enabled", fallback=False)
         source_type = (config.get("FALLBACK", "external_source_m1_type", fallback="") or "").strip().lower()
@@ -49,6 +49,10 @@ def create_external_source(config: configparser.ConfigParser):
     if source_type == "dummy":
         log.info("Fallback M1 habilitado. Usando DummyExternalSource.")
         return DummyExternalSource()
+    if source_type == "csv":
+        csv_dir = config.get("FALLBACK", "csv_dir", fallback="").strip()
+        log.info(f"Fallback M1 habilitado. Usando arquivos CSV de '{csv_dir}'.")
+        return CsvExternalSource(csv_dir)
     log.warning(f"Fallback M1 habilitado, mas o tipo '{source_type}' não é reconhecido. Fallback inativo.")
     return None
 

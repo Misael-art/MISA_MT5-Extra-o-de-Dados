@@ -42,7 +42,8 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
     ])),
     ("FALLBACK", OrderedDict([
         ("external_source_m1_fallback_enabled", "False"),
-        ("external_source_m1_type", "Dummy"),
+        ("external_source_m1_type", "Dummy"),   # Dummy (teste) ou Csv
+        ("csv_dir", ""),                         # pasta com <símbolo>.csv (tipo Csv)
     ])),
     ("APP", OrderedDict([
         ("session_start", "09:00"),  # início do pregão (relatório de qualidade: lacunas)

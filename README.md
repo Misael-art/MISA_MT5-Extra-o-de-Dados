@@ -84,7 +84,10 @@ O arquivo é gerado pelo instalador (referência completa em `config/config.ini.
    - `path`: Caminho para o arquivo do banco de dados SQLite.
 - **`[FALLBACK]`**:
    - `external_source_m1_fallback_enabled`: `True` ou `False` para habilitar o fallback para dados M1 se a extração MT5 falhar.
-   - `external_source_m1_type`: Tipo da fonte externa (atualmente suporta `Dummy` para testes).
+   - `external_source_m1_type`: `Csv` preenche blocos M1 que o MT5 não entregou com arquivos da pasta
+     `csv_dir` (`<símbolo>.csv` com `time,open,high,low,close,...` ou a exportação de barras do próprio
+     MT5, "Barras → Exportar"); `Dummy` só para testes.
+   - `csv_dir`: pasta dos arquivos CSV.
 - **`[EXTRACTION]`**:
    - `chunk_days_m1`: Tamanho do bloco (em dias) para extração M1 (padrão: 30).
    - `chunk_days_m5_m15`: Tamanho do bloco para M5/M15 (padrão: 90).

@@ -7,7 +7,7 @@
 # [BRIDGE]    ponte RPyC para acessar o MT5 do Wine a partir do Linux
 # [DATABASE]  type = sqlite; path relativo à raiz do projeto
 # [EXTRACTION] tamanho dos blocos (dias) por timeframe
-# [FALLBACK]  fonte externa para M1 (apenas "Dummy" implementado)
+# [FALLBACK]  fonte externa para lacunas M1: "Dummy" (teste) ou "Csv" (arquivos em csv_dir)
 # [APP]       horário do pregão (HH:MM) usado pelo relatório de qualidade (lacunas);
 #             time_basis: broker (horário da corretora, padrão) ou utc; broker_utc_offset: fuso (B3 = -3)
 # Credenciais NÃO ficam aqui: use o arquivo .env (veja .env.example).
@@ -34,7 +34,9 @@ chunk_days_default = 365
 
 [FALLBACK]
 external_source_m1_fallback_enabled = False
+# Dummy (teste) ou Csv. Com Csv, coloque <símbolo>.csv (ou a exportação de barras do MT5) em csv_dir
 external_source_m1_type = Dummy
+csv_dir = 
 
 [APP]
 session_start = 09:00
