@@ -236,7 +236,7 @@ def schedule_commands(every, symbols, tf, hours="9-18", days="1-5", root=PROJECT
     minute_field = f"*/{n}" if unit == "m" else "0"
     hour_field = hours if unit == "m" else f"{hours}/{n}" if "-" in hours else f"*/{n}"
     # No cron o comando passa pelo shell: aspas simples evitam que "$N" em "WIN$N" seja expandido
-    cron = (f"{minute_field} {hour_field} * * {days} cd {shlex.quote(str(root))} && "
+    cron = (f"{minute_field} {hour_field} * * {days} cd {shlex.quote(Path(root).as_posix())} && "
             f"./run.sh --cli update --symbols {shlex.quote(joined)} --tf {tf.name}{extra} >> logs/cron.log 2>&1")
     sc = "MINUTE" if unit == "m" else "HOURLY"
     schtasks = (f'schtasks /Create /SC {sc} /MO {n} /TN "MT5 Extracao Update {tf.name}" '
