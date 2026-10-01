@@ -20,3 +20,9 @@ def test_removed_files():
                  "test_mt5_connection.py", "mt5_workaround.py"):
         assert not (REPO / name).exists(), name
     assert (REPO / "scripts" / "manual" / "test_mt5_connection.py").exists()
+
+
+def test_unused_enhanced_modules_removed():
+    """T4.5: módulos sem uso a partir de app.py/CLI foram removidos (um commit por módulo)."""
+    for name in ("integrated_services.py",):
+        assert not (REPO / "mt5_extracao" / name).exists(), name

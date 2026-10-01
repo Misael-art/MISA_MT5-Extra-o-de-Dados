@@ -19,7 +19,6 @@ from mt5_extracao.data_collector import DataCollector
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.security import CredentialManager
 from mt5_extracao.error_handler import with_error_handling, ErrorHandler
-from mt5_extracao.integrated_services import IntegratedServices
 from mt5_extracao.enhanced_calculation_service import EnhancedCalculationService
 from mt5_extracao.performance_optimizer import PerformanceOptimizer
 from mt5_extracao import services
@@ -162,7 +161,6 @@ class MT5Extracao:
         self.ui_manager = None
         self.data_collector = None
         self.data_exporter = None  # Novo atributo para o DataExporter
-        self.integrated_services = None  # Novo atributo para os serviços integrados
         self.historical_extractor = None # Novo atributo para o HistoricalExtractor
         
         # Configurar a janela principal
@@ -208,35 +206,6 @@ class MT5Extracao:
             
             # Configurar tipos de timeframes disponíveis
             self.setup_timeframes()
-            
-            # Inicializar serviços avançados integrados se disponíveis
-            try:
-                logging.info("Inicializando serviços avançados de cálculo...")
-                
-                # Obter configurações avançadas ou usar padrões
-                advanced_config = {}
-                if hasattr(self, 'config') and 'advanced' in self.config:
-                    advanced_config = self.config['advanced']
-                
-                # Criar instância do serviço integrado
-                self.integrated_services = IntegratedServices()
-                
-                # Verificar inicialização bem sucedida
-                if self.integrated_services.initialized:
-                    logging.info("Serviços avançados inicializados com sucesso")
-                    
-                    # Iniciar serviço de cálculo
-                    if hasattr(self.integrated_services, 'calculation_service') and self.integrated_services.calculation_service:
-                        self.integrated_services.calculation_service.start()
-                        logging.info("Serviço de cálculo iniciado")
-                else:
-                    logging.warning("Inicialização dos serviços avançados incompleta")
-                    if self.integrated_services.initialization_errors:
-                        logging.warning(f"Erros de inicialização: {', '.join(self.integrated_services.initialization_errors)}")
-            except Exception as e:
-                logging.warning(f"Não foi possível inicializar serviços avançados: {str(e)}")
-                logging.debug(traceback.format_exc())
-                self.integrated_services = None
             
             # Criar o gerenciador de UI
             logging.info("Instanciando UIManager...")
@@ -892,14 +861,6 @@ class MT5Extracao:
         # Encerrar conexões e recursos
         try:
             logging.info("Encerrando conexões devido a erro...")
-            
-            # Encerrar serviços integrados
-            if hasattr(self, 'integrated_services') and self.integrated_services:
-                try:
-                    self.integrated_services.shutdown()
-                    logging.info("Serviços avançados encerrados")
-                except Exception as e:
-                    logging.error(f"Erro ao encerrar serviços avançados: {str(e)}")
             
             # Encerrar conexão MT5
             if hasattr(self, 'mt5_connector') and self.mt5_connector:
