@@ -6,7 +6,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x tables
     mt5x extract --symbols WIN$N,WDO$N --tf M1 --from 2024-01-01 [--to 2024-06-30] [--indicators]
     mt5x update  --symbols WIN$N --tf M1 [--indicators]
-    mt5x export  --table win_n_1_minuto --format csv|excel [--out arquivo]
+    mt5x export  --table win_n_1_minuto --format csv|excel|parquet|duckdb [--out arquivo]
     mt5x quality --table win_n_1_minuto [--details]
     mt5x schedule --every 15m --symbols WIN$N --tf M1
 
@@ -211,20 +211,31 @@ def cmd_update(args, ctx):
 
 def cmd_export(args, ctx):
     from mt5_extracao.data_exporter import DataExporter
+    from mt5_extracao.error_handler import ExportError
     tables = ctx.db.get_all_tables()
     if args.table not in tables:
         raise ValueError(f"tabela '{args.table}' não existe. Tabelas: {', '.join(tables) or '(nenhuma)'}")
     exporter = DataExporter(ctx.db)
     out = os.path.abspath(args.out) if args.out else None
-    if args.format == "csv":
-        path = exporter.export_to_csv(args.table, caminho_arquivo=out)
-    else:
-        path = exporter.export_to_excel(args.table, caminho_arquivo=out)
+    try:
+        path = _export(exporter, args, out)
+    except ExportError as e:
+        raise RuntimeError(str(e))
     if not path:
         _err("nada exportado (tabela vazia?)")
         return EXIT_FAIL
     _print(f"Exportado: {path}")
     return EXIT_OK
+
+
+def _export(exporter, args, out):
+    if args.format == "csv":
+        return exporter.export_to_csv(args.table, caminho_arquivo=out)
+    if args.format == "excel":
+        return exporter.export_to_excel(args.table, caminho_arquivo=out)
+    if args.format == "parquet":
+        return exporter.export_to_parquet(args.table, caminho_arquivo=out)
+    return exporter.export_to_duckdb([args.table], caminho_arquivo=out)
 
 
 def _parse_every(text):
@@ -457,7 +468,8 @@ def build_parser():
 
     p = sub.add_parser("export", help="exporta uma tabela")
     p.add_argument("--table", required=True, help="nome da tabela (veja 'mt5x tables')")
-    p.add_argument("--format", choices=["csv", "excel"], default="csv")
+    p.add_argument("--format", choices=["csv", "excel", "parquet", "duckdb"], default="csv",
+                   help="parquet e duckdb exigem os pacotes opcionais pyarrow/duckdb")
     p.add_argument("--out", help="arquivo de saída (padrão: exports/<tabela>_<data>.<ext>)")
     p.set_defaults(func=cmd_export)
 

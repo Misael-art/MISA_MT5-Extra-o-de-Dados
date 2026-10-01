@@ -53,7 +53,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T4.3 | Provedor MT5 falso + testes do extrator e do banco | T2.1 | ✅ concluída (cobertura: banco 70%, extrator 72%, backend 93%; mínimo de 60% verificado no CI) |
 | T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ✅ concluída |
 | T4.5 | Remover módulos "enhanced" não usados | T4.3 | ✅ concluída (3 removidos; 2 mantidos com justificativa) |
-| T5.1 | Exportação Parquet / DuckDB | T1.1 | ⏳ |
+| T5.1 | Exportação Parquet / DuckDB | T1.1 | ✅ concluída |
 | T5.2 | PostgreSQL / TimescaleDB | T1.1 | ⏳ |
 | T5.3 | Coleta de ticks | T1.2 | ⏳ |
 | T5.4 | Snapshots do book (DOM) | T5.3 | ⏳ |
@@ -770,7 +770,7 @@ ou integre o que for útil ao `IndicatorCalculator`. Faça **um PR por módulo**
 
 | ID | Resumo do que fazer | Aceite |
 |---|---|---|
-| T5.1 | `DataExporter`: formatos `parquet` (via `pyarrow`, opcional) e `duckdb` (arquivo `.duckdb` com uma tabela por símbolo). Dependências em `requirements-optional.txt` | Exportar 1 milhão de linhas em < 10 s |
+| T5.1 ✅ | `DataExporter`: formatos `parquet` (via `pyarrow`, opcional) e `duckdb` (arquivo `.duckdb` com uma tabela por símbolo). Dependências em `requirements-optional.txt` | Exportar 1 milhão de linhas em < 10 s |
 | T5.2 | `DatabaseManager` com `db_type = postgresql`: string de conexão em `[DATABASE] url` e senha no `.env` (`DB_PASSWORD`). Upsert com `sqlalchemy.dialects.postgresql.insert`. Se a extensão TimescaleDB existir, `create_hypertable` na criação da tabela | Testes com `testcontainers` ou serviço `postgres` no CI |
 | T5.3 | Ticks: `copy_ticks_range(symbol, from, to, COPY_TICKS_ALL)` em blocos de 1 dia; tabela `<símbolo>_ticks` com PK `(time_msc)`; mesma `_extraction_log` | Retomada funciona como em T1.2 |
 | T5.4 | Book: `market_book_add` + `market_book_get` em laço (intervalo configurável); tabela `<símbolo>_book` (`time_msc`, `type`, `price`, `volume`) | Coleta por 1 h sem crescer memória |

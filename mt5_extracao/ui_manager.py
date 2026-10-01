@@ -1608,6 +1608,8 @@ Status: Sem dados no banco. Disponível para coleta.
         export_menu = tk.Menu(file_menu, tearoff=0)
         export_menu.add_command(label="Exportar para CSV", command=lambda: self.export_data("csv"))
         export_menu.add_command(label="Exportar para Excel", command=lambda: self.export_data("excel"))
+        export_menu.add_command(label="Exportar para Parquet", command=lambda: self.export_data("parquet"))
+        export_menu.add_command(label="Exportar para DuckDB", command=lambda: self.export_data("duckdb"))
         export_menu.add_separator()
         export_menu.add_command(label="Exportar Múltiplas Tabelas", command=self.export_multiple_tables)
         
@@ -1768,6 +1770,30 @@ Status: Sem dados no banco. Disponível para coleta.
                             adicionar_timestamp=False
                         )
                         
+                        if result_path:
+                            messagebox.showinfo("Sucesso", f"Dados exportados com sucesso para:\n{result_path}")
+                            export_dialog.destroy()
+                        else:
+                            messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
+                    except Exception as e:
+                        messagebox.showerror("Erro", f"Falha ao exportar: {str(e)}")
+
+            elif format_type.lower() in ('parquet', 'duckdb'):
+                ext = format_type.lower()
+                file_path = filedialog.asksaveasfilename(
+                    defaultextension=f".{ext}",
+                    filetypes=[(f"{ext.capitalize()} files", f"*.{ext}"), ("All files", "*.*")],
+                    initialfile=f"{table_name}.{ext}"
+                )
+                if file_path:
+                    try:
+                        if ext == 'parquet':
+                            result_path = self.data_exporter.export_to_parquet(
+                                table_name, caminho_arquivo=file_path, filtros=filters or None,
+                                adicionar_timestamp=False)
+                        else:
+                            result_path = self.data_exporter.export_to_duckdb(
+                                [table_name], caminho_arquivo=file_path, filtros=filters or None)
                         if result_path:
                             messagebox.showinfo("Sucesso", f"Dados exportados com sucesso para:\n{result_path}")
                             export_dialog.destroy()

@@ -235,10 +235,18 @@ setup_python_env() {
     info "Instalando dependências (pode levar alguns minutos)..."
     "$VENV_PY" -m pip install -r "$PROJECT_ROOT/requirements.txt" \
         || die "Falha ao instalar dependências de requirements.txt"
-    if "$VENV_PY" -m pip install -r "$PROJECT_ROOT/requirements-optional.txt" --quiet 2>/dev/null; then
+    # Opcionais um a um: a falha de um (ex.: pandas-ta) não impede os outros
+    local pkg failed=()
+    while IFS= read -r pkg || [[ -n "$pkg" ]]; do
+        pkg="${pkg%%#*}"
+        pkg="${pkg//[[:space:]]/}"
+        [[ -z "$pkg" ]] && continue
+        "$VENV_PY" -m pip install "$pkg" --quiet 2>/dev/null || failed+=("$pkg")
+    done < "$PROJECT_ROOT/requirements-optional.txt"
+    if ((${#failed[@]} == 0)); then
         ok "Dependências opcionais instaladas"
     else
-        warn "Dependências opcionais (pandas-ta) indisponíveis; o app usará indicadores básicos"
+        warn "Opcionais indisponíveis: ${failed[*]}. O app funciona sem eles (pandas-ta: indicadores básicos; pyarrow/duckdb: exportação Parquet/DuckDB)"
     fi
     ok "Dependências Python instaladas"
 }

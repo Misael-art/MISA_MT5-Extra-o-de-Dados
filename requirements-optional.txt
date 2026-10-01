@@ -3,3 +3,6 @@
 # Obs.: versões antigas foram retiradas do PyPI; pode não haver versão
 # compatível com o seu Python.
 pandas-ta
+# pyarrow / duckdb: exportação Parquet e DuckDB (mt5x export --format parquet|duckdb)
+pyarrow
+duckdb

@@ -89,6 +89,77 @@ class DataExporter:
             log.error(error_msg)
             raise ExportError(error_msg, format="csv", file_path=caminho_arquivo, details=str(e))
     
+    def _read_table(self, tabela, filtros=None):
+        query = f'SELECT * FROM "{tabela}"'
+        if filtros:
+            query += f" WHERE {filtros}"
+        df = self.db_manager.execute_query(query)
+        if df is not None and not df.empty and "time" in df.columns:
+            df["time"] = pd.to_datetime(df["time"])   # no SQLite o horário é texto
+        return df
+
+    def _default_path(self, tabela, ext, adicionar_timestamp=True):
+        tabela_limpa = self._limpar_nome_tabela(tabela)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") if adicionar_timestamp else ""
+        return self.export_dir / (f"{tabela_limpa}_{timestamp}.{ext}" if timestamp else f"{tabela_limpa}.{ext}")
+
+    def export_to_parquet(self, tabela, caminho_arquivo=None, filtros=None, adicionar_timestamp=True):
+        """
+        Exporta uma tabela para Parquet (colunar e compacto; lido por pandas, Polars, DuckDB, Spark).
+        Requer o pacote opcional pyarrow (requirements-optional.txt).
+        """
+        try:
+            import pyarrow  # noqa: F401
+        except ImportError:
+            raise ExportError("Exportação Parquet requer o pacote 'pyarrow'. Instale com: "
+                              "pip install -r requirements-optional.txt", format="parquet")
+        caminho_arquivo = Path(caminho_arquivo) if caminho_arquivo else \
+            self._default_path(tabela, "parquet", adicionar_timestamp)
+        df = self._read_table(tabela, filtros)
+        if df is None or df.empty:
+            log.warning(f"Nenhum dado encontrado na tabela {tabela} com os filtros especificados")
+            return None
+        caminho_arquivo.parent.mkdir(parents=True, exist_ok=True)
+        df.to_parquet(caminho_arquivo, index=False, compression="zstd")
+        log.info(f"Exportação Parquet concluída: {len(df)} registros em {caminho_arquivo}")
+        return str(caminho_arquivo)
+
+    def export_to_duckdb(self, tabelas, caminho_arquivo=None, filtros=None):
+        """
+        Exporta uma ou mais tabelas para um arquivo DuckDB (.duckdb), uma tabela por símbolo/timeframe,
+        com 'time' como TIMESTAMP. Tabelas existentes no arquivo são substituídas.
+        Requer o pacote opcional duckdb (requirements-optional.txt).
+        """
+        try:
+            import duckdb
+        except ImportError:
+            raise ExportError("Exportação DuckDB requer o pacote 'duckdb'. Instale com: "
+                              "pip install -r requirements-optional.txt", format="duckdb")
+        if isinstance(tabelas, str):
+            tabelas = [tabelas]
+        caminho_arquivo = Path(caminho_arquivo) if caminho_arquivo else \
+            self.export_dir / f"mt5_dados_{datetime.now():%Y%m%d_%H%M%S}.duckdb"
+        caminho_arquivo.parent.mkdir(parents=True, exist_ok=True)
+        exported = 0
+        con = duckdb.connect(str(caminho_arquivo))
+        try:
+            for tabela in tabelas:
+                df = self._read_table(tabela, filtros)
+                if df is None or df.empty:
+                    log.warning(f"Tabela {tabela} vazia; não exportada.")
+                    continue
+                nome = self._limpar_nome_tabela(tabela)
+                con.register("df_export", df)
+                con.execute(f'CREATE OR REPLACE TABLE "{nome}" AS SELECT * FROM df_export ORDER BY time')
+                con.unregister("df_export")
+                exported += 1
+        finally:
+            con.close()
+        if not exported:
+            return None
+        log.info(f"Exportação DuckDB concluída: {exported} tabela(s) em {caminho_arquivo}")
+        return str(caminho_arquivo)
+
     @with_error_handling(error_type=ExportError, retry_count=1)
     def export_to_excel(self, tabela, caminho_arquivo=None, filtros=None, adicionar_timestamp=True):
         """

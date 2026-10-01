@@ -190,9 +190,15 @@ function Initialize-PythonEnv {
     Invoke-Native $VenvPy @("-m", "pip", "install", "--upgrade", "pip", "--quiet", "--disable-pip-version-check") "Falha ao atualizar o pip"
     Write-Info "Instalando dependências (pode levar alguns minutos)..."
     Invoke-Native $VenvPy @("-m", "pip", "install", "-r", (Join-Path $ProjectRoot "requirements.txt"), "--disable-pip-version-check") "Falha ao instalar requirements.txt"
-    $optional = Invoke-Quiet $VenvPy @("-m", "pip", "install", "-r", (Join-Path $ProjectRoot "requirements-optional.txt"), "--disable-pip-version-check")
-    if ($optional -eq 0) { Write-Ok "Dependências opcionais instaladas" }
-    else { Write-Warn "Dependências opcionais (pandas-ta) indisponíveis; o app usará indicadores básicos" }
+    # Opcionais um a um: a falha de um (ex.: pandas-ta) não impede os outros
+    $failed = @()
+    foreach ($line in Get-Content (Join-Path $ProjectRoot "requirements-optional.txt")) {
+        $pkg = ($line -split "#")[0].Trim()
+        if (-not $pkg) { continue }
+        if ((Invoke-Quiet $VenvPy @("-m", "pip", "install", $pkg, "--disable-pip-version-check")) -ne 0) { $failed += $pkg }
+    }
+    if ($failed.Count -eq 0) { Write-Ok "Dependências opcionais instaladas" }
+    else { Write-Warn "Opcionais indisponíveis: $($failed -join ', '). O app funciona sem eles (pandas-ta: indicadores básicos; pyarrow/duckdb: exportação Parquet/DuckDB)" }
     Write-Ok "Dependências instaladas"
 }
 

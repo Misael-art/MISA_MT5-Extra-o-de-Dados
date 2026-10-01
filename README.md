@@ -17,7 +17,7 @@ linha de comando, e ajuda a pesquisar estratégias sobre a base construída.
   - tabela por símbolo e timeframe, com nomes sem colisão entre símbolos;
   - base de tempo explícita (horário da corretora ou UTC).
 - **Indicadores técnicos** opcionais na extração e coleta M1 em tempo real.
-- **Exportação** para CSV e Excel (interface ou `mt5x export`).
+- **Exportação** para CSV, Excel, Parquet e DuckDB (interface ou `mt5x export`).
 - **Credenciais** só no arquivo `.env` (privado, fora do git).
 - **Linha de comando `mt5x`** para servidores e automação; códigos de saída padronizados.
 - **Estratégias e triagem de ativos**: seis estratégias clássicas, backtest com custos reais,
