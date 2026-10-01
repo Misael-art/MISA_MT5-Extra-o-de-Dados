@@ -65,8 +65,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.4 | Validação: walk-forward, robustez ±20%, Monte Carlo, Filtro C | T6.3 | ✅ concluída |
 | T6.5 | Especificações do símbolo (`_symbol_specs`) e leitura de OHLCV do banco | T1.1 | ✅ concluída |
 | T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ✅ concluída |
-| T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ⏳ |
-| T6.8 | Documentação `docs/estrategias.md` | T6.7 | ⏳ |
+| T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ✅ concluída |
+| T6.8 | Documentação `docs/estrategias.md` | T6.7 | ✅ concluída |
 
 ---
 
@@ -868,13 +868,17 @@ evento (CSV `[SCREENER] events_file` com `time,symbol,impact`: evento de alto im
 `event_window_hours` horas bloqueia), correlação com a carteira (`[SCREENER] portfolio`, penaliza > 0,7).
 Saída: `Ativo | Válido | Regime | Estratégia sugerida | Score | Observação`.
 
-### T6.7 — CLI, relatório e GUI
+### T6.7 — CLI, relatório e GUI ✅
 
 `mt5x strategies` (tabela-resumo + "evite no início"), `mt5x specs`, `mt5x backtest`, `mt5x validate`,
 `mt5x screen`, `mt5x report` (HTML autocontido em `exports/`, matriz ativo × estratégia com
 métricas e veredito). GUI: menu "Estratégias" que gera o relatório e abre no navegador.
+A orquestração fica em `strategies/research.py` (sem Tkinter) e é usada pela CLI e pela GUI.
+**Armadilha:** a thread de trabalho da GUI nunca chama o Tkinter; envia atualizações por uma
+`queue.Queue` que a thread principal esvazia com `after()` (chamar `root.after` de outra thread
+gera `RuntimeError: main thread is not in main loop`).
 
-### T6.8 — Documentação
+### T6.8 — Documentação ✅
 
 `docs/estrategias.md` para o usuário final: o que cada filtro faz, como ler o relatório,
 tabela das estratégias, lista "evite no início" e o aviso de que backtest não garante resultado futuro.

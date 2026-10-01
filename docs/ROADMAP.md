@@ -13,7 +13,7 @@ As regras para agentes estão em [../AGENTS.md](../AGENTS.md).
 ```
 F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação ──► F5 Escala e novos dados
     │                                             ▲
-    └─────────► F2 Núcleo desacoplado + Linux ────┘
+    └─────────► F2 Núcleo desacoplado + Linux ────┘   F6 Estratégias e triagem (usa a base de F1)
                          │
                          └────────► F4 Qualidade e manutenção (contínua)
 ```
@@ -26,6 +26,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F3** CLI e automação | `mt5x extract/update/export/doctor`, agendamento, `pyproject.toml` | T3.1–T3.4 | F1, F2 | ⏳ |
 | **F4** Qualidade | Limpeza de arquivos, logging central, testes com provedor falso, docs | T4.1–T4.5 | F0 (pode ir em paralelo) | ⏳ |
 | **F5** Escala | Parquet/DuckDB, PostgreSQL/TimescaleDB, ticks, book, fonte externa real | T5.1–T5.6 | F1, F3 | ⏳ |
+| **F6** Estratégias | Seis estratégias, backtest com custos, walk-forward/Monte Carlo (Filtro C), triagem de ativos (Filtros A e B), relatório HTML, menu na GUI | T6.1–T6.8 | F1, F3 | ✅ |
 
 ## Marcos (cada marco = versão publicável)
 
@@ -47,6 +48,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 5. T3.3 → T3.1 → T3.2 → T3.4
 6. T4.4, T4.5
 7. T5.x conforme a necessidade
+8. F6 (T6.1 → T6.8) já concluída; novas estratégias seguem o roteiro em docs/estrategias.md ("Para desenvolvedores")
 
 As fases F1 e F2 são independentes e podem ser executadas em paralelo por
 agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
@@ -55,5 +57,5 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 ## Fora do escopo (por ora)
 
 - macOS: o pacote MetaTrader5 não existe e o Wine no macOS é instável. A arquitetura da ponte (F2) permitiria suportá-lo no futuro.
-- Envio de ordens / trading automatizado: o projeto é de **extração de dados**.
+- Envio de ordens / trading automatizado: o projeto é de **extração de dados** e **pesquisa** (F6 faz backtest e triagem, nunca envia ordens).
 - Bases em nuvem gerenciadas (AWS RDS etc.): basta apontar T5.2 para o host.

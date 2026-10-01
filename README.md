@@ -12,6 +12,9 @@ Aplicação para extração e armazenamento de dados financeiros do MetaTrader 5
 - **Exportação**: Exporta dados para formatos CSV e Excel.
 - **Gerenciamento de Credenciais**: Credenciais no arquivo `.env` (privado, fora do git).
 - **Interface Gráfica**: Interface amigável para interação com o usuário.
+- **Estratégias e triagem de ativos**: seis estratégias clássicas, backtest com custos reais,
+  validação (walk-forward, robustez, Monte Carlo) e triagem de ativos com relatório HTML.
+  Veja [docs/estrategias.md](docs/estrategias.md). Não envia ordens.
 
 ## Novidades
 
@@ -94,6 +97,7 @@ O arquivo é gerado pelo instalador (referência completa em `config/config.ini.
 Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 
 - [Instalação automática](docs/instalacao.md)
+- [Estratégias, backtest e triagem de ativos](docs/estrategias.md)
 - [Roadmap](docs/ROADMAP.md) e [Plano de trabalho detalhado](docs/PLANO_DE_TRABALHO.md)
 - [Regras para agentes/contribuidores](AGENTS.md)
 

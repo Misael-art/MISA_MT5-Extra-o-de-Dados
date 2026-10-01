@@ -96,6 +96,19 @@ O comando **mostra** (não instala) a linha pronta para o `cron` (Linux) ou o co
 (Windows). Por padrão, das 9h às 18h, de segunda a sexta (`--hours 9-18 --days 1-5`). Revise e cole:
 no Linux, com `crontab -e`; no Windows, no Prompt de Comando. A saída do cron vai para `logs/cron.log`.
 
+### Estratégias e triagem de ativos
+
+| Comando | Exemplo |
+|---|---|
+| Lista das estratégias | `./run.sh --cli strategies` |
+| Especificações do contrato | `./run.sh --cli specs --symbols 'WIN$N,WDO$N'` |
+| Triagem (Filtros A e B) | `./run.sh --cli screen --tf D1` |
+| Validação (Filtro C) | `./run.sh --cli validate --tf D1 --strategies all` |
+| Backtest isolado | `./run.sh --cli backtest --symbol 'WIN$N' --tf M15 --strategy orb` |
+| Relatório HTML | `./run.sh --cli report --tf D1 --open` |
+
+Guia completo: [estrategias.md](estrategias.md).
+
 ## Diagnóstico
 
 ```bash
