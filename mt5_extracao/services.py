@@ -60,12 +60,12 @@ def resolve_db_path(config: configparser.ConfigParser, db_path: Optional[str] = 
     path = os.path.expanduser(path)
     if os.path.isabs(path):
         return path
-    in_project = os.path.join(project_root(), path)
+    in_project = os.path.normpath(os.path.join(project_root(), path))
     data_dir = config.get("APP", "data_dir", fallback="").strip()
     if not data_dir:
         return in_project
     base = user_data_dir() if data_dir.lower() == "auto" else os.path.expanduser(data_dir)
-    target = os.path.join(base, path)
+    target = os.path.normpath(os.path.join(base, path))
     if os.path.exists(in_project) and not os.path.exists(target):
         log.info(f"Banco existente em {in_project}; mantido (o novo local seria {target}). "
                  "Para mudar, mova o arquivo para lá.")
