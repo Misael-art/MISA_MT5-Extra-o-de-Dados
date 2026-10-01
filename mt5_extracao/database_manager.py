@@ -575,6 +575,9 @@ class DatabaseManager:
                 max_date_query = f"SELECT MAX(time) FROM {table_name}"
                 result = conn.execute(text(max_date_query))
                 data_fim = result.scalar()
+                # O SQLite devolve o horário como texto: converte (e volta para a base de tempo configurada)
+                data_inicio = self._from_storage(pd.to_datetime(data_inicio)) if data_inicio is not None else None
+                data_fim = self._from_storage(pd.to_datetime(data_fim)) if data_fim is not None else None
                 
                 # Verificar intervalo de tempo (média de tempo entre registros)
                 if total_registros > 1:
