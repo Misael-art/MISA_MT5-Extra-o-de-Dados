@@ -62,7 +62,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.1 | Indicadores puros (`strategies/indicators.py`) | — | ✅ concluída |
 | T6.2 | Seis estratégias com interface comum (`gerar_sinais`) | T6.1 | ✅ concluída |
 | T6.3 | Backtester com custos reais e dimensionamento por risco | T6.2 | ✅ concluída |
-| T6.4 | Validação: walk-forward, robustez ±20%, Monte Carlo, Filtro C | T6.3 | ⏳ |
+| T6.4 | Validação: walk-forward, robustez ±20%, Monte Carlo, Filtro C | T6.3 | ✅ concluída |
 | T6.5 | Especificações do símbolo (`_symbol_specs`) e leitura de OHLCV do banco | T1.1 | ⏳ |
 | T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ⏳ |
 | T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ⏳ |
@@ -829,7 +829,7 @@ Regras (documente qualquer mudança):
 5. Métricas: nº de operações, taxa de acerto, profit factor, payoff, expectativa em R, lucro líquido,
    retorno %, drawdown máximo % (curva de capital fechada).
 
-### T6.4 — Validação (Filtro C)
+### T6.4 — Validação (Filtro C) ✅
 
 `strategies/validation.py`:
 - `walk_forward`: divide em `n_windows + 2` partes; otimiza (grade `param_grid`, objetivo = soma de R)
