@@ -387,6 +387,11 @@ class DatabaseManager:
                 " timeframe  TEXT NOT NULL,"    # timeframe normalizado (ex.: 1_minuto)
                 " table_name TEXT NOT NULL UNIQUE,"
                 " PRIMARY KEY (symbol, timeframe))"))
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS _symbol_specs ("
+                " symbol TEXT PRIMARY KEY, point REAL, digits INTEGER, tick_size REAL, tick_value REAL,"
+                " volume_min REAL, volume_step REAL, volume_max REAL, contract_size REAL,"
+                " currency_profit TEXT, spread REAL, updated_at TEXT)"))
             # Colunas adicionadas depois (bases antigas recebem via ALTER TABLE)
             cols = {row[1] for row in conn.execute(text("PRAGMA table_info(_extraction_log)"))}
             if "quality_json" not in cols:
@@ -420,6 +425,66 @@ class DatabaseManager:
                 "SELECT block_start, block_end FROM _extraction_log "
                 "WHERE table_name = :t AND status IN ('ok', 'empty')"), {"t": table_name}).fetchall()
         return {(datetime.strptime(a, self._TIME_FMT), datetime.strptime(b, self._TIME_FMT)) for a, b in rows}
+
+    SPEC_FIELDS = ("point", "digits", "tick_size", "tick_value", "volume_min", "volume_step", "volume_max",
+                   "contract_size", "currency_profit", "spread")
+
+    def save_symbol_spec(self, symbol, spec):
+        """Grava (ou atualiza) a especificação do símbolo (dict com as chaves de SPEC_FIELDS)."""
+        values = {k: spec.get(k) for k in self.SPEC_FIELDS}
+        cols = ", ".join(self.SPEC_FIELDS)
+        params = ", ".join(f":{k}" for k in self.SPEC_FIELDS)
+        updates = ", ".join(f"{k} = excluded.{k}" for k in self.SPEC_FIELDS)
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f"INSERT INTO _symbol_specs (symbol, {cols}, updated_at) VALUES (:symbol, {params}, :updated_at) "
+                f"ON CONFLICT(symbol) DO UPDATE SET {updates}, updated_at = excluded.updated_at"),
+                {"symbol": symbol, **values, "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+
+    def get_symbol_spec(self, symbol):
+        """Especificação gravada do símbolo (dict, inclui updated_at) ou None."""
+        with self.engine.connect() as conn:
+            row = conn.execute(text("SELECT * FROM _symbol_specs WHERE symbol = :s"), {"s": symbol}).mappings().fetchone()
+        return dict(row) if row else None
+
+    def find_table_for_symbol(self, symbol, timeframe_name):
+        """Tabela existente do símbolo/timeframe, sem registrar nada (None se ainda não foi extraído)."""
+        if not self.is_connected():
+            return None
+        timeframe_key = self._normalize_name(timeframe_name)
+        with self.engine.connect() as conn:
+            row = conn.execute(text("SELECT table_name FROM _symbol_tables WHERE symbol = :s AND timeframe = :t"),
+                               {"s": symbol, "t": timeframe_key}).fetchone()
+        name = row[0] if row else self._normalize_name(f"{symbol}_{timeframe_name}")
+        return name if inspect(self.engine).has_table(name) else None
+
+    def load_ohlcv(self, symbol, timeframe_name, start=None, end=None):
+        """
+        Barras OHLCV (time, open, high, low, close, tick_volume, spread, real_volume) do símbolo, em
+        ordem de tempo, no horário da corretora. DataFrame vazio se não houver dados.
+        """
+        wanted = ["time", "open", "high", "low", "close", "tick_volume", "spread", "real_volume"]
+        table = self.find_table_for_symbol(symbol, timeframe_name)
+        if table is None:
+            return pd.DataFrame(columns=wanted)
+        present = {c["name"] for c in inspect(self.engine).get_columns(table)}
+        cols = [c for c in wanted if c in present]
+        where, params = [], {}
+        if start is not None:
+            where.append("time >= :start")
+            params["start"] = self._to_storage(pd.Timestamp(start)).strftime(self._TIME_FMT)
+        if end is not None:
+            where.append("time <= :end")
+            params["end"] = self._to_storage(pd.Timestamp(end)).strftime(self._TIME_FMT)
+        quoted = ", ".join(f'"{c}"' for c in cols)
+        sql = f'SELECT {quoted} FROM "{table}"'
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        with self.engine.connect() as conn:
+            df = pd.read_sql(text(sql + " ORDER BY time"), conn, params=params)
+        if not df.empty:
+            df["time"] = self._from_storage(pd.to_datetime(df["time"]))
+        return df
 
     def get_last_timestamp(self, table_name):
         """Maior valor de time da tabela (datetime) ou None se a tabela não existir ou estiver vazia."""

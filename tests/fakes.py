@@ -27,7 +27,10 @@ MINUTES = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 10: 10, 12: 12, 15: 15, 20: 20, 3
 RATES_DTYPE = [("time", "<i8"), ("open", "<f8"), ("high", "<f8"), ("low", "<f8"), ("close", "<f8"),
                ("tick_volume", "<u8"), ("spread", "<i4"), ("real_volume", "<u8")]
 
-SymbolInfo = collections.namedtuple("SymbolInfo", "name spread visible path description")
+SymbolInfo = collections.namedtuple(
+    "SymbolInfo", "name spread visible path description point digits trade_tick_size trade_tick_value "
+                  "volume_min volume_step volume_max trade_contract_size currency_profit",
+    defaults=(5.0, 0, 5.0, 0.2, 1.0, 1.0, 1000.0, 0.2, "BRL"))  # padrão: contrato tipo WIN
 
 
 def _epoch(v):

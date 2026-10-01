@@ -63,7 +63,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.2 | Seis estratégias com interface comum (`gerar_sinais`) | T6.1 | ✅ concluída |
 | T6.3 | Backtester com custos reais e dimensionamento por risco | T6.2 | ✅ concluída |
 | T6.4 | Validação: walk-forward, robustez ±20%, Monte Carlo, Filtro C | T6.3 | ✅ concluída |
-| T6.5 | Especificações do símbolo (`_symbol_specs`) e leitura de OHLCV do banco | T1.1 | ⏳ |
+| T6.5 | Especificações do símbolo (`_symbol_specs`) e leitura de OHLCV do banco | T1.1 | ✅ concluída |
 | T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ⏳ |
 | T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ⏳ |
 | T6.8 | Documentação `docs/estrategias.md` | T6.7 | ⏳ |
@@ -840,7 +840,7 @@ Regras (documente qualquer mudança):
   > 50% das janelas positivas; robustez; DD p95 ≤ limite (padrão 20%). Grava em `_strategy_validation`
   (tabela nova, aditiva).
 
-### T6.5 — Especificações do símbolo e leitura do banco
+### T6.5 — Especificações do símbolo e leitura do banco ✅
 
 Tabela `_symbol_specs` (símbolo, point, digits, tick_size, tick_value, volume_min/step/max,
 contract_size, currency_profit, spread, updated_at) preenchida por `mt5x specs` a partir de
