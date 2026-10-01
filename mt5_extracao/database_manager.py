@@ -413,6 +413,41 @@ class DatabaseManager:
                 "WHERE table_name = :t AND status IN ('ok', 'empty')"), {"t": table_name}).fetchall()
         return {(datetime.strptime(a, self._TIME_FMT), datetime.strptime(b, self._TIME_FMT)) for a, b in rows}
 
+    TICK_FIELDS = ("time", "time_msc", "seq", "bid", "ask", "last", "volume", "volume_real", "flags")
+
+    def save_ticks(self, table_name, df):
+        """
+        Grava ticks com upsert. Chave (time_msc, seq): o MT5 pode devolver vários ticks no mesmo
+        milissegundo, e seq (ordem dentro do milissegundo) os mantém distintos e reprocessáveis.
+        Retorna o número de linhas gravadas.
+        """
+        if df is None or df.empty:
+            return 0
+        if not self._check_time_basis():
+            raise RuntimeError("Base de tempo do banco diferente da configurada; ticks não gravados.")
+        data = df.sort_values("time_msc", kind="stable").reset_index(drop=True)
+        data["seq"] = data.groupby("time_msc").cumcount()
+        times = self._to_storage(pd.to_datetime(data["time_msc"], unit="ms"))
+        data["time"] = pd.Series(times).dt.strftime(self._TIME_FMT).values
+        for col in self.TICK_FIELDS:
+            if col not in data.columns:
+                data[col] = 0
+        rows = data[list(self.TICK_FIELDS)].astype(object).where(data[list(self.TICK_FIELDS)].notna(), None)
+        records = rows.to_dict("records")
+        cols = ", ".join(self.TICK_FIELDS)
+        params = ", ".join(f":{c}" for c in self.TICK_FIELDS)
+        updates = ", ".join(f"{c} = excluded.{c}" for c in self.TICK_FIELDS if c not in ("time_msc", "seq"))
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time TEXT NOT NULL, time_msc INTEGER NOT NULL, '
+                f'seq INTEGER NOT NULL, bid REAL, ask REAL, last REAL, volume INTEGER, volume_real REAL, '
+                f'flags INTEGER, PRIMARY KEY (time_msc, seq))'))
+            sql = text(f'INSERT INTO "{table_name}" ({cols}) VALUES ({params}) '
+                       f'ON CONFLICT(time_msc, seq) DO UPDATE SET {updates}')
+            for i in range(0, len(records), 500):
+                conn.execute(sql, records[i:i + 500])
+        return len(records)
+
     SPEC_FIELDS = ("point", "digits", "tick_size", "tick_value", "volume_min", "volume_step", "volume_max",
                    "contract_size", "currency_profit", "spread")
 

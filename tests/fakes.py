@@ -24,6 +24,9 @@ MINUTES = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 10: 10, 12: 12, 15: 15, 20: 20, 3
            16385: 60, 16386: 120, 16387: 180, 16388: 240, 16390: 360, 16392: 480, 16396: 720,
            16408: 1440, 32769: 10080, 49153: 43200}
 
+TICKS_DTYPE = [("time", "<i8"), ("bid", "<f8"), ("ask", "<f8"), ("last", "<f8"), ("volume", "<u8"),
+               ("time_msc", "<i8"), ("flags", "<u4"), ("volume_real", "<f8")]
+
 RATES_DTYPE = [("time", "<i8"), ("open", "<f8"), ("high", "<f8"), ("low", "<f8"), ("close", "<f8"),
                ("tick_volume", "<u8"), ("spread", "<i4"), ("real_volume", "<u8")]
 
@@ -138,6 +141,24 @@ class FakeMT5(types.SimpleNamespace):
         end = _epoch(_dt.datetime(2024, 6, 28, 17, 59))
         times = synthetic_bar_times(end - 60 * 60 * 24 * 30, end, MINUTES[timeframe])
         return self._rates(times[-count - start_pos:len(times) - start_pos or None])
+
+    def copy_ticks_range(self, symbol, date_from, date_to, flags):
+        """3 ticks por minuto de pregão; os dois primeiros no mesmo milissegundo (acontece no MT5 real)."""
+        a, b = _epoch(date_from), _epoch(date_to)
+        self.calls.append(("copy_ticks_range", (symbol, a, b, flags), {}))
+        if symbol not in self.symbols:
+            return None
+        for fa, fb in self.fail_ranges:
+            if a < fb and b > fa:
+                self._last_error = (-1, "Terminal: falha simulada")
+                return None
+        self._last_error = (1, "Success")
+        rows = []
+        for t in synthetic_bar_times(a, b, 1):
+            p = self.price_at(t)
+            for k, offset_ms in enumerate((0, 0, 500)):
+                rows.append((t, p, p + 0.5, p + 0.25 * k, 1 + k, t * 1000 + offset_ms, 6 if k else 2, float(1 + k)))
+        return np.array(rows, dtype=TICKS_DTYPE)
 
     def calls_named(self, name):
         return [c for c in self.calls if c[0] == name]

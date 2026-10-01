@@ -91,3 +91,24 @@ def test_initialize_uses_windows_path_through_bridge(bridge_port, tmp_path, monk
         assert init_calls[-1][2]["path"] == r"C:\Program Files\MetaTrader 5"
     finally:
         mt5_backend.reset()
+
+
+def test_ticks_through_bridge(bridge_port, tmp_path, monkeypatch):
+    """T5.3: copy_ticks_range e a constante COPY_TICKS_ALL passam pela ponte."""
+    from mt5_extracao.tick_extractor import TickExtractor
+    monkeypatch.chdir(tmp_path)
+    cfg = tmp_path / "config.ini"
+    cfg.write_text(f"[BRIDGE]\nenabled = true\nhost = 127.0.0.1\nport = {bridge_port}\n", encoding="utf-8")
+    mt5_backend.reset()
+    monkeypatch.setattr(connector_module, "mt5", None)
+    try:
+        connector = connector_module.MT5Connector(config_path=str(cfg))
+        connector.is_initialized = True
+        db = DatabaseManager(db_path=str(tmp_path / "t.db"))
+        r = TickExtractor(connector, db, chunk_hours=1).extract("WIN$N", dt.datetime(2024, 1, 2, 9),
+                                                                dt.datetime(2024, 1, 2, 11))
+        assert r["failed"] == 0 and r["rows"] > 0
+        with db.engine.connect() as c:
+            assert c.execute(text("SELECT COUNT(*) FROM win_n_ticks")).scalar() == 121 * 3
+    finally:
+        mt5_backend.reset()

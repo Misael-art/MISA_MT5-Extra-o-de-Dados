@@ -6,6 +6,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x tables
     mt5x extract --symbols WIN$N,WDO$N --tf M1 --from 2024-01-01 [--to 2024-06-30] [--indicators]
     mt5x update  --symbols WIN$N --tf M1 [--indicators]
+    mt5x ticks   --symbols WIN$N --from 2024-06-03 [--to 2024-06-07] [--chunk-hours 24]
     mt5x export  --table win_n_1_minuto --format csv|excel|parquet|duckdb [--out arquivo]
     mt5x quality --table win_n_1_minuto [--details]
     mt5x schedule --every 15m --symbols WIN$N --tf M1
@@ -207,6 +208,27 @@ def cmd_update(args, ctx):
         max_workers=args.workers, update_progress_callback=p, finished_callback=f))
     _print(f"Concluído: {ok} ok, {failed} com falha, {canceled} cancelado(s).")
     return EXIT_OK if failed == 0 and canceled == 0 else EXIT_FAIL
+
+
+def cmd_ticks(args, ctx):
+    from mt5_extracao.tick_extractor import TickExtractor
+    symbols = _parse_symbols(args.symbols)
+    start = _parse_date(args.date_from)
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else datetime.now()
+    if end <= start:
+        raise ValueError("--to deve ser posterior a --from")
+    extractor = TickExtractor(ctx.connector(), ctx.db, chunk_hours=args.chunk_hours)
+    failed = 0
+    for symbol in symbols:
+        _print(f"Ticks de {symbol} de {start:%Y-%m-%d} a {end:%Y-%m-%d %H:%M} (tabela {extractor.table_name(symbol)})...")
+        r = extractor.extract(symbol, start, end, overwrite=args.overwrite,
+                              progress=lambda pct, msg: _print(f"[{pct:3d}%] {msg}"))
+        _print(f"{symbol}: {r['rows']} ticks gravados; blocos ok {r['ok']}, sem negócios {r['empty']}, "
+               f"com falha {r['failed']}, já concluídos antes {r['skipped']}.")
+        failed += r["failed"]
+    if failed:
+        _print("Rode o mesmo comando de novo para buscar só os blocos que falharam.")
+    return EXIT_OK if failed == 0 else EXIT_FAIL
 
 
 def cmd_export(args, ctx):
@@ -459,6 +481,14 @@ def build_parser():
     add_common(p)
     p.add_argument("--days-if-empty", type=int, default=30, help="dias a buscar para símbolos sem dados (padrão 30)")
     p.set_defaults(func=cmd_update)
+
+    p = sub.add_parser("ticks", help="extrai ticks (bid/ask/last) por blocos, com retomada")
+    p.add_argument("--symbols", required=True, help="símbolos separados por vírgula")
+    p.add_argument("--from", dest="date_from", required=True, help="data inicial AAAA-MM-DD")
+    p.add_argument("--to", dest="date_to", help="data final AAAA-MM-DD (padrão: agora)")
+    p.add_argument("--chunk-hours", type=int, default=24, help="horas por bloco (padrão 24)")
+    p.add_argument("--overwrite", action="store_true", help="busca de novo blocos já concluídos")
+    p.set_defaults(func=cmd_ticks)
 
     p = sub.add_parser("quality", help="relatório de qualidade dos blocos extraídos de uma tabela")
     p.add_argument("--table", required=True)

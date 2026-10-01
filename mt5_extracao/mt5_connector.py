@@ -41,6 +41,8 @@ DEFAULT_CONFIG_PATH = "config/config.ini"
 
 # Colunas devolvidas pelo MT5 em copy_rates_* (usadas para DataFrames vazios)
 RATES_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
+# Colunas devolvidas pelo MT5 em copy_ticks_*
+TICK_COLUMNS = ['time', 'bid', 'ask', 'last', 'volume', 'time_msc', 'flags', 'volume_real']
 
 class MT5Connector:
     """
@@ -635,6 +637,30 @@ class MT5Connector:
             return None
 
             # except:
+
+    def get_ticks_range(self, symbol, date_from, date_to):
+        """
+        Ticks de [date_from, date_to] via mt5.copy_ticks_range (COPY_TICKS_ALL).
+        DataFrame (vazio se não houve negociação) com 'time' em datetime a partir de time_msc,
+        ou None em caso de falha do MT5.
+        """
+        if not self.is_initialized or not mt5:
+            log.warning(f"Tentativa de obter ticks de {symbol} sem conexão MT5 inicializada.")
+            return None
+        try:
+            ticks = mt5.copy_ticks_range(symbol, date_from, date_to, mt5.COPY_TICKS_ALL)
+            if ticks is None:
+                log.error(f"Erro ao obter ticks de {symbol}. Erro MT5: {mt5.last_error()}")
+                return None
+            df = pd.DataFrame(ticks)
+            if df.empty:
+                return pd.DataFrame(columns=TICK_COLUMNS).astype({'time': 'datetime64[ns]'})
+            df['time'] = pd.to_datetime(df['time_msc'], unit='ms')
+            return df
+        except Exception as e:
+            log.error(f"Erro ao obter ticks de {symbol}: {e}")
+            log.debug(traceback.format_exc())
+            return None
 
     def get_available_timeframes(self):
         """Retorna a lista de timeframes disponíveis como tuplas (nome_legivel, valor_mt5).

@@ -16,6 +16,7 @@ linha de comando, e ajuda a pesquisar estratégias sobre a base construída.
 - **Banco SQLite**:
   - tabela por símbolo e timeframe, com nomes sem colisão entre símbolos;
   - base de tempo explícita (horário da corretora ou UTC).
+- **Ticks** (bid/ask/last) em blocos com retomada: `mt5x ticks`, tabela `<símbolo>_ticks`.
 - **Indicadores técnicos** opcionais na extração e coleta M1 em tempo real.
 - **Exportação** para CSV, Excel, Parquet e DuckDB (interface ou `mt5x export`).
 - **Credenciais** só no arquivo `.env` (privado, fora do git).
