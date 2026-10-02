@@ -15,6 +15,21 @@ O sistema de exportação de dados permite extrair os dados coletados do MT5 par
 - Preserva os tipos de dados originais quando possível
 - Permite aplicar filtros para selecionar apenas os dados desejados
 
+### Exportação para Parquet e DuckDB
+
+Formatos colunares, muito menores e mais rápidos que CSV/Excel para bases grandes:
+
+- **Parquet** (`.parquet`, compressão zstd): lido diretamente por pandas, Polars, DuckDB, Spark e Power BI.
+- **DuckDB** (`.duckdb`): um arquivo de banco analítico com uma tabela por símbolo/timeframe; reexportar substitui a tabela.
+
+Nos dois, a coluna `time` sai como data/hora de verdade (no SQLite ela é texto). Exigem os pacotes
+opcionais `pyarrow` e `duckdb`, que o instalador tenta instalar (ou `pip install -r requirements-optional.txt`).
+
+```bash
+./run.sh --cli export --table win_n_1_minuto --format parquet --out win.parquet
+./run.sh --cli export --table win_n_1_minuto --format duckdb --out base.duckdb
+```
+
 ### Exportação Múltipla
 - Exporta várias tabelas de uma só vez
 - No formato Excel: cria uma planilha separada para cada tabela
@@ -68,3 +83,16 @@ Os filtros seguem a sintaxe SQL WHERE. Exemplos:
 ### Problemas com caracteres especiais
 - Use a codificação UTF-8 ao abrir os arquivos CSV em editores de texto
 - Para Excel, os caracteres especiais devem ser tratados automaticamente 
+## Base de tempo da coluna `time`
+
+A coluna `time` é gravada conforme `[APP] time_basis` no `config/config.ini`:
+
+| Valor | Significado |
+|---|---|
+| `broker` (padrão) | Horário do servidor da corretora, exatamente como o MetaTrader 5 devolve. Na B3 isso costuma ser o horário de Brasília (UTC−3). |
+| `utc` | Convertido para UTC ao gravar, usando `[APP] broker_utc_offset` (B3: `-3`). |
+
+A base usada fica registrada no próprio banco (tabela `_metadata`, chave `time_basis`). Se o
+`config.ini` pedir uma base diferente da já gravada, **nada é gravado** e o log explica o motivo:
+misturar as duas bases no mesmo arquivo corromperia as séries. Para trocar de base, use outro arquivo
+de banco (`[DATABASE] path`).

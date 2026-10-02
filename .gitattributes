@@ -1,0 +1,5 @@
+# Finais de linha fixos: scripts de shell quebram com CRLF; .bat/.ps1 esperam CRLF.
+*.sh  text eol=lf
+*.py  text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf

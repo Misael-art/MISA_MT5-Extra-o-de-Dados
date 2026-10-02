@@ -1,0 +1,10 @@
+# Ferramentas de desenvolvimento e testes
+-r requirements.txt
+pytest>=7.4
+pytest-timeout>=2.2
+pytest-cov>=4.1
+# Exportação colunar (testada no CI)
+pyarrow
+duckdb
+# PostgreSQL (testado no CI com um serviço postgres)
+psycopg[binary]

@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-installers:
+    name: Lint dos instaladores
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck install.sh run.sh scripts/mt5-bridge.sh scripts/install/linux.sh
+      - name: Sintaxe do PowerShell
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/scripts/install/windows.ps1", [ref]$null, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Host; exit 1 }
+
+  tests:
+    name: Testes (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependências
+        run: python -m pip install -r requirements-dev.txt
+      - name: pytest (com cobertura mínima de 60% no núcleo)
+        run: >-
+          python -m pytest -v
+          --cov=mt5_extracao.database_manager --cov=mt5_extracao.historical_extractor
+          --cov=mt5_extracao.mt5_backend --cov-report=term-missing --cov-fail-under=60
+
+  tests-postgresql:
+    name: Testes PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: teste
+          POSTGRES_DB: mt5x_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MT5X_TEST_PG_URL: postgresql+psycopg://postgres:teste@localhost:5432/mt5x_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Dependências
+        run: python -m pip install -r requirements-dev.txt
+      - name: pytest (PostgreSQL)
+        run: python -m pytest -v -rs tests/test_postgresql.py tests/test_database_url.py
+
+  installer-linux:
+    name: Instalador Linux (sem MT5)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ./install.sh --yes --no-mt5
+        run: ./install.sh --yes --no-mt5
+      - name: Verificações pós-instalação
+        run: |
+          test -x .venv/bin/python
+          test -f config/config.ini
+          test -f config/default_symbols.json
+          .venv/bin/python -c "import pandas, sqlalchemy, tkinter, rpyc"
+          .venv/bin/python -m mt5_extracao.bootstrap doctor --no-probe || true
+
+  installer-windows:
+    name: Instalador Windows (sem MT5)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: install.bat -Yes -NoMT5 -NoShortcut
+        shell: cmd
+        run: echo.| install.bat -Yes -NoMT5 -NoShortcut
+      - name: Verificações pós-instalação
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .venv\Scripts\python.exe)) { throw ".venv não criado" }
+          if (-not (Test-Path config\config.ini)) { throw "config.ini não criado" }
+          .venv\Scripts\python.exe -c "import pandas, sqlalchemy, tkinter, MetaTrader5"
+          if ($LASTEXITCODE -ne 0) { throw "dependências ausentes" }
+          .venv\Scripts\python.exe -m mt5_extracao.bootstrap doctor
+          exit 0

@@ -1,0 +1,77 @@
+# Exemplo de configuração. NÃO é necessário copiar manualmente:
+# os instaladores (install.bat / install.sh) geram config/config.ini
+# executando:  python -m mt5_extracao.bootstrap configure
+#
+# [MT5]       path = pasta com terminal64.exe no sistema (no Linux: dentro do prefixo Wine)
+#             windows_path / wine_prefix = usados apenas no Linux (Wine)
+# [BRIDGE]    ponte RPyC para acessar o MT5 do Wine a partir do Linux
+# [DATABASE]  type = sqlite; path relativo à raiz do projeto
+# [EXTRACTION] tamanho dos blocos (dias) por timeframe
+# [FALLBACK]  fonte externa para lacunas M1: "Dummy" (teste) ou "Csv" (arquivos em csv_dir)
+# [APP]       horário do pregão (HH:MM) usado pelo relatório de qualidade (lacunas);
+#             time_basis: broker (horário da corretora, padrão) ou utc; broker_utc_offset: fuso (B3 = -3)
+# Credenciais NÃO ficam aqui: use o arquivo .env (veja .env.example).
+
+[MT5]
+path = C:\Program Files\MetaTrader 5
+windows_path = C:\Program Files\MetaTrader 5
+wine_prefix = 
+
+[BRIDGE]
+enabled = false
+host = 127.0.0.1
+port = 18812
+wine_python = 
+
+[DATABASE]
+# sqlite (padrão, um arquivo) ou postgresql (servidor; TimescaleDB é usado se a extensão existir)
+type = sqlite
+path = database/mt5_data.db
+# PostgreSQL: postgresql://usuario@localhost:5432/mt5 — a senha vai em DB_PASSWORD no arquivo .env
+url = 
+
+[EXTRACTION]
+chunk_days_m1 = 30
+chunk_days_m5_m15 = 90
+chunk_days_default = 365
+
+[FALLBACK]
+external_source_m1_fallback_enabled = False
+# Dummy (teste) ou Csv. Com Csv, coloque <símbolo>.csv (ou a exportação de barras do MT5) em csv_dir
+external_source_m1_type = Dummy
+csv_dir = 
+
+[APP]
+session_start = 09:00
+session_end = 18:30
+time_basis = broker
+broker_utc_offset = -3
+# Onde fica o banco quando [DATABASE] path é relativo: vazio = pasta do projeto (padrão);
+# auto = pasta de dados do usuário (%LOCALAPPDATA%\mt5-extracao, ~/.local/share/mt5-extracao); ou um caminho.
+# Um banco que já exista na pasta do projeto continua sendo usado.
+data_dir = 
+
+[STRATEGY]
+# Backtest e validação (mt5x backtest / validate / report)
+initial_equity = 100000
+risk_per_trade = 0.01
+commission_per_lot = 0
+slippage_points = 0
+max_drawdown = 0.20
+min_profit_factor = 1.3
+min_trades = 100
+
+[SCREENER]
+# Triagem de ativos (mt5x screen). portfolio: símbolos separados por vírgula.
+# events_file: CSV opcional com colunas time,symbol,impact (impacto "alto" bloqueia o ativo)
+max_spread_atr = 0.10
+min_liquidity_percentile = 30
+max_bad_bars = 0.01
+min_years_daily = 3
+min_years_intraday = 1
+spike_multiple = 3
+max_spike_share = 0.02
+max_correlation = 0.7
+portfolio = 
+events_file = 
+event_window_hours = 4

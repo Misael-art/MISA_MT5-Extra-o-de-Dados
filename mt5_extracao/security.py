@@ -17,18 +17,6 @@ except ImportError:
 
 # Configuração de logging
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # Adicionar um handler de arquivo
-    os.makedirs("logs", exist_ok=True)
-    fh = logging.FileHandler("logs/security.log", encoding="utf-8")
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
 
 class CredentialManager:
     """
@@ -267,7 +255,11 @@ class CredentialManager:
             bool: True se conectou com sucesso, False caso contrário
         """
         try:
-            import MetaTrader5 as mt5
+            from mt5_extracao.mt5_backend import get_mt5
+            mt5 = get_mt5()
+            if mt5 is None:
+                self.logger.error("MetaTrader5 indisponível (Windows: instale o pacote; Linux: inicie a ponte).")
+                return False
             
             # Se não forneceu credenciais, tenta usar as armazenadas
             if login is None or password is None:

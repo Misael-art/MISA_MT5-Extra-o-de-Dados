@@ -6,15 +6,24 @@ from threading import Thread, Lock
 from typing import Optional # Adicionado
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import MetaTrader5 as mt5 # Adicionado para constantes de timeframe
 
 # Importar componentes necessários (ajustar caminhos se necessário)
 from .mt5_connector import MT5Connector
 from .database_manager import DatabaseManager
 from .indicator_calculator import IndicatorCalculator
 from .external_data_source import ExternalDataSource # Adicionado
+from . import timeframes as mt5  # constantes TIMEFRAME_* sem depender do pacote MetaTrader5
+from . import data_quality
 
 log = logging.getLogger(__name__)
+
+# Barras anteriores ao bloco usadas para aquecer indicadores com janela/média exponencial.
+# 500 barras deixam a diferença de RSI/MACD em relação ao período inteiro abaixo de 1e-9.
+WARMUP_BARS = 500
+OHLCV_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
+
+# Minutos por barra, indexado pelo valor da constante TIMEFRAME_*
+TIMEFRAME_MINUTES = mt5.MINUTES
 
 class HistoricalExtractor:
     """
@@ -23,7 +32,8 @@ class HistoricalExtractor:
     """
     def __init__(self, connector: MT5Connector, db_manager: DatabaseManager, indicator_calculator: IndicatorCalculator,
                  external_source: Optional[ExternalDataSource] = None,
-                 chunk_config: Optional[dict] = None): # Adicionado chunk_config
+                 chunk_config: Optional[dict] = None, # Adicionado chunk_config
+                 session: tuple = ("09:00", "18:30")):
         """
         Inicializa o extrator histórico.
 
@@ -40,6 +50,8 @@ class HistoricalExtractor:
         self.external_source = external_source
         # Define um chunk_config padrão se não for fornecido
         self.chunk_config = chunk_config or {'m1': 30, 'm5_m15': 90, 'default': 365}
+        # Horário do pregão (HH:MM, HH:MM) usado pelo relatório de qualidade para detectar lacunas
+        self.session = session
         self.extraction_running = False
         self.cancel_requested = False
         self._lock = Lock() # Para controle de estado thread-safe
@@ -55,7 +67,8 @@ class HistoricalExtractor:
                      start_date: datetime, end_date: datetime,
                      include_indicators: bool, overwrite: bool,
                      max_workers: int = 4, # Número de workers paralelos
-                     update_progress_callback=None, finished_callback=None):
+                     update_progress_callback=None, finished_callback=None,
+                     start_dates: Optional[dict] = None):
         """
         Inicia a extração de dados históricos em uma thread separada.
 
@@ -68,6 +81,8 @@ class HistoricalExtractor:
             include_indicators: Se True, calcula indicadores técnicos.
             overwrite: Se True, deleta dados existentes antes de salvar.
             max_workers: Número máximo de threads para paralelização por símbolo.
+            start_dates: Opcional, {símbolo: data inicial} que substitui start_date por símbolo
+                         (usado pela atualização incremental).
             update_progress_callback: Função chamada para atualizar o progresso (progresso, mensagem).
             finished_callback: Função chamada ao finalizar (sucesso, falha).
         """
@@ -85,14 +100,14 @@ class HistoricalExtractor:
         extraction_thread = Thread(target=self._run_extraction,
                                    args=(symbols, timeframe_val, timeframe_name, start_date, end_date,
                                          include_indicators, overwrite, max_workers,
-                                         update_progress_callback, finished_callback))
+                                         update_progress_callback, finished_callback, start_dates))
         extraction_thread.daemon = True
         extraction_thread.start()
 
     def _run_extraction(self, symbols: list, timeframe_val: int, timeframe_name: str,
                         start_date: datetime, end_date: datetime,
                         include_indicators: bool, overwrite: bool, max_workers: int,
-                        update_progress_callback=None, finished_callback=None):
+                        update_progress_callback=None, finished_callback=None, start_dates=None):
         """Lógica principal da extração executada na thread."""
         total_symbols = len(symbols)
         successful_symbols = 0
@@ -103,7 +118,8 @@ class HistoricalExtractor:
             # Usar ThreadPoolExecutor para paralelizar por símbolo
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = {executor.submit(self._process_symbol, symbol, timeframe_val, timeframe_name,
-                                           start_date, end_date, include_indicators, overwrite): symbol
+                                           (start_dates or {}).get(symbol, start_date), end_date,
+                                           include_indicators, overwrite): symbol
                            for symbol in symbols}
 
                 processed_count = 0
@@ -168,6 +184,32 @@ class HistoricalExtractor:
                 self.extraction_running = False
                 self.cancel_requested = False # Resetar estado
 
+    def update_symbols(self, symbols: list, timeframe_val: int, timeframe_name: str,
+                       include_indicators: bool, default_days: int = 30, max_workers: int = 4,
+                       update_progress_callback=None, finished_callback=None, now: Optional[datetime] = None):
+        """
+        Atualização incremental: busca, para cada símbolo, só o que falta desde o último registro
+        salvo até agora (sobreposição de 1 barra, resolvida pelo upsert). Símbolos sem dados
+        começam `default_days` dias atrás. Roda em segundo plano, como extract_data.
+
+        Returns:
+            dict: {símbolo: data inicial usada}
+        """
+        now = now or datetime.now()
+        bar = timedelta(minutes=TIMEFRAME_MINUTES.get(timeframe_val, 1))
+        start_dates = {}
+        for symbol in symbols:
+            table_name = self.db_manager.get_table_name_for_symbol(symbol, timeframe_name)
+            last = self.db_manager.get_last_timestamp(table_name)
+            start_dates[symbol] = (last - bar) if last is not None else now - timedelta(days=default_days)
+            log.info(f"[{symbol}] Atualização a partir de {start_dates[symbol]} (último registro: {last}).")
+        self.extract_data(symbols, timeframe_val, timeframe_name,
+                          start_date=min(start_dates.values()) if start_dates else now,
+                          end_date=now, include_indicators=include_indicators, overwrite=False,
+                          max_workers=max_workers, update_progress_callback=update_progress_callback,
+                          finished_callback=finished_callback, start_dates=start_dates)
+        return start_dates
+
     def _process_symbol(self, symbol: str, timeframe_val: int, timeframe_name: str,
                         start_date: datetime, end_date: datetime,
                         include_indicators: bool, overwrite: bool) -> bool:
@@ -210,16 +252,25 @@ class HistoricalExtractor:
         block_delta = timedelta(days=chunk_days)
         log.info(f"[{symbol}] Usando blocos de {chunk_days} dias para timeframe {timeframe_name}.")
         current_start = start_date
-        all_symbol_data = []
-        symbol_success = True # Assume sucesso até que um bloco falhe
+        table_name = self.db_manager.get_table_name_for_symbol(symbol, timeframe_name)
+        # Retomada: blocos já concluídos em execuções anteriores são pulados (exceto ao sobrescrever)
+        done_blocks = set() if overwrite else self.db_manager.completed_blocks(table_name)
+        failed_blocks = 0
+        total_rows = 0
 
         while current_start < end_date:
             if self.cancel_requested:
                 log.info(f"[{symbol}] Cancelamento solicitado durante processamento de blocos.")
                 return False # Indica falha devido ao cancelamento
 
+            # Os limites dos blocos são determinísticos (necessário para a retomada funcionar)
             block_end = min(current_start + block_delta, end_date)
+            if (current_start, block_end) in done_blocks:
+                log.info(f"[{symbol}] Bloco {current_start} a {block_end} já extraído anteriormente; pulando.")
+                current_start = block_end + timedelta(seconds=1)
+                continue
             log.debug(f"[{symbol}] Processando bloco: {current_start.date()} a {block_end.date()}")
+            source = 'mt5'
 
             # 3. Lógica de Retry com Backoff para buscar o bloco
             max_retries = 3
@@ -230,40 +281,22 @@ class HistoricalExtractor:
                  if self.cancel_requested: return False # Verifica cancelamento antes de cada tentativa
 
                  try:
-                     # Usar copy_rates_from para M1 (via bars) e copy_rates_range para outros
-                     if timeframe_val == mt5.TIMEFRAME_M1:
-                         # Solicitar um número grande de barras a partir da data inicial
-                         # A API MT5 limitará ao máximo disponível se 200k for excessivo
-                         bars_to_request = 200000
-                         block_df = self.connector.get_historical_data(
-                             symbol,
-                             timeframe_val,
-                             start_dt=current_start,
-                             bars=bars_to_request,
-                             end_dt=None # Força o uso de copy_rates_from ou copy_rates_from_pos
-                         )
-                         # Filtrar dados que podem vir antes de current_start se copy_rates_from_pos for usado
-                         if block_df is not None and not block_df.empty:
-                              block_df = block_df[block_df['time'] >= current_start]
-                         # Filtrar dados que podem vir depois de block_end (menos provável com _from/_from_pos)
-                         if block_df is not None and not block_df.empty:
-                              block_df = block_df[block_df['time'] <= block_end]
-                     else:
-                         # Para outros timeframes, usar o range
-                         block_df = self.connector.get_historical_data(
-                             symbol,
-                             timeframe_val,
-                             start_dt=current_start,
-                             end_dt=block_end,
-                             bars=None
-                         )
+                     # copy_rates_range para todos os timeframes (inclusive M1): traz
+                     # somente as barras do bloco e respeita o limite "Max bars in chart".
+                     block_df = self.connector.get_historical_data(
+                         symbol,
+                         timeframe_val,
+                         start_dt=current_start,
+                         end_dt=block_end,
+                         bars=None
+                     )
 
                      if block_df is not None: # Pode retornar DataFrame vazio se não houver dados, o que não é erro
                          log.debug(f"[{symbol}] Bloco {current_start.date()}-{block_end.date()} obtido com {len(block_df)} barras.")
                          break # Sucesso, sai do loop de retry
                      else:
                          # Se retornou None, é um erro na API/Conexão
-                         error = self.connector.mt5.last_error() if hasattr(self.connector, 'mt5') else "N/A"
+                         error = self.connector.last_error()
                          log.warning(f"[{symbol}] Tentativa {attempt+1}/{max_retries}: Falha ao obter bloco {current_start.date()}-{block_end.date()}. Erro MT5: {error}")
 
                  except Exception as e:
@@ -291,6 +324,7 @@ class HistoricalExtractor:
                             if expected_cols.issubset(external_block_df.columns):
                                 log.info(f"[{symbol}] Fallback bem-sucedido! Obtido {len(external_block_df)} barras M1 da fonte externa.")
                                 block_df = external_block_df # Usa os dados do fallback
+                                source = self.external_source.__class__.__name__
                             else:
                                 log.warning(f"[{symbol}] Fonte externa ({self.external_source.__class__.__name__}) retornou dados M1, mas colunas esperadas ({expected_cols}) não encontradas. Ignorando fallback.")
                                 block_df = None # Garante que block_df permaneça None
@@ -305,58 +339,77 @@ class HistoricalExtractor:
 
                 # Se ainda for None após tentativa de fallback (ou se não era M1/sem fallback), marca falha definitiva
                 if block_df is None:
-                    log.error(f"[{symbol}] Falha definitiva ao obter bloco {current_start.date()}-{block_end.date()}.")
-                    symbol_success = False
-                    break # Falha em um bloco, interrompe a extração para este símbolo
+                    log.error(f"[{symbol}] Falha definitiva ao obter bloco {current_start.date()}-{block_end.date()}. Seguindo para o próximo bloco.")
+                    self.db_manager.record_block(table_name, current_start, block_end, 0, 'failed', source)
+                    failed_blocks += 1
+                    current_start = block_end + timedelta(seconds=1)
+                    continue
 
-            # Adiciona dados do bloco (se não estiver vazio)
-            if not block_df.empty:
-                all_symbol_data.append(block_df)
+            # 4. Salva o bloco imediatamente (memória constante; uma falha não perde os blocos anteriores)
+            saved_rows, quality = self._save_block(symbol, timeframe_name, table_name, block_df, current_start,
+                                                   include_indicators, timeframe_val)
+            if saved_rows is None:
+                self.db_manager.record_block(table_name, current_start, block_end, 0, 'failed', source)
+                failed_blocks += 1
+            else:
+                status = 'ok' if saved_rows else 'empty'
+                self.db_manager.record_block(table_name, current_start, block_end, saved_rows, status, source,
+                                             quality=quality)
+                total_rows += saved_rows
 
             # Avança para o próximo bloco
             # Adiciona 1 segundo para evitar sobreposição exata se MT5 incluir a data final
             current_start = block_end + timedelta(seconds=1)
 
-        # 4. Consolidação e Salvamento dos Dados do Símbolo (se todos os blocos tiveram sucesso)
-        if symbol_success and all_symbol_data:
-            final_df = pd.concat(all_symbol_data, ignore_index=True)
-            final_df = final_df.drop_duplicates(subset=['time'], keep='first').sort_values(by='time') # Garante unicidade e ordem
-            log.info(f"[{symbol}] Total de {len(final_df)} barras únicas obtidas após concatenação dos blocos.")
+        if failed_blocks:
+            log.error(f"[{symbol}] Extração concluída com {failed_blocks} bloco(s) com falha; {total_rows} barras salvas. "
+                      f"Execute novamente para tentar só os blocos que faltam.")
+            return False
+        log.info(f"[{symbol}] Extração concluída: {total_rows} barras salvas.")
+        return True
 
-            # Calcular indicadores se solicitado
-            if include_indicators:
-                try:
-                    log.debug(f"[{symbol}] Calculando indicadores...")
-                    final_df = self.indicator_calculator.calculate_technical_indicators(final_df)
-                    # Adicionar outros cálculos se necessário (ex: spread simulado)
-                    symbol_info = self.connector.get_symbol_info(symbol)
-                    if symbol_info:
-                        final_df['spread'] = symbol_info.spread # Spread atual, não histórico
-                except Exception as ind_err:
-                    log.error(f"[{symbol}] Erro ao calcular indicadores: {ind_err}")
-                    # Decide se continua sem indicadores ou falha
-                    # Por enquanto, continua sem indicadores
+    def _save_block(self, symbol, timeframe_name, table_name, block_df, block_start, include_indicators,
+                    timeframe_val=None):
+        """
+        Calcula indicadores (com aquecimento a partir das barras já salvas), verifica a qualidade e grava o bloco.
 
-            # Salvar no banco de dados
+        Returns:
+            (int | None, dict | None): barras gravadas (0 se o bloco estava vazio; None em caso de falha)
+            e o relatório de qualidade (mt5_extracao.data_quality).
+        """
+        if block_df is None or block_df.empty:
+            return 0, None
+        df = block_df.drop_duplicates(subset=['time'], keep='first').sort_values(by='time').reset_index(drop=True)
+
+        if include_indicators:
             try:
-                log.debug(f"[{symbol}] Salvando {len(final_df)} barras no banco de dados...")
-                # Usar save_ohlcv_data que pode ser mais otimizado
-                saved = self.db_manager.save_ohlcv_data(symbol, timeframe_name, final_df)
-                if saved:
-                    log.info(f"[{symbol}] Dados salvos com sucesso no banco.")
-                    return True # Sucesso para este símbolo
+                # Indicadores com janela (RSI, MA, MACD...) precisam das barras anteriores ao bloco
+                warmup = self.db_manager.get_rows_before(table_name, block_start, WARMUP_BARS, columns=OHLCV_COLUMNS)
+                if warmup is not None and not warmup.empty:
+                    combined = pd.concat([warmup, df[[c for c in df.columns if c in OHLCV_COLUMNS]]],
+                                         ignore_index=True)
                 else:
-                    log.error(f"[{symbol}] Falha ao salvar dados no banco (método save_ohlcv_data retornou False).")
-                    return False # Falha para este símbolo
-            except Exception as db_err:
-                log.error(f"[{symbol}] Erro ao salvar dados no banco: {db_err}")
+                    combined = df
+                combined = self.indicator_calculator.calculate_technical_indicators(combined)
+                # O spread de cada barra vem do próprio MT5 (copy_rates_*); não sobrescrever.
+                df = combined[combined['time'] >= block_start].reset_index(drop=True)
+            except Exception as ind_err:
+                log.error(f"[{symbol}] Erro ao calcular indicadores: {ind_err}. Salvando o bloco sem indicadores.")
                 log.debug(traceback.format_exc())
-                return False # Falha para este símbolo
 
-        elif symbol_success and not all_symbol_data:
-            log.info(f"[{symbol}] Nenhum dado encontrado no período solicitado após processar todos os blocos.")
-            return True # Considera sucesso, pois não houve erro, apenas sem dados
-        else:
-            # Se symbol_success é False, significa que um bloco falhou
-            log.error(f"[{symbol}] Extração falhou devido a erro em um dos blocos.")
-            return False # Falha para este símbolo
+        quality = None
+        try:
+            quality = data_quality.check_quality(df, TIMEFRAME_MINUTES.get(timeframe_val, 1), *self.session)
+            if data_quality.has_problems(quality):
+                log.warning(f"[{symbol}] Qualidade do bloco {block_start:%Y-%m-%d}: {data_quality.summarize(quality)}")
+        except Exception as q_err:
+            log.warning(f"[{symbol}] Não foi possível verificar a qualidade do bloco: {q_err}")
+
+        try:
+            if self.db_manager.save_ohlcv_data(symbol, timeframe_name, df):
+                return len(df), quality
+            log.error(f"[{symbol}] Falha ao salvar bloco iniciado em {block_start} (save_ohlcv_data retornou False).")
+        except Exception as db_err:
+            log.error(f"[{symbol}] Erro ao salvar bloco iniciado em {block_start}: {db_err}")
+            log.debug(traceback.format_exc())
+        return None, quality

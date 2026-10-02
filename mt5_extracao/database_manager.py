@@ -2,49 +2,57 @@ import os
 import logging
 import pandas as pd
 import numpy as np # <--- ADICIONADO IMPORT
+import hashlib
+import json
+import threading
 import traceback
-from sqlalchemy import create_engine, text, inspect # Adicionado inspect
+from datetime import datetime
+from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
+from sqlalchemy.dialects.postgresql import insert as postgresql_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
 
-# Garantir que o diretório de logs existe
-os.makedirs("logs", exist_ok=True)
 
-# Configuração de logging (pode ser centralizada depois)
+# Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # Adicionar um handler de arquivo
-    fh = logging.FileHandler("logs/database_manager.log", encoding="utf-8")
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
 
 class DatabaseManager:
     """
     Gerencia a conexão e as operações com o banco de dados.
     """
-    def __init__(self, db_type='sqlite', db_path='database/mt5_data.db'):
+    TIME_BASES = ("broker", "utc")
+
+    def __init__(self, db_type='sqlite', db_path='database/mt5_data.db', time_basis='broker',
+                 broker_utc_offset=-3.0):
         """
         Inicializa o gerenciador do banco de dados.
 
         Args:
-            db_type (str): Tipo do banco ('sqlite', futuramente 'postgresql', etc.).
-            db_path (str): Caminho para o arquivo do banco SQLite ou string de conexão.
+            db_type (str): 'sqlite' ou 'postgresql' (TimescaleDB é usado se a extensão existir).
+            db_path (str): Caminho do arquivo SQLite ou URL SQLAlchemy do PostgreSQL
+                           (ex.: postgresql+psycopg://usuario:senha@host:5432/banco).
+            time_basis (str): 'broker' grava o horário do servidor da corretora como o MT5 devolve
+                              (padrão, comportamento histórico); 'utc' converte para UTC ao gravar.
+            broker_utc_offset (float): fuso da corretora em horas (B3: -3). Usado só com 'utc'.
         """
+        if time_basis not in self.TIME_BASES:
+            raise ValueError(f"time_basis inválido: {time_basis!r} (use 'broker' ou 'utc')")
         self.db_type = db_type
         self.db_path = db_path
+        self.time_basis = time_basis
+        self.broker_utc_offset = float(broker_utc_offset)
+        self._time_basis_checked = False
         self.engine = None
+        self._table_lock = threading.Lock()
+        self._table_cache = {}
         self._connect()
 
     def _connect(self):
         """Estabelece a conexão com o banco de dados."""
-        log.info(f"Configurando conexão com banco de dados: Tipo={self.db_type}, Path={self.db_path}")
+        log.info(f"Configurando conexão com banco de dados: Tipo={self.db_type}, Path={self._safe_location()}")
         try:
             if self.db_type == 'sqlite':
                 # Garante que o diretório do banco existe
@@ -53,16 +61,20 @@ class DatabaseManager:
                     os.makedirs(db_dir)
                     log.info(f"Diretório do banco de dados criado: {db_dir}")
                 connection_string = f'sqlite:///{self.db_path}'
-                self.engine = create_engine(connection_string)
+                # timeout: extrações em paralelo gravam no mesmo arquivo (SQLite serializa escritas)
+                self.engine = create_engine(connection_string, connect_args={'timeout': 30})
                 # Testa a conexão inicial
                 with self.engine.connect() as connection:
                     log.info(f"Conexão com banco de dados SQLite estabelecida: {self.db_path}")
-            # TODO: Adicionar suporte para outros tipos de banco (PostgreSQL/TimescaleDB)
-            # elif self.db_type == 'postgresql':
-            #     # connection_string = f'postgresql://user:password@host:port/database'
-            #     # self.engine = create_engine(connection_string)
-            #     log.warning("Suporte a PostgreSQL ainda não implementado.")
-            #     self.engine = None
+                self._ensure_control_tables()
+            elif self.db_type == 'postgresql':
+                self.engine = create_engine(self.db_path, pool_pre_ping=True)
+                with self.engine.connect() as connection:
+                    self._timescale = bool(connection.execute(text(
+                        "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar())
+                log.info(f"Conexão com PostgreSQL estabelecida: {self._safe_location()}"
+                         + (" (TimescaleDB disponível)" if self._timescale else ""))
+                self._ensure_control_tables()
             else:
                 log.error(f"Tipo de banco de dados não suportado: {self.db_type}")
                 self.engine = None
@@ -74,6 +86,33 @@ class DatabaseManager:
             log.error(f"Erro inesperado ao configurar banco de dados: {e}")
             log.debug(traceback.format_exc())
             self.engine = None
+
+    _timescale = False
+
+    def _safe_location(self):
+        """Caminho/URL para logs, sem a senha."""
+        if self.db_type == 'sqlite':
+            return self.db_path
+        try:
+            return make_url(self.db_path).render_as_string(hide_password=True)
+        except Exception:
+            return "<url inválida>"
+
+    @property
+    def dialect(self):
+        return self.engine.dialect.name if self.engine is not None else self.db_type
+
+    def _data_tables(self):
+        """Tabelas de dados de símbolos (as internas começam com '_')."""
+        names = inspect(self.engine).get_table_names()
+        return sorted(n for n in names if not n.startswith('_') and not n.startswith('sqlite_'))
+
+    @staticmethod
+    def _as_datetime(value):
+        """Horário lido do banco: texto no SQLite, datetime no PostgreSQL."""
+        if isinstance(value, datetime):
+            return value
+        return pd.Timestamp(str(value)).to_pydatetime()
 
     def is_connected(self):
         """Verifica se a conexão com o banco de dados está ativa."""
@@ -87,9 +126,9 @@ class DatabaseManager:
         "high": "REAL",
         "low": "REAL",
         "close": "REAL",
-        "tick_volume": "INTEGER",
+        "tick_volume": "BIGINT",   # BIGINT: no PostgreSQL INTEGER tem 32 bits (no SQLite é igual)
         "spread": "INTEGER",
-        "real_volume": "INTEGER",
+        "real_volume": "BIGINT",
         "rsi": "REAL",
         "macd_line": "REAL",
         "macd_signal": "REAL",
@@ -168,6 +207,10 @@ class DatabaseManager:
                     # Citar o nome da tabela para segurança
                     create_sql = f'CREATE TABLE "{table_name}" ({", ".join(column_defs)})'
                     connection.execute(text(create_sql))
+                    if self._timescale:
+                        # TimescaleDB: particiona por tempo (consultas por período mais rápidas)
+                        connection.execute(text("SELECT create_hypertable(:t, 'time', if_not_exists => TRUE, "
+                                                "migrate_data => TRUE)"), {"t": table_name})
                     # Adicionar commit explícito após DDL
                     if hasattr(connection, 'commit'):
                         connection.commit()
@@ -205,6 +248,10 @@ class DatabaseManager:
         table_name = self.get_table_name_for_symbol(symbol, timeframe_name)
         log.info(f"Preparando para salvar {len(df)} registros para {symbol} ({timeframe_name}) na tabela '{table_name}'...")
 
+        # 0. A base de tempo gravada no banco precisa ser a mesma configurada
+        if not self._check_time_basis():
+            return False
+
         # 1. Garantir que a tabela exista com o schema completo
         if not self._create_table_if_not_exists(table_name):
             log.error(f"Falha ao garantir a existência/schema da tabela '{table_name}'. Abortando salvamento.")
@@ -215,7 +262,7 @@ class DatabaseManager:
             df_converted = df.copy()
             # Garantir que 'time' seja datetime
             if 'time' in df_converted.columns:
-                 df_converted['time'] = pd.to_datetime(df_converted['time'])
+                 df_converted['time'] = self._to_storage(pd.to_datetime(df_converted['time']))
             else:
                  log.error("DataFrame não contém a coluna 'time'.")
                  return False
@@ -254,7 +301,7 @@ class DatabaseManager:
             # Usar 'append'. A chave primária 'time' deve lidar com duplicatas se o SQLite estiver configurado corretamente
             # ou se a lógica de 'overwrite' for usada antes desta chamada.
             # Deixar pandas/SQLAlchemy lidar com a citação do nome da tabela
-            df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True, index_label='time')
+            self._upsert_dataframe(table_name, df_to_save)
 
             log.info(f"Dados para {symbol} ({timeframe_name}) salvos com sucesso em '{table_name}'.")
             return True
@@ -270,6 +317,273 @@ class DatabaseManager:
             log.debug(traceback.format_exc())
             return False
 
+    # Limite seguro de linhas por INSERT: SQLite aceita até 32766 parâmetros;
+    # a tabela OHLCV tem ~70 colunas -> 200 linhas = ~14 mil parâmetros.
+    _UPSERT_CHUNK_ROWS = 200
+
+    def _upsert_dataframe(self, table_name, df):
+        """Insere ou atualiza linhas pela chave primária 'time'. df indexado por 'time'."""
+        table = Table(table_name, MetaData(), autoload_with=self.engine)
+        table_cols = [c.name for c in table.columns]
+        data = df.reset_index() if 'time' not in df.columns else df
+        data = data[[c for c in table_cols if c in data.columns]]
+        # NaN -> None (NULL) e Timestamp -> datetime (formato de gravação do SQLAlchemy)
+        data = data.astype(object).where(pd.notna(data), None)
+        records = data.to_dict(orient='records')
+        for r in records:
+            if isinstance(r['time'], pd.Timestamp):
+                r['time'] = r['time'].to_pydatetime()
+        with self.engine.begin() as conn:
+            for i in range(0, len(records), self._UPSERT_CHUNK_ROWS):
+                insert = postgresql_insert if self.dialect == 'postgresql' else sqlite_insert
+                stmt = insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
+                update_cols = {c: stmt.excluded[c] for c in data.columns if c != 'time'}
+                conn.execute(stmt.on_conflict_do_update(index_elements=['time'], set_=update_cols))
+        return len(records)
+
+    def _has_time_primary_key(self, table_name):
+        """True se a tabela existe e sua chave primária é exatamente a coluna 'time'."""
+        inspector = inspect(self.engine)
+        if not inspector.has_table(table_name):
+            return False
+        return inspector.get_pk_constraint(table_name).get('constrained_columns') == ['time']
+
+    # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
+    _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
+
+    def _to_storage(self, times):
+        """Horário da corretora (como o MT5 devolve) -> horário gravado no banco."""
+        if self.time_basis == "utc":
+            return times - pd.Timedelta(hours=self.broker_utc_offset)
+        return times
+
+    def _from_storage(self, times):
+        """Horário gravado no banco -> horário da corretora."""
+        if self.time_basis == "utc":
+            return times + pd.Timedelta(hours=self.broker_utc_offset)
+        return times
+
+    def get_metadata(self, key):
+        with self.engine.connect() as conn:
+            row = conn.execute(text("SELECT value FROM _metadata WHERE key = :k"), {"k": key}).fetchone()
+        return row[0] if row else None
+
+    def _check_time_basis(self):
+        """
+        Grava a base de tempo na primeira gravação e recusa gravar se o banco já usa outra
+        (misturar horários da corretora e UTC corromperia as séries).
+        """
+        if self._time_basis_checked:
+            return True
+        with self.engine.begin() as conn:
+            row = conn.execute(text("SELECT value FROM _metadata WHERE key = 'time_basis'")).fetchone()
+            if row is None:
+                conn.execute(text("INSERT INTO _metadata (key, value) VALUES ('time_basis', :v)"),
+                             {"v": self.time_basis})
+            elif row[0] != self.time_basis:
+                log.error(f"Este banco grava horários na base '{row[0]}', mas o config.ini pede '{self.time_basis}'. "
+                          f"Nada foi gravado. Ajuste [APP] time_basis = {row[0]} ou use outro arquivo de banco.")
+                return False
+        self._time_basis_checked = True
+        return True
+
+    def _ensure_control_tables(self):
+        """Cria as tabelas internas de controle, se não existirem."""
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS _extraction_log ("
+                " table_name  TEXT NOT NULL,"
+                " block_start TIMESTAMP NOT NULL,"
+                " block_end   TIMESTAMP NOT NULL,"
+                " rows        INTEGER NOT NULL,"
+                " status      TEXT NOT NULL,"   # 'ok' | 'empty' | 'failed'
+                " source      TEXT NOT NULL,"   # 'mt5' | nome da fonte externa
+                " updated_at  TIMESTAMP NOT NULL,"
+                " PRIMARY KEY (table_name, block_start, block_end))"))
+            conn.execute(text("CREATE TABLE IF NOT EXISTS _metadata (key TEXT PRIMARY KEY, value TEXT)"))
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS _symbol_tables ("
+                " symbol     TEXT NOT NULL,"
+                " timeframe  TEXT NOT NULL,"    # timeframe normalizado (ex.: 1_minuto)
+                " table_name TEXT NOT NULL UNIQUE,"
+                " PRIMARY KEY (symbol, timeframe))"))
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS _symbol_specs ("
+                " symbol TEXT PRIMARY KEY, point REAL, digits INTEGER, tick_size REAL, tick_value REAL,"
+                " volume_min REAL, volume_step REAL, volume_max REAL, contract_size REAL,"
+                " currency_profit TEXT, spread REAL, updated_at TEXT)"))
+            # Colunas adicionadas depois (bases antigas recebem via ALTER TABLE)
+            cols = {c["name"] for c in inspect(conn).get_columns("_extraction_log")}
+            if "quality_json" not in cols:
+                conn.execute(text("ALTER TABLE _extraction_log ADD COLUMN quality_json TEXT"))
+
+    def record_block(self, table_name, start, end, rows, status, source, quality=None):
+        """Registra (ou atualiza) o resultado da extração de um bloco (quality: relatório de data_quality)."""
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO _extraction_log (table_name, block_start, block_end, rows, status, source, updated_at, "
+                "quality_json) VALUES (:t, :s, :e, :r, :st, :src, :u, :q) "
+                "ON CONFLICT(table_name, block_start, block_end) DO UPDATE SET "
+                "rows = excluded.rows, status = excluded.status, source = excluded.source, "
+                "updated_at = excluded.updated_at, quality_json = excluded.quality_json"),
+                {"t": table_name, "s": start.strftime(self._TIME_FMT), "e": end.strftime(self._TIME_FMT),
+                 "r": int(rows), "st": status, "src": source, "u": datetime.now().strftime(self._TIME_FMT),
+                 "q": json.dumps(quality, ensure_ascii=False) if quality is not None else None})
+
+    def quality_reports(self, table_name):
+        """Relatórios de qualidade gravados para a tabela: lista de (block_start, dict)."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT block_start, quality_json FROM _extraction_log "
+                "WHERE table_name = :t AND quality_json IS NOT NULL ORDER BY block_start"), {"t": table_name}).fetchall()
+        return [(self._as_datetime(a).strftime(self._TIME_FMT), json.loads(q)) for a, q in rows]
+
+    def completed_blocks(self, table_name):
+        """Blocos (inicio, fim) já concluídos (status 'ok' ou 'empty') para a tabela."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT block_start, block_end FROM _extraction_log "
+                "WHERE table_name = :t AND status IN ('ok', 'empty')"), {"t": table_name}).fetchall()
+        return {(self._as_datetime(a), self._as_datetime(b)) for a, b in rows}
+
+    TICK_FIELDS = ("time", "time_msc", "seq", "bid", "ask", "last", "volume", "volume_real", "flags")
+
+    def save_ticks(self, table_name, df):
+        """
+        Grava ticks com upsert. Chave (time_msc, seq): o MT5 pode devolver vários ticks no mesmo
+        milissegundo, e seq (ordem dentro do milissegundo) os mantém distintos e reprocessáveis.
+        Retorna o número de linhas gravadas.
+        """
+        if df is None or df.empty:
+            return 0
+        if not self._check_time_basis():
+            raise RuntimeError("Base de tempo do banco diferente da configurada; ticks não gravados.")
+        data = df.sort_values("time_msc", kind="stable").reset_index(drop=True)
+        data["seq"] = data.groupby("time_msc").cumcount()
+        times = self._to_storage(pd.to_datetime(data["time_msc"], unit="ms"))
+        data["time"] = pd.Series(times).dt.strftime(self._TIME_FMT).values
+        for col in self.TICK_FIELDS:
+            if col not in data.columns:
+                data[col] = 0
+        rows = data[list(self.TICK_FIELDS)].astype(object).where(data[list(self.TICK_FIELDS)].notna(), None)
+        records = rows.to_dict("records")
+        cols = ", ".join(self.TICK_FIELDS)
+        params = ", ".join(f":{c}" for c in self.TICK_FIELDS)
+        updates = ", ".join(f"{c} = excluded.{c}" for c in self.TICK_FIELDS if c not in ("time_msc", "seq"))
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time TEXT NOT NULL, time_msc BIGINT NOT NULL, '
+                f'seq INTEGER NOT NULL, bid REAL, ask REAL, last REAL, volume BIGINT, volume_real REAL, '
+                f'flags INTEGER, PRIMARY KEY (time_msc, seq))'))
+            sql = text(f'INSERT INTO "{table_name}" ({cols}) VALUES ({params}) '
+                       f'ON CONFLICT(time_msc, seq) DO UPDATE SET {updates}')
+            for i in range(0, len(records), 500):
+                conn.execute(sql, records[i:i + 500])
+        return len(records)
+
+    BOOK_FIELDS = ("time_utc", "time_msc", "type", "price", "volume")
+
+    def save_book(self, table_name, rows):
+        """
+        Grava níveis do book (lista de dicts com BOOK_FIELDS). Chave (time_msc, type, price):
+        horário do coletor em UTC (o MT5 não informa o horário do book). Retorna as linhas gravadas.
+        """
+        if not rows:
+            return 0
+        cols = ", ".join(self.BOOK_FIELDS)
+        params = ", ".join(f":{c}" for c in self.BOOK_FIELDS)
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f'CREATE TABLE IF NOT EXISTS "{table_name}" (time_utc TEXT NOT NULL, time_msc BIGINT NOT NULL, '
+                f'type INTEGER NOT NULL, price REAL NOT NULL, volume REAL, PRIMARY KEY (time_msc, type, price))'))
+            conn.execute(text(f'INSERT INTO "{table_name}" ({cols}) VALUES ({params}) '
+                              f'ON CONFLICT(time_msc, type, price) DO UPDATE SET volume = excluded.volume'), rows)
+        return len(rows)
+
+    SPEC_FIELDS = ("point", "digits", "tick_size", "tick_value", "volume_min", "volume_step", "volume_max",
+                   "contract_size", "currency_profit", "spread")
+
+    def save_symbol_spec(self, symbol, spec):
+        """Grava (ou atualiza) a especificação do símbolo (dict com as chaves de SPEC_FIELDS)."""
+        values = {k: spec.get(k) for k in self.SPEC_FIELDS}
+        cols = ", ".join(self.SPEC_FIELDS)
+        params = ", ".join(f":{k}" for k in self.SPEC_FIELDS)
+        updates = ", ".join(f"{k} = excluded.{k}" for k in self.SPEC_FIELDS)
+        with self.engine.begin() as conn:
+            conn.execute(text(
+                f"INSERT INTO _symbol_specs (symbol, {cols}, updated_at) VALUES (:symbol, {params}, :updated_at) "
+                f"ON CONFLICT(symbol) DO UPDATE SET {updates}, updated_at = excluded.updated_at"),
+                {"symbol": symbol, **values, "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
+
+    def get_symbol_spec(self, symbol):
+        """Especificação gravada do símbolo (dict, inclui updated_at) ou None."""
+        with self.engine.connect() as conn:
+            row = conn.execute(text("SELECT * FROM _symbol_specs WHERE symbol = :s"), {"s": symbol}).mappings().fetchone()
+        return dict(row) if row else None
+
+    def find_table_for_symbol(self, symbol, timeframe_name):
+        """Tabela existente do símbolo/timeframe, sem registrar nada (None se ainda não foi extraído)."""
+        if not self.is_connected():
+            return None
+        timeframe_key = self._normalize_name(timeframe_name)
+        with self.engine.connect() as conn:
+            row = conn.execute(text("SELECT table_name FROM _symbol_tables WHERE symbol = :s AND timeframe = :t"),
+                               {"s": symbol, "t": timeframe_key}).fetchone()
+        name = row[0] if row else self._normalize_name(f"{symbol}_{timeframe_name}")
+        return name if inspect(self.engine).has_table(name) else None
+
+    def load_ohlcv(self, symbol, timeframe_name, start=None, end=None):
+        """
+        Barras OHLCV (time, open, high, low, close, tick_volume, spread, real_volume) do símbolo, em
+        ordem de tempo, no horário da corretora. DataFrame vazio se não houver dados.
+        """
+        wanted = ["time", "open", "high", "low", "close", "tick_volume", "spread", "real_volume"]
+        table = self.find_table_for_symbol(symbol, timeframe_name)
+        if table is None:
+            return pd.DataFrame(columns=wanted)
+        present = {c["name"] for c in inspect(self.engine).get_columns(table)}
+        cols = [c for c in wanted if c in present]
+        where, params = [], {}
+        if start is not None:
+            where.append("time >= :start")
+            params["start"] = self._to_storage(pd.Timestamp(start)).strftime(self._TIME_FMT)
+        if end is not None:
+            where.append("time <= :end")
+            params["end"] = self._to_storage(pd.Timestamp(end)).strftime(self._TIME_FMT)
+        quoted = ", ".join(f'"{c}"' for c in cols)
+        sql = f'SELECT {quoted} FROM "{table}"'
+        if where:
+            sql += " WHERE " + " AND ".join(where)
+        with self.engine.connect() as conn:
+            df = pd.read_sql(text(sql + " ORDER BY time"), conn, params=params)
+        if not df.empty:
+            df["time"] = self._from_storage(pd.to_datetime(df["time"]))
+        return df
+
+    def get_last_timestamp(self, table_name):
+        """Maior valor de time da tabela (datetime) ou None se a tabela não existir ou estiver vazia."""
+        if not self.is_connected() or not inspect(self.engine).has_table(table_name):
+            return None
+        with self.engine.connect() as conn:
+            value = conn.execute(text(f'SELECT MAX(time) FROM "{table_name}"')).scalar()
+        return self._from_storage(pd.to_datetime(value)).to_pydatetime() if value is not None else None
+
+    def get_rows_before(self, table_name, before, limit, columns=None):
+        """
+        Últimas `limit` linhas com time < `before`, em ordem crescente de tempo.
+        Retorna None se a tabela não existir. Usado para aquecer indicadores entre blocos.
+        """
+        if not inspect(self.engine).has_table(table_name):
+            return None
+        cols = ", ".join(f'"{c}"' for c in columns) if columns else "*"
+        query = text(f'SELECT {cols} FROM "{table_name}" WHERE time < :t ORDER BY time DESC LIMIT :n')
+        with self.engine.connect() as conn:
+            df = pd.read_sql(query, conn, params={"t": self._to_storage(pd.Timestamp(before)).strftime(self._TIME_FMT),
+                                                  "n": int(limit)})
+        if not df.empty and 'time' in df.columns:
+            df['time'] = self._from_storage(pd.to_datetime(df['time']))
+        return df.iloc[::-1].reset_index(drop=True)
+
     def get_existing_symbols(self):
         """
         Retorna uma lista de símbolos que já possuem dados no banco.
@@ -282,18 +596,7 @@ class DatabaseManager:
             return []
         
         try:
-            # Consulta todas as tabelas no banco de dados SQLite
-            with self.engine.connect() as conn:
-                if self.db_type == 'sqlite':
-                    # Para SQLite
-                    result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'"))
-                    tables = [row[0] for row in result]
-                # Adicionar suporte para PostgreSQL depois
-                # elif self.db_type == 'postgresql':
-                #     result = conn.execute(text("SELECT tablename FROM pg_catalog.pg_tables WHERE schemaname != 'pg_catalog' AND schemaname != 'information_schema'"))
-                #     tables = [row[0] for row in result]
-                else:
-                    tables = []
+            tables = self._data_tables()
             
             # Filtra apenas tabelas que seguem o padrão de nome de símbolos
             # Assume um padrão como symbol_timeframe (ex: win_n_1_minuto)
@@ -324,11 +627,9 @@ class DatabaseManager:
         try:
             with self.engine.connect() as conn:
                 # Verifica se a tabela existe
-                if self.db_type == 'sqlite':
-                    result = conn.execute(text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"))
-                    if not result.scalar():
-                        log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
-                        return None
+                if not inspect(conn).has_table(table_name):
+                    log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
+                    return None
                 
                 # Informações básicas (contagem, data mais antiga, data mais recente)
                 count_query = f"SELECT COUNT(*) FROM {table_name}"
@@ -348,17 +649,14 @@ class DatabaseManager:
                 max_date_query = f"SELECT MAX(time) FROM {table_name}"
                 result = conn.execute(text(max_date_query))
                 data_fim = result.scalar()
+                # Texto no SQLite, datetime no PostgreSQL: converte (e volta para a base de tempo configurada)
+                data_inicio = self._from_storage(pd.to_datetime(data_inicio)) if data_inicio is not None else None
+                data_fim = self._from_storage(pd.to_datetime(data_fim)) if data_fim is not None else None
                 
                 # Verificar intervalo de tempo (média de tempo entre registros)
-                if total_registros > 1:
-                    # Calcula média de tempo entre registros (para detectar timeframe)
-                    interval_query = f"""
-                    SELECT 
-                        (JULIANDAY(MAX(time)) - JULIANDAY(MIN(time))) * 24 * 60 / (COUNT(*) - 1) as avg_minutes
-                    FROM {table_name}
-                    """
-                    result = conn.execute(text(interval_query))
-                    intervalo_medio_minutos = result.scalar() or 0
+                if total_registros > 1 and data_inicio is not None and data_fim is not None:
+                    # Média de tempo entre registros (para detectar o timeframe)
+                    intervalo_medio_minutos = (data_fim - data_inicio).total_seconds() / 60 / (total_registros - 1)
                 else:
                     intervalo_medio_minutos = 0
                 
@@ -390,24 +688,46 @@ class DatabaseManager:
             log.error(f"Erro inesperado ao obter resumo de {table_name}: {e}")
             return None
     
+    @staticmethod
+    def _normalize_name(text):
+        """Minúsculas; tudo que não é alfanumérico vira '_' (sem '_' repetidos nas pontas/meio)."""
+        text = ''.join(c if c.isalnum() else '_' for c in str(text).lower())
+        return '_'.join(filter(None, text.split('_')))
+
     def get_table_name_for_symbol(self, symbol, timeframe_name):
         """
-        Retorna o nome normalizado da tabela para um símbolo e timeframe.
-        
-        Args:
-            symbol (str): Nome do símbolo (ex: 'WIN$N')
-            timeframe_name (str): Nome do timeframe (ex: '1 minuto')
-            
-        Returns:
-            str: Nome normalizado da tabela
+        Retorna o nome da tabela para um símbolo e timeframe.
+
+        O nome base é o mesmo de sempre (ex.: WIN$N + '1 minuto' -> win_n_1_minuto). Como símbolos
+        diferentes podem gerar o mesmo nome (WIN$N e WIN_N), o par símbolo/timeframe é registrado em
+        _symbol_tables; se o nome base já pertence a outro símbolo, acrescenta-se um sufixo de hash.
+        Tabelas existentes nunca são renomeadas: o primeiro símbolo a usar o nome base fica com ele.
         """
-        # Normaliza o nome da tabela (ex: WIN$N_1_minuto -> win_n_1_minuto)
-        table_name = f"{symbol}_{timeframe_name}".lower()
-        table_name = ''.join(c if c.isalnum() else '_' for c in table_name)
-        # Remove múltiplos underscores
-        table_name = '_'.join(filter(None, table_name.split('_')))
-        return table_name
-    
+        timeframe_key = self._normalize_name(timeframe_name)
+        base = self._normalize_name(f"{symbol}_{timeframe_name}")
+        key = (symbol, timeframe_key)
+        if key in self._table_cache:
+            return self._table_cache[key]
+        if not self.is_connected():
+            return base
+        with self._table_lock:
+            with self.engine.begin() as conn:
+                row = conn.execute(text("SELECT table_name FROM _symbol_tables WHERE symbol = :s AND timeframe = :t"),
+                                   {"s": symbol, "t": timeframe_key}).fetchone()
+                if row:
+                    name = row[0]
+                else:
+                    taken = conn.execute(text("SELECT 1 FROM _symbol_tables WHERE table_name = :n"),
+                                         {"n": base}).fetchone()
+                    name = base
+                    if taken:
+                        name = f"{base}_{hashlib.sha1(symbol.encode('utf-8')).hexdigest()[:6]}"
+                        log.warning(f"Nome de tabela '{base}' já pertence a outro símbolo; '{symbol}' usará '{name}'.")
+                    conn.execute(text("INSERT INTO _symbol_tables (symbol, timeframe, table_name) VALUES (:s, :t, :n)"),
+                                 {"s": symbol, "t": timeframe_key, "n": name})
+            self._table_cache[key] = name
+        return name
+
     def optimize_database(self):
         """
         Executa otimizações no banco de dados para melhorar a performance.
@@ -421,32 +741,25 @@ class DatabaseManager:
             
         try:
             with self.engine.connect() as conn:
-                # Executa VACUUM para otimizar espaço (apenas SQLite)
-                if self.db_type == 'sqlite':
-                    log.info("Iniciando otimização de banco de dados (VACUUM)...")
-                    conn.execute(text("VACUUM"))
-                    log.info("Otimização VACUUM concluída.")
-                    
-                    # Cria índices para melhorar a performance de consultas por data
-                    tables = self.get_existing_symbols()
-                    indexed_tables = 0
-                    
-                    for table in tables:
-                        try:
-                            # Verifica se o índice já existe
-                            index_check = conn.execute(text(f"SELECT name FROM sqlite_master WHERE type='index' AND tbl_name='{table}' AND name='idx_{table}_time'"))
-                            if not index_check.scalar():
-                                # Cria índice de tempo para consultas mais rápidas
-                                log.info(f"Criando índice de tempo para a tabela {table}...")
-                                conn.execute(text(f"CREATE INDEX IF NOT EXISTS idx_{table}_time ON {table} (time)"))
-                                indexed_tables += 1
-                        except Exception as idx_err:
-                            log.warning(f"Erro ao criar índice para {table}: {idx_err}")
-                    
-                    log.info(f"Criados índices para {indexed_tables} tabelas.")
-                    return True
-                    
-                # Lógica para PostgreSQL pode ser adicionada no futuro
+                # VACUUM (SQLite) / VACUUM ANALYZE (PostgreSQL) não rodam dentro de transação
+                conn = conn.execution_options(isolation_level="AUTOCOMMIT")
+                log.info("Iniciando otimização de banco de dados (VACUUM)...")
+                conn.execute(text("VACUUM" if self.dialect == 'sqlite' else "VACUUM ANALYZE"))
+                log.info("Otimização VACUUM concluída.")
+
+                # Cria índices para melhorar a performance de consultas por data
+                indexed_tables = 0
+                for table in self.get_existing_symbols():
+                    try:
+                        existing = {ix["name"] for ix in inspect(conn).get_indexes(table)}
+                        if f"idx_{table}_time" not in existing:
+                            log.info(f"Criando índice de tempo para a tabela {table}...")
+                            conn.execute(text(f'CREATE INDEX IF NOT EXISTS "idx_{table}_time" ON "{table}" (time)'))
+                            indexed_tables += 1
+                    except Exception as idx_err:
+                        log.warning(f"Erro ao criar índice para {table}: {idx_err}")
+
+                log.info(f"Criados índices para {indexed_tables} tabelas.")
                 return True
                 
         except SQLAlchemyError as e:
@@ -505,18 +818,9 @@ class DatabaseManager:
                 return []
                 
         try:
-            # Para SQLite
-            if self.db_type == 'sqlite':
-                query = "SELECT name FROM sqlite_master WHERE type='table'"
-                result = pd.read_sql_query(query, self.engine)
-                tables = result['name'].tolist()
-                log.info(f"Encontradas {len(tables)} tabelas no banco de dados.")
-                return tables
-                
-            # Para outros bancos (PostgreSQL, MySQL)
-            # Implementar conforme necessário
-                
-            return []
+            tables = self._data_tables()
+            log.info(f"Encontradas {len(tables)} tabelas no banco de dados.")
+            return tables
         except Exception as e:
             log.error(f"Erro ao listar tabelas: {e}")
             return []
@@ -592,12 +896,9 @@ class DatabaseManager:
             
         try:
             # Verifica se a tabela existe
-            if self.db_type == 'sqlite':
-                with self.engine.connect() as conn:
-                    result = conn.execute(text(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"))
-                    if not result.scalar():
-                        log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
-                        return None
+            if not inspect(self.engine).has_table(table_name):
+                log.warning(f"Tabela {table_name} não encontrada no banco de dados.")
+                return None
             
             # Consulta os dados mais recentes
             query = f"""
@@ -654,8 +955,10 @@ class DatabaseManager:
             
             # Verifica se 'time' está no DataFrame e converte para tipo correto
             if 'time' in df_to_save.columns:
-                # Garante que 'time' é datetime
-                df_to_save['time'] = pd.to_datetime(df_to_save['time'])
+                # Garante que 'time' é datetime (na base de tempo configurada)
+                if not self._check_time_basis():
+                    return False
+                df_to_save['time'] = self._to_storage(pd.to_datetime(df_to_save['time']))
                 
                 # Define 'time' como índice para a operação funcionar corretamente
                 df_to_save = df_to_save.set_index('time')
@@ -664,8 +967,11 @@ class DatabaseManager:
             for col in df_to_save.select_dtypes(include=['int64', 'uint64']).columns:
                 df_to_save[col] = df_to_save[col].astype('int32')
             
-            # Salva no banco de dados
-            df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True)
+            # Salva no banco de dados (upsert quando a tabela já existe com PK 'time')
+            if self._has_time_primary_key(table_name):
+                self._upsert_dataframe(table_name, df_to_save)
+            else:
+                df_to_save.to_sql(table_name, self.engine, if_exists='append', index=True)
             
             symbol_info = f" para {symbol}" if symbol else ""
             log.info(f"Dados{symbol_info} salvos com sucesso em {table_name} ({len(df)} registros).")
@@ -707,7 +1013,10 @@ class DatabaseManager:
                 with connection.begin():
                     # Construir a query DELETE com parâmetros seguros
                     query = text(f"DELETE FROM {table_name} WHERE time >= :start AND time <= :end")
-                    result = connection.execute(query, {"start": start_date, "end": end_date})
+                    # Mesmo formato de texto gravado na coluna time (comparação de texto no SQLite)
+                    result = connection.execute(query, {
+                        "start": self._to_storage(pd.Timestamp(start_date)).strftime(self._TIME_FMT),
+                        "end": self._to_storage(pd.Timestamp(end_date)).strftime(self._TIME_FMT)})
                     log.info(f"{result.rowcount} registros deletados da tabela '{table_name}'.")
             return True
         except SQLAlchemyError as e:

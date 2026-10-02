@@ -1,5 +1,7 @@
 # Arquivos de ambiente e credenciais
 .env
+.venv/
+.cache/
 credentials.json
 *.key
 
@@ -36,7 +38,8 @@ venv/
 ENV/
 
 # Diretórios específicos da aplicação
-config/
+config/*
+!config/config.ini.example
 database/
 *.db
 *.sqlite3
