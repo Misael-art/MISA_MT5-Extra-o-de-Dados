@@ -396,6 +396,46 @@ def cmd_strategies(args, ctx):
     return EXIT_OK
 
 
+def cmd_robots(args, ctx):
+    from mt5_extracao import robots
+    from mt5_extracao.robots import catalog
+    if args.action == "import":
+        if not args.path:
+            raise ValueError("informe o arquivo do robô: mt5x robots import <arquivo.mq5 ou .ex5>")
+        robot = robots.import_robot(ctx.db, args.path)
+        _print(f"Robô importado: {robot.name} ({robot.key}). Risco: {robot.risk.level}.")
+        for note in robot.notes:
+            _print(f"  {note}")
+        return EXIT_OK
+    items = robots.load_catalog(ctx.config, ctx.db)
+    if args.path:
+        items = [robots.get_robot(items, args.path)]
+    for robot in items:
+        version = f" v{robot.version}" if robot.version else ""
+        _print(f"{robot.key:<28} {robot.kind_label:<7}{robot.name}{version}")
+        details = [d for d in (robot.regime and f"regime: {robot.regime}",
+                               robot.timeframes and "timeframes: " + ", ".join(robot.timeframes),
+                               f"estágio: {robot.stage_label}") if d]
+        _print("    " + " · ".join(details))
+        _print(f"    risco: {robot.risk.level}" + (f" ({robot.risk.summary})" if robot.risk.reasons else ""))
+        for name, rating in robot.preset_risks.items():
+            _print(f"      preset {name}: {rating.level}" + (f" ({rating.summary})" if rating.reasons else ""))
+        if args.path:
+            _print(f"    arquivo: {robot.path}")
+            for group in robot.groups or [""]:
+                if group:
+                    _print(f"    {group}")
+                for item in (i for i in robot.inputs if i.group == group):
+                    _print(f"      {item.name} = {item.default}" + (f"   ({item.comment})" if item.comment else ""))
+        for note in robot.notes:
+            _print(f"    ! {note}")
+    if not catalog.library_dirs(ctx.config):
+        _print("\nPara ver robôs MQL5, indique a pasta em [ROBOTS] library_dirs (config/config.ini) "
+               "ou use 'mt5x robots import <arquivo>'.")
+    _print("\nA classe de risco vem dos parâmetros e do preset; não é garantia. Veja docs/robos.md.")
+    return EXIT_OK
+
+
 def cmd_specs(args, ctx):
     from mt5_extracao.strategies import specs
     symbols = _parse_symbols(args.symbols)
@@ -567,6 +607,11 @@ def build_parser():
     # Estratégias
     p = sub.add_parser("strategies", help="lista as seis estratégias, quando usar e o que evitar")
     p.set_defaults(func=cmd_strategies)
+
+    p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
+    p.add_argument("action", nargs="?", choices=["list", "import"], default="list")
+    p.add_argument("path", nargs="?", help="list: chave de um robô, para ver os parâmetros; import: arquivo .mq5/.ex5")
+    p.set_defaults(func=cmd_robots)
 
     p = sub.add_parser("specs", help="lê do MT5 as especificações de contrato (tick, lote, spread)")
     p.add_argument("--symbols", required=True)

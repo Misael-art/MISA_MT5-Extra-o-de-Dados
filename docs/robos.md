@@ -10,6 +10,21 @@ A aba **Robôs** reúne num só lugar tudo o que pode operar ou ser estudado:
 | **MQL5** | Expert Advisor do MetaTrader 5 (`.mq5` ou `.ex5`) com seus presets (`.set`) | Pastas indicadas em `[ROBOTS] library_dirs` (por exemplo, o clone do `projeto-indicadores-mt5`) ou um arquivo importado |
 | **Python** | As seis estratégias de [estrategias.md](estrategias.md) | Já vêm com o programa |
 
+## Ver o catálogo (já funciona)
+
+```bash
+mt5x robots                       # todos os robôs: tipo, regime, risco de cada preset e estágio
+mt5x robots list hdk_hadouken_painel   # um robô: parâmetros por grupo
+mt5x robots import caminho/Robo.mq5    # acrescenta um robô avulso (.mq5 ou .ex5)
+```
+
+Um `robot.json` opcional ao lado do robô (`<nome>.robot.json`) informa o que o código não diz:
+
+```json
+{"name": "Meu robô", "regime": "tendência", "timeframes": ["M5", "M15"], "markets": "índice e dólar futuros",
+ "risk": {"risk_pct": 0.5, "daily_loss_pct": 2, "max_drawdown_pct": 10, "mandatory_stop": true}}
+```
+
 ## O caminho de um robô
 
 ```
@@ -59,9 +74,8 @@ A classe sempre vem com o motivo. Ela é calculada a partir dos parâmetros e do
 [ROBOTS]
 # Pastas com robôs MQL5, separadas por ponto e vírgula
 library_dirs =
-allow_real = false
-min_demo_days = 20
-max_real_risk_pct = 1.0
 ```
+
+As chaves de operação (`allow_real`, `min_demo_days`, `max_real_risk_pct`) entram junto com as tarefas T8.7 e T8.8.
 
 > Resultado de backtest **não garante** resultado futuro. Comece sempre em demo, com o preset Conservador.

@@ -69,7 +69,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.8 | Documentação `docs/estrategias.md` | T6.7 | ✅ concluída |
 | T7.1 | Interface em abas com tema, inventário da base e análise (gráficos e números de estudo) | T1.8, T6.1 | ✅ concluída (teste da janela roda só onde há display; no CI Linux ele é pulado) |
 | T8.0 | Plano da Fase 8 (robôs) e mudança de escopo registrada | T7.1 | ✅ concluída |
-| T8.1 | Catálogo de robôs: leitura de MQL5/presets, classificação de risco, tabelas `_robots*`, CLI `mt5x robots` | T8.0 | a fazer |
+| T8.1 | Catálogo de robôs: leitura de MQL5/presets, classificação de risco, tabelas `_robots*`, CLI `mt5x robots` | T8.0 | ✅ concluída (só a tabela `_robots`; `_robot_runs` e `_robot_checks` entram nas tarefas que as usam) |
 | T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | a fazer |
 | T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | a fazer |
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | a fazer |
@@ -1022,7 +1022,13 @@ mt5_extracao/ui/robot_detail.py  painel do robô (abre ao clicar no card)
 
 Este texto, a linha F8 do ROADMAP, a reescrita de "Fora do escopo" e `docs/robos.md`.
 
-### T8.1 — Catálogo de robôs
+### T8.1 — Catálogo de robôs ✅
+
+**Registrado na entrega:** conferido com o HADOUKEN real (commit `b3a4bef` do PR #1): versão 7.00, 6 grupos de
+parâmetros, 3 presets com risco Baixo/Moderado/Alto. Quando o robô usa um perfil nomeado (`InpProfile`), os valores
+de risco ficam dentro do código MQL5; sem um `robot.json`, a classe vem do **nome** do perfil (conserv/moder/agress).
+`store.py` cria só `_robots`; `_robot_runs` (T8.3) e `_robot_checks` (T8.6) ficam para quem as usa.
+Biblioteca de exemplo dos testes: `tests/robots_library/`.
 
 - **Arquivos:** `mt5_extracao/robots/{__init__,catalog,mql,risk,store}.py`, `cli.py` (`mt5x robots list|import`),
   `bootstrap/config_builder.py`, `config/config.ini.example`, testes.

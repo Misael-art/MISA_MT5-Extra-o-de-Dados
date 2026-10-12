@@ -124,6 +124,7 @@ Tabelas internas:
 - `cli.py` (`mt5x`):
   - Dados: `doctor`, `symbols`, `tables`, `extract`, `update`, `quality`, `export`, `schedule`.
   - Estratégias: `strategies`, `specs`, `backtest`, `validate`, `screen`, `report`.
+  - Robôs: `robots list`, `robots import`.
   - Códigos de saída: 0 ok, 1 falha, 2 uso incorreto.
 - `services.py`: GUI e CLI montam banco, extrator e fonte externa da mesma forma.
 - `logging_setup.setup_logging()`: só os pontos de entrada configuram handlers. O log é `logs/mt5_extracao.log`, rotativo de 5 MB × 5.
@@ -141,6 +142,17 @@ Guia do usuário: [estrategias.md](estrategias.md). Resumo técnico:
 - `asset_screener.screen`: Filtro A (eliminatório) e Filtro B (score 0–100, regime, estratégia sugerida).
 - `research.py`: orquestra tudo para a CLI e a GUI. A GUI roda em thread e conversa com o Tkinter por uma `queue.Queue`.
 
+### 6. Robôs — `mt5_extracao/robots/`
+
+Guia do usuário: [robos.md](robos.md). Plano: Fase 8 em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md).
+**O Python nunca envia ordens** (`tests/test_no_order_send.py`); quem opera é o robô MQL5 dentro do MT5.
+
+- `mql.py`: lê fonte MQL5 (propriedades, parâmetros por grupo, enums, includes, DLLs) e presets `.set`, sem o MT5.
+- `risk.py`: classe de risco (Baixo/Moderado/Alto/Não avaliado) com os motivos, a partir de parâmetros e preset.
+- `catalog.py`: `load_catalog(config, db)` junta as estratégias Python, as pastas de `[ROBOTS] library_dirs` e os
+  robôs importados; `Robot` é o que a CLI (`mt5x robots`) e a aba "Robôs" mostram.
+- `store.py`: tabela interna `_robots` (robôs importados e estágio), criada sob demanda.
+
 ## Configuração
 
 `config/config.ini` (gerado pelo instalador; referência em `config/config.ini.example`):
@@ -154,6 +166,7 @@ Guia do usuário: [estrategias.md](estrategias.md). Resumo técnico:
 | `[FALLBACK]` | Fonte externa para lacunas M1 |
 | `[APP]` | Pregão (qualidade), base de tempo e fuso da corretora |
 | `[STRATEGY]`, `[SCREENER]` | Capital, risco, custos e cortes dos Filtros A/B/C |
+| `[ROBOTS]` | `library_dirs`: pastas com robôs MQL5 |
 
 Credenciais ficam **somente** no `.env` (`MT5_LOGIN`, `MT5_PASSWORD`, `MT5_SERVER`).
 

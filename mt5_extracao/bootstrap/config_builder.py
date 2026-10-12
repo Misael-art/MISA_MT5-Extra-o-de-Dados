@@ -75,6 +75,9 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("events_file", ""),             # CSV time,symbol,impact (opcional)
         ("event_window_hours", "4"),
     ])),
+    ("ROBOTS", OrderedDict([         # catálogo de robôs (mt5x robots; aba Robôs)
+        ("library_dirs", ""),            # pastas com robôs MQL5 (Experts/, Include/, Presets/), separadas por ;
+    ])),
 ])
 
 DEFAULT_SYMBOLS = OrderedDict([
