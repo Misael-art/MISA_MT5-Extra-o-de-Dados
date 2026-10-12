@@ -164,3 +164,27 @@ Elas ficam em `.env`, com permissão 600 no Linux, e o arquivo está no `.gitign
 Logs da instalação: `logs/install-windows.log` e `logs/install-linux.log`. Log do programa (interface e
 linha de comando): `logs/mt5_extracao.log` (gira a cada 5 MB, guarda 5 arquivos). Na linha de comando,
 `-v` também mostra os detalhes no console.
+
+## Conta do MetaTrader 5 (login automático)
+
+Você **não precisa** informar login, senha ou servidor: o app usa a conta em que o terminal MT5
+estiver logado. As credenciais no `.env` são opcionais.
+
+Um MT5 recém-instalado ainda não tem conta. Nesse caso o instalador do Linux oferece abrir a **conta de
+demonstração gratuita** (dinheiro virtual, servidor `MetaQuotes-Demo`) e preenche o assistente do MT5
+sozinho; você só autoriza. Para fazer isso depois, ou no Windows:
+
+```bash
+.venv/bin/python -m mt5_extracao.bootstrap demo-account          # pergunta antes
+.venv/bin/python -m mt5_extracao.bootstrap demo-account --yes    # sem perguntas
+```
+
+- O cadastro usa dados do projeto (não os seus): nome "Projeto Extracao", e-mail
+  `mt5-extracao@example.com`, celular `11912345678`. Troque com `--first`, `--last`, `--email`,
+  `--phone` e `--birth AAAA-MM-DD`.
+- Abrir a conta significa aceitar os termos e a política de proteção de dados da MetaQuotes.
+- A conta `MetaQuotes-Demo` tem Forex e CFDs (ex.: `EURUSD`), não os ativos da B3. Para `WIN$N`/`WDO$N`,
+  instale o MT5 da sua corretora e abra a conta demo dela.
+- Limitações: validado no Linux (Wine) com o MT5 build 6257; no Windows o comando existe, mas ainda não
+  foi testado. Supõe datas com o ano por último e o código de país que o MT5 sugere; se o formulário
+  recusar algum dado, o comando avisa e você completa na janela do MT5.

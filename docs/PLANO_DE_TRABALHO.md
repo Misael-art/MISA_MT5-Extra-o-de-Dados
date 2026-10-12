@@ -29,7 +29,7 @@ Comando de testes padrão (use o Python do `.venv`):
 |---|---|---|---|
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
-| T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ |
+| T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ parcial: Linux (família Arch) validado com MT5 real; demais ambientes pendentes (docs/validacao_instaladores.md) |
 | T1.1 | Upsert no banco (reextrair sem erro/duplicata) | — | ✅ concluída |
 | T1.2 | Salvar por bloco + tabela de controle + retomada | T1.1 | ✅ concluída |
 | T1.3 | Atualização incremental | T1.2 | ✅ concluída |
@@ -43,7 +43,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
 | T2.4 | Gestão de processos multiplataforma | T2.2 | ✅ concluída |
 | T2.5 | `initialize()` com `windows_path` no Linux | T2.2 | ✅ concluída (validação com MT5 real: T0.3/T2.6) |
-| T2.6 | Teste de paridade Windows × Linux | T2.5 | ⏳ |
+| T2.6 | Teste de paridade Windows × Linux | T2.5 | ⏳ parcial: `scripts/parity_check.py` criado e lado Linux extraído; falta o lado Windows |
 | T3.1 | CLI `mt5x` | T1.3, T2.2 | ✅ concluída |
 | T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ✅ concluída (cron e schtasks; systemd não) |
 | T3.3 | `pyproject.toml` (substitui `setup.py`) | — | ✅ concluída |
