@@ -40,3 +40,6 @@ mt5x = "mt5_extracao.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["mt5_extracao*"]
+
+[tool.setuptools.package-data]
+mt5_extracao = ["assets/*"]

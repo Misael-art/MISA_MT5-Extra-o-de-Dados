@@ -8,7 +8,7 @@
 #   3. Cria um prefixo Wine dedicado, baixa e instala o MetaTrader 5 (/auto)
 #   4. Instala o Python do Windows dentro do Wine + MetaTrader5 + rpyc (ponte)
 #   5. Gera config/config.ini e .env (python -m mt5_extracao.bootstrap configure)
-#   6. Cria atalho no menu de aplicativos, inicia a ponte e roda o diagnóstico
+#   6. Cria atalhos (área de trabalho e menu), inicia a ponte e roda o diagnóstico
 #
 # Uso:  ./install.sh [--yes] [--no-mt5] [--skip-system-packages]
 #                    [--wine-prefix DIR] [--python BIN]
@@ -399,20 +399,11 @@ configure_app() {
 
 # --- 6. Atalho, ponte e diagnóstico ------------------------------------------
 finish() {
-    step "Atalho, ponte e diagnóstico"
-    local apps_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-    if mkdir -p "$apps_dir" 2>/dev/null; then
-        cat > "$apps_dir/mt5-extracao.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=MT5 Extração de Dados
-Comment=Extração de dados do MetaTrader 5
-Exec="$PROJECT_ROOT/run.sh"
-Path=$PROJECT_ROOT
-Terminal=false
-Categories=Office;Finance;
-EOF
-        ok "Atalho criado no menu de aplicativos"
+    step "Atalhos, ponte e diagnóstico"
+    if "$VENV_PY" -m mt5_extracao.bootstrap shortcuts >/dev/null; then
+        ok "Atalhos criados na área de trabalho e no menu de aplicativos"
+    else
+        warn "Não foi possível criar os atalhos. Depois rode: $VENV_PY -m mt5_extracao.bootstrap shortcuts"
     fi
     cleanup
     if [[ $INSTALL_MT5 -eq 1 ]] && [[ -x "$PROJECT_ROOT/scripts/mt5-bridge.sh" ]]; then

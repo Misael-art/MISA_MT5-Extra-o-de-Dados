@@ -203,3 +203,14 @@ na conta de demonstração da MetaQuotes, o app avisa que o servidor não tem o 
 Símbolos personalizados criados dentro do MT5 não são criados pelo app (a API Python do MT5 não permite) e
 não recebem cotações sozinhos. Para usar histórico de outra origem, veja a fonte externa CSV em
 [plano_fallback_m1.md](plano_fallback_m1.md).
+
+## Atalhos (área de trabalho e menu)
+
+O instalador do Linux cria um atalho com ícone na área de trabalho e outro no menu de aplicativos, ambos
+para o `run.sh`. Para criar, recriar ou remover depois:
+
+- no aplicativo: **Arquivo → Atalhos na área de trabalho e no menu...** (também em Configurações);
+- pelo terminal: `.venv/bin/python -m mt5_extracao.bootstrap shortcuts` (opções `--no-desktop`, `--no-menu`, `--remove`).
+
+No Windows a mesma opção cria os atalhos na Área de Trabalho e no menu Iniciar (para o `run.bat`); essa parte
+ainda não foi testada em um Windows. O ícone é gerado por `scripts/make_icon.py`.

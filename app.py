@@ -788,6 +788,13 @@ class MT5Extracao:
     def setup_root_window(self):
         """Configura a janela principal da aplicação"""
         self.root.title("MT5 Extração de Dados")
+        try:
+            # Ícone da janela e da barra de tarefas (o mesmo dos atalhos)
+            from mt5_extracao.bootstrap import shortcuts
+            self._icon_image = tk.PhotoImage(file=str(shortcuts.ASSETS / "icon.png"))
+            self.root.iconphoto(True, self._icon_image)
+        except Exception as e:
+            logging.debug(f"Ícone da janela indisponível: {e}")
         
         # Aumentar o tamanho em 40%
         # Até 1680x980, sem passar do tamanho da tela (em telas menores o conteúdo ficava cortado)

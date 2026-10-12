@@ -5,6 +5,7 @@ CLI de configuração inicial e diagnóstico.
     python -m mt5_extracao.bootstrap doctor [--json] [--no-probe]
     python -m mt5_extracao.bootstrap locate-mt5 [--json]
     python -m mt5_extracao.bootstrap demo-account [--yes]
+    python -m mt5_extracao.bootstrap shortcuts [--no-desktop] [--no-menu] [--remove]
 
 Códigos de saída: 0 = sucesso, 1 = falha, 2 = uso incorreto.
 """
@@ -15,7 +16,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import config_builder, demo_account, doctor, mt5_locator, paths
+from . import config_builder, demo_account, doctor, mt5_locator, paths, shortcuts
 
 
 def _print(msg: str = "") -> None:
@@ -175,6 +176,25 @@ def cmd_demo_account(args) -> int:
     return 0 if code == 0 else 1
 
 
+def cmd_shortcuts(args) -> int:
+    desktop, menu = not args.no_desktop, not args.no_menu
+    if args.remove:
+        removed = shortcuts.remove(desktop, menu)
+        for path in removed:
+            _print(f"Atalho removido: {path}")
+        if not removed:
+            _print("Nenhum atalho para remover.")
+        return 0
+    failed = 0
+    for path, error in shortcuts.create(Path(args.root).resolve(), desktop, menu):
+        if error:
+            failed += 1
+            _print(f"Não foi possível criar o atalho em {path}: {error}")
+        else:
+            _print(f"Atalho criado: {path}")
+    return 1 if failed else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m mt5_extracao.bootstrap",
                                      description="Configuração inicial e diagnóstico do MT5 Extração.")
@@ -217,6 +237,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--phone", help="Celular, só dígitos com DDD")
     p.add_argument("--birth", help="Data de nascimento AAAA-MM-DD")
     p.set_defaults(func=cmd_demo_account)
+
+    p = sub.add_parser("shortcuts", help="Cria os atalhos na área de trabalho e no menu de aplicativos")
+    p.add_argument("--no-desktop", action="store_true", help="Não criar o atalho da área de trabalho")
+    p.add_argument("--no-menu", action="store_true", help="Não criar o atalho do menu de aplicativos / Iniciar")
+    p.add_argument("--remove", action="store_true", help="Remove os atalhos em vez de criar")
+    p.set_defaults(func=cmd_shortcuts)
     return parser
 
 

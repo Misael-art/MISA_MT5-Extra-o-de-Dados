@@ -1641,6 +1641,7 @@ Status: Sem dados no banco. Disponível para coleta.
         # Menu File
         file_menu = tk.Menu(menu_bar, tearoff=0)
         file_menu.add_command(label="Configurações", command=self.open_settings)
+        file_menu.add_command(label="Atalhos na área de trabalho e no menu...", command=self.open_shortcuts_dialog)
         file_menu.add_separator()
         
         # Submenu de exportação
@@ -2072,8 +2073,53 @@ Status: Sem dados no banco. Disponível para coleta.
         buttons.pack(fill=tk.X, pady=(15, 0))
         ttk.Button(buttons, text="Abrir pasta de configuração",
                    command=lambda: self._open_path(config_file.parent)).pack(side=tk.LEFT)
+        ttk.Button(buttons, text="Atalhos...", command=self.open_shortcuts_dialog).pack(side=tk.LEFT, padx=(10, 0))
         ttk.Button(buttons, text="Diagnóstico do ambiente...", command=self.show_doctor).pack(side=tk.LEFT, padx=10)
         ttk.Button(buttons, text="Fechar", command=dialog.destroy).pack(side=tk.RIGHT)
+
+    def open_shortcuts_dialog(self):
+        """Cria ou remove os atalhos do aplicativo na área de trabalho e no menu de aplicativos / Iniciar."""
+        from mt5_extracao.bootstrap import paths, shortcuts
+        menu_label = "Menu Iniciar" if os.name == "nt" else "Menu de aplicativos"
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Atalhos do aplicativo")
+        dialog.transient(self.root)
+        frame = ttk.Frame(dialog, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(frame, text="Onde você quer um atalho para abrir o aplicativo?").pack(anchor="w", pady=(0, 8))
+        desktop_var = tk.BooleanVar(value=True)
+        menu_var = tk.BooleanVar(value=True)
+        dialog.shortcut_vars = (desktop_var, menu_var)  # mantém as referências das caixas
+        ttk.Checkbutton(frame, text="Área de trabalho", variable=desktop_var).pack(anchor="w")
+        ttk.Checkbutton(frame, text=menu_label, variable=menu_var).pack(anchor="w")
+        status_var = tk.StringVar()
+        ttk.Label(frame, textvariable=status_var, wraplength=560, justify=tk.LEFT).pack(anchor="w", pady=(10, 0))
+
+        def show_existing():
+            found = shortcuts.existing()
+            status_var.set("Atalhos existentes:\n" + "\n".join(f"  {p}" for p in found) if found
+                           else "Nenhum atalho criado ainda.")
+
+        def create():
+            if not (desktop_var.get() or menu_var.get()):
+                status_var.set("Marque pelo menos um dos dois lugares.")
+                return
+            results = shortcuts.create(paths.PROJECT_ROOT, desktop_var.get(), menu_var.get())
+            lines = [f"Não foi possível criar em {p}: {err}" if err else f"Atalho criado: {p}" for p, err in results]
+            status_var.set("\n".join(lines))
+            self.log("; ".join(lines))
+
+        def remove():
+            removed = shortcuts.remove(desktop_var.get(), menu_var.get())
+            status_var.set("\n".join(f"Atalho removido: {p}" for p in removed) if removed
+                           else "Não havia atalho para remover nos lugares marcados.")
+
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill=tk.X, pady=(15, 0))
+        ttk.Button(buttons, text="Criar atalhos", command=create).pack(side=tk.LEFT)
+        ttk.Button(buttons, text="Remover atalhos", command=remove).pack(side=tk.LEFT, padx=10)
+        ttk.Button(buttons, text="Fechar", command=dialog.destroy).pack(side=tk.RIGHT)
+        show_existing()
 
     def _open_path(self, path):
         """Abre uma pasta/arquivo no programa padrão do sistema."""
