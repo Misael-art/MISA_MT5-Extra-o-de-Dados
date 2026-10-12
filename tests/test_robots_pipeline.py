@@ -146,7 +146,7 @@ def test_junit_report_lists_steps_and_battery_items(env, tmp_path):
 
 
 def test_cli_check_exit_code_json_and_report(env, monkeypatch, tmp_path, capsys):
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda: False)
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: False)
     monkeypatch.setattr(mt5_tools, "run_windows_command", env.fake())
     report = tmp_path / "ci.xml"
     argv = env.args + ["robots", "check", "ciclo", "--symbol", "EURUSD", "--tf", "H1", "--report", str(report)]

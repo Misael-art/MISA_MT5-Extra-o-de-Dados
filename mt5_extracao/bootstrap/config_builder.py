@@ -78,7 +78,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
     ("ROBOTS", OrderedDict([         # catálogo de robôs (mt5x robots; aba Robôs)
         ("library_dirs", ""),            # pastas com robôs MQL5 (Experts/, Include/, Presets/), separadas por ;
         ("metaeditor_path", ""),         # vazio = MetaEditor64.exe da instalação do MT5 ([MT5] path)
-        ("tester_model", "1"),           # Strategy Tester: 0 cada tick, 1 OHLC de 1 min, 2 abertura, 4 ticks reais
+        ("tester_model", "4"),           # Strategy Tester: 4 ticks reais (padrão), 0 cada tick; 1 e 2 não valem na bateria
         ("max_real_risk_pct", "1.0"),    # teto de risco por operação (%) aceito pela bateria de segurança
         ("safety_lib_dir", ""),          # clone local da biblioteca mt5x-safety (vazio = não instalada)
     ])),

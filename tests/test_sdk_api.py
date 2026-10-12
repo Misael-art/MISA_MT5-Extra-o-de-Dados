@@ -20,7 +20,8 @@ SURFACE = {
     "new_robot": ["name", "folder", "robots", "config", "magic"],
     "install_robot": ["config", "robot", "mt5", "overwrite_presets", "upgrade_safety"],
     "compile_robot": ["config", "robot", "mt5", "run", "overwrite_presets", "upgrade_safety"],
-    "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params", "strategy", "source"],
+    "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params", "strategy", "source",
+                   "trade_from"],
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
                  "is_running", "source"],                       # T10.5: parâmetro novo no fim, com padrão
     "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running"],

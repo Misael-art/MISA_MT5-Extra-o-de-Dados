@@ -70,6 +70,10 @@ def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = N
         gates.append(Gate("Bateria de segurança aprovada", False,
                           f"a aprovação é do {'preset ' + check['preset'] if check.get('preset') else 'padrão do código'}"
                           ", não do que você vai usar", f"Rode: {command}"))
+    elif check.get("fingerprint") != catalog.fingerprint(robot):
+        gates.append(Gate("Bateria de segurança aprovada", False,
+                          "o código mudou depois da aprovação (ou ela é de uma versão anterior do programa)",
+                          f"Compile, teste e rode a bateria de novo: {command}"))
     else:
         gates.append(Gate("Bateria de segurança aprovada", True, f"aprovada em {check['created_at'][:16]}"))
 

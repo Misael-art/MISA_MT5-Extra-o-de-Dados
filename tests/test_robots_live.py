@@ -56,7 +56,10 @@ def home(tmp_path, monkeypatch):
     target.with_suffix(".ex5").write_bytes(b"ex5")
     store.save_run(db, {"run_id": "r1", "robot_key": robot.key, "source": "strategy tester", "symbol": "EURUSD",
                         "timeframe": "H1", "data_start": "2025-01-01 00:00:00", "data_end": "2026-01-01 00:00:00",
-                        "bars": 0, "params": {}, "metrics": {"trades": len(GOOD), "initial_equity": 10000.0},
+                        "bars": 0, "params": {}, "metrics": {"trades": len(GOOD), "initial_equity": 10000.0,
+                                                           "source_fingerprint": catalog.fingerprint(robot),
+                                                           "tester_model_code": "4", "tester_model": "cada tick com ticks reais",
+                                                           "entries": len(GOOD), "entries_without_stop": 0},
                         "equity": [], "trades": [["2025-01-01 00:00:00", p, 0.1] for p in GOOD],
                         "created_at": "2026-01-02 10:00:00"})
     home = SimpleNamespace(prefix=prefix, mt5=mt5, common=common, config=config, db=db, args=["--config", str(cfg)])
@@ -123,7 +126,8 @@ def test_a_newer_failed_battery_closes_the_gate(home):
     home.approve()
     store.save_run(home.db, {"run_id": "r2", "robot_key": "mql5:seguro", "source": "strategy tester", "symbol": "EURUSD",
                              "timeframe": "H1", "data_start": "2025-01-01 00:00:00", "data_end": "2026-01-01 00:00:00",
-                             "bars": 0, "params": {}, "metrics": {"trades": 300, "initial_equity": 10000.0}, "equity": [],
+                             "bars": 0, "params": {}, "metrics": dict(store.load_runs(home.db)[0]["metrics"], trades=300),
+                             "equity": [],
                              "trades": [["2025-01-01 00:00:00", p, 0.1] for p in [10.0, -12.0] * 150],
                              "created_at": "2099-01-01 00:00:00"})
     failed = home.approve()
@@ -137,7 +141,11 @@ def test_a_newer_failed_battery_closes_the_gate(home):
 # --- início ---------------------------------------------------------------------------
 
 def test_start_demo_pins_the_checked_account_and_records_the_state(home):
-    home.approve("Calmo")
+    assert not home.approve("Calmo").approved              # o backtest gravado é do padrão do código, não do preset
+    base = store.load_runs(home.db)[0]
+    store.save_run(home.db, dict(base, run_id="calmo", created_at="2099-01-01 00:00:00",
+                                 params={"InpRiskPct": "0.25", "InpMagicNumber": "9002", "preset": "Calmo"}))
+    assert home.approve("Calmo").approved
     calls = []
     state = live.start_demo(home.db, home.config, home.robot(), DEMO, "EURUSD", "H1", "Calmo", fake_spawn(calls),
                             is_running=lambda: False)
@@ -226,9 +234,9 @@ def connected(home, monkeypatch):
     state = SimpleNamespace(account=DEMO, events=[], spawned=[], running=True)
     monkeypatch.setattr(cli.Context, "connector", lambda self: SimpleNamespace(account_summary=lambda: state.account))
     monkeypatch.setattr(mt5_connector, "mt5", fake_mt5())
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda: state.running)
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: state.running)
 
-    def release():
+    def release(*a):
         state.events.append("closed")
         state.running = False
         return True

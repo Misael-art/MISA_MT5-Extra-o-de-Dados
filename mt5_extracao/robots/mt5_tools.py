@@ -38,6 +38,11 @@ COMPILE_TIMEOUT = 300      # segundos
 TESTER_TIMEOUT = 3600
 TESTER_MODELS = {"0": "cada tick", "1": "OHLC de 1 minuto", "2": "só preços de abertura",
                  "4": "cada tick com ticks reais"}
+# Medido no host (T10.10): no modelo "OHLC de 1 minuto" um stop atravessado por gap de fim de semana é preenchido
+# no preço do stop (-1,00R); com "cada tick" e com ticks reais, no preço do gap (-1,66R), como numa conta. Por
+# isso só os modelos por tick valem para a bateria, e o padrão é o de ticks reais.
+DEFAULT_TESTER_MODEL = "4"
+TICK_MODELS = ("0", "4")
 COPIED, SAME, KEPT = "copiado", "igual", "mantido"
 
 _MESSAGE = re.compile(r"^(?P<file>.*?)\((?P<line>\d+),(?P<column>\d+)\)\s*:\s*(?P<kind>error|warning)\s+"
@@ -358,16 +363,39 @@ def common_files_dir(config) -> Optional[Path]:
     return None
 
 
-def terminal_running() -> bool:
-    """Há um terminal64.exe em execução? (O MT5 não abre duas vezes a mesma instalação.)"""
+OURS, OTHER, UNKNOWN = "desta instalação", "de outra instalação", "não identificado"
+
+
+def _owner(proc, config) -> str:
+    """De qual instalação é este terminal. Sem `config`, todo terminal conta como nosso (comportamento antigo)."""
+    if config is None:
+        return OURS
+    try:
+        exe = install_dir(config) / paths.MT5_TERMINAL_EXE
+    except FileNotFoundError:
+        exe = None
+    return {paths.OURS: OURS, paths.OTHER: OTHER}.get(paths.terminal_owner(proc, exe, wine_prefix(config)), UNKNOWN)
+
+
+def terminal_processes(config=None) -> List[tuple]:
+    """[(processo, dono)] de cada terminal64.exe em execução; dono = OURS, OTHER ou UNKNOWN."""
     import psutil
+    found = []
     for proc in psutil.process_iter(["name", "cmdline"]):
         try:
             if paths.is_terminal_process(proc.info.get("name"), proc.info.get("cmdline")):
-                return True
+                found.append((proc, _owner(proc, config)))
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
-    return False
+    return found
+
+
+def terminal_running(config=None) -> bool:
+    """
+    O terminal DESTA instalação está aberto? (O MT5 não abre duas vezes a mesma instalação.) Um terminal de outra
+    instalação não conta. Um que não dá para identificar conta como aberto: na dúvida, o teste não roda.
+    """
+    return any(owner != OTHER for _, owner in terminal_processes(config))
 
 
 def expert_name(compiled: Path, data: Path) -> str:
@@ -379,7 +407,7 @@ def expert_name(compiled: Path, data: Path) -> str:
 
 
 def tester_model(config) -> str:
-    value = _get(config, "ROBOTS", "tester_model") or "1"
+    value = _get(config, "ROBOTS", "tester_model") or DEFAULT_TESTER_MODEL
     if value not in TESTER_MODELS:
         raise ValueError(f"[ROBOTS] tester_model = {value} é inválido. Use " +
                          ", ".join(f"{k} ({v})" for k, v in TESTER_MODELS.items()) + ".")
@@ -414,7 +442,7 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     fechado. `name` é o nome do relatório (o mesmo passado em `Report=`), sem extensão.
     """
     data = Path(data)
-    if (is_running or terminal_running)():
+    if is_running() if is_running else terminal_running(config):
         raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
                            "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
     prefix = wine_prefix(config)
@@ -436,7 +464,7 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     finally:
         ini.unlink(missing_ok=True)
     if not report.is_file():
-        if (is_running or terminal_running)():
+        if is_running() if is_running else terminal_running(config):
             # Visto no host: com uma atualização pendente, o terminal chama o LiveUpdate, sai sem testar e é
             # reaberto pelo atualizador (já sem o nosso .ini). A segunda execução funciona.
             raise RuntimeError("O Strategy Tester não gerou o relatório e o MetaTrader 5 ficou aberto: ele "
@@ -448,15 +476,24 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     return report
 
 
-def close_terminal(timeout: float = 20.0) -> bool:
-    """Encerra o terminal64.exe (terminate e, depois de `timeout` s, kill). True se nenhum ficou aberto."""
+def close_terminal(timeout: float = 20.0, config=None) -> bool:
+    """
+    Encerra o terminal DESTA instalação (terminate e, depois de `timeout` s, kill). True se nenhum ficou aberto.
+    Nunca encerra o terminal de outra instalação (pode haver um robô operando nele) nem um que não dá para
+    identificar: nesse caso para e pede que a pessoa feche.
+    """
     import psutil
+    found = terminal_processes(config)
+    if any(owner == UNKNOWN for _, owner in found):
+        raise RuntimeError("Há um MetaTrader 5 aberto que não dá para saber se é o desta instalação. Não vou "
+                           "fechá-lo: feche à mão o terminal que usa esta instalação e tente de novo.")
     procs = []
-    for proc in psutil.process_iter(["name", "cmdline"]):
+    for proc, owner in found:
+        if owner != OURS:
+            continue
         try:
-            if paths.is_terminal_process(proc.info.get("name"), proc.info.get("cmdline")):
-                proc.terminate()
-                procs.append(proc)
+            proc.terminate()
+            procs.append(proc)
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     _, alive = psutil.wait_procs(procs, timeout=timeout)
@@ -465,7 +502,7 @@ def close_terminal(timeout: float = 20.0) -> bool:
             proc.kill()
         except psutil.NoSuchProcess:
             pass
-    return not terminal_running()
+    return not terminal_running(config)
 
 
 def _bridge(action: str) -> int:
@@ -475,12 +512,14 @@ def _bridge(action: str) -> int:
     return subprocess.run([str(script), action], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
 
 
-def release_terminal() -> bool:
+def release_terminal(config=None) -> bool:
     """Para a ponte (Linux) e fecha o terminal, para o Tester poder abrir. Devolve True se a ponte estava ativa."""
+    if any(owner == UNKNOWN for _, owner in terminal_processes(config)):
+        close_terminal(config=config)          # levanta o erro antes de mexer na ponte
     bridge_was_running = _bridge("status") == 0
     if bridge_was_running:
         _bridge("stop")
-    if not close_terminal():
+    if not close_terminal(config=config):
         raise RuntimeError("Não foi possível fechar o MetaTrader 5. Feche-o à mão e tente de novo.")
     return bridge_was_running
 
@@ -533,7 +572,7 @@ def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional
                    is_running: Optional[Callable] = None) -> Path:
     """Abre o terminal com o .ini dado (gravado como <name>.ini na pasta de dados) e devolve o caminho do .ini."""
     data = Path(data)
-    if (is_running or terminal_running)():
+    if is_running() if is_running else terminal_running(config):
         raise RuntimeError("O MetaTrader 5 está aberto: o robô só entra no gráfico quando o terminal é iniciado "
                            "pelo programa. Feche o MT5 ou repita com --close-terminal.")
     prefix = wine_prefix(config)

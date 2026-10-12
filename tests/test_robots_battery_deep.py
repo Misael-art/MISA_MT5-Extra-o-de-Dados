@@ -145,12 +145,12 @@ def test_deep_needs_a_backtest_tunables_and_an_mql5_robot(env):
 
 def test_cli_battery_deep_announces_the_cost_first(env, monkeypatch, capsys):
     env.base()
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda: False)
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: False)
     monkeypatch.setattr(mt5_tools, "run_windows_command", env.terminal())
     cli.main(env.args + ["robots", "battery", "fundo", "--deep"])
     out = capsys.readouterr().out
     assert "6 testes no Strategy Tester, cerca de 2 min" in out and "✓ Robustez com parâmetros ±20%" in out
     assert "Estatística: aprovada" in out and out.index("6 testes") < out.index("Bateria de segurança de")
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda: True)
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: True)
     assert cli.main(env.args + ["robots", "battery", "fundo", "--deep"]) == cli.EXIT_FAIL
     assert "--close-terminal" in capsys.readouterr().err

@@ -512,9 +512,9 @@ def _robots_backtest_mql5(args, ctx, robot, tf, start, end):
         params[name.strip()] = value.strip()
     bridge_was_running = False
     try:
-        if args.close_terminal and mt5_tools.terminal_running():
+        if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar o teste...")
-            bridge_was_running = mt5_tools.release_terminal()
+            bridge_was_running = mt5_tools.release_terminal(ctx.config)
         run = backtest.run_mql5(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end, args.preset, params)
     except (OSError, RuntimeError) as e:
         raise RuntimeError(str(e)) from e
@@ -696,9 +696,9 @@ def _robots_check(args, ctx, items):
     end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
     bridge_was_running = False
     try:
-        if args.close_terminal and mt5_tools.terminal_running():
+        if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar o teste...")
-            bridge_was_running = mt5_tools.release_terminal()
+            bridge_was_running = mt5_tools.release_terminal(ctx.config)
         result = pipeline.check(ctx.db, ctx.config, robot, items, args.symbol, tf.label, start, end, args.preset)
     finally:
         if bridge_was_running:
@@ -742,9 +742,9 @@ def _robots_parity(args, ctx, items):
     end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
     bridge_was_running = False
     try:
-        if args.close_terminal and mt5_tools.terminal_running():
+        if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar o teste...")
-            bridge_was_running = mt5_tools.release_terminal()
+            bridge_was_running = mt5_tools.release_terminal(ctx.config)
         if declared:
             outcome = parity.run_declared(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end)
         else:
@@ -764,9 +764,13 @@ def _robots_parity(args, ctx, items):
     _print(f"  Resultado: {_fmt_num(report.python_result)} no Python e {_fmt_num(report.mql5_result)} no MQL5" +
            (f" (diferença {_fmt_pct(difference)}; máximo {_fmt_pct(parity.MAX_RESULT_DIFFERENCE)})"
             if difference is not None else " (o Python deu zero: diferença não calculável)"))
-    if report.excluded_warmup:
-        _print(f"  {report.excluded_warmup} operação(ões) encerrada(s) antes de {report.warmup_until[:16]} ficaram de "
-               "fora: nesse trecho o Python ainda não tinha barras para os indicadores.")
+    _print(f"  Par a par: {report.pairs_close} de {report.matched} com resultado até "
+           f"{_fmt_pct(parity.PAIR_TOLERANCE)} um do outro ({_fmt_pct(report.pairs_close_share)}); a diferença total é "
+           f"{_fmt_pct(report.difference_of_gross)} do giro bruto. Modelo do Tester: "
+           f"{outcome['mql5_run']['metrics']['tester_model']}.")
+    if report.warmup_until:
+        _print(f"  Os dois lados começam a operar em {report.warmup_until[:16]}, com o mesmo capital (as barras "
+               "anteriores só aquecem os indicadores do Python).")
     for label, trades in (("Só no Python", report.only_python), ("Só no MQL5", report.only_mql5)):
         if trades:
             _print(f"  {label} ({len(trades)}): " + ", ".join(str(t[0])[:16] for t in trades[:8]) +
@@ -790,9 +794,9 @@ def _robots_battery(args, ctx, items):
             count = len(battery.deep_plan(robot, runs[0]))
             _print(f"Bateria completa: {count} testes no Strategy Tester, cerca de "
                    f"{max(1, round(count * battery.SECONDS_PER_TEST / 60))} min. O MetaTrader 5 fica fechado enquanto isso.")
-        if args.close_terminal and mt5_tools.terminal_running():
+        if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
-            bridge_was_running = mt5_tools.release_terminal()
+            bridge_was_running = mt5_tools.release_terminal(ctx.config)
     try:
         report = battery.run_battery(ctx.db, ctx.config, robot, items, args.preset, deep=args.deep)
     except (OSError, RuntimeError) as e:
@@ -842,8 +846,8 @@ def _robots_start(args, ctx, items):
         return EXIT_FAIL
     bridge_was_running = False
     try:
-        if mt5_tools.terminal_running():
-            bridge_was_running = mt5_tools.release_terminal()
+        if mt5_tools.terminal_running(ctx.config):
+            bridge_was_running = mt5_tools.release_terminal(ctx.config)
         state = live.start_demo(ctx.db, ctx.config, robot, account, args.symbol, tf.label, args.preset)
     except (OSError, RuntimeError) as e:
         raise RuntimeError(str(e)) from e
@@ -900,8 +904,8 @@ def _robots_stop(args, ctx, items):
         if robot.kind == catalog.MQL5 and robot.stage == catalog.DEMO:
             live.mark_stopped(ctx.db, robot)
     closed = False
-    if args.close_terminal and mt5_tools.terminal_running():
-        mt5_tools.release_terminal()
+    if args.close_terminal and mt5_tools.terminal_running(ctx.config):
+        mt5_tools.release_terminal(ctx.config)
         closed = True
     _data(stop_active=True, kill_file=path, terminal_closed=closed)
     _print(f"PARAR TUDO acionado: {path}")

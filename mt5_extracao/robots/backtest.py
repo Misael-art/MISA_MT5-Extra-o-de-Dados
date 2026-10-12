@@ -45,11 +45,13 @@ def downsample(points: List[list], max_points: int = MAX_CURVE_POINTS) -> List[l
 
 
 def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
-               params: Optional[dict] = None, strategy=None, source: str = "backtest") -> dict:
+               params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None) -> dict:
     """
     Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia').
     `strategy` permite passar a estratégia já montada (ex.: uma DeclaredStrategy), em vez de buscá-la pela chave
     do robô; nesse caso a execução é gravada na chave de `robot` e `robot` pode ser de qualquer tipo.
+    `trade_from`: as barras anteriores a esse horário servem só para aquecer os indicadores; a estratégia começa
+    a operar nele, sem posição e com o capital inicial (é como o Strategy Tester começa em FromDate).
     """
     from mt5_extracao import timeframes
     from mt5_extracao.strategies import get_strategy, research, specs
@@ -69,7 +71,13 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
                          "Escolha um período maior ou extraia mais histórico.")
     spec = specs.load_spec(db, symbol)
     settings = research.backtest_config(config)
-    result = run_backtest(df, strategy, spec, settings)
+    start_index = 0
+    if trade_from is not None:
+        import pandas as pd
+        start_index = int((pd.to_datetime(df["time"]) < pd.Timestamp(trade_from)).sum())
+        if start_index >= len(df):
+            raise ValueError(f"Não há barras a partir de {trade_from} no período pedido.")
+    result = run_backtest(df, strategy, spec, settings, start_index=start_index)
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics["profit_factor"] = min(float(metrics["profit_factor"]), PF_CAP)
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
@@ -80,7 +88,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,
            "equity": downsample(equity_curve(result.trades, settings.initial_equity, df["time"].iloc[0])),
            "trades": [[str(t.exit_time), float(t.pnl), float(t.volume)] for t in result.trades],
-           "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+           "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
     store.save_run(db, run)
     return run
 
@@ -99,13 +107,35 @@ _DEAL_COLUMNS = 13       # horário, oferta, ativo, tipo, direção, volume, pre
 
 
 def _number(text: str) -> float:
+    """
+    Número de um relatório ou CSV do MT5. Aceita milhar com espaço ("10 000.00"), vírgula decimal ("1 234,56") e
+    os dois separadores juntos: o que aparece por último é o decimal ("1,234.56" e "1.234,56").
+    """
     text = text.replace("\xa0", "").replace(" ", "")
     if not text:
         return 0.0
-    try:
-        return float(text)
-    except ValueError:
-        return float(text.replace(".", "").replace(",", "."))
+    if "," in text and "." in text:
+        thousands = "," if text.rfind(".") > text.rfind(",") else "."
+        text = text.replace(thousands, "")
+    return float(text.replace(",", "."))
+
+
+def entries_without_stop(text: str) -> Tuple[int, int]:
+    """
+    (entradas, entradas sem stop) lidas do relatório: cada negócio de entrada (direção "in") aponta para a ordem
+    que o abriu, e a coluna S/L dessa ordem tem de estar preenchida. É a prova, pelo teste, de que o stop é
+    obrigatório; a leitura do código só mostra a intenção.
+    """
+    orders, entries = {}, []
+    for row in _ROW.findall(text):
+        cells = [_TAG.sub("", c).replace("&nbsp;", " ").strip() for c in _CELL.findall(row)]
+        if not cells or not _TIME.match(cells[0]):
+            continue
+        if len(cells) == 11 and cells[3].lower().split()[0:1] in (["buy"], ["sell"]):
+            orders[cells[1]] = cells[6]
+        elif len(cells) == _DEAL_COLUMNS and cells[3].lower() in ("buy", "sell") and cells[4].lower() == "in":
+            entries.append(cells[7])
+    return len(entries), sum(1 for order in entries if not _number(orders.get(order, "") or "0"))
 
 
 def parse_report(text: str) -> Tuple[Optional[float], List[list]]:
@@ -219,6 +249,14 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     if not compiled.is_file() or (source_file.suffix.lower() == ".mq5" and source_file.is_file()
                                   and compiled.stat().st_mtime < source_file.stat().st_mtime):
         raise ValueError(f"{robot.name} não está compilado na pasta do MT5. Rode antes: mt5x robots compile {slug}")
+    # O que roda no Tester é o que está na pasta do MT5. Se o fonte ou um include mudou no disco depois da última
+    # compilação, o teste seria de um código antigo e a bateria leria o novo: recusa e manda compilar.
+    stale = [item.target.name for item in mt5_tools.install_plan(robot, data)
+             if item.source.suffix.lower() in (".mq5", ".mqh") and
+             (not item.target.is_file() or item.target.read_bytes() != item.source.read_bytes())]
+    if stale:
+        raise ValueError(f"O código de {robot.name} mudou desde a última compilação (" + ", ".join(stale[:4]) +
+                         f"). Rode antes: mt5x robots compile {slug}")
     values = tester_values(robot, preset, params)
     name = f"mt5x_{slug}"
     parameters = mt5_tools.write_tester_set(data, name, values) if values else ""
@@ -234,13 +272,17 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     ini = mt5_tools.tester_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, start, end, deposit, name,
                                model, parameters)
     report = mt5_tools.run_tester(config, data, ini, name, run, is_running=is_running)
-    report_deposit, results = parse_report(mql.read_text(report))
+    report_text = mql.read_text(report)
+    report_deposit, results = parse_report(report_text)
+    entries, without_stop = entries_without_stop(report_text)
     trades_source = REPORT_SOURCE
     if trades_csv is not None and trades_csv.is_file():
         results, trades_source = read_hdk_trades(trades_csv), CSV_SOURCE
     initial = report_deposit or deposit
     metrics = metrics_from_results(results, initial)
-    metrics.update(trades_source=trades_source, tester_model=mt5_tools.TESTER_MODELS[model], report=str(report))
+    metrics.update(trades_source=trades_source, tester_model=mt5_tools.TESTER_MODELS[model], report=str(report),
+                   tester_model_code=model, entries=entries, entries_without_stop=without_stop,
+                   source_fingerprint=catalog.fingerprint(robot))
     equity, points = float(initial), [[start.strftime("%Y-%m-%d %H:%M:%S"), float(initial)]]
     for stamp, value, _ in results:
         equity += float(value)
@@ -250,6 +292,6 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
               "data_end": end.strftime("%Y-%m-%d %H:%M:%S"), "bars": 0,
               "params": dict(values, **({"preset": preset} if preset else {})), "metrics": metrics,
               "equity": downsample(points), "trades": [[_iso(t), float(v), float(vol)] for t, v, vol in results],
-              "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+              "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
     store.save_run(db, record)
     return record

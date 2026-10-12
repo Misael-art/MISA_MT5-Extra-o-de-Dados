@@ -776,9 +776,21 @@ class MT5Connector:
             log.warning("psutil não disponível; não é possível encerrar o MT5.")
             return False
         procs = []
+        terminal_exe = os.path.join(self.mt5_path, "terminal64.exe") if self.mt5_path else None
+        wine_prefix = None
+        try:
+            settings = configparser.ConfigParser()
+            settings.read(self.config_path, encoding="utf-8")
+            wine_prefix = settings.get("MT5", "wine_prefix", fallback="").strip() or None
+        except (configparser.Error, OSError):
+            pass
         for proc in psutil.process_iter(['name', 'cmdline']):
             try:
                 if bootstrap_paths.is_terminal_process(proc.info.get('name'), proc.info.get('cmdline')):
+                    # Nunca encerra o terminal de OUTRA instalação: pode haver um robô operando nele
+                    if bootstrap_paths.terminal_owner(proc, terminal_exe, wine_prefix) == bootstrap_paths.OTHER:
+                        log.info("Terminal de outra instalação em execução: não será encerrado.")
+                        continue
                     proc.terminate()
                     procs.append(proc)
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):

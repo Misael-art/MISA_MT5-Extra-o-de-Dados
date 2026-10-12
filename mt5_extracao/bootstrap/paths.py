@@ -103,3 +103,30 @@ def is_terminal_process(name, cmdline=None) -> bool:
         return True
     first = cmdline[0] if cmdline else ""
     return str(first).replace("\\", "/").rsplit("/", 1)[-1].lower() == MT5_TERMINAL_EXE
+
+
+OURS, OTHER, UNKNOWN = "ours", "other", "unknown"
+
+
+def _same_path(a, b) -> bool:
+    return str(a).replace("\\", "/").rstrip("/").lower() == str(b).replace("\\", "/").rstrip("/").lower()
+
+
+def terminal_owner(proc, terminal_exe=None, wine_prefix=None) -> str:
+    """
+    De qual instalação é este processo de terminal: OURS, OTHER ou UNKNOWN. `proc` é um processo do psutil.
+    No Windows compara o caminho do executável com `terminal_exe`. No Wine o caminho é o mesmo em todo prefixo
+    (C:\\...), então compara a variável WINEPREFIX do processo com `wine_prefix` (sem a variável, o Wine usa
+    ~/.wine). UNKNOWN quando não dá para ler o processo ou falta a referência.
+    """
+    try:
+        if is_windows():
+            if not terminal_exe:
+                return UNKNOWN
+            return OURS if _same_path(proc.exe(), terminal_exe) else OTHER
+        if not wine_prefix:
+            return UNKNOWN
+        theirs = (proc.environ() or {}).get("WINEPREFIX") or str(Path.home() / ".wine")
+        return OURS if _same_path(Path(theirs).expanduser(), Path(wine_prefix).expanduser()) else OTHER
+    except Exception:           # acesso negado, processo que sumiu...
+        return UNKNOWN

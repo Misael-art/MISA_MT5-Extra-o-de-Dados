@@ -344,7 +344,31 @@ def attach_checks(robots: List[Robot], checks: List[dict]) -> None:
         robot.checks = by_key.get(robot.key, [])
         if robot.checks and robot.checks[0]["approved"] and robot.stage in robot.stages and \
                 robot.stages.index(robot.stage) < robot.stages.index(APPROVED):
-            robot.stage = APPROVED
+            stale = robot.kind == MQL5 and robot.checks[0].get("fingerprint") not in ("", None, fingerprint(robot))
+            if stale:                     # o código mudou depois da aprovação: ela não vale mais
+                robot.notes.append("O código mudou depois da última bateria: rode o backtest e a bateria de novo.")
+            else:
+                robot.stage = APPROVED
+
+
+def fingerprint(robot: Robot) -> str:
+    """
+    Impressão digital do código do robô: o fonte e os includes do projeto (ou o .ex5, sem fonte) e a versão
+    declarada da biblioteca de segurança. Muda quando o código muda; presets e robot.json descritivo não entram.
+    Serve para a bateria e as travas saberem se o que foi testado é o que está no disco.
+    """
+    import hashlib
+    digest = hashlib.sha256()
+    files = sorted(p for p in robot.files if p.lower().endswith((".mq5", ".mqh", ".ex5")))
+    for name in files:
+        path = Path(name)
+        digest.update(path.name.encode("utf-8"))
+        try:
+            digest.update(path.read_bytes())
+        except OSError:
+            digest.update(b"<ausente>")
+    digest.update(str((robot.manifest or {}).get("safety_lib", "")).encode("utf-8"))
+    return digest.hexdigest()[:16] if files else ""
 
 
 def import_library(db, folder) -> List[Robot]:

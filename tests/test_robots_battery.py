@@ -27,10 +27,15 @@ def by_id(items):
     return {i.id: i for i in items}
 
 
-def save_run(db, key, pnl, symbol="EURUSD", volume=0.1, initial=10000.0, trades=True):
+def save_run(db, robot, pnl, symbol="EURUSD", volume=0.1, initial=10000.0, trades=True, **metrics):
+    """Grava um backtest como o Strategy Tester gravaria (`robot` pode ser o robô ou só a chave)."""
+    key = robot if isinstance(robot, str) else robot.key
+    tested = {} if isinstance(robot, str) else {
+        "source_fingerprint": catalog.fingerprint(robot), "tester_model_code": "4",
+        "tester_model": "cada tick com ticks reais", "entries": len(pnl), "entries_without_stop": 0}
     run = {"run_id": uuid.uuid4().hex, "robot_key": key, "source": "strategy tester", "symbol": symbol,
            "timeframe": "H1", "data_start": "2025-01-01 00:00:00", "data_end": "2026-01-01 00:00:00", "bars": 0,
-           "params": {}, "metrics": {"trades": len(pnl), "initial_equity": initial}, "equity": [],
+           "params": {}, "metrics": {"trades": len(pnl), "initial_equity": initial, **tested, **metrics}, "equity": [],
            "trades": [[f"2025-01-01 {i % 24:02d}:00:00", float(p), volume] for i, p in enumerate(pnl)] if trades else [],
            "created_at": "2026-01-02 10:00:00"}
     store.save_run(db, run)
@@ -123,7 +128,7 @@ def test_comments_do_not_count_as_orders_and_a_robot_without_safety_fails(tmp_pa
 def test_compiled_only_robot_passes_demo_but_never_real(tmp_path, db):
     path = mql_file(tmp_path, "Caixa.ex5", "")
     robot = catalog.robot_from_file(path)
-    save_run(db, robot.key, GOOD)
+    save_run(db, robot, GOOD)
     report = battery.run_battery(db, None, robot, [robot])
     assert report.static_status == battery.NA and report.statistical_status == battery.APPROVED
     assert report.approved and not report.allows_real
@@ -133,24 +138,24 @@ def test_compiled_only_robot_passes_demo_but_never_real(tmp_path, db):
 
 def test_statistical_items_of_a_good_and_a_bad_run(tmp_path, db):
     robot = safe_robot(tmp_path)
-    good = by_id(battery.statistical_items(robot, save_run(db, robot.key, GOOD), None, db))
+    good = by_id(battery.statistical_items(robot, save_run(db, robot, GOOD), None, db))
     assert {i for i, item in good.items() if item.status == battery.FAIL} == set()
     assert good["trades"].detail == "300 operações" and "3,75" in good["profit_factor"].detail
     assert good["out_of_sample"].status == battery.OK and "90 operações" in good["out_of_sample"].detail
     assert good["robustness"].status == battery.WARN and good["cost_stress"].status == battery.WARN   # sem specs
-    bad = by_id(battery.statistical_items(robot, save_run(db, robot.key, BAD), None, db))
+    bad = by_id(battery.statistical_items(robot, save_run(db, robot, BAD), None, db))
     assert {"profit_factor", "expectancy", "out_of_sample"} <= {i for i, x in bad.items() if x.status == battery.FAIL}
-    few = by_id(battery.statistical_items(robot, save_run(db, robot.key, GOOD[:50]), None, db))
+    few = by_id(battery.statistical_items(robot, save_run(db, robot, GOOD[:50]), None, db))
     assert few["trades"].status == battery.FAIL and few["out_of_sample"].status == battery.WARN
 
 
 def test_drawdown_ruin_and_loss_streak(tmp_path, db):
     robot = safe_robot(tmp_path)
     wild = [3000.0, -2500.0] * 150                       # ganha na média, mas com quedas enormes
-    items = by_id(battery.statistical_items(robot, save_run(db, robot.key, wild), None, db))
+    items = by_id(battery.statistical_items(robot, save_run(db, robot, wild), None, db))
     assert items["drawdown"].status == battery.FAIL and items["ruin"].status == battery.FAIL
     streak = ([-5.0] * 12 + [200.0]) * 25
-    items = by_id(battery.statistical_items(robot, save_run(db, robot.key, streak), None, db))
+    items = by_id(battery.statistical_items(robot, save_run(db, robot, streak), None, db))
     assert items["loss_streak"].status == battery.WARN and "12 perdas seguidas" in items["loss_streak"].detail
 
 
@@ -158,9 +163,9 @@ def test_cost_stress_uses_the_symbol_spec(tmp_path, db):
     robot = safe_robot(tmp_path)
     db.save_symbol_spec("EURUSD", SPEC)                   # 10 pontos a 1,00 por ponto por lote
     thin = [1.5, -1.0] * 150                              # 0,1 lote: um spread a mais custa 1,00 por operação
-    item = by_id(battery.statistical_items(robot, save_run(db, robot.key, thin), None, db))["cost_stress"]
+    item = by_id(battery.statistical_items(robot, save_run(db, robot, thin), None, db))["cost_stress"]
     assert item.status == battery.FAIL and "10 pontos" in item.detail
-    item = by_id(battery.statistical_items(robot, save_run(db, robot.key, GOOD), None, db))["cost_stress"]
+    item = by_id(battery.statistical_items(robot, save_run(db, robot, GOOD), None, db))["cost_stress"]
     assert item.status == battery.OK
 
 
@@ -168,7 +173,7 @@ def test_missing_run_and_old_run_without_trades(tmp_path, db):
     robot = safe_robot(tmp_path)
     items = battery.statistical_items(robot, None, None, db)
     assert [i.status for i in items] == [battery.FAIL] and "mt5x robots backtest seguro" in items[0].fix
-    old = save_run(db, robot.key, GOOD, trades=False)
+    old = save_run(db, robot, GOOD, trades=False)
     items = battery.statistical_items(robot, store.load_runs(db, robot.key)[0], None, db)
     assert old["metrics"]["trades"] == 300 and "versão anterior" in items[0].detail
 
@@ -202,14 +207,14 @@ def test_python_strategy_uses_the_saved_validation(db):
 def test_latest_battery_decides_the_stage(tmp_path, db):
     robot = safe_robot(tmp_path)
     store.save_record(db, robot.key, robot.kind, robot.name, robot.path, robot.stage)
-    save_run(db, robot.key, GOOD)
+    save_run(db, robot, GOOD)
     report = battery.run_battery(db, None, robot, [robot])
     assert report.approved and report.allows_real and report.run_id
     loaded = catalog.get_robot(catalog.load_catalog(None, db), "seguro")
     assert loaded.stage == catalog.APPROVED and loaded.checks[0]["check_id"] == report.check_id
     assert next(i for i in loaded.checks[0]["items"] if i["id"] == "compile")["icon"] == "✓"
 
-    run = save_run(db, robot.key, BAD)                    # backtest mais novo e ruim: a aprovação é revogada
+    run = save_run(db, robot, BAD)                    # backtest mais novo e ruim: a aprovação é revogada
     run_time = "2026-01-03 10:00:00"
     from sqlalchemy import text
     with db.engine.begin() as conn:
@@ -244,7 +249,7 @@ def test_panel_text_shows_the_latest_battery(tmp_path, db):
     from mt5_extracao.ui import robot_detail
     robot = safe_robot(tmp_path)
     assert "mt5x robots battery seguro" in robot_detail.battery_text(robot)
-    save_run(db, robot.key, BAD)
+    save_run(db, robot, BAD)
     robot.checks = [battery.run_battery(db, None, robot, [robot]).to_dict()]
     text = robot_detail.battery_text(robot)
     assert text.startswith("✗ Reprovada") and "✗ Expectativa positiva com custos" in text

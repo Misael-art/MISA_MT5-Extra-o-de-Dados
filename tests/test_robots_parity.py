@@ -121,7 +121,7 @@ def test_run_compares_both_backtests_over_the_same_period(env):
 
 
 def test_cli_parity_reports_and_sets_the_exit_code(env, monkeypatch, capsys):
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda: False)
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: False)
     monkeypatch.setattr(mt5_tools, "run_windows_command", env.terminal(env.python_trades))
     argv = env.args + ["robots", "parity", "gemeo", "--strategy", "donchian", "--symbol", "BBB", "--tf", "D1"]
     assert cli.main(argv) == cli.EXIT_OK

@@ -115,3 +115,39 @@ def test_robot_tools_see_and_close_the_wine_terminal(monkeypatch):
     state["procs"] = [term, other]
     term.terminate = lambda: state.update(procs=[other])
     assert mt5_tools.close_terminal(timeout=0) and state["procs"] == [other]
+
+
+def test_terminal_owner_tells_installations_apart(monkeypatch, tmp_path):
+    from pathlib import Path
+    from types import SimpleNamespace
+    from mt5_extracao.bootstrap import paths
+    monkeypatch.setattr(paths, "is_windows", lambda: False)
+    proc = lambda env: SimpleNamespace(environ=lambda: env)
+    assert paths.terminal_owner(proc({"WINEPREFIX": str(tmp_path)}), None, tmp_path) == paths.OURS
+    assert paths.terminal_owner(proc({"WINEPREFIX": "/outro"}), None, tmp_path) == paths.OTHER
+    assert paths.terminal_owner(proc({}), None, tmp_path) == paths.OTHER              # sem a variável: ~/.wine
+    assert paths.terminal_owner(proc({}), None, Path.home() / ".wine") == paths.OURS
+    assert paths.terminal_owner(proc({"WINEPREFIX": str(tmp_path)}), None, None) == paths.UNKNOWN
+
+    def denied():
+        raise PermissionError
+    assert paths.terminal_owner(SimpleNamespace(environ=denied), None, tmp_path) == paths.UNKNOWN
+    monkeypatch.setattr(paths, "is_windows", lambda: True)
+    exe = "C:\\Program Files\\MetaTrader 5\\terminal64.exe"
+    assert paths.terminal_owner(SimpleNamespace(exe=lambda: exe.upper()), exe, None) == paths.OURS
+    assert paths.terminal_owner(SimpleNamespace(exe=lambda: "D:\\Corretora\\terminal64.exe"), exe, None) == paths.OTHER
+    assert paths.terminal_owner(SimpleNamespace(exe=lambda: exe), None, None) == paths.UNKNOWN
+
+
+def test_connector_never_kills_another_installations_terminal(connector, monkeypatch, tmp_path):
+    from mt5_extracao.bootstrap import paths
+    monkeypatch.setattr(paths, "is_windows", lambda: False)
+    cfg = tmp_path / "c.ini"
+    cfg.write_text(f"[MT5]\nwine_prefix = {tmp_path / 'nosso'}\n", encoding="utf-8")
+    monkeypatch.setattr(connector, "config_path", str(cfg))
+    ours, theirs = WineProc(WINE_CMDLINE), WineProc(WINE_CMDLINE)
+    ours.environ = lambda: {"WINEPREFIX": str(tmp_path / "nosso")}
+    theirs.environ = lambda: {"WINEPREFIX": str(tmp_path / "conta_real")}
+    monkeypatch.setattr(connector_module, "psutil", FakePsutil([ours, theirs]))
+    assert connector._kill_terminal_processes(timeout=0) is True
+    assert ours.terminated and not theirs.terminated

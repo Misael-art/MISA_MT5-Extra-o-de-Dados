@@ -15,6 +15,7 @@ from typing import List, Optional
 
 MIN_MATCHED_SHARE = 0.95
 MAX_RESULT_DIFFERENCE = 0.05
+PAIR_TOLERANCE = 0.05          # informativo: um par é "próximo" se os resultados diferem até 5%
 
 
 @dataclass
@@ -30,6 +31,8 @@ class ParityReport:
     tolerance_minutes: float = 0.0
     warmup_until: str = ""                                       # operações encerradas antes disso ficam de fora
     excluded_warmup: int = 0
+    pairs_close: int = 0             # pares cujo resultado difere no máximo PAIR_TOLERANCE do resultado do Python
+    gross: float = 0.0               # giro bruto do Python: soma dos resultados em valor absoluto
 
     @property
     def matched_share(self) -> float:
@@ -44,6 +47,15 @@ class ParityReport:
         return abs(self.mql5_result - self.python_result) / abs(self.python_result)
 
     @property
+    def pairs_close_share(self) -> float:
+        return self.pairs_close / self.matched if self.matched else 0.0
+
+    @property
+    def difference_of_gross(self) -> float:
+        """Diferença do resultado total em relação ao giro bruto: não explode quando o resultado líquido é pequeno."""
+        return abs(self.mql5_result - self.python_result) / self.gross if self.gross else 0.0
+
+    @property
     def ok(self) -> bool:
         difference = self.result_difference
         return bool(self.matched) and self.matched_share >= MIN_MATCHED_SHARE and \
@@ -55,6 +67,8 @@ class ParityReport:
                 "python_result": self.python_result, "mql5_result": self.mql5_result,
                 "result_difference": self.result_difference, "tolerance_minutes": self.tolerance_minutes,
                 "warmup_until": self.warmup_until, "excluded_warmup": self.excluded_warmup,
+                "pairs_close": self.pairs_close, "pairs_close_share": self.pairs_close_share,
+                "difference_of_gross": self.difference_of_gross,
                 "only_python": self.only_python, "only_mql5": self.only_mql5}
 
 
@@ -101,6 +115,9 @@ def compare(python_trades: List[list], mql5_trades: List[list], tolerance_minute
         report.matched += 1
         if (float(trade[1]) > 0) == (float(right[best][1]) > 0):
             report.same_sign += 1
+        if abs(float(right[best][1]) - float(trade[1])) <= PAIR_TOLERANCE * abs(float(trade[1])):
+            report.pairs_close += 1
+    report.gross = sum(abs(float(t[1])) for t in left)
     report.only_mql5 = [list(t) for t, taken in zip(right, used) if not taken]
     report.warmup_until, report.excluded_warmup = (str(warmup_until) if warmup_until is not None else ""), excluded
     return report
@@ -160,16 +177,23 @@ def run_declared(db, config, robot, symbol: str, timeframe: str, start=None, end
         raise ValueError(f"Timeframe inválido: {timeframe}")
     spec = generate.load_spec(robot)
     strategy = DeclaredStrategy(spec)
-    python_run = backtest.run_python(db, config, robot, symbol, timeframe, start, end, strategy=strategy,
-                                     source=backtest.PARITY_SOURCE)
-    period_start = _when(python_run["data_start"])
-    period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
-    mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, period_start, period_end,
-                                 params=parity_params(robot, config), run=runner, is_running=is_running,
-                                 source=backtest.DEEP_SOURCE)
-    # Aquecimento: até o maior período de indicador, o Python não tem como dar sinal; o Tester já tem histórico
+    # Os dois lados precisam começar no mesmo instante, sem posição e com o mesmo capital. O Strategy Tester começa
+    # em FromDate (um dia inteiro) já com histórico para os indicadores; o Python precisa de barras antes para
+    # aquecê-los. Por isso a comparação começa na primeira barra do dia seguinte ao fim do aquecimento.
     bars = db.load_ohlcv(symbol, tf.label, start, end)
     warmup = max([item.period for item in spec.indicators.values()] + [spec.atr_period]) + 1
-    warmup_until = str(bars["time"].iloc[warmup]) if len(bars) > warmup else None
-    return {"report": compare(python_run["trades"], mql5_run["trades"], float(tf.minutes), warmup_until),
-            "python_run": python_run, "mql5_run": mql5_run}
+    if len(bars) <= warmup + 1:
+        from mt5_extracao.strategies import research
+        raise ValueError(research.missing_message([symbol], tf) if bars.empty else
+                         f"Poucas barras de {symbol} para comparar: {len(bars)} (o aquecimento usa {warmup}).")
+    warm_end = _when(str(bars["time"].iloc[warmup]))
+    trade_from = (warm_end + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    python_run = backtest.run_python(db, config, robot, symbol, timeframe, start, end, strategy=strategy,
+                                     source=backtest.PARITY_SOURCE, trade_from=trade_from)
+    period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
+    mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, trade_from, period_end,
+                                 params=parity_params(robot, config), run=runner, is_running=is_running,
+                                 source=backtest.DEEP_SOURCE)
+    report = compare(python_run["trades"], mql5_run["trades"], float(tf.minutes))
+    report.warmup_until = trade_from.strftime("%Y-%m-%d %H:%M:%S")      # início comum da comparação
+    return {"report": report, "python_run": python_run, "mql5_run": mql5_run}

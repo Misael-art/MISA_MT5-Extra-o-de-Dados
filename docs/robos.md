@@ -92,6 +92,9 @@ O programa instala o robô, inicia, acompanha o resultado e tem o botão **PARAR
 
 Conta real vem **desligada** de fábrica.
 
+> **Antes de confiar em um número, leia [sdk/exatidao.md](sdk/exatidao.md):** o que está provado, o que foi
+> corrigido e as lacunas que continuam (por exemplo, o backtester Python é otimista em custos).
+
 ## Bateria de segurança
 
 `mt5x robots battery <robô>` confere dois grupos e mostra cada item com ✓ (passou), ⚠ (aviso) ou ✗ (reprovou),
@@ -100,7 +103,7 @@ sempre com o motivo e o que fazer:
 | Grupo | O que confere |
 |---|---|
 | Código e preset | Compila sem erros, arquivos em UTF-8, stop obrigatório, sem martingale/grid/preço médio, toda ordem pela camada de segurança, sem DLL, magic number exclusivo, risco e limites dentro dos tetos |
-| Estatística | Sobre o último backtest: pelo menos 200 operações, profit factor acima do mínimo, expectativa positiva, queda máxima de Monte Carlo dentro do limite, chance de ruína, resultado mantido no fim do período, o dobro do spread, sequência de perdas |
+| Estatística | Sobre o último backtest, que em robô MQL5 precisa ser do código atual, do mesmo preset, em modelo por tick e com stop em toda entrada: pelo menos 200 operações, profit factor acima do mínimo, expectativa positiva, queda máxima de Monte Carlo dentro do limite, chance de ruína, resultado mantido no fim do período, o dobro do spread, sequência de perdas |
 
 Um ✗ reprova; avisos não reprovam, mas leia cada um. Vale sempre a bateria **mais recente**: se um backtest novo
 reprovar, o robô volta a "Testado". Robô sem código-fonte (`.ex5`) pode passar para demo só pela estatística e
@@ -148,8 +151,9 @@ A classe sempre vem com o motivo. Ela é calculada a partir dos parâmetros e do
 library_dirs =
 # MetaEditor usado para compilar (vazio = o da instalação do MT5)
 metaeditor_path =
-# Modelo do Strategy Tester: 0 cada tick, 1 OHLC de 1 minuto, 2 preços de abertura, 4 ticks reais
-tester_model = 1
+# Modelo do Strategy Tester: 4 ticks reais (padrão) ou 0 cada tick. Os modelos 1 e 2 escondem perda em gap
+# e a bateria não os aceita.
+tester_model = 4
 # Teto de risco por operação (%) aceito pela bateria de segurança
 max_real_risk_pct = 1.0
 ```

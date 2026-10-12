@@ -91,7 +91,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
-| T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ⏳ gera, compila e opera; paridade real **95,9% das operações casadas, mas 9,1% de diferença de resultado (critério: 5%)** |
+| T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ⏳ gera, compila e opera; depois das correções, 97% das operações casadas e 96% dos pares a até 5%; **o critério em dinheiro (5% do líquido) segue não cumprido** e depende de decisão do dono (veja a seção) |
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -1612,7 +1612,20 @@ risco 1% sobre 100.000; modelo OHLC de 1 minuto):**
 - Nos pares casados o lote do MQL5 é sistematicamente cerca de 4% menor (mediana 0,963) e o resultado acompanha
   (mediana 0,961). **Causa não identificada.**
 
-**Para concluir a tarefa:** achar a causa dos 4% no lote (comparar `CHDKRiskGuard.CalcLot` com
+**Atualização (2026-10-12, correção de exatidão):** as causas foram achadas e medidas. Os "4% no lote" não eram
+erro de cálculo: o robô fazia duas operações (duas perdas) no aquecimento, que o Python não fazia, e o capital dele
+ficava cerca de 2% menor dali em diante; o resto vinha da âncora do stop. Corrigido na origem: o esqueleto fixa o
+stop no fechamento da barra do sinal (como o backtester Python) e os dois lados começam no mesmo instante. A
+exclusão do aquecimento usada na primeira medição deixou de ser necessária. Números novos, causas restantes e
+todas as lacunas estão em [sdk/exatidao.md](sdk/exatidao.md). Resumo: 144 × 144 operações, 97,9% casadas e 96,5%
+dos pares a até 5% com "cada tick"; a diferença total é 0,59% do giro bruto, mas 12,2% do resultado líquido.
+
+**Decisão pendente do dono do projeto:** o critério da T10.6 mede a diferença sobre o resultado **líquido**, que
+fica instável quando o líquido é pequeno perto do giro. Não o alterei. As opções são manter (e a tarefa só fecha
+com uma estratégia de resultado líquido maior) ou trocar por medidas que não dependem do líquido: pares a até 5%
+(hoje 96,5%) e diferença sobre o giro bruto (hoje 0,59%).
+
+**Texto original, antes da correção:** achar a causa dos 4% no lote (comparar `CHDKRiskGuard.CalcLot` com
 `SymbolSpec.lots_for_risk` em uma operação) e decidir a âncora do stop; depois repetir a medição. Enquanto isso, o
 robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o valor em dinheiro não.
 
@@ -1662,6 +1675,21 @@ robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o 
 - **Critérios de aceite:** um robô com versão `0.10` ou com DLL é reprovado com o motivo; o pacote de um robô
   aprovado contém só o que foi pedido.
 - **Verificação:** `pytest -q`.
+
+### Correção de exatidão (2026-10-12, PR próprio, depois da T10.10)
+
+Revisão pedida pelo dono do projeto: nenhuma inexatidão pode pôr a operação em risco. O que foi medido, corrigido
+e o que continua lacuna está em [sdk/exatidao.md](sdk/exatidao.md). Mudanças de comportamento que afetam tarefas
+anteriores:
+
+- **T8.5:** `[ROBOTS] tester_model` passa a ter padrão 4 (ticks reais). O backtest recusa código alterado depois da
+  compilação e grava a impressão digital do código, o código do modelo e as entradas sem stop.
+- **T8.6:** quatro itens novos na estatística de robôs MQL5 (código atual, mesma configuração, modelo por tick,
+  stop em toda entrada). `_robot_checks` ganha a coluna `fingerprint` (aditiva). Backtests gravados antes desta
+  correção reprovam no item "código atual" e precisam ser refeitos.
+- **T8.7:** a trava "bateria aprovada" exige que a aprovação seja do código que está no disco.
+- **T8.4/T8.5/T8.7 e conector:** fechar o terminal só atinge o desta instalação.
+- **T10.3:** o esqueleto fixa o stop no fechamento da barra do sinal; robôs criados antes mantêm a regra antiga.
 
 ### T10.W — Validação no Windows (pendência)
 

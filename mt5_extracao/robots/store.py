@@ -149,10 +149,19 @@ def save_check(db, check: dict) -> None:
     from sqlalchemy import text
     row = {**{c: check.get(c) for c in _CHECK_COLUMNS}, "approved": int(check["approved"]),
            "allows_real": int(check["allows_real"]), "items_json": json.dumps(check["items"], ensure_ascii=False)}
+    row["fingerprint"] = check.get("fingerprint", "")
     with db.engine.begin() as conn:
         conn.execute(text(_CREATE_CHECKS))
-        conn.execute(text(f"INSERT INTO _robot_checks ({', '.join(_CHECK_COLUMNS)}) "
-                          f"VALUES ({', '.join(':' + c for c in _CHECK_COLUMNS)})"), row)
+        if not _has_column(conn, "_robot_checks", "fingerprint"):      # base anterior: coluna nova, nada é apagado
+            conn.execute(text("ALTER TABLE _robot_checks ADD COLUMN fingerprint TEXT"))
+        columns = _CHECK_COLUMNS + ("fingerprint",)
+        conn.execute(text(f"INSERT INTO _robot_checks ({', '.join(columns)}) "
+                          f"VALUES ({', '.join(':' + c for c in columns)})"), row)
+
+
+def _has_column(conn, table: str, column: str) -> bool:
+    from sqlalchemy import inspect
+    return any(c["name"] == column for c in inspect(conn).get_columns(table))
 
 
 def load_checks(db, robot_key: str = None) -> list:
@@ -160,13 +169,16 @@ def load_checks(db, robot_key: str = None) -> list:
     from sqlalchemy import inspect, text
     if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_robot_checks"):
         return []
-    sql, params = f"SELECT {', '.join(_CHECK_COLUMNS)} FROM _robot_checks", {}
-    if robot_key:
-        sql += " WHERE robot_key = :k"
-        params["k"] = robot_key
+    params = {}
     with db.engine.connect() as conn:
+        columns = _CHECK_COLUMNS + (("fingerprint",) if _has_column(conn, "_robot_checks", "fingerprint") else ())
+        sql = f"SELECT {', '.join(columns)} FROM _robot_checks"
+        if robot_key:
+            sql += " WHERE robot_key = :k"
+            params["k"] = robot_key
         rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, check_id DESC"), params).mappings()]
     for row in rows:
         row["approved"], row["allows_real"] = bool(row["approved"]), bool(row["allows_real"])
+        row["fingerprint"] = row.get("fingerprint") or ""
         row["items"] = json.loads(row.pop("items_json") or "[]")
     return rows

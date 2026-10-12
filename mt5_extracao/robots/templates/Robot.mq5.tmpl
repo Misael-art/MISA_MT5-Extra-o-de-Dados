@@ -104,12 +104,19 @@ void OnDeinit(const int reason)
    if(g_atr != INVALID_HANDLE) IndicatorRelease(g_atr);
 }
 
-//--- Distância do stop, em preço (0 = ATR ainda sem dados)
-double StopDistance()
+//--- Distância do stop em relação ao preço de entrada (0 = sem dados ou o mercado abriu além do stop).
+//    O stop é um NÍVEL fixado no fechamento da barra do sinal: fechamento -/+ ATR x multiplicador. A distância
+//    usada para o lote e para o alvo é a real, do preço de entrada até esse nível. É a mesma regra do
+//    backtester Python do mt5x; assim os dois lados arriscam o mesmo e saem no mesmo preço.
+double StopDistance(const ENUM_ORDER_TYPE type, const double price)
 {
    double atr[1];
    if(CopyBuffer(g_atr, 0, 1, 1, atr) != 1) return 0;
-   return atr[0] * InpStopAtrMult;
+   double reference = iClose(_Symbol, PERIOD_CURRENT, 1);
+   if(reference <= 0 || atr[0] <= 0) return 0;
+   double level = (type == ORDER_TYPE_BUY) ? reference - atr[0] * InpStopAtrMult : reference + atr[0] * InpStopAtrMult;
+   double distance = (type == ORDER_TYPE_BUY) ? price - level : level - price;
+   return (distance > 0) ? distance : 0;
 }
 
 //--- Este robô já tem posição neste ativo?
@@ -135,17 +142,17 @@ bool TryEnter(const ENUM_ORDER_TYPE type)
    if(reason == "" && g_risk.Paused()) reason = "pausado";
    if(reason == "") g_exec.TradingAllowed(_Symbol, reason);
 
-   double sl_dist = StopDistance();
-   if(reason == "" && sl_dist <= 0) reason = "stop indisponível (ATR sem dados)";
-
    MqlTick tick;
    if(reason == "" && !SymbolInfoTick(_Symbol, tick)) reason = "sem cotação";
+
+   double price   = (type == ORDER_TYPE_BUY) ? tick.ask : tick.bid;
+   double sl_dist = (reason == "") ? StopDistance(type, price) : 0;
+   if(reason == "" && sl_dist <= 0) reason = "stop indisponível (ATR sem dados ou o mercado abriu além do stop)";
 
    double lot = 0, risk_money = 0;
    if(reason == "")
    {
-      double price = (type == ORDER_TYPE_BUY) ? tick.ask : tick.bid;
-      double sl    = (type == ORDER_TYPE_BUY) ? price - sl_dist : price + sl_dist;
+      double sl = (type == ORDER_TYPE_BUY) ? price - sl_dist : price + sl_dist;
       if(g_risk.CalcLot(_Symbol, type, price, sl, lot, risk_money, reason))
          g_risk.CheckEntry(_Symbol, type, risk_money, reason);
    }

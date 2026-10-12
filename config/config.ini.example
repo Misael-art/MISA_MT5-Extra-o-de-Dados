@@ -82,9 +82,10 @@ event_window_hours = 4
 library_dirs = 
 # MetaEditor usado por 'mt5x robots compile'. Vazio = MetaEditor64.exe da pasta do MT5 ([MT5] path).
 metaeditor_path = 
-# Modelo do Strategy Tester em 'mt5x robots backtest' de robô MQL5: 0 = cada tick, 1 = OHLC de 1 minuto,
-# 2 = só preços de abertura, 4 = cada tick com ticks reais (mais fiel e mais lento).
-tester_model = 1
+# Modelo do Strategy Tester em 'mt5x robots backtest' de robô MQL5: 4 = cada tick com ticks reais (padrão, o mais
+# fiel), 0 = cada tick. Os modelos 1 (OHLC de 1 minuto) e 2 (só preços de abertura) são mais rápidos, mas
+# preenchem um stop atravessado por gap no preço do stop, escondendo perda: a bateria de segurança não os aceita.
+tester_model = 4
 # Teto de risco por operação (%) aceito pela bateria de segurança ('mt5x robots battery').
 max_real_risk_pct = 1.0
 # Pasta de um clone de https://github.com/Misael-art/mt5x-safety (biblioteca de segurança MQL5).

@@ -58,6 +58,7 @@ class Report:
     run_id: str = ""
     created_at: str = ""
     check_id: str = ""
+    fingerprint: str = ""          # código avaliado (catalog.fingerprint): a aprovação vale só para ele
 
     def group_status(self, group: str) -> str:
         statuses = [i.status for i in self.items if i.group == group]
@@ -87,6 +88,7 @@ class Report:
         return {"check_id": self.check_id, "robot_key": self.robot_key, "preset": self.preset,
                 "approved": self.approved, "allows_real": self.allows_real, "static_status": self.static_status,
                 "statistical_status": self.statistical_status, "run_id": self.run_id, "created_at": self.created_at,
+                "fingerprint": self.fingerprint,
                 "items": [dict(vars(i), icon=i.icon) for i in self.items]}
 
 
@@ -294,7 +296,72 @@ def _longest_loss_streak(pnl) -> int:
     return longest
 
 
-def statistical_items(robot, run: Optional[dict], config=None, db=None) -> List[Item]:
+def _run_consistency(robot, run: dict, preset: Optional[str]) -> List[Item]:
+    """
+    O backtest é do que está sendo avaliado? Só para robôs MQL5 testados no Strategy Tester: mesmo código, mesmo
+    preset, sem parâmetro alterado à mão, modelo por tick e stop presente em toda entrada do relatório.
+    """
+    from . import backtest, mt5_tools
+    m, slug = run["metrics"], robot.key.split(":", 1)[1]
+    again = f"Rode de novo: mt5x robots backtest {slug} --symbol {run['symbol']} --tf {run['timeframe']}" + \
+            (f" --preset {preset}" if preset else "")
+    items = []
+    tested, current = m.get("source_fingerprint"), catalog.fingerprint(robot)
+    if not tested:
+        items.append(Item(STATISTICAL, "code", "Backtest do código atual", FAIL,
+                          "o backtest é de uma versão anterior do programa e não registrou qual código foi testado",
+                          again))
+    else:
+        items.append(Item(STATISTICAL, "code", "Backtest do código atual", OK if tested == current else FAIL,
+                          "o código testado é o que está no disco" if tested == current
+                          else "o fonte (ou um include) mudou depois do backtest",
+                          "" if tested == current else f"Compile e teste de novo: mt5x robots compile {slug}; depois, "
+                          + again[0].lower() + again[1:]))
+
+    used = run.get("params", {})
+    used_preset = used.get("preset", "")
+    export = contract.input_name(robot, "export_trades") or "InpExportTrades"
+    expected = dict(robot.presets.get(preset, {})) if preset else {}
+    changed = sorted(k for k, v in used.items() if k not in ("preset", export) and str(expected.get(k)) != str(v))
+    if used_preset != (preset or ""):
+        items.append(Item(STATISTICAL, "config", "Backtest com a mesma configuração avaliada", FAIL,
+                          f"o backtest usou {'o preset ' + used_preset if used_preset else 'o padrão do código'} e a "
+                          f"bateria avalia {'o preset ' + preset if preset else 'o padrão do código'}", again))
+    elif changed:
+        items.append(Item(STATISTICAL, "config", "Backtest com a mesma configuração avaliada", FAIL,
+                          "parâmetros alterados à mão no backtest: " + ", ".join(f"{k}={used[k]}" for k in changed),
+                          again + " (sem --param)"))
+    else:
+        items.append(Item(STATISTICAL, "config", "Backtest com a mesma configuração avaliada", OK,
+                          f"preset {preset}" if preset else "padrão do código"))
+
+    code = str(m.get("tester_model_code", ""))
+    label = m.get("tester_model", "") or "não registrado"
+    tick_model = code in mt5_tools.TICK_MODELS or (not code and label in (mt5_tools.TESTER_MODELS["0"],
+                                                                         mt5_tools.TESTER_MODELS["4"]))
+    items.append(Item(STATISTICAL, "tester_model", "Backtest em modelo por tick", OK if tick_model else FAIL,
+                      f"modelo: {label}" if tick_model else
+                      f"modelo: {label}; nesse modelo um stop atravessado por gap é preenchido no preço do stop, "
+                      "escondendo perda",
+                      "" if tick_model else "Use [ROBOTS] tester_model = 4 (ticks reais) ou 0 (cada tick) e teste de novo."))
+
+    if "entries_without_stop" not in m:
+        items.append(Item(STATISTICAL, "stop_tested", "Toda entrada do teste tem stop", WARN,
+                          "o backtest não registrou o stop de cada entrada (versão anterior do programa)", again))
+    elif not m.get("entries") and m.get("trades"):
+        items.append(Item(STATISTICAL, "stop_tested", "Toda entrada do teste tem stop", WARN,
+                          "o relatório não trouxe as ordens de entrada: não foi possível conferir o stop", again))
+    elif m["entries_without_stop"]:
+        items.append(Item(STATISTICAL, "stop_tested", "Toda entrada do teste tem stop", FAIL,
+                          f"{m['entries_without_stop']} de {m['entries']} entradas foram enviadas sem stop",
+                          "O robô abre posição sem stop na ordem: corrija antes de qualquer conta."))
+    else:
+        items.append(Item(STATISTICAL, "stop_tested", "Toda entrada do teste tem stop", OK,
+                          f"{m.get('entries', 0)} entradas, todas com stop na ordem"))
+    return items
+
+
+def statistical_items(robot, run: Optional[dict], config=None, db=None, preset: Optional[str] = None) -> List[Item]:
     """Itens calculados sobre as operações do backtest `run` (o mais recente do robô)."""
     from mt5_extracao.strategies import research, specs
     from mt5_extracao.strategies.validation import monte_carlo
@@ -312,6 +379,8 @@ def statistical_items(robot, run: Optional[dict], config=None, db=None) -> List[
     pnl = [float(t[1]) for t in trades]
     initial = float(run["metrics"].get("initial_equity") or 0.0) or 1.0
     items = [Item(STATISTICAL, "run", "Há um backtest gravado", OK, where)]
+    if robot.kind == catalog.MQL5:
+        items += _run_consistency(robot, run, preset)
 
     enough = len(pnl) >= MIN_TRADES
     items.append(Item(STATISTICAL, "trades", f"Pelo menos {MIN_TRADES} operações", OK if enough else FAIL,
@@ -494,8 +563,9 @@ def run_battery(db, config, robot, robots=(), preset: Optional[str] = None, deep
     runs = [r for r in store.load_runs(db, robot.key) if r["source"] not in catalog.HIDDEN_RUN_SOURCES]
     run = runs[0] if runs else None
     report = Report(robot.key, preset or "", run_id=run["run_id"] if run else "", check_id=uuid.uuid4().hex,
-                    created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    report.items = static_items(robot, config, robots, preset) + statistical_items(robot, run, config, db)
+                    created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"))
+    report.fingerprint = catalog.fingerprint(robot) if robot.kind == catalog.MQL5 else ""
+    report.items = static_items(robot, config, robots, preset) + statistical_items(robot, run, config, db, preset)
     if deep:
         if robot.kind != catalog.MQL5:
             raise ValueError("A bateria completa (--deep) é para robôs MQL5; estratégias Python usam 'mt5x validate'.")

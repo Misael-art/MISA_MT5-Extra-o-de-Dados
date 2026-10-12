@@ -168,12 +168,12 @@ def test_run_mql5_records_the_run_from_the_report(home):
                             dt.datetime(2025, 2, 1), preset="Demo_Conservador", params={"InpRiskPct": "0.25"},
                             run=fake_terminal(report_html(), calls), is_running=lambda: False)
     ini = calls[0][1]
-    assert (ini["Expert"], ini["Symbol"], ini["Period"], ini["Model"]) == ("Demo\\DemoGuard", "EURUSD", "H1", "1")
+    assert (ini["Expert"], ini["Symbol"], ini["Period"], ini["Model"]) == ("Demo\\DemoGuard", "EURUSD", "H1", "4")
     assert (ini["FromDate"], ini["ToDate"], ini["Deposit"]) == ("2025.01.01", "2025.02.01", "10000.00")
     preset = (home.mt5 / "MQL5" / "Profiles" / "Tester" / ini["ExpertParameters"]).read_bytes().decode("utf-16")
     assert "InpRiskPct=0.25\r\n" in preset                                       # --param vence o preset
     m = run["metrics"]
-    assert (m["trades"], m["trades_source"], m["tester_model"]) == (3, backtest.REPORT_SOURCE, "OHLC de 1 minuto")
+    assert (m["trades"], m["trades_source"], m["tester_model"]) == (3, backtest.REPORT_SOURCE, "cada tick com ticks reais")
     assert run["source"] == "strategy tester" and run["params"]["preset"] == "Demo_Conservador"
     assert run["equity"][0] == ["2025-01-01 00:00:00", 10000.0]
     assert run["equity"][-1] == ["2025-01-10 11:00:00", pytest.approx(10813.74)]
@@ -228,7 +228,7 @@ def test_run_mql5_refuses_what_cannot_run(home):
 # --- CLI ------------------------------------------------------------------------------
 
 def test_cli_backtest_of_an_mql5_robot(home, monkeypatch, capsys):
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda: False)
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: False)
     monkeypatch.setattr(mt5_tools, "run_windows_command", fake_terminal(report_html()))
     argv = home.args + ["robots", "backtest", "demoguard", "--symbol", "EURUSD", "--tf", "H1",
                         "--from", "2025-01-01", "--to", "2025-02-01", "--preset", "Demo_Conservador"]
@@ -241,12 +241,12 @@ def test_cli_backtest_of_an_mql5_robot(home, monkeypatch, capsys):
 
 def test_cli_backtest_with_the_terminal_open(home, monkeypatch, capsys):
     events = []
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda: "closed" not in events)
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: "closed" not in events)
     monkeypatch.setattr(mt5_tools, "run_windows_command", fake_terminal(report_html()))
     argv = home.args + ["robots", "backtest", "demoguard", "--symbol", "EURUSD", "--tf", "H1"]
     assert cli.main(argv) == cli.EXIT_FAIL
     assert "--close-terminal" in capsys.readouterr().err and store.load_runs(home.db) == []
-    monkeypatch.setattr(mt5_tools, "release_terminal", lambda: events.append("closed") or True)
+    monkeypatch.setattr(mt5_tools, "release_terminal", lambda *a: events.append("closed") or True)
     monkeypatch.setattr(mt5_tools, "restart_bridge", lambda: events.append("bridge"))
     assert cli.main(argv + ["--close-terminal"]) == cli.EXIT_OK
     assert events == ["closed", "bridge"] and len(store.load_runs(home.db)) == 1   # fecha, testa e religa a ponte

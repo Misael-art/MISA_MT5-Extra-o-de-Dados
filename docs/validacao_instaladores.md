@@ -109,6 +109,8 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | T9.1 | Saída `--json` no console do Windows | `mt5x --json status` | Um único objeto JSON, acentos corretos (cp1252 × UTF-8) | — | ⏳ pendente |
 | T9.2 | Auditoria | `mt5x audit` | Roda; o item de permissão do `.env` é coerente com o Windows | — | ⏳ pendente |
 | T10.2 | Biblioteca de segurança | `mt5x robots compile <robô que declara safety_lib>` com `safety_lib_dir` apontando para o clone | Biblioteca em `MQL5\\Include\\MT5X\\Safety` da pasta de dados; robô compila | — | ⏳ pendente |
+| Exatidão | Só o terminal desta instalação é fechado | com dois MT5 instalados e abertos, `mt5x robots backtest <robô> ... --close-terminal` | Fecha só o de `[MT5] path`; o outro continua aberto | — | ⏳ pendente |
+| Exatidão | Ticks reais | `mt5x robots backtest <robô> --symbol EURUSD --tf H1` com `tester_model = 4` | Relatório gerado; "Qualidade do histórico" conferida à mão | — | ⏳ pendente |
 | Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
 
 A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
