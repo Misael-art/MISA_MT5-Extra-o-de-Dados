@@ -558,6 +558,36 @@ class DatabaseManager:
                 result[symbol] = name
         return result
 
+    def data_inventory(self):
+        """
+        O que existe na base: uma linha por tabela de barras, com
+        {symbol, timeframe (rótulo, ex.: '1 minuto'), table, rows, start, end}. Só leitura.
+        Tabelas de bases antigas, sem registro em _symbol_tables, entram com o símbolo deduzido do nome.
+        """
+        if not self.is_connected():
+            return []
+        from mt5_extracao import timeframes
+        labels = {self._normalize_name(tf.label): tf.label for tf in timeframes.Timeframe}
+        inspector = inspect(self.engine)
+        with self.engine.connect() as conn:
+            registered = {r[2]: (r[0], r[1]) for r in conn.execute(
+                text("SELECT symbol, timeframe, table_name FROM _symbol_tables")).fetchall()}
+            result = []
+            for table in self._data_tables():
+                if "close" not in {c["name"] for c in inspector.get_columns(table)}:
+                    continue  # ticks e book não são barras
+                symbol, key = registered.get(table, (None, None))
+                if symbol is None:
+                    key = next((k for k in sorted(labels, key=len, reverse=True) if table.endswith("_" + k)), None)
+                    symbol = (table[:-len(key) - 1] if key else table).upper()
+                rows, start, end = conn.execute(
+                    text(f'SELECT COUNT(*), MIN(time), MAX(time) FROM "{table}"')).fetchone()
+                result.append({
+                    "symbol": symbol, "timeframe": labels.get(key, key or ""), "table": table, "rows": int(rows or 0),
+                    "start": self._from_storage(pd.to_datetime(start)).to_pydatetime() if start is not None else None,
+                    "end": self._from_storage(pd.to_datetime(end)).to_pydatetime() if end is not None else None})
+        return result
+
     def load_ohlcv(self, symbol, timeframe_name, start=None, end=None):
         """
         Barras OHLCV (time, open, high, low, close, tick_volume, spread, real_volume) do símbolo, em

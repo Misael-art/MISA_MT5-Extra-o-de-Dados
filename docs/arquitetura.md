@@ -120,7 +120,7 @@ Tabelas internas:
 
 ### 4. Pontos de entrada
 
-- `app.py` + `ui_manager.py`: interface gráfica. Os menus Arquivo, **Estratégias** e Ajuda; a extração roda em threads.
+- `app.py` + `ui_manager.py` + `mt5_extracao/ui/`: interface gráfica em abas (Ativos, Minha base, Análise, Atividade), com tema claro/escuro. Os números da aba Análise vêm de `study.py` (sem Tkinter). Os menus Arquivo, Exibir, **Estratégias** e Ajuda; extração, leitura da base e análise rodam em threads.
 - `cli.py` (`mt5x`):
   - Dados: `doctor`, `symbols`, `tables`, `extract`, `update`, `quality`, `export`, `schedule`.
   - Estratégias: `strategies`, `specs`, `backtest`, `validate`, `screen`, `report`.

@@ -1,0 +1,419 @@
+"""Aba "Análise": gráfico de candles com indicadores, números do período, sazonalidade e qualidade dos dados."""
+import logging
+import tkinter as tk
+from tkinter import ttk
+
+import numpy as np
+import pandas as pd
+
+from mt5_extracao import data_quality, study, timeframes
+from mt5_extracao.ui.theme import Tooltip, card, fmt_int, fmt_num
+
+log = logging.getLogger(__name__)
+
+# (rótulo, chave no resumo, texto do glossário)
+TILES = (("Último preço", "last", "Último preço"),
+         ("Retorno no período", "return_pct", "Retorno no período"),
+         ("Volatilidade anualizada", "volatility_pct", "Volatilidade anualizada"),
+         ("Queda máxima", "max_drawdown_pct", "Queda máxima"),
+         ("Amplitude média por barra", "mean_range_pct", "Amplitude média"),
+         ("Barras de alta", "up_bars_pct", "Barras de alta"))
+
+
+class AnalysisPanel:
+    def __init__(self, parent, ui):
+        self.ui = ui
+        self.theme = ui.theme
+        self.data = None       # barras do período, com indicadores
+        self.candles = None    # barras agrupadas para o gráfico
+        self.factor = 1
+        self._request = 0      # descarta respostas de cargas antigas
+        self._canvases = {}
+        self.available = {}    # símbolo -> timeframes (rótulos) com barras na base
+        self.frame = ttk.Frame(parent, padding=12)
+
+        controls = card(self.frame, padding=10)
+        controls.master.pack(fill=tk.X)
+        ttk.Label(controls, text="Ativo", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.symbol_var = tk.StringVar()
+        self.symbol_combo = ttk.Combobox(controls, textvariable=self.symbol_var, state="readonly", width=14)
+        self.symbol_combo.pack(side=tk.LEFT, padx=(6, 14))
+        self.symbol_combo.bind("<<ComboboxSelected>>", lambda e: self._symbol_changed())
+        ttk.Label(controls, text="Timeframe", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.timeframe_var = tk.StringVar()
+        self.timeframe_combo = ttk.Combobox(controls, textvariable=self.timeframe_var, state="readonly", width=12)
+        self.timeframe_combo.pack(side=tk.LEFT, padx=(6, 14))
+        self.timeframe_combo.bind("<<ComboboxSelected>>", lambda e: self.load())
+        ttk.Label(controls, text="Período", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.period_var = tk.StringVar(value=study.PERIODS[1][0])
+        for label, _days in study.PERIODS:
+            ttk.Radiobutton(controls, text=label, value=label, variable=self.period_var, style="Toolbutton",
+                            command=self.load).pack(side=tk.LEFT, padx=(6 if label == study.PERIODS[0][0] else 1, 0))
+        self.overlays = {}
+        for key, label, tip in (("ma20", "MM 20", "Média móvel (MM)"), ("ma50", "MM 50", "Média móvel (MM)"),
+                                ("bb", "Bollinger", "Bandas de Bollinger")):
+            var = tk.BooleanVar(value=key != "ma50")
+            self.overlays[key] = var
+            check = ttk.Checkbutton(controls, text=label, variable=var, style="Surface.TCheckbutton",
+                                    command=self.draw_chart)
+            check.pack(side=tk.LEFT, padx=(14 if key == "ma20" else 6, 0))
+            Tooltip(check, study.GLOSSARY[tip], self.theme)
+
+        tiles = ttk.Frame(self.frame)
+        tiles.pack(fill=tk.X, pady=10)
+        self.tile_values = {}
+        for i, (label, key, glossary) in enumerate(TILES):
+            body = card(tiles, padding=10)
+            body.master.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
+            tiles.columnconfigure(i, weight=1, uniform="tile")
+            name = ttk.Label(body, text=label, style="Muted.TLabel")
+            name.pack(anchor="w")
+            value = ttk.Label(body, text="—", style="Value.TLabel")
+            value.pack(anchor="w")
+            self.tile_values[key] = value
+            Tooltip(body.master, study.GLOSSARY[glossary], self.theme)
+            Tooltip(name, study.GLOSSARY[glossary], self.theme)
+
+        self.status = ttk.Label(self.frame, text="", style="Page.Muted.TLabel")
+        self.status.pack(fill=tk.X, side=tk.BOTTOM, pady=(6, 0))
+        self.tabs = ttk.Notebook(self.frame)
+        self.tabs.pack(fill=tk.BOTH, expand=True)
+        self.chart_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
+        self.season_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
+        self.returns_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
+        self.quality_tab = ttk.Frame(self.tabs, style="Surface.TFrame", padding=14)
+        self.tabs.add(self.chart_tab, text="Gráfico")
+        self.tabs.add(self.season_tab, text="Sazonalidade")
+        self.tabs.add(self.returns_tab, text="Retornos")
+        self.tabs.add(self.quality_tab, text="Qualidade dos dados")
+        self.readout = ttk.Label(self.chart_tab, text="", style="Muted.TLabel")
+        self.readout.pack(fill=tk.X, padx=12, pady=(8, 0))
+        self.quality_text = self.theme.classic(tk.Text(self.quality_tab, wrap=tk.WORD, height=10, padx=10, pady=10))
+        self.quality_text.pack(fill=tk.BOTH, expand=True)
+        self.quality_text.configure(state=tk.DISABLED)
+        self.theme.on_change(self.redraw)
+
+    # --- escolha do ativo -------------------------------------------------------------
+
+    def set_inventory(self, inventory):
+        """Atualiza as listas de ativo/timeframe com o que existe na base."""
+        self.available = {}
+        for item in inventory:
+            if item["rows"] and timeframes.parse(item["timeframe"]):
+                self.available.setdefault(item["symbol"], []).append(item["timeframe"])
+        for labels in self.available.values():
+            labels.sort(key=lambda label: timeframes.parse(label).minutes)
+        symbols = sorted(self.available)
+        self.symbol_combo["values"] = symbols
+        if not symbols:
+            self.symbol_var.set("")
+            self.timeframe_var.set("")
+            self._empty("A base ainda não tem barras. Na aba Ativos, escolha um ativo e clique em "
+                        "\"Extrair histórico\"; depois volte aqui.")
+            return
+        if self.symbol_var.get() not in self.available:
+            self.symbol_var.set(symbols[0])
+            self._symbol_changed()
+        else:
+            self.timeframe_combo["values"] = self.available[self.symbol_var.get()]
+
+    def _symbol_changed(self):
+        labels = self.available.get(self.symbol_var.get(), [])
+        self.timeframe_combo["values"] = labels
+        if self.timeframe_var.get() not in labels:
+            self.timeframe_var.set(labels[0] if labels else "")
+        self.load()
+
+    def open(self, symbol, timeframe_label=None):
+        if symbol not in self.available:
+            return False
+        self.symbol_var.set(symbol)
+        labels = self.available[symbol]
+        self.timeframe_combo["values"] = labels
+        self.timeframe_var.set(timeframe_label if timeframe_label in labels else labels[0])
+        self.load()
+        return True
+
+    # --- carga (em segundo plano) -----------------------------------------------------
+
+    def load(self):
+        symbol, label = self.symbol_var.get(), self.timeframe_var.get()
+        if not symbol or not label:
+            return
+        self._request += 1
+        request = self._request
+        days = dict(study.PERIODS)[self.period_var.get()]
+        end = next((item["end"] for item in self.ui.inventory
+                    if item["symbol"] == symbol and item["timeframe"] == label), None)
+        self.status.config(text=f"Carregando {symbol} ({label})...")
+        db = self.ui.app.db_manager
+        config = self.ui.app.config
+        minutes = timeframes.parse(label).minutes
+
+        def work():
+            bars = db.load_ohlcv(symbol, label, start=study.period_start(end, days))
+            if bars.empty:
+                return None
+            session = (config.get("APP", "session_start", fallback="09:00"),
+                       config.get("APP", "session_end", fallback="18:30")) if config else ("09:00", "18:30")
+            return {"bars": study.add_indicators(bars), "summary": study.summarize(bars),
+                    "seasonality": study.seasonality(bars),
+                    "quality": data_quality.check_quality(bars, minutes, *session), "session": session}
+
+        def done(result, error):
+            if request != self._request:
+                return
+            if error or result is None:
+                self._empty(f"Não foi possível ler {symbol} ({label}): {error}" if error
+                            else f"Sem barras de {symbol} ({label}) neste período.")
+                return
+            self.data = result["bars"]
+            self.result = result
+            self.candles, self.factor = study.compress(self.data)
+            self._show_summary(result["summary"])
+            self._show_quality(result["quality"], result["session"])
+            self.redraw()
+            note = f" Cada candle do gráfico agrupa {self.factor} barras." if self.factor > 1 else ""
+            s = result["summary"]
+            self.status.config(text=f"{symbol} · {label} · {fmt_int(s['bars'])} barras de "
+                                    f"{s['start']:%d/%m/%Y} a {s['end']:%d/%m/%Y}.{note} "
+                                    "Passe o mouse sobre os números e sobre o gráfico para ver detalhes.")
+
+        self.ui.run_bg(work, done)
+
+    def _empty(self, message):
+        self.data = self.candles = None
+        for value in self.tile_values.values():
+            value.config(text="—", style="Value.TLabel")
+        self.status.config(text=message)
+        self.readout.config(text="")
+        for canvas in self._canvases.values():
+            canvas.get_tk_widget().destroy()
+        self._canvases = {}
+
+    def _show_summary(self, s):
+        digits = 5 if s["last"] < 10 else 2
+        self.tile_values["last"].config(text=fmt_num(s["last"], digits))
+        signed = "Good.TLabel" if s["return_pct"] >= 0 else "Bad.TLabel"
+        self.tile_values["return_pct"].config(text=("▲ " if s["return_pct"] >= 0 else "▼ ")
+                                              + fmt_num(abs(s["return_pct"]), 2, "%"), style=signed,
+                                              font=self.theme.font_value)
+        self.tile_values["volatility_pct"].config(text=fmt_num(s["volatility_pct"], 1, "%"))
+        self.tile_values["max_drawdown_pct"].config(text=fmt_num(s["max_drawdown_pct"], 2, "%"))
+        self.tile_values["mean_range_pct"].config(text=fmt_num(s["mean_range_pct"], 3, "%"))
+        self.tile_values["up_bars_pct"].config(text=fmt_num(s["up_bars_pct"], 1, "%"))
+
+    def _show_quality(self, report, session):
+        lines = [f"Barras analisadas: {fmt_int(report['rows'])}",
+                 f"Dias com dados: {report['bars_per_day']['days']} "
+                 f"(de {report['bars_per_day']['min']} a {report['bars_per_day']['max']} barras por dia, "
+                 f"média {fmt_num(report['bars_per_day']['mean'], 1)})", ""]
+        checks = (("gaps", f"Lacunas dentro do pregão ({session[0]}–{session[1]})",
+                   "Faltam barras no meio do pregão. Extraia o período de novo (marque \"Sobrescrever Dados\")."),
+                  ("invalid_ohlc", "Barras com preços inconsistentes (ex.: máxima menor que a mínima)",
+                   "Dado suspeito vindo da corretora. Confira estas barras antes de usá-las."),
+                  ("duplicate_time", "Horários repetidos", "Não deveriam existir: extraia o período de novo."),
+                  ("zero_volume", "Barras sem volume",
+                   "Comum fora do horário de maior liquidez. Só preocupa se forem muitas."))
+        for key, label, advice in checks:
+            count = report[key]["count"]
+            lines.append(f"{'✓' if not count else '⚠'}  {label}: {fmt_int(count)}")
+            if count:
+                lines.append(f"     {advice}")
+                lines.append("     Exemplos: " + "; ".join(str(x) for x in report[key]["examples"][:3]))
+        if not data_quality.has_problems(report):
+            lines += ["", "Nenhum problema encontrado neste período: os dados estão prontos para estudo."]
+        lines += ["", "O horário do pregão usado na verificação vem de [APP] session_start / session_end "
+                      "no arquivo de configuração."]
+        self.quality_text.configure(state=tk.NORMAL)
+        self.quality_text.delete("1.0", tk.END)
+        self.quality_text.insert(tk.END, "\n".join(lines))
+        self.quality_text.configure(state=tk.DISABLED)
+
+    # --- gráficos ---------------------------------------------------------------------
+
+    def _figure(self, key, parent):
+        """Figura do matplotlib dentro da aba (recriada a cada desenho)."""
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+        from matplotlib.figure import Figure
+        old = self._canvases.pop(key, None)
+        if old:
+            old.get_tk_widget().destroy()
+        c = self.theme.colors
+        fig = Figure(dpi=100, facecolor=c["surface"])
+        canvas = FigureCanvasTkAgg(fig, master=parent)
+        canvas.get_tk_widget().configure(background=c["surface"], highlightthickness=0)
+        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        self._canvases[key] = canvas
+        return fig, canvas
+
+    def _style_axis(self, ax, title=None):
+        c = self.theme.colors
+        ax.set_facecolor(c["surface"])
+        for side in ("top", "right"):
+            ax.spines[side].set_visible(False)
+        for side in ("left", "bottom"):
+            ax.spines[side].set_color(c["axis"])
+        ax.tick_params(colors=c["muted"], labelsize=8, length=0)
+        ax.grid(True, axis="y", color=c["grid"], linewidth=0.6)
+        ax.set_axisbelow(True)
+        if title:
+            ax.set_title(title, color=c["ink2"], fontsize=9, loc="left", pad=4)
+
+    def redraw(self):
+        if self.data is None:
+            return
+        try:
+            self.draw_chart()
+            self.draw_seasonality()
+            self.draw_returns()
+        except ImportError:
+            self.status.config(text="Gráficos indisponíveis: instale o matplotlib (pip install matplotlib).")
+        except Exception as e:
+            log.exception("Erro ao desenhar a análise")
+            self.status.config(text=f"Erro ao desenhar o gráfico: {e}")
+
+    def draw_chart(self):
+        if self.candles is None:
+            return
+        from matplotlib.ticker import MaxNLocator
+        c = self.theme.colors
+        df = self.candles
+        self.readout.config(text="")
+        fig, canvas = self._figure("chart", self.chart_tab)
+        grid = fig.add_gridspec(3, 1, height_ratios=(3.2, 1, 1), hspace=0.22, left=0.06, right=0.97,
+                                top=0.94, bottom=0.07)
+        price = fig.add_subplot(grid[0])
+        volume = fig.add_subplot(grid[1], sharex=price)
+        rsi = fig.add_subplot(grid[2], sharex=price)
+        x = np.arange(len(df))
+        up = (df["close"] >= df["open"]).values
+        colors = np.where(up, c["up"], c["down"])
+        price.vlines(x, df["low"], df["high"], colors=colors, linewidth=0.8)
+        body_low = np.minimum(df["open"], df["close"])
+        body = np.maximum((df["close"] - df["open"]).abs(), (df["high"].max() - df["low"].min()) * 0.0008)
+        price.bar(x, body, bottom=body_low, width=0.7, color=colors, linewidth=0)
+
+        # Indicadores calculados nas barras originais; no gráfico vale o valor da última barra de cada candle
+        last = (np.arange(len(df)) + 1) * self.factor - 1
+        last[-1] = len(self.data) - 1
+        ind = self.data.iloc[np.minimum(last, len(self.data) - 1)].reset_index(drop=True)
+        if self.overlays["ma20"].get():
+            price.plot(x, ind["ma20"], color=c["series"][0], linewidth=1.6, label="MM 20")
+        if self.overlays["ma50"].get():
+            price.plot(x, ind["ma50"], color=c["series"][1], linewidth=1.6, label="MM 50")
+        if self.overlays["bb"].get():
+            price.plot(x, ind["bb_upper"], color=c["series"][2], linewidth=1.1, linestyle=(0, (4, 3)),
+                       label="Bollinger (20, 2)")
+            price.plot(x, ind["bb_lower"], color=c["series"][2], linewidth=1.1, linestyle=(0, (4, 3)))
+        if price.get_legend_handles_labels()[0]:
+            price.legend(loc="lower left", bbox_to_anchor=(0, 1.0), fontsize=8, frameon=False,
+                         labelcolor=c["ink2"], ncol=3, borderaxespad=0.2)
+
+        if "tick_volume" in df.columns:
+            volume.bar(x, df["tick_volume"], width=0.7, color=c["muted"], linewidth=0)
+        rsi.plot(x, ind["rsi"], color=c["series"][0], linewidth=1.4)
+        for level in (30, 70):
+            rsi.axhline(level, color=c["axis"], linewidth=0.8, linestyle=(0, (3, 3)))
+        rsi.set_ylim(0, 100)
+        rsi.set_yticks((30, 70))
+        self._style_axis(price)
+        self._style_axis(volume, "Volume (ticks)")
+        self._style_axis(rsi, "IFR (14)")
+        price.tick_params(labelbottom=False)
+        volume.tick_params(labelbottom=False)
+        volume.yaxis.set_major_locator(MaxNLocator(3))
+
+        times = pd.to_datetime(df["time"])
+        intraday = timeframes.parse(self.timeframe_var.get()).minutes * self.factor < 1440
+        fmt = "%d/%m %H:%M" if intraday else "%d/%m/%y"
+        ticks = np.linspace(0, len(df) - 1, min(8, len(df))).astype(int)
+        rsi.set_xticks(ticks)
+        rsi.set_xticklabels([times.iloc[i].strftime(fmt) for i in ticks])
+        price.set_xlim(-1, len(df))
+
+        cross = [ax.axvline(0, color=c["muted"], linewidth=0.7, visible=False) for ax in (price, volume, rsi)]
+
+        def hover(event):
+            inside = event.inaxes in (price, volume, rsi) and event.xdata is not None
+            for line in cross:
+                line.set_visible(inside)
+            if not inside:
+                self.readout.config(text="")
+                canvas.draw_idle()
+                return
+            i = int(min(max(round(event.xdata), 0), len(df) - 1))
+            for line in cross:
+                line.set_xdata([i, i])
+            row, extra = df.iloc[i], ind.iloc[i]
+            digits = 5 if row["close"] < 10 else 2
+            parts = [times.iloc[i].strftime("%d/%m/%Y %H:%M"),
+                     f"Abertura {fmt_num(row['open'], digits)}", f"Máxima {fmt_num(row['high'], digits)}",
+                     f"Mínima {fmt_num(row['low'], digits)}", f"Fechamento {fmt_num(row['close'], digits)}"]
+            if "tick_volume" in df.columns:
+                parts.append(f"Volume {fmt_int(row['tick_volume'])}")
+            if pd.notna(extra["rsi"]):
+                parts.append(f"IFR {fmt_num(extra['rsi'], 1)}")
+            self.readout.config(text="   ·   ".join(parts))
+            canvas.draw_idle()
+
+        canvas.mpl_connect("motion_notify_event", hover)
+        canvas.mpl_connect("figure_leave_event", lambda e: hover(e))
+        canvas.draw_idle()
+
+    def draw_seasonality(self):
+        from matplotlib.ticker import FuncFormatter
+        c = self.theme.colors
+        season = self.result["seasonality"]
+        fig, canvas = self._figure("season", self.season_tab)
+        grid = fig.add_gridspec(1, 2, left=0.07, right=0.98, top=0.88, bottom=0.14, wspace=0.22)
+        hour_ax, day_ax = fig.add_subplot(grid[0]), fig.add_subplot(grid[1])
+        self._style_axis(hour_ax, "Amplitude média por hora do dia (%): quando o ativo mais oscila")
+        self._style_axis(day_ax, "Retorno médio por barra em cada dia da semana (%)")
+        hours = season["hour"]
+        if hours.empty:
+            hour_ax.text(0.5, 0.5, "Barras diárias ou maiores não têm hora do dia.\nEscolha um timeframe intradiário.",
+                         ha="center", va="center", transform=hour_ax.transAxes, color=c["ink2"], fontsize=9)
+            hour_ax.set_xticks([])
+            hour_ax.set_yticks([])
+        else:
+            hour_ax.bar(hours.index, hours["range_pct"], width=0.72, color=c["series"][0], linewidth=0)
+            hour_ax.set_xticks(list(hours.index))
+            hour_ax.set_xticklabels([f"{h}h" for h in hours.index])
+        for ax in (hour_ax, day_ax):
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: fmt_num(v, 3, "%")))
+        days = season["weekday"]
+        if not days.empty:
+            day_ax.bar(range(len(days)), days["return_pct"], width=0.6, linewidth=0,
+                       color=[c["up"] if v >= 0 else c["down"] for v in days["return_pct"]])
+            day_ax.axhline(0, color=c["axis"], linewidth=0.9)
+            day_ax.set_xticks(range(len(days)))
+            day_ax.set_xticklabels([study.WEEKDAYS[d] for d in days.index])
+            span = max(days["return_pct"].abs().max(), 1e-9)
+            for i, value in enumerate(days["return_pct"]):
+                day_ax.annotate(fmt_num(value, 4, "%"), (i, value), ha="center", color=c["ink2"], fontsize=8,
+                                xytext=(0, 4 if value >= 0 else -11), textcoords="offset points")
+            day_ax.set_ylim(-span * 1.35, span * 1.35)
+        canvas.draw_idle()
+
+    def draw_returns(self):
+        from matplotlib.ticker import FuncFormatter
+        c = self.theme.colors
+        fig, canvas = self._figure("returns", self.returns_tab)
+        ax = fig.add_subplot(111)
+        fig.subplots_adjust(left=0.06, right=0.98, top=0.88, bottom=0.14)
+        returns = (self.data["close"].pct_change().dropna() * 100)
+        self._style_axis(ax, "Distribuição dos retornos por barra (%): com que frequência cada variação acontece")
+        if len(returns) > 1:
+            low, high = returns.quantile(0.005), returns.quantile(0.995)
+            ax.hist(returns.clip(low, high), bins=61, color=c["series"][0], linewidth=0, rwidth=0.88)
+            ax.axvline(0, color=c["axis"], linewidth=0.9)
+            q5, q95 = returns.quantile(0.05), returns.quantile(0.95)
+            note = (f"Média {fmt_num(returns.mean(), 4, '%')}   ·   Mediana {fmt_num(returns.median(), 4, '%')}\n"
+                    f"90% das barras variam entre {fmt_num(q5, 3, '%')} e {fmt_num(q95, 3, '%')}\n"
+                    f"Maior alta {fmt_num(returns.max(), 2, '%')}   ·   Maior queda {fmt_num(returns.min(), 2, '%')}")
+            ax.text(0.985, 0.95, note, transform=ax.transAxes, ha="right", va="top", color=c["ink2"], fontsize=9,
+                    linespacing=1.6)
+            ax.set_ylabel("Barras", color=c["muted"], fontsize=8)
+            ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _pos: fmt_num(v, 2, "%")))
+        canvas.draw_idle()

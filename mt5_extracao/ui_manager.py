@@ -12,16 +12,26 @@ from pathlib import Path
 import json
 
 # Importar módulos necessários para exportação
+from mt5_extracao import study, timeframes
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.error_handler import with_error_handling, ExportError
+from mt5_extracao.ui.analysis import AnalysisPanel
+from mt5_extracao.ui.inventory import InventoryPanel
+from mt5_extracao.ui.theme import Theme, Tooltip, card, fmt_int, fmt_num, scrolled_tree
 
 
 # Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
 
+SYMBOL_COLUMNS = ("★", "Ativo", "Na base", "Seleção")
+
+
 class UIManager:
     """
     Gerencia a interface gráfica (Tkinter) da aplicação MT5 Extração.
+
+    Janela principal em abas: Ativos (escolher e extrair), Minha base (o que já existe),
+    Análise (gráficos e números de estudo) e Atividade (log). Os painéis ficam em mt5_extracao/ui/.
     """
     def __init__(self, app_instance):
         """
@@ -37,27 +47,33 @@ class UIManager:
         # Referências aos widgets que precisam ser acessados por outros métodos
         self.status_label = None
         self.log_text = None
-        self.symbols_listbox = None
+        self.symbols_tree = None
         self.selected_listbox = None
         self.start_button = None
         self.stop_button = None
         self.search_var = tk.StringVar() # Variável para busca de símbolos
+        self.filter_var = tk.StringVar(value="all")  # all | fav | data
+        self._filter_job = None
         self._ui_queue = queue.Queue()   # chamadas vindas de outras threads (ver call_in_ui)
 
-        # Inicializar variáveis para símbolos com dados
-        self.existing_symbols_map = {}
+        # O que existe na base (preenchido por refresh_inventory)
+        self.inventory = []
+        self.symbol_series = {}          # símbolo -> séries (itens do inventário) com barras
+        self.existing_symbols_map = {}   # símbolo -> tabela M1 (usado pelo destaque e por código antigo)
         self.symbols_with_data = set()
+        self.detail_symbol = None
 
-        # Adicionar atributos para favoritos
-        self.favorites_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "favorites.json")
+        # Favoritos e preferências da interface ficam na pasta config/ (fora do controle de versão)
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
+        os.makedirs(config_dir, exist_ok=True)
+        self.favorites_file = os.path.join(config_dir, "favorites.json")
+        self.prefs_file = os.path.join(config_dir, "ui_prefs.json")
         self.favorite_symbols = self.load_favorites() or []
-        
-        # Configurar diretório de config se não existir
-        config_dir = os.path.dirname(self.favorites_file)
-        if not os.path.exists(config_dir):
-            os.makedirs(config_dir, exist_ok=True)
+        self.prefs = self._load_json(self.prefs_file, {})
 
         log.info("UIManager inicializado.")
+
+    # --- threads ----------------------------------------------------------------------
 
     def call_in_ui(self, fn, *args):
         """
@@ -68,6 +84,17 @@ class UIManager:
             fn(*args)
         else:
             self._ui_queue.put((fn, args))
+
+    def run_bg(self, work, done):
+        """Roda work() fora da thread da interface e entrega done(resultado, erro) de volta nela."""
+        def target():
+            try:
+                result, error = work(), None
+            except Exception as e:
+                log.error(f"Erro em tarefa de segundo plano: {traceback.format_exc()}")
+                result, error = None, e
+            self._ui_queue.put((done, (result, error)))
+        threading.Thread(target=target, daemon=True).start()
 
     def _pump_ui_queue(self):
         try:
@@ -86,416 +113,421 @@ class UIManager:
         except tk.TclError:
             pass
 
+    # --- preferências -----------------------------------------------------------------
+
+    @staticmethod
+    def _load_json(path, default):
+        try:
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            log.error(f"Erro ao ler {path}: {e}")
+        return default
+
+    def save_prefs(self):
+        """Guarda tema e seleção de ativos para a próxima abertura."""
+        self.prefs["selected"] = list(self.app.selected_symbols)
+        self.prefs["dark"] = bool(self.theme.dark)
+        try:
+            with open(self.prefs_file, "w", encoding="utf-8") as f:
+                json.dump(self.prefs, f, ensure_ascii=False)
+        except Exception as e:
+            log.error(f"Erro ao salvar preferências da interface: {e}")
+
+    def load_favorites(self):
+        """Carrega a lista de símbolos favoritos do arquivo"""
+        return self._load_json(self.favorites_file, [])
+
+    def save_favorites(self):
+        """Salva a lista de símbolos favoritos no arquivo"""
+        try:
+            with open(self.favorites_file, 'w') as f:
+                json.dump(self.favorite_symbols, f)
+            log.info(f"Favoritos salvos em {self.favorites_file}")
+        except Exception as e:
+            log.error(f"Erro ao salvar favoritos: {e}")
+
+    # --- montagem da janela -----------------------------------------------------------
+
     def setup_ui(self):
         """Configura a interface do usuário completa."""
         self.root = self.app.root
         self.root.after(100, self._pump_ui_queue)
-        
-        # Configurar o estilo ttk
+        self.theme = Theme(self.root, dark=bool(self.prefs.get("dark")))
         self.style = ttk.Style()
-        self.style.configure("TButton", font=("Segoe UI", 10))
-        self.style.configure("TLabel", font=("Segoe UI", 10))
-        self.style.configure("TFrame", background="#f0f0f0")
-        
-        # Configurar Progress Bar Styles
-        self.style.configure("Collection.Horizontal.TProgressbar", 
-                        foreground='#4CAF50', background='#4CAF50')
-        self.style.configure("Error.Horizontal.TProgressbar", 
-                        foreground='#F44336', background='#F44336')
-                      
-        # Frame principal para organizar conteúdo
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Frame para busca de símbolos e status
-        top_frame = ttk.Frame(main_frame)
-        top_frame.pack(fill=tk.X, expand=False, pady=(0, 5))
-        
-        # Frame de status
-        status_frame = ttk.Frame(top_frame)
-        status_frame.pack(side=tk.LEFT, fill=tk.Y)
-        
-        # Label de status geral
-        self.status_label = ttk.Label(status_frame, text="Status: Iniciando...")
-        self.status_label.pack(anchor="w", pady=2)
-        
-        # Label de status MT5
-        mt5_status_frame = ttk.Frame(status_frame)
-        mt5_status_frame.pack(fill=tk.X, pady=5)
-        
-        mt5_status_label = ttk.Label(mt5_status_frame, text="MetaTrader 5:")
-        mt5_status_label.pack(side=tk.LEFT)
-        
-        # Mostra a conta e o servidor em uso (ex.: "Conectado: conta 123 em MetaQuotes-Demo (demonstração)")
-        self.mt5_status_value = ttk.Label(mt5_status_frame, text="Verificando...")
-        self.mt5_status_value.pack(side=tk.LEFT, padx=(5, 10))
-        
-        check_mt5_status_btn = ttk.Button(mt5_status_frame, text="Verificar conexão",
-                                          command=self.check_mt5_status)
-        check_mt5_status_btn.pack(side=tk.LEFT, padx=5)
-        
+
+        outer = ttk.Frame(self.root, padding=(14, 12, 14, 8))
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        # Cabeçalho: nome do aplicativo e conexão com o MetaTrader 5
+        header = ttk.Frame(outer)
+        header.pack(fill=tk.X, pady=(0, 10))
+        ttk.Label(header, text="MT5 Extração", style="Page.Title.TLabel").pack(side=tk.LEFT)
+        ttk.Label(header, text="monte, mantenha e estude a sua base de dados do MetaTrader 5",
+                  style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
+        check_mt5_status_btn = ttk.Button(header, text="Verificar conexão", command=self.check_mt5_status)
+        check_mt5_status_btn.pack(side=tk.RIGHT)
         # Privilégios de administrador só existem (e só importam) no Windows
         if os.name == "nt":
-            self.mt5_admin_button = ttk.Button(mt5_status_frame, text="Iniciar MT5 como administrador",
-                                         command=self.launch_mt5_as_admin)
-            self.mt5_admin_button.pack(side=tk.LEFT, padx=5)
-        
-        # Frame do meio que contém as listboxes
-        middle_frame = ttk.Frame(main_frame)
-        middle_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-        middle_frame.columnconfigure(0, weight=1)
-        middle_frame.columnconfigure(1, weight=0)
-        middle_frame.columnconfigure(2, weight=1)
-        middle_frame.rowconfigure(0, weight=1)  # as listas acompanham a altura da janela
-        
-        # Frame esquerdo com lista de todos os símbolos
-        left_frame = ttk.Frame(middle_frame)
-        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
-        
-        self.symbols_label = ttk.Label(left_frame, text="Símbolos Disponíveis:")
-        self.symbols_label.pack(fill=tk.X, pady=(0, 5))
-        
-        # Busca logo acima da lista (uma conta pode ter milhares de símbolos)
-        search_frame = ttk.Frame(left_frame)
-        search_frame.pack(fill=tk.X, pady=(0, 5))
-        ttk.Label(search_frame, text="Buscar:").pack(side=tk.LEFT, padx=(0, 5))
-        self.search_var = tk.StringVar()
-        self.search_var.trace_add("write", self.filter_symbols)
-        search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
-        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        search_entry.focus_set()
-        
-        # Adicionando opções para favoritos
-        favorites_frame = ttk.Frame(left_frame)
-        favorites_frame.pack(fill=tk.X, pady=(0, 5))
-        
-        add_favorite_btn = ttk.Button(favorites_frame, text="★ Adicionar aos Favoritos", 
-                                 command=self.add_to_favorites)
-        add_favorite_btn.pack(side=tk.LEFT, padx=(0, 5))
-        
-        remove_favorite_btn = ttk.Button(favorites_frame, text="☆ Remover dos Favoritos", 
-                                    command=self.remove_from_favorites)
-        remove_favorite_btn.pack(side=tk.LEFT)
-        
-        # Lista de símbolos disponíveis
-        symbols_list_frame = ttk.Frame(left_frame)
-        symbols_list_frame.pack(fill=tk.BOTH, expand=True)
-        symbols_scrollbar = ttk.Scrollbar(symbols_list_frame, orient="vertical")
-        symbols_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.symbols_listbox = tk.Listbox(symbols_list_frame, selectmode=tk.EXTENDED, height=20,
-                                          exportselection=False, yscrollcommand=symbols_scrollbar.set)
-        self.symbols_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.symbols_listbox.bind('<<ListboxSelect>>', self.on_symbol_select)
-        self.symbols_listbox.bind('<Double-Button-1>', lambda e: self.add_symbols())
-        symbols_scrollbar.config(command=self.symbols_listbox.yview)
-        
-        # Criar botões para mover entre listas
-        buttons_frame = ttk.Frame(middle_frame)
-        buttons_frame.grid(row=0, column=1, sticky="ns")
-        
-        add_btn = ttk.Button(buttons_frame, text="Adicionar →", command=self.add_symbols)
-        add_btn.pack(pady=5)
-        
-        remove_btn = ttk.Button(buttons_frame, text="← Remover", command=self.remove_symbols)
-        remove_btn.pack(pady=5)
-        
-        self._botoes_adicionados = True
-        
-        # Frame direito (controles e monitoramento)
-        right_frame = ttk.Frame(middle_frame)
-        right_frame.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
+            self.mt5_admin_button = ttk.Button(header, text="Iniciar MT5 como administrador",
+                                               command=self.launch_mt5_as_admin)
+            self.mt5_admin_button.pack(side=tk.RIGHT, padx=(0, 8))
+        # Mostra a conta e o servidor em uso (ex.: "Conectado: conta 123 em MetaQuotes-Demo (demonstração)")
+        self.mt5_status_value = ttk.Label(header, text="Verificando...")
+        self.mt5_status_value.pack(side=tk.RIGHT, padx=(6, 12))
+        self.mt5_status_dot = ttk.Label(header, text="●")
+        self.mt5_status_dot.pack(side=tk.RIGHT)
 
-        # Frame para símbolos selecionados
-        selected_frame = ttk.LabelFrame(right_frame, text="Símbolos Selecionados (duplo clique em um símbolo para adicionar)")
-        selected_frame.pack(fill=tk.BOTH, expand=False, pady=5)
+        # Barra de status
+        status_bar = ttk.Frame(outer)
+        status_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        self.status_label = ttk.Label(status_bar, text="Status: Iniciando...", style="Page.Muted.TLabel")
+        self.status_label.pack(side=tk.LEFT)
+        self.base_label = ttk.Label(status_bar, text="", style="Page.Muted.TLabel")
+        self.base_label.pack(side=tk.RIGHT)
 
-        selected_list_frame = ttk.Frame(selected_frame)
-        selected_list_frame.pack(fill=tk.BOTH, expand=True)
+        self.notebook = ttk.Notebook(outer)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        symbols_tab = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(symbols_tab, text="Ativos")
+        self.inventory_panel = InventoryPanel(self.notebook, self)
+        self.notebook.add(self.inventory_panel.frame, text="Minha base")
+        self.analysis_panel = AnalysisPanel(self.notebook, self)
+        self.notebook.add(self.analysis_panel.frame, text="Análise")
+        log_tab = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(log_tab, text="Atividade")
 
-        scrollbar2 = ttk.Scrollbar(selected_list_frame)
-        scrollbar2.pack(side=tk.RIGHT, fill=tk.Y)
+        self._build_symbols_tab(symbols_tab)
+        self._build_log_tab(log_tab)
 
-        # self.selected_listbox é atributo do UIManager
-        self.selected_listbox = tk.Listbox(selected_list_frame, selectmode=tk.EXTENDED, yscrollcommand=scrollbar2.set)
-        self.selected_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scrollbar2.config(command=self.selected_listbox.yview)
-        # Preenche com símbolos já selecionados (se houver, ao iniciar)
-        for symbol in self.app.selected_symbols:
-             self.selected_listbox.insert(tk.END, symbol)
-        
-        # Adicionar binding para mostrar detalhes dos dados quando um símbolo selecionado é clicado
-        self.selected_listbox.bind('<<ListboxSelect>>', self.on_selected_symbol_select)
+        # Restaura a seleção da última vez
+        for symbol in self.prefs.get("selected", []):
+            if symbol not in self.app.selected_symbols:
+                self.app.selected_symbols.append(symbol)
+        self._refresh_selected_list()
 
-        # Frame para detalhes do símbolo selecionado
-        self.symbol_details_frame = ttk.LabelFrame(right_frame, text="Detalhes do Símbolo")
-        self.symbol_details_frame.pack(fill=tk.X, expand=False, pady=5)
-        
-        # Conteúdo inicial do frame de detalhes
-        self.symbol_details_content = ttk.Label(self.symbol_details_frame, 
-                                              text="Selecione um símbolo para ver detalhes",
-                                              wraplength=500, justify="left")
-        self.symbol_details_content.pack(fill=tk.X, padx=10, pady=10)
-
-        # Frame de progresso da coleta (inicialmente oculto)
-        self.progress_frame = ttk.LabelFrame(right_frame, text="Progresso da Coleta")
-        
-        # Criar elementos para o progresso
-        self.progress_var = tk.DoubleVar(value=0)
-        self.progress_bar = ttk.Progressbar(self.progress_frame, variable=self.progress_var, 
-                                           style="Collection.Horizontal.TProgressbar",
-                                           length=100, mode='determinate')
-        self.progress_bar.pack(fill=tk.X, padx=10, pady=(10, 0))
-        
-        # Status da coleta
-        self.collection_status_frame = ttk.Frame(self.progress_frame)
-        self.collection_status_frame.pack(fill=tk.X, padx=10, pady=5)
-        
-        # Informações da coleta (lado esquerdo)
-        self.collection_info_frame = ttk.Frame(self.collection_status_frame)
-        self.collection_info_frame.pack(side=tk.LEFT, fill=tk.Y)
-        
-        self.collection_time_label = ttk.Label(self.collection_info_frame, text="Tempo: 00:00:00")
-        self.collection_time_label.pack(anchor="w")
-        
-        self.collection_count_label = ttk.Label(self.collection_info_frame, text="Registros: 0")
-        self.collection_count_label.pack(anchor="w")
-        
-        self.collection_errors_label = ttk.Label(self.collection_info_frame, text="Erros: 0")
-        self.collection_errors_label.pack(anchor="w")
-        
-        # Último status (lado direito)
-        self.last_status_frame = ttk.Frame(self.collection_status_frame)
-        self.last_status_frame.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        self.last_symbol_label = ttk.Label(self.last_status_frame, text="Último símbolo: -")
-        self.last_symbol_label.pack(anchor="e")
-        
-        self.last_time_label = ttk.Label(self.last_status_frame, text="Último registro: -")
-        self.last_time_label.pack(anchor="e")
-        
-        # Progresso por símbolo (lista)
-        self.symbols_progress_frame = ttk.Frame(self.progress_frame)
-        self.symbols_progress_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
-        
-        # A lista de progresso por símbolo será criada dinamicamente
-        # Esconder o frame de progresso inicialmente - será mostrado durante coleta
-        # self.progress_frame.pack_forget()
-
-        # Controles de coleta
-        control_frame = ttk.LabelFrame(right_frame, text="Controle de Coleta")
-        control_frame.pack(fill=tk.BOTH, expand=False, pady=5)
-
-        # self.start_button e self.stop_button são atributos do UIManager
-        # commands chamam métodos do UIManager
-        self.start_button = ttk.Button(control_frame, text="Iniciar Coleta", command=self.start_collection)
-        self.start_button.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
-
-        self.stop_button = ttk.Button(control_frame, text="Parar Coleta", command=self.stop_collection, state=tk.DISABLED)
-        self.stop_button.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-
-        # command chama método do UIManager
-        self.show_stats_button = ttk.Button(control_frame, text="Mostrar Estatísticas", command=self.show_statistics)
-        self.show_stats_button.grid(row=0, column=2, padx=5, pady=5, sticky="ew")
-
-        # command chama método do UIManager
-        self.get_history_button = ttk.Button(control_frame, text="Extrair Dados Históricos", command=self.extract_historical_data)
-        self.get_history_button.grid(row=1, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
-        
-        # Frame para logs e status
-        log_frame = ttk.LabelFrame(right_frame, text="Log de Atividades")
-        log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-
-        log_scroll = ttk.Scrollbar(log_frame)
-        log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-
-        # self.log_text é atributo do UIManager
-        self.log_text = tk.Text(log_frame, height=10, width=50, yscrollcommand=log_scroll.set)
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        log_scroll.config(command=self.log_text.yview)
-
-        # Configurar largura das colunas do main_frame
-        main_frame.columnconfigure(0, weight=1) # Frame esquerdo
-        main_frame.columnconfigure(1, weight=3) # Frame direito
-
-        # Inicializar log (usando método do UIManager)
         self.log("Interface gráfica configurada.")
-        
-        # Carregar símbolos na lista imediatamente
         self.filter_symbols()
-        
-        # Verificar e carregar dados existentes para destaque visual
-        self.load_existing_symbols_data()
+        self.refresh_inventory()
 
-        # Menu (Arquivo, Exportar, Estratégias, Ajuda): existia mas nunca era criado
+        # Menu (Arquivo, Exibir, Estratégias, Ajuda)
         self.create_menu()
+        self.theme.on_change(self._theme_changed)
+        self.root.bind("<Control-f>", lambda e: self.search_entry.focus_set())
+        self.root.bind("<F5>", lambda e: self.refresh_inventory())
 
         # Mostra a conta em uso; se o MT5 não conectou, oferece a correção depois que a janela abrir
         self.refresh_mt5_status()
         if not self._mt5_connected():
             self.root.after(500, self.check_mt5_status)
 
-        # --- Fim da configuração da UI ---
+    def _build_symbols_tab(self, tab):
+        tab.columnconfigure(0, weight=3, uniform="col")
+        tab.columnconfigure(1, weight=2, uniform="col")
+        tab.rowconfigure(0, weight=1)
 
-    def load_existing_symbols_data(self):
-        """Carrega informações sobre símbolos que já têm dados no banco para destacar na UI."""
-        if not self.app.db_manager or not self.app.db_manager.is_connected():
-            log.warning("Não foi possível verificar símbolos existentes: Banco de dados não conectado")
+        # Esquerda: ativos da conta
+        left = card(tab, "Ativos da conta")
+        left.master.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self.symbols_label = ttk.Label(left, text="", style="Muted.TLabel")
+        self.symbols_label.pack(anchor="w", pady=(0, 8))
+
+        search_frame = ttk.Frame(left, style="Surface.TFrame")
+        search_frame.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(search_frame, text="Buscar", style="Muted.TLabel").pack(side=tk.LEFT, padx=(0, 6))
+        self.search_var.trace_add("write", self._schedule_filter)
+        self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.search_entry.focus_set()
+        Tooltip(self.search_entry, "Digite parte do código (ex.: WIN, PETR, EUR). Atalho: Ctrl+F.", self.theme)
+        for text, value, tip in (("Todos", "all", "Todos os ativos que a conta oferece."),
+                                 ("★ Favoritos", "fav", "Só os ativos que você marcou como favoritos."),
+                                 ("Na base", "data", "Só os ativos que já têm dados extraídos.")):
+            radio = ttk.Radiobutton(search_frame, text=text, value=value, variable=self.filter_var,
+                                    style="Toolbutton", command=self.filter_symbols)
+            radio.pack(side=tk.LEFT, padx=(8 if value == "all" else 1, 0))
+            Tooltip(radio, tip, self.theme)
+
+        actions = ttk.Frame(left, style="Surface.TFrame")
+        actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
+        ttk.Button(actions, text="Adicionar à seleção →", command=self.add_symbols).pack(side=tk.LEFT)
+        ttk.Button(actions, text="★ Favoritar / desfavoritar", command=self.toggle_favorites).pack(
+            side=tk.LEFT, padx=(8, 0))
+        ttk.Label(actions, text="Duplo clique adiciona à seleção", style="Muted.TLabel").pack(side=tk.RIGHT)
+
+        tree_frame, self.symbols_tree = scrolled_tree(left, SYMBOL_COLUMNS, (34, 150, 300, 90),
+                                                      ("center", "w", "w", "w"), height=18, selectmode="extended")
+        self.symbols_tree.column("★", stretch=False)
+        tree_frame.pack(fill=tk.BOTH, expand=True)
+        self.symbols_tree.bind("<<TreeviewSelect>>", self.on_symbol_select)
+        self.symbols_tree.bind("<Double-Button-1>", lambda e: self.add_symbols())
+        self.symbols_tree.bind("<Return>", lambda e: self.add_symbols())
+
+        # Direita: seleção, detalhes e ações
+        right = ttk.Frame(tab)
+        right.grid(row=0, column=1, sticky="nsew")
+        right.columnconfigure(0, weight=1)
+        right.rowconfigure(0, weight=1)
+
+        selected = card(right, "Seleção", "ativos que serão extraídos ou coletados")
+        selected.master.grid(row=0, column=0, sticky="nsew")
+        selected_actions = ttk.Frame(selected, style="Surface.TFrame")
+        selected_actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        ttk.Button(selected_actions, text="Remover", command=self.remove_symbols).pack(side=tk.LEFT)
+        ttk.Button(selected_actions, text="Limpar", command=self.clear_selection).pack(side=tk.LEFT, padx=(8, 0))
+        self.selection_label = ttk.Label(selected_actions, text="", style="Muted.TLabel")
+        self.selection_label.pack(side=tk.RIGHT)
+        self.selected_listbox = self.theme.classic(tk.Listbox(selected, selectmode=tk.EXTENDED, height=5,
+                                                              exportselection=False, activestyle="none"))
+        self.selected_listbox.pack(fill=tk.BOTH, expand=True)
+        self.selected_listbox.bind('<<ListboxSelect>>', self.on_selected_symbol_select)
+        self.selected_listbox.bind('<Delete>', lambda e: self.remove_symbols())
+
+        details = card(right, "Detalhes do ativo")
+        details.master.grid(row=1, column=0, sticky="ew", pady=10)
+        self.symbol_details_frame = details.master
+        self.detail_title = ttk.Label(details, text="Selecione um ativo para ver os detalhes", style="Surface.TLabel")
+        self.detail_title.pack(anchor="w")
+        grid = ttk.Frame(details, style="Surface.TFrame")
+        grid.pack(fill=tk.X, pady=(6, 0))
+        grid.columnconfigure(1, weight=1)
+        self.detail_values = {}
+        for row, (key, label, tip) in enumerate((
+                ("price", "Cotação", "Último negócio (ou a oferta de compra, em Forex/CFD) informado pelo MetaTrader 5."),
+                ("spread", "Spread", study.GLOSSARY["Spread médio"]),
+                ("base", "Na base", "Séries já extraídas deste ativo, com o período coberto."))):
+            name = ttk.Label(grid, text=label, style="Muted.TLabel")
+            name.grid(row=row, column=0, sticky="nw", padx=(0, 12), pady=2)
+            value = ttk.Label(grid, text="—", style="Surface.TLabel", justify=tk.LEFT, wraplength=420)
+            value.grid(row=row, column=1, sticky="w", pady=2)
+            self.detail_values[key] = value
+            Tooltip(name, tip, self.theme)
+        # Compatibilidade: código antigo escreve o texto dos detalhes neste rótulo
+        self.symbol_details_content = self.detail_values["base"]
+
+        control = card(right, "O que fazer com a seleção")
+        control.master.grid(row=2, column=0, sticky="ew")
+        row1 = ttk.Frame(control, style="Surface.TFrame")
+        row1.pack(fill=tk.X)
+        self.get_history_button = ttk.Button(row1, text="Extrair histórico...", style="Accent.TButton",
+                                             command=self.extract_historical_data)
+        self.get_history_button.pack(side=tk.LEFT)
+        Tooltip(self.get_history_button, "Baixa as barras do período escolhido (ou só o que falta desde a última "
+                                         "extração) e grava na base. É o primeiro passo para estudar um ativo.",
+                self.theme)
+        self.show_stats_button = ttk.Button(row1, text="Analisar", command=self.show_statistics)
+        self.show_stats_button.pack(side=tk.LEFT, padx=(8, 0))
+        Tooltip(self.show_stats_button, "Abre o gráfico de candles, os indicadores e os números de estudo do ativo "
+                                        "(precisa ter dados na base).", self.theme)
+        row2 = ttk.Frame(control, style="Surface.TFrame")
+        row2.pack(fill=tk.X, pady=(8, 0))
+        self.start_button = ttk.Button(row2, text="Iniciar coleta em tempo real", command=self.start_collection)
+        self.start_button.pack(side=tk.LEFT)
+        Tooltip(self.start_button, "Grava a barra de 1 minuto mais recente de cada ativo da seleção enquanto o "
+                                   "aplicativo estiver aberto.", self.theme)
+        self.stop_button = ttk.Button(row2, text="Parar coleta", command=self.stop_collection, state=tk.DISABLED)
+        self.stop_button.pack(side=tk.LEFT, padx=(8, 0))
+
+        # Progresso da coleta em tempo real (aparece só durante a coleta)
+        self.progress_frame = ttk.Frame(control, style="Surface.TFrame")
+        self.progress_var = tk.DoubleVar(value=0)
+        self.progress_bar = ttk.Progressbar(self.progress_frame, variable=self.progress_var,
+                                            style="Collection.Horizontal.TProgressbar", mode='determinate')
+        self.progress_bar.pack(fill=tk.X, pady=(10, 4))
+        info = ttk.Frame(self.progress_frame, style="Surface.TFrame")
+        info.pack(fill=tk.X)
+        self.collection_time_label = ttk.Label(info, text="Tempo: 00:00:00", style="Muted.TLabel")
+        self.collection_time_label.grid(row=0, column=0, sticky="w", padx=(0, 14))
+        self.collection_count_label = ttk.Label(info, text="Registros: 0", style="Muted.TLabel")
+        self.collection_count_label.grid(row=0, column=1, sticky="w", padx=(0, 14))
+        self.collection_errors_label = ttk.Label(info, text="Erros: 0", style="Muted.TLabel")
+        self.collection_errors_label.grid(row=0, column=2, sticky="w")
+        self.last_symbol_label = ttk.Label(info, text="Último símbolo: -", style="Muted.TLabel")
+        self.last_symbol_label.grid(row=1, column=0, sticky="w", padx=(0, 14))
+        self.last_time_label = ttk.Label(info, text="Último registro: -", style="Muted.TLabel")
+        self.last_time_label.grid(row=1, column=1, columnspan=2, sticky="w")
+        self.symbols_progress_frame = ttk.Frame(self.progress_frame, style="Surface.TFrame")
+        self.symbols_progress_frame.pack(fill=tk.X, pady=(4, 0))
+        self.symbols_progress_frame.columnconfigure(0, weight=1)
+
+    def _build_log_tab(self, tab):
+        body = card(tab, "Atividade", "o que o aplicativo fez nesta sessão")
+        body.master.pack(fill=tk.BOTH, expand=True)
+        actions = ttk.Frame(body, style="Surface.TFrame")
+        actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
+        ttk.Button(actions, text="Limpar", command=lambda: self.log_text.delete("1.0", tk.END)).pack(side=tk.LEFT)
+        ttk.Button(actions, text="Abrir pasta de logs",
+                   command=lambda: self._open_path(Path(self._project_root()) / "logs")).pack(side=tk.LEFT, padx=(8, 0))
+        log_scroll = ttk.Scrollbar(body)
+        log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text = self.theme.classic(tk.Text(body, height=10, wrap=tk.WORD, padx=10, pady=8,
+                                                   yscrollcommand=log_scroll.set))
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        log_scroll.config(command=self.log_text.yview)
+
+    @staticmethod
+    def _project_root():
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def _theme_changed(self):
+        self.create_menu()
+        self.symbols_tree.tag_configure("data", foreground=self.theme.colors["good"])
+        self.refresh_mt5_status(quiet=True)
+        self.save_prefs()
+
+    def toggle_theme(self):
+        self.theme.toggle()
+
+    # --- inventário da base -----------------------------------------------------------
+
+    def refresh_inventory(self):
+        """Lê (em segundo plano) o que existe na base e atualiza as abas."""
+        db = self.app.db_manager
+        if not db or not db.is_connected():
+            log.warning("Não foi possível ler a base: banco de dados não conectado")
+            self.base_label.config(text="Base de dados indisponível")
             return
-            
-        try:
-            # Obter lista de tabelas existentes do banco
-            existing_tables = self.app.db_manager.get_existing_symbols()
-            log.info(f"Encontradas {len(existing_tables)} tabelas com dados no banco")
-            
-            # Timeframe M1 (1 minuto), em uma leitura só (a conta pode ter milhares de símbolos)
-            self.existing_symbols_map = self.app.db_manager.symbols_with_data(self.app.symbols, "1 minuto")
-            self.symbols_with_data = set(self.existing_symbols_map)
+        self.run_bg(db.data_inventory, self._inventory_loaded)
 
-            log.info(f"Identificados {len(self.existing_symbols_map)} símbolos com dados existentes")
-            
-            # Atualizar a interface com destaques visuais
-            self.highlight_symbols_with_data()
-        except Exception as e:
-            log.error(f"Erro ao verificar símbolos existentes: {e}")
-            log.debug(traceback.format_exc())
-            # Garantir que essas propriedades existam mesmo em caso de erro
-            if not hasattr(self, "existing_symbols_map"):
-                self.existing_symbols_map = {}
-            if not hasattr(self, "symbols_with_data"):
-                self.symbols_with_data = set()
-        
+    # Nome antigo, ainda chamado ao fim de uma extração
+    load_existing_symbols_data = refresh_inventory
+
+    def _inventory_loaded(self, inventory, error):
+        if error:
+            self.log(f"Não foi possível ler a base de dados: {error}")
+            return
+        self.inventory = inventory
+        self.symbol_series = {}
+        for item in inventory:
+            if item["rows"]:
+                self.symbol_series.setdefault(item["symbol"], []).append(item)
+        for series in self.symbol_series.values():
+            series.sort(key=lambda item: getattr(timeframes.parse(item["timeframe"]), "minutes", 0))
+        self.symbols_with_data = set(self.symbol_series)
+        self.existing_symbols_map = {item["symbol"]: item["table"] for item in inventory
+                                     if item["rows"] and item["timeframe"] == timeframes.Timeframe.M1.label}
+        self.inventory_panel.show(inventory)
+        self.analysis_panel.set_inventory(inventory)
+        self.filter_symbols()
+        total = sum(item["rows"] for item in inventory)
+        self.base_label.config(text=f"Base: {len(self.symbols_with_data)} ativo(s), {fmt_int(total)} barras"
+                               if inventory else "Base vazia: extraia o histórico de um ativo para começar")
+        if self.detail_symbol:
+            self.update_symbol_details(self.detail_symbol)
+
+    def update_symbols_with_data(self, symbols_with_data=None):
+        """Mantido por compatibilidade com app.py: a interface lê o inventário em refresh_inventory()."""
+
+    def _series_text(self, symbol):
+        parts = []
+        for item in self.symbol_series.get(symbol, []):
+            tf = timeframes.parse(item["timeframe"])
+            parts.append(f"{tf.name if tf else item['timeframe']} ({fmt_int(item['rows'])} barras)")
+        return ", ".join(parts)
+
+    # --- lista de ativos --------------------------------------------------------------
+
+    def _schedule_filter(self, *args):
+        """A busca espera uma pausa na digitação (a conta pode ter milhares de símbolos)."""
+        if self._filter_job:
+            self.root.after_cancel(self._filter_job)
+        self._filter_job = self.root.after(180, self.filter_symbols)
+
+    def filter_symbols(self, *args):
+        """Filtra a lista de símbolos com base no texto de busca e no filtro (todos/favoritos/na base)."""
+        self._filter_job = None
+        tree = self.symbols_tree
+        if not tree: # Verifica se o widget existe
+            return
+        account = list(dict.fromkeys(getattr(self.app, 'symbols', None) or []))
+        mode = self.filter_var.get()
+        universe = account
+        if mode == "data":  # inclui ativos extraídos em outra conta
+            universe = account + sorted(self.symbols_with_data - set(account))
+        elif mode == "fav":
+            universe = [sym for sym in account if sym in self.favorite_symbols]
+        search_text = self.search_var.get().strip().lower()
+        matches = [sym for sym in universe if (not search_text or search_text in sym.lower())
+                   and (mode != "data" or sym in self.symbols_with_data)]
+        favorites = set(self.favorite_symbols)
+        chosen = set(self.app.selected_symbols)
+        ordered = [s for s in matches if s in favorites] + [s for s in matches if s not in favorites]
+
+        tree.delete(*tree.get_children())
+        tree.tag_configure("data", foreground=self.theme.colors["good"])
+        for sym in ordered:
+            tree.insert("", tk.END, iid=sym, tags=("data",) if sym in self.symbols_with_data else (),
+                        values=("★" if sym in favorites else "", sym, self._series_text(sym),
+                                "✓ na seleção" if sym in chosen else ""))
+
+        total = len(account)
+        if not total:
+            text = "Nenhum ativo disponível: clique em \"Verificar conexão\" para conectar ao MetaTrader 5."
+        elif search_text and not matches:
+            text = f"Nenhum ativo contém \"{self.search_var.get().strip()}\" ({total} na conta)."
+        elif len(matches) != total:
+            text = f"{len(matches)} de {total} ativos. Em verde: já têm dados na base."
+        else:
+            text = f"{total} ativos na conta. Em verde: já têm dados na base."
+        self.symbols_label.config(text=text)
+
     def highlight_symbols_with_data(self):
-        """Destaca símbolos que já possuem dados no banco de dados."""
-        if not self.symbols_listbox or not hasattr(self, "symbols_with_data"):
-            return
-            
-        # Só favoritos e símbolos com dados mudam de cor; o resto fica no padrão da lista
-        if self.symbols_with_data or self.favorite_symbols:
-            for i, symbol_text in enumerate(self.symbols_listbox.get(0, tk.END)):
-                is_favorite = symbol_text.startswith("★ ")
-                symbol = symbol_text[2:] if is_favorite else symbol_text
-                has_data = symbol in self.symbols_with_data
-                if is_favorite and has_data:
-                    self.symbols_listbox.itemconfig(i, {'bg': '#E8F5E9', 'fg': '#1976D2'})
-                elif is_favorite:
-                    self.symbols_listbox.itemconfig(i, {'fg': '#1976D2'})
-                elif has_data:
-                    self.symbols_listbox.itemconfig(i, {'bg': '#E8F5E9'})
-        
-        # Destacar símbolos na listbox de selecionados
-        for i in range(self.selected_listbox.size()):
-            symbol = self.selected_listbox.get(i)
-            if symbol in self.existing_symbols_map:
-                self.selected_listbox.itemconfig(i, {'fg': 'green', 'bg': '#f0f8f0'})
-            
-    def on_symbol_select(self, event):
+        """Redesenha a lista (favoritos, dados na base e seleção são marcados em filter_symbols)."""
+        self.filter_symbols()
+
+    def _tree_symbols(self):
+        return list(self.symbols_tree.selection()) if self.symbols_tree else []
+
+    def on_symbol_select(self, event=None):
         """Manipula o evento de seleção na lista de símbolos disponíveis."""
-        if not self.symbols_listbox:
-            return
-        try:
-            selection = self.symbols_listbox.curselection()
-            if selection:
-                symbol_text = self.symbols_listbox.get(selection[0])
-                # Remove o prefixo de favorito se existir
-                if symbol_text.startswith("★ "):
-                    symbol = symbol_text[2:]
-                else:
-                    symbol = symbol_text
-                
-                self.update_symbol_details(symbol)
-        except Exception as e:
-            log.error(f"Erro ao selecionar símbolo: {e}")
-        
-    def on_selected_symbol_select(self, event):
+        symbols = self._tree_symbols()
+        if symbols:
+            self.update_symbol_details(symbols[0])
+
+    def on_selected_symbol_select(self, event=None):
         """Callback quando um símbolo é selecionado na lista de selecionados."""
-        try:
-            selection = self.selected_listbox.curselection()
-            if selection:
-                symbol_text = self.selected_listbox.get(selection[0])
-                # Remove o prefixo de favorito se existir
-                if symbol_text.startswith("★ "):
-                    symbol = symbol_text[2:]
-                else:
-                    symbol = symbol_text
-                
-                self.update_symbol_details(symbol)
-        except Exception as e:
-            log.error(f"Erro ao selecionar símbolo: {e}")
-        
+        selection = self.selected_listbox.curselection()
+        if selection:
+            self.update_symbol_details(self.selected_listbox.get(selection[0]))
+
     def update_symbol_details(self, symbol):
         """Atualiza o painel de detalhes com informações do símbolo selecionado."""
-        if not hasattr(self, 'symbol_details_content') or not symbol:
+        if not symbol:
             return
-            
-        try:
-            # Verificar se o símbolo tem dados existentes
-            has_data = False
-            table_name = None
-            
-            if hasattr(self, 'existing_symbols_map'):
-                if symbol in self.existing_symbols_map:
-                    table_name = self.existing_symbols_map[symbol]
-                    has_data = True
-            else:
-                # Se não tiver o mapa, tentar obter o nome da tabela diretamente
-                if self.app.db_manager:
-                    table_name = self.app.db_manager.get_table_name_for_symbol(symbol, "1 minuto")
-                    # Verificar se a tabela existe
-                    if table_name in self.app.db_manager.get_existing_symbols():
-                        has_data = True
-            
-            # Se tem dados, mostrar resumo
-            if has_data and table_name and self.app.db_manager:
-                try:
-                    summary = self.app.db_manager.get_symbol_data_summary(table_name)
-                    
-                    if summary:
-                        # Formatar texto com informações resumidas
-                        detail_text = f"""Símbolo: {symbol}
-                        
-Dados Existentes:
-• Período: {summary.get('data_inicio', 'N/A')} até {summary.get('data_fim', 'N/A')}
-• Total de registros: {summary.get('total_registros', 0)}
-• Intervalo médio: {summary.get('intervalo_medio_minutos', 'N/A')} minutos
-• Completude dos dados: {summary.get('completude', 0)}%
+        self.detail_symbol = symbol
+        self.detail_title.config(text=symbol, style="Heading.TLabel")
+        series = self.symbol_series.get(symbol, [])
+        if series:
+            lines = []
+            for item in series:
+                tf = timeframes.parse(item["timeframe"])
+                lines.append(f"{item['timeframe']}: {fmt_int(item['rows'])} barras, de {item['start']:%d/%m/%Y} a "
+                             f"{item['end']:%d/%m/%Y} ({study.freshness(item['end'], tf.minutes if tf else 1)})")
+            self.detail_values["base"].config(text="\n".join(lines))
+        else:
+            self.detail_values["base"].config(text="Ainda sem dados. Adicione à seleção e clique em "
+                                                   "\"Extrair histórico\".")
+        if not self._mt5_connected():
+            self.detail_values["price"].config(text="MetaTrader 5 não conectado")
+            self.detail_values["spread"].config(text="—")
+            return
+        self.detail_values["price"].config(text="...")
+        self.detail_values["spread"].config(text="...")
 
-Meta Trader 5:
-• Spread: {self.get_symbol_spread(symbol)}
-• Cotação: {self.get_symbol_price(symbol)}
+        def done(quote, error):
+            if self.detail_symbol != symbol:
+                return
+            price, spread = quote if quote else ("indisponível", "—")
+            self.detail_values["price"].config(text=price)
+            self.detail_values["spread"].config(text=spread)
 
-Status: Disponível para coleta e análise
-"""
-                        self.symbol_details_content.config(text=detail_text)
-                        self.symbol_details_frame.config(text=f"Detalhes de {symbol} (Dados Existentes)")
-                        return
-                except Exception as e:
-                    log.error(f"Erro ao obter resumo para {symbol}: {e}")
-                    log.debug(traceback.format_exc())
-            
-            # Se não tiver dados ou houver erro, mostrar informações básicas
-            detail_text = f"""Símbolo: {symbol}
-
-Meta Trader 5:
-• Spread: {self.get_symbol_spread(symbol)}
-• Cotação: {self.get_symbol_price(symbol)}
-
-Status: Sem dados no banco. Disponível para coleta.
-"""
-            self.symbol_details_content.config(text=detail_text)
-            self.symbol_details_frame.config(text=f"Detalhes de {symbol}")
-        except Exception as e:
-            log.error(f"Erro ao atualizar detalhes do símbolo {symbol}: {e}")
-            log.debug(traceback.format_exc())
-            # Em caso de erro, mostrar mensagem simples
-            self.symbol_details_content.config(text=f"Símbolo: {symbol}\n\nErro ao carregar detalhes.")
-            self.symbol_details_frame.config(text=f"Detalhes de {symbol} (Erro)")
+        self.run_bg(lambda: (self.get_symbol_price(symbol), self.get_symbol_spread(symbol)), done)
 
     def get_symbol_spread(self, symbol):
         """Obtém o spread atual do símbolo via MT5."""
-        if (not self.app.mt5_initialized or not self.app.mt5_connector or 
-            not self.app.mt5_connector.is_initialized):
+        if not self._mt5_connected():
             return "N/A (MT5 não conectado)"
-            
         try:
             symbol_info = self.app.mt5_connector.get_symbol_info(symbol)
             if symbol_info and hasattr(symbol_info, 'spread'):
@@ -504,13 +536,11 @@ Status: Sem dados no banco. Disponível para coleta.
         except Exception as e:
             log.error(f"Erro ao obter spread para {symbol}: {e}")
             return "Erro ao obter spread"
-            
+
     def get_symbol_price(self, symbol):
         """Obtém a cotação atual do símbolo via MT5."""
-        if (not self.app.mt5_initialized or not self.app.mt5_connector or 
-            not self.app.mt5_connector.is_initialized):
+        if not self._mt5_connected():
             return "N/A (MT5 não conectado)"
-            
         try:
             symbol_info = self.app.mt5_connector.get_symbol_info(symbol)
             if not symbol_info:
@@ -523,12 +553,192 @@ Status: Sem dados no banco. Disponível para coleta.
         except Exception as e:
             log.error(f"Erro ao obter cotação para {symbol}: {e}")
             return "Erro ao obter cotação"
-            
-    def update_collection_progress(self, total_collected, total_success, total_errors, 
+
+    # --- seleção ----------------------------------------------------------------------
+
+    def _refresh_selected_list(self):
+        self.selected_listbox.delete(0, tk.END)
+        if self.app.selected_symbols:
+            self.selected_listbox.insert(tk.END, *self.app.selected_symbols)
+        count = len(self.app.selected_symbols)
+        self.selection_label.config(text=f"{count} ativo(s)" if count else "nenhum ativo selecionado")
+        chosen = set(self.app.selected_symbols)
+        for sym in self.symbols_tree.get_children():
+            self.symbols_tree.set(sym, "Seleção", "✓ na seleção" if sym in chosen else "")
+
+    def select_symbols(self, symbols):
+        """Acrescenta ativos à seleção (sem repetir). Retorna quantos entraram."""
+        added = [s for s in dict.fromkeys(symbols) if s not in self.app.selected_symbols]
+        if added:
+            self.app.selected_symbols.extend(added)
+            self._refresh_selected_list()
+            self.save_prefs()
+            self.log(f"{len(added)} ativo(s) adicionado(s) à seleção: {', '.join(added[:8])}"
+                     + ("..." if len(added) > 8 else ""))
+        return len(added)
+
+    def add_symbols(self):
+        """Adiciona símbolos selecionados à lista de monitoramento"""
+        symbols = self._tree_symbols()
+        if not symbols:
+            self.update_status("Clique em um ativo da lista antes de adicionar à seleção.")
+            return
+        if not self.select_symbols(symbols):
+            self.update_status("Os ativos escolhidos já estão na seleção.")
+
+    def remove_symbols(self):
+        """Remove símbolos da lista de monitoramento"""
+        if not self.selected_listbox:
+            return
+        removed = [self.selected_listbox.get(i) for i in self.selected_listbox.curselection()]
+        if not removed:
+            return
+        self.app.selected_symbols[:] = [s for s in self.app.selected_symbols if s not in removed]
+        self._refresh_selected_list()
+        self.save_prefs()
+        self.log(f"Removido(s) da seleção: {', '.join(removed)}")
+
+    def clear_selection(self):
+        if self.app.selected_symbols:
+            self.app.selected_symbols[:] = []
+            self._refresh_selected_list()
+            self.save_prefs()
+
+    # --- favoritos --------------------------------------------------------------------
+
+    def add_to_favorites(self):
+        """Adiciona os símbolos selecionados aos favoritos"""
+        symbols = self._tree_symbols()
+        if not symbols:
+            messagebox.showinfo("Favoritos", "Selecione pelo menos um símbolo para adicionar aos favoritos.")
+            return
+        added = [s for s in symbols if s not in self.favorite_symbols]
+        if added:
+            self.favorite_symbols.extend(added)
+            self.save_favorites()
+            self.log(f"{len(added)} símbolo(s) adicionado(s) aos favoritos.")
+            self.filter_symbols()
+
+    def remove_from_favorites(self):
+        """Remove os símbolos selecionados dos favoritos"""
+        symbols = self._tree_symbols()
+        if not symbols:
+            messagebox.showinfo("Favoritos", "Selecione pelo menos um símbolo para remover dos favoritos.")
+            return
+        removed = [s for s in symbols if s in self.favorite_symbols]
+        if removed:
+            self.favorite_symbols[:] = [s for s in self.favorite_symbols if s not in removed]
+            self.save_favorites()
+            self.log(f"{len(removed)} símbolo(s) removido(s) dos favoritos.")
+            self.filter_symbols()
+
+    def toggle_favorites(self):
+        """Favorita os ativos marcados; se todos já são favoritos, desfavorita."""
+        symbols = self._tree_symbols()
+        if not symbols:
+            self.update_status("Clique em um ativo da lista para favoritar.")
+        elif all(s in self.favorite_symbols for s in symbols):
+            self.remove_from_favorites()
+        else:
+            self.add_to_favorites()
+
+    def show_only_favorites(self):
+        """Mostra apenas os símbolos marcados como favoritos"""
+        self.filter_var.set("fav")
+        self.filter_symbols()
+
+    def show_all_symbols(self):
+        """Mostra todos os símbolos, favoritos primeiro"""
+        self.filter_var.set("all")
+        self.search_var.set("")
+        self.filter_symbols()
+
+    # --- análise e exportação ---------------------------------------------------------
+
+    def open_analysis(self, symbol, timeframe_label=None):
+        """Abre a aba Análise no ativo pedido (avisa se ele ainda não tem dados)."""
+        if not self.analysis_panel.open(symbol, timeframe_label):
+            messagebox.showinfo(
+                "Análise",
+                f"{symbol} ainda não tem dados na base.\n\nAdicione o ativo à seleção e clique em "
+                "\"Extrair histórico\"; depois a análise fica disponível.")
+            return False
+        self.notebook.select(self.analysis_panel.frame)
+        return True
+
+    def show_statistics(self):
+        """Abre a análise do ativo em destaque (ou do primeiro da seleção)."""
+        candidates = [self.detail_symbol] + list(self.app.selected_symbols)
+        symbol = next((s for s in candidates if s in self.symbols_with_data), None) \
+            or next((s for s in candidates if s), None)
+        if symbol:
+            self.open_analysis(symbol)
+        else:
+            self.notebook.select(self.analysis_panel.frame)
+
+    def export_table(self, table_name, format_type, filters=None, on_success=None):
+        """Pergunta onde salvar e exporta a tabela em segundo plano (csv, excel, parquet ou duckdb)."""
+        ext = {"csv": "csv", "excel": "xlsx", "xlsx": "xlsx", "parquet": "parquet",
+               "duckdb": "duckdb"}[format_type.lower()]
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=f".{ext}", initialfile=f"{table_name}.{ext}",
+            filetypes=[(f"{ext.upper()}", f"*.{ext}"), ("Todos os arquivos", "*.*")])
+        if not file_path:
+            return
+        if not hasattr(self, 'data_exporter'):
+            self.data_exporter = DataExporter(self.app.db_manager)
+        exporter = self.data_exporter
+
+        def work():
+            if ext == "csv":
+                return exporter.export_to_csv(table_name, caminho_arquivo=file_path, filtros=filters or None,
+                                              adicionar_timestamp=False)
+            if ext == "xlsx":
+                return exporter.export_to_excel(table_name, caminho_arquivo=file_path, filtros=filters or None,
+                                                adicionar_timestamp=False)
+            if ext == "parquet":
+                return exporter.export_to_parquet(table_name, caminho_arquivo=file_path, filtros=filters or None,
+                                                  adicionar_timestamp=False)
+            return exporter.export_to_duckdb([table_name], caminho_arquivo=file_path, filtros=filters or None)
+
+        def done(result_path, error):
+            if error:
+                self.update_status("Status: falha na exportação")
+                messagebox.showerror("Erro", f"Falha ao exportar: {error}")
+            elif result_path:
+                self.update_status(f"Status: exportado para {result_path}")
+                self.log(f"Tabela {table_name} exportada para {result_path}")
+                messagebox.showinfo("Sucesso", f"Dados exportados com sucesso para:\n{result_path}")
+                if on_success:
+                    on_success()
+            else:
+                messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
+
+        self.update_status(f"Status: exportando {table_name}...")
+        self.run_bg(work, done)
+
+    def show_glossary(self):
+        """Explica, em linguagem simples, os números e indicadores mostrados na aba Análise."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Glossário")
+        dialog.geometry("720x560")
+        dialog.transient(self.root)
+        text = self.theme.classic(scrolledtext.ScrolledText(dialog, wrap=tk.WORD, padx=14, pady=12))
+        text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        text.tag_configure("term", font=self.theme.font_bold, spacing1=10)
+        for term, meaning in study.GLOSSARY.items():
+            text.insert(tk.END, term + "\n", "term")
+            text.insert(tk.END, meaning + "\n")
+        text.config(state=tk.DISABLED)
+        ttk.Button(dialog, text="Fechar", command=dialog.destroy).pack(pady=(0, 10))
+
+    # --- coleta em tempo real ---------------------------------------------------------
+
+    def update_collection_progress(self, total_collected, total_success, total_errors,
                                   elapsed_time, symbols_status, is_running):
         """
         Atualiza a interface com o progresso da coleta.
-        
+
         Args:
             total_collected (int): Total de registros processados
             total_success (int): Total de registros salvos com sucesso
@@ -541,243 +751,64 @@ Status: Sem dados no banco. Disponível para coleta.
             self.call_in_ui(self.update_collection_progress, total_collected, total_success, total_errors,
                             elapsed_time, symbols_status, is_running)
             return
-        # Garantir que existe uma área na interface para mostrar o progresso
         if not hasattr(self, 'progress_frame') or not hasattr(self, 'progress_var'):
             log.warning("Interface de progresso não inicializada.")
             return
-            
-        # Garantir que o frame de progresso esteja visível
         if not self.progress_frame.winfo_ismapped():
-            # Tentar localizar o frame após o qual inserir
-            after_frame = None
-            if hasattr(self, 'symbol_details_frame') and self.symbol_details_frame.winfo_ismapped():
-                after_frame = self.symbol_details_frame
-            elif hasattr(self, 'control_frame') and getattr(self, 'control_frame', None):
-                after_frame = self.control_frame
-                
-            if after_frame:
-                self.progress_frame.pack(fill=tk.X, expand=False, pady=5, after=after_frame)
-            else:
-                self.progress_frame.pack(fill=tk.X, expand=False, pady=5)
-            
-        # Atualizar barra de progresso principal (baseado na taxa de sucesso)
+            self.progress_frame.pack(fill=tk.X)
+
+        # Barra principal: taxa de registros gravados com sucesso
         if total_collected > 0:
             success_rate = (total_success / total_collected) * 100
             self.progress_var.set(success_rate)
-            
-            # Atualizar estilo baseado na taxa de sucesso
-            if success_rate < 50:
-                self.progress_bar.configure(style="Error.Horizontal.TProgressbar")
-            else:
-                self.progress_bar.configure(style="Collection.Horizontal.TProgressbar")
+            self.progress_bar.configure(style="Error.Horizontal.TProgressbar" if success_rate < 50
+                                        else "Collection.Horizontal.TProgressbar")
         else:
             self.progress_var.set(0)
-            
-        # Atualizar labels de informação
-        # Formato de tempo hh:mm:ss
+
         hours, remainder = divmod(int(elapsed_time), 3600)
         minutes, seconds = divmod(remainder, 60)
-        time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        self.collection_time_label.config(text=f"Tempo: {time_str}")
-        
+        self.collection_time_label.config(text=f"Tempo: {hours:02d}:{minutes:02d}:{seconds:02d}")
         self.collection_count_label.config(text=f"Registros: {total_success} de {total_collected}")
         self.collection_errors_label.config(text=f"Erros: {total_errors}")
-        
-        # Encontrar último símbolo processado e último timestamp
+
         last_symbol = "-"
         last_time = "-"
-        
         for symbol, status in symbols_status.items():
             if status['last_time'] is not None:
                 last_symbol = symbol
-                if isinstance(status['last_time'], (str, datetime.datetime)):
-                    if isinstance(status['last_time'], datetime.datetime):
-                        last_time = status['last_time'].strftime("%H:%M:%S")
-                    else:
-                        last_time = status['last_time']
-                        
+                if isinstance(status['last_time'], datetime.datetime):
+                    last_time = status['last_time'].strftime("%H:%M:%S")
+                elif isinstance(status['last_time'], str):
+                    last_time = status['last_time']
         self.last_symbol_label.config(text=f"Último símbolo: {last_symbol}")
         self.last_time_label.config(text=f"Último registro: {last_time}")
-        
-        # Limpar e recriar a área de progresso por símbolo
+
         for widget in self.symbols_progress_frame.winfo_children():
             widget.destroy()
-            
-        # Criar barras de progresso por símbolo (max 5 símbolos)
         row = 0
         for symbol, status in list(symbols_status.items())[:5]:  # Limita a 5 símbolos para não sobrecarregar a UI
             if status['total'] > 0:
-                # Frame para o símbolo
-                symbol_frame = ttk.Frame(self.symbols_progress_frame)
+                symbol_frame = ttk.Frame(self.symbols_progress_frame, style="Surface.TFrame")
                 symbol_frame.grid(row=row, column=0, sticky="ew", pady=2)
                 symbol_frame.columnconfigure(1, weight=1)
-                
-                # Label do símbolo
-                symbol_label = ttk.Label(symbol_frame, text=f"{symbol}:", width=10, anchor="w")
-                symbol_label.grid(row=0, column=0, padx=(0, 5))
-                
-                # Barra de progresso
-                symbol_progress_var = tk.DoubleVar(value=(status['success'] / status['total']) * 100 if status['total'] > 0 else 0)
-                symbol_progress = ttk.Progressbar(symbol_frame, variable=symbol_progress_var, length=100)
+                ttk.Label(symbol_frame, text=f"{symbol}:", width=10, anchor="w", style="Muted.TLabel").grid(
+                    row=0, column=0, padx=(0, 5))
+                symbol_progress = ttk.Progressbar(symbol_frame, value=(status['success'] / status['total']) * 100)
                 symbol_progress.grid(row=0, column=1, sticky="ew")
-                
-                # Texto de status
                 status_text = f"{status['success']}/{status['total']}"
                 if status['last_error']:
                     status_text += f" (Erro: {status['last_error']})"
                     symbol_progress.configure(style="Error.Horizontal.TProgressbar")
-                
-                status_label = ttk.Label(symbol_frame, text=status_text, width=20, anchor="e")
-                status_label.grid(row=0, column=2, padx=(5, 0))
-                
+                ttk.Label(symbol_frame, text=status_text, anchor="e", style="Muted.TLabel").grid(
+                    row=0, column=2, padx=(5, 0))
                 row += 1
-                
-        # Se não estiver mais rodando, desabilitar alguns elementos
+
         if not is_running:
-            # Manter a interface visível para mostrar o resultado final
             self.progress_frame.pack_forget()
+            self.refresh_inventory()
 
-    def filter_symbols(self, *args):
-        """Filtra a lista de símbolos com base no texto de busca"""
-        if not self.symbols_listbox: # Verifica se o widget existe
-            return
-            
-        # Primeiro, verificar se temos símbolos disponíveis
-        if not hasattr(self.app, 'symbols') or not self.app.symbols:
-            log.warning("Nenhum símbolo disponível para filtrar")
-            messagebox.showwarning("Aviso", "Nenhum símbolo disponível para exibir.")
-            return
-            
-        search_text = self.search_var.get().strip().lower()
-        self.symbols_listbox.delete(0, tk.END)
-        
-        # Favoritos primeiro, depois os demais (inserção em lote: a conta pode ter milhares de símbolos)
-        matches = [sym for sym in self.app.symbols if not search_text or search_text in sym.lower()]
-        favorites = [f"★ {sym}" for sym in matches if sym in self.favorite_symbols]
-        others = [sym for sym in matches if sym not in self.favorite_symbols]
-        if favorites or others:
-            self.symbols_listbox.insert(tk.END, *(favorites + others))
-        
-        log.debug(f"Filtro aplicado: {len(favorites)} favoritos e {len(others)} outros símbolos exibidos")
-        if getattr(self, "symbols_label", None):
-            total = len(self.app.symbols)
-            shown = len(matches)
-            if not search_text:
-                text = f"Símbolos Disponíveis: {total}"
-            elif shown:
-                text = f"Símbolos Disponíveis: {shown} de {total}"
-            else:
-                text = f"Nenhum símbolo contém \"{self.search_var.get().strip()}\" nesta conta ({total} no total)"
-            self.symbols_label.config(text=text)
-                
-        # Destacar símbolos com dados existentes
-        self.highlight_symbols_with_data()
-
-    def add_symbols(self):
-        """Adiciona símbolos selecionados à lista de monitoramento"""
-        if not self.symbols_listbox or not self.selected_listbox:
-            log.error("Widgets necessários não foram inicializados")
-            return
-            
-        selected_indices = self.symbols_listbox.curselection()
-        
-        if not selected_indices:
-            messagebox.showinfo("Seleção", "Selecione pelo menos um símbolo para adicionar.")
-            return
-            
-        added_count = 0
-        for i in selected_indices:
-            symbol_text = self.symbols_listbox.get(i)
-            # Remove o prefixo de favorito se existir
-            if symbol_text.startswith("★ "):
-                symbol = symbol_text[2:]
-            else:
-                symbol = symbol_text
-                
-            # Modifica a lista na instância principal
-            if symbol not in self.app.selected_symbols:
-                self.app.selected_symbols.append(symbol)
-                # Adicionar o símbolo com o prefixo de favorito se ele for um favorito
-                if symbol in self.favorite_symbols:
-                    self.selected_listbox.insert(tk.END, f"★ {symbol}")
-                else:
-                    self.selected_listbox.insert(tk.END, symbol)
-                added_count += 1
-                self.log(f"Símbolo adicionado: {symbol}")
-                
-        if added_count > 0:
-            self.log(f"{added_count} símbolo(s) adicionado(s) à lista de selecionados")
-            # Aplicar destaque para símbolos com dados
-            if hasattr(self, 'symbols_with_data'):
-                for i in range(self.selected_listbox.size()):
-                    symbol_text = self.selected_listbox.get(i)
-                    # Remove o prefixo de favorito se existir
-                    if symbol_text.startswith("★ "):
-                        symbol = symbol_text[2:]
-                    else:
-                        symbol = symbol_text
-                        
-                    if symbol in self.symbols_with_data:
-                        self.selected_listbox.itemconfig(i, {'fg': 'green', 'bg': '#f0f8f0'})
-        else:
-            self.log("Nenhum novo símbolo adicionado (já existem na lista)")
-            
-        # Criar botões para adicionar/remover símbolos se não existirem
-        if not hasattr(self, '_botoes_adicionados') or not self._botoes_adicionados:
-            self._adicionar_botoes_selecao()
-            
-    def _adicionar_botoes_selecao(self):
-        """Adiciona botões para mover símbolos entre as listas"""
-        # Obter o frame do meio que contém as listboxes
-        middle_frame = None
-        for child in self.root.winfo_children():
-            if isinstance(child, ttk.Frame):
-                for grandchild in child.winfo_children():
-                    if isinstance(grandchild, ttk.Frame) and len(grandchild.winfo_children()) >= 3:
-                        middle_frame = grandchild
-                        break
-                if middle_frame:
-                    break
-                    
-        if not middle_frame:
-            log.error("Não foi possível encontrar o frame do meio para adicionar botões")
-            return
-            
-        # Criar frame para os botões
-        buttons_frame = ttk.Frame(middle_frame)
-        buttons_frame.grid(row=0, column=1, sticky="ns")
-        
-        # Botão para adicionar símbolo selecionado
-        add_btn = ttk.Button(buttons_frame, text="Adicionar →", command=self.add_symbols)
-        add_btn.pack(pady=5)
-        
-        # Botão para remover símbolo selecionado
-        remove_btn = ttk.Button(buttons_frame, text="← Remover", command=self.remove_symbols)
-        remove_btn.pack(pady=5)
-        
-        self._botoes_adicionados = True
-
-    def remove_symbols(self):
-        """Remove símbolos da lista de monitoramento"""
-        if not self.selected_listbox:
-            return
-        selected_indices = self.selected_listbox.curselection()
-
-        # Remove em ordem reversa para não afetar os índices
-        for i in sorted(selected_indices, reverse=True):
-            symbol_text = self.selected_listbox.get(i)
-            # Remove o prefixo de favorito se existir
-            if symbol_text.startswith("★ "):
-                symbol = symbol_text[2:]
-            else:
-                symbol = symbol_text
-                
-            # Modifica a lista na instância principal
-            if symbol in self.app.selected_symbols:
-                 self.app.selected_symbols.remove(symbol) # Linha duplicada removida
-                 # Linhas 181-182 movidas para cá:
-                 self.selected_listbox.delete(i)
-                 self.log(f"Símbolo removido: {symbol}") # Usa self.log
+    # --- log e status -----------------------------------------------------------------
 
     def update_log_widget(self, message):
         """Atualiza o widget de log (text) com uma nova mensagem."""
@@ -785,16 +816,13 @@ Status: Sem dados no banco. Disponível para coleta.
             self.call_in_ui(self.update_log_widget, message)
             return
         if self.log_text:
-            # Garantir que estamos no fim do log
-            self.log_text.see(tk.END)
-            # Adicionar timestamp e mensagem
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
             self.log_text.insert(tk.END, f"[{timestamp}] {message}\n")
             # Manter o texto visível no final
             self.log_text.see(tk.END)
         else:
             log.warning(f"Tentativa de log na UI sem widget log_text: {message}")
-            
+
     def log(self, message):
         """Atualiza o widget de log na UI com uma nova mensagem."""
         if threading.current_thread() is not threading.main_thread():
@@ -812,14 +840,13 @@ Status: Sem dados no banco. Disponível para coleta.
             return
         # Sempre registrar o status no log
         log.info(f"Status: {status_text}")
-        
+
         # Atualizar widget apenas se estiver disponível
         if hasattr(self, 'status_label') and self.status_label:
             try:
                 self.status_label.config(text=status_text)
             except Exception as e:
                 log.warning(f"Erro ao atualizar widget de status: {e}")
-                # Não vamos exibir a mensagem de aviso sobre widget ausente, apenas logar
         else:
             # Apenas registrar para debug
             log.debug("Widget status_label não disponível para atualização.")
@@ -1114,7 +1141,7 @@ Status: Sem dados no banco. Disponível para coleta.
         # Símbolos Selecionados (Display)
         symbols_frame = ttk.LabelFrame(main_frame, text=f"Símbolos Selecionados ({len(self.app.selected_symbols)})")
         symbols_frame.pack(fill=tk.BOTH, expand=True, pady=10)
-        symbols_text = tk.Text(symbols_frame, height=4)
+        symbols_text = self.theme.classic(tk.Text(symbols_frame, height=4, wrap=tk.WORD, padx=8, pady=6))
         symbols_text.pack(fill=tk.BOTH, expand=True)
         symbols_text.insert(tk.END, ", ".join(self.app.selected_symbols))
         symbols_text.config(state=tk.DISABLED)
@@ -1182,8 +1209,7 @@ Status: Sem dados no banco. Disponível para coleta.
                         if detection_canceled[0]:
                             break
                         
-                        status_var.set(f"Detectando data mais antiga para {symbol}...")
-                        config_window.update_idletasks()
+                        self.call_in_ui(status_var.set, f"Detectando data mais antiga para {symbol}...")
                         
                         try:
                             oldest = self.app.mt5_connector.get_oldest_available_date(
@@ -1204,25 +1230,30 @@ Status: Sem dados no banco. Disponível para coleta.
                         
                     # Determinar a data mais antiga entre todos os símbolos
                     if oldest_dates:
-                        global_oldest = min(oldest_dates.values())
-                        formatted_date = global_oldest.strftime('%Y-%m-%d')
-                        
+                        formatted_date = min(oldest_dates.values()).strftime('%Y-%m-%d')
                         self.log(f"Data mais antiga entre todos os símbolos: {formatted_date}")
-                        status_var.set(f"Data mais antiga detectada: {formatted_date}")
-                        
-                        # Atualizar o campo de data inicial
-                        start_date_entry.delete(0, tk.END)
-                        start_date_entry.insert(0, formatted_date)
+                        self.call_in_ui(show_detected, f"Data mais antiga detectada: {formatted_date}", formatted_date)
                     else:
-                        status_var.set("Não foi possível determinar a data mais antiga")
+                        self.call_in_ui(show_detected, "Não foi possível determinar a data mais antiga", None)
                 except Exception as e:
                     self.log(f"Erro na detecção de data mais antiga: {str(e)}")
-                    status_var.set(f"Erro: {str(e)}")
+                    self.call_in_ui(show_detected, f"Erro: {str(e)}", None)
                 finally:
-                    # Restaurar interface
+                    self.call_in_ui(restore_detect_buttons)
+
+            def show_detected(message, formatted_date):
+                if not config_window.winfo_exists():
+                    return
+                status_var.set(message)
+                if formatted_date:
+                    start_date_entry.delete(0, tk.END)
+                    start_date_entry.insert(0, formatted_date)
+
+            def restore_detect_buttons():
+                if config_window.winfo_exists():
                     detect_button.config(state=tk.NORMAL)
                     cancel_detect_button.grid_remove()
-            
+
             # Iniciar thread de detecção
             detection_thread = threading.Thread(target=detection_thread, daemon=True)
             detection_thread.start()
@@ -1243,7 +1274,7 @@ Status: Sem dados no banco. Disponível para coleta.
             cancel_button.config(text="Fechar")
             parts = [f"{ok} ativo(s) com sucesso"]
             if failed:
-                parts.append(f"{failed} com falha (veja o Log de Atividades)")
+                parts.append(f"{failed} com falha (veja a aba Atividade)")
             if canceled:
                 parts.append(f"{canceled} cancelado(s)")
             summary = "Concluído: " + ", ".join(parts) + "."
@@ -1340,277 +1371,14 @@ Status: Sem dados no banco. Disponível para coleta.
         # Botões
         buttons_frame = ttk.Frame(control_frame)
         buttons_frame.pack(fill=tk.X, pady=5)
-        extract_button = ttk.Button(buttons_frame, text="Iniciar Extração", command=start_extraction_logic)
+        extract_button = ttk.Button(buttons_frame, text="Iniciar Extração", style="Accent.TButton",
+                                    command=start_extraction_logic)
         extract_button.pack(side=tk.LEFT, padx=5)
         update_button = ttk.Button(buttons_frame, text="Atualizar até agora", command=update_extraction_logic)
         update_button.pack(side=tk.LEFT, padx=5)
         cancel_button = ttk.Button(buttons_frame, text="Cancelar", command=cancel_extraction_logic)
         cancel_button.pack(side=tk.RIGHT, padx=5)
 
-    def show_statistics(self):
-        """Cria uma nova janela para exibir estatísticas e gráficos."""
-        if not self.app.selected_symbols:
-            messagebox.showerror("Erro", "Nenhum símbolo selecionado para exibir estatísticas.")
-            return
-
-        # Verifica se o DatabaseManager está disponível
-        if not self.app.db_manager or not self.app.db_manager.is_connected():
-             messagebox.showerror("Erro", "Conexão com banco de dados não disponível.")
-             return
-             
-        # Verifica se o MT5 está conectado (caso precise de dados em tempo real)
-        mt5_conectado = False
-        if (not self.app.mt5_initialized or not self.app.mt5_connector or 
-            not self.app.mt5_connector.is_initialized):
-            response = messagebox.askyesno(
-                "MT5 Desconectado", 
-                "O MT5 está desconectado. Alguns dados em tempo real podem não estar disponíveis. "
-                "Deseja tentar reconectar ao MT5?"
-            )
-            if response:
-                # Avisa o usuário que irá tentar conectar ao MT5
-                self.log("MT5 desconectado. Tentando reconectar...")
-                self.update_status("Status: Reconectando ao MT5...")
-                
-                # Tenta inicializar o MT5
-                if self.app.mt5_connector and self.app.mt5_connector.initialize(recursion_count=0):
-                    self.app.mt5_initialized = True
-                    status = self.app.mt5_connector.get_connection_status()
-                    logging.info(f"Conexão MT5 reestabelecida. Modo: {status.get('mode', 'N/A')}")
-                    self.log(f"MT5 conectado com sucesso. Modo: {status.get('mode', 'N/A')}")
-                    self.update_status("Status: MT5 reconectado!")
-                    messagebox.showinfo("Conexão MT5", "Conexão com MT5 estabelecida com sucesso.")
-                    mt5_conectado = True
-                else:
-                    # Se falhar na reconexão, continua apenas com dados do banco
-                    logging.warning("Falha ao reconectar ao MT5. Mostrando apenas dados armazenados.")
-                    self.log("AVISO: Falha ao reconectar ao MT5. Mostrando apenas dados armazenados.")
-                    self.update_status("Status: Visualizando dados armazenados apenas")
-            # Continua mesmo sem MT5 conectado, apenas com dados do banco
-        else:
-            mt5_conectado = True
-
-        stats_window = tk.Toplevel(self.root)
-        stats_window.title("Estatísticas")
-        stats_window.geometry("800x600")
-        
-        # Adicionar barra de status na janela de estatísticas
-        status_frame = ttk.Frame(stats_window)
-        status_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=5)
-        status_label = ttk.Label(status_frame, text="Carregando estatísticas...")
-        status_label.pack(side=tk.LEFT)
-        
-        # Inicializar o notebook antes
-        notebook = ttk.Notebook(stats_window)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        dados_encontrados = False
-        
-        # Criamos uma função para atualizar dinamicamente o status
-        def update_stats_status(text):
-            status_label.config(text=text)
-            stats_window.update_idletasks()
-        
-        # Processamos cada símbolo
-        for symbol in self.app.selected_symbols:
-            try:
-                update_stats_status(f"Carregando dados para {symbol}...")
-                
-                # Verificar nome da tabela
-                try:
-                    table_name = self.app.db_manager.get_table_name_for_symbol(symbol, "1 minuto")
-                    if not table_name:
-                        self.log(f"Nome de tabela inválido para {symbol}")
-                        update_stats_status(f"Erro: Nome de tabela inválido para {symbol}")
-                        continue
-                except Exception as table_name_error:
-                    self.log(f"Erro ao obter nome da tabela para {symbol}: {str(table_name_error)}")
-                    update_stats_status(f"Erro ao obter nome da tabela para {symbol}")
-                    continue
-                    
-                # Verificar se a tabela existe
-                try:
-                    query_exists = f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'"
-                    table_exists = pd.read_sql(query_exists, self.app.db_manager.engine)
-                    if table_exists.empty:
-                        self.log(f"Tabela {table_name} não existe - sem dados para mostrar estatísticas")
-                        update_stats_status(f"Sem dados para {symbol}")
-                        continue
-                except Exception as exists_error:
-                    self.log(f"Erro ao verificar existência da tabela {table_name}: {str(exists_error)}")
-                    update_stats_status(f"Erro ao verificar tabela {symbol}")
-                    continue
-                
-                # Obter dados
-                try:
-                    query_data = f"SELECT * FROM {table_name} ORDER BY time DESC LIMIT 1000"
-                    df = pd.read_sql(query_data, self.app.db_manager.engine)
-                    
-                    if df.empty:
-                        self.log(f"Nenhum dado encontrado para {symbol}")
-                        update_stats_status(f"Nenhum dado encontrado para {symbol}")
-                        continue
-                except Exception as data_error:
-                    self.log(f"Erro ao ler dados da tabela {table_name}: {str(data_error)}")
-                    update_stats_status(f"Erro ao ler dados de {symbol}")
-                    continue
-                
-                dados_encontrados = True
-                update_stats_status(f"Processando dados de {symbol}...")
-                
-                # Converter coluna de tempo
-                try:
-                    df['time'] = pd.to_datetime(df['time'])
-                except Exception as e:
-                    self.log(f"Erro ao converter coluna de tempo para {symbol}: {str(e)}")
-                
-                # Criar aba para este símbolo
-                tab = ttk.Frame(notebook)
-                notebook.add(tab, text=symbol)
-                
-                # Divisão em duas partes: texto e gráfico
-                panel = ttk.PanedWindow(tab, orient=tk.VERTICAL)
-                panel.pack(fill=tk.BOTH, expand=True)
-                
-                # Painel de texto
-                text_frame = ttk.Frame(panel)
-                panel.add(text_frame, weight=1)
-                
-                stats_text = tk.Text(text_frame, height=15, width=60)
-                stats_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-                
-                # Adicionar scrollbar
-                text_scroll = ttk.Scrollbar(text_frame, command=stats_text.yview)
-                text_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-                stats_text.config(yscrollcommand=text_scroll.set)
-
-                # Calcular estatísticas
-                try:
-                    # Obter preço em tempo real se MT5 conectado
-                    preço_atual = "N/A"
-                    if mt5_conectado:
-                        try:
-                            symbol_info = self.app.mt5_connector.get_symbol_info(symbol)
-                            # Forex/CFD não têm "último negócio": vale a oferta de compra (bid)
-                            cotacao = getattr(symbol_info, 'last', 0) or getattr(symbol_info, 'bid', 0)
-                            if cotacao:
-                                preço_atual = cotacao
-                        except Exception as price_err:
-                            log.warning(f"Erro ao obter preço atual de {symbol}: {price_err}")
-                    
-                    # Usar dados históricos se não conseguiu em tempo real
-                    if preço_atual == "N/A" and not df.empty:
-                        preço_atual = df['close'].iloc[0]
-                    
-                    stats = {
-                        "Intervalo de Datas": f"{df['time'].min().strftime('%Y-%m-%d')} a {df['time'].max().strftime('%Y-%m-%d')}",
-                        "Total de Registros": len(df),
-                        "Preço Atual": preço_atual,
-                        "Preço Máximo": df['high'].max(),
-                        "Preço Mínimo": df['low'].min(),
-                        "Média de Preço (Fechamento)": df['close'].mean(),
-                    }
-                    
-                    # Adicionar estatísticas de indicadores se estiverem disponíveis
-                    for column in ['atr', 'rsi', 'ma_20', 'volume']:
-                        if column in df.columns:
-                            if column == 'atr':
-                                stats["Volatilidade (ATR médio)"] = df['atr'].mean()
-                            elif column == 'rsi':
-                                stats["RSI Atual"] = df['rsi'].iloc[0]
-                            elif column == 'ma_20':
-                                stats["Média Móvel 20 (atual)"] = df['ma_20'].iloc[0]
-                            elif column == 'volume':
-                                stats["Volume Total"] = df['volume'].sum()
-                                stats["Volume Médio"] = df['volume'].mean()
-                    
-                    # Verificar padrões de candle se disponíveis
-                    if 'candle_pattern' in df.columns:
-                        patterns = df['candle_pattern'].value_counts().to_dict()
-                        for pattern, count in patterns.items():
-                            if pattern and pattern != "No Pattern":
-                                stats[f"Padrão {pattern}"] = count
-                except Exception as stats_error:
-                    log.error(f"Erro ao calcular estatísticas para {symbol}: {stats_error}")
-                    log.debug(traceback.format_exc())
-                    stats = {"Erro": f"Falha ao calcular estatísticas: {str(stats_error)}"}
-
-                # Exibir estatísticas
-                stats_text.insert(tk.END, "ESTATÍSTICAS DO SÍMBOLO\n")
-                stats_text.insert(tk.END, "=====================\n\n")
-                for key, value in stats.items():
-                    if value is None or (isinstance(value, float) and pd.isna(value)):
-                        value = "não calculado para estes registros"
-                    elif isinstance(value, float):
-                        value = f"{value:.5f}"
-                    stats_text.insert(tk.END, f"{key}: {value}\n")
-
-                # Painel do gráfico
-                chart_frame = ttk.Frame(panel)
-                panel.add(chart_frame, weight=2)
-
-                # Gráfico (requer matplotlib e FigureCanvasTkAgg)
-                try:
-                    update_stats_status(f"Gerando gráfico para {symbol}...")
-                    
-                    try:
-                        from matplotlib.figure import Figure
-                        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-                    except ImportError:
-                        self.log("Matplotlib não instalado. Gráficos indisponíveis.")
-                        stats_text.insert(tk.END, "\n\nAVISO: Matplotlib não instalado. Gráficos indisponíveis.")
-                        continue
-
-                    fig = Figure(figsize=(10, 4), dpi=100)
-                    ax = fig.add_subplot(111)
-
-                    plot_df = df.iloc[::-1].copy()
-                    plot_df.set_index('time', inplace=True)
-
-                    # Plotando preço de fechamento
-                    ax.plot(plot_df.index, plot_df['close'], label='Preço de Fechamento')
-                    
-                    # Adicionar indicadores se disponíveis
-                    for indicator, params in [
-                        ('ma_20', {'label': 'MA 20', 'linestyle': '--', 'color': 'blue'}),
-                        ('bollinger_upper', {'label': 'Bollinger Sup.', 'linestyle': ':', 'color': 'green'}),
-                        ('bollinger_lower', {'label': 'Bollinger Inf.', 'linestyle': ':', 'color': 'red'})
-                    ]:
-                        if indicator in plot_df.columns:
-                            ax.plot(
-                                plot_df.index, 
-                                plot_df[indicator], 
-                                label=params['label'], 
-                                linestyle=params['linestyle'],
-                                color=params['color']
-                            )
-
-                    ax.set_title(f'Preço de {symbol}')
-                    ax.set_ylabel('Preço')
-                    ax.legend()
-                    fig.autofmt_xdate()
-
-                    canvas = FigureCanvasTkAgg(fig, master=chart_frame)
-                    canvas.draw()
-                    canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-                except Exception as plot_err:
-                    self.log(f"Erro ao gerar gráfico para {symbol}: {str(plot_err)}")
-                    log.error(f"Erro detalhado no gráfico: {traceback.format_exc()}")
-            except Exception as e:
-                self.log(f"Erro ao gerar estatísticas para {symbol}: {str(e)}")
-                logging.error(f"Erro detalhado para {symbol}: {traceback.format_exc()}")
-
-        # Atualização final de status
-        if dados_encontrados:
-            update_stats_status("Estatísticas carregadas com sucesso")
-        else:
-            messagebox.showinfo(
-                "Sem dados",
-                "Não foram encontrados dados para os símbolos selecionados.\n\n"
-                "Execute a coleta de dados primeiro ou selecione outros símbolos."
-            )
-            stats_window.destroy()
-    
     def launch_mt5_as_admin(self):
         """Inicia o MT5 como administrador (se suportado)."""
         try:
@@ -1637,6 +1405,7 @@ Status: Sem dados no banco. Disponível para coleta.
     def create_menu(self):
         """Cria o menu da aplicação."""
         menu_bar = tk.Menu(self.root)
+        self.theme.style_menu(menu_bar)
         
         # Menu File
         file_menu = tk.Menu(menu_bar, tearoff=0)
@@ -1669,9 +1438,22 @@ Status: Sem dados no banco. Disponível para coleta.
         
         file_menu.add_command(label="Sair", command=self.root.quit)
         
+        # Menu Exibir
+        view_menu = tk.Menu(menu_bar, tearoff=0)
+        self._dark_var = tk.BooleanVar(value=self.theme.dark)
+        view_menu.add_checkbutton(label="Tema escuro", variable=self._dark_var, command=self.toggle_theme)
+        view_menu.add_separator()
+        view_menu.add_command(label="Ativos", command=lambda: self.notebook.select(0))
+        view_menu.add_command(label="Minha base", command=lambda: self.notebook.select(1))
+        view_menu.add_command(label="Análise", command=lambda: self.notebook.select(2))
+        view_menu.add_command(label="Atividade", command=lambda: self.notebook.select(3))
+        view_menu.add_separator()
+        view_menu.add_command(label="Atualizar a base (F5)", command=self.refresh_inventory)
+
         # Menu Ajuda
         help_menu = tk.Menu(menu_bar, tearoff=0)
         help_menu.add_command(label="Documentação", command=self.open_documentation)
+        help_menu.add_command(label="Glossário (indicadores e números da análise)", command=self.show_glossary)
         help_menu.add_command(label="Verificar conexão com o MetaTrader 5", command=self.check_mt5_status)
         help_menu.add_command(label="Diagnóstico do ambiente...", command=self.show_doctor)
         help_menu.add_separator()
@@ -1689,7 +1471,10 @@ Status: Sem dados no banco. Disponível para coleta.
         strategy_menu.add_command(label="Sobre as estratégias", command=self.show_strategies_info)
 
         # Adicionar menus à barra de menu
+        for menu in (file_menu, export_menu, favorites_menu, view_menu, strategy_menu, help_menu):
+            self.theme.style_menu(menu)
         menu_bar.add_cascade(label="Arquivo", menu=file_menu)
+        menu_bar.add_cascade(label="Exibir", menu=view_menu)
         menu_bar.add_cascade(label="Estratégias", menu=strategy_menu)
         menu_bar.add_cascade(label="Ajuda", menu=help_menu)
         
@@ -1703,7 +1488,7 @@ Status: Sem dados no banco. Disponível para coleta.
         dialog.title("Diagnóstico do ambiente")
         dialog.geometry("820x520")
         dialog.transient(self.root)
-        text = scrolledtext.ScrolledText(dialog, wrap=tk.WORD)
+        text = self.theme.classic(scrolledtext.ScrolledText(dialog, wrap=tk.WORD, padx=10, pady=8))
         text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         text.insert(tk.END, "Verificando o ambiente, aguarde...")
         text.config(state=tk.DISABLED)
@@ -1747,12 +1532,6 @@ Status: Sem dados no banco. Disponível para coleta.
         export_dialog.geometry("500x350")
         export_dialog.grab_set()  # Modal
         
-        # Estilo
-        s = ttk.Style()
-        s.configure("TFrame", padding=10)
-        s.configure("TButton", padding=5)
-        s.configure("TLabel", padding=5)
-        
         # Frame principal
         main_frame = ttk.Frame(export_dialog, style="TFrame")
         main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -1772,7 +1551,7 @@ Status: Sem dados no banco. Disponível para coleta.
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Lista de tabelas
-        table_listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=10)
+        table_listbox = self.theme.classic(tk.Listbox(list_frame, yscrollcommand=scrollbar.set, height=10))
         table_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=table_listbox.yview)
         
@@ -1799,88 +1578,11 @@ Status: Sem dados no banco. Disponível para coleta.
                 messagebox.showwarning("Aviso", "Selecione uma tabela para exportar")
                 return
                 
-            table_name = table_listbox.get(selected_idx[0])
-            filters = filters_entry.get()
-            
-            # Criar instância do exportador se não existir
-            if not hasattr(self, 'data_exporter'):
-                self.data_exporter = DataExporter(self.app.db_manager)
-                
-            # Solicitar local para salvar
-            if format_type.lower() == 'csv':
-                file_path = filedialog.asksaveasfilename(
-                    defaultextension=".csv",
-                    filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-                    initialfile=f"{table_name}.csv"
-                )
-                
-                if file_path:
-                    try:
-                        result_path = self.data_exporter.export_to_csv(
-                            table_name, 
-                            caminho_arquivo=file_path, 
-                            filtros=filters if filters else None,
-                            adicionar_timestamp=False
-                        )
-                        
-                        if result_path:
-                            messagebox.showinfo("Sucesso", f"Dados exportados com sucesso para:\n{result_path}")
-                            export_dialog.destroy()
-                        else:
-                            messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
-                    except Exception as e:
-                        messagebox.showerror("Erro", f"Falha ao exportar: {str(e)}")
-            
-            elif format_type.lower() in ['excel', 'xlsx']:
-                file_path = filedialog.asksaveasfilename(
-                    defaultextension=".xlsx",
-                    filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
-                    initialfile=f"{table_name}.xlsx"
-                )
-                
-                if file_path:
-                    try:
-                        result_path = self.data_exporter.export_to_excel(
-                            table_name, 
-                            caminho_arquivo=file_path, 
-                            filtros=filters if filters else None,
-                            adicionar_timestamp=False
-                        )
-                        
-                        if result_path:
-                            messagebox.showinfo("Sucesso", f"Dados exportados com sucesso para:\n{result_path}")
-                            export_dialog.destroy()
-                        else:
-                            messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
-                    except Exception as e:
-                        messagebox.showerror("Erro", f"Falha ao exportar: {str(e)}")
+            self.export_table(table_listbox.get(selected_idx[0]), format_type, filters_entry.get(),
+                              on_success=export_dialog.destroy)
 
-            elif format_type.lower() in ('parquet', 'duckdb'):
-                ext = format_type.lower()
-                file_path = filedialog.asksaveasfilename(
-                    defaultextension=f".{ext}",
-                    filetypes=[(f"{ext.capitalize()} files", f"*.{ext}"), ("All files", "*.*")],
-                    initialfile=f"{table_name}.{ext}"
-                )
-                if file_path:
-                    try:
-                        if ext == 'parquet':
-                            result_path = self.data_exporter.export_to_parquet(
-                                table_name, caminho_arquivo=file_path, filtros=filters or None,
-                                adicionar_timestamp=False)
-                        else:
-                            result_path = self.data_exporter.export_to_duckdb(
-                                [table_name], caminho_arquivo=file_path, filtros=filters or None)
-                        if result_path:
-                            messagebox.showinfo("Sucesso", f"Dados exportados com sucesso para:\n{result_path}")
-                            export_dialog.destroy()
-                        else:
-                            messagebox.showwarning("Aviso", "Nenhum dado encontrado para exportar")
-                    except Exception as e:
-                        messagebox.showerror("Erro", f"Falha ao exportar: {str(e)}")
-        
         # Botões
-        ttk.Button(button_frame, text="Exportar", command=do_export).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(button_frame, text="Exportar", style="Accent.TButton", command=do_export).pack(side=tk.RIGHT, padx=5)
         ttk.Button(button_frame, text="Cancelar", command=export_dialog.destroy).pack(side=tk.RIGHT)
     
     def export_multiple_tables(self):
@@ -1922,7 +1624,8 @@ Status: Sem dados no banco. Disponível para coleta.
         left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Lista de tabelas disponíveis
-        available_tables = tk.Listbox(left_list_frame, yscrollcommand=left_scrollbar.set, selectmode=tk.EXTENDED)
+        available_tables = self.theme.classic(tk.Listbox(left_list_frame, yscrollcommand=left_scrollbar.set,
+                                                         selectmode=tk.EXTENDED))
         available_tables.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         left_scrollbar.config(command=available_tables.yview)
         
@@ -1947,7 +1650,8 @@ Status: Sem dados no banco. Disponível para coleta.
         right_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # Lista de tabelas selecionadas
-        selected_tables = tk.Listbox(right_list_frame, yscrollcommand=right_scrollbar.set, selectmode=tk.EXTENDED)
+        selected_tables = self.theme.classic(tk.Listbox(right_list_frame, yscrollcommand=right_scrollbar.set,
+                                                        selectmode=tk.EXTENDED))
         selected_tables.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         right_scrollbar.config(command=selected_tables.yview)
         
@@ -2140,16 +1844,12 @@ Status: Sem dados no banco. Disponível para coleta.
         about_dialog.transient(self.root)
         about_dialog.grab_set()  # Modal
         
-        # Estilo
-        s = ttk.Style()
-        s.configure("About.TLabel", font=("Arial", 12))
-        
         # Frame principal
         main_frame = ttk.Frame(about_dialog, padding=15)
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Título
-        title_label = ttk.Label(main_frame, text="MT5 Extração", font=("Arial", 16, "bold"))
+        title_label = ttk.Label(main_frame, text="MT5 Extração", style="Page.Title.TLabel")
         title_label.pack(pady=(10, 5))
         
         # Versão
@@ -2164,7 +1864,7 @@ Status: Sem dados no banco. Disponível para coleta.
                 versao = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M).group(1)
             except Exception:
                 versao = "desenvolvimento"
-        version_label = ttk.Label(main_frame, text=f"Versão {versao}", font=("Arial", 10))
+        version_label = ttk.Label(main_frame, text=f"Versão {versao}", style="Page.Muted.TLabel")
         version_label.pack(pady=(0, 10))
         
         # Descrição
@@ -2174,7 +1874,7 @@ Status: Sem dados no banco. Disponível para coleta.
             "exporta para CSV, Excel, Parquet e DuckDB e faz pesquisa de estratégias. Não envia ordens."
         )
         
-        desc_label = ttk.Label(main_frame, text=description, justify=tk.CENTER, style="About.TLabel",
+        desc_label = ttk.Label(main_frame, text=description, justify=tk.CENTER,
                                wraplength=500)
         desc_label.pack(pady=10)
         
@@ -2329,177 +2029,21 @@ Status: Sem dados no banco. Disponível para coleta.
         run_button.configure(command=run)
 
     def open_documentation(self):
-        """Abre a documentação"""
-        doc_path = Path("docs/manual.html")
-        
-        if doc_path.exists():
-            # Abrir no navegador padrão
-            import webbrowser
-            webbrowser.open(doc_path.absolute().as_uri())
-        else:
-            messagebox.showinfo(
-                "Documentação",
-                "A documentação está disponível no diretório 'docs/' do projeto.\n\n"
-                "Se o diretório não existir, crie-o e adicione a documentação."
-            )
-    
-    def update_symbols_with_data(self, symbols_with_data):
-        """
-        Atualiza a interface para marcar os símbolos que já têm dados no banco.
-        
-        Args:
-            symbols_with_data (set): Conjunto de símbolos que já têm dados no banco
-        """
-        if not self.symbols_listbox:
-            log.warning("Não foi possível atualizar símbolos com dados: symbols_listbox não inicializado")
-            return
-            
-        # Marcar símbolos com dados na listbox principal
-        for i in range(self.symbols_listbox.size()):
-            symbol = self.symbols_listbox.get(i)
-            
-            # Remover marcador existente, se houver
-            if symbol.endswith(" ✓"):
-                symbol = symbol[:-2].strip()
-                self.symbols_listbox.delete(i)
-                self.symbols_listbox.insert(i, symbol)
-            
-            # Verificar se o símbolo (sem marcador) tem dados
-            if symbol.upper() in symbols_with_data:
-                self.symbols_listbox.delete(i)
-                self.symbols_listbox.insert(i, f"{symbol} ✓")
-        
-        # Atualizar também os símbolos selecionados, se houver
-        if self.selected_listbox:
-            for i in range(self.selected_listbox.size()):
-                symbol = self.selected_listbox.get(i)
-                
-                # Remover marcador existente, se houver
-                if symbol.endswith(" ✓"):
-                    symbol = symbol[:-2].strip()
-                    self.selected_listbox.delete(i)
-                    self.selected_listbox.insert(i, symbol)
-                
-                # Verificar se o símbolo (sem marcador) tem dados
-                if symbol.upper() in symbols_with_data:
-                    self.selected_listbox.delete(i)
-                    self.selected_listbox.insert(i, f"{symbol} ✓")
-
-    def load_favorites(self):
-        """Carrega a lista de símbolos favoritos do arquivo"""
-        try:
-            if os.path.exists(self.favorites_file):
-                with open(self.favorites_file, 'r') as f:
-                    return json.load(f)
-            return []
-        except Exception as e:
-            log.error(f"Erro ao carregar favoritos: {e}")
-            return []
-    
-    def save_favorites(self):
-        """Salva a lista de símbolos favoritos no arquivo"""
-        try:
-            with open(self.favorites_file, 'w') as f:
-                json.dump(self.favorite_symbols, f)
-            log.info(f"Favoritos salvos em {self.favorites_file}")
-        except Exception as e:
-            log.error(f"Erro ao salvar favoritos: {e}")
-
-    def add_to_favorites(self):
-        """Adiciona os símbolos selecionados aos favoritos"""
-        if not self.symbols_listbox:
-            return
-            
-        selected_indices = self.symbols_listbox.curselection()
-        if not selected_indices:
-            messagebox.showinfo("Favoritos", "Selecione pelo menos um símbolo para adicionar aos favoritos.")
-            return
-            
-        added = 0
-        for i in selected_indices:
-            symbol_text = self.symbols_listbox.get(i)
-            # Remove o prefixo se já for um favorito
-            if symbol_text.startswith("★ "):
-                symbol = symbol_text[2:]
-            else:
-                symbol = symbol_text
-                
-            if symbol not in self.favorite_symbols:
-                self.favorite_symbols.append(symbol)
-                added += 1
-                
-        if added > 0:
-            self.save_favorites()
-            self.log(f"{added} símbolo(s) adicionado(s) aos favoritos.")
-            # Atualizar a interface
-            self.filter_symbols()
-        else:
-            messagebox.showinfo("Favoritos", "Os símbolos selecionados já são favoritos.")
-    
-    def remove_from_favorites(self):
-        """Remove os símbolos selecionados dos favoritos"""
-        if not self.symbols_listbox:
-            return
-            
-        selected_indices = self.symbols_listbox.curselection()
-        if not selected_indices:
-            messagebox.showinfo("Favoritos", "Selecione pelo menos um símbolo para remover dos favoritos.")
-            return
-            
-        removed = 0
-        for i in selected_indices:
-            symbol_text = self.symbols_listbox.get(i)
-            # Remove o prefixo se for um favorito
-            if symbol_text.startswith("★ "):
-                symbol = symbol_text[2:]
-            else:
-                symbol = symbol_text
-                
-            if symbol in self.favorite_symbols:
-                self.favorite_symbols.remove(symbol)
-                removed += 1
-                
-        if removed > 0:
-            self.save_favorites()
-            self.log(f"{removed} símbolo(s) removido(s) dos favoritos.")
-            # Atualizar a interface
-            self.filter_symbols()
-        else:
-            messagebox.showinfo("Favoritos", "Nenhum dos símbolos selecionados é favorito.")
-
-    # Adicionar funções para mostrar apenas favoritos ou todos os símbolos
-    def show_only_favorites(self):
-        """Mostra apenas os símbolos marcados como favoritos"""
-        if not self.symbols_listbox:
-            return
-            
-        self.symbols_listbox.delete(0, tk.END)
-        
-        # Adicionar apenas os favoritos
-        for symbol in self.app.symbols:
-            if symbol in self.favorite_symbols:
-                self.symbols_listbox.insert(tk.END, f"★ {symbol}")
-                
-        # Destacar símbolos com dados existentes
-        self.highlight_symbols_with_data()
-        self.log("Exibindo apenas símbolos favoritos")
-    
-    def show_all_symbols(self):
-        """Mostra todos os símbolos, favoritos primeiro"""
-        # Simplesmente chama filter_symbols com a busca vazia
-        self.search_var.set("")
-        self.filter_symbols()
-        self.log("Exibindo todos os símbolos")
+        """Abre a pasta da documentação (docs/) no gerenciador de arquivos."""
+        self._open_path(Path(self._project_root()) / "docs")
 
     def _mt5_connected(self):
         connector = self.app.mt5_connector
         return bool(connector and self.app.mt5_initialized and connector.is_initialized)
 
-    def refresh_mt5_status(self):
-        """Atualiza a barra de status com a conta e o servidor em uso (sem perguntas)."""
+    def refresh_mt5_status(self, quiet=False):
+        """Atualiza o cabeçalho com a conta e o servidor em uso (sem perguntas)."""
+        colors = self.theme.colors
         if not self._mt5_connected():
-            self.update_status("Status: sem conexão com o MetaTrader 5")
-            self.mt5_status_value.config(text="Desconectado", foreground="red")
+            if not quiet:
+                self.update_status("Status: sem conexão com o MetaTrader 5")
+            self.mt5_status_value.config(text="MetaTrader 5 desconectado")
+            self.mt5_status_dot.config(foreground=colors["bad"])
             return False
         info = self.app.mt5_connector.account_summary()
         if info:
@@ -2507,8 +2051,10 @@ Status: Sem dados no banco. Disponível para coleta.
             text = f"Conectado: conta {info['login']} em {info['server']}{kind}"
         else:
             text = "Conectado"
-        self.update_status("Status: pronto")
-        self.mt5_status_value.config(text=text, foreground="green")
+        if not quiet:
+            self.update_status("Status: pronto")
+        self.mt5_status_value.config(text=text)
+        self.mt5_status_dot.config(foreground=colors["up"])
         return True
 
     def _reconnect_mt5(self):
@@ -2588,7 +2134,8 @@ Status: Sem dados no banco. Disponível para coleta.
         except Exception as e:
             log.error(f"Erro ao verificar status do MT5: {e}")
             self.update_status(f"Erro ao verificar status: {str(e)}")
-            self.mt5_status_value.config(text="Erro", foreground="red")
+            self.mt5_status_value.config(text="Erro ao verificar a conexão")
+            self.mt5_status_dot.config(foreground=self.theme.colors["bad"])
     
     def _check_admin_mode(self):
         """Verifica se o MT5 está em modo de administrador."""

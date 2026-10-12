@@ -67,6 +67,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.6 | Triagem de ativos: Filtro A (eliminatório) e Filtro B (score 0–100) | T6.1, T6.5 | ✅ concluída |
 | T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ✅ concluída |
 | T6.8 | Documentação `docs/estrategias.md` | T6.7 | ✅ concluída |
+| T7.1 | Interface em abas com tema, inventário da base e análise (gráficos e números de estudo) | T1.8, T6.1 | ✅ concluída (teste da janela roda só onde há display; no CI Linux ele é pulado) |
 
 ---
 
@@ -898,6 +899,49 @@ gera `RuntimeError: main thread is not in main loop`).
 
 `docs/estrategias.md` para o usuário final: o que cada filtro faz, como ler o relatório,
 tabela das estratégias, lista "evite no início" e o aviso de que backtest não garante resultado futuro.
+
+---
+
+## Fase 7 — Interface para estudo e análise
+
+### T7.1 — Janela principal em abas, tema e análise ✅
+
+**Diagnóstico que motivou a tarefa** (interface anterior):
+
+- Tudo em uma tela só, com o tema padrão do Tk, fonte fixa "Segoe UI" (não existe no Linux) e cores fixas.
+- Não havia visão do que existe na base (ativo x timeframe, período, atualização).
+- "Mostrar Estatísticas" lia só M1, só as últimas 1000 barras, consultava `sqlite_master` (quebrava no
+  PostgreSQL) e fazia tudo na thread da interface, com gráfico de linha simples.
+- `export_data` alterava o estilo global `TFrame`/`TButton`/`TLabel`, desalinhando a janela depois de aberto.
+- A detecção da data mais antiga mexia em widgets a partir da thread de trabalho.
+- `update_symbols_with_data` acrescentava " ✓" ao texto do símbolo, que passava a ser tratado como outro ativo.
+- Ajuda > Documentação apontava para `docs/manual.html`, que não existe; a seleção não era lembrada.
+
+**O que existe e não deve ser quebrado:**
+
+| Arquivo | Papel |
+|---|---|
+| `mt5_extracao/study.py` | Núcleo (sem Tkinter): resumo do período, indicadores do gráfico, sazonalidade, agrupamento de candles, glossário |
+| `DatabaseManager.data_inventory()` | Uma linha por série de barras (símbolo, timeframe, tabela, barras, início, fim); só leitura |
+| `mt5_extracao/ui/theme.py` | Paleta clara/escura, estilos ttk, `Tooltip`, `card`, `scrolled_tree` |
+| `mt5_extracao/ui/inventory.py` | Aba "Minha base" |
+| `mt5_extracao/ui/analysis.py` | Aba "Análise" (candles + volume + IFR, sazonalidade, retornos, qualidade) |
+| `mt5_extracao/ui_manager.py` | Janela principal, aba "Ativos", aba "Atividade" e os diálogos |
+
+**Regras para mexer na interface:**
+
+- Tkinter só em `ui_manager.py` e em `mt5_extracao/ui/`; cálculo fica em `study.py` (testável sem tela).
+- Leitura do banco e do MT5 sempre por `UIManager.run_bg(trabalho, pronto)`; a thread de trabalho nunca toca em widgets.
+- Nada de cor ou fonte fixa: use `ui.theme.colors` e os estilos (`Card.TFrame`, `Surface.TLabel`, `Muted.TLabel`,
+  `Accent.TButton`...). `Listbox`/`Text` passam por `theme.classic()` para acompanhar o tema escuro.
+- Nunca chame `ttk.Style().configure("TFrame"|"TButton"|"TLabel", ...)` dentro de um diálogo: muda o aplicativo todo.
+- Preferências (tema, seleção) ficam em `config/ui_prefs.json`; favoritos em `config/favorites.json` (não versionados).
+
+**Verificação:** `pytest tests/test_study.py tests/test_ui_main_window.py` (no Linux sem tela:
+`xvfb-run -a .venv/bin/python -m pytest tests/test_ui_main_window.py`).
+
+**Pendências conhecidas (não fazem parte desta tarefa):** datas da extração ainda são digitadas como texto;
+exportação de várias tabelas e reconexão ao MT5 ainda rodam na thread da interface; ticks e book seguem só na CLI.
 
 ---
 

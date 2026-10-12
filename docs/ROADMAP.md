@@ -27,6 +27,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F4** Qualidade | Limpeza de arquivos, logging central, testes com provedor falso, docs | T4.1–T4.5 | F0 (pode ir em paralelo) | ✅ |
 | **F5** Escala | Parquet/DuckDB, PostgreSQL/TimescaleDB, ticks, book, fonte externa real | T5.1–T5.6 | F1, F3 | ✅ (TimescaleDB: hypertable automática, ainda não testada em servidor com a extensão) |
 | **F6** Estratégias | Seis estratégias, backtest com custos, walk-forward/Monte Carlo (Filtro C), triagem de ativos (Filtros A e B), relatório HTML, menu na GUI | T6.1–T6.8 | F1, F3 | ✅ |
+| **F7** Interface | Janela principal em abas (Ativos, Minha base, Análise, Atividade), tema claro/escuro, gráficos e números de estudo | T7.1 | F1, F6 | ✅ |
 
 ## Marcos (cada marco = versão publicável)
 
@@ -49,6 +50,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 6. T4.4, T4.5
 7. T5.x conforme a necessidade
 8. F6 (T6.1 → T6.8) já concluída; novas estratégias seguem o roteiro em docs/estrategias.md ("Para desenvolvedores")
+9. F7 (T7.1) já concluída; novos painéis entram em `mt5_extracao/ui/`
 
 As fases F1 e F2 são independentes e podem ser executadas em paralelo por
 agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
