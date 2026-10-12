@@ -30,6 +30,7 @@ mt5x robots compile hdk_hadouken_painel   # copia o robô para o MT5 e compila n
 mt5x robots install hdk_hadouken_painel   # só copia (robô, includes e presets)
 mt5x robots backtest hdk_hadouken_painel --symbol WIN$N --tf M5 --from 2026-01-01 --preset Conservador
 mt5x robots backtest hdk_hadouken_painel --symbols WIN$N,WDO$N --tf M5   # o mesmo teste em vários ativos
+mt5x robots backtest robo1,robo2 --symbols WIN$N,WDO$N --tfs M5,M15,H1 --resume   # lote: robôs x ativos x timeframes
 mt5x robots validate hdk_hadouken_painel  # confere o robot.json contra o contrato (docs/sdk/contrato.md)
 mt5x robots battery hdk_hadouken_painel --preset Conservador   # bateria de segurança
 mt5x robots check hdk_hadouken_painel --symbol WIN$N --tf M5   # contrato, compilação, backtest e bateria de uma vez

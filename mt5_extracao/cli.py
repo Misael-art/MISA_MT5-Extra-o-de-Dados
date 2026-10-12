@@ -26,6 +26,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
     mt5x robots backtest <robô> --symbols EURUSD,GBPUSD --tf H1   # o mesmo teste em vários ativos
+    mt5x robots backtest <r1,r2> --symbols A,B --tfs M15,H1 [--resume]   # lote: robôs x ativos x timeframes
     mt5x robots new <Nome> --dir <pasta>               # cria o esqueleto de um robô sobre a biblioteca de segurança
     mt5x robots generate <declaração.json> --name <Nome> --dir <pasta>   # robô MQL5 a partir de uma estratégia declarada
     mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
@@ -620,8 +621,70 @@ def _robots_backtest_many(args, ctx, robot, tf, start, end):
     return EXIT_FAIL if failed else EXIT_OK
 
 
+def _robots_backtest_batch(args, ctx, items):
+    """Lote: robôs × ativos × timeframes, em fila. Preenche a matriz do painel (mt5x panel)."""
+    from mt5_extracao.robots import backtest, catalog, mt5_tools
+    robots = [catalog.get_robot(items, key) for key in args.path.split(",") if key.strip()]
+    symbols = _parse_symbols(args.symbols or args.symbol)
+    tfs = [_parse_tf(t) for t in (args.tfs or args.tf or "").split(",") if t.strip()]
+    if not robots or not tfs:
+        raise ValueError("uso: mt5x robots backtest <robô1,robô2> --symbols A,B --tfs M15,H1 [--from] [--to] "
+                         "[--preset NOME] [--resume] [--close-terminal]")
+    if args.param:
+        raise ValueError("--param não vale em lote: cada robô tem os próprios parâmetros. Use --preset.")
+    start = _parse_date(args.date_from) if args.date_from else None
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+    total = len(robots) * len(symbols) * len(tfs)
+    names = {r.key: r.name for r in robots}
+    mql5 = any(r.kind == catalog.MQL5 for r in robots)
+    _print(f"Lote: {len(robots)} robô(s) × {len(symbols)} ativo(s) × {len(tfs)} timeframe(s) = {total} teste(s), "
+           "um por vez." + (" Robôs MQL5 usam o Strategy Tester: o MetaTrader 5 fica fechado enquanto isso."
+                            if mql5 else ""))
+    count = {"n": 0}
+
+    def progress(item):
+        count["n"] += 1
+        head = f"  [{count['n']}/{total}] {names[item['robot']]} {item['symbol']} {item['timeframe']}: "
+        if item["run"] is None:
+            _print(head + "não testado: " + item["error"])
+            return
+        m = item["run"]["metrics"]
+        _print(head + f"{m['trades']} operações, profit factor {_fmt_num(m['profit_factor'])}, resultado "
+               f"{_fmt_pct(m['return_pct'])}" + (" (já testado; pulado)" if item["skipped"] else ""))
+    bridge_was_running = False
+    try:
+        if mql5 and mt5_tools.terminal_running(ctx.config):
+            if not args.close_terminal:
+                raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
+                                   "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
+            _print("Fechando o MetaTrader 5 para rodar os testes...")
+            _notify(ctx, "MetaTrader 5 fechado para um lote de testes", "A ponte é religada no fim.", "aviso")
+            bridge_was_running = mt5_tools.release_terminal(ctx.config)
+        results = backtest.run_batch(ctx.db, ctx.config, robots, symbols, tfs, start, end, args.preset,
+                                     resume=args.resume, progress=progress)
+    finally:
+        if bridge_was_running:
+            mt5_tools.restart_bridge()
+    failed = [r for r in results if r["run"] is None]
+    skipped = sum(1 for r in results if r["skipped"])
+    _data(batch=[{**{k: r[k] for k in ("robot", "symbol", "timeframe", "error", "skipped")},
+                  "run": {k: v for k, v in r["run"].items() if k not in ("trades", "equity")} if r["run"] else None}
+                 for r in results],
+          summary={"total": total, "tested": total - len(failed) - skipped, "skipped": skipped, "failed": len(failed)})
+    _print(f"\nLote concluído: {total - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem "
+           "teste. Veja o conjunto com: mt5x panel")
+    _notify(ctx, "Lote de backtests concluído",
+            f"{total - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem teste",
+            "aviso" if failed else None)
+    return EXIT_FAIL if failed else EXIT_OK
+
+
 def _robots_backtest(args, ctx, items):
     from mt5_extracao.robots import backtest, catalog
+    if args.path and (args.tfs or "," in args.path):
+        if not (args.symbol or args.symbols):
+            raise ValueError("informe os ativos do lote em --symbols A,B,C")
+        return _robots_backtest_batch(args, ctx, items)
     if not args.path or not (args.symbol or args.symbols) or not args.tf:
         raise ValueError("uso: mt5x robots backtest <robô> --symbol WIN$N (ou --symbols A,B,C) --tf D1 "
                          "[--from AAAA-MM-DD] [--to AAAA-MM-DD]")
@@ -1430,6 +1493,9 @@ def build_parser():
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
+    p.add_argument("--tfs", help="backtest em lote: vários timeframes separados por vírgula (ex.: M15,H1,D1)")
+    p.add_argument("--resume", action="store_true",
+                   help="backtest em lote: pula a combinação que já tem execução gravada da mesma configuração")
     p.add_argument("--tf", help="backtest: timeframe (ex.: D1)")
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")

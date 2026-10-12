@@ -99,6 +99,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | ✅ concluída (executada no host em dois ativos reais) |
 | T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | ✅ concluída no Linux (conferida no host); Windows não validado |
 | T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | ✅ concluída para as ações do programa; os avisos de operações do robô só com MT5 simulado (dependem da T8.7) |
+| T11.5 | Lote de backtests: robôs × ativos × timeframes em fila, com retomada | T11.2 | ✅ concluída (executada no host) |
+| T11.6 | Matriz de resultados (ativo × timeframe × robô) como camada de dados | T11.5 | a fazer |
+| T11.7 | Painel visual em HTML: visão por ativo e visão por robô | T11.6 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -1974,6 +1977,70 @@ linha no checklist. A interface gráfica do programa não ganhou avisos nesta ta
   novo gera exatamente um aviso e nenhum se repete entre consultas.
 - **O que não será provado aqui:** os avisos de operações de um robô em conta, porque o início em demo (T8.7)
   ainda não foi validado com o MT5 real.
+
+### Painel macro de resultados (T11.5 a T11.7)
+
+Pedido do dono do projeto em 2026-10-12: ver de forma macro os ativos, seus timeframes, as estratégias aplicadas e
+os resultados destacados. Duas visões: **por ativo** (todos os ativos com base, colunas por timeframe; ao escolher o
+robô ou a estratégia aparece o resultado) e **por robô** (os ativos e timeframes em que ele teve resultado positivo).
+
+**O que foi medido antes de planejar (host, 8 núcleos):** os backtests rodam em fila, um por vez. Estratégia Python:
+0,04 s por combinação (um ano de H1, 6.207 barras). Robô MQL5: 10 a 12 s por teste com ticks gerados e cerca de 30 s
+com um ano de ticks reais em H1; o MT5 não abre duas vezes a mesma instalação, então não há paralelismo (várias
+cópias portáteis do terminal não foram testadas). Não há limite de quantidade, só de tempo.
+
+**Três regras para o painel não enganar** (valem para as três tarefas):
+
+1. "Positivo" não é "aprovado". Com muitas combinações, algumas dão lucro por acaso. O destaque forte é só de quem
+   passou na bateria (robô MQL5) ou na validação (estratégia Python) **naquele ativo e timeframe**.
+2. Poucas operações não provam nada: abaixo de 30 operações a célula é marcada como tal, qualquer que seja o lucro.
+3. Cada número diz de onde veio: Python (otimista em custo, T10.12), Strategy Tester e em qual modelo.
+
+Cada célula mostra a execução **mais recente** daquela combinação, não a melhor (escolher a melhor seria escolher o
+acaso).
+
+### T11.5 — Lote de backtests ✅
+
+**Registrado na entrega:** `backtest.run_batch` e `mt5x robots backtest <r1,r2> --symbols A,B --tfs M15,H1 [--resume]`.
+O lote é reconhecido pela vírgula no nome dos robôs ou por `--tfs`. `--param` não vale em lote (cada robô tem os
+próprios parâmetros): use `--preset`. A retomada usa `backtest.already_tested`: em robô MQL5, só dispensa o teste se
+o código, o preset e o modelo do Tester forem os mesmos.
+**Execução real (2026-10-12, host):** 6 estratégias Python × 3 ativos × 4 timeframes (M15 extraído; H1, H4 e D1
+montados pela T11.1) = 72 testes em 7 s. Dois robôs MQL5 × 3 ativos × 2 timeframes = 12 testes com ticks reais, de
+2026-06-01 a 2026-09-30, com o MT5 oculto: 333 s (cerca de 28 s por teste). O robô com o sinal escrito à mão e o
+gerado da declaração deram resultados idênticos nas seis combinações.
+
+- **Objetivo:** preencher a matriz sem digitar um comando por combinação.
+- **Arquivos:** `robots/backtest.py`, `cli.py`, `tests/test_robots_batch.py` (novo).
+- **Passos:** `mt5x robots backtest <robô1,robô2> --symbols A,B --tfs M15,H1 [--from] [--to] [--preset] [--resume]
+  [--close-terminal]`: roda as combinações em fila (`backtest.run_batch`), mostra cada uma ao terminar e o quadro no
+  fim; `--resume` pula a combinação que já tem execução gravada da mesma configuração (robô MQL5: mesmo código,
+  preset e modelo); uma falha não interrompe as outras; com o MT5 aberto, um aviso só; aviso do sistema ao terminar.
+- **Critérios de aceite:** 2 robôs × 2 ativos × 2 timeframes = 8 execuções; interrompido e repetido com `--resume`,
+  só roda o que falta.
+
+### T11.6 — Matriz de resultados
+
+- **Objetivo:** uma função única que o painel (e depois a interface) consome.
+- **Arquivos:** `robots/matrix.py` (novo), `sdk.py`, `docs/sdk/api.md`, `tests/test_robots_matrix.py` (novo).
+- **Passos:** `matrix.build(db, config)` devolve os ativos com base, os timeframes, os robôs e uma célula por
+  (robô, ativo, timeframe) com as métricas da execução mais recente, a origem e a **situação**: `aprovado`,
+  `reprovado`, `promissor` (lucro, 30 ou mais operações, ainda sem bateria ou validação), `poucas operações`,
+  `negativo`; mais `sem teste` e `sem base` para o que falta. `matrix.positives(m, robô)` dá a visão por robô.
+- **Critérios de aceite:** as três regras acima cobertas por teste; execuções auxiliares (bateria completa,
+  paridade) não entram.
+
+### T11.7 — Painel visual
+
+- **Objetivo:** o painel que a pessoa abre e entende de relance.
+- **Arquivos:** `robots/panel.py` (novo), `cli.py`, `tests/test_robots_panel.py` (novo), `docs/robos.md`.
+- **Passos:** `mt5x panel [--out arquivo.html] [--open]` gera **um arquivo HTML só**, com os dados embutidos, sem
+  servidor e sem nada baixado da internet. Visão por ativo (matriz ativo × timeframe do robô escolhido), visão por
+  robô (onde deu positivo, do melhor para o pior), cor pela situação, tema claro e escuro, legenda fixa com o
+  significado de cada cor e o aviso sobre custo. Nenhuma célula usa só cor: sempre texto ou ícone junto.
+- **Critérios de aceite:** aberto no navegador com dados reais do host, mostra as duas visões e a imagem fica
+  registrada na entrega; nada de senha, conta ou caminho pessoal no arquivo.
+- **Fora desta tarefa:** rodar testes a partir do painel (ele é só leitura) e a aba na janela do programa.
 
 ---
 

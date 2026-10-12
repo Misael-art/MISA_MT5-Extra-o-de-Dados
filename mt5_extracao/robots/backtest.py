@@ -322,3 +322,60 @@ def run_many(db, config, robot, symbols, timeframe: str, start=None, end=None, p
         except (OSError, RuntimeError, ValueError) as e:
             results.append({"symbol": symbol, "run": None, "error": str(e)})
     return results
+
+
+def already_tested(db, robot, symbol: str, timeframe_name: str, preset: Optional[str], model: str) -> Optional[dict]:
+    """
+    A execução gravada que dispensa repetir esta combinação num lote com retomada (None se é preciso rodar). Robô
+    MQL5: mesmo código, mesmo preset, sem parâmetro avulso e mesmo modelo do Tester. Estratégia Python: qualquer
+    backtest comum da combinação.
+    """
+    for record in store.load_runs(db, robot.key):
+        if record["source"] in catalog.HIDDEN_RUN_SOURCES or record["timeframe"] != timeframe_name or \
+                record["symbol"].lower() != symbol.lower():
+            continue
+        if robot.kind != catalog.MQL5:
+            return record
+        m, used = record["metrics"], record.get("params", {})
+        export = contract.input_name(robot, "export_trades") or "InpExportTrades"
+        expected = dict(robot.presets.get(preset, {})) if preset else {}
+        extra = [k for k, v in used.items() if k not in ("preset", export) and str(expected.get(k)) != str(v)]
+        if m.get("source_fingerprint") == catalog.fingerprint(robot) and used.get("preset", "") == (preset or "") \
+                and not extra and str(m.get("tester_model_code", "")) == model:
+            return record
+    return None
+
+
+def run_batch(db, config, robots, symbols, timeframes, start=None, end=None, preset: Optional[str] = None,
+              resume: bool = False, progress: Optional[Callable] = None, run: Optional[Callable] = None,
+              is_running: Optional[Callable] = None) -> List[dict]:
+    """
+    Lote: cada robô em cada ativo e em cada timeframe, em fila (um teste por vez). Uma falha não interrompe o
+    resto. Com `resume`, a combinação que já tem execução gravada da mesma configuração é pulada. Devolve, na
+    ordem em que rodou, [{"robot", "symbol", "timeframe", "run" (ou None), "error", "skipped"}]; `progress` é
+    chamado com cada item assim que ele termina.
+    """
+    from . import mt5_tools
+    results = []
+    model = mt5_tools.tester_model(config) if any(r.kind == catalog.MQL5 for r in robots) else ""
+    for robot in robots:
+        for tf in timeframes:
+            for symbol in symbols:
+                item = {"robot": robot.key, "symbol": symbol, "timeframe": tf.name, "run": None, "error": "",
+                        "skipped": False}
+                done = already_tested(db, robot, symbol, tf.name, preset, model) if resume else None
+                if done is not None:
+                    item.update(run=done, skipped=True)
+                else:
+                    try:
+                        if robot.kind == catalog.MQL5:
+                            item["run"] = run_mql5(db, config, robot, symbol, tf.label, start, end, preset, run=run,
+                                                   is_running=is_running)
+                        else:
+                            item["run"] = run_python(db, config, robot, symbol, tf.label, start, end)
+                    except (OSError, RuntimeError, ValueError) as e:
+                        item["error"] = str(e)
+                results.append(item)
+                if progress:
+                    progress(item)
+    return results
