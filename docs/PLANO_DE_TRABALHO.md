@@ -98,7 +98,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
 | T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | ✅ concluída (executada no host em dois ativos reais) |
 | T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | ✅ concluída no Linux (conferida no host); Windows não validado |
-| T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | a fazer |
+| T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | ✅ concluída para as ações do programa; os avisos de operações do robô só com MT5 simulado (dependem da T8.7) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -1932,7 +1932,30 @@ resultado do modo visível (53 operações, profit factor 0,68); a captura de `m
   ficam invisíveis: por isso o passo 3 e os avisos da T11.4. Um terminal oculto operando não pode ser esquecido:
   o `doctor` e o `mt5x status` têm de dizer que ele está aberto.
 
-### T11.4 — Avisos em pop-up das ações executadas
+### T11.4 — Avisos em pop-up das ações executadas ✅
+
+**Registrado na entrega:** `mt5_extracao/notify.py` e a chave `[APP] notifications`. **Vem ligada nas instalações
+novas; em um `config.ini` que já existe é preciso acrescentar `notifications = true`** (sem a chave, o padrão do
+código é desligado, para não surgirem pop-ups em quem não pediu). No Linux usa `notify-send`; sem ferramenta, sem
+sessão gráfica ou desligado, o aviso vira só uma linha de log. `send` nunca levanta erro, e um teste garante que um
+notificador quebrado não derruba o comando.
+
+- **Ações do programa que avisam ao terminar:** extração e atualização, compilação, backtest (um ou vários ativos),
+  bateria (aprovada ou reprovada, com os itens), conferência (`robots check`), início em demo, PARAR TUDO (urgência
+  crítica: fica na tela) e a liberação dele, e quando o MT5 é fechado para um teste.
+- **Ações do robô:** `mt5x robots monitor <robô> --watch [--interval 15]` consulta posições e negócios pelo magic
+  number (somente leitura) e emite um aviso por negócio novo (abertura: lado, volume, ativo e preço; fechamento:
+  resultado), por posição sem stop, quando o PARAR TUDO está ativo e quando a leitura do MT5 cai ou volta. O que já
+  existia quando o acompanhamento começa não gera aviso. Ctrl+C encerra só o acompanhamento.
+- O número da conta aparece mascarado (`•••6000`); nenhum aviso leva senha nem saldo.
+
+**Conferido no host (2026-10-12):** com `notifications = true`, ao fim de uma extração real o serviço de
+notificações da sessão recebeu a chamada (capturada com `dbus-monitor`: aplicativo "MT5 Extração", título "Extração
+concluída"). `live.watch` rodou duas consultas contra o MT5 real pela ponte restrita, sem erro.
+
+**Não conferido:** os avisos de operações de um robô em conta (o início em demo, T8.7, ainda não foi validado); a
+aparência do pop-up na tela (só a entrega ao sistema foi capturada); e o balão do Windows (PowerShell), só simulado:
+linha no checklist. A interface gráfica do programa não ganhou avisos nesta tarefa, só os comandos `mt5x`.
 
 - **Objetivo:** com o MT5 oculto, a pessoa fica sabendo do que aconteceu por avisos do próprio sistema.
 - **Arquivos:** `mt5_extracao/notify.py` (novo, só biblioteca padrão), `robots/live.py`, `cli.py`,

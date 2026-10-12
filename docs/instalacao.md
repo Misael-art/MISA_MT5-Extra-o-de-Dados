@@ -65,6 +65,10 @@ em uma tela virtual (é preciso o pacote do Xvfb). Para uma execução só: `MT5
 `mt5x mt5 status` diz se há um terminal aberto fora da vista e `mt5x mt5 show` grava uma imagem do que ele está
 mostrando. Um terminal oculto continua operando: não o esqueça aberto com um robô.
 
+**Avisos.** Com `[APP] notifications = true`, cada ação concluída (extração, compilação, teste, bateria, início e
+parada de robô) mostra um aviso do sistema. É o par do modo oculto: você não vê o MT5, mas fica sabendo do que
+aconteceu. Em um `config.ini` antigo, acrescente a chave à seção `[APP]`.
+
 > **Estado atual no Linux:** o aplicativo acessa o MT5 pela ponte (`mt5_extracao/mt5_backend.py`)
 > sempre que `[BRIDGE] enabled = true`; o `run.sh` inicia a ponte antes de abrir o app. O fluxo está
 > coberto por testes com uma ponte real e um MetaTrader5 simulado; a validação com o terminal real no

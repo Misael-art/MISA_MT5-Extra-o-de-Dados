@@ -34,6 +34,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots battery <robô> [--preset X] [--deep]   # bateria de segurança; --deep repete o Strategy Tester
     mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
     mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
+    mt5x robots monitor <robô> --watch                 # um pop-up a cada operação do robô
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
     mt5x status                                        # base, robôs, validações e próximas ações sugeridas
     mt5x audit [--mt5] [--fail-on alto]                # segurança do projeto, patrimonial e do capital
@@ -80,6 +81,15 @@ def _err(msg):
         _OUT["errors"].append(str(msg))
     else:
         print(f"ERRO: {msg}", file=sys.stderr, flush=True)
+
+
+def _notify(ctx, title, text="", level=None):
+    """Pop-up do sistema para uma ação concluída ([APP] notifications). Nunca falha o comando."""
+    from mt5_extracao import notify
+    try:
+        notify.send(ctx.config, title, text, level or notify.INFO)
+    except Exception:           # nem a leitura da configuração pode derrubar o comando por causa de um aviso
+        pass
 
 
 def _data(**values):
@@ -361,6 +371,9 @@ def cmd_extract(args, ctx):
         max_workers=args.workers, update_progress_callback=p, finished_callback=f))
     _data(ok=ok, failed=failed, canceled=canceled, symbols=symbols, timeframe=tf.name)
     _print(f"Concluído: {ok} ok, {failed} com falha, {canceled} cancelado(s).")
+    _notify(ctx, "Extração concluída" if failed == 0 and canceled == 0 else "Extração com falhas",
+            f"{', '.join(symbols[:6])} {tf.name}: {ok} ok, {failed} com falha, {canceled} cancelado(s)",
+            None if failed == 0 and canceled == 0 else "aviso")
     return EXIT_OK if failed == 0 and canceled == 0 else EXIT_FAIL
 
 
@@ -374,6 +387,9 @@ def cmd_update(args, ctx):
         max_workers=args.workers, update_progress_callback=p, finished_callback=f))
     _data(ok=ok, failed=failed, canceled=canceled, symbols=symbols, timeframe=tf.name)
     _print(f"Concluído: {ok} ok, {failed} com falha, {canceled} cancelado(s).")
+    _notify(ctx, "Extração concluída" if failed == 0 and canceled == 0 else "Extração com falhas",
+            f"{', '.join(symbols[:6])} {tf.name}: {ok} ok, {failed} com falha, {canceled} cancelado(s)",
+            None if failed == 0 and canceled == 0 else "aviso")
     return EXIT_OK if failed == 0 and canceled == 0 else EXIT_FAIL
 
 
@@ -575,6 +591,7 @@ def _robots_backtest_many(args, ctx, robot, tf, start, end):
                 raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
                                    "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
             _print("Fechando o MetaTrader 5 para rodar os testes...")
+            _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
         results = backtest.run_many(ctx.db, ctx.config, robot, symbols, tf.label, start, end, args.preset, params)
     finally:
@@ -598,6 +615,8 @@ def _robots_backtest_many(args, ctx, robot, tf, start, end):
            "bateria avalia um ativo por vez: mt5x robots battery <robô> --symbol <ativo>.")
     if failed:
         _print("Sem teste: " + ", ".join(failed) + ".")
+    _notify(ctx, f"{robot.name}: backtest em {len(symbols)} ativo(s)",
+            f"{len(symbols) - len(failed)} testado(s), {len(failed)} sem teste, {tf.name}", "aviso" if failed else None)
     return EXIT_FAIL if failed else EXIT_OK
 
 
@@ -626,6 +645,8 @@ def _robots_backtest(args, ctx, items):
            f"{_fmt_num(m['profit_factor'])}   Expectativa: {_fmt_num(m['expectancy_r'])} R")
     _print(f"  Resultado: {_fmt_pct(m['return_pct'])}   Queda máxima: {_fmt_pct(m['max_drawdown_pct'])}")
     _print("Execução gravada (aparece no card do robô). Um backtest isolado não valida a estratégia: use 'mt5x validate'.")
+    _notify(ctx, f"{robot.name}: backtest concluído",
+            f"{run['symbol']} {run['timeframe']}: {m['trades']} operações, profit factor {_fmt_num(m['profit_factor'])}")
     return EXIT_OK
 
 
@@ -642,6 +663,7 @@ def _robots_backtest_mql5(args, ctx, robot, tf, start, end):
     try:
         if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar o teste...")
+            _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
         run = backtest.run_mql5(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end, args.preset, params)
     except (OSError, RuntimeError) as e:
@@ -661,6 +683,8 @@ def _robots_backtest_mql5(args, ctx, robot, tf, start, end):
     if not m["trades"]:
         _print("  Nenhuma operação no período: confira o ativo, o período e os parâmetros do robô.")
     _print("Execução gravada (aparece no card do robô). Um backtest isolado não valida o robô.")
+    _notify(ctx, f"{robot.name}: backtest concluído",
+            f"{run['symbol']} {run['timeframe']}: {m['trades']} operações, profit factor {_fmt_num(m['profit_factor'])}")
     return EXIT_OK
 
 
@@ -786,6 +810,8 @@ def _robots_mt5(args, ctx, items):
     for message in result.messages:
         _print(f"  {message}")
     _print(f"{robot.name}: {result.summary}")
+    _notify(ctx, f"{robot.name}: compilado" if result.ok else f"{robot.name}: erro de compilação", result.summary,
+            None if result.ok else "aviso")
     if not result.ok:
         return EXIT_FAIL
     from mt5_extracao.robots import pipeline
@@ -826,6 +852,7 @@ def _robots_check(args, ctx, items):
     try:
         if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar o teste...")
+            _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
         result = pipeline.check(ctx.db, ctx.config, robot, items, args.symbol, tf.label, start, end, args.preset)
     finally:
@@ -848,6 +875,10 @@ def _robots_check(args, ctx, items):
         _print(f"Relatório JUnit: {args.report}")
     _print("Tudo passou. Aprovação não é garantia de resultado." if result.ok
            else "Há etapa reprovada: corrija e rode de novo.")
+    stopped = next((s.name for s in result.steps if s.status == pipeline.FAILED), "")
+    _notify(ctx, f"{robot.name}: conferência {'aprovada' if result.ok else 'reprovada'}",
+            "Contrato, compilação, backtest e bateria passaram." if result.ok else f"Parou em: {stopped}",
+            None if result.ok else "aviso")
     return EXIT_OK if result.ok else EXIT_FAIL
 
 
@@ -872,6 +903,7 @@ def _robots_parity(args, ctx, items):
     try:
         if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar o teste...")
+            _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
         if declared:
             outcome = parity.run_declared(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end)
@@ -926,6 +958,7 @@ def _robots_battery(args, ctx, items):
                    f"{max(1, round(count * battery.SECONDS_PER_TEST / 60))} min. O MetaTrader 5 fica fechado enquanto isso.")
         if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
+            _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
     try:
         report = battery.run_battery(ctx.db, ctx.config, robot, items, args.preset, deep=args.deep,
@@ -945,6 +978,10 @@ def _robots_battery(args, ctx, items):
             _print(f"  {item.icon} {item.name}: {item.detail}")
             if item.fix:
                 _print(f"      O que fazer: {item.fix}")
+    failed_items = [i.name for i in report.items if i.status == battery.FAIL]
+    _notify(ctx, f"{robot.name}: bateria {'APROVADA' if report.approved else 'REPROVADA'}",
+            "Pode rodar em conta de demonstração." if report.approved else "Reprovou em: " + "; ".join(failed_items[:4]),
+            None if report.approved else "aviso")
     if report.approved:
         _print("\nAprovada: o robô pode rodar em conta de demonstração." +
                ("" if report.allows_real else " Sem a parte de código conferida, nunca em conta real."))
@@ -989,7 +1026,11 @@ def _robots_start(args, ctx, items):
     _data(live=state)
     _print(f"\n{robot.name} iniciado na conta demo {state['account']} ({state['server']}), {state['symbol']} "
            f"{state['timeframe']}" + (f", preset {state['preset']}" if state["preset"] else "") + ".")
-    _print(f"Acompanhe: mt5x robots monitor {args.path}   Parar tudo: mt5x robots stop")
+    _print(f"Acompanhe: mt5x robots monitor {args.path} --watch   Parar tudo: mt5x robots stop")
+    from mt5_extracao import notify
+    _notify(ctx, f"{robot.name} iniciado em conta DEMO",
+            f"{state['symbol']} {state['timeframe']}, conta {notify.mask_account(state['account'])}. "
+            "O MetaTrader 5 foi reiniciado.", "aviso")
     return EXIT_OK
 
 
@@ -1021,6 +1062,25 @@ def _robots_monitor(args, ctx, items):
            f"perda), resultado {_fmt_num(numbers['closed_result'])}")
     if killed:
         _print("  PARAR TUDO está ativo: os robôs com a camada de segurança não abrem novas operações.")
+    if not args.watch:
+        return EXIT_OK
+
+    from mt5_extracao import notify
+
+    def emit(title, text, level):
+        _print(f"{datetime.now():%H:%M:%S}  {title}: {text}")
+        _notify(ctx, f"{robot.name}: {title}", text, level)
+    _print(f"\nAcompanhando {robot.name} a cada {args.interval:g} s (somente leitura). Um aviso por operação. "
+           "Ctrl+C para parar; isso não para o robô.")
+    if not notify.enabled(ctx.config):
+        _print("Os pop-ups estão desligados ([APP] notifications): os avisos aparecem só aqui e no log.")
+    try:
+        emitted = live.watch(mt5_connector.mt5, state["magic"], emit, since, args.interval, args.cycles,
+                             kill_active=lambda: live.stop_active(ctx.config))
+    except KeyboardInterrupt:
+        _print("\nAcompanhamento encerrado. O robô continua como estava.")
+        return EXIT_OK
+    _data(watch={"notices": emitted, "cycles": args.cycles})
     return EXIT_OK
 
 
@@ -1030,6 +1090,8 @@ def _robots_stop(args, ctx, items):
         existed = live.release_stop(ctx.config)
         _data(stop_active=False)
         _print("PARAR TUDO liberado: os robôs voltam a poder operar." if existed else "PARAR TUDO já estava desligado.")
+        if existed:
+            _notify(ctx, "PARAR TUDO liberado", "Os robôs voltam a poder operar.", "aviso")
         return EXIT_OK
     path = live.stop_all(ctx.config)
     for robot in items:
@@ -1046,6 +1108,8 @@ def _robots_stop(args, ctx, items):
     _print("MetaTrader 5 fechado." if closed else
            "Robô sem essa camada (ex.: só .ex5) não obedece ao arquivo: feche o MT5 ou repita com --close-terminal.")
     _print("Para liberar depois: mt5x robots stop --release")
+    _notify(ctx, "PARAR TUDO acionado", "Os robôs com a camada de segurança não abrem novas operações. Posições "
+            "abertas NÃO foram fechadas." + (" MetaTrader 5 fechado." if closed else ""), "crítico")
     return EXIT_OK
 
 
@@ -1383,6 +1447,10 @@ def build_parser():
                    help="backtest de robô MQL5, start e stop: fecha o MT5 (e para a ponte) se estiver aberto; "
                         "backtest e start religam a ponte depois")
     p.add_argument("--release", action="store_true", help="stop: desliga o PARAR TUDO (os robôs voltam a poder operar)")
+    p.add_argument("--watch", action="store_true",
+                   help="monitor: fica acompanhando e avisa (pop-up) a cada operação do robô; Ctrl+C para parar")
+    p.add_argument("--interval", type=float, default=15.0, help="monitor --watch: segundos entre as consultas")
+    p.add_argument("--cycles", type=int, help="monitor --watch: número de consultas antes de sair (padrão: sem fim)")
     p.set_defaults(func=cmd_robots)
 
     p = sub.add_parser("analyze", help="números de estudo de um ativo (retorno, volatilidade, queda, sazonalidade)")

@@ -130,6 +130,8 @@ real, o programa recusa. Com tudo certo, repita com `--close-terminal`: o progra
 novo com o robô no gráfico, na mesma conta.
 
 `mt5x robots monitor <robô>` mostra as posições abertas, as que estão sem stop e o resultado desde o início.
+Com `--watch`, ele fica acompanhando e mostra um aviso do sistema (pop-up) a cada operação do robô, a cada posição
+sem stop e se a leitura do MetaTrader 5 cair. Ctrl+C encerra só o acompanhamento, não o robô.
 
 `mt5x robots stop` é o **PARAR TUDO**: os robôs com a camada de segurança do HADOUKEN param de abrir operações.
 Ele **não fecha as posições abertas** (este programa nunca envia ordens): feche-as no MetaTrader 5. Um robô sem

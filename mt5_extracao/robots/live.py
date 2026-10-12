@@ -207,3 +207,87 @@ def stop_active(config) -> bool:
         return mt5_tools.kill_file(config).is_file()
     except OSError:
         return False
+
+
+# --- acompanhamento contínuo: um aviso por ação do robô ---------------------------------
+
+DEAL_BUY, DEAL_SELL = 0, 1
+
+
+def _money(value: float) -> str:
+    return f"{value:+.2f}".replace(".", ",")
+
+
+def describe_deal(deal) -> tuple:
+    """(título, texto) de um negócio do robô, para o aviso. Entrada: lado, volume, ativo e preço; saída: resultado."""
+    symbol, volume = getattr(deal, "symbol", ""), float(getattr(deal, "volume", 0.0))
+    price, kind = float(getattr(deal, "price", 0.0)), int(getattr(deal, "type", -1))
+    if int(getattr(deal, "entry", DEAL_ENTRY_IN)) == DEAL_ENTRY_IN:
+        side = "COMPRA" if kind == DEAL_BUY else "VENDA" if kind == DEAL_SELL else "operação"
+        return f"Robô abriu {side} em {symbol}", f"{volume:g} lote(s) a {price:g}"
+    result = float(getattr(deal, "profit", 0.0)) + float(getattr(deal, "swap", 0.0)) + \
+        float(getattr(deal, "commission", 0.0))
+    return f"Robô fechou posição em {symbol}", f"{volume:g} lote(s) a {price:g}; resultado {_money(result)}"
+
+
+def watch(mt5, magic, emit: Callable, since: Optional[datetime] = None, interval: float = 15.0,
+          cycles: Optional[int] = None, sleep: Optional[Callable] = None, kill_active: Optional[Callable] = None) -> int:
+    """
+    Consulta o MT5 de tempos em tempos (somente leitura) e chama `emit(título, texto, nível)` uma vez para cada
+    ação nova do robô: negócio de abertura ou de fechamento, posição sem stop, PARAR TUDO ativo, e perda ou volta
+    da conexão. O que já existia quando o acompanhamento começou não gera aviso. Roda `cycles` consultas (None =
+    até ser interrompido) e devolve quantos avisos emitiu.
+    """
+    import time
+    from mt5_extracao import notify
+    magic = int(magic)
+    since = since or datetime.now() - timedelta(days=1)
+    sleep = sleep or time.sleep
+    seen_deals, warned_positions = set(), set()
+    first, connected, kill_warned, emitted, done = True, True, False, 0, 0
+
+    def out(title, text, level=notify.INFO):
+        nonlocal emitted
+        emitted += 1
+        emit(title, text, level)
+
+    while cycles is None or done < cycles:
+        done += 1
+        try:
+            deals = [d for d in (mt5.history_deals_get(since, datetime.now() + timedelta(days=1)) or ())
+                     if int(getattr(d, "magic", 0)) == magic]
+            positions = [p for p in (mt5.positions_get() or ()) if int(getattr(p, "magic", 0)) == magic]
+            if not connected:
+                connected = True
+                out("Acompanhamento do robô retomado", "A leitura do MetaTrader 5 voltou.")
+        except Exception as e:
+            if connected:
+                connected = False
+                out("Acompanhamento do robô interrompido",
+                    f"Não foi possível ler o MetaTrader 5 ({type(e).__name__}). O robô pode continuar operando: "
+                    "confira com 'mt5x mt5 status'.", notify.CRITICAL)
+            if cycles is None or done < cycles:
+                sleep(interval)
+            continue
+        for deal in sorted(deals, key=lambda d: (getattr(d, "time", 0), getattr(d, "ticket", 0))):
+            ticket = getattr(deal, "ticket", None)
+            if ticket in seen_deals:
+                continue
+            seen_deals.add(ticket)
+            if not first:
+                out(*describe_deal(deal))
+        for position in positions:
+            ticket = getattr(position, "ticket", None)
+            if not float(getattr(position, "sl", 0.0)) and ticket not in warned_positions:
+                warned_positions.add(ticket)
+                out("Posição do robô SEM STOP", f"{getattr(position, 'symbol', '')}: "
+                    f"{float(getattr(position, 'volume', 0.0)):g} lote(s) sem stop. Confira no MetaTrader 5.",
+                    notify.CRITICAL)
+        killed = bool(kill_active()) if kill_active else False
+        if killed and not kill_warned:
+            out("PARAR TUDO está ativo", "Os robôs com a camada de segurança não abrem novas operações.", notify.WARNING)
+        kill_warned = killed
+        first = False
+        if cycles is None or done < cycles:
+            sleep(interval)
+    return emitted

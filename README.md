@@ -112,6 +112,7 @@ Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 
 - [Instalação automática](docs/instalacao.md)
 - [Estratégias, backtest e triagem de ativos](docs/estrategias.md)
+- Avisos do sistema (pop-up) a cada ação concluída: `[APP] notifications = true`; `mt5x robots monitor <robô> --watch`
 - MT5 oculto, sem ocupar a tela: `[MT5] hidden = true` (veja [instalação](docs/instalacao.md)); `mt5x mt5 status|show`
 - Montar timeframes maiores de uma base menor: `mt5x resample --symbols EURUSD --base M1 --tf M5,M15,H1`
 - [Robôs: catálogo, backtest, bateria de segurança e conta demo](docs/robos.md)

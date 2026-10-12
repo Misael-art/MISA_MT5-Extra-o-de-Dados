@@ -55,6 +55,9 @@ broker_utc_offset = -3
 # auto = pasta de dados do usuário (%LOCALAPPDATA%\mt5-extracao, ~/.local/share/mt5-extracao); ou um caminho.
 # Um banco que já exista na pasta do projeto continua sendo usado.
 data_dir = 
+# Avisos em pop-up do sistema ao fim de cada ação (extração, compilação, teste, bateria, início e parada de robô)
+# e, com 'mt5x robots monitor <robô> --watch', a cada operação do robô. Sem sessão gráfica vira só registro em log.
+notifications = true
 
 [STRATEGY]
 # Backtest e validação (mt5x backtest / validate / report)

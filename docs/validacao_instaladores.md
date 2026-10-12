@@ -113,6 +113,7 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | Exatidão | Ticks reais | `mt5x robots backtest <robô> --symbol EURUSD --tf H1` com `tester_model = 4` | Relatório gerado; "Qualidade do histórico" conferida à mão | — | ⏳ pendente |
 | T11.3 | MT5 minimizado no modo oculto | com `[MT5] hidden = true`, `mt5x robots backtest <robô> --symbol EURUSD --tf H1` | O terminal abre minimizado, sem tomar o foco, e o teste termina normalmente | — | ⏳ pendente |
 | T11.1 | Timeframe montado | `mt5x resample --symbols EURUSD --base M1 --tf M5,H1` | Barras iguais às extraídas do MT5 | — | ⏳ pendente |
+| T11.4 | Aviso do sistema | com `[APP] notifications = true`, `mt5x extract --symbols EURUSD --tf H1 --from <data>` | Um balão "Extração concluída" aparece ao terminar | — | ⏳ pendente |
 | Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
 
 A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
