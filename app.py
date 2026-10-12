@@ -790,7 +790,13 @@ class MT5Extracao:
         self.root.title("MT5 Extração de Dados")
         
         # Aumentar o tamanho em 40%
-        self.root.geometry("1680x980")  # 1200 * 1.4 = 1680, 700 * 1.4 = 980
+        # Até 1680x980, sem passar do tamanho da tela (em telas menores o conteúdo ficava cortado)
+        width = min(1680, max(900, self.root.winfo_screenwidth() - 80))
+        height = min(980, max(600, self.root.winfo_screenheight() - 120))
+        x = max(0, (self.root.winfo_screenwidth() - width) // 2)
+        y = max(0, (self.root.winfo_screenheight() - height) // 3)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        self.root.minsize(900, 600)
         
         # Configuração para melhor exibição em monitores de alta resolução
         try:

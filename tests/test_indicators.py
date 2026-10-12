@@ -98,3 +98,14 @@ def test_no_lookahead():
                lambda d: ind.bollinger(d["close"])["upper"], lambda d: ind.efficiency_ratio(d["close"]),
                lambda d: ind.linreg_r2(d["close"])):
         pd.testing.assert_series_equal(fn(df).iloc[:250], fn(changed).iloc[:250], check_names=False)
+
+
+def test_price_variations_accept_time_as_text():
+    """A coleta em tempo real entrega 'time' como texto; antes isso quebrava a comparação de datas."""
+    import pandas as pd
+    from mt5_extracao.indicator_calculator import IndicatorCalculator
+    times = pd.date_range(pd.Timestamp.now().normalize() + pd.Timedelta(hours=10), periods=70, freq="min")
+    df = pd.DataFrame({"time": times.strftime("%Y-%m-%d %H:%M:%S"), "open": 10.0, "high": 11.0, "low": 9.0,
+                       "close": [10.0 + i * 0.01 for i in range(70)], "tick_volume": 1})
+    out = IndicatorCalculator().calculate_price_variations(df)
+    assert "var_pct_open_daily" in out.columns and out["var_pct_open_daily"].notna().all()

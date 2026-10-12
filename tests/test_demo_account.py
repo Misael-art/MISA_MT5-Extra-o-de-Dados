@@ -198,3 +198,8 @@ def test_login_from_env_failure_is_reported_without_password(connector, fake_mt5
     monkeypatch.setenv("MT5_PASSWORD", "segredo-errado")
     assert connector._login_from_env() is False
     assert "MT5_SERVER" in caplog.text and "segredo-errado" not in caplog.text
+
+
+def test_account_summary_reports_demo_account(connector, fake_mt5):
+    fake_mt5.logged = __import__("types").SimpleNamespace(login=42, server="MetaQuotes-Demo", trade_mode=0)
+    assert connector.account_summary() == {"login": 42, "server": "MetaQuotes-Demo", "demo": True}

@@ -75,3 +75,18 @@ def test_disconnected_manager_is_safe(tmp_path):
     assert db.get_recent_data(TABLE) is None
     assert db.optimize_database() is False
     assert db.save_ohlcv_data("WIN$N", "1 minuto", random_walk(3)) is False
+
+
+def test_symbols_with_data_reads_once_and_registers_nothing(tmp_path):
+    """A interface consulta milhares de símbolos ao abrir: não pode gravar em _symbol_tables."""
+    import pandas as pd
+    from sqlalchemy import text
+    from mt5_extracao.database_manager import DatabaseManager
+    db = DatabaseManager(db_path=str(tmp_path / "t.db"))
+    df = pd.DataFrame({"time": pd.to_datetime(["2024-01-02 10:00"]), "open": [1.0], "high": [1.0],
+                       "low": [1.0], "close": [1.0], "tick_volume": [1], "spread": [0], "real_volume": [0]})
+    assert db.save_ohlcv_data("WIN$N", "1 minuto", df)
+    symbols = ["WIN$N", "WDO$N"] + [f"X{i}" for i in range(500)]
+    assert db.symbols_with_data(symbols, "1 minuto") == {"WIN$N": "win_n_1_minuto"}
+    with db.engine.connect() as conn:
+        assert conn.execute(text("SELECT COUNT(*) FROM _symbol_tables")).scalar() == 1

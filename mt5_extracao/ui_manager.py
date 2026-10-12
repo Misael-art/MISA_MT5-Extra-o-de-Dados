@@ -42,6 +42,7 @@ class UIManager:
         self.start_button = None
         self.stop_button = None
         self.search_var = tk.StringVar() # Variável para busca de símbolos
+        self._ui_queue = queue.Queue()   # chamadas vindas de outras threads (ver call_in_ui)
 
         # Inicializar variáveis para símbolos com dados
         self.existing_symbols_map = {}
@@ -58,9 +59,37 @@ class UIManager:
 
         log.info("UIManager inicializado.")
 
+    def call_in_ui(self, fn, *args):
+        """
+        Executa fn(*args) na thread da interface. O Tkinter não pode ser usado por outras threads
+        (extração e coleta rodam em threads próprias): elas enfileiram e a interface executa.
+        """
+        if threading.current_thread() is threading.main_thread():
+            fn(*args)
+        else:
+            self._ui_queue.put((fn, args))
+
+    def _pump_ui_queue(self):
+        try:
+            while True:
+                fn, args = self._ui_queue.get_nowait()
+                try:
+                    fn(*args)
+                except tk.TclError as e:      # janela já fechada
+                    log.debug(f"Atualização de interface ignorada: {e}")
+                except Exception:
+                    log.error(f"Erro ao atualizar a interface: {traceback.format_exc()}")
+        except queue.Empty:
+            pass
+        try:
+            self.root.after(100, self._pump_ui_queue)
+        except tk.TclError:
+            pass
+
     def setup_ui(self):
         """Configura a interface do usuário completa."""
         self.root = self.app.root
+        self.root.after(100, self._pump_ui_queue)
         
         # Configurar o estilo ttk
         self.style = ttk.Style()
@@ -94,33 +123,22 @@ class UIManager:
         mt5_status_frame = ttk.Frame(status_frame)
         mt5_status_frame.pack(fill=tk.X, pady=5)
         
-        mt5_status_label = ttk.Label(mt5_status_frame, text="Status MT5:", width=10)
+        mt5_status_label = ttk.Label(mt5_status_frame, text="MetaTrader 5:")
         mt5_status_label.pack(side=tk.LEFT)
         
-        self.mt5_status_value = ttk.Label(mt5_status_frame, text="Desconectado", width=15)
-        self.mt5_status_value.pack(side=tk.LEFT)
+        # Mostra a conta e o servidor em uso (ex.: "Conectado: conta 123 em MetaQuotes-Demo (demonstração)")
+        self.mt5_status_value = ttk.Label(mt5_status_frame, text="Verificando...")
+        self.mt5_status_value.pack(side=tk.LEFT, padx=(5, 10))
         
-        # Botão de administrador para MT5
-        self.mt5_admin_button = ttk.Button(mt5_status_frame, text="Iniciar MT5 Admin", 
-                                     command=self.launch_mt5_as_admin)
-        self.mt5_admin_button.pack(side=tk.LEFT, padx=5)
+        check_mt5_status_btn = ttk.Button(mt5_status_frame, text="Verificar conexão",
+                                          command=self.check_mt5_status)
+        check_mt5_status_btn.pack(side=tk.LEFT, padx=5)
         
-        # Verificar status como administrador
-        check_mt5_admin_status_btn = ttk.Button(mt5_status_frame, text="Verificar Status", 
-                                          width=15, command=self.check_mt5_status)
-        check_mt5_admin_status_btn.pack(side=tk.LEFT, padx=5)
-        
-        # Frame de busca
-        search_frame = ttk.Frame(top_frame)
-        search_frame.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        search_label = ttk.Label(search_frame, text="Buscar:")
-        search_label.pack(side=tk.LEFT, padx=(0, 5))
-        
-        self.search_var = tk.StringVar()
-        self.search_var.trace("w", self.filter_symbols)
-        search_entry = ttk.Entry(search_frame, textvariable=self.search_var, width=30)
-        search_entry.pack(side=tk.LEFT)
+        # Privilégios de administrador só existem (e só importam) no Windows
+        if os.name == "nt":
+            self.mt5_admin_button = ttk.Button(mt5_status_frame, text="Iniciar MT5 como administrador",
+                                         command=self.launch_mt5_as_admin)
+            self.mt5_admin_button.pack(side=tk.LEFT, padx=5)
         
         # Frame do meio que contém as listboxes
         middle_frame = ttk.Frame(main_frame)
@@ -128,13 +146,24 @@ class UIManager:
         middle_frame.columnconfigure(0, weight=1)
         middle_frame.columnconfigure(1, weight=0)
         middle_frame.columnconfigure(2, weight=1)
+        middle_frame.rowconfigure(0, weight=1)  # as listas acompanham a altura da janela
         
         # Frame esquerdo com lista de todos os símbolos
         left_frame = ttk.Frame(middle_frame)
         left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
         
-        symbols_label = ttk.Label(left_frame, text="Símbolos Disponíveis:")
-        symbols_label.pack(fill=tk.X, pady=(0, 5))
+        self.symbols_label = ttk.Label(left_frame, text="Símbolos Disponíveis:")
+        self.symbols_label.pack(fill=tk.X, pady=(0, 5))
+        
+        # Busca logo acima da lista (uma conta pode ter milhares de símbolos)
+        search_frame = ttk.Frame(left_frame)
+        search_frame.pack(fill=tk.X, pady=(0, 5))
+        ttk.Label(search_frame, text="Buscar:").pack(side=tk.LEFT, padx=(0, 5))
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", self.filter_symbols)
+        search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        search_entry.focus_set()
         
         # Adicionando opções para favoritos
         favorites_frame = ttk.Frame(left_frame)
@@ -149,23 +178,25 @@ class UIManager:
         remove_favorite_btn.pack(side=tk.LEFT)
         
         # Lista de símbolos disponíveis
-        self.symbols_listbox = tk.Listbox(left_frame, selectmode=tk.EXTENDED, height=20, exportselection=False)
-        self.symbols_listbox.pack(fill=tk.BOTH, expand=True)
-        self.symbols_listbox.bind('<<ListboxSelect>>', self.on_symbol_select)
-        
-        # Scrollbar para a lista de símbolos
-        symbols_scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=self.symbols_listbox.yview)
+        symbols_list_frame = ttk.Frame(left_frame)
+        symbols_list_frame.pack(fill=tk.BOTH, expand=True)
+        symbols_scrollbar = ttk.Scrollbar(symbols_list_frame, orient="vertical")
         symbols_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.symbols_listbox.config(yscrollcommand=symbols_scrollbar.set)
+        self.symbols_listbox = tk.Listbox(symbols_list_frame, selectmode=tk.EXTENDED, height=20,
+                                          exportselection=False, yscrollcommand=symbols_scrollbar.set)
+        self.symbols_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.symbols_listbox.bind('<<ListboxSelect>>', self.on_symbol_select)
+        self.symbols_listbox.bind('<Double-Button-1>', lambda e: self.add_symbols())
+        symbols_scrollbar.config(command=self.symbols_listbox.yview)
         
         # Criar botões para mover entre listas
         buttons_frame = ttk.Frame(middle_frame)
         buttons_frame.grid(row=0, column=1, sticky="ns")
         
-        add_btn = ttk.Button(buttons_frame, text="➡", command=self.add_symbols)
+        add_btn = ttk.Button(buttons_frame, text="Adicionar →", command=self.add_symbols)
         add_btn.pack(pady=5)
         
-        remove_btn = ttk.Button(buttons_frame, text="⬅", command=self.remove_symbols)
+        remove_btn = ttk.Button(buttons_frame, text="← Remover", command=self.remove_symbols)
         remove_btn.pack(pady=5)
         
         self._botoes_adicionados = True
@@ -175,7 +206,7 @@ class UIManager:
         right_frame.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
 
         # Frame para símbolos selecionados
-        selected_frame = ttk.LabelFrame(right_frame, text="Símbolos Selecionados")
+        selected_frame = ttk.LabelFrame(right_frame, text="Símbolos Selecionados (duplo clique em um símbolo para adicionar)")
         selected_frame.pack(fill=tk.BOTH, expand=False, pady=5)
 
         selected_list_frame = ttk.Frame(selected_frame)
@@ -295,6 +326,14 @@ class UIManager:
         # Verificar e carregar dados existentes para destaque visual
         self.load_existing_symbols_data()
 
+        # Menu (Arquivo, Exportar, Estratégias, Ajuda): existia mas nunca era criado
+        self.create_menu()
+
+        # Mostra a conta em uso; se o MT5 não conectou, oferece a correção depois que a janela abrir
+        self.refresh_mt5_status()
+        if not self._mt5_connected():
+            self.root.after(500, self.check_mt5_status)
+
         # --- Fim da configuração da UI ---
 
     def load_existing_symbols_data(self):
@@ -308,20 +347,10 @@ class UIManager:
             existing_tables = self.app.db_manager.get_existing_symbols()
             log.info(f"Encontradas {len(existing_tables)} tabelas com dados no banco")
             
-            # Lista para mapear entre nomes normalizados e originais
-            self.existing_symbols_map = {}
-            # Inicializar symbols_with_data como um conjunto para pesquisa rápida
-            self.symbols_with_data = set()
-            
-            # Para cada símbolo disponível, verificar se há dados
-            for symbol in self.app.symbols:
-                # Verificar para o timeframe M1 (1 minuto)
-                table_name = self.app.db_manager.get_table_name_for_symbol(symbol, "1 minuto")
-                
-                if table_name in existing_tables:
-                    self.existing_symbols_map[symbol] = table_name
-                    self.symbols_with_data.add(symbol)
-            
+            # Timeframe M1 (1 minuto), em uma leitura só (a conta pode ter milhares de símbolos)
+            self.existing_symbols_map = self.app.db_manager.symbols_with_data(self.app.symbols, "1 minuto")
+            self.symbols_with_data = set(self.existing_symbols_map)
+
             log.info(f"Identificados {len(self.existing_symbols_map)} símbolos com dados existentes")
             
             # Atualizar a interface com destaques visuais
@@ -340,35 +369,18 @@ class UIManager:
         if not self.symbols_listbox or not hasattr(self, "symbols_with_data"):
             return
             
-        # Atualiza formatação para destacar os que têm dados
-        for i in range(self.symbols_listbox.size()):
-            symbol_text = self.symbols_listbox.get(i)
-            # Remove o prefixo de favorito se existir
-            if symbol_text.startswith("★ "):
-                symbol = symbol_text[2:]
-                is_favorite = True
-            else:
-                symbol = symbol_text
-                is_favorite = False
-                
-            # Configurações padrão
-            bg_color = 'white'
-            fg_color = 'black'
-            
-            # Definir cores com base nas condições
-            if is_favorite and symbol in self.symbols_with_data:
-                # Favorito com dados - Destaque azul com fundo verde claro
-                bg_color = '#E8F5E9'  # Verde claro
-                fg_color = '#1976D2'  # Azul
-            elif is_favorite:
-                # Apenas favorito - Azul
-                fg_color = '#1976D2'  # Azul
-            elif symbol in self.symbols_with_data:
-                # Apenas com dados - Fundo verde claro
-                bg_color = '#E8F5E9'  # Verde claro
-            
-            # Aplicar as cores
-            self.symbols_listbox.itemconfig(i, {'bg': bg_color, 'fg': fg_color})
+        # Só favoritos e símbolos com dados mudam de cor; o resto fica no padrão da lista
+        if self.symbols_with_data or self.favorite_symbols:
+            for i, symbol_text in enumerate(self.symbols_listbox.get(0, tk.END)):
+                is_favorite = symbol_text.startswith("★ ")
+                symbol = symbol_text[2:] if is_favorite else symbol_text
+                has_data = symbol in self.symbols_with_data
+                if is_favorite and has_data:
+                    self.symbols_listbox.itemconfig(i, {'bg': '#E8F5E9', 'fg': '#1976D2'})
+                elif is_favorite:
+                    self.symbols_listbox.itemconfig(i, {'fg': '#1976D2'})
+                elif has_data:
+                    self.symbols_listbox.itemconfig(i, {'bg': '#E8F5E9'})
         
         # Destacar símbolos na listbox de selecionados
         for i in range(self.selected_listbox.size()):
@@ -501,9 +513,13 @@ Status: Sem dados no banco. Disponível para coleta.
             
         try:
             symbol_info = self.app.mt5_connector.get_symbol_info(symbol)
-            if symbol_info and hasattr(symbol_info, 'last'):
-                return f"{symbol_info.last:.5f}"
-            return "N/A"
+            if not symbol_info:
+                return "N/A"
+            # Forex/CFD não têm "último negócio": nesses casos vale a oferta de compra (bid)
+            price = getattr(symbol_info, 'last', 0) or getattr(symbol_info, 'bid', 0)
+            if not price:
+                return "sem cotação no momento"
+            return f"{price:.{getattr(symbol_info, 'digits', 5)}f}"
         except Exception as e:
             log.error(f"Erro ao obter cotação para {symbol}: {e}")
             return "Erro ao obter cotação"
@@ -521,6 +537,10 @@ Status: Sem dados no banco. Disponível para coleta.
             symbols_status (dict): Status detalhado por símbolo
             is_running (bool): Se a coleta ainda está em andamento
         """
+        if threading.current_thread() is not threading.main_thread():
+            self.call_in_ui(self.update_collection_progress, total_collected, total_success, total_errors,
+                            elapsed_time, symbols_status, is_running)
+            return
         # Garantir que existe uma área na interface para mostrar o progresso
         if not hasattr(self, 'progress_frame') or not hasattr(self, 'progress_var'):
             log.warning("Interface de progresso não inicializada.")
@@ -628,31 +648,30 @@ Status: Sem dados no banco. Disponível para coleta.
             messagebox.showwarning("Aviso", "Nenhum símbolo disponível para exibir.")
             return
             
-        search_text = self.search_var.get().lower()
+        search_text = self.search_var.get().strip().lower()
         self.symbols_listbox.delete(0, tk.END)
         
-        # Primeiro adicionar favoritos
-        favorites_count = 0
-        for symbol in self.app.symbols:
-            if symbol in self.favorite_symbols and (search_text == '' or search_text in symbol.lower()):
-                self.symbols_listbox.insert(tk.END, f"★ {symbol}")
-                favorites_count += 1
+        # Favoritos primeiro, depois os demais (inserção em lote: a conta pode ter milhares de símbolos)
+        matches = [sym for sym in self.app.symbols if not search_text or search_text in sym.lower()]
+        favorites = [f"★ {sym}" for sym in matches if sym in self.favorite_symbols]
+        others = [sym for sym in matches if sym not in self.favorite_symbols]
+        if favorites or others:
+            self.symbols_listbox.insert(tk.END, *(favorites + others))
         
-        # Depois adicionar o resto dos símbolos
-        other_count = 0
-        for symbol in self.app.symbols:
-            if symbol not in self.favorite_symbols and (search_text == '' or search_text in symbol.lower()):
-                self.symbols_listbox.insert(tk.END, symbol)
-                other_count += 1
-        
-        log.info(f"Filtro aplicado: {favorites_count} favoritos e {other_count} outros símbolos exibidos")
+        log.debug(f"Filtro aplicado: {len(favorites)} favoritos e {len(others)} outros símbolos exibidos")
+        if getattr(self, "symbols_label", None):
+            total = len(self.app.symbols)
+            shown = len(matches)
+            if not search_text:
+                text = f"Símbolos Disponíveis: {total}"
+            elif shown:
+                text = f"Símbolos Disponíveis: {shown} de {total}"
+            else:
+                text = f"Nenhum símbolo contém \"{self.search_var.get().strip()}\" nesta conta ({total} no total)"
+            self.symbols_label.config(text=text)
                 
         # Destacar símbolos com dados existentes
         self.highlight_symbols_with_data()
-        
-        # Se não houver símbolos exibidos, mostrar mensagem
-        if self.symbols_listbox.size() == 0:
-            messagebox.showinfo("Busca", "Nenhum símbolo corresponde ao filtro de busca.")
 
     def add_symbols(self):
         """Adiciona símbolos selecionados à lista de monitoramento"""
@@ -729,11 +748,11 @@ Status: Sem dados no banco. Disponível para coleta.
         buttons_frame.grid(row=0, column=1, sticky="ns")
         
         # Botão para adicionar símbolo selecionado
-        add_btn = ttk.Button(buttons_frame, text="➡", command=self.add_symbols)
+        add_btn = ttk.Button(buttons_frame, text="Adicionar →", command=self.add_symbols)
         add_btn.pack(pady=5)
         
         # Botão para remover símbolo selecionado
-        remove_btn = ttk.Button(buttons_frame, text="⬅", command=self.remove_symbols)
+        remove_btn = ttk.Button(buttons_frame, text="← Remover", command=self.remove_symbols)
         remove_btn.pack(pady=5)
         
         self._botoes_adicionados = True
@@ -762,6 +781,9 @@ Status: Sem dados no banco. Disponível para coleta.
 
     def update_log_widget(self, message):
         """Atualiza o widget de log (text) com uma nova mensagem."""
+        if threading.current_thread() is not threading.main_thread():
+            self.call_in_ui(self.update_log_widget, message)
+            return
         if self.log_text:
             # Garantir que estamos no fim do log
             self.log_text.see(tk.END)
@@ -775,6 +797,9 @@ Status: Sem dados no banco. Disponível para coleta.
             
     def log(self, message):
         """Atualiza o widget de log na UI com uma nova mensagem."""
+        if threading.current_thread() is not threading.main_thread():
+            self.call_in_ui(self.log, message)
+            return
         # Registra no logger do sistema
         log.info(message)
         # Atualiza a UI
@@ -782,6 +807,9 @@ Status: Sem dados no banco. Disponível para coleta.
 
     def update_status(self, status_text):
         """Atualiza o texto de status principal."""
+        if threading.current_thread() is not threading.main_thread():
+            self.call_in_ui(self.update_status, status_text)
+            return
         # Sempre registrar o status no log
         log.info(f"Status: {status_text}")
         
@@ -959,7 +987,10 @@ Status: Sem dados no banco. Disponível para coleta.
                 return
         
         # Verifica se o MT5 está rodando como administrador
-        if hasattr(self.app.mt5_connector, 'is_mt5_running_as_admin') and self.app.mt5_connector._is_mt5_running():
+        # Só no Windows: no Linux o terminal roda no Wine, onde "administrador" não existe, e a
+        # verificação (que lista todos os símbolos pela ponte) só atrasava a abertura da janela.
+        if (os.name == "nt" and hasattr(self.app.mt5_connector, 'is_mt5_running_as_admin')
+                and self.app.mt5_connector._is_mt5_running()):
             if not self.app.mt5_connector.is_mt5_running_as_admin():
                 logging.warning("MT5 está executando sem privilégios de administrador.")
                 response = messagebox.askyesno(
@@ -1025,7 +1056,9 @@ Status: Sem dados no banco. Disponível para coleta.
         # --- Criação da Janela de Configuração (Lógica da UI) ---
         config_window = tk.Toplevel(self.root)
         config_window.title("Configurar Extração de Dados Históricos")
-        config_window.geometry("500x450")
+        config_window.geometry("760x520")
+        config_window.minsize(700, 480)
+        config_window.transient(self.root)
         config_window.grab_set()  # Tornar modal
 
         main_frame = ttk.Frame(config_window, padding="10")
@@ -1048,10 +1081,10 @@ Status: Sem dados no banco. Disponível para coleta.
 
         # Adicionar opções de auto-detecção de data
         auto_detect_var = tk.BooleanVar(value=True)
+        config_window.auto_detect_var = auto_detect_var  # mantém a referência (sem ela a caixa aparece indefinida)
         ttk.Checkbutton(period_frame, text="Auto-detectar data mais antiga", variable=auto_detect_var).grid(row=1, column=2, padx=5, pady=5, sticky="w")
 
         # Botão para detectar a data mais antiga (com debug)
-        log.info("Criando botão 'Detectar Agora'")  # Debug log
         detect_button = ttk.Button(period_frame, text="Detectar Agora", 
                                  command=lambda: detect_oldest_date())
         detect_button.grid(row=1, column=3, padx=5, pady=5, sticky="ew")
@@ -1076,9 +1109,7 @@ Status: Sem dados no banco. Disponível para coleta.
         ttk.Checkbutton(options_frame, text="Calcular Indicadores", variable=include_indicators_var).pack(anchor="w")
         overwrite_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(options_frame, text="Sobrescrever Dados", variable=overwrite_var).pack(anchor="w")
-        ttk.Label(options_frame, text="Máximo de Barras:").pack(anchor="w")
-        max_bars_var = tk.StringVar(value="10000")
-        ttk.Entry(options_frame, textvariable=max_bars_var, width=10).pack(anchor="w")
+        max_bars_var = tk.StringVar(value="10000")  # sem efeito na extração por blocos; campo removido da tela
 
         # Símbolos Selecionados (Display)
         symbols_frame = ttk.LabelFrame(main_frame, text=f"Símbolos Selecionados ({len(self.app.selected_symbols)})")
@@ -1096,17 +1127,6 @@ Status: Sem dados no banco. Disponível para coleta.
         status_var = tk.StringVar(value="Pronto")
         ttk.Label(control_frame, textvariable=status_var).pack(anchor="w")
         
-        # Botões de ação na parte inferior
-        buttons_frame = ttk.Frame(main_frame)
-        buttons_frame.pack(fill=tk.X, pady=10)
-        
-        start_button = ttk.Button(buttons_frame, text="Iniciar Extração", 
-                               command=lambda: start_extraction_logic())
-        start_button.pack(side=tk.LEFT, padx=5)
-        
-        cancel_button = ttk.Button(buttons_frame, text="Cancelar", 
-                                command=lambda: cancel_extraction_logic())
-        cancel_button.pack(side=tk.RIGHT, padx=5)
         
         # Log para debug
         log.info("Configuração de extração histórica concluída - botões criados")
@@ -1212,6 +1232,26 @@ Status: Sem dados no banco. Disponível para coleta.
             dentro da função detect_oldest_date."""
             pass
         
+        def show_progress(progress, message):
+            progress_var.set(progress)
+            status_var.set(message)
+
+        def finished(ok, failed, canceled):
+            """Fim da extração/atualização: libera os botões, resume o resultado e marca os ativos com dados."""
+            extract_button.config(state=tk.NORMAL)
+            update_button.config(state=tk.NORMAL)
+            cancel_button.config(text="Fechar")
+            parts = [f"{ok} ativo(s) com sucesso"]
+            if failed:
+                parts.append(f"{failed} com falha (veja o Log de Atividades)")
+            if canceled:
+                parts.append(f"{canceled} cancelado(s)")
+            summary = "Concluído: " + ", ".join(parts) + "."
+            progress_var.set(100)
+            status_var.set(summary)
+            self.log(summary)
+            self.load_existing_symbols_data()
+
         # --- Lógica de Extração (será chamada pelo botão) ---
         def start_extraction_logic():
             # Obter valores da UI
@@ -1239,6 +1279,7 @@ Status: Sem dados no banco. Disponível para coleta.
 
             # Desabilita botão e inicia thread (lógica movida para app)
             extract_button.config(state=tk.DISABLED)
+            update_button.config(state=tk.DISABLED)
             cancel_button.config(text="Cancelar")
             status_var.set("Iniciando extração...")
             progress_var.set(0)
@@ -1257,9 +1298,8 @@ Status: Sem dados no banco. Disponível para coleta.
                 overwrite=overwrite,
                 # auto_detect_oldest_date é gerenciado internamente pelo extractor
                 # max_workers pode ser configurado ou padrão
-                update_progress_callback=lambda p, msg: self.root.after_idle(lambda: (progress_var.set(p), status_var.set(msg))),
-                # Ajustar callback para 3 args (success, failed, canceled)
-                finished_callback=lambda s, f, c: self.root.after_idle(lambda: (extract_button.config(state=tk.NORMAL), cancel_button.config(text="Fechar")))
+                update_progress_callback=lambda p, msg: self.call_in_ui(show_progress, p, msg),
+                finished_callback=lambda s, f, c: self.call_in_ui(finished, s, f, c)
             )
 
         # --- Atualização incremental: do último registro salvo até agora ---
@@ -1280,18 +1320,13 @@ Status: Sem dados no banco. Disponível para coleta.
             status_var.set("Atualizando a partir do último registro salvo...")
             progress_var.set(0)
 
-            def finished(s, f, c):
-                extract_button.config(state=tk.NORMAL)
-                update_button.config(state=tk.NORMAL)
-                cancel_button.config(text="Fechar")
-
             self.app.historical_extractor.update_symbols(
                 symbols=self.app.selected_symbols,
                 timeframe_val=timeframe_val,
                 timeframe_name=timeframe_name,
                 include_indicators=include_indicators_var.get(),
-                update_progress_callback=lambda p, msg: self.root.after_idle(lambda: (progress_var.set(p), status_var.set(msg))),
-                finished_callback=lambda s, f, c: self.root.after_idle(lambda: finished(s, f, c))
+                update_progress_callback=lambda p, msg: self.call_in_ui(show_progress, p, msg),
+                finished_callback=lambda s, f, c: self.call_in_ui(finished, s, f, c)
             )
 
         def cancel_extraction_logic():
@@ -1456,8 +1491,10 @@ Status: Sem dados no banco. Disponível para coleta.
                     if mt5_conectado:
                         try:
                             symbol_info = self.app.mt5_connector.get_symbol_info(symbol)
-                            if symbol_info and hasattr(symbol_info, 'last'):
-                                preço_atual = symbol_info.last
+                            # Forex/CFD não têm "último negócio": vale a oferta de compra (bid)
+                            cotacao = getattr(symbol_info, 'last', 0) or getattr(symbol_info, 'bid', 0)
+                            if cotacao:
+                                preço_atual = cotacao
                         except Exception as price_err:
                             log.warning(f"Erro ao obter preço atual de {symbol}: {price_err}")
                     
@@ -1502,7 +1539,9 @@ Status: Sem dados no banco. Disponível para coleta.
                 stats_text.insert(tk.END, "ESTATÍSTICAS DO SÍMBOLO\n")
                 stats_text.insert(tk.END, "=====================\n\n")
                 for key, value in stats.items():
-                    if isinstance(value, float):
+                    if value is None or (isinstance(value, float) and pd.isna(value)):
+                        value = "não calculado para estes registros"
+                    elif isinstance(value, float):
                         value = f"{value:.5f}"
                     stats_text.insert(tk.END, f"{key}: {value}\n")
 
@@ -1632,6 +1671,9 @@ Status: Sem dados no banco. Disponível para coleta.
         # Menu Ajuda
         help_menu = tk.Menu(menu_bar, tearoff=0)
         help_menu.add_command(label="Documentação", command=self.open_documentation)
+        help_menu.add_command(label="Verificar conexão com o MetaTrader 5", command=self.check_mt5_status)
+        help_menu.add_command(label="Diagnóstico do ambiente...", command=self.show_doctor)
+        help_menu.add_separator()
         help_menu.add_command(label="Sobre", command=self.show_about)
         
         # Menu Estratégias (pesquisa com os dados do banco; não envia ordens)
@@ -1653,6 +1695,40 @@ Status: Sem dados no banco. Disponível para coleta.
         # Configurar a barra de menu
         self.root.config(menu=menu_bar)
     
+    def show_doctor(self):
+        """Mostra o diagnóstico do ambiente (o mesmo do comando 'mt5x doctor'), com as dicas de correção."""
+        from mt5_extracao.bootstrap import doctor, paths
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Diagnóstico do ambiente")
+        dialog.geometry("820x520")
+        dialog.transient(self.root)
+        text = scrolledtext.ScrolledText(dialog, wrap=tk.WORD)
+        text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        text.insert(tk.END, "Verificando o ambiente, aguarde...")
+        text.config(state=tk.DISABLED)
+        ttk.Button(dialog, text="Fechar", command=dialog.destroy).pack(pady=(0, 10))
+        result = {}
+
+        def work():
+            try:
+                result["text"] = doctor.format_report(doctor.run_checks(paths.PROJECT_ROOT))
+            except Exception as e:
+                result["text"] = f"Não foi possível concluir o diagnóstico: {e}"
+
+        def show():
+            if not dialog.winfo_exists():
+                return
+            if "text" not in result:
+                dialog.after(300, show)
+                return
+            text.config(state=tk.NORMAL)
+            text.delete("1.0", tk.END)
+            text.insert(tk.END, result["text"])
+            text.config(state=tk.DISABLED)
+
+        threading.Thread(target=work, daemon=True).start()
+        dialog.after(300, show)
+
     def export_data(self, format_type):
         """
         Exibe diálogo para exportar dados de uma tabela para CSV ou Excel.
@@ -1969,14 +2045,53 @@ Status: Sem dados no banco. Disponível para coleta.
         ttk.Button(button_frame, text="Cancelar", command=export_dialog.destroy).pack(side=tk.RIGHT)
 
     def open_settings(self):
-        """Abre a janela de configurações"""
-        messagebox.showinfo("Configurações", "Funcionalidade em desenvolvimento")
+        """Mostra a configuração em uso e onde alterá-la."""
+        config_file = Path(getattr(self.app, "config_path", "config/config.ini")).resolve()
+        cfg = self.app.config
+        info = self.app.mt5_connector.account_summary() if self._mt5_connected() else None
+        account = (f"conta {info['login']} em {info['server']}" + (" (demonstração)" if info["demo"] else "")
+                   if info else "sem conexão")
+        lines = [
+            f"Conta em uso: {account}",
+            f"MetaTrader 5: {cfg.get('MT5', 'path', fallback='não configurado')}",
+            f"Banco de dados: {cfg.get('DATABASE', 'type', fallback='sqlite')} - "
+            f"{cfg.get('DATABASE', 'path', fallback='database/mt5_data.db')}",
+            f"Arquivo de configuração: {config_file}",
+            "",
+            "Para trocar de conta (ex.: corretora com ativos da B3), preencha MT5_LOGIN, MT5_PASSWORD e",
+            "MT5_SERVER no arquivo .env da pasta do projeto: o aplicativo entra nessa conta sozinho.",
+            "As demais opções ficam no arquivo de configuração acima (reinicie o aplicativo depois de editar).",
+        ]
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Configurações")
+        dialog.transient(self.root)
+        frame = ttk.Frame(dialog, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(frame, text="\n".join(lines), justify=tk.LEFT, wraplength=720).pack(anchor="w")
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill=tk.X, pady=(15, 0))
+        ttk.Button(buttons, text="Abrir pasta de configuração",
+                   command=lambda: self._open_path(config_file.parent)).pack(side=tk.LEFT)
+        ttk.Button(buttons, text="Diagnóstico do ambiente...", command=self.show_doctor).pack(side=tk.LEFT, padx=10)
+        ttk.Button(buttons, text="Fechar", command=dialog.destroy).pack(side=tk.RIGHT)
+
+    def _open_path(self, path):
+        """Abre uma pasta/arquivo no programa padrão do sistema."""
+        import subprocess
+        try:
+            if os.name == "nt":
+                os.startfile(str(path))  # noqa: só existe no Windows
+            else:
+                subprocess.Popen(["xdg-open", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as e:
+            messagebox.showinfo("Abrir", f"Não foi possível abrir automaticamente.\nCaminho: {path}\n({e})")
         
     def show_about(self):
         """Exibe informações sobre o aplicativo"""
         about_dialog = tk.Toplevel(self.root)
         about_dialog.title("Sobre MT5 Extração")
-        about_dialog.geometry("400x300")
+        about_dialog.geometry("560x320")
+        about_dialog.transient(self.root)
         about_dialog.grab_set()  # Modal
         
         # Estilo
@@ -1992,22 +2107,32 @@ Status: Sem dados no banco. Disponível para coleta.
         title_label.pack(pady=(10, 5))
         
         # Versão
-        version_label = ttk.Label(main_frame, text="Versão 1.0.0", font=("Arial", 10))
+        try:
+            from importlib.metadata import version as _pkg_version
+            versao = _pkg_version("mt5-extracao")
+        except Exception:
+            # Rodando da pasta do projeto, sem instalar o pacote: lê a versão do pyproject.toml
+            import re
+            try:
+                pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+                versao = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(encoding="utf-8"), re.M).group(1)
+            except Exception:
+                versao = "desenvolvimento"
+        version_label = ttk.Label(main_frame, text=f"Versão {versao}", font=("Arial", 10))
         version_label.pack(pady=(0, 10))
         
         # Descrição
         description = (
             "Ferramenta para extração e análise de dados do MetaTrader 5.\n\n"
-            "Esta aplicação permite coletar dados de mercado em tempo real\n"
-            "e armazená-los em banco de dados local para análise posterior."
+            "Monta e mantém bases históricas (barras, indicadores e ticks) em banco de dados local, "
+            "exporta para CSV, Excel, Parquet e DuckDB e faz pesquisa de estratégias. Não envia ordens."
         )
         
-        desc_label = ttk.Label(main_frame, text=description, justify=tk.CENTER, style="About.TLabel")
+        desc_label = ttk.Label(main_frame, text=description, justify=tk.CENTER, style="About.TLabel",
+                               wraplength=500)
         desc_label.pack(pady=10)
         
         # Copyright
-        copyright_label = ttk.Label(main_frame, text="© 2025 - Todos os direitos reservados", font=("Arial", 8))
-        copyright_label.pack(side=tk.BOTTOM, pady=10)
         
         # Botão de fechar
         close_button = ttk.Button(main_frame, text="Fechar", command=about_dialog.destroy)
@@ -2320,53 +2445,100 @@ Status: Sem dados no banco. Disponível para coleta.
         self.filter_symbols()
         self.log("Exibindo todos os símbolos")
 
+    def _mt5_connected(self):
+        connector = self.app.mt5_connector
+        return bool(connector and self.app.mt5_initialized and connector.is_initialized)
+
+    def refresh_mt5_status(self):
+        """Atualiza a barra de status com a conta e o servidor em uso (sem perguntas)."""
+        if not self._mt5_connected():
+            self.update_status("Status: sem conexão com o MetaTrader 5")
+            self.mt5_status_value.config(text="Desconectado", foreground="red")
+            return False
+        info = self.app.mt5_connector.account_summary()
+        if info:
+            kind = " (demonstração)" if info["demo"] else ""
+            text = f"Conectado: conta {info['login']} em {info['server']}{kind}"
+        else:
+            text = "Conectado"
+        self.update_status("Status: pronto")
+        self.mt5_status_value.config(text=text, foreground="green")
+        return True
+
+    def _reconnect_mt5(self):
+        """Conecta de novo e recarrega a lista de símbolos da conta."""
+        self.update_status("Status: conectando ao MetaTrader 5...")
+        self.root.update_idletasks()
+        self.app.mt5_initialized = bool(self.app.mt5_connector.initialize(recursion_count=0))
+        if self.app.mt5_initialized:
+            self.app.load_symbols()
+            self.filter_symbols()
+        return self.refresh_mt5_status()
+
+    def _offer_demo_account(self):
+        """MT5 sem conta: oferece abrir a conta de demonstração gratuita e conecta em seguida."""
+        from mt5_extracao.bootstrap import demo_account, paths
+        data = demo_account.DEMO_DEFAULTS
+        if not messagebox.askyesno(
+                "Abrir conta de demonstração",
+                "O MetaTrader 5 ainda não tem uma conta, por isso não conecta.\n\n"
+                "Posso abrir agora a conta de demonstração gratuita (dinheiro virtual, servidor "
+                "MetaQuotes-Demo) e preencher o cadastro com dados do projeto:\n"
+                f"  {data['first']} {data['last']} - {data['email']}\n\n"
+                f"{demo_account.TERMS_NOTICE}\n\nAbrir a conta agora?"):
+            return
+        self.update_status("Status: abrindo a conta de demonstração (cerca de 1 minuto)...")
+        result = {}
+
+        def work():
+            try:
+                result["code"] = demo_account.open_demo_account(paths.PROJECT_ROOT, log=log.info)
+            except Exception as e:
+                log.error(f"Erro ao abrir a conta de demonstração: {e}")
+                result["code"] = 1
+
+        def wait():
+            if "code" not in result:
+                self.root.after(500, wait)
+            elif result["code"] == 0 and self._reconnect_mt5():
+                messagebox.showinfo("Conta de demonstração", "Conta aberta e MetaTrader 5 conectado.")
+            else:
+                self.refresh_mt5_status()
+                messagebox.showwarning(
+                    "Conta de demonstração",
+                    "Não consegui abrir a conta sozinho.\n\nAbra pelo MetaTrader 5 (Arquivo > Abrir uma conta) "
+                    "e depois clique em \"Verificar conexão\".")
+
+        threading.Thread(target=work, daemon=True).start()
+        self.root.after(500, wait)
+
     def check_mt5_status(self):
-        """Verifica e atualiza o status de conexão do MT5."""
+        """Verifica a conexão com o MT5 e, se não houver, oferece a correção adequada."""
         try:
-            if not self.app.mt5_connector or not hasattr(self.app.mt5_connector, '_is_mt5_running'):
+            if not self.app.mt5_connector:
                 self.update_status("Status: MT5 não inicializado")
                 return
-                
-            # Verificar se o MT5 está em execução
-            is_running = self.app.mt5_connector._is_mt5_running()
-            
-            if not is_running:
-                self.update_status("Status: MT5 não está em execução")
-                self.mt5_status_value.config(text="Desconectado", foreground="red")
+            if self.refresh_mt5_status():
+                if os.name == "nt":
+                    self._check_admin_mode()
                 return
-                
-            # Verificar se está conectado
-            if not self.app.mt5_initialized or not self.app.mt5_connector.is_initialized:
-                self.update_status("Status: MT5 em execução, mas desconectado")
-                self.mt5_status_value.config(text="Desconectado", foreground="orange")
-                
-                # Tentar reconectar
-                response = messagebox.askyesno(
-                    "Reconectar",
-                    "O MT5 está em execução, mas a aplicação não está conectada.\n\nDeseja tentar conectar agora?"
-                )
-                
-                if response:
-                    if self.app.mt5_connector.initialize(recursion_count=0):
-                        self.app.mt5_initialized = True
-                        self.update_status("Status: MT5 conectado com sucesso")
-                        self.mt5_status_value.config(text="Conectado", foreground="green")
-                        
-                        # Verificar modo de administrador
-                        self._check_admin_mode()
-                    else:
-                        self.update_status("Status: Falha ao conectar com MT5")
-                        messagebox.showerror("Erro", "Não foi possível conectar ao MT5. Verifique se o terminal está aberto e funcionando corretamente.")
-                
+
+            from mt5_extracao.bootstrap import demo_account, paths
+            cfg = demo_account.read_settings(paths.PROJECT_ROOT)
+            if cfg["mt5_dir"] and os.path.isdir(cfg["mt5_dir"]) and not demo_account.has_account(
+                    cfg["mt5_dir"], cfg["wine_prefix"] or None):
+                self._offer_demo_account()
                 return
-                
-            # Se chegou aqui, está em execução e conectado
-            self.update_status("Status: MT5 conectado")
-            self.mt5_status_value.config(text="Conectado", foreground="green")
-            
-            # Verificar modo de administrador
-            self._check_admin_mode()
-            
+            if messagebox.askyesno(
+                    "Conectar ao MetaTrader 5",
+                    "A aplicação não está conectada ao MetaTrader 5.\n\nDeseja tentar conectar agora?"):
+                if not self._reconnect_mt5():
+                    hint = ("Confira se o MetaTrader 5 abre normalmente." if os.name == "nt" else
+                            "Confira a ponte com ./scripts/mt5-bridge.sh status.")
+                    messagebox.showerror(
+                        "MetaTrader 5",
+                        "Não foi possível conectar ao MetaTrader 5.\n\n" + hint +
+                        "\nPara o diagnóstico completo, rode o comando 'mt5x doctor'.")
         except Exception as e:
             log.error(f"Erro ao verificar status do MT5: {e}")
             self.update_status(f"Erro ao verificar status: {str(e)}")

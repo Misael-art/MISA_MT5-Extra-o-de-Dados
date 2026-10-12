@@ -576,6 +576,11 @@ class AdvancedIndicators:
         try:
             result = {}
             
+            # A coleta em tempo real entrega 'time' como texto; o acessor .dt exige datetime
+            if 'time' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['time']):
+                df = df.copy()
+                df['time'] = pd.to_datetime(df['time'])
+
             # Extrai informações temporais
             if 'time' in df.columns:
                 # Dia da semana (0=segunda, 6=domingo)

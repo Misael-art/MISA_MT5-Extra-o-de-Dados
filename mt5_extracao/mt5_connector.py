@@ -1121,6 +1121,17 @@ class MT5Connector:
                 log.debug(f"Erro ao consultar o símbolo {symbol}: {e}")
         return missing
 
+    def account_summary(self):
+        """{'login', 'server', 'demo'} da conta logada, ou None se não houver conta/conexão."""
+        try:
+            info = mt5.account_info()
+            if info is None:
+                return None
+            return {"login": getattr(info, "login", ""), "server": getattr(info, "server", "") or "",
+                    "demo": getattr(info, "trade_mode", None) == 0}
+        except Exception:
+            return None
+
     def server_name(self):
         """Nome do servidor da conta logada no terminal (ex.: MetaQuotes-Demo), ou ''."""
         try:

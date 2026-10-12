@@ -44,6 +44,25 @@ ponte com o MT5 real). Roteiro em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md), 
    falhar, a conexão falha (não segue na conta errada). Validado só com o MT5 falso: falta testar com a
    conta de uma corretora.
 
+### Interface gráfica (validada em 2026-10-12 com o MT5 real, em display virtual Xvfb)
+
+Todas as telas foram abertas e os fluxos de extração histórica e coleta em tempo real executados pela GUI.
+
+| Problema encontrado | Correção |
+|---|---|
+| A GUI não abria com Tk 9 (`trace("w", ...)` foi removido): "Erro Fatal de Inicialização" | `trace_add("write", ...)` |
+| Abertura congelava por minutos com 12.306 símbolos: uma consulta e uma gravação em `_symbol_tables` por símbolo | `DatabaseManager.symbols_with_data`: uma leitura, nenhuma gravação |
+| O menu (Exportar, Estratégias, Ajuda) nunca era criado | `create_menu()` passou a ser chamado |
+| A janela de extração nunca mostrava o fim (threads mexiam no Tkinter) | fila `call_in_ui`; resumo "Concluído: N ativo(s) com sucesso" |
+| Coleta em tempo real: erros nos indicadores (`time` como texto) | conversão para datetime |
+| Janela fixa em 1680x980 cortava o conteúdo em telas menores; listas não acompanhavam a altura | tamanho limitado à tela; listas expansíveis; busca acima da lista |
+| "Status MT5: Desconectado" mesmo conectado; botão de administrador no Linux | mostra conta e servidor em uso; botão só no Windows |
+| MT5 sem conta / desconectado | a GUI oferece abrir a conta de demonstração ou reconectar |
+| "Configurações" era só "em desenvolvimento"; "Sobre" cortado; estatísticas com `None`/`nan` | tela de configuração em uso, diagnóstico em Ajuda, textos corrigidos |
+
+Não validado: aparência em um desktop real com gerenciador de janelas (as capturas foram em Xvfb), a GUI no
+Windows e o diálogo de abertura da conta demo pela GUI (o comando por trás dele foi testado).
+
 ### Extração real (conta MetaQuotes-Demo, pela ponte)
 
 | Verificação | Resultado |

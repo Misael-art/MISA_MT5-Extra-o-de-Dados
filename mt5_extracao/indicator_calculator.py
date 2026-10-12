@@ -169,6 +169,10 @@ class IndicatorCalculator:
 
         log.debug(f"Calculando variações para DataFrame com {len(df)} linhas...")
         try:
+            # A coleta em tempo real entrega 'time' como texto; as comparações de data exigem datetime
+            if not pd.api.types.is_datetime64_any_dtype(df['time']):
+                df = df.copy()
+                df['time'] = pd.to_datetime(df['time'])
             # Garante ordenação por tempo (importante para cálculos baseados em iloc)
             df = df.sort_values('time')
 

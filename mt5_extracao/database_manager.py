@@ -532,6 +532,32 @@ class DatabaseManager:
         name = row[0] if row else self._normalize_name(f"{symbol}_{timeframe_name}")
         return name if inspect(self.engine).has_table(name) else None
 
+    def symbols_with_data(self, symbols, timeframe_name):
+        """
+        {símbolo: tabela} dos símbolos que já têm tabela nesse timeframe. Uma leitura só e nenhuma
+        gravação: serve para a interface marcar os ativos mesmo com milhares de símbolos na conta.
+        """
+        if not self.is_connected():
+            return {}
+        timeframe_key = self._normalize_name(timeframe_name)
+        existing = set(self._data_tables())
+        with self.engine.connect() as conn:
+            rows = conn.execute(text("SELECT symbol, table_name FROM _symbol_tables WHERE timeframe = :t"),
+                                {"t": timeframe_key}).fetchall()
+        registered = {r[0]: r[1] for r in rows}
+        owners = {table: symbol for symbol, table in registered.items()}
+        result = {}
+        for symbol in symbols:
+            name = registered.get(symbol)
+            if name is None:
+                # Base antiga sem registro: vale o nome padrão, se não pertencer a outro símbolo
+                name = self._normalize_name(f"{symbol}_{timeframe_name}")
+                if owners.get(name, symbol) != symbol:
+                    continue
+            if name in existing:
+                result[symbol] = name
+        return result
+
     def load_ohlcv(self, symbol, timeframe_name, start=None, end=None):
         """
         Barras OHLCV (time, open, high, low, close, tick_volume, spread, real_volume) do símbolo, em
