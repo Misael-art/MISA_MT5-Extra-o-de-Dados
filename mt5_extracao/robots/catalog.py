@@ -18,6 +18,7 @@ from . import risk as risk_mod
 log = logging.getLogger(__name__)
 
 PYTHON, MQL5 = "python", "mql5"
+LIBRARY = "library"      # registro de uma pasta de robôs adicionada pela interface (não é um robô)
 KIND_LABELS = {PYTHON: "Python", MQL5: "MQL5"}
 
 # Ciclo de vida. Cada estágio só é alcançado pela tarefa que o implementa (veja docs/robos.md).
@@ -25,6 +26,14 @@ IMPORTED, COMPILED, TESTED, APPROVED, DEMO, LIVE = ("importado", "compilado", "t
 STAGES = (IMPORTED, COMPILED, TESTED, APPROVED, DEMO, LIVE)
 STAGE_LABELS = {IMPORTED: "Importado", COMPILED: "Compilado", TESTED: "Testado", APPROVED: "Bateria",
                 DEMO: "Demo", LIVE: "Real"}
+# O que falta para chegar ao estágio (texto do card)
+STAGE_NEXT = {COMPILED: "compilar no MetaEditor", TESTED: "rodar um backtest",
+              APPROVED: "passar na bateria de segurança", DEMO: "rodar em conta demo", LIVE: "operar em conta real"}
+
+
+def stages_for(kind: str) -> Tuple[str, ...]:
+    """Estratégia Python não compila nem opera: o caminho dela termina na bateria."""
+    return (IMPORTED, TESTED, APPROVED) if kind == PYTHON else STAGES
 
 
 @dataclass
@@ -41,6 +50,7 @@ class Robot:
     files: List[str] = field(default_factory=list)            # fonte + includes do projeto + presets
     missing_includes: List[str] = field(default_factory=list)  # em geral, biblioteca padrão do MT5
     inputs: List[mql.MqlInput] = field(default_factory=list)
+    enums: Dict[str, Dict[str, int]] = field(default_factory=dict)   # para mostrar o nome do valor de um preset
     presets: Dict[str, Dict[str, str]] = field(default_factory=dict)
     preset_risks: Dict[str, risk_mod.RiskRating] = field(default_factory=dict)
     risk: risk_mod.RiskRating = field(default_factory=lambda: risk_mod.RiskRating(risk_mod.UNKNOWN))
@@ -48,6 +58,7 @@ class Robot:
     dll_imports: List[str] = field(default_factory=list)
     stage: str = IMPORTED
     notes: List[str] = field(default_factory=list)             # avisos para o usuário (ex.: "não compilado")
+    results: List[dict] = field(default_factory=list)          # testes gravados, o melhor primeiro
 
     @property
     def kind_label(self) -> str:
@@ -64,6 +75,30 @@ class Robot:
             if item.group and item.group not in seen:
                 seen.append(item.group)
         return seen
+
+    def display_value(self, item: mql.MqlInput, value: Optional[str] = None) -> str:
+        """Valor de um parâmetro como o usuário lê: presets guardam enums como número ('1' -> nome do membro)."""
+        value = item.default if value is None else value
+        if item.type in self.enums:
+            member = mql.enum_member(self.enums, item.type, value)
+            if member and member != value:
+                return f"{member} ({value})"
+        return value
+
+    @property
+    def stages(self) -> Tuple[str, ...]:
+        return stages_for(self.kind)
+
+    @property
+    def next_step(self) -> str:
+        """O que falta para o próximo estágio ('' se já está no último)."""
+        stages = self.stages
+        position = stages.index(self.stage) if self.stage in stages else 0
+        return STAGE_NEXT[stages[position + 1]] if position + 1 < len(stages) else ""
+
+    @property
+    def result(self) -> Optional[dict]:
+        return self.results[0] if self.results else None
 
 
 def _slug(text: str) -> str:
@@ -171,7 +206,7 @@ def robot_from_file(path) -> Robot:
         regime=manifest.get("regime", ""), timeframes=tuple(manifest.get("timeframes", ())),
         markets=manifest.get("markets", ""), path=str(path),
         files=[str(path)] + [str(p) for p in includes] + preset_files, missing_includes=missing,
-        inputs=src.inputs, presets=presets,
+        inputs=src.inputs, enums=enums, presets=presets,
         preset_risks={name: risk_mod.rate(src.inputs, values, enums, manifest=risk_manifest)
                       for name, values in presets.items()},
         risk=risk_mod.rate(src.inputs, {}, enums, manifest=risk_manifest),
@@ -209,6 +244,10 @@ def load_catalog(config=None, db=None) -> List[Robot]:
         for robot in scan_library(folder):
             robots.setdefault(robot.key, robot)
     records = store.load_records(db)
+    for record in records.values():
+        if record["kind"] == LIBRARY:
+            for robot in scan_library(record["path"]):
+                robots.setdefault(robot.key, robot)
     for key, record in records.items():
         if key in robots or record["kind"] != MQL5:
             continue
@@ -222,7 +261,44 @@ def load_catalog(config=None, db=None) -> List[Robot]:
         robot = robots.get(key)
         if robot and record.get("stage") in STAGES and STAGES.index(record["stage"]) > STAGES.index(robot.stage):
             robot.stage = record["stage"]
+    if db is not None and getattr(db, "engine", None) is not None:
+        from mt5_extracao.strategies.validation import load_validations
+        attach_validations(list(robots.values()), load_validations(db))
     return list(robots.values())
+
+
+def attach_validations(robots: List[Robot], validations) -> None:
+    """
+    Liga às estratégias Python os vereditos já gravados por 'mt5x validate' (Filtro C), o melhor primeiro:
+    aprovados antes, depois o maior profit factor fora da amostra. Quem tem teste passa a "Testado".
+    """
+    if validations is None or len(validations) == 0:
+        return
+    for robot in robots:
+        if robot.kind != PYTHON:
+            continue
+        rows = validations[validations["strategy"] == robot.key.split(":", 1)[1]]
+        robot.results = sorted((
+            {"symbol": r.symbol, "timeframe": r.timeframe, "approved": bool(r.approved), "status": r.status,
+             "profit_factor": float(r.profit_factor_oos), "trades": int(r.trades_oos),
+             "positive_windows": float(r.positive_windows), "robust": bool(r.robust),
+             "max_drawdown": float(r.mc_dd), "when": r.created_at,
+             "source": "validação fora da amostra (walk-forward)"} for r in rows.itertuples()),
+            key=lambda x: (not x["approved"], -x["profit_factor"]))
+        if robot.results and robot.stage == IMPORTED:
+            robot.stage = TESTED
+
+
+def import_library(db, folder) -> List[Robot]:
+    """Registra uma pasta de robôs (layout do MT5 ou pasta simples) para entrar no catálogo."""
+    folder = Path(folder).expanduser().resolve()
+    if not folder.is_dir():
+        raise FileNotFoundError(f"Pasta não encontrada: {folder}")
+    found = scan_library(folder)
+    if not found:
+        raise ValueError(f"Nenhum robô (.mq5 ou .ex5 de Expert Advisor) encontrado em {folder}.")
+    store.save_record(db, f"{LIBRARY}:{_slug(str(folder))}", LIBRARY, folder.name, str(folder))
+    return found
 
 
 def import_robot(db, path) -> Robot:

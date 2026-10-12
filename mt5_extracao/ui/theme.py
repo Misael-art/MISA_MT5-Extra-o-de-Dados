@@ -97,6 +97,10 @@ class Theme:
             "Warn.TLabel": {"foreground": c["warn"], "font": self.font_bold},
         }.items():
             style.configure(name, background=c["surface"], **opts)
+        style.configure("Selected.Card.TFrame", background=c["surface"], relief="solid", borderwidth=2,
+                        bordercolor=c["accent"], lightcolor=c["accent"], darkcolor=c["accent"])
+        style.configure("Badge.TLabel", background=c["select"], foreground=c["ink"], font=self.font_small,
+                        padding=(7, 2))
         style.configure("Page.Muted.TLabel", background=c["page"], foreground=c["ink2"], font=self.font_small)
         style.configure("Page.Title.TLabel", background=c["page"], foreground=c["ink"], font=self.font_title)
 
@@ -133,6 +137,14 @@ class Theme:
         style.map("TNotebook.Tab", background=[("selected", c["surface"])], foreground=[("selected", c["accent"])],
                   padding=[("selected", (18, 9))], expand=[("selected", (0, 0, 0, 0))],
                   lightcolor=[("selected", c["surface"])], bordercolor=[("selected", c["border"])])
+
+        # Abas dentro de um painel estreito (ex.: detalhes do robô)
+        style.configure("Compact.TNotebook", background=c["surface"], borderwidth=0, tabmargins=(0, 0, 0, 0))
+        style.configure("Compact.TNotebook.Tab", background=c["surface"], foreground=c["ink2"], padding=(10, 6),
+                        borderwidth=0, font=self.font)
+        style.map("Compact.TNotebook.Tab", background=[("selected", c["field"])],
+                  foreground=[("selected", c["accent"])], padding=[("selected", (10, 6))],
+                  expand=[("selected", (0, 0, 0, 0))])
 
         style.configure("Treeview", background=c["field"], fieldbackground=c["field"], foreground=c["ink"],
                         rowheight=int(self.font.metrics("linespace") * 1.7), borderwidth=0)

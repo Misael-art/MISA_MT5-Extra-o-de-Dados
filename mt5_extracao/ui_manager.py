@@ -17,6 +17,7 @@ from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.error_handler import with_error_handling, ExportError
 from mt5_extracao.ui.analysis import AnalysisPanel
 from mt5_extracao.ui.inventory import InventoryPanel
+from mt5_extracao.ui.robots import RobotsPanel
 from mt5_extracao.ui.theme import Theme, Tooltip, card, fmt_int, fmt_num, scrolled_tree
 
 
@@ -195,6 +196,8 @@ class UIManager:
         self.notebook.add(self.inventory_panel.frame, text="Minha base")
         self.analysis_panel = AnalysisPanel(self.notebook, self)
         self.notebook.add(self.analysis_panel.frame, text="Análise")
+        self.robots_panel = RobotsPanel(self.notebook, self)
+        self.notebook.add(self.robots_panel.frame, text="Robôs")
         log_tab = ttk.Frame(self.notebook, padding=12)
         self.notebook.add(log_tab, text="Atividade")
 
@@ -210,6 +213,7 @@ class UIManager:
         self.log("Interface gráfica configurada.")
         self.filter_symbols()
         self.refresh_inventory()
+        self.robots_panel.reload()
 
         # Menu (Arquivo, Exibir, Estratégias, Ajuda)
         self.create_menu()
@@ -1446,7 +1450,8 @@ class UIManager:
         view_menu.add_command(label="Ativos", command=lambda: self.notebook.select(0))
         view_menu.add_command(label="Minha base", command=lambda: self.notebook.select(1))
         view_menu.add_command(label="Análise", command=lambda: self.notebook.select(2))
-        view_menu.add_command(label="Atividade", command=lambda: self.notebook.select(3))
+        view_menu.add_command(label="Robôs", command=lambda: self.notebook.select(self.robots_panel.frame))
+        view_menu.add_command(label="Atividade", command=lambda: self.notebook.select(4))
         view_menu.add_separator()
         view_menu.add_command(label="Atualizar a base (F5)", command=self.refresh_inventory)
 
@@ -1977,6 +1982,8 @@ class UIManager:
         def finish(message):
             status.set(message)
             run_button.state(["!disabled"])
+            if mode != "screen":      # a validação grava vereditos: os cards dos robôs mostram o resultado
+                self.robots_panel.reload()
 
         def work(tf, symbols, keys):
             from mt5_extracao.strategies import research

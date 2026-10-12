@@ -120,7 +120,7 @@ Tabelas internas:
 
 ### 4. Pontos de entrada
 
-- `app.py` + `ui_manager.py` + `mt5_extracao/ui/`: interface gráfica em abas (Ativos, Minha base, Análise, Atividade), com tema claro/escuro. Os números da aba Análise vêm de `study.py` (sem Tkinter). Os menus Arquivo, Exibir, **Estratégias** e Ajuda; extração, leitura da base e análise rodam em threads.
+- `app.py` + `ui_manager.py` + `mt5_extracao/ui/`: interface gráfica em abas (Ativos, Minha base, Análise, Robôs, Atividade), com tema claro/escuro. Os números da aba Análise vêm de `study.py` (sem Tkinter). Os menus Arquivo, Exibir, **Estratégias** e Ajuda; extração, leitura da base e análise rodam em threads.
 - `cli.py` (`mt5x`):
   - Dados: `doctor`, `symbols`, `tables`, `extract`, `update`, `quality`, `export`, `schedule`.
   - Estratégias: `strategies`, `specs`, `backtest`, `validate`, `screen`, `report`.
@@ -151,7 +151,8 @@ Guia do usuário: [robos.md](robos.md). Plano: Fase 8 em [PLANO_DE_TRABALHO.md](
 - `risk.py`: classe de risco (Baixo/Moderado/Alto/Não avaliado) com os motivos, a partir de parâmetros e preset.
 - `catalog.py`: `load_catalog(config, db)` junta as estratégias Python, as pastas de `[ROBOTS] library_dirs` e os
   robôs importados; `Robot` é o que a CLI (`mt5x robots`) e a aba "Robôs" mostram.
-- `store.py`: tabela interna `_robots` (robôs importados e estágio), criada sob demanda.
+- `store.py`: tabela interna `_robots` (robôs e pastas importados, estágio), criada sob demanda.
+- Interface: `ui/robots.py` (grade de cards, filtros, importação) e `ui/robot_detail.py` (painel do robô).
 
 ## Configuração
 

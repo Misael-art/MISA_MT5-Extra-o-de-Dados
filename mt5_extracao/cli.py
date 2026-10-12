@@ -401,7 +401,11 @@ def cmd_robots(args, ctx):
     from mt5_extracao.robots import catalog
     if args.action == "import":
         if not args.path:
-            raise ValueError("informe o arquivo do robô: mt5x robots import <arquivo.mq5 ou .ex5>")
+            raise ValueError("informe o arquivo ou a pasta: mt5x robots import <arquivo.mq5, .ex5 ou pasta>")
+        if os.path.isdir(os.path.expanduser(args.path)):
+            found = robots.import_library(ctx.db, args.path)
+            _print(f"Pasta adicionada ao catálogo: {len(found)} robô(s): " + ", ".join(r.name for r in found))
+            return EXIT_OK
         robot = robots.import_robot(ctx.db, args.path)
         _print(f"Robô importado: {robot.name} ({robot.key}). Risco: {robot.risk.level}.")
         for note in robot.notes:
@@ -610,7 +614,7 @@ def build_parser():
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
     p.add_argument("action", nargs="?", choices=["list", "import"], default="list")
-    p.add_argument("path", nargs="?", help="list: chave de um robô, para ver os parâmetros; import: arquivo .mq5/.ex5")
+    p.add_argument("path", nargs="?", help="list: chave de um robô, para ver os parâmetros; import: arquivo .mq5/.ex5 ou pasta de robôs")
     p.set_defaults(func=cmd_robots)
 
     p = sub.add_parser("specs", help="lê do MT5 as especificações de contrato (tick, lote, spread)")

@@ -12,6 +12,12 @@ A aba **Robôs** reúne num só lugar tudo o que pode operar ou ser estudado:
 
 ## Ver o catálogo (já funciona)
 
+Na interface: aba **Robôs**. Cada card mostra o tipo, o regime, a classe de risco com o motivo, as estatísticas do
+melhor teste gravado e o estágio. Clique no card para ver os parâmetros (do código ou de um preset), os testes e o
+que falta para operar. **Importar robô** aceita um arquivo `.mq5`/`.ex5` ou uma pasta no formato do MT5.
+
+Na linha de comando:
+
 ```bash
 mt5x robots                       # todos os robôs: tipo, regime, risco de cada preset e estágio
 mt5x robots list hdk_hadouken_painel   # um robô: parâmetros por grupo

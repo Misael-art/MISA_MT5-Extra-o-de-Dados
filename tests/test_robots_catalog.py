@@ -210,3 +210,50 @@ def test_robots_key_is_in_defaults_and_example():
     assert DEFAULTS["ROBOTS"]["library_dirs"] == ""
     example = (Path(__file__).parent.parent / "config" / "config.ini.example").read_text(encoding="utf-8")
     assert re.search(r"^\[ROBOTS\]\n(#.*\n)*library_dirs", example, re.M)
+
+
+def test_folder_import_validations_and_display_values(tmp_path):
+    """T8.2: pasta adicionada pela interface, vereditos gravados ligados às estratégias e nomes de enum."""
+    from mt5_extracao.strategies import validation
+    db = DatabaseManager(db_path=str(tmp_path / "db.sqlite"))
+    with pytest.raises(ValueError, match="Nenhum robô"):
+        robots.import_library(db, tmp_path)
+    assert [r.name for r in robots.import_library(db, LIBRARY)] == ["DemoGuard", "Martingale"]
+    robots.import_library(db, LIBRARY)                                        # de novo: não duplica
+
+    def verdict(approved, pf):
+        return {"strategy": "donchian", "approved": approved, "status": "x", "params": {},
+                "oos_metrics": {"profit_factor": pf, "trades": 150},
+                "checks": [{"name": "Janelas walk-forward positivas", "value": 0.6}],
+                "robustness": {"robust": approved}, "monte_carlo": {"dd_percentile": 0.15},
+                "data_start": "2020-01-01", "data_end": "2024-01-01"}
+    validation.save_validation(db, "AAA", "D1", verdict(False, 2.5))
+    validation.save_validation(db, "BBB", "D1", verdict(True, 1.4))
+    items = robots.load_catalog(None, db)
+    assert len(items) == 8
+    donchian = robots.get_robot(items, "donchian")
+    assert [r["symbol"] for r in donchian.results] == ["BBB", "AAA"]          # aprovada vem antes do maior PF
+    assert donchian.result["max_drawdown"] == 0.15 and donchian.stage == "testado"
+    assert (donchian.stages, donchian.next_step) == (("importado", "testado", "bateria"),
+                                                     "passar na bateria de segurança")
+    untested = robots.get_robot(items, "squeeze")
+    assert untested.result is None and untested.next_step == "rodar um backtest"
+
+    guard = robots.get_robot(items, "demoguard")
+    assert guard.next_step == "compilar no MetaEditor" and len(guard.stages) == 6
+    profile = next(i for i in guard.inputs if i.name == "InpProfile")
+    assert guard.display_value(profile) == "DEMO_PROFILE_MODERATE"
+    assert guard.display_value(profile, "0") == "DEMO_PROFILE_CONSERVATIVE (0)"
+    risk_input = next(i for i in guard.inputs if i.name == "InpRiskPct")
+    assert guard.display_value(risk_input, "0.4") == "0.4"
+
+
+def test_cli_imports_a_folder(cli_args, tmp_path, capsys):
+    folder = tmp_path / "meus_robos"
+    folder.mkdir()
+    (folder / "Solo.mq5").write_text("input int InpStopPoints = 100; // Stop (pontos)\nvoid OnTick() { }\n",
+                                     encoding="utf-8")
+    assert cli.main(cli_args + ["robots", "import", str(folder)]) == 0
+    assert "1 robô(s): Solo" in capsys.readouterr().out
+    assert cli.main(cli_args + ["robots"]) == 0
+    assert "mql5:solo" in capsys.readouterr().out

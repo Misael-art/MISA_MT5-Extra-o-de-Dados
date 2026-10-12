@@ -70,7 +70,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T7.1 | Interface em abas com tema, inventário da base e análise (gráficos e números de estudo) | T1.8, T6.1 | ✅ concluída (teste da janela roda só onde há display; no CI Linux ele é pulado) |
 | T8.0 | Plano da Fase 8 (robôs) e mudança de escopo registrada | T7.1 | ✅ concluída |
 | T8.1 | Catálogo de robôs: leitura de MQL5/presets, classificação de risco, tabelas `_robots*`, CLI `mt5x robots` | T8.0 | ✅ concluída (só a tabela `_robots`; `_robot_runs` e `_robot_checks` entram nas tarefas que as usam) |
-| T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | a fazer |
+| T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | ✅ concluída (mini-curva de capital fica para a T8.3, que grava as execuções) |
 | T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | a fazer |
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | a fazer |
 | T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | a fazer |
@@ -1044,7 +1044,14 @@ Biblioteca de exemplo dos testes: `tests/robots_library/`.
   presets recebem classes de risco coerentes com o perfil; bases antigas abrem sem erro; `robots/*` sem Tkinter.
 - **Armadilhas:** presets guardam enums como número (`InpProfile=1`); arquivos legados em UTF-16.
 
-### T8.2 — Aba "Robôs"
+### T8.2 — Aba "Robôs" ✅
+
+**Registrado na entrega:** o painel do robô fica ao lado da grade (mesma aba), não numa janela à parte. Os cards das
+estratégias Python já mostram a melhor validação gravada por `mt5x validate` (`catalog.attach_validations`) e passam
+a "Testado"; a mini-curva de capital depende de `_robot_runs` e fica para a T8.3. Pastas adicionadas pela interface
+são gravadas em `_robots` (tipo `library`), para não reescrever o `config.ini` do usuário. O caminho da estratégia
+Python tem 3 estágios (Importado → Testado → Bateria): ela não compila nem opera. Capturas conferidas nos dois temas
+com o HADOUKEN real em display virtual.
 
 - **Arquivos:** `ui/robots.py`, `ui/robot_detail.py`, `ui_manager.py` (aba e menu Exibir), `tests/test_ui_main_window.py`.
 - **Card:** nome, versão e selo do tipo; regime e timeframes; classe de risco + motivo curto; estatísticas do último
