@@ -20,8 +20,18 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x screen   [--symbols ...] --tf D1                       # Filtros A e B
     mt5x report   [--symbols ...] --tf D1 [--validate] [--open] # relatório HTML
 
+  Robôs e operação por agente (veja docs/agente.md):
+    mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
+    mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
+    mt5x status                                        # base, robôs, validações e próximas ações sugeridas
+    mt5x commands                                      # todos os comandos e argumentos (para agentes)
+
 Sem o pacote instalado: python -m mt5_extracao.cli ... (ou ./run.sh --cli ... / run.bat --cli ...).
 Códigos de saída: 0 sucesso, 1 falha, 2 uso incorreto.
+
+Com --json (antes do comando), a saída padrão traz um único objeto JSON:
+    {"ok": bool, "command": str, "exit_code": int, "data": {...}, "messages": [...], "errors": [...]}
+Nenhum comando pede entrada pelo teclado.
 """
 import argparse
 import logging
@@ -40,12 +50,51 @@ EXIT_OK, EXIT_FAIL, EXIT_USAGE = 0, 1, 2
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+# Modo --json: nada é impresso durante o comando; texto, erros e dados saem juntos, num objeto só.
+_OUT = {"json": False, "messages": [], "errors": [], "data": {}, "raw": False}
+
+
 def _print(msg=""):
-    print(msg, flush=True)
+    if _OUT["json"]:
+        _OUT["messages"].extend(str(msg).splitlines() or [""])
+    else:
+        print(msg, flush=True)
 
 
 def _err(msg):
-    print(f"ERRO: {msg}", file=sys.stderr, flush=True)
+    if _OUT["json"]:
+        _OUT["errors"].append(str(msg))
+    else:
+        print(f"ERRO: {msg}", file=sys.stderr, flush=True)
+
+
+def _data(**values):
+    """Dados estruturados do comando (só aparecem com --json)."""
+    _OUT["data"].update(values)
+
+
+def _jsonable(value):
+    """Converte para tipos do JSON: datas viram texto, números do numpy viram int/float, NaN/infinito viram null."""
+    import math
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, bool) or value is None or isinstance(value, str):
+        return value
+    if hasattr(value, "item") and not isinstance(value, (int, float)):      # escalares do numpy
+        try:
+            value = value.item()
+        except (ValueError, AttributeError):
+            return str(value)
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, int):
+        return value
+    if hasattr(value, "__dataclass_fields__"):
+        from dataclasses import asdict
+        return _jsonable(asdict(value))
+    return str(value)
 
 
 
@@ -142,8 +191,9 @@ def _run_blocking(start):
 
 def cmd_doctor(args, ctx):
     from mt5_extracao.bootstrap.__main__ import main as bootstrap_main
-    argv = ["doctor"] + (["--json"] if args.json else [])
-    return bootstrap_main(argv)
+    as_json = args.json or _OUT["json"]
+    _OUT["raw"] = as_json           # o doctor já imprime o próprio JSON
+    return bootstrap_main(["doctor"] + (["--json"] if as_json else []))
 
 
 def cmd_symbols(args, ctx):
@@ -151,6 +201,7 @@ def cmd_symbols(args, ctx):
     names = sorted(getattr(s, "name", str(s)) for s in items)
     for name in names:
         _print(name)
+    _data(symbols=names)
     _print(f"\n{len(names)} símbolo(s).")
     return EXIT_OK
 
@@ -160,6 +211,7 @@ def cmd_tables(args, ctx):
     for table in tables:
         last = ctx.db.get_last_timestamp(table)
         _print(f"{table}\túltimo registro: {last or '-'}")
+    _data(tables=tables, series=ctx.db.data_inventory())
     _print(f"\n{len(tables)} tabela(s).")
     return EXIT_OK
 
@@ -219,6 +271,7 @@ def cmd_extract(args, ctx):
     ok, failed, canceled = _run_blocking(lambda p, f: extractor.extract_data(
         symbols, tf.value, tf.label, start, end, include_indicators=args.indicators, overwrite=args.overwrite,
         max_workers=args.workers, update_progress_callback=p, finished_callback=f))
+    _data(ok=ok, failed=failed, canceled=canceled, symbols=symbols, timeframe=tf.name)
     _print(f"Concluído: {ok} ok, {failed} com falha, {canceled} cancelado(s).")
     return EXIT_OK if failed == 0 and canceled == 0 else EXIT_FAIL
 
@@ -231,6 +284,7 @@ def cmd_update(args, ctx):
     ok, failed, canceled = _run_blocking(lambda p, f: extractor.update_symbols(
         symbols, tf.value, tf.label, include_indicators=args.indicators, default_days=args.days_if_empty,
         max_workers=args.workers, update_progress_callback=p, finished_callback=f))
+    _data(ok=ok, failed=failed, canceled=canceled, symbols=symbols, timeframe=tf.name)
     _print(f"Concluído: {ok} ok, {failed} com falha, {canceled} cancelado(s).")
     return EXIT_OK if failed == 0 and canceled == 0 else EXIT_FAIL
 
@@ -396,6 +450,108 @@ def cmd_strategies(args, ctx):
     return EXIT_OK
 
 
+def _robot_dict(robot, full=False):
+    data = {"key": robot.key, "kind": robot.kind, "name": robot.name, "version": robot.version,
+            "regime": robot.regime, "timeframes": list(robot.timeframes), "markets": robot.markets,
+            "stage": robot.stage, "stages": list(robot.stages), "next_step": robot.next_step,
+            "risk": {"level": robot.risk.level, "reasons": robot.risk.reasons, "facts": robot.risk.facts},
+            "preset_risks": {name: {"level": r.level, "reasons": r.reasons} for name, r in robot.preset_risks.items()},
+            "has_source": robot.has_source, "dll_imports": robot.dll_imports, "notes": robot.notes,
+            "path": robot.path, "headline": robot.headline, "validations": robot.results,
+            "runs": [{k: v for k, v in run.items() if k != "equity"} for run in robot.runs]}
+    if full:
+        data.update(description=robot.description, files=robot.files, missing_includes=robot.missing_includes,
+                    presets=robot.presets, inputs=[{"name": i.name, "type": i.type, "default": i.default,
+                                                    "comment": i.comment, "group": i.group} for i in robot.inputs])
+    return data
+
+
+def _robots_backtest(args, ctx, items):
+    from mt5_extracao.robots import backtest, catalog
+    if not args.path or not args.symbol or not args.tf:
+        raise ValueError("uso: mt5x robots backtest <robô> --symbol WIN$N --tf D1 [--from AAAA-MM-DD] [--to AAAA-MM-DD]")
+    robot = catalog.get_robot(items, args.path)
+    tf = _parse_tf(args.tf)
+    start = _parse_date(args.date_from) if args.date_from else None
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+    run = backtest.run_python(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end,
+                              _parse_params(args.param))
+    m = run["metrics"]
+    _data(run=run)
+    _print(f"{robot.name} em {run['symbol']} {run['timeframe']}: {run['bars']} barras "
+           f"({run['data_start'][:10]} a {run['data_end'][:10]})")
+    _print(f"  Operações: {m['trades']}   Acerto: {_fmt_pct(m['win_rate'])}   Profit factor: "
+           f"{_fmt_num(m['profit_factor'])}   Expectativa: {_fmt_num(m['expectancy_r'])} R")
+    _print(f"  Resultado: {_fmt_pct(m['return_pct'])}   Queda máxima: {_fmt_pct(m['max_drawdown_pct'])}")
+    _print("Execução gravada (aparece no card do robô). Um backtest isolado não valida a estratégia: use 'mt5x validate'.")
+    return EXIT_OK
+
+
+def cmd_analyze(args, ctx):
+    """Os números da aba Análise (study.py) para um ativo e timeframe, sem interface."""
+    from mt5_extracao import study
+    tf = _parse_tf(args.tf)
+    periods = dict(study.PERIODS)
+    if args.period not in periods:
+        raise ValueError(f"período inválido: {args.period} (use um de: {', '.join(periods)})")
+    item = next((i for i in ctx.db.data_inventory() if i["symbol"] == args.symbol and i["timeframe"] == tf.label), None)
+    if item is None or not item["rows"]:
+        raise ValueError(f"sem barras de {args.symbol} {tf.name} na base. Rode: mt5x extract --symbols {args.symbol} "
+                         f"--tf {tf.name} --from AAAA-MM-DD")
+    df = ctx.db.load_ohlcv(args.symbol, tf.label, study.period_start(item["end"], periods[args.period]))
+    summary = study.summarize(df)
+    freshness = study.freshness(item["end"], tf.minutes)
+    season = {name: frame.reset_index().to_dict("records") for name, frame in study.seasonality(df).items()}
+    _data(symbol=args.symbol, timeframe=tf.name, period=args.period, bars=len(df), freshness=freshness,
+          summary=summary, seasonality=season)
+    _print(f"{args.symbol} {tf.name}, {args.period}: {len(df)} barras, dados {freshness}")
+    for label, key, pct in (("Último preço", "last", False), ("Retorno no período", "return_pct", True),
+                            ("Volatilidade anualizada", "volatility_pct", True),
+                            ("Queda máxima", "max_drawdown_pct", True),
+                            ("Amplitude média por barra", "mean_range_pct", True), ("Barras de alta", "up_bars_pct", True)):
+        value = summary.get(key)
+        _print(f"  {label}: " + ("—" if value is None else (f"{value:.2f}%".replace(".", ",") if pct else f"{value:g}")))
+    return EXIT_OK
+
+
+def cmd_status(args, ctx):
+    """Retrato do projeto para decidir o próximo passo sem olhar a tela."""
+    from mt5_extracao import agent
+    state = agent.status(ctx.config, ctx.db)
+    _data(**state)
+    base = state["base"]
+    _print(f"Base: {base['symbols']} ativo(s), {base['series']} série(s), {base['bars']} barras; "
+           f"{len(base['stale'])} série(s) desatualizada(s).")
+    r = state["robots"]
+    _print(f"Robôs: {r['total']} ({r['mql5']} MQL5, {r['python']} Python); por estágio: "
+           + ", ".join(f"{k} {v}" for k, v in r["by_stage"].items()))
+    v = state["validations"]
+    _print(f"Validações: {v['total']} gravada(s), {v['approved']} aprovada(s).")
+    _print("Próximas ações sugeridas:")
+    for action in state["next_actions"]:
+        _print(f"  [{action['priority']}] {action['why']}")
+        _print(f"      {action['command']}")
+    return EXIT_OK
+
+
+def cmd_commands(args, ctx):
+    """Catálogo dos comandos e argumentos, lido do próprio analisador (não fica desatualizado)."""
+    parser = build_parser()
+    sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
+    helps = {a.dest: a.help for a in sub._choices_actions}
+    catalog = []
+    for name, p in sub.choices.items():
+        arguments = [{"flags": a.option_strings or [a.dest], "required": bool(a.required) if a.option_strings
+                      else a.nargs not in ("?", "*"), "default": None if a.default is argparse.SUPPRESS else a.default,
+                      "choices": list(a.choices) if a.choices else None, "help": a.help or ""}
+                     for a in p._actions if a.dest != "help"]
+        catalog.append({"command": name, "help": helps.get(name, ""), "arguments": arguments})
+        _print(f"{name:<11} {helps.get(name, '')}")
+    _data(commands=catalog, exit_codes={"0": "sucesso", "1": "falha", "2": "uso incorreto"},
+          global_flags=["--config", "--db", "--json", "-v"])
+    return EXIT_OK
+
+
 def cmd_robots(args, ctx):
     from mt5_extracao import robots
     from mt5_extracao.robots import catalog
@@ -404,16 +560,21 @@ def cmd_robots(args, ctx):
             raise ValueError("informe o arquivo ou a pasta: mt5x robots import <arquivo.mq5, .ex5 ou pasta>")
         if os.path.isdir(os.path.expanduser(args.path)):
             found = robots.import_library(ctx.db, args.path)
+            _data(robots=[_robot_dict(r) for r in found])
             _print(f"Pasta adicionada ao catálogo: {len(found)} robô(s): " + ", ".join(r.name for r in found))
             return EXIT_OK
         robot = robots.import_robot(ctx.db, args.path)
+        _data(robots=[_robot_dict(robot)])
         _print(f"Robô importado: {robot.name} ({robot.key}). Risco: {robot.risk.level}.")
         for note in robot.notes:
             _print(f"  {note}")
         return EXIT_OK
     items = robots.load_catalog(ctx.config, ctx.db)
+    if args.action == "backtest":
+        return _robots_backtest(args, ctx, items)
     if args.path:
         items = [robots.get_robot(items, args.path)]
+    _data(robots=[_robot_dict(r, full=bool(args.path)) for r in items])
     for robot in items:
         version = f" v{robot.version}" if robot.version else ""
         _print(f"{robot.key:<28} {robot.kind_label:<7}{robot.name}{version}")
@@ -467,6 +628,9 @@ def cmd_backtest(args, ctx):
     spec = specs.load_spec(ctx.db, args.symbol)
     result = run_backtest(df, strategy, spec, research.backtest_config(ctx.config))
     m = result.metrics
+    _data(symbol=args.symbol, timeframe=tf.name, strategy=strategy.key, params=strategy.params, bars=len(df),
+          data_start=df["time"].iloc[0], data_end=df["time"].iloc[-1], metrics=m, spec_known=spec.known,
+          skipped_min_lot=result.skipped_min_lot)
     _print(f"{strategy.describe()} em {args.symbol} {tf.name}: {len(df)} barras "
            f"({df['time'].iloc[0]:%Y-%m-%d} a {df['time'].iloc[-1]:%Y-%m-%d})")
     if not spec.known:
@@ -498,6 +662,9 @@ def cmd_validate(args, ctx):
     for v in verdicts:
         _print(f"{v['symbol']:<10} {v['strategy']:<9} {v['status']}")
     approved = sum(1 for v in verdicts if v["approved"])
+    _data(timeframe=tf.name, approved=approved, missing=missing, verdicts=[
+        {k: v.get(k) for k in ("symbol", "strategy", "approved", "status", "params", "checks", "oos_metrics",
+                               "monte_carlo", "data_start", "data_end", "bars")} for v in verdicts])
     _print(f"\n{approved} de {len(verdicts)} combinação(ões) aprovada(s) no Filtro C. "
            "Resultados gravados; veja 'mt5x report'.")
     return EXIT_OK if verdicts else EXIT_FAIL
@@ -510,6 +677,7 @@ def cmd_screen(args, ctx):
     rows, missing = research.run_screen(ctx.db, symbols, tf, ctx.config)
     if missing:
         _err(research.missing_message(missing, tf))
+    _data(timeframe=tf.name, rows=rows, missing=missing)
     if rows:
         _print(asset_screener.format_table(rows))
         _print(f"\n{sum(r['valid'] for r in rows)} de {len(rows)} ativo(s) aptos (Filtro A). "
@@ -527,6 +695,7 @@ def cmd_report(args, ctx):
     path, rows, missing = research.build_report(ctx.db, symbols, tf, ctx.config, args.out)
     if missing:
         _err(research.missing_message(missing, tf))
+    _data(path=os.path.abspath(path), rows=rows, missing=missing)
     _print(f"Relatório salvo em {os.path.abspath(path)}")
     if args.open:
         import webbrowser
@@ -541,6 +710,8 @@ def build_parser():
     parser.add_argument("--config", default=services.DEFAULT_CONFIG_PATH, help="config.ini (padrão config/config.ini)")
     parser.add_argument("--db", help="caminho do banco SQLite (padrão: [DATABASE] path)")
     parser.add_argument("-v", "--verbose", action="store_true", help="mostra os logs detalhados")
+    parser.add_argument("--json", dest="json_output", action="store_true",
+                        help="saída em um único objeto JSON (para agentes e scripts); use antes do comando")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("doctor", help="diagnóstico do ambiente")
@@ -613,9 +784,26 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import"], default="list")
-    p.add_argument("path", nargs="?", help="list: chave de um robô, para ver os parâmetros; import: arquivo .mq5/.ex5 ou pasta de robôs")
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest"], default="list")
+    p.add_argument("path", nargs="?", help="list/backtest: chave do robô; import: arquivo .mq5/.ex5 ou pasta de robôs")
+    p.add_argument("--symbol", help="backtest: ativo")
+    p.add_argument("--tf", help="backtest: timeframe (ex.: D1)")
+    p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
+    p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
+    p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
     p.set_defaults(func=cmd_robots)
+
+    p = sub.add_parser("analyze", help="números de estudo de um ativo (retorno, volatilidade, queda, sazonalidade)")
+    p.add_argument("--symbol", required=True)
+    p.add_argument("--tf", required=True)
+    p.add_argument("--period", default="1 ano", help='"1 mês", "3 meses", "6 meses", "1 ano" ou "Tudo"')
+    p.set_defaults(func=cmd_analyze)
+
+    p = sub.add_parser("status", help="retrato da base, dos robôs e das validações, com as próximas ações sugeridas")
+    p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("commands", help="lista todos os comandos e argumentos (para agentes)")
+    p.set_defaults(func=cmd_commands)
 
     p = sub.add_parser("specs", help="lê do MT5 as especificações de contrato (tick, lote, spread)")
     p.add_argument("--symbols", required=True)
@@ -670,7 +858,22 @@ def main(argv=None):
     args = parser.parse_args(argv)
     # Arquivo de log sempre completo (INFO); no console só avisos e erros, salvo com -v
     setup_logging(console_level=logging.INFO if args.verbose else logging.WARNING)
+    _OUT.update(json=bool(args.json_output), messages=[], errors=[], data={}, raw=False)
     ctx = Context(args)
+    try:
+        code = _run_command(args, ctx)
+        if _OUT["json"] and not _OUT["raw"]:
+            import json
+            print(json.dumps(_jsonable({"ok": code == EXIT_OK, "command": args.command, "exit_code": code,
+                                        "data": _OUT["data"], "messages": _OUT["messages"],
+                                        "errors": _OUT["errors"]}), ensure_ascii=False), flush=True)
+        return code
+    finally:
+        _OUT["json"] = False
+        teardown_logging()
+
+
+def _run_command(args, ctx):
     try:
         return args.func(args, ctx)
     except ValueError as e:
@@ -682,8 +885,6 @@ def main(argv=None):
     except KeyboardInterrupt:
         _err("interrompido pelo usuário")
         return EXIT_FAIL
-    finally:
-        teardown_logging()
 
 
 if __name__ == "__main__":
