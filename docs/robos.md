@@ -94,6 +94,24 @@ O programa instala o robô, inicia, acompanha o resultado e tem o botão **PARAR
 
 Conta real vem **desligada** de fábrica.
 
+## Painel: tudo de uma vez
+
+`mt5x panel --open` gera e abre uma página com a visão de conjunto: os ativos com base, os timeframes e, para o
+robô ou a estratégia escolhida, o resultado de cada combinação. Para preencher o painel de uma vez:
+
+```bash
+mt5x robots backtest robo1,robo2 --symbols EURUSD,GBPUSD --tfs M15,H1 --resume --close-terminal
+mt5x panel --open
+```
+
+- **Por ativo:** uma linha por ativo, uma coluna por timeframe; a cor e o ícone dizem a situação.
+- **Por robô:** todos os robôs lado a lado e, para o escolhido, onde o resultado foi positivo.
+
+![Painel, visão por ativo](img/painel_por_ativo.png)
+
+Leia a legenda do painel: **promissor não é aprovado** (falta a bateria ou a validação naquele ativo e timeframe),
+menos de 30 operações não prova nada, e um backtest Python de ativo sem `mt5x specs` aparece como "não confiável".
+
 > **Antes de confiar em um número, leia [sdk/exatidao.md](sdk/exatidao.md):** o que está provado, o que foi
 > corrigido e as lacunas que continuam (por exemplo, o backtester Python é otimista em custos).
 

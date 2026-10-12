@@ -22,6 +22,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
 
   Robôs e operação por agente (veja docs/agente.md):
     mt5x resample --symbols X --base M1 --tf M5,M15,H1    # monta timeframes maiores de uma base menor
+    mt5x panel [--open]                                # painel visual: ativos x timeframes x robôs
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
@@ -312,6 +313,31 @@ def cmd_mt5(args, ctx):
             _print("Atenção: há um terminal aberto fora da vista. Um robô pode estar operando nele.")
     else:
         _print("Modo oculto: desligado (o terminal abre na sua tela).")
+    return EXIT_OK
+
+
+def cmd_panel(args, ctx):
+    """Painel visual (um arquivo HTML) com a matriz ativo x timeframe x robô. Só leitura."""
+    from mt5_extracao.robots import matrix, panel
+    data = matrix.build(ctx.db, ctx.config)
+    out = args.out or str(PROJECT_ROOT / "exports" / "painel_resultados.html")
+    path = panel.write(data, out)
+    counts = {}
+    for cell in data["cells"]:
+        counts[cell["status"]] = counts.get(cell["status"], 0) + 1
+    _data(panel=str(path), symbols=len(data["symbols"]), timeframes=data["timeframes"], robots=len(data["robots"]),
+          cells=len(data["cells"]), by_status=counts)
+    _print(f"Painel gravado em {path}")
+    _print(f"  {len(data['symbols'])} ativo(s), {len(data['timeframes'])} timeframe(s), {len(data['robots'])} robô(s) e "
+           f"estratégia(s), {len(data['cells'])} combinação(ões) testada(s)" +
+           ("" if data["cells"] else ". Ainda não há backtests: rode 'mt5x robots backtest ...' e gere de novo."))
+    if counts:
+        _print("  " + " · ".join(f"{n} {status}" for status, n in sorted(counts.items(), key=lambda kv: -kv[1])))
+    if args.open:
+        import webbrowser
+        webbrowser.open(path.resolve().as_uri())
+    else:
+        _print("Abra o arquivo no navegador (ou repita com --open).")
     return EXIT_OK
 
 
@@ -1404,6 +1430,11 @@ def build_parser():
     p = sub.add_parser("symbols", help="lista símbolos do MT5")
     p.add_argument("--group", default="*", help='filtro do MT5, ex.: "*WIN*"')
     p.set_defaults(func=cmd_symbols)
+
+    p = sub.add_parser("panel", help="painel visual (HTML) com os resultados por ativo, timeframe e robô")
+    p.add_argument("--out", help="arquivo HTML a gravar (padrão: exports/painel_resultados.html)")
+    p.add_argument("--open", action="store_true", help="abre o painel no navegador")
+    p.set_defaults(func=cmd_panel)
 
     p = sub.add_parser("mt5", help="estado do terminal e, no modo oculto, captura da tela virtual")
     p.add_argument("action", nargs="?", choices=["status", "show"], default="status")

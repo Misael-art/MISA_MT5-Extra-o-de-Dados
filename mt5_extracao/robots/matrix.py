@@ -8,7 +8,9 @@ Matriz de resultados: ativo x timeframe x robô, para ver o conjunto de uma vez 
 Três regras para a matriz não enganar (docs/PLANO_DE_TRABALHO.md, "Painel macro de resultados"):
 1. "Positivo" não é "aprovado": APPROVED só para quem passou na bateria (robô MQL5) ou na validação (estratégia
    Python) naquele ativo e timeframe.
-2. Com menos de MIN_TRADES operações a célula é FEW_TRADES, qualquer que seja o lucro.
+2. Com menos de MIN_TRADES operações a célula é FEW_TRADES, qualquer que seja o lucro. E um backtest Python de
+   ativo sem especificação de contrato é UNRELIABLE: os valores em dinheiro não valem (visto no host: profit
+   factor 0,00 em GBPUSD só por falta da especificação).
 3. Cada célula diz de onde o número veio (`origin`): Python é otimista em custo; no Strategy Tester, o modelo.
 
 Cada célula traz a execução MAIS RECENTE da combinação, não a melhor. Só leitura: não roda teste nenhum.
@@ -20,6 +22,7 @@ from . import catalog, store
 
 MIN_TRADES = 30
 APPROVED, REJECTED, PROMISING, FEW_TRADES, NEGATIVE = "aprovado", "reprovado", "promissor", "poucas operações", "negativo"
+UNRELIABLE = "não confiável"
 UNTESTED, NO_DATA = "sem teste", "sem base"
 STATUS_LABELS = {
     APPROVED: "Passou na bateria de segurança (robô MQL5) ou na validação (estratégia Python) neste ativo e timeframe",
@@ -27,6 +30,8 @@ STATUS_LABELS = {
     PROMISING: "Deu lucro com 30 ou mais operações, mas ainda não passou pela bateria ou pela validação",
     FEW_TRADES: "Menos de 30 operações: o resultado não prova nada, qualquer que seja",
     NEGATIVE: "Perdeu dinheiro no teste",
+    UNRELIABLE: "Backtest Python de um ativo sem especificação de contrato: lote e valores são aproximados. Rode "
+                "'mt5x specs --symbols <ativo>' e teste de novo",
     UNTESTED: "Há barras na base, mas este robô ainda não foi testado aqui",
     NO_DATA: "Não há barras deste ativo neste timeframe na base",
 }
@@ -38,7 +43,9 @@ def _timeframe_order() -> Dict[str, int]:
     return {tf.name: tf.minutes for tf in Timeframe}
 
 
-def _status(net: float, trades: int, verdict: Optional[bool]) -> str:
+def _status(net: float, trades: int, verdict: Optional[bool], reliable: bool = True) -> str:
+    if not reliable:
+        return UNRELIABLE
     if trades < MIN_TRADES:
         return FEW_TRADES
     if verdict is True:
@@ -101,7 +108,8 @@ def build(db, config=None, robots: Optional[List] = None) -> dict:
             "Strategy Tester, " + str(m.get("tester_model") or "modelo não registrado")
         cells.append({
             "robot": run["robot_key"], "symbol": run["symbol"], "timeframe": run["timeframe"],
-            "status": _status(net, trades, verdict["approved"] if verdict else None),
+            "status": _status(net, trades, verdict["approved"] if verdict else None,
+                              reliable=robot.kind != catalog.PYTHON or bool(m.get("spec_known", True))),
             "trades": trades, "win_rate": float(m.get("win_rate", 0.0)),
             "profit_factor": float(m.get("profit_factor", 0.0)), "return_pct": float(m.get("return_pct", 0.0)),
             "net_profit": net, "max_drawdown_pct": float(m.get("max_drawdown_pct", 0.0)),

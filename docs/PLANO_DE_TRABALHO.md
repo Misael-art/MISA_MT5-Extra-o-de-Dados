@@ -101,7 +101,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | ✅ concluída para as ações do programa; os avisos de operações do robô só com MT5 simulado (dependem da T8.7) |
 | T11.5 | Lote de backtests: robôs × ativos × timeframes em fila, com retomada | T11.2 | ✅ concluída (executada no host) |
 | T11.6 | Matriz de resultados (ativo × timeframe × robô) como camada de dados | T11.5 | ✅ concluída |
-| T11.7 | Painel visual em HTML: visão por ativo e visão por robô | T11.6 | a fazer |
+| T11.7 | Painel visual em HTML: visão por ativo e visão por robô | T11.6 | ✅ concluída (conferida com dados reais do host) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -2035,7 +2035,29 @@ regras têm um teste cada. Só leitura: `build` não roda teste nenhum.
 - **Critérios de aceite:** as três regras acima cobertas por teste; execuções auxiliares (bateria completa,
   paridade) não entram.
 
-### T11.7 — Painel visual
+### T11.7 — Painel visual ✅
+
+**Registrado na entrega:** `robots/panel.py` e `mt5x panel [--out arquivo.html] [--open]` (padrão:
+`exports/painel_resultados.html`). Um arquivo só, com os dados embutidos, sem servidor e sem nada baixado da
+internet (um teste confere que não há nenhum endereço externo). Visão **por ativo**: matriz ativo × timeframe do
+robô escolhido, com o número em destaque à escolha (resultado, profit factor, operações ou queda máxima). Visão
+**por robô**: um quadro de todos os robôs com quantas combinações há em cada situação e, abaixo, onde o robô
+escolhido deu positivo, com os aprovados primeiro. Clicar em uma célula mostra o detalhe (período, origem do número,
+veredito). Tema claro e escuro; em tela estreita a matriz rola dentro do cartão. Cada situação tem ícone e texto,
+nunca só cor. A página guarda a visão, o robô e o número no endereço (`#robot/mql5:meurobo/return_pct`).
+
+**Conferido com dados reais (2026-10-12, host):** 3 ativos, 4 timeframes, 8 robôs e 84 combinações (72 de
+estratégias Python e 12 de robôs MQL5 com ticks reais), aberto em navegador sem interface nas duas visões, nos dois
+temas e em largura de celular. Imagens: [por ativo](img/painel_por_ativo.png) e [por robô](img/painel_por_robo.png).
+
+**Achado da conferência, corrigido na matriz:** as estratégias Python em GBPUSD e USDJPY apareciam com profit factor
+0,00 porque esses ativos não tinham a especificação de contrato gravada (`mt5x specs`); o backtester usa valores
+genéricos e o resultado em dinheiro não vale. A matriz ganhou a situação **não confiável** para esse caso (48 das 72
+células Python do teste), que não entra na visão por robô. Outro defeito achado pelo teste: o texto embutido usava um
+escape que o `JSON.parse` recusaria se um nome de robô tivesse `<!--`; passou a usar `\u003c`.
+
+**Limites:** o painel é uma fotografia: gere de novo depois de novos testes. Não roda testes nem filtra por período.
+A aparência foi vista em capturas de um navegador sem interface, não em uso com mouse e teclado.
 
 - **Objetivo:** o painel que a pessoa abre e entende de relance.
 - **Arquivos:** `robots/panel.py` (novo), `cli.py`, `tests/test_robots_panel.py` (novo), `docs/robos.md`.

@@ -50,7 +50,7 @@ def test_inventory_timeframes_and_what_is_missing(env):
     assert matrix.cell_status(m, robots[0].key, "EURUSD", "H1") == matrix.UNTESTED
     assert matrix.cell_status(m, robots[0].key, "GBPUSD", "M15") == matrix.NO_DATA
     assert set(m["statuses"]) == {matrix.APPROVED, matrix.REJECTED, matrix.PROMISING, matrix.FEW_TRADES,
-                                  matrix.NEGATIVE, matrix.UNTESTED, matrix.NO_DATA}
+                                  matrix.NEGATIVE, matrix.UNRELIABLE, matrix.UNTESTED, matrix.NO_DATA}
 
 
 def test_rule_1_profit_is_not_approval(env):
@@ -81,6 +81,20 @@ def test_rule_2_few_trades_never_count(env):
     m = matrix.build(db, None, robots)
     assert cell(m, mql, "EURUSD", "H1")["status"] == matrix.FEW_TRADES and m["min_trades"] == 30
     assert matrix.positives(m, mql.key) == []
+
+
+def test_python_backtest_without_contract_spec_is_unreliable(env):
+    db, robots = env
+    mql, donchian = robots[0], robots[1]
+    run(db, donchian, "EURUSD", "H1", net=900, source="backtest", spec_known=False)
+    run(db, donchian, "GBPUSD", "H1", net=900, source="backtest", spec_known=True)
+    run(db, mql, "EURUSD", "H1", net=900)                        # robô MQL5: o Tester conhece o contrato
+    m = matrix.build(db, None, robots)
+    assert cell(m, donchian, "EURUSD", "H1")["status"] == matrix.UNRELIABLE
+    assert cell(m, donchian, "GBPUSD", "H1")["status"] == matrix.PROMISING
+    assert cell(m, mql, "EURUSD", "H1")["status"] == matrix.PROMISING
+    assert [r["symbol"] for r in matrix.positives(m, donchian.key)] == ["GBPUSD"]
+    assert "mt5x specs" in m["statuses"][matrix.UNRELIABLE]
 
 
 def test_rule_3_every_cell_says_where_the_number_came_from(env):
