@@ -77,6 +77,8 @@ def status(config, db) -> dict:
     if uncompiled:
         add("compilar", "Robô(s) MQL5 ainda não compilado(s): " + ", ".join(uncompiled) + ".",
             "compilar no MetaEditor (F7)", requires_human=True)
+    add("auditar", "Auditoria de segurança (projeto, patrimônio e capital): rode a cada ciclo e antes de operar.",
+        "mt5x audit")
     return {
         "base": base,
         "robots": {"total": len(catalog), "mql5": sum(r.kind == robots_core.MQL5 for r in catalog),

@@ -24,6 +24,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
     mt5x status                                        # base, robôs, validações e próximas ações sugeridas
+    mt5x audit [--mt5] [--fail-on alto]                # segurança do projeto, patrimonial e do capital
     mt5x commands                                      # todos os comandos e argumentos (para agentes)
 
 Sem o pacote instalado: python -m mt5_extracao.cli ... (ou ./run.sh --cli ... / run.bat --cli ...).
@@ -534,6 +535,28 @@ def cmd_status(args, ctx):
     return EXIT_OK
 
 
+def cmd_audit(args, ctx):
+    """Auditoria de segurança do projeto, patrimonial e da gestão do capital."""
+    from mt5_extracao import audit
+    account = ctx.connector().account_summary() if args.mt5 else None
+    try:
+        db = ctx.db
+    except RuntimeError:
+        db = None
+    findings = audit.run_audit(PROJECT_ROOT, ctx.config, db, account)
+    blocking = audit.failures(findings, args.fail_on)
+    summary = audit.summarize(findings)
+    _data(summary=summary, findings=[f.to_dict() for f in findings], blocking=[f.id for f in blocking])
+    marks = {audit.FAIL: "✗", audit.OK: "✓", audit.SKIPPED: "–"}
+    for f in findings:
+        _print(f"{marks[f.status]} [{f.area}/{f.severity}] {f.id} {f.title}" + (f": {f.detail}" if f.detail else ""))
+        if f.status == audit.FAIL and f.fix:
+            _print(f"    Como corrigir: {f.fix}")
+    _print(f"\n{summary['failed']} achado(s) em {summary['total']} verificações "
+           f"({summary['skipped']} não verificada(s)). Bloqueiam (≥ {args.fail_on}): {len(blocking)}.")
+    return EXIT_FAIL if blocking else EXIT_OK
+
+
 def cmd_commands(args, ctx):
     """Catálogo dos comandos e argumentos, lido do próprio analisador (não fica desatualizado)."""
     parser = build_parser()
@@ -801,6 +824,12 @@ def build_parser():
 
     p = sub.add_parser("status", help="retrato da base, dos robôs e das validações, com as próximas ações sugeridas")
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("audit", help="auditoria de segurança: projeto, patrimônio e gestão do capital")
+    p.add_argument("--mt5", action="store_true", help="consulta o MT5 para saber se a conta conectada é demo ou real")
+    p.add_argument("--fail-on", default="alto", choices=["crítico", "alto", "médio", "baixo"],
+                   help="gravidade mínima que faz o comando sair com código 1 (padrão: alto)")
+    p.set_defaults(func=cmd_audit)
 
     p = sub.add_parser("commands", help="lista todos os comandos e argumentos (para agentes)")
     p.set_defaults(func=cmd_commands)

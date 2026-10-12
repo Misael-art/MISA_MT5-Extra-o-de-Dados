@@ -10,7 +10,7 @@ REPO = Path(__file__).resolve().parents[1]
 CORE_MODULES = ["mt5_extracao.mt5_connector", "mt5_extracao.error_handler", "mt5_extracao.historical_extractor",
                 "mt5_extracao.database_manager", "mt5_extracao.indicator_calculator", "mt5_extracao.security",
                 "mt5_extracao.mt5_backend", "mt5_extracao.timeframes", "mt5_extracao.study", "mt5_extracao.robots",
-                "mt5_extracao.agent"]
+                "mt5_extracao.agent", "mt5_extracao.audit"]
 
 
 def test_core_imports_without_metatrader5_and_tkinter(tmp_path):
