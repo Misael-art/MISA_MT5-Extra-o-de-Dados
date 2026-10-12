@@ -48,6 +48,7 @@ def test_panel_is_one_self_contained_file(env):
     assert cell["origin"] == "Strategy Tester, cada tick com ticks reais" and cell["preset"] == "Painel_Conservador"
     for word in ("Por ativo", "Por robô", "O que cada situação significa", "mais recente", "otimistas em custo"):
         assert word in html
+    assert "[hidden] { display: none !important; }" in html      # caixas escondidas não podem aparecer vazias
 
 
 def test_panel_carries_no_personal_paths_trades_or_accounts(env):

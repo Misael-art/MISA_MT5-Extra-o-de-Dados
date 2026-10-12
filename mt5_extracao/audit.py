@@ -143,6 +143,20 @@ def check_bridge(root: Path, config) -> List[Finding]:
     return [exposed, open_service]
 
 
+def check_panel() -> Finding:
+    """O painel vivo executa ações: só pode escutar na própria máquina e precisa de chave."""
+    from mt5_extracao.robots import panel_server
+    f = Finding("P7", PROJECT, CRITICAL, OK, "Painel vivo só na própria máquina e com chave")
+    if panel_server.HOST not in ("127.0.0.1", "localhost", "::1"):
+        f.status = FAIL
+        f.detail = f"o painel escutaria em {panel_server.HOST}: qualquer máquina da rede poderia acionar os botões"
+        f.fix = "Volte panel_server.HOST para 127.0.0.1."
+    elif not getattr(panel_server.PanelApp, "check_key", None):
+        f.status, f.detail = FAIL, "o painel não confere a chave da sessão"
+        f.fix = "Restaure PanelApp.check_key: sem ela, qualquer página aberta no navegador dispara ações."
+    return f
+
+
 def check_python_orders(root: Path) -> Finding:
     f = Finding("A2", ASSETS, CRITICAL, OK, "O Python não envia ordens")
     files = list((root / "mt5_extracao").rglob("*.py")) + list((root / "scripts").rglob("*.py")) + [root / "app.py"]
@@ -301,7 +315,7 @@ def run_audit(root, config=None, db=None, account: Optional[dict] = None, catalo
         from mt5_extracao import robots
         catalog = robots.load_catalog(config, db)
     findings = [check_tracked_secrets(root), check_env_permissions(root), check_config_secrets(config),
-                check_logs(root), *check_bridge(root, config), check_python_orders(root),
+                check_logs(root), *check_bridge(root, config), check_panel(), check_python_orders(root),
                 check_dependencies(installed), *check_account(account, config), *check_robots(catalog),
                 *check_capital(config), *check_validations(db)]
     order = {FAIL: 0, SKIPPED: 1, OK: 2}

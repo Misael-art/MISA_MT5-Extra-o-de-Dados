@@ -103,7 +103,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.6 | Matriz de resultados (ativo × timeframe × robô) como camada de dados | T11.5 | ✅ concluída |
 | T11.7 | Painel visual em HTML: visão por ativo e visão por robô | T11.6 | ✅ concluída (conferida com dados reais do host) |
 | T11.8 | Botão na interface para abrir o painel de resultados | T11.7 | ✅ concluída |
-| T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | a fazer |
+| T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | ✅ concluída (conferida no host) |
 | T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -2097,7 +2097,29 @@ menus Exibir e Estratégias (`UIManager.open_results_panel`). Gera `exports/pain
 com o que há na base e abre no navegador. Conferido em teste com a janela real e em uma captura da aba Robôs.
 Quando a T11.9 entrar, o mesmo botão passa a abrir o painel vivo.
 
-### T11.9 — Painel vivo: servidor, atualização e ações sem MT5
+### T11.9 — Painel vivo: servidor, atualização e ações sem MT5 ✅
+
+**Registrado na entrega:** `robots/panel_server.py` (só biblioteca padrão), `mt5x panel --serve [--open] [--port N]`
+e o botão **Painel de resultados** da interface, que agora sobe o painel vivo dentro do próprio programa (e cai para
+o arquivo se a porta não abrir). A página consulta o servidor a cada 2 s (trabalho em curso) e 10 s (matriz) e se
+redesenha quando a versão dos dados muda. Botões: **Testar o que falta** (estratégia Python escolhida, em cada ativo
+e timeframe com base ainda sem teste), **Montar timeframes** (os maiores, a partir do menor que há na base),
+**PARAR TUDO** (com confirmação na própria página) e, no detalhe da célula, **Rodar a bateria neste ativo** e
+**Testar de novo**. O progresso e o resultado aparecem na faixa do painel e em um aviso do sistema.
+
+As seis regras de segurança têm teste: pedido sem chave ou com chave errada (403), `Host` de fora ou de outra porta
+(403), `Origin` de outra página (403), chave no endereço não vale em `POST`, ação fora da lista e parâmetro que não
+existe (recusados com o motivo), segundo trabalho enquanto um roda (409). A lista de ações é `backtest`, `resample`,
+`battery` e `stop_all`; o teste trava essa lista. `mt5x audit` ganhou o item P7 (painel só na própria máquina e
+com chave).
+
+**Conferido no host (2026-10-12):** `mt5x panel --serve` escutando só em `127.0.0.1`; sem chave 403, com chave 200,
+com `Host` de outra máquina 403; uma bateria disparada pela API apareceu na página viva (captura em navegador sem
+interface). **Não conferido:** os cliques dos botões em um navegador de verdade (a ação foi disparada pela mesma
+chamada que o botão faz, não pelo clique).
+
+**Limites:** o backtest de robô MQL5 pelo painel fica para a T11.10 (ele fecha o MetaTrader 5); o painel vivo só
+existe enquanto o `mt5x panel --serve` ou a janela do programa estiverem abertos; a chave muda a cada vez.
 
 - **Arquivos:** `robots/panel_server.py` (novo, só biblioteca padrão), `robots/panel.py`, `cli.py`, `ui_manager.py`,
   `audit.py`, `tests/test_panel_server.py` (novo).

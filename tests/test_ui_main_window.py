@@ -201,20 +201,22 @@ def test_backtest_from_the_robot_card(ui):
     assert not detail.run_box.winfo_ismapped() and "Strategy Tester" in detail.tests_text.cget("text")
 
 
-def test_results_panel_button_generates_and_opens_the_page(ui, tmp_path, monkeypatch):
-    """T11.8: o painel de resultados tem botão na aba Robôs e item nos menus Exibir e Estratégias."""
-    from mt5_extracao.bootstrap import paths
-    monkeypatch.setattr(paths, "PROJECT_ROOT", tmp_path)                  # não grava na pasta exports do projeto
+def test_results_panel_button_opens_the_live_panel(ui, tmp_path, monkeypatch):
+    """T11.8/T11.9: o painel tem botão na aba Robôs e item nos menus; abre o painel vivo (servidor local)."""
+    import urllib.request
     opened = []
     button = ui.robots_panel.panel_button
     assert "Painel de resultados" in button.cget("text")
-    monkeypatch.setattr(ui, "open_results_panel", lambda opener=None: type(ui).open_results_panel(ui, opened.append))
-    type(ui).open_results_panel(ui, opened.append)
-    ui.pump(1.0)
-    target = tmp_path / "exports" / "painel_resultados.html"
-    assert target.is_file() and opened == [target.resolve().as_uri()]
-    html = target.read_text(encoding="utf-8")
-    assert "Painel de resultados" in html and "WIN$N" in html           # o ativo que está na base de teste
+    try:
+        type(ui).open_results_panel(ui, opened.append)
+        url = opened[0]
+        assert url.startswith("http://127.0.0.1:") and "?k=" in url
+        html = urllib.request.urlopen(url, timeout=5).read().decode("utf-8")
+        assert "Painel de resultados" in html and "WIN$N" in html           # o ativo que está na base de teste
+        type(ui).open_results_panel(ui, opened.append)                      # segundo clique: o mesmo servidor
+        assert opened[1] == url
+    finally:
+        ui._panel_server.stop()
     labels = []
     menu_bar = ui.root.nametowidget(ui.root.cget("menu"))
     for i in range(menu_bar.index("end") + 1):
@@ -222,3 +224,18 @@ def test_results_panel_button_generates_and_opens_the_page(ui, tmp_path, monkeyp
         labels += [submenu.entrycget(j, "label") for j in range(submenu.index("end") + 1)
                    if submenu.type(j) == "command"]
     assert sum("Painel de resultados" in label for label in labels) == 2
+
+
+def test_results_panel_falls_back_to_the_snapshot_file(ui, tmp_path, monkeypatch):
+    from mt5_extracao.bootstrap import paths
+    from mt5_extracao.robots import panel_server
+
+    def no_port(*a, **k):
+        raise OSError("sem porta")
+    monkeypatch.setattr(panel_server, "PanelServer", no_port)
+    monkeypatch.setattr(paths, "PROJECT_ROOT", tmp_path)                  # não grava na pasta exports do projeto
+    opened = []
+    type(ui).open_results_panel(ui, opened.append)
+    ui.pump(1.0)
+    target = tmp_path / "exports" / "painel_resultados.html"
+    assert target.is_file() and opened == [target.resolve().as_uri()]

@@ -35,6 +35,7 @@ _TEMPLATE = r"""<!doctype html>
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
 header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
@@ -94,6 +95,19 @@ tr.sel td { background: var(--none-bg); }
 .legend li { display: grid; grid-template-columns: 160px 1fr; gap: 10px; font-size: 13px; align-items: start; }
 .warn { margin-top: 10px; font-size: 13px; color: var(--muted); border-left: 3px solid var(--few); padding-left: 10px; }
 .blank { padding: 28px 16px; color: var(--muted); text-align: center; }
+.live { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.live .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.live .state { color: var(--muted); font-size: 13px; margin-right: auto; display: flex; gap: 8px; align-items: center; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); display: inline-block; }
+.dot.off { background: var(--bad); } .dot.busy { background: var(--few); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .btn.primary { color: #0c1420; }
+.btn.danger { border-color: var(--bad); color: var(--bad); font-weight: 600; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.job { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 10px; font-size: 13px; }
+.job b { font-size: 14px; } .job pre { margin: 6px 0 0; white-space: pre-wrap; color: var(--muted); font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; max-height: 150px; overflow: auto; }
+.confirm { margin-top: 10px; padding: 10px; border: 1px solid var(--bad); border-radius: 8px; font-size: 13px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 @media (max-width: 640px) { .legend li { grid-template-columns: 1fr; } .field { min-width: 46%; flex: 1; } h1 { font-size: 20px; } }
 </style>
 </head>
@@ -106,6 +120,16 @@ tr.sel td { background: var(--none-bg); }
     </div>
     <button class="btn" id="theme" type="button" aria-label="Alternar tema claro e escuro">Tema</button>
   </header>
+  <div class="live" id="live" hidden>
+    <div class="row">
+      <div class="state"><span class="dot" id="dot"></span><span id="livestate">Painel vivo</span></div>
+      <button class="btn primary" id="act-missing" type="button">Testar o que falta</button>
+      <button class="btn" id="act-resample" type="button">Montar timeframes</button>
+      <button class="btn danger" id="act-stop" type="button">PARAR TUDO</button>
+    </div>
+    <div class="confirm" id="confirm" hidden></div>
+    <div class="job" id="job" hidden></div>
+  </div>
   <div class="chips" id="chips"></div>
   <div class="bar">
     <div class="field" style="min-width:auto">
@@ -133,6 +157,8 @@ tr.sel td { background: var(--none-bg); }
     <ul id="legend"></ul>
     <p class="warn">Cada célula mostra o teste <b>mais recente</b> daquela combinação, não o melhor. Lucro em backtest não é garantia de
     resultado. Números do backtester Python são otimistas em custo: a palavra final é a do Strategy Tester com ticks reais.</p>
+    <p class="warn" id="livenote" hidden>Painel vivo: os botões executam ações do programa neste computador, uma por vez. Por aqui não se
+    inicia robô em conta nem se libera o PARAR TUDO: isso continua sendo feito pela linha de comando.</p>
   </div>
 </div>
 <script id="data" type="application/json">__DATA__</script>
@@ -140,6 +166,8 @@ tr.sel td { background: var(--none-bg); }
 (function () {
   "use strict";
   var M = JSON.parse(document.getElementById("data").textContent);
+  var LIVE = __LIVE__ && location.protocol !== "file:";
+  var KEY = (location.search.match(/[?&]k=([^&#]+)/) || [])[1] || "";
   var ICON = {"aprovado": "✓", "promissor": "↗", "reprovado": "×", "negativo": "▼", "poucas operações": "…", "não confiável": "⚠", "sem teste": "○", "sem base": "–"};
   var CLS = {"aprovado": "st-aprovado", "promissor": "st-promissor", "reprovado": "st-reprovado", "negativo": "st-negativo", "poucas operações": "st-poucas", "não confiável": "st-poucas"};
   var ORDER = ["aprovado", "promissor", "reprovado", "negativo", "poucas operações", "não confiável", "sem teste", "sem base"];
@@ -162,7 +190,12 @@ tr.sel td { background: var(--none-bg); }
     return pct(cell.return_pct);
   }
   var cells = {};
-  M.cells.forEach(function (c) { cells[c.robot + "|" + c.symbol + "|" + c.timeframe] = c; });
+  function index() {
+    cells = {};
+    M.cells.forEach(function (c) { cells[c.robot + "|" + c.symbol + "|" + c.timeframe] = c; });
+  }
+  index();
+  function robotOf(key) { return M.robots.filter(function (x) { return x.key === key; })[0]; }
   function robotName(key) { var r = M.robots.filter(function (x) { return x.key === key; })[0]; return r ? r.name : key; }
   function symbols() {
     var q = state.search.trim().toLowerCase();
@@ -189,6 +222,18 @@ tr.sel td { background: var(--none-bg); }
     rows.forEach(function (r) { dl.appendChild(el("div", {}, [el("dt", {text: r[0]}), el("dd", {text: r[1]})])); });
     box.appendChild(dl);
     box.appendChild(el("p", {"class": "warn", text: M.statuses[cell.status] + "."}));
+    if (LIVE) {
+      var acts = el("div", {"class": "acts"});
+      var battery = el("button", {"class": "btn", type: "button", text: "Rodar a bateria neste ativo"});
+      battery.addEventListener("click", function () { act("battery", {robot: cell.robot, symbol: cell.symbol}); });
+      acts.appendChild(battery);
+      if ((robotOf(cell.robot) || {}).kind === "python") {
+        var again = el("button", {"class": "btn", type: "button", text: "Testar de novo"});
+        again.addEventListener("click", function () { act("backtest", {robots: [cell.robot], symbols: [cell.symbol], tfs: [cell.timeframe]}); });
+        acts.appendChild(again);
+      }
+      box.appendChild(acts);
+    }
   }
 
   function renderAsset(root) {
@@ -247,7 +292,7 @@ tr.sel td { background: var(--none-bg); }
       var n = count(r.key), row = el("tr", {"class": "pick" + (r.key === state.robot ? " sel" : ""), tabindex: "0"},
         [el("td", {}, [el("b", {text: r.name})]), el("td", {text: r.kind_label}), el("td", {"class": "num", text: String(n.total)})]);
       ["aprovado", "promissor", "reprovado", "negativo", "poucas operações", "não confiável"].forEach(function (s) { row.appendChild(el("td", {"class": "num", text: n[s] ? String(n[s]) : "·"})); });
-      function choose() { state.robot = r.key; $("robot").value = r.key; render(); }
+      function choose() { state.robot = r.key; $("robot").value = r.key; render(); if (LIVE) buttons(); }
       row.addEventListener("click", choose);
       row.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); choose(); } });
       body.appendChild(row);
@@ -290,21 +335,113 @@ tr.sel td { background: var(--none-bg); }
     try { history.replaceState(null, "", "#" + state.view + "/" + encodeURIComponent(state.robot) + "/" + state.metric); } catch (e) { /* arquivo local */ }
   }
 
-  $("generated").textContent = "Gerado em " + M.generated_at + " · só leitura: este arquivo não roda testes";
-  var totals = {}; ORDER.forEach(function (s) { totals[s] = 0; });
-  M.cells.forEach(function (c) { totals[c.status] += 1; });
-  [[M.symbols.length, "ativos"], [M.timeframes.length, "timeframes"], [M.robots.length, "robôs e estratégias"], [M.cells.length, "combinações testadas"],
-   [totals["aprovado"], "✓ aprovadas"], [totals["promissor"], "↗ promissoras"]].forEach(function (c) {
-    $("chips").appendChild(el("div", {"class": "chip"}, [el("b", {text: String(c[0])}), el("span", {text: c[1]})]));
-  });
-  var groups = {};
-  M.robots.forEach(function (r) { (groups[r.kind_label] = groups[r.kind_label] || []).push(r); });
-  Object.keys(groups).forEach(function (label) {
-    var g = el("optgroup", {label: label});
-    groups[label].forEach(function (r) { g.appendChild(el("option", {value: r.key, text: r.name + (r.tested ? " (" + r.tested + " testes)" : " (sem teste)")})); });
-    $("robot").appendChild(g);
-  });
+  function header() {
+    $("generated").textContent = LIVE ? "Painel vivo · dados de " + M.generated_at
+      : "Gerado em " + M.generated_at + " · só leitura: este arquivo não roda testes";
+    var totals = {}; ORDER.forEach(function (s) { totals[s] = 0; });
+    M.cells.forEach(function (c) { totals[c.status] += 1; });
+    $("chips").textContent = "";
+    [[M.symbols.length, "ativos"], [M.timeframes.length, "timeframes"], [M.robots.length, "robôs e estratégias"], [M.cells.length, "combinações testadas"],
+     [totals["aprovado"], "✓ aprovadas"], [totals["promissor"], "↗ promissoras"]].forEach(function (c) {
+      $("chips").appendChild(el("div", {"class": "chip"}, [el("b", {text: String(c[0])}), el("span", {text: c[1]})]));
+    });
+    var groups = {};
+    $("robot").textContent = "";
+    M.robots.forEach(function (r) { (groups[r.kind_label] = groups[r.kind_label] || []).push(r); });
+    Object.keys(groups).forEach(function (label) {
+      var g = el("optgroup", {label: label});
+      groups[label].forEach(function (r) { g.appendChild(el("option", {value: r.key, text: r.name + (r.tested ? " (" + r.tested + " testes)" : " (sem teste)")})); });
+      $("robot").appendChild(g);
+    });
+    if (state.robot) $("robot").value = state.robot;
+  }
+  header();
   ORDER.forEach(function (s) { $("legend").appendChild(el("li", {}, [pill(s), el("span", {text: M.statuses[s]})])); });
+
+  // ----- painel vivo: só quando a página vem do servidor local do programa -----
+  var lastJob = null, busy = false;
+  function api(method, path, body) {
+    var options = {method: method, headers: {"X-MT5X-Key": KEY}, cache: "no-store"};
+    if (body) { options.headers["Content-Type"] = "application/json"; options.body = JSON.stringify(body); }
+    return fetch(path, options).then(function (r) { return r.json().then(function (j) { return {ok: r.ok, data: j}; }); });
+  }
+  function setState(text, kind) { $("livestate").textContent = text; $("dot").className = "dot" + (kind ? " " + kind : ""); }
+  function showJob(job) {
+    var box = $("job");
+    if (!job) { box.hidden = true; return; }
+    box.hidden = false;
+    box.textContent = "";
+    box.appendChild(el("b", {text: job.label + ": " + job.status + (job.result ? " · " + job.result : "")}));
+    if (job.messages.length) box.appendChild(el("pre", {text: job.messages.join("\n")}));
+  }
+  function buttons() {
+    var robot = robotOf(state.robot) || {};
+    ["act-missing", "act-resample"].forEach(function (id) { $(id).disabled = busy; });
+    $("act-missing").textContent = "Testar o que falta em " + (robot.name || "…");
+    if (robot.kind !== "python") {
+      $("act-missing").disabled = true;
+      $("act-missing").title = "O teste de robôs MQL5 fecha o MetaTrader 5: use a linha de comando (mt5x robots backtest).";
+    } else { $("act-missing").title = "Roda o backtest desta estratégia em cada ativo e timeframe com base que ainda não foi testado."; }
+  }
+  function refresh() {
+    return api("GET", "/api/matrix").then(function (r) {
+      if (!r.ok) { setState(r.data.error || "Sem acesso ao programa", "off"); return; }
+      if (r.data.version !== M.version) { M = r.data; index(); header(); render(); }
+      if (!busy) setState("Painel vivo · atualizado às " + new Date().toLocaleTimeString("pt-BR"), "");
+    }).catch(function () { setState("O programa não está respondendo: o painel parou de se atualizar", "off"); });
+  }
+  function poll() {
+    api("GET", "/api/job").then(function (r) {
+      if (!r.ok) return;
+      var job = r.data.job, was = busy;
+      busy = !!job && job.status === "em andamento";
+      if (job && (busy || !lastJob || lastJob.id !== job.id || lastJob.status !== job.status)) showJob(job);
+      if (busy) setState("Trabalhando: " + job.label, "busy");
+      if (was && !busy) refresh();
+      lastJob = job; buttons();
+    }).catch(function () {});
+  }
+  function act(action, params) {
+    $("confirm").hidden = true;
+    api("POST", "/api/action", {action: action, params: params}).then(function (r) {
+      if (!r.ok) { showJob({label: "Pedido recusado", status: "não executado", result: r.data.error, messages: []}); return; }
+      busy = true; showJob(r.data.job); setState("Trabalhando: " + r.data.job.label, "busy"); buttons();
+    }).catch(function () { setState("O programa não está respondendo", "off"); });
+  }
+  function missing() {
+    var symbols = {}, tfs = {};
+    M.symbols.forEach(function (s) { M.timeframes.forEach(function (tf) {
+      if ((M.inventory[s] || {})[tf] && !cells[state.robot + "|" + s + "|" + tf]) { symbols[s] = 1; tfs[tf] = 1; }
+    }); });
+    return {symbols: Object.keys(symbols), tfs: Object.keys(tfs)};
+  }
+  if (LIVE) {
+    $("live").hidden = false; $("livenote").hidden = false;
+    $("act-missing").addEventListener("click", function () {
+      var m = missing();
+      if (!m.symbols.length) { showJob({label: "Testar o que falta", status: "nada a fazer", result: "Todas as combinações com base já foram testadas.", messages: []}); return; }
+      act("backtest", {robots: [state.robot], symbols: m.symbols, tfs: m.tfs, resume: true});
+    });
+    $("act-resample").addEventListener("click", function () {
+      var base = M.timeframes[0], sizes = {M1: 1, M5: 5, M15: 15, M30: 30, H1: 60, H4: 240, D1: 1440};
+      var targets = Object.keys(sizes).filter(function (tf) { return sizes[base] && sizes[tf] > sizes[base] && sizes[tf] % sizes[base] === 0; });
+      var symbols = M.symbols.filter(function (s) { return (M.inventory[s] || {})[base]; });
+      if (!targets.length || !symbols.length) { showJob({label: "Montar timeframes", status: "nada a fazer", result: "Não há um timeframe menor na base de onde montar os maiores.", messages: []}); return; }
+      act("resample", {symbols: symbols, base: base, tfs: targets});
+    });
+    $("act-stop").addEventListener("click", function () {
+      var box = $("confirm");
+      box.hidden = false; box.textContent = "";
+      box.appendChild(el("span", {text: "PARAR TUDO: os robôs com a camada de segurança param de abrir operações. Posições abertas NÃO são fechadas. Confirma?"}));
+      var yes = el("button", {"class": "btn danger", type: "button", text: "Sim, parar tudo"});
+      var no = el("button", {"class": "btn", type: "button", text: "Cancelar"});
+      yes.addEventListener("click", function () { act("stop_all", {}); });
+      no.addEventListener("click", function () { box.hidden = true; });
+      box.appendChild(yes); box.appendChild(no);
+    });
+    setInterval(poll, 2000); setInterval(function () { if (!busy) refresh(); }, 10000);
+    poll();
+  }
   var best = M.robots.slice().sort(function (a, b) { return b.tested - a.tested; })[0];
   state.robot = best ? best.key : "";
   var hash = decodeURIComponent(location.hash.replace(/^#/, "")).split("/");
@@ -312,7 +449,7 @@ tr.sel td { background: var(--none-bg); }
   if (hash[1] && M.robots.some(function (r) { return r.key === hash[1]; })) state.robot = hash[1];
   if (hash[2] && $("metric").querySelector('option[value="' + hash[2] + '"]')) state.metric = hash[2];
   $("robot").value = state.robot; $("metric").value = state.metric;
-  $("robot").addEventListener("change", function (e) { state.robot = e.target.value; render(); });
+  $("robot").addEventListener("change", function (e) { state.robot = e.target.value; render(); if (LIVE) buttons(); });
   $("metric").addEventListener("change", function (e) { state.metric = e.target.value; render(); });
   $("search").addEventListener("input", function (e) { state.search = e.target.value; render(); });
   $("tab-asset").addEventListener("click", function () { state.view = "asset"; render(); });
@@ -325,6 +462,7 @@ tr.sel td { background: var(--none-bg); }
   var forced = (location.search.match(/[?&]tema=(claro|escuro)/) || [])[1];
   if (forced) document.documentElement.setAttribute("data-theme", forced === "escuro" ? "dark" : "light");
   render();
+  if (LIVE) buttons();
 })();
 </script>
 </body>
@@ -332,13 +470,16 @@ tr.sel td { background: var(--none-bg); }
 """
 
 
-def render(matrix: dict) -> str:
-    """O HTML completo do painel para a matriz dada (`matrix.build`)."""
+def render(matrix: dict, live: bool = False) -> str:
+    """
+    O HTML completo do painel para a matriz dada (`matrix.build`). Com `live`, a página (servida pelo
+    panel_server) se atualiza sozinha e mostra os botões de ação; como arquivo, é a fotografia de sempre.
+    """
     data = json.dumps(matrix, ensure_ascii=False, separators=(",", ":"))
     # o JSON vai dentro de uma tag <script>: nenhum "<" pode aparecer literalmente (fecharia a tag ou abriria um
     # comentário). \u003c é um escape válido de JSON, então o texto chega inteiro ao JSON.parse.
     data = data.replace("<", "\\u003c")
-    return _TEMPLATE.replace("__DATA__", data)
+    return _TEMPLATE.replace("__LIVE__", "true" if live else "false").replace("__DATA__", data)
 
 
 def write(matrix: dict, path) -> Path:

@@ -105,6 +105,10 @@ mt5x robots backtest robo1,robo2 --symbols EURUSD,GBPUSD --tfs M15,H1 --resume -
 mt5x panel --open
 ```
 
+- **Painel vivo:** aberto pelo botão da janela do programa ou com `mt5x panel --serve --open`, ele se atualiza
+  sozinho e tem botões: testar o que falta de uma estratégia, montar timeframes, rodar a bateria de uma célula e
+  PARAR TUDO. Só este computador o alcança, e só com a chave do endereço. Iniciar robô em conta e liberar o PARAR
+  TUDO não se faz pelo painel.
 - **Por ativo:** uma linha por ativo, uma coluna por timeframe; a cor e o ícone dizem a situação.
 - **Por robô:** todos os robôs lado a lado e, para o escolhido, onde o resultado foi positivo.
 

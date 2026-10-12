@@ -23,6 +23,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
   Robôs e operação por agente (veja docs/agente.md):
     mt5x resample --symbols X --base M1 --tf M5,M15,H1    # monta timeframes maiores de uma base menor
     mt5x panel [--open]                                # painel visual: ativos x timeframes x robôs
+    mt5x panel --serve --open                          # painel vivo: atualiza sozinho e tem botões de ação
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
@@ -316,9 +317,39 @@ def cmd_mt5(args, ctx):
     return EXIT_OK
 
 
+def _panel_serve(args, ctx):
+    """Painel vivo: servidor local (só 127.0.0.1, com chave) que atualiza a página e executa as ações da lista."""
+    import time
+    from mt5_extracao.robots import panel_server
+    try:
+        server = panel_server.PanelServer(ctx.db, ctx.config, args.port or 0,
+                                          notifier=lambda title, text, level=None: _notify(ctx, title, text, level))
+    except OSError as e:
+        raise RuntimeError(f"Não foi possível abrir a porta {args.port}: {e}. Tente outra com --port.") from e
+    server.start()
+    _data(url=server.url, port=server.port)
+    _print(f"Painel vivo em {server.url}")
+    _print("Só este computador o alcança, e só com a chave do endereço acima (ela muda a cada vez). Ele se atualiza "
+           "sozinho e os botões rodam uma ação por vez. Ctrl+C para encerrar.")
+    if args.open:
+        import webbrowser
+        webbrowser.open(server.url)
+    try:
+        deadline = time.monotonic() + args.seconds if args.seconds else None
+        while deadline is None or time.monotonic() < deadline:
+            time.sleep(0.2)
+    except KeyboardInterrupt:
+        _print("\nPainel encerrado.")
+    finally:
+        server.stop()
+    return EXIT_OK
+
+
 def cmd_panel(args, ctx):
     """Painel visual (um arquivo HTML) com a matriz ativo x timeframe x robô. Só leitura."""
     from mt5_extracao.robots import matrix, panel
+    if args.serve:
+        return _panel_serve(args, ctx)
     data = matrix.build(ctx.db, ctx.config)
     out = args.out or str(PROJECT_ROOT / "exports" / "painel_resultados.html")
     path = panel.write(data, out)
@@ -1434,6 +1465,10 @@ def build_parser():
     p = sub.add_parser("panel", help="painel visual (HTML) com os resultados por ativo, timeframe e robô")
     p.add_argument("--out", help="arquivo HTML a gravar (padrão: exports/painel_resultados.html)")
     p.add_argument("--open", action="store_true", help="abre o painel no navegador")
+    p.add_argument("--serve", action="store_true",
+                   help="painel vivo: servidor local (só este computador) que atualiza a página e executa ações")
+    p.add_argument("--port", type=int, help="--serve: porta (padrão: uma livre)")
+    p.add_argument("--seconds", type=float, help="--serve: encerra sozinho depois desse tempo (padrão: até Ctrl+C)")
     p.set_defaults(func=cmd_panel)
 
     p = sub.add_parser("mt5", help="estado do terminal e, no modo oculto, captura da tela virtual")

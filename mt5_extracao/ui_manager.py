@@ -99,12 +99,30 @@ class UIManager:
 
     def open_results_panel(self, opener=None):
         """
-        Gera o painel de resultados (exports/painel_resultados.html) com o que há na base agora e o abre no
-        navegador. É a visão de conjunto: ativos x timeframes x robôs. O painel é só leitura.
+        Abre o painel de resultados no navegador: a visão de conjunto ativos x timeframes x robôs. Sobe o painel
+        vivo (servidor local, só nesta máquina e com chave), que se atualiza sozinho e tem botões de ação; se o
+        servidor não puder subir, gera o arquivo exports/painel_resultados.html e abre a fotografia.
         """
+        import webbrowser
         from mt5_extracao.bootstrap import paths
-        from mt5_extracao.robots import matrix, panel
+        from mt5_extracao.robots import matrix, panel, panel_server
         db, config = self.app.db_manager, getattr(self.app, "config", None)
+        opener = opener or webbrowser.open
+        server = getattr(self, "_panel_server", None)
+        if server is None:
+            try:
+                from mt5_extracao import notify
+                server = panel_server.PanelServer(
+                    db, config, notifier=lambda title, text, level=None: notify.send(config, title, text,
+                                                                                     level or notify.INFO)).start()
+                self._panel_server = server
+            except OSError as e:
+                log.warning(f"O painel vivo não pôde subir ({e}); abrindo a fotografia.")
+        if server is not None:
+            opener(server.url)
+            self.log("Painel de resultados aberto no navegador (vivo: atualiza sozinho e tem botões de ação). "
+                     "Ele funciona enquanto este programa estiver aberto.")
+            return
         target = paths.PROJECT_ROOT / "exports" / "painel_resultados.html"
         self.log("Gerando o painel de resultados...")
 
@@ -119,10 +137,8 @@ class UIManager:
                                      parent=self.root)
                 return
             path, cells = result
-            import webbrowser
-            (opener or webbrowser.open)(Path(path).resolve().as_uri())
-            self.log(f"Painel de resultados aberto no navegador ({cells} combinação(ões) testada(s)): {path}" +
-                     ("" if cells else ". Ainda não há backtests: use o card de um robô ou 'mt5x robots backtest'."))
+            opener(Path(path).resolve().as_uri())
+            self.log(f"Painel de resultados aberto no navegador ({cells} combinação(ões) testada(s)): {path}")
         self.run_bg(work, done)
 
     def _pump_ui_queue(self):
