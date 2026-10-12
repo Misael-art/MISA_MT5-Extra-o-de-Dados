@@ -68,6 +68,16 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ✅ concluída |
 | T6.8 | Documentação `docs/estrategias.md` | T6.7 | ✅ concluída |
 | T7.1 | Interface em abas com tema, inventário da base e análise (gráficos e números de estudo) | T1.8, T6.1 | ✅ concluída (teste da janela roda só onde há display; no CI Linux ele é pulado) |
+| T8.0 | Plano da Fase 8 (robôs) e mudança de escopo registrada | T7.1 | ✅ concluída |
+| T8.1 | Catálogo de robôs: leitura de MQL5/presets, classificação de risco, tabelas `_robots*`, CLI `mt5x robots` | T8.0 | a fazer |
+| T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | a fazer |
+| T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | a fazer |
+| T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | a fazer |
+| T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | a fazer |
+| T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | a fazer |
+| T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | a fazer |
+| T8.8 | Tempo real em conta real: bateria operacional e travas extras | T8.7 + período em demo | a fazer |
+| T8.9 | Robôs de atuação: portar as seis estratégias para MQL5 (`TryEnter`) e checar paridade | T8.5 | a fazer (no repositório HADOUKEN) |
 
 ---
 
@@ -942,6 +952,150 @@ tabela das estratégias, lista "evite no início" e o aviso de que backtest não
 
 **Pendências conhecidas (não fazem parte desta tarefa):** datas da extração ainda são digitadas como texto;
 exportação de várias tabelas e reconexão ao MT5 ainda rodam na thread da interface; ticks e book seguem só na CLI.
+
+---
+
+## Fase 8 — Gestão de estratégias e robôs
+
+Objetivo: um lugar para **importar, avaliar, testar, aprovar e colocar para operar** robôs. O catálogo
+junta dois tipos: robôs MQL5 (`.mq5`/`.ex5` + presets `.set`, como o HADOUKEN v7 do repositório
+`projeto-indicadores-mt5`) e as estratégias Python da Fase 6. Guia do usuário: [robos.md](robos.md).
+
+**Decisões registradas (2026-10-12):**
+
+| Tema | Decisão |
+|---|---|
+| O que é "robô" | MQL5 e Python no mesmo catálogo; cada card diz o tipo e o que está disponível |
+| Tempo real | O aplicativo inicia o robô no MT5, em demo e em conta real (real com as travas abaixo) |
+| HADOUKEN | Nenhum código MQL5 é copiado para este repositório: o app lê robôs das pastas de `[ROBOTS] library_dirs` |
+| Backtest de MQL5 | Strategy Tester do MT5 disparado pelo app; Monte Carlo e checklist rodam aqui |
+
+**Princípio de segurança (vale para todas as tarefas da fase):** o Python **nunca** envia ordem. Quem opera é
+o robô MQL5 dentro do MT5, pela camada `Safety/`. O app instala, configura, inicia, monitora (somente leitura)
+e para (kill switch). `tests/test_no_order_send.py` (criado na T8.1) falha se `order_send` aparecer em `mt5_extracao/`.
+
+| Destino | Exigido para iniciar |
+|---|---|
+| Demo | Compilado sem erros + bateria estática aprovada + bateria estatística aprovada |
+| Real | Tudo acima + `[ROBOTS] allow_real = true` + `min_demo_days` (padrão 20) dias em demo com resultado dentro do esperado + risco do preset ≤ `max_real_risk_pct` (padrão 1%) + confirmação digitando o número da conta |
+
+Demo ou real vem de `MT5Connector.account_summary()["demo"]`.
+
+**Fatos que condicionam a fase:**
+
+- O HADOUKEN v7 ainda não foi compilado no MetaEditor (PR #1 do outro repositório, rascunho). Até compilar, o
+  card fica em "não compilado" e nada além disso é liberado.
+- O v7 é um painel de operação, sem entrada automática. Estratégia automática precisa chamar `TryEnter()` (T8.9).
+- O MT5 não abre uma segunda instância da mesma instalação. Rodar o Strategy Tester ou iniciar um robô pelo app
+  exige fechar o terminal (e a ponte) ou usar uma segunda cópia em modo `/portable`. **Não provado no Wine**: a
+  T8.4 começa provando isso à mão; se falhar, a T8.5 passa a "importar o relatório gerado no MT5".
+
+**Arquitetura:**
+
+```
+mt5_extracao/robots/            núcleo, sem Tkinter (entra em CORE_MODULES de tests/test_core_decoupling.py)
+  catalog.py     Robot (dataclass); fontes: strategies.REGISTRY + pastas MQL5; estágio do ciclo de vida
+  mql.py         lê #property, input (grupo, tipo, padrão, comentário), .set, #include, #import
+  risk.py        classificação de risco com motivos (Baixo / Moderado / Alto / Não avaliado)
+  store.py       tabelas novas (aditivas): _robots, _robot_runs, _robot_checks
+  backtest.py    Python: strategies.run_backtest · MQL5: lê relatório + CSV de trades
+  battery.py     bateria de segurança -> veredito por item, com motivo e o que fazer
+  mt5_tools.py   pasta de dados, instalar arquivos, compilar, ini do tester/startup, kill switch
+  live.py        travas de demo/real, início, monitoramento somente leitura
+mt5_extracao/ui/robots.py        aba "Robôs": grade de cards, filtros, importação
+mt5_extracao/ui/robot_detail.py  painel do robô (abre ao clicar no card)
+```
+
+**Reaproveitar, não reescrever:** `StrategyInfo` (`strategies/base.py`); `run_backtest`, `compute_metrics`, `Trade`
+(`strategies/backtester.py`); `validate`, `walk_forward`, `robustness`, `monte_carlo` (`strategies/validation.py`);
+`load_data`, `backtest_config`, `criteria` (`strategies/research.py`); `load_spec` (`strategies/specs.py`);
+`Theme`, `card`, `Tooltip`, `scrolled_tree`, `fmt_num` (`ui/theme.py`); `UIManager.run_bg`/`call_in_ui`;
+`MT5Installation`, `installation_from_path` (`bootstrap/mt5_locator.py`); `linux_to_wine_path`,
+`wine_to_linux_path` (`bootstrap/paths.py`). Do HADOUKEN, só contratos de arquivo: `HDK_trades_<magic>.csv`
+(separador `;`), `HDK_KILL.txt` em `Common\Files` e `Presets/*.set`.
+
+**Configuração nova** (em `DEFAULTS` e em `config/config.ini.example`, na tarefa que usar cada chave):
+`[ROBOTS] library_dirs`, `metaeditor_path`, `tester_model`, `allow_real = false`, `min_demo_days = 20`,
+`max_real_risk_pct = 1.0`.
+
+### T8.0 — Plano e mudança de escopo ✅
+
+Este texto, a linha F8 do ROADMAP, a reescrita de "Fora do escopo" e `docs/robos.md`.
+
+### T8.1 — Catálogo de robôs
+
+- **Arquivos:** `mt5_extracao/robots/{__init__,catalog,mql,risk,store}.py`, `cli.py` (`mt5x robots list|import`),
+  `bootstrap/config_builder.py`, `config/config.ini.example`, testes.
+- **Passos:** (1) `mql.py`: ler `.mq5` em UTF-8 (com ou sem BOM) e UTF-16, extrair `#property version/description`,
+  `input`/`sinput` com grupo, tipo, padrão e comentário, `#include`, `#import`; ler `.set` (`chave=valor`, `;` comenta).
+  (2) `catalog.py`: `Robot` com chave estável, tipo (`mql5`/`python`), nome, versão, regime, timeframes, arquivos,
+  inputs, presets, estágio; robôs Python vêm de `REGISTRY`; MQL5 de `library_dirs` (pasta `Experts/`) ou de um
+  arquivo importado; `robot.json` ao lado do EA, se existir, tem prioridade sobre a heurística.
+  (3) `risk.py`: classe e motivos a partir de inputs e preset (stop obrigatório, risco por trade, limite diário,
+  drawdown, preço médio/martingale/grid); só `.ex5` = "Não avaliado". (4) `store.py`: tabelas aditivas e leitura/gravação.
+  (5) CLI. (6) `test_no_order_send.py`.
+- **Critérios de aceite:** a pasta do HADOUKEN gera um card com versão 7.00, 6 grupos de inputs e 3 presets; os três
+  presets recebem classes de risco coerentes com o perfil; bases antigas abrem sem erro; `robots/*` sem Tkinter.
+- **Armadilhas:** presets guardam enums como número (`InpProfile=1`); arquivos legados em UTF-16.
+
+### T8.2 — Aba "Robôs"
+
+- **Arquivos:** `ui/robots.py`, `ui/robot_detail.py`, `ui_manager.py` (aba e menu Exibir), `tests/test_ui_main_window.py`.
+- **Card:** nome, versão e selo do tipo; regime e timeframes; classe de risco + motivo curto; estatísticas do último
+  teste (profit factor, acerto, expectativa, drawdown máximo, nº de trades) e mini-curva de capital; trilha do estágio
+  (Importado → Compilado → Testado → Bateria → Demo → Real). Estado sempre em texto + ícone, nunca só cor.
+- **Barra superior:** Importar robô ▾ (arquivo, pasta, reler a biblioteca), busca e filtros (tipo, regime, risco, estágio).
+- **Painel (clique no card):** abas Visão geral, Backtest, Bateria de segurança e Tempo real; nesta tarefa só a
+  primeira tem conteúdo, as outras dizem o que falta e em qual tarefa entram.
+- **Regras:** as da Fase 7 (tema, `run_bg`, nada de cor ou fonte fixa).
+
+### T8.3 — Backtest pelo card (Python)
+
+`robots/backtest.py` chama `research.load_data` + `run_backtest`, grava em `_robot_runs` (métricas e curva de capital)
+e a aba Backtest mostra curva, métricas e trades. O card passa a mostrar as estatísticas e o estágio "Testado".
+
+### T8.4 — Ferramentas MT5
+
+`robots/mt5_tools.py`: localizar a pasta de dados (`terminal_info().data_path`) e o MetaEditor; copiar o EA, seus
+includes e presets para `MQL5/`; compilar (`MetaEditor64.exe /compile:<arquivo> /log`, pelo Wine no Linux) e ler o log
+(UTF-16) em erros e avisos. Os executáveis entram por função injetada, para testar sem MT5. **Primeiro passo:**
+prova manual, no Wine do usuário, de compilar e de abrir o terminal com `/config:`; registre o resultado aqui.
+
+### T8.5 — Backtest MQL5
+
+Gerar o `.ini` do tester (`[Tester] Expert, ExpertParameters, Symbol, Period, Model, FromDate, ToDate, Deposit,
+Report, ReplaceReport=1, ShutdownTerminal=1`), parar a ponte e o terminal, rodar, religar; ler o relatório e
+`HDK_trades_<magic>.csv`. Plano B (se a T8.4 mostrar que não funciona no Wine): importar relatório e CSV gerados à mão.
+
+### T8.6 — Bateria de segurança
+
+| Grupo | Itens | Fonte |
+|---|---|---|
+| Estática | compila sem erros; encoding; stop obrigatório; sem martingale/grid/preço médio; toda ordem passa pela `Safety/` (sem `OrderSend`/`CTrade` solto); sem `#import` de DLL; magic exclusivo; risco por trade, limite diário e drawdown do preset dentro dos tetos | `mql.py` |
+| Estatística | ≥ 200 trades; PF > 1,3; expectativa > 0 com custos; drawdown Monte Carlo p95/p99 ≤ limite; chance de ruína; fora da amostra; robustez ±20%; estresse de custo (spread ×2); maior sequência de perdas | `validation.py` + trades |
+| Operacional (T8.8) | dias em demo; desvio demo × backtest; kill switch testado; limite diário respeitado | `live.py` |
+
+Cada item devolve ✓ / ⚠ / ✗ com o motivo e o que fazer. Robô só com `.ex5`: estática "não avaliável", não libera conta real.
+
+### T8.7 — Tempo real em demo
+
+`robots/live.py`: travas da tabela acima; início pelo `.ini` de inicialização (`[StartUp] Expert=...`); posições e
+resultado por magic com `positions_get`/`history_deals_get` (somente leitura); **PARAR TUDO** grava `HDK_KILL.txt`
+em `Common\Files`. Recusa com mensagem clara se a conta conectada não for demo.
+
+### T8.8 — Tempo real em conta real
+
+Bateria operacional, `allow_real`, `min_demo_days`, `max_real_risk_pct` e confirmação digitando o número da conta.
+É a tarefa de maior risco e a última da fase.
+
+### T8.9 — Robôs de atuação
+
+No repositório HADOUKEN: módulo de sinais para cada uma das seis estratégias chamando `TryEnter()`, e um `robot.json`
+por robô. Aqui: comparar os trades do Strategy Tester com os do backtester Python no mesmo período.
+
+**Verificação da fase:** `PYTHONPATH=. xvfb-run -a .venv/bin/python -m pytest -q` e o `doctor` antes e depois de cada
+tarefa; manual, com MT5 real em demo: importar a pasta do HADOUKEN, compilar, rodar backtest e bateria, iniciar em demo
+com o preset Conservador e acionar PARAR TUDO.
 
 ---
 

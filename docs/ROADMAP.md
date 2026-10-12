@@ -28,6 +28,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F5** Escala | Parquet/DuckDB, PostgreSQL/TimescaleDB, ticks, book, fonte externa real | T5.1–T5.6 | F1, F3 | ✅ (TimescaleDB: hypertable automática, ainda não testada em servidor com a extensão) |
 | **F6** Estratégias | Seis estratégias, backtest com custos, walk-forward/Monte Carlo (Filtro C), triagem de ativos (Filtros A e B), relatório HTML, menu na GUI | T6.1–T6.8 | F1, F3 | ✅ |
 | **F7** Interface | Janela principal em abas (Ativos, Minha base, Análise, Atividade), tema claro/escuro, gráficos e números de estudo | T7.1 | F1, F6 | ✅ |
+| **F8** Robôs | Catálogo de robôs (MQL5 e Python) em cards, backtest, bateria de segurança e operação em demo/real pelo robô MQL5 | T8.0–T8.9 | F6, F7 | T8.0 ✅; demais a fazer |
 
 ## Marcos (cada marco = versão publicável)
 
@@ -51,6 +52,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 7. T5.x conforme a necessidade
 8. F6 (T6.1 → T6.8) já concluída; novas estratégias seguem o roteiro em docs/estrategias.md ("Para desenvolvedores")
 9. F7 (T7.1) já concluída; novos painéis entram em `mt5_extracao/ui/`
+10. F8: T8.0 → T8.1 → T8.2 → T8.3 → T8.4 → T8.5 → T8.6 → T8.7 → T8.8 (T8.9 em paralelo depois da T8.5)
 
 As fases F1 e F2 são independentes e podem ser executadas em paralelo por
 agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
@@ -59,5 +61,7 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 ## Fora do escopo (por ora)
 
 - macOS: o pacote MetaTrader5 não existe e o Wine no macOS é instável. A arquitetura da ponte (F2) permitiria suportá-lo no futuro.
-- Envio de ordens / trading automatizado: o projeto é de **extração de dados** e **pesquisa** (F6 faz backtest e triagem, nunca envia ordens).
+- Envio de ordens **pelo Python**: o código deste projeto nunca chama `order_send`. A partir da F8 o aplicativo
+  instala, inicia, monitora e para robôs MQL5, e quem opera é o robô dentro do MT5, pela camada `Safety/` do
+  HADOUKEN (veja [robos.md](robos.md)). Conta real fica desligada por padrão.
 - Bases em nuvem gerenciadas (AWS RDS etc.): basta apontar T5.2 para o host.
