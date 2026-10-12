@@ -21,6 +21,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x report   [--symbols ...] --tf D1 [--validate] [--open] # relatório HTML
 
   Robôs e operação por agente (veja docs/agente.md):
+    mt5x resample --symbols X --base M1 --tf M5,M15,H1    # monta timeframes maiores de uma base menor
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
@@ -218,13 +219,51 @@ def cmd_symbols(args, ctx):
 
 
 def cmd_tables(args, ctx):
+    from mt5_extracao import resample
     tables = ctx.db.get_all_tables()
+    series = ctx.db.data_inventory()
+    built = resample.origins(ctx.db)                      # séries montadas de um timeframe menor, não extraídas
+    by_table = {}
+    for item in series:
+        tf = timeframes.parse(item["timeframe"])
+        item["built_from"] = built.get((item["symbol"], tf.name if tf else ""), "")
+        by_table[item["table"]] = item["built_from"]
     for table in tables:
         last = ctx.db.get_last_timestamp(table)
-        _print(f"{table}\túltimo registro: {last or '-'}")
-    _data(tables=tables, series=ctx.db.data_inventory())
+        _print(f"{table}\túltimo registro: {last or '-'}" +
+               (f"\t(montada a partir de {by_table[table]})" if by_table.get(table) else ""))
+    _data(tables=tables, series=series)
     _print(f"\n{len(tables)} tabela(s).")
     return EXIT_OK
+
+
+def cmd_resample(args, ctx):
+    """Monta timeframes maiores a partir de uma base menor já extraída (não fala com o MT5)."""
+    from mt5_extracao import resample
+    symbols, base = _parse_symbols(args.symbols), _parse_tf(args.base)
+    targets = [_parse_tf(t) for t in args.tf.split(",") if t.strip()]
+    if not targets:
+        raise ValueError("informe em --tf os timeframes a montar, ex.: --tf M5,M15,H1")
+    for target in targets:
+        resample.check_pair(base, target)
+    start = _parse_date(args.date_from) if args.date_from else None
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+    done, failed = [], []
+    for symbol in symbols:
+        try:
+            rows = resample.resample_symbol(ctx.db, symbol, base, targets, start, end)
+        except (ValueError, RuntimeError) as e:
+            failed.append({"symbol": symbol, "error": str(e)})
+            _print(f"{symbol}: {e}")
+            continue
+        done += rows
+        for row in rows:
+            _print(f"{symbol} {row['timeframe']}: {row['bars']} barras montadas de {row['source_bars']} barras "
+                   f"{base.name} ({row['data_start'][:16]} a {row['data_end'][:16]})")
+    _data(resampled=done, failed=failed)
+    _print(f"\nConcluído: {len(done)} série(s) montada(s), {len(failed)} ativo(s) com falha. As barras montadas "
+           "seguem as regras do MT5 (spread = o menor do período) e aparecem em 'mt5x tables' como montadas.")
+    return EXIT_OK if done and not failed else EXIT_FAIL
 
 
 def cmd_quality(args, ctx):
@@ -1147,6 +1186,14 @@ def build_parser():
     p = sub.add_parser("symbols", help="lista símbolos do MT5")
     p.add_argument("--group", default="*", help='filtro do MT5, ex.: "*WIN*"')
     p.set_defaults(func=cmd_symbols)
+
+    p = sub.add_parser("resample", help="monta timeframes maiores a partir de uma base menor (ex.: M5 e H1 de M1)")
+    p.add_argument("--symbols", required=True, help="símbolos separados por vírgula")
+    p.add_argument("--base", required=True, help="timeframe já extraído, o menor (ex.: M1)")
+    p.add_argument("--tf", required=True, help="timeframes a montar, separados por vírgula (ex.: M5,M15,H1)")
+    p.add_argument("--from", dest="date_from", help="início AAAA-MM-DD (padrão: toda a base)")
+    p.add_argument("--to", dest="date_to", help="fim AAAA-MM-DD")
+    p.set_defaults(func=cmd_resample)
 
     p = sub.add_parser("tables", help="lista tabelas do banco e o último registro de cada uma")
     p.set_defaults(func=cmd_tables)

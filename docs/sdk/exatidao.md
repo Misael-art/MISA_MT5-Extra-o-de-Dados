@@ -46,7 +46,8 @@ Cada uma com o que ela significa para quem vai operar.
 
 1. **O backtester Python é otimista em custos** (pendência registrada como T10.12 no [plano](../PLANO_DE_TRABALHO.md), com a
    medição completa e o roteiro para retomar). Ele trabalha com barras: usa o spread gravado na barra (média de
-   0,57 ponto nas barras H1 medidas) e não vê o spread alargar. Com ticks reais, o mesmo robô perdeu 43,6% a mais
+   0,57 ponto nas barras H1 medidas) e não vê o spread alargar. Medido na T11.1: esse valor é o **menor** spread
+   que houve na barra, não o que a operação paga. Com ticks reais, o mesmo robô perdeu 43,6% a mais
    (2,09% do giro). Parte vem de operações que, com o spread real, saem em outro ponto. **Consequência:** a
    validação das estratégias Python (`mt5x validate`) e o lado Python da paridade favorecem a estratégia. Antes de
    operar, a palavra final é a do Strategy Tester com ticks reais. Mitigação disponível: preencher

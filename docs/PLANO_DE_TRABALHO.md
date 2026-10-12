@@ -95,7 +95,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
 | T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | a fazer (medição e roteiro guardados; veja a seção) |
 | T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
-| T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | a fazer |
+| T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
 | T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | a fazer |
 | T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | a fazer |
 | T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | a fazer |
@@ -1735,6 +1735,10 @@ Registrada a pedido do dono do projeto para ser retomada depois. **Nada foi alte
   Diferença por par casado (MQL5 − Python): com "cada tick", média −7,9 e mediana −3,3; com ticks reais, média −8,9
   e mediana −1,7. Com ticks reais, só cerca de −1.250 dos −3.982 vêm dos pares casados; o resto vem das 4 operações
   de cada lado que não casam, ou seja, que saem em outro ponto.
+- **Confirmado na T11.1 (2026-10-12):** a coluna `spread` de uma barra do MT5 é o **menor** spread do período (em
+  2.880 barras M5, 960 M15, 240 H1, 60 H4 e 10 D1 montadas do M1, só a regra "mínimo" reproduziu o MT5 em todas).
+  O backtester usa essa coluna como o custo de cada operação, ou seja, cobra sempre o melhor spread que houve na
+  barra. É a hipótese 1 abaixo, agora medida: quanto maior o timeframe, mais otimista o custo.
 - **O que já se sabe:**
   - O spread gravado nas barras H1 extraídas é muito baixo: média de 0,57 ponto, percentil 95 de 2 pontos, máximo
     de 38. O backtester usa esse valor (coluna `spread`) como o custo de cada operação.
@@ -1808,7 +1812,33 @@ de `validacao_instaladores.md`, e nada que mexa em número de backtest entra sem
 
 Este texto, a linha F11 do ROADMAP e as quatro linhas do painel.
 
-### T11.1 — Montar um timeframe maior a partir de uma base menor
+### T11.1 — Montar um timeframe maior a partir de uma base menor ✅
+
+**Medição que definiu as regras (2026-10-12, host, MetaQuotes-Demo, EURUSD de 2026-09-14 a 2026-09-25):** foram
+extraídos do MT5 os timeframes M1 (14.396 barras), M5, M15, H1, H4 e D1. Montando cada um a partir do M1:
+
+| Timeframe | Barras no MT5 | Barras montadas | Abertura, máxima, mínima, fechamento e volumes | `spread` = primeira / **mínimo** / máximo / última |
+|---|---|---|---|---|
+| M5 | 2.880 | 2.880 | iguais em todas | 2.815 / **2.880** / 2.746 / 2.795 |
+| M15 | 960 | 960 | iguais em todas | 929 / **960** / 899 / 923 |
+| H1 | 240 | 240 | iguais em todas | 233 / **240** / 217 / 232 |
+| H4 | 60 | 60 | iguais em todas | 53 / **60** / 45 / 60 |
+| D1 | 10 | 10 | iguais em todas | 3 / **10** / 0 / 10 |
+
+Conclusão: a coluna `spread` de uma barra do MT5 é o **menor** spread do período. Com essa regra, o comando
+`mt5x resample` rodado em uma base só com o M1 produziu os cinco timeframes **iguais aos do MT5 em todas as colunas
+e em todas as barras**. Esse fato também confirma a primeira hipótese da T10.12 (registrado lá).
+
+**Registrado na entrega:** `mt5_extracao/resample.py` e `mt5x resample --symbols X --base M1 --tf M5,M15,H1
+[--from] [--to]` (as opções seguem as dos outros comandos: `--base` é o timeframe de origem; `--from` e `--to` são
+datas). A origem fica na tabela nova `_resampled` e `mt5x tables` mostra "(montada a partir de M1)". Rodar de novo
+não duplica; se a base menor cresceu, a série montada acompanha. Recusa, com o motivo, montar de maior para menor,
+timeframe que não é múltiplo e semanal ou mensal.
+
+**Não conferido:** ativos com sessão (B3: `WIN$N`, `WDO$N`, ações), porque a conta de demonstração disponível não
+os tem. O alinhamento é pelo relógio da base; em H4 a corretora pode alinhar de outro jeito. Antes de usar em um
+ativo da B3, repita a comparação acima com a conta da corretora. Indicadores gravados na tabela de origem não são
+copiados para a montada.
 
 - **Objetivo:** extrair uma vez o timeframe menor (por exemplo M1) e obter dele os maiores (M5, M15, H1...), sem
   nova extração e com as mesmas barras que o MT5 daria.

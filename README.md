@@ -112,6 +112,7 @@ Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 
 - [Instalação automática](docs/instalacao.md)
 - [Estratégias, backtest e triagem de ativos](docs/estrategias.md)
+- Montar timeframes maiores de uma base menor: `mt5x resample --symbols EURUSD --base M1 --tf M5,M15,H1`
 - [Robôs: catálogo, backtest, bateria de segurança e conta demo](docs/robos.md)
 - [SDK para desenvolver robôs MQL5](docs/sdk/README.md): tutorial, contrato, API e o que ainda é lacuna
 - [Roadmap](docs/ROADMAP.md) e [Plano de trabalho detalhado](docs/PLANO_DE_TRABALHO.md)
