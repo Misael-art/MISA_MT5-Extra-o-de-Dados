@@ -183,8 +183,23 @@ sozinho; você só autoriza. Para fazer isso depois, ou no Windows:
   `mt5-extracao@example.com`, celular `11912345678`. Troque com `--first`, `--last`, `--email`,
   `--phone` e `--birth AAAA-MM-DD`.
 - Abrir a conta significa aceitar os termos e a política de proteção de dados da MetaQuotes.
-- A conta `MetaQuotes-Demo` tem Forex e CFDs (ex.: `EURUSD`), não os ativos da B3. Para `WIN$N`/`WDO$N`,
-  instale o MT5 da sua corretora e abra a conta demo dela.
+- A conta `MetaQuotes-Demo` tem Forex e CFDs (ex.: `EURUSD`), não os ativos da B3 (veja abaixo).
 - Limitações: validado no Linux (Wine) com o MT5 build 6257; no Windows o comando existe, mas ainda não
   foi testado. Supõe datas com o ano por último e o código de país que o MT5 sugere; se o formulário
   recusar algum dado, o comando avisa e você completa na janela do MT5.
+
+### Ativos da B3 (WIN, WDO, ações)
+
+`WIN$N`, `WDO$N`, `PETR4` etc. só existem nos servidores de corretoras brasileiras. Se você pedir um deles
+na conta de demonstração da MetaQuotes, o app avisa que o servidor não tem o símbolo.
+
+1. Abra uma conta (demo ou real) em uma corretora que ofereça MT5 com B3. Esta é a única etapa manual:
+   o cadastro é seu, com a corretora.
+2. Instale o MT5 da corretora e aponte o app para ele:
+   `.venv/bin/python -m mt5_extracao.bootstrap configure --mt5-path "<pasta do MT5 da corretora>"`
+3. Preencha `MT5_LOGIN`, `MT5_PASSWORD` e `MT5_SERVER` no `.env` (o `configure` pergunta). A partir daí o
+   app entra nessa conta sozinho a cada conexão. O nome do servidor deve ser igual ao exibido no MT5.
+
+Símbolos personalizados criados dentro do MT5 não são criados pelo app (a API Python do MT5 não permite) e
+não recebem cotações sozinhos. Para usar histórico de outra origem, veja a fonte externa CSV em
+[plano_fallback_m1.md](plano_fallback_m1.md).

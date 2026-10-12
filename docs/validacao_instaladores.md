@@ -35,6 +35,15 @@ ponte com o MT5 real). Roteiro em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md), 
 5. **Reexecutar o instalador com o MT5 aberto travava** em `wineserver -w` (que espera todos os processos
    do Wine). Agora não espera quando o terminal ou a ponte estão em execução.
 
+6. **Preços de outro ativo gravados como `WIN$N` (integridade).** `WIN$N` não existe na `MetaQuotes-Demo`,
+   mas a autocorreção de nomes removia o `$` e achava `WINN` (ação dos EUA, ~US$ 35): a extração gravava
+   esses preços em `win_n_1_minuto` e informava "Sucesso". A variação que remove o `$` foi retirada; agora
+   a extração falha e a CLI explica que o servidor não tem o símbolo e o que fazer.
+7. **Credenciais do `.env` nunca eram usadas.** O parâmetro `auto_login` do conector não fazia nada. Agora,
+   com `MT5_LOGIN`/`MT5_PASSWORD`/`MT5_SERVER` preenchidos, o app entra nessa conta sozinho; se o login
+   falhar, a conexão falha (não segue na conta errada). Validado só com o MT5 falso: falta testar com a
+   conta de uma corretora.
+
 ### Extração real (conta MetaQuotes-Demo, pela ponte)
 
 | Verificação | Resultado |
@@ -44,8 +53,8 @@ ponte com o MT5 real). Roteiro em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md), 
 | Reextrair o mesmo período | ✅ continua 7.200 linhas, sem duplicatas |
 | `mt5x update --symbols EURUSD --tf M1` | ✅ base avançou até o minuto atual (7.581 linhas) |
 
-Não validado: símbolos da B3 (`WIN$N`, `WDO$N`). A conta `MetaQuotes-Demo` só tem Forex/CFDs; para a B3 é
-preciso a conta demo de uma corretora brasileira (use o instalador dela com `--mt5-path`).
+Não validado: símbolos da B3 (`WIN$N`, `WDO$N`, `PETR4`...). Conferido no MT5 real que a `MetaQuotes-Demo`
+não tem nenhum deles; é preciso a conta de uma corretora brasileira (veja docs/instalacao.md).
 
 ## T2.6 — Paridade Windows × Linux
 

@@ -102,3 +102,17 @@ def test_quality_command_after_extract(env, capsys):
     out = capsys.readouterr().out
     assert "2 bloco(s) verificados, 0 com problemas" in out
     assert "540 barras" in out
+
+
+def test_extract_explains_symbol_missing_on_server(env, capsys):
+    """Símbolo da B3 numa conta que não o tem: aviso amigável com o servidor e o que fazer; falha no final."""
+    code = cli.main(env + ["extract", "--symbols", "DOL$N", "--tf", "M1", "--from", "2024-01-02", "--to", "2024-01-03"])
+    out = capsys.readouterr().out
+    assert code == cli.EXIT_FAIL
+    assert "Fake-Demo não tem: DOL$N" in out and "corretoras brasileiras" in out and "--mt5-path" in out
+
+
+def test_no_warning_when_symbols_exist(env, fake_mt5, capsys):
+    symbol = list(fake_mt5.symbols)[0]
+    cli.main(env + ["extract", "--symbols", symbol, "--tf", "M1", "--from", "2024-01-02", "--to", "2024-01-03"])
+    assert "não tem:" not in capsys.readouterr().out

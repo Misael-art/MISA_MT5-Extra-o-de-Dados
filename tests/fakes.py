@@ -79,6 +79,13 @@ class FakeMT5(types.SimpleNamespace):
         self.calls.append(("initialize", args, kwargs))
         return True
 
+    def login(self, login, password=None, server=None):
+        self.calls.append(("login", (login,), {"server": server}))
+        if password != getattr(self, "valid_password", password):
+            return False
+        self.logged = types.SimpleNamespace(login=login, server=server or "Fake-Demo", balance=0.0)
+        return True
+
     def shutdown(self):
         return True
 
@@ -89,7 +96,7 @@ class FakeMT5(types.SimpleNamespace):
         return types.SimpleNamespace(connected=True, name="FakeMT5", path="C:\\Fake")
 
     def account_info(self):
-        return types.SimpleNamespace(login=1, server="Fake-Demo", balance=0.0)
+        return getattr(self, "logged", None) or types.SimpleNamespace(login=1, server="Fake-Demo", balance=0.0)
 
     def version(self):
         return (500, 5000, "01 Jan 2026")

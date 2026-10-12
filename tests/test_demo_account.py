@@ -153,3 +153,48 @@ def test_wizard_script_without_wizard():
     wizard = _FakeWizard(script)
     wizard.page = len(wizard.pages)
     assert script.run(_args(), wizard=wizard, log=lambda m: None) == script.EXIT_NO_WIZARD
+
+
+def test_auto_correct_never_maps_dollar_series_to_another_asset(connector, fake_mt5):
+    """
+    Regressão (MT5 real, MetaQuotes-Demo): WIN$N não existe lá, mas WINN (ação dos EUA) existe.
+    A "correção" que removia o '$' gravava os preços de WINN como se fossem WIN$N.
+    """
+    fake_mt5.symbols = list(fake_mt5.symbols) + ["DOLN"]
+    assert connector.auto_correct_symbol("DOL$N") == "DOL$N"
+    assert connector.missing_symbols(["DOL$N", "DOLN"]) == ["DOL$N"]
+    assert connector.server_name() == "Fake-Demo"
+
+
+# --- Login automático com as credenciais do .env -------------------------------------------
+def _clear_credentials(monkeypatch):
+    for name in ("MT5_LOGIN", "MT5_PASSWORD", "MT5_SERVER"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+
+
+def test_no_credentials_keeps_terminal_account(connector, fake_mt5, monkeypatch):
+    _clear_credentials(monkeypatch)
+    assert connector._login_from_env() is True
+    assert not fake_mt5.calls_named("login")
+
+
+def test_login_from_env_switches_account(connector, fake_mt5, monkeypatch):
+    _clear_credentials(monkeypatch)
+    monkeypatch.setenv("MT5_LOGIN", "555")
+    monkeypatch.setenv("MT5_PASSWORD", "segredo")
+    monkeypatch.setenv("MT5_SERVER", "Corretora-DEMO")
+    assert connector._login_from_env() is True
+    assert fake_mt5.account_info().login == 555 and connector.server_name() == "Corretora-DEMO"
+    # já está na conta certa: não entra de novo
+    assert connector._login_from_env() is True
+    assert len(fake_mt5.calls_named("login")) == 1
+
+
+def test_login_from_env_failure_is_reported_without_password(connector, fake_mt5, monkeypatch, caplog):
+    _clear_credentials(monkeypatch)
+    fake_mt5.valid_password = "outra"
+    monkeypatch.setenv("MT5_LOGIN", "555")
+    monkeypatch.setenv("MT5_PASSWORD", "segredo-errado")
+    assert connector._login_from_env() is False
+    assert "MT5_SERVER" in caplog.text and "segredo-errado" not in caplog.text

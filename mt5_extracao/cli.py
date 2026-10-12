@@ -26,6 +26,7 @@ Códigos de saída: 0 sucesso, 1 falha, 2 uso incorreto.
 import argparse
 import logging
 import os
+import re
 import shlex
 import sys
 import threading
@@ -187,6 +188,25 @@ def _extract_common(args):
     return _parse_symbols(args.symbols), _parse_tf(args.tf)
 
 
+_B3_SYMBOL = re.compile(r"^([A-Z]{3}\$[A-Z]?|[A-Z]{4}\d{1,2}F?|(WIN|WDO|IND|DOL)[A-Z]\d{2})$")
+
+
+def _warn_missing_symbols(connector, symbols):
+    """Explica, antes de extrair, quais símbolos o servidor da conta atual não tem e o que fazer."""
+    check = getattr(connector, "missing_symbols", None)
+    missing = check(symbols) if check else []
+    if not missing:
+        return
+    server = connector.server_name() or "da conta atual"
+    _print(f"AVISO: o servidor {server} não tem: {', '.join(missing)}.")
+    if any(_B3_SYMBOL.match(s.upper()) for s in missing):
+        _print("  Ativos da B3 (WIN, WDO, ações) só existem nos servidores de corretoras brasileiras;")
+        _print("  a conta de demonstração da MetaQuotes tem Forex e CFDs (ex.: EURUSD).")
+        _print("  Instale o MT5 da sua corretora, entre na conta dela e aponte o app para ele:")
+        _print("    python -m mt5_extracao.bootstrap configure --mt5-path \"<pasta do MT5 da corretora>\"")
+    _print("  Para ver os nomes que existem nesta conta: mt5x symbols --group \"*TEXTO*\"")
+
+
 def cmd_extract(args, ctx):
     symbols, tf = _extract_common(args)
     start = _parse_date(args.date_from)
@@ -194,6 +214,7 @@ def cmd_extract(args, ctx):
     if end <= start:
         raise ValueError("--to deve ser posterior a --from")
     extractor = ctx.extractor()
+    _warn_missing_symbols(ctx.connector(), symbols)
     _print(f"Extraindo {', '.join(symbols)} {tf.name} de {start:%Y-%m-%d} a {end:%Y-%m-%d %H:%M}...")
     ok, failed, canceled = _run_blocking(lambda p, f: extractor.extract_data(
         symbols, tf.value, tf.label, start, end, include_indicators=args.indicators, overwrite=args.overwrite,
@@ -205,6 +226,7 @@ def cmd_extract(args, ctx):
 def cmd_update(args, ctx):
     symbols, tf = _extract_common(args)
     extractor = ctx.extractor()
+    _warn_missing_symbols(ctx.connector(), symbols)
     _print(f"Atualizando {', '.join(symbols)} {tf.name} até agora...")
     ok, failed, canceled = _run_blocking(lambda p, f: extractor.update_symbols(
         symbols, tf.value, tf.label, include_indicators=args.indicators, default_days=args.days_if_empty,
@@ -221,6 +243,7 @@ def cmd_ticks(args, ctx):
     if end <= start:
         raise ValueError("--to deve ser posterior a --from")
     extractor = TickExtractor(ctx.connector(), ctx.db, chunk_hours=args.chunk_hours)
+    _warn_missing_symbols(ctx.connector(), symbols)
     failed = 0
     for symbol in symbols:
         _print(f"Ticks de {symbol} de {start:%Y-%m-%d} a {end:%Y-%m-%d %H:%M} (tabela {extractor.table_name(symbol)})...")

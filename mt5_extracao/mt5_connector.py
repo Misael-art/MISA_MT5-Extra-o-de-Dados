@@ -285,6 +285,10 @@ class MT5Connector:
                             log.warning(f"Erro ao verificar símbolos: {symbols_err}")
                             
                         log.info(f"Conexão com MT5 inicializada com sucesso (estratégia: {strategy['description']})")
+                        if auto_login and not self._login_from_env():
+                            self.is_initialized = False
+                            self.connection_mode = "Erro de Login"
+                            return False
                         self.is_initialized = True
                         self.connection_mode = f"Conectado ({strategy['description']})"
                         return True
@@ -318,6 +322,43 @@ class MT5Connector:
         # Se chegou aqui, não conseguiu inicializar
         self.is_initialized = False
         self.connection_mode = "Erro de Conexão"
+        return False
+
+    def _login_from_env(self):
+        """
+        Entra na conta definida em MT5_LOGIN/MT5_PASSWORD/MT5_SERVER (.env), se houver.
+
+        Sem credenciais, usa a conta em que o terminal já está (ex.: a de demonstração).
+        Retorna False só quando há credenciais e o login falha: seguir na conta errada
+        gravaria dados de outro servidor.
+        """
+        try:
+            from dotenv import load_dotenv
+            from mt5_extracao.bootstrap import paths
+            load_dotenv(paths.env_path())
+        except Exception as e:
+            log.debug(f"Não foi possível ler o .env: {e}")
+        login = (os.getenv("MT5_LOGIN") or "").strip()
+        password = os.getenv("MT5_PASSWORD") or ""
+        server = (os.getenv("MT5_SERVER") or "").strip()
+        if not login or not password:
+            return True
+        try:
+            current = mt5.account_info()
+            if (current is not None and str(getattr(current, "login", "")) == login
+                    and (not server or getattr(current, "server", "") == server)):
+                return True
+            kwargs = {"password": password}
+            if server:
+                kwargs["server"] = server
+            if mt5.login(int(login), **kwargs):
+                log.info(f"Login automático na conta {login} ({server or 'servidor atual'}) concluído.")
+                return True
+            log.error(f"Login automático na conta {login} ({server or 'servidor atual'}) falhou: "
+                      f"{mt5.last_error()}. Confira MT5_LOGIN, MT5_PASSWORD e MT5_SERVER no .env "
+                      "(o nome do servidor deve ser igual ao que aparece no MT5).")
+        except Exception as e:
+            log.error(f"Erro no login automático na conta {login}: {e}")
         return False
 
     def get_symbols(self, group="*"):
@@ -1067,6 +1108,26 @@ class MT5Connector:
         log.error(f"Erro não tratado para {symbol}: {error}")
         return False
             
+    def missing_symbols(self, symbols):
+        """Símbolos que não existem no servidor da conta atual (nome exato, sem autocorreção)."""
+        if not self.is_initialized or not mt5:
+            return []
+        missing = []
+        for symbol in symbols:
+            try:
+                if mt5.symbol_info(symbol) is None:
+                    missing.append(symbol)
+            except Exception as e:
+                log.debug(f"Erro ao consultar o símbolo {symbol}: {e}")
+        return missing
+
+    def server_name(self):
+        """Nome do servidor da conta logada no terminal (ex.: MetaQuotes-Demo), ou ''."""
+        try:
+            return getattr(mt5.account_info(), "server", "") or ""
+        except Exception:
+            return ""
+
     def validate_symbol(self, symbol):
         """
         Verifica se um símbolo é válido e está disponível no MT5.
@@ -1131,7 +1192,8 @@ class MT5Connector:
                     variations = [
                         corrected + '$',      # Adiciona $
                         corrected + '$N',     # Adiciona $N para índices futuros  
-                        corrected.replace('$', ''),  # Remove $ se existir
+                        # Nunca remover o '$': WIN$N viraria WINN, que é outro ativo (uma ação dos
+                        # EUA na MetaQuotes-Demo), e os preços errados seriam gravados como WIN$N.
                         corrected + 'USD',    # Para criptomoedas
                         'WIN$N' if corrected in ['WIN', 'WINFUT', 'WIN$'] else corrected,
                         'DOL$N' if corrected in ['DOL', 'DOLFUT', 'DOL$'] else corrected,
