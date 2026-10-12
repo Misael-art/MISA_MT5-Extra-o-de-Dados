@@ -16,6 +16,9 @@ _INCLUDE = re.compile(r'^\s*#include\s+([<"])(.+?)[>"]')
 _IMPORT = re.compile(r'^\s*#import\s+"(.+?)"')
 _ENUM = re.compile(r"\benum\s+(\w+)\s*\{(.*?)\}", re.S)
 _BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+# Envio de ordem em MQL5: a função nativa ou os métodos de abertura da classe CTrade
+ORDER_CALL = re.compile(r"\b(OrderSend|OrderSendAsync)\s*\(|"
+                        r"\.\s*(Buy|Sell|PositionOpen|BuyLimit|SellLimit|BuyStop|SellStop)\s*\(")
 
 
 @dataclass(frozen=True)

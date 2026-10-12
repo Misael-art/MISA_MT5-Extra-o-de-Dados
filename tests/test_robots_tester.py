@@ -103,14 +103,14 @@ def test_metrics_from_results_match_the_card_keys():
     assert m["max_drawdown_pct"] == pytest.approx(300 / 11113.74)                # do pico até o fim
     empty = backtest.metrics_from_results([], 10000.0)
     assert (empty["trades"], empty["profit_factor"], empty["max_drawdown_pct"]) == (0, 0.0, 0.0)
-    assert backtest.metrics_from_results([["t", 5.0]], 100.0)["profit_factor"] == backtest.PF_CAP
+    assert backtest.metrics_from_results([["t", 5.0, 1.0]], 100.0)["profit_factor"] == backtest.PF_CAP
 
 
 def test_read_hdk_trades_follows_the_hadouken_contract(tmp_path):
     path = tmp_path / "HDK_trades_1.csv"
     path.write_text("time;symbol;type;volume;result\n2026.01.05 00:00;EURUSD;close_sell;0.10;19.90\n"
                     "2026.01.06 01:00;EURUSD;close_buy;0.10;-9.00\n\n", encoding="cp1252")
-    assert backtest.read_hdk_trades(path) == [["2026.01.05 00:00", 19.9], ["2026.01.06 01:00", -9.0]]
+    assert backtest.read_hdk_trades(path) == [["2026.01.05 00:00", 19.9, 0.1], ["2026.01.06 01:00", -9.0, 0.1]]
     path.write_text("a;b\n1;2\n", encoding="cp1252")
     with pytest.raises(ValueError, match="time;symbol;type;volume;result"):
         backtest.read_hdk_trades(path)
@@ -175,6 +175,7 @@ def test_run_mql5_records_the_run_from_the_report(home):
     assert run["equity"][-1] == ["2025-01-10 11:00:00", pytest.approx(10813.74)]
     saved = store.load_runs(home.db, home.robot.key)[0]
     assert saved["run_id"] == run["run_id"] and saved["metrics"]["expectancy_r"] is None
+    assert saved["trades"][0] == ["2025-01-07 16:00:00", pytest.approx(-86.26), 0.19] and len(saved["trades"]) == 3
     robot = catalog.get_robot(catalog.load_catalog(home.config, home.db), "demoguard")
     assert robot.stage == catalog.TESTED and robot.headline["trades"] == 3 and robot.headline["approved"] is None
 

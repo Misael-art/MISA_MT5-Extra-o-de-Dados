@@ -29,6 +29,7 @@ mt5x robots import caminho/Robo.mq5    # acrescenta um robô avulso (.mq5 ou .ex
 mt5x robots compile hdk_hadouken_painel   # copia o robô para o MT5 e compila no MetaEditor
 mt5x robots install hdk_hadouken_painel   # só copia (robô, includes e presets)
 mt5x robots backtest hdk_hadouken_painel --symbol WIN$N --tf M5 --from 2026-01-01 --preset Conservador
+mt5x robots battery hdk_hadouken_painel --preset Conservador   # bateria de segurança
 ```
 
 `compile` copia o robô, seus includes e presets para a pasta `MQL5` do MetaTrader 5, compila e mostra os erros e
@@ -83,6 +84,22 @@ O programa instala o robô, inicia, acompanha o resultado e tem o botão **PARAR
 
 Conta real vem **desligada** de fábrica.
 
+## Bateria de segurança
+
+`mt5x robots battery <robô>` confere dois grupos e mostra cada item com ✓ (passou), ⚠ (aviso) ou ✗ (reprovou),
+sempre com o motivo e o que fazer:
+
+| Grupo | O que confere |
+|---|---|
+| Código e preset | Compila sem erros, arquivos em UTF-8, stop obrigatório, sem martingale/grid/preço médio, toda ordem pela camada de segurança, sem DLL, magic number exclusivo, risco e limites dentro dos tetos |
+| Estatística | Sobre o último backtest: pelo menos 200 operações, profit factor acima do mínimo, expectativa positiva, queda máxima de Monte Carlo dentro do limite, chance de ruína, resultado mantido no fim do período, o dobro do spread, sequência de perdas |
+
+Um ✗ reprova; avisos não reprovam, mas leia cada um. Vale sempre a bateria **mais recente**: se um backtest novo
+reprovar, o robô volta a "Testado". Robô sem código-fonte (`.ex5`) pode passar para demo só pela estatística e
+nunca é liberado para conta real. Para o item do spread, grave antes a especificação do ativo (`mt5x specs`).
+
+**Aprovação não é garantia de lucro.** É o mínimo para o robô rodar em conta de demonstração.
+
 ## Classe de risco
 
 | Classe | Significado |
@@ -100,6 +117,12 @@ A classe sempre vem com o motivo. Ela é calculada a partir dos parâmetros e do
 [ROBOTS]
 # Pastas com robôs MQL5, separadas por ponto e vírgula
 library_dirs =
+# MetaEditor usado para compilar (vazio = o da instalação do MT5)
+metaeditor_path =
+# Modelo do Strategy Tester: 0 cada tick, 1 OHLC de 1 minuto, 2 preços de abertura, 4 ticks reais
+tester_model = 1
+# Teto de risco por operação (%) aceito pela bateria de segurança
+max_real_risk_pct = 1.0
 ```
 
 As chaves de operação (`allow_real`, `min_demo_days`, `max_real_risk_pct`) entram junto com as tarefas T8.7 e T8.8.

@@ -28,7 +28,6 @@ SAFE_VERSIONS = {"pillow": "12.3.0", "cryptography": "49.0.0", "requests": "2.33
 _SECRET_FILES = re.compile(r"(^|/)(\.env|credentials\.json|.*\.key|.*\.pem|config/config\.ini)$|\.(db|sqlite)$")
 _SECRET_IN_LOG = re.compile(r"(password|senha|passwd|token)\s*[=:]\s*['\"]?[^\s'\"*]{4,}", re.I)
 _ORDER_CALL = re.compile(r"\border_(send|send_async)\b")
-_MQL_ORDER = re.compile(r"\b(OrderSend|OrderSendAsync)\s*\(|\.\s*(Buy|Sell|PositionOpen|BuyLimit|SellLimit|BuyStop|SellStop)\s*\(")
 
 
 @dataclass
@@ -219,7 +218,7 @@ def check_robots(catalog) -> List[Finding]:
         if safety:        # robô com camada de segurança: nada fora dela pode enviar ordem
             outside = [p for p in robot.files if p not in safety and p.lower().endswith((".mq5", ".mqh"))]
             loose = [Path(p).name for p in outside
-                     if _MQL_ORDER.search(re.sub(r"//[^\n]*", "", mql.read_text(p)))]
+                     if mql.ORDER_CALL.search(re.sub(r"//[^\n]*", "", mql.read_text(p)))]
             if loose:
                 findings.append(Finding("A7", ASSETS, HIGH, FAIL, f"Ordem fora da camada de segurança: {label}",
                                         "envio direto em: " + ", ".join(loose),

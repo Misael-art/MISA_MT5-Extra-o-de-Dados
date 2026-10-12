@@ -74,6 +74,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,
            "equity": downsample(equity_curve(result.trades, settings.initial_equity, df["time"].iloc[0])),
+           "trades": [[str(t.exit_time), float(t.pnl), float(t.volume)] for t in result.trades],
            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     store.save_run(db, run)
     return run
@@ -102,7 +103,7 @@ def _number(text: str) -> float:
 def parse_report(text: str) -> Tuple[Optional[float], List[list]]:
     """
     Lê a tabela de negócios (deals) do relatório .htm do Strategy Tester. Devolve (depósito inicial, operações
-    fechadas como [horário, resultado]), com resultado = lucro + swap + comissão. Os títulos do relatório mudam
+    fechadas como [horário, resultado, volume]), com resultado = lucro + swap + comissão. Os títulos do relatório mudam
     com o idioma do terminal; por isso a leitura vai pela forma das linhas (13 colunas, tipo e direção em inglês).
     """
     deposit, results = None, []
@@ -115,14 +116,15 @@ def parse_report(text: str) -> Tuple[Optional[float], List[list]]:
             if deposit is None:
                 deposit = _number(cells[10])
         elif kind in ("buy", "sell") and direction not in ("", "in"):
-            results.append([cells[0], _number(cells[10]) + _number(cells[9]) + _number(cells[8])])
+            results.append([cells[0], _number(cells[10]) + _number(cells[9]) + _number(cells[8]),
+                            _number(cells[5])])
     return deposit, results
 
 
 def read_hdk_trades(path) -> List[list]:
     """
     Operações fechadas do HADOUKEN (Common\\Files\\HDK_trades_<magic>.csv): separador ';' e colunas
-    time;symbol;type;volume;result. Devolve [horário, resultado].
+    time;symbol;type;volume;result. Devolve [horário, resultado, volume].
     """
     lines = [line.strip() for line in mql.read_text(path).splitlines() if line.strip()]
     if not lines:
@@ -131,7 +133,9 @@ def read_hdk_trades(path) -> List[list]:
     if "time" not in header or "result" not in header:
         raise ValueError(f"{Path(path).name} não tem as colunas esperadas (time;symbol;type;volume;result).")
     time_at, result_at = header.index("time"), header.index("result")
-    return [[cells[time_at].strip(), _number(cells[result_at])]
+    volume_at = header.index("volume") if "volume" in header else None
+    return [[cells[time_at].strip(), _number(cells[result_at]),
+             _number(cells[volume_at]) if volume_at is not None and volume_at < len(cells) else 0.0]
             for cells in (line.split(";") for line in lines[1:]) if len(cells) > max(time_at, result_at)]
 
 
@@ -228,13 +232,14 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     metrics = metrics_from_results(results, initial)
     metrics.update(trades_source=trades_source, tester_model=mt5_tools.TESTER_MODELS[model], report=str(report))
     equity, points = float(initial), [[start.strftime("%Y-%m-%d %H:%M:%S"), float(initial)]]
-    for stamp, value in results:
+    for stamp, value, _ in results:
         equity += float(value)
         points.append([_iso(stamp), equity])
     record = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": "strategy tester", "symbol": symbol,
               "timeframe": tf.name, "data_start": start.strftime("%Y-%m-%d %H:%M:%S"),
               "data_end": end.strftime("%Y-%m-%d %H:%M:%S"), "bars": 0,
               "params": dict(values, **({"preset": preset} if preset else {})), "metrics": metrics,
-              "equity": downsample(points), "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+              "equity": downsample(points), "trades": [[_iso(t), float(v), float(vol)] for t, v, vol in results],
+              "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     store.save_run(db, record)
     return record

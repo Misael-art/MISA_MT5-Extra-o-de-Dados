@@ -62,6 +62,7 @@ class Robot:
     notes: List[str] = field(default_factory=list)             # avisos para o usuário (ex.: "não compilado")
     results: List[dict] = field(default_factory=list)          # validações gravadas, a melhor primeiro
     runs: List[dict] = field(default_factory=list)             # backtests gravados, o mais recente primeiro
+    checks: List[dict] = field(default_factory=list)           # baterias de segurança, a mais recente primeiro
 
     @property
     def kind_label(self) -> str:
@@ -289,6 +290,7 @@ def load_catalog(config=None, db=None) -> List[Robot]:
         from mt5_extracao.strategies.validation import load_validations
         attach_validations(list(robots.values()), load_validations(db))
         attach_runs(list(robots.values()), store.load_runs(db))
+        attach_checks(list(robots.values()), store.load_checks(db))
     return list(robots.values())
 
 
@@ -324,6 +326,21 @@ def attach_runs(robots: List[Robot], runs: List[dict]) -> None:
         if robot.runs and robot.stage in robot.stages and \
                 robot.stages.index(robot.stage) < robot.stages.index(TESTED):
             robot.stage = TESTED
+
+
+def attach_checks(robots: List[Robot], checks: List[dict]) -> None:
+    """
+    Liga a cada robô as baterias gravadas. Vale a mais recente: aprovada, o robô passa a "Bateria"; reprovada,
+    ele não passa (o estágio da bateria não fica gravado em `_robots`, para poder ser revogado).
+    """
+    by_key = {}
+    for check in checks:
+        by_key.setdefault(check["robot_key"], []).append(check)
+    for robot in robots:
+        robot.checks = by_key.get(robot.key, [])
+        if robot.checks and robot.checks[0]["approved"] and robot.stage in robot.stages and \
+                robot.stages.index(robot.stage) < robot.stages.index(APPROVED):
+            robot.stage = APPROVED
 
 
 def import_library(db, folder) -> List[Robot]:

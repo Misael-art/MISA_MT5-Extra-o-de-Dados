@@ -21,8 +21,29 @@ BATTERY_TEXT = (
     "passando pela camada de segurança, sem DLL externa, risco e limites dentro dos tetos.\n"
     "• Estatística: pelo menos 200 operações, profit factor acima de 1,3, expectativa positiva com custos, "
     "drawdown de Monte Carlo dentro do limite, teste fora da amostra, robustez de ±20% e estresse de custos.\n"
-    "• Operação em demo: dias rodando, desvio em relação ao backtest e teste do botão de parada.\n\n"
-    "Ainda não disponível nesta versão.")
+    "• Operação em demo: dias rodando, desvio em relação ao backtest e teste do botão de parada "
+    "(ainda não disponível).\n\n"
+    "Por enquanto, pela linha de comando:")
+
+
+def battery_text(robot) -> str:
+    """Texto da aba Bateria: a explicação e o comando ou, se já rodou, o resultado da bateria mais recente."""
+    slug = robot.key.split(":", 1)[1]
+    command = f"  mt5x robots battery {slug}"
+    if not robot.checks:
+        return f"{BATTERY_TEXT}\n\n{command}"
+    check = robot.checks[0]
+    lines = [("✓ Aprovada" if check["approved"] else "✗ Reprovada") + f" em {check['created_at'][:16]}" +
+             (f", preset {check['preset']}" if check["preset"] else "") +
+             f" · código e preset: {check['static_status']} · estatística: {check['statistical_status']}"]
+    if check["approved"] and not check["allows_real"]:
+        lines.append("Sem a parte de código conferida, o robô não é liberado para conta real.")
+    for item in check["items"]:
+        lines.append(f"{item['icon']} {item['name']}: {item['detail']}")
+        if item["fix"] and item["status"] != "ok":
+            lines.append(f"      {item['fix']}")
+    lines += ["", "Aprovação não é garantia de resultado. Para rodar de novo:", command]
+    return "\n".join(lines)
 
 LIVE_TEXT_MQL5 = (
     "Quem envia as ordens é o robô, dentro do MetaTrader 5. Este programa instala, inicia, acompanha e para.\n\n"
@@ -216,12 +237,13 @@ class RobotDetail:
         tests_frame.pack(fill=tk.X)
 
         # Bateria e tempo real
-        ttk.Label(battery, text=BATTERY_TEXT, style="Surface.TLabel", wraplength=400, justify=tk.LEFT).pack(anchor="w")
+        self.battery_text = ttk.Label(battery, text="", style="Surface.TLabel", wraplength=400, justify=tk.LEFT)
+        self.battery_text.pack(anchor="w")
         self.live_text = ttk.Label(live, text="", style="Surface.TLabel", wraplength=400, justify=tk.LEFT)
         self.live_text.pack(anchor="w")
 
         self._wrapped = (self.title, self.subtitle, self.description, self.notes, self.risk_reasons,
-                         self.tests_text, self.run_status, self.live_text, battery.winfo_children()[0])
+                         self.tests_text, self.run_status, self.live_text, self.battery_text)
         self.theme.on_change(self._theme_changed)
         body.bind("<Configure>", self._rewrap)
         self.show(None)
@@ -253,6 +275,7 @@ class RobotDetail:
         count = len(robot.files)
         self.files_label.config(text=f"{count} arquivo(s): fonte, includes e presets" if count > 1 else "")
         self._show_tests()
+        self.battery_text.config(text=battery_text(robot))
         self.live_text.config(text=LIVE_TEXT_PYTHON if robot.kind == catalog.PYTHON else LIVE_TEXT_MQL5)
 
     def _show_values(self):

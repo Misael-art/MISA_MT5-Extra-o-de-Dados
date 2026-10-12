@@ -87,11 +87,20 @@ def save_run(db, run: dict) -> None:
            "data_end": run["data_end"], "bars": int(run["bars"]),
            "params_json": json.dumps(run.get("params", {}), ensure_ascii=False),
            "metrics_json": json.dumps(run["metrics"], ensure_ascii=False),
-           "equity_json": json.dumps(run["equity"]), "created_at": run["created_at"]}
+           "equity_json": json.dumps(run["equity"]), "created_at": run["created_at"],
+           "trades_json": json.dumps(run.get("trades", []))}
     with db.engine.begin() as conn:
         conn.execute(text(_CREATE_RUNS))
-        conn.execute(text(f"INSERT INTO _robot_runs ({', '.join(_RUN_COLUMNS)}) "
-                          f"VALUES ({', '.join(':' + c for c in _RUN_COLUMNS)})"), row)
+        if not _has_trades_column(conn):          # base criada antes da T8.6: coluna nova, nada é apagado
+            conn.execute(text("ALTER TABLE _robot_runs ADD COLUMN trades_json TEXT"))
+        columns = _RUN_COLUMNS + ("trades_json",)
+        conn.execute(text(f"INSERT INTO _robot_runs ({', '.join(columns)}) "
+                          f"VALUES ({', '.join(':' + c for c in columns)})"), row)
+
+
+def _has_trades_column(conn) -> bool:
+    from sqlalchemy import inspect
+    return any(c["name"] == "trades_json" for c in inspect(conn).get_columns("_robot_runs"))
 
 
 def load_runs(db, robot_key: str = None) -> list:
@@ -99,15 +108,65 @@ def load_runs(db, robot_key: str = None) -> list:
     from sqlalchemy import inspect, text
     if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_robot_runs"):
         return []
-    sql = f"SELECT {', '.join(_RUN_COLUMNS)} FROM _robot_runs"
     params = {}
+    with db.engine.connect() as conn:
+        columns = _RUN_COLUMNS + (("trades_json",) if _has_trades_column(conn) else ())
+        sql = f"SELECT {', '.join(columns)} FROM _robot_runs"
+        if robot_key:
+            sql += " WHERE robot_key = :k"
+            params["k"] = robot_key
+        rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, run_id DESC"), params).mappings()]
+    for row in rows:
+        row["trades"] = json.loads(row.pop("trades_json", None) or "[]")      # [[horário, resultado, volume], ...]
+        row["params"] = json.loads(row.pop("params_json") or "{}")
+        row["metrics"] = json.loads(row.pop("metrics_json") or "{}")
+        row["equity"] = json.loads(row.pop("equity_json") or "[]")
+    return rows
+
+
+# --- bateria de segurança -------------------------------------------------------------
+
+_CREATE_CHECKS = """
+CREATE TABLE IF NOT EXISTS _robot_checks (
+    check_id TEXT PRIMARY KEY,
+    robot_key TEXT NOT NULL,
+    preset TEXT,
+    approved INTEGER NOT NULL,
+    allows_real INTEGER NOT NULL,
+    static_status TEXT,
+    statistical_status TEXT,
+    run_id TEXT,
+    items_json TEXT,
+    created_at TEXT NOT NULL
+)
+"""
+_CHECK_COLUMNS = ("check_id", "robot_key", "preset", "approved", "allows_real", "static_status",
+                  "statistical_status", "run_id", "items_json", "created_at")
+
+
+def save_check(db, check: dict) -> None:
+    """Grava o resultado de uma bateria (cada execução é uma linha; a mais recente é a que vale)."""
+    from sqlalchemy import text
+    row = {**{c: check.get(c) for c in _CHECK_COLUMNS}, "approved": int(check["approved"]),
+           "allows_real": int(check["allows_real"]), "items_json": json.dumps(check["items"], ensure_ascii=False)}
+    with db.engine.begin() as conn:
+        conn.execute(text(_CREATE_CHECKS))
+        conn.execute(text(f"INSERT INTO _robot_checks ({', '.join(_CHECK_COLUMNS)}) "
+                          f"VALUES ({', '.join(':' + c for c in _CHECK_COLUMNS)})"), row)
+
+
+def load_checks(db, robot_key: str = None) -> list:
+    """Baterias gravadas, a mais recente primeiro (lista vazia se a tabela ainda não existir)."""
+    from sqlalchemy import inspect, text
+    if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_robot_checks"):
+        return []
+    sql, params = f"SELECT {', '.join(_CHECK_COLUMNS)} FROM _robot_checks", {}
     if robot_key:
         sql += " WHERE robot_key = :k"
         params["k"] = robot_key
     with db.engine.connect() as conn:
-        rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, run_id DESC"), params).mappings()]
+        rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, check_id DESC"), params).mappings()]
     for row in rows:
-        row["params"] = json.loads(row.pop("params_json") or "{}")
-        row["metrics"] = json.loads(row.pop("metrics_json") or "{}")
-        row["equity"] = json.loads(row.pop("equity_json") or "[]")
+        row["approved"], row["allows_real"] = bool(row["approved"]), bool(row["allows_real"])
+        row["items"] = json.loads(row.pop("items_json") or "[]")
     return rows

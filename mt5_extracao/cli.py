@@ -24,6 +24,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
+    mt5x robots battery <robô> [--preset X]            # bateria de segurança: código, preset e estatística
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
     mt5x status                                        # base, robôs, validações e próximas ações sugeridas
     mt5x audit [--mt5] [--fail-on alto]                # segurança do projeto, patrimonial e do capital
@@ -461,7 +462,8 @@ def _robot_dict(robot, full=False):
             "preset_risks": {name: {"level": r.level, "reasons": r.reasons} for name, r in robot.preset_risks.items()},
             "has_source": robot.has_source, "dll_imports": robot.dll_imports, "notes": robot.notes,
             "path": robot.path, "headline": robot.headline, "validations": robot.results,
-            "runs": [{k: v for k, v in run.items() if k != "equity"} for run in robot.runs]}
+            "runs": [{k: v for k, v in run.items() if k not in ("equity", "trades")} for run in robot.runs],
+            "battery": ({k: v for k, v in robot.checks[0].items() if k != "items"} if robot.checks else None)}
     if full:
         data.update(description=robot.description, files=robot.files, missing_includes=robot.missing_includes,
                     presets=robot.presets, inputs=[{"name": i.name, "type": i.type, "default": i.default,
@@ -482,7 +484,7 @@ def _robots_backtest(args, ctx, items):
     run = backtest.run_python(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end,
                               _parse_params(args.param))
     m = run["metrics"]
-    _data(run=run)
+    _data(run={k: v for k, v in run.items() if k != "trades"})
     _print(f"{robot.name} em {run['symbol']} {run['timeframe']}: {run['bars']} barras "
            f"({run['data_start'][:10]} a {run['data_end'][:10]})")
     _print(f"  Operações: {m['trades']}   Acerto: {_fmt_pct(m['win_rate'])}   Profit factor: "
@@ -513,7 +515,7 @@ def _robots_backtest_mql5(args, ctx, robot, tf, start, end):
         if bridge_was_running:
             mt5_tools.restart_bridge()
     m = run["metrics"]
-    _data(run=run)
+    _data(run={k: v for k, v in run.items() if k != "trades"})
     _print(f"{robot.name} em {run['symbol']} {run['timeframe']} pelo Strategy Tester "
            f"({run['data_start'][:10]} a {run['data_end'][:10]}, modelo: {m['tester_model']})")
     _print(f"  Operações: {m['trades']}   Acerto: {_fmt_pct(m['win_rate'])}   Profit factor: "
@@ -649,6 +651,29 @@ def _robots_mt5(args, ctx, items):
     return EXIT_OK
 
 
+def _robots_battery(args, ctx, items):
+    from mt5_extracao.robots import battery, catalog
+    if not args.path:
+        raise ValueError("uso: mt5x robots battery <robô> [--preset NOME] (veja as chaves em 'mt5x robots list')")
+    robot = catalog.get_robot(items, args.path)
+    report = battery.run_battery(ctx.db, ctx.config, robot, items, args.preset)
+    _data(battery=report.to_dict())
+    _print(f"Bateria de segurança de {robot.name}" + (f", preset {report.preset}" if report.preset else ""))
+    for group, status in ((battery.STATIC, report.static_status), (battery.STATISTICAL, report.statistical_status)):
+        _print(f"\n{group.capitalize()}: {status}")
+        for item in (i for i in report.items if i.group == group):
+            _print(f"  {item.icon} {item.name}: {item.detail}")
+            if item.fix:
+                _print(f"      O que fazer: {item.fix}")
+    if report.approved:
+        _print("\nAprovada: o robô pode rodar em conta de demonstração." +
+               ("" if report.allows_real else " Sem a parte de código conferida, nunca em conta real."))
+        _print("Aprovação não é garantia de resultado. Confira os avisos (⚠) antes de seguir.")
+        return EXIT_OK
+    _print("\nReprovada: corrija os itens marcados com ✗ e rode a bateria de novo.")
+    return EXIT_FAIL
+
+
 def cmd_robots(args, ctx):
     from mt5_extracao import robots
     from mt5_extracao.robots import catalog
@@ -671,6 +696,8 @@ def cmd_robots(args, ctx):
         return _robots_backtest(args, ctx, items)
     if args.action in ("install", "compile"):
         return _robots_mt5(args, ctx, items)
+    if args.action == "battery":
+        return _robots_battery(args, ctx, items)
     if args.path:
         items = [robots.get_robot(items, args.path)]
     _data(robots=[_robot_dict(r, full=bool(args.path)) for r in items])
@@ -883,7 +910,7 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile"],
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery"],
                    default="list")
     p.add_argument("path", nargs="?", help="list/backtest/install/compile: chave do robô; "
                                            "import: arquivo .mq5/.ex5 ou pasta de robôs")
@@ -894,7 +921,7 @@ def build_parser():
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
-    p.add_argument("--preset", help="backtest de robô MQL5: nome do preset (.set) a usar")
+    p.add_argument("--preset", help="backtest de robô MQL5 e battery: nome do preset (.set) a usar")
     p.add_argument("--close-terminal", action="store_true",
                    help="backtest de robô MQL5: fecha o MT5 (e para a ponte) se estiver aberto, e religa a ponte depois")
     p.set_defaults(func=cmd_robots)

@@ -74,7 +74,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | ✅ concluída |
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | ✅ concluída (só CLI; o botão no card fica para quando a aba ganhar ações de MT5) |
 | T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | ✅ concluída (só CLI; validada com EAs de exemplo, o HADOUKEN v7 ainda não compila) |
-| T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | a fazer |
+| T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | ✅ concluída (só CLI; em MQL5, robustez ±20% fica como aviso "não avaliado") |
 | T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | a fazer |
 | T8.8 | Tempo real em conta real: bateria operacional e travas extras | T8.7 + período em demo | a fazer |
 | T8.9 | Robôs de atuação: portar as seis estratégias para MQL5 (`TryEnter`) e checar paridade | T8.5 | a fazer (no repositório HADOUKEN) |
@@ -1132,7 +1132,31 @@ Gerar o `.ini` do tester (`[Tester] Expert, ExpertParameters, Symbol, Period, Mo
 Report, ReplaceReport=1, ShutdownTerminal=1`), parar a ponte e o terminal, rodar, religar; ler o relatório e
 `HDK_trades_<magic>.csv`. Plano B (se a T8.4 mostrar que não funciona no Wine): importar relatório e CSV gerados à mão.
 
-### T8.6 — Bateria de segurança
+### T8.6 — Bateria de segurança ✅
+
+**Registrado na entrega:**
+
+- `robots/battery.py` e `mt5x robots battery <robô> [--preset P]`: cada item com ✓ / ⚠ / ✗, o motivo e o que fazer;
+  código de saída 1 se reprovar. O resultado fica em `_robot_checks` (tabela nova) e aparece na aba Bateria do painel.
+- **Regra de aprovação:** nenhum ✗ (avisos não reprovam). Vale a bateria **mais recente**: aprovada, o robô passa a
+  "Bateria"; uma reprovação posterior revoga (o estágio da bateria não é gravado em `_robots`).
+- **Robô só com `.ex5`:** estática "não avaliável". Interpretei a frase da tabela abaixo como: passa para demo se a
+  estatística aprovar (`approved`), mas `allows_real` fica falso para sempre.
+- A estatística roda sobre as operações do backtest mais recente do robô. Para isso `_robot_runs` ganhou a coluna
+  `trades_json` (aditiva, criada por `ALTER TABLE` em bases antigas); execuções anteriores pedem um novo backtest.
+- **Diferenças em relação à tabela abaixo:**
+  - *Fora da amostra:* estratégia Python usa a validação walk-forward gravada (`mt5x validate`). Robô MQL5 não tem
+    otimização aqui, então o item é "o resultado se mantém no fim do período" (profit factor > 1 nos 30% finais).
+  - *Robustez ±20%:* Python usa a validação; em MQL5 fica ⚠ "não avaliado" (exigiria repetir o Strategy Tester para
+    cada parâmetro). Fica como melhoria.
+  - *Estresse de custo:* um spread a mais por operação (spread × valor do ponto × volume, de `_symbol_specs`); sem a
+    especificação do ativo, ⚠ "não avaliado".
+  - *Ordens fora da `Safety/`:* robô que envia ordem direto e não tem camada de segurança é reprovado; robô que não
+    envia ordem nenhuma (painel) recebe aviso. A expressão de envio de ordem passou para `mql.ORDER_CALL`, usada
+    também pela auditoria.
+- Limiares fixos no código: 200 operações, ruína ≤ 1% das simulações, aviso a partir de 10 perdas seguidas. Do
+  `config.ini`: `[STRATEGY] min_profit_factor` e `max_drawdown`, e a chave nova `[ROBOTS] max_real_risk_pct`.
+- Não rodei a bateria com o HADOUKEN v7 (ele ainda não compila).
 
 | Grupo | Itens | Fonte |
 |---|---|---|
