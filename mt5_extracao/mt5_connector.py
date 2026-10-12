@@ -245,7 +245,11 @@ class MT5Connector:
                 # Estratégia 6: Caminho direto para terminal64.exe
                 {"description": "Terminal direto", "params": {"path": path_mod.join(init_path, "terminal64.exe"), "timeout": 30000}}
             ]
-            
+            if remote:
+                # No Wine só o caminho completo do terminal64.exe inicia o terminal; as demais
+                # falham com "Process create failed" e só atrasam (validado com MT5 real, T0.3).
+                connection_strategies.insert(0, connection_strategies.pop())
+
             # Tenta cada estratégia até que uma funcione
             for strategy in connection_strategies:
                 try:

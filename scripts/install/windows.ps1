@@ -41,7 +41,7 @@ $env:PYTHONUTF8 = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
 # --- Versões/URLs (altere aqui, em um único lugar) ---------------------------
-$MT5SetupUrl = "https://download.mql5.com/cdn/web/metaquotes.software.corp/metatrader5/mt5setup.exe"
+$MT5SetupUrl = "https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe"
 $PythonMinor = @(3, 9)      # mínimo aceito
 $PythonMaxMinor = 13        # máximo testado (3.13)
 

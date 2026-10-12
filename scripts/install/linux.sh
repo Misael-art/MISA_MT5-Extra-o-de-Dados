@@ -24,7 +24,7 @@ VENV_PY="$VENV_DIR/bin/python"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/mt5-extracao"
 
 # --- Versões/URLs (altere aqui, em um único lugar) ---------------------------
-MT5_SETUP_URL="https://download.mql5.com/cdn/web/metaquotes.software.corp/metatrader5/mt5setup.exe"
+MT5_SETUP_URL="https://download.mql5.com/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe"
 WIN_PYTHON_VERSION="3.11.9"
 WIN_PYTHON_URL="https://www.python.org/ftp/python/${WIN_PYTHON_VERSION}/python-${WIN_PYTHON_VERSION}-amd64.exe"
 WIN_PYTHON_DIR_WIN='C:\Python311'          # deve bater com paths.WINE_PYTHON_WINDOWS_DIR
@@ -94,10 +94,25 @@ if [[ $EUID -ne 0 ]]; then
 else
     warn "Executando como root. Recomendado: usuário comum (o sudo será usado quando necessário)."
 fi
+ROOT_NOTICE_SHOWN=0
+root_notice() {
+    # Explica uma única vez por que a senha será pedida
+    [[ $ROOT_NOTICE_SHOWN -eq 1 ]] && return
+    ROOT_NOTICE_SHOWN=1
+    info "Para instalar pacotes do sistema é preciso a sua permissão de administrador."
+    info "$1 A senha vai direto para o sistema; este instalador não a lê nem guarda."
+}
 as_root() {
+    # Ordem: já é root -> sudo sem senha -> sudo no terminal -> janela gráfica (pkexec)
     if [[ $EUID -eq 0 ]]; then "$@"
-    elif [[ -n "$SUDO" ]]; then $SUDO "$@"
-    else die "É necessário privilégio de administrador para: $* (instale o sudo ou rode as etapas manualmente)"; fi
+    elif [[ -n "$SUDO" ]] && sudo -n true 2>/dev/null; then sudo "$@"
+    elif [[ -n "$SUDO" && -t 0 ]]; then
+        root_notice "Digite a sua senha quando o sudo pedir."
+        sudo "$@"
+    elif command -v pkexec >/dev/null 2>&1 && [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]]; then
+        root_notice "Uma janela do sistema vai pedir a sua senha."
+        pkexec "$@"
+    else die "É necessário privilégio de administrador para: $* (rode ./install.sh em um terminal, ou instale o sudo, ou execute esse comando manualmente como root)"; fi
 }
 
 download() {
@@ -179,10 +194,16 @@ install_system_packages() {
             as_root dnf install -y python3 python3-pip python3-tkinter curl xorg-x11-server-Xvfb
             if [[ $INSTALL_MT5 -eq 1 ]]; then as_root dnf install -y wine; fi ;;
         arch)
-            as_root pacman -Sy --needed --noconfirm python python-pip tk curl xorg-server-xvfb
-            if [[ $INSTALL_MT5 -eq 1 ]]; then
-                as_root pacman -S --needed --noconfirm wine \
-                    || die "Falha ao instalar o Wine. Habilite o repositório [multilib] em /etc/pacman.conf e rode novamente."
+            # Só pede permissão se faltar algo (pacman -Q não precisa de root)
+            local pkgs=(python python-pip tk curl xorg-server-xvfb) missing=() p
+            if [[ $INSTALL_MT5 -eq 1 ]]; then pkgs+=(wine); fi
+            for p in "${pkgs[@]}"; do pacman -Qq "$p" >/dev/null 2>&1 || missing+=("$p"); done
+            if [[ ${#missing[@]} -eq 0 ]]; then
+                info "Nada a instalar: todos os pacotes já estão presentes"
+            else
+                info "Pacotes que faltam: ${missing[*]}"
+                as_root pacman -S --needed --noconfirm "${missing[@]}" \
+                    || die "Falha ao instalar: ${missing[*]}. Atualize o sistema (sudo pacman -Syu); para o Wine, habilite o repositório [multilib] em /etc/pacman.conf. Depois rode ./install.sh novamente."
             fi ;;
         suse)
             as_root zypper --non-interactive install python3 python3-pip python3-tk curl xvfb-run
@@ -282,6 +303,13 @@ wine_env() {
     export WINEDLLOVERRIDES="mscoree,mshtml="
 }
 
+wine_wait() {
+    # Espera os processos do Wine terminarem. Se o terminal ou a ponte já estão abertos
+    # (reexecução do instalador), "wineserver -w" nunca retornaria: nesse caso não espera.
+    if pgrep -x terminal64.exe >/dev/null 2>&1 || pgrep -f 'mt5_bridge_server\.py' >/dev/null 2>&1; then return 0; fi
+    timeout 300 wineserver -w || true
+}
+
 # --- 3. Wine + MetaTrader 5 ---------------------------------------------------
 mt5_installed() {
     "$VENV_PY" -m mt5_extracao.bootstrap locate-mt5 --wine-prefix "$WINEPREFIX" >/dev/null 2>&1
@@ -298,9 +326,9 @@ setup_wine_and_mt5() {
         info "Criando prefixo Wine em $WINEPREFIX"
         mkdir -p "$WINEPREFIX"
         wineboot --init >/dev/null 2>&1 || true
-        wineserver -w || true
+        wine_wait
         wine reg add 'HKCU\Software\Wine' /v Version /d win10 /f >/dev/null 2>&1 || true
-        wineserver -w || true
+        wine_wait
         ok "Prefixo Wine criado (Windows 10)"
     else
         ok "Prefixo Wine já existe: $WINEPREFIX"
@@ -340,7 +368,7 @@ setup_wine_python() {
         info "Instalando Python $WIN_PYTHON_VERSION (Windows) no Wine..."
         wine "$installer" /quiet InstallAllUsers=0 "TargetDir=$WIN_PYTHON_DIR_WIN" PrependPath=0 \
             Include_test=0 Include_doc=0 Include_launcher=0 Include_tcltk=0 >/dev/null 2>&1 || true
-        wineserver -w || true
+        wine_wait
         [[ -f "$wine_py_unix" ]] || die "Python do Windows não foi instalado no Wine ($wine_py_unix)."
         ok "Python do Windows instalado no Wine"
     else
@@ -354,7 +382,7 @@ setup_wine_python() {
     server_win="$(winepath -w "$PROJECT_ROOT/scripts/mt5_bridge_server.py" 2>/dev/null)"
     wine "$wine_py_win" "$server_win" --check >/dev/null 2>&1 \
         || die "A ponte não conseguiu importar MetaTrader5 no Wine. Veja $LOG_FILE"
-    wineserver -w || true
+    wine_wait
     ok "Ponte pronta (MetaTrader5 + rpyc $RPYC_VERSION no Wine)"
 }
 
@@ -389,6 +417,13 @@ EOF
     cleanup
     if [[ $INSTALL_MT5 -eq 1 ]] && [[ -x "$PROJECT_ROOT/scripts/mt5-bridge.sh" ]]; then
         "$PROJECT_ROOT/scripts/mt5-bridge.sh" start || warn "Não foi possível iniciar a ponte agora (veja logs/mt5_bridge.log)"
+    fi
+    if [[ $INSTALL_MT5 -eq 1 ]]; then
+        # Sem conta o MT5 não conecta: abre a conta de demonstração gratuita (pergunta antes, salvo --yes)
+        local demo_args=(demo-account)
+        if [[ $ASSUME_YES -eq 1 ]]; then demo_args+=(--yes); fi
+        "$VENV_PY" -m mt5_extracao.bootstrap "${demo_args[@]}" \
+            || warn "Conta de demonstração não aberta agora. Depois rode: $VENV_PY -m mt5_extracao.bootstrap demo-account"
     fi
     echo
     if "$VENV_PY" -m mt5_extracao.bootstrap doctor; then DOCTOR_OK=1; else DOCTOR_OK=0; fi

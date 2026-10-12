@@ -86,9 +86,11 @@ def test_initialize_uses_windows_path_through_bridge(bridge_port, tmp_path, monk
         assert connector.initialize() is True
         assert connector.is_initialized
         assert connector.mt5_windows_path == r"C:\Program Files\MetaTrader 5"
-        # O MT5 (no "Wine") recebeu o caminho no formato Windows, não o caminho do Linux
+        # O MT5 (no "Wine") recebeu o caminho no formato Windows, não o caminho do Linux, e já na
+        # 1ª tentativa o do terminal64.exe: com o MT5 real, só a pasta dá "Process create failed" (T0.3)
         init_calls = connector_module.mt5.calls_named("initialize")
-        assert init_calls[-1][2]["path"] == r"C:\Program Files\MetaTrader 5"
+        assert len(init_calls) == 1
+        assert init_calls[-1][2]["path"] == r"C:\Program Files\MetaTrader 5\terminal64.exe"
     finally:
         mt5_backend.reset()
 
