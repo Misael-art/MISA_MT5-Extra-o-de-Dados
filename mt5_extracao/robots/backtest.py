@@ -225,7 +225,8 @@ def tester_values(robot, preset: Optional[str] = None, params: Optional[dict] = 
 
 def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=None, preset: Optional[str] = None,
              params: Optional[dict] = None, run: Optional[Callable] = None,
-             is_running: Optional[Callable] = None, source: str = TESTER_SOURCE) -> dict:
+             is_running: Optional[Callable] = None, source: str = TESTER_SOURCE,
+             model: Optional[str] = None) -> dict:
     """
     Roda o robô MQL5 no Strategy Tester (o terminal precisa estar fechado) e grava a execução. O robô tem de
     estar instalado e compilado na pasta de dados do MT5 ('mt5x robots compile').
@@ -261,7 +262,9 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     name = f"mt5x_{slug}"
     parameters = mt5_tools.write_tester_set(data, name, values) if values else ""
     deposit = float(research.backtest_config(config).initial_equity)
-    model = mt5_tools.tester_model(config)
+    if model is not None and model not in mt5_tools.TESTER_MODELS:
+        raise ValueError(f"Modelo do Strategy Tester inválido: {model}")
+    model = model or mt5_tools.tester_model(config)      # `model` troca o de [ROBOTS] tester_model só nesta execução
     defaults = {i.name: i.default for i in robot.inputs}
     magic_input = contract.input_name(robot, "magic") or "InpMagicNumber"
     magic = str(values.get(magic_input, defaults.get(magic_input, ""))).split("|")[0].strip()

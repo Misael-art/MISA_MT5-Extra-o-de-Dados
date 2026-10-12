@@ -48,8 +48,10 @@ def test_each_trade_is_matched_at_most_once_and_to_the_nearest():
 
 
 def test_result_difference_and_sign_agreement_decide():
-    close = parity.compare(PY, shifted(PY, factor=1.04))
-    assert close.ok and close.result_difference == pytest.approx(0.04)
+    close = parity.compare(PY, shifted(PY, factor=1.01))
+    assert close.ok and close.result_difference == pytest.approx(0.01) and close.median_ratio == pytest.approx(1.01)
+    biased = parity.compare(PY, shifted(PY, factor=0.96))        # todo par 4% menor: viés sistemático (lote, capital)
+    assert biased.pairs_close_share == 1.0 and biased.median_ratio == pytest.approx(0.96) and not biased.ok
     far = parity.compare(PY, shifted(PY, factor=1.2))
     assert not far.ok and far.matched_share == 1.0 and far.result_difference == pytest.approx(0.2)
     flipped = parity.compare(PY, [[t[0], -t[1], t[2]] for t in PY])

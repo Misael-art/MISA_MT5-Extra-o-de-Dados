@@ -2,7 +2,8 @@
 Paridade Python x MQL5: a versão MQL5 de uma estratégia faz as mesmas operações que o protótipo em Python?
 
     report = compare(python_run["trades"], mql5_run["trades"], tolerance_minutes=60)
-    report.ok            # >= 95% das operações casadas e diferença total de resultado <= 5%
+    report.ok            # >= 95% casadas, >= 95% dos pares a até 5%, diferença total <= 1% do giro bruto
+                         # e mediana da razão entre os pares a até 2% de 1
 
 As operações gravadas em `_robot_runs` são [horário de saída, resultado, volume]: a direção não é guardada, então
 o casamento é pelo horário de saída, dentro de uma tolerância (por padrão, uma barra). O relatório mostra os
@@ -13,9 +14,16 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-MIN_MATCHED_SHARE = 0.95
-MAX_RESULT_DIFFERENCE = 0.05
-PAIR_TOLERANCE = 0.05          # informativo: um par é "próximo" se os resultados diferem até 5%
+# Critério (decisão do dono do projeto em 2026-10-12, depois da medição registrada em docs/sdk/exatidao.md):
+# as três condições precisam valer. A diferença sobre o resultado LÍQUIDO continua no relatório, mas deixou de
+# ser critério: ela fica instável quando o líquido é pequeno perto do giro.
+MIN_MATCHED_SHARE = 0.95          # operações casadas pelo horário de saída
+PAIR_TOLERANCE = 0.05             # um par é "próximo" se os resultados diferem até 5% do resultado do Python
+MIN_PAIRS_CLOSE_SHARE = 0.95      # pares próximos, entre os casados
+MAX_DIFFERENCE_OF_GROSS = 0.01    # diferença do resultado total, sobre o giro bruto do Python
+MAX_MEDIAN_BIAS = 0.02            # desvio da mediana da razão MQL5/Python entre os pares: pega um viés sistemático
+                                  # (ex.: lote sempre 4% menor), que passaria nas outras duas medidas
+PARITY_TESTER_MODEL = "0"         # "cada tick": a paridade compara a LÓGICA; o custo real é outra medida
 
 
 @dataclass
@@ -32,6 +40,7 @@ class ParityReport:
     warmup_until: str = ""                                       # operações encerradas antes disso ficam de fora
     excluded_warmup: int = 0
     pairs_close: int = 0             # pares cujo resultado difere no máximo PAIR_TOLERANCE do resultado do Python
+    median_ratio: float = 1.0        # mediana de resultado MQL5 / resultado Python entre os pares
     gross: float = 0.0               # giro bruto do Python: soma dos resultados em valor absoluto
 
     @property
@@ -57,9 +66,9 @@ class ParityReport:
 
     @property
     def ok(self) -> bool:
-        difference = self.result_difference
         return bool(self.matched) and self.matched_share >= MIN_MATCHED_SHARE and \
-            difference is not None and difference <= MAX_RESULT_DIFFERENCE
+            self.pairs_close_share >= MIN_PAIRS_CLOSE_SHARE and \
+            self.difference_of_gross <= MAX_DIFFERENCE_OF_GROSS and abs(self.median_ratio - 1.0) <= MAX_MEDIAN_BIAS
 
     def to_dict(self) -> dict:
         return {"ok": self.ok, "python_trades": self.python_trades, "mql5_trades": self.mql5_trades,
@@ -68,7 +77,7 @@ class ParityReport:
                 "result_difference": self.result_difference, "tolerance_minutes": self.tolerance_minutes,
                 "warmup_until": self.warmup_until, "excluded_warmup": self.excluded_warmup,
                 "pairs_close": self.pairs_close, "pairs_close_share": self.pairs_close_share,
-                "difference_of_gross": self.difference_of_gross,
+                "difference_of_gross": self.difference_of_gross, "median_ratio": self.median_ratio,
                 "only_python": self.only_python, "only_mql5": self.only_mql5}
 
 
@@ -95,7 +104,7 @@ def compare(python_trades: List[list], mql5_trades: List[list], tolerance_minute
     used = [False] * len(right)
     report = ParityReport(len(left), len(right), 0, tolerance_minutes=tolerance_minutes,
                           python_result=sum(float(t[1]) for t in left), mql5_result=sum(float(t[1]) for t in right))
-    start = 0
+    start, ratios = 0, []
     for trade in left:
         when = _when(trade[0])
         while start < len(right) and _when(right[start][0]) < when - tolerance:
@@ -117,6 +126,12 @@ def compare(python_trades: List[list], mql5_trades: List[list], tolerance_minute
             report.same_sign += 1
         if abs(float(right[best][1]) - float(trade[1])) <= PAIR_TOLERANCE * abs(float(trade[1])):
             report.pairs_close += 1
+        if float(trade[1]):
+            ratios.append(float(right[best][1]) / float(trade[1]))
+    if ratios:
+        ratios.sort()
+        middle = len(ratios) // 2
+        report.median_ratio = ratios[middle] if len(ratios) % 2 else (ratios[middle - 1] + ratios[middle]) / 2
     report.gross = sum(abs(float(t[1])) for t in left)
     report.only_mql5 = [list(t) for t, taken in zip(right, used) if not taken]
     report.warmup_until, report.excluded_warmup = (str(warmup_until) if warmup_until is not None else ""), excluded
@@ -138,7 +153,8 @@ def run(db, config, robot, strategy_robot, symbol: str, timeframe: str, start=No
     period_start = _when(python_run["data_start"])
     period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
     mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, period_start, period_end, preset,
-                                 run=runner, is_running=is_running)
+                                 run=runner, is_running=is_running, source=backtest.DEEP_SOURCE,
+                                 model=PARITY_TESTER_MODEL)
     return {"report": compare(python_run["trades"], mql5_run["trades"], float(tf.minutes)),
             "python_run": python_run, "mql5_run": mql5_run}
 
@@ -193,7 +209,7 @@ def run_declared(db, config, robot, symbol: str, timeframe: str, start=None, end
     period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
     mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, trade_from, period_end,
                                  params=parity_params(robot, config), run=runner, is_running=is_running,
-                                 source=backtest.DEEP_SOURCE)
+                                 source=backtest.DEEP_SOURCE, model=PARITY_TESTER_MODEL)
     report = compare(python_run["trades"], mql5_run["trades"], float(tf.minutes))
     report.warmup_until = trade_from.strftime("%Y-%m-%d %H:%M:%S")      # início comum da comparação
     return {"report": report, "python_run": python_run, "mql5_run": mql5_run}

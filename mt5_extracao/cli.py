@@ -761,13 +761,16 @@ def _robots_parity(args, ctx, items):
     _print(f"  Operações: {report.python_trades} no Python, {report.mql5_trades} no MQL5; {report.matched} casadas "
            f"({_fmt_pct(report.matched_share)}; mínimo {_fmt_pct(parity.MIN_MATCHED_SHARE)}), "
            f"{report.same_sign} com o mesmo sinal de resultado")
-    _print(f"  Resultado: {_fmt_num(report.python_result)} no Python e {_fmt_num(report.mql5_result)} no MQL5" +
-           (f" (diferença {_fmt_pct(difference)}; máximo {_fmt_pct(parity.MAX_RESULT_DIFFERENCE)})"
-            if difference is not None else " (o Python deu zero: diferença não calculável)"))
     _print(f"  Par a par: {report.pairs_close} de {report.matched} com resultado até "
-           f"{_fmt_pct(parity.PAIR_TOLERANCE)} um do outro ({_fmt_pct(report.pairs_close_share)}); a diferença total é "
-           f"{_fmt_pct(report.difference_of_gross)} do giro bruto. Modelo do Tester: "
-           f"{outcome['mql5_run']['metrics']['tester_model']}.")
+           f"{_fmt_pct(parity.PAIR_TOLERANCE)} um do outro ({_fmt_pct(report.pairs_close_share)}; mínimo "
+           f"{_fmt_pct(parity.MIN_PAIRS_CLOSE_SHARE)}); mediana da razão MQL5/Python {_fmt_num(report.median_ratio, 3)} "
+           f"(de {_fmt_num(1 - parity.MAX_MEDIAN_BIAS, 2)} a {_fmt_num(1 + parity.MAX_MEDIAN_BIAS, 2)})")
+    _print(f"  Resultado: {_fmt_num(report.python_result)} no Python e {_fmt_num(report.mql5_result)} no MQL5; a "
+           f"diferença é {_fmt_pct(report.difference_of_gross)} do giro bruto (máximo "
+           f"{_fmt_pct(parity.MAX_DIFFERENCE_OF_GROSS)})" +
+           (f" e {_fmt_pct(difference)} do resultado líquido (só informativo)" if difference is not None else ""))
+    _print(f"  Modelo do Tester: {outcome['mql5_run']['metrics']['tester_model']}. A paridade compara a lógica; o "
+           "custo com ticks reais é maior do que o do backtester Python (veja docs/sdk/exatidao.md).")
     if report.warmup_until:
         _print(f"  Os dois lados começam a operar em {report.warmup_until[:16]}, com o mesmo capital (as barras "
                "anteriores só aquecem os indicadores do Python).")
@@ -776,8 +779,7 @@ def _robots_parity(args, ctx, items):
             _print(f"  {label} ({len(trades)}): " + ", ".join(str(t[0])[:16] for t in trades[:8]) +
                    (" ..." if len(trades) > 8 else ""))
     _print("Paridade dentro do critério." if report.ok else
-           "Fora do critério. Diferenças legítimas existem (modelo de ticks, spread, horário da corretora): confira as "
-           "operações sem par antes de concluir.")
+           "Fora do critério: confira as operações sem par e os pares que divergem antes de confiar no robô.")
     return EXIT_OK if report.ok else EXIT_FAIL
 
 

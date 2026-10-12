@@ -30,9 +30,15 @@ Medições de 2026-10-12, host Linux, MT5 build 6258 no Wine, conta MetaQuotes-D
 | Cada tick | 144 × 144 | 141 (97,9%) | 136 de 141 (96,5%) | 12,2% do líquido; 0,59% do giro bruto |
 | Ticks reais | 144 × 144 | 140 (97,2%) | 134 de 140 (95,7%) | 43,6% do líquido; 2,09% do giro bruto |
 
-Em todos os pares o sinal do resultado é o mesmo. O critério da T10.6 (≥ 95% casadas **e** diferença ≤ 5% do
-resultado líquido) **não é cumprido** na segunda parte. O percentual sobre o líquido é alto porque o líquido é
-pequeno perto do giro (−9.139 sobre 190.777), não porque as operações divirjam.
+Em todos os pares o sinal do resultado é o mesmo. O percentual sobre o líquido é alto porque o líquido é pequeno
+perto do giro (−9.139 sobre 190.777), não porque as operações divirjam.
+
+**Critério em vigor (decisão do dono do projeto, 2026-10-12):** ≥ 95% das operações casadas, ≥ 95% dos pares a até
+5%, diferença total ≤ 1% do giro bruto e mediana da razão MQL5/Python entre 0,98 e 1,02 (esta última pega um viés
+sistemático, como lote sempre menor). A diferença sobre o líquido segue no relatório, só como informação. A
+paridade roda sempre em "cada tick", porque compara a lógica: nesse modelo o robô medido **cumpre** o critério
+(97,9%; 96,5%; 0,6%; mediana 1,000). Com ticks reais ele ficaria em 2,09% do giro, fora do limite de 1%: essa
+distância é custo, não lógica, e é a lacuna 1 abaixo.
 
 ## Lacunas que continuam
 

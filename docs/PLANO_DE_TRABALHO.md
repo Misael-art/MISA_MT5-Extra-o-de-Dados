@@ -91,7 +91,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
-| T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ⏳ gera, compila e opera; depois das correções, 97% das operações casadas e 96% dos pares a até 5%; **o critério em dinheiro (5% do líquido) segue não cumprido** e depende de decisão do dono (veja a seção) |
+| T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -1499,7 +1499,9 @@ nas variações).
 **Registrado na entrega:** `robots/parity.py` e `mt5x robots parity <robô MQL5> --strategy <chave> --symbol X --tf M5`
 (ou `"parity_with"` no `robot.json`). Roda o backtest Python e o do Strategy Tester no mesmo período e mostra:
 operações de cada lado, casadas, com o mesmo sinal de resultado, as sem par (com o horário) e a diferença do
-resultado total. Critério: ≥ 95% casadas e diferença ≤ 5%; código de saída 1 fora dele. `sdk` ganhou
+resultado total. Critério original: ≥ 95% casadas e diferença ≤ 5% do resultado líquido; **trocado em 2026-10-12**
+por decisão do dono (veja a T10.10): ≥ 95% casadas, ≥ 95% dos pares a até 5%, diferença ≤ 1% do giro bruto e
+mediana da razão entre 0,98 e 1,02. Código de saída 1 fora dele. `sdk` ganhou
 `compare_parity`, `run_parity` e `ParityReport`.
 
 **Diferença em relação ao passo 1:** o casamento é só pelo **horário de saída** (tolerância de uma barra), não por
@@ -1574,7 +1576,7 @@ real: quando elas entrarem, `parity` e a bateria `--deep` são acrescentadas aqu
   funcionam; os modelos de `robots new` estão dentro do wheel.
 - **Verificação:** `pip install dist/*.whl` em um venv novo.
 
-### T10.10 — Geração de MQL5 a partir de Python (opcional) ⏳
+### T10.10 — Geração de MQL5 a partir de Python (opcional) ✅
 
 **Registrado na entrega:** `strategies/declared.py` (`SignalSpec`, `DeclaredStrategy`), `robots/generate.py` e
 `mt5x robots generate <declaração.json> --name <Nome> --dir <pasta>`. A declaração é um JSON: indicadores `sma`,
@@ -1620,7 +1622,24 @@ exclusão do aquecimento usada na primeira medição deixou de ser necessária. 
 todas as lacunas estão em [sdk/exatidao.md](sdk/exatidao.md). Resumo: 144 × 144 operações, 97,9% casadas e 96,5%
 dos pares a até 5% com "cada tick"; a diferença total é 0,59% do giro bruto, mas 12,2% do resultado líquido.
 
-**Decisão pendente do dono do projeto:** o critério da T10.6 mede a diferença sobre o resultado **líquido**, que
+**Decisão do dono do projeto (2026-10-12): trocar o critério pelas medidas que não dependem do líquido.** O
+critério de paridade passou a ser, com as quatro condições valendo juntas:
+
+| Condição | Limite | Medido (EURUSD H1, "cada tick") |
+|---|---|---|
+| Operações casadas pelo horário de saída | ≥ 95% | 141 de 144 (97,9%) |
+| Pares com resultado a até 5% um do outro | ≥ 95% | 136 de 141 (96,5%) |
+| Diferença do resultado total sobre o giro bruto | ≤ 1% | 0,6% |
+| Mediana da razão MQL5/Python entre os pares | de 0,98 a 1,02 | 1,000 |
+
+A quarta condição não estava na recomendação: acrescentei porque as duas medidas novas deixariam passar um viés
+sistemático (todo par 4% menor, como o defeito do capital achado antes), e ela o pega. A diferença sobre o
+resultado líquido continua no relatório, só como informação (12,2%). A paridade passou a rodar sempre no modelo
+"cada tick", qualquer que seja `[ROBOTS] tester_model`: ela compara a **lógica**; a diferença de custo para os
+ticks reais é a lacuna 1 de [sdk/exatidao.md](sdk/exatidao.md) e é medida à parte. Os limites de 1% e de 2% foram
+fixados por mim, antes de rodar a medição final, e não devem ser afrouxados para um robô passar.
+
+**Texto anterior à decisão:** o critério da T10.6 mede a diferença sobre o resultado **líquido**, que
 fica instável quando o líquido é pequeno perto do giro. Não o alterei. As opções são manter (e a tarefa só fecha
 com uma estratégia de resultado líquido maior) ou trocar por medidas que não dependem do líquido: pares a até 5%
 (hoje 96,5%) e diferença sobre o giro bruto (hoje 0,59%).

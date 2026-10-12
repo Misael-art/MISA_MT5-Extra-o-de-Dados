@@ -229,5 +229,9 @@ def test_parity_reports_pair_agreement_and_difference_of_gross():
     report = parity.compare(python, mql5)
     assert report.matched == 2 and report.pairs_close == 2 and report.pairs_close_share == 1.0
     assert report.result_difference == pytest.approx(1.0)        # 10 de diferença sobre um líquido de 10: 100%
-    assert report.difference_of_gross == pytest.approx(10 / 1990) and not report.ok   # o critério continua o mesmo
-    assert set(report.to_dict()) >= {"pairs_close_share", "difference_of_gross"}
+    assert report.difference_of_gross == pytest.approx(10 / 1990) and report.median_ratio == pytest.approx(1.005)
+    assert report.ok                 # o líquido pequeno não reprova mais: valem os pares, o giro bruto e o viés
+    one_off = parity.compare(python + [["2025-01-06 10:00:00", -1000.0, 1.0]],
+                             mql5 + [["2025-01-06 10:05:00", -1660.0, 1.0]])           # um stop preenchido em gap
+    assert not one_off.ok and one_off.pairs_close_share == pytest.approx(2 / 3)
+    assert set(report.to_dict()) >= {"pairs_close_share", "difference_of_gross", "median_ratio"}
