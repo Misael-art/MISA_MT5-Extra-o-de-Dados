@@ -40,8 +40,12 @@ class GateError(RuntimeError):
         super().__init__("O robô não pode iniciar: " + "; ".join(f"{g.name} ({g.detail})" for g in failed))
 
 
-def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = None) -> List[Gate]:
-    """Exigências para iniciar em demo. `account` é MT5Connector.account_summary() (None sem conexão)."""
+def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = None,
+               symbol: Optional[str] = None, timeframe: Optional[str] = None) -> List[Gate]:
+    """
+    Exigências para iniciar em demo. `account` é MT5Connector.account_summary() (None sem conexão). Com `symbol`
+    e `timeframe` (o gráfico em que o robô vai entrar), a aprovação da bateria tem de ser desse ativo e timeframe.
+    """
     slug = robot.key.split(":", 1)[1]
     if robot.kind != catalog.MQL5:
         return [Gate("Robô MQL5", False, "estratégia Python não opera",
@@ -70,6 +74,13 @@ def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = N
         gates.append(Gate("Bateria de segurança aprovada", False,
                           f"a aprovação é do {'preset ' + check['preset'] if check.get('preset') else 'padrão do código'}"
                           ", não do que você vai usar", f"Rode: {command}"))
+    elif symbol and check.get("symbol") and (check["symbol"].lower(), check.get("timeframe", "")) != \
+            (symbol.lower(), timeframe or check.get("timeframe", "")):
+        gates.append(Gate("Bateria de segurança aprovada", False,
+                          f"a aprovação é de {check['symbol']} {check.get('timeframe', '')}, não de {symbol} "
+                          f"{timeframe or ''}".rstrip(),
+                          f"Teste e aprove neste ativo: mt5x robots backtest {slug} --symbol {symbol} --tf "
+                          f"{timeframe or '<timeframe>'} e depois {command} --symbol {symbol}"))
     elif check.get("fingerprint") != catalog.fingerprint(robot):
         gates.append(Gate("Bateria de segurança aprovada", False,
                           "o código mudou depois da aprovação (ou ela é de uma versão anterior do programa)",
@@ -107,7 +118,7 @@ def start_demo(db, config, robot, account: Optional[dict], symbol: str, timefram
     tf = timeframes.parse(timeframe)
     if tf is None:
         raise ValueError(f"Timeframe inválido: {timeframe}")
-    gates = demo_gates(config, robot, account, preset)
+    gates = demo_gates(config, robot, account, preset, symbol, tf.name)
     if not all(g.ok for g in gates):
         raise GateError(gates)
     data = mt5_tools.data_dir(config)

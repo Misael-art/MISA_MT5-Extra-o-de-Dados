@@ -25,6 +25,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
+    mt5x robots backtest <robô> --symbols EURUSD,GBPUSD --tf H1   # o mesmo teste em vários ativos
     mt5x robots new <Nome> --dir <pasta>               # cria o esqueleto de um robô sobre a biblioteca de segurança
     mt5x robots generate <declaração.json> --name <Nome> --dir <pasta>   # robô MQL5 a partir de uma estratégia declarada
     mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
@@ -517,14 +518,65 @@ def _robot_dict(robot, full=False):
     return data
 
 
+def _robots_backtest_many(args, ctx, robot, tf, start, end):
+    """O mesmo backtest em vários ativos, com um quadro comparativo. Cada ativo é um teste independente."""
+    from mt5_extracao.robots import backtest, catalog, mt5_tools
+    symbols = _parse_symbols(args.symbols)
+    mql5 = robot.kind == catalog.MQL5
+    params = {}
+    for item in args.param or []:
+        if "=" not in item:
+            raise ValueError(f"--param deve ser nome=valor (recebido: {item})")
+        name, value = item.split("=", 1)
+        params[name.strip()] = value.strip()
+    if not mql5:
+        params = _parse_params(args.param)
+    bridge_was_running = False
+    try:
+        if mql5 and mt5_tools.terminal_running(ctx.config):
+            if not args.close_terminal:       # um aviso só, em vez do mesmo erro repetido em cada ativo
+                raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
+                                   "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
+            _print("Fechando o MetaTrader 5 para rodar os testes...")
+            bridge_was_running = mt5_tools.release_terminal(ctx.config)
+        results = backtest.run_many(ctx.db, ctx.config, robot, symbols, tf.label, start, end, args.preset, params)
+    finally:
+        if bridge_was_running:
+            mt5_tools.restart_bridge()
+    _data(runs=[{"symbol": r["symbol"], "error": r["error"],
+                 "run": {k: v for k, v in r["run"].items() if k not in ("trades", "equity")} if r["run"] else None}
+                for r in results],
+          summary={"tested": sum(1 for r in results if r["run"]), "failed": sum(1 for r in results if not r["run"])})
+    _print(f"{robot.name} em {tf.name}, {len(symbols)} ativo(s):")
+    _print(f"  {'Ativo':<12}{'Operações':>10}{'Acerto':>9}{'Profit factor':>15}{'Resultado':>12}{'Queda máx.':>12}")
+    for r in results:
+        if r["run"] is None:
+            _print(f"  {r['symbol']:<12}não testado: {r['error']}")
+            continue
+        m = r["run"]["metrics"]
+        _print(f"  {r['symbol']:<12}{m['trades']:>10}{_fmt_pct(m['win_rate']):>9}{_fmt_num(m['profit_factor']):>15}"
+               f"{_fmt_pct(m['return_pct']):>12}{_fmt_pct(m['max_drawdown_pct']):>12}")
+    failed = [r["symbol"] for r in results if r["run"] is None]
+    _print("Cada ativo é um teste independente (não há resultado de carteira). As execuções ficaram gravadas; a "
+           "bateria avalia um ativo por vez: mt5x robots battery <robô> --symbol <ativo>.")
+    if failed:
+        _print("Sem teste: " + ", ".join(failed) + ".")
+    return EXIT_FAIL if failed else EXIT_OK
+
+
 def _robots_backtest(args, ctx, items):
     from mt5_extracao.robots import backtest, catalog
-    if not args.path or not args.symbol or not args.tf:
-        raise ValueError("uso: mt5x robots backtest <robô> --symbol WIN$N --tf D1 [--from AAAA-MM-DD] [--to AAAA-MM-DD]")
+    if not args.path or not (args.symbol or args.symbols) or not args.tf:
+        raise ValueError("uso: mt5x robots backtest <robô> --symbol WIN$N (ou --symbols A,B,C) --tf D1 "
+                         "[--from AAAA-MM-DD] [--to AAAA-MM-DD]")
+    if args.symbol and args.symbols:
+        raise ValueError("use --symbol (um ativo) ou --symbols (vários), não os dois")
     robot = catalog.get_robot(items, args.path)
     tf = _parse_tf(args.tf)
     start = _parse_date(args.date_from) if args.date_from else None
     end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+    if args.symbols:
+        return _robots_backtest_many(args, ctx, robot, tf, start, end)
     if robot.kind == catalog.MQL5:
         return _robots_backtest_mql5(args, ctx, robot, tf, start, end)
     run = backtest.run_python(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end,
@@ -839,7 +891,8 @@ def _robots_battery(args, ctx, items):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
     try:
-        report = battery.run_battery(ctx.db, ctx.config, robot, items, args.preset, deep=args.deep)
+        report = battery.run_battery(ctx.db, ctx.config, robot, items, args.preset, deep=args.deep,
+                                     symbol=args.symbol)
     except (OSError, RuntimeError) as e:
         raise RuntimeError(str(e)) from e
     finally:
@@ -847,7 +900,8 @@ def _robots_battery(args, ctx, items):
             from mt5_extracao.robots import mt5_tools
             mt5_tools.restart_bridge()
     _data(battery=report.to_dict())
-    _print(f"Bateria de segurança de {robot.name}" + (f", preset {report.preset}" if report.preset else ""))
+    _print(f"Bateria de segurança de {robot.name}" + (f", preset {report.preset}" if report.preset else "") +
+           (f", sobre o backtest de {report.symbol} {report.timeframe}" if report.symbol else ""))
     for group, status in ((battery.STATIC, report.static_status), (battery.STATISTICAL, report.statistical_status)):
         _print(f"\n{group.capitalize()}: {status}")
         for item in (i for i in report.items if i.group == group):
@@ -871,7 +925,7 @@ def _robots_start(args, ctx, items):
     robot = catalog.get_robot(items, args.path)
     tf = _parse_tf(args.tf)
     account = ctx.connector().account_summary()
-    gates = live.demo_gates(ctx.config, robot, account, args.preset)
+    gates = live.demo_gates(ctx.config, robot, account, args.preset, args.symbol, tf.name)
     _data(robot=robot.key, gates=[vars(g) for g in gates])
     _print(f"Exigências para iniciar {robot.name} em conta demo:")
     for gate in gates:
@@ -1268,7 +1322,8 @@ def build_parser():
                                            "import: arquivo .mq5/.ex5 ou pasta de robôs")
     p.add_argument("--overwrite-presets", action="store_true",
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
-    p.add_argument("--symbol", help="backtest: ativo")
+    p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
+    p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
     p.add_argument("--tf", help="backtest: timeframe (ex.: D1)")
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")

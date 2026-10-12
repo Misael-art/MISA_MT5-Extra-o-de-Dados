@@ -298,3 +298,27 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
               "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
     store.save_run(db, record)
     return record
+
+
+# --- vários ativos --------------------------------------------------------------------
+
+def run_many(db, config, robot, symbols, timeframe: str, start=None, end=None, preset: Optional[str] = None,
+             params: Optional[dict] = None, run: Optional[Callable] = None,
+             is_running: Optional[Callable] = None) -> List[dict]:
+    """
+    O mesmo backtest em vários ativos, um por vez. Cada ativo é um teste independente (não há resultado "de
+    carteira"). Um ativo que falha não interrompe os outros. Devolve, na ordem pedida,
+    [{"symbol", "run" (ou None), "error" (ou "")}].
+    """
+    results = []
+    for symbol in symbols:
+        try:
+            if robot.kind == catalog.MQL5:
+                record = run_mql5(db, config, robot, symbol, timeframe, start, end, preset, params, run=run,
+                                  is_running=is_running)
+            else:
+                record = run_python(db, config, robot, symbol, timeframe, start, end, params)
+            results.append({"symbol": symbol, "run": record, "error": ""})
+        except (OSError, RuntimeError, ValueError) as e:
+            results.append({"symbol": symbol, "run": None, "error": str(e)})
+    return results

@@ -96,7 +96,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | a fazer (medição e roteiro guardados; veja a seção) |
 | T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
 | T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
-| T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | a fazer |
+| T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | ✅ concluída (executada no host em dois ativos reais) |
 | T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | a fazer |
 | T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
@@ -1862,7 +1862,18 @@ copiados para a montada.
 - **Armadilhas:** horário da corretora × UTC (use a base como está gravada); barras de sessões que não começam em
   múltiplo do timeframe (B3 abre 09:00: M30 e H1 alinham na hora cheia, H4 depende da corretora: confira com o MT5).
 
-### T11.2 — Backtest em vários ativos
+### T11.2 — Backtest em vários ativos ✅
+
+**Registrado na entrega:** `mt5x robots backtest <robô> --symbols A,B,C --tf H1` (`backtest.run_many`), para robôs
+MQL5 e estratégias Python. Um teste por ativo, quadro comparativo, cada execução gravada; um ativo que falha não
+interrompe os outros e o código de saída é 1 se algum falhar. Com o MT5 aberto e sem `--close-terminal`, o comando
+para com um aviso só. `mt5x robots battery <robô> --symbol X` escolhe o ativo avaliado (sem a opção, vale o
+backtest mais recente). A aprovação passa a guardar o ativo e o timeframe (`_robot_checks.symbol` e `.timeframe`,
+colunas aditivas) e a trava de demo **recusa iniciar o robô em um ativo ou timeframe diferente do aprovado**.
+Não há resultado "de carteira": cada ativo é um teste independente, e a saída diz isso.
+**Execução real (2026-10-12, host, ticks reais):** o robô do tutorial em EURUSD e GBPUSD H1, de 2026-06-01 a
+2026-09-30, mais um ativo inexistente: 53 e 54 operações, o terceiro com o motivo da falha, 66 s no total, código
+de saída 1.
 
 - **Objetivo:** testar o mesmo robô ou estratégia em uma lista de ativos e ver o resultado lado a lado.
 - **Arquivos:** `robots/backtest.py`, `robots/battery.py`, `cli.py`, `tests/test_robots_multi.py` (novo).

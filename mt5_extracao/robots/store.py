@@ -140,6 +140,8 @@ CREATE TABLE IF NOT EXISTS _robot_checks (
     created_at TEXT NOT NULL
 )
 """
+# colunas acrescentadas depois (aditivas): código avaliado, e ativo e timeframe do backtest que deu a aprovação
+_CHECK_EXTRA = ("fingerprint", "symbol", "timeframe")
 _CHECK_COLUMNS = ("check_id", "robot_key", "preset", "approved", "allows_real", "static_status",
                   "statistical_status", "run_id", "items_json", "created_at")
 
@@ -149,12 +151,14 @@ def save_check(db, check: dict) -> None:
     from sqlalchemy import text
     row = {**{c: check.get(c) for c in _CHECK_COLUMNS}, "approved": int(check["approved"]),
            "allows_real": int(check["allows_real"]), "items_json": json.dumps(check["items"], ensure_ascii=False)}
-    row["fingerprint"] = check.get("fingerprint", "")
+    for extra in _CHECK_EXTRA:
+        row[extra] = check.get(extra, "")
     with db.engine.begin() as conn:
         conn.execute(text(_CREATE_CHECKS))
-        if not _has_column(conn, "_robot_checks", "fingerprint"):      # base anterior: coluna nova, nada é apagado
-            conn.execute(text("ALTER TABLE _robot_checks ADD COLUMN fingerprint TEXT"))
-        columns = _CHECK_COLUMNS + ("fingerprint",)
+        for extra in _CHECK_EXTRA:                 # base anterior: colunas novas, nada é apagado
+            if not _has_column(conn, "_robot_checks", extra):
+                conn.execute(text(f"ALTER TABLE _robot_checks ADD COLUMN {extra} TEXT"))
+        columns = _CHECK_COLUMNS + _CHECK_EXTRA
         conn.execute(text(f"INSERT INTO _robot_checks ({', '.join(columns)}) "
                           f"VALUES ({', '.join(':' + c for c in columns)})"), row)
 
@@ -171,7 +175,7 @@ def load_checks(db, robot_key: str = None) -> list:
         return []
     params = {}
     with db.engine.connect() as conn:
-        columns = _CHECK_COLUMNS + (("fingerprint",) if _has_column(conn, "_robot_checks", "fingerprint") else ())
+        columns = _CHECK_COLUMNS + tuple(c for c in _CHECK_EXTRA if _has_column(conn, "_robot_checks", c))
         sql = f"SELECT {', '.join(columns)} FROM _robot_checks"
         if robot_key:
             sql += " WHERE robot_key = :k"
@@ -179,6 +183,7 @@ def load_checks(db, robot_key: str = None) -> list:
         rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, check_id DESC"), params).mappings()]
     for row in rows:
         row["approved"], row["allows_real"] = bool(row["approved"]), bool(row["allows_real"])
-        row["fingerprint"] = row.get("fingerprint") or ""
+        for extra in _CHECK_EXTRA:
+            row[extra] = row.get(extra) or ""
         row["items"] = json.loads(row.pop("items_json") or "[]")
     return rows

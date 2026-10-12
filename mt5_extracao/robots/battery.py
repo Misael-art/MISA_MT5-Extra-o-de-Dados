@@ -59,6 +59,8 @@ class Report:
     created_at: str = ""
     check_id: str = ""
     fingerprint: str = ""          # código avaliado (catalog.fingerprint): a aprovação vale só para ele
+    symbol: str = ""               # ativo e timeframe do backtest avaliado: a aprovação vale só para eles
+    timeframe: str = ""
 
     def group_status(self, group: str) -> str:
         statuses = [i.status for i in self.items if i.group == group]
@@ -88,7 +90,7 @@ class Report:
         return {"check_id": self.check_id, "robot_key": self.robot_key, "preset": self.preset,
                 "approved": self.approved, "allows_real": self.allows_real, "static_status": self.static_status,
                 "statistical_status": self.statistical_status, "run_id": self.run_id, "created_at": self.created_at,
-                "fingerprint": self.fingerprint,
+                "fingerprint": self.fingerprint, "symbol": self.symbol, "timeframe": self.timeframe,
                 "items": [dict(vars(i), icon=i.icon) for i in self.items]}
 
 
@@ -554,15 +556,23 @@ def deep_items(db, config, robot, run: dict, runner: Optional[Callable] = None,
 
 
 def run_battery(db, config, robot, robots=(), preset: Optional[str] = None, deep: bool = False,
-                runner: Optional[Callable] = None, is_running: Optional[Callable] = None) -> Report:
+                runner: Optional[Callable] = None, is_running: Optional[Callable] = None,
+                symbol: Optional[str] = None) -> Report:
     """
     Roda a bateria sobre o backtest mais recente do robô e grava o resultado em `_robot_checks`. Com `deep`
     (só MQL5), repete o Strategy Tester para medir "fora da amostra" e robustez; o MT5 precisa estar fechado.
     """
     from . import backtest
     runs = [r for r in store.load_runs(db, robot.key) if r["source"] not in catalog.HIDDEN_RUN_SOURCES]
+    if symbol:                                 # com vários ativos testados, a pessoa escolhe qual é avaliado
+        chosen = [r for r in runs if r["symbol"].lower() == symbol.lower()]
+        if not chosen and runs:
+            raise ValueError(f"Não há backtest de {robot.name} em {symbol}. Testados: " +
+                             ", ".join(sorted({r['symbol'] for r in runs})) + ".")
+        runs = chosen
     run = runs[0] if runs else None
     report = Report(robot.key, preset or "", run_id=run["run_id"] if run else "", check_id=uuid.uuid4().hex,
+                    symbol=run["symbol"] if run else "", timeframe=run["timeframe"] if run else "",
                     created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"))
     report.fingerprint = catalog.fingerprint(robot) if robot.kind == catalog.MQL5 else ""
     report.items = static_items(robot, config, robots, preset) + statistical_items(robot, run, config, db, preset)

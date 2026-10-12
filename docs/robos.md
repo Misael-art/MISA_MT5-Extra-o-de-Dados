@@ -29,6 +29,7 @@ mt5x robots import caminho/Robo.mq5    # acrescenta um robô avulso (.mq5 ou .ex
 mt5x robots compile hdk_hadouken_painel   # copia o robô para o MT5 e compila no MetaEditor
 mt5x robots install hdk_hadouken_painel   # só copia (robô, includes e presets)
 mt5x robots backtest hdk_hadouken_painel --symbol WIN$N --tf M5 --from 2026-01-01 --preset Conservador
+mt5x robots backtest hdk_hadouken_painel --symbols WIN$N,WDO$N --tf M5   # o mesmo teste em vários ativos
 mt5x robots validate hdk_hadouken_painel  # confere o robot.json contra o contrato (docs/sdk/contrato.md)
 mt5x robots battery hdk_hadouken_painel --preset Conservador   # bateria de segurança
 mt5x robots check hdk_hadouken_painel --symbol WIN$N --tf M5   # contrato, compilação, backtest e bateria de uma vez
@@ -112,6 +113,9 @@ nunca é liberado para conta real. Para o item do spread, grave antes a especifi
 Para robôs MQL5, `--deep` faz a **bateria completa**: repete o Strategy Tester na parte inicial e na parte final
 do período e com cada parâmetro listado em `tunable` (no `robot.json`) 20% abaixo e 20% acima. O comando avisa
 quantos testes vai rodar; conte cerca de 10 a 15 segundos por teste, com o MetaTrader 5 fechado.
+
+Com vários ativos testados (`--symbols`), a bateria avalia um por vez: `mt5x robots battery <robô> --symbol <ativo>`.
+A aprovação vale para aquele ativo e timeframe; o robô não é liberado em outro.
 
 **Aprovação não é garantia de lucro.** É o mínimo para o robô rodar em conta de demonstração.
 

@@ -24,7 +24,7 @@ SURFACE = {
                    "trade_from"],
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
                  "is_running", "source", "model"],              # parâmetros novos no fim, com padrão
-    "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running"],
+    "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running", "symbol"],
     "check": ["db", "config", "robot", "robots", "symbol", "timeframe", "start", "end", "preset", "run", "is_running"],
     "write_junit": ["result", "path"],
     "compare_parity": ["python_trades", "mql5_trades", "tolerance_minutes", "warmup_until"],     # T10.6, T10.10

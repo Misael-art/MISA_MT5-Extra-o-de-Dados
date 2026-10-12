@@ -62,7 +62,8 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 | `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None)` | Backtest de uma estratégia Python com as barras da base |
 | `run_mql5(db, config, robot, symbol, timeframe, start=None, end=None, preset=None, params=None, ...)` | Backtest de um robô MQL5 pelo Strategy Tester. O MT5 precisa estar fechado |
 
-Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`.
+Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`. Pela CLI, `--symbols A,B,C`
+roda o mesmo teste em vários ativos.
 
 ## Bateria e ciclo completo
 
