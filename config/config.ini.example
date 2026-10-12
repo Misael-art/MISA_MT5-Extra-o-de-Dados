@@ -82,3 +82,6 @@ event_window_hours = 4
 library_dirs = 
 # MetaEditor usado por 'mt5x robots compile'. Vazio = MetaEditor64.exe da pasta do MT5 ([MT5] path).
 metaeditor_path = 
+# Modelo do Strategy Tester em 'mt5x robots backtest' de robô MQL5: 0 = cada tick, 1 = OHLC de 1 minuto,
+# 2 = só preços de abertura, 4 = cada tick com ticks reais (mais fiel e mais lento).
+tester_model = 1

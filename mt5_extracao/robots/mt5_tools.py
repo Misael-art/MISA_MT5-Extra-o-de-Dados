@@ -4,12 +4,17 @@ presets) para `MQL5/` e compilar, lendo o log do MetaEditor em erros e avisos.
 
     items, result = compile_robot(config, robot)     # instala e compila; result.ok diz se gerou o .ex5
 
-Nada aqui envia ordens nem inicia o robô. Os executáveis entram por função injetada (`run`), para testar sem MT5.
+    report = run_tester(config, data, tester_ini(...), "nome")    # roda o Strategy Tester e devolve o relatório
+
+Nada aqui envia ordens nem inicia o robô numa conta: o Strategy Tester só simula. Os executáveis entram por
+função injetada (`run`), para testar sem MT5.
 
 Validado à mão no Wine (2026-10-12, Wine 11.17, T8.4): o MetaEditor só entende caminhos com espaço quando as
 aspas ficam depois dos dois-pontos (/compile:"C:\\..."), e o `wine` não repassa argumentos assim. Por isso, no
 Linux, a linha de comando vai dentro de um .bat executado por `wine cmd /c`. O código de saída do MetaEditor é
 1 quando compila e 0 quando falha: quem decide o resultado é o log, nunca o código de saída.
+O terminal aceita `/config:"C:\\x.ini"` com `[Tester]` e `ShutdownTerminal=1`: roda o teste, grava o relatório na
+pasta de dados e fecha sozinho. No Wine ele precisa de `/portable` (sem isso abre uma pasta de dados vazia).
 """
 import logging
 import os
@@ -30,6 +35,9 @@ log = logging.getLogger(__name__)
 
 METAEDITOR_EXE = "MetaEditor64.exe"
 COMPILE_TIMEOUT = 300      # segundos
+TESTER_TIMEOUT = 3600
+TESTER_MODELS = {"0": "cada tick", "1": "OHLC de 1 minuto", "2": "só preços de abertura",
+                 "4": "cada tick com ticks reais"}
 COPIED, SAME, KEPT = "copiado", "igual", "mantido"
 
 _MESSAGE = re.compile(r"^(?P<file>.*?)\((?P<line>\d+),(?P<column>\d+)\)\s*:\s*(?P<kind>error|warning)\s+"
@@ -327,3 +335,140 @@ def compile_robot(config, robot: Robot, mt5=None, run: Optional[Callable] = None
         raise ValueError(f"{robot.name} não tem código-fonte (.mq5): não há o que compilar.")
     items = install(robot, data_dir(config, mt5), overwrite_presets)
     return items, compile_source(items[0].target, find_metaeditor(config), wine_prefix(config), run)
+
+
+# --- Strategy Tester ------------------------------------------------------------------
+
+def common_files_dir(config) -> Optional[Path]:
+    """`Common\\Files` do MetaTrader (onde o HADOUKEN grava HDK_trades_<magic>.csv). None se não existir."""
+    for root in _appdata_roots(config):
+        folder = root / "MetaQuotes" / "Terminal" / "Common" / "Files"
+        if folder.is_dir():
+            return folder
+    return None
+
+
+def terminal_running() -> bool:
+    """Há um terminal64.exe em execução? (O MT5 não abre duas vezes a mesma instalação.)"""
+    import psutil
+    for proc in psutil.process_iter(["name"]):
+        try:
+            if (proc.info["name"] or "").lower() == paths.MT5_TERMINAL_EXE:
+                return True
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+    return False
+
+
+def expert_name(compiled: Path, data: Path) -> str:
+    """Nome do robô como o Tester espera: relativo a MQL5\\Experts, sem extensão, com barras do Windows."""
+    relative = _inside(Path(compiled), Path(data) / "MQL5" / "Experts")
+    if relative is None:
+        raise ValueError(f"{compiled} não está em MQL5/Experts da pasta de dados do MT5.")
+    return "\\".join(relative.with_suffix("").parts)
+
+
+def tester_model(config) -> str:
+    value = _get(config, "ROBOTS", "tester_model") or "1"
+    if value not in TESTER_MODELS:
+        raise ValueError(f"[ROBOTS] tester_model = {value} é inválido. Use " +
+                         ", ".join(f"{k} ({v})" for k, v in TESTER_MODELS.items()) + ".")
+    return value
+
+
+def tester_ini(expert: str, symbol: str, period: str, date_from, date_to, deposit: float, report: str,
+               model: str = "1", parameters: str = "") -> str:
+    """Texto do .ini de um teste único (sem otimização) que fecha o terminal ao terminar."""
+    lines = ["[Tester]", f"Expert={expert}"]
+    if parameters:
+        lines.append(f"ExpertParameters={parameters}")
+    lines += [f"Symbol={symbol}", f"Period={period}", "Optimization=0", f"Model={model}",
+              f"FromDate={date_from:%Y.%m.%d}", f"ToDate={date_to:%Y.%m.%d}", "ForwardMode=0",
+              f"Deposit={deposit:.2f}", f"Report={report}", "ReplaceReport=1", "ShutdownTerminal=1"]
+    return "\r\n".join(lines) + "\r\n"
+
+
+def write_tester_set(data: Path, name: str, values: dict) -> str:
+    """Grava os parâmetros do teste em MQL5/Profiles/Tester/<name>.set e devolve o nome do arquivo."""
+    folder = Path(data) / "MQL5" / "Profiles" / "Tester"
+    folder.mkdir(parents=True, exist_ok=True)
+    text = "".join(f"{key}={value}\r\n" for key, value in values.items())
+    (folder / f"{name}.set").write_bytes(text.encode("utf-16"))
+    return f"{name}.set"
+
+
+def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Callable] = None,
+               timeout: int = TESTER_TIMEOUT, is_running: Optional[Callable] = None) -> Path:
+    """
+    Roda o Strategy Tester com o .ini dado e devolve o caminho do relatório (.htm). O terminal precisa estar
+    fechado. `name` é o nome do relatório (o mesmo passado em `Report=`), sem extensão.
+    """
+    data = Path(data)
+    if (is_running or terminal_running)():
+        raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
+                           "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
+    prefix = wine_prefix(config)
+    terminal = install_dir(config) / paths.MT5_TERMINAL_EXE
+    if not terminal.is_file():
+        raise FileNotFoundError(f"Terminal não encontrado em {terminal}. Confira [MT5] path em config/config.ini.")
+    report = data / f"{name}.htm"
+    report.unlink(missing_ok=True)
+    ini = data / f"{name}.ini"
+    ini.write_bytes(ini_text.encode("utf-16"))
+    portable = prefix is not None or data.resolve() == terminal.parent.resolve()
+    command_line = '"{}"{} /config:"{}"'.format(_windows_path(terminal, prefix), " /portable" if portable else "",
+                                                _windows_path(ini, prefix))
+    try:
+        (run or run_windows_command)(command_line, terminal.parent, prefix, timeout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"O teste não terminou em {timeout // 60} min. Feche o MetaTrader 5 que ficou aberto e "
+                           "use um período menor ou [ROBOTS] tester_model = 1.") from None
+    finally:
+        ini.unlink(missing_ok=True)
+    if not report.is_file():
+        raise RuntimeError("O Strategy Tester não gerou o relatório. Causas comuns: o terminal sem conta conectada, "
+                           "o ativo não existe na corretora ou falta histórico no período. Veja o log em "
+                           f"{data / 'Tester' / 'logs'}.")
+    return report
+
+
+def close_terminal(timeout: float = 20.0) -> bool:
+    """Encerra o terminal64.exe (terminate e, depois de `timeout` s, kill). True se nenhum ficou aberto."""
+    import psutil
+    procs = []
+    for proc in psutil.process_iter(["name"]):
+        try:
+            if (proc.info["name"] or "").lower() == paths.MT5_TERMINAL_EXE:
+                proc.terminate()
+                procs.append(proc)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+    _, alive = psutil.wait_procs(procs, timeout=timeout)
+    for proc in alive:
+        try:
+            proc.kill()
+        except psutil.NoSuchProcess:
+            pass
+    return not terminal_running()
+
+
+def _bridge(action: str) -> int:
+    script = paths.PROJECT_ROOT / "scripts" / "mt5-bridge.sh"
+    if paths.is_windows() or not script.is_file():
+        return 3                # sem ponte: no Windows o app fala direto com o MT5
+    return subprocess.run([str(script), action], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+
+
+def release_terminal() -> bool:
+    """Para a ponte (Linux) e fecha o terminal, para o Tester poder abrir. Devolve True se a ponte estava ativa."""
+    bridge_was_running = _bridge("status") == 0
+    if bridge_was_running:
+        _bridge("stop")
+    if not close_terminal():
+        raise RuntimeError("Não foi possível fechar o MetaTrader 5. Feche-o à mão e tente de novo.")
+    return bridge_was_running
+
+
+def restart_bridge() -> None:
+    if _bridge("start") != 0:
+        log.warning("A ponte não voltou a subir depois do teste. Rode: ./scripts/mt5-bridge.sh start")

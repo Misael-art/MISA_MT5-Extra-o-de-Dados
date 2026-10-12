@@ -3,14 +3,18 @@ Backtest pelo card do robô.
 
 Estratégias Python usam o backtester do projeto (barras da base, custos e lote pelo risco) e a execução
 fica gravada em `_robot_runs`, com a curva de capital. Robôs MQL5 são testados pelo Strategy Tester do
-MT5 (T8.5). Um backtest isolado não valida a estratégia: isso é papel da validação e da bateria.
+MT5 (`run_mql5`): o app gera o .ini, roda o terminal, lê as operações do relatório (ou do
+`HDK_trades_<magic>.csv` do HADOUKEN) e calcula aqui as mesmas métricas. Um backtest isolado não valida a
+estratégia: isso é papel da validação e da bateria.
 """
 import math
+import re
 import uuid
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Callable, List, Optional, Tuple
 
-from . import catalog, store
+from . import catalog, mql, store
 
 MAX_CURVE_POINTS = 240
 PF_CAP = 99.0     # profit factor sem nenhuma perda é infinito; guardamos um teto legível
@@ -47,7 +51,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     from mt5_extracao.strategies import get_strategy, research, specs
     from mt5_extracao.strategies.backtester import run_backtest
     if robot.kind != catalog.PYTHON:
-        raise ValueError("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5 (ainda não disponível).")
+        raise ValueError("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5: use run_mql5.")
     tf = timeframes.parse(timeframe)
     if tf is None:
         raise ValueError(f"Timeframe inválido: {timeframe}")
@@ -73,3 +77,164 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     store.save_run(db, run)
     return run
+
+
+# --- MQL5: Strategy Tester ------------------------------------------------------------
+
+REPORT_SOURCE, CSV_SOURCE = "relatório do Strategy Tester", "HDK_trades.csv"
+_ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
+_CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
+_TAG = re.compile(r"<[^>]+>")
+_TIME = re.compile(r"^\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}(:\d{2})?$")
+_DEAL_COLUMNS = 13       # horário, oferta, ativo, tipo, direção, volume, preço, ordem, comissão, swap, lucro, saldo, comentário
+
+
+def _number(text: str) -> float:
+    text = text.replace("\xa0", "").replace(" ", "")
+    if not text:
+        return 0.0
+    try:
+        return float(text)
+    except ValueError:
+        return float(text.replace(".", "").replace(",", "."))
+
+
+def parse_report(text: str) -> Tuple[Optional[float], List[list]]:
+    """
+    Lê a tabela de negócios (deals) do relatório .htm do Strategy Tester. Devolve (depósito inicial, operações
+    fechadas como [horário, resultado]), com resultado = lucro + swap + comissão. Os títulos do relatório mudam
+    com o idioma do terminal; por isso a leitura vai pela forma das linhas (13 colunas, tipo e direção em inglês).
+    """
+    deposit, results = None, []
+    for row in _ROW.findall(text):
+        cells = [_TAG.sub("", c).replace("&nbsp;", " ").strip() for c in _CELL.findall(row)]
+        if len(cells) != _DEAL_COLUMNS or not _TIME.match(cells[0]):
+            continue
+        kind, direction = cells[3].lower(), cells[4].lower()
+        if kind == "balance":
+            if deposit is None:
+                deposit = _number(cells[10])
+        elif kind in ("buy", "sell") and direction not in ("", "in"):
+            results.append([cells[0], _number(cells[10]) + _number(cells[9]) + _number(cells[8])])
+    return deposit, results
+
+
+def read_hdk_trades(path) -> List[list]:
+    """
+    Operações fechadas do HADOUKEN (Common\\Files\\HDK_trades_<magic>.csv): separador ';' e colunas
+    time;symbol;type;volume;result. Devolve [horário, resultado].
+    """
+    lines = [line.strip() for line in mql.read_text(path).splitlines() if line.strip()]
+    if not lines:
+        return []
+    header = [h.strip().lower() for h in lines[0].split(";")]
+    if "time" not in header or "result" not in header:
+        raise ValueError(f"{Path(path).name} não tem as colunas esperadas (time;symbol;type;volume;result).")
+    time_at, result_at = header.index("time"), header.index("result")
+    return [[cells[time_at].strip(), _number(cells[result_at])]
+            for cells in (line.split(";") for line in lines[1:]) if len(cells) > max(time_at, result_at)]
+
+
+def metrics_from_results(results: List[list], initial_equity: float) -> dict:
+    """As métricas do card a partir dos resultados em dinheiro. Sem o risco inicial de cada operação, não há R."""
+    pnl = [float(r[1]) for r in results]
+    wins, losses = [x for x in pnl if x > 0], [x for x in pnl if x < 0]
+    gross_profit, gross_loss = sum(wins), -sum(losses)
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else (PF_CAP if gross_profit > 0 else 0.0)
+    equity = peak = float(initial_equity)
+    drawdown = 0.0
+    for value in pnl:
+        equity += value
+        peak = max(peak, equity)
+        if peak > 0:
+            drawdown = max(drawdown, (peak - equity) / peak)
+    return {"trades": len(pnl), "win_rate": len(wins) / len(pnl) if pnl else 0.0,
+            "profit_factor": min(profit_factor, PF_CAP),
+            "payoff": (gross_profit / len(wins)) / (gross_loss / len(losses)) if wins and losses else 0.0,
+            "expectancy_r": None, "expectancy": sum(pnl) / len(pnl) if pnl else 0.0,
+            "net_profit": sum(pnl), "return_pct": sum(pnl) / initial_equity if initial_equity else 0.0,
+            "max_drawdown_pct": drawdown, "initial_equity": float(initial_equity)}
+
+
+def _iso(stamp: str) -> str:
+    """'2025.01.07 16:00' (MT5) -> '2025-01-07 16:00:00', o formato das curvas das estratégias Python."""
+    date, _, clock = stamp.partition(" ")
+    return date.replace(".", "-") + " " + (clock if clock.count(":") == 2 else (clock or "00:00") + ":00")
+
+
+def tester_values(robot, preset: Optional[str] = None, params: Optional[dict] = None) -> dict:
+    """Parâmetros que o teste muda em relação ao código: os do preset, depois os informados, e a exportação de trades."""
+    values = {}
+    if preset:
+        if preset not in robot.presets:
+            raise ValueError(f"Preset desconhecido: '{preset}'. Disponíveis: " + (", ".join(robot.presets) or "nenhum") + ".")
+        values.update(robot.presets[preset])
+    known = {i.name for i in robot.inputs}
+    for name, value in (params or {}).items():
+        if known and name not in known:
+            raise ValueError(f"{robot.name} não tem o parâmetro '{name}'. Veja: mt5x robots list " +
+                             robot.key.split(":", 1)[1])
+        values[name] = value
+    if "InpExportTrades" in known:
+        values["InpExportTrades"] = "true"       # o HADOUKEN grava HDK_trades_<magic>.csv no fim do teste
+    return values
+
+
+def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=None, preset: Optional[str] = None,
+             params: Optional[dict] = None, run: Optional[Callable] = None,
+             is_running: Optional[Callable] = None) -> dict:
+    """
+    Roda o robô MQL5 no Strategy Tester (o terminal precisa estar fechado) e grava a execução. O robô tem de
+    estar instalado e compilado na pasta de dados do MT5 ('mt5x robots compile').
+    """
+    from mt5_extracao import timeframes
+    from mt5_extracao.strategies import research
+    from . import mt5_tools
+    if robot.kind != catalog.MQL5:
+        raise ValueError("Estratégias Python usam o backtester do projeto: use run_python.")
+    tf = timeframes.parse(timeframe)
+    if tf is None:
+        raise ValueError(f"Timeframe inválido: {timeframe}")
+    end = end or datetime.now()
+    start = start or end - timedelta(days=365)
+    if start >= end:
+        raise ValueError("O início do período precisa ser anterior ao fim.")
+    slug = robot.key.split(":", 1)[1]
+    data = mt5_tools.data_dir(config)
+    source = mt5_tools.install_plan(robot, data)[0].target
+    compiled = source.with_suffix(".ex5")
+    if not compiled.is_file() or (source.suffix.lower() == ".mq5" and source.is_file()
+                                  and compiled.stat().st_mtime < source.stat().st_mtime):
+        raise ValueError(f"{robot.name} não está compilado na pasta do MT5. Rode antes: mt5x robots compile {slug}")
+    values = tester_values(robot, preset, params)
+    name = f"mt5x_{slug}"
+    parameters = mt5_tools.write_tester_set(data, name, values) if values else ""
+    deposit = float(research.backtest_config(config).initial_equity)
+    model = mt5_tools.tester_model(config)
+    defaults = {i.name: i.default for i in robot.inputs}
+    magic = str(values.get("InpMagicNumber", defaults.get("InpMagicNumber", ""))).split("|")[0].strip()
+    common = mt5_tools.common_files_dir(config)
+    trades_csv = common / f"HDK_trades_{magic}.csv" if common is not None and magic.isdigit() else None
+    if trades_csv is not None:
+        trades_csv.unlink(missing_ok=True)        # o de um teste anterior não pode passar por resultado deste
+    ini = mt5_tools.tester_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, start, end, deposit, name,
+                               model, parameters)
+    report = mt5_tools.run_tester(config, data, ini, name, run, is_running=is_running)
+    report_deposit, results = parse_report(mql.read_text(report))
+    trades_source = REPORT_SOURCE
+    if trades_csv is not None and trades_csv.is_file():
+        results, trades_source = read_hdk_trades(trades_csv), CSV_SOURCE
+    initial = report_deposit or deposit
+    metrics = metrics_from_results(results, initial)
+    metrics.update(trades_source=trades_source, tester_model=mt5_tools.TESTER_MODELS[model], report=str(report))
+    equity, points = float(initial), [[start.strftime("%Y-%m-%d %H:%M:%S"), float(initial)]]
+    for stamp, value in results:
+        equity += float(value)
+        points.append([_iso(stamp), equity])
+    record = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": "strategy tester", "symbol": symbol,
+              "timeframe": tf.name, "data_start": start.strftime("%Y-%m-%d %H:%M:%S"),
+              "data_end": end.strftime("%Y-%m-%d %H:%M:%S"), "bars": 0,
+              "params": dict(values, **({"preset": preset} if preset else {})), "metrics": metrics,
+              "equity": downsample(points), "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    store.save_run(db, record)
+    return record

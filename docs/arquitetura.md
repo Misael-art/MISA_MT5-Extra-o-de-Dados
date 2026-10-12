@@ -159,6 +159,8 @@ Guia do usuário: [robos.md](robos.md). Plano: Fase 8 em [PLANO_DE_TRABALHO.md](
 - `mt5_tools.py`: pasta de dados do MT5, cópia do robô para `MQL5/` e compilação pelo MetaEditor (no Linux, por
   um `.bat` dentro do Wine), com o log lido em erros e avisos. Os executáveis entram por função injetada.
 - `backtest.py`: `run_python` roda o backtester numa estratégia Python e grava métricas e curva de capital.
+  `run_mql5` roda o robô MQL5 no Strategy Tester (`.ini` gerado por `mt5_tools`, terminal fechado), lê as
+  operações do relatório ou do `HDK_trades_<magic>.csv` e calcula as mesmas métricas.
 - Interface: `ui/robots.py` (grade de cards, filtros, importação) e `ui/robot_detail.py` (painel do robô).
 
 ## Configuração

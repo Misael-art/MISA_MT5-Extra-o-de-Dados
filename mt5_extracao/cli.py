@@ -23,6 +23,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
   Robôs e operação por agente (veja docs/agente.md):
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
+    mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
     mt5x status                                        # base, robôs, validações e próximas ações sugeridas
     mt5x audit [--mt5] [--fail-on alto]                # segurança do projeto, patrimonial e do capital
@@ -476,6 +477,8 @@ def _robots_backtest(args, ctx, items):
     tf = _parse_tf(args.tf)
     start = _parse_date(args.date_from) if args.date_from else None
     end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+    if robot.kind == catalog.MQL5:
+        return _robots_backtest_mql5(args, ctx, robot, tf, start, end)
     run = backtest.run_python(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end,
                               _parse_params(args.param))
     m = run["metrics"]
@@ -486,6 +489,41 @@ def _robots_backtest(args, ctx, items):
            f"{_fmt_num(m['profit_factor'])}   Expectativa: {_fmt_num(m['expectancy_r'])} R")
     _print(f"  Resultado: {_fmt_pct(m['return_pct'])}   Queda máxima: {_fmt_pct(m['max_drawdown_pct'])}")
     _print("Execução gravada (aparece no card do robô). Um backtest isolado não valida a estratégia: use 'mt5x validate'.")
+    return EXIT_OK
+
+
+def _robots_backtest_mql5(args, ctx, robot, tf, start, end):
+    """Robô MQL5: Strategy Tester do MT5 (simulação; nenhuma ordem é enviada a conta alguma)."""
+    from mt5_extracao.robots import backtest, mt5_tools
+    params = {}
+    for item in args.param or []:
+        if "=" not in item:
+            raise ValueError(f"--param deve ser nome=valor (recebido: {item})")
+        name, value = item.split("=", 1)
+        params[name.strip()] = value.strip()
+    bridge_was_running = False
+    try:
+        if args.close_terminal and mt5_tools.terminal_running():
+            _print("Fechando o MetaTrader 5 para rodar o teste...")
+            bridge_was_running = mt5_tools.release_terminal()
+        run = backtest.run_mql5(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end, args.preset, params)
+    except (OSError, RuntimeError) as e:
+        raise RuntimeError(str(e)) from e
+    finally:
+        if bridge_was_running:
+            mt5_tools.restart_bridge()
+    m = run["metrics"]
+    _data(run=run)
+    _print(f"{robot.name} em {run['symbol']} {run['timeframe']} pelo Strategy Tester "
+           f"({run['data_start'][:10]} a {run['data_end'][:10]}, modelo: {m['tester_model']})")
+    _print(f"  Operações: {m['trades']}   Acerto: {_fmt_pct(m['win_rate'])}   Profit factor: "
+           f"{_fmt_num(m['profit_factor'])}   Resultado médio: {_fmt_num(m['expectancy'])} por operação")
+    _print(f"  Resultado: {_fmt_num(m['net_profit'])} ({_fmt_pct(m['return_pct'])})   "
+           f"Queda máxima: {_fmt_pct(m['max_drawdown_pct'])}")
+    _print(f"  Operações lidas de: {m['trades_source']}. Relatório completo: {m['report']}")
+    if not m["trades"]:
+        _print("  Nenhuma operação no período: confira o ativo, o período e os parâmetros do robô.")
+    _print("Execução gravada (aparece no card do robô). Um backtest isolado não valida o robô.")
     return EXIT_OK
 
 
@@ -856,6 +894,9 @@ def build_parser():
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
+    p.add_argument("--preset", help="backtest de robô MQL5: nome do preset (.set) a usar")
+    p.add_argument("--close-terminal", action="store_true",
+                   help="backtest de robô MQL5: fecha o MT5 (e para a ponte) se estiver aberto, e religa a ponte depois")
     p.set_defaults(func=cmd_robots)
 
     p = sub.add_parser("analyze", help="números de estudo de um ativo (retorno, volatilidade, queda, sazonalidade)")

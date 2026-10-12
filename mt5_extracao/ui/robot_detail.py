@@ -286,8 +286,17 @@ class RobotDetail:
         self.run_box.pack_forget()
         self.validations_box.pack_forget()
         if robot.kind == catalog.MQL5:
-            self.tests_text.config(text="O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5 e a análise "
-                                        "(Monte Carlo, checklist) é feita aqui.\n\nAinda não disponível nesta versão.")
+            slug = robot.key.split(":", 1)[1]
+            text = ("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5, com o MT5 fechado. "
+                    f"Por enquanto, pela linha de comando:\n\n  mt5x robots compile {slug}\n"
+                    f"  mt5x robots backtest {slug} --symbol <ativo> --tf <timeframe>")
+            if robot.runs:
+                last, m = robot.runs[0], robot.runs[0]["metrics"]
+                text += (f"\n\nÚltimo teste ({last['created_at'][:10]}, {last['symbol']} {last['timeframe']}): "
+                         f"{fmt_int(m['trades'])} operações, profit factor {fmt_num(m['profit_factor'])}, resultado "
+                         f"{fmt_num(m['return_pct'] * 100, 1, '%')}, queda máxima "
+                         f"{fmt_num(m['max_drawdown_pct'] * 100, 1, '%')}.")
+            self.tests_text.config(text=text)
             return
         self.tests_text.config(text="Backtest com as barras da sua base, custos e lote pelo risco. "
                                     "Não garante resultado futuro.")

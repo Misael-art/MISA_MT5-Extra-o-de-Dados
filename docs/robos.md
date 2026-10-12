@@ -28,12 +28,21 @@ mt5x robots list hdk_hadouken_painel   # um robô: parâmetros por grupo
 mt5x robots import caminho/Robo.mq5    # acrescenta um robô avulso (.mq5 ou .ex5)
 mt5x robots compile hdk_hadouken_painel   # copia o robô para o MT5 e compila no MetaEditor
 mt5x robots install hdk_hadouken_painel   # só copia (robô, includes e presets)
+mt5x robots backtest hdk_hadouken_painel --symbol WIN$N --tf M5 --from 2026-01-01 --preset Conservador
 ```
 
 `compile` copia o robô, seus includes e presets para a pasta `MQL5` do MetaTrader 5, compila e mostra os erros e
 avisos do MetaEditor com arquivo, linha e coluna. Sem erros, o robô passa a **Compilado**. A sua pasta de robôs
 não é alterada. Um preset que você já ajustou no MT5 é mantido; para trocá-lo pelo da pasta, use
 `--overwrite-presets`. Feche o MetaEditor antes, se ele estiver aberto.
+
+`backtest` de um robô MQL5 roda no **Strategy Tester** do MetaTrader 5: é uma simulação, nenhuma ordem vai
+para a sua conta. O robô precisa estar compilado e o MT5 precisa estar **fechado** (ele não abre duas vezes).
+Se estiver aberto, o programa avisa e não mexe em nada; com `--close-terminal` ele fecha o MT5, roda o teste e
+religa a ponte. Não use `--close-terminal` com um robô operando. O teste usa o capital de
+`[STRATEGY] initial_equity`, os parâmetros do `--preset` (e de `--param nome=valor`) e o modelo de
+`[ROBOTS] tester_model`. O resultado fica gravado no card; o relatório completo do MT5 fica na pasta do
+terminal (`mt5x_<robô>.htm`). Sem `--from` e `--to`, vale o último ano.
 
 Um `robot.json` opcional ao lado do robô (`<nome>.robot.json`) informa o que o código não diz:
 

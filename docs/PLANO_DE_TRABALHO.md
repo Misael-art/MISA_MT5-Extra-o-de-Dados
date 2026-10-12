@@ -73,7 +73,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | ✅ concluída (mini-curva de capital fica para a T8.3, que grava as execuções) |
 | T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | ✅ concluída |
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | ✅ concluída (só CLI; o botão no card fica para quando a aba ganhar ações de MT5) |
-| T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | a fazer |
+| T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | ✅ concluída (só CLI; validada com EAs de exemplo, o HADOUKEN v7 ainda não compila) |
 | T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | a fazer |
 | T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | a fazer |
 | T8.8 | Tempo real em conta real: bateria operacional e travas extras | T8.7 + período em demo | a fazer |
@@ -1102,7 +1102,31 @@ includes e presets para `MQL5/`; compilar (`MetaEditor64.exe /compile:<arquivo> 
 (UTF-16) em erros e avisos. Os executáveis entram por função injetada, para testar sem MT5. **Primeiro passo:**
 prova manual, no Wine do usuário, de compilar e de abrir o terminal com `/config:`; registre o resultado aqui.
 
-### T8.5 — Backtest MQL5
+### T8.5 — Backtest MQL5 ✅
+
+**Registrado na entrega:**
+
+- `mt5x robots backtest <robô MQL5> --symbol X --tf H1 [--from] [--to] [--preset P] [--param nome=valor]` gera o
+  `.ini` e o `.set` (UTF-16), roda `terminal64.exe /config:` e grava a execução em `_robot_runs`
+  (`source = "strategy tester"`). O robô passa a "Testado". Sem `--from`/`--to`: os últimos 365 dias.
+- **Diferença em relação ao texto abaixo:** o app **não** fecha o MT5 por conta própria (pode haver robô operando).
+  Com o terminal aberto o comando para e explica; `--close-terminal` para a ponte, fecha o terminal, testa e
+  religa a ponte se ela estava ativa.
+- As operações vêm da tabela de negócios do relatório `.htm`, lida pela forma das linhas (13 colunas, tipo e
+  direção em inglês), porque os títulos mudam com o idioma do terminal. As métricas são calculadas aqui, com
+  resultado = lucro + swap + comissão. No teste real (Moving Average, EURUSD H1, 510 operações) bateram com as do
+  MT5: resultado −860,47, profit factor 0,80, acerto 21,76%, rebaixamento do saldo 10,62%.
+- Contrato do HADOUKEN, conferido no fonte do v7 (`ExportTradesCsv`): `Common\Files\HDK_trades_<magic>.csv`, ANSI,
+  separador `;`, colunas `time;symbol;type;volume;result`, gravado no `OnTester` só com `InpExportTrades = true`.
+  Se o robô tem esse parâmetro, o teste o liga; o CSV antigo é apagado antes e, se o novo existir, as operações
+  vêm dele. Validado de ponta a ponta com um EA de sonda que grava o mesmo CSV (185 operações, soma igual à do
+  relatório). **Pendente:** repetir com o HADOUKEN v7 quando ele compilar.
+- Sem risco inicial por operação não há expectativa em R: `expectancy_r` fica vazio e `expectancy` traz o resultado
+  médio em dinheiro. `bars` fica 0 (o relatório só traz esse número em campo traduzido).
+- Depósito do teste: `[STRATEGY] initial_equity`. Chave nova: `[ROBOTS] tester_model` (padrão 1, OHLC de 1 minuto).
+- O relatório completo e os gráficos ficam na pasta de dados do MT5 (`mt5x_<robô>.htm`), trocados a cada teste.
+- O painel do robô mostra os comandos e o resumo do último teste; o botão de rodar pelo card não entrou.
+- Não validado no Windows nem com o terminal aberto de verdade (`--close-terminal` só com processos simulados).
 
 Gerar o `.ini` do tester (`[Tester] Expert, ExpertParameters, Symbol, Period, Model, FromDate, ToDate, Deposit,
 Report, ReplaceReport=1, ShutdownTerminal=1`), parar a ponte e o terminal, rodar, religar; ler o relatório e
