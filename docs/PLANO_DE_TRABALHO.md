@@ -93,6 +93,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
+| T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | a fazer (medição e roteiro guardados; veja a seção) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -1694,6 +1695,54 @@ robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o 
 - **Critérios de aceite:** um robô com versão `0.10` ou com DLL é reprovado com o motivo; o pacote de um robô
   aprovado contém só o que foi pedido.
 - **Verificação:** `pytest -q`.
+
+### T10.12 — Custo real no backtester Python (pendência registrada em 2026-10-12)
+
+Registrada a pedido do dono do projeto para ser retomada depois. **Nada foi alterado no backtester por causa dela.**
+
+- **O problema:** o backtester Python (`strategies/backtester.py`) dá um resultado melhor do que o Strategy Tester
+  com ticks reais para a mesma lógica. Ele afeta tudo o que usa o backtester: `mt5x backtest`, `mt5x validate`
+  (Filtro C), a triagem e o lado Python da paridade. Enquanto não for resolvido, **a decisão de operar se apoia no
+  Strategy Tester com ticks reais**, não no Python.
+- **A medição (2026-10-12):** host Linux, MT5 build 6258 no Wine, conta MetaQuotes-Demo, EURUSD H1, de 2025-10-03
+  a 2026-09-30; robô gerado da declaração de cruzamento de médias simples 10 × 40, stop 1,5 × ATR(14) fixado no
+  fechamento da barra do sinal, alvo 2R, risco de 1% sobre 100.000, sem limites de perda (como faz
+  `parity.parity_params`). O mesmo lado Python (144 operações, resultado −9.138,67, giro bruto 190.777) contra o
+  Tester em três modelos:
+
+  | Modelo do Tester | Operações | Casadas | Pares a até 5% | Resultado MQL5 | Diferença para o Python |
+  |---|---|---|---|---|---|
+  | OHLC de 1 minuto | 144 | 141 | 135 (95,7%) | −7.581,30 | +1.557 (0,82% do giro); **otimista**: stop em gap preenchido no preço do stop |
+  | Cada tick | 144 | 141 | 136 (96,5%) | −10.255,38 | −1.117 (0,59% do giro; 12,2% do líquido) |
+  | Cada tick com ticks reais | 144 | 140 | 134 (95,7%) | −13.120,89 | **−3.982 (2,09% do giro; 43,6% do líquido)** |
+
+  Diferença por par casado (MQL5 − Python): com "cada tick", média −7,9 e mediana −3,3; com ticks reais, média −8,9
+  e mediana −1,7. Com ticks reais, só cerca de −1.250 dos −3.982 vêm dos pares casados; o resto vem das 4 operações
+  de cada lado que não casam, ou seja, que saem em outro ponto.
+- **O que já se sabe:**
+  - O spread gravado nas barras H1 extraídas é muito baixo: média de 0,57 ponto, percentil 95 de 2 pontos, máximo
+    de 38. O backtester usa esse valor (coluna `spread`) como o custo de cada operação.
+  - Dentro de uma barra o Python não sabe a ordem entre stop e alvo e assume o stop.
+  - As entradas coincidem em horário e preço; a lógica é a mesma (paridade dentro do critério em "cada tick").
+- **Hipóteses a testar, na ordem:**
+  1. O spread da barra é o do instante da abertura (ou o mínimo), e não o que a operação paga. Com ticks reais o
+     spread alarga na virada do dia e em notícia, e um stop de venda pode ser atingido pelo ask sem o bid chegar lá.
+     Conferir com `mt5x ticks` em uma das operações divergentes.
+  2. Parte da diferença é execução (preço do primeiro tick da barra contra `abertura + spread`).
+  3. A ordem stop/alvo dentro da barra H1: repetir o lado Python resolvendo a barra com dados de M1.
+- **Caminhos possíveis (a escolher quando retomar):** (a) calibrar o custo por ativo e horário com os ticks reais
+  extraídos e gravá-lo em `_symbol_specs`; (b) resolver a ordem stop/alvo com barras M1 quando houver; (c) passar a
+  conferir stop e alvo contra o lado certo do preço usando um spread por hora, e não o da barra; (d) no mínimo,
+  uma auditoria que compare o spread das barras com o dos ticks e avise quando o backtest está otimista.
+- **Como reproduzir:** `mt5x extract --symbols EURUSD --tf H1 --from 2025-10-01 --to 2026-09-30` e
+  `mt5x specs --symbols EURUSD`; salve a declaração acima em um JSON e rode `mt5x robots generate <json> --name X
+  --dir <pasta>`, `mt5x robots compile x` e `mt5x robots parity x --symbol EURUSD --tf H1` (modelo "cada tick").
+  Para os outros modelos, chame `backtest.run_mql5(..., params=parity.parity_params(robot, config), model="4")`
+  (ou `"1"`) no mesmo período e compare com `parity.compare`. Os números devem bater com a tabela acima enquanto a
+  corretora mantiver o mesmo histórico.
+- **Critério de aceite:** no mesmo cenário, a diferença do resultado total entre o Python e o Tester com ticks
+  reais fica em até 1% do giro bruto (o limite da paridade), sem piorar a paridade em "cada tick"; e a validação
+  das seis estratégias é refeita e os vereditos que mudarem são registrados.
 
 ### Correção de exatidão (2026-10-12, PR próprio, depois da T10.10)
 
