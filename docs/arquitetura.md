@@ -84,7 +84,11 @@ preparam Python, `.venv`, MT5 (no Linux, Wine + Python do Windows + ponte) e cha
 - `mt5_backend.get_mt5()` é o **único** ponto que importa `MetaTrader5`.
   - No Windows devolve o pacote oficial.
   - No Linux devolve `RemoteMT5`, que fala com a ponte RPyC (`scripts/mt5_bridge_server.py`), rodando no Python do Windows dentro do Wine.
-  - Datas viajam como epoch. Arrays numpy e namedtuples são convertidos em tipos simples do lado do servidor.
+  - A ponte é **restrita**: só atende às funções de leitura da lista `ALLOWED` do servidor, não executa código
+    enviado pelo cliente, não expõe módulos e não aceita pickle. Funções de ordem ficam de fora de propósito.
+  - Argumentos e resultados viajam como texto JSON: datas como epoch, arrays numpy e namedtuples em tipos simples,
+    que o cliente reconstrói. Cliente e servidor conferem o protocolo (`mt5x-bridge/2`); uma ponte antiga ainda em
+    execução é recusada com a orientação de reiniciá-la.
 - `MT5Connector` faz o resto:
   - inicialização com login do `.env`;
   - retentativas;

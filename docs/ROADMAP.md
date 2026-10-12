@@ -29,6 +29,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F6** Estratégias | Seis estratégias, backtest com custos, walk-forward/Monte Carlo (Filtro C), triagem de ativos (Filtros A e B), relatório HTML, menu na GUI | T6.1–T6.8 | F1, F3 | ✅ |
 | **F7** Interface | Janela principal em abas (Ativos, Minha base, Análise, Atividade), tema claro/escuro, gráficos e números de estudo | T7.1 | F1, F6 | ✅ |
 | **F8** Robôs | Catálogo de robôs (MQL5 e Python) em cards, backtest, bateria de segurança e operação em demo/real pelo robô MQL5 | T8.0–T8.9 | F6, F7 | T8.0–T8.3 ✅; demais a fazer |
+| **F9** Agentes e segurança | Operação sem tela (`--json`, `status`, `analyze`), auditoria `mt5x audit` e ponte do Linux restrita a funções de leitura | T9.1–T9.3 | F3, F8 (T8.3) | ✅ |
 
 ## Marcos (cada marco = versão publicável)
 
@@ -53,6 +54,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 8. F6 (T6.1 → T6.8) já concluída; novas estratégias seguem o roteiro em docs/estrategias.md ("Para desenvolvedores")
 9. F7 (T7.1) já concluída; novos painéis entram em `mt5_extracao/ui/`
 10. F8: T8.0 → T8.1 → T8.2 → T8.3 → T8.4 → T8.5 → T8.6 → T8.7 → T8.8 (T8.9 em paralelo depois da T8.5)
+11. F9 (T9.1 → T9.3) já concluída
 
 As fases F1 e F2 são independentes e podem ser executadas em paralelo por
 agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**

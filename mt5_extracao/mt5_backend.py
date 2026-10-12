@@ -15,6 +15,7 @@ import calendar
 import collections
 import configparser
 import datetime as _dt
+import json
 import logging
 import threading
 
@@ -22,21 +23,7 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
-# Código executado no Python do Wine (servidor da ponte) para converter os
-# resultados do MetaTrader5 em tipos que o Linux consegue desserializar.
-_REMOTE_HELPER = r'''
-import MetaTrader5 as _mt5
-def _mt5x_encode(v):
-    if hasattr(v, "dtype") and getattr(v.dtype, "names", None):
-        return {"__ndarray__": True, "descr": [(n, v.dtype[n].str) for n in v.dtype.names], "rows": v.tolist()}
-    if hasattr(v, "_asdict"):
-        return {"__struct__": type(v).__name__, "fields": {k: _mt5x_encode(x) for k, x in v._asdict().items()}}
-    if isinstance(v, (tuple, list)):
-        return [_mt5x_encode(x) for x in v] if any(hasattr(x, "_asdict") for x in v) else tuple(v)
-    return v
-def _mt5x_call(name, args, kwargs):
-    return _mt5x_encode(getattr(_mt5, name)(*args, **kwargs))
-'''
+BRIDGE_PROTOCOL = "mt5x-bridge/2"
 
 
 def _to_epoch(v):
@@ -67,17 +54,26 @@ def _decode(v):
 
 
 class RemoteMT5:
-    """Mesma API do módulo MetaTrader5, executada no Python do Wine via RPyC."""
+    """
+    Mesma API do módulo MetaTrader5, executada no Python do Wine pela ponte restrita
+    (scripts/mt5_bridge_server.py): só funções de leitura, argumentos e resultados em JSON.
+    """
 
     def __init__(self, host="127.0.0.1", port=18812):
         import rpyc
-        self._rpyc = rpyc
         self._lock = threading.Lock()  # uma conexão RPyC não deve ser usada por várias threads ao mesmo tempo
-        self._conn = rpyc.classic.connect(host, port, keepalive=True)
-        self._conn._config["sync_request_timeout"] = 300
-        self._conn.execute(_REMOTE_HELPER)
-        self._call = self._conn.namespace["_mt5x_call"]
-        self._module = self._conn.modules["MetaTrader5"]
+        self._conn = rpyc.connect(host, port, keepalive=True,
+                                  config={"sync_request_timeout": 300, "allow_pickle": False})
+        try:
+            protocol = str(self._conn.root.info())
+        except Exception as e:
+            self._conn.close()
+            raise RuntimeError("a ponte em execução é de uma versão antiga (modo aberto). "
+                               "Reinicie-a: ./scripts/mt5-bridge.sh restart") from e
+        if protocol != BRIDGE_PROTOCOL:
+            self._conn.close()
+            raise RuntimeError(f"ponte fala '{protocol}', esperado '{BRIDGE_PROTOCOL}'. "
+                               "Reinicie-a: ./scripts/mt5-bridge.sh restart")
         self._consts = {}
 
     def __getattr__(self, name):
@@ -86,14 +82,13 @@ class RemoteMT5:
         if name.isupper() or name == "__version__":
             if name not in self._consts:
                 with self._lock:
-                    self._consts[name] = self._rpyc.classic.obtain(getattr(self._module, name))
+                    self._consts[name] = self._conn.root.const(name)
             return self._consts[name]
 
         def fn(*args, **kwargs):
-            args = tuple(_to_epoch(a) for a in args)
-            kwargs = {k: _to_epoch(v) for k, v in kwargs.items()}
+            payload = json.dumps([[_to_epoch(a) for a in args], {k: _to_epoch(v) for k, v in kwargs.items()}])
             with self._lock:
-                return _decode(self._rpyc.classic.obtain(self._call(name, args, kwargs)))
+                return _decode(json.loads(self._conn.root.call(name, payload)))
         fn.__name__ = name
         return fn
 

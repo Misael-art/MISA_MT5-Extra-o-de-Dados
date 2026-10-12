@@ -29,7 +29,8 @@ def _free_port():
 def bridge_port():
     pytest.importorskip("rpyc")
     port = _free_port()
-    proc = subprocess.Popen([sys.executable, str(REPO / "scripts" / "mt5_bridge_server.py"), "--port", str(port)],
+    proc = subprocess.Popen([sys.executable, str(REPO / "scripts" / "mt5_bridge_server.py"), "--port", str(port),
+                             "--allow", "calls_named"],     # método do MT5 falso, usado só para conferir as chamadas
                             env=dict(os.environ, PYTHONPATH=str(REPO / "tests" / "fake_mt5_package")),
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     deadline = time.time() + 20

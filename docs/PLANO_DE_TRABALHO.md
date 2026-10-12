@@ -78,6 +78,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | a fazer |
 | T8.8 | Tempo real em conta real: bateria operacional e travas extras | T8.7 + período em demo | a fazer |
 | T8.9 | Robôs de atuação: portar as seis estratégias para MQL5 (`TryEnter`) e checar paridade | T8.5 | a fazer (no repositório HADOUKEN) |
+| T9.1 | CLI para agentes: saída `--json`, `mt5x status`, `analyze`, `commands` e `robots backtest` | T8.3 | ✅ concluída |
+| T9.2 | `mt5x audit`: segurança do projeto, do patrimônio e do capital | T9.1 | ✅ concluída |
+| T9.3 | Ponte restrita: só funções de leitura, sem execução de código nem pickle | T9.2 | ✅ concluída (reinicie a ponte depois de atualizar) |
 
 ---
 
@@ -1114,6 +1117,40 @@ por robô. Aqui: comparar os trades do Strategy Tester com os do backtester Pyth
 **Verificação da fase:** `PYTHONPATH=. xvfb-run -a .venv/bin/python -m pytest -q` e o `doctor` antes e depois de cada
 tarefa; manual, com MT5 real em demo: importar a pasta do HADOUKEN, compilar, rodar backtest e bateria, iniciar em demo
 com o preset Conservador e acionar PARAR TUDO.
+
+---
+
+## Fase 9 — Operação por agente e segurança
+
+### T9.1 — CLI para agentes ✅
+
+`--json` devolve um único objeto `{ok, command, exit_code, data, messages, errors}` por comando. `mt5x status`
+resume base, robôs, validações e próximas ações (`mt5_extracao/agent.py`); `mt5x analyze`, `mt5x robots backtest`
+e `mt5x commands` completam a operação sem tela.
+
+### T9.2 — Auditoria (`mt5x audit`) ✅
+
+`mt5_extracao/audit.py`: achados de projeto (P), patrimônio (A) e capital (C), cada um com gravidade, evidência e
+como corrigir. Código de saída 1 quando há achado de gravidade alta ou crítica.
+
+### T9.3 — Ponte restrita ✅
+
+Fecha o achado A1 da auditoria. A ponte usava o modo aberto do RPyC (`SlaveService`), em que qualquer programa do
+computador podia executar código no Python do Wine e, por ele, enviar ordens pela conta logada.
+
+**Registrado na entrega:**
+
+- `scripts/mt5_bridge_server.py` expõe só `info`, `const` e `call`; `call` aceita apenas os nomes de `ALLOWED`
+  (leitura de dados e de estado, mais `initialize`/`login`/`shutdown`). Nenhuma função `order_*` está na lista, e
+  `--allow` (só para testes) recusa nomes que comecem com `order`.
+- Argumentos e resultados em JSON; `allow_pickle`, `allow_public_attrs` e `allow_all_attrs` desligados.
+- Protocolo `mt5x-bridge/2`, conferido pelo cliente (`mt5_backend.BRIDGE_PROTOCOL`). Com uma ponte antiga ainda em
+  execução, `RemoteMT5` e o `doctor` falham com a ação de correção: `./scripts/mt5-bridge.sh restart`.
+- Aviso no log quando o servidor escuta fora de `127.0.0.1`.
+- Testes em `tests/test_mt5_backend.py` (recusas, ausência de execução de código, ponte antiga) e a ponte de ponta
+  a ponta em `tests/test_linux_bridge_e2e.py`.
+
+**Pendente (manual):** repetir `scripts/parity_check.py` com o MT5 real pela ponte nova.
 
 ---
 

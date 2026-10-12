@@ -115,3 +115,83 @@ def test_get_mt5_bridge_down_returns_none(tmp_path):
     cfg = tmp_path / "config.ini"
     cfg.write_text(f"[BRIDGE]\nenabled = true\nport = {_free_port()}\n", encoding="utf-8")
     assert mt5_backend.get_mt5(str(cfg)) is None
+
+
+# --- T9.3: a ponte é restrita (somente leitura, sem execução de código) ---------------
+
+def test_bridge_refuses_order_functions_and_unknown_names(bridge):
+    m = mt5_backend.RemoteMT5("127.0.0.1", bridge)
+    for name in ("order_" + "send", "order_" + "check", "order_calc_margin", "eval", "__import__"):
+        if name.startswith("_"):
+            with pytest.raises(AttributeError):
+                getattr(m, name)
+            continue
+        with pytest.raises(Exception, match="não permitida"):
+            getattr(m, name)({"action": 1})
+    with pytest.raises(Exception, match="constantes"):
+        m._conn.root.const("initialize")
+    assert m.last_error() == (1, "Success")                    # a conexão segue utilizável depois das recusas
+
+
+def test_bridge_does_not_execute_code_or_expose_modules(bridge):
+    import rpyc
+    conn = rpyc.connect("127.0.0.1", bridge)
+    try:
+        for attribute in ("execute", "eval", "getmodule", "modules", "namespace", "builtins"):
+            with pytest.raises(AttributeError):
+                getattr(conn.root, attribute)
+        with pytest.raises(Exception):                         # argumentos só em JSON: nada de objetos remotos
+            conn.root.call("symbol_info", object())
+        with pytest.raises(Exception):
+            conn.root.call("symbol_info", "isto não é JSON")
+        assert conn.root.info() == mt5_backend.BRIDGE_PROTOCOL
+    finally:
+        conn.close()
+    with pytest.raises(Exception):                             # o modo aberto ("classic") não existe mais
+        legacy = rpyc.classic.connect("127.0.0.1", bridge)
+        try:
+            legacy.modules["os"].getcwd()
+        finally:
+            legacy.close()
+
+
+def test_server_refuses_to_allow_order_functions():
+    code = subprocess.call([sys.executable, str(REPO / "scripts" / "mt5_bridge_server.py"), "--port", str(_free_port()),
+                            "--allow", "order_" + "send"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    assert code == 1
+
+
+def test_allow_list_has_no_order_functions():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("bridge_server", REPO / "scripts" / "mt5_bridge_server.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert not [name for name in module.ALLOWED if name.startswith("order_")]
+    assert {"copy_rates_range", "symbol_info", "account_info", "positions_get"} <= module.ALLOWED
+    assert module.PROTOCOL == mt5_backend.BRIDGE_PROTOCOL
+
+
+def test_old_open_bridge_is_reported_with_the_fix(tmp_path):
+    """Cliente novo + ponte antiga (ainda em execução): erro claro pedindo para reiniciar a ponte."""
+    rpyc = pytest.importorskip("rpyc")
+    from rpyc.utils.server import ThreadedServer
+    import threading
+    server = ThreadedServer(rpyc.SlaveService, hostname="127.0.0.1", port=0, reuse_addr=True)
+    thread = threading.Thread(target=server.start, daemon=True)
+    thread.start()
+    deadline = time.time() + 10
+    while True:
+        try:
+            socket.create_connection(("127.0.0.1", server.port), 0.5).close()
+            break
+        except OSError:
+            assert time.time() < deadline, "servidor antigo de teste não iniciou"
+            time.sleep(0.05)
+    try:
+        with pytest.raises(RuntimeError, match="mt5-bridge.sh restart"):
+            mt5_backend.RemoteMT5("127.0.0.1", server.port)
+        from mt5_extracao.bootstrap import doctor
+        check = doctor.probe_bridge("127.0.0.1", server.port)
+        assert check.status == doctor.FAIL and "versão antiga" in check.detail
+    finally:
+        server.close()

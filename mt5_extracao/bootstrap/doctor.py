@@ -198,13 +198,18 @@ def probe_bridge(host: str, port: int) -> Check:
         return Check("Ponte MT5 (RPyC)", FAIL, "módulo rpyc ausente no Python do Linux",
                      "pip install -r requirements.txt")
     try:
-        conn = rpyc.classic.connect(host, port)
+        conn = rpyc.connect(host, port)
         try:
-            remote_mt5 = conn.modules["MetaTrader5"]
-            version = str(getattr(remote_mt5, "__version__", "?"))
+            try:
+                protocol = str(conn.root.info())
+            except Exception:
+                return Check("Ponte MT5 (RPyC)", FAIL, "a ponte em execução é de uma versão antiga, em modo aberto "
+                             "(qualquer programa do computador poderia usar a sua conta)",
+                             "Reinicie a ponte: ./scripts/mt5-bridge.sh restart")
+            version = str(conn.root.const("__version__"))
         finally:
             conn.close()
-        return Check("Ponte MT5 (RPyC)", OK, f"MetaTrader5 {version} via {host}:{port}")
+        return Check("Ponte MT5 (RPyC)", OK, f"MetaTrader5 {version} via {host}:{port} ({protocol}, somente leitura)")
     except Exception as e:
         return Check("Ponte MT5 (RPyC)", FAIL, f"{type(e).__name__}: {e}",
                      "Veja logs/mt5_bridge.log e reinicie: ./scripts/mt5-bridge.sh restart")
