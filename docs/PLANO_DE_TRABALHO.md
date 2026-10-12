@@ -84,8 +84,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.0 | Plano da Fase 10 (SDK de robôs) e regra da pendência do Windows | T8.6, T9.3 | ✅ concluída |
 | T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | ✅ concluída |
 | T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | ✅ concluída (biblioteca só compilada: nenhum robô operou com ela) |
-| T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | ⏳ código, testes e compilação real prontos; **falta rodar o esqueleto com um sinal no Strategy Tester** |
-| T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | ⏳ código e testes prontos com executáveis simulados; **falta a execução real no host** |
+| T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | ✅ concluída (validada no Strategy Tester real) |
+| T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | ✅ concluída (executada de ponta a ponta no host) |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
 | T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | a fazer |
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
@@ -1389,7 +1389,15 @@ erros. **Não feito:** download automático da biblioteca; o HADOUKEN ainda usa 
 - **Armadilhas:** não versione os `.mqh` aqui. Se o HADOUKEN v7 ainda não compilar, extraia só a `Safety/`: é ela que
   precisa compilar, não o painel.
 
-### T10.3 — `mt5x robots new` ⏳
+### T10.3 — `mt5x robots new` ✅
+
+**Validação real (2026-10-12, host Linux, MT5 build 6258 no Wine, conta MetaQuotes-Demo):** robô criado com
+`mt5x robots new`, com um sinal de cruzamento de médias (10 × 40) escrito nos blocos marcados, rodado por
+`mt5x robots check` em EURUSD M15, de 2025-10-01 a 2026-09-30. Resultado, lido do relatório do Strategy Tester:
+99 entradas, **todas com stop** (coluna S/L preenchida nas 99), lote calculado pelo risco (de 1,9 a 11,67 lotes
+para 0,5% de 100.000), saídas por stop e por alvo e uma saída pela própria biblioteca (`HDK close`, ao bater um
+limite). As operações foram lidas do `HDK_trades_<magic>.csv` exportado pelo robô. O que está provado é o
+esqueleto operando pela biblioteca no **Strategy Tester**; em conta (demo ou real) ele nunca rodou.
 
 **Registrado na entrega:** `robots/scaffold.py`, modelos em `robots/templates/` e `mt5x robots new <Nome> --dir <pasta>`
 (registra a pasta no catálogo). O esqueleto traz risco, stop pelo ATR, limites, parada de emergência e exportação de
@@ -1418,7 +1426,18 @@ escrever um sinal simples, rodar `mt5x robots backtest` e confirmar que há oper
 - **Verificação:** `pytest -q` (conteúdo gerado e `contract.validate`); manual no host: `new` → `compile`.
 - **Armadilhas:** modelo é texto com marcadores simples (`{{NOME}}`); não adicione motor de templates.
 
-### T10.4 — `mt5x robots check` ⏳
+### T10.4 — `mt5x robots check` ✅
+
+**Validação real (2026-10-12):** as quatro etapas rodaram de verdade no host, em 17 s: contrato (passou), instalar e
+compilar (3,8 s), backtest (10,4 s, 99 operações, profit factor 0,96) e bateria, que **reprovou** como devia um
+cruzamento de médias ingênuo (menos de 200 operações, profit factor abaixo de 1,3, expectativa negativa). Código de
+saída 1 e relatório JUnit com 24 casos e 4 falhas. Dois achados da execução:
+
+- `--close-terminal` fechou um terminal real pela primeira vez (duas vezes), parou e religou a ponte. Fica conferido
+  no Wine o que as T8.5 e T8.7 tinham só com processos simulados.
+- Na primeira tentativa havia uma atualização do MT5 pendente: o terminal leu o `.ini`, chamou o LiveUpdate, saiu
+  sem testar e foi reaberto pelo atualizador. O comando terminou em "não gerou o relatório". A segunda execução
+  funcionou. `run_tester` agora reconhece o caso (relatório ausente e terminal aberto) e diz para fechar e repetir.
 
 **Registrado na entrega:** `robots/pipeline.py` e `mt5x robots check <robô> --symbol X --tf M5 [--preset] [--report
 arquivo.xml] [--close-terminal]`. Quatro etapas, parando na primeira que falhar: contrato → instalar e compilar →

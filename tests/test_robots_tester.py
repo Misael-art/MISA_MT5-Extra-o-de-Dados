@@ -147,9 +147,13 @@ def test_run_tester_command_line_and_failures(home):
     assert calls[0][0] == f'"{WINDOWS_DIR}\\terminal64.exe" /portable /config:"{WINDOWS_DIR}\\r1.ini"'
     with pytest.raises(RuntimeError, match="--close-terminal"):
         mt5_tools.run_tester(home.config, home.mt5, "[Tester]\r\nReport=r1\r\n", "r1", is_running=lambda: True)
-    with pytest.raises(RuntimeError, match="não gerou o relatório"):             # o relatório antigo não vale
+    with pytest.raises(RuntimeError, match="falta histórico"):                   # o relatório antigo não vale
         mt5_tools.run_tester(home.config, home.mt5, "[Tester]\r\nReport=r1\r\n", "r1", fake_terminal(None),
                              is_running=lambda: False)
+    states = iter([False, True])            # fechado antes; aberto depois: o MT5 se atualizou e reabriu sozinho
+    with pytest.raises(RuntimeError, match="acabou de se atualizar"):
+        mt5_tools.run_tester(home.config, home.mt5, "[Tester]\r\nReport=r1\r\n", "r1", fake_terminal(None),
+                             is_running=lambda: next(states))
 
     def slow(*a):
         raise subprocess.TimeoutExpired("wine", 1)

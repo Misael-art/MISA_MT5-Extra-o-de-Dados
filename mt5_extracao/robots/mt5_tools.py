@@ -436,6 +436,12 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     finally:
         ini.unlink(missing_ok=True)
     if not report.is_file():
+        if (is_running or terminal_running)():
+            # Visto no host: com uma atualização pendente, o terminal chama o LiveUpdate, sai sem testar e é
+            # reaberto pelo atualizador (já sem o nosso .ini). A segunda execução funciona.
+            raise RuntimeError("O Strategy Tester não gerou o relatório e o MetaTrader 5 ficou aberto: ele "
+                               "provavelmente acabou de se atualizar e reabriu sozinho. Feche o MT5 (ou use "
+                               "--close-terminal) e rode de novo.")
         raise RuntimeError("O Strategy Tester não gerou o relatório. Causas comuns: o terminal sem conta conectada, "
                            "o ativo não existe na corretora ou falta histórico no período. Veja o log em "
                            f"{data / 'Tester' / 'logs'}.")
