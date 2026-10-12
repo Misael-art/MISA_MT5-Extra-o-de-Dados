@@ -83,6 +83,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
 # --- MQL5: Strategy Tester ------------------------------------------------------------
 
 REPORT_SOURCE, CSV_SOURCE = "relatório do Strategy Tester", "HDK_trades.csv"
+TESTER_SOURCE = "strategy tester"
+DEEP_SOURCE = "strategy tester (bateria)"    # execuções extras da bateria: não são o "último backtest" do card
 _ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
 _CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
 _TAG = re.compile(r"<[^>]+>")
@@ -187,7 +189,7 @@ def tester_values(robot, preset: Optional[str] = None, params: Optional[dict] = 
 
 def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=None, preset: Optional[str] = None,
              params: Optional[dict] = None, run: Optional[Callable] = None,
-             is_running: Optional[Callable] = None) -> dict:
+             is_running: Optional[Callable] = None, source: str = TESTER_SOURCE) -> dict:
     """
     Roda o robô MQL5 no Strategy Tester (o terminal precisa estar fechado) e grava a execução. O robô tem de
     estar instalado e compilado na pasta de dados do MT5 ('mt5x robots compile').
@@ -206,10 +208,10 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
         raise ValueError("O início do período precisa ser anterior ao fim.")
     slug = robot.key.split(":", 1)[1]
     data = mt5_tools.data_dir(config)
-    source = mt5_tools.install_plan(robot, data)[0].target
-    compiled = source.with_suffix(".ex5")
-    if not compiled.is_file() or (source.suffix.lower() == ".mq5" and source.is_file()
-                                  and compiled.stat().st_mtime < source.stat().st_mtime):
+    source_file = mt5_tools.install_plan(robot, data)[0].target
+    compiled = source_file.with_suffix(".ex5")
+    if not compiled.is_file() or (source_file.suffix.lower() == ".mq5" and source_file.is_file()
+                                  and compiled.stat().st_mtime < source_file.stat().st_mtime):
         raise ValueError(f"{robot.name} não está compilado na pasta do MT5. Rode antes: mt5x robots compile {slug}")
     values = tester_values(robot, preset, params)
     name = f"mt5x_{slug}"
@@ -237,7 +239,7 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     for stamp, value, _ in results:
         equity += float(value)
         points.append([_iso(stamp), equity])
-    record = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": "strategy tester", "symbol": symbol,
+    record = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
               "timeframe": tf.name, "data_start": start.strftime("%Y-%m-%d %H:%M:%S"),
               "data_end": end.strftime("%Y-%m-%d %H:%M:%S"), "bars": 0,
               "params": dict(values, **({"preset": preset} if preset else {})), "metrics": metrics,

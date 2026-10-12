@@ -22,8 +22,8 @@ SURFACE = {
     "compile_robot": ["config", "robot", "mt5", "run", "overwrite_presets", "upgrade_safety"],
     "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params"],
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
-                 "is_running"],
-    "run_battery": ["db", "config", "robot", "robots", "preset"],
+                 "is_running", "source"],                       # T10.5: parâmetro novo no fim, com padrão
+    "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running"],
     "check": ["db", "config", "robot", "robots", "symbol", "timeframe", "start", "end", "preset", "run", "is_running"],
     "write_junit": ["result", "path"],
     "get_strategy": ["key", "params"],

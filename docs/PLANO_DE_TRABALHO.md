@@ -86,7 +86,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | ✅ concluída (biblioteca só compilada: nenhum robô operou com ela) |
 | T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | ✅ concluída (validada no Strategy Tester real) |
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | ✅ concluída (executada de ponta a ponta no host) |
-| T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
+| T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | ✅ concluída (executada no host) |
 | T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | a fazer |
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
@@ -1463,7 +1463,18 @@ pendência da T10.3, é o mesmo teste: `new` → sinal simples → `check`.
 - **Verificação:** `pytest -q`; manual no host com um EA de exemplo.
 - **Armadilhas:** não duplique lógica: a `pipeline` só chama o que já existe.
 
-### T10.5 — Bateria completa para MQL5
+### T10.5 — Bateria completa para MQL5 ✅
+
+**Registrado na entrega:** `mt5x robots battery <robô> --deep [--close-terminal]`. A partir do último backtest, roda
+`2 + 2 × parâmetros de "tunable"` testes: o período em 70% inicial e 30% final, e cada parâmetro em −20% e +20%
+(inteiros são arredondados; variação que não muda o valor é pulada). Os itens "fora da amostra" e "robustez" da
+bateria são **trocados** pelos medidos. As execuções extras ficam em `_robot_runs` com
+`source = "strategy tester (bateria)"` e não viram o "último backtest" do card nem a base da próxima bateria. Antes
+de rodar, o comando diz quantos testes são e o tempo estimado. Sem `tunable` no `robot.json`, a robustez fica como
+aviso. `run_mql5` e `run_battery` ganharam parâmetros no fim (`source`; `deep`, `runner`, `is_running`), com o teste
+da API atualizado. **Execução real (2026-10-12, host):** 10 testes em 104 s (cerca de 10 s cada) no robô de sonda
+com quatro parâmetros; a robustez reprovou o cruzamento de médias, como esperado (profit factor entre 0,81 e 1,00
+nas variações).
 
 - **Objetivo:** trocar os dois itens que hoje são aviso ou aproximação em MQL5 por medidas reais.
 - **Depende de:** T10.4.

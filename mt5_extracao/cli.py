@@ -27,7 +27,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots new <Nome> --dir <pasta>               # cria o esqueleto de um robô sobre a biblioteca de segurança
     mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
     mt5x robots check <robô> --symbol X --tf M5        # contrato, compilação, backtest e bateria em um comando
-    mt5x robots battery <robô> [--preset X]            # bateria de segurança: código, preset e estatística
+    mt5x robots battery <robô> [--preset X] [--deep]   # bateria de segurança; --deep repete o Strategy Tester
     mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
     mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
@@ -726,7 +726,25 @@ def _robots_battery(args, ctx, items):
     if not args.path:
         raise ValueError("uso: mt5x robots battery <robô> [--preset NOME] (veja as chaves em 'mt5x robots list')")
     robot = catalog.get_robot(items, args.path)
-    report = battery.run_battery(ctx.db, ctx.config, robot, items, args.preset)
+    bridge_was_running = False
+    if args.deep:
+        from mt5_extracao.robots import backtest, mt5_tools, store
+        runs = [r for r in store.load_runs(ctx.db, robot.key) if r["source"] != backtest.DEEP_SOURCE]
+        if robot.kind == catalog.MQL5 and runs and runs[0].get("trades"):
+            count = len(battery.deep_plan(robot, runs[0]))
+            _print(f"Bateria completa: {count} testes no Strategy Tester, cerca de "
+                   f"{max(1, round(count * battery.SECONDS_PER_TEST / 60))} min. O MetaTrader 5 fica fechado enquanto isso.")
+        if args.close_terminal and mt5_tools.terminal_running():
+            _print("Fechando o MetaTrader 5 para rodar os testes...")
+            bridge_was_running = mt5_tools.release_terminal()
+    try:
+        report = battery.run_battery(ctx.db, ctx.config, robot, items, args.preset, deep=args.deep)
+    except (OSError, RuntimeError) as e:
+        raise RuntimeError(str(e)) from e
+    finally:
+        if bridge_was_running:
+            from mt5_extracao.robots import mt5_tools
+            mt5_tools.restart_bridge()
     _data(battery=report.to_dict())
     _print(f"Bateria de segurança de {robot.name}" + (f", preset {report.preset}" if report.preset else ""))
     for group, status in ((battery.STATIC, report.static_status), (battery.STATISTICAL, report.statistical_status)):
@@ -1119,6 +1137,8 @@ def build_parser():
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
+    p.add_argument("--deep", action="store_true",
+                   help="battery (robô MQL5): repete o Strategy Tester para medir fora da amostra e robustez ±20%%")
     p.add_argument("--report", help="check: grava um relatório JUnit XML neste arquivo (para CI)")
     p.add_argument("--dir", help="new: pasta de robôs onde criar (layout Experts/ Presets/)")
     p.add_argument("--upgrade-safety", action="store_true",

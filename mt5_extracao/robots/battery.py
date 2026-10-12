@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from . import catalog, contract, mql, safety_lib, store
 from . import risk as risk_mod
@@ -399,12 +399,110 @@ def statistical_items(robot, run: Optional[dict], config=None, db=None) -> List[
 
 # --- execução -------------------------------------------------------------------------
 
-def run_battery(db, config, robot, robots=(), preset: Optional[str] = None) -> Report:
-    """Roda a bateria sobre o backtest mais recente do robô e grava o resultado em `_robot_checks`."""
-    runs = store.load_runs(db, robot.key)
+# --- bateria completa (MQL5): repete o Strategy Tester ----------------------------------
+
+DEEP_SPLIT = 0.7            # parte inicial do período; o restante é a parte "fora da amostra"
+VARIATION = 0.2             # robustez: cada parâmetro em -20% e +20%
+SECONDS_PER_TEST = 15       # estimativa mostrada antes de rodar (medido no host: 10 a 12 s por teste)
+
+
+def _number(value) -> Optional[float]:
+    try:
+        return float(str(value).split("|")[0].replace(",", "."))
+    except (TypeError, ValueError):
+        return None
+
+
+def _format(value: float, like: str) -> str:
+    """Mantém inteiro o que era inteiro (períodos) e usa ponto decimal no que era fracionário."""
+    if re.fullmatch(r"-?\d+", str(like).strip()):
+        return str(int(round(value)))
+    return f"{value:.6g}"
+
+
+def deep_plan(robot, run: dict) -> List[dict]:
+    """
+    Testes extras da bateria completa, a partir do último backtest: o período dividido em dois e cada parâmetro
+    de `tunable` (robot.json) em -20% e +20%. Cada item: {kind, label, start, end, params}.
+    """
+    start = datetime.strptime(run["data_start"], "%Y-%m-%d %H:%M:%S")
+    end = datetime.strptime(run["data_end"], "%Y-%m-%d %H:%M:%S")
+    cut = start + (end - start) * DEEP_SPLIT
+    base = {k: v for k, v in run.get("params", {}).items() if k != "preset"}
+    plan = [{"kind": "period", "label": "parte inicial", "start": start, "end": cut, "params": base},
+            {"kind": "period", "label": "parte final", "start": cut, "end": end, "params": base}]
+    defaults = {i.name: i.default for i in robot.inputs}
+    for name in (robot.manifest or {}).get("tunable") or []:
+        current = base.get(name, defaults.get(name))
+        number = _number(current)
+        if number is None:
+            continue
+        for factor in (1 - VARIATION, 1 + VARIATION):
+            value = _format(number * factor, str(current))
+            if value != _format(number, str(current)):          # inteiro pequeno pode não mudar com 20%
+                plan.append({"kind": "param", "label": f"{name} = {value}", "start": start, "end": end,
+                             "params": {**base, name: value}})
+    return plan
+
+
+def deep_items(db, config, robot, run: dict, runner: Optional[Callable] = None,
+               is_running: Optional[Callable] = None) -> List[Item]:
+    """Roda os testes de `deep_plan` e devolve os itens "fora da amostra" e "robustez" medidos de verdade."""
+    from mt5_extracao.strategies import research
+    from . import backtest
+    criteria = research.criteria(config)
+    preset = run.get("params", {}).get("preset") or None
+    results = []
+    for test in deep_plan(robot, run):
+        record = backtest.run_mql5(db, config, robot, run["symbol"], run["timeframe"], test["start"], test["end"],
+                                   preset, test["params"], run=runner, is_running=is_running,
+                                   source=backtest.DEEP_SOURCE)
+        results.append((test, record["metrics"]))
+    periods = {t["label"]: m for t, m in results if t["kind"] == "period"}
+    first, last = periods["parte inicial"], periods["parte final"]
+    detail = (f"profit factor {_num(first['profit_factor'])} na parte inicial ({first['trades']} operações) e "
+              f"{_num(last['profit_factor'])} na parte final ({last['trades']} operações)")
+    if last["trades"] < MIN_RECENT_TRADES:
+        oos = Item(STATISTICAL, "out_of_sample", "Fora da amostra (parte final do período)", WARN,
+                   detail + f"; menos de {MIN_RECENT_TRADES} operações na parte final", "Teste um período maior.")
+    else:
+        ok = last["profit_factor"] > 1.0
+        oos = Item(STATISTICAL, "out_of_sample", "Fora da amostra (parte final do período)", OK if ok else FAIL, detail,
+                   "" if ok else "O robô não se sustenta na parte mais recente do período.")
+    variations = [(t["label"], m) for t, m in results if t["kind"] == "param"]
+    if not variations:
+        robust = Item(STATISTICAL, "robustness", "Robustez com parâmetros ±20%", WARN,
+                      "o robot.json não lista parâmetros em \"tunable\": nada foi variado",
+                      "Liste em \"tunable\" os parâmetros numéricos da estratégia (docs/sdk/contrato.md).")
+    else:
+        weak = [f"{label} (profit factor {_num(m['profit_factor'])})" for label, m in variations
+                if m["profit_factor"] <= criteria.robustness_min_pf]
+        robust = Item(STATISTICAL, "robustness", "Robustez com parâmetros ±20%", FAIL if weak else OK,
+                      "perde o resultado com: " + "; ".join(weak) if weak
+                      else f"{len(variations)} variações mantêm profit factor acima de {_num(criteria.robustness_min_pf)}",
+                      "Ajuste frágil costuma ser acaso: não opere." if weak else "")
+    return [oos, robust]
+
+
+def run_battery(db, config, robot, robots=(), preset: Optional[str] = None, deep: bool = False,
+                runner: Optional[Callable] = None, is_running: Optional[Callable] = None) -> Report:
+    """
+    Roda a bateria sobre o backtest mais recente do robô e grava o resultado em `_robot_checks`. Com `deep`
+    (só MQL5), repete o Strategy Tester para medir "fora da amostra" e robustez; o MT5 precisa estar fechado.
+    """
+    from . import backtest
+    runs = [r for r in store.load_runs(db, robot.key) if r["source"] != backtest.DEEP_SOURCE]
     run = runs[0] if runs else None
     report = Report(robot.key, preset or "", run_id=run["run_id"] if run else "", check_id=uuid.uuid4().hex,
                     created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     report.items = static_items(robot, config, robots, preset) + statistical_items(robot, run, config, db)
+    if deep:
+        if robot.kind != catalog.MQL5:
+            raise ValueError("A bateria completa (--deep) é para robôs MQL5; estratégias Python usam 'mt5x validate'.")
+        if run is None or not run.get("trades"):
+            raise ValueError("Rode antes um backtest: mt5x robots backtest " + robot.key.split(":", 1)[1] +
+                             " --symbol <ativo> --tf <timeframe>")
+        measured = {i.id: i for i in deep_items(db, config, robot, run, runner, is_running)}
+        report.items = [measured.get(i.id, i) for i in report.items]
     store.save_check(db, report.to_dict())
     return report

@@ -68,7 +68,7 @@ Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e 
 
 | Nome | O que faz |
 |---|---|
-| `run_battery(db, config, robot, robots=(), preset=None)` | Bateria de segurança sobre o último backtest. Devolve `BatteryReport` |
+| `run_battery(db, config, robot, robots=(), preset=None, deep=False, ...)` | Bateria de segurança sobre o último backtest. Com `deep=True` (robô MQL5), repete o Strategy Tester para medir fora da amostra e robustez. Devolve `BatteryReport` |
 | `BatteryReport` | `items`, `approved`, `allows_real`, `static_status`, `statistical_status`, `to_dict()` |
 | `BatteryItem` | `group`, `id`, `name`, `status`, `detail`, `fix` |
 | `check(db, config, robot, robots, symbol, timeframe, ...)` | Contrato, compilação, backtest e bateria, parando na primeira falha. Devolve `CheckResult` |

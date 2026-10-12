@@ -103,6 +103,10 @@ Um ✗ reprova; avisos não reprovam, mas leia cada um. Vale sempre a bateria **
 reprovar, o robô volta a "Testado". Robô sem código-fonte (`.ex5`) pode passar para demo só pela estatística e
 nunca é liberado para conta real. Para o item do spread, grave antes a especificação do ativo (`mt5x specs`).
 
+Para robôs MQL5, `--deep` faz a **bateria completa**: repete o Strategy Tester na parte inicial e na parte final
+do período e com cada parâmetro listado em `tunable` (no `robot.json`) 20% abaixo e 20% acima. O comando avisa
+quantos testes vai rodar; conte cerca de 10 a 15 segundos por teste, com o MetaTrader 5 fechado.
+
 **Aprovação não é garantia de lucro.** É o mínimo para o robô rodar em conta de demonstração.
 
 ## Rodar em conta de demonstração
