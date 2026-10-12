@@ -1,0 +1,8 @@
+{
+  "key": "cruzamento",
+  "name": "Cruzamento de médias",
+  "indicators": {"rapida": {"kind": "sma", "period": 10}, "lenta": {"kind": "sma", "period": 40}},
+  "long": [["cross_above", "rapida", "lenta"]],
+  "short": [["cross_below", "rapida", "lenta"]],
+  "atr_period": 14, "stop_atr": 1.5, "target_r": 2.0
+}

@@ -1,0 +1,8 @@
+; ExemploCruzamento: preset conservador (criado pelo mt5x)
+InpMagicNumber=175355
+InpRiskPct=0.25
+InpDailyLossPct=1.0
+InpWeeklyLossPct=2.0
+InpMaxDrawdownPct=5.0
+InpStopAtrMult=1.5
+InpTakeProfitR=2

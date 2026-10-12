@@ -89,7 +89,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | ✅ concluída (executada no host) |
 | T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | ✅ concluída (um par real comparado na T10.10; a ferramenta apontou as diferenças) |
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
-| T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
+| T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | ✅ concluída (todas as saídas do tutorial são de uma execução real no host) |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
@@ -1553,7 +1553,18 @@ real: quando elas entrarem, `parity` e a bateria `--deep` são acrescentadas aqu
 - **Verificação:** `pytest -q`.
 - **Armadilhas:** não mova módulos: só reexporte.
 
-### T10.8 — Documentação do desenvolvedor
+### T10.8 — Documentação do desenvolvedor ✅
+
+**Registrado na entrega:** `docs/sdk/README.md` (porta de entrada), `docs/sdk/tutorial.md` e `docs/sdk/exemplo/`
+(o robô gerado no passo 8 do tutorial, com a declaração `cruzamento.json`). O tutorial foi executado inteiro no
+host em 2026-10-12, em uma base e uma pasta de robôs novas, e cada bloco de saída foi colado dessa execução; só os
+caminhos pessoais foram encurtados. O exemplo é um cruzamento de médias que **perde no teste e é reprovado pela
+bateria**, e o texto diz isso no topo: serve para mostrar o ciclo e a bateria trabalhando. O passo 9 (conta demo)
+só aponta para o guia e repete que não foi validado com o MT5 real. `tests/test_sdk_docs.py` garante que o exemplo
+publicado é exatamente o que `generate` produz hoje (se o esqueleto mudar, o exemplo e o tutorial têm de ser
+refeitos), que os links existem e que todo `mt5x robots <ação>` citado existe.
+**Diferença em relação ao texto abaixo:** o exemplo publicado vem de `robots generate`, não de `robots new`; o
+caminho do `new` com o sinal escrito à mão está no tutorial (passos 1 a 7), com saídas reais.
 
 - **Objetivo:** alguém que nunca viu o projeto vai do zero a um robô aprovado na bateria seguindo um texto.
 - **Depende de:** T10.3, T10.7.
