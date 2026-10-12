@@ -74,6 +74,13 @@ Todos na pasta comum do MetaTrader (`Common\Files`).
 | `HDK_trades_<magic>.csv` | o robô, no `OnTester`, quando o parâmetro de `export_trades` está ligado | ANSI, separador `;`, cabeçalho `time;symbol;type;volume;result`. Uma linha por operação **fechada**; `time` como `AAAA.MM.DD HH:MM`; `result` = lucro + swap + comissão |
 | `HDK_KILL.txt` | o `mt5x` (`mt5x robots stop`) | Enquanto existir, o robô não abre novas operações. O conteúdo não importa |
 
+## Biblioteca de segurança
+
+O robô que declara `"safety_lib": "1.0.0"` usa a biblioteca [mt5x-safety](https://github.com/Misael-art/mt5x-safety).
+Clone o repositório, aponte `[ROBOTS] safety_lib_dir` para a pasta do clone e o `mt5x robots install` (ou `compile`)
+copia a biblioteca para `MQL5/Include/MT5X/Safety` na versão pedida. Se a pasta do MT5 já tiver outra versão, o
+programa para e explica; para trocar, use `--upgrade-safety`.
+
 ## O que o robô não pode fazer
 
 A bateria de segurança reprova:

@@ -627,13 +627,20 @@ def _robots_mt5(args, ctx, items):
     robot = catalog.get_robot(items, args.path)
     try:
         if args.action == "install":
-            installed, result = mt5_tools.install(robot, mt5_tools.data_dir(ctx.config), args.overwrite_presets), None
+            installed, result = mt5_tools.install_robot(ctx.config, robot, overwrite_presets=args.overwrite_presets,
+                                                        upgrade_safety=args.upgrade_safety), None
         else:
-            installed, result = mt5_tools.compile_robot(ctx.config, robot, overwrite_presets=args.overwrite_presets)
+            installed, result = mt5_tools.compile_robot(ctx.config, robot, overwrite_presets=args.overwrite_presets,
+                                                        upgrade_safety=args.upgrade_safety)
     except (OSError, RuntimeError) as e:
         raise RuntimeError(str(e)) from e
     _data(robot=robot.key, files=[{"source": str(i.source), "target": str(i.target), "status": i.status}
                                   for i in installed])
+    from mt5_extracao.robots import safety_lib
+    wanted = safety_lib.required_version(robot)
+    if wanted:
+        _data(safety_lib=wanted)
+        _print(f"  biblioteca de segurança {wanted} instalada na pasta do MT5")
     for item in installed:
         _print(f"  {item.status:<8} {item.target}")
     kept = [i.target.name for i in installed if i.status == mt5_tools.KEPT]
@@ -1046,6 +1053,8 @@ def build_parser():
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
+    p.add_argument("--upgrade-safety", action="store_true",
+                   help="install/compile: troca a biblioteca de segurança instalada no MT5 pela versão do clone")
     p.add_argument("--preset", help="backtest de robô MQL5 e battery: nome do preset (.set) a usar")
     p.add_argument("--close-terminal", action="store_true",
                    help="backtest de robô MQL5, start e stop: fecha o MT5 (e para a ponte) se estiver aberto; "

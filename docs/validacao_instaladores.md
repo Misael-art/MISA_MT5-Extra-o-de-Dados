@@ -108,6 +108,7 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | T8.7 | PARAR TUDO | `mt5x robots stop` e `--release` | `HDK_KILL.txt` criado e removido em `Common\Files` | — | ⏳ pendente |
 | T9.1 | Saída `--json` no console do Windows | `mt5x --json status` | Um único objeto JSON, acentos corretos (cp1252 × UTF-8) | — | ⏳ pendente |
 | T9.2 | Auditoria | `mt5x audit` | Roda; o item de permissão do `.env` é coerente com o Windows | — | ⏳ pendente |
+| T10.2 | Biblioteca de segurança | `mt5x robots compile <robô que declara safety_lib>` com `safety_lib_dir` apontando para o clone | Biblioteca em `MQL5\\Include\\MT5X\\Safety` da pasta de dados; robô compila | — | ⏳ pendente |
 | Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
 
 A ponte restrita (T9.3) é só do Linux e não entra nesta lista.

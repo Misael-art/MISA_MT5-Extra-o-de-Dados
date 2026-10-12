@@ -28,7 +28,7 @@ from typing import Callable, List, Optional, Tuple
 
 from mt5_extracao.bootstrap import paths
 
-from . import mql
+from . import mql, safety_lib
 from .catalog import MQL5, Robot
 
 log = logging.getLogger(__name__)
@@ -328,12 +328,22 @@ def compile_source(source, metaeditor, prefix: Optional[Path] = None, run: Optio
     return result
 
 
+def install_robot(config, robot: Robot, mt5=None, overwrite_presets: bool = False,
+                  upgrade_safety: bool = False) -> List[InstallItem]:
+    """Instala o robô e, se ele a declara no robot.json, a biblioteca de segurança na versão pedida."""
+    data = data_dir(config, mt5)
+    if robot.kind == MQL5:
+        safety_lib.ensure(config, robot, data, upgrade_safety)
+    return install(robot, data, overwrite_presets)
+
+
 def compile_robot(config, robot: Robot, mt5=None, run: Optional[Callable] = None,
-                  overwrite_presets: bool = False) -> Tuple[List[InstallItem], CompileResult]:
+                  overwrite_presets: bool = False, upgrade_safety: bool = False
+                  ) -> Tuple[List[InstallItem], CompileResult]:
     """Copia o robô para a pasta de dados do MT5 e compila lá. Devolve (arquivos instalados, resultado)."""
     if robot.kind == MQL5 and not robot.has_source:
         raise ValueError(f"{robot.name} não tem código-fonte (.mq5): não há o que compilar.")
-    items = install(robot, data_dir(config, mt5), overwrite_presets)
+    items = install_robot(config, robot, mt5, overwrite_presets, upgrade_safety)
     return items, compile_source(items[0].target, find_metaeditor(config), wine_prefix(config), run)
 
 

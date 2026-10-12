@@ -87,3 +87,6 @@ metaeditor_path =
 tester_model = 1
 # Teto de risco por operação (%) aceito pela bateria de segurança ('mt5x robots battery').
 max_real_risk_pct = 1.0
+# Pasta de um clone de https://github.com/Misael-art/mt5x-safety (biblioteca de segurança MQL5).
+# O mt5x instala dela a versão que cada robô declara em "safety_lib" no robot.json. Vazio = não usa.
+safety_lib_dir = 

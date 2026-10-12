@@ -83,7 +83,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T9.3 | Ponte restrita: só funções de leitura, sem execução de código nem pickle | T9.2 | ✅ concluída (reinicie a ponte depois de atualizar) |
 | T10.0 | Plano da Fase 10 (SDK de robôs) e regra da pendência do Windows | T8.6, T9.3 | ✅ concluída |
 | T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | ✅ concluída |
-| T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | repositório `mt5x-safety` criado (v1.0.0, compila); falta a parte deste repositório |
+| T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | ✅ concluída (biblioteca só compilada: nenhum robô operou com ela) |
 | T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | a fazer |
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | a fazer |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
@@ -1342,7 +1342,16 @@ depende do sistema operacional: sem linha nova no checklist do Windows.
 - **Verificação:** `pytest -q`, `doctor`.
 - **Armadilhas:** não mude o significado de campos que `catalog._manifest` já lê. Não exija contrato para robô `.ex5`.
 
-### T10.2 — Biblioteca de segurança MQL5 versionada
+### T10.2 — Biblioteca de segurança MQL5 versionada ✅
+
+**Registrado na entrega (parte deste repositório):** `robots/safety_lib.py`, chave `[ROBOTS] safety_lib_dir` e a opção
+`--upgrade-safety`. `mt5x robots install`/`compile` instalam a biblioteca em `MQL5/Include/<include_dir>` na versão
+que o robô declara em `"safety_lib"` e gravam o marcador `MQL5/Include/mt5x-safety.json`. Versão do clone diferente
+da pedida, ou outra versão já instalada no MT5, dão erro com a ação de correção; nada é trocado em silêncio. A
+bateria ganhou o item "biblioteca de segurança na versão declarada" e passa a aceitar como "ordens pela camada de
+segurança" o robô que inclui a biblioteca e não envia ordem por fora. **Conferido no host:** um robô de sonda que
+declara a 1.0.0 e inclui `HDK_RiskGuard.mqh` e `HDK_SafeExecutor.mqh` foi instalado e compilado do zero pela CLI, sem
+erros. **Não feito:** download automático da biblioteca; o HADOUKEN ainda usa a própria cópia da `Safety/`.
 
 - **Objetivo:** o desenvolvedor recebe a camada de segurança como dependência com versão, e não copiando uma pasta
   de outro projeto.

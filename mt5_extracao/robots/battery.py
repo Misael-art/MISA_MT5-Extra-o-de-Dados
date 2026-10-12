@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import List, Optional
 
-from . import catalog, contract, mql, store
+from . import catalog, contract, mql, safety_lib, store
 from . import risk as risk_mod
 
 OK, WARN, FAIL, NA = "ok", "aviso", "falha", "não avaliável"
@@ -159,6 +159,8 @@ def _orders_item(robot) -> Item:
                     "Porte o robô para a camada Safety/ do HADOUKEN: stop obrigatório e limites conferidos a cada ordem.")
     if safety:
         return Item(STATIC, "orders", name, OK, "nenhum envio de ordem fora de Safety/")
+    if any("safety/" in m.replace("\\", "/").lower() for m in robot.missing_includes):
+        return Item(STATIC, "orders", name, OK, "o robô inclui a biblioteca de segurança e não envia ordem por fora")
     return Item(STATIC, "orders", name, WARN, "o código não envia ordens (painel ou robô sem entrada automática)",
                 "Sem entradas não há o que testar: confirme se este é mesmo o arquivo que opera.")
 
@@ -215,6 +217,19 @@ def static_items(robot, config=None, robots=(), preset: Optional[str] = None) ->
                       else "não encontrei parâmetro de martingale, grid ou preço médio",
                       "Desligue o aumento de posição no preset." if averaging else ""))
     items.append(_orders_item(robot))
+    wanted = safety_lib.required_version(robot)
+    if wanted:
+        try:
+            from . import mt5_tools
+            current = safety_lib.installed_version(mt5_tools.data_dir(config))
+        except (OSError, ValueError):
+            current = ""
+        slug = robot.key.split(":", 1)[1]
+        items.append(Item(STATIC, "safety_lib", "Biblioteca de segurança na versão declarada",
+                          OK if current == wanted else FAIL,
+                          f"mt5x-safety {wanted}" if current == wanted
+                          else f"o robô pede a {wanted}; na pasta do MT5 há " + (f"a {current}" if current else "nenhuma"),
+                          "" if current == wanted else f"Rode: mt5x robots install {slug}"))
 
     items.append(Item(STATIC, "dll", "Sem DLL externa", FAIL if robot.dll_imports else OK,
                       "importa " + ", ".join(robot.dll_imports) if robot.dll_imports else "nenhum #import de DLL",
