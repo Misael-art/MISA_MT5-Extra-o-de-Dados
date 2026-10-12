@@ -88,7 +88,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | ⏳ código e testes prontos com executáveis simulados; **falta a execução real no host** |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
 | T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | a fazer |
-| T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | a fazer |
+| T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | a fazer |
@@ -1481,7 +1481,14 @@ pendência da T10.3, é o mesmo teste: `new` → sinal simples → `check`.
 - **Armadilhas:** diferenças legítimas existem (modelo de ticks, spread por barra, horário da corretora): o
   relatório mostra, quem decide é a pessoa.
 
-### T10.7 — API Python pública
+### T10.7 — API Python pública ✅
+
+**Registrado na entrega:** `mt5_extracao/sdk.py` reexporta 27 nomes (`API_VERSION = 1`); nenhum módulo foi movido.
+Como `contract.validate` e `strategies.validation.validate` têm o mesmo nome, entram como `validate_contract` e
+`validate_strategy`; `scaffold.create` entra como `new_robot`. `tests/test_sdk_api.py` fixa a lista de nomes e os
+parâmetros de cada função e confere que todo nome público está em `docs/sdk/api.md`. `sdk` entrou em `CORE_MODULES`
+(importa sem `MetaTrader5` e sem `tkinter`). Feita antes das T10.5 e T10.6, que estão paradas à espera da execução
+real: quando elas entrarem, `parity` e a bateria `--deep` são acrescentadas aqui, no fim, sem quebrar o que existe.
 
 - **Objetivo:** quem usa o projeto como biblioteca importa de um lugar só, que não muda sem aviso.
 - **Depende de:** T10.4.
