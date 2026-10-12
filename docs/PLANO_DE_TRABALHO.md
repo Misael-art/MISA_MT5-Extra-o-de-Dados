@@ -71,7 +71,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.0 | Plano da Fase 8 (robôs) e mudança de escopo registrada | T7.1 | ✅ concluída |
 | T8.1 | Catálogo de robôs: leitura de MQL5/presets, classificação de risco, tabelas `_robots*`, CLI `mt5x robots` | T8.0 | ✅ concluída (só a tabela `_robots`; `_robot_runs` e `_robot_checks` entram nas tarefas que as usam) |
 | T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | ✅ concluída (mini-curva de capital fica para a T8.3, que grava as execuções) |
-| T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | a fazer |
+| T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | ✅ concluída |
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | a fazer |
 | T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | a fazer |
 | T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | a fazer |
@@ -1062,7 +1062,12 @@ com o HADOUKEN real em display virtual.
   primeira tem conteúdo, as outras dizem o que falta e em qual tarefa entram.
 - **Regras:** as da Fase 7 (tema, `run_bg`, nada de cor ou fonte fixa).
 
-### T8.3 — Backtest pelo card (Python)
+### T8.3 — Backtest pelo card (Python) ✅
+
+**Registrado na entrega:** `_robot_runs` guarda métricas e a curva de capital já reduzida (até 240 pontos, mantendo
+os extremos de cada trecho, para não esconder o pior drawdown). No card, a validação tem prioridade sobre o backtest
+(`Robot.headline`): backtest isolado não aprova nem reprova, por isso aparece como "Último backtest", sem veredito.
+A tabela de operações do backtest não entrou no painel (o `mt5x backtest --trades-out` já exporta); fica como melhoria.
 
 `robots/backtest.py` chama `research.load_data` + `run_backtest`, grava em `_robot_runs` (métricas e curva de capital)
 e a aba Backtest mostra curva, métricas e trades. O card passa a mostrar as estatísticas e o estágio "Testado".

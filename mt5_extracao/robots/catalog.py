@@ -58,7 +58,8 @@ class Robot:
     dll_imports: List[str] = field(default_factory=list)
     stage: str = IMPORTED
     notes: List[str] = field(default_factory=list)             # avisos para o usuário (ex.: "não compilado")
-    results: List[dict] = field(default_factory=list)          # testes gravados, o melhor primeiro
+    results: List[dict] = field(default_factory=list)          # validações gravadas, a melhor primeiro
+    runs: List[dict] = field(default_factory=list)             # backtests gravados, o mais recente primeiro
 
     @property
     def kind_label(self) -> str:
@@ -99,6 +100,25 @@ class Robot:
     @property
     def result(self) -> Optional[dict]:
         return self.results[0] if self.results else None
+
+    @property
+    def headline(self) -> Optional[dict]:
+        """
+        Números do card: a melhor validação (mais rigorosa: fora da amostra) ou, sem ela, o último backtest.
+        'approved' é None quando o número vem de um backtest isolado, que não aprova nem reprova nada.
+        """
+        if self.results:
+            r = self.results[0]
+            return {"kind": "validação", "symbol": r["symbol"], "timeframe": r["timeframe"],
+                    "profit_factor": r["profit_factor"], "trades": r["trades"], "max_drawdown": r["max_drawdown"],
+                    "extra": r["positive_windows"], "extra_label": "janelas com lucro", "approved": r["approved"],
+                    "count": len(self.results)}
+        if self.runs:
+            r, m = self.runs[0], self.runs[0]["metrics"]
+            return {"kind": "backtest", "symbol": r["symbol"], "timeframe": r["timeframe"],
+                    "profit_factor": m["profit_factor"], "trades": m["trades"], "max_drawdown": m["max_drawdown_pct"],
+                    "extra": m["win_rate"], "extra_label": "acerto", "approved": None, "count": len(self.runs)}
+        return None
 
 
 def _slug(text: str) -> str:
@@ -264,6 +284,7 @@ def load_catalog(config=None, db=None) -> List[Robot]:
     if db is not None and getattr(db, "engine", None) is not None:
         from mt5_extracao.strategies.validation import load_validations
         attach_validations(list(robots.values()), load_validations(db))
+        attach_runs(list(robots.values()), store.load_runs(db))
     return list(robots.values())
 
 
@@ -286,6 +307,18 @@ def attach_validations(robots: List[Robot], validations) -> None:
              "source": "validação fora da amostra (walk-forward)"} for r in rows.itertuples()),
             key=lambda x: (not x["approved"], -x["profit_factor"]))
         if robot.results and robot.stage == IMPORTED:
+            robot.stage = TESTED
+
+
+def attach_runs(robots: List[Robot], runs: List[dict]) -> None:
+    """Liga a cada robô os backtests gravados (mais recente primeiro). Quem tem teste passa a "Testado"."""
+    by_key = {}
+    for run in runs:
+        by_key.setdefault(run["robot_key"], []).append(run)
+    for robot in robots:
+        robot.runs = by_key.get(robot.key, [])
+        if robot.runs and robot.stage in robot.stages and \
+                robot.stages.index(robot.stage) < robot.stages.index(TESTED):
             robot.stage = TESTED
 
 

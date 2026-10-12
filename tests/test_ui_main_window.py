@@ -176,3 +176,26 @@ def test_robots_tab_survives_theme_toggle(ui):
     ui.pump(0.4)
     assert len(ui.robots_panel.cards) == 8
     assert ui.robots_panel.canvas.cget("background") == ui.theme.colors["page"]
+
+
+def test_backtest_from_the_robot_card(ui):
+    """T8.3: rodar o backtest pelo painel do robô grava a execução e atualiza o card."""
+    panel = ui.robots_panel
+    panel.select("python:donchian")
+    detail = panel.detail
+    assert detail.symbol_var.get() == "WIN$N" and detail.timeframe_var.get() == "1 minuto"
+    assert detail.run_tiles["trades"].cget("text") == "—" and "Rodar backtest" in detail.run_status.cget("text")
+    detail.run_backtest()
+    ui.pump(2.5)
+    assert detail.shown_run is not None and detail.shown_run["symbol"] == "WIN$N"
+    assert detail.run_tiles["trades"].cget("text") != "—"
+    assert "WIN$N M1 · 600 barras" in detail.run_status.cget("text")
+    text = " | ".join(_labels(panel.cards["python:donchian"]))
+    assert "Último backtest em WIN$N M1" in text and "Estágio 2 de 3: Testado" in text
+    assert detail.robot.key == "python:donchian" and len(detail.robot.runs) == 1     # painel segue no mesmo robô
+    ui.toggle_theme()
+    ui.pump(0.4)
+    assert detail.shown_run is not None
+
+    panel.select("mql5:demoguard")
+    assert not detail.run_box.winfo_ismapped() and "Strategy Tester" in detail.tests_text.cget("text")

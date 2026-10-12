@@ -5,7 +5,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from mt5_extracao import robots as robots_core
 from mt5_extracao.robots import catalog, risk
-from mt5_extracao.ui.robot_detail import RISK_STYLES, RobotDetail
+from mt5_extracao.ui.robot_detail import RISK_STYLES, RobotDetail, draw_equity
 from mt5_extracao.ui.theme import Tooltip, card, fmt_int, fmt_num
 
 log = logging.getLogger(__name__)
@@ -14,12 +14,12 @@ ALL = "Todos"
 CARD_MIN_WIDTH = 310
 
 
-def result_tiles(result):
-    """(valor, legenda) das estatísticas do card, a partir do melhor teste gravado."""
-    return ((fmt_num(result["profit_factor"]), "profit factor"),
-            (fmt_int(result["trades"]), "operações"),
-            (fmt_num(result["max_drawdown"] * 100, 1, "%"), "drawdown"),
-            (fmt_num(result["positive_windows"] * 100, 0, "%"), "janelas com lucro"))
+def result_tiles(headline):
+    """(valor, legenda) das estatísticas do card, a partir de Robot.headline."""
+    return ((fmt_num(headline["profit_factor"]), "profit factor"),
+            (fmt_int(headline["trades"]), "operações"),
+            (fmt_num(headline["max_drawdown"] * 100, 1, "%"), "drawdown"),
+            (fmt_num(headline["extra"] * 100, 0, "%"), headline["extra_label"]))
 
 
 class RobotsPanel:
@@ -170,22 +170,37 @@ class RobotsPanel:
             anchor="w", pady=(1, 8))
 
         ttk.Separator(outer).pack(fill=tk.X, pady=(0, 8))
-        result = robot.result
-        if result:
+        headline = robot.headline
+        if headline:
             tiles = ttk.Frame(outer, style="Surface.TFrame")
             tiles.pack(fill=tk.X)
-            Tooltip(tiles, "Melhor validação gravada, fora da amostra e com custos: profit factor, número de "
-                           "operações, drawdown no cenário ruim do Monte Carlo e parcela das janelas walk-forward "
-                           "que deram lucro.", self.theme)
-            for column, (value, caption) in enumerate(result_tiles(result)):
+            Tooltip(tiles, "Validação: fora da amostra e com custos (profit factor, operações, drawdown no cenário "
+                           "ruim do Monte Carlo e janelas walk-forward com lucro). Backtest: um único período, "
+                           "serve para estudar, não aprova a estratégia.", self.theme)
+            for column, (value, caption) in enumerate(result_tiles(headline)):
                 tiles.columnconfigure(column, weight=1, uniform="tile")
                 ttk.Label(tiles, text=value, style="Heading.TLabel").grid(row=0, column=column, sticky="w")
                 ttk.Label(tiles, text=caption, style="Muted.TLabel", wraplength=70, justify=tk.LEFT).grid(
                     row=1, column=column, sticky="nw")
-            verdict = "✓ aprovada" if result["approved"] else "✕ reprovada"
-            more = f" · mais {len(robot.results) - 1} teste(s)" if len(robot.results) > 1 else ""
-            ttk.Label(outer, text=f"{verdict} em {result['symbol']} {result['timeframe']}{more}",
-                      style="Good.TLabel" if result["approved"] else "Bad.TLabel").pack(anchor="w", pady=(6, 0))
+            if robot.runs and len(robot.runs[0]["equity"]) > 2:
+                spark = tk.Canvas(outer, height=30, highlightthickness=0, borderwidth=0,
+                                  background=self.theme.colors["surface"])
+                spark.pack(fill=tk.X, pady=(6, 0))
+                spark.bind("<Configure>", lambda e, c=spark, run=robot.runs[0]: draw_equity(
+                    c, run["equity"], self.theme, labels=False))
+                if headline["kind"] != "backtest":      # os números acima vêm da validação, a curva não
+                    last = robot.runs[0]
+                    ttk.Label(outer, text=f"curva: último backtest em {last['symbol']} {last['timeframe']}",
+                              style="Muted.TLabel", wraplength=wrap, justify=tk.LEFT).pack(anchor="w")
+            where = f"em {headline['symbol']} {headline['timeframe']}"
+            more = f" · mais {headline['count'] - 1} teste(s)" if headline["count"] > 1 else ""
+            if headline["approved"] is None:
+                ttk.Label(outer, text=f"Último backtest {where}{more}", style="Muted.TLabel", wraplength=wrap,
+                          justify=tk.LEFT).pack(anchor="w", pady=(6, 0))
+            else:
+                verdict = "✓ aprovada" if headline["approved"] else "✕ reprovada"
+                ttk.Label(outer, text=f"{verdict} {where}{more}",
+                          style="Good.TLabel" if headline["approved"] else "Bad.TLabel").pack(anchor="w", pady=(6, 0))
         else:
             ttk.Label(outer, text="Sem teste gravado", style="Surface.TLabel").pack(anchor="w")
             ttk.Label(outer, text="As estatísticas aparecem aqui depois do primeiro teste.", style="Muted.TLabel",

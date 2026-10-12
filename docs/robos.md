@@ -16,6 +16,10 @@ Na interface: aba **Robôs**. Cada card mostra o tipo, o regime, a classe de ris
 melhor teste gravado e o estágio. Clique no card para ver os parâmetros (do código ou de um preset), os testes e o
 que falta para operar. **Importar robô** aceita um arquivo `.mq5`/`.ex5` ou uma pasta no formato do MT5.
 
+Estratégias Python: na aba **Backtest** do painel, escolha o ativo, o timeframe e o período e clique em
+**Rodar backtest**. O resultado (operações, acerto, profit factor, expectativa, resultado, queda máxima e a curva de
+capital) fica gravado e aparece no card. Backtest isolado serve para estudar; quem aprova ou reprova é a validação.
+
 Na linha de comando:
 
 ```bash

@@ -413,6 +413,7 @@ class UIManager:
                                      if item["rows"] and item["timeframe"] == timeframes.Timeframe.M1.label}
         self.inventory_panel.show(inventory)
         self.analysis_panel.set_inventory(inventory)
+        self.robots_panel.detail.inventory_changed()
         self.filter_symbols()
         total = sum(item["rows"] for item in inventory)
         self.base_label.config(text=f"Base: {len(self.symbols_with_data)} ativo(s), {fmt_int(total)} barras"
