@@ -63,6 +63,7 @@ class Robot:
     results: List[dict] = field(default_factory=list)          # validações gravadas, a melhor primeiro
     runs: List[dict] = field(default_factory=list)             # backtests gravados, o mais recente primeiro
     checks: List[dict] = field(default_factory=list)           # baterias de segurança, a mais recente primeiro
+    manifest: dict = field(default_factory=dict)               # robot.json ao lado do robô (vazio se não houver)
 
     @property
     def kind_label(self) -> str:
@@ -203,7 +204,7 @@ def robot_from_file(path) -> Robot:
     if suffix == ".ex5":
         return Robot(key=key, kind=MQL5, name=manifest.get("name", path.stem), path=str(path), files=[str(path)],
                      regime=manifest.get("regime", ""), timeframes=tuple(manifest.get("timeframes", ())),
-                     markets=manifest.get("markets", ""), has_source=False, stage=COMPILED,
+                     markets=manifest.get("markets", ""), has_source=False, stage=COMPILED, manifest=manifest,
                      risk=risk_mod.rate([], has_source=False, manifest=manifest.get("risk")),
                      notes=["Sem código-fonte: parâmetros e proteções não podem ser verificados."])
 
@@ -234,7 +235,7 @@ def robot_from_file(path) -> Robot:
         preset_risks={name: risk_mod.rate(src.inputs, values, enums, manifest=risk_manifest)
                       for name, values in presets.items()},
         risk=risk_mod.rate(src.inputs, {}, enums, manifest=risk_manifest),
-        dll_imports=src.dll_imports, stage=COMPILED if is_compiled else IMPORTED, notes=notes)
+        dll_imports=src.dll_imports, stage=COMPILED if is_compiled else IMPORTED, notes=notes, manifest=manifest)
 
 
 def scan_library(folder) -> List[Robot]:

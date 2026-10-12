@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
-from . import catalog, mql, store
+from . import catalog, contract, mql, store
 
 MAX_CURVE_POINTS = 240
 PF_CAP = 99.0     # profit factor sem nenhuma perda é infinito; guardamos um teto legível
@@ -179,8 +179,9 @@ def tester_values(robot, preset: Optional[str] = None, params: Optional[dict] = 
             raise ValueError(f"{robot.name} não tem o parâmetro '{name}'. Veja: mt5x robots list " +
                              robot.key.split(":", 1)[1])
         values[name] = value
-    if "InpExportTrades" in known:
-        values["InpExportTrades"] = "true"       # o HADOUKEN grava HDK_trades_<magic>.csv no fim do teste
+    export = contract.input_name(robot, "export_trades") or "InpExportTrades"
+    if export in known:
+        values[export] = "true"                  # o robô grava HDK_trades_<magic>.csv no fim do teste
     return values
 
 
@@ -216,7 +217,8 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     deposit = float(research.backtest_config(config).initial_equity)
     model = mt5_tools.tester_model(config)
     defaults = {i.name: i.default for i in robot.inputs}
-    magic = str(values.get("InpMagicNumber", defaults.get("InpMagicNumber", ""))).split("|")[0].strip()
+    magic_input = contract.input_name(robot, "magic") or "InpMagicNumber"
+    magic = str(values.get(magic_input, defaults.get(magic_input, ""))).split("|")[0].strip()
     common = mt5_tools.common_files_dir(config)
     trades_csv = common / f"HDK_trades_{magic}.csv" if common is not None and magic.isdigit() else None
     if trades_csv is not None:

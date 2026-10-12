@@ -17,7 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import List, Optional
 
-from . import catalog, mql, store
+from . import catalog, contract, mql, store
 from . import risk as risk_mod
 
 OK, WARN, FAIL, NA = "ok", "aviso", "falha", "não avaliável"
@@ -117,7 +117,9 @@ def _preset_values(robot, preset: Optional[str]) -> dict:
 
 def magic_number(robot, values: Optional[dict] = None) -> str:
     """Valor do parâmetro de magic number ('' se o robô não tem um)."""
-    item = next((i for i in robot.inputs if _MAGIC.search(i.name)), None)
+    declared = contract.input_name(robot, "magic")
+    item = next((i for i in robot.inputs if i.name == declared), None) if declared else None
+    item = item or next((i for i in robot.inputs if _MAGIC.search(i.name)), None)
     return "" if item is None else str((values or {}).get(item.name, item.default)).split("|")[0].strip()
 
 
@@ -176,7 +178,20 @@ def static_items(robot, config=None, robots=(), preset: Optional[str] = None) ->
                      "Peça o .mq5. Sem ele o robô pode rodar em demo, nunca em conta real.")]
     values = _preset_values(robot, preset)
     rating = robot.preset_risks.get(preset, robot.risk) if preset else robot.risk
-    facts, items = rating.facts, []
+    facts, items = dict(rating.facts), []
+
+    if contract.declared(robot):
+        problems = contract.validate(robot)
+        items.append(Item(STATIC, "contract", "Contrato do robô válido", FAIL if problems else OK,
+                          "; ".join(str(p) for p in problems) if problems else f"contrato {contract.CONTRACT_VERSION}",
+                          f"Corrija o robot.json (veja docs/sdk/contrato.md): mt5x robots validate "
+                          f"{robot.key.split(':', 1)[1]}" if problems else ""))
+        if not problems:
+            facts.update(contract.facts(robot, values))       # valores lidos pelo nome declarado, sem adivinhar
+    else:
+        items.append(Item(STATIC, "contract", "Contrato do robô válido", WARN,
+                          "o robô não declara contrato: risco e limites são lidos por nomes prováveis de parâmetros",
+                          "Crie o robot.json com \"contract\": 1 (veja docs/sdk/contrato.md)."))
 
     compiled = robot.stage in robot.stages and robot.stages.index(robot.stage) >= robot.stages.index(catalog.COMPILED)
     items.append(Item(STATIC, "compile", "Compila sem erros", OK if compiled else FAIL,
@@ -220,7 +235,7 @@ def static_items(robot, config=None, robots=(), preset: Optional[str] = None) ->
                           if same else ""))
 
     problems, notes = [], []
-    if rating.level == risk_mod.HIGH:
+    if rating.level == risk_mod.HIGH and "contract" not in {i.id for i in items if i.status == OK}:
         problems.append("risco classificado como Alto (" + rating.summary + ")")
     risk_pct = facts.get("risk_pct")
     if risk_pct is not None:

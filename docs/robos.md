@@ -29,6 +29,7 @@ mt5x robots import caminho/Robo.mq5    # acrescenta um robô avulso (.mq5 ou .ex
 mt5x robots compile hdk_hadouken_painel   # copia o robô para o MT5 e compila no MetaEditor
 mt5x robots install hdk_hadouken_painel   # só copia (robô, includes e presets)
 mt5x robots backtest hdk_hadouken_painel --symbol WIN$N --tf M5 --from 2026-01-01 --preset Conservador
+mt5x robots validate hdk_hadouken_painel  # confere o robot.json contra o contrato (docs/sdk/contrato.md)
 mt5x robots battery hdk_hadouken_painel --preset Conservador   # bateria de segurança
 mt5x robots start hdk_hadouken_painel --symbol WIN$N --tf M5 --preset Conservador --close-terminal   # conta DEMO
 mt5x robots monitor hdk_hadouken_painel   # posições e resultado do robô

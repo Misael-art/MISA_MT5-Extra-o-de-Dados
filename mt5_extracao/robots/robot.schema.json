@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "robot.json (contrato 1 do mt5x)",
+  "description": "Fica ao lado do robô, como <Nome>.robot.json ou robot.json. A validação é feita por mt5_extracao/robots/contract.py; este arquivo é a referência.",
+  "type": "object",
+  "required": ["contract", "inputs"],
+  "additionalProperties": false,
+  "properties": {
+    "contract": {"const": 1, "description": "Versão do contrato."},
+    "name": {"type": "string"},
+    "description": {"type": "string"},
+    "regime": {"type": "string", "description": "tendência, lateral, rompimento ou compressão."},
+    "timeframes": {"type": "array", "items": {"type": "string"}},
+    "markets": {"type": "string"},
+    "risk": {
+      "type": "object",
+      "description": "Valores fixos no código, quando não há parâmetro: risk_pct, daily_loss_pct, max_drawdown_pct, mandatory_stop."
+    },
+    "inputs": {
+      "type": "object",
+      "description": "Nome do parâmetro (input) do robô que cumpre cada papel.",
+      "required": ["magic", "risk_pct", "daily_loss_pct", "max_drawdown_pct", "stop"],
+      "additionalProperties": false,
+      "properties": {
+        "magic": {"type": "string"},
+        "risk_pct": {"type": "string"},
+        "daily_loss_pct": {"type": "string"},
+        "max_drawdown_pct": {"type": "string"},
+        "stop": {"type": "string"},
+        "export_trades": {"type": "string"}
+      }
+    },
+    "tunable": {"type": "array", "items": {"type": "string"}, "description": "Parâmetros numéricos da estratégia, variados em ±20% no teste de robustez."},
+    "safety_lib": {"type": "string", "description": "Versão exigida da biblioteca mt5x-safety, ex.: 1.0.0."},
+    "parity_with": {"type": "string", "description": "Chave da estratégia Python de que este robô é a versão MQL5."}
+  }
+}

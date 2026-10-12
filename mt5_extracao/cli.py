@@ -24,6 +24,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
+    mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
     mt5x robots battery <robô> [--preset X]            # bateria de segurança: código, preset e estatística
     mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
     mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
@@ -655,6 +656,25 @@ def _robots_mt5(args, ctx, items):
     return EXIT_OK
 
 
+def _robots_validate(args, ctx, items):
+    from mt5_extracao.robots import catalog, contract
+    if not args.path:
+        raise ValueError("uso: mt5x robots validate <robô> (veja as chaves em 'mt5x robots list')")
+    robot = catalog.get_robot(items, args.path)
+    if robot.kind != catalog.MQL5:
+        raise ValueError(f"{robot.name} é uma estratégia Python: o contrato vale para robôs MQL5.")
+    problems = contract.validate(robot)
+    _data(robot=robot.key, contract=contract.CONTRACT_VERSION, valid=not problems,
+          problems=[vars(p) for p in problems])
+    if not problems:
+        _print(f"{robot.name}: contrato {contract.CONTRACT_VERSION} válido.")
+        return EXIT_OK
+    _print(f"{robot.name}: {len(problems)} problema(s) no contrato (veja docs/sdk/contrato.md):")
+    for problem in problems:
+        _print(f"  ✗ {problem}")
+    return EXIT_FAIL
+
+
 def _robots_battery(args, ctx, items):
     from mt5_extracao.robots import battery, catalog
     if not args.path:
@@ -797,6 +817,8 @@ def cmd_robots(args, ctx):
         return _robots_mt5(args, ctx, items)
     if args.action == "battery":
         return _robots_battery(args, ctx, items)
+    if args.action == "validate":
+        return _robots_validate(args, ctx, items)
     if args.action in ("start", "monitor", "stop"):
         return {"start": _robots_start, "monitor": _robots_monitor, "stop": _robots_stop}[args.action](args, ctx, items)
     if args.path:
@@ -1011,7 +1033,8 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "start", "monitor",
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "start",
+                                                    "monitor",
                                                     "stop"],
                    default="list")
     p.add_argument("path", nargs="?", help="list/backtest/install/compile: chave do robô; "

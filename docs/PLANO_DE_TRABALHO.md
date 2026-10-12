@@ -82,7 +82,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T9.2 | `mt5x audit`: segurança do projeto, do patrimônio e do capital | T9.1 | ✅ concluída |
 | T9.3 | Ponte restrita: só funções de leitura, sem execução de código nem pickle | T9.2 | ✅ concluída (reinicie a ponte depois de atualizar) |
 | T10.0 | Plano da Fase 10 (SDK de robôs) e regra da pendência do Windows | T8.6, T9.3 | ✅ concluída |
-| T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | a fazer |
+| T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | ✅ concluída |
 | T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | repositório `mt5x-safety` criado (v1.0.0, compila); falta a parte deste repositório |
 | T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | a fazer |
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | a fazer |
@@ -1305,7 +1305,15 @@ parar o projeto:
 Este texto, a linha F10 e os marcos M6/M7 do ROADMAP, a regra do Windows no AGENTS.md e o checklist inicial em
 `validacao_instaladores.md` (com o que as T8.4–T8.7 deixaram sem validar).
 
-### T10.1 — Contrato do robô v1
+### T10.1 — Contrato do robô v1 ✅
+
+**Registrado na entrega:** `docs/sdk/contrato.md`, `robots/contract.py`, `robots/robot.schema.json` e
+`mt5x robots validate`. `Robot.manifest` guarda o `robot.json` lido. Com contrato válido, a bateria lê risco, limites,
+stop e magic pelos nomes declarados e deixa de reprovar só pela classe "Alto" heurística (os números decidem); sem
+contrato, tudo como antes, mais o aviso "o robô não declara contrato". O backtest usa os papéis `magic` e
+`export_trades` quando declarados. Campos `tunable`, `safety_lib` e `parity_with` já são validados, para as tarefas
+T10.5, T10.2 e T10.6 usarem. Um teste garante que o esquema e o validador listam os mesmos campos. Nada desta tarefa
+depende do sistema operacional: sem linha nova no checklist do Windows.
 
 - **Objetivo:** tirar o contrato do robô das expressões regulares e pô-lo em uma especificação que a bateria confere.
 - **Depende de:** T8.6.

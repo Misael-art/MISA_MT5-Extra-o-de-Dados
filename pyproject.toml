@@ -42,4 +42,4 @@ mt5x = "mt5_extracao.cli:main"
 include = ["mt5_extracao*"]
 
 [tool.setuptools.package-data]
-mt5_extracao = ["assets/*"]
+mt5_extracao = ["assets/*", "robots/*.json"]

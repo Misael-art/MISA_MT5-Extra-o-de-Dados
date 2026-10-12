@@ -71,6 +71,7 @@ def test_static_items_of_a_robot_inside_the_safety_layer(tmp_path):
     robot = safe_robot(tmp_path)
     items = by_id(battery.static_items(robot, None, [robot]))
     assert {i: items[i].status for i in items} == {
+        "contract": battery.WARN,       # T10.1: sem robot.json de contrato, os valores vêm de nomes prováveis
         "compile": battery.OK, "encoding": battery.OK, "stop": battery.OK, "averaging": battery.OK,
         "orders": battery.OK, "dll": battery.OK, "magic": battery.OK, "limits": battery.OK}
     assert "0,50% por operação (teto 1,00%)" in items["limits"].detail and "magic 9001" in items["magic"].detail
@@ -206,7 +207,7 @@ def test_latest_battery_decides_the_stage(tmp_path, db):
     assert report.approved and report.allows_real and report.run_id
     loaded = catalog.get_robot(catalog.load_catalog(None, db), "seguro")
     assert loaded.stage == catalog.APPROVED and loaded.checks[0]["check_id"] == report.check_id
-    assert loaded.checks[0]["items"][0]["icon"] == "✓"
+    assert next(i for i in loaded.checks[0]["items"] if i["id"] == "compile")["icon"] == "✓"
 
     run = save_run(db, robot.key, BAD)                    # backtest mais novo e ruim: a aprovação é revogada
     run_time = "2026-01-03 10:00:00"
