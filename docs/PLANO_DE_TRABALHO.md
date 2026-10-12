@@ -1140,6 +1140,13 @@ prova manual, no Wine do usuário, de compilar e de abrir o terminal com `/confi
 - O relatório completo e os gráficos ficam na pasta de dados do MT5 (`mt5x_<robô>.htm`), trocados a cada teste.
 - O painel do robô mostra os comandos e o resumo do último teste; o botão de rodar pelo card não entrou.
 - Não validado no Windows nem com o terminal aberto de verdade (`--close-terminal` só com processos simulados).
+- **Defeito achado em 2026-10-12, com o MT5 aberto de verdade, e corrigido em PR próprio:** no Wine 11.17 o
+  psutil mostra o terminal com o nome de processo `main` e o executável `wine-preloader`; só o primeiro item da
+  linha de comando traz `terminal64.exe`. `terminal_running()` devolvia falso, o backtest tentava abrir uma
+  segunda instância e terminava em "não gerou o relatório", em vez de parar e explicar. `close_terminal()` e
+  `MT5Connector._kill_terminal_processes` tinham o mesmo defeito (não achariam o processo). A detecção agora é
+  `paths.is_terminal_process(nome, linha de comando)`. Conferido: com o MT5 aberto, `terminal_running()` devolve
+  verdadeiro. **Ainda não conferido:** fechar um terminal real com `--close-terminal`.
 
 Gerar o `.ini` do tester (`[Tester] Expert, ExpertParameters, Symbol, Period, Model, FromDate, ToDate, Deposit,
 Report, ReplaceReport=1, ShutdownTerminal=1`), parar a ponte e o terminal, rodar, religar; ler o relatório e

@@ -91,3 +91,15 @@ def wine_to_linux_path(win_path: str, prefix: Path) -> Path:
         raise ValueError(f"Somente caminhos da unidade C: são suportados: {win_path}")
     rest = [part for part in p[2:].split("\\") if part]
     return Path(prefix, "drive_c", *rest)
+
+
+def is_terminal_process(name, cmdline=None) -> bool:
+    """
+    O processo é o terminal do MT5? No Windows o nome do processo é terminal64.exe. No Wine o processo aparece
+    com outro nome (ex.: "main") e o executável é o wine-preloader: só o primeiro item da linha de comando traz
+    o caminho do terminal64.exe (conferido com Wine 11.17).
+    """
+    if (name or "").lower() == MT5_TERMINAL_EXE:
+        return True
+    first = cmdline[0] if cmdline else ""
+    return str(first).replace("\\", "/").rsplit("/", 1)[-1].lower() == MT5_TERMINAL_EXE

@@ -21,6 +21,7 @@ from mt5_extracao.error_handler import (
 )
 
 import ntpath
+from mt5_extracao.bootstrap import paths as bootstrap_paths
 from mt5_extracao.mt5_backend import get_mt5, RemoteMT5
 from mt5_extracao import timeframes
 
@@ -120,11 +121,12 @@ class MT5Connector:
                 
         try:
             # Primeira abordagem: verificar por processo terminal64.exe via psutil
-            for proc in psutil.process_iter(['name', 'exe']):
+            for proc in psutil.process_iter(['name', 'exe', 'cmdline']):
                 try:
-                    # Verifica tanto o nome quanto o caminho do executável
+                    # Verifica o nome, o caminho do executável e, para o Wine, a linha de comando
                     if (proc.info['name'] and 'terminal64.exe' in proc.info['name'].lower()) or \
-                       (proc.info['exe'] and 'terminal64.exe' in proc.info['exe'].lower()):
+                       (proc.info['exe'] and 'terminal64.exe' in proc.info['exe'].lower()) or \
+                       bootstrap_paths.is_terminal_process(proc.info.get('name'), proc.info.get('cmdline')):
                         log.info("Processo terminal64.exe encontrado em execução.")
                         return True
                         
@@ -774,9 +776,9 @@ class MT5Connector:
             log.warning("psutil não disponível; não é possível encerrar o MT5.")
             return False
         procs = []
-        for proc in psutil.process_iter(['name']):
+        for proc in psutil.process_iter(['name', 'cmdline']):
             try:
-                if (proc.info['name'] or '').lower() == 'terminal64.exe':
+                if bootstrap_paths.is_terminal_process(proc.info.get('name'), proc.info.get('cmdline')):
                     proc.terminate()
                     procs.append(proc)
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):

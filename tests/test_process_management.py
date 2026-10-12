@@ -70,3 +70,48 @@ def test_linux_never_launches_exe(connector, monkeypatch):
     assert connector._start_mt5_if_not_running() is False
     assert connector.launch_mt5_as_admin(wait_for_user=False) is False
     assert connector.is_admin() == (os.geteuid() == 0)
+
+
+# --- Wine: o terminal aparece com outro nome de processo ------------------------------
+
+WINE_CMDLINE = ["C:\\Program Files\\MetaTrader 5\\terminal64.exe", ""]
+
+
+class WineProc(FakeProc):
+    """Como o psutil mostra o terminal no Wine 11.17: nome 'main', executável wine-preloader."""
+
+    def __init__(self, cmdline, name="main"):
+        super().__init__(name)
+        self.info.update(cmdline=cmdline, exe="/usr/lib/wine/x86_64-unix/wine-preloader")
+
+
+def test_is_terminal_process_by_name_or_command_line():
+    from mt5_extracao.bootstrap import paths
+    assert paths.is_terminal_process("terminal64.exe") and paths.is_terminal_process("Terminal64.EXE", [])
+    assert paths.is_terminal_process("main", WINE_CMDLINE)
+    assert paths.is_terminal_process("main", ["/opt/mt5/terminal64.exe", "/portable"])
+    assert not paths.is_terminal_process("main", ["C:\\Python311\\python.exe", "Z:\\x\\terminal64.exe"])
+    assert not paths.is_terminal_process("main", ["C:\\Program Files\\MetaTrader 5\\MetaEditor64.exe"])
+    assert not paths.is_terminal_process(None, None) and not paths.is_terminal_process("python.exe", [])
+
+
+def test_kill_terminal_processes_finds_the_wine_terminal(connector, monkeypatch):
+    term, bridge = WineProc(WINE_CMDLINE), WineProc(["C:\\Python311\\python.exe", "mt5_bridge_server.py"])
+    monkeypatch.setattr(connector_module, "psutil", FakePsutil([term, bridge]))
+    assert connector._kill_terminal_processes(timeout=0) is True
+    assert term.terminated and not bridge.terminated
+
+
+def test_robot_tools_see_and_close_the_wine_terminal(monkeypatch):
+    import psutil
+    from mt5_extracao.robots import mt5_tools
+    term, other = WineProc(WINE_CMDLINE), WineProc(["C:\\Python311\\python.exe"])
+    state = {"procs": [term, other]}
+    monkeypatch.setattr(psutil, "process_iter", lambda attrs=None: list(state["procs"]))
+    monkeypatch.setattr(psutil, "wait_procs", lambda procs, timeout=None: (list(procs), []))
+    assert mt5_tools.terminal_running()
+    state["procs"] = [other]
+    assert not mt5_tools.terminal_running()
+    state["procs"] = [term, other]
+    term.terminate = lambda: state.update(procs=[other])
+    assert mt5_tools.close_terminal(timeout=0) and state["procs"] == [other]

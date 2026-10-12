@@ -361,9 +361,9 @@ def common_files_dir(config) -> Optional[Path]:
 def terminal_running() -> bool:
     """Há um terminal64.exe em execução? (O MT5 não abre duas vezes a mesma instalação.)"""
     import psutil
-    for proc in psutil.process_iter(["name"]):
+    for proc in psutil.process_iter(["name", "cmdline"]):
         try:
-            if (proc.info["name"] or "").lower() == paths.MT5_TERMINAL_EXE:
+            if paths.is_terminal_process(proc.info.get("name"), proc.info.get("cmdline")):
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
@@ -446,9 +446,9 @@ def close_terminal(timeout: float = 20.0) -> bool:
     """Encerra o terminal64.exe (terminate e, depois de `timeout` s, kill). True se nenhum ficou aberto."""
     import psutil
     procs = []
-    for proc in psutil.process_iter(["name"]):
+    for proc in psutil.process_iter(["name", "cmdline"]):
         try:
-            if (proc.info["name"] or "").lower() == paths.MT5_TERMINAL_EXE:
+            if paths.is_terminal_process(proc.info.get("name"), proc.info.get("cmdline")):
                 proc.terminate()
                 procs.append(proc)
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
