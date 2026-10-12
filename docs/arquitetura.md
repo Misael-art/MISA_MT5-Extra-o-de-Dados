@@ -159,6 +159,8 @@ Guia do usuário: [robos.md](robos.md). Plano: Fase 8 em [PLANO_DE_TRABALHO.md](
 - `battery.py`: bateria de segurança. Itens de código e preset (compilação, stop, martingale, ordens fora da
   `Safety/`, DLL, magic, limites) e estatísticos sobre as operações do último backtest (Monte Carlo, ruína,
   estresse de custo). Resultado em `_robot_checks`; a bateria mais recente decide o estágio "Bateria".
+- `live.py`: tempo real em conta demo. Travas, `.ini` de início com a conta conferida, acompanhamento por magic
+  number (somente leitura) e PARAR TUDO (`HDK_KILL.txt`). Recusa conta real. Ainda não validado com o MT5 real.
 - `mt5_tools.py`: pasta de dados do MT5, cópia do robô para `MQL5/` e compilação pelo MetaEditor (no Linux, por
   um `.bat` dentro do Wine), com o log lido em erros e avisos. Os executáveis entram por função injetada.
 - `backtest.py`: `run_python` roda o backtester numa estratégia Python e grava métricas e curva de capital.

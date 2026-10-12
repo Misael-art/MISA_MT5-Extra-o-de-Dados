@@ -49,8 +49,12 @@ LIVE_TEXT_MQL5 = (
     "Quem envia as ordens é o robô, dentro do MetaTrader 5. Este programa instala, inicia, acompanha e para.\n\n"
     "Para iniciar em demo: robô compilado sem erros e bateria de segurança aprovada.\n"
     "Para iniciar em conta real: tudo isso, mais um período em demo com resultado dentro do esperado, risco por "
-    "operação dentro do teto e confirmação digitando o número da conta. Conta real vem desligada de fábrica.\n\n"
-    "Ainda não disponível nesta versão.")
+    "operação dentro do teto e confirmação digitando o número da conta. Conta real vem desligada de fábrica "
+    "e ainda não está disponível.\n\n"
+    "Conta demo, por enquanto pela linha de comando:\n\n"
+    "  mt5x robots start <robô> --symbol <ativo> --tf <timeframe> --close-terminal\n"
+    "  mt5x robots monitor <robô>\n"
+    "  mt5x robots stop        (PARAR TUDO)")
 
 LIVE_TEXT_PYTHON = (
     "Esta é uma estratégia de pesquisa: roda backtest com a sua base e não opera no MetaTrader 5.\n\n"

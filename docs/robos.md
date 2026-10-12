@@ -30,6 +30,9 @@ mt5x robots compile hdk_hadouken_painel   # copia o robô para o MT5 e compila n
 mt5x robots install hdk_hadouken_painel   # só copia (robô, includes e presets)
 mt5x robots backtest hdk_hadouken_painel --symbol WIN$N --tf M5 --from 2026-01-01 --preset Conservador
 mt5x robots battery hdk_hadouken_painel --preset Conservador   # bateria de segurança
+mt5x robots start hdk_hadouken_painel --symbol WIN$N --tf M5 --preset Conservador --close-terminal   # conta DEMO
+mt5x robots monitor hdk_hadouken_painel   # posições e resultado do robô
+mt5x robots stop                          # PARAR TUDO
 ```
 
 `compile` copia o robô, seus includes e presets para a pasta `MQL5` do MetaTrader 5, compila e mostra os erros e
@@ -99,6 +102,23 @@ reprovar, o robô volta a "Testado". Robô sem código-fonte (`.ex5`) pode passa
 nunca é liberado para conta real. Para o item do spread, grave antes a especificação do ativo (`mt5x specs`).
 
 **Aprovação não é garantia de lucro.** É o mínimo para o robô rodar em conta de demonstração.
+
+## Rodar em conta de demonstração
+
+> **Aviso:** esta parte ainda não foi validada com o MetaTrader 5 real. Use somente em conta de demonstração e
+> confira no próprio MT5 se o robô entrou no gráfico.
+
+`mt5x robots start <robô> --symbol <ativo> --tf <timeframe>` mostra as exigências, uma a uma: robô compilado, bateria
+aprovada com o mesmo preset, conta **de demonstração** conectada e PARAR TUDO desligado. Se a conta conectada for
+real, o programa recusa. Com tudo certo, repita com `--close-terminal`: o programa fecha o MetaTrader 5 e o abre de
+novo com o robô no gráfico, na mesma conta.
+
+`mt5x robots monitor <robô>` mostra as posições abertas, as que estão sem stop e o resultado desde o início.
+
+`mt5x robots stop` é o **PARAR TUDO**: os robôs com a camada de segurança do HADOUKEN param de abrir operações.
+Ele **não fecha as posições abertas** (este programa nunca envia ordens): feche-as no MetaTrader 5. Um robô sem
+essa camada não obedece; para ele, use `mt5x robots stop --close-terminal`, que fecha o MT5. Para voltar a
+operar: `mt5x robots stop --release`.
 
 ## Classe de risco
 

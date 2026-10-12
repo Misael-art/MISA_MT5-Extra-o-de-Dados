@@ -472,3 +472,62 @@ def release_terminal() -> bool:
 def restart_bridge() -> None:
     if _bridge("start") != 0:
         log.warning("A ponte não voltou a subir depois do teste. Rode: ./scripts/mt5-bridge.sh start")
+
+
+# --- iniciar um robô no terminal (T8.7) -----------------------------------------------
+# Atenção: este trecho NÃO foi validado com o terminal real (só com processos simulados). As chaves de
+# [StartUp] e [Experts] seguem a documentação do MT5 ("iniciar a plataforma com configuração própria").
+
+KILL_FILE = "HDK_KILL.txt"
+
+
+def kill_file(config) -> Path:
+    """Arquivo que a camada de segurança do HADOUKEN lê a cada ciclo: enquanto existir, nenhum robô opera."""
+    folder = common_files_dir(config)
+    if folder is None:
+        roots = _appdata_roots(config)
+        if not roots:
+            raise FileNotFoundError("Pasta Common\\Files do MetaTrader não encontrada. Abra o MT5 uma vez.")
+        folder = roots[0] / "MetaQuotes" / "Terminal" / "Common" / "Files"
+    return folder / KILL_FILE
+
+
+def startup_ini(expert: str, symbol: str, period: str, login, server: str, parameters: str = "") -> str:
+    """
+    .ini que abre o terminal na conta conferida e coloca o robô num gráfico. Fixar Login e Server impede que o
+    robô suba em outra conta que não a verificada como demo. DLL fica desligada.
+    """
+    lines = ["[Common]", f"Login={login}", f"Server={server}",
+             "[Experts]", "Enabled=1", "AllowLiveTrading=1", "AllowDllImport=0",
+             "[StartUp]", f"Expert={expert}", f"Symbol={symbol}", f"Period={period}"]
+    if parameters:
+        lines.append(f"ExpertParameters={parameters}")
+    return "\r\n".join(lines) + "\r\n"
+
+
+def spawn_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] = None) -> None:
+    """Como run_windows_command, mas sem esperar o programa terminar (o terminal fica aberto)."""
+    if paths.is_windows():
+        subprocess.Popen(command_line, cwd=str(cwd))
+        return
+    run_windows_command('start "" ' + command_line, cwd, prefix, timeout=60)
+
+
+def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional[Callable] = None,
+                   is_running: Optional[Callable] = None) -> Path:
+    """Abre o terminal com o .ini dado (gravado como <name>.ini na pasta de dados) e devolve o caminho do .ini."""
+    data = Path(data)
+    if (is_running or terminal_running)():
+        raise RuntimeError("O MetaTrader 5 está aberto: o robô só entra no gráfico quando o terminal é iniciado "
+                           "pelo programa. Feche o MT5 ou repita com --close-terminal.")
+    prefix = wine_prefix(config)
+    terminal = install_dir(config) / paths.MT5_TERMINAL_EXE
+    if not terminal.is_file():
+        raise FileNotFoundError(f"Terminal não encontrado em {terminal}. Confira [MT5] path em config/config.ini.")
+    ini = data / f"{name}.ini"
+    ini.write_bytes(ini_text.encode("utf-16"))
+    portable = prefix is not None or data.resolve() == terminal.parent.resolve()
+    command_line = '"{}"{} /config:"{}"'.format(_windows_path(terminal, prefix), " /portable" if portable else "",
+                                                _windows_path(ini, prefix))
+    (spawn or spawn_windows_command)(command_line, terminal.parent, prefix)
+    return ini

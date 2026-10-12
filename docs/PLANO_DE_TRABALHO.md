@@ -75,7 +75,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | ✅ concluída (só CLI; o botão no card fica para quando a aba ganhar ações de MT5) |
 | T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | ✅ concluída (só CLI; validada com EAs de exemplo, o HADOUKEN v7 ainda não compila) |
 | T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | ✅ concluída (só CLI; em MQL5, robustez ±20% fica como aviso "não avaliado") |
-| T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | a fazer |
+| T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | ⏳ código e testes prontos **só com terminal simulado**; falta a validação com o MT5 real em demo |
 | T8.8 | Tempo real em conta real: bateria operacional e travas extras | T8.7 + período em demo | a fazer |
 | T8.9 | Robôs de atuação: portar as seis estratégias para MQL5 (`TryEnter`) e checar paridade | T8.5 | a fazer (no repositório HADOUKEN) |
 | T9.1 | CLI para agentes: saída `--json`, `mt5x status`, `analyze`, `commands` e `robots backtest` | T8.3 | ✅ concluída |
@@ -1166,7 +1166,36 @@ Report, ReplaceReport=1, ShutdownTerminal=1`), parar a ponte e o terminal, rodar
 
 Cada item devolve ✓ / ⚠ / ✗ com o motivo e o que fazer. Robô só com `.ex5`: estática "não avaliável", não libera conta real.
 
-### T8.7 — Tempo real em demo
+### T8.7 — Tempo real em demo ⏳
+
+**Estado: implementada e testada apenas com terminal, conta e MT5 simulados** (decisão do dono do projeto em
+2026-10-12). Nenhum robô foi iniciado em conta alguma. Antes de marcar como concluída, falta provar com o MT5 real,
+em conta demo:
+
+1. que `terminal64.exe /portable /config:` com `[StartUp] Expert=...` coloca o robô no gráfico e que
+   `[Experts] Enabled=1`, `AllowLiveTrading=1`, `AllowDllImport=0` são as chaves certas (vieram da documentação);
+2. que `[Common] Login` e `Server` mantêm a conta conferida (sem senha no `.ini`, usando a salva no terminal);
+3. que `start "" ...` dentro do `.bat` deixa o terminal aberto no Wine depois que o `wine cmd /c` retorna;
+4. que o HADOUKEN para ao encontrar `Common\Files\HDK_KILL.txt` (conferido só no fonte: `CheckKillSwitch`);
+5. que a ponte religada enxerga o terminal reiniciado, para o `monitor`.
+
+**Registrado na entrega:**
+
+- `robots/live.py` e `mt5x robots start <robô> --symbol X --tf M5 [--preset P] --close-terminal`,
+  `mt5x robots monitor <robô>` e `mt5x robots stop [--release] [--close-terminal]`.
+- **Travas para demo** (todas mostradas, com o que fazer): robô MQL5; `.ex5` na pasta do MT5; bateria mais recente
+  aprovada **e do mesmo preset** que será usado; conta conectada e de demonstração; PARAR TUDO desligado.
+- **Conta real é sempre recusada** aqui, com o número e o servidor da conta na mensagem. O `.ini` fixa o login e o
+  servidor conferidos, para o robô não subir em outra conta.
+- Para saber se a conta é demo o terminal precisa estar aberto; para o robô entrar no gráfico ele precisa ser
+  reiniciado pelo app. Por isso o `start` exige `--close-terminal` como consentimento: sem a opção ele mostra as
+  travas e não mexe em nada.
+- `monitor` lê posições e negócios pelo magic number (somente leitura): abertas, sem stop, resultado aberto e
+  fechado desde o início; avisa se a conta conectada não é a do início.
+- `stop` grava `HDK_KILL.txt` e **não fecha posições** (o Python não envia ordens). Robô sem a camada HADOUKEN não
+  obedece ao arquivo: o comando diz isso e oferece `--close-terminal`. `stop --release` remove o arquivo.
+- O estado do início fica em `_robots.meta_json` (`live`); o estágio "Demo" volta ao anterior depois do `stop`.
+- Só CLI: a aba "Tempo real" do painel mostra os comandos.
 
 `robots/live.py`: travas da tabela acima; início pelo `.ini` de inicialização (`[StartUp] Expert=...`); posições e
 resultado por magic com `positions_get`/`history_deals_get` (somente leitura); **PARAR TUDO** grava `HDK_KILL.txt`

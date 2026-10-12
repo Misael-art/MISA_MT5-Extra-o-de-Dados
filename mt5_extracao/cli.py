@@ -25,6 +25,8 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
     mt5x robots battery <robô> [--preset X]            # bateria de segurança: código, preset e estatística
+    mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
+    mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
     mt5x status                                        # base, robôs, validações e próximas ações sugeridas
     mt5x audit [--mt5] [--fail-on alto]                # segurança do projeto, patrimonial e do capital
@@ -646,8 +648,10 @@ def _robots_mt5(args, ctx, items):
     _print(f"{robot.name}: {result.summary}")
     if not result.ok:
         return EXIT_FAIL
-    store.save_record(ctx.db, robot.key, robot.kind, robot.name, robot.path, catalog.COMPILED,
-                      {"compiled": result.compiled, "warnings": result.warnings})
+    record = store.load_records(ctx.db).get(robot.key, {})          # não apaga o que outras etapas gravaram
+    stage = record.get("stage") if record.get("stage") in (catalog.DEMO, catalog.LIVE) else catalog.COMPILED
+    store.save_record(ctx.db, robot.key, robot.kind, robot.name, robot.path, stage,
+                      dict(record.get("meta", {}), compiled=result.compiled, warnings=result.warnings))
     return EXIT_OK
 
 
@@ -674,6 +678,101 @@ def _robots_battery(args, ctx, items):
     return EXIT_FAIL
 
 
+def _robots_start(args, ctx, items):
+    """Inicia o robô em conta de demonstração. Quem opera é o robô, dentro do MT5; aqui nenhuma ordem é enviada."""
+    from mt5_extracao.robots import catalog, live, mt5_tools
+    if not args.path or not args.symbol or not args.tf:
+        raise ValueError("uso: mt5x robots start <robô> --symbol WIN$N --tf M5 [--preset NOME] --close-terminal")
+    robot = catalog.get_robot(items, args.path)
+    tf = _parse_tf(args.tf)
+    account = ctx.connector().account_summary()
+    gates = live.demo_gates(ctx.config, robot, account, args.preset)
+    _data(robot=robot.key, gates=[vars(g) for g in gates])
+    _print(f"Exigências para iniciar {robot.name} em conta demo:")
+    for gate in gates:
+        _print(f"  {'✓' if gate.ok else '✗'} {gate.name}" + (f": {gate.detail}" if gate.detail else ""))
+        if gate.fix:
+            _print(f"      O que fazer: {gate.fix}")
+    if not all(g.ok for g in gates):
+        _print("\nO robô não foi iniciado.")
+        return EXIT_FAIL
+    if not args.close_terminal:
+        _print("\nTudo certo, mas o robô só entra no gráfico quando o programa reinicia o MetaTrader 5. Isso "
+               "interrompe o que estiver rodando nele. Para seguir, repita com --close-terminal.")
+        return EXIT_FAIL
+    bridge_was_running = False
+    try:
+        if mt5_tools.terminal_running():
+            bridge_was_running = mt5_tools.release_terminal()
+        state = live.start_demo(ctx.db, ctx.config, robot, account, args.symbol, tf.label, args.preset)
+    except (OSError, RuntimeError) as e:
+        raise RuntimeError(str(e)) from e
+    finally:
+        if bridge_was_running:
+            mt5_tools.restart_bridge()
+    _data(live=state)
+    _print(f"\n{robot.name} iniciado na conta demo {state['account']} ({state['server']}), {state['symbol']} "
+           f"{state['timeframe']}" + (f", preset {state['preset']}" if state["preset"] else "") + ".")
+    _print(f"Acompanhe: mt5x robots monitor {args.path}   Parar tudo: mt5x robots stop")
+    return EXIT_OK
+
+
+def _robots_monitor(args, ctx, items):
+    from mt5_extracao import mt5_connector
+    from mt5_extracao.robots import catalog, live
+    if not args.path:
+        raise ValueError("uso: mt5x robots monitor <robô>")
+    robot = catalog.get_robot(items, args.path)
+    state = live.live_state(ctx.db, robot)
+    if not state:
+        raise ValueError(f"{robot.name} nunca foi iniciado por aqui. Use: mt5x robots start {args.path} ...")
+    if not str(state.get("magic", "")).isdigit():
+        raise RuntimeError(f"{robot.name} não tem magic number: não dá para separar as operações dele.")
+    account = ctx.connector().account_summary()
+    since = datetime.strptime(state["started_at"], "%Y-%m-%d %H:%M:%S")
+    numbers = live.status(mt5_connector.mt5, state["magic"], since)
+    killed = live.stop_active(ctx.config)
+    _data(live=state, status=numbers, account=account, stop_active=killed)
+    _print(f"{robot.name} em {state['symbol']} {state['timeframe']}, desde {state['started_at']}" +
+           (f" (parado em {state['stopped_at']})" if state.get("stopped_at") else ""))
+    if account and str(account.get("login")) != str(state["account"]):
+        _print(f"  ! A conta conectada agora ({account.get('login')}) não é a do início ({state['account']}).")
+    _print(f"  Posições abertas: {numbers['open_positions']} ({_fmt_num(numbers['open_volume'])} lotes), "
+           f"resultado aberto {_fmt_num(numbers['open_profit'])}")
+    if numbers["positions_without_stop"]:
+        _print(f"  ! {numbers['positions_without_stop']} posição(ões) sem stop.")
+    _print(f"  Operações fechadas: {numbers['closed_trades']} ({numbers['wins']} com lucro, {numbers['losses']} com "
+           f"perda), resultado {_fmt_num(numbers['closed_result'])}")
+    if killed:
+        _print("  PARAR TUDO está ativo: os robôs com a camada de segurança não abrem novas operações.")
+    return EXIT_OK
+
+
+def _robots_stop(args, ctx, items):
+    from mt5_extracao.robots import catalog, live, mt5_tools
+    if args.release:
+        existed = live.release_stop(ctx.config)
+        _data(stop_active=False)
+        _print("PARAR TUDO liberado: os robôs voltam a poder operar." if existed else "PARAR TUDO já estava desligado.")
+        return EXIT_OK
+    path = live.stop_all(ctx.config)
+    for robot in items:
+        if robot.kind == catalog.MQL5 and robot.stage == catalog.DEMO:
+            live.mark_stopped(ctx.db, robot)
+    closed = False
+    if args.close_terminal and mt5_tools.terminal_running():
+        mt5_tools.release_terminal()
+        closed = True
+    _data(stop_active=True, kill_file=path, terminal_closed=closed)
+    _print(f"PARAR TUDO acionado: {path}")
+    _print("Os robôs com a camada de segurança do HADOUKEN param de operar no próximo ciclo. Posições abertas "
+           "NÃO são fechadas por este programa: confira no MetaTrader 5.")
+    _print("MetaTrader 5 fechado." if closed else
+           "Robô sem essa camada (ex.: só .ex5) não obedece ao arquivo: feche o MT5 ou repita com --close-terminal.")
+    _print("Para liberar depois: mt5x robots stop --release")
+    return EXIT_OK
+
+
 def cmd_robots(args, ctx):
     from mt5_extracao import robots
     from mt5_extracao.robots import catalog
@@ -698,6 +797,8 @@ def cmd_robots(args, ctx):
         return _robots_mt5(args, ctx, items)
     if args.action == "battery":
         return _robots_battery(args, ctx, items)
+    if args.action in ("start", "monitor", "stop"):
+        return {"start": _robots_start, "monitor": _robots_monitor, "stop": _robots_stop}[args.action](args, ctx, items)
     if args.path:
         items = [robots.get_robot(items, args.path)]
     _data(robots=[_robot_dict(r, full=bool(args.path)) for r in items])
@@ -910,7 +1011,8 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery"],
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "start", "monitor",
+                                                    "stop"],
                    default="list")
     p.add_argument("path", nargs="?", help="list/backtest/install/compile: chave do robô; "
                                            "import: arquivo .mq5/.ex5 ou pasta de robôs")
@@ -923,7 +1025,9 @@ def build_parser():
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
     p.add_argument("--preset", help="backtest de robô MQL5 e battery: nome do preset (.set) a usar")
     p.add_argument("--close-terminal", action="store_true",
-                   help="backtest de robô MQL5: fecha o MT5 (e para a ponte) se estiver aberto, e religa a ponte depois")
+                   help="backtest de robô MQL5, start e stop: fecha o MT5 (e para a ponte) se estiver aberto; "
+                        "backtest e start religam a ponte depois")
+    p.add_argument("--release", action="store_true", help="stop: desliga o PARAR TUDO (os robôs voltam a poder operar)")
     p.set_defaults(func=cmd_robots)
 
     p = sub.add_parser("analyze", help="números de estudo de um ativo (retorno, volatilidade, queda, sazonalidade)")
