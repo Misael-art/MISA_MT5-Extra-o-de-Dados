@@ -81,6 +81,17 @@ Comando de testes padrão (use o Python do `.venv`):
 | T9.1 | CLI para agentes: saída `--json`, `mt5x status`, `analyze`, `commands` e `robots backtest` | T8.3 | ✅ concluída |
 | T9.2 | `mt5x audit`: segurança do projeto, do patrimônio e do capital | T9.1 | ✅ concluída |
 | T9.3 | Ponte restrita: só funções de leitura, sem execução de código nem pickle | T9.2 | ✅ concluída (reinicie a ponte depois de atualizar) |
+| T10.0 | Plano da Fase 10 (SDK de robôs) e regra da pendência do Windows | T8.6, T9.3 | ✅ concluída |
+| T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | a fazer |
+| T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 + decisão do dono (repositório novo) | a fazer |
+| T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | a fazer |
+| T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | a fazer |
+| T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
+| T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | a fazer |
+| T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | a fazer |
+| T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
+| T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
+| T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
 
@@ -1248,6 +1259,232 @@ computador podia executar código no Python do Wine e, por ele, enviar ordens pe
   a ponta em `tests/test_linux_bridge_e2e.py`.
 
 **Pendente (manual):** repetir `scripts/parity_check.py` com o MT5 real pela ponte nova.
+
+---
+
+## Fase 10 — SDK para desenvolvimento de robôs
+
+Objetivo: além de **gerenciar** robôs prontos (Fase 8), o projeto passa a servir a quem **escreve** o robô. O motor
+de qualidade já existe (instalar, compilar, Strategy Tester, bateria, tempo real em demo); a Fase 10 o empacota em
+um contrato escrito, um ponto de partida, um ciclo de desenvolvimento repetível e uma API estável. O aplicativo
+amigável não muda: o SDK é uma camada a mais sobre o mesmo código.
+
+**Decisões registradas (2026-10-12):**
+
+| Tema | Decisão |
+|---|---|
+| Camada de segurança MQL5 | Sai do HADOUKEN e vira **biblioteca própria, em repositório próprio, com versão**. O SDK instala uma versão fixada. O HADOUKEN e os robôs novos passam a depender dela |
+| Código MQL5 neste repositório | Continua valendo "nenhum código de robô é copiado para cá". Exceção única: os **modelos** de `mt5x robots new` (esqueleto, não estratégia), que são código deste projeto |
+| Quem envia ordens | Só o robô MQL5, pela biblioteca de segurança. O Python nunca envia ordens (`tests/test_no_order_send.py` continua valendo) |
+| Tradução Python → MQL5 | Manual, por quem desenvolve. O SDK confere a **paridade** das operações; não gera MQL5 a partir de Python |
+| Windows | Pendência (T10.W). O desenvolvimento segue no host atual; veja a regra abaixo |
+
+### Regra da pendência do Windows (vale para toda a fase)
+
+O host de desenvolvimento atual é Linux (Manjaro) com o MT5 no Wine. Não há máquina Windows disponível. Para não
+parar o projeto:
+
+1. **Desenvolva e verifique no host atual.** Uma tarefa está concluída quando passa em "Verificação" no Linux.
+   Não espere o Windows.
+2. **O código continua multiplataforma** (regra do AGENTS.md): `pathlib`, nada de caminho fixo, e todo ponto em que
+   o comportamento muda por sistema passa por `paths.is_windows()`. Os testes exercitam os **dois** caminhos com
+   `monkeypatch` de `paths.is_windows`, como em `tests/test_robots_mt5_tools.py`.
+3. **Registre o que não foi provado.** Cada tarefa acrescenta ao checklist "Pendências de validação no Windows",
+   em [validacao_instaladores.md](validacao_instaladores.md), uma linha por comportamento que só o Windows real
+   confirma (comando exato e resultado esperado). No texto da tarefa e no PR escreva "Não validado no Windows".
+4. **Não escreva "funciona no Windows" sem ter rodado lá.** Nem no README, nem em mensagem ao usuário.
+5. **O que a pendência bloqueia:** só a T10.9 (publicação) e o marco M7. Nada mais.
+6. **Quando houver uma máquina Windows:** execute a T10.W de uma vez, linha por linha, corrija o que falhar em PRs
+   próprios e marque cada linha com a data.
+
+### T10.0 — Plano da Fase 10 ✅
+
+Este texto, a linha F10 e os marcos M6/M7 do ROADMAP, a regra do Windows no AGENTS.md e o checklist inicial em
+`validacao_instaladores.md` (com o que as T8.4–T8.7 deixaram sem validar).
+
+### T10.1 — Contrato do robô v1
+
+- **Objetivo:** tirar o contrato do robô das expressões regulares e pô-lo em uma especificação que a bateria confere.
+- **Depende de:** T8.6.
+- **Arquivos:** `docs/sdk/contrato.md` (novo), `mt5_extracao/robots/robot.schema.json` (novo),
+  `mt5_extracao/robots/contract.py` (novo), `robots/battery.py`, `robots/catalog.py`, `cli.py`,
+  `tests/test_robots_contract.py` (novo).
+- **Passos:**
+  1. Escreva `docs/sdk/contrato.md` com a versão `contract = 1` e as seções: `robot.json` (campos, tipos, quais são
+     obrigatórios), parâmetros obrigatórios do robô (magic number, risco por operação, limite de perda diário,
+     drawdown máximo, stop, exportação de trades), arquivos trocados (`HDK_trades_<magic>.csv`, `HDK_KILL.txt`,
+     com colunas e codificação, já conferidos no fonte na T8.5/T8.7) e o que o robô **não** pode fazer (DLL, ordem
+     fora da biblioteca de segurança, martingale/grid/preço médio).
+  2. `robot.schema.json`: esquema do `robot.json` com `"contract": 1`. Campos de hoje (`name`, `description`,
+     `regime`, `timeframes`, `markets`, `risk`) mais `inputs`: o **nome do parâmetro** de cada papel
+     (`magic`, `risk_pct`, `daily_loss_pct`, `max_drawdown_pct`, `stop`, `export_trades`).
+  3. `contract.py`: `validate(robot) -> List[Problem]` sem dependência nova (validação escrita à mão; não adicione
+     `jsonschema` ao `requirements.txt`). Confere o `robot.json` contra o esquema e se cada parâmetro declarado em
+     `inputs` existe no fonte.
+  4. `battery.static_items`: quando o robô declara `"contract": 1`, use os nomes de `inputs` em vez de
+     `risk.find_inputs`. Sem contrato, tudo continua como hoje (robôs antigos não podem quebrar) e a bateria
+     acrescenta um item ⚠ "robô sem contrato declarado".
+  5. `mt5x robots validate <robô>`: lista os problemas; código de saída 1 se houver algum.
+- **Critérios de aceite:** os dois robôs de `tests/robots_library` continuam com o mesmo resultado na bateria (mais
+  o aviso novo); um robô de teste com `robot.json` de contrato 1 troca os itens "não foi possível conferir" por
+  valores lidos; `robot.json` inválido aponta campo e motivo em português.
+- **Verificação:** `pytest -q`, `doctor`.
+- **Armadilhas:** não mude o significado de campos que `catalog._manifest` já lê. Não exija contrato para robô `.ex5`.
+
+### T10.2 — Biblioteca de segurança MQL5 versionada
+
+- **Objetivo:** o desenvolvedor recebe a camada de segurança como dependência com versão, e não copiando uma pasta
+  de outro projeto.
+- **Depende de:** T8.4 e de uma **decisão do dono do projeto**: criar o repositório da biblioteca (nome sugerido:
+  `mt5x-safety`) a partir de `Include/Framework/HADOUKEN/Safety/` do `projeto-indicadores-mt5`. Um agente **não**
+  cria repositório nem move código do HADOUKEN por conta própria: pare e peça.
+- **Arquivos (neste repositório):** `mt5_extracao/robots/safety_lib.py` (novo), `cli.py`, `config_builder.py`,
+  `config/config.ini.example`, `robots/battery.py`, `tests/test_robots_safety_lib.py` (novo).
+- **Passos:**
+  1. No repositório da biblioteca (fora daqui): os `.mqh` da `Safety/`, um `VERSION`, um `safety.json`
+     (`{"version": "...", "contract": 1, "files": [...]}`) e um EA mínimo de teste que **compila** no MetaEditor.
+     Confira a compilação com `mt5x robots compile` (T8.4) no host atual.
+  2. Aqui: chave `[ROBOTS] safety_lib_dir` (pasta local da biblioteca; vazio = não instalada). Sem download
+     automático nesta tarefa.
+  3. `safety_lib.py`: `installed_version(data_dir)`, `install(lib_dir, data_dir)` (copia para
+     `MQL5/Include/`, idempotente, grava `safety.json` ao lado) e `required_version(robot)` (do `robot.json`).
+  4. `mt5x robots install`/`compile` instalam a biblioteca antes, se o robô a declara. Versão diferente da pedida:
+     erro claro com a ação de correção; nunca troque em silêncio.
+  5. Bateria: item novo "biblioteca de segurança na versão declarada".
+- **Critérios de aceite:** com a pasta da biblioteca configurada, um robô que a inclui instala e compila do zero em
+  uma pasta de dados limpa; a bateria reprova quando a versão instalada não é a declarada.
+- **Verificação:** `pytest -q` (biblioteca falsa em `tmp_path`) e, manual no host, compilar o EA mínimo real.
+- **Armadilhas:** não versione os `.mqh` aqui. Se o HADOUKEN v7 ainda não compilar, extraia só a `Safety/`: é ela que
+  precisa compilar, não o painel.
+
+### T10.3 — `mt5x robots new`
+
+- **Objetivo:** começar um robô novo já certo: sobre a biblioteca de segurança, com contrato, presets e teste.
+- **Depende de:** T10.1, T10.2.
+- **Arquivos:** `mt5_extracao/robots/templates/` (novo: `Robot.mq5.tmpl`, `robot.json.tmpl`,
+  `Conservador.set.tmpl`, `README.md.tmpl`), `mt5_extracao/robots/scaffold.py` (novo), `cli.py`, `pyproject.toml`
+  (incluir os modelos no pacote), `tests/test_robots_scaffold.py` (novo).
+- **Passos:**
+  1. `mt5x robots new <Nome> --dir <pasta> [--symbol X --tf M5]` cria `Experts/<Nome>/<Nome>.mq5`,
+     `<Nome>.robot.json` (contrato 1), `Presets/<Nome>_Conservador.set` e `README.md` no layout do MT5.
+  2. O modelo do EA tem: os parâmetros obrigatórios do contrato, `OnInit`/`OnTick`/`OnTester` prontos, exportação
+     de trades, e **um único ponto marcado** onde o desenvolvedor escreve o sinal, chamando a função de entrada da
+     biblioteca. O esqueleto não tem estratégia: sem sinal, ele não opera.
+  3. Magic number: gerado e conferido contra o catálogo (não repetir um existente).
+  4. Recusa sobrescrever pasta que já existe.
+- **Critérios de aceite:** o robô recém-criado passa em `mt5x robots validate`, compila no MetaEditor do host sem
+  erros e, na bateria estática, não tem nenhum ✗.
+- **Verificação:** `pytest -q` (conteúdo gerado e `contract.validate`); manual no host: `new` → `compile`.
+- **Armadilhas:** modelo é texto com marcadores simples (`{{NOME}}`); não adicione motor de templates.
+
+### T10.4 — `mt5x robots check`
+
+- **Objetivo:** o ciclo do desenvolvedor em um comando, utilizável em CI.
+- **Depende de:** T10.1.
+- **Arquivos:** `mt5_extracao/robots/pipeline.py` (novo), `cli.py`, `tests/test_robots_pipeline.py` (novo).
+- **Passos:**
+  1. `pipeline.check(db, config, robot, symbol, timeframe, start, end, preset)` executa, parando no primeiro que
+     falhar: `contract.validate` → `mt5_tools.compile_robot` → `backtest.run_mql5` → `battery.run_battery`.
+     Devolve as etapas com situação, duração e detalhe.
+  2. `mt5x robots check <robô> --symbol X --tf M5 [...]`: imprime as etapas; `--json` devolve tudo; `--report
+     arquivo.xml` grava JUnit XML (uma `testcase` por etapa e por item da bateria) com a biblioteca padrão.
+  3. Código de saída: 0 só se todas as etapas passarem.
+  4. Mesma regra da T8.5 para o terminal aberto: para e explica, a não ser com `--close-terminal`.
+- **Critérios de aceite:** com executáveis simulados, o comando percorre as quatro etapas e o XML é lido por
+  `xml.etree`; uma falha de compilação interrompe antes do backtest.
+- **Verificação:** `pytest -q`; manual no host com um EA de exemplo.
+- **Armadilhas:** não duplique lógica: a `pipeline` só chama o que já existe.
+
+### T10.5 — Bateria completa para MQL5
+
+- **Objetivo:** trocar os dois itens que hoje são aviso ou aproximação em MQL5 por medidas reais.
+- **Depende de:** T10.4.
+- **Arquivos:** `robots/battery.py`, `robots/backtest.py`, `robots/store.py`, `cli.py`,
+  `tests/test_robots_battery.py`.
+- **Passos:**
+  1. **Fora da amostra:** `mt5x robots battery <robô> --deep` roda o Strategy Tester em dois períodos (70% inicial e
+     30% final das datas do último backtest) e exige profit factor > 1 no período final.
+  2. **Robustez ±20%:** para cada parâmetro numérico do contrato marcado como `tunable` no `robot.json`, roda o
+     teste com −20% e +20%; aprovado se todas as variações mantêm profit factor acima de
+     `Criteria.robustness_min_pf` (1,0; o mesmo critério das estratégias Python, em `strategies/validation.py`).
+  3. Grave cada execução extra em `_robot_runs` com `source = "strategy tester (bateria)"` para não virar o
+     "último backtest" do card (ajuste `attach_runs`).
+  4. Mostre antes quantos testes serão rodados e o tempo estimado; sem `--deep` a bateria fica como hoje.
+- **Critérios de aceite:** com o terminal simulado, o número de execuções é `2 + 2 × parâmetros`; a aprovação do
+  robô só muda se algum item novo reprovar.
+- **Verificação:** `pytest -q`; manual no host com o EA de exemplo (anote o tempo no plano).
+- **Armadilhas:** cada teste abre e fecha o terminal (~12 s no host atual); não rode em paralelo na mesma instalação.
+
+### T10.6 — Paridade Python × MQL5
+
+- **Objetivo:** provar que a versão MQL5 de uma estratégia faz as mesmas operações que o protótipo em Python.
+- **Depende de:** T10.3, T8.5. Absorve a parte "comparar os trades" da T8.9; portar as seis estratégias continua na T8.9.
+- **Arquivos:** `mt5_extracao/robots/parity.py` (novo), `cli.py`, `tests/test_robots_parity.py` (novo).
+- **Passos:**
+  1. `parity.compare(python_trades, mql5_trades, tolerance)` casa as operações por horário de saída e direção e
+     devolve: casadas, só no Python, só no MQL5, diferença de resultado por operação.
+  2. `mt5x robots parity <robô MQL5> --strategy <chave Python> --symbol X --tf M5` roda os dois backtests no mesmo
+     período e mostra o relatório. O `robot.json` pode declarar `"parity_with": "<chave>"`.
+  3. Critério padrão: ≥ 95% das operações casadas e diferença total de resultado ≤ 5%. Registre os números; não
+     ajuste o critério para um robô passar.
+- **Critérios de aceite:** listas idênticas dão 100%; uma operação a mais de um lado aparece nomeada no relatório.
+- **Verificação:** `pytest -q` com listas sintéticas.
+- **Armadilhas:** diferenças legítimas existem (modelo de ticks, spread por barra, horário da corretora): o
+  relatório mostra, quem decide é a pessoa.
+
+### T10.7 — API Python pública
+
+- **Objetivo:** quem usa o projeto como biblioteca importa de um lugar só, que não muda sem aviso.
+- **Depende de:** T10.4.
+- **Arquivos:** `mt5_extracao/sdk.py` (novo), `docs/sdk/api.md` (novo), `tests/test_sdk_api.py` (novo), `pyproject.toml`.
+- **Passos:**
+  1. `sdk.py` reexporta, com `__all__`, o que é público: catálogo (`load_catalog`, `Robot`), contrato (`validate`),
+     ferramentas (`compile_robot`), backtest (`run_python`, `run_mql5`), bateria (`run_battery`, `Report`),
+     `pipeline.check`, e de estratégias `Strategy`, `get_strategy`, `run_backtest`, `validate`.
+  2. `tests/test_sdk_api.py` fixa a lista de nomes e as assinaturas: mudar a API passa a exigir mudar o teste.
+  3. `docs/sdk/api.md`: cada nome, o que faz e um exemplo curto. Política: versão semântica; o que está em `sdk` só
+     muda de forma incompatível em versão maior, com um ciclo de aviso (`DeprecationWarning`).
+  4. `sdk.py` não importa `tkinter` nem `MetaTrader5` (entra em `CORE_MODULES` de `tests/test_core_decoupling.py`).
+- **Critérios de aceite:** `from mt5_extracao import sdk` funciona sem MT5 e sem Tk; o teste de superfície passa.
+- **Verificação:** `pytest -q`.
+- **Armadilhas:** não mova módulos: só reexporte.
+
+### T10.8 — Documentação do desenvolvedor
+
+- **Objetivo:** alguém que nunca viu o projeto vai do zero a um robô aprovado na bateria seguindo um texto.
+- **Depende de:** T10.3, T10.7.
+- **Arquivos:** `docs/sdk/README.md`, `docs/sdk/tutorial.md`, `docs/sdk/exemplo/` (robô completo, criado com
+  `robots new`, com sinal simples), `README.md` (seção curta apontando para `docs/sdk/`).
+- **Passos:** tutorial na ordem `new` → escrever o sinal → `validate` → `compile` → `backtest` → `battery` →
+  `check` → `parity` → demo. Cada passo com o comando, a saída esperada e o erro mais comum.
+- **Critérios de aceite:** todos os comandos do tutorial foram executados no host atual e as saídas coladas são
+  reais; o robô de exemplo passa em `mt5x robots check`.
+- **Verificação:** rodar o tutorial inteiro em uma pasta limpa.
+- **Armadilhas:** o exemplo é didático, não uma estratégia para operar: diga isso no topo.
+
+### T10.9 — Pacote publicável
+
+- **Objetivo:** instalar com `pip install` e saber o que mudou a cada versão.
+- **Depende de:** T10.8 e **T10.W** (não publique um pacote que nunca rodou no Windows dizendo que suporta Windows).
+- **Arquivos:** `pyproject.toml`, `CHANGELOG.md` (novo), `.github/workflows/` (job de build), `README.md`.
+- **Passos:** versão única lida de um lugar; extras opcionais como em `requirements-optional.txt`; `python -m
+  build` no CI; `CHANGELOG.md` no formato "Keep a Changelog". A publicação em si é ação de uma pessoa.
+- **Critérios de aceite:** o wheel instala em um ambiente limpo e `mt5x --help` e `from mt5_extracao import sdk`
+  funcionam; os modelos de `robots new` estão dentro do wheel.
+- **Verificação:** `pip install dist/*.whl` em um venv novo.
+
+### T10.W — Validação no Windows (pendência)
+
+- **Objetivo:** provar no Windows real o que foi desenvolvido e verificado só no Linux.
+- **Depende de:** uma máquina Windows 10 ou 11 com o MetaTrader 5. **Não bloqueia** as tarefas T10.1–T10.8.
+- **Arquivos:** `docs/validacao_instaladores.md` (seção "Pendências de validação no Windows").
+- **Passos:** execute cada linha do checklist, anote data e resultado; para cada falha, abra um PR próprio com a
+  correção e um teste que simule o caso (`monkeypatch` de `paths.is_windows`).
+- **Critérios de aceite:** nenhuma linha "⏳ pendente" no checklist.
+- **Enquanto não for feita:** siga a "Regra da pendência do Windows" no início desta fase.
+
+**Verificação da fase:** `PYTHONPATH=. xvfb-run -a .venv/bin/python -m pytest -q` e o `doctor` antes e depois de cada
+tarefa; ao fim, no host atual: `mt5x robots new` → escrever um sinal simples → `mt5x robots check` verde.
 
 ---
 

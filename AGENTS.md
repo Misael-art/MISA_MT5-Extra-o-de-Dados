@@ -20,6 +20,10 @@ Leia este arquivo inteiro antes de alterar o projeto. O que fazer está em
 
 - **Windows e Linux são plataformas de primeira classe.** Use `pathlib`/`os.path`; nunca fixe `C:\`
   nem `/home` em código (exceto nos valores padrão já centralizados em `mt5_extracao/bootstrap/paths.py`).
+- **Validação no Windows é pendência, não bloqueio.** O host de desenvolvimento é Linux (MT5 no Wine): conclua a
+  tarefa verificando nele, teste os dois caminhos simulando `paths.is_windows`, e registre o que só o Windows real
+  confirma no checklist de `docs/validacao_instaladores.md`. Nunca afirme que algo funciona no Windows sem ter
+  rodado lá. Regra completa: "Regra da pendência do Windows", Fase 10 do PLANO_DE_TRABALHO.md.
 - **`mt5_extracao/bootstrap/` usa só a biblioteca padrão.** Ele roda antes das dependências existirem.
 - **Não importe `MetaTrader5` fora de `mt5_extracao/mt5_backend.py`** (a partir de T2.2).
   Enquanto T2.2 não for concluída, não adicione novos `import MetaTrader5`.

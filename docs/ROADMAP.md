@@ -4,6 +4,10 @@ Visão: com um duplo clique (Windows) ou `./install.sh` (Linux), o usuário inst
 tudo e constrói e mantém bases históricas confiáveis (OHLCV, indicadores, ticks)
 do MetaTrader 5, pela interface gráfica ou por linha de comando agendada.
 
+A partir da Fase 10 o projeto é também um **SDK para desenvolver robôs MQL5 de alto padrão**: um contrato
+escrito, um ponto de partida (`mt5x robots new`), um ciclo de desenvolvimento em um comando e uma API estável.
+O aplicativo amigável (automação, análise e gestão) continua sendo o mesmo; o SDK é uma camada a mais.
+
 O detalhamento de cada tarefa (arquivos, passos, código de referência, critérios
 de aceite e testes) está em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md).
 As regras para agentes estão em [../AGENTS.md](../AGENTS.md).
@@ -30,6 +34,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F7** Interface | Janela principal em abas (Ativos, Minha base, Análise, Atividade), tema claro/escuro, gráficos e números de estudo | T7.1 | F1, F6 | ✅ |
 | **F8** Robôs | Catálogo de robôs (MQL5 e Python) em cards, backtest, bateria de segurança e operação em demo/real pelo robô MQL5 | T8.0–T8.9 | F6, F7 | T8.0–T8.6 ✅; T8.7 ⏳ (só simulada, falta validar com o MT5 real em demo); demais a fazer |
 | **F9** Agentes e segurança | Operação sem tela (`--json`, `status`, `analyze`), auditoria `mt5x audit` e ponte do Linux restrita a funções de leitura | T9.1–T9.3 | F3, F8 (T8.3) | ✅ |
+| **F10** SDK de robôs | Contrato do robô, biblioteca de segurança MQL5 versionada, `robots new`, ciclo `robots check`, bateria completa para MQL5, paridade Python × MQL5, API pública, documentação e pacote | T10.0–T10.9 + T10.W | F8 (T8.4–T8.6), F9 | T10.0 ✅; demais a fazer. **T10.W (validação no Windows) é pendência: não bloqueia o desenvolvimento no host atual** |
 
 ## Marcos (cada marco = versão publicável)
 
@@ -41,6 +46,8 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | M3 — Sem cliques | 0.5.0 | T3.1–T3.3; `mt5x update` agendado via cron / Agendador de Tarefas mantém a base em dia |
 | M4 — Manutenível | 0.6.0 | T4.1–T4.4; cobertura de testes ≥ 60% no núcleo (`database_manager`, `historical_extractor`, `mt5_backend`) |
 | M5 — Escala | 1.0.0 | T5.1–T5.4; exportação Parquet, TimescaleDB opcional, ticks |
+| M6 — SDK no host atual | 1.1.0 | T10.1–T10.8 concluídas e verificadas no Linux (Wine); um robô criado com `mt5x robots new` passa por `mt5x robots check` do zero |
+| M7 — SDK publicado | 1.2.0 | M6 + T10.W (checklist do Windows cumprido) + T10.9 (pacote publicado) |
 
 ## Ordem recomendada de execução (uma tarefa = um PR)
 
@@ -55,6 +62,12 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 9. F7 (T7.1) já concluída; novos painéis entram em `mt5_extracao/ui/`
 10. F8: T8.0 → T8.1 → T8.2 → T8.3 → T8.4 → T8.5 → T8.6 → T8.7 → T8.8 (T8.9 em paralelo depois da T8.5)
 11. F9 (T9.1 → T9.3) já concluída
+12. F10, em três trilhas que podem andar em paralelo (arquivos diferentes):
+    - ciclo e qualidade: T10.1 → T10.4 → T10.5
+    - lado MQL5: T10.2 → T10.3 → T10.6
+    - superfície pública: T10.7 → T10.8 → T10.9 (a T10.9 só depois da T10.W)
+    - T10.W quando houver uma máquina Windows; até lá, cada tarefa acrescenta o que falta conferir ao
+      checklist em [validacao_instaladores.md](validacao_instaladores.md)
 
 As fases F1 e F2 são independentes e podem ser executadas em paralelo por
 agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
@@ -65,5 +78,9 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 - macOS: o pacote MetaTrader5 não existe e o Wine no macOS é instável. A arquitetura da ponte (F2) permitiria suportá-lo no futuro.
 - Envio de ordens **pelo Python**: o código deste projeto nunca chama `order_send`. A partir da F8 o aplicativo
   instala, inicia, monitora e para robôs MQL5, e quem opera é o robô dentro do MT5, pela camada `Safety/` do
-  HADOUKEN (veja [robos.md](robos.md)). Conta real fica desligada por padrão.
+  HADOUKEN (veja [robos.md](robos.md)). Conta real fica desligada por padrão. O SDK (F10) não muda isso:
+  ele ajuda a escrever o robô MQL5; o envio de ordens continua sendo só do robô.
+- Geração automática de MQL5 a partir de Python (transpilador): a F10 entrega modelo, contrato e conferência de
+  paridade; a tradução da lógica é feita por quem desenvolve.
+- Publicação no MQL5 Market e licenciamento de robôs.
 - Bases em nuvem gerenciadas (AWS RDS etc.): basta apontar T5.2 para o host.

@@ -84,3 +84,30 @@ Script: `scripts/parity_check.py` (requer `pyarrow`).
 | Linux (ponte) | 2026-10-12 | `parity_check.py extract --symbol EURUSD --date 2026-10-09 --out linux.parquet` | ✅ 1.440 barras |
 | Windows | — | mesmo comando, `--out windows.parquet`, mesma conta/corretora | ⏳ pendente |
 | Comparação | — | `parity_check.py compare linux.parquet windows.parquet` | ⏳ pendente |
+
+## Pendências de validação no Windows
+
+O desenvolvimento segue no host atual (Linux, MT5 no Wine). Esta lista junta o que só o Windows real confirma e é
+executada de uma vez na tarefa **T10.W** (veja "Regra da pendência do Windows", Fase 10 do
+[PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md)). Cada tarefa nova acrescenta aqui as suas linhas. As pendências mais
+antigas (instaladores e paridade da T2.6) estão nas tabelas acima e entram na mesma execução.
+
+Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de demonstração.
+
+| Origem | O que conferir | Comando | Resultado esperado | Data | Situação |
+|---|---|---|---|---|---|
+| T8.4 | Pasta de dados fora do modo portátil | `mt5x robots install <robô>` | Arquivos em `%APPDATA%\MetaQuotes\Terminal\<id>\MQL5` (achada por `origin.txt`), não na pasta do programa | — | ⏳ pendente |
+| T8.4 | Compilação sem o `.bat` do Wine | `mt5x robots compile <robô>` | `.ex5` gerado; erros e avisos lidos do log; caminho com espaço funciona | — | ⏳ pendente |
+| T8.4 | Código de saída do MetaEditor | o mesmo | Resultado correto mesmo com o código de saída invertido (1 = compilou) | — | ⏳ pendente |
+| T8.5 | Strategy Tester sem `/portable` | `mt5x robots backtest <robô> --symbol EURUSD --tf H1` | Relatório `.htm` na pasta de dados; métricas iguais às do MT5 | — | ⏳ pendente |
+| T8.5 | Idioma do relatório | o mesmo, com o terminal em inglês e em português | Mesmas operações lidas nos dois idiomas | — | ⏳ pendente |
+| T8.5 | `Common\Files` | backtest de um robô com `InpExportTrades` | `HDK_trades_<magic>.csv` lido de `%APPDATA%\MetaQuotes\Terminal\Common\Files` | — | ⏳ pendente |
+| T8.5 | Terminal aberto | o mesmo comando com o MT5 aberto, sem e com `--close-terminal` | Sem a opção: para e explica; com ela: fecha, testa (não há ponte para religar) | — | ⏳ pendente |
+| T8.6 | Bateria | `mt5x robots battery <robô>` | Mesmo resultado que no Linux para o mesmo backtest | — | ⏳ pendente |
+| T8.7 | Início em demo | `mt5x robots start <robô> --symbol EURUSD --tf H1 --close-terminal` | Só depois de validada no Linux (lista da T8.7 no plano): robô no gráfico, na conta conferida | — | ⏳ pendente |
+| T8.7 | PARAR TUDO | `mt5x robots stop` e `--release` | `HDK_KILL.txt` criado e removido em `Common\Files` | — | ⏳ pendente |
+| T9.1 | Saída `--json` no console do Windows | `mt5x --json status` | Um único objeto JSON, acentos corretos (cp1252 × UTF-8) | — | ⏳ pendente |
+| T9.2 | Auditoria | `mt5x audit` | Roda; o item de permissão do `.env` é coerente com o Windows | — | ⏳ pendente |
+| Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
+
+A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
