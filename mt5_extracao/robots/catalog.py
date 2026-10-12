@@ -30,7 +30,8 @@ STAGE_LABELS = {IMPORTED: "Importado", COMPILED: "Compilado", TESTED: "Testado",
 STAGE_NEXT = {COMPILED: "compilar no MetaEditor", TESTED: "rodar um backtest",
               APPROVED: "passar na bateria de segurança", DEMO: "rodar em conta demo", LIVE: "operar em conta real"}
 
-DEEP_RUN_SOURCE = "strategy tester (bateria)"     # o mesmo valor de backtest.DEEP_SOURCE
+# os mesmos valores de backtest.DEEP_SOURCE e backtest.PARITY_SOURCE
+HIDDEN_RUN_SOURCES = ("strategy tester (bateria)", "backtest python (paridade)")
 NOT_COMPILED = "Ainda não compilado"       # início do aviso que some quando a compilação é registrada
 
 
@@ -322,7 +323,7 @@ def attach_runs(robots: List[Robot], runs: List[dict]) -> None:
     """Liga a cada robô os backtests gravados (mais recente primeiro). Quem tem teste passa a "Testado"."""
     by_key = {}
     for run in runs:
-        if run["source"] != DEEP_RUN_SOURCE:          # execuções extras da bateria não são o backtest do card
+        if run["source"] not in HIDDEN_RUN_SOURCES:   # execuções auxiliares não são o backtest do card
             by_key.setdefault(run["robot_key"], []).append(run)
     for robot in robots:
         robot.runs = by_key.get(robot.key, [])

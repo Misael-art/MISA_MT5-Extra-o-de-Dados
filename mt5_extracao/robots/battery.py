@@ -491,7 +491,7 @@ def run_battery(db, config, robot, robots=(), preset: Optional[str] = None, deep
     (só MQL5), repete o Strategy Tester para medir "fora da amostra" e robustez; o MT5 precisa estar fechado.
     """
     from . import backtest
-    runs = [r for r in store.load_runs(db, robot.key) if r["source"] != backtest.DEEP_SOURCE]
+    runs = [r for r in store.load_runs(db, robot.key) if r["source"] not in catalog.HIDDEN_RUN_SOURCES]
     run = runs[0] if runs else None
     report = Report(robot.key, preset or "", run_id=run["run_id"] if run else "", check_id=uuid.uuid4().hex,
                     created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))

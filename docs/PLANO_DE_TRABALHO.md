@@ -87,11 +87,11 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | ✅ concluída (validada no Strategy Tester real) |
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | ✅ concluída (executada de ponta a ponta no host) |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | ✅ concluída (executada no host) |
-| T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | ⏳ código e testes prontos; **falta comparar um par real** (só existirá com a T10.10 ou a T8.9) |
+| T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | ✅ concluída (um par real comparado na T10.10; a ferramenta apontou as diferenças) |
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
-| T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | a fazer |
+| T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ⏳ gera, compila e opera; paridade real **95,9% das operações casadas, mas 9,1% de diferença de resultado (critério: 5%)** |
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -1494,7 +1494,7 @@ nas variações).
 - **Verificação:** `pytest -q`; manual no host com o EA de exemplo (anote o tempo no plano).
 - **Armadilhas:** cada teste abre e fecha o terminal (~12 s no host atual); não rode em paralelo na mesma instalação.
 
-### T10.6 — Paridade Python × MQL5 ⏳
+### T10.6 — Paridade Python × MQL5 ✅
 
 **Registrado na entrega:** `robots/parity.py` e `mt5x robots parity <robô MQL5> --strategy <chave> --symbol X --tf M5`
 (ou `"parity_with"` no `robot.json`). Roda o backtest Python e o do Strategy Tester no mesmo período e mostra:
@@ -1506,8 +1506,8 @@ resultado total. Critério: ≥ 95% casadas e diferença ≤ 5%; código de saí
 horário e direção, porque `_robot_runs.trades_json` guarda horário, resultado e volume, sem a direção. O relatório
 conta, em troca, quantos pares têm o mesmo sinal de resultado. Guardar a direção fica como melhoria.
 
-**Não conferido:** nenhum par real foi comparado, porque ainda não existe um robô MQL5 que seja a versão de uma
-estratégia Python deste projeto. A prova vem com a T10.10 (ou com a T8.9). Atenção ao comparar resultado em dinheiro:
+**Conferido na T10.10:** um par real foi comparado (robô gerado × a própria declaração) e a ferramenta fez o que
+devia: apontou as 6 operações divergentes pelo horário e a diferença de resultado. Veja os números lá. Atenção ao comparar resultado em dinheiro:
 o lote do Python vem de `[STRATEGY] risk_per_trade` e o do robô, do parâmetro de risco dele; use o mesmo risco e o
 mesmo capital nos dois lados.
 
@@ -1574,7 +1574,47 @@ real: quando elas entrarem, `parity` e a bateria `--deep` são acrescentadas aqu
   funcionam; os modelos de `robots new` estão dentro do wheel.
 - **Verificação:** `pip install dist/*.whl` em um venv novo.
 
-### T10.10 — Geração de MQL5 a partir de Python (opcional)
+### T10.10 — Geração de MQL5 a partir de Python (opcional) ⏳
+
+**Registrado na entrega:** `strategies/declared.py` (`SignalSpec`, `DeclaredStrategy`), `robots/generate.py` e
+`mt5x robots generate <declaração.json> --name <Nome> --dir <pasta>`. A declaração é um JSON: indicadores `sma`,
+`ema` e `rsi` sobre o fechamento; condições `cross_above`, `cross_below`, `above`, `below` entre indicadores,
+`close` ou números (todas precisam valer); `atr_period`, `stop_atr` e `target_r`. O robô gerado é o esqueleto da
+T10.3 com os blocos marcados preenchidos, os padrões de stop, alvo e ATR ajustados, `tunable` e
+`"parity_with": "declared"` no `robot.json`, e a declaração gravada ao lado (`<Nome>.signal.json`).
+`mt5x robots parity <robô>` compara o robô com a própria declaração (`parity.run_declared`), igualando o risco por
+operação ao do backtester Python e abrindo os limites de perda só nesse teste. O ATR do stop, no lado Python, é a
+média simples do true range, como o `iATR` do MT5.
+
+**Diferença em relação ao passo 3:** a entrada é um arquivo JSON, não um `.py`. No passo 4, em vez de reescrever uma
+das seis estratégias (todas usam saídas que o esqueleto não tem: trailing, saída por sinal), a prova foi feita com
+um cruzamento de médias simples declarado.
+
+**Paridade real (2026-10-12, host; EURUSD H1, 2025-10-01 a 2026-09-30; médias 10 × 40, stop 1,5 × ATR(14), alvo 2R;
+risco 1% sobre 100.000; modelo OHLC de 1 minuto):**
+
+| Medida | Python | MQL5 | Critério |
+|---|---|---|---|
+| Operações (fora o aquecimento) | 145 | 145 | — |
+| Casadas pelo horário de saída | 139 (95,9%) | | ≥ 95% ✓ |
+| Pares com o mesmo sinal de resultado | 139 de 139 | | — |
+| Resultado total | −10.057,34 | −10.970,90 | diferença 9,1%; máximo 5% ✗ |
+
+**O critério não foi cumprido** (e não foi afrouxado). O que a medição mostrou:
+
+- Sem excluir o aquecimento eram 145 × 147 operações e 94,6% casadas: o Tester tem histórico antes do início do
+  período e o Python não. `parity.compare` passou a aceitar `warmup_until`, e `run_declared` deixa de fora, dos dois
+  lados, o que encerrou antes de haver barras para o maior indicador (2 operações do MQL5).
+- As 6 operações sem par são as mesmas dos dois lados, com a saída em barras diferentes. Causa provável, **não
+  confirmada**: dentro de uma barra H1 o Python não sabe se o stop ou o alvo veio primeiro (assume o stop) e o
+  Tester sabe, pelo OHLC de 1 minuto; e o stop do Python parte do fechamento da barra do sinal, enquanto o do
+  robô parte do preço de entrada.
+- Nos pares casados o lote do MQL5 é sistematicamente cerca de 4% menor (mediana 0,963) e o resultado acompanha
+  (mediana 0,961). **Causa não identificada.**
+
+**Para concluir a tarefa:** achar a causa dos 4% no lote (comparar `CHDKRiskGuard.CalcLot` com
+`SymbolSpec.lots_for_risk` em uma operação) e decidir a âncora do stop; depois repetir a medição. Enquanto isso, o
+robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o valor em dinheiro não.
 
 - **Objetivo:** escrever a estratégia uma vez, em Python, e obter o robô MQL5 correspondente, sem traduzir à mão.
 - **Depende de:** T10.3 (modelo do robô) e T10.6 (paridade, que é como se prova que a geração está certa).

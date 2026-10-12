@@ -25,6 +25,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
     mt5x robots new <Nome> --dir <pasta>               # cria o esqueleto de um robô sobre a biblioteca de segurança
+    mt5x robots generate <declaração.json> --name <Nome> --dir <pasta>   # robô MQL5 a partir de uma estratégia declarada
     mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
     mt5x robots check <robô> --symbol X --tf M5        # contrato, compilação, backtest e bateria em um comando
     mt5x robots parity <robô MQL5> --strategy <chave> --symbol X --tf M5   # mesmas operações que o Python?
@@ -726,13 +727,16 @@ def _robots_parity(args, ctx, items):
     """Compara as operações do robô MQL5 (Strategy Tester) com as da estratégia Python no mesmo período."""
     from mt5_extracao.robots import catalog, mt5_tools, parity
     robot = catalog.get_robot(items, args.path) if args.path else None
+    from mt5_extracao.robots import generate
     key = args.strategy or (robot.manifest.get("parity_with", "") if robot is not None else "")
     if robot is None or not key or not args.symbol or not args.tf:
         raise ValueError("uso: mt5x robots parity <robô MQL5> --strategy <chave da estratégia Python> --symbol X "
                          "--tf M5 [--from AAAA-MM-DD] [--to AAAA-MM-DD] (ou \"parity_with\" no robot.json)")
-    strategy = catalog.get_robot(items, key)
-    if robot.kind != catalog.MQL5 or strategy.kind != catalog.PYTHON:
+    declared = key == generate.DECLARED            # robô gerado: compara com a própria declaração
+    strategy = None if declared else catalog.get_robot(items, key)
+    if robot.kind != catalog.MQL5 or (strategy is not None and strategy.kind != catalog.PYTHON):
         raise ValueError("A paridade compara um robô MQL5 com uma estratégia Python (nessa ordem).")
+    strategy_name = generate.load_spec(robot).name if declared else strategy.name
     tf = _parse_tf(args.tf)
     start = _parse_date(args.date_from) if args.date_from else None
     end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
@@ -741,7 +745,10 @@ def _robots_parity(args, ctx, items):
         if args.close_terminal and mt5_tools.terminal_running():
             _print("Fechando o MetaTrader 5 para rodar o teste...")
             bridge_was_running = mt5_tools.release_terminal()
-        outcome = parity.run(ctx.db, ctx.config, robot, strategy, args.symbol, tf.label, start, end, args.preset)
+        if declared:
+            outcome = parity.run_declared(ctx.db, ctx.config, robot, args.symbol, tf.label, start, end)
+        else:
+            outcome = parity.run(ctx.db, ctx.config, robot, strategy, args.symbol, tf.label, start, end, args.preset)
     except (OSError, RuntimeError) as e:
         raise RuntimeError(str(e)) from e
     finally:
@@ -750,13 +757,16 @@ def _robots_parity(args, ctx, items):
     report = outcome["report"]
     _data(parity=report.to_dict(), python_run=outcome["python_run"]["run_id"], mql5_run=outcome["mql5_run"]["run_id"])
     difference = report.result_difference
-    _print(f"Paridade de {robot.name} (MQL5) com {strategy.name} (Python), {args.symbol} {tf.name}:")
+    _print(f"Paridade de {robot.name} (MQL5) com {strategy_name} (Python), {args.symbol} {tf.name}:")
     _print(f"  Operações: {report.python_trades} no Python, {report.mql5_trades} no MQL5; {report.matched} casadas "
            f"({_fmt_pct(report.matched_share)}; mínimo {_fmt_pct(parity.MIN_MATCHED_SHARE)}), "
            f"{report.same_sign} com o mesmo sinal de resultado")
     _print(f"  Resultado: {_fmt_num(report.python_result)} no Python e {_fmt_num(report.mql5_result)} no MQL5" +
            (f" (diferença {_fmt_pct(difference)}; máximo {_fmt_pct(parity.MAX_RESULT_DIFFERENCE)})"
             if difference is not None else " (o Python deu zero: diferença não calculável)"))
+    if report.excluded_warmup:
+        _print(f"  {report.excluded_warmup} operação(ões) encerrada(s) antes de {report.warmup_until[:16]} ficaram de "
+               "fora: nesse trecho o Python ainda não tinha barras para os indicadores.")
     for label, trades in (("Só no Python", report.only_python), ("Só no MQL5", report.only_mql5)):
         if trades:
             _print(f"  {label} ({len(trades)}): " + ", ".join(str(t[0])[:16] for t in trades[:8]) +
@@ -943,6 +953,30 @@ def cmd_robots(args, ctx):
             _print(f"A pasta {root} foi adicionada ao catálogo.")
         _print(f"Agora escreva o sinal em {created[0].name} (veja o README ao lado) e rode: "
                f"mt5x robots compile {robot.key.split(':', 1)[1]}")
+        return EXIT_OK
+    if args.action == "generate":
+        from mt5_extracao.robots import generate
+        if not args.path or not args.name or not args.dir:
+            raise ValueError("uso: mt5x robots generate <declaração.json> --name <Nome> --dir <pasta de robôs>")
+        try:
+            created = generate.create(generate.read_spec_file(args.path), args.name, args.dir, items, ctx.config)
+        except (OSError, RuntimeError) as e:
+            raise RuntimeError(str(e)) from e
+        robot = robots.robot_from_file(created[0])
+        slug = robot.key.split(":", 1)[1]
+        _data(robot=_robot_dict(robot), files=[str(p) for p in created])
+        _print(f"Robô {robot.name} gerado a partir da declaração:")
+        for path in created:
+            _print(f"  {path}")
+        from mt5_extracao.robots import store
+        root = Path(args.dir).expanduser().resolve()
+        known = [Path(p).resolve() for p in catalog.library_dirs(ctx.config)] + [
+            Path(r["path"]).resolve() for r in store.load_records(ctx.db).values() if r["kind"] == catalog.LIBRARY]
+        if root not in known:
+            robots.import_library(ctx.db, root)
+            _print(f"A pasta {root} foi adicionada ao catálogo.")
+        _print(f"Compile e prove a paridade com a declaração: mt5x robots compile {slug} && "
+               f"mt5x robots parity {slug} --symbol <ativo> --tf <timeframe>")
         return EXIT_OK
     if args.action == "backtest":
         return _robots_backtest(args, ctx, items)
@@ -1171,6 +1205,7 @@ def build_parser():
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
     p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check", "parity",
+                                                    "generate",
                                                     "new",
                                                     "start",
                                                     "monitor",
@@ -1189,7 +1224,8 @@ def build_parser():
     p.add_argument("--deep", action="store_true",
                    help="battery (robô MQL5): repete o Strategy Tester para medir fora da amostra e robustez ±20%%")
     p.add_argument("--report", help="check: grava um relatório JUnit XML neste arquivo (para CI)")
-    p.add_argument("--dir", help="new: pasta de robôs onde criar (layout Experts/ Presets/)")
+    p.add_argument("--name", help="generate: nome do robô a criar")
+    p.add_argument("--dir", help="new/generate: pasta de robôs onde criar (layout Experts/ Presets/)")
     p.add_argument("--upgrade-safety", action="store_true",
                    help="install/compile: troca a biblioteca de segurança instalada no MT5 pela versão do clone")
     p.add_argument("--preset", help="backtest de robô MQL5 e battery: nome do preset (.set) a usar")

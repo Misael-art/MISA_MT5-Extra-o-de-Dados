@@ -32,6 +32,9 @@ mt5x robots backtest hdk_hadouken_painel --symbol WIN$N --tf M5 --from 2026-01-0
 mt5x robots validate hdk_hadouken_painel  # confere o robot.json contra o contrato (docs/sdk/contrato.md)
 mt5x robots battery hdk_hadouken_painel --preset Conservador   # bateria de segurança
 mt5x robots check hdk_hadouken_painel --symbol WIN$N --tf M5   # contrato, compilação, backtest e bateria de uma vez
+mt5x robots new MeuRobo --dir ~/robos                          # esqueleto de um robô novo (docs/sdk)
+mt5x robots generate declaracao.json --name MeuRobo --dir ~/robos   # robô a partir de uma estratégia declarada
+mt5x robots parity meurobo --symbol EURUSD --tf H1             # o robô faz as mesmas operações que o Python?
 mt5x robots start hdk_hadouken_painel --symbol WIN$N --tf M5 --preset Conservador --close-terminal   # conta DEMO
 mt5x robots monitor hdk_hadouken_painel   # posições e resultado do robô
 mt5x robots stop                          # PARAR TUDO

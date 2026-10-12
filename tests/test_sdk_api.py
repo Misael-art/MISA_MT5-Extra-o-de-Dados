@@ -11,7 +11,7 @@ REPO = Path(__file__).resolve().parents[1]
 SURFACE = {
     "API_VERSION": None, "CONTRACT_VERSION": None,
     "Robot": None, "Problem": None, "CompileResult": None, "BatteryItem": None, "BatteryReport": None,
-    "CheckResult": None, "ParityReport": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,
+    "CheckResult": None, "ParityReport": None, "SignalSpec": None, "DeclaredStrategy": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,
     "load_catalog": ["config", "db"],
     "get_robot": ["robots", "key"],
     "robot_from_file": ["path"],
@@ -20,15 +20,16 @@ SURFACE = {
     "new_robot": ["name", "folder", "robots", "config", "magic"],
     "install_robot": ["config", "robot", "mt5", "overwrite_presets", "upgrade_safety"],
     "compile_robot": ["config", "robot", "mt5", "run", "overwrite_presets", "upgrade_safety"],
-    "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params"],
+    "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params", "strategy", "source"],
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
                  "is_running", "source"],                       # T10.5: parâmetro novo no fim, com padrão
     "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running"],
     "check": ["db", "config", "robot", "robots", "symbol", "timeframe", "start", "end", "preset", "run", "is_running"],
     "write_junit": ["result", "path"],
-    "compare_parity": ["python_trades", "mql5_trades", "tolerance_minutes"],                     # T10.6
+    "compare_parity": ["python_trades", "mql5_trades", "tolerance_minutes", "warmup_until"],     # T10.6, T10.10
     "run_parity": ["db", "config", "robot", "strategy_robot", "symbol", "timeframe", "start", "end", "preset",
                    "runner", "is_running"],
+    "generate_robot": ["spec", "name", "folder", "robots", "config", "magic"],                   # T10.10
     "get_strategy": ["key", "params"],
     "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],

@@ -83,6 +83,16 @@ Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e 
 | `run_parity(db, config, robot, strategy_robot, symbol, timeframe, ...)` | Roda os dois backtests no mesmo período e compara. Devolve `report`, `python_run` e `mql5_run` |
 | `ParityReport` | `matched`, `matched_share`, `only_python`, `only_mql5`, `result_difference`, `same_sign`, `ok` |
 
+## Estratégia declarada e geração do robô MQL5
+
+| Nome | O que faz |
+|---|---|
+| `SignalSpec` | A regra de entrada como dados: indicadores (`sma`, `ema`, `rsi`), condições, stop em ATR e alvo em R. `SignalSpec.from_dict(...)` valida |
+| `DeclaredStrategy` | Executa uma `SignalSpec` no backtester Python (mesma interface das outras estratégias) |
+| `generate_robot(spec, name, folder, robots=(), config=None, magic=None)` | Cria o robô MQL5 com o sinal gerado (o mesmo que `mt5x robots generate`) |
+
+Não é um tradutor de Python: só o que está na declaração é gerado. A prova de cada robô gerado é a paridade.
+
 ## Estratégias Python
 
 | Nome | O que faz |

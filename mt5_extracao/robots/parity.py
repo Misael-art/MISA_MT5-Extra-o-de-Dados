@@ -28,6 +28,8 @@ class ParityReport:
     mql5_result: float = 0.0
     same_sign: int = 0                                           # pares em que os dois ganharam ou os dois perderam
     tolerance_minutes: float = 0.0
+    warmup_until: str = ""                                       # operações encerradas antes disso ficam de fora
+    excluded_warmup: int = 0
 
     @property
     def matched_share(self) -> float:
@@ -52,6 +54,7 @@ class ParityReport:
                 "matched": self.matched, "matched_share": self.matched_share, "same_sign": self.same_sign,
                 "python_result": self.python_result, "mql5_result": self.mql5_result,
                 "result_difference": self.result_difference, "tolerance_minutes": self.tolerance_minutes,
+                "warmup_until": self.warmup_until, "excluded_warmup": self.excluded_warmup,
                 "only_python": self.only_python, "only_mql5": self.only_mql5}
 
 
@@ -59,8 +62,19 @@ def _when(stamp) -> datetime:
     return datetime.strptime(str(stamp)[:19].replace("T", " "), "%Y-%m-%d %H:%M:%S")
 
 
-def compare(python_trades: List[list], mql5_trades: List[list], tolerance_minutes: float = 60.0) -> ParityReport:
-    """Casa as operações pelo horário de saída (cada uma no máximo uma vez, a mais próxima dentro da tolerância)."""
+def compare(python_trades: List[list], mql5_trades: List[list], tolerance_minutes: float = 60.0,
+            warmup_until=None) -> ParityReport:
+    """
+    Casa as operações pelo horário de saída (cada uma no máximo uma vez, a mais próxima dentro da tolerância).
+    `warmup_until`: operações encerradas antes desse horário ficam de fora dos dois lados. Serve para o início do
+    período, em que o Python ainda não tem barras para os indicadores e o Strategy Tester já tem histórico.
+    """
+    excluded = 0
+    if warmup_until is not None:
+        cutoff = _when(warmup_until)
+        kept = [[t for t in trades if _when(t[0]) >= cutoff] for trades in (python_trades, mql5_trades)]
+        excluded = len(python_trades) + len(mql5_trades) - len(kept[0]) - len(kept[1])
+        python_trades, mql5_trades = kept
     tolerance = timedelta(minutes=tolerance_minutes)
     left = sorted(python_trades, key=lambda t: _when(t[0]))
     right = sorted(mql5_trades, key=lambda t: _when(t[0]))
@@ -88,6 +102,7 @@ def compare(python_trades: List[list], mql5_trades: List[list], tolerance_minute
         if (float(trade[1]) > 0) == (float(right[best][1]) > 0):
             report.same_sign += 1
     report.only_mql5 = [list(t) for t, taken in zip(right, used) if not taken]
+    report.warmup_until, report.excluded_warmup = (str(warmup_until) if warmup_until is not None else ""), excluded
     return report
 
 
@@ -108,4 +123,53 @@ def run(db, config, robot, strategy_robot, symbol: str, timeframe: str, start=No
     mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, period_start, period_end, preset,
                                  run=runner, is_running=is_running)
     return {"report": compare(python_run["trades"], mql5_run["trades"], float(tf.minutes)),
+            "python_run": python_run, "mql5_run": mql5_run}
+
+
+def parity_params(robot, config) -> dict:
+    """
+    Parâmetros do robô para a comparação valer: o mesmo risco por operação do backtester Python e os limites de
+    perda abertos (o Python não tem limite diário nem de drawdown; com eles ligados o robô deixaria de operar em
+    dias em que o Python opera). Vale só para o teste de paridade, no Strategy Tester.
+    """
+    from mt5_extracao.strategies import research
+    from . import contract
+    known = {i.name for i in robot.inputs}
+    params = {}
+    risk_input = contract.input_name(robot, "risk_pct")
+    if risk_input:
+        params[risk_input] = f"{research.backtest_config(config).risk_per_trade * 100:g}"
+    for name in (contract.input_name(robot, "daily_loss_pct"), contract.input_name(robot, "max_drawdown_pct"),
+                 "InpWeeklyLossPct"):
+        if name and name in known:
+            params[name] = "100"
+    return params
+
+
+def run_declared(db, config, robot, symbol: str, timeframe: str, start=None, end=None, runner=None,
+                 is_running=None) -> dict:
+    """
+    Paridade de um robô gerado por `mt5x robots generate` com a própria declaração, executada em Python.
+    Devolve {"report", "python_run", "mql5_run"}. O MT5 precisa estar fechado.
+    """
+    from mt5_extracao import timeframes
+    from mt5_extracao.strategies.declared import DeclaredStrategy
+    from . import backtest, generate
+    tf = timeframes.parse(timeframe)
+    if tf is None:
+        raise ValueError(f"Timeframe inválido: {timeframe}")
+    spec = generate.load_spec(robot)
+    strategy = DeclaredStrategy(spec)
+    python_run = backtest.run_python(db, config, robot, symbol, timeframe, start, end, strategy=strategy,
+                                     source=backtest.PARITY_SOURCE)
+    period_start = _when(python_run["data_start"])
+    period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
+    mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, period_start, period_end,
+                                 params=parity_params(robot, config), run=runner, is_running=is_running,
+                                 source=backtest.DEEP_SOURCE)
+    # Aquecimento: até o maior período de indicador, o Python não tem como dar sinal; o Tester já tem histórico
+    bars = db.load_ohlcv(symbol, tf.label, start, end)
+    warmup = max([item.period for item in spec.indicators.values()] + [spec.atr_period]) + 1
+    warmup_until = str(bars["time"].iloc[warmup]) if len(bars) > warmup else None
+    return {"report": compare(python_run["trades"], mql5_run["trades"], float(tf.minutes), warmup_until),
             "python_run": python_run, "mql5_run": mql5_run}

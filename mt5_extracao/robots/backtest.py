@@ -45,12 +45,16 @@ def downsample(points: List[list], max_points: int = MAX_CURVE_POINTS) -> List[l
 
 
 def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
-               params: Optional[dict] = None) -> dict:
-    """Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia')."""
+               params: Optional[dict] = None, strategy=None, source: str = "backtest") -> dict:
+    """
+    Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia').
+    `strategy` permite passar a estratégia já montada (ex.: uma DeclaredStrategy), em vez de buscá-la pela chave
+    do robô; nesse caso a execução é gravada na chave de `robot` e `robot` pode ser de qualquer tipo.
+    """
     from mt5_extracao import timeframes
     from mt5_extracao.strategies import get_strategy, research, specs
     from mt5_extracao.strategies.backtester import run_backtest
-    if robot.kind != catalog.PYTHON:
+    if strategy is None and robot.kind != catalog.PYTHON:
         raise ValueError("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5: use run_mql5.")
     tf = timeframes.parse(timeframe)
     if tf is None:
@@ -58,7 +62,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     df = db.load_ohlcv(symbol, tf.label, start, end)
     if df.empty:
         raise ValueError(research.missing_message([symbol], tf))
-    strategy = get_strategy(robot.key.split(":", 1)[1], **(params or {}))
+    if strategy is None:
+        strategy = get_strategy(robot.key.split(":", 1)[1], **(params or {}))
     if len(df) < strategy.min_bars:
         raise ValueError(f"Poucas barras para {strategy.info.name}: {len(df)} no período (mínimo {strategy.min_bars}). "
                          "Escolha um período maior ou extraia mais histórico.")
@@ -70,7 +75,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
                    spec_known=bool(spec.known), initial_equity=float(settings.initial_equity),
                    risk_per_trade=float(settings.risk_per_trade))
-    run = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": "backtest", "symbol": symbol,
+    run = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,
            "equity": downsample(equity_curve(result.trades, settings.initial_equity, df["time"].iloc[0])),
@@ -85,6 +90,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
 REPORT_SOURCE, CSV_SOURCE = "relatório do Strategy Tester", "HDK_trades.csv"
 TESTER_SOURCE = "strategy tester"
 DEEP_SOURCE = "strategy tester (bateria)"    # execuções extras da bateria: não são o "último backtest" do card
+PARITY_SOURCE = "backtest python (paridade)" # o lado Python de uma paridade, gravado na chave do robô MQL5
 _ROW = re.compile(r"<tr[^>]*>(.*?)</tr>", re.S | re.I)
 _CELL = re.compile(r"<t[dh][^>]*>(.*?)</t[dh]>", re.S | re.I)
 _TAG = re.compile(r"<[^>]+>")

@@ -161,6 +161,8 @@ Guia do usuário: [robos.md](robos.md). Plano: Fase 8 em [PLANO_DE_TRABALHO.md](
 - `safety_lib.py`: instala a biblioteca de segurança `mt5x-safety` (repositório próprio) na versão que o robô
   declara, a partir de um clone local (`[ROBOTS] safety_lib_dir`).
 - `scaffold.py` e `templates/`: `mt5x robots new`, o esqueleto de um robô sobre a biblioteca de segurança.
+- `generate.py`: `mt5x robots generate`, que preenche o esqueleto com o sinal MQL5 de uma estratégia declarada
+  (`strategies/declared.py`: a mesma declaração roda no backtester Python).
 - `parity.py`: `mt5x robots parity`, que compara as operações do robô MQL5 com as da estratégia Python.
 - `pipeline.py`: `mt5x robots check`, que encadeia contrato, compilação, backtest e bateria e grava JUnit XML.
 - `battery.py`: bateria de segurança. Itens de código e preset (compilação, stop, martingale, ordens fora da
