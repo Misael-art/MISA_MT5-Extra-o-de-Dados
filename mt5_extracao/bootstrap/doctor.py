@@ -14,7 +14,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import List, Optional
 
-from . import paths
+from . import demo_account, paths
 from .mt5_locator import has_terminal
 
 OK, WARN, FAIL = "OK", "AVISO", "FALHA"
@@ -125,6 +125,19 @@ def check_config(root: Path) -> List[Check]:
     return checks
 
 
+def check_mt5_account(root: Path) -> List[Check]:
+    """Avisa quando o terminal ainda não tem conta (o MT5 novo abre um assistente e não conecta)."""
+    cfg = _read_config(root)
+    mt5_path = cfg.get("MT5", "path", fallback="").strip() if cfg is not None else ""
+    if not mt5_path or not has_terminal(Path(mt5_path)):
+        return []
+    prefix = cfg.get("MT5", "wine_prefix", fallback="").strip() or None
+    if demo_account.has_account(mt5_path, prefix):
+        return [Check("Conta no MT5", OK, "o terminal tem conta cadastrada")]
+    return [Check("Conta no MT5", WARN, "o terminal ainda não tem conta",
+                  "Abra a conta de demonstração gratuita: python -m mt5_extracao.bootstrap demo-account")]
+
+
 def check_mt5_module_windows() -> Check:
     return check_module("MetaTrader5", "MetaTrader5", required=True)
 
@@ -218,6 +231,8 @@ def run_checks(root: Path = paths.PROJECT_ROOT, probe_bridge_conn: bool = True) 
     else:
         checks.append(Check("Ponte MT5 (Wine)", WARN, "desativada ([BRIDGE] enabled = false)",
                             "Para usar o MT5 no Linux rode ./install.sh sem --no-mt5."))
+        return checks
+    checks += check_mt5_account(root)
     return checks
 
 

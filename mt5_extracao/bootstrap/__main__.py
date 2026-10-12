@@ -4,6 +4,7 @@ CLI de configuração inicial e diagnóstico.
     python -m mt5_extracao.bootstrap configure [opções]
     python -m mt5_extracao.bootstrap doctor [--json] [--no-probe]
     python -m mt5_extracao.bootstrap locate-mt5 [--json]
+    python -m mt5_extracao.bootstrap demo-account [--yes]
 
 Códigos de saída: 0 = sucesso, 1 = falha, 2 = uso incorreto.
 """
@@ -14,7 +15,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import config_builder, doctor, mt5_locator, paths
+from . import config_builder, demo_account, doctor, mt5_locator, paths
 
 
 def _print(msg: str = "") -> None:
@@ -146,6 +147,34 @@ def cmd_doctor(args) -> int:
     return 1 if any(c.status == doctor.FAIL for c in checks) else 0
 
 
+def cmd_demo_account(args) -> int:
+    root = Path(args.root).resolve()
+    data = {k: getattr(args, k) for k in demo_account.DEMO_DEFAULTS}
+    shown = {**demo_account.DEMO_DEFAULTS, **{k: v for k, v in data.items() if v}}
+    cfg = demo_account.read_settings(root)
+    if cfg["mt5_dir"] and demo_account.has_account(cfg["mt5_dir"], cfg["wine_prefix"] or None):
+        _print("O MetaTrader 5 já tem uma conta cadastrada. Nada a fazer.")
+        return 0
+    _print("O MetaTrader 5 ainda não tem conta. Posso abrir a conta de demonstração gratuita")
+    _print("(dinheiro virtual, servidor MetaQuotes-Demo) com estes dados do projeto:")
+    _print(f"  Nome: {shown['first']} {shown['last']}   E-mail: {shown['email']}")
+    _print(f"  Celular: {shown['phone']}   Nascimento: {shown['birth']}")
+    _print(demo_account.TERMS_NOTICE)
+    if not args.yes:
+        if not sys.stdin.isatty():
+            _print("Para autorizar sem perguntas, rode novamente com --yes.")
+            return 2
+        if not _ask("Abrir a conta de demonstração agora? (S/n)", "s").lower().startswith("s"):
+            _print("Tudo bem. Você pode abrir a conta pelo próprio MT5 (Arquivo > Abrir uma conta).")
+            return 1
+    code = demo_account.open_demo_account(root, data, log=_print)
+    if code == demo_account.EXIT_REJECTED:
+        _print("Complete o formulário na janela do MT5, ou informe outros dados: --phone, --email...")
+    elif code != 0:
+        _print("Não foi possível abrir a conta sozinho. Abra pelo MT5: Arquivo > Abrir uma conta.")
+    return 0 if code == 0 else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m mt5_extracao.bootstrap",
                                      description="Configuração inicial e diagnóstico do MT5 Extração.")
@@ -179,6 +208,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--wine-prefix", help="Procurar somente neste prefixo Wine (Linux)")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_locate)
+
+    p = sub.add_parser("demo-account", help="Abre a conta de demonstração gratuita no MT5 (se não houver conta)")
+    p.add_argument("--yes", action="store_true", help="Autoriza sem perguntar (aceita os termos da MetaQuotes)")
+    p.add_argument("--first", help="Primeiro nome (padrão: dados do projeto)")
+    p.add_argument("--last", help="Sobrenome")
+    p.add_argument("--email", help="E-mail")
+    p.add_argument("--phone", help="Celular, só dígitos com DDD")
+    p.add_argument("--birth", help="Data de nascimento AAAA-MM-DD")
+    p.set_defaults(func=cmd_demo_account)
     return parser
 
 
