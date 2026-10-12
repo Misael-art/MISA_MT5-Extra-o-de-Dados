@@ -27,6 +27,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots new <Nome> --dir <pasta>               # cria o esqueleto de um robô sobre a biblioteca de segurança
     mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
     mt5x robots check <robô> --symbol X --tf M5        # contrato, compilação, backtest e bateria em um comando
+    mt5x robots parity <robô MQL5> --strategy <chave> --symbol X --tf M5   # mesmas operações que o Python?
     mt5x robots battery <robô> [--preset X] [--deep]   # bateria de segurança; --deep repete o Strategy Tester
     mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
     mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
@@ -721,6 +722,51 @@ def _robots_check(args, ctx, items):
     return EXIT_OK if result.ok else EXIT_FAIL
 
 
+def _robots_parity(args, ctx, items):
+    """Compara as operações do robô MQL5 (Strategy Tester) com as da estratégia Python no mesmo período."""
+    from mt5_extracao.robots import catalog, mt5_tools, parity
+    robot = catalog.get_robot(items, args.path) if args.path else None
+    key = args.strategy or (robot.manifest.get("parity_with", "") if robot is not None else "")
+    if robot is None or not key or not args.symbol or not args.tf:
+        raise ValueError("uso: mt5x robots parity <robô MQL5> --strategy <chave da estratégia Python> --symbol X "
+                         "--tf M5 [--from AAAA-MM-DD] [--to AAAA-MM-DD] (ou \"parity_with\" no robot.json)")
+    strategy = catalog.get_robot(items, key)
+    if robot.kind != catalog.MQL5 or strategy.kind != catalog.PYTHON:
+        raise ValueError("A paridade compara um robô MQL5 com uma estratégia Python (nessa ordem).")
+    tf = _parse_tf(args.tf)
+    start = _parse_date(args.date_from) if args.date_from else None
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+    bridge_was_running = False
+    try:
+        if args.close_terminal and mt5_tools.terminal_running():
+            _print("Fechando o MetaTrader 5 para rodar o teste...")
+            bridge_was_running = mt5_tools.release_terminal()
+        outcome = parity.run(ctx.db, ctx.config, robot, strategy, args.symbol, tf.label, start, end, args.preset)
+    except (OSError, RuntimeError) as e:
+        raise RuntimeError(str(e)) from e
+    finally:
+        if bridge_was_running:
+            mt5_tools.restart_bridge()
+    report = outcome["report"]
+    _data(parity=report.to_dict(), python_run=outcome["python_run"]["run_id"], mql5_run=outcome["mql5_run"]["run_id"])
+    difference = report.result_difference
+    _print(f"Paridade de {robot.name} (MQL5) com {strategy.name} (Python), {args.symbol} {tf.name}:")
+    _print(f"  Operações: {report.python_trades} no Python, {report.mql5_trades} no MQL5; {report.matched} casadas "
+           f"({_fmt_pct(report.matched_share)}; mínimo {_fmt_pct(parity.MIN_MATCHED_SHARE)}), "
+           f"{report.same_sign} com o mesmo sinal de resultado")
+    _print(f"  Resultado: {_fmt_num(report.python_result)} no Python e {_fmt_num(report.mql5_result)} no MQL5" +
+           (f" (diferença {_fmt_pct(difference)}; máximo {_fmt_pct(parity.MAX_RESULT_DIFFERENCE)})"
+            if difference is not None else " (o Python deu zero: diferença não calculável)"))
+    for label, trades in (("Só no Python", report.only_python), ("Só no MQL5", report.only_mql5)):
+        if trades:
+            _print(f"  {label} ({len(trades)}): " + ", ".join(str(t[0])[:16] for t in trades[:8]) +
+                   (" ..." if len(trades) > 8 else ""))
+    _print("Paridade dentro do critério." if report.ok else
+           "Fora do critério. Diferenças legítimas existem (modelo de ticks, spread, horário da corretora): confira as "
+           "operações sem par antes de concluir.")
+    return EXIT_OK if report.ok else EXIT_FAIL
+
+
 def _robots_battery(args, ctx, items):
     from mt5_extracao.robots import battery, catalog
     if not args.path:
@@ -908,6 +954,8 @@ def cmd_robots(args, ctx):
         return _robots_validate(args, ctx, items)
     if args.action == "check":
         return _robots_check(args, ctx, items)
+    if args.action == "parity":
+        return _robots_parity(args, ctx, items)
     if args.action in ("start", "monitor", "stop"):
         return {"start": _robots_start, "monitor": _robots_monitor, "stop": _robots_stop}[args.action](args, ctx, items)
     if args.path:
@@ -1122,7 +1170,7 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check",
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check", "parity",
                                                     "new",
                                                     "start",
                                                     "monitor",
@@ -1137,6 +1185,7 @@ def build_parser():
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
+    p.add_argument("--strategy", help="parity: chave da estratégia Python a comparar (ex.: donchian)")
     p.add_argument("--deep", action="store_true",
                    help="battery (robô MQL5): repete o Strategy Tester para medir fora da amostra e robustez ±20%%")
     p.add_argument("--report", help="check: grava um relatório JUnit XML neste arquivo (para CI)")

@@ -87,7 +87,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | ✅ concluída (validada no Strategy Tester real) |
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | ✅ concluída (executada de ponta a ponta no host) |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | ✅ concluída (executada no host) |
-| T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | a fazer |
+| T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | ⏳ código e testes prontos; **falta comparar um par real** (só existirá com a T10.10 ou a T8.9) |
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | ✅ concluída |
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
@@ -1494,7 +1494,22 @@ nas variações).
 - **Verificação:** `pytest -q`; manual no host com o EA de exemplo (anote o tempo no plano).
 - **Armadilhas:** cada teste abre e fecha o terminal (~12 s no host atual); não rode em paralelo na mesma instalação.
 
-### T10.6 — Paridade Python × MQL5
+### T10.6 — Paridade Python × MQL5 ⏳
+
+**Registrado na entrega:** `robots/parity.py` e `mt5x robots parity <robô MQL5> --strategy <chave> --symbol X --tf M5`
+(ou `"parity_with"` no `robot.json`). Roda o backtest Python e o do Strategy Tester no mesmo período e mostra:
+operações de cada lado, casadas, com o mesmo sinal de resultado, as sem par (com o horário) e a diferença do
+resultado total. Critério: ≥ 95% casadas e diferença ≤ 5%; código de saída 1 fora dele. `sdk` ganhou
+`compare_parity`, `run_parity` e `ParityReport`.
+
+**Diferença em relação ao passo 1:** o casamento é só pelo **horário de saída** (tolerância de uma barra), não por
+horário e direção, porque `_robot_runs.trades_json` guarda horário, resultado e volume, sem a direção. O relatório
+conta, em troca, quantos pares têm o mesmo sinal de resultado. Guardar a direção fica como melhoria.
+
+**Não conferido:** nenhum par real foi comparado, porque ainda não existe um robô MQL5 que seja a versão de uma
+estratégia Python deste projeto. A prova vem com a T10.10 (ou com a T8.9). Atenção ao comparar resultado em dinheiro:
+o lote do Python vem de `[STRATEGY] risk_per_trade` e o do robô, do parâmetro de risco dele; use o mesmo risco e o
+mesmo capital nos dois lados.
 
 - **Objetivo:** provar que a versão MQL5 de uma estratégia faz as mesmas operações que o protótipo em Python.
 - **Depende de:** T10.3, T8.5. Absorve a parte "comparar os trades" da T8.9; portar as seis estratégias continua na T8.9.

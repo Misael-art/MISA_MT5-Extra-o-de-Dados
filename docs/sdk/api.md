@@ -75,6 +75,14 @@ Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e 
 | `CheckResult` | `steps`, `ok`, `report` (a bateria), `to_dict()` |
 | `write_junit(result, path)` | Grava o `CheckResult` em JUnit XML |
 
+## Paridade Python × MQL5
+
+| Nome | O que faz |
+|---|---|
+| `compare_parity(python_trades, mql5_trades, tolerance_minutes=60)` | Casa as operações pelo horário de saída e devolve `ParityReport` |
+| `run_parity(db, config, robot, strategy_robot, symbol, timeframe, ...)` | Roda os dois backtests no mesmo período e compara. Devolve `report`, `python_run` e `mql5_run` |
+| `ParityReport` | `matched`, `matched_share`, `only_python`, `only_mql5`, `result_difference`, `same_sign`, `ok` |
+
 ## Estratégias Python
 
 | Nome | O que faz |

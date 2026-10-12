@@ -22,6 +22,9 @@ from mt5_extracao.robots.catalog import Robot, get_robot, import_library, load_c
 from mt5_extracao.robots.contract import CONTRACT_VERSION, Problem
 from mt5_extracao.robots.contract import validate as validate_contract
 from mt5_extracao.robots.mt5_tools import CompileResult, compile_robot, install_robot
+from mt5_extracao.robots.parity import ParityReport
+from mt5_extracao.robots.parity import compare as compare_parity
+from mt5_extracao.robots.parity import run as run_parity
 from mt5_extracao.robots.pipeline import CheckResult, check, write_junit
 from mt5_extracao.robots.scaffold import create as new_robot
 from mt5_extracao.strategies import Strategy, StrategyInfo, get_strategy
@@ -42,6 +45,8 @@ __all__ = [
     "run_python", "run_mql5",
     # bateria e ciclo completo
     "BatteryItem", "BatteryReport", "run_battery", "CheckResult", "check", "write_junit",
+    # paridade Python x MQL5
+    "ParityReport", "compare_parity", "run_parity",
     # estratégias Python
     "Strategy", "StrategyInfo", "get_strategy", "BacktestConfig", "run_backtest", "validate_strategy",
 ]

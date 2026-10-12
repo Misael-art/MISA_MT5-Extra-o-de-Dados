@@ -11,7 +11,7 @@ REPO = Path(__file__).resolve().parents[1]
 SURFACE = {
     "API_VERSION": None, "CONTRACT_VERSION": None,
     "Robot": None, "Problem": None, "CompileResult": None, "BatteryItem": None, "BatteryReport": None,
-    "CheckResult": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,
+    "CheckResult": None, "ParityReport": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,
     "load_catalog": ["config", "db"],
     "get_robot": ["robots", "key"],
     "robot_from_file": ["path"],
@@ -26,6 +26,9 @@ SURFACE = {
     "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running"],
     "check": ["db", "config", "robot", "robots", "symbol", "timeframe", "start", "end", "preset", "run", "is_running"],
     "write_junit": ["result", "path"],
+    "compare_parity": ["python_trades", "mql5_trades", "tolerance_minutes"],                     # T10.6
+    "run_parity": ["db", "config", "robot", "strategy_robot", "symbol", "timeframe", "start", "end", "preset",
+                   "runner", "is_running"],
     "get_strategy": ["key", "params"],
     "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],
