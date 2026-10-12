@@ -24,6 +24,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
+    mt5x robots new <Nome> --dir <pasta>               # cria o esqueleto de um robô sobre a biblioteca de segurança
     mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
     mt5x robots battery <robô> [--preset X]            # bateria de segurança: código, preset e estatística
     mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
@@ -818,6 +819,29 @@ def cmd_robots(args, ctx):
             _print(f"  {note}")
         return EXIT_OK
     items = robots.load_catalog(ctx.config, ctx.db)
+    if args.action == "new":
+        from mt5_extracao.robots import scaffold
+        if not args.path or not args.dir:
+            raise ValueError("uso: mt5x robots new <Nome> --dir <pasta de robôs> (ex.: --dir ~/robos)")
+        try:
+            created = scaffold.create(args.path, args.dir, items, ctx.config)
+        except (OSError, RuntimeError) as e:
+            raise RuntimeError(str(e)) from e
+        robot = robots.robot_from_file(created[0])
+        _data(robot=_robot_dict(robot), files=[str(p) for p in created])
+        _print(f"Robô {robot.name} criado:")
+        for path in created:
+            _print(f"  {path}")
+        root = Path(args.dir).expanduser().resolve()
+        from mt5_extracao.robots import store
+        known = [Path(p).resolve() for p in catalog.library_dirs(ctx.config)] + [
+            Path(r["path"]).resolve() for r in store.load_records(ctx.db).values() if r["kind"] == catalog.LIBRARY]
+        if root not in known:
+            robots.import_library(ctx.db, root)
+            _print(f"A pasta {root} foi adicionada ao catálogo.")
+        _print(f"Agora escreva o sinal em {created[0].name} (veja o README ao lado) e rode: "
+               f"mt5x robots compile {robot.key.split(':', 1)[1]}")
+        return EXIT_OK
     if args.action == "backtest":
         return _robots_backtest(args, ctx, items)
     if args.action in ("install", "compile"):
@@ -1040,7 +1064,8 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "start",
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "new",
+                                                    "start",
                                                     "monitor",
                                                     "stop"],
                    default="list")
@@ -1053,6 +1078,7 @@ def build_parser():
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
+    p.add_argument("--dir", help="new: pasta de robôs onde criar (layout Experts/ Presets/)")
     p.add_argument("--upgrade-safety", action="store_true",
                    help="install/compile: troca a biblioteca de segurança instalada no MT5 pela versão do clone")
     p.add_argument("--preset", help="backtest de robô MQL5 e battery: nome do preset (.set) a usar")

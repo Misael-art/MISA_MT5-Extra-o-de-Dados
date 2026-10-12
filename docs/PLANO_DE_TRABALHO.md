@@ -84,7 +84,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.0 | Plano da Fase 10 (SDK de robôs) e regra da pendência do Windows | T8.6, T9.3 | ✅ concluída |
 | T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | ✅ concluída |
 | T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | ✅ concluída (biblioteca só compilada: nenhum robô operou com ela) |
-| T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | a fazer |
+| T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | ⏳ código, testes e compilação real prontos; **falta rodar o esqueleto com um sinal no Strategy Tester** |
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | a fazer |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
 | T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | a fazer |
@@ -1389,7 +1389,16 @@ erros. **Não feito:** download automático da biblioteca; o HADOUKEN ainda usa 
 - **Armadilhas:** não versione os `.mqh` aqui. Se o HADOUKEN v7 ainda não compilar, extraia só a `Safety/`: é ela que
   precisa compilar, não o painel.
 
-### T10.3 — `mt5x robots new`
+### T10.3 — `mt5x robots new` ⏳
+
+**Registrado na entrega:** `robots/scaffold.py`, modelos em `robots/templates/` e `mt5x robots new <Nome> --dir <pasta>`
+(registra a pasta no catálogo). O esqueleto traz risco, stop pelo ATR, limites, parada de emergência e exportação de
+operações; a estratégia entra nos blocos marcados `MT5X:PARAMETROS`, `GLOBAIS`, `INIT` e `SINAL`
+(`scaffold.set_section` preenche um bloco, para a T10.10 usar). **Conferido no host:** o robô recém-criado passa em
+`mt5x robots validate` e compila no MetaEditor com a biblioteca real 1.0.0, sem erros nem avisos, vazio e também com
+um sinal de cruzamento de médias. **Não conferido:** o robô operando no Strategy Tester. A tentativa foi feita com o
+MT5 do usuário aberto e o teste, corretamente, não rodou. Antes de marcar ✅: com o MT5 fechado, criar um robô,
+escrever um sinal simples, rodar `mt5x robots backtest` e confirmar que há operações e que todas têm stop.
 
 - **Objetivo:** começar um robô novo já certo: sobre a biblioteca de segurança, com contrato, presets e teste.
 - **Depende de:** T10.1, T10.2.
