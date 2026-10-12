@@ -22,6 +22,8 @@ from mt5_extracao.robots.catalog import Robot, get_robot, import_library, load_c
 from mt5_extracao.robots.contract import CONTRACT_VERSION, Problem
 from mt5_extracao.robots.contract import validate as validate_contract
 from mt5_extracao.robots.generate import create as generate_robot
+from mt5_extracao.robots.matrix import build as build_matrix
+from mt5_extracao.robots.matrix import positives as matrix_positives
 from mt5_extracao.robots.mt5_tools import CompileResult, compile_robot, install_robot
 from mt5_extracao.robots.parity import ParityReport
 from mt5_extracao.robots.parity import compare as compare_parity
@@ -51,6 +53,8 @@ __all__ = [
     "ParityReport", "compare_parity", "run_parity",
     # estratégia declarada e geração do robô MQL5
     "SignalSpec", "DeclaredStrategy", "generate_robot",
+    # visão de conjunto: ativo x timeframe x robô
+    "build_matrix", "matrix_positives",
     # estratégias Python
     "Strategy", "StrategyInfo", "get_strategy", "BacktestConfig", "run_backtest", "validate_strategy",
 ]

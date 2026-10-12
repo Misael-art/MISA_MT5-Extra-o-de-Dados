@@ -100,7 +100,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | ✅ concluída no Linux (conferida no host); Windows não validado |
 | T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | ✅ concluída para as ações do programa; os avisos de operações do robô só com MT5 simulado (dependem da T8.7) |
 | T11.5 | Lote de backtests: robôs × ativos × timeframes em fila, com retomada | T11.2 | ✅ concluída (executada no host) |
-| T11.6 | Matriz de resultados (ativo × timeframe × robô) como camada de dados | T11.5 | a fazer |
+| T11.6 | Matriz de resultados (ativo × timeframe × robô) como camada de dados | T11.5 | ✅ concluída |
 | T11.7 | Painel visual em HTML: visão por ativo e visão por robô | T11.6 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -2019,7 +2019,12 @@ gerado da declaração deram resultados idênticos nas seis combinações.
 - **Critérios de aceite:** 2 robôs × 2 ativos × 2 timeframes = 8 execuções; interrompido e repetido com `--resume`,
   só roda o que falta.
 
-### T11.6 — Matriz de resultados
+### T11.6 — Matriz de resultados ✅
+
+**Registrado na entrega:** `robots/matrix.py` (`build`, `cell_status`, `positives`) e, na API pública, `build_matrix` e
+`matrix_positives`. Cada célula traz a execução mais recente, a origem do número e o veredito (bateria ou validação,
+com a data). Uma aprovação cujo código mudou depois deixa de valer e a célula vira "reprovado", com o motivo. As três
+regras têm um teste cada. Só leitura: `build` não roda teste nenhum.
 
 - **Objetivo:** uma função única que o painel (e depois a interface) consome.
 - **Arquivos:** `robots/matrix.py` (novo), `sdk.py`, `docs/sdk/api.md`, `tests/test_robots_matrix.py` (novo).

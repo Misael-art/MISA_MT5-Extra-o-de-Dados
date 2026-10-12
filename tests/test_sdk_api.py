@@ -31,6 +31,8 @@ SURFACE = {
     "run_parity": ["db", "config", "robot", "strategy_robot", "symbol", "timeframe", "start", "end", "preset",
                    "runner", "is_running"],
     "generate_robot": ["spec", "name", "folder", "robots", "config", "magic"],                   # T10.10
+    "build_matrix": ["db", "config", "robots"],                                                  # T11.6
+    "matrix_positives": ["matrix", "robot_key"],
     "get_strategy": ["key", "params"],
     "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],

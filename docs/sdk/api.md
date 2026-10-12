@@ -94,6 +94,16 @@ roda o mesmo teste em vários ativos.
 
 Não é um tradutor de Python: só o que está na declaração é gerado. A prova de cada robô gerado é a paridade.
 
+## Visão de conjunto
+
+| Nome | O que faz |
+|---|---|
+| `build_matrix(db, config=None, robots=None)` | Ativos com base, timeframes, robôs e uma célula por (robô, ativo, timeframe) com a execução mais recente, a origem do número e a situação (`aprovado`, `reprovado`, `promissor`, `poucas operações`, `negativo`). Só leitura |
+| `matrix_positives(matrix, robot_key)` | Onde o robô teve resultado positivo, os aprovados primeiro |
+
+"Promissor" é lucro com 30 ou mais operações **sem** bateria nem validação: não é aprovação. É o que o painel
+(`mt5x panel`) mostra.
+
 ## Estratégias Python
 
 | Nome | O que faz |
