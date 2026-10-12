@@ -26,6 +26,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
     mt5x robots new <Nome> --dir <pasta>               # cria o esqueleto de um robô sobre a biblioteca de segurança
     mt5x robots validate <robô>                        # confere o robot.json contra o contrato do SDK
+    mt5x robots check <robô> --symbol X --tf M5        # contrato, compilação, backtest e bateria em um comando
     mt5x robots battery <robô> [--preset X]            # bateria de segurança: código, preset e estatística
     mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
     mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
@@ -657,10 +658,8 @@ def _robots_mt5(args, ctx, items):
     _print(f"{robot.name}: {result.summary}")
     if not result.ok:
         return EXIT_FAIL
-    record = store.load_records(ctx.db).get(robot.key, {})          # não apaga o que outras etapas gravaram
-    stage = record.get("stage") if record.get("stage") in (catalog.DEMO, catalog.LIVE) else catalog.COMPILED
-    store.save_record(ctx.db, robot.key, robot.kind, robot.name, robot.path, stage,
-                      dict(record.get("meta", {}), compiled=result.compiled, warnings=result.warnings))
+    from mt5_extracao.robots import pipeline
+    pipeline.record_compiled(ctx.db, robot, result)          # não apaga o que outras etapas gravaram
     return EXIT_OK
 
 
@@ -681,6 +680,45 @@ def _robots_validate(args, ctx, items):
     for problem in problems:
         _print(f"  ✗ {problem}")
     return EXIT_FAIL
+
+
+def _robots_check(args, ctx, items):
+    """Ciclo completo do desenvolvedor; código de saída 0 só se todas as etapas passarem (bom para CI)."""
+    from mt5_extracao.robots import catalog, mt5_tools, pipeline
+    if not args.path or not args.symbol or not args.tf:
+        raise ValueError("uso: mt5x robots check <robô> --symbol EURUSD --tf H1 [--from AAAA-MM-DD] [--to AAAA-MM-DD] "
+                         "[--preset NOME] [--report arquivo.xml]")
+    robot = catalog.get_robot(items, args.path)
+    tf = _parse_tf(args.tf)
+    start = _parse_date(args.date_from) if args.date_from else None
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+    bridge_was_running = False
+    try:
+        if args.close_terminal and mt5_tools.terminal_running():
+            _print("Fechando o MetaTrader 5 para rodar o teste...")
+            bridge_was_running = mt5_tools.release_terminal()
+        result = pipeline.check(ctx.db, ctx.config, robot, items, args.symbol, tf.label, start, end, args.preset)
+    finally:
+        if bridge_was_running:
+            mt5_tools.restart_bridge()
+    if args.report:
+        pipeline.write_junit(result, args.report)
+    _data(check=result.to_dict(), report=args.report or "")
+    icons = {pipeline.PASSED: "✓", pipeline.WARNED: "⚠", pipeline.FAILED: "✗", pipeline.SKIPPED: "–"}
+    _print(f"Conferência de {robot.name}:")
+    for step in result.steps:
+        _print(f"  {icons[step.status]} {step.name} ({step.status}, {_fmt_num(step.seconds, 1)} s)" +
+               (f": {step.detail}" if step.detail else ""))
+    if result.report:
+        for item in (i for i in result.report.items if i.status in ("falha", "aviso")):
+            _print(f"      {item.icon} {item.name}: {item.detail}")
+            if item.fix:
+                _print(f"          O que fazer: {item.fix}")
+    if args.report:
+        _print(f"Relatório JUnit: {args.report}")
+    _print("Tudo passou. Aprovação não é garantia de resultado." if result.ok
+           else "Há etapa reprovada: corrija e rode de novo.")
+    return EXIT_OK if result.ok else EXIT_FAIL
 
 
 def _robots_battery(args, ctx, items):
@@ -850,6 +888,8 @@ def cmd_robots(args, ctx):
         return _robots_battery(args, ctx, items)
     if args.action == "validate":
         return _robots_validate(args, ctx, items)
+    if args.action == "check":
+        return _robots_check(args, ctx, items)
     if args.action in ("start", "monitor", "stop"):
         return {"start": _robots_start, "monitor": _robots_monitor, "stop": _robots_stop}[args.action](args, ctx, items)
     if args.path:
@@ -1064,7 +1104,8 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "new",
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check",
+                                                    "new",
                                                     "start",
                                                     "monitor",
                                                     "stop"],
@@ -1078,6 +1119,7 @@ def build_parser():
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
+    p.add_argument("--report", help="check: grava um relatório JUnit XML neste arquivo (para CI)")
     p.add_argument("--dir", help="new: pasta de robôs onde criar (layout Experts/ Presets/)")
     p.add_argument("--upgrade-safety", action="store_true",
                    help="install/compile: troca a biblioteca de segurança instalada no MT5 pela versão do clone")

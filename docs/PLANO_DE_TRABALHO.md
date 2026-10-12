@@ -85,7 +85,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | ✅ concluída |
 | T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | ✅ concluída (biblioteca só compilada: nenhum robô operou com ela) |
 | T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | ⏳ código, testes e compilação real prontos; **falta rodar o esqueleto com um sinal no Strategy Tester** |
-| T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | a fazer |
+| T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | ⏳ código e testes prontos com executáveis simulados; **falta a execução real no host** |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
 | T10.6 | Paridade Python × MQL5: `mt5x robots parity` (absorve a parte de comparação da T8.9) | T10.3, T8.5 | a fazer |
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | a fazer |
@@ -1418,7 +1418,15 @@ escrever um sinal simples, rodar `mt5x robots backtest` e confirmar que há oper
 - **Verificação:** `pytest -q` (conteúdo gerado e `contract.validate`); manual no host: `new` → `compile`.
 - **Armadilhas:** modelo é texto com marcadores simples (`{{NOME}}`); não adicione motor de templates.
 
-### T10.4 — `mt5x robots check`
+### T10.4 — `mt5x robots check` ⏳
+
+**Registrado na entrega:** `robots/pipeline.py` e `mt5x robots check <robô> --symbol X --tf M5 [--preset] [--report
+arquivo.xml] [--close-terminal]`. Quatro etapas, parando na primeira que falhar: contrato → instalar e compilar →
+backtest → bateria. Situações: passou, aviso (não reprova), falhou, não executada. `--json` devolve as etapas e a
+bateria; `--report` grava JUnit XML com um caso por etapa e por item da bateria. Decisões: robô **sem** contrato
+declarado recebe aviso na primeira etapa e segue (robôs antigos continuam conferíveis); backtest **sem nenhuma
+operação** reprova a etapa. **Não conferido:** a execução real no host (o MT5 do usuário estava aberto); junto com a
+pendência da T10.3, é o mesmo teste: `new` → sinal simples → `check`.
 
 - **Objetivo:** o ciclo do desenvolvedor em um comando, utilizável em CI.
 - **Depende de:** T10.1.

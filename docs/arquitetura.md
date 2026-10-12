@@ -160,6 +160,8 @@ Guia do usuário: [robos.md](robos.md). Plano: Fase 8 em [PLANO_DE_TRABALHO.md](
   (magic, risco, limites, stop). Especificação em [sdk/contrato.md](sdk/contrato.md).
 - `safety_lib.py`: instala a biblioteca de segurança `mt5x-safety` (repositório próprio) na versão que o robô
   declara, a partir de um clone local (`[ROBOTS] safety_lib_dir`).
+- `scaffold.py` e `templates/`: `mt5x robots new`, o esqueleto de um robô sobre a biblioteca de segurança.
+- `pipeline.py`: `mt5x robots check`, que encadeia contrato, compilação, backtest e bateria e grava JUnit XML.
 - `battery.py`: bateria de segurança. Itens de código e preset (compilação, stop, martingale, ordens fora da
   `Safety/`, DLL, magic, limites) e estatísticos sobre as operações do último backtest (Monte Carlo, ruína,
   estresse de custo). Resultado em `_robot_checks`; a bateria mais recente decide o estágio "Bateria".
