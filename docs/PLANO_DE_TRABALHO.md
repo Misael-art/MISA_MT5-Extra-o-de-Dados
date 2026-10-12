@@ -102,6 +102,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.5 | Lote de backtests: robôs × ativos × timeframes em fila, com retomada | T11.2 | ✅ concluída (executada no host) |
 | T11.6 | Matriz de resultados (ativo × timeframe × robô) como camada de dados | T11.5 | ✅ concluída |
 | T11.7 | Painel visual em HTML: visão por ativo e visão por robô | T11.6 | ✅ concluída (conferida com dados reais do host) |
+| T11.8 | Botão na interface para abrir o painel de resultados | T11.7 | ✅ concluída |
+| T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | a fazer |
+| T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -2068,6 +2071,53 @@ A aparência foi vista em capturas de um navegador sem interface, não em uso co
 - **Critérios de aceite:** aberto no navegador com dados reais do host, mostra as duas visões e a imagem fica
   registrada na entrega; nada de senha, conta ou caminho pessoal no arquivo.
 - **Fora desta tarefa:** rodar testes a partir do painel (ele é só leitura) e a aba na janela do programa.
+
+### Painel vivo (T11.8 a T11.10)
+
+Pedido do dono do projeto em 2026-10-12: o painel não achado pela interface precisa de um botão de lançamento, e
+deve poder executar ações do projeto e se atualizar sozinho, em vez de ser só uma fotografia.
+
+Um arquivo HTML aberto do disco não executa nada no computador. Para ter botões é preciso um servidor local do
+próprio projeto. **Regras de segurança, obrigatórias nas duas tarefas do servidor:**
+
+1. Escuta só em `127.0.0.1`; recusa qualquer pedido cujo cabeçalho `Host` não seja `127.0.0.1` ou `localhost`.
+2. Uma chave aleatória por sessão; sem ela (no cabeçalho do pedido) nenhuma ação e nenhum dado saem. Impede que
+   outra página aberta no navegador dispare ações.
+3. Lista fechada de ações, cada uma com parâmetros conferidos contra o que existe (robô do catálogo, ativo da base,
+   timeframe conhecido). Nada de comando livre, caminho de arquivo ou texto que vá para um interpretador.
+4. Um trabalho por vez, com progresso e resultado visíveis; o que fecha o MT5 pede confirmação na página.
+5. **Fora do painel, por decisão registrada:** iniciar robô em conta (o início em demo ainda não foi validado com o
+   MT5 real), liberar o PARAR TUDO, editar configuração ou código. Acionar o PARAR TUDO entra, porque é a ação segura.
+6. `mt5x audit` confere se o painel está exposto à rede, como faz com a ponte.
+
+### T11.8 — Botão na interface ✅
+
+**Registrado na entrega:** botão **Painel de resultados** na barra da aba Robôs e o item "Painel de resultados" nos
+menus Exibir e Estratégias (`UIManager.open_results_panel`). Gera `exports/painel_resultados.html` em segundo plano
+com o que há na base e abre no navegador. Conferido em teste com a janela real e em uma captura da aba Robôs.
+Quando a T11.9 entrar, o mesmo botão passa a abrir o painel vivo.
+
+### T11.9 — Painel vivo: servidor, atualização e ações sem MT5
+
+- **Arquivos:** `robots/panel_server.py` (novo, só biblioteca padrão), `robots/panel.py`, `cli.py`, `ui_manager.py`,
+  `audit.py`, `tests/test_panel_server.py` (novo).
+- **Passos:** `mt5x panel --serve [--port N]` sobe o servidor em `127.0.0.1`, abre o navegador já com a chave e fica
+  até Ctrl+C. Rotas: a página; `GET /api/matrix` (a matriz atual); `GET /api/job` (trabalho em curso: nome,
+  progresso, mensagens, resultado); `POST /api/action` com uma ação da lista. Ações desta tarefa: montar timeframes
+  (`resample`), backtest de estratégia Python (célula, linha ou lote), bateria no ativo da célula e PARAR TUDO. A
+  página consulta o servidor a cada poucos segundos e redesenha quando a matriz muda; sem servidor (arquivo aberto
+  do disco) os botões não aparecem e ela continua sendo a fotografia de sempre.
+- **Critérios de aceite:** as seis regras acima, cada uma com teste (pedido sem chave, com `Host` de fora, ação fora
+  da lista, parâmetro inexistente, segundo trabalho enquanto um roda); no host, um backtest disparado pelo painel
+  aparece na matriz sem recarregar a página.
+
+### T11.10 — Painel vivo: ações que usam o MT5
+
+- **Passos:** atualizar a base (`update`) e gravar a especificação de contrato (`specs`), que abrem o terminal
+  (oculto, se o modo estiver ligado); backtest de robô MQL5 (célula, linha ou lote), que fecha o terminal desta
+  instalação e religa a ponte, sempre com confirmação na página.
+- **Critérios de aceite:** no host, com o modo oculto, uma atualização e um teste MQL5 disparados pelo painel; a
+  página mostra o progresso e o aviso do sistema chega no fim.
 
 ---
 

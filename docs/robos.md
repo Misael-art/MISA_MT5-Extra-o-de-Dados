@@ -96,7 +96,8 @@ Conta real vem **desligada** de fábrica.
 
 ## Painel: tudo de uma vez
 
-`mt5x panel --open` gera e abre uma página com a visão de conjunto: os ativos com base, os timeframes e, para o
+Na janela do programa, o botão **Painel de resultados** (aba Robôs, ou menu Exibir) gera e abre no navegador uma
+página com a visão de conjunto; pela linha de comando é `mt5x panel --open`. Ela mostra os ativos com base, os timeframes e, para o
 robô ou a estratégia escolhida, o resultado de cada combinação. Para preencher o painel de uma vez:
 
 ```bash

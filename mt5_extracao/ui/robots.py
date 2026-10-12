@@ -47,6 +47,11 @@ class RobotsPanel:
         Tooltip(self.import_button, "Robôs MQL5 vêm de um arquivo ou de uma pasta no formato do MT5 (Experts, Include, "
                                     "Presets), como o clone do projeto HADOUKEN. Nada é copiado: o programa só lê.",
                 self.theme)
+        self.panel_button = ttk.Button(bar, text="Painel de resultados", style="Accent.TButton",
+                                       command=ui.open_results_panel)
+        self.panel_button.pack(side=tk.RIGHT)
+        Tooltip(self.panel_button, "Abre no navegador a visão de conjunto: todos os ativos com base, os timeframes e o "
+                                   "resultado de cada robô ou estratégia em cada combinação. Só leitura.", self.theme)
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.render())
         ttk.Label(bar, text="Buscar", style="Muted.TLabel").pack(side=tk.LEFT, padx=(16, 6))

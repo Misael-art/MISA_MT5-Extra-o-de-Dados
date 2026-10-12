@@ -97,6 +97,34 @@ class UIManager:
             self._ui_queue.put((done, (result, error)))
         threading.Thread(target=target, daemon=True).start()
 
+    def open_results_panel(self, opener=None):
+        """
+        Gera o painel de resultados (exports/painel_resultados.html) com o que há na base agora e o abre no
+        navegador. É a visão de conjunto: ativos x timeframes x robôs. O painel é só leitura.
+        """
+        from mt5_extracao.bootstrap import paths
+        from mt5_extracao.robots import matrix, panel
+        db, config = self.app.db_manager, getattr(self.app, "config", None)
+        target = paths.PROJECT_ROOT / "exports" / "painel_resultados.html"
+        self.log("Gerando o painel de resultados...")
+
+        def work():
+            data = matrix.build(db, config)
+            return panel.write(data, target), len(data["cells"])
+
+        def done(result, error):
+            if error is not None:
+                self.log(f"Não foi possível gerar o painel: {error}")
+                messagebox.showerror("Painel de resultados", f"Não foi possível gerar o painel:\n{error}",
+                                     parent=self.root)
+                return
+            path, cells = result
+            import webbrowser
+            (opener or webbrowser.open)(Path(path).resolve().as_uri())
+            self.log(f"Painel de resultados aberto no navegador ({cells} combinação(ões) testada(s)): {path}" +
+                     ("" if cells else ". Ainda não há backtests: use o card de um robô ou 'mt5x robots backtest'."))
+        self.run_bg(work, done)
+
     def _pump_ui_queue(self):
         try:
             while True:
@@ -1454,6 +1482,7 @@ class UIManager:
         view_menu.add_command(label="Robôs", command=lambda: self.notebook.select(self.robots_panel.frame))
         view_menu.add_command(label="Atividade", command=lambda: self.notebook.select(4))
         view_menu.add_separator()
+        view_menu.add_command(label="Painel de resultados (abre no navegador)", command=self.open_results_panel)
         view_menu.add_command(label="Atualizar a base (F5)", command=self.refresh_inventory)
 
         # Menu Ajuda
@@ -1473,6 +1502,8 @@ class UIManager:
                                   command=lambda: self.open_strategy_dialog("validate"))
         strategy_menu.add_command(label="Gerar relatório e abrir no navegador...",
                                   command=lambda: self.open_strategy_dialog("report"))
+        strategy_menu.add_command(label="Painel de resultados: ativos x timeframes x robôs...",
+                                  command=self.open_results_panel)
         strategy_menu.add_separator()
         strategy_menu.add_command(label="Sobre as estratégias", command=self.show_strategies_info)
 

@@ -199,3 +199,26 @@ def test_backtest_from_the_robot_card(ui):
 
     panel.select("mql5:demoguard")
     assert not detail.run_box.winfo_ismapped() and "Strategy Tester" in detail.tests_text.cget("text")
+
+
+def test_results_panel_button_generates_and_opens_the_page(ui, tmp_path, monkeypatch):
+    """T11.8: o painel de resultados tem botão na aba Robôs e item nos menus Exibir e Estratégias."""
+    from mt5_extracao.bootstrap import paths
+    monkeypatch.setattr(paths, "PROJECT_ROOT", tmp_path)                  # não grava na pasta exports do projeto
+    opened = []
+    button = ui.robots_panel.panel_button
+    assert "Painel de resultados" in button.cget("text")
+    monkeypatch.setattr(ui, "open_results_panel", lambda opener=None: type(ui).open_results_panel(ui, opened.append))
+    type(ui).open_results_panel(ui, opened.append)
+    ui.pump(1.0)
+    target = tmp_path / "exports" / "painel_resultados.html"
+    assert target.is_file() and opened == [target.resolve().as_uri()]
+    html = target.read_text(encoding="utf-8")
+    assert "Painel de resultados" in html and "WIN$N" in html           # o ativo que está na base de teste
+    labels = []
+    menu_bar = ui.root.nametowidget(ui.root.cget("menu"))
+    for i in range(menu_bar.index("end") + 1):
+        submenu = menu_bar.nametowidget(menu_bar.entrycget(i, "menu"))
+        labels += [submenu.entrycget(j, "label") for j in range(submenu.index("end") + 1)
+                   if submenu.type(j) == "command"]
+    assert sum("Painel de resultados" in label for label in labels) == 2
