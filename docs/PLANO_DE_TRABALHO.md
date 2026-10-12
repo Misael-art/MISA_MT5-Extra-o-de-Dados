@@ -83,7 +83,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T9.3 | Ponte restrita: só funções de leitura, sem execução de código nem pickle | T9.2 | ✅ concluída (reinicie a ponte depois de atualizar) |
 | T10.0 | Plano da Fase 10 (SDK de robôs) e regra da pendência do Windows | T8.6, T9.3 | ✅ concluída |
 | T10.1 | Contrato do robô v1: especificação, esquema do `robot.json` e `mt5x robots validate` | T8.6 | a fazer |
-| T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 + decisão do dono (repositório novo) | a fazer |
+| T10.2 | Biblioteca de segurança MQL5 própria e versionada, instalada pelo SDK | T8.4 | repositório `mt5x-safety` criado (v1.0.0, compila); falta a parte deste repositório |
 | T10.3 | `mt5x robots new`: esqueleto de robô sobre a biblioteca de segurança | T10.1, T10.2 | a fazer |
 | T10.4 | `mt5x robots check`: instalar, compilar, testar e rodar a bateria em um comando, com relatório para CI | T10.1 | a fazer |
 | T10.5 | Bateria completa para MQL5: robustez ±20% e fora da amostra repetindo o Strategy Tester | T10.4 | a fazer |
@@ -91,6 +91,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.7 | API Python pública e estável (`mt5_extracao.sdk`), com versão e política de mudança | T10.4 | a fazer |
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | a fazer |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
+| T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | a fazer |
+| T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -1276,7 +1278,8 @@ amigável não muda: o SDK é uma camada a mais sobre o mesmo código.
 | Camada de segurança MQL5 | Sai do HADOUKEN e vira **biblioteca própria, em repositório próprio, com versão**. O SDK instala uma versão fixada. O HADOUKEN e os robôs novos passam a depender dela |
 | Código MQL5 neste repositório | Continua valendo "nenhum código de robô é copiado para cá". Exceção única: os **modelos** de `mt5x robots new` (esqueleto, não estratégia), que são código deste projeto |
 | Quem envia ordens | Só o robô MQL5, pela biblioteca de segurança. O Python nunca envia ordens (`tests/test_no_order_send.py` continua valendo) |
-| Tradução Python → MQL5 | Manual, por quem desenvolve. O SDK confere a **paridade** das operações; não gera MQL5 a partir de Python |
+| Tradução Python → MQL5 | Função **opcional** (T10.10): gera MQL5 a partir de uma estratégia **declarada** (indicadores e condições suportados), que roda igual nos dois lados. Código Python livre continua sendo portado à mão; em qualquer caso o SDK confere a **paridade** (T10.6) |
+| MQL5 Market | Função **opcional** (T10.11): confere as exigências e monta o pacote. O envio é feito pela pessoa no MQL5.com |
 | Windows | Pendência (T10.W). O desenvolvimento segue no host atual; veja a regra abaixo |
 
 ### Regra da pendência do Windows (vale para toda a fase)
@@ -1335,9 +1338,14 @@ Este texto, a linha F10 e os marcos M6/M7 do ROADMAP, a regra do Windows no AGEN
 
 - **Objetivo:** o desenvolvedor recebe a camada de segurança como dependência com versão, e não copiando uma pasta
   de outro projeto.
-- **Depende de:** T8.4 e de uma **decisão do dono do projeto**: criar o repositório da biblioteca (nome sugerido:
-  `mt5x-safety`) a partir de `Include/Framework/HADOUKEN/Safety/` do `projeto-indicadores-mt5`. Um agente **não**
-  cria repositório nem move código do HADOUKEN por conta própria: pare e peça.
+- **Depende de:** T8.4.
+- **Feito em 2026-10-12, a pedido do dono do projeto:** repositório privado
+  [`Misael-art/mt5x-safety`](https://github.com/Misael-art/mt5x-safety), versão `v1.0.0`, clone local em
+  `~/Projects/mt5x-safety`. Contém os oito arquivos de `Include/Framework/HADOUKEN/Safety/` do
+  `projeto-indicadores-mt5` (commit `b3a4bef`), sem alteração, em `Include/MT5X/Safety/`, mais `VERSION`,
+  `safety.json` e `Experts/MT5X/SafetySmoke.mq5`. **Conferido:** o teste de compilação passa no MetaEditor do
+  host sem erros nem avisos. **Não conferido:** nenhum robô operou com a biblioteca; o HADOUKEN ainda não foi
+  alterado para depender dela (continua com a própria cópia). O passo 1 abaixo está cumprido.
 - **Arquivos (neste repositório):** `mt5_extracao/robots/safety_lib.py` (novo), `cli.py`, `config_builder.py`,
   `config/config.ini.example`, `robots/battery.py`, `tests/test_robots_safety_lib.py` (novo).
 - **Passos:**
@@ -1472,6 +1480,55 @@ Este texto, a linha F10 e os marcos M6/M7 do ROADMAP, a regra do Windows no AGEN
 - **Critérios de aceite:** o wheel instala em um ambiente limpo e `mt5x --help` e `from mt5_extracao import sdk`
   funcionam; os modelos de `robots new` estão dentro do wheel.
 - **Verificação:** `pip install dist/*.whl` em um venv novo.
+
+### T10.10 — Geração de MQL5 a partir de Python (opcional)
+
+- **Objetivo:** escrever a estratégia uma vez, em Python, e obter o robô MQL5 correspondente, sem traduzir à mão.
+- **Depende de:** T10.3 (modelo do robô) e T10.6 (paridade, que é como se prova que a geração está certa).
+- **Limite, por decisão registrada:** não é um tradutor de Python. `gerar_sinais` das seis estratégias é código
+  pandas livre e **não** é convertido. O que se gera é MQL5 a partir de uma **declaração**: indicadores de uma
+  lista suportada e condições de entrada, saída, stop e alvo escritas como dados.
+- **Arquivos:** `mt5_extracao/strategies/declared.py` (novo), `mt5_extracao/robots/generate.py` (novo),
+  `mt5_extracao/robots/templates/Signal.mqh.tmpl` (novo), `cli.py`, `tests/test_robots_generate.py` (novo).
+- **Passos:**
+  1. `declared.py`: `SignalSpec` (dataclass) com indicadores (`sma`, `ema`, `rsi`, `atr`, `donchian`, `bollinger`:
+     só os que já existem em `strategies/indicators.py`), condições (`cruza_acima`, `cruza_abaixo`, `maior`, `menor`
+     entre séries ou constantes), stop e alvo em múltiplos de ATR. `DeclaredStrategy(Strategy)` executa a
+     declaração no backtester Python: mesma interface `gerar_sinais`.
+  2. `generate.py`: `to_mql5(spec) -> str` gera o módulo de sinal (`iMA`, `iRSI`, `iATR`... e as condições) que entra
+     no ponto marcado do modelo da T10.3. Indicador ou condição fora da lista: erro dizendo o que não é suportado.
+  3. `mt5x robots generate <arquivo.py ou chave> --name <Nome> --dir <pasta>`: cria o robô (como `robots new`) já com
+     o sinal gerado e `"parity_with"` no `robot.json`.
+  4. Reescreva **uma** das seis estratégias como declaração (a mais simples: cruzamento de médias ou Donchian) e
+     prove a paridade com a T10.6 no host. As outras só entram se couberem na declaração sem gambiarra.
+- **Critérios de aceite:** o robô gerado compila no MetaEditor do host; `mt5x robots parity` dele contra a própria
+  declaração em Python cumpre o critério da T10.6; os números ficam registrados aqui.
+- **Verificação:** `pytest -q` (texto gerado e execução Python da declaração); manual no host: `generate` →
+  `compile` → `parity`.
+- **Armadilhas:** barra em formação × barra fechada (gere sempre sobre a barra fechada, índice 1); `ArraySetAsSeries`;
+  o MQL5 gerado nunca envia ordem direto, só chama a entrada da biblioteca de segurança.
+
+### T10.11 — Preparação para o MQL5 Market (opcional)
+
+- **Objetivo:** saber se um robô está pronto para ser enviado ao MQL5 Market e montar o que o vendedor precisa.
+- **Depende de:** T10.4.
+- **Limite:** o envio **não** é automatizado. Ele é feito pela pessoa na área do vendedor do MQL5.com, que também
+  roda a validação automática oficial. Esta tarefa não promete aprovação no Market.
+- **Antes de implementar:** leia as regras atuais do Market no MQL5.com e registre aqui a lista conferida, com a
+  data. A lista abaixo é o ponto de partida e **não foi conferida na fonte**; o único item observado no host é o
+  aviso 68 do MetaEditor ("version ... is incompatible with MQL5 Market, must be xxx.yyy").
+- **Arquivos:** `mt5_extracao/robots/market.py` (novo), `cli.py`, `tests/test_robots_market.py` (novo).
+- **Passos:**
+  1. `market.check(robot, compile_result, runs) -> List[Item]` (mesmo formato da bateria): `#property version` no
+     formato `xxx.yyy`; compila sem erros **e sem avisos**; sem `#import` de DLL; `#property description`
+     preenchida; sem símbolo, conta ou caminho fixo no código; trata lote mínimo/passo e falta de margem sem erro;
+     backtest sem erros no log em mais de um ativo e timeframe.
+  2. `mt5x robots market <robô> [--pack <pasta>]`: mostra os itens; com `--pack`, copia o `.ex5`, a descrição e um
+     `LEIA-ME.txt` com o que ainda é manual (imagens, textos da página, preço, envio).
+  3. Nunca copie o `.mq5` para o pacote sem `--with-source`.
+- **Critérios de aceite:** um robô com versão `0.10` ou com DLL é reprovado com o motivo; o pacote de um robô
+  aprovado contém só o que foi pedido.
+- **Verificação:** `pytest -q`.
 
 ### T10.W — Validação no Windows (pendência)
 
