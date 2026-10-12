@@ -77,6 +77,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
     ])),
     ("ROBOTS", OrderedDict([         # catálogo de robôs (mt5x robots; aba Robôs)
         ("library_dirs", ""),            # pastas com robôs MQL5 (Experts/, Include/, Presets/), separadas por ;
+        ("metaeditor_path", ""),         # vazio = MetaEditor64.exe da instalação do MT5 ([MT5] path)
     ])),
 ])
 

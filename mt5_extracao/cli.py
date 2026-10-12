@@ -22,6 +22,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
 
   Robôs e operação por agente (veja docs/agente.md):
     mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
+    mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
     mt5x status                                        # base, robôs, validações e próximas ações sugeridas
     mt5x audit [--mt5] [--fail-on alto]                # segurança do projeto, patrimonial e do capital
@@ -575,6 +576,41 @@ def cmd_commands(args, ctx):
     return EXIT_OK
 
 
+def _robots_mt5(args, ctx, items):
+    """install: copia o robô para a pasta de dados do MT5. compile: copia e compila no MetaEditor."""
+    from mt5_extracao.robots import catalog, mt5_tools, store
+    if not args.path:
+        raise ValueError(f"uso: mt5x robots {args.action} <robô> (veja as chaves em 'mt5x robots list')")
+    robot = catalog.get_robot(items, args.path)
+    try:
+        if args.action == "install":
+            installed, result = mt5_tools.install(robot, mt5_tools.data_dir(ctx.config), args.overwrite_presets), None
+        else:
+            installed, result = mt5_tools.compile_robot(ctx.config, robot, overwrite_presets=args.overwrite_presets)
+    except (OSError, RuntimeError) as e:
+        raise RuntimeError(str(e)) from e
+    _data(robot=robot.key, files=[{"source": str(i.source), "target": str(i.target), "status": i.status}
+                                  for i in installed])
+    for item in installed:
+        _print(f"  {item.status:<8} {item.target}")
+    kept = [i.target.name for i in installed if i.status == mt5_tools.KEPT]
+    if kept:
+        _print("Preset(s) já existentes no MT5 com outro conteúdo foram mantidos: " + ", ".join(kept) +
+               ". Para trocar pelos da biblioteca, repita com --overwrite-presets.")
+    if result is None:
+        _print(f"{robot.name}: arquivos na pasta do MT5. Para compilar: mt5x robots compile {args.path}")
+        return EXIT_OK
+    _data(compile=result.to_dict())
+    for message in result.messages:
+        _print(f"  {message}")
+    _print(f"{robot.name}: {result.summary}")
+    if not result.ok:
+        return EXIT_FAIL
+    store.save_record(ctx.db, robot.key, robot.kind, robot.name, robot.path, catalog.COMPILED,
+                      {"compiled": result.compiled, "warnings": result.warnings})
+    return EXIT_OK
+
+
 def cmd_robots(args, ctx):
     from mt5_extracao import robots
     from mt5_extracao.robots import catalog
@@ -595,6 +631,8 @@ def cmd_robots(args, ctx):
     items = robots.load_catalog(ctx.config, ctx.db)
     if args.action == "backtest":
         return _robots_backtest(args, ctx, items)
+    if args.action in ("install", "compile"):
+        return _robots_mt5(args, ctx, items)
     if args.path:
         items = [robots.get_robot(items, args.path)]
     _data(robots=[_robot_dict(r, full=bool(args.path)) for r in items])
@@ -807,8 +845,12 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest"], default="list")
-    p.add_argument("path", nargs="?", help="list/backtest: chave do robô; import: arquivo .mq5/.ex5 ou pasta de robôs")
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile"],
+                   default="list")
+    p.add_argument("path", nargs="?", help="list/backtest/install/compile: chave do robô; "
+                                           "import: arquivo .mq5/.ex5 ou pasta de robôs")
+    p.add_argument("--overwrite-presets", action="store_true",
+                   help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo")
     p.add_argument("--tf", help="backtest: timeframe (ex.: D1)")
     p.add_argument("--from", dest="date_from", help="backtest: início AAAA-MM-DD")

@@ -80,3 +80,5 @@ event_window_hours = 4
 # Catálogo de robôs (mt5x robots list). library_dirs: pastas com robôs MQL5, separadas por ponto e vírgula.
 # Cada pasta segue o layout do MT5 (Experts/, Include/, Presets/), como o clone do projeto-indicadores-mt5.
 library_dirs = 
+# MetaEditor usado por 'mt5x robots compile'. Vazio = MetaEditor64.exe da pasta do MT5 ([MT5] path).
+metaeditor_path = 

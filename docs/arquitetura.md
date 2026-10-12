@@ -156,6 +156,8 @@ Guia do usuário: [robos.md](robos.md). Plano: Fase 8 em [PLANO_DE_TRABALHO.md](
 - `catalog.py`: `load_catalog(config, db)` junta as estratégias Python, as pastas de `[ROBOTS] library_dirs` e os
   robôs importados; `Robot` é o que a CLI (`mt5x robots`) e a aba "Robôs" mostram.
 - `store.py`: tabelas internas `_robots` (robôs e pastas importados, estágio) e `_robot_runs` (backtests), criadas sob demanda.
+- `mt5_tools.py`: pasta de dados do MT5, cópia do robô para `MQL5/` e compilação pelo MetaEditor (no Linux, por
+  um `.bat` dentro do Wine), com o log lido em erros e avisos. Os executáveis entram por função injetada.
 - `backtest.py`: `run_python` roda o backtester numa estratégia Python e grava métricas e curva de capital.
 - Interface: `ui/robots.py` (grade de cards, filtros, importação) e `ui/robot_detail.py` (painel do robô).
 

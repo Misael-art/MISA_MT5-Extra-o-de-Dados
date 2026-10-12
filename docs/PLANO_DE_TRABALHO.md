@@ -72,7 +72,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.1 | Catálogo de robôs: leitura de MQL5/presets, classificação de risco, tabelas `_robots*`, CLI `mt5x robots` | T8.0 | ✅ concluída (só a tabela `_robots`; `_robot_runs` e `_robot_checks` entram nas tarefas que as usam) |
 | T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | ✅ concluída (mini-curva de capital fica para a T8.3, que grava as execuções) |
 | T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | ✅ concluída |
-| T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | a fazer |
+| T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | ✅ concluída (só CLI; o botão no card fica para quando a aba ganhar ações de MT5) |
 | T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | a fazer |
 | T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | a fazer |
 | T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | a fazer |
@@ -1075,7 +1075,27 @@ A tabela de operações do backtest não entrou no painel (o `mt5x backtest --tr
 `robots/backtest.py` chama `research.load_data` + `run_backtest`, grava em `_robot_runs` (métricas e curva de capital)
 e a aba Backtest mostra curva, métricas e trades. O card passa a mostrar as estatísticas e o estágio "Testado".
 
-### T8.4 — Ferramentas MT5
+### T8.4 — Ferramentas MT5 ✅
+
+**Prova manual (2026-10-12, Wine 11.17, MT5 em modo portátil no prefixo do instalador):**
+
+| Prova | Resultado |
+|---|---|
+| Compilar pelo MetaEditor | ✅ gera o `.ex5` e o log UTF-16; erros e avisos vêm como `arquivo(linha,coluna) : error N: texto` e a última linha é `Result: N errors, M warnings` |
+| Caminho com espaço | ⚠️ só funciona com as aspas depois dos dois-pontos (`/compile:"C:\..."`). O `wine` não repassa o argumento assim, então a linha de comando vai num `.bat` rodado por `wine cmd /c` |
+| Código de saída | ⚠️ invertido: 1 quando compila, 0 quando falha (ou quando não entende o caminho). O resultado vem do log |
+| Abrir o terminal com `/config:` | ✅ `terminal64.exe /portable /config:"C:\x.ini"` com `[Tester]` e `ShutdownTerminal=1` rodou o Strategy Tester (EURUSD H1, 10 dias), gravou o relatório `.htm` na pasta de dados e fechou sozinho em 12 s |
+
+Consequências: a T8.5 pode disparar o Strategy Tester pelo app (não precisa cair para "importar o relatório"),
+sempre com `/portable` no Wine (sem ele o terminal abre uma pasta de dados vazia, sem conta) e com o terminal
+e a ponte fechados. A segunda instância em paralelo não foi testada.
+
+**Registrado na entrega:** `mt5x robots install <robô>` copia e `mt5x robots compile <robô>` copia e compila; a
+compilação aprovada grava o estágio "Compilado" em `_robots` (a biblioteca do usuário não recebe o `.ex5`).
+Presets que já existem no MT5 com outro conteúdo são mantidos, salvo `--overwrite-presets`. Sem o MT5 conectado,
+a pasta de dados vem de `origin.txt` (pasta do usuário) ou da própria instalação. Chave nova:
+`[ROBOTS] metaeditor_path`. Testes em `tests/test_robots_mt5_tools.py` com um MetaEditor falso; a compilação
+real das duas amostras de `tests/robots_library` foi conferida à mão. Não validado no Windows.
 
 `robots/mt5_tools.py`: localizar a pasta de dados (`terminal_info().data_path`) e o MetaEditor; copiar o EA, seus
 includes e presets para `MQL5/`; compilar (`MetaEditor64.exe /compile:<arquivo> /log`, pelo Wine no Linux) e ler o log

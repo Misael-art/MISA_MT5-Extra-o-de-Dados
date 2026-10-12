@@ -73,10 +73,10 @@ def status(config, db) -> dict:
     for tf, names in sorted(untested.items()):
         add("validar", f"{len(set(names))} ativo(s) {tf} com estratégias ainda não validadas.",
             f"mt5x validate --symbols {','.join(sorted(set(names)))} --tf {tf} --strategies all")
-    uncompiled = [r.name for r in catalog if r.kind == robots_core.MQL5 and r.stage == "importado"]
+    uncompiled = [r for r in catalog if r.kind == robots_core.MQL5 and r.stage == "importado"]
     if uncompiled:
-        add("compilar", "Robô(s) MQL5 ainda não compilado(s): " + ", ".join(uncompiled) + ".",
-            "compilar no MetaEditor (F7)", requires_human=True)
+        add("compilar", "Robô(s) MQL5 ainda não compilado(s): " + ", ".join(r.name for r in uncompiled) + ".",
+            "mt5x robots compile " + uncompiled[0].key.split(":", 1)[1], requires_human=True)
     add("auditar", "Auditoria de segurança (projeto, patrimônio e capital): rode a cada ciclo e antes de operar.",
         "mt5x audit")
     return {

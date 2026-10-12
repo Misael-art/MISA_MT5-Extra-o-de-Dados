@@ -30,6 +30,8 @@ STAGE_LABELS = {IMPORTED: "Importado", COMPILED: "Compilado", TESTED: "Testado",
 STAGE_NEXT = {COMPILED: "compilar no MetaEditor", TESTED: "rodar um backtest",
               APPROVED: "passar na bateria de segurança", DEMO: "rodar em conta demo", LIVE: "operar em conta real"}
 
+NOT_COMPILED = "Ainda não compilado"       # início do aviso que some quando a compilação é registrada
+
 
 def stages_for(kind: str) -> Tuple[str, ...]:
     """Estratégia Python não compila nem opera: o caminho dela termina na bateria."""
@@ -217,7 +219,8 @@ def robot_from_file(path) -> Robot:
     risk_manifest = manifest.get("risk")
     compiled = path.with_suffix(".ex5")
     is_compiled = compiled.is_file() and compiled.stat().st_mtime >= path.stat().st_mtime
-    notes = [] if is_compiled else ["Ainda não compilado: compile no MetaEditor (F7) antes de testar ou operar."]
+    notes = [] if is_compiled else [NOT_COMPILED + ": use 'mt5x robots compile' (ou F7 no MetaEditor) antes de "
+                                    "testar ou operar."]
     if src.dll_imports:
         notes.append("Usa DLL externa (" + ", ".join(src.dll_imports) + "): só rode se confiar na origem.")
     return Robot(
@@ -281,6 +284,7 @@ def load_catalog(config=None, db=None) -> List[Robot]:
         robot = robots.get(key)
         if robot and record.get("stage") in STAGES and STAGES.index(record["stage"]) > STAGES.index(robot.stage):
             robot.stage = record["stage"]
+            robot.notes = [n for n in robot.notes if not n.startswith(NOT_COMPILED)]
     if db is not None and getattr(db, "engine", None) is not None:
         from mt5_extracao.strategies.validation import load_validations
         attach_validations(list(robots.values()), load_validations(db))

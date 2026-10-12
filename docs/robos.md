@@ -26,7 +26,14 @@ Na linha de comando:
 mt5x robots                       # todos os robôs: tipo, regime, risco de cada preset e estágio
 mt5x robots list hdk_hadouken_painel   # um robô: parâmetros por grupo
 mt5x robots import caminho/Robo.mq5    # acrescenta um robô avulso (.mq5 ou .ex5)
+mt5x robots compile hdk_hadouken_painel   # copia o robô para o MT5 e compila no MetaEditor
+mt5x robots install hdk_hadouken_painel   # só copia (robô, includes e presets)
 ```
+
+`compile` copia o robô, seus includes e presets para a pasta `MQL5` do MetaTrader 5, compila e mostra os erros e
+avisos do MetaEditor com arquivo, linha e coluna. Sem erros, o robô passa a **Compilado**. A sua pasta de robôs
+não é alterada. Um preset que você já ajustou no MT5 é mantido; para trocá-lo pelo da pasta, use
+`--overwrite-presets`. Feche o MetaEditor antes, se ele estiver aberto.
 
 Um `robot.json` opcional ao lado do robô (`<nome>.robot.json`) informa o que o código não diz:
 
