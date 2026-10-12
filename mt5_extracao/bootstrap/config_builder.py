@@ -24,6 +24,8 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("path", ""),            # diretório com terminal64.exe no host
         ("windows_path", ""),    # mesmo diretório no formato C:\... (Wine)
         ("wine_prefix", ""),     # prefixo Wine (somente Linux)
+        ("hidden", "false"),     # true = MT5 fora da tela (Linux: tela virtual Xvfb; Windows: minimizado)
+        ("hidden_display", ":99"),  # número da tela virtual do modo oculto (Linux)
     ])),
     ("BRIDGE", OrderedDict([
         ("enabled", "false"),    # true no Linux: MT5 acessado via RPyC dentro do Wine

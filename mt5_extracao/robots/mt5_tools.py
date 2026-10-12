@@ -26,12 +26,28 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
-from mt5_extracao.bootstrap import paths
+from mt5_extracao.bootstrap import display, paths
 
 from . import mql, safety_lib
 from .catalog import MQL5, Robot
 
 log = logging.getLogger(__name__)
+
+# Configuração em uso, para o modo oculto ([MT5] hidden). Quem carrega a configuração (CLI, interface) chama
+# use_config uma vez; sem isso, os processos do Wine herdam o ambiente como está.
+_ACTIVE_CONFIG = None
+
+
+def use_config(config) -> None:
+    global _ACTIVE_CONFIG
+    _ACTIVE_CONFIG = config
+
+
+def _wine_env(prefix) -> dict:
+    env = display.child_env(_ACTIVE_CONFIG)
+    env.update(WINEPREFIX=str(prefix), WINEDEBUG="-all")
+    return env
+
 
 METAEDITOR_EXE = "MetaEditor64.exe"
 COMPILE_TIMEOUT = 300      # segundos
@@ -264,7 +280,9 @@ def run_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] = N
                         timeout: int = COMPILE_TIMEOUT) -> int:
     """Executa uma linha de comando do Windows: direto no Windows; no Linux, por um .bat dentro do Wine."""
     if paths.is_windows():
-        return subprocess.run(command_line, cwd=str(cwd), timeout=timeout).returncode
+        startup = display.windows_startup(display.enabled(_ACTIVE_CONFIG))
+        return subprocess.run(command_line, cwd=str(cwd), timeout=timeout,
+                              **({"startupinfo": startup} if startup else {})).returncode
     if prefix is None:
         raise RuntimeError("[MT5] wine_prefix vazio em config/config.ini. Execute ./install.sh")
     if shutil.which("wine") is None:
@@ -283,8 +301,7 @@ def run_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] = N
         with os.fdopen(handle, "wb") as f:
             handle = None
             f.write(data)
-        env = dict(os.environ, WINEPREFIX=str(prefix), WINEDEBUG="-all")
-        return subprocess.run(["wine", "cmd", "/c", _windows_path(bat, prefix)], cwd=str(cwd), env=env,
+        return subprocess.run(["wine", "cmd", "/c", _windows_path(bat, prefix)], cwd=str(cwd), env=_wine_env(prefix),
                               timeout=timeout, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
     finally:
         if handle is not None:
@@ -509,7 +526,11 @@ def _bridge(action: str) -> int:
     script = paths.PROJECT_ROOT / "scripts" / "mt5-bridge.sh"
     if paths.is_windows() or not script.is_file():
         return 3                # sem ponte: no Windows o app fala direto com o MT5
-    return subprocess.run([str(script), action], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
+    env = dict(os.environ)
+    if display.enabled(_ACTIVE_CONFIG):
+        env[display.ENV_SWITCH] = "1"        # a ponte lê config/config.ini; isto cobre o modo ligado só nesta execução
+    return subprocess.run([str(script), action], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                          env=env).returncode
 
 
 def release_terminal(config=None) -> bool:
@@ -563,7 +584,8 @@ def startup_ini(expert: str, symbol: str, period: str, login, server: str, param
 def spawn_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] = None) -> None:
     """Como run_windows_command, mas sem esperar o programa terminar (o terminal fica aberto)."""
     if paths.is_windows():
-        subprocess.Popen(command_line, cwd=str(cwd))
+        startup = display.windows_startup(display.enabled(_ACTIVE_CONFIG))
+        subprocess.Popen(command_line, cwd=str(cwd), **({"startupinfo": startup} if startup else {}))
         return
     run_windows_command('start "" ' + command_line, cwd, prefix, timeout=60)
 

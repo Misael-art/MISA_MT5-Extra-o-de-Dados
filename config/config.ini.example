@@ -16,6 +16,11 @@
 path = C:\Program Files\MetaTrader 5
 windows_path = C:\Program Files\MetaTrader 5
 wine_prefix = 
+# MT5 oculto: true = o terminal, o MetaEditor e o Strategy Tester rodam sem ocupar a tela. No Linux usam uma
+# tela virtual (precisa do Xvfb); no Windows o terminal abre minimizado. Para ver o que o MT5 oculto está
+# mostrando: mt5x mt5 show. Para uma execução só: MT5X_HIDDEN=1 mt5x ...  (MT5X_HIDDEN=0 desliga).
+hidden = false
+hidden_display = :99
 
 [BRIDGE]
 enabled = false

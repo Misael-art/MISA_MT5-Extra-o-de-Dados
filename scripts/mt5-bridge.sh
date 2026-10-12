@@ -49,6 +49,19 @@ is_running() {
 }
 
 start_display() {
+    # Modo oculto ([MT5] hidden = true ou MT5X_HIDDEN=1): a ponte e o terminal que ela abre vão para a tela
+    # virtual fixa, mesmo havendo uma tela real. O próprio Python do projeto decide e inicia o Xvfb.
+    local hidden_display
+    if ! hidden_display="$(PYTHONPATH="$PROJECT_ROOT${PYTHONPATH:+:$PYTHONPATH}" "$VENV_PY" -m mt5_extracao.bootstrap.display \
+            "$PROJECT_ROOT/config/config.ini")"; then
+        echo "Modo oculto ligado, mas a tela virtual não pôde ser iniciada (veja a mensagem acima)." >&2
+        return 1
+    fi
+    if [[ -n "$hidden_display" ]]; then
+        export DISPLAY="$hidden_display"
+        unset WAYLAND_DISPLAY
+        return
+    fi
     # O terminal MT5 (iniciado por mt5.initialize) precisa de um display X
     if [[ -n "${DISPLAY:-}" ]]; then return; fi
     if ! command -v Xvfb >/dev/null 2>&1; then

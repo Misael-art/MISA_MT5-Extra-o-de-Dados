@@ -151,6 +151,7 @@ def check_linux_bridge(root: Path, probe: bool = True) -> List[Check]:
     else:
         checks.append(Check("Wine", FAIL, "comando 'wine' não encontrado",
                             "Execute ./install.sh (instala o Wine automaticamente)."))
+    checks.append(check_hidden_mode(cfg))
 
     if cfg is None:
         return checks
@@ -180,6 +181,21 @@ def check_linux_bridge(root: Path, probe: bool = True) -> List[Check]:
         return checks
     checks.append(probe_bridge(host, port))
     return checks
+
+
+def check_hidden_mode(config) -> Check:
+    """Modo oculto ([MT5] hidden): precisa do Xvfb; avisa que o terminal fica fora da vista."""
+    import shutil
+    from . import display
+    if not display.enabled(config):
+        return Check("MT5 oculto", OK, "desligado (o terminal abre na tela)")
+    name = display.display_name(config)
+    if shutil.which("Xvfb") is None:
+        return Check("MT5 oculto", FAIL, "ligado, mas o Xvfb não está instalado",
+                     "Instale o Xvfb (xorg-server-xvfb no Arch/Manjaro, xvfb no Debian/Ubuntu) ou use [MT5] hidden = false")
+    state = "ativa" if display.is_running(name) else "inicia com a ponte ou com o primeiro teste"
+    return Check("MT5 oculto", OK, f"ligado, tela virtual {name} ({state}). O terminal não aparece na tela: "
+                                   "veja-o com 'mt5x mt5 show'")
 
 
 def _port_open(host: str, port: int, timeout: float = 1.5) -> bool:

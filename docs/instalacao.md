@@ -59,6 +59,12 @@ Opções: `./install.sh --yes --no-mt5 --skip-system-packages --wine-prefix DIR 
 
 Ponte: `./scripts/mt5-bridge.sh start|stop|restart|status|foreground` (log em `logs/mt5_bridge.log`).
 
+**MT5 oculto.** Para o MetaTrader 5 não ocupar a tela, ligue `[MT5] hidden = true` em `config/config.ini` e
+reinicie a ponte (`./scripts/mt5-bridge.sh restart`). O terminal, o MetaEditor e o Strategy Tester passam a rodar
+em uma tela virtual (é preciso o pacote do Xvfb). Para uma execução só: `MT5X_HIDDEN=1 mt5x ...`.
+`mt5x mt5 status` diz se há um terminal aberto fora da vista e `mt5x mt5 show` grava uma imagem do que ele está
+mostrando. Um terminal oculto continua operando: não o esqueça aberto com um robô.
+
 > **Estado atual no Linux:** o aplicativo acessa o MT5 pela ponte (`mt5_extracao/mt5_backend.py`)
 > sempre que `[BRIDGE] enabled = true`; o `run.sh` inicia a ponte antes de abrir o app. O fluxo está
 > coberto por testes com uma ponte real e um MetaTrader5 simulado; a validação com o terminal real no

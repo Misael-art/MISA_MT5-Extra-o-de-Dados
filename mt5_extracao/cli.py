@@ -49,6 +49,7 @@ Nenhum comando pede entrada pelo teclado.
 import argparse
 import logging
 import os
+import subprocess
 import re
 import shlex
 import sys
@@ -125,6 +126,8 @@ class Context:
     def config(self):
         if self._config is None:
             self._config = services.load_config(self.args.config)
+            from mt5_extracao.robots import mt5_tools
+            mt5_tools.use_config(self._config)           # modo oculto: os processos do Wine vão para a tela virtual
         return self._config
 
     @property
@@ -265,6 +268,40 @@ def cmd_resample(args, ctx):
     _print(f"\nConcluído: {len(done)} série(s) montada(s), {len(failed)} ativo(s) com falha. As barras montadas "
            "seguem as regras do MT5 (spread = o menor do período) e aparecem em 'mt5x tables' como montadas.")
     return EXIT_OK if done and not failed else EXIT_FAIL
+
+
+def cmd_mt5(args, ctx):
+    """Estado do terminal desta instalação e, no modo oculto, uma captura do que ele está mostrando."""
+    from mt5_extracao.bootstrap import display
+    from mt5_extracao.robots import mt5_tools
+    hidden = display.enabled(ctx.config)
+    name = display.display_name(ctx.config)
+    if args.action == "show":
+        if not hidden:
+            raise ValueError("O modo oculto está desligado: o MetaTrader 5 abre na sua tela. Para ligar: [MT5] hidden "
+                             "= true em config/config.ini (ou MT5X_HIDDEN=1 só nesta execução).")
+        try:
+            path = display.screenshot(name, args.out or os.path.join("logs", "mt5_oculto.png"))
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as e:
+            raise RuntimeError(str(e)) from e
+        _data(screenshot=str(path), display=name)
+        _print(f"Captura da tela virtual {name} gravada em {path}")
+        return EXIT_OK
+    owners = [owner for _, owner in mt5_tools.terminal_processes(ctx.config)]
+    ours = sum(1 for o in owners if o == mt5_tools.OURS)
+    _data(hidden=hidden, display=name if hidden else "", terminal_open=ours > 0,
+          other_terminals=sum(1 for o in owners if o != mt5_tools.OURS), display_running=display.is_running(name))
+    _print("MetaTrader 5 desta instalação: " + ("ABERTO" if ours else "fechado") +
+           (f" ({len(owners) - ours} terminal(is) de outra instalação ou não identificado(s) também em execução)"
+            if len(owners) > ours else ""))
+    if hidden:
+        _print(f"Modo oculto: LIGADO, tela virtual {name} " + ("ativa" if display.is_running(name) else "parada") +
+               ". O terminal não aparece na sua tela; para ver o que ele mostra: mt5x mt5 show")
+        if ours:
+            _print("Atenção: há um terminal aberto fora da vista. Um robô pode estar operando nele.")
+    else:
+        _print("Modo oculto: desligado (o terminal abre na sua tela).")
+    return EXIT_OK
 
 
 def cmd_quality(args, ctx):
@@ -1240,6 +1277,11 @@ def build_parser():
     p = sub.add_parser("symbols", help="lista símbolos do MT5")
     p.add_argument("--group", default="*", help='filtro do MT5, ex.: "*WIN*"')
     p.set_defaults(func=cmd_symbols)
+
+    p = sub.add_parser("mt5", help="estado do terminal e, no modo oculto, captura da tela virtual")
+    p.add_argument("action", nargs="?", choices=["status", "show"], default="status")
+    p.add_argument("--out", help="show: arquivo PNG da captura (padrão: logs/mt5_oculto.png)")
+    p.set_defaults(func=cmd_mt5)
 
     p = sub.add_parser("resample", help="monta timeframes maiores a partir de uma base menor (ex.: M5 e H1 de M1)")
     p.add_argument("--symbols", required=True, help="símbolos separados por vírgula")

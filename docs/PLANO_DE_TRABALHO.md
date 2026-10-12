@@ -97,7 +97,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
 | T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
 | T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | ✅ concluída (executada no host em dois ativos reais) |
-| T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | a fazer |
+| T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | ✅ concluída no Linux (conferida no host); Windows não validado |
 | T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -1891,7 +1891,29 @@ de saída 1.
   ativo não libera o início em outro.
 - **Verificação:** `pytest -q`; no host, um robô em dois ativos reais.
 
-### T11.3 — MT5 oculto
+### T11.3 — MT5 oculto ✅
+
+**Registrado na entrega:** `[MT5] hidden = true` (padrão `false`) e `hidden_display = :99`; para uma execução só,
+`MT5X_HIDDEN=1 mt5x ...` (e `MT5X_HIDDEN=0` desliga). `bootstrap/display.py` inicia o Xvfb quando preciso e monta o
+ambiente dos processos do Wine (DISPLAY da tela virtual, sem WAYLAND_DISPLAY). Usam esse ambiente: a ponte
+(`scripts/mt5-bridge.sh`, que pergunta ao próprio Python do projeto) e, por ela, o terminal aberto na extração; o
+MetaEditor; o Strategy Tester; e o início do robô. `mt5x mt5 status` diz se o terminal desta instalação está aberto
+e, com o modo ligado, lembra que ele está fora da vista; `mt5x mt5 show` grava uma captura da tela virtual (precisa
+do ImageMagick). O `doctor` ganhou a verificação "MT5 oculto".
+
+**Conferido no host (2026-10-12, Manjaro, sessão Wayland com XWayland, Wine 11.17):** primeiro a linha de base, com
+o modo desligado: a lista de janelas da tela real (`xwininfo -display :0 -root -tree`) mostrou 62 janelas do MT5.
+Com `MT5X_HIDDEN=1`: uma extração (EURUSD M15) e um backtest com ticks reais rodaram do começo ao fim com **0
+janelas do MT5 na tela real** e 61 na tela virtual, amostradas a cada 4 s durante o teste; o backtest deu o mesmo
+resultado do modo visível (53 operações, profit factor 0,68); a captura de `mt5x mt5 show` mostrou o terminal.
+
+**Limites:**
+- A tela virtual continua ativa depois dos comandos (processo pequeno); a ponte iniciada no modo oculto precisa ser
+  reiniciada para voltar à tela real (`./scripts/mt5-bridge.sh restart` com o modo desligado).
+- Diálogos do MT5 que pedem clique (login, atualização) ficam invisíveis: use `mt5x mt5 show` se algo travar.
+- A interface gráfica do programa (`./run.sh`) não foi testada com o modo ligado; os comandos `mt5x` foram.
+- **Windows:** o terminal é iniciado minimizado e sem tomar o foco (`STARTUPINFO`). Só simulado em teste: linha no
+  checklist do Windows. Não é "oculto" de verdade: aparece na barra de tarefas.
 
 - **Objetivo:** extrair, testar e operar sem a janela do MetaTrader 5 aparecer na tela.
 - **Arquivos:** `mt5_extracao/bootstrap/display.py` (novo, só biblioteca padrão), `scripts/mt5-bridge.sh`,
