@@ -94,6 +94,11 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
 | T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | a fazer (medição e roteiro guardados; veja a seção) |
+| T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
+| T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | a fazer |
+| T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | a fazer |
+| T11.3 | MT5 oculto: terminal e Strategy Tester sem ocupar a tela | T8.5 | a fazer |
+| T11.4 | Avisos em pop-up no computador a cada ação executada, inclusive as do robô | T11.3 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -1782,6 +1787,107 @@ anteriores:
 
 **Verificação da fase:** `PYTHONPATH=. xvfb-run -a .venv/bin/python -m pytest -q` e o `doctor` antes e depois de cada
 tarefa; ao fim, no host atual: `mt5x robots new` → escrever um sinal simples → `mt5x robots check` verde.
+
+---
+
+## Fase 11 — Testes amplos e operação discreta
+
+Pedida pelo dono do projeto em 2026-10-12, para ser feita antes da T10.11. Quatro pontos, um PR cada:
+
+| Pedido | Tarefa |
+|---|---|
+| "Montar um tempo maior com uma extração de tempo menor (um gráfico de 5 com uma base de 1, e assim por diante)" | T11.1 |
+| "Backtest em vários ativos" | T11.2 |
+| "Extrair e operar com o MT5 oculto, sem ocupar tela" | T11.3 |
+| "Mas com pop-up de notificação no host das ações executadas" | T11.4 |
+
+Valem as regras da Fase 10: o desenvolvimento segue no host Linux, o que só o Windows confirma vai para o checklist
+de `validacao_instaladores.md`, e nada que mexa em número de backtest entra sem ser conferido contra o MT5 real.
+
+### T11.0 — Plano da Fase 11 ✅
+
+Este texto, a linha F11 do ROADMAP e as quatro linhas do painel.
+
+### T11.1 — Montar um timeframe maior a partir de uma base menor
+
+- **Objetivo:** extrair uma vez o timeframe menor (por exemplo M1) e obter dele os maiores (M5, M15, H1...), sem
+  nova extração e com as mesmas barras que o MT5 daria.
+- **Arquivos:** `mt5_extracao/resample.py` (novo), `cli.py`, `tests/test_resample.py` (novo), `docs/`.
+- **Passos:**
+  1. `resample.resample_bars(df, source_tf, target_tf)`: agrupa pelo início da barra do timeframe maior (no horário
+     da base): abertura da primeira, máxima, mínima, fechamento da última, soma dos volumes. Só de menor para
+     maior, com o maior múltiplo do menor, até D1 (semanal e mensal dependem do calendário da corretora e ficam de
+     fora). Uma barra maior com menos barras menores do que o esperado é válida (mercado parado), como no MT5.
+  2. **A regra da coluna `spread` é decidida medindo**, não supondo: extraia M1 e M5 do mesmo período no MT5 real,
+     monte o M5 a partir do M1 com cada regra candidata (primeira, mínimo, máximo, última) e fique com a que
+     reproduz a coluna do MT5. Registre aqui a medição. Isso importa por causa da T10.12.
+  3. `mt5x resample --symbols X --from M1 --to M5,M15,H1 [--from-date --to-date]` grava as tabelas dos timeframes
+     maiores (upsert, como a extração) e registra a origem. Indicadores gravados na tabela menor não são copiados.
+  4. Marque a origem: a tabela montada não pode passar por extraída. Registre em `_extraction_progress` ou em uma
+     tabela própria aditiva, e mostre "montado a partir de M1" em `mt5x tables`.
+- **Critérios de aceite:** no período medido, o M5 montado do M1 é **igual** ao M5 extraído do MT5 em abertura,
+  máxima, mínima, fechamento e volume de ticks, barra a barra; a diferença na coluna `spread`, se houver, fica
+  registrada com números.
+- **Verificação:** `pytest -q` (dados sintéticos) e a comparação real acima no host.
+- **Armadilhas:** horário da corretora × UTC (use a base como está gravada); barras de sessões que não começam em
+  múltiplo do timeframe (B3 abre 09:00: M30 e H1 alinham na hora cheia, H4 depende da corretora: confira com o MT5).
+
+### T11.2 — Backtest em vários ativos
+
+- **Objetivo:** testar o mesmo robô ou estratégia em uma lista de ativos e ver o resultado lado a lado.
+- **Arquivos:** `robots/backtest.py`, `robots/battery.py`, `cli.py`, `tests/test_robots_multi.py` (novo).
+- **Passos:**
+  1. `mt5x robots backtest <robô> --symbols A,B,C --tf M5 [...]`: roda um ativo por vez (robô MQL5: um Strategy
+     Tester por ativo, com o terminal fechado uma vez só), grava cada execução e imprime um quadro: operações,
+     acerto, profit factor, resultado, queda máxima e o motivo quando um ativo falha. Um ativo que falha não
+     interrompe os outros; o código de saída é 1 se algum falhar.
+  2. `--json` devolve a lista de execuções e o resumo.
+  3. `mt5x robots battery <robô> --symbol X` escolhe de qual ativo é o backtest avaliado (hoje vale o mais recente).
+     A aprovação da bateria passa a registrar o ativo e o timeframe; a trava de demo exige que sejam os mesmos do
+     início.
+  4. Sem agregação "de carteira" nesta tarefa: cada ativo é um teste independente, e o texto diz isso.
+- **Critérios de aceite:** três ativos, um deles sem dados: dois resultados e um motivo; a bateria aprovada em um
+  ativo não libera o início em outro.
+- **Verificação:** `pytest -q`; no host, um robô em dois ativos reais.
+
+### T11.3 — MT5 oculto
+
+- **Objetivo:** extrair, testar e operar sem a janela do MetaTrader 5 aparecer na tela.
+- **Arquivos:** `mt5_extracao/bootstrap/display.py` (novo, só biblioteca padrão), `scripts/mt5-bridge.sh`,
+  `robots/mt5_tools.py`, `config_builder.py`, `config/config.ini.example`, `doctor.py`, testes.
+- **Passos:**
+  1. Chave `[MT5] hidden = false` (padrão: nada muda para quem já usa).
+  2. **Linux:** com `hidden = true`, o terminal, o MetaEditor e a ponte rodam em um display virtual (Xvfb) próprio
+     e fixo, mesmo havendo uma tela real. `display.ensure()` inicia o Xvfb se preciso e devolve o `DISPLAY`; a
+     ponte e `run_windows_command` passam a usá-lo. `mt5x doctor` diz se o modo oculto está ativo e se o Xvfb existe.
+  3. **Ver o terminal quando precisar:** `mt5x mt5 show` tira uma captura da tela virtual para um arquivo (com o
+     que estiver instalado: `import`/`xwd`), e a documentação explica como desligar o modo oculto.
+  4. **Windows:** iniciar o terminal minimizado, sem tomar o foco. Não validado: linha no checklist do Windows.
+- **Critérios de aceite:** no host, com `hidden = true`, uma extração e um backtest rodam do começo ao fim sem
+  nenhuma janela do MT5 na tela real (conferido listando as janelas do display real) e com os mesmos resultados.
+- **Armadilhas:** o terminal precisa de um display para abrir; diálogos que pedem clique (login, atualização)
+  ficam invisíveis: por isso o passo 3 e os avisos da T11.4. Um terminal oculto operando não pode ser esquecido:
+  o `doctor` e o `mt5x status` têm de dizer que ele está aberto.
+
+### T11.4 — Avisos em pop-up das ações executadas
+
+- **Objetivo:** com o MT5 oculto, a pessoa fica sabendo do que aconteceu por avisos do próprio sistema.
+- **Arquivos:** `mt5_extracao/notify.py` (novo, só biblioteca padrão), `robots/live.py`, `cli.py`,
+  `config_builder.py`, `config/config.ini.example`, testes.
+- **Passos:**
+  1. `notify.send(título, texto, urgência)`: no Linux usa `notify-send`; no Windows, um balão pelo PowerShell (não
+     validado: checklist). Sem ferramenta ou sem sessão gráfica, vira só registro em log. Nunca levanta erro: um
+     aviso que falha não pode derrubar uma extração.
+  2. Chave `[APP] notifications = true`. Nunca coloque senha, número de conta inteiro ou saldo em um aviso.
+  3. **Ações do programa** que avisam ao terminar: extração e atualização (ok, falhas), compilação, backtest,
+     bateria (aprovada ou reprovada), início em demo, PARAR TUDO, MT5 fechado e reaberto.
+  4. **Ações do robô:** `mt5x robots monitor <robô> --watch [--interval 15]` consulta posições e negócios pelo
+     magic number (somente leitura) e avisa a cada abertura e fechamento, com ativo, lado, volume e resultado;
+     avisa também posição sem stop e quando o PARAR TUDO está ativo. Termina com Ctrl+C.
+- **Critérios de aceite:** um aviso real aparece no host ao fim de uma extração; com o MT5 simulado, cada negócio
+  novo gera exatamente um aviso e nenhum se repete entre consultas.
+- **O que não será provado aqui:** os avisos de operações de um robô em conta, porque o início em demo (T8.7)
+  ainda não foi validado com o MT5 real.
 
 ---
 

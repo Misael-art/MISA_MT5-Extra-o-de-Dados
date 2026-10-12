@@ -35,6 +35,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F8** Robôs | Catálogo de robôs (MQL5 e Python) em cards, backtest, bateria de segurança e operação em demo/real pelo robô MQL5 | T8.0–T8.9 | F6, F7 | T8.0–T8.6 ✅; T8.7 ⏳ (só simulada, falta validar com o MT5 real em demo); demais a fazer |
 | **F9** Agentes e segurança | Operação sem tela (`--json`, `status`, `analyze`), auditoria `mt5x audit` e ponte do Linux restrita a funções de leitura | T9.1–T9.3 | F3, F8 (T8.3) | ✅ |
 | **F10** SDK de robôs | Contrato do robô, biblioteca de segurança MQL5 versionada, `robots new`, ciclo `robots check`, bateria completa para MQL5, paridade Python × MQL5, API pública, documentação e pacote; como funções opcionais, geração de MQL5 a partir de uma estratégia declarada em Python e preparação para o MQL5 Market | T10.0–T10.12 + T10.W | F8 (T8.4–T8.6), F9 | T10.0–T10.8 e T10.10 ✅; demais a fazer (T10.9 pacote, T10.11 Market, T10.12 custo do backtester, T10.W Windows). Lacunas conhecidas em docs/sdk/exatidao.md; a do custo do backtester Python virou a T10.12. Opcionais: T10.10 (gerar MQL5 a partir de Python) e T10.11 (preparar para o MQL5 Market). **T10.W (validação no Windows) é pendência: não bloqueia o desenvolvimento no host atual** |
+| **F11** Testes amplos e operação discreta | Montar um timeframe maior a partir de uma base menor (M5 de M1...), backtest em vários ativos de uma vez, MT5 oculto (sem ocupar a tela) e avisos em pop-up no computador a cada ação executada | T11.0–T11.4 | F1, F8, F10 | T11.0 ✅; demais a fazer |
 
 ## Marcos (cada marco = versão publicável)
 
@@ -67,6 +68,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
     - lado MQL5: T10.2 → T10.3 → T10.6
     - superfície pública: T10.7 → T10.8 → T10.9 (a T10.9 só depois da T10.W)
     - opcionais, depois das trilhas: T10.10 (depende de T10.3 e T10.6) e T10.11 (depende de T10.4)
+    - F11, pedida pelo dono do projeto antes da T10.11: T11.1 → T11.2 → T11.3 → T11.4
     - T10.W quando houver uma máquina Windows; até lá, cada tarefa acrescenta o que falta conferir ao
       checklist em [validacao_instaladores.md](validacao_instaladores.md)
 
