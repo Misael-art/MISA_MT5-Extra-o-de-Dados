@@ -6,12 +6,17 @@ Backtester barra a barra com custos reais e dimensionamento por risco.
 
 Premissas (conservadoras; ver docs/estrategias.md):
 1. Barras do MT5 são BID. Compra entra/sai no ASK = bid + spread × point; venda no bid.
-   O spread vem da coluna `spread` de cada barra (pontos) ou de spec.spread_points.
+   O spread vem da coluna `spread` de cada barra (pontos) ou de spec.spread_points. Essa coluna é o MENOR
+   spread do período da barra; com o spread medido nos ticks (spec.spread_by_hour, de `mt5x specs --calibrate`),
+   cada execução paga o maior dos dois: o da barra ou o típico daquela hora (na abertura de uma barra que
+   começa na hora cheia, o do primeiro tick da hora, que na virada do dia é bem maior).
 2. Sinal no fechamento da barra i -> execução na abertura da barra i+1 (+ slippage).
 3. Stop e alvo tocados na mesma barra: conta o STOP. Gap além do stop executa na abertura.
 4. Lote = capital × risco / perda por lote no stop, arredondado para baixo no volume_step.
    Abaixo do lote mínimo, a operação é pulada (skipped_min_lot).
 5. Drawdown medido na curva de capital das operações fechadas.
+6. Swap: a posição que atravessa a virada do dia paga (ou recebe) o swap do símbolo, em pontos por lote por
+   noite, triplo no dia da semana informado pela corretora. Só o modo "em pontos" é calculado.
 """
 import math
 from dataclasses import asdict, dataclass, field
@@ -41,7 +46,30 @@ class SymbolSpec:
     contract_size: float = 1.0
     currency_profit: str = ""
     spread_points: float = 0.0    # usado quando os dados não têm a coluna spread
+    swap_long: float = 0.0        # swap de uma noite comprado, por lote (em pontos, se swap_mode == 1)
+    swap_short: float = 0.0       # swap de uma noite vendido
+    swap_mode: int = 0            # SYMBOL_SWAP_MODE do MT5: 1 = em pontos (o único calculado aqui)
+    swap_triple_day: int = 3      # dia do swap triplo, como no MT5 (0 = domingo ... 3 = quarta)
+    spread_by_hour: Optional[tuple] = None   # spread real por hora do dia, em pontos (mt5x specs --calibrate)
+    spread_at_open: Optional[tuple] = None   # spread no primeiro tick de cada hora (o que a abertura da barra paga)
     known: bool = True            # False = especificação genérica (rode `mt5x specs`)
+
+    def swap_nights(self, entry_time, exit_time) -> int:
+        """Viradas de dia entre a entrada e a saída, contando três na noite do swap triplo; fim de semana não conta."""
+        day, last = pd.Timestamp(entry_time).normalize(), pd.Timestamp(exit_time).normalize()
+        nights = 0
+        while day < last:
+            if day.weekday() < 5:                                   # segunda a sexta
+                nights += 3 if (day.weekday() + 1) % 7 == self.swap_triple_day else 1
+            day += pd.Timedelta(days=1)
+        return nights
+
+    def swap_money(self, direction: int, volume: float, entry_time, exit_time) -> float:
+        """Swap da posição na moeda da conta (negativo = custo). Zero se o modo do símbolo não é em pontos."""
+        rate = self.swap_long if direction > 0 else self.swap_short
+        if self.swap_mode != 1 or not rate:
+            return 0.0
+        return rate * self.point * self.money_per_price_unit * volume * self.swap_nights(entry_time, exit_time)
 
     @property
     def tick(self) -> float:
@@ -70,6 +98,8 @@ class BacktestConfig:
     slippage_points: float = 0.0       # por execução a mercado
     commission_per_lot: float = 0.0    # por lote e por lado, na moeda da conta
     compound: bool = True              # risco sobre o capital atual (False = capital inicial)
+    swap: bool = True                  # cobra o swap das posições que viram o dia
+    real_spread: bool = True           # usa o spread medido nos ticks, quando a especificação tem (senão, o da barra)
 
 
 @dataclass
@@ -158,6 +188,24 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     else:
         spread_pts = np.full(n, float(spec.spread_points))
     spr = spread_pts * spec.point
+    # Spread de cada execução: na abertura (spr_open), no fechamento (spr_close) e dentro da barra (spr).
+    spr_open = spr_close = spr
+    if cfg.real_spread and spec.spread_by_hour and n:
+        profile = np.array([np.nan if v is None else float(v) for v in spec.spread_by_hour]) * spec.point
+        step = times.diff().median() if n > 1 else pd.Timedelta(hours=1)
+        hours = max(1, int(round(step / pd.Timedelta(hours=1)))) if step >= pd.Timedelta(hours=1) else 1
+        open_hour = times.dt.hour.to_numpy()
+        close_hour = (times + step - pd.Timedelta(minutes=1)).dt.hour.to_numpy()
+        at_open = profile
+        if spec.spread_at_open:
+            at_open = np.array([np.nan if v is None else float(v) for v in spec.spread_at_open]) * spec.point
+        on_the_hour = (times.dt.minute == 0).to_numpy()            # a barra abre na hora cheia?
+        spr_open = np.fmax(spr, np.where(on_the_hour, at_open[open_hour], profile[open_hour]))
+        spr_close = np.fmax(spr, profile[close_hour])
+        # dentro da barra o spread foi, no mínimo, o menor das horas que ela cobre
+        spanned = np.stack([profile[(open_hour + k) % 24] for k in range(min(hours, 24))])
+        floor = np.where(np.isnan(spanned), np.inf, spanned).min(axis=0)
+        spr = np.fmax(spr, np.where(np.isfinite(floor), floor, np.nan))
     slip = cfg.slippage_points * spec.point
     ppu = spec.money_per_price_unit
     days = times.dt.normalize().to_numpy()
@@ -176,8 +224,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     pending_entry = 0
     pending_exit = False
 
-    def fill_exit(d, bid_price, i, market=True):
-        price = bid_price + (spr[i] if d < 0 else 0.0)   # venda a descoberto recompra no ask
+    def fill_exit(d, bid_price, spread, market=True):
+        price = bid_price + (spread if d < 0 else 0.0)   # venda a descoberto recompra no ask
         return price - d * slip if market else price
 
     def close_part(volume, price):
@@ -186,6 +234,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
 
     def close_all(i, price, reason):
         nonlocal equity, pos
+        if cfg.swap:
+            pos["pnl"] += spec.swap_money(pos["dir"], pos["remaining"], times.iloc[pos["i"]], times.iloc[i])
         close_part(pos["remaining"], price)
         equity += pos["pnl"]
         trades.append(Trade(direction=pos["dir"], entry_time=times.iloc[pos["i"]], exit_time=times.iloc[i],
@@ -198,13 +248,13 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     for i in range(n):
         # 1) saída por sinal pendente, na abertura
         if pos is not None and pending_exit:
-            close_all(i, fill_exit(pos["dir"], o[i], i), "signal")
+            close_all(i, fill_exit(pos["dir"], o[i], spr_open[i]), "signal")
         pending_exit = False
 
         # 2) entrada pendente, na abertura
         if pos is None and pending_entry:
             d, s = pending_entry, i - 1
-            entry = o[i] + spr[i] + slip if d > 0 else o[i] - slip
+            entry = o[i] + spr_open[i] + slip if d > 0 else o[i] - slip
             stop = stop_long[s] if d > 0 else stop_short[s]
             risk_px = (entry - stop) * d
             if not np.isfinite(risk_px) or risk_px <= 0:
@@ -258,9 +308,9 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 if (new > pos["stop"]) if d > 0 else (new < pos["stop"]):
                     pos["stop"], pos["stop_kind"] = new, "trailing"
             if rules.max_bars and i - pos["i"] + 1 >= rules.max_bars:
-                close_all(i, fill_exit(d, c[i], i), "time")
+                close_all(i, fill_exit(d, c[i], spr_close[i]), "time")
             elif rules.eod_exit and last_of_day[i]:
-                close_all(i, fill_exit(d, c[i], i), "eod")
+                close_all(i, fill_exit(d, c[i], spr_close[i]), "eod")
             elif (exit_long[i] if d > 0 else exit_short[i]):
                 pending_exit = True
 
@@ -272,7 +322,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                     pending_entry = want
 
     if pos is not None:
-        close_all(n - 1, fill_exit(pos["dir"], c[n - 1], n - 1), "end")
+        close_all(n - 1, fill_exit(pos["dir"], c[n - 1], spr_close[n - 1]), "end")
 
     eq_times = [times.iloc[0]] + [t.exit_time for t in trades] if n else []
     eq_vals = [cfg.initial_equity] + list(cfg.initial_equity + np.cumsum([t.pnl for t in trades])) if n else []

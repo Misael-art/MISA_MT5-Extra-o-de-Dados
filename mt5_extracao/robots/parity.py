@@ -162,7 +162,7 @@ def run(db, config, robot, strategy_robot, symbol: str, timeframe: str, start=No
     warm_end = _when(str(bars["time"].iloc[warmup]))
     trade_from = (warm_end + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     python_run = backtest.run_python(db, config, strategy_robot, symbol, timeframe, start, end,
-                                     source=backtest.PARITY_SOURCE, trade_from=trade_from)
+                                     source=backtest.PARITY_SOURCE, trade_from=trade_from, real_spread=False)
     period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
     mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, trade_from, period_end, preset,
                                  params=parity_params(robot, config), run=runner, is_running=is_running,
@@ -218,7 +218,7 @@ def run_declared(db, config, robot, symbol: str, timeframe: str, start=None, end
     warm_end = _when(str(bars["time"].iloc[warmup]))
     trade_from = (warm_end + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     python_run = backtest.run_python(db, config, robot, symbol, timeframe, start, end, strategy=strategy,
-                                     source=backtest.PARITY_SOURCE, trade_from=trade_from)
+                                     source=backtest.PARITY_SOURCE, trade_from=trade_from, real_spread=False)
     period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
     mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, trade_from, period_end,
                                  params=parity_params(robot, config), run=runner, is_running=is_running,

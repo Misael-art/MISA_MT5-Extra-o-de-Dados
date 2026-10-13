@@ -93,7 +93,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
 | T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
-| T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | a fazer (medição e roteiro guardados; veja a seção) |
+| T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | ✅ concluída: no cenário medido, 0,00% do giro contra os ticks reais (era 1,63%); exige calibrar o spread com ticks |
 | T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
 | T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
 | T11.2 | Backtest em vários ativos de uma vez, com quadro comparativo | T11.1, T8.5 | ✅ concluída (executada no host em dois ativos reais) |
@@ -1760,7 +1760,60 @@ robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o 
   aprovado contém só o que foi pedido.
 - **Verificação:** `pytest -q`.
 
-### T10.12 — Custo real no backtester Python (pendência registrada em 2026-10-12)
+### T10.12 — Custo real no backtester Python ✅
+
+**Registrado na entrega (2026-10-12).** O que foi feito:
+
+- **Swap:** `mt5x specs` passa a gravar `swap_long`, `swap_short`, `swap_mode` e `swap_rollover3days` (colunas novas
+  em `_symbol_specs`, aditivas; base antiga recebe por `ALTER TABLE`). O backtester cobra o swap de cada noite que
+  a posição atravessa, com a noite tripla. Só o modo "em pontos" é calculado.
+- **Spread medido nos ticks:** `mt5x specs --symbols X --calibrate` lê os ticks já extraídos (`mt5x ticks`) e grava,
+  por hora do dia, a média do spread ponderada pelo tempo e a média do spread no **primeiro tick da hora**. O
+  backtester cobra, em cada execução, o maior entre o spread da barra e o medido. Não usa o MT5.
+- **Paridade:** o lado Python da paridade continua com o spread das barras (`real_spread=False`), porque o modelo
+  "cada tick" do Tester também usa. O swap vale nos dois.
+- `mt5x backtest` avisa quando o ativo não tem calibração ("custo otimista").
+
+**Medição, no mesmo cenário da tabela abaixo** (robô `ExemploCruzamento`, EURUSD H1, de 2025-10-03 a 2026-09-30,
+risco de 1%, limites abertos; Tester refeito hoje: "cada tick" 144 operações e −10.255,38; ticks reais 143 e
+−12.243,69). Calibração com 3.605.060 ticks de 23 dias (quatro semanas espalhadas de 2025-11 a 2026-09):
+
+| Custo no Python | Resultado | Contra "cada tick" (dif. sobre o giro) | Contra ticks reais: casadas | pares a até 5% | dif. sobre o giro |
+|---|---|---|---|---|---|
+| Barra, sem swap (antes) | −9.138,67 | 0,59% | 96,5% | 95,7% | **1,63%** |
+| Barra + swap (o que a paridade usa) | −9.604,25 | 0,34% | 96,5% | 96,4% | 1,39% |
+| Ticks + swap (novo padrão) | −12.247,82 | 1,06% | 97,9% | 96,5% | **0,00%** |
+
+- **Critério de aceite cumprido:** contra os ticks reais a diferença é 0,00% do giro (máximo 1%), e a paridade em
+  "cada tick" melhorou (de 0,59% para 0,34%), medida de novo pela CLI.
+- **A causa, conferida nos ticks:** a hipótese 1. O spread das barras desta corretora é praticamente zero (média
+  de 0,57 ponto em H1 e 0,16 em M1), mas nos ticks ele é de 2 a 3 pontos na maior parte do dia, 20 na hora da
+  virada do dia e 37, em média, no primeiro tick dessa hora. Em 2026-07-23 00:00 o primeiro tick tinha 21 pontos:
+  a compra saiu a 1,14129 em vez de 1,14112, o alvo de 2R subiu de 1,14336 para 1,14387 e o preço só chegou a
+  1,14358. A operação que dava +1.826 em "cada tick" deu −909 com ticks reais. Essa única operação valia 1,4% do
+  giro.
+- **O swap** explica 466 da diferença (o Python não cobrava nada).
+- **Hipótese 3 (ordem stop/alvo com barras M1): medida e descartada.** Resolver o interior da barra com M1 mudou o
+  resultado em 3 (−9.141 contra −9.139); além disso a corretora só entrega cerca de 100 mil barras M1 (três
+  meses). O código do experimento não ficou no projeto.
+- **Revalidação das seis estratégias** (`validate`, EURUSD em H1, H4 e M15, custo antigo contra o novo): as 18
+  combinações já estavam reprovadas e continuam. O custo novo piorou todas; nenhum veredito mudou. Exemplos: Squeeze
+  H1, profit factor fora da amostra de 1,20 para 1,14; Squeeze H4, de 1,32 para 1,00; BB/RSI H4, de 1,37 para 1,29.
+
+**O que não foi feito ou não está provado:**
+
+- O acerto de 0,00% é de **um** cenário. Ele depende de uma operação na virada do dia cair do mesmo lado nos dois
+  modelos; em outro ativo, período ou robô a diferença pode ser maior. Não medi outros.
+- A calibração é uma média por hora de uma amostra de 23 dias. O spread da primeira semana extraída (setembro de
+  2026) era bem menor que o das outras três, ou seja, ele muda ao longo do ano e a amostra pesa no resultado.
+- Com a calibração, o Python fica **mais longe** do modelo "cada tick" (1,06%), como esperado: são custos
+  diferentes. Por isso a paridade não usa a calibração.
+- Os ticks ocupam espaço: 3,6 milhões de ticks levaram a base de 209 MB para 328 MB.
+- Swap em outros modos (dinheiro, juros) fica em zero, sem aviso na saída do backtest.
+- Ativos da B3 não foram medidos (a conta usada não tem).
+- O caminho (b) do texto abaixo não foi adotado, e os robôs da T8.9 não foram comparados de novo com ticks reais.
+
+**Texto original da pendência (2026-10-12), mantido como registro:**
 
 Registrada a pedido do dono do projeto para ser retomada depois. **Nada foi alterado no backtester por causa dela.**
 

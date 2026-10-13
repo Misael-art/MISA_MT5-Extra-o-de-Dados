@@ -1342,9 +1342,39 @@ def cmd_robots(args, ctx):
     return EXIT_OK
 
 
+def _specs_calibrate(args, ctx, symbols):
+    """Mede o spread real nos ticks já extraídos e grava ao lado da especificação. Não usa o MT5."""
+    from mt5_extracao.strategies import specs
+    failed, data = False, {}
+    for symbol in symbols:
+        try:
+            profile = specs.calibrate_spread(ctx.db, symbol)
+        except ValueError as e:
+            _print(f"  {e}")
+            failed = True
+            continue
+        data[symbol] = profile
+        hours = [v for v in profile["hours"] if v is not None]
+        opens = [v for v in profile["open"] if v is not None]
+        worst = max(range(24), key=lambda h: profile["open"][h] if profile["open"][h] is not None else -1)
+        _print(f"  {symbol}: spread medido em {profile['ticks']} ticks de {profile['days']} dia(s) "
+               f"({profile['from'][:10]} a {profile['to'][:10]}): média {_fmt_num(profile['mean'], 1)} pontos; por hora, de "
+               f"{_fmt_num(min(hours), 1)} a {_fmt_num(max(hours), 1)}; na abertura da hora, até "
+               f"{_fmt_num(max(opens), 1)} (às {worst:02d}h).")
+        if profile["days"] < 20:
+            _print(f"    Só {profile['days']} dia(s) de ticks: a medida fica instável. Extraia pelo menos 20 dias, "
+                   "espalhados pelo ano (mt5x ticks), e repita.")
+    _data(spread=data)
+    if data:
+        _print("O backtest, a validação e a triagem em Python passam a cobrar esse spread em cada execução.")
+    return EXIT_FAIL if failed else EXIT_OK
+
+
 def cmd_specs(args, ctx):
     from mt5_extracao.strategies import specs
     symbols = _parse_symbols(args.symbols)
+    if args.calibrate:
+        return _specs_calibrate(args, ctx, symbols)
     result = specs.fetch_and_save_specs(ctx.connector(), ctx.db, symbols)
     for symbol, status in result.items():
         if status == "ok":
@@ -1371,11 +1401,15 @@ def cmd_backtest(args, ctx):
     m = result.metrics
     _data(symbol=args.symbol, timeframe=tf.name, strategy=strategy.key, params=strategy.params, bars=len(df),
           data_start=df["time"].iloc[0], data_end=df["time"].iloc[-1], metrics=m, spec_known=spec.known,
-          skipped_min_lot=result.skipped_min_lot)
+          real_spread=bool(spec.spread_by_hour), skipped_min_lot=result.skipped_min_lot)
     _print(f"{strategy.describe()} em {args.symbol} {tf.name}: {len(df)} barras "
            f"({df['time'].iloc[0]:%Y-%m-%d} a {df['time'].iloc[-1]:%Y-%m-%d})")
     if not spec.known:
         _print("  AVISO: especificação ausente; valores em dinheiro e lotes são aproximados. Rode 'mt5x specs'.")
+    elif not spec.spread_by_hour:
+        _print(f"  AVISO: custo otimista. O spread usado é o das barras, que é o menor de cada período. Meça o real: "
+               f"'mt5x ticks --symbols {args.symbol} --from ... --to ...' e 'mt5x specs --symbols {args.symbol} "
+               "--calibrate'.")
     _print(f"  Operações: {m['trades']}   Acerto: {_fmt_pct(m['win_rate'])}   Profit factor: "
            f"{_fmt_num(m['profit_factor'])}   Payoff: {_fmt_num(m['payoff'])}")
     _print(f"  Expectativa: {_fmt_num(m['expectancy_r'])} R por operação   Resultado: {_fmt_num(m['net_profit'])} "
@@ -1604,8 +1638,11 @@ def build_parser():
     p = sub.add_parser("commands", help="lista todos os comandos e argumentos (para agentes)")
     p.set_defaults(func=cmd_commands)
 
-    p = sub.add_parser("specs", help="lê do MT5 as especificações de contrato (tick, lote, spread)")
+    p = sub.add_parser("specs", help="lê do MT5 as especificações de contrato (tick, lote, spread, swap)")
     p.add_argument("--symbols", required=True)
+    p.add_argument("--calibrate", action="store_true",
+                   help="mede o spread real nos ticks já extraídos (mt5x ticks) e passa a usá-lo nos backtests; "
+                        "não usa o MT5")
     p.set_defaults(func=cmd_specs)
 
     p = sub.add_parser("backtest", help="backtest de uma estratégia em um símbolo")
