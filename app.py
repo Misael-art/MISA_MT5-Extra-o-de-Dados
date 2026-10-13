@@ -19,24 +19,12 @@ from mt5_extracao.data_collector import DataCollector
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.security import CredentialManager
 from mt5_extracao.error_handler import with_error_handling, ErrorHandler
-from mt5_extracao.integrated_services import IntegratedServices
-from mt5_extracao.enhanced_calculation_service import EnhancedCalculationService
-from mt5_extracao.performance_optimizer import PerformanceOptimizer
-from mt5_extracao.historical_extractor import HistoricalExtractor # Adicionado
-from mt5_extracao.external_data_source import ExternalDataSource, DummyExternalSource # Adicionado para Fallback
+from mt5_extracao import services
 from typing import Optional # Adicionado para type hint
-# Garantir que o diretório de logs existe
-os.makedirs("logs", exist_ok=True)
+from mt5_extracao.logging_setup import setup_logging
 
-# Configuração de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("logs/mt5_app.log", encoding="utf-8"),
-        logging.StreamHandler()
-    ]
-)
+# Logging central: logs/mt5_extracao.log (rotativo) + console
+setup_logging()
 
 # Função para verificar dependências críticas antes de continuar
 def verificar_dependencias_criticas():
@@ -56,11 +44,10 @@ def verificar_dependencias_criticas():
         except Exception as e:
             logging.error(f"Erro ao instalar psutil: {str(e)}")
 
-    # MetaTrader5 é essencial
-    try:
-        import MetaTrader5
-    except ImportError:
-        dependencias_faltantes.append("MetaTrader5")
+    # MetaTrader5 é essencial: módulo local (Windows) ou ponte RPyC (Linux)
+    from mt5_extracao.mt5_backend import get_mt5
+    if get_mt5("config/config.ini") is None:
+        dependencias_faltantes.append("MetaTrader5 (Windows: pacote MetaTrader5; Linux: ./scripts/mt5-bridge.sh start)")
 
     # Outras dependências críticas
     try:
@@ -89,7 +76,6 @@ try:
     import pandas as pd
     import numpy as np
     from sqlalchemy import create_engine
-    import MetaTrader5 as mt5
 
     # Verificação especial para pandas_ta devido a problemas conhecidos
     try:
@@ -173,7 +159,6 @@ class MT5Extracao:
         self.ui_manager = None
         self.data_collector = None
         self.data_exporter = None  # Novo atributo para o DataExporter
-        self.integrated_services = None  # Novo atributo para os serviços integrados
         self.historical_extractor = None # Novo atributo para o HistoricalExtractor
         
         # Configurar a janela principal
@@ -199,7 +184,8 @@ class MT5Extracao:
             
             # Inicializar conexão com MT5
             logging.info("Inicializando conexão MT5 via Connector...")
-            self.mt5_connector = MT5Connector(config_path=self.config_path)
+            self.mt5_connector = MT5Connector(config_path=self.config_path,
+                                              ask_user=lambda t, m: messagebox.askyesno(t, m))
             
             # Tentar conectar ao MT5
             if self.mt5_connector.initialize():
@@ -219,35 +205,6 @@ class MT5Extracao:
             # Configurar tipos de timeframes disponíveis
             self.setup_timeframes()
             
-            # Inicializar serviços avançados integrados se disponíveis
-            try:
-                logging.info("Inicializando serviços avançados de cálculo...")
-                
-                # Obter configurações avançadas ou usar padrões
-                advanced_config = {}
-                if hasattr(self, 'config') and 'advanced' in self.config:
-                    advanced_config = self.config['advanced']
-                
-                # Criar instância do serviço integrado
-                self.integrated_services = IntegratedServices()
-                
-                # Verificar inicialização bem sucedida
-                if self.integrated_services.initialized:
-                    logging.info("Serviços avançados inicializados com sucesso")
-                    
-                    # Iniciar serviço de cálculo
-                    if hasattr(self.integrated_services, 'calculation_service') and self.integrated_services.calculation_service:
-                        self.integrated_services.calculation_service.start()
-                        logging.info("Serviço de cálculo iniciado")
-                else:
-                    logging.warning("Inicialização dos serviços avançados incompleta")
-                    if self.integrated_services.initialization_errors:
-                        logging.warning(f"Erros de inicialização: {', '.join(self.integrated_services.initialization_errors)}")
-            except Exception as e:
-                logging.warning(f"Não foi possível inicializar serviços avançados: {str(e)}")
-                logging.debug(traceback.format_exc())
-                self.integrated_services = None
-            
             # Criar o gerenciador de UI
             logging.info("Instanciando UIManager...")
             self.ui_manager = UIManager(self)
@@ -265,43 +222,10 @@ class MT5Extracao:
             logging.info("Instanciando DataExporter...")
             self.data_exporter = DataExporter(self.db_manager)
 
-            # --- Configuração do Fallback M1 ---
-            external_data_source_instance: Optional[ExternalDataSource] = None
-            try:
-                fallback_enabled = self.config.getboolean('FALLBACK', 'external_source_m1_fallback_enabled', fallback=False)
-                fallback_type = self.config.get('FALLBACK', 'external_source_m1_type', fallback=None)
-
-                if fallback_enabled:
-                    if fallback_type and fallback_type.strip().lower() == 'dummy':
-                        logging.info("Fallback M1 habilitado. Usando DummyExternalSource.")
-                        external_data_source_instance = DummyExternalSource()
-                    # TODO: Adicionar 'elif fallback_type.lower() == 'api_x':' para futuras fontes
-                    else:
-                        logging.warning(f"Fallback M1 habilitado na configuração, mas o tipo '{fallback_type}' não é reconhecido ou está vazio. Fallback permanecerá inativo.")
-                else:
-                    logging.info("Fallback M1 para fontes externas está desabilitado na configuração.")
-            except configparser.Error as cfg_err:
-                 logging.error(f"Erro ao ler configurações de fallback do config.ini: {cfg_err}. Fallback desativado.")
-            except Exception as e:
-                 logging.error(f"Erro inesperado ao configurar fallback: {e}. Fallback desativado.")
-                 logging.debug(traceback.format_exc())
-            # --- Configuração do Chunking Dinâmico ---
-            chunk_config = {
-                'm1': self.config.getint('EXTRACTION', 'chunk_days_m1', fallback=30),
-                'm5_m15': self.config.getint('EXTRACTION', 'chunk_days_m5_m15', fallback=90),
-                'default': self.config.getint('EXTRACTION', 'chunk_days_default', fallback=365)
-            }
-            logging.info(f"Configuração de Chunking lida: M1={chunk_config['m1']}d, M5/M15={chunk_config['m5_m15']}d, Default={chunk_config['default']}d")
-
-            # --- Inicializar o extrator histórico ---
+            # --- Extrator histórico (fallback M1 e blocos lidos do config.ini) ---
             logging.info("Instanciando HistoricalExtractor...")
-            self.historical_extractor = HistoricalExtractor(
-                connector=self.mt5_connector,
-                db_manager=self.db_manager,
-                indicator_calculator=self.indicator_calculator,
-                external_source=external_data_source_instance, # Passa a instância (ou None)
-                chunk_config=chunk_config # Passa a configuração de chunking
-            )
+            self.historical_extractor = services.create_extractor(
+                self.config, self.mt5_connector, self.db_manager, self.indicator_calculator)
             # REMOVIDA LINHA EXTRA ')'
             
             # Configurar a UI
@@ -343,15 +267,15 @@ class MT5Extracao:
             db_type = self.config.get('DATABASE', 'type', fallback='sqlite')
             db_path = self.config.get('DATABASE', 'path', fallback='database/mt5_data.db')
 
-            # Instanciar DatabaseManager
+            # Instanciar DatabaseManager (inclui a base de tempo de [APP])
             logging.info(f"Instanciando DatabaseManager (Tipo: {db_type}, Path: {db_path})...")
-            self.db_manager = DatabaseManager(db_type=db_type, db_path=db_path)
+            self.db_manager = services.create_db_manager(self.config)
 
             if not self.db_manager.is_connected():
                 logging.error("Falha ao conectar ao banco de dados via DatabaseManager.")
                 messagebox.showerror("Erro de Banco de Dados",
                                    "Não foi possível conectar ao banco de dados configurado.\n"
-                                   "Verifique as configurações e o log 'mt5_app.log'.")
+                                   "Verifique as configurações e o log 'logs/mt5_extracao.log'.")
                 return False # Indica falha
 
             logging.info("DatabaseManager inicializado com sucesso.")
@@ -864,9 +788,22 @@ class MT5Extracao:
     def setup_root_window(self):
         """Configura a janela principal da aplicação"""
         self.root.title("MT5 Extração de Dados")
+        try:
+            # Ícone da janela e da barra de tarefas (o mesmo dos atalhos)
+            from mt5_extracao.bootstrap import shortcuts
+            self._icon_image = tk.PhotoImage(file=str(shortcuts.ASSETS / "icon.png"))
+            self.root.iconphoto(True, self._icon_image)
+        except Exception as e:
+            logging.debug(f"Ícone da janela indisponível: {e}")
         
         # Aumentar o tamanho em 40%
-        self.root.geometry("1680x980")  # 1200 * 1.4 = 1680, 700 * 1.4 = 980
+        # Até 1680x980, sem passar do tamanho da tela (em telas menores o conteúdo ficava cortado)
+        width = min(1680, max(900, self.root.winfo_screenwidth() - 80))
+        height = min(980, max(600, self.root.winfo_screenheight() - 120))
+        x = max(0, (self.root.winfo_screenwidth() - width) // 2)
+        y = max(0, (self.root.winfo_screenheight() - height) // 3)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+        self.root.minsize(900, 600)
         
         # Configuração para melhor exibição em monitores de alta resolução
         try:
@@ -936,14 +873,6 @@ class MT5Extracao:
         try:
             logging.info("Encerrando conexões devido a erro...")
             
-            # Encerrar serviços integrados
-            if hasattr(self, 'integrated_services') and self.integrated_services:
-                try:
-                    self.integrated_services.shutdown()
-                    logging.info("Serviços avançados encerrados")
-                except Exception as e:
-                    logging.error(f"Erro ao encerrar serviços avançados: {str(e)}")
-            
             # Encerrar conexão MT5
             if hasattr(self, 'mt5_connector') and self.mt5_connector:
                 try:
@@ -977,4 +906,7 @@ if __name__ == "__main__":
         root.mainloop()
     finally:
         # Desconectar MT5 ao sair
-        mt5.shutdown()
+        from mt5_extracao.mt5_backend import get_mt5
+        _mt5 = get_mt5("config/config.ini")
+        if _mt5 is not None:
+            _mt5.shutdown()

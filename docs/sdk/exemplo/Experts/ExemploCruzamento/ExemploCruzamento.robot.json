@@ -1,0 +1,24 @@
+{
+  "contract": 1,
+  "name": "ExemploCruzamento",
+  "description": "Cruzamento de médias (sinal gerado a partir da declaração cruzamento).",
+  "regime": "",
+  "timeframes": [],
+  "markets": "",
+  "inputs": {
+    "magic": "InpMagicNumber",
+    "risk_pct": "InpRiskPct",
+    "daily_loss_pct": "InpDailyLossPct",
+    "max_drawdown_pct": "InpMaxDrawdownPct",
+    "stop": "InpStopAtrMult",
+    "export_trades": "InpExportTrades"
+  },
+  "tunable": [
+    "InpRapidaPeriod",
+    "InpLentaPeriod",
+    "InpStopAtrMult",
+    "InpTakeProfitR"
+  ],
+  "safety_lib": "1.0.0",
+  "parity_with": "declared"
+}

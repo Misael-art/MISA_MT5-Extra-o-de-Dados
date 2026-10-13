@@ -3,16 +3,8 @@ import pandas as pd
 import numpy as np
 import traceback
 
-# Configuração de logging (pode ser centralizada depois)
+# Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # TODO: Configurar handler de arquivo se necessário, ou usar config central
 
 # Tenta importar pandas_ta e define fallback
 try:
@@ -177,6 +169,10 @@ class IndicatorCalculator:
 
         log.debug(f"Calculando variações para DataFrame com {len(df)} linhas...")
         try:
+            # A coleta em tempo real entrega 'time' como texto; as comparações de data exigem datetime
+            if not pd.api.types.is_datetime64_any_dtype(df['time']):
+                df = df.copy()
+                df['time'] = pd.to_datetime(df['time'])
             # Garante ordenação por tempo (importante para cálculos baseados em iloc)
             df = df.sort_values('time')
 

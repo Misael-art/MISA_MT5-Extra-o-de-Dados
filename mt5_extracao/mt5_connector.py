@@ -6,7 +6,6 @@ import time
 import traceback
 import datetime
 import pandas as pd
-from tkinter import messagebox  # Temporário? Idealmente, remover dependência da UI.
 import json
 import subprocess
 from pathlib import Path
@@ -21,11 +20,13 @@ from mt5_extracao.error_handler import (
     MT5IPCError
 )
 
-try:
-    import MetaTrader5 as mt5
-except ImportError:
-    logging.error("Módulo MetaTrader5 não encontrado. Instale-o com: pip install MetaTrader5")
-    mt5 = None
+import ntpath
+from mt5_extracao.bootstrap import paths as bootstrap_paths
+from mt5_extracao.mt5_backend import get_mt5, RemoteMT5
+from mt5_extracao import timeframes
+
+# Módulo MetaTrader5 local (Windows) ou RemoteMT5 (Linux/ponte); resolvido no primeiro MT5Connector
+mt5 = None
 
 try:
     import psutil
@@ -33,35 +34,56 @@ except ImportError:
     logging.warning("Módulo psutil não encontrado. Verificação de processo MT5 desativada.")
     psutil = None
 
-# Garantir que o diretório de logs existe
-os.makedirs("logs", exist_ok=True)
 
-# Configuração de logging (pode ser centralizada depois)
+# Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # Adicionar um handler de arquivo
-    fh = logging.FileHandler("logs/mt5_connector.log", encoding="utf-8")
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
 
 DEFAULT_CONFIG_PATH = "config/config.ini"
+
+# Colunas devolvidas pelo MT5 em copy_rates_* (usadas para DataFrames vazios)
+RATES_COLUMNS = ['time', 'open', 'high', 'low', 'close', 'tick_volume', 'spread', 'real_volume']
+# Colunas devolvidas pelo MT5 em copy_ticks_*
+TICK_COLUMNS = ['time', 'bid', 'ask', 'last', 'volume', 'time_msc', 'flags', 'volume_real']
 
 class MT5Connector:
     """
     Gerencia a conexão com a plataforma MetaTrader 5.
     """
-    def __init__(self, config_path=DEFAULT_CONFIG_PATH):
+    def __init__(self, config_path=DEFAULT_CONFIG_PATH, ask_user=None):
+        """
+        Args:
+            config_path: caminho do config.ini.
+            ask_user: callback opcional (titulo, mensagem) -> bool para perguntas ao usuário.
+                      A interface gráfica passa um diálogo; sem callback a resposta é "não".
+        """
         self.config_path = config_path
+        self.ask_user = ask_user
+        self.mt5_windows_path = None
+        global mt5
+        if mt5 is None:
+            mt5 = get_mt5(config_path)
         self.mt5_path = None
         self.is_initialized = False
         self.connection_mode = "Desconectado" # Ex: Conectado, Compatibilidade, Limitado, Fallback
         self._load_config()
+
+    def last_error(self):
+        """Último erro do MT5 (código, descrição) ou None se o MT5 estiver indisponível."""
+        try:
+            return mt5.last_error() if mt5 is not None else None
+        except Exception as e:
+            return (-1, str(e))
+
+    def _ask_user(self, title, message):
+        """Pergunta sim/não ao usuário pelo callback da interface; sem callback, responde não."""
+        if self.ask_user is None:
+            log.info(f"Sem interface para perguntar '{title}'; assumindo 'não'.")
+            return False
+        try:
+            return bool(self.ask_user(title, message))
+        except Exception as e:
+            log.warning(f"Falha ao perguntar ao usuário ('{title}'): {e}; assumindo 'não'.")
+            return False
 
     def _load_config(self):
         """Carrega o caminho do MT5 do arquivo de configuração."""
@@ -73,6 +95,8 @@ class MT5Connector:
         try:
             config.read(self.config_path)
             self.mt5_path = config.get('MT5', 'path', fallback=None)
+            # No Linux o terminal roda no Wine: mt5.initialize() precisa do caminho C:\...
+            self.mt5_windows_path = config.get('MT5', 'windows_path', fallback='') or None
             if not self.mt5_path:
                 log.error("Caminho do MT5 não definido no arquivo de configuração.")
             elif not os.path.exists(self.mt5_path):
@@ -92,23 +116,17 @@ class MT5Connector:
             bool: True se o MT5 está em execução, False caso contrário
         """
         if not psutil:
-            log.warning("psutil não disponível, usando método alternativo para verificar se MT5 está em execução.")
-            try:
-                # Tenta usar o comando tasklist como alternativa
-                result = subprocess.run(["tasklist", "/FI", "IMAGENAME eq terminal64.exe"], 
-                                        capture_output=True, text=True)
-                return "terminal64.exe" in result.stdout
-            except Exception as e:
-                log.error(f"Erro ao verificar processo MT5 via tasklist: {e}")
-                return False  # Assume que não está rodando em caso de erro
+            log.warning("psutil não disponível; não é possível verificar se o MT5 está em execução.")
+            return False
                 
         try:
             # Primeira abordagem: verificar por processo terminal64.exe via psutil
-            for proc in psutil.process_iter(['name', 'exe']):
+            for proc in psutil.process_iter(['name', 'exe', 'cmdline']):
                 try:
-                    # Verifica tanto o nome quanto o caminho do executável
+                    # Verifica o nome, o caminho do executável e, para o Wine, a linha de comando
                     if (proc.info['name'] and 'terminal64.exe' in proc.info['name'].lower()) or \
-                       (proc.info['exe'] and 'terminal64.exe' in proc.info['exe'].lower()):
+                       (proc.info['exe'] and 'terminal64.exe' in proc.info['exe'].lower()) or \
+                       bootstrap_paths.is_terminal_process(proc.info.get('name'), proc.info.get('cmdline')):
                         log.info("Processo terminal64.exe encontrado em execução.")
                         return True
                         
@@ -189,24 +207,33 @@ class MT5Connector:
             log.error(f"Caminho configurado para o MT5 não existe: {mt5_path}")
             return False
             
-        # Verifica se o MT5 já está em execução
-        is_running = self._is_mt5_running()
-        log.info(f"MT5 está em execução? {is_running}")
-        
-        # Se não estiver rodando ou forçar reinício, tenta iniciar
-        if not is_running:
-            if self._start_mt5_if_not_running(recursion_count):
-                is_running = True
+        # Linux (ponte): o terminal roda no Wine e é iniciado pelo próprio mt5.initialize(path=...)
+        remote = isinstance(mt5, RemoteMT5)
+        init_path = (self.mt5_windows_path or mt5_path) if remote else mt5_path
+        path_mod = ntpath if remote else os.path
+
+        if remote:
+            is_running = True
+            log.info(f"MT5 via ponte (Wine); caminho do terminal no Windows: {init_path}")
+        else:
+            # Verifica se o MT5 já está em execução
+            is_running = self._is_mt5_running()
+            log.info(f"MT5 está em execução? {is_running}")
+
+            # Se não estiver rodando ou forçar reinício, tenta iniciar
+            if not is_running:
+                if self._start_mt5_if_not_running(recursion_count):
+                    is_running = True
         
         # Verifica se está rodando como administrador (apenas uma vez)
         if is_running:
             # Lista de estratégias de conexão para tentar
             connection_strategies = [
                 # Estratégia 1: Conexão padrão
-                {"description": "Padrão", "params": {"path": mt5_path, "timeout": 30000}},
+                {"description": "Padrão", "params": {"path": init_path, "timeout": 30000}},
                 
                 # Estratégia 2: Modo portátil
-                {"description": "Portátil", "params": {"path": mt5_path, "timeout": 30000, "portable": True}},
+                {"description": "Portátil", "params": {"path": init_path, "timeout": 30000, "portable": True}},
                 
                 # Estratégia 3: Servidor local
                 {"description": "Servidor local", "params": {"server": "127.0.0.1", "timeout": 30000}},
@@ -215,12 +242,16 @@ class MT5Connector:
                 {"description": "Timeout longo", "params": {"timeout": 60000}},
                 
                 # Estratégia 5: Caminho alternativo (pasta pai)
-                {"description": "Caminho pai", "params": {"path": os.path.dirname(mt5_path), "timeout": 30000}},
+                {"description": "Caminho pai", "params": {"path": path_mod.dirname(init_path), "timeout": 30000}},
                 
                 # Estratégia 6: Caminho direto para terminal64.exe
-                {"description": "Terminal direto", "params": {"path": os.path.join(mt5_path, "terminal64.exe"), "timeout": 30000}}
+                {"description": "Terminal direto", "params": {"path": path_mod.join(init_path, "terminal64.exe"), "timeout": 30000}}
             ]
-            
+            if remote:
+                # No Wine só o caminho completo do terminal64.exe inicia o terminal; as demais
+                # falham com "Process create failed" e só atrasam (validado com MT5 real, T0.3).
+                connection_strategies.insert(0, connection_strategies.pop())
+
             # Tenta cada estratégia até que uma funcione
             for strategy in connection_strategies:
                 try:
@@ -256,6 +287,10 @@ class MT5Connector:
                             log.warning(f"Erro ao verificar símbolos: {symbols_err}")
                             
                         log.info(f"Conexão com MT5 inicializada com sucesso (estratégia: {strategy['description']})")
+                        if auto_login and not self._login_from_env():
+                            self.is_initialized = False
+                            self.connection_mode = "Erro de Login"
+                            return False
                         self.is_initialized = True
                         self.connection_mode = f"Conectado ({strategy['description']})"
                         return True
@@ -266,7 +301,7 @@ class MT5Connector:
                         log.error(f"Falha na estratégia {strategy['description']}: {error_description}")
                         
                         # Verifica se é o erro IPC específico (código -10003)
-                        if error[0] == -10003 and "IPC initialize failed" in error[1]:
+                        if error[0] == -10003 and "IPC initialize failed" in error[1] and not remote:
                             log.warning("Detectado erro IPC específico. Tentando resolver...")
                             # Tenta corrigir o erro IPC
                             if self._fix_ipc_error():
@@ -289,6 +324,43 @@ class MT5Connector:
         # Se chegou aqui, não conseguiu inicializar
         self.is_initialized = False
         self.connection_mode = "Erro de Conexão"
+        return False
+
+    def _login_from_env(self):
+        """
+        Entra na conta definida em MT5_LOGIN/MT5_PASSWORD/MT5_SERVER (.env), se houver.
+
+        Sem credenciais, usa a conta em que o terminal já está (ex.: a de demonstração).
+        Retorna False só quando há credenciais e o login falha: seguir na conta errada
+        gravaria dados de outro servidor.
+        """
+        try:
+            from dotenv import load_dotenv
+            from mt5_extracao.bootstrap import paths
+            load_dotenv(paths.env_path())
+        except Exception as e:
+            log.debug(f"Não foi possível ler o .env: {e}")
+        login = (os.getenv("MT5_LOGIN") or "").strip()
+        password = os.getenv("MT5_PASSWORD") or ""
+        server = (os.getenv("MT5_SERVER") or "").strip()
+        if not login or not password:
+            return True
+        try:
+            current = mt5.account_info()
+            if (current is not None and str(getattr(current, "login", "")) == login
+                    and (not server or getattr(current, "server", "") == server)):
+                return True
+            kwargs = {"password": password}
+            if server:
+                kwargs["server"] = server
+            if mt5.login(int(login), **kwargs):
+                log.info(f"Login automático na conta {login} ({server or 'servidor atual'}) concluído.")
+                return True
+            log.error(f"Login automático na conta {login} ({server or 'servidor atual'}) falhou: "
+                      f"{mt5.last_error()}. Confira MT5_LOGIN, MT5_PASSWORD e MT5_SERVER no .env "
+                      "(o nome do servidor deve ser igual ao que aparece no MT5).")
+        except Exception as e:
+            log.error(f"Erro no login automático na conta {login}: {e}")
         return False
 
     def get_symbols(self, group="*"):
@@ -583,6 +655,37 @@ class MT5Connector:
             # try:
             #     mt5.market_book_release(symbol)
 
+    # --- Book de ofertas (coleta contínua; ver book_collector.py) ---------------------
+    def book_subscribe(self, symbol):
+        """market_book_add: assina o book do símbolo. True se o MT5 aceitou."""
+        if not self.is_initialized or not mt5:
+            return False
+        ok = bool(mt5.market_book_add(symbol))
+        if not ok:
+            log.error(f"MT5 recusou o book de {symbol}: {mt5.last_error()} (a corretora oferece book para ele?)")
+        return ok
+
+    def book_snapshot(self, symbol):
+        """market_book_get: lista de dicts {type, price, volume} ou None em caso de falha."""
+        if not self.is_initialized or not mt5:
+            return None
+        try:
+            book = mt5.market_book_get(symbol)
+        except Exception as e:
+            log.error(f"Erro ao ler o book de {symbol}: {e}")
+            return None
+        if book is None:
+            return None
+        return [{"type": int(item.type), "price": float(item.price),
+                 "volume": float(getattr(item, "volume_dbl", 0) or item.volume)} for item in book]
+
+    def book_release(self, symbol):
+        if self.is_initialized and mt5:
+            try:
+                mt5.market_book_release(symbol)
+            except Exception as e:
+                log.debug(f"market_book_release({symbol}): {e}")
+
     def get_rates_range(self, symbol, timeframe, date_from, date_to):
         """Encapsula mt5.copy_rates_range()"""
         if not self.is_initialized or not mt5:
@@ -613,60 +716,37 @@ class MT5Connector:
 
             # except:
 
-    def get_available_timeframes(self):
-        """Retorna a lista de timeframes disponíveis.
-
-        Retorna uma lista de tuplas (nome_legivel, valor_mt5).
-        Usa os valores do módulo mt5 se inicializado, caso contrário, usa padrões.
+    def get_ticks_range(self, symbol, date_from, date_to):
         """
-        # Valores padrão (caso mt5 não esteja disponível ou inicializado)
-        default_timeframes = [
-            ("1 minuto", 1),
-            ("5 minutos", 5),
-            ("15 minutos", 15),
-            ("30 minutos", 30),
-            ("1 hora", 60),
-            ("4 horas", 240),
-            ("1 dia", 1440),
-            ("1 semana", 10080),
-            ("1 mês", 43200)
-        ]
-
-        if self.is_initialized and mt5:
-            try:
-                # Tenta usar os valores do MT5
-                return [
-                    ("1 minuto", mt5.TIMEFRAME_M1),
-                    ("5 minutos", mt5.TIMEFRAME_M5),
-                    ("15 minutos", mt5.TIMEFRAME_M15),
-                    ("30 minutos", mt5.TIMEFRAME_M30),
-                    ("1 hora", mt5.TIMEFRAME_H1),
-                    ("4 horas", mt5.TIMEFRAME_H4),
-                    ("1 dia", mt5.TIMEFRAME_D1),
-                    ("1 semana", mt5.TIMEFRAME_W1),
-                    ("1 mês", mt5.TIMEFRAME_MN1)
-                ]
-            except AttributeError as e:
-                log.warning(f"Erro ao acessar constantes de timeframe do MT5 ({e}). Usando padrões.")
-                return default_timeframes
-            except Exception as e:
-                 log.error(f"Erro inesperado ao obter timeframes do MT5: {e}")
-                 return default_timeframes
-        else:
-            # Retorna os padrões se não estiver conectado
-            log.info("MT5 não inicializado. Usando timeframes padrão.")
-            return default_timeframes
-
-            #     pass
+        Ticks de [date_from, date_to] via mt5.copy_ticks_range (COPY_TICKS_ALL).
+        DataFrame (vazio se não houve negociação) com 'time' em datetime a partir de time_msc,
+        ou None em caso de falha do MT5.
+        """
+        if not self.is_initialized or not mt5:
+            log.warning(f"Tentativa de obter ticks de {symbol} sem conexão MT5 inicializada.")
             return None
-
+        try:
+            ticks = mt5.copy_ticks_range(symbol, date_from, date_to, mt5.COPY_TICKS_ALL)
+            if ticks is None:
+                log.error(f"Erro ao obter ticks de {symbol}. Erro MT5: {mt5.last_error()}")
+                return None
+            df = pd.DataFrame(ticks)
+            if df.empty:
+                return pd.DataFrame(columns=TICK_COLUMNS).astype({'time': 'datetime64[ns]'})
+            df['time'] = pd.to_datetime(df['time_msc'], unit='ms')
+            return df
+        except Exception as e:
+            log.error(f"Erro ao obter ticks de {symbol}: {e}")
             log.debug(traceback.format_exc())
             return None
 
-            log.debug(traceback.format_exc())
-            self.is_initialized = False
-            self.connection_mode = "Erro Crítico"
-            return False
+    def get_available_timeframes(self):
+        """Retorna a lista de timeframes disponíveis como tuplas (nome_legivel, valor_mt5).
+
+        Os valores são sempre as constantes oficiais do MT5 (mt5_extracao.timeframes),
+        estando o terminal conectado ou não.
+        """
+        return [(tf.label, tf.value) for tf in timeframes.MAIN]
 
     def shutdown(self):
         """Encerra a conexão com o MetaTrader 5."""
@@ -687,8 +767,51 @@ class MT5Connector:
             "path": self.mt5_path
         }
         
+    def _kill_terminal_processes(self, timeout=10):
+        """
+        Encerra os processos terminal64.exe (terminate e, após `timeout` s, kill).
+        Multiplataforma (psutil). Retorna True se nenhum processo do terminal ficou em execução.
+        """
+        if not psutil:
+            log.warning("psutil não disponível; não é possível encerrar o MT5.")
+            return False
+        procs = []
+        terminal_exe = os.path.join(self.mt5_path, "terminal64.exe") if self.mt5_path else None
+        wine_prefix = None
+        try:
+            settings = configparser.ConfigParser()
+            settings.read(self.config_path, encoding="utf-8")
+            wine_prefix = settings.get("MT5", "wine_prefix", fallback="").strip() or None
+        except (configparser.Error, OSError):
+            pass
+        for proc in psutil.process_iter(['name', 'cmdline']):
+            try:
+                if bootstrap_paths.is_terminal_process(proc.info.get('name'), proc.info.get('cmdline')):
+                    # Nunca encerra o terminal de OUTRA instalação: pode haver um robô operando nele
+                    if bootstrap_paths.terminal_owner(proc, terminal_exe, wine_prefix) == bootstrap_paths.OTHER:
+                        log.info("Terminal de outra instalação em execução: não será encerrado.")
+                        continue
+                    proc.terminate()
+                    procs.append(proc)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
+        if not procs:
+            return True
+        _, alive = psutil.wait_procs(procs, timeout=timeout)
+        for proc in alive:
+            try:
+                proc.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        _, alive = psutil.wait_procs(alive, timeout=timeout)
+        if alive:
+            log.warning(f"{len(alive)} processo(s) do MT5 não puderam ser encerrados.")
+        return not alive
+
     def is_admin(self):
-        """Verifica se o programa está sendo executado como administrador."""
+        """Verifica se o programa está sendo executado como administrador (root no Linux)."""
+        if os.name != 'nt':
+            return hasattr(os, 'geteuid') and os.geteuid() == 0
         try:
             import ctypes
             return ctypes.windll.shell32.IsUserAnAdmin() != 0
@@ -797,6 +920,10 @@ class MT5Connector:
         Returns:
             bool: True se o processo foi iniciado, False caso contrário
         """
+        if os.name != 'nt':
+            log.info("No Linux o terminal é iniciado pela ponte (mt5.initialize); nada a fazer aqui.")
+            return False
+
         if not self.mt5_path:
             log.error("Caminho do MT5 não configurado. Impossível iniciar.")
             return False
@@ -815,46 +942,17 @@ class MT5Connector:
                 
             # Está rodando sem permissões adequadas, pergunta se quer fechar
             if wait_for_user:
-                # Importa aqui para evitar dependência circular
-                try:
-                    from tkinter import messagebox
-                    resposta = messagebox.askquestion(
+                if not self._ask_user(
                         "MT5 sem permissões adequadas",
                         "O MetaTrader 5 está em execução, mas sem permissões adequadas. "
                         "Para melhor funcionamento, é recomendável fechá-lo e reabri-lo como administrador.\n\n"
-                        "Deseja fechar o MT5 atual e reabri-lo como administrador?"
-                    )
-                    if resposta != 'yes':
-                        log.info("Usuário optou por não reiniciar o MT5 como administrador.")
-                        return False
-                except ImportError:
-                    # Se não conseguir importar tkinter, continua sem perguntar
-                    pass
+                        "Deseja fechar o MT5 atual e reabri-lo como administrador?"):
+                    log.info("Usuário optou por não reiniciar o MT5 como administrador.")
+                    return False
                         
-            # Fecha o MT5 atual usando diversas abordagens
+            # Fecha o MT5 atual
             try:
-                killed = False
-                # Abordagem 1: Usando taskkill para garantir que todos os processos sejam encerrados
-                try:
-                    subprocess.run(["taskkill", "/F", "/IM", "terminal64.exe"], 
-                                  capture_output=True, text=True)
-                    killed = True
-                except Exception as e:
-                    log.warning(f"Erro ao encerrar MT5 via taskkill: {e}")
-                
-                # Abordagem 2: Usando psutil caso taskkill falhe
-                if not killed and psutil:
-                    try:
-                        for proc in psutil.process_iter(['name']):
-                            try:
-                                if proc.info['name'] and 'terminal64.exe' in proc.info['name'].lower():
-                                    proc.kill()
-                            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                                continue
-                        killed = True
-                    except Exception as e:
-                        log.warning(f"Erro ao encerrar MT5 via psutil: {e}")
-                
+                killed = self._kill_terminal_processes()
                 if killed:
                     log.info("Processos do MT5 encerrados.")
                     # Espera para garantir que o processo foi encerrado completamente
@@ -873,20 +971,13 @@ class MT5Connector:
             import ctypes
             
             if wait_for_user and not self._is_mt5_running():
-                try:
-                    from tkinter import messagebox
-                    resposta = messagebox.askquestion(
+                if not self._ask_user(
                         "Iniciar MT5 como Administrador",
                         "Para garantir o funcionamento correto, o MetaTrader 5 precisa ser iniciado com permissões "
                         "de administrador.\n\n"
-                        "Deseja iniciar o MT5 como administrador agora?"
-                    )
-                    if resposta != 'yes':
-                        log.info("Usuário optou por não iniciar o MT5 como administrador.")
-                        return False
-                except ImportError:
-                    # Se não conseguir importar tkinter, continua sem perguntar
-                    pass
+                        "Deseja iniciar o MT5 como administrador agora?"):
+                    log.info("Usuário optou por não iniciar o MT5 como administrador.")
+                    return False
             
             # Se já tentou fechar mas ainda está rodando, avisa
             if self._is_mt5_running():
@@ -1031,6 +1122,37 @@ class MT5Connector:
         log.error(f"Erro não tratado para {symbol}: {error}")
         return False
             
+    def missing_symbols(self, symbols):
+        """Símbolos que não existem no servidor da conta atual (nome exato, sem autocorreção)."""
+        if not self.is_initialized or not mt5:
+            return []
+        missing = []
+        for symbol in symbols:
+            try:
+                if mt5.symbol_info(symbol) is None:
+                    missing.append(symbol)
+            except Exception as e:
+                log.debug(f"Erro ao consultar o símbolo {symbol}: {e}")
+        return missing
+
+    def account_summary(self):
+        """{'login', 'server', 'demo'} da conta logada, ou None se não houver conta/conexão."""
+        try:
+            info = mt5.account_info()
+            if info is None:
+                return None
+            return {"login": getattr(info, "login", ""), "server": getattr(info, "server", "") or "",
+                    "demo": getattr(info, "trade_mode", None) == 0}
+        except Exception:
+            return None
+
+    def server_name(self):
+        """Nome do servidor da conta logada no terminal (ex.: MetaQuotes-Demo), ou ''."""
+        try:
+            return getattr(mt5.account_info(), "server", "") or ""
+        except Exception:
+            return ""
+
     def validate_symbol(self, symbol):
         """
         Verifica se um símbolo é válido e está disponível no MT5.
@@ -1095,7 +1217,8 @@ class MT5Connector:
                     variations = [
                         corrected + '$',      # Adiciona $
                         corrected + '$N',     # Adiciona $N para índices futuros  
-                        corrected.replace('$', ''),  # Remove $ se existir
+                        # Nunca remover o '$': WIN$N viraria WINN, que é outro ativo (uma ação dos
+                        # EUA na MetaQuotes-Demo), e os preços errados seriam gravados como WIN$N.
                         corrected + 'USD',    # Para criptomoedas
                         'WIN$N' if corrected in ['WIN', 'WINFUT', 'WIN$'] else corrected,
                         'DOL$N' if corrected in ['DOL', 'DOLFUT', 'DOL$'] else corrected,
@@ -1325,6 +1448,10 @@ class MT5Connector:
         if is_running:
             log.info("MT5 já está em execução.")
             return True
+
+        if os.name != 'nt':
+            log.info("No Linux o terminal é iniciado pela ponte (mt5.initialize); não é possível executar o .exe aqui.")
+            return False
             
         # Se chegou até aqui, precisamos iniciar o MT5
         if not self.mt5_path:
@@ -1385,12 +1512,8 @@ class MT5Connector:
             # 2. Tenta encerrar e reiniciar o MT5
             log.info("Encerrando o MT5 para resolver problema de comunicação...")
             try:
-                # Tenta usar taskkill para garantir que o processo termina
-                subprocess.run(["taskkill", "/F", "/IM", "terminal64.exe"], 
-                              capture_output=True, text=True)
-                              
-                # Espera 3 segundos para o processo encerrar
-                time.sleep(3)
+                # Encerra o terminal (psutil: terminate e, se preciso, kill)
+                self._kill_terminal_processes()
                 
                 # Verifica se realmente encerrou
                 if self._is_mt5_running():
@@ -1668,14 +1791,7 @@ class MT5Connector:
             
             # Converter o timeframe para o formato do MT5
             mt5_timeframe = timeframe
-            if not isinstance(timeframe, int) or timeframe not in [
-                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
-                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
-                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
-                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
-                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
-                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
-            ]:
+            if not isinstance(timeframe, int) or timeframe not in timeframes.VALUES:
                 mt5_timeframe = self._convert_timeframe_to_mt5(timeframe)
                 if mt5_timeframe is None:
                     log.error(f"Timeframe inválido: {timeframe}")
@@ -1715,6 +1831,12 @@ class MT5Connector:
                     time.sleep(0.5)
                     retry_count += 1
             
+            # Resposta válida porém vazia (fim de semana, feriado, período sem histórico):
+            # não é falha. Devolve um DataFrame vazio para o chamador seguir adiante.
+            if rates is not None and len(rates) == 0:
+                log.info(f"Sem dados no período para {symbol} no timeframe {timeframe} ({params_str}).")
+                return pd.DataFrame(columns=RATES_COLUMNS).astype({'time': 'datetime64[ns]'})
+
             # Verificar se conseguiu obter dados após as tentativas
             if rates is None or len(rates) == 0:
                 error = mt5.last_error()
@@ -1737,129 +1859,20 @@ class MT5Connector:
 
     def _convert_timeframe_to_mt5(self, timeframe_str):
         """
-        Converte uma string de timeframe (ex: '1min') ou valor inteiro para o valor correspondente do MT5.
-        
-        Args:
-            timeframe_str (str ou int): String representando o timeframe ou valor inteiro diretamente
-            
+        Converte um timeframe (valor do MT5, minutos ou texto como '1min', 'M5', '1 hora')
+        para o valor da constante do MT5. Ver mt5_extracao.timeframes.parse.
+
         Returns:
-            int: Valor do timeframe do MT5 ou None se não for possível converter
+            int: Valor do timeframe do MT5 ou None se o MT5 não estiver inicializado
         """
         if not self.is_initialized or not mt5:
             log.warning("MT5 não inicializado ao tentar converter timeframe")
             return None
-
-        # Se já for um dos valores numéricos do MT5, retorna diretamente
-        if isinstance(timeframe_str, int):
-            # Verifica se é um dos valores válidos do MT5
-            valid_timeframes = [
-                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
-                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
-                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
-                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
-                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
-                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
-            ]
-            if timeframe_str in valid_timeframes:
-                return timeframe_str
-                
-            # É um inteiro, mas não é um valor direto do MT5, tenta interpretar como minutos
-            log.warning(f"Valor de timeframe {timeframe_str} não é diretamente um valor MT5, tentando interpretar como minutos")
-            # Continua com a conversão abaixo
-
-        # Mapeamento de strings para valores do MT5
-        timeframe_map = {
-            'm1': mt5.TIMEFRAME_M1,
-            'm5': mt5.TIMEFRAME_M5,
-            'm15': mt5.TIMEFRAME_M15,
-            'm30': mt5.TIMEFRAME_M30,
-            'h1': mt5.TIMEFRAME_H1,
-            'h4': mt5.TIMEFRAME_H4,
-            'd1': mt5.TIMEFRAME_D1,
-            'w1': mt5.TIMEFRAME_W1,
-            'mn1': mt5.TIMEFRAME_MN1,
-            # Mais aliases para flexibilidade
-            '1m': mt5.TIMEFRAME_M1,
-            '5m': mt5.TIMEFRAME_M5,
-            '15m': mt5.TIMEFRAME_M15,
-            '30m': mt5.TIMEFRAME_M30,
-            'h': mt5.TIMEFRAME_H1,
-            '4hour': mt5.TIMEFRAME_H4,
-            'day': mt5.TIMEFRAME_D1,
-            'week': mt5.TIMEFRAME_W1,
-            'month': mt5.TIMEFRAME_MN1,
-            # Aliases em português
-            'minuto': mt5.TIMEFRAME_M1,
-            '1min': mt5.TIMEFRAME_M1,
-            '5min': mt5.TIMEFRAME_M5,
-            '15min': mt5.TIMEFRAME_M15,
-            '30min': mt5.TIMEFRAME_M30,
-            'hora': mt5.TIMEFRAME_H1,
-            '4horas': mt5.TIMEFRAME_H4,
-            'dia': mt5.TIMEFRAME_D1,
-            'diario': mt5.TIMEFRAME_D1,
-            'semana': mt5.TIMEFRAME_W1,
-            'semanal': mt5.TIMEFRAME_W1,
-            'mes': mt5.TIMEFRAME_MN1,
-            'mensal': mt5.TIMEFRAME_MN1
-        }
-        
-        # Normaliza a string para lowercase e sem espaços
-        if isinstance(timeframe_str, str):
-            normalized = timeframe_str.lower().replace(' ', '')
-            
-            if normalized in timeframe_map:
-                return timeframe_map[normalized]
-                
-            # Tratar casos como '1', '5', etc.
-            try:
-                # Se for apenas um número, assume que são minutos
-                minutes = int(normalized)
-                if minutes == 1:
-                    return mt5.TIMEFRAME_M1
-                elif minutes == 5:
-                    return mt5.TIMEFRAME_M5
-                elif minutes == 15:
-                    return mt5.TIMEFRAME_M15
-                elif minutes == 30:
-                    return mt5.TIMEFRAME_M30
-                elif minutes == 60:
-                    return mt5.TIMEFRAME_H1
-                elif minutes == 240:
-                    return mt5.TIMEFRAME_H4
-                elif minutes == 1440:
-                    return mt5.TIMEFRAME_D1
-                elif minutes == 10080:
-                    return mt5.TIMEFRAME_W1
-                elif minutes == 43200:
-                    return mt5.TIMEFRAME_MN1
-            except ValueError:
-                # Não é um número puro
-                pass
-        else:
-            # Se não for string nem um valor válido do MT5, tenta interpretar como minutos
-            minutes = int(timeframe_str)
-            if minutes == 1:
-                return mt5.TIMEFRAME_M1
-            elif minutes == 5:
-                return mt5.TIMEFRAME_M5
-            elif minutes == 15:
-                return mt5.TIMEFRAME_M15
-            elif minutes == 30:
-                return mt5.TIMEFRAME_M30
-            elif minutes == 60:
-                return mt5.TIMEFRAME_H1
-            elif minutes == 240:
-                return mt5.TIMEFRAME_H4
-            elif minutes == 1440:
-                return mt5.TIMEFRAME_D1
-            elif minutes == 10080:
-                return mt5.TIMEFRAME_W1
-            elif minutes == 43200:
-                return mt5.TIMEFRAME_MN1
-            
-        log.warning(f"Timeframe não reconhecido: {timeframe_str}, usando padrão TIMEFRAME_M1")
-        return mt5.TIMEFRAME_M1
+        tf = timeframes.parse(timeframe_str)
+        if tf is None:
+            log.warning(f"Timeframe não reconhecido: {timeframe_str}, usando padrão TIMEFRAME_M1")
+            return timeframes.Timeframe.M1.value
+        return tf.value
 
     @with_error_handling(error_type=MT5ConnectionError)
     def get_historical_data(self, symbol, timeframe='1min', bars=None, start_dt=None, end_dt=None):
@@ -1891,14 +1904,7 @@ class MT5Connector:
             
             # Converter o timeframe para o formato do MT5
             mt5_timeframe = timeframe
-            if not isinstance(timeframe, int) or timeframe not in [
-                mt5.TIMEFRAME_M1, mt5.TIMEFRAME_M2, mt5.TIMEFRAME_M3, mt5.TIMEFRAME_M4, 
-                mt5.TIMEFRAME_M5, mt5.TIMEFRAME_M6, mt5.TIMEFRAME_M10, mt5.TIMEFRAME_M12, 
-                mt5.TIMEFRAME_M15, mt5.TIMEFRAME_M20, mt5.TIMEFRAME_M30, 
-                mt5.TIMEFRAME_H1, mt5.TIMEFRAME_H2, mt5.TIMEFRAME_H3, mt5.TIMEFRAME_H4, 
-                mt5.TIMEFRAME_H6, mt5.TIMEFRAME_H8, mt5.TIMEFRAME_H12, 
-                mt5.TIMEFRAME_D1, mt5.TIMEFRAME_W1, mt5.TIMEFRAME_MN1
-            ]:
+            if not isinstance(timeframe, int) or timeframe not in timeframes.VALUES:
                 mt5_timeframe = self._convert_timeframe_to_mt5(timeframe)
                 if mt5_timeframe is None:
                     log.error(f"Timeframe inválido: {timeframe}")
@@ -1955,9 +1961,13 @@ class MT5Connector:
                     if rates is not None and len(rates) > 0:
                         break
                         
-                    # Se não obteve dados, registra erro e tenta novamente
+                    # Se não obteve dados, registra e tenta novamente (resposta vazia não é erro,
+                    # mas o terminal pode estar baixando o histórico)
                     error = mt5.last_error()
-                    log.warning(f"Tentativa {retry_count+1}/{max_retries}: Falha ao obter dados para {symbol} usando {params_str}. Erro MT5: {error}")
+                    if rates is not None:
+                        log.debug(f"Tentativa {retry_count+1}/{max_retries}: nenhuma barra para {symbol} usando {params_str}.")
+                    else:
+                        log.warning(f"Tentativa {retry_count+1}/{max_retries}: Falha ao obter dados para {symbol} usando {params_str}. Erro MT5: {error}")
                     
                     # Esperar antes de tentar novamente
                     time.sleep(0.5)
@@ -1968,6 +1978,12 @@ class MT5Connector:
                     time.sleep(0.5)
                     retry_count += 1
             
+            # Resposta válida porém vazia (fim de semana, feriado, período sem histórico):
+            # não é falha. Devolve um DataFrame vazio para o chamador seguir adiante.
+            if rates is not None and len(rates) == 0:
+                log.info(f"Sem dados no período para {symbol} no timeframe {timeframe} ({params_str}).")
+                return pd.DataFrame(columns=RATES_COLUMNS).astype({'time': 'datetime64[ns]'})
+
             # Verificar se conseguiu obter dados após as tentativas
             if rates is None or len(rates) == 0:
                 error = mt5.last_error()

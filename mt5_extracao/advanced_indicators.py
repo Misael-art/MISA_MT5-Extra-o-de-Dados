@@ -7,12 +7,6 @@ from typing import Dict, List, Union, Optional, Tuple
 
 # Configuração de logging
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
 
 class AdvancedIndicators:
     """
@@ -582,6 +576,11 @@ class AdvancedIndicators:
         try:
             result = {}
             
+            # A coleta em tempo real entrega 'time' como texto; o acessor .dt exige datetime
+            if 'time' in df.columns and not pd.api.types.is_datetime64_any_dtype(df['time']):
+                df = df.copy()
+                df['time'] = pd.to_datetime(df['time'])
+
             # Extrai informações temporais
             if 'time' in df.columns:
                 # Dia da semana (0=segunda, 6=domingo)

@@ -1,0 +1,4 @@
+; preset conservador
+InpProfile=0
+InpStopAtrMult=2.0
+InpBlockAveraging=true

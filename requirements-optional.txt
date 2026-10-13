@@ -1,0 +1,10 @@
+# Dependências opcionais: o instalador tenta instalar, mas segue sem elas.
+# pandas-ta: indicadores extras (o app tem implementações básicas de reserva).
+# Obs.: versões antigas foram retiradas do PyPI; pode não haver versão
+# compatível com o seu Python.
+pandas-ta
+# pyarrow / duckdb: exportação Parquet e DuckDB (mt5x export --format parquet|duckdb)
+pyarrow
+duckdb
+# psycopg: banco PostgreSQL/TimescaleDB ([DATABASE] type = postgresql)
+psycopg[binary]

@@ -6,24 +6,17 @@ import os
 from pathlib import Path
 import sys
 import datetime
-from tkinter import messagebox
 
 # Configuração de logging
 log = logging.getLogger(__name__)
-if not log.handlers:
-    log.setLevel(logging.INFO)
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # Adicionar um handler de console para depuração inicial
-    ch = logging.StreamHandler()
-    ch.setFormatter(formatter)
-    log.addHandler(ch)
-    # Adicionar um handler de arquivo
-    os.makedirs("logs", exist_ok=True)
-    fh = logging.FileHandler("logs/error_handler.log", encoding="utf-8")
-    fh.setFormatter(formatter)
-    log.addHandler(fh)
 
 # Definição de exceções personalizadas para o projeto
+
+def _messagebox():
+    """Importa o messagebox do Tkinter só quando um diálogo é exibido (núcleo sem dependência de UI)."""
+    from tkinter import messagebox
+    return messagebox
+
 class MT5Error(Exception):
     """Exceção base para erros relacionados ao MetaTrader 5"""
     def __init__(self, message, error_code=None, details=None):
@@ -192,12 +185,14 @@ def check_mt5_error(mt5_result, operation_name="operação MT5"):
     Raises:
         MT5Error: Exceção apropriada para o tipo de erro
     """
-    import MetaTrader5 as mt5
-    
+    from mt5_extracao.mt5_backend import get_mt5
+    mt5 = get_mt5()
+
     if mt5_result is None or (isinstance(mt5_result, (bool, int)) and not mt5_result):
         # Obter o último erro do MT5
-        error_code = mt5.last_error()[0] if hasattr(mt5, 'last_error') else -1
-        error_msg = str(mt5.last_error()) if hasattr(mt5, 'last_error') else "Erro desconhecido"
+        last = mt5.last_error() if mt5 is not None else None
+        error_code = last[0] if last else -1
+        error_msg = str(last) if last else "MT5 indisponível"
         
         # Mapear para exceções específicas
         if error_code == -10003:  # IPC initialize failed
@@ -276,7 +271,7 @@ class ErrorHandler:
                 f"O erro foi registrado com ID: {exception_id}\n"
                 f"Consulte os logs para mais informações."
             )
-            messagebox.showerror(error_title, detailed_message)
+            _messagebox().showerror(error_title, detailed_message)
         except Exception:
             # Se falhar ao exibir a mensagem, apenas registra no log
             self.logger.error("Não foi possível exibir a mensagem de erro ao usuário")
@@ -427,7 +422,7 @@ class ErrorHandler:
             if details:
                 display_message += f"\n\nDetalhes: {details}"
             
-            messagebox.showerror(title, display_message)
+            _messagebox().showerror(title, display_message)
             return True
         except Exception as e:
             self.logger.error(f"Erro ao exibir mensagem de erro: {str(e)}")
@@ -445,7 +440,7 @@ class ErrorHandler:
             bool: True se a mensagem foi exibida, False em caso contrário
         """
         try:
-            messagebox.showwarning(title, message)
+            _messagebox().showwarning(title, message)
             return True
         except Exception as e:
             self.logger.error(f"Erro ao exibir mensagem de aviso: {str(e)}")
@@ -463,7 +458,7 @@ class ErrorHandler:
             bool: True se a mensagem foi exibida, False em caso contrário
         """
         try:
-            messagebox.showinfo(title, message)
+            _messagebox().showinfo(title, message)
             return True
         except Exception as e:
             self.logger.error(f"Erro ao exibir mensagem informativa: {str(e)}")
