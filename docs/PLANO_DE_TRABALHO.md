@@ -2312,6 +2312,47 @@ Especificação do dono do projeto (2026-10-13), registrada em `Documentation/HA
 HADOUKEN (`projeto-indicadores-mt5`); o andamento real de cada etapa, com o que não foi conferido, está em
 `Documentation/HADOUKEN_2/ANDAMENTO.md` de lá. Aqui ficam o painel de status e a parte do mt5x.
 
+### Ponto de retomada (2026-10-13, 02:00, host Linux)
+
+Quem continuar começa aqui. Tudo o que foi feito está em commit e enviado; nada ficou só na máquina.
+
+**Onde está cada coisa**
+
+| Repositório | Branch | PR | Estado |
+|---|---|---|---|
+| mt5x (este) | `tarefa/T12-carteira-leitura` | #39, aberto contra `master` | CI verde em Linux, Windows e PostgreSQL; não mesclado |
+| HADOUKEN (`~/Projects/projeto-indicadores-mt5`) | `hadouken2/safety-carteira` | #3, rascunho, sobre o #2 | compila; ver `Documentation/HADOUKEN_2/ANDAMENTO.md` |
+| HADOUKEN | `tarefa/T8.9-estrategias` | #2, rascunho, sobre o #1 | seis robôs de estratégia e quadro de status |
+| `mt5x-safety` (`~/Projects/mt5x-safety`) | `main` | — | 1.0.0, **desatualizada** em relação à `Safety/` 7.1 |
+
+**Estado do host**
+
+- `config/config.ini` (não versionado) tem `[ROBOTS] safety_lib_dir` e `library_dirs` apontando para os dois clones.
+- Conta do terminal: MetaQuotes-Demo, hedging. Base com EURUSD em M1, M15, H1 e H4, ticks de 23 dias e a
+  calibração de spread gravada.
+- **Nenhum robô está rodando na demo.** O `HDK_EmaAtr` caiu quando o terminal foi reiniciado para carregar o
+  sentinela; antes disso não houve operação. O PARAR TUDO está liberado.
+- Scripts de rascunho desta sessão (fora dos repositórios): `~/Projects/mt5x-rascunhos-2026-10-13/`. O
+  `t87_start.py` inicia o `HDK_EmaAtr` na demo **dispensando a trava da bateria**; só o dono do projeto o roda, e só
+  para o teste de mecânica da T8.7. `watch_first_trade.py` espera a primeira operação, só leitura.
+
+**Próximos passos, na ordem**
+
+1. Mesclar o #39 (decisão do dono).
+2. Rodar de novo a paridade dos seis robôs com a `Safety/` 7.1 (`mt5x robots parity <robô> --symbol EURUSD --tf
+   <tf> --close-terminal`; números de referência na seção T8.9). Fecha o terminal por alguns minutos.
+3. Recompilar o `HDK_EmaAtr` e, se o dono quiser, recolocá-lo na demo até a primeira operação (item que falta da
+   T8.7: ordem real, aviso de operação e `monitor` com posição aberta).
+4. T12.2: conciliar a carteira com posições de verdade, inclusive uma manual, e comparar o risco do MQL5 com o do
+   Python.
+5. T12.3: guardião com orçamento por robô e bloqueio global. É a etapa que usa as operações supervisionadas.
+6. Antes de operar com mais de um robô: o `start` derruba o robô anterior e não confere se o terminal carregou o
+   arquivo de início (lacunas registradas na T8.7).
+
+**Pendências que não são de código:** não existe robô aprovado na bateria (as seis estratégias reprovam em
+EURUSD); não há conta netting nem ativos da B3 no host; T10.W (Windows), T10.9 e T10.11 seguem abertas; o PR #1
+deste repositório está aberto com os commits já no `master` e pode ser fechado.
+
 **Regras da fase:** o mt5x continua sem enviar ordens; no MQL5 só o `HDK_SafeExecutor` envia, altera ou cancela;
 ver a conta não dá direito de mexer nela; a paridade dos seis robôs de estratégia não pode mudar; conta real nunca
 é o padrão. Cada etapa tem o seu critério de aceite no plano de lá e só é marcada ✅ com ele cumprido.
