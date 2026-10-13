@@ -117,6 +117,15 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
+| T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
+| T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | a fazer |
+| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | a fazer |
+| T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | a fazer |
+| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
+| T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
+| T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
+| T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
+| T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -2446,6 +2455,214 @@ abria com a conta ainda zerada.
 
 Na ordem do plano. A T12.3 (guardião com poder de bloquear) é a que dá uso às operações supervisionadas da T12.1.
 A T12.4 começa por ensinar o executor a criar ordens pendentes.
+
+---
+
+## Fase 13 — MT5x Analytics: catálogo de evidências sobre ativos
+
+**Situação: planejada. Nada desta fase foi implementado.** Especificação do dono do projeto (2026-10-13), guardada
+como veio em [analytics/ESPECIFICACAO.md](analytics/ESPECIFICACAO.md) (as seções citadas abaixo como "§" são de lá).
+Esta seção é o plano de implantação: o que já existe no código, onde a especificação e o código divergem, e as
+tarefas na ordem.
+
+**Em uma frase:** o Python calcula e valida, com data de validade e amostra, fatos sobre cada ativo (volume
+relativo, regime, sazonalidade, probabilidades condicionais) e os publica em um arquivo pequeno; o robô MQL5 só lê.
+
+**Regras da fase** (valem para todas as tarefas):
+
+1. O Python continua sem enviar ordens. Publicar um arquivo de leitura não muda isso.
+2. Nenhum dado analítico dá permissão para passar por cima do `HDK_RiskGuard` ou do `HDK_SafeExecutor`.
+3. Com o analytics desligado, ou com o arquivo ausente, vencido ou malformado, a decisão de cada robô é a mesma de
+   hoje. A paridade dos seis robôs de estratégia não pode mudar.
+4. Nenhum fato usa informação posterior ao instante em que ele é dado como disponível (regra *point-in-time*, §8).
+5. Toda hipótese testada fica registrada, inclusive as rejeitadas. "Aprovada" quer dizer evidência fora da
+   amostra naquele contexto, não recomendação de compra ou venda.
+6. Os primeiros modos de uso no robô são só `VISUAL_ONLY` e `NO_ACTION` (§10). Bloquear ou reduzir entrada é a
+   T13.7, opt-in por estratégia.
+7. Mudanças de schema são aditivas (AGENTS.md): as tabelas por símbolo e timeframe de hoje não mudam.
+
+### T13.0 — Plano e levantamento inicial ✅
+
+Especificação guardada e plano registrado. O levantamento abaixo foi feito lendo o código do mt5x em 2026-10-13;
+**o repositório HADOUKEN não foi lido nesta rodada**.
+
+**O que já existe e a fase deve reaproveitar**
+
+| Assunto da especificação | O que existe hoje | Onde |
+|---|---|---|
+| Montar timeframe maior a partir do M1 (§4.2) | `mt5x resample` (T11.1): abertura da primeira, máxima, mínima, fechamento da última, soma dos dois volumes, `spread` = o menor do período. Conferido barra a barra contra o MT5 real em EURUSD (M5, M15, H1, H4, D1) | `mt5_extracao/resample.py`, tabela `_resampled` |
+| Qualidade dos dados (§4.1) | OHLC inconsistente, volume zero, horário duplicado, lacunas e barras por dia, por bloco extraído | `data_quality.py`, `_extraction_log.quality_json`, `mt5x quality` |
+| Base de tempo (§4.1) | Uma coluna `time`, no horário da corretora (padrão) ou em UTC, escolhida para a base inteira | `DatabaseManager.time_basis` (T1.6) |
+| Ticks e book (§2, item 6) | Extração de ticks por blocos e snapshots do book, pela CLI | `tick_extractor.py`, `book_collector.py` |
+| Spread medido | Perfil de spread por hora, calculado dos ticks | `_symbol_specs.spread_profile` (T10.12) |
+| Sazonalidade (§5) | Retorno e amplitude médios por hora e por dia da semana (sem volume) | `study.seasonality`, `mt5x analyze` |
+| Regime (§5, H05) | "tendência", "lateral" ou "transição" pelo ADX da última barra, com eficiência, R² e percentil do ATR | `strategies/asset_screener.py` (`filter_b`) |
+| Validação fora da amostra (§7.3) | Walk-forward, robustez de parâmetros e Monte Carlo, para as estratégias | `strategies/validation.py`, `mt5x validate` |
+| Calendário de eventos | CSV opcional `time,symbol,impact` | `[SCREENER] events_file` |
+| Pasta comum do MT5 (§9.1) | O caminho de `Common\Files` é resolvido no Windows e no Wine; o mt5x já **lê** de lá (`HDK_trades_<magic>.csv`, `HDK_portfolio_<conta>.json`) | `robots/mt5_tools.common_files_dir` |
+| Resultado por robô, ativo e timeframe (§5, "saúde das estratégias") | Execução mais recente de cada combinação, com a situação | `robots/matrix.py` (T11.6) |
+
+**Onde a especificação e o código divergem** (cada item tem a tarefa que decide)
+
+1. **O `resample` atual agrupa pelo relógio, não pela sessão.** Uma barra H4 ou D1 pode juntar dois pregões, e não
+   há estado de barra parcial, cobertura nem contagem de barras de origem. Ele também só monta timeframes que o MT5
+   tem (o enum `Timeframe`) e só até D1; "qualquer múltiplo de minuto" (M7, M45...) não cabe no enum. → T13.1.
+2. **O `spread` da barra montada é o mínimo do período**, porque é assim que o MT5 monta e foi isso que se conferiu.
+   A especificação pede que a métrica seja declarada (§4.2). O mínimo é o melhor caso, não um custo. → T13.1: manter
+   o mínimo na coluna que imita o MT5 e dar nome próprio a qualquer outra medida.
+3. **A base guarda um horário só, e sem "disponível em".** Não há `time_utc` e `time_broker` lado a lado,
+   `available_at`, `revision` nem `ingest_batch`: reextrair regrava a barra (upsert da T1.1) sem deixar rastro do
+   valor anterior. → T13.1 e T13.2, por tabelas novas ao lado, sem mexer nas de barras.
+4. **Não há calendário de sessões.** O horário de sessão do relatório de qualidade é um par fixo (09:00 a 18:30) e a
+   atualização "em dia" da interface desconta três dias para o fim de semana. Feriado, pausa, fechamento antecipado
+   e horário de verão não existem no código. → T13.1.
+5. **Volume real zero e volume desconhecido são o mesmo valor hoje** (a coluna vem zerada do MT5 quando a corretora
+   não informa). → T13.1.
+6. **Não há catálogo de instrumentos nem rolagem de contrato.** O símbolo é o texto da corretora (`WIN$N`). Como a
+   corretora monta a série contínua não foi verificado. → decisão em aberto 2; não entra antes de haver ativos da B3
+   no host.
+7. **A validação existente é de estratégia, não de hipótese:** não tem correção para múltiplos testes, *purging*,
+   intervalo de confiança com dependência temporal nem taxa-base. → T13.4.
+8. **O backtester Python é otimista em custo e não limita margem** (pendências registradas na T10.12 e no ponto de
+   retomada da Fase 12). Qualquer "expectativa líquida" calculada com ele herda isso. → T13.4 e T13.7: a evidência
+   que libera uso no robô vem do Strategy Tester com ticks reais.
+9. **O nome `mt5x analytics validate` convive com `mt5x validate` e `mt5x analyze`**, que já existem e fazem outra
+   coisa. → T13.2 decide os nomes antes de criar o primeiro comando.
+10. **O lado MQL5 mora em outro repositório** (HADOUKEN). A T13.5 e a T13.6 têm uma parte lá, com o plano e o
+    andamento de lá, como na Fase 12.
+
+**Não levantado nesta rodada** (cada tarefa começa por conferir o que lhe diz respeito): o código do HADOUKEN
+(`StrategySignal`, `StrategyRules`, painel); se um robô no Strategy Tester consegue ler um arquivo da pasta comum
+(teste 14 da especificação); o tamanho real da base com M1 de vários anos e o tempo de cálculo; a qualidade do volume
+real por corretora.
+
+### T13.1 — Calendário de sessões e barras derivadas (A1)
+
+- **Objetivo:** montar, do M1, barras de N minutos que respeitam a sessão, com estado de qualidade por barra.
+- **Depende de:** T11.1.
+- **Arquivos previstos:** `mt5_extracao/analytics/calendar.py` e `analytics/resampling.py` (novos), tabelas novas
+  `market_calendar` e `bars_derived`, `cli.py`, testes novos. `resample.py` e as tabelas de barras atuais não mudam.
+- **Passos:**
+  1. Calendário por símbolo: sessões com abertura, fechamento e pausas, em UTC e no horário da corretora. Fonte a
+     decidir (decisão em aberto 1): deduzido das barras M1 já gravadas, lido do MT5 (`symbol_info`), ou arquivo
+     mantido à mão para feriados e horários especiais.
+  2. Agregador por sessão para qualquer N inteiro de minutos, com `bar_count`, `coverage_ratio` e `quality_status`
+     (`COMPLETE`, `PARTIAL`, `NO_TRADES`, `MISSING`, `CORRECTED`) e a política `partial_last_bar`.
+  3. `1D` como sessão e `1440min` como janela de 24 horas, separados.
+  4. Volume real: desconhecido diferente de zero.
+  5. Atualização incremental: uma ingestão nova refaz só as barras afetadas.
+- **Critérios de aceite:** testes 1, 2, 3, 4 (a parte das barras) e 5 da especificação (§14); para um ativo 24 horas
+  (EURUSD), as barras derivadas dos timeframes do MT5 continuam iguais às do `resample` atual, que foi conferido
+  contra o terminal.
+- **Armadilha:** não trocar o `resample` atual por este. Os backtests gravados e a paridade usam as barras de hoje.
+
+### T13.2 — Guarda de características com data de disponibilidade (A2)
+
+- **Objetivo:** gravar cada fato com quando foi observado, quando ficou disponível, até quando vale, de qual
+  revisão dos dados saiu e com qual versão do algoritmo; e consultar "o que se sabia em tal instante".
+- **Depende de:** T13.1.
+- **Arquivos previstos:** `analytics/feature_store.py`, `analytics/features.py` (registro de características e
+  dependências), tabelas `feature_definitions` e `feature_values`, `cli.py` (`mt5x analytics ...`, nomes decididos
+  aqui), testes.
+- **Passos:** registro de características com dependências; gravação com revisão (correção tardia gera revisão nova,
+  a anterior fica); consulta *as-of*; recálculo só do que depende do que mudou.
+- **Critérios de aceite:** testes 4, 6 e 7 da especificação.
+- **Decide antes de começar:** SQLite ou PostgreSQL para estas tabelas, medindo com a base real (decisão em aberto 6).
+
+### T13.3 — Perfis de volume, sazonalidade e regimes (A3)
+
+- **Objetivo:** as famílias de características da §5 que só dependem de barras: retornos e gaps, volume (médias,
+  inclinação, percentil), volume intradiário e RVOL no mesmo horário, volatilidade, tendência e lateralidade,
+  sazonalidade e estrutura intradiária.
+- **Depende de:** T13.2.
+- **Arquivos previstos:** `analytics/volume_profiles.py`, `analytics/market_regimes.py`, testes com séries sintéticas.
+- **Passos:** reaproveitar `strategies/indicators.py`, `study.seasonality` e a classificação da triagem em vez de
+  reescrever; estados `TREND`, `RANGE`, `TRANSITION` e `UNCERTAIN` com confiança e duração mínima; cada
+  característica declara o que "confiança" quer dizer para ela.
+- **Critérios de aceite:** algoritmos conferidos em séries sintéticas de resposta conhecida e em pelo menos dois
+  mercados diferentes da base; o regime da triagem (`mt5x screen`) e o desta tarefa ou são o mesmo cálculo ou a
+  diferença fica documentada.
+- **Fica de fora:** liquidez e microestrutura (precisam de ticks e book com cobertura medida) e relações entre
+  ativos. Entram como tarefas próprias quando houver dados.
+
+### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
+
+- **Objetivo:** descrever uma hipótese em um arquivo (condição, janela, desfecho, universo, custos), avaliá-la e
+  guardar o resultado com amostra, taxa-base, *lift*, expectativa líquida, intervalo de confiança e resultado fora
+  da amostra.
+- **Depende de:** T13.3.
+- **Arquivos previstos:** `analytics/hypotheses.py`, `analytics/pattern_engine.py`, `analytics/validation.py`,
+  tabelas `pattern_definitions` e `pattern_evaluations`, definições de H01 a H05, testes.
+- **Passos:** formato declarativo; separação cronológica treino, validação e teste, com *purging* e embargo;
+  correção para múltiplos testes; intervalo por *bootstrap* em blocos; sensibilidade a custo e atraso; estados
+  `DRAFT → EXPLORATORY → VALIDATING → APPROVED → MONITORING → RETIRED`; busca exploratória sempre marcada como tal.
+- **Critérios de aceite:** teste 8 da especificação; H01 a H05 avaliadas com dados reais e o resultado publicado em
+  relatório, **qualquer que seja ele** (a tarefa não depende de as hipóteses se confirmarem); uma hipótese rejeitada
+  continua no catálogo.
+- **Armadilhas:** os números de H01 a H05 na especificação (1,5%, 0,5%, 1,15%, 17:25, 0,40%) são exemplos, não
+  medidas; o horário de fechamento vem do calendário da T13.1; um gap que aconteceu antes da entrada não é lucro de
+  quem entra na abertura.
+
+### T13.5 — Publicador e leitor MQL5 somente leitura (A5)
+
+- **Objetivo:** gravar o retrato das características em um arquivo que o robô lê sem risco de pegar um arquivo pela
+  metade ou vencido.
+- **Depende de:** T13.3 (publica características) e T12.1 (camada `Safety` do HADOUKEN).
+- **Arquivos previstos:** aqui, `analytics/publisher.py`, tabela `feature_publications`, `cli.py`, testes; no
+  HADOUKEN, `Include/Framework/HADOUKEN/Analytics/` (`HDK_AnalyticsTypes`, `HDK_AnalyticsReader`).
+- **Passos:** CSV com os campos da §9.1 e manifesto com versão e hash; arquivo temporário, conferência e troca
+  atômica; pasta resolvida por `mt5_tools.common_files_dir`; leitor que devolve `UNAVAILABLE` ou `STALE` em vez de
+  um valor neutro inventado; prazo de validade por característica.
+- **Critérios de aceite:** testes 9, 11 e 14 da especificação; conferido no MT5 real do host (Wine); o Windows fica
+  no checklist de [validacao_instaladores.md](validacao_instaladores.md).
+- **Decide antes de começar:** se o leitor funciona dentro do Strategy Tester (o Tester tem pasta de arquivos
+  própria) e, se não, como um teste reproduz o que o robô veria; CSV ou a cópia em SQLite da §9.3, medindo.
+
+### T13.6 — Tela de pesquisa no mt5x e aba no painel do HADOUKEN (A6)
+
+- **Objetivo:** ver as características, as hipóteses e a origem de cada número.
+- **Depende de:** T13.4 e T13.5; T7.2 (tabelas da interface) e T12.6 (abas do painel do HADOUKEN).
+- **Arquivos previstos:** aqui, um painel novo em `mt5_extracao/ui/` ou uma aba no painel de resultados do
+  navegador (decidir na tarefa: o painel vivo da T11.9 já tem servidor, atualização e gráficos); no HADOUKEN,
+  `HDK_AnalyticsPanel`.
+- **Critérios de aceite:** filtros, mapa por dia e hora, distribuição condicional, catálogo de hipóteses com
+  amostra, validade e fonte; no painel do MT5, idade do dado sempre à vista e aviso de dado vencido.
+
+### T13.7 — Estratégia × regime e pilotos opt-in (A7)
+
+- **Objetivo:** medir o resultado de cada estratégia condicionado ao regime e permitir que uma estratégia, por
+  escolha explícita, use uma evidência aprovada para bloquear a própria entrada ou reduzir o risco.
+- **Depende de:** T13.5, T12.3 (guardião com orçamento) e de haver robô aprovado na bateria.
+- **Arquivos previstos:** `analytics/strategy_fitness.py`, tabela `strategy_regime_stats`; no HADOUKEN,
+  `HDK_AnalyticsPolicy`.
+- **Critérios de aceite:** teste 10 da especificação (com o analytics desligado nada muda); bateria, paridade e
+  walk-forward sem regressão; a política só reduz, nunca aumenta volume ou orçamento; evidência do Strategy Tester
+  com ticks reais, não só do backtester Python.
+
+### T13.8 — Deriva, alertas e governança das regras (A8)
+
+- **Objetivo:** acompanhar as regras aprovadas e rebaixar sozinho a que deixar de se sustentar.
+- **Depende de:** T13.4 e T13.7.
+- **Arquivos previstos:** `analytics/monitoring.py`, avisos por `notify.py`.
+- **Critérios de aceite:** regra instável passa de `APPROVED` para `MONITORING` ou `RETIRED` com o motivo gravado;
+  trilha de quem aprovou, quando e com qual evidência; política de retenção e de cópia de segurança definida.
+
+### Decisões em aberto (do dono do projeto, antes da tarefa indicada)
+
+| # | Decisão | Antes de |
+|---|---|---|
+| 1 | De onde vem o calendário de sessões e quem mantém feriados e horários especiais | T13.1 |
+| 2 | Série contínua de WIN/WDO: só para estudo ou também para características de execução (nunca executar em preço ajustado) | T13.1, quando houver ativos da B3 |
+| 3 | Aceitar timeframes que o MT5 não tem (M7, M45...) ou só os do enum `Timeframe` | T13.1 |
+| 4 | Nomes dos comandos `mt5x analytics ...`, dado que `validate`, `analyze` e `report` já existem | T13.2 |
+| 5 | O que "confiança" significa em cada característica publicada | T13.3 |
+| 6 | SQLite ou PostgreSQL para as tabelas novas; CSV ou SQLite para o retrato lido pelo MT5 (medindo) | T13.2 e T13.5 |
+| 7 | Prazo de validade do retrato por frequência e o que cada estratégia faz com dado vencido | T13.5 |
+| 8 | Consentimento explícito para uma evidência alterar limite operacional | T13.7 |
+| 9 | Retenção, versionamento e cópia de segurança de características e hipóteses aprovadas | T13.8 |
+
+**Ordem com a Fase 12:** T13.1 a T13.4 são só Python e não tocam no HADOUKEN, então podem andar em paralelo com a
+Fase 12. T13.5 em diante mexem no HADOUKEN e dependem das tarefas da Fase 12 indicadas em cada uma.
 
 ---
 
