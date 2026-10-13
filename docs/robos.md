@@ -38,6 +38,7 @@ mt5x robots new MeuRobo --dir ~/robos                          # esqueleto de um
 mt5x robots generate declaracao.json --name MeuRobo --dir ~/robos   # robô a partir de uma estratégia declarada
 mt5x robots parity meurobo --symbol EURUSD --tf H1             # o robô faz as mesmas operações que o Python?
 mt5x robots start hdk_hadouken_painel --symbol WIN$N --tf M5 --preset Conservador --close-terminal   # conta DEMO
+mt5x portfolio                 # carteira da conta: posições e ordens de todos os robôs e manuais (só leitura)
 mt5x robots monitor hdk_hadouken_painel   # posições e resultado do robô
 mt5x robots stop                          # PARAR TUDO
 ```

@@ -105,6 +105,16 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.8 | Botão na interface para abrir o painel de resultados | T11.7 | ✅ concluída |
 | T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | ✅ concluída (conferida no host) |
 | T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | ✅ concluída (conferida no host, com o MT5 oculto) |
+| T12.0 | Plano do HADOUKEN 2.0 registrado e diagnóstico do código atual (etapa 0) | T8.9 | ✅ concluída |
+| T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; nenhuma operação supervisionada foi executada |
+| T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
+| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
+| T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | a fazer |
+| T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
+| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.4 | a fazer |
+| T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
+| T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
+| T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -1268,8 +1278,15 @@ não espera por ele. Os testes com terminal simulado não pegavam isso.
   (T11.4) e `monitor` com posição aberta continuam sem prova com o MT5 real.
 - O `start` grava o robô como iniciado sem conferir se o terminal carregou o arquivo de início. Na tentativa que
   falhou o programa disse "iniciado" e o robô não estava no gráfico. **Falta** ler o log do terminal depois de abrir.
-- O robô fica gravado no perfil do terminal: depois do `stop` ele continua no gráfico, bloqueado, e volta junto
-  quando o terminal reabrir. Para tirá-lo de vez é preciso removê-lo do gráfico à mão. **Não há comando para isso.**
+- Depois do `stop` o robô continua no gráfico, bloqueado; para tirá-lo é preciso removê-lo à mão. **Não há comando
+  para isso.**
+- **Correção (2026-10-13):** eu tinha escrito aqui que o robô ficava no perfil e voltava quando o terminal
+  reabrisse. Não é o que acontece quando o programa reinicia o terminal: ao reabri-lo com outro arquivo de início
+  (para carregar o `HDK_AccountGuardian`), só o robô desse arquivo foi carregado e o `HDK_EmaAtr` **sumiu do
+  gráfico** (o perfil salvo tinha o gráfico EURUSD H1 sem robô). Consequências: o arquivo de início carrega **um**
+  robô por vez, e cada `start` do programa derruba o robô anterior sem avisar. Causa provável, não confirmada: o
+  programa encerra o terminal à força e o perfil não é salvo com o robô. **Falta** tratar isso (fechar o terminal
+  de forma limpa, ou avisar e recusar quando já houver um robô iniciado) antes de operar com mais de um robô.
 - Só no Linux. O caminho do Windows (`Popen` direto, sem `.bat`) não mudou e não foi validado.
 - A trava da bateria não foi exercitada com um robô aprovado, porque não existe um.
 
@@ -2286,6 +2303,93 @@ do MT5 na tela real. Imagem: [painel vivo](img/painel_vivo.png).
   instalação e religa a ponte, sempre com confirmação na página.
 - **Critérios de aceite:** no host, com o modo oculto, uma atualização e um teste MQL5 disparados pelo painel; a
   página mostra o progresso e o aviso do sistema chega no fim.
+
+---
+
+## Fase 12 — HADOUKEN 2.0: carteira, Gradiente Linear, painel e estatísticas
+
+Especificação do dono do projeto (2026-10-13), registrada em `Documentation/HADOUKEN_2/PLANO.md` do repositório
+HADOUKEN (`projeto-indicadores-mt5`); o andamento real de cada etapa, com o que não foi conferido, está em
+`Documentation/HADOUKEN_2/ANDAMENTO.md` de lá. Aqui ficam o painel de status e a parte do mt5x.
+
+### Ponto de retomada (2026-10-13, 02:00, host Linux)
+
+Quem continuar começa aqui. Tudo o que foi feito está em commit e enviado; nada ficou só na máquina.
+
+**Onde está cada coisa**
+
+| Repositório | Branch | PR | Estado |
+|---|---|---|---|
+| mt5x (este) | `tarefa/T12-carteira-leitura` | #39, aberto contra `master` | CI verde em Linux, Windows e PostgreSQL; não mesclado |
+| HADOUKEN (`~/Projects/projeto-indicadores-mt5`) | `hadouken2/safety-carteira` | #3, rascunho, sobre o #2 | compila; ver `Documentation/HADOUKEN_2/ANDAMENTO.md` |
+| HADOUKEN | `tarefa/T8.9-estrategias` | #2, rascunho, sobre o #1 | seis robôs de estratégia e quadro de status |
+| `mt5x-safety` (`~/Projects/mt5x-safety`) | `main` | — | 1.0.0, **desatualizada** em relação à `Safety/` 7.1 |
+
+**Estado do host**
+
+- `config/config.ini` (não versionado) tem `[ROBOTS] safety_lib_dir` e `library_dirs` apontando para os dois clones.
+- Conta do terminal: MetaQuotes-Demo, hedging. Base com EURUSD em M1, M15, H1 e H4, ticks de 23 dias e a
+  calibração de spread gravada.
+- **Nenhum robô está rodando na demo.** O `HDK_EmaAtr` caiu quando o terminal foi reiniciado para carregar o
+  sentinela; antes disso não houve operação. O PARAR TUDO está liberado.
+- Scripts de rascunho desta sessão (fora dos repositórios): `~/Projects/mt5x-rascunhos-2026-10-13/`. O
+  `t87_start.py` inicia o `HDK_EmaAtr` na demo **dispensando a trava da bateria**; só o dono do projeto o roda, e só
+  para o teste de mecânica da T8.7. `watch_first_trade.py` espera a primeira operação, só leitura.
+
+**Próximos passos, na ordem**
+
+1. Mesclar o #39 (decisão do dono).
+2. Rodar de novo a paridade dos seis robôs com a `Safety/` 7.1 (`mt5x robots parity <robô> --symbol EURUSD --tf
+   <tf> --close-terminal`; números de referência na seção T8.9). Fecha o terminal por alguns minutos.
+3. Recompilar o `HDK_EmaAtr` e, se o dono quiser, recolocá-lo na demo até a primeira operação (item que falta da
+   T8.7: ordem real, aviso de operação e `monitor` com posição aberta).
+4. T12.2: conciliar a carteira com posições de verdade, inclusive uma manual, e comparar o risco do MQL5 com o do
+   Python.
+5. T12.3: guardião com orçamento por robô e bloqueio global. É a etapa que usa as operações supervisionadas.
+6. Antes de operar com mais de um robô: o `start` derruba o robô anterior e não confere se o terminal carregou o
+   arquivo de início (lacunas registradas na T8.7).
+
+**Pendências que não são de código:** não existe robô aprovado na bateria (as seis estratégias reprovam em
+EURUSD); não há conta netting nem ativos da B3 no host; T10.W (Windows), T10.9 e T10.11 seguem abertas; o PR #1
+deste repositório está aberto com os commits já no `master` e pode ser fechado.
+
+**Regras da fase:** o mt5x continua sem enviar ordens; no MQL5 só o `HDK_SafeExecutor` envia, altera ou cancela;
+ver a conta não dá direito de mexer nela; a paridade dos seis robôs de estratégia não pode mudar; conta real nunca
+é o padrão. Cada etapa tem o seu critério de aceite no plano de lá e só é marcada ✅ com ele cumprido.
+
+### T12.0 — Plano e diagnóstico ✅
+
+Plano registrado e código atual levantado (seção "Etapa 0" do andamento). Achados que mudam o caminho: o executor
+não cria ordem pendente (a boleta e a grade dependem disso); não existe orçamento de risco global; a `mt5x-safety`
+está desatualizada em relação à `Safety/`; não há conta netting no host, então nada de netting (B3) se prova aqui.
+
+### T12.1 — Safety ampliada ⏳
+
+No HADOUKEN: `ENUM_HDK_PERMISSION` e, no `HDK_SafeExecutor`, `SetMandate`, `Adopt`, `ScopeFor`, `SupervisedClose`,
+`SupervisedCancel` e `SupervisedCloseAll`, todas auditadas em `MQL5\Files\HDK_Audit`. As funções antigas não
+mudaram: seguem restritas ao próprio magic. **Compila** (painel, sentinela e cinco robôs de estratégia). **Falta:**
+executar uma operação supervisionada (só acontece com o guardião da T12.3), rodar de novo a paridade dos seis
+robôs, atualizar a `mt5x-safety` e a regra da bateria para os arquivos novos.
+
+### T12.2 — Carteira somente leitura ⏳
+
+- HADOUKEN: `HDK_PortfolioRegistry.mqh` e o robô `HDK_AccountGuardian.mq5`, que só observa, avisa e grava
+  `Common\Files\HDK_portfolio_<conta>.json`.
+- mt5x: `robots/portfolio.py` e `mt5x portfolio` (pela ponte) ou `mt5x portfolio --guardian` (pelo arquivo do
+  sentinela). Mostra posições e pendentes de todos os robôs e manuais, o dono de cada uma (pelo magic number do
+  catálogo), o risco até o stop, os totais e os ativos com mais de um dono. Chave nova:
+  `[ROBOTS] max_account_risk_pct` (0 = não compara; só muda o estado mostrado).
+- **Conferido:** seis testes automáticos; leitura real da conta demo, vazia (estado NORMAL); o sentinela carregado
+  no terminal real (`expert HDK_AccountGuardian (EURUSD,M5) loaded successfully`), gravando o retrato, lido por
+  `mt5x portfolio --guardian` com os mesmos números da leitura pela ponte.
+- **Falta para o aceite:** conciliar com o terminal uma conta **com posições, inclusive manuais** (a conta estava
+  vazia, então nenhum cálculo de risco foi comparado); ver o quadro desenhado e a trava de "um sentinela por
+  terminal"; comparar o risco calculado no MQL5 (`OrderCalcProfit`) com o do Python (valor do tick); conta netting.
+
+### T12.3 a T12.8 — a fazer
+
+Na ordem do plano. A T12.3 (guardião com poder de bloquear) é a que dá uso às operações supervisionadas da T12.1.
+A T12.4 começa por ensinar o executor a criar ordens pendentes.
 
 ---
 
