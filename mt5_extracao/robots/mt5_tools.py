@@ -670,7 +670,10 @@ def spawn_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] =
 
 def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional[Callable] = None,
                    is_running: Optional[Callable] = None) -> Path:
-    """Abre o terminal com o .ini dado (gravado como <name>.ini na pasta de dados) e devolve o caminho do .ini."""
+    """
+    Abre o terminal com o .ini dado (gravado como <name>.ini na pasta de dados) e devolve o caminho do .ini. Com
+    `ini_text` vazio o terminal abre sem /config, como pelo atalho (é o que "Abrir visão MT5" usa sem perfil próprio).
+    """
     data = Path(data)
     if is_running() if is_running else terminal_running(config):
         raise RuntimeError("O MetaTrader 5 está aberto: o robô só entra no gráfico quando o terminal é iniciado "
@@ -682,7 +685,8 @@ def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional
     ini = data / f"{name}.ini"
     ini.write_bytes(ini_text.encode("utf-16"))
     portable = prefix is not None or data.resolve() == terminal.parent.resolve()
-    command_line = '"{}"{} /config:"{}"'.format(_windows_path(terminal, prefix), " /portable" if portable else "",
-                                                _windows_path(ini, prefix))
+    command_line = '"{}"{}'.format(_windows_path(terminal, prefix), " /portable" if portable else "")
+    if ini_text:
+        command_line += ' /config:"{}"'.format(_windows_path(ini, prefix))
     (spawn or spawn_windows_command)(command_line, terminal.parent, prefix)
     return ini

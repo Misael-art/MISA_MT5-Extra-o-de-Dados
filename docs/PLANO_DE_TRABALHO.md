@@ -110,10 +110,14 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
 | T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800, ligada e desligada) |
 | T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; Windows e tema claro não vistos |
+| T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída com testes automáticos; **não conferida no terminal real** (veja a tarefa) |
+| T12.L2 | Opções da organização da janela na interface (diálogo Configurações), gravando o `config.ini` sem perder comentários | T12.L1 | ✅ concluída no Linux (vista em tela virtual, temas claro e escuro); Windows não visto |
+| T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída com o terminal simulado; **não exercitada no MT5 real** (veja a tarefa) |
+| T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | a fazer |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
-| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.4 | a fazer |
+| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | a fazer (dividida em T12.6a, T12.6b e T12.6c na revisão de 2026-10-13) |
 | T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
@@ -2441,6 +2445,238 @@ no repositório HADOUKEN, `Documentation/HADOUKEN_2/TESTES_PAINEL_V7.md` (catorz
 painel do MT5 passou a escolher sozinho entre as disposições compacta, normal e ampla e a ajustar o tamanho para
 caber. **Defeito grave achado e corrigido lá:** o `HDK_RiskGuard` travava o robô por drawdown quando o terminal
 abria com a conta ainda zerada.
+
+### Revisão das etapas do painel e da organização da janela (2026-10-13)
+
+Pedido do dono do projeto: rever as etapas do painel e a questão da organização da janela do MT5, com a
+possibilidade de ajustá-la pelas opções da interface. **Só revisão e plano: nenhum código mudou.** Foram lidos
+`robots/layout.py`, `robots/live.py`, o diálogo Configurações (`ui_manager.open_settings`), `config_builder.py` e,
+no HADOUKEN, `PLANO.md`, `ANDAMENTO.md`, `TESTES_PAINEL_V7.md` e os parâmetros do `HDK_HADOUKEN_Painel.mq5`. Os
+documentos do HADOUKEN **não foram alterados**; o que muda lá está indicado em cada item.
+
+**Achados sobre a organização da janela (T12.L)**
+
+1. **É tudo ou nada.** `layout.apply` esconde as quatro janelas laterais e as três barras juntas, e a única chave é
+   `[MT5] manage_layout`. Não dá para manter a Observação do Mercado e fechar o resto, por exemplo.
+2. **Os identificadores estão em pares.** `32843` e `32845` aparecem como "Observação do Mercado / Navegador" e
+   `32841` e `32846` como "Caixa de Ferramentas / Testador": não se sabe qual número é qual janela. Escolher janela
+   por janela exige descobrir isso no terminal antes.
+3. **Devolver o arranjo anterior regrava o `terminal.ini` inteiro** com a cópia guardada na primeira organização.
+   Tudo o que o terminal gravou nesse arquivo depois disso (não só a visibilidade das janelas) volta ao valor
+   antigo. O conteúdo completo desse arquivo não foi inventariado, então o tamanho do risco não é conhecido.
+4. **Só vale quando o programa abre o terminal por `mt5x robots start`.** Abrir o MT5 pela ponte, pela interface
+   ou à mão não organiza nada, e o botão TELA do painel não tem efeito na hora: só grava a escolha.
+5. **Há três interruptores para a mesma coisa:** a chave do `config.ini`, o parâmetro `InpManageLayout` do painel e
+   o arquivo `HDK_LAYOUT_OFF.txt` (botão TELA). Hoje qualquer "desligado" vence. A regra não está escrita em lugar
+   nenhum para o usuário.
+6. **O diálogo Configurações da interface só mostra.** Ele exibe a conta, os caminhos e manda editar o arquivo e
+   reiniciar. Não existe hoje nenhuma opção editável pela interface: a do layout seria a primeira.
+7. **Gravar o `config.ini` pelo programa apaga os comentários.** `config_builder.write_config` regrava o arquivo
+   pelo `configparser`. Quem partiu do `config.ini.example` (comentado) perderia as explicações na primeira
+   alteração feita pela interface.
+8. **Achado 12 da bateria do painel continua marcado como aberto** ("cada início acrescenta um gráfico ao
+   perfil"). O perfil próprio "HADOUKEN" apaga os gráficos anteriores a cada início, o que deveria resolver, mas
+   isso não foi conferido de novo depois da mudança.
+9. **Seguem sem conferência:** o clique no botão TELA, outro build do MT5 e o Windows (já registrados na T12.L).
+
+**Achados sobre as etapas do painel (T12.P e T12.6)**
+
+1. **A etapa 6 foi feita pela metade e fora de ordem.** As três disposições (compacta, normal, ampla) entraram
+   antes das etapas 3 a 5. Do que falta, uma parte não depende de nada (botão recolhido, quebra de linha no log,
+   tema claro) e outra depende de etapas que não começaram: a aba Boleta e a aba Gradiente precisam das ordens
+   pendentes (T12.4), a aba Estatísticas completa é a T12.6A, a aba IA é a T12.7. Hoje o painel de status põe tudo
+   sob "T12.6, depende de T12.4", o que trava também o que poderia andar.
+2. **Quatro coisas se chamam "layout" ou "compacto".** (a) a organização da janela do MT5; (b) as disposições do
+   painel (`InpPanelLayout`: compacta, normal, ampla); (c) os estados do plano (`EXPANDIDO`, `COMPACTO`,
+   `RECOLHIDO`); (d) um `ENUM_HDK_LAYOUT_MODE` em `HDK_Config.mqh` (compacto, normal, expandido, mínimo), cujo uso
+   não foi verificado. "Compacto" é ao mesmo tempo uma disposição e um estado. Além disso o painel já tem um
+   "minimizar" (vira uma barra), que não é o `RECOLHIDO` do plano (botão `H` com ponto colorido).
+3. **A lista de abas do plano tem 11 e a Fase 13 acrescenta uma** ("Inteligência do Ativo", T13.6). O painel tem
+   quatro hoje (Visão geral, Posições, Estatísticas, Log). Não há decisão sobre como 12 abas cabem na disposição
+   compacta, que mostra quatro linhas por aba.
+4. **Construir em cima do que não foi visto.** Continuam sem conferência: a disposição normal, o parâmetro que
+   força a disposição, o ajuste de tamanho abaixo de 100%, o tema claro, a tela real do dono (2560×1980) e o
+   Windows. Também: vender, trailing, break-even no lucro, limites de perda atingidos e dois painéis ao mesmo tempo.
+5. **Sem linha de base de desempenho.** A medida de 7,8% de um núcleo e 377 MB não tem comparação sem o painel;
+   com mais abas, não haverá como dizer o que piorou.
+
+**Etapas revistas** (substituem a linha única "T12.6" como guia de ordem; os critérios de aceite da etapa 6 do
+plano do HADOUKEN continuam valendo para o conjunto)
+
+| Passo | O que é | Depende de |
+|---|---|---|
+| T12.L1 | Organização da janela configurável por partes, devolução sem regravar o arquivo inteiro | T12.L |
+| T12.L2 | Opções da organização da janela na interface (diálogo Configurações) | T12.L1 |
+| T12.6a | Fechar o que ficou sem conferência no painel v7 e fixar o vocabulário | T12.P |
+| T12.6b | Estado recolhido (botão `H`), quebra de linha do log e a aba Configuração | T12.6a |
+| T12.6c | Abas que dependem de outras etapas: Boleta e Gradiente (T12.4), Carteira (T12.2), Risco e Alertas (T12.3), Estatísticas (T12.6A), IA (T12.7), Inteligência do Ativo (T13.6) | cada aba, a sua |
+
+A T12.L1 e a T12.L2 são do mt5x e não dependem do guardião: podem ser as próximas. A T12.6a também.
+
+### T12.L1 — Organização da janela configurável por partes ✅
+
+**Registrado na entrega (2026-10-13):**
+
+- Chaves novas em `[MT5]`, todas `true` por padrão: `layout_hide_navigation` (Observação do Mercado e Navegador),
+  `layout_hide_toolbox` (Caixa de Ferramentas e Testador), `layout_hide_toolbars` e `layout_own_profile`.
+  `manage_layout` segue como interruptor geral. Valor inválido vale o padrão, com aviso no log.
+- `layout.apply(data, toolbars, navigation, toolbox)`; uma parte desligada **depois** de já ter sido escondida volta
+  como o usuário tinha (pela cópia guardada). `layout.options`, `layout.status`, `layout.has_arrangement`,
+  `layout.panel_off` e `layout.set_panel_off`.
+- **Devolução seletiva:** `layout.restore` repõe só o `IsVisible` das janelas e barras que o módulo conhece, com o
+  valor da cópia guardada, e deixa o resto do `terminal.ini` como está. O arquivo real do host tem dezenas de
+  outras seções (`Settings`, `Options`, `Common`...), que antes voltavam ao valor antigo junto. A cópia
+  `terminal.ini.antes-do-mt5x` continua sendo criada uma vez e apagada na devolução.
+- `mt5x mt5 layout` (estado, com `--json`) e `mt5x mt5 restore-layout` (recusa com o terminal aberto).
+- Sem o perfil próprio (`layout_own_profile = false`) o gráfico do robô abre no perfil em que o terminal estava, e
+  cada início acrescenta um gráfico a ele (é o achado 12 da bateria do painel; com o perfil próprio há teste de que
+  fica um gráfico só).
+- **Decisões tomadas sem resposta do dono do projeto** (podem ser revistas): por grupo, e não janela por janela
+  (decisão 1); só ao iniciar um robô, como já era (decisão 2).
+- **Conferido:** os sete testes anteriores passam sem alteração; nove testes novos em
+  `tests/test_robots_layout.py`; `mt5x mt5 layout` rodado no host, lendo o `terminal.ini` real (só leitura).
+- **Não feito / não conferido:** o passo 1 (descobrir no terminal qual identificador é qual janela) **não foi
+  feito**, porque exige fechar e reabrir o MT5 do host, e por isso as partes são os dois pares, não as quatro
+  janelas; nenhuma organização nova foi aplicada ao terminal real nem vista na tela; outro build e Windows.
+
+**Texto original da tarefa:**
+
+- **Objetivo:** escolher o que a organização faz, e devolver o arranjo anterior sem desfazer outras configurações
+  do terminal.
+- **Depende de:** T12.L.
+- **Arquivos previstos:** `robots/layout.py`, `robots/live.py`, `bootstrap/config_builder.py`,
+  `config/config.ini.example`, `cli.py`, `tests/test_robots_layout.py`.
+- **Passos:**
+  1. No terminal real, fechar uma janela por vez e comparar o `terminal.ini`, para saber qual identificador é a
+     Observação do Mercado, o Navegador, a Caixa de Ferramentas e o Testador. Registrar o build.
+  2. Chaves novas em `[MT5]`, todas com `fallback` igual ao comportamento de hoje (a chave `manage_layout`
+     continua sendo o interruptor geral): `layout_hide_side_panes`, `layout_hide_toolbars` e `layout_own_profile`
+     (perfil "HADOUKEN" com o gráfico maximizado). Se o passo 1 separar as janelas, uma lista do que esconder em vez
+     de uma chave só para as laterais (decisão 1).
+  3. `layout.apply` passa a receber o que esconder; `organize_window` lê as chaves.
+  4. Devolução seletiva: guardar **quais seções foram alteradas e o valor anterior**, e na devolução repor só
+     isso. A cópia `terminal.ini.antes-do-mt5x` de quem já usa continua sendo aceita (base antiga não quebra).
+  5. `mt5x mt5` ganha o estado da organização (ligada ou desligada, por quem, o que será escondido, se há arranjo
+     guardado) e a devolução sob comando, com o terminal fechado.
+  6. Conferir de novo o achado 12 da bateria do painel (gráficos acumulando no perfil) e fechá-lo ou reabri-lo.
+- **Critérios de aceite:** com as chaves ausentes, o resultado é idêntico ao de hoje (os sete testes atuais passam
+  sem mudança); cada opção desligada deixa a sua parte intacta; depois de organizar, mudar outra configuração do
+  terminal e desligar, a outra configuração **permanece**; conferido no terminal real do host em 1280×800.
+- **Não conferível no host:** Windows e outro build (vão para o checklist de `validacao_instaladores.md`).
+
+### T12.L2 — Opções da organização da janela na interface ✅
+
+**Registrado na entrega (2026-10-13):**
+
+- `mt5_extracao/ui/settings.py` (novo, `SettingsDialog`): Arquivo > Configurações passou de um texto fixo para dois
+  blocos. "Em uso" (conta, terminal, banco, arquivo) e "Janela do MetaTrader 5": a caixa geral, uma caixa por parte
+  (desabilitadas com a geral desligada), o estado (ligada, desligada, desligada pelo botão TELA, ligada sem
+  nenhuma parte), o que está escondido agora e os botões "Voltar a ligar" (desfaz o desligamento do botão TELA) e
+  "Devolver o arranjo anterior agora" (só com o terminal fechado).
+- Cada clique grava na hora, com a confirmação na própria janela; se a gravação falha, a caixa volta e a mensagem
+  diz o que conferir. A configuração em memória muda junto: não precisa reiniciar o aplicativo.
+- `config_builder.set_config_value(path, seção, chave, valor)`: troca só a linha da chave (ou a acrescenta ao fim
+  da seção, ou a seção ao fim do arquivo), com escrita atômica. Comentários, ordem e grafia da chave ficam. Serve
+  para qualquer opção futura da interface.
+- **Decisões tomadas sem resposta do dono do projeto:** a disposição do painel não entrou nesta tarefa (entrou na
+  T12.L3, depois da resposta); o botão TELA continua e qualquer "desligado" vence, com a interface mostrando quem desligou (decisão 4).
+- **Conferido:** seis testes novos da janela (clique real nas caixas, arquivo com comentários preservado, reabrir
+  com o que foi salvo, devolução recusada com o terminal aberto, botão TELA, pasta do MT5 ausente e falha de
+  gravação) e três do `set_config_value`; diálogo visto em tela virtual nos temas claro e escuro.
+- **Não conferido:** o diálogo na tela real e no Windows; um início de robô de verdade obedecendo às opções (o
+  teste chama `live.organize_window`, que é o que o início usa).
+
+**Texto original da tarefa:**
+
+- **Objetivo:** ligar, desligar e ajustar a organização da janela pelo diálogo Configurações, sem editar arquivo.
+- **Depende de:** T12.L1.
+- **Arquivos previstos:** `ui_manager.py` (ou um painel novo em `mt5_extracao/ui/`), `bootstrap/config_builder.py`
+  (gravação de uma chave preservando comentários), `tests/test_ui_main_window.py`, `tests/test_bootstrap_config.py`.
+- **Passos:**
+  1. Gravar uma chave no `config.ini` **sem regravar o arquivo**: trocar só a linha da chave (ou acrescentá-la na
+     seção), mantendo comentários e ordem. Escrita atômica, como as demais.
+  2. No diálogo Configurações, o bloco "Janela do MT5": caixa geral "Organizar a janela ao iniciar um robô" e,
+     abaixo, uma caixa por opção da T12.L1, desabilitadas quando a geral está desligada.
+  3. Mostrar o estado real: se o botão TELA do painel desligou a organização (arquivo `HDK_LAYOUT_OFF.txt`), dizer
+     isso e oferecer "voltar a ligar" (apaga o arquivo); se há arranjo anterior guardado, o botão "Devolver o
+     arranjo anterior agora", habilitado só com o terminal fechado.
+  4. Texto fixo no bloco: a mudança vale na próxima vez que o programa abrir o MT5 para um robô; com o MT5 já
+     aberto nada muda na hora.
+  5. Leitura do estado e gravação por `run_bg` (regra da Fase 7); o `config` em memória é atualizado junto, para
+     não exigir reinício do aplicativo.
+- **Critérios de aceite:** marcar e desmarcar muda o `config.ini`, com os comentários do arquivo preservados; o
+  início seguinte de um robô obedece; o estado do botão TELA aparece certo; testes com a pasta do MT5 simulada (sem
+  MT5 real); mensagens em português com a ação de correção.
+- **Armadilhas:** é a primeira opção editável da interface, então a gravação da chave deve servir para as próximas
+  (não escrever algo específico do layout); não gravar em `config.ini` nada que seja segredo.
+
+### T12.L3 — "Abrir visão MT5" e disposição do painel nas opções ✅
+
+Respostas do dono do projeto às decisões da revisão (2026-10-13): **1** por grupo, está bom; **2** não só ao iniciar
+um robô: poder mudar a opção e aplicar a visão quando quiser; **3** incluir a disposição do painel nas opções e pôr
+na interface um botão bem visível de "abrir visão MT5", que respeite as opções escolhidas.
+
+**Registrado na entrega:**
+
+- `robots/view.py` (novo), `open_view(config, close_terminal)`: aplica a organização escolhida e abre o terminal.
+  Com ele aberto, só segue se quem chamou autorizou fechar: para a ponte, pede ao terminal que feche, grava,
+  abre de novo e religa a ponte (inclusive se a abertura falhar). Com a organização desligada, devolve o arranjo
+  anterior. Não coloca nem tira robô de gráfico e não envia ordem.
+- **Perfil de gráficos:** a visão usa o perfil "HADOUKEN" **como está**, se ele já existe (ele nasce no primeiro
+  início de robô pelo programa). Refazê-lo apagaria o gráfico em que o robô ficou. Sem ele, o terminal abre no
+  perfil em que estava, sem `/config` (`mt5_tools.start_terminal` passou a aceitar isso).
+- **Disposição do painel:** `[MT5] panel_layout` = `auto`, `compact`, `normal` ou `wide` (os códigos 0 a 3 de
+  `ENUM_HDK_PANEL_LAYOUT`, lidos do código do HADOUKEN). No início de um robô que tem o parâmetro `InpPanelLayout`,
+  `live.panel_parameters` grava `MQL5/Presets/mt5x_painel.set` (cópia do preset com esse parâmetro trocado; o preset
+  do usuário não muda) e o usa. Em "Abrir visão MT5", `layout.set_panel_input` troca a linha `InpPanelLayout=N` nos
+  gráficos do perfil próprio, e só nele. Com `auto` e sem perfil, nada disso muda o comportamento anterior.
+- **Interface:** botão "Abrir visão MT5" no cabeçalho, com ícone desenhado pelo programa (`ui/icons.py`, Pillow),
+  para não depender das fontes do Tk. Em Configurações: a lista "Disposição do painel do HADOUKEN" e o botão
+  "Aplicar e abrir o MT5 agora" (a mesma ação). Com o MT5 aberto, pergunta antes de fechar e avisa do efeito sobre
+  robô no gráfico, coleta e extração. O trabalho roda por `run_bg`.
+- **Linha de comando:** `mt5x mt5 view [--close-terminal]`; `mt5x mt5 layout` mostra a disposição escolhida.
+- **Conferido:** dez testes em `tests/test_robots_view.py` e quatro novos da janela, com o terminal simulado; botão
+  e diálogo vistos em tela virtual.
+- **Não conferido, e é o que mais importa nesta tarefa:**
+  - **Nenhuma abertura real do MT5 por este caminho.** Fechar o terminal do host, gravar e reabrir não foi feito.
+  - **O formato do gráfico salvo com robô** (`<inputs>` com `InpPanelLayout=N` no `.chr`) é o que se conhece do MT5;
+    no host não havia nenhum gráfico com robô para conferir. Se o formato for outro, a linha não é encontrada e
+    nada muda (não quebra), mas a disposição não é atualizada.
+  - **Arquivo de parâmetros só com `InpPanelLayout`** (início de robô sem preset e disposição diferente de `auto`):
+    não se verificou se o MT5 aceita um `.set` parcial. Se não aceitar, o início acusa que o robô não foi carregado.
+  - **Depois de reabrir, este programa fica desconectado** até "Verificar conexão" (a interface avisa). A reconexão
+    automática não foi feita.
+  - Windows.
+
+### T12.6a — Painel v7: conferência pendente e vocabulário
+
+- **Objetivo:** não empilhar abas novas em cima do que não foi visto, e dar um nome só a cada coisa.
+- **Onde:** repositório HADOUKEN (`TESTES_PAINEL_V7.md`, `PLANO.md`); aqui só o painel de status.
+- **Passos:** ver a disposição normal, o parâmetro que força a disposição, o ajuste abaixo de 100% e o tema claro;
+  repetir na tela real do dono; medir o terminal sem o painel, para ter a linha de base de desempenho; fixar o
+  vocabulário (proposta: "organização da janela" para o MT5, "disposição" para compacta, normal e ampla, "estado"
+  para expandido e recolhido, sem um estado chamado "compacto"); verificar se o `ENUM_HDK_LAYOUT_MODE` de
+  `HDK_Config.mqh` ainda é usado.
+- **Critério de aceite:** a lista "O que não foi testado" do relatório do painel fica só com o que depende de
+  mercado, de outra conta ou do Windows.
+
+### T12.6b e T12.6c
+
+Detalhadas no plano do HADOUKEN quando chegarem. Registro desta revisão: o **estado recolhido** e o **minimizar**
+que já existe precisam virar uma coisa só ou ter papéis declarados; a aba **Configuração** do painel deve mostrar a
+organização da janela com as mesmas opções da T12.L2 (lendo o que o mt5x grava), em vez de um segundo conjunto de
+interruptores; e é preciso decidir como 12 abas cabem na disposição compacta antes de criar a quinta.
+
+**Decisões do dono do projeto** (antes da tarefa indicada)
+
+| # | Decisão | Antes de |
+|---|---|---|
+| 1 | Escolher janela por janela (quatro caixas) ou por grupo (laterais, barras, perfil próprio). **Respondida: por grupo** | T12.L1 |
+| 2 | A organização deve valer também quando o MT5 é aberto pela ponte ou pela interface, ou só ao iniciar um robô. **Respondida: quando o usuário pedir (T12.L3)**; abrir pela ponte continua sem organizar | T12.L1 |
+| 3 | A disposição do painel (automática, compacta, normal, ampla) também entra nas opções da interface. **Respondida: sim (T12.L3)** | T12.L2 |
+| 4 | O botão TELA do painel continua existindo ao lado das opções da interface, e qual vence quando divergem (hoje: qualquer "desligado" vence) | T12.L2 |
+| 5 | Vocabulário do item 2 dos achados do painel | T12.6a |
+| 6 | Como as abas novas cabem na disposição compacta (rolagem, menu, ou abas só nas disposições maiores) | T12.6c |
 
 ### T12.3 a T12.8 — a fazer
 

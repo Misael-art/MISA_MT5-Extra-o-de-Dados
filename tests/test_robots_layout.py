@@ -91,3 +91,160 @@ def test_start_adds_the_profile_and_turning_off_gives_the_arrangement_back(tmp_p
     assert live.organize_window(config, data, "EURUSD", "M15") == "" and read(data) == INI
     (common / layout.OFF_FILE).unlink()
     assert live.organize_window(config, data, "EURUSD", "S30") == ""    # falha na organização não impede o início
+
+
+# --- T12.L1: organização por partes, devolução seletiva e estado -----------------------------------------------
+
+FULL = ("[Window]\r\nFullscreen=0\r\n[Pane-32841]\r\nID=32841\r\nIsVisible=1\r\n[Pane-32846]\r\nID=32846\r\nIsVisible=1\r\n"
+        "[Pane-32843]\r\nID=32843\r\nIsVisible=1\r\n[Pane-32845]\r\nID=32845\r\nIsVisible=0\r\n[Pane-32900]\r\nID=32900\r\n"
+        "IsVisible=1\r\n[Pane-32931]\r\nID=32931\r\nIsVisible=1\r\n[Settings]\r\nSound=1\r\n[Common]\r\nLogin=1\r\n")
+
+
+def shown(data):
+    return layout.visibility(read(data))
+
+
+def test_each_part_can_be_left_alone(tmp_path):
+    data = terminal(tmp_path, FULL)
+    assert layout.apply(data, toolbars=False, toolbox=False) == ["Observação do Mercado / Navegador"]
+    assert shown(data) == {"32841": "1", "32846": "1", "32843": "0", "32845": "0", "32900": "1", "32931": "1"}
+    data = terminal(tmp_path / "b", FULL)
+    assert layout.apply(data, navigation=False, toolbars=False) == ["Caixa de Ferramentas / Testador"]
+    assert shown(data)["32841"] == shown(data)["32846"] == "0" and shown(data)["32843"] == "1"
+    data = terminal(tmp_path / "c", FULL)
+    assert layout.apply(data, navigation=False, toolbox=False, toolbars=False) == []
+    assert read(data) == FULL and not layout.has_arrangement(data)          # nada pedido: nada mexido, nada guardado
+
+
+def test_a_part_turned_off_later_comes_back_as_the_user_had_it(tmp_path):
+    data = terminal(tmp_path, FULL)
+    layout.apply(data)                                                       # tudo escondido
+    assert set(shown(data).values()) == {"0"}
+    assert layout.apply(data, toolbars=False) == []                          # barras desligadas depois: voltam
+    assert shown(data)["32900"] == shown(data)["32931"] == "1" and shown(data)["32841"] == "0"
+    assert layout.apply(data, toolbars=False, navigation=False) == []
+    assert shown(data)["32843"] == "1" and shown(data)["32845"] == "0"       # a que o usuário já escondia segue escondida
+    assert layout.has_arrangement(data)
+
+
+def test_restore_gives_back_only_the_windows_and_keeps_later_changes(tmp_path):
+    """O terminal.ini também guarda opções do terminal: devolver o arranjo não pode desfazer o que mudou depois."""
+    data = terminal(tmp_path, FULL)
+    layout.apply(data)
+    path = layout.ini_path(data)
+    changed = read(data).replace("Sound=1", "Sound=0").replace("Login=1", "Login=777") + "[Novo]\r\nChave=1\r\n"
+    path.write_bytes(changed.encode("utf-16"))                               # o terminal gravou outras coisas depois
+    assert layout.restore(data)
+    text = read(data)
+    assert "Sound=0" in text and "Login=777" in text and "[Novo]\r\nChave=1" in text
+    assert layout.visibility(text) == layout.visibility(FULL)                # as janelas, como o usuário tinha
+    assert not layout.has_arrangement(data) and not layout.restore(data)
+
+
+def test_restore_recreates_a_missing_terminal_ini_from_the_copy(tmp_path):
+    data = terminal(tmp_path, FULL)
+    layout.apply(data)
+    layout.ini_path(data).unlink()
+    assert layout.restore(data) and read(data) == FULL
+
+
+def test_options_come_from_config_with_fallback_to_everything_on():
+    assert layout.options(None) == layout.Options()
+    config = configparser.ConfigParser()
+    assert layout.options(config) == layout.Options(True, True, True, True, True)
+    config.read_dict({"MT5": {"manage_layout": "no", "layout_hide_toolbars": "false", "layout_own_profile": "0",
+                              "layout_hide_toolbox": "talvez"}})                # valor inválido vale o padrão
+    assert layout.options(config) == layout.Options(enabled=False, navigation=True, toolbox=True, toolbars=False,
+                                                    own_profile=False)
+    from mt5_extracao.bootstrap import config_builder
+    assert {key for key, *_ in layout.OPTION_KEYS} | {layout.MASTER_KEY} <= set(config_builder.DEFAULTS["MT5"])
+    example = configparser.ConfigParser()
+    example.read("config/config.ini.example", encoding="utf-8")
+    assert all(example.getboolean("MT5", key) for key, *_ in layout.OPTION_KEYS)
+
+
+def test_status_tells_who_turned_it_off_and_what_is_hidden(tmp_path):
+    data, common = terminal(tmp_path, FULL), tmp_path / "Common"
+    common.mkdir()
+    config = configparser.ConfigParser()
+    config.read_dict({"MT5": {"layout_hide_toolbars": "false"}})
+    state = layout.status(config, data, common)
+    assert state["active"] and not state["panel_off"] and not state["has_arrangement"]
+    assert state["options"] == {"layout_hide_navigation": True, "layout_hide_toolbox": True,
+                                "layout_hide_toolbars": False, "layout_own_profile": True}
+    assert state["will_hide"] == ["Caixa de Ferramentas / Testador", "Observação do Mercado / Navegador"]
+    assert state["hidden_now"] == ["Observação do Mercado / Navegador"]      # a que o usuário já tinha escondido
+    layout.apply(data, toolbars=False)
+    layout.set_panel_off(common, True)                                       # o mesmo arquivo do botão TELA
+    state = layout.status(config, data, common)
+    assert state["enabled"] and state["panel_off"] and not state["active"] and state["has_arrangement"]
+    assert state["hidden_now"] == ["Caixa de Ferramentas / Testador", "Observação do Mercado / Navegador"]
+    layout.set_panel_off(common, False)
+    layout.set_panel_off(common, False)                                      # religar duas vezes não dá erro
+    assert layout.status(config, data, common)["active"]
+    assert layout.status(None)["active"] and layout.status(config, tmp_path / "nada")["hidden_now"] == []
+
+
+def test_start_obeys_each_option(tmp_path, monkeypatch):
+    common = tmp_path / "Common"
+    common.mkdir()
+    monkeypatch.setattr(live.mt5_tools, "common_files_dir", lambda config: common)
+    config = configparser.ConfigParser()
+    config.read_dict({"MT5": {"layout_own_profile": "false", "layout_hide_toolbox": "false"}})
+    data = terminal(tmp_path / "t", FULL)
+    assert live.organize_window(config, data, "EURUSD", "M15") == ""         # sem o perfil próprio
+    assert not (data / "MQL5").exists() and not (common / layout.SEED_FILE).exists()
+    assert shown(data)["32841"] == "1" and shown(data)["32843"] == "0" and shown(data)["32900"] == "0"
+    config["MT5"]["layout_own_profile"] = "true"
+    assert live.organize_window(config, data, "EURUSD", "M15") == "[Charts]\r\nProfileLast=HADOUKEN\r\n"
+    config["MT5"]["manage_layout"] = "false"                                 # desligar devolve só as janelas
+    assert live.organize_window(config, data, "EURUSD", "M15") == "" and read(data) == FULL
+
+
+def test_profile_does_not_pile_up_charts_between_starts(tmp_path):
+    """Achado 12 da bateria do painel: cada início deixa um gráfico só no perfil próprio."""
+    folder = tmp_path / "MQL5" / "Profiles" / "Charts" / layout.PROFILE
+    for symbol in ("EURUSD", "GBPUSD", "WIN$N"):
+        layout.prepare_profile(tmp_path, symbol, "M15")
+        (folder / "chart02.chr").write_bytes(b"grafico que o terminal gravou ao fechar")
+    layout.prepare_profile(tmp_path, "PETR4", "H1")
+    assert sorted(p.name for p in folder.iterdir()) == ["chart01.chr", "order.wnd"]
+    assert "symbol=PETR4" in (folder / "chart01.chr").read_bytes().decode("utf-16")
+
+
+def test_cli_shows_the_layout_state_and_restores_only_with_the_terminal_closed(tmp_path, monkeypatch, capsys):
+    import json
+
+    from mt5_extracao import cli
+    from mt5_extracao.robots import mt5_tools
+    data, common = terminal(tmp_path / "t", FULL), tmp_path / "Common"
+    common.mkdir()
+    cfg = tmp_path / "config.ini"
+    cfg.write_text(f"[MT5]\nlayout_hide_toolbars = false\n[DATABASE]\ntype = sqlite\npath = {tmp_path / 'db.sqlite'}\n",
+                   encoding="utf-8")
+    monkeypatch.setattr(mt5_tools, "data_dir", lambda config, mt5=None: data)
+    monkeypatch.setattr(mt5_tools, "common_files_dir", lambda config: common)
+    running = [True]
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda config=None: running[0])
+
+    assert cli.main(["--config", str(cfg), "mt5", "layout"]) == cli.EXIT_OK
+    out = capsys.readouterr().out
+    assert "Organização da janela: LIGADA" in out and "[ ] Esconder as barras de ferramentas" in out
+    assert "[x] Fechar a Observação do Mercado e o Navegador" in out and "Arranjo anterior guardado: não" in out
+
+    layout.apply(data, toolbars=False)
+    assert cli.main(["--config", str(cfg), "mt5", "restore-layout"]) == cli.EXIT_USAGE       # terminal aberto
+    assert "Feche o terminal" in capsys.readouterr().err and layout.has_arrangement(data)
+    running[0] = False
+    assert cli.main(["--config", str(cfg), "--json", "mt5", "layout"]) == cli.EXIT_OK
+    state = json.loads(capsys.readouterr().out)["data"]
+    assert state["has_arrangement"] is True and state["options"]["layout_hide_toolbars"] is False
+    assert cli.main(["--config", str(cfg), "mt5", "restore-layout"]) == cli.EXIT_OK
+    out = capsys.readouterr().out
+    assert "devolvido" in out and "continua ligada" in out and read(data) == FULL
+    assert cli.main(["--config", str(cfg), "mt5", "restore-layout"]) == cli.EXIT_OK
+    assert "Não há arranjo anterior guardado" in capsys.readouterr().out
+
+    (common / layout.OFF_FILE).write_text("x")
+    assert cli.main(["--config", str(cfg), "mt5", "layout"]) == cli.EXIT_OK
+    assert "DESLIGADA pelo botão TELA" in capsys.readouterr().out

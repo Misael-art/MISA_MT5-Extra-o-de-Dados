@@ -300,6 +300,19 @@ def cmd_mt5(args, ctx):
         _data(screenshot=str(path), display=name)
         _print(f"Captura da tela virtual {name} gravada em {path}")
         return EXIT_OK
+    if args.action in ("layout", "restore-layout"):
+        return _mt5_layout(args, ctx)
+    if args.action == "view":
+        from mt5_extracao.robots import view
+        try:
+            result = view.open_view(ctx.config, close_terminal=args.close_terminal)
+        except view.TerminalOpen as e:
+            raise ValueError(str(e)) from e
+        except OSError as e:
+            raise RuntimeError(str(e)) from e
+        _data(**result)
+        _print(view.describe(result))
+        return EXIT_OK
     owners = [owner for _, owner in mt5_tools.terminal_processes(ctx.config)]
     ours = sum(1 for o in owners if o == mt5_tools.OURS)
     _data(hidden=hidden, display=name if hidden else "", terminal_open=ours > 0,
@@ -314,6 +327,42 @@ def cmd_mt5(args, ctx):
             _print("Atenção: há um terminal aberto fora da vista. Um robô pode estar operando nele.")
     else:
         _print("Modo oculto: desligado (o terminal abre na sua tela).")
+    return EXIT_OK
+
+
+def _mt5_layout(args, ctx):
+    """Estado da organização da janela do MT5 (`layout`) ou devolução do arranjo anterior (`restore-layout`)."""
+    from mt5_extracao.robots import layout, mt5_tools
+    data = mt5_tools.data_dir(ctx.config)
+    common = mt5_tools.common_files_dir(ctx.config)
+    if args.action == "restore-layout":
+        if mt5_tools.terminal_running(ctx.config):
+            raise ValueError("O MetaTrader 5 está aberto: ele regravaria o arranjo ao fechar. Feche o terminal e rode "
+                             "de novo: mt5x mt5 restore-layout")
+        restored = layout.restore(data)
+        _data(restored=restored)
+        _print("Arranjo anterior da janela do MT5 devolvido." if restored else
+               "Não há arranjo anterior guardado: a janela do MT5 está como você deixou.")
+        if restored and layout.enabled(ctx.config, common):
+            _print("A organização continua ligada: o próximo 'mt5x robots start' organiza a janela de novo. Para "
+                   "desligar: [MT5] manage_layout = false em config/config.ini (ou Arquivo > Configurações).")
+        return EXIT_OK
+    state = layout.status(ctx.config, data, common)
+    _data(**state)
+    if state["panel_off"]:
+        _print("Organização da janela: DESLIGADA pelo botão TELA do painel do HADOUKEN.")
+    elif not state["enabled"]:
+        _print("Organização da janela: DESLIGADA em [MT5] manage_layout.")
+    else:
+        _print("Organização da janela: LIGADA. Vale na próxima vez que o programa abrir o MT5 para iniciar um robô.")
+    for key, _attr, label, _hint in layout.OPTION_KEYS:
+        _print(f"  [{'x' if state['options'][key] else ' '}] {label}  ({key})")
+    _print(f"Disposição do painel do HADOUKEN: {layout.PANEL_LAYOUTS[state['panel_layout']][0]}  (panel_layout = "
+           f"{state['panel_layout']})")
+    _print("Escondido agora no terminal: " + (", ".join(state["hidden_now"]) or "nada"))
+    _print("Arranjo anterior guardado: " + ("sim (para devolver: mt5x mt5 restore-layout, com o MT5 fechado)"
+                                             if state["has_arrangement"] else "não"))
+    _print("Para aplicar agora: mt5x mt5 view --close-terminal")
     return EXIT_OK
 
 
@@ -1556,8 +1605,15 @@ def build_parser():
     p.add_argument("--seconds", type=float, help="--serve: encerra sozinho depois desse tempo (padrão: até Ctrl+C)")
     p.set_defaults(func=cmd_panel)
 
-    p = sub.add_parser("mt5", help="estado do terminal e, no modo oculto, captura da tela virtual")
-    p.add_argument("action", nargs="?", choices=["status", "show"], default="status")
+    p = sub.add_parser("mt5", help="estado do terminal, organização da janela e, no modo oculto, captura da tela "
+                                   "virtual")
+    p.add_argument("action", nargs="?", choices=["status", "show", "layout", "restore-layout", "view"],
+                   default="status",
+                   help="status (padrão); show: captura da tela virtual; layout: o que a organização da janela faz "
+                        "e o que está escondido; restore-layout: devolve o arranjo anterior (MT5 fechado); view: "
+                        "abre o MT5 com a organização escolhida aplicada")
+    p.add_argument("--close-terminal", action="store_true",
+                   help="view: se o MT5 estiver aberto, fecha e abre de novo (interrompe o que roda nele)")
     p.add_argument("--out", help="show: arquivo PNG da captura (padrão: logs/mt5_oculto.png)")
     p.set_defaults(func=cmd_mt5)
 
