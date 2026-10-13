@@ -1278,8 +1278,15 @@ não espera por ele. Os testes com terminal simulado não pegavam isso.
   (T11.4) e `monitor` com posição aberta continuam sem prova com o MT5 real.
 - O `start` grava o robô como iniciado sem conferir se o terminal carregou o arquivo de início. Na tentativa que
   falhou o programa disse "iniciado" e o robô não estava no gráfico. **Falta** ler o log do terminal depois de abrir.
-- O robô fica gravado no perfil do terminal: depois do `stop` ele continua no gráfico, bloqueado, e volta junto
-  quando o terminal reabrir. Para tirá-lo de vez é preciso removê-lo do gráfico à mão. **Não há comando para isso.**
+- Depois do `stop` o robô continua no gráfico, bloqueado; para tirá-lo é preciso removê-lo à mão. **Não há comando
+  para isso.**
+- **Correção (2026-10-13):** eu tinha escrito aqui que o robô ficava no perfil e voltava quando o terminal
+  reabrisse. Não é o que acontece quando o programa reinicia o terminal: ao reabri-lo com outro arquivo de início
+  (para carregar o `HDK_AccountGuardian`), só o robô desse arquivo foi carregado e o `HDK_EmaAtr` **sumiu do
+  gráfico** (o perfil salvo tinha o gráfico EURUSD H1 sem robô). Consequências: o arquivo de início carrega **um**
+  robô por vez, e cada `start` do programa derruba o robô anterior sem avisar. Causa provável, não confirmada: o
+  programa encerra o terminal à força e o perfil não é salvo com o robô. **Falta** tratar isso (fechar o terminal
+  de forma limpa, ou avisar e recusar quando já houver um robô iniciado) antes de operar com mais de um robô.
 - Só no Linux. O caminho do Windows (`Popen` direto, sem `.bat`) não mudou e não foi validado.
 - A trava da bateria não foi exercitada com um robô aprovado, porque não existe um.
 
@@ -2331,10 +2338,12 @@ robôs, atualizar a `mt5x-safety` e a regra da bateria para os arquivos novos.
   sentinela). Mostra posições e pendentes de todos os robôs e manuais, o dono de cada uma (pelo magic number do
   catálogo), o risco até o stop, os totais e os ativos com mais de um dono. Chave nova:
   `[ROBOTS] max_account_risk_pct` (0 = não compara; só muda o estado mostrado).
-- **Conferido:** seis testes automáticos; leitura real da conta demo, vazia (estado NORMAL).
-- **Falta para o aceite:** conciliar com o terminal uma conta **com posições, inclusive manuais**; ver o sentinela
-  carregado em um gráfico; comparar o risco calculado no MQL5 (`OrderCalcProfit`) com o do Python (valor do tick);
-  conta netting.
+- **Conferido:** seis testes automáticos; leitura real da conta demo, vazia (estado NORMAL); o sentinela carregado
+  no terminal real (`expert HDK_AccountGuardian (EURUSD,M5) loaded successfully`), gravando o retrato, lido por
+  `mt5x portfolio --guardian` com os mesmos números da leitura pela ponte.
+- **Falta para o aceite:** conciliar com o terminal uma conta **com posições, inclusive manuais** (a conta estava
+  vazia, então nenhum cálculo de risco foi comparado); ver o quadro desenhado e a trava de "um sentinela por
+  terminal"; comparar o risco calculado no MQL5 (`OrderCalcProfit`) com o do Python (valor do tick); conta netting.
 
 ### T12.3 a T12.8 — a fazer
 
