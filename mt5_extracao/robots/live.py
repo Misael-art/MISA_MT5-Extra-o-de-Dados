@@ -130,10 +130,12 @@ def organize_window(config, data, symbol: str, timeframe: str) -> str:
 
 def start_demo(db, config, robot, account: Optional[dict], symbol: str, timeframe: str,
                preset: Optional[str] = None, spawn: Optional[Callable] = None,
-               is_running: Optional[Callable] = None) -> dict:
+               is_running: Optional[Callable] = None, confirm: Optional[Callable] = None) -> dict:
     """
     Confere as travas e abre o terminal com o robô no gráfico. Lança GateError se alguma exigência falhar.
-    O terminal precisa estar fechado (o chamador fecha, se o usuário pediu).
+    O terminal precisa estar fechado (o chamador fecha, se o usuário pediu). Depois de abrir, confere no log do
+    terminal que o robô foi carregado, se quem chama passar `confirm` (o comando `mt5x robots start` passa
+    mt5_tools.confirm_startup); se não foi, levanta RuntimeError e NÃO grava o robô como iniciado.
     """
     from mt5_extracao import timeframes
     tf = timeframes.parse(timeframe)
@@ -156,7 +158,11 @@ def start_demo(db, config, robot, account: Optional[dict], symbol: str, timefram
     ini = mt5_tools.startup_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, account["login"],
                                 account.get("server", ""), parameters)
     ini += organize_window(config, data, symbol, tf.name)
+    opened_at = datetime.now()
+    expert = mt5_tools.expert_name(compiled, data)
     mt5_tools.start_terminal(config, data, ini, "mt5x_startup", spawn, is_running)
+    if confirm is not None:
+        confirm(data, expert, opened_at)
     state = {"account": account["login"], "server": account.get("server", ""), "symbol": symbol,
              "timeframe": tf.name, "preset": preset or "", "magic": battery.magic_number(robot, values),
              "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "stopped_at": ""}

@@ -108,7 +108,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.0 | Plano do HADOUKEN 2.0 registrado e diagnóstico do código atual (etapa 0) | T8.9 | ✅ concluída |
 | T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; nenhuma operação supervisionada foi executada |
 | T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
-| T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800); sobra a aba do gráfico auxiliar |
+| T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800, ligada e desligada) |
 | T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; Windows e tema claro não vistos |
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | a fazer |
@@ -1327,6 +1327,23 @@ em todos. A causa conhecida é a T10.12; a parte que não vem dela não foi medi
 `Documentation/Guides/ROBOS_DE_ESTRATEGIA.md` daquele repositório. **Falta:** achar a causa das operações sem par
 no Pullback e no ORB, medir o efeito do custo (T10.12) e testar em ativos da B3.
 
+**Paridade repetida (2026-10-13), depois da `Safety/` 7.1 e da correção do `HDK_RiskGuard`:** o lado MQL5 dos seis
+robôs deu **exatamente os mesmos números** da tabela acima (mesmas operações e mesmo resultado em todos), ou seja,
+as mudanças na camada de segurança não alteraram o comportamento dos robôs. O lado Python mudou porque passou a
+cobrar swap (T10.12), e a distância diminuiu um pouco em cinco dos seis:
+
+| Robô | Casadas | Pares a até 5% | Diferença sobre o giro | Mediana MQL5/Python |
+|---|---|---|---|---|
+| `HDK_EmaAtr` (H1) | 97,1% | 92,6% | 1,3% | 0,997 |
+| `HDK_Donchian` (H4) | 97,9% | 89,1% | 4,9% | 0,984 |
+| `HDK_BbRsi` (H1) | 96,3% | 78,5% | 2,4% | 0,979 |
+| `HDK_Squeeze` (H1) | 99,4% | 86,6% | 1,8% | 0,995 |
+| `HDK_Pullback` (H1) | 88,2% | 94,0% | 2,0% | 0,987 |
+| `HDK_Orb` (M15) | 91,8% | 36,0% | 1,2% | 0,941 |
+
+Continuam todos fora do critério. O `ExemploCruzamento` do SDK, recompilado com a `mt5x-safety` 1.1.0, continua
+dentro (97,9% casadas, 96,5% dos pares, 0,3% do giro, mediana 1,001).
+
 **Correção feita aqui por causa desta tarefa:** `parity.run` (estratégia portada à mão) não igualava os dois lados
 como `run_declared` já fazia. O robô rodava com o risco padrão dele e com os limites de perda ligados, e os dois
 lados não começavam juntos; na primeira medição a mediana MQL5/Python era 0,501. Agora ele usa `parity_params` e o
@@ -2323,7 +2340,7 @@ Quem continuar começa aqui. Tudo o que foi feito está em commit, enviado e mes
 - mt5x (este repositório): tudo no `master`.
 - HADOUKEN (`~/Projects/projeto-indicadores-mt5`): veja `Documentation/HADOUKEN_2/ANDAMENTO.md` (estado das etapas
   e lista de pendências) e `TESTES_PAINEL_V7.md` (bateria do painel, correções e a organização da janela).
-- `mt5x-safety` (`~/Projects/mt5x-safety`): 1.0.0, **desatualizada**, e com o defeito do bloqueio falso por drawdown.
+- `mt5x-safety` (`~/Projects/mt5x-safety`): 1.1.0, igual à `Safety/` 7.1 do HADOUKEN.
 
 **Estado do host**
 
@@ -2337,23 +2354,29 @@ Quem continuar começa aqui. Tudo o que foi feito está em commit, enviado e mes
 - Scripts de rascunho e capturas de tela (fora dos repositórios): `~/Projects/mt5x-rascunhos-2026-10-13/`. O
   `t87_start.py` inicia o `HDK_EmaAtr` na demo **dispensando a trava da bateria**; só o dono do projeto o roda.
 
+**Resolvido na rodada de correções de 2026-10-13**
+
+- `mt5x-safety` 1.1.0 publicada, com a correção do bloqueio falso por drawdown; o SDK e o exemplo passaram a usá-la.
+- Paridade dos seis robôs repetida com a camada nova: o lado MQL5 não mudou (seção T8.9).
+- A organização da janela fecha o gráfico auxiliar (fica um só gráfico, maximizado) e a devolução do arranjo
+  anterior foi vista no terminal.
+- O `mt5x robots start` confere no log do terminal que o robô foi carregado e, se não foi, não o grava como iniciado.
+
 **Pendências abertas, por ordem de importância**
 
-1. **Atualizar a `mt5x-safety`** com a `Safety/` 7.1, a correção do bloqueio falso por drawdown e a saída parcial; os
-   robôs do SDK ainda compilam com a cópia antiga, que tem o defeito.
-2. **Rodar de novo a paridade dos seis robôs** (`mt5x robots parity <robô> --symbol EURUSD --tf <tf>
-   --close-terminal`; números de referência na seção T8.9).
-3. **T8.7, o que falta:** uma operação de verdade de um robô automático em demo (ordem, aviso e `monitor` com
-   posição aberta); o `start` ainda não confere no log se o terminal carregou o arquivo de início; recompilar um
-   robô não recarrega o que já está no gráfico (é preciso reabrir o terminal).
-4. **Backtester Python sem limite de margem:** resultados abaixo de −100% e entradas que a camada de segurança
-   bloquearia (ORB). Sem tarefa ainda.
-5. **Organização da janela:** a aba do gráfico auxiliar não é fechada pelo painel; identificadores lidos só do
-   build 6258; Windows não visto.
-6. **T12.2:** comparar o risco calculado no MQL5 com o do Python em mais de uma posição e em conta netting.
-7. **T12.3 em diante:** guardião com orçamento por robô (dá uso às operações supervisionadas), ordens pendentes no
+1. **T8.7, o que falta:** uma operação de verdade de um robô automático em demo (ordem, aviso e `monitor` com
+   posição aberta). Depende de sinal de mercado e de um robô aprovado, ou do script que dispensa a trava. A
+   conferência do log pelo `start` tem teste automático, mas não foi exercitada pelo comando real, porque ele exige
+   bateria aprovada. Recompilar um robô não recarrega o que já está no gráfico (é preciso reabrir o terminal).
+2. **Backtester Python sem limite de margem:** resultados abaixo de −100% e entradas que a camada de segurança
+   bloquearia (ORB). Sem tarefa ainda; precisa da margem por lote, que a ponte hoje não fornece.
+3. **Bloqueio falso por drawdown:** corrigido no MQL5, sem teste automático (não há como rodar MQL5 no CI).
+4. **Organização da janela:** identificadores lidos só do build 6258; o clique no botão TELA não foi feito no
+   terminal (o arquivo de "desligado" foi criado à mão); Windows não visto.
+5. **T12.2:** comparar o risco calculado no MQL5 com o do Python em mais de uma posição e em conta netting.
+6. **T12.3 em diante:** guardião com orçamento por robô (dá uso às operações supervisionadas), ordens pendentes no
    executor, Gradiente Linear, abas novas do painel, estatísticas e copiloto.
-8. **Não são de código:** nenhum robô passa na bateria (as seis estratégias reprovam em EURUSD); não há conta
+7. **Não são de código:** nenhum robô passa na bateria (as seis estratégias reprovam em EURUSD); não há conta
    netting nem ativos da B3 no host; T10.W (Windows), T10.9 e T10.11 abertas; o PR #1 deste repositório está aberto
    com os commits já no `master` e pode ser fechado.
 
@@ -2405,11 +2428,11 @@ o terminal fechado, logo antes de abri-lo (`live.organize_window`, chamado pelo 
   força ele não gravava a configuração nem o perfil; era a causa de o robô anterior sumir do gráfico (T8.7).
 - Falha ao organizar nunca impede o início do robô.
 
-**Conferido no host**, em tela virtual de 1280×800: terminal sem as quatro janelas e sem as barras, gráfico do painel
-maximizado. Sete testes automáticos (`tests/test_robots_layout.py`).
-**Não conferido ou com defeito:** a aba do gráfico auxiliar continua aparecendo (o painel não a fechou); desligar e
-ver o arranjo voltar no terminal real; o caminho do `mt5x robots start` de ponta a ponta com um robô aprovado (o
-teste chamou as mesmas funções por um script); outro build do MT5; Windows.
+**Conferido no host**, em tela virtual de 1280×800: terminal sem as quatro janelas e sem as barras, um só gráfico,
+maximizado (o painel fecha o gráfico auxiliar); com a organização desligada, a abertura seguinte devolveu o arranjo
+anterior. Sete testes automáticos (`tests/test_robots_layout.py`).
+**Não conferido:** o caminho do `mt5x robots start` de ponta a ponta com um robô aprovado (o teste chamou as mesmas
+funções por um script); o clique no botão TELA; outro build do MT5; Windows.
 
 ### T12.P — Painel responsivo e bateria de testes ✅
 
