@@ -286,9 +286,8 @@ OPTION_KEYS = (
      "Usa um perfil de gráficos próprio (\"HADOUKEN\"); os seus perfis não são tocados. Desligado, o gráfico do robô "
      "é aberto no perfil em que o terminal estava, e cada início acrescenta um gráfico a ele."),
     ("view_panel", "panel", "Mostrar o painel do HADOUKEN no gráfico",
-     "Em \"Abrir visão MT5\" o painel entra no gráfico. Enquanto ele não passar na bateria de segurança, entra só "
-     "para visualização: o PARAR TUDO é acionado e o painel aparece BLOQUEADO até você liberar (mt5x robots stop "
-     "--release). Precisa do perfil de gráficos próprio (a opção acima)."),
+     "Em \"Abrir visão MT5\" o painel entra no gráfico, na conta de demonstração conferida. Precisa do perfil de "
+     "gráficos próprio (a opção acima)."),
 )
 MASTER_KEY = "manage_layout"
 
@@ -306,6 +305,23 @@ def panel_layout(config) -> str:
         log.warning(f"[MT5] {PANEL_KEY} = {value!r} não existe (use auto, compact, normal ou wide): usando auto.")
         return "auto"
     return value
+
+
+PANEL_BLOCK_KEY = "panel_demo_blocked"
+
+
+def panel_blocked(config) -> bool:
+    """
+    A pessoa religou o bloqueio do painel manual em demo ([MT5] panel_demo_blocked)? O padrão é não: em conta de
+    demonstração o painel manual opera (decisão do dono do projeto, 2026-10-13).
+    """
+    if config is None:
+        return False
+    try:
+        return config.getboolean("MT5", PANEL_BLOCK_KEY, fallback=False)
+    except ValueError:      # na dúvida sobre o que a pessoa quis, vale o lado seguro: bloqueado
+        log.warning(f"[MT5] {PANEL_BLOCK_KEY} com valor inválido em config.ini: tratando como bloqueado.")
+        return True
 
 
 def panel_code(name: str) -> int:
@@ -391,7 +407,7 @@ def status(config, data_dir=None, common_files=None) -> dict:
             except (OSError, UnicodeError) as e:
                 log.debug(f"Não foi possível ler {path}: {e}")
     return {"enabled": opts.enabled, "panel_off": off, "active": opts.enabled and not off,
-            "panel_layout": panel_layout(config),
+            "panel_layout": panel_layout(config), "panel_blocked": panel_blocked(config),
             "has_profile": data_dir is not None and has_profile(data_dir),
             "options": {key: getattr(opts, attr) for key, attr, _, _ in OPTION_KEYS},
             "will_hide": sorted(set(wanted.values())), "has_arrangement": arrangement, "hidden_now": hidden_now}

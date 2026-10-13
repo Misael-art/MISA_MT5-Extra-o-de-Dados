@@ -109,7 +109,20 @@ def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = N
 
 
 BATTERY_GATE, KILL_GATE = "Bateria de segurança aprovada", "PARAR TUDO desligado"
+TESTER_SOURCE = "strategy tester"      # o mesmo de backtest.TESTER_SOURCE (o backtest comum de um robô MQL5)
 STATIC_GATE = "Leitura do código aprovada"
+
+
+def is_manual_panel(robot) -> Optional[bool]:
+    """
+    O robô é um painel de operação manual? A evidência é o Strategy Tester: no teste mais recente do código que
+    está no disco ele não fez nenhuma entrada sozinho. None se não há teste do código atual (não dá para saber).
+    """
+    for run in robot.runs:
+        metrics = run.get("metrics", {})
+        if run.get("source") == TESTER_SOURCE and metrics.get("source_fingerprint") == catalog.fingerprint(robot):
+            return int(metrics.get("entries", 0) or 0) == 0 and int(metrics.get("trades", 0) or 0) == 0
+    return None
 
 
 def panel_gates(config, robot, account: Optional[dict], preset: Optional[str] = None) -> tuple:
@@ -117,14 +130,22 @@ def panel_gates(config, robot, account: Optional[dict], preset: Optional[str] = 
     Exigências para a visão do MT5 colocar um painel no gráfico. Devolve (travas, negociação ligada).
 
     Um painel de operação manual não tem como passar na parte estatística da bateria (ela mede operações
-    automáticas). Por isso há dois casos: com a bateria inteira aprovada ele entra como qualquer robô, com a
-    negociação ligada; sem ela, entra SÓ PARA VISUALIZAÇÃO, e quem garante isso é o PARAR TUDO, que a visão aciona
-    (a camada de segurança do HADOUKEN não envia ordem enquanto ele estiver acionado). A chave `AllowLiveTrading`
-    do arquivo de início não serve de garantia: medido no host, a negociação algorítmica do terminal estava ligada
-    depois de o programa conectar. Mesmo só para ver, exige-se a leitura do código aprovada (stop obrigatório, toda
-    ordem pela camada de segurança, sem DLL) para o código que está no disco, o robô compilado e conta demo.
-    A trava da bateria de `mt5x robots start` não muda.
+    automáticas). Decisão do dono do projeto (2026-10-13): **em conta de demonstração o painel manual opera sem
+    bloqueio**, a menos que a pessoa religue o bloqueio (`[MT5] panel_demo_blocked`). Três casos:
+
+    1. Bateria inteira aprovada: entra como qualquer robô, com a negociação ligada.
+    2. Painel manual (veja is_manual_panel) em conta demo, com o robô compilado e a leitura do código aprovada para
+       o código que está no disco (stop obrigatório, toda ordem pela camada de segurança, sem DLL): negociação
+       ligada, salvo se `panel_demo_blocked` estiver ligado.
+    3. Qualquer outro caso que cumpra as exigências do item 2 menos a de ser painel manual (um robô que opera
+       sozinho, ou sem teste do código atual): só para visualização.
+
+    "Só para visualização" quer dizer negociação desligada E o PARAR TUDO acionado pela visão: a chave
+    `AllowLiveTrading` do arquivo de início não serve de garantia (medido no host, a negociação algorítmica do
+    terminal estava ligada depois de o programa conectar). Conta real nunca entra por aqui. A trava da bateria de
+    `mt5x robots start` para robôs automáticos não muda.
     """
+    from . import layout
     gates = demo_gates(config, robot, account, preset)
     if all(g.ok for g in gates):
         return gates, True
@@ -141,7 +162,8 @@ def panel_gates(config, robot, account: Optional[dict], preset: Optional[str] = 
                           f"Compile e rode de novo: mt5x robots battery {slug}"))
     else:
         gates.append(Gate(STATIC_GATE, True, f"em {check['created_at'][:16]}"))
-    return gates, False
+    manual = is_manual_panel(robot)
+    return gates, bool(manual) and all(g.ok for g in gates) and not layout.panel_blocked(config)
 
 
 def organize_window(config, data, symbol: str, timeframe: str) -> str:

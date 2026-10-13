@@ -9,7 +9,7 @@ from pathlib import Path
 from tkinter import ttk
 
 from mt5_extracao.bootstrap import config_builder
-from mt5_extracao.robots import layout, mt5_tools
+from mt5_extracao.robots import layout, live, mt5_tools
 from mt5_extracao.ui.theme import Tooltip, card
 
 log = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class SettingsDialog:
         self.window = tk.Toplevel(ui.root)
         self.window.title("Configurações")
         self.window.transient(ui.root)
-        self.window.minsize(640, 600)
+        self.window.minsize(640, 640)
         outer = ttk.Frame(self.window, padding=14)
         outer.pack(fill=tk.BOTH, expand=True)
 
@@ -128,7 +128,27 @@ class SettingsDialog:
                                   "MT5 agora\", para o painel que já está em um gráfico do perfil próprio.",
                 self.ui.theme)
 
+        self.block_var = tk.BooleanVar(value=False)
+        self.block_check = ttk.Checkbutton(
+            body, text="Manter o painel bloqueado mesmo em conta de demonstração (PARAR TUDO)",
+            style="Surface.TCheckbutton", variable=self.block_var, command=self.save_block)
+        self.block_check.pack(anchor="w", pady=(8, 0))
+        Tooltip(self.block_check, "Desmarcado (padrão): em conta de demonstração o painel de operação manual abre "
+                                  "liberado para comprar e vender. Marcado: ele abre só para visualização, com o "
+                                  "PARAR TUDO acionado. Conta real nunca entra por aqui, e um robô que opera sozinho "
+                                  "posto como painel abre sempre bloqueado.", self.ui.theme)
+        self.stop_row = ttk.Frame(body, style="Surface.TFrame")
+        self.stop_label = ttk.Label(self.stop_row, style="Bad.TLabel", wraplength=WRAP - 230, justify=tk.LEFT,
+                                    text="PARAR TUDO acionado: nenhum robô do HADOUKEN opera e o painel aparece "
+                                         "bloqueado.")
+        self.stop_label.pack(side=tk.LEFT)
+        self.release_button = ttk.Button(self.stop_row, text="Liberar o PARAR TUDO", command=self.release_stop)
+        self.release_button.pack(side=tk.RIGHT)
+        Tooltip(self.release_button, "Remove a parada de emergência. Os robôs do HADOUKEN que estiverem em gráficos "
+                                     "voltam a poder operar; o painel deixa de aparecer bloqueado.", self.ui.theme)
+
         apply_row = ttk.Frame(body, style="Surface.TFrame")
+        self.apply_row = apply_row
         apply_row.pack(fill=tk.X, pady=(12, 0))
         self.apply_button = ttk.Button(apply_row, text="Aplicar e abrir o MT5 agora", style="Accent.TButton",
                                        image=ui_icon(self), compound=tk.LEFT, command=self.apply_now)
@@ -163,7 +183,13 @@ class SettingsDialog:
                 log.debug(f"Pasta de dados do MT5 não encontrada: {e}")
                 data = None
             common = mt5_tools.common_files_dir(config)
-            return data, common, layout.status(config, data, common)
+            state = layout.status(config, data, common)
+            try:
+                state["stopped"] = live.stop_active(config)
+            except Exception as e:
+                log.debug(f"Estado do PARAR TUDO não lido: {e}")
+                state["stopped"] = False
+            return data, common, state
         self.ui.run_bg(work, self._loaded)
 
     def _loaded(self, result, error):
@@ -181,6 +207,10 @@ class SettingsDialog:
         for key, var in self.vars.items():
             var.set(state["enabled"] if key == layout.MASTER_KEY else state["options"][key])
         self.panel_var.set(layout.PANEL_LAYOUTS[state["panel_layout"]][0])
+        self.block_var.set(state["panel_blocked"])
+        self.stop_row.pack_forget()
+        if state.get("stopped"):
+            self.stop_row.pack(fill=tk.X, pady=(8, 0), before=self.apply_row)
         for key, check in self.checks.items():
             if key != layout.MASTER_KEY:
                 check.state(["!disabled"] if state["enabled"] else ["disabled"])
@@ -214,7 +244,7 @@ class SettingsDialog:
             return
         self.state = layout.status(self.config, None, self.common) | {
             "has_arrangement": self.state["has_arrangement"], "hidden_now": self.state["hidden_now"],
-            "has_profile": self.state["has_profile"]}
+            "has_profile": self.state["has_profile"], "stopped": self.state.get("stopped", False)}
         self._show()
         self.feedback.config(style="Good.TLabel",
                              text=f"Salvo em {self.config_file.name}. Vale na próxima vez que o programa abrir o "
@@ -246,6 +276,35 @@ class SettingsDialog:
                                       "abrir o MT5 agora\".")
         else:
             self.panel_var.set(layout.PANEL_LAYOUTS[self.state["panel_layout"]][0])
+
+    def save_block(self):
+        """Grava se o painel manual abre bloqueado mesmo em conta de demonstração."""
+        blocked = self.block_var.get()
+        if not self._write(layout.PANEL_BLOCK_KEY, "true" if blocked else "false"):
+            self.block_var.set(not blocked)
+            return
+        self.state["panel_blocked"] = blocked
+        self.feedback.config(
+            style="Good.TLabel",
+            text=f"Salvo em {self.config_file.name}. " + (
+                "O painel abre só para visualização na próxima vez que o programa abrir o MetaTrader 5."
+                if blocked else
+                "Em conta de demonstração o painel abre liberado para operar na próxima vez que o programa abrir o "
+                "MetaTrader 5." + (" O PARAR TUDO continua acionado: libere no botão acima." if self.state.get("stopped")
+                                   else "")))
+
+    def release_stop(self):
+        """Remove a parada de emergência, por decisão de quem clicou."""
+        try:
+            live.release_stop(self.config)
+        except OSError as e:
+            self.feedback.config(style="Bad.TLabel", text=f"Não foi possível liberar o PARAR TUDO: {e}")
+            return
+        self.ui.log("PARAR TUDO liberado pelo diálogo de Configurações.")
+        self.feedback.config(style="Good.TLabel",
+                             text="PARAR TUDO liberado. Um painel que já está no gráfico deixa de aparecer bloqueado "
+                                  "em instantes.")
+        self.refresh()
 
     def apply_now(self):
         """O mesmo que "Abrir visão MT5" da janela principal, com o resultado mostrado aqui."""

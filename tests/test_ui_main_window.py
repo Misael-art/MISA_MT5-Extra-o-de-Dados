@@ -718,3 +718,28 @@ def test_closing_the_window_while_connecting_does_not_raise(ui, connecting):
     assert callable(DatabaseManager.close)
     ui.app.db_manager.close()
     ui.app.db_manager.close()                                          # encerrar duas vezes não dá erro
+
+
+def test_settings_release_the_stop_and_turn_the_demo_block_on_and_off(ui, settings):
+    """T12.L4: em demo o painel manual abre liberado; a pessoa pode religar o bloqueio e liberar o PARAR TUDO."""
+    from mt5_extracao.robots import layout
+    kill = settings.env.common / "HDK_KILL.txt"
+    assert settings.block_var.get() is False and not settings.stop_row.winfo_manager()
+    assert "bloqueado mesmo em conta de demonstração" in settings.block_check.cget("text")
+    settings.block_check.invoke()
+    assert settings.env.config_file.read_text(encoding="utf-8").endswith("panel_demo_blocked = true\n")
+    assert layout.panel_blocked(ui.app.config) is True and "só para visualização" in settings.feedback.cget("text")
+    settings.block_check.invoke()
+    assert layout.panel_blocked(ui.app.config) is False and "liberado para operar" in settings.feedback.cget("text")
+
+    kill.write_text("PARAR TUDO acionado pelo mt5x")
+    settings.refresh()
+    ui.pump(0.5)
+    assert settings.stop_row.winfo_manager() == "pack" and "PARAR TUDO acionado" in settings.stop_label.cget("text")
+    settings.block_check.invoke()
+    settings.block_check.invoke()                                       # ao liberar, lembra que a parada segue ativa
+    assert "O PARAR TUDO continua acionado" in settings.feedback.cget("text") and kill.exists()
+    settings.release_button.invoke()                                    # só um clique da pessoa libera
+    ui.pump(0.5)
+    assert not kill.exists() and not settings.stop_row.winfo_manager()
+    assert "PARAR TUDO liberado" in settings.feedback.cget("text")

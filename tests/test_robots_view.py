@@ -243,7 +243,7 @@ def panel(mt5, tmp_path, monkeypatch):
     presets.mkdir(parents=True)
     (presets / "Calmo.set").write_bytes(b"\xff\xfe" + "InpRiskPct=0.25\r\n".encode("utf-16-le"))
     robot = types.SimpleNamespace(key="mql5:painel", name="Painel", kind=catalog.MQL5, presets={"Calmo": {}},
-                                  inputs=[types.SimpleNamespace(name="InpPanelLayout")], checks=[])
+                                  inputs=[types.SimpleNamespace(name="InpPanelLayout")], checks=[], runs=[])
     env = types.SimpleNamespace(robot=robot, killed=False)
     items = [types.SimpleNamespace(target=experts / "Painel.mq5"),
              types.SimpleNamespace(target=presets / "Calmo.set")]
@@ -260,11 +260,28 @@ def panel(mt5, tmp_path, monkeypatch):
                          "symbol": "", "timeframe": "", "created_at": "2026-10-13 16:00:00"}]
     env.check = check
     check()
+
+    def tested(entries=0, fingerprint="codigo-atual"):
+        """O teste mais recente no Strategy Tester: sem entradas, é um painel de operação manual."""
+        robot.runs = [{"source": "strategy tester", "metrics": {"source_fingerprint": fingerprint, "entries": entries,
+                                                                "trades": entries}}]
+    env.tested = tested
+    tested()
     mt5.inis = lambda: [ini for name, ini in (c for c in mt5.calls if isinstance(c, tuple))]
     return env
 
 
-def test_panel_without_the_battery_enters_for_viewing_only_with_trading_off(mt5, panel):
+def test_manual_panel_operates_in_a_demo_account_without_the_battery(mt5, panel):
+    """Decisão do dono do projeto (2026-10-13): em conta demo o painel manual abre liberado para operar."""
+    result = view.open_view(mt5.config, symbol="EURUSD", timeframe="H1", db=object(), account=DEMO)
+    ini = mt5.inis()[0]
+    assert "AllowLiveTrading=1" in ini and not panel.kill.exists()
+    assert result["panel"] == "Painel" and result["panel_trading"] is True and result["panel_blocked"] is False
+    assert "liberado para operar" in view.describe(result) and result["panel_note"] == ""
+
+
+def test_the_user_can_turn_the_block_back_on(mt5, panel):
+    mt5.config.read_dict({"MT5": {"panel_demo_blocked": "true"}})
     result = view.open_view(mt5.config, symbol="EURUSD", timeframe="H1", db=object(), account=DEMO)
     ini = mt5.inis()[0]
     assert panel.kill.is_file() and "só para visualização" in panel.kill.read_text(encoding="cp1252")   # PARAR TUDO
@@ -274,6 +291,31 @@ def test_panel_without_the_battery_enters_for_viewing_only_with_trading_off(mt5,
     assert ini.endswith("[Charts]\r\nProfileLast=HADOUKEN\r\n")
     assert result["panel"] == "Painel" and result["panel_trading"] is False and result["chart"] == "EURUSD H1"
     assert "PARAR TUDO foi acionado" in view.describe(result) and "mt5x robots stop --release" in view.describe(result)
+    mt5.config["MT5"]["panel_demo_blocked"] = "talvez"                  # valor inválido: vale o lado seguro
+    assert view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)["panel_blocked"] is True
+
+
+def test_a_robot_that_trades_by_itself_is_never_released_as_a_panel(mt5, panel):
+    """A liberação é do painel MANUAL: um robô que faz entradas sozinho, posto como painel, abre bloqueado."""
+    from mt5_extracao.robots import live as live_module
+    panel.tested(entries=37)
+    assert live_module.is_manual_panel(panel.robot) is False
+    result = view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)
+    assert result["panel_trading"] is False and result["panel_blocked"] is True and panel.kill.is_file()
+    panel.kill.unlink()
+    panel.tested(fingerprint="codigo-antigo")                           # sem teste do código atual: não dá para saber
+    assert live_module.is_manual_panel(panel.robot) is None
+    assert view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)["panel_blocked"] is True
+    panel.kill.unlink()
+    panel.robot.runs = []
+    assert view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)["panel_blocked"] is True
+
+
+def test_an_active_stop_is_never_released_by_the_view(mt5, panel):
+    panel.kill.write_text("PARAR TUDO acionado antes")
+    result = view.open_view(mt5.config, symbol="EURUSD", timeframe="H1", db=object(), account=DEMO)
+    assert result["panel_trading"] is True and panel.kill.read_text() == "PARAR TUDO acionado antes"
+    assert "o PARAR TUDO está acionado" in result["panel_note"] and "atenção: " in view.describe(result)
     assert (mt5.common / layout.SEED_FILE).is_file()                    # o painel fecha o gráfico auxiliar
     chart = (layout.profile_dir(mt5.data) / "chart01.chr").read_bytes().decode("utf-16")
     assert "symbol=EURUSD" in chart and "period_type=1\r\nperiod_size=1" in chart
@@ -284,7 +326,7 @@ def test_panel_with_the_whole_battery_approved_enters_with_trading_on(mt5, panel
     result = view.open_view(mt5.config, symbol="EURUSD", timeframe="H1", db=object(), account=DEMO)
     assert "AllowLiveTrading=1" in mt5.inis()[0] and result["panel_trading"] is True
     assert not panel.kill.exists() and result["panel_blocked"] is False        # aprovado: nada é bloqueado
-    assert "com a negociação ligada" in view.describe(result)
+    assert "liberado para operar" in view.describe(result)
 
 
 @pytest.mark.parametrize("setup, reason", [
@@ -353,9 +395,6 @@ def test_the_battery_gate_of_robots_start_is_unchanged(mt5, panel):
     gates = live.demo_gates(mt5.config, panel.robot, DEMO)
     assert not all(g.ok for g in gates) and any(g.name == live.BATTERY_GATE and not g.ok for g in gates)
     view_gates, trading = live.panel_gates(mt5.config, panel.robot, DEMO)
-    assert all(g.ok for g in view_gates) and trading is False
-    panel.check(approved=True)
-    assert live.panel_gates(mt5.config, panel.robot, DEMO)[1] is True
-    panel.kill.write_text("x")                               # aprovado, mas com o PARAR TUDO acionado: só para ver
-    assert live.panel_gates(mt5.config, panel.robot, DEMO)[1] is False
+    assert all(g.ok for g in view_gates) and trading is True          # painel manual em demo: liberado
+    assert not all(g.ok for g in live.demo_gates(mt5.config, panel.robot, DEMO))     # e o start continua recusando
     assert "AllowLiveTrading=1" in mt5_tools.startup_ini("X", "EURUSD", "H1", 1, "S")     # o padrão do início não mudou

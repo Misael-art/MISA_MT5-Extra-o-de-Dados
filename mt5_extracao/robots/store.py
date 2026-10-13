@@ -5,6 +5,7 @@ Só guarda o que não dá para redescobrir lendo as pastas: de onde o robô foi 
 estágio ele está. Mudança de schema aditiva: bases antigas continuam abrindo.
 """
 import json
+import threading
 from datetime import datetime
 from typing import Dict
 
@@ -79,8 +80,19 @@ _RUN_COLUMNS = ("run_id", "robot_key", "source", "symbol", "timeframe", "data_st
                 "params_json", "metrics_json", "equity_json", "created_at")
 
 
+# A bateria de backtests da interface grava de várias threads. Criar a tabela e acrescentar a coluna nova são
+# "conferir e depois alterar": sem a trava, duas gravações simultâneas em uma base nova tentavam acrescentar a mesma
+# coluna e uma delas falhava ("duplicate column name").
+_SCHEMA_LOCK = threading.Lock()
+
+
 def save_run(db, run: dict) -> None:
     """Grava um backtest: métricas e curva de capital (já reduzida a poucos pontos)."""
+    with _SCHEMA_LOCK:
+        _save_run(db, run)
+
+
+def _save_run(db, run: dict) -> None:
     from sqlalchemy import text
     row = {"run_id": run["run_id"], "robot_key": run["robot_key"], "source": run["source"],
            "symbol": run["symbol"], "timeframe": run["timeframe"], "data_start": run["data_start"],
