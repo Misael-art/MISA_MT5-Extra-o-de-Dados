@@ -22,7 +22,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -599,6 +601,43 @@ def startup_ini(expert: str, symbol: str, period: str, login, server: str, param
     if parameters:
         lines.append(f"ExpertParameters={parameters}")
     return "\r\n".join(lines) + "\r\n"
+
+
+def confirm_startup(data: Path, expert: str, since: datetime, timeout: float = 60.0, sleep=time.sleep) -> None:
+    """
+    Confere no log do terminal que ele carregou o arquivo de início e pôs o robô no gráfico. Sem isso o programa
+    dizia "iniciado" mesmo quando o terminal abria sem o robô (T8.7). `expert` é o nome do robô, sem pasta;
+    `since`, o instante em que o terminal foi aberto. Levanta RuntimeError, com o que fazer, se o terminal recusar
+    o arquivo ou se o robô não aparecer em `timeout` segundos.
+    """
+    log_file = Path(data) / "logs" / (since.strftime("%Y%m%d") + ".log")
+    stamp = since.strftime("%H:%M:%S")
+    name = Path(expert.replace("\\", "/")).name.lower()
+    deadline = time.time() + timeout
+    while True:
+        lines = []
+        if log_file.is_file():
+            try:
+                lines = [l for l in read_log_text(log_file).splitlines() if len(l.split("\t")) >= 5 and l.split("\t")[2][:8] >= stamp]
+            except OSError:
+                lines = []
+        if any("cannot load config" in l for l in lines):
+            raise RuntimeError("O MetaTrader 5 abriu, mas não conseguiu ler o arquivo de início: o robô NÃO está no gráfico. "
+                               f"Veja {log_file} e tente de novo; se repetir, rode: mt5x doctor")
+        if any("expert " + name in l.lower() and "loaded successfully" in l for l in lines):
+            return
+        if time.time() >= deadline:
+            raise RuntimeError(f"O MetaTrader 5 abriu, mas em {int(timeout)} s o log não mostrou o robô {Path(expert).name} "
+                               f"carregado: ele pode NÃO estar no gráfico. Confira no terminal e em {log_file}.")
+        sleep(2.0)
+
+
+def read_log_text(path: Path) -> str:
+    """Log do terminal (UTF-16; alguns builds gravam UTF-8)."""
+    data = Path(path).read_bytes()
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return data.decode("utf-16", errors="replace")
+    return data.decode("utf-8", errors="replace")
 
 
 SPAWN_BAT = "mt5x_spawn.bat"          # .bat que abre o terminal sem esperar (Wine)

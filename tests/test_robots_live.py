@@ -253,6 +253,8 @@ def connected(home, monkeypatch):
     monkeypatch.setattr(mt5_tools, "release_terminal", release)
     monkeypatch.setattr(mt5_tools, "restart_bridge", lambda: state.events.append("bridge"))
     monkeypatch.setattr(mt5_tools, "spawn_windows_command", fake_spawn(state.spawned))
+    # o comando confere no log do terminal que o robô carregou; aqui o terminal é simulado e "confirma" na hora
+    monkeypatch.setattr(mt5_tools, "confirm_startup", lambda data, expert, since: state.events.append("confirmed"))
     return state
 
 
@@ -266,7 +268,7 @@ def test_cli_start_shows_the_gates_and_only_starts_with_consent(home, connected,
     assert "--close-terminal" in capsys.readouterr().out and connected.spawned == [] and connected.events == []
     assert cli.main(argv + ["--close-terminal"]) == cli.EXIT_OK
     assert "iniciado na conta demo 5001" in capsys.readouterr().out
-    assert connected.events == ["closed", "bridge"] and len(connected.spawned) == 1
+    assert connected.events == ["closed", "confirmed", "bridge"] and len(connected.spawned) == 1
 
 
 def test_cli_start_refuses_a_real_account(home, connected, capsys):
@@ -299,3 +301,38 @@ def test_cli_monitor_and_stop(home, connected, capsys):
     assert "MetaTrader 5 fechado" in capsys.readouterr().out and connected.events == ["closed"]
     assert cli.main(home.args + ["robots", "stop", "--release"]) == cli.EXIT_OK
     assert "liberado" in capsys.readouterr().out and not (home.common / "HDK_KILL.txt").exists()
+
+
+def test_start_is_confirmed_in_the_terminal_log_or_refused(home, tmp_path):
+    """T8.7: o programa só diz "iniciado" se o log do terminal mostrar o robô carregado."""
+    from datetime import datetime
+    home.approve()
+    since = datetime(2026, 10, 13, 6, 11, 20)
+    logs = tmp_path / "dados" / "logs"
+    logs.mkdir(parents=True)
+    log_file = logs / "20261013.log"
+
+    def write(*lines):
+        log_file.write_bytes("\r\n".join(lines).encode("utf-16"))
+
+    old = "AA\t0\t05:00:00.000\tExperts\texpert Seguro (EURUSD,H1) loaded successfully"      # de uma abertura anterior
+    write(old, "BB\t0\t06:11:23.596\tStartup\tsuccessfully initialized from start config \"C:\\x.ini\"",
+          "CC\t0\t06:11:27.309\tExperts\texpert Seguro (EURUSD,H1) loaded successfully")
+    mt5_tools.confirm_startup(tmp_path / "dados", "Pasta\\Seguro", since, timeout=0, sleep=lambda s: None)
+    write(old, "DD\t2\t06:11:24.277\tTerminal\tcannot load config \"C:\\x.ini\"\" at start")
+    with pytest.raises(RuntimeError, match="NÃO está no gráfico"):
+        mt5_tools.confirm_startup(tmp_path / "dados", "Seguro", since, timeout=0, sleep=lambda s: None)
+    write(old)                                                                             # só a linha antiga: não vale
+    with pytest.raises(RuntimeError, match="não mostrou o robô Seguro"):
+        mt5_tools.confirm_startup(tmp_path / "dados", "Seguro", since, timeout=0, sleep=lambda s: None)
+
+    def refuse(data, expert, opened_at):
+        raise RuntimeError("o robô NÃO está no gráfico")
+    with pytest.raises(RuntimeError, match="NÃO está no gráfico"):
+        live.start_demo(home.db, home.config, home.robot(), DEMO, "EURUSD", "H1", spawn=fake_spawn([]),
+                        is_running=lambda: False, confirm=refuse)
+    assert live.live_state(home.db, home.robot()) is None                # não ficou gravado como iniciado
+    seen = []
+    live.start_demo(home.db, home.config, home.robot(), DEMO, "EURUSD", "H1", spawn=fake_spawn([]),
+                    is_running=lambda: False, confirm=lambda data, expert, opened_at: seen.append(expert))
+    assert seen and seen[0].endswith("Seguro") and live.live_state(home.db, home.robot())["symbol"] == "EURUSD"

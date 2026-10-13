@@ -1187,7 +1187,8 @@ def _robots_start(args, ctx, items):
     try:
         if mt5_tools.terminal_running(ctx.config):
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
-        state = live.start_demo(ctx.db, ctx.config, robot, account, args.symbol, tf.label, args.preset)
+        state = live.start_demo(ctx.db, ctx.config, robot, account, args.symbol, tf.label, args.preset,
+                                confirm=mt5_tools.confirm_startup)
     except (OSError, RuntimeError) as e:
         raise RuntimeError(str(e)) from e
     finally:
