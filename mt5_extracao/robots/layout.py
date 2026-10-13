@@ -285,6 +285,10 @@ OPTION_KEYS = (
     ("layout_own_profile", "own_profile", "Abrir o gráfico do robô sozinho e maximizado",
      "Usa um perfil de gráficos próprio (\"HADOUKEN\"); os seus perfis não são tocados. Desligado, o gráfico do robô "
      "é aberto no perfil em que o terminal estava, e cada início acrescenta um gráfico a ele."),
+    ("view_panel", "panel", "Mostrar o painel do HADOUKEN no gráfico",
+     "Em \"Abrir visão MT5\" o painel entra no gráfico. Enquanto ele não passar na bateria de segurança, entra só "
+     "para visualização: o PARAR TUDO é acionado e o painel aparece BLOQUEADO até você liberar (mt5x robots stop "
+     "--release). Precisa do perfil de gráficos próprio (a opção acima)."),
 )
 MASTER_KEY = "manage_layout"
 
@@ -347,6 +351,7 @@ class Options:
     toolbox: bool = True
     toolbars: bool = True
     own_profile: bool = True
+    panel: bool = True
 
 
 def _flag(config, key: str) -> bool:

@@ -2708,6 +2708,49 @@ gráfico, e abriu "AAAC". Passou a usar o gráfico que o usuário tinha.
 do host, que é Wayland; conferiu-se só que as duas janelas existem); a mensagem de "sem internet" com a rede
 realmente fora (só com a rede simulada); Windows.
 
+### O painel na visão do MT5, só para visualização (2026-10-13)
+
+Relato do dono do projeto depois da correção acima: a interface e o gráfico abriram, mas o painel e os seus modos de
+visão não apareciam. A visão abria só o gráfico: o painel é um robô e ninguém o colocava lá.
+
+**O que impedia:** `mt5x robots start` exige a bateria de segurança aprovada, e o painel **nunca passa nela**. Rodada
+em 2026-10-13 para `hdk_hadouken_painel`: a leitura do código foi aprovada (stop obrigatório, toda ordem pela camada
+de segurança, sem DLL, sem preço médio) e a parte estatística reprovou por ter **zero operações**, porque um painel
+de operação manual não opera sozinho no Strategy Tester. A trava foi desenhada para robôs automáticos.
+
+**O que foi feito, sem afrouxar a trava de `mt5x robots start`:**
+
+- `view.open_view` passou a pôr o painel no gráfico pelo arquivo de início (`[MT5] view_panel`, `panel_robot`,
+  `panel_preset`), na conta conferida. `live.panel_gates` decide o modo:
+  - **bateria inteira aprovada:** entra como qualquer robô, com a negociação ligada;
+  - **sem ela:** entra **só para visualização**. Exige o robô compilado, conta de demonstração e a leitura do
+    código aprovada para o código que está no disco, e a visão **aciona o PARAR TUDO** (`HDK_KILL.txt`), que a
+    camada de segurança do HADOUKEN obedece. O painel aparece bloqueado até a pessoa liberar
+    (`mt5x robots stop --release`).
+- Se alguma exigência falha, a visão abre só com o gráfico e diz o motivo (`panel_note`).
+- A conta conferida em cada conexão é guardada em `config/ui_prefs.json`, para a abertura do programa poder pôr o
+  painel com o terminal ainda fechado. Sem conta conferida, o painel não entra.
+- A disposição escolhida (`panel_layout`) vai no arquivo de parâmetros do painel.
+
+**Por que o PARAR TUDO, e não a chave `AllowLiveTrading=0`:** a primeira versão usava só essa chave do arquivo de
+início. No teste real, depois de o programa conectar, `terminal_info().trade_allowed` estava **ligado**. Não se
+conseguiu provar pelo Python que o robô ficou impedido de operar, então a chave continua sendo gravada, mas não é
+tratada como garantia.
+
+**Conferido no host, com o MT5 real:** `expert HDK_HADOUKEN_Painel (EURUSD,H1) loaded successfully` no log do
+terminal; `HDK_KILL.txt` gravado; o programa reconectou. Doze testes automáticos novos, inclusive um de que a trava
+de `mt5x robots start` não mudou.
+**Não conferido:** o painel na tela (a tela real do host é Wayland e não dá para capturar) e a faixa "BLOQUEADO"
+nesta abertura (o log do painel só é gravado quando o terminal fecha; ela foi vista na bateria do painel v7); a
+disposição escolhida aparecendo no painel; Windows.
+**Achado sem correção:** ao fechar, o terminal deixou a pasta do perfil "HADOUKEN" **vazia**, sem o gráfico do
+painel. Como a visão refaz o perfil a cada abertura, o painel volta, mas o que a pessoa desenhar nesse gráfico se
+perde. Causa não investigada.
+
+**Decisão do dono do projeto, em aberto:** se um painel de operação manual pode **operar** em conta demo só com a
+leitura do código aprovada (sem a parte estatística, que não se aplica a ele), ou se a bateria deve ganhar um
+critério próprio para painéis. Até lá, operar exige liberar o PARAR TUDO à mão.
+
 ### T12.6a — Painel v7: conferência pendente e vocabulário
 
 - **Objetivo:** não empilhar abas novas em cima do que não foi visto, e dar um nome só a cada coisa.

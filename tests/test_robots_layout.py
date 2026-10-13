@@ -151,7 +151,7 @@ def test_restore_recreates_a_missing_terminal_ini_from_the_copy(tmp_path):
 def test_options_come_from_config_with_fallback_to_everything_on():
     assert layout.options(None) == layout.Options()
     config = configparser.ConfigParser()
-    assert layout.options(config) == layout.Options(True, True, True, True, True)
+    assert layout.options(config) == layout.Options(True, True, True, True, True, True)
     config.read_dict({"MT5": {"manage_layout": "no", "layout_hide_toolbars": "false", "layout_own_profile": "0",
                               "layout_hide_toolbox": "talvez"}})                # valor inválido vale o padrão
     assert layout.options(config) == layout.Options(enabled=False, navigation=True, toolbox=True, toolbars=False,
@@ -171,7 +171,7 @@ def test_status_tells_who_turned_it_off_and_what_is_hidden(tmp_path):
     state = layout.status(config, data, common)
     assert state["active"] and not state["panel_off"] and not state["has_arrangement"]
     assert state["options"] == {"layout_hide_navigation": True, "layout_hide_toolbox": True,
-                                "layout_hide_toolbars": False, "layout_own_profile": True}
+                                "layout_hide_toolbars": False, "layout_own_profile": True, "view_panel": True}
     assert state["will_hide"] == ["Caixa de Ferramentas / Testador", "Observação do Mercado / Navegador"]
     assert state["hidden_now"] == ["Observação do Mercado / Navegador"]      # a que o usuário já tinha escondido
     layout.apply(data, toolbars=False)

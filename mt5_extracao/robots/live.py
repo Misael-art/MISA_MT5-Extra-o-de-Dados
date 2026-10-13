@@ -108,6 +108,42 @@ def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = N
     return gates
 
 
+BATTERY_GATE, KILL_GATE = "Bateria de segurança aprovada", "PARAR TUDO desligado"
+STATIC_GATE = "Leitura do código aprovada"
+
+
+def panel_gates(config, robot, account: Optional[dict], preset: Optional[str] = None) -> tuple:
+    """
+    Exigências para a visão do MT5 colocar um painel no gráfico. Devolve (travas, negociação ligada).
+
+    Um painel de operação manual não tem como passar na parte estatística da bateria (ela mede operações
+    automáticas). Por isso há dois casos: com a bateria inteira aprovada ele entra como qualquer robô, com a
+    negociação ligada; sem ela, entra SÓ PARA VISUALIZAÇÃO, e quem garante isso é o PARAR TUDO, que a visão aciona
+    (a camada de segurança do HADOUKEN não envia ordem enquanto ele estiver acionado). A chave `AllowLiveTrading`
+    do arquivo de início não serve de garantia: medido no host, a negociação algorítmica do terminal estava ligada
+    depois de o programa conectar. Mesmo só para ver, exige-se a leitura do código aprovada (stop obrigatório, toda
+    ordem pela camada de segurança, sem DLL) para o código que está no disco, o robô compilado e conta demo.
+    A trava da bateria de `mt5x robots start` não muda.
+    """
+    gates = demo_gates(config, robot, account, preset)
+    if all(g.ok for g in gates):
+        return gates, True
+    gates = [g for g in gates if g.name not in (BATTERY_GATE, KILL_GATE)]
+    check = robot.checks[0] if robot.checks else None
+    slug = robot.key.split(":", 1)[1]
+    if check is None:
+        gates.append(Gate(STATIC_GATE, False, "a bateria ainda não foi rodada", f"Rode: mt5x robots battery {slug}"))
+    elif check.get("static_status") != battery.APPROVED:
+        gates.append(Gate(STATIC_GATE, False, "a leitura do código reprovou",
+                          f"Corrija os itens reprovados e rode: mt5x robots battery {slug}"))
+    elif check.get("fingerprint") != catalog.fingerprint(robot):
+        gates.append(Gate(STATIC_GATE, False, "o código mudou depois da leitura",
+                          f"Compile e rode de novo: mt5x robots battery {slug}"))
+    else:
+        gates.append(Gate(STATIC_GATE, True, f"em {check['created_at'][:16]}"))
+    return gates, False
+
+
 def organize_window(config, data, symbol: str, timeframe: str) -> str:
     """
     Organização da janela do MT5 (padrão: ligada): janelas laterais e barras de ferramentas fechadas e o gráfico do

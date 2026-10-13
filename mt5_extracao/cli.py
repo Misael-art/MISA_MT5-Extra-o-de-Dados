@@ -306,8 +306,15 @@ def cmd_mt5(args, ctx):
         from mt5_extracao.robots import view
         try:
             tf = _parse_tf(args.tf).name if args.tf else ""
+            # o painel só entra na conta conferida: com o terminal aberto dá para conferir antes de fechá-lo
+            account = None
+            if args.close_terminal and mt5_tools.terminal_running(ctx.config):
+                try:
+                    account = ctx.connector().account_summary()
+                except Exception as e:           # sem a conta conferida a visão abre só com o gráfico
+                    logging.getLogger(__name__).debug(f"Conta não conferida para a visão: {e}")
             result = view.open_view(ctx.config, close_terminal=args.close_terminal, symbol=args.symbol or "",
-                                    timeframe=tf)
+                                    timeframe=tf, db=ctx.db, account=account, confirm=mt5_tools.confirm_startup)
         except view.TerminalOpen as e:
             raise ValueError(str(e)) from e
         except OSError as e:

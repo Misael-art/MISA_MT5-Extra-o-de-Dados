@@ -55,6 +55,7 @@ def test_view_with_the_terminal_closed_applies_the_options_and_opens_it(mt5):
     result = view.open_view(mt5.config)
     assert mt5.calls == [("abrir", "")]                                # sem perfil próprio ainda: abre sem /config
     assert result == {"reopened": False, "organized": True, "restored": False, "profile": "", "chart": "",
+                      "panel": "", "panel_trading": False, "panel_blocked": False, "panel_note": "",
                       "panel_layout": "auto",
                       "panel_charts": 0, "bridge": False,
                       "hidden": ["Caixa de Ferramentas / Testador", "Observação do Mercado / Navegador"]}
@@ -223,3 +224,138 @@ def test_view_without_a_symbol_starts_from_the_chart_the_user_already_had(mt5):
     (mt5.data / "Config" / "common.ini").write_bytes("[Charts]\r\nProfileLast=HADOUKEN\r\n".encode("utf-16"))
     assert layout.user_chart(mt5.data) == ("GBPUSD", "H4")
     assert layout.user_chart(mt5.data / "nada") == ("", "")
+
+
+# --- o painel na visão: só para visualização enquanto não tem a bateria aprovada ----------------------------------
+
+DEMO = {"login": 5001, "server": "Corretora-Demo", "demo": True}
+REAL = {"login": 7001, "server": "Corretora-Real", "demo": False}
+
+
+@pytest.fixture
+def panel(mt5, tmp_path, monkeypatch):
+    """Um painel no catálogo, 'compilado' na pasta do MT5 simulada, com a bateria gravada como se queira."""
+    from mt5_extracao.robots import battery, catalog
+    experts = mt5.data / "MQL5" / "Experts" / "HADOUKEN"
+    experts.mkdir(parents=True)
+    (experts / "Painel.ex5").write_bytes(b"ex5")
+    presets = mt5.data / "MQL5" / "Presets"
+    presets.mkdir(parents=True)
+    (presets / "Calmo.set").write_bytes(b"\xff\xfe" + "InpRiskPct=0.25\r\n".encode("utf-16-le"))
+    robot = types.SimpleNamespace(key="mql5:painel", name="Painel", kind=catalog.MQL5, presets={"Calmo": {}},
+                                  inputs=[types.SimpleNamespace(name="InpPanelLayout")], checks=[])
+    env = types.SimpleNamespace(robot=robot, killed=False)
+    items = [types.SimpleNamespace(target=experts / "Painel.mq5"),
+             types.SimpleNamespace(target=presets / "Calmo.set")]
+    monkeypatch.setattr(mt5_tools, "install_plan", lambda robot, data: items)
+    kill = mt5.common / "HDK_KILL.txt"
+    monkeypatch.setattr(mt5_tools, "kill_file", lambda config: kill)
+    env.kill = kill
+    monkeypatch.setattr(catalog, "load_catalog", lambda config, db=None: [robot])
+    monkeypatch.setattr(catalog, "fingerprint", lambda robot: "codigo-atual")
+    mt5.config.read_dict({"MT5": {"panel_robot": "painel"}})
+
+    def check(static=battery.APPROVED, approved=False, fingerprint="codigo-atual"):
+        robot.checks = [{"approved": approved, "static_status": static, "fingerprint": fingerprint, "preset": "",
+                         "symbol": "", "timeframe": "", "created_at": "2026-10-13 16:00:00"}]
+    env.check = check
+    check()
+    mt5.inis = lambda: [ini for name, ini in (c for c in mt5.calls if isinstance(c, tuple))]
+    return env
+
+
+def test_panel_without_the_battery_enters_for_viewing_only_with_trading_off(mt5, panel):
+    result = view.open_view(mt5.config, symbol="EURUSD", timeframe="H1", db=object(), account=DEMO)
+    ini = mt5.inis()[0]
+    assert panel.kill.is_file() and "só para visualização" in panel.kill.read_text(encoding="cp1252")   # PARAR TUDO
+    assert result["panel_blocked"] is True and "AllowLiveTrading=0" in ini
+    assert "[Common]\r\nLogin=5001\r\nServer=Corretora-Demo\r\n" in ini                         # só na conta conferida
+    assert "[StartUp]\r\nExpert=HADOUKEN\\Painel\r\nSymbol=EURUSD\r\nPeriod=H1\r\n" in ini
+    assert ini.endswith("[Charts]\r\nProfileLast=HADOUKEN\r\n")
+    assert result["panel"] == "Painel" and result["panel_trading"] is False and result["chart"] == "EURUSD H1"
+    assert "PARAR TUDO foi acionado" in view.describe(result) and "mt5x robots stop --release" in view.describe(result)
+    assert (mt5.common / layout.SEED_FILE).is_file()                    # o painel fecha o gráfico auxiliar
+    chart = (layout.profile_dir(mt5.data) / "chart01.chr").read_bytes().decode("utf-16")
+    assert "symbol=EURUSD" in chart and "period_type=1\r\nperiod_size=1" in chart
+
+
+def test_panel_with_the_whole_battery_approved_enters_with_trading_on(mt5, panel):
+    panel.check(approved=True)
+    result = view.open_view(mt5.config, symbol="EURUSD", timeframe="H1", db=object(), account=DEMO)
+    assert "AllowLiveTrading=1" in mt5.inis()[0] and result["panel_trading"] is True
+    assert not panel.kill.exists() and result["panel_blocked"] is False        # aprovado: nada é bloqueado
+    assert "com a negociação ligada" in view.describe(result)
+
+
+@pytest.mark.parametrize("setup, reason", [
+    (lambda p, m: p.check(static="reprovada"), "Leitura do código aprovada: a leitura do código reprovou"),
+    (lambda p, m: p.check(fingerprint="codigo-antigo"), "o código mudou depois da leitura"),
+    (lambda p, m: setattr(p.robot, "checks", []), "a bateria ainda não foi rodada"),
+    (lambda p, m: (m.data / "MQL5" / "Experts" / "HADOUKEN" / "Painel.ex5").unlink(), "Compilado na pasta do MT5"),
+    (lambda p, m: m.config.read_dict({"MT5": {"panel_preset": "Sumiu"}}), "o preset Sumiu não está na pasta do MT5"),
+])
+def test_panel_is_not_shown_when_a_safety_requirement_fails_and_the_view_still_opens(mt5, panel, setup, reason):
+    setup(panel, mt5)
+    result = view.open_view(mt5.config, symbol="EURUSD", timeframe="H1", db=object(), account=DEMO)
+    assert result["panel"] == "" and reason in result["panel_note"] and not panel.kill.exists()
+    assert "[StartUp]" not in mt5.inis()[0] and "Expert=" not in mt5.inis()[0]     # nenhum robô é carregado
+    assert result["chart"] == "EURUSD H1" and "painel não mostrado: " in view.describe(result)
+
+
+def test_panel_never_enters_a_real_or_unknown_account(mt5, panel):
+    panel.check(approved=True)
+    for account, reason in ((REAL, "é REAL"), (None, "a conta ainda não foi conferida"), ({}, "ainda não foi conferida")):
+        result = view.open_view(mt5.config, symbol="EURUSD", db=object(), account=account)
+        assert result["panel"] == "" and reason in result["panel_note"] and "Expert=" not in mt5.inis()[-1]
+
+
+def test_panel_can_be_turned_off_and_needs_the_own_profile_and_the_organization(mt5, panel):
+    for keys in ({"view_panel": "false"}, {"layout_own_profile": "false"}, {"manage_layout": "false"}):
+        mt5.config.read_dict({"MT5": {"view_panel": "true", "layout_own_profile": "true", "manage_layout": "true"}})
+        mt5.config.read_dict({"MT5": keys})
+        result = view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)
+        assert result["panel"] == "" and result["panel_note"] == "" and "Expert=" not in mt5.inis()[-1]
+    mt5.config.read_dict({"MT5": {"view_panel": "true", "layout_own_profile": "true", "manage_layout": "true"}})
+    assert view.open_view(mt5.config, symbol="EURUSD", account=DEMO)["panel"] == ""      # sem banco: sem catálogo
+    mt5.config["MT5"]["panel_robot"] = "outro"
+    assert "não está no catálogo" in view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)["panel_note"]
+
+
+def test_panel_uses_the_chosen_preset_and_layout_and_the_users_chart_when_no_symbol_is_given(mt5, panel):
+    default = mt5.data / "MQL5" / "Profiles" / "Charts" / "Default"
+    default.mkdir(parents=True)
+    (default / "chart01.chr").write_bytes(
+        b"\xff\xfe" + "<chart>\r\nsymbol=GBPUSD\r\nperiod_type=0\r\nperiod_size=5\r\n</chart>\r\n".encode("utf-16-le"))
+    mt5.config.read_dict({"MT5": {"panel_preset": "Calmo", "panel_layout": "wide"}})
+    result = view.open_view(mt5.config, db=object(), account=DEMO)
+    ini = mt5.inis()[0]
+    assert "Symbol=GBPUSD\r\nPeriod=M5\r\nExpertParameters=mt5x_painel.set\r\n" in ini and result["chart"] == "GBPUSD M5"
+    params = (mt5.data / "MQL5" / "Presets" / "mt5x_painel.set").read_bytes().decode("utf-16")
+    assert params == "InpRiskPct=0.25\r\nInpPanelLayout=3\r\n"          # o preset, com a disposição escolhida
+
+
+def test_panel_that_does_not_load_is_reported_and_the_bridge_comes_back(mt5, panel):
+    mt5.running, mt5.bridge = True, True
+
+    def not_loaded(data, expert, since):
+        raise RuntimeError("o log não mostrou o robô Painel carregado")
+    result = view.open_view(mt5.config, close_terminal=True, symbol="EURUSD", db=object(), account=DEMO,
+                            confirm=not_loaded)
+    assert result["panel"] == "" and "não mostrou o robô Painel" in result["panel_note"] and mt5.calls[-1] == "ponte"
+    seen = []
+    result = view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO,
+                            confirm=lambda data, expert, since: seen.append(expert))
+    assert result["panel"] == "Painel" and seen == ["HADOUKEN\\Painel"]
+
+
+def test_the_battery_gate_of_robots_start_is_unchanged(mt5, panel):
+    """A visão não afrouxa `mt5x robots start`: sem a bateria inteira aprovada, ele continua recusando."""
+    gates = live.demo_gates(mt5.config, panel.robot, DEMO)
+    assert not all(g.ok for g in gates) and any(g.name == live.BATTERY_GATE and not g.ok for g in gates)
+    view_gates, trading = live.panel_gates(mt5.config, panel.robot, DEMO)
+    assert all(g.ok for g in view_gates) and trading is False
+    panel.check(approved=True)
+    assert live.panel_gates(mt5.config, panel.robot, DEMO)[1] is True
+    panel.kill.write_text("x")                               # aprovado, mas com o PARAR TUDO acionado: só para ver
+    assert live.panel_gates(mt5.config, panel.robot, DEMO)[1] is False
+    assert "AllowLiveTrading=1" in mt5_tools.startup_ini("X", "EURUSD", "H1", 1, "S")     # o padrão do início não mudou

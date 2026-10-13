@@ -1868,7 +1868,10 @@ class UIManager:
             # se o perfil de gráficos próprio ainda não existe, ele nasce com o gráfico do ativo em foco
             # o ativo em foco (o clicado na lista); sem ele, a visão usa o gráfico que a pessoa já tinha
             symbol = self.detail_symbol or ""
-            self.run_bg(lambda: view.open_view(config, close_terminal=running, symbol=symbol), opened)
+            account = self.app.mt5_connector.account_summary() if self._mt5_connected() else self.prefs.get("account")
+            self.run_bg(lambda: view.open_view(config, close_terminal=running, symbol=symbol,
+                                               db=self.app.db_manager, account=account,
+                                               confirm=mt5_tools.confirm_startup), opened)
 
         self.run_bg(lambda: mt5_tools.terminal_running(config), checked)
 
@@ -2148,6 +2151,18 @@ class UIManager:
         except tk.TclError as e:
             log.debug(f"Não foi possível trazer a janela para a frente: {e}")
 
+    def _remember_account(self):
+        """Guarda a conta conferida nesta conexão: é ela que a visão usa para pôr o painel com o MT5 ainda fechado."""
+        try:
+            info = self.app.mt5_connector.account_summary()
+        except Exception as e:
+            log.debug(f"Conta não lida: {e}")
+            return
+        if info and info.get("login"):
+            self.prefs["account"] = {"login": info["login"], "server": info.get("server", ""),
+                                     "demo": bool(info.get("demo"))}
+            self.save_prefs()
+
     def connect_mt5(self, startup=False):
         """
         Abre o MetaTrader 5 (com a janela organizada como nas configurações, se ele estiver fechado) e conecta,
@@ -2171,7 +2186,9 @@ class UIManager:
                 # Sem ativo: se o perfil próprio ainda não existe, ele nasce com o gráfico que a pessoa já tinha
                 # (a seleção salva pode ter centenas de ativos; o primeiro dela não diz nada).
                 if not mt5_tools.terminal_running(config):
-                    log.info("Visão do MetaTrader 5 ao conectar: " + view.describe(view.open_view(config)))
+                    opened = view.open_view(config, db=app.db_manager, account=self.prefs.get("account"),
+                                            confirm=mt5_tools.confirm_startup)
+                    log.info("Visão do MetaTrader 5 ao conectar: " + view.describe(opened))
             except Exception as e:
                 log.warning(f"Não foi possível abrir o MetaTrader 5 já organizado ({e}). Seguindo com a conexão.")
             connected = bool(app.mt5_connector.initialize(recursion_count=0))
@@ -2190,6 +2207,7 @@ class UIManager:
             self.bring_to_front()
             if self.refresh_mt5_status():
                 self.log("Conectado ao MetaTrader 5.")
+                self._remember_account()
                 return
             app.mt5_initialized = False
             text = connection_help.explain(reason, windows=os.name == "nt")

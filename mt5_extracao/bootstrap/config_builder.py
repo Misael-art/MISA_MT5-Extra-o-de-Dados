@@ -33,6 +33,9 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("layout_hide_toolbars", "true"),    # barras de ferramentas;
         ("layout_own_profile", "true"),      # gráfico do robô sozinho e maximizado, em perfil de gráficos próprio
         ("panel_layout", "auto"),            # disposição do painel do HADOUKEN: auto, compact, normal ou wide
+        ("view_panel", "true"),              # "Abrir visão MT5" põe o painel no gráfico (sem bateria: só visualização)
+        ("panel_robot", "hdk_hadouken_painel"),  # qual robô do catálogo é o painel
+        ("panel_preset", ""),                # preset do painel na visão (vazio = padrão do código)
     ])),
     ("BRIDGE", OrderedDict([
         ("enabled", "false"),    # true no Linux: MT5 acessado via RPyC dentro do Wine

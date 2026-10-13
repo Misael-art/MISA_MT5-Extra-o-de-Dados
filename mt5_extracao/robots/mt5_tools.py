@@ -590,13 +590,15 @@ def kill_file(config) -> Path:
     return folder / KILL_FILE
 
 
-def startup_ini(expert: str, symbol: str, period: str, login, server: str, parameters: str = "") -> str:
+def startup_ini(expert: str, symbol: str, period: str, login, server: str, parameters: str = "",
+                live_trading: bool = True) -> str:
     """
     .ini que abre o terminal na conta conferida e coloca o robô num gráfico. Fixar Login e Server impede que o
-    robô suba em outra conta que não a verificada como demo. DLL fica desligada.
+    robô suba em outra conta que não a verificada como demo. DLL fica desligada. Com `live_trading=False` o robô
+    entra no gráfico com a negociação desligada (é como a visão mostra um painel que não passou na bateria).
     """
     lines = ["[Common]", f"Login={login}", f"Server={server}",
-             "[Experts]", "Enabled=1", "AllowLiveTrading=1", "AllowDllImport=0",
+             "[Experts]", "Enabled=1", f"AllowLiveTrading={1 if live_trading else 0}", "AllowDllImport=0",
              "[StartUp]", f"Expert={expert}", f"Symbol={symbol}", f"Period={period}"]
     if parameters:
         lines.append(f"ExpertParameters={parameters}")

@@ -280,11 +280,12 @@ def test_settings_show_the_layout_options_on_by_default(ui, settings):
     assert settings.window.title() == "Configurações"
     assert "Ligada." == settings.status_label.cget("text")
     assert set(settings.vars) == {"manage_layout", "layout_hide_navigation", "layout_hide_toolbox",
-                                  "layout_hide_toolbars", "layout_own_profile"}
+                                  "layout_hide_toolbars", "layout_own_profile", "view_panel"}
     assert all(var.get() for var in settings.vars.values())
     assert [settings.checks[key].cget("text") for key, *_ in layout.OPTION_KEYS] == [
         "Fechar a Observação do Mercado e o Navegador", "Fechar a Caixa de Ferramentas e o Testador de Estratégia",
-        "Esconder as barras de ferramentas", "Abrir o gráfico do robô sozinho e maximizado"]
+        "Esconder as barras de ferramentas", "Abrir o gráfico do robô sozinho e maximizado",
+        "Mostrar o painel do HADOUKEN no gráfico"]
     assert "Nenhum arranjo guardado" in settings.arrangement_label.cget("text")
     assert settings.restore_button.instate(["disabled"]) and not settings.panel_button.winfo_manager()
     assert "conta 1 em Demo (demonstração)" in " ".join(_labels(settings.window))
@@ -390,13 +391,14 @@ def view_calls(ui, settings, monkeypatch):
     calls = types.SimpleNamespace(opened=[], asked=[], answer=True, fail=None, env=settings.env, symbols=[])
     monkeypatch.setattr(mt5_tools, "terminal_running", lambda config=None: calls.env.running)
 
-    def open_view(config, close_terminal=False, spawn=None, symbol="", timeframe=""):
+    def open_view(config, close_terminal=False, spawn=None, symbol="", timeframe="", **extra):
         calls.symbols.append(symbol)
         if calls.fail:
             raise calls.fail
         calls.opened.append(close_terminal)
         return {"reopened": close_terminal, "organized": True, "hidden": ["barra de ferramentas"], "restored": False,
-                "profile": "", "chart": "", "panel_layout": "auto", "panel_charts": 0, "bridge": False}
+                "profile": "", "chart": "", "panel": "", "panel_trading": False, "panel_note": "",
+                "panel_layout": "auto", "panel_charts": 0, "bridge": False}
     monkeypatch.setattr(view, "open_view", open_view)
 
     def ask(title, message, **kwargs):
@@ -496,10 +498,11 @@ def connecting(ui, monkeypatch):
     monkeypatch.setattr(mt5_tools, "terminal_running", lambda config=None: env.running)
     monkeypatch.setattr(mt5_tools, "use_config", lambda config: None)
 
-    def open_view(config, close_terminal=False, spawn=None, symbol="", timeframe=""):
+    def open_view(config, close_terminal=False, spawn=None, symbol="", timeframe="", **extra):
         env.opened.append(symbol)
         env.running = True
         return {"reopened": False, "organized": True, "hidden": [], "restored": False, "profile": "", "chart": "",
+                "panel": "", "panel_trading": False, "panel_note": "",
                 "panel_layout": "auto", "panel_charts": 0, "bridge": False}
     monkeypatch.setattr(view, "open_view", open_view)
     monkeypatch.setattr(connection_help, "internet_ok", lambda *a, **k: env.online)
