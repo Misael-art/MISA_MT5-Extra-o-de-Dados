@@ -123,10 +123,10 @@ Levantadas lendo o código em 2026-10-13. "Existe" quer dizer que o arquivo est�
 
 | # | Decisão | Trava |
 |---|---|---|
-| 1 | Um painel de operação manual pode operar em demo só com a leitura do código aprovada, ou a bateria ganha critério próprio para painéis | G-16 |
+| 1 | Um painel de operação manual pode operar em demo só com a leitura do código aprovada, ou a bateria ganha critério próprio para painéis. **Respondida em 2026-10-13: em conta demo o painel manual opera sem bloqueio, salvo se a pessoa religar o bloqueio** (T12.L4 do plano). Conta real segue sem critério | G-16 |
 | 2 | Política para preço médio controlado (`AveragingPolicy`): quem pode usar, com quais tetos e qual avaliação | D-06 a D-10, D-15 |
-| 3 | Onde moram os contratos do framework (no HADOUKEN, na `mt5x-safety` ou em biblioteca nova) e como versionam | B-02 a B-07, B-11 |
-| 4 | De onde vem o calendário de sessões e quem mantém feriados | A-02 |
+| 3 | Onde moram os contratos do framework (no HADOUKEN, na `mt5x-safety` ou em biblioteca nova) e como versionam. **Proposta em [DECISOES_CONTRATOS_E_CALENDARIO.md](DECISOES_CONTRATOS_E_CALENDARIO.md)**: duas pastas, uma biblioteca, uma versão | B-02 a B-07, B-11 |
+| 4 | De onde vem o calendário de sessões e quem mantém feriados. **Proposta no mesmo documento**: passado deduzido das barras, grade semanal exportada pelo terminal, exceções em arquivo mantido | A-02 |
 | 5 | Série contínua de futuros só para estudo ou também para características de execução | A-01, A-03 |
 | 6 | Conta netting: abrir uma conta de teste com ativos da B3 antes de qualquer mecanismo por nível | F-11 |
 | 7 | Limite de autonomia dos agentes de IA: o que podem fazer sem confirmação humana | J-09 |

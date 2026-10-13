@@ -114,6 +114,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída; partes e devolução vistas no terminal real nos testes da T12.L3 |
 | T12.L2 | Opções da organização da janela na interface (diálogo Configurações), gravando o `config.ini` sem perder comentários | T12.L1 | ✅ concluída no Linux (vista em tela virtual, temas claro e escuro); Windows não visto |
 | T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída e testada no MT5 real do host (tela virtual); a disposição do painel com robô de verdade e o Windows não foram vistos |
+| T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
 | T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | a fazer |
@@ -2844,6 +2845,35 @@ perde. Causa não investigada.
 **Decisão do dono do projeto, em aberto:** se um painel de operação manual pode **operar** em conta demo só com a
 leitura do código aprovada (sem a parte estatística, que não se aplica a ele), ou se a bateria deve ganhar um
 critério próprio para painéis. Até lá, operar exige liberar o PARAR TUDO à mão.
+
+### T12.L4 — Painel manual liberado para operar em conta demo ✅
+
+**Decisão do dono do projeto (2026-10-13):** em conta de demonstração o painel de operação manual pode operar sem
+bloqueio, a menos que a pessoa queira religar o bloqueio; ele precisa estar liberado para os testes. Responde à
+decisão em aberto da seção "O painel na visão do MT5".
+
+**Registrado na entrega:**
+
+- `live.panel_gates`: o painel manual em conta demo entra com a negociação ligada e **sem** o PARAR TUDO. Continuam
+  exigidos o robô compilado, a conta de demonstração conferida e a leitura do código aprovada para o código que
+  está no disco. Conta real nunca entra por aqui.
+- **Quem é "painel manual":** `live.is_manual_panel` usa a evidência do Strategy Tester. No teste mais recente do
+  código atual, o robô não fez nenhuma entrada sozinho. Um robô que opera sozinho, posto como painel em
+  `[MT5] panel_robot`, ou sem teste do código atual, continua abrindo só para visualização, com o PARAR TUDO. Sem
+  isso a liberação seria um atalho para pular a bateria de qualquer robô.
+- **Religar o bloqueio:** `[MT5] panel_demo_blocked = true`, ou a caixa "Manter o painel bloqueado mesmo em conta
+  de demonstração" em Arquivo > Configurações. Valor inválido na chave vale como bloqueado.
+- **O PARAR TUDO nunca é liberado sozinho.** Se já estava acionado, a visão avisa e o painel aparece bloqueado. O
+  diálogo de Configurações mostra o estado e tem o botão "Liberar o PARAR TUDO", que só age com o clique da pessoa.
+- **A trava da bateria de `mt5x robots start` para robôs automáticos não mudou** (há teste).
+- **Defeito achado e corrigido junto:** na bateria de backtests em paralelo (T7.2), duas gravações simultâneas em
+  uma base nova tentavam criar a mesma coluna de `_robot_runs` e uma falhava (`duplicate column name`). A gravação
+  passou a ter uma trava; há teste que falha sem a correção.
+
+**Conferido:** 643 testes passando; no host, o PARAR TUDO que a visão tinha acionado foi liberado a pedido do dono
+do projeto (`mt5x robots stop --release`).
+**Não conferido:** o painel operando de fato em demo depois da liberação (nenhuma ordem foi enviada nestes testes);
+se a negociação algorítmica do terminal fica ligada quando o painel entra pelo arquivo de início; Windows.
 
 ### T12.6a — Painel v7: conferência pendente e vocabulário
 

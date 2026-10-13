@@ -138,3 +138,26 @@ def test_real_python_backtests_are_recorded(tmp_path):
     recorded = {(r["robot_key"], r["symbol"], r["timeframe"]) for r in store.load_runs(db)}
     assert recorded == {(robot.key, symbol, "D1") for symbol in ("PETR4", "VALE3") for robot in robots}
     assert all(0 <= e["cpu"] <= 100 and 0 < e["ram"] <= 100 for e in events if e["kind"] == runner.DONE)
+
+
+def test_parallel_first_writes_to_a_new_database_do_not_collide(tmp_path):
+    """Defeito visto na bateria: duas gravações simultâneas em uma base nova tentavam criar a mesma coluna."""
+    from mt5_extracao.robots import store
+    for attempt in range(6):
+        db = DatabaseManager(db_path=str(tmp_path / f"corrida{attempt}.db"))
+        errors, start = [], threading.Barrier(8)
+
+        def save(i):
+            start.wait()
+            try:
+                store.save_run(db, {"run_id": f"r{i}", "robot_key": "python:a", "source": "backtest", "symbol": "X",
+                                    "timeframe": "D1", "data_start": "", "data_end": "", "bars": 1, "params": {},
+                                    "metrics": {}, "equity": [], "created_at": f"2026-01-01 00:00:0{i}"})
+            except Exception as e:
+                errors.append(str(e))
+        threads = [threading.Thread(target=save, args=(i,)) for i in range(8)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert errors == [] and len(store.load_runs(db)) == 8

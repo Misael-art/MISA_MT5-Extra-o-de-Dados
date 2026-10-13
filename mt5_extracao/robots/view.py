@@ -68,8 +68,9 @@ def open_view(config, close_terminal: bool = False, spawn: Optional[Callable] = 
     `symbol`, vale o primeiro gráfico do perfil em que o terminal estava.
 
     Com `[MT5] view_panel` ligado, `db` e `account` (MT5Connector.account_summary() da conta conferida), o painel
-    do HADOUKEN entra no gráfico pelo arquivo de início, na conta conferida. Sem a bateria de segurança aprovada
-    ele entra só para visualização, com o PARAR TUDO acionado (veja live.panel_gates). Se o painel não puder ser
+    do HADOUKEN entra no gráfico pelo arquivo de início, na conta conferida. Em conta demo o painel manual entra
+    liberado para operar; com `[MT5] panel_demo_blocked` (ou se não for um painel manual) entra só para
+    visualização, com o PARAR TUDO acionado (veja live.panel_gates). Se o painel não puder ser
     mostrado, a visão segue só com o gráfico e `panel_note` diz o motivo. `confirm` (mt5_tools.confirm_startup)
     confere no log do terminal que o painel foi carregado.
 
@@ -109,12 +110,16 @@ def open_view(config, close_terminal: bool = False, spawn: Optional[Callable] = 
                 layout.prepare_profile(data, panel["symbol"], panel["timeframe"], common)
                 result.update(profile=layout.PROFILE, chart=f"{panel['symbol']} {panel['timeframe']}",
                               panel=panel["robot"].name, panel_trading=panel["live"])
+                from . import live
                 if not panel["live"]:
-                    # Sem a bateria aprovada o painel só pode ser VISTO: o PARAR TUDO garante que a camada de
-                    # segurança não envia ordem. Ele fica acionado até a pessoa liberar (mt5x robots stop --release).
-                    from . import live
-                    live.stop_all(config, "Painel aberto só para visualização (sem a bateria de segurança aprovada).")
+                    # Só para visualização (bloqueio religado pela pessoa, ou não é um painel manual): o PARAR TUDO
+                    # garante que a camada de segurança não envia ordem. Fica acionado até a pessoa liberar.
+                    live.stop_all(config, "Painel aberto só para visualização.")
                     result["panel_blocked"] = True
+                elif live.stop_active(config):
+                    # Liberado para operar, mas o PARAR TUDO já estava acionado: a visão nunca o libera sozinha.
+                    result["panel_note"] = ("o PARAR TUDO está acionado, então o painel aparece bloqueado: libere em "
+                                            "Arquivo > Configurações ou com 'mt5x robots stop --release'")
                 ini = mt5_tools.startup_ini(panel["expert"], panel["symbol"], panel["timeframe"], account["login"],
                                             account.get("server", ""), panel["parameters"],
                                             live_trading=panel["live"]) + layout.startup_lines(layout.PROFILE)
@@ -161,10 +166,12 @@ def describe(result: dict) -> str:
     else:
         parts.append("organização desligada" + (", arranjo anterior devolvido" if result["restored"] else ""))
     if result["panel"]:
-        parts.append(f"painel {result['panel']} no gráfico, " + ("com a negociação ligada" if result["panel_trading"]
-                     else "só para visualização: ele não tem a bateria de segurança aprovada, então o PARAR TUDO foi "
-                          "acionado (o painel aparece BLOQUEADO e nenhum robô do HADOUKEN opera até você liberar com "
-                          "'mt5x robots stop --release')"))
+        parts.append(f"painel {result['panel']} no gráfico, " + ("liberado para operar" if result["panel_trading"]
+                     else "só para visualização: o PARAR TUDO foi acionado (o painel aparece BLOQUEADO e nenhum robô "
+                          "do HADOUKEN opera até você liberar em Arquivo > Configurações ou com 'mt5x robots stop "
+                          "--release')"))
+        if result["panel_note"]:
+            parts.append("atenção: " + result["panel_note"])
     elif result["panel_note"]:
         parts.append("painel não mostrado: " + result["panel_note"])
     if result["panel_charts"]:
