@@ -187,13 +187,9 @@ class MT5Extracao:
             self.mt5_connector = MT5Connector(config_path=self.config_path,
                                               ask_user=lambda t, m: messagebox.askyesno(t, m))
             
-            # Tentar conectar ao MT5
-            if self.mt5_connector.initialize():
-                logging.info("Conexão com MT5 inicializada com sucesso")
-                self.mt5_initialized = True  # Atualiza o status de inicialização
-            else:
-                logging.warning("Falha ao inicializar conexão MT5. Modo: Erro de Conexão")
-                self.mt5_initialized = False  # Garante que o status está como falso em caso de erro
+            # A conexão com o MT5 é feita depois que a janela aparece, em segundo plano (UIManager.connect_mt5):
+            # conectar aqui deixava o programa sem janela por minutos quando o MT5 demorava ou não conectava.
+            self.mt5_initialized = False
             
             # Inicializar outros componentes
             logging.info("Instanciando IndicatorCalculator...")

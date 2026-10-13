@@ -11,6 +11,7 @@ Regras:
 import configparser
 import json
 import os
+import re
 import tempfile
 from collections import OrderedDict
 from pathlib import Path
@@ -27,6 +28,14 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("hidden", "false"),     # true = MT5 fora da tela (Linux: tela virtual Xvfb; Windows: minimizado)
         ("hidden_display", ":99"),  # número da tela virtual do modo oculto (Linux)
         ("manage_layout", "true"),  # ao iniciar um robô: janelas laterais fechadas e o gráfico dele maximizado
+        ("layout_hide_navigation", "true"),  # partes da organização acima (também em Arquivo > Configurações):
+        ("layout_hide_toolbox", "true"),     # Observação do Mercado e Navegador; Caixa de Ferramentas e Testador;
+        ("layout_hide_toolbars", "true"),    # barras de ferramentas;
+        ("layout_own_profile", "true"),      # gráfico do robô sozinho e maximizado, em perfil de gráficos próprio
+        ("panel_layout", "auto"),            # disposição do painel do HADOUKEN: auto, compact, normal ou wide
+        ("view_panel", "true"),              # "Abrir visão MT5" põe o painel no gráfico (sem bateria: só visualização)
+        ("panel_robot", "hdk_hadouken_painel"),  # qual robô do catálogo é o painel
+        ("panel_preset", ""),                # preset do painel na visão (vazio = padrão do código)
     ])),
     ("BRIDGE", OrderedDict([
         ("enabled", "false"),    # true no Linux: MT5 acessado via RPyC dentro do Wine
@@ -158,6 +167,43 @@ def write_config(path: Path, cfg: configparser.ConfigParser) -> None:
     buf.write("# Pode ser editado manualmente; valores existentes são preservados ao reconfigurar.\n\n")
     cfg.write(buf)
     atomic_write_text(path, buf.getvalue())
+
+
+_SECTION_LINE = re.compile(r"^\s*\[(?P<name>[^\]]+)\]\s*$")
+
+
+def set_config_value(path: Path, section: str, key: str, value: str) -> None:
+    """
+    Grava UMA chave no config.ini trocando só a linha dela (ou acrescentando-a ao fim da seção, ou a seção ao fim
+    do arquivo). Comentários, ordem e as demais chaves ficam como estão: é o que a interface usa para salvar uma
+    opção sem regravar o arquivo do usuário.
+    """
+    path = Path(path)
+    if any(ch in str(value) for ch in "\r\n"):
+        raise ValueError(f"Valor inválido para [{section}] {key}: não pode ter quebra de linha.")
+    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+    # sem diferenciar maiúsculas: o leitor padrão do Python não diferencia, e duas grafias da chave o fariam falhar
+    key_line = re.compile(r"^\s*(" + re.escape(key) + r")\s*[=:]", re.IGNORECASE)
+    start = end = None
+    for index, line in enumerate(lines):
+        match = _SECTION_LINE.match(line)
+        if match and start is None and match.group("name").strip() == section:
+            start = index
+        elif match and start is not None:
+            end = index
+            break
+    new_line = f"{key} = {value}"
+    if start is None:
+        lines += ([""] if lines and lines[-1].strip() else []) + [f"[{section}]", new_line]
+    else:
+        end = len(lines) if end is None else end
+        found = next((i for i in range(start + 1, end) if key_line.match(lines[i])), None)
+        if found is not None:
+            lines[found] = f"{key_line.match(lines[found]).group(1)} = {value}"     # mantém a grafia do arquivo
+        else:
+            last = max((i for i in range(start, end) if lines[i].strip()), default=start)
+            lines.insert(last + 1, new_line)
+    atomic_write_text(path, "\n".join(lines) + "\n")
 
 
 def read_env_file(path: Path) -> "OrderedDict[str, str]":

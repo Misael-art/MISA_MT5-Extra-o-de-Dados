@@ -26,6 +26,28 @@ hidden_display = :99
 # num perfil de gráficos próprio ("HADOUKEN"); o seu perfil e o seu arranjo são guardados e voltam quando desligar.
 # false desliga. O botão TELA do painel do HADOUKEN desliga e liga a mesma coisa.
 manage_layout = true
+# Cada parte da organização pode ser desligada sozinha (também em Arquivo > Configurações, na interface; para ver
+# o estado: mt5x mt5 layout). Uma parte desligada depois de já ter sido escondida volta como você tinha deixado.
+# Observação do Mercado e Navegador (lateral esquerda):
+layout_hide_navigation = true
+# Caixa de Ferramentas e Testador de Estratégia (parte de baixo):
+layout_hide_toolbox = true
+# Barras de ferramentas (o menu Exibir do MT5 as traz de volta):
+layout_hide_toolbars = true
+# Gráfico do robô sozinho e maximizado, no perfil de gráficos "HADOUKEN". false = o gráfico do robô é aberto no
+# perfil em que o terminal estava, e cada início acrescenta um gráfico a ele.
+layout_own_profile = true
+# Disposição do painel do HADOUKEN (parâmetro InpPanelLayout do robô): auto (pelo tamanho do gráfico), compact,
+# normal ou wide. Vale quando o programa inicia o robô do painel e em "Abrir visão MT5" (mt5x mt5 view).
+panel_layout = auto
+# "Abrir visão MT5" (e a abertura do programa) põe o painel no gráfico. Se o painel não tiver a bateria de segurança
+# aprovada, ele entra SÓ PARA VISUALIZAÇÃO: o PARAR TUDO é acionado (nenhum robô do HADOUKEN opera) e o painel
+# aparece BLOQUEADO até você liberar com 'mt5x robots stop --release'. Exige conta de demonstração, o painel
+# compilado e a leitura do código aprovada (mt5x robots battery <painel>). false = só o gráfico.
+view_panel = true
+# Qual robô do catálogo é o painel (mt5x robots list) e com qual preset ele entra (vazio = padrão do código).
+panel_robot = hdk_hadouken_painel
+panel_preset =
 
 [BRIDGE]
 enabled = false

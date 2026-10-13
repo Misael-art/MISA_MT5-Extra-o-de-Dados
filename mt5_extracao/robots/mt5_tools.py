@@ -590,13 +590,15 @@ def kill_file(config) -> Path:
     return folder / KILL_FILE
 
 
-def startup_ini(expert: str, symbol: str, period: str, login, server: str, parameters: str = "") -> str:
+def startup_ini(expert: str, symbol: str, period: str, login, server: str, parameters: str = "",
+                live_trading: bool = True) -> str:
     """
     .ini que abre o terminal na conta conferida e coloca o robô num gráfico. Fixar Login e Server impede que o
-    robô suba em outra conta que não a verificada como demo. DLL fica desligada.
+    robô suba em outra conta que não a verificada como demo. DLL fica desligada. Com `live_trading=False` o robô
+    entra no gráfico com a negociação desligada (é como a visão mostra um painel que não passou na bateria).
     """
     lines = ["[Common]", f"Login={login}", f"Server={server}",
-             "[Experts]", "Enabled=1", "AllowLiveTrading=1", "AllowDllImport=0",
+             "[Experts]", "Enabled=1", f"AllowLiveTrading={1 if live_trading else 0}", "AllowDllImport=0",
              "[StartUp]", f"Expert={expert}", f"Symbol={symbol}", f"Period={period}"]
     if parameters:
         lines.append(f"ExpertParameters={parameters}")
@@ -670,7 +672,10 @@ def spawn_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] =
 
 def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional[Callable] = None,
                    is_running: Optional[Callable] = None) -> Path:
-    """Abre o terminal com o .ini dado (gravado como <name>.ini na pasta de dados) e devolve o caminho do .ini."""
+    """
+    Abre o terminal com o .ini dado (gravado como <name>.ini na pasta de dados) e devolve o caminho do .ini. Com
+    `ini_text` vazio o terminal abre sem /config, como pelo atalho (é o que "Abrir visão MT5" usa sem perfil próprio).
+    """
     data = Path(data)
     if is_running() if is_running else terminal_running(config):
         raise RuntimeError("O MetaTrader 5 está aberto: o robô só entra no gráfico quando o terminal é iniciado "
@@ -682,7 +687,8 @@ def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional
     ini = data / f"{name}.ini"
     ini.write_bytes(ini_text.encode("utf-16"))
     portable = prefix is not None or data.resolve() == terminal.parent.resolve()
-    command_line = '"{}"{} /config:"{}"'.format(_windows_path(terminal, prefix), " /portable" if portable else "",
-                                                _windows_path(ini, prefix))
+    command_line = '"{}"{}'.format(_windows_path(terminal, prefix), " /portable" if portable else "")
+    if ini_text:
+        command_line += ' /config:"{}"'.format(_windows_path(ini, prefix))
     (spawn or spawn_windows_command)(command_line, terminal.parent, prefix)
     return ini
