@@ -1,0 +1,196 @@
+"""
+Bateria de backtests em segundo plano (botão "Iniciar Backtest" da aba "Minha base").
+
+    jobs = [Job(robot, "PETR4", "1 dia"), ...]
+    runner = BatchRunner(db, config, jobs, on_event=print)
+    runner.start()            # não bloqueia; runner.cancel() interrompe o que ainda não começou
+
+Os testes rodam em um `concurrent.futures.ThreadPoolExecutor`. O `ResourceGovernor` lê o uso de CPU e de memória
+(psutil) e ajusta quantos testes rodam ao mesmo tempo, para o computador não passar do limite configurado em
+`[ROBOTS] batch_max_cpu_pct` e `batch_max_ram_pct`. Robôs MQL5 rodam um por vez: o MT5 não abre duas vezes a mesma
+instalação. Uma falha não interrompe os outros testes.
+
+`on_event` é chamado pelas threads de trabalho: quem usa na interface precisa repassar para a thread do Tkinter.
+"""
+import logging
+import os
+import threading
+import time
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+from dataclasses import dataclass
+from typing import Callable, List, Optional, Tuple
+
+from . import backtest, catalog
+
+log = logging.getLogger(__name__)
+
+DEFAULT_MAX_CPU, DEFAULT_MAX_RAM = 75.0, 85.0
+HEADROOM = 15.0             # só aumenta os testes simultâneos com esta folga de CPU abaixo do limite
+SAMPLE_INTERVAL = 0.25      # leituras mais próximas que isso repetem a anterior (a medida de CPU fica instável)
+STARTED, DONE, FINISHED = "start", "done", "finished"
+
+
+@dataclass
+class Job:
+    robot: object            # catalog.Robot
+    symbol: str
+    timeframe: str           # rótulo da base (ex.: "1 dia")
+
+
+def _psutil_sample() -> Tuple[float, float]:
+    import psutil
+    return float(psutil.cpu_percent(interval=None)), float(psutil.virtual_memory().percent)
+
+
+def limits_from_config(config) -> dict:
+    """Limites de `[ROBOTS]`, com os padrões quando a chave falta ou está inválida."""
+    def read(key, default):
+        try:
+            return float(config.get("ROBOTS", key, fallback=str(default))) if config is not None else default
+        except (TypeError, ValueError):
+            return default
+    return {"max_cpu": read("batch_max_cpu_pct", DEFAULT_MAX_CPU), "max_ram": read("batch_max_ram_pct", DEFAULT_MAX_RAM),
+            "max_workers": int(read("batch_max_workers", 0)) or None}
+
+
+class ResourceGovernor:
+    """Decide quantos testes podem rodar ao mesmo tempo a partir do uso de CPU e de memória do computador."""
+
+    def __init__(self, max_cpu: float = DEFAULT_MAX_CPU, max_ram: float = DEFAULT_MAX_RAM,
+                 max_workers: Optional[int] = None, sample: Optional[Callable] = None,
+                 clock: Callable = time.monotonic):
+        self.max_cpu, self.max_ram = float(max_cpu), float(max_ram)
+        self.max_workers = max(1, int(max_workers or max(1, (os.cpu_count() or 2) - 1)))
+        self._sample, self._clock = sample or _psutil_sample, clock
+        self._last, self._at = (0.0, 0.0), None
+        self.limit = 1
+        if sample is None:
+            _psutil_sample()            # a primeira leitura de CPU do psutil não mede nada: serve de ponto de partida
+
+    def read(self) -> Tuple[float, float]:
+        """(CPU %, RAM %). Devolve a leitura anterior se a última foi há menos de SAMPLE_INTERVAL."""
+        now = self._clock()
+        if self._at is None or now - self._at >= SAMPLE_INTERVAL:
+            try:
+                self._last = self._sample()
+            except Exception as e:      # sem leitura, mantém a anterior: o lote não para por causa do monitor
+                log.debug(f"Não foi possível ler o uso de CPU e memória: {e}")
+            self._at = now
+            self._adjust()
+        return self._last
+
+    def _adjust(self) -> None:
+        cpu, ram = self._last
+        if cpu >= self.max_cpu or ram >= self.max_ram:
+            self.limit = max(1, self.limit - 1)
+        elif cpu < self.max_cpu - HEADROOM:
+            self.limit = min(self.max_workers, self.limit + 1)
+
+
+def run_job(db, config, job: Job) -> dict:
+    if job.robot.kind == catalog.MQL5:
+        return backtest.run_mql5(db, config, job.robot, job.symbol, job.timeframe)
+    return backtest.run_python(db, config, job.robot, job.symbol, job.timeframe)
+
+
+class BatchRunner:
+    """
+    Roda `jobs` em segundo plano. Eventos (dicionários) entregues a `on_event`:
+      {"kind": "start", "index" (1 = primeiro a começar), "total", "job", "cpu", "ram", "workers"}
+      {"kind": "done", "completed", "total", "job", "run" (ou None), "error" (ou ""), "cpu", "ram"}
+      {"kind": "finished", "total", "ok", "failed", "canceled"}
+    `mql5_setup`, se informado, é chamado uma vez antes do primeiro robô MQL5 (ex.: fechar o MT5) e devolve a função
+    que desfaz o preparo no fim (ou None).
+    """
+
+    def __init__(self, db, config, jobs: List[Job], on_event: Optional[Callable] = None,
+                 governor: Optional[ResourceGovernor] = None, run: Optional[Callable] = None,
+                 mql5_setup: Optional[Callable] = None):
+        self.db, self.config, self.jobs = db, config, list(jobs)
+        self.on_event = on_event or (lambda event: None)
+        self.governor = governor or ResourceGovernor(**limits_from_config(config))
+        self._run = run or run_job
+        self._mql5_setup = mql5_setup
+        self._cancel = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self.results: List[dict] = []
+
+    def start(self) -> "BatchRunner":
+        self._thread = threading.Thread(target=self._coordinate, name="mt5x-backtests", daemon=True)
+        self._thread.start()
+        return self
+
+    def cancel(self) -> None:
+        """Não começa mais nenhum teste; os que já estão rodando terminam."""
+        self._cancel.set()
+
+    def join(self, timeout: Optional[float] = None) -> bool:
+        if self._thread is not None:
+            self._thread.join(timeout)
+        return self._thread is None or not self._thread.is_alive()
+
+    @property
+    def running(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
+    def _emit(self, **event) -> None:
+        try:
+            self.on_event(event)
+        except Exception:
+            log.exception("Erro ao avisar o andamento dos backtests")
+
+    def _execute(self, job: Job) -> dict:
+        try:
+            return {"job": job, "run": self._run(self.db, self.config, job), "error": ""}
+        except Exception as e:           # qualquer falha de um teste fica nele: os outros continuam
+            log.warning(f"Backtest de {job.robot.name} em {job.symbol} ({job.timeframe}) falhou: {e}")
+            return {"job": job, "run": None, "error": str(e) or type(e).__name__}
+
+    def _next(self, pending: List[Job], mql5_busy: bool) -> Optional[Job]:
+        for job in pending:
+            if job.robot.kind != catalog.MQL5 or not mql5_busy:
+                pending.remove(job)
+                return job
+        return None
+
+    def _coordinate(self) -> None:
+        total, pending, running = len(self.jobs), list(self.jobs), {}
+        started = failed = 0
+        cleanup = None
+        governor = self.governor
+        try:
+            with ThreadPoolExecutor(max_workers=governor.max_workers, thread_name_prefix="mt5x-backtest") as pool:
+                while (pending and not self._cancel.is_set()) or running:
+                    cpu, ram = governor.read()
+                    while pending and not self._cancel.is_set() and len(running) < max(1, governor.limit):
+                        job = self._next(pending, any(j.robot.kind == catalog.MQL5 for j in running.values()))
+                        if job is None:
+                            break
+                        if job.robot.kind == catalog.MQL5 and self._mql5_setup is not None:
+                            setup, self._mql5_setup = self._mql5_setup, None
+                            try:
+                                cleanup = setup()
+                            except Exception as e:      # sem o preparo, os robôs MQL5 falham cada um com o seu motivo
+                                log.warning(f"Preparo para os robôs MQL5 falhou: {e}")
+                        started += 1
+                        self._emit(kind=STARTED, index=started, total=total, job=job, cpu=cpu, ram=ram,
+                                   workers=len(running) + 1)
+                        running[pool.submit(self._execute, job)] = job
+                    if not running:
+                        continue
+                    finished, _ = wait(list(running), timeout=SAMPLE_INTERVAL, return_when=FIRST_COMPLETED)
+                    for future in finished:
+                        running.pop(future)
+                        result = future.result()
+                        self.results.append(result)
+                        failed += result["run"] is None
+                        cpu, ram = governor.read()
+                        self._emit(kind=DONE, completed=len(self.results), total=total, cpu=cpu, ram=ram, **result)
+        finally:
+            if cleanup is not None:
+                try:
+                    cleanup()
+                except Exception as e:
+                    log.warning(f"Não foi possível desfazer o preparo dos robôs MQL5: {e}")
+            done = len(self.results)
+            self._emit(kind=FINISHED, total=total, ok=done - failed, failed=failed, canceled=total - done)

@@ -21,6 +21,19 @@ DARK = {
 }
 
 
+# Sem Xft (ex.: o Tk embutido em algumas distribuições do Python no Linux), o Tk só enxerga as fontes antigas do X11
+# e não desenha emojis nem os símbolos de estrela e de caixa: nesses casos as tabelas usam estes textos.
+PLAIN_GLYPHS = (("🟢 ", ""), ("🔴 ", ""), ("⚪ ", ""), ("🎯 ", ""), ("❌ ", ""), ("★", "*"), ("☆", "·"), ("☑", "[x]"),
+                ("☐", "[ ]"))
+
+
+def _rich_glyphs(root):
+    try:
+        return str(root.tk.call("::tk::pkgconfig", "get", "fontsystem")) != "x11"
+    except tk.TclError:
+        return True
+
+
 class Theme:
     """Aplica a paleta aos estilos ttk e aos widgets clássicos (Listbox, Text) registrados."""
 
@@ -30,6 +43,7 @@ class Theme:
         self.colors = DARK if dark else LIGHT
         self._classic = []    # widgets tk (não ttk) a recolorir quando o tema muda
         self._listeners = []  # funções chamadas depois da troca (ex.: redesenhar gráficos)
+        self.rich_glyphs = _rich_glyphs(root)
         base = tkfont.nametofont("TkDefaultFont")
         size = max(10, abs(int(base.cget("size"))))
         family = base.cget("family")
@@ -42,6 +56,13 @@ class Theme:
         self.font_title = tkfont.Font(family=family, size=size + 5, weight="bold")
         self.font_value = tkfont.Font(family=family, size=size + 4, weight="bold")
         self.apply()
+
+    def glyphs(self, text):
+        """O texto como este Tk consegue desenhar: com os símbolos, ou com os substitutos de PLAIN_GLYPHS."""
+        if not self.rich_glyphs:
+            for symbol, plain in PLAIN_GLYPHS:
+                text = text.replace(symbol, plain)
+        return text
 
     def on_change(self, fn):
         self._listeners.append(fn)
@@ -248,8 +269,8 @@ class Tooltip:
             self._tip = None
 
 
-def scrolled_tree(parent, columns, widths, anchors=None, height=10, selectmode="browse"):
-    """Treeview com barra de rolagem. Retorna (frame, tree)."""
+def scrolled_tree(parent, columns, widths, anchors=None, height=10, selectmode="browse", xscroll=False):
+    """Treeview com barra de rolagem (e a horizontal, com `xscroll`). Retorna (frame, tree)."""
     frame = ttk.Frame(parent, style="Surface.TFrame")
     tree = ttk.Treeview(frame, columns=columns, show="headings", height=height, selectmode=selectmode)
     anchors = anchors or ["w"] * len(columns)
@@ -259,6 +280,10 @@ def scrolled_tree(parent, columns, widths, anchors=None, height=10, selectmode="
     bar = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=bar.set)
     bar.pack(side=tk.RIGHT, fill=tk.Y)
+    if xscroll:
+        xbar = ttk.Scrollbar(frame, orient="horizontal", command=tree.xview)
+        tree.configure(xscrollcommand=xbar.set)
+        xbar.pack(side=tk.BOTTOM, fill=tk.X)
     tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     return frame, tree
 

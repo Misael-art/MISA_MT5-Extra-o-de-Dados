@@ -112,6 +112,9 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | Exatidão | Só o terminal desta instalação é fechado | com dois MT5 instalados e abertos, `mt5x robots backtest <robô> ... --close-terminal` | Fecha só o de `[MT5] path`; o outro continua aberto | — | ⏳ pendente |
 | Exatidão | Ticks reais | `mt5x robots backtest <robô> --symbol EURUSD --tf H1` com `tester_model = 4` | Relatório gerado; "Qualidade do histórico" conferida à mão | — | ⏳ pendente |
 | T11.3 | MT5 minimizado no modo oculto | com `[MT5] hidden = true`, `mt5x robots backtest <robô> --symbol EURUSD --tf H1` | O terminal abre minimizado, sem tomar o foco, e o teste termina normalmente | — | ⏳ pendente |
+| T7.2 | Símbolos das tabelas | abrir as abas Ativos e Minha base | ★/☆, ☑/☐ e 🟢 🔴 ⚪ 🎯 ❌ aparecem desenhados (no Windows o Tk usa as fontes do sistema) | — | ⏳ pendente |
+| T7.2 | Bateria pela interface | marcar duas séries em Minha base, "Iniciar Backtest", escolher duas estratégias Python | Janela não trava; barra de status mostra o andamento com CPU e RAM; a coluna Robô Lucrativo muda ao fim de cada teste | — | ⏳ pendente |
+| T7.2 | Robô MQL5 pela interface | o mesmo, com um robô MQL5 compilado e o MT5 aberto | Pergunta antes de fechar o MT5; testa; "Verificar conexão" reconecta (não há ponte para religar) | — | ⏳ pendente |
 | T11.1 | Timeframe montado | `mt5x resample --symbols EURUSD --base M1 --tf M5,H1` | Barras iguais às extraídas do MT5 | — | ⏳ pendente |
 | T11.4 | Aviso do sistema | com `[APP] notifications = true`, `mt5x extract --symbols EURUSD --tf H1 --from <data>` | Um balão "Extração concluída" aparece ao terminar | — | ⏳ pendente |
 | T11.9 | Painel vivo | `mt5x panel --serve --open`, clicar em "Testar o que falta" de uma estratégia Python | A página mostra o progresso e a matriz se atualiza sozinha | — | ⏳ pendente |
