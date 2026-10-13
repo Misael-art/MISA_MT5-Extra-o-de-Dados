@@ -26,6 +26,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("wine_prefix", ""),     # prefixo Wine (somente Linux)
         ("hidden", "false"),     # true = MT5 fora da tela (Linux: tela virtual Xvfb; Windows: minimizado)
         ("hidden_display", ":99"),  # número da tela virtual do modo oculto (Linux)
+        ("manage_layout", "true"),  # ao iniciar um robô: janelas laterais fechadas e o gráfico dele maximizado
     ])),
     ("BRIDGE", OrderedDict([
         ("enabled", "false"),    # true no Linux: MT5 acessado via RPyC dentro do Wine

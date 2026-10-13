@@ -107,6 +107,27 @@ def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = N
     return gates
 
 
+def organize_window(config, data, symbol: str, timeframe: str) -> str:
+    """
+    Organização da janela do MT5 (padrão: ligada): janelas laterais e barras de ferramentas fechadas e o gráfico do
+    robô sozinho e maximizado, num perfil de gráficos próprio. Devolve o trecho a acrescentar ao .ini de início
+    ('' se desligada em [MT5] manage_layout ou pelo botão TELA do painel; aí o arranjo do usuário é devolvido).
+    Falha aqui nunca impede o início do robô.
+    """
+    from . import layout
+    try:
+        common = mt5_tools.common_files_dir(config)
+        if not layout.enabled(config, common):
+            if layout.restore(data):
+                log.info("Organização da janela desligada: o arranjo anterior do MT5 foi devolvido.")
+            return ""
+        layout.apply(data)
+        return layout.startup_lines(layout.prepare_profile(data, symbol, timeframe, common))
+    except (OSError, ValueError) as e:
+        log.warning(f"Não foi possível organizar a janela do MT5 ({e}). O robô inicia com o arranjo atual.")
+        return ""
+
+
 def start_demo(db, config, robot, account: Optional[dict], symbol: str, timeframe: str,
                preset: Optional[str] = None, spawn: Optional[Callable] = None,
                is_running: Optional[Callable] = None) -> dict:
@@ -134,6 +155,7 @@ def start_demo(db, config, robot, account: Optional[dict], symbol: str, timefram
     values = robot.presets.get(preset, {}) if preset else {}
     ini = mt5_tools.startup_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, account["login"],
                                 account.get("server", ""), parameters)
+    ini += organize_window(config, data, symbol, tf.name)
     mt5_tools.start_terminal(config, data, ini, "mt5x_startup", spawn, is_running)
     state = {"account": account["login"], "server": account.get("server", ""), "symbol": symbol,
              "timeframe": tf.name, "preset": preset or "", "magic": battery.magic_number(robot, values),
