@@ -44,14 +44,15 @@ distância é custo, não lógica, e é a lacuna 1 abaixo.
 
 Cada uma com o que ela significa para quem vai operar.
 
-1. **O backtester Python é otimista em custos** (pendência registrada como T10.12 no [plano](../PLANO_DE_TRABALHO.md), com a
-   medição completa e o roteiro para retomar). Ele trabalha com barras: usa o spread gravado na barra (média de
-   0,57 ponto nas barras H1 medidas) e não vê o spread alargar. Medido na T11.1: esse valor é o **menor** spread
-   que houve na barra, não o que a operação paga. Com ticks reais, o mesmo robô perdeu 43,6% a mais
-   (2,09% do giro). Parte vem de operações que, com o spread real, saem em outro ponto. **Consequência:** a
-   validação das estratégias Python (`mt5x validate`) e o lado Python da paridade favorecem a estratégia. Antes de
-   operar, a palavra final é a do Strategy Tester com ticks reais. Mitigação disponível: preencher
-   `[STRATEGY] slippage_points` e `commission_per_lot` (a auditoria já acusa quando estão em zero).
+1. **O custo do backtester Python depende de uma calibração que você precisa fazer** (T10.12, resolvida em
+   2026-10-12; medição completa no [plano](../PLANO_DE_TRABALHO.md)). O spread gravado nas barras é o **menor** do
+   período, e o Python ignorava o swap. Agora ele cobra o swap por noite e, depois de `mt5x ticks` e
+   `mt5x specs --symbols <ativo> --calibrate`, o spread medido nos ticks, inclusive o do primeiro tick de cada hora
+   (na virada do dia do EURUSD, 37 pontos em média, contra zero na barra). No cenário medido, a diferença para o
+   Strategy Tester com ticks reais caiu de 1,63% para 0,00% do giro. **O que continua valendo:** sem a calibração
+   o custo segue otimista (o `mt5x backtest` avisa); a calibração é uma média de uma amostra de dias, não o spread
+   de cada instante; só o swap "em pontos" é calculado; e o resultado foi medido em **um** cenário (EURUSD H1, um
+   robô). Antes de operar, a palavra final continua sendo a do Strategy Tester com ticks reais.
 2. **Dentro de uma barra, o Python não sabe se o stop ou o alvo veio primeiro** e assume o stop. É conservador, mas
    desloca a saída de algumas operações (3 de 144).
 3. **Queda máxima e Monte Carlo usam só operações fechadas.** A queda com a posição aberta não entra.

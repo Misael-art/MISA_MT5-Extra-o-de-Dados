@@ -45,13 +45,16 @@ def downsample(points: List[list], max_points: int = MAX_CURVE_POINTS) -> List[l
 
 
 def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
-               params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None) -> dict:
+               params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None,
+               real_spread: bool = True) -> dict:
     """
     Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia').
     `strategy` permite passar a estratégia já montada (ex.: uma DeclaredStrategy), em vez de buscá-la pela chave
     do robô; nesse caso a execução é gravada na chave de `robot` e `robot` pode ser de qualquer tipo.
     `trade_from`: as barras anteriores a esse horário servem só para aquecer os indicadores; a estratégia começa
     a operar nele, sem posição e com o capital inicial (é como o Strategy Tester começa em FromDate).
+    `real_spread=False` cobra o spread das barras, e não o medido nos ticks: é o que o modelo "cada tick" do
+    Strategy Tester faz, e por isso é o que a paridade usa (ela compara a lógica, não o custo).
     """
     from mt5_extracao import timeframes
     from mt5_extracao.strategies import get_strategy, research, specs
@@ -71,6 +74,9 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
                          "Escolha um período maior ou extraia mais histórico.")
     spec = specs.load_spec(db, symbol)
     settings = research.backtest_config(config)
+    if not real_spread:
+        import dataclasses
+        settings = dataclasses.replace(settings, real_spread=False)
     start_index = 0
     if trade_from is not None:
         import pandas as pd
@@ -81,7 +87,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics["profit_factor"] = min(float(metrics["profit_factor"]), PF_CAP)
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
-                   spec_known=bool(spec.known), initial_equity=float(settings.initial_equity),
+                   spec_known=bool(spec.known), real_spread=bool(settings.real_spread and spec.spread_by_hour),
+                   initial_equity=float(settings.initial_equity),
                    risk_per_trade=float(settings.risk_per_trade))
     run = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),

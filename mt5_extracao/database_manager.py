@@ -416,6 +416,11 @@ class DatabaseManager:
             cols = {c["name"] for c in inspect(conn).get_columns("_extraction_log")}
             if "quality_json" not in cols:
                 conn.execute(text("ALTER TABLE _extraction_log ADD COLUMN quality_json TEXT"))
+            cols = {c["name"] for c in inspect(conn).get_columns("_symbol_specs")}
+            for name, kind in (("swap_long", "REAL"), ("swap_short", "REAL"), ("swap_mode", "INTEGER"),
+                               ("swap_rollover3days", "INTEGER"), ("spread_profile", "TEXT")):
+                if name not in cols:
+                    conn.execute(text(f"ALTER TABLE _symbol_specs ADD COLUMN {name} {kind}"))
 
     def record_block(self, table_name, start, end, rows, status, source, quality=None):
         """Registra (ou atualiza) o resultado da extração de um bloco (quality: relatório de data_quality)."""
@@ -501,7 +506,23 @@ class DatabaseManager:
         return len(rows)
 
     SPEC_FIELDS = ("point", "digits", "tick_size", "tick_value", "volume_min", "volume_step", "volume_max",
-                   "contract_size", "currency_profit", "spread")
+                   "contract_size", "currency_profit", "spread", "swap_long", "swap_short", "swap_mode",
+                   "swap_rollover3days")
+
+    def save_spread_profile(self, symbol, profile):
+        """Grava o spread medido nos ticks (dict de specs.spread_profile). O símbolo precisa ter especificação."""
+        with self.engine.begin() as conn:
+            done = conn.execute(text("UPDATE _symbol_specs SET spread_profile = :p WHERE symbol = :s"),
+                                {"p": json.dumps(profile, ensure_ascii=False), "s": symbol})
+        return done.rowcount > 0
+
+    def load_tick_spreads(self, table_name):
+        """Ticks com bid e ask de uma tabela <símbolo>_ticks: DataFrame time_msc, bid, ask (vazio se não há)."""
+        if not inspect(self.engine).has_table(table_name):
+            return pd.DataFrame(columns=["time_msc", "bid", "ask"])
+        with self.engine.connect() as conn:
+            return pd.read_sql(text(f'SELECT time_msc, bid, ask FROM "{table_name}" WHERE bid > 0 AND ask > 0 '
+                                    "ORDER BY time_msc"), conn)
 
     def save_symbol_spec(self, symbol, spec):
         """Grava (ou atualiza) a especificação do símbolo (dict com as chaves de SPEC_FIELDS)."""

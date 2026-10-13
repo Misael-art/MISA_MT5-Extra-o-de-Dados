@@ -59,7 +59,7 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 
 | Nome | O que faz |
 |---|---|
-| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None)` | Backtest de uma estratégia Python com as barras da base |
+| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True)` | Backtest de uma estratégia Python com as barras da base. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
 | `run_mql5(db, config, robot, symbol, timeframe, start=None, end=None, preset=None, params=None, ...)` | Backtest de um robô MQL5 pelo Strategy Tester. O MT5 precisa estar fechado |
 
 Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`. Pela CLI, `--symbols A,B,C`

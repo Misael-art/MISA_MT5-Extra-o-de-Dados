@@ -126,7 +126,14 @@ e na coluna *Observação* da triagem (✅ validada / ❌ reprovada / não valid
 
 ## Premissas do backtest
 
-- Barras do MT5 são de **bid**: a compra paga o spread da própria barra (coluna `spread`); a venda a descoberto paga na recompra.
+- Barras do MT5 são de **bid**: a compra paga o spread; a venda a descoberto paga na recompra.
+- **Spread:** a coluna `spread` da barra é o **menor** spread do período, e por isso é otimista. Para cobrar o real,
+  extraia ticks (`mt5x ticks --symbols X --from ... --to ...`, pelo menos 20 dias espalhados pelo ano) e rode
+  `mt5x specs --symbols X --calibrate`. O backtest passa a cobrar, em cada execução, o maior entre o spread da barra
+  e o medido naquela hora; na abertura de uma barra que começa na hora cheia vale o do primeiro tick da hora, que na
+  virada do dia é bem maior. Sem a calibração, `mt5x backtest` avisa que o custo está otimista.
+- **Swap:** a posição que atravessa a virada do dia paga (ou recebe) o swap do símbolo, lido por `mt5x specs`, com a
+  noite tripla no dia informado pela corretora. Só o swap "em pontos" é calculado; nos outros modos ele fica em zero.
 - Sinal no fechamento da barra → execução na abertura da barra seguinte (mais `slippage_points`).
 - Se stop e alvo são tocados na mesma barra, conta o **stop** (premissa pessimista). Gap além do stop executa na abertura.
 - Tamanho da posição: `capital × risco ÷ perda por lote no stop`, arredondado para baixo no passo de lote. Se ficar abaixo do lote mínimo, a operação é **ignorada** e contada no resumo.
