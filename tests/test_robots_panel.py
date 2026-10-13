@@ -2,6 +2,7 @@
 import json
 import re
 import uuid
+from pathlib import Path
 
 import pytest
 
@@ -92,3 +93,12 @@ def test_cli_panel_writes_the_file_and_reports_the_counts(env, capsys, monkeypat
     empty.write_text(f"[DATABASE]\ntype = sqlite\npath = {tmp_path / 'vazio.sqlite'}\n", encoding="utf-8")
     assert cli.main(["--config", str(empty), "panel", "--out", str(tmp_path / "v.html")]) == cli.EXIT_OK
     assert "Ainda não há backtests" in capsys.readouterr().out
+
+
+def test_page_script_handles_the_cases_found_by_the_panel_test_battery():
+    """Bateria de testes do painel (2026-10-13): quatro defeitos de uso corrigidos no script da página."""
+    source = Path(panel.__file__).read_text(encoding="utf-8")
+    assert "Nenhum ativo combina com o filtro" in source          # filtro sem resultado não é "base vazia"
+    assert '(r.tested === 1 ? " teste)" : " testes)")' in source   # "1 teste", não "1 testes"
+    assert "box.scrollIntoView" in source                          # o detalhe da célula aparece na tela
+    assert 'localStorage.setItem("mt5x-tema"' in source and 'localStorage.getItem("mt5x-tema")' in source

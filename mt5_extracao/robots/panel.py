@@ -234,6 +234,8 @@ tr.sel td { background: var(--none-bg); }
       acts.appendChild(again);
       box.appendChild(acts);
     }
+    // o detalhe fica abaixo da tabela: sem isto, clicar numa célula parecia não fazer nada em telas baixas
+    if (box.scrollIntoView) box.scrollIntoView({block: "nearest", behavior: "smooth"});
   }
 
   function renderAsset(root) {
@@ -241,7 +243,11 @@ tr.sel td { background: var(--none-bg); }
     card.appendChild(el("h2", {text: robotName(state.robot) + ": ativos e timeframes"}));
     card.appendChild(el("p", {"class": "hint", text: "Uma linha por ativo com base, uma coluna por timeframe. Clique em uma célula para ver os detalhes."}));
     var list = symbols();
-    if (!list.length) { card.appendChild(el("div", {"class": "blank", text: "Nenhum ativo com base. Extraia dados com: mt5x extract"})); root.appendChild(card); return; }
+    if (!list.length) {
+      var none = M.symbols.length ? "Nenhum ativo combina com o filtro \"" + state.search.trim() + "\". Apague o filtro para ver todos."
+                                  : "Nenhum ativo com base. Extraia dados com: mt5x extract";
+      card.appendChild(el("div", {"class": "blank", text: none})); root.appendChild(card); return;
+    }
     var head = el("tr", {}, [el("th", {"class": "sym", text: "Ativo"})]);
     M.timeframes.forEach(function (tf) { head.appendChild(el("th", {text: tf})); });
     var body = el("tbody");
@@ -350,7 +356,7 @@ tr.sel td { background: var(--none-bg); }
     M.robots.forEach(function (r) { (groups[r.kind_label] = groups[r.kind_label] || []).push(r); });
     Object.keys(groups).forEach(function (label) {
       var g = el("optgroup", {label: label});
-      groups[label].forEach(function (r) { g.appendChild(el("option", {value: r.key, text: r.name + (r.tested ? " (" + r.tested + " testes)" : " (sem teste)")})); });
+      groups[label].forEach(function (r) { g.appendChild(el("option", {value: r.key, text: r.name + (r.tested ? " (" + r.tested + (r.tested === 1 ? " teste)" : " testes)") : " (sem teste)")})); });
       $("robot").appendChild(g);
     });
     if (state.robot) $("robot").value = state.robot;
@@ -474,9 +480,12 @@ tr.sel td { background: var(--none-bg); }
     var root = document.documentElement, dark = root.getAttribute("data-theme") === "dark" ||
       (!root.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
     root.setAttribute("data-theme", dark ? "light" : "dark");
+    try { localStorage.setItem("mt5x-tema", dark ? "light" : "dark"); } catch (e) { /* sem armazenamento: só não lembra */ }
   });
-  var forced = (location.search.match(/[?&]tema=(claro|escuro)/) || [])[1];
+  var forced = (location.search.match(/[?&]tema=(claro|escuro)/) || [])[1], saved = null;
+  try { saved = localStorage.getItem("mt5x-tema"); } catch (e) { saved = null; }
   if (forced) document.documentElement.setAttribute("data-theme", forced === "escuro" ? "dark" : "light");
+  else if (saved === "dark" || saved === "light") document.documentElement.setAttribute("data-theme", saved);
   render();
   if (LIVE) buttons();
 })();
