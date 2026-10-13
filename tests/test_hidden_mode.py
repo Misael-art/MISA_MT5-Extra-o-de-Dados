@@ -101,6 +101,7 @@ def test_windows_starts_the_terminal_minimised_without_focus(monkeypatch):
 
 def test_doctor_and_status_say_when_the_terminal_is_out_of_sight(linux, monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(display, "is_running", lambda name: True)
+    monkeypatch.setattr("shutil.which", lambda name: f"/usr/bin/{name}")        # o Xvfb não existe em toda máquina
     assert "desligado" in doctor.check_hidden_mode(config("false")).detail
     check = doctor.check_hidden_mode(config())
     assert check.status == doctor.OK and "mt5x mt5 show" in check.detail

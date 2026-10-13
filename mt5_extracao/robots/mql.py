@@ -56,16 +56,22 @@ class MqlSource:
 
 
 def read_text(path) -> str:
-    """Lê UTF-8 (com ou sem BOM) e UTF-16, que é como o MetaEditor grava arquivos antigos e logs."""
+    """Lê UTF-8 (com ou sem BOM) e UTF-16, que é como o MetaEditor grava arquivos antigos e logs.
+
+    As quebras de linha voltam sempre como "\n": no Windows os arquivos têm "\r\n", e regravar o texto lido
+    dobraria as linhas.
+    """
     data = Path(path).read_bytes()
     if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
-        return data.decode("utf-16", errors="replace")
-    if data[:3] == b"\xef\xbb\xbf":
-        return data[3:].decode("utf-8", errors="replace")
-    try:
-        return data.decode("utf-8")
-    except UnicodeDecodeError:
-        return data.decode("cp1252", errors="replace")
+        text = data.decode("utf-16", errors="replace")
+    elif data[:3] == b"\xef\xbb\xbf":
+        text = data[3:].decode("utf-8", errors="replace")
+    else:
+        try:
+            text = data.decode("utf-8")
+        except UnicodeDecodeError:
+            text = data.decode("cp1252", errors="replace")
+    return text.replace("\r\n", "\n")
 
 
 def _unquote(value: str) -> str:

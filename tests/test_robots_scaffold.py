@@ -103,3 +103,12 @@ def test_cli_new_registers_the_folder_in_the_catalog(tmp_path, capsys):
     assert cli.main(args + ["robots", "new", "Outro"]) == cli.EXIT_USAGE
     assert cli.main(args + ["robots", "new", "Outro", "--dir", str(tmp_path / "robos")]) == cli.EXIT_OK
     assert "adicionada ao catálogo" not in capsys.readouterr().out        # a pasta já estava registrada
+
+
+def test_reading_a_windows_file_and_writing_it_back_does_not_double_the_lines(tmp_path):
+    """No Windows os fontes têm CRLF; o texto lido volta com "\\n", senão regravar criaria linhas em branco."""
+    source = tmp_path / "Robo.mq5"
+    source.write_bytes("int a;\r\nint b;\r\n".encode("utf-8"))
+    assert mql.read_text(source) == "int a;\nint b;\n"
+    source.write_bytes("﻿int a;\r\nint b;\r\n".encode("utf-16"))
+    assert mql.read_text(source) == "int a;\nint b;\n"

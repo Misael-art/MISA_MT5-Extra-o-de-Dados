@@ -220,6 +220,8 @@ def test_results_panel_button_opens_the_live_panel(ui, tmp_path, monkeypatch):
     labels = []
     menu_bar = ui.root.nametowidget(ui.root.cget("menu"))
     for i in range(menu_bar.index("end") + 1):
+        if menu_bar.type(i) != "cascade":                                    # no Windows a barra tem outras entradas
+            continue
         submenu = menu_bar.nametowidget(menu_bar.entrycget(i, "menu"))
         labels += [submenu.entrycget(j, "label") for j in range(submenu.index("end") + 1)
                    if submenu.type(j) == "command"]
