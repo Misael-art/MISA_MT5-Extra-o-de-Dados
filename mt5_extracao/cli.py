@@ -305,7 +305,9 @@ def cmd_mt5(args, ctx):
     if args.action == "view":
         from mt5_extracao.robots import view
         try:
-            result = view.open_view(ctx.config, close_terminal=args.close_terminal)
+            tf = _parse_tf(args.tf).name if args.tf else ""
+            result = view.open_view(ctx.config, close_terminal=args.close_terminal, symbol=args.symbol or "",
+                                    timeframe=tf)
         except view.TerminalOpen as e:
             raise ValueError(str(e)) from e
         except OSError as e:
@@ -1614,6 +1616,8 @@ def build_parser():
                         "abre o MT5 com a organização escolhida aplicada")
     p.add_argument("--close-terminal", action="store_true",
                    help="view: se o MT5 estiver aberto, fecha e abre de novo (interrompe o que roda nele)")
+    p.add_argument("--symbol", help="view: ativo do gráfico, se o perfil de gráficos próprio ainda não tiver nenhum")
+    p.add_argument("--tf", help="view: timeframe desse gráfico (padrão: M15)")
     p.add_argument("--out", help="show: arquivo PNG da captura (padrão: logs/mt5_oculto.png)")
     p.set_defaults(func=cmd_mt5)
 

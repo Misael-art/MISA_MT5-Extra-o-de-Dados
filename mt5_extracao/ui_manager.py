@@ -210,8 +210,6 @@ class UIManager:
         header = ttk.Frame(outer)
         header.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(header, text="MT5 Extração", style="Page.Title.TLabel").pack(side=tk.LEFT)
-        ttk.Label(header, text="monte, mantenha e estude a sua base de dados do MetaTrader 5",
-                  style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
         check_mt5_status_btn = ttk.Button(header, text="Verificar conexão", command=self.check_mt5_status)
         check_mt5_status_btn.pack(side=tk.RIGHT)
         from mt5_extracao.ui import icons
@@ -233,6 +231,9 @@ class UIManager:
         self.mt5_status_value.pack(side=tk.RIGHT, padx=(6, 12))
         self.mt5_status_dot = ttk.Label(header, text="●")
         self.mt5_status_dot.pack(side=tk.RIGHT)
+        # Por último: em janela estreita é o subtítulo que encolhe, não a conta nem os botões
+        ttk.Label(header, text="monte, mantenha e estude a sua base de dados do MetaTrader 5",
+                  style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
 
         # Barra de status
         status_bar = ttk.Frame(outer)
@@ -1864,7 +1865,10 @@ class UIManager:
                 finish(None)
                 return
             self.update_status("Status: " + ("fechando e abrindo" if running else "abrindo") + " o MetaTrader 5...")
-            self.run_bg(lambda: view.open_view(config, close_terminal=running), opened)
+            # se o perfil de gráficos próprio ainda não existe, ele nasce com o gráfico do ativo em foco
+            symbol = self.detail_symbol or next(iter(self.app.selected_symbols), "") or \
+                next(iter(sorted(self.symbols_with_data)), "")
+            self.run_bg(lambda: view.open_view(config, close_terminal=running, symbol=symbol), opened)
 
         self.run_bg(lambda: mt5_tools.terminal_running(config), checked)
 

@@ -25,7 +25,8 @@ from typing import Dict, List
 
 log = logging.getLogger(__name__)
 
-# Cada par de identificadores é um par de janelas; qual número é qual janela do par não foi conferido no terminal.
+# Cada par de identificadores é um par de janelas. Visto no terminal real (build 6258, 2026-10-13): 32846 é o
+# Testador de Estratégia e 32841 a Caixa de Ferramentas. Qual do outro par é o Navegador não foi conferido.
 TOOLBOX_PANES = {"32841": "Caixa de Ferramentas / Testador", "32846": "Caixa de Ferramentas / Testador"}
 NAVIGATION_PANES = {"32843": "Observação do Mercado / Navegador", "32845": "Observação do Mercado / Navegador"}
 SIDE_PANES = dict(TOOLBOX_PANES, **NAVIGATION_PANES)

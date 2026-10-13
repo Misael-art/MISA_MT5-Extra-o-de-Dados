@@ -387,15 +387,16 @@ def view_calls(ui, settings, monkeypatch):
     """Troca a abertura real do MT5 por um registro; `answer` é a resposta à pergunta de fechar e reabrir."""
     from mt5_extracao.robots import mt5_tools, view
     from mt5_extracao.ui import settings as settings_module
-    calls = types.SimpleNamespace(opened=[], asked=[], answer=True, fail=None, env=settings.env)
+    calls = types.SimpleNamespace(opened=[], asked=[], answer=True, fail=None, env=settings.env, symbols=[])
     monkeypatch.setattr(mt5_tools, "terminal_running", lambda config=None: calls.env.running)
 
-    def open_view(config, close_terminal=False, spawn=None):
+    def open_view(config, close_terminal=False, spawn=None, symbol="", timeframe=""):
+        calls.symbols.append(symbol)
         if calls.fail:
             raise calls.fail
         calls.opened.append(close_terminal)
         return {"reopened": close_terminal, "organized": True, "hidden": ["barra de ferramentas"], "restored": False,
-                "profile": "", "panel_layout": "auto", "panel_charts": 0, "bridge": False}
+                "profile": "", "chart": "", "panel_layout": "auto", "panel_charts": 0, "bridge": False}
     monkeypatch.setattr(view, "open_view", open_view)
 
     def ask(title, message, **kwargs):
@@ -415,7 +416,12 @@ def test_open_view_button_has_an_icon_and_opens_without_asking_when_mt5_is_close
     assert button.instate(["disabled"])                                  # um pedido por vez
     ui.pump(0.8)
     assert view_calls.opened == [False] and view_calls.asked == []
+    assert view_calls.symbols == ["WIN$N"]                                # sem ativo em foco: o primeiro da base
     assert button.instate(["!disabled"])
+    ui.update_symbol_details("PETR4")
+    button.invoke()
+    ui.pump(0.8)
+    assert view_calls.symbols == ["WIN$N", "PETR4"]                       # o ativo em foco dá o gráfico da visão
     assert ui.status_label.cget("text") == "Status: MetaTrader 5 aberto com a visão escolhida"
 
 

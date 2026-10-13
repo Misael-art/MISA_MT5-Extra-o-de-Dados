@@ -54,7 +54,8 @@ def test_view_with_the_terminal_closed_applies_the_options_and_opens_it(mt5):
     mt5.config.read_dict({"MT5": {"layout_hide_toolbars": "false"}})
     result = view.open_view(mt5.config)
     assert mt5.calls == [("abrir", "")]                                # sem perfil próprio ainda: abre sem /config
-    assert result == {"reopened": False, "organized": True, "restored": False, "profile": "", "panel_layout": "auto",
+    assert result == {"reopened": False, "organized": True, "restored": False, "profile": "", "chart": "",
+                      "panel_layout": "auto",
                       "panel_charts": 0, "bridge": False,
                       "hidden": ["Caixa de Ferramentas / Testador", "Observação do Mercado / Navegador"]}
     seen = layout.visibility(mt5.shown())
@@ -182,3 +183,23 @@ def test_cli_view_needs_permission_to_reopen(mt5, tmp_path, capsys):
     assert cli.main(["--config", str(cfg), "mt5", "layout"]) == cli.EXIT_OK
     out = capsys.readouterr().out
     assert "Compacta" in out and "panel_layout = compact" in out and "mt5x mt5 view --close-terminal" in out
+
+
+def test_view_creates_the_own_profile_with_one_maximized_chart_when_there_is_none(mt5):
+    result = view.open_view(mt5.config, symbol="PETR4")
+    assert result["profile"] == "HADOUKEN" and result["chart"] == "PETR4 M15"
+    assert mt5.calls == [("abrir", "[Charts]\r\nProfileLast=HADOUKEN\r\n")]
+    folder = layout.profile_dir(mt5.data)
+    chart = (folder / "chart01.chr").read_bytes().decode("utf-16")
+    assert "symbol=PETR4\r\n" in chart and "period_size=15\r\n" in chart and "window_type=3\r\n" in chart
+    assert not (mt5.common / layout.SEED_FILE).exists()                 # não há gráfico auxiliar para o painel fechar
+    assert "com o gráfico de PETR4 M15 maximizado" in view.describe(result)
+    (folder / "chart01.chr").write_bytes(b"\xff\xfe" + CHART.encode("utf-16-le"))    # um robô passou a morar ali
+    again = view.open_view(mt5.config, symbol="VALE3", timeframe="H1")
+    assert again["chart"] == "" and again["profile"] == "HADOUKEN"       # perfil que já tem gráfico: usado como está
+    assert "HDK_HADOUKEN_Painel" in (folder / "chart01.chr").read_bytes().decode("utf-16")
+    mt5.config.read_dict({"MT5": {"layout_own_profile": "false"}})
+    for old in folder.glob("chart*.chr"):
+        old.unlink()
+    assert view.open_view(mt5.config, symbol="VALE3")["profile"] == ""   # opção desligada: nenhum perfil é criado
+    assert not layout.has_profile(mt5.data)

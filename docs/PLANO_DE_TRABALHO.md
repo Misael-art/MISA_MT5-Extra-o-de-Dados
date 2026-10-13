@@ -110,9 +110,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
 | T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800, ligada e desligada) |
 | T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; Windows e tema claro não vistos |
-| T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída com testes automáticos; **não conferida no terminal real** (veja a tarefa) |
+| T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída; partes e devolução vistas no terminal real nos testes da T12.L3 |
 | T12.L2 | Opções da organização da janela na interface (diálogo Configurações), gravando o `config.ini` sem perder comentários | T12.L1 | ✅ concluída no Linux (vista em tela virtual, temas claro e escuro); Windows não visto |
-| T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída com o terminal simulado; **não exercitada no MT5 real** (veja a tarefa) |
+| T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída e testada no MT5 real do host (tela virtual); a disposição do painel com robô de verdade e o Windows não foram vistos |
 | T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | a fazer |
@@ -2635,12 +2635,31 @@ na interface um botão bem visível de "abrir visão MT5", que respeite as opç�
   "Aplicar e abrir o MT5 agora" (a mesma ação). Com o MT5 aberto, pergunta antes de fechar e avisa do efeito sobre
   robô no gráfico, coleta e extração. O trabalho roda por `run_bg`.
 - **Linha de comando:** `mt5x mt5 view [--close-terminal]`; `mt5x mt5 layout` mostra a disposição escolhida.
-- **Conferido:** dez testes em `tests/test_robots_view.py` e quatro novos da janela, com o terminal simulado; botão
-  e diálogo vistos em tela virtual.
-- **Não conferido, e é o que mais importa nesta tarefa:**
-  - **Nenhuma abertura real do MT5 por este caminho.** Fechar o terminal do host, gravar e reabrir não foi feito.
+- **Testes automáticos:** onze em `tests/test_robots_view.py` e quatro novos da janela, com o terminal simulado.
+- **Testado no MT5 real do host (2026-10-13, build 6258 no Wine, tela virtual de 1280×800 do modo oculto, conta
+  MetaQuotes-Demo, sem robô no gráfico), com uma captura de tela a cada passo:**
+  1. `mt5x mt5 view` com o terminal fechado e tudo ligado: abriu sem as janelas laterais e sem as barras.
+  2. O mesmo com o terminal aberto: recusou sem `--close-terminal`; com ele, fechou, reabriu e religou a ponte.
+  3. Perfil próprio criado pela visão (`--symbol EURUSD`): **um gráfico só, EURUSD M15, maximizado**
+     ([captura](img/t12_visao_mt5/visao_organizada_1280x800.png)).
+  4. Barras e parte de baixo desligadas em uma cópia do `config.ini`: voltaram a aparecer; a lateral seguiu fechada.
+  5. O botão "Abrir visão MT5" clicado na interface de verdade (em outra tela virtual), com a configuração real:
+     perguntou antes de fechar, reabriu organizado e liberou o botão em 2,6 s.
+  6. `mt5x mt5 restore-layout` com o terminal aberto: recusou. Com a organização desligada, a visão devolveu as
+     quatro janelas e as barras; a visibilidade de todas ficou igual à do arquivo guardado antes dos testes.
+- **Achado no teste real e corrigido:** sem perfil próprio, o terminal abria no perfil do usuário, que no host tem
+  um único gráfico salvo **minimizado** (área toda cinza). A visão passou a criar o perfil próprio com um gráfico
+  maximizado do ativo em foco quando esse perfil ainda não tem gráfico (`open_view(symbol=...)`, `--symbol`/`--tf`).
+- **Efeito colateral do modo oculto, não desta tarefa:** rodando na tela virtual de 1280×800, o terminal regravou
+  no `terminal.ini` o tamanho da janela e das áreas laterais (medidas de uma tela 4K viraram medidas de 1280×800).
+  Depois dos testes o `terminal.ini` original, guardado antes, foi devolvido. Vale para qualquer uso do modo
+  oculto em máquina com tela maior que a virtual; fica como pendência para a T11.3.
+- **Não conferido:**
+  - **A disposição do painel com um robô de verdade.** Não há robô aprovado na bateria para iniciar pelo programa
+    (o script que dispensa a trava é só do dono do projeto), então nenhum gráfico com o painel existiu nos testes.
+  - **A visão na tela real do dono** (2560×1980): os testes foram na tela virtual.
   - **O formato do gráfico salvo com robô** (`<inputs>` com `InpPanelLayout=N` no `.chr`) é o que se conhece do MT5;
-    no host não havia nenhum gráfico com robô para conferir. Se o formato for outro, a linha não é encontrada e
+    no host não há nenhum gráfico com robô para conferir. Se o formato for outro, a linha não é encontrada e
     nada muda (não quebra), mas a disposição não é atualizada.
   - **Arquivo de parâmetros só com `InpPanelLayout`** (início de robô sem preset e disposição diferente de `auto`):
     não se verificou se o MT5 aceita um `.set` parcial. Se não aceitar, o início acusa que o robô não foi carregado.
