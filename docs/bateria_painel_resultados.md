@@ -30,10 +30,12 @@ Os quatro foram conferidos de novo no navegador depois da correção.
 
 ## Achados que ficaram abertos
 
-- **Resultado abaixo de −100%** (até −316,0% em ACR M1, −147,9% em EURUSD M1). O backtester Python continua
-  operando depois de o capital acabar. Em conta de verdade isso não existe. Todas as células assim estão marcadas
-  "não confiável" (ativo sem especificação) ou são M1, mas o número em si é enganoso. **É defeito do backtester,
-  não do painel.**
+- **Resultado abaixo de −100%** (até −316,0% em ACR M1, −147,9% em EURUSD M1). O backtester Python não confere
+  margem: com um stop muito curto, o lote para arriscar 1% fica maior do que o capital sustenta, e um gap além do
+  stop perde muitas vezes o risco previsto. Depois que o capital fica negativo ele para de operar, mas o estrago já
+  está feito. É o mesmo ponto que apareceu na T8.9 (ORB), onde a camada de segurança do robô bloqueou as entradas
+  por margem e o Python não. Todas as células assim estão marcadas "não confiável" ou são M1. **É defeito do
+  backtester, não do painel; registrado como pendência, sem tarefa ainda: limitar o lote pela margem.**
 - **O `HDK_AccountGuardian` aparece na lista de robôs**, com "0 testadas". Ele é um sentinela, não opera.
 - **Em tela larga o conteúdo ocupa uma coluna de 1.280 px** e o resto fica vazio. É escolha de layout, não defeito.
 - **"Origem do número: backtester Python (otimista em custo)"** aparece mesmo em ativo com o spread calibrado
@@ -48,3 +50,11 @@ Os quatro foram conferidos de novo no navegador depois da correção.
   PARAR TUDO pelo botão. Elas têm testes automáticos e foram conferidas na T11.10 pela chamada direta.
 - Teclado e leitor de tela.
 - Firefox e Safari.
+
+## Painel do HADOUKEN no MT5
+
+Na mesma rodada o painel v7 ganhou disposições compacta, normal e ampla, escolhidas pelo tamanho do gráfico, e as
+correções da bateria dele. Relatório e PR no repositório HADOUKEN (`Documentation/HADOUKEN_2/TESTES_PAINEL_V7.md`,
+PR #4). Um achado de lá que é do mt5x: **cada início pelo arquivo de início acrescenta um gráfico ao perfil do
+terminal** (havia cinco EURUSD M15 no fim dos testes) e **recompilar um robô não recarrega o que já está no
+gráfico**; os dois ficam como pendência da T8.7.
