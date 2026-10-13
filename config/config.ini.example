@@ -21,6 +21,11 @@ wine_prefix =
 # mostrando: mt5x mt5 show. Para uma execução só: MT5X_HIDDEN=1 mt5x ...  (MT5X_HIDDEN=0 desliga).
 hidden = false
 hidden_display = :99
+# Organização da janela do MT5 ao iniciar um robô (mt5x robots start): fecha a Observação do Mercado, o Navegador, a
+# Caixa de Ferramentas e o Testador, esconde as barras de ferramentas e abre o gráfico do robô sozinho e maximizado,
+# num perfil de gráficos próprio ("HADOUKEN"); o seu perfil e o seu arranjo são guardados e voltam quando desligar.
+# false desliga. O botão TELA do painel do HADOUKEN desliga e liga a mesma coisa.
+manage_layout = true
 
 [BRIDGE]
 enabled = false

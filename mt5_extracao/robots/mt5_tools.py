@@ -493,10 +493,29 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     return report
 
 
+def ask_terminal_to_close(config=None) -> bool:
+    """
+    Pede ao terminal para fechar normalmente (`taskkill` sem /F, que manda o mesmo aviso do botão de fechar).
+    Devolve False se não deu para pedir; quem chama cai no encerramento à força.
+    """
+    command = ["taskkill", "/IM", paths.MT5_TERMINAL_EXE]
+    try:
+        if paths.is_windows():
+            return subprocess.run(command, capture_output=True, timeout=15).returncode == 0
+        prefix = wine_prefix(config)
+        if prefix is None or shutil.which("wine") is None:
+            return False
+        return subprocess.run(["wine"] + command, env=_wine_env(prefix), capture_output=True, timeout=30).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def close_terminal(timeout: float = 20.0, config=None) -> bool:
     """
-    Encerra o terminal DESTA instalação (terminate e, depois de `timeout` s, kill). True se nenhum ficou aberto.
-    Nunca encerra o terminal de outra instalação (pode haver um robô operando nele) nem um que não dá para
+    Encerra o terminal DESTA instalação. Primeiro pede para ele fechar (como o botão de fechar da janela), que é
+    quando ele grava a configuração e o perfil de gráficos; se não sair em `timeout` s, encerra à força (terminate
+    e kill). Encerrar à força de saída fazia o terminal perder o arranjo e o robô que estava no gráfico (T8.7).
+    True se nenhum ficou aberto. Nunca encerra o terminal de outra instalação (pode haver um robô operando nele) nem um que não dá para
     identificar: nesse caso para e pede que a pessoa feche.
     """
     import psutil
@@ -504,10 +523,11 @@ def close_terminal(timeout: float = 20.0, config=None) -> bool:
     if any(owner == UNKNOWN for _, owner in found):
         raise RuntimeError("Há um MetaTrader 5 aberto que não dá para saber se é o desta instalação. Não vou "
                            "fechá-lo: feche à mão o terminal que usa esta instalação e tente de novo.")
+    ours = [proc for proc, owner in found if owner == OURS]
+    if ours and ask_terminal_to_close(config):
+        _, ours = psutil.wait_procs(ours, timeout=timeout)       # deu tempo de gravar e sair?
     procs = []
-    for proc, owner in found:
-        if owner != OURS:
-            continue
+    for proc in ours:
         try:
             proc.terminate()
             procs.append(proc)
