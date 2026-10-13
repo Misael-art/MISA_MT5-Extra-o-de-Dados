@@ -135,6 +135,5 @@ Levantadas lendo o código em 2026-10-13. "Existe" quer dizer que o arquivo est�
 
 ## Pré-requisitos da primeira implementação
 
-Antes de qualquer tarefa da etapa 1 ou 2: PRs de documentação mesclados (as tarefas da Fase 13, as `T12.L1` a
-`T12.L3` e as `T12.6a` a `T12.6c` citadas aqui vêm de PRs ainda abertos em 2026-10-13: #44 e #45 do mt5x); decisões 3 e 4 tomadas; uma operação supervisionada do
+Antes de qualquer tarefa da etapa 1 ou 2 (os PRs de documentação já foram mesclados em 2026-10-13): decisões 3 e 4 tomadas; uma operação supervisionada do
 executor exercitada (pendência da T12.1); a paridade dos seis robôs medida de novo como linha de base.

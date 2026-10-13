@@ -68,6 +68,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T6.7 | CLI `strategies/specs/backtest/validate/screen/report` + relatório HTML + menu na GUI | T6.4, T6.6 | ✅ concluída |
 | T6.8 | Documentação `docs/estrategias.md` | T6.7 | ✅ concluída |
 | T7.1 | Interface em abas com tema, inventário da base e análise (gráficos e números de estudo) | T1.8, T6.1 | ✅ concluída (teste da janela roda só onde há display; no CI Linux ele é pulado) |
+| T7.2 | Tabelas de ativos (favorito, volume, robô lucrativo, status, benchmark, seleção), ordenação e bateria de backtests em segundo plano pela interface | T7.1, T8.3, T11.5 | ✅ concluída (símbolos na tela, robô MQL5 com MT5 real e Windows não conferidos; veja a tarefa) |
 | T8.0 | Plano da Fase 8 (robôs) e mudança de escopo registrada | T7.1 | ✅ concluída |
 | T8.1 | Catálogo de robôs: leitura de MQL5/presets, classificação de risco, tabelas `_robots*`, CLI `mt5x robots` | T8.0 | ✅ concluída (só a tabela `_robots`; `_robot_runs` e `_robot_checks` entram nas tarefas que as usam) |
 | T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | ✅ concluída (mini-curva de capital fica para a T8.3, que grava as execuções) |
@@ -999,13 +1000,96 @@ tabela das estratégias, lista "evite no início" e o aviso de que backtest não
 - Nada de cor ou fonte fixa: use `ui.theme.colors` e os estilos (`Card.TFrame`, `Surface.TLabel`, `Muted.TLabel`,
   `Accent.TButton`...). `Listbox`/`Text` passam por `theme.classic()` para acompanhar o tema escuro.
 - Nunca chame `ttk.Style().configure("TFrame"|"TButton"|"TLabel", ...)` dentro de um diálogo: muda o aplicativo todo.
-- Preferências (tema, seleção) ficam em `config/ui_prefs.json`; favoritos em `config/favorites.json` (não versionados).
+- Preferências (tema, seleção) ficam em `config/ui_prefs.json` (não versionado); favoritos e benchmark, na tabela
+  `_asset_prefs` do banco desde a T7.2 (`config/favorites.json` é a reserva sem banco).
 
 **Verificação:** `pytest tests/test_study.py tests/test_ui_main_window.py` (no Linux sem tela:
 `xvfb-run -a .venv/bin/python -m pytest tests/test_ui_main_window.py`).
 
 **Pendências conhecidas (não fazem parte desta tarefa):** datas da extração ainda são digitadas como texto;
 exportação de várias tabelas e reconexão ao MT5 ainda rodam na thread da interface; ticks e book seguem só na CLI.
+
+### T7.2 — Tabelas de ativos, marcação em lote e bateria de backtests pela interface ✅
+
+Pedido do dono do projeto (2026-10-13): modernizar as tabelas das abas "Ativos" e "Minha base" e rodar backtests de
+vários ativos e vários robôs pela interface, em segundo plano e sem sobrecarregar o computador.
+
+**O que foi pedido**
+
+1. As duas tabelas com as colunas, da esquerda para a direita: Favorito (★/☆, clique alterna e grava no banco),
+   Ativo, Volume, Robô Lucrativo (`🟢 +12,4%`, `🔴 Sem Lucro`, `⚪ N/A`), Status da Base (`🟢 Atualizada`,
+   `🔴 Precisa de atualização`), Benchmark (`🎯 Sim`, `❌ Não`), Detalhes na Base (`M1 (6.489 barras)`) e Seleção
+   (caixa por linha).
+2. Ordem padrão: favoritos no topo, depois os de maior volume, depois ordem alfabética. Clique no cabeçalho ordena
+   por aquela coluna, com os favoritos sempre no topo: Robô Lucrativo traz os com lucro, Status da Base os que
+   precisam de atualização, Volume do maior para o menor (e o inverso no segundo clique), Benchmark os que têm.
+3. Barra de ações: "Selecionar Todos" (linhas visíveis), "Deselecionar Todos" e o contador de selecionados.
+4. Em "Minha base", o botão "Iniciar Backtest (N selecionados)", desabilitado enquanto nada está marcado.
+5. Diálogo com todos os robôs e estratégias do catálogo, uma caixa cada, "Selecionar todos os robôs", "Limpar
+   seleção" e "Executar N Backtest(s)" (séries × robôs).
+6. Execução em segundo plano (`concurrent.futures`), com monitor de CPU e memória (`psutil`) que regula quantos
+   testes rodam juntos; andamento na barra de status (`Executando Backtest 4/12: PETR4 + Robô (CPU: 45% | RAM: 60%)`)
+   e a coluna Robô Lucrativo atualizada assim que cada teste termina.
+
+**Registrado na entrega**
+
+| Arquivo | Papel |
+|---|---|
+| `mt5_extracao/asset_table.py` (novo) | Núcleo, sem Tkinter: tabela `_asset_prefs` (favorito e benchmark), volume, resultado dos robôs por ativo, situação da base, montagem e ordenação das linhas com `pandas` |
+| `mt5_extracao/robots/runner.py` (novo) | `BatchRunner` (fila em `ThreadPoolExecutor`, eventos de andamento, cancelamento) e `ResourceGovernor` (CPU e memória pelo `psutil`) |
+| `mt5_extracao/ui/backtest_dialog.py` (novo) | Diálogo de escolha dos robôs |
+| `mt5_extracao/ui/inventory.py` | Aba "Minha base" com as colunas novas, marcação, benchmark e a bateria |
+| `mt5_extracao/ui_manager.py` | Aba "Ativos" com as colunas novas, clique na estrela e na caixa, ordenação e barra de ações |
+| `mt5_extracao/ui/theme.py` | `Theme.glyphs` (texto simples quando o Tk não desenha os símbolos) e barra horizontal em `scrolled_tree` |
+| `config_builder.py`, `config/config.ini.example` | `[ROBOTS] batch_max_cpu_pct` (75), `batch_max_ram_pct` (85), `batch_max_workers` (0 = núcleos menos um) |
+
+**Decisões tomadas onde o pedido deixava em aberto (ou batia com o que já existe)**
+
+- **"Minha base" continua com uma linha por série (ativo × timeframe).** As ações que já existiam (Analisar,
+  Exportar) e o backtest precisam do timeframe. A caixa marca a série; o contador mostra os ativos e, quando
+  difere, as séries. Em "Ativos" a linha é o ativo, e a caixa é a seleção que já existia (a lista da direita).
+- **Volume** é a média diária dos últimos 30 dias de dados **da base** (volume real quando a corretora informa,
+  senão o de ticks). Ativo sem dados na base fica com "—" e, na ordem padrão, vem em ordem alfabética depois dos
+  que têm volume. Não se consulta o MT5 para o volume de todos os ativos da conta (são milhares de consultas).
+- **Robô Lucrativo** segue a regra da matriz (T11.6): vale o backtest **mais recente** de cada robô em cada ativo e
+  timeframe, não o melhor. Mostra o maior retorno entre os que deram lucro líquido. **Lucro em um teste não é
+  aprovação** (não exige as 30 operações nem a bateria): o aviso está na dica da aba; o veredito segue no painel de
+  resultados. Em "Minha base" o valor é o daquela série; em "Ativos", o do ativo em qualquer timeframe.
+- **Status da Base** usa a data da última barra gravada (`study.freshness`, a mesma regra de "em dia" da T7.1), sem
+  consultar o MT5. Em "Ativos", o ativo só está "Atualizada" se todas as suas séries estiverem.
+- **Benchmark:** não existia no banco. Entrou como coluna `benchmark` da `_asset_prefs`, preenchida pelo botão
+  "Benchmark..." de "Minha base" (texto livre; em branco desvincula). Nenhum cálculo usa o benchmark ainda.
+- **Favoritos** saíram de `config/favorites.json` para a tabela `_asset_prefs`. Na primeira abertura os do arquivo
+  são levados para o banco (o arquivo fica onde está e segue como reserva quando não há banco).
+- **Números com vírgula** (`+12,4%`), como no resto do aplicativo, e não com ponto como no exemplo do pedido.
+- **Sem CustomTkinter:** o pedido cita "CustomTkinter / Tkinter"; o projeto usa `ttk` com tema próprio e assim
+  ficou. O `Treeview` não tem caixa de seleção nem cor por célula: estrela e caixa são texto clicável, e a estrela
+  não fica amarela.
+- **Threads, não processos:** os backtests gravam no mesmo banco e usam o catálogo carregado; um teste de
+  estratégia Python leva centésimos de segundo (T11.5). Robôs MQL5 rodam **um por vez** (o MT5 não abre duas vezes
+  a mesma instalação) e precisam do terminal fechado: a interface pergunta antes de fechá-lo e, com "Não", testa só
+  as estratégias Python.
+- **Regulagem:** começa com um teste; a cada leitura (no mínimo 0,25 s entre elas) sobe um se a CPU estiver 15
+  pontos abaixo do teto e desce um se a CPU ou a memória passarem do teto. Nunca menos que um. O teto vale para a
+  decisão de **começar** mais um teste: um teste já em andamento não é interrompido.
+- **Tk sem Xft:** o Python deste host (distribuição do `uv`) traz um Tk que só enxerga as fontes antigas do X11 e
+  não desenha emojis, estrela nem caixa. `Theme.glyphs` detecta isso (`tk::pkgconfig get fontsystem` = `x11`) e
+  troca por texto: `*`/`·`, `[x]`/`[ ]` e os rótulos sem o emoji ("Sem Lucro", "Atualizada", "Sim").
+
+**Conferido no host (Linux):** 14 testes do núcleo (`tests/test_asset_table.py`, `tests/test_robots_runner.py`, um
+deles com estratégias reais, SQLite e o `psutil`) e 5 testes novos da janela (`tests/test_ui_main_window.py`): clique
+na estrela e na caixa pelas coordenadas da célula, migração dos favoritos, botão que acompanha a marcação, diálogo,
+bateria em segundo plano, benchmark e o modo de texto simples. Telas vistas em tela virtual (1300×780), **no modo de texto simples**.
+
+**Não conferido:**
+
+- Os símbolos (★, ☑, 🟢, 🔴, 🎯) desenhados na tela: o Tk do host não os desenha. Fica para um Tk com Xft ou o Windows.
+- Robô MQL5 pela bateria da interface com o MT5 real (fechar o terminal, testar, religar a ponte): só com dublê.
+- A regulagem com o computador de fato carregado: testada com leituras simuladas.
+- Conta com milhares de ativos: o tempo de redesenho da tabela a cada clique não foi medido.
+- Windows: checklist em [validacao_instaladores.md](validacao_instaladores.md).
+
+**Verificação:** `pytest tests/test_asset_table.py tests/test_robots_runner.py tests/test_ui_main_window.py`.
 
 ---
 

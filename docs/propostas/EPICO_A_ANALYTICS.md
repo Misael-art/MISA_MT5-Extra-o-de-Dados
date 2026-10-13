@@ -69,7 +69,7 @@ Regras do épico: armazenamento **versionado** (toda característica tem versão
 ### A-08 — Perfil histórico de volume e volume relativo
 - **O quê e por quê:** curva esperada de volume por minuto da sessão e RVOL "até agora" comparado ao mesmo horário de sessões anteriores.
 - **Repositório:** mt5x · **Prioridade:** P1 · **Complexidade:** M · **Status:** PLANEJADO (parte da T13.3)
-- **Módulos existentes:** nenhum dedicado; a T7.2 (PR aberto) calcula um volume médio diário simples para a interface · **Depende de:** A-02, A-04 · **Pré-requisitos:** diagnosticar o volume real por corretora
+- **Módulos existentes:** nenhum dedicado; `asset_table.volumes` (T7.2) calcula um volume médio diário simples para a interface · **Depende de:** A-02, A-04 · **Pré-requisitos:** diagnosticar o volume real por corretora
 - **Riscos:** volume de ticks não é contrato negociado; zero e desconhecido são o mesmo valor hoje.
 - **Aceite:** RVOL do instante t usa só o que estava disponível em t; volume real ausente não vira zero.
 - **Testes:** teste 5 e 6 da especificação; sessão curta e feriado.

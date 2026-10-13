@@ -31,7 +31,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F4** Qualidade | Limpeza de arquivos, logging central, testes com provedor falso, docs | T4.1–T4.5 | F0 (pode ir em paralelo) | ✅ |
 | **F5** Escala | Parquet/DuckDB, PostgreSQL/TimescaleDB, ticks, book, fonte externa real | T5.1–T5.6 | F1, F3 | ✅ (TimescaleDB: hypertable automática, conferida em servidor com a extensão) |
 | **F6** Estratégias | Seis estratégias, backtest com custos, walk-forward/Monte Carlo (Filtro C), triagem de ativos (Filtros A e B), relatório HTML, menu na GUI | T6.1–T6.8 | F1, F3 | ✅ |
-| **F7** Interface | Janela principal em abas (Ativos, Minha base, Análise, Atividade), tema claro/escuro, gráficos e números de estudo | T7.1 | F1, F6 | ✅ |
+| **F7** Interface | Janela principal em abas (Ativos, Minha base, Análise, Atividade), tema claro/escuro, gráficos e números de estudo; tabelas de ativos com favorito, volume, resultado dos robôs, status e benchmark, e bateria de backtests em segundo plano | T7.1–T7.2 | F1, F6 | ✅ |
 | **F8** Robôs | Catálogo de robôs (MQL5 e Python) em cards, backtest, bateria de segurança e operação em demo/real pelo robô MQL5 | T8.0–T8.9 | F6, F7 | T8.0–T8.6 ✅; T8.7 ⏳ (só simulada, falta validar com o MT5 real em demo); demais a fazer |
 | **F9** Agentes e segurança | Operação sem tela (`--json`, `status`, `analyze`), auditoria `mt5x audit` e ponte do Linux restrita a funções de leitura | T9.1–T9.3 | F3, F8 (T8.3) | ✅ |
 | **F10** SDK de robôs | Contrato do robô, biblioteca de segurança MQL5 versionada, `robots new`, ciclo `robots check`, bateria completa para MQL5, paridade Python × MQL5, API pública, documentação e pacote; como funções opcionais, geração de MQL5 a partir de uma estratégia declarada em Python e preparação para o MQL5 Market | T10.0–T10.12 + T10.W | F8 (T8.4–T8.6), F9 | T10.0–T10.8 e T10.10 ✅; demais a fazer (T10.9 pacote, T10.11 Market, T10.12 custo do backtester, T10.W Windows). Lacunas conhecidas em docs/sdk/exatidao.md; a do custo do backtester Python foi resolvida na T10.12 (swap e spread medido nos ticks). Opcionais: T10.10 (gerar MQL5 a partir de Python) e T10.11 (preparar para o MQL5 Market). **T10.W (validação no Windows) é pendência: não bloqueia o desenvolvimento no host atual** |
@@ -63,7 +63,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 6. T4.4, T4.5
 7. T5.x conforme a necessidade
 8. F6 (T6.1 → T6.8) já concluída; novas estratégias seguem o roteiro em docs/estrategias.md ("Para desenvolvedores")
-9. F7 (T7.1) já concluída; novos painéis entram em `mt5_extracao/ui/`
+9. F7 (T7.1 → T7.2) já concluída; novos painéis entram em `mt5_extracao/ui/`
 10. F8: T8.0 → T8.1 → T8.2 → T8.3 → T8.4 → T8.5 → T8.6 → T8.7 → T8.8 (T8.9 em paralelo depois da T8.5)
 11. F9 (T9.1 → T9.3) já concluída
 12. F10, em três trilhas que podem andar em paralelo (arquivos diferentes):

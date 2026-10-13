@@ -12,7 +12,7 @@ from pathlib import Path
 import json
 
 # Importar módulos necessários para exportação
-from mt5_extracao import study, timeframes
+from mt5_extracao import asset_table, study, timeframes
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.error_handler import with_error_handling, ExportError
 from mt5_extracao.ui.analysis import AnalysisPanel
@@ -24,7 +24,7 @@ from mt5_extracao.ui.theme import Theme, Tooltip, card, fmt_int, fmt_num, scroll
 # Handlers configurados em mt5_extracao.logging_setup (pontos de entrada)
 log = logging.getLogger(__name__)
 
-SYMBOL_COLUMNS = ("★", "Ativo", "Na base", "Seleção")
+SYMBOL_COLUMNS = asset_table.COLUMNS
 
 
 class UIManager:
@@ -63,13 +63,18 @@ class UIManager:
         self.existing_symbols_map = {}   # símbolo -> tabela M1 (usado pelo destaque e por código antigo)
         self.symbols_with_data = set()
         self.detail_symbol = None
+        self.volumes = {}                # símbolo -> volume médio diário (asset_table.volumes)
+        self.profit_cells = {}           # (símbolo, timeframe) -> último backtest de cada robô
+        self.benchmarks = {}             # símbolo -> índice de referência vinculado
+        self._symbol_sort = (None, False)
 
-        # Favoritos e preferências da interface ficam na pasta config/ (fora do controle de versão)
+        # Favoritos ficam no banco (tabela _asset_prefs); o arquivo é a reserva sem banco e a origem da migração.
+        # Preferências da interface ficam na pasta config/ (fora do controle de versão)
         config_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config")
         os.makedirs(config_dir, exist_ok=True)
         self.favorites_file = os.path.join(config_dir, "favorites.json")
         self.prefs_file = os.path.join(config_dir, "ui_prefs.json")
-        self.favorite_symbols = self.load_favorites() or []
+        self.favorite_symbols = self._load_json(self.favorites_file, []) or []
         self.prefs = self._load_json(self.prefs_file, {})
 
         log.info("UIManager inicializado.")
@@ -181,18 +186,47 @@ class UIManager:
         except Exception as e:
             log.error(f"Erro ao salvar preferências da interface: {e}")
 
+    def _prefs_db(self):
+        db = getattr(self.app, "db_manager", None)
+        return db if db and db.is_connected() else None
+
     def load_favorites(self):
-        """Carrega a lista de símbolos favoritos do arquivo"""
-        return self._load_json(self.favorites_file, [])
+        """Carrega os favoritos do banco (ou do arquivo, se não houver banco ou eles ainda não estiverem nele)."""
+        try:
+            stored = asset_table.load_prefs(self._prefs_db())
+        except Exception as e:
+            log.error(f"Erro ao ler os favoritos do banco: {e}")
+            stored = None
+        return stored["favorites"] if stored is not None else self._load_json(self.favorites_file, [])
 
     def save_favorites(self):
-        """Salva a lista de símbolos favoritos no arquivo"""
+        """Salva a lista de símbolos favoritos no banco (sem banco, no arquivo)"""
+        db = self._prefs_db()
         try:
+            if db is not None:
+                asset_table.save_favorites(db, self.favorite_symbols)
+                return
             with open(self.favorites_file, 'w') as f:
                 json.dump(self.favorite_symbols, f)
             log.info(f"Favoritos salvos em {self.favorites_file}")
         except Exception as e:
             log.error(f"Erro ao salvar favoritos: {e}")
+
+    def _sync_favorites(self):
+        """Na abertura: lê os favoritos do banco; na primeira vez, leva para lá os do arquivo antigo."""
+        db = self._prefs_db()
+        if db is None:
+            return
+        try:
+            stored = asset_table.load_prefs(db)
+            if stored is not None:
+                self.favorite_symbols = stored["favorites"]
+                self.benchmarks = stored["benchmarks"]
+            elif self.favorite_symbols:
+                asset_table.save_favorites(db, self.favorite_symbols)
+                log.info(f"{len(self.favorite_symbols)} favorito(s) do arquivo levados para o banco.")
+        except Exception as e:
+            log.error(f"Erro ao ler os favoritos do banco: {e}")
 
     # --- montagem da janela -----------------------------------------------------------
 
@@ -266,6 +300,7 @@ class UIManager:
         self._refresh_selected_list()
 
         self.log("Interface gráfica configurada.")
+        self._sync_favorites()
         self.filter_symbols()
         self.refresh_inventory()
         self.robots_panel.reload()
@@ -282,8 +317,8 @@ class UIManager:
             self.root.after(200, lambda: self.connect_mt5(startup=True))
 
     def _build_symbols_tab(self, tab):
-        tab.columnconfigure(0, weight=3, uniform="col")
-        tab.columnconfigure(1, weight=2, uniform="col")
+        tab.columnconfigure(0, weight=2, uniform="col")
+        tab.columnconfigure(1, weight=1, uniform="col")
         tab.rowconfigure(0, weight=1)
 
         # Esquerda: ativos da conta
@@ -303,7 +338,7 @@ class UIManager:
         for text, value, tip in (("Todos", "all", "Todos os ativos que a conta oferece."),
                                  ("★ Favoritos", "fav", "Só os ativos que você marcou como favoritos."),
                                  ("Na base", "data", "Só os ativos que já têm dados extraídos.")):
-            radio = ttk.Radiobutton(search_frame, text=text, value=value, variable=self.filter_var,
+            radio = ttk.Radiobutton(search_frame, text=self.theme.glyphs(text), value=value, variable=self.filter_var,
                                     style="Toolbutton", command=self.filter_symbols)
             radio.pack(side=tk.LEFT, padx=(8 if value == "all" else 1, 0))
             Tooltip(radio, tip, self.theme)
@@ -311,16 +346,30 @@ class UIManager:
         actions = ttk.Frame(left, style="Surface.TFrame")
         actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
         ttk.Button(actions, text="Adicionar à seleção →", command=self.add_symbols).pack(side=tk.LEFT)
-        ttk.Button(actions, text="★ Favoritar / desfavoritar", command=self.toggle_favorites).pack(
+        ttk.Button(actions, text=self.theme.glyphs("★ Favoritar / desfavoritar"), command=self.toggle_favorites).pack(
             side=tk.LEFT, padx=(8, 0))
         ttk.Label(actions, text="Duplo clique adiciona à seleção", style="Muted.TLabel").pack(side=tk.RIGHT)
 
-        tree_frame, self.symbols_tree = scrolled_tree(left, SYMBOL_COLUMNS, (34, 150, 300, 90),
-                                                      ("center", "w", "w", "w"), height=18, selectmode="extended")
-        self.symbols_tree.column("★", stretch=False)
+        quick = ttk.Frame(left, style="Surface.TFrame")
+        quick.pack(fill=tk.X, pady=(0, 8))
+        ttk.Button(quick, text=self.theme.glyphs("☑ Selecionar Todos"), command=self.select_all_visible).pack(
+            side=tk.LEFT)
+        ttk.Button(quick, text=self.theme.glyphs("☐ Deselecionar Todos"), command=self.clear_selection).pack(
+            side=tk.LEFT, padx=(8, 0))
+        self.selected_count_label = ttk.Label(quick, text="", style="Muted.TLabel")
+        self.selected_count_label.pack(side=tk.LEFT, padx=(12, 0))
+
+        tree_frame, self.symbols_tree = scrolled_tree(
+            left, SYMBOL_COLUMNS, (30, 80, 70, 100, 160, 76, 110, 54),
+            ("center", "w", "e", "w", "w", "w", "w", "center"), height=18, selectmode="extended", xscroll=True)
+        self.symbols_tree.column(asset_table.COL_FAVORITE, stretch=False)
+        self.symbols_tree.heading(asset_table.COL_FAVORITE, text=self.theme.glyphs(asset_table.COL_FAVORITE))
         tree_frame.pack(fill=tk.BOTH, expand=True)
+        for col in SYMBOL_COLUMNS:
+            self.symbols_tree.heading(col, command=lambda c=col: self.sort_symbols(c))
         self.symbols_tree.bind("<<TreeviewSelect>>", self.on_symbol_select)
-        self.symbols_tree.bind("<Double-Button-1>", lambda e: self.add_symbols())
+        self.symbols_tree.bind("<Button-1>", self._symbol_clicked)
+        self.symbols_tree.bind("<Double-Button-1>", self._symbol_double_clicked)
         self.symbols_tree.bind("<Return>", lambda e: self.add_symbols())
 
         # Direita: seleção, detalhes e ações
@@ -447,15 +496,31 @@ class UIManager:
             log.warning("Não foi possível ler a base: banco de dados não conectado")
             self.base_label.config(text="Base de dados indisponível")
             return
-        self.run_bg(db.data_inventory, self._inventory_loaded)
+        def work():
+            from mt5_extracao.robots import store
+            inventory = db.data_inventory()
+            extra = {}
+            try:        # as colunas de volume e de robôs são um complemento: sem elas a base ainda aparece
+                extra = {"volumes": asset_table.volumes(db, inventory),
+                         "cells": asset_table.profit_cells(store.load_runs(db)),
+                         "prefs": asset_table.load_prefs(db)}
+            except Exception as e:
+                log.error(f"Não foi possível ler volume, backtests ou benchmark da base: {e}")
+            return {"inventory": inventory, **extra}
+        self.run_bg(work, self._inventory_loaded)
 
     # Nome antigo, ainda chamado ao fim de uma extração
     load_existing_symbols_data = refresh_inventory
 
-    def _inventory_loaded(self, inventory, error):
+    def _inventory_loaded(self, loaded, error):
         if error:
             self.log(f"Não foi possível ler a base de dados: {error}")
             return
+        inventory = loaded["inventory"]
+        if "cells" in loaded:
+            self.volumes, self.profit_cells = loaded["volumes"], loaded["cells"]
+            if loaded["prefs"] is not None:
+                self.benchmarks = loaded["prefs"]["benchmarks"]
         self.inventory = inventory
         self.symbol_series = {}
         for item in inventory:
@@ -478,13 +543,6 @@ class UIManager:
 
     def update_symbols_with_data(self, symbols_with_data=None):
         """Mantido por compatibilidade com app.py: a interface lê o inventário em refresh_inventory()."""
-
-    def _series_text(self, symbol):
-        parts = []
-        for item in self.symbol_series.get(symbol, []):
-            tf = timeframes.parse(item["timeframe"])
-            parts.append(f"{tf.name if tf else item['timeframe']} ({fmt_int(item['rows'])} barras)")
-        return ", ".join(parts)
 
     # --- lista de ativos --------------------------------------------------------------
 
@@ -510,16 +568,16 @@ class UIManager:
         search_text = self.search_var.get().strip().lower()
         matches = [sym for sym in universe if (not search_text or search_text in sym.lower())
                    and (mode != "data" or sym in self.symbols_with_data)]
-        favorites = set(self.favorite_symbols)
-        chosen = set(self.app.selected_symbols)
-        ordered = [s for s in matches if s in favorites] + [s for s in matches if s not in favorites]
+        # Favoritos no topo; depois, por padrão, os de maior volume (ou a coluna clicada no cabeçalho)
+        rows = asset_table.sort_rows(asset_table.build_rows(
+            ((sym, sym, self.symbol_series.get(sym, [])) for sym in dict.fromkeys(matches)), self.favorite_symbols,
+            self.volumes, self.profit_cells, self.benchmarks, self.app.selected_symbols), *self._symbol_sort)
 
         tree.delete(*tree.get_children())
         tree.tag_configure("data", foreground=self.theme.colors["good"])
-        for sym in ordered:
-            tree.insert("", tk.END, iid=sym, tags=("data",) if sym in self.symbols_with_data else (),
-                        values=("★" if sym in favorites else "", sym, self._series_text(sym),
-                                "✓ na seleção" if sym in chosen else ""))
+        for row in rows.itertuples():
+            tree.insert("", tk.END, iid=row.key, tags=("data",) if row.key in self.symbols_with_data else (),
+                        values=self.cell_texts(row))
 
         total = len(account)
         if not total:
@@ -535,6 +593,43 @@ class UIManager:
     def highlight_symbols_with_data(self):
         """Redesenha a lista (favoritos, dados na base e seleção são marcados em filter_symbols)."""
         self.filter_symbols()
+
+    def cell_texts(self, row):
+        """Os textos de uma linha das tabelas de ativos, como este Tk consegue desenhar (ver Theme.glyphs)."""
+        return tuple(self.theme.glyphs(text) for text in asset_table.display(row))
+
+    def sort_symbols(self, column):
+        """Clique no cabeçalho: ordena por essa coluna (segundo clique inverte). Favoritos seguem no topo."""
+        self._symbol_sort = (column, not self._symbol_sort[1] if self._symbol_sort[0] == column else False)
+        self.filter_symbols()
+
+    def _symbol_column_at(self, x):
+        index = int(self.symbols_tree.identify_column(x).lstrip("#") or 0) - 1
+        return SYMBOL_COLUMNS[index] if 0 <= index < len(SYMBOL_COLUMNS) else None
+
+    def _symbol_clicked(self, event):
+        """Clique em ★ alterna o favorito; clique na caixa da coluna Seleção põe ou tira o ativo da seleção."""
+        tree = self.symbols_tree
+        symbol = tree.identify_row(event.y)
+        if tree.identify_region(event.x, event.y) != "cell" or not symbol:
+            return None
+        column = self._symbol_column_at(event.x)
+        if column == asset_table.COL_FAVORITE:
+            self.toggle_favorite(symbol)
+            return "break"
+        if column == asset_table.COL_SELECTED:
+            if symbol in self.app.selected_symbols:
+                self.unselect_symbols([symbol])
+            else:
+                self.select_symbols([symbol])
+            return "break"
+        return None
+
+    def _symbol_double_clicked(self, event):
+        if self._symbol_column_at(event.x) in (asset_table.COL_FAVORITE, asset_table.COL_SELECTED):
+            return "break"
+        self.add_symbols()
+        return None
 
     def _tree_symbols(self):
         return list(self.symbols_tree.selection()) if self.symbols_tree else []
@@ -622,9 +717,11 @@ class UIManager:
             self.selected_listbox.insert(tk.END, *self.app.selected_symbols)
         count = len(self.app.selected_symbols)
         self.selection_label.config(text=f"{count} ativo(s)" if count else "nenhum ativo selecionado")
+        self.selected_count_label.config(text=f"{count} ativo(s) selecionado(s)")
         chosen = set(self.app.selected_symbols)
         for sym in self.symbols_tree.get_children():
-            self.symbols_tree.set(sym, "Seleção", "✓ na seleção" if sym in chosen else "")
+            self.symbols_tree.set(sym, asset_table.COL_SELECTED, self.theme.glyphs(
+                asset_table.CHECK_ON if sym in chosen else asset_table.CHECK_OFF))
 
     def select_symbols(self, symbols):
         """Acrescenta ativos à seleção (sem repetir). Retorna quantos entraram."""
@@ -646,17 +743,26 @@ class UIManager:
         if not self.select_symbols(symbols):
             self.update_status("Os ativos escolhidos já estão na seleção.")
 
-    def remove_symbols(self):
-        """Remove símbolos da lista de monitoramento"""
-        if not self.selected_listbox:
-            return
-        removed = [self.selected_listbox.get(i) for i in self.selected_listbox.curselection()]
+    def select_all_visible(self):
+        """Marca todas as linhas que estão na lista (respeita a busca e o filtro)."""
+        if not self.select_symbols(self.symbols_tree.get_children()):
+            self.update_status("Todos os ativos da lista já estão na seleção.")
+
+    def unselect_symbols(self, removed):
+        """Tira ativos da seleção."""
+        removed = [s for s in removed if s in self.app.selected_symbols]
         if not removed:
             return
         self.app.selected_symbols[:] = [s for s in self.app.selected_symbols if s not in removed]
         self._refresh_selected_list()
         self.save_prefs()
-        self.log(f"Removido(s) da seleção: {', '.join(removed)}")
+        self.log(f"Removido(s) da seleção: {', '.join(removed[:8])}" + ("..." if len(removed) > 8 else ""))
+
+    def remove_symbols(self):
+        """Remove símbolos da lista de monitoramento"""
+        if not self.selected_listbox:
+            return
+        self.unselect_symbols([self.selected_listbox.get(i) for i in self.selected_listbox.curselection()])
 
     def clear_selection(self):
         if self.app.selected_symbols:
@@ -675,9 +781,8 @@ class UIManager:
         added = [s for s in symbols if s not in self.favorite_symbols]
         if added:
             self.favorite_symbols.extend(added)
-            self.save_favorites()
             self.log(f"{len(added)} símbolo(s) adicionado(s) aos favoritos.")
-            self.filter_symbols()
+            self._favorites_changed()
 
     def remove_from_favorites(self):
         """Remove os símbolos selecionados dos favoritos"""
@@ -688,9 +793,53 @@ class UIManager:
         removed = [s for s in symbols if s in self.favorite_symbols]
         if removed:
             self.favorite_symbols[:] = [s for s in self.favorite_symbols if s not in removed]
-            self.save_favorites()
             self.log(f"{len(removed)} símbolo(s) removido(s) dos favoritos.")
-            self.filter_symbols()
+            self._favorites_changed()
+
+    def _favorites_changed(self):
+        """Grava os favoritos e redesenha as duas tabelas, mantendo a posição da rolagem."""
+        self.save_favorites()
+        top = self.symbols_tree.yview()[0]
+        self.filter_symbols()
+        self.symbols_tree.yview_moveto(top)
+        self.inventory_panel.show(self.inventory)
+
+    def toggle_favorite(self, symbol):
+        """Clique na estrela: favorita ou desfavorita um ativo."""
+        if symbol in self.favorite_symbols:
+            self.favorite_symbols[:] = [s for s in self.favorite_symbols if s != symbol]
+        else:
+            self.favorite_symbols.append(symbol)
+        self._favorites_changed()
+
+    def set_benchmark(self, symbol, benchmark):
+        """Vincula (ou, em branco, desvincula) o índice de referência do ativo e atualiza as tabelas."""
+        db = self._prefs_db()
+        if db is None:
+            messagebox.showerror("Benchmark", "Banco de dados não disponível: não é possível gravar o benchmark.")
+            return
+        try:
+            asset_table.set_benchmark(db, symbol, benchmark)
+        except Exception as e:
+            log.error(f"Erro ao gravar o benchmark de {symbol}: {e}")
+            messagebox.showerror("Benchmark", f"Não foi possível gravar o benchmark de {symbol}:\n{e}")
+            return
+        if benchmark:
+            self.benchmarks[symbol] = benchmark
+        else:
+            self.benchmarks.pop(symbol, None)
+        self.log(f"Benchmark de {symbol}: {benchmark or 'nenhum'}.")
+        self.filter_symbols()
+        self.inventory_panel.show(self.inventory)
+
+    def backtest_recorded(self, run):
+        """Um backtest acabou de ser gravado: a coluna Robô Lucrativo do ativo muda na hora, nas duas abas."""
+        asset_table.add_run(self.profit_cells, run)
+        symbol = run["symbol"]
+        if self.symbols_tree.exists(symbol):
+            self.symbols_tree.set(symbol, asset_table.COL_PROFIT, self.theme.glyphs(
+                asset_table.fmt_profit(asset_table.profit_of(self.profit_cells, symbol))))
+        self.inventory_panel.profit_changed(symbol)
 
     def toggle_favorites(self):
         """Favorita os ativos marcados; se todos já são favoritos, desfavorita."""

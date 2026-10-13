@@ -124,7 +124,7 @@ Tabelas internas:
 
 ### 4. Pontos de entrada
 
-- `app.py` + `ui_manager.py` + `mt5_extracao/ui/`: interface gráfica em abas (Ativos, Minha base, Análise, Robôs, Atividade), com tema claro/escuro. Os números da aba Análise vêm de `study.py` (sem Tkinter). Os menus Arquivo, Exibir, **Estratégias** e Ajuda; extração, leitura da base e análise rodam em threads.
+- `app.py` + `ui_manager.py` + `mt5_extracao/ui/`: interface gráfica em abas (Ativos, Minha base, Análise, Robôs, Atividade), com tema claro/escuro. Os números da aba Análise vêm de `study.py` (sem Tkinter). Os menus Arquivo, Exibir, **Estratégias** e Ajuda; extração, leitura da base e análise rodam em threads. As tabelas de ativos (favorito, volume, resultado dos robôs, status, benchmark) vêm de `asset_table.py` (sem Tkinter; favoritos e benchmark na tabela `_asset_prefs`), e o botão "Iniciar Backtest" da aba Minha base usa `robots/runner.py`, que roda os testes em segundo plano e regula quantos rodam juntos pelo uso de CPU e memória (`[ROBOTS] batch_max_*`).
 - `cli.py` (`mt5x`):
   - Dados: `doctor`, `symbols`, `tables`, `extract`, `update`, `quality`, `export`, `schedule`.
   - Estratégias: `strategies`, `specs`, `backtest`, `validate`, `screen`, `report`.

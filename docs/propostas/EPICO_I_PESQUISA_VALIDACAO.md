@@ -10,7 +10,7 @@ marcada como tal e só entra com aprovação (I-13).
 ### I-01 — Backtests por ativo e timeframe
 - **O quê e por quê:** manter e estender o lote de backtests e a matriz de resultados para os módulos novos (sinal, execução, saída).
 - **Repositório:** mt5x · **Prioridade:** P1 · **Complexidade:** P · **Status:** PLANEJADO (base entregue nas T11.5 e T11.6; extensão a módulos é nova)
-- **Módulos existentes:** `robots/backtest.py` (`run_batch`), `robots/matrix.py`, `robots/runner.py` (PR da T7.2, aberto) · **Depende de:** B-08 · **Pré-requisitos:** identificador de composição (qual sinal, qual execução, qual saída) gravado na execução
+- **Módulos existentes:** `robots/backtest.py` (`run_batch`), `robots/matrix.py`, `robots/runner.py` (T7.2) · **Depende de:** B-08 · **Pré-requisitos:** identificador de composição (qual sinal, qual execução, qual saída) gravado na execução
 - **Riscos:** combinações demais e algumas dão lucro por acaso; a célula mostra a execução mais recente, não a melhor.
 - **Aceite:** uma composição é uma linha distinta na matriz; as três regras da matriz continuam cobertas por teste.
 - **Testes:** os de `tests/test_robots_batch.py` e `test_robots_matrix.py`, mais composições.

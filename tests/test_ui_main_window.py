@@ -33,6 +33,7 @@ def ui(tmp_path):
     manager.prefs_file = str(tmp_path / "ui_prefs.json")
     manager.favorite_symbols, manager.prefs = [], {}
     manager.setup_ui()
+    manager.theme.rich_glyphs = True      # os testes conferem os símbolos, qualquer que seja o Tk da máquina
     manager.pump = lambda seconds=0.6: _pump(root, seconds)
     manager.pump()
     yield manager
@@ -54,9 +55,9 @@ def _pump(root, seconds):
 
 def test_symbols_list_marks_what_is_in_the_database(ui):
     tree = ui.symbols_tree
-    assert list(tree.get_children()) == ["WIN$N", "WDO$N", "PETR4"]
-    assert tree.set("WIN$N", "Na base") == "M1 (600 barras)"
-    assert tree.set("PETR4", "Na base") == ""
+    assert list(tree.get_children()) == ["WIN$N", "PETR4", "WDO$N"]    # com volume primeiro; o resto em ordem alfabética
+    assert tree.set("WIN$N", "Detalhes na Base") == "M1 (600 barras)"
+    assert tree.set("PETR4", "Detalhes na Base") == ""
     ui.filter_var.set("data")
     ui.filter_symbols()
     assert list(tree.get_children()) == ["WIN$N"]
@@ -71,7 +72,7 @@ def test_selection_and_favorites_are_remembered(ui):
     ui.add_symbols()
     ui.toggle_favorites()
     assert ui.app.selected_symbols == ["PETR4"]
-    assert ui.symbols_tree.set("PETR4", "Seleção") == "✓ na seleção"
+    assert ui.symbols_tree.set("PETR4", "Seleção") == "☑"
     assert list(ui.symbols_tree.get_children())[0] == "PETR4"          # favoritos vêm primeiro
     assert ui._load_json(ui.prefs_file, {})["selected"] == ["PETR4"]
     assert ui.load_favorites() == ["PETR4"]
@@ -244,6 +245,145 @@ def test_results_panel_falls_back_to_the_snapshot_file(ui, tmp_path, monkeypatch
     ui.pump(1.0)
     target = tmp_path / "exports" / "painel_resultados.html"
     assert target.is_file() and opened == [target.resolve().as_uri()]
+
+
+def _click(tree, handler, iid, column):
+    """
+    Clica no meio de uma célula, pelo mesmo caminho do mouse. Se a coluna está fora da área visível (a janela de
+    teste é mais estreita no Windows e a última coluna ficava de fora), rola a tabela na horizontal antes, como a
+    pessoa faria com a barra de rolagem.
+    """
+    tree.update_idletasks()
+    tree.see(iid)
+    box = tree.bbox(iid, column)
+    if not box or box[0] < 0 or box[0] + box[2] > tree.winfo_width():
+        tree.xview_moveto(1.0 if column == tree.cget("columns")[-1] else 0.0)
+        tree.update_idletasks()
+        box = tree.bbox(iid, column)
+    assert box and 0 <= box[0] and box[0] + box[2] <= tree.winfo_width(), f"coluna {column} fora da área visível"
+    x, y, width, height = box
+    return handler(types.SimpleNamespace(x=x + width // 2, y=y + height // 2))
+
+
+def test_asset_table_columns_star_and_checkbox_clicks(ui):
+    """T7.2: colunas novas, clique na estrela grava o favorito no banco e clique na caixa marca o ativo."""
+    from mt5_extracao import asset_table
+    tree = ui.symbols_tree
+    ui.notebook.select(0)
+    ui.pump(0.3)
+    assert tree.cget("columns") == asset_table.COLUMNS
+    assert tree.item("WIN$N", "values") == ("☆", "WIN$N", "600,0 mil", "⚪ N/A", "🔴 Precisa de atualização", "❌ Não",
+                                            "M1 (600 barras)", "☐")
+    assert tree.item("PETR4", "values")[2:5] == ("—", "⚪ N/A", "⚪ Sem dados")
+
+    assert _click(tree, ui._symbol_clicked, "WDO$N", "★") == "break"
+    assert list(tree.get_children()) == ["WDO$N", "WIN$N", "PETR4"] and tree.set("WDO$N", "★") == "★"
+    assert asset_table.load_prefs(ui.app.db_manager)["favorites"] == ["WDO$N"]         # gravado no SQLite
+    assert ui.inventory_panel.tree.set(next(iter(ui.inventory_panel.rows)), "★") == "☆"
+    _click(tree, ui._symbol_clicked, "WDO$N", "★")
+    assert asset_table.load_prefs(ui.app.db_manager)["favorites"] == [] and tree.set("WDO$N", "★") == "☆"
+
+    _click(tree, ui._symbol_clicked, "PETR4", "Seleção")
+    assert ui.app.selected_symbols == ["PETR4"] and tree.set("PETR4", "Seleção") == "☑"
+    assert ui.selected_count_label.cget("text") == "1 ativo(s) selecionado(s)"
+    ui.search_var.set("w")
+    ui.filter_symbols()
+    ui.select_all_visible()                                                             # só as linhas visíveis
+    assert sorted(ui.app.selected_symbols) == ["PETR4", "WDO$N", "WIN$N"]
+    assert ui.selected_count_label.cget("text") == "3 ativo(s) selecionado(s)"
+    ui.clear_selection()
+    assert ui.app.selected_symbols == [] and tree.set("WIN$N", "Seleção") == "☐"
+    assert ui.selected_count_label.cget("text") == "0 ativo(s) selecionado(s)"
+
+    ui.search_var.set("")
+    ui.favorite_symbols.append("PETR4")
+    ui.sort_symbols("Volume")
+    assert list(tree.get_children()) == ["PETR4", "WIN$N", "WDO$N"]                     # favorito segue no topo
+    ui.sort_symbols("Volume")
+    assert list(tree.get_children()) == ["PETR4", "WIN$N", "WDO$N"]                     # sem volume fica por último
+
+
+def test_favorites_file_is_migrated_to_the_database(ui):
+    from mt5_extracao import asset_table
+    ui.favorite_symbols = ["WDO$N"]                # o que veio do favorites.json antigo
+    ui._sync_favorites()
+    assert asset_table.load_prefs(ui.app.db_manager)["favorites"] == ["WDO$N"]
+    ui.favorite_symbols = []
+    ui._sync_favorites()                           # daí em diante quem vale é o banco
+    assert ui.favorite_symbols == ["WDO$N"]
+
+
+def test_backtest_button_follows_the_checked_rows_and_runs_in_background(ui):
+    """T7.2: botão desabilitado sem marcação; diálogo de robôs; bateria em segundo plano atualiza a coluna."""
+    from mt5_extracao.ui.backtest_dialog import BacktestDialog
+    panel = ui.inventory_panel
+    ui.notebook.select(panel.frame)
+    ui.pump(0.3)
+    iid = next(iter(panel.rows))
+    assert panel.backtest_button.cget("text") == "Iniciar Backtest" and panel.backtest_button.instate(["disabled"])
+    assert _click(panel.tree, panel._clicked, iid, "Seleção") == "break"
+    assert panel.backtest_button.cget("text") == "Iniciar Backtest (1 selecionado)"
+    assert panel.backtest_button.instate(["!disabled"]) and panel.tree.set(iid, "Seleção") == "☑"
+    assert panel.count_label.cget("text") == "1 ativo(s) selecionado(s)"
+    panel.uncheck_all()
+    assert panel.backtest_button.instate(["disabled"]) and panel.count_label.cget("text") == "0 ativo(s) selecionado(s)"
+    panel.check_all()
+    assert panel.checked == {iid}
+
+    chosen = []
+    dialog = BacktestDialog(ui, panel.checked_items(), ui.robots_panel.robots, chosen.extend)
+    assert dialog.run_button.instate(["disabled"]) and len(dialog.vars) == 8
+    dialog.set_all(True)
+    assert dialog.run_button.cget("text") == "Executar 8 Backtest(s)" and "MQL5" in dialog.note.cget("text")
+    dialog.set_all(False)
+    for key in ("python:donchian", "python:ema_atr"):
+        dialog.vars[key].set(True)
+    dialog._update()
+    assert dialog.run_button.cget("text") == "Executar 2 Backtest(s)"
+    dialog.confirm()
+    assert sorted(r.key for r in chosen) == ["python:donchian", "python:ema_atr"]
+
+    assert panel.tree.set(iid, "Robô Lucrativo") == "⚪ N/A"
+    batch = panel.run_backtests(panel.checked_items(), chosen)
+    assert panel.backtest_button.instate(["disabled"])                 # uma bateria por vez
+    deadline = time.time() + 60
+    while (batch.running or panel.progress_frame.winfo_manager()) and time.time() < deadline:
+        ui.pump(0.2)
+    assert [r["error"] for r in batch.results] == ["", ""]
+    assert panel.tree.set(iid, "Robô Lucrativo") != "⚪ N/A"
+    assert ui.symbols_tree.set("WIN$N", "Robô Lucrativo") == panel.tree.set(iid, "Robô Lucrativo")
+    assert ui.status_label.cget("text") == "Backtests concluídos: 2 testado(s), 0 com falha."
+    assert panel.backtest_button.instate(["!disabled"]) and panel.progress_var.get() == 100.0
+    ui.pump(1.0)                                                       # o catálogo é relido ao fim
+    ui.refresh_inventory()
+    ui.pump(1.0)
+    assert panel.tree.set(iid, "Robô Lucrativo") != "⚪ N/A" and panel.checked == {iid}   # relido do banco
+
+
+def test_benchmark_is_saved_and_shown(ui):
+    from mt5_extracao import asset_table
+    ui.set_benchmark("WIN$N", "IBOV")
+    iid = next(iter(ui.inventory_panel.rows))
+    assert ui.inventory_panel.tree.set(iid, "Benchmark") == "🎯 Sim"
+    assert ui.symbols_tree.set("WIN$N", "Benchmark") == "🎯 Sim" and ui.symbols_tree.set("PETR4", "Benchmark") == "❌ Não"
+    assert asset_table.load_prefs(ui.app.db_manager)["benchmarks"] == {"WIN$N": "IBOV"}
+    ui.set_benchmark("WIN$N", "")
+    assert ui.inventory_panel.tree.set(iid, "Benchmark") == "❌ Não"
+
+
+def test_tables_stay_readable_when_tk_cannot_draw_the_symbols(ui):
+    """Tk sem Xft (Linux) não desenha emoji, estrela nem caixa: as tabelas trocam por texto simples."""
+    ui.theme.rich_glyphs = False
+    ui.favorite_symbols.append("PETR4")
+    ui.select_symbols(["PETR4"])
+    ui.filter_symbols()
+    assert ui.symbols_tree.item("PETR4", "values")[0::7] == ("*", "[x]")
+    assert ui.symbols_tree.item("WIN$N", "values") == ("·", "WIN$N", "600,0 mil", "N/A", "Precisa de atualização", "Não",
+                                                       "M1 (600 barras)", "[ ]")
+    panel = ui.inventory_panel
+    panel.show(ui.inventory)
+    panel.check_all()
+    assert panel.tree.set(next(iter(panel.rows)), "Seleção") == "[x]"
 
 
 # --- T12.L2: opções da organização da janela do MT5 em Arquivo > Configurações ----------------------------------

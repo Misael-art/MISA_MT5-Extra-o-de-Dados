@@ -129,3 +129,9 @@ max_account_risk_pct = 0
 # Pasta de um clone de https://github.com/Misael-art/mt5x-safety (biblioteca de segurança MQL5).
 # O mt5x instala dela a versão que cada robô declara em "safety_lib" no robot.json. Vazio = não usa.
 safety_lib_dir = 
+# Backtests em lote pela interface (botão "Iniciar Backtest" da aba Minha base): os testes rodam em segundo plano e
+# um novo teste só entra em paralelo enquanto o uso de CPU e de memória do computador estiver abaixo destes tetos (%).
+batch_max_cpu_pct = 75
+batch_max_ram_pct = 85
+# Máximo de backtests ao mesmo tempo. 0 = número de núcleos do processador menos um. Robôs MQL5 rodam sempre um por vez.
+batch_max_workers = 0
