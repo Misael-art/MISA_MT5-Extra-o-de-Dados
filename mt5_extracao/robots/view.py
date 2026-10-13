@@ -27,7 +27,8 @@ def open_view(config, close_terminal: bool = False, spawn: Optional[Callable] = 
               timeframe: str = "") -> dict:
     """
     Aplica a organização da janela e abre o terminal. `symbol` e `timeframe` (padrão M15) só são usados quando o
-    perfil de gráficos próprio ainda não tem gráfico: aí ele é criado com um gráfico desse ativo, maximizado.
+    perfil de gráficos próprio ainda não tem gráfico: aí ele é criado com um gráfico desse ativo, maximizado (sem
+    `symbol`, com o ativo e o timeframe do primeiro gráfico do perfil em que o terminal estava).
     Devolve {"reopened" (estava aberto e foi fechado), "organized" (a organização está ligada), "hidden": [o que foi
     escondido agora], "restored" (o arranjo anterior foi devolvido, com a organização desligada), "profile" (perfil
     de gráficos usado ou ""), "chart" (gráfico criado no perfil, ex. "EURUSD M15", ou ""), "panel_layout",
@@ -54,9 +55,12 @@ def open_view(config, close_terminal: bool = False, spawn: Optional[Callable] = 
             # O perfil próprio que já tem gráfico é usado como está: refazê-lo apagaria o gráfico em que um robô
             # ficou. Sem gráfico nenhum, ele nasce aqui com um gráfico maximizado do ativo pedido (sem o aviso ao
             # painel: não há gráfico auxiliar a fechar). Sem ativo, o terminal abre no perfil em que estava.
-            if opts.own_profile and not layout.has_profile(data) and symbol:
-                layout.prepare_profile(data, symbol, timeframe or DEFAULT_TIMEFRAME)
-                result["chart"] = f"{symbol} {timeframe or DEFAULT_TIMEFRAME}"
+            if opts.own_profile and not layout.has_profile(data):
+                if not symbol:           # sem ativo pedido: o gráfico que o usuário já tinha no perfil dele
+                    symbol, timeframe = layout.user_chart(data)
+                if symbol:
+                    layout.prepare_profile(data, symbol, timeframe or DEFAULT_TIMEFRAME)
+                    result["chart"] = f"{symbol} {timeframe or DEFAULT_TIMEFRAME}"
             if opts.own_profile and layout.has_profile(data):
                 result["profile"] = layout.PROFILE
                 ini = layout.startup_lines(layout.PROFILE)

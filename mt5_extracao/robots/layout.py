@@ -417,6 +417,34 @@ def prepare_profile(data_dir, symbol: str, timeframe: str, common_files=None) ->
     return PROFILE
 
 
+def user_chart(data_dir) -> tuple:
+    """
+    (ativo, timeframe) do primeiro gráfico do perfil em que o terminal estava (`[Charts] ProfileLast` de
+    Config\\common.ini; "Default" se não houver), ou ("", ""). Só leitura: os perfis do usuário não são tocados.
+    """
+    data_dir = Path(data_dir)
+    profile = "Default"
+    try:
+        common, _ = _read(data_dir / "Config" / "common.ini")
+        match = re.search(r"^ProfileLast=(.+?)\s*$", common, re.M)
+        if match and match.group(1) != PROFILE:
+            profile = match.group(1)
+    except (OSError, UnicodeError):
+        pass
+    periods = {value: name for name, value in _PERIODS.items()}
+    for chart in sorted((data_dir / "MQL5" / "Profiles" / "Charts" / profile).glob("chart*.chr")):
+        try:
+            text, _ = _read(chart)
+        except (OSError, UnicodeError):
+            continue
+        symbol = re.search(r"^symbol=(\S+)\s*$", text, re.M)
+        kind, size = re.search(r"^period_type=(\d+)\s*$", text, re.M), re.search(r"^period_size=(\d+)\s*$", text, re.M)
+        if symbol:
+            period = periods.get((int(kind.group(1)), int(size.group(1))), "") if kind and size else ""
+            return symbol.group(1), period
+    return "", ""
+
+
 def startup_lines(profile: str) -> str:
     """Trecho do .ini de início que abre o terminal no perfil dado."""
     return f"[Charts]\r\nProfileLast={profile}\r\n"

@@ -203,3 +203,23 @@ def test_view_creates_the_own_profile_with_one_maximized_chart_when_there_is_non
         old.unlink()
     assert view.open_view(mt5.config, symbol="VALE3")["profile"] == ""   # opção desligada: nenhum perfil é criado
     assert not layout.has_profile(mt5.data)
+
+
+def test_view_without_a_symbol_starts_from_the_chart_the_user_already_had(mt5):
+    """Visto no host: o perfil do usuário tinha um gráfico minimizado. A visão o repete, maximizado, no perfil próprio."""
+    default = mt5.data / "MQL5" / "Profiles" / "Charts" / "Default"
+    default.mkdir(parents=True)
+    user_chart = "<chart>\r\nsymbol=GBPUSD\r\nperiod_type=1\r\nperiod_size=4\r\nwindow_type=2\r\n</chart>\r\n"
+    (default / "chart01.chr").write_bytes(b"\xff\xfe" + user_chart.encode("utf-16-le"))
+    assert layout.user_chart(mt5.data) == ("GBPUSD", "H4")
+    result = view.open_view(mt5.config)
+    assert result["chart"] == "GBPUSD H4" and result["profile"] == "HADOUKEN"
+    own = (layout.profile_dir(mt5.data) / "chart01.chr").read_bytes().decode("utf-16")
+    assert "symbol=GBPUSD\r\n" in own and "window_type=3\r\n" in own
+    assert (default / "chart01.chr").read_bytes().decode("utf-16") == user_chart      # o perfil do usuário: intocado
+    # o perfil em que o terminal estava vem de common.ini; o próprio perfil "HADOUKEN" não serve de origem
+    (mt5.data / "Config" / "common.ini").write_bytes("[Charts]\r\nProfileLast=Meu\r\n".encode("utf-16"))
+    assert layout.user_chart(mt5.data) == ("", "")
+    (mt5.data / "Config" / "common.ini").write_bytes("[Charts]\r\nProfileLast=HADOUKEN\r\n".encode("utf-16"))
+    assert layout.user_chart(mt5.data) == ("GBPUSD", "H4")
+    assert layout.user_chart(mt5.data / "nada") == ("", "")

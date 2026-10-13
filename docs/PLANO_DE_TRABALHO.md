@@ -2667,6 +2667,47 @@ na interface um botão bem visível de "abrir visão MT5", que respeite as opç�
     automática não foi feita.
   - Windows.
 
+### Correção: o programa abria sem janela e o MT5 sem a organização (2026-10-13)
+
+Relato do dono do projeto: erro ao iniciar o MT5; depois, só o MT5 aparecia, sem as customizações, e a janela do
+programa não podia ser vista nem usada.
+
+**O que se achou** (logs do programa, do MT5 e do sistema, no host):
+
+1. **A causa do erro era a rede.** O Wi-Fi do host oscilou a partir das 14:56 e ficou fora das 15:01 às 15:26. O
+   log do MT5 dizia `no connection to MetaQuotes-Demo`; o programa mostrava seis estratégias de conexão que
+   falharam, sem dizer que faltava internet.
+2. **O programa conectava ao MT5 antes de montar a janela.** Com a conexão lenta ou falhando, ficava de 30
+   segundos a mais de 2 minutos sem janela (medido no log: 15:02:34 a 15:04:46), com o MT5 aberto por cima.
+3. **O MT5 aberto pela conexão vinha sem a organização**, que só era aplicada ao iniciar um robô ou pelo botão
+   "Abrir visão MT5".
+4. **Fechar a janela durante a verificação gerava exceção não tratada**, e o encerramento chamava
+   `DatabaseManager.close`, que não existia.
+
+**O que mudou:**
+
+- `app.py` não conecta mais na inicialização: a janela é montada e `UIManager.connect_mt5` conecta em segundo
+  plano (`run_bg`), com o estado no cabeçalho e a base já extraída disponível enquanto isso. Um segundo pedido
+  durante a conexão é ignorado. "Verificar conexão" usa o mesmo caminho.
+- Com o terminal fechado, a conexão o abre por `view.open_view`, **já organizado**. Falha ao organizar não impede
+  a conexão. Com o terminal já aberto, nada é fechado nem reorganizado.
+- Sem ativo pedido, a visão cria o perfil próprio com o **gráfico que o usuário já tinha** (`layout.user_chart`: o
+  primeiro gráfico do perfil em que o terminal estava), maximizado. O botão "Abrir visão MT5" usa o ativo clicado
+  na lista e, sem ele, o mesmo gráfico.
+- `mt5_extracao/connection_help.py` (novo, sem Tkinter): confere a internet por três endereços e escolhe entre
+  "sem internet", "abriu e não entrou na conta" e "não abriu", cada um com a ação de correção.
+- Depois de conectar, a janela do programa é trazida para a frente (`bring_to_front`).
+- `DatabaseManager.close()` e a verificação protegida contra janela já fechada.
+
+**Conferido no host, na tela real, com o MT5 real:** programa aberto por `./run.sh` com o terminal fechado: a janela
+ficou pronta em 2 s (16:06:58 a 16:07:00), o MT5 abriu organizado com EURUSD H1 maximizado e conectou em 14 s; as
+duas janelas constam na tela. Catorze testes automáticos novos.
+**Defeito achado nesse teste e corrigido:** a primeira versão usava o primeiro item da seleção salva como ativo do
+gráfico, e abriu "AAAC". Passou a usar o gráfico que o usuário tinha.
+**Não conferido:** se a janela do programa de fato fica por cima do MT5 na tela (não há como capturar a tela real
+do host, que é Wayland; conferiu-se só que as duas janelas existem); a mensagem de "sem internet" com a rede
+realmente fora (só com a rede simulada); Windows.
+
 ### T12.6a — Painel v7: conferência pendente e vocabulário
 
 - **Objetivo:** não empilhar abas novas em cima do que não foi visto, e dar um nome só a cada coisa.

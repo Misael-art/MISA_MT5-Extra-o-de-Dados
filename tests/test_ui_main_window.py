@@ -416,12 +416,12 @@ def test_open_view_button_has_an_icon_and_opens_without_asking_when_mt5_is_close
     assert button.instate(["disabled"])                                  # um pedido por vez
     ui.pump(0.8)
     assert view_calls.opened == [False] and view_calls.asked == []
-    assert view_calls.symbols == ["WIN$N"]                                # sem ativo em foco: o primeiro da base
+    assert view_calls.symbols == [""]                                     # sem ativo em foco: o gráfico que já havia
     assert button.instate(["!disabled"])
     ui.update_symbol_details("PETR4")
     button.invoke()
     ui.pump(0.8)
-    assert view_calls.symbols == ["WIN$N", "PETR4"]                       # o ativo em foco dá o gráfico da visão
+    assert view_calls.symbols == ["", "PETR4"]                       # o ativo em foco dá o gráfico da visão
     assert ui.status_label.cget("text") == "Status: MetaTrader 5 aberto com a visão escolhida"
 
 
@@ -473,3 +473,105 @@ def test_settings_choose_the_panel_layout_and_apply_now(ui, settings, view_calls
     ui.pump(0.5)
     assert again.panel_var.get() == "Ampla (duas colunas, telas grandes)"
     again.window.destroy()
+
+
+# --- a janela aparece antes de conectar; o MT5 abre organizado; a falta de conexão é explicada --------------------
+
+@pytest.fixture
+def connecting(ui, monkeypatch):
+    """Conector e MT5 simulados para `connect_mt5`: `ok` decide se conecta; `online` e `running`, o diagnóstico."""
+    from mt5_extracao import connection_help
+    from mt5_extracao.robots import mt5_tools, view
+    env = types.SimpleNamespace(ok=True, online=True, running=False, opened=[], warned=[], tries=0, slow=0.0)
+
+    def initialize(recursion_count=0):
+        env.tries += 1
+        time.sleep(env.slow)
+        ui.app.mt5_connector.is_initialized = env.ok
+        return env.ok
+    ui.app.mt5_connector.initialize = initialize
+    ui.app.mt5_connector.is_initialized = False
+    ui.app.mt5_initialized = False
+    ui.app.load_symbols = lambda: setattr(ui.app, "symbols", ["EURUSD", "PETR4"])
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda config=None: env.running)
+    monkeypatch.setattr(mt5_tools, "use_config", lambda config: None)
+
+    def open_view(config, close_terminal=False, spawn=None, symbol="", timeframe=""):
+        env.opened.append(symbol)
+        env.running = True
+        return {"reopened": False, "organized": True, "hidden": [], "restored": False, "profile": "", "chart": "",
+                "panel_layout": "auto", "panel_charts": 0, "bridge": False}
+    monkeypatch.setattr(view, "open_view", open_view)
+    monkeypatch.setattr(connection_help, "internet_ok", lambda *a, **k: env.online)
+    monkeypatch.setattr("mt5_extracao.ui_manager.messagebox.showwarning", lambda t, m, **k: env.warned.append(m))
+    monkeypatch.setattr(type(ui), "_missing_account", staticmethod(lambda: False))
+    ui.refresh_mt5_status(quiet=True)
+    return env
+
+
+def test_connect_runs_in_background_opens_mt5_organized_and_loads_the_symbols(ui, connecting):
+    connecting.slow = 0.6
+    ui.select_symbols(["PETR4"])
+    ui.connect_mt5(startup=True)
+    assert ui.mt5_status_value.cget("text") == "Abrindo e conectando ao MetaTrader 5..."
+    assert ui.check_button.instate(["disabled"])
+    ui.connect_mt5()                                                   # segundo pedido enquanto conecta: ignorado
+    ui.pump(0.2)
+    ui.notebook.select(1)                                              # a janela segue utilizável enquanto conecta
+    assert ui.notebook.index("current") == 1
+    ui.pump(1.2)
+    assert connecting.opened == [""] and connecting.tries == 1         # MT5 fechado: aberto já organizado, uma vez
+    # sem ativo: a visão parte do gráfico que a pessoa já tinha, não do primeiro item da seleção salva
+    assert ui.app.mt5_initialized is True and sorted(ui.symbols_tree.get_children()) == ["EURUSD", "PETR4"]
+    assert "Conectado: conta 1 em Demo" in ui.mt5_status_value.cget("text") and connecting.warned == []
+    assert ui.check_button.instate(["!disabled"])
+
+
+def test_connect_does_not_reopen_a_terminal_that_is_already_open(ui, connecting):
+    connecting.running = True
+    ui.connect_mt5()
+    ui.pump(0.8)
+    assert connecting.opened == [] and connecting.tries == 1 and ui.app.mt5_initialized is True
+
+
+def test_no_internet_is_said_plainly_with_what_to_do(ui, connecting):
+    connecting.ok, connecting.online = False, False
+    ui.connect_mt5(startup=True)
+    ui.pump(0.8)
+    assert len(connecting.warned) == 1 and "sem internet" in connecting.warned[0]
+    assert "Verificar conexão" in connecting.warned[0]
+    assert ui.status_label.cget("text") == "Status: sem conexão com o MetaTrader 5 (sem internet)"
+    assert ui.mt5_status_value.cget("text") == "MetaTrader 5 desconectado" and ui.app.mt5_initialized is False
+    assert ui.check_button.instate(["!disabled"])
+
+    connecting.online = True                                           # com internet: o terminal abriu e não entrou
+    ui.check_mt5_status()                                              # o botão "Verificar conexão"
+    ui.pump(0.8)
+    assert "não entrou na conta" in connecting.warned[1]
+    connecting.ok = True                                               # a rede voltou
+    ui.check_mt5_status()
+    ui.pump(0.8)
+    assert len(connecting.warned) == 2 and "Conectado" in ui.mt5_status_value.cget("text")
+
+
+def test_a_failure_to_organize_the_window_does_not_stop_the_connection(ui, connecting, monkeypatch):
+    from mt5_extracao.robots import view
+
+    def broken(*args, **kwargs):
+        raise FileNotFoundError("terminal.ini ilegível")
+    monkeypatch.setattr(view, "open_view", broken)
+    ui.connect_mt5()
+    ui.pump(0.8)
+    assert connecting.tries == 1 and ui.app.mt5_initialized is True
+
+
+def test_closing_the_window_while_connecting_does_not_raise(ui, connecting):
+    """Visto no host: fechar a janela durante a verificação gerava uma exceção não tratada."""
+    def destroyed(*args, **kwargs):
+        raise tk.TclError('invalid command name ".!frame.!frame.!label2"')
+    ui.refresh_mt5_status = destroyed
+    ui.check_mt5_status()                                              # não propaga
+    from mt5_extracao.database_manager import DatabaseManager
+    assert callable(DatabaseManager.close)
+    ui.app.db_manager.close()
+    ui.app.db_manager.close()                                          # encerrar duas vezes não dá erro
