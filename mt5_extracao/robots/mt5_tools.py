@@ -581,13 +581,32 @@ def startup_ini(expert: str, symbol: str, period: str, login, server: str, param
     return "\r\n".join(lines) + "\r\n"
 
 
+SPAWN_BAT = "mt5x_spawn.bat"          # .bat que abre o terminal sem esperar (Wine)
+
+
 def spawn_windows_command(command_line: str, cwd: Path, prefix: Optional[Path] = None) -> None:
     """Como run_windows_command, mas sem esperar o programa terminar (o terminal fica aberto)."""
     if paths.is_windows():
         startup = display.windows_startup(display.enabled(_ACTIVE_CONFIG))
         subprocess.Popen(command_line, cwd=str(cwd), **({"startupinfo": startup} if startup else {}))
         return
-    run_windows_command('start "" ' + command_line, cwd, prefix, timeout=60)
+    # No Wine a linha vai num .bat, sem `start`: o `start` do cmd reescreve as aspas de /config:"C:\...ini" e o
+    # terminal recebia o caminho com uma aspa sobrando ("cannot load config"), abrindo sem o robô (visto no host
+    # na T8.7). Quem não espera é o Popen. O .bat tem nome fixo porque precisa existir enquanto o cmd o lê.
+    if prefix is None:
+        raise RuntimeError("[MT5] wine_prefix vazio em config/config.ini. Execute ./install.sh")
+    if shutil.which("wine") is None:
+        raise RuntimeError("Wine não encontrado. Execute ./install.sh")
+    temp = Path(prefix) / "drive_c" / "windows" / "temp"
+    temp.mkdir(parents=True, exist_ok=True)
+    bat = temp / SPAWN_BAT
+    try:
+        bat.write_bytes(("@echo off\r\n" + command_line.replace("%", "%%") + "\r\n").encode("cp1252"))
+    except UnicodeEncodeError:
+        raise ValueError("O caminho do MetaTrader 5 tem caracteres que o Wine não repassa: use uma pasta só com "
+                         "letras comuns.") from None
+    subprocess.Popen(["wine", "cmd", "/c", _windows_path(bat, prefix)], cwd=str(cwd), env=_wine_env(prefix),
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
 
 def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional[Callable] = None,

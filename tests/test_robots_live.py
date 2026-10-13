@@ -170,10 +170,20 @@ def test_start_demo_needs_the_terminal_closed(home):
 
 
 def test_wine_spawn_does_not_wait_for_the_terminal(home, monkeypatch):
+    """A linha vai num .bat sem `start` (que estragava as aspas de /config:"...") e ninguém espera o terminal."""
     seen = []
-    monkeypatch.setattr(mt5_tools, "run_windows_command", lambda *a, **k: seen.append((a, k)) or 0)
-    mt5_tools.spawn_windows_command('"C:\\t.exe" /config:"C:\\x.ini"', home.mt5, home.prefix)
-    assert seen[0][0][0] == 'start "" "C:\\t.exe" /config:"C:\\x.ini"' and seen[0][1] == {"timeout": 60}
+    monkeypatch.setattr(mt5_tools.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(mt5_tools.subprocess, "Popen", lambda *a, **k: seen.append((a, k)))
+    monkeypatch.setattr(mt5_tools, "run_windows_command", lambda *a, **k: pytest.fail("não pode esperar o terminal"))
+    line = '"C:\\t.exe" /portable /config:"C:\\Program Files\\x.ini"'
+    mt5_tools.spawn_windows_command(line, home.mt5, home.prefix)
+    bat = home.prefix / "drive_c" / "windows" / "temp" / mt5_tools.SPAWN_BAT
+    assert bat.read_bytes().decode("cp1252") == "@echo off\r\n" + line + "\r\n"       # a linha, sem `start`
+    (command,), options = seen[0]
+    assert command[:3] == ["wine", "cmd", "/c"] and command[3].endswith(mt5_tools.SPAWN_BAT)
+    assert options["start_new_session"] is True and options["cwd"] == str(home.mt5)
+    with pytest.raises(RuntimeError, match="wine_prefix"):
+        mt5_tools.spawn_windows_command(line, home.mt5, None)
 
 
 # --- acompanhamento e PARAR TUDO ------------------------------------------------------

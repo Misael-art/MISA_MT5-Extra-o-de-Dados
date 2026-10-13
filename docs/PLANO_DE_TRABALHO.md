@@ -75,7 +75,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | ✅ concluída (só CLI; o botão no card fica para quando a aba ganhar ações de MT5) |
 | T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | ✅ concluída (só CLI; o HADOUKEN v7 compila e roda no Tester, sem operações por ser um painel) |
 | T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | ✅ concluída (só CLI; em MQL5, robustez ±20% fica como aviso "não avaliado") |
-| T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | ⏳ código e testes prontos **só com terminal simulado**; falta a validação com o MT5 real em demo |
+| T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | ✅ concluída: os cinco itens da mecânica provados em conta demo com o MT5 real (trava da bateria dispensada só nesse teste); nenhuma operação ocorreu |
 | T8.8 | Tempo real em conta real: bateria operacional e travas extras | T8.7 + período em demo | a fazer |
 | T8.9 | Robôs de atuação: portar as seis estratégias para MQL5 (`TryEnter`) e checar paridade | T8.5 | ⏳ parcial: seis robôs portados e compilando (PR #2 do repositório HADOUKEN); nenhum cumpre a paridade nem passa na bateria |
 | T9.1 | CLI para agentes: saída `--json`, `mt5x status`, `analyze`, `commands` e `robots backtest` | T8.3 | ✅ concluída |
@@ -1201,7 +1201,7 @@ Report, ReplaceReport=1, ShutdownTerminal=1`), parar a ponte e o terminal, rodar
 
 Cada item devolve ✓ / ⚠ / ✗ com o motivo e o que fazer. Robô só com `.ex5`: estática "não avaliável", não libera conta real.
 
-### T8.7 — Tempo real em demo ⏳
+### T8.7 — Tempo real em demo ✅
 
 **Estado: implementada e testada apenas com terminal, conta e MT5 simulados** (decisão do dono do projeto em
 2026-10-12). Nenhum robô foi iniciado em conta alguma. Antes de marcar como concluída, falta provar com o MT5 real,
@@ -1242,6 +1242,36 @@ o `ExemploCruzamento` do SDK (EURUSD H1, 119 operações, profit factor 0,87), o
 os três robôs da T8.9 levados à bateria foram reprovados. A trava não foi contornada. Os cinco itens acima
 continuam sem prova; a T8.7 só anda quando houver um robô aprovado. A `mt5x-safety` também obedece ao
 `HDK_KILL.txt` (`CHDKRiskGuard`), então um robô do SDK aprovado serve para provar o item 4.
+
+**Validação da mecânica em demo (2026-10-12/13, host Linux, MT5 build 6258 no Wine, conta MetaQuotes-Demo), pedida
+pelo dono do projeto.** Como nenhum robô tem bateria aprovada, o teste foi feito por um script à parte, rodado pelo
+dono, que dispensa **só** a trava "bateria aprovada" e mantém as outras (robô compilado, conta demo, PARAR TUDO
+desligado). O `mt5x robots start` não mudou e continua recusando. Robô: `HDK_EmaAtr` (T8.9), EURUSD H1, preset
+conservador (0,25% por operação).
+
+| Item | Resultado | Evidência |
+|---|---|---|
+| 1. `[StartUp] Expert=...` põe o robô no gráfico; chaves de `[Experts]` | ✅ | log do terminal: `successfully initialized from start config`, `5 inputs read from expert ... set file ...HDK_EmaAtr_Conservador.set`, `expert HDK_EmaAtr (EURUSD,H1) loaded successfully` |
+| 2. `[Common] Login` e `Server` mantêm a conta | ✅ | `authorized on MetaQuotes-Demo`; pela ponte, a mesma conta, de demonstração |
+| 3. O terminal fica aberto depois que o comando volta | ✅ | processo vivo minutos depois; o comando voltou em menos de 1 s |
+| 4. O robô para com `Common\Files\HDK_KILL.txt` | ✅ | `mt5x robots stop` às 23:59:56; log do robô às 23:59:57: `BLOQUEADO: kill switch acionado` |
+| 5. A ponte religada enxerga o terminal reiniciado | ✅ | `mt5x robots monitor hdk_emaatr`: 0 posições, 0 operações |
+
+**Defeito achado e corrigido nesta validação:** na primeira tentativa o terminal abriu sem o robô, com
+`cannot load config "...mt5x_startup.ini""` no log. No Wine o programa abria o terminal com `start`, que reescreve
+as aspas de `/config:"C:\...ini"`. Agora `spawn_windows_command` grava a linha original num `.bat` de nome fixo e
+não espera por ele. Os testes com terminal simulado não pegavam isso.
+
+**O que não ficou provado e o que foi visto de novo:**
+
+- **Nenhuma operação aconteceu** (não houve sinal no intervalo). Ordem de verdade, aviso de operação do robô
+  (T11.4) e `monitor` com posição aberta continuam sem prova com o MT5 real.
+- O `start` grava o robô como iniciado sem conferir se o terminal carregou o arquivo de início. Na tentativa que
+  falhou o programa disse "iniciado" e o robô não estava no gráfico. **Falta** ler o log do terminal depois de abrir.
+- O robô fica gravado no perfil do terminal: depois do `stop` ele continua no gráfico, bloqueado, e volta junto
+  quando o terminal reabrir. Para tirá-lo de vez é preciso removê-lo do gráfico à mão. **Não há comando para isso.**
+- Só no Linux. O caminho do Windows (`Popen` direto, sem `.bat`) não mudou e não foi validado.
+- A trava da bateria não foi exercitada com um robô aprovado, porque não existe um.
 
 ### T8.8 — Tempo real em conta real
 
