@@ -2,7 +2,8 @@
 
 Leia este arquivo inteiro antes de alterar o projeto. O que fazer está em
 [docs/ROADMAP.md](docs/ROADMAP.md) e, passo a passo, em
-[docs/PLANO_DE_TRABALHO.md](docs/PLANO_DE_TRABALHO.md).
+[docs/PLANO_DE_TRABALHO.md](docs/PLANO_DE_TRABALHO.md). Onde paramos e como retomar em outra
+máquina: [docs/continuidade.md](docs/continuidade.md).
 
 ## Fluxo obrigatório
 
