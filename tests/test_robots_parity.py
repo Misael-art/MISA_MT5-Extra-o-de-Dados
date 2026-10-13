@@ -118,7 +118,10 @@ def test_run_compares_both_backtests_over_the_same_period(env):
                          "BBB", "1 dia", runner=env.terminal(env.python_trades), is_running=lambda: False)
     report = outcome["report"]
     assert report.ok and report.python_trades == report.mql5_trades == report.matched > 0
-    assert env.inis[0]["FromDate"] == outcome["python_run"]["data_start"][:10].replace("-", ".")
+    # os dois lados começam juntos, depois do aquecimento dos indicadores do Python (não no início dos dados)
+    assert env.inis[0]["FromDate"] == report.warmup_until[:10].replace("-", ".")
+    assert report.warmup_until[:10] > outcome["python_run"]["data_start"][:10]
+    assert all(t[0] >= report.warmup_until for t in outcome["python_run"]["trades"])
     assert env.inis[0]["Symbol"] == "BBB" and env.inis[0]["Period"] == "D1"
 
 
@@ -129,10 +132,10 @@ def test_cli_parity_reports_and_sets_the_exit_code(env, monkeypatch, capsys):
     assert cli.main(argv) == cli.EXIT_OK
     out = capsys.readouterr().out
     assert "Paridade dentro do critério" in out and "casadas (100,0%" in out
-    monkeypatch.setattr(mt5_tools, "run_windows_command", env.terminal(lambda: env.python_trades()[:-3]))
+    monkeypatch.setattr(mt5_tools, "run_windows_command", env.terminal(lambda: env.python_trades()[:-1]))
     assert cli.main(argv) == cli.EXIT_FAIL
     out = capsys.readouterr().out
-    assert "Só no Python (3)" in out and "Fora do critério" in out
+    assert "Só no Python (1)" in out and "Fora do critério" in out
     assert cli.main(env.args + ["robots", "parity", "gemeo", "--symbol", "BBB", "--tf", "D1"]) == cli.EXIT_USAGE
     assert cli.main(env.args + ["robots", "parity", "donchian", "--strategy", "gemeo", "--symbol", "BBB",
                                 "--tf", "D1"]) == cli.EXIT_USAGE

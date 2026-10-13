@@ -54,7 +54,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T4.4 | Atualizar `docs/arquitetura.md` e `README.md` | F1, F2 | ✅ concluída |
 | T4.5 | Remover módulos "enhanced" não usados | T4.3 | ✅ concluída (3 removidos; 2 mantidos com justificativa) |
 | T5.1 | Exportação Parquet / DuckDB | T1.1 | ✅ concluída |
-| T5.2 | PostgreSQL / TimescaleDB | T1.1 | ✅ concluída (hypertable do TimescaleDB não testada) |
+| T5.2 | PostgreSQL / TimescaleDB | T1.1 | ✅ concluída (hypertable conferida no host com TimescaleDB 2.30.2 em contêiner, 2026-10-12) |
 | T5.3 | Coleta de ticks | T1.2 | ✅ concluída (CLI `mt5x ticks`; na GUI ainda não) |
 | T5.4 | Snapshots do book (DOM) | T5.3 | ✅ concluída (CLI `mt5x book`) |
 | T5.5 | Fonte externa real (importação CSV) | T1.2 | ✅ concluída |
@@ -73,11 +73,11 @@ Comando de testes padrão (use o Python do `.venv`):
 | T8.2 | Aba "Robôs": cards, filtros, importação e painel "Visão geral" | T8.1 | ✅ concluída (mini-curva de capital fica para a T8.3, que grava as execuções) |
 | T8.3 | Backtest pelo card (robôs Python) e aba Backtest | T8.2 | ✅ concluída |
 | T8.4 | Ferramentas MT5: instalar arquivos, compilar e ler o log do MetaEditor | T8.1 | ✅ concluída (só CLI; o botão no card fica para quando a aba ganhar ações de MT5) |
-| T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | ✅ concluída (só CLI; validada com EAs de exemplo, o HADOUKEN v7 ainda não compila) |
+| T8.5 | Backtest MQL5 pelo Strategy Tester (ini, relatório, CSV de trades) | T8.4 + HADOUKEN v7 compilando | ✅ concluída (só CLI; o HADOUKEN v7 compila e roda no Tester, sem operações por ser um painel) |
 | T8.6 | Bateria de segurança (estática + estatística) | T8.3, T8.5 | ✅ concluída (só CLI; em MQL5, robustez ±20% fica como aviso "não avaliado") |
 | T8.7 | Tempo real em demo: travas, início, monitoramento, PARAR TUDO | T8.6 | ⏳ código e testes prontos **só com terminal simulado**; falta a validação com o MT5 real em demo |
 | T8.8 | Tempo real em conta real: bateria operacional e travas extras | T8.7 + período em demo | a fazer |
-| T8.9 | Robôs de atuação: portar as seis estratégias para MQL5 (`TryEnter`) e checar paridade | T8.5 | a fazer (no repositório HADOUKEN) |
+| T8.9 | Robôs de atuação: portar as seis estratégias para MQL5 (`TryEnter`) e checar paridade | T8.5 | ⏳ parcial: seis robôs portados e compilando (PR #2 do repositório HADOUKEN); nenhum cumpre a paridade nem passa na bateria |
 | T9.1 | CLI para agentes: saída `--json`, `mt5x status`, `analyze`, `commands` e `robots backtest` | T8.3 | ✅ concluída |
 | T9.2 | `mt5x audit`: segurança do projeto, do patrimônio e do capital | T9.1 | ✅ concluída |
 | T9.3 | Ponte restrita: só funções de leitura, sem execução de código nem pickle | T9.2 | ✅ concluída (reinicie a ponte depois de atualizar) |
@@ -1145,7 +1145,10 @@ prova manual, no Wine do usuário, de compilar e de abrir o terminal com `/confi
   separador `;`, colunas `time;symbol;type;volume;result`, gravado no `OnTester` só com `InpExportTrades = true`.
   Se o robô tem esse parâmetro, o teste o liga; o CSV antigo é apagado antes e, se o novo existir, as operações
   vêm dele. Validado de ponta a ponta com um EA de sonda que grava o mesmo CSV (185 operações, soma igual à do
-  relatório). **Pendente:** repetir com o HADOUKEN v7 quando ele compilar.
+  relatório). **Repetido com o HADOUKEN v7 (2026-10-12):** compilou sem erros nem avisos (MT5 build 6258 no Wine) e
+  rodou no Strategy Tester (EURUSD H1, 2025-10-03 a 2026-09-30, ticks reais, preset `HDK_Conservador`): 0 operações,
+  porque o v7 é um painel sem entrada automática. O teste levou cerca de uma hora (o robô usa temporizador de
+  500 ms). A leitura do CSV do `OnTester` com operações de verdade ficou conferida pelos robôs da T8.9.
 - Sem risco inicial por operação não há expectativa em R: `expectancy_r` fica vazio e `expectancy` traz o resultado
   médio em dinheiro. `bars` fica 0 (o relatório só traz esse número em campo traduzido).
 - Depósito do teste: `[STRATEGY] initial_equity`. Chave nova: `[ROBOTS] tester_model` (padrão 1, OHLC de 1 minuto).
@@ -1233,6 +1236,13 @@ em conta demo:
 resultado por magic com `positions_get`/`history_deals_get` (somente leitura); **PARAR TUDO** grava `HDK_KILL.txt`
 em `Common\Files`. Recusa com mensagem clara se a conta conectada não for demo.
 
+**Tentativa de validação no host (2026-10-12), com autorização do dono do projeto:** a conta do terminal é de
+demonstração (MetaQuotes-Demo). **Nenhum robô foi iniciado**, porque nenhum passa na trava "bateria aprovada":
+o `ExemploCruzamento` do SDK (EURUSD H1, 119 operações, profit factor 0,87), o HADOUKEN v7 (painel, 0 operações) e
+os três robôs da T8.9 levados à bateria foram reprovados. A trava não foi contornada. Os cinco itens acima
+continuam sem prova; a T8.7 só anda quando houver um robô aprovado. A `mt5x-safety` também obedece ao
+`HDK_KILL.txt` (`CHDKRiskGuard`), então um robô do SDK aprovado serve para provar o item 4.
+
 ### T8.8 — Tempo real em conta real
 
 Bateria operacional, `allow_real`, `min_demo_days`, `max_real_risk_pct` e confirmação digitando o número da conta.
@@ -1242,6 +1252,36 @@ Bateria operacional, `allow_real`, `min_demo_days`, `max_real_risk_pct` e confir
 
 No repositório HADOUKEN: módulo de sinais para cada uma das seis estratégias chamando `TryEnter()`, e um `robot.json`
 por robô. Aqui: comparar os trades do Strategy Tester com os do backtester Python no mesmo período.
+
+**Registrado (2026-10-12), parcial:** feito no repositório HADOUKEN (`projeto-indicadores-mt5`, branch
+`tarefa/T8.9-estrategias`, PR #2 em rascunho): motor comum (`Strategies/HDK_StrategyRobot.mqh`) com as regras do
+backtester Python, indicadores com as mesmas fórmulas (`HDK_StrategyMath.mqh`) e seis robôs em
+`Experts/HADOUKEN/Estrategias/` (`HDK_Donchian`, `HDK_EmaAtr`, `HDK_BbRsi`, `HDK_Orb`, `HDK_Pullback`,
+`HDK_Squeeze`), cada um com `robot.json` (`parity_with`) e preset. `ClosePosition` da camada de segurança ganhou um
+volume opcional, para a saída parcial; a `mt5x-safety` ainda não tem essa mudança.
+
+Os seis compilam sem erros. Paridade no host (EURUSD, "cada tick", cerca de 13 meses):
+
+| Robô | Operações Python × MQL5 | Casadas | Pares a até 5% | Diferença sobre o giro | Mediana MQL5/Python |
+|---|---|---|---|---|---|
+| `HDK_EmaAtr` (H1) | 70 × 70 | 97,1% | 86,8% | 1,7% | 0,997 |
+| `HDK_Donchian` (H4) | 47 × 46 | 97,9% | 78,3% | 5,7% | 0,982 |
+| `HDK_BbRsi` (H1) | 188 × 185 | 96,3% | 74,0% | 2,6% | 0,978 |
+| `HDK_Squeeze` (H1) | 173 × 172 | 99,4% | 79,1% | 2,2% | 0,992 |
+| `HDK_Pullback` (H1) | 76 × 73 | 88,2% | 92,5% | 2,1% | 0,987 |
+| `HDK_Orb` (M15) | 257 × 239 | 91,8% | 36,0% | 1,2% | 0,941 |
+
+**Nenhum cumpre o critério** (que não foi afrouxado): as operações coincidem, o valor não, e o MQL5 rende menos
+em todos. A causa conhecida é a T10.12; a parte que não vem dela não foi medida. Bateria com ticks reais
+(2024-10-01 a 2026-09-30, preset Conservador): `HDK_Donchian` 81 operações e profit factor 1,19; `HDK_BbRsi` 128 e
+0,74; `HDK_Squeeze` 72 e 0,51. **Todos reprovados.** Detalhes e lacunas em
+`Documentation/Guides/ROBOS_DE_ESTRATEGIA.md` daquele repositório. **Falta:** achar a causa das operações sem par
+no Pullback e no ORB, medir o efeito do custo (T10.12) e testar em ativos da B3.
+
+**Correção feita aqui por causa desta tarefa:** `parity.run` (estratégia portada à mão) não igualava os dois lados
+como `run_declared` já fazia. O robô rodava com o risco padrão dele e com os limites de perda ligados, e os dois
+lados não começavam juntos; na primeira medição a mediana MQL5/Python era 0,501. Agora ele usa `parity_params` e o
+início comum depois do aquecimento (`min_bars` da estratégia).
 
 **Verificação da fase:** `PYTHONPATH=. xvfb-run -a .venv/bin/python -m pytest -q` e o `doctor` antes e depois de cada
 tarefa; manual, com MT5 real em demo: importar a pasta do HADOUKEN, compilar, rodar backtest e bateria, iniciar em demo
@@ -1279,7 +1319,9 @@ computador podia executar código no Python do Wine e, por ele, enviar ordens pe
 - Testes em `tests/test_mt5_backend.py` (recusas, ausência de execução de código, ponte antiga) e a ponte de ponta
   a ponta em `tests/test_linux_bridge_e2e.py`.
 
-**Pendente (manual):** repetir `scripts/parity_check.py` com o MT5 real pela ponte nova.
+**Conferido no host (2026-10-12):** `scripts/parity_check.py extract --symbol EURUSD --date 2026-10-09` pela ponte
+restrita (`mt5x-bridge/2`) trouxe as mesmas 1.440 barras M1 da extração anterior. A comparação com o lado Windows
+continua na T2.6.
 
 ---
 

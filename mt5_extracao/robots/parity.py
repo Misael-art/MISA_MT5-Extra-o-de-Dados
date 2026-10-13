@@ -149,14 +149,27 @@ def run(db, config, robot, strategy_robot, symbol: str, timeframe: str, start=No
     tf = timeframes.parse(timeframe)
     if tf is None:
         raise ValueError(f"Timeframe inválido: {timeframe}")
-    python_run = backtest.run_python(db, config, strategy_robot, symbol, timeframe, start, end)
-    period_start = _when(python_run["data_start"])
+    # Como em run_declared: os dois lados começam no mesmo instante, sem posição e com o mesmo capital, e o robô usa
+    # o risco por operação do backtester Python, com os limites de perda abertos. Sem isso a comparação mede a
+    # diferença de configuração, não a de lógica.
+    from mt5_extracao.strategies import get_strategy, research
+    strategy = get_strategy(strategy_robot.key.split(":", 1)[1])
+    bars = db.load_ohlcv(symbol, tf.label, start, end)
+    warmup = int(strategy.min_bars)
+    if len(bars) <= warmup + 1:
+        raise ValueError(research.missing_message([symbol], tf) if bars.empty else
+                         f"Poucas barras de {symbol} para comparar: {len(bars)} (o aquecimento usa {warmup}).")
+    warm_end = _when(str(bars["time"].iloc[warmup]))
+    trade_from = (warm_end + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    python_run = backtest.run_python(db, config, strategy_robot, symbol, timeframe, start, end,
+                                     source=backtest.PARITY_SOURCE, trade_from=trade_from)
     period_end = _when(python_run["data_end"]) + timedelta(minutes=tf.minutes)
-    mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, period_start, period_end, preset,
-                                 run=runner, is_running=is_running, source=backtest.DEEP_SOURCE,
-                                 model=PARITY_TESTER_MODEL)
-    return {"report": compare(python_run["trades"], mql5_run["trades"], float(tf.minutes)),
-            "python_run": python_run, "mql5_run": mql5_run}
+    mql5_run = backtest.run_mql5(db, config, robot, symbol, timeframe, trade_from, period_end, preset,
+                                 params=parity_params(robot, config), run=runner, is_running=is_running,
+                                 source=backtest.DEEP_SOURCE, model=PARITY_TESTER_MODEL)
+    report = compare(python_run["trades"], mql5_run["trades"], float(tf.minutes))
+    report.warmup_until = trade_from.strftime("%Y-%m-%d %H:%M:%S")      # início comum da comparação
+    return {"report": report, "python_run": python_run, "mql5_run": mql5_run}
 
 
 def parity_params(robot, config) -> dict:
