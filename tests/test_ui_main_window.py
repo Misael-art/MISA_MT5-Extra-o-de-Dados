@@ -166,7 +166,10 @@ def test_robots_tab_shows_recorded_validation_and_imports(ui, tmp_path):
                      'input int InpStopPoints = 200; // Stop (pontos)\nvoid OnTick() { }\n', encoding="utf-8")
     from mt5_extracao import robots
     panel.run_import(lambda: [robots.import_robot(ui.app.db_manager, loose)])
-    ui.pump(1.0)
+    deadline = time.time() + 15                                  # a importação roda em outra thread
+    while "mql5:avulso" not in panel.cards and time.time() < deadline:
+        ui.pump(0.2)
+    ui.pump(0.4)
     assert "mql5:avulso" in panel.cards and panel.selected_key == "mql5:avulso"
     assert panel.detail.title.cget("text") == "Avulso"
 
