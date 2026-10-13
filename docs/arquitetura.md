@@ -202,3 +202,11 @@ Credenciais ficam **somente** no `.env` (`MT5_LOGIN`, `MT5_PASSWORD`, `MT5_SERVE
 - `tests/market_data.py`: séries sintéticas para as estratégias.
 
 O CI (Ubuntu e Windows) roda os instaladores sem MT5, o `shellcheck` e a suíte, com cobertura mínima de 60% em `database_manager`, `historical_extractor` e `mt5_backend`.
+
+## Evolução planejada
+
+O backlog integrado do HADOUKEN e do mt5x (framework modular de estratégias, execução, carteira, painel,
+estatísticas, analytics e IA) está em [propostas/README.md](propostas/README.md). **É planejamento: nada do que
+está lá muda a arquitetura descrita acima** enquanto não for implementado e validado. Regras que não mudam: o
+Python não envia ordens; toda ordem passa pelo `HDK_SafeExecutor`; mudanças de schema são aditivas; o contrato do
+robô versão 1 continua válido até haver migração especificada.

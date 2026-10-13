@@ -244,10 +244,17 @@ class UIManager:
         header = ttk.Frame(outer)
         header.pack(fill=tk.X, pady=(0, 10))
         ttk.Label(header, text="MT5 Extração", style="Page.Title.TLabel").pack(side=tk.LEFT)
-        ttk.Label(header, text="monte, mantenha e estude a sua base de dados do MetaTrader 5",
-                  style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
-        check_mt5_status_btn = ttk.Button(header, text="Verificar conexão", command=self.check_mt5_status)
-        check_mt5_status_btn.pack(side=tk.RIGHT)
+        self.check_button = ttk.Button(header, text="Verificar conexão", command=self.check_mt5_status)
+        self.check_button.pack(side=tk.RIGHT)
+        from mt5_extracao.ui import icons
+        self._view_icon = icons.mt5_view(self.theme.colors["on_accent"])
+        self.mt5_view_button = ttk.Button(header, text="Abrir visão MT5", image=self._view_icon, compound=tk.LEFT,
+                                          style="Accent.TButton", command=self.open_mt5_view)
+        self.mt5_view_button.pack(side=tk.RIGHT, padx=(0, 8))
+        Tooltip(self.mt5_view_button, "Abre o MetaTrader 5 com a janela organizada como você escolheu em Arquivo > "
+                                      "Configurações (janelas laterais, barras de ferramentas, perfil de gráficos e "
+                                      "disposição do painel). Se ele já estiver aberto, pergunta antes de fechar e "
+                                      "abrir de novo.", self.theme)
         # Privilégios de administrador só existem (e só importam) no Windows
         if os.name == "nt":
             self.mt5_admin_button = ttk.Button(header, text="Iniciar MT5 como administrador",
@@ -258,6 +265,9 @@ class UIManager:
         self.mt5_status_value.pack(side=tk.RIGHT, padx=(6, 12))
         self.mt5_status_dot = ttk.Label(header, text="●")
         self.mt5_status_dot.pack(side=tk.RIGHT)
+        # Por último: em janela estreita é o subtítulo que encolhe, não a conta nem os botões
+        ttk.Label(header, text="monte, mantenha e estude a sua base de dados do MetaTrader 5",
+                  style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
 
         # Barra de status
         status_bar = ttk.Frame(outer)
@@ -301,10 +311,10 @@ class UIManager:
         self.root.bind("<Control-f>", lambda e: self.search_entry.focus_set())
         self.root.bind("<F5>", lambda e: self.refresh_inventory())
 
-        # Mostra a conta em uso; se o MT5 não conectou, oferece a correção depois que a janela abrir
+        # A janela aparece primeiro; o MT5 é aberto (já organizado) e conectado em segundo plano
         self.refresh_mt5_status()
-        if not self._mt5_connected():
-            self.root.after(500, self.check_mt5_status)
+        if not self._mt5_connected() and hasattr(self.app.mt5_connector, "initialize"):
+            self.root.after(200, lambda: self.connect_mt5(startup=True))
 
     def _build_symbols_tab(self, tab):
         tab.columnconfigure(0, weight=2, uniform="col")
@@ -328,7 +338,7 @@ class UIManager:
         for text, value, tip in (("Todos", "all", "Todos os ativos que a conta oferece."),
                                  ("★ Favoritos", "fav", "Só os ativos que você marcou como favoritos."),
                                  ("Na base", "data", "Só os ativos que já têm dados extraídos.")):
-            radio = ttk.Radiobutton(search_frame, text=text, value=value, variable=self.filter_var,
+            radio = ttk.Radiobutton(search_frame, text=self.theme.glyphs(text), value=value, variable=self.filter_var,
                                     style="Toolbutton", command=self.filter_symbols)
             radio.pack(side=tk.LEFT, padx=(8 if value == "all" else 1, 0))
             Tooltip(radio, tip, self.theme)
@@ -336,7 +346,7 @@ class UIManager:
         actions = ttk.Frame(left, style="Surface.TFrame")
         actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
         ttk.Button(actions, text="Adicionar à seleção →", command=self.add_symbols).pack(side=tk.LEFT)
-        ttk.Button(actions, text="★ Favoritar / desfavoritar", command=self.toggle_favorites).pack(
+        ttk.Button(actions, text=self.theme.glyphs("★ Favoritar / desfavoritar"), command=self.toggle_favorites).pack(
             side=tk.LEFT, padx=(8, 0))
         ttk.Label(actions, text="Duplo clique adiciona à seleção", style="Muted.TLabel").pack(side=tk.RIGHT)
 
@@ -1953,36 +1963,66 @@ class UIManager:
         ttk.Button(button_frame, text="Cancelar", command=export_dialog.destroy).pack(side=tk.RIGHT)
 
     def open_settings(self):
-        """Mostra a configuração em uso e onde alterá-la."""
-        config_file = Path(getattr(self.app, "config_path", "config/config.ini")).resolve()
-        cfg = self.app.config
-        info = self.app.mt5_connector.account_summary() if self._mt5_connected() else None
-        account = (f"conta {info['login']} em {info['server']}" + (" (demonstração)" if info["demo"] else "")
-                   if info else "sem conexão")
-        lines = [
-            f"Conta em uso: {account}",
-            f"MetaTrader 5: {cfg.get('MT5', 'path', fallback='não configurado')}",
-            f"Banco de dados: {cfg.get('DATABASE', 'type', fallback='sqlite')} - "
-            f"{cfg.get('DATABASE', 'path', fallback='database/mt5_data.db')}",
-            f"Arquivo de configuração: {config_file}",
-            "",
-            "Para trocar de conta (ex.: corretora com ativos da B3), preencha MT5_LOGIN, MT5_PASSWORD e",
-            "MT5_SERVER no arquivo .env da pasta do projeto: o aplicativo entra nessa conta sozinho.",
-            "As demais opções ficam no arquivo de configuração acima (reinicie o aplicativo depois de editar).",
-        ]
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Configurações")
-        dialog.transient(self.root)
-        frame = ttk.Frame(dialog, padding=15)
-        frame.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(frame, text="\n".join(lines), justify=tk.LEFT, wraplength=720).pack(anchor="w")
-        buttons = ttk.Frame(frame)
-        buttons.pack(fill=tk.X, pady=(15, 0))
-        ttk.Button(buttons, text="Abrir pasta de configuração",
-                   command=lambda: self._open_path(config_file.parent)).pack(side=tk.LEFT)
-        ttk.Button(buttons, text="Atalhos...", command=self.open_shortcuts_dialog).pack(side=tk.LEFT, padx=(10, 0))
-        ttk.Button(buttons, text="Diagnóstico do ambiente...", command=self.show_doctor).pack(side=tk.LEFT, padx=10)
-        ttk.Button(buttons, text="Fechar", command=dialog.destroy).pack(side=tk.RIGHT)
+        """Abre as configurações: o que está em uso e as opções ajustáveis pela interface (janela do MT5)."""
+        from mt5_extracao.ui.settings import SettingsDialog
+        self.settings_dialog = SettingsDialog(self)
+        return self.settings_dialog
+
+    def open_mt5_view(self, parent=None, on_done=None):
+        """
+        Abre (ou, com a sua confirmação, fecha e reabre) o MetaTrader 5 com a organização da janela escolhida nas
+        configurações. `on_done(resultado ou None)` é chamado ao fim, na thread da interface.
+        """
+        from mt5_extracao.robots import mt5_tools, view
+        config = self.app.config
+        parent = parent or self.root
+        self.mt5_view_button.state(["disabled"])
+        self.update_status("Status: preparando a visão do MetaTrader 5...")
+
+        def finish(result):
+            self.mt5_view_button.state(["!disabled"])
+            if on_done:
+                on_done(result)
+
+        def opened(result, error):
+            if error:
+                self.update_status("Status: não foi possível abrir a visão do MetaTrader 5")
+                self.log(f"Não foi possível abrir a visão do MetaTrader 5: {error}")
+                messagebox.showerror("Abrir visão MT5", f"Não foi possível abrir o MetaTrader 5:\n\n{error}\n\n"
+                                     "Confira [MT5] path em Arquivo > Configurações > Diagnóstico do ambiente.",
+                                     parent=parent)
+                finish(None)
+                return
+            text = view.describe(result)
+            self.log("Visão do MetaTrader 5: " + text)
+            self.update_status("Status: MetaTrader 5 aberto com a visão escolhida" +
+                               (" (clique em \"Verificar conexão\" para reconectar)" if result["reopened"] else ""))
+            finish(result)
+
+        def checked(running, error):
+            if error:
+                opened(None, error)
+                return
+            if running and not messagebox.askyesno(
+                    "Abrir visão MT5",
+                    "O MetaTrader 5 está aberto. A organização da janela só é gravada com ele fechado.\n\n"
+                    "Fechar e abrir de novo agora?\n\n"
+                    "Um robô que esteja no gráfico para enquanto o terminal reinicia e volta com ele; a coleta e a "
+                    "extração em andamento neste programa são interrompidas (depois, use \"Verificar conexão\").",
+                    parent=parent):
+                self.update_status("Status: visão do MetaTrader 5 não alterada")
+                finish(None)
+                return
+            self.update_status("Status: " + ("fechando e abrindo" if running else "abrindo") + " o MetaTrader 5...")
+            # se o perfil de gráficos próprio ainda não existe, ele nasce com o gráfico do ativo em foco
+            # o ativo em foco (o clicado na lista); sem ele, a visão usa o gráfico que a pessoa já tinha
+            symbol = self.detail_symbol or ""
+            account = self.app.mt5_connector.account_summary() if self._mt5_connected() else self.prefs.get("account")
+            self.run_bg(lambda: view.open_view(config, close_terminal=running, symbol=symbol,
+                                               db=self.app.db_manager, account=account,
+                                               confirm=mt5_tools.confirm_startup), opened)
+
+        self.run_bg(lambda: mt5_tools.terminal_running(config), checked)
 
     def open_shortcuts_dialog(self):
         """Cria ou remove os atalhos do aplicativo na área de trabalho e no menu de aplicativos / Iniciar."""
@@ -2241,6 +2281,94 @@ class UIManager:
         connector = self.app.mt5_connector
         return bool(connector and self.app.mt5_initialized and connector.is_initialized)
 
+    @staticmethod
+    def _missing_account():
+        """O MetaTrader 5 instalado ainda não tem nenhuma conta cadastrada?"""
+        from mt5_extracao.bootstrap import demo_account, paths
+        cfg = demo_account.read_settings(paths.PROJECT_ROOT)
+        return bool(cfg["mt5_dir"] and os.path.isdir(cfg["mt5_dir"]) and not demo_account.has_account(
+            cfg["mt5_dir"], cfg["wine_prefix"] or None))
+
+    def bring_to_front(self):
+        """Traz a janela do programa para a frente (o MetaTrader 5, ao abrir, fica por cima dela)."""
+        try:
+            self.root.deiconify()
+            self.root.lift()
+            self.root.attributes("-topmost", True)
+            self.root.after(600, lambda: self.root.attributes("-topmost", False))
+            self.root.focus_force()
+        except tk.TclError as e:
+            log.debug(f"Não foi possível trazer a janela para a frente: {e}")
+
+    def _remember_account(self):
+        """Guarda a conta conferida nesta conexão: é ela que a visão usa para pôr o painel com o MT5 ainda fechado."""
+        try:
+            info = self.app.mt5_connector.account_summary()
+        except Exception as e:
+            log.debug(f"Conta não lida: {e}")
+            return
+        if info and info.get("login"):
+            self.prefs["account"] = {"login": info["login"], "server": info.get("server", ""),
+                                     "demo": bool(info.get("demo"))}
+            self.save_prefs()
+
+    def connect_mt5(self, startup=False):
+        """
+        Abre o MetaTrader 5 (com a janela organizada como nas configurações, se ele estiver fechado) e conecta,
+        tudo em segundo plano: a janela do programa continua utilizável. No fim atualiza a lista de ativos e, se
+        não conectou, diz o motivo e o que fazer.
+        """
+        if getattr(self, "_connecting", False):
+            return
+        from mt5_extracao import connection_help
+        from mt5_extracao.robots import mt5_tools, view
+        self._connecting = True
+        app, config = self.app, self.app.config
+        self.mt5_status_value.config(text="Abrindo e conectando ao MetaTrader 5...")
+        self.mt5_status_dot.config(foreground=self.theme.colors["ink2"])
+        self.check_button.state(["disabled"])
+        self.update_status("Status: abrindo e conectando ao MetaTrader 5 (a base já extraída segue disponível)...")
+
+        def work():
+            mt5_tools.use_config(config)
+            try:        # terminal fechado: abre já com a organização escolhida. Falha aqui não impede a conexão.
+                # Sem ativo: se o perfil próprio ainda não existe, ele nasce com o gráfico que a pessoa já tinha
+                # (a seleção salva pode ter centenas de ativos; o primeiro dela não diz nada).
+                if not mt5_tools.terminal_running(config):
+                    opened = view.open_view(config, db=app.db_manager, account=self.prefs.get("account"),
+                                            confirm=mt5_tools.confirm_startup)
+                    log.info("Visão do MetaTrader 5 ao conectar: " + view.describe(opened))
+            except Exception as e:
+                log.warning(f"Não foi possível abrir o MetaTrader 5 já organizado ({e}). Seguindo com a conexão.")
+            connected = bool(app.mt5_connector.initialize(recursion_count=0))
+            if connected:
+                app.mt5_initialized = True
+                app.load_symbols()
+                return None
+            return connection_help.diagnose(mt5_tools.terminal_running(config), connection_help.internet_ok())
+
+        def done(reason, error):
+            self._connecting = False
+            self.check_button.state(["!disabled"])
+            if error is not None:
+                reason = connection_help.NOT_OPEN
+            self.filter_symbols()
+            self.bring_to_front()
+            if self.refresh_mt5_status():
+                self.log("Conectado ao MetaTrader 5.")
+                self._remember_account()
+                return
+            app.mt5_initialized = False
+            text = connection_help.explain(reason, windows=os.name == "nt")
+            self.log("Sem conexão com o MetaTrader 5: " + text.replace("\n\n", " ").replace("\n", " "))
+            self.update_status("Status: sem conexão com o MetaTrader 5 (" + reason + ")")
+            if reason != connection_help.NO_INTERNET and self._missing_account():
+                self._offer_demo_account()      # terminal sem conta nenhuma: oferece abrir a de demonstração
+            else:
+                messagebox.showwarning("MetaTrader 5 sem conexão", text, parent=self.root)
+
+        self.run_bg(work, done)
+
     def refresh_mt5_status(self, quiet=False):
         """Atualiza o cabeçalho com a conta e o servidor em uso (sem perguntas)."""
         colors = self.theme.colors
@@ -2320,27 +2448,20 @@ class UIManager:
                     self._check_admin_mode()
                 return
 
-            from mt5_extracao.bootstrap import demo_account, paths
-            cfg = demo_account.read_settings(paths.PROJECT_ROOT)
-            if cfg["mt5_dir"] and os.path.isdir(cfg["mt5_dir"]) and not demo_account.has_account(
-                    cfg["mt5_dir"], cfg["wine_prefix"] or None):
+            if self._missing_account():
                 self._offer_demo_account()
                 return
-            if messagebox.askyesno(
-                    "Conectar ao MetaTrader 5",
-                    "A aplicação não está conectada ao MetaTrader 5.\n\nDeseja tentar conectar agora?"):
-                if not self._reconnect_mt5():
-                    hint = ("Confira se o MetaTrader 5 abre normalmente." if os.name == "nt" else
-                            "Confira a ponte com ./scripts/mt5-bridge.sh status.")
-                    messagebox.showerror(
-                        "MetaTrader 5",
-                        "Não foi possível conectar ao MetaTrader 5.\n\n" + hint +
-                        "\nPara o diagnóstico completo, rode o comando 'mt5x doctor'.")
+            self.connect_mt5()          # em segundo plano; se não conectar, diz o motivo e o que fazer
+        except tk.TclError as e:        # a janela foi fechada no meio da verificação: nada a atualizar
+            log.debug(f"Verificação de conexão interrompida: {e}")
         except Exception as e:
             log.error(f"Erro ao verificar status do MT5: {e}")
-            self.update_status(f"Erro ao verificar status: {str(e)}")
-            self.mt5_status_value.config(text="Erro ao verificar a conexão")
-            self.mt5_status_dot.config(foreground=self.theme.colors["bad"])
+            try:
+                self.update_status(f"Erro ao verificar status: {str(e)}")
+                self.mt5_status_value.config(text="Erro ao verificar a conexão")
+                self.mt5_status_dot.config(foreground=self.theme.colors["bad"])
+            except tk.TclError:
+                pass
     
     def _check_admin_mode(self):
         """Verifica se o MT5 está em modo de administrador."""

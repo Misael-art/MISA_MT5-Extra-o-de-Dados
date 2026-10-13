@@ -89,6 +89,11 @@ class DatabaseManager:
 
     _timescale = False
 
+    def close(self):
+        """Libera as conexões com o banco (chamado ao encerrar o aplicativo). Pode ser chamado mais de uma vez."""
+        if self.engine is not None:
+            self.engine.dispose()
+
     def _safe_location(self):
         """Caminho/URL para logs, sem a senha."""
         if self.db_type == 'sqlite':

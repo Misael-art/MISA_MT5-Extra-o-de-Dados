@@ -121,3 +121,52 @@ def test_cli_configure_invalid_mt5_path(tmp_path):
     root.mkdir()
     assert main(["--root", str(root), "configure", "--non-interactive", "--no-doctor",
                  "--mt5-path", str(tmp_path / "nada")]) == 1
+
+
+COMMENTED = """# Arquivo do usuário, com comentários
+[MT5]
+# caminho do terminal
+path = C:\\MT5
+manage_layout = true   
+
+[DATABASE]
+; banco
+type = sqlite
+"""
+
+
+def test_set_config_value_changes_one_line_and_keeps_comments(tmp_path):
+    """T12.L2: a interface grava uma opção sem regravar o arquivo (comentários, ordem e o resto ficam)."""
+    path = tmp_path / "config.ini"
+    path.write_text(COMMENTED, encoding="utf-8")
+    config_builder.set_config_value(path, "MT5", "manage_layout", "false")
+    assert path.read_text(encoding="utf-8") == COMMENTED.replace("manage_layout = true   ", "manage_layout = false")
+    config_builder.set_config_value(path, "MT5", "layout_hide_toolbars", "false")       # chave nova: fim da seção
+    text = path.read_text(encoding="utf-8")
+    assert "manage_layout = false\nlayout_hide_toolbars = false\n\n[DATABASE]" in text
+    assert "# caminho do terminal" in text and "; banco" in text
+    config_builder.set_config_value(path, "ROBOTS", "tester_model", "0")                # seção nova: fim do arquivo
+    text = path.read_text(encoding="utf-8")
+    assert text.endswith("type = sqlite\n\n[ROBOTS]\ntester_model = 0\n")
+    config_builder.set_config_value(path, "DATABASE", "TYPE", "postgresql")             # chave sem diferença de caixa
+    parsed = config_builder.load_config(path)
+    assert parsed.get("DATABASE", "type") == "postgresql" and parsed.get("MT5", "path") == "C:\\MT5"
+    assert parsed.getboolean("MT5", "manage_layout") is False and parsed.get("ROBOTS", "tester_model") == "0"
+    assert not [p for p in tmp_path.iterdir() if p.name != "config.ini"]                # nenhum temporário sobrando
+
+
+def test_set_config_value_creates_the_file_and_refuses_line_breaks(tmp_path):
+    path = tmp_path / "novo" / "config.ini"
+    config_builder.set_config_value(path, "MT5", "manage_layout", "false")
+    assert path.read_text(encoding="utf-8") == "[MT5]\nmanage_layout = false\n"
+    with pytest.raises(ValueError, match="quebra de linha"):
+        config_builder.set_config_value(path, "MT5", "path", "a\n[X]\nb = 1")
+    assert path.read_text(encoding="utf-8") == "[MT5]\nmanage_layout = false\n"
+
+
+def test_set_config_value_does_not_touch_a_same_named_key_of_another_section(tmp_path):
+    path = tmp_path / "config.ini"
+    path.write_text("[A]\npath = 1\n[B]\npath = 2\n[C]\nx = 3\n", encoding="utf-8")
+    config_builder.set_config_value(path, "B", "path", "9")
+    config_builder.set_config_value(path, "B", "novo", "s")
+    assert path.read_text(encoding="utf-8") == "[A]\npath = 1\n[B]\npath = 9\nnovo = s\n[C]\nx = 3\n"

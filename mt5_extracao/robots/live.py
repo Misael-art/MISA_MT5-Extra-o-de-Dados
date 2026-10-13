@@ -14,6 +14,7 @@ O início pelo terminal real NÃO foi validado: só com processos simulados (vej
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Callable, List, Optional
 
 from . import battery, catalog, mt5_tools, store
@@ -107,12 +108,49 @@ def demo_gates(config, robot, account: Optional[dict], preset: Optional[str] = N
     return gates
 
 
+BATTERY_GATE, KILL_GATE = "Bateria de segurança aprovada", "PARAR TUDO desligado"
+STATIC_GATE = "Leitura do código aprovada"
+
+
+def panel_gates(config, robot, account: Optional[dict], preset: Optional[str] = None) -> tuple:
+    """
+    Exigências para a visão do MT5 colocar um painel no gráfico. Devolve (travas, negociação ligada).
+
+    Um painel de operação manual não tem como passar na parte estatística da bateria (ela mede operações
+    automáticas). Por isso há dois casos: com a bateria inteira aprovada ele entra como qualquer robô, com a
+    negociação ligada; sem ela, entra SÓ PARA VISUALIZAÇÃO, e quem garante isso é o PARAR TUDO, que a visão aciona
+    (a camada de segurança do HADOUKEN não envia ordem enquanto ele estiver acionado). A chave `AllowLiveTrading`
+    do arquivo de início não serve de garantia: medido no host, a negociação algorítmica do terminal estava ligada
+    depois de o programa conectar. Mesmo só para ver, exige-se a leitura do código aprovada (stop obrigatório, toda
+    ordem pela camada de segurança, sem DLL) para o código que está no disco, o robô compilado e conta demo.
+    A trava da bateria de `mt5x robots start` não muda.
+    """
+    gates = demo_gates(config, robot, account, preset)
+    if all(g.ok for g in gates):
+        return gates, True
+    gates = [g for g in gates if g.name not in (BATTERY_GATE, KILL_GATE)]
+    check = robot.checks[0] if robot.checks else None
+    slug = robot.key.split(":", 1)[1]
+    if check is None:
+        gates.append(Gate(STATIC_GATE, False, "a bateria ainda não foi rodada", f"Rode: mt5x robots battery {slug}"))
+    elif check.get("static_status") != battery.APPROVED:
+        gates.append(Gate(STATIC_GATE, False, "a leitura do código reprovou",
+                          f"Corrija os itens reprovados e rode: mt5x robots battery {slug}"))
+    elif check.get("fingerprint") != catalog.fingerprint(robot):
+        gates.append(Gate(STATIC_GATE, False, "o código mudou depois da leitura",
+                          f"Compile e rode de novo: mt5x robots battery {slug}"))
+    else:
+        gates.append(Gate(STATIC_GATE, True, f"em {check['created_at'][:16]}"))
+    return gates, False
+
+
 def organize_window(config, data, symbol: str, timeframe: str) -> str:
     """
     Organização da janela do MT5 (padrão: ligada): janelas laterais e barras de ferramentas fechadas e o gráfico do
-    robô sozinho e maximizado, num perfil de gráficos próprio. Devolve o trecho a acrescentar ao .ini de início
-    ('' se desligada em [MT5] manage_layout ou pelo botão TELA do painel; aí o arranjo do usuário é devolvido).
-    Falha aqui nunca impede o início do robô.
+    robô sozinho e maximizado, num perfil de gráficos próprio. Cada parte pode ser desligada em [MT5] (veja
+    layout.OPTION_KEYS). Devolve o trecho a acrescentar ao .ini de início ('' sem o perfil próprio, ou se a
+    organização está desligada em [MT5] manage_layout ou pelo botão TELA do painel; aí o arranjo do usuário é
+    devolvido). Falha aqui nunca impede o início do robô.
     """
     from . import layout
     try:
@@ -121,11 +159,34 @@ def organize_window(config, data, symbol: str, timeframe: str) -> str:
             if layout.restore(data):
                 log.info("Organização da janela desligada: o arranjo anterior do MT5 foi devolvido.")
             return ""
-        layout.apply(data)
+        opts = layout.options(config)
+        layout.apply(data, toolbars=opts.toolbars, navigation=opts.navigation, toolbox=opts.toolbox)
+        if not opts.own_profile:
+            return ""
         return layout.startup_lines(layout.prepare_profile(data, symbol, timeframe, common))
     except (OSError, ValueError) as e:
         log.warning(f"Não foi possível organizar a janela do MT5 ({e}). O robô inicia com o arranjo atual.")
         return ""
+
+
+def panel_parameters(config, robot, data, parameters: str) -> str:
+    """
+    Arquivo de parâmetros do início com a disposição do painel escolhida em [MT5] panel_layout. Só muda algo se a
+    escolha não for 'auto' e o robô tiver o parâmetro `InpPanelLayout`: aí grava em MQL5/Presets uma cópia do preset
+    (ou um arquivo só com esse parâmetro) e devolve o nome dela. O preset do usuário não é alterado.
+    """
+    from . import layout, mql
+    choice = layout.panel_layout(config)
+    if choice == "auto" or not any(i.name == layout.PANEL_INPUT for i in robot.inputs):
+        return parameters
+    folder = Path(data) / "MQL5" / "Presets"
+    lines = mql.read_text(folder / parameters).splitlines() if parameters else []
+    lines = [line for line in lines if not line.strip().startswith(layout.PANEL_INPUT + "=")]
+    lines.append(f"{layout.PANEL_INPUT}={layout.panel_code(choice)}")
+    folder.mkdir(parents=True, exist_ok=True)
+    name = "mt5x_painel.set"
+    (folder / name).write_bytes(b"\xff\xfe" + "".join(line + "\r\n" for line in lines).encode("utf-16-le"))
+    return name
 
 
 def start_demo(db, config, robot, account: Optional[dict], symbol: str, timeframe: str,
@@ -155,6 +216,7 @@ def start_demo(db, config, robot, account: Optional[dict], symbol: str, timefram
                              + robot.key.split(":", 1)[1])
         parameters = target.name
     values = robot.presets.get(preset, {}) if preset else {}
+    parameters = panel_parameters(config, robot, data, parameters)
     ini = mt5_tools.startup_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, account["login"],
                                 account.get("server", ""), parameters)
     ini += organize_window(config, data, symbol, tf.name)
