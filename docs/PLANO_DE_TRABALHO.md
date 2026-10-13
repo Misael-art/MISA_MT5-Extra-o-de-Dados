@@ -104,7 +104,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.7 | Painel visual em HTML: visão por ativo e visão por robô | T11.6 | ✅ concluída (conferida com dados reais do host) |
 | T11.8 | Botão na interface para abrir o painel de resultados | T11.7 | ✅ concluída |
 | T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | ✅ concluída (conferida no host) |
-| T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | a fazer |
+| T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | ✅ concluída (conferida no host, com o MT5 oculto) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -2133,7 +2133,28 @@ existe enquanto o `mt5x panel --serve` ou a janela do programa estiverem abertos
   da lista, parâmetro inexistente, segundo trabalho enquanto um roda); no host, um backtest disparado pelo painel
   aparece na matriz sem recarregar a página.
 
-### T11.10 — Painel vivo: ações que usam o MT5
+### T11.10 — Painel vivo: ações que usam o MT5 ✅
+
+**Registrado na entrega:** três ações novas na lista (agora `backtest`, `resample`, `battery`, `stop_all`, `update` e
+`specs`; um teste trava a lista e confere que não há nada de iniciar, liberar ou configurar):
+
+- **Atualizar a base** (`update`): busca as barras novas das séries **extraídas** e refaz as **montadas** delas
+  (T11.1) com as barras novas.
+- **Gravar especificações** (`specs`): grava o contrato dos ativos, o que tira as estratégias Python da situação
+  "não confiável".
+- **Backtest de robô MQL5** (`backtest`): se o MetaTrader 5 desta instalação estiver aberto, o servidor responde
+  428 e **nada roda** até a página repetir o pedido com a confirmação; aí fecha o terminal, testa e religa a ponte.
+  Uma estratégia Python nunca pede confirmação nem toca no MT5.
+
+O acesso ao MT5 chega ao painel por uma função dada por quem o abre (`mt5x panel --serve` ou a janela do programa);
+sem ela, as ações que precisam do MT5 falham com a explicação.
+
+**Conferido no host (2026-10-12), com o MT5 oculto, disparando cada ação pela mesma chamada que o botão faz:**
+especificações de EURUSD, GBPUSD e USDJPY gravadas; base atualizada (3 séries M15) e 9 séries montadas refeitas; teste
+MQL5 com o terminal aberto recusado sem a confirmação e executado com ela (45 operações em EURUSD H4, ponte religada);
+as 72 combinações Python testadas de novo, e as células "não confiável" caíram de 48 para 0. Durante tudo, 0 janelas
+do MT5 na tela real. Imagem: [painel vivo](img/painel_vivo.png).
+**Não conferido:** os cliques em um navegador de verdade, e o Windows.
 
 - **Passos:** atualizar a base (`update`) e gravar a especificação de contrato (`specs`), que abrem o terminal
   (oculto, se o modo estiver ligado); backtest de robô MQL5 (célula, linha ou lote), que fecha o terminal desta

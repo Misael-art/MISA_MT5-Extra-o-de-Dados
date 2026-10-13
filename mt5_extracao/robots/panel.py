@@ -124,6 +124,8 @@ tr.sel td { background: var(--none-bg); }
     <div class="row">
       <div class="state"><span class="dot" id="dot"></span><span id="livestate">Painel vivo</span></div>
       <button class="btn primary" id="act-missing" type="button">Testar o que falta</button>
+      <button class="btn" id="act-update" type="button" title="Busca no MetaTrader 5 as barras novas dos timeframes extraídos e refaz os montados.">Atualizar a base</button>
+      <button class="btn" id="act-specs" type="button" title="Grava o contrato (ponto, valor do tick, lotes) dos ativos: resolve as células 'não confiável'.">Gravar especificações</button>
       <button class="btn" id="act-resample" type="button">Montar timeframes</button>
       <button class="btn danger" id="act-stop" type="button">PARAR TUDO</button>
     </div>
@@ -227,11 +229,9 @@ tr.sel td { background: var(--none-bg); }
       var battery = el("button", {"class": "btn", type: "button", text: "Rodar a bateria neste ativo"});
       battery.addEventListener("click", function () { act("battery", {robot: cell.robot, symbol: cell.symbol}); });
       acts.appendChild(battery);
-      if ((robotOf(cell.robot) || {}).kind === "python") {
-        var again = el("button", {"class": "btn", type: "button", text: "Testar de novo"});
-        again.addEventListener("click", function () { act("backtest", {robots: [cell.robot], symbols: [cell.symbol], tfs: [cell.timeframe]}); });
-        acts.appendChild(again);
-      }
+      var again = el("button", {"class": "btn", type: "button", text: "Testar de novo"});
+      again.addEventListener("click", function () { act("backtest", {robots: [cell.robot], symbols: [cell.symbol], tfs: [cell.timeframe]}); });
+      acts.appendChild(again);
       box.appendChild(acts);
     }
   }
@@ -376,12 +376,11 @@ tr.sel td { background: var(--none-bg); }
   }
   function buttons() {
     var robot = robotOf(state.robot) || {};
-    ["act-missing", "act-resample"].forEach(function (id) { $(id).disabled = busy; });
+    ["act-missing", "act-resample", "act-update", "act-specs"].forEach(function (id) { $(id).disabled = busy; });
     $("act-missing").textContent = "Testar o que falta em " + (robot.name || "…");
-    if (robot.kind !== "python") {
-      $("act-missing").disabled = true;
-      $("act-missing").title = "O teste de robôs MQL5 fecha o MetaTrader 5: use a linha de comando (mt5x robots backtest).";
-    } else { $("act-missing").title = "Roda o backtest desta estratégia em cada ativo e timeframe com base que ainda não foi testado."; }
+    $("act-missing").title = robot.kind === "python"
+      ? "Roda o backtest desta estratégia em cada ativo e timeframe com base que ainda não foi testado."
+      : "Roda o Strategy Tester em cada ativo e timeframe ainda sem teste. Se o MetaTrader 5 estiver aberto, o painel pede para fechá-lo.";
   }
   function refresh() {
     return api("GET", "/api/matrix").then(function (r) {
@@ -401,9 +400,26 @@ tr.sel td { background: var(--none-bg); }
       lastJob = job; buttons();
     }).catch(function () {});
   }
+  function ask(text, yesLabel, onYes) {
+    var box = $("confirm");
+    box.hidden = false; box.textContent = "";
+    box.appendChild(el("span", {text: text}));
+    var yes = el("button", {"class": "btn danger", type: "button", text: yesLabel});
+    var no = el("button", {"class": "btn", type: "button", text: "Cancelar"});
+    yes.addEventListener("click", function () { box.hidden = true; onYes(); });
+    no.addEventListener("click", function () { box.hidden = true; });
+    box.appendChild(yes); box.appendChild(no);
+  }
   function act(action, params) {
     $("confirm").hidden = true;
     api("POST", "/api/action", {action: action, params: params}).then(function (r) {
+      if (!r.ok && r.data.confirm) {
+        ask(r.data.error + " Confirma?", "Sim, fechar o MetaTrader 5 e testar", function () {
+          var again = {}; Object.keys(params).forEach(function (k) { again[k] = params[k]; }); again.confirm = r.data.confirm;
+          act(action, again);
+        });
+        return;
+      }
       if (!r.ok) { showJob({label: "Pedido recusado", status: "não executado", result: r.data.error, messages: []}); return; }
       busy = true; showJob(r.data.job); setState("Trabalhando: " + r.data.job.label, "busy"); buttons();
     }).catch(function () { setState("O programa não está respondendo", "off"); });
@@ -430,15 +446,15 @@ tr.sel td { background: var(--none-bg); }
       act("resample", {symbols: symbols, base: base, tfs: targets});
     });
     $("act-stop").addEventListener("click", function () {
-      var box = $("confirm");
-      box.hidden = false; box.textContent = "";
-      box.appendChild(el("span", {text: "PARAR TUDO: os robôs com a camada de segurança param de abrir operações. Posições abertas NÃO são fechadas. Confirma?"}));
-      var yes = el("button", {"class": "btn danger", type: "button", text: "Sim, parar tudo"});
-      var no = el("button", {"class": "btn", type: "button", text: "Cancelar"});
-      yes.addEventListener("click", function () { act("stop_all", {}); });
-      no.addEventListener("click", function () { box.hidden = true; });
-      box.appendChild(yes); box.appendChild(no);
+      ask("PARAR TUDO: os robôs com a camada de segurança param de abrir operações. Posições abertas NÃO são fechadas. Confirma?",
+          "Sim, parar tudo", function () { act("stop_all", {}); });
     });
+    $("act-update").addEventListener("click", function () {
+      var tfs = M.timeframes.filter(function (tf) { return M.symbols.some(function (s) { var i = (M.inventory[s] || {})[tf]; return i && !i.built_from; }); });
+      if (!tfs.length) { showJob({label: "Atualizar a base", status: "nada a fazer", result: "Não há séries extraídas na base.", messages: []}); return; }
+      act("update", {symbols: M.symbols, tfs: tfs});
+    });
+    $("act-specs").addEventListener("click", function () { act("specs", {symbols: M.symbols}); });
     setInterval(poll, 2000); setInterval(function () { if (!busy) refresh(); }, 10000);
     poll();
   }

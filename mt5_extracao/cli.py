@@ -323,7 +323,8 @@ def _panel_serve(args, ctx):
     from mt5_extracao.robots import panel_server
     try:
         server = panel_server.PanelServer(ctx.db, ctx.config, args.port or 0,
-                                          notifier=lambda title, text, level=None: _notify(ctx, title, text, level))
+                                          notifier=lambda title, text, level=None: _notify(ctx, title, text, level),
+                                          connect=ctx.connector)
     except OSError as e:
         raise RuntimeError(f"Não foi possível abrir a porta {args.port}: {e}. Tente outra com --port.") from e
     server.start()

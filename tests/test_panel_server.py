@@ -92,7 +92,8 @@ def test_rule_3_closed_list_of_actions_and_checked_parameters(server):
     post = lambda body: call(server, "POST", "/api/action", body)
     status, body = post({"action": "run", "params": {"cmd": "rm -rf /"}})
     assert status == 400 and "Ação desconhecida" in body["error"]
-    assert set(panel_server.ACTIONS) == {"backtest", "resample", "battery", "stop_all"}      # nada de iniciar robô
+    assert set(panel_server.ACTIONS) == {"backtest", "resample", "battery", "stop_all", "update", "specs"}
+    assert not any(word in name for name in panel_server.ACTIONS for word in ("start", "release", "config", "exec"))
     assert post({"action": "backtest", "params": {"robots": ["python:donchian"], "symbols": ["EURUSD"], "tfs": ["M15"],
                                                   "shell": "x"}})[0] == 400                  # parâmetro fora da lista
     for params, text in (
@@ -143,14 +144,108 @@ def test_page_matrix_and_refresh_after_a_backtest(server):
     assert server.notices[-1][0] == "Painel: Backtest (concluído)"
 
 
-def test_mql5_backtest_is_not_offered_here_yet(server, tmp_path):
-    from mt5_extracao.robots import scaffold
+# --- ações que usam o MetaTrader 5 (T11.10) ---------------------------------------------
+
+def mql5_robot(server, tmp_path, monkeypatch, running):
+    """Um robô MQL5 'compilado' num MT5 falso; `running` diz se o terminal está aberto. Devolve o registro de eventos."""
+    import configparser
+    from mt5_extracao.bootstrap import paths
+    from mt5_extracao.robots import catalog, mt5_tools, scaffold
+    mt5 = server.prefix / "drive_c" / "Program Files" / "MetaTrader 5"
+    (mt5 / "MQL5" / "Experts").mkdir(parents=True)
+    (mt5 / "terminal64.exe").write_bytes(b"")
     scaffold.create("Vivo", tmp_path / "robos", magic=730001)
     server.app.config["ROBOTS"] = {"library_dirs": str(tmp_path / "robos")}
-    call(server, "POST", "/api/action", {"action": "backtest", "params": {"robots": ["mql5:vivo"], "symbols": ["EURUSD"],
-                                                                         "tfs": ["M15"]}})
+    server.app.config["MT5"]["path"] = str(mt5)
+    robot = catalog.get_robot(catalog.load_catalog(server.app.config, server.db), "vivo")
+    mt5_tools.install(robot, mt5)[0].target.with_suffix(".ex5").write_bytes(b"ex5")
+    events, state = [], {"running": running}
+
+    def terminal(command_line, cwd, prefix, timeout):
+        ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix)
+        ini = configparser.ConfigParser()
+        ini.optionxform = str
+        ini.read_string(ini_path.read_bytes().decode("utf-16"))
+        events.append("teste " + ini["Tester"]["Symbol"])
+        rows = "".join(f"<tr><td>2025.01.02 {i % 24:02d}:00:00</td><td>{i + 2}</td><td>EURUSD</td><td>sell</td><td>out</td>"
+                       f"<td>0.10</td><td>1.1</td><td>{i + 2}</td><td>0.00</td><td>0.00</td><td>{(30 if i % 2 else -10):.2f}</td>"
+                       "<td>0.00</td><td></td></tr>" for i in range(40))
+        (ini_path.parent / (ini["Tester"]["Report"] + ".htm")).write_bytes(
+            ("<html><body><table>" + rows + "</table></body></html>").encode("utf-16"))
+        return 0
+
+    def release(config=None):
+        events.append("fechou o MT5")
+        state["running"] = False
+        return True
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: state["running"])
+    monkeypatch.setattr(mt5_tools, "release_terminal", release)
+    monkeypatch.setattr(mt5_tools, "restart_bridge", lambda: events.append("religou a ponte"))
+    monkeypatch.setattr(mt5_tools, "run_windows_command", terminal)
+    return events
+
+
+def test_mql5_backtest_needs_explicit_confirmation_before_closing_mt5(server, tmp_path, monkeypatch):
+    events = mql5_robot(server, tmp_path, monkeypatch, running=True)
+    body = {"action": "backtest", "params": {"robots": ["mql5:vivo"], "symbols": ["EURUSD"], "tfs": ["M15"]}}
+    status, answer = call(server, "POST", "/api/action", body)
+    assert status == 428 and answer["confirm"] == "close_mt5" and "FECHAR o MetaTrader 5" in answer["error"]
+    assert events == [] and call(server, "GET", "/api/job")[1]["job"] is None            # nada rodou, nada fechou
+    body["params"]["confirm"] = "sim"                                                    # confirmação errada não vale
+    assert call(server, "POST", "/api/action", body)[0] == 428 and events == []
+    body["params"]["confirm"] = "close_mt5"
+    assert call(server, "POST", "/api/action", body)[0] == 202
     job = wait(server)
-    assert job["status"] == panel_server.FAILED and "fecha o MetaTrader 5" in job["result"]
+    assert job["status"] == panel_server.DONE and job["result"].startswith("1 testado(s)")
+    assert events == ["fechou o MT5", "teste EURUSD", "religou a ponte"]
+    cell = call(server, "GET", "/api/matrix")[1]["cells"][0]
+    assert cell["robot"] == "mql5:vivo" and cell["origin"].startswith("Strategy Tester")
+
+
+def test_mql5_backtest_with_mt5_closed_and_python_never_ask(server, tmp_path, monkeypatch):
+    events = mql5_robot(server, tmp_path, monkeypatch, running=False)
+    assert call(server, "POST", "/api/action", {"action": "backtest", "params": {
+        "robots": ["mql5:vivo"], "symbols": ["EURUSD"], "tfs": ["M15"]}})[0] == 202       # fechado: não há o que confirmar
+    assert wait(server)["status"] == panel_server.DONE and events == ["teste EURUSD"]
+    monkeypatch.setattr("mt5_extracao.robots.mt5_tools.terminal_running", lambda *a: True)
+    assert call(server, "POST", "/api/action", {"action": "backtest", "params": {
+        "robots": ["python:donchian"], "symbols": ["EURUSD"], "tfs": ["M15"]}})[0] == 202   # Python não toca no MT5
+    wait(server)
+    assert "fechou o MT5" not in events
+
+
+def test_update_refreshes_extracted_series_and_rebuilds_the_built_ones(server, monkeypatch):
+    from mt5_extracao import resample, services
+    resample.resample_symbol(server.db, "EURUSD", Timeframe.M15, [Timeframe.H1])
+    calls = []
+
+    class FakeExtractor:
+        def update_symbols(self, symbols, tf_value, tf_label, **kw):
+            calls.append((list(symbols), tf_label))
+            kw["finished_callback"](len(symbols), 0, 0)
+    monkeypatch.setattr(services, "create_extractor", lambda *a: FakeExtractor())
+    server.app._connect = lambda: object()
+    call(server, "POST", "/api/action", {"action": "update", "params": {"symbols": ["EURUSD"], "tfs": ["M15", "H1"]}})
+    job = wait(server)
+    assert job["status"] == panel_server.DONE and job["result"] == "1 série(s) atualizada(s), 0 com falha, 1 remontada(s)"
+    assert calls == [(["EURUSD"], Timeframe.M15.label)]                  # o H1 é montado: não se extrai, refaz-se
+
+
+def test_specs_and_actions_without_mt5_access(server, monkeypatch):
+    call(server, "POST", "/api/action", {"action": "specs", "params": {"symbols": ["EURUSD"]}})
+    job = wait(server)
+    assert job["status"] == panel_server.FAILED and "sem acesso ao MetaTrader 5" in job["result"]
+    info = type("Info", (), {"point": 1e-5, "digits": 5, "trade_tick_size": 1e-5, "trade_tick_value": 1.0,
+                             "volume_min": 0.01, "volume_step": 0.01, "volume_max": 100.0,
+                             "trade_contract_size": 100000.0, "currency_profit": "USD", "spread": 8})()
+    server.app._connect = lambda: type("C", (), {"is_initialized": True, "get_symbol_info": lambda self, s: info})()
+    call(server, "POST", "/api/action", {"action": "specs", "params": {"symbols": ["EURUSD"]}})
+    job = wait(server)
+    assert job["status"] == panel_server.DONE and job["result"].startswith("1 de 1 especificação")
+    assert server.db.get_symbol_spec("EURUSD") is not None
+    server.app._connect = lambda: (_ for _ in ()).throw(RuntimeError("ponte parada"))
+    call(server, "POST", "/api/action", {"action": "update", "params": {"symbols": ["EURUSD"], "tfs": ["M15"]}})
+    assert "Não foi possível conectar ao MetaTrader 5: ponte parada" in wait(server)["result"]
 
 
 def test_resample_battery_and_stop_all(server):

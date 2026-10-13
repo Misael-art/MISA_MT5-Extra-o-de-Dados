@@ -114,7 +114,8 @@ class UIManager:
                 from mt5_extracao import notify
                 server = panel_server.PanelServer(
                     db, config, notifier=lambda title, text, level=None: notify.send(config, title, text,
-                                                                                     level or notify.INFO)).start()
+                                                                                     level or notify.INFO),
+                    connect=lambda: self.app.mt5_connector).start()
                 self._panel_server = server
             except OSError as e:
                 log.warning(f"O painel vivo não pôde subir ({e}); abrindo a fotografia.")
