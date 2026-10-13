@@ -126,6 +126,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
+| T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -2663,6 +2664,41 @@ real por corretora.
 
 **Ordem com a Fase 12:** T13.1 a T13.4 são só Python e não tocam no HADOUKEN, então podem andar em paralelo com a
 Fase 12. T13.5 em diante mexem no HADOUKEN e dependem das tarefas da Fase 12 indicadas em cada uma.
+
+---
+
+## Fase 14 — Plataforma modular HADOUKEN + mt5x (backlog integrado)
+
+**Situação: backlog registrado. Nada implementado.** Pedido do dono do projeto (2026-10-13): registrar como
+tarefas futuras, rastreáveis e na ordem de dependência, as propostas de evolução do conjunto. O backlog fica fora
+deste arquivo, em [propostas/README.md](propostas/README.md), porque cruza três repositórios:
+
+| Épico | Assunto | Onde está | Relação com tarefas deste plano |
+|---|---|---|---|
+| A | Base de dados e inteligência de mercado | [propostas/EPICO_A_ANALYTICS.md](propostas/EPICO_A_ANALYTICS.md) | É a Fase 13 (T13.1 a T13.8), mais Renko, liquidez e correlação entre ativos |
+| B | Framework modular de estratégias | HADOUKEN | novo |
+| C | Estratégias e indicadores | HADOUKEN | parte existe (seis estratégias, T6.x e T8.9) |
+| D | Mecanismos de entrada e execução | HADOUKEN | Gradiente Linear é T12.4 e T12.5 |
+| E | Gestão de posições e saídas | HADOUKEN | parte existe no executor |
+| F | Gestão global de carteira | HADOUKEN | T12.2 e T12.3 |
+| G | Painel HADOUKEN | HADOUKEN | T12.6 (T12.6a a T12.6c) |
+| H | Estatísticas avançadas | HADOUKEN e mt5x | T12.6A |
+| I | Pesquisa, otimização e validação | [propostas/EPICO_I_PESQUISA_VALIDACAO.md](propostas/EPICO_I_PESQUISA_VALIDACAO.md) | estende T6.4, T8.6, T10.5, T10.6 e T10.12 |
+| J | IA e agentes de desenvolvimento | [propostas/EPICO_J_IA_AGENTES.md](propostas/EPICO_J_IA_AGENTES.md) | T12.7 e T9.1 |
+
+**Como este backlog convive com o plano:** as tarefas do backlog usam identificadores próprios (`A-03`, `D-07`) e
+os estados `PROPOSTO → PLANEJADO → EM DESENVOLVIMENTO → EM TESTE → VALIDADO → CONCLUÍDO`. Uma tarefa só entra no
+painel de status deste arquivo, com número `T<fase>.<n>` e passos detalhados, quando for a próxima a ser feita. As
+que já são tarefas daqui (Fases 12 e 13) continuam valendo como estão: o backlog aponta para elas, não as repete.
+
+**Ordem, dependências críticas, regras de compatibilidade e segurança, lacunas do código e decisões pendentes:**
+em [propostas/README.md](propostas/README.md). As referências de estudo indicadas (vídeos, não assistidos nesta
+rodada) estão em [propostas/REFERENCIAS.md](propostas/REFERENCIAS.md).
+
+### T14.0 — Backlog integrado registrado ✅
+
+Dez épicos e 131 tarefas registrados nos repositórios mt5x e HADOUKEN, e a regra de evolução da `mt5x-safety` no
+repositório dela. Só documentação: nenhum código, preset, configuração ou banco foi alterado.
 
 ---
 
