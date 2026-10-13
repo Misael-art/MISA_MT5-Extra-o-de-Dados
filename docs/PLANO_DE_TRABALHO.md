@@ -105,6 +105,16 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.8 | Botão na interface para abrir o painel de resultados | T11.7 | ✅ concluída |
 | T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | ✅ concluída (conferida no host) |
 | T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | ✅ concluída (conferida no host, com o MT5 oculto) |
+| T12.0 | Plano do HADOUKEN 2.0 registrado e diagnóstico do código atual (etapa 0) | T8.9 | ✅ concluída |
+| T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; nenhuma operação supervisionada foi executada |
+| T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
+| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
+| T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | a fazer |
+| T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
+| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.4 | a fazer |
+| T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
+| T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
+| T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -2286,6 +2296,50 @@ do MT5 na tela real. Imagem: [painel vivo](img/painel_vivo.png).
   instalação e religa a ponte, sempre com confirmação na página.
 - **Critérios de aceite:** no host, com o modo oculto, uma atualização e um teste MQL5 disparados pelo painel; a
   página mostra o progresso e o aviso do sistema chega no fim.
+
+---
+
+## Fase 12 — HADOUKEN 2.0: carteira, Gradiente Linear, painel e estatísticas
+
+Especificação do dono do projeto (2026-10-13), registrada em `Documentation/HADOUKEN_2/PLANO.md` do repositório
+HADOUKEN (`projeto-indicadores-mt5`); o andamento real de cada etapa, com o que não foi conferido, está em
+`Documentation/HADOUKEN_2/ANDAMENTO.md` de lá. Aqui ficam o painel de status e a parte do mt5x.
+
+**Regras da fase:** o mt5x continua sem enviar ordens; no MQL5 só o `HDK_SafeExecutor` envia, altera ou cancela;
+ver a conta não dá direito de mexer nela; a paridade dos seis robôs de estratégia não pode mudar; conta real nunca
+é o padrão. Cada etapa tem o seu critério de aceite no plano de lá e só é marcada ✅ com ele cumprido.
+
+### T12.0 — Plano e diagnóstico ✅
+
+Plano registrado e código atual levantado (seção "Etapa 0" do andamento). Achados que mudam o caminho: o executor
+não cria ordem pendente (a boleta e a grade dependem disso); não existe orçamento de risco global; a `mt5x-safety`
+está desatualizada em relação à `Safety/`; não há conta netting no host, então nada de netting (B3) se prova aqui.
+
+### T12.1 — Safety ampliada ⏳
+
+No HADOUKEN: `ENUM_HDK_PERMISSION` e, no `HDK_SafeExecutor`, `SetMandate`, `Adopt`, `ScopeFor`, `SupervisedClose`,
+`SupervisedCancel` e `SupervisedCloseAll`, todas auditadas em `MQL5\Files\HDK_Audit`. As funções antigas não
+mudaram: seguem restritas ao próprio magic. **Compila** (painel, sentinela e cinco robôs de estratégia). **Falta:**
+executar uma operação supervisionada (só acontece com o guardião da T12.3), rodar de novo a paridade dos seis
+robôs, atualizar a `mt5x-safety` e a regra da bateria para os arquivos novos.
+
+### T12.2 — Carteira somente leitura ⏳
+
+- HADOUKEN: `HDK_PortfolioRegistry.mqh` e o robô `HDK_AccountGuardian.mq5`, que só observa, avisa e grava
+  `Common\Files\HDK_portfolio_<conta>.json`.
+- mt5x: `robots/portfolio.py` e `mt5x portfolio` (pela ponte) ou `mt5x portfolio --guardian` (pelo arquivo do
+  sentinela). Mostra posições e pendentes de todos os robôs e manuais, o dono de cada uma (pelo magic number do
+  catálogo), o risco até o stop, os totais e os ativos com mais de um dono. Chave nova:
+  `[ROBOTS] max_account_risk_pct` (0 = não compara; só muda o estado mostrado).
+- **Conferido:** seis testes automáticos; leitura real da conta demo, vazia (estado NORMAL).
+- **Falta para o aceite:** conciliar com o terminal uma conta **com posições, inclusive manuais**; ver o sentinela
+  carregado em um gráfico; comparar o risco calculado no MQL5 (`OrderCalcProfit`) com o do Python (valor do tick);
+  conta netting.
+
+### T12.3 a T12.8 — a fazer
+
+Na ordem do plano. A T12.3 (guardião com poder de bloquear) é a que dá uso às operações supervisionadas da T12.1.
+A T12.4 começa por ensinar o executor a criar ordens pendentes.
 
 ---
 

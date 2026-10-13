@@ -836,6 +836,55 @@ def cmd_analyze(args, ctx):
     return EXIT_OK
 
 
+def cmd_portfolio(args, ctx):
+    """Carteira da conta: todas as posições e ordens, de quem são e quanto arriscam. Somente leitura."""
+    from mt5_extracao import mt5_connector
+    from mt5_extracao.robots import catalog, portfolio
+    if args.guardian:
+        data = portfolio.read_guardian(ctx.config)
+        if data is None:
+            _print("Não há retrato do guardião. Coloque o HDK_AccountGuardian em um gráfico do MetaTrader 5 "
+                   "(ele grava o retrato a cada poucos segundos) ou rode sem --guardian, pela ponte.")
+            return EXIT_FAIL
+        _data(portfolio=data, source="guardian")
+        _print(f"Retrato do HDK_AccountGuardian, conta {data.get('login')}, gravado em {data.get('updated')} "
+               f"(horário do servidor): estado {data.get('state')}" + (f" ({data.get('reason')})" if data.get("reason") else ""))
+        _print(f"  Saldo {_fmt_num(data.get('balance', 0))}   Patrimônio {_fmt_num(data.get('equity', 0))}   Flutuante "
+               f"{_fmt_num(data.get('floating', 0))}   Risco até o stop "
+               f"{_fmt_num(data.get('risk_open', 0) + data.get('risk_pending', 0))}"
+               + ("" if data.get("risk_complete") else " (incompleto: há posição ou ordem sem stop)"))
+        _print(f"  {len(data.get('positions', []))} posição(ões), {len(data.get('orders', []))} ordem(ns) pendente(s).")
+        return EXIT_OK
+    ctx.connector()
+    limit = ctx.config.getfloat("ROBOTS", "max_account_risk_pct", fallback=0.0)
+    data = portfolio.snapshot(mt5_connector.mt5, catalog.load_catalog(ctx.config, ctx.db), limit)
+    _data(portfolio=data, source="bridge")
+    t = data["totals"]
+    _print(f"Carteira da conta {data['login']} ({data['server']}, {'DEMO' if data['demo'] else 'REAL'}, "
+           f"{'hedging' if data['hedging'] else 'netting: uma posição por ativo'}), em {data['currency']}:")
+    _print(f"  Estado: {data['state']}" + (f" ({data['reason']})" if data["reason"] else ""))
+    _print(f"  Saldo {_fmt_num(t['balance'])}   Patrimônio {_fmt_num(t['equity'])}   Margem livre "
+           f"{_fmt_num(t['margin_free'])}   Flutuante {_fmt_num(t['floating'])}")
+    _print(f"  Risco até o stop: {_fmt_num(t['risk_open'])} nas posições e {_fmt_num(t['risk_pending'])} nas ordens "
+           f"pendentes ({_fmt_num(t['risk_pct'])}% do saldo" + (")" if t["risk_complete"] else ", INCOMPLETO)"))
+    _print(f"  {t['positions']} posição(ões), {t['orders']} ordem(ns) pendente(s), {t['without_stop']} sem stop, "
+           f"{t['manual']} manual(is) ou sem dono.")
+    for group in data["by_owner"]:
+        _print(f"  - {group['owner']}: {group['positions']} posição(ões), {group['orders']} ordem(ns), "
+               f"{_fmt_num(group['volume'])} lote(s) em {', '.join(group['symbols'])}; resultado "
+               f"{_fmt_num(group['profit'])}, risco {_fmt_num(group['risk_money'])}")
+    for item in data["positions"]:
+        risk = "SEM STOP" if not item["has_stop"] else ("risco não calculado" if item["risk_money"] is None
+                                                        else f"risco {_fmt_num(item['risk_money'])}")
+        _print(f"    #{item['ticket']} {item['symbol']} {'COMPRA' if item['direction'] > 0 else 'VENDA'} "
+               f"{_fmt_num(item['volume'])} ({item['owner']}): resultado {_fmt_num(item['profit'])}, {risk}")
+    for symbol, who in data["shared_symbols"].items():
+        _print(f"  ATENÇÃO: {symbol} tem mais de um dono ({', '.join(who)})"
+               + ("." if data["hedging"] else ": em conta netting eles dividem UMA posição."))
+    _print("Somente leitura: este comando não envia, altera nem cancela ordens.")
+    return EXIT_OK
+
+
 def cmd_status(args, ctx):
     """Retrato do projeto para decidir o próximo passo sem olhar a tela."""
     from mt5_extracao import agent
@@ -1625,6 +1674,12 @@ def build_parser():
     p.add_argument("--tf", required=True)
     p.add_argument("--period", default="1 ano", help='"1 mês", "3 meses", "6 meses", "1 ano" ou "Tudo"')
     p.set_defaults(func=cmd_analyze)
+
+    p = sub.add_parser("portfolio", help="carteira da conta: posições e ordens de todos os robôs e manuais, com o "
+                                         "risco até o stop (somente leitura)")
+    p.add_argument("--guardian", action="store_true",
+                   help="lê o retrato gravado pelo HDK_AccountGuardian, sem usar a ponte")
+    p.set_defaults(func=cmd_portfolio)
 
     p = sub.add_parser("status", help="retrato da base, dos robôs e das validações, com as próximas ações sugeridas")
     p.set_defaults(func=cmd_status)
