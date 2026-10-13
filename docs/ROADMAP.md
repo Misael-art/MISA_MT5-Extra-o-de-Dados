@@ -37,6 +37,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F10** SDK de robôs | Contrato do robô, biblioteca de segurança MQL5 versionada, `robots new`, ciclo `robots check`, bateria completa para MQL5, paridade Python × MQL5, API pública, documentação e pacote; como funções opcionais, geração de MQL5 a partir de uma estratégia declarada em Python e preparação para o MQL5 Market | T10.0–T10.12 + T10.W | F8 (T8.4–T8.6), F9 | T10.0–T10.8 e T10.10 ✅; demais a fazer (T10.9 pacote, T10.11 Market, T10.12 custo do backtester, T10.W Windows). Lacunas conhecidas em docs/sdk/exatidao.md; a do custo do backtester Python foi resolvida na T10.12 (swap e spread medido nos ticks). Opcionais: T10.10 (gerar MQL5 a partir de Python) e T10.11 (preparar para o MQL5 Market). **T10.W (validação no Windows) é pendência: não bloqueia o desenvolvimento no host atual** |
 | **F11** Testes amplos e operação discreta | Montar um timeframe maior a partir de uma base menor (M5 de M1...), backtest em vários ativos de uma vez, MT5 oculto (sem ocupar a tela) e avisos em pop-up no computador a cada ação executada | T11.0–T11.10 | F1, F8, F10 | T11.0–T11.4 ✅ (T11.3 e T11.4 só validadas no Linux; avisos de operações do robô só com MT5 simulado); T11.5–T11.8 (lote, matriz, painel visual e botão na interface) ✅; T11.9–T11.10 (painel vivo, com ações) ✅ |
 | **F12** HADOUKEN 2.0 | Carteira da conta, guardião global, Gradiente Linear, painel recolhível com abas, estatísticas e copiloto de IA só de leitura | T12.0–T12.8 | F8, F10 | T12.0, T12.L (janela organizada) e T12.P (painel responsivo) ✅; T12.1 e T12.2 ⏳; T12.3 em diante a fazer |
+| **F13** MT5x Analytics | Catálogo de evidências sobre ativos: barras derivadas do M1 por sessão, características com data de disponibilidade (volume relativo, regime, sazonalidade), hipóteses validadas fora da amostra e um retrato pequeno que os robôs MQL5 só leem. Especificação em [analytics/ESPECIFICACAO.md](analytics/ESPECIFICACAO.md) | T13.0–T13.8 | F11 (T11.1), F12 (para T13.5 em diante) | T13.0 ✅ (plano); demais a fazer. **Nada implementado** |
 
 ## Marcos (cada marco = versão publicável)
 
@@ -72,6 +73,8 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
     - F11, pedida pelo dono do projeto antes da T10.11: T11.1 → T11.2 → T11.3 → T11.4
     - T10.W quando houver uma máquina Windows; até lá, cada tarefa acrescenta o que falta conferir ao
       checklist em [validacao_instaladores.md](validacao_instaladores.md)
+13. F13 (MT5x Analytics), planejada: T13.1 → T13.2 → T13.3 → T13.4 só em Python, em paralelo com a F12; T13.5 → T13.6 → T13.7 → T13.8
+    mexem no HADOUKEN e dependem da F12 (veja as dependências de cada tarefa)
 
 As fases F1 e F2 são independentes e podem ser executadas em paralelo por
 agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
