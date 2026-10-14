@@ -107,8 +107,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | ✅ concluída (conferida no host) |
 | T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | ✅ concluída (conferida no host, com o MT5 oculto) |
 | T12.0 | Plano do HADOUKEN 2.0 registrado e diagnóstico do código atual (etapa 0) | T8.9 | ✅ concluída |
-| T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; nenhuma operação supervisionada foi executada |
-| T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
+| T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; operação supervisionada fica para depois da T12.3 e só em demo |
+| T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: implementação F-03 em curso; conciliação demo com posições e netting pendentes |
 | T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800, ligada e desligada) |
 | T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; Windows e tema claro não vistos |
 | T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída; partes e devolução vistas no terminal real nos testes da T12.L3 |
@@ -116,7 +116,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída e testada no MT5 real do host (tela virtual); a disposição do painel com robô de verdade e o Windows não foram vistos |
 | T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
 | T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
-| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
+| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | ⏳ em implementação autorizada; operações supervisionadas serão exercitadas depois da etapa, apenas em demo |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor (D-02) e boleta de ordem pendente no painel (G-05, limite e stop, exercitada em conta demo) entregues; a grade não começou |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
 | T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | a fazer (dividida em T12.6a, T12.6b e T12.6c na revisão de 2026-10-13) |
@@ -2493,9 +2493,22 @@ está desatualizada em relação à `Safety/`; não há conta netting no host, e
 
 No HADOUKEN: `ENUM_HDK_PERMISSION` e, no `HDK_SafeExecutor`, `SetMandate`, `Adopt`, `ScopeFor`, `SupervisedClose`,
 `SupervisedCancel` e `SupervisedCloseAll`, todas auditadas em `MQL5\Files\HDK_Audit`. As funções antigas não
-mudaram: seguem restritas ao próprio magic. **Compila** (painel, sentinela e cinco robôs de estratégia). **Falta:**
-executar uma operação supervisionada (só acontece com o guardião da T12.3), rodar de novo a paridade dos seis
-robôs, atualizar a `mt5x-safety` e a regra da bateria para os arquivos novos.
+mudaram: seguem restritas ao próprio magic. **Compila** (painel, sentinela e seis robôs de estratégia); `mt5x-safety`
+1.4.0 inclui a consolidação de exposição. Em 2026-10-14 rodei a paridade T10.6 dos seis robôs em EURUSD no período
+2025-10-01 a 2026-09-30 (Strategy Tester, cada tick). Nenhum cumpriu todos os limites existentes; essa comparação
+mede Python × MQL5 e não é uma aprovação operacional:
+
+| Robô | Python × MQL5 | Casadas | Pares até 5% | Diferença do giro | Mediana MQL5/Python |
+|---|---:|---:|---:|---:|---:|
+| EmaAtr H1 | 58 × 58 | 96,6% | 91,1% | 1,5% | 0,997 |
+| Donchian H4 | 32 × 31 | 96,9% | 90,3% | 3,4% | 0,994 |
+| BbRsi H1 | 167 × 164 | 96,4% | 77,6% | 2,6% | 0,978 |
+| Squeeze H1 | 149 × 149 | 100,0% | 85,2% | 2,5% | 0,986 |
+| Pullback H1 | 58 × 55 | 89,7% | 94,2% | 1,2% | 0,990 |
+| Orb M15 | 257 × 239 | 91,8% | 36,0% | 1,2% | 0,941 |
+
+**Pendente:** exercitar uma operação supervisionada depois da T12.3, apenas em demo. Nenhuma operação supervisionada
+foi executada.
 
 ### T12.2 — Carteira somente leitura ⏳
 
@@ -3055,7 +3068,9 @@ interruptores; e é preciso decidir como 12 abas cabem na disposição compacta 
 
 ### T12.3 a T12.8 — a fazer
 
-Na ordem do plano. A T12.3 (guardião com poder de bloquear) é a que dá uso às operações supervisionadas da T12.1.
+**Decisão do dono (2026-10-14):** avançar a implementação da Safety em T12.2/T12.3 mesmo com a validação
+operacional pendente. Exercitar operações supervisionadas somente após T12.3 e somente em conta demo. A T12.3
+(guardião com poder de bloquear) dá uso às operações supervisionadas da T12.1; nenhuma conta real será usada.
 A T12.4 começa por ensinar o executor a criar ordens pendentes.
 
 ---

@@ -1,6 +1,6 @@
 # ExemploCruzamento
 
-Robô MQL5 criado com `mt5x robots new`. Toda ordem passa pela biblioteca de segurança `mt5x-safety` 1.3.0.
+Robô MQL5 criado com `mt5x robots new`. Toda ordem passa pela biblioteca de segurança `mt5x-safety` 1.4.0.
 O esqueleto **não opera** até você escrever o sinal.
 
 ## O que editar

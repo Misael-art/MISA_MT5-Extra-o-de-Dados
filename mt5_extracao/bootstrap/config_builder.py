@@ -96,6 +96,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("tester_model", "4"),           # Strategy Tester: 4 ticks reais (padrão), 0 cada tick; 1 e 2 não valem na bateria
         ("max_real_risk_pct", "1.0"),    # teto de risco por operação (%) aceito pela bateria de segurança
         ("max_account_risk_pct", "0"),   # mt5x portfolio: avisa se o risco da conta até o stop passar disso (%; 0 = desligado)
+        ("account_exposure_groups", ""), # mt5x portfolio: grupos fixos; grupos separados por ; e padrões de símbolos por ,
         ("safety_lib_dir", ""),          # clone local da biblioteca mt5x-safety (vazio = não instalada)
         ("batch_max_cpu_pct", "75"),     # backtests pela interface: teto de uso de CPU (%) para rodar mais um em paralelo
         ("batch_max_ram_pct", "85"),     # idem, para a memória

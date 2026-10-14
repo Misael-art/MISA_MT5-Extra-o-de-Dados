@@ -912,10 +912,12 @@ def cmd_portfolio(args, ctx):
                f"{_fmt_num(data.get('risk_open', 0) + data.get('risk_pending', 0))}"
                + ("" if data.get("risk_complete") else " (incompleto: há posição ou ordem sem stop)"))
         _print(f"  {len(data.get('positions', []))} posição(ões), {len(data.get('orders', []))} ordem(ns) pendente(s).")
+        _print_portfolio_exposures(data)
         return EXIT_OK
     ctx.connector()
     limit = ctx.config.getfloat("ROBOTS", "max_account_risk_pct", fallback=0.0)
-    data = portfolio.snapshot(mt5_connector.mt5, catalog.load_catalog(ctx.config, ctx.db), limit)
+    fixed_groups = ctx.config.get("ROBOTS", "account_exposure_groups", fallback="")
+    data = portfolio.snapshot(mt5_connector.mt5, catalog.load_catalog(ctx.config, ctx.db), limit, fixed_groups)
     _data(portfolio=data, source="bridge")
     t = data["totals"]
     _print(f"Carteira da conta {data['login']} ({data['server']}, {'DEMO' if data['demo'] else 'REAL'}, "
@@ -939,8 +941,36 @@ def cmd_portfolio(args, ctx):
     for symbol, who in data["shared_symbols"].items():
         _print(f"  ATENÇÃO: {symbol} tem mais de um dono ({', '.join(who)})"
                + ("." if data["hedging"] else ": em conta netting eles dividem UMA posição."))
+    _print_portfolio_exposures(data)
     _print("Somente leitura: este comando não envia, altera nem cancela ordens.")
     return EXIT_OK
+
+
+def _print_portfolio_exposures(data):
+    """Mostra a consolidação por ativo e grupo dos retratos do mt5x e do guardião."""
+    exposures = data.get("exposures", [])
+    if exposures:
+        complete = data.get("risk_complete", data.get("totals", {}).get("risk_complete", True))
+        note = " (parcial: há risco não calculado)" if not complete else ""
+        _print(f"Exposição por ativo; risco na moeda da conta{note}:")
+        for item in exposures:
+            buy_count = item.get("buy_positions", 0)
+            buy_orders = item.get("buy_orders", 0)
+            sell_count = item.get("sell_positions", 0)
+            sell_orders = item.get("sell_orders", 0)
+            _print(f"  {item.get('symbol')}: compra {buy_count} posição(ões)/{buy_orders} ordem(ns), "
+                   f"{_fmt_num(item.get('buy_volume', 0))} lote(s), risco {_fmt_num(item.get('buy_risk_money', 0))}; "
+                   f"venda {sell_count} posição(ões)/{sell_orders} ordem(ns), "
+                   f"{_fmt_num(item.get('sell_volume', 0))} lote(s), risco {_fmt_num(item.get('sell_risk_money', 0))} "
+                   f"{item.get('currency', data.get('currency', ''))}.")
+    groups = data.get("groups", [])
+    if groups:
+        complete = data.get("risk_complete", data.get("totals", {}).get("risk_complete", True))
+        note = " (parcial: há risco não calculado)" if not complete else ""
+        _print(f"Exposição por grupo{note}:")
+        for item in groups:
+            _print(f"  {item.get('group')}: compra {_fmt_num(item.get('buy_risk_money', 0))}, "
+                   f"venda {_fmt_num(item.get('sell_risk_money', 0))} {item.get('currency', data.get('currency', ''))}.")
 
 
 def cmd_status(args, ctx):
