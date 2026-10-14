@@ -110,16 +110,16 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; nenhuma operação supervisionada foi executada |
 | T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
 | T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800, ligada e desligada) |
-| T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; Windows e tema claro não vistos |
+| T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; tema claro e disposição normal vistos na T12.6a; Windows pendente |
 | T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída; partes e devolução vistas no terminal real nos testes da T12.L3 |
 | T12.L2 | Opções da organização da janela na interface (diálogo Configurações), gravando o `config.ini` sem perder comentários | T12.L1 | ✅ concluída no Linux (vista em tela virtual, temas claro e escuro); Windows não visto |
 | T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída e testada no MT5 real do host (tela virtual); a disposição do painel com robô de verdade e o Windows não foram vistos |
 | T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
-| T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
+| T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | ✅ concluída no Linux (2026-10-14): normal forçada, ajuste derivado em 70%, paleta clara e tela eDP-1 1280×800 vistos; linha de base sem painel registrada; tentativa de VENDA bloqueada, sem execução nem mudança de posição; Windows pendente |
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor (D-02) e boleta de ordem pendente no painel (G-05, limite e stop, exercitada em conta demo) entregues; a grade não começou |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
-| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | a fazer (dividida em T12.6a, T12.6b e T12.6c na revisão de 2026-10-13) |
+| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | ⏳ parcial: T12.6a concluída; T12.6b e T12.6c a fazer (dividida na revisão de 2026-10-13) |
 | T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
@@ -2577,23 +2577,24 @@ documentos do HADOUKEN **não foram alterados**; o que muda lá está indicado e
 **Achados sobre as etapas do painel (T12.P e T12.6)**
 
 1. **A etapa 6 foi feita pela metade e fora de ordem.** As três disposições (compacta, normal, ampla) entraram
-   antes das etapas 3 a 5. Do que falta, uma parte não depende de nada (botão recolhido, quebra de linha no log,
-   tema claro) e outra depende de etapas que não começaram: a aba Boleta e a aba Gradiente precisam das ordens
+   antes das etapas 3 a 5. Do que falta, uma parte não depende de nada (botão recolhido, quebra de linha no log)
+   e outra depende de etapas que não começaram: a aba Boleta e a aba Gradiente precisam das ordens
    pendentes (T12.4), a aba Estatísticas completa é a T12.6A, a aba IA é a T12.7. Hoje o painel de status põe tudo
    sob "T12.6, depende de T12.4", o que trava também o que poderia andar.
-2. **Quatro coisas se chamam "layout" ou "compacto".** (a) a organização da janela do MT5; (b) as disposições do
-   painel (`InpPanelLayout`: compacta, normal, ampla); (c) os estados do plano (`EXPANDIDO`, `COMPACTO`,
-   `RECOLHIDO`); (d) um `ENUM_HDK_LAYOUT_MODE` em `HDK_Config.mqh` (compacto, normal, expandido, mínimo), cujo uso
-   não foi verificado. "Compacto" é ao mesmo tempo uma disposição e um estado. Além disso o painel já tem um
-   "minimizar" (vira uma barra), que não é o `RECOLHIDO` do plano (botão `H` com ponto colorido).
+2. **Vocabulário fixado na T12.6a.** "Disposição do painel" nomeia compacta, normal e ampla (`InpPanelLayout`);
+   "estado do painel" nomeia expandido e recolhido (o botão `—` do v7 recolhe o painel em uma barra); "organização
+   da janela do MT5" nomeia o arranjo do terminal aplicado pelo mt5x. "Compacta" não é um estado. A enumeração
+   ativa é `ENUM_HDK_PANEL_LAYOUT`; `ENUM_HDK_LAYOUT_MODE` aparece somente no modelo genérico de `HDK_Config.mqh`,
+   sem referência no painel v7.
 3. **A lista de abas do plano tem 11 e a Fase 13 acrescenta uma** ("Inteligência do Ativo", T13.6). O painel tem
    quatro hoje (Visão geral, Posições, Estatísticas, Log). Não há decisão sobre como 12 abas cabem na disposição
    compacta, que mostra quatro linhas por aba.
-4. **Construir em cima do que não foi visto.** Continuam sem conferência: a disposição normal, o parâmetro que
-   força a disposição, o ajuste de tamanho abaixo de 100%, o tema claro, a tela real do dono (2560×1980) e o
-   Windows. Também: vender, trailing, break-even no lucro, limites de perda atingidos e dois painéis ao mesmo tempo.
-5. **Sem linha de base de desempenho.** A medida de 7,8% de um núcleo e 377 MB não tem comparação sem o painel;
-   com mais abas, não haverá como dizer o que piorou.
+4. **Construir em cima do que não foi visto.** A disposição normal, o parâmetro que a força, a paleta clara, o
+   ajuste abaixo de 100% e uma tela física foram conferidos na T12.6a. Continuam pendentes Windows, testes de
+   negociação em conta apropriada e duas instâncias ao mesmo tempo.
+5. **Linha de base registrada em escopo menor.** A T12.6a mediu um gráfico com e sem painel no mesmo terminal;
+   a CPU variou entre janelas e não permite atribuir a diferença ao painel. A amostra histórica de oito gráficos
+   e painel (7,8% de um núcleo e 377 MB) segue sem par equivalente.
 
 **Etapas revistas** (substituem a linha única "T12.6" como guia de ordem; os critérios de aceite da etapa 6 do
 plano do HADOUKEN continuam valendo para o conjunto)
@@ -2602,11 +2603,11 @@ plano do HADOUKEN continuam valendo para o conjunto)
 |---|---|---|
 | T12.L1 | Organização da janela configurável por partes, devolução sem regravar o arquivo inteiro | T12.L |
 | T12.L2 | Opções da organização da janela na interface (diálogo Configurações) | T12.L1 |
-| T12.6a | Fechar o que ficou sem conferência no painel v7 e fixar o vocabulário | T12.P |
-| T12.6b | Estado recolhido (botão `H`), quebra de linha do log e a aba Configuração | T12.6a |
+| T12.6a | Fechar o que ficou sem conferência no painel v7 e fixar o vocabulário ✅ 2026-10-14 | T12.P |
+| T12.6b | Estado recolhido (botão `H`), quebra de linha do log e a aba Configuração | T12.6a, G-02 (arquitetura modular do painel) |
 | T12.6c | Abas que dependem de outras etapas: Boleta e Gradiente (T12.4), Carteira (T12.2), Risco e Alertas (T12.3), Estatísticas (T12.6A), IA (T12.7), Inteligência do Ativo (T13.6) | cada aba, a sua |
 
-A T12.L1 e a T12.L2 são do mt5x e não dependem do guardião: podem ser as próximas. A T12.6a também.
+A T12.L1–T12.L3 foram concluídas; a T12.6a também. As próximas tarefas devem seguir a tabela de dependências acima.
 
 ### T12.L1 — Organização da janela configurável por partes ✅
 
@@ -3020,10 +3021,10 @@ próprio robô (sem guardião, T12.3); com pendentes nas duas direções a faixa
 bloqueado", o que é verdade mas confunde.
 
 **Não conferido:** uma pendente executando e virando posição pela boleta (só no teste do Strategy Tester do
-executor); cancelamento por fim do horário e por bloqueio de risco; disposições compacta e ampla da aba; tema
-claro; a tela real do dono do projeto; conta netting; ativo da B3; Windows.
+executor); cancelamento por fim do horário e por bloqueio de risco; disposições compacta e ampla da aba; conta
+netting; ativo da B3; Windows. A paleta clara e a saída física eDP-1 1280×800 foram vistas na T12.6a.
 
-### T12.6a — Painel v7: conferência pendente e vocabulário
+### T12.6a — Painel v7: conferência e vocabulário ✅
 
 - **Objetivo:** não empilhar abas novas em cima do que não foi visto, e dar um nome só a cada coisa.
 - **Onde:** repositório HADOUKEN (`TESTES_PAINEL_V7.md`, `PLANO.md`); aqui só o painel de status.
@@ -3034,10 +3035,17 @@ claro; a tela real do dono do projeto; conta netting; ativo da B3; Windows.
   `HDK_Config.mqh` ainda é usado.
 - **Critério de aceite:** a lista "O que não foi testado" do relatório do painel fica só com o que depende de
   mercado, de outra conta ou do Windows.
+- **Concluída (2026-10-14):** disposição normal forçada, ajuste abaixo de 100% derivado da fórmula ativa e da
+  captura, paleta clara automática e tela física eDP-1 1280×800 vistos; o painel coube também após reduzir a janela.
+  A linha de base de um gráfico sem painel foi registrada. O MT5 recusou uma tentativa de VENDA por AutoTrading
+  desligado; nenhuma ordem foi executada nem posição alterada. Medições e limitações em
+  `Documentation/HADOUKEN_2/TESTES_PAINEL_V7.md` no repositório HADOUKEN.
 
 ### T12.6b e T12.6c
 
-Detalhadas no plano do HADOUKEN quando chegarem. Registro desta revisão: o **estado recolhido** e o **minimizar**
+Detalhadas no plano do HADOUKEN. A T12.6b depende de G-02 (arquitetura modular), conforme as dependências de
+G-03/G-04 no épico; G-02 é a próxima tarefa elegível e T12.6b aguarda sua conclusão. Registro desta revisão: o
+**estado recolhido** e o **minimizar**
 que já existe precisam virar uma coisa só ou ter papéis declarados; a aba **Configuração** do painel deve mostrar a
 organização da janela com as mesmas opções da T12.L2 (lendo o que o mt5x grava), em vez de um segundo conjunto de
 interruptores; e é preciso decidir como 12 abas cabem na disposição compacta antes de criar a quinta.
