@@ -139,8 +139,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T15.8 | Gestão de recursos: arquivo em Parquet, aparar e retenção por idade, aviso por série e voltar a uma cópia pela interface | T15.7 | ✅ concluída no Linux; PostgreSQL real e Windows não vistos |
 | T15.9 | Gestão de recursos: limites que bloqueiam a gravação na extração, retenção por ativo e `drop_chunks` do TimescaleDB | T15.8 | ✅ concluída no Linux; TimescaleDB real e Windows não vistos |
 | T15.10 | Próximas frentes da gestão de recursos (guarda em ticks e book, indicadores no painel vivo) | T15.9 | proposta |
-| T16.0 | Plano da aba Analytics de operações (contexto, re-simulação de execução, insights, lente por robô e por ativo) em `docs/propostas/ANALYTICS_OPERACOES.md` | — | ✅ plano registrado (aguarda as decisões da seção 8) |
-| T16.1–T16.12 | Analytics de operações: livro de operações, importadores, enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só estudo), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
+| T16.0 | Plano da aba Laboratório (analytics de operações: contexto, re-simulação de execução, insights, lente por robô e por ativo) em `docs/propostas/ANALYTICS_OPERACOES.md` | — | ✅ plano registrado, com as decisões do dono (seção 8) |
+| T16.1–T16.12 | Laboratório: livro de operações, importadores, calendário econômico de várias fontes (CSV e MT5), enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só para robô que o suporta, com as travas dele), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -3380,17 +3380,18 @@ repositório dela. Só documentação: nenhum código, preset, configuração ou
 
 Sobre a regra "nunca apague tabelas de usuários": ela vale para mudanças de schema. Aqui a retirada é ação explícita do usuário (ou da automação que ele ligou), sempre precedida do arquivo, e reversível.
 
-## Fase 16 — Analytics de operações (contexto, execução e otimização)
+## Fase 16 — Laboratório: analytics de operações (contexto, execução e otimização)
 
-**Pedida pelo dono do projeto em 2026-10-14.** Uma aba "Analytics" que enriquece cada operação dos robôs (dia, hora,
+**Pedida pelo dono do projeto em 2026-10-14.** Uma aba "Laboratório" que enriquece cada operação dos robôs (dia, hora,
 notícia, volume, volatilidade), mostra onde eles ganham e perdem por duas lentes (por robô e por ativo), re-simula as
-mesmas entradas sob outros modos de execução e propõe regras de filtro validadas fora da amostra. Plano completo,
+mesmas entradas sob outros modos de execução e propõe regras de filtro validadas em walk-forward e numa reserva final
+intocada. Calendário econômico de várias fontes (CSV e exportação do MT5). Plano completo,
 tarefas T16.1 a T16.12, dependências e decisões pendentes: [propostas/ANALYTICS_OPERACOES.md](propostas/ANALYTICS_OPERACOES.md).
 
 Convivência: o pacote é `mt5_extracao/trade_analytics/` e o comando `mt5x trades`, porque `analytics/` e
 `mt5x analytics` já estão reservados para a Fase 13 (contexto do mercado, sem PnL). O livro de operações
-`_trade_ledger` é o mesmo da T12.6A. Martingale e grid seguem proibidos em robô real pela bateria; no Analytics são
-estudo, e martingale nunca é exportado.
+`_trade_ledger` é o mesmo da T12.6A. Martingale e grid seguem proibidos em robô real pela bateria; no Laboratório o
+martingale só aparece para robô que o suporta, com as travas de segurança dele.
 
 ---
 
