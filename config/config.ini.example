@@ -217,3 +217,5 @@ calendar_min_importance = 0
 # Faixas de horário das operações (minutos) e barras do "retorno anterior" à entrada.
 time_bucket_min = 30
 volatility_period = 14
+# Célula (dia, faixa, ativo...) com menos operações que isso aparece hachurada: "amostra pequena, não conclua nada".
+min_trades_cell = 30

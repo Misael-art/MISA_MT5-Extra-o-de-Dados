@@ -141,6 +141,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("calendar_min_importance", "0"),    # 0 todos, 1 baixa+, 2 média+, 3 só alta
         ("time_bucket_min", "30"),           # faixas de horário das operações (minutos)
         ("volatility_period", "14"),         # barras do retorno anterior à entrada
+        ("min_trades_cell", "30"),           # menos operações que isso numa célula = "amostra pequena"
     ])),
 ])
 
