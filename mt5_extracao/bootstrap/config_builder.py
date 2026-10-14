@@ -102,6 +102,35 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("batch_max_ram_pct", "85"),     # idem, para a memória
         ("batch_max_workers", "0"),      # máximo de backtests simultâneos (0 = núcleos do processador menos um)
     ])),
+    ("RESOURCES", OrderedDict([      # gestão de recursos (aba Recursos; mt5x resources). Automação só com opt-in
+        ("auto_enabled", "false"),           # true = monitora e age sozinho no intervalo abaixo
+        ("monitor_interval_minutes", "60"),
+        ("alert_db_gb", "10"),               # avisa quando a base passar disso (0 = desligado)
+        ("alert_disk_free_pct", "10"),       # avisa quando o disco livre cair abaixo disso (%)
+        ("auto_vacuum", "false"),            # otimiza sozinho quando o espaço recuperável passar de vacuum_min_mb
+        ("vacuum_min_mb", "200"),
+        ("auto_clean_orphans", "false"),     # remove sozinho registros de controle de tabelas que não existem mais
+        ("auto_archive", "false"),           # arquiva sozinho (reversível) as séries das regras abaixo
+        ("auto_archive_rules", "obsoleta,vazia"),  # sem_lucro, sem_estudo, obsoleta, vazia
+        ("obsolete_days", "180"),            # idade da última barra para a regra "obsoleta"
+        ("archive_dir", ""),                 # vazio = pasta arquivo/ ao lado da base
+        ("keep_snapshots_days", "365"),      # histórico de medições guardado
+        ("auto_backup", "false"),            # cópia de segurança da base (SQLite) a cada backup_interval_hours
+        ("backup_interval_hours", "24"),
+        ("backup_keep", "5"),                # quantas cópias guardar (as mais velhas são apagadas)
+        ("backup_dir", ""),                  # vazio = pasta copias/ ao lado da base
+        ("auto_clean_files", "false"),       # apaga sozinho logs e exportações mais velhos que os dias abaixo
+        ("logs_keep_days", "30"),            # 0 = nunca apaga logs (o log em uso nunca é apagado)
+        ("exports_keep_days", "0"),          # 0 = nunca apaga exportações
+        ("archive_format", "sqlite"),        # formato do arquivo: sqlite (abre em qualquer lugar) ou parquet (menor; pyarrow)
+        ("auto_trim", "false"),              # apara sozinho (arquiva) o histórico mais velho que os dias abaixo
+        ("retention_intraday_days", "0"),    # barras intradiárias (menores que 1 dia); 0 = guarda tudo
+        ("retention_ticks_days", "0"),       # ticks e book; 0 = guarda tudo
+        ("max_series_mb", "0"),              # avisa quando uma série passar disso (MB); 0 = desligado
+        ("block_disk_free_pct", "0"),        # extração para de gravar com disco livre abaixo disso (%); 0 = nunca
+        ("block_db_gb", "0"),                # extração para de gravar com a base acima disso (GB); 0 = nunca
+        ("retention_overrides", ""),         # retenção por ativo: WIN$N:30, PETR4:0 (0 = guarda tudo desse ativo)
+    ])),
 ])
 
 DEFAULT_SYMBOLS = OrderedDict([
