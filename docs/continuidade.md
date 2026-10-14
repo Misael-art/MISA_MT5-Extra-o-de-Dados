@@ -67,3 +67,20 @@ Só houve conflito em `docs/PLANO_DE_TRABALHO.md` (F-03 × T12.1/T12.6a). Códig
      são candidatos à limpeza.
    - Tabelas internas novas, todas aditivas: `_resource_snapshots` e `_resource_actions`.
 5. Ao terminar a tarefa, atualize o painel do PLANO_DE_TRABALHO.md e, se mudar o estado geral, este arquivo.
+
+## Retomada em 2026-10-14 — T12.3
+
+A implementação autorizada do guardião global está na branch `tarefa/T12.3-guardiao-global` neste repositório,
+`codex/t12-3-orcamento-global` no HADOUKEN e `codex/t12-3-orcamento-global` na `mt5x-safety`. O estado real é
+**parcial**: `Safety/` 7.3 / `mt5x-safety` 1.5.0 implementam orçamento global e por magic, reservas de entradas a
+mercado e pendentes, coordenação do guardião, bloqueio fail-closed e auditoria.
+
+Verificações desta retomada: 11 fontes MQL5 compilaram com zero erros e avisos; o harness passou 21 testes
+sintéticos e 5 chamadas de `Reserve`/`Release` em Strategy Tester de conta demo, sem enviar ordens; os testes
+Python direcionados passaram (28/28); a paridade dos seis robôs foi repetida com os mesmos resultados da linha de
+base. O terminal principal foi restaurado após o teste e o log isolado por execução foi preservado localmente.
+
+T12.3 ainda não atende ao aceite completo: falta validar duas entradas simultâneas de robôs em demo; a reserva de
+planos e os limites por ativo/grupo não foram implementados. A operação supervisionada da T12.1 permanece pendente
+para depois de T12.3 e só poderá ser exercitada em demo. O worktree obsoleto `../MISA_MT5-gestao-recursos` e a
+branch local de integração já foram removidos; o worktree `../MISA_MT5-analytics` continua ativo na tarefa T16.2.

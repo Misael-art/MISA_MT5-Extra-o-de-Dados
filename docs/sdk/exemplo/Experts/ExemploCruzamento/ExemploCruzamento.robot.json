@@ -19,6 +19,6 @@
     "InpStopAtrMult",
     "InpTakeProfitR"
   ],
-  "safety_lib": "1.4.0",
+  "safety_lib": "1.5.0",
   "parity_with": "declared"
 }

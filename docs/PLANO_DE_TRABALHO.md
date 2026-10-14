@@ -116,7 +116,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída e testada no MT5 real do host (tela virtual); a disposição do painel com robô de verdade e o Windows não foram vistos |
 | T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
 | T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | ✅ concluída no Linux (2026-10-14): normal forçada, ajuste derivado em 70%, paleta clara e tela eDP-1 1280×800 vistos; linha de base sem painel registrada; tentativa de VENDA bloqueada, sem execução nem mudança de posição; Windows pendente |
-| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | ⏳ em implementação autorizada; operações supervisionadas serão exercitadas depois da etapa, apenas em demo |
+| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | ⏳ parcial: Safety 7.3 / mt5x-safety 1.5.0; 11 arquivos MQL5 compilados sem avisos; 21 verificações sintéticas + 5 do caminho de reserva em Strategy Tester demo passaram sem ordens; falta validar dois robôs simultâneos; reservas de planos e limites por ativo/grupo pendentes; operações supervisionadas só depois desta etapa e em demo |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor (D-02) e boleta de ordem pendente no painel (G-05, limite e stop, exercitada em conta demo) entregues; a grade não começou |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
 | T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | ⏳ parcial: T12.6a concluída; T12.6b e T12.6c a fazer (dividida na revisão de 2026-10-13) |
@@ -2550,13 +2550,11 @@ mede Python × MQL5 e não é uma aprovação operacional:
 foi executada.
 
 **Divergência de dependências registrada:** a validação restante de T12.1 exige T12.3, mas a tabela faz T12.2
-depender de T12.1 e T12.3 depender de T12.2. A sequência forma um ciclo. É preciso esclarecer se T12.2 pode avançar
-com a implementação da Safety enquanto a operação supervisionada fica para T12.3, ou se a ordem deve ser revista.
-Até essa decisão, T12.1 permanece parcial e T12.2 não é iniciada.
+depender de T12.1 e T12.3 depender de T12.2. A sequência forma um ciclo.
 
-*Harmonização de 2026-10-14:* na frente F-03 a T12.3 passou a constar como "em implementação autorizada", o que
-indica a escolha de avançar com a T12.3 antes de fechar a T12.1. A ordem formal (T12.1 → T12.2 → T12.3) ainda
-precisa da confirmação do dono do projeto; nada foi reordenado nesta harmonização.
+**Decisão do dono (2026-10-14):** a implementação de Safety em T12.2/T12.3 pode avançar com a validação operacional
+pendente. Operações supervisionadas ficam para depois de T12.3 e só serão exercitadas em conta demo. As dependências
+formais da tabela não foram reordenadas; nenhuma conta real será usada.
 
 ### T12.2 — Carteira somente leitura ⏳
 
