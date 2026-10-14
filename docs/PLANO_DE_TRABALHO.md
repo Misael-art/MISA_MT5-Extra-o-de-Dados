@@ -117,7 +117,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
 | T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
-| T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | a fazer |
+| T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor entregues e validadas no Strategy Tester (D-02); boleta e grade não começaram |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
 | T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | a fazer (dividida em T12.6a, T12.6b e T12.6c na revisão de 2026-10-13) |
 | T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
@@ -2934,6 +2934,52 @@ normalmente em conta demo. É relato dele; nenhuma ordem foi enviada nos testes 
 
 **Próximo passo combinado:** a abertura de ordens na instância HADOUKEN, conforme o plano (ordens pendentes no
 executor: D-02 do backlog, primeiro passo da etapa 4 do HADOUKEN 2.0 e da T12.4).
+
+### T12.4, primeiro passo — Ordens pendentes no executor (D-02) ✅
+
+Pedido do dono do projeto (2026-10-13): tratar a abertura de ordens na instância HADOUKEN, conforme o plano, pelo
+caminho mais seguro. A entrega é do repositório HADOUKEN (PR #10 de lá) e da `mt5x-safety` (1.2.0); aqui ficam o
+plano seguido, a evidência e o que mudou no mt5x.
+
+**Plano seguido, na ordem combinada:**
+
+1. Métodos novos no `HDK_SafeExecutor` (`PlacePending`, `ModifyPending`, `CancelPending`, `CancelAllPending`,
+   `CancelExpired`, `PendingCount`) e a contagem do risco das pendentes no `HDK_RiskGuard` (`CheckPendingEntry`),
+   **sem alterar o que existia** e sem ligar nada ao painel nem aos robôs.
+2. Teste só no Strategy Tester: o robô de teste recusa iniciar fora dele, então nenhuma ordem de teste foi para conta.
+3. Paridade: os seis robôs com a camada nova e com a antiga, mesmo período, operação por operação.
+4. `mt5x-safety` 1.2.0 com os mesmos arquivos.
+5. Painel compilado de novo, com o teste no Strategy Tester e a leitura do código refeitos.
+6. Merge.
+
+**Decidido com o dono do projeto:** sem o guardião com orçamento (T12.3), o risco de uma pendente conta só no
+limite do próprio robô, como uma posição aberta. A reserva na conta inteira (F-05) entra com o guardião.
+
+**Evidência (host Linux, MT5 build 6259 no Wine, 2026-10-13):**
+
+- Compila sem erros nem avisos, em pasta separada da instalação (`/include` do MetaEditor).
+- Teste das pendentes: **50 de 50 conferências** (EURUSD H1, cada tick). Entre elas: recusa sem stop, do lado
+  errado do mercado e com volume fora do passo; stop-limite e validade com data; cancelamento por idade; pendente
+  que executa e vira **posição com stop**; o risco passa de pendente para posição; preço médio recusado.
+- **Os seis robôs de estratégia fizeram as mesmas 690 operações** (horário, resultado e volume) com a camada nova e
+  com a antiga: EURUSD, ticks reais, 2025-10-01 a 2026-09-30. A comparação foi direta porque o período padrão da
+  paridade mudou (a base de EURUSD cresceu) e a tabela da seção T8.9 deixou de ser comparável.
+- Painel: compilado com a camada nova, leitura do código aprovada, teste do código atual sem entradas sozinho: a
+  visão continua abrindo-o liberado em conta demo.
+
+**O que mudou no mt5x:** o SDK passou a declarar a `mt5x-safety` 1.2.0 (`scaffold.DEFAULT_SAFETY_VERSION`, o
+exemplo e a documentação do SDK). Quem já tem a 1.1.0 instalada na pasta do MT5 troca com `--upgrade-safety`.
+
+**Achados no caminho:**
+
+- A corretora arredonda a validade da ordem ao minuto.
+- O painel no Strategy Tester é lento: 9 dias de ticks reais levaram 4 minutos, e 3 meses passaram de 4 minutos sem
+  terminar. É mais um dado para a G-17 (resposta do painel).
+
+**Não conferido:** ordem pendente em conta de demonstração (não há quem as coloque: a boleta não existe); conta
+netting; ativo da B3; Windows.
+**Não faz parte desta entrega:** boleta no painel (G-05), cancelamento automático por sinal ou fim de pregão
+(E-10), reserva de risco na conta inteira (F-05), recuperação após reinício (E-13), grade (D-06).
 
 ### T12.6a — Painel v7: conferência pendente e vocabulário
 
