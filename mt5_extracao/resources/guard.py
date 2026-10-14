@@ -56,11 +56,11 @@ def make(db, config, interval: float = 30.0) -> Optional[Callable[[], Optional[s
     policy = policy_mod.load(config)
     if not (policy.block_disk_free_pct or policy.block_db_gb):
         return None
-    state = {"at": 0.0, "reason": None}
+    state = {"at": None, "reason": None}     # None: a primeira chamada sempre mede
 
     def guard() -> Optional[str]:
         now = time.monotonic()
-        if now - state["at"] >= interval:
+        if state["at"] is None or now - state["at"] >= interval:
             state["at"], state["reason"] = now, check(db, policy)
         return state["reason"]
     return guard

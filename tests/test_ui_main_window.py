@@ -36,6 +36,10 @@ def ui(tmp_path):
     manager.theme.rich_glyphs = True      # os testes conferem os símbolos, qualquer que seja o Tk da máquina
     manager.pump = lambda seconds=0.6: _pump(root, seconds)
     manager.pump()
+    # A base é lida em segundo plano: em máquina lenta (runner Windows) 0,6 s não bastam. Espera até 10 s.
+    end = time.time() + 10
+    while not manager.symbol_series and time.time() < end:
+        manager.pump(0.1)
     yield manager
     root.destroy()
 

@@ -513,6 +513,14 @@ def test_guard_is_cached(db, tmp_path, monkeypatch):
     assert len(calls) == 1
 
 
+def test_guard_checks_on_first_call_even_right_after_boot(db, tmp_path, monkeypatch):
+    """time.monotonic() conta desde o boot: numa máquina recém-ligada é menor que o intervalo."""
+    from mt5_extracao.resources import guard
+    monkeypatch.setattr(guard.time, "monotonic", lambda: 5.0)
+    monkeypatch.setattr(guard, "check", lambda db, p: "bloqueado")
+    assert guard.make(db, _config(tmp_path, block_db_gb="1"), interval=30)() == "bloqueado"
+
+
 def test_extractor_stops_before_writing_when_blocked(db):
     import pandas as pd
     from mt5_extracao.historical_extractor import HistoricalExtractor
