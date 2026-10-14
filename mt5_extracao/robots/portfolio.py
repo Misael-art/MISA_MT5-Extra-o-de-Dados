@@ -41,6 +41,32 @@ def owner_name(magic: int, names: dict) -> str:
     return names.get(int(magic), f"robô não catalogado #{int(magic)}")
 
 
+def _matches_symbol(symbol: str, pattern: str) -> bool:
+    """Mesmo curinga do HDK_SymbolMatches: igualdade ou prefixo antes do primeiro `*`."""
+    pattern = pattern.strip()
+    if not pattern:
+        return False
+    star = pattern.find("*")
+    return symbol == pattern if star < 0 else symbol.startswith(pattern[:star])
+
+
+def _exposure_groups(symbol: str, info, fixed_groups: str) -> list[str]:
+    groups = []
+    for index, spec in enumerate((fixed_groups or "").split(";")):
+        patterns = [pattern for pattern in spec.split(",") if pattern.strip()]
+        if any(_matches_symbol(symbol, pattern) for pattern in patterns):
+            groups.append(f"Grupo {index + 1}")
+    if groups:
+        return groups
+    base = str(getattr(info, "currency_base", "") or "")
+    profit = str(getattr(info, "currency_profit", "") or "")
+    if base:
+        groups.append(base)
+    if profit and profit not in groups:
+        groups.append(profit)
+    return groups or [f"Ativo {symbol}"]
+
+
 def _risk(info, buy: bool, volume: float, price: float, stop: float) -> Optional[float]:
     """Perda de ir do preço ao stop, na moeda da conta. None = sem stop ou sem dados do ativo; 0 = stop no lucro."""
     if not stop or info is None:
@@ -53,7 +79,7 @@ def _risk(info, buy: bool, volume: float, price: float, stop: float) -> Optional
     return max(0.0, distance / tick_size * tick_value * float(volume))
 
 
-def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0) -> dict:
+def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0, exposure_groups: str = "") -> dict:
     """
     Retrato da conta conectada. Levanta RuntimeError, com o que fazer, se não há conta.
     `max_risk_pct` (% do saldo) só muda o campo "state": nada é bloqueado aqui.
@@ -72,20 +98,26 @@ def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0) -> dict:
     positions = []
     for p in mt5.positions_get() or ():
         buy = int(p.type) == 0
-        risk = _risk(info(p.symbol), buy, p.volume, float(p.price_open), float(p.sl))
+        specs = info(p.symbol)
+        risk = _risk(specs, buy, p.volume, float(p.price_open), float(p.sl))
         positions.append({
             "ticket": int(p.ticket), "symbol": p.symbol, "magic": int(p.magic), "owner": owner_name(p.magic, names),
             "direction": 1 if buy else -1, "volume": float(p.volume), "price_open": float(p.price_open),
             "sl": float(p.sl), "tp": float(p.tp), "has_stop": bool(p.sl), "risk_money": risk,
+            "base_currency": str(getattr(specs, "currency_base", "") or ""),
+            "profit_currency": str(getattr(specs, "currency_profit", "") or ""),
             "profit": float(p.profit) + float(getattr(p, "swap", 0.0) or 0.0)})
     orders = []
     for o in mt5.orders_get() or ():
         buy = int(o.type) in BUY_ORDER_TYPES
-        risk = _risk(info(o.symbol), buy, o.volume_current, float(o.price_open), float(o.sl))
+        specs = info(o.symbol)
+        risk = _risk(specs, buy, o.volume_current, float(o.price_open), float(o.sl))
         orders.append({
             "ticket": int(o.ticket), "symbol": o.symbol, "magic": int(o.magic), "owner": owner_name(o.magic, names),
             "type": int(o.type), "direction": 1 if buy else -1, "volume": float(o.volume_current),
-            "price": float(o.price_open), "sl": float(o.sl), "has_stop": bool(o.sl), "risk_money": risk})
+            "price": float(o.price_open), "sl": float(o.sl), "has_stop": bool(o.sl), "risk_money": risk,
+            "base_currency": str(getattr(specs, "currency_base", "") or ""),
+            "profit_currency": str(getattr(specs, "currency_profit", "") or "")})
 
     balance = float(getattr(account, "balance", 0.0) or 0.0)
     unknown = [i for i in positions + orders if i["risk_money"] is None]
@@ -120,6 +152,27 @@ def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0) -> dict:
         shared.setdefault(item["symbol"], set()).add(item["owner"])
     shared = {symbol: sorted(who) for symbol, who in shared.items() if len(who) > 1}
 
+    account_currency = str(getattr(account, "currency", "") or "")
+    by_symbol = {}
+    by_group = {}
+    for item, kind in [(p, "positions") for p in positions] + [(o, "orders") for o in orders]:
+        symbol = item["symbol"]
+        exposure = by_symbol.setdefault(symbol, {
+            "symbol": symbol, "base_currency": item["base_currency"], "profit_currency": item["profit_currency"],
+            "currency": account_currency, "buy_positions": 0, "sell_positions": 0,
+            "buy_orders": 0, "sell_orders": 0, "buy_volume": 0.0, "sell_volume": 0.0,
+            "buy_risk_money": 0.0, "sell_risk_money": 0.0})
+        side = "buy" if item["direction"] > 0 else "sell"
+        exposure[f"{side}_{kind}"] += 1
+        exposure[f"{side}_volume"] += item["volume"]
+        exposure[f"{side}_risk_money"] += item["risk_money"] or 0.0
+        for group_name in _exposure_groups(symbol, info(symbol), exposure_groups):
+            group = by_group.setdefault(group_name, {
+                "group": group_name, "currency": account_currency, "buy_positions": 0, "sell_positions": 0,
+                "buy_orders": 0, "sell_orders": 0, "buy_risk_money": 0.0, "sell_risk_money": 0.0})
+            group[f"{side}_{kind}"] += 1
+            group[f"{side}_risk_money"] += item["risk_money"] or 0.0
+
     reason = ""
     if unknown:
         reason = (f"{len(unknown)} posição(ões) ou ordem(ns) sem stop ou sem dados do ativo: o risco da conta não pode "
@@ -127,10 +180,12 @@ def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0) -> dict:
     elif max_risk_pct > 0 and totals["risk_pct"] > max_risk_pct:
         reason = f"risco até o stop de {totals['risk_pct']:.2f}% do saldo (limite {max_risk_pct:.2f}%)"
     return {"login": int(getattr(account, "login", 0) or 0), "server": getattr(account, "server", "") or "",
-            "currency": getattr(account, "currency", "") or "", "demo": getattr(account, "trade_mode", None) == 0,
+            "currency": account_currency, "demo": getattr(account, "trade_mode", None) == 0,
             "hedging": hedging, "state": ALERT if reason else NORMAL, "reason": reason, "totals": totals,
             "positions": positions, "orders": orders,
-            "by_owner": sorted(by_owner.values(), key=lambda g: -g["risk_money"]), "shared_symbols": shared}
+            "by_owner": sorted(by_owner.values(), key=lambda g: -g["risk_money"]), "shared_symbols": shared,
+            "exposures": [by_symbol[key] for key in sorted(by_symbol)],
+            "groups": [by_group[key] for key in sorted(by_group)]}
 
 
 def read_guardian(config, login=None) -> Optional[dict]:

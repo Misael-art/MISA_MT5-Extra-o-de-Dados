@@ -24,7 +24,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x resample --symbols X --base M1 --tf M5,M15,H1    # monta timeframes maiores de uma base menor
     mt5x panel [--open]                                # painel visual: ativos x timeframes x robôs
     mt5x panel --serve --open                          # painel vivo: atualiza sozinho e tem botões de ação
-    mt5x robots [list|import|backtest] ...             # catálogo, importação e backtest de estratégia Python
+    mt5x robots [list|import|backtest|market] ...     # catálogo, importação, backtest e pré-check Market
     mt5x robots [install|compile] <robô>               # copia o robô MQL5 para o MT5 e compila no MetaEditor
     mt5x robots backtest <robô MQL5> --symbol EURUSD --tf H1 [--preset X]   # Strategy Tester do MT5
     mt5x robots backtest <robô> --symbols EURUSD,GBPUSD --tf H1   # o mesmo teste em vários ativos
@@ -35,6 +35,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots check <robô> --symbol X --tf M5        # contrato, compilação, backtest e bateria em um comando
     mt5x robots parity <robô MQL5> --strategy <chave> --symbol X --tf M5   # mesmas operações que o Python?
     mt5x robots battery <robô> [--preset X] [--deep]   # bateria de segurança; --deep repete o Strategy Tester
+    mt5x robots market <robô> [--pack <pasta>]        # pré-check local e pacote manual do MQL5 Market
     mt5x robots start <robô> --symbol X --tf M5        # inicia o robô em conta DEMO (travas conferidas antes)
     mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
     mt5x robots monitor <robô> --watch                 # um pop-up a cada operação do robô
@@ -912,10 +913,12 @@ def cmd_portfolio(args, ctx):
                f"{_fmt_num(data.get('risk_open', 0) + data.get('risk_pending', 0))}"
                + ("" if data.get("risk_complete") else " (incompleto: há posição ou ordem sem stop)"))
         _print(f"  {len(data.get('positions', []))} posição(ões), {len(data.get('orders', []))} ordem(ns) pendente(s).")
+        _print_portfolio_exposures(data)
         return EXIT_OK
     ctx.connector()
     limit = ctx.config.getfloat("ROBOTS", "max_account_risk_pct", fallback=0.0)
-    data = portfolio.snapshot(mt5_connector.mt5, catalog.load_catalog(ctx.config, ctx.db), limit)
+    fixed_groups = ctx.config.get("ROBOTS", "account_exposure_groups", fallback="")
+    data = portfolio.snapshot(mt5_connector.mt5, catalog.load_catalog(ctx.config, ctx.db), limit, fixed_groups)
     _data(portfolio=data, source="bridge")
     t = data["totals"]
     _print(f"Carteira da conta {data['login']} ({data['server']}, {'DEMO' if data['demo'] else 'REAL'}, "
@@ -939,8 +942,36 @@ def cmd_portfolio(args, ctx):
     for symbol, who in data["shared_symbols"].items():
         _print(f"  ATENÇÃO: {symbol} tem mais de um dono ({', '.join(who)})"
                + ("." if data["hedging"] else ": em conta netting eles dividem UMA posição."))
+    _print_portfolio_exposures(data)
     _print("Somente leitura: este comando não envia, altera nem cancela ordens.")
     return EXIT_OK
+
+
+def _print_portfolio_exposures(data):
+    """Mostra a consolidação por ativo e grupo dos retratos do mt5x e do guardião."""
+    exposures = data.get("exposures", [])
+    if exposures:
+        complete = data.get("risk_complete", data.get("totals", {}).get("risk_complete", True))
+        note = " (parcial: há risco não calculado)" if not complete else ""
+        _print(f"Exposição por ativo; risco na moeda da conta{note}:")
+        for item in exposures:
+            buy_count = item.get("buy_positions", 0)
+            buy_orders = item.get("buy_orders", 0)
+            sell_count = item.get("sell_positions", 0)
+            sell_orders = item.get("sell_orders", 0)
+            _print(f"  {item.get('symbol')}: compra {buy_count} posição(ões)/{buy_orders} ordem(ns), "
+                   f"{_fmt_num(item.get('buy_volume', 0))} lote(s), risco {_fmt_num(item.get('buy_risk_money', 0))}; "
+                   f"venda {sell_count} posição(ões)/{sell_orders} ordem(ns), "
+                   f"{_fmt_num(item.get('sell_volume', 0))} lote(s), risco {_fmt_num(item.get('sell_risk_money', 0))} "
+                   f"{item.get('currency', data.get('currency', ''))}.")
+    groups = data.get("groups", [])
+    if groups:
+        complete = data.get("risk_complete", data.get("totals", {}).get("risk_complete", True))
+        note = " (parcial: há risco não calculado)" if not complete else ""
+        _print(f"Exposição por grupo{note}:")
+        for item in groups:
+            _print(f"  {item.get('group')}: compra {_fmt_num(item.get('buy_risk_money', 0))}, "
+                   f"venda {_fmt_num(item.get('sell_risk_money', 0))} {item.get('currency', data.get('currency', ''))}.")
 
 
 def cmd_status(args, ctx):
@@ -1342,6 +1373,36 @@ def _robots_stop(args, ctx, items):
     return EXIT_OK
 
 
+def _robots_market(args, ctx, items):
+    """Pré-checa um EA para revisão e, opcionalmente, monta um pacote local."""
+    from mt5_extracao.robots import catalog, market, store
+    robot = catalog.get_robot(items, args.path)
+    if robot.kind != catalog.MQL5:
+        raise ValueError("`mt5x robots market` só aceita um Expert Advisor MQL5.")
+    if args.with_source and not args.pack:
+        raise ValueError("`--with-source` exige `--pack <pasta>`. Nada foi copiado.")
+    compile_result = market.last_compile_result(ctx.config, robot)
+    checks = market.check(robot, compile_result, store.load_runs(ctx.db, robot.key))
+    ready = market.ready(checks)
+    _data(market={"robot_key": robot.key, "ready": ready, "compile": compile_result.to_dict(),
+                  "items": [dict(vars(item), icon=item.icon) for item in checks]})
+    _print(f"Pré-checagem local do MQL5 Market: {robot.name}")
+    for item in checks:
+        _print(f"  {item.icon} {item.name}: {item.detail}")
+        if item.fix:
+            _print(f"      O que fazer: {item.fix}")
+    if not ready:
+        _print("\nPré-checagem reprovada. O envio manual e a validação oficial continuam com o vendedor.")
+        return EXIT_FAIL
+    if args.pack:
+        files = market.pack(robot, compile_result, args.pack, with_source=args.with_source)
+        _data(package=[str(path) for path in files])
+        _print(f"\nPacote local criado em {Path(args.pack).expanduser()}; revise os avisos e o LEIA-ME.txt.")
+    else:
+        _print("\nPré-checagem sem falhas. O envio e a validação oficial continuam manuais.")
+    return EXIT_OK
+
+
 def cmd_robots(args, ctx):
     from mt5_extracao import robots
     from mt5_extracao.robots import catalog
@@ -1419,6 +1480,10 @@ def cmd_robots(args, ctx):
         return _robots_check(args, ctx, items)
     if args.action == "parity":
         return _robots_parity(args, ctx, items)
+    if args.action == "market":
+        if not args.path:
+            raise ValueError("uso: mt5x robots market <robô> [--pack <pasta>] [--with-source]")
+        return _robots_market(args, ctx, items)
     if args.action in ("start", "monitor", "stop"):
         return {"start": _robots_start, "monitor": _robots_monitor, "stop": _robots_stop}[args.action](args, ctx, items)
     if args.path:
@@ -1698,7 +1763,7 @@ def build_parser():
     p.set_defaults(func=cmd_strategies)
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
-    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check", "parity",
+    p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check", "parity", "market",
                                                     "generate",
                                                     "new",
                                                     "start",
@@ -1719,6 +1784,9 @@ def build_parser():
     p.add_argument("--to", dest="date_to", help="backtest: fim AAAA-MM-DD")
     p.add_argument("--param", action="append", default=[], help="backtest: parâmetro nome=valor (repetível)")
     p.add_argument("--strategy", help="parity: chave da estratégia Python a comparar (ex.: donchian)")
+    p.add_argument("--pack", help="market: pasta vazia onde montar o pacote local do produto")
+    p.add_argument("--with-source", action="store_true",
+                   help="market: inclui .mq5/.mqh no pacote (por padrão só vai o .ex5)")
     p.add_argument("--deep", action="store_true",
                    help="battery (robô MQL5): repete o Strategy Tester para medir fora da amostra e robustez ±20%%")
     p.add_argument("--report", help="check: grava um relatório JUnit XML neste arquivo (para CI)")
@@ -1748,6 +1816,9 @@ def build_parser():
     p.add_argument("--guardian", action="store_true",
                    help="lê o retrato gravado pelo HDK_AccountGuardian, sem usar a ponte")
     p.set_defaults(func=cmd_portfolio)
+
+    from mt5_extracao.resources import commands as resources_commands
+    resources_commands.add_parser(sub)
 
     p = sub.add_parser("status", help="retrato da base, dos robôs e das validações, com as próximas ações sugeridas")
     p.set_defaults(func=cmd_status)

@@ -55,6 +55,8 @@ class HistoricalExtractor:
         self.extraction_running = False
         self.cancel_requested = False
         self._lock = Lock() # Para controle de estado thread-safe
+        # Gestão de recursos (T15.9): função que devolve o motivo para NÃO gravar (disco ou base no limite) ou None
+        self.write_guard = None
 
     def cancel_extraction(self):
         """Sinaliza o cancelamento da extração em andamento."""
@@ -405,6 +407,11 @@ class HistoricalExtractor:
         except Exception as q_err:
             log.warning(f"[{symbol}] Não foi possível verificar a qualidade do bloco: {q_err}")
 
+        blocked = self.write_guard() if self.write_guard is not None else None
+        if blocked:
+            log.error(f"[{symbol}] Extração interrompida antes de gravar: {blocked}.")
+            self.cancel_requested = True
+            return None, quality
         try:
             if self.db_manager.save_ohlcv_data(symbol, timeframe_name, df):
                 return len(df), quality

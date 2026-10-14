@@ -133,6 +133,9 @@ max_real_risk_pct = 1.0
 # mt5x portfolio: estado ALERTA quando o risco de TODA a conta até o stop (posições e ordens pendentes, de todos os
 # robôs e manuais) passar deste percentual do saldo. 0 = não compara. Só avisa: nada é bloqueado.
 max_account_risk_pct = 0
+# Grupos fixos de exposição: separe grupos com ; e padrões de símbolos com , (ex.: WIN*,IND*;EURUSD,GBPUSD).
+# Ativos sem grupo fixo são agrupados pelas moedas-base e de lucro informadas pelo MT5.
+account_exposure_groups =
 # Pasta de um clone de https://github.com/Misael-art/mt5x-safety (biblioteca de segurança MQL5).
 # O mt5x instala dela a versão que cada robô declara em "safety_lib" no robot.json. Vazio = não usa.
 safety_lib_dir = 
@@ -142,3 +145,56 @@ batch_max_cpu_pct = 75
 batch_max_ram_pct = 85
 # Máximo de backtests ao mesmo tempo. 0 = número de núcleos do processador menos um. Robôs MQL5 rodam sempre um por vez.
 batch_max_workers = 0
+
+[RESOURCES]
+# Gestão de recursos (aba Recursos; mt5x resources). Nada roda sozinho enquanto auto_enabled = false.
+# Ligada, cada ação automática tem a sua chave, também desligada por padrão. Arquivar é reversível: a série vai para
+# um arquivo SQLite na pasta archive_dir e volta com "Restaurar" (ou mt5x resources restore).
+auto_enabled = false
+# Intervalo entre ciclos de monitoramento (minutos, mínimo 5).
+monitor_interval_minutes = 60
+# Avisos: base acima de alert_db_gb (GB; 0 = desligado) e disco livre abaixo de alert_disk_free_pct (%).
+alert_db_gb = 10
+alert_disk_free_pct = 10
+# Otimizar (VACUUM) sozinho quando o espaço livre dentro da base passar de vacuum_min_mb.
+auto_vacuum = false
+vacuum_min_mb = 200
+# Remover sozinho registros de controle de tabelas que não existem mais.
+auto_clean_orphans = false
+# Arquivar sozinho as séries que caírem nas regras listadas (sem_lucro, sem_estudo, obsoleta, vazia).
+# Favoritos, seleção, benchmarks e ativos com benchmark positivo (algum backtest com lucro) nunca são arquivados.
+auto_archive = false
+auto_archive_rules = obsoleta,vazia
+# Idade (dias) da última barra para a série contar como obsoleta.
+obsolete_days = 180
+# Pasta do arquivo. Vazio = arquivo/ ao lado do arquivo da base.
+archive_dir = 
+# Quantos dias de histórico de medições guardar.
+keep_snapshots_days = 365
+# Cópia de segurança da base (só SQLite; no PostgreSQL use pg_dump): a cada backup_interval_hours, guardando as
+# backup_keep mais novas em backup_dir (vazio = copias/ ao lado da base). Precisa de disco do tamanho da base.
+auto_backup = false
+backup_interval_hours = 24
+backup_keep = 5
+backup_dir = 
+# Apagar sozinho arquivos antigos de logs e de exportações (dias; 0 = nunca). O log em uso nunca é apagado.
+auto_clean_files = false
+logs_keep_days = 30
+exports_keep_days = 0
+# Formato do arquivo de séries arquivadas e aparadas: sqlite (padrão, abre em qualquer lugar) ou parquet (bem menor,
+# exige o pyarrow de requirements-optional.txt).
+archive_format = sqlite
+# Retenção: apara (arquiva, reversível) o histórico mais velho que N dias. 0 = guarda tudo. Vale para SQLite e
+# PostgreSQL. Intradiário = barras menores que 1 dia; ticks inclui o book. Só roda sozinho com auto_trim = true.
+auto_trim = false
+retention_intraday_days = 0
+retention_ticks_days = 0
+# Avisa quando uma série sozinha passar deste tamanho (MB). 0 = desligado.
+max_series_mb = 0
+# Limites que BLOQUEIAM a gravação: a extração para (com o motivo) quando o disco livre cair abaixo de
+# block_disk_free_pct (%) ou a base passar de block_db_gb (GB). 0 = nunca bloqueia.
+block_disk_free_pct = 0
+block_db_gb = 0
+# Retenção por ativo, valendo sobre retention_intraday_days e retention_ticks_days: ATIVO:dias separados por
+# vírgula. 0 = guarda tudo desse ativo. Ex.: WIN$N:30, PETR4:0
+retention_overrides = 

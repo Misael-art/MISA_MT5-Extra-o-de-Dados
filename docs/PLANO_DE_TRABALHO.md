@@ -93,7 +93,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | ✅ concluída (todas as saídas do tutorial são de uma execução real no host) |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
-| T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
+| T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | em andamento: código e testes automáticos prontos; falta backtest no MT5 conectado |
 | T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | ✅ concluída: no cenário medido, 0,00% do giro contra os ticks reais (era 1,63%); exige calibrar o spread com ticks |
 | T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
 | T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
@@ -107,19 +107,19 @@ Comando de testes padrão (use o Python do `.venv`):
 | T11.9 | Painel vivo: servidor local, atualização sozinha e ações que não mexem no MT5 | T11.8 | ✅ concluída (conferida no host) |
 | T11.10 | Painel vivo: ações que abrem ou fecham o MT5 (atualizar base, especificação, teste MQL5) | T11.9 | ✅ concluída (conferida no host, com o MT5 oculto) |
 | T12.0 | Plano do HADOUKEN 2.0 registrado e diagnóstico do código atual (etapa 0) | T8.9 | ✅ concluída |
-| T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; nenhuma operação supervisionada foi executada |
-| T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: lado mt5x testado e lido na conta demo; sentinela só compilado |
+| T12.1 | Safety ampliada: permissões e operações supervisionadas com auditoria (etapa 1) | T12.0 | ⏳ parcial: compila; operação supervisionada fica para depois da T12.3 e só em demo |
+| T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: implementação F-03 em curso; conciliação demo com posições e netting pendentes |
 | T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800, ligada e desligada) |
-| T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; Windows e tema claro não vistos |
+| T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; tema claro e disposição normal vistos na T12.6a; Windows pendente |
 | T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída; partes e devolução vistas no terminal real nos testes da T12.L3 |
 | T12.L2 | Opções da organização da janela na interface (diálogo Configurações), gravando o `config.ini` sem perder comentários | T12.L1 | ✅ concluída no Linux (vista em tela virtual, temas claro e escuro); Windows não visto |
 | T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída e testada no MT5 real do host (tela virtual); a disposição do painel com robô de verdade e o Windows não foram vistos |
 | T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
-| T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
-| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
+| T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | ✅ concluída no Linux (2026-10-14): normal forçada, ajuste derivado em 70%, paleta clara e tela eDP-1 1280×800 vistos; linha de base sem painel registrada; tentativa de VENDA bloqueada, sem execução nem mudança de posição; Windows pendente |
+| T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | ⏳ em implementação autorizada; operações supervisionadas serão exercitadas depois da etapa, apenas em demo |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor (D-02) e boleta de ordem pendente no painel (G-05, limite e stop, exercitada em conta demo) entregues; a grade não começou |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
-| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | a fazer (dividida em T12.6a, T12.6b e T12.6c na revisão de 2026-10-13) |
+| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | ⏳ parcial: T12.6a concluída; T12.6b e T12.6c a fazer (dividida na revisão de 2026-10-13) |
 | T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
@@ -133,6 +133,12 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
 | T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
+| T15.0 | Plano da gestão de recursos (aba Recursos) registrado em `docs/propostas/GESTAO_RECURSOS.md` | — | ✅ concluída |
+| T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ concluída no Linux (aba vista em tela virtual, temas claro e escuro); Windows não visto |
+| T15.7 | Cópia de segurança da base e limpeza de logs e exportações antigos (gestão de recursos) | T15.6 | ✅ concluída no Linux; Windows não visto |
+| T15.8 | Gestão de recursos: arquivo em Parquet, aparar e retenção por idade, aviso por série e voltar a uma cópia pela interface | T15.7 | ✅ concluída no Linux; PostgreSQL real e Windows não vistos |
+| T15.9 | Gestão de recursos: limites que bloqueiam a gravação na extração, retenção por ativo e `drop_chunks` do TimescaleDB | T15.8 | ✅ concluída no Linux; TimescaleDB real e Windows não vistos |
+| T15.10 | Próximas frentes da gestão de recursos (guarda em ticks e book, indicadores no painel vivo) | T15.9 | proposta |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -1907,23 +1913,48 @@ robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o 
 
 - **Objetivo:** saber se um robô está pronto para ser enviado ao MQL5 Market e montar o que o vendedor precisa.
 - **Depende de:** T10.4.
+- **Status:** EM ANDAMENTO (2026-10-14; log isolado por execução autorizado pelo dono do projeto).
 - **Limite:** o envio **não** é automatizado. Ele é feito pela pessoa na área do vendedor do MQL5.com, que também
   roda a validação automática oficial. Esta tarefa não promete aprovação no Market.
-- **Antes de implementar:** leia as regras atuais do Market no MQL5.com e registre aqui a lista conferida, com a
-  data. A lista abaixo é o ponto de partida e **não foi conferida na fonte**; o único item observado no host é o
-  aviso 68 do MetaEditor ("version ... is incompatible with MQL5 Market, must be xxx.yyy").
+- **Regras conferidas em 2026-10-14:** [Rules of Using the Market Service](https://www.mql5.com/en/market/rules),
+  [The checks a trading robot must pass](https://www.mql5.com/en/articles/2555),
+  [How to publish a product](https://www.mql5.com/en/articles/385) e
+  [propriedades `#property` do MQL5](https://www.mql5.com/en/book/basis/preprocessor/preprocessor_properties).
+  O serviço exige cadastro de vendedor e envio manual; a regra não será automatizada. O produto não pode mudar de
+  funcionamento por tipo/número de conta ou servidor; textos, nomes de entradas e mensagens do produto devem estar
+  em inglês; não pode prometer lucro nem incluir links de terceiros na apresentação. A distribuição é um único
+  `.ex5`, com dependências incluídas como recursos. O Market executa testes automáticos no Strategy Tester em
+  condições, símbolos e timeframes diferentes; aprovação não garante lucro nem ausência de erros. Essas regras não
+  substituem a bateria do mt5x. O bloqueio de `#import` de DLL continua sendo uma política local desta tarefa.
+- **Versão:** a referência de `#property` descreve o formato Market `X.Y`; o MetaEditor instalado apresenta o aviso
+  Market 68 para `0.10` ("must be xxx.yyy"). Testei no Wine, em arquivo temporário: `0.10` compilou com aviso 68;
+  `1.000` compilou com 0 erros e 0 avisos. O pré-check seguirá o requisito mais estrito do compilador observado no
+  host (`XXX.YYY`) e ainda exigirá compilação sem avisos.
 - **Arquivos:** `mt5_extracao/robots/market.py` (novo), `cli.py`, `tests/test_robots_market.py` (novo).
 - **Passos:**
   1. `market.check(robot, compile_result, runs) -> List[Item]` (mesmo formato da bateria): `#property version` no
      formato `xxx.yyy`; compila sem erros **e sem avisos**; sem `#import` de DLL; `#property description`
      preenchida; sem símbolo, conta ou caminho fixo no código; trata lote mínimo/passo e falta de margem sem erro;
-     backtest sem erros no log em mais de um ativo e timeframe.
-  2. `mt5x robots market <robô> [--pack <pasta>]`: mostra os itens; com `--pack`, copia o `.ex5`, a descrição e um
-     `LEIA-ME.txt` com o que ainda é manual (imagens, textos da página, preço, envio).
-  3. Nunca copie o `.mq5` para o pacote sem `--with-source`.
+     backtest sem erros no log em mais de um ativo e timeframe. Cada backtest grava o trecho novo do log do terminal
+     e dos agentes em `Tester/mt5x_runs/<run_id>.log`; `_robot_runs.metrics_json` guarda o caminho e se a captura
+     foi bem-sucedida. Bases antigas continuam abrindo; execuções sem captura não contam como evidência nova.
+  2. `mt5x robots market <robô> [--pack <pasta>]`: lê o log da última compilação, mostra os itens e aceita avisos
+     que ainda precisam de revisão do vendedor; com `--pack`, copia o `.ex5`, `description.txt` e um `LEIA-ME.txt`
+     com o que ainda é manual (imagens, textos da página, preço, cadastro e envio).
+  3. Nunca copie o `.mq5` para o pacote sem `--with-source`; por padrão ele contém só `.ex5`, descrição e leia-me.
 - **Critérios de aceite:** um robô com versão `0.10` ou com DLL é reprovado com o motivo; o pacote de um robô
   aprovado contém só o que foi pedido.
 - **Verificação:** `pytest -q`.
+- **Decisão do dono do projeto (2026-10-14):** capturar e registrar log isolado por execução; testes da T10.11
+  podem usar a conta demo. A captura mantém apenas os bytes acrescentados durante aquele backtest, sem copiar o log
+  diário inteiro. O Strategy Tester continua sendo simulação e não envia ordens a uma conta.
+- **Verificação no host (2026-10-14):** antes da alteração, `.venv/bin/python -m pytest -q` — 648 aprovados,
+  8 ignorados (327,36 s). Depois da implementação: 656 aprovados, 8 ignorados (367,21 s); testes focados de Market
+  e Tester: 18 aprovados; `doctor`: 16 OK, 2 avisos conhecidos (`pandas-ta` opcional ausente e ponte configurada
+  como desativada); `git diff --check` passou.
+- **Backtest real pendente:** o terminal está aberto, mas a consulta local do MT5 devolveu `account_info = None`;
+  o diagnóstico confirma `[BRIDGE] enabled = false`. Não fechei o terminal nem rodei o Tester sem confirmar a demo
+  e o estado da conta. Nenhuma configuração foi alterada e nenhuma ordem foi enviada.
 
 ### T10.12 — Custo real no backtester Python ✅
 
@@ -2493,9 +2524,39 @@ está desatualizada em relação à `Safety/`; não há conta netting no host, e
 
 No HADOUKEN: `ENUM_HDK_PERMISSION` e, no `HDK_SafeExecutor`, `SetMandate`, `Adopt`, `ScopeFor`, `SupervisedClose`,
 `SupervisedCancel` e `SupervisedCloseAll`, todas auditadas em `MQL5\Files\HDK_Audit`. As funções antigas não
-mudaram: seguem restritas ao próprio magic. **Compila** (painel, sentinela e cinco robôs de estratégia). **Falta:**
-executar uma operação supervisionada (só acontece com o guardião da T12.3), rodar de novo a paridade dos seis
-robôs, atualizar a `mt5x-safety` e a regra da bateria para os arquivos novos.
+mudaram: seguem restritas ao próprio magic. **Compila** (painel, sentinela e seis robôs de estratégia). **Falta:**
+executar uma operação supervisionada, que depende de o guardião da T12.3 chamar essas funções. Os outros itens foram
+conferidos depois: a paridade dos seis robôs foi refeita com a `Safety/` 7.1 (T8.9) e, na validação posterior do
+D-02/T12.4, as duas camadas produziram as mesmas 690 operações. A `mt5x-safety` 1.3.0 contém os nove arquivos do
+manifesto; em 2026-10-14 eles foram comparados byte a byte com a pasta `Safety/` do HADOUKEN. A regra da bateria já
+trata `Safety/` como camada permitida e tem testes para aceitar envio dentro dela e reprovar envio direto no robô;
+nenhum ajuste adicional foi necessário. T12.1 segue parcial até haver um caminho exercitável para a operação
+supervisionada; não foi feita operação em conta.
+
+Atualização da frente F-03 (mesmo dia): `mt5x-safety` 1.4.0 inclui a consolidação de exposição. Em 2026-10-14 rodei a paridade T10.6 dos seis robôs em EURUSD no período
+2025-10-01 a 2026-09-30 (Strategy Tester, cada tick). Nenhum cumpriu todos os limites existentes; essa comparação
+mede Python × MQL5 e não é uma aprovação operacional:
+
+| Robô | Python × MQL5 | Casadas | Pares até 5% | Diferença do giro | Mediana MQL5/Python |
+|---|---:|---:|---:|---:|---:|
+| EmaAtr H1 | 58 × 58 | 96,6% | 91,1% | 1,5% | 0,997 |
+| Donchian H4 | 32 × 31 | 96,9% | 90,3% | 3,4% | 0,994 |
+| BbRsi H1 | 167 × 164 | 96,4% | 77,6% | 2,6% | 0,978 |
+| Squeeze H1 | 149 × 149 | 100,0% | 85,2% | 2,5% | 0,986 |
+| Pullback H1 | 58 × 55 | 89,7% | 94,2% | 1,2% | 0,990 |
+| Orb M15 | 257 × 239 | 91,8% | 36,0% | 1,2% | 0,941 |
+
+**Pendente:** exercitar uma operação supervisionada depois da T12.3, apenas em demo. Nenhuma operação supervisionada
+foi executada.
+
+**Divergência de dependências registrada:** a validação restante de T12.1 exige T12.3, mas a tabela faz T12.2
+depender de T12.1 e T12.3 depender de T12.2. A sequência forma um ciclo. É preciso esclarecer se T12.2 pode avançar
+com a implementação da Safety enquanto a operação supervisionada fica para T12.3, ou se a ordem deve ser revista.
+Até essa decisão, T12.1 permanece parcial e T12.2 não é iniciada.
+
+*Harmonização de 2026-10-14:* na frente F-03 a T12.3 passou a constar como "em implementação autorizada", o que
+indica a escolha de avançar com a T12.3 antes de fechar a T12.1. A ordem formal (T12.1 → T12.2 → T12.3) ainda
+precisa da confirmação do dono do projeto; nada foi reordenado nesta harmonização.
 
 ### T12.2 — Carteira somente leitura ⏳
 
@@ -2577,23 +2638,24 @@ documentos do HADOUKEN **não foram alterados**; o que muda lá está indicado e
 **Achados sobre as etapas do painel (T12.P e T12.6)**
 
 1. **A etapa 6 foi feita pela metade e fora de ordem.** As três disposições (compacta, normal, ampla) entraram
-   antes das etapas 3 a 5. Do que falta, uma parte não depende de nada (botão recolhido, quebra de linha no log,
-   tema claro) e outra depende de etapas que não começaram: a aba Boleta e a aba Gradiente precisam das ordens
+   antes das etapas 3 a 5. Do que falta, uma parte não depende de nada (botão recolhido, quebra de linha no log)
+   e outra depende de etapas que não começaram: a aba Boleta e a aba Gradiente precisam das ordens
    pendentes (T12.4), a aba Estatísticas completa é a T12.6A, a aba IA é a T12.7. Hoje o painel de status põe tudo
    sob "T12.6, depende de T12.4", o que trava também o que poderia andar.
-2. **Quatro coisas se chamam "layout" ou "compacto".** (a) a organização da janela do MT5; (b) as disposições do
-   painel (`InpPanelLayout`: compacta, normal, ampla); (c) os estados do plano (`EXPANDIDO`, `COMPACTO`,
-   `RECOLHIDO`); (d) um `ENUM_HDK_LAYOUT_MODE` em `HDK_Config.mqh` (compacto, normal, expandido, mínimo), cujo uso
-   não foi verificado. "Compacto" é ao mesmo tempo uma disposição e um estado. Além disso o painel já tem um
-   "minimizar" (vira uma barra), que não é o `RECOLHIDO` do plano (botão `H` com ponto colorido).
+2. **Vocabulário fixado na T12.6a.** "Disposição do painel" nomeia compacta, normal e ampla (`InpPanelLayout`);
+   "estado do painel" nomeia expandido e recolhido (o botão `—` do v7 recolhe o painel em uma barra); "organização
+   da janela do MT5" nomeia o arranjo do terminal aplicado pelo mt5x. "Compacta" não é um estado. A enumeração
+   ativa é `ENUM_HDK_PANEL_LAYOUT`; `ENUM_HDK_LAYOUT_MODE` aparece somente no modelo genérico de `HDK_Config.mqh`,
+   sem referência no painel v7.
 3. **A lista de abas do plano tem 11 e a Fase 13 acrescenta uma** ("Inteligência do Ativo", T13.6). O painel tem
    quatro hoje (Visão geral, Posições, Estatísticas, Log). Não há decisão sobre como 12 abas cabem na disposição
    compacta, que mostra quatro linhas por aba.
-4. **Construir em cima do que não foi visto.** Continuam sem conferência: a disposição normal, o parâmetro que
-   força a disposição, o ajuste de tamanho abaixo de 100%, o tema claro, a tela real do dono (2560×1980) e o
-   Windows. Também: vender, trailing, break-even no lucro, limites de perda atingidos e dois painéis ao mesmo tempo.
-5. **Sem linha de base de desempenho.** A medida de 7,8% de um núcleo e 377 MB não tem comparação sem o painel;
-   com mais abas, não haverá como dizer o que piorou.
+4. **Construir em cima do que não foi visto.** A disposição normal, o parâmetro que a força, a paleta clara, o
+   ajuste abaixo de 100% e uma tela física foram conferidos na T12.6a. Continuam pendentes Windows, testes de
+   negociação em conta apropriada e duas instâncias ao mesmo tempo.
+5. **Linha de base registrada em escopo menor.** A T12.6a mediu um gráfico com e sem painel no mesmo terminal;
+   a CPU variou entre janelas e não permite atribuir a diferença ao painel. A amostra histórica de oito gráficos
+   e painel (7,8% de um núcleo e 377 MB) segue sem par equivalente.
 
 **Etapas revistas** (substituem a linha única "T12.6" como guia de ordem; os critérios de aceite da etapa 6 do
 plano do HADOUKEN continuam valendo para o conjunto)
@@ -2602,11 +2664,11 @@ plano do HADOUKEN continuam valendo para o conjunto)
 |---|---|---|
 | T12.L1 | Organização da janela configurável por partes, devolução sem regravar o arquivo inteiro | T12.L |
 | T12.L2 | Opções da organização da janela na interface (diálogo Configurações) | T12.L1 |
-| T12.6a | Fechar o que ficou sem conferência no painel v7 e fixar o vocabulário | T12.P |
-| T12.6b | Estado recolhido (botão `H`), quebra de linha do log e a aba Configuração | T12.6a |
+| T12.6a | Fechar o que ficou sem conferência no painel v7 e fixar o vocabulário ✅ 2026-10-14 | T12.P |
+| T12.6b | Estado recolhido (botão `H`), quebra de linha do log e a aba Configuração | T12.6a, G-02 (arquitetura modular do painel) |
 | T12.6c | Abas que dependem de outras etapas: Boleta e Gradiente (T12.4), Carteira (T12.2), Risco e Alertas (T12.3), Estatísticas (T12.6A), IA (T12.7), Inteligência do Ativo (T13.6) | cada aba, a sua |
 
-A T12.L1 e a T12.L2 são do mt5x e não dependem do guardião: podem ser as próximas. A T12.6a também.
+A T12.L1–T12.L3 foram concluídas; a T12.6a também. As próximas tarefas devem seguir a tabela de dependências acima.
 
 ### T12.L1 — Organização da janela configurável por partes ✅
 
@@ -3020,10 +3082,10 @@ próprio robô (sem guardião, T12.3); com pendentes nas duas direções a faixa
 bloqueado", o que é verdade mas confunde.
 
 **Não conferido:** uma pendente executando e virando posição pela boleta (só no teste do Strategy Tester do
-executor); cancelamento por fim do horário e por bloqueio de risco; disposições compacta e ampla da aba; tema
-claro; a tela real do dono do projeto; conta netting; ativo da B3; Windows.
+executor); cancelamento por fim do horário e por bloqueio de risco; disposições compacta e ampla da aba; conta
+netting; ativo da B3; Windows. A paleta clara e a saída física eDP-1 1280×800 foram vistas na T12.6a.
 
-### T12.6a — Painel v7: conferência pendente e vocabulário
+### T12.6a — Painel v7: conferência e vocabulário ✅
 
 - **Objetivo:** não empilhar abas novas em cima do que não foi visto, e dar um nome só a cada coisa.
 - **Onde:** repositório HADOUKEN (`TESTES_PAINEL_V7.md`, `PLANO.md`); aqui só o painel de status.
@@ -3034,10 +3096,17 @@ claro; a tela real do dono do projeto; conta netting; ativo da B3; Windows.
   `HDK_Config.mqh` ainda é usado.
 - **Critério de aceite:** a lista "O que não foi testado" do relatório do painel fica só com o que depende de
   mercado, de outra conta ou do Windows.
+- **Concluída (2026-10-14):** disposição normal forçada, ajuste abaixo de 100% derivado da fórmula ativa e da
+  captura, paleta clara automática e tela física eDP-1 1280×800 vistos; o painel coube também após reduzir a janela.
+  A linha de base de um gráfico sem painel foi registrada. O MT5 recusou uma tentativa de VENDA por AutoTrading
+  desligado; nenhuma ordem foi executada nem posição alterada. Medições e limitações em
+  `Documentation/HADOUKEN_2/TESTES_PAINEL_V7.md` no repositório HADOUKEN.
 
 ### T12.6b e T12.6c
 
-Detalhadas no plano do HADOUKEN quando chegarem. Registro desta revisão: o **estado recolhido** e o **minimizar**
+Detalhadas no plano do HADOUKEN. A T12.6b depende de G-02 (arquitetura modular), conforme as dependências de
+G-03/G-04 no épico; G-02 é a próxima tarefa elegível e T12.6b aguarda sua conclusão. Registro desta revisão: o
+**estado recolhido** e o **minimizar**
 que já existe precisam virar uma coisa só ou ter papéis declarados; a aba **Configuração** do painel deve mostrar a
 organização da janela com as mesmas opções da T12.L2 (lendo o que o mt5x grava), em vez de um segundo conjunto de
 interruptores; e é preciso decidir como 12 abas cabem na disposição compacta antes de criar a quinta.
@@ -3055,7 +3124,9 @@ interruptores; e é preciso decidir como 12 abas cabem na disposição compacta 
 
 ### T12.3 a T12.8 — a fazer
 
-Na ordem do plano. A T12.3 (guardião com poder de bloquear) é a que dá uso às operações supervisionadas da T12.1.
+**Decisão do dono (2026-10-14):** avançar a implementação da Safety em T12.2/T12.3 mesmo com a validação
+operacional pendente. Exercitar operações supervisionadas somente após T12.3 e somente em conta demo. A T12.3
+(guardião com poder de bloquear) dá uso às operações supervisionadas da T12.1; nenhuma conta real será usada.
 A T12.4 começa por ensinar o executor a criar ordens pendentes.
 
 ---
@@ -3300,6 +3371,12 @@ rodada) estão em [propostas/REFERENCIAS.md](propostas/REFERENCIAS.md).
 
 Dez épicos e 131 tarefas registrados nos repositórios mt5x e HADOUKEN, e a regra de evolução da `mt5x-safety` no
 repositório dela. Só documentação: nenhum código, preset, configuração ou banco foi alterado.
+
+## Fase 15 — Gestão de recursos (espaço, higienização e automação)
+
+**Frente paralela ao roadmap, pedida pelo dono do projeto em 2026-10-14.** A base pode ficar muito grande: a aba "Recursos" mede a base, as tabelas e o disco; aponta séries sem benchmark positivo, não usadas em estudos, obsoletas ou vazias (favoritos, seleção, benchmarks e ativos com benchmark positivo, isto é, com algum backtest lucrativo em qualquer robô ou configuração, ficam protegidos); arquiva de forma reversível (cópia conferida antes de retirar da base) e restaura; otimiza; e tem automação programada **só com opt-in** (`[RESOURCES] auto_enabled`). O mesmo pelo terminal em `mt5x resources`. Plano, princípios, regras e chaves: [propostas/GESTAO_RECURSOS.md](propostas/GESTAO_RECURSOS.md).
+
+Sobre a regra "nunca apague tabelas de usuários": ela vale para mudanças de schema. Aqui a retirada é ação explícita do usuário (ou da automação que ele ligou), sempre precedida do arquivo, e reversível.
 
 ---
 

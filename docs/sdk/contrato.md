@@ -31,7 +31,7 @@ Conferir um robô: `mt5x robots validate <robô>`.
     "export_trades": "InpExportTrades"
   },
   "tunable": ["InpChannelPeriod", "InpStopAtrMult"],
-  "safety_lib": "1.3.0"
+  "safety_lib": "1.4.0"
 }
 ```
 
@@ -76,7 +76,7 @@ Todos na pasta comum do MetaTrader (`Common\Files`).
 
 ## Biblioteca de segurança
 
-O robô que declara `"safety_lib": "1.3.0"` usa a biblioteca [mt5x-safety](https://github.com/Misael-art/mt5x-safety).
+O robô que declara `"safety_lib": "1.4.0"` usa a biblioteca [mt5x-safety](https://github.com/Misael-art/mt5x-safety).
 Clone o repositório, aponte `[ROBOTS] safety_lib_dir` para a pasta do clone e o `mt5x robots install` (ou `compile`)
 copia a biblioteca para `MQL5/Include/MT5X/Safety` na versão pedida. Se a pasta do MT5 já tiver outra versão, o
 programa para e explica; para trocar, use `--upgrade-safety`.

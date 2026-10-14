@@ -1,0 +1,96 @@
+# Fase 15 — Gestão de recursos (espaço, higienização e automação)
+
+**Pedido do dono do projeto (2026-10-14):** abrir uma frente paralela ao roadmap com uma aba de gestão de recursos
+na interface. O primeiro problema é o espaço: a base pode ficar muito grande. A aba deve monitorar a base e o disco,
+higienizar, permitir limpar ativos sem resultado positivo, não usados em estudos ou obsoletos, e oferecer
+monitoramento e automação programada **somente se o usuário ligar** (opt-in). Deve ser robusta, resiliente e
+preparada para novas frentes (logs, exportações, cópias de segurança).
+
+Branch: `tarefa/T15-gestao-recursos`, em worktree separado, para não interferir nos agentes do roadmap. Os arquivos
+novos ficam em `mt5_extracao/resources/` e `mt5_extracao/ui/resources.py`; nos arquivos compartilhados as mudanças
+são pontuais (registro da aba, do subcomando e das chaves de configuração).
+
+## Princípios
+
+1. **Nada some sem volta.** "Limpar" um ativo é **arquivar**: a tabela é copiada para um arquivo SQLite próprio em
+   `database/arquivo/`, a cópia é conferida (mesmo número de linhas) e só então a tabela sai da base. Restaurar
+   devolve a tabela e o registro dela. A regra do AGENTS.md ("nunca apague tabelas de usuários") vale para
+   mudanças de schema; aqui a remoção é uma **ação explícita do usuário**, sempre precedida do arquivo.
+2. **Protegidos nunca são candidatos:** favoritos, ativos na seleção, ativos com benchmark vinculado, ativos usados
+   como benchmark de outro, e ativos com **benchmark positivo**: já houve backtest e o ativo ficou positivo em
+   algum dos robôs ou configurações testados (qualquer execução, não só a mais recente; definição do dono do
+   projeto, 2026-10-14).
+3. **Automação é opt-in e conservadora.** Com `[RESOURCES] auto_enabled = false` (padrão) nada roda sozinho. Ligada,
+   cada ação automática tem a sua chave própria, também desligada por padrão, e a automação só arquiva (reversível).
+4. **Medir é barato e não trava a interface.** Toda leitura roda em segundo plano; medição pesada (tamanho por
+   tabela) usa `dbstat` do SQLite quando disponível e cai para estimativa por linhas quando não.
+5. **Uma ação por vez:** trava de arquivo (`database/arquivo/.lock`) impede que a interface e o agendador do sistema
+   (cron / Agendador de Tarefas) mexam na base ao mesmo tempo.
+6. **Tudo auditado:** cada ação grava em `_resource_actions` (quando, o quê, origem ui/cli/auto, bytes antes e
+   depois). Retratos periódicos ficam em `_resource_snapshots` (mudança aditiva: bases antigas continuam abrindo).
+7. **Extensível:** as regras de higienização e os "módulos" de medição ficam em registros (`hygiene.RULES`,
+   `storage.EXTRA_DIRS`); uma frente nova acrescenta uma entrada, sem mexer na aba.
+
+## Tarefas
+
+| Tarefa | O quê | Estado |
+|---|---|---|
+| T15.0 | Este plano | ✅ |
+| T15.1 | Medição: tamanho da base e de cada tabela, espaço recuperável, disco livre, pastas (logs, exportações, arquivo); retratos e projeção de crescimento | ✅ |
+| T15.2 | Higienização: regras `sem_lucro`, `sem_estudo`, `obsoleta`, `vazia` e registros órfãos, com proteções | ✅ |
+| T15.3 | Ações seguras: arquivar (com conferência), restaurar, otimizar (VACUUM com checagem de disco), limpar órfãos; auditoria e trava | ✅ |
+| T15.4 | `mt5x resources status | scan | archive | restore | archives | vacuum | orphans | auto | history` | ✅ |
+| T15.5 | Automação opt-in: política em `[RESOURCES]`, ciclo (medir → alertar → agir), alertas pelo `notify`, agendador na interface e comando para o cron | ✅ |
+| T15.6 | Aba "Recursos" na interface: indicadores, Espaço, Higienização, Arquivo, Automação e Histórico | ✅ (vista em tela virtual no Linux; Windows não visto) |
+| T15.7 | Cópia de segurança conferida (SQLite, API de backup + `quick_check`, guarda as N mais novas) e limpeza de logs e exportações antigos; guia "Cópias e arquivos", `mt5x resources backup | backups | files`, opções na automação | ✅ (Linux) |
+| T15.8 | Arquivo em Parquet (`archive_format`); aparar séries por idade com retenção automática para intradiário e ticks/book (SQLite e PostgreSQL, reversível); aviso de série acima de `max_series_mb`; voltar a uma cópia de segurança pela interface e por `mt5x resources restore-backup` (guarda antes o estado atual) | ✅ (Linux; PostgreSQL só pelo caminho genérico exercitado sobre SQLite) |
+| T15.9 | Limites que **bloqueiam** a gravação (`block_disk_free_pct`, `block_db_gb`: o extrator para antes de gravar o bloco, com o motivo); retenção por ativo (`retention_overrides`); `drop_chunks` do TimescaleDB ao aparar hypertables (o DELETE cuida do bloco parcial) | ✅ (Linux; TimescaleDB real não visto) |
+| T15.10 | Próximas frentes: guarda também nos ticks e no book (hoje só nas barras), painel vivo no navegador com os indicadores de espaço | proposta |
+
+## Regras de higienização (T15.2)
+
+| Regra | Quando a série é candidata |
+|---|---|
+| `sem_lucro` | Houve backtest no ativo e nenhum, de nenhum robô ou configuração, foi positivo (sem benchmark positivo) |
+| `sem_estudo` | Nenhum backtest no ativo (em nenhum timeframe) |
+| `obsoleta` | Última barra mais velha que `[RESOURCES] obsolete_days` (padrão 180) |
+| `vazia` | Tabela sem linhas |
+
+Órfãos: linhas de `_symbol_tables` e `_extraction_log` que apontam para tabelas que não existem mais.
+
+## Configuração (`[RESOURCES]`)
+
+| Chave | Padrão | Uso |
+|---|---|---|
+| `auto_enabled` | `false` | Liga o monitoramento automático (opt-in) |
+| `monitor_interval_minutes` | `60` | Intervalo entre ciclos |
+| `alert_db_gb` | `10` | Avisa quando a base passar disso (0 = desligado) |
+| `alert_disk_free_pct` | `10` | Avisa quando o disco livre cair abaixo disso (%) |
+| `auto_vacuum` | `false` | Otimiza sozinho quando o recuperável passar de `vacuum_min_mb` |
+| `vacuum_min_mb` | `200` | Limiar da otimização automática |
+| `auto_clean_orphans` | `false` | Remove registros órfãos sozinho |
+| `auto_archive` | `false` | Arquiva sozinho as séries das regras em `auto_archive_rules` |
+| `auto_archive_rules` | `obsoleta,vazia` | Regras que a automação pode arquivar |
+| `obsolete_days` | `180` | Idade para a regra `obsoleta` |
+| `archive_dir` | vazio | Pasta do arquivo (vazio = `arquivo/` ao lado da base) |
+| `keep_snapshots_days` | `365` | Quanto histórico de medições guardar |
+| `auto_backup` | `false` | Cópia de segurança automática da base (só SQLite) |
+| `backup_interval_hours` | `24` | Intervalo entre cópias |
+| `backup_keep` | `5` | Quantas cópias guardar |
+| `backup_dir` | vazio | Pasta das cópias (vazio = `copias/` ao lado da base) |
+| `auto_clean_files` | `false` | Apaga sozinho logs e exportações antigos |
+| `logs_keep_days` | `30` | Idade dos logs apagados (0 = nunca; o log em uso nunca é apagado) |
+| `exports_keep_days` | `0` | Idade das exportações apagadas (0 = nunca) |
+| `archive_format` | `sqlite` | `sqlite` ou `parquet` (menor; exige pyarrow) |
+| `auto_trim` | `false` | Apara sozinho o histórico pela retenção abaixo |
+| `retention_intraday_days` | `0` | Retenção das barras menores que 1 dia (0 = tudo) |
+| `retention_ticks_days` | `0` | Retenção de ticks e book (0 = tudo) |
+| `max_series_mb` | `0` | Avisa quando uma série passar disso (0 = desligado) |
+| `block_disk_free_pct` | `0` | Extração para de gravar com disco livre abaixo disso (%; 0 = nunca) |
+| `block_db_gb` | `0` | Extração para de gravar com a base acima disso (GB; 0 = nunca) |
+| `retention_overrides` | vazio | Retenção por ativo, `ATIVO:dias` (0 = guarda tudo do ativo) |
+
+## Validação
+
+- Testes em `tests/test_resources.py` (medição, regras, arquivar/restaurar ida e volta, trava, automação, CLI).
+- Windows: só simulado. Pendências no checklist de `docs/validacao_instaladores.md` (T10.W).

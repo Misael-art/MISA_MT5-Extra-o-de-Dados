@@ -10,8 +10,10 @@ from mt5_extracao import cli, mt5_connector
 from mt5_extracao.bootstrap import paths
 from mt5_extracao.robots import mt5_tools, portfolio
 
-EUR = NS(trade_tick_size=0.00001, trade_tick_value=1.0, point=0.00001)
-WIN = NS(trade_tick_size=5.0, trade_tick_value=1.0, point=1.0)
+EUR = NS(trade_tick_size=0.00001, trade_tick_value=1.0, point=0.00001,
+         currency_base="EUR", currency_profit="USD")
+WIN = NS(trade_tick_size=5.0, trade_tick_value=1.0, point=1.0,
+         currency_base="BRL", currency_profit="BRL")
 
 
 class FakeMT5:
@@ -69,7 +71,31 @@ def test_snapshot_names_owners_and_adds_the_risk_to_the_stop():
     ema = next(g for g in data["by_owner"] if g["owner"] == "HDK_EmaAtr")
     assert ema["positions"] == 1 and ema["orders"] == 1 and ema["risk_money"] == pytest.approx(300.0)
     assert data["shared_symbols"] == {"EURUSD": sorted(["HDK_EmaAtr", portfolio.MANUAL, "robô não catalogado #777"])}
+    eur = data["exposures"][0]
+    assert eur["symbol"] == "EURUSD" and eur["currency"] == "USD"
+    assert eur["buy_positions"] == 2 and eur["sell_positions"] == 1 and eur["buy_orders"] == 1
+    assert eur["buy_volume"] == pytest.approx(4.0) and eur["sell_volume"] == pytest.approx(1.0)
+    assert eur["buy_risk_money"] + eur["sell_risk_money"] == pytest.approx(
+        t["risk_open"] + t["risk_pending"])
+    currencies = {group["group"]: group for group in data["groups"]}
+    assert currencies["EUR"]["buy_risk_money"] + currencies["EUR"]["sell_risk_money"] == pytest.approx(550.0)
+    assert currencies["USD"]["currency"] == "USD"
+    assert currencies["USD"]["buy_risk_money"] + currencies["USD"]["sell_risk_money"] == pytest.approx(550.0)
     assert portfolio.snapshot(mt5, ROBOTS, max_risk_pct=0.5)["state"] == portfolio.ALERT
+
+
+def test_fixed_exposure_groups_override_currency_groups_and_can_overlap():
+    mt5 = FakeMT5(positions=[position(1, "EURUSD", 0, 0, 1.0, 1.1, 1.099),
+                             position(2, "WIN$N", 0, 1, 2.0, 130000.0, 130100.0)])
+    data = portfolio.snapshot(mt5, exposure_groups="EUR*;EURUSD,WIN*")
+    groups = {item["group"]: item for item in data["groups"]}
+    assert groups["Grupo 1"]["buy_risk_money"] == pytest.approx(100.0)
+    assert groups["Grupo 2"]["buy_risk_money"] == pytest.approx(100.0)
+    assert groups["Grupo 2"]["sell_risk_money"] == pytest.approx(40.0)
+    assert all(item["currency"] == "USD" for item in groups.values())
+    # Um símbolo em dois grupos aparece em ambos; os grupos não devem ser somados entre si.
+    assert sum(item["buy_risk_money"] + item["sell_risk_money"] for item in groups.values()) > (
+        data["totals"]["risk_open"] + data["totals"]["risk_pending"])
 
 
 def test_position_without_stop_makes_the_account_risk_incomplete():
@@ -109,6 +135,7 @@ def home(tmp_path, monkeypatch):
     mt5.mkdir(parents=True)
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"path": str(mt5), "wine_prefix": str(prefix)},
+                      "ROBOTS": {"account_exposure_groups": "EURUSD"},
                       "DATABASE": {"type": "sqlite", "path": str(tmp_path / "db.sqlite")}})
     cfg = tmp_path / "config.ini"
     with open(cfg, "w", encoding="utf-8") as f:
@@ -141,4 +168,5 @@ def test_cli_portfolio_reads_through_the_backend(home, monkeypatch, capsys):
     assert cli.main(home.args + ["portfolio"]) == cli.EXIT_OK
     out = capsys.readouterr().out
     assert "DEMO, hedging" in out and "risco 100,00" in out and portfolio.MANUAL in out and "Somente leitura" in out
+    assert "Exposição por ativo" in out and "Exposição por grupo" in out and "Grupo 1" in out
     assert fake.sent == []
