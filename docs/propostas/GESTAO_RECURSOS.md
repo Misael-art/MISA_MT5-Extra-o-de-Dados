@@ -17,7 +17,9 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
    devolve a tabela e o registro dela. A regra do AGENTS.md ("nunca apague tabelas de usuários") vale para
    mudanças de schema; aqui a remoção é uma **ação explícita do usuário**, sempre precedida do arquivo.
 2. **Protegidos nunca são candidatos:** favoritos, ativos na seleção, ativos com benchmark vinculado, ativos usados
-   como benchmark de outro, e séries com backtest lucrativo.
+   como benchmark de outro, e ativos com **benchmark positivo**: já houve backtest e o ativo ficou positivo em
+   algum dos robôs ou configurações testados (qualquer execução, não só a mais recente; definição do dono do
+   projeto, 2026-10-14).
 3. **Automação é opt-in e conservadora.** Com `[RESOURCES] auto_enabled = false` (padrão) nada roda sozinho. Ligada,
    cada ação automática tem a sua chave própria, também desligada por padrão, e a automação só arquiva (reversível).
 4. **Medir é barato e não trava a interface.** Toda leitura roda em segundo plano; medição pesada (tamanho por
@@ -47,7 +49,7 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 
 | Regra | Quando a série é candidata |
 |---|---|
-| `sem_lucro` | Houve backtest na série e nenhum robô teve lucro no mais recente |
+| `sem_lucro` | Houve backtest no ativo e nenhum, de nenhum robô ou configuração, foi positivo (sem benchmark positivo) |
 | `sem_estudo` | Nenhum backtest no ativo (em nenhum timeframe) |
 | `obsoleta` | Última barra mais velha que `[RESOURCES] obsolete_days` (padrão 180) |
 | `vazia` | Tabela sem linhas |

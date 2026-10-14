@@ -159,7 +159,7 @@ vacuum_min_mb = 200
 # Remover sozinho registros de controle de tabelas que não existem mais.
 auto_clean_orphans = false
 # Arquivar sozinho as séries que caírem nas regras listadas (sem_lucro, sem_estudo, obsoleta, vazia).
-# Favoritos, seleção, benchmarks e séries com backtest lucrativo nunca são arquivados.
+# Favoritos, seleção, benchmarks e ativos com benchmark positivo (algum backtest com lucro) nunca são arquivados.
 auto_archive = false
 auto_archive_rules = obsoleta,vazia
 # Idade (dias) da última barra para a série contar como obsoleta.

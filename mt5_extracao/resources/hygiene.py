@@ -17,12 +17,10 @@ from typing import Callable, Dict, Iterable, List, Optional
 
 from sqlalchemy import inspect, text
 
-from mt5_extracao import timeframes
-
 log = logging.getLogger(__name__)
 
 LABELS = {
-    "sem_lucro": "Sem resultado positivo",
+    "sem_lucro": "Sem benchmark positivo",
     "sem_estudo": "Não usado em estudos",
     "obsoleta": "Obsoleta",
     "vazia": "Vazia",
@@ -36,7 +34,8 @@ class Context:
     favorites: set = field(default_factory=set)
     selected: set = field(default_factory=set)
     benchmarks: dict = field(default_factory=dict)       # ativo -> índice vinculado
-    cells: dict = field(default_factory=dict)            # (ativo, timeframe) -> {robô: (lucro, retorno)}
+    tested: dict = field(default_factory=dict)           # ativo -> número de backtests (qualquer robô e configuração)
+    best: dict = field(default_factory=dict)             # ativo -> (robô, lucro) do melhor backtest positivo já feito
     studied: set = field(default_factory=set)            # ativos com backtest ou validação
 
     @property
@@ -44,15 +43,11 @@ class Context:
         return {str(v).upper() for v in self.benchmarks.values() if v}
 
 
-def _tf_name(label: str) -> Optional[str]:
-    tf = timeframes.parse(label) if label else None
-    return tf.name if tf else None
-
-
 def _rule_no_profit(item, ctx: Context) -> Optional[str]:
-    robots = ctx.cells.get((item["symbol"], _tf_name(item["timeframe"])))
-    if robots and all(net <= 0 for net, _ in robots.values()):
-        return f"{len(robots)} robô(s) testado(s) nesta série, nenhum com lucro no backtest mais recente"
+    """Benchmark positivo = algum backtest do ativo, de qualquer robô ou configuração, em qualquer data, deu lucro."""
+    runs = ctx.tested.get(item["symbol"], 0)
+    if runs and item["symbol"] not in ctx.best:
+        return f"{runs} backtest(s) no ativo, nenhum positivo em nenhum robô ou configuração"
     return None
 
 
@@ -95,10 +90,9 @@ def protections(item, ctx: Context) -> List[str]:
         out.append(f"benchmark vinculado ({ctx.benchmarks[symbol]})")
     if symbol.upper() in ctx.benchmark_targets:
         out.append("usado como benchmark de outro ativo")
-    robots = ctx.cells.get((symbol, _tf_name(item["timeframe"]))) or {}
-    winners = [key for key, (net, _ret) in robots.items() if net > 0]
-    if winners:
-        out.append(f"backtest lucrativo ({', '.join(sorted(winners)[:3])})")
+    if symbol in ctx.best:
+        robot, _net = ctx.best[symbol]
+        out.append(f"benchmark positivo ({robot})")
     return out
 
 
@@ -114,9 +108,13 @@ def build_context(db, obsolete_days: int, selected: Iterable[str] = (), now: Opt
     except Exception as e:
         log.warning(f"Favoritos e benchmarks não lidos: {e}")
     try:
-        runs = store.load_runs(db)
-        ctx.cells = asset_table.profit_cells(runs)
-        ctx.studied = {r["symbol"] for r in runs}
+        for run in store.load_runs(db):        # todas as execuções: robôs, parâmetros e datas
+            symbol = run["symbol"]
+            ctx.tested[symbol] = ctx.tested.get(symbol, 0) + 1
+            net = float((run.get("metrics") or {}).get("net_profit", 0) or 0)
+            if net > 0 and net > ctx.best.get(symbol, (None, 0.0))[1]:
+                ctx.best[symbol] = (run["robot_key"], net)
+        ctx.studied = set(ctx.tested)
     except Exception as e:
         log.warning(f"Backtests não lidos: {e}")
     try:

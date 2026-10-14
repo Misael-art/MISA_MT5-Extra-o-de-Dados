@@ -21,11 +21,11 @@ def _bars(end, n=50):
                          "tick_volume": 100, "spread": 1, "real_volume": 0})
 
 
-def _run(db, robot, symbol, net):
-    store.save_run(db, {"run_id": f"{robot}-{symbol}", "robot_key": robot, "source": "backtest", "symbol": symbol,
+def _run(db, robot, symbol, net, run_id=None, created="2026-10-01 10:00:00"):
+    store.save_run(db, {"run_id": run_id or f"{robot}-{symbol}", "robot_key": robot, "source": "backtest", "symbol": symbol,
                         "timeframe": "D1", "data_start": "2026-01-01", "data_end": "2026-10-01", "bars": 50,
                         "metrics": {"net_profit": net, "return_pct": net / 1000}, "equity": [],
-                        "created_at": "2026-10-01 10:00:00"})
+                        "created_at": created})
 
 
 def _config(tmp_path, **resources):
@@ -134,6 +134,16 @@ def test_scan_finds_candidates_and_respects_protections(db, tmp_path):
     protected = {p["symbol"]: p for p in found["protected"]}
     assert "favorito" in protected["FAV3"]["protections"]
     assert "PETR4" not in protected            # protegida e sem nenhum motivo: nem aparece
+
+
+def test_any_positive_run_ever_is_a_positive_benchmark(db, tmp_path):
+    """Benchmark positivo: qualquer backtest do ativo, de qualquer robô ou configuração, em qualquer data, com lucro."""
+    _run(db, "rob_b", "VALE3", 50.0, run_id="antigo", created="2025-01-01 10:00:00")   # antigo, outro robô
+    _run(db, "rob_a", "VALE3", -300.0, run_id="novo", created="2026-10-10 10:00:00")    # o mais recente perde
+    found = hygiene.scan(db, policy.load(_config(tmp_path)), now=NOW)
+    assert "VALE3" not in {c["symbol"] for c in found["candidates"]}
+    reasons = hygiene.build_context(db, 180, now=NOW)
+    assert reasons.best["VALE3"] == ("rob_b", 50.0) and reasons.tested["VALE3"] == 3
 
 
 def test_selection_and_benchmark_protect(db, tmp_path):

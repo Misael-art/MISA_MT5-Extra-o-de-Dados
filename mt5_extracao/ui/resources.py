@@ -41,7 +41,7 @@ AUTO_FLAGS = (
     ("auto_clean_orphans", "Limpar registros órfãos sozinho", "Apaga registros de controle de tabelas que não "
                                                               "existem mais. Não toca em dados de ativos."),
     ("auto_archive", "Arquivar sozinho as séries das regras marcadas", "Arquivar é reversível: a série vai para um "
-                     "arquivo e volta com Restaurar. Favoritos, seleção, benchmarks e séries com backtest lucrativo "
+                     "arquivo e volta com Restaurar. Favoritos, seleção, benchmarks e ativos com benchmark positivo "
                      "nunca são arquivados."),
     ("auto_backup", "Fazer cópia de segurança da base sozinho", "Cópia conferida do arquivo SQLite no intervalo "
                                                                "abaixo, guardando as mais novas. Precisa de disco do "
