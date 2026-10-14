@@ -1,0 +1,364 @@
+# Fase 16 — Analytics de operações: contexto, execução e otimização
+
+**Pedido do dono do projeto (2026-10-14):** evoluir a análise para uma aba **Analytics** que transforme extração e
+backtest em inteligência e otimização de estratégias. A aba deve:
+
+- enriquecer cada operação com calendário, horário, notícias, volume e volatilidade;
+- mostrar onde o robô ganha e perde (heatmaps, curvas por horário, dispersões);
+- re-simular a mesma entrada sob outros modos de execução (ponto fixo, gradiente fixo, dinâmico ou direcional,
+  martingale, trailing stop);
+- sugerir regras de filtragem com um simulador que recalcula a curva de patrimônio;
+- ter duas lentes: **por robô** (em que ativos e condições ele funciona) e **por ativo** (que robôs e execuções
+  exploram melhor aquele ativo).
+
+**Estado: plano registrado. Nada implementado.** Este documento diz o que fazer, em que ordem, onde no código e como
+cada passo é aceito. Cada tarefa vira um PR (regra do AGENTS.md).
+
+---
+
+## 1. Como esta fase convive com o que já existe
+
+Esta fase não pode duplicar nem atropelar outras frentes. As decisões abaixo foram tomadas lendo o código e os
+planos em 2026-10-14.
+
+| Já existe ou está planejado | Relação com a Fase 16 | Decisão |
+|---|---|---|
+| **Fase 13 — MT5x Analytics** ([ESPECIFICACAO](../analytics/ESPECIFICACAO.md)): hipóteses sobre o **mercado** (gap, volume, regime), pacote `mt5_extracao/analytics/` e comando `mt5x analytics` | A especificação diz: "sem sobreposição ao painel de estatísticas operacionais: este é histórico do mercado e contexto, não PnL realizado". A Fase 16 é justamente o PnL realizado dos robôs | **Pacote próprio: `mt5_extracao/trade_analytics/`. Comando próprio: `mt5x trades`.** O nome `analytics` fica para a Fase 13. Quando a T13.1 (calendário de sessões) e a T13.2 (características *as-of*) existirem, a Fase 16 passa a consumi-las em vez de calcular por conta própria (ver T16.3) |
+| **Aba "Análise"** (`ui/analysis.py`): candles, indicadores e sazonalidade **do ativo** | Assunto diferente: preço, não operações | Continua como está. A aba nova se chama **"Analytics"** e fica logo depois de "Robôs" (é lá que se olha o resultado dos robôs). O subtítulo da aba deixa claro: "operações dos robôs: onde ganham, onde perdem e como executar melhor" |
+| **T12.6A — Estatísticas** (livro por operação e por grade, no HADOUKEN e no mt5x) | As duas precisam de um **livro de operações** com entrada, saída e contexto | **Um livro só:** a tabela `_trade_ledger` da T16.1 é o esquema que a T12.6A também usa. Quem fizer primeiro cria; o outro reaproveita |
+| **Épico I** ([EPICO_I](EPICO_I_PESQUISA_VALIDACAO.md)): I-02 (execução independente do sinal), I-03 (walk-forward), I-09 (sobreajuste), I-10 (estratégia × regime), I-11 (otimização) | O simulador de execução e as regras otimizadas são exatamente esse território, com o maior risco do épico: **o melhor do passado vendido como resultado** | As regras do Épico I valem aqui (seção 6): separação dentro/fora da amostra, contagem de tentativas, amostra mínima de 30 operações por célula, preenchimento conservador |
+| **Bateria de segurança** (`robots/battery.py`, `robots/risk.py`): reprova martingale, grid e preço médio em robô real | O Analytics simula martingale e gradiente | Simular é estudo, não operação. **Martingale nunca vira preset exportado.** Gradiente só é exportado como parâmetros do Gradiente Linear do HADOUKEN (T12.4/T12.5), que roda dentro da camada de segurança |
+| **Calendário econômico:** `[SCREENER] events_file` (CSV `time,symbol,impact`) já lido por `asset_screener.load_events` | Fonte de "notícias de impacto" | Reaproveitar o mesmo arquivo e o mesmo leitor. Fonte automática de calendário é decisão pendente (seção 8) |
+| **Custos reais** (T10.12) e `SymbolSpec` (`strategies/backtester.py`) | A re-simulação precisa de custo, lote e valor do ponto | A re-simulação usa o mesmo `SymbolSpec` e o mesmo `BacktestConfig` do backtester. Nenhum modelo de custo novo |
+| **Gestão de recursos** (Fase 15) | Tabelas novas crescem | As tabelas novas entram no inventário da aba Recursos. Retenção e arquivo seguem as regras de lá |
+| **Interface:** Tkinter + matplotlib (já usado na aba Análise), tema claro e escuro (`ui/theme.py`) | O pedido citou PyQt, pyqtgraph, Plotly e seaborn | **Mantém Tkinter + matplotlib.** Trocar o toolkit quebraria a aplicação inteira e os testes de interface. Zoom e dicas ao parar o mouse vêm do matplotlib embutido (barra de navegação e eventos `motion_notify`). Uma visão HTML interativa opcional pode reaproveitar o painel vivo (T11.9) depois (T16.12) |
+
+---
+
+## 2. Arquitetura
+
+```text
+mt5_extracao/trade_analytics/        (sem Tkinter; só pandas/numpy, como o núcleo)
+  ledger.py        T16.1  livro de operações (_trade_ledger): gravar e ler, por robô ou por ativo
+  importers.py     T16.2  operações do backtester Python e do HDK_trades.csv (MQL5) para o livro
+  enrich.py        T16.3  colunas de contexto por operação (calendário, horário, notícia, volume, volatilidade)
+  calendar_events.py T16.3  eventos econômicos (lê o events_file; janela antes e depois)
+  aggregate.py     T16.4  agregações por dimensão e cruzamentos (robô → ativos; ativo → robôs)
+  stats.py         T16.4  métricas, intervalos de confiança (bootstrap), amostra mínima
+  execution/       T16.6–T16.8  re-simulação de execução sobre as barras M1 da base
+    engine.py      motor barra a barra com regra conservadora intrabarra
+    modes.py       ponto fixo, trailing, break-even, gradiente fixo/dinâmico/direcional, (anti)martingale
+  rules.py         T16.9  regras de filtro (dia, horário, notícia, volatilidade) e troca de modo
+  insights.py      T16.10 descoberta de regras com validação fora da amostra e contagem de tentativas
+  cache.py         T16.5  cache das colunas enriquecidas por execução (_trade_features)
+mt5_extracao/ui/trade_analytics.py   T16.11 aba "Analytics" (Tkinter + matplotlib)
+mt5_extracao/ui/charts.py            T16.11 gráficos reutilizáveis (heatmap, overlay, dispersão, barras)
+mt5x trades ...                      T16.12 o mesmo pelo terminal, com --json para agentes
+```
+
+**Fluxo:** backtest (Python ou MQL5) → `importers` grava no `_trade_ledger` → `enrich` calcula o contexto de cada
+operação usando **só barras fechadas antes da entrada** e guarda no `_trade_features` → `aggregate` e `stats`
+respondem às perguntas das duas lentes → `execution` re-simula sob outros modos → `rules` e `insights` propõem e
+testam filtros → a aba e o `mt5x trades` desenham.
+
+**Regras técnicas herdadas do AGENTS.md:** sem `tkinter` no núcleo; sem `import MetaTrader5` (a Fase 16 não fala com
+o MT5; ela lê a base); tabelas novas só aditivas; chaves novas em `DEFAULTS` e no `config.ini.example` com
+`fallback=`; Windows e Linux de primeira classe; mensagens em português; todo comportamento com teste, sem MT5 real.
+
+---
+
+## 3. Dados
+
+### 3.1 Livro de operações — `_trade_ledger` (T16.1)
+
+Uma linha por operação de qualquer backtest ou conta. Mesmo esquema para a T12.6A.
+
+| Coluna | Tipo | Observação |
+|---|---|---|
+| `run_id` | TEXT | liga ao `_robot_runs` (backtest) ou a uma importação de conta |
+| `seq` | INTEGER | ordem da operação no run; chave (`run_id`, `seq`) |
+| `robot_key`, `symbol`, `timeframe` | TEXT | as duas lentes filtram por aqui (índices) |
+| `source` | TEXT | `python`, `mql5_tester`, `conta_demo`, `conta_real`, `resim:<modo>` |
+| `direction` | INTEGER | +1 compra, -1 venda |
+| `entry_time`, `exit_time` | TIMESTAMP | horário da base (`time_basis` vale como no resto) |
+| `entry_price`, `exit_price`, `stop_price`, `target_price` | REAL | stop e alvo iniciais; podem ser nulos |
+| `volume`, `pnl`, `r_multiple`, `bars`, `exit_reason` | — | `exit_reason`: stop, alvo, sinal, tempo, fim |
+| `mae`, `mfe` | REAL | maior contra e a favor durante a operação, em pontos (calculado pelo enriquecimento quando a fonte não traz) |
+| `params_hash` | TEXT | parâmetros/preset do run, para comparar configurações |
+| `completeness` | TEXT | `completo` ou `parcial` (ex.: MQL5 antigo sem horário de entrada) |
+
+**Lacuna de hoje (conferida no código):** `robots/backtest.py` grava em `_robot_runs.trades_json` só
+`[saída, resultado, volume]`, e o `HDK_trades.csv` do HADOUKEN tem só `time;symbol;type;volume;result`. O
+backtester Python já tem tudo em `Trade` (`entry_time`, `direction`, preços, `r_multiple`, `exit_reason`): basta
+gravar. Para os robôs MQL5 é preciso estender o CSV no HADOUKEN (T16.2b, tarefa cruzada). Até lá, essas operações
+entram como `parcial` e a aba mostra só o que dá para mostrar com o horário de saída.
+
+### 3.2 Contexto por operação — `_trade_features` (T16.3, T16.5)
+
+Calculado uma vez e guardado; `feature_version` muda quando a fórmula muda (e invalida o cache).
+
+| Grupo | Colunas |
+|---|---|
+| Calendário | `day_of_week` (0=seg), `day_of_month`, `week_of_month` (1–5), `month`, `is_month_end` |
+| Horário | `hour`, `bucket_15m`, `bucket_30m`, `minutes_from_open` (pela sessão do dia; T13.1 quando existir) |
+| Notícias | `event_impact` (nenhum, baixo, médio, alto), `minutes_to_event` (sinal: antes ou depois), `event_name` |
+| Microestrutura | `entry_volume` (volume real, senão de ticks, da barra anterior à entrada), `volume_rank` (percentil em 20 dias), `atr14`, `atr_pct`, `bb_width`, `prior_return_pct` (variação nas N barras anteriores), `volatility_bucket` (baixa, média, alta por tercis do próprio ativo) |
+| Resultado | `win_flag`, `pnl`, `r_multiple`, `duration_min`, `mae`, `mfe` |
+
+**Sem olhar o futuro:** toda característica usa só barras com `time < entry_time` (a barra da entrada ainda não
+fechou). Isso tem teste próprio, com uma série armadilha (T16.3). É a mesma regra *point-in-time* da Fase 13.
+
+### 3.3 Eventos do calendário (T16.3)
+
+Lê o `events_file` que já existe (`time,symbol,impact`) e aceita colunas opcionais `name` e `country`. Uma operação
+fica "com notícia" quando há evento do mesmo ativo (ou `*`) dentro da janela
+`[TRADE_ANALYTICS] event_window_before_min` / `event_window_after_min` em torno da entrada. Sem arquivo, a dimensão aparece desabilitada
+na aba, com a explicação de como preencher.
+
+---
+
+## 4. Re-simulação de execução (T16.6 a T16.8)
+
+### 4.1 O que é e o que não é
+
+Pega os **pontos de entrada** de um run (horário, direção, stop inicial) e refaz a **gestão da posição** sobre as
+barras M1 da base, sob outro modo. Não roda o MT5. Não muda o sinal. Responde: "com estas mesmas entradas, como
+teria ido com trailing, com gradiente, com martingale?".
+
+### 4.2 Regras do motor (`execution/engine.py`)
+
+- **Barras M1 da base** como trajetória; se a série do run for maior que M1 e existir M1, usa M1. Sem M1, usa a do run e
+  marca o resultado como "resolução grosseira".
+- **Ambiguidade intrabarra conservadora:** se stop e alvo cabem na mesma barra, o **stop vem primeiro**. Gap: a ordem
+  é preenchida na abertura da barra, não no nível. Escorregamento e comissão vêm do `BacktestConfig` (mesmos
+  custos do backtester).
+- **Paridade obrigatória:** o modo "ponto fixo" com os parâmetros do run tem que reproduzir as operações do
+  backtester Python (mesmas entradas e saídas; tolerância declarada no teste). Sem isso, nenhum outro modo é
+  mostrado.
+- **Limites de segurança da simulação:** exposição máxima em lotes e número máximo de níveis por modo; operação que
+  estoura o limite é encerrada e marcada. Martingale tem teto de multiplicações e mostra a **ruína**: perda máxima e
+  maior sequência.
+
+### 4.3 Modos (`execution/modes.py`, um registro aberto como os da Fase 15)
+
+| Modo | Parâmetros | Observação |
+|---|---|---|
+| Ponto fixo (base) | alvo e stop em pontos ou em R | referência de comparação |
+| Break-even | gatilho em R, deslocamento | |
+| Trailing por ATR (Chandelier) | período, múltiplo | |
+| Trailing por máxima/mínima de N barras | N | |
+| Gradiente linear fixo | espaçamento em pontos, níveis, lote por nível, a favor ou contra | mesmos nomes de parâmetros do Gradiente Linear do HADOUKEN (T12.4) |
+| Gradiente dinâmico | espaçamento = k × ATR no momento da montagem | alinhado à T12.5 |
+| Gradiente direcional (piramidação) | adiciona só a favor; stop do conjunto sobe | |
+| Martingale / anti-martingale | multiplicador, teto, reinício | **só estudo**: marcado em vermelho, nunca exportável (bateria) |
+
+Cada modo devolve um resultado no mesmo formato do backtester (lista de `Trade` + curva), gravado no
+`_trade_ledger` com `source = resim:<modo>` e o `params_hash` do modo. Assim tudo o que vale para operações reais
+(enriquecimento, agregação, heatmaps) vale igual para as simuladas.
+
+---
+
+## 5. A aba "Analytics" (T16.11)
+
+### 5.1 Barra superior (sempre visível)
+
+```text
+MODALIDADE: (•) Por robô  ( ) Por ativo   | Robô [▼] ou Ativo [▼] | Comparar: [x] WIN$N [x] WDO$N ...
+Período [de .. até] | Execução [Ponto fixo ▼] | Notícias: [ ] ocultar impacto alto | Amostra: dentro / fora | ⟳
+```
+
+- **Por robô:** o robô escolhido, em todos os ativos e timeframes em que foi testado.
+- **Por ativo:** todos os robôs testados no ativo escolhido.
+- **Amostra:** "dentro", "fora" ou "toda". O corte fica em `[TRADE_ANALYTICS] oos_fraction` (padrão: os últimos
+  30% de cada run). Toda tela mostra de que amostra são os números.
+
+### 5.2 Guias internas (cada uma é um dos protótipos do pedido)
+
+| Guia | Conteúdo | Protótipo |
+|---|---|---|
+| **Visão geral** | Indicadores no topo (operações, acerto, fator de lucro, expectativa, queda máxima, com intervalo de confiança); heatmap Horário × Dia da semana; curvas de patrimônio sobrepostas (ativos na lente Robô, robôs na lente Ativo, ou modos de execução); tabela de notícias × desempenho | 1 e lente dupla |
+| **Tempo e calendário** | Barras por dia da semana (acerto e resultado), heatmap do dia do mês (1–31), curva de acerto e resultado ao longo do pregão (faixas de 15/30/60 min), semana do mês, vencedoras × perdedoras por faixa de 30 min | pilar 1 |
+| **Microestrutura** | Dispersão Volatilidade (ATR) × resultado (vencedora e perdedora em cores distintas), barras por faixa de volume com acerto, heatmap Volatilidade × Faixa horária | pilar 2 |
+| **Execução** | Seleção dos modos para comparar; curvas sobrepostas; matriz Modo × (acerto, fator de lucro, payoff, queda máxima, melhores horários); super-heatmap Contexto × Modo; dispersão Acerto × Fator de lucro por [contexto + modo] | 2 |
+| **Insights e simulador** | Lista de insights com amostra, intervalo e estado; checklist de regras (excluir dia, janela horária, notícia; trocar de modo por volatilidade ou horário); antes × depois **fora da amostra**; "Exportar proposta" | 3 |
+| **Comparativo** (só na lente Ativo) | Revezamento: qual robô domina cada faixa horária ou dia; correlação dos resultados diários entre robôs (se as perdas se somam ou se compensam) | lente Ativo |
+
+### 5.3 Regras visuais (pedagogia e honestidade)
+
+- Paleta **divergente acessível** (azul ↔ laranja, não verde ↔ vermelho puro) com a escala sempre visível; tema
+  claro e escuro pelos tokens de `ui/theme.py`. Respeita o pedido "estilo terminal profissional" no tema escuro sem
+  criar um terceiro tema.
+- Toda célula mostra **n** (número de operações). Célula com **n < 30** fica hachurada e cinza, com a dica "amostra
+  pequena: não conclua nada daqui" (regra I-10).
+- Ao parar o mouse: dica com n, acerto, expectativa e intervalo de 90%. Clicar numa célula filtra as outras guias
+  (cruzamento interativo).
+- Cada gráfico tem um "?" com a explicação curta (como o glossário da aba Análise).
+- Nada é chamado de "recomendado". Insight mostra estado (`exploratório`, `validado fora da amostra`), amostra e
+  quantas alternativas foram testadas para encontrá-lo.
+
+### 5.4 Desempenho
+
+- Leitura, enriquecimento e agregação em segundo plano (`ui.run_bg`), como as outras abas. A aba só lê a base quando
+  é aberta.
+- Enriquecimento calculado **uma vez por run** e guardado (`_trade_features`); trocar filtro só re-agrega em memória.
+- Metas, medidas em teste de desempenho com 50 mil operações sintéticas:
+
+  | Operação | Meta |
+  |---|---|
+  | Re-agregar e redesenhar a guia visível | < 300 ms |
+  | Simulador de regras (sem re-simular execução) | < 500 ms |
+  | Re-simular um modo | < 5 s para 10 mil operações em M1, com progresso e cancelamento |
+
+- Gráficos reaproveitam a `Figure` e redesenham só a guia visível. Curvas longas são reduzidas (como o
+  `downsample` dos backtests). O simulador espera 250 ms depois da última mudança antes de recalcular.
+
+---
+
+## 6. Otimização sem enganar ninguém (T16.9, T16.10)
+
+É a parte mais perigosa: com dezenas de dias, horários, faixas e modos, sempre existe uma combinação que "teria dado
+lucro". Regras obrigatórias, do Épico I e da especificação da Fase 13:
+
+1. **Dentro e fora da amostra.** Regras são **descobertas** só na parte de dentro. O "resultado projetado" do
+   simulador é mostrado na parte de **fora**, ao lado da de dentro. Se só melhora dentro, a tela diz isso.
+2. **Contagem de tentativas.** Cada insight informa quantas combinações foram testadas para achá-lo. A significância
+   é corrigida por múltiplos testes (FDR de Benjamini-Hochberg). Quando a I-09 existir, entra o Deflated Sharpe.
+3. **Amostra mínima.** Regra que deixa menos de 30 operações em qualquer lado não vira insight.
+4. **Intervalo de confiança** por bootstrap em blocos (dias), não só a média.
+5. **Teste do ruído:** em operações de resultado aleatório, o motor de insights não pode produzir nenhum insight
+   "validado". Esse é um teste automático da T16.10.
+6. **Exportar é propor, não aplicar.** "Exportar proposta" grava um arquivo
+   (`exports/propostas/<robô>_<data>.json`) com as regras, a amostra, os números de dentro e de fora e o número de
+   tentativas. Para virar preset de robô passa pelo fluxo de sempre: `mt5x validate`, bateria e paridade.
+   **Martingale nunca é exportado.** Regras de gradiente saem como parâmetros do Gradiente Linear do HADOUKEN.
+7. Insights têm o mesmo ciclo de estados da Fase 13 (`exploratório → validando → validado → monitorando →
+   aposentado`), guardados em `_trade_insights` (aditiva).
+
+---
+
+## 7. Tarefas
+
+Cada tarefa é um PR. "Aceite" é o que o revisor confere; "Testes" é o mínimo em `tests/`.
+
+### T16.0 — Plano registrado
+Este documento, as linhas no painel e a seção da Fase 16 no PLANO_DE_TRABALHO.md. **Aceite:** revisão do dono.
+
+### T16.1 — Livro de operações (`_trade_ledger`)
+- **Fazer:** `trade_analytics/ledger.py` com `save_trades(db, run_id, trades, meta)`, `load(db, robot=None,
+  symbol=None, timeframe=None, source=None, start=None, end=None)` → DataFrame; índices por robô, ativo e horário
+  de entrada; criação sob demanda (aditiva), SQLite e PostgreSQL.
+- **Aceite:** gravar e ler devolve as mesmas operações; base antiga abre; nenhuma tabela existente muda.
+- **Testes:** ida e volta; filtros das duas lentes; PostgreSQL pelo job de CI que já existe.
+
+### T16.2 — Importadores (Python e MQL5)
+- **Fazer:** (a) `robots/backtest.py` passa a gravar também no livro as operações completas do `Trade`
+  (mantendo `trades_json` como está, por compatibilidade); importador para os runs antigos (`mt5x trades import`)
+  que gera linhas `parcial`. (b) **Tarefa cruzada no HADOUKEN (T16.2b):** acrescentar ao `HDK_trades.csv` as colunas
+  `entry_time;entry_price;exit_price;sl;tp;direction;exit_reason`. O leitor `read_hdk_trades` aceita os dois formatos.
+- **Aceite:** backtest novo de estratégia Python aparece completo no livro; run MQL5 antigo aparece `parcial`;
+  CSV novo vira `completo`.
+- **Testes:** o backtest grava; CSV antigo e novo; nada muda em `_robot_runs`.
+
+### T16.3 — Enriquecimento e calendário econômico
+- **Fazer:** `enrich.py` (colunas da seção 3.2) e `calendar_events.py` (leitor do `events_file`, janela configurável).
+  Sessão e minutos desde a abertura: pela dedução das barras do dia (mesma ideia da T13.1); quando a T13.1 existir,
+  troca a fonte sem mudar a saída.
+- **Chaves novas `[TRADE_ANALYTICS]`:** `event_window_before_min = 30`, `event_window_after_min = 30`,
+  `time_bucket_min = 30`, `volatility_period = 14`, `oos_fraction = 0.3`, `min_trades_cell = 30`.
+- **Aceite:** cada operação recebe as colunas; nenhuma usa barra com `time >= entry_time`.
+- **Testes:** série armadilha (um salto de preço na barra da entrada não pode aparecer no ATR da operação); dia da
+  semana e semana do mês em datas conhecidas; operação sem barras anteriores fica com contexto nulo, sem erro.
+
+### T16.4 — Agregações e estatística (as duas lentes)
+- **Fazer:** `aggregate.py`: `by_dimension(df, dims)`, `crosstab(df, row, col, metric)`, `robot_view(db, robot)`,
+  `asset_view(db, symbol)`, `daily_correlation(df)`; `stats.py`: métricas do backtester (`compute_metrics`), bootstrap
+  em blocos por dia, marcação de amostra pequena.
+- **Aceite:** os números batem com `compute_metrics` no total; cada célula traz n e intervalo.
+- **Testes:** dados sintéticos com efeito plantado (perde às sextas, ganha das 10h às 11h) que tem de aparecer; célula
+  com n < 30 marcada.
+
+### T16.5 — Cache e desempenho
+- **Fazer:** `_trade_features` com `feature_version`; recalcula só os runs novos ou com versão velha; entra no
+  inventário da Fase 15 (tamanho, retenção).
+- **Aceite:** abrir a aba pela segunda vez não recalcula; metas da seção 5.4 medidas.
+- **Testes:** invalidação por versão; teste de desempenho com 50 mil operações (marcado, roda no CI).
+
+### T16.6 — Motor de re-simulação e modo ponto fixo
+- **Fazer:** `execution/engine.py` com as regras da seção 4.2 e o modo base.
+- **Aceite:** **paridade** com o backtester Python nas seis estratégias (mesmas entradas e saídas, tolerância
+  declarada); stop antes do alvo na barra ambígua; gap preenchido na abertura.
+- **Testes:** paridade; barra ambígua; gap; custo e escorregamento iguais aos do backtester.
+
+### T16.7 — Modos de saída (break-even e trailings)
+- **Aceite:** cada modo com caso sintético de resultado conhecido.
+- **Testes:** trilha sobe e nunca desce; break-even só depois do gatilho.
+
+### T16.8 — Modos de dimensionamento (gradientes e martingale)
+- **Fazer:** gradiente fixo, dinâmico (ATR) e direcional, com os nomes de parâmetro do Gradiente Linear do HADOUKEN
+  (T12.4/T12.5); martingale e anti-martingale com teto. Limites de exposição e níveis.
+- **Aceite:** exposição nunca passa do teto; martingale marcado "só estudo" em todo lugar em que aparece.
+- **Testes:** preço médio e resultado de grade em trajetória conhecida; teto respeitado; sequência de perdas leva ao
+  limite e encerra.
+
+### T16.9 — Regras e simulador
+- **Fazer:** `rules.py`: regras como dados (`{"tipo": "excluir_dia", "dias": [4]}`, `janela_horaria`,
+  `excluir_noticia`, `trocar_modo_se`), aplicadas ao livro enriquecido; resultado antes × depois em dentro e fora.
+- **Aceite:** aplicar e remover uma regra devolve o original; simulador dentro da meta de tempo.
+- **Testes:** regra de excluir sexta tira exatamente as operações de sexta; troca de modo usa o resultado re-simulado
+  daquele modo.
+
+### T16.10 — Insights automáticos
+- **Fazer:** `insights.py` varre as dimensões (dia, faixa horária, notícia, volatilidade, volume, modo) só na parte de
+  dentro; mede na parte de fora; corrige por múltiplos testes; texto pedagógico pronto ("Sextas: expectativa
+  -R$ 14,20 por operação em 212 operações; fora da amostra: -R$ 9,80 em 61"); grava em `_trade_insights`.
+- **Aceite:** regras da seção 6; cada insight mostra n, intervalo, tentativas e estado.
+- **Testes:** efeito plantado é achado e validado; **ruído puro não produz insight validado** (mil sorteios); insight
+  que só existe dentro da amostra fica "exploratório".
+
+### T16.11 — Aba "Analytics"
+- **Fazer:** `ui/trade_analytics.py` e `ui/charts.py` (heatmap, overlay, dispersão, barras agrupadas, com hachura de
+  amostra pequena e dicas). Entra no notebook depois de "Robôs", no menu Exibir pelo widget, não pelo índice.
+  Barra superior e guias da seção 5. Ligação com a aba Robôs: "Abrir no Analytics" no painel de cada robô.
+- **Aceite:** abre com a base vazia (mensagem de como começar), com runs parciais (o que falta e por quê) e com dados
+  completos; temas claro e escuro; 1100×720 sem cortar controles.
+- **Testes:** os de interface do padrão de `tests/test_ui_main_window.py` (com espera pela leitura em segundo plano,
+  como corrigido na harmonização): troca de lente, filtro, clique na célula, simulador.
+
+### T16.12 — `mt5x trades` e relatório
+- **Fazer:** `mt5x trades import | enrich | report --robot X | --symbol Y | simulate --mode ... | insights | export`,
+  todos com `--json`. Relatório HTML opcional pelo mesmo gerador do painel de resultados (T11.7), com gráficos
+  interativos no navegador.
+- **Aceite:** os mesmos números da aba.
+- **Testes:** CLI com base de teste, como os de `tests/test_cli.py`.
+
+### Ordem e dependências
+
+```text
+T16.0 → T16.1 → T16.2 → T16.3 → T16.4 → T16.5 ─┬→ T16.11 (guias Visão geral, Tempo, Microestrutura)
+                         │                      └→ T16.12 (report)
+                         └→ T16.6 → T16.7 → T16.8 → T16.9 → T16.10 → T16.11 (Execução, Insights) → T16.12 (simulate, insights)
+T16.2b (HADOUKEN) em paralelo; sem ela os robôs MQL5 ficam "parciais"
+```
+
+A primeira entrega útil para o usuário é **T16.1 a T16.5 mais a T16.11 parcial**: a lente dupla com tempo, calendário e
+microestrutura, sem re-simulação. A re-simulação e o simulador vêm depois, porque dependem da paridade da T16.6.
+
+---
+
+## 8. Decisões pendentes do dono do projeto
+
+1. **Nome da aba:** "Analytics" (como pedido) ao lado de "Análise" pode confundir em português. Alternativas:
+   "Desempenho" ou "Laboratório". O plano usa "Analytics".
+2. **Fonte do calendário econômico:** hoje é um CSV mantido à mão (`events_file`). Uma fonte automática (site, API
+   paga ou exportação do calendário do próprio MT5 pelo MQL5, `CalendarValueHistory`) precisa de escolha. A
+   exportação pelo MQL5 é a candidata natural (mesmo caminho do `HDK_sessions` proposto em
+   [DECISOES_CONTRATOS_E_CALENDARIO](DECISOES_CONTRATOS_E_CALENDARIO.md)).
+3. **Martingale na interface:** mostrar, marcado "só estudo" (o plano), ou não mostrar.
+4. **Fração fora da amostra padrão:** 30% finais de cada run (o plano) ou walk-forward por janelas desde o início.
+
+## 9. O que este plano não promete
+
+- Re-simular sobre M1 não é o mesmo que o Strategy Tester com ticks reais: a ordem dentro do minuto é suposta
+  (conservadora). Quando a ordem exata importar, a validação final é pelo Strategy Tester (I-08).
+- Insight validado fora da amostra é **evidência**, não recomendação de operação.
+- Robôs MQL5 só terão análise completa depois da T16.2b no HADOUKEN.
