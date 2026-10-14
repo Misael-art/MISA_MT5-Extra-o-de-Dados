@@ -168,3 +168,13 @@ obsolete_days = 180
 archive_dir = 
 # Quantos dias de histórico de medições guardar.
 keep_snapshots_days = 365
+# Cópia de segurança da base (só SQLite; no PostgreSQL use pg_dump): a cada backup_interval_hours, guardando as
+# backup_keep mais novas em backup_dir (vazio = copias/ ao lado da base). Precisa de disco do tamanho da base.
+auto_backup = false
+backup_interval_hours = 24
+backup_keep = 5
+backup_dir = 
+# Apagar sozinho arquivos antigos de logs e de exportações (dias; 0 = nunca). O log em uso nunca é apagado.
+auto_clean_files = false
+logs_keep_days = 30
+exports_keep_days = 0

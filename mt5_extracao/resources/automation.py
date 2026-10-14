@@ -11,7 +11,7 @@ from typing import Iterable, List, Optional
 
 from sqlalchemy import text
 
-from mt5_extracao.resources import actions, hygiene, storage
+from mt5_extracao.resources import actions, files, hygiene, storage
 from mt5_extracao.resources import policy as policy_mod
 
 log = logging.getLogger(__name__)
@@ -75,7 +75,7 @@ def run_cycle(db, config, origin: str = "auto", selected: Iterable[str] = (), no
     """
     policy = policy_mod.load(config)
     now = now or datetime.now()
-    report = storage.measure(db, policy_mod.archive_dir(db, policy))
+    report = storage.measure(db, policy_mod.archive_dir(db, policy), config=config)
     storage.record_snapshot(db, report, policy.keep_snapshots_days)
     found_alerts = alerts(report, policy)
     done: List[dict] = []
@@ -92,6 +92,12 @@ def run_cycle(db, config, origin: str = "auto", selected: Iterable[str] = (), no
                 if targets:
                     results = actions.archive_tables(db, config, list(targets), origin, reasons=targets)
                     done.append({"action": "arquivar", "result": results})
+            if policy.auto_clean_files:
+                cleaned = files.clean_files(db, config, origin, now)
+                if cleaned["removed"]:
+                    done.append({"action": "arquivos", "result": cleaned})
+            if policy.auto_backup and files.backup_due(db, config, now):
+                done.append({"action": "copiar", "result": files.backup(db, config, origin)})
             reclaim = storage.measure(db, with_dirs=False).get("reclaimable_bytes") if done else \
                 report.get("reclaimable_bytes")
             if policy.auto_vacuum and reclaim and reclaim >= policy.vacuum_min_mb * MB:

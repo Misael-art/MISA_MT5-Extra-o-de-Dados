@@ -114,6 +114,13 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("obsolete_days", "180"),            # idade da última barra para a regra "obsoleta"
         ("archive_dir", ""),                 # vazio = pasta arquivo/ ao lado da base
         ("keep_snapshots_days", "365"),      # histórico de medições guardado
+        ("auto_backup", "false"),            # cópia de segurança da base (SQLite) a cada backup_interval_hours
+        ("backup_interval_hours", "24"),
+        ("backup_keep", "5"),                # quantas cópias guardar (as mais velhas são apagadas)
+        ("backup_dir", ""),                  # vazio = pasta copias/ ao lado da base
+        ("auto_clean_files", "false"),       # apaga sozinho logs e exportações mais velhos que os dias abaixo
+        ("logs_keep_days", "30"),            # 0 = nunca apaga logs (o log em uso nunca é apagado)
+        ("exports_keep_days", "0"),          # 0 = nunca apaga exportações
     ])),
 ])
 

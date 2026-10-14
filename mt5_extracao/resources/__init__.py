@@ -10,4 +10,4 @@ reversível e automação opt-in. Sem Tkinter: a interface só desenha o que sai
 
 Plano e regras: docs/propostas/GESTAO_RECURSOS.md (Fase 15).
 """
-from mt5_extracao.resources import actions, automation, hygiene, policy, storage  # noqa: F401
+from mt5_extracao.resources import actions, automation, files, hygiene, policy, storage  # noqa: F401

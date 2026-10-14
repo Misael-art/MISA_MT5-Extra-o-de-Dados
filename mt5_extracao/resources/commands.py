@@ -1,7 +1,7 @@
 """`mt5x resources ...` (T15.4). Registrado em cli.build_parser por `add_parser`; a saída usa os auxiliares do cli."""
 import argparse
 
-from mt5_extracao.resources import actions, automation, hygiene, storage
+from mt5_extracao.resources import actions, automation, files, hygiene, storage
 from mt5_extracao.resources import policy as policy_mod
 
 
@@ -27,6 +27,12 @@ def add_parser(sub) -> None:
     q.add_argument("--yes", action="store_true")
     rs.add_parser("auto", help="um ciclo de monitoramento (para o cron / Agendador de Tarefas); só age com "
                                "[RESOURCES] auto_enabled = true")
+    q = rs.add_parser("backup", help="cópia de segurança conferida da base (SQLite), guardando as mais novas")
+    q.add_argument("--yes", action="store_true")
+    rs.add_parser("backups", help="lista as cópias de segurança")
+    q = rs.add_parser("files", help="logs e exportações mais velhos que [RESOURCES] logs_keep_days / "
+                                    "exports_keep_days (--yes apaga)")
+    q.add_argument("--yes", action="store_true")
     q = rs.add_parser("history", help="medições gravadas e ações executadas")
     q.add_argument("--limit", type=int, default=30)
     p.set_defaults(func=run)
@@ -51,7 +57,7 @@ def run(args: argparse.Namespace, ctx) -> int:
     command = args.resources_command
 
     if command == "status":
-        report = storage.measure(db, policy_mod.archive_dir(db, policy))
+        report = storage.measure(db, policy_mod.archive_dir(db, policy), config=config)
         storage.record_snapshot(db, report, policy.keep_snapshots_days)
         trend = storage.growth(storage.load_snapshots(db, 90))
         found = automation.alerts(report, policy)
@@ -166,6 +172,41 @@ def run(args: argparse.Namespace, ctx) -> int:
             out(f"Ação automática: {d['action']}")
         data(alerts=result["alerts"], actions=result["actions"], db_bytes=result["report"]["db_bytes"])
         return cli.EXIT_OK
+
+    if command == "backup":
+        if not args.yes:
+            err("nada foi feito: confirme com --yes")
+            return cli.EXIT_USAGE
+        result = files.backup(db, config, origin="cli")
+        out(f"Cópia criada: {result['path']} ({hb(result['bytes'])})" if result["ok"]
+            else f"Cópia não feita: {result['error']}")
+        for old in result["pruned"]:
+            out(f"Cópia antiga apagada: {old}")
+        data(**result)
+        return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
+
+    if command == "backups":
+        items = files.list_backups(db, config)
+        for b in items:
+            out(f"{b['path']}\t{hb(b['bytes'])}\t{b['created_at']:%Y-%m-%d %H:%M}")
+        out(f"\n{len(items)} cópia(s). Para voltar a uma delas: feche o programa e copie o arquivo por cima da base.")
+        data(backups=items)
+        return cli.EXIT_OK
+
+    if command == "files":
+        if not args.yes:
+            items = files.old_files(db, config)
+            for f in items:
+                out(f"{f['folder']}\t{f['path']}\t{hb(f['bytes'])}\t{f['modified']:%Y-%m-%d}")
+            out(f"\n{len(items)} arquivo(s), {hb(sum(f['bytes'] for f in items))} (apague com --yes).")
+            data(files=items)
+            return cli.EXIT_OK
+        result = files.clean_files(db, config, origin="cli")
+        out(f"{result['removed']} arquivo(s) apagado(s), {hb(result['bytes'])} liberados.")
+        for e in result["errors"]:
+            err(e)
+        data(**result)
+        return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
 
     if command == "history":
         snaps = storage.load_snapshots(db)[-args.limit:]

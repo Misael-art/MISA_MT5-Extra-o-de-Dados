@@ -31,6 +31,12 @@ def _project_root() -> Path:
 EXTRA_DIRS["Logs"] = lambda db, archive: _project_root() / "logs"
 EXTRA_DIRS["Exportações"] = lambda db, archive: _project_root() / "exports"
 EXTRA_DIRS["Arquivo"] = lambda db, archive: archive
+EXTRA_DIRS["Cópias"] = lambda db, archive, config=None: _backup_dir(db, config)
+
+
+def _backup_dir(db, config=None):
+    from mt5_extracao.resources import files, policy
+    return files.backup_dir(db, policy.load(config))
 
 _SNAPSHOTS = """
 CREATE TABLE IF NOT EXISTS _resource_snapshots (
@@ -110,7 +116,7 @@ def _sqlite_sizes(conn) -> Dict[str, int]:
         return {}
 
 
-def measure(db, archive: Optional[Path] = None, with_dirs: bool = True) -> dict:
+def measure(db, archive: Optional[Path] = None, with_dirs: bool = True, config=None) -> dict:
     """
     Retrato do espaço. Nunca lança: o que não puder ser medido fica None e o motivo vai em "warnings".
     tables: [{table, kind, rows, bytes, estimated (bytes estimados pelas linhas), symbol, timeframe, start, end}]
@@ -170,7 +176,7 @@ def measure(db, archive: Optional[Path] = None, with_dirs: bool = True) -> dict:
         archive = archive or policy_mod.archive_dir(db)
         for label, locate in EXTRA_DIRS.items():
             try:
-                path = Path(locate(db, archive))
+                path = Path(locate(db, archive, config) if label == "Cópias" else locate(db, archive))
                 report["dirs"][label] = {"path": str(path), "bytes": dir_bytes(path)}
             except Exception as e:
                 report["warnings"].append(f"Pasta {label}: {e}")

@@ -303,3 +303,68 @@ def test_cli_status_scan_archive_restore(db, tmp_path, capsys):
     capsys.readouterr()
     assert inspect(db.engine).has_table(table)
     assert _cli(tmp_path, db, "history") == cli.EXIT_OK
+
+
+# --- cópias e arquivos antigos (T15.7) -----------------------------------------------------
+
+def test_backup_is_checked_and_pruned(db, tmp_path):
+    from mt5_extracao.resources import files
+    cfg = _config(tmp_path, backup_dir=str(tmp_path / "copias"), backup_keep="2")
+    paths = []
+    for i in range(3):
+        result = files.backup(db, cfg, origin="teste")
+        assert result["ok"], result
+        paths.append(result["path"])
+        import os, time
+        os.utime(result["path"], (time.time() - (10 - i) * 60,) * 2)    # horários distintos
+    left = [b["path"] for b in files.list_backups(db, cfg)]
+    assert len(left) == 2 and paths[0] not in left
+    copy = DatabaseManager(db_path=left[0])
+    assert {i["symbol"] for i in copy.data_inventory()} == {"PETR4", "VALE3", "OLD3", "FAV3"}
+    copy.close()
+    assert not files.backup_due(db, _config(tmp_path, backup_dir=str(tmp_path / "copias")))
+
+
+def test_backup_refuses_without_disk(db, tmp_path, monkeypatch):
+    from mt5_extracao.resources import files
+    monkeypatch.setattr(storage, "disk_usage", lambda p: {"free": 1, "total": 10, "used": 9, "free_pct": 10.0,
+                                                          "path": str(p)})
+    result = files.backup(db, _config(tmp_path, backup_dir=str(tmp_path / "copias")))
+    assert not result["ok"] and "disco livre" in result["error"]
+    assert not list((tmp_path / "copias").glob("*"))
+
+
+def test_old_files_keep_the_active_log_and_respect_zero(db, tmp_path, monkeypatch):
+    import os
+    from mt5_extracao.resources import files
+    logs, exports = tmp_path / "logs", tmp_path / "exports"
+    logs.mkdir(); exports.mkdir()
+    for path in (logs / "mt5_extracao.log", logs / "mt5_extracao.log.1", exports / "a.csv"):
+        path.write_text("x")
+        old = (NOW - timedelta(days=90)).timestamp()
+        os.utime(path, (old, old))
+    monkeypatch.setitem(storage.EXTRA_DIRS, "Logs", lambda db, archive: logs)
+    monkeypatch.setitem(storage.EXTRA_DIRS, "Exportações", lambda db, archive: exports)
+    found = files.old_files(db, _config(tmp_path), now=NOW)              # exportações: 0 = nunca
+    assert [f["path"] for f in found] == [str(logs / "mt5_extracao.log.1")]
+    found = files.old_files(db, _config(tmp_path, exports_keep_days=30), now=NOW)
+    assert len(found) == 2
+    result = files.clean_files(db, _config(tmp_path, exports_keep_days=30), now=NOW)
+    assert result["removed"] == 2 and (logs / "mt5_extracao.log").exists()
+
+
+def test_cycle_makes_backup_only_with_opt_in(db, tmp_path):
+    from mt5_extracao.resources import files
+    cfg = _config(tmp_path, auto_backup="true", backup_dir=str(tmp_path / "copias"))
+    automation.run_cycle(db, cfg, now=NOW)
+    assert files.list_backups(db, cfg) == []
+    cfg["RESOURCES"]["auto_enabled"] = "true"
+    out = automation.run_cycle(db, cfg, now=NOW)
+    assert [d["action"] for d in out["actions"]] == ["copiar"]
+    assert len(files.list_backups(db, cfg)) == 1
+
+
+def test_cli_backup_and_files(db, tmp_path, capsys):
+    assert _cli(tmp_path, db, "backup") == cli.EXIT_USAGE
+    assert _cli(tmp_path, db, "backups") == cli.EXIT_OK
+    assert _cli(tmp_path, db, "files") == cli.EXIT_OK

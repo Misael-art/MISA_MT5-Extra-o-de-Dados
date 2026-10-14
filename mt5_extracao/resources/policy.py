@@ -25,6 +25,13 @@ class Policy:
     obsolete_days: int = 180
     archive_dir: str = ""
     keep_snapshots_days: int = 365
+    auto_backup: bool = False
+    backup_interval_hours: int = 24
+    backup_keep: int = 5
+    backup_dir: str = ""
+    auto_clean_files: bool = False
+    logs_keep_days: int = 30
+    exports_keep_days: int = 0
     errors: list = field(default_factory=list)   # chaves com valor inválido (usou o padrão)
 
 
@@ -76,6 +83,14 @@ def load(config) -> Policy:
         archive_dir=(config.get(SECTION, "archive_dir", fallback="") if config is not None and
                      config.has_section(SECTION) else "") or "",
         keep_snapshots_days=max(1, _get(config, "keep_snapshots_days", int, d.keep_snapshots_days, errors)),
+        auto_backup=_get(config, "auto_backup", bool, d.auto_backup, errors),
+        backup_interval_hours=max(1, _get(config, "backup_interval_hours", int, d.backup_interval_hours, errors)),
+        backup_keep=max(1, _get(config, "backup_keep", int, d.backup_keep, errors)),
+        backup_dir=(config.get(SECTION, "backup_dir", fallback="") if config is not None and
+                    config.has_section(SECTION) else "") or "",
+        auto_clean_files=_get(config, "auto_clean_files", bool, d.auto_clean_files, errors),
+        logs_keep_days=_get(config, "logs_keep_days", int, d.logs_keep_days, errors),
+        exports_keep_days=_get(config, "exports_keep_days", int, d.exports_keep_days, errors),
         errors=errors)
 
 

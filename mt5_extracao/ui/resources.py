@@ -12,7 +12,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from mt5_extracao.bootstrap import config_builder
-from mt5_extracao.resources import actions, automation, hygiene, storage
+from mt5_extracao.resources import actions, automation, files, hygiene, storage
 from mt5_extracao.resources import policy as policy_mod
 from mt5_extracao.ui.theme import Tooltip, card, fmt_int, scrolled_tree
 
@@ -43,6 +43,11 @@ AUTO_FLAGS = (
     ("auto_archive", "Arquivar sozinho as séries das regras marcadas", "Arquivar é reversível: a série vai para um "
                      "arquivo e volta com Restaurar. Favoritos, seleção, benchmarks e séries com backtest lucrativo "
                      "nunca são arquivados."),
+    ("auto_backup", "Fazer cópia de segurança da base sozinho", "Cópia conferida do arquivo SQLite no intervalo "
+                                                               "abaixo, guardando as mais novas. Precisa de disco do "
+                                                               "tamanho da base."),
+    ("auto_clean_files", "Apagar logs e exportações antigos sozinho", "Usa os dias abaixo (0 = nunca). O log em uso "
+                                                                       "nunca é apagado."),
 )
 AUTO_NUMBERS = (
     ("monitor_interval_minutes", "Intervalo entre ciclos (min)", 5, 1440),
@@ -50,6 +55,10 @@ AUTO_NUMBERS = (
     ("alert_disk_free_pct", "Avisar quando o disco livre cair abaixo de (%)", 0, 99),
     ("vacuum_min_mb", "Otimizar quando houver recuperável acima de (MB)", 1, 1000000),
     ("obsolete_days", "Série obsoleta após (dias sem barra nova)", 1, 36500),
+    ("backup_interval_hours", "Cópia de segurança a cada (horas)", 1, 8760),
+    ("backup_keep", "Cópias guardadas", 1, 1000),
+    ("logs_keep_days", "Apagar logs com mais de (dias; 0 = nunca)", 0, 36500),
+    ("exports_keep_days", "Apagar exportações com mais de (dias; 0 = nunca)", 0, 36500),
 )
 
 
@@ -84,6 +93,7 @@ class ResourcesPanel:
         self._build_space_tab()
         self._build_clean_tab()
         self._build_archive_tab()
+        self._build_files_tab()
         self._build_auto_tab()
         self._build_history_tab()
         self.frame.bind("<Configure>", self._resized, add="+")
@@ -196,6 +206,72 @@ class ResourcesPanel:
         frame.pack(fill=tk.BOTH, expand=True)
         self.archive_tree.bind("<Double-1>", lambda e: self.restore_selected())
 
+    def _build_files_tab(self):
+        tab = ttk.Frame(self.tabs, padding=10, style="Surface.TFrame")
+        self.tabs.add(tab, text="Cópias e arquivos")
+        row = ttk.Frame(tab, style="Surface.TFrame")
+        row.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        self.backup_button = ttk.Button(row, text="Fazer cópia agora", style="Accent.TButton", command=self.backup)
+        self.backup_button.pack(side=tk.LEFT)
+        Tooltip(self.backup_button, "Cópia conferida da base inteira, feita com ela em uso. Para voltar a uma cópia: "
+                                    "feche o programa e copie o arquivo por cima da base.", self.ui.theme)
+        ttk.Button(row, text="Abrir pasta das cópias", command=self.open_backup_dir).pack(side=tk.LEFT, padx=(8, 0))
+        self.files_button = ttk.Button(row, text="Apagar arquivos antigos", command=self.clean_files)
+        self.files_button.pack(side=tk.RIGHT)
+        self.files_summary = ttk.Label(tab, text="", style="Muted.TLabel", wraplength=760, justify=tk.LEFT)
+        self.files_summary.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        frame, self.backup_tree = scrolled_tree(tab, ("Cópia", "Tamanho", "Criada em"), (420, 100, 140),
+                                                ("w", "e", "w"), height=10)
+        frame.pack(fill=tk.BOTH, expand=True)
+        self.backups, self.old_files = [], []
+
+    def _show_files(self):
+        tree = self.backup_tree
+        tree.delete(*tree.get_children())
+        for b in self.backups:
+            tree.insert("", tk.END, values=(Path(b["path"]).name, hb(b["bytes"]), f"{b['created_at']:%d/%m/%Y %H:%M}"))
+        size = sum(f["bytes"] for f in self.old_files)
+        text = (f"{len(self.backups)} cópia(s), {hb(sum(b['bytes'] for b in self.backups))}. " if self.backups
+                else "Nenhuma cópia de segurança ainda. ")
+        text += (f"Arquivos antigos de logs e exportações: {len(self.old_files)} ({hb(size)})." if self.old_files
+                 else "Nenhum arquivo antigo de logs ou exportações pelos dias da guia Automação.")
+        self.files_summary.config(text=text)
+        if not self.old_files:
+            self.files_button.state(["disabled"])
+
+    def backup(self):
+        db, config = self._db(), self._config()
+        if not db:
+            return
+
+        def done(result):
+            if result["ok"]:
+                self.ui.log(f"Recursos: cópia de segurança criada em {result['path']} ({hb(result['bytes'])}).")
+            else:
+                messagebox.showerror("Cópia de segurança", result["error"], parent=self.frame)
+        self._run_action("copiando a base", lambda: files.backup(db, config, "ui"), done)
+
+    def clean_files(self):
+        db, config = self._db(), self._config()
+        if not db or not self.old_files:
+            return
+        by_folder = {}
+        for f in self.old_files:
+            by_folder[f["folder"]] = by_folder.get(f["folder"], 0) + 1
+        if not messagebox.askyesno("Apagar arquivos antigos", "Apagar " + ", ".join(
+                f"{n} de {k.lower()}" for k, n in by_folder.items()) + f" ({hb(sum(f['bytes'] for f in self.old_files))})?"
+                "\n\nEstes arquivos não vão para o arquivo: somem de vez.", parent=self.frame):
+            return
+
+        def done(result):
+            self.ui.log(f"Recursos: {result['removed']} arquivo(s) antigo(s) apagado(s), {hb(result['bytes'])}.")
+        self._run_action("apagando arquivos antigos", lambda: files.clean_files(db, config, "ui"), done)
+
+    def open_backup_dir(self):
+        folder = files.backup_dir(self._db(), policy_mod.load(self._config()))
+        folder.mkdir(parents=True, exist_ok=True)
+        self.ui._open_path(folder)
+
     def _build_auto_tab(self):
         tab = ttk.Frame(self.tabs, padding=12, style="Surface.TFrame")
         self.tabs.add(tab, text="Automação")
@@ -215,8 +291,9 @@ class ResourcesPanel:
             w.pack(anchor="w", pady=1)
             Tooltip(w, hint, self.ui.theme)
             self.auto_widgets.append(w)
-        rules = ttk.Frame(flags, style="Surface.TFrame")
-        rules.pack(anchor="w", padx=(22, 0))
+            if key == "auto_archive":            # as regras ficam logo abaixo da opção a que pertencem
+                rules = ttk.Frame(flags, style="Surface.TFrame")
+                rules.pack(anchor="w", padx=(22, 0))
         self.auto_rule_vars = {}
         for code in hygiene.RULES:
             var = tk.BooleanVar(value=code in p.auto_archive_rules)
@@ -228,11 +305,14 @@ class ResourcesPanel:
         numbers = ttk.Frame(tab, style="Surface.TFrame")
         numbers.pack(fill=tk.X, pady=(12, 0))
         self.auto_numbers = {}
-        for row, (key, label, low, high) in enumerate(AUTO_NUMBERS):
-            ttk.Label(numbers, text=label, style="Surface.TLabel").grid(row=row, column=0, sticky="w", pady=2)
+        half = (len(AUTO_NUMBERS) + 1) // 2      # duas colunas: cabe em telas baixas
+        for index, (key, label, low, high) in enumerate(AUTO_NUMBERS):
+            row, col = index % half, (index // half) * 2
+            ttk.Label(numbers, text=label, style="Surface.TLabel").grid(row=row, column=col, sticky="w", pady=2,
+                                                                         padx=(0 if col == 0 else 28, 0))
             var = tk.StringVar(value=self._num_text(getattr(p, key)))
-            spin = ttk.Spinbox(numbers, from_=low, to=high, textvariable=var, width=10)
-            spin.grid(row=row, column=1, sticky="w", padx=(12, 0), pady=2)
+            spin = ttk.Spinbox(numbers, from_=low, to=high, textvariable=var, width=8)
+            spin.grid(row=row, column=col + 1, sticky="w", padx=(12, 0), pady=2)
             self.auto_numbers[key] = var
 
         buttons = ttk.Frame(tab, style="Surface.TFrame")
@@ -276,7 +356,7 @@ class ResourcesPanel:
         self.busy = busy
         state = ["disabled"] if busy else ["!disabled"]
         for button in (self.refresh_button, self.vacuum_button, self.archive_button, self.orphans_button,
-                       self.restore_button, self.cycle_button):
+                       self.restore_button, self.cycle_button, self.backup_button, self.files_button):
             button.state(state)
         if busy:
             self.progress.pack(side=tk.RIGHT, padx=(0, 10))
@@ -300,12 +380,14 @@ class ResourcesPanel:
 
         def work():
             policy = policy_mod.load(config)
-            report = storage.measure(db, policy_mod.archive_dir(db, policy))
+            report = storage.measure(db, policy_mod.archive_dir(db, policy), config=config)
             storage.record_snapshot(db, report, policy.keep_snapshots_days)
             sizes = {t["table"]: t["bytes"] for t in report["tables"]}
             return {"report": report, "policy": policy,
                     "scan": hygiene.scan(db, policy, selected, sizes),
                     "archives": actions.list_archives(db, config),
+                    "backups": files.list_backups(db, config),
+                    "old_files": files.old_files(db, config),
                     "snapshots": storage.load_snapshots(db, 365),
                     "actions": actions.load_actions(db, 200),
                     "last_cycle": automation.last_cycle(db)}
@@ -319,12 +401,14 @@ class ResourcesPanel:
         self.report, self.scan_result = result["report"], result["scan"]
         self.archives, self.snapshots = result["archives"], result["snapshots"]
         self.last_cycle = result["last_cycle"]
+        self.backups, self.old_files = result["backups"], result["old_files"]
         policy = result["policy"]
         self.measured_label.config(text=f"medido às {self.report['measured_at']:%H:%M:%S}")
         self._show_kpis(policy)
         self._show_space()
         self._show_scan()
         self._show_archives()
+        self._show_files()
         self._show_actions(result["actions"])
         self._draw_history()
         self._show_auto_status(policy)

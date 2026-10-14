@@ -40,7 +40,8 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 | T15.4 | `mt5x resources status | scan | archive | restore | archives | vacuum | orphans | auto | history` | ✅ |
 | T15.5 | Automação opt-in: política em `[RESOURCES]`, ciclo (medir → alertar → agir), alertas pelo `notify`, agendador na interface e comando para o cron | ✅ |
 | T15.6 | Aba "Recursos" na interface: indicadores, Espaço, Higienização, Arquivo, Automação e Histórico | ✅ (vista em tela virtual no Linux; Windows não visto) |
-| T15.7 | Próximas frentes: rotação de logs, limpeza de exportações antigas, cópia de segurança agendada, compactação em Parquet, retenção por particionamento no PostgreSQL/TimescaleDB, limites por ativo | proposta |
+| T15.7 | Cópia de segurança conferida (SQLite, API de backup + `quick_check`, guarda as N mais novas) e limpeza de logs e exportações antigos; guia "Cópias e arquivos", `mt5x resources backup | backups | files`, opções na automação | ✅ (Linux) |
+| T15.8 | Próximas frentes: compactação em Parquet, retenção por particionamento no PostgreSQL/TimescaleDB, limites por ativo, restaurar uma cópia pela interface | proposta |
 
 ## Regras de higienização (T15.2)
 
@@ -69,6 +70,13 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 | `obsolete_days` | `180` | Idade para a regra `obsoleta` |
 | `archive_dir` | vazio | Pasta do arquivo (vazio = `arquivo/` ao lado da base) |
 | `keep_snapshots_days` | `365` | Quanto histórico de medições guardar |
+| `auto_backup` | `false` | Cópia de segurança automática da base (só SQLite) |
+| `backup_interval_hours` | `24` | Intervalo entre cópias |
+| `backup_keep` | `5` | Quantas cópias guardar |
+| `backup_dir` | vazio | Pasta das cópias (vazio = `copias/` ao lado da base) |
+| `auto_clean_files` | `false` | Apaga sozinho logs e exportações antigos |
+| `logs_keep_days` | `30` | Idade dos logs apagados (0 = nunca; o log em uso nunca é apagado) |
+| `exports_keep_days` | `0` | Idade das exportações apagadas (0 = nunca) |
 
 ## Validação
 

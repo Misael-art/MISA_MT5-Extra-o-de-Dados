@@ -126,7 +126,7 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | T11.1 | Timeframe montado | `mt5x resample --symbols EURUSD --base M1 --tf M5,H1` | Barras iguais às extraídas do MT5 | — | ⏳ pendente |
 | T11.4 | Aviso do sistema | com `[APP] notifications = true`, `mt5x extract --symbols EURUSD --tf H1 --from <data>` | Um balão "Extração concluída" aparece ao terminar | — | ⏳ pendente |
 | T11.9 | Painel vivo | `mt5x panel --serve --open`, clicar em "Testar o que falta" de uma estratégia Python | A página mostra o progresso e a matriz se atualiza sozinha | — | ⏳ pendente |
-| T15 | Gestão de recursos | aba Recursos: "Medir agora", arquivar uma série obsoleta, restaurá-la, "Otimizar"; depois `mt5x resources auto` no Agendador de Tarefas com `[RESOURCES] auto_enabled = true` | Disco livre e tamanho batem com o Explorador; a série some e volta com as mesmas linhas; a trava `.lock` é apagada ao fim; o agendador roda sem a janela aberta | — | ⏳ pendente |
+| T15 | Gestão de recursos | aba Recursos: "Medir agora", arquivar uma série obsoleta, restaurá-la, "Otimizar"; depois `mt5x resources auto` no Agendador de Tarefas com `[RESOURCES] auto_enabled = true` | Disco livre e tamanho batem com o Explorador; a série some e volta com as mesmas linhas; a trava `.lock` é apagada ao fim; o agendador roda sem a janela aberta; "Fazer cópia agora" com o programa extraindo gera cópia que abre | — | ⏳ pendente |
 | Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
 
 A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
