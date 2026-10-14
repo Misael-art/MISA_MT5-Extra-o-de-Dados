@@ -126,6 +126,9 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("retention_intraday_days", "0"),    # barras intradiárias (menores que 1 dia); 0 = guarda tudo
         ("retention_ticks_days", "0"),       # ticks e book; 0 = guarda tudo
         ("max_series_mb", "0"),              # avisa quando uma série passar disso (MB); 0 = desligado
+        ("block_disk_free_pct", "0"),        # extração para de gravar com disco livre abaixo disso (%); 0 = nunca
+        ("block_db_gb", "0"),                # extração para de gravar com a base acima disso (GB); 0 = nunca
+        ("retention_overrides", ""),         # retenção por ativo: WIN$N:30, PETR4:0 (0 = guarda tudo desse ativo)
     ])),
 ])
 

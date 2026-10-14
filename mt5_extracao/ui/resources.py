@@ -5,6 +5,7 @@ lê a base na primeira vez que é aberta e quando o usuário pede.
 
 Os números e as regras vêm de mt5_extracao/resources (sem Tkinter).
 """
+import configparser
 import logging
 import tkinter as tk
 from datetime import datetime, timedelta
@@ -163,6 +164,26 @@ class ResourcesPanel:
                 self.ui.theme)
         self.dirs_label = ttk.Label(row, text="", style="Muted.TLabel")
         self.dirs_label.pack(side=tk.LEFT, padx=(12, 0))
+
+        limits = ttk.Frame(tab, style="Surface.TFrame")
+        limits.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        p = policy_mod.load(self._config())
+        ttk.Label(limits, text="Parar extrações com disco livre abaixo de (%)", style="Surface.TLabel").pack(
+            side=tk.LEFT)
+        self.block_disk_var = tk.StringVar(value=self._num_text(p.block_disk_free_pct))
+        ttk.Spinbox(limits, from_=0, to=99, textvariable=self.block_disk_var, width=5).pack(side=tk.LEFT, padx=(6, 14))
+        ttk.Label(limits, text="ou base acima de (GB)", style="Surface.TLabel").pack(side=tk.LEFT)
+        self.block_db_var = tk.StringVar(value=self._num_text(p.block_db_gb))
+        ttk.Spinbox(limits, from_=0, to=100000, textvariable=self.block_db_var, width=6).pack(side=tk.LEFT,
+                                                                                           padx=(6, 14))
+        ttk.Label(limits, text="Retenção por ativo", style="Surface.TLabel").pack(side=tk.LEFT)
+        self.overrides_var = tk.StringVar(value=", ".join(f"{s}:{d}" for s, d in p.retention_overrides.items()))
+        overrides = ttk.Entry(limits, textvariable=self.overrides_var, width=22)
+        overrides.pack(side=tk.LEFT, padx=(6, 8), fill=tk.X, expand=True)
+        Tooltip(overrides, "ATIVO:dias separados por vírgula (ex.: WIN$N:30, PETR4:0). Vale sobre a retenção da guia "
+                           "Automação; 0 = guarda tudo desse ativo. 0 nos dois limites = nunca para a extração.",
+                self.ui.theme)
+        ttk.Button(limits, text="Salvar limites", command=self.save_limits).pack(side=tk.LEFT)
         frame, self.space_tree = scrolled_tree(tab, SPACE_COLUMNS, SPACE_WIDTHS, SPACE_ANCHORS, height=12)
         frame.pack(fill=tk.BOTH, expand=True)
         self.space_tree.tag_configure("internal", foreground=self.ui.theme.colors["muted"])
@@ -798,6 +819,47 @@ class ResourcesPanel:
         state = ["!disabled"] if self.auto_vars["auto_enabled"].get() else ["disabled"]
         for w in self.auto_widgets:
             w.state(state)
+
+    def save_limits(self):
+        values = {}
+        for key, var, high in (("block_disk_free_pct", self.block_disk_var, 99),
+                               ("block_db_gb", self.block_db_var, 100000)):
+            try:
+                number = float(var.get().strip().replace(",", "."))
+                if not 0 <= number <= high:
+                    raise ValueError
+            except ValueError:
+                messagebox.showerror("Limites", f"Use um número entre 0 e {high}.", parent=self.frame)
+                return
+            values[key] = self._num_text(number)
+        cfg = configparser.ConfigParser(interpolation=None)
+        cfg[policy_mod.SECTION] = {"retention_overrides": self.overrides_var.get()}
+        errors = []
+        parsed = policy_mod._overrides(cfg, errors)
+        if errors:
+            messagebox.showerror("Retenção por ativo", "\n".join(errors), parent=self.frame)
+            return
+        values["retention_overrides"] = ", ".join(f"{s}:{d}" for s, d in parsed.items())
+        if self._write_values(values):
+            self.ui.log("Limites e retenção por ativo gravados. Valem nas próximas extrações.")
+
+    def _write_values(self, values) -> bool:
+        config = self._config()
+        path = Path(getattr(self.ui.app, "config_path", "config/config.ini")).resolve()
+        try:
+            for key, value in values.items():
+                config_builder.set_config_value(path, policy_mod.SECTION, key, value)
+        except (OSError, ValueError) as e:
+            log.error(f"Erro ao gravar [{policy_mod.SECTION}] em {path}: {e}")
+            messagebox.showerror("Gestão de recursos", f"Não foi possível gravar em {path.name}: {e}",
+                                 parent=self.frame)
+            return False
+        if config is not None:
+            if not config.has_section(policy_mod.SECTION):
+                config.add_section(policy_mod.SECTION)
+            for key, value in values.items():
+                config.set(policy_mod.SECTION, key, value)
+        return True
 
     def save_automation(self):
         config = self._config()

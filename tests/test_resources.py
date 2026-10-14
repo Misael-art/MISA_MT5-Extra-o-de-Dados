@@ -489,3 +489,79 @@ def test_cli_trim_needs_yes(db, tmp_path, capsys):
     assert len(_rows(db, table)) == 50
     assert _cli(tmp_path, db, "trim", table, "--days", "10", "--yes") == cli.EXIT_OK
     assert len(_rows(db, table)) <= 11
+
+
+# --- T15.9: limites que bloqueiam, retenção por ativo, TimescaleDB ---------------------------
+
+def test_guard_is_off_by_default_and_blocks_when_disk_is_low(db, tmp_path, monkeypatch):
+    from mt5_extracao.resources import guard
+    assert guard.make(db, _config(tmp_path)) is None
+    monkeypatch.setattr(storage, "disk_usage", lambda p: {"free": 1, "total": 100, "used": 99, "free_pct": 1.0,
+                                                          "path": str(p)})
+    g = guard.make(db, _config(tmp_path, block_disk_free_pct="5"))
+    assert "disco com só 1.0% livre" in g()
+    assert guard.make(db, _config(tmp_path, block_db_gb="0.000001"))() .startswith("a base ocupa")
+    assert guard.make(db, _config(tmp_path, block_db_gb="100"))() is None
+
+
+def test_guard_is_cached(db, tmp_path, monkeypatch):
+    from mt5_extracao.resources import guard
+    calls = []
+    monkeypatch.setattr(guard, "check", lambda db, p: calls.append(1))
+    g = guard.make(db, _config(tmp_path, block_db_gb="1"), interval=3600)
+    g(); g(); g()
+    assert len(calls) == 1
+
+
+def test_extractor_stops_before_writing_when_blocked(db):
+    import pandas as pd
+    from mt5_extracao.historical_extractor import HistoricalExtractor
+    ext = HistoricalExtractor(connector=None, db_manager=db, indicator_calculator=None)
+    ext.write_guard = lambda: "disco cheio"
+    saved, _ = ext._save_block("NEW3", "1 dia", "new3_1_dia", _bars(NOW, 5), pd.Timestamp(NOW - timedelta(days=5)),
+                               include_indicators=False)
+    assert saved is None and ext.cancel_requested
+    assert "NEW3" not in {i["symbol"] for i in db.data_inventory()}
+
+
+def test_services_wire_the_guard(db, tmp_path):
+    from mt5_extracao import services
+    ext = services.create_extractor(_config(tmp_path, block_db_gb="5"), None, db, None)
+    assert callable(ext.write_guard)
+    assert services.create_extractor(_config(tmp_path), None, db, None).write_guard is None
+
+
+def test_retention_overrides_per_asset(db, tmp_path):
+    hourly = lambda: _bars(NOW).assign(time=pd.date_range(end=NOW, periods=50, freq="h"))  # noqa: E731
+    db.save_ohlcv_data("WIN$N", "1 minuto", hourly())
+    db.save_ohlcv_data("WDO$N", "1 minuto", hourly())
+    db.save_ohlcv_data("IND$N", "1 minuto", hourly())
+    with db.engine.begin() as conn:
+        conn.execute(text("CREATE TABLE win_n_ticks (time TEXT, time_msc BIGINT, bid REAL)"))
+    cfg = _config(tmp_path, retention_intraday_days="10", retention_ticks_days="5",
+                  retention_overrides="WIN$N:2, WDO$N:0, lixo")
+    p = policy.load(cfg)
+    assert p.retention_overrides == {"WIN$N": 2, "WDO$N": 0} and len(p.errors) == 1
+    plan = automation.retention_plan(storage.measure(db, with_dirs=False), p)
+    assert plan["win_n_1_minuto"] == 2 and plan["win_n_ticks"] == 2
+    assert "wdo_n_1_minuto" not in plan                     # 0 = guarda tudo desse ativo
+    assert plan["ind_n_1_minuto"] == 10
+    assert not any(t.endswith("_1_dia") for t in plan)      # diário nunca entra
+
+
+def test_timescale_drop_chunks_is_used_only_for_hypertables(monkeypatch):
+    class Conn:
+        def __init__(self):
+            self.sql, self.counts = [], [100, 60]
+        def execute(self, stmt, params=None):
+            sql = str(stmt)
+            self.sql.append(sql)
+            value = 1 if "hypertables" in sql else (self.counts.pop(0) if "COUNT" in sql else None)
+            return type("R", (), {"scalar": lambda self: value})()
+    class DB:
+        dialect, _timescale = "postgresql", True
+    conn = Conn()
+    assert actions._drop_old_chunks(DB(), conn, "win_ticks", NOW) == 40
+    assert any("drop_chunks" in s for s in conn.sql)
+    DB._timescale = False
+    assert actions._drop_old_chunks(DB(), Conn(), "win_ticks", NOW) == 0

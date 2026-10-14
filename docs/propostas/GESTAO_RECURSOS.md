@@ -44,7 +44,8 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 | T15.6 | Aba "Recursos" na interface: indicadores, Espaço, Higienização, Arquivo, Automação e Histórico | ✅ (vista em tela virtual no Linux; Windows não visto) |
 | T15.7 | Cópia de segurança conferida (SQLite, API de backup + `quick_check`, guarda as N mais novas) e limpeza de logs e exportações antigos; guia "Cópias e arquivos", `mt5x resources backup | backups | files`, opções na automação | ✅ (Linux) |
 | T15.8 | Arquivo em Parquet (`archive_format`); aparar séries por idade com retenção automática para intradiário e ticks/book (SQLite e PostgreSQL, reversível); aviso de série acima de `max_series_mb`; voltar a uma cópia de segurança pela interface e por `mt5x resources restore-backup` (guarda antes o estado atual) | ✅ (Linux; PostgreSQL só pelo caminho genérico exercitado sobre SQLite) |
-| T15.9 | Próximas frentes: `drop_chunks` nativo do TimescaleDB, limites que bloqueiam extração (hoje só avisam), retenção por ativo | proposta |
+| T15.9 | Limites que **bloqueiam** a gravação (`block_disk_free_pct`, `block_db_gb`: o extrator para antes de gravar o bloco, com o motivo); retenção por ativo (`retention_overrides`); `drop_chunks` do TimescaleDB ao aparar hypertables (o DELETE cuida do bloco parcial) | ✅ (Linux; TimescaleDB real não visto) |
+| T15.10 | Próximas frentes: guarda também nos ticks e no book (hoje só nas barras), painel vivo no navegador com os indicadores de espaço | proposta |
 
 ## Regras de higienização (T15.2)
 
@@ -85,6 +86,9 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 | `retention_intraday_days` | `0` | Retenção das barras menores que 1 dia (0 = tudo) |
 | `retention_ticks_days` | `0` | Retenção de ticks e book (0 = tudo) |
 | `max_series_mb` | `0` | Avisa quando uma série passar disso (0 = desligado) |
+| `block_disk_free_pct` | `0` | Extração para de gravar com disco livre abaixo disso (%; 0 = nunca) |
+| `block_db_gb` | `0` | Extração para de gravar com a base acima disso (GB; 0 = nunca) |
+| `retention_overrides` | vazio | Retenção por ativo, `ATIVO:dias` (0 = guarda tudo do ativo) |
 
 ## Validação
 

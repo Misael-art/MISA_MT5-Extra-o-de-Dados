@@ -137,7 +137,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ concluída no Linux (aba vista em tela virtual, temas claro e escuro); Windows não visto |
 | T15.7 | Cópia de segurança da base e limpeza de logs e exportações antigos (gestão de recursos) | T15.6 | ✅ concluída no Linux; Windows não visto |
 | T15.8 | Gestão de recursos: arquivo em Parquet, aparar e retenção por idade, aviso por série e voltar a uma cópia pela interface | T15.7 | ✅ concluída no Linux; PostgreSQL real e Windows não vistos |
-| T15.9 | Próximas frentes da gestão de recursos (`drop_chunks` do TimescaleDB, limites que bloqueiam, retenção por ativo) | T15.8 | proposta |
+| T15.9 | Gestão de recursos: limites que bloqueiam a gravação na extração, retenção por ativo e `drop_chunks` do TimescaleDB | T15.8 | ✅ concluída no Linux; TimescaleDB real e Windows não vistos |
+| T15.10 | Próximas frentes da gestão de recursos (guarda em ticks e book, indicadores no painel vivo) | T15.9 | proposta |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

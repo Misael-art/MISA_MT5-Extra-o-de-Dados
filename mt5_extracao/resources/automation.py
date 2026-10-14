@@ -53,14 +53,31 @@ def alerts(report: dict, policy) -> List[dict]:
 def retention_plan(report: dict, policy) -> dict:
     """{tabela: dias} das séries que a retenção configurada alcança (intradiárias, ticks e book)."""
     from mt5_extracao import timeframes
+    from mt5_extracao.database_manager import DatabaseManager
+    overrides = {DatabaseManager._normalize_name(s): d for s, d in policy.retention_overrides.items()}
+
+    def override(t):
+        """Dias do ativo em retention_overrides (pelo símbolo da série ou, em ticks/book, pelo começo do nome)."""
+        if t.get("symbol"):
+            return overrides.get(DatabaseManager._normalize_name(t["symbol"]))
+        prefix = next((k for k in sorted(overrides, key=len, reverse=True) if t["table"].startswith(k + "_")), None)
+        return overrides.get(prefix) if prefix else None
+
     plan = {}
     for t in report.get("tables", []):
-        if t["kind"] == storage.KIND_BARS and policy.retention_intraday_days:
+        if t["kind"] == storage.KIND_BARS:
             tf = timeframes.parse(t["timeframe"]) if t.get("timeframe") else None
-            if tf is not None and tf.minutes < 1440:
-                plan[t["table"]] = policy.retention_intraday_days
-        elif t["kind"] in (storage.KIND_TICKS, storage.KIND_BOOK) and policy.retention_ticks_days:
-            plan[t["table"]] = policy.retention_ticks_days
+            if tf is None or tf.minutes >= 1440:
+                continue
+            days = policy.retention_intraday_days
+        elif t["kind"] in (storage.KIND_TICKS, storage.KIND_BOOK):
+            days = policy.retention_ticks_days
+        else:
+            continue
+        own = override(t)
+        days = own if own is not None else days
+        if days:
+            plan[t["table"]] = days
     return plan
 
 

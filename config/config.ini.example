@@ -188,3 +188,10 @@ retention_intraday_days = 0
 retention_ticks_days = 0
 # Avisa quando uma série sozinha passar deste tamanho (MB). 0 = desligado.
 max_series_mb = 0
+# Limites que BLOQUEIAM a gravação: a extração para (com o motivo) quando o disco livre cair abaixo de
+# block_disk_free_pct (%) ou a base passar de block_db_gb (GB). 0 = nunca bloqueia.
+block_disk_free_pct = 0
+block_db_gb = 0
+# Retenção por ativo, valendo sobre retention_intraday_days e retention_ticks_days: ATIVO:dias separados por
+# vírgula. 0 = guarda tudo desse ativo. Ex.: WIN$N:30, PETR4:0
+retention_overrides = 

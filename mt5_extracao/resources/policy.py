@@ -38,6 +38,9 @@ class Policy:
     retention_intraday_days: int = 0
     retention_ticks_days: int = 0
     max_series_mb: float = 0.0
+    block_disk_free_pct: float = 0.0
+    block_db_gb: float = 0.0
+    retention_overrides: dict = field(default_factory=dict)   # ativo -> dias
     errors: list = field(default_factory=list)   # chaves com valor inválido (usou o padrão)
 
 
@@ -60,6 +63,24 @@ def _get(config, key, cast, default, errors):
     except ValueError:
         errors.append(f"[{SECTION}] {key} = {raw!r} é inválido; usado o padrão {default!r}")
         return default
+
+
+def _overrides(config, errors) -> dict:
+    """`retention_overrides = WIN$N:30, PETR4:0` -> {"WIN$N": 30, "PETR4": 0} (0 = guarda tudo desse ativo)."""
+    raw = config.get(SECTION, "retention_overrides", fallback="") if config is not None and \
+        config.has_section(SECTION) else ""
+    out = {}
+    for part in (raw or "").split(","):
+        if not part.strip():
+            continue
+        symbol, sep, days = part.rpartition(":")
+        try:
+            if not sep or not symbol.strip() or int(days) < 0:
+                raise ValueError
+            out[symbol.strip().upper()] = int(days)
+        except ValueError:
+            errors.append(f"[{SECTION}] retention_overrides: trecho {part.strip()!r} ignorado (use ATIVO:dias)")
+    return out
 
 
 def load(config) -> Policy:
@@ -107,6 +128,9 @@ def load(config) -> Policy:
         retention_intraday_days=_get(config, "retention_intraday_days", int, d.retention_intraday_days, errors),
         retention_ticks_days=_get(config, "retention_ticks_days", int, d.retention_ticks_days, errors),
         max_series_mb=_get(config, "max_series_mb", float, d.max_series_mb, errors),
+        block_disk_free_pct=_get(config, "block_disk_free_pct", float, d.block_disk_free_pct, errors),
+        block_db_gb=_get(config, "block_db_gb", float, d.block_db_gb, errors),
+        retention_overrides=_overrides(config, errors),
         errors=errors)
 
 

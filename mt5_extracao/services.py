@@ -156,7 +156,8 @@ def chunk_config(config: configparser.ConfigParser) -> dict:
 
 def create_extractor(config, connector, db_manager, indicator_calculator):
     from mt5_extracao.historical_extractor import HistoricalExtractor
-    return HistoricalExtractor(
+    from mt5_extracao.resources import guard
+    extractor = HistoricalExtractor(
         connector=connector,
         db_manager=db_manager,
         indicator_calculator=indicator_calculator,
@@ -165,3 +166,5 @@ def create_extractor(config, connector, db_manager, indicator_calculator):
         session=(config.get("APP", "session_start", fallback="09:00"),
                  config.get("APP", "session_end", fallback="18:30")),
     )
+    extractor.write_guard = guard.make(db_manager, config)     # None quando [RESOURCES] não liga nenhum limite
+    return extractor

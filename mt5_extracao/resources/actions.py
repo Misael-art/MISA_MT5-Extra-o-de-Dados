@@ -231,6 +231,24 @@ def _cutoff_param(db, before: datetime):
     return before.strftime("%Y-%m-%d %H:%M:%S") if db.dialect == "sqlite" else before
 
 
+def _drop_old_chunks(db, conn, table: str, before: datetime) -> int:
+    """
+    TimescaleDB: descarta de uma vez os blocos (chunks) inteiros anteriores ao corte, muito mais rápido que DELETE
+    linha a linha; o DELETE que vem depois cuida do bloco parcial. Devolve as linhas descartadas (0 fora do Timescale).
+    """
+    if db.dialect != "postgresql" or not getattr(db, "_timescale", False):
+        return 0
+    hyper = conn.execute(text("SELECT 1 FROM timescaledb_information.hypertables WHERE hypertable_name = :t"),
+                         {"t": table}).scalar()
+    if not hyper:
+        return 0
+    before_count = int(conn.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar() or 0)
+    conn.execute(text("SELECT drop_chunks(:t, older_than => :cut)"), {"t": table, "cut": before})
+    after_count = int(conn.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar() or 0)
+    log.info(f"{table}: drop_chunks descartou {before_count - after_count} linha(s) antes de {before}.")
+    return before_count - after_count
+
+
 def _new_target(folder: Path, table: str, suffix: str) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     target, n = folder / f"{table}__{stamp}{suffix}", 1
@@ -306,7 +324,8 @@ def _move_rows(db, table, folder, existing, origin, reason, fmt="sqlite", before
             raise RuntimeError(f"cópia conferida com {copied} linha(s), a tabela tem {rows_before}; nada foi removido")
         with db.engine.begin() as conn:
             if trim:
-                deleted = conn.execute(text(f'DELETE FROM "{table}"{where}'), params).rowcount
+                deleted = _drop_old_chunks(db, conn, table, before)
+                deleted += conn.execute(text(f'DELETE FROM "{table}"{where}'), params).rowcount
                 if deleted != rows_before:
                     raise RuntimeError(f"seriam apagadas {deleted} linha(s), a cópia tem {rows_before}; "
                                        "nada foi removido")
