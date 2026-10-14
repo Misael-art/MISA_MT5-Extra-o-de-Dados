@@ -110,3 +110,9 @@ protege as das Fases 13, 15 e 16.
 
 **Próximas tarefas:** T13.2 (Fase 13) pode partir do `master`. Pendências da Fase 16 na seção 10 do plano dela
 (T16.2b no HADOUKEN, exportação do calendário com o MT5 conectado, Windows real).
+
+**Queda "Illegal instruction"/"Segmentation fault" na suíte (era a mesma "regressão inconclusiva" da T13.1):** o coletor de
+lixo do Python rodava dentro de threads de segundo plano e destruía variáveis e imagens do Tk, que só aceita a thread
+principal. Corrigido: a janela desliga a coleta automática (`ui_manager.setup_ui`) e coleta na thread principal a cada
+~2 s (`_pump_ui_queue`); os testes religam e coletam depois de cada teste (`tests/conftest.py`). Com isso, a suíte
+completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
