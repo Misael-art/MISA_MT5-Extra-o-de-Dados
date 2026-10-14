@@ -117,8 +117,11 @@ def save_trades(db, run_id: str, trades: Iterable, robot_key: Optional[str] = No
 
 def load(db, robot_key: Optional[str] = None, symbol: Optional[str] = None, timeframe: Optional[str] = None,
          source: Optional[str] = None, run_id: Optional[str] = None, start=None, end=None,
-         completeness: Optional[str] = None) -> pd.DataFrame:
-    """Operações filtradas (entrada em [start, end)), ordenadas por entrada; DataFrame vazio com as colunas se não houver."""
+         completeness: Optional[str] = None, include_resim: bool = False) -> pd.DataFrame:
+    """
+    Operações filtradas (entrada em [start, end)), ordenadas por entrada; DataFrame vazio com as colunas se não houver.
+    Re-simulações (source "resim:...") ficam de fora, salvo `include_resim` ou um `source`/`run_id` pedido.
+    """
     empty = pd.DataFrame(columns=list(COLUMNS))
     if not _usable(db) or not inspect(db.engine).has_table(TABLE):
         return empty
@@ -128,6 +131,8 @@ def load(db, robot_key: Optional[str] = None, symbol: Optional[str] = None, time
         if value is not None:
             where.append(f"{name} = :{name}")
             params[name] = value
+    if not include_resim and source is None and run_id is None:
+        where.append("source NOT LIKE 'resim:%'")
     if start is not None:
         where.append("COALESCE(entry_time, exit_time) >= :start")
         params["start"] = pd.Timestamp(start).to_pydatetime()
@@ -143,14 +148,15 @@ def load(db, robot_key: Optional[str] = None, symbol: Optional[str] = None, time
     return frame
 
 
-def runs(db) -> List[dict]:
+def runs(db, include_resim: bool = False) -> List[dict]:
     """Resumo por run: [{run_id, robot_key, symbol, timeframe, source, trades, completeness}] (para os seletores)."""
     if not _usable(db) or not inspect(db.engine).has_table(TABLE):
         return []
+    where = "" if include_resim else "WHERE source NOT LIKE 'resim:%' "
     with db.engine.connect() as conn:
         return [dict(r) for r in conn.execute(text(
             f"SELECT run_id, robot_key, symbol, timeframe, source, COUNT(*) AS trades, MAX(completeness) AS "
-            f"completeness FROM {TABLE} GROUP BY run_id, robot_key, symbol, timeframe, source "
+            f"completeness FROM {TABLE} {where}GROUP BY run_id, robot_key, symbol, timeframe, source "
             f"ORDER BY robot_key, symbol, timeframe")).mappings()]
 
 
