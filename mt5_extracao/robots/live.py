@@ -193,18 +193,30 @@ def organize_window(config, data, symbol: str, timeframe: str) -> str:
 
 def panel_parameters(config, robot, data, parameters: str) -> str:
     """
-    Arquivo de parâmetros do início com a disposição do painel escolhida em [MT5] panel_layout. Só muda algo se a
-    escolha não for 'auto' e o robô tiver o parâmetro `InpPanelLayout`: aí grava em MQL5/Presets uma cópia do preset
-    (ou um arquivo só com esse parâmetro) e devolve o nome dela. O preset do usuário não é alterado.
+    Arquivo de parâmetros do início com o que as opções de [MT5] pedem para o painel: a disposição
+    (`panel_layout`, parâmetro `InpPanelLayout`) e operar em qualquer horário (`panel_any_hours`, parâmetro
+    `InpUseHours=false`). Só muda algo se alguma opção sair do padrão e o robô tiver o parâmetro correspondente:
+    aí grava em MQL5/Presets uma cópia do preset (ou um arquivo só com esses parâmetros) e devolve o nome dela.
+    O preset do usuário não é alterado.
+
+    Estas opções existem porque a visão recoloca o painel no gráfico a cada abertura, com os parâmetros de fábrica:
+    o que a pessoa muda pela janela de parâmetros do MT5 (F7) vale só até o terminal ser reaberto pelo programa.
     """
     from . import layout, mql
+    known = {i.name for i in robot.inputs}
+    wanted = {}
     choice = layout.panel_layout(config)
-    if choice == "auto" or not any(i.name == layout.PANEL_INPUT for i in robot.inputs):
+    if choice != "auto":
+        wanted[layout.PANEL_INPUT] = str(layout.panel_code(choice))
+    if layout.panel_any_hours(config):
+        wanted[layout.HOURS_INPUT] = "false"
+    wanted = {name: value for name, value in wanted.items() if name in known}
+    if not wanted:
         return parameters
     folder = Path(data) / "MQL5" / "Presets"
     lines = mql.read_text(folder / parameters).splitlines() if parameters else []
-    lines = [line for line in lines if not line.strip().startswith(layout.PANEL_INPUT + "=")]
-    lines.append(f"{layout.PANEL_INPUT}={layout.panel_code(choice)}")
+    lines = [line for line in lines if line.strip().split("=", 1)[0] not in wanted]
+    lines += [f"{name}={value}" for name, value in wanted.items()]
     folder.mkdir(parents=True, exist_ok=True)
     name = "mt5x_painel.set"
     (folder / name).write_bytes(b"\xff\xfe" + "".join(line + "\r\n" for line in lines).encode("utf-16-le"))

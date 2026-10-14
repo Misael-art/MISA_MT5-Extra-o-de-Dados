@@ -398,3 +398,41 @@ def test_the_battery_gate_of_robots_start_is_unchanged(mt5, panel):
     assert all(g.ok for g in view_gates) and trading is True          # painel manual em demo: liberado
     assert not all(g.ok for g in live.demo_gates(mt5.config, panel.robot, DEMO))     # e o start continua recusando
     assert "AllowLiveTrading=1" in mt5_tools.startup_ini("X", "EURUSD", "H1", 1, "S")     # o padrão do início não mudou
+
+
+# --- horário do painel: opção que fica gravada e o relógio do servidor ---------------------------------------------
+
+def test_panel_can_be_told_to_trade_at_any_hour_and_the_option_survives_reopening(mt5, panel):
+    """Visto no host: o painel recusava por horário (que é o do servidor) e o ajuste pelo F7 se perdia ao reabrir."""
+    panel.robot.inputs = [types.SimpleNamespace(name=n) for n in ("InpUseHours", "InpStartTime", "InpPanelLayout")]
+    result = view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)
+    assert "ExpertParameters" not in mt5.inis()[0] and result["panel"] == "Painel"      # padrão: parâmetros de fábrica
+    mt5.config.read_dict({"MT5": {"panel_any_hours": "true"}})
+    for _ in range(2):                                                                   # a cada abertura, de novo
+        view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)
+        assert "ExpertParameters=mt5x_painel.set\r\n" in mt5.inis()[-1]
+        params = (mt5.data / "MQL5" / "Presets" / "mt5x_painel.set").read_bytes().decode("utf-16")
+        assert params == "InpUseHours=false\r\n"
+    mt5.config.read_dict({"MT5": {"panel_preset": "Calmo", "panel_layout": "compact"}})   # junto com preset e disposição
+    (mt5.data / "MQL5" / "Presets" / "Calmo.set").write_bytes(
+        b"\xff\xfe" + "InpRiskPct=0.25\r\nInpUseHours=true\r\nInpStartTime=09:15\r\n".encode("utf-16-le"))
+    view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)
+    params = (mt5.data / "MQL5" / "Presets" / "mt5x_painel.set").read_bytes().decode("utf-16")
+    assert params == "InpRiskPct=0.25\r\nInpStartTime=09:15\r\nInpPanelLayout=1\r\nInpUseHours=false\r\n"
+    assert "InpUseHours=true" in (mt5.data / "MQL5" / "Presets" / "Calmo.set").read_bytes().decode("utf-16")
+    panel.robot.inputs = [types.SimpleNamespace(name="InpRiskPct")]                       # robô sem esses parâmetros
+    view.open_view(mt5.config, symbol="EURUSD", db=object(), account=DEMO)
+    assert "ExpertParameters=Calmo.set\r\n" in mt5.inis()[-1]
+    mt5.config["MT5"]["panel_any_hours"] = "talvez"
+    assert layout.panel_any_hours(mt5.config) is False and layout.panel_any_hours(None) is False
+
+
+def test_server_clock_offset_from_the_last_quote():
+    now = 1_800_000_000.0
+    assert layout.server_offset_hours(now + 6 * 3600 - 4, now) == 6.0          # servidor 6 h à frente do UTC
+    assert layout.server_offset_hours(now + 2 * 3600 + 20, now) == 2.0
+    assert layout.server_offset_hours(now - 3.5 * 3600, now) == -3.5
+    assert layout.server_offset_hours(now, now) == 0.0
+    assert layout.server_offset_hours(now + 6 * 3600 - 3 * 3600, now, max_age=900) == 3.0   # indistinguível de outro fuso
+    assert layout.server_offset_hours(now + 6 * 3600 - 1000, now) is None       # cotação velha: não serve de relógio
+    assert layout.server_offset_hours(0, now) is None and layout.server_offset_hours(None, now) is None

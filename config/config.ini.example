@@ -44,6 +44,10 @@ panel_layout = auto
 # painel compilado e a leitura do código aprovada (mt5x robots battery <painel>). Conta real nunca. false = só o
 # gráfico.
 view_panel = true
+# O painel só aceita compra e venda dentro da janela de horário dele (de fábrica, 09:15 a 17:30), contada no HORÁRIO
+# DO SERVIDOR da corretora, que pode estar várias horas à frente do seu. true = opera em qualquer horário. O que
+# você muda pela janela de parâmetros do MT5 (F7) vale só até o programa reabrir o terminal; esta opção fica.
+panel_any_hours = false
 # Em conta de demonstração o painel de operação manual abre liberado para operar. true = ele abre bloqueado: o
 # PARAR TUDO é acionado (nenhum robô do HADOUKEN opera) até você liberar em Arquivo > Configurações ou com
 # 'mt5x robots stop --release'. Um robô que opera sozinho posto aqui como painel abre sempre bloqueado.

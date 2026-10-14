@@ -2875,6 +2875,53 @@ do projeto (`mt5x robots stop --release`).
 **Não conferido:** o painel operando de fato em demo depois da liberação (nenhuma ordem foi enviada nestes testes);
 se a negociação algorítmica do terminal fica ligada quando o painel entra pelo arquivo de início; Windows.
 
+### Correção: horário do painel e reabertura do MT5 sem o painel (2026-10-13)
+
+Relato do dono do projeto, no primeiro teste do painel liberado: impressão de atraso no painel; compra e venda
+recusadas por horário; "ao retirar ele continuou restringindo".
+
+**O que os registros mostram** (registro do painel em `MQL5\Files\HDK_Logs` e log do terminal):
+
+1. **A janela de horário do painel é contada no relógio do servidor da corretora**, que no host está 6 horas à
+   frente do computador. Às 20:43 (local) o fim foi mudado para 22:30 pela janela de parâmetros do MT5; no servidor
+   eram 02:43, e a compra foi recusada com "fora do horário (09:15–22:30)". A mensagem não diz que o horário é o do
+   servidor nem que horas são lá.
+2. **A visão recoloca o painel a cada abertura com os parâmetros de fábrica** (09:15 a 17:30, o horário da B3),
+   então o que se muda pelo F7 se perde quando o programa reabre o terminal.
+3. **Fechar o MT5 com o programa aberto o trazia de volta "cru".** Às 20:43:44 o terminal foi fechado; a
+   reconexão automática do conector o reabriu doze segundos depois, pelo `mt5.initialize`, sem a organização da
+   janela e sem o painel.
+
+**O que mudou:**
+
+- `[MT5] panel_any_hours` e a caixa "Painel opera em qualquer horário" em Configurações: passa `InpUseHours=false`
+  ao painel a cada abertura. `live.panel_parameters` agora junta as opções (disposição e horário) em um arquivo só.
+- Configurações mostra o **horário do servidor agora** e a diferença para o computador, tirados da última cotação.
+  Só afirma com cotação andando (duas leituras com intervalo): com o mercado fechado, a cotação parada daria um
+  fuso errado. Essa leitura chega depois, sem atrasar o diálogo.
+- `MT5Connector.prepare_terminal`: gancho chamado antes de cada tentativa de conexão. A interface põe nele a
+  abertura do terminal já organizado e com o painel, então a reconexão automática também passa por ela.
+
+**Conferido no host, com o MT5 real:** com a opção ligada, o registro do painel passou de "operando 09:15–22:30" a
+"operando 24h" (20:54:26). Isso também confirma que o MT5 **aceita um arquivo de parâmetros parcial** (só
+`InpUseHours`), item que estava como não verificado na T12.L3. Sete testes automáticos novos; 648 no total.
+
+**Sobre o atraso, o que se sabe e o que não se sabe:**
+
+- Medido durante a queixa: terminal a 2,7% de um núcleo e 327 MB; o programa a 0,4%; a máquina a 24% de CPU e 72%
+  de memória. Nenhum dos dois estava sobrecarregando o computador.
+- No código do painel: ele se atualiza por um temporizador de **500 ms** (`HDK_TIMER_MS`), e estatísticas e linhas a
+  cada segundo; o clique é tratado na hora, mas o que aparece na tela espera o ciclo seguinte. O ping até a
+  corretora era de 224 ms.
+- **Não medido:** o tempo entre o clique e a resposta na tela. Não há como capturar a tela real do host, então a
+  causa do atraso percebido é hipótese, não medida. Reduzir o ciclo ou redesenhar logo depois do clique é mudança
+  no MQL5 do HADOUKEN (G-02); depois dela a leitura do código e o teste do Strategy Tester precisam ser refeitos,
+  ou o painel volta a abrir bloqueado.
+
+**Não conferido:** uma compra ou venda de fato executada pelo painel depois da correção; a reabertura organizada
+depois de fechar o MT5 à mão, no terminal real (só com dublê); Windows.
+**Fica para o HADOUKEN:** a mensagem de recusa dizer que o horário é o do servidor e que horas são lá.
+
 ### T12.6a — Painel v7: conferência pendente e vocabulário
 
 - **Objetivo:** não empilhar abas novas em cima do que não foi visto, e dar um nome só a cada coisa.
