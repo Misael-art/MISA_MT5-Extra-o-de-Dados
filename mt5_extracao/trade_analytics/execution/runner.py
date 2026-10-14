@@ -62,3 +62,24 @@ def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = No
         ledger.save_trades(db, f"{run_id}#{mode}", result.trades, robot_key=data["robot_key"], symbol=data["symbol"],
                            timeframe=data["timeframe"], source=RESIM_PREFIX + mode)
     return result
+
+
+def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] = None, save: bool = False) -> dict:
+    """
+    O mesmo run em vários modos, sobre as MESMAS entradas: {modo: {"result": SimResult, "metrics": {...}}}.
+    `params` = {modo: {parâmetro: valor}}. As barras e custos são lidos uma vez só.
+    """
+    from mt5_extracao.trade_analytics import stats
+    from mt5_extracao.trade_analytics.execution import modes as registry
+    data = inputs(db, config, run_id)
+    base = base_policy(data["robot_key"])
+    initial = data["cfg"].initial_equity
+    out = {}
+    for key in modes_wanted or list(registry.exit_modes()):
+        mode = registry.MODES[key]
+        policy = mode.policy(base, (params or {}).get(key))
+        result = resimulate(db, config, run_id, policy, key, save=save, data=data)
+        pnl = [t.pnl for t in result.trades]
+        out[key] = {"result": result, "name": mode.name,
+                    "metrics": stats.metrics(pnl, initial, [t.r_multiple for t in result.trades])}
+    return out
