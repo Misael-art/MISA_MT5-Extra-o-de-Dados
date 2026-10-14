@@ -177,11 +177,35 @@ def test_run_mql5_records_the_run_from_the_report(home):
     assert run["source"] == "strategy tester" and run["params"]["preset"] == "Demo_Conservador"
     assert run["equity"][0] == ["2025-01-01 00:00:00", 10000.0]
     assert run["equity"][-1] == ["2025-01-10 11:00:00", pytest.approx(10813.74)]
+    assert m["tester_log_captured"] is False and m["tester_log"] == ""
     saved = store.load_runs(home.db, home.robot.key)[0]
     assert saved["run_id"] == run["run_id"] and saved["metrics"]["expectancy_r"] is None
     assert saved["trades"][0] == ["2025-01-07 16:00:00", pytest.approx(-86.26), 0.19] and len(saved["trades"]) == 3
     robot = catalog.get_robot(catalog.load_catalog(home.config, home.db), "demoguard")
     assert robot.stage == catalog.TESTED and robot.headline["trades"] == 3 and robot.headline["approved"] is None
+
+
+def test_run_mql5_records_the_tester_log_delta_per_run(home):
+    daily = home.mt5 / "Tester" / "Agent-127.0.0.1-3000" / "logs" / "20261014.log"
+    daily.parent.mkdir(parents=True)
+    daily.write_bytes(b"previous backtest\n")
+    fake = fake_terminal(report_html())
+
+    def run_and_append_log(*args):
+        result = fake(*args)
+        with daily.open("ab") as handle:
+            handle.write(b"current backtest: 0 errors, 0 warnings\n")
+        return result
+
+    record = backtest.run_mql5(home.db, home.config, home.robot, "EURUSD", "H1", dt.datetime(2025, 1, 1),
+                               dt.datetime(2025, 2, 1), run=run_and_append_log, is_running=lambda: False)
+    metrics = record["metrics"]
+    isolated = Path(metrics["tester_log"])
+    assert metrics["tester_log_captured"] is True and isolated.is_file()
+    assert b"current backtest" in isolated.read_bytes()
+    assert b"previous backtest" not in isolated.read_bytes()
+    saved = store.load_runs(home.db, home.robot.key)[0]
+    assert saved["metrics"]["tester_log"] == str(isolated)
 
 
 def test_run_mql5_prefers_the_hadouken_csv_and_drops_a_stale_one(home, tmp_path):
