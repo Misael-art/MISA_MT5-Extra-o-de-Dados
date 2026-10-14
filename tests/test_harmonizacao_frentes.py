@@ -21,3 +21,12 @@ def test_t13_tables_are_internal_and_do_not_become_fake_assets(tmp_path):
     found = hygiene.scan(db, policy.Policy())
     assert all(not c["table"].startswith("_") for c in found["candidates"])   # Recursos nunca propõe arquivá-las
     db.close()
+
+
+def test_ui_turns_off_automatic_gc_and_collects_on_the_main_thread(monkeypatch):
+    """Lixo do Tk só é destruído na thread principal: a janela desliga a coleta automática e coleta no laço dela."""
+    import gc
+    from mt5_extracao import ui_manager
+    source = open(ui_manager.__file__, encoding="utf-8").read()
+    assert "gc.disable()" in source and "gc.collect()" in source
+    assert gc.isenabled()                           # fora da janela (e entre testes) a coleta automática fica ligada

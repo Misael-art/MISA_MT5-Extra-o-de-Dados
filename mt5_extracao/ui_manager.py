@@ -244,6 +244,11 @@ class UIManager:
     def setup_ui(self):
         """Configura a interface do usuário completa."""
         self.root = self.app.root
+        # Tk só aceita a thread principal, inclusive para DESTRUIR variáveis e imagens. Com a coleta automática ligada,
+        # o coletor de ciclos pode rodar dentro de uma thread de segundo plano (run_bg, extração) e destruir lixo do Tk
+        # ali, derrubando o processo. Desligada, a contagem de referências segue liberando quase tudo na hora e os
+        # ciclos são coletados por _pump_ui_queue, na thread principal, a cada ~2 s.
+        gc.disable()
         self.root.after(100, self._pump_ui_queue)
         self.theme = Theme(self.root, dark=bool(self.prefs.get("dark")))
         self.style = ttk.Style()

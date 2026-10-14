@@ -535,8 +535,10 @@ class LaboratoryPanel:
         self.mode_vars = {}
         per_row = 5
         for k, (key, mode) in enumerate(modes.available(robot).items()):
-            var = self._all_mode_vars.setdefault(key, tk.BooleanVar(
-                value=key in ("ponto_fixo", "trailing_atr", "gradiente_dinamico")))
+            if key not in self._all_mode_vars:      # cria só uma vez (setdefault criaria e descartaria a cada chamada)
+                self._all_mode_vars[key] = tk.BooleanVar(
+                    value=key in ("ponto_fixo", "trailing_atr", "gradiente_dinamico"))
+            var = self._all_mode_vars[key]
             self.mode_vars[key] = var
             w = ttk.Checkbutton(self.modes_box, text=mode.name.split(" (")[0], variable=var)
             w.grid(row=k // per_row, column=k % per_row, sticky="w", padx=(0, 10))
