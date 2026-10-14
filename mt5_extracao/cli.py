@@ -1819,6 +1819,8 @@ def build_parser():
 
     from mt5_extracao.resources import commands as resources_commands
     resources_commands.add_parser(sub)
+    from mt5_extracao.trade_analytics import commands as trades_commands
+    trades_commands.add_parser(sub)
 
     p = sub.add_parser("status", help="retrato da base, dos robôs e das validações, com as próximas ações sugeridas")
     p.set_defaults(func=cmd_status)
@@ -1918,4 +1920,7 @@ def _run_command(args, ctx):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # Com `python -m mt5_extracao.cli` este arquivo roda como __main__; os subcomandos de outros módulos
+    # (resources, trades) importam `mt5_extracao.cli`. Delegar para ele mantém um estado de saída só (--json).
+    from mt5_extracao import cli as _cli
+    sys.exit(_cli.main())

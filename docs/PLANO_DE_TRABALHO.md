@@ -141,7 +141,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T15.10 | Próximas frentes da gestão de recursos (guarda em ticks e book, indicadores no painel vivo) | T15.9 | proposta |
 | T16.0 | Plano da aba Laboratório (analytics de operações: contexto, re-simulação de execução, insights, lente por robô e por ativo) em `docs/propostas/ANALYTICS_OPERACOES.md` | — | ✅ plano registrado, com as decisões do dono (seção 8) |
 | T16.1 | Laboratório: livro de operações `_trade_ledger` (gravar, ler pelas lentes robô e ativo) | T16.0 | ✅ concluída |
-| T16.2–T16.12 | Laboratório: livro de operações, importadores, calendário econômico de várias fontes (CSV e MT5), enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só para robô que o suporta, com as travas dele), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
+| T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
+| T16.3a–T16.12 | Laboratório: livro de operações, importadores, calendário econômico de várias fontes (CSV e MT5), enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só para robô que o suporta, com as travas dele), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
