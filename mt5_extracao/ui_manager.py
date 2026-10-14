@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext, filedialog
+import gc
 import logging
 import datetime
 import traceback
@@ -163,6 +164,12 @@ class UIManager:
                     log.error(f"Erro ao atualizar a interface: {traceback.format_exc()}")
         except queue.Empty:
             pass
+        # Lixo do Tk (variáveis, imagens) só pode ser destruído na thread principal; se ficar acumulado, o coletor do
+        # Python pode rodar numa thread de segundo plano (run_bg) e o Tk derruba o processo. Coleta aqui a cada ~2 s.
+        self._gc_ticks = getattr(self, "_gc_ticks", 0) + 1
+        if self._gc_ticks >= 20:
+            self._gc_ticks = 0
+            gc.collect()
         try:
             self.root.after(100, self._pump_ui_queue)
         except tk.TclError:

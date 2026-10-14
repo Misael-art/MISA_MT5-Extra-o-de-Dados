@@ -529,11 +529,14 @@ class LaboratoryPanel:
         from mt5_extracao.trade_analytics.execution import modes
         for w in self.modes_box.winfo_children():
             w.destroy()
-        keep = {k: v.get() for k, v in self.mode_vars.items()}
+        # as variáveis do Tk são reaproveitadas (nunca descartadas): descartá-las deixa lixo do Tk que o coletor pode
+        # destruir numa thread de segundo plano, e o Tk só aceita a thread principal
+        self._all_mode_vars = getattr(self, "_all_mode_vars", {})
         self.mode_vars = {}
         per_row = 5
         for k, (key, mode) in enumerate(modes.available(robot).items()):
-            var = tk.BooleanVar(value=keep.get(key, key in ("ponto_fixo", "trailing_atr", "gradiente_dinamico")))
+            var = self._all_mode_vars.setdefault(key, tk.BooleanVar(
+                value=key in ("ponto_fixo", "trailing_atr", "gradiente_dinamico")))
             self.mode_vars[key] = var
             w = ttk.Checkbutton(self.modes_box, text=mode.name.split(" (")[0], variable=var)
             w.grid(row=k // per_row, column=k % per_row, sticky="w", padx=(0, 10))

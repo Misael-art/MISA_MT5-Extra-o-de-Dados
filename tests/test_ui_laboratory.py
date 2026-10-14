@@ -71,6 +71,10 @@ def panel(tmp_path):
     p.pump, p.db = pump, db
     yield p
     root.destroy()
+    # lixo do Tk tem de ser coletado AQUI, na thread principal: se sobrar, o coletor pode rodar numa thread de
+    # segundo plano do próximo teste e o Tk derruba o processo ("Illegal instruction")
+    import gc
+    gc.collect()
     db.close()
 
 

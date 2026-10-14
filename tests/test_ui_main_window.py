@@ -42,6 +42,8 @@ def ui(tmp_path):
         manager.pump(0.1)
     yield manager
     root.destroy()
+    import gc
+    gc.collect()        # lixo do Tk coletado na thread principal (veja tests/test_ui_laboratory.py)
 
 
 def _config():
