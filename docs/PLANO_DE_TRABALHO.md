@@ -2494,8 +2494,18 @@ está desatualizada em relação à `Safety/`; não há conta netting no host, e
 No HADOUKEN: `ENUM_HDK_PERMISSION` e, no `HDK_SafeExecutor`, `SetMandate`, `Adopt`, `ScopeFor`, `SupervisedClose`,
 `SupervisedCancel` e `SupervisedCloseAll`, todas auditadas em `MQL5\Files\HDK_Audit`. As funções antigas não
 mudaram: seguem restritas ao próprio magic. **Compila** (painel, sentinela e cinco robôs de estratégia). **Falta:**
-executar uma operação supervisionada (só acontece com o guardião da T12.3), rodar de novo a paridade dos seis
-robôs, atualizar a `mt5x-safety` e a regra da bateria para os arquivos novos.
+executar uma operação supervisionada, que depende de o guardião da T12.3 chamar essas funções. Os outros itens foram
+conferidos depois: a paridade dos seis robôs foi refeita com a `Safety/` 7.1 (T8.9) e, na validação posterior do
+D-02/T12.4, as duas camadas produziram as mesmas 690 operações. A `mt5x-safety` 1.3.0 contém os nove arquivos do
+manifesto; em 2026-10-14 eles foram comparados byte a byte com a pasta `Safety/` do HADOUKEN. A regra da bateria já
+trata `Safety/` como camada permitida e tem testes para aceitar envio dentro dela e reprovar envio direto no robô;
+nenhum ajuste adicional foi necessário. T12.1 segue parcial até haver um caminho exercitável para a operação
+supervisionada; não foi feita operação em conta.
+
+**Divergência de dependências registrada:** a validação restante de T12.1 exige T12.3, mas a tabela faz T12.2
+depender de T12.1 e T12.3 depender de T12.2. A sequência forma um ciclo. É preciso esclarecer se T12.2 pode avançar
+com a implementação da Safety enquanto a operação supervisionada fica para T12.3, ou se a ordem deve ser revista.
+Até essa decisão, T12.1 permanece parcial e T12.2 não é iniciada.
 
 ### T12.2 — Carteira somente leitura ⏳
 
