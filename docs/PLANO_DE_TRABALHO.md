@@ -2502,6 +2502,11 @@ trata `Safety/` como camada permitida e tem testes para aceitar envio dentro del
 nenhum ajuste adicional foi necessário. T12.1 segue parcial até haver um caminho exercitável para a operação
 supervisionada; não foi feita operação em conta.
 
+**Divergência de dependências registrada:** a validação restante de T12.1 exige T12.3, mas a tabela faz T12.2
+depender de T12.1 e T12.3 depender de T12.2. A sequência forma um ciclo. É preciso esclarecer se T12.2 pode avançar
+com a implementação da Safety enquanto a operação supervisionada fica para T12.3, ou se a ordem deve ser revista.
+Até essa decisão, T12.1 permanece parcial e T12.2 não é iniciada.
+
 ### T12.2 — Carteira somente leitura ⏳
 
 - HADOUKEN: `HDK_PortfolioRegistry.mqh` e o robô `HDK_AccountGuardian.mq5`, que só observa, avisa e grava
