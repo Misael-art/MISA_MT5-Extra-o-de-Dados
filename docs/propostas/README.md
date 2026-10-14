@@ -12,18 +12,18 @@ cada passo não for validado.
 
 | Épico | Assunto | Repositório responsável | Documento | Tarefas |
 |---|---|---|---|---|
-| A | Base de dados e inteligência de mercado | mt5x | [EPICO_A_ANALYTICS.md](EPICO_A_ANALYTICS.md) | 14 |
+| A | Base de dados e inteligência de mercado | mt5x | [EPICO_A_ANALYTICS.md](EPICO_A_ANALYTICS.md) | 15 |
 | B | Framework modular de estratégias | HADOUKEN (integração: mt5x) | `Documentation/HADOUKEN_2/propostas/EPICO_B_FRAMEWORK_MODULAR.md` no HADOUKEN | 11 |
 | C | Estratégias e indicadores | HADOUKEN e mt5x (par Python) | `.../EPICO_C_ESTRATEGIAS.md` no HADOUKEN | 12 |
 | D | Mecanismos de entrada e execução | HADOUKEN (`Safety/`) | `.../EPICO_D_EXECUCAO.md` no HADOUKEN | 16 |
 | E | Gestão de posições e saídas | HADOUKEN | `.../EPICO_E_POSICOES.md` no HADOUKEN | 13 |
 | F | Gestão global de carteira | HADOUKEN (leitura: mt5x) | `.../EPICO_F_CARTEIRA.md` no HADOUKEN | 12 |
-| G | Painel HADOUKEN | HADOUKEN (abertura e travas: mt5x) | `.../EPICO_G_PAINEL.md` no HADOUKEN | 16 |
+| G | Painel HADOUKEN | HADOUKEN (abertura e travas: mt5x) | `.../EPICO_G_PAINEL.md` no HADOUKEN | 17 |
 | H | Estatísticas avançadas | HADOUKEN e mt5x | `.../EPICO_H_ESTATISTICAS.md` no HADOUKEN | 15 |
 | I | Pesquisa, otimização e validação | mt5x | [EPICO_I_PESQUISA_VALIDACAO.md](EPICO_I_PESQUISA_VALIDACAO.md) | 13 |
 | J | IA e agentes de desenvolvimento | mt5x e HADOUKEN | [EPICO_J_IA_AGENTES.md](EPICO_J_IA_AGENTES.md) | 9 |
 
-Total: **10 épicos, 131 tarefas**. O repositório HADOUKEN é `Misael-art/projeto-indicadores-mt5`; a evolução da
+Total: **10 épicos, 133 tarefas** (131 no registro inicial; A-15 e G-17 acrescentadas em 2026-10-13). O repositório HADOUKEN é `Misael-art/projeto-indicadores-mt5`; a evolução da
 biblioteca `Misael-art/mt5x-safety` está descrita no `ROADMAP.md` de lá. As referências de estudo estão em
 [REFERENCIAS.md](REFERENCIAS.md).
 
@@ -52,7 +52,7 @@ Na ordem de dependência técnica. Uma etapa não começa interface que dependa 
 | 2. Contratos, sem mudar comportamento | Os seis contratos e o adaptador dos robôs atuais, com a paridade intacta | B-02 a B-08, D-01, E-01, E-05, E-06 | 0 |
 | 3. Execução e carteira de base | Ordens pendentes no executor, cancelamento, recuperação após reinício, orçamento e reserva de risco | D-02, E-10, E-13, F-01 a F-05, F-09 a F-12 | 2 |
 | 4. Livro de estatísticas | Negócio, ordem, posição, operação e ciclo como coisas distintas; KPIs conciliados | H-01 a H-10, H-14 | 3 |
-| 5. Conteúdo analítico e publicação | Volume, sazonalidade, regimes, hipóteses; retrato lido pelos robôs | A-06 a A-10, A-13, C-12 | 1, 2 |
+| 5. Conteúdo analítico e publicação | Volume, sazonalidade, regimes, hipóteses, notícias no histórico; retrato lido pelos robôs | A-06 a A-10, A-13, A-15, C-12 | 1, 2 |
 | 6. Estratégias de referência e Composer | Módulos de sinal novos, combinação sem duplicar código, teste de execução separado do sinal | C-01 a C-10, B-09, B-10, I-02, I-06 | 2, 4 |
 | 7. Gradiente Linear | Grade fixa e dinâmica, ciclo e cesta, com orçamento agregado | D-06, D-07, E-11, E-12, F-06 a F-08, H-12 | 3, 4 |
 | 8. Painel completo e inteligência | Painel modular recolhível com as abas; tela de inteligência dos ativos | G-02 a G-15, A-14, H-11, H-13, H-15 | 4, 5, 7 |

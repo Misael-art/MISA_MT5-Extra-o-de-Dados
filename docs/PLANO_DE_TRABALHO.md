@@ -2872,8 +2872,9 @@ decisão em aberto da seção "O painel na visão do MT5".
 
 **Conferido:** 643 testes passando; no host, o PARAR TUDO que a visão tinha acionado foi liberado a pedido do dono
 do projeto (`mt5x robots stop --release`).
-**Não conferido:** o painel operando de fato em demo depois da liberação (nenhuma ordem foi enviada nestes testes);
-se a negociação algorítmica do terminal fica ligada quando o painel entra pelo arquivo de início; Windows.
+**Confirmado pelo dono do projeto (2026-10-13):** o painel comprou e vendeu normalmente em conta demo depois da
+liberação e da correção do horário (seção seguinte).
+**Não conferido:** Windows.
 
 ### Correção: horário do painel e reabertura do MT5 sem o painel (2026-10-13)
 
@@ -2918,9 +2919,21 @@ recusadas por horário; "ao retirar ele continuou restringindo".
   no MQL5 do HADOUKEN (G-02); depois dela a leitura do código e o teste do Strategy Tester precisam ser refeitos,
   ou o painel volta a abrir bloqueado.
 
-**Não conferido:** uma compra ou venda de fato executada pelo painel depois da correção; a reabertura organizada
-depois de fechar o MT5 à mão, no terminal real (só com dublê); Windows.
-**Fica para o HADOUKEN:** a mensagem de recusa dizer que o horário é o do servidor e que horas são lá.
+**Confirmado pelo dono do projeto (2026-10-13):** depois da correção, compra e venda pelo painel funcionaram
+normalmente em conta demo. É relato dele; nenhuma ordem foi enviada nos testes automáticos.
+**Não conferido:** a reabertura organizada depois de fechar o MT5 à mão, no terminal real (só com dublê); Windows.
+
+**Registrado para depois, a pedido do dono do projeto (não é urgente: o estado atual atende):**
+
+- **Resposta do painel ao clique:** reduzir o ciclo de 500 ms ou redesenhar logo depois do clique, e a mensagem de
+  recusa dizer que o horário é o do servidor e que horas são lá. É a tarefa **G-17** do backlog (no HADOUKEN).
+  Depois de mexer no painel, a leitura do código e o teste do Strategy Tester precisam ser refeitos, ou ele volta
+  a abrir bloqueado.
+- **Notícias no histórico dos ativos:** o filtro de notícias deve popular a base, em uma coluna, para o estudo das
+  estatísticas no futuro. É a tarefa **A-15** ([propostas/EPICO_A_ANALYTICS.md](propostas/EPICO_A_ANALYTICS.md)).
+
+**Próximo passo combinado:** a abertura de ordens na instância HADOUKEN, conforme o plano (ordens pendentes no
+executor: D-02 do backlog, primeiro passo da etapa 4 do HADOUKEN 2.0 e da T12.4).
 
 ### T12.6a — Painel v7: conferência pendente e vocabulário
 
