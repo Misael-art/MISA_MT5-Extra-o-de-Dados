@@ -64,22 +64,52 @@ def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = No
     return result
 
 
-def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] = None, save: bool = False) -> dict:
+def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] = None, save: bool = False,
+            robot=None, preset: Optional[str] = None) -> dict:
     """
-    O mesmo run em vários modos, sobre as MESMAS entradas: {modo: {"result": SimResult, "metrics": {...}}}.
-    `params` = {modo: {parâmetro: valor}}. As barras e custos são lidos uma vez só.
+    O mesmo run em vários modos, sobre as MESMAS entradas: {modo: {"result", "name", "metrics", ...}}.
+    `params` = {modo: {parâmetro: valor}}. As barras e custos são lidos uma vez só. Martingale e anti-martingale só
+    entram com `robot` que os suporte (as travas vêm dele); pedidos sem suporte são recusados com ValueError.
     """
+    import pandas as pd
     from mt5_extracao.trade_analytics import stats
-    from mt5_extracao.trade_analytics.execution import modes as registry
+    from mt5_extracao.trade_analytics.execution import modes as registry, sizing
     data = inputs(db, config, run_id)
     base = base_policy(data["robot_key"])
     initial = data["cfg"].initial_equity
+    allowed = registry.available(robot, preset)
+    wanted = list(modes_wanted or registry.exit_modes())      # sem lista: os modos de saída (como na T16.7)
+    refused = [k for k in wanted if k not in allowed]
+    if refused:
+        raise ValueError(f"Modo(s) {', '.join(refused)} indisponível(is) para {data['robot_key']}: o robô não tem "
+                         "parâmetro de martingale, ou o preset bloqueia preço médio.")
     out = {}
-    for key in modes_wanted or list(registry.exit_modes()):
+    base_result = None
+    for key in wanted:
         mode = registry.MODES[key]
-        policy = mode.policy(base, (params or {}).get(key))
+        values = dict(mode.params, **(params or {}).get(key, {}))
+        if key in registry.SEQUENCE:
+            base_result = base_result or resimulate(db, config, run_id, base, "ponto_fixo", data=data)
+            frame = pd.DataFrame([vars(t) for t in base_result.trades])
+            support = sizing.martingale_support(robot, preset)
+            safety = sizing.robot_safety(robot, preset, config, data["spec"])
+            safety.max_levels = int(values.get("niveis", safety.max_levels))
+            seq = sizing.apply(frame, initial, support["multiplier"], safety, anti=registry.SEQUENCE[key])
+            rows = seq["trades"][~seq["trades"]["skipped"]]
+            out[key] = {"result": None, "name": mode.name, "study_only": True, "sequence": seq,
+                        "safety_notes": safety.notes,
+                        "metrics": stats.metrics(rows["pnl"], initial,
+                                                 rows["r_multiple"] * rows["volume"] / frame.loc[rows.index, "volume"])}
+            if save:
+                ledger.save_trades(db, f"{run_id}#{key}", rows.to_dict("records"), robot_key=data["robot_key"],
+                                   symbol=data["symbol"], timeframe=data["timeframe"], source=RESIM_PREFIX + key)
+            continue
+        policy = mode.policy(base, values)
         result = resimulate(db, config, run_id, policy, key, save=save, data=data)
+        if key == "ponto_fixo":
+            base_result = result
         pnl = [t.pnl for t in result.trades]
-        out[key] = {"result": result, "name": mode.name,
-                    "metrics": stats.metrics(pnl, initial, [t.r_multiple for t in result.trades])}
+        out[key] = {"result": result, "name": mode.name, "study_only": mode.study_only,
+                    "metrics": stats.metrics(pnl, initial, [t.r_multiple for t in result.trades]),
+                    "adds": result.adds, "capped": result.capped, "max_volume": result.max_volume}
     return out

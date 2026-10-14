@@ -57,3 +57,44 @@ register(Mode("trailing_barras", "Trailing pela mínima/máxima de N barras", EX
 
 def exit_modes() -> Dict[str, Mode]:
     return {k: m for k, m in MODES.items() if m.kind == EXIT}
+
+
+# --- dimensionamento (T16.8) ----------------------------------------------------------------
+# Gradientes: os mesmos conceitos do Gradiente Linear do HADOUKEN (T12.4 fixo, T12.5 dinâmico). Exportáveis só como
+# parâmetros dele, que roda dentro da camada de segurança.
+
+register(Mode("gradiente_fixo", "Gradiente linear fixo (contra)", SIZING,
+              "Abre novos níveis a cada N pontos contra a posição (preço médio), até o número de níveis e o teto de "
+              "exposição. O stop do conjunto continua o inicial: o risco cresce a cada nível.",
+              {"niveis": 3, "espacamento_pontos": 100, "fator_lote": 1.0, "teto_lotes": 0},
+              lambda base, p: base.with_(grid_levels=int(p["niveis"]), grid_direction="contra",
+                                         grid_spacing_points=p["espacamento_pontos"], grid_lot_factor=p["fator_lote"],
+                                         grid_max_volume=p["teto_lotes"] or None)))
+register(Mode("gradiente_dinamico", "Gradiente dinâmico por ATR (contra)", SIZING,
+              "Como o gradiente fixo, com espaçamento de k × ATR medido antes da entrada (alarga com a volatilidade).",
+              {"niveis": 3, "k_atr": 1.0, "fator_lote": 1.0, "teto_lotes": 0},
+              lambda base, p: base.with_(grid_levels=int(p["niveis"]), grid_direction="contra",
+                                         grid_spacing_atr=p["k_atr"], grid_lot_factor=p["fator_lote"],
+                                         grid_max_volume=p["teto_lotes"] or None)))
+register(Mode("gradiente_direcional", "Gradiente direcional (piramidação)", SIZING,
+              "Aumenta a posição a cada N pontos A FAVOR e sobe o stop do conjunto para a entrada anterior.",
+              {"niveis": 3, "espacamento_pontos": 100, "fator_lote": 1.0, "teto_lotes": 0},
+              lambda base, p: base.with_(grid_levels=int(p["niveis"]), grid_direction="favor", grid_trail_stop=True,
+                                         grid_spacing_points=p["espacamento_pontos"], grid_lot_factor=p["fator_lote"],
+                                         grid_max_volume=p["teto_lotes"] or None)))
+# Martingale: transformação da sequência (sizing.apply) sobre o modo base. Só para robô que o suporta (seção 4.4).
+SEQUENCE = {"martingale": False, "anti_martingale": True}       # modo -> anti?
+register(Mode("martingale", "Martingale (só robôs que o suportam)", SIZING,
+              "Multiplica o lote depois de cada perda e volta ao inicial depois de um ganho, com as travas do próprio "
+              "robô (perda diária, drawdown, risco por operação, lote máximo). A bateria reprova martingale para "
+              "operação real: aqui é estudo do comportamento.", {"niveis": 4}, study_only=True))
+register(Mode("anti_martingale", "Anti-martingale (só robôs que o suportam)", SIZING,
+              "Multiplica o lote depois de cada ganho e volta ao inicial depois de uma perda, com as travas do robô.",
+              {"niveis": 4}, study_only=True))
+
+
+def available(robot=None, preset: Optional[str] = None) -> Dict[str, Mode]:
+    """Os modos que fazem sentido para o robô: martingale e anti-martingale só se ele os suporta."""
+    from mt5_extracao.trade_analytics.execution import sizing
+    supported = robot is not None and sizing.martingale_support(robot, preset) is not None
+    return {k: m for k, m in MODES.items() if k not in SEQUENCE or supported}

@@ -43,6 +43,14 @@ class ExitPolicy:
     max_bars: Optional[int] = None
     eod_exit: bool = False
     keep_original_exits: bool = True          # sinal, tempo, fim do dia e fim dos dados do run original
+    # Gradiente (T16.8): entradas adicionais na mesma operação. "contra" = preço médio; "favor" = piramidação
+    grid_levels: int = 0
+    grid_direction: str = "contra"
+    grid_spacing_points: Optional[float] = None    # espaçamento fixo, em pontos do ativo
+    grid_spacing_atr: Optional[float] = None       # espaçamento dinâmico: k × ATR da barra anterior à entrada
+    grid_lot_factor: float = 1.0                   # lote de cada nível = lote inicial × fator
+    grid_max_volume: Optional[float] = None        # teto de exposição (lotes somados)
+    grid_trail_stop: bool = False                  # piramidação: o stop do conjunto sobe para a entrada anterior
 
     @classmethod
     def from_rules(cls, rules) -> "ExitPolicy":
@@ -60,6 +68,9 @@ class SimResult:
     trades: List[Trade]
     skipped: int                  # operações sem stop, sem entrada ou fora das barras
     approximate: int              # entradas sem barra no horário exato (resolução diferente da do run)
+    adds: int = 0                 # entradas adicionais do gradiente
+    capped: int = 0               # níveis não abertos por causa do teto de exposição
+    max_volume: float = 0.0       # maior exposição (lotes somados) numa operação
 
 
 def _bar_index(times: pd.Series, when) -> Optional[int]:
@@ -80,7 +91,8 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     last_of_day = np.append(days[1:] != days[:-1], True) if len(days) else np.array([], dtype=bool)
     atr_v = np.asarray(atr, dtype=float) if atr is not None else np.full(len(data), np.nan)
     out: List[Trade] = []
-    skipped = approximate = 0
+    skipped = approximate = adds = capped = 0
+    stats_volume = [0.0]
     n = len(data)
 
     for t in trades.sort_values("entry_time").itertuples(index=False):
@@ -108,39 +120,97 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
         exit_orig = _bar_index(times, t.exit_time) if not pd.isna(t.exit_time) else None
         reason_orig = t.exit_reason
         pos = {"stop": stop, "kind": "stop", "remaining": volume, "pnl": -cfg.commission_per_lot * volume,
-               "partial": False, "be": False}
+               "partial": False, "be": False, "lots": [[entry, volume]], "next_level": 1}
+        grid = policy.grid_levels > 0
+        spacing = None
+        if grid:
+            if policy.grid_spacing_atr:
+                ref = atr_v[i0 - 1] if i0 > 0 else np.nan        # ATR da barra fechada antes da entrada
+                spacing = policy.grid_spacing_atr * ref if np.isfinite(ref) else None
+            elif policy.grid_spacing_points:
+                spacing = policy.grid_spacing_points * spec.point
+            grid = bool(spacing and spacing > 0)
+        sign = -1 if policy.grid_direction == "contra" else 1
 
         def fill_exit(bid_price, spread, market=True):
             price = bid_price + (spread if d < 0 else 0.0)
             return price - d * slip if market else price
 
         def close_part(vol, price):
-            pos["pnl"] += (price - entry) * d * ppu * vol - cfg.commission_per_lot * vol
+            # fecha `vol` lotes, do mais antigo para o mais novo (com gradiente há vários preços de entrada)
+            left = vol
+            for lot in pos["lots"]:
+                take = min(lot[1], left)
+                if take <= 0:
+                    continue
+                pos["pnl"] += (price - lot[0]) * d * ppu * take - cfg.commission_per_lot * take
+                lot[1] = round(lot[1] - take, 8)
+                left = round(left - take, 8)
+            pos["lots"] = [lot for lot in pos["lots"] if lot[1] > 1e-12]
             pos["remaining"] = round(pos["remaining"] - vol, 8)
 
+        def add_levels(i, lo, hi, op):
+            """Abre os níveis do gradiente tocados nesta barra (ordem limite/stop, preenchida no nível ou na abertura)."""
+            nonlocal adds, capped
+            while pos["next_level"] <= policy.grid_levels:
+                k = pos["next_level"]
+                level = entry + d * sign * k * spacing
+                touched = ((lo <= level) if d > 0 else (hi >= level)) if sign < 0 else \
+                    ((hi >= level) if d > 0 else (lo <= level))
+                if not touched:
+                    break
+                lot = volume * policy.grid_lot_factor
+                if policy.grid_max_volume and pos["remaining"] + lot > policy.grid_max_volume + 1e-12:
+                    capped += policy.grid_levels - k + 1
+                    pos["next_level"] = policy.grid_levels + 1
+                    break
+                # limite (contra) preenche no nível ou melhor; stop (a favor) no nível ou pior, se abriu além
+                gapped = (op < level) if (d > 0) == (sign < 0) else (op > level)
+                price = op if gapped else level
+                # os níveis são medidos no lado que fecha a posição (bid na compra, ask na venda); entrar é o outro lado
+                price = price + spr[i] if d > 0 else price - spr[i]
+                previous = pos["lots"][-1][0]
+                pos["lots"].append([price, lot])
+                pos["remaining"] = round(pos["remaining"] + lot, 8)
+                pos["pnl"] -= cfg.commission_per_lot * lot
+                pos["next_level"] = k + 1
+                adds += 1
+                if sign > 0 and policy.grid_trail_stop:
+                    if (previous > pos["stop"]) if d > 0 else (previous < pos["stop"]):
+                        pos["stop"], pos["kind"] = previous, "trailing"
+            stats_volume[0] = max(stats_volume[0], pos["remaining"])
+            stats_volume_trade[0] = max(stats_volume_trade[0], pos["remaining"])
+
         def close_all(i, price, reason):
+            pos["peak_volume"] = max(volume, stats_volume_trade[0])
             if cfg.swap:
                 pos["pnl"] += spec.swap_money(d, pos["remaining"], times.iloc[i0], times.iloc[i])
             close_part(pos["remaining"], price)
             out.append(Trade(direction=d, entry_time=times.iloc[i0], exit_time=times.iloc[i], entry_price=entry,
-                             exit_price=float(price), volume=volume, pnl=float(pos["pnl"]),
+                             exit_price=float(price), volume=float(pos["peak_volume"]), pnl=float(pos["pnl"]),
                              r_multiple=float(pos["pnl"] / (risk_px * ppu * volume)), bars=i - i0 + 1,
                              exit_reason=EXIT_REASONS[reason], equity_before=float("nan"), stop_price=stop,
                              target_price=target))
 
         closed = False
+        stats_volume[0] = max(stats_volume[0], volume)
+        stats_volume_trade = [volume]
         for i in range(i0, n):
             if policy.keep_original_exits and i == exit_orig and reason_orig in _OPEN_EXITS and i > i0:
                 close_all(i, fill_exit(o[i], spr_open[i]), "signal")
                 closed = True
                 break
             lo, hi, op = (l[i], h[i], o[i]) if d > 0 else (l[i] + spr[i], h[i] + spr[i], o[i] + spr[i])
+            if grid and sign < 0:
+                add_levels(i, lo, hi, op)       # contra: assume o pior caso (o nível enche antes do stop)
             if (lo <= pos["stop"]) if d > 0 else (hi >= pos["stop"]):
                 level = min(op, pos["stop"]) if d > 0 else max(op, pos["stop"])
                 close_all(i, level - d * slip, pos["kind"])
                 closed = True
                 break
-            if policy.partial_r and not pos["partial"]:
+            if grid and sign > 0:
+                add_levels(i, lo, hi, op)       # a favor: só depois de conferir que o stop não foi atingido
+            if policy.partial_r and not pos["partial"] and not grid:
                 level = entry + d * policy.partial_r * risk_px
                 if (hi >= level) if d > 0 else (lo <= level):
                     pos["partial"] = True
@@ -186,4 +256,4 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 break
         if not closed:
             close_all(n - 1, fill_exit(c[n - 1], spr_close[n - 1]), "end")
-    return SimResult(out, skipped, approximate)
+    return SimResult(out, skipped, approximate, adds, capped, stats_volume[0])
