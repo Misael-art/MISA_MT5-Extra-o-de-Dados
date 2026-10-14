@@ -9,6 +9,7 @@ from typing import Optional, Tuple
 
 SECTION = "RESOURCES"
 RULE_CODES = ("sem_lucro", "sem_estudo", "obsoleta", "vazia")
+ARCHIVE_FORMATS = ("sqlite", "parquet")
 
 
 @dataclass
@@ -32,6 +33,11 @@ class Policy:
     auto_clean_files: bool = False
     logs_keep_days: int = 30
     exports_keep_days: int = 0
+    archive_format: str = "sqlite"
+    auto_trim: bool = False
+    retention_intraday_days: int = 0
+    retention_ticks_days: int = 0
+    max_series_mb: float = 0.0
     errors: list = field(default_factory=list)   # chaves com valor inválido (usou o padrão)
 
 
@@ -68,6 +74,11 @@ def load(config) -> Policy:
         if unknown:
             errors.append(f"[{SECTION}] auto_archive_rules: regra(s) desconhecida(s) {', '.join(unknown)} ignorada(s)")
         rules = tuple(r for r in parsed if r in RULE_CODES)
+    fmt = (config.get(SECTION, "archive_format", fallback="") if config is not None and config.has_section(SECTION)
+           else "").strip().lower() or d.archive_format
+    if fmt not in ARCHIVE_FORMATS:
+        errors.append(f"[{SECTION}] archive_format = {fmt!r} é inválido; usado 'sqlite' (use sqlite ou parquet)")
+        fmt = d.archive_format
     return Policy(
         auto_enabled=_get(config, "auto_enabled", bool, d.auto_enabled, errors),
         monitor_interval_minutes=max(5, _get(config, "monitor_interval_minutes", int, d.monitor_interval_minutes,
@@ -91,6 +102,11 @@ def load(config) -> Policy:
         auto_clean_files=_get(config, "auto_clean_files", bool, d.auto_clean_files, errors),
         logs_keep_days=_get(config, "logs_keep_days", int, d.logs_keep_days, errors),
         exports_keep_days=_get(config, "exports_keep_days", int, d.exports_keep_days, errors),
+        archive_format=fmt,
+        auto_trim=_get(config, "auto_trim", bool, d.auto_trim, errors),
+        retention_intraday_days=_get(config, "retention_intraday_days", int, d.retention_intraday_days, errors),
+        retention_ticks_days=_get(config, "retention_ticks_days", int, d.retention_ticks_days, errors),
+        max_series_mb=_get(config, "max_series_mb", float, d.max_series_mb, errors),
         errors=errors)
 
 

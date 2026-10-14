@@ -9,7 +9,7 @@ import logging
 import tkinter as tk
 from datetime import datetime, timedelta
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 
 from mt5_extracao.bootstrap import config_builder
 from mt5_extracao.resources import actions, automation, files, hygiene, storage
@@ -46,6 +46,9 @@ AUTO_FLAGS = (
     ("auto_backup", "Fazer cópia de segurança da base sozinho", "Cópia conferida do arquivo SQLite no intervalo "
                                                                "abaixo, guardando as mais novas. Precisa de disco do "
                                                                "tamanho da base."),
+    ("auto_trim", "Aparar sozinho o histórico antigo (retenção)", "Arquiva e retira as linhas mais velhas que os dias de "
+                                                                 "retenção abaixo (0 = guarda tudo). Reversível pela "
+                                                                 "guia Arquivo."),
     ("auto_clean_files", "Apagar logs e exportações antigos sozinho", "Usa os dias abaixo (0 = nunca). O log em uso "
                                                                        "nunca é apagado."),
 )
@@ -59,6 +62,9 @@ AUTO_NUMBERS = (
     ("backup_keep", "Cópias guardadas", 1, 1000),
     ("logs_keep_days", "Apagar logs com mais de (dias; 0 = nunca)", 0, 36500),
     ("exports_keep_days", "Apagar exportações com mais de (dias; 0 = nunca)", 0, 36500),
+    ("retention_intraday_days", "Reter barras intradiárias por (dias; 0 = tudo)", 0, 36500),
+    ("retention_ticks_days", "Reter ticks e book por (dias; 0 = tudo)", 0, 36500),
+    ("max_series_mb", "Avisar quando uma série passar de (MB; 0 = não)", 0, 10000000),
 )
 
 
@@ -148,8 +154,15 @@ class ResourcesPanel:
     def _build_space_tab(self):
         tab = ttk.Frame(self.tabs, padding=10, style="Surface.TFrame")
         self.tabs.add(tab, text="Espaço")
-        self.dirs_label = ttk.Label(tab, text="", style="Muted.TLabel")
-        self.dirs_label.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        row = ttk.Frame(tab, style="Surface.TFrame")
+        row.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        self.trim_button = ttk.Button(row, text="Aparar série...", command=self.trim_selected)
+        self.trim_button.pack(side=tk.LEFT)
+        Tooltip(self.trim_button, "Mantém só os últimos N dias da série selecionada: as linhas mais velhas vão para "
+                                  "o arquivo (reversível) e saem da base. Bom para M1 e ticks, que crescem rápido.",
+                self.ui.theme)
+        self.dirs_label = ttk.Label(row, text="", style="Muted.TLabel")
+        self.dirs_label.pack(side=tk.LEFT, padx=(12, 0))
         frame, self.space_tree = scrolled_tree(tab, SPACE_COLUMNS, SPACE_WIDTHS, SPACE_ANCHORS, height=12)
         frame.pack(fill=tk.BOTH, expand=True)
         self.space_tree.tag_configure("internal", foreground=self.ui.theme.colors["muted"])
@@ -216,6 +229,8 @@ class ResourcesPanel:
         Tooltip(self.backup_button, "Cópia conferida da base inteira, feita com ela em uso. Para voltar a uma cópia: "
                                     "feche o programa e copie o arquivo por cima da base.", self.ui.theme)
         ttk.Button(row, text="Abrir pasta das cópias", command=self.open_backup_dir).pack(side=tk.LEFT, padx=(8, 0))
+        self.back_button = ttk.Button(row, text="Voltar a esta cópia...", command=self.restore_backup)
+        self.back_button.pack(side=tk.LEFT, padx=(8, 0))
         self.files_button = ttk.Button(row, text="Apagar arquivos antigos", command=self.clean_files)
         self.files_button.pack(side=tk.RIGHT)
         self.files_summary = ttk.Label(tab, text="", style="Muted.TLabel", wraplength=760, justify=tk.LEFT)
@@ -229,7 +244,7 @@ class ResourcesPanel:
         tree = self.backup_tree
         tree.delete(*tree.get_children())
         for b in self.backups:
-            tree.insert("", tk.END, values=(Path(b["path"]).name, hb(b["bytes"]), f"{b['created_at']:%d/%m/%Y %H:%M}"))
+            tree.insert("", tk.END, iid=b["path"], values=(Path(b["path"]).name, hb(b["bytes"]), f"{b['created_at']:%d/%m/%Y %H:%M}"))
         size = sum(f["bytes"] for f in self.old_files)
         text = (f"{len(self.backups)} cópia(s), {hb(sum(b['bytes'] for b in self.backups))}. " if self.backups
                 else "Nenhuma cópia de segurança ainda. ")
@@ -266,6 +281,55 @@ class ResourcesPanel:
         def done(result):
             self.ui.log(f"Recursos: {result['removed']} arquivo(s) antigo(s) apagado(s), {hb(result['bytes'])}.")
         self._run_action("apagando arquivos antigos", lambda: files.clean_files(db, config, "ui"), done)
+
+    def restore_backup(self):
+        db, config = self._db(), self._config()
+        selection = self.backup_tree.selection()
+        if not db or not selection:
+            messagebox.showinfo("Voltar a uma cópia", "Selecione a cópia na lista.", parent=self.frame)
+            return
+        path = selection[0]
+        if not messagebox.askyesno(
+                "Voltar a uma cópia", f"Trocar a base inteira pela cópia {Path(path).name}?\n\nTudo o que foi "
+                "gravado depois dela some da base. Antes, o estado atual é guardado numa cópia nova (se isso falhar, "
+                "nada muda).\n\nPare extrações e backtests antes de continuar.", icon="warning", parent=self.frame):
+            return
+
+        def done(result):
+            if result["ok"]:
+                self.ui.log(f"Recursos: base trocada pela cópia {Path(path).name}; estado anterior em "
+                            f"{result['safety_copy']}.")
+                self.ui.refresh_inventory()
+            else:
+                messagebox.showerror("Voltar a uma cópia", result["error"], parent=self.frame)
+        self._run_action("voltando à cópia", lambda: files.restore_backup(db, config, path, "ui"), done)
+
+    def trim_selected(self):
+        db, config = self._db(), self._config()
+        selection = self.space_tree.selection()
+        item = next((t for t in (self.report or {}).get("tables", []) if selection and t["table"] == selection[0]),
+                    None)
+        if not db or item is None or item["kind"] == storage.KIND_INTERNAL:
+            messagebox.showinfo("Aparar série", "Selecione na lista uma série de barras, ticks ou book.",
+                                parent=self.frame)
+            return
+        days = simpledialog.askinteger("Aparar série", f"{item['table']}: manter os últimos quantos dias?",
+                                       parent=self.frame, minvalue=1, maxvalue=36500, initialvalue=365)
+        if not days:
+            return
+        if not messagebox.askyesno("Aparar série", f"As linhas de {item['table']} com mais de {days} dias vão para o "
+                                                   "arquivo e saem da base. Você pode devolvê-las pela guia Arquivo."
+                                                   "\n\nContinuar?", parent=self.frame):
+            return
+
+        def done(results):
+            r = results[0]
+            if r["ok"]:
+                self.ui.log(f"Recursos: {r['table']}: {r['rows']} linha(s) aparada(s).")
+                self.ui.refresh_inventory()
+            else:
+                messagebox.showerror("Aparar série", r["error"], parent=self.frame)
+        self._run_action("aparando", lambda: actions.trim_tables(db, config, {item["table"]: days}, "ui"), done)
 
     def open_backup_dir(self):
         folder = files.backup_dir(self._db(), policy_mod.load(self._config()))
@@ -315,16 +379,25 @@ class ResourcesPanel:
             spin.grid(row=row, column=col + 1, sticky="w", padx=(12, 0), pady=2)
             self.auto_numbers[key] = var
 
+        last = len(AUTO_NUMBERS) % half or half      # o formato ocupa a vaga livre da segunda coluna
+        ttk.Label(numbers, text="Formato do arquivo de séries", style="Surface.TLabel").grid(
+            row=last if len(AUTO_NUMBERS) % 2 else half, column=2, sticky="w", pady=2, padx=(28, 0))
+        self.format_var = tk.StringVar(value=p.archive_format)
+        fmt_box = ttk.Combobox(numbers, textvariable=self.format_var, values=policy_mod.ARCHIVE_FORMATS,
+                               state="readonly", width=7)
+        fmt_box.grid(row=last if len(AUTO_NUMBERS) % 2 else half, column=3, sticky="w", padx=(12, 0), pady=2)
+        Tooltip(fmt_box, "sqlite: abre em qualquer ferramenta. parquet: bem menor (exige o pyarrow).", self.ui.theme)
+
         buttons = ttk.Frame(tab, style="Surface.TFrame")
-        buttons.pack(fill=tk.X, pady=(12, 0))
+        buttons.pack(fill=tk.X, pady=(12, 0), side=tk.BOTTOM, before=master)   # sempre visível, mesmo em tela baixa
         ttk.Button(buttons, text="Salvar", style="Accent.TButton", command=self.save_automation).pack(side=tk.LEFT)
         self.cycle_button = ttk.Button(buttons, text="Rodar um ciclo agora", command=lambda: self.run_cycle("ui"))
         self.cycle_button.pack(side=tk.LEFT, padx=(8, 0))
-        self.auto_feedback = ttk.Label(tab, text="", style="Muted.TLabel", wraplength=760, justify=tk.LEFT)
-        self.auto_feedback.pack(anchor="w", pady=(10, 0))
-        ttk.Label(tab, text="Sem a interface aberta, agende no sistema: \"mt5x resources auto\" (cron no Linux, "
-                            "Agendador de Tarefas no Windows). Ele segue as mesmas opções.",
-                  style="Muted.TLabel", wraplength=760, justify=tk.LEFT).pack(anchor="w", pady=(6, 0))
+        self.auto_feedback = ttk.Label(buttons, text="", style="Muted.TLabel", wraplength=640, justify=tk.LEFT)
+        self.auto_feedback.pack(side=tk.LEFT, padx=(12, 0))
+        Tooltip(self.cycle_button, "Sem a interface aberta, agende no sistema: \"mt5x resources auto\" (cron no "
+                                   "Linux, Agendador de Tarefas no Windows). Ele segue as mesmas opções.",
+                self.ui.theme)
         self._auto_toggled()
 
     def _build_history_tab(self):
@@ -356,7 +429,8 @@ class ResourcesPanel:
         self.busy = busy
         state = ["disabled"] if busy else ["!disabled"]
         for button in (self.refresh_button, self.vacuum_button, self.archive_button, self.orphans_button,
-                       self.restore_button, self.cycle_button, self.backup_button, self.files_button):
+                       self.restore_button, self.cycle_button, self.backup_button, self.files_button, self.trim_button,
+                       self.back_button):
             button.state(state)
         if busy:
             self.progress.pack(side=tk.RIGHT, padx=(0, 10))
@@ -466,7 +540,7 @@ class ResourcesPanel:
         for t in sorted(self.report["tables"], key=keys[col], reverse=reverse):
             size = hb(t["bytes"]) + (" *" if t["estimated"] else "")
             share = f"{(t['bytes'] or 0) / total * 100:.1f}%" if total else "—"
-            tree.insert("", tk.END, values=(t["table"], t["kind"], t["symbol"] or "", t["timeframe"] or "",
+            tree.insert("", tk.END, iid=t["table"], values=(t["table"], t["kind"], t["symbol"] or "", t["timeframe"] or "",
                                             fmt_int(t["rows"]), size, share, _fmt_date(t["end"])),
                         tags=("internal",) if t["kind"] == storage.KIND_INTERNAL else ())
         dirs = self.report["dirs"]
@@ -551,6 +625,10 @@ class ResourcesPanel:
         tree.delete(*tree.get_children())
         for a in self.archives:
             reason = "; ".join(hygiene.LABELS.get(k, k) for k in (a["reasons"] or {})) or (a["error"] or "manual")
+            if a.get("kind") == "trim":
+                reason = f"Histórico aparado (mantidos {a.get('keep_days')} dias)"
+            if a.get("format") == "parquet":
+                reason += " · parquet"
             tree.insert("", tk.END, iid=a["path"], values=(a["table"], a["symbol"] or "",
                                                            fmt_int(a["rows"]) if a["rows"] is not None else "—",
                                                            hb(a["bytes"]), _fmt_date(a["archived_at"]), reason))
@@ -725,6 +803,7 @@ class ResourcesPanel:
         config = self._config()
         path = Path(getattr(self.ui.app, "config_path", "config/config.ini")).resolve()
         values = {key: "true" if var.get() else "false" for key, var in self.auto_vars.items()}
+        values["archive_format"] = self.format_var.get()
         values["auto_archive_rules"] = ",".join(c for c, v in self.auto_rule_vars.items() if v.get())
         for key, label, low, high in AUTO_NUMBERS:
             raw = self.auto_numbers[key].get().strip().replace(",", ".")

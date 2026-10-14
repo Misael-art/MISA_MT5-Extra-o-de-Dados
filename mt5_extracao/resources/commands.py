@@ -30,6 +30,13 @@ def add_parser(sub) -> None:
     q = rs.add_parser("backup", help="cópia de segurança conferida da base (SQLite), guardando as mais novas")
     q.add_argument("--yes", action="store_true")
     rs.add_parser("backups", help="lista as cópias de segurança")
+    q = rs.add_parser("restore-backup", help="volta a base inteira a uma cópia (guarda antes o estado atual)")
+    q.add_argument("path")
+    q.add_argument("--yes", action="store_true")
+    q = rs.add_parser("trim", help="apara séries: arquiva e retira as linhas mais velhas que --days (reversível)")
+    q.add_argument("tables", nargs="*", help="tabelas; sem nomes, usa a retenção de [RESOURCES]")
+    q.add_argument("--days", type=int, help="manter os últimos N dias")
+    q.add_argument("--yes", action="store_true")
     q = rs.add_parser("files", help="logs e exportações mais velhos que [RESOURCES] logs_keep_days / "
                                     "exports_keep_days (--yes apaga)")
     q.add_argument("--yes", action="store_true")
@@ -184,6 +191,40 @@ def run(args: argparse.Namespace, ctx) -> int:
             out(f"Cópia antiga apagada: {old}")
         data(**result)
         return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
+
+    if command == "restore-backup":
+        if not args.yes:
+            err("nada foi alterado: confirme com --yes (pare extrações e backtests antes)")
+            return cli.EXIT_USAGE
+        result = files.restore_backup(db, config, args.path, origin="cli")
+        out(f"Base trocada pela cópia. Estado anterior guardado em {result['safety_copy']}." if result["ok"]
+            else f"Nada foi trocado: {result['error']}")
+        data(**result)
+        return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
+
+    if command == "trim":
+        if args.tables:
+            if not args.days or args.days < 1:
+                raise ValueError("informe --days (manter os últimos N dias)")
+            plan = {t: args.days for t in args.tables}
+        else:
+            plan = automation.retention_plan(storage.measure(db, with_dirs=False), policy)
+            if args.days:
+                plan = {t: args.days for t in plan}
+        if not plan:
+            raise ValueError("nada a aparar: informe as tabelas e --days, ou ligue a retenção em [RESOURCES]")
+        if not args.yes:
+            for table, days in plan.items():
+                out(f"{table}: manteria os últimos {days} dias")
+            err("nada foi alterado: confirme com --yes")
+            data(would_trim=plan)
+            return cli.EXIT_USAGE
+        results = actions.trim_tables(db, config, plan, origin="cli")
+        for r in results:
+            out(f"{r['table']}: " + (f"{r['rows']} linha(s) aparada(s)" + (f" em {r['archive']}" if r["archive"] else "")
+                                     if r["ok"] else f"NÃO aparada: {r['error']}"))
+        data(results=results)
+        return cli.EXIT_OK if all(r["ok"] for r in results) else cli.EXIT_FAIL
 
     if command == "backups":
         items = files.list_backups(db, config)

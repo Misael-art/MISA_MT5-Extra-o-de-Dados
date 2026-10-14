@@ -43,7 +43,8 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 | T15.5 | Automação opt-in: política em `[RESOURCES]`, ciclo (medir → alertar → agir), alertas pelo `notify`, agendador na interface e comando para o cron | ✅ |
 | T15.6 | Aba "Recursos" na interface: indicadores, Espaço, Higienização, Arquivo, Automação e Histórico | ✅ (vista em tela virtual no Linux; Windows não visto) |
 | T15.7 | Cópia de segurança conferida (SQLite, API de backup + `quick_check`, guarda as N mais novas) e limpeza de logs e exportações antigos; guia "Cópias e arquivos", `mt5x resources backup | backups | files`, opções na automação | ✅ (Linux) |
-| T15.8 | Próximas frentes: compactação em Parquet, retenção por particionamento no PostgreSQL/TimescaleDB, limites por ativo, restaurar uma cópia pela interface | proposta |
+| T15.8 | Arquivo em Parquet (`archive_format`); aparar séries por idade com retenção automática para intradiário e ticks/book (SQLite e PostgreSQL, reversível); aviso de série acima de `max_series_mb`; voltar a uma cópia de segurança pela interface e por `mt5x resources restore-backup` (guarda antes o estado atual) | ✅ (Linux; PostgreSQL só pelo caminho genérico exercitado sobre SQLite) |
+| T15.9 | Próximas frentes: `drop_chunks` nativo do TimescaleDB, limites que bloqueiam extração (hoje só avisam), retenção por ativo | proposta |
 
 ## Regras de higienização (T15.2)
 
@@ -79,6 +80,11 @@ são pontuais (registro da aba, do subcomando e das chaves de configuração).
 | `auto_clean_files` | `false` | Apaga sozinho logs e exportações antigos |
 | `logs_keep_days` | `30` | Idade dos logs apagados (0 = nunca; o log em uso nunca é apagado) |
 | `exports_keep_days` | `0` | Idade das exportações apagadas (0 = nunca) |
+| `archive_format` | `sqlite` | `sqlite` ou `parquet` (menor; exige pyarrow) |
+| `auto_trim` | `false` | Apara sozinho o histórico pela retenção abaixo |
+| `retention_intraday_days` | `0` | Retenção das barras menores que 1 dia (0 = tudo) |
+| `retention_ticks_days` | `0` | Retenção de ticks e book (0 = tudo) |
+| `max_series_mb` | `0` | Avisa quando uma série passar disso (0 = desligado) |
 
 ## Validação
 

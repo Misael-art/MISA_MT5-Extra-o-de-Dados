@@ -121,6 +121,11 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("auto_clean_files", "false"),       # apaga sozinho logs e exportações mais velhos que os dias abaixo
         ("logs_keep_days", "30"),            # 0 = nunca apaga logs (o log em uso nunca é apagado)
         ("exports_keep_days", "0"),          # 0 = nunca apaga exportações
+        ("archive_format", "sqlite"),        # formato do arquivo: sqlite (abre em qualquer lugar) ou parquet (menor; pyarrow)
+        ("auto_trim", "false"),              # apara sozinho (arquiva) o histórico mais velho que os dias abaixo
+        ("retention_intraday_days", "0"),    # barras intradiárias (menores que 1 dia); 0 = guarda tudo
+        ("retention_ticks_days", "0"),       # ticks e book; 0 = guarda tudo
+        ("max_series_mb", "0"),              # avisa quando uma série passar disso (MB); 0 = desligado
     ])),
 ])
 

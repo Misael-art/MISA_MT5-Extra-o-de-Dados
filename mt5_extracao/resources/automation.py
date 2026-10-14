@@ -34,12 +34,34 @@ def alerts(report: dict, policy) -> List[dict]:
         out.append({"level": "crítico", "code": "disco_cheio",
                     "text": f"Disco com só {disk['free_pct']:.1f}% livre ({storage.human_bytes(disk['free'])}). "
                             "Arquive séries antigas ou libere espaço; extrações podem falhar."})
+    if policy.max_series_mb:
+        big = [t for t in report.get("tables", []) if t["kind"] != storage.KIND_INTERNAL and
+               (t["bytes"] or 0) > policy.max_series_mb * MB]
+        if big:
+            names = ", ".join(f"{t['table']} ({storage.human_bytes(t['bytes'])})" for t in big[:5])
+            out.append({"level": "aviso", "code": "serie_grande",
+                        "text": f"{len(big)} série(s) acima de {storage.human_bytes(policy.max_series_mb * MB)}: "
+                                f"{names}. Considere aparar o histórico antigo (Recursos > Espaço)."})
     reclaim = report.get("reclaimable_bytes")
     if reclaim and reclaim > max(policy.vacuum_min_mb, 1) * MB:
         out.append({"level": "aviso", "code": "recuperavel",
                     "text": f"{storage.human_bytes(reclaim)} livres dentro da base podem voltar ao disco com "
                             "\"Otimizar\"."})
     return out
+
+
+def retention_plan(report: dict, policy) -> dict:
+    """{tabela: dias} das séries que a retenção configurada alcança (intradiárias, ticks e book)."""
+    from mt5_extracao import timeframes
+    plan = {}
+    for t in report.get("tables", []):
+        if t["kind"] == storage.KIND_BARS and policy.retention_intraday_days:
+            tf = timeframes.parse(t["timeframe"]) if t.get("timeframe") else None
+            if tf is not None and tf.minutes < 1440:
+                plan[t["table"]] = policy.retention_intraday_days
+        elif t["kind"] in (storage.KIND_TICKS, storage.KIND_BOOK) and policy.retention_ticks_days:
+            plan[t["table"]] = policy.retention_ticks_days
+    return plan
 
 
 def last_cycle(db) -> Optional[datetime]:
@@ -92,6 +114,12 @@ def run_cycle(db, config, origin: str = "auto", selected: Iterable[str] = (), no
                 if targets:
                     results = actions.archive_tables(db, config, list(targets), origin, reasons=targets)
                     done.append({"action": "arquivar", "result": results})
+            if policy.auto_trim:
+                plan = retention_plan(report, policy)
+                if plan:
+                    trimmed = actions.trim_tables(db, config, plan, origin, now)
+                    if any(r["rows"] for r in trimmed):
+                        done.append({"action": "aparar", "result": trimmed})
             if policy.auto_clean_files:
                 cleaned = files.clean_files(db, config, origin, now)
                 if cleaned["removed"]:

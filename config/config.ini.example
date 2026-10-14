@@ -178,3 +178,13 @@ backup_dir =
 auto_clean_files = false
 logs_keep_days = 30
 exports_keep_days = 0
+# Formato do arquivo de séries arquivadas e aparadas: sqlite (padrão, abre em qualquer lugar) ou parquet (bem menor,
+# exige o pyarrow de requirements-optional.txt).
+archive_format = sqlite
+# Retenção: apara (arquiva, reversível) o histórico mais velho que N dias. 0 = guarda tudo. Vale para SQLite e
+# PostgreSQL. Intradiário = barras menores que 1 dia; ticks inclui o book. Só roda sozinho com auto_trim = true.
+auto_trim = false
+retention_intraday_days = 0
+retention_ticks_days = 0
+# Avisa quando uma série sozinha passar deste tamanho (MB). 0 = desligado.
+max_series_mb = 0

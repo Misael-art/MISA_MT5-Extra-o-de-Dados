@@ -14,9 +14,9 @@ import os
 import sqlite3
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
@@ -128,7 +128,7 @@ def _control_rows(conn, table: str) -> dict:
 
 # --- arquivar --------------------------------------------------------------------------
 
-def _archive_one_sqlite(db, table: str, target: Path, info: dict) -> int:
+def _archive_one_sqlite(db, table: str, target: Path, info: dict, where: str = "", params: dict = None) -> int:
     """Cópia rápida: o arquivo novo anexa a base de origem e copia com o mesmo CREATE TABLE. Devolve as linhas."""
     source = str(Path(db.db_path).resolve())
     con = sqlite3.connect(str(target), timeout=30)
@@ -142,7 +142,8 @@ def _archive_one_sqlite(db, table: str, target: Path, info: dict) -> int:
         info["indexes"] = [r[0] for r in con.execute(
             "SELECT sql FROM src.sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL", (table,))]
         con.execute(create_sql[0])
-        con.execute(f'INSERT INTO main."{table}" SELECT * FROM src."{table}"')
+        con.execute(f'INSERT INTO main."{table}" SELECT * FROM src."{table}"' + where.replace(":cut", "?"),
+                    tuple((params or {}).values()))
         _write_info(con, info)
         con.commit()
         con.execute("DETACH DATABASE src")
@@ -151,13 +152,14 @@ def _archive_one_sqlite(db, table: str, target: Path, info: dict) -> int:
         con.close()
 
 
-def _archive_one_generic(db, table: str, target: Path, info: dict) -> int:
+def _archive_one_generic(db, table: str, target: Path, info: dict, where: str = "", params: dict = None) -> int:
     """PostgreSQL (ou qualquer outro): copia em blocos com pandas para um SQLite."""
     arc = create_engine(f"sqlite:///{target}")
     copied = 0
     try:
         with db.engine.connect() as conn:
-            for chunk in pd.read_sql(text(f'SELECT * FROM "{table}"'), conn, chunksize=CHUNK_ROWS):
+            for chunk in pd.read_sql(text(f'SELECT * FROM "{table}"{where}'), conn, params=params or {},
+                                     chunksize=CHUNK_ROWS):
                 chunk.to_sql(table, arc, if_exists="append", index=False)
                 copied += len(chunk)
         if copied == 0:      # tabela vazia: mantém pelo menos as colunas
@@ -186,6 +188,7 @@ def archive_tables(db, config, tables: Iterable[str], origin: str = "ui", reason
     """
     Arquiva e remove as tabelas, uma a uma (uma falha não impede as outras). Devolve
     [{table, ok, archive, rows, bytes_freed, error}]. Tabelas internas ('_...') são recusadas.
+    Formato do arquivo: [RESOURCES] archive_format (sqlite, padrão; ou parquet, bem menor, exige pyarrow).
     """
     policy = policy_mod.load(config)
     folder = policy_mod.archive_dir(db, policy)
@@ -196,62 +199,148 @@ def archive_tables(db, config, tables: Iterable[str], origin: str = "ui", reason
         for index, table in enumerate(tables):
             if progress:
                 progress(index, len(tables), table)
-            results.append(_archive_one(db, table, folder, existing, origin, (reasons or {}).get(table)))
+            results.append(_move_rows(db, table, folder, existing, origin, (reasons or {}).get(table),
+                                      policy.archive_format))
     return results
 
 
-def _archive_one(db, table, folder, existing, origin, reason) -> dict:
+def trim_tables(db, config, plan: Dict[str, int], origin: str = "ui", now: Optional[datetime] = None) -> List[dict]:
+    """
+    Apara séries: as linhas mais velhas que `dias` (plan = {tabela: dias}) vão para o arquivo e saem da base; a
+    tabela fica, com o período recente. Funciona no SQLite e no PostgreSQL. Restaurar devolve as linhas.
+    """
+    policy = policy_mod.load(config)
+    folder = policy_mod.archive_dir(db, policy)
+    now = now or datetime.now()
+    results = []
+    with exclusive(folder, f"aparar ({origin})"):
+        existing = set(inspect(db.engine).get_table_names())
+        for table, days in plan.items():
+            results.append(_move_rows(db, table, folder, existing, origin, None, policy.archive_format,
+                                      before=now - timedelta(days=int(days)), keep_days=int(days)))
+    return results
+
+
+def _time_column(db, table: str) -> Optional[str]:
+    columns = {c["name"] for c in inspect(db.engine).get_columns(table)}
+    return next((c for c in ("time", "time_utc") if c in columns), None)
+
+
+def _cutoff_param(db, before: datetime):
+    """O SQLite guarda o horário como texto ('AAAA-MM-DD HH:MM:SS...'): compara como texto; o PostgreSQL, como data."""
+    return before.strftime("%Y-%m-%d %H:%M:%S") if db.dialect == "sqlite" else before
+
+
+def _new_target(folder: Path, table: str, suffix: str) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    target, n = folder / f"{table}__{stamp}{suffix}", 1
+    while target.exists() or _sidecar(target).exists():
+        target, n = folder / f"{table}__{stamp}-{n}{suffix}", n + 1
+    return target
+
+
+def _sidecar(path: Path) -> Path:
+    return Path(str(path) + ".json")
+
+
+def _copy_parquet(db, table: str, target: Path, info: dict, where: str, params: dict) -> int:
+    with db.engine.connect() as conn:
+        frame = pd.read_sql(text(f'SELECT * FROM "{table}"{where}'), conn, params=params)
+    frame.to_parquet(target, index=False, compression="zstd")
+    _sidecar(target).write_text(json.dumps(info, ensure_ascii=False, default=str), encoding="utf-8")
+    return len(pd.read_parquet(target, columns=[frame.columns[0]])) if len(frame.columns) else 0
+
+
+def _move_rows(db, table, folder, existing, origin, reason, fmt="sqlite", before=None, keep_days=None) -> dict:
+    """Arquiva a tabela inteira (before=None) ou só as linhas anteriores a `before` (aparar)."""
+    trim = before is not None
+    action = "aparar" if trim else "arquivar"
     result = {"table": table, "ok": False, "archive": None, "rows": 0, "bytes_freed": None, "error": None}
     if table.startswith("_") or table.startswith("sqlite_"):
-        result["error"] = "tabela interna não pode ser arquivada"
+        result["error"] = f"tabela interna não pode ser {'aparada' if trim else 'arquivada'}"
         return result
     if table not in existing:
         result["error"] = "tabela não existe"
         return result
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    target = folder / f"{table}__{stamp}{ARCHIVE_SUFFIX}"
-    n = 1
-    while target.exists():
-        target = folder / f"{table}__{stamp}-{n}{ARCHIVE_SUFFIX}"
-        n += 1
+    if fmt == "parquet":
+        try:
+            import pyarrow  # noqa: F401
+        except ImportError:
+            result["error"] = "formato parquet exige o pyarrow (pip install pyarrow); nada foi alterado"
+            return result
+    where, params = "", {}
+    if trim:
+        column = _time_column(db, table)
+        if column is None:
+            result["error"] = "tabela sem coluna de horário: não dá para aparar por idade"
+            return result
+        where, params = f' WHERE "{column}" < :cut', {"cut": _cutoff_param(db, before)}
+    target = _new_target(folder, table, ".parquet" if fmt == "parquet" else ARCHIVE_SUFFIX)
     try:
         with db.engine.connect() as conn:
-            rows_before = int(conn.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar() or 0)
+            rows_before = int(conn.execute(text(f'SELECT COUNT(*) FROM "{table}"{where}'), params).scalar() or 0)
             controls = _control_rows(conn, table)
+        if trim and rows_before == 0:
+            result.update(ok=True, rows=0)
+            return result
         info = {"table": table, "rows": rows_before, "archived_at": datetime.now().isoformat(timespec="seconds"),
-                "dialect": db.dialect, "origin": origin, "reasons": reason, "controls": controls}
-        disk = storage.disk_usage(folder)
+                "dialect": db.dialect, "origin": origin, "reasons": reason, "controls": controls,
+                "kind": "trim" if trim else "table", "format": fmt}
+        if trim:
+            info.update(before=before.isoformat(timespec="seconds"), keep_days=keep_days)
+        if db.dialect == "sqlite":
+            with db.engine.connect() as conn:
+                info["create_sql"] = conn.execute(text(
+                    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :t"), {"t": table}).scalar()
+                info["indexes"] = [r[0] for r in conn.execute(text(
+                    "SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = :t AND sql IS NOT NULL"),
+                    {"t": table})]
         size_before = storage.measure(db, with_dirs=False).get("db_bytes")
-        copied = (_archive_one_sqlite if db.dialect == "sqlite" else _archive_one_generic)(db, table, target, info)
+        if fmt == "parquet":
+            copied = _copy_parquet(db, table, target, info, where, params)
+        elif db.dialect == "sqlite":
+            copied = _archive_one_sqlite(db, table, target, info, where, params)
+        else:
+            copied = _archive_one_generic(db, table, target, info, where, params)
         if copied != rows_before:
             raise RuntimeError(f"cópia conferida com {copied} linha(s), a tabela tem {rows_before}; nada foi removido")
         with db.engine.begin() as conn:
-            conn.execute(text(f'DROP TABLE "{table}"'))
-            if inspect(conn).has_table("_symbol_tables"):
-                conn.execute(text("DELETE FROM _symbol_tables WHERE table_name = :t"), {"t": table})
-            if inspect(conn).has_table("_extraction_log"):
-                conn.execute(text("DELETE FROM _extraction_log WHERE table_name = :t"), {"t": table})
-        _forget_table(db, table)
+            if trim:
+                deleted = conn.execute(text(f'DELETE FROM "{table}"{where}'), params).rowcount
+                if deleted != rows_before:
+                    raise RuntimeError(f"seriam apagadas {deleted} linha(s), a cópia tem {rows_before}; "
+                                       "nada foi removido")
+            else:
+                conn.execute(text(f'DROP TABLE "{table}"'))
+                if inspect(conn).has_table("_symbol_tables"):
+                    conn.execute(text("DELETE FROM _symbol_tables WHERE table_name = :t"), {"t": table})
+                if inspect(conn).has_table("_extraction_log"):
+                    conn.execute(text("DELETE FROM _extraction_log WHERE table_name = :t"), {"t": table})
+        if not trim:
+            _forget_table(db, table)
         result.update(ok=True, archive=str(target), rows=copied)
-        audit(db, "arquivar", table, origin, True, size_before, None,
-              {"archive": str(target), "rows": copied, "reasons": reason,
-               "disk_free": disk.get("free") if disk else None})
-        log.info(f"Tabela {table} arquivada em {target} ({copied} linhas).")
+        audit(db, action, table, origin, True, size_before, None,
+              {"archive": str(target), "rows": copied, "reasons": reason, "keep_days": keep_days, "format": fmt})
+        log.info(f"Tabela {table}: {copied} linha(s) {'aparadas' if trim else 'arquivadas'} em {target}.")
     except Exception as e:
-        log.error(f"Falha ao arquivar {table}: {e}")
+        log.error(f"Falha ao {action} {table}: {e}")
         result["error"] = str(e)
-        try:
-            if target.exists() and not result["ok"]:
-                target.unlink()
-        except OSError:
-            pass
-        audit(db, "arquivar", table, origin, False, detail={"error": str(e)})
+        for leftover in (target, _sidecar(target)):
+            try:
+                if leftover.exists():
+                    leftover.unlink()
+            except OSError:
+                pass
+        audit(db, action, table, origin, False, detail={"error": str(e)})
     return result
 
 
 # --- arquivo: listar e restaurar --------------------------------------------------------
 
 def _read_info(path: Path) -> dict:
+    path = Path(path)
+    if path.suffix == ".parquet":
+        return json.loads(_sidecar(path).read_text(encoding="utf-8"))
     con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=10)
     try:
         return {k: json.loads(v) for k, v in con.execute("SELECT key, value FROM _archive_info")}
@@ -260,19 +349,25 @@ def _read_info(path: Path) -> dict:
 
 
 def list_archives(db, config) -> List[dict]:
-    """Arquivos disponíveis, o mais novo primeiro: [{path, table, rows, archived_at, bytes, symbol, timeframe, error}]."""
+    """
+    Arquivos disponíveis, o mais novo primeiro:
+    [{path, table, rows, archived_at, bytes, symbol, timeframe, kind ('table' ou 'trim'), format, error}].
+    """
     folder = policy_mod.archive_dir(db, policy_mod.load(config))
     if not folder.is_dir():
         return []
     out = []
-    for path in sorted(folder.glob(f"*{ARCHIVE_SUFFIX}"), key=lambda p: p.stat().st_mtime, reverse=True):
+    paths = list(folder.glob(f"*{ARCHIVE_SUFFIX}")) + list(folder.glob("*.parquet"))
+    for path in sorted(paths, key=lambda p: p.stat().st_mtime, reverse=True):
         item = {"path": str(path), "bytes": path.stat().st_size, "table": path.stem.split("__")[0], "rows": None,
-                "archived_at": None, "symbol": None, "timeframe": None, "reasons": None, "error": None}
+                "archived_at": None, "symbol": None, "timeframe": None, "reasons": None, "kind": "table",
+                "format": "parquet" if path.suffix == ".parquet" else "sqlite", "keep_days": None, "error": None}
         try:
             info = _read_info(path)
             controls = (info.get("controls") or {}).get("symbol_tables") or [{}]
             item.update(table=info.get("table", item["table"]), rows=info.get("rows"),
                         archived_at=info.get("archived_at"), reasons=info.get("reasons"),
+                        kind=info.get("kind", "table"), keep_days=info.get("keep_days"),
                         symbol=controls[0].get("symbol"), timeframe=controls[0].get("timeframe"))
         except Exception as e:
             item["error"] = f"arquivo sem informações legíveis: {e}"
@@ -280,8 +375,42 @@ def list_archives(db, config) -> List[dict]:
     return out
 
 
+def _insert_ignoring(db, table: str, frame: pd.DataFrame) -> int:
+    """Insere as linhas; as que já existem (mesma chave) ficam como estão. Devolve as linhas enviadas."""
+    if frame.empty:
+        return 0
+    columns = list(frame.columns)
+    names = ", ".join(f'"{c}"' for c in columns)
+    values = ", ".join(f":p{i}" for i in range(len(columns)))
+    if db.dialect == "sqlite":
+        sql = f'INSERT OR IGNORE INTO "{table}" ({names}) VALUES ({values})'
+    else:
+        sql = f'INSERT INTO "{table}" ({names}) VALUES ({values}) ON CONFLICT DO NOTHING'
+    data = frame.astype(object).where(pd.notna(frame), None)
+    records = [{f"p{i}": v for i, v in enumerate(row)} for row in data.itertuples(index=False, name=None)]
+    with db.engine.begin() as conn:
+        for start in range(0, len(records), CHUNK_ROWS):
+            conn.execute(text(sql), records[start:start + CHUNK_ROWS])
+    return len(records)
+
+
+def _frames(path: Path, table: str):
+    if path.suffix == ".parquet":
+        yield pd.read_parquet(path)
+        return
+    arc = create_engine(f"sqlite:///{path}")
+    try:
+        with arc.connect() as src:
+            yield from pd.read_sql(text(f'SELECT * FROM "{table}"'), src, chunksize=CHUNK_ROWS)
+    finally:
+        arc.dispose()
+
+
 def restore_archive(db, config, archive_path, origin: str = "ui") -> dict:
-    """Devolve a tabela à base. Recusa se a tabela já existir (nada é sobrescrito)."""
+    """
+    Devolve à base o que o arquivo guarda. Série inteira: recusa se a tabela já existir (nada é sobrescrito).
+    Linhas aparadas: voltam para a tabela existente; linhas que já estão lá ficam como estão.
+    """
     path = Path(archive_path)
     policy = policy_mod.load(config)
     folder = policy_mod.archive_dir(db, policy)
@@ -289,22 +418,29 @@ def restore_archive(db, config, archive_path, origin: str = "ui") -> dict:
     with exclusive(folder, f"restaurar ({origin})"):
         try:
             info = _read_info(path)
-            table = info["table"]
+            table, trim = info["table"], info.get("kind") == "trim"
             result["table"] = table
-            if inspect(db.engine).has_table(table):
+            exists = inspect(db.engine).has_table(table)
+            if trim and not exists:
+                raise RuntimeError(f"a tabela {table} não está na base; restaure antes a série inteira")
+            if not trim and exists:
                 raise RuntimeError(f"a tabela {table} já existe na base; nada foi alterado")
-            if db.dialect == "sqlite" and info.get("dialect") == "sqlite" and info.get("create_sql"):
+            if db.dialect == "sqlite" and path.suffix == ARCHIVE_SUFFIX and info.get("dialect") == "sqlite" and \
+                    (trim or info.get("create_sql")):
                 con = sqlite3.connect(str(Path(db.db_path).resolve()), timeout=30)
                 try:
                     con.execute("ATTACH DATABASE ? AS arc", (str(path),))
                     con.execute("BEGIN")
-                    con.execute(info["create_sql"])
-                    con.execute(f'INSERT INTO main."{table}" SELECT * FROM arc."{table}"')
-                    for sql in info.get("indexes") or []:
-                        con.execute(sql)
-                    rows = con.execute(f'SELECT COUNT(*) FROM main."{table}"').fetchone()[0]
-                    if rows != info.get("rows"):
-                        raise RuntimeError(f"restauradas {rows} linha(s), o arquivo diz {info.get('rows')}")
+                    if trim:
+                        rows = con.execute(f'INSERT OR IGNORE INTO main."{table}" SELECT * FROM arc."{table}"').rowcount
+                    else:
+                        con.execute(info["create_sql"])
+                        con.execute(f'INSERT INTO main."{table}" SELECT * FROM arc."{table}"')
+                        for sql in info.get("indexes") or []:
+                            con.execute(sql)
+                        rows = con.execute(f'SELECT COUNT(*) FROM main."{table}"').fetchone()[0]
+                        if rows != info.get("rows"):
+                            raise RuntimeError(f"restauradas {rows} linha(s), o arquivo diz {info.get('rows')}")
                     con.commit()
                 except Exception:
                     con.rollback()
@@ -312,28 +448,35 @@ def restore_archive(db, config, archive_path, origin: str = "ui") -> dict:
                 finally:
                     con.close()
             else:
-                arc = create_engine(f"sqlite:///{path}")
+                if not trim:
+                    if db.dialect == "sqlite" and info.get("create_sql"):
+                        with db.engine.begin() as conn:
+                            conn.execute(text(info["create_sql"]))
                 rows = 0
-                try:
-                    with arc.connect() as src:
-                        for chunk in pd.read_sql(text(f'SELECT * FROM "{table}"'), src, chunksize=CHUNK_ROWS):
-                            chunk.to_sql(table, db.engine, if_exists="append", index=False)
-                            rows += len(chunk)
-                finally:
-                    arc.dispose()
-            with db.engine.begin() as conn:
-                for row in (info.get("controls") or {}).get("symbol_tables") or []:
-                    conn.execute(text("DELETE FROM _symbol_tables WHERE symbol = :symbol AND timeframe = :timeframe"),
-                                 row)
-                    conn.execute(text("INSERT INTO _symbol_tables (symbol, timeframe, table_name) "
-                                      "VALUES (:symbol, :timeframe, :table_name)"), row)
-            _forget_table(db, table)
+                for frame in _frames(path, table):
+                    if not inspect(db.engine).has_table(table):
+                        frame.head(0).to_sql(table, db.engine, index=False)
+                    rows += _insert_ignoring(db, table, frame)
+                if not trim:
+                    with db.engine.begin() as conn:
+                        for sql in (info.get("indexes") or []) if db.dialect == "sqlite" else []:
+                            conn.execute(text(sql))
+            if not trim:
+                with db.engine.begin() as conn:
+                    for row in (info.get("controls") or {}).get("symbol_tables") or []:
+                        conn.execute(text("DELETE FROM _symbol_tables WHERE symbol = :symbol AND "
+                                          "timeframe = :timeframe"), row)
+                        conn.execute(text("INSERT INTO _symbol_tables (symbol, timeframe, table_name) "
+                                          "VALUES (:symbol, :timeframe, :table_name)"), row)
+                _forget_table(db, table)
             restored = path.parent / "restaurados"
             restored.mkdir(exist_ok=True)
             path.replace(restored / path.name)       # o arquivo não é apagado: vai para restaurados/
+            if _sidecar(path).exists():
+                _sidecar(path).replace(restored / _sidecar(path).name)
             result.update(ok=True, rows=rows)
-            audit(db, "restaurar", table, origin, True, detail={"archive": str(path), "rows": rows})
-            log.info(f"Tabela {table} restaurada de {path} ({rows} linhas).")
+            audit(db, "restaurar", table, origin, True, detail={"archive": str(path), "rows": rows, "trim": trim})
+            log.info(f"Tabela {table}: {rows} linha(s) restaurada(s) de {path}.")
         except Exception as e:
             log.error(f"Falha ao restaurar {path}: {e}")
             result["error"] = str(e)

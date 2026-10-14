@@ -378,3 +378,114 @@ def test_cli_backup_and_files(db, tmp_path, capsys):
     assert _cli(tmp_path, db, "backup") == cli.EXIT_USAGE
     assert _cli(tmp_path, db, "backups") == cli.EXIT_OK
     assert _cli(tmp_path, db, "files") == cli.EXIT_OK
+
+
+# --- T15.8: parquet, aparar, limite por série, voltar a uma cópia ---------------------------
+
+def _rows(db, table):
+    with db.engine.connect() as conn:
+        return conn.execute(text(f'SELECT * FROM "{table}" ORDER BY time')).fetchall()
+
+
+def test_parquet_archive_round_trip(db, tmp_path):
+    pytest.importorskip("pyarrow")
+    cfg = _config(tmp_path, archive_format="parquet")
+    table = _table(db, "OLD3")
+    original = _rows(db, table)
+    [result] = actions.archive_tables(db, cfg, [table])
+    assert result["ok"] and result["archive"].endswith(".parquet")
+    [arch] = actions.list_archives(db, cfg)
+    assert arch["format"] == "parquet" and arch["rows"] == 50 and arch["symbol"] == "OLD3"
+    assert actions.restore_archive(db, cfg, arch["path"])["ok"]
+    assert _rows(db, table) == original
+    assert db.find_table_for_symbol("OLD3", "1 dia") == table
+
+
+def test_trim_keeps_recent_rows_and_restores_the_rest(db, tmp_path):
+    cfg = _config(tmp_path)
+    table = _table(db, "PETR4")                    # 50 barras diárias até NOW
+    original = _rows(db, table)
+    [result] = actions.trim_tables(db, cfg, {table: 20}, origin="teste", now=NOW)
+    assert result["ok"] and result["rows"] == 29          # a barra exatamente no corte fica
+    assert len(_rows(db, table)) == 21
+    [arch] = actions.list_archives(db, cfg)
+    assert arch["kind"] == "trim" and arch["keep_days"] == 20
+    assert actions.restore_archive(db, cfg, arch["path"])["ok"]
+    assert _rows(db, table) == original
+    # nada a aparar: ok, sem arquivo
+    [again] = actions.trim_tables(db, cfg, {table: 3650}, now=NOW)
+    assert again["ok"] and again["rows"] == 0 and again["archive"] is None
+
+
+def test_trim_generic_path_and_parquet(db, tmp_path):
+    pytest.importorskip("pyarrow")
+    cfg = _config(tmp_path, archive_format="parquet")
+    table = _table(db, "VALE3")
+    [result] = actions.trim_tables(db, cfg, {table: 10}, now=NOW)
+    assert result["ok"] and result["rows"] == 39 and len(_rows(db, table)) == 11
+    assert actions.restore_archive(db, cfg, result["archive"])["ok"]
+    assert len(_rows(db, table)) == 50
+
+
+def test_trim_restore_needs_the_table(db, tmp_path):
+    cfg = _config(tmp_path)
+    table = _table(db, "OLD3")
+    [trim] = actions.trim_tables(db, cfg, {table: 10}, now=NOW - timedelta(days=400))
+    actions.archive_tables(db, cfg, [table])
+    result = actions.restore_archive(db, cfg, trim["archive"])
+    assert not result["ok"] and "restaure antes a série inteira" in result["error"]
+
+
+def test_retention_plan_and_auto_trim(db, tmp_path):
+    db.save_ohlcv_data("WIN", "1 minuto", _bars(NOW).assign(time=pd.date_range(end=NOW, periods=50, freq="h")))
+    cfg = _config(tmp_path, retention_intraday_days="1", auto_enabled="true", auto_trim="true")
+    report = storage.measure(db, with_dirs=False)
+    assert automation.retention_plan(report, policy.load(cfg)) == {"win_1_minuto": 1}
+    out = automation.run_cycle(db, cfg, now=NOW)
+    [trim] = [d for d in out["actions"] if d["action"] == "aparar"]
+    assert trim["result"][0]["rows"] > 0
+    assert len(_rows(db, "win_1_minuto")) < 50
+
+
+def test_series_size_alert():
+    p = policy.Policy(max_series_mb=1)
+    report = {"db_bytes": 1, "tables": [{"table": "x", "kind": storage.KIND_BARS, "bytes": 2 * 1024 ** 2},
+                                        {"table": "_y", "kind": storage.KIND_INTERNAL, "bytes": 9 * 1024 ** 2}]}
+    [alert] = automation.alerts(report, p)
+    assert alert["code"] == "serie_grande" and "x (" in alert["text"] and "_y" not in alert["text"]
+
+
+def test_invalid_archive_format_falls_back(tmp_path):
+    p = policy.load(_config(tmp_path, archive_format="zip"))
+    assert p.archive_format == "sqlite" and p.errors
+
+
+def test_restore_backup_keeps_a_safety_copy(db, tmp_path):
+    from mt5_extracao.resources import files
+    cfg = _config(tmp_path, backup_dir=str(tmp_path / "copias"), backup_keep="1")
+    first = files.backup(db, cfg)
+    assert first["ok"]
+    actions.archive_tables(db, cfg, [_table(db, "OLD3")])
+    assert "OLD3" not in {i["symbol"] for i in db.data_inventory()}
+    result = files.restore_backup(db, cfg, first["path"], origin="teste")
+    assert result["ok"], result
+    assert "OLD3" in {i["symbol"] for i in db.data_inventory()}
+    from pathlib import Path
+    assert Path(first["path"]).exists() and Path(result["safety_copy"]).exists()   # nada apagado (keep=1)
+
+
+def test_restore_backup_refuses_a_broken_copy(db, tmp_path):
+    from mt5_extracao.resources import files
+    broken = tmp_path / "quebrada.db"
+    broken.write_bytes(b"isto nao e um sqlite" * 100)
+    result = files.restore_backup(db, _config(tmp_path, backup_dir=str(tmp_path / "copias")), broken)
+    assert not result["ok"]
+    assert "OLD3" in {i["symbol"] for i in db.data_inventory()}
+
+
+def test_cli_trim_needs_yes(db, tmp_path, capsys):
+    table = _table(db, "PETR4")
+    assert _cli(tmp_path, db, "trim", table, "--days", "10") == cli.EXIT_USAGE
+    assert len(_rows(db, table)) == 50
+    assert _cli(tmp_path, db, "trim", table, "--days", "10", "--yes") == cli.EXIT_OK
+    assert len(_rows(db, table)) <= 11
