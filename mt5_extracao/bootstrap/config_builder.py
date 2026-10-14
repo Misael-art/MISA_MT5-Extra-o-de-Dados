@@ -142,6 +142,8 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("time_bucket_min", "30"),           # faixas de horário das operações (minutos)
         ("volatility_period", "14"),         # barras do retorno anterior à entrada
         ("min_trades_cell", "30"),           # menos operações que isso numa célula = "amostra pequena"
+        ("wf_folds", "4"),                   # blocos do walk-forward que valida as regras (mínimo 2)
+        ("holdout_fraction", "0.2"),         # fração final do histórico guardada intocada para o veredito
     ])),
 ])
 

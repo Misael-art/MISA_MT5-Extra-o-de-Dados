@@ -219,3 +219,7 @@ time_bucket_min = 30
 volatility_period = 14
 # Célula (dia, faixa, ativo...) com menos operações que isso aparece hachurada: "amostra pequena, não conclua nada".
 min_trades_cell = 30
+# Validação das regras (simulador e insights): o histórico é cortado em wf_folds blocos (procura nos anteriores,
+# confere no seguinte) e os últimos holdout_fraction ficam guardados para o veredito final.
+wf_folds = 4
+holdout_fraction = 0.2
