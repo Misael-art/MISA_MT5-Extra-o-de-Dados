@@ -139,6 +139,8 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("calendar_days_forward", "30"),     # ... e dias à frente
         ("calendar_countries", ""),          # códigos de país (BR,US); vazio = todos
         ("calendar_min_importance", "0"),    # 0 todos, 1 baixa+, 2 média+, 3 só alta
+        ("time_bucket_min", "30"),           # faixas de horário das operações (minutos)
+        ("volatility_period", "14"),         # barras do retorno anterior à entrada
     ])),
 ])
 

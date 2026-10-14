@@ -214,3 +214,6 @@ calendar_days_back = 1095
 calendar_days_forward = 30
 calendar_countries = 
 calendar_min_importance = 0
+# Faixas de horário das operações (minutos) e barras do "retorno anterior" à entrada.
+time_bucket_min = 30
+volatility_period = 14
