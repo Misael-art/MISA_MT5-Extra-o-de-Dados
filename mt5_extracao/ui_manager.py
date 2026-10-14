@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext, filedialog
+import gc
 import logging
 import datetime
 import traceback
@@ -17,6 +18,7 @@ from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.error_handler import with_error_handling, ExportError
 from mt5_extracao.ui.analysis import AnalysisPanel
 from mt5_extracao.ui.inventory import InventoryPanel
+from mt5_extracao.ui.laboratory import LaboratoryPanel
 from mt5_extracao.ui.resources import ResourcesPanel
 from mt5_extracao.ui.robots import RobotsPanel
 from mt5_extracao.ui.theme import Theme, Tooltip, card, fmt_int, fmt_num, scrolled_tree
@@ -33,7 +35,7 @@ class UIManager:
     Gerencia a interface gráfica (Tkinter) da aplicação MT5 Extração.
 
     Janela principal em abas: Ativos (escolher e extrair), Minha base (o que já existe),
-    Análise (gráficos e números de estudo), Robôs, Recursos (espaço e higienização) e Atividade (log).
+    Análise (gráficos e números de estudo), Robôs, Laboratório (operações dos robôs), Recursos (espaço e higienização) e Atividade (log).
     Os painéis ficam em mt5_extracao/ui/.
     """
     def __init__(self, app_instance):
@@ -162,6 +164,12 @@ class UIManager:
                     log.error(f"Erro ao atualizar a interface: {traceback.format_exc()}")
         except queue.Empty:
             pass
+        # Lixo do Tk (variáveis, imagens) só pode ser destruído na thread principal; se ficar acumulado, o coletor do
+        # Python pode rodar numa thread de segundo plano (run_bg) e o Tk derruba o processo. Coleta aqui a cada ~2 s.
+        self._gc_ticks = getattr(self, "_gc_ticks", 0) + 1
+        if self._gc_ticks >= 20:
+            self._gc_ticks = 0
+            gc.collect()
         try:
             self.root.after(100, self._pump_ui_queue)
         except tk.TclError:
@@ -236,6 +244,11 @@ class UIManager:
     def setup_ui(self):
         """Configura a interface do usuário completa."""
         self.root = self.app.root
+        # Tk só aceita a thread principal, inclusive para DESTRUIR variáveis e imagens. Com a coleta automática ligada,
+        # o coletor de ciclos pode rodar dentro de uma thread de segundo plano (run_bg, extração) e destruir lixo do Tk
+        # ali, derrubando o processo. Desligada, a contagem de referências segue liberando quase tudo na hora e os
+        # ciclos são coletados por _pump_ui_queue, na thread principal, a cada ~2 s.
+        gc.disable()
         self.root.after(100, self._pump_ui_queue)
         self.theme = Theme(self.root, dark=bool(self.prefs.get("dark")))
         self.style = ttk.Style()
@@ -290,6 +303,11 @@ class UIManager:
         self.notebook.add(self.analysis_panel.frame, text="Análise")
         self.robots_panel = RobotsPanel(self.notebook, self)
         self.notebook.add(self.robots_panel.frame, text="Robôs")
+        self.laboratory_panel = LaboratoryPanel(self.notebook, self)
+        self.notebook.add(self.laboratory_panel.frame, text="Laboratório")
+        # Laboratório só lê a base na primeira vez que a aba é aberta
+        self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.notebook.select() == str(
+            self.laboratory_panel.frame) and self.laboratory_panel.on_show(), add="+")
         self.resources_panel = ResourcesPanel(self.notebook, self)
         self.notebook.add(self.resources_panel.frame, text="Recursos")
         log_tab = ttk.Frame(self.notebook, padding=12)
@@ -1665,6 +1683,7 @@ class UIManager:
         view_menu.add_command(label="Minha base", command=lambda: self.notebook.select(1))
         view_menu.add_command(label="Análise", command=lambda: self.notebook.select(2))
         view_menu.add_command(label="Robôs", command=lambda: self.notebook.select(self.robots_panel.frame))
+        view_menu.add_command(label="Laboratório", command=lambda: self.notebook.select(self.laboratory_panel.frame))
         view_menu.add_command(label="Recursos", command=lambda: self.notebook.select(self.resources_panel.frame))
         view_menu.add_command(label="Atividade", command=lambda: self.notebook.select(self.log_tab))
         view_menu.add_separator()

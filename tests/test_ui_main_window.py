@@ -42,6 +42,8 @@ def ui(tmp_path):
         manager.pump(0.1)
     yield manager
     root.destroy()
+    import gc
+    gc.collect()        # lixo do Tk coletado na thread principal (veja tests/test_ui_laboratory.py)
 
 
 def _config():
@@ -194,7 +196,11 @@ def test_backtest_from_the_robot_card(ui):
     assert detail.symbol_var.get() == "WIN$N" and detail.timeframe_var.get() == "1 minuto"
     assert detail.run_tiles["trades"].cget("text") == "—" and "Rodar backtest" in detail.run_status.cget("text")
     detail.run_backtest()
-    ui.pump(2.5)
+    # o backtest roda em segundo plano (e grava no livro do Laboratório): no runner do Windows 2,5 s não bastam
+    end = time.time() + 20      # o resultado e o card do robô também se atualizam em segundo plano
+    while time.time() < end and (detail.shown_run is None or "Último backtest em WIN$N M1" not in
+                                 " | ".join(_labels(panel.cards["python:donchian"]))):
+        ui.pump(0.2)
     assert detail.shown_run is not None and detail.shown_run["symbol"] == "WIN$N"
     assert detail.run_tiles["trades"].cget("text") != "—"
     assert "WIN$N M1 · 600 barras" in detail.run_status.cget("text")

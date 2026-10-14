@@ -131,6 +131,20 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("block_db_gb", "0"),                # extração para de gravar com a base acima disso (GB); 0 = nunca
         ("retention_overrides", ""),         # retenção por ativo: WIN$N:30, PETR4:0 (0 = guarda tudo desse ativo)
     ])),
+    ("TRADE_ANALYTICS", OrderedDict([  # Laboratório (Fase 16; mt5x trades)
+        ("event_window_before_min", "30"),   # operação "com notícia": evento até N min antes da entrada
+        ("event_window_after_min", "30"),    # ... ou até N min depois
+        ("event_symbols", ""),               # moeda -> ativos, ex.: BRL: WIN$N WDO$N; USD: WDO$N
+        ("calendar_days_back", "1095"),      # exportação do calendário do MT5: dias de histórico
+        ("calendar_days_forward", "30"),     # ... e dias à frente
+        ("calendar_countries", ""),          # códigos de país (BR,US); vazio = todos
+        ("calendar_min_importance", "0"),    # 0 todos, 1 baixa+, 2 média+, 3 só alta
+        ("time_bucket_min", "30"),           # faixas de horário das operações (minutos)
+        ("volatility_period", "14"),         # barras do retorno anterior à entrada
+        ("min_trades_cell", "30"),           # menos operações que isso numa célula = "amostra pequena"
+        ("wf_folds", "4"),                   # blocos do walk-forward que valida as regras (mínimo 2)
+        ("holdout_fraction", "0.2"),         # fração final do histórico guardada intocada para o veredito
+    ])),
 ])
 
 DEFAULT_SYMBOLS = OrderedDict([

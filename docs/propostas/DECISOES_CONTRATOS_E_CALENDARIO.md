@@ -1,8 +1,9 @@
 # Proposta: onde moram os contratos do framework e de onde vem o calendário de sessões
 
-> **Proposta para decisão. Nada aqui foi implementado.** Pedida pelo dono do projeto em 2026-10-13 ("faça uma busca
-> das fontes e proponha como viabilizar"). São as decisões 3 e 4 do [índice do roadmap](README.md). Cada afirmação
-> diz se foi conferida no código, lida em uma fonte externa ou é recomendação.
+> A decisão de calendário da T13.1 foi adotada em 2026-10-14 e está registrada abaixo. A decisão sobre contratos
+> (seção 2) continua como proposta. O documento foi pedido pelo dono do projeto em 2026-10-13 ("faça uma busca das
+> fontes e proponha como viabilizar"). São as decisões 3 e 4 do [índice do roadmap](README.md). Cada afirmação diz
+> se foi conferida no código, lida em uma fonte externa ou é recomendação.
 
 ## 1. Calendário de sessões (decisão 4)
 
@@ -20,6 +21,20 @@
 
 Nenhuma fonte sozinha resolve. A grade semanal está no terminal e só o MQL5 a lê; os feriados não estão no
 terminal; a base diz a verdade sobre o passado e nada sobre o futuro.
+
+### Decisão adotada para T13.1 (2026-10-14)
+
+- O calendário histórico parte das barras M1. O comando `mt5x resample --session-aware` também registra os campos
+  estáveis de `symbol_info` do MT5 como metadados do símbolo.
+- O dia de sessão usa por padrão `00:00` no horário da corretora, configurável com `--session-anchor HH:MM` para
+  representar sessões noturnas. Um gap M1 maior que `--session-gap-minutes` (padrão 60) abre outra sessão observada.
+- `symbol_info` do Python não contém a grade semanal de sessões. Portanto a saída é uma inferência histórica, não um
+  calendário oficial nem uma previsão de feriados.
+- A estrutura guarda fonte e metadados genéricos para permitir acréscimo futuro de outras fontes. **Nenhuma fonte
+  externa ou calendário de feriados foi consultado ou incorporado na T13.1.**
+- O offset UTC usa `[APP] broker_utc_offset`, fixo no histórico; mudanças de horário de verão não são reconstruídas.
+
+Regras completas e evidências da implementação: [T13.1_CALENDARIO_OBSERVADO.md](../analytics/T13.1_CALENDARIO_OBSERVADO.md).
 
 ### Proposta: três camadas, cada uma com o seu papel
 
@@ -42,7 +57,7 @@ A camada 1 também serve de **conferência** das outras duas: se o terminal diz 
 
 | Passo | O quê | Onde | Depende de |
 |---|---|---|---|
-| 1 | Dedução das sessões a partir do M1, com a tabela `market_calendar` e o estado de cada dia (normal, curto, sem pregão, sem dados) | mt5x, T13.1 | nada: pode ser o primeiro passo da implementação |
+| 1 | Dedução das sessões a partir do M1, com a tabela `_market_calendar` e o estado de cada dia (normal, curto, sem pregão, sem dados) | mt5x, T13.1 | nada: pode ser o primeiro passo da implementação |
 | 2 | Guardar a diferença servidor × UTC por data, deduzida das barras quando a base é `broker` | mt5x, T13.1 | passo 1 |
 | 3 | Exportador das sessões no sentinela, e leitor no mt5x | HADOUKEN e mt5x | passo 1 (a tabela existir) |
 | 4 | Arquivo de exceções, com a semente opcional | mt5x | passo 1 |

@@ -1,12 +1,13 @@
 # MT5x Analytics — Especificação funcional e técnica v1.0
 
-> **Situação: intenção registrada, nada implementado.** Texto do dono do projeto, recebido em 2026-10-13 e guardado
-> aqui como veio (só a formatação foi ajustada). O plano de implantação, com o que já existe no código e o que
-> falta, está na Fase 13 de [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md). Onde este texto e o código atual
-> divergem, a Fase 13 diz qual dos dois vale.
+> **Situação:** intenção registrada em 2026-10-13. A entrega A1/T13.1 (calendário observado e barras derivadas)
+> foi implementada; A2 em diante continuam planejadas. O plano de implantação está na Fase 13 de
+> [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md), e as regras entregues estão em
+> [T13.1_CALENDARIO_OBSERVADO.md](T13.1_CALENDARIO_OBSERVADO.md). Onde este texto e o código atual divergem,
+> a Fase 13 diz qual dos dois vale.
 
 **Escopo:** projeto Python `mt5x` / `MT5 Extração de Dados`, com interface de consulta para Experts MQL5 do HADOUKEN.
-**Natureza:** proposta de evolução; módulos indicados como NOVO ainda não foram auditados ou implementados.
+**Natureza:** proposta de evolução; fora da T13.1, os módulos indicados como NOVO ainda não foram implementados.
 **Princípio:** Python coleta, agrega, estuda, valida e publica dados; MQL5 avalia as informações publicadas, respeita
 os próprios sinais e a camada Safety; Python **nunca envia ordens**.
 

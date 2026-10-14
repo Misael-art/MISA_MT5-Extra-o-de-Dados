@@ -124,7 +124,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
-| T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | a fazer |
+| T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ⏳ implementação pronta; 20 testes focados passaram e EURUSD teve paridade; repetição da suíte completa ficou inconclusiva nos testes Tk/conector; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | a fazer |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | a fazer |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
@@ -139,6 +139,21 @@ Comando de testes padrão (use o Python do `.venv`):
 | T15.8 | Gestão de recursos: arquivo em Parquet, aparar e retenção por idade, aviso por série e voltar a uma cópia pela interface | T15.7 | ✅ concluída no Linux; PostgreSQL real e Windows não vistos |
 | T15.9 | Gestão de recursos: limites que bloqueiam a gravação na extração, retenção por ativo e `drop_chunks` do TimescaleDB | T15.8 | ✅ concluída no Linux; TimescaleDB real e Windows não vistos |
 | T15.10 | Próximas frentes da gestão de recursos (guarda em ticks e book, indicadores no painel vivo) | T15.9 | proposta |
+| T16.0 | Plano da aba Laboratório (analytics de operações: contexto, re-simulação de execução, insights, lente por robô e por ativo) em `docs/propostas/ANALYTICS_OPERACOES.md` | — | ✅ plano registrado, com as decisões do dono (seção 8) |
+| T16.1 | Laboratório: livro de operações `_trade_ledger` (gravar, ler pelas lentes robô e ativo) | T16.0 | ✅ concluída |
+| T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
+| T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
+| T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
+| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
+| T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
+| T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
+| T16.6 | Laboratório: motor de re-simulação de execução com paridade com o backtester (seis estratégias) | T16.5 | ✅ concluída |
+| T16.7 | Laboratório: modos de saída (alvo em R, break-even, trailing por ATR e por barras) e comparação entre modos | T16.6 | ✅ concluída |
+| T16.8 | Laboratório: gradientes (fixo, dinâmico, direcional) e martingale só para robô que o suporta, com as travas dele | T16.7 | ✅ concluída |
+| T16.9 | Laboratório: regras de filtro e simulador, validados em walk-forward com folga e reserva final | T16.8 | ✅ concluída |
+| T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
+| T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
+| T16.12 | Laboratório: `mt5x trades report/compare/insights/simulate` com `--json` | T16.11b | ✅ concluída (relatório HTML opcional não feito) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -3214,19 +3229,30 @@ real por corretora.
 - **Objetivo:** montar, do M1, barras de N minutos que respeitam a sessão, com estado de qualidade por barra.
 - **Depende de:** T11.1.
 - **Arquivos previstos:** `mt5_extracao/analytics/calendar.py` e `analytics/resampling.py` (novos), tabelas novas
-  `market_calendar` e `bars_derived`, `cli.py`, testes novos. `resample.py` e as tabelas de barras atuais não mudam.
+  `_market_calendar` e `_bars_derived`, `cli.py`, testes novos. `resample.py` e as tabelas de barras atuais não mudam.
 - **Passos:**
-  1. Calendário por símbolo: sessões com abertura, fechamento e pausas, em UTC e no horário da corretora. Fonte a
-     decidir (decisão em aberto 1): deduzido das barras M1 já gravadas, lido do MT5 (`symbol_info`), ou arquivo
-     mantido à mão para feriados e horários especiais.
+  1. Calendário por símbolo: sessões observadas em M1 com abertura, fechamento e segmentos, em UTC e no horário da
+     corretora. Decisão do dono (2026-10-14): M1 como fonte histórica e `symbol_info` do MT5 como metadado estável;
+     não importar nem enriquecer com fontes externas nesta tarefa. O dia de sessão usa `00:00` do servidor por
+     padrão, com `--session-anchor HH:MM` para sessão noturna, e gap configurável para separar blocos.
   2. Agregador por sessão para qualquer N inteiro de minutos, com `bar_count`, `coverage_ratio` e `quality_status`
      (`COMPLETE`, `PARTIAL`, `NO_TRADES`, `MISSING`, `CORRECTED`) e a política `partial_last_bar`.
   3. `1D` como sessão e `1440min` como janela de 24 horas, separados.
   4. Volume real: desconhecido diferente de zero.
-  5. Atualização incremental: uma ingestão nova refaz só as barras afetadas.
+  5. Atualização incremental: uma ingestão nova cria revisão apenas para as barras cujo conteúdo mudou; as revisões
+     anteriores permanecem.
 - **Critérios de aceite:** testes 1, 2, 3, 4 (a parte das barras) e 5 da especificação (§14); para um ativo 24 horas
   (EURUSD), as barras derivadas dos timeframes do MT5 continuam iguais às do `resample` atual, que foi conferido
-  contra o terminal.
+  contra o terminal. Detalhe de funcionamento, limitações e evidência: [T13.1_CALENDARIO_OBSERVADO.md](analytics/T13.1_CALENDARIO_OBSERVADO.md).
+- **Verificação desta entrega:** 20 testes focados (11 da T13.1 + 9 legados do `resample`) passaram. Na base local
+  lida em modo somente leitura, 3.133 M5, 1.044 M15, 261 H1, 65 H4 e 11 sessões diárias EURUSD tiveram OHLCV igual
+  ao agregador legado. Duas repetições integrais ficaram inconclusivas: a primeira terminou aos 79% com 413
+  aprovados, 8 pulados, 85 falhas e 98 erros após `OSError: [Errno 28] No space left on device` no tmpfs; a segunda
+  chegou à bateria de UI/conector, emitiu marcadores `E` e encerrou com status 143 após cerca de 32 minutos, sem
+  resumo final. Os temporários próprios foram removidos; o tmpfs tinha 604 MB livres quando a segunda execução
+  terminou. Não há resultado global aprovado nem diagnóstico final das falhas de UI/conector. Nenhuma conexão com
+  conta MT5 foi feita. O `doctor` terminou com 16 OK, 2 avisos e 0 falhas; avisos: `pandas-ta` ausente e ponte Wine
+  desativada.
 - **Armadilha:** não trocar o `resample` atual por este. Os backtests gravados e a paridade usam as barras de hoje.
 
 ### T13.2 — Guarda de características com data de disponibilidade (A2)
@@ -3377,6 +3403,19 @@ repositório dela. Só documentação: nenhum código, preset, configuração ou
 **Frente paralela ao roadmap, pedida pelo dono do projeto em 2026-10-14.** A base pode ficar muito grande: a aba "Recursos" mede a base, as tabelas e o disco; aponta séries sem benchmark positivo, não usadas em estudos, obsoletas ou vazias (favoritos, seleção, benchmarks e ativos com benchmark positivo, isto é, com algum backtest lucrativo em qualquer robô ou configuração, ficam protegidos); arquiva de forma reversível (cópia conferida antes de retirar da base) e restaura; otimiza; e tem automação programada **só com opt-in** (`[RESOURCES] auto_enabled`). O mesmo pelo terminal em `mt5x resources`. Plano, princípios, regras e chaves: [propostas/GESTAO_RECURSOS.md](propostas/GESTAO_RECURSOS.md).
 
 Sobre a regra "nunca apague tabelas de usuários": ela vale para mudanças de schema. Aqui a retirada é ação explícita do usuário (ou da automação que ele ligou), sempre precedida do arquivo, e reversível.
+
+## Fase 16 — Laboratório: analytics de operações (contexto, execução e otimização)
+
+**Pedida pelo dono do projeto em 2026-10-14.** Uma aba "Laboratório" que enriquece cada operação dos robôs (dia, hora,
+notícia, volume, volatilidade), mostra onde eles ganham e perdem por duas lentes (por robô e por ativo), re-simula as
+mesmas entradas sob outros modos de execução e propõe regras de filtro validadas em walk-forward e numa reserva final
+intocada. Calendário econômico de várias fontes (CSV e exportação do MT5). Plano completo,
+tarefas T16.1 a T16.12, dependências e decisões pendentes: [propostas/ANALYTICS_OPERACOES.md](propostas/ANALYTICS_OPERACOES.md).
+
+Convivência: o pacote é `mt5_extracao/trade_analytics/` e o comando `mt5x trades`, porque `analytics/` e
+`mt5x analytics` já estão reservados para a Fase 13 (contexto do mercado, sem PnL). O livro de operações
+`_trade_ledger` é o mesmo da T12.6A. Martingale e grid seguem proibidos em robô real pela bateria; no Laboratório o
+martingale só aparece para robô que o suporta, com as travas de segurança dele.
 
 ---
 

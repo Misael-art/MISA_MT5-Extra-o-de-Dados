@@ -22,3 +22,16 @@ def connector(fake_mt5, tmp_path, monkeypatch):
     conn = MT5Connector(config_path=os.path.join(str(tmp_path), "nao-existe.ini"))
     conn.is_initialized = True
     return conn
+
+
+@pytest.fixture(autouse=True)
+def _collect_tk_garbage_on_main_thread():
+    """
+    Depois de cada teste, coleta o lixo na thread principal. Objetos do Tk (variáveis, imagens) de janelas já fechadas
+    só podem ser destruídos na thread principal; se sobrarem, o coletor pode rodar numa thread de segundo plano de um
+    teste seguinte e o Tk derruba o processo ("Illegal instruction" ou "Segmentation fault").
+    """
+    yield
+    import gc
+    gc.enable()          # a janela principal desliga a coleta automática (ui_manager.setup_ui); religa entre testes
+    gc.collect()

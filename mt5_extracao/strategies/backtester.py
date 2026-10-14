@@ -115,6 +115,8 @@ class Trade:
     bars: int
     exit_reason: str
     equity_before: float
+    stop_price: Optional[float] = None     # stop inicial (o Laboratório re-simula a partir dele; T16.6)
+    target_price: Optional[float] = None   # alvo inicial, quando houve
 
     @property
     def return_pct(self) -> float:
@@ -167,21 +169,12 @@ def compute_metrics(trades: List[Trade], initial_equity: float) -> Dict[str, flo
     }
 
 
-def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
-                 config: Optional[BacktestConfig] = None, start_index: int = 0,
-                 signals: Optional[pd.DataFrame] = None) -> BacktestResult:
+def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConfig"):
     """
-    start_index: só abre operações a partir desta barra (as anteriores servem de aquecimento
-    dos indicadores; usado no walk-forward).
+    Spread (em preço) de cada barra dentro dela, na abertura e no fechamento, como o backtest usa nas execuções.
+    Separado de run_backtest para a re-simulação do Laboratório (T16.6) usar exatamente as mesmas regras.
     """
-    spec = spec or SymbolSpec(known=False)
-    cfg = config or BacktestConfig()
-    data = df.reset_index(drop=True)
-    sig = (signals if signals is not None else strategy.gerar_sinais(data)).reset_index(drop=True)
-    rules = strategy.exit_rules()
     n = len(data)
-
-    o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
     times = pd.to_datetime(data["time"])
     if "spread" in data.columns:
         spread_pts = data["spread"].fillna(spec.spread_points).to_numpy(dtype=float)
@@ -206,6 +199,26 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         spanned = np.stack([profile[(open_hour + k) % 24] for k in range(min(hours, 24))])
         floor = np.where(np.isnan(spanned), np.inf, spanned).min(axis=0)
         spr = np.fmax(spr, np.where(np.isfinite(floor), floor, np.nan))
+    return spr, spr_open, spr_close
+
+
+def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
+                 config: Optional[BacktestConfig] = None, start_index: int = 0,
+                 signals: Optional[pd.DataFrame] = None) -> BacktestResult:
+    """
+    start_index: só abre operações a partir desta barra (as anteriores servem de aquecimento
+    dos indicadores; usado no walk-forward).
+    """
+    spec = spec or SymbolSpec(known=False)
+    cfg = config or BacktestConfig()
+    data = df.reset_index(drop=True)
+    sig = (signals if signals is not None else strategy.gerar_sinais(data)).reset_index(drop=True)
+    rules = strategy.exit_rules()
+    n = len(data)
+
+    o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
+    times = pd.to_datetime(data["time"])
+    spr, spr_open, spr_close = execution_spreads(data, spec, cfg)
     slip = cfg.slippage_points * spec.point
     ppu = spec.money_per_price_unit
     days = times.dt.normalize().to_numpy()
@@ -242,7 +255,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                             entry_price=pos["entry"], exit_price=float(price), volume=pos["volume"],
                             pnl=float(pos["pnl"]), r_multiple=float(pos["pnl"] / pos["risk_money"]),
                             bars=i - pos["i"] + 1, exit_reason=EXIT_REASONS[reason],
-                            equity_before=pos["equity_before"]))
+                            equity_before=pos["equity_before"], stop_price=float(pos["initial_stop"]),
+                            target_price=None if pos["target"] is None else float(pos["target"])))
         pos = None
 
     for i in range(n):
@@ -268,7 +282,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                     target = tgt_long[s] if d > 0 else tgt_short[s]
                     if not np.isfinite(target) and rules.target_r:
                         target = entry + d * rules.target_r * risk_px
-                    pos = {"dir": d, "entry": entry, "stop": stop, "stop_kind": "stop",
+                    pos = {"dir": d, "entry": entry, "stop": stop, "stop_kind": "stop", "initial_stop": stop,
                            "target": target if np.isfinite(target) else None, "volume": volume,
                            "remaining": volume, "risk_px": risk_px, "risk_money": risk_px * ppu * volume,
                            "pnl": -cfg.commission_per_lot * volume, "i": i, "partial_done": False,

@@ -198,3 +198,28 @@ block_db_gb = 0
 # Retenção por ativo, valendo sobre retention_intraday_days e retention_ticks_days: ATIVO:dias separados por
 # vírgula. 0 = guarda tudo desse ativo. Ex.: WIN$N:30, PETR4:0
 retention_overrides = 
+
+[TRADE_ANALYTICS]
+# Laboratório (aba Laboratório; mt5x trades). Calendário econômico: o CSV de [SCREENER] events_file e a exportação do
+# calendário do próprio MT5 (mt5x trades calendar export) são unidos numa tabela só.
+# Uma operação conta como "com notícia" quando há evento ligado ao ativo até N minutos antes ou depois da entrada.
+event_window_before_min = 30
+event_window_after_min = 30
+# Quais ativos cada moeda afeta, além da moeda de lucro do ativo e das moedas no nome (EURUSD). Ex.:
+# event_symbols = BRL: WIN$N WDO$N; USD: WDO$N
+event_symbols = 
+# Exportação do calendário do MT5: dias de histórico e à frente, países (vazio = todos) e importância mínima
+# (0 todos, 1 baixa ou mais, 2 média ou mais, 3 só alta).
+calendar_days_back = 1095
+calendar_days_forward = 30
+calendar_countries = 
+calendar_min_importance = 0
+# Faixas de horário das operações (minutos) e barras do "retorno anterior" à entrada.
+time_bucket_min = 30
+volatility_period = 14
+# Célula (dia, faixa, ativo...) com menos operações que isso aparece hachurada: "amostra pequena, não conclua nada".
+min_trades_cell = 30
+# Validação das regras (simulador e insights): o histórico é cortado em wf_folds blocos (procura nos anteriores,
+# confere no seguinte) e os últimos holdout_fraction ficam guardados para o veredito final.
+wf_folds = 4
+holdout_fraction = 0.2

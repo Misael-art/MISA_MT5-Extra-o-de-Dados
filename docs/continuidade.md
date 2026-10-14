@@ -67,3 +67,52 @@ Só houve conflito em `docs/PLANO_DE_TRABALHO.md` (F-03 × T12.1/T12.6a). Códig
      são candidatos à limpeza.
    - Tabelas internas novas, todas aditivas: `_resource_snapshots` e `_resource_actions`.
 5. Ao terminar a tarefa, atualize o painel do PLANO_DE_TRABALHO.md e, se mudar o estado geral, este arquivo.
+
+## Retomada após a harmonização — T13.1
+
+- Branch local atual: `tarefa/T13.1-calendario-sessoes`, criada a partir de `master` em `2226bf5`.
+- A T13.1 implementa calendário observado em M1, captura de metadados estáveis de `symbol_info`, barras derivadas
+  versionadas e o modo `mt5x resample --session-aware`. As regras e limitações estão em
+  [T13.1_CALENDARIO_OBSERVADO.md](analytics/T13.1_CALENDARIO_OBSERVADO.md).
+- Verificação: testes focados `.venv/bin/python -m pytest -q tests/test_analytics_calendar.py tests/test_resample.py`
+  — **20 aprovados**; `doctor` — 16 OK, 2 avisos, 0 falhas. Duas repetições integrais ficaram inconclusivas: a
+  primeira terminou aos 79% com 413 aprovados, 8 pulados, 85 falhas e 98 erros após `OSError: [Errno 28] No space
+  left on device` no tmpfs; a segunda chegou à bateria de UI/conector, emitiu marcadores `E` e encerrou com status
+  143 após cerca de 32 minutos, sem resumo final. Os temporários próprios foram removidos; o tmpfs tinha 604 MB
+  livres ao fim da segunda execução. A base EURUSD foi lida sem escrita e sem conectar ao MT5. O modo legado
+  `resample` não mudou.
+- A branch é local; não houve push nem PR. A T13.1 fica pronta para revisão, com a regressão global inconclusiva;
+  a T13.2 continua sendo a próxima tarefa da Fase 13 após integrar esta dependência.
+- Worktree `../MISA_MT5-analytics` permanece ativo e não foi removido; na última conferência estava na branch
+  `tarefa/T16.11b-execucao-insights`.
+
+## Harmonização 2 (2026-10-14): Fase 16 e T13.1 no master
+
+Branch `integracao/fase16-t13.1`, mesclada no `master` (veja o PR dela). Entraram:
+
+| Frente | O que traz | Registro |
+|---|---|---|
+| Fase 16 — Laboratório (T16.0 a T16.12; PRs #56 a #70, fechados como substituídos) | Aba "Laboratório", livro de operações `_trade_ledger`, calendário econômico de várias fontes, enriquecimento, re-simulação de execução, insights validados, `mt5x trades` | [propostas/ANALYTICS_OPERACOES.md](propostas/ANALYTICS_OPERACOES.md), seção 10 |
+| T13.1 — calendário de sessões (branch `tarefa/T13.1-calendario-sessoes`, commit `05506ee`) | Calendário observado em M1, barras derivadas versionadas, `mt5x resample --session-aware` | [analytics/T13.1_CALENDARIO_OBSERVADO.md](analytics/T13.1_CALENDARIO_OBSERVADO.md) |
+
+**Ajuste feito na T13.1 durante a harmonização:** as tabelas viraram `_market_calendar` e `_bars_derived`. Sem o `_`,
+o `DatabaseManager` as trataria como séries de ativo: `bars_derived` tem `close` e entraria no inventário, e o
+`MIN(time)` do inventário quebraria ("Minha base", Laboratório e Recursos fora do ar). Nenhuma base real tinha as
+tabelas. Teste de regressão: `tests/test_harmonizacao_frentes.py`.
+
+**Sobre a suíte "inconclusiva" da T13.1:** as duas causas eram do ambiente, não do código:
+1. o tmpfs `/tmp` estava com 3,8 GB de pastas antigas do pytest (`/tmp/pytest-of-misael/pytest-*`); foram apagadas;
+2. o display `:0` fica inacessível para o shell em alguns momentos, e cada teste de interface espera minutos pelo X
+   antes de desistir (os `E` e o status 143 depois de 32 min). **Rode a suíte com `xvfb-run -a`** (cerca de 6 min).
+
+**Regra nova para todos:** tabela interna (que não é série de ativo) começa com `_`. O teste de regressão acima
+protege as das Fases 13, 15 e 16.
+
+**Próximas tarefas:** T13.2 (Fase 13) pode partir do `master`. Pendências da Fase 16 na seção 10 do plano dela
+(T16.2b no HADOUKEN, exportação do calendário com o MT5 conectado, Windows real).
+
+**Queda "Illegal instruction"/"Segmentation fault" na suíte (era a mesma "regressão inconclusiva" da T13.1):** o coletor de
+lixo do Python rodava dentro de threads de segundo plano e destruía variáveis e imagens do Tk, que só aceita a thread
+principal. Corrigido: a janela desliga a coleta automática (`ui_manager.setup_ui`) e coleta na thread principal a cada
+~2 s (`_pump_ui_queue`); os testes religam e coletam depois de cada teste (`tests/conftest.py`). Com isso, a suíte
+completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
