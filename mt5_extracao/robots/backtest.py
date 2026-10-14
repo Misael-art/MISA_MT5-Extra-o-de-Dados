@@ -97,6 +97,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
            "trades": [[str(t.exit_time), float(t.pnl), float(t.volume)] for t in result.trades],
            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
     store.save_run(db, run)
+    from mt5_extracao.trade_analytics import importers       # Laboratório (T16.2): operações completas no livro
+    importers.safely(importers.record_python_run, db, run, result.trades)
     return run
 
 
@@ -308,6 +310,9 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
               "equity": downsample(points), "trades": [[_iso(t), float(v), float(vol)] for t, v, vol in results],
               "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
     store.save_run(db, record)
+    from mt5_extracao.trade_analytics import importers       # Laboratório (T16.2): operações no livro
+    importers.safely(importers.record_mql5_run, db, record,
+                     trades_csv if trades_source == CSV_SOURCE else None)
     return record
 
 

@@ -139,6 +139,21 @@ Comando de testes padrão (use o Python do `.venv`):
 | T15.8 | Gestão de recursos: arquivo em Parquet, aparar e retenção por idade, aviso por série e voltar a uma cópia pela interface | T15.7 | ✅ concluída no Linux; PostgreSQL real e Windows não vistos |
 | T15.9 | Gestão de recursos: limites que bloqueiam a gravação na extração, retenção por ativo e `drop_chunks` do TimescaleDB | T15.8 | ✅ concluída no Linux; TimescaleDB real e Windows não vistos |
 | T15.10 | Próximas frentes da gestão de recursos (guarda em ticks e book, indicadores no painel vivo) | T15.9 | proposta |
+| T16.0 | Plano da aba Laboratório (analytics de operações: contexto, re-simulação de execução, insights, lente por robô e por ativo) em `docs/propostas/ANALYTICS_OPERACOES.md` | — | ✅ plano registrado, com as decisões do dono (seção 8) |
+| T16.1 | Laboratório: livro de operações `_trade_ledger` (gravar, ler pelas lentes robô e ativo) | T16.0 | ✅ concluída |
+| T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
+| T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
+| T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
+| T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
+| T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
+| T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
+| T16.6 | Laboratório: motor de re-simulação de execução com paridade com o backtester (seis estratégias) | T16.5 | ✅ concluída |
+| T16.7 | Laboratório: modos de saída (alvo em R, break-even, trailing por ATR e por barras) e comparação entre modos | T16.6 | ✅ concluída |
+| T16.8 | Laboratório: gradientes (fixo, dinâmico, direcional) e martingale só para robô que o suporta, com as travas dele | T16.7 | ✅ concluída |
+| T16.9 | Laboratório: regras de filtro e simulador, validados em walk-forward com folga e reserva final | T16.8 | ✅ concluída |
+| T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
+| T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
+| T16.12 | Laboratório: `mt5x trades report/compare/insights/simulate` com `--json` | T16.11b | ✅ concluída (relatório HTML opcional não feito) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -3377,6 +3392,19 @@ repositório dela. Só documentação: nenhum código, preset, configuração ou
 **Frente paralela ao roadmap, pedida pelo dono do projeto em 2026-10-14.** A base pode ficar muito grande: a aba "Recursos" mede a base, as tabelas e o disco; aponta séries sem benchmark positivo, não usadas em estudos, obsoletas ou vazias (favoritos, seleção, benchmarks e ativos com benchmark positivo, isto é, com algum backtest lucrativo em qualquer robô ou configuração, ficam protegidos); arquiva de forma reversível (cópia conferida antes de retirar da base) e restaura; otimiza; e tem automação programada **só com opt-in** (`[RESOURCES] auto_enabled`). O mesmo pelo terminal em `mt5x resources`. Plano, princípios, regras e chaves: [propostas/GESTAO_RECURSOS.md](propostas/GESTAO_RECURSOS.md).
 
 Sobre a regra "nunca apague tabelas de usuários": ela vale para mudanças de schema. Aqui a retirada é ação explícita do usuário (ou da automação que ele ligou), sempre precedida do arquivo, e reversível.
+
+## Fase 16 — Laboratório: analytics de operações (contexto, execução e otimização)
+
+**Pedida pelo dono do projeto em 2026-10-14.** Uma aba "Laboratório" que enriquece cada operação dos robôs (dia, hora,
+notícia, volume, volatilidade), mostra onde eles ganham e perdem por duas lentes (por robô e por ativo), re-simula as
+mesmas entradas sob outros modos de execução e propõe regras de filtro validadas em walk-forward e numa reserva final
+intocada. Calendário econômico de várias fontes (CSV e exportação do MT5). Plano completo,
+tarefas T16.1 a T16.12, dependências e decisões pendentes: [propostas/ANALYTICS_OPERACOES.md](propostas/ANALYTICS_OPERACOES.md).
+
+Convivência: o pacote é `mt5_extracao/trade_analytics/` e o comando `mt5x trades`, porque `analytics/` e
+`mt5x analytics` já estão reservados para a Fase 13 (contexto do mercado, sem PnL). O livro de operações
+`_trade_ledger` é o mesmo da T12.6A. Martingale e grid seguem proibidos em robô real pela bateria; no Laboratório o
+martingale só aparece para robô que o suporta, com as travas de segurança dele.
 
 ---
 

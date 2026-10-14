@@ -1,0 +1,95 @@
+"""T16.3: enriquecimento das operações (calendário, notícia, volume, volatilidade), sem olhar o futuro."""
+import configparser
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from mt5_extracao.database_manager import DatabaseManager
+from mt5_extracao.trade_analytics import calendar as cal
+from mt5_extracao.trade_analytics import enrich, ledger
+
+
+def _bars(n=600, start="2026-01-05 09:00", freq="5min", jump_at=None):
+    times = pd.date_range(start, periods=n, freq=freq)
+    close = 100 + np.cumsum(np.full(n, 0.01))
+    high, low = close + 0.2, close - 0.2
+    if jump_at is not None:                  # armadilha: só a barra da entrada (e depois) é violenta
+        high[jump_at:] += 50
+        low[jump_at:] -= 50
+    return pd.DataFrame({"time": times, "open": close, "high": high, "low": low, "close": close,
+                         "tick_volume": np.arange(n) + 1, "spread": 1, "real_volume": 0})
+
+
+@pytest.fixture
+def db(tmp_path):
+    db = DatabaseManager(db_path=str(tmp_path / "base.db"))
+    yield db
+    db.close()
+
+
+def _trade(entry, exit_=None, direction=1, pnl=5.0, price=100.0):
+    return {"direction": direction, "entry_time": pd.Timestamp(entry), "exit_time": pd.Timestamp(exit_ or entry) +
+            pd.Timedelta(minutes=0 if exit_ else 30), "entry_price": price, "exit_price": price + 1, "pnl": pnl}
+
+
+def _cfg(**extra):
+    cfg = configparser.ConfigParser()
+    cfg["TRADE_ANALYTICS"] = {k: str(v) for k, v in extra.items()}
+    return cfg
+
+
+def test_calendar_columns_on_known_dates():
+    cols = enrich.calendar_columns(pd.Series(pd.to_datetime(["2026-01-09 10:47", "2026-01-30 15:05"])), 30)
+    assert cols["day_of_week"].tolist() == [4, 4]                     # sextas
+    assert cols["week_of_month"].tolist() == [2, 5] and cols["is_month_end"].tolist() == [False, True]
+    assert cols["time_bucket"].tolist() == ["10:30", "15:00"] and cols["hour"].tolist() == [10, 15]
+
+
+def test_no_lookahead_in_market_features(db):
+    """O salto de volatilidade começa na barra da entrada: o ATR da operação não pode vê-lo."""
+    bars = _bars(jump_at=400)
+    db.save_ohlcv_data("WIN$N", "5 minutos", bars)
+    entry = bars["time"].iloc[400]
+    ledger.save_trades(db, "r", [_trade(entry)], robot_key="a", symbol="WIN$N", timeframe="M5")
+    f = enrich.enrich(db, None, ledger.load(db))
+    calm = enrich.enrich(db, None, ledger.load(db).assign(entry_time=bars["time"].iloc[399]))
+    assert f["atr"].iloc[0] == pytest.approx(calm["atr"].iloc[0])   # mesma barra anterior usada
+    assert f["atr"].iloc[0] < 1                                       # nada dos ±50 da armadilha
+    assert f["entry_volume"].iloc[0] == 400                           # volume da barra 399 (a anterior)
+    assert f["mfe"].iloc[0] > 40                                      # MAE/MFE (resultado) veem o caminho
+
+
+def test_volatility_bucket_is_point_in_time(db):
+    bars = _bars(n=500)
+    bars.loc[300:, ["high"]] += 5
+    bars.loc[300:, ["low"]] -= 5
+    db.save_ohlcv_data("WIN$N", "5 minutos", bars)
+    trades = [_trade(bars["time"].iloc[250]), _trade(bars["time"].iloc[320])]
+    ledger.save_trades(db, "r", trades, robot_key="a", symbol="WIN$N", timeframe="M5")
+    f = enrich.enrich(db, None, ledger.load(db))
+    assert f["volatility_bucket"].tolist()[1] == "alta"
+    assert f["volatility_rank"].iloc[1] > f["volatility_rank"].iloc[0]
+
+
+def test_events_window_and_partial_trades(db, tmp_path):
+    db.save_ohlcv_data("WIN$N", "5 minutos", _bars())
+    path = tmp_path / "e.csv"
+    path.write_text("time,symbol,impact,name\n2026-01-05 10:20,WIN$N,alto,Copom\n", encoding="utf-8")
+    cal.import_source(db, None, "csv", path)
+    ledger.save_trades(db, "r", [_trade("2026-01-05 10:00"), _trade("2026-01-05 13:00"),
+                                 {"exit_time": "2026-01-05 10:30", "pnl": -1.0}],
+                       robot_key="a", symbol="WIN$N", timeframe="M5")
+    f = enrich.enrich(db, _cfg(event_window_before_min=30, event_window_after_min=30), ledger.load(db))
+    by = f.set_index("seq")
+    assert by.loc[0, "event_impact"] == cal.HIGH and by.loc[0, "minutes_to_event"] == 20 and by.loc[0, "event_name"] == "Copom"
+    assert by.loc[1, "event_impact"] == 0
+    assert by.loc[2, "time_ref"] == "saida" and pd.isna(by.loc[2, "atr"]) and by.loc[2, "event_impact"] == cal.HIGH
+    assert by.loc[0, "minutes_from_open"] == 60 and by.loc[2, "win_flag"] == 0
+
+
+def test_without_bars_or_calendar_nothing_breaks(db):
+    ledger.save_trades(db, "r", [_trade("2026-01-05 10:00")], robot_key="a", symbol="XYZ", timeframe="M5")
+    f = enrich.enrich(db, None, ledger.load(db))
+    assert len(f) == 1 and pd.isna(f["atr"].iloc[0]) and f["day_of_week"].iloc[0] == 0
+    assert enrich.enrich(db, None, ledger.load(db, symbol="nada")).empty
