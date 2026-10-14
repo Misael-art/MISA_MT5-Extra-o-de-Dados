@@ -45,11 +45,11 @@ def test_m3_ohlcv_is_exact_and_reruns_are_idempotent(db):
     assert (first[0]["inserted"], first[0]["corrected"], first[0]["unchanged"]) == (1, 0, 0)
     assert (second[0]["inserted"], second[0]["corrected"], second[0]["unchanged"]) == (0, 0, 1)
     with db.engine.connect() as conn:
-        row = conn.execute(text("SELECT * FROM bars_derived WHERE symbol='EURUSD' AND tf='M3'"))\
+        row = conn.execute(text("SELECT * FROM _bars_derived WHERE symbol='EURUSD' AND tf='M3'"))\
             .mappings().one()
-        calendar_row = conn.execute(text("SELECT * FROM market_calendar WHERE symbol='EURUSD'"))\
+        calendar_row = conn.execute(text("SELECT * FROM _market_calendar WHERE symbol='EURUSD'"))\
             .mappings().one()
-        assert conn.execute(text("SELECT COUNT(*) FROM bars_derived")).scalar() == 1
+        assert conn.execute(text("SELECT COUNT(*) FROM _bars_derived")).scalar() == 1
     assert (row["open"], row["high"], row["low"], row["close"]) == (99.5, 103.0, 99.0, 102.0)
     assert row["tick_volume"] == 12 and row["spread_min"] == 3
     assert row["real_volume"] == 0 and row["real_volume_known"] == 1
@@ -70,7 +70,7 @@ def test_real_volume_null_is_not_zero(db):
 
     with db.engine.connect() as conn:
         row = conn.execute(text("SELECT real_volume, real_volume_observed, real_volume_known, "
-                                "real_volume_known_count FROM bars_derived")).one()
+                                "real_volume_known_count FROM _bars_derived")).one()
     assert row == (None, 0, 0, 2)
 
 
@@ -81,7 +81,7 @@ def test_zero_tick_volume_is_marked_no_trades(db):
     resampling.resample_symbol(db, "EURUSD", ["M3"], symbol_info=SimpleNamespace(name="EURUSD"))
 
     with db.engine.connect() as conn:
-        row = conn.execute(text("SELECT quality_status, tick_volume FROM bars_derived")).one()
+        row = conn.execute(text("SELECT quality_status, tick_volume FROM _bars_derived")).one()
     assert row == ("NO_TRADES", 0)
 
 
@@ -130,7 +130,7 @@ def test_late_m1_changes_only_its_derived_bar_and_adds_a_revision(db):
 
     assert changed[0]["corrected"] == 1 and changed[0]["unchanged"] == 1
     with db.engine.connect() as conn:
-        rows = conn.execute(text("SELECT bar_start_broker, revision, quality_status FROM bars_derived "
+        rows = conn.execute(text("SELECT bar_start_broker, revision, quality_status FROM _bars_derived "
                                  "WHERE symbol='EURUSD' AND tf='M5' ORDER BY bar_start_broker, revision")).fetchall()
     assert rows == [
         ("2026-09-14 09:00:00.000000", 1, "PARTIAL"),
@@ -150,7 +150,7 @@ def test_late_m1_at_session_open_keeps_the_session_and_bar_keys_stable(db):
 
     assert changed[0]["corrected"] == 1 and changed[0]["unchanged"] == 1
     with db.engine.connect() as conn:
-        rows = conn.execute(text("SELECT session_id, bar_start_broker, revision FROM bars_derived "
+        rows = conn.execute(text("SELECT session_id, bar_start_broker, revision FROM _bars_derived "
                                  "WHERE symbol='EURUSD' AND tf='M5' ORDER BY bar_start_broker, revision")).fetchall()
     assert len(rows) == 3
     assert rows[0][0] == rows[1][0]
@@ -170,7 +170,7 @@ def test_missing_extraction_block_marks_partial_bar_as_missing(db):
     resampling.resample_symbol(db, "EURUSD", ["M5"], symbol_info=SimpleNamespace(name="EURUSD"))
 
     with db.engine.connect() as conn:
-        rows = conn.execute(text("SELECT coverage_ratio, quality_status FROM bars_derived "
+        rows = conn.execute(text("SELECT coverage_ratio, quality_status FROM _bars_derived "
                                  "ORDER BY revision")).fetchall()
     assert rows == [(pytest.approx(0.4), "MISSING"), (pytest.approx(0.4), "CORRECTED")]
 
@@ -225,6 +225,6 @@ def test_cli_session_aware_requires_m1_and_records_mt5_symbol_info(tmp_path, mon
 
     assert result == cli.EXIT_OK
     with DatabaseManager(db_path=str(db_path)).engine.connect() as conn:
-        row = conn.execute(text("SELECT source_metadata_json FROM market_calendar WHERE symbol='EURUSD'"))\
+        row = conn.execute(text("SELECT source_metadata_json FROM _market_calendar WHERE symbol='EURUSD'"))\
             .scalar_one()
     assert json.loads(row)["symbol_info"]["name"] == "EURUSD"

@@ -85,3 +85,28 @@ Só houve conflito em `docs/PLANO_DE_TRABALHO.md` (F-03 × T12.1/T12.6a). Códig
   a T13.2 continua sendo a próxima tarefa da Fase 13 após integrar esta dependência.
 - Worktree `../MISA_MT5-analytics` permanece ativo e não foi removido; na última conferência estava na branch
   `tarefa/T16.11b-execucao-insights`.
+
+## Harmonização 2 (2026-10-14): Fase 16 e T13.1 no master
+
+Branch `integracao/fase16-t13.1`, mesclada no `master` (veja o PR dela). Entraram:
+
+| Frente | O que traz | Registro |
+|---|---|---|
+| Fase 16 — Laboratório (T16.0 a T16.12; PRs #56 a #70, fechados como substituídos) | Aba "Laboratório", livro de operações `_trade_ledger`, calendário econômico de várias fontes, enriquecimento, re-simulação de execução, insights validados, `mt5x trades` | [propostas/ANALYTICS_OPERACOES.md](propostas/ANALYTICS_OPERACOES.md), seção 10 |
+| T13.1 — calendário de sessões (branch `tarefa/T13.1-calendario-sessoes`, commit `05506ee`) | Calendário observado em M1, barras derivadas versionadas, `mt5x resample --session-aware` | [analytics/T13.1_CALENDARIO_OBSERVADO.md](analytics/T13.1_CALENDARIO_OBSERVADO.md) |
+
+**Ajuste feito na T13.1 durante a harmonização:** as tabelas viraram `_market_calendar` e `_bars_derived`. Sem o `_`,
+o `DatabaseManager` as trataria como séries de ativo: `bars_derived` tem `close` e entraria no inventário, e o
+`MIN(time)` do inventário quebraria ("Minha base", Laboratório e Recursos fora do ar). Nenhuma base real tinha as
+tabelas. Teste de regressão: `tests/test_harmonizacao_frentes.py`.
+
+**Sobre a suíte "inconclusiva" da T13.1:** as duas causas eram do ambiente, não do código:
+1. o tmpfs `/tmp` estava com 3,8 GB de pastas antigas do pytest (`/tmp/pytest-of-misael/pytest-*`); foram apagadas;
+2. o display `:0` fica inacessível para o shell em alguns momentos, e cada teste de interface espera minutos pelo X
+   antes de desistir (os `E` e o status 143 depois de 32 min). **Rode a suíte com `xvfb-run -a`** (cerca de 6 min).
+
+**Regra nova para todos:** tabela interna (que não é série de ativo) começa com `_`. O teste de regressão acima
+protege as das Fases 13, 15 e 16.
+
+**Próximas tarefas:** T13.2 (Fase 13) pode partir do `master`. Pendências da Fase 16 na seção 10 do plano dela
+(T16.2b no HADOUKEN, exportação do calendário com o MT5 conectado, Windows real).

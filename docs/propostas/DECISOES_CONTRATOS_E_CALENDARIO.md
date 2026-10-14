@@ -57,7 +57,7 @@ A camada 1 também serve de **conferência** das outras duas: se o terminal diz 
 
 | Passo | O quê | Onde | Depende de |
 |---|---|---|---|
-| 1 | Dedução das sessões a partir do M1, com a tabela `market_calendar` e o estado de cada dia (normal, curto, sem pregão, sem dados) | mt5x, T13.1 | nada: pode ser o primeiro passo da implementação |
+| 1 | Dedução das sessões a partir do M1, com a tabela `_market_calendar` e o estado de cada dia (normal, curto, sem pregão, sem dados) | mt5x, T13.1 | nada: pode ser o primeiro passo da implementação |
 | 2 | Guardar a diferença servidor × UTC por data, deduzida das barras quando a base é `broker` | mt5x, T13.1 | passo 1 |
 | 3 | Exportador das sessões no sentinela, e leitor no mt5x | HADOUKEN e mt5x | passo 1 (a tabela existir) |
 | 4 | Arquivo de exceções, com a semente opcional | mt5x | passo 1 |

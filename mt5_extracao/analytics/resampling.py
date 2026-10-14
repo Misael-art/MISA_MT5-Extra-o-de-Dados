@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 
 QUALITY_STATUSES = frozenset({"COMPLETE", "PARTIAL", "NO_TRADES", "MISSING", "CORRECTED"})
 _CREATE_BARS = """
-CREATE TABLE IF NOT EXISTS bars_derived (
+CREATE TABLE IF NOT EXISTS _bars_derived (
     symbol TEXT NOT NULL,
     tf TEXT NOT NULL,
     bar_start_utc TEXT NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS bars_derived (
 )
 """
 _CREATE_BARS_INDEX = "CREATE INDEX IF NOT EXISTS ix_bars_derived_lookup " \
-                     "ON bars_derived (symbol, tf, bar_start_utc)"
+                     "ON _bars_derived (symbol, tf, bar_start_utc)"
 
 
 @dataclass(frozen=True)
@@ -94,7 +94,7 @@ def parse_target(value):
 
 
 def ensure_schema(db):
-    """Cria ``bars_derived`` sem alterar ou migrar tabelas históricas existentes."""
+    """Cria ``_bars_derived`` sem alterar ou migrar tabelas históricas existentes."""
     calendar.ensure_schema(db)
     with db.engine.begin() as conn:
         conn.execute(text(_CREATE_BARS))
@@ -311,7 +311,7 @@ def _save_bars(db, bars):
     with db.engine.begin() as conn:
         for bar in bars:
             latest = conn.execute(text(
-                "SELECT revision, input_hash FROM bars_derived WHERE symbol = :symbol AND tf = :tf "
+                "SELECT revision, input_hash FROM _bars_derived WHERE symbol = :symbol AND tf = :tf "
                 "AND session_id = :session_id AND bar_start_utc = :bar_start_utc ORDER BY revision DESC LIMIT 1"),
                 {key: bar[key] for key in ("symbol", "tf", "session_id", "bar_start_utc")}).mappings().fetchone()
             if latest and latest["input_hash"] == bar["input_hash"]:
@@ -328,7 +328,7 @@ def _save_bars(db, bars):
             columns = tuple(bar)
             names = ", ".join(columns)
             params = ", ".join(f":{name}" for name in columns)
-            conn.execute(text(f"INSERT INTO bars_derived ({names}) VALUES ({params})"), bar)
+            conn.execute(text(f"INSERT INTO _bars_derived ({names}) VALUES ({params})"), bar)
     return counts
 
 

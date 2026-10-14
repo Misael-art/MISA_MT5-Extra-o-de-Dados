@@ -19,7 +19,7 @@ _SYMBOL_INFO_FIELDS = (
 )
 
 _CREATE_CALENDAR = """
-CREATE TABLE IF NOT EXISTS market_calendar (
+CREATE TABLE IF NOT EXISTS _market_calendar (
     symbol TEXT NOT NULL,
     session_id TEXT NOT NULL,
     open_utc TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS market_calendar (
 )
 """
 _CREATE_CALENDAR_INDEX = "CREATE INDEX IF NOT EXISTS ix_market_calendar_symbol_open " \
-                         "ON market_calendar (symbol, open_utc)"
+                         "ON _market_calendar (symbol, open_utc)"
 
 
 def _json_value(value):
@@ -251,14 +251,14 @@ def save_sessions(db, sessions):
     with db.engine.begin() as conn:
         for session in sessions:
             latest = conn.execute(text(
-                "SELECT revision, input_hash FROM market_calendar WHERE symbol = :symbol AND session_id = :sid "
+                "SELECT revision, input_hash FROM _market_calendar WHERE symbol = :symbol AND session_id = :sid "
                 "ORDER BY revision DESC LIMIT 1"),
                 {"symbol": session["symbol"], "sid": session["session_id"]}).mappings().fetchone()
             if latest and latest["input_hash"] == session["input_hash"]:
                 continue
             revision = int(latest["revision"] + 1) if latest else 1
             conn.execute(text(
-                "INSERT INTO market_calendar (symbol, session_id, open_utc, close_utc, open_broker, close_broker, "
+                "INSERT INTO _market_calendar (symbol, session_id, open_utc, close_utc, open_broker, close_broker, "
                 "segments_json, source, source_metadata_json, timezone_offset_hours, observed_at_utc, input_hash, "
                 "revision) VALUES (:symbol, :session_id, :open_utc, :close_utc, :open_broker, :close_broker, "
                 ":segments_json, :source, :source_metadata_json, :timezone_offset_hours, :observed_at_utc, "

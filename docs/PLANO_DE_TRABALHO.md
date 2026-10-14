@@ -3229,7 +3229,7 @@ real por corretora.
 - **Objetivo:** montar, do M1, barras de N minutos que respeitam a sessão, com estado de qualidade por barra.
 - **Depende de:** T11.1.
 - **Arquivos previstos:** `mt5_extracao/analytics/calendar.py` e `analytics/resampling.py` (novos), tabelas novas
-  `market_calendar` e `bars_derived`, `cli.py`, testes novos. `resample.py` e as tabelas de barras atuais não mudam.
+  `_market_calendar` e `_bars_derived`, `cli.py`, testes novos. `resample.py` e as tabelas de barras atuais não mudam.
 - **Passos:**
   1. Calendário por símbolo: sessões observadas em M1 com abertura, fechamento e segmentos, em UTC e no horário da
      corretora. Decisão do dono (2026-10-14): M1 como fonte histórica e `symbol_info` do MT5 como metadado estável;
