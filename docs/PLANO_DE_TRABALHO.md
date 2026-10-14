@@ -93,7 +93,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | ✅ concluída (todas as saídas do tutorial são de uma execução real no host) |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
-| T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
+| T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | em andamento: código e testes automáticos prontos; falta backtest no MT5 conectado |
 | T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | ✅ concluída: no cenário medido, 0,00% do giro contra os ticks reais (era 1,63%); exige calibrar o spread com ticks |
 | T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
 | T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
@@ -1907,23 +1907,48 @@ robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o 
 
 - **Objetivo:** saber se um robô está pronto para ser enviado ao MQL5 Market e montar o que o vendedor precisa.
 - **Depende de:** T10.4.
+- **Status:** EM ANDAMENTO (2026-10-14; log isolado por execução autorizado pelo dono do projeto).
 - **Limite:** o envio **não** é automatizado. Ele é feito pela pessoa na área do vendedor do MQL5.com, que também
   roda a validação automática oficial. Esta tarefa não promete aprovação no Market.
-- **Antes de implementar:** leia as regras atuais do Market no MQL5.com e registre aqui a lista conferida, com a
-  data. A lista abaixo é o ponto de partida e **não foi conferida na fonte**; o único item observado no host é o
-  aviso 68 do MetaEditor ("version ... is incompatible with MQL5 Market, must be xxx.yyy").
+- **Regras conferidas em 2026-10-14:** [Rules of Using the Market Service](https://www.mql5.com/en/market/rules),
+  [The checks a trading robot must pass](https://www.mql5.com/en/articles/2555),
+  [How to publish a product](https://www.mql5.com/en/articles/385) e
+  [propriedades `#property` do MQL5](https://www.mql5.com/en/book/basis/preprocessor/preprocessor_properties).
+  O serviço exige cadastro de vendedor e envio manual; a regra não será automatizada. O produto não pode mudar de
+  funcionamento por tipo/número de conta ou servidor; textos, nomes de entradas e mensagens do produto devem estar
+  em inglês; não pode prometer lucro nem incluir links de terceiros na apresentação. A distribuição é um único
+  `.ex5`, com dependências incluídas como recursos. O Market executa testes automáticos no Strategy Tester em
+  condições, símbolos e timeframes diferentes; aprovação não garante lucro nem ausência de erros. Essas regras não
+  substituem a bateria do mt5x. O bloqueio de `#import` de DLL continua sendo uma política local desta tarefa.
+- **Versão:** a referência de `#property` descreve o formato Market `X.Y`; o MetaEditor instalado apresenta o aviso
+  Market 68 para `0.10` ("must be xxx.yyy"). Testei no Wine, em arquivo temporário: `0.10` compilou com aviso 68;
+  `1.000` compilou com 0 erros e 0 avisos. O pré-check seguirá o requisito mais estrito do compilador observado no
+  host (`XXX.YYY`) e ainda exigirá compilação sem avisos.
 - **Arquivos:** `mt5_extracao/robots/market.py` (novo), `cli.py`, `tests/test_robots_market.py` (novo).
 - **Passos:**
   1. `market.check(robot, compile_result, runs) -> List[Item]` (mesmo formato da bateria): `#property version` no
      formato `xxx.yyy`; compila sem erros **e sem avisos**; sem `#import` de DLL; `#property description`
      preenchida; sem símbolo, conta ou caminho fixo no código; trata lote mínimo/passo e falta de margem sem erro;
-     backtest sem erros no log em mais de um ativo e timeframe.
-  2. `mt5x robots market <robô> [--pack <pasta>]`: mostra os itens; com `--pack`, copia o `.ex5`, a descrição e um
-     `LEIA-ME.txt` com o que ainda é manual (imagens, textos da página, preço, envio).
-  3. Nunca copie o `.mq5` para o pacote sem `--with-source`.
+     backtest sem erros no log em mais de um ativo e timeframe. Cada backtest grava o trecho novo do log do terminal
+     e dos agentes em `Tester/mt5x_runs/<run_id>.log`; `_robot_runs.metrics_json` guarda o caminho e se a captura
+     foi bem-sucedida. Bases antigas continuam abrindo; execuções sem captura não contam como evidência nova.
+  2. `mt5x robots market <robô> [--pack <pasta>]`: lê o log da última compilação, mostra os itens e aceita avisos
+     que ainda precisam de revisão do vendedor; com `--pack`, copia o `.ex5`, `description.txt` e um `LEIA-ME.txt`
+     com o que ainda é manual (imagens, textos da página, preço, cadastro e envio).
+  3. Nunca copie o `.mq5` para o pacote sem `--with-source`; por padrão ele contém só `.ex5`, descrição e leia-me.
 - **Critérios de aceite:** um robô com versão `0.10` ou com DLL é reprovado com o motivo; o pacote de um robô
   aprovado contém só o que foi pedido.
 - **Verificação:** `pytest -q`.
+- **Decisão do dono do projeto (2026-10-14):** capturar e registrar log isolado por execução; testes da T10.11
+  podem usar a conta demo. A captura mantém apenas os bytes acrescentados durante aquele backtest, sem copiar o log
+  diário inteiro. O Strategy Tester continua sendo simulação e não envia ordens a uma conta.
+- **Verificação no host (2026-10-14):** antes da alteração, `.venv/bin/python -m pytest -q` — 648 aprovados,
+  8 ignorados (327,36 s). Depois da implementação: 656 aprovados, 8 ignorados (367,21 s); testes focados de Market
+  e Tester: 18 aprovados; `doctor`: 16 OK, 2 avisos conhecidos (`pandas-ta` opcional ausente e ponte configurada
+  como desativada); `git diff --check` passou.
+- **Backtest real pendente:** o terminal está aberto, mas a consulta local do MT5 devolveu `account_info = None`;
+  o diagnóstico confirma `[BRIDGE] enabled = false`. Não fechei o terminal nem rodei o Tester sem confirmar a demo
+  e o estado da conta. Nenhuma configuração foi alterada e nenhuma ordem foi enviada.
 
 ### T10.12 — Custo real no backtester Python ✅
 

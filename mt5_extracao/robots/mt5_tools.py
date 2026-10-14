@@ -445,6 +445,71 @@ def tester_ini(expert: str, symbol: str, period: str, date_from, date_to, deposi
     return "\r\n".join(lines) + "\r\n"
 
 
+def tester_run_log(data: Path, run_id: str) -> Path:
+    """Caminho do log isolado que o mt5x guarda para uma execução do Strategy Tester."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", str(run_id)):
+        raise ValueError("Identificador inválido para o log do Strategy Tester.")
+    return Path(data) / "Tester" / "mt5x_runs" / f"{run_id}.log"
+
+
+def _tester_log_snapshot(data: Path) -> dict:
+    """Tamanho, data de alteração e cauda dos logs diários do terminal e de seus agentes."""
+    root = Path(data) / "Tester"
+    result = {}
+    for path in root.glob("**/logs/*.log"):
+        try:
+            stat = path.stat()
+            with path.open("rb") as handle:
+                handle.seek(max(0, stat.st_size - 256))
+                tail = handle.read()
+            result[path] = {"size": stat.st_size, "mtime_ns": stat.st_mtime_ns, "tail": tail}
+        except OSError as e:
+            log.debug(f"Não foi possível inspecionar o log do Tester {path.name}: {e}")
+    return result
+
+
+def _capture_tester_log(data: Path, before: dict, run_id: str) -> Optional[Path]:
+    """Copia para um arquivo por execução somente os bytes novos nos logs do Tester."""
+    try:
+        after = _tester_log_snapshot(data)
+        chunks = []
+        for path in sorted(after, key=lambda p: str(p)):
+            current = after[path]
+            previous = before.get(path)
+            if previous is None:
+                start = 0
+            elif current["mtime_ns"] == previous["mtime_ns"] and current["size"] == previous["size"]:
+                continue
+            elif current["size"] > previous["size"]:
+                tail_start = max(0, previous["size"] - len(previous["tail"]))
+                with path.open("rb") as handle:
+                    handle.seek(tail_start)
+                    same_tail = handle.read(len(previous["tail"])) == previous["tail"]
+                start = previous["size"] if same_tail else 0
+            else:
+                start = 0
+            with path.open("rb") as handle:
+                handle.seek(start)
+                content = handle.read()
+            if content:
+                relative = path.relative_to(Path(data))
+                chunks.append((relative, content))
+        if not chunks:
+            return None
+        target = tester_run_log(data, run_id)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("wb") as handle:
+            for relative, content in chunks:
+                handle.write(f"\n===== {relative.as_posix()} =====\n".encode("utf-8"))
+                handle.write(content)
+                if not content.endswith(b"\n"):
+                    handle.write(b"\n")
+        return target
+    except (OSError, ValueError) as e:
+        log.warning(f"Não foi possível guardar um log isolado do Strategy Tester: {e}")
+        return None
+
+
 def write_tester_set(data: Path, name: str, values: dict) -> str:
     """Grava os parâmetros do teste em MQL5/Profiles/Tester/<name>.set e devolve o nome do arquivo."""
     folder = Path(data) / "MQL5" / "Profiles" / "Tester"
@@ -455,7 +520,8 @@ def write_tester_set(data: Path, name: str, values: dict) -> str:
 
 
 def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Callable] = None,
-               timeout: int = TESTER_TIMEOUT, is_running: Optional[Callable] = None) -> Path:
+               timeout: int = TESTER_TIMEOUT, is_running: Optional[Callable] = None,
+               run_id: Optional[str] = None) -> Path:
     """
     Roda o Strategy Tester com o .ini dado e devolve o caminho do relatório (.htm). O terminal precisa estar
     fechado. `name` é o nome do relatório (o mesmo passado em `Report=`), sem extensão.
@@ -472,6 +538,7 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
     report.unlink(missing_ok=True)
     ini = data / f"{name}.ini"
     ini.write_bytes(ini_text.encode("utf-16"))
+    logs_before = _tester_log_snapshot(data) if run_id else {}
     portable = prefix is not None or data.resolve() == terminal.parent.resolve()
     command_line = '"{}"{} /config:"{}"'.format(_windows_path(terminal, prefix), " /portable" if portable else "",
                                                 _windows_path(ini, prefix))
@@ -482,6 +549,8 @@ def run_tester(config, data: Path, ini_text: str, name: str, run: Optional[Calla
                            "use um período menor ou [ROBOTS] tester_model = 1.") from None
     finally:
         ini.unlink(missing_ok=True)
+        if run_id:
+            _capture_tester_log(data, logs_before, run_id)
     if not report.is_file():
         if is_running() if is_running else terminal_running(config):
             # Visto no host: com uma atualização pendente, o terminal chama o LiveUpdate, sai sem testar e é

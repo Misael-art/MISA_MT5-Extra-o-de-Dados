@@ -279,9 +279,10 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     trades_csv = common / f"HDK_trades_{magic}.csv" if common is not None and magic.isdigit() else None
     if trades_csv is not None:
         trades_csv.unlink(missing_ok=True)        # o de um teste anterior não pode passar por resultado deste
+    run_id = uuid.uuid4().hex
     ini = mt5_tools.tester_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, start, end, deposit, name,
                                model, parameters)
-    report = mt5_tools.run_tester(config, data, ini, name, run, is_running=is_running)
+    report = mt5_tools.run_tester(config, data, ini, name, run, is_running=is_running, run_id=run_id)
     report_text = mql.read_text(report)
     report_deposit, results = parse_report(report_text)
     entries, without_stop = entries_without_stop(report_text)
@@ -290,14 +291,17 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
         results, trades_source = read_hdk_trades(trades_csv), CSV_SOURCE
     initial = report_deposit or deposit
     metrics = metrics_from_results(results, initial)
+    tester_log = mt5_tools.tester_run_log(data, run_id)
     metrics.update(trades_source=trades_source, tester_model=mt5_tools.TESTER_MODELS[model], report=str(report),
                    tester_model_code=model, entries=entries, entries_without_stop=without_stop,
-                   source_fingerprint=catalog.fingerprint(robot))
+                   source_fingerprint=catalog.fingerprint(robot),
+                   tester_log=str(tester_log) if tester_log.is_file() else "",
+                   tester_log_captured=tester_log.is_file())
     equity, points = float(initial), [[start.strftime("%Y-%m-%d %H:%M:%S"), float(initial)]]
     for stamp, value, _ in results:
         equity += float(value)
         points.append([_iso(stamp), equity])
-    record = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
+    record = {"run_id": run_id, "robot_key": robot.key, "source": source, "symbol": symbol,
               "timeframe": tf.name, "data_start": start.strftime("%Y-%m-%d %H:%M:%S"),
               "data_end": end.strftime("%Y-%m-%d %H:%M:%S"), "bars": 0,
               "params": dict(values, **({"preset": preset} if preset else {})), "metrics": metrics,
