@@ -56,6 +56,7 @@ class UIManager:
         self.filter_var = tk.StringVar(value="all")  # all | fav | data
         self._filter_job = None
         self._ui_queue = queue.Queue()   # chamadas vindas de outras threads (ver call_in_ui)
+        self._terminal_lock = threading.Lock()   # uma abertura do terminal por vez (ver _open_organized_terminal)
 
         # O que existe na base (preenchido por refresh_inventory)
         self.inventory = []
@@ -2312,6 +2313,31 @@ class UIManager:
                                      "demo": bool(info.get("demo"))}
             self.save_prefs()
 
+    def _open_organized_terminal(self):
+        """
+        Se o MetaTrader 5 está fechado, abre-o já com a organização escolhida e o painel. É chamado antes de toda
+        tentativa de conexão (inclusive a reconexão automática depois que a pessoa fecha o MT5), porque sem isso é
+        a própria conexão que abre o terminal, sem nada. Um pedido por vez; falha aqui não impede a conexão.
+        """
+        from mt5_extracao.robots import mt5_tools, view
+        if not self._terminal_lock.acquire(blocking=False):
+            return
+        try:
+            config = self.app.config
+            if not mt5_tools.terminal_running(config):
+                opened = view.open_view(config, db=self.app.db_manager, account=self.prefs.get("account"),
+                                        confirm=mt5_tools.confirm_startup)
+                log.info("Visão do MetaTrader 5 ao conectar: " + view.describe(opened))
+        except Exception as e:
+            log.warning(f"Não foi possível abrir o MetaTrader 5 já organizado ({e}). Seguindo com a conexão.")
+        finally:
+            self._terminal_lock.release()
+
+    def _install_terminal_hook(self):
+        connector = self.app.mt5_connector
+        if hasattr(connector, "prepare_terminal") and connector.prepare_terminal is None:
+            connector.prepare_terminal = self._open_organized_terminal
+
     def connect_mt5(self, startup=False):
         """
         Abre o MetaTrader 5 (com a janela organizada como nas configurações, se ele estiver fechado) e conecta,
@@ -2331,15 +2357,8 @@ class UIManager:
 
         def work():
             mt5_tools.use_config(config)
-            try:        # terminal fechado: abre já com a organização escolhida. Falha aqui não impede a conexão.
-                # Sem ativo: se o perfil próprio ainda não existe, ele nasce com o gráfico que a pessoa já tinha
-                # (a seleção salva pode ter centenas de ativos; o primeiro dela não diz nada).
-                if not mt5_tools.terminal_running(config):
-                    opened = view.open_view(config, db=app.db_manager, account=self.prefs.get("account"),
-                                            confirm=mt5_tools.confirm_startup)
-                    log.info("Visão do MetaTrader 5 ao conectar: " + view.describe(opened))
-            except Exception as e:
-                log.warning(f"Não foi possível abrir o MetaTrader 5 já organizado ({e}). Seguindo com a conexão.")
+            self._install_terminal_hook()       # as reconexões automáticas do conector também passam por ele
+            self._open_organized_terminal()     # terminal fechado: abre já organizado, antes de conectar
             connected = bool(app.mt5_connector.initialize(recursion_count=0))
             if connected:
                 app.mt5_initialized = True

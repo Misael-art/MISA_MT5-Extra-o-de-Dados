@@ -58,6 +58,10 @@ class MT5Connector:
         """
         self.config_path = config_path
         self.ask_user = ask_user
+        # Chamado, se definido, antes de cada tentativa de conexão. A interface põe aqui a abertura do terminal já
+        # organizado: sem isso, quando a pessoa fecha o MT5 com o programa aberto, a reconexão automática o reabre
+        # "cru" (sem a organização da janela e sem o painel), porque é o próprio mt5.initialize que abre o terminal.
+        self.prepare_terminal = None
         self.mt5_windows_path = None
         global mt5
         if mt5 is None:
@@ -195,7 +199,13 @@ class MT5Connector:
         if not mt5:
             log.error("Módulo MetaTrader5 não está disponível ou não foi importado corretamente")
             return False
-            
+
+        if self.prepare_terminal is not None and recursion_count == 0:
+            try:
+                self.prepare_terminal()
+            except Exception as e:      # preparar o terminal é um conforto: nunca impede a conexão
+                log.warning(f"Não foi possível preparar o terminal antes de conectar ({e}). Seguindo com a conexão.")
+
         # Verifica o caminho do MT5
         if not mt5_path:
             mt5_path = self.mt5_path

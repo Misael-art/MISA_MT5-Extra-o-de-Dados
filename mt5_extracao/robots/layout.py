@@ -308,6 +308,38 @@ def panel_layout(config) -> str:
 
 
 PANEL_BLOCK_KEY = "panel_demo_blocked"
+PANEL_HOURS_KEY, HOURS_INPUT = "panel_any_hours", "InpUseHours"
+
+
+def panel_any_hours(config) -> bool:
+    """
+    A pessoa pediu que o painel opere em qualquer horário ([MT5] panel_any_hours)? O padrão é não: vale a janela
+    de horário do painel, que é contada no HORÁRIO DO SERVIDOR da corretora, não no do computador.
+    """
+    if config is None:
+        return False
+    try:
+        return config.getboolean("MT5", PANEL_HOURS_KEY, fallback=False)
+    except ValueError:
+        log.warning(f"[MT5] {PANEL_HOURS_KEY} com valor inválido em config.ini: usando o padrão (false).")
+        return False
+
+
+def server_offset_hours(server_epoch, now_utc_epoch, max_age: float = 300.0):
+    """
+    Diferença, em horas (múltiplos de meia hora), entre o relógio do servidor da corretora e o UTC, a partir do
+    horário da última cotação de um ativo. O MT5 entrega esse horário como se fosse UTC, mas ele está no fuso do
+    servidor. None se a cotação não cai perto de uma meia hora cheia (está velha: mercado fechado). Uma cotação
+    parada há um número quase exato de meias horas não se distingue de outro fuso: quem chama deve conferir que a
+    cotação está andando (veja ui/settings.py).
+    """
+    if not server_epoch:
+        return None
+    diff = float(server_epoch) - float(now_utc_epoch)
+    offset = round(diff / 1800.0) / 2.0
+    if abs(diff - offset * 3600.0) > max_age or abs(offset) > 14:
+        return None
+    return offset
 
 
 def panel_blocked(config) -> bool:
@@ -408,6 +440,7 @@ def status(config, data_dir=None, common_files=None) -> dict:
                 log.debug(f"Não foi possível ler {path}: {e}")
     return {"enabled": opts.enabled, "panel_off": off, "active": opts.enabled and not off,
             "panel_layout": panel_layout(config), "panel_blocked": panel_blocked(config),
+            "panel_any_hours": panel_any_hours(config),
             "has_profile": data_dir is not None and has_profile(data_dir),
             "options": {key: getattr(opts, attr) for key, attr, _, _ in OPTION_KEYS},
             "will_hide": sorted(set(wanted.values())), "has_arrangement": arrangement, "hidden_now": hidden_now}

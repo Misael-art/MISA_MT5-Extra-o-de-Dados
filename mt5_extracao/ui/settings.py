@@ -25,6 +25,8 @@ def ui_icon(dialog):
 
 
 class SettingsDialog:
+    CLOCK_WAIT = 2.5     # segundos entre as duas leituras de cotação que conferem se o mercado está andando
+
     def __init__(self, ui):
         self.ui = ui
         self.app = ui.app
@@ -40,7 +42,7 @@ class SettingsDialog:
         self.window = tk.Toplevel(ui.root)
         self.window.title("Configurações")
         self.window.transient(ui.root)
-        self.window.minsize(640, 640)
+        self.window.minsize(640, 700)
         outer = ttk.Frame(self.window, padding=14)
         outer.pack(fill=tk.BOTH, expand=True)
 
@@ -128,6 +130,17 @@ class SettingsDialog:
                                   "MT5 agora\", para o painel que já está em um gráfico do perfil próprio.",
                 self.ui.theme)
 
+        self.hours_var = tk.BooleanVar(value=False)
+        self.hours_check = ttk.Checkbutton(
+            body, text="Painel opera em qualquer horário (desliga a janela de horário dele)",
+            style="Surface.TCheckbutton", variable=self.hours_var, command=self.save_hours)
+        self.hours_check.pack(anchor="w", pady=(8, 0))
+        Tooltip(self.hours_check, "De fábrica o painel só aceita compra e venda de 09:15 a 17:30, no horário do "
+                                  "servidor da corretora (não no do seu computador). Marcado, ele opera em qualquer "
+                                  "horário. O que você muda pela janela de parâmetros do MT5 (F7) vale só até o "
+                                  "programa reabrir o terminal; esta opção fica.", self.ui.theme)
+        self.server_label = ttk.Label(body, text="", style="Muted.TLabel", wraplength=WRAP, justify=tk.LEFT)
+        self.server_label.pack(anchor="w", padx=(22, 0))
         self.block_var = tk.BooleanVar(value=False)
         self.block_check = ttk.Checkbutton(
             body, text="Manter o painel bloqueado mesmo em conta de demonstração (PARAR TUDO)",
@@ -189,6 +202,7 @@ class SettingsDialog:
             except Exception as e:
                 log.debug(f"Estado do PARAR TUDO não lido: {e}")
                 state["stopped"] = False
+            state["server_offset"] = (self.state or {}).get("server_offset")
             return data, common, state
         self.ui.run_bg(work, self._loaded)
 
@@ -201,6 +215,14 @@ class SettingsDialog:
             return
         self.data_dir, self.common, self.state = result
         self._show()
+        # O relógio do servidor leva alguns segundos (duas leituras de cotação): chega depois, sem segurar o diálogo
+        self.ui.run_bg(self._server_offset, self._clock_loaded)
+
+    def _clock_loaded(self, offset, error):
+        if not self.window.winfo_exists() or self.state is None:
+            return
+        self.state["server_offset"] = None if error else offset
+        self.server_label.config(text=self._server_text(self.state["server_offset"]))
 
     def _show(self):
         state = self.state
@@ -208,6 +230,8 @@ class SettingsDialog:
             var.set(state["enabled"] if key == layout.MASTER_KEY else state["options"][key])
         self.panel_var.set(layout.PANEL_LAYOUTS[state["panel_layout"]][0])
         self.block_var.set(state["panel_blocked"])
+        self.hours_var.set(state["panel_any_hours"])
+        self.server_label.config(text=self._server_text(state.get("server_offset")))
         self.stop_row.pack_forget()
         if state.get("stopped"):
             self.stop_row.pack(fill=tk.X, pady=(8, 0), before=self.apply_row)
@@ -244,7 +268,8 @@ class SettingsDialog:
             return
         self.state = layout.status(self.config, None, self.common) | {
             "has_arrangement": self.state["has_arrangement"], "hidden_now": self.state["hidden_now"],
-            "has_profile": self.state["has_profile"], "stopped": self.state.get("stopped", False)}
+            "has_profile": self.state["has_profile"], "stopped": self.state.get("stopped", False),
+            "server_offset": self.state.get("server_offset")}
         self._show()
         self.feedback.config(style="Good.TLabel",
                              text=f"Salvo em {self.config_file.name}. Vale na próxima vez que o programa abrir o "
@@ -276,6 +301,61 @@ class SettingsDialog:
                                       "abrir o MT5 agora\".")
         else:
             self.panel_var.set(layout.PANEL_LAYOUTS[self.state["panel_layout"]][0])
+
+    def _server_offset(self):
+        """Horas entre o relógio do servidor da corretora e o UTC, pela última cotação (None se não der para saber)."""
+        import time
+        if not self.ui._mt5_connected():
+            return None
+        symbols = [self.ui.detail_symbol] + list(self.app.selected_symbols)[:3] + ["EURUSD"]
+
+        def newest():
+            best = 0
+            for symbol in dict.fromkeys(s for s in symbols if s):
+                try:
+                    info = self.app.mt5_connector.get_symbol_info(symbol)
+                except Exception as e:
+                    log.debug(f"Cotação de {symbol} não lida: {e}")
+                    continue
+                best = max(best, getattr(info, "time", 0) or 0)
+            return best
+        # Só serve de relógio uma cotação que está andando: com o mercado fechado, a última cotação parada daria
+        # um fuso errado. Duas leituras com um intervalo; se nada mudou, não se afirma nada.
+        first = newest()
+        time.sleep(self.CLOCK_WAIT)
+        second = newest()
+        if not second or second <= first:
+            return None
+        return layout.server_offset_hours(second, time.time())
+
+    @staticmethod
+    def _server_text(offset):
+        """A frase sobre o horário do servidor, para quem ajusta a janela de horário do painel."""
+        import datetime
+        if offset is None:
+            return ("O horário do painel é o do servidor da corretora, que pode ser diferente do seu. (Sem cotação "
+                    "recente para dizer a diferença agora.)")
+        utc = datetime.datetime.now(datetime.timezone.utc)
+        server = utc + datetime.timedelta(hours=offset)
+        gap = (server.replace(tzinfo=None) - datetime.datetime.now()).total_seconds() / 3600.0
+        gap = round(gap * 2) / 2
+        side = "igual ao do seu computador" if gap == 0 else (
+            f"{abs(gap):g} h {'à frente' if gap > 0 else 'atrás'} do seu computador")
+        return f"Horário do servidor da corretora agora: {server:%H:%M} ({side}). É nele que o painel conta o horário."
+
+    def save_hours(self):
+        """Grava se o painel opera em qualquer horário."""
+        any_hours = self.hours_var.get()
+        if not self._write(layout.PANEL_HOURS_KEY, "true" if any_hours else "false"):
+            self.hours_var.set(not any_hours)
+            return
+        self.state["panel_any_hours"] = any_hours
+        self.feedback.config(
+            style="Good.TLabel",
+            text=f"Salvo em {self.config_file.name}. " + (
+                "O painel passa a operar em qualquer horário" if any_hours else
+                "O painel volta a usar a janela de horário dele (no horário do servidor)") +
+            " na próxima vez que o programa abrir o MetaTrader 5: clique em \"Aplicar e abrir o MT5 agora\".")
 
     def save_block(self):
         """Grava se o painel manual abre bloqueado mesmo em conta de demonstração."""

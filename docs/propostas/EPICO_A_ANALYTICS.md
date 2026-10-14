@@ -5,7 +5,7 @@ Repositório responsável: **mt5x**. Índice, convenções e regras comuns: [REA
 A maior parte deste épico **já está planejada** como Fase 13 do [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md),
 com a especificação em [analytics/ESPECIFICACAO.md](../analytics/ESPECIFICACAO.md). As entradas abaixo apontam para
 a tarefa do plano em vez de repeti-la. São novas, sem tarefa no plano: **A-03** (Renko), **A-09** na parte de
-liquidez e **A-11** (correlação entre ativos).
+liquidez, **A-11** (correlação entre ativos) e **A-15** (notícias no histórico dos ativos).
 
 Regras do épico: armazenamento **versionado** (toda característica tem versão do algoritmo e revisão dos dados) e
 **sem olhar para o futuro** (nenhum fato usa informação posterior ao instante em que é dado como disponível).
@@ -121,3 +121,12 @@ Regras do épico: armazenamento **versionado** (toda característica tem versão
 - **Riscos:** tela que mostra probabilidade sem amostra; leitura que trava a interface.
 - **Aceite:** todo número mostra amostra, validade e fonte; leitura em segundo plano.
 - **Testes:** testes de janela com base sintética; base vazia e dado vencido.
+
+### A-15 — Notícias de alto impacto no histórico dos ativos
+- **O quê e por quê:** gravar na base, junto ao histórico de cada ativo, os eventos do calendário econômico que o filtro de notícias do painel usa (horário, moeda, nome, impacto) e marcar em uma coluna as barras que caem na janela de uma notícia. Pedido do dono do projeto em 2026-10-13, para estudar depois as estatísticas: como o ativo se comporta antes e depois da notícia, e se pausar perto dela ajuda ou atrapalha.
+- **Repositório:** mt5x (exportador: HADOUKEN) · **Prioridade:** P2 · **Complexidade:** M · **Status:** PROPOSTO
+- **Módulos existentes:** `HDK_MarketFilter.mqh` (lê o calendário econômico do MT5 e pausa de 30 minutos antes a 15 depois; só guarda os próximos eventos, em memória); `[SCREENER] events_file` no mt5x (CSV `time,symbol,impact`, opcional e mantido à mão); `robots/mt5_tools.common_files_dir` · **Depende de:** A-02, A-04 · **Pré-requisitos:** exportador dos eventos no MQL5, porque o pacote Python do MT5 não tem função de calendário econômico (a lista oficial tem 32 funções e nenhuma é de calendário)
+- **Riscos:** o calendário do MT5 só existe no terminal conectado e muda com revisões (horário e valor do evento são corrigidos depois); horário do evento no relógio do servidor, não em UTC; evento do passado gravado com dado revisado é olhar para o futuro; coluna nova em tabela de barras existente (mudança de schema tem de ser aditiva).
+- **Aceite:** cada evento fica gravado com quando foi visto e de qual revisão; a coluna da barra é derivada dos eventos e pode ser refeita; base antiga continua abrindo; barra sem evento fica vazia, não zero.
+- **Testes:** eventos sintéticos na borda da janela (30 minutos antes, 15 depois); evento revisado; ativo cuja moeda não tem evento; base criada antes da coluna.
+- **Como viabilizar (proposta):** o mesmo caminho das sessões em [DECISOES_CONTRATOS_E_CALENDARIO.md](DECISOES_CONTRATOS_E_CALENDARIO.md): o sentinela exporta os eventos para `Common\Files`, o mt5x lê e grava em uma tabela de eventos, e a coluna das barras (ou a característica na guarda da A-04) é calculada a partir dela. Guardar os eventos em tabela própria, e não só a coluna, é o que permite mudar a janela depois sem perder o dado.

@@ -36,6 +36,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("view_panel", "true"),              # "Abrir visão MT5" põe o painel no gráfico (sem bateria: só visualização)
         ("panel_robot", "hdk_hadouken_painel"),  # qual robô do catálogo é o painel
         ("panel_preset", ""),                # preset do painel na visão (vazio = padrão do código)
+        ("panel_any_hours", "false"),        # true = o painel opera em qualquer horário (desliga a janela de horário dele)
         ("panel_demo_blocked", "false"),     # true = o painel manual abre bloqueado (PARAR TUDO) mesmo em conta demo
     ])),
     ("BRIDGE", OrderedDict([

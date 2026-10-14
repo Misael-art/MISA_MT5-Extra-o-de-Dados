@@ -407,6 +407,7 @@ def settings(ui, tmp_path, monkeypatch):
     monkeypatch.setattr(settings_module.mt5_tools, "data_dir", lambda config, mt5=None: state.data)
     monkeypatch.setattr(settings_module.mt5_tools, "common_files_dir", lambda config: state.common)
     monkeypatch.setattr(settings_module.mt5_tools, "terminal_running", lambda config=None: state.running)
+    monkeypatch.setattr(settings_module.SettingsDialog, "CLOCK_WAIT", 0.05)     # sem esperar o relógio do servidor
     dialog = ui.open_settings()
     ui.pump(0.5)
     dialog.env = state
@@ -743,3 +744,62 @@ def test_settings_release_the_stop_and_turn_the_demo_block_on_and_off(ui, settin
     ui.pump(0.5)
     assert not kill.exists() and not settings.stop_row.winfo_manager()
     assert "PARAR TUDO liberado" in settings.feedback.cget("text")
+
+
+def test_settings_any_hour_option_and_server_clock(ui, settings):
+    """O painel conta o horário no relógio do servidor; a opção de operar em qualquer horário fica gravada."""
+    from mt5_extracao.robots import layout
+    assert settings.hours_var.get() is False and "qualquer horário" in settings.hours_check.cget("text")
+    assert "horário do painel é o do servidor" in settings.server_label.cget("text")     # sem cotação: só o aviso
+    settings.hours_check.invoke()
+    assert settings.env.config_file.read_text(encoding="utf-8").endswith("panel_any_hours = true\n")
+    assert layout.panel_any_hours(ui.app.config) is True and "qualquer horário" in settings.feedback.cget("text")
+    assert "Aplicar e abrir o MT5 agora" in settings.feedback.cget("text")
+    frozen = time.time() + 6 * 3600
+    ui.app.mt5_connector.get_symbol_info = lambda s: types.SimpleNamespace(spread=5, last=1.0, bid=0, digits=2, time=frozen)
+    settings.refresh()
+    ui.pump(0.5)
+    assert "Sem cotação recente" in settings.server_label.cget("text")      # cotação parada (mercado fechado): não afirma
+    ui.app.mt5_connector.get_symbol_info = lambda s: types.SimpleNamespace(
+        spread=5, last=1.0, bid=0, digits=2, time=time.time() + 6 * 3600)                 # servidor 6 h à frente do UTC
+    settings.refresh()
+    ui.pump(0.6)
+    text = settings.server_label.cget("text")
+    assert text.startswith("Horário do servidor da corretora agora: ") and "do seu computador" in text
+    assert settings.hours_var.get() is True
+    settings.hours_check.invoke()
+    assert layout.panel_any_hours(ui.app.config) is False and "janela de horário" in settings.feedback.cget("text")
+
+
+def test_automatic_reconnection_also_opens_the_terminal_organized(ui, connecting):
+    """Visto no host: a pessoa fechou o MT5 e a reconexão automática o reabriu sem a organização e sem o painel."""
+    ui.app.mt5_connector.prepare_terminal = None            # o conector de verdade tem este gancho
+    ui.connect_mt5()
+    ui.pump(0.8)
+    hook = ui.app.mt5_connector.prepare_terminal
+    assert callable(hook) and connecting.opened == [""]     # aberto organizado uma vez, na conexão
+    hook()                                                   # reconexão com o terminal aberto: nada a fazer
+    assert connecting.opened == [""]
+    connecting.running = False                               # a pessoa fechou o MetaTrader 5
+    hook()                                                   # o conector chama isto antes de reconectar
+    assert connecting.opened == ["", ""]
+
+
+def test_connector_calls_the_prepare_hook_before_connecting(monkeypatch, tmp_path):
+    from mt5_extracao import mt5_connector
+    calls = []
+    fake = types.SimpleNamespace(initialize=lambda **k: calls.append("initialize") or False,
+                                 last_error=lambda: (-1, "sem terminal"), shutdown=lambda: None)
+    monkeypatch.setattr(mt5_connector, "mt5", fake)
+    cfg = tmp_path / "config.ini"
+    cfg.write_text(f"[MT5]\npath = {tmp_path}\n", encoding="utf-8")
+    connector = mt5_connector.MT5Connector(config_path=str(cfg))
+    assert connector.prepare_terminal is None
+    connector.prepare_terminal = lambda: calls.append("preparar")
+    connector.initialize()
+    assert calls and calls[0] == "preparar" and calls.count("preparar") == 1      # uma vez, antes de conectar
+
+    def broken():
+        raise RuntimeError("terminal.ini ilegível")
+    connector.prepare_terminal = broken
+    connector.initialize()                                   # falha ao preparar não impede a tentativa de conexão
