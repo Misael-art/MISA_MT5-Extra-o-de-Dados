@@ -152,7 +152,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.8 | Laboratório: gradientes (fixo, dinâmico, direcional) e martingale só para robô que o suporta, com as travas dele | T16.7 | ✅ concluída |
 | T16.9 | Laboratório: regras de filtro e simulador, validados em walk-forward com folga e reserva final | T16.8 | ✅ concluída |
 | T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
-| T16.11b–T16.12 | Laboratório: livro de operações, importadores, calendário econômico de várias fontes (CSV e MT5), enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só para robô que o suporta, com as travas dele), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
+| T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
+| T16.12 | Laboratório: livro de operações, importadores, calendário econômico de várias fontes (CSV e MT5), enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só para robô que o suporta, com as travas dele), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

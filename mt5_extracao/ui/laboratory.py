@@ -4,9 +4,10 @@ Aba "Laboratório" (Fase 16, T16.11): onde os robôs ganham e perdem, pelas duas
 - Por robô: o robô escolhido em todos os ativos e timeframes em que foi testado.
 - Por ativo: todos os robôs testados no ativo escolhido.
 
-Guias desta entrega: Visão geral, Tempo e calendário, Microestrutura e Comparativo. Execução e Insights dependem da
-re-simulação (T16.6 a T16.10) e aparecem desabilitadas, com o motivo. Os números vêm de mt5_extracao/trade_analytics
-(sem Tkinter); a leitura roda em segundo plano e só a guia visível é desenhada.
+Guias: Visão geral, Tempo e calendário, Microestrutura, Comparativo, Execução (o mesmo run re-simulado em vários modos,
+T16.6 a T16.8) e Insights (insights validados, simulador de regras e exportação da proposta, T16.9 e T16.10). Os
+números vêm de mt5_extracao/trade_analytics (sem Tkinter); toda conta roda em segundo plano e só a guia visível é
+desenhada.
 """
 import logging
 import tkinter as tk
@@ -24,10 +25,12 @@ log = logging.getLogger(__name__)
 LENS_ROBOT, LENS_ASSET = "robot", "asset"
 PERIODS = (("Tudo", None), ("Último ano", 365), ("Últimos 6 meses", 182), ("Últimos 3 meses", 91))
 TABS = ("Visão geral", "Tempo e calendário", "Microestrutura", "Comparativo", "Execução", "Insights")
-DISABLED_TABS = {"Execução": "chega com a re-simulação de execução (T16.6 a T16.8)",
-                 "Insights": "chega com o simulador de regras e os insights validados (T16.9 e T16.10)"}
+DISABLED_TABS: dict = {}
 WEEKDAYS = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sáb", 6: "Dom"}
 IMPACTS = {0: "Sem evento", 1: "Baixo", 2: "Médio", 3: "Alto"}
+SHORT_MODES = {"ponto_fixo": "Base", "alvo_r": "Alvo R", "break_even": "BE", "trailing_atr": "Trail ATR",
+               "trailing_barras": "Trail N", "gradiente_fixo": "Grad. fixo", "gradiente_dinamico": "Grad. ATR",
+               "gradiente_direcional": "Pirâm.", "martingale": "Mart.", "anti_martingale": "Anti-mart."}
 KPIS = (("n", "Operações", "Quantas operações há no recorte."),
         ("win_rate", "Acerto", "Percentual de operações com resultado positivo."),
         ("profit_factor", "Fator de lucro", "Soma dos ganhos dividida pela soma das perdas. Acima de 1, o robô ganhou "
@@ -74,6 +77,12 @@ class LaboratoryPanel:
             if name in DISABLED_TABS:
                 ttk.Label(tab, text=DISABLED_TABS[name], style="Muted.TLabel").pack(pady=20)
         self.tabs.bind("<<NotebookTabChanged>>", lambda e: self.render_visible(), add="+")
+        self.mode_results = {}     # modo -> DataFrame (run_id, seq, pnl, ...) do run comparado
+        self.mode_metrics = {}
+        self.found = []            # insights da última procura
+        self.evaluation = None
+        self._build_execution_tab()
+        self._build_insights_tab()
         self.theme.on_change(self._theme_changed)
 
     # --- montagem ----------------------------------------------------------------------
@@ -228,6 +237,7 @@ class LaboratoryPanel:
             view = view[pd.to_numeric(view["event_impact"], errors="coerce").fillna(0) < 3]
         self.view = view
         self._drawn = set()
+        self.mode_results, self.mode_metrics, self.evaluation = {}, {}, None
         self._show_kpis()
         self.render_visible()
 
@@ -279,7 +289,8 @@ class LaboratoryPanel:
             return
         try:
             {"Visão geral": self._overview, "Tempo e calendário": self._time, "Microestrutura": self._micro,
-             "Comparativo": self._compare}[name]()
+             "Comparativo": self._compare, "Execução": self._execution_refresh,
+             "Insights": self._insights_refresh}[name]()
             self._drawn.add(name)
         except ImportError:
             self.set_note("Gráficos indisponíveis: instale o matplotlib (pip install matplotlib).")
@@ -470,6 +481,369 @@ class LaboratoryPanel:
         else:
             chart.message("Na lente por robô, a tabela acima compara o robô em cada ativo e timeframe. A correlação "
                           "entre robôs aparece na lente por ativo.")
+
+    # --- Execução (T16.6 a T16.8) --------------------------------------------------------
+
+    def _build_execution_tab(self):
+        tab = self.tab_frames["Execução"]
+        bar = ttk.Frame(tab, style="Surface.TFrame")
+        bar.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+        ttk.Label(bar, text="Run:", style="Surface.TLabel").pack(side=tk.LEFT)
+        self.run_var = tk.StringVar()
+        self.run_combo = ttk.Combobox(bar, textvariable=self.run_var, state="readonly", width=38)
+        self.run_combo.pack(side=tk.LEFT, padx=(6, 12))
+        self.mode_vars = {}
+        self.modes_box = ttk.Frame(tab, style="Surface.TFrame")      # linha própria: quebra quando não cabe
+        self.modes_box.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 4))
+        self.compare_button = ttk.Button(bar, text="Comparar modos", style="Accent.TButton", command=self.compare_modes)
+        self.compare_button.pack(side=tk.RIGHT)
+        Tooltip(self.compare_button, "Re-simula as MESMAS entradas do run em cada modo marcado, sobre as barras da "
+                                     "base, com os custos do backtester. Martingale só aparece para robô que o suporta, "
+                                     "com as travas dele.", self.theme)
+        self.exec_note = ttk.Label(tab, text="Escolha um run e os modos e clique em \"Comparar modos\".",
+                                   style="Muted.TLabel", wraplength=1000, justify=tk.LEFT)
+        self.exec_note.grid(row=2, column=0, columnspan=2, sticky="w")
+        box, self.mode_tree = scrolled_tree(
+            tab, ("Modo", "Operações", "Acerto", "Fator de lucro", "Payoff", "Expectativa", "Queda máxima",
+                  "Melhor faixa", "Observação"), (210, 80, 70, 100, 70, 100, 100, 100, 260),
+            ("w", "e", "e", "e", "e", "e", "e", "w", "w"), height=6)
+        box.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(6, 0))
+        self.mode_tree.tag_configure("study", foreground=self.theme.colors["warn"])
+        tab.columnconfigure(0, weight=1)
+        tab.columnconfigure(1, weight=1)
+
+    def _fill_runs(self):
+        view = self.view
+        if view is None or view.empty:
+            return
+        runs = view.groupby("run_id").agg(symbol=("symbol", "first"), timeframe=("timeframe", "first"),
+                                          robot=("robot_key", "first"), n=("pnl", "size"),
+                                          complete=("completeness", lambda c: (c == "completo").all()))
+        self._run_labels = {f"{r.robot} · {r.symbol} {r.timeframe} · {r.n} op." + ("" if r.complete else " (parcial)"):
+                            run_id for run_id, r in runs.iterrows()}
+        self.run_combo.configure(values=list(self._run_labels))
+        if self.run_var.get() not in self._run_labels and self._run_labels:
+            self.run_var.set(next(iter(self._run_labels)))
+
+    def _fill_modes(self, robot=None):
+        from mt5_extracao.trade_analytics.execution import modes
+        for w in self.modes_box.winfo_children():
+            w.destroy()
+        keep = {k: v.get() for k, v in self.mode_vars.items()}
+        self.mode_vars = {}
+        per_row = 5
+        for k, (key, mode) in enumerate(modes.available(robot).items()):
+            var = tk.BooleanVar(value=keep.get(key, key in ("ponto_fixo", "trailing_atr", "gradiente_dinamico")))
+            self.mode_vars[key] = var
+            w = ttk.Checkbutton(self.modes_box, text=mode.name.split(" (")[0], variable=var)
+            w.grid(row=k // per_row, column=k % per_row, sticky="w", padx=(0, 10))
+            Tooltip(w, mode.help, self.theme)
+
+    def _execution_refresh(self):
+        self._fill_runs()
+        if not self.mode_vars:
+            self._fill_modes()
+        if self.mode_metrics:
+            self._show_modes()
+
+    def compare_modes(self):
+        db, config = self._db(), self._config()
+        run_id = getattr(self, "_run_labels", {}).get(self.run_var.get())
+        wanted = [k for k, v in self.mode_vars.items() if v.get()]
+        if db is None or not run_id or not wanted:
+            self.exec_note.config(text="Escolha um run na lista." if not run_id else "Marque ao menos um modo.")
+            return
+        if "ponto_fixo" not in wanted:
+            wanted.insert(0, "ponto_fixo")
+        self.compare_button.state(["disabled"])
+        self.exec_note.config(text="Re-simulando... (pode levar alguns segundos por modo)")
+        base = self.view[self.view["run_id"] == run_id]
+        lab = base.set_index("seq")
+        robot_key = str(base["robot_key"].iloc[0])
+
+        def work():
+            from mt5_extracao.robots import catalog
+            from mt5_extracao.trade_analytics.execution import runner
+            robot = None
+            try:
+                robot = catalog.get_robot(catalog.load_catalog(config, db), robot_key)
+            except Exception:
+                robot = None
+            table = runner.compare(db, config, run_id, wanted, robot=robot)
+            frames = {}
+            entries = base[["seq", "entry_time"]].dropna().set_index("entry_time")["seq"]
+            for key, item in table.items():
+                if item["result"] is not None:
+                    rows = [{"run_id": run_id, "seq": entries.get(t.entry_time), "pnl": t.pnl,
+                             "exit_time": t.exit_time, "entry_time": t.entry_time} for t in item["result"].trades]
+                else:
+                    seq = item["sequence"]["trades"]
+                    rows = [{"run_id": run_id, "seq": entries.get(t.entry_time), "pnl": t.pnl,
+                             "exit_time": t.exit_time, "entry_time": t.entry_time}
+                            for t in seq[~seq["skipped"]].itertuples()]
+                frames[key] = pd.DataFrame(rows).dropna(subset=["seq"])
+            return robot, table, frames
+
+        def done(result, error):
+            self.compare_button.state(["!disabled"])
+            if error is not None:
+                self.exec_note.config(text=f"Não foi possível re-simular: {error}")
+                return
+            robot, table, frames = result
+            self._fill_modes(robot)
+            self.mode_results, self.mode_metrics = frames, table
+            self._mode_lab = lab
+            self._show_modes()
+        self.ui.run_bg(work, done)
+
+    def _show_modes(self):
+        tree = self.mode_tree
+        tree.delete(*tree.get_children())
+        lab = getattr(self, "_mode_lab", None)
+        buckets = lab["time_bucket"] if lab is not None and "time_bucket" in lab else None
+        curves, heat = {}, {}
+        for key, item in self.mode_metrics.items():
+            m, frame = item["metrics"], self.mode_results.get(key)
+            best = "—"
+            if frame is not None and not frame.empty and buckets is not None:
+                rows_key = frame["seq"].map(buckets)
+                if rows_key.nunique() > 16:            # muitas faixas: agrupa por hora para o heatmap caber
+                    rows_key = rows_key.str[:2] + "h"
+                heat[SHORT_MODES.get(key, key)] = frame.assign(b=rows_key).groupby("b")["pnl"].mean()
+                by = frame.assign(b=frame["seq"].map(buckets)).groupby("b")["pnl"]
+                counts = by.size()
+                ok = by.mean()[counts >= 5]
+                best = ok.idxmax() if not ok.empty else "—"
+                ordered = frame.sort_values("exit_time")
+                curves[item["name"].split(" (")[0]] = pd.Series(ordered["pnl"].cumsum().values,
+                                                                index=pd.to_datetime(ordered["exit_time"]))
+            note = []
+            if item.get("study_only"):
+                note.append("só estudo (a bateria reprova para conta real)")
+                trig = (item.get("sequence") or {}).get("triggers", {})
+                fired = ", ".join(f"{k}: {v}" for k, v in trig.items() if v)
+                if fired:
+                    note.append("travas: " + fired)
+            if item.get("adds"):
+                note.append(f"{item['adds']} entradas adicionais; exposição máx. {fmt_num(item['max_volume'], 2)}")
+            tree.insert("", tk.END, values=(item["name"], fmt_int(m["n"]), fmt_num(m["win_rate"] * 100, 1, "%"),
+                                            fmt_num(m["profit_factor"], 2), fmt_num(m["payoff"], 2),
+                                            charts.money(m["expectancy"]), fmt_num(m["max_drawdown_pct"] * 100, 1, "%"),
+                                            best, "; ".join(note)),
+                        tags=("study",) if item.get("study_only") else ())
+        chart = self._chart("Execução", "e_curves", 4, 0, height=2.8)
+        chart.clear()
+        charts.overlay(chart, chart.figure.add_subplot(111), curves, "Mesmas entradas, modos diferentes: resultado acumulado")
+        chart.draw()
+        chart = self._chart("Execução", "e_heat", 4, 1, height=2.8)
+        chart.clear()
+        if heat:
+            value = pd.DataFrame(heat).sort_index()
+            n = value.notna().astype(int) * 0
+            charts.heatmap(chart, chart.figure.add_subplot(111), value, n, value.isna(),
+                           "Expectativa: faixa horária × modo")
+            chart.figure.tight_layout()
+        chart.draw()
+        base = self.mode_metrics.get("ponto_fixo", {}).get("metrics")
+        if base:
+            self.exec_note.config(text=f"Base: {fmt_int(base['n'])} operações. Re-simulação sobre barras: a ordem "
+                                       "dentro da barra é suposta (stop antes do alvo). Para a ordem exata, valide no "
+                                       "Strategy Tester com ticks reais.")
+
+    # --- Insights e simulador (T16.9 e T16.10) ---------------------------------------------
+
+    def _build_insights_tab(self):
+        tab = self.tab_frames["Insights"]
+        top = ttk.Frame(tab, style="Surface.TFrame")
+        top.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.find_button = ttk.Button(top, text="Procurar insights", style="Accent.TButton", command=self.find_insights)
+        self.find_button.pack(side=tk.LEFT)
+        Tooltip(self.find_button, "Procura dias, horários, notícias e faixas de volatilidade em que o robô vai pior, "
+                                  "só fora da reserva final; corrige pelo número de combinações testadas e só chama "
+                                  "de \"validado\" o que se confirma na reserva final.", self.theme)
+        self.insight_note = ttk.Label(top, text="", style="Muted.TLabel", wraplength=800, justify=tk.LEFT)
+        self.insight_note.pack(side=tk.LEFT, padx=(12, 0))
+        box, self.insight_tree = scrolled_tree(tab, ("Usar", "Estado", "Insight"), (50, 170, 900),
+                                               ("center", "w", "w"), height=4, selectmode="extended")
+        box.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(6, 6))
+        self.insight_tree.tag_configure("validated", foreground=self.theme.colors["good"])
+        self.insight_tree.bind("<Button-1>", self._insight_clicked, add="+")
+        self.use_insight = set()
+        manual = ttk.LabelFrame(tab, text="Regras manuais")
+        manual.grid(row=2, column=0, sticky="nsew", padx=(0, 6))
+        self.day_vars = {d: tk.BooleanVar(value=False) for d in range(5)}
+        row = ttk.Frame(manual)
+        row.pack(anchor="w")
+        ttk.Label(row, text="Não operar:").pack(side=tk.LEFT)
+        for d, var in self.day_vars.items():
+            ttk.Checkbutton(row, text=WEEKDAYS[d], variable=var).pack(side=tk.LEFT, padx=(4, 0))
+        row = ttk.Frame(manual)
+        row.pack(anchor="w", pady=(4, 0))
+        self.window_on = tk.BooleanVar(value=False)
+        ttk.Checkbutton(row, text="Operar só entre", variable=self.window_on).pack(side=tk.LEFT)
+        self.window_from, self.window_to = tk.StringVar(value="10:00"), tk.StringVar(value="12:00")
+        ttk.Entry(row, textvariable=self.window_from, width=6).pack(side=tk.LEFT, padx=4)
+        ttk.Label(row, text="e").pack(side=tk.LEFT)
+        ttk.Entry(row, textvariable=self.window_to, width=6).pack(side=tk.LEFT, padx=4)
+        self.no_news = tk.BooleanVar(value=False)
+        ttk.Checkbutton(manual, text="Não operar com notícia de impacto alto na janela", variable=self.no_news).pack(
+            anchor="w", pady=(4, 0))
+        self.no_high_vol = tk.BooleanVar(value=False)
+        ttk.Checkbutton(manual, text="Não operar com volatilidade alta", variable=self.no_high_vol).pack(anchor="w")
+        actions = ttk.Frame(manual)
+        actions.pack(anchor="w", pady=(8, 0))
+        self.simulate_button = ttk.Button(actions, text="Simular", style="Accent.TButton", command=self.simulate)
+        self.simulate_button.pack(side=tk.LEFT)
+        self.export_button = ttk.Button(actions, text="Exportar proposta", command=self.export_proposal)
+        self.export_button.pack(side=tk.LEFT, padx=(8, 0))
+        Tooltip(self.export_button, "Grava um arquivo com as regras e os números (procura, provas e reserva final). "
+                                    "É uma proposta: para virar preset, passa por mt5x validate, bateria e paridade.",
+                self.theme)
+        self.sim_text = ttk.Label(tab, text="", style="Surface.TLabel", wraplength=520, justify=tk.LEFT)
+        self.sim_text.grid(row=3, column=0, sticky="nw", pady=(6, 0))
+        tab.columnconfigure(0, weight=1)
+        tab.columnconfigure(1, weight=1)
+
+    def _insights_refresh(self):
+        pass
+
+    def find_insights(self):
+        view, config = self.view, self._config()
+        if view is None or view.empty:
+            return
+        self.find_button.state(["disabled"])
+        self.insight_note.config(text="Procurando... (cada combinação testada entra na conta)")
+        modes = dict(self.mode_results)
+
+        def work():
+            from mt5_extracao.trade_analytics import insights
+            found = insights.discover(view, config)
+            base = modes.pop("ponto_fixo", None)
+            if modes and base is not None:
+                found += insights.mode_insights(view[view["run_id"].isin(base["run_id"])], modes, config)
+            return found
+
+        def done(found, error):
+            self.find_button.state(["!disabled"])
+            if error is not None:
+                self.insight_note.config(text=f"Erro na procura: {error}")
+                return
+            from mt5_extracao.trade_analytics import insights
+            self.found = found
+            self.use_insight = set()
+            tree = self.insight_tree
+            tree.delete(*tree.get_children())
+            for k, i in enumerate(found):
+                tree.insert("", tk.END, iid=str(k), values=(self._mark(False) if i.rule else "", i.state, i.text),
+                            tags=("validated",) if i.state == insights.VALIDATED else ())
+            n_ok = sum(i.state == insights.VALIDATED for i in found)
+            tested = found[0].tested if found else 0
+            self.insight_note.config(text=f"{len(found)} candidato(s), {n_ok} validado(s) fora da amostra; "
+                                          f"{tested} combinação(ões) testadas. Exploratório = pista, não conclusão.")
+        self.ui.run_bg(work, done)
+
+    def _mark(self, on):
+        return self.theme.glyphs("☑" if on else "☐")
+
+    def _insight_clicked(self, event):
+        tree = self.insight_tree
+        if tree.identify_column(event.x) != "#1":
+            return
+        iid = tree.identify_row(event.y)
+        if not iid or not self.found[int(iid)].rule:
+            return
+        self.use_insight ^= {iid}
+        tree.set(iid, "Usar", self._mark(iid in self.use_insight))
+        return "break"
+
+    def selected_rules(self):
+        chosen = [self.found[int(k)].rule for k in sorted(self.use_insight, key=int)]
+        days = [d for d, v in self.day_vars.items() if v.get()]
+        if days:
+            chosen.append({"tipo": "excluir_dia", "dias": days})
+        if self.window_on.get():
+            chosen.append({"tipo": "janela_horaria", "inicio": self.window_from.get().strip(),
+                           "fim": self.window_to.get().strip()})
+        if self.no_news.get():
+            chosen.append({"tipo": "excluir_noticia", "impacto_min": 3})
+        if self.no_high_vol.get():
+            chosen.append({"tipo": "excluir_volatilidade", "faixas": ["alta"]})
+        return chosen
+
+    def simulate(self):
+        view, config, chosen = self.view, self._config(), self.selected_rules()
+        if view is None or view.empty:
+            return
+        if not chosen:
+            self.sim_text.config(text="Marque uma regra (insight ou manual) para simular.")
+            return
+        needs = {r["modo"] for r in chosen if r.get("tipo") == "trocar_modo"}
+        missing = needs - set(self.mode_results)
+        if missing:
+            self.sim_text.config(text=f"Compare antes os modos {', '.join(sorted(missing))} na guia Execução.")
+            return
+        lab = view[view["run_id"].isin(next(iter(self.mode_results.values()))["run_id"])] if needs else view
+        self.simulate_button.state(["disabled"])
+        modes = dict(self.mode_results)
+
+        def work():
+            from mt5_extracao.trade_analytics import rules
+            return rules.evaluate(lab, chosen, config, modes), rules.apply(lab, chosen, modes), lab
+
+        def done(result, error):
+            self.simulate_button.state(["!disabled"])
+            if error is not None:
+                self.sim_text.config(text=f"Não foi possível simular: {error}")
+                return
+            self.evaluation, after, lab = result
+            self._chosen = chosen
+            ev = self.evaluation
+            line = lambda part: (f"expectativa {charts.money(ev[part]['before']['expectancy'])} → "  # noqa: E731
+                                 f"{charts.money(ev[part]['after']['expectancy'])}; fator de lucro "
+                                 f"{fmt_num(ev[part]['before']['profit_factor'], 2)} → "
+                                 f"{fmt_num(ev[part]['after']['profit_factor'], 2)}; queda máx. "
+                                 f"{fmt_num(ev[part]['before']['max_drawdown_pct'] * 100, 1, '%')} → "
+                                 f"{fmt_num(ev[part]['after']['max_drawdown_pct'] * 100, 1, '%')}")
+            text = ["Regras: " + "; ".join(ev["rules"]),
+                    f"Procura: {line('search')}",
+                    f"Provas do walk-forward: melhorou em {ev['folds_improved']} de {len(ev['folds'])}",
+                    f"Reserva final (não usada em nada antes): {line('holdout')}",
+                    f"{ev['removed']} operação(ões) removida(s)."]
+            if ev["weak"] or ev["note"]:
+                text.append(ev["note"])
+            if ev["holdout"]["after"]["expectancy"] <= ev["holdout"]["before"]["expectancy"]:
+                text.append("Atenção: na reserva final as regras não melhoraram o resultado.")
+            self.sim_text.config(text="\n".join(text))
+            chart = self._chart("Insights", "i_curves", 2, 1, rowspan=2, height=3.0)
+            chart.clear()
+            curves = {}
+            for name, frame in (("antes", lab), ("depois", after)):
+                ordered = frame.sort_values("exit_time")
+                curves[name] = pd.Series(ordered["pnl"].cumsum().values, index=pd.to_datetime(ordered["exit_time"]))
+            ax = chart.figure.add_subplot(111)
+            charts.overlay(chart, ax, curves, "Curva antes × depois das regras (a reserva final começa na linha)")
+            from mt5_extracao.trade_analytics import rules as rules_mod
+            plan = rules_mod.split(lab, config)
+            if plan.holdout.any():
+                start = pd.to_datetime(lab["entry_time"].fillna(lab["exit_time"]))[plan.holdout].min()
+                ax.axvline(start, color=self.theme.colors["muted"], linestyle="--", linewidth=1)
+            chart.draw()
+        self.ui.run_bg(work, done)
+
+    def export_proposal(self):
+        if self.evaluation is None:
+            self.sim_text.config(text="Simule as regras antes de exportar.")
+            return
+        from mt5_extracao.trade_analytics import export
+        scope = ("robot:" if self.lens.get() == LENS_ROBOT else "symbol:") + self.selected.get()
+        tested = self.found[0].tested if self.found else 0
+        try:
+            path = export.proposal(scope, self._chosen, self.evaluation, tested)
+        except OSError as e:
+            self.sim_text.config(text=f"Não foi possível gravar a proposta: {e}")
+            return
+        self.ui.log(f"Laboratório: proposta exportada em {path}")
+        self.sim_text.config(text=self.sim_text.cget("text") + f"\n\nProposta gravada em {path}.")
 
     # --- ações -------------------------------------------------------------------------
 

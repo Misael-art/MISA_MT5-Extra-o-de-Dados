@@ -92,7 +92,7 @@ def test_lenses_filters_and_tabs(panel):
         panel.pump(lambda: name in panel._drawn, 10)
         assert name in panel._drawn
     assert len(panel.compare_tree.get_children()) == 2                  # o robô em dois ativos
-    assert str(panel.tabs.tab(4, "state")) == "disabled"               # Execução: chega com a T16.6
+    assert str(panel.tabs.tab(4, "state")) == "normal"                 # Execução e Insights habilitadas (T16.11b)
     panel.lens.set("asset")
     panel._lens_changed()
     panel.pump(lambda: panel.view is not None and panel.selected.get() == "WDO$N")
@@ -115,3 +115,33 @@ def test_import_button_brings_old_runs(panel):
     panel.pump(lambda: panel.view is not None)
     assert panel.selected.get() == "mql5:x"
     assert "sem horário de entrada" in panel.note.cget("text")
+
+
+def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
+    """T16.11b: comparar modos de um run real, procurar insights, simular uma regra e exportar a proposta."""
+    from mt5_extracao import robots
+    from mt5_extracao.robots import backtest
+    from mt5_extracao.trade_analytics import export
+    from tests.market_data import random_walk
+    panel.db.save_ohlcv_data("BBB", "15 minutos", random_walk(3000, seed=4, vol=0.6, freq="15min", spread=10))
+    robot = next(r for r in robots.load_catalog(None, panel.db) if r.key == "python:donchian")
+    backtest.run_python(panel.db, None, robot, "BBB", "M15")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel.tabs.select(4)
+    panel.pump(lambda: "Execução" in panel._drawn, 10)
+    assert panel.run_var.get() and "martingale" not in panel.mode_vars          # Python: sem martingale
+    panel.compare_modes()
+    panel.pump(lambda: bool(panel.mode_metrics), 60)
+    assert {"ponto_fixo", "trailing_atr"} <= set(panel.mode_metrics)
+    assert len(panel.mode_tree.get_children()) == len(panel.mode_metrics)
+    panel.tabs.select(5)
+    panel.find_insights()
+    panel.pump(lambda: "candidato" in panel.insight_note.cget("text"), 60)
+    panel.day_vars[4].set(True)
+    panel.simulate()
+    panel.pump(lambda: panel.evaluation is not None, 30)
+    assert "Reserva final" in panel.sim_text.cget("text") and "Não operar Sex" in panel.sim_text.cget("text")
+    monkeypatch.setattr(export, "_folder", lambda: tmp_path)
+    panel.export_proposal()
+    assert list(tmp_path.glob("robot_python_donchian_*.json"))

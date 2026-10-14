@@ -129,7 +129,7 @@ def heatmap(chart: Chart, ax, value: pd.DataFrame, n: pd.DataFrame, small: pd.Da
     ax.set_xticks(range(len(cols)))
     ax.set_xticklabels([plain(k) for k in cols], rotation=45 if len(cols) > 12 else 0, fontsize=7 if len(cols) > 12 else 8)
     ax.set_yticks(range(len(rows)))
-    ax.set_yticklabels([plain(r) for r in rows])
+    ax.set_yticklabels([plain(r) for r in rows], fontsize=6 if len(rows) > 16 else 8)
     ax.tick_params(axis="x", labeltop=True, labelbottom=False)
 
     def hover(event):
