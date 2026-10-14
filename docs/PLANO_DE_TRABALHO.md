@@ -93,7 +93,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.8 | Documentação do desenvolvedor: tutorial, referência do contrato e robô de exemplo | T10.3, T10.7 | ✅ concluída (todas as saídas do tutorial são de uma execução real no host) |
 | T10.9 | Pacote publicável: versão, extras, changelog e publicação | T10.8, **T10.W** | a fazer |
 | T10.10 | **Opcional.** Geração de MQL5 a partir de uma estratégia declarada em Python (`mt5x robots generate`) | T10.3, T10.6 | ✅ concluída: paridade real dentro do critério aprovado pelo dono (97,9% casadas, 96,5% dos pares a até 5%, diferença de 0,6% do giro bruto) |
-| T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | a fazer |
+| T10.11 | **Opcional.** Preparação para o MQL5 Market: conferência e pacote (`mt5x robots market`) | T10.4 | aguardando resolução do log isolado do Tester |
 | T10.12 | **Pendência registrada.** Custo real no backtester Python: fechar a diferença para o Strategy Tester com ticks reais | T10.10 | ✅ concluída: no cenário medido, 0,00% do giro contra os ticks reais (era 1,63%); exige calibrar o spread com ticks |
 | T11.0 | Plano da Fase 11 (testes amplos e operação discreta) | T10.8 | ✅ concluída |
 | T11.1 | Montar um timeframe maior a partir de uma base menor (`mt5x resample`) | T1.1 | ✅ concluída (igual ao MT5 em EURUSD; ativos da B3 não conferidos) |
@@ -1907,11 +1907,23 @@ robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o 
 
 - **Objetivo:** saber se um robô está pronto para ser enviado ao MQL5 Market e montar o que o vendedor precisa.
 - **Depende de:** T10.4.
+- **Status:** AGUARDANDO ESCLARECIMENTO (2026-10-14).
 - **Limite:** o envio **não** é automatizado. Ele é feito pela pessoa na área do vendedor do MQL5.com, que também
   roda a validação automática oficial. Esta tarefa não promete aprovação no Market.
-- **Antes de implementar:** leia as regras atuais do Market no MQL5.com e registre aqui a lista conferida, com a
-  data. A lista abaixo é o ponto de partida e **não foi conferida na fonte**; o único item observado no host é o
-  aviso 68 do MetaEditor ("version ... is incompatible with MQL5 Market, must be xxx.yyy").
+- **Regras conferidas em 2026-10-14:** [Rules of Using the Market Service](https://www.mql5.com/en/market/rules),
+  [The checks a trading robot must pass](https://www.mql5.com/en/articles/2555),
+  [How to publish a product](https://www.mql5.com/en/articles/385) e
+  [propriedades `#property` do MQL5](https://www.mql5.com/en/book/basis/preprocessor/preprocessor_properties).
+  O serviço exige cadastro de vendedor e envio manual; a regra não será automatizada. O produto não pode mudar de
+  funcionamento por tipo/número de conta ou servidor; textos, nomes de entradas e mensagens do produto devem estar
+  em inglês; não pode prometer lucro nem incluir links de terceiros na apresentação. A distribuição é um único
+  `.ex5`, com dependências incluídas como recursos. O Market executa testes automáticos no Strategy Tester em
+  condições, símbolos e timeframes diferentes; aprovação não garante lucro nem ausência de erros. Essas regras não
+  substituem a bateria do mt5x. O bloqueio de `#import` de DLL continua sendo uma política local desta tarefa.
+- **Versão:** a referência de `#property` descreve o formato Market `X.Y`; o MetaEditor instalado apresenta o aviso
+  Market 68 para `0.10` ("must be xxx.yyy"). Testei no Wine, em arquivo temporário: `0.10` compilou com aviso 68;
+  `1.000` compilou com 0 erros e 0 avisos. O pré-check seguirá o requisito mais estrito do compilador observado no
+  host (`XXX.YYY`) e ainda exigirá compilação sem avisos.
 - **Arquivos:** `mt5_extracao/robots/market.py` (novo), `cli.py`, `tests/test_robots_market.py` (novo).
 - **Passos:**
   1. `market.check(robot, compile_result, runs) -> List[Item]` (mesmo formato da bateria): `#property version` no
@@ -1924,6 +1936,11 @@ robô gerado serve para estudo: as entradas e o sinal do resultado coincidem, o 
 - **Critérios de aceite:** um robô com versão `0.10` ou com DLL é reprovado com o motivo; o pacote de um robô
   aprovado contém só o que foi pedido.
 - **Verificação:** `pytest -q`.
+- **Divergência registrada antes da implementação:** o aceite exige backtests sem erros no log, mas `_robot_runs`
+  guarda métricas e o caminho do relatório `.htm`, não o log isolado de cada execução. No host, `Tester/logs` usa
+  arquivos diários combinados e os nomes dos relatórios não aparecem neles; não há correlação segura entre um log e
+  cada item de `runs`. É preciso decidir se a T10.11 inclui capturar e registrar o log por execução ou se essa
+  conferência fica manual. O código da tarefa não foi iniciado.
 
 ### T10.12 — Custo real no backtester Python ✅
 
