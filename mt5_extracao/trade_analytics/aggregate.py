@@ -74,7 +74,7 @@ def crosstab(lab: pd.DataFrame, row: str, col: str, metric: str = "expectancy", 
         return {"value": empty, "n": empty, "small": empty}
     return {"value": table.pivot(index=row, columns=col, values=metric),
             "n": table.pivot(index=row, columns=col, values="n").fillna(0).astype(int),
-            "small": table.pivot(index=row, columns=col, values="small").fillna(True).astype(bool)}
+            "small": table.pivot(index=row, columns=col, values="small").astype("boolean").fillna(True).astype(bool)}
 
 
 def robot_view(lab: pd.DataFrame, config=None) -> pd.DataFrame:
