@@ -14,7 +14,7 @@ from typing import Iterable, List, Optional
 from . import battery, catalog, safety_lib
 
 TEMPLATES = Path(__file__).parent / "templates"
-DEFAULT_SAFETY_VERSION = "1.1.0"
+DEFAULT_SAFETY_VERSION = "1.2.0"
 _NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{2,39}$")
 # blocos do modelo que quem desenvolve (ou a geração de código) preenche
 SECTIONS = ("PARAMETROS", "GLOBAIS", "INIT", "SINAL")

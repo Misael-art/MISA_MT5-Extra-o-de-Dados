@@ -60,8 +60,9 @@ Na ordem de dependência técnica. Uma etapa não começa interface que dependa 
 
 ## Dependências críticas
 
-1. **O executor não cria ordem pendente** (`HDK_SafeExecutor.Open` é só a mercado). D-02 destrava a boleta, o
-   reteste, os níveis fixos e o Gradiente inteiro.
+1. ~~O executor não cria ordem pendente.~~ **Resolvida em 2026-10-13 (D-02):** o `HDK_SafeExecutor` cria, altera
+   e cancela ordens limite, stop e stop-limite, validadas no Strategy Tester. Boleta, reteste, níveis fixos e
+   Gradiente deixam de estar travados por isso; continuam dependendo do orçamento agregado (item 2).
 2. **Não há orçamento de risco agregado.** O guardião (`HDK_AccountGuardian`) só observa. F-04 e F-05 são
    pré-requisito de qualquer mecanismo que abra mais de uma ordem por decisão (grade, fracionamento, scale-in).
 3. **Conta netting nunca foi testada** e não há ativo da B3 no host. Tudo o que depende de posição por nível
@@ -111,7 +112,7 @@ Levantadas lendo o código em 2026-10-13. "Existe" quer dizer que o arquivo est�
 | Guarda de características | Indicadores calculados na hora (`strategies/indicators.py`, `study.py`) | Persistência versionada com data de disponibilidade |
 | Estratégias Python | Seis (`ema_atr`, `donchian`, `bb_rsi`, `orb`, `pullback`, `squeeze`) e estratégias declaradas (`declared.py`) | MACD, retorno à média dedicado, price action, candlestick, Renko, VWAP, aprendizado de máquina |
 | Motor MQL5 | `HDK_StrategyRobot.mqh`: sinal (`HDKSignal`) e saídas (`HDKExitRules`) no mesmo robô | Separação em contexto, sinal, execução, posição e risco; Composer |
-| Execução | Mercado, fechamento total e parcial, alteração de stop, break-even e trailing por ATR | Ordens pendentes, níveis, reteste, grade, fracionamento, TWAP/VWAP |
+| Execução | Mercado, ordens pendentes (desde a `mt5x-safety` 1.2.0), fechamento total e parcial, alteração de stop, break-even e trailing por ATR | Quem use as pendentes (boleta, níveis, reteste), grade, fracionamento, TWAP/VWAP |
 | Carteira | `HDK_PortfolioRegistry` e sentinela que só observam; `mt5x portfolio` | Orçamento, reserva, líder, bloqueio, reconciliação, netting |
 | Permissões | `ENUM_HDK_PERMISSION` e operações supervisionadas no executor | Nunca foram executadas; dependem do guardião |
 | Painel | v7 com quatro abas e três disposições | Recolhido, abas novas, boletas, módulos |

@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //| ExemploCruzamento.mq5                                                     |
 //| Criado com o mt5x (mt5x robots new). Toda ordem passa pela       |
-//| biblioteca de segurança mt5x-safety 1.1.0.                  |
+//| biblioteca de segurança mt5x-safety 1.2.0.                  |
 //|                                                                  |
 //| O que você escreve: a função Signal(), mais abaixo.              |
 //| O que já vem pronto: risco, stop obrigatório, limites de perda,  |
