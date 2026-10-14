@@ -142,3 +142,29 @@ batch_max_cpu_pct = 75
 batch_max_ram_pct = 85
 # Máximo de backtests ao mesmo tempo. 0 = número de núcleos do processador menos um. Robôs MQL5 rodam sempre um por vez.
 batch_max_workers = 0
+
+[RESOURCES]
+# Gestão de recursos (aba Recursos; mt5x resources). Nada roda sozinho enquanto auto_enabled = false.
+# Ligada, cada ação automática tem a sua chave, também desligada por padrão. Arquivar é reversível: a série vai para
+# um arquivo SQLite na pasta archive_dir e volta com "Restaurar" (ou mt5x resources restore).
+auto_enabled = false
+# Intervalo entre ciclos de monitoramento (minutos, mínimo 5).
+monitor_interval_minutes = 60
+# Avisos: base acima de alert_db_gb (GB; 0 = desligado) e disco livre abaixo de alert_disk_free_pct (%).
+alert_db_gb = 10
+alert_disk_free_pct = 10
+# Otimizar (VACUUM) sozinho quando o espaço livre dentro da base passar de vacuum_min_mb.
+auto_vacuum = false
+vacuum_min_mb = 200
+# Remover sozinho registros de controle de tabelas que não existem mais.
+auto_clean_orphans = false
+# Arquivar sozinho as séries que caírem nas regras listadas (sem_lucro, sem_estudo, obsoleta, vazia).
+# Favoritos, seleção, benchmarks e séries com backtest lucrativo nunca são arquivados.
+auto_archive = false
+auto_archive_rules = obsoleta,vazia
+# Idade (dias) da última barra para a série contar como obsoleta.
+obsolete_days = 180
+# Pasta do arquivo. Vazio = arquivo/ ao lado do arquivo da base.
+archive_dir = 
+# Quantos dias de histórico de medições guardar.
+keep_snapshots_days = 365

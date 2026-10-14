@@ -101,6 +101,20 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("batch_max_ram_pct", "85"),     # idem, para a memória
         ("batch_max_workers", "0"),      # máximo de backtests simultâneos (0 = núcleos do processador menos um)
     ])),
+    ("RESOURCES", OrderedDict([      # gestão de recursos (aba Recursos; mt5x resources). Automação só com opt-in
+        ("auto_enabled", "false"),           # true = monitora e age sozinho no intervalo abaixo
+        ("monitor_interval_minutes", "60"),
+        ("alert_db_gb", "10"),               # avisa quando a base passar disso (0 = desligado)
+        ("alert_disk_free_pct", "10"),       # avisa quando o disco livre cair abaixo disso (%)
+        ("auto_vacuum", "false"),            # otimiza sozinho quando o espaço recuperável passar de vacuum_min_mb
+        ("vacuum_min_mb", "200"),
+        ("auto_clean_orphans", "false"),     # remove sozinho registros de controle de tabelas que não existem mais
+        ("auto_archive", "false"),           # arquiva sozinho (reversível) as séries das regras abaixo
+        ("auto_archive_rules", "obsoleta,vazia"),  # sem_lucro, sem_estudo, obsoleta, vazia
+        ("obsolete_days", "180"),            # idade da última barra para a regra "obsoleta"
+        ("archive_dir", ""),                 # vazio = pasta arquivo/ ao lado da base
+        ("keep_snapshots_days", "365"),      # histórico de medições guardado
+    ])),
 ])
 
 DEFAULT_SYMBOLS = OrderedDict([

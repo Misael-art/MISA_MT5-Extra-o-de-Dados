@@ -1749,6 +1749,9 @@ def build_parser():
                    help="lê o retrato gravado pelo HDK_AccountGuardian, sem usar a ponte")
     p.set_defaults(func=cmd_portfolio)
 
+    from mt5_extracao.resources import commands as resources_commands
+    resources_commands.add_parser(sub)
+
     p = sub.add_parser("status", help="retrato da base, dos robôs e das validações, com as próximas ações sugeridas")
     p.set_defaults(func=cmd_status)
 
