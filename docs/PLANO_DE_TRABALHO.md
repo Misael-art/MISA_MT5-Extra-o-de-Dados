@@ -133,6 +133,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
 | T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
+| T15.0 | Plano da gestão de recursos (aba Recursos) registrado em `docs/propostas/GESTAO_RECURSOS.md` | — | ✅ concluída |
+| T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ concluída no Linux (aba vista em tela virtual, temas claro e escuro); Windows não visto |
+| T15.7 | Próximas frentes da gestão de recursos (logs, exportações, cópia de segurança, Parquet, retenção no PostgreSQL) | T15.6 | proposta |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -3300,6 +3303,12 @@ rodada) estão em [propostas/REFERENCIAS.md](propostas/REFERENCIAS.md).
 
 Dez épicos e 131 tarefas registrados nos repositórios mt5x e HADOUKEN, e a regra de evolução da `mt5x-safety` no
 repositório dela. Só documentação: nenhum código, preset, configuração ou banco foi alterado.
+
+## Fase 15 — Gestão de recursos (espaço, higienização e automação)
+
+**Frente paralela ao roadmap, pedida pelo dono do projeto em 2026-10-14.** A base pode ficar muito grande: a aba "Recursos" mede a base, as tabelas e o disco; aponta séries sem resultado positivo, não usadas em estudos, obsoletas ou vazias (favoritos, seleção, benchmarks e séries com backtest lucrativo ficam protegidos); arquiva de forma reversível (cópia conferida antes de retirar da base) e restaura; otimiza; e tem automação programada **só com opt-in** (`[RESOURCES] auto_enabled`). O mesmo pelo terminal em `mt5x resources`. Plano, princípios, regras e chaves: [propostas/GESTAO_RECURSOS.md](propostas/GESTAO_RECURSOS.md).
+
+Sobre a regra "nunca apague tabelas de usuários": ela vale para mudanças de schema. Aqui a retirada é ação explícita do usuário (ou da automação que ele ligou), sempre precedida do arquivo, e reversível.
 
 ---
 
