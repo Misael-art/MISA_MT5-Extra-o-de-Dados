@@ -133,6 +133,9 @@ max_real_risk_pct = 1.0
 # mt5x portfolio: estado ALERTA quando o risco de TODA a conta até o stop (posições e ordens pendentes, de todos os
 # robôs e manuais) passar deste percentual do saldo. 0 = não compara. Só avisa: nada é bloqueado.
 max_account_risk_pct = 0
+# Grupos fixos de exposição: separe grupos com ; e padrões de símbolos com , (ex.: WIN*,IND*;EURUSD,GBPUSD).
+# Ativos sem grupo fixo são agrupados pelas moedas-base e de lucro informadas pelo MT5.
+account_exposure_groups =
 # Pasta de um clone de https://github.com/Misael-art/mt5x-safety (biblioteca de segurança MQL5).
 # O mt5x instala dela a versão que cada robô declara em "safety_lib" no robot.json. Vazio = não usa.
 safety_lib_dir = 
