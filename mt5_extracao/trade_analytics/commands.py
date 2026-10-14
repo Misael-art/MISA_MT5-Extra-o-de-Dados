@@ -21,6 +21,29 @@ def add_parser(sub) -> None:
     q.add_argument("--days-forward", type=int, help="padrão: [TRADE_ANALYTICS] calendar_days_forward")
     q.add_argument("--countries", help="ex.: BR,US (padrão: [TRADE_ANALYTICS] calendar_countries; vazio = todos)")
     q.add_argument("--close-terminal", action="store_true", help="fecha o MT5 antes, se estiver aberto")
+    for name, helptext in (("report", "números do robô (todos os ativos) ou do ativo (todos os robôs), por dimensão"),
+                           ("insights", "procura insights (validados só se confirmados na reserva final)"),
+                           ("simulate", "simula regras de filtro: procura, provas do walk-forward e reserva final")):
+        q = ts.add_parser(name, help=helptext)
+        lens = q.add_mutually_exclusive_group(required=True)
+        lens.add_argument("--robot", help="lente por robô, ex.: python:donchian")
+        lens.add_argument("--symbol", help="lente por ativo, ex.: WIN$N")
+        if name == "report":
+            q.add_argument("--by", default="day_of_week,time_bucket,event_impact,volatility_bucket",
+                           help="dimensões separadas por vírgula")
+        if name == "insights":
+            q.add_argument("--save", action="store_true", help="grava em _trade_insights")
+        if name == "simulate":
+            q.add_argument("--exclude-days", default="", help="dias a excluir, 0 = segunda ... 4 = sexta (ex.: 4)")
+            q.add_argument("--window", help="operar só entre HH:MM-HH:MM")
+            q.add_argument("--no-news", action="store_true", help="excluir notícia de impacto alto")
+            q.add_argument("--no-high-vol", action="store_true", help="excluir volatilidade alta")
+            q.add_argument("--rules", help="regras em JSON (lista), como as do arquivo exportado")
+            q.add_argument("--export", action="store_true", help="grava a proposta em exports/propostas/")
+    q = ts.add_parser("compare", help="o mesmo run re-simulado em vários modos de execução")
+    q.add_argument("--run", required=True, help="run_id (veja mt5x trades runs)")
+    q.add_argument("--modes", default="", help="modos separados por vírgula (padrão: os de saída)")
+    q.add_argument("--preset", help="preset do robô (para as travas do martingale)")
     p.set_defaults(func=run)
 
 
@@ -45,6 +68,10 @@ def run(args: argparse.Namespace, ctx) -> int:
         return cli.EXIT_OK
     if args.trades_command == "calendar":
         return _calendar(args, ctx)
+    if args.trades_command in ("report", "insights", "simulate"):
+        return _analysis(args, ctx)
+    if args.trades_command == "compare":
+        return _compare(args, ctx)
     raise ValueError(f"subcomando desconhecido: {args.trades_command}")
 
 
@@ -93,3 +120,103 @@ def _calendar(args, ctx) -> int:
         data(request=str(request))
         return cli.EXIT_OK
     raise ValueError(f"subcomando desconhecido: {sub}")
+
+
+def _lab(args, ctx):
+    from mt5_extracao.trade_analytics import aggregate
+    filters = {"robot_key": args.robot} if args.robot else {"symbol": args.symbol}
+    lab = aggregate.frame(ctx.db, ctx.config, **filters)
+    if lab.empty:
+        raise ValueError("Nenhuma operação no livro para essa seleção (veja mt5x trades runs; importe com mt5x trades "
+                         "import).")
+    return lab, ("robot:" + args.robot) if args.robot else ("symbol:" + args.symbol)
+
+
+def _analysis(args, ctx) -> int:
+    import json
+    from mt5_extracao import cli
+    from mt5_extracao.trade_analytics import aggregate, export, insights, rules
+    out, data = cli._print, cli._data
+    lab, scope = _lab(args, ctx)
+    if args.trades_command == "report":
+        total = aggregate.summarize(lab, aggregate._initial_equity(ctx.config), aggregate.min_trades(ctx.config))
+        out(f"{scope}: {total['n']} operações, acerto {total['win_rate'] * 100:.1f}%, fator de lucro "
+            f"{total['profit_factor']:.2f}, expectativa {total['expectancy']:.2f} (90%: {total['ci_low']} a "
+            f"{total['ci_high']})")
+        tables = {}
+        for dim in [d.strip() for d in args.by.split(",") if d.strip()]:
+            if dim not in lab:
+                raise ValueError(f"dimensão desconhecida: {dim}")
+            table = aggregate.by_dimension(lab, [dim], ctx.config)
+            tables[dim] = table.to_dict("records")
+            out(f"\n{dim}:")
+            for r in table.itertuples():
+                out(f"  {getattr(r, dim)}\t{r.n} op.\tacerto {r.win_rate * 100:.0f}%\texpectativa {r.expectancy:.2f}"
+                    + ("\t(amostra pequena)" if r.small else ""))
+        lens = aggregate.robot_view(lab, ctx.config) if args.robot else aggregate.asset_view(lab, ctx.config)
+        data(scope=scope, total=total, by=tables, lens=lens.to_dict("records"))
+        return cli.EXIT_OK
+    if args.trades_command == "insights":
+        found = insights.discover(lab, ctx.config)
+        for i in found:
+            out(f"[{i.state}] {i.text}")
+        if not found:
+            out("Nenhum grupo com operações suficientes para testar.")
+        if args.save:
+            insights.save(ctx.db, scope, found)
+        data(scope=scope, insights=[vars(i) for i in found])
+        return cli.EXIT_OK
+    chosen = json.loads(args.rules) if args.rules else []
+    days = [int(d) for d in args.exclude_days.split(",") if d.strip()]
+    if days:
+        chosen.append({"tipo": "excluir_dia", "dias": days})
+    if args.window:
+        start, end = args.window.split("-")
+        chosen.append({"tipo": "janela_horaria", "inicio": start.strip(), "fim": end.strip()})
+    if args.no_news:
+        chosen.append({"tipo": "excluir_noticia", "impacto_min": 3})
+    if args.no_high_vol:
+        chosen.append({"tipo": "excluir_volatilidade", "faixas": ["alta"]})
+    if not chosen:
+        raise ValueError("informe ao menos uma regra (--exclude-days, --window, --no-news, --no-high-vol ou --rules)")
+    ev = rules.evaluate(lab, chosen, ctx.config)
+    for part, label in (("search", "Procura"), ("holdout", "Reserva final")):
+        b, a = ev[part]["before"], ev[part]["after"]
+        out(f"{label}: expectativa {b['expectancy']:.2f} -> {a['expectancy']:.2f}; fator de lucro "
+            f"{b['profit_factor']:.2f} -> {a['profit_factor']:.2f}; queda {b['max_drawdown_pct'] * 100:.1f}% -> "
+            f"{a['max_drawdown_pct'] * 100:.1f}%")
+    out(f"Provas do walk-forward: melhorou em {ev['folds_improved']} de {len(ev['folds'])}. {ev['note']}")
+    path = export.proposal(scope, chosen, ev) if args.export else None
+    if path:
+        out(f"Proposta gravada em {path} (proposta: para virar preset passa por validate, bateria e paridade).")
+    data(scope=scope, rules=chosen, evaluation=ev, proposal=str(path) if path else None)
+    return cli.EXIT_OK
+
+
+def _compare(args, ctx) -> int:
+    from mt5_extracao import cli
+    from mt5_extracao.robots import catalog
+    from mt5_extracao.trade_analytics import ledger
+    from mt5_extracao.trade_analytics.execution import runner
+    out, data = cli._print, cli._data
+    rows = ledger.load(ctx.db, run_id=args.run)
+    if rows.empty:
+        raise ValueError(f"run {args.run} não está no livro (veja mt5x trades runs)")
+    robot = None
+    try:
+        robot = catalog.get_robot(catalog.load_catalog(ctx.config, ctx.db), str(rows["robot_key"].iloc[0]))
+    except Exception:
+        robot = None
+    wanted = [m.strip() for m in args.modes.split(",") if m.strip()] or None
+    table = runner.compare(ctx.db, ctx.config, args.run, wanted, robot=robot, preset=args.preset)
+    result = {}
+    for key, item in table.items():
+        m = item["metrics"]
+        out(f"{item['name']}: {m['n']} op., acerto {m['win_rate'] * 100:.1f}%, fator de lucro {m['profit_factor']:.2f}, "
+            f"expectativa {m['expectancy']:.2f}, queda {m['max_drawdown_pct'] * 100:.1f}%"
+            + ("  [só estudo]" if item.get("study_only") else ""))
+        result[key] = {"name": item["name"], "metrics": m, "study_only": item.get("study_only", False),
+                       "triggers": (item.get("sequence") or {}).get("triggers"),
+                       "safety_notes": item.get("safety_notes")}
+    data(run=args.run, modes=result)
+    return cli.EXIT_OK
