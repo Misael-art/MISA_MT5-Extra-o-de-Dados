@@ -140,7 +140,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T15.9 | Gestão de recursos: limites que bloqueiam a gravação na extração, retenção por ativo e `drop_chunks` do TimescaleDB | T15.8 | ✅ concluída no Linux; TimescaleDB real e Windows não vistos |
 | T15.10 | Próximas frentes da gestão de recursos (guarda em ticks e book, indicadores no painel vivo) | T15.9 | proposta |
 | T16.0 | Plano da aba Laboratório (analytics de operações: contexto, re-simulação de execução, insights, lente por robô e por ativo) em `docs/propostas/ANALYTICS_OPERACOES.md` | — | ✅ plano registrado, com as decisões do dono (seção 8) |
-| T16.1–T16.12 | Laboratório: livro de operações, importadores, calendário econômico de várias fontes (CSV e MT5), enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só para robô que o suporta, com as travas dele), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
+| T16.1 | Laboratório: livro de operações `_trade_ledger` (gravar, ler pelas lentes robô e ativo) | T16.0 | ✅ concluída |
+| T16.2–T16.12 | Laboratório: livro de operações, importadores, calendário econômico de várias fontes (CSV e MT5), enriquecimento, agregações, cache, re-simulação (ponto fixo, saídas, gradientes, martingale só para robô que o suporta, com as travas dele), regras, insights, aba e `mt5x trades` | T16.0 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

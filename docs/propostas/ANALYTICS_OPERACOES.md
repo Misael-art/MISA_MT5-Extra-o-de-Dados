@@ -431,3 +431,19 @@ microestrutura, sem re-simulação. A re-simulação e o simulador vêm depois, 
   (conservadora). Quando a ordem exata importar, a validação final é pelo Strategy Tester (I-08).
 - Insight validado fora da amostra é **evidência**, não recomendação de operação.
 - Robôs MQL5 só terão análise completa depois da T16.2b no HADOUKEN.
+
+---
+
+## 10. Andamento (atualize a cada tarefa: é o ponto de passagem entre agentes)
+
+**Como continuar daqui:** cada tarefa é uma branch empilhada sobre a anterior (`tarefa/T16.<n>-...`), com PR para a
+branch de baixo. Antes de começar, leia a última linha desta tabela, faça `git fetch` e crie a sua branch a partir da
+branch da última tarefa concluída (ou do `master`, se ela já foi mesclada). Só mexa em arquivos da Fase 16
+(`mt5_extracao/trade_analytics/`, `mt5_extracao/ui/laboratory.py`, `mt5_extracao/ui/charts.py`, `tests/test_trade_*`)
+e, nos arquivos compartilhados, só nos pontos citados na tarefa. Testes do PostgreSQL do Laboratório vão em
+`tests/test_*_pg.py` (o job de PostgreSQL do CI já roda esse padrão).
+
+| Tarefa | Branch | PR | Estado | O que ficou pronto e o que falta |
+|---|---|---|---|---|
+| T16.0 | `tarefa/T16.0-plano-analytics` | #56 | ✅ | Plano e decisões do dono |
+| T16.1 | `tarefa/T16.1-livro-operacoes` | (ver PR da branch) | ✅ | `trade_analytics/ledger.py`: `_trade_ledger` com `save_trades`, `load` (lentes robô e ativo, período), `runs`, `delete_run`; colunas acrescentadas em base antiga; `completo`/`parcial`. Testes: `tests/test_trade_ledger.py` e `tests/test_trade_analytics_pg.py`. Falta: nada; quem grava no livro é a T16.2 |
