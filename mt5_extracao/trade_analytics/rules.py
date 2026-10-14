@@ -4,6 +4,7 @@ Regras de filtro e simulador (T16.9), com a separação dos dados da seção 6.1
 Regras são dados (para exportar, gravar e mostrar):
     {"tipo": "excluir_dia", "dias": [4]}                          # 0 = segunda ... 4 = sexta
     {"tipo": "janela_horaria", "inicio": "10:00", "fim": "12:00"} # só opera dentro da janela (entrada)
+    {"tipo": "excluir_janela", "inicio": "12:00", "fim": "13:30"} # não opera dentro da janela
     {"tipo": "excluir_noticia", "impacto_min": 3}                 # tira operações com notícia desse impacto ou maior
     {"tipo": "excluir_volatilidade", "faixas": ["alta"]}
     {"tipo": "trocar_modo", "modo": "trailing_atr", "quando": {"volatility_bucket": ["alta"]}}
@@ -25,7 +26,8 @@ import pandas as pd
 
 from mt5_extracao.trade_analytics import aggregate, stats
 
-TYPES = ("excluir_dia", "janela_horaria", "excluir_noticia", "excluir_volatilidade", "trocar_modo")
+TYPES = ("excluir_dia", "janela_horaria", "excluir_janela", "excluir_noticia", "excluir_volatilidade",
+         "trocar_modo")
 
 
 def describe(rule: dict) -> str:
@@ -35,6 +37,8 @@ def describe(rule: dict) -> str:
         return "Não operar " + ", ".join(aggregate.day_label(d) for d in rule.get("dias", []))
     if kind == "janela_horaria":
         return f"Operar só entre {rule.get('inicio')} e {rule.get('fim')}"
+    if kind == "excluir_janela":
+        return f"Não operar entre {rule.get('inicio')} e {rule.get('fim')}"
     if kind == "excluir_noticia":
         return f"Não operar com notícia de impacto {rule.get('impacto_min', 3)} ou maior na janela"
     if kind == "excluir_volatilidade":
@@ -55,11 +59,12 @@ def _mask(lab: pd.DataFrame, rule: dict) -> pd.Series:
     kind = rule.get("tipo")
     if kind == "excluir_dia":
         return lab["day_of_week"].isin(rule.get("dias", []))
-    if kind == "janela_horaria":
+    if kind in ("janela_horaria", "excluir_janela"):
         t = pd.to_datetime(lab["entry_time"].fillna(lab["exit_time"]))
         minutes = t.dt.hour * 60 + t.dt.minute
         start, end = _minutes(rule["inicio"]), _minutes(rule["fim"])
-        return ~((minutes >= start) & (minutes < end))
+        inside = (minutes >= start) & (minutes < end)
+        return inside if kind == "excluir_janela" else ~inside
     if kind == "excluir_noticia":
         return pd.to_numeric(lab["event_impact"], errors="coerce").fillna(0) >= rule.get("impacto_min", 3)
     if kind == "excluir_volatilidade":
