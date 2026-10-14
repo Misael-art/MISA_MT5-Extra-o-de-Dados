@@ -12,7 +12,7 @@ from typing import Dict, Iterable, List, Optional
 import numpy as np
 import pandas as pd
 
-from mt5_extracao.trade_analytics import enrich, ledger, stats
+from mt5_extracao.trade_analytics import ledger, stats
 
 DAY_NAMES = ("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom")
 
@@ -36,7 +36,10 @@ def frame(db, config, features: Optional[pd.DataFrame] = None, **filters) -> pd.
     trades = ledger.load(db, **filters)
     if trades.empty:
         return trades
-    feats = enrich.enrich(db, config, trades) if features is None else features
+    if features is None:
+        from mt5_extracao.trade_analytics import cache       # T16.5: calcula só os runs que mudaram
+        features = cache.features(db, config, trades)
+    feats = features
     merged = trades.merge(feats, on=["run_id", "seq"], how="left", suffixes=("", "_f"))
     merged["day"] = pd.to_datetime(merged["entry_time"].fillna(merged["exit_time"])).dt.normalize()
     return merged
