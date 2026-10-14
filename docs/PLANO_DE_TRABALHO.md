@@ -117,7 +117,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
 | T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | a fazer |
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | a fazer |
-| T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor entregues e validadas no Strategy Tester (D-02); boleta e grade não começaram |
+| T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor (D-02) e boleta de ordem pendente no painel (G-05, limite e stop, exercitada em conta demo) entregues; a grade não começou |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
 | T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | a fazer (dividida em T12.6a, T12.6b e T12.6c na revisão de 2026-10-13) |
 | T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
@@ -2978,8 +2978,50 @@ exemplo e a documentação do SDK). Quem já tem a 1.1.0 instalada na pasta do M
 
 **Não conferido:** ordem pendente em conta de demonstração (não há quem as coloque: a boleta não existe); conta
 netting; ativo da B3; Windows.
-**Não faz parte desta entrega:** boleta no painel (G-05), cancelamento automático por sinal ou fim de pregão
-(E-10), reserva de risco na conta inteira (F-05), recuperação após reinício (E-13), grade (D-06).
+**Não faz parte desta entrega:** boleta no painel (G-05, veio no passo seguinte), cancelamento automático por sinal
+ou fim de pregão (E-10), reserva de risco na conta inteira (F-05), recuperação após reinício (E-13), grade (D-06).
+
+### T12.4, segundo passo — Boleta de ordem pendente no painel (G-05) ✅
+
+Pedido do dono do projeto (2026-10-13): seguir com a boleta, como sugerido depois das ordens pendentes. A entrega é
+do repositório HADOUKEN (PR #11 de lá) e da `mt5x-safety` (1.3.0); aqui ficam o que foi feito, a evidência e o que
+mudou no mt5x.
+
+**O que o painel ganhou:** a aba "Boleta", a quinta. Tipo (limite ou stop), direção, preço escolhido pela distância
+do mercado em passos de dez ticks, prévia de lote, risco, stop e alvo, botão de envio (que mostra o motivo quando
+não pode enviar) e a lista das pendentes do robô, com `×` em cada uma e "Cancelar todas". Validade pelo parâmetro
+novo `InpPendingMaxMin` (240 minutos). Pausa, bloqueio, fim do horário do robô e FECHAR TUDO cancelam as pendentes.
+Toda ordem sai pelo `HDK_SafeExecutor`, depois do `HDK_RiskGuard`; o Python continua sem enviar ordem nenhuma.
+
+**Evidência (host Linux, MT5 build 6259 no Wine, conta MetaQuotes-Demo, hedging, EURUSD H1, 2026-10-13).** O teste
+foi feito no terminal em tela virtual, clicando no painel e lendo a conta com `mt5x portfolio`; as ordens ficaram a
+100 pips do mercado e foram todas canceladas.
+
+- Compila sem erros nem avisos; a checagem estática do HADOUKEN passa.
+- Com o robô pausado o envio é recusado, com o motivo na tela.
+- Compra limite e venda stop colocadas: 1,26 lote, stop e alvo na ordem, risco de US$ 149,94 cada (0,15% do saldo),
+  validade de 239 minutos gravada na ordem. `mt5x portfolio` mostrou as duas, com o risco e o dono certos.
+- Terceira ordem na mesma direção recusada: "preço médio bloqueado".
+- `×` cancelou só a ordem escolhida; "Cancelar todas", PAUSAR e FECHAR TUDO cancelaram o que havia.
+- Depois da versão final do código: compilado pelo `mt5x robots compile`, teste no Strategy Tester (2026-09-21 a
+  2026-09-30, ticks reais) sem entradas, leitura do código aprovada ("nenhum envio de ordem fora de Safety/"): a
+  visão continua abrindo o painel liberado em conta demo.
+
+**O que mudou no mt5x:** o SDK passou a declarar a `mt5x-safety` 1.3.0 (`scaffold.DEFAULT_SAFETY_VERSION`, o exemplo
+e a documentação do SDK). Na biblioteca a aba só aparece para o robô que liga `pend_enabled`; o robô criado pelo
+`mt5x robots new` não usa o painel, então nada muda nele além do número da versão.
+
+**Achado no caminho:** a tela virtual do modo oculto (1280x800) é baixa para o painel com o MT5 em 192 DPI; para
+ver o painel inteiro o teste usou uma tela virtual de 1920x1080 criada à mão.
+
+**Limitações desta versão:** não se digita o preço (o painel não tem campo de edição); sem stop-limite na boleta;
+tipo, direção e distância voltam ao padrão quando o robô reinicia; o risco da pendente conta só no limite do
+próprio robô (sem guardião, T12.3); com pendentes nas duas direções a faixa do topo diz "PAUSADO: preço médio
+bloqueado", o que é verdade mas confunde.
+
+**Não conferido:** uma pendente executando e virando posição pela boleta (só no teste do Strategy Tester do
+executor); cancelamento por fim do horário e por bloqueio de risco; disposições compacta e ampla da aba; tema
+claro; a tela real do dono do projeto; conta netting; ativo da B3; Windows.
 
 ### T12.6a — Painel v7: conferência pendente e vocabulário
 

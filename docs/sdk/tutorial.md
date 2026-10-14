@@ -112,7 +112,7 @@ MeuRobo: contrato 1 válido.
 
 ```text
 $ mt5x robots compile meurobo
-  biblioteca de segurança 1.2.0 instalada na pasta do MT5
+  biblioteca de segurança 1.3.0 instalada na pasta do MT5
   copiado  <pasta do MT5>/MQL5/Experts/MeuRobo/MeuRobo.mq5
   copiado  <pasta do MT5>/MQL5/Presets/MeuRobo_Conservador.set
 MeuRobo: Compilado sem erros (0 aviso(s)): MeuRobo.ex5
@@ -155,7 +155,7 @@ Estática: aprovada
   ✓ Stop obrigatório: o stop é sempre definido
   ⚠ Sem martingale, grid ou preço médio: não encontrei parâmetro de martingale, grid ou preço médio
   ✓ Toda ordem passa pela camada de segurança: o robô inclui a biblioteca de segurança e não envia ordem por fora
-  ✓ Biblioteca de segurança na versão declarada: mt5x-safety 1.2.0
+  ✓ Biblioteca de segurança na versão declarada: mt5x-safety 1.3.0
   ✓ Sem DLL externa: nenhum #import de DLL
   ✓ Magic number exclusivo: magic 107964
   ✓ Risco e limites dentro dos tetos: 0,50% por operação (teto 1,00%); limite diário 2,00%; drawdown máximo 10,00% (teto 20,00%)
@@ -246,7 +246,7 @@ Compile e prove a paridade com a declaração: mt5x robots compile exemplocruzam
 
 ```text
 $ mt5x robots compile exemplocruzamento
-  biblioteca de segurança 1.2.0 instalada na pasta do MT5
+  biblioteca de segurança 1.3.0 instalada na pasta do MT5
   copiado  <pasta do MT5>/MQL5/Experts/ExemploCruzamento/ExemploCruzamento.mq5
   copiado  <pasta do MT5>/MQL5/Presets/ExemploCruzamento_Conservador.set
 ExemploCruzamento: Compilado sem erros (0 aviso(s)): ExemploCruzamento.ex5

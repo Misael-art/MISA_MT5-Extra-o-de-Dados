@@ -112,10 +112,10 @@ Levantadas lendo o código em 2026-10-13. "Existe" quer dizer que o arquivo est�
 | Guarda de características | Indicadores calculados na hora (`strategies/indicators.py`, `study.py`) | Persistência versionada com data de disponibilidade |
 | Estratégias Python | Seis (`ema_atr`, `donchian`, `bb_rsi`, `orb`, `pullback`, `squeeze`) e estratégias declaradas (`declared.py`) | MACD, retorno à média dedicado, price action, candlestick, Renko, VWAP, aprendizado de máquina |
 | Motor MQL5 | `HDK_StrategyRobot.mqh`: sinal (`HDKSignal`) e saídas (`HDKExitRules`) no mesmo robô | Separação em contexto, sinal, execução, posição e risco; Composer |
-| Execução | Mercado, ordens pendentes (desde a `mt5x-safety` 1.2.0), fechamento total e parcial, alteração de stop, break-even e trailing por ATR | Quem use as pendentes (boleta, níveis, reteste), grade, fracionamento, TWAP/VWAP |
+| Execução | Mercado, ordens pendentes (desde a `mt5x-safety` 1.2.0), fechamento total e parcial, alteração de stop, break-even e trailing por ATR | Quem use as pendentes além da boleta do painel (níveis, reteste), grade, fracionamento, TWAP/VWAP |
 | Carteira | `HDK_PortfolioRegistry` e sentinela que só observam; `mt5x portfolio` | Orçamento, reserva, líder, bloqueio, reconciliação, netting |
 | Permissões | `ENUM_HDK_PERMISSION` e operações supervisionadas no executor | Nunca foram executadas; dependem do guardião |
-| Painel | v7 com quatro abas e três disposições | Recolhido, abas novas, boletas, módulos |
+| Painel | v7 com cinco abas (a quinta é a boleta de ordem pendente limite e stop, G-05) e três disposições | Recolhido, as outras abas novas e boletas, módulos |
 | Estatísticas | `HDK_TradeStats` por magic; matriz de resultados no mt5x | Livro por operação e ciclo, custos, comparação com backtest |
 | Validação | Walk-forward, robustez e Monte Carlo para estratégias; bateria; paridade | Múltiplos testes, sobreajuste, teste de execução separado do sinal, critério para painel e grade |
 | IA | CLI para agentes (`mt5x --json`), scripts antigos em `Tools/` do HADOUKEN | Agentes com permissão definida, diagnóstico, explicações com evidência |
