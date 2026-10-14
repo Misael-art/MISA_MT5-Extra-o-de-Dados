@@ -124,7 +124,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
-| T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | a fazer |
+| T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ⏳ implementação pronta; 20 testes focados passaram e EURUSD teve paridade; repetição da suíte completa ficou inconclusiva nos testes Tk/conector; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | a fazer |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | a fazer |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
@@ -3216,17 +3216,28 @@ real por corretora.
 - **Arquivos previstos:** `mt5_extracao/analytics/calendar.py` e `analytics/resampling.py` (novos), tabelas novas
   `market_calendar` e `bars_derived`, `cli.py`, testes novos. `resample.py` e as tabelas de barras atuais não mudam.
 - **Passos:**
-  1. Calendário por símbolo: sessões com abertura, fechamento e pausas, em UTC e no horário da corretora. Fonte a
-     decidir (decisão em aberto 1): deduzido das barras M1 já gravadas, lido do MT5 (`symbol_info`), ou arquivo
-     mantido à mão para feriados e horários especiais.
+  1. Calendário por símbolo: sessões observadas em M1 com abertura, fechamento e segmentos, em UTC e no horário da
+     corretora. Decisão do dono (2026-10-14): M1 como fonte histórica e `symbol_info` do MT5 como metadado estável;
+     não importar nem enriquecer com fontes externas nesta tarefa. O dia de sessão usa `00:00` do servidor por
+     padrão, com `--session-anchor HH:MM` para sessão noturna, e gap configurável para separar blocos.
   2. Agregador por sessão para qualquer N inteiro de minutos, com `bar_count`, `coverage_ratio` e `quality_status`
      (`COMPLETE`, `PARTIAL`, `NO_TRADES`, `MISSING`, `CORRECTED`) e a política `partial_last_bar`.
   3. `1D` como sessão e `1440min` como janela de 24 horas, separados.
   4. Volume real: desconhecido diferente de zero.
-  5. Atualização incremental: uma ingestão nova refaz só as barras afetadas.
+  5. Atualização incremental: uma ingestão nova cria revisão apenas para as barras cujo conteúdo mudou; as revisões
+     anteriores permanecem.
 - **Critérios de aceite:** testes 1, 2, 3, 4 (a parte das barras) e 5 da especificação (§14); para um ativo 24 horas
   (EURUSD), as barras derivadas dos timeframes do MT5 continuam iguais às do `resample` atual, que foi conferido
-  contra o terminal.
+  contra o terminal. Detalhe de funcionamento, limitações e evidência: [T13.1_CALENDARIO_OBSERVADO.md](analytics/T13.1_CALENDARIO_OBSERVADO.md).
+- **Verificação desta entrega:** 20 testes focados (11 da T13.1 + 9 legados do `resample`) passaram. Na base local
+  lida em modo somente leitura, 3.133 M5, 1.044 M15, 261 H1, 65 H4 e 11 sessões diárias EURUSD tiveram OHLCV igual
+  ao agregador legado. Duas repetições integrais ficaram inconclusivas: a primeira terminou aos 79% com 413
+  aprovados, 8 pulados, 85 falhas e 98 erros após `OSError: [Errno 28] No space left on device` no tmpfs; a segunda
+  chegou à bateria de UI/conector, emitiu marcadores `E` e encerrou com status 143 após cerca de 32 minutos, sem
+  resumo final. Os temporários próprios foram removidos; o tmpfs tinha 604 MB livres quando a segunda execução
+  terminou. Não há resultado global aprovado nem diagnóstico final das falhas de UI/conector. Nenhuma conexão com
+  conta MT5 foi feita. O `doctor` terminou com 16 OK, 2 avisos e 0 falhas; avisos: `pandas-ta` ausente e ponte Wine
+  desativada.
 - **Armadilha:** não trocar o `resample` atual por este. Os backtests gravados e a paridade usam as barras de hoje.
 
 ### T13.2 — Guarda de características com data de disponibilidade (A2)

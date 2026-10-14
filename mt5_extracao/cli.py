@@ -21,7 +21,9 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x report   [--symbols ...] --tf D1 [--validate] [--open] # relatório HTML
 
   Robôs e operação por agente (veja docs/agente.md):
-    mt5x resample --symbols X --base M1 --tf M5,M15,H1    # monta timeframes maiores de uma base menor
+    mt5x resample --symbols X --base M1 --tf M5,M15,H1    # mantém o resample pelo relógio já existente
+    mt5x resample --symbols X --base M1 --tf M3,1D,1440min --session-aware
+                                                        # barras analíticas por sessão observada
     mt5x panel [--open]                                # painel visual: ativos x timeframes x robôs
     mt5x panel --serve --open                          # painel vivo: atualiza sozinho e tem botões de ação
     mt5x robots [list|import|backtest|market] ...     # catálogo, importação, backtest e pré-check Market
@@ -256,16 +258,51 @@ def cmd_tables(args, ctx):
 
 
 def cmd_resample(args, ctx):
-    """Monta timeframes maiores a partir de uma base menor já extraída (não fala com o MT5)."""
+    """Monta barras legadas offline ou, em --session-aware, barras analíticas com metadata do MT5."""
     from mt5_extracao import resample
     symbols, base = _parse_symbols(args.symbols), _parse_tf(args.base)
+    start = _parse_date(args.date_from) if args.date_from else None
+    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
+
+    if getattr(args, "session_aware", False):
+        from mt5_extracao.analytics import resampling
+        if base is not timeframes.Timeframe.M1:
+            raise ValueError("--session-aware exige --base M1; as barras por sessão usam M1 como origem.")
+        targets = [value.strip() for value in args.tf.split(",") if value.strip()]
+        if not targets:
+            raise ValueError("informe em --tf os timeframes a montar, ex.: --tf M3,M5,1D,1440min")
+        for target in targets:
+            resampling.parse_target(target)
+        connector = ctx.connector()
+        done, failed = [], []
+        for symbol in symbols:
+            try:
+                info = connector.get_symbol_info(symbol)
+                if info is None:
+                    raise RuntimeError(f"symbol_info do MT5 não disponível para {symbol}.")
+                rows = resampling.resample_symbol(
+                    ctx.db, symbol, targets, symbol_info=info,
+                    session_gap_minutes=args.session_gap_minutes,
+                    session_anchor=args.session_anchor,
+                    partial_last_bar=args.partial_last_bar, start=start, end=end)
+            except (ValueError, RuntimeError) as e:
+                failed.append({"symbol": symbol, "error": str(e)})
+                _print(f"{symbol}: {e}")
+                continue
+            done += rows
+            for row in rows:
+                _print(f"{symbol} {row['timeframe']}: {row['bars']} barras observadas de {row['source_bars']} M1; "
+                       f"{row['inserted']} novas, {row['corrected']} corrigidas, {row['unchanged']} inalteradas")
+        _data(session_aware=True, resampled=done, failed=failed)
+        _print(f"\nConcluído: {len(done)} série(s) por sessão, {len(failed)} ativo(s) com falha. "
+               "O calendário é inferido das barras M1 observadas; nenhuma barra sem dados foi criada.")
+        return EXIT_OK if done and not failed else EXIT_FAIL
+
     targets = [_parse_tf(t) for t in args.tf.split(",") if t.strip()]
     if not targets:
         raise ValueError("informe em --tf os timeframes a montar, ex.: --tf M5,M15,H1")
     for target in targets:
         resample.check_pair(base, target)
-    start = _parse_date(args.date_from) if args.date_from else None
-    end = _parse_date(args.date_to, end_of_day=True) if args.date_to else None
     done, failed = [], []
     for symbol in symbols:
         try:
@@ -1693,12 +1730,20 @@ def build_parser():
     p.add_argument("--out", help="show: arquivo PNG da captura (padrão: logs/mt5_oculto.png)")
     p.set_defaults(func=cmd_mt5)
 
-    p = sub.add_parser("resample", help="monta timeframes maiores a partir de uma base menor (ex.: M5 e H1 de M1)")
+    p = sub.add_parser("resample", help="monta timeframes legados ou barras analíticas por sessão a partir de M1")
     p.add_argument("--symbols", required=True, help="símbolos separados por vírgula")
     p.add_argument("--base", required=True, help="timeframe já extraído, o menor (ex.: M1)")
     p.add_argument("--tf", required=True, help="timeframes a montar, separados por vírgula (ex.: M5,M15,H1)")
     p.add_argument("--from", dest="date_from", help="início AAAA-MM-DD (padrão: toda a base)")
     p.add_argument("--to", dest="date_to", help="fim AAAA-MM-DD")
+    p.add_argument("--session-aware", action="store_true",
+                   help="deriva barras analíticas respeitando sessões inferidas de M1 e registra symbol_info do MT5")
+    p.add_argument("--session-gap-minutes", type=int, default=60,
+                   help="--session-aware: gap M1 maior que este valor abre outra sessão inferida (padrão: 60)")
+    p.add_argument("--session-anchor", default="00:00",
+                   help="--session-aware: começo do dia de sessão em HH:MM do horário da corretora (padrão: 00:00)")
+    p.add_argument("--partial-last-bar", choices=["include", "drop"], default="include",
+                   help="--session-aware: inclui (padrão) ou descarta o candle final parcial de cada sessão")
     p.set_defaults(func=cmd_resample)
 
     p = sub.add_parser("tables", help="lista tabelas do banco e o último registro de cada uma")

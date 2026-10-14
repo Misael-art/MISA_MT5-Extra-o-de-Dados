@@ -72,7 +72,8 @@ Na ordem de dependência técnica. Uma etapa não começa interface que dependa 
    execução fracionada). I-13 e G-16 vêm antes de qualquer um deles operar.
 6. **O backtester Python é otimista em custo e não limita margem.** A evidência que libera operação vem do
    Strategy Tester com ticks reais (I-07, I-08).
-7. **Analytics depende de calendário de sessões**, que não existe (A-02).
+7. **A T13.1 fornece calendário histórico observado em M1** para as barras derivadas (A-02). A grade semanal futura
+   do terminal e feriados externos ainda não foram enriquecidos.
 
 ## Compatibilidade e segurança (valem para todas as tarefas)
 
@@ -127,7 +128,7 @@ Levantadas lendo o código em 2026-10-13. "Existe" quer dizer que o arquivo est�
 | 1 | Um painel de operação manual pode operar em demo só com a leitura do código aprovada, ou a bateria ganha critério próprio para painéis. **Respondida em 2026-10-13: em conta demo o painel manual opera sem bloqueio, salvo se a pessoa religar o bloqueio** (T12.L4 do plano). Conta real segue sem critério | G-16 |
 | 2 | Política para preço médio controlado (`AveragingPolicy`): quem pode usar, com quais tetos e qual avaliação | D-06 a D-10, D-15 |
 | 3 | Onde moram os contratos do framework (no HADOUKEN, na `mt5x-safety` ou em biblioteca nova) e como versionam. **Proposta em [DECISOES_CONTRATOS_E_CALENDARIO.md](DECISOES_CONTRATOS_E_CALENDARIO.md)**: duas pastas, uma biblioteca, uma versão | B-02 a B-07, B-11 |
-| 4 | De onde vem o calendário de sessões e quem mantém feriados. **Proposta no mesmo documento**: passado deduzido das barras, grade semanal exportada pelo terminal, exceções em arquivo mantido | A-02 |
+| 4 | De onde vem o calendário de sessões e quem mantém feriados. **Respondida em 2026-10-14 para T13.1:** passado observado em M1, metadados de `symbol_info`, âncora de sessão configurável; sem enriquecimento externo nesta etapa. A grade semanal e feriados ficam para depois | A-02 |
 | 5 | Série contínua de futuros só para estudo ou também para características de execução | A-01, A-03 |
 | 6 | Conta netting: abrir uma conta de teste com ativos da B3 antes de qualquer mecanismo por nível | F-11 |
 | 7 | Limite de autonomia dos agentes de IA: o que podem fazer sem confirmação humana | J-09 |
@@ -136,5 +137,6 @@ Levantadas lendo o código em 2026-10-13. "Existe" quer dizer que o arquivo est�
 
 ## Pré-requisitos da primeira implementação
 
-Antes de qualquer tarefa da etapa 1 ou 2 (os PRs de documentação já foram mesclados em 2026-10-13): decisões 3 e 4 tomadas; uma operação supervisionada do
-executor exercitada (pendência da T12.1); a paridade dos seis robôs medida de novo como linha de base.
+A T13.1 é Python-only e usa a decisão 4 registrada acima; ela não depende dos contratos MQL5 da decisão 3 nem exercita
+operações supervisionadas. A decisão 3 e a operação supervisionada da T12.1 continuam pré-requisitos das etapas que
+integram contratos e execução. A paridade dos seis robôs foi medida novamente como linha de base na Fase 12.
