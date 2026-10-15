@@ -18,7 +18,10 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.ui import charts
-from mt5_extracao.ui.theme import Tooltip, card, fmt_int, fmt_num, scrolled_tree
+from mt5_extracao.ui.components import ChartPanel, FilterBar, MetricCard, Notice, PageHeader, TablePanel
+from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
+from mt5_extracao.ui.visual_tokens import SPACING
+from mt5_extracao.ui.visual_tokens import TYPOGRAPHY
 
 log = logging.getLogger(__name__)
 
@@ -37,36 +40,45 @@ KPIS = (("n", "Operações", "Quantas operações há no recorte."),
                                             "mais do que perdeu."),
         ("expectancy", "Expectativa", "Resultado médio por operação, com o intervalo de 90% (bootstrap por dias)."),
         ("max_drawdown_pct", "Queda máxima", "Maior queda da curva de resultado a partir de um topo."))
+NOTE_STYLE = {"success": "Success", "warning": "Warning", "error": "Error", "info": "Info",
+              "neutral": "Neutral", "partial": "Warning", "loading": "Info", "empty": "Neutral",
+              "unavailable": "Error"}
+NOTE_LABEL = {"success": "Concluído", "warning": "Aviso", "error": "Erro", "info": "Informação",
+              "neutral": "Status", "partial": "Parcial", "loading": "Carregando", "empty": "Sem dados",
+              "unavailable": "Indisponível"}
 
 
 class LaboratoryPanel:
     def __init__(self, parent, ui):
         self.ui = ui
         self.theme = ui.theme
-        self.frame = ttk.Frame(parent, padding=12)
+        self.frame = ttk.Frame(parent, padding=SPACING["md"])
         self.runs = []
         self.lab = None            # livro enriquecido da seleção (sem filtros de tela)
         self.view = None           # com os filtros de tela
         self.loaded = False
         self._request = 0
         self._charts = {}
+        self._chart_panels = {}
+        self._analysis_notebooks = {}
+        self._analysis_views = {}
         self._drawn = set()        # guias já desenhadas com o recorte atual
 
-        head = ttk.Frame(self.frame)
-        head.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(head, text="Laboratório", style="Page.Title.TLabel").pack(side=tk.LEFT)
-        ttk.Label(head, text="operações dos robôs: onde ganham, onde perdem e como executar melhor",
-                  style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
-        self.refresh_button = ttk.Button(head, text="Atualizar", command=self.reload)
-        self.refresh_button.pack(side=tk.RIGHT)
-        self.import_button = ttk.Button(head, text="Importar backtests antigos", command=self.import_runs)
-        self.import_button.pack(side=tk.RIGHT, padx=(0, 8))
-        Tooltip(self.import_button, "Traz para o Laboratório os backtests gravados antes dele existir. Os de robôs "
-                                    "MQL5 entram sem o horário de entrada (análise só por horário de saída).", self.theme)
+        head = PageHeader(self.frame, "Laboratório",
+                          "operações dos robôs: onde ganham, onde perdem e como executar melhor")
+        head.pack(fill=tk.X, pady=(0, SPACING["md"]))
+        self.import_button = head.add_action(
+            "Importar backtests antigos", self.import_runs,
+            tooltip="Traz para o Laboratório os backtests gravados antes dele existir. Os de robôs MQL5 entram sem o "
+                    "horário de entrada (análise só por horário de saída).", theme=self.theme)
+        self.refresh_button = head.add_action("Atualizar", self.reload, style="Accent.TButton")
 
         self._build_filters()
         self._build_kpis()
-        self.note = ttk.Label(self.frame, text="", style="Muted.TLabel", wraplength=1000, justify=tk.LEFT)
+        self.notice = Notice(self.frame, "", kind="info", theme=self.theme)
+        self.notice.message.configure(wraplength=1100)
+        self.note = self.notice.message  # texto de estado preservado para as telas e testes existentes.
+        self._note_kind = "info"
         self.tabs = ttk.Notebook(self.frame, style="Compact.TNotebook")
         self.tabs.pack(fill=tk.BOTH, expand=True)
         self.tab_frames = {}
@@ -88,31 +100,51 @@ class LaboratoryPanel:
     # --- montagem ----------------------------------------------------------------------
 
     def set_note(self, text):
-        """Avisos acima das guias; a faixa some quando não há aviso."""
-        self.note.config(text=text)
-        if text:
-            self.note.pack(fill=tk.X, pady=(0, 6), before=self.tabs)
+        """Estado, disponibilidade ou qualidade acima das guias; a faixa some sem aviso."""
+        if not text:
+            self.note.config(text="")
+            self.notice.pack_forget()
+            return
+        lowered = text.casefold()
+        if "indisponível" in lowered or "indisponíveis" in lowered:
+            kind = "unavailable"
+        elif "erro" in lowered or "não foi possível" in lowered:
+            kind = "error"
+        elif "calculando" in lowered or "procurando" in lowered:
+            kind = "loading"
+        elif "nenhuma operação" in lowered or "ainda não tem operações" in lowered:
+            kind = "empty"
+        elif "amostra pequena" in lowered or "sem horário de entrada" in lowered or "sem calendário" in lowered:
+            kind = "partial"
         else:
-            self.note.pack_forget()
+            kind = "info"
+        style = NOTE_STYLE[kind]
+        self.notice.configure(style=f"{style}.Notice.TFrame")
+        self.notice.badge.set_status(NOTE_LABEL[kind], kind=kind)
+        self.note.configure(text=text, style=f"{style}.Notice.TLabel")
+        self._note_kind = kind
+        self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.tabs)
 
     def _build_filters(self):
-        bar = ttk.Frame(self.frame)
-        bar.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(bar, text="Modalidade:").pack(side=tk.LEFT)
+        bar = FilterBar(self.frame)
+        bar.pack(fill=tk.X, pady=(0, SPACING["sm"]))
+        self.filter_bar = bar
+        ttk.Label(bar, text="Modalidade:", style="Surface.TLabel").pack(side=tk.LEFT)
         self.lens = tk.StringVar(value=LENS_ROBOT)
         for value, label, hint in ((LENS_ROBOT, "Por robô", "Em quais ativos, horários e condições este robô vai "
                                                              "melhor?"),
                                    (LENS_ASSET, "Por ativo", "Que robôs exploram melhor este ativo?")):
-            w = ttk.Radiobutton(bar, text=label, value=value, variable=self.lens, command=self._lens_changed)
+            w = ttk.Radiobutton(bar, text=label, value=value, variable=self.lens, style="Surface.TRadiobutton",
+                                command=self._lens_changed)
             w.pack(side=tk.LEFT, padx=(8, 0))
             Tooltip(w, hint, self.theme)
-        self.selector_label = ttk.Label(bar, text="Robô:")
+        self.selector_label = ttk.Label(bar, text="Robô:", style="Surface.TLabel")
         self.selector_label.pack(side=tk.LEFT, padx=(18, 4))
         self.selected = tk.StringVar()
         self.selector = ttk.Combobox(bar, textvariable=self.selected, state="readonly", width=28)
         self.selector.pack(side=tk.LEFT)
         self.selector.bind("<<ComboboxSelected>>", lambda e: self.load_lab())
-        ttk.Label(bar, text="Período:").pack(side=tk.LEFT, padx=(18, 4))
+        ttk.Label(bar, text="Período:", style="Surface.TLabel").pack(side=tk.LEFT, padx=(18, 4))
         self.period = tk.StringVar(value=PERIODS[0][0])
         period = ttk.Combobox(bar, textvariable=self.period, state="readonly", width=16,
                               values=[p[0] for p in PERIODS])
@@ -120,6 +152,7 @@ class LaboratoryPanel:
         period.bind("<<ComboboxSelected>>", lambda e: self.apply_filters())
         self.hide_news = tk.BooleanVar(value=False)
         news = ttk.Checkbutton(bar, text="Ocultar notícias de impacto alto", variable=self.hide_news,
+                               style="Surface.TCheckbutton",
                                command=self.apply_filters)
         news.pack(side=tk.LEFT, padx=(18, 0))
         Tooltip(news, "Tira as operações com evento de impacto alto na janela de [TRADE_ANALYTICS] "
@@ -127,29 +160,55 @@ class LaboratoryPanel:
 
     def _build_kpis(self):
         row = ttk.Frame(self.frame)
-        row.pack(fill=tk.X, pady=(0, 6))
+        row.pack(fill=tk.X, pady=(0, SPACING["sm"]))
         self.kpi = {}
+        self.metric_cards = {}
         for k, (key, title, hint) in enumerate(KPIS):
             row.columnconfigure(k, weight=1, uniform="kpi")
-            body = card(row, title, padding=10)
-            body.master.grid(row=0, column=k, sticky="nsew", padx=(0 if k == 0 else 8, 0))
-            value = ttk.Label(body, text="—", style="Value.TLabel")
-            value.pack(anchor="w")
-            sub = ttk.Label(body, text="", style="Muted.TLabel")
-            sub.pack(anchor="w")
-            Tooltip(body.master, hint, self.theme)
-            self.kpi[key] = (value, sub)
+            metric = MetricCard(row, title, value="—", hint=hint, theme=self.theme, padding=SPACING["sm"])
+            metric.grid(row=0, column=k, sticky="nsew", padx=(0 if k == 0 else SPACING["sm"], 0))
+            self.metric_cards[key] = metric
+            self.kpi[key] = (metric.value_label, metric.detail_label)
 
-    def _chart(self, tab, key, row, col, rowspan=1, colspan=1, height=3.0):
+    def _chart(self, tab, key, row, col, rowspan=1, colspan=1, height=3.0, parent=None):
         chart = self._charts.get(key)
         if chart is None:
-            chart = charts.Chart(self.tab_frames[tab], self.theme, height)
-            chart.widget.grid(row=row, column=col, rowspan=rowspan, columnspan=colspan, sticky="nsew", padx=4,
-                              pady=4)
-            self.tab_frames[tab].rowconfigure(row, weight=1)
-            self.tab_frames[tab].columnconfigure(col, weight=1)
+            chart_parent = parent or self.tab_frames[tab]
+            panel = ChartPanel(chart_parent, padding=SPACING["xs"])
+            panel.grid(row=row, column=col, rowspan=rowspan, columnspan=colspan, sticky="nsew",
+                       padx=SPACING["xs"], pady=SPACING["xs"])
+            chart = charts.Chart(panel.chart_area, self.theme, height)
+            chart.widget.pack(fill=tk.BOTH, expand=True)
+            self._chart_panels[key] = panel
+            chart_parent.rowconfigure(row, weight=1)
+            chart_parent.columnconfigure(col, weight=1)
             self._charts[key] = chart
         return chart
+
+    def _overview_view(self, key, title):
+        if not hasattr(self, "overview_notebook"):
+            self.overview_notebook = ttk.Notebook(self.tab_frames["Visão geral"], style="Compact.TNotebook")
+            self.overview_notebook.pack(fill=tk.BOTH, expand=True)
+            self.overview_views = {}
+        if key not in self.overview_views:
+            frame = ttk.Frame(self.overview_notebook, padding=SPACING["xs"], style="Surface.TFrame")
+            self.overview_notebook.add(frame, text=title)
+            self.overview_views[key] = frame
+        return self.overview_views[key]
+
+    def _analysis_view(self, tab, key, title):
+        """Dá altura e largura úteis a cada gráfico de análises com várias séries."""
+        if tab not in self._analysis_notebooks:
+            notebook = ttk.Notebook(self.tab_frames[tab], style="Compact.TNotebook")
+            notebook.pack(fill=tk.BOTH, expand=True)
+            self._analysis_notebooks[tab] = notebook
+            self._analysis_views[tab] = {}
+        views = self._analysis_views[tab]
+        if key not in views:
+            frame = ttk.Frame(self._analysis_notebooks[tab], padding=SPACING["xs"], style="Surface.TFrame")
+            self._analysis_notebooks[tab].add(frame, text=title)
+            views[key] = frame
+        return views[key]
 
     # --- leitura -----------------------------------------------------------------------
 
@@ -245,8 +304,7 @@ class LaboratoryPanel:
 
     def _empty(self, text):
         for key in ("n", "win_rate", "profit_factor", "expectancy", "max_drawdown_pct"):
-            self.kpi[key][0].config(text="—")
-            self.kpi[key][1].config(text="")
+            self.metric_cards[key].set_value("—", "", style="Value.TLabel")
         self.set_note(text)
         self._drawn = set()
         for chart in self._charts.values():
@@ -259,17 +317,16 @@ class LaboratoryPanel:
             self._empty("Nenhuma operação neste recorte.")
             return
         m = aggregate.summarize(view, aggregate._initial_equity(self._config()), aggregate.min_trades(self._config()))
-        self.kpi["n"][0].config(text=fmt_int(m["n"]))
-        self.kpi["n"][1].config(text=f"{view['run_id'].nunique()} run(s)")
-        self.kpi["win_rate"][0].config(text=fmt_num(m["win_rate"] * 100, 1, "%"))
-        self.kpi["profit_factor"][0].config(text=fmt_num(m["profit_factor"], 2))
-        self.kpi["expectancy"][0].config(text=charts.money(m["expectancy"]),
-                                         style="Good.TLabel" if m["ci_low"] is not None and m["ci_low"] > 0 else
-                                         "Bad.TLabel" if m["ci_high"] is not None and m["ci_high"] < 0 else
-                                         "Value.TLabel")
-        self.kpi["expectancy"][1].config(text=f"90%: {charts.money(m['ci_low'])} a {charts.money(m['ci_high'])}"
-                                         if m["ci_low"] is not None else "intervalo: poucos dias")
-        self.kpi["max_drawdown_pct"][0].config(text=fmt_num(m["max_drawdown_pct"] * 100, 1, "%"))
+        self.metric_cards["n"].set_value(fmt_int(m["n"]), f"{view['run_id'].nunique()} run(s)")
+        self.metric_cards["win_rate"].set_value(fmt_num(m["win_rate"] * 100, 1, "%"), "")
+        self.metric_cards["profit_factor"].set_value(fmt_num(m["profit_factor"], 2), "")
+        expectancy_style = ("Good.TLabel" if m["ci_low"] is not None and m["ci_low"] > 0 else
+                            "Bad.TLabel" if m["ci_high"] is not None and m["ci_high"] < 0 else "Value.TLabel")
+        expectancy_detail = (f"90%: {charts.money(m['ci_low'])} a {charts.money(m['ci_high'])}"
+                             if m["ci_low"] is not None else "intervalo: poucos dias")
+        self.metric_cards["expectancy"].set_value(charts.money(m["expectancy"]), expectancy_detail,
+                                                   style=expectancy_style)
+        self.metric_cards["max_drawdown_pct"].set_value(fmt_num(m["max_drawdown_pct"] * 100, 1, "%"), "")
         partial = int((view["completeness"] == "parcial").sum())
         notes = []
         if m["small"]:
@@ -277,8 +334,6 @@ class LaboratoryPanel:
         if partial:
             notes.append(f"{partial} operação(ões) sem horário de entrada (robôs MQL5 antes da T16.2b): entram só "
                          "nas análises de calendário, pela saída.")
-        if "event_impact" in view and pd.to_numeric(view["event_impact"], errors="coerce").isna().all():
-            notes.append("Sem calendário econômico: importe com `mt5x trades calendar import`.")
         self.set_note(" ".join(notes))
 
     def render_visible(self):
@@ -302,32 +357,86 @@ class LaboratoryPanel:
         self._drawn = set()
         self.render_visible()
 
-    def _heat(self, chart, ax, view, row, col, title, col_labels=None, row_labels=None, row_order=None):
+    def _crosstab(self, view, row, col, row_order=None):
         from mt5_extracao.trade_analytics import aggregate
         table = aggregate.crosstab(view, row, col, config=self._config())
         if row_order and not table["value"].empty:
             order = [r for r in row_order if r in table["value"].index]
             table = {k: v.reindex(order) for k, v in table.items()}
+        return table
+
+    def _heat(self, chart, ax, view, row, col, title, col_labels=None, row_labels=None, row_order=None):
+        table = self._crosstab(view, row, col, row_order)
         charts.heatmap(chart, ax, table["value"], table["n"], table["small"], title, row_labels, col_labels)
+        self._sample_notice(chart, table["small"])
+
+    def _sample_notice(self, chart, flags):
+        """Explica a hachura sem recalcular o limite de amostra definido pelo motor analítico."""
+        panel = next((self._chart_panels[key] for key, candidate in self._charts.items() if candidate is chart), None)
+        if panel is None:
+            return
+        has_small = flags is not None and bool(np.asarray(flags, dtype=bool).any())
+        is_heatmap = any(axis.images for axis in chart.figure.axes)
+        if not has_small:
+            text = None
+        elif is_heatmap:
+            text = ("Cinza pontilhado = sem operações; hachura diagonal = amostra positiva abaixo do mínimo; "
+                    "n = operações neste grupo.")
+        else:
+            text = "Hachura diagonal = amostra positiva abaixo do mínimo; n = operações neste grupo."
+        panel.set_notice(text, kind="partial", theme=self.theme)
+
+    def _overview_matrix(self, parent, view):
+        """Tabela rolável para a matriz horária de 24 linhas, sem comprimir rótulos ou contagens."""
+        table = self._crosstab(view, "time_bucket", "day_of_week")
+        values = table["value"].reindex(columns=range(7))
+        counts = table["n"].reindex(index=values.index, columns=range(7), fill_value=0).fillna(0)
+        small = table["small"].reindex(index=values.index, columns=range(7), fill_value=False).fillna(False)
+        if not hasattr(self, "overview_heat_table"):
+            day_names = tuple(WEEKDAYS[day] for day in range(7))
+            self.overview_heat_table = TablePanel(
+                parent, "Expectativa por faixa horária × dia", ("Faixa", *day_names),
+                (80, 150, 150, 150, 150, 150, 150, 150),
+                ("w",) + ("center",) * 7, height=9, subtitle="Entrada · moeda da conta",
+                padding=SPACING["xs"])
+            self.overview_heat_table.grid(row=0, column=0, sticky="nsew", padx=SPACING["xs"], pady=SPACING["xs"])
+            self.overview_heat_notice = Notice(
+                self.overview_heat_table.body,
+                "Cada célula mostra resultado · n=operações. * = amostra positiva abaixo do mínimo; n=0 = sem operações.",
+                kind="info", theme=self.theme)
+            self.overview_heat_notice.pack(fill=tk.X, pady=(0, SPACING["xs"]),
+                                           before=self.overview_heat_table.table_frame)
+            parent.rowconfigure(0, weight=1)
+            parent.columnconfigure(0, weight=1)
+        tree = self.overview_heat_table.tree
+        tree.delete(*tree.get_children())
+        for hour in values.index:
+            row = [hour]
+            for day in range(7):
+                value = values.loc[hour, day]
+                count = int(counts.loc[hour, day])
+                marker = "*" if count > 0 and bool(small.loc[hour, day]) else ""
+                amount = charts.money(value) if pd.notna(value) else "—"
+                row.append(f"{amount} · n={count}{marker}")
+            tree.insert("", tk.END, values=tuple(row))
 
     def _overview(self):
         from mt5_extracao.trade_analytics import aggregate
         view, tab = self.view, "Visão geral"
+        heat_frame = self._overview_view("heat", "Horários")
+        curve_frame = self._overview_view("curves", "Curvas")
+        news_frame = self._overview_view("news", "Calendário")
         timed = view[view["time_ref"] == "entrada"]
-        chart = self._chart(tab, "ov_heat", 0, 0, height=3.4)
-        chart.clear()
-        self._heat(chart, chart.figure.add_subplot(111), timed if not timed.empty else view, "time_bucket",
-                   "day_of_week", "Expectativa: faixa horária × dia (n por célula; tramado = menos de 30)",
-                   WEEKDAYS)
-        chart.figure.tight_layout()
-        chart.draw()
+        self._overview_matrix(heat_frame, timed if not timed.empty else view)
         by = "symbol" if self.lens.get() == LENS_ROBOT else "robot_key"
-        chart = self._chart(tab, "ov_curves", 0, 1, height=3.4)
+        chart = self._chart(tab, "ov_curves", 0, 0, colspan=2, height=3.2, parent=curve_frame)
         chart.clear()
         charts.overlay(chart, chart.figure.add_subplot(111), aggregate.equity_curves(view, by),
                        "Resultado acumulado por " + ("ativo" if by == "symbol" else "robô"))
+        self._sample_notice(chart, None)
+        chart.figure.tight_layout()
         chart.draw()
-        chart = self._chart(tab, "ov_news", 1, 0, colspan=2, height=2.4)
+        chart = self._chart(tab, "ov_news", 0, 0, colspan=2, height=3.2, parent=news_frame)
         chart.clear()
         news = view.assign(impact=pd.to_numeric(view["event_impact"], errors="coerce"))
         table = aggregate.by_dimension(news, ["impact"], self._config(), ci=False)
@@ -340,6 +449,7 @@ class LaboratoryPanel:
                       for i, w in zip(table["impact"], table["win_rate"])]
             charts.bars(chart, ax, labels, table["expectancy"], table["n"], table["small"],
                         "Notícias do calendário × expectativa por operação")
+            self._sample_notice(chart, table["small"])
             chart.figure.tight_layout()
             chart.draw()
 
@@ -347,35 +457,43 @@ class LaboratoryPanel:
         from mt5_extracao.trade_analytics import aggregate
         view, tab, cfg = self.view, "Tempo e calendário", self._config()
         days = aggregate.by_dimension(view, ["day_of_week"], cfg, ci=False)
-        chart = self._chart(tab, "t_week", 0, 0)
+        chart = self._chart(tab, "t_week", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "week", "Dia da semana"))
         chart.clear()
         charts.bars(chart, chart.figure.add_subplot(111), [WEEKDAYS.get(int(d), d) for d in days["day_of_week"]],
                     days["expectancy"], days["n"], days["small"], "Dia da semana: expectativa por operação")
+        self._sample_notice(chart, days["small"])
         chart.figure.tight_layout()
         chart.draw()
         month = aggregate.by_dimension(view, ["day_of_month"], cfg, ci=False)
-        chart = self._chart(tab, "t_month", 0, 1)
+        chart = self._chart(tab, "t_month", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "month", "Dia do mês"))
         chart.clear()
         charts.bars(chart, chart.figure.add_subplot(111), [str(int(d)) for d in month["day_of_month"]],
                     month["expectancy"], month["n"], month["small"], "Dia do mês: expectativa por operação")
+        self._sample_notice(chart, month["small"])
         chart.figure.tight_layout()
         chart.draw()
         hours = aggregate.by_dimension(view, ["time_bucket"], cfg, ci=False)
-        chart = self._chart(tab, "t_hours", 1, 0)
+        chart = self._chart(tab, "t_hours", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "hours", "Expectativa e acerto"))
         chart.clear()
         ax = chart.figure.add_subplot(111)
         charts.bars(chart, ax, list(hours["time_bucket"]), hours["expectancy"], hours["n"], hours["small"],
                     "Faixa horária: expectativa (barras) e acerto % (linha)")
+        self._sample_notice(chart, hours["small"])
         twin = ax.twinx()
         twin.plot(range(len(hours)), hours["win_rate"] * 100, color=self.theme.colors["ink2"], linewidth=1.2,
                   marker="o", markersize=3)
+        twin.set_ylabel("Acerto (%)", color=self.theme.colors["muted"], fontsize=TYPOGRAPHY["chart_label"])
         twin.set_ylim(0, 100)
-        twin.tick_params(colors=self.theme.colors["muted"], labelsize=7, length=0)
+        twin.tick_params(colors=self.theme.colors["muted"], labelsize=TYPOGRAPHY["chart_tick"], length=0)
         for side in ("top", "right", "left", "bottom"):
             twin.spines[side].set_visible(False)
         chart.figure.tight_layout()
         chart.draw()
-        chart = self._chart(tab, "t_winloss", 1, 1)
+        chart = self._chart(tab, "t_winloss", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "wins_losses", "Vitórias e perdas"))
         chart.clear()
         ax = chart.figure.add_subplot(111)
         charts.style_axis(ax, self.theme, "Vencedoras × perdedoras por faixa horária")
@@ -386,11 +504,19 @@ class LaboratoryPanel:
         ax.bar(x, counts[1], color=c["series"][0], width=0.65, label="vencedoras", linewidth=0)
         ax.bar(x, counts[0], bottom=counts[1], color=c["series"][1], width=0.65, label="perdedoras", linewidth=0,
                hatch="..")
+        totals = counts[1] + counts[0]
+        for index, total in enumerate(totals):
+            crowded = len(counts) > 14
+            ax.text(index, total, f"n={int(total)}", ha="center", va="bottom", rotation=90 if crowded else 0,
+                    fontsize=TYPOGRAPHY["chart_tick"], color=c["ink"])
+        ax.set_ylabel("Operações por faixa horária", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
+        ax.margins(y=0.2)
         ax.set_xticks(x)
         crowded = len(x) > 12
-        ax.set_xticklabels(counts.index, fontsize=7 if crowded else 8, rotation=45 if crowded else 0,
+        ax.set_xticklabels(counts.index, fontsize=TYPOGRAPHY["chart_tick"], rotation=45 if crowded else 0,
                            ha="right" if crowded else "center")
-        legend = ax.legend(fontsize=7, frameon=False)
+        legend = ax.legend(fontsize=TYPOGRAPHY["chart_tick"], frameon=False, loc="upper left",
+                           bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
         for text in legend.get_texts():
             text.set_color(c["ink2"])
         chart.figure.tight_layout()
@@ -401,12 +527,18 @@ class LaboratoryPanel:
         view, tab, cfg = self.view, "Microestrutura", self._config()
         complete = view[view["time_ref"] == "entrada"]
         if complete.empty or pd.to_numeric(complete["atr_pct"], errors="coerce").isna().all():
-            for key, r, col in (("m_scatter", 0, 0), ("m_vol", 0, 1), ("m_volume", 1, 0), ("m_heat", 1, 1)):
-                self._chart(tab, key, r, col).message(
-                    "Sem horário de entrada ou sem barras na base para estas operações: a microestrutura precisa dos "
-                    "dois (extraia o ativo no timeframe do backtest).")
+            missing = ("Sem horário de entrada ou sem barras na base para estas operações: a microestrutura precisa "
+                       "dos dois (extraia o ativo no timeframe do backtest).")
+            for key, view_key, title in (("m_scatter", "scatter", "Volatilidade × resultado"),
+                                         ("m_vol", "volatility", "Faixa de volatilidade"),
+                                         ("m_volume", "volume", "Volume na entrada"),
+                                         ("m_heat", "heat", "Volatilidade × horário")):
+                chart = self._chart(tab, key, 0, 0, height=4.0,
+                                    parent=self._analysis_view(tab, view_key, title))
+                chart.message(missing)
             return
-        chart = self._chart(tab, "m_scatter", 0, 0)
+        chart = self._chart(tab, "m_scatter", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "scatter", "Volatilidade × resultado"))
         chart.clear()
         charts.scatter_win_loss(chart, chart.figure.add_subplot(111), pd.to_numeric(complete["atr_pct"]) * 100,
                                 complete["pnl"], "Volatilidade na entrada (ATR %) × resultado", "ATR % do preço")
@@ -415,11 +547,13 @@ class LaboratoryPanel:
         order = {"baixa": 0, "média": 1, "alta": 2}
         vol = aggregate.by_dimension(complete, ["volatility_bucket"], cfg, ci=False)
         vol = vol.assign(o=vol["volatility_bucket"].map(order)).sort_values("o")
-        chart = self._chart(tab, "m_vol", 0, 1)
+        chart = self._chart(tab, "m_vol", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "volatility", "Faixa de volatilidade"))
         chart.clear()
         charts.bars(chart, chart.figure.add_subplot(111),
                     [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto" for b, w in zip(vol["volatility_bucket"], vol["win_rate"])],
                     vol["expectancy"], vol["n"], vol["small"], "Faixa de volatilidade (percentil nas 250 barras anteriores)")
+        self._sample_notice(chart, vol["small"])
         chart.figure.tight_layout()
         chart.draw()
         ranked = complete.assign(volume_band=pd.cut(pd.to_numeric(complete["volume_rank"], errors="coerce"),
@@ -429,14 +563,17 @@ class LaboratoryPanel:
             volume_band=lambda d: d["volume_band"].astype(str)), ["volume_band"], cfg, ci=False)
         order = {"baixo": 0, "médio-baixo": 1, "médio-alto": 2, "alto": 3}
         volume = volume.assign(o=volume["volume_band"].map(order)).sort_values("o")
-        chart = self._chart(tab, "m_volume", 1, 0)
+        chart = self._chart(tab, "m_volume", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "volume", "Volume na entrada"))
         chart.clear()
         charts.bars(chart, chart.figure.add_subplot(111),
                     [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto" for b, w in zip(volume["volume_band"], volume["win_rate"])],
                     volume["expectancy"], volume["n"], volume["small"], "Volume na entrada (quartil nas 20 barras anteriores)")
+        self._sample_notice(chart, volume["small"])
         chart.figure.tight_layout()
         chart.draw()
-        chart = self._chart(tab, "m_heat", 1, 1)
+        chart = self._chart(tab, "m_heat", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "heat", "Volatilidade × horário"))
         chart.clear()
         self._heat(chart, chart.figure.add_subplot(111), complete, "volatility_bucket", "time_bucket",
                    "Volatilidade × faixa horária", row_order=("baixa", "média", "alta"))
@@ -446,14 +583,18 @@ class LaboratoryPanel:
     def _compare(self):
         from mt5_extracao.trade_analytics import aggregate
         tab, view, cfg = "Comparativo", self.view, self._config()
-        frame = self.tab_frames[tab]
+        table_view = self._analysis_view(tab, "items", "Ativos e timeframes")
         if not hasattr(self, "compare_tree"):
-            box, self.compare_tree = scrolled_tree(
-                frame, ("Item", "Timeframe", "Operações", "Acerto", "Fator de lucro", "Expectativa", "Intervalo 90%",
-                        "Queda máxima"), (170, 80, 80, 70, 100, 100, 170, 100),
-                ("w", "w", "e", "e", "e", "e", "w", "e"), height=8)
-            box.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=4, pady=4)
-            frame.rowconfigure(0, weight=1)
+            table_panel = TablePanel(
+                table_view, "Comparação por ativo e timeframe",
+                ("Item", "Timeframe", "Operações", "Acerto", "Fator de lucro", "Expectativa", "Intervalo 90%",
+                 "Queda máxima"), (170, 80, 80, 70, 100, 100, 170, 100),
+                ("w", "w", "e", "e", "e", "e", "w", "e"), height=8, padding=SPACING["xs"])
+            table_panel.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=SPACING["xs"], pady=SPACING["xs"])
+            table_view.rowconfigure(0, weight=1)
+            table_view.columnconfigure(0, weight=1)
+            self.compare_panel = table_panel
+            self.compare_tree = table_panel.tree
             self.compare_tree.tag_configure("small", foreground=self.theme.colors["muted"])
         table = aggregate.robot_view(view, cfg) if self.lens.get() == LENS_ROBOT else aggregate.asset_view(view, cfg)
         key = "symbol" if self.lens.get() == LENS_ROBOT else "robot_key"
@@ -465,7 +606,8 @@ class LaboratoryPanel:
                                             fmt_num(r["profit_factor"], 2), charts.money(r["expectancy"]), interval,
                                             fmt_num(r["max_drawdown_pct"] * 100, 1, "%")),
                         tags=("small",) if r["small"] else ())
-        chart = self._chart(tab, "c_corr", 1, 0, colspan=2, height=2.8)
+        chart = self._chart(tab, "c_corr", 0, 0, height=4.0,
+                            parent=self._analysis_view(tab, "correlation", "Correlação"))
         if self.lens.get() == LENS_ASSET:
             corr = aggregate.daily_correlation(view, "robot_key")
             if corr.shape[0] >= 2:
@@ -473,7 +615,10 @@ class LaboratoryPanel:
                 n = pd.DataFrame(np.ones(corr.shape, dtype=int), index=corr.index, columns=corr.columns)
                 charts.heatmap(chart, chart.figure.add_subplot(111), corr, n * 0, corr.isna(),
                                "Correlação dos resultados diários entre robôs (positiva = perdas que se somam)",
-                               metric_name="Correlação")
+                               metric_name="Correlação", show_counts=False)
+                self._chart_panels["c_corr"].set_notice(
+                    "Células cinza pontilhadas = pares sem dados em comum; escala fixa de −1 a 1.",
+                    kind="partial", theme=self.theme)
                 chart.figure.tight_layout()
                 chart.draw()
                 return
@@ -503,11 +648,13 @@ class LaboratoryPanel:
         self.exec_note = ttk.Label(tab, text="Escolha um run e os modos e clique em \"Comparar modos\".",
                                    style="Muted.TLabel", wraplength=1000, justify=tk.LEFT)
         self.exec_note.grid(row=2, column=0, columnspan=2, sticky="w")
-        box, self.mode_tree = scrolled_tree(
-            tab, ("Modo", "Operações", "Acerto", "Fator de lucro", "Payoff", "Expectativa", "Queda máxima",
-                  "Melhor faixa", "Observação"), (210, 80, 70, 100, 70, 100, 100, 100, 260),
-            ("w", "e", "e", "e", "e", "e", "e", "w", "w"), height=6)
-        box.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(6, 0))
+        self.mode_panel = TablePanel(
+            tab, "Resultados por modo",
+            ("Modo", "Operações", "Acerto", "Fator de lucro", "Payoff", "Expectativa", "Queda máxima",
+             "Melhor faixa", "Observação"), (210, 80, 70, 100, 70, 100, 100, 100, 260),
+            ("w", "e", "e", "e", "e", "e", "e", "w", "w"), height=6, padding=SPACING["xs"])
+        self.mode_panel.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(SPACING["sm"], 0))
+        self.mode_tree = self.mode_panel.tree
         self.mode_tree.tag_configure("study", foreground=self.theme.colors["warn"])
         tab.columnconfigure(0, weight=1)
         tab.columnconfigure(1, weight=1)
@@ -646,7 +793,7 @@ class LaboratoryPanel:
             value = pd.DataFrame(heat).sort_index()
             n = value.notna().astype(int) * 0
             charts.heatmap(chart, chart.figure.add_subplot(111), value, n, value.isna(),
-                           "Expectativa: faixa horária × modo")
+                           "Expectativa: faixa horária × modo", show_counts=False)
             chart.figure.tight_layout()
         chart.draw()
         base = self.mode_metrics.get("ponto_fixo", {}).get("metrics")
@@ -668,9 +815,12 @@ class LaboratoryPanel:
                                   "de \"validado\" o que se confirma na reserva final.", self.theme)
         self.insight_note = ttk.Label(top, text="", style="Muted.TLabel", wraplength=800, justify=tk.LEFT)
         self.insight_note.pack(side=tk.LEFT, padx=(12, 0))
-        box, self.insight_tree = scrolled_tree(tab, ("Usar", "Estado", "Insight"), (50, 170, 900),
-                                               ("center", "w", "w"), height=4, selectmode="extended")
-        box.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(6, 6))
+        self.insight_panel = TablePanel(tab, "Insights encontrados", ("Usar", "Estado", "Insight"),
+                                        (50, 170, 900), ("center", "w", "w"), height=4,
+                                        selectmode="extended", padding=SPACING["xs"])
+        self.insight_panel.grid(row=1, column=0, columnspan=2, sticky="nsew",
+                                pady=(SPACING["sm"], SPACING["sm"]))
+        self.insight_tree = self.insight_panel.tree
         self.insight_tree.tag_configure("validated", foreground=self.theme.colors["good"])
         self.insight_tree.bind("<Button-1>", self._insight_clicked, add="+")
         self.use_insight = set()
