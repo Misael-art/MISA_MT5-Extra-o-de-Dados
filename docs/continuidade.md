@@ -1028,3 +1028,15 @@ Ubuntu1269/142 e jobs PostgreSQL/lint/instaladores aprovados em4b3302c;
 Windows CI1381/30/5 e seis checks de execução aprovados em4b3302c; Windows físico pendente. Próxima integração:
 T13.3 canônica bde3652; preservar a ordenação e o helper de schemas.
 O aceite ponta a ponta dos testes4/7 inclui os produtores/publicador seguintes.
+
+## Integração canônica T13.3 — 2026-10-18 (em validação)
+
+Origem bde3652 reaplicada sobre a T13.2 integrada. A linha de base compartilhada
+1398/13/3, saída0 e cobertura77,44%, foi conferida por hash antes das mudanças;
+ambiente e requirements permanecem os mesmos da regressão aprovada.
+A ordenação topológica e as fixtures PostgreSQL privadas foram preservadas.
+O arquivo de matriz genérica da origem dependia do commit documental e8657fe,
+ausente na base atual; seu conteúdo canônico foi incorporado como registro
+histórico datado, com os resultados atuais discriminados no plano/contrato.
+Os números833/10 e os dois mercados de2026-10-15 são evidência histórica,
+não aceite desta composição. Novos testes/medições e PR próprios pendentes.
