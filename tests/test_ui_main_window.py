@@ -109,6 +109,31 @@ def test_theme_toggle_redraws_without_errors(ui):
     assert set(ui.analysis_panel._canvases) == {"chart", "season", "returns"}
 
 
+def test_dense_tabs_reflow_and_assets_remain_reachable_in_a_small_window(ui):
+    ui.root.geometry("900x620")
+    ui.pump(0.4)
+    assert ui._symbols_stacked is True
+    assert ui._symbols_left_outer.grid_info()["row"] == 0
+    assert ui._symbols_right_outer.grid_info()["row"] == 1
+    assert ui.symbols_scrollbar.winfo_manager() == "pack"
+
+    ui.notebook.select(ui.analysis_panel.frame)
+    ui.pump(0.3)
+    assert ui.analysis_panel._controls_stacked is True
+    assert ui.analysis_panel._metric_columns <= 3
+
+    ui.notebook.select(ui.robots_panel.frame)
+    ui.pump(0.3)
+    assert ui.robots_panel._body_stacked is True
+    assert ui.robots_panel._filterbar_stacked is True
+    assert ui.robots_panel.body_scrollbar.winfo_manager() == "pack"
+
+    ui.notebook.select(ui.resources_panel.frame)
+    ui.pump(0.3)
+    assert ui.resources_panel._kpi_columns == 2
+    assert ui.resources_panel._limits_stacked is True
+
+
 def _labels(widget):
     texts = [widget.cget("text")] if widget.winfo_class() == "TLabel" else []
     for child in widget.winfo_children():

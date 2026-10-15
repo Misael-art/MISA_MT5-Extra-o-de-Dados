@@ -16,6 +16,7 @@ import json
 from mt5_extracao import asset_table, study, timeframes
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.error_handler import with_error_handling, ExportError
+from mt5_extracao.ui.components import ContentPanel, FilterBar, PageHeader
 from mt5_extracao.ui.analysis import AnalysisPanel
 from mt5_extracao.ui.inventory import InventoryPanel
 from mt5_extracao.ui.laboratory import LaboratoryPanel
@@ -344,17 +345,31 @@ class UIManager:
             self.root.after(200, lambda: self.connect_mt5(startup=True))
 
     def _build_symbols_tab(self, tab):
-        tab.columnconfigure(0, weight=2, uniform="col")
-        tab.columnconfigure(1, weight=1, uniform="col")
         tab.rowconfigure(0, weight=1)
+        self.symbols_canvas = tk.Canvas(tab, highlightthickness=0, borderwidth=0,
+                                        background=self.theme.colors["page"])
+        self.symbols_scrollbar = ttk.Scrollbar(tab, orient="vertical", command=self.symbols_canvas.yview)
+        self.symbols_canvas.configure(yscrollcommand=self.symbols_scrollbar.set)
+        self.symbols_canvas.pack(fill=tk.BOTH, expand=True)
+        content = ttk.Frame(self.symbols_canvas)
+        self._symbols_content = content
+        self._symbols_window = self.symbols_canvas.create_window(0, 0, window=content, anchor="nw")
+        content.bind("<Configure>", self._sync_symbols_viewport, add="+")
+        self.symbols_canvas.bind("<Configure>", self._sync_symbols_viewport, add="+")
+        for sequence, direction in (("<MouseWheel>", "wheel"), ("<Button-4>", "up"), ("<Button-5>", "down")):
+            self.symbols_canvas.bind(sequence, lambda event, d=direction: self._scroll_symbols(event, d), add="+")
 
         # Esquerda: ativos da conta
-        left = card(tab, "Ativos da conta")
+        content.columnconfigure(0, weight=2, uniform="col")
+        content.columnconfigure(1, weight=1, uniform="col")
+        content.rowconfigure(0, weight=1)
+        left = card(content, "Ativos da conta")
         left.master.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        self._symbols_left_outer = left.master
         self.symbols_label = ttk.Label(left, text="", style="Muted.TLabel")
         self.symbols_label.pack(anchor="w", pady=(0, 8))
 
-        search_frame = ttk.Frame(left, style="Surface.TFrame")
+        search_frame = FilterBar(left, padding=6)
         search_frame.pack(fill=tk.X, pady=(0, 8))
         ttk.Label(search_frame, text="Buscar", style="Muted.TLabel").pack(side=tk.LEFT, padx=(0, 6))
         self.search_var.trace_add("write", self._schedule_filter)
@@ -387,20 +402,25 @@ class UIManager:
         self.selected_count_label.pack(side=tk.LEFT, padx=(12, 0))
 
         tree_frame, self.symbols_tree = scrolled_tree(
-            left, SYMBOL_COLUMNS, (30, 80, 70, 100, 160, 76, 110, 54),
+            left, SYMBOL_COLUMNS, (26, 78, 70, 88, 135, 65, 108, 58),
             ("center", "w", "e", "w", "w", "w", "w", "center"), height=18, selectmode="extended", xscroll=True)
         self.symbols_tree.column(asset_table.COL_FAVORITE, stretch=False)
         self.symbols_tree.heading(asset_table.COL_FAVORITE, text=self.theme.glyphs(asset_table.COL_FAVORITE))
         tree_frame.pack(fill=tk.BOTH, expand=True)
         for col in SYMBOL_COLUMNS:
-            self.symbols_tree.heading(col, command=lambda c=col: self.sort_symbols(c))
+            heading = {asset_table.COL_VOLUME: "Vol.", asset_table.COL_PROFIT: "Robô +",
+                       asset_table.COL_STATUS: "Status", asset_table.COL_BENCHMARK: "Bench.",
+                       asset_table.COL_DETAILS: "Na base", asset_table.COL_SELECTED: "Sel."}.get(col, col)
+            self.symbols_tree.heading(col, text=self.theme.glyphs(heading),
+                                      command=lambda c=col: self.sort_symbols(c))
         self.symbols_tree.bind("<<TreeviewSelect>>", self.on_symbol_select)
         self.symbols_tree.bind("<Button-1>", self._symbol_clicked)
         self.symbols_tree.bind("<Double-Button-1>", self._symbol_double_clicked)
         self.symbols_tree.bind("<Return>", lambda e: self.add_symbols())
 
         # Direita: seleção, detalhes e ações
-        right = ttk.Frame(tab)
+        right = ttk.Frame(content)
+        self._symbols_right_outer = right
         right.grid(row=0, column=1, sticky="nsew")
         right.columnconfigure(0, weight=1)
         right.rowconfigure(0, weight=1)
@@ -409,10 +429,12 @@ class UIManager:
         selected.master.grid(row=0, column=0, sticky="nsew")
         selected_actions = ttk.Frame(selected, style="Surface.TFrame")
         selected_actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
-        ttk.Button(selected_actions, text="Remover", command=self.remove_symbols).pack(side=tk.LEFT)
-        ttk.Button(selected_actions, text="Limpar", command=self.clear_selection).pack(side=tk.LEFT, padx=(8, 0))
+        selected_buttons = ttk.Frame(selected_actions, style="Surface.TFrame")
+        selected_buttons.pack(fill=tk.X)
+        ttk.Button(selected_buttons, text="Remover", command=self.remove_symbols).pack(side=tk.LEFT)
+        ttk.Button(selected_buttons, text="Limpar", command=self.clear_selection).pack(side=tk.LEFT, padx=(8, 0))
         self.selection_label = ttk.Label(selected_actions, text="", style="Muted.TLabel")
-        self.selection_label.pack(side=tk.RIGHT)
+        self.selection_label.pack(anchor="e", pady=(4, 0))
         self.selected_listbox = self.theme.classic(tk.Listbox(selected, selectmode=tk.EXTENDED, height=5,
                                                               exportselection=False, activestyle="none"))
         self.selected_listbox.pack(fill=tk.BOTH, expand=True)
@@ -485,15 +507,68 @@ class UIManager:
         self.symbols_progress_frame = ttk.Frame(self.progress_frame, style="Surface.TFrame")
         self.symbols_progress_frame.pack(fill=tk.X, pady=(4, 0))
         self.symbols_progress_frame.columnconfigure(0, weight=1)
+        self._symbols_stacked = None
+        tab.bind("<Configure>", self._responsive_symbols_tab, add="+")
+
+    def _responsive_symbols_tab(self, event):
+        stacked = event.width < 1050
+        if stacked == self._symbols_stacked:
+            return
+        self._symbols_stacked = stacked
+        if stacked:
+            self._symbols_content.columnconfigure(0, weight=1, uniform="")
+            self._symbols_content.columnconfigure(1, weight=0, uniform="")
+            self._symbols_content.rowconfigure(0, weight=2)
+            self._symbols_content.rowconfigure(1, weight=3)
+            self._symbols_left_outer.grid_configure(row=0, column=0, columnspan=2, sticky="nsew",
+                                                    padx=0, pady=(0, 8))
+            self._symbols_right_outer.grid_configure(row=1, column=0, columnspan=2, sticky="nsew")
+        else:
+            self._symbols_content.columnconfigure(0, weight=2, uniform="col")
+            self._symbols_content.columnconfigure(1, weight=1, uniform="col")
+            self._symbols_content.rowconfigure(0, weight=1)
+            self._symbols_content.rowconfigure(1, weight=0)
+            self._symbols_left_outer.grid_configure(row=0, column=0, columnspan=1, sticky="nsew",
+                                                    padx=(0, 10), pady=0)
+            self._symbols_right_outer.grid_configure(row=0, column=1, columnspan=1, sticky="nsew")
+
+    def _sync_symbols_viewport(self, _event=None):
+        canvas_height = self.symbols_canvas.winfo_height()
+        canvas_width = self.symbols_canvas.winfo_width()
+        content_height = self._symbols_content.winfo_reqheight()
+        if canvas_height <= 1 or canvas_width <= 1:
+            return
+        needs_scroll = self._symbols_stacked and content_height > canvas_height + 4
+        height = max(canvas_height, content_height) if needs_scroll else canvas_height
+        self.symbols_canvas.itemconfigure(self._symbols_window, width=canvas_width, height=height)
+        self.symbols_canvas.configure(scrollregion=(0, 0, canvas_width, height))
+        if needs_scroll:
+            if not self.symbols_scrollbar.winfo_manager():
+                self.symbols_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, before=self.symbols_canvas)
+        elif self.symbols_scrollbar.winfo_manager():
+            self.symbols_scrollbar.pack_forget()
+
+    def _scroll_symbols(self, event, direction):
+        if direction == "up":
+            delta = -1
+        elif direction == "down":
+            delta = 1
+        else:
+            delta = -1 if event.delta > 0 else 1
+        self.symbols_canvas.yview_scroll(delta, "units")
+        return "break"
 
     def _build_log_tab(self, tab):
-        body = card(tab, "Atividade", "o que o aplicativo fez nesta sessão")
-        body.master.pack(fill=tk.BOTH, expand=True)
-        actions = ttk.Frame(body, style="Surface.TFrame")
-        actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
-        ttk.Button(actions, text="Limpar", command=lambda: self.log_text.delete("1.0", tk.END)).pack(side=tk.LEFT)
-        ttk.Button(actions, text="Abrir pasta de logs",
-                   command=lambda: self._open_path(Path(self._project_root()) / "logs")).pack(side=tk.LEFT, padx=(8, 0))
+        frame = ttk.Frame(tab, padding=12)
+        frame.pack(fill=tk.BOTH, expand=True)
+        header = PageHeader(frame, "Atividade", "O que o aplicativo fez nesta sessão")
+        header.pack(fill=tk.X, pady=(0, 8))
+        header.add_action("Limpar", lambda: self.log_text.delete("1.0", tk.END))
+        header.add_action("Abrir pasta de logs",
+                          lambda: self._open_path(Path(self._project_root()) / "logs"))
+        panel = ContentPanel(frame, title="Registro da sessão", subtitle="Mensagens desta execução", padding=10)
+        panel.pack(fill=tk.BOTH, expand=True)
+        body = panel.body
         log_scroll = ttk.Scrollbar(body)
         log_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.log_text = self.theme.classic(tk.Text(body, height=10, wrap=tk.WORD, padx=10, pady=8,
@@ -507,6 +582,7 @@ class UIManager:
 
     def _theme_changed(self):
         self.create_menu()
+        self.symbols_canvas.configure(background=self.theme.colors["page"])
         self.symbols_tree.tag_configure("data", foreground=self.theme.colors["good"])
         self.refresh_mt5_status(quiet=True)
         self.save_prefs()

@@ -15,7 +15,8 @@ from tkinter import messagebox, simpledialog, ttk
 from mt5_extracao.bootstrap import config_builder
 from mt5_extracao.resources import actions, automation, files, hygiene, storage
 from mt5_extracao.resources import policy as policy_mod
-from mt5_extracao.ui.theme import Tooltip, card, fmt_int, scrolled_tree
+from mt5_extracao.ui.components import FilterBar, MetricCard, PageHeader
+from mt5_extracao.ui.theme import Tooltip, fmt_int, scrolled_tree
 
 log = logging.getLogger(__name__)
 
@@ -110,29 +111,26 @@ class ResourcesPanel:
     # --- montagem ----------------------------------------------------------------------
 
     def _build_header(self):
-        head = ttk.Frame(self.frame)
+        head = PageHeader(self.frame, "Gestão de recursos", "ainda não medido")
         head.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(head, text="Gestão de recursos", style="Page.Title.TLabel").pack(side=tk.LEFT)
-        self.measured_label = ttk.Label(head, text="ainda não medido", style="Page.Muted.TLabel")
-        self.measured_label.pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
-        self.refresh_button = ttk.Button(head, text="Medir agora", style="Accent.TButton", command=self.refresh)
-        self.refresh_button.pack(side=tk.RIGHT)
-        self.progress = ttk.Progressbar(head, mode="indeterminate", length=120)
-        Tooltip(self.refresh_button, "Mede a base, as tabelas, o disco e as pastas, e refaz a análise de "
-                                     "higienização. Grava um retrato para o histórico.", self.ui.theme)
+        self.measured_label = head.subtitle_label
+        self.refresh_button = head.add_action("Medir agora", self.refresh, style="Accent.TButton",
+                                              tooltip="Mede a base, as tabelas, o disco e as pastas, e refaz a análise "
+                                                      "de higienização. Grava um retrato para o histórico.",
+                                              theme=self.ui.theme)
+        self.progress = ttk.Progressbar(head.action_frame, mode="indeterminate", length=120)
 
     def _kpi(self, parent, column, title, hint):
-        body = card(parent, title, padding=12)
-        body.master.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 8, 0))
-        value = ttk.Label(body, text="—", style="Value.TLabel")
-        value.pack(anchor="w")
-        sub = ttk.Label(body, text="", style="Muted.TLabel", wraplength=220, justify=tk.LEFT)
-        sub.pack(anchor="w", pady=(2, 0))
-        Tooltip(body.master, hint, self.ui.theme)
-        return body, value, sub
+        metric = MetricCard(parent, title, value="—", hint=hint, theme=self.ui.theme, padding=12)
+        metric.grid(row=0, column=column, sticky="nsew", padx=(0 if column == 0 else 8, 0))
+        metric.detail_label.pack(anchor="w", pady=(2, 0))
+        self.kpi_cards.append(metric)
+        return metric.body, metric.value_label, metric.detail_label
 
     def _build_kpis(self):
         row = ttk.Frame(self.frame)
+        self.kpi_row = row
+        self.kpi_cards = []
         row.pack(fill=tk.X, pady=(0, 8))
         for i in range(4):
             row.columnconfigure(i, weight=1, uniform="kpi")
@@ -151,6 +149,20 @@ class ResourcesPanel:
         _, self.kpi_clean, self.kpi_clean_sub = self._kpi(
             row, 3, "Candidatas à limpeza", "Séries que caem em alguma regra de higienização e não estão "
                                             "protegidas. Veja a guia Higienização.")
+        self._kpi_columns = 0
+        row.bind("<Configure>", self._layout_kpis, add="+")
+
+    def _layout_kpis(self, event):
+        columns = 4 if event.width >= 1050 else 2 if event.width >= 520 else 1
+        if columns == self._kpi_columns:
+            return
+        self._kpi_columns = columns
+        for column in range(4):
+            self.kpi_row.columnconfigure(column, weight=1 if column < columns else 0,
+                                         uniform="resource-kpi" if column < columns else "")
+        for index, panel in enumerate(self.kpi_cards):
+            panel.grid(row=index // columns, column=index % columns, sticky="nsew",
+                       padx=(0, 8 if index % columns < columns - 1 else 0), pady=(0, 8))
 
     def _build_space_tab(self):
         tab = ttk.Frame(self.tabs, padding=10, style="Surface.TFrame")
@@ -165,31 +177,61 @@ class ResourcesPanel:
         self.dirs_label = ttk.Label(row, text="", style="Muted.TLabel")
         self.dirs_label.pack(side=tk.LEFT, padx=(12, 0))
 
-        limits = ttk.Frame(tab, style="Surface.TFrame")
+        limits = FilterBar(tab, padding=6)
         limits.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        limits.columnconfigure(0, weight=1, uniform="limits")
+        limits.columnconfigure(1, weight=1, uniform="limits")
+        thresholds = ttk.Frame(limits, style="Surface.TFrame")
+        thresholds.grid(row=0, column=0, sticky="w")
+        retention = ttk.Frame(limits, style="Surface.TFrame")
+        retention.grid(row=0, column=1, sticky="ew", padx=(12, 0))
+        self.limits_frame = limits
+        self.threshold_controls = thresholds
+        self.retention_controls = retention
         p = policy_mod.load(self._config())
-        ttk.Label(limits, text="Parar extrações com disco livre abaixo de (%)", style="Surface.TLabel").pack(
+        ttk.Label(thresholds, text="Parar extrações com disco livre abaixo de (%)", style="Surface.TLabel").pack(
             side=tk.LEFT)
         self.block_disk_var = tk.StringVar(value=self._num_text(p.block_disk_free_pct))
-        ttk.Spinbox(limits, from_=0, to=99, textvariable=self.block_disk_var, width=5).pack(side=tk.LEFT, padx=(6, 14))
-        ttk.Label(limits, text="ou base acima de (GB)", style="Surface.TLabel").pack(side=tk.LEFT)
+        ttk.Spinbox(thresholds, from_=0, to=99, textvariable=self.block_disk_var, width=5).pack(
+            side=tk.LEFT, padx=(6, 14))
+        ttk.Label(thresholds, text="ou base acima de (GB)", style="Surface.TLabel").pack(side=tk.LEFT)
         self.block_db_var = tk.StringVar(value=self._num_text(p.block_db_gb))
-        ttk.Spinbox(limits, from_=0, to=100000, textvariable=self.block_db_var, width=6).pack(side=tk.LEFT,
-                                                                                           padx=(6, 14))
-        ttk.Label(limits, text="Retenção por ativo", style="Surface.TLabel").pack(side=tk.LEFT)
+        ttk.Spinbox(thresholds, from_=0, to=100000, textvariable=self.block_db_var, width=6).pack(
+            side=tk.LEFT, padx=(6, 14))
+        ttk.Label(retention, text="Retenção por ativo", style="Surface.TLabel").pack(side=tk.LEFT)
         self.overrides_var = tk.StringVar(value=", ".join(f"{s}:{d}" for s, d in p.retention_overrides.items()))
-        overrides = ttk.Entry(limits, textvariable=self.overrides_var, width=22)
+        overrides = ttk.Entry(retention, textvariable=self.overrides_var, width=22)
         overrides.pack(side=tk.LEFT, padx=(6, 8), fill=tk.X, expand=True)
         Tooltip(overrides, "ATIVO:dias separados por vírgula (ex.: WIN$N:30, PETR4:0). Vale sobre a retenção da guia "
                            "Automação; 0 = guarda tudo desse ativo. 0 nos dois limites = nunca para a extração.",
                 self.ui.theme)
-        ttk.Button(limits, text="Salvar limites", command=self.save_limits).pack(side=tk.LEFT)
+        ttk.Button(retention, text="Salvar limites", command=self.save_limits).pack(side=tk.LEFT)
+        self._limits_stacked = None
+        limits.bind("<Configure>", self._layout_limits, add="+")
         frame, self.space_tree = scrolled_tree(tab, SPACE_COLUMNS, SPACE_WIDTHS, SPACE_ANCHORS, height=12)
         frame.pack(fill=tk.BOTH, expand=True)
         self.space_tree.tag_configure("internal", foreground=self.ui.theme.colors["muted"])
         for col in SPACE_COLUMNS:
             self.space_tree.heading(col, command=lambda c=col: self._sort_space(c))
         self._space_sort = ("Tamanho", True)
+
+    def _layout_limits(self, event):
+        stacked = event.width < 1050
+        if stacked == self._limits_stacked:
+            return
+        self._limits_stacked = stacked
+        if stacked:
+            self.limits_frame.columnconfigure(0, weight=1, uniform="")
+            self.limits_frame.columnconfigure(1, weight=0, uniform="")
+            self.threshold_controls.grid_configure(row=0, column=0, columnspan=2, sticky="w", padx=0)
+            self.retention_controls.grid_configure(row=1, column=0, columnspan=2, sticky="ew", padx=0,
+                                                  pady=(6, 0))
+        else:
+            self.limits_frame.columnconfigure(0, weight=1, uniform="limits")
+            self.limits_frame.columnconfigure(1, weight=1, uniform="limits")
+            self.threshold_controls.grid_configure(row=0, column=0, columnspan=1, sticky="w", padx=0, pady=0)
+            self.retention_controls.grid_configure(row=0, column=1, columnspan=1, sticky="ew", padx=(12, 0),
+                                                  pady=0)
 
     def _build_clean_tab(self):
         tab = ttk.Frame(self.tabs, padding=10, style="Surface.TFrame")
