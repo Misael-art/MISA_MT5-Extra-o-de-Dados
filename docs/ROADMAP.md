@@ -39,11 +39,12 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F12** HADOUKEN 2.0 | Carteira da conta, guardião global, Gradiente Linear, painel recolhível com abas, estatísticas e copiloto de IA só de leitura | T12.0–T12.8 | F8, F10 | T12.0, T12.L (janela organizada) e T12.P (painel responsivo) ✅; T12.1 e T12.2 ⏳; T12.6a ✅ (normal, tema claro, ajuste abaixo de 100%, tela física, vocabulário e linha de base de um gráfico); G-02 (arquitetura modular do painel) é a próxima tarefa elegível; T12.6b aguarda G-02, e T12.3 e demais etapas aguardam suas dependências. T12.L1–T12.L3 ✅ |
 | **F13** MT5x Analytics | Catálogo de evidências sobre ativos: barras derivadas do M1 por sessão, características com data de disponibilidade (volume relativo, regime, sazonalidade), hipóteses validadas fora da amostra e um retrato pequeno que os robôs MQL5 só leem. Especificação em [analytics/ESPECIFICACAO.md](analytics/ESPECIFICACAO.md) | T13.0–T13.8 | F11 (T11.1), F12 (para T13.5 em diante) | T13.0 ✅ (plano); demais a fazer. **Nada implementado** |
 | **F14** Plataforma modular | Backlog integrado do HADOUKEN e do mt5x: framework modular de estratégias, mecanismos de execução, gestão de posições e de carteira, painel, estatísticas, pesquisa e validação, IA. Índice em [propostas/README.md](propostas/README.md) | T14.0 (registro); as tarefas têm identificador próprio (`A-01` a `J-09`) | F12, F13 | T14.0 ✅ (backlog registrado). **Nada implementado**: cada tarefa entra no plano quando for a próxima |
-| **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0: registro documental; T18.1–T18.9 planejadas |
+| **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0: plano; T18.1 concluída localmente; T18.8: protótipo sintético em `master` (PR #78); demais planejadas |
 
 ## Fase 18 — Relações entre indicadores e aderência dos setups
 
-**Planejada em 2026-10-15; implementação não iniciada.** T18.0 registra a especificação e os prompts;
+**Iniciada em 2026-10-15.** T18.0 registra a especificação e os prompts; T18.1 foi concluída localmente e T18.8
+tem apresentação sintética integrada ao `master`, sem serviço real;
 T18.1–T18.9 entregam registry/colunas analíticas, associações entre indicadores e com movimentos/resultados,
 convergências, janelas temporais, serviço local, candidatos a presets, UI e API posterior somente leitura.
 Integra F13/F16/F15 e reutiliza a F17, após conferir as branches disponíveis.

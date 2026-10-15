@@ -1,15 +1,24 @@
 """Registro versionado de características e seleção por dependências.
 
 Dependências de fontes externas usam chaves estáveis como ``bars:M1`` ou
-``market_calendar``. Dependências de outras características usam
-``feature:<feature_id>``; assim uma alteração de origem alcança somente os
-cálculos que dependem dela, direta ou indiretamente.
+``market_calendar``. ``{timeframe}`` declara dependência aplicada ao timeframe
+do valor (por exemplo, ``bars_derived:{timeframe}``). Dependências de outras
+características usam ``feature:<feature_id>``; assim uma alteração de origem
+alcança somente os cálculos que dependem dela, direta ou indiretamente.
 """
+from fnmatch import fnmatchcase
+
 from mt5_extracao.analytics import feature_store
 
 
 def _feature_dependency(dependency):
     return dependency[len("feature:"):] if dependency.startswith("feature:") else None
+
+
+def _dependency_matches(dependency, changed):
+    if dependency == changed:
+        return True
+    return "{timeframe}" in dependency and fnmatchcase(changed, dependency.replace("{timeframe}", "*"))
 
 
 def _latest_by_id(definitions):
@@ -50,7 +59,9 @@ def _validate_dependencies(feature_id, dependencies, definitions):
         visit(node)
 
 
-def register(db, feature_id, name, algorithm_version, *, parameters=None, dependencies=()):
+def register(db, feature_id, name, algorithm_version, *, parameters=None, dependencies=(), family=None, formula=None,
+             unit=None, warmup_count=None, warmup_unit=None, source_id=None, timeframe=None,
+             availability_rule=None, value_type=None):
     """Registra uma versão imutável após validar referências e ciclos."""
     if feature_id is None or name is None or algorithm_version is None:
         raise ValueError("feature_id, name e algorithm_version são obrigatórios.")
@@ -73,7 +84,11 @@ def register(db, feature_id, name, algorithm_version, *, parameters=None, depend
         if value not in normalized:
             normalized.append(value)
     _validate_dependencies(feature_id, normalized, feature_store.list_definitions(db))
-    return feature_store.register_definition(db, feature_id, name, algorithm_version, parameters, normalized)
+    return feature_store.register_definition(
+        db, feature_id, name, algorithm_version, parameters, normalized, family=family, formula=formula, unit=unit,
+        warmup_count=warmup_count, warmup_unit=warmup_unit, source_id=source_id, timeframe=timeframe,
+        availability_rule=availability_rule, value_type=value_type,
+    )
 
 
 def list_features(db, include_versions=False):
@@ -113,7 +128,8 @@ def affected_by(db, changed_dependencies):
     affected = []
     while True:
         found = [feature_id for feature_id, definition in sorted(remaining.items())
-                 if set(definition["dependencies"]) & changed]
+                 if any(_dependency_matches(dependency, item)
+                        for dependency in definition["dependencies"] for item in changed)]
         if not found:
             break
         for feature_id in found:

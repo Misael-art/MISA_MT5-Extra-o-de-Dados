@@ -24,7 +24,8 @@ modo sombra → pilotos autorizados → monitoramento.
 ## Extensão autorizada: Fase 18 (2026-10-15)
 
 Pedido adicional do dono: relações entre indicadores, movimentos futuros, ganhos/perdas de Experts e aderência
-temporal dos setups. **Planejada; não implementada.** Não altera o estado das entregas F13/F16 acima.
+temporal dos setups. T18.1 foi concluída localmente; T18.8 tem protótipo sintético no `master`, sem consulta real.
+Não altera o estado das entregas F13/F16 acima.
 
 | Requisito adicional | Tarefa | Evidência de aceite exigida |
 |---|---|---|
@@ -40,6 +41,10 @@ temporal dos setups. **Planejada; não implementada.** Não altera o estado das 
 
 Detalhe e coordenação em [RELACOES_INDICADORES_SETUP.md](../propostas/RELACOES_INDICADORES_SETUP.md);
 prompts [Analytics](PROMPT_F18_ANALYTICS.md) e [UI](PROMPT_F18_UI.md).
+
+Estado T18.1 nesta branch: registry tipado, alvos forward, migração aditiva e DTO v1/fixture implementados; 41 testes
+focados, suíte completa 875/10 e `doctor` 16 OK/2 avisos/0 falhas. Não há cálculo de associação nem integração do
+serviço à UI; PostgreSQL e Windows reais seguem pendentes.
 
 ## 1. Dados e tempo
 

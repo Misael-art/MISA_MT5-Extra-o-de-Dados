@@ -5,13 +5,18 @@
 Pedido do dono para relações entre indicadores, preço futuro, ganhos/perdas e aderência temporal dos Experts.
 T18.0 registra [especificação](propostas/RELACOES_INDICADORES_SETUP.md), tarefas no plano/roadmap/matriz e prompts
 separados de [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
-T18.1–T18.9 estão **planejadas**, não implementadas. Nenhum código de execução, tabela, preset ou ordem foi alterado.
+T18.1 está em implementação local na branch `tarefa/T18.1-registry-indicadores`; T18.8 tem protótipo visual integrado
+ao `master` pela PR #78, ainda com dados sintéticos porque T18.6 não existe nesta base. Nenhuma relação real foi
+calculada nem preset, Expert ou ordem foi alterado.
 
 O registro fica na branch local `tarefa/T18.0-plano-associacoes`, worktree
 `../MISA_MT5-Extra-o-de-Dados-T18.0`, baseada no checkpoint T13.6 `dba30d7`. Não houve merge de F13/F16/F17
 nem publicação. Os agentes precisam integrar a documentação por diff revisado, preservando atualizações mais recentes.
 Pesquisa/serviço local independem de MQL5; aplicação operacional mantém dependências e autorizações de T13.7.
 Cada implementação é uma tarefa por PR; UI só consome contrato e reaproveita F17 após conferir sua integração.
+
+O trabalho de código da T18.1 está no worktree `../MISA_MT5-Extra-o-de-Dados-T18.1`, baseado no checkpoint T18.0
+`cfe34dc`. A fixture/DTO é entregue nessa branch; a UI do `master` ainda requer um adaptador no serviço T18.6.
 
 Verificação do registro: instalador sem MT5 e dependências dev executados; 5 testes focados de documentação/integração
 aprovados; 11 novos links locais conferidos; `git diff --check` sem erros. Doctor do ambiente existente:
@@ -316,3 +321,23 @@ As telas mt5x/MQL5 e a ligação da aplicação continuam pendentes de T13.5 e T
 ainda dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
 Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
 `UNAVAILABLE`, fixture point-in-time no Tester) foi enviada ao dono; a resposta continua pendente.
+
+## Checkpoint T18.1 — registry, alvos e DTO — 2026-10-15
+
+- Branch local `tarefa/T18.1-registry-indicadores`, worktree `../MISA_MT5-Extra-o-de-Dados-T18.1`, sobre T18.0
+  `cfe34dc`; implementação concluída e commitada localmente, ainda sem integração. Não foi feito merge amplo de
+  branches F13/F16/F17.
+- Implementados registry nativo determinístico (incluindo MACD sem `pandas-ta`), metadados T13.3, tipagem nas
+  gravações, templates de dependência por timeframe, alvos forward, migration aditiva da feature store, DTO v1 e
+  fixture JSON sintética. A mudança de escopo dos produtores usa a versão de definição 1.2; as versões 1.1 existentes
+  permanecem no histórico.
+- Revisão focada encontrou e corrigiu SQL com nome antigo de warmup, limite de aquecimento deslocado, colisão ao
+  registrar o mesmo feature em vários timeframes, aceitação de valor diferente do tipo declarado, regra verbal do
+  fim de alvo e validação incompleta de DTO. Focados T18.1/T13.2/T13.3: **41 aprovados em 18,28 s**; suíte completa
+  sob Xvfb: **875 aprovados, 10 ignorados em 593,27 s**; `doctor`: **16 OK, 2 avisos, 0 falhas**.
+- Sem relação calculada, serviço/CLI T18.6, persistência de resultados, dados reais ou integração UI. O protótipo UI
+  no `master` continua marcado como sintético. Windows real e PostgreSQL para esta migração/registro ainda não foram
+  testados.
+- Fixture estática lida do disco e validada como schema v1, sintética e sem efeito calculado; `git diff --check`
+  passou. Próximo passo: continuar as tarefas elegíveis do plano em branches separadas. Não publicar esta branch nem
+  fazer merge externo.

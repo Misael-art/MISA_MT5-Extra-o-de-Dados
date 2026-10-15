@@ -46,7 +46,7 @@ def test_definitions_are_versioned_immutable_and_validate_dependencies(db):
     assert len([item for item in features.list_features(db, include_versions=True)
                 if item["feature_id"] == "close_m1"]) == 2
 
-    with pytest.raises(ValueError, match="nova algorithm_version"):
+    with pytest.raises(ValueError, match="nova versão do algoritmo"):
         features.register(db, "close_m1", "M1 close", "1.0", dependencies=["bars:M5"])
     with pytest.raises(ValueError, match="Dependência não registrada"):
         features.register(db, "unknown_dependent", "Unknown", "1.0", dependencies=["feature:missing"])

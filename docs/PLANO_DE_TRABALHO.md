@@ -159,14 +159,14 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
 | T16.12 | Laboratório: `mt5x trades enrich/report/simulate/insights/export` com `--json` | T16.11b | ✅ implementação local em `tarefa/T16.12-cli-relatorio` (código `e99becd`); preserva `compare`, `report --by`, simulação por filtros e `insights --save`. Focados 15; suíte 794/9; doctor 16/2/0. Windows pendente; relatório HTML opcional não feito |
 | T18.0 | Plano de relações entre indicadores e aderência temporal, com prompts coordenados | Pedido do dono | ✅ registro documental; nenhuma funcionalidade implementada |
-| T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | planejada |
+| T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | ✅ concluída localmente em `tarefa/T18.1-registry-indicadores`; 41 focados, suíte 875/10, doctor 16 OK/2 avisos/0 falhas; PostgreSQL e Windows reais pendentes |
 | T18.2 | Indicador × indicador e × movimento futuro | T18.1, infraestrutura validada T13.4 | planejada |
 | T18.3 | Indicador × resultado do Expert (compra/venda, ganho/loss) | T18.2, T16.1, T16.3b | planejada |
 | T18.4 | Convergências de fatores e utilidade incremental OOS | T18.3, T13.4 | planejada |
 | T18.5 | Janelas móveis, aderência temporal e jobs incrementais | T18.2, T13.3b, T15.9; T18.3/4 para trilhas de Expert/conjunto | planejada |
 | T18.6 | Consulta local, CLI, projeções de colunas e DTO versionado | T18.2, T18.5; T18.3/4 para respectivos resultados | planejada |
 | T18.7 | Candidatos a filtros/presets para otimização, sem aplicação automática | T18.4, T18.6 | planejada |
-| T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | planejada |
+| T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | ⏳ apresentação prototipada na PR #78 do `master`, com fixture sintética; integração real aguarda T18.6 |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -3514,7 +3514,8 @@ indicador × resultado do Expert, por ativo/contrato/corretora, timeframe, vers�
 convergências e acompanhar estabilidade no tempo. Colunas adicionais são projeções consultáveis/exportáveis sobre
 armazenamento normalizado versionado, preservando barras e tabelas de usuário.
 
-**T18.0 registra o plano; T18.1–T18.9 estão planejadas, não implementadas.** Especificação, passos, arquivos previstos,
+**T18.0 registra o plano.** T18.1 foi concluída localmente na branch `tarefa/T18.1-registry-indicadores`; T18.8 tem
+protótipo visual integrado ao `master`, sem serviço real. As demais tarefas seguem planejadas. Especificação, passos, arquivos previstos,
 contratos, testes e critérios de aceite por tarefa:
 [RELACOES_INDICADORES_SETUP.md](propostas/RELACOES_INDICADORES_SETUP.md).
 
@@ -3528,6 +3529,8 @@ T18.6 → T18.7 (propostas) e T18.9 (API posterior). T18.8 prepara UI com fixtur
 Não bloquear pesquisa local por T13.5/MQL5; consumo operacional mantém T13.7, Safety e autorizações próprias.
 T13.4 pode oferecer infraestrutura sem ter suas hipóteses reais promovidas; validar a capacidade necessária,
 sem dispensar custos, eventos maduros, dados suficientes ou avaliação OOS das novas relações.
+
+Contrato, fixture sintética e limites desta entrega T18.1: [T18.1_REGISTRY_DTO.md](analytics/T18.1_REGISTRY_DTO.md).
 
 Prompts de continuidade:
 [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).

@@ -433,7 +433,7 @@ def test_recalculate_affected_runs_each_family_once(db):
     producers.compute(db, "TEST", "M15", families=["regime", "calendar"])
     handlers = producers.recalculators(db, "TEST", "M15")
     definitions = features.list_features(db)
-    assert all("bars_derived:M15" in item["dependencies"] for item in definitions)
+    assert all("bars_derived:{timeframe}" in item["dependencies"] for item in definitions)
     results = features.recalculate_affected(db, ["bars_derived:M15"], handlers)
     families = {item["result"][0]["family"] for item in results}
     assert families == {"regime", "calendar"}

@@ -28,12 +28,14 @@ from collections import deque
 import numpy as np
 import pandas as pd
 
-from mt5_extracao.analytics import (feature_store, features, market_regimes, resampling, session_structure,
-                                    volume_profiles)
+from mt5_extracao.analytics import (feature_store, features, indicator_registry, market_regimes, resampling,
+                                    session_structure, volume_profiles)
 
 log = logging.getLogger(__name__)
 
-ALGORITHM_VERSION = "1.1"
+# 1.2 mantém as fórmulas numéricas de 1.1, mas escopa dependências ao timeframe
+# do valor em vez de vincular a definição a um único timeframe.
+ALGORITHM_VERSION = "1.2"
 FAMILIES = ("volume", "rvol", "volatility", "regime", "structure", "calendar")
 WILDER_MEMORY = 5
 DEFAULTS = {
@@ -356,13 +358,14 @@ def _family_rows(family, bars, params, volume_source):
 
 
 def register_definitions(db, family, feature_ids, params, timeframe, volume_source=None):
-    dependencies = [f"bars_derived:{timeframe}", "market_calendar"]
+    dependencies = ["bars_derived:{timeframe}", "market_calendar"]
     for feature_id in sorted(feature_ids):
         parameters = dict(params, family=family, confidence=CONFIDENCE[family])
         if volume_source:
             parameters["volume_source"] = volume_source
+        contract = indicator_registry.producer_contract(feature_id, family, parameters, timeframe, volume_source)
         features.register(db, feature_id, feature_id.replace(".", " "), ALGORITHM_VERSION, parameters=parameters,
-                          dependencies=dependencies)
+                          dependencies=dependencies, **contract)
 
 
 def compute(db, symbol, timeframe, *, families=None, volume_source="auto", overrides=None, write_guard=None):
