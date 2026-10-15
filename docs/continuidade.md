@@ -146,3 +146,14 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Worktree separado `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` permanece intocado. Não houve push nem PR.
 - Próxima tarefa elegível registrada nesta retomada: T13.4. T16.3b também é independente e pode ser tratada em branch
   separado; manter cada tarefa em sua própria branch.
+
+## Início da extensão T13.3b — 2026-10-15
+
+- Branch isolada `tarefa/T13.3b-producers-incrementais`, derivada de `tarefa/T13.3-perfis-regimes` em `bde3652`.
+  Worktrees T17 não foram tocados.
+- Ambiente Python 3.11.15 e Xvfb disponíveis; `/tmp` tinha 5,2 GiB livres, então a suíte foi executada ali.
+  Linha de base antes das alterações: **833 aprovados, 10 ignorados em 627,98 s**.
+- A revisão do código confirma que `producers.compute` sempre chama `latest_bars` sem limite e recalcula a família
+  inteira. `save_values` valida todo o lote e grava valores numa transação, mas o job não tem checkpoint. O contrato
+  desta extensão exige atualização real por barras novas, retomada depois de falha e correções dependentes sem usar
+  janela finita como substituto exato de estado recursivo. Nenhuma alteração de código foi feita ainda neste branch.

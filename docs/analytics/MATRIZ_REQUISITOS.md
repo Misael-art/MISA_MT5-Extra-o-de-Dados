@@ -72,7 +72,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Modo sombra (decide, não age) | — | Tudo | **T13.7a** | T13.5 | Nenhuma ordem afetada; sinais registrados |
 | Piloto opt-in que só reduz risco | `mt5x-safety` (guardião, orçamento) | Política | T13.7 | T13.5, T12.3, robô aprovado, **autorização do dono** | Só reduz; bateria sem regressão |
 | Monitoramento e rebaixamento | — | Tudo | T13.8 | T13.4, T13.7 | Motivo e trilha gravados |
-| Jobs idempotentes, checkpoint, recursos | Fase 15 (`write_guard`, retenção, arquivo) | Produtores da T13.3 consultam o guarda | T13.3 | — | Escrita bloqueada pelo guarda é recusada com mensagem |
+| Jobs idempotentes, checkpoint, recursos | Fase 15 (`write_guard`, retenção, arquivo); `save_values` grava em transação idempotente | `producers.compute` recarrega/recalcula todo o histórico; sem checkpoint, retomada por lote, timeout/retentativa limitada ou medição do job persistente | T13.3b | T13.3, T15.9 | Falha e retomada não duplicam nem pulam valores; correção tardia iguala recomputação completa; carga nova não relê o histórico inteiro |
 
 ## Questões para o dono do projeto (não bloqueiam T13.3 a T13.4)
 

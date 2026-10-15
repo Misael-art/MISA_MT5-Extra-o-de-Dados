@@ -127,6 +127,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementação concluída no Linux: 833 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Decisão 5 (confiança) segue proposta pendente; PostgreSQL e Windows real não testados |
+| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | em implementação na branch `tarefa/T13.3b-producers-incrementais`; independente da T13.4 |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
@@ -3298,6 +3299,26 @@ real por corretora.
   com volume desconhecido fica ausente; (d) percentis e medianas só com a janela anterior; (e) correção tardia de
   barra só fica disponível no `computed_at_utc` da correção; (f) a última sessão da base é tratada como aberta;
   (g) a gravação consulta o `write_guard` da Fase 15; (h) proposta de "confiança" para a decisão 5.
+
+### T13.3b — Produtores incrementais e recuperáveis (extensão identificada em 2026-10-15)
+
+- **Motivo:** `analytics.producers.compute` usa `latest_bars` e recalcula a família inteira a cada chamada. `save_values`
+  e a transação por família tornam a gravação repetível, mas não há checkpoint durável por lote, retomada coordenada
+  nem medição reproduzível do job produtor.
+- **Objetivo:** processar só o intervalo novo ou afetado, retomar com segurança após falha e preservar paridade com a
+  recomputação completa; impedir que uma correção tardia deixe características dependentes antigas válidas.
+- **Depende de:** T13.3 e `write_guard`/limites da T15.9. É independente da avaliação estatística da T13.4.
+- **Contrato de retomada:** checkpoint identifica ativo, timeframe, família, versão do algoritmo, parâmetros e revisão
+  da fonte; grava valores e avanço do checkpoint de modo transacional e idempotente. Limita lotes, tempo e retentativas;
+  interrupção permite retomar ou reiniciar sem duplicar nem pular valores.
+- **Exatidão:** janelas finitas incluem aquecimento suficiente. Indicadores recursivos só retomam de estado salvo se a
+  continuidade desse estado for provada contra recomputação; até lá, reconstruir desde uma âncora conhecida ou executar
+  recomputação completa, sem tratar memória aproximada como exata.
+- **Medição:** registrar versão, configuração, revisão e fonte de entrada, duração, pico de memória e crescimento do
+  banco em cenário reproduzível; sementes só quando houver etapa estocástica. Não repetir carga completa por padrão.
+- **Aceite:** testes sintéticos de reexecução idempotente, falha após lote/checkpoint, retomada, correção tardia e
+  igualdade com recomputação completa; `write_guard` bloqueia cada lote; medição mostra que a atualização incremental
+  não lê/recalcula todo o histórico para uma barra nova.
 
 ### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
 
