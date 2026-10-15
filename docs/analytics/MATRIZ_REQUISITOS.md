@@ -14,8 +14,9 @@ ignorado); Windows real segue pendente. T13.4 segue parcial por custos e dados
 reais ausentes. T16.3c implementa as revisões, mas replay com recibos de fonte real está pendente. Evidências:
 [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md), [T13.4_RELATORIO.md](T13.4_RELATORIO.md) e
 [continuidade.md](../continuidade.md). A Decisão 5 permanece aberta.
-O contrato de dados proposto para T13.6 está na branch local `tarefa/T13.6-contrato-ui` (`51d47be`); adaptador e
-telas continuam pendentes das dependências declaradas na tarefa.
+O contrato v1 e o adaptador DTO puro-Python de T13.6 foram implementados na branch local
+`tarefa/T13.6-contrato-ui`; focados 5 aprovados, suíte completa 865/10 e doctor 16 OK/2 avisos/0 falhas. Telas e
+integração da aplicação continuam pendentes das dependências declaradas na tarefa.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -67,7 +68,7 @@ modo sombra → pilotos autorizados → monitoramento.
 
 | Requisito | Existente | Lacuna | Tarefa | Critério de aceite | Estado nesta retomada (evidência ou pendência) |
 |---|---|---|---|---|---|
-| Original × filtrado (líquido, expectativa, drawdown, exposição, custos, n, estabilidade) | `rules.evaluate`, guia Insights do Laboratório | Adaptador visual com proveniência e distinção entre ledger fixo e reexecução | T13.6 | Rótulo "simulado" em todo resultado filtrado | **Contrato proposto** em [T13.6_CONTRATO_UI.md](T13.6_CONTRATO_UI.md); adaptador/telas seguem pendentes de T13.5 e T12.6. Filtro de ledger fixo permanece contrafactual; mudança de estado exige reexecução completa. |
+| Original × filtrado (líquido, expectativa, drawdown, exposição, custos, n, estabilidade) | `rules.evaluate`, guia Insights do Laboratório | Adaptador visual com proveniência e distinção entre ledger fixo e reexecução | T13.6 | Rótulo "simulado" em todo resultado filtrado | **Contrato e adaptador DTO parciais** em [T13.6_CONTRATO_UI.md](T13.6_CONTRATO_UI.md); telas e integração seguem pendentes de T13.5 e T12.6. Filtro de ledger fixo permanece contrafactual; mudança de estado exige reexecução completa. |
 | Filtro que muda estado/capital/sinais seguintes exige re-execução completa | `rules` filtra um livro fixo | Reexecução completa pelo backtester | T13.7 | Só afirmar equivalência após reexecução | **Pendente** de T13.7; filtragem de ledger fixo não é equivalente. |
 | Registro de todos os sinais, inclusive bloqueados | — | `_signal_log` e integração do leitor | T13.7a | Instante, estratégia, direção, contexto, versão, decisão e motivo | **Pendente de decisão do dono** para incluir T13.7a e da T13.5; nenhuma estratégia é alterada. |
 

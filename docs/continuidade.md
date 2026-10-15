@@ -283,11 +283,13 @@ Entregas locais independentes, sem merge, push ou PR:
 
 ## T13.6 — contrato de dados para a UI
 
-Na branch local `tarefa/T13.6-contrato-ui`, commits `51d47be` e `304daa0`, foi preparado o contrato v1 para a UI
-consumir resultados, comparações, proveniência, validade e incerteza. O contrato distingue ledger observado,
-contrafactual de ledger fixo, reexecução e log de sombra; contagens de sinais ausentes ficam `null`, não zero. O
-exemplo é fictício e está identificado como tal.
-O adaptador e as telas não foram implementados: dependem de T13.5 e T12.6; as contagens de aceitos/bloqueados ainda
-dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
+Na branch local `tarefa/T13.6-contrato-ui`, o contrato v1 e o adaptador DTO puro-Python foram implementados. Ele
+serializa comparação de ledger fixo e catálogo de hipóteses, conserva proveniência disponível e representa campos
+ausentes como `null`/estado explícito. O contrato distingue ledger observado, contrafactual de ledger fixo, reexecução
+e log de sombra; contagens de sinais ausentes ficam `null`, não zero. O exemplo é fictício e está identificado como tal.
+Validação em 2026-10-15: focados 5 aprovados, suíte completa sob Xvfb 865 aprovados/10 ignorados e doctor 16 OK/2
+avisos/0 falhas.
+As telas mt5x/MQL5 e a ligação da aplicação continuam pendentes de T13.5 e T12.6; contagens de aceitos/bloqueados
+ainda dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
 Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
 `UNAVAILABLE`, fixture point-in-time no Tester) foi enviada ao dono; a resposta continua pendente.
