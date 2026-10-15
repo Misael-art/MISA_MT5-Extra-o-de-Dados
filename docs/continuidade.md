@@ -225,3 +225,24 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   encheu; a repetição usou diretórios temporários em `/var/tmp` e terminou normalmente.
 - Nenhum MT5 real foi conectado. A validação em Windows, DPI alto e 1920×1080 segue pendente para T17.5/checklist;
   não se declara validação Windows. Próxima tarefa: T17.5, validação visual integrada e documentação final da fase.
+
+## Conclusão da T17.5 — 2026-10-15
+
+- T17.5 concluída no Linux na worktree `../MISA_MT5-Extra-o-de-Dados-T17.5`, branch
+  `tarefa/T17.5-validacao-visual`, baseada no commit T17.4 `c3f625b`. A instalação e as dependências de desenvolvimento
+  foram preparadas antes da baseline; esta entrega fecha a documentação e as evidências sem alteração de cálculo ou API.
+- As seis telas foram capturadas em claro/escuro a 1920×1080, com Xvfb em 96 DPI (`tk scaling=1,333`) e 144 DPI
+  (`tk scaling=1,998`), em `docs/img/interface-visual/T17.5/`. Há capturas adicionais de Análise com 10 barras e de
+  Ativos com cotação sintética grande. Os pares antes/depois 1280×800 e as capturas narrow 900×850/900×620 estão em
+  `docs/img/interface-visual/T17.4/`.
+- Fixture local sem MT5 real: 46 símbolos, 600 barras M1, 480 M15 e uma série curta de 10 barras. A Análise recusou o
+  ativo sem dados e abriu as séries existentes. `Ctrl+F`, busca, Tab e resize foram exercitados; em 900×620 Ativos
+  empilha os painéis e expõe rolagem, e em 1920×1080 volta ao leiaute lado a lado. O display Xvfb não oferece estado
+  de maximização de um gerenciador real. As imagens originais do pedido continuam indisponíveis.
+- Na baseline direta do desktop: **831 aprovados, 10 pulados, 2 falhas intermitentes** (teste de desempenho de agregação
+  em 1,59 s frente ao limite de 1,5 s; teste responsivo sem conseguir reduzir a janela desktop de 1280 px). As duas
+  repetições isoladas passaram, com a responsiva em Xvfb. Suíte final completa em Xvfb 1280×800: **833 aprovados,
+  10 pulados em 674,22 s**. `doctor`: **16 OK, 2 avisos esperados, 0 falhas** (`pandas-ta` opcional ausente e ponte
+  MT5 desligada); `git diff --check` passou.
+- A Fase 17 está concluída no Linux. Windows real, DPI de 125%/150%, maximização pelo sistema e glifos/fontes do Tk
+  continuam na pendência T17.1–T17.5 de `docs/validacao_instaladores.md`; não se declara validação Windows.
