@@ -17,8 +17,9 @@ DARK = dict(_DARK)
 
 # Sem Xft (ex.: o Tk embutido em algumas distribuições do Python no Linux), o Tk só enxerga as fontes antigas do X11
 # e não desenha emojis nem os símbolos de estrela e de caixa: nesses casos as tabelas usam estes textos.
-PLAIN_GLYPHS = (("🟢 ", ""), ("🔴 ", ""), ("⚪ ", ""), ("🎯 ", ""), ("❌ ", ""), ("★", "*"), ("☆", "·"), ("☑", "[x]"),
-                ("☐", "[ ]"))
+PLAIN_GLYPHS = (("🟢 ", ""), ("🔴 ", ""), ("⚪ ", ""), ("🎯 ", ""), ("❌ ", ""), ("★", "*"), ("☆", "·"),
+                ("☑", "[x]"), ("☐", "[ ]"), ("✓", "+"), ("⚠", "!"), ("×", "x"), ("ℹ", "i"),
+                ("●", "o"), ("◐", "~"), ("○", "o"), ("…", "..."))
 
 
 def _rich_glyphs(root):
@@ -158,6 +159,16 @@ class Theme:
                         bordercolor=c["accent"], lightcolor=c["accent"], darkcolor=c["accent"])
         style.configure("Badge.TLabel", background=c["select"], foreground=c["ink"], font=self.font_small,
                         padding=(SPACING["sm"], SPACING["2xs"]))
+        for name, color in (("Success", c["good"]), ("Warning", c["warn"]), ("Error", c["bad"]),
+                            ("Info", c["accent"]), ("Neutral", c["ink2"])):
+            style.configure(f"{name}.Status.TLabel", background=c["surface"], foreground=color,
+                            font=self.font_bold, padding=(SPACING["sm"], SPACING["2xs"]))
+            style.configure(f"{name}.Notice.TFrame", background=c["surface"], relief="solid", borderwidth=1,
+                            bordercolor=color, lightcolor=color, darkcolor=color)
+            style.configure(f"{name}.Notice.TLabel", background=c["surface"], foreground=c["ink"])
+        style.configure("Notice.TFrame", background=c["surface"], relief="solid", borderwidth=1,
+                        bordercolor=c["border"], lightcolor=c["border"], darkcolor=c["border"])
+        style.configure("Notice.TLabel", background=c["surface"], foreground=c["ink"])
         style.configure("Page.Muted.TLabel", background=c["page"], foreground=c["ink2"], font=self.font_small)
         style.configure("Page.Title.TLabel", background=c["page"], foreground=c["ink"], font=self.font_title)
 
