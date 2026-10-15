@@ -7,11 +7,23 @@ T18.0 registra [especificação](propostas/RELACOES_INDICADORES_SETUP.md), taref
 separados de [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
 T18.1–T18.9 estão **planejadas**, não implementadas. Nenhum código de execução, tabela, preset ou ordem foi alterado.
 
-O registro fica na branch local `tarefa/T18.0-plano-associacoes`, worktree
-`../MISA_MT5-Extra-o-de-Dados-T18.0`, baseada no checkpoint T13.6 `dba30d7`. Não houve merge de F13/F16/F17
-nem publicação. Os agentes precisam integrar a documentação por diff revisado, preservando atualizações mais recentes.
+O registro ficou na branch local `tarefa/T18.0-plano-associacoes`, worktree
+`../MISA_MT5-Extra-o-de-Dados-T18.0`, baseada no checkpoint T13.6 `dba30d7`. A T18.8 está sendo preparada em branch
+própria sobre T18.0, com a implementação visual da T17.5 integrada para reutilização. Analytics ainda não entregou
+T18.1 (DTO/fixture) nem T18.6 (serviço); por isso a tela desta tarefa começa com fixture declarada como provisória.
+Não houve publicação.
 Pesquisa/serviço local independem de MQL5; aplicação operacional mantém dependências e autorizações de T13.7.
-Cada implementação é uma tarefa por PR; UI só consome contrato e reaproveita F17 após conferir sua integração.
+Cada implementação é uma tarefa por PR; UI só consome contrato e reaproveita os componentes visuais entregues na F17.
+
+## Reutilização da Fase 17 na T18.8 — 2026-10-15
+
+- A branch local `tarefa/T17.5-validacao-visual` foi integrada à branch `tarefa/T18.8-relacoes-aderencia` para trazer
+  tokens, temas, componentes ttk e ajustes de Laboratório/gráficos. As mudanças locais da worktree T17.6 não foram
+  incorporadas.
+- A Fase 17 foi validada no Linux em Xvfb; Windows real e DPI de 125%/150% continuam pendentes no checklist de
+  `docs/validacao_instaladores.md`.
+- As tarefas T18.1 e T18.6 seguem ausentes desta base. A fixture de apresentação da T18.8 não representa contrato final
+  de Analytics e será substituída/adaptada quando os produtores entregarem DTO e serviço.
 
 Verificação do registro: instalador sem MT5 e dependências dev executados; 5 testes focados de documentação/integração
 aprovados; 11 novos links locais conferidos; `git diff --check` sem erros. Doctor do ambiente existente:

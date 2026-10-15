@@ -2,29 +2,24 @@
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import ttk
+from mt5_extracao.ui.visual_tokens import (
+    DEFAULT_READING_SCALE,
+    DIMENSIONS,
+    SPACING,
+    choose_font_family,
+    font_size,
+)
+from mt5_extracao.ui.visual_tokens import DARK as _DARK, LIGHT as _LIGHT
 
-LIGHT = {
-    "page": "#f1f0ec", "surface": "#fcfcfb", "field": "#ffffff", "ink": "#0b0b0b", "ink2": "#52514e",
-    "muted": "#898781", "border": "#d9d8d1", "grid": "#e1e0d9", "axis": "#c3c2b7",
-    "accent": "#2a78d6", "accent_hover": "#256abf", "on_accent": "#ffffff", "select": "#cde2fb",
-    "good": "#006300", "bad": "#b42b2b", "warn": "#8a5a00",
-    "up": "#0ca30c", "down": "#d03b3b",
-    "series": ("#2a78d6", "#eb6834", "#1baf7a"),
-}
-DARK = {
-    "page": "#0d0d0d", "surface": "#1a1a19", "field": "#242422", "ink": "#f0efec", "ink2": "#c3c2b7",
-    "muted": "#898781", "border": "#383835", "grid": "#2c2c2a", "axis": "#383835",
-    "accent": "#3987e5", "accent_hover": "#5598e7", "on_accent": "#0d0d0d", "select": "#184f95",
-    "good": "#0ca30c", "bad": "#e66767", "warn": "#fab219",
-    "up": "#0ca30c", "down": "#d03b3b",
-    "series": ("#3987e5", "#d95926", "#199e70"),
-}
+LIGHT = dict(_LIGHT)
+DARK = dict(_DARK)
 
 
 # Sem Xft (ex.: o Tk embutido em algumas distribuições do Python no Linux), o Tk só enxerga as fontes antigas do X11
 # e não desenha emojis nem os símbolos de estrela e de caixa: nesses casos as tabelas usam estes textos.
-PLAIN_GLYPHS = (("🟢 ", ""), ("🔴 ", ""), ("⚪ ", ""), ("🎯 ", ""), ("❌ ", ""), ("★", "*"), ("☆", "·"), ("☑", "[x]"),
-                ("☐", "[ ]"))
+PLAIN_GLYPHS = (("🟢 ", ""), ("🔴 ", ""), ("⚪ ", ""), ("🎯 ", ""), ("❌ ", ""), ("★", "*"), ("☆", "·"),
+                ("☑", "[x]"), ("☐", "[ ]"), ("✓", "+"), ("⚠", "!"), ("×", "x"), ("ℹ", "i"),
+                ("●", "o"), ("◐", "~"), ("○", "o"), ("…", "..."))
 
 
 def _rich_glyphs(root):
@@ -37,25 +32,68 @@ def _rich_glyphs(root):
 class Theme:
     """Aplica a paleta aos estilos ttk e aos widgets clássicos (Listbox, Text) registrados."""
 
-    def __init__(self, root, dark=False):
+    def __init__(self, root, dark=False, scale=DEFAULT_READING_SCALE):
         self.root = root
         self.dark = dark
         self.colors = DARK if dark else LIGHT
+        self.scale = self._validate_scale(scale)
         self._classic = []    # widgets tk (não ttk) a recolorir quando o tema muda
         self._listeners = []  # funções chamadas depois da troca (ex.: redesenhar gráficos)
         self.rich_glyphs = _rich_glyphs(root)
         base = tkfont.nametofont("TkDefaultFont")
-        size = max(10, abs(int(base.cget("size"))))
-        family = base.cget("family")
-        base.configure(size=size)
-        for name in ("TkTextFont", "TkMenuFont", "TkHeadingFont"):
-            tkfont.nametofont(name).configure(family=family, size=size, weight="normal")
+        self.base_size = max(11, abs(int(base.cget("size"))))
+        self.font_family = choose_font_family(tkfont.families(root), base.cget("family"))
+        try:
+            self.tk_scaling = float(root.tk.call("tk", "scaling"))
+            self.dpi = float(root.winfo_fpixels("1i"))
+        except tk.TclError:
+            self.tk_scaling = None
+            self.dpi = None
         self.font = base
-        self.font_small = tkfont.Font(family=family, size=size - 1)
-        self.font_bold = tkfont.Font(family=family, size=size, weight="bold")
-        self.font_title = tkfont.Font(family=family, size=size + 5, weight="bold")
-        self.font_value = tkfont.Font(family=family, size=size + 4, weight="bold")
+        self.font_small = tkfont.Font(root)
+        self.font_bold = tkfont.Font(root, weight="bold")
+        self.font_section = tkfont.Font(root, weight="bold")
+        self.font_title = tkfont.Font(root, weight="bold")
+        self.font_value = tkfont.Font(root, weight="bold")
+        self._configure_fonts()
         self.apply()
+
+    @staticmethod
+    def _validate_scale(scale):
+        try:
+            value = float(scale)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("A escala de leitura precisa ser um número entre 0,85 e 1,5.") from exc
+        if not 0.85 <= value <= 1.5:
+            raise ValueError("A escala de leitura precisa ficar entre 0,85 e 1,5.")
+        return round(value, 2)
+
+    def _configure_fonts(self):
+        sizes = {role: font_size(role, self.base_size, self.scale)
+                 for role in ("body", "small", "section", "title", "value")}
+        self.font.configure(family=self.font_family, size=sizes["body"], weight="normal")
+        for name in ("TkTextFont", "TkMenuFont", "TkHeadingFont"):
+            tkfont.nametofont(name).configure(family=self.font_family, size=sizes["body"], weight="normal")
+        self.font_small.configure(family=self.font_family, size=sizes["small"], weight="normal")
+        self.font_bold.configure(family=self.font_family, size=sizes["body"], weight="bold")
+        self.font_section.configure(family=self.font_family, size=sizes["section"], weight="bold")
+        self.font_title.configure(family=self.font_family, size=sizes["title"], weight="bold")
+        self.font_value.configure(family=self.font_family, size=sizes["value"], weight="bold")
+
+    def set_scale(self, scale):
+        """Ajusta a leitura sem alterar o DPI configurado pelo sistema operacional."""
+        value = self._validate_scale(scale)
+        if value == self.scale:
+            return False
+        self.scale = value
+        self._configure_fonts()
+        self.apply()
+        self._notify_change()
+        return True
+
+    def _notify_change(self):
+        for fn in tuple(self._listeners):
+            fn()
 
     def glyphs(self, text):
         """O texto como este Tk consegue desenhar: com os símbolos, ou com os substitutos de PLAIN_GLYPHS."""
@@ -71,8 +109,7 @@ class Theme:
         self.dark = not self.dark
         self.colors = DARK if self.dark else LIGHT
         self.apply()
-        for fn in self._listeners:
-            fn()
+        self._notify_change()
 
     def classic(self, widget):
         """Registra um Listbox/Text para acompanhar o tema e já aplica as cores atuais."""
@@ -110,7 +147,7 @@ class Theme:
         for name, opts in {
             "Surface.TLabel": {"foreground": c["ink"]},
             "Muted.TLabel": {"foreground": c["ink2"], "font": self.font_small},
-            "Heading.TLabel": {"foreground": c["ink"], "font": self.font_bold},
+            "Heading.TLabel": {"foreground": c["ink"], "font": self.font_section},
             "Title.TLabel": {"foreground": c["ink"], "font": self.font_title},
             "Value.TLabel": {"foreground": c["ink"], "font": self.font_value},
             "Good.TLabel": {"foreground": c["good"], "font": self.font_bold},
@@ -121,11 +158,22 @@ class Theme:
         style.configure("Selected.Card.TFrame", background=c["surface"], relief="solid", borderwidth=2,
                         bordercolor=c["accent"], lightcolor=c["accent"], darkcolor=c["accent"])
         style.configure("Badge.TLabel", background=c["select"], foreground=c["ink"], font=self.font_small,
-                        padding=(7, 2))
+                        padding=(SPACING["sm"], SPACING["2xs"]))
+        for name, color in (("Success", c["good"]), ("Warning", c["warn"]), ("Error", c["bad"]),
+                            ("Info", c["accent"]), ("Neutral", c["ink2"])):
+            style.configure(f"{name}.Status.TLabel", background=c["surface"], foreground=color,
+                            font=self.font_bold, padding=(SPACING["sm"], SPACING["2xs"]))
+            style.configure(f"{name}.Notice.TFrame", background=c["surface"], relief="solid", borderwidth=1,
+                            bordercolor=color, lightcolor=color, darkcolor=color)
+            style.configure(f"{name}.Notice.TLabel", background=c["surface"], foreground=c["ink"])
+        style.configure("Notice.TFrame", background=c["surface"], relief="solid", borderwidth=1,
+                        bordercolor=c["border"], lightcolor=c["border"], darkcolor=c["border"])
+        style.configure("Notice.TLabel", background=c["surface"], foreground=c["ink"])
         style.configure("Page.Muted.TLabel", background=c["page"], foreground=c["ink2"], font=self.font_small)
         style.configure("Page.Title.TLabel", background=c["page"], foreground=c["ink"], font=self.font_title)
 
-        style.configure("TButton", background=c["surface"], foreground=c["ink"], padding=(12, 6), relief="flat",
+        style.configure("TButton", background=c["surface"], foreground=c["ink"],
+                        padding=(SPACING["md"], SPACING["sm"]), relief="flat",
                         borderwidth=1)
         style.map("TButton", background=[("disabled", c["page"]), ("active", c["grid"])],
                   bordercolor=[("focus", c["accent"])])
@@ -133,7 +181,8 @@ class Theme:
                         bordercolor=c["accent"], lightcolor=c["accent"], darkcolor=c["accent"])
         style.map("Accent.TButton", background=[("disabled", c["grid"]), ("active", c["accent_hover"])],
                   foreground=[("disabled", c["muted"])])
-        style.configure("Toolbutton", background=c["surface"], foreground=c["ink2"], padding=(10, 5), relief="flat")
+        style.configure("Toolbutton", background=c["surface"], foreground=c["ink2"],
+                        padding=(SPACING["sm"], SPACING["xs"]), relief="flat")
         style.map("Toolbutton", background=[("selected", c["select"]), ("active", c["grid"])],
                   foreground=[("selected", c["ink"])])
 
@@ -143,35 +192,40 @@ class Theme:
             style.configure(name, background=bg, foreground=c["ink"], indicatorbackground=c["field"],
                             indicatorforeground=c["accent"])
             style.map(name, background=[("active", bg)], indicatorbackground=[("selected", c["field"])])
-        style.configure("TEntry", padding=5)
-        style.configure("TCombobox", padding=4, arrowcolor=c["ink2"], background=c["surface"])
+        style.configure("TEntry", padding=SPACING["xs"])
+        style.configure("TCombobox", padding=SPACING["xs"], arrowcolor=c["ink2"], background=c["surface"])
         style.map("TCombobox", fieldbackground=[("readonly", c["field"])], foreground=[("readonly", c["ink"])],
                   selectbackground=[("readonly", c["field"])], selectforeground=[("readonly", c["ink"])])
-        style.configure("TLabelframe", background=c["page"], bordercolor=c["border"], relief="solid", padding=8)
+        style.configure("TLabelframe", background=c["page"], bordercolor=c["border"], relief="solid",
+                        padding=SPACING["sm"])
         style.configure("TLabelframe.Label", background=c["page"], foreground=c["ink2"], font=self.font_bold)
         style.configure("TPanedwindow", background=c["page"])
         style.configure("TSeparator", background=c["border"])
 
         style.configure("TNotebook", background=c["page"], borderwidth=0, tabmargins=(0, 0, 0, 0))
-        style.configure("TNotebook.Tab", background=c["page"], foreground=c["ink2"], padding=(18, 9), borderwidth=0,
+        style.configure("TNotebook.Tab", background=c["page"], foreground=c["ink2"],
+                        padding=(SPACING["xl"], SPACING["md"]), borderwidth=0,
                         font=self.font_bold)
         style.map("TNotebook.Tab", background=[("selected", c["surface"])], foreground=[("selected", c["accent"])],
-                  padding=[("selected", (18, 9))], expand=[("selected", (0, 0, 0, 0))],
+                  padding=[("selected", (SPACING["xl"], SPACING["md"]))], expand=[("selected", (0, 0, 0, 0))],
                   lightcolor=[("selected", c["surface"])], bordercolor=[("selected", c["border"])])
 
         # Abas dentro de um painel estreito (ex.: detalhes do robô)
         style.configure("Compact.TNotebook", background=c["surface"], borderwidth=0, tabmargins=(0, 0, 0, 0))
-        style.configure("Compact.TNotebook.Tab", background=c["surface"], foreground=c["ink2"], padding=(10, 6),
+        style.configure("Compact.TNotebook.Tab", background=c["surface"], foreground=c["ink2"],
+                        padding=(SPACING["md"], SPACING["sm"]),
                         borderwidth=0, font=self.font)
         style.map("Compact.TNotebook.Tab", background=[("selected", c["field"])],
-                  foreground=[("selected", c["accent"])], padding=[("selected", (10, 6))],
+                  foreground=[("selected", c["accent"])],
+                  padding=[("selected", (SPACING["md"], SPACING["sm"]))],
                   expand=[("selected", (0, 0, 0, 0))])
 
         style.configure("Treeview", background=c["field"], fieldbackground=c["field"], foreground=c["ink"],
-                        rowheight=int(self.font.metrics("linespace") * 1.7), borderwidth=0)
+                        rowheight=int(self.font.metrics("linespace") * DIMENSIONS["tree_row_height_factor"]),
+                        borderwidth=0)
         style.map("Treeview", background=[("selected", c["select"])], foreground=[("selected", c["ink"])])
         style.configure("Treeview.Heading", background=c["surface"], foreground=c["ink2"], relief="flat",
-                        font=self.font_small, padding=(6, 6))
+                        font=self.font_small, padding=(SPACING["sm"], SPACING["sm"]))
         style.map("Treeview.Heading", background=[("active", c["grid"])])
 
         style.configure("TScrollbar", background=c["surface"], troughcolor=c["page"], bordercolor=c["page"],
@@ -210,7 +264,7 @@ class Theme:
                        activeforeground=c["ink"], relief="flat", borderwidth=0)
 
 
-def card(parent, title=None, hint=None, padding=14):
+def card(parent, title=None, hint=None, padding=SPACING["lg"]):
     """Bloco com borda e título. Retorna o frame de conteúdo (use .master para posicionar o cartão)."""
     outer = ttk.Frame(parent, style="Card.TFrame", padding=padding)
     if title:

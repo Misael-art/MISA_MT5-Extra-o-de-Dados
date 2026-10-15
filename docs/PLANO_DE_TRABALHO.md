@@ -158,6 +158,11 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
 | T16.12 | Laboratório: `mt5x trades enrich/report/simulate/insights/export` com `--json` | T16.11b | ✅ implementação local em `tarefa/T16.12-cli-relatorio` (código `e99becd`); preserva `compare`, `report --by`, simulação por filtros e `insights --save`. Focados 15; suíte 794/9; doctor 16/2/0. Windows pendente; relatório HTML opcional não feito |
+| T17.1 | Sistema visual: tokens, tipografia, temas e contraste mensurável | F7 | ✅ concluída no Linux; Windows pendente |
+| T17.2 | Componentes de apresentação reutilizáveis, extraídos de usos reais | T17.1 | ✅ concluída no Linux; Windows pendente |
+| T17.3 | Laboratório e gráficos: hierarquia, estados de qualidade, amostra e legibilidade | T17.1, T17.2, T16.11a, T16.11b | ✅ concluída no Linux; Windows pendente |
+| T17.4 | Aplicação progressiva do sistema às abas Ativos, Minha base, Análise, Robôs, Recursos e Atividade | T17.2, T17.3, T8.2, T15.1–T15.6 | ✅ concluída no Linux; Windows pendente |
+| T17.5 | Validação visual integrada, capturas comparáveis e documentação | T17.1–T17.4 | ✅ concluída no Linux; Windows pendente |
 | T18.0 | Plano de relações entre indicadores e aderência temporal, com prompts coordenados | Pedido do dono | ✅ registro documental; nenhuma funcionalidade implementada |
 | T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | planejada |
 | T18.2 | Indicador × indicador e × movimento futuro | T18.1, infraestrutura validada T13.4 | planejada |

@@ -1,0 +1,85 @@
+# Fase 17 — Modernização visual e de usabilidade do mt5x
+
+**Pedido do dono do projeto (2026-10-14):** tornar a interface Tkinter existente mais legível, consistente e profissional, com estética de aplicativo SaaS desktop. Preservar arquitetura, cálculos, dados, callbacks e regras de segurança. Este plano organiza a frente em tarefas pequenas; cada uma corresponde a uma entrega revisável.
+
+## 1. Limites e convivência
+
+- Permanecem Tkinter/ttk e matplotlib; sem migração para web, Electron, Qt ou toolkit novo.
+- A Fase 17 apresenta dados existentes. Não altera schemas, modelos financeiros, critérios estatísticos, permissões, custos, sinais, operações ou APIs públicas.
+- O pacote visual fica em `mt5_extracao/ui/`; nenhum `tkinter` novo entra no núcleo.
+- Reutilizar `ui/theme.py`, `ui/icons.py` e os componentes existentes. Extrair componentes apenas a partir de usos concretos.
+- Fase 13 calcula contexto de mercado; Fase 16 calcula analytics de operações. A Fase 17 não importa nem duplica esses motores.
+- Dados ausentes, parciais e amostras insuficientes continuam identificados. Se reduzir hachuras, usar texto, ícone ou padrão alternativo com a mesma clareza.
+- As operações de Tk continuam na thread principal. Gráficos, callbacks, coleta de lixo, filas e ciclo de vida das imagens mantêm as proteções existentes.
+
+## 2. Sequência de entregas
+
+### T17.1 — Tokens, tipografia, escala e temas
+
+- **Objetivo:** centralizar valores visuais e melhorar a legibilidade sem alterar layout ou semântica das telas.
+- **Arquivos:** `mt5_extracao/ui/visual_tokens.py`, `mt5_extracao/ui/theme.py`, `tests/test_ui_theme.py`, capturas em `docs/img/interface-visual/T17.1/`, este plano e o checklist Windows.
+- **Passos:**
+  1. Medir a família de fonte e o DPI que o Tk realmente enxerga; registrar captura do Laboratório com fixture sintética nos temas claro e escuro.
+  2. Centralizar paletas, papéis tipográficos, escala, espaçamento, dimensões e tamanhos de texto dos gráficos.
+  3. Escolher fonte instalada com preferência por Inter e fallbacks por plataforma; usar a fonte padrão do Tk só quando nenhuma preferência existir. Não baixar nem distribuir fontes.
+  4. Aplicar tokens ao `Theme`, preservar a assinatura `Theme(root, dark=...)` e disponibilizar escala de leitura sem multiplicar o DPI já aplicado pelo Tk.
+  5. Medir contraste das cores textuais e de séries e acrescentar testes estáveis para paletas, fonte disponível e escala.
+- **Aceite:** fontes pequenas ficam com pelo menos 10 pt e texto base com pelo menos 11 pt (ou preserva tamanho maior do sistema); texto comum atinge 4,5:1 nos dois temas; elementos gráficos essenciais atingem 3:1; seleção, foco, estados, menus e tooltips continuam acompanhando o tema; Tk conserva o dimensionamento de DPI do sistema.
+- **Verificação:** `tests/test_ui_theme.py`, suíte completa, `doctor`, captura 1280×800 com fixture; a validação adicional 1920×1080, DPI alto, resize e Windows real fica registrada na T17.5.
+- **Estado:** concluída no Linux; Windows pendente. O Tk escolheu Lato no host; Inter e Noto Sans não estão entre as famílias expostas pelo X atual. Capturas comparáveis estão na seção 3.
+
+### T17.2 — Componentes reutilizáveis de apresentação
+
+- **Objetivo:** consolidar padrões usados pelas telas sem criar um framework genérico.
+- **Arquivos:** novo `mt5_extracao/ui/components.py`, `mt5_extracao/ui/theme.py` e `tests/test_ui_components.py`; as integrações
+  em arquivos de tela ficam na T17.3/T17.4.
+- **Componentes:** cabeçalho, barra de filtros, cartão de métrica, status com texto e ícone, avisos, estados
+  vazio/carregando/parcial/indisponível, painel de gráfico, tabela, capacidade/progresso, resumo de comparação e
+  painel de detalhes.
+- **Aceite:** componentes recebem dados por argumentos explícitos, respeitam os dois temas, têm foco/teclado visíveis e não contêm cálculo de analytics; nenhum controle aparenta funcionar sem callback.
+- **Verificação:** baseline **814 aprovados, 10 pulados em 723,22 s**; foco de temas/componentes **18 aprovados**; suíte final **827 aprovados, 10 pulados em 790,90 s**. `doctor`: **16 OK, 2 avisos esperados, 0 falhas**; `git diff --check` passou.
+- **Estado:** concluída no Linux. `Theme` fornece variantes semânticas para badge e aviso nos dois temas; símbolos têm fallback para Tk sem glifos ricos. Nenhuma tela foi integrada nesta tarefa. Windows real pendente.
+
+### T17.3 — Laboratório e gráficos
+
+- **Objetivo:** organizar primeiro a tela de maior densidade analítica e tornar os gráficos legíveis.
+- **Arquivos previstos:** `mt5_extracao/ui/laboratory.py`, `mt5_extracao/ui/charts.py`, testes e capturas.
+- **Ordem visual:** título/contexto, filtros, métricas, avisos de disponibilidade/qualidade, guias, gráficos/tabelas e detalhes sob demanda.
+- **Aceite:** manter amostra, intervalo e estado visíveis; separar conexão, qualidade, validação e resultado; indicar unidade e período; não conectar dados ausentes; não cobrir dados com legendas; manter zoom, seleção e dicas. A hachura pode diminuir apenas se outra indicação igualmente clara continuar presente.
+- **Baseline Linux:** **826 aprovados, 10 pulados, 1 falha** em 660,14 s. O teste de restauração de layout esperou uma resposta assíncrona por 0,6 s; a repetição isolada passou (**1 aprovado em 6,43 s**). Nenhuma alteração foi feita para essa ocorrência, que fica registrada como intermitência preexistente até a verificação final.
+- **Entrega Linux:** integra `PageHeader`, `FilterBar`, `MetricCard`, `Notice`, `ChartPanel` e `TablePanel`. A visão geral usa tabela rolável para as 24 faixas horárias, com resultado, `n` e asterisco apenas para amostra positiva abaixo do mínimo; `n=0` aparece como sem operações. Curvas, calendário, horários, microestrutura e comparação usam subtelas para manter um gráfico por área de leitura. Gráficos mostram unidades, contagens e estado de amostra; heatmaps têm escala de cor, padrão distinto para dados ausentes e correlação fixa em −1…1. Os cálculos e seus motores não mudaram.
+- **Inspeção visual:** capturas da visão geral em claro/escuro e 1280×800 em `docs/img/interface-visual/T17.3/mt5x-before-light.png`, `mt5x-before-dark.png`, `mt5x-after-light.png` e `mt5x-after-dark.png`. A análise temporal em claro, mesma resolução e fixture, está em `mt5x-before-tempo-light.png` e `mt5x-after-tempo-light.png`. Também foram inspecionadas as vistas Curvas, Calendário, Microestrutura indisponível e Correlação com dois robôs; o MT5 permaneceu desconectado.
+- **Verificação final:** testes focados de tema/componentes/gráficos/Laboratório **27 aprovados em 16,89 s**. Suíte completa **831 aprovados, 10 pulados, 1 falha em 560,91 s**. A única falha foi novamente `test_settings_restore_the_arrangement_only_with_the_terminal_closed`, fora do escopo: o feedback assíncrono não chegou em 0,6 s; repetição isolada **1 aprovado em 5,84 s**. `doctor`: **16 OK, 2 avisos esperados, 0 falhas**; `git diff --check` passou. Não se alterou Configurações.
+- **Estado:** concluída no Linux na worktree `../MISA_MT5-Extra-o-de-Dados-T17.3`, branch `tarefa/T17.3-laboratorio-graficos`, baseada no commit `0d81adb`. As cinco capturas originais mencionadas no pedido continuam indisponíveis; a inspeção usou fixture sintética e o MT5 desconectado. Windows permanece pendente para a T17.5/checklist.
+
+### T17.4 — Aplicação gradual às outras abas
+
+- **Telas:** Ativos, Minha base, Análise, Robôs, Recursos e Atividade.
+- **Arquivos previstos:** `mt5_extracao/ui_manager.py` e módulos de tela existentes (`inventory.py`, `analysis.py`, `robots.py`, `robot_detail.py`, `resources.py`), com testes por tela.
+- **Levantamento e propriedade antes da implementação (2026-10-15):** Ativos e Atividade ficam em `ui_manager.py` (`_build_symbols_tab`, `_build_log_tab`); Minha base em `ui/inventory.py`; Análise em `ui/analysis.py`; Robôs em `ui/robots.py` e `ui/robot_detail.py`; Recursos em `ui/resources.py`. A apresentação é responsabilidade desta tarefa. `ui/components.py` e `ui/theme.py` serão reutilizados; `ui/laboratory.py` e motores de analytics/backtest ficam fora do escopo. `ui_manager.py` também concentra navegação e callbacks assíncronos, então os ajustes nele serão limitados à disposição e estilo dos widgets das telas nomeadas. `docs/PLANO_DE_TRABALHO.md`, `docs/ROADMAP.md`, esta proposta e `docs/continuidade.md` são arquivos compartilhados e só serão atualizados por esta entrega ao final. O trabalho ocorre na worktree `../MISA_MT5-Extra-o-de-Dados-T17.4`, branch `tarefa/T17.4-aplicacao-abas`, baseada no commit T17.3 `ccde9ce`; não há edição concorrente desses arquivos no worktree.
+- **Fronteira com Analytics:** não alterar funções de cálculo, critérios, schema, segurança dos robôs nem contratos. Tabelas, progressos, estados e detalhes recebem valores/callbacks já preparados pelas telas. A coordenação de implementação fica nesta worktree isolada; os componentes visuais isolados já foram entregues na T17.2.
+- **Baseline Linux:** instalador e dependências de desenvolvimento concluídos; suíte completa **832 aprovados, 10 pulados em 618,76 s**, antes das alterações visuais.
+- **Aceite:** manter nomes, navegação, ações e dados atuais; melhorar hierarquia, densidade, tabelas e estados; empilhar conteúdo em janelas menores; foco e ordem de Tab permanecem utilizáveis. Segurança/aprovação segue separada do resultado financeiro; capacidade desconhecida não vira percentual inventado.
+- **Entrega Linux (2026-10-15):** Ativos e Minha base usam `FilterBar` para busca, seleção e ações; Ativos encurta apenas os títulos exibidos na tabela, preserva as chaves internas e permite rolar a tela em janelas menores. Análise e Recursos reorganizam filtros e cartões de métricas conforme a largura. Robôs reorganiza filtros e detalhes e oferece rolagem vertical no layout empilhado; a tabela de parâmetros mantém rolagem horizontal. Atividade agora usa cabeçalho e painel de conteúdo compartilhados. A apresentação foi ajustada sem alterar cálculos, dados, navegação ou callbacks.
+- **Inspeção visual:** capturas de referência sintética antes/depois para as seis telas em `docs/img/interface-visual/T17.4/`. As capturas `mt5x-before-*-light.png` e as versões `mt5x-after-*-light.png` são 1280×800; há também versões depois em tema escuro na mesma resolução. As capturas narrow em claro são 900×850, com vistas adicionais 900×620 da parte inferior de Ativos e Robôs para conferir acesso aos controles. A fixture usa barras sintéticas, banco local e MT5 desconectado. O leiaute foi conferido em tema claro e escuro, em tamanho amplo e reduzido. As cinco imagens de referência originais mencionadas no pedido não estavam disponíveis e não foram reenviadas.
+- **Verificação final:** teste responsivo focado **1 aprovado**; suíte completa **833 aprovados, 10 pulados em 653,73 s**, executada com diretório temporário dedicado em `/var/tmp`; `doctor` **16 OK, 2 avisos esperados, 0 falhas** (dependência opcional `pandas-ta` ausente e ponte MT5 desativada por `--no-mt5`); `py_compile` dos módulos alterados e `git diff --check` passaram. A primeira tentativa da suíte completa foi interrompida porque o `tmpfs` de sessão encheu; a repetição completa terminou sem esse erro.
+- **Estado:** concluída no Linux na worktree `../MISA_MT5-Extra-o-de-Dados-T17.4`, branch `tarefa/T17.4-aplicacao-abas`, baseada no commit T17.3 `ccde9ce`. Windows real, DPI alto e resolução 1920×1080 permanecem pendentes para T17.5 e o checklist; não se declara validação Windows.
+
+### T17.5 — Validação visual integrada e documentação
+
+- **Objetivo:** conferir a aplicação completa e fechar evidências da fase.
+- **Cobertura:** 1280×800, 1920×1080, condição de DPI alto, janela reduzida/maximizada, claro/escuro, resize, teclado, dados completos/parciais/ausentes, amostra insuficiente, números grandes, listas extensas e muitas séries.
+- **Aceite:** capturas comparáveis antes/depois; nenhuma sobreposição, corte ou perda de informação; números idênticos aos motores; estados de qualidade explícitos; `pytest` e `doctor` passam; pendências que exigem Windows real estão no checklist sem alegação de validação não executada.
+- **Validação Linux (2026-10-15):** executada na worktree `../MISA_MT5-Extra-o-de-Dados-T17.5`, branch `tarefa/T17.5-validacao-visual`, baseada no commit T17.4 `c3f625b`. A tela ocupou o display virtual 1920×1080 em 96 DPI (`tk scaling=1,333`) e 144 DPI (`tk scaling=1,998`); as seis telas do T17.4 também têm capturas comparáveis 1280×800 e 900×850. Em 900×620, Ativos empilha os painéis e mostra a barra de rolagem; em 1920×1080 retorna ao leiaute lado a lado. O Xvfb não executa estado de maximização de um gerenciador de janelas real.
+- **Interação e dados:** `Ctrl+F` levou o foco à busca; Tab avançou para o filtro; buscar `SYNTH001` deixou uma linha. A fixture local continha 46 símbolos, 600 barras M1, 480 M15 e uma série curta de 10 barras; a Análise recusou abrir `PETR4` sem dados e abriu as séries com dados. O painel de detalhes foi exercitado com cotação sintética `1234567890.12`, com precisão preservada e sem corte. Nenhum terminal ou MT5 real foi conectado; a captura de número grande usa provedor MT5 falso.
+- **Capturas:** `docs/img/interface-visual/T17.5/` contém as seis telas em claro/escuro a 1920×1080 nos dois perfis Xvfb (96 e 144 DPI), além de Análise com 10 barras e Ativos com número grande a 144 DPI. A revisão visual não encontrou cortes ou sobreposições nas telas examinadas; barras e listas longas permanecem acessíveis por rolagem. O comparativo antes/depois 1280×800 está em `docs/img/interface-visual/T17.4/`. As cinco referências originais do pedido não foram anexadas novamente.
+- **Verificação:** baseline antes de alterações: **831 aprovados, 10 pulados e 2 falhas** na execução direta do desktop: a medição `test_aggregation_speed_on_50k_cached_trades` levou 1,59 s para um limite de 1,5 s; `test_dense_tabs_reflow_and_assets_remain_reachable_in_a_small_window` não conseguiu reduzir a janela porque o desktop manteve 1280 px. As repetições isoladas passaram (a responsiva no Xvfb); a suíte completa final no Xvfb 1280×800 passou: **833 aprovados, 10 pulados em 674,22 s**. `doctor`: **16 OK, 2 avisos esperados, 0 falhas** (`pandas-ta` opcional ausente e ponte desligada); `git diff --check` passou.
+- **Estado:** concluída no Linux; T17.1–T17.5 foram verificadas no Linux e a Fase 17 está fechada nessa plataforma. Windows real, escalas de exibição de 125%/150%, DPI do sistema e maximização com gerenciador de janelas permanecem pendentes na linha T17.1–T17.5 de `docs/validacao_instaladores.md`; não se declara validação Windows.
+
+## 3. Evidência de linha de base da T17.1
+
+As cinco capturas citadas no pedido não estavam disponíveis no diretório de anexos ao iniciar esta tarefa. Para não bloquear a inspeção, a linha de base foi capturada no aplicativo real com ledger e barras sintéticos, sem conexão ao MT5. `docs/img/interface-visual/T17.1/mt5x-before-light.png` e `mt5x-before-dark.png` mostram o antes; `mt5x-after-light.png` e `mt5x-after-dark.png` mostram o estado após os tokens da T17.1, todos em 1280×800. As capturas originais do usuário devem ser anexadas à T17.3 para orientar e completar a comparação visual.
+
+Problemas observados na linha de base: a configuração Tk do host podia cair na fonte bitmap `fixed` de 7 pt; a hierarquia entre texto de apoio e conteúdo principal era fraca; o tema claro tinha contraste `muted` 3,15:1 e `accent` 3,87:1 em alguns fundos; a grade de amostra pequena mostrava hachura em todas as células da fixture. A hachura e o estado de amostra pequena devem continuar identificáveis.
+
+O teste inicial da worktree Linux antes das alterações foi **809 aprovados, 10 pulados, em 492,63 s**, sob `xvfb-run -a`. Depois das alterações, os testes de interface focados tiveram **43 aprovados** e a suíte final **814 aprovados, 10 pulados, em 718,50 s**, com `TMPDIR` e `--basetemp` próprios. Um run completo anterior terminou por falta transitória de espaço. `doctor`: 16 OK, 2 avisos esperados, 0 falhas. O Xvfb local pode expor um conjunto diferente de fontes do X real; por isso, teste automatizado e inspeção visual da fonte instalada são verificações distintas.

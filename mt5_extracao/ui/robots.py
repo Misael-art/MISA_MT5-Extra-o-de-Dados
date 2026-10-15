@@ -5,8 +5,9 @@ from tkinter import filedialog, messagebox, ttk
 
 from mt5_extracao import robots as robots_core
 from mt5_extracao.robots import catalog, risk
+from mt5_extracao.ui.components import FilterBar
 from mt5_extracao.ui.robot_detail import RISK_STYLES, RobotDetail, draw_equity
-from mt5_extracao.ui.theme import Tooltip, card, fmt_int, fmt_num
+from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 
 log = logging.getLogger(__name__)
 
@@ -33,8 +34,10 @@ class RobotsPanel:
         self._columns = 0
         self.frame = ttk.Frame(parent, padding=12)
 
-        bar = card(self.frame, padding=10)
-        bar.master.pack(fill=tk.X)
+        bar = FilterBar(self.frame, padding=10)
+        bar.pack(fill=tk.X)
+        for column, weight in enumerate((0, 1, 1, 0)):
+            bar.columnconfigure(column, weight=weight)
         self.import_button = ttk.Menubutton(bar, text="Importar robô ▾", style="Accent.TButton")
         menu = tk.Menu(self.import_button, tearoff=0)
         self.theme.style_menu(menu)
@@ -43,37 +46,59 @@ class RobotsPanel:
         menu.add_separator()
         menu.add_command(label="Reler o catálogo", command=self.reload)
         self.import_button["menu"] = menu
-        self.import_button.pack(side=tk.LEFT)
+        self.import_button.grid(row=0, column=0, sticky="w")
         Tooltip(self.import_button, "Robôs MQL5 vêm de um arquivo ou de uma pasta no formato do MT5 (Experts, Include, "
                                     "Presets), como o clone do projeto HADOUKEN. Nada é copiado: o programa só lê.",
                 self.theme)
         self.panel_button = ttk.Button(bar, text="Painel de resultados", style="Accent.TButton",
                                        command=ui.open_results_panel)
-        self.panel_button.pack(side=tk.RIGHT)
+        self.panel_button.grid(row=0, column=3, sticky="e")
         Tooltip(self.panel_button, "Abre no navegador a visão de conjunto: todos os ativos com base, os timeframes e o "
                                    "resultado de cada robô ou estratégia em cada combinação. Só leitura.", self.theme)
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self.render())
-        ttk.Label(bar, text="Buscar", style="Muted.TLabel").pack(side=tk.LEFT, padx=(16, 6))
-        ttk.Entry(bar, textvariable=self.search_var, width=18).pack(side=tk.LEFT)
+        search = ttk.Frame(bar, style="Surface.TFrame")
+        self.filterbar = bar
+        self.filterbar_search = search
+        search.grid(row=0, column=1, columnspan=2, sticky="ew", padx=12)
+        ttk.Label(search, text="Buscar", style="Muted.TLabel").pack(side=tk.LEFT, padx=(0, 6))
+        search_entry = ttk.Entry(search, textvariable=self.search_var, width=18)
+        search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.filters = {}
-        for key, label, values, width in (
+        self.filter_cells = []
+        for index, (key, label, values, width) in enumerate((
                 ("kind", "Tipo", (ALL, "MQL5", "Python"), 8),
                 ("risk", "Risco", (ALL,) + risk.LEVELS, 13),
                 ("stage", "Estágio", (ALL,) + tuple(catalog.STAGE_LABELS.values()), 11),
-                ("regime", "Regime", (ALL,), 14)):
-            ttk.Label(bar, text=label, style="Muted.TLabel").pack(side=tk.LEFT, padx=(14, 6))
+                ("regime", "Regime", (ALL,), 14))):
+            cell = ttk.Frame(bar, style="Surface.TFrame")
+            cell.grid(row=1, column=index, sticky="ew", padx=(0 if index == 0 else 8, 0), pady=(8, 0))
+            self.filter_cells.append(cell)
+            cell.columnconfigure(1, weight=1)
+            ttk.Label(cell, text=label, style="Muted.TLabel").grid(row=0, column=0, sticky="w", padx=(0, 6))
             var = tk.StringVar(value=ALL)
-            combo = ttk.Combobox(bar, textvariable=var, values=values, state="readonly", width=width)
-            combo.pack(side=tk.LEFT)
+            combo = ttk.Combobox(cell, textvariable=var, values=values, state="readonly", width=width)
+            combo.grid(row=0, column=1, sticky="w")
             combo.bind("<<ComboboxSelected>>", lambda e: self.render())
             self.filters[key] = (var, combo)
+        self._filterbar_stacked = None
+        bar.bind("<Configure>", self._responsive_filterbar, add="+")
 
         self.summary = ttk.Label(self.frame, text="Lendo o catálogo...", style="Page.Muted.TLabel")
         self.summary.pack(anchor="w", pady=(8, 6))
 
-        body = ttk.Frame(self.frame)
-        body.pack(fill=tk.BOTH, expand=True)
+        body_view = ttk.Frame(self.frame)
+        body_view.pack(fill=tk.BOTH, expand=True)
+        self.body_canvas = tk.Canvas(body_view, highlightthickness=0, borderwidth=0,
+                                     background=self.theme.colors["page"])
+        self.body_scrollbar = ttk.Scrollbar(body_view, orient="vertical", command=self.body_canvas.yview)
+        self.body_canvas.configure(yscrollcommand=self.body_scrollbar.set)
+        self.body_canvas.pack(fill=tk.BOTH, expand=True)
+        body = ttk.Frame(self.body_canvas)
+        self.body = body
+        self._body_window = self.body_canvas.create_window(0, 0, window=body, anchor="nw")
+        body.bind("<Configure>", self._sync_body_viewport, add="+")
+        self.body_canvas.bind("<Configure>", self._sync_body_viewport, add="+")
         body.columnconfigure(0, weight=3, uniform="robots")
         body.columnconfigure(1, weight=2, uniform="robots")
         body.rowconfigure(0, weight=1)
@@ -94,7 +119,68 @@ class RobotsPanel:
 
         self.detail = RobotDetail(body, ui)
         self.detail.frame.grid(row=0, column=1, sticky="nsew")
+        self._body_stacked = None
+        body.bind("<Configure>", self._responsive_body, add="+")
         self.theme.on_change(self._theme_changed)
+
+    def _sync_body_viewport(self, _event=None):
+        canvas_width = self.body_canvas.winfo_width()
+        canvas_height = self.body_canvas.winfo_height()
+        content_height = self.body.winfo_reqheight()
+        if canvas_width <= 1 or canvas_height <= 1:
+            return
+        needs_scroll = self._body_stacked and content_height > canvas_height + 4
+        height = max(canvas_height, content_height) if needs_scroll else canvas_height
+        self.body_canvas.itemconfigure(self._body_window, width=canvas_width, height=height)
+        self.body_canvas.configure(scrollregion=(0, 0, canvas_width, height))
+        if needs_scroll:
+            if not self.body_scrollbar.winfo_manager():
+                self.body_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, before=self.body_canvas)
+        elif self.body_scrollbar.winfo_manager():
+            self.body_scrollbar.pack_forget()
+
+    def _responsive_filterbar(self, event):
+        stacked = event.width < 850
+        if stacked == self._filterbar_stacked:
+            return
+        self._filterbar_stacked = stacked
+        if stacked:
+            for column in range(4):
+                self.filterbar.columnconfigure(column, weight=1)
+            self.filterbar_search.grid_configure(row=1, column=0, columnspan=4, padx=0, pady=(8, 0))
+            for index, cell in enumerate(self.filter_cells):
+                cell.grid_configure(row=2 + index // 2, column=(index % 2) * 2, columnspan=2,
+                                    padx=(0, 8 if index % 2 == 0 else 0), pady=(8, 0))
+        else:
+            for column, weight in enumerate((0, 1, 1, 0)):
+                self.filterbar.columnconfigure(column, weight=weight)
+            self.filterbar_search.grid_configure(row=0, column=1, columnspan=2, padx=12, pady=0)
+            for index, cell in enumerate(self.filter_cells):
+                cell.grid_configure(row=1, column=index, columnspan=1,
+                                    padx=(0 if index == 0 else 8, 0), pady=(8, 0))
+
+    def _responsive_body(self, event):
+        stacked = event.width < 980
+        if stacked == self._body_stacked:
+            return
+        self._body_stacked = stacked
+        if stacked:
+            self.body.columnconfigure(0, weight=1, uniform="")
+            self.body.columnconfigure(1, weight=0, uniform="")
+            self.body.rowconfigure(0, weight=3, minsize=250)
+            self.body.rowconfigure(1, weight=2, minsize=300)
+            self.detail.frame.grid_propagate(False)
+            self.canvas.master.grid_configure(row=0, column=0, columnspan=2, sticky="nsew", padx=0, pady=(0, 8))
+            self.detail.frame.grid_configure(row=1, column=0, columnspan=2, sticky="nsew")
+        else:
+            self.body.columnconfigure(0, weight=3, uniform="robots")
+            self.body.columnconfigure(1, weight=2, uniform="robots")
+            self.body.rowconfigure(0, weight=1, minsize=0)
+            self.body.rowconfigure(1, weight=0, minsize=0)
+            self.detail.frame.grid_propagate(True)
+            self.canvas.master.grid_configure(row=0, column=0, columnspan=1, sticky="nsew", padx=(0, 10), pady=0)
+            self.detail.frame.grid_configure(row=0, column=1, columnspan=1, sticky="nsew")
+        self._sync_body_viewport()
 
     # --- dados ------------------------------------------------------------------------
 
@@ -298,6 +384,7 @@ class RobotsPanel:
 
     def _theme_changed(self):
         self.canvas.configure(background=self.theme.colors["page"])
+        self.body_canvas.configure(background=self.theme.colors["page"])
         self.render()
 
     # --- importação -------------------------------------------------------------------

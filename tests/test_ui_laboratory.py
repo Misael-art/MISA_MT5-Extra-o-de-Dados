@@ -82,6 +82,7 @@ def test_empty_book_explains_how_to_start(panel):
     panel.on_show()
     panel.pump(lambda: "ainda não tem operações" in panel.note.cget("text"))
     assert "Importar backtests antigos" in panel.note.cget("text")
+    assert panel._note_kind == "empty"
 
 
 def test_lenses_filters_and_tabs(panel):
@@ -91,10 +92,27 @@ def test_lenses_filters_and_tabs(panel):
     panel.on_show()
     panel.pump(lambda: panel.view is not None)
     assert panel.selected.get() == "python:a" and panel.kpi["n"][0].cget("text") == "240"
+    assert [panel.overview_notebook.tab(i, "text") for i in range(3)] == ["Horários", "Curvas", "Calendário"]
+    assert panel.overview_heat_table.master is panel.overview_views["heat"]
+    assert len(panel.overview_heat_table.tree.get_children()) == 24
+    first_cell = panel.overview_heat_table.tree.item(panel.overview_heat_table.tree.get_children()[0], "values")[1]
+    assert "n=" in first_cell
+    cells = [panel.overview_heat_table.tree.item(row, "values")[1:] for row in
+             panel.overview_heat_table.tree.get_children()]
+    empty_cells = [cell for row in cells for cell in row if "n=0" in cell]
+    assert empty_cells and all(cell.endswith("n=0") and "—" in cell for cell in empty_cells)
+    assert any(cell.endswith("*") and "n=0" not in cell for row in cells for cell in row)
     for k, name in enumerate(("Tempo e calendário", "Microestrutura", "Comparativo")):
         panel.tabs.select(k + 1)
         panel.pump(lambda: name in panel._drawn, 10)
         assert name in panel._drawn
+    assert [panel._analysis_notebooks["Comparativo"].tab(i, "text") for i in range(2)] == [
+        "Ativos e timeframes", "Correlação"]
+    assert [panel._analysis_notebooks["Tempo e calendário"].tab(i, "text") for i in range(4)] == [
+        "Dia da semana", "Dia do mês", "Expectativa e acerto", "Vitórias e perdas"]
+    assert all(text.get_rotation() == 90 for text in panel._charts["t_winloss"].figure.axes[0].texts)
+    assert [panel._analysis_notebooks["Microestrutura"].tab(i, "text") for i in range(4)] == [
+        "Volatilidade × resultado", "Faixa de volatilidade", "Volume na entrada", "Volatilidade × horário"]
     assert len(panel.compare_tree.get_children()) == 2                  # o robô em dois ativos
     assert str(panel.tabs.tab(4, "state")) == "normal"                 # Execução e Insights habilitadas (T16.11b)
     panel.lens.set("asset")
@@ -104,6 +122,10 @@ def test_lenses_filters_and_tabs(panel):
     panel.load_lab()
     panel.pump(lambda: panel.view is not None and set(panel.view["robot_key"]) == {"python:a", "python:b"})
     assert panel.kpi["n"][0].cget("text") == "240"
+    correlation = panel._charts["c_corr"]
+    assert correlation.figure.axes[0].images[0].norm.vmin == -1
+    assert correlation.figure.axes[-1].get_ylabel() == "Correlação"
+    assert "escala fixa de −1 a 1" in panel._chart_panels["c_corr"].notice.message.cget("text")
     panel.period.set("Últimos 3 meses")
     panel.apply_filters()
     assert int(panel.kpi["n"][0].cget("text").replace(".", "")) < 240
@@ -119,6 +141,7 @@ def test_import_button_brings_old_runs(panel):
     panel.pump(lambda: panel.view is not None)
     assert panel.selected.get() == "mql5:x"
     assert "sem horário de entrada" in panel.note.cget("text")
+    assert panel._note_kind == "partial"
 
 
 def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
