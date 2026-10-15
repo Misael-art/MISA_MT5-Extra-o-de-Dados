@@ -128,7 +128,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementação concluída no Linux: 833 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Decisão 5 (confiança) segue proposta pendente; PostgreSQL e Windows real não testados |
 | T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ implementação na branch local `tarefa/T13.3b-producers-incrementais` (`4ede7fa`); 46 focados e suíte final 848/10; doctor 16 OK/2 avisos/0 falhas. PostgreSQL e Windows reais pendentes; ainda não integrada |
-| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | ⏳ parcial na branch `tarefa/T13.4-hipoteses-walk-forward`: H01–H16 têm builders; H06–H16 permanecem DRAFT, sem limiares/OOS medidos; H06–H13 têm contagens somente descritivas EURUSD/AGG; H14–H16 não têm eventos utilizáveis: ledger omite campos de entrada, snapshots `_robot_runs` guardam só timestamp/PnL/volume e 14 exports MQL5 têm apenas o cabeçalho legado sem entrada; comparabilidade real não declarada. `real_spread` é marcador booleano; comissão/slippage seguem ausentes e o perfil de spread não completa custos OOS. Teste nulo: 40 conjuntos, tolerância de até 6/40 em falso sinal ajustado ou elegibilidade no nível nominal de 5%; focados 27/27, suíte completa 860/10, `doctor` 16 OK/2 avisos/0 falhas. Instalador e venv isolado concluídos no Linux. Ver `docs/analytics/T13.4_RELATORIO.md`. Não integrada ao master |
+| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | ⏳ parcial na branch `tarefa/T13.4-hipoteses-walk-forward`: H01–H16 têm builders; H06–H16 permanecem DRAFT, sem limiares/OOS medidos; H06–H13 têm contagens somente descritivas EURUSD/AGG. H14/H15: 58 referências de relatório resolvem para 9 caminhos compartilhados sem snapshot por run; 161 entradas EURUSD alinham por minuto/preço sob base temporal não confirmada e geram apenas 156/132 observações exploratórias. H16 não tem sinais explícitos; mercados comparáveis não declarados. `real_spread` é marcador booleano; comissão/slippage seguem ausentes e o perfil de spread não completa custos OOS. Teste nulo: 40 conjuntos, tolerância de até 6/40 em falso sinal ajustado ou elegibilidade no nível nominal de 5%; focados 27/27, suíte completa 860/10, `doctor` 16 OK/2 avisos/0 falhas. Instalador e venv isolado concluídos no Linux. Ver `docs/analytics/T13.4_RELATORIO.md`. Não integrada ao master |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7a | Registro de sinais e modo sombra (decide e registra, não age) | T13.5 | a fazer (proposta em 2026-10-14; confirmar com o dono) |
@@ -3345,11 +3345,13 @@ real por corretora.
   desativada). Windows real, PostgreSQL e MT5 real não foram testados.
 - **Atualização desta retomada (2026-10-15):** H06–H16 têm builders causais, com entradas de `trade_events`/`signal_events`
   explícitas para H14–H16 e resumo descritivo de estabilidade entre mercados declarados. H06–H13 produziram apenas
-  contagens informativas ao ler EURUSD (99.611 barras) e AGG (8.181) em memória; H14/H15 não têm entradas utilizáveis
-  no ledger local e não há tabela de sinais para H16. Todos H06–H16 continuam `DRAFT`; nenhuma tentativa OOS ou reserva
-  real foi executada. O sweep H06–H13 levou **37,80 s**, pico de memória do processo **275,5 MiB**; tamanho do SQLite
-  ficou em **353.746.944 bytes** antes/depois da leitura `mode=ro` + `query_only=1`. Ver resultados e contagens no
-  relatório. A T13.4 permanece **parcial**, sem transição para `APPROVED`.
+  contagens informativas ao ler EURUSD (99.611 barras) e AGG (8.181) em memória. Reauditoria encontrou 58 referências
+  a relatório em `_robot_runs`, compartilhadas por 9 caminhos `.htm`; os arquivos atuais contêm 699 entradas, das quais
+  161 EURUSD alinham por minuto e preço com M1 sob base temporal não confirmada. Sob essa hipótese, H14/H15 geraram
+  156/132 observações exploratórias em memória; isso não identifica cada relatório com seu run nem constitui OOS.
+  H16 segue sem tabela de sinais. Todos H06–H16 continuam `DRAFT`; nenhuma reserva real foi consumida. O sweep H06–H13
+  levou **37,80 s**, pico RSS **275,5 MiB**; SQLite ficou em **353.746.944 bytes** antes/depois da leitura `mode=ro` +
+  `query_only=1`. Ver resultados e limites no relatório. A T13.4 permanece **parcial**, sem transição para `APPROVED`.
 - **Extensões detalhadas em 2026-10-14** (sem tarefa nova; reutilizar `trade_analytics/rules.split`, `stats` e o
   controle de ruído de `insights`): campos obrigatórios de cada hipótese — universo, sessão, fuso, condição,
   gatilho, entrada executável, saída, custos, parâmetros, versão e validação; embargo do tamanho do horizonte do
