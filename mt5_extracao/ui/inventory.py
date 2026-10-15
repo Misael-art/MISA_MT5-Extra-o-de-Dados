@@ -9,6 +9,7 @@ from tkinter import messagebox, simpledialog, ttk
 from mt5_extracao import asset_table
 from mt5_extracao.asset_table import COL_FAVORITE, COL_SELECTED, COLUMNS
 from mt5_extracao.robots import catalog, runner
+from mt5_extracao.ui.components import FilterBar
 from mt5_extracao.ui.backtest_dialog import BacktestDialog
 from mt5_extracao.ui.theme import Tooltip, card, fmt_int, scrolled_tree
 
@@ -38,7 +39,7 @@ class InventoryPanel:
                               "cujo backtest mais recente nesta série deu lucro; lucro em um teste não é aprovação. "
                               "Status da Base: pela data da última barra gravada.", ui.theme)
 
-        quick = ttk.Frame(body, style="Surface.TFrame")
+        quick = FilterBar(body, padding=6)
         quick.pack(fill=tk.X, pady=(0, 8))
         ttk.Button(quick, text=ui.theme.glyphs("☑ Selecionar Todos"), command=self.check_all).pack(side=tk.LEFT)
         ttk.Button(quick, text=ui.theme.glyphs("☐ Deselecionar Todos"), command=self.uncheck_all).pack(
@@ -46,7 +47,7 @@ class InventoryPanel:
         self.count_label = ttk.Label(quick, text="", style="Muted.TLabel")
         self.count_label.pack(side=tk.LEFT, padx=(12, 0))
 
-        actions = ttk.Frame(body, style="Surface.TFrame")
+        actions = FilterBar(body, padding=6)
         actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(10, 0))
         self.backtest_button = ttk.Button(actions, text="Iniciar Backtest", style="Accent.TButton",
                                           command=self.start_backtest)

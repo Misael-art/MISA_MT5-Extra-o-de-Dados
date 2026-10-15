@@ -204,3 +204,24 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - As cinco capturas originais do pedido não foram reenviadas. Nenhum MT5 real foi conectado. Windows e DPI alto ficam
   pendentes para a T17.5/checklist; não se declara validação Windows.
 - Próxima tarefa: T17.4, aplicação progressiva às abas restantes.
+
+## Conclusão da T17.4 — 2026-10-15
+
+- T17.4 concluída no Linux na worktree `../MISA_MT5-Extra-o-de-Dados-T17.4`, branch
+  `tarefa/T17.4-aplicacao-abas`, baseada no commit T17.3 `ccde9ce`. Instalação com
+  `./install.sh --yes --no-mt5` e dependências de desenvolvimento concluídas antes do trabalho; baseline: **832 aprovados,
+  10 pulados em 618,76 s**.
+- As abas Ativos, Minha base, Análise, Robôs, Recursos e Atividade agora reutilizam os componentes visuais existentes
+  e reorganizam filtros, métricas, tabelas e detalhes para janelas menores. Ativos e Robôs mantêm os controles inferiores
+  alcançáveis por rolagem; a tabela de parâmetros de robô pode ser rolada horizontalmente. Nenhum cálculo, contrato ou
+  regra operacional foi alterado.
+- Capturas antes/depois das seis telas, com MT5 desconectado e fixture sintética, estão em
+  `docs/img/interface-visual/T17.4/`: antes/depois em claro a 1280×800, depois em escuro a 1280×800 e depois em claro a
+  900×850. As vistas inferiores de Ativos e Robôs também foram capturadas a 900×620. As cinco imagens de referência
+  originais citadas no pedido não estavam disponíveis e seguem pendentes.
+- Verificação: teste responsivo focado **1 aprovado**; suíte completa final **833 aprovados, 10 pulados em 653,73 s**;
+  `doctor` **16 OK, 2 avisos esperados, 0 falhas** (`pandas-ta` opcional ausente e ponte desativada por `--no-mt5`);
+  `py_compile` e `git diff --check` passaram. A primeira suíte completa parou porque o `tmpfs` de sessão do pytest
+  encheu; a repetição usou diretórios temporários em `/var/tmp` e terminou normalmente.
+- Nenhum MT5 real foi conectado. A validação em Windows, DPI alto e 1920×1080 segue pendente para T17.5/checklist;
+  não se declara validação Windows. Próxima tarefa: T17.5, validação visual integrada e documentação final da fase.

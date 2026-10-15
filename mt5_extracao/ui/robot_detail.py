@@ -175,11 +175,12 @@ class RobotDetail:
         self.folder_button.pack(side=tk.LEFT)
         self.files_label = ttk.Label(actions, text="", style="Muted.TLabel")
         self.files_label.pack(side=tk.LEFT, padx=(10, 0))
-        tree_frame, self.inputs_tree = scrolled_tree(overview, ("Valor", "Descrição"), (150, 220), height=6)
+        tree_frame, self.inputs_tree = scrolled_tree(overview, ("Valor", "Descrição"), (95, 180), height=6,
+                                                     xscroll=True)
         self.inputs_tree.configure(show="tree headings")
         self.inputs_tree.heading("#0", text="Parâmetro", anchor="w")
-        self.inputs_tree.column("#0", width=170, stretch=False)
-        self.inputs_tree.column("Valor", stretch=False)
+        self.inputs_tree.column("#0", width=110, stretch=False)
+        self.inputs_tree.column("Valor", width=95, stretch=False)
         tree_frame.pack(fill=tk.BOTH, expand=True)
 
         # Backtest

@@ -7,16 +7,17 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao import data_quality, study, timeframes
-from mt5_extracao.ui.theme import Tooltip, card, fmt_int, fmt_num
+from mt5_extracao.ui.components import FilterBar, MetricCard
+from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 
 log = logging.getLogger(__name__)
 
 # (rótulo, chave no resumo, texto do glossário)
 TILES = (("Último preço", "last", "Último preço"),
          ("Retorno no período", "return_pct", "Retorno no período"),
-         ("Volatilidade anualizada", "volatility_pct", "Volatilidade anualizada"),
+         ("Volatilidade anual.", "volatility_pct", "Volatilidade anualizada"),
          ("Queda máxima", "max_drawdown_pct", "Queda máxima"),
-         ("Amplitude média por barra", "mean_range_pct", "Amplitude média"),
+         ("Amplitude por barra", "mean_range_pct", "Amplitude média"),
          ("Barras de alta", "up_bars_pct", "Barras de alta"))
 
 
@@ -32,50 +33,58 @@ class AnalysisPanel:
         self.available = {}    # símbolo -> timeframes (rótulos) com barras na base
         self.frame = ttk.Frame(parent, padding=12)
 
-        controls = card(self.frame, padding=10)
-        controls.master.pack(fill=tk.X)
-        ttk.Label(controls, text="Ativo", style="Muted.TLabel").pack(side=tk.LEFT)
+        controls = FilterBar(self.frame, padding=10)
+        controls.pack(fill=tk.X)
+        controls.columnconfigure(0, weight=1)
+        data_filters = ttk.Frame(controls, style="Surface.TFrame")
+        data_filters.grid(row=0, column=0, sticky="w")
+        indicator_filters = ttk.Frame(controls, style="Surface.TFrame")
+        indicator_filters.grid(row=0, column=1, sticky="e", padx=(12, 0))
+        self.indicator_filters = indicator_filters
+        ttk.Label(data_filters, text="Ativo", style="Muted.TLabel").pack(side=tk.LEFT)
         self.symbol_var = tk.StringVar()
-        self.symbol_combo = ttk.Combobox(controls, textvariable=self.symbol_var, state="readonly", width=14)
+        self.symbol_combo = ttk.Combobox(data_filters, textvariable=self.symbol_var, state="readonly", width=14)
         self.symbol_combo.pack(side=tk.LEFT, padx=(6, 14))
         self.symbol_combo.bind("<<ComboboxSelected>>", lambda e: self._symbol_changed())
-        ttk.Label(controls, text="Timeframe", style="Muted.TLabel").pack(side=tk.LEFT)
+        ttk.Label(data_filters, text="Timeframe", style="Muted.TLabel").pack(side=tk.LEFT)
         self.timeframe_var = tk.StringVar()
-        self.timeframe_combo = ttk.Combobox(controls, textvariable=self.timeframe_var, state="readonly", width=12)
+        self.timeframe_combo = ttk.Combobox(data_filters, textvariable=self.timeframe_var, state="readonly", width=12)
         self.timeframe_combo.pack(side=tk.LEFT, padx=(6, 14))
         self.timeframe_combo.bind("<<ComboboxSelected>>", lambda e: self.load())
-        ttk.Label(controls, text="Período", style="Muted.TLabel").pack(side=tk.LEFT)
+        ttk.Label(data_filters, text="Período", style="Muted.TLabel").pack(side=tk.LEFT)
         self.period_var = tk.StringVar(value=study.PERIODS[1][0])
         for label, _days in study.PERIODS:
-            ttk.Radiobutton(controls, text=label, value=label, variable=self.period_var, style="Toolbutton",
+            ttk.Radiobutton(data_filters, text=label, value=label, variable=self.period_var, style="Toolbutton",
                             command=self.load).pack(side=tk.LEFT, padx=(6 if label == study.PERIODS[0][0] else 1, 0))
         self.overlays = {}
         for key, label, tip in (("ma20", "MM 20", "Média móvel (MM)"), ("ma50", "MM 50", "Média móvel (MM)"),
                                 ("bb", "Bollinger", "Bandas de Bollinger")):
             var = tk.BooleanVar(value=key != "ma50")
             self.overlays[key] = var
-            check = ttk.Checkbutton(controls, text=label, variable=var, style="Surface.TCheckbutton",
+            check = ttk.Checkbutton(indicator_filters, text=label, variable=var, style="Surface.TCheckbutton",
                                     command=self.draw_chart)
-            check.pack(side=tk.LEFT, padx=(14 if key == "ma20" else 6, 0))
+            check.pack(side=tk.LEFT, padx=(0 if key == "ma20" else 10, 0))
             Tooltip(check, study.GLOSSARY[tip], self.theme)
+        self._controls_stacked = None
+        controls.bind("<Configure>", self._layout_controls, add="+")
 
         tiles = ttk.Frame(self.frame)
         tiles.pack(fill=tk.X, pady=10)
+        self.metric_cards = []
         self.tile_values = {}
         for i, (label, key, glossary) in enumerate(TILES):
-            body = card(tiles, padding=10)
-            body.master.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
-            tiles.columnconfigure(i, weight=1, uniform="tile")
-            name = ttk.Label(body, text=label, style="Muted.TLabel")
-            name.pack(anchor="w")
-            value = ttk.Label(body, text="—", style="Value.TLabel")
-            value.pack(anchor="w")
-            self.tile_values[key] = value
-            Tooltip(body.master, study.GLOSSARY[glossary], self.theme)
-            Tooltip(name, study.GLOSSARY[glossary], self.theme)
+            metric = MetricCard(tiles, title=label, value="—", hint=study.GLOSSARY[glossary],
+                                theme=self.theme, padding=10)
+            metric.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
+            self.metric_cards.append(metric)
+            self.tile_values[key] = metric.value_label
+        self._metric_columns = 0
+        tiles.bind("<Configure>", self._layout_metrics, add="+")
 
-        self.status = ttk.Label(self.frame, text="", style="Page.Muted.TLabel")
+        self.status = ttk.Label(self.frame, text="", style="Page.Muted.TLabel", wraplength=1200,
+                                justify=tk.LEFT)
         self.status.pack(fill=tk.X, side=tk.BOTTOM, pady=(6, 0))
+        self.frame.bind("<Configure>", self._resize_status, add="+")
         self.tabs = ttk.Notebook(self.frame)
         self.tabs.pack(fill=tk.BOTH, expand=True)
         self.chart_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
@@ -92,6 +101,32 @@ class AnalysisPanel:
         self.quality_text.pack(fill=tk.BOTH, expand=True)
         self.quality_text.configure(state=tk.DISABLED)
         self.theme.on_change(self.redraw)
+
+    def _layout_controls(self, event):
+        stacked = event.width < 1040
+        if stacked == self._controls_stacked:
+            return
+        self._controls_stacked = stacked
+        if stacked:
+            self.indicator_filters.grid_configure(row=1, column=0, sticky="w", padx=0, pady=(8, 0))
+        else:
+            self.indicator_filters.grid_configure(row=0, column=1, sticky="e", padx=(12, 0), pady=0)
+
+    def _resize_status(self, event):
+        self.status.configure(wraplength=max(240, event.width - 28))
+
+    def _layout_metrics(self, event):
+        columns = 6 if event.width >= 1100 else 3 if event.width >= 650 else 2 if event.width >= 440 else 1
+        if columns == self._metric_columns:
+            return
+        self._metric_columns = columns
+        for column in range(6):
+            self.metric_cards[0].master.columnconfigure(
+                column, weight=1 if column < columns else 0,
+                uniform="analysis-metric" if column < columns else "")
+        for index, metric in enumerate(self.metric_cards):
+            metric.grid(row=index // columns, column=index % columns, sticky="nsew",
+                        padx=(0, 8 if index % columns < columns - 1 else 0), pady=(0, 8))
 
     # --- escolha do ativo -------------------------------------------------------------
 
