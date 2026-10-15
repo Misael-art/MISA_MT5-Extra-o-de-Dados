@@ -146,3 +146,6 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Worktree separado `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` permanece intocado. Não houve push nem PR.
 - Próxima tarefa elegível registrada nesta retomada: T13.4. T16.3b também é independente e pode ser tratada em branch
   separado; manter cada tarefa em sua própria branch.
+- Complemento documental local `52e7442` adicionou a verificação Windows da T13.3 ao checklist: usar `--db` com uma
+  cópia descartável contendo `_bars_derived`, conferir idempotência e paridade dos valores, e não tocar na base original.
+  Os módulos Analytics não têm ramificação por `paths.is_windows`; os testes existentes simulam ambos os valores.
