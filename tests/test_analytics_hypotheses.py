@@ -15,6 +15,7 @@ from mt5_extracao.analytics.validation import (
     EVALUATIONS_TABLE,
     RESERVATIONS_TABLE,
     _condition_for,
+    _metric,
     _sensitivity,
     evaluate_and_store,
     evaluate_samples,
@@ -123,6 +124,8 @@ def test_catalog_definitions_are_json_data_with_declared_parameter_references():
     draft_eval = evaluate_samples(pd.DataFrame(), get_definition("H14"))
     assert draft_eval["status"] == "DRAFT"
     assert not draft_eval["eligible_for_approval"]
+    assert draft_eval["sample_quality"]["minimum_session_days"] == 60
+    assert not draft_eval["sample_quality"]["session_days_sufficient"]
     draft_effect = _simple_definition(status="DRAFT")
     draft_samples = _evaluation_samples(200)
     draft_samples["feature"] = (np.arange(len(draft_samples)) % 2 == 0).astype(int)
@@ -134,6 +137,10 @@ def test_catalog_definitions_are_json_data_with_declared_parameter_references():
     invalid = deepcopy(get_definition("H01"))
     invalid["condition"]["conditions"][0]["parameter"] = "nao_declarado"
     with pytest.raises(ValueError, match="parâmetros não declarados"):
+        validate_definition(invalid)
+    invalid = deepcopy(get_definition("H01"))
+    invalid["validation"]["min_sessions"] = True
+    with pytest.raises(ValueError, match="validation.min_sessions"):
         validate_definition(invalid)
 
 
@@ -573,8 +580,56 @@ def test_strong_synthetic_effect_is_only_validating_not_automatically_approved()
     definition["validation"]["min_samples"] = 15
     result = evaluate_samples(_evaluation_samples(200), definition, n_boot=200)
     assert result["eligible_for_approval"]
+    assert result["sample_quality"]["session_days_sufficient"]
     assert result["status"] == "VALIDATING"
     assert result["approved"] is False
+
+
+def test_minimum_session_days_gates_validation_even_when_sample_count_passes():
+    definition = _simple_definition(status="EXPLORATORY")
+    definition["costs"]["missing_components"] = []
+    definition["validation"]["min_samples"] = 10
+    definition["validation"]["min_sessions"] = 40
+    definition["session"]["session_anchor"] = "17:00"
+    samples = _evaluation_samples(100)
+    samples["feature"] = (np.arange(len(samples)) % 2 == 0).astype(int)
+    samples["success"] = samples["feature"].astype(bool)
+    samples["target_success"] = samples["success"]
+    session_days = pd.date_range("2020-01-01", periods=20, freq="D")
+    session_hours = np.tile([17, 21, 25, 29, 35], 20)
+    samples["observation_time"] = session_days.repeat(5) + pd.to_timedelta(session_hours, unit="h")
+    samples["entry_time"] = samples["observation_time"] + pd.Timedelta(minutes=1)
+    samples["horizon_end"] = samples["observation_time"] + pd.Timedelta(minutes=5)
+
+    result = evaluate_samples(samples, definition, n_boot=100)
+
+    assert result["sample_count"] == 100
+    assert result["sample_quality"]["session_days_observed"] == 20
+    assert result["sample_quality"]["minimum_session_days"] == 40
+    assert not result["sample_quality"]["session_days_sufficient"]
+    assert result["weak"]
+    assert not result["eligible_for_approval"]
+
+
+def test_bootstrap_intervals_cluster_by_anchored_session_day(monkeypatch):
+    captured = {}
+
+    def capture_bootstrap(values, times, **kwargs):
+        captured["times"] = pd.to_datetime(times)
+        return (0.1, 0.2)
+
+    monkeypatch.setattr("mt5_extracao.analytics.validation.stats.bootstrap_ci", capture_bootstrap)
+    session_day = pd.Timestamp("2020-01-01")
+    samples = pd.DataFrame({
+        "observation_time": [session_day + pd.Timedelta(hours=18), session_day + pd.Timedelta(days=1, hours=1)],
+        "session_day": [session_day, session_day],
+        "outcome_return": [0.1, 0.2],
+        "trade_executed": [True, True],
+    })
+
+    _metric(samples, pd.Series([True, True]), pd.Series([True, True]), n_boot=5)
+
+    assert captured["times"].tolist() == [session_day, session_day]
 
 
 def test_missing_cost_inputs_are_never_reported_as_zero_costs_or_approval_eligible():

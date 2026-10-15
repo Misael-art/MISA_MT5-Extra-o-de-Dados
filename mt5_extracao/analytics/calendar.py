@@ -115,7 +115,7 @@ def _canonical_hash(value):
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _parse_session_anchor(value):
+def parse_session_anchor(value):
     try:
         hour_text, minute_text = str(value).strip().split(":", 1)
         hour, minute = int(hour_text), int(minute_text)
@@ -142,7 +142,7 @@ def sessionize_m1(bars, symbol, broker_utc_offset=-3.0, session_gap_minutes=DEFA
         raise ValueError("session_gap_minutes precisa ser um inteiro positivo.")
     if gap_minutes != session_gap_minutes:
         raise ValueError("session_gap_minutes precisa ser um inteiro positivo.")
-    anchor_minutes, anchor_text = _parse_session_anchor(session_anchor)
+    anchor_minutes, anchor_text = parse_session_anchor(session_anchor)
     offset = float(broker_utc_offset)
     if not pd.notna(offset):
         raise ValueError("O offset UTC da corretora precisa ser numérico.")
