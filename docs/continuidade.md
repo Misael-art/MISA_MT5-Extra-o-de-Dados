@@ -159,14 +159,19 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   correção anterior ao cursor, consulta de valores limitada às observações do lote e medição de jobs.
 - `latest_bars` detecta quando barras elegíveis só ficaram fechadas pela passagem do relógio, mesmo sem nova revisão
   na fonte. Um teste determinístico avança o relógio e verifica que só uma barra é lida dentre três.
-- Testes focados: **46 aprovados em 51,24 s**; os três cenários críticos foram repetidos (**3 aprovados em 1,35 s**).
+- Testes focados SQLite: **46 aprovados em 51,24 s**; os três cenários críticos foram repetidos (**3 aprovados em 1,35 s**).
   A primeira suíte completa teve **847 aprovados, 10 ignorados e 1 falha em 587,64 s**: a atualização assíncrona de
   `test_ui_main_window.py::test_no_internet_is_said_plainly_with_what_to_do` excedeu o tempo de espera. O teste passou
   isoladamente (**1 aprovado em 5,87 s**). Na repetição integral final, a suíte passou com **848 aprovados e 10
-  ignorados em 601,33 s**; a falha não se repetiu. Nenhum arquivo de UI foi alterado nesta branch.
+  ignorados em 601,33 s**; a falha não se repetiu. Depois, foi adicionado teste PostgreSQL opt-in para retomada e
+  append; o grupo PostgreSQL passou com **10 testes** em contêiner descartável PostgreSQL 16. A suíte completa com
+  PostgreSQL habilitado passou com **858 aprovados, 1 ignorado em 565,80 s**. Nenhum arquivo de UI foi alterado.
 - `doctor`: **16 OK, 2 avisos, 0 falhas**. Avisos: `pandas-ta` opcional ausente e ponte Wine desativada. A
   worktree não tinha `config/config.ini`; foi gerada com `configure --non-interactive --skip-credentials --no-bridge`
   (sem credenciais). Configuração e lista local de símbolos são ignoradas pelo Git.
+- Validação PostgreSQL: `tests/test_postgresql.py`, `tests/test_trade_analytics_pg.py` e
+  `tests/test_analytics_profiles_pg.py` — **10 aprovados**. O teste novo cobre checkpoint recuperável e append
+  incremental no produtor. O contêiner isolado foi removido. Windows real continua pendente.
 - Benchmark determinístico em SQLite temporário (160 sessões de 30 M1 + uma sessão incremental; 966 barras M5 finais):
   `producers.compute` completo **10.103 ms**, incremental **1.321 ms** (7,65×); crescimento do banco/WAL **17.932.288
   bytes** vs. **290.816 bytes**; pico RSS praticamente igual (**182.571.008** vs. **182.673.408 bytes**). O benchmark
