@@ -6,7 +6,7 @@ As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fa
 [propostas/ANALYTICS_OPERACOES.md](../propostas/ANALYTICS_OPERACOES.md) (Fase 16).
 
 Atualização de 2026-10-15: T13.3 está na branch local `tarefa/T13.3-perfis-regimes`, commit `bde3652`, e T13.4 está
-na branch separada `tarefa/T13.4-hipoteses-walk-forward`, checkpoint de código `0ff2df5` e documentação `6ce45bf`;
+na branch separada `tarefa/T13.4-hipoteses-walk-forward`, checkpoint de código `0ff2df5` e documentação até `41bdef7`;
 nenhuma delas está integrada ao `master`.
 T16.3b está na branch local independente `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`. Evidências e
 limitações estão em [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md), [T13.4_RELATORIO.md](T13.4_RELATORIO.md)

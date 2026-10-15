@@ -209,8 +209,9 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 
 ## Reconciliação da matriz e extensões temporais — 2026-10-15
 
-- O checkpoint T13.4 de código é `0ff2df5`; `6ce45bf` atualiza o ponteiro de continuidade. Ambos são locais e não
-  integrados. A matriz agora classifica os itens sem dados reais OOS, sem mercado comparável, sem eventos de trade e
+- O checkpoint T13.4 de código é `0ff2df5`; `6ce45bf` atualiza o ponteiro de continuidade e `41bdef7` reconcilia
+  estado da matriz/propostas. Ambos são locais e não integrados. A matriz agora classifica os itens sem dados reais
+  OOS, sem mercado comparável, sem eventos de trade e
   sem jobs incrementais como pendentes, com o dado ou contrato que falta explícito.
 - A linha T16.3b estava atrasada em `PLANO_DE_TRABALHO.md` e `propostas/ANALYTICS_OPERACOES.md`: o trabalho existe em
   `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`, com 22 testes focados, suíte 806/9 e doctor 16/2/0; a
