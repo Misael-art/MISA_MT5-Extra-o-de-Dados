@@ -5,6 +5,10 @@ Serve para não duplicar componentes: cada requisito aponta para o que já exist
 As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fase 13) e em
 [propostas/ANALYTICS_OPERACOES.md](../propostas/ANALYTICS_OPERACOES.md) (Fase 16).
 
+Atualização de 2026-10-15: as lacunas da T13.3 foram implementadas e verificadas na branch local
+`tarefa/T13.3-perfis-regimes`, dependente da T13.2 local; ainda não foram integradas ao `master`. Evidências e
+limitações da base estão em [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md). A Decisão 5 permanece aberta.
+
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
 
@@ -13,9 +17,10 @@ modo sombra → pilotos autorizados → monitoramento.
 | Requisito | Implementação existente | Lacuna | Tarefa | Dependência | Critério de aceite |
 |---|---|---|---|---|---|
 | Barras por sessão, sem barras fantasmas | `analytics/calendar.py`, `analytics/resampling.py` (`_market_calendar`, `_bars_derived`) | Calendário é inferido do M1 (reconstrução histórica); offset fixo, sem horário de verão | T13.1 ✅ (limitações registradas) | — | Testes 1–3 e 5 da especificação |
-| Fato com observação, disponibilidade, validade, revisão | `analytics/feature_store.py` (T13.2) | Gravação em lote (uma transação por valor é lenta para séries longas) | T13.3 acrescenta `save_values` | T13.2 | Mesmo contrato de `save_value`, testado |
-| Consulta *as-of* | `feature_store.query_as_of` | Junção *as-of* de uma série de instantes de decisão (só há consulta por um instante) | T13.3 (`asof_join`) | T13.2 | Cada decisão vê só `available_at <= t`; teste entre timeframes |
-| Barra superior aberta não conta como fechada | `available_at = bar_end_utc` nos produtores | — | T13.3 | T13.2 | Teste: H1 das 10:00 não aparece às 10:30 |
+| Fato com observação, disponibilidade, validade, revisão | `analytics/feature_store.py` (T13.2) e `save_values` (T13.3) | — | T13.3 ✅ | T13.2 | Mesmo contrato de `save_value`, lote atômico e duplicatas no lote testados |
+| Consulta *as-of* | `query_as_of`, `query_history`, `asof_join` | — | T13.3 ✅ | T13.2 | Revisões anteriores preservadas; séries separadas por símbolo, TF e versão; decisões só veem `available_at <= t` |
+| Barra superior aberta ou incompleta não conta como fechada | `latest_bars(closed_only=True)` e `available_at = bar_end_utc` | — | T13.3 ✅ | T13.2 | H1 não aparece antes de fechar; parcial, cobertura incompleta e barra futura excluídas |
+| Correção tardia e proveniência das características | Revisões em `_bars_derived`, janelas por sessão e fingerprint `source_revision` | Memória de Wilder é aproximada; estado/duração do regime dependem do prefixo histórico | T13.3 ✅ | T13.1, T13.2 | Disponibilidade nunca antecipa correção; limite de decaimento e propagação do estado testados |
 | Volume real ≠ volume de ticks | `_bars_derived.real_volume_known` | `trade_analytics/enrich.py` mistura real e tick barra a barra e trata real `0` como ausente | **T16.3b** | — | Fonte do volume declarada; nunca misturada na mesma série |
 | Contexto do Laboratório só com informação anterior | `enrich.py` usa `time < entry_time` | Usa a barra **aberta** quando a entrada não cai na abertura da barra; surpresa de notícia posterior à entrada vaza | **T16.3b** | — | Testes de vazamento com entrada no meio da barra e com notícia depois da entrada |
 | Fato × divulgação × recebimento × revisão (economia) | `_economic_events` guarda horário do evento e `actual` | Não guarda quando o `actual` foi recebido nem revisões | Registrado; entra quando houver característica econômica (fora da T13.3) | T16.3a | `actual` só usado após o recebimento |
@@ -25,14 +30,14 @@ modo sombra → pilotos autorizados → monitoramento.
 
 | Requisito | Existente | Lacuna | Tarefa | Critério de aceite |
 |---|---|---|---|---|
-| Retornos, gap, pregão anterior, movimento após abertura | `study.seasonality` (agregado, sem *as-of*) | Por sessão, com disponibilidade | T13.3 | Gap disponível só no fim da 1ª barra da sessão |
-| Volume: médias/medianas 5–60 sessões, inclinação, percentil | — | Tudo | T13.3 | Só sessões anteriores; série sintética de resposta conhecida |
-| RVOL no mesmo horário | Fórmula na §5 da especificação | Tudo | T13.3 | Mediana das sessões anteriores no mesmo minuto da sessão; amostra insuficiente = ausente, nunca 1,0 |
-| Volatilidade, compressão/expansão | `strategies/indicators.py` (ATR, Bollinger, percentil) | Percentil só com janela anterior | T13.3 (reutiliza `indicators`) | Percentil causal |
-| Regime TREND/RANGE/TRANSITION/UNCERTAIN | `asset_screener` (ADX 25/20 na última barra) | Confiança, duração mínima, estado incerto | T13.3 | Mesmo cálculo da triagem com duração 1; diferença documentada |
-| Faixa inicial, distância de níveis anteriores | — | Tudo | T13.3 (faixa inicial e máx./mín. da sessão anterior) | Disponível só após N minutos |
-| Sazonalidade (dia, semana do mês, hora, minuto da sessão) | `enrich.calendar_columns`, `study.seasonality` | Minuto da sessão pelo calendário observado | T13.3 reutiliza `calendar_columns` | — |
-| "Confiança" por característica | Decisão em aberto 5 | Definição | T13.3 propõe por característica; **dono confirma** | Texto de cada definição registrado nos `parameters` |
+| Retornos, gap, pregão anterior, movimento após abertura | `study.seasonality` (agregado, sem *as-of*) | Implementação causal por sessão | T13.3 ✅ | Gap disponível só no fim da 1ª barra da sessão |
+| Volume: médias/medianas 5–60 sessões, inclinação, percentil | `volume_profiles.py` | — | T13.3 ✅ | Só sessões anteriores completas; sintético e AGG medidos |
+| RVOL no mesmo horário | `volume_profiles.py` | — | T13.3 ✅ | Mediana das sessões anteriores no mesmo minuto; amostra insuficiente ou denominador zero = ausente |
+| Volatilidade, compressão/expansão | `strategies.indicators` (ATR, Bollinger) e `market_regimes.py` | — | T13.3 ✅ | Percentil causal e correção tardia testados |
+| Regime TREND/RANGE/TRANSITION/UNCERTAIN | `asset_screener` e `market_regimes.py` (ADX 25/20) | — | T13.3 ✅ | Paridade com a triagem para duração 1; duração mínima 3 e aquecimento incerto |
+| Faixa inicial, distância de níveis anteriores | `session_structure.py` | — | T13.3 ✅ | Disponibilidade após N minutos; rompimento de duas pontas fica marcado ambíguo |
+| Sazonalidade (dia, semana do mês, hora, minuto da sessão) | `enrich.calendar_columns`, `calendar_rows` | `study.seasonality` é agregado sobre a amostra inteira e não é causal | T13.3 ✅ | Colunas do calendário reutilizadas; resumo global fica só na validação descritiva |
+| "Confiança" por característica | Proposta registrada nos parâmetros | Decisão em aberto 5 | T13.3 ✅ (proposta) | Texto de cada definição registrado; dono ainda confirma |
 
 ## 3. Hipóteses e validação (T13.4)
 

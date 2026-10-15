@@ -25,6 +25,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x resample --symbols X --base M1 --tf M3,1D,1440min --session-aware
                                                         # barras analíticas por sessão observada
     mt5x analytics features list|show|values|affected     # características versionadas e consulta point-in-time
+    mt5x analytics features compute --symbol X --tf M5    # volume, RVOL, volatilidade, regime e estrutura (T13.3)
     mt5x panel [--open]                                # painel visual: ativos x timeframes x robôs
     mt5x panel --serve --open                          # painel vivo: atualiza sozinho e tem botões de ação
     mt5x robots [list|import|backtest|market] ...     # catálogo, importação, backtest e pré-check Market
@@ -1771,9 +1772,18 @@ def build_parser():
     q.add_argument("--to", dest="date_to", help="fim exclusivo de observation_time, com fuso")
     q.set_defaults(func=cmd_analytics)
 
+    q = features_sub.add_parser("compute", help="calcula volume, RVOL, volatilidade, regime e estrutura da sessão")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--tf", required=True, help="timeframe de _bars_derived (gere antes com resample --session-aware)")
+    q.add_argument("--families", help="lista separada por vírgula (padrão: todas): "
+                                      "volume,rvol,volatility,regime,structure,calendar")
+    q.add_argument("--volume-source", choices=("auto", "real", "tick"), default="auto",
+                   help="auto usa o volume real só se todas as barras o conhecem; nunca mistura os dois")
+    q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("affected", help="lista características dependentes de fontes alteradas")
     q.add_argument("--changed", required=True,
-                   help="chaves separadas por vírgula, por exemplo bars:M1,feature:returns")
+                   help="chaves separadas por vírgula, por exemplo bars:M1,bars_derived:M15,feature:returns")
     q.set_defaults(func=cmd_analytics)
 
     p = sub.add_parser("tables", help="lista tabelas do banco e o último registro de cada uma")
@@ -1983,6 +1993,22 @@ def cmd_analytics(args, ctx):
         else:
             _print(frame.to_string(index=False))
         _data(values=frame.to_dict("records"))
+        return EXIT_OK
+
+    if args.features_action == "compute":
+        from mt5_extracao.analytics import producers
+        from mt5_extracao.resources import guard
+
+        families = [item.strip() for item in (args.families or "").split(",") if item.strip()] or None
+        summary = producers.compute(ctx.db, args.symbol, args.tf, families=families,
+                                    volume_source=args.volume_source, write_guard=guard.make(ctx.db, ctx.config))
+        for item in summary:
+            _print(f"{item['family']}\t{item['features']} características\t{item['values']} valores "
+                   f"({item['inserted']} novos, {item['revised']} revisados, {item['unchanged']} inalterados)"
+                   + (f"\tvolume: {item['volume_source']}" if item["volume_source"] else ""))
+        _print("\nValores históricos são reconstruídos: disponíveis no fim da barra ou da sessão, "
+               "como se as barras de hoje já existissem então.")
+        _data(summary=summary)
         return EXIT_OK
 
     if args.features_action == "affected":

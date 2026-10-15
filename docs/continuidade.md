@@ -129,3 +129,20 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   `doctor` 16 OK, 2 avisos, 0 falhas. Os dois testes PostgreSQL da frente foram pulados localmente porque
   `MT5X_TEST_PG_URL` não está configurada; um teste de round-trip *as-of* foi adicionado ao job PostgreSQL do CI.
   Windows real, PostgreSQL local e MT5 real não foram testados.
+
+## Retomada da T13.3 — 2026-10-15
+
+- Branch local: `tarefa/T13.3-perfis-regimes`, com T13.2 como ancestral local; T13.2 e T13.3 ainda não foram integradas
+  ao `master`. A implementação e as limitações da T13.3 estão em
+  [T13.3_PERFIS_REGIMES.md](analytics/T13.3_PERFIS_REGIMES.md).
+- Verificação após as alterações: testes focados T13.3/T13.1/T13.2 — **42 aprovados em 23,54 s**; suíte completa —
+  **833 aprovados, 10 ignorados em 676,66 s**; `doctor` — **16 OK, 2 avisos, 0 falhas**. O único aviso opcional é
+  `pandas-ta`; a ponte Wine está desativada pela configuração atual.
+- A base `database/mt5_data.db` foi aberta somente em modo SQLite `mode=ro`; nenhum cálculo foi gravado nela e o MT5
+  não foi conectado. EURUSD e AGG atenderam à validação de dois mercados descrita no relatório da T13.3.
+- Decisão 5 permanece pendente do dono: a confiança proposta para regime é uma fração de concordância entre ADX,
+  eficiência e R²; para RVOL é a quantidade de sessões usadas na mediana. A T13.4 pode avançar; a T13.5 aguarda a
+  decisão conforme o plano. Windows real, PostgreSQL local, MT5 real e DST não foram validados.
+- Worktree separado `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` permanece intocado. Não houve push nem PR.
+- Próxima tarefa elegível registrada nesta retomada: T13.4. T16.3b também é independente e pode ser tratada em branch
+  separado; manter cada tarefa em sua própria branch.
