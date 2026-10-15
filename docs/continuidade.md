@@ -220,9 +220,9 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   incremental, recuperação e medição dos produtores; T16.3c para disponibilidade/revisões econômicas *as-of*. As
   propostas foram registradas no plano. T16.3a armazena `event_time` e `imported_at`, mas não prova o momento em que
   `actual` foi recebido nem preserva versões anteriores; nenhuma data de recepção será inferida.
-- A próxima tarefa técnica independente é T13.3b numa branch própria, derivada da T13.3; primeiro executar a linha de
-  base do branch com `/tmp` e Xvfb, depois desenhar retomada/idempotência contra a recomputação integral. A T13.7a
-  continua aguardando resposta do dono; T13.5 segue dependente de T12.1 e decisões de validade/Strategy Tester.
+- Naquele checkpoint, a próxima tarefa independente era T13.3b. Ela foi concluída depois em branch própria; veja o
+  checkpoint atualizado abaixo. A T13.7a continua aguardando resposta do dono; T13.5 segue dependente de T12.1 e das
+  decisões de validade/Strategy Tester.
 
 ## Checkpoint T13.4 — completude do modelo de custos — 2026-10-15
 
@@ -236,3 +236,42 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   `doctor` **16 OK, 2 avisos, 0 falhas** (módulo opcional `pandas-ta` ausente; ponte Wine desativada). Nenhum script
   `.sh` foi alterado. A T13.4 permanece parcial: H06–H16 não têm avaliação OOS real, H14–H16 ainda dependem de eventos
   reais válidos e não há comparabilidade declarada entre mercados.
+
+## Checkpoint do ciclo Analytics — 2026-10-15
+
+Entregas locais independentes, sem merge, push ou PR:
+
+- **T13.3b:** branch `tarefa/T13.3b-producers-incrementais`; código `4ede7fa`, documentação final `4ecbaca`. A suíte
+  final passou com **848 aprovados, 10 ignorados em 601,33 s**; `doctor` **16 OK, 2 avisos, 0 falhas**. O benchmark
+  sintético registrou `compute` completo em 10.103 ms e incremento em 1.321 ms (**7,65×**); crescimento SQLite/WAL
+  de 17.932.288 bytes contra 290.816 bytes. PostgreSQL e Windows reais pendentes. A primeira suíte teve uma falha
+  assíncrona de UI, que não se repetiu na suíte integral posterior.
+- **T13.4:** branch `tarefa/T13.4-hipoteses-walk-forward`, HEAD `ae30450`. Implementação permanece parcial: faltam
+  custos completos de comissão/slippage, eventos reais para H14–H16 e mercados comparáveis para avaliação OOS. A
+  suíte completa registrada passou com **860 aprovados, 10 ignorados**; `doctor` **16 OK, 2 avisos, 0 falhas**.
+- **T16.3b:** branch local `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`; corrige barra aberta,
+  surpresa posterior à entrada e mistura de fontes de volume. MAE/MFE segue aproximado em M1/OHLC.
+- **T16.3c:** branch `tarefa/T16.3c-calendario-point-in-time`, commit `fc24bde`; guarda primeira observação e
+  histórico de revisões, com `load_asof`/`merged_asof`. Testes focados **28 aprovados**, suíte **812 aprovados, 9
+  ignorados**, `doctor` **16 OK, 2 avisos, 0 falhas**. Falta replay com recibos de fonte real.
+- **T16.11c:** branch `tarefa/T16.11c-interacoes-laboratorio`, commit `701f4fd`; testes de UI focados **40 aprovados**,
+  suíte **789 aprovados, 9 ignorados**, `doctor` **16 OK, 2 avisos, 0 falhas**. Windows real pendente.
+- **T16.12:** branch `tarefa/T16.12-cli-relatorio`, HEAD `e99becd`; preserva os comandos publicados `compare`,
+  `report --by`, simulação por filtros e `insights --save`, e adiciona `enrich`, re-simulação por run e
+  `export --rules-file`. Usa envelope `--json`; persistência de simulação exige `--save` e a exportação gera proposta
+  não aplicável. Testes focados **15 aprovados**, suíte **794 aprovados, 9 ignorados**, `doctor` **16 OK, 2 avisos,
+  0 falhas**. Windows real pendente.
+
+### Bloqueios externos e dependências
+
+- **T13.5:** T12.1 permanece parcial; política de validade e comportamento do leitor no Strategy Tester precisam ser
+  decididos/validados antes do publicador e leitor MQL5.
+- **T13.7a:** a confirmação solicitada para adicionar o modo sombra informativo segue sem resposta; não autoriza piloto
+  nem qualquer conta real.
+- **T13.4:** sem custos observados completos, eventos de estratégia reais e grupo de mercados comparáveis, não há
+  evidência OOS suficiente para promover hipóteses.
+- **T16.3c:** não inferir disponibilidade histórica de `event_time` ou importação posterior; replay depende de recibos
+  reais confiáveis.
+- **T16.2b:** o checkout `/home/misael/Projects/HADOUKEN-MQL5-Framework` está vazio e o remoto configurado não tem
+  branches nem commits. Não substituí por outro repositório; aguardo indicação de um checkout HADOUKEN populado.
+- Worktrees T17.1–T17.6 seguem separados e intocados. Nenhuma ação financeira ou operacional foi realizada.

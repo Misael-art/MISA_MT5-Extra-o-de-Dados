@@ -127,7 +127,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementação concluída no Linux: 833 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Decisão 5 (confiança) segue proposta pendente; PostgreSQL e Windows real não testados |
-| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | proposta registrada; a fazer em branch própria. Não muda o aceite original da T13.3 |
+| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ implementação na branch local `tarefa/T13.3b-producers-incrementais` (`4ede7fa`); 46 focados e suíte final 848/10; doctor 16 OK/2 avisos/0 falhas. PostgreSQL e Windows reais pendentes; ainda não integrada |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | ⏳ parcial na branch `tarefa/T13.4-hipoteses-walk-forward`: H01–H16 têm builders; H06–H16 permanecem DRAFT, sem limiares/OOS medidos; H06–H13 têm contagens somente descritivas EURUSD/AGG; eventos reais para H14–H16 não existem na base; comparabilidade real não declarada. Auditoria impede sensibilidade líquida com custo ausente e exige custos completos na reserva OOS; comissão/slippage seguem ausentes nas definições atuais. Linux: 860 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Ver `docs/analytics/T13.4_RELATORIO.md`. Não integrada ao master |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
@@ -147,7 +147,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
 | T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
 | T16.3b | Laboratório: correção temporal do enriquecimento (barra aberta, surpresa de notícia futura, volume real × ticks, limite temporal de MAE/MFE) | T16.3 | ✅ entregue localmente na branch `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`: focados 22 aprovados, suíte 806 aprovados/9 ignorados, `doctor` 16 OK/2 avisos/0 falhas. MAE/MFE segue aproximação M1/OHLC; branch não integrada |
-| T16.3c | Calendário econômico point-in-time: disponibilidade observada e histórico de revisões | T16.3a, T16.3b | proposta registrada; avaliação real pendente de captura/fonte com disponibilidade confiável |
+| T16.3c | Calendário econômico point-in-time: disponibilidade observada e histórico de revisões | T16.3a, T16.3b | ✅ implementação local em `tarefa/T16.3c-calendario-point-in-time` (`fc24bde`); 28 focados, suíte 812/9 e doctor 16/2/0. Replay de recibos de fonte real e Windows pendentes; não integrada |
 | T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
@@ -157,7 +157,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.9 | Laboratório: regras de filtro e simulador, validados em walk-forward com folga e reserva final | T16.8 | ✅ concluída |
 | T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
-| T16.12 | Laboratório: `mt5x trades report/compare/insights/simulate` com `--json` | T16.11b | ✅ concluída (relatório HTML opcional não feito) |
+| T16.12 | Laboratório: `mt5x trades enrich/report/simulate/insights/export` com `--json` | T16.11b | ✅ implementação local em `tarefa/T16.12-cli-relatorio` (HEAD `e99becd`); preserva `compare`, `report --by`, simulação por filtros e `insights --save`. Focados 15; suíte 794/9; doctor 16/2/0. Windows pendente; relatório HTML opcional não feito |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

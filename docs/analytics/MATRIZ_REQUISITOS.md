@@ -5,12 +5,14 @@ Serve para não duplicar componentes: cada requisito aponta para o que já exist
 As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fase 13) e em
 [propostas/ANALYTICS_OPERACOES.md](../propostas/ANALYTICS_OPERACOES.md) (Fase 16).
 
-Atualização de 2026-10-15: T13.3 está na branch local `tarefa/T13.3-perfis-regimes`, commit `bde3652`, e T13.4 está
-na branch separada `tarefa/T13.4-hipoteses-walk-forward`, checkpoint de código `0ff2df5` e documentação até `41bdef7`;
-nenhuma delas está integrada ao `master`.
-T16.3b está na branch local independente `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`. Evidências e
-limitações estão em [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md), [T13.4_RELATORIO.md](T13.4_RELATORIO.md)
-e [continuidade.md](../continuidade.md). A Decisão 5 permanece aberta.
+Atualização de 2026-10-15: T13.3 está na branch local `tarefa/T13.3-perfis-regimes` (`bde3652`), T13.3b na
+`tarefa/T13.3b-producers-incrementais` (`4ede7fa`, documentação final `4ecbaca`), e T13.4 na
+`tarefa/T13.4-hipoteses-walk-forward` (`ae30450`). T16.3b está em `tarefa/T16.3b-enriquecimento-temporal`
+(`5d85cf3`) e T16.3c em `tarefa/T16.3c-calendario-point-in-time` (`fc24bde`). Nenhuma dessas branches foi integrada
+ao `master`. T13.3b passou a suíte final com 848 aprovados e 10 ignorados; T13.4 segue parcial por custos e dados
+reais ausentes. T16.3c implementa as revisões, mas replay com recibos de fonte real está pendente. Evidências:
+[T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md), [T13.4_RELATORIO.md](T13.4_RELATORIO.md) e
+[continuidade.md](../continuidade.md). A Decisão 5 permanece aberta.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -26,7 +28,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Correção tardia e proveniência das características | Revisões em `_bars_derived`, janelas por sessão e fingerprint `source_revision` | Memória de Wilder é aproximada; estado/duração do regime dependem do prefixo histórico | T13.3 | T13.1, T13.2 | Disponibilidade não antecipa correção; limite e propagação testados | **Entregue com limite documentado** na T13.3; a aproximação não é garantia de memória exata. |
 | Volume real ≠ volume de ticks | `_bars_derived.real_volume_known`; enriquecimento temporal corrigido | — | T13.3/T16.3b | — | Fonte declarada; séries nunca misturam fontes | **Entregue localmente** em T13.3 e T16.3b; testes das duas frentes registrados, branches ainda não integradas. |
 | Contexto do Laboratório só com informação anterior | Enriquecimento só usa barras fechadas e eventos conhecidos até a entrada | Resolução M1 ainda limita ordem intrabar e precisão de MAE/MFE | T16.3b | — | Armadilhas de entrada no meio da barra e notícia posterior | **Entregue localmente** em `5d85cf3`; aproximações intrabar permanecem explícitas; branch não integrada. |
-| Fato × divulgação × recebimento × revisão (economia) | T16.3a implementa CSV/MT5 e união em `_economic_events` | `event_time`/`imported_at` não provam a disponibilidade à estratégia; `save` substitui a linha do evento, sem histórico de revisões | T16.3c (proposta) | T16.3a/T16.3b | Usar `actual` só após disponibilidade comprovada; preservar revisões e desconhecidos | **Pendente de disponibilidade/revisão point-in-time**: T16.3a existe; T16.3b exclui evento agendado após a entrada, mas não reconstrói quando o `actual` chegou nem versões corrigidas. Usar `source_received_at` quando confiável ou `first_observed_at` capturado ao importar ao vivo; históricos sem isso ficam desconhecidos. Não inferir recepção de `event_time` ou de uma importação histórica posterior. |
+| Fato × divulgação × recebimento × revisão (economia) | T16.3c mantém disponibilidade observada e histórico aditivo de revisões | A base histórica não contém recibos confiáveis; importações antigas não reconstroem a disponibilidade original | T16.3c | T16.3a/T16.3b | Usar `actual` só após disponibilidade comprovada; preservar revisões e desconhecidos | **Implementação entregue localmente** em `fc24bde`; testes sintéticos cobrem `load_asof` e revisões. Replay real segue pendente até haver fonte/exportação com timestamps confiáveis. Não inferir recepção de `event_time` ou de importação histórica posterior. |
 | Série contínua ajustada nunca executada | Decisão em aberto 2 do plano | Sem ativos B3 contínuos na base | Decisão 2 | Dono do projeto | Nunca executar em preço ajustado | **Pendente de decisão e dados**; não há ativo B3 contínuo disponível para validar. |
 
 ## 2. Características (T13.3)
@@ -75,7 +77,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Modo sombra (decide, não age) | — | — | T13.7a | T13.5 | Nenhuma ordem afetada; sinais registrados | **Pendente de decisão** sobre adicionar T13.7a ao plano e dependente de T13.5. |
 | Piloto opt-in que só reduz risco | `mt5x-safety` (guardião, orçamento) | Política e evidência Strategy Tester | T13.7 | T13.5, T13.7a, T12.3, robô aprovado, autorização específica | Só reduz; bateria sem regressão | **Pendente** de dependências e autorização específica; conta real não autorizada. |
 | Monitoramento e rebaixamento | — | Implementação completa, trilha, retenção e backup | T13.8 | T13.4, T13.7 | Motivo e trilha gravados | **Pendente** de T13.7; ainda sem trilha de ator/motivo de transição ou política de backup específica. |
-| Jobs idempotentes, checkpoint, recursos | Fase 15 (`write_guard`, retenção, arquivo); produtores T13.3 gravam com `save_values` e consultam guarda | `compute` relê e recalcula todo o histórico; não há checkpoint/resumo de execução ou retomada por lote; falta medição reproduzível do job produtor | T13.3b (proposta) | T13.3, T15.9 | Reexecução após falha e correção tardia igualam recomputação completa sem duplicatas; limites de recursos e métricas de execução gravados | **Pendente de execução incremental/recuperável**: guarda e gravação idempotente são exercitados; a implementação do produtor não tem checkpoint nem processamento incremental. O sweep T13.4 mediu builders em memória, não o job persistente T13.3. |
+| Jobs idempotentes, checkpoint, recursos | `producer_jobs.py`, checkpoint transacional por família, cursor + sequência da fonte, limites e runs medidos | PostgreSQL e Windows reais não foram executados | T13.3b ✅ (branch local) | T13.3, T15.9 | Falha e retomada sem duplicar/pular; correção tardia iguala recomputação completa; novas barras leem só delta/cauda limitada; métricas em [relatório](T13.3B_PRODUTORES_INCREMENTAIS.md) | **Entregue localmente** em `4ede7fa`; testes de falha/retomada e correção tardia passaram; suíte final 848/10 e doctor 16 OK/2 avisos/0 falhas. PostgreSQL/Windows reais pendentes. |
 
 ## Questões para o dono do projeto (não bloqueiam T13.3 a T13.4)
 
