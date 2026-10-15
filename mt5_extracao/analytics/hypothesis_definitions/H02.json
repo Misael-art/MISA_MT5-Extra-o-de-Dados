@@ -1,0 +1,23 @@
+{
+  "pattern_id": "H02",
+  "title": "Alta até 17:25 e continuação até o fechamento observado",
+  "version": "1.0",
+  "status": "EXPLORATORY",
+  "sample_builder": "H02",
+  "universe": {"timeframes": ["M1"], "minimum_sessions": 40, "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"field": "return_to_trigger", "operator": "gte", "parameter": "return_threshold"},
+  "trigger": {"type": "broker_time", "time": "17:25", "requires_closed_bar": true},
+  "entry": {"type": "first_bar_open_after_trigger", "direction": "buy", "delay_bars": 0},
+  "exit": {"type": "observed_session_close"},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"return_threshold": 0.0115, "continuation_threshold": 0.004,
+                 "threshold_provenance": "examples_from_specification_not_estimates"},
+  "parameter_grid": {"return_threshold": [0.008, 0.0115, 0.015]},
+  "sensitivity_grid": {"continuation_threshold": [0.002, 0.004, 0.006]},
+  "validation": {"horizon_minutes": 1440, "min_samples": 30, "min_sessions": 40, "alpha": 0.05,
+                  "bootstrap_block": "session", "parameter_selection": "train_only"},
+  "target": {"field": "return_after_trigger", "operator": "gte", "parameter": "continuation_threshold"},
+  "outcome": {"field": "long_return_to_close", "type": "executable_after_trigger", "net_of_observed_spread": true}
+}

@@ -1,0 +1,22 @@
+{
+  "pattern_id": "H05",
+  "title": "Regime de lateralização e propensão a rompimento",
+  "version": "1.0",
+  "status": "EXPLORATORY",
+  "sample_builder": "H05",
+  "universe": {"timeframes": ["M1"], "minimum_sessions": 40, "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"field": "prior_regime", "operator": "eq", "value": "RANGE"},
+  "trigger": {"type": "prior_session_close", "known_at": "prior_bar_close"},
+  "entry": {"type": "opening_range_breakout", "minutes_parameter": "opening_range_minutes",
+            "direction": "first_close_outside_range_next_open"},
+  "exit": {"type": "observed_session_close"},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"opening_range_minutes": 30, "minimum_regime_duration": 3,
+                 "threshold_provenance": "T13.3 defaults; exploratory"},
+  "validation": {"horizon_minutes": 1440, "min_samples": 30, "min_sessions": 40, "alpha": 0.05,
+                  "bootstrap_block": "session", "parameter_selection": "train_only"},
+  "target": {"field": "breakout_success", "operator": "eq", "value": true},
+  "outcome": {"field": "breakout_return", "type": "opening_range_breakout_proxy", "net_of_observed_spread": true}
+}

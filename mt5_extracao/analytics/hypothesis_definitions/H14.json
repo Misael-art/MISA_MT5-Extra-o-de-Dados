@@ -1,0 +1,21 @@
+{
+  "pattern_id": "H14",
+  "title": "MAE e MFE por horizonte e contexto",
+  "version": "0.1",
+  "status": "DRAFT",
+  "sample_builder": "DRAFT",
+  "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"field": "prior_regime", "operator": "in", "value": ["TREND", "RANGE"]},
+  "trigger": {"type": "trade_entry", "post_entry_excursions_are_outcomes_only": true},
+  "entry": {"type": "declared_strategy_entry", "direction": "trade_direction"},
+  "exit": {"type": "fixed_horizon", "minutes": 60},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"mae_mfe_resolution": "available_bar_resolution", "horizon_minutes": 60,
+                 "threshold_provenance": "unmeasured_draft"},
+  "validation": {"horizon_minutes": 60, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
+                  "parameter_selection": "train_only"},
+  "target": {"field": "net_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "mae_mfe", "type": "DRAFT_resolution_labeled", "net_of_observed_spread": true}
+}

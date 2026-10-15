@@ -1,0 +1,28 @@
+{
+  "pattern_id": "H01",
+  "title": "Alta na sessão anterior e gap negativo",
+  "version": "1.0",
+  "status": "EXPLORATORY",
+  "sample_builder": "H01",
+  "universe": {"timeframes": ["M1"], "minimum_sessions": 40, "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"operator": "and", "conditions": [
+    {"field": "previous_session_return", "operator": "gte", "parameter": "prior_return_threshold"},
+    {"field": "gap_return", "operator": "lte", "parameter": "gap_threshold"}
+  ]},
+  "trigger": {"type": "session_open", "known_at": "open"},
+  "entry": {"type": "after_open_bars", "direction": "sell", "delay_bars": 1},
+  "exit": {"type": "minutes_after_session_open", "minutes": 5},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"prior_return_threshold": 0.015, "gap_threshold": -0.005, "profit_threshold": 0.0,
+                 "threshold_provenance": "examples_from_specification_not_estimates"},
+  "parameter_grid": {"prior_return_threshold": [0.01, 0.015, 0.02],
+                      "gap_threshold": [-0.003, -0.005, -0.007]},
+  "sensitivity_grid": {"profit_threshold": [0.0, 0.0005]},
+  "validation": {"horizon_minutes": 5, "min_samples": 30, "min_sessions": 40, "alpha": 0.05,
+                  "bootstrap_block": "session", "parameter_selection": "train_only"},
+  "target": {"field": "outcome_return", "operator": "gt", "parameter": "profit_threshold",
+             "interpretation": "gap_before_entry_not_trade_profit"},
+  "outcome": {"field": "short_return_5m", "type": "executable_after_open", "net_of_observed_spread": true}
+}

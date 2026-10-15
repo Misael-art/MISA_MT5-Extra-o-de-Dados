@@ -127,7 +127,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementação concluída no Linux: 833 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Decisão 5 (confiança) segue proposta pendente; PostgreSQL e Windows real não testados |
-| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
+| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | ⏳ parcial na branch `tarefa/T13.4-hipoteses-walk-forward`: H01–H05, catálogo, avaliação e relatório real implementados; H06–H16 seguem DRAFT sem builders; estabilidade entre mercados e registro de tentativas abortadas pendentes. Linux: 847 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas; não integrada ao master |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7a | Registro de sinais e modo sombra (decide e registra, não age) | T13.5 | a fazer (proposta em 2026-10-14; confirmar com o dono) |
@@ -3313,6 +3313,15 @@ real por corretora.
 - **Critérios de aceite:** teste 8 da especificação; H01 a H05 avaliadas com dados reais e o resultado publicado em
   relatório, **qualquer que seja ele** (a tarefa não depende de as hipóteses se confirmarem); uma hipótese rejeitada
   continua no catálogo.
+- **Estado registrado em 2026-10-15:** implementação e avaliação informativa H01–H05 na branch local
+  `tarefa/T13.4-hipoteses-walk-forward`, sobre T13.3 (`bde3652`); H01–H05 estão no catálogo e o relatório publica
+  inclusive ausência de amostra e resultados negativos. H06–H16 foram cadastradas como `DRAFT`, sem builders. As
+  métricas de estabilidade por ano, concentração, custo, atraso e perturbação de parâmetros existem; comparação
+  agregada entre mercados comparáveis, trilha de tentativas abortadas por exceção, builders de H06–H16 e tempo de
+  recuperação continuam pendentes. As tentativas reais foram somente leitura e não consumiram reserva persistida.
+  Verificações Linux: focado **80 aprovados em 42,47 s**; completo **847 aprovados, 10 ignorados em 566,04 s**;
+  `doctor` **16 OK, 2 avisos, 0 falhas** (opcional `pandas-ta` ausente e ponte Wine desativada). Windows real,
+  PostgreSQL e MT5 real não foram testados. A T13.4 fica **parcial**, sem transição de hipótese para `APPROVED`.
 - **Extensões detalhadas em 2026-10-14** (sem tarefa nova; reutilizar `trade_analytics/rules.split`, `stats` e o
   controle de ruído de `insights`): campos obrigatórios de cada hipótese — universo, sessão, fuso, condição,
   gatilho, entrada executável, saída, custos, parâmetros, versão e validação; embargo do tamanho do horizonte do

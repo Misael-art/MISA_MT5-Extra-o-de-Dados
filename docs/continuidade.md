@@ -146,3 +146,36 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Worktree separado `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` permanece intocado. Não houve push nem PR.
 - Próxima tarefa elegível registrada nesta retomada: T13.4. T16.3b também é independente e pode ser tratada em branch
   separado; manter cada tarefa em sua própria branch.
+
+## Retomada da T16.3b e T13.4 — 2026-10-15
+
+### T16.3b — enriquecimento temporal do Laboratório
+
+- Branch local independente `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`, sobre o `master`; ainda não
+  integrada. Corrige o uso de barra M1 aberta para entradas no meio da barra, a mistura barra a barra entre volume
+  real e ticks, notícia posterior à entrada e MAE/MFE que incorporava a barra de saída inteira.
+- Testes focados de enriquecimento/cache/calendário: **22 aprovados**. Suíte daquela branch: **806 aprovados, 9
+  ignorados**; doctor **16 OK, 2 avisos, 0 falhas**. Limites de reconstrução intrabar e disponibilidade de notícias
+  estão registrados em `docs/propostas/ANALYTICS_OPERACOES.md`. A alteração é local; sem push/PR.
+
+### T13.4 — hipóteses e avaliação temporal
+
+- Trabalho em `tarefa/T13.4-hipoteses-walk-forward`, iniciada sobre a T13.3 local (`bde3652`); commits e integração
+  ainda pendentes. Arquivos de implementação: `hypotheses.py`, `pattern_engine.py`, `validation.py`, catálogo JSON
+  H01–H16 e `tests/test_analytics_hypotheses.py`; relatório: [T13.4_RELATORIO.md](analytics/T13.4_RELATORIO.md).
+- H01–H05 têm builders e foram avaliadas em memória sobre EURUSD e AGG, lendo `database/mt5_data.db` somente com
+  SQLite `mode=ro` e `PRAGMA query_only=1`. Hashes, período, custos ausentes, amostras sem condição, resultados
+  negativos e a única estimativa com amostra informativa constam no relatório. Nenhuma reserva foi gravada e nenhuma
+  hipótese foi aprovada.
+- H06–H16 são definições declarativas `DRAFT`, sem builders nem métricas avaliadas. Continuam pendentes a estabilidade
+  agregada entre mercados comparáveis, registro persistente de falhas de execução antes da avaliação ser gravada,
+  tempo de recuperação e construtores dessas hipóteses. Decisão 5 continua pendente; não impede o relatório
+  informativo H01–H05.
+- Verificação: focada **80 aprovados em 42,47 s** (T13.4, calendário, feature store, perfis/regimes e validação
+  estatística); completa **847 aprovados, 10 ignorados em 566,04 s**; `doctor` **16 OK, 2 avisos, 0 falhas**. Avisos:
+  dependência opcional `pandas-ta` ausente e ponte Wine desativada por configuração. Nenhum `.sh` foi alterado; não
+  se aplica ShellCheck. Windows real, PostgreSQL e MT5 real não foram testados.
+- Para T13.5 a dependência T12.1 segue **parcial** no plano. A decisão #6 resolveu SQLite/SQLAlchemy para o banco,
+  mas o formato do snapshot ainda depende de medição; seguem pendentes a política de validade (#7) e o comportamento
+  do leitor no Strategy Tester. T13.7a segue proposta pendente de decisão. Não iniciar ações no HADOUKEN, publicar snapshots,
+  fazer pilotos ou tocar em contas. T17.1 e os worktrees T17.2/T17.3 permanecem fora do escopo e intocados.
