@@ -116,3 +116,48 @@ lixo do Python rodava dentro de threads de segundo plano e destruía variáveis 
 principal. Corrigido: a janela desliga a coleta automática (`ui_manager.setup_ui`) e coleta na thread principal a cada
 ~2 s (`_pump_ui_queue`); os testes religam e coletam depois de cada teste (`tests/conftest.py`). Com isso, a suíte
 completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
+
+## Retomada da T13.2 — 2026-10-14
+
+- Implementação na branch `codex/t13.2-feature-store`, ainda não integrada: registry imutável por versão, valores
+  append-only com disponibilidade UTC e revisão, consulta *as-of*, propagação seletiva de dependências e CLI
+  `mt5x analytics features list/show/values/affected`. Detalhes em
+  [T13.2_FEATURE_STORE.md](analytics/T13.2_FEATURE_STORE.md).
+- Decisão da primeira fase: SQLite, com SQLAlchemy e DDL portátil. A base local lida somente em metadados tinha
+  329,6 MB e 23 tabelas. A exportação do retrato para o MT5 permanece para a T13.5. Nenhum valor de característica
+  foi calculado ou gravado na base real.
+- Verificação: testes focados 20 aprovados, 2 pulados; suíte completa **809 aprovados, 10 pulados em 521,99 s**;
+  `doctor` 16 OK, 2 avisos, 0 falhas. Os dois testes PostgreSQL da frente foram pulados localmente porque
+  `MT5X_TEST_PG_URL` não está configurada; um teste de round-trip *as-of* foi adicionado ao job PostgreSQL do CI.
+  Windows real, PostgreSQL local e MT5 real não foram testados.
+
+## Retomada da Fase 17 — 2026-10-14
+
+- **T17.1 concluída em 2026-10-15** no Linux; validação Windows continua pendente.
+- A Fase 17 foi criada para a modernização visual do mt5x, separada das frentes de Analytics. O plano completo está em
+  [propostas/INTERFACE_VISUAL.md](propostas/INTERFACE_VISUAL.md); T17.1 a T17.5 têm entregas independentes.
+- T17.1 foi concluída no Linux na worktree `../MISA_MT5-Extra-o-de-Dados-T17.1`, branch `tarefa/T17.1-sistema-visual`, baseada no
+  commit `e8657fe`. A worktree original da T13.3 contém alterações Analytics não commitadas e foi preservada.
+- Escopo T17.1: `ui/visual_tokens.py` centraliza paletas, escala, tipografia, espaçamento, dimensões e contraste;
+  `ui/theme.py` agora escolhe uma família sans instalada, aplica tamanhos mínimos de 11/10 pt, suporta ajuste de
+  leitura sem duplicar o DPI e usa tokens de espaço nas tabelas, controles e abas. `tests/test_ui_theme.py` cobre
+  contraste, fallback, tamanhos e notificação de redesenho. Nenhum motor, cálculo, schema ou conexão MT5 foi alterado.
+- Linha de base da T17.1: `install.sh --yes --no-mt5`, `pip install -r requirements-dev.txt` e suíte antes das
+  alterações (**809 aprovados, 10 pulados em 492,63 s**, com `xvfb-run -a`). A linha de base realista usa ledger e
+  barras sintéticos e está em `docs/img/interface-visual/T17.1/mt5x-before-light.png` e
+  `mt5x-before-dark.png`; não houve conexão ao MT5. Após a mudança, capturas com a mesma fixture estão em
+  `mt5x-after-light.png` e `mt5x-after-dark.png`.
+- No host Linux, a família Tk disponível é Lato; Inter/Noto Sans não aparecem entre as famílias anunciadas ao Tk.
+  A escala física medida no Xvfb foi ~100 DPI e `tk scaling` 1,389; o Tk aplica essa escala aos pontos. Contraste
+  textual inicial medido: `muted` 3,15:1 e `accent` 3,87:1 no fundo claro. A nova paleta é testada a pelo menos
+  4,5:1 para os papéis de texto e 3:1 para séries.
+- Verificação posterior: testes focados de tema/janela/Laboratório **43 aprovados em 250,42 s**; teste focado de
+  tokens/tema **5 aprovados em 0,43 s**; suíte completa final **814 aprovados, 10 pulados em 718,50 s** usando
+  `TMPDIR` e `--basetemp` dedicados após um primeiro run interrompido por `Errno 28` de armazenamento temporário.
+  `doctor`: **16 OK, 2 avisos, 0 falhas** (opcional
+  `pandas-ta` ausente e ponte desligada por `--no-mt5`). `git diff --check` passou.
+- Capturas de referência do usuário não estavam no diretório de anexos. O pedido de reenvio está pendente; usar as
+  capturas reais quando disponíveis na T17.3. A validação em Windows com DPI 125%/150% está pendente em
+  [validacao_instaladores.md](validacao_instaladores.md); nenhum resultado Windows foi declarado.
+- Próxima tarefa: T17.2 (componentes visuais); depois T17.3 (Laboratório e gráficos), T17.4 (demais abas) e T17.5
+  (validação visual integrada).
