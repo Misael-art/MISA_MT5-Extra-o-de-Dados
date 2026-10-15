@@ -256,7 +256,7 @@ Entregas locais independentes, sem merge, push ou PR:
   ignorados**, `doctor` **16 OK, 2 avisos, 0 falhas**. Falta replay com recibos de fonte real.
 - **T16.11c:** branch `tarefa/T16.11c-interacoes-laboratorio`, commit `701f4fd`; testes de UI focados **40 aprovados**,
   suíte **789 aprovados, 9 ignorados**, `doctor` **16 OK, 2 avisos, 0 falhas**. Windows real pendente.
-- **T16.12:** branch `tarefa/T16.12-cli-relatorio`, HEAD `e99becd`; preserva os comandos publicados `compare`,
+- **T16.12:** branch `tarefa/T16.12-cli-relatorio`, código `e99becd`; preserva os comandos publicados `compare`,
   `report --by`, simulação por filtros e `insights --save`, e adiciona `enrich`, re-simulação por run e
   `export --rules-file`. Usa envelope `--json`; persistência de simulação exige `--save` e a exportação gera proposta
   não aplicável. Testes focados **15 aprovados**, suíte **794 aprovados, 9 ignorados**, `doctor` **16 OK, 2 avisos,
