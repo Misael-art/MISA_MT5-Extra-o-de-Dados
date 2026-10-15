@@ -13,6 +13,8 @@ ao `master`. T13.3b passou a suíte final com 848 aprovados e 10 ignorados; T13.
 reais ausentes. T16.3c implementa as revisões, mas replay com recibos de fonte real está pendente. Evidências:
 [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md), [T13.4_RELATORIO.md](T13.4_RELATORIO.md) e
 [continuidade.md](../continuidade.md). A Decisão 5 permanece aberta.
+O contrato de dados proposto para T13.6 está na branch local `tarefa/T13.6-contrato-ui`; adaptador e telas continuam
+pendentes das dependências declaradas na tarefa.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -64,7 +66,7 @@ modo sombra → pilotos autorizados → monitoramento.
 
 | Requisito | Existente | Lacuna | Tarefa | Critério de aceite | Estado nesta retomada (evidência ou pendência) |
 |---|---|---|---|---|---|
-| Original × filtrado (líquido, expectativa, drawdown, exposição, custos, n, estabilidade) | `rules.evaluate`, guia Insights do Laboratório | Contrato integrado e comparação visual | T13.6 | Rótulo "simulado" em todo resultado filtrado | **Pendente** de T13.6 e T13.5; o relatório T13.4 declara que não simula execução nem reexecução de carteira. |
+| Original × filtrado (líquido, expectativa, drawdown, exposição, custos, n, estabilidade) | `rules.evaluate`, guia Insights do Laboratório | Adaptador visual com proveniência e distinção entre ledger fixo e reexecução | T13.6 | Rótulo "simulado" em todo resultado filtrado | **Contrato proposto** em [T13.6_CONTRATO_UI.md](T13.6_CONTRATO_UI.md); adaptador/telas seguem pendentes de T13.5 e T12.6. Filtro de ledger fixo permanece contrafactual; mudança de estado exige reexecução completa. |
 | Filtro que muda estado/capital/sinais seguintes exige re-execução completa | `rules` filtra um livro fixo | Reexecução completa pelo backtester | T13.7 | Só afirmar equivalência após reexecução | **Pendente** de T13.7; filtragem de ledger fixo não é equivalente. |
 | Registro de todos os sinais, inclusive bloqueados | — | `_signal_log` e integração do leitor | T13.7a | Instante, estratégia, direção, contexto, versão, decisão e motivo | **Pendente de decisão do dono** para incluir T13.7a e da T13.5; nenhuma estratégia é alterada. |
 

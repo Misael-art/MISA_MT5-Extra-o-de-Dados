@@ -275,3 +275,13 @@ Entregas locais independentes, sem merge, push ou PR:
 - **T16.2b:** o checkout `/home/misael/Projects/HADOUKEN-MQL5-Framework` está vazio e o remoto configurado não tem
   branches nem commits. Não substituí por outro repositório; aguardo indicação de um checkout HADOUKEN populado.
 - Worktrees T17.1–T17.6 seguem separados e intocados. Nenhuma ação financeira ou operacional foi realizada.
+
+## T13.6 — contrato de dados para a UI
+
+Na branch local `tarefa/T13.6-contrato-ui`, foi preparado o contrato v1 para a UI consumir resultados, comparações,
+proveniência, validade e incerteza. O contrato distingue ledger observado, contrafactual de ledger fixo, reexecução e
+log de sombra; contagens de sinais ausentes ficam `null`, não zero. O exemplo é fictício e está identificado como tal.
+O adaptador e as telas não foram implementados: dependem de T13.5 e T12.6; as contagens de aceitos/bloqueados ainda
+dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
+Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
+`UNAVAILABLE`, fixture point-in-time no Tester) foi enviada ao dono; a resposta continua pendente.
