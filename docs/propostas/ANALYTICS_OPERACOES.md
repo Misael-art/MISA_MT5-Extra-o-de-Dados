@@ -102,11 +102,13 @@ Calculado uma vez e guardado; `feature_version` muda quando a fórmula muda (e i
 | Calendário | `day_of_week` (0=seg), `day_of_month`, `week_of_month` (1–5), `month`, `is_month_end` |
 | Horário | `hour`, `bucket_15m`, `bucket_30m`, `minutes_from_open` (pela sessão do dia; T13.1 quando existir) |
 | Notícias | `event_impact` (nenhum, baixo, médio, alto), `minutes_to_event` (sinal: antes ou depois), `event_name` |
-| Microestrutura | `entry_volume` (volume real, senão de ticks, da barra anterior à entrada), `volume_rank` (percentil em 20 dias), `atr14`, `atr_pct`, `bb_width`, `prior_return_pct` (variação nas N barras anteriores), `volatility_bucket` (baixa, média, alta por tercis do próprio ativo) |
-| Resultado | `win_flag`, `pnl`, `r_multiple`, `duration_min`, `mae`, `mfe` |
+| Microestrutura | `entry_volume` e `volume_source` (`real_volume` se toda a série o informa, senão `tick_volume`; nunca mistura dentro da série), `volume_rank` (percentil em 20 barras), `atr14`, `atr_pct`, `bb_width`, `prior_return_pct`, `volatility_bucket` |
+| Resultado | `win_flag`, `pnl`, `r_multiple`, `duration_min`, `mae`, `mfe` e `mae_mfe_resolution` (resolução OHLC e indicação de aproximação intrabar) |
 
-**Sem olhar o futuro:** toda característica usa só barras com `time < entry_time` (a barra da entrada ainda não
-fechou). Isso tem teste próprio, com uma série armadilha (T16.3). É a mesma regra *point-in-time* da Fase 13.
+**Sem olhar o futuro:** características de mercado usam apenas barras cujo fechamento já ocorreu até `entry_time`;
+uma barra que abriu antes da entrada, mas ainda estava aberta no horário da decisão, fica de fora. MAE/MFE são
+resultados, usam as barras OHLC que cruzam o intervalo da operação e declaram sua resolução porque os extremos
+intrabar podem ter ocorrido antes da entrada ou depois da saída.
 
 ### 3.3 Calendário econômico de várias fontes (T16.3a)
 
@@ -333,9 +335,23 @@ Este documento, as linhas no painel e a seção da Fase 16 no PLANO_DE_TRABALHO.
 - **Chaves novas `[TRADE_ANALYTICS]`:** `event_window_before_min = 30`, `event_window_after_min = 30`,
   `time_bucket_min = 30`, `volatility_period = 14`, `wf_folds = 4`, `holdout_fraction = 0.2`, `min_trades_cell = 30`,
   `event_symbols = ` (mapeamentos moeda → ativos).
-- **Aceite:** cada operação recebe as colunas; nenhuma usa barra com `time >= entry_time`.
+- **Aceite:** cada operação recebe as colunas; nenhuma característica de mercado usa barra que ainda estava aberta
+  em `entry_time`.
 - **Testes:** série armadilha (um salto de preço na barra da entrada não pode aparecer no ATR da operação); dia da
   semana e semana do mês em datas conhecidas; operação sem barras anteriores fica com contexto nulo, sem erro.
+
+### T16.3b — Correção temporal do enriquecimento
+- **Fazer:** só usar barras fechadas no horário da entrada; ocultar a surpresa até o horário do evento e a importação
+  dos valores real/previsto; escolher uma única fonte de volume por série e expô-la em `volume_source`; registrar em
+  `mae_mfe_resolution` o timeframe OHLC e que extremos intrabar são aproximados; invalidar o cache e acrescentar as
+  colunas novas por migração aditiva.
+- **Aceite:** entrada no meio de uma barra usa a última barra fechada; surpresa de evento futuro ou ainda não
+  importada fica ausente; série com volume real parcial usa ticks na série inteira, e volume real zero não é trocado
+  por ticks; MAE/MFE inclui barras que cruzam entrada/saída e identifica a aproximação OHLC.
+- **Limite:** não há histórico de ticks disponível pela API de leitura da base; MAE/MFE continua aproximado na
+  resolução da barra, com essa limitação exposta em cada linha.
+- **Testes:** casos de entrada no meio da barra, fonte única com real incompleto e real zero, surpresa antes/depois
+  da disponibilidade, caminho MAE/MFE intrabar e migração de cache antigo.
 
 ### T16.4 — Agregações e estatística (as duas lentes)
 - **Fazer:** `aggregate.py`: `by_dimension(df, dims)`, `crosstab(df, row, col, metric)`, `robot_view(db, robot)`,
@@ -451,6 +467,7 @@ e, nos arquivos compartilhados, só nos pontos citados na tarefa. Testes do Post
 | T16.2b | (repositório HADOUKEN) | — | a fazer | Acrescentar ao `HDK_trades_<magic>.csv` as colunas `entry_time;entry_price;exit_price;sl;tp;direction;exit_reason`, **depois** das atuais `time;symbol;type;volume;result` (nessa ordem; separador `;`; horário `AAAA.MM.DD HH:MM`; `direction` = `buy`/`sell`; `sl`/`tp` = 0 quando não houver; `exit_reason` = `sl`, `tp`, `sinal`, `tempo` ou `fim`). O leitor do mt5x já aceita esse formato e o antigo (`read_hdk_trades_full`); nada mais muda no mt5x |
 | T16.3a | `tarefa/T16.3a-calendario` | (ver PR da branch) | ✅ (Linux) | `trade_analytics/calendar/`: tabela `_economic_events`; fontes `csv` (o `events_file` de sempre, com colunas opcionais `name,country,currency,actual,forecast,previous,override`) e `mt5` (script `trade_analytics/mql5/MT5X_CalendarExport.mq5`, só leitura, grava `Common\Files\MT5X_calendar_<servidor>.csv`, **compilado no MetaEditor do host**); `merged` une o mesmo evento das fontes (horário a 1 min, moeda, nome parecido), escolhe o impacto (manual > MT5 > maior) e calcula a surpresa; `events_for` liga eventos ao ativo (moeda de lucro, moedas no nome do par, `event_symbols`, `*` do CSV). `mt5x trades calendar import/status/install/export`. Chaves novas em `[TRADE_ANALYTICS]`. Testes: `tests/test_trade_calendar.py`. **Não visto:** a exportação rodando no terminal conectado (o script compila; executar exige o MT5 aberto e conectado, e o terminal do host é compartilhado com outro agente) — próximo agente: rodar `mt5x trades calendar export` com o MT5 fechado e depois `import --source mt5` |
 | T16.3 | `tarefa/T16.3-enriquecimento` | (ver PR da branch) | ✅ | `trade_analytics/enrich.py`: `enrich(db, config, trades)` devolve, por operação, calendário (dia da semana, do mês, semana do mês, mês, fim de mês, hora, faixa), minutos desde a abertura do dia, notícia mais forte na janela (impacto, minutos até o evento, nome, surpresa), volume e percentil, ATR, ATR%, largura de Bollinger, retorno anterior, percentil e faixa de volatilidade **point-in-time**, ganho/perda, duração, MAE e MFE. Operação parcial recebe só calendário pela saída. Chaves `time_bucket_min` e `volatility_period`. `FEATURE_VERSION = 1` (a T16.5 usa para o cache). Testes: `tests/test_trade_enrich.py` (inclui a armadilha de olhar o futuro) |
+| T16.3b | `tarefa/T16.3b-enriquecimento-temporal` | — | ✅ (Linux) | `enrich.py` agora seleciona barras com fechamento até a decisão e escolhe uma única fonte de volume por série (`real_volume` ou `tick_volume`, exposta em `volume_source`). A surpresa só fica disponível depois do evento e da importação de real/previsto. MAE/MFE inclui barras que cruzam a operação e declara a aproximação OHLC em `mae_mfe_resolution`; ticks não estão disponíveis pela API de leitura atual. `FEATURE_VERSION = 2`, com colunas novas por migração aditiva do cache. Focados: 22 aprovados; suíte: 806 aprovados, 9 ignorados; `doctor`: 16 OK, 2 avisos, 0 falhas. Windows, PostgreSQL e MT5 real não foram exercitados |
 | T16.4 | `tarefa/T16.4-agregacoes` | (ver PR da branch) | ✅ | `trade_analytics/stats.py` (métricas com as fórmulas de `compute_metrics`, conferidas em teste; bootstrap em blocos de dias) e `trade_analytics/aggregate.py` (`frame` = livro + enriquecimento; `by_dimension`, `crosstab` com valor/n/pequena, `robot_view`, `asset_view`, `equity_curves`, `daily_correlation`). Chave `min_trades_cell`. Testes: `tests/test_trade_aggregate.py` (efeitos plantados — sexta negativa, 10h positiva — aparecem; célula pequena marcada) |
 | T16.5 | `tarefa/T16.5-cache` | (ver PR da branch) | ✅ | `trade_analytics/cache.py`: `_trade_features` + `_trade_features_runs` (assinatura por run: versão das fórmulas, chaves de `[TRADE_ANALYTICS]` que entram na conta, operações do run e calendário). `aggregate.frame` passa a usar o cache. Teste de desempenho com 50 mil operações (crosstab + by_dimension abaixo de 1,5 s no CI). As tabelas novas aparecem sozinhas no inventário da aba Recursos (Fase 15). Testes: `tests/test_trade_cache.py` |
 | T16.11a | `tarefa/T16.11a-aba-laboratorio` | (ver PR da branch) | ✅ (Linux, tela virtual, temas claro e escuro) | Primeira parte da aba: `ui/charts.py` (heatmap divergente azul↔laranja com n por célula e trama nas células com n < 30, barras, curvas sobrepostas, dispersão vencedoras × perdedoras com forma e cor, dicas ao parar o mouse; `$` de WIN$N escapado) e `ui/laboratory.py` (lentes por robô e por ativo, período, ocultar notícias de impacto alto, indicadores com intervalo de 90%, guias Visão geral, Tempo e calendário, Microestrutura e Comparativo; Execução e Insights desabilitadas com o motivo; botão "Importar backtests antigos"; avisos de amostra pequena, operações parciais e calendário vazio). A aba entra depois de "Robôs" (`ui_manager.py`: registro e menu Exibir, pelo widget). Testes: `tests/test_ui_laboratory.py`. **Falta (T16.11b):** guias Execução e Insights, clique na célula filtrando as outras guias, "Abrir no Laboratório" no painel do robô |

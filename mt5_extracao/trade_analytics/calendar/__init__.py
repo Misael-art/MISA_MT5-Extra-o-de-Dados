@@ -117,6 +117,8 @@ def load(db, start=None, end=None, source: Optional[str] = None) -> pd.DataFrame
         frame = pd.read_sql(text(f"SELECT * FROM {TABLE}" + (" WHERE " + " AND ".join(where) if where else "") +
                                  " ORDER BY event_time"), conn, params=params)
     frame["event_time"] = pd.to_datetime(frame["event_time"])
+    if "imported_at" in frame:
+        frame["imported_at"] = pd.to_datetime(frame["imported_at"], errors="coerce")
     return frame
 
 
@@ -199,7 +201,7 @@ def merged(db, start=None, end=None) -> pd.DataFrame:
     """
     raw = load(db, start, end)
     cols = ["event_time", "name", "country", "currency", "symbol", "impact", "actual", "forecast", "previous",
-            "surprise", "sources"]
+            "surprise", "surprise_available_at", "sources"]
     if raw.empty:
         return pd.DataFrame(columns=cols)
     groups: List[List[dict]] = []
@@ -220,13 +222,22 @@ def merged(db, start=None, end=None) -> pd.DataFrame:
         manual = next((g for g in group if g.get("override")), None)
         main = by.get("mt5") or group[0]
         impact = manual["impact"] if manual else (main["impact"] if "mt5" in by else max(g["impact"] for g in group))
-        pick = lambda name: next((g[name] for g in [main] + group if g.get(name) is not None and  # noqa: E731
-                                  not (isinstance(g[name], float) and pd.isna(g[name]))), None)
-        actual, forecast = pick("actual"), pick("forecast")
-        out.append({"event_time": main["event_time"], "name": pick("name"), "country": pick("country"),
-                    "currency": pick("currency"), "symbol": pick("symbol") or "", "impact": int(impact),
-                    "actual": actual, "forecast": forecast, "previous": pick("previous"),
+        pick = lambda name: next((g for g in [main] + group if pd.notna(g.get(name))), None)  # noqa: E731
+        actual_record, forecast_record = pick("actual"), pick("forecast")
+        actual = actual_record.get("actual") if actual_record is not None else None
+        forecast = forecast_record.get("forecast") if forecast_record is not None else None
+        surprise_available_at = None
+        if actual is not None and forecast is not None and actual_record is not None and forecast_record is not None:
+            times = [main["event_time"], actual_record.get("event_time"), forecast_record.get("event_time"),
+                     actual_record.get("imported_at"), forecast_record.get("imported_at")]
+            if all(pd.notna(value) for value in times):
+                surprise_available_at = max(pd.Timestamp(value) for value in times)
+        pick_value = lambda name: (next((g[name] for g in [main] + group if pd.notna(g.get(name))), None))  # noqa: E731
+        out.append({"event_time": main["event_time"], "name": pick_value("name"), "country": pick_value("country"),
+                    "currency": pick_value("currency"), "symbol": pick_value("symbol") or "", "impact": int(impact),
+                    "actual": actual, "forecast": forecast, "previous": pick_value("previous"),
                     "surprise": actual - forecast if actual is not None and forecast is not None else None,
+                    "surprise_available_at": surprise_available_at,
                     "sources": ",".join(sorted(by))})
     return pd.DataFrame(out, columns=cols)
 

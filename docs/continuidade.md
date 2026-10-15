@@ -116,3 +116,18 @@ lixo do Python rodava dentro de threads de segundo plano e destruía variáveis 
 principal. Corrigido: a janela desliga a coleta automática (`ui_manager.setup_ui`) e coleta na thread principal a cada
 ~2 s (`_pump_ui_queue`); os testes religam e coletam depois de cada teste (`tests/conftest.py`). Com isso, a suíte
 completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
+
+## T16.3b — correção temporal do Laboratório (2026-10-15)
+
+- Branch local `tarefa/T16.3b-enriquecimento-temporal`, criada sobre o `master` em `880bf18`. A tarefa concluiu a
+  correção de barras abertas, disponibilidade da surpresa, fonte única de volume, rótulo de resolução de MAE/MFE e
+  migração aditiva do cache. Evidências e escopo estão no andamento da
+  [proposta do Laboratório](propostas/ANALYTICS_OPERACOES.md).
+- Verificação: baseline **802 aprovados, 9 ignorados em 717,57 s**; focados **22 aprovados em 17,29 s**; suíte após
+  alterações **806 aprovados, 9 ignorados em 531,31 s**; `doctor` **16 OK, 2 avisos, 0 falhas**. Avisos: pandas-ta
+  opcional ausente e ponte Wine desativada por configuração.
+- MAE/MFE usa barras OHLC sobrepostas ao período da operação; sem leitura de ticks, os extremos de barras parciais
+  podem não coincidir com a ordem intrabar real. Isso fica exposto em `mae_mfe_resolution`.
+- T13.2/T13.3 seguem fora do `master` em branches locais; T13.3 foi concluída em
+  `tarefa/T13.3-perfis-regimes` (`bde3652`) e sua continuidade está registrada na branch própria. O worktree separado
+  `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` não foi alterado. Nenhum push ou PR foi feito.

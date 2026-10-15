@@ -5,6 +5,7 @@ import time
 import numpy as np
 import pandas as pd
 import pytest
+from sqlalchemy import inspect
 
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.trade_analytics import aggregate, cache, enrich, ledger
@@ -64,6 +65,20 @@ def test_changes_invalidate_only_what_changed(db, counter, tmp_path):
     cache.invalidate(db, "a")
     aggregate.frame(db, cfg)
     assert counter[-1] == 20
+
+
+def test_feature_cache_adds_new_t16_3b_columns_to_existing_table(db):
+    ledger.save_trades(db, "legacy", _trades(1), robot_key="r", symbol="WIN$N", timeframe="M5")
+    trades = ledger.load(db)
+    old_schema = enrich.enrich(db, None, trades).drop(columns=["volume_source", "mae_mfe_resolution"])
+    old_schema.to_sql(cache.TABLE, db.engine, if_exists="append", index=False)
+
+    result = cache.features(db, None, trades)
+
+    columns = {column["name"] for column in inspect(db.engine).get_columns(cache.TABLE)}
+    assert {"volume_source", "mae_mfe_resolution"} <= columns
+    assert {"volume_source", "mae_mfe_resolution"} <= set(result.columns)
+    assert result["feature_version"].iloc[0] == 2
 
 
 def test_aggregation_speed_on_50k_cached_trades(db):

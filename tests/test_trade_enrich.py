@@ -4,6 +4,7 @@ import configparser
 import numpy as np
 import pandas as pd
 import pytest
+from sqlalchemy import text
 
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.trade_analytics import calendar as cal
@@ -56,8 +57,40 @@ def test_no_lookahead_in_market_features(db):
     calm = enrich.enrich(db, None, ledger.load(db).assign(entry_time=bars["time"].iloc[399]))
     assert f["atr"].iloc[0] == pytest.approx(calm["atr"].iloc[0])   # mesma barra anterior usada
     assert f["atr"].iloc[0] < 1                                       # nada dos ±50 da armadilha
-    assert f["entry_volume"].iloc[0] == 400                           # volume da barra 399 (a anterior)
+    assert f["entry_volume"].iloc[0] == 0                             # real_volume zero é dado, não ausência
+    assert f["volume_source"].iloc[0] == "real_volume"
     assert f["mfe"].iloc[0] > 40                                      # MAE/MFE (resultado) veem o caminho
+    assert f["mae_mfe_resolution"].iloc[0] == "M5 OHLC (intrabar aproximado)"
+
+
+def test_midbar_entry_uses_only_the_last_fully_closed_bar(db):
+    bars = _bars(jump_at=400)
+    bars["real_volume"] = bars["tick_volume"] * 10
+    db.save_ohlcv_data("WIN$N", "5 minutos", bars)
+    entry = bars["time"].iloc[400] + pd.Timedelta(minutes=2)
+    ledger.save_trades(db, "midbar", [_trade(entry, exit_=entry + pd.Timedelta(minutes=5))],
+                       robot_key="a", symbol="WIN$N", timeframe="M5")
+
+    features = enrich.enrich(db, None, ledger.load(db))
+
+    assert features["entry_volume"].iloc[0] == 4000             # barra 399; 400 ainda estava aberta
+    assert features["volume_source"].iloc[0] == "real_volume"
+    assert features["atr"].iloc[0] < 1                          # o salto da barra 400 não entrou no contexto
+    assert features["mfe"].iloc[0] > 40                         # mas a barra de entrada integra o resultado aproximado
+    assert features["mae_mfe_resolution"].iloc[0] == "M5 OHLC (intrabar aproximado)"
+
+
+def test_volume_source_is_selected_for_the_whole_series(db):
+    bars = _bars()
+    bars.loc[0, "real_volume"] = np.nan
+    db.save_ohlcv_data("WIN$N", "5 minutos", bars)
+    entry = bars["time"].iloc[400]
+    ledger.save_trades(db, "ticks", [_trade(entry)], robot_key="a", symbol="WIN$N", timeframe="M5")
+
+    features = enrich.enrich(db, None, ledger.load(db))
+
+    assert features["volume_source"].iloc[0] == "tick_volume"
+    assert features["entry_volume"].iloc[0] == 400
 
 
 def test_volatility_bucket_is_point_in_time(db):
@@ -86,6 +119,26 @@ def test_events_window_and_partial_trades(db, tmp_path):
     assert by.loc[1, "event_impact"] == 0
     assert by.loc[2, "time_ref"] == "saida" and pd.isna(by.loc[2, "atr"]) and by.loc[2, "event_impact"] == cal.HIGH
     assert by.loc[0, "minutes_from_open"] == 60 and by.loc[2, "win_flag"] == 0
+
+
+def test_surprise_is_withheld_until_event_and_values_are_available(db, tmp_path):
+    db.save_ohlcv_data("WIN$N", "5 minutos", _bars())
+    path = tmp_path / "release.csv"
+    path.write_text("time,symbol,impact,name,actual,forecast\n"
+                    "2026-01-05 10:05,WIN$N,alto,Release,12,10\n", encoding="utf-8")
+    cal.import_source(db, None, "csv", path)
+    with db.engine.begin() as conn:
+        conn.execute(text("UPDATE _economic_events SET imported_at = :available WHERE name = :name"),
+                     {"available": "2026-01-05 10:06:00", "name": "Release"})
+    ledger.save_trades(db, "news", [_trade("2026-01-05 10:00"), _trade("2026-01-05 10:05:30"),
+                                     _trade("2026-01-05 10:10")],
+                       robot_key="a", symbol="WIN$N", timeframe="M5")
+
+    features = enrich.enrich(db, _cfg(event_window_before_min=30, event_window_after_min=30), ledger.load(db))
+
+    assert pd.isna(features["event_surprise"].iloc[0])      # evento futuro para a primeira decisão
+    assert pd.isna(features["event_surprise"].iloc[1])      # release ocorreu, mas os valores ainda não foram importados
+    assert features["event_surprise"].iloc[2] == pytest.approx(2.0)
 
 
 def test_without_bars_or_calendar_nothing_breaks(db):

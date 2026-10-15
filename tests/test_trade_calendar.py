@@ -69,6 +69,7 @@ def test_merge_unites_sources_and_enriches(db, tmp_path):
     assert nfp["sources"] == "csv,mt5"                       # o mesmo evento das duas fontes vira uma linha
     assert nfp["impact"] == cal.MEDIUM                        # marcado à mão no CSV vence o do MT5
     assert nfp["surprise"] == pytest.approx(96.0)             # real − previsto
+    assert nfp["surprise_available_at"] >= nfp["event_time"]  # disponibilidade inclui o horário do evento e da importação
     ipca = events[events["name"] == "IPCA"].iloc[0]
     assert ipca["sources"] == "csv,mt5" and ipca["impact"] == cal.MEDIUM   # sem marcação à mão: o do MT5
     assert len(events) == 3                                    # NFP, desemprego e IPCA

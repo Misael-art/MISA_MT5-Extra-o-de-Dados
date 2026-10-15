@@ -23,15 +23,16 @@ from mt5_extracao.strategies import indicators
 log = logging.getLogger(__name__)
 
 SECTION = "TRADE_ANALYTICS"
-FEATURE_VERSION = 1            # mude quando uma fórmula mudar: invalida o cache (T16.5)
+FEATURE_VERSION = 2            # T16.3b: barras fechadas, surpresa disponível e proveniência explícita
 VOL_LOOKBACK = 250             # barras para o percentil de volatilidade
 VOLUME_LOOKBACK = 20           # barras para o percentil de volume
 VOL_LABELS = ("baixa", "média", "alta")
 
 COLUMNS = ("run_id", "seq", "time_ref", "day_of_week", "day_of_month", "week_of_month", "month", "is_month_end",
            "hour", "time_bucket", "minutes_from_open", "event_impact", "minutes_to_event", "event_name",
-           "event_surprise", "entry_volume", "volume_rank", "atr", "atr_pct", "bb_width", "prior_return_pct",
-           "volatility_rank", "volatility_bucket", "win_flag", "duration_min", "mae", "mfe", "feature_version")
+           "event_surprise", "entry_volume", "volume_source", "volume_rank", "atr", "atr_pct", "bb_width",
+           "prior_return_pct", "volatility_rank", "volatility_bucket", "win_flag", "duration_min", "mae", "mfe",
+           "mae_mfe_resolution", "feature_version")
 
 
 def _setting(config, key, default):
@@ -61,12 +62,22 @@ def _bars(db, symbol: str, timeframe: str, cache: Dict) -> pd.DataFrame:
         if not frame.empty:
             frame = frame.sort_values("time").reset_index(drop=True)
             frame["time"] = pd.to_datetime(frame["time"])
+            if tf.name == "MN1":
+                frame["bar_end"] = frame["time"].map(lambda value: value + pd.DateOffset(months=1))
+            else:
+                frame["bar_end"] = frame["time"] + pd.Timedelta(minutes=tf.minutes)
             frame["atr"] = indicators.atr(frame, 14)
             frame["atr_pct"] = frame["atr"] / frame["close"]
             bands = indicators.bollinger(frame["close"], 20, 2.0)
             frame["bb_width"] = (bands["upper"] - bands["lower"]) / bands["mid"]
-            real = frame["real_volume"] if "real_volume" in frame else 0
-            frame["vol"] = np.where(pd.Series(real).fillna(0) > 0, real, frame["tick_volume"])
+            real = pd.to_numeric(frame["real_volume"], errors="coerce") if "real_volume" in frame else None
+            ticks = pd.to_numeric(frame["tick_volume"], errors="coerce") if "tick_volume" in frame else None
+            if real is not None and real.notna().all():
+                frame["vol"], frame["volume_source"] = real, "real_volume"
+            elif ticks is not None:
+                frame["vol"], frame["volume_source"] = ticks, "tick_volume"
+            else:
+                frame["vol"], frame["volume_source"] = np.nan, None
             frame["date"] = frame["time"].dt.normalize()
             frame["day_open"] = frame.groupby("date")["time"].transform("min")
         cache[key] = frame
@@ -133,7 +144,9 @@ def enrich(db, config, trades: pd.DataFrame) -> pd.DataFrame:
                 out.at[i, "event_impact"] = int(top["impact"])
                 out.at[i, "minutes_to_event"] = float((top["event_time"] - when).total_seconds() / 60)
                 out.at[i, "event_name"] = top["name"]
-                out.at[i, "event_surprise"] = top["surprise"]
+                available_at = top.get("surprise_available_at")
+                if pd.notna(top["surprise"]) and pd.notna(available_at) and pd.Timestamp(available_at) <= when:
+                    out.at[i, "event_surprise"] = top["surprise"]
             else:
                 out.at[i, "event_impact"] = 0
         if pd.isna(entry.loc[i]) or not row.get("symbol"):
@@ -141,13 +154,14 @@ def enrich(db, config, trades: pd.DataFrame) -> pd.DataFrame:
         bars = _bars(db, row["symbol"], row.get("timeframe"), cache)
         if bars.empty:
             continue
-        k = int(bars["time"].searchsorted(entry.loc[i], side="left")) - 1   # última barra fechada antes da entrada
+        k = int(bars["bar_end"].searchsorted(entry.loc[i], side="right")) - 1
         if k < 0:
             continue
         bar = bars.iloc[k]
         out.at[i, "minutes_from_open"] = float((entry.loc[i] - bar["day_open"]).total_seconds() / 60) \
             if bar["date"] == entry.loc[i].normalize() else None
         out.at[i, "entry_volume"] = float(bar["vol"])
+        out.at[i, "volume_source"] = bar["volume_source"]
         out.at[i, "volume_rank"] = _percentile(bars["vol"].values[max(0, k - VOLUME_LOOKBACK + 1):k + 1].astype(float),
                                                float(bar["vol"]))
         for name in ("atr", "atr_pct", "bb_width"):
@@ -160,10 +174,12 @@ def enrich(db, config, trades: pd.DataFrame) -> pd.DataFrame:
         out.at[i, "volatility_rank"] = rank
         out.at[i, "volatility_bucket"] = None if rank is None else VOL_LABELS[min(2, int(rank * 3))]
         if pd.notna(exit_.loc[i]) and pd.notna(row.get("entry_price")) and row.get("direction") in (1, -1):
-            path = bars[(bars["time"] >= entry.loc[i]) & (bars["time"] <= exit_.loc[i])]
+            path = bars[(bars["time"] < exit_.loc[i]) & (bars["bar_end"] > entry.loc[i])]
             if not path.empty:
                 d, price = int(row["direction"]), float(row["entry_price"])
                 favorable = (path["high"].max() - price) if d == 1 else (price - path["low"].min())
                 adverse = (price - path["low"].min()) if d == 1 else (path["high"].max() - price)
                 out.at[i, "mfe"], out.at[i, "mae"] = max(0.0, float(favorable)), max(0.0, float(adverse))
+                tf = timeframes.parse(row.get("timeframe"))
+                out.at[i, "mae_mfe_resolution"] = f"{tf.name} OHLC (intrabar aproximado)" if tf else None
     return out[list(COLUMNS)]

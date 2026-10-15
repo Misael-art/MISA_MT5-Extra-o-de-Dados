@@ -68,6 +68,10 @@ def _load(db, run_ids) -> pd.DataFrame:
 def _store(db, run_id: str, sig: str, feats: pd.DataFrame) -> None:
     with db.engine.begin() as conn:
         if inspect(conn).has_table(TABLE):
+            present = {column["name"] for column in inspect(conn).get_columns(TABLE)}
+            for name in ("volume_source", "mae_mfe_resolution"):
+                if name not in present:
+                    conn.execute(text(f"ALTER TABLE {TABLE} ADD COLUMN {name} TEXT"))
             conn.execute(text(f"DELETE FROM {TABLE} WHERE run_id = :r"), {"r": run_id})
         conn.execute(text(f"DELETE FROM {RUNS} WHERE run_id = :r"), {"r": run_id})
         conn.execute(text(f"INSERT INTO {RUNS} VALUES (:r, :s, :v, :t)"),
