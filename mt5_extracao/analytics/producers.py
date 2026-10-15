@@ -29,12 +29,15 @@ from collections import deque
 import numpy as np
 import pandas as pd
 
-from mt5_extracao.analytics import (feature_store, features, market_regimes, resampling, session_structure,
-                                    producer_jobs, volume_profiles)
+from mt5_extracao.analytics import (feature_store, features, indicator_registry, market_regimes, resampling,
+                                    session_structure, producer_jobs, volume_profiles)
 
 log = logging.getLogger(__name__)
 
-ALGORITHM_VERSION = "1.2.1"
+# 1.3 acrescenta o contrato tipado; fórmulas e precisão de 1.2.1 são preservadas.
+# Novas definições não alteram os registros imutáveis nem reutilizam checkpoints
+# de 1.2.1 como se já contivessem esse contrato.
+ALGORITHM_VERSION = "1.3"
 FAMILIES = ("volume", "rvol", "volatility", "regime", "structure", "calendar")
 WILDER_MEMORY = 5
 MAX_BATCH_SIZE = 50_000
@@ -436,8 +439,9 @@ def register_definitions(db, family, feature_ids, params, timeframe, volume_sour
     algorithm_version = algorithm_version or _feature_algorithm_version(family, params, volume_source, timeframe)
     for feature_id in sorted(feature_ids):
         parameters = _definition_parameters(family, params, volume_source)
+        contract = indicator_registry.producer_contract(feature_id, family, parameters, timeframe, volume_source)
         features.register(db, feature_id, feature_id.replace(".", " "), algorithm_version, parameters=parameters,
-                          dependencies=dependencies)
+                          dependencies=dependencies, **contract)
 
 
 def _config_hash(family, params, volume_source, timeframe):

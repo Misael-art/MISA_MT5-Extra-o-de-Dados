@@ -1,3 +1,11 @@
+## Retomada T18.1 — 2026-10-19
+
+Integração isolada do commit canônico 80fd887 sobre EXTR-02/43a4035, preservando a worktree original.
+Cinco conflitos registrados e resolvidos por preservação da base documental e do incremental T13.3b.
+Contrato tipado de produtores usa versão 1.3, sem mudar fórmulas/precisão nem apagar definições/valores 1.2.1.
+Baseline 1482/18/3 reaproveitada por identidade de 281 fontes/testes; aceite atualizado em execução.
+Ver [T18.1_REGISTRY_DTO.md](analytics/T18.1_REGISTRY_DTO.md). EXTR-02 permanece separado na PR #123.
+
 # Continuidade: harmonização de 2026-10-14
 
 ## EXTR-02 — ponte destacada do iniciador (2026-10-19)
@@ -421,6 +429,9 @@ T18.1–T18.9 estavam inicialmente planejadas; a apresentação T18.8 foi adicio
 e T18.6 (serviço de consulta) ainda não estão nesta base, então a tela usa uma fixture sintética e identificada como provisória.
 Pesquisa/serviço local independem de MQL5; aplicação operacional mantém dependências e autorizações próprias de T13.7.
 Nenhum cálculo analítico, preset, Expert ou ordem foi alterado pela apresentação. Cada implementação segue uma tarefa por PR.
+
+O trabalho de código da T18.1 está no worktree `../MISA_MT5-Extra-o-de-Dados-T18.1`, baseado no checkpoint T18.0
+`cfe34dc`. A fixture/DTO é entregue nessa branch; a UI do `master` ainda requer um adaptador no serviço T18.6.
 
 Verificação do registro: instalador sem MT5 e dependências dev executados; 5 testes focados de documentação/integração
 aprovados; 11 novos links locais conferidos; `git diff --check` sem erros. Doctor do ambiente existente:

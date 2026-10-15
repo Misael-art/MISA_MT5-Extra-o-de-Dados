@@ -49,14 +49,15 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F13** MT5x Analytics | Catálogo de evidências sobre ativos: barras derivadas do M1 por sessão, características com data de disponibilidade (volume relativo, regime, sazonalidade), hipóteses validadas fora da amostra e um retrato pequeno que os robôs MQL5 só leem. Especificação em [analytics/ESPECIFICACAO.md](analytics/ESPECIFICACAO.md) | T13.0–T13.8 | F11 (T11.1), F12 (para T13.5 em diante) | T13.0 ✅ (plano); demais a fazer. **Nada implementado** |
 | **F14** Plataforma modular | Backlog integrado do HADOUKEN e do mt5x: framework modular de estratégias, mecanismos de execução, gestão de posições e de carteira, painel, estatísticas, pesquisa e validação, IA. Índice em [propostas/README.md](propostas/README.md) | T14.0 (registro); as tarefas têm identificador próprio (`A-01` a `J-09`) | F12, F13 | T14.0 ✅ (backlog registrado). **Nada implementado**: cada tarefa entra no plano quando for a próxima |
 | **F17** Modernização visual do mt5x | Sistema visual e tipográfico, componentes reutilizáveis, Laboratório e gráficos, aplicação progressiva às abas e validação visual | T17.1–T17.5 | F7, F8, F15, F16 | T17.1–T17.5 ✅ Linux; validação Windows pendente |
-| **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0 documental; T18.8 com apresentação local sintética; Analytics e integração pendentes |
+| **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0 documental; T18.1 em integração canônica revisada; T18.8 sintética; associações/serviço pendentes |
 | **F19** Pilares e presets | Dados de mercado/operações; entrada/orientação, lotes/parciais, ganho, stop e filtros; Default primeiro, Manual nomeado/Defensivo/Maximalista(PF)/Ultra; setups HADOUKEN e UI coerente | T19.0–T19.57 | F13/F16/F18 conforme capacidade; contratos B e Safety para consumo MQL5; F17 para UI | T19.0 documental com adendos; T19.1 em revisão local ([inventário](propostas/INVENTARIO_F19.md)); runtime planejado. Gestão da conta posterior, sem adiar travas |
 | **F20** Robustez transversal | Cálculos certificados, dados/experimentos reproduzíveis, fidelidade econômica/eventos, evidências/presets, observação/recuperação, UI investigativa, recursos/SDK/restore e carteira posterior | T20.0–T20.30 | F19 e donos F1/F5/F12–18/B–J por capacidade; não espera todas as fases | T20.0 documental; T20.1 em revisão local no mapa único; T20.2–30 planejadas, sem capacidade nova implementada |
 
 ## Fase 18 — Relações entre indicadores e aderência dos setups
 
 **Planejada em 2026-10-15; execução parcial.** T18.0 registra a especificação e os prompts. T18.8 já tem uma apresentação
-local para validação, com fixture identificada como sintética e componentes da F17. Registry/colunas analíticas,
+local para validação, com fixture identificada como sintética e componentes da F17. Registry/DTO T18.1 em
+integração canônica revisada;
 associações entre indicadores e movimentos/resultados, convergências, janelas temporais, serviço local, candidatos a
 presets e API somente leitura permanecem pendentes das tarefas de Analytics.
 

@@ -241,6 +241,10 @@ quando aplicável; atualizar painel e continuidade com evidências; entregar uma
 T18.1 deve detalhar arquivos de schema/registry e congelar fixture/DTO antes de T18.8 começar a implementação.
 T18.2–T18.7 têm prioridade analítica P1; T18.8 é P1 em paralelo; T18.9 é P2 após consumo local validado.
 
+Implementação local iniciada em 2026-10-15: ver [T18.1_REGISTRY_DTO.md](../analytics/T18.1_REGISTRY_DTO.md) para
+o schema aditivo, escopo de timeframe, unidades, regras de maturidade e fixture v1. T18.2–T18.9 não são concluídas
+por esse contrato; nenhuma estatística real nem serviço da UI está disponível ainda.
+
 **Locais previstos, a confirmar por auditoria:** analytics/indicator_registry.py, analytics/associations.py,
 analytics/association_store.py, analytics/association_jobs.py, analytics/setup_alignment.py,
 analytics/research_candidates.py; adaptadores de trade_analytics reutilizam ledger/enrich; UI em
