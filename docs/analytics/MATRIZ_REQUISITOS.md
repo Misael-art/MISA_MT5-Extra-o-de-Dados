@@ -6,15 +6,16 @@ As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fa
 [propostas/ANALYTICS_OPERACOES.md](../propostas/ANALYTICS_OPERACOES.md) (Fase 16).
 
 Atualização de 2026-10-15: T13.3 está na branch local `tarefa/T13.3-perfis-regimes` (`bde3652`), T13.3b na
-`tarefa/T13.3b-producers-incrementais` (`4ede7fa`, documentação final `4ecbaca`), e T13.4 na
+`tarefa/T13.3b-producers-incrementais` (código `4ede7fa`, validação PostgreSQL `7a1faca`), e T13.4 na
 `tarefa/T13.4-hipoteses-walk-forward` (`ae30450`). T16.3b está em `tarefa/T16.3b-enriquecimento-temporal`
 (`5d85cf3`) e T16.3c em `tarefa/T16.3c-calendario-point-in-time` (`fc24bde`). Nenhuma dessas branches foi integrada
-ao `master`. T13.3b passou a suíte final com 848 aprovados e 10 ignorados; T13.4 segue parcial por custos e dados
+ao `master`. T13.3b passou 10 testes PostgreSQL e a suíte completa com PostgreSQL habilitado (858 aprovados, 1
+ignorado); Windows real segue pendente. T13.4 segue parcial por custos e dados
 reais ausentes. T16.3c implementa as revisões, mas replay com recibos de fonte real está pendente. Evidências:
 [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md), [T13.4_RELATORIO.md](T13.4_RELATORIO.md) e
 [continuidade.md](../continuidade.md). A Decisão 5 permanece aberta.
-O contrato de dados proposto para T13.6 está na branch local `tarefa/T13.6-contrato-ui`; adaptador e telas continuam
-pendentes das dependências declaradas na tarefa.
+O contrato de dados proposto para T13.6 está na branch local `tarefa/T13.6-contrato-ui` (`51d47be`); adaptador e
+telas continuam pendentes das dependências declaradas na tarefa.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -24,8 +25,8 @@ modo sombra → pilotos autorizados → monitoramento.
 | Requisito | Implementação existente | Lacuna | Tarefa | Dependência | Critério de aceite | Estado nesta retomada (evidência ou pendência) |
 |---|---|---|---|---|---|---|
 | Barras por sessão, sem barras fantasmas | `analytics/calendar.py`, `analytics/resampling.py` (`_market_calendar`, `_bars_derived`) | Calendário é inferido do M1; offset fixo, sem horário de verão | T13.1 ✅ | — | Testes 1–3 e 5 da especificação | **Entregue no Linux**; reconstrução, feriados, DST, Windows e MT5 real continuam como limites registrados em T13.1. |
-| Fato com observação, disponibilidade, validade, revisão | `analytics/feature_store.py` e `save_values` | — | T13.2/T13.3 | T13.2 | Contrato, lote atômico e duplicatas testados | **Entregue localmente** nas branches T13.2/T13.3; PostgreSQL e Windows real pendentes. |
-| Consulta *as-of* | `query_as_of`, `query_history`, `asof_join` | — | T13.2 | T13.2 | Revisões preservadas; decisões só veem `available_at <= t` | **Entregue localmente**; testes T13.2 registrados na continuidade; não integrado ao `master`. |
+| Fato com observação, disponibilidade, validade, revisão | `analytics/feature_store.py` e `save_values` | — | T13.2/T13.3 | T13.2 | Contrato, lote atômico e duplicatas testados | **Entregue localmente** nas branches T13.2/T13.3; round-trip/revisão PostgreSQL 16 testado em banco descartável; Windows real pendente. |
+| Consulta *as-of* | `query_as_of`, `query_history`, `asof_join` | — | T13.2 | T13.2 | Revisões preservadas; decisões só veem `available_at <= t` | **Entregue localmente**; round-trip com duas revisões e consulta antes/depois da disponibilidade passou em PostgreSQL 16 descartável (`test_trade_analytics_pg.py`); Windows real pendente e código não integrado ao `master`. |
 | Barra superior aberta ou incompleta não conta como fechada | `latest_bars(closed_only=True)` e `available_at = bar_end_utc` | — | T13.2 | T13.2 | H1 não aparece antes de fechar; parcial, cobertura incompleta e barra futura excluídas | **Entregue localmente** e coberto por testes point-in-time; não integrado ao `master`. |
 | Correção tardia e proveniência das características | Revisões em `_bars_derived`, janelas por sessão e fingerprint `source_revision` | Memória de Wilder é aproximada; estado/duração do regime dependem do prefixo histórico | T13.3 | T13.1, T13.2 | Disponibilidade não antecipa correção; limite e propagação testados | **Entregue com limite documentado** na T13.3; a aproximação não é garantia de memória exata. |
 | Volume real ≠ volume de ticks | `_bars_derived.real_volume_known`; enriquecimento temporal corrigido | — | T13.3/T16.3b | — | Fonte declarada; séries nunca misturam fontes | **Entregue localmente** em T13.3 e T16.3b; testes das duas frentes registrados, branches ainda não integradas. |
@@ -79,7 +80,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Modo sombra (decide, não age) | — | — | T13.7a | T13.5 | Nenhuma ordem afetada; sinais registrados | **Pendente de decisão** sobre adicionar T13.7a ao plano e dependente de T13.5. |
 | Piloto opt-in que só reduz risco | `mt5x-safety` (guardião, orçamento) | Política e evidência Strategy Tester | T13.7 | T13.5, T13.7a, T12.3, robô aprovado, autorização específica | Só reduz; bateria sem regressão | **Pendente** de dependências e autorização específica; conta real não autorizada. |
 | Monitoramento e rebaixamento | — | Implementação completa, trilha, retenção e backup | T13.8 | T13.4, T13.7 | Motivo e trilha gravados | **Pendente** de T13.7; ainda sem trilha de ator/motivo de transição ou política de backup específica. |
-| Jobs idempotentes, checkpoint, recursos | `producer_jobs.py`, checkpoint transacional por família, cursor + sequência da fonte, limites e runs medidos | PostgreSQL e Windows reais não foram executados | T13.3b ✅ (branch local) | T13.3, T15.9 | Falha e retomada sem duplicar/pular; correção tardia iguala recomputação completa; novas barras leem só delta/cauda limitada; métricas em [relatório](T13.3B_PRODUTORES_INCREMENTAIS.md) | **Entregue localmente** em `4ede7fa`; testes de falha/retomada e correção tardia passaram; suíte final 848/10 e doctor 16 OK/2 avisos/0 falhas. PostgreSQL/Windows reais pendentes. |
+| Jobs idempotentes, checkpoint, recursos | `producer_jobs.py`, checkpoint transacional por família, cursor + sequência da fonte, limites e runs medidos | Windows real e TimescaleDB não foram exercitados | T13.3b ✅ (branch local) | T13.3, T15.9 | Falha e retomada sem duplicar/pular; correção tardia iguala recomputação completa; novas barras leem só delta/cauda limitada; métricas em [relatório](T13.3B_PRODUTORES_INCREMENTAIS.md) | **Entregue localmente** em `4ede7fa`; recuperação/append passaram em SQLite e PostgreSQL 16 descartável. Grupo PostgreSQL: 10 aprovados; suíte completa com PostgreSQL: 858/1; doctor 16 OK/2 avisos/0 falhas. Windows real segue pendente. |
 
 ## Questões para o dono do projeto (não bloqueiam T13.3 a T13.4)
 

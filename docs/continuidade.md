@@ -241,11 +241,16 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 
 Entregas locais independentes, sem merge, push ou PR:
 
-- **T13.3b:** branch `tarefa/T13.3b-producers-incrementais`; código `4ede7fa`, documentação final `4ecbaca`. A suíte
-  final passou com **848 aprovados, 10 ignorados em 601,33 s**; `doctor` **16 OK, 2 avisos, 0 falhas**. O benchmark
+- **T13.3b:** branch `tarefa/T13.3b-producers-incrementais`; código `4ede7fa`, validação PostgreSQL `7a1faca`. A
+  suíte completa com PostgreSQL habilitado passou com **858 aprovados, 1 ignorado em 565,80 s**; grupo PostgreSQL
+  **10 aprovados**; `doctor` **16 OK, 2 avisos, 0 falhas**. O benchmark
   sintético registrou `compute` completo em 10.103 ms e incremento em 1.321 ms (**7,65×**); crescimento SQLite/WAL
-  de 17.932.288 bytes contra 290.816 bytes. PostgreSQL e Windows reais pendentes. A primeira suíte teve uma falha
+  de 17.932.288 bytes contra 290.816 bytes. PostgreSQL 16 local foi validado em contêiner descartável; Windows e
+  MT5 reais permanecem pendentes. A primeira suíte teve uma falha
   assíncrona de UI, que não se repetiu na suíte integral posterior.
+- No mesmo banco PostgreSQL 16 descartável, `test_trade_analytics_pg.py` validou round-trip do feature store e
+  consulta antes/depois de uma revisão. Isso acrescenta evidência PostgreSQL para T13.2; validação Windows permanece
+  pendente.
 - **T13.4:** branch `tarefa/T13.4-hipoteses-walk-forward`, HEAD `ae30450`. Implementação permanece parcial: faltam
   custos completos de comissão/slippage, eventos reais para H14–H16 e mercados comparáveis para avaliação OOS. A
   suíte completa registrada passou com **860 aprovados, 10 ignorados**; `doctor` **16 OK, 2 avisos, 0 falhas**.
@@ -278,9 +283,10 @@ Entregas locais independentes, sem merge, push ou PR:
 
 ## T13.6 — contrato de dados para a UI
 
-Na branch local `tarefa/T13.6-contrato-ui`, foi preparado o contrato v1 para a UI consumir resultados, comparações,
-proveniência, validade e incerteza. O contrato distingue ledger observado, contrafactual de ledger fixo, reexecução e
-log de sombra; contagens de sinais ausentes ficam `null`, não zero. O exemplo é fictício e está identificado como tal.
+Na branch local `tarefa/T13.6-contrato-ui`, commits `51d47be` e `304daa0`, foi preparado o contrato v1 para a UI
+consumir resultados, comparações, proveniência, validade e incerteza. O contrato distingue ledger observado,
+contrafactual de ledger fixo, reexecução e log de sombra; contagens de sinais ausentes ficam `null`, não zero. O
+exemplo é fictício e está identificado como tal.
 O adaptador e as telas não foram implementados: dependem de T13.5 e T12.6; as contagens de aceitos/bloqueados ainda
 dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
 Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
