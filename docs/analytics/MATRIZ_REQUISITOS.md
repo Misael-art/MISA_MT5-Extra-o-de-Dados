@@ -7,7 +7,7 @@ As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fa
 
 Atualização de 2026-10-15, HEADs locais conferidos: T13.3 está na branch `tarefa/T13.3-perfis-regimes`
 (`a028334`), T13.3b em `tarefa/T13.3b-producers-incrementais` (`7a1faca`), e T13.4 em
-`tarefa/T13.4-hipoteses-walk-forward` (`2b28058`, antes desta correção). T16.3b está em
+`tarefa/T13.4-hipoteses-walk-forward` (correção do piso de sessões em `799a634`). T16.3b está em
 `tarefa/T16.3b-enriquecimento-temporal` (`5d85cf3`) e T16.3c em `tarefa/T16.3c-calendario-point-in-time`
 (`de8a71b`). Nenhuma dessas branches foi integrada
 ao `master`. T13.3b passou a suíte final com 848 aprovados e 10 ignorados; T13.4 segue parcial por custos e dados
