@@ -185,7 +185,8 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 
 ## Atualização T13.4 — builders H06–H16 e validação de retomada — 2026-10-15
 
-- Continuação na branch `tarefa/T13.4-hipoteses-walk-forward`, sobre o checkpoint `ccf5316`. `pattern_extensions.py`
+- Continuação na branch `tarefa/T13.4-hipoteses-walk-forward`, sobre a base `ccf5316`, com checkpoint local `0ff2df5`.
+  `pattern_extensions.py`
   implementa H06–H16; H14/H15 exigem `trade_events`, H16 exige `signal_events`. Todos esses padrões seguem `DRAFT`;
   o motor não os deixa elegíveis mesmo com efeito sintético. `summarize_market_stability` publica apenas um resumo
   descritivo por grupo previamente declarado, hipótese, versão e timeframe.
