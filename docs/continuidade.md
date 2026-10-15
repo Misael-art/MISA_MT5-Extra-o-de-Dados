@@ -168,11 +168,13 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   negativos e a única estimativa com amostra informativa constam no relatório. Nenhuma reserva foi gravada e nenhuma
   hipótese foi aprovada.
 - H06–H16 são definições declarativas `DRAFT`, sem builders nem métricas avaliadas. Continuam pendentes a estabilidade
-  agregada entre mercados comparáveis, registro persistente de falhas de execução antes da avaliação ser gravada,
-  tempo de recuperação e construtores dessas hipóteses. Decisão 5 continua pendente; não impede o relatório
+  agregada entre mercados comparáveis, tempo de recuperação e construtores dessas hipóteses. Avaliações agora gravam
+  `RUNNING` e consomem a reserva antes do cálculo; exceções ficam como `FAILED`. Uma interrupção abrupta deixa a linha
+  `RUNNING` visível e não libera a reserva. Decisão 5 continua pendente; não impede o relatório
   informativo H01–H05.
-- Verificação: focada **80 aprovados em 42,47 s** (T13.4, calendário, feature store, perfis/regimes e validação
-  estatística); completa **847 aprovados, 10 ignorados em 566,04 s**; `doctor` **16 OK, 2 avisos, 0 falhas**. Avisos:
+- Verificação após auditoria de tentativas: focada **81 aprovados em 38,32 s** (T13.4, calendário, feature store,
+  perfis/regimes e validação estatística); completa **848 aprovados, 10 ignorados em 572,38 s**; `doctor` **16 OK, 2
+  avisos, 0 falhas**. Avisos:
   dependência opcional `pandas-ta` ausente e ponte Wine desativada por configuração. Nenhum `.sh` foi alterado; não
   se aplica ShellCheck. Windows real, PostgreSQL e MT5 real não foram testados.
 - Para T13.5 a dependência T12.1 segue **parcial** no plano. A decisão #6 resolveu SQLite/SQLAlchemy para o banco,
