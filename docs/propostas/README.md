@@ -8,6 +8,14 @@ Objetivo: evoluir o HADOUKEN (robôs MQL5) e o mt5x (dados, pesquisa e validaç�
 modular de pesquisa, desenvolvimento, validação e operação de robôs, **sem mudar o comportamento atual** enquanto
 cada passo não for validado.
 
+## Extensão Fase 18 — relações e aderência dos setups
+
+Planejada a pedido do dono em 2026-10-15: indicadores entre si, com movimentos futuros e com ganhos/perdas dos
+Experts; estabilidade temporal, convergências, candidatos a presets, consulta local e API posterior.
+Não altera a contagem original dos dez épicos; é uma frente detalhada ligada aos épicos A/I e às Fases 13/16/17.
+Especificação e tarefas T18.0–T18.9: [RELACOES_INDICADORES_SETUP.md](RELACOES_INDICADORES_SETUP.md).
+**Só o planejamento foi entregue; as funcionalidades estão pendentes.**
+
 ## Onde está cada épico
 
 | Épico | Assunto | Repositório responsável | Documento | Tarefas |
