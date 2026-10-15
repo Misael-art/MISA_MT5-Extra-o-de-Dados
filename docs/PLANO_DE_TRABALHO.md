@@ -154,7 +154,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
 | T16.11c | Laboratório: filtrar todas as guias ao clicar em uma célula de contexto; abrir um robô no Laboratório pelo painel de detalhes | T16.11b | ✅ concluída no Linux (tela virtual); Windows não visto |
-| T16.12 | Laboratório: livro de operações, importadores, calendário, enriquecimento, agregações, re-simulação, filtros, insights, exportação de propostas e `mt5x trades` | T16.0 | ✅ implementação local em `tarefa/T16.12-cli-relatorio` (HEAD `e99becd`); conserva `compare`, `report --by`, filtros e `insights --save`, adiciona `enrich`, re-simulação por run e `export --rules-file`. Focados 15; suíte 794/9; doctor 16/2/0. Windows pendente |
+| T16.12 | Laboratório: livro de operações, importadores, calendário, enriquecimento, agregações, re-simulação, filtros, insights, exportação de propostas e `mt5x trades` | T16.0 | ✅ implementação local em `tarefa/T16.12-cli-relatorio` (código `e99becd`); conserva `compare`, `report --by`, filtros e `insights --save`, adiciona `enrich`, re-simulação por run e `export --rules-file`. Focados 15; suíte 794/9; doctor 16/2/0. Windows pendente |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

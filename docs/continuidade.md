@@ -95,8 +95,8 @@ tenham entrada, aceite e testes determinísticos.
 
 ### Continuidade do ciclo Analytics — checkpoint T16.12 (2026-10-15)
 
-T16.12 foi implementada localmente na branch `tarefa/T16.12-cli-relatorio`, HEAD `e99becd` (implementação inicial
-`34f43d7`), em worktree própria e baseada na entrega T16.11c. Ela preserva `compare`, `report --by`, simulação de filtros e `insights --save` do CLI já publicado, além de
+T16.12 foi implementada localmente na branch `tarefa/T16.12-cli-relatorio`, com código em `e99becd` (implementação
+inicial `34f43d7`), em worktree própria e baseada na entrega T16.11c. Ela preserva `compare`, `report --by`, simulação de filtros e `insights --save` do CLI já publicado, além de
 adicionar `enrich`, relatório completo, re-simulação por run e `export --rules-file`. Os comandos usam os agregadores e
 motores existentes; re-simulação de execução e persistência de insights exigem `--save`. `--json` mantém o envelope
 global do CLI. A exportação gera uma proposta para revisão, sem aplicar regras.
