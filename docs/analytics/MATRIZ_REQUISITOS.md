@@ -8,10 +8,10 @@ As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fa
 Atualização de 2026-10-15: as lacunas da T13.3 foram implementadas e verificadas na branch local
 `tarefa/T13.3-perfis-regimes`, dependente da T13.2 local; ainda não foram integradas ao `master`. Evidências e
 limitações da base estão em [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md). A Decisão 5 permanece aberta.
-T13.3b está em validação local na branch `tarefa/T13.3b-producers-incrementais`; veja
-[T13.3B_PRODUTORES_INCREMENTAIS.md](T13.3B_PRODUTORES_INCREMENTAIS.md). Os testes focados passaram; a suíte
-completa teve uma falha assíncrona de UI, que passou isoladamente; `doctor` não teve falhas. A extensão permanece
-local e ainda não foi integrada.
+T13.3b está concluída localmente na branch `tarefa/T13.3b-producers-incrementais`; veja
+[T13.3B_PRODUTORES_INCREMENTAIS.md](T13.3B_PRODUTORES_INCREMENTAIS.md). Testes focados: 46 aprovados; repetição
+integral final: 848 aprovados, 10 ignorados; `doctor`: 16 OK, 2 avisos, 0 falhas. PostgreSQL e Windows reais seguem
+pendentes; a extensão permanece local e ainda não foi integrada.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -76,7 +76,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Modo sombra (decide, não age) | — | Tudo | **T13.7a** | T13.5 | Nenhuma ordem afetada; sinais registrados |
 | Piloto opt-in que só reduz risco | `mt5x-safety` (guardião, orçamento) | Política | T13.7 | T13.5, T12.3, robô aprovado, **autorização do dono** | Só reduz; bateria sem regressão |
 | Monitoramento e rebaixamento | — | Tudo | T13.8 | T13.4, T13.7 | Motivo e trilha gravados |
-| Jobs idempotentes, checkpoint, recursos | `producer_jobs.py`, checkpoint transacional por família, cursor + sequência da fonte, limites e runs medidos | Implementado e testado localmente; SQLite sintético; PostgreSQL/Windows reais pendentes | T13.3b ✅ (branch local) | T13.3, T15.9 | Falha e retomada sem duplicar/pular; correção tardia iguala recomputação completa; novas barras leem só delta/cauda limitada; métricas em [relatório](T13.3B_PRODUTORES_INCREMENTAIS.md). A suíte geral registra uma falha transitória de UI, repetida isoladamente com sucesso. |
+| Jobs idempotentes, checkpoint, recursos | `producer_jobs.py`, checkpoint transacional por família, cursor + sequência da fonte, limites e runs medidos | Implementado e testado localmente em SQLite sintético; PostgreSQL/Windows reais pendentes | T13.3b ✅ (branch local) | T13.3, T15.9 | Falha e retomada sem duplicar/pular; correção tardia iguala recomputação completa; novas barras leem só delta/cauda limitada; métricas em [relatório](T13.3B_PRODUTORES_INCREMENTAIS.md). Suíte final: 848 aprovados, 10 ignorados; doctor 16 OK/2 avisos/0 falhas. |
 
 ## Questões para o dono do projeto (não bloqueiam T13.3 a T13.4)
 

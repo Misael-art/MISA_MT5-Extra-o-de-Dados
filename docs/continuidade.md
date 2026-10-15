@@ -159,11 +159,11 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   correção anterior ao cursor, consulta de valores limitada às observações do lote e medição de jobs.
 - `latest_bars` detecta quando barras elegíveis só ficaram fechadas pela passagem do relógio, mesmo sem nova revisão
   na fonte. Um teste determinístico avança o relógio e verifica que só uma barra é lida dentre três.
-- Testes focados atuais: **46 aprovados em 51,24 s**; os três cenários críticos foram repetidos (**3 aprovados em
-  1,35 s**). Suíte completa: **847 aprovados, 10 ignorados, 1 falhou em 587,64 s**. A falha foi a atualização
-  assíncrona de `test_ui_main_window.py::test_no_internet_is_said_plainly_with_what_to_do`; repetido isoladamente,
-  passou (**1 aprovado em 5,87 s**). A branch não altera arquivos de UI; não considerar o primeiro resultado da
-  suíte como totalmente verde.
+- Testes focados: **46 aprovados em 51,24 s**; os três cenários críticos foram repetidos (**3 aprovados em 1,35 s**).
+  A primeira suíte completa teve **847 aprovados, 10 ignorados e 1 falha em 587,64 s**: a atualização assíncrona de
+  `test_ui_main_window.py::test_no_internet_is_said_plainly_with_what_to_do` excedeu o tempo de espera. O teste passou
+  isoladamente (**1 aprovado em 5,87 s**). Na repetição integral final, a suíte passou com **848 aprovados e 10
+  ignorados em 601,33 s**; a falha não se repetiu. Nenhum arquivo de UI foi alterado nesta branch.
 - `doctor`: **16 OK, 2 avisos, 0 falhas**. Avisos: `pandas-ta` opcional ausente e ponte Wine desativada. A
   worktree não tinha `config/config.ini`; foi gerada com `configure --non-interactive --skip-credentials --no-bridge`
   (sem credenciais). Configuração e lista local de símbolos são ignoradas pelo Git.
@@ -177,6 +177,6 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   benchmark. O relatório, matriz e plano já refletem o estado validado nesta branch.
 - Commit da implementação: `4ede7fa` (`feat(analytics): make T13.3 producers incremental`); a documentação do resultado
   e continuidade foi atualizada em seguida.
-- Próximo passo: salvar o checkpoint de continuidade e avançar à T13.4 e T16.3b em
-  branches/worktrees próprias. O teste isolado de UI passou; a falha da execução integral fica registrada para
-  investigação em frente de UI, sem editar `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` aqui.
+- T13.4 e T16.3b avançaram depois deste checkpoint em branches independentes. Para retomar o ciclo, leia as seções
+  mais recentes deste arquivo e preserve os worktrees T17; a falha assíncrona da primeira suíte fica registrada como
+  transitória, resolvida pela repetição integral acima.
