@@ -293,3 +293,14 @@ As telas mt5x/MQL5 e a ligação da aplicação continuam pendentes de T13.5 e T
 ainda dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
 Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
 `UNAVAILABLE`, fixture point-in-time no Tester) foi enviada ao dono; a resposta continua pendente.
+
+## Checkpoint: isolamento das fixtures PostgreSQL — 2026-10-15
+
+- Branch local `codex/postgresql-test-schema-isolation`. As fixtures de `tests/test_postgresql.py` e
+  `tests/test_trade_analytics_pg.py` criam um schema `mt5x_test_<uuid>`, definem `search_path` apenas para ele e
+  removem somente esse schema ao terminar. Elas não executam mais `DROP SCHEMA public CASCADE`.
+- Validação em contêiner PostgreSQL 16 descartável: **10 testes passaram**. Uma tabela sentinela em `public`
+  permaneceu intacta e nenhum schema temporário ficou após a suíte; o contêiner foi parado. Sem
+  `MT5X_TEST_PG_URL`, a bateria local inicial ficou em **1 aprovado, 9 ignorados**.
+- `doctor`: **16 OK, 2 avisos, 0 falhas**. A senha de autenticação não foi usada; o contêiner aceitou conexão
+  somente pela porta efêmera em `127.0.0.1`.
