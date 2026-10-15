@@ -3,7 +3,11 @@
   "title": "MAE e MFE por horizonte e contexto",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H14",
+  "inputs": {"trade_events_required": ["entry_time", "entry_price", "direction"],
+              "optional_fields": ["symbol", "trade_id", "strategy_id"],
+              "bar_source": "closed_m1_bars", "time_basis": "same_naive_broker_basis_as_m1",
+              "entry_bar_policy": "mid_bar_entries_use_only_subsequent_closed_m1_bars"},
   "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"field": "prior_regime", "operator": "in", "value": ["TREND", "RANGE"]},
@@ -16,6 +20,6 @@
                  "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 60, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
                   "parameter_selection": "train_only"},
-  "target": {"field": "net_return", "operator": "gt", "value": 0},
-  "outcome": {"field": "mae_mfe", "type": "DRAFT_resolution_labeled", "net_of_observed_spread": true}
+  "target": {"field": "outcome_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "outcome_return", "type": "trade_context_with_M1_MAE_MFE", "net_of_observed_spread": true}
 }

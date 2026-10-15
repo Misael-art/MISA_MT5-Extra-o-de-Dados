@@ -3,7 +3,7 @@
   "title": "Rompimento e reteste da faixa inicial",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H12",
   "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"field": "opening_range_retest_confirmed", "operator": "eq", "value": true},
@@ -12,10 +12,10 @@
   "exit": {"type": "observed_session_close"},
   "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
             "missing_components": ["slippage", "commission"]},
-  "parameters": {"opening_range_minutes": 30, "retest_tolerance_atr": 0.2,
+  "parameters": {"opening_range_minutes": 30, "retest_tolerance_atr": 0.2, "atr_period": 14,
                  "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 1440, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
                   "parameter_selection": "train_only"},
-  "target": {"field": "net_return", "operator": "gt", "value": 0},
-  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+  "target": {"field": "outcome_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "outcome_return", "type": "opening_range_retest_to_close", "net_of_observed_spread": true}
 }

@@ -3,7 +3,7 @@
   "title": "Gap e movimento executável após a abertura",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H11",
   "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"field": "opening_gap_return", "operator": "lte", "value": -0.005},
@@ -15,6 +15,6 @@
   "parameters": {"gap_threshold": -0.005, "horizon_minutes": 5, "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 5, "min_samples": 30, "min_sessions": 40, "alpha": 0.05,
                   "parameter_selection": "train_only"},
-  "target": {"field": "net_return", "operator": "gt", "value": 0},
-  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+  "target": {"field": "outcome_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "outcome_return", "type": "post_gap_fixed_horizon", "net_of_observed_spread": true}
 }

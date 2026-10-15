@@ -3,7 +3,7 @@
   "title": "Recuperação após queda percentual ou em ATR",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H10",
   "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"operator": "and", "conditions": [
@@ -11,14 +11,16 @@
     {"field": "drawdown_atr_from_prior_peak", "operator": "lte", "value": -1.5}
   ]},
   "trigger": {"type": "closed_m1_bar", "peak_and_drawdown_are_point_in_time": true},
-  "entry": {"type": "next_m1_bar_open", "direction": "strategy_signal"},
+  "entry": {"type": "next_m1_bar_open", "direction": "buy_after_drawdown"},
   "exit": {"type": "recovery_or_fixed_horizon", "recovery_bars": 20, "horizon_minutes": 60},
   "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
             "missing_components": ["slippage", "commission"]},
   "parameters": {"drawdown_pct": -0.01, "drawdown_atr": -1.5, "recovery_bars": 20,
+                 "prior_peak_lookback_bars": 60, "atr_period": 14,
                  "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 60, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
                   "parameter_selection": "train_only"},
-  "target": {"field": "net_return", "operator": "gt", "value": 0},
-  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+  "target": {"field": "recovered_within_recovery_window", "operator": "eq", "value": true},
+  "outcome": {"field": "outcome_return", "type": "recovery_within_declared_bars_or_fixed_horizon_net_return",
+              "net_of_observed_spread": true}
 }

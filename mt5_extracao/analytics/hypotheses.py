@@ -50,6 +50,8 @@ def validate_definition(definition):
                  "outcome"):
         if not isinstance(definition[name], dict):
             raise ValueError(f"{name} precisa ser um objeto JSON.")
+    if "inputs" in definition and not isinstance(definition["inputs"], dict):
+        raise ValueError("inputs precisa ser um objeto JSON quando declarado.")
     _validate_condition(definition["condition"])
     _validate_condition(definition["target"], "target")
     if not definition["universe"].get("timeframes"):

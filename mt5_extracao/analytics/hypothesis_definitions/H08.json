@@ -3,21 +3,24 @@
   "title": "RVOL com compressão ou expansão",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H08",
   "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"operator": "and", "conditions": [
     {"field": "rvol_same_minute", "operator": "gte", "value": 1.5},
-    {"field": "volatility_state", "operator": "eq", "value": "COMPRESSION"}
+    {"field": "volatility_state", "operator": "in", "value": ["COMPRESSION", "EXPANSION"]}
   ]},
   "trigger": {"type": "closed_m1_bar", "baseline_uses_prior_sessions": true},
-  "entry": {"type": "next_m1_bar_open", "direction": "strategy_signal"},
+  "entry": {"type": "next_m1_bar_open", "direction": "preceding_5_bar_drift"},
   "exit": {"type": "fixed_horizon", "minutes": 30},
   "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
             "missing_components": ["slippage", "commission"]},
-  "parameters": {"rvol_threshold": 1.5, "volatility_state": "COMPRESSION", "threshold_provenance": "unmeasured_draft"},
+  "parameters": {"rvol_threshold": 1.5, "volatility_states": ["COMPRESSION", "EXPANSION"],
+                 "minimum_baseline_sessions": 5,
+                 "baseline_sessions": 20, "volatility_lookback": 30, "compression_percentile": 20,
+                 "direction_lookback": 5, "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 30, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
                   "parameter_selection": "train_only"},
-  "target": {"field": "net_return", "operator": "gt", "value": 0},
-  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+  "target": {"field": "outcome_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "outcome_return", "type": "rvol_compression_or_expansion_fixed_horizon", "net_of_observed_spread": true}
 }

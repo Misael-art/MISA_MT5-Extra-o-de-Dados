@@ -332,7 +332,8 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
     candidates = _parameter_candidates(definition)
     family_tests = int(tests_counted) if tests_counted is not None else max(1, int(attempt_count)) * len(candidates)
     if samples is None or samples.empty:
-        return {"pattern_id": definition["pattern_id"], "version": definition["version"], "status": "EXPLORATORY",
+        empty_status = "DRAFT" if definition["status"] == "DRAFT" else "EXPLORATORY"
+        return {"pattern_id": definition["pattern_id"], "version": definition["version"], "status": empty_status,
                 "weak": True, "note": "sem observações avaliáveis", "sample_count": 0, "folds": [],
                 "train": _empty_metric(), "validation": _empty_metric(), "test": {"reused": not include_test},
                 "parameter_selection": {"method": "maximum net expectancy on training partition",
@@ -422,11 +423,13 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
         for result in fold_results)
     holdout_positive = bool(include_test and test_metric.get("expectancy_net") is not None and
                             test_metric["expectancy_net"] > 0)
-    eligible = bool(not weak and p_adjusted < float(definition["validation"].get("alpha", 0.05)) and
+    eligible = bool(definition["status"] != "DRAFT" and not weak and
+                    p_adjusted < float(definition["validation"].get("alpha", 0.05)) and
                     fold_positive and holdout_positive and test_metric.get("expectancy_ci", [None])[0] is not None and
                     test_metric["expectancy_ci"][0] > 0)
+    result_status = "DRAFT" if definition["status"] == "DRAFT" else "VALIDATING" if eligible else "EXPLORATORY"
     return {"pattern_id": definition["pattern_id"], "version": definition["version"],
-            "title": definition["title"], "status": "VALIDATING" if eligible else "EXPLORATORY",
+            "title": definition["title"], "status": result_status,
             "weak": weak, "note": plan.note, "sample_count": int(len(frame)),
             "sample_quality": quality,
             "condition_count": int(condition.sum()), "attempt_count": int(attempt_count),
@@ -445,6 +448,93 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
                            "expectancy_basis": "per executed trade; per-observation value is reported separately",
                            "missing_components": definition["costs"].get("missing_components", [])},
             "eligible_for_approval": eligible, "approved": False}
+
+
+def summarize_market_stability(evaluations, comparable_groups):
+    """Resume expectativas OOS por grupos comparáveis, sem inferência nem aprovação agregada.
+
+    ``evaluations`` contém linhas com ``market`` (ou ``symbol``), ``timeframe`` e ``result``
+    produzido por :func:`evaluate_samples`. ``comparable_groups`` mapeia o nome do grupo para
+    os mercados declarados comparáveis pelo chamador. Só são comparadas avaliações da mesma
+    hipótese, versão e timeframe.
+    """
+    if not isinstance(comparable_groups, dict):
+        raise ValueError("comparable_groups precisa mapear nomes de grupo para mercados.")
+    normalized = []
+    for item in evaluations:
+        if not isinstance(item, dict):
+            raise ValueError("Cada avaliação precisa ser um objeto.")
+        market = item.get("market", item.get("symbol"))
+        timeframe = item.get("timeframe")
+        result = item.get("result", item)
+        if not market or not timeframe or not isinstance(result, dict):
+            raise ValueError("Cada avaliação precisa declarar market, timeframe e result.")
+        pattern_id, version = result.get("pattern_id"), result.get("version")
+        if not pattern_id or not version:
+            raise ValueError("Cada result precisa declarar pattern_id e version.")
+        test_metric = result.get("test")
+        expectancy = test_metric.get("expectancy_net") if isinstance(test_metric, dict) else None
+        if expectancy is None:
+            expectancy = result.get("expectancy_net")
+        try:
+            expectancy = float(expectancy) if expectancy is not None else None
+        except (TypeError, ValueError, OverflowError):
+            expectancy = None
+        if expectancy is not None and not np.isfinite(expectancy):
+            expectancy = None
+        normalized.append({"market": str(market), "timeframe": str(timeframe), "pattern_id": str(pattern_id),
+                           "version": str(version), "expectancy_net": expectancy,
+                           "result_status": result.get("status")})
+
+    output = []
+    for group_name, markets in comparable_groups.items():
+        if not isinstance(markets, (list, tuple)) or not markets:
+            raise ValueError(f"O grupo comparável {group_name} precisa listar mercados.")
+        expected = [str(market) for market in markets]
+        if len(set(expected)) != len(expected):
+            raise ValueError(f"O grupo comparável {group_name} contém mercados duplicados.")
+        members = [item for item in normalized if item["market"] in expected]
+        keys = sorted({(item["pattern_id"], item["version"], item["timeframe"]) for item in members})
+        for pattern_id, version, timeframe in keys:
+            matches = [item for item in members if (item["pattern_id"], item["version"], item["timeframe"])
+                       == (pattern_id, version, timeframe)]
+            by_market = {}
+            for item in matches:
+                if item["market"] in by_market:
+                    raise ValueError("Há mais de uma avaliação por hipótese/versão/timeframe/mercado; "
+                                     "selecione explicitamente qual tentativa deve ser resumida.")
+                by_market[item["market"]] = item
+            values = [by_market[market]["expectancy_net"] for market in expected
+                      if market in by_market and by_market[market]["expectancy_net"] is not None]
+            coverage = len(values) / len(expected)
+            signs = {"positive": sum(value > 0 for value in values),
+                     "negative": sum(value < 0 for value in values),
+                     "zero": sum(value == 0 for value in values)}
+            sign_consistency = max(signs.values()) / len(values) if values else None
+            if len(expected) < 2:
+                status = "INSUFFICIENT_COMPARABLE_MARKETS"
+            elif len(values) < 2:
+                status = "INSUFFICIENT_COVERAGE"
+            else:
+                status = "DESCRIPTIVE"
+            quartiles = np.percentile(values, [25, 50, 75]).tolist() if values else [None, None, None]
+            output.append({"group": str(group_name), "pattern_id": pattern_id, "version": version,
+                           "timeframe": timeframe, "status": status,
+                           "expected_markets": expected,
+                           "market_results": [{"market": market,
+                                               "expectancy_net": by_market.get(market, {}).get("expectancy_net"),
+                                               "result_status": by_market.get(market, {}).get("result_status")}
+                                              for market in expected],
+                           "coverage": {"observed": len(values), "expected": len(expected),
+                                        "fraction": float(coverage)},
+                           "expectancy_net": {"median": float(quartiles[1]) if values else None,
+                                              "q25": float(quartiles[0]) if values else None,
+                                              "q75": float(quartiles[2]) if values else None,
+                                              "iqr": float(quartiles[2] - quartiles[0]) if values else None},
+                           "sign_counts": signs, "sign_consistency": sign_consistency,
+                           "interpretation": "Resumo descritivo; não representa significância, "
+                                             "probabilidade de lucro ou aprovação."})
+    return output
 
 
 def _json_safe(value):
