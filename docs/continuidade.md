@@ -151,7 +151,9 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   opcional ausente e ponte Wine desativada por configuração. `git diff --check` limpo.
 - Evidência de replay com dados de mercado permanece pendente até existir histórico real de recibos/revisões da fonte.
   Auditoria local somente leitura em 2026-10-15 confirmou que `[SCREENER] events_file` está vazio e que `Common\Files`
-  não contém exportação `MT5X_calendar_*.csv`; não há fonte local para o replay. Windows e PostgreSQL não foram exercitados.
+  não contém exportação `MT5X_calendar_*.csv`; não há fonte local para o replay. O importador CSV aceita `source_received_at`
+  explícito com fuso e o normaliza para UTC (teste de fuso presente); o exportador MQL5 não emite esse campo. Para o
+  replay real é necessário fornecer CSV com recibos explícitos. Windows e PostgreSQL não foram exercitados.
   O `/run/user/1000` cheio foi deixado intacto; a execução dos testes usa
   diretórios privados em `/tmp`. A tarefa consta como parcial até esse replay ser possível. Worktrees da T17 permanecem
   intocados; não houve push ou PR.
