@@ -70,25 +70,23 @@ Só houve conflito em `docs/PLANO_DE_TRABALHO.md` (F-03 × T12.1/T12.6a). Códig
 
 ## Retomada após a harmonização — T13.1
 
-- Branch local atual: `tarefa/T13.1-calendario-sessoes`, criada a partir de `master` em `2226bf5`.
+- Branch de origem: `tarefa/T13.1-calendario-sessoes`, criada a partir de `master` em `2226bf5` e integrada no PR
+  #71 (merge `880bf18`).
 - A T13.1 implementa calendário observado em M1, captura de metadados estáveis de `symbol_info`, barras derivadas
   versionadas e o modo `mt5x resample --session-aware`. As regras e limitações estão em
   [T13.1_CALENDARIO_OBSERVADO.md](analytics/T13.1_CALENDARIO_OBSERVADO.md).
 - Verificação: testes focados `.venv/bin/python -m pytest -q tests/test_analytics_calendar.py tests/test_resample.py`
-  — **20 aprovados**; `doctor` — 16 OK, 2 avisos, 0 falhas. Duas repetições integrais ficaram inconclusivas: a
-  primeira terminou aos 79% com 413 aprovados, 8 pulados, 85 falhas e 98 erros após `OSError: [Errno 28] No space
-  left on device` no tmpfs; a segunda chegou à bateria de UI/conector, emitiu marcadores `E` e encerrou com status
-  143 após cerca de 32 minutos, sem resumo final. Os temporários próprios foram removidos; o tmpfs tinha 604 MB
-  livres ao fim da segunda execução. A base EURUSD foi lida sem escrita e sem conectar ao MT5. O modo legado
-  `resample` não mudou.
-- A branch é local; não houve push nem PR. A T13.1 fica pronta para revisão, com a regressão global inconclusiva;
-  a T13.2 continua sendo a próxima tarefa da Fase 13 após integrar esta dependência.
-- Worktree `../MISA_MT5-analytics` permanece ativo e não foi removido; na última conferência estava na branch
-  `tarefa/T16.11b-execucao-insights`.
+  — **20 aprovados**; `doctor` — 16 OK, 2 avisos, 0 falhas. As duas primeiras repetições integrais ficaram
+  inconclusivas por espaço temporário e display inacessível; isso foi resolvido na harmonização com `xvfb-run -a`.
+  A suíte integrada do master foi repetida com `/tmp`: **802 aprovados, 9 pulados em 510 s**. A base EURUSD foi lida
+  sem escrita e sem conectar ao MT5. O modo legado `resample` não mudou.
+- A branch foi integrada no PR #71. O worktree `../MISA_MT5-analytics` foi removido a pedido em 2026-10-14 após
+  confirmar que estava limpo e que sua branch já era ancestral do master; o banco ignorado continha apenas tabelas
+  internas vazias. A referência da branch local foi mantida.
 
 ## Harmonização 2 (2026-10-14): Fase 16 e T13.1 no master
 
-Branch `integracao/fase16-t13.1`, mesclada no `master` (veja o PR dela). Entraram:
+Branch `integracao/fase16-t13.1`, mesclada no `master` pelo PR #71 (merge `880bf18`). Entraram:
 
 | Frente | O que traz | Registro |
 |---|---|---|
@@ -108,11 +106,26 @@ tabelas. Teste de regressão: `tests/test_harmonizacao_frentes.py`.
 **Regra nova para todos:** tabela interna (que não é série de ativo) começa com `_`. O teste de regressão acima
 protege as das Fases 13, 15 e 16.
 
-**Próximas tarefas:** T13.2 (Fase 13) pode partir do `master`. Pendências da Fase 16 na seção 10 do plano dela
-(T16.2b no HADOUKEN, exportação do calendário com o MT5 conectado, Windows real).
+**Próximas tarefas:** T13.2 foi implementada na branch local `codex/t13.2-feature-store`; após revisão e integração,
+T13.3 pode começar. Pendências da Fase 16 na seção 10 do plano dela (T16.2b no HADOUKEN, exportação do calendário
+com o MT5 conectado, Windows real).
 
 **Queda "Illegal instruction"/"Segmentation fault" na suíte (era a mesma "regressão inconclusiva" da T13.1):** o coletor de
 lixo do Python rodava dentro de threads de segundo plano e destruía variáveis e imagens do Tk, que só aceita a thread
 principal. Corrigido: a janela desliga a coleta automática (`ui_manager.setup_ui`) e coleta na thread principal a cada
 ~2 s (`_pump_ui_queue`); os testes religam e coletam depois de cada teste (`tests/conftest.py`). Com isso, a suíte
 completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
+
+## Retomada da T13.2 — 2026-10-14
+
+- Implementação na branch `codex/t13.2-feature-store`, ainda não integrada: registry imutável por versão, valores
+  append-only com disponibilidade UTC e revisão, consulta *as-of*, propagação seletiva de dependências e CLI
+  `mt5x analytics features list/show/values/affected`. Detalhes em
+  [T13.2_FEATURE_STORE.md](analytics/T13.2_FEATURE_STORE.md).
+- Decisão da primeira fase: SQLite, com SQLAlchemy e DDL portátil. A base local lida somente em metadados tinha
+  329,6 MB e 23 tabelas. A exportação do retrato para o MT5 permanece para a T13.5. Nenhum valor de característica
+  foi calculado ou gravado na base real.
+- Verificação: testes focados 20 aprovados, 2 pulados; suíte completa **809 aprovados, 10 pulados em 521,99 s**;
+  `doctor` 16 OK, 2 avisos, 0 falhas. Os dois testes PostgreSQL da frente foram pulados localmente porque
+  `MT5X_TEST_PG_URL` não está configurada; um teste de round-trip *as-of* foi adicionado ao job PostgreSQL do CI.
+  Windows real, PostgreSQL local e MT5 real não foram testados.

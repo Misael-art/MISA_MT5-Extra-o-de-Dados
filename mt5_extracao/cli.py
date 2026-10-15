@@ -24,6 +24,7 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x resample --symbols X --base M1 --tf M5,M15,H1    # mantém o resample pelo relógio já existente
     mt5x resample --symbols X --base M1 --tf M3,1D,1440min --session-aware
                                                         # barras analíticas por sessão observada
+    mt5x analytics features list|show|values|affected     # características versionadas e consulta point-in-time
     mt5x panel [--open]                                # painel visual: ativos x timeframes x robôs
     mt5x panel --serve --open                          # painel vivo: atualiza sozinho e tem botões de ação
     mt5x robots [list|import|backtest|market] ...     # catálogo, importação, backtest e pré-check Market
@@ -1746,6 +1747,35 @@ def build_parser():
                    help="--session-aware: inclui (padrão) ou descarta o candle final parcial de cada sessão")
     p.set_defaults(func=cmd_resample)
 
+    p = sub.add_parser("analytics", help="características analíticas versionadas e consultas point-in-time")
+    analytics_sub = p.add_subparsers(dest="analytics_domain", required=True)
+    p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
+    features_sub = p_features.add_subparsers(dest="features_action", required=True)
+
+    q = features_sub.add_parser("list", help="lista as definições de características registradas")
+    q.add_argument("--all-versions", action="store_true", help="mostra também versões antigas do algoritmo")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("show", help="mostra a definição e as dependências de uma característica")
+    q.add_argument("feature_id")
+    q.add_argument("--algorithm-version", help="versão do algoritmo (padrão: a definição mais recente)")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("values", help="consulta o último valor que já estava disponível no instante dado")
+    q.add_argument("--as-of", required=True, help="instante de decisão com fuso, por exemplo 2026-10-14T17:25:00Z")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--tf", required=True, help="timeframe do valor, por exemplo M1")
+    q.add_argument("--feature", dest="feature_id", help="limita a uma característica")
+    q.add_argument("--algorithm-version", help="limita a uma versão do algoritmo")
+    q.add_argument("--from", dest="date_from", help="início inclusivo de observation_time, com fuso")
+    q.add_argument("--to", dest="date_to", help="fim exclusivo de observation_time, com fuso")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("affected", help="lista características dependentes de fontes alteradas")
+    q.add_argument("--changed", required=True,
+                   help="chaves separadas por vírgula, por exemplo bars:M1,feature:returns")
+    q.set_defaults(func=cmd_analytics)
+
     p = sub.add_parser("tables", help="lista tabelas do banco e o último registro de cada uma")
     p.set_defaults(func=cmd_tables)
 
@@ -1918,6 +1948,57 @@ def build_parser():
     p.add_argument("--open", action="store_true", help="abre o relatório no navegador")
     p.set_defaults(func=cmd_report)
     return parser
+
+
+def cmd_analytics(args, ctx):
+    """Inspeciona o registro de características e consulta valores point-in-time."""
+    import json
+    from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action == "list":
+        items = features.list_features(ctx.db, include_versions=args.all_versions)
+        if not items:
+            _print("Nenhuma característica registrada.")
+        else:
+            for item in items:
+                _print(f"{item['feature_id']}@{item['algorithm_version']}\t{item['name']}\t"
+                       f"dependências: {', '.join(item['dependencies']) or 'nenhuma'}")
+        _print(f"\n{len(items)} definição(ões).")
+        _data(features=items)
+        return EXIT_OK
+
+    if args.features_action == "show":
+        item = features.get_feature(ctx.db, args.feature_id, args.algorithm_version)
+        _print(json.dumps(_jsonable(item), ensure_ascii=False, indent=2))
+        _data(feature=item)
+        return EXIT_OK
+
+    if args.features_action == "values":
+        frame = feature_store.query_as_of(
+            ctx.db, args.as_of, symbol=args.symbol, timeframe=args.tf, feature_id=args.feature_id,
+            algorithm_version=args.algorithm_version, start=args.date_from, end=args.date_to,
+        )
+        if frame.empty:
+            _print("Nenhum valor disponível para os filtros e o instante informado.")
+        else:
+            _print(frame.to_string(index=False))
+        _data(values=frame.to_dict("records"))
+        return EXIT_OK
+
+    if args.features_action == "affected":
+        changed = [item.strip() for item in args.changed.split(",") if item.strip()]
+        if not changed:
+            raise ValueError("informe ao menos uma fonte em --changed")
+        items = features.affected_by(ctx.db, changed)
+        if not items:
+            _print("Nenhuma característica depende das fontes informadas.")
+        else:
+            for item in items:
+                _print(f"{item['feature_id']}@{item['algorithm_version']}\t{item['name']}")
+        _data(changed=changed, affected=items)
+        return EXIT_OK
+
+    raise ValueError(f"subcomando analytics desconhecido: {args.features_action}")
 
 
 def _tolerant_streams():
