@@ -130,7 +130,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
-| T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
+| T13.7a | Registro de sinais e modo sombra (decide e registra, não age) | T13.5 | a fazer (proposta em 2026-10-14; confirmar com o dono) |
+| T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T13.7a, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
 | T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
 | T15.0 | Plano da gestão de recursos (aba Recursos) registrado em `docs/propostas/GESTAO_RECURSOS.md` | — | ✅ concluída |
@@ -144,6 +145,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
 | T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
+| T16.3b | Laboratório: correção temporal do enriquecimento (barra aberta, surpresa de notícia futura, volume real × ticks) | T16.3 | a fazer (achado da auditoria de 2026-10-14) |
 | T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
@@ -3288,6 +3290,14 @@ real por corretora.
   diferença fica documentada.
 - **Fica de fora:** liquidez e microestrutura (precisam de ticks e book com cobertura medida) e relações entre
   ativos. Entram como tarefas próprias quando houver dados.
+- **Extensões detalhadas em 2026-10-14** ([MATRIZ_REQUISITOS.md](analytics/MATRIZ_REQUISITOS.md)), dentro do
+  escopo da T13.3, sem tarefa nova: (a) estrutura da sessão — retorno do pregão anterior, gap (disponível no fim da
+  1ª barra), faixa inicial de N minutos, primeiro rompimento (ambíguo quando as duas pontas rompem na mesma barra) e
+  distância à máxima/mínima do pregão anterior em ATR; (b) `feature_store.save_values` (lote numa transação) e
+  `asof_join` (várias decisões, inclusive entre timeframes); (c) volume real e de ticks nunca na mesma série, sessão
+  com volume desconhecido fica ausente; (d) percentis e medianas só com a janela anterior; (e) correção tardia de
+  barra só fica disponível no `computed_at_utc` da correção; (f) a última sessão da base é tratada como aberta;
+  (g) a gravação consulta o `write_guard` da Fase 15; (h) proposta de "confiança" para a decisão 5.
 
 ### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
 
@@ -3303,6 +3313,18 @@ real por corretora.
 - **Critérios de aceite:** teste 8 da especificação; H01 a H05 avaliadas com dados reais e o resultado publicado em
   relatório, **qualquer que seja ele** (a tarefa não depende de as hipóteses se confirmarem); uma hipótese rejeitada
   continua no catálogo.
+- **Extensões detalhadas em 2026-10-14** (sem tarefa nova; reutilizar `trade_analytics/rules.split`, `stats` e o
+  controle de ruído de `insights`): campos obrigatórios de cada hipótese — universo, sessão, fuso, condição,
+  gatilho, entrada executável, saída, custos, parâmetros, versão e validação; embargo do tamanho do horizonte do
+  rótulo; seleção de parâmetros só no treino; registro persistente de **todas** as tentativas (inclusive as
+  descartadas) com contagem exibida; reserva final marcada como consumida na primeira avaliação (uma segunda
+  avaliação aparece como "reutilizada"); sensibilidade a custo, atraso de entrada e perturbação de parâmetros;
+  estabilidade por período e por mercado comparável; concentração dos resultados; teste de ruído (nenhuma
+  aprovação em séries sem efeito). Hipóteses a cobrir além de H01–H05, todas como dados e não como colunas:
+  confirmação entre timeframes, dia/faixa da sessão condicionados ao regime, RVOL e compressão/expansão, janelas
+  recorrentes da sessão, recuperação após queda percentual ou em ATR, gap e movimento após a abertura,
+  rompimento/reteste da faixa inicial, distância de níveis anteriores, MAE/MFE, tempo de recuperação e atraso de
+  entrada. Amostra mínima não é suficiência: cada hipótese declara o critério e a incerteza.
 - **Armadilhas:** os números de H01 a H05 na especificação (1,5%, 0,5%, 1,15%, 17:25, 0,40%) são exemplos, não
   medidas; o horário de fechamento vem do calendário da T13.1; um gap que aconteceu antes da entrada não é lucro de
   quem entra na abertura.
@@ -3332,11 +3354,25 @@ real por corretora.
 - **Critérios de aceite:** filtros, mapa por dia e hora, distribuição condicional, catálogo de hipóteses com
   amostra, validade e fonte; no painel do MT5, idade do dado sempre à vista e aviso de dado vencido.
 
+### T13.7a — Registro de sinais e modo sombra (proposta de 2026-10-14)
+
+- **Objetivo:** antes de qualquer piloto, registrar todos os sinais das estratégias — inclusive os que um filtro
+  bloquearia — com instante, estratégia, direção, contexto disponível (via `asof_join`), versão da regra, decisão
+  e motivo; o filtro decide em sombra e **não altera nenhuma ordem**.
+- **Depende de:** T13.5 (retrato e leitor). Não depende de Safety porque não age.
+- **Arquivos previstos:** `analytics/signals.py`, tabela interna `_signal_log`, comparação original × filtrado
+  marcada "contrafactual simulado"; no HADOUKEN, gravação do sinal pelo leitor da T13.5.
+- **Critérios de aceite:** com o analytics desligado o robô decide igual (teste 10); bloqueio registrado sem
+  mudar a ordem; quando bloquear muda estado, capital ou sinais seguintes, a comparação exige re-execução completa
+  da estratégia e diz isso, em vez de filtrar um livro fixo.
+- **Decisão do dono:** confirmar a inclusão desta tarefa (registrada em [MATRIZ_REQUISITOS.md](analytics/MATRIZ_REQUISITOS.md)).
+
 ### T13.7 — Estratégia × regime e pilotos opt-in (A7)
 
 - **Objetivo:** medir o resultado de cada estratégia condicionado ao regime e permitir que uma estratégia, por
   escolha explícita, use uma evidência aprovada para bloquear a própria entrada ou reduzir o risco.
-- **Depende de:** T13.5, T12.3 (guardião com orçamento) e de haver robô aprovado na bateria.
+- **Depende de:** T13.5, T13.7a (modo sombra com resultado registrado), T12.3 (guardião com orçamento), de haver
+  robô aprovado na bateria e de **autorização específica do dono** para cada piloto (conta demo; conta real não).
 - **Arquivos previstos:** `analytics/strategy_fitness.py`, tabela `strategy_regime_stats`; no HADOUKEN,
   `HDK_AnalyticsPolicy`.
 - **Critérios de aceite:** teste 10 da especificação (com o analytics desligado nada muda); bateria, paridade e
