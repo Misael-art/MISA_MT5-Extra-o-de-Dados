@@ -325,7 +325,7 @@ Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por caracte
 ## Checkpoint T18.1 — registry, alvos e DTO — 2026-10-15
 
 - Branch local `tarefa/T18.1-registry-indicadores`, worktree `../MISA_MT5-Extra-o-de-Dados-T18.1`, sobre T18.0
-  `cfe34dc`; implementação concluída e commitada localmente, ainda sem integração. Não foi feito merge amplo de
+  `cfe34dc`; implementação concluída no commit local `80fd887`, ainda sem integração. Não foi feito merge amplo de
   branches F13/F16/F17.
 - Implementados registry nativo determinístico (incluindo MACD sem `pandas-ta`), metadados T13.3, tipagem nas
   gravações, templates de dependência por timeframe, alvos forward, migration aditiva da feature store, DTO v1 e
