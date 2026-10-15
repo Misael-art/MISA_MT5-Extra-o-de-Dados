@@ -172,5 +172,35 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   alterações locais Analytics. Na checagem final estava limpa em `tarefa/T16.3b-enriquecimento-temporal`, HEAD
   `880bf18`; o reflog contém o commit `bde3652 feat(T13.3): add profile and regime features` antes da troca de
   branch. Nenhum comando desta tarefa alterou o worktree original.
-- Próxima tarefa: T17.3 (Laboratório e gráficos), depois T17.4 (demais abas) e T17.5
+- T17.3 concluída no Linux; próxima tarefa: T17.4 (demais abas), depois T17.5
   (validação visual integrada).
+
+## Retomada T17.3 — 2026-10-15
+
+- T17.3 iniciada na worktree `../MISA_MT5-Extra-o-de-Dados-T17.3`, branch `tarefa/T17.3-laboratorio-graficos`,
+  baseada no commit `0d81adb` da T17.2. Instalação Linux com `./install.sh --yes --no-mt5` e dependências de
+  desenvolvimento concluídas; `doctor` do instalador informou 16 OK, 2 avisos esperados, 0 falhas.
+- Baseline antes das mudanças: **826 aprovados, 10 pulados e 1 falha em 660,14 s** no teste
+  `test_settings_restore_the_arrangement_only_with_the_terminal_closed`; a mensagem de conclusão não chegou em
+  0,6 s. Repetição isolada: **1 aprovado em 6,43 s**. Não alteramos a tela de Configurações, fora do escopo da T17.3.
+- As cinco capturas originais do pedido não estavam disponíveis na worktree nem foram reenviadas; a comparação da
+  T17.3 usa fixture sintética e fica registrada para incorporar as referências reais quando disponíveis.
+
+## Conclusão da T17.3 — 2026-10-15
+
+- Na worktree `../MISA_MT5-Extra-o-de-Dados-T17.3`, branch `tarefa/T17.3-laboratorio-graficos`, baseada em `0d81adb`,
+  a visão geral do Laboratório passou a usar uma tabela rolável de 24 horários com valor, unidade, `n` e estado de
+  amostra explícitos. Células sem operações mostram `— · n=0`; o asterisco indica operações positivas abaixo do mínimo.
+- Horários, microestrutura e comparação agora oferecem subtelas para ler um gráfico por vez. Gráficos de barras e
+  heatmaps mostram unidade, contagem e qualidade; heatmaps distinguem ausência de dados, e a correlação mantém a
+  escala fixa −1…1 com legenda.
+- Capturas em 1280×800, com MT5 desconectado, estão em `docs/img/interface-visual/T17.3/`: visão geral antes/depois
+  em claro e escuro e análise temporal antes/depois em claro. Foram inspecionadas também as vistas Curvas, Calendário,
+  Microestrutura indisponível e Correlação com dois robôs.
+- Testes focados: **27 aprovados em 16,89 s**. Suíte completa: **831 aprovados, 10 pulados, 1 falha em 560,91 s**;
+  a falha foi a mesma intermitência fora de escopo observada na baseline, em
+  `test_settings_restore_the_arrangement_only_with_the_terminal_closed`; repetição isolada: **1 aprovado em 5,84 s**.
+  `doctor`: **16 OK, 2 avisos esperados, 0 falhas**; `git diff --check` passou.
+- As cinco capturas originais do pedido não foram reenviadas. Nenhum MT5 real foi conectado. Windows e DPI alto ficam
+  pendentes para a T17.5/checklist; não se declara validação Windows.
+- Próxima tarefa: T17.4, aplicação progressiva às abas restantes.
