@@ -1,5 +1,28 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Nova frente documental F18 — 2026-10-15
+
+Pedido do dono para relações entre indicadores, preço futuro, ganhos/perdas e aderência temporal dos Experts.
+T18.0 registra [especificação](propostas/RELACOES_INDICADORES_SETUP.md), tarefas no plano/roadmap/matriz e prompts
+separados de [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
+T18.1–T18.9 estão **planejadas**, não implementadas. Nenhum código de execução, tabela, preset ou ordem foi alterado.
+
+O registro fica na branch local `tarefa/T18.0-plano-associacoes`, worktree
+`../MISA_MT5-Extra-o-de-Dados-T18.0`, baseada no checkpoint T13.6 `dba30d7`. Não houve merge de F13/F16/F17
+nem publicação. Os agentes precisam integrar a documentação por diff revisado, preservando atualizações mais recentes.
+Pesquisa/serviço local independem de MQL5; aplicação operacional mantém dependências e autorizações de T13.7.
+Cada implementação é uma tarefa por PR; UI só consome contrato e reaproveita F17 após conferir sua integração.
+
+Verificação do registro: instalador sem MT5 e dependências dev executados; 5 testes focados de documentação/integração
+aprovados; 11 novos links locais conferidos; `git diff --check` sem erros. Doctor do ambiente existente:
+16 OK, 2 avisos (pandas-ta opcional ausente e ponte desligada), 0 falhas.
+A primeira linha de base sob Xvfb foi interrompida por falta de espaço no tmpfs `/tmp` (Errno 28).
+A repetição em diretório exclusivo no disco terminou com 828 aprovados e 47 ignorados em 402,66 s; o Xvfb encerrou
+com erro de limpeza (`kill: No such process`, saída 1), portanto **não é validação integral da UI**.
+Janela principal repetida isoladamente: 34 aprovados em 154,36 s. Não se somam essas execuções como suíte única.
+Nenhum teste foi alterado/pulado por esta tarefa; não foram apagados temporários de outros agentes.
+Não houve ShellCheck porque nenhum script shell mudou. Windows e MT5 real não foram validados nesta entrega.
+
 **Leia isto antes de retomar qualquer tarefa.** Em 2026-10-14 os agentes pararam por limite de crédito com várias
 frentes abertas em branches locais. A pedido do dono do projeto, todas foram integradas ao `master` numa única
 harmonização (branch `integracao/harmonizacao-2026-10-14`), testadas juntas e registradas aqui. O estado de cada

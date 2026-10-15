@@ -40,6 +40,21 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F13** MT5x Analytics | Catálogo de evidências sobre ativos: barras derivadas do M1 por sessão, características com data de disponibilidade (volume relativo, regime, sazonalidade), hipóteses validadas fora da amostra e um retrato pequeno que os robôs MQL5 só leem. Especificação em [analytics/ESPECIFICACAO.md](analytics/ESPECIFICACAO.md) | T13.0–T13.8 | F11 (T11.1), F12 (para T13.5 em diante) | T13.0 ✅ (plano); demais a fazer. **Nada implementado** |
 | **F14** Plataforma modular | Backlog integrado do HADOUKEN e do mt5x: framework modular de estratégias, mecanismos de execução, gestão de posições e de carteira, painel, estatísticas, pesquisa e validação, IA. Índice em [propostas/README.md](propostas/README.md) | T14.0 (registro); as tarefas têm identificador próprio (`A-01` a `J-09`) | F12, F13 | T14.0 ✅ (backlog registrado). **Nada implementado**: cada tarefa entra no plano quando for a próxima |
 | **F17** Modernização visual do mt5x | Sistema visual e tipográfico, componentes reutilizáveis, Laboratório e gráficos, aplicação progressiva às abas e validação visual | T17.1–T17.5 | F7, F8, F15, F16 | T17.1–T17.5 ✅ Linux; validação Windows pendente |
+| **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0: registro documental; T18.1–T18.9 planejadas |
+
+## Fase 18 — Relações entre indicadores e aderência dos setups
+
+**Planejada em 2026-10-15; implementação não iniciada.** T18.0 registra a especificação e os prompts;
+T18.1–T18.9 entregam registry/colunas analíticas, associações entre indicadores e com movimentos/resultados,
+convergências, janelas temporais, serviço local, candidatos a presets, UI e API posterior somente leitura.
+Integra F13/F16/F15 e reutiliza a F17, após conferir as branches disponíveis.
+
+Plano completo: [Relações e aderência](propostas/RELACOES_INDICADORES_SETUP.md).
+Ordem: T18.1 → T18.2 → T18.3 → T18.4; T18.5 → T18.6 → T18.7/T18.9;
+T18.8 em paralelo com fixture após T18.1, integrada ao serviço T18.6. Ver dependências detalhadas no plano.
+Dados insuficientes não são incompatibilidade; associação não implica causalidade ou lucro.
+Primeiro consumo na base/CLI e Laboratório; depois propostas de pesquisa para presets/agentes e API opt-in.
+Nenhuma mudança automática de risco, preset ou ordem.
 
 ## Marcos (cada marco = versão publicável)
 
