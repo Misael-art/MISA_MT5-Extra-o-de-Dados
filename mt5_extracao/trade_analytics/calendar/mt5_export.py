@@ -99,6 +99,7 @@ def read_export(path) -> List[dict]:
                      "currency": (cells.get("currency") or "").upper() or None, "symbol": None,
                      "impact": int(cells.get("importance") or 0), "actual": number("actual"),
                      "forecast": number("forecast"), "previous": number("previous"),
+                     "observed_at": availability_timestamp(cells.get("observed_at_utc"), "observed_at"),
                      "source_received_at": availability_timestamp(cells.get("source_received_at"))})
     if offset is not None:
         log.info(f"Calendário do MT5: horário do servidor (UTC{offset / 3600:+.1f}).")

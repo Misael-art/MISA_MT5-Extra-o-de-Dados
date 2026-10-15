@@ -157,7 +157,7 @@ def _key(source: str, row: dict) -> str:
 
 
 def save(db, source: str, rows: Iterable[dict], *, observed_at=None) -> int:
-    """Grava eventos e conserva revisões observadas; reimportação igual é idempotente."""
+    """Grava eventos e conserva revisões; `observed_at` por linha prevalece sobre a hora de importação."""
     rows = list(rows)
     ensure_table(db)
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -165,9 +165,10 @@ def save(db, source: str, rows: Iterable[dict], *, observed_at=None) -> int:
     clean = []
     for row in rows:
         r = {name: row.get(name) for name in COLUMNS}
+        row_observed_stamp = availability_timestamp(row.get("observed_at"), "observed_at") or observed_stamp
         r["event_time"] = pd.Timestamp(r["event_time"]).to_pydatetime()
         r["source"], r["imported_at"] = source, stamp
-        # first_observed_at é local e só pode ser preenchido ao receber uma versão nova.
+        # first_observed_at registra a primeira observação confiável da versão.
         r["first_observed_at"] = None
         r["source_received_at"] = availability_timestamp(row.get("source_received_at"))
         r["event_key"] = _key(source, r)
@@ -176,12 +177,12 @@ def save(db, source: str, rows: Iterable[dict], *, observed_at=None) -> int:
             r[name] = None if value is None or value == "" or pd.isna(value) else float(value)
         r["impact"] = int(r["impact"]) if r.get("impact") is not None else NONE
         r["override"] = 1 if r.get("override") else 0
-        clean.append(r)
+        clean.append((r, row_observed_stamp))
     if not clean:
         return 0
     names = list(COLUMNS)
     with db.engine.begin() as conn:
-        for row in clean:
+        for row, row_observed_stamp in clean:
             current = conn.execute(text(f"SELECT * FROM {TABLE} WHERE event_key=:key"),
                                    {"key": row["event_key"]}).mappings().first()
             current = dict(current) if current is not None else None
@@ -193,9 +194,9 @@ def save(db, source: str, rows: Iterable[dict], *, observed_at=None) -> int:
                     # Uma reimportação sem a coluna opcional não apaga uma disponibilidade já recebida.
                     row["source_received_at"] = current.get("source_received_at")
             else:
-                row["first_observed_at"] = observed_stamp
+                row["first_observed_at"] = row_observed_stamp
 
-            history = conn.execute(text(f"SELECT revision_no, revision_hash FROM {REVISION_TABLE} "
+            history = conn.execute(text(f"SELECT revision_no, revision_hash, observed_at FROM {REVISION_TABLE} "
                                         "WHERE event_key=:key ORDER BY revision_no DESC LIMIT 1"),
                                   {"key": row["event_key"]}).mappings().first()
             if current is not None and history is None:
@@ -206,12 +207,17 @@ def save(db, source: str, rows: Iterable[dict], *, observed_at=None) -> int:
                 old_fingerprint = _revision_hash(old)
                 old_available = availability_timestamp(old.get("first_observed_at"), "first_observed_at")
                 _insert_revision(conn, old, 1, old_available, old_fingerprint)
-                history = {"revision_no": 1, "revision_hash": old_fingerprint}
+                history = {"revision_no": 1, "revision_hash": old_fingerprint, "observed_at": old_available}
 
             fingerprint = _revision_hash(row)
+            latest_observed = history["observed_at"] if history is not None else None
+            if latest_observed and row_observed_stamp and fingerprint != history["revision_hash"] and \
+                    pd.Timestamp(row_observed_stamp) < pd.Timestamp(latest_observed):
+                raise ValueError("observed_at da revisão é anterior à última versão registrada; "
+                                 "importe os arquivos do calendário em ordem cronológica.")
             if history is None or history["revision_hash"] != fingerprint:
                 revision_no = int(history["revision_no"]) + 1 if history is not None else 1
-                _insert_revision(conn, row, revision_no, observed_stamp, fingerprint)
+                _insert_revision(conn, row, revision_no, row_observed_stamp, fingerprint)
 
             conn.execute(text(f"DELETE FROM {TABLE} WHERE event_key=:key"), {"key": row["event_key"]})
             conn.execute(text(f"INSERT INTO {TABLE} ({', '.join(names)}) "

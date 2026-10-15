@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| MT5X_CalendarExport.mq5                                          |
-//| Laboratório do mt5x (Fase 16, T16.3a): exporta o calendário      |
+//| Laboratório do mt5x (Fase 16, T16.3a/T16.3c): exporta o calendário|
 //| econômico do próprio MetaTrader 5 para Common\Files.             |
 //|                                                                  |
 //| Só lê: não abre gráfico, não envia ordem, não usa DLL.           |
@@ -80,6 +80,14 @@ string Num(const bool has, const double value)
    return has ? DoubleToString(value, 6) : "";
   }
 
+string IsoUtc(const datetime value)
+  {
+   string result = TimeToString(value, TIME_DATE | TIME_SECONDS);
+   StringReplace(result, ".", "-");
+   StringReplace(result, " ", "T");
+   return result + "Z";
+  }
+
 string Clean(string text)
   {
    StringReplace(text, ";", ",");
@@ -90,6 +98,12 @@ string Clean(string text)
 
 void OnStart()
   {
+   if(MQLInfoInteger(MQL_TESTER))
+     {
+      Print("MT5X_CalendarExport: não exportado: o Strategy Tester usa horário simulado. "
+            "Execute o script no terminal conectado.");
+      return;
+     }
    ReadRequest();
    string server = AccountInfoString(ACCOUNT_SERVER);
    StringReplace(server, " ", "_");
@@ -108,7 +122,7 @@ void OnStart()
      }
    // diferença servidor x UTC no momento da exportação, para converter os horários depois
    FileWriteString(h, "# server_utc_offset_sec=" + IntegerToString((long)(TimeTradeServer() - TimeGMT())) + "\r\n");
-   FileWriteString(h, "time;event_id;name;country;currency;importance;actual;forecast;previous\r\n");
+   FileWriteString(h, "time;event_id;name;country;currency;importance;actual;forecast;previous;observed_at_utc\r\n");
 
    int written = 0;
    // em blocos de 30 dias: históricos longos não cabem numa chamada só em todas as versões do terminal
@@ -124,6 +138,8 @@ void OnStart()
                "). O terminal precisa estar conectado à corretora.");
          continue;
         }
+      // Marca quando este terminal recebeu os valores da API; não é um recibo declarado pela fonte.
+      datetime observed_at_utc = TimeGMT();
       for(int i = 0; i < n; i++)
         {
          MqlCalendarEvent event;
@@ -140,7 +156,8 @@ void OnStart()
                        IntegerToString((int)event.importance) + ";" +
                        Num(values[i].HasActualValue(), values[i].GetActualValue()) + ";" +
                        Num(values[i].HasForecastValue(), values[i].GetForecastValue()) + ";" +
-                       Num(values[i].HasPreviousValue(), values[i].GetPreviousValue()) + "\r\n";
+                       Num(values[i].HasPreviousValue(), values[i].GetPreviousValue()) + ";" +
+                       IsoUtc(observed_at_utc) + "\r\n";
          FileWriteString(h, line);
          written++;
         }

@@ -152,9 +152,13 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Evidência de replay com dados de mercado permanece pendente até existir histórico real de recibos/revisões da fonte.
   Auditoria local somente leitura em 2026-10-15 confirmou que `[SCREENER] events_file` está vazio e que `Common\Files`
   não contém exportação `MT5X_calendar_*.csv`; não há fonte local para o replay. O importador CSV aceita `source_received_at`
-  explícito com fuso e o normaliza para UTC (teste de fuso presente); o exportador MQL5 não emite esse campo. Para o
-  replay real é necessário fornecer CSV com recibos explícitos. Windows e PostgreSQL não foram exercitados.
-  Revalidação focada dos testes de recibo CSV e exportador MT5: **2 aprovados em 2,14 s**.
-  O `/run/user/1000` cheio foi deixado intacto; a execução dos testes usa
-  diretórios privados em `/tmp`. A tarefa consta como parcial até esse replay ser possível. Worktrees da T17 permanecem
-  intocados; não houve push ou PR.
+  explícito com fuso e o normaliza para UTC. Nesta continuação, o exportador MQL5 passou a gravar `observed_at_utc` após
+  cada consulta bem-sucedida; o importador guarda esse horário como observação da versão, sem preencher
+  `source_received_at`. A API não declara a hora de recebimento da fonte. O exportador recusa o Strategy Tester para não
+  usar seu relógio simulado como UTC; a hora depende do relógio local do terminal. Como o arquivo corrente é substituído,
+  cada exportação precisa ser importada antes da seguinte para preservar revisões intermediárias. O replay real ainda
+  exige uma exportação feita no MT5 conectado ou CSV com recibos explícitos. Testes focados calendário/enriquecimento/cache:
+  **29 aprovados**; suíte completa: **813 aprovados, 9
+  ignorados em 644,74 s**; `doctor`: **16 OK, 2 avisos, 0 falhas**. A compilação/exportação em terminal MT5, Windows e
+  PostgreSQL não foram exercitados. `event_time` continua em horário do servidor; o offset exportado é apenas o atual e
+  não resolve conversão histórica sob DST. Worktrees da T17 permanecem intocados; não houve push ou PR.

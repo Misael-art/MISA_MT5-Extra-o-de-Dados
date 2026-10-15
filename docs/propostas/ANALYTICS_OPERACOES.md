@@ -118,7 +118,7 @@ calendário do próprio MT5.
 | Fonte | Como entra | O que traz |
 |---|---|---|
 | CSV manual (`[SCREENER] events_file`, como hoje) | leitor atual, com colunas opcionais novas | `time,symbol,impact` e, se houver, `name,country,currency` |
-| **Calendário do MT5** (`CalendarValueHistory`, `CalendarEventById`, `CalendarCountryById` no MQL5) | script MQL5 `MT5X_CalendarExport.mq5`, instalado e rodado pelo mt5x como os demais scripts (`robots/mt5_tools.py`), que grava `Common\Files\MT5X_calendar_<servidor>.csv`; o mt5x importa | nome do evento, país, moeda, importância (nenhuma, baixa, média, alta), valores real, previsto e anterior, horário do servidor |
+| **Calendário do MT5** (`CalendarValueHistory`, `CalendarEventById`, `CalendarCountryById` no MQL5) | script MQL5 `MT5X_CalendarExport.mq5`, instalado e rodado pelo mt5x como os demais scripts (`robots/mt5_tools.py`), que grava `Common\Files\MT5X_calendar_<servidor>.csv`; o mt5x importa | nome do evento, país, moeda, importância (nenhuma, baixa, média, alta), valores real, previsto e anterior, horário do servidor e `observed_at_utc` do terminal após cada consulta |
 | Fontes futuras | um importador por fonte, no mesmo registro | — |
 
 Tudo vai para a tabela aditiva **`_economic_events`** (`event_time`, `event_id`, `name`, `country`, `currency`,
@@ -126,6 +126,17 @@ Tudo vai para a tabela aditiva **`_economic_events`** (`event_time`, `event_id`,
 As revisões observadas ficam na tabela interna aditiva **`_economic_event_revisions`**. `imported_at` segue para
 auditoria; não prova disponibilidade histórica. `first_observed_at` registra quando esta instalação recebeu a versão;
 `source_received_at` só é preenchido quando a fonte declara uma hora de recebimento com fuso, normalizada para UTC.
+O exportador MQL5 acrescenta `observed_at_utc` após cada consulta bem-sucedida a `CalendarValueHistory`; o importador
+usa esse instante como `first_observed_at`/`observed_at` da versão, mas mantém `source_received_at` vazio porque a API
+não declara quando a fonte recebeu ou publicou o valor. O horário do evento retornado pelo calendário é horário do
+servidor, conforme a [documentação de `CalendarValueHistory`](https://www.mql5.com/en/docs/calendar/calendarvaluehistory).
+O campo `time` permanece no horário ingênuo do servidor. `server_utc_offset_sec` descreve o offset no instante da
+exportação e não converte o histórico; não aplique esse offset a eventos antigos como se o servidor não tivesse
+mudado de fuso ou horário de verão.
+O instante de observação usa o relógio GMT do terminal e depende do relógio do computador estar correto; o script
+recusa execução no Strategy Tester, onde o horário é simulado ([`TimeGMT`](https://www.mql5.com/en/docs/dateandtime/timegmt)).
+O arquivo de exportação corrente é substituído atomicamente; importe cada arquivo antes da exportação seguinte para
+preservar revisões intermediárias no banco.
 Enriquecimento ao unir as fontes:
 
 - o mesmo evento de duas fontes (mesma moeda, horário a até 1 minuto e nome parecido) vira **uma linha**, com as

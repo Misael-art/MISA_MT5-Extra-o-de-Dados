@@ -50,6 +50,29 @@ def test_mt5_export_reads_explicit_source_received_timestamp(tmp_path):
     assert row["source_received_at"] == "2026-01-09T08:31:00+00:00"
 
 
+def test_mt5_export_observation_time_drives_asof_and_rejects_stale_revisions(db, tmp_path):
+    content = ("time;event_id;name;country;currency;importance;actual;forecast;previous;observed_at_utc\n"
+               "2020.01.09 10:30;release-1;Employment report;US;USD;3;256;160;212;"
+               "2026-01-09T10:31:00Z\n")
+    path = _write(tmp_path, "MT5X_calendar_Observed.csv", content)
+    row = mt5_export.read_export(path)[0]
+    assert row["observed_at"] == "2026-01-09T10:31:00+00:00"
+    assert row["source_received_at"] is None
+    assert cal.save(db, "mt5", [row], observed_at=pd.Timestamp("2027-01-01T00:00:00Z")) == 1
+    assert cal.load_asof(db, pd.Timestamp("2026-01-09T10:30:59Z"), source="mt5").empty
+    assert cal.load_asof(db, pd.Timestamp("2026-01-09T10:31:00Z"), source="mt5")["actual"].tolist() == [256.0]
+
+    correction = {**row, "actual": 300.0, "observed_at": "2026-01-10T10:00:00Z"}
+    cal.save(db, "mt5", [correction], observed_at=pd.Timestamp("2027-01-01T00:00:00Z"))
+    assert cal.load_asof(db, pd.Timestamp("2026-01-10T09:59:59Z"), source="mt5")["actual"].tolist() == [256.0]
+    assert cal.load_asof(db, pd.Timestamp("2026-01-10T10:00:00Z"), source="mt5")["actual"].tolist() == [300.0]
+
+    stale = {**row, "actual": 250.0, "observed_at": "2026-01-09T10:32:00Z"}
+    with pytest.raises(ValueError, match="anterior à última versão"):
+        cal.save(db, "mt5", [stale], observed_at=pd.Timestamp("2027-01-01T00:00:00Z"))
+    assert cal.load_asof(db, pd.Timestamp("2026-01-10T10:00:00Z"), source="mt5")["actual"].tolist() == [300.0]
+
+
 def test_old_csv_keeps_working(tmp_path):
     rows = cal.read_csv_file(_write(tmp_path, "e.csv", CSV_OLD))
     assert [r["impact"] for r in rows] == [cal.HIGH, cal.LOW]
@@ -225,6 +248,9 @@ def test_script_has_no_trading_calls():
     for forbidden in ("OrderSend", "CTrade", "PositionOpen", "#import"):
         assert forbidden not in source
     assert "CalendarValueHistory" in source and "FILE_COMMON" in source
+    assert "observed_at_utc" in source and "source_received_at" not in source
+    assert "MQLInfoInteger(MQL_TESTER)" in source
+    assert source.index("CalendarValueHistory(values, start, stop)") < source.index("datetime observed_at_utc = TimeGMT();")
 
 
 def test_cli_calendar_import_and_status(db, tmp_path, capsys):
