@@ -721,6 +721,7 @@ def _build_h16(sessions, symbol, definition, point, signal_events):
             row[f"gross_return_delay_{delay}"] = trade["gross_return"]
             row[f"outcome_return_delay_{delay}"] = trade["outcome_return"]
             row[f"cost_bps_delay_{delay}"] = trade["cost_bps"]
+            row[f"cost_observed_delay_{delay}"] = trade["cost_observed"]
         rows.append(row)
     return rows
 

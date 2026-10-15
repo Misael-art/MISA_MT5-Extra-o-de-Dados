@@ -223,3 +223,16 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - A próxima tarefa técnica independente é T13.3b numa branch própria, derivada da T13.3; primeiro executar a linha de
   base do branch com `/tmp` e Xvfb, depois desenhar retomada/idempotência contra a recomputação integral. A T13.7a
   continua aguardando resposta do dono; T13.5 segue dependente de T12.1 e decisões de validade/Strategy Tester.
+
+## Checkpoint T13.4 — completude do modelo de custos — 2026-10-15
+
+- Na branch existente `tarefa/T13.4-hipoteses-walk-forward`, a auditoria encontrou preenchimento implícito de custos
+  ausentes com zero na sensibilidade e ausência de bloqueio por componentes de custo desconhecidos. A sensibilidade
+  agora exige custo disponível para cada entrada e não publica expectativa líquida incompleta; o gate OOS para
+  `VALIDATING` verifica todos os componentes declarados, `cost_bps` e spread observado quando exigido pelo modelo.
+- H01–H16 ainda declaram comissão e slippage ausentes; nenhuma hipótese pode ficar elegível até que esses componentes
+  sejam medidos. Nenhuma base real foi escrita e nenhuma reserva OOS foi consumida.
+- Verificação Linux: testes T13.4 focados **27 aprovados**; suíte completa **860 aprovados, 10 ignorados em 533,64 s**;
+  `doctor` **16 OK, 2 avisos, 0 falhas** (módulo opcional `pandas-ta` ausente; ponte Wine desativada). Nenhum script
+  `.sh` foi alterado. A T13.4 permanece parcial: H06–H16 não têm avaliação OOS real, H14–H16 ainda dependem de eventos
+  reais válidos e não há comparabilidade declarada entre mercados.

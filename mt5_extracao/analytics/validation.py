@@ -184,7 +184,8 @@ def _empty_metric():
             "n_executed": 0, "worst_outcome": None, "max_drawdown": None,
             "max_drawdown_basis": "cumulative one-unit net returns; no portfolio sizing",
             "stability_by_year": {},
-            "top_five_percent_profit_share": None, "cost_observed_fraction": None}
+            "top_five_percent_profit_share": None, "cost_observed_fraction": 0.0,
+            "cost_bps_available_fraction": 0.0}
 
 
 def _block_difference(frame, condition, success, n_boot=1000, seed=7):
@@ -277,6 +278,9 @@ def _metric(frame, condition, success, n_boot=1000, seed=7):
     observed_cost = traded_signal.get("cost_observed", pd.Series(False, index=traded_signal.index))
     cost_fraction = float(pd.Series(observed_cost, index=traded_signal.index).fillna(False).mean()) \
         if not traded_signal.empty else 0.0
+    cost_bps = pd.to_numeric(traded_signal.get("cost_bps", pd.Series(np.nan, index=traded_signal.index)),
+                             errors="coerce")
+    cost_bps_fraction = float(cost_bps.notna().mean()) if not traded_signal.empty else 0.0
     return {"n_total": int(len(total)), "n_condition": int(len(signal)),
             "n_success": int(success.loc[signal.index].sum()) if not signal.empty else 0,
             "p_conditional": p_cond, "p_base": p_base, "lift": float(lift) if lift is not None else None,
@@ -288,7 +292,7 @@ def _metric(frame, condition, success, n_boot=1000, seed=7):
             "worst_outcome": float(outcomes.min()) if len(outcomes) else None, "max_drawdown": drawdown,
             "max_drawdown_basis": "cumulative one-unit net returns; no portfolio sizing",
             "stability_by_year": by_year, "top_five_percent_profit_share": concentration,
-            "cost_observed_fraction": cost_fraction}
+            "cost_observed_fraction": cost_fraction, "cost_bps_available_fraction": cost_bps_fraction}
 
 
 def _sensitivity(frame, condition, definition):
@@ -299,21 +303,72 @@ def _sensitivity(frame, condition, definition):
     if selected.empty:
         return scenarios
     gross = pd.to_numeric(selected.get("gross_return", pd.Series(np.nan, index=selected.index)), errors="coerce")
-    costs = pd.to_numeric(selected.get("cost_bps", pd.Series(0.0, index=selected.index)), errors="coerce")
+    costs = pd.to_numeric(selected.get("cost_bps", pd.Series(np.nan, index=selected.index)), errors="coerce")
+    observed = selected.get("cost_observed", pd.Series(False, index=selected.index)).fillna(False).astype(bool)
+    missing_components = list(definition["costs"].get("missing_components", []))
+    requires_observed_spread = definition["costs"].get("spread") == "observed_m1"
     if gross.notna().any():
+        valid_gross = gross.notna()
+        available_cost = costs.notna()
+        if requires_observed_spread:
+            available_cost &= observed
+        cost_rows = valid_gross & available_cost
+        cost_coverage = float(cost_rows.sum() / valid_gross.sum())
+        model_complete = not missing_components and cost_coverage == 1.0
         for multiplier in (0.0, 1.0, 2.0):
-            values = gross - costs.fillna(0) * multiplier / 10000.0
-            scenarios.append({"type": "cost_multiplier", "value": multiplier, "n": int(values.notna().sum()),
-                              "expectancy_net": float(values.mean()) if values.notna().any() else None})
+            if multiplier == 0.0:
+                values = gross.loc[valid_gross]
+                expectancy = float(values.mean())
+                complete = True
+                reason = None
+            else:
+                values = gross.loc[cost_rows] - costs.loc[cost_rows] * multiplier / 10000.0
+                complete = model_complete
+                expectancy = float(values.mean()) if complete and len(values) else None
+                reasons = []
+                if missing_components:
+                    reasons.append("componentes de custo ausentes: " + ", ".join(map(str, missing_components)))
+                if cost_coverage < 1.0:
+                    reasons.append(f"custos observáveis cobrem {int(cost_rows.sum())}/{int(valid_gross.sum())} operações")
+                reason = "; ".join(reasons) or (None if complete else "amostra sem retornos com custos observáveis")
+            scenarios.append({"type": "cost_multiplier", "value": multiplier, "n": int(len(values)),
+                              "n_total": int(valid_gross.sum()), "cost_observed_fraction": cost_coverage,
+                              "cost_model_complete": model_complete, "complete": complete,
+                              "incomplete_reason": reason,
+                              "expectancy_gross": float(gross.loc[valid_gross].mean()),
+                              "expectancy_net": expectancy})
     for delay in (0, 1, 3):
         gross_name, cost_name = f"gross_return_delay_{delay}", f"cost_bps_delay_{delay}"
         if gross_name not in selected:
             continue
-        delayed_cost = selected.get(cost_name, pd.Series(0.0, index=selected.index))
-        delayed = pd.to_numeric(selected[gross_name], errors="coerce") - \
-            pd.to_numeric(delayed_cost, errors="coerce").fillna(0) / 10000.0
-        scenarios.append({"type": "entry_delay_bars", "value": delay, "n": int(delayed.notna().sum()),
-                          "expectancy_net": float(delayed.mean()) if delayed.notna().any() else None})
+        delayed_gross = pd.to_numeric(selected[gross_name], errors="coerce")
+        delayed_cost = pd.to_numeric(selected.get(cost_name, pd.Series(np.nan, index=selected.index)),
+                                      errors="coerce")
+        observed_name = f"cost_observed_delay_{delay}"
+        delayed_observed = selected.get(observed_name,
+                                        observed if delay == 0 else pd.Series(False, index=selected.index))
+        delayed_observed = pd.Series(delayed_observed, index=selected.index).fillna(False).astype(bool)
+        valid_delayed = delayed_gross.notna()
+        delayed_cost_rows = valid_delayed & delayed_cost.notna()
+        if requires_observed_spread:
+            delayed_cost_rows &= delayed_observed
+        delayed_coverage = float(delayed_cost_rows.sum() / valid_delayed.sum()) if valid_delayed.any() else 0.0
+        delayed_complete = not missing_components and delayed_coverage == 1.0 and valid_delayed.any()
+        delayed = delayed_gross.loc[delayed_cost_rows] - delayed_cost.loc[delayed_cost_rows] / 10000.0
+        reasons = []
+        if missing_components:
+            reasons.append("componentes de custo ausentes: " + ", ".join(map(str, missing_components)))
+        if delayed_coverage < 1.0:
+            reasons.append(f"custos observáveis cobrem {int(delayed_cost_rows.sum())}/"
+                           f"{int(valid_delayed.sum())} operações")
+        reason = "; ".join(reasons) or (None if delayed_complete else "amostra sem retornos com custos observáveis")
+        scenarios.append({"type": "entry_delay_bars", "value": delay, "n": int(len(delayed)),
+                          "n_total": int(valid_delayed.sum()), "cost_observed_fraction": delayed_coverage,
+                          "cost_model_complete": not missing_components and delayed_coverage == 1.0,
+                          "complete": delayed_complete, "incomplete_reason": reason,
+                          "expectancy_gross": float(delayed_gross.loc[valid_delayed].mean())
+                          if valid_delayed.any() else None,
+                          "expectancy_net": float(delayed.mean()) if delayed_complete else None})
     return scenarios
 
 
@@ -340,7 +395,11 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
                                         "candidate_count": len(candidates), "selected": None},
                 "parameter_sensitivity": [], "sensitivity": [],
                 "multiple_testing": {"method": "Bonferroni family-wise", "tests_counted": family_tests,
-                "p_adjusted": 1.0}, "eligible_for_approval": False}
+                "p_adjusted": 1.0},
+                "cost_model": {"complete_for_test": False,
+                               "missing_components": list(definition["costs"].get("missing_components", [])),
+                               "approval_blockers": ["sem amostra OOS para confirmar os custos"]},
+                "eligible_for_approval": False}
     frame = samples.sort_values("observation_time", kind="stable").reset_index(drop=True).copy()
     if "horizon_end" not in frame:
         frame["horizon_end"] = pd.to_datetime(frame["observation_time"]) + pd.to_timedelta(
@@ -416,6 +475,17 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
     observed_costs = signal_rows.get("cost_observed", pd.Series(False, index=signal_rows.index)).fillna(False)
     p_value = test_metric.get("p_value") if isinstance(test_metric, dict) and not test_metric.get("reused") else None
     p_adjusted = min(1.0, float(p_value) * family_tests) if p_value is not None else 1.0
+    missing_cost_components = list(definition["costs"].get("missing_components", []))
+    approval_cost_blockers = ["componente de custo ausente: " + str(component)
+                              for component in missing_cost_components]
+    test_cost_coverage = test_metric.get("cost_observed_fraction") if isinstance(test_metric, dict) else None
+    test_cost_bps_coverage = test_metric.get("cost_bps_available_fraction") if isinstance(test_metric, dict) else None
+    if test_cost_bps_coverage is None or test_cost_bps_coverage < 1.0:
+        approval_cost_blockers.append("bps de custo ausente em operações OOS")
+    if definition["costs"].get("spread") == "observed_m1" and (test_cost_coverage is None or
+                                                               test_cost_coverage < 1.0):
+        approval_cost_blockers.append("spread M1 não observado em todas as operações OOS")
+    cost_model_complete = not approval_cost_blockers
     weak = bool(plan.weak or train_metric["n_condition"] < minimum or validation_metric["n_condition"] < minimum or
                 (include_test and test_metric.get("n_condition", 0) < minimum))
     fold_positive = bool(fold_results) and all(
@@ -426,7 +496,7 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
     eligible = bool(definition["status"] != "DRAFT" and not weak and
                     p_adjusted < float(definition["validation"].get("alpha", 0.05)) and
                     fold_positive and holdout_positive and test_metric.get("expectancy_ci", [None])[0] is not None and
-                    test_metric["expectancy_ci"][0] > 0)
+                    test_metric["expectancy_ci"][0] > 0 and cost_model_complete)
     result_status = "DRAFT" if definition["status"] == "DRAFT" else "VALIDATING" if eligible else "EXPLORATORY"
     return {"pattern_id": definition["pattern_id"], "version": definition["version"],
             "title": definition["title"], "status": result_status,
@@ -444,9 +514,13 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
             "test": test_metric, "sensitivity": sensitivity,
             "multiple_testing": {"method": "Bonferroni family-wise", "tests_counted": family_tests,
                                  "p_adjusted": p_adjusted},
-            "cost_model": {"observed_spread_fraction": float(observed_costs.mean()) if len(signal_rows) else None,
+            "cost_model": {"complete_for_test": cost_model_complete,
+                           "observed_spread_fraction": float(observed_costs.mean()) if len(signal_rows) else None,
+                           "test_observed_spread_fraction": test_cost_coverage,
+                           "test_cost_bps_available_fraction": test_cost_bps_coverage,
                            "expectancy_basis": "per executed trade; per-observation value is reported separately",
-                           "missing_components": definition["costs"].get("missing_components", [])},
+                           "missing_components": missing_cost_components,
+                           "approval_blockers": approval_cost_blockers},
             "eligible_for_approval": eligible, "approved": False}
 
 
