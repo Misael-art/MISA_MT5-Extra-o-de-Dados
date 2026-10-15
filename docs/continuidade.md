@@ -128,11 +128,14 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   opcional ausente e ponte Wine desativada por configuração.
 - MAE/MFE usa barras OHLC sobrepostas ao período da operação; sem leitura de ticks, os extremos de barras parciais
   podem não coincidir com a ordem intrabar real. Isso fica exposto em `mae_mfe_resolution`.
-- Reauditoria de aceite: o novo teste de fronteira injeta um pico na barra M5 parcial da saída e outro na barra
-  seguinte. O primeiro entra como aproximação OHLC; o segundo não contamina MAE/MFE. Baseline focado anterior à
-  inclusão: `tests/test_trade_enrich.py` **8 aprovados**; validação final de enriquecimento/calendário/cache:
-  **23 aprovados**; `doctor --no-probe`: **16 OK, 2 avisos, 0 falhas**. O código de execução não mudou nesta
-  reauditoria.
-- T13.2/T13.3 seguem fora do `master` em branches locais; T13.3 foi concluída em
-  `tarefa/T13.3-perfis-regimes` (`bde3652`) e sua continuidade está registrada na branch própria. O worktree separado
-  `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` não foi alterado. Nenhum push ou PR foi feito.
+- Reauditoria de aceite: o teste de fronteira injeta um pico na barra M5 parcial da saída e outro na barra
+  seguinte. O primeiro entra como aproximação OHLC; o segundo não contamina MAE/MFE. Nesta retomada, os testes
+  focados de enriquecimento/calendário/cache passaram (**23 aprovados**) e `doctor` passou com **16 OK, 2 avisos,
+  0 falhas**. O diagnóstico avisou que `pandas-ta` não está instalado e que a ponte Wine está desativada.
+- A suíte completa (**806 aprovados, 9 ignorados**) é o resultado após a implementação original. A revisão posterior
+  acrescentou apenas o teste de fronteira e atualizou o registro; o código de execução permaneceu inalterado.
+- T13.2/T13.3 seguem fora do `master` em branches locais; a auditoria T13.3 foi registrada no commit local
+  `3f9e333` da branch `tarefa/T13.3-perfis-regimes`. A T17.1 foi integrada pela PR de UI #72 e seu worktree
+  obsoleto foi removido na limpeza autorizada. O worktree sujo de T17.6 permanece preservado e intocado. Nenhuma
+  branch de Analytics foi publicada ou integrada.
+- Próxima tarefa do ciclo Analytics, conforme a instrução de retomada: T13.4, em seu próprio worktree.
