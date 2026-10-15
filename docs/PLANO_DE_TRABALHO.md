@@ -3397,7 +3397,7 @@ real por corretora.
   bloquearia — com instante, estratégia, direção, contexto disponível (via `asof_join`), versão da regra, decisão
   e motivo; o filtro decide em sombra e **não altera nenhuma ordem**.
 - **Depende de:** T13.5 (retrato e leitor). Não depende de Safety porque não age.
-- **Arquivos previstos:** `analytics/signals.py`, tabela interna `_signal_log`, comparação original × filtrado
+- **Arquivos previstos:** [especificação técnica](analytics/T13.7A_MODO_SOMBRA.md); `analytics/signals.py`, tabela interna `_signal_log`, comparação original × filtrado
   marcada "contrafactual simulado"; no HADOUKEN, gravação do sinal pelo leitor da T13.5.
 - **Critérios de aceite:** com o analytics desligado o robô decide igual (teste 10); bloqueio registrado sem
   mudar a ordem; quando bloquear muda estado, capital ou sinais seguintes, a comparação exige re-execução completa

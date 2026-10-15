@@ -293,3 +293,12 @@ As telas mt5x/MQL5 e a ligação da aplicação continuam pendentes de T13.5 e T
 ainda dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
 Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
 `UNAVAILABLE`, fixture point-in-time no Tester) foi enviada ao dono; a resposta continua pendente.
+
+## Proposta técnica T13.7a — 2026-10-15
+
+- Branch local `tarefa/T13.7a-especificacao-sombra`, criada sobre `tarefa/T13.6-contrato-ui` em `dba30d7`. O documento
+  `docs/analytics/T13.7A_MODO_SOMBRA.md` especifica eventos as-of, decisões sombra `WOULD_ALLOW`, `WOULD_BLOCK` e `NOT_EVALUATED`, estado de cobertura, idempotência, falhas de gravação e testes de paridade do TESTE 10.
+- A proposta preserva o caminho operacional atual: o resultado sombra não altera pedidos de ordem; coleta incompleta
+  torna a evidência insuficiente. Transporte de eventos segue em aberto até a decisão da T13.5 sobre Tester e leitura.
+- T13.6 presentation DTO foi revalidado nesta retomada: `tests/test_analytics_presentation.py`, 5 aprovados em 1,37 s.
+  Nenhum código ou worktree T17 foi alterado. A inclusão de T13.7a segue aguardando decisão do dono.
