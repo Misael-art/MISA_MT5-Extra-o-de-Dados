@@ -4,7 +4,6 @@ import configparser
 import numpy as np
 import pandas as pd
 import pytest
-from sqlalchemy import text
 
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.trade_analytics import calendar as cal
@@ -124,21 +123,37 @@ def test_events_window_and_partial_trades(db, tmp_path):
 def test_surprise_is_withheld_until_event_and_values_are_available(db, tmp_path):
     db.save_ohlcv_data("WIN$N", "5 minutos", _bars())
     path = tmp_path / "release.csv"
-    path.write_text("time,symbol,impact,name,actual,forecast\n"
-                    "2026-01-05 10:05,WIN$N,alto,Release,12,10\n", encoding="utf-8")
+    path.write_text("time,symbol,impact,name,actual,forecast,source_received_at\n"
+                    "2026-01-05 10:05,WIN$N,alto,Release,12,10,2026-01-05T10:06:00-03:00\n", encoding="utf-8")
     cal.import_source(db, None, "csv", path)
-    with db.engine.begin() as conn:
-        conn.execute(text("UPDATE _economic_events SET imported_at = :available WHERE name = :name"),
-                     {"available": "2026-01-05 10:06:00", "name": "Release"})
     ledger.save_trades(db, "news", [_trade("2026-01-05 10:00"), _trade("2026-01-05 10:05:30"),
                                      _trade("2026-01-05 10:10")],
                        robot_key="a", symbol="WIN$N", timeframe="M5")
 
-    features = enrich.enrich(db, _cfg(event_window_before_min=30, event_window_after_min=30), ledger.load(db))
+    cfg = _cfg(event_window_before_min=30, event_window_after_min=30)
+    cfg["APP"] = {"time_basis": "broker", "broker_utc_offset": "-3"}
+    features = enrich.enrich(db, cfg, ledger.load(db))
 
     assert pd.isna(features["event_surprise"].iloc[0])      # evento futuro para a primeira decisão
     assert pd.isna(features["event_surprise"].iloc[1])      # release ocorreu, mas os valores ainda não foram importados
     assert features["event_surprise"].iloc[2] == pytest.approx(2.0)
+
+
+def test_historical_surprise_without_availability_is_not_backfilled_from_import(db, tmp_path):
+    db.save_ohlcv_data("WIN$N", "5 minutos", _bars())
+    path = tmp_path / "historical-release.csv"
+    path.write_text("time,symbol,impact,name,actual,forecast\n"
+                    "2026-01-05 10:05,WIN$N,alto,Historical release,12,10\n", encoding="utf-8")
+    cal.import_source(db, None, "csv", path)
+    ledger.save_trades(db, "historical-news", [_trade("2026-01-05 10:10")],
+                       robot_key="a", symbol="WIN$N", timeframe="M5")
+
+    cfg = _cfg(event_window_before_min=30, event_window_after_min=30)
+    cfg["APP"] = {"time_basis": "broker", "broker_utc_offset": "-3"}
+    features = enrich.enrich(db, cfg, ledger.load(db))
+
+    assert features["event_impact"].iloc[0] == cal.HIGH
+    assert pd.isna(features["event_surprise"].iloc[0])
 
 
 def test_without_bars_or_calendar_nothing_breaks(db):

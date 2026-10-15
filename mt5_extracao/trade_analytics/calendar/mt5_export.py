@@ -18,6 +18,8 @@ from typing import List, Optional
 
 import pandas as pd
 
+from . import availability_timestamp
+
 log = logging.getLogger(__name__)
 
 SCRIPT = Path(__file__).resolve().parents[1] / "mql5" / "MT5X_CalendarExport.mq5"
@@ -96,7 +98,8 @@ def read_export(path) -> List[dict]:
                      "name": cells.get("name") or None, "country": cells.get("country") or None,
                      "currency": (cells.get("currency") or "").upper() or None, "symbol": None,
                      "impact": int(cells.get("importance") or 0), "actual": number("actual"),
-                     "forecast": number("forecast"), "previous": number("previous")})
+                     "forecast": number("forecast"), "previous": number("previous"),
+                     "source_received_at": availability_timestamp(cells.get("source_received_at"))})
     if offset is not None:
         log.info(f"Calendário do MT5: horário do servidor (UTC{offset / 3600:+.1f}).")
     return rows

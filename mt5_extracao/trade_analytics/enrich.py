@@ -23,7 +23,7 @@ from mt5_extracao.strategies import indicators
 log = logging.getLogger(__name__)
 
 SECTION = "TRADE_ANALYTICS"
-FEATURE_VERSION = 2            # T16.3b: barras fechadas, surpresa disponível e proveniência explícita
+FEATURE_VERSION = 3            # T16.3c: timestamps de disponibilidade observados e revisões as-of
 VOL_LOOKBACK = 250             # barras para o percentil de volatilidade
 VOLUME_LOOKBACK = 20           # barras para o percentil de volume
 VOL_LABELS = ("baixa", "média", "alta")
@@ -91,6 +91,25 @@ def _percentile(window: np.ndarray, value: float) -> Optional[float]:
     return float((window <= value).mean())
 
 
+def _decision_time_utc(value, config):
+    """Converte o horário ingênuo do livro usando o fuso configurado; sem base válida, falha fechado."""
+    stamp = pd.Timestamp(value)
+    if pd.isna(stamp):
+        return None
+    if stamp.tzinfo is not None:
+        return stamp.tz_convert("UTC")
+    try:
+        basis = config.get("APP", "time_basis", fallback="broker").strip().lower() if config is not None else "broker"
+        if basis == "utc":
+            return stamp.tz_localize("UTC")
+        if basis != "broker":
+            return None
+        offset = float(config.get("APP", "broker_utc_offset", fallback="-3") if config is not None else -3)
+    except (AttributeError, TypeError, ValueError):
+        return None
+    return (stamp - pd.Timedelta(hours=offset)).tz_localize("UTC")
+
+
 def _events_index(db, config, symbols):
     """Eventos unidos por ativo (vazio se não houver calendário)."""
     from mt5_extracao.trade_analytics import calendar as cal
@@ -145,8 +164,11 @@ def enrich(db, config, trades: pd.DataFrame) -> pd.DataFrame:
                 out.at[i, "minutes_to_event"] = float((top["event_time"] - when).total_seconds() / 60)
                 out.at[i, "event_name"] = top["name"]
                 available_at = top.get("surprise_available_at")
-                if pd.notna(top["surprise"]) and pd.notna(available_at) and pd.Timestamp(available_at) <= when:
-                    out.at[i, "event_surprise"] = top["surprise"]
+                decision_utc = _decision_time_utc(when, config)
+                if pd.notna(top["surprise"]) and pd.notna(available_at) and decision_utc is not None:
+                    available_utc = pd.Timestamp(available_at)
+                    if available_utc.tzinfo is not None and available_utc.tz_convert("UTC") <= decision_utc:
+                        out.at[i, "event_surprise"] = top["surprise"]
             else:
                 out.at[i, "event_impact"] = 0
         if pd.isna(entry.loc[i]) or not row.get("symbol"):

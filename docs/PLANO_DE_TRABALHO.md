@@ -145,6 +145,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
 | T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
 | T16.3b | Laboratório: correção temporal do enriquecimento (barra aberta, surpresa de notícia futura, volume real × ticks, resolução de MAE/MFE) | T16.3 | ✅ concluída no Linux: 806 aprovados, 9 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas; MAE/MFE permanece aproximado em OHLC |
+| T16.3c | Laboratório: proveniência, revisões e disponibilidade point-in-time do calendário econômico | T16.3b | 🟡 implementação e suíte validadas no Linux (812 aprovados, 9 ignorados; `doctor` 16 OK, 2 avisos); replay com recibos reais, Windows e PostgreSQL pendentes |
 | T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |

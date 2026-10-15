@@ -4,6 +4,7 @@ import json
 
 import pandas as pd
 import pytest
+from sqlalchemy import text
 
 from mt5_extracao import cli
 from mt5_extracao.database_manager import DatabaseManager
@@ -41,6 +42,14 @@ def test_mt5_export_is_read(tmp_path):
     assert rows[1]["previous"] is None and rows[2]["currency"] == "BRL"
 
 
+def test_mt5_export_reads_explicit_source_received_timestamp(tmp_path):
+    content = ("time;event_id;name;country;currency;importance;actual;forecast;previous;source_received_at\n"
+               "2026.01.09 10:30;840030016;Nonfarm Payrolls;US;USD;3;256;160;212;"
+               "2026-01-09T10:31:00+02:00\n")
+    row = mt5_export.read_export(_write(tmp_path, "MT5X_calendar_Received.csv", content))[0]
+    assert row["source_received_at"] == "2026-01-09T08:31:00+00:00"
+
+
 def test_old_csv_keeps_working(tmp_path):
     rows = cal.read_csv_file(_write(tmp_path, "e.csv", CSV_OLD))
     assert [r["impact"] for r in rows] == [cal.HIGH, cal.LOW]
@@ -61,6 +70,98 @@ def test_import_is_idempotent_per_source(db, tmp_path):
         cal.import_source(db, None, "site")
 
 
+def test_revision_history_is_idempotent_and_queries_as_of_observation(db):
+    first_seen = pd.Timestamp("2026-10-10T12:00:00Z")
+    second_seen = pd.Timestamp("2026-10-11T12:00:00Z")
+    later_reimport = pd.Timestamp("2026-10-12T12:00:00Z")
+    event = {"event_time": pd.Timestamp("2020-01-09 10:30"), "event_id": "release-1",
+             "name": "Employment report", "country": "US", "currency": "USD", "symbol": "USD",
+             "impact": cal.HIGH, "actual": 256.0, "forecast": 160.0, "previous": 212.0}
+    key = cal._key("csv", event)
+    with pytest.raises(ValueError, match="fuso horário"):
+        cal.load_asof(db, pd.Timestamp("2026-10-10 12:00:00"))
+
+    assert cal.save(db, "csv", [event], observed_at=first_seen) == 1
+    assert cal.load_asof(db, pd.Timestamp("2020-01-10T00:00:00Z")).empty
+    before_revision = cal.load_asof(db, second_seen - pd.Timedelta(seconds=1))
+    assert before_revision["actual"].tolist() == [256.0]
+    first_revision = cal.load_revisions(db, event_key=key).iloc[0]
+    assert first_revision["revision_no"] == 1 and first_revision["observed_at"] == first_seen
+
+    corrected = {**event, "actual": 300.0}
+    assert cal.save(db, "csv", [corrected], observed_at=second_seen) == 1
+    assert cal.load_asof(db, second_seen - pd.Timedelta(seconds=1))["actual"].tolist() == [256.0]
+    assert cal.load_asof(db, second_seen)["actual"].tolist() == [300.0]
+    assert cal.merged_asof(db, second_seen - pd.Timedelta(seconds=1))["actual"].tolist() == [256.0]
+    assert cal.merged_asof(db, second_seen)["actual"].tolist() == [300.0]
+
+    cal.save(db, "csv", [corrected], observed_at=later_reimport)
+    revisions = cal.load_revisions(db, event_key=key)
+    assert revisions["revision_no"].tolist() == [1, 2]
+    assert cal.load(db).iloc[0]["first_observed_at"] == first_seen
+
+
+def test_legacy_import_time_is_not_inferred_as_availability(db):
+    old_columns = {name: kind for name, kind in cal.COLUMNS.items()
+                   if name not in {"first_observed_at", "source_received_at"}}
+    event = {"event_time": pd.Timestamp("2020-01-09 10:30").to_pydatetime(), "event_id": "legacy-1",
+             "name": "Historical report", "country": "US", "currency": "USD", "symbol": "USD",
+             "impact": cal.HIGH, "actual": 1.5, "forecast": 1.0, "previous": 1.2,
+             "override": 0, "source": "csv", "imported_at": "2026-01-09 12:00:00"}
+    event["event_key"] = cal._key("csv", event)
+    names = list(old_columns)
+    with db.engine.begin() as conn:
+        ddl = ", ".join(f"{name} {kind}" for name, kind in old_columns.items())
+        conn.execute(text(f"CREATE TABLE {cal.TABLE} ({ddl})"))
+        conn.execute(text(f"INSERT INTO {cal.TABLE} ({', '.join(names)}) "
+                          f"VALUES ({', '.join(':' + name for name in names)})"), event)
+
+    assert cal.load(db)["actual"].tolist() == [1.5]
+    assert cal.load_asof(db, pd.Timestamp("2026-12-01T00:00:00Z")).empty
+    assert pd.isna(cal.merged(db).iloc[0]["surprise_available_at"])
+
+    incoming = {name: value for name, value in event.items() if name not in {"event_key", "source", "imported_at"}}
+    cal.save(db, "csv", [incoming], observed_at=pd.Timestamp("2026-10-10T12:00:00Z"))
+    assert cal.load(db)["actual"].tolist() == [1.5]
+    assert cal.load_asof(db, pd.Timestamp("2026-12-01T00:00:00Z")).empty
+    legacy_revision = cal.load_revisions(db, event_key=event["event_key"]).iloc[0]
+    assert pd.isna(legacy_revision["available_at"])
+
+
+def test_asof_date_filters_apply_after_latest_event_time_revision(db):
+    first_seen = pd.Timestamp("2026-10-10T12:00:00Z")
+    corrected_seen = pd.Timestamp("2026-10-11T12:00:00Z")
+    event = {"event_time": pd.Timestamp("2020-01-09 10:30"), "event_id": "corrected-time-1",
+             "name": "Rescheduled release", "country": "US", "currency": "USD", "symbol": "USD",
+             "impact": cal.HIGH, "actual": 1.0, "forecast": 0.5, "previous": 0.8}
+    cal.save(db, "csv", [event], observed_at=first_seen)
+    moved = {**event, "event_time": pd.Timestamp("2020-02-09 10:30"), "actual": 1.5}
+    cal.save(db, "csv", [moved], observed_at=corrected_seen)
+
+    old_range = {"start": pd.Timestamp("2020-01-01"), "end": pd.Timestamp("2020-02-01")}
+    new_range = {"start": pd.Timestamp("2020-02-01"), "end": pd.Timestamp("2020-03-01")}
+    before_correction = cal.load_asof(db, corrected_seen - pd.Timedelta(seconds=1), **old_range)
+    after_correction_old_range = cal.load_asof(db, corrected_seen, **old_range)
+    after_correction_new_range = cal.load_asof(db, corrected_seen, **new_range)
+
+    assert before_correction["event_time"].tolist() == [pd.Timestamp("2020-01-09 10:30")]
+    assert after_correction_old_range.empty
+    assert after_correction_new_range["event_time"].tolist() == [pd.Timestamp("2020-02-09 10:30")]
+
+
+def test_csv_source_received_at_requires_timezone_and_normalizes_to_utc(tmp_path):
+    aware = _write(tmp_path, "received.csv",
+                    "time,symbol,impact,source_received_at\n"
+                    "2020-01-09 10:30,USD,alto,2020-01-09T10:32:00-03:00\n")
+    row = cal.read_csv_file(aware)[0]
+    assert row["source_received_at"] == "2020-01-09T13:32:00+00:00"
+    naive = _write(tmp_path, "received-naive.csv",
+                   "time,symbol,impact,source_received_at\n"
+                   "2020-01-09 10:30,USD,alto,2020-01-09 10:32:00\n")
+    with pytest.raises(ValueError, match="fuso horário"):
+        cal.read_csv_file(naive)
+
+
 def test_merge_unites_sources_and_enriches(db, tmp_path):
     cal.import_source(db, None, "mt5", _write(tmp_path, "m.csv", MT5_FILE))
     cal.import_source(db, None, "csv", _write(tmp_path, "e.csv", CSV_NEW))
@@ -69,7 +170,7 @@ def test_merge_unites_sources_and_enriches(db, tmp_path):
     assert nfp["sources"] == "csv,mt5"                       # o mesmo evento das duas fontes vira uma linha
     assert nfp["impact"] == cal.MEDIUM                        # marcado à mão no CSV vence o do MT5
     assert nfp["surprise"] == pytest.approx(96.0)             # real − previsto
-    assert nfp["surprise_available_at"] >= nfp["event_time"]  # disponibilidade inclui o horário do evento e da importação
+    assert pd.Timestamp(nfp["surprise_available_at"]).tzinfo is not None  # disponibilidade tem fuso explícito
     ipca = events[events["name"] == "IPCA"].iloc[0]
     assert ipca["sources"] == "csv,mt5" and ipca["impact"] == cal.MEDIUM   # sem marcação à mão: o do MT5
     assert len(events) == 3                                    # NFP, desemprego e IPCA

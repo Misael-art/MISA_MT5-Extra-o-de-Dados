@@ -131,3 +131,25 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - T13.2/T13.3 seguem fora do `master` em branches locais; T13.3 foi concluída em
   `tarefa/T13.3-perfis-regimes` (`bde3652`) e sua continuidade está registrada na branch própria. O worktree separado
   `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` não foi alterado. Nenhum push ou PR foi feito.
+
+## T16.3c — proveniência point-in-time do calendário (2026-10-15)
+
+- Worktree local `/home/misael/Projects/MISA_MT5-Extra-o-de-Dados-T16.3c`, branch
+  `tarefa/T16.3c-calendario-point-in-time`, empilhada sobre a dependência local T16.3b (`5d85cf3`, baseada em
+  `master` `880bf18`).
+- Implementação em validação: colunas aditivas de disponibilidade em `_economic_events`, tabela de revisões
+  `_economic_event_revisions`, `load_revisions`/`load_asof`/`merged_asof`, e enriquecimento que só expõe surpresa após
+  disponibilidade registrada. Reimportação idêntica permanece idempotente; eventos antigos sem recibo não ganham
+  disponibilidade a partir do evento ou de `imported_at`.
+- Baseline antes das alterações: `test_trade_calendar.py`, `test_analytics_calendar.py` e `test_trade_enrich.py`,
+  **29 aprovados**. A primeira suíte integral parou por `ENOSPC` (85 falhas, 415 aprovados, 8 ignorados, 98 erros
+  antes do `INTERNALERROR`); a segunda teve **4 falhas, 802 aprovados, 9 ignorados**, todas com erros de espaço.
+  Sem tocar em `/run/user/1000`, a reprodução isolada das quatro falhas passou **4/4** com
+  `XDG_RUNTIME_DIR`, `TMPDIR` e `SQLITE_TMPDIR` em diretórios privados de `/tmp`.
+- Validação final: focados **28 aprovados** (`test_trade_calendar.py`, `test_trade_enrich.py`, `test_trade_cache.py`);
+  suíte integral **812 aprovados, 9 ignorados em 601,71 s**; `doctor` **16 OK, 2 avisos, 0 falhas**. Avisos: `pandas-ta`
+  opcional ausente e ponte Wine desativada por configuração. `git diff --check` limpo.
+- Evidência de replay com dados de mercado permanece pendente até existir histórico real de recibos/revisões da fonte.
+  Windows e PostgreSQL não foram exercitados. O `/run/user/1000` cheio foi deixado intacto; a execução dos testes usa
+  diretórios privados em `/tmp`. A tarefa consta como parcial até esse replay ser possível. Worktrees da T17 permanecem
+  intocados; não houve push ou PR.

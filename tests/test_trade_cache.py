@@ -78,7 +78,7 @@ def test_feature_cache_adds_new_t16_3b_columns_to_existing_table(db):
     columns = {column["name"] for column in inspect(db.engine).get_columns(cache.TABLE)}
     assert {"volume_source", "mae_mfe_resolution"} <= columns
     assert {"volume_source", "mae_mfe_resolution"} <= set(result.columns)
-    assert result["feature_version"].iloc[0] == 2
+    assert result["feature_version"].iloc[0] == 3
 
 
 def test_aggregation_speed_on_50k_cached_trades(db):
