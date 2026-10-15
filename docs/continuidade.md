@@ -294,6 +294,30 @@ ainda dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.m
 Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
 `UNAVAILABLE`, fixture point-in-time no Tester) foi enviada ao dono; a resposta continua pendente.
 
+## Harmonização após integração de UI e checkpoint de Analytics — 2026-10-15
+
+`master` e `origin/master` estão em `7959fca` (PR #78, T18.8, mesclado). A branch antiga
+`tarefa/T18.8-relacoes-aderencia` não foi mesclada diretamente porque também contém alterações de Analytics ainda
+fora do master; os blobs de `mt5_extracao/ui/relations.py` e `tests/test_ui_relations.py` são idênticos aos do commit
+publicado `48ca375`. O PR #78 teve CI verde em Linux, Windows, PostgreSQL e instaladores. No snapshot exato do master,
+a revisão local repetiu a instalação Linux sem MT5, executou a suíte completa sob Xvfb (`TMPDIR=/tmp`: **837
+aprovados, 9 ignorados em 574,49 s**), os testes focados da UI (`tests/test_ui_relations.py` e
+`tests/test_ui_laboratory.py`: **15 aprovados em 31,93 s**) e `doctor` (**16 OK, 2 avisos, 0 falhas**). Os avisos
+são `pandas-ta` opcional ausente e ponte MT5 desativada. As telas usam fixture sintética e permanecem uma apresentação
+provisória; DTO T18.1 e serviço T18.6 continuam pendentes. Windows real no host segue pendente.
+
+O estado das branches Analytics foi reconciliado na matriz e no painel do plano: master permanece `7959fca`, nenhuma
+dessas branches locais foi integrada. HEADs e evidências atuais: T13.3 `3f9e333` (42 focados, suíte 833/10); T13.3b
+`00f6770`/código `03570b0` (48 focados, suíte 850/12, PostgreSQL descartável 11 testes, benchmark incremental
+7,89×); T13.4 `827afab` (suíte 864/10, ainda parcial); T13.6 `dba30d7`; T16.3b `af6281a` (23 focados; a suíte
+806/9 é anterior ao teste de limite); T16.3c `6d9de5f` (31 focados, suíte 815/9); T16.11c `701f4fd`; T16.12
+`adff6eb`. As limitações, comandos e dependências continuam registradas nas linhas correspondentes da matriz e do plano.
+
+Pendências externas não mudaram: T13.5 aguarda T12.1 e a decisão sobre validade/Strategy Tester; T13.7a aguarda
+confirmação para entrar no plano; T13.4 não tem custos medidos completos, eventos reais H14–H16 nem grupo comparável
+para validação OOS; T16.3c precisa de recibos históricos confiáveis; T16.2b depende de checkout HADOUKEN populado.
+Nenhuma operação em base de usuário, conta MT5, merge ou publicação de Analytics foi feita nesta reconciliação.
+
 ## Reconciliação do estado Analytics — 2026-10-15
 
 Este checkpoint substitui os hashes e contagens anteriores nos registros acima. `master` e `origin/master` estão em
