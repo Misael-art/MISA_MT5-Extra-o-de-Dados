@@ -85,6 +85,23 @@ def test_empty_book_explains_how_to_start(panel):
     assert panel._note_kind == "empty"
 
 
+def test_relations_view_is_available_without_ledger_and_restores_trade_filters(panel):
+    from mt5_extracao.ui.laboratory import RELATIONS_TAB
+
+    panel.tabs.select(panel.tab_frames[RELATIONS_TAB])
+    panel.render_visible()
+    panel.ui.root.update()
+    assert panel.relations_panel is not None
+    assert RELATIONS_TAB in panel._drawn
+    assert not panel.filter_bar.winfo_manager()
+    assert not panel.kpi_row.winfo_manager()
+
+    panel.tabs.select(panel.tab_frames["Visão geral"])
+    panel.render_visible()
+    assert panel.filter_bar.winfo_manager()
+    assert panel.kpi_row.winfo_manager()
+
+
 def test_lenses_filters_and_tabs(panel):
     ledger.save_trades(panel.db, "a", _trades(1), robot_key="python:a", symbol="WIN$N", timeframe="M5")
     ledger.save_trades(panel.db, "b", _trades(2), robot_key="python:a", symbol="WDO$N", timeframe="M5")

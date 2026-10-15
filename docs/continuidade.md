@@ -1,17 +1,45 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Retomada T18.8 — 2026-10-15
+
+A apresentação local da T18.8 foi implementada. A aba Laboratório tem as visões Matriz (Indicador × indicador e Indicador × alvo),
+Linha do tempo, Ganhos e perdas, Convergências e Candidatos. As subvisões usam a fixture do componente e estão
+identificadas como sintéticas; veja as capturas em [docs/img/relations/T18.8](img/relations/T18.8/).
+
+A revisão com Analytics confirmou que T18.1 (DTO/fixture versionada) e T18.6 (serviço de consulta) ainda não estão
+presentes nesta base. Não integrar ao ledger F16 nem inferir estados até receber esse contrato. A UI não recalcula
+estatísticas, não altera Experts, presets ou ordens, e não oferece ação operacional para candidatos. O layout reusa
+tema, tokens e componentes T17; subvisões ficam roláveis em janelas menores e a linha temporal suaviza só a exibição
+entre pontos recebidos, preservando marcadores e lacunas.
+
+Validação reportada na worktree original da T18.8 (que também continha branches locais de Analytics): suíte completa
+**900 aprovados, 10 ignorados** em 666,12 s; `doctor` **16 OK, 2 avisos, 0 falhas**
+(`pandas-ta` opcional ausente e ponte MT5 desativada); `git diff --check` limpo. Capturas foram geradas em Linux/Xvfb
+nos temas claro e escuro, em 1280×800, 1920×1080, 820×800 e escala Tk simulada de 150%. Windows real não foi executado.
+Na revisão posterior, as faixas da linha do tempo passaram a usar tons neutros para reservar as cores semânticas aos
+marcadores; legenda, seletor de ranking e avisos empilham/quebram texto em janelas estreitas. As quatro capturas da
+linha do tempo foram renovadas depois desses ajustes.
+
+Revisão da cadeia isolada para publicação (master + T17.1–T17.5 + T18.0 + T18.8): instalação Linux com
+`./install.sh --yes --no-mt5` e `requirements-dev.txt`; primeira suíte completa **835 aprovados, 9 ignorados,
+2 falhas** em 616,75 s (`test_settings_restore_the_arrangement_only_with_the_terminal_closed` e
+`test_no_internet_is_said_plainly_with_what_to_do`). Ambos passaram quando repetidos isoladamente. Segunda suíte
+completa: **836 aprovados, 9 ignorados, 1 falha** em 594,69 s; repetiu apenas
+`test_settings_restore_the_arrangement_only_with_the_terminal_closed`, também aprovado isoladamente. A espera
+assíncrona deste teste já tinha sido registrada como intermitente durante T17.3; nenhum teste foi enfraquecido nem
+alterado para esconder o resultado. `doctor`: **16 OK, 2 avisos, 0 falhas** (`pandas-ta` opcional ausente e ponte
+MT5 desativada). Os testes focados da apresentação T18.8: **15 aprovados**. `git diff --check` passou; nenhum script
+shell mudou. Windows real não foi executado.
+
 ## Nova frente documental F18 — 2026-10-15
 
 Pedido do dono para relações entre indicadores, preço futuro, ganhos/perdas e aderência temporal dos Experts.
-T18.0 registra [especificação](propostas/RELACOES_INDICADORES_SETUP.md), tarefas no plano/roadmap/matriz e prompts
-separados de [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
-T18.1–T18.9 estão **planejadas**, não implementadas. Nenhum código de execução, tabela, preset ou ordem foi alterado.
-
-O registro fica na branch local `tarefa/T18.0-plano-associacoes`, worktree
-`../MISA_MT5-Extra-o-de-Dados-T18.0`, baseada no checkpoint T13.6 `dba30d7`. Não houve merge de F13/F16/F17
-nem publicação. Os agentes precisam integrar a documentação por diff revisado, preservando atualizações mais recentes.
-Pesquisa/serviço local independem de MQL5; aplicação operacional mantém dependências e autorizações de T13.7.
-Cada implementação é uma tarefa por PR; UI só consome contrato e reaproveita F17 após conferir sua integração.
+T18.0 registra a [especificação](propostas/RELACOES_INDICADORES_SETUP.md), a [matriz específica da F18](analytics/MATRIZ_REQUISITOS_F18.md),
+as tarefas no plano/roadmap e os prompts separados de [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
+T18.1–T18.9 estavam inicialmente planejadas; a apresentação T18.8 foi adicionada depois. T18.1 (DTO/fixture versionada)
+e T18.6 (serviço de consulta) ainda não estão nesta base, então a tela usa uma fixture sintética e identificada como provisória.
+Pesquisa/serviço local independem de MQL5; aplicação operacional mantém dependências e autorizações próprias de T13.7.
+Nenhum cálculo analítico, preset, Expert ou ordem foi alterado pela apresentação. Cada implementação segue uma tarefa por PR.
 
 Verificação do registro: instalador sem MT5 e dependências dev executados; 5 testes focados de documentação/integração
 aprovados; 11 novos links locais conferidos; `git diff --check` sem erros. Doctor do ambiente existente:
