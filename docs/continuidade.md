@@ -135,9 +135,10 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 ## T16.3c — proveniência point-in-time do calendário (2026-10-15)
 
 - Worktree local `/home/misael/Projects/MISA_MT5-Extra-o-de-Dados-T16.3c`, branch
-  `tarefa/T16.3c-calendario-point-in-time`, empilhada sobre a dependência local T16.3b (`5d85cf3`, baseada em
-  `master` `880bf18`).
-- Implementação em validação: colunas aditivas de disponibilidade em `_economic_events`, tabela de revisões
+  `tarefa/T16.3c-calendario-point-in-time`, baseada no código da T16.3b (`5d85cf3`, a partir de `master` `880bf18`).
+  Inclui também o teste de fronteira MAE/MFE da T16.3b (`acc1872`), reaplicado nesta branch sem mudança de produção;
+  follow-up local commitado em `0af51d2`, ainda sem PR ou integração.
+- Validação local completa com dados sintéticos: colunas aditivas de disponibilidade em `_economic_events`, tabela de revisões
   `_economic_event_revisions`, `load_revisions`/`load_asof`/`merged_asof`, e enriquecimento que só expõe surpresa após
   disponibilidade registrada. Reimportação idêntica permanece idempotente; eventos antigos sem recibo não ganham
   disponibilidade a partir do evento ou de `imported_at`.
@@ -159,9 +160,8 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   cada exportação precisa ser importada antes da seguinte para preservar revisões intermediárias. O replay real ainda
   exige uma exportação feita no MT5 conectado ou CSV com recibos explícitos. Em 2026-10-15, acrescentei teste de
   regressão que verifica o corte *as-of* pelo `source_received_at` antes da observação local atrasada e a entrada de
-  correções no recibo correspondente. A bateria focada calendário/enriquecimento/cache passou **30 testes** em
-  diretórios temporários privados; a tentativa inicial em `/tmp` teve uma falha `database or disk is full`. A suíte
-  integral mais recente, anterior a esse teste, registrou **813 aprovados, 9 ignorados em 644,74 s**; `doctor` foi
-  **16 OK, 2 avisos, 0 falhas**. A compilação/exportação em terminal MT5, Windows e
+  correções no recibo correspondente. Após incluir o teste de fronteira T16.3b, a bateria focada calendário/
+  enriquecimento/cache passou **31 testes em 18,67 s**; a suíte integral passou **815 testes, 9 ignorados em 467,15 s**;
+  `doctor`: **16 OK, 2 avisos, 0 falhas**. A compilação/exportação em terminal MT5, Windows e
   PostgreSQL não foram exercitados. `event_time` continua em horário do servidor; o offset exportado é apenas o atual e
   não resolve conversão histórica sob DST. Worktrees da T17 permanecem intocados; não houve push ou PR.
