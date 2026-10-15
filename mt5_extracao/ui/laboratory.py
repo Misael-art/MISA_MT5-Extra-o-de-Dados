@@ -27,7 +27,9 @@ log = logging.getLogger(__name__)
 
 LENS_ROBOT, LENS_ASSET = "robot", "asset"
 PERIODS = (("Tudo", None), ("Último ano", 365), ("Últimos 6 meses", 182), ("Últimos 3 meses", 91))
-TABS = ("Visão geral", "Tempo e calendário", "Microestrutura", "Comparativo", "Execução", "Insights")
+RELATIONS_TAB = "Relações e aderência"
+TABS = ("Visão geral", "Tempo e calendário", "Microestrutura", "Comparativo", "Execução", "Insights",
+        RELATIONS_TAB)
 DISABLED_TABS: dict = {}
 WEEKDAYS = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sáb", 6: "Dom"}
 IMPACTS = {0: "Sem evento", 1: "Baixo", 2: "Médio", 3: "Alto"}
@@ -63,6 +65,7 @@ class LaboratoryPanel:
         self._analysis_notebooks = {}
         self._analysis_views = {}
         self._drawn = set()        # guias já desenhadas com o recorte atual
+        self.relations_panel = None  # F18 é apresentada por componente separado e sem acesso ao ledger F16.
 
         head = PageHeader(self.frame, "Laboratório",
                           "operações dos robôs: onde ganham, onde perdem e como executar melhor")
@@ -123,7 +126,10 @@ class LaboratoryPanel:
         self.notice.badge.set_status(NOTE_LABEL[kind], kind=kind)
         self.note.configure(text=text, style=f"{style}.Notice.TLabel")
         self._note_kind = kind
-        self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.tabs)
+        if self._current_tab_name() == RELATIONS_TAB:
+            self.notice.pack_forget()
+        else:
+            self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.tabs)
 
     def _build_filters(self):
         bar = FilterBar(self.frame)
@@ -160,6 +166,7 @@ class LaboratoryPanel:
 
     def _build_kpis(self):
         row = ttk.Frame(self.frame)
+        self.kpi_row = row
         row.pack(fill=tk.X, pady=(0, SPACING["sm"]))
         self.kpi = {}
         self.metric_cards = {}
@@ -337,9 +344,19 @@ class LaboratoryPanel:
         self.set_note(" ".join(notes))
 
     def render_visible(self):
+        name = self.tabs.tab(self.tabs.select(), "text")
+        self._sync_tab_context(name)
+        if name == RELATIONS_TAB:
+            if self.relations_panel is None:
+                from mt5_extracao.ui.relations import RelationsPanel
+                self.relations_panel = RelationsPanel(self.tab_frames[RELATIONS_TAB], self.theme)
+                self.relations_panel.frame.pack(fill=tk.BOTH, expand=True)
+            if name not in self._drawn:
+                self.relations_panel.render()
+                self._drawn.add(name)
+            return
         if self.view is None or self.view.empty:
             return
-        name = self.tabs.tab(self.tabs.select(), "text")
         if name in self._drawn or name in DISABLED_TABS:
             return
         try:
@@ -356,6 +373,29 @@ class LaboratoryPanel:
     def _theme_changed(self):
         self._drawn = set()
         self.render_visible()
+
+    def _current_tab_name(self):
+        try:
+            selected = self.tabs.select()
+            return self.tabs.tab(selected, "text") if selected else ""
+        except (AttributeError, tk.TclError):
+            return ""
+
+    def _sync_tab_context(self, name):
+        """Não exibe filtros/KPIs de operações como se filtrassem as relações de indicadores."""
+        if name == RELATIONS_TAB:
+            self.filter_bar.pack_forget()
+            self.kpi_row.pack_forget()
+            self.notice.pack_forget()
+            return
+        if not self.kpi_row.winfo_manager():
+            self.kpi_row.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.notice if self.notice.winfo_manager()
+                              else self.tabs)
+        if not self.filter_bar.winfo_manager():
+            self.filter_bar.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.kpi_row)
+        text = self.note.cget("text")
+        if text and not self.notice.winfo_manager():
+            self.set_note(text)
 
     def _crosstab(self, view, row, col, row_order=None):
         from mt5_extracao.trade_analytics import aggregate

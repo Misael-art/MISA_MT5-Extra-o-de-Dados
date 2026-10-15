@@ -1,16 +1,37 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Retomada T18.8 — 2026-10-15
+
+A apresentação local da T18.8 foi implementada na branch `tarefa/T18.8-relacoes-aderencia`, worktree
+`../MISA_MT5-Extra-o-de-Dados-T18.8`. A aba Laboratório tem as visões Matriz (Indicador × indicador e Indicador × alvo),
+Linha do tempo, Ganhos e perdas, Convergências e Candidatos. As subvisões usam a fixture do componente e estão
+identificadas como sintéticas; veja as capturas em [docs/img/relations/T18.8](img/relations/T18.8/).
+
+A revisão com Analytics confirmou que T18.1 (DTO/fixture versionada) e T18.6 (serviço de consulta) ainda não estão
+presentes nesta base. Não integrar ao ledger F16 nem inferir estados até receber esse contrato. A UI não recalcula
+estatísticas, não altera Experts, presets ou ordens, e não oferece ação operacional para candidatos. O layout reusa
+tema, tokens e componentes T17; subvisões ficam roláveis em janelas menores e a linha temporal suaviza só a exibição
+entre pontos recebidos, preservando marcadores e lacunas.
+
+Validação T18.8: suíte completa **900 aprovados, 10 ignorados** em 666,12 s; `doctor` **16 OK, 2 avisos, 0 falhas**
+(`pandas-ta` opcional ausente e ponte MT5 desativada); `git diff --check` limpo. Capturas foram geradas em Linux/Xvfb
+nos temas claro e escuro, em 1280×800, 1920×1080, 820×800 e escala Tk simulada de 150%. Windows real não foi executado.
+Na revisão posterior, as faixas da linha do tempo passaram a usar tons neutros para reservar as cores semânticas aos
+marcadores; legenda, seletor de ranking e avisos empilham/quebram texto em janelas estreitas. As quatro capturas da
+linha do tempo foram renovadas depois desses ajustes.
+
 ## Nova frente documental F18 — 2026-10-15
 
 Pedido do dono para relações entre indicadores, preço futuro, ganhos/perdas e aderência temporal dos Experts.
 T18.0 registra [especificação](propostas/RELACOES_INDICADORES_SETUP.md), tarefas no plano/roadmap/matriz e prompts
 separados de [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
-T18.1–T18.9 estão **planejadas**, não implementadas. Nenhum código de execução, tabela, preset ou ordem foi alterado.
+No registro inicial da T18.0, T18.1–T18.9 estavam planejadas. A UI provisória T18.8 foi adicionada depois; nenhum
+cálculo analítico, preset ou ordem foi alterado.
 
 O registro ficou na branch local `tarefa/T18.0-plano-associacoes`, worktree
-`../MISA_MT5-Extra-o-de-Dados-T18.0`, baseada no checkpoint T13.6 `dba30d7`. A T18.8 está sendo preparada em branch
-própria sobre T18.0, com a implementação visual da T17.5 integrada para reutilização. Analytics ainda não entregou
-T18.1 (DTO/fixture) nem T18.6 (serviço); por isso a tela desta tarefa começa com fixture declarada como provisória.
+`../MISA_MT5-Extra-o-de-Dados-T18.0`, baseada no checkpoint T13.6 `dba30d7`. A T18.8 foi preparada em branch própria
+sobre T18.0, com a implementação visual da T17.5 integrada para reutilização. Analytics ainda não entregou
+T18.1 (DTO/fixture) nem T18.6 (serviço); por isso a tela desta tarefa usa fixture declarada como provisória.
 Não houve publicação.
 Pesquisa/serviço local independem de MQL5; aplicação operacional mantém dependências e autorizações de T13.7.
 Cada implementação é uma tarefa por PR; UI só consome contrato e reaproveita os componentes visuais entregues na F17.
