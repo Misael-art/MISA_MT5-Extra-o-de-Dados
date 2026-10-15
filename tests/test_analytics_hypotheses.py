@@ -548,13 +548,22 @@ def test_parameter_choice_uses_training_only_and_walk_forward_purges_label_horiz
     assert changed_fold["selected_parameters"] == first_fold["selected_parameters"]
 
 
-def test_seeded_noise_does_not_pass_the_validation_gate():
+def test_seeded_noise_false_positive_rate_stays_within_tolerance():
     definition = _simple_definition(status="EXPLORATORY")
-    samples = _evaluation_samples(400, seed=20261015, noise=True)
-    result = evaluate_samples(samples, definition, n_boot=200)
-    assert not result["eligible_for_approval"]
-    assert result["approved"] is False
-    assert result["multiple_testing"]["method"] == "Bonferroni family-wise"
+    definition["costs"]["missing_components"] = []
+    false_significance = 0
+    false_eligibility = 0
+    replications = 40
+    for seed in range(20261015, 20261015 + replications):
+        result = evaluate_samples(_evaluation_samples(400, seed=seed, noise=True), definition, n_boot=200)
+        false_significance += result["multiple_testing"]["p_adjusted"] < definition["validation"]["alpha"]
+        false_eligibility += result["eligible_for_approval"]
+        assert result["approved"] is False
+        assert result["multiple_testing"]["method"] == "Bonferroni family-wise"
+
+    # Under a nominal 5% null, 6/40 is a conservative one-sided 99% binomial tolerance.
+    assert false_significance <= 6
+    assert false_eligibility <= 6
 
 
 def test_strong_synthetic_effect_is_only_validating_not_automatically_approved():

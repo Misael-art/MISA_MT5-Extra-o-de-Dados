@@ -275,3 +275,23 @@ Entregas locais independentes, sem merge, push ou PR:
 - **T16.2b:** o checkout `/home/misael/Projects/HADOUKEN-MQL5-Framework` está vazio e o remoto configurado não tem
   branches nem commits. Não substituí por outro repositório; aguardo indicação de um checkout HADOUKEN populado.
 - Worktrees T17.1–T17.6 seguem separados e intocados. Nenhuma ação financeira ou operacional foi realizada.
+
+## Reconciliação e checkpoint da retomada — 2026-10-15
+
+- O worktree principal está limpo em `tarefa/T13.6-contrato-ui`, HEAD `dba30d7`. `843a85a` (T13.2) é ancestral do
+  HEAD local, mas não de `origin/master` (`880bf18`); `git ls-remote` confirmou que as branches T13.2, T13.3, T13.4,
+  T13.6 e T16.3b não estão publicadas no `origin`. Portanto, a nota “não integrada ao master” continua correta;
+  ancestralidade local não significa integração nem publicação.
+- A branch T16.3b continua em `5d85cf3`; reexecução atual dos testes de enriquecimento/cache/calendário: **22 aprovados**.
+  A mudança está dentro da aproximação M1/OHLC descrita no plano; nenhum arquivo dessa branch foi alterado nesta revisão.
+- Releitura SQLite estritamente somente leitura da base local (`sqlite3 -readonly`): EURUSD M1 tem 99.611 barras
+  (2026-07-07 a 2026-10-12); AGG M1 tem 8.181 (2026-09-14 a 2026-10-12). `_trade_ledger` tem 22.420 linhas,
+  todas sem `entry_time`, `entry_price` e `direction`; o schema não registra custos por operação. A base não contém
+  `_economic_events`, tabelas de hipóteses nem `_signal_log`. Não surgiu evidência real para H14–H16, custos completos
+  ou grupo de mercados comparáveis; nenhuma tabela foi criada nem modificada.
+- A revisão T13.4 substituiu o teste nulo que era bloqueado por custos incompletos por 40 conjuntos sintéticos
+  independentes com custos completos. O teste usa limite conservador de 6/40 falsos sinais/elegibilidades sob nível
+  nominal de 5%, sem exigir taxa zero. A suíte focada T13.4 passou: **27 aprovados**. A suíte completa e o `doctor`
+  desta revisão ainda estão pendentes.
+- `/tmp` estava com 556 MiB livres; os comandos de pytest usam `TMPDIR=/home/misael/.cache/mt5-extracao-tmp` e
+  `xvfb-run -a`. Nenhum temporário de outro processo foi removido. Todos os worktrees T17 permanecem intocados.
