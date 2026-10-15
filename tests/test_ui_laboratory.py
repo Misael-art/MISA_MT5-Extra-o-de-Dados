@@ -1,8 +1,10 @@
 """T16.11 (parte 1): aba Laboratório — lentes, filtros, guias e estados vazios."""
 import configparser
+import gc
 import queue
 import threading
 import time
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
@@ -34,6 +36,7 @@ def panel(tmp_path):
     from mt5_extracao.ui.theme import Theme
     db = DatabaseManager(db_path=str(tmp_path / "lab.db"))
     jobs = queue.Queue()
+    workers = []
 
     class UI:
         def __init__(self):
@@ -47,7 +50,9 @@ def panel(tmp_path):
                     jobs.put((done, (work(), None)))
                 except Exception as e:                 # noqa: BLE001
                     jobs.put((done, (None, e)))
-            threading.Thread(target=target, daemon=True).start()
+            worker = threading.Thread(target=target, daemon=True)
+            workers.append(worker)
+            worker.start()
 
         def log(self, text):
             self.logs.append(text)
@@ -57,6 +62,8 @@ def panel(tmp_path):
     notebook.pack()
     p = LaboratoryPanel(notebook, ui)
     notebook.add(p.frame, text="Laboratório")
+    ui.notebook = notebook
+    ui.laboratory_panel = p
 
     def pump(until=lambda: False, seconds=15):
         end = time.time() + seconds
@@ -68,10 +75,21 @@ def panel(tmp_path):
             if until():
                 return
             time.sleep(0.02)
-    p.pump, p.db = pump, db
-    yield p
-    root.destroy()
-    db.close()
+    p.pump, p.db, p.root = pump, db, root
+    gc_was_enabled = gc.isenabled()
+    # Pandas may hit a native illegal instruction if automatic GC runs inside this worker thread.
+    # Keep collection on the Tk test thread, after background work has finished.
+    gc.disable()
+    try:
+        yield p
+    finally:
+        for worker in workers:
+            worker.join()
+        root.destroy()
+        db.close()
+        if gc_was_enabled:
+            gc.enable()
+            gc.collect()
 
 
 def test_empty_book_explains_how_to_start(panel):
@@ -103,6 +121,60 @@ def test_lenses_filters_and_tabs(panel):
     panel.period.set("Últimos 3 meses")
     panel.apply_filters()
     assert int(panel.kpi["n"][0].cget("text").replace(".", "")) < 240
+
+
+def test_heatmap_cell_filters_all_laboratory_tabs(panel):
+    from matplotlib.backend_bases import MouseEvent
+    from mt5_extracao.trade_analytics import aggregate
+
+    ledger.save_trades(panel.db, "a", _trades(1), robot_key="python:a", symbol="WIN$N", timeframe="M5")
+    ledger.save_trades(panel.db, "b", _trades(2), robot_key="python:a", symbol="WDO$N", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel.root.update()
+
+    chart = panel._charts["ov_heat"]
+    ax = chart.figure.axes[0]
+    table = aggregate.crosstab(panel.view, "time_bucket", "day_of_week", config=panel._config())
+    i, j = np.argwhere(table["n"].to_numpy() > 0)[0]
+    expected = {"time_bucket": table["n"].index[i], "day_of_week": table["n"].columns[j]}
+    x, y = ax.transData.transform((j, i))
+    event = MouseEvent("button_press_event", chart.canvas, x, y, button=1)
+    chart.canvas.callbacks.process("button_press_event", event)
+
+    assert panel.cell_filter == expected
+    assert panel.view["time_bucket"].eq(expected["time_bucket"]).all()
+    assert panel.view["day_of_week"].eq(expected["day_of_week"]).all()
+    filtered_count = len(panel.view)
+    panel.tabs.select(1)
+    panel.pump(lambda: "Tempo e calendário" in panel._drawn)
+    assert "Tempo e calendário" in panel._drawn
+    assert len(panel.view) == filtered_count
+
+    panel.clear_cell_filter_button.invoke()
+    assert panel.cell_filter is None
+    assert len(panel.view) > filtered_count
+
+
+def test_robot_detail_opens_laboratory_for_robot_and_explains_missing_runs(panel):
+    from mt5_extracao.ui.robot_detail import RobotDetail
+
+    ledger.save_trades(panel.db, "a", _trades(1), robot_key="python:a", symbol="WIN$N", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel.root.update()
+
+    detail = RobotDetail(panel.frame, panel.ui)
+    detail.robot = SimpleNamespace(key="python:a")
+    detail.laboratory_button.invoke()
+    panel.pump(lambda: panel.selected.get() == "python:a" and panel.view is not None)
+    assert panel.ui.notebook.select() == str(panel.frame)
+    assert panel.selected.get() == "python:a"
+
+    detail.robot = SimpleNamespace(key="python:without-runs")
+    detail.laboratory_button.invoke()
+    panel.pump(lambda: panel.selected.get() == "" and "Este robô ainda não tem operações" in panel.note.cget("text"))
+    assert panel.selected.get() == ""
 
 
 def test_import_button_brings_old_runs(panel):

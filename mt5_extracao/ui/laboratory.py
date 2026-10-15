@@ -28,6 +28,8 @@ TABS = ("Visão geral", "Tempo e calendário", "Microestrutura", "Comparativo", 
 DISABLED_TABS: dict = {}
 WEEKDAYS = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sáb", 6: "Dom"}
 IMPACTS = {0: "Sem evento", 1: "Baixo", 2: "Médio", 3: "Alto"}
+CELL_FILTER_LABELS = {"time_bucket": "faixa horária", "day_of_week": "dia da semana",
+                      "volatility_bucket": "volatilidade"}
 SHORT_MODES = {"ponto_fixo": "Base", "alvo_r": "Alvo R", "break_even": "BE", "trailing_atr": "Trail ATR",
                "trailing_barras": "Trail N", "gradiente_fixo": "Grad. fixo", "gradiente_dinamico": "Grad. ATR",
                "gradiente_direcional": "Pirâm.", "martingale": "Mart.", "anti_martingale": "Anti-mart."}
@@ -49,8 +51,11 @@ class LaboratoryPanel:
         self.view = None           # com os filtros de tela
         self.loaded = False
         self._request = 0
+        self._reload_request = 0
         self._charts = {}
         self._drawn = set()        # guias já desenhadas com o recorte atual
+        self.cell_filter = None
+        self._requested_robot = None
 
         head = ttk.Frame(self.frame)
         head.pack(fill=tk.X, pady=(0, 8))
@@ -65,6 +70,7 @@ class LaboratoryPanel:
                                     "MQL5 entram sem o horário de entrada (análise só por horário de saída).", self.theme)
 
         self._build_filters()
+        self._build_cell_filter_status()
         self._build_kpis()
         self.note = ttk.Label(self.frame, text="", style="Muted.TLabel", wraplength=1000, justify=tk.LEFT)
         self.tabs = ttk.Notebook(self.frame, style="Compact.TNotebook")
@@ -127,6 +133,7 @@ class LaboratoryPanel:
 
     def _build_kpis(self):
         row = ttk.Frame(self.frame)
+        self.kpi_frame = row
         row.pack(fill=tk.X, pady=(0, 6))
         self.kpi = {}
         for k, (key, title, hint) in enumerate(KPIS):
@@ -139,6 +146,54 @@ class LaboratoryPanel:
             sub.pack(anchor="w")
             Tooltip(body.master, hint, self.theme)
             self.kpi[key] = (value, sub)
+
+    def _build_cell_filter_status(self):
+        self.cell_filter_bar = ttk.Frame(self.frame, style="Surface.TFrame")
+        self.cell_filter_label = ttk.Label(self.cell_filter_bar, text="", style="Muted.TLabel")
+        self.cell_filter_label.pack(side=tk.LEFT)
+        self.clear_cell_filter_button = ttk.Button(self.cell_filter_bar, text="Limpar filtro do gráfico",
+                                                   command=self.clear_cell_filter)
+        self.clear_cell_filter_button.pack(side=tk.RIGHT)
+        self.cell_filter_bar.pack_forget()
+
+    def _show_cell_filter(self):
+        if not self.cell_filter:
+            self.cell_filter_bar.pack_forget()
+            return
+        labels = []
+        for key, value in self.cell_filter.items():
+            if key == "day_of_week":
+                value = WEEKDAYS.get(int(value), value)
+            labels.append(f"{CELL_FILTER_LABELS.get(key, key)}: {value}")
+        self.cell_filter_label.config(text="Filtro do gráfico: " + " × ".join(labels))
+        self.cell_filter_bar.pack(fill=tk.X, pady=(0, 6), before=self.kpi_frame)
+
+    def set_cell_filter(self, filters):
+        """Aplica a célula clicada a todas as guias; clicar nela de novo remove o filtro."""
+        selected = {key: value.item() if isinstance(value, np.generic) else value for key, value in filters.items()}
+        self.cell_filter = None if selected == self.cell_filter else selected
+        self._show_cell_filter()
+        self.apply_filters()
+
+    def clear_cell_filter(self):
+        self.cell_filter = None
+        self._show_cell_filter()
+        self.apply_filters()
+
+    def open_robot(self, robot_key):
+        """Abre a lente deste robô; explica quando ainda não há operações no livro."""
+        self._request += 1  # invalida uma análise da seleção anterior que ainda esteja em segundo plano
+        self.lens.set(LENS_ROBOT)
+        self._requested_robot = str(robot_key)
+        self.selected.set(self._requested_robot)
+        self.lab = self.view = None
+        self.cell_filter = None
+        self._show_cell_filter()
+        self.set_note("Abrindo o robô no Laboratório...")
+        notebook = getattr(self.ui, "notebook", None)
+        if notebook is not None:
+            notebook.select(self.frame)
+        self.reload()
 
     def _chart(self, tab, key, row, col, rowspan=1, colspan=1, height=3.0):
         chart = self._charts.get(key)
@@ -170,9 +225,13 @@ class LaboratoryPanel:
             self.set_note("Base de dados indisponível.")
             return
         self.loaded = True
+        self._reload_request += 1
+        request = self._reload_request
         from mt5_extracao.trade_analytics import ledger
 
         def done(runs, error):
+            if request != self._reload_request:
+                return
             if error is not None:
                 self.set_note(f"Não foi possível ler o livro de operações: {error}")
                 return
@@ -188,13 +247,29 @@ class LaboratoryPanel:
         options = self._options()
         self.selector.configure(values=options)
         self.selector_label.config(text="Robô:" if self.lens.get() == LENS_ROBOT else "Ativo:")
+        requested = self._requested_robot
         if not options:
             self.selected.set("")
             self.lab = self.view = None
-            self._empty("O Laboratório ainda não tem operações. Rode um backtest na aba Robôs ou em Minha base, ou "
-                        "clique em \"Importar backtests antigos\".")
+            if requested:
+                self._empty("Este robô ainda não tem operações no Laboratório. Rode um backtest ou importe os "
+                            "backtests antigos.")
+            else:
+                self._empty("O Laboratório ainda não tem operações. Rode um backtest na aba Robôs ou em Minha base, "
+                            "ou clique em \"Importar backtests antigos\".")
+            self._requested_robot = None
             return
-        if self.selected.get() not in options:
+        if requested and requested not in options:
+            self.selected.set("")
+            self.lab = self.view = None
+            self._empty("Este robô ainda não tem operações no Laboratório. Rode um backtest ou importe os "
+                        "backtests antigos.")
+            self._requested_robot = None
+            return
+        if requested:
+            self.selected.set(requested)
+            self._requested_robot = None
+        elif self.selected.get() not in options:
             self.selected.set(options[0])
         self.load_lab()
 
@@ -235,6 +310,14 @@ class LaboratoryPanel:
             view = view[view["day"] >= view["day"].max() - timedelta(days=days)]
         if self.hide_news.get() and "event_impact" in view:
             view = view[pd.to_numeric(view["event_impact"], errors="coerce").fillna(0) < 3]
+        if self.cell_filter:
+            for key, value in self.cell_filter.items():
+                if key not in view:
+                    continue
+                if pd.isna(value):
+                    view = view[view[key].isna()]
+                else:
+                    view = view[view[key].eq(value)]
         self.view = view
         self._drawn = set()
         self.mode_results, self.mode_metrics, self.evaluation = {}, {}, None
@@ -308,7 +391,8 @@ class LaboratoryPanel:
         if row_order and not table["value"].empty:
             order = [r for r in row_order if r in table["value"].index]
             table = {k: v.reindex(order) for k, v in table.items()}
-        charts.heatmap(chart, ax, table["value"], table["n"], table["small"], title, row_labels, col_labels)
+        charts.heatmap(chart, ax, table["value"], table["n"], table["small"], title, row_labels, col_labels,
+                       row_key=row, col_key=col, on_cell=self.set_cell_filter)
 
     def _overview(self):
         from mt5_extracao.trade_analytics import aggregate

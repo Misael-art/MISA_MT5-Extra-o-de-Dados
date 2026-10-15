@@ -173,6 +173,10 @@ class RobotDetail:
         actions.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
         self.folder_button = ttk.Button(actions, text="Abrir a pasta do robô", command=self.open_folder)
         self.folder_button.pack(side=tk.LEFT)
+        self.laboratory_button = ttk.Button(actions, text="Abrir no Laboratório", command=self.open_laboratory)
+        self.laboratory_button.pack(side=tk.LEFT, padx=(8, 0))
+        Tooltip(self.laboratory_button, "Abre o Laboratório na lente deste robô e mostra as operações gravadas no livro.",
+                self.theme)
         self.files_label = ttk.Label(actions, text="", style="Muted.TLabel")
         self.files_label.pack(side=tk.LEFT, padx=(10, 0))
         tree_frame, self.inputs_tree = scrolled_tree(overview, ("Valor", "Descrição"), (150, 220), height=6)
@@ -255,6 +259,13 @@ class RobotDetail:
     def _rewrap(self, event):
         for label in self._wrapped:
             label.configure(wraplength=max(220, event.width - 30))
+
+    def open_laboratory(self):
+        if self.robot is None:
+            return
+        laboratory = getattr(self.ui, "laboratory_panel", None)
+        if laboratory is not None:
+            laboratory.open_robot(self.robot.key)
 
     def show(self, robot):
         self.robot = robot

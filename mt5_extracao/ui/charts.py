@@ -24,14 +24,17 @@ class Chart:
         self.widget = self.canvas.get_tk_widget()
         self.widget.configure(background=theme.colors["surface"], highlightthickness=0)
         self.hover: List[Callable] = []          # cada desenho registra f(event) -> texto ou None
+        self.click: List[Callable] = []          # cada desenho registra f(event) -> bool consumido
         self._tip = None
         self.canvas.mpl_connect("motion_notify_event", self._moved)
+        self.canvas.mpl_connect("button_press_event", self._pressed)
 
     def clear(self):
         self.figure.clear()
         self.figure.set_facecolor(self.theme.colors["surface"])
         self.widget.configure(background=self.theme.colors["surface"])
         self.hover = []
+        self.click = []
         self._tip = None
 
     def draw(self):
@@ -60,6 +63,13 @@ class Chart:
             self._tip.set_text(text or "")
             self._tip.set_visible(bool(text))
             self.canvas.draw_idle()
+
+    def _pressed(self, event):
+        if event.button != 1:
+            return
+        for callback in self.click:
+            if callback(event):
+                break
 
 
 def plain(text) -> str:
@@ -97,7 +107,8 @@ def money(value) -> str:
 
 
 def heatmap(chart: Chart, ax, value: pd.DataFrame, n: pd.DataFrame, small: pd.DataFrame, title: str,
-            row_labels: Optional[Dict] = None, col_labels: Optional[Dict] = None, metric_name="Expectativa"):
+            row_labels: Optional[Dict] = None, col_labels: Optional[Dict] = None, metric_name="Expectativa",
+            row_key=None, col_key=None, on_cell=None):
     """Valor por célula na paleta divergente centrada em zero; célula pequena hachurada; n escrito em cada célula."""
     from matplotlib.colors import TwoSlopeNorm
     from matplotlib.patches import Rectangle
@@ -144,6 +155,20 @@ def heatmap(chart: Chart, ax, value: pd.DataFrame, n: pd.DataFrame, small: pd.Da
         shown = money(data[i, j]) if metric_name != "Correlação" else f"{data[i, j]:.2f}".replace(".", ",")
         return f"{rows[i]} × {cols[j]}: {metric_name} {shown}{amount}{note if count else ''}"
     chart.hover.append(hover)
+
+    if on_cell is not None and row_key and col_key:
+        def select_cell(event):
+            if event.inaxes is not ax or event.xdata is None or event.ydata is None:
+                return False
+            j, i = int(round(event.xdata)), int(round(event.ydata))
+            if not (0 <= i < data.shape[0] and 0 <= j < data.shape[1]):
+                return False
+            count = int(n.values[i, j]) if i < n.shape[0] and j < n.shape[1] else 0
+            if not count or not np.isfinite(data[i, j]):
+                return False
+            on_cell({row_key: value.index[i], col_key: value.columns[j]})
+            return True
+        chart.click.append(select_cell)
 
 
 def bars(chart: Chart, ax, labels, values, n=None, small=None, title="", fmt=money, signed=True):

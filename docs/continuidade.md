@@ -67,3 +67,28 @@ Só houve conflito em `docs/PLANO_DE_TRABALHO.md` (F-03 × T12.1/T12.6a). Códig
      são candidatos à limpeza.
    - Tabelas internas novas, todas aditivas: `_resource_snapshots` e `_resource_actions`.
 5. Ao terminar a tarefa, atualize o painel do PLANO_DE_TRABALHO.md e, se mudar o estado geral, este arquivo.
+
+## Continuidade do ciclo Analytics — checkpoint 2026-10-15
+
+O objetivo ativo é continuar a Fase 13 em ordem de dependência, avançando trabalho independente enquanto decisões ou
+dados externos não chegam. Entregas locais deste ciclo, cada uma no seu worktree: T13.3b (`tarefa/T13.3b-producers-incrementais`,
+`3921af5`), T13.4 (`tarefa/T13.4-hipoteses-walk-forward`, `ae30450`) e T16.3c
+(`tarefa/T16.3c-calendario-point-in-time`, `fc24bde`). Nenhuma foi publicada ou mesclada.
+
+T16.11c está na branch `tarefa/T16.11c-interacoes-laboratorio`, separada dos worktrees T17.1–T17.5. A entrega inclui
+filtro cruzado por clique em heatmaps de contexto e atalho do painel de detalhes do robô. A suíte completa passou com
+**789 aprovados e 9 pulados**; os 40 testes focados de Laboratório e janela principal também passaram. O doctor reportou
+16 OK, 2 avisos (`pandas-ta` opcional ausente e ponte Wine desativada) e 0 falhas. A validação real do Tk/Matplotlib no
+Windows segue pendente na lista de [validacao_instaladores.md](validacao_instaladores.md).
+
+### Pendências e decisões
+
+- **T13.5:** aguarda a conclusão parcial da T12.1 e as decisões externas sobre política de frescor (#7) e comportamento
+  do Strategy Tester.
+- **T13.7a:** foi solicitada confirmação para adicionar o modo shadow, apenas informativo e sem ordens. A resposta do
+  dono ainda está pendente; essa confirmação não autoriza piloto nem conta real.
+- **T13.4:** evidência fora da amostra ainda depende de custos e calendário confiáveis e de mercados comparáveis reais.
+- **T16.3c:** ainda falta replay de recibos de uma fonte real para validar a história de disponibilidade no tempo.
+
+Não alterar os worktrees T17.1–T17.5 ao retomar. Sem resposta do dono, continuar somente com tarefas independentes que
+tenham entrada, aceite e testes determinísticos.
