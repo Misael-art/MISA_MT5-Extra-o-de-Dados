@@ -78,6 +78,40 @@ def test_late_correction_adds_revision_and_as_of_keeps_old_knowledge(db):
         assert conn.execute(text("SELECT COUNT(*) FROM _feature_values")).scalar() == 2
 
 
+def test_invalidated_value_hides_old_value_only_after_invalidation_time(db):
+    features.register(db, "context.test", "Contexto de teste", "1.0", dependencies=["bars:M1"])
+    observation = "2026-10-14T09:00:00Z"
+    available = "2026-10-14T09:05:00Z"
+    invalidated = "2026-10-14T10:00:00Z"
+    first = {"symbol": "TEST", "timeframe": "M1", "feature_id": "context.test",
+             "algorithm_version": "1.0", "observation_time": observation, "value": 1.25,
+             "available_at": available, "observed_at": available, "source_revision": "before"}
+
+    assert feature_store.save_values(db, [first]) == {"inserted": 1, "revised": 0, "unchanged": 0}
+    tombstone = {"symbol": "TEST", "timeframe": "M1", "feature_id": "context.test",
+                 "algorithm_version": "1.0", "observation_time": observation, "value": None,
+                 "available_at": invalidated, "observed_at": invalidated, "source_revision": "after",
+                 "quality": "INVALIDATED", "metadata": {"reason": "entrada corrigida"}}
+    assert feature_store.save_values(db, [tombstone]) == {"inserted": 0, "revised": 1, "unchanged": 0}
+
+    before = feature_store.query_as_of(db, "2026-10-14T09:59:59.999999Z", symbol="TEST", timeframe="M1",
+                                      feature_id="context.test")
+    assert before[["numeric_value", "revision"]].iloc[0].tolist() == [1.25, 1]
+    after = feature_store.query_as_of(db, "2026-10-14T10:00:00.000001Z", symbol="TEST", timeframe="M1",
+                                     feature_id="context.test")
+    assert len(after) == 1
+    assert pd.isna(after.iloc[0]["numeric_value"])
+    assert pd.isna(after.iloc[0]["categorical_value"])
+    assert after.iloc[0]["quality"] == "INVALIDATED"
+    assert feature_store.save_values(db, [tombstone]) == {"inserted": 0, "revised": 0, "unchanged": 1}
+    joined = feature_store.asof_join(
+        pd.DataFrame({"decision_time": [pd.Timestamp("2026-10-14T10:00:00.000001Z")]}),
+        feature_store.query_history(db, symbol="TEST", timeframe="M1", feature_id="context.test"),
+    )
+    assert joined.iloc[0]["quality"] == "INVALIDATED"
+    assert pd.isna(joined.iloc[0]["numeric_value"])
+
+
 def test_point_in_time_does_not_expose_close_before_it_is_available(db):
     register_close(db)
     feature_store.save_value(

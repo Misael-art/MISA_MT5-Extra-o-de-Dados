@@ -358,11 +358,72 @@ def _family_rows(family, bars, params, volume_source):
 def register_definitions(db, family, feature_ids, params, timeframe, volume_source=None):
     dependencies = [f"bars_derived:{timeframe}", "market_calendar"]
     for feature_id in sorted(feature_ids):
-        parameters = dict(params, family=family, confidence=CONFIDENCE[family])
-        if volume_source:
-            parameters["volume_source"] = volume_source
+        parameters = _definition_parameters(family, params, volume_source)
         features.register(db, feature_id, feature_id.replace(".", " "), ALGORITHM_VERSION, parameters=parameters,
                           dependencies=dependencies)
+
+
+def _definition_parameters(family, params, volume_source):
+    parameters = dict(params, family=family, confidence=CONFIDENCE[family])
+    if volume_source:
+        parameters["volume_source"] = volume_source
+    return parameters
+
+
+def _invalidated_records(db, symbol, timeframe, family, params, volume_source, rows):
+    """Gera revisões ``INVALIDATED`` quando um recálculo deixa de produzir valores antigos.
+
+    Uma ausência é persistida como fato temporal próprio: consultas anteriores à mudança ainda
+    veem a revisão válida antiga; consultas posteriores veem a ausência, nunca o valor obsoleto.
+    O fingerprint cobre o retrato de barras usado para decidir que a família foi recalculada.
+    """
+    expected_parameters = json.loads(json.dumps(_definition_parameters(family, params, volume_source),
+                                                ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                                                allow_nan=False))
+    feature_ids = {
+        item["feature_id"] for item in feature_store.list_definitions(db)
+        if item["algorithm_version"] == ALGORITHM_VERSION and item["parameters"] == expected_parameters
+    }
+    if not feature_ids:
+        return []
+    previous = feature_store.latest_values(db, symbol=symbol, timeframe=timeframe, feature_ids=feature_ids,
+                                           algorithm_version=ALGORITHM_VERSION)
+    if previous.empty:
+        return []
+    current_keys = pd.MultiIndex.from_tuples(
+        [(row["feature_id"], pd.Timestamp(row["observation_time"]).tz_convert("UTC")) for row in rows],
+        names=["feature_id", "observation_time"],
+    )
+    previous_keys = pd.MultiIndex.from_frame(previous[["feature_id", "observation_time"]])
+    missing = previous.loc[~previous_keys.isin(current_keys) & previous["quality"].ne("INVALIDATED")]
+    if missing.empty:
+        return []
+
+    source_bars = resampling.latest_bars(db, symbol, timeframe, closed_only=False)
+    if source_bars.empty:
+        return []
+    tokens = _source_tokens(source_bars)
+    fingerprint = _source_revision(tokens, range(len(tokens)))
+    source_available = source_bars["computed_at_utc"].max()
+    invalidations = []
+    for old in missing.itertuples(index=False):
+        available = max(source_available, old.available_at_utc)
+        invalidations.append({
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "feature_id": old.feature_id,
+            "algorithm_version": old.algorithm_version,
+            "observation_time": old.observation_time,
+            "value": None,
+            "available_at": available,
+            "observed_at": available,
+            "quality": "INVALIDATED",
+            "source_revision": f"{fingerprint}:invalidated",
+            "metadata": {"reason": "indisponível após recálculo das barras", "family": family,
+                         "source_scope": "retrato completo da família", "reconstructed": True,
+                         "previous_revision": int(old.revision)},
+        })
+    return invalidations
 
 
 def compute(db, symbol, timeframe, *, families=None, volume_source="auto", overrides=None, write_guard=None):
@@ -392,11 +453,14 @@ def compute(db, symbol, timeframe, *, families=None, volume_source="auto", overr
                     "source_revision": row["source_revision"],
                     "metadata": dict(row["metadata"], reconstructed=True)}
                    for row in rows]
-        counts = feature_store.save_values(db, records)
+        invalidations = _invalidated_records(db, symbol, label, family, params, source, rows)
+        counts = feature_store.save_values(db, records + invalidations)
         summary.append({"family": family, "symbol": symbol, "timeframe": label, "features": len(feature_ids),
-                        "values": len(records), "volume_source": source, **counts})
-        log.info("%s %s %s: %s valores (%s novos, %s revisados, %s inalterados)", symbol, label, family,
-                 len(records), counts["inserted"], counts["revised"], counts["unchanged"])
+                        "values": len(records), "invalidations": len(invalidations), "volume_source": source,
+                        **counts})
+        log.info("%s %s %s: %s valores, %s invalidações (%s novos, %s revisados, %s inalterados)", symbol, label,
+                 family, len(records), len(invalidations), counts["inserted"], counts["revised"],
+                 counts["unchanged"])
     return summary
 
 

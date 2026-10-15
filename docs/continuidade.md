@@ -135,17 +135,24 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Branch local: `tarefa/T13.3-perfis-regimes`, com T13.2 como ancestral local; T13.2 e T13.3 ainda não foram integradas
   ao `master`. A implementação e as limitações da T13.3 estão em
   [T13.3_PERFIS_REGIMES.md](analytics/T13.3_PERFIS_REGIMES.md).
-- Verificação após as alterações: testes focados T13.3/T13.1/T13.2 — **42 aprovados em 23,54 s**; suíte completa —
-  **833 aprovados, 10 ignorados em 676,66 s**; `doctor` — **16 OK, 2 avisos, 0 falhas**. O único aviso opcional é
-  `pandas-ta`; a ponte Wine está desativada pela configuração atual.
+- Auditoria de retomada: correção tardia que faz uma característica deixar de existir agora grava revisão
+  `quality=INVALIDATED` append-only. Antes da disponibilidade da invalidação, consultas *as-of* ainda veem o valor
+  anterior; depois, veem a linha invalidada com ambos os campos de valor nulos. O RVOL corrigido e o contrato da
+  feature store têm testes de regressão.
+- Verificação final do código: testes focados T13.1–T13.3 — **53 aprovados**; suíte completa —
+  **835 aprovados, 10 ignorados em 515,58 s**; `doctor` — **16 OK, 2 avisos, 0 falhas**. Os avisos são a
+  dependência opcional `pandas-ta` ausente e a ponte Wine desativada pela configuração atual.
 - A base `database/mt5_data.db` foi aberta somente em modo SQLite `mode=ro`; nenhum cálculo foi gravado nela e o MT5
   não foi conectado. EURUSD e AGG atenderam à validação de dois mercados descrita no relatório da T13.3.
 - Decisão 5 permanece pendente do dono: a confiança proposta para regime é uma fração de concordância entre ADX,
   eficiência e R²; para RVOL é a quantidade de sessões usadas na mediana. A T13.4 pode avançar; a T13.5 aguarda a
   decisão conforme o plano. Windows real, PostgreSQL local, MT5 real e DST não foram validados.
-- Worktree separado `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` permanece intocado. Não houve push nem PR.
-- Próxima tarefa elegível registrada nesta retomada: T13.4. T16.3b também é independente e pode ser tratada em branch
-  separado; manter cada tarefa em sua própria branch.
+- A T17.1 foi integrada pela PR de UI #72; seu worktree obsoleto foi removido na limpeza autorizada. O worktree
+  sujo de T17.6 permanece preservado e intocado.
+- Esta retomada não publicou nem integrou Analytics. Próximo passo autorizado: auditar/concluir T16.3b em sua branch
+  própria e, depois, retomar T13.4 em seu worktree, mantendo uma tarefa por branch.
 - Complemento documental local `52e7442` adicionou a verificação Windows da T13.3 ao checklist: usar `--db` com uma
   cópia descartável contendo `_bars_derived`, conferir idempotência e paridade dos valores, e não tocar na base original.
   Os módulos Analytics não têm ramificação por `paths.is_windows`; os testes existentes simulam ambos os valores.
+
+- Commit local da auditoria T13.3: `fix(T13.3): invalidate features removed by corrections` (sem push, PR ou merge).

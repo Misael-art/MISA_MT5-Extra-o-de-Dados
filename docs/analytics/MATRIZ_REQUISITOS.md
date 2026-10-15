@@ -7,7 +7,9 @@ As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fa
 
 Atualização de 2026-10-15: as lacunas da T13.3 foram implementadas e verificadas na branch local
 `tarefa/T13.3-perfis-regimes`, dependente da T13.2 local; ainda não foram integradas ao `master`. Evidências e
-limitações da base estão em [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md). A Decisão 5 permanece aberta.
+limitações da base estão em [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md). Uma auditoria de retomada também
+corrigiu valores obsoletos quando uma revisão tardia torna uma característica indisponível, usando revisões
+`INVALIDATED` append-only. A Decisão 5 permanece aberta.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -20,7 +22,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Fato com observação, disponibilidade, validade, revisão | `analytics/feature_store.py` (T13.2) e `save_values` (T13.3) | — | T13.3 ✅ | T13.2 | Mesmo contrato de `save_value`, lote atômico e duplicatas no lote testados |
 | Consulta *as-of* | `query_as_of`, `query_history`, `asof_join` | — | T13.3 ✅ | T13.2 | Revisões anteriores preservadas; séries separadas por símbolo, TF e versão; decisões só veem `available_at <= t` |
 | Barra superior aberta ou incompleta não conta como fechada | `latest_bars(closed_only=True)` e `available_at = bar_end_utc` | — | T13.3 ✅ | T13.2 | H1 não aparece antes de fechar; parcial, cobertura incompleta e barra futura excluídas |
-| Correção tardia e proveniência das características | Revisões em `_bars_derived`, janelas por sessão e fingerprint `source_revision` | Memória de Wilder é aproximada; estado/duração do regime dependem do prefixo histórico | T13.3 ✅ | T13.1, T13.2 | Disponibilidade nunca antecipa correção; limite de decaimento e propagação do estado testados |
+| Correção tardia e proveniência das características | Revisões em `_bars_derived`, janelas por sessão, fingerprint `source_revision` e tombstone `INVALIDATED` quando um resultado some | Memória de Wilder é aproximada; estado/duração do regime dependem do prefixo histórico | T13.3 ✅ | T13.1, T13.2 | Disponibilidade nunca antecipa correção; valor antigo só aparece antes da invalidação; limite de decaimento e propagação do estado testados |
 | Volume real ≠ volume de ticks | `_bars_derived.real_volume_known` | `trade_analytics/enrich.py` mistura real e tick barra a barra e trata real `0` como ausente | **T16.3b** | — | Fonte do volume declarada; nunca misturada na mesma série |
 | Contexto do Laboratório só com informação anterior | `enrich.py` usa `time < entry_time` | Usa a barra **aberta** quando a entrada não cai na abertura da barra; surpresa de notícia posterior à entrada vaza | **T16.3b** | — | Testes de vazamento com entrada no meio da barra e com notícia depois da entrada |
 | Fato × divulgação × recebimento × revisão (economia) | `_economic_events` guarda horário do evento e `actual` | Não guarda quando o `actual` foi recebido nem revisões | Registrado; entra quando houver característica econômica (fora da T13.3) | T16.3a | `actual` só usado após o recebimento |
