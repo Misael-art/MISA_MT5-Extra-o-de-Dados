@@ -206,3 +206,19 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - A T13.4 permanece **parcial**: nenhum H06–H16 foi avaliado OOS; H14–H16 precisam de eventos reais válidos; não há
   grupo de mercados comparáveis declarado. Próximo limite operacional: T13.5 segue dependente de T12.1 e dos detalhes
   externos #6/#7/Strategy Tester; T13.7a ainda requer confirmação do dono. Nenhuma operação externa foi feita.
+
+## Reconciliação da matriz e extensões temporais — 2026-10-15
+
+- O checkpoint T13.4 de código é `0ff2df5`; `6ce45bf` atualiza o ponteiro de continuidade. Ambos são locais e não
+  integrados. A matriz agora classifica os itens sem dados reais OOS, sem mercado comparável, sem eventos de trade e
+  sem jobs incrementais como pendentes, com o dado ou contrato que falta explícito.
+- A linha T16.3b estava atrasada em `PLANO_DE_TRABALHO.md` e `propostas/ANALYTICS_OPERACOES.md`: o trabalho existe em
+  `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`, com 22 testes focados, suíte 806/9 e doctor 16/2/0; a
+  aproximação M1/OHLC segue declarada. Não foi integrada.
+- A revisão encontrou duas lacunas que não estavam detalhadas como tarefas: T13.3b para checkpoint, execução
+  incremental, recuperação e medição dos produtores; T16.3c para disponibilidade/revisões econômicas *as-of*. As
+  propostas foram registradas no plano. T16.3a armazena `event_time` e `imported_at`, mas não prova o momento em que
+  `actual` foi recebido nem preserva versões anteriores; nenhuma data de recepção será inferida.
+- A próxima tarefa técnica independente é T13.3b numa branch própria, derivada da T13.3; primeiro executar a linha de
+  base do branch com `/tmp` e Xvfb, depois desenhar retomada/idempotência contra a recomputação integral. A T13.7a
+  continua aguardando resposta do dono; T13.5 segue dependente de T12.1 e decisões de validade/Strategy Tester.

@@ -127,6 +127,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementação concluída no Linux: 833 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Decisão 5 (confiança) segue proposta pendente; PostgreSQL e Windows real não testados |
+| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | proposta registrada; a fazer em branch própria. Não muda o aceite original da T13.3 |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | ⏳ parcial na branch `tarefa/T13.4-hipoteses-walk-forward`: H01–H16 têm builders; H06–H16 permanecem DRAFT, sem limiares/OOS medidos; H06–H13 têm contagens somente descritivas EURUSD/AGG; eventos reais para H14–H16 não existem na base; comparabilidade real não declarada. Linux: 859 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Ver `docs/analytics/T13.4_RELATORIO.md`. Não integrada ao master |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
@@ -145,7 +146,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
 | T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
-| T16.3b | Laboratório: correção temporal do enriquecimento (barra aberta, surpresa de notícia futura, volume real × ticks) | T16.3 | a fazer (achado da auditoria de 2026-10-14) |
+| T16.3b | Laboratório: correção temporal do enriquecimento (barra aberta, surpresa de notícia futura, volume real × ticks, limite temporal de MAE/MFE) | T16.3 | ✅ entregue localmente na branch `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`: focados 22 aprovados, suíte 806 aprovados/9 ignorados, `doctor` 16 OK/2 avisos/0 falhas. MAE/MFE segue aproximação M1/OHLC; branch não integrada |
+| T16.3c | Calendário econômico point-in-time: disponibilidade observada e histórico de revisões | T16.3a, T16.3b | proposta registrada; avaliação real pendente de captura/fonte com disponibilidade confiável |
 | T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
@@ -3298,6 +3300,26 @@ real por corretora.
   com volume desconhecido fica ausente; (d) percentis e medianas só com a janela anterior; (e) correção tardia de
   barra só fica disponível no `computed_at_utc` da correção; (f) a última sessão da base é tratada como aberta;
   (g) a gravação consulta o `write_guard` da Fase 15; (h) proposta de "confiança" para a decisão 5.
+
+### T13.3b — Produtores incrementais e recuperáveis (extensão identificada em 2026-10-15)
+
+- **Motivo:** `analytics.producers.compute` usa `latest_bars` e recalcula a família inteira a cada chamada. `save_values`
+  e a transação por família tornam a gravação repetível, mas não há checkpoint durável por lote, retomada coordenada
+  nem medição reproduzível do job produtor.
+- **Objetivo:** processar só o intervalo novo ou afetado, retomar com segurança após falha e preservar paridade com a
+  recomputação completa; impedir que uma correção tardia deixe características dependentes antigas válidas.
+- **Depende de:** T13.3 e `write_guard`/limites da T15.9. É independente da avaliação estatística da T13.4.
+- **Contrato de retomada:** checkpoint deve identificar ativo, timeframe, família, versão do algoritmo, parâmetros e
+  revisão da fonte; gravar valores e avanço do checkpoint de modo transacional e idempotente. Limitar lotes, tempo e
+  retentativas; uma interrupção deve permitir retomar ou reiniciar sem duplicar nem pular valores.
+- **Exatidão:** janelas finitas precisam incluir o aquecimento anterior suficiente. Indicadores recursivos só podem
+  retomar de estado salvo se a continuidade desse estado for provada contra recomputação; até lá, usar reconstrução
+  desde uma âncora conhecida ou recomputação completa, sem tratar memória aproximada como exata.
+- **Medição:** registrar versão, configuração, revisão e fonte de entrada, duração, pico de memória e crescimento do
+  banco em cenário reproduzível; sementes só quando houver etapa estocástica. Não repetir carga completa por padrão.
+- **Aceite:** testes sintéticos de reexecução idempotente, falha após lote/checkpoint, retomada, correção tardia e
+  igualdade com recomputação completa; `write_guard` bloqueia cada lote; medição mostra que a atualização incremental
+  não lê/recalcula todo o histórico para uma barra nova.
 
 ### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
 

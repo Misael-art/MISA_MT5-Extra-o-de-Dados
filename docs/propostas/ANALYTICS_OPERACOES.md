@@ -353,6 +353,30 @@ Achados da auditoria da integração temporal entre características e Laborató
    dela: são resultado, não contexto, mas ficam aproximados. Correção: documentar a aproximação; ticks quando houver.
 - **Aceite:** testes de vazamento com entrada no meio da barra e com notícia depois da entrada; `FEATURE_VERSION`
   sobe para 2 (o cache da T16.5 se invalida sozinho); resultados antigos não mudam no livro.
+- **Estado local (2026-10-15):** entregue em `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`.
+  Testes focados: 22 aprovados; suíte: 806 aprovados, 9 ignorados; `doctor`: 16 OK, 2 avisos, 0 falhas.
+  MAE/MFE continua aproximado à resolução M1/OHLC. A branch não foi integrada.
+
+### T16.3c — Calendário econômico point-in-time: disponibilidade observada e revisões (extensão de 2026-10-15)
+
+- **Lacuna confirmada:** T16.3a guarda `event_time`, valores `actual`/`forecast`/`previous` e `imported_at`. O primeiro
+  é o horário do evento informado pelo calendário (sem separar previsto de divulgação efetiva); o segundo é quando
+  esta base foi carregada. Nenhum dos dois prova quando o valor real ficou disponível à estratégia, e o `save` atual
+  substitui a mesma linha quando o evento recebe correção, sem guardar a versão anterior. A T16.3b evita usar eventos
+  agendados depois da entrada, mas não reconstrói disponibilidade nem revisões.
+- **Objetivo:** preservar proveniência e revisões sem inventar timestamps. Em captura ao vivo, `first_observed_at`
+  registra quando o mt5x recebeu a informação; se a fonte trouxer um `source_received_at` confiável, guardá-lo à parte.
+  Consultas *as-of* só usam valores quando uma dessas disponibilidades documentadas for `<= decision_time`. Horários
+  ausentes ficam desconhecidos; não usar esses campos em características point-in-time.
+- **Persistência:** adicionar armazenamento interno de revisões por fonte/evento, mantendo `_economic_events` e bancos
+  antigos legíveis. Reimportar deve ser idempotente sem apagar revisões históricas. `imported_at`, `first_observed_at`
+  e `source_received_at` devem ter significados distintos.
+- **Aceite:** fixtures cobrem um evento com duas revisões observadas em instantes distintos e consultas antes/depois da
+  segunda revisão; reimportação não duplica nem apaga histórico; evento histórico sem timestamp de disponibilidade
+  fica desconhecido para contexto *as-of*; nenhum código deduz disponibilidade pelo horário do evento ou por uma
+  importação posterior.
+- **Dependências/limites:** T16.3a e T16.3b. Implementação e testes sintéticos são independentes, mas avaliação real
+  point-in-time fica pendente até existir uma fonte/exportação com timestamps confiáveis de recebimento e revisão.
 
 ### T16.4 — Agregações e estatística (as duas lentes)
 - **Fazer:** `aggregate.py`: `by_dimension(df, dims)`, `crosstab(df, row, col, metric)`, `robot_view(db, robot)`,
@@ -468,7 +492,8 @@ e, nos arquivos compartilhados, só nos pontos citados na tarefa. Testes do Post
 | T16.2b | (repositório HADOUKEN) | — | a fazer | Acrescentar ao `HDK_trades_<magic>.csv` as colunas `entry_time;entry_price;exit_price;sl;tp;direction;exit_reason`, **depois** das atuais `time;symbol;type;volume;result` (nessa ordem; separador `;`; horário `AAAA.MM.DD HH:MM`; `direction` = `buy`/`sell`; `sl`/`tp` = 0 quando não houver; `exit_reason` = `sl`, `tp`, `sinal`, `tempo` ou `fim`). O leitor do mt5x já aceita esse formato e o antigo (`read_hdk_trades_full`); nada mais muda no mt5x |
 | T16.3a | `tarefa/T16.3a-calendario` | (ver PR da branch) | ✅ (Linux) | `trade_analytics/calendar/`: tabela `_economic_events`; fontes `csv` (o `events_file` de sempre, com colunas opcionais `name,country,currency,actual,forecast,previous,override`) e `mt5` (script `trade_analytics/mql5/MT5X_CalendarExport.mq5`, só leitura, grava `Common\Files\MT5X_calendar_<servidor>.csv`, **compilado no MetaEditor do host**); `merged` une o mesmo evento das fontes (horário a 1 min, moeda, nome parecido), escolhe o impacto (manual > MT5 > maior) e calcula a surpresa; `events_for` liga eventos ao ativo (moeda de lucro, moedas no nome do par, `event_symbols`, `*` do CSV). `mt5x trades calendar import/status/install/export`. Chaves novas em `[TRADE_ANALYTICS]`. Testes: `tests/test_trade_calendar.py`. **Não visto:** a exportação rodando no terminal conectado (o script compila; executar exige o MT5 aberto e conectado, e o terminal do host é compartilhado com outro agente) — próximo agente: rodar `mt5x trades calendar export` com o MT5 fechado e depois `import --source mt5` |
 | T16.3 | `tarefa/T16.3-enriquecimento` | (ver PR da branch) | ✅ | `trade_analytics/enrich.py`: `enrich(db, config, trades)` devolve, por operação, calendário (dia da semana, do mês, semana do mês, mês, fim de mês, hora, faixa), minutos desde a abertura do dia, notícia mais forte na janela (impacto, minutos até o evento, nome, surpresa), volume e percentil, ATR, ATR%, largura de Bollinger, retorno anterior, percentil e faixa de volatilidade **point-in-time**, ganho/perda, duração, MAE e MFE. Operação parcial recebe só calendário pela saída. Chaves `time_bucket_min` e `volatility_period`. `FEATURE_VERSION = 1` (a T16.5 usa para o cache). Testes: `tests/test_trade_enrich.py` (inclui a armadilha de olhar o futuro) |
-| T16.3b | `tarefa/T16.3b-enrich-temporal` | — | a fazer | Achados da auditoria temporal de 2026-10-14 (seção 7, T16.3b) |
+| T16.3b | `tarefa/T16.3b-enriquecimento-temporal` | — | ✅ local (`5d85cf3`) | Barra aberta, notícia posterior à entrada, volume real × ticks e limite temporal de MAE/MFE; 22 testes focados, suíte 806/9, `doctor` 16/2/0. M1/OHLC permanece aproximado; não integrada |
+| T16.3c | proposta; branch a definir | — | proposta | Disponibilidade point-in-time e preservação de revisões econômicas; históricos locais não têm horário de disponibilidade |
 | T16.4 | `tarefa/T16.4-agregacoes` | (ver PR da branch) | ✅ | `trade_analytics/stats.py` (métricas com as fórmulas de `compute_metrics`, conferidas em teste; bootstrap em blocos de dias) e `trade_analytics/aggregate.py` (`frame` = livro + enriquecimento; `by_dimension`, `crosstab` com valor/n/pequena, `robot_view`, `asset_view`, `equity_curves`, `daily_correlation`). Chave `min_trades_cell`. Testes: `tests/test_trade_aggregate.py` (efeitos plantados — sexta negativa, 10h positiva — aparecem; célula pequena marcada) |
 | T16.5 | `tarefa/T16.5-cache` | (ver PR da branch) | ✅ | `trade_analytics/cache.py`: `_trade_features` + `_trade_features_runs` (assinatura por run: versão das fórmulas, chaves de `[TRADE_ANALYTICS]` que entram na conta, operações do run e calendário). `aggregate.frame` passa a usar o cache. Teste de desempenho com 50 mil operações (crosstab + by_dimension abaixo de 1,5 s no CI). As tabelas novas aparecem sozinhas no inventário da aba Recursos (Fase 15). Testes: `tests/test_trade_cache.py` |
 | T16.11a | `tarefa/T16.11a-aba-laboratorio` | (ver PR da branch) | ✅ (Linux, tela virtual, temas claro e escuro) | Primeira parte da aba: `ui/charts.py` (heatmap divergente azul↔laranja com n por célula e trama nas células com n < 30, barras, curvas sobrepostas, dispersão vencedoras × perdedoras com forma e cor, dicas ao parar o mouse; `$` de WIN$N escapado) e `ui/laboratory.py` (lentes por robô e por ativo, período, ocultar notícias de impacto alto, indicadores com intervalo de 90%, guias Visão geral, Tempo e calendário, Microestrutura e Comparativo; Execução e Insights desabilitadas com o motivo; botão "Importar backtests antigos"; avisos de amostra pequena, operações parciais e calendário vazio). A aba entra depois de "Robôs" (`ui_manager.py`: registro e menu Exibir, pelo widget). Testes: `tests/test_ui_laboratory.py`. **Falta (T16.11b):** guias Execução e Insights, clique na célula filtrando as outras guias, "Abrir no Laboratório" no painel do robô |
