@@ -404,16 +404,19 @@ Este documento, as linhas no painel e a seção da Fase 16 no PLANO_DE_TRABALHO.
   sem operações; testar em Linux com tela virtual e registrar a validação real no Windows como pendente.
 
 ### T16.12 — `mt5x trades` e relatório
-- **Fazer:** `mt5x trades import | runs | enrich [--robot X | --symbol Y] | report --robot X | --symbol Y |
-  simulate --run-id ID --mode ... | insights --robot X | --symbol Y [--mode ...] | export --robot X | --symbol Y
-  --rules-file regras.json`. `--json` é a opção global antes de `trades` e devolve um único objeto para cada comando.
-  `simulate --save` grava a re-simulação como `resim:<modo>` no livro; `insights` também inclui comparações de modo
-  quando solicitado; `export` grava uma proposta para estudo e nunca aplica as regras. O HTML interativo segue como
-  opcional.
+- **Fazer:** `mt5x trades import | runs | enrich [--robot X | --symbol Y] | report --robot X | --symbol Y [--by ...] |
+  compare --run ID [--modes ...] [--preset P] | simulate --run-id ID --mode ... | --robot X | --symbol Y
+  [--exclude-days ...] [--window ...] [--no-news] [--no-high-vol] [--rules JSON] [--export] |
+  insights --robot X | --symbol Y [--mode ...] [--save] | export --robot X | --symbol Y --rules-file regras.json`.
+  `--json` é a opção global antes de `trades` e devolve um único objeto para cada comando. `simulate --save` grava a
+  re-simulação como `resim:<modo>` no livro; `simulate --export` só grava uma proposta; `insights --save` persiste
+  resultados apenas quando solicitado; `export` grava uma proposta para estudo e nunca aplica as regras. O HTML
+  interativo segue opcional.
 - **Aceite:** as métricas e agregações do relatório vêm dos mesmos cálculos do Laboratório; a re-simulação retorna
   métricas do mesmo `runner.compare`; insights preservam estado exploratório/validado e a reserva final; exportação
   inclui regras, procura, provas, reserva e avisos.
-- **Testes:** CLI sobre SQLite temporário, sem MT5 real; `--json` e texto de erro para todos os subcomandos novos.
+- **Testes:** CLI sobre SQLite temporário, sem MT5 real; `--json` e texto de erro para os subcomandos, preservando
+  `compare`, `report --by`, simulação de filtros e persistência explícita de insights.
 
 ### Ordem e dependências
 
@@ -475,4 +478,4 @@ e, nos arquivos compartilhados, só nos pontos citados na tarefa. Testes do Post
 | T16.10 | `tarefa/T16.10-insights` | (ver PR da branch) | ✅ | `trade_analytics/insights.py`: `discover` (dia, faixa horária, notícia, volatilidade; Welch, Benjamini-Hochberg a 1% sobre todas as combinações; walk-forward em que cada prova só vê a sua procura; **efeito confirmado na reserva final com teste próprio a 5%**; texto pedagógico com n, tentativas e reserva) e `mode_insights` (modo × contexto, teste pareado nas mesmas operações; regra `trocar_modo`). `_trade_insights` (aditiva). `rules` ganhou `excluir_janela`. **Teste do ruído: 60 sorteios de ruído puro, nenhum insight validado** (a 1ª versão validava 2 — critérios endurecidos e documentados). Testes: `tests/test_trade_insights.py` |
 | T16.11b | `tarefa/T16.11b-execucao-insights` | (ver PR da branch) | ✅ (Linux, tela virtual) | Guias **Execução** (escolher run e modos; martingale só aparece para robô que o suporta; tabela modo × acerto, fator de lucro, payoff, expectativa, queda, melhor faixa e observações — entradas adicionais, exposição, travas disparadas, "só estudo"; curvas sobrepostas; heatmap faixa horária × modo) e **Insights** (procura com estado e texto; marcar insights e regras manuais; simular com procura, provas e reserva final, curva antes × depois com a linha do início da reserva; aviso quando a reserva não melhora; exportar proposta). `trade_analytics/export.py` grava `exports/propostas/<escopo>_<data>.json` com regras, números, tentativas e avisos (martingale reprovável, gradiente só via HADOUKEN, evidência fraca). Correção junto: teste do card de backtest espera o resultado em vez de tempo fixo (falhava no Windows). Testes: `tests/test_ui_laboratory.py`, `tests/test_trade_export.py`. **Ambiente:** neste host, o display `:0` às vezes fica inacessível para o shell e os testes de interface ficam minutos esperando o X; rode a suíte com `xvfb-run -a` (assim: 787 aprovados, 9 pulados, ~6 min; uma rodada anterior caiu uma vez com "instrução ilegal" num módulo nativo e não se repetiu — se acontecer, rode de novo com `python -X faulthandler`). A continuação opcional T16.11c está registrada na linha seguinte |
 | T16.11c | `tarefa/T16.11c-interacoes-laboratorio` | — | ✅ (Linux, tela virtual) | Clique esquerdo em uma célula preenchida dos heatmaps de contexto cria filtro em todas as guias; faixa mostra os valores selecionados e o botão limpa o recorte. "Abrir no Laboratório" no painel de detalhes do robô muda para a lente por robô, atualiza o livro e explica o caso sem operações. Respostas antigas de atualização do livro são ignoradas; a análise em andamento é invalidada ao trocar de robô. Testes: `tests/test_ui_laboratory.py` e `tests/test_ui_main_window.py`; suíte completa: 789 passaram, 9 pulados. Doctor: 16 OK, 2 avisos opcionais, 0 falhas. A validação real no Windows continua pendente |
-| T16.12 | `tarefa/T16.12-cli-relatorio` | — | ✅ (Linux; suíte e CLI JSON) | `trades enrich` usa o cache point-in-time; `report` por robô ou ativo devolve métricas, dimensões e heatmaps calculados pelos mesmos agregadores da aba; `simulate --run-id --mode` chama o motor existente e só persiste com `--save`; `insights` procura contexto e, se solicitado, modos; `export --rules-file` cria a proposta não aplicável. `--json` usa o envelope global do CLI. HTML interativo permaneceu opcional. Testes focados: 13 aprovados; suíte completa: 792 aprovados, 9 pulados; doctor: 16 OK, 2 avisos opcionais, 0 falhas. Validação real da CLI no Windows pendente |
+| T16.12 | `tarefa/T16.12-cli-relatorio` | — | ✅ local (`34f43d7`; Linux) | Preserva `compare`, `report --by`, filtros de `simulate` e `insights --save`; adiciona `enrich`, relatório com agregações e heatmaps, re-simulação por run e `export --rules-file`. Re-simulação e insights persistem só com `--save`; proposta nunca é aplicada. `--json` usa o envelope global. Testes focados: 15 aprovados; suíte completa: 794 aprovados, 9 pulados; doctor: 16 OK, 2 avisos, 0 falhas. Validação Windows pendente; HTML opcional não feito |

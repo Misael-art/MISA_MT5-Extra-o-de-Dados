@@ -23,17 +23,28 @@ def add_parser(sub) -> None:
 
     q = ts.add_parser("report", help="relatório de operações pelas mesmas métricas do Laboratório")
     _scope_arguments(q, required=True)
+    q.add_argument("--by", help="dimensões para detalhar, separadas por vírgula (padrão: dimensões do Laboratório)")
 
-    q = ts.add_parser("simulate", help="re-simula um run sobre as mesmas entradas e barras")
-    q.add_argument("--run-id", action="append", required=True, help="run no livro (pode repetir)")
-    q.add_argument("--mode", required=True, choices=MODE_KEYS, help="modo de execução a comparar")
+    q = ts.add_parser("simulate", help="simula regras de filtro ou re-simula um run sobre as mesmas entradas e barras")
+    target = q.add_mutually_exclusive_group(required=True)
+    target.add_argument("--run-id", action="append", help="run no livro para re-simular (pode repetir)")
+    target.add_argument("--robot", help="lente por robô para avaliar regras")
+    target.add_argument("--symbol", help="lente por ativo para avaliar regras")
+    q.add_argument("--mode", choices=MODE_KEYS, help="modo de execução para --run-id")
     q.add_argument("--param", action="append", default=[], help="parâmetro do modo como nome=valor (pode repetir)")
     q.add_argument("--save", action="store_true", help="grava a re-simulação como resim:<modo> no livro")
+    q.add_argument("--exclude-days", default="", help="dias a excluir, 0 = segunda ... 4 = sexta (ex.: 4)")
+    q.add_argument("--window", help="operar só entre HH:MM-HH:MM")
+    q.add_argument("--no-news", action="store_true", help="excluir notícia de impacto alto")
+    q.add_argument("--no-high-vol", action="store_true", help="excluir volatilidade alta")
+    q.add_argument("--rules", help="regras em JSON (lista), como as do arquivo exportado")
+    q.add_argument("--export", action="store_true", help="grava a proposta em exports/propostas/")
 
     q = ts.add_parser("insights", help="procura contextos com diferença consistente fora da amostra")
     _scope_arguments(q, required=True)
     q.add_argument("--mode", action="append", choices=MODE_KEYS[1:], default=[],
                    help="re-simula este modo para procurar diferenças por contexto (pode repetir)")
+    q.add_argument("--save", action="store_true", help="grava os insights em _trade_insights")
 
     q = ts.add_parser("export", help="exporta uma proposta de regras para estudo, sem aplicá-las")
     _scope_arguments(q, required=True)
@@ -41,6 +52,11 @@ def add_parser(sub) -> None:
     q.add_argument("--rule", action="append", default=[], help="regra adicional em JSON (pode repetir)")
     q.add_argument("--tested", type=int, help="alternativas testadas; padrão: valor do arquivo ou dos insights")
     q.add_argument("--out-dir", help="pasta de saída (padrão: exports/propostas)")
+
+    q = ts.add_parser("compare", help="o mesmo run re-simulado em vários modos de execução")
+    q.add_argument("--run", required=True, help="run_id (veja mt5x trades runs)")
+    q.add_argument("--modes", default="", help="modos separados por vírgula (padrão: os de saída)")
+    q.add_argument("--preset", help="preset do robô (para as travas do martingale)")
 
     c = ts.add_parser("calendar", help="calendário econômico de várias fontes (CSV e MT5)")
     cs = c.add_subparsers(dest="calendar_command", required=True)
@@ -88,6 +104,8 @@ def run(args: argparse.Namespace, ctx) -> int:
         return _report(args, ctx)
     if args.trades_command == "simulate":
         return _simulate(args, ctx)
+    if args.trades_command == "compare":
+        return _compare(args, ctx)
     if args.trades_command == "insights":
         return _insights(args, ctx)
     if args.trades_command == "export":
@@ -163,7 +181,12 @@ def _report(args, ctx) -> int:
     metrics = None
     if not lab.empty:
         metrics = aggregate.summarize(lab, aggregate._initial_equity(ctx.config), aggregate.min_trades(ctx.config))
-        for dim in ("day_of_week", "time_bucket", "event_impact", "volatility_bucket"):
+        selected = ([name.strip() for name in args.by.split(",") if name.strip()] if args.by else
+                    ["day_of_week", "time_bucket", "event_impact", "volatility_bucket"])
+        unknown = [dim for dim in selected if dim not in lab]
+        if unknown:
+            raise ValueError(f"Dimensão(ões) desconhecida(s): {', '.join(unknown)}")
+        for dim in selected:
             dimensions[dim] = _records(aggregate.by_dimension(lab, [dim], ctx.config))
         heatmaps = {
             "time_by_day": _records(aggregate.by_dimension(lab, ["time_bucket", "day_of_week"], ctx.config,
@@ -172,7 +195,8 @@ def _report(args, ctx) -> int:
                                                                    ctx.config, ci=False)),
         }
     partial = int((lab["completeness"] == ledger.PARTIAL).sum()) if not lab.empty else 0
-    payload = {"scope": _scope_name(args), "summary": metrics, "runs": runs, "scope_breakdown": _records(scope_table),
+    scope_records = _records(scope_table)
+    payload = {"scope": _scope_name(args), "summary": metrics, "runs": runs, "scope_breakdown": scope_records,
                "dimensions": dimensions, "heatmaps": heatmaps,
                "coverage": {"partial_operations": partial,
                             "calendar_operations": int(lab["event_impact"].notna().sum())
@@ -197,7 +221,8 @@ def _report(args, ctx) -> int:
                 name = row.get("symbol") if args.robot else row.get("robot_key")
                 _print(f"    {name} {row.get('timeframe', '')}: {row.get('n', 0)} operações, expectativa "
                        f"{_money(row.get('expectancy'))}")
-    cli._data(report=payload)
+    # Mantém as chaves `total`, `by` e `lens` usadas pelo CLI T16.12 já publicado.
+    cli._data(report=payload, total=metrics, by=dimensions, lens=scope_records)
     return cli.EXIT_OK
 
 
@@ -222,6 +247,15 @@ def _robot_for(db, config, robot_key):
 
 
 def _simulate(args, ctx) -> int:
+    if not args.run_id:
+        if args.mode or args.param or args.save:
+            raise ValueError("--mode, --param e --save exigem --run-id; filtros usam --robot ou --symbol")
+        return _simulate_filters(args, ctx)
+    if not args.mode:
+        raise ValueError("--mode é obrigatório quando --run-id é informado")
+    if args.exclude_days or args.window or args.no_news or args.no_high_vol or args.rules or args.export:
+        raise ValueError("opções de filtro (--exclude-days, --window, --no-news, --no-high-vol, --rules, --export) "
+                         "usam --robot ou --symbol, não --run-id")
     from mt5_extracao import cli
     from mt5_extracao.trade_analytics import ledger
     from mt5_extracao.trade_analytics.execution import modes, runner
@@ -261,6 +295,76 @@ def _simulate(args, ctx) -> int:
         if sequence is not None:
             _print("  Travas disparadas: " + ", ".join(f"{name}: {count}" for name, count in sequence["triggers"].items()))
     cli._data(simulations=results)
+    return cli.EXIT_OK
+
+
+def _simulate_filters(args, ctx) -> int:
+    import json
+    from mt5_extracao import cli
+    from mt5_extracao.trade_analytics import export, rules
+
+    lab = _load_lab(args, ctx)
+    if lab.empty:
+        raise ValueError(f"Nenhuma operação no livro para {_scope_name(args)}.")
+    try:
+        chosen = json.loads(args.rules) if args.rules else []
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"--rules deve ser uma lista JSON de regras: {exc}") from exc
+    if not isinstance(chosen, list):
+        raise ValueError("--rules deve ser uma lista JSON de regras")
+    days = [int(day.strip()) for day in args.exclude_days.split(",") if day.strip()]
+    if days:
+        chosen.append({"tipo": "excluir_dia", "dias": days})
+    if args.window:
+        try:
+            start, end = args.window.split("-", 1)
+        except ValueError as exc:
+            raise ValueError("--window deve usar HH:MM-HH:MM") from exc
+        chosen.append({"tipo": "janela_horaria", "inicio": start.strip(), "fim": end.strip()})
+    if args.no_news:
+        chosen.append({"tipo": "excluir_noticia", "impacto_min": 3})
+    if args.no_high_vol:
+        chosen.append({"tipo": "excluir_volatilidade", "faixas": ["alta"]})
+    if not chosen:
+        raise ValueError("informe ao menos uma regra (--exclude-days, --window, --no-news, --no-high-vol ou --rules)")
+    evaluation = rules.evaluate(lab, chosen, ctx.config)
+    for part, label in (("search", "Procura"), ("holdout", "Reserva final")):
+        before, after = evaluation[part]["before"], evaluation[part]["after"]
+        _print(f"{label}: expectativa {_money(before['expectancy'])} -> {_money(after['expectancy'])}; fator de lucro "
+               f"{before['profit_factor']:.2f} -> {after['profit_factor']:.2f}; queda "
+               f"{before['max_drawdown_pct'] * 100:.1f}% -> {after['max_drawdown_pct'] * 100:.1f}%")
+    _print(f"Provas do walk-forward: melhorou em {evaluation['folds_improved']} de {len(evaluation['folds'])}. "
+           f"{evaluation['note']}")
+    proposal = export.proposal(_scope_name(args), chosen, evaluation) if args.export else None
+    if proposal:
+        _print(f"Proposta gravada em {proposal}. Ela não foi aplicada.")
+    cli._data(scope=_scope_name(args), rules=chosen, evaluation=evaluation,
+              proposal=str(proposal) if proposal else None)
+    return cli.EXIT_OK
+
+
+def _compare(args, ctx) -> int:
+    from mt5_extracao import cli
+    from mt5_extracao.trade_analytics import ledger
+    from mt5_extracao.trade_analytics.execution import runner
+
+    trades = ledger.load(ctx.db, run_id=args.run)
+    if trades.empty:
+        raise ValueError(f"Run {args.run} não está no livro de operações.")
+    robot = _robot_for(ctx.db, ctx.config, str(trades.iloc[0]["robot_key"]))
+    wanted = [mode.strip() for mode in args.modes.split(",") if mode.strip()] or None
+    compared = runner.compare(ctx.db, ctx.config, args.run, wanted, robot=robot, preset=args.preset)
+    results = {}
+    for key, item in compared.items():
+        metrics = item["metrics"]
+        _print(f"{item['name']}: {metrics['n']} op., acerto {cli._fmt_pct(metrics['win_rate'])}, fator de lucro "
+               f"{cli._fmt_num(metrics['profit_factor'])}, expectativa {_money(metrics['expectancy'])}, queda "
+               f"{cli._fmt_pct(metrics['max_drawdown_pct'])}"
+               + (" [só estudo]" if item.get("study_only") else ""))
+        sequence = item.get("sequence") or {}
+        results[key] = {"name": item["name"], "metrics": metrics, "study_only": bool(item.get("study_only")),
+                        "triggers": sequence.get("triggers"), "safety_notes": item.get("safety_notes")}
+    cli._data(run=args.run, modes=results)
     return cli.EXIT_OK
 
 
@@ -342,12 +446,13 @@ def _insights(args, ctx) -> int:
     if args.mode:
         modes, skipped = _mode_frames(ctx, lab, args.mode)
         found.extend(insights.mode_insights(lab, modes, ctx.config))
-    saved = insights.save(ctx.db, _scope_name(args), found)
+    saved = insights.save(ctx.db, _scope_name(args), found) if args.save else 0
     for item in found:
         _print(f"{item.state}: {item.text}")
     if not found:
         _print("Nenhum contexto atingiu a amostra mínima para gerar uma pista.")
-    _print(f"{len(found)} insight(s); {saved} gravado(s) em {_scope_name(args)}.")
+    suffix = f"{saved} gravado(s)" if args.save else "não gravados (use --save para persistir)"
+    _print(f"{len(found)} insight(s); {suffix} em {_scope_name(args)}.")
     cli._data(scope=_scope_name(args), insights=[asdict(item) for item in found], saved=saved,
               runs_without_modes=skipped)
     return cli.EXIT_OK

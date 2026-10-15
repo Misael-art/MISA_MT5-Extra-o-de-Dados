@@ -40,9 +40,11 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x robots monitor <robô> | mt5x robots stop      # acompanha (somente leitura) | PARAR TUDO
     mt5x robots monitor <robô> --watch                 # um pop-up a cada operação do robô
     mt5x trades import | runs | enrich [--robot X | --symbol Y]
-    mt5x trades report --robot X | --symbol Y          # mesmo resumo do Laboratório
+    mt5x trades report --robot X | --symbol Y [--by day_of_week,time_bucket]
+    mt5x trades compare --run ID [--modes ponto_fixo,trailing_atr]
     mt5x trades simulate --run-id ID --mode ponto_fixo [--save]
-    mt5x trades insights --robot X | --symbol Y [--mode trailing_atr]
+    mt5x trades simulate --robot X --exclude-days 4 [--export]
+    mt5x trades insights --robot X | --symbol Y [--mode trailing_atr] [--save]
     mt5x trades export --robot X --rules-file rules.json
     mt5x analyze --symbol WIN$N --tf D1 [--period "1 ano"]   # os números da aba Análise
     mt5x status                                        # base, robôs, validações e próximas ações sugeridas
