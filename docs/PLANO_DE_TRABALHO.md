@@ -154,6 +154,11 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
 | T16.12 | Laboratório: `mt5x trades report/compare/insights/simulate` com `--json` | T16.11b | ✅ concluída (relatório HTML opcional não feito) |
+| T17.1 | Sistema visual: tokens, tipografia, temas e contraste mensurável | F7 | ✅ concluída no Linux; Windows pendente |
+| T17.2 | Componentes de apresentação reutilizáveis, extraídos de usos reais | T17.1 | a fazer |
+| T17.3 | Laboratório e gráficos: hierarquia, estados de qualidade, amostra e legibilidade | T17.1, T17.2, T16.11a, T16.11b | a fazer |
+| T17.4 | Aplicação progressiva do sistema às abas Ativos, Minha base, Análise, Robôs, Recursos e Atividade | T17.2, T17.3, T8.2, T15.1–T15.6 | a fazer |
+| T17.5 | Validação visual integrada, capturas comparáveis e documentação | T17.1–T17.4 | a fazer |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -3416,6 +3421,10 @@ Convivência: o pacote é `mt5_extracao/trade_analytics/` e o comando `mt5x trad
 `mt5x analytics` já estão reservados para a Fase 13 (contexto do mercado, sem PnL). O livro de operações
 `_trade_ledger` é o mesmo da T12.6A. Martingale e grid seguem proibidos em robô real pela bateria; no Laboratório o
 martingale só aparece para robô que o suporta, com as travas de segurança dele.
+
+## Fase 17 — Modernização visual do mt5x
+
+**Pedida pelo dono do projeto em 2026-10-14.** Tornar a interface desktop mais legível, consistente e adaptável, preservando Tkinter/ttk, matplotlib, navegação, callbacks, cálculos, contratos e avisos de qualidade. A frente inclui tokens e temas, componentes de apresentação, Laboratório e gráficos, aplicação progressiva às outras abas e validação documentada. O plano detalhado, arquivos, critérios e limites está em [propostas/INTERFACE_VISUAL.md](propostas/INTERFACE_VISUAL.md). Cada tarefa é uma entrega separada; nenhuma altera motores analíticos ou regras operacionais.
 
 ---
 
