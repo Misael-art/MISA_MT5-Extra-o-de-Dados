@@ -156,3 +156,25 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   Os módulos Analytics não têm ramificação por `paths.is_windows`; os testes existentes simulam ambos os valores.
 
 - Commit local da auditoria T13.3: `fix(T13.3): invalidate features removed by corrections` (sem push, PR ou merge).
+
+## Retomada da T13.3b — 2026-10-15
+
+- Auditoria encontrou a branch inicial de T13.3b sobre a T13.3 anterior à correção `INVALIDATED`. O código e os testes
+  foram reconciliados com a T13.3 auditada (`3f9e333`) na branch local `tarefa/T13.3b-producers-incrementais`; o commit
+  `03570b0` contém implementação e testes. A referência `codex/t13.3b-before-t13.3-reconcile` preserva o ponto
+  anterior como recuperação local.
+- Baseline antes das alterações desta retomada: **848 aprovados, 11 ignorados em 555,21 s**. A bateria SQLite de
+  perfis e feature store passou com **48 aprovados em 52,33 s**. O teste de regressão simula correção tardia, falha
+  após lote confirmado e retomada, verificando que a invalidação não desaparece do checkpoint e que o histórico
+  *as-of* anterior continua preservado.
+- PostgreSQL 16 descartável em loopback: **11 aprovados** entre `test_postgresql.py`, `test_trade_analytics_pg.py` e
+  `test_analytics_profiles_pg.py`, incluindo a mesma correção RVOL seguida de retomada. Contêiner removido ao fim.
+- Benchmark sintético, 160 sessões + 1 incremental, 966 barras M5 finais: chamada `compute` 10.174 ms completa e
+  1.290 ms incremental (**7,89×**); soma dos tempos medidos pelos jobs 10.160 ms e 155 ms; 25.398 valores novos contra
+  163 novos e 2 inalterados; crescimento SQLite/WAL 17.932.288 contra 290.816 bytes. Pico RSS: 182.767.616 contra
+  181.936.128 bytes, sem redução demonstrada.
+- Suíte completa final: **850 aprovados, 12 ignorados em 535,63 s**. `doctor`: **16 OK, 2 avisos, 0 falhas**
+  (`pandas-ta` opcional ausente e ponte Wine desativada).
+- Nenhuma Analytics foi publicada, enviada ou integrada. MT5 real, Windows real, calendário DST e fontes reais não
+  foram usados nesta extensão. Próximo passo independente: retomar T16.3c depois de auditar seu empilhamento sobre
+  T16.3b; T13.5 segue aguardando as decisões registradas na matriz. Worktrees sujos da T17 permanecem intocados.

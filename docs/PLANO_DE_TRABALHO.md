@@ -127,6 +127,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementada e auditada no Linux: suíte integral 835 aprovados, 10 ignorados; foco T13.1–T13.3 53 aprovados; `doctor` 16 OK, 2 avisos, 0 falhas. Correção tardia que remove um valor agora grava revisão `INVALIDATED`; consultas *as-of* anteriores preservam o fato antigo. Checklist Windows atualizado em `docs/validacao_instaladores.md`. Decisão 5 segue pendente; PostgreSQL local, Windows real e DST não testados |
+| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ concluída localmente na branch `tarefa/T13.3b-producers-incrementais`: suíte 850/12; foco 48; PostgreSQL 16: 11; `doctor` 16 OK/2 avisos/0 falhas; benchmark incremental 7,89× mais rápido no tempo de parede. Sem PR/merge. Windows real, MT5 real, DST e mercados reais pendentes |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
@@ -3298,6 +3299,25 @@ real por corretora.
   com volume desconhecido fica ausente; (d) percentis e medianas só com a janela anterior; (e) correção tardia de
   barra só fica disponível no `computed_at_utc` da correção; (f) a última sessão da base é tratada como aberta;
   (g) a gravação consulta o `write_guard` da Fase 15; (h) proposta de "confiança" para a decisão 5.
+
+### T13.3b — Produtores incrementais e recuperáveis (extensão identificada em 2026-10-15)
+
+- Evidência e limites desta entrega: [T13.3B_PRODUTORES_INCREMENTAIS.md](analytics/T13.3B_PRODUTORES_INCREMENTAIS.md).
+- **Motivo:** processar só barras novas quando possível, retomar após falha e manter paridade com a reconstrução
+  completa, inclusive quando uma correção remove um valor já publicado.
+- **Depende de:** T13.3 e dos limites/`write_guard` da T15.9. É independente da avaliação estatística da T13.4.
+- **Contrato de retomada:** checkpoint identifica ativo, timeframe, família, versão, configuração e sequência da fonte;
+  gravação dos valores e avanço do checkpoint ocorrem na mesma transação. Lotes, tempo, memória e retentativas são
+  limitados. Reexecução retoma sem duplicar nem pular fatos.
+- **Exatidão:** janelas finitas guardam aquecimento suficiente. Estado recursivo só continua se a paridade for provada;
+  correções anteriores ao cursor reconstroem a família inteira. Valores antigos removidos pela correção recebem uma
+  revisão append-only `INVALIDATED`, disponível no instante da correção, e tombstones entram nos mesmos lotes
+  cronológicos do checkpoint.
+- **Medição:** registrar versão, configuração, revisão e fonte, duração, RSS e crescimento do banco num cenário
+  reproduzível. O benchmark separa o tempo do produtor da preparação M1/resampling.
+- **Aceite:** testes sintéticos de idempotência, falha após lote, retomada, correção tardia, paridade com reconstrução,
+  `write_guard` por lote e consulta limitada às observações do lote; benchmark demonstra atualização incremental sem
+  ler/recalcular todo o histórico do produtor.
 
 ### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
 
