@@ -50,6 +50,10 @@ def validate_definition(definition):
                  "outcome"):
         if not isinstance(definition[name], dict):
             raise ValueError(f"{name} precisa ser um objeto JSON.")
+    missing_costs = definition["costs"].get("missing_components", [])
+    if not isinstance(missing_costs, list) or any(not isinstance(item, str) or not item.strip()
+                                                   for item in missing_costs):
+        raise ValueError("costs.missing_components precisa ser uma lista de textos não vazios.")
     if "inputs" in definition and not isinstance(definition["inputs"], dict):
         raise ValueError("inputs precisa ser um objeto JSON quando declarado.")
     _validate_condition(definition["condition"])

@@ -196,6 +196,7 @@ def _entry_delay_returns(group, entry_index, exit_bar, direction, definition, po
         result[f"gross_return_delay_{delay}"] = row["gross_return"]
         result[f"outcome_return_delay_{delay}"] = row["outcome_return"]
         result[f"cost_bps_delay_{delay}"] = row["cost_bps"]
+        result[f"cost_observed_delay_{delay}"] = row["cost_observed"]
     return result
 
 

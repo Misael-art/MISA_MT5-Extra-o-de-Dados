@@ -15,6 +15,7 @@ from mt5_extracao.analytics.validation import (
     EVALUATIONS_TABLE,
     RESERVATIONS_TABLE,
     _condition_for,
+    _sensitivity,
     evaluate_and_store,
     evaluate_samples,
     list_evaluations,
@@ -559,11 +560,45 @@ def test_seeded_noise_does_not_pass_the_validation_gate():
 def test_strong_synthetic_effect_is_only_validating_not_automatically_approved():
     definition = deepcopy(get_definition("H01"))
     definition.pop("parameter_grid", None)
+    definition["costs"]["missing_components"] = []
     definition["validation"]["min_samples"] = 15
     result = evaluate_samples(_evaluation_samples(200), definition, n_boot=200)
     assert result["eligible_for_approval"]
     assert result["status"] == "VALIDATING"
     assert result["approved"] is False
+
+
+def test_missing_cost_inputs_are_never_reported_as_zero_costs_or_approval_eligible():
+    definition = _simple_definition(status="EXPLORATORY")
+    samples = _evaluation_samples(200)
+    samples["feature"] = (np.arange(len(samples)) % 2 == 0).astype(int)
+    samples["success"] = samples["feature"]
+    sensitivity = _sensitivity(samples, samples["feature"], definition)
+    one_x_cost = next(item for item in sensitivity
+                      if item["type"] == "cost_multiplier" and item["value"] == 1.0)
+    assert one_x_cost["expectancy_net"] is None
+    assert not one_x_cost["complete"]
+    assert "componentes de custo ausentes" in one_x_cost["incomplete_reason"]
+
+    samples["gross_return_delay_1"] = samples["gross_return"] + 0.001
+    delayed = next(item for item in _sensitivity(samples, samples["feature"], definition)
+                   if item["type"] == "entry_delay_bars" and item["value"] == 1)
+    assert delayed["expectancy_net"] is None
+    assert not delayed["complete"]
+
+    result = evaluate_samples(samples, definition, n_boot=100)
+    assert not result["eligible_for_approval"]
+    assert not result["cost_model"]["complete_for_test"]
+    assert {"componente de custo ausente: commission", "componente de custo ausente: slippage"} <= \
+        set(result["cost_model"]["approval_blockers"])
+
+    complete_definition = _simple_definition(status="EXPLORATORY")
+    complete_definition["costs"]["missing_components"] = []
+    missing_cost_values = samples.copy()
+    missing_cost_values["cost_bps"] = np.nan
+    missing_cost_result = evaluate_samples(missing_cost_values, complete_definition, n_boot=100)
+    assert not missing_cost_result["eligible_for_approval"]
+    assert "bps de custo ausente em operações OOS" in missing_cost_result["cost_model"]["approval_blockers"]
 
 
 def test_persistent_attempts_count_all_candidates_and_never_reuse_final_holdout(tmp_path):
