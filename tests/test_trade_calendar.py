@@ -185,6 +185,33 @@ def test_csv_source_received_at_requires_timezone_and_normalizes_to_utc(tmp_path
         cal.read_csv_file(naive)
 
 
+def test_source_received_at_controls_asof_before_delayed_local_observation(db, tmp_path):
+    content = ("time,symbol,impact,name,actual,forecast,source_received_at\n"
+               "2020-01-09 10:30,USD,alto,Employment report,256,160,2026-01-09T10:31:00-03:00\n")
+    row = cal.read_csv_file(_write(tmp_path, "received-asof.csv", content))[0]
+    first_observed = pd.Timestamp("2026-01-10T12:00:00Z")
+    cal.save(db, "csv", [row], observed_at=first_observed)
+
+    receipt = pd.Timestamp("2026-01-09T13:31:00Z")
+    assert cal.load_asof(db, receipt - pd.Timedelta(seconds=1)).empty
+    first = cal.load_asof(db, receipt).iloc[0]
+    assert first["actual"] == 256.0
+    assert first["available_at"] == receipt
+    assert cal.merged_asof(db, receipt - pd.Timedelta(seconds=1)).empty
+    merged_first = cal.merged_asof(db, receipt).iloc[0]
+    assert merged_first["surprise"] == 96.0
+    assert merged_first["surprise_available_at"] == receipt
+
+    correction = {**row, "actual": 300.0, "source_received_at": "2026-01-10T08:00:00-03:00"}
+    cal.save(db, "csv", [correction], observed_at=pd.Timestamp("2026-01-11T12:00:00Z"))
+    corrected_receipt = pd.Timestamp("2026-01-10T11:00:00Z")
+    assert cal.load_asof(db, corrected_receipt - pd.Timedelta(seconds=1))["actual"].tolist() == [256.0]
+    assert cal.load_asof(db, corrected_receipt)["actual"].tolist() == [300.0]
+    merged_corrected = cal.merged_asof(db, corrected_receipt).iloc[0]
+    assert merged_corrected["surprise"] == 140.0
+    assert merged_corrected["surprise_available_at"] == corrected_receipt
+
+
 def test_merge_unites_sources_and_enriches(db, tmp_path):
     cal.import_source(db, None, "mt5", _write(tmp_path, "m.csv", MT5_FILE))
     cal.import_source(db, None, "csv", _write(tmp_path, "e.csv", CSV_NEW))

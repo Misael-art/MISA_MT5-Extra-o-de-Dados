@@ -157,8 +157,11 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   `source_received_at`. A API não declara a hora de recebimento da fonte. O exportador recusa o Strategy Tester para não
   usar seu relógio simulado como UTC; a hora depende do relógio local do terminal. Como o arquivo corrente é substituído,
   cada exportação precisa ser importada antes da seguinte para preservar revisões intermediárias. O replay real ainda
-  exige uma exportação feita no MT5 conectado ou CSV com recibos explícitos. Testes focados calendário/enriquecimento/cache:
-  **29 aprovados**; suíte completa: **813 aprovados, 9
-  ignorados em 644,74 s**; `doctor`: **16 OK, 2 avisos, 0 falhas**. A compilação/exportação em terminal MT5, Windows e
+  exige uma exportação feita no MT5 conectado ou CSV com recibos explícitos. Em 2026-10-15, acrescentei teste de
+  regressão que verifica o corte *as-of* pelo `source_received_at` antes da observação local atrasada e a entrada de
+  correções no recibo correspondente. A bateria focada calendário/enriquecimento/cache passou **30 testes** em
+  diretórios temporários privados; a tentativa inicial em `/tmp` teve uma falha `database or disk is full`. A suíte
+  integral mais recente, anterior a esse teste, registrou **813 aprovados, 9 ignorados em 644,74 s**; `doctor` foi
+  **16 OK, 2 avisos, 0 falhas**. A compilação/exportação em terminal MT5, Windows e
   PostgreSQL não foram exercitados. `event_time` continua em horário do servidor; o offset exportado é apenas o atual e
   não resolve conversão histórica sob DST. Worktrees da T17 permanecem intocados; não houve push ou PR.
