@@ -92,3 +92,19 @@ Windows segue pendente na lista de [validacao_instaladores.md](validacao_instala
 
 Não alterar os worktrees T17.1–T17.5 ao retomar. Sem resposta do dono, continuar somente com tarefas independentes que
 tenham entrada, aceite e testes determinísticos.
+
+### Continuidade do ciclo Analytics — checkpoint T16.12 (2026-10-15)
+
+T16.12 foi implementada localmente na branch `tarefa/T16.12-cli-relatorio`, em worktree própria e baseada na entrega
+T16.11c. O CLI `mt5x trades` agora oferece `enrich`, `report`, `simulate`, `insights` e `export`; os comandos usam os
+agregadores e motores existentes, e simulações só são persistidas quando chamadas com `--save`. `--json` mantém o
+envelope global do CLI. A exportação gera uma proposta para revisão, sem aplicar regras.
+
+Antes de qualquer alteração, a suíte completa passou com **789 aprovados e 9 pulados**. Após a implementação, os testes
+focados de comandos, importadores e exportação passaram (**13 aprovados**), e a suíte completa passou com **792
+aprovados e 9 pulados** em tela virtual. O doctor reportou **16 OK, 2 avisos opcionais e 0 falhas** (`pandas-ta` ausente
+e ponte Wine desativada). A validação real da CLI/JSON no Windows continua pendente no checklist de
+[validacao_instaladores.md](validacao_instaladores.md).
+
+T13.5, T13.7a, T13.4 e T16.3c seguem com as pendências e decisões descritas acima. Os worktrees T17.1–T17.5 continuam
+separados e não foram alterados.
