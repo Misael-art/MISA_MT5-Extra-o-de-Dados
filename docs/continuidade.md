@@ -182,3 +182,26 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   mas o formato do snapshot ainda depende de medição; seguem pendentes a política de validade (#7) e o comportamento
   do leitor no Strategy Tester. T13.7a segue proposta pendente de decisão. Não iniciar ações no HADOUKEN, publicar snapshots,
   fazer pilotos ou tocar em contas. T17.1 e os worktrees T17.2/T17.3 permanecem fora do escopo e intocados.
+
+## Atualização T13.4 — builders H06–H16 e validação de retomada — 2026-10-15
+
+- Continuação na branch `tarefa/T13.4-hipoteses-walk-forward`, sobre o checkpoint `ccf5316`. `pattern_extensions.py`
+  implementa H06–H16; H14/H15 exigem `trade_events`, H16 exige `signal_events`. Todos esses padrões seguem `DRAFT`;
+  o motor não os deixa elegíveis mesmo com efeito sintético. `summarize_market_stability` publica apenas um resumo
+  descritivo por grupo previamente declarado, hipótese, versão e timeframe.
+- H06–H16 foram exercitadas por fixtures. O catálogo inclui horário sem fuso, resolução M1, entrada/saída e os
+  limites de resolução de H14–H16. H06 alinha e só usa M15 fechada; H09/H10 rejeitam lacunas nos rótulos; H10 respeita
+  a janela de recuperação; H12 preserva ambiguidade/ausência; H14/H15 usam apenas barras fechadas disponíveis.
+- Leitura real somente leitura (`mode=ro`, `query_only=1`): H06–H13 produziram contagens EURUSD/AGG descritas em
+  `docs/analytics/T13.4_RELATORIO.md`; não foram feitos testes de efeito ou reserva OOS. Volume real EURUSD conhecido
+  zero manteve H08 sem amostra; AGG produziu H08. A `_trade_ledger` local não tem entrada, preço e direção simultâneos
+  e não existe tabela de sinais, então H14–H16 não têm eventos reais para avaliar. EURUSD e AGG não foram declarados
+  comparáveis.
+- Sweep read-only H06–H13: **37,80 s**, RSS máximo **275,5 MiB**, 99.611 barras EURUSD + 8.181 AGG; SQLite permaneceu
+  em **353.746.944 bytes** antes/depois. Suíte T13.4: **26 aprovados**. Suíte completa: **859 aprovados, 10 ignorados
+  em 648,97 s**. `doctor`: **16 OK, 2 avisos, 0 falhas** (`pandas-ta` opcional ausente; ponte Wine desativada).
+  Nenhum `.sh` mudou; não se aplica ShellCheck. Windows real, PostgreSQL, horário de verão e terminal MT5 não foram
+  testados.
+- A T13.4 permanece **parcial**: nenhum H06–H16 foi avaliado OOS; H14–H16 precisam de eventos reais válidos; não há
+  grupo de mercados comparáveis declarado. Próximo limite operacional: T13.5 segue dependente de T12.1 e dos detalhes
+  externos #6/#7/Strategy Tester; T13.7a ainda requer confirmação do dono. Nenhuma operação externa foi feita.

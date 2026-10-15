@@ -3,7 +3,11 @@
   "title": "Tempo até recuperação após excursão adversa",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H15",
+  "inputs": {"trade_events_required": ["entry_time", "entry_price", "direction"],
+              "optional_fields": ["symbol", "trade_id", "strategy_id"],
+              "bar_source": "closed_m1_bars", "time_basis": "same_naive_broker_basis_as_m1",
+              "entry_bar_policy": "mid_bar_entries_use_only_subsequent_closed_m1_bars"},
   "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"field": "mae_atr", "operator": "gte", "value": 1.0},
@@ -12,10 +16,10 @@
   "exit": {"type": "recovery_or_fixed_horizon", "horizon_minutes": 120},
   "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
             "missing_components": ["slippage", "commission"]},
-  "parameters": {"recovery_level": "entry_price", "horizon_minutes": 120,
+  "parameters": {"recovery_level": "entry_price", "horizon_minutes": 120, "mae_atr": 1.0, "atr_period": 14,
                  "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 120, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
                   "parameter_selection": "train_only"},
   "target": {"field": "recovered_within_horizon", "operator": "eq", "value": true},
-  "outcome": {"field": "recovery_minutes", "type": "DRAFT", "net_of_observed_spread": true}
+  "outcome": {"field": "recovery_minutes", "type": "recovery_after_adverse_excursion", "net_of_observed_spread": true}
 }

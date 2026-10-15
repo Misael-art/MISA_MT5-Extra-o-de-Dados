@@ -3,7 +3,7 @@
   "title": "Dia e faixa da sessão condicionados ao regime",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H07",
   "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"operator": "and", "conditions": [
@@ -12,13 +12,14 @@
     {"field": "session_minute", "operator": "gte", "value": 60}
   ]},
   "trigger": {"type": "closed_session_feature_available"},
-  "entry": {"type": "next_bar_open", "direction": "strategy_signal"},
+  "entry": {"type": "next_bar_open", "direction": "preceding_5_bar_drift"},
   "exit": {"type": "fixed_horizon", "minutes": 30},
   "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
             "missing_components": ["slippage", "commission"]},
-  "parameters": {"session_minute": 60, "weekday": 0, "threshold_provenance": "unmeasured_draft"},
+  "parameters": {"session_minute": 60, "weekday": 0, "direction_lookback": 5,
+                 "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 30, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
                   "parameter_selection": "train_only"},
-  "target": {"field": "net_return", "operator": "gt", "value": 0},
-  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+  "target": {"field": "outcome_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "outcome_return", "type": "regime_weekday_fixed_horizon", "net_of_observed_spread": true}
 }

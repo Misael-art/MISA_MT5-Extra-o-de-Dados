@@ -354,13 +354,18 @@ _BUILDERS = {"H01": _build_h01, "H02": _build_h02, "H03": _build_session_hypothe
              "H04": _build_session_hypothesis, "H05": _build_session_hypothesis}
 
 
-def build_observations(bars, symbol, definition, *, point=None, broker_utc_offset=-3.0):
-    """Calcula amostras H01–H05 em memória, sem escrever no banco ou usar barras futuras no sinal."""
+def build_observations(bars, symbol, definition, *, point=None, broker_utc_offset=-3.0,
+                       signal_events=None, trade_events=None):
+    """Calcula amostras em memória sem escrita; sinais e operações vêm por contratos explícitos."""
     validate_definition(definition)
     builder = definition["sample_builder"]
-    if builder not in _BUILDERS:
-        raise ValueError(f"Construtor de amostras indisponível: {builder}.")
-    frame = _BUILDERS[builder](bars, str(symbol), definition, point, float(broker_utc_offset))[0]
+    if builder in _BUILDERS:
+        frame = _BUILDERS[builder](bars, str(symbol), definition, point, float(broker_utc_offset))[0]
+    else:
+        from mt5_extracao.analytics.pattern_extensions import build_extended_observations
+        frame = build_extended_observations(
+            bars, str(symbol), definition, point=point, broker_utc_offset=float(broker_utc_offset),
+            signal_events=signal_events, trade_events=trade_events)
     if frame.empty:
         return frame
     frame["target_success"] = pd.to_numeric(frame["target_success"], errors="coerce").astype("boolean")

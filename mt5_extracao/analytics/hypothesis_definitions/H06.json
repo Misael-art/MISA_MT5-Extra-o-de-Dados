@@ -3,21 +3,22 @@
   "title": "Confirmação entre timeframes fechados",
   "version": "0.1",
   "status": "DRAFT",
-  "sample_builder": "DRAFT",
+  "sample_builder": "H06",
   "universe": {"timeframes": ["M1", "M15"], "markets": "declared_by_run"},
   "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
   "condition": {"operator": "and", "conditions": [
     {"field": "higher_tf_regime", "operator": "eq", "value": "TREND"},
-    {"field": "lower_tf_direction", "operator": "eq", "value": "signal_direction"}
+    {"field": "lower_tf_direction_confirmed", "operator": "eq", "value": true}
   ]},
   "trigger": {"type": "lower_timeframe_bar_close", "higher_timeframe_must_be_closed": true},
-  "entry": {"type": "next_lower_timeframe_bar_open", "direction": "strategy_signal"},
+  "entry": {"type": "next_lower_timeframe_bar_open", "direction": "confirmed_higher_timeframe_direction"},
   "exit": {"type": "fixed_horizon", "minutes": 30},
   "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
             "missing_components": ["slippage", "commission"]},
-  "parameters": {"higher_timeframe": "M15", "horizon_minutes": 30, "threshold_provenance": "unmeasured_draft"},
+  "parameters": {"higher_timeframe": "M15", "higher_timeframe_minutes": 15, "direction_lookback_bars": 3,
+                 "minimum_regime_duration": 3, "horizon_minutes": 30, "threshold_provenance": "unmeasured_draft"},
   "validation": {"horizon_minutes": 30, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
                   "parameter_selection": "train_only"},
-  "target": {"field": "net_return", "operator": "gt", "value": 0},
-  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+  "target": {"field": "outcome_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "outcome_return", "type": "higher_timeframe_confirmed_fixed_horizon", "net_of_observed_spread": true}
 }
