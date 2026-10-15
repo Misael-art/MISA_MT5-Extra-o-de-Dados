@@ -246,7 +246,7 @@ Entregas locais independentes, sem merge, push ou PR:
   sintético registrou `compute` completo em 10.103 ms e incremento em 1.321 ms (**7,65×**); crescimento SQLite/WAL
   de 17.932.288 bytes contra 290.816 bytes. PostgreSQL e Windows reais pendentes. A primeira suíte teve uma falha
   assíncrona de UI, que não se repetiu na suíte integral posterior.
-- **T13.4:** branch `tarefa/T13.4-hipoteses-walk-forward`, HEAD `ae30450`. Implementação permanece parcial: faltam
+- **T13.4:** branch `tarefa/T13.4-hipoteses-walk-forward`, checkpoint de código `2822811`. Implementação permanece parcial: faltam
   custos completos de comissão/slippage, eventos reais para H14–H16 e mercados comparáveis para avaliação OOS. A
   suíte completa registrada passou com **860 aprovados, 10 ignorados**; `doctor` **16 OK, 2 avisos, 0 falhas**.
 - **T16.3b:** branch local `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`; corrige barra aberta,
@@ -290,8 +290,13 @@ Entregas locais independentes, sem merge, push ou PR:
   `_economic_events`, tabelas de hipóteses nem `_signal_log`. Não surgiu evidência real para H14–H16, custos completos
   ou grupo de mercados comparáveis; nenhuma tabela foi criada nem modificada.
 - A revisão T13.4 substituiu o teste nulo que era bloqueado por custos incompletos por 40 conjuntos sintéticos
-  independentes com custos completos. O teste usa limite conservador de 6/40 falsos sinais/elegibilidades sob nível
-  nominal de 5%, sem exigir taxa zero. A suíte focada T13.4 passou: **27 aprovados**. A suíte completa e o `doctor`
-  desta revisão ainda estão pendentes.
-- `/tmp` estava com 556 MiB livres; os comandos de pytest usam `TMPDIR=/home/misael/.cache/mt5-extracao-tmp` e
-  `xvfb-run -a`. Nenhum temporário de outro processo foi removido. Todos os worktrees T17 permanecem intocados.
+  independentes com custos completos. O teste usa sementes fixas e tolerância de até 6/40 para cada contagem de falso
+  sinal ajustado/elegibilidade sob nível nominal de 5%; não exige taxa zero. Suíte focada inicial: 27 aprovados;
+  suíte completa da branch: 860 aprovados, 10 ignorados em 577,20 s; repetição focada após preparar a venv
+  isolada: 27 aprovados em 58,38 s.
+- O instalador no worktree T13.4 inicialmente encontrou falta de espaço no filesystem temporário padrão. Com `TMPDIR`
+  apontado para um filesystem com espaço, `./install.sh --yes --no-mt5` e a instalação de `requirements-dev.txt`
+  concluíram. Doctor pela venv isolada: 16 OK, 2 avisos, 0 falhas (`pandas-ta` opcional ausente; ponte Wine
+  desativada por `--no-mt5`). Não houve alteração em scripts de instalação.
+- O filesystem temporário padrão chegou a 4 KiB livres; nenhum temporário de outro processo foi removido. Os comandos
+  de pytest usaram o diretório de cache reservado para esta tarefa. Todos os worktrees T17 permanecem intocados.
