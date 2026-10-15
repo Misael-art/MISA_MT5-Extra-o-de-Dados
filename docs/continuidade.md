@@ -230,12 +230,18 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   ausentes com zero na sensibilidade e ausência de bloqueio por componentes de custo desconhecidos. A sensibilidade
   agora exige custo disponível para cada entrada e não publica expectativa líquida incompleta; o gate OOS para
   `VALIDATING` verifica todos os componentes declarados, `cost_bps` e spread observado quando exigido pelo modelo.
-- H01–H16 ainda declaram comissão e slippage ausentes; nenhuma hipótese pode ficar elegível até que esses componentes
-  sejam medidos. Nenhuma base real foi escrita e nenhuma reserva OOS foi consumida.
+- H01–H16 ainda não têm vetor de custos completo e atribuível; comissão zero e swaps dos relatórios atuais não medem
+  slippage nem decompõem os resultados persistidos dos CSVs. Nenhuma hipótese pode ficar elegível até completar essa
+  evidência. Nenhuma base real foi escrita e nenhuma reserva OOS foi consumida.
 - Inventário M1 em consulta somente leitura: 13 registros em `_symbol_tables`, 12 tabelas existentes; dez tabelas
   adicionais além de EURUSD/AGG têm 4–6.489 barras. Só EURUSD tem `_symbol_specs`; não há classificação/proveniência
   suficiente para declarar grupo comparável, então esses símbolos não foram avaliados. Um registro aponta para tabela
   inexistente.
+- Auditoria dos nove relatórios Tester atuais: `mtime` está até 1,41 s do `created_at` mais recente por caminho e
+  `metrics_json.entries` bate com a contagem de entradas em 9/9; a associação ao último run é corroborada, mas os
+  relatórios históricos não têm snapshot/hash. As tabelas declaram USD; comissão é zero em 1.425 negócios e swap não
+  zero em 208 saídas. Oito dos nove resultados persistidos usam CSV legado de cinco campos, sem entrada/preço/custos
+  separados; slippage segue ausente e os dados não liberam avaliação OOS.
 - Verificação Linux: testes T13.4 focados **27 aprovados**; suíte completa **860 aprovados, 10 ignorados em 533,64 s**;
   `doctor` **16 OK, 2 avisos, 0 falhas** (módulo opcional `pandas-ta` ausente; ponte Wine desativada). Nenhum script
   `.sh` foi alterado. A T13.4 permanece parcial: H06–H16 não têm avaliação OOS real, H14–H16 ainda dependem de eventos
@@ -306,5 +312,5 @@ Entregas locais independentes, sem merge, push ou PR:
   desativada por `--no-mt5`). Não houve alteração em scripts de instalação.
 - O filesystem temporário padrão chegou a 4 KiB livres; nenhum temporário de outro processo foi removido. Os comandos
   de pytest usaram o diretório de cache reservado para esta tarefa. Todos os worktrees T17 permanecem intocados.
-- Auditoria somente leitura de fontes alternativas: `_robot_runs` contém 223 execuções e 28.264 registros serializados; cada registro tem timestamp, PnL e volume. O produtor Python grava `exit_time`. `_trade_features` contém 19.895 linhas, todas com `time_ref=saida`. A pasta `Common\Files` tem 14 exports `HDK_trades_*.csv`, todos com cabeçalho `time;symbol;type;volume;result`. `metrics_json.real_spread` aparece em 96 execuções como marcador booleano (26 verdadeiras, 70 falsas, 127 ausentes); há um perfil de spread em `_symbol_specs`, sem comissão/slippage por operação.
-- Reauditoria dos relatórios Tester: 58 referências em `metrics_json.report` apontam para apenas 9 caminhos `.htm` compartilhados, sem snapshot/hash por run. Os arquivos atuais contêm 699 negócios `in`: 698 EURUSD e 1 AGG. Em EURUSD, 176 entradas coincidem no minuto com M1 local e 161 também passam pela checagem de preço OHLC expandido pelo spread; o evento AGG não pode ser validado por preço porque falta `point`. Não há marcador `UTC`/`GMT` nem base temporal declarada. Com o alinhamento ingênuo assumido apenas para diagnóstico, os builders produziram 156 observações H14 e 132 H15 em memória; isso não é validação OOS, não resolve a associação relatório/run e não cobre comissão/slippage. H14/H15 continuam `DRAFT`; H16 permanece sem sinais explícitos. Nenhuma tabela foi alterada nem reserva consumida.
+- Auditoria somente leitura de fontes alternativas: `_robot_runs` contém 223 execuções e 28.264 registros serializados; cada registro tem timestamp, PnL e volume. O produtor Python grava `exit_time`. `_trade_features` contém 19.895 linhas, todas com `time_ref=saida`. A pasta `Common\\Files` tem 14 exports `HDK_trades_*.csv`, todos com cabeçalho `time;symbol;type;volume;result`, sem campos de entrada ou decomposição de custos. `metrics_json.real_spread` aparece em 96 execuções como marcador booleano (26 verdadeiras, 70 falsas, 127 ausentes); há um perfil de spread em `_symbol_specs`.
+- Reauditoria dos relatórios Tester: 58 referências em `metrics_json.report` apontam para 9 caminhos `.htm` compartilhados. O `mtime` de cada conteúdo atual fica até 1,41 s do último `created_at` e a contagem de entradas bate com a métrica em 9/9; isso corrobora apenas o último run por caminho, não restaura snapshots históricos. Os arquivos atuais contêm 699 negócios `in`: 698 EURUSD e 1 AGG. Em EURUSD, 176 entradas coincidem no minuto com M1 local e 161 também passam pela checagem de preço OHLC expandido pelo spread; o evento AGG não pode ser validado por preço porque falta `point`. Não há marcador `UTC`/`GMT` nem base temporal declarada. As tabelas declaram USD; comissão é zero em 1.425 negócios e swap não zero em 208 saídas. O resultado persistido de 8/9 runs mais recentes vem do CSV legado, e slippage não é medida. Com o alinhamento ingênuo assumido apenas para diagnóstico, os builders produziram 156 observações H14 e 132 H15 em memória; isso não é validação OOS. H14/H15 continuam `DRAFT`; H16 permanece sem sinais explícitos. Nenhuma tabela foi alterada nem reserva consumida.
