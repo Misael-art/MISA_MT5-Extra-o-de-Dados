@@ -65,6 +65,10 @@ def validate_definition(definition):
         raise ValueError("validation.horizon_minutes precisa ser positivo.")
     if not isinstance(definition["validation"].get("min_samples"), int) or definition["validation"]["min_samples"] < 2:
         raise ValueError("validation.min_samples precisa ser inteiro >= 2.")
+    minimum_sessions = definition["validation"].get("min_sessions")
+    if minimum_sessions is not None and (isinstance(minimum_sessions, bool) or
+                                         not isinstance(minimum_sessions, int) or minimum_sessions < 2):
+        raise ValueError("validation.min_sessions precisa ser inteiro >= 2 quando declarado.")
     for grid_name in ("parameter_grid", "sensitivity_grid"):
         grid = definition.get(grid_name, {})
         if not isinstance(grid, dict):

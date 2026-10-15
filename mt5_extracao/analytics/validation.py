@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import inspect, text
 
+from mt5_extracao.analytics.calendar import parse_session_anchor
 from mt5_extracao.analytics.hypotheses import STATUSES, validate_definition
 from mt5_extracao.analytics.pattern_engine import condition_mask
 from mt5_extracao.trade_analytics import rules, stats
@@ -195,7 +196,8 @@ def _block_difference(frame, condition, success, n_boot=1000, seed=7):
         return [None, None], 1.0
     flags = condition.loc[data.index].astype(bool).to_numpy()
     target = success.loc[data.index].astype(float).to_numpy()
-    day = pd.to_datetime(data["observation_time"]).dt.normalize().to_numpy()
+    day_source = data["session_day"] if "session_day" in data else data["observation_time"]
+    day = pd.to_datetime(day_source).dt.normalize().to_numpy()
     dates = list(dict.fromkeys(day))
     clusters = [np.flatnonzero(day == date) for date in dates]
     if len(clusters) < 2 or not flags.any() or flags.all():
@@ -255,7 +257,8 @@ def _metric(frame, condition, success, n_boot=1000, seed=7):
     traded_signal = signal.loc[executed]
     outcomes = pd.to_numeric(traded_signal.get("outcome_return"), errors="coerce").dropna() \
         if not traded_signal.empty else pd.Series(dtype=float)
-    ci = stats.bootstrap_ci(outcomes, pd.to_datetime(signal.loc[outcomes.index, "observation_time"]),
+    cluster_times = signal["session_day"] if "session_day" in signal else signal["observation_time"]
+    ci = stats.bootstrap_ci(outcomes, pd.to_datetime(cluster_times.loc[outcomes.index]),
                             n_boot=n_boot, alpha=0.10, seed=seed) if len(outcomes) else (None, None)
     diff_ci, p_value = _block_difference(total, condition.loc[total.index], success.loc[total.index],
                                          n_boot=n_boot, seed=seed + 1)
@@ -386,10 +389,18 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
     validate_definition(definition)
     candidates = _parameter_candidates(definition)
     family_tests = int(tests_counted) if tests_counted is not None else max(1, int(attempt_count)) * len(candidates)
+    minimum_session_days = int(definition["validation"].get("min_sessions", 1))
     if samples is None or samples.empty:
         empty_status = "DRAFT" if definition["status"] == "DRAFT" else "EXPLORATORY"
         return {"pattern_id": definition["pattern_id"], "version": definition["version"], "status": empty_status,
                 "weak": True, "note": "sem observações avaliáveis", "sample_count": 0, "folds": [],
+                "sample_quality": {"evaluated_count": 0,
+                                   "excluded_target_count": 0,
+                                   "ambiguous_breakout_count": 0,
+                                   "unavailable_breakout_count": 0,
+                                   "session_days_observed": 0,
+                                   "minimum_session_days": minimum_session_days,
+                                   "session_days_sufficient": False},
                 "train": _empty_metric(), "validation": _empty_metric(), "test": {"reused": not include_test},
                 "parameter_selection": {"method": "maximum net expectancy on training partition",
                                         "candidate_count": len(candidates), "selected": None},
@@ -406,6 +417,8 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
             definition["validation"]["horizon_minutes"], unit="m")
     frame["observation_time"] = pd.to_datetime(frame["observation_time"])
     frame["horizon_end"] = pd.to_datetime(frame["horizon_end"])
+    anchor_minutes, _ = parse_session_anchor(definition["session"].get("session_anchor", "00:00"))
+    frame["session_day"] = (frame["observation_time"] - pd.Timedelta(minutes=anchor_minutes)).dt.normalize()
     if "outcome_return" not in frame:
         raise ValueError("As observações precisam conter outcome_return.")
     entry_times = frame.get("entry_time", frame["observation_time"])
@@ -430,12 +443,17 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
     selected_parameters.update(best_override)
     condition, success = _condition_for(frame, definition, best_override)
     frame["_condition"], frame["_success"] = condition, success
+    session_days_observed = int(frame.loc[success.notna(), "session_day"].nunique())
+    session_days_sufficient = session_days_observed >= minimum_session_days
     quality = {"evaluated_count": int(success.notna().sum()),
                "excluded_target_count": int(success.isna().sum()),
                "ambiguous_breakout_count": int(frame.get("breakout_ambiguous", pd.Series(False, index=frame.index))
                                                 .fillna(False).astype(bool).sum()),
                "unavailable_breakout_count": int((~frame.get("breakout_available", pd.Series(True, index=frame.index))
-                                                  .fillna(False).astype(bool)).sum())}
+                                                  .fillna(False).astype(bool)).sum()),
+               "session_days_observed": session_days_observed,
+               "minimum_session_days": minimum_session_days,
+               "session_days_sufficient": session_days_sufficient}
     train, validation, holdout = frame.loc[train_mask], frame.loc[validation_mask], frame.loc[plan.holdout]
     train_metric = _metric(train, train["_condition"], train["_success"], n_boot, seed)
     validation_metric = _metric(validation, validation["_condition"], validation["_success"], n_boot, seed + 1)
@@ -486,7 +504,8 @@ def evaluate_samples(samples, definition, *, include_test=True, n_boot=1000, att
                                                                test_cost_coverage < 1.0):
         approval_cost_blockers.append("spread M1 não observado em todas as operações OOS")
     cost_model_complete = not approval_cost_blockers
-    weak = bool(plan.weak or train_metric["n_condition"] < minimum or validation_metric["n_condition"] < minimum or
+    weak = bool(not session_days_sufficient or plan.weak or train_metric["n_condition"] < minimum or
+                validation_metric["n_condition"] < minimum or
                 (include_test and test_metric.get("n_condition", 0) < minimum))
     fold_positive = bool(fold_results) and all(
         result["check"]["expectancy_net"] is not None and result["check"]["expectancy_net"] > 0

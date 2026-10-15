@@ -3360,8 +3360,17 @@ real por corretora.
 - Os relatórios atuais registram comissão zero e swap não zero em 208 das 1.425 linhas de negócios, em USD. Oito dos
   nove resultados mais recentes usam o CSV legado `time;symbol;type;volume;result`; slippage continua sem medida e o
   resultado não é um vetor de custos completo por operação.
-- Após a atualização documental, a suíte integral passou com **860 aprovados, 10 ignorados em 614,34 s**; `doctor
-  --no-probe` registrou **16 OK, 2 avisos, 0 falhas**. Código de execução não mudou nesta verificação.
+- No checkpoint da atualização documental, a suíte integral passou com **860 aprovados, 10 ignorados em 614,34 s**;
+  `doctor --no-probe` registrou **16 OK, 2 avisos, 0 falhas**. A correção de execução descrita abaixo veio depois.
+- **Atualização de validação (2026-10-15):** auditoria do gate encontrou `validation.min_sessions` declarado nos JSONs,
+  mas não aplicado pelo avaliador. Agora a contagem de dias de sessão usa `session_anchor`, aparece em `sample_quality`,
+  torna a amostra fraca abaixo do piso e alimenta os agrupamentos de bootstrap. Um teste com 20 dias contra mínimo 40
+  e âncora 17:00 cruza meia-noite sem inflar a contagem. Nos eventos alinhados H14/H15, são 61/58 dias observados:
+  H14 excede o piso de 60 por um dia; H15 não atinge. Isso não é prova de independência nem libera OOS. Bateria
+  analítica final: **71 aprovados, 2 ignorados**; suíte integral após a correção principal: **861 aprovados, 10
+  ignorados em 558,85 s**. O ajuste posterior do formato vazio de `sample_quality` passou na bateria analítica final;
+  a suíte integral não foi repetida para essa alteração localizada. `doctor --no-probe`: **16 OK, 2 avisos, 0 falhas**
+  (módulo opcional `pandas-ta` ausente e ponte Wine desativada).
 - **Extensões detalhadas em 2026-10-14** (sem tarefa nova; reutilizar `trade_analytics/rules.split`, `stats` e o
   controle de ruído de `insights`): campos obrigatórios de cada hipótese — universo, sessão, fuso, condição,
   gatilho, entrada executável, saída, custos, parâmetros, versão e validação; embargo do tamanho do horizonte do
