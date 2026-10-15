@@ -80,6 +80,23 @@ def test_midbar_entry_uses_only_the_last_fully_closed_bar(db):
     assert features["mae_mfe_resolution"].iloc[0] == "M5 OHLC (intrabar aproximado)"
 
 
+def test_mae_mfe_approximates_exit_bar_but_excludes_bars_after_exit(db):
+    bars = _bars()
+    bars.loc[401, "high"] += 50       # barra parcial da saída, ainda deve entrar na aproximação OHLC
+    bars.loc[402, "high"] += 500      # começa depois da saída e não pode contaminar o resultado
+    db.save_ohlcv_data("WIN$N", "5 minutos", bars)
+    entry = bars["time"].iloc[400] + pd.Timedelta(minutes=2)
+    exit_ = bars["time"].iloc[401] + pd.Timedelta(minutes=2)
+    price = float(bars["close"].iloc[400])
+    ledger.save_trades(db, "exit-boundary", [_trade(entry, exit_=exit_, price=price)],
+                       robot_key="a", symbol="WIN$N", timeframe="M5")
+
+    features = enrich.enrich(db, None, ledger.load(db))
+
+    assert 49 < features["mfe"].iloc[0] < 100
+    assert features["mae_mfe_resolution"].iloc[0] == "M5 OHLC (intrabar aproximado)"
+
+
 def test_volume_source_is_selected_for_the_whole_series(db):
     bars = _bars()
     bars.loc[0, "real_volume"] = np.nan

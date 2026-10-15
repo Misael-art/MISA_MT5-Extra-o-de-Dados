@@ -128,6 +128,11 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   opcional ausente e ponte Wine desativada por configuração.
 - MAE/MFE usa barras OHLC sobrepostas ao período da operação; sem leitura de ticks, os extremos de barras parciais
   podem não coincidir com a ordem intrabar real. Isso fica exposto em `mae_mfe_resolution`.
+- Reauditoria de aceite: o novo teste de fronteira injeta um pico na barra M5 parcial da saída e outro na barra
+  seguinte. O primeiro entra como aproximação OHLC; o segundo não contamina MAE/MFE. Baseline focado anterior à
+  inclusão: `tests/test_trade_enrich.py` **8 aprovados**; validação final de enriquecimento/calendário/cache:
+  **23 aprovados**; `doctor --no-probe`: **16 OK, 2 avisos, 0 falhas**. O código de execução não mudou nesta
+  reauditoria.
 - T13.2/T13.3 seguem fora do `master` em branches locais; T13.3 foi concluída em
   `tarefa/T13.3-perfis-regimes` (`bde3652`) e sua continuidade está registrada na branch própria. O worktree separado
   `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` não foi alterado. Nenhum push ou PR foi feito.
