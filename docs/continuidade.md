@@ -232,10 +232,16 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   `VALIDATING` verifica todos os componentes declarados, `cost_bps` e spread observado quando exigido pelo modelo.
 - H01–H16 ainda declaram comissão e slippage ausentes; nenhuma hipótese pode ficar elegível até que esses componentes
   sejam medidos. Nenhuma base real foi escrita e nenhuma reserva OOS foi consumida.
+- Inventário M1 em consulta somente leitura: 13 registros em `_symbol_tables`, 12 tabelas existentes; dez tabelas
+  adicionais além de EURUSD/AGG têm 4–6.489 barras. Só EURUSD tem `_symbol_specs`; não há classificação/proveniência
+  suficiente para declarar grupo comparável, então esses símbolos não foram avaliados. Um registro aponta para tabela
+  inexistente.
 - Verificação Linux: testes T13.4 focados **27 aprovados**; suíte completa **860 aprovados, 10 ignorados em 533,64 s**;
   `doctor` **16 OK, 2 avisos, 0 falhas** (módulo opcional `pandas-ta` ausente; ponte Wine desativada). Nenhum script
   `.sh` foi alterado. A T13.4 permanece parcial: H06–H16 não têm avaliação OOS real, H14–H16 ainda dependem de eventos
   reais válidos e não há comparabilidade declarada entre mercados.
+- Revalidação após a reconciliação documental, sem mudanças no código: suíte integral **860 aprovados, 10 ignorados
+  em 614,34 s**; `doctor --no-probe` **16 OK, 2 avisos, 0 falhas**. `git diff --check` foi executado no diff final.
 
 ## Checkpoint do ciclo Analytics — 2026-10-15
 

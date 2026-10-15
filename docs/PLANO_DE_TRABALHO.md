@@ -3351,7 +3351,11 @@ real por corretora.
   156/132 observações exploratórias em memória; isso não identifica cada relatório com seu run nem constitui OOS.
   H16 segue sem tabela de sinais. Todos H06–H16 continuam `DRAFT`; nenhuma reserva real foi consumida. O sweep H06–H13
   levou **37,80 s**, pico RSS **275,5 MiB**; SQLite ficou em **353.746.944 bytes** antes/depois da leitura `mode=ro` +
-  `query_only=1`. Ver resultados e limites no relatório. A T13.4 permanece **parcial**, sem transição para `APPROVED`.
+  `query_only=1`. Inventário M1 adicional encontrou 13 registros, 12 tabelas existentes; dez outras além de EURUSD/AGG
+  têm 4–6.489 barras, sem metadados suficientes para formar um grupo comparável (`_symbol_specs` só tem EURUSD). Ver
+  resultados e limites no relatório. A T13.4 permanece **parcial**, sem transição para `APPROVED`.
+- Após a atualização documental, a suíte integral passou com **860 aprovados, 10 ignorados em 614,34 s**; `doctor
+  --no-probe` registrou **16 OK, 2 avisos, 0 falhas**. Código de execução não mudou nesta verificação.
 - **Extensões detalhadas em 2026-10-14** (sem tarefa nova; reutilizar `trade_analytics/rules.split`, `stats` e o
   controle de ruído de `insights`): campos obrigatórios de cada hipótese — universo, sessão, fuso, condição,
   gatilho, entrada executável, saída, custos, parâmetros, versão e validação; embargo do tamanho do horizonte do
