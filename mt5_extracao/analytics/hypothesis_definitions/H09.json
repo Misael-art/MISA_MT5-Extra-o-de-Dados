@@ -1,0 +1,20 @@
+{
+  "pattern_id": "H09",
+  "title": "Janelas recorrentes da sessão",
+  "version": "0.1",
+  "status": "DRAFT",
+  "sample_builder": "DRAFT",
+  "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"field": "session_minute", "operator": "gte", "value": 120},
+  "trigger": {"type": "closed_m1_bar", "window_is_predeclared": true},
+  "entry": {"type": "next_m1_bar_open", "direction": "strategy_signal"},
+  "exit": {"type": "fixed_horizon", "minutes": 15},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"window_start_minute": 120, "window_end_minute": 180, "threshold_provenance": "unmeasured_draft"},
+  "validation": {"horizon_minutes": 15, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
+                  "parameter_selection": "train_only"},
+  "target": {"field": "net_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+}

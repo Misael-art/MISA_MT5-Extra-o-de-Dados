@@ -1,0 +1,35 @@
+{
+  "pattern_id": "H04",
+  "title": "Volume atípico de segunda ou baixo de terça-feira",
+  "version": "1.0",
+  "status": "EXPLORATORY",
+  "sample_builder": "H04",
+  "universe": {"timeframes": ["M1"], "minimum_sessions": 40, "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {
+    "operator": "or",
+    "conditions": [
+      {"operator": "and", "conditions": [
+        {"field": "weekday", "operator": "eq", "value": 0},
+        {"field": "opening_range_weekday_volume_ratio", "operator": "gt", "parameter": "weekday_ratio_threshold"}]},
+      {"operator": "and", "conditions": [
+        {"field": "weekday", "operator": "eq", "value": 1},
+        {"field": "opening_range_weekday_volume_ratio", "operator": "lt", "parameter": "weekday_ratio_threshold"}]}
+    ]
+  },
+  "trigger": {"type": "opening_range_close", "known_after_closed_minutes_parameter": "opening_range_minutes"},
+  "entry": {"type": "opening_range_breakout", "minutes_parameter": "opening_range_minutes",
+            "direction": "first_close_outside_range_next_open"},
+  "exit": {"type": "observed_session_close"},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"weekday_baseline_occurrences": 5, "opening_range_minutes": 30,
+                 "weekday_ratio_threshold": 1.0,
+                 "normalization": "volume_per_observed_minute_same_opening_range",
+                 "threshold_provenance": "exploratory_no_operational_cutoff"},
+  "parameter_grid": {"weekday_ratio_threshold": [0.8, 1.0, 1.2]},
+  "validation": {"horizon_minutes": 1440, "min_samples": 30, "min_sessions": 40, "alpha": 0.05,
+                  "bootstrap_block": "session", "parameter_selection": "train_only"},
+  "target": {"field": "breakout_success", "operator": "eq", "value": true},
+  "outcome": {"field": "breakout_return", "type": "opening_range_breakout_proxy", "net_of_observed_spread": true}
+}

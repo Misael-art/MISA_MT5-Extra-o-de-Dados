@@ -1,0 +1,20 @@
+{
+  "pattern_id": "H16",
+  "title": "Atraso de entrada e degradação de expectativa",
+  "version": "0.1",
+  "status": "DRAFT",
+  "sample_builder": "DRAFT",
+  "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"field": "strategy_signal", "operator": "eq", "value": true},
+  "trigger": {"type": "signal_timestamp", "context_is_asof": true},
+  "entry": {"type": "next_bar_open_with_delay_scenarios", "direction": "signal_direction"},
+  "exit": {"type": "declared_strategy_exit"},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"delay_bars": [0, 1, 3], "threshold_provenance": "sensitivity_not_selection"},
+  "validation": {"horizon_minutes": 1440, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
+                  "parameter_selection": "train_only"},
+  "target": {"field": "net_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+}

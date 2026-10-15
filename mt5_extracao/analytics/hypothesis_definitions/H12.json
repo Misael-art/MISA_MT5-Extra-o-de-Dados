@@ -1,0 +1,21 @@
+{
+  "pattern_id": "H12",
+  "title": "Rompimento e reteste da faixa inicial",
+  "version": "0.1",
+  "status": "DRAFT",
+  "sample_builder": "DRAFT",
+  "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"field": "opening_range_retest_confirmed", "operator": "eq", "value": true},
+  "trigger": {"type": "closed_bar_after_retest", "ambiguous_intrabar_order_excluded": true},
+  "entry": {"type": "next_bar_open_after_retest_confirmation", "direction": "breakout_direction"},
+  "exit": {"type": "observed_session_close"},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"opening_range_minutes": 30, "retest_tolerance_atr": 0.2,
+                 "threshold_provenance": "unmeasured_draft"},
+  "validation": {"horizon_minutes": 1440, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
+                  "parameter_selection": "train_only"},
+  "target": {"field": "net_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+}

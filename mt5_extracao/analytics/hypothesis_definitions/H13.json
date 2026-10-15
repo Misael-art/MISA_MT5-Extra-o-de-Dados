@@ -1,0 +1,20 @@
+{
+  "pattern_id": "H13",
+  "title": "Distância a níveis da sessão anterior",
+  "version": "0.1",
+  "status": "DRAFT",
+  "sample_builder": "DRAFT",
+  "universe": {"timeframes": ["M1"], "markets": "declared_by_run"},
+  "session": {"source": "observed_m1", "timezone": "broker", "session_anchor": "00:00"},
+  "condition": {"field": "distance_previous_high_atr", "operator": "lte", "value": 0.25},
+  "trigger": {"type": "closed_m1_bar", "previous_level_available_at_prior_close": true},
+  "entry": {"type": "next_m1_bar_open", "direction": "strategy_signal"},
+  "exit": {"type": "fixed_horizon", "minutes": 30},
+  "costs": {"spread": "observed_m1", "slippage_bps": 0, "commission_bps": 0,
+            "missing_components": ["slippage", "commission"]},
+  "parameters": {"level": "previous_high", "distance_atr": 0.25, "threshold_provenance": "unmeasured_draft"},
+  "validation": {"horizon_minutes": 30, "min_samples": 30, "min_sessions": 60, "alpha": 0.05,
+                  "parameter_selection": "train_only"},
+  "target": {"field": "net_return", "operator": "gt", "value": 0},
+  "outcome": {"field": "net_return", "type": "DRAFT", "net_of_observed_spread": true}
+}
