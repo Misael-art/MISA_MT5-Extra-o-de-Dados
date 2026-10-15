@@ -155,7 +155,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
 | T16.12 | Laboratório: `mt5x trades report/compare/insights/simulate` com `--json` | T16.11b | ✅ concluída (relatório HTML opcional não feito) |
 | T17.1 | Sistema visual: tokens, tipografia, temas e contraste mensurável | F7 | ✅ concluída no Linux; Windows pendente |
-| T17.2 | Componentes de apresentação reutilizáveis, extraídos de usos reais | T17.1 | a fazer |
+| T17.2 | Componentes de apresentação reutilizáveis, extraídos de usos reais | T17.1 | ✅ concluída no Linux; Windows pendente |
 | T17.3 | Laboratório e gráficos: hierarquia, estados de qualidade, amostra e legibilidade | T17.1, T17.2, T16.11a, T16.11b | a fazer |
 | T17.4 | Aplicação progressiva do sistema às abas Ativos, Minha base, Análise, Robôs, Recursos e Atividade | T17.2, T17.3, T8.2, T15.1–T15.6 | a fazer |
 | T17.5 | Validação visual integrada, capturas comparáveis e documentação | T17.1–T17.4 | a fazer |

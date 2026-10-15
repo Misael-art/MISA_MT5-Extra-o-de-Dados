@@ -159,5 +159,18 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Capturas de referência do usuário não estavam no diretório de anexos. O pedido de reenvio está pendente; usar as
   capturas reais quando disponíveis na T17.3. A validação em Windows com DPI 125%/150% está pendente em
   [validacao_instaladores.md](validacao_instaladores.md); nenhum resultado Windows foi declarado.
-- Próxima tarefa: T17.2 (componentes visuais); depois T17.3 (Laboratório e gráficos), T17.4 (demais abas) e T17.5
+- T17.2 concluída em 2026-10-15 na worktree `../MISA_MT5-Extra-o-de-Dados-T17.2`, branch
+  `tarefa/T17.2-componentes-apresentacao`, baseada no commit `a1ad9fe`. `ui/components.py` agora reúne cabeçalho,
+  faixa de filtros, painel/cartão de métrica, badge semântico, aviso, painel de estado, gráfico, tabela, progresso,
+  resumo comparativo e painel recolhível de detalhes. `ui/theme.py` configura estilos de status e fallback textual
+  para glifos ausentes. As ações visíveis exigem callback; a camada não calcula analytics e as telas não foram
+  integradas ainda.
+- T17.2: baseline **814 aprovados, 10 pulados em 723,22 s**; testes focados **18 aprovados**; suíte final
+  **827 aprovados, 10 pulados em 790,90 s**; `doctor` **16 OK, 2 avisos esperados, 0 falhas**; `git diff --check`
+  passou. Avisos: `pandas-ta` opcional ausente e ponte MT5 desligada por `--no-mt5`. Windows real segue pendente.
+- Verificação de preservação: a worktree original começou esta frente em `tarefa/T13.3-perfis-regimes` com
+  alterações locais Analytics. Na checagem final estava limpa em `tarefa/T16.3b-enriquecimento-temporal`, HEAD
+  `880bf18`; o reflog contém o commit `bde3652 feat(T13.3): add profile and regime features` antes da troca de
+  branch. Nenhum comando desta tarefa alterou o worktree original.
+- Próxima tarefa: T17.3 (Laboratório e gráficos), depois T17.4 (demais abas) e T17.5
   (validação visual integrada).

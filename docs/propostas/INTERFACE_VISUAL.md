@@ -31,9 +31,14 @@
 ### T17.2 — Componentes reutilizáveis de apresentação
 
 - **Objetivo:** consolidar padrões usados pelas telas sem criar um framework genérico.
-- **Arquivos previstos:** novo `mt5_extracao/ui/components.py` e testes; integrações em arquivos de tela ficam na T17.3/T17.4.
-- **Componentes:** cabeçalho, barra de filtros, cartão de métrica, status com texto e ícone, avisos, estados vazio/carregando/parcial/indisponível, painel de gráfico, tabela, capacidade/progresso, resumo de comparação e painel de detalhes.
+- **Arquivos:** novo `mt5_extracao/ui/components.py`, `mt5_extracao/ui/theme.py` e `tests/test_ui_components.py`; as integrações
+  em arquivos de tela ficam na T17.3/T17.4.
+- **Componentes:** cabeçalho, barra de filtros, cartão de métrica, status com texto e ícone, avisos, estados
+  vazio/carregando/parcial/indisponível, painel de gráfico, tabela, capacidade/progresso, resumo de comparação e
+  painel de detalhes.
 - **Aceite:** componentes recebem dados por argumentos explícitos, respeitam os dois temas, têm foco/teclado visíveis e não contêm cálculo de analytics; nenhum controle aparenta funcionar sem callback.
+- **Verificação:** baseline **814 aprovados, 10 pulados em 723,22 s**; foco de temas/componentes **18 aprovados**; suíte final **827 aprovados, 10 pulados em 790,90 s**. `doctor`: **16 OK, 2 avisos esperados, 0 falhas**; `git diff --check` passou.
+- **Estado:** concluída no Linux. `Theme` fornece variantes semânticas para badge e aviso nos dois temas; símbolos têm fallback para Tk sem glifos ricos. Nenhuma tela foi integrada nesta tarefa. Windows real pendente.
 
 ### T17.3 — Laboratório e gráficos
 
