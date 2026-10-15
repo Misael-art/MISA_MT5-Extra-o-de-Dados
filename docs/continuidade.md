@@ -135,24 +135,212 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Branch local: `tarefa/T13.3-perfis-regimes`, com T13.2 como ancestral local; T13.2 e T13.3 ainda não foram integradas
   ao `master`. A implementação e as limitações da T13.3 estão em
   [T13.3_PERFIS_REGIMES.md](analytics/T13.3_PERFIS_REGIMES.md).
-- Auditoria de retomada: correção tardia que faz uma característica deixar de existir agora grava revisão
-  `quality=INVALIDATED` append-only. Antes da disponibilidade da invalidação, consultas *as-of* ainda veem o valor
-  anterior; depois, veem a linha invalidada com ambos os campos de valor nulos. O RVOL corrigido e o contrato da
-  feature store têm testes de regressão.
-- Verificação final do código: testes focados T13.1–T13.3 — **53 aprovados**; suíte completa —
-  **835 aprovados, 10 ignorados em 515,58 s**; `doctor` — **16 OK, 2 avisos, 0 falhas**. Os avisos são a
-  dependência opcional `pandas-ta` ausente e a ponte Wine desativada pela configuração atual.
+- Verificação após as alterações: testes focados T13.3/T13.1/T13.2 — **42 aprovados em 23,54 s**; suíte completa —
+  **833 aprovados, 10 ignorados em 676,66 s**; `doctor` — **16 OK, 2 avisos, 0 falhas**. O único aviso opcional é
+  `pandas-ta`; a ponte Wine está desativada pela configuração atual.
 - A base `database/mt5_data.db` foi aberta somente em modo SQLite `mode=ro`; nenhum cálculo foi gravado nela e o MT5
   não foi conectado. EURUSD e AGG atenderam à validação de dois mercados descrita no relatório da T13.3.
 - Decisão 5 permanece pendente do dono: a confiança proposta para regime é uma fração de concordância entre ADX,
   eficiência e R²; para RVOL é a quantidade de sessões usadas na mediana. A T13.4 pode avançar; a T13.5 aguarda a
   decisão conforme o plano. Windows real, PostgreSQL local, MT5 real e DST não foram validados.
-- A T17.1 foi integrada pela PR de UI #72; seu worktree obsoleto foi removido na limpeza autorizada. O worktree
-  sujo de T17.6 permanece preservado e intocado.
-- Esta retomada não publicou nem integrou Analytics. Próximo passo autorizado: auditar/concluir T16.3b em sua branch
-  própria e, depois, retomar T13.4 em seu worktree, mantendo uma tarefa por branch.
-- Complemento documental local `52e7442` adicionou a verificação Windows da T13.3 ao checklist: usar `--db` com uma
-  cópia descartável contendo `_bars_derived`, conferir idempotência e paridade dos valores, e não tocar na base original.
-  Os módulos Analytics não têm ramificação por `paths.is_windows`; os testes existentes simulam ambos os valores.
+- Worktree separado `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` permanece intocado. Não houve push nem PR.
+- Próxima tarefa elegível registrada nesta retomada: T13.4. T16.3b também é independente e pode ser tratada em branch
+  separado; manter cada tarefa em sua própria branch.
 
-- Commit local da auditoria T13.3: `fix(T13.3): invalidate features removed by corrections` (sem push, PR ou merge).
+## Retomada da T16.3b e T13.4 — 2026-10-15
+
+### T16.3b — enriquecimento temporal do Laboratório
+
+- Branch local independente `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`, sobre o `master`; ainda não
+  integrada. Corrige o uso de barra M1 aberta para entradas no meio da barra, a mistura barra a barra entre volume
+  real e ticks, notícia posterior à entrada e MAE/MFE que incorporava a barra de saída inteira.
+- Testes focados de enriquecimento/cache/calendário: **22 aprovados**. Suíte daquela branch: **806 aprovados, 9
+  ignorados**; doctor **16 OK, 2 avisos, 0 falhas**. Limites de reconstrução intrabar e disponibilidade de notícias
+  estão registrados em `docs/propostas/ANALYTICS_OPERACOES.md`. A alteração é local; sem push/PR.
+
+### T13.4 — hipóteses e avaliação temporal
+
+- Trabalho na branch local `tarefa/T13.4-hipoteses-walk-forward`, baseada na T13.3 (`bde3652`), com checkpoints
+  `61c8326` e `7935b30`; ainda não integrada ao `master`. Arquivos de implementação: `hypotheses.py`,
+  `pattern_engine.py`, `validation.py`, catálogo JSON
+  H01–H16 e `tests/test_analytics_hypotheses.py`; relatório: [T13.4_RELATORIO.md](analytics/T13.4_RELATORIO.md).
+- H01–H05 têm builders e foram avaliadas em memória sobre EURUSD e AGG, lendo `database/mt5_data.db` somente com
+  SQLite `mode=ro` e `PRAGMA query_only=1`. Hashes, período, custos ausentes, amostras sem condição, resultados
+  negativos e a única estimativa com amostra informativa constam no relatório. Nenhuma reserva foi gravada e nenhuma
+  hipótese foi aprovada.
+- H06–H16 são definições declarativas `DRAFT`, sem builders nem métricas avaliadas. Continuam pendentes a estabilidade
+  agregada entre mercados comparáveis, tempo de recuperação e construtores dessas hipóteses. Avaliações agora gravam
+  `RUNNING` e consomem a reserva antes do cálculo; exceções ficam como `FAILED`. Uma interrupção abrupta deixa a linha
+  `RUNNING` visível e não libera a reserva. Decisão 5 continua pendente; não impede o relatório
+  informativo H01–H05.
+- Verificação após auditoria de tentativas: focada **81 aprovados em 38,32 s** (T13.4, calendário, feature store,
+  perfis/regimes e validação estatística); completa **848 aprovados, 10 ignorados em 572,38 s**; `doctor` **16 OK, 2
+  avisos, 0 falhas**. Avisos:
+  dependência opcional `pandas-ta` ausente e ponte Wine desativada por configuração. Nenhum `.sh` foi alterado; não
+  se aplica ShellCheck. Windows real, PostgreSQL e MT5 real não foram testados.
+- Para T13.5 a dependência T12.1 segue **parcial** no plano. A decisão #6 resolveu SQLite/SQLAlchemy para o banco,
+  mas o formato do snapshot ainda depende de medição; seguem pendentes a política de validade (#7) e o comportamento
+  do leitor no Strategy Tester. T13.7a segue proposta pendente de decisão. Não iniciar ações no HADOUKEN, publicar snapshots,
+  fazer pilotos ou tocar em contas. T17.1 e os worktrees T17.2/T17.3 permanecem fora do escopo e intocados.
+
+## Atualização T13.4 — builders H06–H16 e validação de retomada — 2026-10-15
+
+- Continuação na branch `tarefa/T13.4-hipoteses-walk-forward`, sobre a base `ccf5316`, com checkpoint local `0ff2df5`.
+  `pattern_extensions.py`
+  implementa H06–H16; H14/H15 exigem `trade_events`, H16 exige `signal_events`. Todos esses padrões seguem `DRAFT`;
+  o motor não os deixa elegíveis mesmo com efeito sintético. `summarize_market_stability` publica apenas um resumo
+  descritivo por grupo previamente declarado, hipótese, versão e timeframe.
+- H06–H16 foram exercitadas por fixtures. O catálogo inclui horário sem fuso, resolução M1, entrada/saída e os
+  limites de resolução de H14–H16. H06 alinha e só usa M15 fechada; H09/H10 rejeitam lacunas nos rótulos; H10 respeita
+  a janela de recuperação; H12 preserva ambiguidade/ausência; H14/H15 usam apenas barras fechadas disponíveis.
+- Leitura real somente leitura (`mode=ro`, `query_only=1`): H06–H13 produziram contagens EURUSD/AGG descritas em
+  `docs/analytics/T13.4_RELATORIO.md`; não foram feitos testes de efeito ou reserva OOS. Volume real EURUSD conhecido
+  zero manteve H08 sem amostra; AGG produziu H08. A `_trade_ledger` local não tem entrada, preço e direção simultâneos
+  e não existe tabela de sinais, então H14–H16 não têm eventos reais para avaliar. EURUSD e AGG não foram declarados
+  comparáveis.
+- Sweep read-only H06–H13: **37,80 s**, RSS máximo **275,5 MiB**, 99.611 barras EURUSD + 8.181 AGG; SQLite permaneceu
+  em **353.746.944 bytes** antes/depois. Suíte T13.4: **26 aprovados**. Suíte completa: **859 aprovados, 10 ignorados
+  em 648,97 s**. `doctor`: **16 OK, 2 avisos, 0 falhas** (`pandas-ta` opcional ausente; ponte Wine desativada).
+  Nenhum `.sh` mudou; não se aplica ShellCheck. Windows real, PostgreSQL, horário de verão e terminal MT5 não foram
+  testados.
+- A T13.4 permanece **parcial**: nenhum H06–H16 foi avaliado OOS; H14–H16 precisam de eventos reais válidos; não há
+  grupo de mercados comparáveis declarado. Próximo limite operacional: T13.5 segue dependente de T12.1 e dos detalhes
+  externos #6/#7/Strategy Tester; T13.7a ainda requer confirmação do dono. Nenhuma operação externa foi feita.
+
+## Reconciliação da matriz e extensões temporais — 2026-10-15
+
+- O checkpoint T13.4 de código é `0ff2df5`; `6ce45bf` atualiza o ponteiro de continuidade e `41bdef7` reconcilia
+  estado da matriz/propostas. Ambos são locais e não integrados. A matriz agora classifica os itens sem dados reais
+  OOS, sem mercado comparável, sem eventos de trade e
+  sem jobs incrementais como pendentes, com o dado ou contrato que falta explícito.
+- A linha T16.3b estava atrasada em `PLANO_DE_TRABALHO.md` e `propostas/ANALYTICS_OPERACOES.md`: o trabalho existe em
+  `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`, com 22 testes focados, suíte 806/9 e doctor 16/2/0; a
+  aproximação M1/OHLC segue declarada. Não foi integrada.
+- A revisão encontrou duas lacunas que não estavam detalhadas como tarefas: T13.3b para checkpoint, execução
+  incremental, recuperação e medição dos produtores; T16.3c para disponibilidade/revisões econômicas *as-of*. As
+  propostas foram registradas no plano. T16.3a armazena `event_time` e `imported_at`, mas não prova o momento em que
+  `actual` foi recebido nem preserva versões anteriores; nenhuma data de recepção será inferida.
+- Naquele checkpoint, a próxima tarefa independente era T13.3b. Ela foi concluída depois em branch própria; veja o
+  checkpoint atualizado abaixo. A T13.7a continua aguardando resposta do dono; T13.5 segue dependente de T12.1 e das
+  decisões de validade/Strategy Tester.
+
+## Checkpoint T13.4 — completude do modelo de custos — 2026-10-15
+
+- Na branch existente `tarefa/T13.4-hipoteses-walk-forward`, a auditoria encontrou preenchimento implícito de custos
+  ausentes com zero na sensibilidade e ausência de bloqueio por componentes de custo desconhecidos. A sensibilidade
+  agora exige custo disponível para cada entrada e não publica expectativa líquida incompleta; o gate OOS para
+  `VALIDATING` verifica todos os componentes declarados, `cost_bps` e spread observado quando exigido pelo modelo.
+- H01–H16 ainda não têm vetor de custos completo e atribuível; comissão zero e swaps dos relatórios atuais não medem
+  slippage nem decompõem os resultados persistidos dos CSVs. Nenhuma hipótese pode ficar elegível até completar essa
+  evidência. Nenhuma base real foi escrita e nenhuma reserva OOS foi consumida.
+- Inventário M1 em consulta somente leitura: 13 registros em `_symbol_tables`, 12 tabelas existentes; dez tabelas
+  adicionais além de EURUSD/AGG têm 4–6.489 barras. Só EURUSD tem `_symbol_specs`; não há classificação/proveniência
+  suficiente para declarar grupo comparável, então esses símbolos não foram avaliados. Um registro aponta para tabela
+  inexistente.
+- Auditoria dos nove relatórios Tester atuais: `mtime` está até 1,41 s do `created_at` mais recente por caminho e
+  `metrics_json.entries` bate com a contagem de entradas em 9/9; a associação ao último run é corroborada, mas os
+  relatórios históricos não têm snapshot/hash. As tabelas declaram USD; comissão é zero em 1.425 negócios e swap não
+  zero em 208 saídas. Oito dos nove resultados persistidos usam CSV legado de cinco campos, sem entrada/preço/custos
+  separados; slippage segue ausente e os dados não liberam avaliação OOS.
+- Verificação Linux: testes T13.4 focados **27 aprovados**; suíte completa **860 aprovados, 10 ignorados em 533,64 s**;
+  `doctor` **16 OK, 2 avisos, 0 falhas** (módulo opcional `pandas-ta` ausente; ponte Wine desativada). Nenhum script
+  `.sh` foi alterado. A T13.4 permanece parcial: H06–H16 não têm avaliação OOS real, H14–H16 ainda dependem de eventos
+  reais válidos e não há comparabilidade declarada entre mercados.
+- Revalidação após a reconciliação documental, sem mudanças no código: suíte integral **860 aprovados, 10 ignorados
+  em 614,34 s**; `doctor --no-probe` **16 OK, 2 avisos, 0 falhas**. `git diff --check` foi executado no diff final.
+
+## Checkpoint do ciclo Analytics — 2026-10-15
+
+Entregas locais independentes, sem merge, push ou PR:
+
+- **T13.3b:** branch `tarefa/T13.3b-producers-incrementais`; código `4ede7fa`, documentação final `4ecbaca`. A suíte
+  final passou com **848 aprovados, 10 ignorados em 601,33 s**; `doctor` **16 OK, 2 avisos, 0 falhas**. O benchmark
+  sintético registrou `compute` completo em 10.103 ms e incremento em 1.321 ms (**7,65×**); crescimento SQLite/WAL
+  de 17.932.288 bytes contra 290.816 bytes. PostgreSQL e Windows reais pendentes. A primeira suíte teve uma falha
+  assíncrona de UI, que não se repetiu na suíte integral posterior.
+- **T13.4:** branch `tarefa/T13.4-hipoteses-walk-forward`, checkpoint de código `2822811`. Implementação permanece parcial: faltam
+  custos completos de comissão/slippage, eventos reais para H14–H16 e mercados comparáveis para avaliação OOS. A
+  suíte completa registrada passou com **860 aprovados, 10 ignorados**; `doctor` **16 OK, 2 avisos, 0 falhas**.
+- **T16.3b:** branch local `tarefa/T16.3b-enriquecimento-temporal`, commit `5d85cf3`; corrige barra aberta,
+  surpresa posterior à entrada e mistura de fontes de volume. MAE/MFE segue aproximado em M1/OHLC.
+- **T16.3c:** branch `tarefa/T16.3c-calendario-point-in-time`, commit `fc24bde`; guarda primeira observação e
+  histórico de revisões, com `load_asof`/`merged_asof`. Testes focados **28 aprovados**, suíte **812 aprovados, 9
+  ignorados**, `doctor` **16 OK, 2 avisos, 0 falhas**. Falta replay com recibos de fonte real.
+- **T16.11c:** branch `tarefa/T16.11c-interacoes-laboratorio`, commit `701f4fd`; testes de UI focados **40 aprovados**,
+  suíte **789 aprovados, 9 ignorados**, `doctor` **16 OK, 2 avisos, 0 falhas**. Windows real pendente.
+- **T16.12:** branch `tarefa/T16.12-cli-relatorio`, código `e99becd`; preserva os comandos publicados `compare`,
+  `report --by`, simulação por filtros e `insights --save`, e adiciona `enrich`, re-simulação por run e
+  `export --rules-file`. Usa envelope `--json`; persistência de simulação exige `--save` e a exportação gera proposta
+  não aplicável. Testes focados **15 aprovados**, suíte **794 aprovados, 9 ignorados**, `doctor` **16 OK, 2 avisos,
+  0 falhas**. Windows real pendente.
+
+### Bloqueios externos e dependências
+
+- **T13.5:** T12.1 permanece parcial; política de validade e comportamento do leitor no Strategy Tester precisam ser
+  decididos/validados antes do publicador e leitor MQL5.
+- **T13.7a:** a confirmação solicitada para adicionar o modo sombra informativo segue sem resposta; não autoriza piloto
+  nem qualquer conta real.
+- **T13.4:** sem custos observados completos, eventos de estratégia reais e grupo de mercados comparáveis, não há
+  evidência OOS suficiente para promover hipóteses.
+- **T16.3c:** não inferir disponibilidade histórica de `event_time` ou importação posterior; replay depende de recibos
+  reais confiáveis.
+- **T16.2b:** o checkout `/home/misael/Projects/HADOUKEN-MQL5-Framework` está vazio e o remoto configurado não tem
+  branches nem commits. Não substituí por outro repositório; aguardo indicação de um checkout HADOUKEN populado.
+- Worktrees T17.1–T17.6 seguem separados e intocados. Nenhuma ação financeira ou operacional foi realizada.
+
+## Reconciliação e checkpoint da retomada — 2026-10-15
+
+- O worktree principal está limpo em `tarefa/T13.6-contrato-ui`, HEAD `dba30d7`. `843a85a` (T13.2) é ancestral do
+  HEAD local, mas não de `origin/master` (`880bf18`); `git ls-remote` confirmou que as branches T13.2, T13.3, T13.4,
+  T13.6 e T16.3b não estão publicadas no `origin`. Portanto, a nota “não integrada ao master” continua correta;
+  ancestralidade local não significa integração nem publicação.
+- A branch T16.3b continua em `5d85cf3`; reexecução atual dos testes de enriquecimento/cache/calendário: **22 aprovados**.
+  A mudança está dentro da aproximação M1/OHLC descrita no plano; nenhum arquivo dessa branch foi alterado nesta revisão.
+- Releitura SQLite estritamente somente leitura da base local (`sqlite3 -readonly`): EURUSD M1 tem 99.611 barras
+  (2026-07-07 a 2026-10-12); AGG M1 tem 8.181 (2026-09-14 a 2026-10-12). `_trade_ledger` tem 22.420 linhas,
+  todas sem `entry_time`, `entry_price` e `direction`; o schema não registra custos por operação. A base não contém
+  `_economic_events`, tabelas de hipóteses nem `_signal_log`. Não surgiu evidência real para H14–H16, custos completos
+  ou grupo de mercados comparáveis; nenhuma tabela foi criada nem modificada.
+- A revisão T13.4 substituiu o teste nulo que era bloqueado por custos incompletos por 40 conjuntos sintéticos
+  independentes com custos completos. O teste usa sementes fixas e tolerância de até 6/40 para cada contagem de falso
+  sinal ajustado/elegibilidade sob nível nominal de 5%; não exige taxa zero. Suíte focada inicial: 27 aprovados;
+  suíte completa da branch: 860 aprovados, 10 ignorados em 577,20 s; repetição focada após preparar a venv
+  isolada: 27 aprovados em 58,38 s.
+- O instalador no worktree T13.4 inicialmente encontrou falta de espaço no filesystem temporário padrão. Com `TMPDIR`
+  apontado para um filesystem com espaço, `./install.sh --yes --no-mt5` e a instalação de `requirements-dev.txt`
+  concluíram. Doctor pela venv isolada: 16 OK, 2 avisos, 0 falhas (`pandas-ta` opcional ausente; ponte Wine
+  desativada por `--no-mt5`). Não houve alteração em scripts de instalação.
+- O filesystem temporário padrão chegou a 4 KiB livres; nenhum temporário de outro processo foi removido. Os comandos
+  de pytest usaram o diretório de cache reservado para esta tarefa. Todos os worktrees T17 permanecem intocados.
+- Correção T13.4 nesta retomada: `validation.min_sessions` não era aplicado. O avaliador agora informa dias de sessão
+  ancorados em `sample_quality`, bloqueia elegibilidade abaixo do piso e reamostra pelos mesmos dias âncora. Teste
+  sintético com 20 dias/mínimo 40 e âncora 17:00 cobre a virada da meia-noite. Nos 161 eventos EURUSD alinhados sob
+  base temporal não confirmada, H14 produz 156 observações em 61 dias e H15 132 em 58; o mínimo é 60. Esses números
+  só descrevem o filtro quantitativo e não autorizam leitura OOS. Bateria analítica final: 71 aprovados, 2 ignorados;
+  regressão integral após a correção principal: 861 aprovados, 10 ignorados em 558,85 s. O ajuste posterior do formato
+  vazio de `sample_quality` passou na bateria analítica final; a suíte integral não foi repetida para essa alteração
+  localizada. Correção de código em `799a634`. `doctor --no-probe`: 16 OK, 2 avisos, 0 falhas (`pandas-ta` opcional
+  ausente; ponte Wine desativada).
+- Auditoria somente leitura de fontes alternativas: `_robot_runs` contém 223 execuções e 28.264 registros serializados; cada registro tem timestamp, PnL e volume. O produtor Python grava `exit_time`. `_trade_features` contém 19.895 linhas, todas com `time_ref=saida`. A pasta `Common\\Files` tem 14 exports `HDK_trades_*.csv`, todos com cabeçalho `time;symbol;type;volume;result`, sem campos de entrada ou decomposição de custos. `metrics_json.real_spread` aparece em 96 execuções como marcador booleano (26 verdadeiras, 70 falsas, 127 ausentes); há um perfil de spread em `_symbol_specs`.
+- Reauditoria dos relatórios Tester: 58 referências em `metrics_json.report` apontam para 9 caminhos `.htm` compartilhados. O `mtime` de cada conteúdo atual fica até 1,41 s do último `created_at` e a contagem de entradas bate com a métrica em 9/9; isso corrobora apenas o último run por caminho, não restaura snapshots históricos. Os arquivos atuais contêm 699 negócios `in`: 698 EURUSD e 1 AGG. Em EURUSD, 176 entradas coincidem no minuto com M1 local e 161 também passam pela checagem de preço OHLC expandido pelo spread; o evento AGG não pode ser validado por preço porque falta `point`. Não há marcador `UTC`/`GMT` nem base temporal declarada. As tabelas declaram USD; comissão é zero em 1.425 negócios e swap não zero em 208 saídas. O resultado persistido de 8/9 runs mais recentes vem do CSV legado, e slippage não é medida. Com o alinhamento ingênuo assumido apenas para diagnóstico, os builders produziram 156 observações H14 e 132 H15 em memória; isso não é validação OOS. H14/H15 continuam `DRAFT`; H16 permanece sem sinais explícitos. Nenhuma tabela foi alterada nem reserva consumida.
+
+## Harmonização local T13.3–T13.4 — 2026-10-15
+
+- A branch `tarefa/T13.4-hipoteses-walk-forward` foi reaplicada sobre a T13.3 auditada (`3f9e333`); o ponteiro
+  local de recuperação foi mantido durante a operação. O checkpoint de código é `9990eb3`. Baseline pré-rebase:
+  **862 aprovados/10 ignorados em 587,84 s**; após o encadeamento: **864 aprovados/10 ignorados em 625,95 s**;
+  `doctor`: **16 OK, 2 avisos, 0 falhas**. Nenhuma branch de Analytics foi publicada, integrada ao `master` ou
+  usada para publicar artefatos.
+- T13.3: `3f9e333`, 835 aprovados/10 ignorados na suíte e 53 testes focados; revisões `INVALIDATED` preservam o
+  valor antigo somente antes da disponibilidade da invalidação.
+- T16.3b: código `5d85cf3`, teste de fronteira `acc1872`, checkpoint documental `af6281a`; reauditoria focada
+  atual 23 aprovados e `doctor` 16 OK/2 avisos/0 falhas. A suíte integral 806/9 foi executada no código de
+  produção inalterado; os avisos atuais são `pandas-ta` opcional ausente e ponte Wine desativada.
+- A T17.1 foi integrada pela PR de UI #72 e seu worktree obsoleto foi removido conforme autorização anterior.
+  O worktree sujo de T17.6 permanece preservado e intocado.
+- T13.4 segue parcial como pesquisa: não há custos completos atribuíveis, base temporal comprovada para entradas
+  dos relatórios Tester, eventos de estratégia reais ou grupo de mercados comparáveis. Nenhuma reserva OOS real foi
+  consumida; resultados exploratórios permanecem identificados como tal.
+- Foram reapresentadas ao dono, nesta retomada, as decisões pendentes para T13.5 (incluir `observation_time_utc`
+  no schema v1; política de validade e tratamento no Tester), a Decisão 5 sobre semântica de confiança e a confirmação
+  da inclusão de T13.7a. Implementação dependente aguarda resposta; não houve uso real nem alteração operacional.

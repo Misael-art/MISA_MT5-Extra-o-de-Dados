@@ -126,8 +126,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
-| T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementada e auditada no Linux: suíte integral 835 aprovados, 10 ignorados; foco T13.1–T13.3 53 aprovados; `doctor` 16 OK, 2 avisos, 0 falhas. Correção tardia que remove um valor agora grava revisão `INVALIDATED`; consultas *as-of* anteriores preservam o fato antigo. Checklist Windows atualizado em `docs/validacao_instaladores.md`. Decisão 5 segue pendente; PostgreSQL local, Windows real e DST não testados |
-| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
+| T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ auditada localmente em `tarefa/T13.3-perfis-regimes` (`3f9e333`): 835 aprovados, 10 ignorados; foco T13.1–T13.3 53 aprovados; `doctor` 16 OK, 2 avisos, 0 falhas. Correções tardias que removem saídas geram revisão `INVALIDATED`; PostgreSQL e Windows real pendentes |
+| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ implementação na branch local `tarefa/T13.3b-producers-incrementais` (`4ede7fa`); 46 focados e suíte final 848/10; doctor 16 OK/2 avisos/0 falhas. PostgreSQL e Windows reais pendentes; ainda não integrada |
+| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | ⏳ parcial na branch `tarefa/T13.4-hipoteses-walk-forward`: H01–H16 têm builders; H06–H16 permanecem DRAFT, sem limiares/OOS medidos; H06–H13 têm contagens somente descritivas EURUSD/AGG. Nos 9 relatórios atuais, mtime e contagem de entradas corroboram o último run; registros históricos não têm snapshot e a base temporal segue desconhecida. 161 entradas EURUSD alinham por minuto/preço sob hipótese temporal e geram 156/132 observações exploratórias. HTML registra comissão zero e swaps em USD; 8/9 resultados persistidos usam CSV legado de 5 campos, e slippage segue sem medida. H16 não tem sinais; mercados comparáveis não declarados. `real_spread` é marcador booleano e o perfil de spread não completa custos OOS. Teste nulo: 40 conjuntos, tolerância de até 6/40 em falso sinal ajustado ou elegibilidade no nível nominal de 5%; focados 27/27; após encadear sobre T13.3 auditada, suíte completa 864 aprovados/10 ignorados em 625,95 s; `doctor` 16 OK/2 avisos/0 falhas. Instalador e venv isolado concluídos no Linux. Ver `docs/analytics/T13.4_RELATORIO.md`. Não integrada ao master |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7a | Registro de sinais e modo sombra (decide e registra, não age) | T13.5 | a fazer (proposta em 2026-10-14; confirmar com o dono) |
@@ -145,7 +146,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.2 | Laboratório: importadores para o livro (backtest Python, CSV do HADOUKEN nos dois formatos, runs antigos) e `mt5x trades import/runs` | T16.1 | ✅ concluída no mt5x; a T16.2b (colunas novas no CSV) é do HADOUKEN |
 | T16.3a | Laboratório: calendário econômico de várias fontes (CSV e exportação do MT5 por MQL5), unido e enriquecido | T16.2 | ✅ concluída no Linux (script compilado no host; exportação com o terminal conectado não exercitada) |
 | T16.3 | Laboratório: enriquecimento das operações (calendário, notícia, volume, volatilidade point-in-time, MAE/MFE) | T16.3a | ✅ concluída |
-| T16.3b | Laboratório: correção temporal do enriquecimento (barra aberta, surpresa de notícia futura, volume real × ticks) | T16.3 | a fazer (achado da auditoria de 2026-10-14) |
+| T16.3b | Laboratório: correção temporal do enriquecimento (barra aberta, surpresa de notícia futura, volume real × ticks, limite temporal de MAE/MFE) | T16.3 | ✅ entregue localmente em `tarefa/T16.3b-enriquecimento-temporal` (código `5d85cf3`, regressão de fronteira `acc1872`, checkpoint `af6281a`): reauditoria focada 23 aprovados; suíte integral 806/9 é da implementação sem mudança posterior no código; `doctor` atual 16 OK/2 avisos/0 falhas. MAE/MFE segue aproximação M1/OHLC; branch não integrada |
+| T16.3c | Calendário econômico point-in-time: disponibilidade observada e histórico de revisões | T16.3a, T16.3b | ✅ implementação local em `tarefa/T16.3c-calendario-point-in-time` (`fc24bde`); 28 focados, suíte 812/9 e doctor 16/2/0. Replay de recibos de fonte real e Windows pendentes; não integrada |
 | T16.4 | Laboratório: agregações das duas lentes e estatística (bootstrap em blocos, amostra mínima) | T16.3 | ✅ concluída |
 | T16.5 | Laboratório: cache do enriquecimento por run, com assinatura (versão, configuração, operações, calendário) | T16.4 | ✅ concluída |
 | T16.11a | Laboratório: aba (lentes por robô e por ativo; guias Visão geral, Tempo e calendário, Microestrutura e Comparativo) | T16.5 | ✅ concluída no Linux (tela virtual, temas claro e escuro); Windows não visto |
@@ -155,7 +157,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.9 | Laboratório: regras de filtro e simulador, validados em walk-forward com folga e reserva final | T16.8 | ✅ concluída |
 | T16.10 | Laboratório: insights automáticos (contexto e modo × contexto) validados na reserva final; ruído não gera insight validado | T16.9 | ✅ concluída |
 | T16.11b | Laboratório: guias Execução (comparar modos) e Insights (simulador e exportação da proposta) | T16.10 | ✅ concluída no Linux (tela virtual); Windows não visto |
-| T16.12 | Laboratório: `mt5x trades report/compare/insights/simulate` com `--json` | T16.11b | ✅ concluída (relatório HTML opcional não feito) |
+| T16.12 | Laboratório: `mt5x trades enrich/report/simulate/insights/export` com `--json` | T16.11b | ✅ implementação local em `tarefa/T16.12-cli-relatorio` (código `e99becd`); preserva `compare`, `report --by`, simulação por filtros e `insights --save`. Focados 15; suíte 794/9; doctor 16/2/0. Windows pendente; relatório HTML opcional não feito |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -3299,6 +3301,26 @@ real por corretora.
   barra só fica disponível no `computed_at_utc` da correção; (f) a última sessão da base é tratada como aberta;
   (g) a gravação consulta o `write_guard` da Fase 15; (h) proposta de "confiança" para a decisão 5.
 
+### T13.3b — Produtores incrementais e recuperáveis (extensão identificada em 2026-10-15)
+
+- **Motivo:** `analytics.producers.compute` usa `latest_bars` e recalcula a família inteira a cada chamada. `save_values`
+  e a transação por família tornam a gravação repetível, mas não há checkpoint durável por lote, retomada coordenada
+  nem medição reproduzível do job produtor.
+- **Objetivo:** processar só o intervalo novo ou afetado, retomar com segurança após falha e preservar paridade com a
+  recomputação completa; impedir que uma correção tardia deixe características dependentes antigas válidas.
+- **Depende de:** T13.3 e `write_guard`/limites da T15.9. É independente da avaliação estatística da T13.4.
+- **Contrato de retomada:** checkpoint deve identificar ativo, timeframe, família, versão do algoritmo, parâmetros e
+  revisão da fonte; gravar valores e avanço do checkpoint de modo transacional e idempotente. Limitar lotes, tempo e
+  retentativas; uma interrupção deve permitir retomar ou reiniciar sem duplicar nem pular valores.
+- **Exatidão:** janelas finitas precisam incluir o aquecimento anterior suficiente. Indicadores recursivos só podem
+  retomar de estado salvo se a continuidade desse estado for provada contra recomputação; até lá, usar reconstrução
+  desde uma âncora conhecida ou recomputação completa, sem tratar memória aproximada como exata.
+- **Medição:** registrar versão, configuração, revisão e fonte de entrada, duração, pico de memória e crescimento do
+  banco em cenário reproduzível; sementes só quando houver etapa estocástica. Não repetir carga completa por padrão.
+- **Aceite:** testes sintéticos de reexecução idempotente, falha após lote/checkpoint, retomada, correção tardia e
+  igualdade com recomputação completa; `write_guard` bloqueia cada lote; medição mostra que a atualização incremental
+  não lê/recalcula todo o histórico para uma barra nova.
+
 ### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
 
 - **Objetivo:** descrever uma hipótese em um arquivo (condição, janela, desfecho, universo, custos), avaliá-la e
@@ -3313,6 +3335,43 @@ real por corretora.
 - **Critérios de aceite:** teste 8 da especificação; H01 a H05 avaliadas com dados reais e o resultado publicado em
   relatório, **qualquer que seja ele** (a tarefa não depende de as hipóteses se confirmarem); uma hipótese rejeitada
   continua no catálogo.
+- **Estado inicial desta retomada (2026-10-15):** implementação e avaliação informativa H01–H05 na branch local
+  `tarefa/T13.4-hipoteses-walk-forward`, sobre T13.3 (`bde3652`); H01–H05 estão no catálogo e o relatório publica
+  inclusive ausência de amostra e resultados negativos. H06–H16 ainda não tinham builders nesse checkpoint. As
+  avaliações persistidas iniciam como `RUNNING` e exceções gravam `FAILED`; uma interrupção abrupta deixa a linha
+  `RUNNING` e reserva consumida para impedir reuso. As tentativas reais foram somente leitura e não consumiram reserva
+  persistida. Verificações desse checkpoint: focado **81 aprovados em 38,32 s**; completo **848 aprovados, 10
+  ignorados em 572,38 s**; `doctor` **16 OK, 2 avisos, 0 falhas** (opcional `pandas-ta` ausente e ponte Wine
+  desativada). Windows real, PostgreSQL e MT5 real não foram testados.
+- **Atualização desta retomada (2026-10-15):** H06–H16 têm builders causais, com entradas de `trade_events`/`signal_events`
+  explícitas para H14–H16 e resumo descritivo de estabilidade entre mercados declarados. H06–H13 produziram apenas
+  contagens informativas ao ler EURUSD (99.611 barras) e AGG (8.181) em memória. Reauditoria encontrou 58 referências
+  a relatório em `_robot_runs`, compartilhadas por 9 caminhos `.htm`; os arquivos atuais contêm 699 entradas, das quais
+  161 EURUSD alinham por minuto e preço com M1 sob base temporal não confirmada. Sob essa hipótese, H14/H15 geraram
+  156/132 observações exploratórias em memória sob base temporal não confirmada; isso não constitui OOS. Para os nove
+  relatórios atuais, `mtime` ficou até 1,41 s do último
+  `created_at` e a contagem de entradas bateu com `metrics_json.entries` em 9/9; isso corrobora só o conteúdo atual,
+  sem recuperar relatórios históricos nem fixar a base temporal. H16 segue sem tabela de sinais. Todos H06–H16 continuam
+  `DRAFT`; nenhuma reserva real foi consumida. O sweep H06–H13
+  levou **37,80 s**, pico RSS **275,5 MiB**; SQLite ficou em **353.746.944 bytes** antes/depois da leitura `mode=ro` +
+  `query_only=1`. Inventário M1 adicional encontrou 13 registros, 12 tabelas existentes; dez outras além de EURUSD/AGG
+  têm 4–6.489 barras, sem metadados suficientes para formar um grupo comparável (`_symbol_specs` só tem EURUSD). Ver
+  resultados e limites no relatório. A T13.4 permanece **parcial**, sem transição para `APPROVED`.
+- Os relatórios atuais registram comissão zero e swap não zero em 208 das 1.425 linhas de negócios, em USD. Oito dos
+  nove resultados mais recentes usam o CSV legado `time;symbol;type;volume;result`; slippage continua sem medida e o
+  resultado não é um vetor de custos completo por operação.
+- No checkpoint da atualização documental, a suíte integral passou com **860 aprovados, 10 ignorados em 614,34 s**;
+  `doctor --no-probe` registrou **16 OK, 2 avisos, 0 falhas**. A correção de execução descrita abaixo veio depois.
+- **Atualização de validação (2026-10-15):** auditoria do gate encontrou `validation.min_sessions` declarado nos JSONs,
+  mas não aplicado pelo avaliador. Agora a contagem de dias de sessão usa `session_anchor`, aparece em `sample_quality`,
+  torna a amostra fraca abaixo do piso e alimenta os agrupamentos de bootstrap. Um teste com 20 dias contra mínimo 40
+  e âncora 17:00 cruza meia-noite sem inflar a contagem. Nos eventos alinhados H14/H15, são 61/58 dias observados:
+  H14 excede o piso de 60 por um dia; H15 não atinge. Isso não é prova de independência nem libera OOS. Bateria
+  analítica final: **71 aprovados, 2 ignorados**; suíte integral após a correção principal: **861 aprovados, 10
+  ignorados em 558,85 s**. Correção registrada em `799a634`. O ajuste posterior do formato vazio de `sample_quality`
+  passou na bateria analítica final;
+  a suíte integral não foi repetida para essa alteração localizada. `doctor --no-probe`: **16 OK, 2 avisos, 0 falhas**
+  (módulo opcional `pandas-ta` ausente e ponte Wine desativada).
 - **Extensões detalhadas em 2026-10-14** (sem tarefa nova; reutilizar `trade_analytics/rules.split`, `stats` e o
   controle de ruído de `insights`): campos obrigatórios de cada hipótese — universo, sessão, fuso, condição,
   gatilho, entrada executável, saída, custos, parâmetros, versão e validação; embargo do tamanho do horizonte do
