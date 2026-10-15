@@ -67,7 +67,7 @@ modo sombra → pilotos autorizados → monitoramento.
 
 | Requisito | Existente | Lacuna | Tarefa | Dependência | Critério de aceite |
 |---|---|---|---|---|---|
-| Snapshot versionado, procedência, validade, hash, troca atômica, rejeição | `mt5_tools.common_files_dir` | Tudo | T13.5 | T13.3, T12.1 | Testes 9, 11, 14 |
+| Snapshot versionado, procedência, validade, hash, troca atômica, rejeição | `mt5_tools.common_files_dir` | §9.1 não inclui `observation_time_utc`, necessário para preservar a observação da feature store | T13.5 (pendente de conciliação do schema) | T13.3, T12.1 | Pendente até conciliar o contrato; depois, testes 9, 11, 14 |
 | Analytics desligado preserva comportamento | — | — | T13.7 | T13.5 | Teste 10 |
 | Modo sombra (decide, não age) | — | Tudo | **T13.7a** | T13.5 | Nenhuma ordem afetada; sinais registrados |
 | Piloto opt-in que só reduz risco | `mt5x-safety` (guardião, orçamento) | Política | T13.7 | T13.5, T12.3, robô aprovado, **autorização do dono** | Só reduz; bateria sem regressão |

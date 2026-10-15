@@ -149,3 +149,21 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 - Complemento documental local `52e7442` adicionou a verificação Windows da T13.3 ao checklist: usar `--db` com uma
   cópia descartável contendo `_bars_derived`, conferir idempotência e paridade dos valores, e não tocar na base original.
   Os módulos Analytics não têm ramificação por `paths.is_windows`; os testes existentes simulam ambos os valores.
+
+## Retomada da T13.5 — 2026-10-15
+
+- Worktree local: `/home/misael/Projects/MISA_MT5-Extra-o-de-Dados-T13.5`, branch `tarefa/T13.5-publicador-candidato`,
+  baseada em `a028334` (`tarefa/T13.3-perfis-regimes`). A branch não foi integrada.
+- Ambiente instalado conforme o fluxo do projeto. Suíte inicial, antes de qualquer alteração: **833 aprovados,
+  10 ignorados em 494,01 s**. Após as alterações documentais: suíte **833 aprovados, 10 ignorados em 495,41 s**;
+  `doctor` **16 OK, 2 avisos, 0 falhas**; `git diff --check` aprovado. Os avisos são `pandas-ta` opcional ausente e
+  ponte Wine desativada.
+- Antes de implementar o publicador, foi encontrada uma divergência entre a seção 9.1 de
+  `docs/analytics/ESPECIFICACAO.md` e a feature store: o CSV proposto não possui `observation_time_utc`. O produtor
+  T13.3 associa `observation_time` ao início da barra e `available_at` ao fim/correção; na reconstrução, também passa
+  `available_at` como `observed_at`. Detalhes em
+  [T13.5_CONTRATO_PUBLICACAO.md](analytics/T13.5_CONTRATO_PUBLICACAO.md).
+- A serialização e o leitor não foram implementados. A escolha entre incluir `observation_time_utc` no schema v1 ou
+  adiar publicação até outro contrato foi encaminhada ao dono. A Decisão 7 sobre validade/Strategy Tester e a
+  dependência T12.1 continuam pendentes. Nenhuma pasta do MT5 foi acessada; nenhum MT5 foi conectado.
+- O trabalho deste checkpoint é somente documental. O worktree T17.1 permanece intocado; não houve push ou PR.

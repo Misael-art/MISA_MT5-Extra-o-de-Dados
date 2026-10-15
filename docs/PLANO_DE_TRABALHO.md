@@ -128,7 +128,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementação concluída no Linux: 833 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. A suíte integral inclui testes existentes que simulam `paths.is_windows` nos dois valores; checklist para validar o produtor em Windows real registrado em `docs/validacao_instaladores.md`. Decisão 5 segue pendente; PostgreSQL, Windows real e DST não testados |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
-| T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
+| T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | ⏸ pausada na porta do contrato: §9.1 não inclui `observation_time_utc`, distinto de `observed_at_utc`; decisão e evidência em [`T13.5_CONTRATO_PUBLICACAO.md`](analytics/T13.5_CONTRATO_PUBLICACAO.md). Decisão 7 e dependência T12.1 também pendentes |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7a | Registro de sinais e modo sombra (decide e registra, não age) | T13.5 | a fazer (proposta em 2026-10-14; confirmar com o dono) |
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T13.7a, T12.3 | a fazer |
