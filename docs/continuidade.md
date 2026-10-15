@@ -153,7 +153,28 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   Worktrees T17 não foram tocados.
 - Ambiente Python 3.11.15 e Xvfb disponíveis; `/tmp` tinha 5,2 GiB livres, então a suíte foi executada ali.
   Linha de base antes das alterações: **833 aprovados, 10 ignorados em 627,98 s**.
-- A revisão do código confirma que `producers.compute` sempre chama `latest_bars` sem limite e recalcula a família
-  inteira. `save_values` valida todo o lote e grava valores numa transação, mas o job não tem checkpoint. O contrato
-  desta extensão exige atualização real por barras novas, retomada depois de falha e correções dependentes sem usar
-  janela finita como substituto exato de estado recursivo. Nenhuma alteração de código foi feita ainda neste branch.
+- Revisão inicial: `producers.compute` recarregava as barras e reconstruía cada família; os lotes da feature store
+  também consultavam o histórico inteiro de cada característica. O código agora usa sequence/cursor, checkpoints
+  duráveis por família, valores e checkpoint numa transação, retomada após falha, EWM exato, reconstrução após
+  correção anterior ao cursor, consulta de valores limitada às observações do lote e medição de jobs.
+- `latest_bars` detecta quando barras elegíveis só ficaram fechadas pela passagem do relógio, mesmo sem nova revisão
+  na fonte. Um teste determinístico avança o relógio e verifica que só uma barra é lida dentre três.
+- Testes focados atuais: **46 aprovados em 51,24 s**; os três cenários críticos foram repetidos (**3 aprovados em
+  1,35 s**). Suíte completa: **847 aprovados, 10 ignorados, 1 falhou em 587,64 s**. A falha foi a atualização
+  assíncrona de `test_ui_main_window.py::test_no_internet_is_said_plainly_with_what_to_do`; repetido isoladamente,
+  passou (**1 aprovado em 5,87 s**). A branch não altera arquivos de UI; não considerar o primeiro resultado da
+  suíte como totalmente verde.
+- `doctor`: **16 OK, 2 avisos, 0 falhas**. Avisos: `pandas-ta` opcional ausente e ponte Wine desativada. A
+  worktree não tinha `config/config.ini`; foi gerada com `configure --non-interactive --skip-credentials --no-bridge`
+  (sem credenciais). Configuração e lista local de símbolos são ignoradas pelo Git.
+- Benchmark determinístico em SQLite temporário (160 sessões de 30 M1 + uma sessão incremental; 966 barras M5 finais):
+  `producers.compute` completo **10.103 ms**, incremental **1.321 ms** (7,65×); crescimento do banco/WAL **17.932.288
+  bytes** vs. **290.816 bytes**; pico RSS praticamente igual (**182.571.008** vs. **182.673.408 bytes**). O benchmark
+  está em `scripts/benchmark_analytics_producers.py`; detalhes e limite de escopo em
+  `docs/analytics/T13.3B_PRODUTORES_INCREMENTAIS.md`. O tempo exclui o resampling M1.
+- Arquivos de código alterados: `analytics/feature_store.py`, `analytics/producers.py`, `analytics/resampling.py`,
+  novo `analytics/producer_jobs.py`; testes em `test_analytics_features.py` e `test_analytics_profiles.py`; novo
+  benchmark. O relatório, matriz e plano já refletem o estado em validação. As alterações ainda não foram commitadas.
+- Próximo passo: revisar `git diff --check`, salvar o checkpoint commitado da T13.3b e avançar à T13.4 e T16.3b em
+  branches/worktrees próprias. O teste isolado de UI passou; a falha da execução integral fica registrada para
+  investigação em frente de UI, sem editar `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` aqui.

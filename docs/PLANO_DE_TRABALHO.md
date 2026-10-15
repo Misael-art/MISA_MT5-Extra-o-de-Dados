@@ -127,7 +127,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ implementação concluída no Linux: 833 aprovados, 10 ignorados; `doctor` 16 OK, 2 avisos, 0 falhas. Decisão 5 (confiança) segue proposta pendente; PostgreSQL e Windows real não testados |
-| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | em implementação na branch `tarefa/T13.3b-producers-incrementais`; independente da T13.4 |
+| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ implementação concluída na branch `tarefa/T13.3b-producers-incrementais`; 46 focados passaram, suíte geral 847/10 com uma falha assíncrona de UI aprovada isoladamente, `doctor` 16 OK/2 avisos/0 falhas; evidência em `docs/analytics/T13.3B_PRODUTORES_INCREMENTAIS.md`; independente da T13.4 |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |

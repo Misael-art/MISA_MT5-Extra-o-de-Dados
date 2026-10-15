@@ -42,11 +42,22 @@ CREATE TABLE IF NOT EXISTS _bars_derived (
     source_timeframe TEXT NOT NULL,
     input_hash TEXT NOT NULL,
     computed_at_utc TEXT NOT NULL,
+    source_seq BIGINT NOT NULL DEFAULT 0,
     PRIMARY KEY (symbol, tf, session_id, bar_start_utc, revision)
 )
 """
 _CREATE_BARS_INDEX = "CREATE INDEX IF NOT EXISTS ix_bars_derived_lookup " \
                      "ON _bars_derived (symbol, tf, bar_start_utc)"
+_CREATE_SOURCE_INDEX = "CREATE INDEX IF NOT EXISTS ix_bars_derived_source_sequence " \
+                       "ON _bars_derived (symbol, tf, source_seq, bar_start_utc)"
+_CREATE_SOURCE_SEQUENCES = """
+CREATE TABLE IF NOT EXISTS _analytics_source_sequences (
+    symbol TEXT NOT NULL,
+    tf TEXT NOT NULL,
+    sequence BIGINT NOT NULL,
+    PRIMARY KEY (symbol, tf)
+)
+"""
 
 
 @dataclass(frozen=True)
@@ -102,7 +113,11 @@ def ensure_schema(db):
         existing = {column["name"] for column in inspect(conn).get_columns("_bars_derived")}
         if "is_partial" not in existing:
             conn.execute(text("ALTER TABLE _bars_derived ADD COLUMN is_partial INTEGER NOT NULL DEFAULT 0"))
+        if "source_seq" not in existing:
+            conn.execute(text("ALTER TABLE _bars_derived ADD COLUMN source_seq BIGINT NOT NULL DEFAULT 0"))
         conn.execute(text(_CREATE_BARS_INDEX))
+        conn.execute(text(_CREATE_SOURCE_INDEX))
+        conn.execute(text(_CREATE_SOURCE_SEQUENCES))
 
 
 def _number(value):
@@ -314,6 +329,7 @@ def _save_bars(db, bars):
     computed = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
     counts = {"inserted": 0, "corrected": 0, "unchanged": 0}
     with db.engine.begin() as conn:
+        changed = []
         for bar in bars:
             latest = conn.execute(text(
                 "SELECT revision, input_hash FROM _bars_derived WHERE symbol = :symbol AND tf = :tf "
@@ -330,11 +346,96 @@ def _save_bars(db, bars):
                 counts["inserted"] += 1
             bar["revision"] = revision
             bar["computed_at_utc"] = computed
-            columns = tuple(bar)
-            names = ", ".join(columns)
-            params = ", ".join(f":{name}" for name in columns)
-            conn.execute(text(f"INSERT INTO _bars_derived ({names}) VALUES ({params})"), bar)
+            changed.append(bar)
+        by_source = {}
+        for bar in changed:
+            by_source.setdefault((bar["symbol"], bar["tf"]), []).append(bar)
+        for (symbol, timeframe), source_bars in by_source.items():
+            conn.execute(text(
+                "INSERT INTO _analytics_source_sequences (symbol, tf, sequence) VALUES (:symbol, :tf, 1) "
+                "ON CONFLICT (symbol, tf) DO UPDATE SET sequence = _analytics_source_sequences.sequence + 1"),
+                {"symbol": symbol, "tf": timeframe})
+            sequence = int(conn.execute(text(
+                "SELECT sequence FROM _analytics_source_sequences WHERE symbol = :symbol AND tf = :tf"),
+                {"symbol": symbol, "tf": timeframe}).scalar_one())
+            for bar in source_bars:
+                bar["source_seq"] = sequence
+                columns = tuple(bar)
+                names = ", ".join(columns)
+                params = ", ".join(f":{name}" for name in columns)
+                conn.execute(text(f"INSERT INTO _bars_derived ({names}) VALUES ({params})"), bar)
     return counts
+
+
+def latest_source_sequence(db, symbol, timeframe):
+    """Geração monotônica das últimas revisões derivadas, sem ler o histórico de barras."""
+    if db is None or getattr(db, "engine", None) is None or \
+            not inspect(db.engine).has_table("_analytics_source_sequences"):
+        return None
+    target = parse_target(timeframe)
+    with db.engine.connect() as conn:
+        value = conn.execute(text(
+            "SELECT sequence FROM _analytics_source_sequences WHERE symbol = :symbol AND tf = :tf"),
+            {"symbol": str(symbol), "tf": target.label}).scalar()
+        if value is None and inspect(conn).has_table("_bars_derived"):
+            value = conn.execute(text(
+                "SELECT MAX(source_seq) FROM _bars_derived WHERE symbol = :symbol AND tf = :tf"),
+                {"symbol": str(symbol), "tf": target.label}).scalar()
+    return int(value) if value is not None else 0
+
+
+def has_closed_bars_after(db, symbol, timeframe, bar_start_utc):
+    """Checa, sem carregar o histórico, se uma barra nova ficou elegível pelo relógio."""
+    if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_bars_derived"):
+        return False
+    target = parse_target(timeframe)
+    columns = {column["name"] for column in inspect(db.engine).get_columns("_bars_derived")}
+    partial_clause = "COALESCE(candidate.is_partial, 0) = 0" if "is_partial" in columns else (
+        "NOT EXISTS (SELECT 1 FROM _bars_derived was_partial WHERE was_partial.symbol = candidate.symbol "
+        "AND was_partial.tf = candidate.tf AND was_partial.session_id = candidate.session_id "
+        "AND was_partial.bar_start_utc = candidate.bar_start_utc AND was_partial.revision < candidate.revision "
+        "AND was_partial.quality_status = 'PARTIAL' AND was_partial.coverage_ratio >= 0.999999999)")
+    eligibility = ("candidate.quality_status IN ('COMPLETE', 'NO_TRADES', 'CORRECTED') "
+                   "AND candidate.coverage_ratio >= 0.999999999 AND candidate.bar_end_utc <= :as_of "
+                   f"AND {partial_clause}")
+    if target.minutes is not None:
+        if db.engine.dialect.name == "sqlite":
+            eligibility += " AND (julianday(candidate.bar_end_utc) - julianday(candidate.bar_start_utc)) " \
+                           "* 1440.0 >= :duration_minutes - 0.000001"
+        else:
+            eligibility += " AND EXTRACT(EPOCH FROM (CAST(candidate.bar_end_utc AS TIMESTAMPTZ) - " \
+                           "CAST(candidate.bar_start_utc AS TIMESTAMPTZ))) >= :duration_seconds - 0.000001"
+    cursor_clause = "" if bar_start_utc is None else "AND candidate.bar_start_utc > :bar_start_after"
+    latest_candidate = "NOT EXISTS (SELECT 1 FROM _bars_derived newer WHERE newer.symbol = candidate.symbol " \
+                       "AND newer.tf = candidate.tf AND newer.session_id = candidate.session_id " \
+                       "AND newer.bar_start_utc = candidate.bar_start_utc AND newer.revision > candidate.revision)"
+    latest_incomplete = "NOT EXISTS (SELECT 1 FROM _bars_derived newer WHERE newer.symbol = incomplete.symbol " \
+                        "AND newer.tf = incomplete.tf AND newer.session_id = incomplete.session_id " \
+                        "AND newer.bar_start_utc = incomplete.bar_start_utc AND newer.revision > incomplete.revision)"
+    sql = f"""
+        SELECT 1 FROM _bars_derived candidate
+        WHERE candidate.symbol = :symbol AND candidate.tf = :tf
+          AND {latest_candidate} AND {eligibility} {cursor_clause}
+          AND NOT EXISTS (
+              SELECT 1 FROM _bars_derived incomplete
+              WHERE incomplete.symbol = candidate.symbol AND incomplete.tf = candidate.tf
+                AND incomplete.session_id = candidate.session_id AND {latest_incomplete}
+                AND NOT ({eligibility.replace('candidate.', 'incomplete.')})
+          )
+        LIMIT 1
+    """
+    params = {"symbol": str(symbol), "tf": target.label, "as_of": _utc_now().strftime(
+        "%Y-%m-%dT%H:%M:%S.%f+00:00")}
+    if bar_start_utc is not None:
+        stamp = pd.Timestamp(bar_start_utc)
+        if stamp.tzinfo is None:
+            raise ValueError("bar_start_utc precisa incluir fuso horário.")
+        params["bar_start_after"] = stamp.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+    if target.minutes is not None:
+        params["duration_minutes"] = float(target.minutes)
+        params["duration_seconds"] = float(target.minutes) * 60.0
+    with db.engine.connect() as conn:
+        return conn.execute(text(sql), params).first() is not None
 
 
 def resample_symbol(db, symbol, targets, symbol_info=None, session_gap_minutes=calendar.DEFAULT_SESSION_GAP_MINUTES,
@@ -368,7 +469,7 @@ def resample_symbol(db, symbol, targets, symbol_info=None, session_gap_minutes=c
     return summary
 
 
-def latest_bars(db, symbol, timeframe, *, closed_only=True):
+def latest_bars(db, symbol, timeframe, *, closed_only=True, source_seq_after=None, bar_start_after=None):
     """Última revisão de cada barra derivada, em ordem cronológica.
 
     As colunas de horário UTC voltam como ``Timestamp`` com fuso. ``computed_at_utc``
@@ -382,12 +483,22 @@ def latest_bars(db, symbol, timeframe, *, closed_only=True):
     if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_bars_derived"):
         return pd.DataFrame()
     columns = {column["name"] for column in inspect(db.engine).get_columns("_bars_derived")}
+    if source_seq_after is not None and "source_seq" not in columns:
+        return pd.DataFrame()
     current_partial = "COALESCE(latest.is_partial, 0)" if "is_partial" in columns else "0"
+    source_filters = []
+    if source_seq_after is not None and "source_seq" in columns:
+        source_filters.append("source_seq > :source_seq_after")
+    elif source_seq_after is not None and bar_start_after is None:
+        return pd.DataFrame()
+    if bar_start_after is not None:
+        source_filters.append("bar_start_utc > :bar_start_after")
+    source_filter = " AND (" + " OR ".join(source_filters) + ")" if source_filters else ""
     sql = f"""
         WITH ranked AS (
             SELECT *, ROW_NUMBER() OVER (PARTITION BY symbol, tf, session_id, bar_start_utc
                                          ORDER BY revision DESC) AS latest_rank
-            FROM _bars_derived WHERE symbol = :symbol AND tf = :tf
+            FROM _bars_derived WHERE symbol = :symbol AND tf = :tf{source_filter}
         ), latest AS (
             SELECT * FROM ranked WHERE latest_rank = 1
         )
@@ -403,8 +514,16 @@ def latest_bars(db, symbol, timeframe, *, closed_only=True):
                ) THEN 1 ELSE 0 END AS _partial_from_history
         FROM latest ORDER BY latest.bar_start_utc
     """
+    params = {"symbol": str(symbol), "tf": target.label}
+    if source_seq_after is not None and "source_seq" in columns:
+        params["source_seq_after"] = int(source_seq_after)
+    if bar_start_after is not None:
+        stamp = pd.Timestamp(bar_start_after)
+        if stamp.tzinfo is None:
+            raise ValueError("bar_start_after precisa incluir fuso horário.")
+        params["bar_start_after"] = stamp.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
     with db.engine.connect() as conn:
-        frame = pd.read_sql(text(sql), conn, params={"symbol": str(symbol), "tf": target.label})
+        frame = pd.read_sql(text(sql), conn, params=params)
     if frame.empty:
         return frame
     frame = frame.drop(columns="latest_rank")
@@ -426,8 +545,13 @@ def latest_bars(db, symbol, timeframe, *, closed_only=True):
         elif target.mode == "fixed_24h":
             duration = (frame["bar_end_utc"] - frame["bar_start_utc"]).dt.total_seconds() / 60.0
             acceptable &= duration.ge(1440.0 - 1e-9)
-        acceptable &= frame["bar_end_utc"] <= pd.Timestamp.now(tz="UTC")
+        acceptable &= frame["bar_end_utc"] <= _utc_now()
         incomplete_sessions = set(frame.loc[~acceptable, "session_id"])
         frame = frame.loc[acceptable].copy()
         frame["session_complete"] = ~frame["session_id"].isin(incomplete_sessions)
     return frame.reset_index(drop=True)
+
+
+def _utc_now():
+    """Relógio UTC isolado para a fronteira de disponibilidade de barras fechadas."""
+    return pd.Timestamp.now(tz="UTC")

@@ -53,6 +53,8 @@ CREATE TABLE IF NOT EXISTS {VALUES_TABLE} (
 
 _CREATE_ASOF_INDEX = f"CREATE INDEX IF NOT EXISTS ix_feature_values_asof " \
                      f"ON {VALUES_TABLE} (symbol, tf, feature_id, available_at_utc, observation_time, revision)"
+_CREATE_KEY_INDEX = f"CREATE INDEX IF NOT EXISTS ix_feature_values_key_revision " \
+                    f"ON {VALUES_TABLE} (symbol, tf, feature_id, algorithm_version, observation_time, revision)"
 _CREATE_SOURCE_INDEX = f"CREATE INDEX IF NOT EXISTS ix_feature_values_source_revision " \
                        f"ON {VALUES_TABLE} (feature_id, algorithm_version, source_revision)"
 _SCHEMA_LOCK = threading.Lock()
@@ -97,6 +99,7 @@ def ensure_schema(db):
         conn.execute(text(_CREATE_DEFINITIONS))
         conn.execute(text(_CREATE_VALUES))
         conn.execute(text(_CREATE_ASOF_INDEX))
+        conn.execute(text(_CREATE_KEY_INDEX))
         conn.execute(text(_CREATE_SOURCE_INDEX))
 
 
@@ -350,7 +353,7 @@ def _value_record(symbol, timeframe, feature_id, algorithm_version, observation_
             "metadata_json": metadata_json}
 
 
-def save_values(db, records):
+def save_values(db, records, *, transaction_hook=None):
     """Grava muitos valores numa única transação, com as mesmas regras de ``save_value``.
 
     ``records`` é uma sequência de dicionários com os argumentos de ``save_value``
@@ -367,7 +370,7 @@ def save_values(db, records):
                                              "observation_time", "value")]
         rows.append(_value_record(*args, **item))
     counts = {"inserted": 0, "revised": 0, "unchanged": 0}
-    if not rows:
+    if not rows and transaction_hook is None:
         return counts
     ensure_schema(db)
     with db.engine.begin() as conn:
@@ -378,15 +381,24 @@ def save_values(db, records):
                     {"feature_id": feature_id, "version": version}).first():
                 raise ValueError(f"Característica não registrada: {feature_id}@{version}.")
         current = {}
-        for symbol, tf, feature_id, version in {(r["symbol"], r["tf"], r["feature_id"], r["algorithm_version"])
-                                                for r in rows}:
-            result = conn.execute(text(
-                f"SELECT observation_time, revision, value_hash, available_at_utc FROM {VALUES_TABLE} "
-                "WHERE symbol = :symbol AND tf = :tf AND feature_id = :feature_id "
-                "AND algorithm_version = :version ORDER BY observation_time, revision"),
-                {"symbol": symbol, "tf": tf, "feature_id": feature_id, "version": version}).mappings()
-            for found in result:
-                current[(symbol, tf, found["observation_time"], feature_id, version)] = dict(found)
+        requested_times = {}
+        for row in rows:
+            identity = (row["symbol"], row["tf"], row["feature_id"], row["algorithm_version"])
+            requested_times.setdefault(identity, set()).add(row["observation_time"])
+        for (symbol, tf, feature_id, version), times in requested_times.items():
+            ordered_times = sorted(times)
+            for offset in range(0, len(ordered_times), 400):
+                chunk = ordered_times[offset:offset + 400]
+                placeholders = ", ".join(f":observation_{index}" for index in range(len(chunk)))
+                params = {"symbol": symbol, "tf": tf, "feature_id": feature_id, "version": version}
+                params.update({f"observation_{index}": value for index, value in enumerate(chunk)})
+                result = conn.execute(text(
+                    f"SELECT observation_time, revision, value_hash, available_at_utc FROM {VALUES_TABLE} "
+                    "WHERE symbol = :symbol AND tf = :tf AND feature_id = :feature_id "
+                    "AND algorithm_version = :version "
+                    f"AND observation_time IN ({placeholders}) ORDER BY observation_time, revision"), params).mappings()
+                for found in result:
+                    current[(symbol, tf, found["observation_time"], feature_id, version)] = dict(found)
         inserts = []
         for row in rows:
             key = (row["symbol"], row["tf"], row["observation_time"], row["feature_id"], row["algorithm_version"])
@@ -409,6 +421,8 @@ def save_values(db, records):
                 "metadata_json) VALUES (:symbol, :tf, :observation_time, :available_at_utc, :observed_at_utc, "
                 ":valid_until_utc, :feature_id, :algorithm_version, :numeric_value, :categorical_value, :quality, "
                 ":source_revision, :revision, :value_hash, :metadata_json)"), inserts)
+        if transaction_hook is not None:
+            transaction_hook(conn, counts)
     return counts
 
 

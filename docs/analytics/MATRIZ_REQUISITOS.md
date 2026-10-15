@@ -8,6 +8,10 @@ As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fa
 Atualização de 2026-10-15: as lacunas da T13.3 foram implementadas e verificadas na branch local
 `tarefa/T13.3-perfis-regimes`, dependente da T13.2 local; ainda não foram integradas ao `master`. Evidências e
 limitações da base estão em [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md). A Decisão 5 permanece aberta.
+T13.3b está em validação local na branch `tarefa/T13.3b-producers-incrementais`; veja
+[T13.3B_PRODUTORES_INCREMENTAIS.md](T13.3B_PRODUTORES_INCREMENTAIS.md). Os testes focados passaram; a suíte
+completa teve uma falha assíncrona de UI, que passou isoladamente; `doctor` não teve falhas. A extensão permanece
+local e ainda não foi integrada.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -20,7 +24,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Fato com observação, disponibilidade, validade, revisão | `analytics/feature_store.py` (T13.2) e `save_values` (T13.3) | — | T13.3 ✅ | T13.2 | Mesmo contrato de `save_value`, lote atômico e duplicatas no lote testados |
 | Consulta *as-of* | `query_as_of`, `query_history`, `asof_join` | — | T13.3 ✅ | T13.2 | Revisões anteriores preservadas; séries separadas por símbolo, TF e versão; decisões só veem `available_at <= t` |
 | Barra superior aberta ou incompleta não conta como fechada | `latest_bars(closed_only=True)` e `available_at = bar_end_utc` | — | T13.3 ✅ | T13.2 | H1 não aparece antes de fechar; parcial, cobertura incompleta e barra futura excluídas |
-| Correção tardia e proveniência das características | Revisões em `_bars_derived`, janelas por sessão e fingerprint `source_revision` | Memória de Wilder é aproximada; estado/duração do regime dependem do prefixo histórico | T13.3 ✅ | T13.1, T13.2 | Disponibilidade nunca antecipa correção; limite de decaimento e propagação do estado testados |
+| Correção tardia e proveniência das características | Revisões em `_bars_derived`, `source_revision` finito ou encadeado por prefixo, checkpoint recursivo | Recalcular a família se a revisão preceder o cursor | T13.3/T13.3b | T13.1, T13.2 | Estado EWM continua exatamente; correções antes do cursor reconstroem; `available_at` e fingerprint causal testados |
 | Volume real ≠ volume de ticks | `_bars_derived.real_volume_known` | `trade_analytics/enrich.py` mistura real e tick barra a barra e trata real `0` como ausente | **T16.3b** | — | Fonte do volume declarada; nunca misturada na mesma série |
 | Contexto do Laboratório só com informação anterior | `enrich.py` usa `time < entry_time` | Usa a barra **aberta** quando a entrada não cai na abertura da barra; surpresa de notícia posterior à entrada vaza | **T16.3b** | — | Testes de vazamento com entrada no meio da barra e com notícia depois da entrada |
 | Fato × divulgação × recebimento × revisão (economia) | `_economic_events` guarda horário do evento e `actual` | Não guarda quando o `actual` foi recebido nem revisões | Registrado; entra quando houver característica econômica (fora da T13.3) | T16.3a | `actual` só usado após o recebimento |
@@ -72,7 +76,7 @@ modo sombra → pilotos autorizados → monitoramento.
 | Modo sombra (decide, não age) | — | Tudo | **T13.7a** | T13.5 | Nenhuma ordem afetada; sinais registrados |
 | Piloto opt-in que só reduz risco | `mt5x-safety` (guardião, orçamento) | Política | T13.7 | T13.5, T12.3, robô aprovado, **autorização do dono** | Só reduz; bateria sem regressão |
 | Monitoramento e rebaixamento | — | Tudo | T13.8 | T13.4, T13.7 | Motivo e trilha gravados |
-| Jobs idempotentes, checkpoint, recursos | Fase 15 (`write_guard`, retenção, arquivo); `save_values` grava em transação idempotente | `producers.compute` recarrega/recalcula todo o histórico; sem checkpoint, retomada por lote, timeout/retentativa limitada ou medição do job persistente | T13.3b | T13.3, T15.9 | Falha e retomada não duplicam nem pulam valores; correção tardia iguala recomputação completa; carga nova não relê o histórico inteiro |
+| Jobs idempotentes, checkpoint, recursos | `producer_jobs.py`, checkpoint transacional por família, cursor + sequência da fonte, limites e runs medidos | Implementado e testado localmente; SQLite sintético; PostgreSQL/Windows reais pendentes | T13.3b ✅ (branch local) | T13.3, T15.9 | Falha e retomada sem duplicar/pular; correção tardia iguala recomputação completa; novas barras leem só delta/cauda limitada; métricas em [relatório](T13.3B_PRODUTORES_INCREMENTAIS.md). A suíte geral registra uma falha transitória de UI, repetida isoladamente com sucesso. |
 
 ## Questões para o dono do projeto (não bloqueiam T13.3 a T13.4)
 
