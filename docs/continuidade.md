@@ -174,7 +174,9 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   `docs/analytics/T13.3B_PRODUTORES_INCREMENTAIS.md`. O tempo exclui o resampling M1.
 - Arquivos de código alterados: `analytics/feature_store.py`, `analytics/producers.py`, `analytics/resampling.py`,
   novo `analytics/producer_jobs.py`; testes em `test_analytics_features.py` e `test_analytics_profiles.py`; novo
-  benchmark. O relatório, matriz e plano já refletem o estado em validação. As alterações ainda não foram commitadas.
-- Próximo passo: revisar `git diff --check`, salvar o checkpoint commitado da T13.3b e avançar à T13.4 e T16.3b em
+  benchmark. O relatório, matriz e plano já refletem o estado validado nesta branch.
+- Commit da implementação: `4ede7fa` (`feat(analytics): make T13.3 producers incremental`); a documentação do resultado
+  e continuidade foi atualizada em seguida.
+- Próximo passo: salvar o checkpoint de continuidade e avançar à T13.4 e T16.3b em
   branches/worktrees próprias. O teste isolado de UI passou; a falha da execução integral fica registrada para
   investigação em frente de UI, sem editar `/home/misael/Projects/MISA_MT5-Extra-o-Dados-T17.1` aqui.
