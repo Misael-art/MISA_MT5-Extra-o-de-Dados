@@ -167,7 +167,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.5 | Janelas móveis, aderência temporal e jobs incrementais | T18.2, T13.3b, T15.9; T18.3/4 para trilhas de Expert/conjunto | planejada |
 | T18.6 | Consulta local, CLI, projeções de colunas e DTO versionado | T18.2, T18.5; T18.3/4 para respectivos resultados | planejada |
 | T18.7 | Candidatos a filtros/presets para otimização, sem aplicação automática | T18.4, T18.6 | planejada |
-| T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | planejada |
+| T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; integração T18.1/T18.6 pendente |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
@@ -3445,7 +3445,8 @@ indicador × resultado do Expert, por ativo/contrato/corretora, timeframe, vers�
 convergências e acompanhar estabilidade no tempo. Colunas adicionais são projeções consultáveis/exportáveis sobre
 armazenamento normalizado versionado, preservando barras e tabelas de usuário.
 
-**T18.0 registra o plano; T18.1–T18.9 estão planejadas, não implementadas.** Especificação, passos, arquivos previstos,
+**T18.0 registra o plano.** T18.8 tem uma apresentação local provisória; T18.1–T18.7 e T18.9 continuam planejadas,
+e a ligação da UI ao DTO/serviço real depende de T18.1/T18.6. Especificação, passos, arquivos previstos,
 contratos, testes e critérios de aceite por tarefa:
 [RELACOES_INDICADORES_SETUP.md](propostas/RELACOES_INDICADORES_SETUP.md).
 
@@ -3455,14 +3456,19 @@ deterioração e vermelho adverso são estados de evidência com critérios expl
 Correlação baixa não prova que um Expert não funciona. Ranking escolhido usando o futuro não pode colorir replay passado.
 
 Ordem: T18.1 → T18.2 → T18.3 → T18.4; T18.5 inicia sobre T18.2 e amplia com T18.3/4;
-T18.6 → T18.7 (propostas) e T18.9 (API posterior). T18.8 prepara UI com fixture T18.1 e integra após T18.6.
+T18.6 → T18.7 (propostas) e T18.9 (API posterior). A UI T18.8 reutiliza componentes T17 e apresenta fixture
+explicitamente sintética; adaptador/integração aguardam contrato T18.1 e serviço T18.6.
 Não bloquear pesquisa local por T13.5/MQL5; consumo operacional mantém T13.7, Safety e autorizações próprias.
 T13.4 pode oferecer infraestrutura sem ter suas hipóteses reais promovidas; validar a capacidade necessária,
 sem dispensar custos, eventos maduros, dados suficientes ou avaliação OOS das novas relações.
 
+Na T18.8, nenhuma estatística é recalculada pelos widgets e nenhum Expert/preset/ordem é alterado. As capturas Linux
+em claro/escuro, 1280×800, 1920×1080, janela estreita 820×800 e escala simulada de 150% estão em
+`docs/img/relations/T18.8/`; Windows real permanece pendente.
+
 Prompts de continuidade:
 [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
-F17 está em branches separadas: verificar integração antes de reutilizar componentes.
+T18.8 reutiliza a implementação visual da F17 integrada nesta branch.
 
 ---
 
