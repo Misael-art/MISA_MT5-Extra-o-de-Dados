@@ -327,6 +327,32 @@ def test_persistent_attempts_count_all_candidates_and_never_reuse_final_holdout(
         engine.dispose()
 
 
+def test_failed_attempt_is_persisted_and_final_holdout_stays_reserved(tmp_path):
+    definition = _simple_definition()
+    samples = _evaluation_samples(60)
+    samples["feature"] = (np.arange(len(samples)) % 2 == 0).astype(int)
+    samples["success"] = samples["feature"] == 1
+    failed_samples = samples.drop(columns=["outcome_return"])
+    engine = create_engine("sqlite:///" + str(tmp_path / "failed-attempt.sqlite"))
+    db = SimpleNamespace(engine=engine)
+    try:
+        first = evaluate_and_store(db, definition, failed_samples, "EURUSD", "M1", n_boot=100)
+        assert first["status"] == "FAILED"
+        assert first["error"]["type"] == "ValueError"
+        assert first["holdout_reused"] is False
+        assert first["test"]["available"] is False
+
+        second = evaluate_and_store(db, definition, samples, "EURUSD", "M1", n_boot=100)
+        assert second["holdout_reused"] is True
+        assert second["test"]["reused"] is True
+        rows = list_evaluations(db, pattern_id=definition["pattern_id"])
+        assert [row["status"] for row in rows] == ["FAILED", "EXPLORATORY"]
+        assert rows[0]["result"]["error"]["message"] == "As observações precisam conter outcome_return."
+        assert rows[1]["holdout_reused"] == 1
+    finally:
+        engine.dispose()
+
+
 def test_write_guard_blocks_catalog_writes(tmp_path):
     definition = _simple_definition()
     samples = _evaluation_samples(60)

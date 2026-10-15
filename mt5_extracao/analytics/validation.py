@@ -477,28 +477,21 @@ def _dataset_hash(samples):
 
 
 def evaluate_and_store(db, definition, samples, symbol, timeframe, *, n_boot=1000, write_guard=None):
-    """Registra toda tentativa e consome a reserva final uma vez por hipótese/versão/mercado/timeframe."""
+    """Registra tentativas iniciadas e consome a reserva final antes de avaliar os dados."""
     _check_write_guard(write_guard)
     register_definition(db, definition, write_guard=write_guard)
     symbol, timeframe = str(symbol), str(timeframe)
     holdout_key = f"{definition['pattern_id']}|{definition['version']}|{symbol}|{timeframe}"
     candidate_count = len(_parameter_candidates(definition))
-    with db.engine.connect() as conn:
-        reserved = conn.execute(text(f"SELECT 1 FROM {RESERVATIONS_TABLE} WHERE pattern_id=:id AND version=:v "
-                                     "AND symbol=:s AND timeframe=:tf"),
-                                {"id": definition["pattern_id"], "v": definition["version"],
-                                 "s": symbol, "tf": timeframe}).first() is not None
+    evaluation_id = uuid.uuid4().hex
+    started_at = datetime.now(timezone.utc).isoformat()
+    with _LOCK, db.engine.begin() as conn:
         attempt_no = int(conn.execute(text(f"SELECT COUNT(*) FROM {EVALUATIONS_TABLE} WHERE pattern_id=:id "
                                            "AND version=:v AND symbol=:s AND timeframe=:tf"),
                                       {"id": definition["pattern_id"], "v": definition["version"],
                                        "s": symbol, "tf": timeframe}).scalar() or 0) + 1
         prior_tests = int(conn.execute(text(f"SELECT COALESCE(SUM(tests_counted), 0) FROM {EVALUATIONS_TABLE}")).scalar() or 0)
         total_tests = prior_tests + candidate_count
-    report = evaluate_samples(samples, definition, include_test=not reserved, n_boot=n_boot,
-                              attempt_count=attempt_no, tests_counted=total_tests)
-    evaluation_id = uuid.uuid4().hex
-    stamp = datetime.now(timezone.utc).isoformat()
-    with _LOCK, db.engine.begin() as conn:
         reservation = conn.execute(text(f"SELECT evaluation_id FROM {RESERVATIONS_TABLE} WHERE pattern_id=:id AND version=:v "
                                         "AND symbol=:s AND timeframe=:tf"),
                                    {"id": definition["pattern_id"], "v": definition["version"],
@@ -509,34 +502,58 @@ def evaluate_and_store(db, definition, samples, symbol, timeframe, *, n_boot=100
                               "(pattern_id, version, symbol, timeframe, evaluation_id, consumed_at_utc) "
                               "VALUES (:id, :v, :s, :tf, :e, :stamp)"),
                          {"id": definition["pattern_id"], "v": definition["version"], "s": symbol,
-                          "tf": timeframe, "e": evaluation_id, "stamp": stamp})
-        if reused:
-            report["test"] = {"reused": True, "first_evaluation_id": reservation}
-            report["eligible_for_approval"] = False
-            report["approved"] = False
-            report["status"] = "EXPLORATORY"
-        count_all = int(conn.execute(text(f"SELECT COALESCE(SUM(tests_counted), 0) FROM {EVALUATIONS_TABLE}")).scalar() or 0) \
-            + candidate_count
-        report["attempt_number"] = attempt_no
-        report["multiple_testing"]["tests_counted"] = count_all
-        raw_p = report.get("test", {}).get("p_value") if not reused else None
-        adjusted = min(1.0, float(raw_p) * count_all) if raw_p is not None else 1.0
-        report["multiple_testing"]["p_adjusted"] = adjusted
-        if report.get("eligible_for_approval") and adjusted >= float(definition["validation"].get("alpha", 0.05)):
-            report["eligible_for_approval"] = False
-            report["status"] = "EXPLORATORY"
-        result_json = json.dumps(_json_safe(report), ensure_ascii=False, sort_keys=True, separators=(",", ":"),
-                                 allow_nan=False)
+                          "tf": timeframe, "e": evaluation_id, "stamp": started_at})
+        initial = {"status": "RUNNING", "attempt_number": attempt_no, "holdout_reused": reused}
+        result_json = json.dumps(initial, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        dataset_hash = _dataset_hash(samples)
         conn.execute(text(f"INSERT INTO {EVALUATIONS_TABLE} "
                           "(evaluation_id, pattern_id, version, symbol, timeframe, attempt_no, tests_counted, "
                           "dataset_hash, holdout_key, holdout_reused, status, result_json, validated_at_utc) "
                           "VALUES (:e, :id, :v, :s, :tf, :attempt, :tests, :hash, :holdout, :reused, :status, :result, :stamp)"),
                      {"e": evaluation_id, "id": definition["pattern_id"], "v": definition["version"], "s": symbol,
-                      "tf": timeframe, "attempt": attempt_no, "tests": candidate_count, "hash": _dataset_hash(samples),
-                      "holdout": holdout_key, "reused": int(reused), "status": report["status"],
-                      "result": result_json, "stamp": stamp})
+                      "tf": timeframe, "attempt": attempt_no, "tests": candidate_count, "hash": dataset_hash,
+                      "holdout": holdout_key, "reused": int(reused), "status": "RUNNING",
+                      "result": result_json, "stamp": started_at})
+
+    error = None
+    try:
+        report = evaluate_samples(samples, definition, include_test=not reused, n_boot=n_boot,
+                                  attempt_count=attempt_no, tests_counted=total_tests)
+    except Exception as exc:  # Keep failed attempts and their consumed OOS reservation auditable.
+        error = {"type": type(exc).__name__, "message": str(exc)[:1000]}
+        report = {"pattern_id": definition["pattern_id"], "version": definition["version"],
+                  "status": "FAILED", "weak": True, "eligible_for_approval": False, "approved": False,
+                  "error": error, "test": {"available": False, "reason": "evaluation_failed"}}
+
+    stamp = datetime.now(timezone.utc).isoformat()
+    if reused:
+        report["test"] = {"reused": True, "first_evaluation_id": reservation}
+        report["eligible_for_approval"] = False
+        report["approved"] = False
+        if error is None:
+            report["status"] = "EXPLORATORY"
+    report["attempt_number"] = attempt_no
     report["evaluation_id"] = evaluation_id
     report["holdout_reused"] = reused
+    report.setdefault("multiple_testing", {"method": "Bonferroni family-wise"})
+    if error is None:
+        raw_p = report.get("test", {}).get("p_value") if not reused else None
+        with db.engine.connect() as conn:
+            count_all = int(conn.execute(text(f"SELECT COALESCE(SUM(tests_counted), 0) FROM {EVALUATIONS_TABLE}")).scalar() or 0)
+        adjusted = min(1.0, float(raw_p) * count_all) if raw_p is not None else 1.0
+        report["multiple_testing"].update({"tests_counted": count_all, "p_adjusted": adjusted})
+        if report.get("eligible_for_approval") and adjusted >= float(definition["validation"].get("alpha", 0.05)):
+            report["eligible_for_approval"] = False
+            report["status"] = "EXPLORATORY"
+    else:
+        report["multiple_testing"].update({"tests_counted": total_tests, "p_adjusted": 1.0})
+    result_json = json.dumps(_json_safe(report), ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                             allow_nan=False)
+    with _LOCK, db.engine.begin() as conn:
+        conn.execute(text(f"UPDATE {EVALUATIONS_TABLE} SET holdout_reused=:reused, status=:status, "
+                          "result_json=:result, validated_at_utc=:stamp WHERE evaluation_id=:e"),
+                     {"reused": int(reused), "status": report["status"], "result": result_json,
+                      "stamp": stamp, "e": evaluation_id})
     return report
 
 
