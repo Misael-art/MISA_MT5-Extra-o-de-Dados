@@ -5,18 +5,19 @@ Serve para não duplicar componentes: cada requisito aponta para o que já exist
 As tarefas citadas estão em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md) (Fase 13) e em
 [propostas/ANALYTICS_OPERACOES.md](../propostas/ANALYTICS_OPERACOES.md) (Fase 16).
 
-Atualização de 2026-10-15: T13.3 está na branch local `tarefa/T13.3-perfis-regimes` (`bde3652`), T13.3b na
-`tarefa/T13.3b-producers-incrementais` (código `4ede7fa`, validação PostgreSQL `7a1faca`), e T13.4 na
-`tarefa/T13.4-hipoteses-walk-forward` (`ae30450`). T16.3b está em `tarefa/T16.3b-enriquecimento-temporal`
-(`5d85cf3`) e T16.3c em `tarefa/T16.3c-calendario-point-in-time` (`fc24bde`). Nenhuma dessas branches foi integrada
-ao `master`. T13.3b passou 10 testes PostgreSQL e a suíte completa com PostgreSQL habilitado (858 aprovados, 1
-ignorado); Windows real segue pendente. T13.4 segue parcial por custos e dados
-reais ausentes. T16.3c implementa as revisões, mas replay com recibos de fonte real está pendente. Evidências:
-[T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md), [T13.4_RELATORIO.md](T13.4_RELATORIO.md) e
-[continuidade.md](../continuidade.md). A Decisão 5 permanece aberta.
-O contrato v1 e o adaptador DTO puro-Python de T13.6 foram implementados na branch local
-`tarefa/T13.6-contrato-ui`; focados 5 aprovados, suíte completa 865/10 e doctor 16 OK/2 avisos/0 falhas. Telas e
-integração da aplicação continuam pendentes das dependências declaradas na tarefa.
+Atualização de 2026-10-15: `master` e `origin/master` estão em `880bf18`. T13.2 (`843a85a`) é ancestral local de
+T13.3 (`a028334`) e T13.6 (`dba30d7`), mas não está integrada ao master; as branches Analytics listadas nesta
+atualização também permanecem locais. T13.3b está em `tarefa/T13.3b-producers-incrementais` (HEAD `7a1faca`;
+PostgreSQL `10` testes, suíte PostgreSQL `858/1`); T13.4 em `tarefa/T13.4-hipoteses-walk-forward` (HEAD `8edf3cb`);
+T13.7a tem especificação em `tarefa/T13.7a-especificacao-sombra` (HEAD `2525ab4`, confirmação pendente). T16.3b
+está em `tarefa/T16.3b-enriquecimento-temporal` (HEAD `acc1872`) e T16.3c em
+`tarefa/T16.3c-calendario-point-in-time` (HEAD `20f8a87`; 30 focados, suíte registrada 813/9 anterior ao teste
+novo). T16.11c está em `701f4fd` e T16.12 em `adff6eb`. Nenhuma dessas branches foi integrada ao master.
+T13.4 segue parcial por custos e dados reais ausentes. T16.3c aguarda recibos reais para replay; Windows real segue
+pendente. Evidências: [T13.3_PERFIS_REGIMES.md](T13.3_PERFIS_REGIMES.md),
+[T13.4_RELATORIO.md](T13.4_RELATORIO.md) e [continuidade.md](../continuidade.md). A Decisão 5 permanece aberta.
+O contrato v1 e o adaptador DTO puro-Python de T13.6 têm 5 focados, suíte registrada 865/10 e `doctor` 16 OK/2
+avisos/0 falhas; telas e integração da aplicação aguardam T13.5 e T12.6.
 
 Ciclo: dados → características → hipóteses → validação → comparação de filtros → publicação informativa →
 modo sombra → pilotos autorizados → monitoramento.
@@ -31,8 +32,8 @@ modo sombra → pilotos autorizados → monitoramento.
 | Barra superior aberta ou incompleta não conta como fechada | `latest_bars(closed_only=True)` e `available_at = bar_end_utc` | — | T13.2 | T13.2 | H1 não aparece antes de fechar; parcial, cobertura incompleta e barra futura excluídas | **Entregue localmente** e coberto por testes point-in-time; não integrado ao `master`. |
 | Correção tardia e proveniência das características | Revisões em `_bars_derived`, janelas por sessão e fingerprint `source_revision` | Memória de Wilder é aproximada; estado/duração do regime dependem do prefixo histórico | T13.3 | T13.1, T13.2 | Disponibilidade não antecipa correção; limite e propagação testados | **Entregue com limite documentado** na T13.3; a aproximação não é garantia de memória exata. |
 | Volume real ≠ volume de ticks | `_bars_derived.real_volume_known`; enriquecimento temporal corrigido | — | T13.3/T16.3b | — | Fonte declarada; séries nunca misturam fontes | **Entregue localmente** em T13.3 e T16.3b; testes das duas frentes registrados, branches ainda não integradas. |
-| Contexto do Laboratório só com informação anterior | Enriquecimento só usa barras fechadas e eventos conhecidos até a entrada | Resolução M1 ainda limita ordem intrabar e precisão de MAE/MFE | T16.3b | — | Armadilhas de entrada no meio da barra e notícia posterior | **Entregue localmente** em `5d85cf3`; aproximações intrabar permanecem explícitas; branch não integrada. |
-| Fato × divulgação × recebimento × revisão (economia) | T16.3c mantém disponibilidade observada e histórico aditivo de revisões | A base histórica não contém recibos confiáveis; importações antigas não reconstroem a disponibilidade original | T16.3c | T16.3a/T16.3b | Usar `actual` só após disponibilidade comprovada; preservar revisões e desconhecidos | **Implementação entregue localmente** em `fc24bde`; testes sintéticos cobrem `load_asof` e revisões. Replay real segue pendente até haver fonte/exportação com timestamps confiáveis. Não inferir recepção de `event_time` ou de importação histórica posterior. |
+| Contexto do Laboratório só com informação anterior | Enriquecimento só usa barras fechadas e eventos conhecidos até a entrada | Resolução M1 ainda limita ordem intrabar e precisão de MAE/MFE | T16.3b | — | Armadilhas de entrada no meio da barra e notícia posterior | **Entregue localmente** em `acc1872`; reauditoria focada 23; suíte 806/9 é anterior ao teste novo. Aproximações intrabar permanecem explícitas; branch não integrada. |
+| Fato × divulgação × recebimento × revisão (economia) | T16.3c mantém disponibilidade observada e histórico aditivo de revisões | A base histórica não contém recibos confiáveis; importações antigas não reconstroem a disponibilidade original | T16.3c | T16.3a/T16.3b | Usar `actual` só após disponibilidade comprovada; preservar revisões e desconhecidos | **Implementação entregue localmente** em `20f8a87`; 30 testes sintéticos cobrem `load_asof`, `merged_asof`, revisões e o recibo explícito `source_received_at`. Replay real segue pendente até haver fonte/exportação com timestamps confiáveis. Não inferir recepção de `event_time` ou de importação histórica posterior. |
 | Série contínua ajustada nunca executada | Decisão em aberto 2 do plano | Sem ativos B3 contínuos na base | Decisão 2 | Dono do projeto | Nunca executar em preço ajustado | **Pendente de decisão e dados**; não há ativo B3 contínuo disponível para validar. |
 
 ## 2. Características (T13.3)

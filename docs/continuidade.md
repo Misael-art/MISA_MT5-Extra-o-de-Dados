@@ -106,9 +106,9 @@ tabelas. Teste de regressão: `tests/test_harmonizacao_frentes.py`.
 **Regra nova para todos:** tabela interna (que não é série de ativo) começa com `_`. O teste de regressão acima
 protege as das Fases 13, 15 e 16.
 
-**Próximas tarefas:** T13.2 foi implementada na branch local `codex/t13.2-feature-store`; após revisão e integração,
-T13.3 pode começar. Pendências da Fase 16 na seção 10 do plano dela (T16.2b no HADOUKEN, exportação do calendário
-com o MT5 conectado, Windows real).
+**Próximas tarefas (registro histórico de 2026-10-14):** naquele checkpoint, T13.2 estava na branch local
+`codex/t13.2-feature-store` e T13.3 ainda podia começar. O estado posterior, incluindo a ancestralidade e as
+implementações locais de T13.3 em diante, está registrado nos checkpoints datados abaixo.
 
 **Queda "Illegal instruction"/"Segmentation fault" na suíte (era a mesma "regressão inconclusiva" da T13.1):** o coletor de
 lixo do Python rodava dentro de threads de segundo plano e destruía variáveis e imagens do Tk, que só aceita a thread
@@ -293,3 +293,49 @@ As telas mt5x/MQL5 e a ligação da aplicação continuam pendentes de T13.5 e T
 ainda dependem da decisão e implementação de T13.7a. Ver [T13.6_CONTRATO_UI.md](analytics/T13.6_CONTRATO_UI.md).
 Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por característica e comportamento `STALE`/
 `UNAVAILABLE`, fixture point-in-time no Tester) foi enviada ao dono; a resposta continua pendente.
+
+## Reconciliação do estado Analytics — 2026-10-15
+
+Este checkpoint substitui os hashes e contagens anteriores nos registros acima. `master` e `origin/master` estão em
+`880bf18`. O commit T13.2 `843a85a` é ancestral local de T13.3 e T13.6, mas nenhum dos trabalhos abaixo foi integrado
+ao master; não houve push nem PR.
+
+- **T13.3:** branch `tarefa/T13.3-perfis-regimes`, HEAD `a028334`; 42 testes focados, suíte 833/10 e `doctor` 16 OK,
+  2 avisos, 0 falhas. EURUSD/AGG foram avaliados conforme o relatório. A Decisão 5 continua pendente; PostgreSQL da
+  T13.3, DST, Windows real e MT5 real não foram validados.
+- **T13.3b:** branch `tarefa/T13.3b-producers-incrementais`, HEAD `7a1faca`; 46 testes focados SQLite, 10 testes
+  PostgreSQL e suíte completa com PostgreSQL 858/1; `doctor` 16 OK/2 avisos/0 falhas. O benchmark sintético mediu
+  7,65× no caminho incremental. Windows e TimescaleDB reais não foram exercitados.
+- **T13.4:** branch `tarefa/T13.4-hipoteses-walk-forward`, HEAD `8edf3cb`; 27 focados, suíte 860/10 e `doctor`
+  16 OK/2 avisos/0 falhas. Permanece parcial: faltam comissão/slippage medidos, eventos reais válidos para H14–H16,
+  grupo de mercados comparáveis e evidência OOS; hipóteses sem custo completo não são elegíveis.
+- **T13.5/T13.6:** a T13.5 aguarda T12.1 e a resposta à Decisão 7 sobre validade e comportamento no Strategy Tester.
+  O contrato e DTO da T13.6 estão na branch `tarefa/T13.6-contrato-ui`, HEAD `dba30d7` (5 focados; suíte 865/10;
+  doctor 16/2/0); telas e ligação da aplicação aguardam T13.5/T12.6.
+- **T13.7a/T13.7:** a especificação está na branch `tarefa/T13.7a-especificacao-sombra`, HEAD `2525ab4`; a
+  confirmação do dono solicitada para adicionar a tarefa segue pendente. T13.7 não autoriza piloto; nenhuma conta real
+  está autorizada.
+- **T16.3b:** branch `tarefa/T16.3b-enriquecimento-temporal`, HEAD `acc1872`; reauditoria focada 23. A suíte 806/9
+  registrada é anterior ao teste novo; MAE/MFE continua aproximado em M1/OHLC.
+- **T16.3c:** branch `tarefa/T16.3c-calendario-point-in-time`, HEAD `20f8a87`; 30 focados, `doctor` 16/2/0. O teste
+  novo confirma que `source_received_at` explícito, e não a observação local tardia, controla as consultas
+  `load_asof`/`merged_asof`. A suíte 813/9 é anterior a esse teste e não foi repetida. Replay ainda depende de
+  recibos/exportação reais confiáveis, que não estão disponíveis.
+- **T16.11c/T16.12:** branches locais `tarefa/T16.11c-interacoes-laboratorio` (HEAD `701f4fd`, 40 testes focados de
+  UI) e `tarefa/T16.12-cli-relatorio` (HEAD `adff6eb`, código `e99becd`, 15 focados). As suítes registradas são
+  históricas e ambas as branches permanecem fora do master.
+- **Segurança das integrações PostgreSQL:** a branch separada `codex/postgresql-test-schema-isolation`, commit
+  `80fd2f3`, dá a cada teste um schema UUID e impede que os fixtures de integração removam o schema `public`. Em
+  PostgreSQL 16 descartável, os três módulos selecionados passaram (**10 testes**); a tabela sentinela de `public`
+  permaneceu intacta e nenhum schema temporário sobrou. O worktree foi encerrado limpo; essa correção também não foi
+  integrada.
+- **Validação desta reconciliação documental:** no worktree `codex/analytics-continuity-reconciliation`, a suíte
+  completa passou com **865 aprovados e 10 ignorados em 506,08 s**; `doctor` teve **16 OK, 2 avisos, 0 falhas** e
+  `git diff --check` passou. Os avisos são `pandas-ta` opcional ausente e ponte Wine desativada. Nenhum código-fonte
+  ou `.sh` foi alterado.
+
+Limites externos sem mudança: o checkout HADOUKEN para T16.2b está vazio e sem referências remotas; não há dados de
+custos completos ou eventos H14–H16 na base; o replay T16.3c precisa de recibos de fonte; a resposta à Decisão 7 e a
+confirmação de T13.7a seguem pendentes. Não reabrir essas perguntas nesta retomada. T17.1 e os demais worktrees de UI
+permaneceram fora do escopo e intocados. Nenhuma operação em conta, base real, merge, publicação externa ou push foi
+realizada.

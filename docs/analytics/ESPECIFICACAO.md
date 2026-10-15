@@ -1,10 +1,11 @@
 # MT5x Analytics — Especificação funcional e técnica v1.0
 
-> **Situação:** intenção registrada em 2026-10-13. A entrega A1/T13.1 (calendário observado e barras derivadas)
-> foi implementada; A2 em diante continuam planejadas. O plano de implantação está na Fase 13 de
-> [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md), e as regras entregues estão em
-> [T13.1_CALENDARIO_OBSERVADO.md](T13.1_CALENDARIO_OBSERVADO.md). Onde este texto e o código atual divergem,
-> a Fase 13 diz qual dos dois vale.
+> **Situação:** intenção original registrada em 2026-10-13. Desde então, T13.1 foi integrada ao master; T13.2,
+> T13.3 e T13.3b têm implementações locais, T13.4 está parcial e T13.6 tem contrato/DTO, sem telas. As branches
+> posteriores à T13.1 ainda não estão integradas. T13.5–T13.8 dependem de decisões, tarefas anteriores e autorizações.
+> O estado atual está em [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md),
+> [MATRIZ_REQUISITOS.md](MATRIZ_REQUISITOS.md) e [continuidade.md](../continuidade.md); este arquivo registra o
+> desenho funcional. Onde o desenho divergir do código ou do plano atual, prevalece o plano.
 
 **Escopo:** projeto Python `mt5x` / `MT5 Extração de Dados`, com interface de consulta para Experts MQL5 do HADOUKEN.
 **Natureza:** proposta de evolução; fora da T13.1, os módulos indicados como NOVO ainda não foram implementados.
