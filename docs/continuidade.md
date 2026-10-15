@@ -160,8 +160,9 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
 
 ### T13.4 — hipóteses e avaliação temporal
 
-- Trabalho em `tarefa/T13.4-hipoteses-walk-forward`, iniciada sobre a T13.3 local (`bde3652`); commits e integração
-  ainda pendentes. Arquivos de implementação: `hypotheses.py`, `pattern_engine.py`, `validation.py`, catálogo JSON
+- Trabalho na branch local `tarefa/T13.4-hipoteses-walk-forward`, baseada na T13.3 (`bde3652`), com checkpoints
+  `61c8326` e `7935b30`; ainda não integrada ao `master`. Arquivos de implementação: `hypotheses.py`,
+  `pattern_engine.py`, `validation.py`, catálogo JSON
   H01–H16 e `tests/test_analytics_hypotheses.py`; relatório: [T13.4_RELATORIO.md](analytics/T13.4_RELATORIO.md).
 - H01–H05 têm builders e foram avaliadas em memória sobre EURUSD e AGG, lendo `database/mt5_data.db` somente com
   SQLite `mode=ro` e `PRAGMA query_only=1`. Hashes, período, custos ausentes, amostras sem condição, resultados
