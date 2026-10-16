@@ -3,7 +3,9 @@ import os
 import tkinter as tk
 from tkinter import ttk
 
-from mt5_extracao import study
+from mt5_extracao import study, timeframes
+from mt5_extracao.ui.components import ScrollableContent
+from mt5_extracao.ui.visual_tokens import SPACING
 from mt5_extracao.robots import backtest, catalog, risk
 from mt5_extracao.ui.theme import Tooltip, card, fmt_int, fmt_num, scrolled_tree
 
@@ -135,6 +137,8 @@ class RobotDetail:
         self.ui = ui
         self.theme = ui.theme
         self.robot = None
+        self._active_request = None
+        self._shown_request = None
         body = card(parent, padding=14)
         self.frame = body.master
 
@@ -152,6 +156,10 @@ class RobotDetail:
         live = ttk.Frame(self.tabs, style="Surface.TFrame", padding=10)
         for tab, text in ((overview, "Visão geral"), (tests, "Backtest"), (battery, "Bateria"), (live, "Tempo real")):
             self.tabs.add(tab, text=text)
+
+        self.tests_viewport = ScrollableContent(tests, self.theme)
+        self.tests_viewport.pack(fill=tk.BOTH, expand=True)
+        tests = self.tests_viewport.content
 
         # Visão geral
         self.description = ttk.Label(overview, text="", style="Surface.TLabel", wraplength=400, justify=tk.LEFT)
@@ -187,21 +195,29 @@ class RobotDetail:
         self.tests_text = ttk.Label(tests, text="", style="Surface.TLabel", wraplength=400, justify=tk.LEFT)
         self.tests_text.pack(anchor="w")
         self.run_box = ttk.Frame(tests, style="Surface.TFrame")
+        ttk.Label(self.run_box, text="Seleção para o próximo teste", style="Heading.TLabel").pack(anchor="w", pady=(8, 0))
         controls = ttk.Frame(self.run_box, style="Surface.TFrame")
+        self.run_controls = controls
+        self.run_control_cells = [ttk.Frame(controls, style="Surface.TFrame") for _ in range(4)]
         controls.pack(fill=tk.X, pady=(8, 0))
         self.symbol_var, self.timeframe_var = tk.StringVar(), tk.StringVar()
         self.period_var = tk.StringVar(value=study.PERIODS[-1][0])
         for column, (label, var, width) in enumerate((("Ativo", self.symbol_var, 10),
                                                       ("Timeframe", self.timeframe_var, 10),
                                                       ("Período", self.period_var, 8))):
-            ttk.Label(controls, text=label, style="Muted.TLabel").grid(row=0, column=column, sticky="w")
-            combo = ttk.Combobox(controls, textvariable=var, state="readonly", width=width)
-            combo.grid(row=1, column=column, sticky="w", padx=(0, 8))
+            ttk.Label(self.run_control_cells[column], text=label, style="Muted.TLabel").pack(anchor="w")
+            combo = ttk.Combobox(self.run_control_cells[column], textvariable=var, state="readonly", width=width)
+            combo.pack(anchor="w", fill=tk.X)
             setattr(self, ("symbol", "timeframe", "period")[column] + "_combo", combo)
         self.period_combo.configure(values=[label for label, _days in study.PERIODS])
         self.symbol_combo.bind("<<ComboboxSelected>>", lambda e: self._symbol_changed())
-        self.run_button = ttk.Button(controls, text="Rodar backtest", style="Accent.TButton", command=self.run_backtest)
-        self.run_button.grid(row=1, column=3, sticky="w")
+        self.run_button = ttk.Button(self.run_control_cells[3], text="Rodar backtest", style="Accent.TButton", command=self.run_backtest)
+        self.run_button.pack(anchor="w", side=tk.BOTTOM)
+        controls.bind("<Configure>", self._layout_run_controls, add="+")
+        self.result_context = ttk.Label(self.run_box, text="", style="Muted.TLabel", wraplength=400, justify=tk.LEFT)
+        self.result_context.pack(anchor="w", fill=tk.X, pady=(6, 0))
+        self.execution_status = ttk.Label(self.run_box, text="", style="Muted.TLabel", wraplength=400, justify=tk.LEFT)
+        self.execution_status.pack(anchor="w", fill=tk.X)
         self.run_status = ttk.Label(self.run_box, text="", style="Muted.TLabel", wraplength=400, justify=tk.LEFT)
         self.run_status.pack(anchor="w", pady=(6, 4))
         tiles = ttk.Frame(self.run_box, style="Surface.TFrame")
@@ -248,17 +264,52 @@ class RobotDetail:
         self.live_text.pack(anchor="w")
 
         self._wrapped = (self.title, self.subtitle, self.description, self.notes, self.risk_reasons,
-                         self.tests_text, self.run_status, self.live_text, self.battery_text)
+                         self.tests_text, self.run_status, self.live_text, self.battery_text,
+                         self.result_context, self.execution_status)
         self.theme.on_change(self._theme_changed)
         body.bind("<Configure>", self._rewrap)
+        for variable in (self.symbol_var, self.timeframe_var, self.period_var):
+            variable.trace_add("write", lambda *_: self._update_result_context())
         self.show(None)
+
+    def _layout_run_controls(self, event):
+        widths = [cell.winfo_reqwidth() for cell in self.run_control_cells]
+        gap = SPACING["sm"]
+        columns = 4 if sum(widths) + 3 * gap <= event.width else (
+            2 if max(widths[0], widths[2]) + max(widths[1], widths[3]) + gap <= event.width else 1)
+        for index, cell in enumerate(self.run_control_cells):
+            self.run_controls.columnconfigure(index, weight=1 if index < columns else 0)
+            cell.grid(row=index // columns, column=index % columns, sticky="nsew",
+                      padx=(0, gap if index % columns < columns - 1 else 0), pady=(0, gap))
+
+    def _selection_context(self):
+        symbol, label = self.symbol_var.get(), self.timeframe_var.get()
+        tf = timeframes.parse(label)
+        item = next((item for item in self.ui.symbol_series.get(symbol, []) if item["timeframe"] == label), {})
+        return (self.robot.key if self.robot else None, symbol, tf.name if tf else label, self.period_var.get(),
+                str(item.get("start")), str(item.get("end")), item.get("rows"))
+
+    def _update_result_context(self):
+        if not getattr(self, "shown_run", None):
+            self.result_context.config(text="")
+            return
+        if self._shown_request == self._selection_context():
+            text = "Resultado do teste executado para esta seleção."
+        elif self._shown_request is None:
+            text = "Resultado armazenado: confira ativo, período e data abaixo. Execute para avaliar a seleção atual."
+        else:
+            text = "Resultado anterior: a seleção ou a base mudou. Execute novamente para atualizar."
+        self.result_context.config(text=text)
 
     def _rewrap(self, event):
         for label in self._wrapped:
             label.configure(wraplength=max(220, event.width - 30))
 
     def show(self, robot):
+        previous_key = self.robot.key if self.robot else None
         self.robot = robot
+        if previous_key != (robot.key if robot else None):
+            self.execution_status.config(text="")
         if robot is None:
             self.title.config(text="Robôs")
             self.subtitle.config(text="Clique em um card para ver os detalhes.")
@@ -337,7 +388,7 @@ class RobotDetail:
         if self.symbol_var.get() not in symbols:
             self.symbol_var.set(last["symbol"] if last and last["symbol"] in symbols else (symbols[0] if symbols else ""))
         self._symbol_changed()
-        self.run_button.state(["!disabled"] if symbols else ["disabled"])
+        self.run_button.state(["!disabled"] if symbols and self._active_request is None else ["disabled"])
         if symbols:
             self.show_run(last)
         else:
@@ -366,28 +417,40 @@ class RobotDetail:
 
     def run_backtest(self):
         robot, symbol, timeframe = self.robot, self.symbol_var.get(), self.timeframe_var.get()
-        if not robot or not symbol or not timeframe:
+        if not robot or not symbol or not timeframe or self._active_request is not None:
             return
         item = next((i for i in self.ui.symbol_series.get(symbol, []) if i["timeframe"] == timeframe), None)
         days = dict(study.PERIODS).get(self.period_var.get())
         start = study.period_start(item["end"], days) if item else None
         db, config = self.ui.app.db_manager, getattr(self.ui.app, "config", None)
+        request = self._selection_context()
+        self._active_request = request
         self.run_button.state(["disabled"])
-        self.run_status.config(text=f"Rodando {robot.name} em {symbol} ({timeframe})...")
+        self.execution_status.config(text=f"Rodando {robot.name} em {symbol} ({timeframe})...")
 
         def done(run, error):
-            self.run_button.state(["!disabled"])
+            self._active_request = None
+            self.run_button.state(["!disabled"] if self.symbol_var.get() and self.timeframe_var.get() else ["disabled"])
             if error:
-                self.run_status.config(text=f"Não foi possível rodar: {error}")
+                if self.robot and self.robot.key == robot.key:
+                    self.execution_status.config(text=f"Não foi possível rodar {symbol} ({timeframe}): {error}. O resultado exibido não foi atualizado.")
                 return
+            self.ui.backtest_recorded(run)
             self.ui.log(f"Backtest de {robot.name} em {symbol} {run['timeframe']}: {run['metrics']['trades']} operações.")
-            if self.robot is robot:
-                self.show_run(run)
+            if self.robot and self.robot.key == robot.key:
+                self.execution_status.config(text="")
+                self.show_run(run, request_context=request)
             self.ui.robots_panel.reload()      # o card passa a mostrar o resultado
         self.ui.run_bg(lambda: backtest.run_python(db, config, robot, symbol, timeframe, start), done)
 
-    def show_run(self, run, empty_text="Escolha o ativo e o período e clique em \"Rodar backtest\"."):
+    def show_run(self, run, empty_text="Escolha o ativo e o período e clique em \"Rodar backtest\".", request_context=None):
+        previous = self.shown_run
+        if request_context is not None:
+            self._shown_request = request_context
+        elif not run or not previous or run.get("run_id") != previous.get("run_id"):
+            self._shown_request = None
         self.shown_run = run
+        self._update_result_context()
         for _label, key, kind, _tip in RUN_TILES:
             self.run_tiles[key].config(text=format_metric(run["metrics"].get(key), kind) if run else "—")
         if run:

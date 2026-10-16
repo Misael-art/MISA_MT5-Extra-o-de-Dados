@@ -229,6 +229,8 @@ def test_backtest_from_the_robot_card(ui):
     assert detail.shown_run is not None and detail.shown_run["symbol"] == "WIN$N"
     assert detail.run_tiles["trades"].cget("text") != "—"
     assert "WIN$N M1 · 600 barras" in detail.run_status.cget("text")
+    assert "para esta seleção" in detail.result_context.cget("text")
+    assert ui.profit_cells  # o detalhe usa o mesmo hook de atualização imediata do lote
     text = " | ".join(_labels(panel.cards["python:donchian"]))
     assert "Último backtest em WIN$N M1" in text and "Estágio 2 de 3: Testado" in text
     assert detail.robot.key == "python:donchian" and len(detail.robot.runs) == 1     # painel segue no mesmo robô
@@ -883,3 +885,60 @@ def test_inventory_attention_keeps_sort_selection_refresh_and_theme(ui):
     style = ttk.Style(ui.root)
     assert str(style.lookup(panel.tree.cget("style"), "background", ("selected",))) == ui.theme.colors["accent"]
     assert str(style.lookup(panel.tree.cget("style"), "foreground", ("selected",))) == ui.theme.colors["on_accent"]
+
+
+def test_robot_backtest_keeps_result_context_and_pending_request(ui, monkeypatch):
+    from copy import deepcopy
+    panel = ui.robots_panel
+    panel.select("python:donchian")
+    detail = panel.detail
+    run = {"run_id": "context-test", "robot_key": "python:donchian", "symbol": "WIN$N", "timeframe": "M1",
+           "bars": 600, "data_start": "2024-01-02 09:00", "data_end": "2024-01-02 18:59",
+           "created_at": "2024-02-01 12:00", "metrics": {"trades": 2, "return_pct": -0.1},
+           "equity": [["2024-01-02", 100], ["2024-01-03", 90]]}
+    detail.show_run(run)
+    assert "Resultado armazenado" in detail.result_context.cget("text")
+    pending, recorded = [], []
+    monkeypatch.setattr(ui, "run_bg", lambda work, done: pending.append((work, done)))
+    monkeypatch.setattr(ui, "backtest_recorded", lambda result: recorded.append(result))
+    monkeypatch.setattr(panel, "reload", lambda: None)
+    detail.run_backtest()
+    detail.run_backtest()
+    assert len(pending) == 1 and detail.run_button.instate(["disabled"])
+    detail.period_var.set("1 mês")
+    pending.pop()[1](run, None)
+    assert recorded == [run] and detail.shown_run is run
+    assert "Resultado anterior" in detail.result_context.cget("text")
+    detail.run_backtest()
+    pending.pop()[1](None, RuntimeError("falha simulada"))
+    assert detail.shown_run is run and "falha simulada" in detail.execution_status.cget("text")
+    assert "não foi atualizado" in detail.execution_status.cget("text")
+    assert "600 barras" in detail.run_status.cget("text")
+    detail.run_backtest()
+    updated = deepcopy(run);updated["run_id"] = "updated"
+    pending.pop()[1](updated, None)
+    assert "para esta seleção" in detail.result_context.cget("text")
+    detail.show_run(deepcopy(updated))  # releitura do catálogo mantém a proveniência do mesmo run
+    assert "para esta seleção" in detail.result_context.cget("text")
+    detail.run_backtest()
+    panel.select("python:ema_atr")
+    before = detail.shown_run
+    pending.pop()[1](run, None)
+    assert detail.robot.key == "python:ema_atr" and detail.shown_run is before
+    assert recorded[-1] is run
+
+
+def test_robot_backtest_controls_reflow_inside_available_width(ui):
+    ui.notebook.select(ui.robots_panel.frame)
+    ui.robots_panel.select("python:donchian")
+    detail = ui.robots_panel.detail
+    detail.tabs.select(1)
+    for _ in range(2):
+        for width in (1920, 1280, 820, 1920):
+            ui.root.geometry(f"{width}x800");ui.pump(0.15)
+            for cell in detail.run_control_cells:
+                assert cell.winfo_ismapped()
+                assert cell.winfo_rootx() >= detail.run_controls.winfo_rootx()
+                assert cell.winfo_rootx() + cell.winfo_width() <= detail.run_controls.winfo_rootx() + detail.run_controls.winfo_width()
+            assert detail.run_button.winfo_width() >= detail.run_button.winfo_reqwidth()
+        ui.toggle_theme()
