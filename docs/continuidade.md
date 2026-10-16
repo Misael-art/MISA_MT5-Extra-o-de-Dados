@@ -489,6 +489,27 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   inalterada; uma reexecução no mesmo8246686 passou, todoschecksverdes. Falha
   inicial preservada nos logs e descrição, sem alterar timeout ou testes.
 
+- CI Windows do 2706c66 revelou duas falhas reais: painel interno recebia
+  novamente os 4 px já reservados pelo split. Removido espaçamento duplicado
+  de Linha do tempo, Distribuição e Convergência, preservando as exigências de
+  largura dos testes. Log inicial preservado; validação da correção em execução.
+
+- Correção de espaçamento: 13 testes de Relações aprovados em58,77 s;
+  operação96/144DPI e ciclo1920→1280→820→1920, ambos temas, confirmou
+  detalhe acima do mínimo. DPI144:445px(min388) em1920, empilha nas menores;
+  DPI96:453px em1920 e292px(min276) em1280. Interfaces encerradas0.
+  Capturas de demonstração identificadas SYNTHETIC; suíte completa
+  final b35f274:858 aprovados/9 ignorados em1118,60 s, saída0. Windows
+  do mesmo commit aprovado em20m47s.
+
+- Primeira repetição local do ajuste:784 aprovados/83 ignorados, saída0;
+  não aceita para QA porque74 testes gráficos ficaram sem display após falha
+  do Xvfb no roteiro privado. Mantido log da tentativa. Roteiro corrigido
+  (-noreset e displayfd aberto), repetido mesmo SHA:858/9, sem exclusões
+  gráficas. Os nove ignorados esperados são integrações opcionais separadas
+  e são executadas em seus jobs do CI. Nenhum teste alterado para contornar
+  a falha do ambiente. Doctor:15 OK/2 avisos/1 falha deliberada MT5.path vazio.
+
 ## T17.16 — contexto e controles do Backtest (2026-10-16)
 
 - Branch `codex/t17-16-contexto-backtest`, baseT17.17/#88; ambiente próprio
@@ -521,7 +542,7 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   distingue retorno de preço e lucro de robô. Mesmos tokens de T17.12; sem
   mudança em fórmulas, candles ou banco.
 - Oito testes focados aprovados em 42,24 s; incluem zero, ausência, NaN/Inf,
-  tema, limpeza e contraste mínimo 4,5. Suíte final em execução no 65b13d0.
+  tema, limpeza e contraste mínimo 4,5. Suíte final 65b13d0: 865 aprovados/9 ignorados em1251,92 s, saída0. PR #90 draft.
 - Interface operada em cópia consistente da base real EURUSD H1: resumo
   idêntico ao anterior após normalizar somente datas para JSON. Dois temas,
   96/144 DPI, 1280×800/1920×1080; cenários zero/ausência rotulados CONTROLLED.
