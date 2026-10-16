@@ -297,3 +297,23 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   MT5 desligada); `git diff --check` passou.
 - A Fase 17 está concluída no Linux. Windows real, DPI de 125%/150%, maximização pelo sistema e glifos/fontes do Tk
   continuam na pendência T17.1–T17.5 de `docs/validacao_instaladores.md`; não se declara validação Windows.
+
+## T17.7 — referência temporal e população (2026-10-16)
+
+- Implementação em branch `codex/t17-7-contexto-temporal`, PR #81 draft, base direta
+  master. Sem merge. PRs #79/#80 permanecem separados e sem autorização de integração.
+- Horários identifica entrada/saída e população; seleção mista explicita saídas
+  excluídas da matriz sem alterar os KPIs. Visões temporais identificam referência
+  mista. Sem mudança de agregação, valores, risco ou ordens.
+- Baseline 837 aprovados/9 ignorados em 726,65 s; primeira suíte posterior
+  838 aprovados/9 ignorados em 583,13 s; testes focados finais 6 aprovados.
+  Revalidação no commit 061f751: **838 aprovados, 9 ignorados em 705,84 s**, saída 0.
+- Dados reais em cópia consistente: 263 operações parciais, temas claro/escuro,
+  1280×800/1920×1080, exportação UI de 12405 barras conferida; encerramento saída 0.
+  Doctor principal aprovado; worktree deliberadamente offline acusa caminho MT5 vazio.
+  Nenhum shell alterado; Windows real pendente.
+- DPI144 desde a criação do Tk revelou cortes no cabeçalho/filtros e matriz sem
+  altura em 1280×800: problema crítico ainda aberto, T17.9 proposta. T17.8 proposta
+  remove suavização existente em Relações. WIP T17.6 preservada byte a byte.
+- Auditoria e evidências em [AUDITORIA_UI_20261016.md](propostas/AUDITORIA_UI_20261016.md).
+  Aceite visual integral e campanha PF ≥ 1,9 permanecem pendentes.

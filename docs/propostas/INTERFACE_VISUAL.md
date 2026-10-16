@@ -104,3 +104,8 @@ refinamento visual antes da campanha PF ≥ 1,9. PRs #79/#80 continuam separados
   auditoria continua separado deste recorte.
 - **Baseline:** instalador Linux sem MT5 e dependências dev concluídos; 837 aprovados,
   9 ignorados em 726,65 s, saída 0, Xvfb exclusivo e Python 3.11.15.
+
+- **Entrega:** PR #81 draft. Suíte no commit 061f751: 838 aprovados, 9 ignorados,
+  saída 0; 6 testes focados aprovados. Doctor do principal aprovado. Worktree
+  offline acusa caminho MT5 vazio. Capturas reais e pendências críticas em
+  [auditoria](AUDITORIA_UI_20261016.md). Sem merge; sem aceite visual global.

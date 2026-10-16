@@ -33,6 +33,8 @@ terminado; isso não prova um defeito de encerramento do aplicativo.
 - Minha base: 12 ativos/15 séries, ordenação por ativo, seleção com teclado e exportação CSV
   pela ação da UI. 12405 linhas EURUSD H1 conferidas contra a base; integrity_check ok.
   O destino do diálogo foi fornecido pelo driver privado; não foi testada a escolha manual do arquivo.
+  CLI `trades report` e os cinco KPIs da UI coincidem na precisão exibida para
+  a mesma seleção antiga de 263 operações; isso não certifica custos completos.
 - Análise: EURUSD H1, recorte de 1537 barras, Gráfico/Sazonalidade/Retornos/Qualidade.
   São dados de mercado, distintos de resultados do Expert.
 - Laboratório: 263 operações parciais em três runs, as quatro visões temporais,
