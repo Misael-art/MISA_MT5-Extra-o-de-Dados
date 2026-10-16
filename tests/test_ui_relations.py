@@ -260,3 +260,16 @@ def test_split_views_keep_readable_details_through_resize_and_themes(relations_p
             assert "OOS" in panel._details["timeline"].get("1.0", "end-1c")
             assert panel.timeline_chart.widget.winfo_height() >= 100
         panel.theme.toggle()
+
+
+def test_detail_spacing_is_owned_by_split_container(relations_panel):
+    panel, root = relations_panel
+    for name in ("timeline", "distribution", "convergence"):
+        detail = getattr(panel, name + "_detail")
+        assert str(detail.pack_info().get("padx", "0")) == "0"
+        split = detail.master.master
+        gap = detail.master.grid_info()["padx"]
+        if split._relations_orientation == tk.HORIZONTAL:
+            assert gap != 0
+        else:
+            assert gap == 0
