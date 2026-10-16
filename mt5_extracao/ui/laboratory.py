@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.ui import charts
-from mt5_extracao.ui.components import (ChartPanel, ContentPanel, FilterBar, MatrixTable, MetricCard, Notice,
+from mt5_extracao.ui.components import (ChartPanel, ContentPanel, DetailsPanel, FilterBar, MatrixTable, MetricCard, Notice,
                                        PageHeader, ScrollableContent, TablePanel)
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 from mt5_extracao.ui.visual_tokens import SPACING, result_attention_colors
@@ -95,6 +95,13 @@ class LaboratoryPanel:
         self.notice.bind("<Configure>", self._resize_notice, add="+")
         self.note = self.notice.message  # texto de estado preservado para as telas e testes existentes.
         self._note_kind = "info"
+        self.context_details = DetailsPanel(self.results_body, "População e referência da queda", expanded=False,
+                                            information=True, theme=self.theme, padding=SPACING["sm"])
+        self.context_text = ttk.Label(self.context_details.body, text="", justify=tk.LEFT, style="Muted.TLabel")
+        self.context_text.pack(fill=tk.X)
+        self.context_details.bind("<Configure>", lambda e: self.context_text.configure(
+            wraplength=max(180, e.width - 4 * SPACING["sm"])), add="+")
+        self.population_context = None
         self.tabs = ttk.Notebook(self.results_body, style="Compact.TNotebook")
         self.tabs.pack(fill=tk.BOTH, expand=True)
         self.tab_frames = {}
@@ -119,13 +126,14 @@ class LaboratoryPanel:
         reserve = self.notice.badge.winfo_reqwidth() + 4 * SPACING["sm"]
         self.note.configure(wraplength=max(180, event.width - reserve))
 
-    def set_note(self, text):
+    def set_note(self, text, kind=None):
         """Estado, disponibilidade ou qualidade acima das guias; a faixa some sem aviso."""
         if not text:
             self.note.config(text="")
             self.notice.pack_forget()
             return
         lowered = text.casefold()
+        explicit_kind = kind
         if "indisponível" in lowered or "indisponíveis" in lowered:
             kind = "unavailable"
         elif "erro" in lowered or "não foi possível" in lowered:
@@ -138,6 +146,7 @@ class LaboratoryPanel:
             kind = "partial"
         else:
             kind = "info"
+        kind = explicit_kind or kind
         style = NOTE_STYLE[kind]
         self.notice.configure(style=f"{style}.Notice.TFrame")
         self.notice.badge.set_status(NOTE_LABEL[kind], kind=kind)
@@ -146,7 +155,8 @@ class LaboratoryPanel:
         if self._current_tab_name() == RELATIONS_TAB:
             self.notice.pack_forget()
         else:
-            self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.tabs)
+            self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]),
+                             before=self.context_details if self.context_details.winfo_manager() else self.tabs)
 
     def _build_filters(self):
         bar = FilterBar(self.frame)
@@ -351,6 +361,8 @@ class LaboratoryPanel:
     def _empty(self, text):
         for key in ("n", "win_rate", "profit_factor", "expectancy", "max_drawdown_pct"):
             self.metric_cards[key].set_value("—", "", style="Value.TLabel")
+        self.context_details.pack_forget()
+        self.population_context = None
         self.set_note(text)
         self._drawn = set()
         for chart in self._charts.values():
@@ -358,7 +370,7 @@ class LaboratoryPanel:
 
     def _show_kpis(self):
         from mt5_extracao import profit_factor
-        from mt5_extracao.trade_analytics import aggregate
+        from mt5_extracao.trade_analytics import aggregate, context
         view = self.view
         if view is None or view.empty:
             self._empty("Nenhuma operação neste recorte.")
@@ -373,15 +385,17 @@ class LaboratoryPanel:
                              if m["ci_low"] is not None else "intervalo: poucos dias")
         self.metric_cards["expectancy"].set_value(charts.money(m["expectancy"]), expectancy_detail,
                                                    style=expectancy_style)
-        self.metric_cards["max_drawdown_pct"].set_value(fmt_num(m["max_drawdown_pct"] * 100, 1, "%"), "")
-        partial = int((view["completeness"] == "parcial").sum())
-        notes = []
+        self.population_context = context.population(view, aggregate._initial_equity(self._config()))
+        capital = self.population_context["initial_equity_reference"]
+        self.metric_cards["max_drawdown_pct"].set_value(
+            fmt_num(m["max_drawdown_pct"] * 100, 1, "%"),
+            f"Capital ref.: {fmt_num(capital, 0)}" if capital is not None else "Capital ref. desconhecido")
+        self.context_text.configure(text=context.details(self.population_context))
+        self.context_details.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.tabs)
+        notes = [context.summary(self.population_context)]
         if m["small"]:
-            notes.append(f"Amostra pequena ({m['n']} operações): use como pista, não como conclusão.")
-        if partial:
-            notes.append(f"{partial} operação(ões) sem horário de entrada (robôs MQL5 antes da T16.2b): entram só "
-                         "nas análises de calendário, pela saída.")
-        self.set_note(" ".join(notes))
+            notes.insert(0, f"Amostra pequena ({m['n']} operações): use como pista, não como conclusão.")
+        self.set_note(" ".join(notes), kind="partial" if m["small"] or self.population_context["partial"] else "info")
 
     def render_visible(self):
         name = self.tabs.tab(self.tabs.select(), "text")
@@ -427,15 +441,18 @@ class LaboratoryPanel:
             self.filter_bar.pack_forget()
             self.kpi_row.pack_forget()
             self.notice.pack_forget()
+            self.context_details.pack_forget()
             return
+        if self.population_context is not None and not self.context_details.winfo_manager():
+            self.context_details.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.tabs)
         if not self.kpi_row.winfo_manager():
             self.kpi_row.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.notice if self.notice.winfo_manager()
-                              else self.tabs)
+                              else self.context_details if self.context_details.winfo_manager() else self.tabs)
         if not self.filter_bar.winfo_manager():
             self.filter_bar.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.kpi_row)
         text = self.note.cget("text")
         if text and not self.notice.winfo_manager():
-            self.set_note(text)
+            self.set_note(text, kind=self._note_kind)
 
     def _crosstab(self, view, row, col, row_order=None):
         from mt5_extracao.trade_analytics import aggregate
@@ -468,14 +485,8 @@ class LaboratoryPanel:
 
     def _temporal_context(self, view):
         """Descreve a referência recebida do enriquecimento, sem inferir entradas."""
-        refs = set(view["time_ref"].dropna())
-        if refs == {"entrada"}:
-            return "Entrada"
-        if refs == {"saida"}:
-            return "Saída (entrada indisponível)"
-        if refs == {"entrada", "saida"}:
-            return "Referência mista: entrada quando disponível; saída nas demais"
-        return "Referência temporal indisponível"
+        from mt5_extracao.trade_analytics.context import temporal_label
+        return temporal_label(view["time_ref"].dropna())
 
     def _overview_matrix(self, parent, view):
         """Matriz com atenção pelo sinal, sem atribuir confiança à cor do resultado."""
@@ -1080,15 +1091,16 @@ class LaboratoryPanel:
         modes = dict(self.mode_results)
 
         def work():
-            from mt5_extracao.trade_analytics import rules
-            return rules.evaluate(lab, chosen, config, modes), rules.apply(lab, chosen, modes), lab
+            from mt5_extracao.trade_analytics import aggregate, context, rules
+            return (rules.evaluate(lab, chosen, config, modes), rules.apply(lab, chosen, modes), lab,
+                    context.population(lab, aggregate._initial_equity(config)))
 
         def done(result, error):
             self.simulate_button.state(["!disabled"])
             if error is not None:
                 self.sim_text.config(text=f"Não foi possível simular: {error}")
                 return
-            self.evaluation, after, lab = result
+            self.evaluation, after, lab, self._evaluation_context = result
             self._chosen = chosen
             ev = self.evaluation
             line = lambda part: (f"expectativa {charts.money(ev[part]['before']['expectancy'])} → "  # noqa: E731
@@ -1131,7 +1143,8 @@ class LaboratoryPanel:
         scope = ("robot:" if self.lens.get() == LENS_ROBOT else "symbol:") + self.selected.get()
         tested = self.found[0].tested if self.found else 0
         try:
-            path = export.proposal(scope, self._chosen, self.evaluation, tested)
+            path = export.proposal(scope, self._chosen, self.evaluation, tested,
+                                   context=getattr(self, "_evaluation_context", None))
         except OSError as e:
             self.sim_text.config(text=f"Não foi possível gravar a proposta: {e}")
             return

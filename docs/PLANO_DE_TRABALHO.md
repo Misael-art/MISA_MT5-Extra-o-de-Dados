@@ -187,6 +187,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.18 | Cabeçalho e Análise: reflow pela fonte e área analítica percorrível | T17.13 | implementada; fonte/teclado/rolagem e UI real conferidos; suíte final registrada no PR |
 | T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; UI real conferida; suíte final registrada no PR |
 | T17.22 | Iniciar análise local pelo lançador sem conectar o MT5 | T2.2, T17.3 | implementada; baseline 890/9 e focados aprovados; [contrato e aceite](propostas/T17_22_INICIO_OFFLINE.md); validação final/integração no PR próprio |
+| T17.23 | Contexto verificável da agregação e comprovação recolhível no Laboratório | T17.21, T17.22 | em execução; baseline 947/9 aprovado; [escopo e aceite](propostas/T17_23_CONTEXTO_AGREGACAO.md) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
