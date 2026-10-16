@@ -180,7 +180,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.16 | Backtest: contexto do resultado e controles acessíveis no detalhe | T17.17 | implementada; PR #89 draft; 859 aprovados/9 ignorados; integração pendente |
 | T17.13 | Análise: sinal do retorno zero e atenção visual coerente | T17.16 | baseline 859/9; 8 focados; suíte 865/9 saída 0; UI real conferida; PR #90 draft |
 | T17.10 | Laboratório: ganhos, perdas, zeradas e resultado ausente no núcleo e gráfico | T17.13 | implementada; PR #91 draft; 875 aprovados/9 ignorados; operação real conferida; integração pendente |
-| T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | escopo registrado; baseline 875/9 aprovada; em implementação |
+| T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | implementada; 29 testes núcleo/desenho + 9 UI; operação real conferida; suíte final em execução |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
