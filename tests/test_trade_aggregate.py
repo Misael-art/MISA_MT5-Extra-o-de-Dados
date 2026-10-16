@@ -124,3 +124,56 @@ def test_outcome_counts_empty_book_has_stable_columns():
     result = aggregate.outcome_counts(pd.DataFrame(), "time_bucket")
     assert result.empty
     assert result.columns.tolist() == ["time_bucket", "n", "wins", "losses", "flat", "unknown"]
+
+
+@pytest.mark.parametrize("configured,minutes,slots", [
+    (None, 30, 48), ("60", 60, 24), ("17", 17, 85),
+    ("inválido", 30, 48), ("0", 1, 1440), ("-3", 1, 1440), ("2000", 2000, 1),
+])
+def test_hourly_grid_uses_the_enrichment_configuration(configured, minutes, slots):
+    import configparser
+    from mt5_extracao.trade_analytics import enrich
+    config = None
+    if configured is not None:
+        config = configparser.ConfigParser()
+        config["TRADE_ANALYTICS"] = {"time_bucket_min": configured}
+    times = pd.Series(pd.to_datetime(["2025-01-01 00:05", "2025-01-01 01:31"]))
+    lab = enrich.calendar_columns(times, minutes).assign(pnl=[0.0, 5.0])
+    original = lab.copy(deep=True)
+    result = aggregate.hourly_summary(lab, config)
+    table = result["table"]
+    assert result["bucket_min"] == minutes and len(table) == slots
+    assert result["timed_n"] == result["measured_n"] == 2
+    assert result["untimed_n"] == result["missing_result_n"] == 0
+    assert table["n"].sum() == 2 and table["time_bucket"].iloc[0] == "00:00"
+    observed = aggregate.by_dimension(lab, ["time_bucket"], config, ci=False).set_index("time_bucket")
+    compared = table.set_index("time_bucket").loc[observed.index]
+    for column in ("n", "expectancy", "win_rate", "small"):
+        pd.testing.assert_series_equal(compared[column], observed[column], check_dtype=False)
+    missing = table["n"].eq(0)
+    assert table.loc[missing, ["expectancy", "win_rate"]].isna().all().all()
+    assert not table.loc[missing, "small"].any()
+    pd.testing.assert_frame_equal(lab, original)
+
+
+def test_hourly_grid_reports_unplaced_and_invalid_results_without_fake_zero():
+    lab = pd.DataFrame({"time_bucket": ["00:00", "01:00", "00:15", None, "02:00", "03:00"],
+                        "pnl": [0.0, 4.0, -5.0, 9.0, np.nan, np.inf]})
+    original = lab.copy(deep=True)
+    result = aggregate.hourly_summary(lab)
+    table = result["table"].set_index("time_bucket")
+    assert result["timed_n"] == 4 and result["measured_n"] == 2
+    assert result["untimed_n"] == 2 and result["missing_result_n"] == 2
+    assert table["n"].sum() == 2
+    assert table.loc["00:00", "expectancy"] == 0 and table.loc["00:00", "n"] == 1
+    assert table.loc["00:30", "n"] == 0 and np.isnan(table.loc["00:30", "expectancy"])
+    assert np.isnan(table.loc["02:00", "expectancy"]) and not table.loc["02:00", "small"]
+    pd.testing.assert_frame_equal(lab, original)
+
+
+def test_hourly_grid_empty_book_has_no_measurements():
+    result = aggregate.hourly_summary(pd.DataFrame())
+    assert len(result["table"]) == 48
+    assert result["table"]["n"].sum() == result["timed_n"] == result["measured_n"] == 0
+    assert result["table"][["expectancy", "win_rate"]].isna().all().all()
+    assert not result["table"]["small"].any()
