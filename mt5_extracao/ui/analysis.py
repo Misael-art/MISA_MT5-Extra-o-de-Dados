@@ -8,7 +8,7 @@ import pandas as pd
 
 from mt5_extracao import data_quality, study, timeframes
 from mt5_extracao.ui.visual_tokens import result_attention_colors, result_attention_role
-from mt5_extracao.ui.components import FilterBar, MetricCard
+from mt5_extracao.ui.components import FilterBar, MetricCard, ScrollableContent
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 
 log = logging.getLogger(__name__)
@@ -31,16 +31,21 @@ class AnalysisPanel:
         self.factor = 1
         self._request = 0      # descarta respostas de cargas antigas
         self._canvases = {}
+        self._figure_frames = {}
         self.available = {}    # símbolo -> timeframes (rótulos) com barras na base
         self.frame = ttk.Frame(parent, padding=12)
+        self._layout_job = None
+        self.frame.bind("<Destroy>", self._destroyed, add="+")
 
         controls = FilterBar(self.frame, padding=10)
+        self.controls = controls
         controls.pack(fill=tk.X)
-        controls.columnconfigure(0, weight=1)
         data_filters = ttk.Frame(controls, style="Surface.TFrame")
-        data_filters.grid(row=0, column=0, sticky="w")
+        period_filters = ttk.Frame(controls, style="Surface.TFrame")
         indicator_filters = ttk.Frame(controls, style="Surface.TFrame")
-        indicator_filters.grid(row=0, column=1, sticky="e", padx=(12, 0))
+        self.filter_cells = (data_filters, period_filters, indicator_filters)
+        for column, cell in enumerate(self.filter_cells):
+            cell.grid(row=0, column=column, sticky="w")
         self.indicator_filters = indicator_filters
         ttk.Label(data_filters, text="Ativo", style="Muted.TLabel").pack(side=tk.LEFT)
         self.symbol_var = tk.StringVar()
@@ -52,10 +57,10 @@ class AnalysisPanel:
         self.timeframe_combo = ttk.Combobox(data_filters, textvariable=self.timeframe_var, state="readonly", width=12)
         self.timeframe_combo.pack(side=tk.LEFT, padx=(6, 14))
         self.timeframe_combo.bind("<<ComboboxSelected>>", lambda e: self.load())
-        ttk.Label(data_filters, text="Período", style="Muted.TLabel").pack(side=tk.LEFT)
+        ttk.Label(period_filters, text="Período", style="Muted.TLabel").pack(side=tk.LEFT)
         self.period_var = tk.StringVar(value=study.PERIODS[1][0])
         for label, _days in study.PERIODS:
-            ttk.Radiobutton(data_filters, text=label, value=label, variable=self.period_var, style="Toolbutton",
+            ttk.Radiobutton(period_filters, text=label, value=label, variable=self.period_var, style="Toolbutton",
                             command=self.load).pack(side=tk.LEFT, padx=(6 if label == study.PERIODS[0][0] else 1, 0))
         self.overlays = {}
         for key, label, tip in (("ma20", "MM 20", "Média móvel (MM)"), ("ma50", "MM 50", "Média móvel (MM)"),
@@ -67,9 +72,14 @@ class AnalysisPanel:
             check.pack(side=tk.LEFT, padx=(0 if key == "ma20" else 10, 0))
             Tooltip(check, study.GLOSSARY[tip], self.theme)
         self._controls_stacked = None
-        controls.bind("<Configure>", self._layout_controls, add="+")
+        self._controls_layout = None
+        controls.bind("<Configure>", self._schedule_layout, add="+")
 
-        tiles = ttk.Frame(self.frame)
+        self.results_viewport = ScrollableContent(self.frame, self.theme)
+        self.results_viewport.pack(fill=tk.BOTH, expand=True)
+        self.results_viewport.canvas.bind("<Configure>", self._schedule_layout, add="+")
+        results = self.results_viewport.content
+        tiles = ttk.Frame(results, style="Surface.TFrame")
         tiles.pack(fill=tk.X, pady=10)
         self.metric_cards = []
         self.tile_values = {}
@@ -79,7 +89,8 @@ class AnalysisPanel:
             metric.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
             self.metric_cards.append(metric)
             self.tile_values[key] = metric.value_label
-        self.return_legend = ttk.Label(self.frame,
+            metric.value_label.bind("<Configure>", self._schedule_layout, add="+")
+        self.return_legend = ttk.Label(results,
             text="Retorno do preço: azul suave = alta · discreto = queda · zero neutro · — = indisponível. Não mede lucro do robô.",
             style="Page.Muted.TLabel", wraplength=1100, justify=tk.LEFT)
         self.return_legend.pack(fill=tk.X, pady=(0, 4))
@@ -87,14 +98,15 @@ class AnalysisPanel:
         self._return_value = None
         self.theme.on_change(self._refresh_return_attention)
         self._metric_columns = 0
-        tiles.bind("<Configure>", self._layout_metrics, add="+")
+        tiles.bind("<Configure>", self._schedule_layout, add="+")
 
         self.status = ttk.Label(self.frame, text="", style="Page.Muted.TLabel", wraplength=1200,
                                 justify=tk.LEFT)
         self.status.pack(fill=tk.X, side=tk.BOTTOM, pady=(6, 0))
         self.frame.bind("<Configure>", self._resize_status, add="+")
-        self.tabs = ttk.Notebook(self.frame)
+        self.tabs = ttk.Notebook(results)
         self.tabs.pack(fill=tk.BOTH, expand=True)
+        self.tabs.bind("<<NotebookTabChanged>>", self._schedule_layout, add="+")
         self.chart_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
         self.season_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
         self.returns_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
@@ -103,28 +115,75 @@ class AnalysisPanel:
         self.tabs.add(self.season_tab, text="Sazonalidade")
         self.tabs.add(self.returns_tab, text="Retornos")
         self.tabs.add(self.quality_tab, text="Qualidade dos dados")
-        self.readout = ttk.Label(self.chart_tab, text="", style="Muted.TLabel")
+        self.readout = ttk.Label(self.chart_tab, text="", style="Muted.TLabel", justify=tk.LEFT)
         self.readout.pack(fill=tk.X, padx=12, pady=(8, 0))
+        self.readout.bind("<Configure>", lambda event: self.readout.configure(wraplength=max(1, event.width)))
+        self.readout.bind("<Configure>", self._schedule_layout, add="+")
         self.quality_text = self.theme.classic(tk.Text(self.quality_tab, wrap=tk.WORD, height=10, padx=10, pady=10))
         self.quality_text.pack(fill=tk.BOTH, expand=True)
         self.quality_text.configure(state=tk.DISABLED)
         self.theme.on_change(self.redraw)
+        self.theme.on_change(self._schedule_layout)
 
-    def _layout_controls(self, event):
-        stacked = event.width < 1040
-        if stacked == self._controls_stacked:
+    def _schedule_layout(self, _event=None):
+        if self._layout_job is None and self.frame.winfo_exists():
+            self._layout_job = self.frame.after_idle(self._layout)
+
+    def _destroyed(self, event):
+        if event.widget is self.frame and self._layout_job is not None:
+            self.frame.after_cancel(self._layout_job)
+            self._layout_job = None
+
+    def _layout(self):
+        # Mantém a marca durante update_idletasks para coalescer Configure reentrante.
+        self.frame.update_idletasks()
+        self._layout_controls()
+        self._layout_metrics()
+        self._layout_figures()
+        self._layout_job = None
+
+    def _layout_figures(self):
+        if not self._figure_frames:
             return
-        self._controls_stacked = stacked
-        if stacked:
-            self.indicator_filters.grid_configure(row=1, column=0, sticky="w", padx=0, pady=(8, 0))
-        else:
-            self.indicator_filters.grid_configure(row=0, column=1, sticky="e", padx=(12, 0), pady=0)
+        selected = self.tabs.nametowidget(self.tabs.select())
+        notebook_trim = max(0, self.tabs.winfo_height() - selected.winfo_height())
+        fixed = (self.metric_cards[0].master.winfo_reqheight() + 20
+                 + self.return_legend.winfo_reqheight() + 4 + notebook_trim + 12)
+        minimum = max(480, self.theme.font.metrics("linespace") * 24)
+        for key, frame in self._figure_frames.items():
+            readout = self.readout.winfo_reqheight() + 8 if key == "chart" else 0
+            inset = 2 * int(self.results_viewport.canvas.cget("highlightthickness"))
+            available = self.results_viewport.canvas.winfo_height() - inset - fixed - readout
+            height = max(minimum, available) if frame.master is selected else minimum
+            if int(frame.cget("height")) != height:
+                frame.configure(height=height)
+                frame.rowconfigure(0, minsize=height)
+
+    def _layout_controls(self):
+        widths = [cell.winfo_reqwidth() for cell in self.filter_cells]
+        available = max(1, self.controls.winfo_width() - 22)
+        columns = (3 if sum(widths) + 24 <= available else
+                   2 if widths[0] + widths[1] + 12 <= available else 1)
+        self._controls_stacked = columns < 3
+        key = (columns, tuple(widths))
+        if key == self._controls_layout:
+            return
+        self._controls_layout = key
+        for column in range(3):
+            self.controls.columnconfigure(column, weight=1 if column == columns - 1 else 0, minsize=0)
+        for index, cell in enumerate(self.filter_cells):
+            cell.grid_configure(row=index // columns, column=index % columns,
+                                columnspan=columns if columns == 2 and index == 2 else 1,
+                                sticky="w", padx=(0 if index % columns == 0 else 12, 0),
+                                pady=(8 if index >= columns else 0, 0))
 
     def _resize_status(self, event):
         self.status.configure(wraplength=max(240, event.width - 28))
 
-    def _layout_metrics(self, event):
-        columns = 6 if event.width >= 1100 else 3 if event.width >= 650 else 2 if event.width >= 440 else 1
+    def _layout_metrics(self):
+        available = self.metric_cards[0].master.winfo_width()
+        required = max(card.winfo_reqwidth() for card in self.metric_cards)
+        columns = next((n for n in (6, 3, 2) if n * required + (n - 1) * 8 <= available), 1)
         if columns == self._metric_columns:
             return
         self._metric_columns = columns
@@ -235,6 +294,10 @@ class AnalysisPanel:
         for canvas in self._canvases.values():
             canvas.get_tk_widget().destroy()
         self._canvases = {}
+        for frame in self._figure_frames.values():
+            frame.destroy()
+        self._figure_frames = {}
+        self._schedule_layout()
 
     def _show_summary(self, s):
         digits = 5 if s["last"] < 10 else 2
@@ -245,6 +308,7 @@ class AnalysisPanel:
         self.tile_values["max_drawdown_pct"].config(text=fmt_num(s["max_drawdown_pct"], 2, "%"))
         self.tile_values["mean_range_pct"].config(text=fmt_num(s["mean_range_pct"], 3, "%"))
         self.tile_values["up_bars_pct"].config(text=fmt_num(s["up_bars_pct"], 1, "%"))
+        self._schedule_layout()
 
     def _refresh_return_attention(self):
         value = self._return_value
@@ -292,12 +356,30 @@ class AnalysisPanel:
         old = self._canvases.pop(key, None)
         if old:
             old.get_tk_widget().destroy()
+        old_frame = self._figure_frames.pop(key, None)
+        if old_frame:
+            old_frame.destroy()
         c = self.theme.colors
         fig = Figure(dpi=100, facecolor=c["surface"])
-        canvas = FigureCanvasTkAgg(fig, master=parent)
-        canvas.get_tk_widget().configure(background=c["surface"], highlightthickness=0)
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        # O backend pode mudar o tamanho pedido pelo Canvas ao aplicar o DPI real.
+        # O contêiner conserva a altura legível sem disputar configure() com ele.
+        frame = ttk.Frame(parent, style="Surface.TFrame")
+        # O Notebook nativo pode dar à página a altura requisitada por outra aba.
+        # Só a largura vem do pack; a altura segue fonte e espaço útil do viewport.
+        frame.pack(fill=tk.X, expand=False, padx=6, pady=6)
+        frame.grid_propagate(False)
+        frame.columnconfigure(0, weight=1)
+        self._figure_frames[key] = frame
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        widget = canvas.get_tk_widget()
+        # A requisição inicial também pode incorporar DPI; não é a altura de referência.
+        height = max(480, self.theme.font.metrics("linespace") * 24)
+        frame.configure(height=height)
+        frame.rowconfigure(0, weight=1, minsize=height)
+        widget.configure(background=c["surface"], highlightthickness=0)
+        widget.grid(row=0, column=0, sticky="nsew")
         self._canvases[key] = canvas
+        self._schedule_layout()
         return fig, canvas
 
     def _style_axis(self, ax, title=None):
