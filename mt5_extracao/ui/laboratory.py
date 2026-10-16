@@ -595,18 +595,25 @@ class LaboratoryPanel:
         chart.figure.tight_layout()
         chart.draw()
         chart = self._chart(tab, "t_winloss", 0, 0, height=4.0,
-                            parent=self._analysis_view(tab, "wins_losses", "Vitórias e perdas"))
+                            parent=self._analysis_view(tab, "wins_losses", "Ganhos, perdas e zeradas"))
         chart.clear()
         ax = chart.figure.add_subplot(111)
-        charts.style_axis(ax, self.theme, "Vencedoras × perdedoras por faixa horária")
-        counts = view.groupby(["time_bucket", "win_flag"]).size().unstack(fill_value=0) \
-            .reindex(columns=[1, 0], fill_value=0)
+        charts.style_axis(ax, self.theme, "Resultado das operações por faixa horária")
+        counts = aggregate.outcome_counts(view, "time_bucket")
         x = np.arange(len(counts))
         c = self.theme.colors
-        ax.bar(x, counts[1], color=c["series"][0], width=0.65, label="vencedoras", linewidth=0)
-        ax.bar(x, counts[0], bottom=counts[1], color=c["series"][1], width=0.65, label="perdedoras", linewidth=0,
-               hatch="..")
-        totals = counts[1] + counts[0]
+        bottom = np.zeros(len(counts))
+        for key, label, color, alpha, hatch in (
+                ("wins", "ganhos (>0)", c["accent"], .85, None),
+                ("losses", "perdas (<0)", c["ink2"], .35, ".."),
+                ("flat", "zeradas (=0)", c["border"], 1.0, None),
+                ("unknown", "indisponíveis", c["surface"], 1.0, "//")):
+            if counts[key].any():
+                ax.bar(x, counts[key], bottom=bottom, color=color, alpha=alpha, width=.65,
+                       label=label, linewidth=.5 if key == "unknown" else 0,
+                       edgecolor=c["muted"], hatch=hatch)
+            bottom = bottom + counts[key].to_numpy()
+        totals = counts["n"]
         for index, total in enumerate(totals):
             crowded = len(counts) > 14
             ax.text(index, total, f"n={int(total)}", ha="center", va="bottom", rotation=90 if crowded else 0,
@@ -615,7 +622,8 @@ class LaboratoryPanel:
         ax.margins(y=0.2)
         ax.set_xticks(x)
         crowded = len(x) > 12
-        ax.set_xticklabels(counts.index, fontsize=TYPOGRAPHY["chart_tick"], rotation=45 if crowded else 0,
+        ax.set_xticklabels(["Faixa indisponível" if pd.isna(value) else str(value) for value in counts["time_bucket"]],
+                           fontsize=TYPOGRAPHY["chart_tick"], rotation=45 if crowded else 0,
                            ha="right" if crowded else "center")
         legend = ax.legend(fontsize=TYPOGRAPHY["chart_tick"], frameon=False, loc="upper left",
                            bbox_to_anchor=(1.02, 1.0), borderaxespad=0)

@@ -553,6 +553,36 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   Nenhuma operação em conta, nenhum merge. Clipping preexistente da Análise
   em 144 DPI/1280 permanece achado separado, sem ampliar este recorte.
 
+## T17.10 — operações zeradas distintas de perdas (2026-10-16)
+
+- Branch `codex/t17-10-resultados-zerados`, base T17.13/#90. Ambiente próprio
+  instalado; baseline no88cbe6c:865 aprovados/9 ignorados em1114,07 s, saída0,
+  antes do código. Correção de espaçamento da dependência T17.17 reconciliada.
+- Reprodução real BBRSI:10.777 operações,4.071 ganhos,6.366 perdas,340 zeradas;
+  o gráfico anterior mostrava6.706 perdedoras. Novo `aggregate.outcome_counts`
+  classifica o PnL no núcleo (>0/<0/=0/ausente ou inválido), preservando a
+  dimensão ausente e a população. A UI renderiza as séries prontas e omite
+  categorias sem operações da legenda. Ganhos em azul, perdas discretas com
+  trama, zeradas neutras. Não muda PF, expectativa, equity ou ledger/schema.
+- Quatorze testes do núcleo aprovados em3,00 s e oito de Laboratório em31,62 s;
+  incluem zero, ausentes/não finitos/booleanos, categoria vazia, dimensão ausente,
+  métricas preservadas, dois temas e atualização da seleção sem série antiga.
+  Suíte completa no85b81ef:875 aprovados/9 ignorados em944,54 s, saída0; PR #91 draft.
+- Aplicação real em cópia consistente, ambos temas,96/144 DPI e1280/1920:
+  barras reconciliadas com4.071/6.366/340 e soma10.777. Ledger antes/depois
+  com hash idêntico; quick_check dos dois bancos OK. Contagens CSV geradas pela API do núcleo e gráfico
+  exportado conferidos nos artefatos privados. PageDown e rolagem alcançam a
+  base do gráfico em144 DPI; sessões próprias encerradas0. Capturas em
+  docs/img/interface-visual/T17.10. Dados existentes expostos, sem novo backtest
+  ou campanha financeira; esses agregados não são evidência OOS.
+- Doctor isolado:15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Principal
+  integrada até #87 tem diagnóstico separado21 OK/1 aviso/0 falhas, ponte
+  consultada em modo somente leitura; nenhuma operação em conta.
+- Pendências separadas observadas: aviso parcial atribui origem só a MQL5 mesmo
+  na seleção Python; densidade dos rótulos horários em DPI alto e contexto
+  completo nos exports de gráficos exigem recortes próprios. Não é aceite
+  visual global, nem demonstração da meta financeira.
+
 ## T17.20 — restauração com sincronização observável (2026-10-16)
 
 - Branch `codex/t17-20-sincronizacao-arranjo`, base da principal após #89.

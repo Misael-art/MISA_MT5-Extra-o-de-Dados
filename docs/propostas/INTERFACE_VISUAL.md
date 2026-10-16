@@ -370,6 +370,27 @@ controlado foram capturados separadamente; resumo real preservado.
   sinal positivo emzero; cores representam sinal e não aprovação. Respeitar
   arquitetura existente, semestatísticas/widgetsouduplicar análise.
 
+### T17.10 — classificação fiel de resultados por faixa horária
+
+Achado: Tempo e calendário → Vitórias e perdas agrupa `win_flag=0` como
+perdedoras, incluindo resultados exatamente zerados. `stats.metrics` já usa
+perdas estritamente negativas. Há zeros no ledger real; reprodução usa cópia
+consistente da base, sem novos testes históricos.
+
+Recorte: núcleo `trade_analytics.aggregate` fornece contagens por dimensão de
+ganhos (>0), perdas (<0), zeradas (=0) e resultados ausentes/não finitos. A UI
+renderiza a agregação pronta com rótulos/sinais, cores discretas para negativos
+e neutras para zero/ausência. Dimensões ausentes devem permanecer explícitas;
+população e soma das séries precisam reconciliar. Não mudar PF, expectativa,
+equity, schema/cache ou definição existente de `win_flag`. Sem estatísticas
+novas calculadas no widget.
+
+Aceite: testes núcleo para vazio, zeros, ganhos, perdas, mistos, ausentes e
+dimensões ausentes; números existentes preservados. Comparar contagens da
+base com barras/legenda, ambos temas, 96/144 DPI, 1280/1920, interação e
+exportação do gráfico. Suíte inicial antes do código e final, doctor e
+evidências reais. Uma branch/PR própria. Campanha PF19 permanece pendente.
+
 ### T17.20 — sincronização da verificação de restauração
 
 O CI Windows do a893f54 falhou duas vezes na verificação de restauração de
