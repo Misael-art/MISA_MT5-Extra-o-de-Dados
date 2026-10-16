@@ -268,15 +268,21 @@ class UIManager:
         self.mt5_view_button = ttk.Button(header, text="Abrir visão MT5", image=self._view_icon, compound=tk.LEFT,
                                           style="Accent.TButton", command=self.open_mt5_view)
         self.mt5_view_button.pack(side=tk.RIGHT, padx=(0, 8))
-        Tooltip(self.mt5_view_button, "Abre o MetaTrader 5 com a janela organizada como você escolheu em Arquivo > "
-                                      "Configurações (janelas laterais, barras de ferramentas, perfil de gráficos e "
-                                      "disposição do painel). Se ele já estiver aberto, pergunta antes de fechar e "
-                                      "abrir de novo.", self.theme)
+        view_hint = ("Conexão desativada nesta sessão. Reabra o aplicativo sem --offline para conectar ao MT5."
+                     if self._offline_mode() else
+                     "Abre o MetaTrader 5 com a janela organizada como você escolheu em Arquivo > "
+                     "Configurações (janelas laterais, barras de ferramentas, perfil de gráficos e "
+                     "disposição do painel). Se ele já estiver aberto, pergunta antes de fechar e abrir de novo.")
+        Tooltip(self.mt5_view_button, view_hint, self.theme)
+        if self._offline_mode():
+            Tooltip(self.check_button, view_hint, self.theme)
         # Privilégios de administrador só existem (e só importam) no Windows
         if os.name == "nt":
             self.mt5_admin_button = ttk.Button(header, text="Iniciar MT5 como administrador",
                                                command=self.launch_mt5_as_admin)
             self.mt5_admin_button.pack(side=tk.RIGHT, padx=(0, 8))
+            if self._offline_mode():
+                Tooltip(self.mt5_admin_button, view_hint, self.theme)
         # Mostra a conta e o servidor em uso (ex.: "Conectado: conta 123 em MetaQuotes-Demo (demonstração)")
         self.mt5_status_value = ttk.Label(header, text="Verificando...")
         self.mt5_status_value.pack(side=tk.RIGHT, padx=(6, 12))
@@ -341,7 +347,7 @@ class UIManager:
 
         # A janela aparece primeiro; o MT5 é aberto (já organizado) e conectado em segundo plano
         self.refresh_mt5_status()
-        if not self._mt5_connected() and hasattr(self.app.mt5_connector, "initialize"):
+        if not self._offline_mode() and not self._mt5_connected() and hasattr(self.app.mt5_connector, "initialize"):
             self.root.after(200, lambda: self.connect_mt5(startup=True))
 
     def _build_symbols_tab(self, tab):
@@ -1693,6 +1699,9 @@ class UIManager:
 
     def launch_mt5_as_admin(self):
         """Inicia o MT5 como administrador (se suportado)."""
+        if self._offline_mode():
+            self.refresh_mt5_status()
+            return
         try:
             if not hasattr(self.app.mt5_connector, 'launch_mt5_as_admin'):
                 messagebox.showerror("Função não suportada", "Lançamento como administrador não implementado nesta versão.")
@@ -2078,6 +2087,11 @@ class UIManager:
         Abre (ou, com a sua confirmação, fecha e reabre) o MetaTrader 5 com a organização da janela escolhida nas
         configurações. `on_done(resultado ou None)` é chamado ao fim, na thread da interface.
         """
+        if self._offline_mode():
+            self.refresh_mt5_status()
+            if on_done:
+                on_done(None)
+            return
         from mt5_extracao.robots import mt5_tools, view
         config = self.app.config
         parent = parent or self.root
@@ -2382,7 +2396,23 @@ class UIManager:
         """Abre a pasta da documentação (docs/) no gerenciador de arquivos."""
         self._open_path(Path(self._project_root()) / "docs")
 
+    def _offline_mode(self):
+        return bool(getattr(self.app, "offline", False))
+
+    def _show_offline_status(self, quiet=False):
+        self.mt5_status_value.config(text="Análise local (offline)")
+        self.mt5_status_dot.config(foreground=self.theme.colors["ink2"])
+        if not quiet:
+            self.update_status("Reabra sem --offline para conectar.")
+        for name in ("mt5_view_button", "check_button", "mt5_admin_button"):
+            button = getattr(self, name, None)
+            if button is not None:
+                button.state(["disabled"])
+        return False
+
     def _mt5_connected(self):
+        if self._offline_mode():
+            return False
         connector = self.app.mt5_connector
         return bool(connector and self.app.mt5_initialized and connector.is_initialized)
 
@@ -2448,6 +2478,8 @@ class UIManager:
         tudo em segundo plano: a janela do programa continua utilizável. No fim atualiza a lista de ativos e, se
         não conectou, diz o motivo e o que fazer.
         """
+        if self._offline_mode():
+            return self._show_offline_status()
         if getattr(self, "_connecting", False):
             return
         from mt5_extracao import connection_help
@@ -2494,6 +2526,8 @@ class UIManager:
 
     def refresh_mt5_status(self, quiet=False):
         """Atualiza o cabeçalho com a conta e o servidor em uso (sem perguntas)."""
+        if self._offline_mode():
+            return self._show_offline_status(quiet)
         colors = self.theme.colors
         if not self._mt5_connected():
             if not quiet:
@@ -2515,6 +2549,8 @@ class UIManager:
 
     def _reconnect_mt5(self):
         """Conecta de novo e recarrega a lista de símbolos da conta."""
+        if self._offline_mode():
+            return self._show_offline_status()
         self.update_status("Status: conectando ao MetaTrader 5...")
         self.root.update_idletasks()
         self.app.mt5_initialized = bool(self.app.mt5_connector.initialize(recursion_count=0))
@@ -2525,6 +2561,8 @@ class UIManager:
 
     def _offer_demo_account(self):
         """MT5 sem conta: oferece abrir a conta de demonstração gratuita e conecta em seguida."""
+        if self._offline_mode():
+            return self._show_offline_status()
         from mt5_extracao.bootstrap import demo_account, paths
         data = demo_account.DEMO_DEFAULTS
         if not messagebox.askyesno(
@@ -2563,6 +2601,8 @@ class UIManager:
     def check_mt5_status(self):
         """Verifica a conexão com o MT5 e, se não houver, oferece a correção adequada."""
         try:
+            if self._offline_mode():
+                return self._show_offline_status()
             if not self.app.mt5_connector:
                 self.update_status("Status: MT5 não inicializado")
                 return
@@ -2588,6 +2628,8 @@ class UIManager:
     
     def _check_admin_mode(self):
         """Verifica se o MT5 está em modo de administrador."""
+        if self._offline_mode():
+            return self._show_offline_status()
         if not hasattr(self.app.mt5_connector, 'is_mt5_running_as_admin'):
             return
             
