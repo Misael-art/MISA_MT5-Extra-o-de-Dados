@@ -783,3 +783,9 @@ pendente; nenhum terminal/conta do usuário foi iniciado ou encerrado.
   continuam disponíveis. Oito focados passaram em16,47s após esse ajuste.
   A suíte56f73b2 foi interrompida241 antes da revisão, sem alegar aprovação;
   novo head tem suíte/CI próprios. Primeira inspeção offline1537barras saiu0.
+
+## T13.10 — estudo PF19 limitado (2026-10-16)
+
+Protocolo2383efd registrado antes dos resultados. Depois do aceite críticoUI e do lançador real99 (10.445BBRSI/31runs, configuração preservada), oito backtests EURUSD H1/M15, EMAATR/Donchian padrão e custos base/adverso foram executados sequencialmente no ce9fae9. Todos tiveram resultado modelado negativo; maiorPF0,875849 noDonchianM15/669operações. Nenhum OOS independente e custos/moeda não certificados; zero candidatos aprovados. Não ampliar a busca para forçar1,9. [Relatório, ICs, gates e reprodução](pesquisa/PF19_RELATORIO_20261016.md).
+
+A base de origem e o protocolo mantiveram os hashes; os oito livros foram reconciliados independentemente por contagem/GP/GL/resultado/PF. O código reusa backtester/estratégias/PF, sem SDK/terminal/contas ou mudança de parâmetros/risco. Baseline947/9 e sete focados (incluindo subprocessos CLI sintéticos) passaram; suíte geral e CI do PR100 em curso. Não confundir execução de pesquisa com integração ou aprovação financeira.
