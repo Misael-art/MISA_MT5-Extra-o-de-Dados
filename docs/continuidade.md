@@ -599,7 +599,7 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   financeiras e parâmetros foram preservados.
 - 29 testes de núcleo/desenho aprovados em 7,78 s e 9 de UI em 38,51 s, incluindo
   grades configuráveis, vazio, exclusões, zero observado, segmentos e temas.
-  Suíte completa no 3b4e6d1 em execução; resultado final ainda pendente.
+  Suíte completa no 3b4e6d1: 886 aprovados/9 ignorados em 879,42 s, saída 0. PR #92 draft.
 - Operação real nos dois temas, 96/144 DPI e 1280×800/1920×1080: 48 posições,
   37 medidas, 11 lacunas e 4 segmentos. Expectativa, acerto, n e marca de amostra
   dos grupos observados comparados com a tabela original e preservados. Rótulos
