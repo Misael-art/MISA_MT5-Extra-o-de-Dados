@@ -317,7 +317,7 @@ explicitamente o resultado armazenado da seleção para o próximo teste. Botão
 Rodar backtest aparece cortado em1280×800.
 
 - Dependência:T17.17/#88 e anteriores; ambiente próprio instalado/dev, baseline
-  9f40e96 em andamento antes do código. Evidência privada do lote históricoUI.
+  9f40e96:857 aprovados/9 ignorados em823,04 s, saída0 antes do código. Evidência privada do lote históricoUI.
 - Arquivos:ui/robot_detail.py, tests/test_ui_main_window.py, proposta/painel/
   continuidade/capturas. Sem alteração de engine, métricas, banco ou risco.
 - Passos: controles refluem pela largura real; seleção para próximo teste e
@@ -338,3 +338,14 @@ Rodar backtest aparece cortado em1280×800.
   `UIManager.backtest_recorded`, embora a execução em lote use esse hook para
   atualizar Ativos/Minha base. O recorte reutilizará o hook existente ao concluir
   o teste, com regressão da atualização imediata; não criará cálculos na UI.
+
+- Implementado no58cb114: controles refluem em4/2/1colunas, conteúdoBacktest
+  rolável com componente existente; resultado armazenado/anterior/da seleção
+  explícito, estado de execução separado dos metadados e curva. Proveniência
+  da seleção conservadora: histórico não é rotulado atual por inferência.
+- Pedido duplicado bloqueado, erro mantém resultado anterior, retorno de outro
+  robô não é atribuído ao atual; hookbacktest_recorded atualizaMinhaBase/Ativos.
+- Três focados aprovados em21,68 s; geometria repetidaDPI144:1 em11,82 s.
+  Operação real emcópia privada, temas/DPI96/144/1280/1920, testePythonH1,
+  resultado atual depois do teste e anterior após mudar período, rolagemPageDown.
+  Exposição registrada, semcampanhaPF19 ouOOSindependente. Suíte58cb114emcurso.
