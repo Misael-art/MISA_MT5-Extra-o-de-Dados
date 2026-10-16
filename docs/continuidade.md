@@ -552,3 +552,23 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Doctor isolado: 15 OK/2 avisos/1 falha de MT5.path vazio deliberado.
   Nenhuma operação em conta, nenhum merge. Clipping preexistente da Análise
   em 144 DPI/1280 permanece achado separado, sem ampliar este recorte.
+
+## T17.20 — restauração com sincronização observável (2026-10-16)
+
+- Branch `codex/t17-20-sincronizacao-arranjo`, base da principal após #89.
+  Ambiente próprio instalado; baseline b9e54c9: 860 aprovados/9 ignorados em
+  868,84 s, saída 0, antes do código.
+- Duas execuções Windows do a893f54 falharam na espera fixa de 0,6 s do teste
+  antigo. Logs e identidade da fixture/runtime preservados. A primeira correção
+  local revelou outra etapa: feedback encerrado antes do refresh que reabilita
+  o botão. Esperar apenas a mensagem permitia ignorar a segunda invocação.
+- O teste agora aguarda callback e estado esperado do diálogo com prazo finito,
+  incluindo o primeiro refresh. Cenários de restauração imediata e I/O falso
+  atrasado em 1 s; nenhum MT5 real. Todas as verificações originais de proteção
+  e bytes UTF-16 mantidas, com conferência por AST; novas verificações confirmam
+  nenhuma restauração com terminal aberto e uma única chamada quando fechado.
+- Quatro focados aprovados em 18,68 s. A tentativa local anterior, com 3 aprovações
+  e 1 falha, permanece registrada. Suíte completa no cc13d0e em execução; resultado
+  final pendente. Diff de runtime vazio: não houve alteração da aplicação.
+- Doctor isolado: 15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Nenhuma
+  conta, configuração ou arquivo do terminal do usuário foi alterado.
