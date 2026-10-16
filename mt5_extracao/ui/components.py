@@ -519,6 +519,8 @@ class ScrollableContent(ttk.Frame):
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
         self.content = ttk.Frame(self.canvas, style="Surface.TFrame")
         self._window = self.canvas.create_window((0, 0), window=self.content, anchor="nw")
+        self._geometry_sync = None
+        self.bind("<Destroy>", self._destroyed, add="+")
         self.canvas.grid(row=0, column=0, sticky="nsew")
         self.columnconfigure(0, weight=1)
         self.rowconfigure(0, weight=1)
@@ -545,6 +547,19 @@ class ScrollableContent(ttk.Frame):
         self._content_changed()
 
     def _content_changed(self, _event=None):
+        if self._geometry_sync is None:
+            self._geometry_sync = self.after_idle(self._sync_content)
+
+    def _destroyed(self, event):
+        if event.widget is self and self._geometry_sync is not None:
+            self.after_cancel(self._geometry_sync)
+            self._geometry_sync = None
+
+    def _sync_content(self):
+        # A largura pode alterar o requisito de altura dos rótulos que quebram linhas.
+        # Mantém o agendamento marcado durante o cálculo para não reentrar pelo Configure.
+        self.content.update_idletasks()
+        self._geometry_sync = None
         inset = 2 * int(self.canvas.cget("highlightthickness"))
         height = max(self.content.winfo_reqheight(), self.canvas.winfo_height() - inset)
         if int(float(self.canvas.itemcget(self._window, "height"))) != height:
