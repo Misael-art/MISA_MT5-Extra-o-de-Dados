@@ -102,8 +102,8 @@ def test_metrics_from_results_match_the_card_keys():
     assert m["return_pct"] == pytest.approx(0.081374) and m["expectancy_r"] is None
     assert m["max_drawdown_pct"] == pytest.approx(300 / 11113.74)                # do pico até o fim
     empty = backtest.metrics_from_results([], 10000.0)
-    assert (empty["trades"], empty["profit_factor"], empty["max_drawdown_pct"]) == (0, 0.0, 0.0)
-    assert backtest.metrics_from_results([["t", 5.0, 1.0]], 100.0)["profit_factor"] == backtest.PF_CAP
+    assert (empty["trades"], empty["profit_factor"], empty["max_drawdown_pct"]) == (0, None, 0.0)
+    assert backtest.metrics_from_results([["t", 5.0, 1.0]], 100.0)["profit_factor"] is None
 
 
 def test_read_hdk_trades_follows_the_hadouken_contract(tmp_path):

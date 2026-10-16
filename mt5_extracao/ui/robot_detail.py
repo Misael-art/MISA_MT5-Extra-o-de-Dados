@@ -68,7 +68,8 @@ LIVE_TEXT_PYTHON = (
 RUN_TILES = (("Operações", "trades", "int", "Operações fechadas no período."),
              ("Acerto", "win_rate", "pct", "Parcela das operações que terminaram com lucro."),
              ("Profit factor", "profit_factor", "num", "Soma dos lucros dividida pela soma das perdas. Acima de 1 ganha "
-                                                       "mais do que perde; a validação exige mais de 1,3."),
+                                                       "mais do que perde; a validação exige mais de 1,3. Sem perdas, "
+                                                       "o PF é indefinido e não satisfaz esse critério."),
              ("Expectativa", "expectancy_r", "r", "Resultado médio por operação, em múltiplos do risco inicial (R)."),
              ("Resultado", "return_pct", "pct", "Resultado sobre o capital inicial, já com spread, slippage e corretagem."),
              ("Queda máxima", "max_drawdown_pct", "pct", "Maior queda do capital desde um pico, nas operações fechadas."))

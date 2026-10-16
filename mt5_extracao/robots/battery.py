@@ -17,6 +17,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, List, Optional
 
+from mt5_extracao import profit_factor
 from . import catalog, contract, mql, safety_lib, store
 from . import risk as risk_mod
 
@@ -99,6 +100,8 @@ def _pct(value: float, digits: int = 1) -> str:
 
 
 def _num(value: float, digits: int = 2) -> str:
+    if value is None:
+        return "indefinido"
     return f"{value:.{digits}f}".replace(".", ",")
 
 
@@ -285,9 +288,8 @@ def static_items(robot, config=None, robots=(), preset: Optional[str] = None) ->
 
 # --- estatística ----------------------------------------------------------------------
 
-def _profit_factor(pnl) -> float:
-    gains, losses = sum(x for x in pnl if x > 0), -sum(x for x in pnl if x < 0)
-    return gains / losses if losses > 0 else (float("inf") if gains > 0 else 0.0)
+def _profit_factor(pnl) -> Optional[float]:
+    return profit_factor.fields(pnl)["profit_factor"]
 
 
 def _longest_loss_streak(pnl) -> int:
@@ -388,10 +390,11 @@ def statistical_items(robot, run: Optional[dict], config=None, db=None, preset: 
     items.append(Item(STATISTICAL, "trades", f"Pelo menos {MIN_TRADES} operações", OK if enough else FAIL,
                       f"{len(pnl)} operações", "" if enough else "Teste um período maior ou um timeframe menor."))
     pf = _profit_factor(pnl)
-    pf_ok = pf > criteria.min_profit_factor
+    pf_ok = profit_factor.passes(pf, criteria.min_profit_factor)
     items.append(Item(STATISTICAL, "profit_factor", f"Profit factor acima de {_num(criteria.min_profit_factor)}",
-                      OK if pf_ok else FAIL, "profit factor " + ("sem perdas" if pf == float("inf") else _num(pf)),
-                      "" if pf_ok else "O que o robô ganha não cobre o que perde com folga: não opere este ajuste."))
+                      OK if pf_ok else FAIL, "profit factor " + profit_factor.text(pf),
+                      "Sem perdas no denominador: PF indefinido, amostra inadequada para este critério." if pf is None
+                      else "" if pf_ok else "O que o robô ganha não cobre o que perde com folga: não opere este ajuste."))
     expectancy = sum(pnl) / len(pnl) if pnl else 0.0
     items.append(Item(STATISTICAL, "expectancy", "Expectativa positiva com custos", OK if expectancy > 0 else FAIL,
                       f"{_num(expectancy)} por operação, em média",
@@ -440,10 +443,10 @@ def statistical_items(robot, run: Optional[dict], config=None, db=None, preset: 
                               "Teste um período maior."))
         else:
             items.append(Item(STATISTICAL, "out_of_sample", "Resultado se mantém no fim do período",
-                              OK if recent_pf > 1.0 else FAIL,
-                              f"profit factor {'sem perdas' if recent_pf == float('inf') else _num(recent_pf)} nas últimas "
+                              OK if profit_factor.passes(recent_pf, 1.0) else FAIL,
+                              f"profit factor {profit_factor.text(recent_pf)} nas últimas "
                               f"{len(recent)} operações ({_pct(RECENT_SHARE, 0)} finais do teste)",
-                              "" if recent_pf > 1.0 else "O robô parou de funcionar na parte mais recente do teste."))
+                              "" if profit_factor.passes(recent_pf, 1.0) else "PF insuficiente ou indefinido na parte mais recente do teste."))
         items.append(Item(STATISTICAL, "robustness", "Robustez com parâmetros ±20%", WARN,
                           "não avaliado nesta versão para robôs MQL5 (exige repetir o Strategy Tester com os parâmetros "
                           "vizinhos)", "Repita o backtest com --param mudando cada parâmetro em ±20% e compare."))
@@ -452,10 +455,10 @@ def statistical_items(robot, run: Optional[dict], config=None, db=None, preset: 
     extra = spec.spread_points * spec.point * spec.money_per_price_unit if spec is not None and spec.known else 0.0
     if extra > 0 and all(len(t) > 2 and t[2] for t in trades) and trades:
         stressed = _profit_factor([float(t[1]) - extra * float(t[2]) for t in trades])
-        items.append(Item(STATISTICAL, "cost_stress", "Aguenta o dobro do spread", OK if stressed > 1.0 else FAIL,
-                          f"profit factor {'sem perdas' if stressed == float('inf') else _num(stressed)} com um spread "
+        items.append(Item(STATISTICAL, "cost_stress", "Aguenta o dobro do spread", OK if profit_factor.passes(stressed, 1.0) else FAIL,
+                          f"profit factor {profit_factor.text(stressed)} com um spread "
                           f"a mais por operação ({_num(spec.spread_points, 0)} pontos)",
-                          "" if stressed > 1.0 else "O lucro some com um custo um pouco maior: margem pequena demais."))
+                          "" if profit_factor.passes(stressed, 1.0) else "PF insuficiente ou indefinido no cenário de custo maior."))
     else:
         items.append(Item(STATISTICAL, "cost_stress", "Aguenta o dobro do spread", WARN,
                           f"não avaliado: falta a especificação de contrato de {run['symbol']} (spread e valor do ponto)",
@@ -531,13 +534,13 @@ def deep_items(db, config, robot, run: dict, runner: Optional[Callable] = None,
         results.append((test, record["metrics"]))
     periods = {t["label"]: m for t, m in results if t["kind"] == "period"}
     first, last = periods["parte inicial"], periods["parte final"]
-    detail = (f"profit factor {_num(first['profit_factor'])} na parte inicial ({first['trades']} operações) e "
-              f"{_num(last['profit_factor'])} na parte final ({last['trades']} operações)")
+    detail = (f"profit factor {profit_factor.text(first['profit_factor'])} na parte inicial ({first['trades']} operações) e "
+              f"{profit_factor.text(last['profit_factor'])} na parte final ({last['trades']} operações)")
     if last["trades"] < MIN_RECENT_TRADES:
         oos = Item(STATISTICAL, "out_of_sample", "Fora da amostra (parte final do período)", WARN,
                    detail + f"; menos de {MIN_RECENT_TRADES} operações na parte final", "Teste um período maior.")
     else:
-        ok = last["profit_factor"] > 1.0
+        ok = profit_factor.passes(last["profit_factor"], 1.0)
         oos = Item(STATISTICAL, "out_of_sample", "Fora da amostra (parte final do período)", OK if ok else FAIL, detail,
                    "" if ok else "O robô não se sustenta na parte mais recente do período.")
     variations = [(t["label"], m) for t, m in results if t["kind"] == "param"]
@@ -546,8 +549,8 @@ def deep_items(db, config, robot, run: dict, runner: Optional[Callable] = None,
                       "o robot.json não lista parâmetros em \"tunable\": nada foi variado",
                       "Liste em \"tunable\" os parâmetros numéricos da estratégia (docs/sdk/contrato.md).")
     else:
-        weak = [f"{label} (profit factor {_num(m['profit_factor'])})" for label, m in variations
-                if m["profit_factor"] <= criteria.robustness_min_pf]
+        weak = [f"{label} (profit factor {profit_factor.text(m['profit_factor'])})" for label, m in variations
+                if not profit_factor.passes(m["profit_factor"], criteria.robustness_min_pf)]
         robust = Item(STATISTICAL, "robustness", "Robustez com parâmetros ±20%", FAIL if weak else OK,
                       "perde o resultado com: " + "; ".join(weak) if weak
                       else f"{len(variations)} variações mantêm profit factor acima de {_num(criteria.robustness_min_pf)}",

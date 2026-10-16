@@ -152,7 +152,9 @@ def test_metrics_and_equity_curve():
 
 
 def test_compute_metrics_edge_cases():
-    assert compute_metrics([], 1000)["profit_factor"] == 0.0
+    assert compute_metrics([], 1000)["profit_factor"] is None
+    assert compute_metrics([], 1000)["profit_factor_status"] == "no_trades"
     df = bars([[100, 101, 99, 100], [100, 101, 99, 100], [100, 111, 100, 110]])
     res = run_backtest(df, Manual(long=[0], stop={0: 90}, target={0: 110}), SPEC, CFG)
-    assert math.isinf(res.metrics["profit_factor"])
+    assert res.metrics["profit_factor"] is None
+    assert res.metrics["profit_factor_status"] == "no_losses"

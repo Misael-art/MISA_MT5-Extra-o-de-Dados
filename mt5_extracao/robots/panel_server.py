@@ -16,6 +16,7 @@ Regras de segurança (docs/PLANO_DE_TRABALHO.md, "Painel vivo"), todas cobertas 
 O Python continua sem enviar ordens: as ações são leitura da base, backtests e a gravação do arquivo de parada.
 """
 import hmac
+from mt5_extracao import profit_factor
 import json
 import logging
 import secrets
@@ -149,7 +150,7 @@ class PanelApp:
                 job.say(head + "não testado: " + item["error"])
             else:
                 m = item["run"]["metrics"]
-                job.say(head + f"{m['trades']} operações, profit factor {m['profit_factor']:.2f}".replace(".", ",") +
+                job.say(head + f"{m['trades']} operações, profit factor {profit_factor.text(m['profit_factor'])}" +
                         (" (já testado)" if item["skipped"] else ""))
         from . import mt5_tools
         bridge_was_running = False

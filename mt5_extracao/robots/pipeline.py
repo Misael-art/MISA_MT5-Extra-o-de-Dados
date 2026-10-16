@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 
 from . import backtest, battery, catalog, contract, mt5_tools, store
+from mt5_extracao import profit_factor
 
 PASSED, WARNED, FAILED, SKIPPED = "passou", "aviso", "falhou", "não executada"
 STEPS = (("contract", "Contrato do robô"), ("compile", "Instalar e compilar"),
@@ -95,7 +96,7 @@ def check(db, config, robot, robots, symbol: str, timeframe: str, start=None, en
         m = record["metrics"]
         step.data["run_id"] = record["run_id"]
         step.data["metrics"] = {k: v for k, v in m.items() if not isinstance(v, (dict, list))}
-        detail = f"{m['trades']} operações, profit factor {m['profit_factor']:.2f}".replace(".", ",")
+        detail = f"{m['trades']} operações, profit factor {profit_factor.text(m['profit_factor'])}"
         return (PASSED, detail) if m["trades"] else (FAILED, "nenhuma operação no período: confira o ativo, o período "
                                                              "e se o robô tem sinal")
 

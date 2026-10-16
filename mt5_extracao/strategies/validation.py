@@ -24,12 +24,10 @@ import numpy as np
 import pandas as pd
 
 from . import get_strategy
+from mt5_extracao import profit_factor
 from .backtester import BacktestConfig, SymbolSpec, Trade, compute_metrics, run_backtest
 
 log = logging.getLogger(__name__)
-
-PF_CAP = 999.0   # profit factor "infinito" (sem perdas) é gravado/exibido como 999
-
 
 @dataclass
 class Criteria:
@@ -43,10 +41,6 @@ class Criteria:
     mc_runs: int = 1000
     mc_percentile: float = 95.0
     seed: int = 42
-
-
-def _cap(pf: float) -> float:
-    return PF_CAP if math.isinf(pf) else float(pf)
 
 
 def _grid(key: str) -> List[dict]:
@@ -110,8 +104,10 @@ def walk_forward(df: pd.DataFrame, key: str, spec: Optional[SymbolSpec] = None,
             "window": w + 1,
             "oos_start": str(df["time"].iloc[is_end]), "oos_end": str(df["time"].iloc[oos_end - 1]),
             "params": best[1],
-            "is_profit_factor": _cap(best[2]["profit_factor"]), "is_trades": best[2]["trades"],
-            "oos_profit_factor": _cap(oos.metrics["profit_factor"]), "oos_trades": oos.metrics["trades"],
+            "is_profit_factor": best[2]["profit_factor"], "is_trades": best[2]["trades"],
+            "is_profit_factor_status": best[2]["profit_factor_status"],
+            "oos_profit_factor": oos.metrics["profit_factor"], "oos_trades": oos.metrics["trades"],
+            "oos_profit_factor_status": oos.metrics["profit_factor_status"],
             "oos_net_profit": oos.metrics["net_profit"],
         })
     positive = sum(1 for w in windows if w["oos_net_profit"] > 0)
@@ -138,8 +134,9 @@ def robustness(df: pd.DataFrame, key: str, spec: Optional[SymbolSpec] = None,
                 new = value * factor
             r = run_backtest(df, get_strategy(key, **{**base, name: new}), spec, config)
             variants.append({"param": name, "value": new, "factor": factor,
-                             "profit_factor": _cap(r.metrics["profit_factor"]), "trades": r.metrics["trades"]})
-    ok = [v for v in variants if v["profit_factor"] > min_pf]
+                             "profit_factor": r.metrics["profit_factor"], "trades": r.metrics["trades"],
+                             "profit_factor_status": r.metrics["profit_factor_status"]})
+    ok = [v for v in variants if profit_factor.passes(v["profit_factor"], min_pf)]
     return {"variants": variants, "share_ok": len(ok) / len(variants) if variants else 0.0,
             "robust": bool(variants) and len(ok) == len(variants)}
 
@@ -163,6 +160,8 @@ def _pct(x: float) -> str:
 
 
 def _num(x: float, digits: int = 2) -> str:
+    if x is None or not math.isfinite(x):
+        return "indefinido"
     return f"{x:.{digits}f}".replace(".", ",")
 
 
@@ -178,12 +177,14 @@ def validate(df: pd.DataFrame, key: str, spec: Optional[SymbolSpec] = None,
     rob = robustness(df, key, spec, config, params, criteria.robustness_min_pf)
     mc = monte_carlo(wf["oos_trades"], criteria.mc_runs, criteria.mc_percentile, criteria.seed)
     oos = wf["oos_metrics"]
-    pf_oos = _cap(oos["profit_factor"])
+    pf_oos = oos["profit_factor"]
 
     checks = [
         {"name": "Profit factor fora da amostra", "value": pf_oos, "threshold": criteria.min_profit_factor,
-         "passed": pf_oos > criteria.min_profit_factor,
-         "text": f"PF fora da amostra {_num(pf_oos)} (mínimo > {_num(criteria.min_profit_factor)})"},
+         "passed": profit_factor.passes(pf_oos, criteria.min_profit_factor),
+         "text": f"PF fora da amostra {_num(pf_oos)}"
+                 + (f" — {profit_factor.reason(oos)}" if pf_oos is None else "")
+                 + f" (mínimo > {_num(criteria.min_profit_factor)})"},
         {"name": "Operações fora da amostra", "value": oos["trades"], "threshold": criteria.min_trades,
          "passed": oos["trades"] >= criteria.min_trades,
          "text": f"{oos['trades']} operações fora da amostra (mínimo {criteria.min_trades})"},
@@ -247,12 +248,12 @@ def save_validation(db, symbol: str, timeframe: str, verdict: dict) -> None:
             "result_json = excluded.result_json, data_start = excluded.data_start, data_end = excluded.data_end, "
             "created_at = excluded.created_at"),
             {"s": symbol, "tf": timeframe, "k": verdict["strategy"], "a": int(verdict["approved"]),
-             "st": verdict["status"], "pf": _cap(verdict["oos_metrics"]["profit_factor"]),
+             "st": verdict["status"], "pf": verdict["oos_metrics"]["profit_factor"],
              "n": int(verdict["oos_metrics"]["trades"]),
              "pw": float(next(c["value"] for c in verdict["checks"] if c["name"].startswith("Janelas"))),
              "rb": int(verdict["robustness"]["robust"]), "dd": float(verdict["monte_carlo"]["dd_percentile"]),
              "p": json.dumps(verdict["params"], default=_json_default),
-             "r": json.dumps(verdict, default=_json_default, ensure_ascii=False),
+             "r": json.dumps(verdict, default=_json_default, ensure_ascii=False, allow_nan=False),
              "ds": verdict["data_start"], "de": verdict["data_end"],
              "c": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
 
@@ -265,7 +266,26 @@ def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optiona
     if not inspect(db.engine).has_table("_strategy_validation"):
         return pd.DataFrame(columns=cols)
     with db.engine.connect() as conn:
-        df = pd.read_sql(text(f"SELECT {', '.join(cols)} FROM _strategy_validation"), conn)
+        df = pd.read_sql(text(f"SELECT {', '.join(cols)}, result_json FROM _strategy_validation"), conn)
+    df["profit_factor_oos"] = df["profit_factor_oos"].astype(object)
+    for index, row in df.iterrows():
+        try:
+            payload = json.loads(row["result_json"] or "{}")
+            saved = payload.get("oos_metrics", {}) if isinstance(payload, dict) else {}
+            if not isinstance(saved, dict):
+                saved = {}
+        except (TypeError, ValueError):
+            saved = {}
+        recorded = row["profit_factor_oos"]
+        projected = profit_factor.read_fields({**saved, "profit_factor": recorded})
+        df.at[index, "profit_factor_oos"] = projected["profit_factor"]
+        df.at[index, "profit_factor_status"] = projected["profit_factor_status"]
+        df.at[index, "profit_factor_recorded"] = recorded
+        df.at[index, "approved_recorded"] = bool(row["approved"])
+        if projected["profit_factor"] is None:
+            df.at[index, "approved"] = 0
+            df.at[index, "status"] = str(row["status"] or "") + "; " + profit_factor.reason(projected)
+    df = df.drop(columns="result_json")
     if symbols:
         df = df[df["symbol"].isin(symbols)]
     if timeframe:

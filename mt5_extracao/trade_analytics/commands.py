@@ -1,6 +1,7 @@
 """`mt5x trades ...` (Laboratório, Fase 16). Registrado em cli.build_parser por `add_parser`; a saída usa os auxiliares
 do cli. Cada tarefa da Fase 16 acrescenta aqui o seu subcomando (T16.12 fecha o conjunto)."""
 import argparse
+from mt5_extracao import profit_factor
 
 
 def add_parser(sub) -> None:
@@ -141,7 +142,7 @@ def _analysis(args, ctx) -> int:
     if args.trades_command == "report":
         total = aggregate.summarize(lab, aggregate._initial_equity(ctx.config), aggregate.min_trades(ctx.config))
         out(f"{scope}: {total['n']} operações, acerto {total['win_rate'] * 100:.1f}%, fator de lucro "
-            f"{total['profit_factor']:.2f}, expectativa {total['expectancy']:.2f} (90%: {total['ci_low']} a "
+            f"{profit_factor.text(total['profit_factor'])}, expectativa {total['expectancy']:.2f} (90%: {total['ci_low']} a "
             f"{total['ci_high']})")
         tables = {}
         for dim in [d.strip() for d in args.by.split(",") if d.strip()]:
@@ -183,7 +184,7 @@ def _analysis(args, ctx) -> int:
     for part, label in (("search", "Procura"), ("holdout", "Reserva final")):
         b, a = ev[part]["before"], ev[part]["after"]
         out(f"{label}: expectativa {b['expectancy']:.2f} -> {a['expectancy']:.2f}; fator de lucro "
-            f"{b['profit_factor']:.2f} -> {a['profit_factor']:.2f}; queda {b['max_drawdown_pct'] * 100:.1f}% -> "
+            f"{profit_factor.text(b['profit_factor'])} -> {profit_factor.text(a['profit_factor'])}; queda {b['max_drawdown_pct'] * 100:.1f}% -> "
             f"{a['max_drawdown_pct'] * 100:.1f}%")
     out(f"Provas do walk-forward: melhorou em {ev['folds_improved']} de {len(ev['folds'])}. {ev['note']}")
     path = export.proposal(scope, chosen, ev) if args.export else None
@@ -212,7 +213,7 @@ def _compare(args, ctx) -> int:
     result = {}
     for key, item in table.items():
         m = item["metrics"]
-        out(f"{item['name']}: {m['n']} op., acerto {m['win_rate'] * 100:.1f}%, fator de lucro {m['profit_factor']:.2f}, "
+        out(f"{item['name']}: {m['n']} op., acerto {m['win_rate'] * 100:.1f}%, fator de lucro {profit_factor.text(m['profit_factor'])}, "
             f"expectativa {m['expectancy']:.2f}, queda {m['max_drawdown_pct'] * 100:.1f}%"
             + ("  [só estudo]" if item.get("study_only") else ""))
         result[key] = {"name": item["name"], "metrics": m, "study_only": item.get("study_only", False),

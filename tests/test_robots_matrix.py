@@ -53,6 +53,25 @@ def test_inventory_timeframes_and_what_is_missing(env):
                                   matrix.NEGATIVE, matrix.UNRELIABLE, matrix.UNTESTED, matrix.NO_DATA}
 
 
+def test_undefined_pf_does_not_keep_projected_approval(env):
+    db, robots = env
+    robot = robots[0]
+    run(db, robot, "EURUSD", "H1", net=900, pf=None)
+    check(db, robot, "EURUSD", "H1", True)
+    result = matrix.build(db, None, robots)
+    c = cell(result, robot, "EURUSD", "H1")
+    assert c["profit_factor"] is None and c["status"] == matrix.REJECTED
+    assert "PF indefinido" in c["verdict"]
+    assert not matrix.positives(result, robot.key)
+
+
+def test_positive_ranking_places_missing_pf_after_defined_pf():
+    common = {"robot": "r", "status": matrix.PROMISING, "return_pct": 0.1}
+    rows = [{**common, "profit_factor": value} for value in [None, 0, 2000, float("nan"), 2]]
+    result = matrix.positives({"cells": rows}, "r")
+    assert [c["profit_factor"] for c in result[:3]] == [2000, 2, 0]
+
+
 def test_rule_1_profit_is_not_approval(env):
     db, robots = env
     mql = robots[0]
