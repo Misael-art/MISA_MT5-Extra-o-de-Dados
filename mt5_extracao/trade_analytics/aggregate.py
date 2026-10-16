@@ -66,6 +66,66 @@ def by_dimension(lab: pd.DataFrame, dims: Iterable[str], config=None, ci: bool =
     return pd.DataFrame(rows)
 
 
+def _pnl_numbers(values: pd.Series) -> np.ndarray:
+    numbers = pd.to_numeric(values, errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    boolean = values.map(lambda value: isinstance(value, (bool, np.bool_))).to_numpy(dtype=bool)
+    return np.where(np.isfinite(numbers) & ~boolean, numbers, np.nan)
+
+
+def outcome_counts(lab: pd.DataFrame, dimension: str) -> pd.DataFrame:
+    """Contagens por sinal do PnL recebido; zero e ausência nunca são perdas.
+
+    `n` inclui todas as operações, inclusive resultados inválidos e dimensão
+    ausente. A dimensão ausente permanece como NA para a apresentação explicá-la.
+    Não altera as métricas financeiras nem o livro recebido.
+    """
+    columns = [dimension, "n", "wins", "losses", "flat", "unknown"]
+    if lab.empty:
+        return pd.DataFrame(columns=columns)
+    rows = []
+    for key, group in lab.groupby(dimension, sort=True, dropna=False, observed=True):
+        values = _pnl_numbers(group["pnl"])
+        valid = np.isfinite(values)
+        rows.append({dimension: key, "n": len(group),
+                     "wins": int(np.count_nonzero(valid & (values > 0))),
+                     "losses": int(np.count_nonzero(valid & (values < 0))),
+                     "flat": int(np.count_nonzero(valid & (values == 0))),
+                     "unknown": int(np.count_nonzero(~valid))})
+    return pd.DataFrame(rows, columns=columns)
+
+
+def hourly_summary(lab: pd.DataFrame, config=None) -> dict:
+    """Grade diária explícita, sem resultado inventado para faixas sem medida.
+
+    Metadados distinguem operações sem faixa válida e sem PnL disponível.
+    As métricas dos grupos observados vêm de by_dimension, sem interpolação.
+    """
+    from mt5_extracao.trade_analytics import enrich
+
+    minutes = enrich.time_bucket_minutes(config)
+    labels = [f"{minute // 60:02d}:{minute % 60:02d}" for minute in range(0, 1440, minutes)]
+    timed = lab.loc[lab["time_bucket"].isin(labels)] if not lab.empty else lab
+    numbers = _pnl_numbers(timed["pnl"]) if not timed.empty else np.array([], dtype=float)
+    finite = np.isfinite(numbers)
+    measured = timed.loc[finite].copy()
+    if not measured.empty:
+        measured["pnl"] = numbers[finite]
+    observed = by_dimension(measured, ["time_bucket"], config, ci=False)
+    if observed.empty:
+        table = pd.DataFrame({"time_bucket": labels, "n": 0, "expectancy": np.nan,
+                              "win_rate": np.nan, "small": False})
+    else:
+        table = observed.set_index("time_bucket").reindex(labels)
+        table.index.name = "time_bucket"
+        table["n"] = table["n"].fillna(0).astype(int)
+        missing = table["n"].eq(0)
+        table.loc[missing, ["expectancy", "win_rate"]] = np.nan
+        table["small"] = table["small"].astype("boolean").fillna(False).astype(bool) & ~missing
+        table = table.reset_index()[["time_bucket", "n", "expectancy", "win_rate", "small"]]
+    return {"table": table, "bucket_min": minutes, "timed_n": len(timed), "measured_n": len(measured),
+            "untimed_n": len(lab) - len(timed), "missing_result_n": len(timed) - len(measured)}
+
+
 def crosstab(lab: pd.DataFrame, row: str, col: str, metric: str = "expectancy", config=None) -> Dict[str, pd.DataFrame]:
     """Heatmap: {"value": métrica por célula, "n": operações por célula, "small": célula pequena}."""
     table = by_dimension(lab, [row, col], config, ci=False)

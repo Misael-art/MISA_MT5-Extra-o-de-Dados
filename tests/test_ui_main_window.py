@@ -968,3 +968,29 @@ def test_robot_backtest_controls_reflow_inside_available_width(ui):
                 assert cell.winfo_rootx() + cell.winfo_width() <= detail.run_controls.winfo_rootx() + detail.run_controls.winfo_width()
             assert detail.run_button.winfo_width() >= detail.run_button.winfo_reqwidth()
         ui.toggle_theme()
+
+
+@pytest.mark.parametrize("value,expected", [(2.5, "+2,50%"), (-2.5, "-2,50%"), (0, "0,00%"),
+                                           (None, "—"), (float("nan"), "—"), (float("inf"), "—")])
+def test_market_return_attention_preserves_zero_missing_and_theme(ui, value, expected):
+    from mt5_extracao.ui.visual_tokens import result_attention_colors, contrast_ratio
+    from tkinter import ttk
+    panel = ui.analysis_panel
+    summary = {"last": 1.2, "return_pct": value, "volatility_pct": 2.0, "max_drawdown_pct": -3.0,
+               "mean_range_pct": .1, "up_bars_pct": 50.0}
+    original = dict(summary)
+    for _ in range(2):
+        panel._show_summary(summary)
+        label = panel.tile_values["return_pct"]
+        assert label.cget("text") == expected
+        fill, ink = result_attention_colors(value, ui.theme.colors)
+        style = ttk.Style(ui.root)
+        assert style.lookup(label.cget("style"), "background").lower() == fill.lower()
+        assert style.lookup(label.cget("style"), "foreground").lower() == ink.lower()
+        assert contrast_ratio(ink, fill) >= 4.5
+        ui.toggle_theme()
+        assert label.cget("text") == expected
+    assert summary == original
+    assert "Não mede lucro do robô" in panel.return_legend.cget("text")
+    panel._empty("Sem dados")
+    assert panel.tile_values["return_pct"].cget("text") == "—"

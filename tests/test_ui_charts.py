@@ -93,3 +93,17 @@ def test_curve_and_scatter_legends_are_outside_the_data_axes():
     legend_box = ax.get_legend().get_bbox_to_anchor().transformed(ax.transAxes.inverted())
     assert legend_box.x0 >= 1.0
     assert "moeda da conta" in ax.get_ylabel()
+
+
+def test_bars_keep_missing_measurements_distinct_from_observed_zero():
+    chart = _chart()
+    ax = chart.figure.add_subplot(111)
+    charts.bars(chart, ax, ["ausente", "NaN", "infinito", "zero", "perda"],
+                [None, np.nan, np.inf, 0.0, -1.0], n=[0, 0, 0, 3, 4],
+                small=[True, True, True, False, False])
+    assert all(np.isnan(rect.get_height()) for rect in ax.patches[:3])
+    assert ax.patches[3].get_height() == 0.0
+    assert [text.get_text() for text in ax.texts] == ["0,00\nn=3", "-1,00\nn=4"]
+    missing = chart.hover[0](SimpleNamespace(inaxes=ax, xdata=0))
+    assert "—" in missing and "n=0" in missing and "amostra pequena" not in missing
+    assert "0,00" in chart.hover[0](SimpleNamespace(inaxes=ax, xdata=3))
