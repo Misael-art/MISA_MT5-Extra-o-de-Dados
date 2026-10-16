@@ -274,3 +274,37 @@ ScrollableContent ajusta largura, mas não altura da janela Canvas.
   em docs/img/interface-visual/T17.14/. Aceite visual global continua pendente.
 
 - Focados finais:35 aprovados em52,74 s, incluindoLaboratório/Relações/componentes.
+
+## T17.17 — detalhe legível nas divisões de Relações
+
+Registrado antes da implementação. Medição real da UI emDPI144 encontra detalhe
+com143px em1920×1080 e1280×800, por pesos de colunas sem reserva de largura;
+texto quebra por palavra. FonteLato11 mede364px para28 dígitos, ou388px com
+preenchimento. T17.14 resolve altura, não resolve essa largura independente.
+
+- Dependência:T17.14/#87 e ancestrais. Ambiente próprio instalado/dev, baseline
+  ad31f06:856 aprovados/9 ignorados em732,12 s, saída0, antes do código.
+- Arquivos:ui/relations.py, tests/test_ui_relations.py, proposta/painel/
+  continuidade/capturas. Não mudar valores, semântica de estados,engine ou fonte.
+- Passos: largura mínima de detalhe pela fonte real, divisão proporcional que
+  respeita a reserva ou empilhamento quando não couber; testar posições/medidas
+  reais após resize1920→1280→820→1920, nos doisDPIs/temas; preservar seleção,
+  rolagem e mínimos de gráficos/tabelas; suíte/doctor/PR próprio.
+- Aceite: texto do detalhe tem largura legível emduascolunas; caso contrário
+  empilha e permanece rolável. Sem fixar número de colunas por resolução
+  nominal quando font/DPI/largura efetiva exigirem reflow. A fonte continua
+  explicitamente sintética, não há conexão aoDTO/serviçoF18 ainda pendente.
+
+- Implementado noe8bdb11: colunas proporcionais com reserva mínima pela fonte
+  (28dígitos+preenchimento), incluindo o espaço entre áreas; empilha quando
+  as proporções não cabem. Sem fixarDPI/resolução dentro da regra.
+- Focados finais:12 aprovados em30,05 s. Operação em ambos os temas,DPI96/144,
+  resize1920→1280→820→1920. EmDPI144/1920, detalhe143→441px (mínimo388);
+  em1280e820, empilhado1154/774px. Gráfico mantém344px de altura em144DPI.
+  Capturasdocs/img/interface-visual/T17.17; fonte sintética declarada.
+- Baseline856/9,732,12 s, saída0; suíte completae8bdb11:857 aprovados/9 ignorados em808,56 s, saída0.
+  Ainda não constitui aceite visual global nem integração aoF18real.
+
+- PageDown/rolagem/seleção OOS no detalhe empilhado operados emDPI144/1280,
+  captura adicional versionada; encerramento0. Doctoroffline15OK/2avisos/1falha
+  esperada porpath vazio. CI#86 verde após repetição limitada no mesmoSHA.

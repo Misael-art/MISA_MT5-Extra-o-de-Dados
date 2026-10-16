@@ -462,3 +462,50 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Doctor deste recorte:15 OK/2 avisos/1 falha porMT5.path vazio deliberado
   e ponte desativada; não é diagnóstico verde. Host principal segue diagnóstico
   separado21 OK/1 aviso/0 falhas. PR #87 draft, sem merge.
+
+## T17.17 — detalhe legível em Relações (2026-10-16)
+
+- Branch `codex/t17-17-detalhe-legivel`, baseT17.14/#87. `_split_view` mede
+  reserva de texto pela fonte real e mantém proporção das colunas; se não
+  couber, empilha e conserva rolagem e mínimos dos gráficos/tabelas. Nenhuma
+  mudança de dados/seleção/estados/engine; fonte continua sintética declarada.
+- Ambiente próprio instalado/dev; baselinead31f06:856 aprovados/9 ignorados
+  em732,12 s, saída0. Focados finais12 aprovados em30,05 s. Suíte completa
+  e8bdb11:857 aprovados/9 ignorados em808,56 s, saída0.
+  O resultado não substitui a revisão independente nem oCI noSHAfinal.
+- Aplicação operada emdois temas,DPI96/144,1920×1080/1280×800/820×800 e
+  retorno à janela grande. Em144DPI, detalhe143→441px (mínimo388) em1920;
+  em1280e820 empilha1154/774px; gráfico344px preservado. Capturas
+  `docs/img/interface-visual/T17.17/`. Nenhum resultado sintético chamado real.
+- Próximos problemas:T17.16 contexto/backtestbotão;T17.13 retornozeroemAnálise;
+  T17.10/T17.11 semântica deempates/lacunas exige núcleo. Revisão/integração
+  ainda pendentes; #79/#80 fora da autorização nova solicitada, nenhuma conta.
+
+- Inspeção adicionalDPI144/1280: PageDown pelo teclado e rolagem levam ao
+  detalhe empilhado; seleção OOS atualiza o detalhe. Sessão própria encerrada0.
+  Doctoroffline15 OK/2 avisos/1 falha deliberada deMT5.path vazio; hostprincipal
+  comdiagnóstico separado21 OK/1 aviso/0 falhas. PR #88 draft, semmerge.
+- CI da dependência #86: primeiratentativaWindowstimeout60 s emfixtureSQL
+  inalterada; uma reexecução no mesmo8246686 passou, todoschecksverdes. Falha
+  inicial preservada nos logs e descrição, sem alterar timeout ou testes.
+
+- CI Windows do 2706c66 revelou duas falhas reais: painel interno recebia
+  novamente os 4 px já reservados pelo split. Removido espaçamento duplicado
+  de Linha do tempo, Distribuição e Convergência, preservando as exigências de
+  largura dos testes. Log inicial preservado; validação da correção em execução.
+
+- Correção de espaçamento: 13 testes de Relações aprovados em58,77 s;
+  operação96/144DPI e ciclo1920→1280→820→1920, ambos temas, confirmou
+  detalhe acima do mínimo. DPI144:445px(min388) em1920, empilha nas menores;
+  DPI96:453px em1920 e292px(min276) em1280. Interfaces encerradas0.
+  Capturas de demonstração identificadas SYNTHETIC; suíte completa
+  final b35f274:858 aprovados/9 ignorados em1118,60 s, saída0. Windows
+  do mesmo commit aprovado em20m47s.
+
+- Primeira repetição local do ajuste:784 aprovados/83 ignorados, saída0;
+  não aceita para QA porque74 testes gráficos ficaram sem display após falha
+  do Xvfb no roteiro privado. Mantido log da tentativa. Roteiro corrigido
+  (-noreset e displayfd aberto), repetido mesmo SHA:858/9, sem exclusões
+  gráficas. Os nove ignorados esperados são integrações opcionais separadas
+  e são executadas em seus jobs do CI. Nenhum teste alterado para contornar
+  a falha do ambiente. Doctor:15 OK/2 avisos/1 falha deliberada MT5.path vazio.
