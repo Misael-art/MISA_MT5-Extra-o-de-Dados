@@ -83,3 +83,24 @@ As cinco capturas citadas no pedido não estavam disponíveis no diretório de a
 Problemas observados na linha de base: a configuração Tk do host podia cair na fonte bitmap `fixed` de 7 pt; a hierarquia entre texto de apoio e conteúdo principal era fraca; o tema claro tinha contraste `muted` 3,15:1 e `accent` 3,87:1 em alguns fundos; a grade de amostra pequena mostrava hachura em todas as células da fixture. A hachura e o estado de amostra pequena devem continuar identificáveis.
 
 O teste inicial da worktree Linux antes das alterações foi **809 aprovados, 10 pulados, em 492,63 s**, sob `xvfb-run -a`. Depois das alterações, os testes de interface focados tiveram **43 aprovados** e a suíte final **814 aprovados, 10 pulados, em 718,50 s**, com `TMPDIR` e `--basetemp` próprios. Um run completo anterior terminou por falta transitória de espaço. `doctor`: 16 OK, 2 avisos esperados, 0 falhas. O Xvfb local pode expor um conjunto diferente de fontes do X real; por isso, teste automatizado e inspeção visual da fonte instalada são verificações distintas.
+
+## T17.7 — Referência temporal e população do Laboratório
+
+Registro anterior à implementação, 2026-10-16. Prioridade do dono: auditoria real e
+refinamento visual antes da campanha PF ≥ 1,9. PRs #79/#80 continuam separados e sem merge autorizado.
+
+- **Problema observado:** Horários mostra “Entrada” com 263 operações reais parciais
+  enriquecidas pela saída. Na seleção mista, a matriz usa somente entradas, enquanto
+  os KPIs usam a seleção inteira, sem explicitar essa diferença de população.
+- **Dependências:** T16.3 (`time_ref`), T17.3 e componentes existentes, presentes no master.
+- **Arquivos:** `ui/laboratory.py`, `tests/test_ui_laboratory.py`, este plano, painel de
+  status, continuidade e evidências deste recorte. T17.6 permanece preservada separadamente.
+- **Passos:** baseline; identificar populações recebidas; rotular matriz e contexto
+  temporal; testar completo/parcial/misto e troca; inspecionar temas/resoluções/DPI;
+  suíte e doctor; commit/PR próprio.
+- **Aceite:** referência entrada/saída/mista explícita; exclusão de saídas na matriz
+  mista visível; números e seleção inalterados; testes de regressão e capturas reais.
+  Não suavizar curvas. Windows real permanece pendente. O aceite integral da nova
+  auditoria continua separado deste recorte.
+- **Baseline:** instalador Linux sem MT5 e dependências dev concluídos; 837 aprovados,
+  9 ignorados em 726,65 s, saída 0, Xvfb exclusivo e Python 3.11.15.

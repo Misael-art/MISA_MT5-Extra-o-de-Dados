@@ -189,3 +189,40 @@ def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
     monkeypatch.setattr(export, "_folder", lambda: tmp_path)
     panel.export_proposal()
     assert list(tmp_path.glob("robot_python_donchian_*.json"))
+
+
+def test_temporal_population_updates_without_changing_matrix_values(panel):
+    """Entrada e saída em horas distintas: rótulo e n acompanham a população existente."""
+    ledger.save_trades(panel.db, "complete", _trades(5, n=3), robot_key="python:full", symbol="AAA", timeframe="H1")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    original = panel.view.copy(deep=True)
+    parent = panel.overview_views["heat"]
+    panel._overview_matrix(parent, original)
+    rows = [panel.overview_heat_table.tree.item(i, "values") for i in panel.overview_heat_table.tree.get_children()]
+    assert "Entrada · 3 operações" in panel.overview_heat_notice.message.cget("text")
+    partial = original.copy(deep=True)
+    partial["time_ref"] = "saida"
+    panel.view = partial
+    panel._overview_matrix(parent, partial)
+    assert "Saída (entrada indisponível) · 3 operações" in panel.overview_heat_notice.message.cget("text")
+    assert rows == [panel.overview_heat_table.tree.item(i, "values") for i in
+                    panel.overview_heat_table.tree.get_children()]
+    mixed = pd.concat([original, partial], ignore_index=True)
+    panel.view = mixed
+    panel._overview()
+    text = panel.overview_heat_notice.message.cget("text")
+    assert "Entrada · 3 operações" in text and "3 operações sem entrada ficam fora" in text
+    assert rows == [panel.overview_heat_table.tree.item(i, "values") for i in
+                    panel.overview_heat_table.tree.get_children()]
+    panel._time()
+    for key in ("t_week", "t_month", "t_hours", "t_winloss"):
+        text = panel._chart_panels[key].notice.message.cget("text")
+        assert "Referência mista" in text and "6 operações" in text
+    panel._time()
+    assert panel._chart_panels["t_winloss"].notice.message.cget("text").count("Referência mista") == 1
+    pd.testing.assert_frame_equal(mixed, panel.view)
+    panel.view = original
+    panel._overview()
+    assert "ficam fora" not in panel.overview_heat_notice.message.cget("text")
+    pd.testing.assert_frame_equal(original, panel.view)

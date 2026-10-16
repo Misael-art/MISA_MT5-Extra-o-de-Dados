@@ -426,6 +426,17 @@ class LaboratoryPanel:
             text = "Hachura diagonal = amostra positiva abaixo do mínimo; n = operações neste grupo."
         panel.set_notice(text, kind="partial", theme=self.theme)
 
+    def _temporal_context(self, view):
+        """Descreve a referência recebida do enriquecimento, sem inferir entradas."""
+        refs = set(view["time_ref"].dropna())
+        if refs == {"entrada"}:
+            return "Entrada"
+        if refs == {"saida"}:
+            return "Saída (entrada indisponível)"
+        if refs == {"entrada", "saida"}:
+            return "Referência mista: entrada quando disponível; saída nas demais"
+        return "Referência temporal indisponível"
+
     def _overview_matrix(self, parent, view):
         """Tabela rolável para a matriz horária de 24 linhas, sem comprimir rótulos ou contagens."""
         table = self._crosstab(view, "time_bucket", "day_of_week")
@@ -437,7 +448,7 @@ class LaboratoryPanel:
             self.overview_heat_table = TablePanel(
                 parent, "Expectativa por faixa horária × dia", ("Faixa", *day_names),
                 (80, 150, 150, 150, 150, 150, 150, 150),
-                ("w",) + ("center",) * 7, height=9, subtitle="Entrada · moeda da conta",
+                ("w",) + ("center",) * 7, height=9, subtitle="Referência temporal · moeda da conta",
                 padding=SPACING["xs"])
             self.overview_heat_table.grid(row=0, column=0, sticky="nsew", padx=SPACING["xs"], pady=SPACING["xs"])
             self.overview_heat_notice = Notice(
@@ -448,6 +459,15 @@ class LaboratoryPanel:
                                            before=self.overview_heat_table.table_frame)
             parent.rowconfigure(0, weight=1)
             parent.columnconfigure(0, weight=1)
+        self.overview_heat_table.subtitle_label.configure(text="Moeda da conta")
+        excluded = len(self.view) - len(view)
+        population = f"{self._temporal_context(view)} · {fmt_int(len(view))} operações na matriz."
+        if excluded:
+            population += f" {fmt_int(excluded)} operações sem entrada ficam fora desta matriz; KPIs incluem o recorte inteiro."
+        self.overview_heat_notice.message.configure(
+            text=population + " Cada célula: resultado · n=operações. * = amostra pequena; n=0 = sem operações.")
+        self.overview_heat_notice.message.bind(
+            "<Configure>", lambda event: self.overview_heat_notice.message.configure(wraplength=max(180, event.width)))
         tree = self.overview_heat_table.tree
         tree.delete(*tree.get_children())
         for hour in values.index:
@@ -561,6 +581,15 @@ class LaboratoryPanel:
             text.set_color(c["ink2"])
         chart.figure.tight_layout()
         chart.draw()
+        self._sample_notice(chart, None)
+        context = self._temporal_context(view) + f" · {fmt_int(len(view))} operações no recorte."
+        for key in ("t_week", "t_month", "t_hours", "t_winloss"):
+            panel = self._chart_panels[key]
+            sample = panel.notice.message.cget("text") if panel.notice is not None else ""
+            panel.set_notice(context + (" " + sample if sample else ""), kind="info", theme=self.theme)
+            panel.notice.message.bind(
+                "<Configure>", lambda event, message=panel.notice.message:
+                message.configure(wraplength=max(180, event.width)))
 
     def _micro(self):
         from mt5_extracao.trade_analytics import aggregate
