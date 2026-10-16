@@ -521,7 +521,7 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   distingue retorno de preço e lucro de robô. Mesmos tokens de T17.12; sem
   mudança em fórmulas, candles ou banco.
 - Oito testes focados aprovados em 42,24 s; incluem zero, ausência, NaN/Inf,
-  tema, limpeza e contraste mínimo 4,5. Suíte final em execução no 65b13d0.
+  tema, limpeza e contraste mínimo 4,5. Suíte final 65b13d0: 865 aprovados/9 ignorados em1251,92 s, saída0. PR #90 draft.
 - Interface operada em cópia consistente da base real EURUSD H1: resumo
   idêntico ao anterior após normalizar somente datas para JSON. Dois temas,
   96/144 DPI, 1280×800/1920×1080; cenários zero/ausência rotulados CONTROLLED.
