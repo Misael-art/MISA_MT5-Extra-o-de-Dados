@@ -289,3 +289,41 @@ def test_outcome_chart_separates_zero_and_refreshes_in_both_themes(panel):
     axis = panel._charts["t_winloss"].figure.axes[0]
     assert [container.get_label() for container in axis.containers] == ["ganhos (>0)"]
     assert sum(bar.get_height() for bar in axis.containers[0].patches) == 3
+
+
+def test_hourly_curve_preserves_real_spacing_and_gaps_in_both_themes(panel):
+    from dataclasses import replace
+    from matplotlib.path import Path
+    entries = pd.to_datetime(["2025-01-06 00:05", "2025-01-06 02:35", "2025-01-06 03:35", "2025-01-06 04:05"])
+    trades = [replace(trade, entry_time=entry, exit_time=entry + pd.Timedelta(minutes=10), pnl=pnl)
+              for trade, entry, pnl in zip(_trades(11, n=4), entries, [0.0, 5.0, -2.0, 2.0])]
+    ledger.save_trades(panel.db, "gaps", trades, robot_key="python:gaps", symbol="AAA", timeframe="H1")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    original = panel.view.copy(deep=True)
+    panel.tabs.select(1)
+    expected = np.full(48, np.nan)
+    expected[[0, 5, 7, 8]] = [0, 100, 0, 100]
+    for _ in range(2):
+        panel._time()
+        panel.ui.root.update()
+        chart = panel._charts["t_hours"]
+        line = chart.figure.axes[1].lines[0]
+        np.testing.assert_equal(line.get_xdata(), np.arange(48))
+        np.testing.assert_equal(line.get_ydata(), expected)
+        codes = [code for _vertices, code in line.get_path().iter_segments()]
+        assert codes.count(Path.MOVETO) == 3
+        assert len(chart.figure.axes[0].texts) == 4
+        assert len(chart.figure.axes[0].get_xticks()) <= 12
+        assert "30 min" in chart.figure.axes[0].get_xlabel()
+        notice = panel._chart_panels["t_hours"].notice.message.cget("text")
+        assert "Lacunas (n=0)" in notice and "não equivalem a zero" in notice
+        pd.testing.assert_frame_equal(panel.view, original)
+        panel.theme.toggle()
+    panel.view = original.copy(deep=True)
+    panel.view["time_bucket"] = None
+    panel._time()
+    chart = panel._charts["t_hours"]
+    assert len(chart.figure.axes) == 1 and not chart.figure.axes[0].lines
+    assert "Sem operações com horário e resultado válidos" in chart.figure.axes[0].texts[0].get_text()
+    assert "4 operações sem faixa horária válida ficam fora" in panel._chart_panels["t_hours"].notice.message.cget("text")

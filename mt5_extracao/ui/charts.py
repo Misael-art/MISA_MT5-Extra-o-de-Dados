@@ -170,10 +170,14 @@ def bars(chart: Chart, ax, labels, values, n=None, small=None, title="", fmt=mon
     theme = chart.theme
     c = theme.colors
     style_axis(ax, theme, title)
-    values = [float(v) if v is not None else 0.0 for v in values]
-    colors = [c["series"][0] if (v >= 0 or not signed) else c["series"][1] for v in values]
+    values = [float(v) if v is not None else np.nan for v in values]
+    values = [v if np.isfinite(v) else np.nan for v in values]
+    colors = [c["border"] if not np.isfinite(v) else c["series"][0] if (v >= 0 or not signed)
+              else c["series"][1] for v in values]
     drawn = ax.bar(range(len(values)), values, color=colors, width=0.65, linewidth=0)
     for k, rect in enumerate(drawn):
+        if not np.isfinite(values[k]):
+            continue
         if small is not None and small[k]:
             rect.set_hatch("///")
             rect.set_alpha(0.45)
@@ -205,7 +209,7 @@ def bars(chart: Chart, ax, labels, values, n=None, small=None, title="", fmt=mon
         if not 0 <= k < len(values):
             return None
         extra = f" (n={int(n[k])})" if n is not None else ""
-        warn = "  (amostra pequena)" if small is not None and small[k] else ""
+        warn = "  (amostra pequena)" if np.isfinite(values[k]) and small is not None and small[k] else ""
         return f"{labels[k]}: {fmt(values[k])}{extra}{warn}"
     chart.hover.append(hover)
 

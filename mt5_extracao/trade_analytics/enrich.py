@@ -41,6 +41,11 @@ def _setting(config, key, default):
         return default
 
 
+def time_bucket_minutes(config) -> int:
+    """Largura usada pelo enriquecimento e pela grade de apresentação."""
+    return max(1, _setting(config, "time_bucket_min", 30))
+
+
 def calendar_columns(times: pd.Series, bucket_min: int = 30) -> pd.DataFrame:
     """Dia da semana (0 = segunda), do mês, semana do mês (1–5), mês, fim de mês (últimos 3 dias), hora e faixa."""
     t = pd.to_datetime(times)
@@ -99,7 +104,7 @@ def enrich(db, config, trades: pd.DataFrame) -> pd.DataFrame:
     """Uma linha por operação (mesmo índice de `trades`) com COLUMNS."""
     if trades is None or trades.empty:
         return pd.DataFrame(columns=COLUMNS)
-    bucket_min = max(1, _setting(config, "time_bucket_min", 30))
+    bucket_min = time_bucket_minutes(config)
     vol_period = max(1, _setting(config, "volatility_period", 14))
     before = _setting(config, "event_window_before_min", 30)
     after = _setting(config, "event_window_after_min", 30)

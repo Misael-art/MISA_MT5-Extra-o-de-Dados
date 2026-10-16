@@ -576,24 +576,36 @@ class LaboratoryPanel:
         self._sample_notice(chart, month["small"])
         chart.figure.tight_layout()
         chart.draw()
-        hours = aggregate.by_dimension(view, ["time_bucket"], cfg, ci=False)
+        hourly = aggregate.hourly_summary(view, cfg)
+        hours = hourly["table"]
         chart = self._chart(tab, "t_hours", 0, 0, height=4.0,
                             parent=self._analysis_view(tab, "hours", "Expectativa e acerto"))
         chart.clear()
-        ax = chart.figure.add_subplot(111)
-        charts.bars(chart, ax, list(hours["time_bucket"]), hours["expectancy"], hours["n"], hours["small"],
-                    "Faixa horária: expectativa (barras) e acerto % (linha)")
-        self._sample_notice(chart, hours["small"])
-        twin = ax.twinx()
-        twin.plot(range(len(hours)), hours["win_rate"] * 100, color=self.theme.colors["ink2"], linewidth=1.2,
-                  marker="o", markersize=3)
-        twin.set_ylabel("Acerto (%)", color=self.theme.colors["muted"], fontsize=TYPOGRAPHY["chart_label"])
-        twin.set_ylim(0, 100)
-        twin.tick_params(colors=self.theme.colors["muted"], labelsize=TYPOGRAPHY["chart_tick"], length=0)
-        for side in ("top", "right", "left", "bottom"):
-            twin.spines[side].set_visible(False)
-        chart.figure.tight_layout()
-        chart.draw()
+        if hourly["measured_n"]:
+            ax = chart.figure.add_subplot(111)
+            charts.bars(chart, ax, list(hours["time_bucket"]), hours["expectancy"], hours["n"], hours["small"],
+                        "Faixa horária: expectativa (barras) e acerto % (linha)")
+            self._sample_notice(chart, hours["small"])
+            # A grade continua completa; só os rótulos do eixo são espaçados.
+            ticks = list(range(0, len(hours), max(1, (len(hours) + 11) // 12)))
+            ax.set_xticks(ticks)
+            ax.set_xticklabels(hours["time_bucket"].iloc[ticks], fontsize=TYPOGRAPHY["chart_tick"],
+                               rotation=45 if len(ticks) > 8 else 0, ha="right" if len(ticks) > 8 else "center")
+            ax.set_xlabel(f"Horário · faixas de {hourly['bucket_min']} min", color=self.theme.colors["muted"],
+                          fontsize=TYPOGRAPHY["chart_label"])
+            twin = ax.twinx()
+            twin.plot(range(len(hours)), hours["win_rate"] * 100, color=self.theme.colors["ink2"], linewidth=1.2,
+                      marker="o", markersize=3)
+            twin.set_ylabel("Acerto (%)", color=self.theme.colors["muted"], fontsize=TYPOGRAPHY["chart_label"])
+            twin.set_ylim(0, 100)
+            twin.tick_params(colors=self.theme.colors["muted"], labelsize=TYPOGRAPHY["chart_tick"], length=0)
+            for side in ("top", "right", "left", "bottom"):
+                twin.spines[side].set_visible(False)
+            chart.figure.tight_layout()
+            chart.draw()
+        else:
+            chart.message("Sem operações com horário e resultado válidos para este gráfico.")
+            self._sample_notice(chart, None)
         chart = self._chart(tab, "t_winloss", 0, 0, height=4.0,
                             parent=self._analysis_view(tab, "wins_losses", "Ganhos, perdas e zeradas"))
         chart.clear()
@@ -636,6 +648,12 @@ class LaboratoryPanel:
         for key in ("t_week", "t_month", "t_hours", "t_winloss"):
             panel = self._chart_panels[key]
             sample = panel.notice.message.cget("text") if panel.notice is not None else ""
+            if key == "t_hours":
+                sample = "Lacunas (n=0): sem observações válidas; não equivalem a zero e não são ligadas. " + sample
+                if hourly["untimed_n"]:
+                    sample += f" {hourly['untimed_n']} operações sem faixa horária válida ficam fora deste gráfico."
+                if hourly["missing_result_n"]:
+                    sample += f" {hourly['missing_result_n']} operações com horário, mas sem resultado válido, ficam fora."
             panel.set_notice(context + (" " + sample if sample else ""), kind="info", theme=self.theme)
             panel.notice.message.bind(
                 "<Configure>", lambda event, message=panel.notice.message:
