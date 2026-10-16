@@ -216,3 +216,26 @@ na timeline de Relações, conforme instrução de não suavizar resultados.
   Base vazia local, fixture de Relações explicitamente sintética, dois temas,
   DPI96/144 e 1280×800/1920×1080. Suíte posterior b9fd90a: 852 aprovados/1 falha/9 ignorados em652,79 s, saída1; mesma espera fixa de conexão da baseline.
   Limite de ocupação vertical registrado para outro recorte; sem aceite global.
+
+## T17.15 — sincronização do teste de recuperação da conexão
+
+Recorte registrado antes do código. Falha repetida na baseline e pós-T17.8:
+`test_no_internet_is_said_plainly_with_what_to_do` consulta a UI 0,8 s após cada
+trabalho em background. Em carga, o último callback ainda está pendente; isolado
+passou em6,04 s. Não há evidência de defeito do conector nesta reprodução.
+
+- Base: T17.8/#85; ambiente próprio instalado/dev. Baseline completa b9fd90a:
+  852 aprovados/1 falha/9 ignorados em652,79 s; nenhuma alteração de runtime desde.
+- Arquivos: tests/test_ui_main_window.py, proposta/painel/continuidade.
+- Passos: aguardar conclusão observável de cada tentativa com prazo limitado;
+  manter todas as asserções de mensagens, estado, conta simulada e botão; testar
+  cenário com worker deliberadamente mais lento que0,8 s; exigir falha explícita ao vencer o prazo; rodar
+  focados, suíte e doctor; PR próprio. Nenhuma conexão/conta real necessária.
+- Aceite: teste não depende de velocidade incidental da máquina; não aumentar
+  somente sleep, não retirar asserção nem ignorar falha; timeout falha claramente.
+  Não mexer em outras esperas ou runtime fora deste recorte.
+
+- Focados: 5 aprovados em23,75 s, incluindo worker0/1 s e casos adjacentes
+  de abertura/terminal existente/falha de organização. Todas as asserções de
+  resultado preservadas; nenhuma mudança de runtime. Suíte completa20765d8:854 aprovados/9 ignorados
+  em765,21 s, saída0.
