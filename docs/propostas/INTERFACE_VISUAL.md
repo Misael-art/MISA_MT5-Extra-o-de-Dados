@@ -294,3 +294,13 @@ preenchimento. T17.14 resolve altura, não resolve essa largura independente.
   empilha e permanece rolável. Sem fixar número de colunas por resolução
   nominal quando font/DPI/largura efetiva exigirem reflow. A fonte continua
   explicitamente sintética, não há conexão aoDTO/serviçoF18 ainda pendente.
+
+- Implementado noe8bdb11: colunas proporcionais com reserva mínima pela fonte
+  (28dígitos+preenchimento), incluindo o espaço entre áreas; empilha quando
+  as proporções não cabem. Sem fixarDPI/resolução dentro da regra.
+- Focados finais:12 aprovados em30,05 s. Operação em ambos os temas,DPI96/144,
+  resize1920→1280→820→1920. EmDPI144/1920, detalhe143→441px (mínimo388);
+  em1280e820, empilhado1154/774px. Gráfico mantém344px de altura em144DPI.
+  Capturasdocs/img/interface-visual/T17.17; fonte sintética declarada.
+- Baseline856/9,732,12 s, saída0; suíte completae8bdb11 em andamento.
+  Ainda não constitui aceite visual global nem integração aoF18real.

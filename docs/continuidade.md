@@ -462,3 +462,20 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Doctor deste recorte:15 OK/2 avisos/1 falha porMT5.path vazio deliberado
   e ponte desativada; não é diagnóstico verde. Host principal segue diagnóstico
   separado21 OK/1 aviso/0 falhas. PR #87 draft, sem merge.
+
+## T17.17 — detalhe legível em Relações (2026-10-16)
+
+- Branch `codex/t17-17-detalhe-legivel`, baseT17.14/#87. `_split_view` mede
+  reserva de texto pela fonte real e mantém proporção das colunas; se não
+  couber, empilha e conserva rolagem e mínimos dos gráficos/tabelas. Nenhuma
+  mudança de dados/seleção/estados/engine; fonte continua sintética declarada.
+- Ambiente próprio instalado/dev; baselinead31f06:856 aprovados/9 ignorados
+  em732,12 s, saída0. Focados finais12 aprovados em30,05 s. Suíte completa
+  e8bdb11 em andamento. Não chamarCI/suíte final verde antes da conclusão.
+- Aplicação operada emdois temas,DPI96/144,1920×1080/1280×800/820×800 e
+  retorno à janela grande. Em144DPI, detalhe143→441px (mínimo388) em1920;
+  em1280e820 empilha1154/774px; gráfico344px preservado. Capturas
+  `docs/img/interface-visual/T17.17/`. Nenhum resultado sintético chamado real.
+- Próximos problemas:T17.16 contexto/backtestbotão;T17.13 retornozeroemAnálise;
+  T17.10/T17.11 semântica deempates/lacunas exige núcleo. Revisão/integração
+  ainda pendentes; #79/#80 fora da autorização nova solicitada, nenhuma conta.
