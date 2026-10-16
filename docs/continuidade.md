@@ -1,5 +1,21 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Frente de organização ORG — 2026-10-15
+
+A auditoria local de organização (não publicada) inventariou o trabalho espalhado entre os três repositórios e fez a
+preservação Git em ORG-01 (bundles por repositório, restauração verificada, patches e tar do WIP da T17.6; nada foi
+removido, movido ou publicado). O PR documental ORG-02 registra as fontes canônicas, a fila de integração e a política
+de commits/PRs/merges em [organizacao_ecossistema.md](organizacao_ecossistema.md), e as unidades ORG no
+[PLANO_DE_TRABALHO](PLANO_DE_TRABALHO.md).
+
+Regras já em vigor: uma tarefa por PR com base reconciliada e cada agente em worktree próprio; nada de merge em
+bloco; a T16.2b é feita no repositório HADOUKEN populado (`projeto-indicadores-mt5`), não no checkout reservado
+`HADOUKEN-MQL5-Framework` (que segue vazio até um ADR); as versões 1.4.0/1.5.0 da Safety só viram release estável
+depois da revisão de política/validação; a limpeza física de worktrees só depois dos gates (ORG-09).
+
+A T17.6 (worktree `../MISA_MT5-Extra-o-Dados-T17.6`) segue com WIP do responsável; não remover nem substituir. A
+próxima ação da fila é o recorte do isolamento PostgreSQL (ORG-04), em PR próprio.
+
 ## Retomada T18.8 — 2026-10-15
 
 A apresentação local da T18.8 foi implementada. A aba Laboratório tem as visões Matriz (Indicador × indicador e Indicador × alvo),
