@@ -542,16 +542,21 @@ class ScrollableContent(ttk.Frame):
 
     def _canvas_changed(self, event):
         self.canvas.itemconfigure(self._window, width=event.width)
-        self._sync_scrollbar()
+        self._content_changed()
 
     def _content_changed(self, _event=None):
+        inset = 2 * int(self.canvas.cget("highlightthickness"))
+        height = max(self.content.winfo_reqheight(), self.canvas.winfo_height() - inset)
+        if int(float(self.canvas.itemcget(self._window, "height"))) != height:
+            self.canvas.itemconfigure(self._window, height=height)
         bounds = self.canvas.bbox("all")
         if bounds:
             self.canvas.configure(scrollregion=bounds)
         self._sync_scrollbar()
 
     def _sync_scrollbar(self):
-        needs_scroll = self.content.winfo_reqheight() > self.canvas.winfo_height() + 2
+        available = self.canvas.winfo_height() - 2 * int(self.canvas.cget("highlightthickness"))
+        needs_scroll = self.content.winfo_reqheight() > available
         if needs_scroll and not self.scrollbar.winfo_manager():
             self.scrollbar.grid(row=0, column=1, sticky="ns")
         elif not needs_scroll and self.scrollbar.winfo_manager():

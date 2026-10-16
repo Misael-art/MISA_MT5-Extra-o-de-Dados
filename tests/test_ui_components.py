@@ -224,3 +224,27 @@ def test_matrix_cells_preserve_values_and_one_keyboard_entry(app):
     matrix.set_rows(["única"], rows[:1]);root.update()
     assert len(matrix.cells) == 1
     assert matrix.content.winfo_reqheight() < 200
+
+
+def test_scrollable_content_fills_available_height_and_restores_scroll(app):
+    from mt5_extracao.ui.components import ScrollableContent
+    root, theme = app
+    viewport = ScrollableContent(root, theme)
+    viewport.pack(fill=tk.BOTH, expand=True)
+    content = ttk.Frame(viewport.content, height=280)
+    content.pack(fill=tk.BOTH, expand=True)
+    for _ in range(2):
+        for height in (600, 280, 160, 600):
+            root.geometry(f"500x{height}")
+            root.update()
+            expected = max(viewport.content.winfo_reqheight(), viewport.canvas.winfo_height() - 2)
+            assert viewport.content.winfo_height() == expected
+            assert viewport.scrollbar.winfo_ismapped() == (height <= 280)
+            if height <= 280:
+                root.focus_force();viewport.canvas.focus_set()
+                viewport.canvas.event_generate("<Next>");root.update()
+                assert viewport.canvas.yview()[0] > 0
+            else:
+                assert viewport.canvas.yview() == (0.0, 1.0)
+                assert content.winfo_height() >= 580
+        theme.toggle()
