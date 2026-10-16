@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from mt5_extracao import cli, profit_factor as pf
 from mt5_extracao.database_manager import DatabaseManager
-from mt5_extracao.robots import backtest, battery, store
+from mt5_extracao.robots import backtest, battery, catalog, store
 from mt5_extracao.strategies import report, validation
 from mt5_extracao.strategies.backtester import Trade, compute_metrics
 from mt5_extracao.trade_analytics import stats
@@ -206,3 +206,22 @@ def test_persisted_battery_approval_for_no_loss_run_is_revoked_only_in_read_proj
     with db.engine.connect() as conn:
         assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, "[]")
     db.close()
+
+
+@pytest.mark.parametrize("original", [float("inf"), -float("inf"), float("nan"), None])
+def test_nonfinite_legacy_recorded_value_does_not_escape_in_json_provenance(original):
+    fields = pf.read_fields({"profit_factor": original}, [2000, -1], 2)
+    assert fields["profit_factor"] == 2000 and fields["profit_factor_recorded"] is None
+    json.dumps(fields, allow_nan=False)
+
+
+def test_catalog_does_not_rank_external_undefined_approval_before_defined_validation():
+    common = {"timeframe": "H1", "strategy": "donchian", "approved": True, "status": "relatado",
+              "trades_oos": 300, "positive_windows": 1.0, "robust": True, "mc_dd": 0.1,
+              "created_at": "2026-01-01"}
+    rows = pd.DataFrame([{**common, "symbol": "UNKNOWN", "profit_factor_oos": None},
+                         {**common, "symbol": "DEFINED", "profit_factor_oos": 2.0}])
+    robot = SimpleNamespace(kind=catalog.PYTHON, key="python:donchian", stage=catalog.IMPORTED, results=[])
+    catalog.attach_validations([robot], rows)
+    assert [x["symbol"] for x in robot.results] == ["DEFINED", "UNKNOWN"]
+    assert robot.results[0]["approved"] and not robot.results[1]["approved"]

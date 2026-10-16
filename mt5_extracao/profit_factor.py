@@ -75,7 +75,7 @@ def read_fields(metrics: dict, pnl=None, expected_count=None) -> dict:
     if pnl is not None:
         values = list(pnl)
         if expected_count is not None and len(values) == expected_count:
-            return {**fields(values), "profit_factor_recorded": original,
+            return {**fields(values), "profit_factor_recorded": original if finite(original) is not None else None,
                     "profit_factor_origin": "ledger_recomputed"}
     if metrics.get("profit_factor_version") == VERSION:
         gains, loss = finite(metrics.get("gross_profit")), finite(metrics.get("gross_loss"))

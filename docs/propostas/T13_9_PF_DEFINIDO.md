@@ -53,3 +53,33 @@ Referências consultadas em 2026-10-16:
 
 - https://www.metatrader5.com/en/terminal/help/algotrading/testing_report
 - https://www.mql5.com/en/docs/constants/environment_state/statistics
+
+## Implementação e verificação
+
+O contrato comum está em `mt5_extracao/profit_factor.py`. O livro antigo é
+reconciliado somente na leitura, com valor relatado e origem preservados quando
+representáveis em JSON estrito. Um valor antigo não finito não reaparece como
+`Infinity` no campo de proveniência; o registro original permanece no banco.
+Baterias antigas vinculadas a uma execução com PF indefinido também exigem
+nova validação na projeção, conservando flags e itens armazenados. Catálogo e
+matriz reutilizam os runs carregados. A correção não valida aprovações antigas
+sem vínculo de execução nem certifica custos que não foram registrados.
+
+Focados iniciais:156 aprovados em53,87s. Após a revisão das baterias legadas:
+93 aprovados em14,96s; contrato/live/UI:56 em27,52s. Suíte240f92a:926 aprovados
+/9 ignorados em681,75s, saída0. O ajuste final de JSON/ordenação tem verificação
+própria e novo head; a evidência integral correspondente é registrada no PR97.
+A suíte5576195 foi encerrada para incorporar a revisão (241), sem alegação
+de aprovação. Doctor isolado:15OK/2avisos/1falha deliberada por terminal não
+configurado e ponte desativada. A principal foi diagnosticada separadamente:
+21OK/1aviso/0falhas; Windows com MT5 real permanece pendente.
+
+Na cópia histórica,4.140 valores alheios ao PF foram idênticos entre os dois
+produtores comparados; os276 hashes de livros permaneceram iguais, assim como
+o arquivo SQLite. Sessão nativa em144DPI:263 operações reais mantêm PF0,87;
+cenários controlados explicitamente sintéticos mostram ausência com motivo e
+PF2000 inteiro. O motivo curto cabe no cartão (106px requisitados/216px úteis),
+após a inspeção detectar corte da descrição longa. Sessão encerrada com saída0.
+Nenhuma estratégia nova, ordem, backtest ou resultado OOS foi produzido por
+essa verificação. As informações de custos/moeda ausentes continuam pendência
+explícita antes de qualificar qualquer campanha PF líquido≥1,9.

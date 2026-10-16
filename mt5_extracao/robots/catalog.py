@@ -311,7 +311,8 @@ def attach_validations(robots: List[Robot], validations) -> None:
             continue
         rows = validations[validations["strategy"] == robot.key.split(":", 1)[1]]
         robot.results = sorted((
-            {"symbol": r.symbol, "timeframe": r.timeframe, "approved": bool(r.approved), "status": r.status,
+            {"symbol": r.symbol, "timeframe": r.timeframe,
+             "approved": bool(r.approved) and profit_factor.finite(r.profit_factor_oos) is not None, "status": r.status,
              "profit_factor": profit_factor.finite(r.profit_factor_oos), "trades": int(r.trades_oos),
              "positive_windows": float(r.positive_windows), "robust": bool(r.robust),
              "max_drawdown": float(r.mc_dd), "when": r.created_at,
