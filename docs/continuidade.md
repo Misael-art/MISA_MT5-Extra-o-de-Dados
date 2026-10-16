@@ -552,3 +552,24 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   final pendente. Diff de runtime vazio: não houve alteração da aplicação.
 - Doctor isolado: 15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Nenhuma
   conta, configuração ou arquivo do terminal do usuário foi alterado.
+
+## T17.21 — informação recolhível sem perder a seleção (2026-10-16)
+
+- Ambiente próprio instalado/dev; baseline eed5f34 com 861 aprovados/9 ignorados
+  em653,15 s, saída0, antes do código. Reutiliza DetailsPanel, sem dependências.
+- Variante de informação com botão ℹ e texto de ação, Enter/Espaço e Escape;
+  recolher conserva o texto e devolve foco ao botão quando necessário. Seis
+  detalhes de seleção começam fechados; mudança de seleção atualiza o conteúdo
+  sem expansão automática. O split devolve largura/altura à análise e conserva
+  a largura de leitura de T17.17 quando aberto.
+- Critérios extensos dos estados e explicação do traçado ficam sob informação;
+  contexto primário e avisos sintéticos/custos/ausência/validade permanecem
+  expostos. Recorte avançado mantém seus dados e passa ao mesmo botão informativo.
+- Trinta testes existentes de componentes/Relações passaram em23,42 s; com
+  os novos contratos de teclado, foco, texto fechado, seleção e ganho de área,
+  33 passaram em28,97 s. Verificações anteriores de detalhe legível permanecem
+  exercitadas com o painel explicitamente aberto; assertivas do componente
+  original conferidas por AST. Suíte final/operação visual/doctor pendentes.
+- As referências são a descrição do usuário e as telas atuais; anexos temporários
+  ausentes não foram alegados como inspecionados. Relações continua demonstração
+  sintética, sem ligação ao DTO/serviço F18. Não houve cálculo ou mudança de dados.
