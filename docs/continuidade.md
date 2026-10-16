@@ -572,3 +572,28 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   final pendente. Diff de runtime vazio: não houve alteração da aplicação.
 - Doctor isolado: 15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Nenhuma
   conta, configuração ou arquivo do terminal do usuário foi alterado.
+
+## T17.18 — Análise e cabeçalho respeitam a fonte (2026-10-16)
+
+- Ambiente isolado instalado/dev; baseline a893f54 repetida após reboot com
+  866 aprovados/9 ignorados em623,39 s, saída0. Recebeu correção test-only #93.
+- Filtros agrupados e cartões refluem pelo tamanho pedido pela fonte e valor;
+  resultados em ScrollableContent existente, leitura OHLC quebrada e figuras
+  com altura mínima em contêiner próprio. O contêiner evita que o backend
+  Matplotlib/DPI sobrescreva o tamanho pedido do canvas. Cabeçalho mantém
+  nome/conexão/ações legíveis; a legenda secundária só aparece quando cabe.
+- Primeira tentativa entrou em ciclo de geometria; execução interrompida e
+  logs preservados. Chave de layout e retirada do reset transitório de wrap
+  estabilizaram a atualização. Dez focados existentes passaram em47,44 s;
+  cinco de geometria em40,48 s; após contêiner,14 em74,99 s; fonte maior e
+  número extenso:cinco em43,92 s. Assertivas nativas de largura, bounds e
+  não sobreposição, PageDown, dados inalterados e cancelamento ao destruir.
+- Aplicação operada com EURUSD H1 real,1.537 barras e resumo idêntico: dois
+  temas,96/144 DPI,1920/1280/900 e leitura OHLC. Na escala real o backend
+  reduziu o requisito do canvas; a correção do contêiner manteve a altura.
+  O primeiro roteiro de hover sintético perdeu o readout num Leave nativo;
+  repetido em144 DPI com movimento real do mouse, verificação aprovada.
+  As duas sessões finais encerraram0. Nenhuma fórmula/candle/indicador mudou.
+- Roteiros passaram a aguardar a base disponível antes de abrir o ativo;
+  abrir cedo acionava o diálogo informativo previsto, não falha no produto.
+  Suíte completa/doctor/CI e integração ainda pendentes neste snapshot.
