@@ -5,8 +5,8 @@
 Consolidar somente o contrato do fator de lucro (PF). O Laboratório e o card
 limitam razões a 99; a validação converte infinito em 999; a bateria pode aprovar
 amostras sem perdas. A auditoria somente de leitura da cópia histórica encontrou
-276 execuções, todas com livro finito reconciliável, das quais 14 tinham número
-de PF sem denominador de perdas. Isso não é uma campanha de pesquisa nem prova
+276 execuções, todas com livro finito reconciliável, das quais 14 estavam vazias
+e tinham PF zero sem denominador de perdas. Isso não é uma campanha de pesquisa nem prova
 de custos líquidos completos ou de amostra independente.
 
 ## Passos, nesta ordem

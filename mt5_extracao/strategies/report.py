@@ -10,6 +10,7 @@ from typing import List
 import pandas as pd
 
 from . import AVOID, REGISTRY
+from mt5_extracao import profit_factor
 
 CSS = """
 :root{--bg:#f7f7f5;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e3e2dd;--ok:#1f7a4d;--ok-bg:#e3f4ea;
@@ -85,7 +86,7 @@ def _matrix(rows: List[dict], validations: pd.DataFrame) -> str:
             v = hit.iloc[0]
             cls, label = ("ok", "✅ aprovada") if bool(v["approved"]) else ("bad", "❌ reprovada")
             pf, trades = v["profit_factor_oos"], int(v["trades_oos"])
-            detail = (f"PF {'∞' if pf >= 999 else _num(pf)} · {trades} op. · DD p95 {_num(v['mc_dd'] * 100, 1)}%"
+            detail = (f"PF {profit_factor.text(pf)} · {trades} op. · DD p95 {_num(v['mc_dd'] * 100, 1)}%"
                       if trades else "sem operações fora da amostra")
             cells.append(f"<td title='{_e(v['status'])}'><span class='badge {cls}'>{label}</span><br>"
                          f"<small>{detail}</small></td>")

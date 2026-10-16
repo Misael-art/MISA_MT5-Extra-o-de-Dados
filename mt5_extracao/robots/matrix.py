@@ -19,6 +19,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from . import catalog, store
+from mt5_extracao import profit_factor
 
 MIN_TRADES = 30
 APPROVED, REJECTED, PROMISING, FEW_TRADES, NEGATIVE = "aprovado", "reprovado", "promissor", "poucas operações", "negativo"
@@ -104,6 +105,8 @@ def build(db, config=None, robots: Optional[List] = None) -> dict:
         m = run["metrics"]
         trades, net = int(m.get("trades", 0)), float(m.get("net_profit", 0.0))
         verdict = verdicts.get(combo)
+        if verdict and profit_factor.finite(m.get("profit_factor")) is None:
+            verdict = {**verdict, "approved": False, "kind": verdict["kind"] + "; PF indefinido neste backtest"}
         origin = PYTHON_ORIGIN if robot.kind == catalog.PYTHON else \
             "Strategy Tester, " + str(m.get("tester_model") or "modelo não registrado")
         cells.append({
@@ -111,7 +114,9 @@ def build(db, config=None, robots: Optional[List] = None) -> dict:
             "status": _status(net, trades, verdict["approved"] if verdict else None,
                               reliable=robot.kind != catalog.PYTHON or bool(m.get("spec_known", True))),
             "trades": trades, "win_rate": float(m.get("win_rate", 0.0)),
-            "profit_factor": float(m.get("profit_factor", 0.0)), "return_pct": float(m.get("return_pct", 0.0)),
+            "profit_factor": profit_factor.finite(m.get("profit_factor")),
+            "profit_factor_status": m.get("profit_factor_status", "legacy_reported"),
+            "profit_factor_note": profit_factor.reason(m), "return_pct": float(m.get("return_pct", 0.0)),
             "net_profit": net, "max_drawdown_pct": float(m.get("max_drawdown_pct", 0.0)),
             "period": f"{run['data_start'][:10]} a {run['data_end'][:10]}", "tested_at": run["created_at"][:16],
             "origin": origin, "preset": run.get("params", {}).get("preset", "") if robot.kind == catalog.MQL5 else "",
@@ -141,4 +146,4 @@ def positives(matrix: dict, robot_key: str) -> List[dict]:
     primeiro e depois pelo profit factor. Uma célula reprovada não entra, mesmo com lucro.
     """
     rows = [c for c in matrix["cells"] if c["robot"] == robot_key and c["status"] in (APPROVED, PROMISING)]
-    return sorted(rows, key=lambda c: (c["status"] != APPROVED, -c["profit_factor"], -c["return_pct"]))
+    return sorted(rows, key=lambda c: (c["status"] != APPROVED, profit_factor.sort_key(c["profit_factor"]), -c["return_pct"]))

@@ -149,6 +149,18 @@ def test_statistical_items_of_a_good_and_a_bad_run(tmp_path, db):
     assert few["trades"].status == battery.FAIL and few["out_of_sample"].status == battery.WARN
 
 
+def test_all_winning_sample_does_not_pass_pf_or_recent_pf(tmp_path, db):
+    robot = safe_robot(tmp_path)
+    run = save_run(db, robot, [30.0] * 300)
+    items = by_id(battery.statistical_items(robot, run, None, db))
+    assert items["trades"].status == battery.OK
+    assert items["expectancy"].status == battery.OK
+    assert items["profit_factor"].status == battery.FAIL
+    assert items["out_of_sample"].status == battery.FAIL
+    assert "indefinido" in items["profit_factor"].detail
+    assert "Sem perdas" in items["profit_factor"].fix
+
+
 def test_drawdown_ruin_and_loss_streak(tmp_path, db):
     robot = safe_robot(tmp_path)
     wild = [3000.0, -2500.0] * 150                       # ganha na média, mas com quedas enormes

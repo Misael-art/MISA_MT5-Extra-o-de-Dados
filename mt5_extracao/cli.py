@@ -689,6 +689,8 @@ def _fmt_pct(x):
 
 
 def _fmt_num(x, digits=2):
+    if x is None:
+        return "indefinido"
     return ("∞" if x == float("inf") else f"{x:.{digits}f}").replace(".", ",")
 
 

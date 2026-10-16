@@ -298,6 +298,7 @@ def load_catalog(config=None, db=None) -> List[Robot]:
 
 
 def attach_validations(robots: List[Robot], validations) -> None:
+    from mt5_extracao import profit_factor
     """
     Liga às estratégias Python os vereditos já gravados por 'mt5x validate' (Filtro C), o melhor primeiro:
     aprovados antes, depois o maior profit factor fora da amostra. Quem tem teste passa a "Testado".
@@ -310,11 +311,11 @@ def attach_validations(robots: List[Robot], validations) -> None:
         rows = validations[validations["strategy"] == robot.key.split(":", 1)[1]]
         robot.results = sorted((
             {"symbol": r.symbol, "timeframe": r.timeframe, "approved": bool(r.approved), "status": r.status,
-             "profit_factor": float(r.profit_factor_oos), "trades": int(r.trades_oos),
+             "profit_factor": profit_factor.finite(r.profit_factor_oos), "trades": int(r.trades_oos),
              "positive_windows": float(r.positive_windows), "robust": bool(r.robust),
              "max_drawdown": float(r.mc_dd), "when": r.created_at,
              "source": "validação fora da amostra (walk-forward)"} for r in rows.itertuples()),
-            key=lambda x: (not x["approved"], -x["profit_factor"]))
+            key=lambda x: (not x["approved"], profit_factor.sort_key(x["profit_factor"])))
         if robot.results and robot.stage == IMPORTED:
             robot.stage = TESTED
 

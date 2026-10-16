@@ -132,6 +132,12 @@ def load_runs(db, robot_key: str = None) -> list:
         row["trades"] = json.loads(row.pop("trades_json", None) or "[]")      # [[horário, resultado, volume], ...]
         row["params"] = json.loads(row.pop("params_json") or "{}")
         row["metrics"] = json.loads(row.pop("metrics_json") or "{}")
+        from mt5_extracao import profit_factor
+        try:
+            pnl = [t[1] for t in row["trades"]]
+        except (TypeError, IndexError):
+            pnl = None
+        row["metrics"].update(profit_factor.read_fields(row["metrics"], pnl, row["metrics"].get("trades")))
         row["equity"] = json.loads(row.pop("equity_json") or "[]")
     return rows
 
