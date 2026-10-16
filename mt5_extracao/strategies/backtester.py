@@ -140,14 +140,10 @@ class BacktestResult:
 
 
 def compute_metrics(trades: List[Trade], initial_equity: float) -> Dict[str, float]:
+    from mt5_extracao import profit_factor
     pnl = np.array([t.pnl for t in trades], dtype=float)
     r = np.array([t.r_multiple for t in trades], dtype=float)
     wins, losses = pnl[pnl > 0], pnl[pnl < 0]
-    gross_profit, gross_loss = float(wins.sum()), float(-losses.sum())
-    if gross_loss > 0:
-        pf = gross_profit / gross_loss
-    else:
-        pf = math.inf if gross_profit > 0 else 0.0
     equity = initial_equity + np.concatenate([[0.0], np.cumsum(pnl)])
     peak = np.maximum.accumulate(equity)
     dd = np.where(peak > 0, (peak - equity) / peak, 0.0)
@@ -157,7 +153,7 @@ def compute_metrics(trades: List[Trade], initial_equity: float) -> Dict[str, flo
     return {
         "trades": int(len(trades)),
         "win_rate": float(len(wins) / len(trades)) if trades else 0.0,
-        "profit_factor": float(pf),
+        **profit_factor.fields(pnl),
         "payoff": float(wins.mean() / -losses.mean()) if len(wins) and len(losses) else 0.0,
         "expectancy_r": float(r.mean()) if len(r) else 0.0,
         "total_r": float(r.sum()),

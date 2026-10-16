@@ -632,6 +632,45 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Doctor isolado: 15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Nenhuma
   conta, configuração ou arquivo do terminal do usuário foi alterado.
 
+## T17.18 — Análise e cabeçalho respeitam a fonte (2026-10-16)
+
+- Ambiente isolado instalado/dev; baseline a893f54 repetida após reboot com
+  866 aprovados/9 ignorados em623,39 s, saída0. Recebeu correção test-only #93.
+- Filtros agrupados e cartões refluem pelo tamanho pedido pela fonte e valor;
+  resultados em ScrollableContent existente, leitura OHLC quebrada e figuras
+  com altura mínima em contêiner próprio. O contêiner evita que o backend
+  Matplotlib/DPI sobrescreva o tamanho pedido do canvas. Cabeçalho mantém
+  nome/conexão/ações legíveis; a legenda secundária só aparece quando cabe.
+- Primeira tentativa entrou em ciclo de geometria; execução interrompida e
+  logs preservados. Chave de layout e retirada do reset transitório de wrap
+  estabilizaram a atualização. Dez focados existentes passaram em47,44 s;
+  cinco de geometria em40,48 s; após contêiner,14 em74,99 s; fonte maior e
+  número extenso:cinco em43,92 s. Assertivas nativas de largura, bounds e
+  não sobreposição, PageDown, dados inalterados e cancelamento ao destruir.
+- Aplicação operada com EURUSD H1 real,1.537 barras e resumo idêntico: dois
+  temas,96/144 DPI,1920/1280/900 e leitura OHLC. Na escala real o backend
+  reduziu o requisito do canvas; a correção do contêiner manteve a altura.
+  O primeiro roteiro de hover sintético perdeu o readout num Leave nativo;
+  repetido em144 DPI com movimento real do mouse, verificação aprovada.
+  As duas sessões finais encerraram0. Nenhuma fórmula/candle/indicador mudou.
+- Roteiros passaram a aguardar a base disponível antes de abrir o ativo;
+  abrir cedo acionava o diálogo informativo previsto, não falha no produto.
+  Suíte completa/doctor/CI e integração ainda pendentes neste snapshot.
+
+- A revisão dos valores de geometria revelou aumento de1347→2051 px após
+  redimensionar/alternar tema em DPI real. O full076053b foi interrompido com
+  saída143 antes de alterar código; esse resultado não é aprovação. Contêiner
+  agora conserva requisito próprio e desliga propagação do grid, evitando
+  realimentação do requisito do backend. Teste verifica limites mínimo E máximo.
+- Cinco focados com fonte maior, valor extenso e limites passaram em29,24 s.
+  Operação real repetida:144 DPI ficou em600 px nos dois temas e1920/1280/900;
+  96 DPI em480 px nas janelas menores e609 px quando há área. Texto/candles e
+  resumo das1.537 barras idênticos; hover por mouse real, teclado e rolagem
+  conferidos. Duas sessões encerradas0. Capturas finais substituem somente as
+  imagens geradas nesta tarefa; tentativas anteriores mantidas nos artefatos.
+- Resultado da suíte final/doctor/CI e revisão é atualizado no PR; não houve
+  operação em conta, nova pesquisa financeira ou modificação de base do usuário.
+
 ## T17.21 — informação recolhível sem perder a seleção (2026-10-16)
 
 - Ambiente próprio instalado/dev; baseline eed5f34 com 861 aprovados/9 ignorados
@@ -669,3 +708,48 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   e seis perfis por escala passaram. As duas sessões encerraram0.
 - Validação final após a correção e reconciliação com a principal é registrada
   no PR desta tarefa; a suíte864/9 anterior não substitui essa execução.
+
+## Retomada T17.18 — altura nativa em DPI alto
+
+- Validação combinada d05106f:896 aprovados/9 ignorados em742,33s, saída0.
+  O CI Windows encontrou uma falha nova no limite superior da figura:892px
+  para teto864px com fonte maior. Sem repetição cega ou tolerância adicional: o
+  código deixa de usar a altura requisitada inicial do backend, que também pode
+  incorporar DPI, e usa480px ou24linhas da fonte. Novo teste injeta pedido
+  inicial de1920px e conserva as mesmas exigências de limite mínimo/máximo em
+  duas escalas. As execuções anteriores ficam preservadas; resultado final do
+  novo código e novo CI serão registrados antes da integração.
+
+- O CI Windows do acb617f ainda encontrou excesso de altura:989px na regressão
+  injetada e892px no resize, para teto864px. O diagnóstico local confirmou que
+  o pack podia expandir a figura pela área atribuída à página do Notebook.
+  Agora somente a largura vem do pack; a altura é calculada pela fonte e pelo
+  espaço útil do viewport, descontando cartões, legenda, abas e leitura OHLC.
+  Abas ocultas conservam o mínimo e a seleção/resize recalcula a aba visível.
+  A regressão também força uma página de2048px: o fonte imutável acb617f falha
+  nas duas escalas no host (2009>550 e2002>744); o novo código passa nos mesmos
+  cenários. Cinco focados finais:38,37s. O primeiro roteiro de reprodução teve
+  erro de importação de fakes (saída4), corrigido somente no harness; não foi
+  contado como demonstração da regressão. Nenhum limite foi relaxado.
+
+## T13.9 — PF definido e compatibilidade histórica (2026-10-16)
+
+Implementação em PR97, sem campanha financeira. Um contrato comum remove tetos
+99/999, representa vazio/sem perdas/inválido como null com motivo e conserva
+razões finitas. Validação/bateria não aprovam por indefinição; consumidores
+aceitam ausência. Projeções antigas recalculam PF quando o livro está completo
+e mantêm os registros originais, inclusive aprovações de bateria que precisam
+ser refeitas quando vinculadas a PF indefinido. Banco antigo continua abrindo.
+
+Ambiente instalado/dev e baseline887/9 anteriores ao código. Focados156, depois
+93 e56 nas revisões; suíte240f92a com926/9 em681,75s, saída0. O head final recebe
+ajuste de proveniência JSON/ordenação, com validação específica e integral no
+PR. Uma suíte anterior foi encerrada241 para incorporar a revisão, não contada
+como aprovação. Doctor isolado15/2/1deliberado; principal21/1/0 separado.
+
+Cópia pré-exposta:276 execuções e chaves únicas,14 vazias com PF0 sem denominador;
+276 livros e4.140 valores de outras métricas preservados. UI real263operações
+continua PF0,87; testes visuais controlados identificados verificam sem perdas
+e razão2000, com motivo legível em144DPI. Não demonstram meta financeira.
+Detalhes de escopo, limites e compatibilidade em
+[PF definido](propostas/T13_9_PF_DEFINIDO.md).

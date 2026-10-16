@@ -259,13 +259,20 @@ class UIManager:
 
         # Cabeçalho: nome do aplicativo e conexão com o MetaTrader 5
         header = ttk.Frame(outer)
+        self.main_header = header
+        self._header_layout_job = None
+        self._header_layout_key = None
         header.pack(fill=tk.X, pady=(0, 10))
-        ttk.Label(header, text="MT5 Extração", style="Page.Title.TLabel").pack(side=tk.LEFT)
-        self.check_button = ttk.Button(header, text="Verificar conexão", command=self.check_mt5_status)
+        self._header_brand = ttk.Frame(header)
+        self._header_actions = ttk.Frame(header)
+        self._header_connection = ttk.Frame(header)
+        self.brand_label = ttk.Label(self._header_brand, text="MT5 Extração", style="Page.Title.TLabel")
+        self.brand_label.pack(side=tk.LEFT)
+        self.check_button = ttk.Button(self._header_actions, text="Verificar conexão", command=self.check_mt5_status)
         self.check_button.pack(side=tk.RIGHT)
         from mt5_extracao.ui import icons
         self._view_icon = icons.mt5_view(self.theme.colors["on_accent"])
-        self.mt5_view_button = ttk.Button(header, text="Abrir visão MT5", image=self._view_icon, compound=tk.LEFT,
+        self.mt5_view_button = ttk.Button(self._header_actions, text="Abrir visão MT5", image=self._view_icon, compound=tk.LEFT,
                                           style="Accent.TButton", command=self.open_mt5_view)
         self.mt5_view_button.pack(side=tk.RIGHT, padx=(0, 8))
         view_hint = ("Conexão desativada nesta sessão. Reabra o aplicativo sem --offline para conectar ao MT5."
@@ -278,19 +285,29 @@ class UIManager:
             Tooltip(self.check_button, view_hint, self.theme)
         # Privilégios de administrador só existem (e só importam) no Windows
         if os.name == "nt":
-            self.mt5_admin_button = ttk.Button(header, text="Iniciar MT5 como administrador",
+            self.mt5_admin_button = ttk.Button(self._header_actions, text="Iniciar MT5 como administrador",
                                                command=self.launch_mt5_as_admin)
             self.mt5_admin_button.pack(side=tk.RIGHT, padx=(0, 8))
             if self._offline_mode():
                 Tooltip(self.mt5_admin_button, view_hint, self.theme)
         # Mostra a conta e o servidor em uso (ex.: "Conectado: conta 123 em MetaQuotes-Demo (demonstração)")
-        self.mt5_status_value = ttk.Label(header, text="Verificando...")
+        self.mt5_status_value = ttk.Label(self._header_connection, text="Verificando...", justify=tk.LEFT)
         self.mt5_status_value.pack(side=tk.RIGHT, padx=(6, 12))
-        self.mt5_status_dot = ttk.Label(header, text="●")
+        self.mt5_status_dot = ttk.Label(self._header_connection, text="●")
         self.mt5_status_dot.pack(side=tk.RIGHT)
-        # Por último: em janela estreita é o subtítulo que encolhe, não a conta nem os botões
-        ttk.Label(header, text="monte, mantenha e estude a sua base de dados do MetaTrader 5",
-                  style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
+        self.caption_label = ttk.Label(self._header_brand,
+                                      text="monte, mantenha e estude a sua base de dados do MetaTrader 5",
+                                      style="Page.Muted.TLabel")
+        self.header_action_buttons = ([self.mt5_admin_button] if os.name == "nt" else []) + [
+            self.mt5_view_button, self.check_button]
+        for button in self.header_action_buttons:
+            button.pack_forget()
+        header.columnconfigure(0, weight=1)
+        for widget in (header, self._header_connection):
+            widget.bind("<Configure>", self._schedule_header_layout, add="+")
+        self.root.bind("<Destroy>", self._header_destroyed, add="+")
+        self.theme.on_change(self._schedule_header_layout)
+        self._schedule_header_layout()
 
         # Barra de status
         status_bar = ttk.Frame(outer)
@@ -349,6 +366,53 @@ class UIManager:
         self.refresh_mt5_status()
         if not self._offline_mode() and not self._mt5_connected() and hasattr(self.app.mt5_connector, "initialize"):
             self.root.after(200, lambda: self.connect_mt5(startup=True))
+
+    def _schedule_header_layout(self, _event=None):
+        if self._header_layout_job is None and self.main_header.winfo_exists():
+            self._header_layout_job = self.root.after_idle(self._layout_header)
+
+    def _header_destroyed(self, event):
+        if event.widget is self.root and self._header_layout_job is not None:
+            self.root.after_cancel(self._header_layout_job)
+            self._header_layout_job = None
+
+    def _layout_header(self):
+        # O subtítulo é secundário; conexão e ações conservam texto, foco e tamanho.
+        available = max(1, self.main_header.winfo_width())
+        widths = [button.winfo_reqwidth() for button in self.header_action_buttons]
+        brand_width = self.brand_label.winfo_reqwidth()
+        connection_width = (self.mt5_status_dot.winfo_reqwidth() +
+                            self.theme.font.measure(self.mt5_status_value.cget("text")) + 20)
+        key = (available, tuple(widths), brand_width, connection_width, self.caption_label.winfo_reqwidth())
+        if key == self._header_layout_key:
+            self._header_layout_job = None
+            return
+        self._header_layout_key = key
+        one_row = sum(widths) + 8 * (len(widths) - 1) <= available
+        for index, button in enumerate(self.header_action_buttons):
+            button.grid(row=0 if one_row else index, column=index if one_row else 0,
+                        sticky="e", padx=(8 if one_row and index else 0, 0),
+                        pady=(4 if not one_row and index else 0, 0))
+        actions_width = sum(widths) + 8 * (len(widths) - 1) if one_row else max(widths)
+        same_row = brand_width + connection_width + actions_width + 24 <= available
+        connection_below = brand_width + connection_width + 12 > available
+        self.mt5_status_value.configure(
+            wraplength=max(1, available - self.mt5_status_dot.winfo_reqwidth() - 18) if connection_below else 0)
+        self._header_brand.grid(row=0, column=0, columnspan=2 if connection_below else 1, sticky="w")
+        self._header_connection.grid(row=1 if connection_below else 0,
+                                     column=0 if connection_below else 1,
+                                     columnspan=2 if connection_below else 1, sticky="e")
+        self._header_actions.grid(row=0 if same_row else 2 if connection_below else 1,
+                                  column=2 if same_row else 0, columnspan=1 if same_row else 2,
+                                  sticky="e", padx=(12 if same_row else 0, 0),
+                                  pady=(0 if same_row else 4, 0))
+        caption_fits = (same_row and brand_width + connection_width + actions_width +
+                        self.caption_label.winfo_reqwidth() + 36 <= available)
+        if caption_fits:
+            self.caption_label.pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
+        else:
+            self.caption_label.pack_forget()
+        self._header_layout_job = None
 
     def _build_symbols_tab(self, tab):
         tab.rowconfigure(0, weight=1)

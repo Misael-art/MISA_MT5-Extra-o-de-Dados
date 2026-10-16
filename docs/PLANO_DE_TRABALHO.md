@@ -132,6 +132,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
+| T13.9 | PF definido, sem teto artificial e consumo coerente | T6.4, T8.3, T16.4 | implementada; [contrato e compatibilidade](propostas/T13_9_PF_DEFINIDO.md); validação final e integração no PR #97; sem campanha financeira |
 | T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
 | T15.0 | Plano da gestão de recursos (aba Recursos) registrado em `docs/propostas/GESTAO_RECURSOS.md` | — | ✅ concluída |
 | T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ concluída no Linux (aba vista em tela virtual, temas claro e escuro); Windows não visto |
@@ -182,6 +183,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.10 | Laboratório: ganhos, perdas, zeradas e resultado ausente no núcleo e gráfico | T17.13 | implementada; PR #91 draft; 875 aprovados/9 ignorados; operação real conferida; integração pendente |
 | T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | implementada; PR #92 draft; 886 aprovados/9 ignorados; operação real conferida; integração pendente |
 | T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | implementada; 4 focados aprovados; suíte final em execução; integração pendente |
+| T17.18 | Cabeçalho e Análise: reflow pela fonte e área analítica percorrível | T17.13 | implementada; fonte/teclado/rolagem e UI real conferidos; suíte final registrada no PR |
 | T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; UI real conferida; suíte final registrada no PR |
 | T17.22 | Iniciar análise local pelo lançador sem conectar o MT5 | T2.2, T17.3 | escopo registrado; baseline 890/9 aprovado; [passos e aceite](propostas/T17_22_INICIO_OFFLINE.md) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |

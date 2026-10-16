@@ -86,7 +86,7 @@ def status(config, db) -> dict:
                    "high_risk": [r.key for r in catalog if r.risk.level == "Alto"]},
         "validations": {"total": int(len(validations)), "approved": int(len(approved)),
                         "approved_items": [{"symbol": r.symbol, "timeframe": r.timeframe, "strategy": r.strategy,
-                                            "profit_factor": float(r.profit_factor_oos), "trades": int(r.trades_oos),
+                                            "profit_factor": r.profit_factor_oos, "trades": int(r.trades_oos),
                                             "created_at": r.created_at} for r in approved.itertuples()]},
         "specs_missing": without_spec,
         "next_actions": actions,
