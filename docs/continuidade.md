@@ -509,3 +509,26 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   gráficas. Os nove ignorados esperados são integrações opcionais separadas
   e são executadas em seus jobs do CI. Nenhum teste alterado para contornar
   a falha do ambiente. Doctor:15 OK/2 avisos/1 falha deliberada MT5.path vazio.
+
+## T17.16 — contexto e controles do Backtest (2026-10-16)
+
+- Branch `codex/t17-16-contexto-backtest`, baseT17.17/#88; ambiente próprio
+  instalado/dev, baseline9f40e96:857 aprovados/9 ignorados em823,04 s, saída0.
+- Seleção para próximo teste separada do resultado armazenado; após teste desta
+  sessão, a proveniência da seleção/base identifica compatibilidade ou resultado
+  anterior. Histórico não recebe equivalência de período presumida. Erro não
+  apaga resultado/curva, pedido duplicado não inicia, callback de outro robô não
+  muda o detalhe atual. Hook existente atualizaAtivos/MinhaBase imediatamente.
+- Controles refluem4/2/1colunas eBacktest usaScrollableContent daT17.14.
+  Três focados aprovados em21,68 s, incluindo erro/seleção/troca de robô; geometria
+  DPI144:1 aprovado em11,82 s. Suíte58cb114:859 aprovados/9 ignorados
+  em937,37 s, saída0. PR #89 draft.
+- Operação real: cópia privada consistente da base, dois temas,DPI96/144 e
+  1280×800/1920×1080; botão inteiro, PageDownacessa resultado. Novo testePython
+  EURUSDH1 concluído, texto da seleção atual confirmado e muda paraanterior após
+  alterarperíodo. Dados expostos registrados, semOOS/campanhaPF19, nenhuma conta
+  outerminal. Evidênciasdocs/img/interface-visual/T17.16 e logsprivados.
+- Semmerge; aceitevisualglobal/revisão/integração pendentes.
+
+- DoctorofflineT17.16:15 OK/2 avisos/1 falha deliberadaMT5.pathvazio;
+  principal preservada comdiagnóstico separado21 OK/1 aviso/0 falhas.
