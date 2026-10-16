@@ -348,4 +348,4 @@ Rodar backtest aparece cortado em1280×800.
 - Três focados aprovados em21,68 s; geometria repetidaDPI144:1 em11,82 s.
   Operação real emcópia privada, temas/DPI96/144/1280/1920, testePythonH1,
   resultado atual depois do teste e anterior após mudar período, rolagemPageDown.
-  Exposição registrada, semcampanhaPF19 ouOOSindependente. Suíte58cb114emcurso.
+  Exposição registrada, semcampanhaPF19 ouOOSindependente. Suíte58cb114:859 aprovados/9 ignorados em937,37 s, saída0.
