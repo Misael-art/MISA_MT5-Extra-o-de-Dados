@@ -775,3 +775,11 @@ Recebeu a cadeia T13.9/T17.18, com diff próprio restrito ao início local;
 15 focados combinados em53,78s. Suíte final, CI, operação instalada pelo
 lançador e diagnóstico serão registrados no PR. Windows real permanece
 pendente; nenhum terminal/conta do usuário foi iniciado ou encerrado.
+
+- A inspeção nativa do modo local encontrou a lista de símbolos configurados
+  ainda chamada de “ativos da conta” e ações de extração/coleta habilitadas.
+  Rótulos agora identificam a lista local; extração/coleta e chamadas diretas
+  ficam desativadas, com a ação de reabrir explicada. Análises/importação
+  continuam disponíveis. Oito focados passaram em16,47s após esse ajuste.
+  A suíte56f73b2 foi interrompida241 antes da revisão, sem alegar aprovação;
+  novo head tem suíte/CI próprios. Primeira inspeção offline1537barras saiu0.

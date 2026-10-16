@@ -433,7 +433,7 @@ class UIManager:
         content.columnconfigure(0, weight=2, uniform="col")
         content.columnconfigure(1, weight=1, uniform="col")
         content.rowconfigure(0, weight=1)
-        left = card(content, "Ativos da conta")
+        left = card(content, "Ativos configurados" if self._offline_mode() else "Ativos da conta")
         left.master.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
         self._symbols_left_outer = left.master
         self.symbols_label = ttk.Label(left, text="", style="Muted.TLabel")
@@ -540,7 +540,8 @@ class UIManager:
         self.get_history_button = ttk.Button(row1, text="Extrair histórico...", style="Accent.TButton",
                                              command=self.extract_historical_data)
         self.get_history_button.pack(side=tk.LEFT)
-        Tooltip(self.get_history_button, "Baixa as barras do período escolhido (ou só o que falta desde a última "
+        Tooltip(self.get_history_button, "Reabra sem --offline para extrair dados do MT5." if self._offline_mode() else
+                                         "Baixa as barras do período escolhido (ou só o que falta desde a última "
                                          "extração) e grava na base. É o primeiro passo para estudar um ativo.",
                 self.theme)
         self.show_stats_button = ttk.Button(row1, text="Analisar", command=self.show_statistics)
@@ -551,7 +552,8 @@ class UIManager:
         row2.pack(fill=tk.X, pady=(8, 0))
         self.start_button = ttk.Button(row2, text="Iniciar coleta em tempo real", command=self.start_collection)
         self.start_button.pack(side=tk.LEFT)
-        Tooltip(self.start_button, "Grava a barra de 1 minuto mais recente de cada ativo da seleção enquanto o "
+        Tooltip(self.start_button, "Reabra sem --offline para coletar dados do MT5." if self._offline_mode() else
+                                   "Grava a barra de 1 minuto mais recente de cada ativo da seleção enquanto o "
                                    "aplicativo estiver aberto.", self.theme)
         self.stop_button = ttk.Button(row2, text="Parar coleta", command=self.stop_collection, state=tk.DISABLED)
         self.stop_button.pack(side=tk.LEFT, padx=(8, 0))
@@ -754,13 +756,16 @@ class UIManager:
 
         total = len(account)
         if not total:
-            text = "Nenhum ativo disponível: clique em \"Verificar conexão\" para conectar ao MetaTrader 5."
+            text = ("Nenhum ativo configurado. Consulte as séries locais na aba Minha base." if self._offline_mode()
+                    else "Nenhum ativo disponível: clique em \"Verificar conexão\" para conectar ao MetaTrader 5.")
         elif search_text and not matches:
-            text = f"Nenhum ativo contém \"{self.search_var.get().strip()}\" ({total} na conta)."
+            origin = "na lista local" if self._offline_mode() else "na conta"
+            text = f"Nenhum ativo contém \"{self.search_var.get().strip()}\" ({total} {origin})."
         elif len(matches) != total:
             text = f"{len(matches)} de {total} ativos. Em verde: já têm dados na base."
         else:
-            text = f"{total} ativos na conta. Em verde: já têm dados na base."
+            origin = "configurados" if self._offline_mode() else "na conta"
+            text = f"{total} ativos {origin}. Em verde: já têm dados na base."
         self.symbols_label.config(text=text)
 
     def highlight_symbols_with_data(self):
@@ -1235,6 +1240,8 @@ class UIManager:
 
     def toggle_collection_buttons(self, collecting):
         """Habilita/desabilita os botões de iniciar/parar coleta."""
+        if self._offline_mode():
+            return self._show_offline_status()
         if self.start_button and self.stop_button:
             if collecting:
                 self.start_button.config(state=tk.DISABLED)
@@ -1247,6 +1254,8 @@ class UIManager:
 
     def start_collection(self):
         """Inicia a coleta de dados (chamado pelo botão)."""
+        if self._offline_mode():
+            return self._show_offline_status()
         # Obter e verificar os símbolos selecionados primeiro
         if not self.app.selected_symbols:
             messagebox.showerror("Erro", "Nenhum símbolo selecionado para coleta.")
@@ -1367,6 +1376,8 @@ class UIManager:
 
     def extract_historical_data(self):
         """Abre a janela de configuração e inicia a extração de dados históricos."""
+        if self._offline_mode():
+            return self._show_offline_status()
         # Verifica pré-condições (acessa atributos da app)
         if not self.app.mt5_initialized or not self.app.mt5_connector or not self.app.mt5_connector.is_initialized:
             # Verifica se podemos reconectar ao MT5
@@ -2461,14 +2472,15 @@ class UIManager:
         self._open_path(Path(self._project_root()) / "docs")
 
     def _offline_mode(self):
-        return bool(getattr(self.app, "offline", False))
+        return bool(getattr(getattr(self, "app", None), "offline", False))
 
     def _show_offline_status(self, quiet=False):
         self.mt5_status_value.config(text="Análise local (offline)")
         self.mt5_status_dot.config(foreground=self.theme.colors["ink2"])
         if not quiet:
             self.update_status("Reabra sem --offline para conectar.")
-        for name in ("mt5_view_button", "check_button", "mt5_admin_button"):
+        for name in ("mt5_view_button", "check_button", "mt5_admin_button", "get_history_button",
+                     "start_button", "stop_button"):
             button = getattr(self, name, None)
             if button is not None:
                 button.state(["disabled"])

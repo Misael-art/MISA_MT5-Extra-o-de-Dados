@@ -143,6 +143,8 @@ def create(root,offline=False):
                 root.after(50,inspect_local);return
             assert 'offline' in ui.mt5_status_value.cget('text')
             assert ui.check_button.instate(['disabled']) and ui.mt5_view_button.instate(['disabled'])
+            assert ui.get_history_button.instate(['disabled']) and ui.start_button.instate(['disabled'])
+            assert 'configurados' in ui.symbols_label.cget('text')
             ui.check_mt5_status();ui.connect_mt5();ui.open_mt5_view();ui._offer_demo_account()
             assert ui.open_analysis('WIN$N','1 minuto')
             root.after(50,inspect_analysis)

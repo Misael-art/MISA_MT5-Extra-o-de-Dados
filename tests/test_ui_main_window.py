@@ -119,7 +119,8 @@ def test_offline_mode_keeps_terminal_actions_disabled_and_blocks_direct_calls(ui
     for _ in range(2):
         assert not ui.refresh_mt5_status()
         assert not ui._mt5_connected()
-        for button in (ui.mt5_view_button, ui.check_button, ui.mt5_admin_button):
+        for button in (ui.mt5_view_button, ui.check_button, ui.mt5_admin_button, ui.get_history_button,
+                       ui.start_button, ui.stop_button):
             assert button.instate(["disabled"])
         assert ui.mt5_status_value.cget("text") == "Análise local (offline)"
         assert "sem --offline" in ui.status_label.cget("text")
@@ -132,6 +133,12 @@ def test_offline_mode_keeps_terminal_actions_disabled_and_blocks_direct_calls(ui
         ui._reconnect_mt5()
         ui.launch_mt5_as_admin()
         ui._check_admin_mode()
+        ui.start_collection()
+        ui.extract_historical_data()
+        ui.toggle_collection_buttons(False)
+        ui.filter_symbols()
+        assert "configurados" in ui.symbols_label.cget("text")
+        assert "na conta" not in ui.symbols_label.cget("text")
         assert calls == []
         ui.toggle_theme()
 
