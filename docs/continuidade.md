@@ -493,3 +493,19 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   novamente os 4 px já reservados pelo split. Removido espaçamento duplicado
   de Linha do tempo, Distribuição e Convergência, preservando as exigências de
   largura dos testes. Log inicial preservado; validação da correção em execução.
+
+- Correção de espaçamento: 13 testes de Relações aprovados em58,77 s;
+  operação96/144DPI e ciclo1920→1280→820→1920, ambos temas, confirmou
+  detalhe acima do mínimo. DPI144:445px(min388) em1920, empilha nas menores;
+  DPI96:453px em1920 e292px(min276) em1280. Interfaces encerradas0.
+  Capturas de demonstração identificadas SYNTHETIC; suíte completa
+  final b35f274:858 aprovados/9 ignorados em1118,60 s, saída0. Windows
+  do mesmo commit aprovado em20m47s.
+
+- Primeira repetição local do ajuste:784 aprovados/83 ignorados, saída0;
+  não aceita para QA porque74 testes gráficos ficaram sem display após falha
+  do Xvfb no roteiro privado. Mantido log da tentativa. Roteiro corrigido
+  (-noreset e displayfd aberto), repetido mesmo SHA:858/9, sem exclusões
+  gráficas. Os nove ignorados esperados são integrações opcionais separadas
+  e são executadas em seus jobs do CI. Nenhum teste alterado para contornar
+  a falha do ambiente. Doctor:15 OK/2 avisos/1 falha deliberada MT5.path vazio.
