@@ -425,7 +425,7 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   Parametrizado com worker imediato e worker de1 s para ultrapassar os0,8 s
   anteriores. Nenhuma mudança de conector, runtime ou negociação.
 - Focados: 5 aprovados/32 não selecionados em23,75 s. Suíte completa20765d8
-  em andamento; não chamar pronta antes do resultado. Doctor do mesmo runtime
+  aprovada: **854 aprovados/9 ignorados em765,21 s, saída0**. Doctor do mesmo runtime
   offline já registrado15 OK/2 avisos/1 falha deliberada de MT5.path vazio.
 - Operação adicional de UI sobre cópia real: diálogo15séries×15robôs, limpar/
   selecionar/cancelar sem iniciar; lote histórico EURUSD H1 com6estratégias

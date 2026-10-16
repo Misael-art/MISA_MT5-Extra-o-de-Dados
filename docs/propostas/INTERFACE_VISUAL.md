@@ -237,4 +237,5 @@ passou em6,04 s. Não há evidência de defeito do conector nesta reprodução.
 
 - Focados: 5 aprovados em23,75 s, incluindo worker0/1 s e casos adjacentes
   de abertura/terminal existente/falha de organização. Todas as asserções de
-  resultado preservadas; nenhuma mudança de runtime. Suíte completa pendente.
+  resultado preservadas; nenhuma mudança de runtime. Suíte completa20765d8:854 aprovados/9 ignorados
+  em765,21 s, saída0.
