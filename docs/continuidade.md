@@ -457,3 +457,7 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Limites independentes: detalhe lateral143px emDPI144(T17.17), seletor/resultado
   e botão de Backtest(T17.16), retornozero emAnálise(T17.13), empates/lacunas
   temporais(T17.10/T17.11). Aceite global, revisão/merge e PF19 pendentes.
+
+- Doctor deste recorte:15 OK/2 avisos/1 falha porMT5.path vazio deliberado
+  e ponte desativada; não é diagnóstico verde. Host principal segue diagnóstico
+  separado21 OK/1 aviso/0 falhas. PR #87 draft, sem merge.
