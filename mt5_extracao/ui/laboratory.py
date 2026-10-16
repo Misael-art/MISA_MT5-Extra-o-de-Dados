@@ -576,37 +576,56 @@ class LaboratoryPanel:
         self._sample_notice(chart, month["small"])
         chart.figure.tight_layout()
         chart.draw()
-        hours = aggregate.by_dimension(view, ["time_bucket"], cfg, ci=False)
+        hourly = aggregate.hourly_summary(view, cfg)
+        hours = hourly["table"]
         chart = self._chart(tab, "t_hours", 0, 0, height=4.0,
                             parent=self._analysis_view(tab, "hours", "Expectativa e acerto"))
         chart.clear()
-        ax = chart.figure.add_subplot(111)
-        charts.bars(chart, ax, list(hours["time_bucket"]), hours["expectancy"], hours["n"], hours["small"],
-                    "Faixa horária: expectativa (barras) e acerto % (linha)")
-        self._sample_notice(chart, hours["small"])
-        twin = ax.twinx()
-        twin.plot(range(len(hours)), hours["win_rate"] * 100, color=self.theme.colors["ink2"], linewidth=1.2,
-                  marker="o", markersize=3)
-        twin.set_ylabel("Acerto (%)", color=self.theme.colors["muted"], fontsize=TYPOGRAPHY["chart_label"])
-        twin.set_ylim(0, 100)
-        twin.tick_params(colors=self.theme.colors["muted"], labelsize=TYPOGRAPHY["chart_tick"], length=0)
-        for side in ("top", "right", "left", "bottom"):
-            twin.spines[side].set_visible(False)
-        chart.figure.tight_layout()
-        chart.draw()
+        if hourly["measured_n"]:
+            ax = chart.figure.add_subplot(111)
+            charts.bars(chart, ax, list(hours["time_bucket"]), hours["expectancy"], hours["n"], hours["small"],
+                        "Faixa horária: expectativa (barras) e acerto % (linha)")
+            self._sample_notice(chart, hours["small"])
+            # A grade continua completa; só os rótulos do eixo são espaçados.
+            ticks = list(range(0, len(hours), max(1, (len(hours) + 11) // 12)))
+            ax.set_xticks(ticks)
+            ax.set_xticklabels(hours["time_bucket"].iloc[ticks], fontsize=TYPOGRAPHY["chart_tick"],
+                               rotation=45 if len(ticks) > 8 else 0, ha="right" if len(ticks) > 8 else "center")
+            ax.set_xlabel(f"Horário · faixas de {hourly['bucket_min']} min", color=self.theme.colors["muted"],
+                          fontsize=TYPOGRAPHY["chart_label"])
+            twin = ax.twinx()
+            twin.plot(range(len(hours)), hours["win_rate"] * 100, color=self.theme.colors["ink2"], linewidth=1.2,
+                      marker="o", markersize=3)
+            twin.set_ylabel("Acerto (%)", color=self.theme.colors["muted"], fontsize=TYPOGRAPHY["chart_label"])
+            twin.set_ylim(0, 100)
+            twin.tick_params(colors=self.theme.colors["muted"], labelsize=TYPOGRAPHY["chart_tick"], length=0)
+            for side in ("top", "right", "left", "bottom"):
+                twin.spines[side].set_visible(False)
+            chart.figure.tight_layout()
+            chart.draw()
+        else:
+            chart.message("Sem operações com horário e resultado válidos para este gráfico.")
+            self._sample_notice(chart, None)
         chart = self._chart(tab, "t_winloss", 0, 0, height=4.0,
-                            parent=self._analysis_view(tab, "wins_losses", "Vitórias e perdas"))
+                            parent=self._analysis_view(tab, "wins_losses", "Ganhos, perdas e zeradas"))
         chart.clear()
         ax = chart.figure.add_subplot(111)
-        charts.style_axis(ax, self.theme, "Vencedoras × perdedoras por faixa horária")
-        counts = view.groupby(["time_bucket", "win_flag"]).size().unstack(fill_value=0) \
-            .reindex(columns=[1, 0], fill_value=0)
+        charts.style_axis(ax, self.theme, "Resultado das operações por faixa horária")
+        counts = aggregate.outcome_counts(view, "time_bucket")
         x = np.arange(len(counts))
         c = self.theme.colors
-        ax.bar(x, counts[1], color=c["series"][0], width=0.65, label="vencedoras", linewidth=0)
-        ax.bar(x, counts[0], bottom=counts[1], color=c["series"][1], width=0.65, label="perdedoras", linewidth=0,
-               hatch="..")
-        totals = counts[1] + counts[0]
+        bottom = np.zeros(len(counts))
+        for key, label, color, alpha, hatch in (
+                ("wins", "ganhos (>0)", c["accent"], .85, None),
+                ("losses", "perdas (<0)", c["ink2"], .35, ".."),
+                ("flat", "zeradas (=0)", c["border"], 1.0, None),
+                ("unknown", "indisponíveis", c["surface"], 1.0, "//")):
+            if counts[key].any():
+                ax.bar(x, counts[key], bottom=bottom, color=color, alpha=alpha, width=.65,
+                       label=label, linewidth=.5 if key == "unknown" else 0,
+                       edgecolor=c["muted"], hatch=hatch)
+            bottom = bottom + counts[key].to_numpy()
+        totals = counts["n"]
         for index, total in enumerate(totals):
             crowded = len(counts) > 14
             ax.text(index, total, f"n={int(total)}", ha="center", va="bottom", rotation=90 if crowded else 0,
@@ -615,7 +634,8 @@ class LaboratoryPanel:
         ax.margins(y=0.2)
         ax.set_xticks(x)
         crowded = len(x) > 12
-        ax.set_xticklabels(counts.index, fontsize=TYPOGRAPHY["chart_tick"], rotation=45 if crowded else 0,
+        ax.set_xticklabels(["Faixa indisponível" if pd.isna(value) else str(value) for value in counts["time_bucket"]],
+                           fontsize=TYPOGRAPHY["chart_tick"], rotation=45 if crowded else 0,
                            ha="right" if crowded else "center")
         legend = ax.legend(fontsize=TYPOGRAPHY["chart_tick"], frameon=False, loc="upper left",
                            bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
@@ -628,6 +648,12 @@ class LaboratoryPanel:
         for key in ("t_week", "t_month", "t_hours", "t_winloss"):
             panel = self._chart_panels[key]
             sample = panel.notice.message.cget("text") if panel.notice is not None else ""
+            if key == "t_hours":
+                sample = "Lacunas (n=0): sem observações válidas; não equivalem a zero e não são ligadas. " + sample
+                if hourly["untimed_n"]:
+                    sample += f" {hourly['untimed_n']} operações sem faixa horária válida ficam fora deste gráfico."
+                if hourly["missing_result_n"]:
+                    sample += f" {hourly['missing_result_n']} operações com horário, mas sem resultado válido, ficam fora."
             panel.set_notice(context + (" " + sample if sample else ""), kind="info", theme=self.theme)
             panel.notice.message.bind(
                 "<Configure>", lambda event, message=panel.notice.message:
