@@ -414,3 +414,24 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   a timeline exige rolagem interna, especialmente em 1920×1080. Próximo recorte
   de ocupação da altura deve preservar mínimos/rolagem e ser testado separadamente.
 - Sem merge, operação em conta ou campanha PF. Revisão/integração pendentes.
+
+## T17.15 — sincronização do teste de conexão (2026-10-16)
+
+- PR #86 draft, branch `codex/t17-15-sincronizacao-conexao`, base #85;
+  ambiente próprio preparado e baseline completa da T17.8 registrada com a
+  mesma falha repetida de espera fixa. Somente teste/documentação nesta tarefa.
+- O cenário de internet/conta/recuperação aguarda `_connecting` terminar com
+  prazo de10 s, mantendo todas as asserções e verificando botão disponível.
+  Parametrizado com worker imediato e worker de1 s para ultrapassar os0,8 s
+  anteriores. Nenhuma mudança de conector, runtime ou negociação.
+- Focados: 5 aprovados/32 não selecionados em23,75 s. Suíte completa20765d8
+  em andamento; não chamar pronta antes do resultado. Doctor do mesmo runtime
+  offline já registrado15 OK/2 avisos/1 falha deliberada de MT5.path vazio.
+- Operação adicional de UI sobre cópia real: diálogo15séries×15robôs, limpar/
+  selecionar/cancelar sem iniciar; lote histórico EURUSD H1 com6estratégias
+  Python e1worker, quatro concluídos/zero falhas/dois pendentes cancelados.
+  Resultados negativos preservados, dados marcados como expostos à pesquisa.
+  Não é campanha PF19 nem reserva independente. Sem ordem ou terminal.
+- T17.14 preparada em worktree próprio, baseline rodando antes de modificar
+  layout. T17.16 proposta após seletor H4 mostrar resultado H1 anterior e botão
+  cortado no detalhe do robô; sem mudança de cálculos. Nenhum merge realizado.
