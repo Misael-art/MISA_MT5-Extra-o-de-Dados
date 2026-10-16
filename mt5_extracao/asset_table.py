@@ -9,6 +9,7 @@ volume médio diário, resultado dos robôs por ativo, situação da base e a or
 Favoritos e benchmark ficam na tabela interna `_asset_prefs`, criada sob demanda (mudança aditiva: bases antigas
 continuam abrindo).
 """
+import math
 from datetime import datetime, timedelta
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -134,11 +135,22 @@ def fmt_volume(value) -> str:
 
 # --- robô lucrativo -------------------------------------------------------------------
 
+def _metric_number(value) -> Optional[float]:
+    """Métrica disponível, sem substituir ausência ou valor inválido por zero."""
+    if isinstance(value, bool):
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return number if math.isfinite(number) else None
+
+
 def add_run(cells: dict, run: dict) -> None:
     """Põe uma execução em `cells` como a mais recente do robô naquele ativo e timeframe."""
-    m = run.get("metrics", {})
+    m = run.get("metrics") or {}
     cells.setdefault((run["symbol"], run["timeframe"]), {})[run["robot_key"]] = (
-        float(m.get("net_profit", 0.0)), float(m.get("return_pct", 0.0)))
+        _metric_number(m.get("net_profit")), _metric_number(m.get("return_pct")))
 
 
 def profit_cells(runs: List[dict]) -> dict:
@@ -155,11 +167,12 @@ def profit_cells(runs: List[dict]) -> dict:
 
 def profit_of(cells: dict, symbol: str, timeframe_name: Optional[str] = None) -> Optional[float]:
     """
-    None: nenhum robô testado no ativo (ou naquele timeframe). Senão, o maior retorno entre os robôs com lucro
-    líquido positivo, ou um número negativo/zero quando nenhum teve lucro.
+    None: nenhum resultado com métricas disponíveis no ativo (ou naquele timeframe). Senão, o maior retorno
+    entre os robôs com lucro positivo, ou negativo/zero quando nenhum resultado conhecido teve lucro.
     """
     results = [value for (sym, tf), robots in cells.items() for value in robots.values()
                if sym == symbol and timeframe_name in (None, tf)]
+    results = [(net, ret) for net, ret in results if net is not None and ret is not None]
     if not results:
         return None
     winners = [ret for net, ret in results if net > 0]
@@ -167,11 +180,13 @@ def profit_of(cells: dict, symbol: str, timeframe_name: Optional[str] = None) ->
 
 
 def fmt_profit(value: Optional[float]) -> str:
-    if value is None or pd.isna(value):
+    value = _metric_number(value)
+    if value is None:
         return PROFIT_NONE
-    if value <= 0:
-        return PROFIT_NEGATIVE
-    return "🟢 +" + f"{value * 100:.1f}".replace(".", ",") + "%"
+    if value == 0:
+        return "⚪ 0,0%"
+    amount = f"{abs(value) * 100:.1f}".replace(".", ",") + "%"
+    return ("🟢 +" if value > 0 else "🔴 -") + amount
 
 
 # --- situação da base e benchmark -----------------------------------------------------

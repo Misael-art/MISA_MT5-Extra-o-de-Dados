@@ -128,3 +128,30 @@ fora da largura, matriz sem altura.
 - **Aceite:** todos os botões/filtros acessíveis, resultados com altura útil por
   rolagem, contexto selecionado visível, valores/callbacks/Tk GC preservados; nenhuma
   alteração de cálculo, fixture ou suavização (T17.8 separada). Windows real pendente.
+
+## T17.12a — Ausência, zero e perda na preparação das tabelas
+
+Recorte registrado antes da implementação, necessário para T17.12 (hierarquia de
+atenção pedida pelo dono). A auditoria anterior às cores encontrou `add_run`
+substituindo métricas ausentes por zero. A base real auditada tem 271 runs com
+ambas as métricas presentes; a lacuna afeta dados incompletos e precisa de teste
+próprio. Sem nova estatística dentro de widgets.
+
+- **Dependência:** T17.9/PR #82, base 972658c. Ambiente instalado e baseline antes
+  das alterações: suíte completa aprovada, evidência privada t1712-baseline.
+- **Arquivos:** asset_table.py, tests/test_asset_table.py, este plano, painel,
+  continuidade e evidências do recorte. Nenhum widget/colorização nesta tarefa.
+- **Passos:** preservar ausência/não finitos na entrada do adaptador; considerar
+  somente métricas disponíveis na apresentação; impedir fallback a runs antigos
+  quando o mais recente está incompleto; exibir retorno negativo e zero existentes
+  distintamente de N/A; testar latest/ausência/zero/perda/resultado conhecido junto
+  de desconhecido; operar UI/CLI e conferir que os registros completos mantêm seus
+  valores; suíte e doctor; commit/PR próprio.
+- **Aceite:** ausência não vira zero; resultado negativo conhecido continua
+  disponível; nenhuma fórmula/seleção de runs/regra de risco muda; texto percentual
+  revela os valores já calculados. T17.12 aplica as cores depois deste suporte.
+
+- **Evidência:** 14 testes focados aprovados. Comparação de 271 runs completos
+  reais, cobrindo 13 séries: células e retornos idênticos antes/depois; somente
+  apresentação textual de zero/perda mudou. Captura real em
+  `docs/img/interface-visual/T17.12a/`. Suíte completa posterior pendente.

@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 
 import pandas as pd
+import pytest
 
 from mt5_extracao import asset_table as at
 from mt5_extracao.database_manager import DatabaseManager
@@ -56,7 +57,7 @@ def test_profit_uses_the_latest_run_of_each_robot():
     cells = at.profit_cells(runs)
     assert at.fmt_profit(at.profit_of(cells, "PETR4", "D1")) == "🟢 +12,4%"
     assert at.fmt_profit(at.profit_of(cells, "PETR4")) == "🟢 +30,0%"         # o ativo inteiro: o melhor timeframe
-    assert at.fmt_profit(at.profit_of(cells, "VALE3")) == "🔴 Sem Lucro"
+    assert at.fmt_profit(at.profit_of(cells, "VALE3")) == "🔴 -1,0%"
     assert at.fmt_profit(at.profit_of(cells, "WIN$N")) == "⚪ N/A"           # execução auxiliar da bateria não entra
     at.add_run(cells, _run("python:a", "VALE3", "D1", 20.0, 0.02))            # um teste novo substitui o anterior
     assert at.fmt_profit(at.profit_of(cells, "VALE3")) == "🟢 +2,0%"
@@ -103,3 +104,30 @@ def test_series_rows_show_status_details_and_profit_of_that_timeframe():
     shown = [at.display(row) for row in rows.itertuples()]
     assert shown == [("☆", "PETR4", "—", "⚪ N/A", "🔴 Precisa de atualização", "🎯 Sim", "H1 (120 barras)", "☑"),
                      ("☆", "PETR4", "—", "🟢 +10,0%", "🟢 Atualizada", "🎯 Sim", "D1 (6.489 barras)", "☐")]
+
+
+def test_missing_metrics_do_not_become_zero_or_reuse_an_older_run():
+    older = _run("python:a", "AAA", "H1", 50, .05)
+    latest = {**older, "metrics": {}}
+    cells = at.profit_cells([latest, older])
+    assert cells[("AAA", "H1")]["python:a"] == (None, None)
+    assert at.profit_of(cells, "AAA") is None
+    assert at.fmt_profit(at.profit_of(cells, "AAA")) == "⚪ N/A"
+    loss = _run("python:b", "AAA", "H1", -10, -.01)
+    at.add_run(cells, loss)
+    assert at.profit_of(cells, "AAA") == -.01
+    assert at.fmt_profit(at.profit_of(cells, "AAA")) == "🔴 -1,0%"
+    assert at.fmt_profit(0) == "⚪ 0,0%"
+
+
+@pytest.mark.parametrize("metrics", [{"net_profit": True, "return_pct": .1}, {"net_profit": 10}, {"return_pct": .1},
+                                    {"net_profit": None, "return_pct": .1},
+                                    {"net_profit": float("inf"), "return_pct": .1},
+                                    {"net_profit": 10, "return_pct": float("nan")},
+                                    {"net_profit": "indisponível", "return_pct": .1}])
+def test_partial_or_invalid_metrics_remain_unavailable(metrics):
+    run = {**_run("python:a", "AAA", "H1", 0, 0), "metrics": metrics}
+    cells = at.profit_cells([run])
+    assert at.profit_of(cells, "AAA") is None
+    assert at.fmt_profit(float("nan")) == "⚪ N/A"
+    assert at.fmt_profit(float("inf")) == "⚪ N/A"
