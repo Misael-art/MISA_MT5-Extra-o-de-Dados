@@ -124,7 +124,7 @@ def test_lenses_filters_and_tabs(panel):
     assert [panel._analysis_notebooks["Comparativo"].tab(i, "text") for i in range(2)] == [
         "Ativos e timeframes", "Correlação"]
     assert [panel._analysis_notebooks["Tempo e calendário"].tab(i, "text") for i in range(4)] == [
-        "Dia da semana", "Dia do mês", "Expectativa e acerto", "Vitórias e perdas"]
+        "Dia da semana", "Dia do mês", "Expectativa e acerto", "Ganhos, perdas e zeradas"]
     assert all(text.get_rotation() == 90 for text in panel._charts["t_winloss"].figure.axes[0].texts)
     assert [panel._analysis_notebooks["Microestrutura"].tab(i, "text") for i in range(4)] == [
         "Volatilidade × resultado", "Faixa de volatilidade", "Volume na entrada", "Volatilidade × horário"]
@@ -261,3 +261,31 @@ def test_small_window_keeps_filters_and_scrollable_results_reachable(panel):
         assert button.winfo_ismapped()
         assert button.winfo_rootx() + button.winfo_width() <= panel.frame.winfo_rootx() + panel.frame.winfo_width()
     assert panel.kpi["n"][0].cget("text") == "120"
+
+
+def test_outcome_chart_separates_zero_and_refreshes_in_both_themes(panel):
+    from dataclasses import replace
+    mixed = [replace(trade, pnl=value) for trade, value in zip(_trades(8, n=6), [12, -7, 0, 0, 3, -2])]
+    positive = [replace(trade, pnl=1.0) for trade in _trades(9, n=3)]
+    ledger.save_trades(panel.db, "mixed", mixed, robot_key="python:a", symbol="AAA", timeframe="H1")
+    ledger.save_trades(panel.db, "positive", positive, robot_key="python:b", symbol="AAA", timeframe="H1")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    original = panel.view.copy(deep=True)
+    panel.tabs.select(1)
+    for _ in range(2):
+        panel._time()
+        axis = panel._charts["t_winloss"].figure.axes[0]
+        totals = {container.get_label(): sum(bar.get_height() for bar in container.patches)
+                  for container in axis.containers}
+        assert totals == {"ganhos (>0)": 2, "perdas (<0)": 2, "zeradas (=0)": 2}
+        assert sum(totals.values()) == len(panel.view)
+        assert "6 operações" in panel._chart_panels["t_winloss"].notice.message.cget("text")
+        pd.testing.assert_frame_equal(panel.view, original)
+        panel.theme.toggle()
+    panel.selected.set("python:b")
+    panel.load_lab()
+    panel.pump(lambda: panel.view is not None and set(panel.view["robot_key"]) == {"python:b"})
+    axis = panel._charts["t_winloss"].figure.axes[0]
+    assert [container.get_label() for container in axis.containers] == ["ganhos (>0)"]
+    assert sum(bar.get_height() for bar in axis.containers[0].patches) == 3

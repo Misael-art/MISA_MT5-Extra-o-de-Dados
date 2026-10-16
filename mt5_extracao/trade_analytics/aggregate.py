@@ -66,6 +66,29 @@ def by_dimension(lab: pd.DataFrame, dims: Iterable[str], config=None, ci: bool =
     return pd.DataFrame(rows)
 
 
+def outcome_counts(lab: pd.DataFrame, dimension: str) -> pd.DataFrame:
+    """Contagens por sinal do PnL recebido; zero e ausência nunca são perdas.
+
+    `n` inclui todas as operações, inclusive resultados inválidos e dimensão
+    ausente. A dimensão ausente permanece como NA para a apresentação explicá-la.
+    Não altera as métricas financeiras nem o livro recebido.
+    """
+    columns = [dimension, "n", "wins", "losses", "flat", "unknown"]
+    if lab.empty:
+        return pd.DataFrame(columns=columns)
+    rows = []
+    for key, group in lab.groupby(dimension, sort=True, dropna=False, observed=True):
+        values = pd.to_numeric(group["pnl"], errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+        boolean = group["pnl"].map(lambda value: isinstance(value, (bool, np.bool_))).to_numpy(dtype=bool)
+        valid = np.isfinite(values) & ~boolean
+        rows.append({dimension: key, "n": len(group),
+                     "wins": int(np.count_nonzero(valid & (values > 0))),
+                     "losses": int(np.count_nonzero(valid & (values < 0))),
+                     "flat": int(np.count_nonzero(valid & (values == 0))),
+                     "unknown": int(np.count_nonzero(~valid))})
+    return pd.DataFrame(rows, columns=columns)
+
+
 def crosstab(lab: pd.DataFrame, row: str, col: str, metric: str = "expectancy", config=None) -> Dict[str, pd.DataFrame]:
     """Heatmap: {"value": métrica por célula, "n": operações por célula, "small": célula pequena}."""
     table = by_dimension(lab, [row, col], config, ci=False)

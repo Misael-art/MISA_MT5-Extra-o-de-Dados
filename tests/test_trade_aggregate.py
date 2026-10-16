@@ -88,3 +88,39 @@ def test_bootstrap_ci_contains_the_mean_and_needs_two_days():
 
 def test_empty_book():
     assert aggregate.by_dimension(pd.DataFrame(), ["day_of_week"]).empty
+
+
+@pytest.mark.parametrize("values,expected", [
+    ([1, 2], (2, 0, 0, 0)), ([-1, -2], (0, 2, 0, 0)),
+    ([0, -0.0], (0, 0, 2, 0)), ([2, -1, 0, 0], (1, 1, 2, 0)),
+    ([None, np.nan, np.inf, -np.inf, "inválido", True, False], (0, 0, 0, 7)),
+    (["1.5", "-2", "0", None], (1, 1, 1, 1)),
+])
+def test_outcome_counts_distinguish_zero_and_unknown(values, expected):
+    lab = pd.DataFrame({"time_bucket": ["09:00"] * len(values), "pnl": values})
+    original = lab.copy(deep=True)
+    result = aggregate.outcome_counts(lab, "time_bucket")
+    assert result.iloc[0][["wins", "losses", "flat", "unknown"]].tolist() == list(expected)
+    assert result.iloc[0]["n"] == len(values) == sum(expected)
+    pd.testing.assert_frame_equal(lab, original)
+
+
+def test_outcome_counts_keep_missing_dimension_and_financial_metrics():
+    lab = pd.DataFrame({"time_bucket": pd.Categorical(["09:00", "09:00", None, None],
+                                                     categories=["09:00", "10:00"]),
+                        "pnl": [4.0, -2.0, 0.0, 0.0]})
+    original = lab.copy(deep=True)
+    before = stats.metrics(lab["pnl"])
+    result = aggregate.outcome_counts(lab, "time_bucket")
+    assert len(result) == 2  # não cria amostra na categoria sem operações
+    assert result["n"].sum() == len(lab)
+    assert (result[["wins", "losses", "flat", "unknown"]].sum(axis=1) == result["n"]).all()
+    assert result.loc[result["time_bucket"].isna(), "flat"].iloc[0] == 2
+    assert stats.metrics(lab["pnl"]) == before
+    pd.testing.assert_frame_equal(lab, original)
+
+
+def test_outcome_counts_empty_book_has_stable_columns():
+    result = aggregate.outcome_counts(pd.DataFrame(), "time_bucket")
+    assert result.empty
+    assert result.columns.tolist() == ["time_bucket", "n", "wins", "losses", "flat", "unknown"]
