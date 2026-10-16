@@ -389,3 +389,9 @@ Arquivos: ui/components.py, ui/relations.py, testes de ambos, documentação e
 capturas. Aceite: mouse/teclado, preservação de texto/seleção/gráfico/tabelas,
 ganho de área, duas paletas e 96/144 DPI em1280/1920/820, scroll, fechamento e
 reabertura. Suíte focada/completa, doctor, revisão/CI e PR próprio.
+
+Achado na validação T17.21: o caractere ℹ estava no texto do botão, mas não
+apareceu nas capturas reais com a fonte do host. O mesmo recorte inclui agora
+`ui/icons.py`, reutilizando o desenho Pillow/PhotoImage existente, sem nova
+dependência. Ícone de informação com texto acessível, tamanho pela fonte e
+atualização de cor no tema; teste exige imagem não vazia, além do rótulo.

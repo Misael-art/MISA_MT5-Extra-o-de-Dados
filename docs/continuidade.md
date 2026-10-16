@@ -573,3 +573,11 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - As referências são a descrição do usuário e as telas atuais; anexos temporários
   ausentes não foram alegados como inspecionados. Relações continua demonstração
   sintética, sem ligação ao DTO/serviço F18. Não houve cálculo ou mudança de dados.
+
+- Suíte no43a14b5 concluída: 864 passed, 9 skipped in 609.05s (0:10:09), saída0. Nas capturas da
+  operação visual, texto/seleção/gráfico/tabelas permaneceram idênticos; clique
+  real por mouse e Escape/foco funcionaram em96/144 DPI e três larguras.
+  O glifo ℹ, apesar de presente no texto, não apareceu na fonte do host. Antes
+  do aceite final, será substituído pelo ícone desenhado do sistema existente
+  (`ui/icons.py`), com imagem não vazia e atualização por tema verificadas.
+  A suíte anterior permanece evidência da versão anterior, não da correção.
