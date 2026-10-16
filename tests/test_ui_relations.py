@@ -192,8 +192,11 @@ def test_scope_is_not_a_fake_filter_and_detail_stacks_on_narrow_windows(relation
     root.update()
     root.geometry("1280x800")
     root.update()
-    assert panel.timeline_split._relations_orientation == tk.HORIZONTAL
-    assert panel.timeline_detail.master.grid_info()["row"] == 0
+    if panel.timeline_split._relations_orientation == tk.HORIZONTAL:
+        assert panel.timeline_detail.winfo_width() >= panel.timeline_split._relations_detail_minwidth
+        assert panel.timeline_detail.master.grid_info()["row"] == 0
+    else:
+        assert panel.timeline_detail.master.grid_info()["row"] == 1
     assert panel.timeline_ranking_note.grid_info()["row"] == 0
 
 
@@ -234,3 +237,26 @@ def test_timeline_keeps_exact_points_and_internal_gap_in_both_themes(relations_p
         panel.timeline_table.tree.selection_set("timeline-3")
         panel._timeline_selected(None)
         assert "OOS" in panel._details["timeline"].get("1.0", "end-1c")
+
+
+def test_split_views_keep_readable_details_through_resize_and_themes(relations_panel):
+    panel, root = relations_panel
+    for _ in range(2):
+        for width in (1920, 1280, 820, 1920):
+            root.geometry(f"{width}x1080")
+            panel.notebook.select(panel.pages["Linha do tempo"])
+            root.update()
+            split = panel.timeline_split
+            detail = panel.timeline_detail
+            assert detail.winfo_width() >= split._relations_detail_minwidth
+            assert detail.winfo_rootx() >= split.winfo_rootx()
+            assert detail.winfo_rootx() + detail.winfo_width() <= split.winfo_rootx() + split.winfo_width()
+            if split._relations_orientation == tk.HORIZONTAL:
+                assert detail.master.grid_info()["row"] == 0
+            else:
+                assert detail.master.grid_info()["row"] == 1
+            panel.timeline_table.tree.selection_set("timeline-3")
+            panel._timeline_selected(None)
+            assert "OOS" in panel._details["timeline"].get("1.0", "end-1c")
+            assert panel.timeline_chart.widget.winfo_height() >= 100
+        panel.theme.toggle()

@@ -538,8 +538,7 @@ class RelationsPanel:
         self._detail_panels[key] = panel
         return panel
 
-    @staticmethod
-    def _split_view(parent, primary_weight=3, detail_weight=1):
+    def _split_view(self, parent, primary_weight=3, detail_weight=1):
         """Gráfico/tabela e detalhe ficam lado a lado; em largura estreita as áreas são empilhadas."""
         split = ttk.Frame(parent, style="Surface.TFrame")
         split.pack(fill=tk.BOTH, expand=True)
@@ -550,7 +549,12 @@ class RelationsPanel:
         split._relations_orientation = None
 
         def resize(event):
-            orientation = tk.VERTICAL if event.width < 900 else tk.HORIZONTAL
+            detail_min = max(220, self.theme.font.measure("0" * 28) + 2 * SPACING["md"])
+            # A proporção também precisa reservar espaço ao texto, não apenas ao gráfico.
+            detail_column_min = detail_min + SPACING["xs"]
+            minimum = detail_column_min * (primary_weight + detail_weight) / detail_weight
+            split._relations_detail_minwidth = detail_min
+            orientation = tk.VERTICAL if event.width < max(900, minimum) else tk.HORIZONTAL
             if split._relations_orientation != orientation:
                 split._relations_orientation = orientation
                 if orientation == tk.VERTICAL:
@@ -558,15 +562,17 @@ class RelationsPanel:
                     detail.grid_configure(row=1, column=0, columnspan=2, padx=0, pady=(SPACING["xs"], 0))
                     split.rowconfigure(0, weight=3)
                     split.rowconfigure(1, weight=2)
-                    split.columnconfigure(0, weight=1)
-                    split.columnconfigure(1, weight=0)
+                    split.columnconfigure(0, weight=1, minsize=0, uniform="")
+                    split.columnconfigure(1, weight=0, minsize=0, uniform="")
                 else:
                     primary.grid_configure(row=0, column=0, columnspan=1, padx=0)
                     detail.grid_configure(row=0, column=1, columnspan=1, padx=(SPACING["xs"], 0), pady=0)
                     split.rowconfigure(0, weight=1)
                     split.rowconfigure(1, weight=0)
-                    split.columnconfigure(0, weight=primary_weight)
-                    split.columnconfigure(1, weight=detail_weight)
+                    split.columnconfigure(0, weight=primary_weight, uniform="relations-split",
+                                          minsize=round(detail_column_min * primary_weight / detail_weight))
+                    split.columnconfigure(1, weight=detail_weight, uniform="relations-split",
+                                          minsize=detail_column_min)
 
         split.bind("<Configure>", resize, add="+")
         return split, primary, detail

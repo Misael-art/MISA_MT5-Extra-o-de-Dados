@@ -283,7 +283,7 @@ texto quebra por palavra. FonteLato11 mede364px para28 dígitos, ou388px com
 preenchimento. T17.14 resolve altura, não resolve essa largura independente.
 
 - Dependência:T17.14/#87 e ancestrais. Ambiente próprio instalado/dev, baseline
-  ad31f06 em andamento; nenhum código será alterado antes de concluir a rodada.
+  ad31f06:856 aprovados/9 ignorados em732,12 s, saída0, antes do código.
 - Arquivos:ui/relations.py, tests/test_ui_relations.py, proposta/painel/
   continuidade/capturas. Não mudar valores, semântica de estados,engine ou fonte.
 - Passos: largura mínima de detalhe pela fonte real, divisão proporcional que
