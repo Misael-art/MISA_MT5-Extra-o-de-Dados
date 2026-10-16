@@ -533,6 +533,26 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - DoctorofflineT17.16:15 OK/2 avisos/1 falha deliberadaMT5.pathvazio;
   principal preservada comdiagnóstico separado21 OK/1 aviso/0 falhas.
 
+## T17.13 — retorno de mercado com atenção coerente (2026-10-16)
+
+- Branch `codex/t17-13-retorno-mercado`, base T17.16/#89. Ambiente próprio
+  instalado e baseline 859 aprovados/9 ignorados, saída 0, antes do código.
+- Retorno positivo recebe azul suave, negativo discreto, zero neutro e ausência
+  explícita. Sinais textuais preservam a leitura sem depender da cor. Legenda
+  distingue retorno de preço e lucro de robô. Mesmos tokens de T17.12; sem
+  mudança em fórmulas, candles ou banco.
+- Oito testes focados aprovados em 42,24 s; incluem zero, ausência, NaN/Inf,
+  tema, limpeza e contraste mínimo 4,5. Suíte final 65b13d0: 865 aprovados/9 ignorados em1251,92 s, saída0. PR #90 draft.
+- Interface operada em cópia consistente da base real EURUSD H1: resumo
+  idêntico ao anterior após normalizar somente datas para JSON. Dois temas,
+  96/144 DPI, 1280×800/1920×1080; cenários zero/ausência rotulados CONTROLLED.
+  Capturas em docs/img/interface-visual/T17.13. Tentativas do roteiro com
+  serialização incorreta/rodapé antigo foram retidas nos logs e substituídas
+  por novas capturas, sem editar imagens.
+- Doctor isolado: 15 OK/2 avisos/1 falha de MT5.path vazio deliberado.
+  Nenhuma operação em conta, nenhum merge. Clipping preexistente da Análise
+  em 144 DPI/1280 permanece achado separado, sem ampliar este recorte.
+
 ## T17.20 — restauração com sincronização observável (2026-10-16)
 
 - Branch `codex/t17-20-sincronizacao-arranjo`, base da principal após #89.

@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao import data_quality, study, timeframes
+from mt5_extracao.ui.visual_tokens import result_attention_colors, result_attention_role
 from mt5_extracao.ui.components import FilterBar, MetricCard
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 
@@ -78,6 +79,13 @@ class AnalysisPanel:
             metric.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
             self.metric_cards.append(metric)
             self.tile_values[key] = metric.value_label
+        self.return_legend = ttk.Label(self.frame,
+            text="Retorno do preço: azul suave = alta · discreto = queda · zero neutro · — = indisponível. Não mede lucro do robô.",
+            style="Page.Muted.TLabel", wraplength=1100, justify=tk.LEFT)
+        self.return_legend.pack(fill=tk.X, pady=(0, 4))
+        self.return_legend.bind("<Configure>", lambda event: self.return_legend.configure(wraplength=max(180, event.width)))
+        self._return_value = None
+        self.theme.on_change(self._refresh_return_attention)
         self._metric_columns = 0
         tiles.bind("<Configure>", self._layout_metrics, add="+")
 
@@ -220,6 +228,8 @@ class AnalysisPanel:
         self.data = self.candles = None
         for value in self.tile_values.values():
             value.config(text="—", style="Value.TLabel")
+        self._return_value = None
+        self._refresh_return_attention()
         self.status.config(text=message)
         self.readout.config(text="")
         for canvas in self._canvases.values():
@@ -229,14 +239,22 @@ class AnalysisPanel:
     def _show_summary(self, s):
         digits = 5 if s["last"] < 10 else 2
         self.tile_values["last"].config(text=fmt_num(s["last"], digits))
-        signed = "Good.TLabel" if s["return_pct"] >= 0 else "Bad.TLabel"
-        self.tile_values["return_pct"].config(text=("▲ " if s["return_pct"] >= 0 else "▼ ")
-                                              + fmt_num(abs(s["return_pct"]), 2, "%"), style=signed,
-                                              font=self.theme.font_value)
+        self._return_value = s.get("return_pct")
+        self._refresh_return_attention()
         self.tile_values["volatility_pct"].config(text=fmt_num(s["volatility_pct"], 1, "%"))
         self.tile_values["max_drawdown_pct"].config(text=fmt_num(s["max_drawdown_pct"], 2, "%"))
         self.tile_values["mean_range_pct"].config(text=fmt_num(s["mean_range_pct"], 3, "%"))
         self.tile_values["up_bars_pct"].config(text=fmt_num(s["up_bars_pct"], 1, "%"))
+
+    def _refresh_return_attention(self):
+        value = self._return_value
+        role = result_attention_role(value)
+        fill, foreground = result_attention_colors(value, self.theme.colors)
+        style = "MarketReturn.Value.TLabel"
+        ttk.Style(self.frame).configure(style, background=fill, foreground=foreground, font=self.theme.font_value)
+        prefix = {"positive": "+", "negative": "-", "zero": ""}.get(role, "")
+        text = "—" if role == "absent" else prefix + fmt_num(abs(float(value)), 2, "%")
+        self.tile_values["return_pct"].configure(text=text, style=style)
 
     def _show_quality(self, report, session):
         lines = [f"Barras analisadas: {fmt_int(report['rows'])}",

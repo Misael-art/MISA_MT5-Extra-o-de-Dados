@@ -350,6 +350,26 @@ Rodar backtest aparece cortado em1280×800.
   resultado atual depois do teste e anterior após mudar período, rolagemPageDown.
   Exposição registrada, semcampanhaPF19 ouOOSindependente. Suíte58cb114:859 aprovados/9 ignorados em937,37 s, saída0.
 
+## T17.13 — sinal e atenção do retorno de mercado
+
+Registrado antes do código. A UI real de Análise foi operada emEURUSDH1
+(1537barras). Cenário controlado identificado, fornecendo retornozero ao resumo
+sem alterar banco, reproduziu `▲0,00%`/Good.TLabel. Dados reais e cenário
+controlado foram capturados separadamente; resumo real preservado.
+
+- Dependências:T17.12tokens e cadeiaUI atéT17.16/#89. Ambiente próprio
+  instalado/dev e baselinef6436b6:859 aprovados/9 ignorados em905,65 s, saída0.
+- Arquivos:ui/analysis.py, tokens/tema apenas se necessários à reutilização,
+  testes deAnálise/janela e proposta/painel/continuidade/capturas.
+- Passos: usar sinal/ausência explícitos e atenção compartilhada; zero neutro
+  semseta ascendente, ausência semnúmero inventado, perdas legíveis discretas;
+  legenda curta explicando retorno depreço (não resultado doExpert/validação).
+  Reproduzir real/zero/ausente nos temas eDPI96/144/1280/1920, validar contraste,
+  precisão e atualização; suíte/doctor ePRpróprio.
+- Aceite: valores reais idênticos, sem alterar fórmulas/candles/dados; nenhum
+  sinal positivo emzero; cores representam sinal e não aprovação. Respeitar
+  arquitetura existente, semestatísticas/widgetsouduplicar análise.
+
 ### T17.20 — sincronização da verificação de restauração
 
 O CI Windows do a893f54 falhou duas vezes na verificação de restauração de
