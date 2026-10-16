@@ -424,13 +424,15 @@ class RelationsPanel:
 
     def _build_state_legend(self):
         self._configure_styles()
-        legend = ttk.Frame(self.frame, style="Surface.TFrame")
+        legend = DetailsPanel(self.frame, "Estados: presença ≠ evidência ≠ autorização",
+                              expanded=False, information=True, theme=self.theme, padding=SPACING["xs"])
+        self.state_legend = legend
         legend.pack(fill=tk.X, pady=(0, SPACING["xs"]))
-        header = ttk.Label(legend, text="Estados condicionais do produtor · presença do setup ≠ evidência ≠ autorização · "
+        header = ttk.Label(legend.body, text="Estados condicionais do produtor · presença do setup ≠ evidência ≠ autorização · "
                            "azul não aparece na fixture sintética.", style="Muted.TLabel")
-        _fit_label_to_parent(header, legend)
+        _fit_label_to_parent(header, legend.body)
         header.pack(anchor="w", fill=tk.X, pady=(0, SPACING["2xs"]))
-        labels_frame = ttk.Frame(legend, style="Surface.TFrame")
+        labels_frame = ttk.Frame(legend.body, style="Surface.TFrame")
         labels_frame.pack(fill=tk.X)
         self._legend_labels_frame = labels_frame
         labels = (
@@ -473,7 +475,8 @@ class RelationsPanel:
             scope_label.pack(anchor="w", fill=tk.X)
             self.scope_blocks.append(block)
             bar.columnconfigure(column, weight=1, uniform="relations-filter")
-        self.advanced = DetailsPanel(bar, "Recorte avançado", expanded=False, padding=SPACING["xs"])
+        self.advanced = DetailsPanel(bar, "Recorte avançado", expanded=False, information=True,
+                                     theme=self.theme, padding=SPACING["xs"])
         self.advanced.grid(row=1, column=0, columnspan=4, sticky="ew", padx=SPACING["xs"],
                            pady=(SPACING["xs"], 0))
         details = _SYNTHETIC_FIXTURE["scope"]
@@ -521,7 +524,10 @@ class RelationsPanel:
         bar.bind("<Configure>", resize_scope, add="+")
 
     def _page_detail(self, parent, key, visible_lines=4):
-        panel = ContentPanel(parent, title="Detalhe da seleção", padding=SPACING["xs"])
+        panel = DetailsPanel(parent, title="Detalhe da seleção", expanded=False, information=True,
+                             on_toggle=getattr(parent, "_relations_reflow", None), theme=self.theme,
+                             padding=SPACING["xs"])
+        parent._relations_disclosure = panel
         area = ttk.Frame(panel.body, style="Surface.TFrame")
         area.pack(fill=tk.X)
         text = self.theme.classic(tk.Text(area, width=36, height=visible_lines, wrap=tk.WORD, undo=False,
@@ -534,6 +540,7 @@ class RelationsPanel:
         area.columnconfigure(0, weight=1)
         area.rowconfigure(0, weight=1)
         text.bind("<Configure>", lambda event, target=text: target.configure(wrap="word"))
+        text.bind("<Escape>", panel.collapse)
         self._details[key] = text
         self._detail_panels[key] = panel
         return panel
@@ -547,21 +554,27 @@ class RelationsPanel:
         primary.grid(row=0, column=0, sticky="nsew")
         detail.grid(row=0, column=1, sticky="nsew", padx=(SPACING["xs"], 0))
         split._relations_orientation = None
+        split._relations_layout = None
 
-        def resize(event):
+        def resize(_event=None):
+            width = split.winfo_width()
+            disclosure = getattr(detail, "_relations_disclosure", None)
+            expanded = disclosure is not None and disclosure.expanded
             detail_min = max(220, self.theme.font.measure("0" * 28) + 2 * SPACING["md"])
             # A proporção também precisa reservar espaço ao texto, não apenas ao gráfico.
             detail_column_min = detail_min + SPACING["xs"]
             minimum = detail_column_min * (primary_weight + detail_weight) / detail_weight
             split._relations_detail_minwidth = detail_min
-            orientation = tk.VERTICAL if event.width < max(900, minimum) else tk.HORIZONTAL
-            if split._relations_orientation != orientation:
+            orientation = tk.VERTICAL if not expanded or width < max(900, minimum) else tk.HORIZONTAL
+            layout = (orientation, expanded)
+            if split._relations_layout != layout:
+                split._relations_layout = layout
                 split._relations_orientation = orientation
                 if orientation == tk.VERTICAL:
                     primary.grid_configure(row=0, column=0, columnspan=2, padx=0)
                     detail.grid_configure(row=1, column=0, columnspan=2, padx=0, pady=(SPACING["xs"], 0))
-                    split.rowconfigure(0, weight=3)
-                    split.rowconfigure(1, weight=2)
+                    split.rowconfigure(0, weight=3 if expanded else 1)
+                    split.rowconfigure(1, weight=2 if expanded else 0)
                     split.columnconfigure(0, weight=1, minsize=0, uniform="")
                     split.columnconfigure(1, weight=0, minsize=0, uniform="")
                 else:
@@ -575,6 +588,7 @@ class RelationsPanel:
                                           minsize=detail_column_min)
 
         split.bind("<Configure>", resize, add="+")
+        detail._relations_reflow = resize
         return split, primary, detail
 
     def _set_detail(self, key, title, row):
@@ -715,12 +729,16 @@ class RelationsPanel:
         except (ImportError, tk.TclError):
             self.timeline_toolbar = None
         self.timeline_chart.widget.pack(fill=tk.BOTH, expand=True)
-        timeline_note = ttk.Label(panel.body,
+        self.timeline_explanation = DetailsPanel(panel.body, "Como ler o traçado", expanded=False,
+                                                 information=True, theme=self.theme, padding=SPACING["2xs"])
+        self.timeline_explanation.pack(fill=tk.X, pady=(0, SPACING["2xs"]))
+        timeline_note = ttk.Label(self.timeline_explanation.body,
                                   text="Faixas temporais neutras: aquecimento, treino, validação e OOS; cores de estado aparecem "
                                        "apenas nos marcadores. Segmentos retos ligam os valores recebidos, sem suavização. "
                                        "Lacunas não são conectadas.",
                                   style="Muted.TLabel")
-        _fit_label_to_parent(timeline_note, panel.body)
+        self.timeline_method_note = timeline_note
+        _fit_label_to_parent(timeline_note, self.timeline_explanation.body)
         timeline_note.pack(fill=tk.X, pady=(0, SPACING["2xs"]))
         self.timeline_table = TablePanel(primary, "Janelas observadas", columns=("period", "segment", "rho", "interval", "n", "utility", "freshness", "presence"),
                                          widths=(170, 94, 70, 180, 70, 145, 95, 90), anchors=("w", "center", "center", "w", "center", "w", "center", "center"),

@@ -183,6 +183,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | implementada; PR #92 draft; 886 aprovados/9 ignorados; operação real conferida; integração pendente |
 | T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | implementada; 4 focados aprovados; suíte final em execução; integração pendente |
 | T17.18 | Cabeçalho e Análise: reflow pela fonte e área analítica percorrível | T17.13 | implementada; fonte/teclado/rolagem e UI real conferidos; suíte final registrada no PR |
+| T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; UI real conferida; suíte final registrada no PR |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

@@ -670,3 +670,41 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   imagens geradas nesta tarefa; tentativas anteriores mantidas nos artefatos.
 - Resultado da suíte final/doctor/CI e revisão é atualizado no PR; não houve
   operação em conta, nova pesquisa financeira ou modificação de base do usuário.
+
+## T17.21 — informação recolhível sem perder a seleção (2026-10-16)
+
+- Ambiente próprio instalado/dev; baseline eed5f34 com 861 aprovados/9 ignorados
+  em653,15 s, saída0, antes do código. Reutiliza DetailsPanel, sem dependências.
+- Variante de informação com botão ℹ e texto de ação, Enter/Espaço e Escape;
+  recolher conserva o texto e devolve foco ao botão quando necessário. Seis
+  detalhes de seleção começam fechados; mudança de seleção atualiza o conteúdo
+  sem expansão automática. O split devolve largura/altura à análise e conserva
+  a largura de leitura de T17.17 quando aberto.
+- Critérios extensos dos estados e explicação do traçado ficam sob informação;
+  contexto primário e avisos sintéticos/custos/ausência/validade permanecem
+  expostos. Recorte avançado mantém seus dados e passa ao mesmo botão informativo.
+- Trinta testes existentes de componentes/Relações passaram em23,42 s; com
+  os novos contratos de teclado, foco, texto fechado, seleção e ganho de área,
+  33 passaram em28,97 s. Verificações anteriores de detalhe legível permanecem
+  exercitadas com o painel explicitamente aberto; assertivas do componente
+  original conferidas por AST. Suíte final/operação visual/doctor pendentes.
+- As referências são a descrição do usuário e as telas atuais; anexos temporários
+  ausentes não foram alegados como inspecionados. Relações continua demonstração
+  sintética, sem ligação ao DTO/serviço F18. Não houve cálculo ou mudança de dados.
+
+- Suíte no43a14b5 concluída: 864 passed, 9 skipped in 609.05s (0:10:09), saída0. Nas capturas da
+  operação visual, texto/seleção/gráfico/tabelas permaneceram idênticos; clique
+  real por mouse e Escape/foco funcionaram em96/144 DPI e três larguras.
+  O glifo ℹ, apesar de presente no texto, não apareceu na fonte do host. Antes
+  do aceite final, será substituído pelo ícone desenhado do sistema existente
+  (`ui/icons.py`), com imagem não vazia e atualização por tema verificadas.
+  A suíte anterior permanece evidência da versão anterior, não da correção.
+
+- Ícone desenhado implementado no sistema Pillow/PhotoImage existente, com
+  tamanho pela fonte, contraste do tema e rótulo acessível. Trinta e três
+  focados passaram em27,72 s; tentativa anterior teve NameError na variável
+  do próprio teste, corrigida sem mudar o contrato. Fotos novas96/144 DPI
+  mostram o ícone; clique real, Escape/foco, paridade de texto/gráfico/tabela
+  e seis perfis por escala passaram. As duas sessões encerraram0.
+- Validação final após a correção e reconciliação com a principal é registrada
+  no PR desta tarefa; a suíte864/9 anterior não substitui essa execução.

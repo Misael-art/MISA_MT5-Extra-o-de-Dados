@@ -76,7 +76,7 @@ def test_timeline_preserves_gaps_and_exposes_chronological_windows(relations_pan
     assert values[-1][-1] == "UNKNOWN"
     assert panel.timeline_table.tree.item("timeline-2", "tags") == ("DETERIORATING",)
     chart_panel = panel.timeline_chart.widget.master
-    assert "Lacunas não são conectadas" in chart_panel.winfo_children()[-1].cget("text")
+    assert "Lacunas não são conectadas" in panel.timeline_method_note.cget("text")
 
 
 def test_short_window_scrolls_instead_of_compressing_chart_or_table(relations_panel):
@@ -171,6 +171,8 @@ def test_semantic_colors_require_explicit_producer_evidence(relations_panel):
 def test_scope_is_not_a_fake_filter_and_detail_stacks_on_narrow_windows(relations_panel):
     panel, root = relations_panel
     assert not hasattr(panel, "filter_vars")
+    panel.timeline_detail.set_expanded(True)
+    panel.state_legend.set_expanded(True)
     panel.notebook.select(panel.pages["Linha do tempo"])
     root.update()
     root.geometry("820x800")
@@ -232,7 +234,7 @@ def test_timeline_keeps_exact_points_and_internal_gap_in_both_themes(relations_p
         assert codes.count(Path.MOVETO) == 2
         assert len(axis.collections) == 3
         assert panel.timeline_table.tree.item("timeline-2", "values")[2] == "—"
-        note = panel.timeline_chart.widget.master.winfo_children()[-1].cget("text")
+        note = panel.timeline_method_note.cget("text")
         assert "sem suavização" in note and "Lacunas não são conectadas" in note
         panel.timeline_table.tree.selection_set("timeline-3")
         panel._timeline_selected(None)
@@ -241,6 +243,7 @@ def test_timeline_keeps_exact_points_and_internal_gap_in_both_themes(relations_p
 
 def test_split_views_keep_readable_details_through_resize_and_themes(relations_panel):
     panel, root = relations_panel
+    panel.timeline_detail.set_expanded(True)
     for _ in range(2):
         for width in (1920, 1280, 820, 1920):
             root.geometry(f"{width}x1080")
@@ -266,6 +269,8 @@ def test_detail_spacing_is_owned_by_split_container(relations_panel):
     panel, root = relations_panel
     for name in ("timeline", "distribution", "convergence"):
         detail = getattr(panel, name + "_detail")
+        detail.set_expanded(True)
+        root.update()
         assert str(detail.pack_info().get("padx", "0")) == "0"
         split = detail.master.master
         gap = detail.master.grid_info()["padx"]
@@ -273,3 +278,62 @@ def test_detail_spacing_is_owned_by_split_container(relations_panel):
             assert gap != 0
         else:
             assert gap == 0
+
+
+def test_secondary_information_starts_closed_without_hiding_primary_warnings(relations_panel):
+    panel, root = relations_panel
+    assert len(panel._detail_panels) == 6
+    for detail in [*panel._detail_panels.values(), panel.state_legend, panel.timeline_explanation]:
+        assert not detail.expanded
+        assert detail.body.winfo_manager() == ""
+        assert str(detail.information_icon) in detail.toggle_button.cget("image")
+        assert detail.information_icon.width() >= 14
+    assert panel.synthetic_notice.winfo_ismapped()
+    assert "DADOS SINTÉTICOS" in panel.synthetic_notice.message.cget("text")
+    assert panel.distribution_notice.winfo_manager()
+    assert "expectativa líquida" in panel.distribution_notice.message.cget("text")
+    assert "evidência ≠ autorização" in panel.state_legend.title_label.cget("text")
+    panel.state_legend.toggle_button.invoke()
+    root.update()
+    assert all(label.winfo_ismapped() for label, _state, _text in panel._legend_labels)
+    panel.timeline_explanation.toggle_button.invoke()
+    assert "Lacunas não são conectadas" in panel.timeline_method_note.cget("text")
+
+
+def test_closed_selection_details_update_and_release_space_without_changing_plot(relations_panel):
+    panel, root = relations_panel
+    panel.notebook.select(panel.pages["Linha do tempo"])
+    for _ in range(2):
+        for width in (1920, 1280, 820):
+            root.geometry(f"{width}x900")
+            detail = panel.timeline_detail
+            detail.set_expanded(False)
+            root.update()
+            viewport = panel._page_scrolls["Linha do tempo"]
+            closed_width = panel.timeline_chart.widget.winfo_width()
+            closed_height = viewport.content.winfo_reqheight()
+            observed = panel.timeline_chart.figure.axes[0].lines[0].get_ydata().copy()
+            table = [panel.timeline_table.tree.item(iid, "values") for iid in panel._timeline_iids]
+            for iid, segment in (("timeline-0", "Aquecimento"), ("timeline-3", "OOS")):
+                panel.timeline_table.tree.selection_set(iid)
+                panel._timeline_selected(None)
+                assert not detail.expanded
+                assert segment in panel._details["timeline"].get("1.0", "end-1c")
+            selected_text = panel._details["timeline"].get("1.0", "end-1c")
+            detail.toggle_button.invoke()
+            root.update()
+            assert detail.expanded
+            assert (closed_width > panel.timeline_chart.widget.winfo_width() or
+                    closed_height < viewport.content.winfo_reqheight())
+            assert panel._details["timeline"].get("1.0", "end-1c") == selected_text
+            np.testing.assert_equal(panel.timeline_chart.figure.axes[0].lines[0].get_ydata(), observed)
+            assert [panel.timeline_table.tree.item(iid, "values") for iid in panel._timeline_iids] == table
+            text = panel._details["timeline"]
+            text.focus_force()
+            root.update()
+            text.event_generate("<Escape>")
+            root.update()
+            assert not detail.expanded
+            assert root.focus_get() is detail.toggle_button
+            assert text.get("1.0", "end-1c") == selected_text
+        panel.theme.toggle()
