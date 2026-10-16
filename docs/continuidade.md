@@ -708,3 +708,12 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   e seis perfis por escala passaram. As duas sessões encerraram0.
 - Validação final após a correção e reconciliação com a principal é registrada
   no PR desta tarefa; a suíte864/9 anterior não substitui essa execução.
+
+- Validação combinada d05106f:896 aprovados/9 ignorados em742,33s, saída0.
+  O CI Windows encontrou uma falha nova no limite superior da figura:892px
+  para teto864px com fonte maior. Sem repetição cega ou tolerância adicional: o
+  código deixa de usar a altura requisitada inicial do backend, que também pode
+  incorporar DPI, e usa480px ou24linhas da fonte. Novo teste injeta pedido
+  inicial de1920px e conserva as mesmas exigências de limite mínimo/máximo em
+  duas escalas. As execuções anteriores ficam preservadas; resultado final do
+  novo código e novo CI serão registrados antes da integração.

@@ -349,7 +349,8 @@ class AnalysisPanel:
         self._figure_frames[key] = frame
         canvas = FigureCanvasTkAgg(fig, master=frame)
         widget = canvas.get_tk_widget()
-        height = max(widget.winfo_reqheight(), self.theme.font.metrics("linespace") * 24)
+        # A requisição inicial também pode incorporar DPI; não é a altura de referência.
+        height = max(480, self.theme.font.metrics("linespace") * 24)
         frame.configure(height=height)
         frame.rowconfigure(0, weight=1, minsize=height)
         widget.configure(background=c["surface"], highlightthickness=0)

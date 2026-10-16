@@ -1010,6 +1010,35 @@ def _set_ui_scaling(ui, scaling):
 
 
 @pytest.mark.parametrize("scaling", [96 / 72, 144 / 72])
+def test_analysis_figure_height_does_not_follow_backend_initial_request(ui, monkeypatch, scaling):
+    from matplotlib.backends import backend_tkagg
+
+    _set_ui_scaling(ui, scaling)
+    original = backend_tkagg.FigureCanvasTkAgg
+
+    class InflatedCanvas(original):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.get_tk_widget().configure(height=1920)
+
+    monkeypatch.setattr(backend_tkagg, "FigureCanvasTkAgg", InflatedCanvas)
+    panel = ui.analysis_panel
+    assert ui.open_analysis("WIN$N", "1 minuto")
+    deadline = time.monotonic() + 10
+    while panel.data is None and time.monotonic() < deadline:
+        ui.pump(.05)
+    assert panel.data is not None
+    panel.redraw()
+    for width in (1280, 900, 1920, 1280):
+        ui.root.geometry(f"{width}x800")
+        ui.pump(.15)
+        widget = panel._canvases["chart"].get_tk_widget()
+        assert widget.winfo_height() >= ui.theme.font.metrics("linespace") * 24
+        assert widget.winfo_height() <= max(480, ui.theme.font.metrics("linespace") * 24,
+                                            panel.results_viewport.canvas.winfo_height())
+
+
+@pytest.mark.parametrize("scaling", [96 / 72, 144 / 72])
 def test_analysis_keeps_native_text_and_chart_size_through_resize(ui, scaling):
     import pandas as pd
     from matplotlib.backend_bases import MouseEvent
