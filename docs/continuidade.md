@@ -403,7 +403,9 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   A base de código foi aprovada separadamente na T17.12: 852/9, saída 0.
 - Focados: 11 aprovados em 23,10 s; cenário de lacuna interna/seleção nos dois
   temas repetido após a última asserção: 1 aprovado em 2,85 s. Suíte completa do
-  código b9fd90a em andamento, com supervisor isolado para preservar conclusão.
+  código b9fd90a: 852 aprovados/1 falha/9 ignorados em 652,79 s, saída 1.
+  A falha repetiu o mesmo teste de conexão/espera fixa da baseline; não é suíte
+  global aprovada. Correção da sincronização exige tarefa separada.
 - Aplicação aberta com base vazia de auditoria, terminal desativado, Relações
   explicitamente sintética, ambos os temas, DPI96/144 e 1280×800/1920×1080.
   Capturas em `docs/img/interface-visual/T17.8/`; doctor offline 15 OK/2 avisos/

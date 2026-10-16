@@ -214,5 +214,5 @@ na timeline de Relações, conforme instrução de não suavizar resultados.
   aos centros/valores recebidos, com NaN nas ausências. 11 testes focados aprovados
   (23,10 s); nova asserção de seleção na lacuna aprovada em rodada de 2,85 s.
   Base vazia local, fixture de Relações explicitamente sintética, dois temas,
-  DPI96/144 e 1280×800/1920×1080. Suíte completa posterior em andamento.
+  DPI96/144 e 1280×800/1920×1080. Suíte posterior b9fd90a: 852 aprovados/1 falha/9 ignorados em652,79 s, saída1; mesma espera fixa de conexão da baseline.
   Limite de ocupação vertical registrado para outro recorte; sem aceite global.
