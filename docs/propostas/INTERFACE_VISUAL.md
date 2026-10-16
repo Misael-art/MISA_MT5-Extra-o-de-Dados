@@ -413,3 +413,20 @@ Matplotlib e marcadores nas posições corretas; temas claro/escuro,96/144 DPI,
 evidências. Baseline1851b1d:875 aprovados/9 ignorados em917,57s, saída0.
 Uma tarefa/branch/PR. Densidade geral dos ticks e metadata completa dos
 exports continuam em recortes próprios. Sem novo backtest ou campanhaPF19.
+
+### T17.20 — sincronização da verificação de restauração
+
+O CI Windows do a893f54 falhou duas vezes na verificação de restauração de
+arranjo: após espera fixa de 0,6 s, o feedback ainda era "Conferindo...". Runtime,
+fixture e função do teste são idênticos à dependência #89; logs preservados.
+A única repetição no mesmo SHA confirmou a falha; não haverá repetição cega.
+
+Recorte apenas de teste e documentação: aguardar condição observável do fim
+do callback com prazo finito. Manter todas as verificações de terminal aberto,
+backup, bytes UTF-16 restaurados, organização ligada e estado final do botão.
+Cobrir restauração imediata e I/O falso deliberadamente lento; nenhum MT5 real.
+Não substituir por sleep maior nem mudar o comportamento da aplicação.
+
+Ambiente próprio instalado; baseline b9e54c9: 860 aprovados/9 ignorados em
+868,84 s, saída 0, antes do código. Aceite: cenários rápido/lento aprovados,
+suíte completa, doctor, revisão técnica e CI no SHA exato em PR próprio.

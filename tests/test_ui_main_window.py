@@ -502,25 +502,51 @@ def test_settings_reopen_with_what_was_saved(ui, settings):
     again.window.destroy()
 
 
-def test_settings_restore_the_arrangement_only_with_the_terminal_closed(ui, settings):
+@pytest.mark.parametrize("restore_delay", [0.0, 1.0])
+def test_settings_restore_the_arrangement_only_with_the_terminal_closed(ui, settings, monkeypatch, restore_delay):
     from mt5_extracao.robots import layout
+    original_restore = layout.restore
+    restore_calls = []
+
+    def restore_with_delay(data):
+        restore_calls.append(data)
+        time.sleep(restore_delay)  # I/O deliberadamente lento; não é a sincronização do teste.
+        return original_restore(data)
+
+    monkeypatch.setattr(layout, "restore", restore_with_delay)
+
+    def wait_for_state(expected_backup, *, operation=False):
+        def ready():
+            pending = settings.feedback.cget("text").startswith("Conferindo se o MetaTrader 5")
+            return (not (operation and pending) and settings.state is not None
+                    and settings.state["has_arrangement"] == expected_backup
+                    and settings.restore_button.instate(["!disabled"] if expected_backup else ["disabled"]))
+
+        deadline = time.monotonic() + 10
+        while not ready() and time.monotonic() < deadline:
+            ui.pump(0.05)
+        assert ready(), "A operação e a atualização do diálogo não terminaram em 10 s"
+
     layout.apply(settings.env.data)
     settings.refresh()
-    ui.pump(0.5)
+    wait_for_state(True)
     assert "Há um arranjo anterior guardado" in settings.arrangement_label.cget("text")
     assert "barra de ferramentas" in settings.arrangement_label.cget("text")
     assert settings.restore_button.instate(["!disabled"])
     settings.env.running = True
     settings.restore_button.invoke()
-    ui.pump(0.6)
+    wait_for_state(True, operation=True)
     assert "está aberto" in settings.feedback.cget("text") and layout.has_arrangement(settings.env.data)
+    assert not restore_calls
     settings.env.running = False
     settings.restore_button.invoke()
-    ui.pump(0.6)
+    wait_for_state(False, operation=True)
     assert "Arranjo anterior devolvido" in settings.feedback.cget("text")
     assert "continua ligada" in settings.feedback.cget("text")
     assert layout.ini_path(settings.env.data).read_bytes().decode("utf-16") == TERMINAL_INI
     assert settings.restore_button.instate(["disabled"])
+
+    assert restore_calls == [settings.env.data]
 
 
 def test_settings_show_and_undo_the_panel_button_switch(ui, settings):
