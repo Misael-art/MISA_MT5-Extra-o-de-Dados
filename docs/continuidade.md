@@ -581,3 +581,12 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   do aceite final, será substituído pelo ícone desenhado do sistema existente
   (`ui/icons.py`), com imagem não vazia e atualização por tema verificadas.
   A suíte anterior permanece evidência da versão anterior, não da correção.
+
+- Ícone desenhado implementado no sistema Pillow/PhotoImage existente, com
+  tamanho pela fonte, contraste do tema e rótulo acessível. Trinta e três
+  focados passaram em27,72 s; tentativa anterior teve NameError na variável
+  do próprio teste, corrigida sem mudar o contrato. Fotos novas96/144 DPI
+  mostram o ícone; clique real, Escape/foco, paridade de texto/gráfico/tabela
+  e seis perfis por escala passaram. As duas sessões encerraram0.
+- Validação final após a correção e reconciliação com a principal é registrada
+  no PR desta tarefa; a suíte864/9 anterior não substitui essa execução.

@@ -286,7 +286,8 @@ def test_secondary_information_starts_closed_without_hiding_primary_warnings(rel
     for detail in [*panel._detail_panels.values(), panel.state_legend, panel.timeline_explanation]:
         assert not detail.expanded
         assert detail.body.winfo_manager() == ""
-        assert "ℹ" in detail.toggle_button.cget("text")
+        assert str(detail.information_icon) in detail.toggle_button.cget("image")
+        assert detail.information_icon.width() >= 14
     assert panel.synthetic_notice.winfo_ismapped()
     assert "DADOS SINTÉTICOS" in panel.synthetic_notice.message.cget("text")
     assert panel.distribution_notice.winfo_manager()

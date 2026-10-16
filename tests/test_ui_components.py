@@ -169,17 +169,21 @@ def test_progress_comparison_and_details_are_presentation_only(app):
 def test_information_details_support_keyboard_and_keep_hidden_content(app):
     import time
 
-    root, _theme = app
+    root, theme = app
     states = []
     details = DetailsPanel(root, "Comprovação da seleção", expanded=False,
-                           information=True, on_toggle=states.append)
+                           information=True, on_toggle=states.append, theme=theme)
     details.pack(fill=tk.X)
     text = tk.Text(details.body, height=3)
     text.insert("1.0", "Aquecimento · n=0 · motivo completo preservado")
     text.pack(fill=tk.X)
     root.geometry("640x360")
     root.update()
-    assert "ℹ" in details.toggle_button.cget("text")
+    assert details.toggle_button.cget("text") == "Detalhes"
+    icon = details.information_icon
+    assert str(icon) in details.toggle_button.cget("image")
+    assert icon.width() >= 14
+    assert sum(not icon.transparency_get(x, y) for x in range(icon.width()) for y in range(icon.height())) > 20
     assert details.body.winfo_manager() == ""
     details.toggle_button.focus_force()
     details.toggle_button.event_generate("<Return>")
@@ -204,6 +208,11 @@ def test_information_details_support_keyboard_and_keep_hidden_content(app):
     root.update()
     assert not details.expanded
     assert states == [True, False, True, False, True, False]
+    theme.rich_glyphs = False
+    theme.toggle()
+    assert str(details.information_icon) != str(icon)
+    assert str(details.information_icon) in details.toggle_button.cget("image")
+    assert text.get("1.0", "end-1c") == "Aquecimento · n=0 · motivo completo preservado"
 
 
 @pytest.mark.parametrize("palette", [LIGHT, DARK])

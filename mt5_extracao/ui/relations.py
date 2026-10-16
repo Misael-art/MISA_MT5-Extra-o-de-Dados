@@ -425,7 +425,7 @@ class RelationsPanel:
     def _build_state_legend(self):
         self._configure_styles()
         legend = DetailsPanel(self.frame, "Estados: presença ≠ evidência ≠ autorização",
-                              expanded=False, information=True, padding=SPACING["xs"])
+                              expanded=False, information=True, theme=self.theme, padding=SPACING["xs"])
         self.state_legend = legend
         legend.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         header = ttk.Label(legend.body, text="Estados condicionais do produtor · presença do setup ≠ evidência ≠ autorização · "
@@ -475,7 +475,8 @@ class RelationsPanel:
             scope_label.pack(anchor="w", fill=tk.X)
             self.scope_blocks.append(block)
             bar.columnconfigure(column, weight=1, uniform="relations-filter")
-        self.advanced = DetailsPanel(bar, "Recorte avançado", expanded=False, information=True, padding=SPACING["xs"])
+        self.advanced = DetailsPanel(bar, "Recorte avançado", expanded=False, information=True,
+                                     theme=self.theme, padding=SPACING["xs"])
         self.advanced.grid(row=1, column=0, columnspan=4, sticky="ew", padx=SPACING["xs"],
                            pady=(SPACING["xs"], 0))
         details = _SYNTHETIC_FIXTURE["scope"]
@@ -524,7 +525,8 @@ class RelationsPanel:
 
     def _page_detail(self, parent, key, visible_lines=4):
         panel = DetailsPanel(parent, title="Detalhe da seleção", expanded=False, information=True,
-                             on_toggle=getattr(parent, "_relations_reflow", None), padding=SPACING["xs"])
+                             on_toggle=getattr(parent, "_relations_reflow", None), theme=self.theme,
+                             padding=SPACING["xs"])
         parent._relations_disclosure = panel
         area = ttk.Frame(panel.body, style="Surface.TFrame")
         area.pack(fill=tk.X)
@@ -728,7 +730,7 @@ class RelationsPanel:
             self.timeline_toolbar = None
         self.timeline_chart.widget.pack(fill=tk.BOTH, expand=True)
         self.timeline_explanation = DetailsPanel(panel.body, "Como ler o traçado", expanded=False,
-                                                 information=True, padding=SPACING["2xs"])
+                                                 information=True, theme=self.theme, padding=SPACING["2xs"])
         self.timeline_explanation.pack(fill=tk.X, pady=(0, SPACING["2xs"]))
         timeline_note = ttk.Label(self.timeline_explanation.body,
                                   text="Faixas temporais neutras: aquecimento, treino, validação e OOS; cores de estado aparecem "

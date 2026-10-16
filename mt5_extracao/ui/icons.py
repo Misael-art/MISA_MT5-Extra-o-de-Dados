@@ -29,3 +29,15 @@ def mt5_view(color: str, size: int = 20) -> tk.PhotoImage:
     r = stroke * 0.9
     draw.ellipse((points[-1][0] - r, points[-1][1] - r, points[-1][0] + r, points[-1][1] + r), fill=color)
     return _photo(image, size)
+
+
+def information(color: str, size: int = 18) -> tk.PhotoImage:
+    """Um i dentro de um círculo, independente dos glifos da fonte instalada."""
+    s = size * _SCALE
+    image = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    stroke = max(2, s // 12)
+    draw.ellipse((s * .08, s * .08, s * .92, s * .92), outline=color, width=stroke)
+    draw.ellipse((s * .44, s * .25, s * .56, s * .37), fill=color)
+    draw.line((s * .50, s * .46, s * .50, s * .75), fill=color, width=stroke)
+    return _photo(image, size)

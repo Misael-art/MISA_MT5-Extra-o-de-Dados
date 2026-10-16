@@ -179,7 +179,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.17 | Relações: detalhe legível e reflow pela largura efetiva | T17.14 | implementada; PR #88 draft; 858 aprovados/9 ignorados; Windows aprovado após corrigir espaçamento; integração pendente |
 | T17.16 | Backtest: contexto do resultado e controles acessíveis no detalhe | T17.17 | implementada; PR #89 draft; 859 aprovados/9 ignorados; integração pendente |
 | T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | implementada; 4 focados aprovados; suíte final em execução; integração pendente |
-| T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; suíte final e operação visual em validação |
+| T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; UI real conferida; suíte final registrada no PR |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
