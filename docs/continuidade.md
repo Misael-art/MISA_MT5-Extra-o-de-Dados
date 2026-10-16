@@ -337,3 +337,13 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   preservada, sem importar suavização. Pré-requisito T17.12a preserva métricas
   ausentes e distingue zero/perda/sem resultado na apresentação compartilhada.
   Aceite visual global e campanha PF ≥ 1,9 continuam pendentes.
+
+### Revalidação CI da T17.9 no Windows
+
+O job Windows de uma branch descendente retornou duas colunas após o teste pedir
+1920 px; a asserção exigia quatro. O teste foi corrigido na tarefa de origem
+para verificar todos os controles mapeados e inteiros dentro dos limites reais
+do painel, mantendo a checagem dos valores. A causa precisa da diferença de
+fontes/DPI/tamanho efetivo no runner não foi medida. Não se exige um número fixo
+de colunas quando o conteúdo precisa refluír. Nenhuma asserção de acesso, valor,
+seleção ou rolagem foi retirada. Windows manual continua pendente.
