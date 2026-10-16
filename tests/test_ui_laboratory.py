@@ -257,5 +257,13 @@ def test_small_window_keeps_filters_and_scrollable_results_reachable(panel):
                panel.overview_heat_table.table_frame.winfo_children() if child.winfo_class() == "TScrollbar")
     root.geometry("1920x1080")
     root.update()
-    assert panel._filter_columns == 4
+    # O tamanho pedido não fixa a largura efetiva nem as métricas das fontes no Windows.
+    # Verificamos acesso real aos controles, inclusive quando o leiaute precisa de duas linhas.
+    for cell in panel.filter_cells:
+        assert cell.winfo_ismapped()
+        assert cell.winfo_rootx() >= panel.filter_bar.winfo_rootx()
+        assert cell.winfo_rootx() + cell.winfo_width() <= panel.filter_bar.winfo_rootx() + panel.filter_bar.winfo_width()
+    for button in (panel.import_button, panel.refresh_button):
+        assert button.winfo_ismapped()
+        assert button.winfo_rootx() + button.winfo_width() <= panel.frame.winfo_rootx() + panel.frame.winfo_width()
     assert panel.kpi["n"][0].cget("text") == "120"
