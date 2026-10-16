@@ -90,7 +90,7 @@ Testes focados finais: **31 aprovados em 44,07 s**. Duas falhas iniciais nos tes
 novos: posição inicial do canvas inclui borda de 1 pixel, e `orient` retorna objeto
 Tcl em vez de string; corrigidas as expectativas de representação, preservando
 a verificação de retorno à posição inicial e da barra horizontal. A suíte
-completa posterior ainda precisa terminar. Doctor isolado: 15 OK/2 avisos/1 falha
+completa posterior em 972658c passou: **840 aprovados, 9 ignorados em 733,11 s**, saída 0. Doctor isolado: 15 OK/2 avisos/1 falha
 (caminho MT5 deliberadamente vazio); principal permanece validado separadamente.
 Windows real pendente. Não houve alteração shell.
 
