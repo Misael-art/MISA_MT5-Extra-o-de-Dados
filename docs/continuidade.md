@@ -388,3 +388,29 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 
 - Revalidação do host principal após T17.12: doctor 21 OK/1 aviso/0 falhas.
   T17.6 preservada, incluindo 22 arquivos não rastreados e diffs staged/unstaged.
+
+## T17.8 — traço observado em Relações (2026-10-16)
+
+- Branch `codex/t17-8-traco-observado`, base T17.12/#84. Remove interpolação
+  cúbica da timeline: agora um ponto por janela recebida, com NaN preservando
+  lacunas; traço reto explicitado na legenda. Estados, marcadores, tabela, seleção
+  e gestão de callbacks permanecem. Fonte continua fixture sintética declarada,
+  sem vínculo com base real/serviço F18; não há resultado financeiro nesta entrega.
+- Ambiente próprio instalado e dev. Baseline própria: 851 aprovados/1 falha/9
+  ignorados em 653,29 s, teste de conexão com espera fixa de 0,8 s já intermitente;
+  repetição isolada passou (1 em 6,04 s). Supervisor terminou 143 antes do filho,
+  que escreveu o resumo; exit do filho não capturado. Não chamar baseline verde.
+  A base de código foi aprovada separadamente na T17.12: 852/9, saída 0.
+- Focados: 11 aprovados em 23,10 s; cenário de lacuna interna/seleção nos dois
+  temas repetido após a última asserção: 1 aprovado em 2,85 s. Suíte completa do
+  código b9fd90a: 852 aprovados/1 falha/9 ignorados em 652,79 s, saída 1.
+  A falha repetiu o mesmo teste de conexão/espera fixa da baseline; não é suíte
+  global aprovada. Correção da sincronização exige tarefa separada.
+- Aplicação aberta com base vazia de auditoria, terminal desativado, Relações
+  explicitamente sintética, ambos os temas, DPI96/144 e 1280×800/1920×1080.
+  Capturas em `docs/img/interface-visual/T17.8/`; doctor offline 15 OK/2 avisos/
+  1 falha deliberada por MT5.path vazio. Host principal: 21 OK/1 aviso/0 falhas.
+- Auditoria encontrou espaço vertical ocioso abaixo da área analítica enquanto
+  a timeline exige rolagem interna, especialmente em 1920×1080. Próximo recorte
+  de ocupação da altura deve preservar mínimos/rolagem e ser testado separadamente.
+- Sem merge, operação em conta ou campanha PF. Revisão/integração pendentes.

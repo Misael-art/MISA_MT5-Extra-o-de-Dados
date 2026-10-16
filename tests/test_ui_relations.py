@@ -64,15 +64,12 @@ def test_timeline_preserves_gaps_and_exposes_chronological_windows(relations_pan
     neutral = to_rgba(panel.theme.colors["axis"])
     assert axis.patches
     assert all(np.allclose(patch.get_facecolor()[:3], neutral[:3]) for patch in axis.patches)
-    observed = axis.lines[0].get_ydata()
-    assert np.isnan(observed[0])
-    assert len(observed) > 5
-    assert np.isclose(observed[1], 0.26)
-    assert np.isclose(observed[-1], 0.19)
-    from mt5_extracao.ui.relations import _smooth_observed_segments
-    _, separated = _smooth_observed_segments((0, 1, 2, 3, 4, 5), (0.1, 0.2, 0.3, np.nan, -0.2, -0.1))
-    assert np.isnan(separated).sum() == 1
-    assert np.isclose(separated[0], 0.1) and np.isclose(separated[-1], -0.1)
+    from matplotlib import dates as mdates
+    from mt5_extracao.ui.relations import _SYNTHETIC_FIXTURE, _date
+    windows = _SYNTHETIC_FIXTURE["timeline"]["series"][0]["windows"]
+    np.testing.assert_equal(axis.lines[0].get_ydata(), [np.nan, 0.26, 0.03, -0.04, 0.19])
+    np.testing.assert_equal(axis.lines[0].get_xdata(),
+                            mdates.date2num([_date(window["center"]) for window in windows]))
     values = [panel.timeline_table.tree.item(iid, "values") for iid in panel._timeline_iids]
     assert [row[1] for row in values] == ["Aquecimento", "Treino", "Validação", "OOS", "OOS"]
     assert values[-1][-2] == "STALE"
@@ -208,3 +205,32 @@ def test_timeline_redraw_replaces_pick_callback_instead_of_accumulating(relation
     panel._draw_timeline()
     callbacks = panel.timeline_chart.canvas.callbacks.callbacks["button_press_event"]
     assert len(callbacks) == before
+
+
+def test_timeline_keeps_exact_points_and_internal_gap_in_both_themes(relations_panel, monkeypatch):
+    from copy import deepcopy
+    from matplotlib.path import Path
+    from mt5_extracao.ui.relations import _SYNTHETIC_FIXTURE
+
+    panel, root = relations_panel
+    series = deepcopy(_SYNTHETIC_FIXTURE["timeline"]["series"][0])
+    series["windows"][2].update(value=None, value_text="—", n="n=0")
+    monkeypatch.setattr(panel, "_current_timeline_series", lambda: series)
+    for _ in range(2):
+        panel.theme.toggle()
+        panel._draw_timeline()
+        root.update_idletasks()
+        axis = panel.timeline_chart.figure.axes[0]
+        line = axis.lines[0]
+        np.testing.assert_equal(line.get_ydata(), [np.nan, 0.26, np.nan, -0.04, 0.19])
+        assert len(line.get_xdata()) == len(series["windows"])
+        # NaN inicia dois trechos; nenhuma linha atravessa a janela ausente.
+        codes = [code for _vertices, code in line.get_path().iter_segments()]
+        assert codes.count(Path.MOVETO) == 2
+        assert len(axis.collections) == 3
+        assert panel.timeline_table.tree.item("timeline-2", "values")[2] == "—"
+        note = panel.timeline_chart.widget.master.winfo_children()[-1].cget("text")
+        assert "sem suavização" in note and "Lacunas não são conectadas" in note
+        panel.timeline_table.tree.selection_set("timeline-3")
+        panel._timeline_selected(None)
+        assert "OOS" in panel._details["timeline"].get("1.0", "end-1c")

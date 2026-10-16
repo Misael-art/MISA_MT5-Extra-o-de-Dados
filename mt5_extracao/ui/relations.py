@@ -195,61 +195,6 @@ def _fit_label_to_parent(label, parent, *, reserve=24, minimum=220):
     return label
 
 
-def _smooth_observed_segments(x_values, y_values, samples_per_interval=16):
-    """Suaviza só o traço entre observações contíguas; preserva valores, ordem e lacunas recebidas."""
-    x_values = np.asarray(x_values, dtype=float)
-    y_values = np.asarray(y_values, dtype=float)
-    output_x: list[float] = []
-    output_y: list[float] = []
-    index = 0
-    while index < len(y_values):
-        if not np.isfinite(y_values[index]):
-            if not output_y or np.isfinite(output_y[-1]):
-                output_x.append(float("nan"))
-                output_y.append(float("nan"))
-            index += 1
-            continue
-        end = index + 1
-        while end < len(y_values) and np.isfinite(y_values[end]):
-            end += 1
-        x = x_values[index:end]
-        y = y_values[index:end]
-        if len(x) < 3:
-            smooth_x, smooth_y = x, y
-        else:
-            intervals = np.diff(x)
-            secants = np.diff(y) / intervals
-            slopes = np.empty(len(x), dtype=float)
-            slopes[0], slopes[-1] = secants[0], secants[-1]
-            for point in range(1, len(x) - 1):
-                before, after = secants[point - 1], secants[point]
-                if before * after <= 0:
-                    slopes[point] = 0.0
-                else:
-                    left, right = intervals[point - 1], intervals[point]
-                    w1, w2 = 2 * right + left, right + 2 * left
-                    slopes[point] = (w1 + w2) / (w1 / before + w2 / after)
-            pieces_x, pieces_y = [], []
-            for interval, width in enumerate(intervals):
-                t = np.linspace(0.0, 1.0, samples_per_interval, endpoint=False)
-                t2, t3 = t * t, t * t * t
-                h00, h10 = 2 * t3 - 3 * t2 + 1, t3 - 2 * t2 + t
-                h01, h11 = -2 * t3 + 3 * t2, t3 - t2
-                pieces_x.append(x[interval] + width * t)
-                pieces_y.append(h00 * y[interval] + h10 * width * slopes[interval]
-                                + h01 * y[interval + 1] + h11 * width * slopes[interval + 1])
-            pieces_x.append(x[-1:])
-            pieces_y.append(y[-1:])
-            smooth_x, smooth_y = np.concatenate(pieces_x), np.concatenate(pieces_y)
-        if output_y and np.isfinite(output_y[-1]):
-            output_x.append(float("nan"))
-            output_y.append(float("nan"))
-        output_x.extend(map(float, smooth_x))
-        output_y.extend(map(float, smooth_y))
-        index = end
-    return np.asarray(output_x), np.asarray(output_y)
-
-
 def _visual_state(row: dict) -> str:
     """Mapeia apenas estados explícitos do produtor; nunca estima evidência na UI."""
     utility = row.get("utility_state", "INCONCLUSIVE")
@@ -766,7 +711,7 @@ class RelationsPanel:
         self.timeline_chart.widget.pack(fill=tk.BOTH, expand=True)
         timeline_note = ttk.Label(panel.body,
                                   text="Faixas temporais neutras: aquecimento, treino, validação e OOS; cores de estado aparecem "
-                                       "apenas nos marcadores. Traço suavizado entre observações; marcadores preservam os valores recebidos. "
+                                       "apenas nos marcadores. Segmentos retos ligam os valores recebidos, sem suavização. "
                                        "Lacunas não são conectadas.",
                                   style="Muted.TLabel")
         _fit_label_to_parent(timeline_note, panel.body)
@@ -809,8 +754,7 @@ class RelationsPanel:
         centers = [_date(window["center"]) for window in series["windows"]]
         values = [np.nan if window["value"] is None else window["value"] for window in series["windows"]]
         import matplotlib.dates as mdates
-        smooth_x, smooth_y = _smooth_observed_segments(mdates.date2num(centers), values)
-        ax.plot(smooth_x, smooth_y, color=c["ink2"], linewidth=1.8,
+        ax.plot(mdates.date2num(centers), values, color=c["ink2"], linewidth=1.8,
                 solid_capstyle="round", solid_joinstyle="round", zorder=2)
         for center, window in zip(centers, series["windows"]):
             if window["value"] is None:
