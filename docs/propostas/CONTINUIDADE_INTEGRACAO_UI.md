@@ -18,7 +18,7 @@ baseline, preservando as integrações existentes.
 
 ## Estado verificado da integração
 
-Snapshot da principal `b9e54c9`, em 2026-10-16. Cada PR abaixo foi revisado
+Snapshot da principal `eed5f34`, em 2026-10-16. Cada PR abaixo foi revisado
 tecnicamente pelo agente executor, teve os checks conferidos no head final,
 foi integrado separadamente e confirmado no remoto. Não houve revisão por
 outro agente. CI foi usado como evidência adicional à leitura dos diffs.
@@ -34,6 +34,7 @@ outro agente. CI foi usado como evidência adicional à leitura dos diffs.
 | [#87](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/87) | T17.14: altura útil da análise | `a13c2c6` | Altura/rolagem verificadas em 144 DPI após resize |
 | [#88](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/88) | T17.17: detalhe legível | `3471dbe` | Detalhe acima do mínimo, quatro larguras, 144 DPI |
 | [#89](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/89) | T17.16: contexto do Backtest | `b9e54c9` | Execução histórica, atualização e resultado anterior verificados |
+| [#93](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/93) | T17.20: sincronização da restauração nos testes | `eed5f34` | Dois cenários falsos aprovados na principal, 8,75 s |
 
 Os smokes executaram o módulo da instalação principal e sua venv no host,
 com cópia consistente dos dados reais e configuração isolada que desativa a
@@ -53,20 +54,34 @@ usam provedores falsos e instaladores sem MT5.
   retorno de mercado distingue alta, queda, zero e ausência. Suíte reconciliada
   `a893f54`: 866 aprovados/9 ignorados, saída 0. O job Windows falhou duas vezes
   no teste antigo de restauração, com feedback ainda pendente após 0,6 s.
-  A correção foi separada no #93; não se repetirá o SHA antigo indefinidamente.
+  A correção foi integrada no #93 e recebida no `0a23687`; checks novos em curso. Não se repetirá o SHA antigo indefinidamente.
 - [#91](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/91), T17.10:
   zeradas separadas de perdas. Suíte `85b81ef`: 875 aprovados/9 ignorados,
   saída 0. BBRSI real: 4.071 ganhos, 6.366 perdas, 340 zeradas; o gráfico anterior
   mostrava 6.706 perdas. Ledger com hash idêntico antes/depois; SQL independente
-  confirma as 48 faixas exportadas. Integração depende do #90.
+  confirma as 48 faixas exportadas. Recebeu o pai corrigido em `fd94893`; CI novo em curso. Integração depende do #90.
 - [#92](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/92), T17.11:
   grade horária explícita. Suíte `3b4e6d1`: 886 aprovados/9 ignorados, saída 0.
   Dados reais: 263 operações, 48 posições, 37 medidas e quatro segmentos;
-  valores observados preservados. Integração depende do #91.
-- [#93](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/93), T17.20:
-  teste aguarda callback e estado atualizado do diálogo. Quatro focados
-  aprovados, restauração rápida e lenta, todas as oito verificações originais
-  preservadas. Suíte final e checks ainda pendentes neste snapshot.
+  valores observados preservados. Recebeu o pai corrigido em `06c92d3`; CI novo em curso. Integração depende do #91.
+
+A suíte documental c3d3785 terminou com 860 aprovados/9 ignorados em
+591,95 s, saída 0. A execução anterior foi interrompida pelo reboot do host
+às 19:16:57 UTC e não foi contada como aprovação. O #93 tem suíte própria
+861/9, CI integral aprovado e as oito verificações originais preservadas;
+nenhum arquivo real de terminal foi restaurado pelos testes.
+
+Após o reboot, o diagnóstico encontrou a ponte parada. Foi iniciado apenas
+o servidor RPC de leitura, cujo startup importa o SDK sem chamar initialize,
+login ou funções de negociação. O doctor seguinte confirmou 21 OK/1 aviso/
+0 falhas. Configuração do usuário e o hash do diff T17.6 foram reconferidos.
+
+O novo pedido de detalhes recolhíveis com ícone de informação é T17.21,
+separado da geometria da Análise T17.18. Os anexos temporários não estão
+disponíveis; nenhuma imagem ausente foi alegada como inspecionada. Detalhes,
+critérios longos e explicações secundárias devem liberar área sem esconder
+avisos sintéticos, custos incompletos, denominadores ou contexto primário.
+Ambos os recortes ainda aguardam implementação neste snapshot.
 
 ## Falhas e limitações preservadas
 

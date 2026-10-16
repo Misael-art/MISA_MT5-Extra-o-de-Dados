@@ -533,17 +533,37 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - DoctorofflineT17.16:15 OK/2 avisos/1 falha deliberadaMT5.pathvazio;
   principal preservada comdiagnóstico separado21 OK/1 aviso/0 falhas.
 
+## T17.20 — restauração com sincronização observável (2026-10-16)
+
+- Branch `codex/t17-20-sincronizacao-arranjo`, base da principal após #89.
+  Ambiente próprio instalado; baseline b9e54c9: 860 aprovados/9 ignorados em
+  868,84 s, saída 0, antes do código.
+- Duas execuções Windows do a893f54 falharam na espera fixa de 0,6 s do teste
+  antigo. Logs e identidade da fixture/runtime preservados. A primeira correção
+  local revelou outra etapa: feedback encerrado antes do refresh que reabilita
+  o botão. Esperar apenas a mensagem permitia ignorar a segunda invocação.
+- O teste agora aguarda callback e estado esperado do diálogo com prazo finito,
+  incluindo o primeiro refresh. Cenários de restauração imediata e I/O falso
+  atrasado em 1 s; nenhum MT5 real. Todas as verificações originais de proteção
+  e bytes UTF-16 mantidas, com conferência por AST; novas verificações confirmam
+  nenhuma restauração com terminal aberto e uma única chamada quando fechado.
+- Quatro focados aprovados em 18,68 s. A tentativa local anterior, com 3 aprovações
+  e 1 falha, permanece registrada. Suíte completa no cc13d0e em execução; resultado
+  final pendente. Diff de runtime vazio: não houve alteração da aplicação.
+- Doctor isolado: 15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Nenhuma
+  conta, configuração ou arquivo do terminal do usuário foi alterado.
+
 ## ORG05 — estado da integração visual (2026-10-16)
 
-A principal b9e54c9 reúne os PRs #81–#89, integrados separadamente após revisão
+A principal eed5f34 reúne os PRs #81–#89 e #93, integrados separadamente após revisão
 técnica do agente executor, checks no head final e smoke no módulo instalado com
 configuração/dados privados. O trabalho original T17.6, as configurações e as
 bases do usuário foram preservados. Nenhum agente adicional foi acionado.
 
 Estado por PR, commits de merge, verificações no host, falhas preservadas e
 pendências estão em [Continuidade da integração visual](propostas/CONTINUIDADE_INTEGRACAO_UI.md).
-O painel do plano foi reconciliado com essas integrações. #90 aguarda a correção
-separada do teste assíncrono (#93); #91/#92 possuem implementação, testes e
+O painel do plano foi reconciliado com essas integrações. #90 recebeu a correção
+separada do teste assíncrono (#93) e aguarda novo CI; #91/#92 possuem implementação, testes e
 operação real registrados, mas ainda dependem da cadeia de integração.
 
 O smoke histórico do #89 manteve as 129 operações, PF 0,637667 e resultado
@@ -553,5 +573,8 @@ financeira não foi demonstrada. Aceite global da UI, dados/custos e pesquisa
 permanecem frentes explícitas. #79/#80, releases e contas seguem separados.
 
 ORG05 altera somente documentação. Baseline a13c2c6: 856 aprovados/9 ignorados,
-saída 0; base depois reconciliada com b9e54c9. Verificação final desta unidade
-será registrada no PR, junto ao diagnóstico e à conferência de consistência.
+saída 0; base depois reconciliada com b9e54c9. Suíte final c3d3785: 860 aprovados/9
+ignorados em 591,95 s, saída 0, após repetir a execução interrompida por reboot.
+Depois recebeu #93, mantendo diff próprio somente documental. Doctor atual da
+principal após restaurar apenas o servidor RPC: 21 OK/1 aviso/0 falhas. Pedido
+de informações recolhíveis registrado em T17.21, ainda sem código neste snapshot.
