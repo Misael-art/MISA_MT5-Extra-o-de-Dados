@@ -713,10 +713,20 @@ def test_connect_does_not_reopen_a_terminal_that_is_already_open(ui, connecting)
     assert connecting.opened == [] and connecting.tries == 1 and ui.app.mt5_initialized is True
 
 
-def test_no_internet_is_said_plainly_with_what_to_do(ui, connecting):
+@pytest.mark.parametrize("worker_delay", [0.0, 1.0])
+def test_no_internet_is_said_plainly_with_what_to_do(ui, connecting, worker_delay):
+    connecting.slow = worker_delay
+
+    def wait_for_attempt():
+        deadline = time.monotonic() + 10
+        while getattr(ui, "_connecting", False) and time.monotonic() < deadline:
+            ui.pump(0.05)
+        assert not getattr(ui, "_connecting", False), "A tentativa de conexão não terminou em 10 s"
+        assert ui.check_button.instate(["!disabled"])
+
     connecting.ok, connecting.online = False, False
     ui.connect_mt5(startup=True)
-    ui.pump(0.8)
+    wait_for_attempt()
     assert len(connecting.warned) == 1 and "sem internet" in connecting.warned[0]
     assert "Verificar conexão" in connecting.warned[0]
     assert ui.status_label.cget("text") == "Status: sem conexão com o MetaTrader 5 (sem internet)"
@@ -725,11 +735,11 @@ def test_no_internet_is_said_plainly_with_what_to_do(ui, connecting):
 
     connecting.online = True                                           # com internet: o terminal abriu e não entrou
     ui.check_mt5_status()                                              # o botão "Verificar conexão"
-    ui.pump(0.8)
+    wait_for_attempt()
     assert "não entrou na conta" in connecting.warned[1]
     connecting.ok = True                                               # a rede voltou
     ui.check_mt5_status()
-    ui.pump(0.8)
+    wait_for_attempt()
     assert len(connecting.warned) == 2 and "Conectado" in ui.mt5_status_value.cget("text")
 
 
