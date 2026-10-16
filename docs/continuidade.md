@@ -488,3 +488,8 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - CI da dependência #86: primeiratentativaWindowstimeout60 s emfixtureSQL
   inalterada; uma reexecução no mesmo8246686 passou, todoschecksverdes. Falha
   inicial preservada nos logs e descrição, sem alterar timeout ou testes.
+
+- CI Windows do 2706c66 revelou duas falhas reais: painel interno recebia
+  novamente os 4 px já reservados pelo split. Removido espaçamento duplicado
+  de Linha do tempo, Distribuição e Convergência, preservando as exigências de
+  largura dos testes. Log inicial preservado; validação da correção em execução.
