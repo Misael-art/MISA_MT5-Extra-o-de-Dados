@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.ui import charts
-from mt5_extracao.ui.components import ChartPanel, FilterBar, MetricCard, Notice, PageHeader, TablePanel
+from mt5_extracao.ui.components import ChartPanel, FilterBar, MetricCard, Notice, PageHeader, ScrollableContent, TablePanel
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 from mt5_extracao.ui.visual_tokens import SPACING
 from mt5_extracao.ui.visual_tokens import TYPOGRAPHY
@@ -76,13 +76,25 @@ class LaboratoryPanel:
                     "horário de entrada (análise só por horário de saída).", theme=self.theme)
         self.refresh_button = head.add_action("Atualizar", self.reload, style="Accent.TButton")
 
+        # Cabeçalho e seleção permanecem fora da área rolável de resultados.
+        for widget in (head.title_label, head.subtitle_label, head.action_frame):
+            widget.pack_forget()
+        head.title_label.grid(row=0, column=0, sticky="w")
+        head.action_frame.grid(row=0, column=1, sticky="e")
+        head.subtitle_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(SPACING["xs"], 0))
+        head.columnconfigure(0, weight=1)
+        head.bind("<Configure>", lambda event: head.subtitle_label.configure(wraplength=max(180, event.width)))
         self._build_filters()
+        self.results_viewport = ScrollableContent(self.frame, self.theme)
+        self.results_viewport.pack(fill=tk.BOTH, expand=True)
+        self.results_body = self.results_viewport.content
         self._build_kpis()
-        self.notice = Notice(self.frame, "", kind="info", theme=self.theme)
+        self.notice = Notice(self.results_body, "", kind="info", theme=self.theme)
         self.notice.message.configure(wraplength=1100)
+        self.notice.bind("<Configure>", self._resize_notice, add="+")
         self.note = self.notice.message  # texto de estado preservado para as telas e testes existentes.
         self._note_kind = "info"
-        self.tabs = ttk.Notebook(self.frame, style="Compact.TNotebook")
+        self.tabs = ttk.Notebook(self.results_body, style="Compact.TNotebook")
         self.tabs.pack(fill=tk.BOTH, expand=True)
         self.tab_frames = {}
         for name in TABS:
@@ -101,6 +113,10 @@ class LaboratoryPanel:
         self.theme.on_change(self._theme_changed)
 
     # --- montagem ----------------------------------------------------------------------
+
+    def _resize_notice(self, event):
+        reserve = self.notice.badge.winfo_reqwidth() + 4 * SPACING["sm"]
+        self.note.configure(wraplength=max(180, event.width - reserve))
 
     def set_note(self, text):
         """Estado, disponibilidade ou qualidade acima das guias; a faixa some sem aviso."""
@@ -135,37 +151,59 @@ class LaboratoryPanel:
         bar = FilterBar(self.frame)
         bar.pack(fill=tk.X, pady=(0, SPACING["sm"]))
         self.filter_bar = bar
-        ttk.Label(bar, text="Modalidade:", style="Surface.TLabel").pack(side=tk.LEFT)
+        cells = [ttk.Frame(bar, style="Surface.TFrame") for _ in range(4)]
+        self.filter_cells = cells
+        mode, selection, period_cell, news_cell = cells
+        ttk.Label(mode, text="Modalidade:", style="Surface.TLabel").pack(side=tk.LEFT)
         self.lens = tk.StringVar(value=LENS_ROBOT)
         for value, label, hint in ((LENS_ROBOT, "Por robô", "Em quais ativos, horários e condições este robô vai "
                                                              "melhor?"),
                                    (LENS_ASSET, "Por ativo", "Que robôs exploram melhor este ativo?")):
-            w = ttk.Radiobutton(bar, text=label, value=value, variable=self.lens, style="Surface.TRadiobutton",
+            w = ttk.Radiobutton(mode, text=label, value=value, variable=self.lens, style="Surface.TRadiobutton",
                                 command=self._lens_changed)
             w.pack(side=tk.LEFT, padx=(8, 0))
             Tooltip(w, hint, self.theme)
-        self.selector_label = ttk.Label(bar, text="Robô:", style="Surface.TLabel")
-        self.selector_label.pack(side=tk.LEFT, padx=(18, 4))
+        self.selector_label = ttk.Label(selection, text="Robô:", style="Surface.TLabel")
+        self.selector_label.pack(side=tk.LEFT, padx=(0, 4))
         self.selected = tk.StringVar()
-        self.selector = ttk.Combobox(bar, textvariable=self.selected, state="readonly", width=28)
+        self.selector = ttk.Combobox(selection, textvariable=self.selected, state="readonly", width=28)
         self.selector.pack(side=tk.LEFT)
         self.selector.bind("<<ComboboxSelected>>", lambda e: self.load_lab())
-        ttk.Label(bar, text="Período:", style="Surface.TLabel").pack(side=tk.LEFT, padx=(18, 4))
+        ttk.Label(period_cell, text="Período:", style="Surface.TLabel").pack(side=tk.LEFT, padx=(0, 4))
         self.period = tk.StringVar(value=PERIODS[0][0])
-        period = ttk.Combobox(bar, textvariable=self.period, state="readonly", width=16,
+        period = ttk.Combobox(period_cell, textvariable=self.period, state="readonly", width=16,
                               values=[p[0] for p in PERIODS])
         period.pack(side=tk.LEFT)
         period.bind("<<ComboboxSelected>>", lambda e: self.apply_filters())
         self.hide_news = tk.BooleanVar(value=False)
-        news = ttk.Checkbutton(bar, text="Ocultar notícias de impacto alto", variable=self.hide_news,
+        news = ttk.Checkbutton(news_cell, text="Ocultar notícias de impacto alto", variable=self.hide_news,
                                style="Surface.TCheckbutton",
                                command=self.apply_filters)
-        news.pack(side=tk.LEFT, padx=(18, 0))
+        news.pack(side=tk.LEFT)
         Tooltip(news, "Tira as operações com evento de impacto alto na janela de [TRADE_ANALYTICS] "
                       "event_window_before_min / after_min. Calendário: mt5x trades calendar import.", self.theme)
 
+        self._filter_columns = None
+        bar.bind("<Configure>", self._layout_filters, add="+")
+
+    def _layout_filters(self, event):
+        widths = [cell.winfo_reqwidth() for cell in self.filter_cells]
+        gap = SPACING["sm"]
+        available = max(1, event.width - 2 * gap)
+        columns = 4 if sum(widths) + 3 * gap <= available else (
+            2 if max(widths[0], widths[2]) + max(widths[1], widths[3]) + gap <= available else 1)
+        if columns == self._filter_columns:
+            return
+        self._filter_columns = columns
+        for index in range(4):
+            self.filter_bar.columnconfigure(index, weight=1 if index < columns else 0)
+        for index, cell in enumerate(self.filter_cells):
+            cell.grid(row=index // columns, column=index % columns, sticky="w",
+                      padx=(0 if index % columns == 0 else gap, 0),
+                      pady=(0 if index < columns else SPACING["xs"], 0))
+
     def _build_kpis(self):
-        row = ttk.Frame(self.frame)
+        row = ttk.Frame(self.results_body)
         self.kpi_row = row
         row.pack(fill=tk.X, pady=(0, SPACING["sm"]))
         self.kpi = {}
@@ -448,7 +486,7 @@ class LaboratoryPanel:
             self.overview_heat_table = TablePanel(
                 parent, "Expectativa por faixa horária × dia", ("Faixa", *day_names),
                 (80, 150, 150, 150, 150, 150, 150, 150),
-                ("w",) + ("center",) * 7, height=9, subtitle="Referência temporal · moeda da conta",
+                ("w",) + ("center",) * 7, height=9, xscroll=True, subtitle="Referência temporal · moeda da conta",
                 padding=SPACING["xs"])
             self.overview_heat_table.grid(row=0, column=0, sticky="nsew", padx=SPACING["xs"], pady=SPACING["xs"])
             self.overview_heat_notice = Notice(
@@ -479,6 +517,12 @@ class LaboratoryPanel:
                 amount = charts.money(value) if pd.notna(value) else "—"
                 row.append(f"{amount} · n={count}{marker}")
             tree.insert("", tk.END, values=tuple(row))
+        # Largura de apresentação pela fonte real; os valores e a população não mudam.
+        for index, column in enumerate(tree.cget("columns")):
+            texts = [tree.heading(column, "text")] + [
+                tree.item(item, "values")[index] for item in tree.get_children()]
+            width = max(self.theme.font.measure(text) for text in texts) + 2 * SPACING["md"]
+            tree.column(column, width=max(80, width), minwidth=max(80, width), stretch=False)
 
     def _overview(self):
         from mt5_extracao.trade_analytics import aggregate

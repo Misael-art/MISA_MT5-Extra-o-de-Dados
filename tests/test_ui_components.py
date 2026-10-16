@@ -177,3 +177,27 @@ def test_semantic_component_styles_have_readable_foreground(app, palette):
                         ("Info", "accent"), ("Neutral", "ink2")):
         assert style.lookup(f"{name}.Status.TLabel", "foreground") == palette[token]
         assert style.lookup(f"{name}.Status.TLabel", "background") == palette["surface"]
+
+
+def test_scrollable_content_preserves_height_and_keyboard_access(app):
+    from mt5_extracao.ui.components import ScrollableContent
+    root, theme = app
+    root.geometry("500x240")
+    viewport = ScrollableContent(root, theme)
+    viewport.pack(fill=tk.BOTH, expand=True)
+    for index in range(30):
+        ttk.Label(viewport.content, text=f"Linha {index}").pack()
+    root.update()
+    assert viewport.scrollbar.winfo_manager() == "grid"
+    assert viewport.content.winfo_height() > viewport.canvas.winfo_height()
+    root.focus_force()
+    viewport.canvas.focus_set()
+    initial = viewport.canvas.yview()[0]
+    viewport.canvas.event_generate("<Next>")
+    root.update()
+    assert viewport.canvas.yview()[0] > 0
+    viewport.canvas.event_generate("<Prior>")
+    root.update()
+    assert viewport.canvas.yview()[0] == initial
+    theme.toggle()
+    assert viewport.canvas.cget("background") == theme.colors["surface"]

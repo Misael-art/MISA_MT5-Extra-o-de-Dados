@@ -14,6 +14,7 @@ from tkinter import ttk
 import numpy as np
 
 from mt5_extracao.ui import charts
+from mt5_extracao.ui.components import ScrollableContent as _ScrollablePage
 from mt5_extracao.ui.components import ContentPanel, DetailsPanel, FilterBar, Notice, PageHeader, TablePanel
 from mt5_extracao.ui.visual_tokens import SPACING, TYPOGRAPHY
 
@@ -32,40 +33,6 @@ _STATE_COLORS = {
     "INCONCLUSIVE": "muted",
 }
 _STATE_MARKERS = {"FAVORABLE": "o", "DETERIORATING": "^", "ADVERSE": "X", "INCONCLUSIVE": "s"}
-
-
-class _ScrollablePage(ttk.Frame):
-    """Deixa a área de trabalho percorrível quando o gráfico e os dados excedem a janela."""
-
-    def __init__(self, parent, theme):
-        super().__init__(parent, style="Surface.TFrame")
-        self.canvas = theme.classic(tk.Canvas(self, highlightthickness=0, borderwidth=0))
-        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.content = ttk.Frame(self.canvas, style="Surface.TFrame")
-        self._window = self.canvas.create_window((0, 0), window=self.content, anchor="nw")
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-        self.content.bind("<Configure>", self._content_changed, add="+")
-        self.canvas.bind("<Configure>", self._canvas_changed, add="+")
-
-    def _canvas_changed(self, event):
-        self.canvas.itemconfigure(self._window, width=event.width)
-        self._sync_scrollbar()
-
-    def _content_changed(self, _event=None):
-        bounds = self.canvas.bbox("all")
-        if bounds:
-            self.canvas.configure(scrollregion=bounds)
-        self._sync_scrollbar()
-
-    def _sync_scrollbar(self):
-        needs_scroll = self.content.winfo_reqheight() > self.canvas.winfo_height() + 2
-        if needs_scroll and not self.scrollbar.winfo_manager():
-            self.scrollbar.grid(row=0, column=1, sticky="ns")
-        elif not needs_scroll and self.scrollbar.winfo_manager():
-            self.scrollbar.grid_remove()
 
 
 # Dados de apresentação combinados com Analytics para exercitar estados e casos de borda.

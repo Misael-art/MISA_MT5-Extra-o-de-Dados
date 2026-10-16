@@ -226,3 +226,36 @@ def test_temporal_population_updates_without_changing_matrix_values(panel):
     panel._overview()
     assert "ficam fora" not in panel.overview_heat_notice.message.cget("text")
     pd.testing.assert_frame_equal(original, panel.view)
+
+
+def test_small_window_keeps_filters_and_scrollable_results_reachable(panel):
+    root = panel.ui.root
+    root.geometry("900x620")
+    panel.frame.master.pack(fill=tk.BOTH, expand=True)
+    ledger.save_trades(panel.db, "a", _trades(1), robot_key="python:a", symbol="AAA", timeframe="H1")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    root.update()
+    assert panel._filter_columns < 4
+    for cell in panel.filter_cells:
+        assert cell.winfo_ismapped()
+        assert cell.winfo_x() + cell.winfo_width() <= panel.filter_bar.winfo_width()
+    assert panel.refresh_button.winfo_ismapped()
+    viewport = panel.results_viewport
+    assert viewport.scrollbar.winfo_manager() == "grid"
+    assert viewport.content.winfo_height() > viewport.canvas.winfo_height()
+    viewport.canvas.yview_moveto(1)
+    root.update()
+    assert panel.filter_bar.winfo_ismapped()
+    assert panel.selector.winfo_ismapped()
+    tree = panel.overview_heat_table.tree
+    assert tree.winfo_height() >= 100
+    for index, column in enumerate(tree.cget("columns")):
+        for item in tree.get_children():
+            assert tree.column(column, "minwidth") >= panel.theme.font.measure(tree.item(item, "values")[index])
+    assert any(str(child.cget("orient")) == "horizontal" for child in
+               panel.overview_heat_table.table_frame.winfo_children() if child.winfo_class() == "TScrollbar")
+    root.geometry("1920x1080")
+    root.update()
+    assert panel._filter_columns == 4
+    assert panel.kpi["n"][0].cget("text") == "120"
