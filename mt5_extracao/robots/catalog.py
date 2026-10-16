@@ -292,17 +292,18 @@ def load_catalog(config=None, db=None) -> List[Robot]:
     if db is not None and getattr(db, "engine", None) is not None:
         from mt5_extracao.strategies.validation import load_validations
         attach_validations(list(robots.values()), load_validations(db))
-        attach_runs(list(robots.values()), store.load_runs(db))
-        attach_checks(list(robots.values()), store.load_checks(db))
+        runs = store.load_runs(db)
+        attach_runs(list(robots.values()), runs)
+        attach_checks(list(robots.values()), store.load_checks(db, runs=runs))
     return list(robots.values())
 
 
 def attach_validations(robots: List[Robot], validations) -> None:
-    from mt5_extracao import profit_factor
     """
     Liga às estratégias Python os vereditos já gravados por 'mt5x validate' (Filtro C), o melhor primeiro:
     aprovados antes, depois o maior profit factor fora da amostra. Quem tem teste passa a "Testado".
     """
+    from mt5_extracao import profit_factor
     if validations is None or len(validations) == 0:
         return
     for robot in robots:

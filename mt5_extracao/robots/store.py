@@ -186,7 +186,7 @@ def _has_column(conn, table: str, column: str) -> bool:
     return any(c["name"] == column for c in inspect(conn).get_columns(table))
 
 
-def load_checks(db, robot_key: str = None) -> list:
+def load_checks(db, robot_key: str = None, *, runs=None) -> list:
     """Baterias gravadas, a mais recente primeiro (lista vazia se a tabela ainda não existir)."""
     from sqlalchemy import inspect, text
     if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_robot_checks"):
@@ -199,9 +199,21 @@ def load_checks(db, robot_key: str = None) -> list:
             sql += " WHERE robot_key = :k"
             params["k"] = robot_key
         rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, check_id DESC"), params).mappings()]
+    run_metrics = {run["run_id"]: run["metrics"] for run in
+                   (load_runs(db, robot_key) if runs is None else runs)}
     for row in rows:
         row["approved"], row["allows_real"] = bool(row["approved"]), bool(row["allows_real"])
         for extra in _CHECK_EXTRA:
             row[extra] = row.get(extra) or ""
         row["items"] = json.loads(row.pop("items_json") or "[]")
+        metrics = run_metrics.get(row["run_id"])
+        if metrics is not None and metrics.get("profit_factor") is None:
+            from mt5_extracao import profit_factor
+            row["approved_recorded"], row["allows_real_recorded"] = row["approved"], row["allows_real"]
+            row["approved"] = row["allows_real"] = False
+            row["statistical_status"] = "reprovada"
+            row["items"].append({"group": "estatística", "id": "profit_factor_contract",
+                                 "name": "PF definido na execução vinculada", "status": "falha",
+                                 "detail": profit_factor.reason(metrics),
+                                 "fix": "Rode novamente a validação/bateria com uma amostra adequada."})
     return rows

@@ -366,7 +366,7 @@ class LaboratoryPanel:
         m = aggregate.summarize(view, aggregate._initial_equity(self._config()), aggregate.min_trades(self._config()))
         self.metric_cards["n"].set_value(fmt_int(m["n"]), f"{view['run_id'].nunique()} run(s)")
         self.metric_cards["win_rate"].set_value(fmt_num(m["win_rate"] * 100, 1, "%"), "")
-        self.metric_cards["profit_factor"].set_value(fmt_num(m["profit_factor"], 2), profit_factor.reason(m))
+        self.metric_cards["profit_factor"].set_value(fmt_num(m["profit_factor"], 2), profit_factor.reason(m, compact=True))
         expectancy_style = ("Good.TLabel" if m["ci_low"] is not None and m["ci_low"] > 0 else
                             "Bad.TLabel" if m["ci_high"] is not None and m["ci_high"] < 0 else "Value.TLabel")
         expectancy_detail = (f"90%: {charts.money(m['ci_low'])} a {charts.money(m['ci_high'])}"

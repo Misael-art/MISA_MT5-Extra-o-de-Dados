@@ -270,7 +270,10 @@ def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optiona
     df["profit_factor_oos"] = df["profit_factor_oos"].astype(object)
     for index, row in df.iterrows():
         try:
-            saved = json.loads(row["result_json"] or "{}").get("oos_metrics", {})
+            payload = json.loads(row["result_json"] or "{}")
+            saved = payload.get("oos_metrics", {}) if isinstance(payload, dict) else {}
+            if not isinstance(saved, dict):
+                saved = {}
         except (TypeError, ValueError):
             saved = {}
         recorded = row["profit_factor_oos"]

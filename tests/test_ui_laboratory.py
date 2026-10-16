@@ -85,7 +85,7 @@ def test_empty_book_explains_how_to_start(panel):
     assert panel._note_kind == "empty"
 
 
-@pytest.mark.parametrize("values,shown,reason", [([1, 5], "—", "Sem perdas no denominador"),
+@pytest.mark.parametrize("values,shown,reason", [([1, 5], "—", "Sem perdas"),
                                                 ([2000, -1], "2.000,00", "")])
 def test_pf_card_keeps_undefined_reason_or_full_finite_ratio(panel, values, shown, reason):
     panel.view = pd.DataFrame({"pnl": values, "run_id": ["controlled"] * len(values),

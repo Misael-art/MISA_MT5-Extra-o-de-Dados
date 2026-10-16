@@ -106,13 +106,14 @@ def test_legacy_run_projection_reconciles_pf_without_rewriting_database(tmp_path
     db.close()
 
 
-def test_legacy_validation_sentinel_loses_projected_approval_but_stored_result_is_preserved(tmp_path):
+@pytest.mark.parametrize("raw_json", ["{}", "[]", "null", '{"oos_metrics":[]}', "inválido"])
+def test_legacy_validation_sentinel_loses_projected_approval_but_stored_result_is_preserved(tmp_path, raw_json):
     db = DatabaseManager(db_path=str(tmp_path / "old.db"))
     with db.engine.begin() as conn:
         conn.execute(text(validation._CREATE))
         conn.execute(text("INSERT INTO _strategy_validation (symbol,timeframe,strategy,approved,status,"
                           "profit_factor_oos,trades_oos,positive_windows,robust,mc_dd,result_json,created_at) "
-                          "VALUES ('X','H1','donchian',1,'antiga',999,300,1,1,0,'{}','2026-01-01')"))
+                          "VALUES ('X','H1','donchian',1,'antiga',999,300,1,1,0,:raw,'2026-01-01')"), {"raw": raw_json})
     rows = validation.load_validations(db)
     assert not bool(rows.iloc[0]["approved"]) and bool(rows.iloc[0]["approved_recorded"])
     assert pd.isna(rows.iloc[0]["profit_factor_oos"])
@@ -186,3 +187,22 @@ def test_trade_cli_exports_json_null_and_explains_undefined_in_text(tmp_path, ca
     assert data["total"]["profit_factor_status"] == "no_losses"
     assert cli.main(args + ["trades", "report", "--robot", "python:donchian"]) == cli.EXIT_OK
     assert "indefinido" in capsys.readouterr().out
+
+
+def test_persisted_battery_approval_for_no_loss_run_is_revoked_only_in_read_projection(tmp_path):
+    db = DatabaseManager(db_path=str(tmp_path / "checks.db"))
+    run = {"run_id": "win-only", "robot_key": "python:donchian", "source": "backtest", "symbol": "X",
+           "timeframe": "H1", "data_start": "2025-01-01", "data_end": "2025-12-31", "bars": 1,
+           "metrics": {"trades": 300, "profit_factor": 99}, "equity": [],
+           "trades": [["t", 5, 1]] * 300, "created_at": "2026-01-01"}
+    store.save_run(db, run)
+    store.save_check(db, {"check_id": "old-check", "robot_key": run["robot_key"], "approved": True,
+                          "allows_real": True, "static_status": "aprovada", "statistical_status": "aprovada",
+                          "run_id": run["run_id"], "items": [], "created_at": "2026-01-02"})
+    projected = store.load_checks(db)[0]
+    assert not projected["approved"] and not projected["allows_real"]
+    assert projected["approved_recorded"] and projected["allows_real_recorded"]
+    assert projected["items"][-1]["id"] == "profit_factor_contract"
+    with db.engine.connect() as conn:
+        assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, "[]")
+    db.close()

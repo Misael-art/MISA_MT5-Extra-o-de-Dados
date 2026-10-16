@@ -57,7 +57,11 @@ def text(value, digits: int = 2) -> str:
     return f"{number:.{digits}f}".replace(".", ",") if number is not None else "indefinido"
 
 
-def reason(metrics: dict) -> str:
+def reason(metrics: dict, compact: bool = False) -> str:
+    if compact:
+        return {"no_losses": "Sem perdas", "no_trades": "Sem operações",
+                "invalid_pnl": "PnL inválido/ausente", "legacy_unverified": "PF legado não verificado",
+                "legacy_reported": "PF legado relatado"}.get(metrics.get("profit_factor_status"), "")
     return {"no_losses": "Sem perdas no denominador", "no_trades": "Sem operações",
             "invalid_pnl": "Resultado ausente ou inválido",
             "legacy_unverified": "PF legado sem denominador verificável",

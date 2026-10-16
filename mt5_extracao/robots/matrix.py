@@ -80,7 +80,8 @@ def build(db, config=None, robots: Optional[List] = None) -> dict:
 
     # veredito por (robô, ativo, timeframe): a bateria mais recente (MQL5) ou a validação (Python)
     verdicts: Dict[tuple, dict] = {}
-    for check in reversed(store.load_checks(db)):                 # da mais antiga para a mais recente: a última vence
+    runs = store.load_runs(db)
+    for check in reversed(store.load_checks(db, runs=runs)):      # da mais antiga para a mais recente: a última vence
         robot = by_key.get(check["robot_key"])
         if robot is None or not check.get("symbol"):
             continue
@@ -96,7 +97,7 @@ def build(db, config=None, robots: Optional[List] = None) -> dict:
                                                           "kind": "validação fora da amostra"}
 
     cells, seen = [], set()
-    for run in store.load_runs(db):                               # mais recentes primeiro
+    for run in runs:                                             # mais recentes primeiro
         robot = by_key.get(run["robot_key"])
         combo = (run["robot_key"], run["symbol"], run["timeframe"])
         if robot is None or run["source"] in catalog.HIDDEN_RUN_SOURCES or combo in seen:
