@@ -180,6 +180,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.16 | Backtest: contexto do resultado e controles acessíveis no detalhe | T17.17 | implementada; PR #89 draft; 859 aprovados/9 ignorados; integração pendente |
 | T17.13 | Análise: sinal do retorno zero e atenção visual coerente | T17.16 | baseline 859/9; 8 focados; suíte 865/9 saída 0; UI real conferida; PR #90 draft |
 | T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | implementada; 4 focados aprovados; suíte final em execução; integração pendente |
+| T17.18 | Cabeçalho e Análise: reflow pela fonte e área analítica percorrível | T17.13 | escopo registrado; baseline 866 aprovados/9 ignorados; implementação pendente |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

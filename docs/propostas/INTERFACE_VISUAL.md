@@ -386,3 +386,28 @@ Não substituir por sleep maior nem mudar o comportamento da aplicação.
 Ambiente próprio instalado; baseline b9e54c9: 860 aprovados/9 ignorados em
 868,84 s, saída 0, antes do código. Aceite: cenários rápido/lento aprovados,
 suíte completa, doctor, revisão técnica e CI no SHA exato em PR próprio.
+
+### T17.18 — cabeçalho e Análise respeitam a fonte e a altura mínima
+
+Reprodução no host com EURUSD H1, 1.537 barras existentes: em 144 DPI e
+1280×800, quatro títulos de cartões ficam menores que o texto pedido; a figura
+recebe 229 px. Em 900 px, a figura cai para 56 px. O subtítulo institucional
+também é cortado perto dos controles de conexão. Nenhum número deve mudar.
+
+Recorte de geometria: agrupar seleção de ativo/timeframe, período e indicadores;
+refluir pela largura pedida pela fonte. Cartões escolhem 6/3/2/1 colunas pelo
+maior requisito de título/valor. Resultados usam ScrollableContent existente,
+com altura suficiente para a figura e leitura OHLC quebrada em linhas. Filtros
+permanecem acessíveis. Cabeçalho conserva nome, conexão e ações; subtítulo
+secundário só aparece quando inteiro cabe e ações passam de linha se preciso.
+Agendamentos de geometria são coalescidos e cancelados ao destruir.
+
+Ambiente próprio instalado/dev; baseline a893f54 repetida após reboot:
+866 aprovados/9 ignorados em 623,39 s, saída 0. A execução anterior interrompida
+não foi contada. Depois recebeu somente correção test-only #93/documentos.
+Arquivos: ui/analysis.py, ui_manager.py, testes de UI, documentação/capturas.
+Sem novos cálculos, parâmetros, compressão, candles, indicadores ou dados.
+Aceite: temas claro/escuro, 96/144 DPI, 1280/1920 e janela estreita; controles,
+títulos/valores legíveis, gráfico preservado por rolagem, leitura OHLC inteira,
+resumo/candles idênticos, foco/seleção/overlays e fechamento sem callbacks soltos.
+Suítes focada/completa, doctor, revisão/CI e integração em PR próprio.
