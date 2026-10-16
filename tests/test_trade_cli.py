@@ -30,6 +30,9 @@ def test_report_both_lenses(setup, capsys):
     db, run, cfg = setup
     code, out = _call(cfg, capsys, "report", "--robot", "python:donchian")
     assert code == cli.EXIT_OK and out["data"]["total"]["n"] == run["metrics"]["trades"]
+    from mt5_extracao.trade_analytics import aggregate, context
+    expected = context.population(aggregate.frame(db, None, robot_key="python:donchian"))
+    assert out["data"]["context"] == expected
     assert "day_of_week" in out["data"]["by"] and out["data"]["lens"][0]["symbol"] == "BBB"
     code, out = _call(cfg, capsys, "report", "--symbol", "BBB", "--by", "hour")
     assert out["data"]["lens"][0]["robot_key"] == "python:donchian"
@@ -50,4 +53,7 @@ def test_compare_insights_simulate_and_export(setup, capsys, tmp_path, monkeypat
     code, out = _call(cfg, capsys, "simulate", "--robot", "python:donchian", "--exclude-days", "4", "--export")
     assert code == cli.EXIT_OK and out["data"]["evaluation"]["rules"] == ["Não operar Sex"]
     assert out["data"]["proposal"] and list((tmp_path / "propostas").glob("*.json"))
+    from pathlib import Path
+    exported = json.loads(Path(out["data"]["proposal"]).read_text())
+    assert exported["contexto_populacao"] == out["data"]["context"]
     assert cli.main(["--config", cfg, "trades", "simulate", "--robot", "python:donchian"]) == cli.EXIT_USAGE

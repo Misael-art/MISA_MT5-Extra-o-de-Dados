@@ -21,7 +21,7 @@ def _folder() -> Path:
 
 
 def proposal(scope: str, rules: List[dict], evaluation: dict, tested: int = 0, folder: Optional[Path] = None,
-             notes: Optional[List[str]] = None) -> Path:
+             notes: Optional[List[str]] = None, context: Optional[dict] = None) -> Path:
     folder = Path(folder) if folder else _folder()
     folder.mkdir(parents=True, exist_ok=True)
     study = [r for r in rules if r.get("tipo") == "trocar_modo" and r.get("modo") in STUDY_ONLY]
@@ -45,6 +45,8 @@ def proposal(scope: str, rules: List[dict], evaluation: dict, tested: int = 0, f
         "provas_que_melhoraram": evaluation.get("folds_improved"), "reserva_final": evaluation.get("holdout"),
         "operacoes_removidas": evaluation.get("removed"),
     }
+    if context is not None:
+        data["contexto_populacao"] = context
     safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in scope)
     path = folder / f"{safe}_{datetime.now():%Y%m%d-%H%M%S}.json"
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=float), encoding="utf-8")
