@@ -171,6 +171,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
 | T17.7 | Laboratório: referência temporal e população explícitas | T16.3, T17.3 | implementada; PR #81 draft; 838 aprovados/9 ignorados; integração e aceite visual global pendentes |
 | T17.9 | Laboratório responsivo em DPI alto e área de resultados rolável | T17.1–T17.3, T17.7 | implementada; PR #82 draft; 840 aprovados/9 ignorados; integração pendente |
+| T17.12a | Tabelas: preservar ausência e distinguir zero/perda na apresentação | T17.9 | implementada; PR #83 draft; 848 aprovados/9 ignorados; integração pendente |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
