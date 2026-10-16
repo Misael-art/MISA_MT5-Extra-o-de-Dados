@@ -317,3 +317,33 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   remove suavização existente em Relações. WIP T17.6 preservada byte a byte.
 - Auditoria e evidências em [AUDITORIA_UI_20261016.md](propostas/AUDITORIA_UI_20261016.md).
   Aceite visual integral e campanha PF ≥ 1,9 permanecem pendentes.
+
+## T17.9 — responsividade do Laboratório (2026-10-16)
+
+- Branch `codex/t17-9-laboratorio-responsivo`, PR #82 draft, empilhado sobre #81.
+  Código em 972658c. Sem merge. Contexto de seleção fixo, cabeçalho/filtros
+  reorganizados, resultados roláveis com área útil, colunas medidas pela fonte
+  e rolagem horizontal; componente reutilizado de Relações, sem alteração analítica.
+- Baseline 838 aprovados/9 ignorados em 697,62 s. Focados 31 aprovados em 44,07 s.
+  Suíte completa no commit 972658c: **840 aprovados, 9 ignorados em 733,11 s**, saída 0.
+- Inspeção real iterativa com 263 operações parciais: DPI144 desde o início do Tk,
+  1280×800/1920×1080, claro/escuro e rolagem; nova rodada em DPI96 incluiu 900×620.
+  Cortes de aviso e valores encontrados na primeira rodada foram corrigidos na
+  segunda. Capturas em `docs/img/interface-visual/T17.9/`.
+- Doctor isolado 15 OK/2 avisos/1 falha por caminho MT5 deliberadamente vazio;
+  principal validado separadamente. Windows real pendente, nenhum shell alterado.
+- Pedido posterior do dono: atenção discreta a positivos/negativos/ausências em
+  Horários e Minha base. T17.12 planejada reutilizando seletivamente T17.6
+  preservada, sem importar suavização. Pré-requisito T17.12a preserva métricas
+  ausentes e distingue zero/perda/sem resultado na apresentação compartilhada.
+  Aceite visual global e campanha PF ≥ 1,9 continuam pendentes.
+
+### Revalidação CI da T17.9 no Windows
+
+O job Windows de uma branch descendente retornou duas colunas após o teste pedir
+1920 px; a asserção exigia quatro. O teste foi corrigido na tarefa de origem
+para verificar todos os controles mapeados e inteiros dentro dos limites reais
+do painel, mantendo a checagem dos valores. A causa precisa da diferença de
+fontes/DPI/tamanho efetivo no runner não foi medida. Não se exige um número fixo
+de colunas quando o conteúdo precisa refluír. Nenhuma asserção de acesso, valor,
+seleção ou rolagem foi retirada. Windows manual continua pendente.

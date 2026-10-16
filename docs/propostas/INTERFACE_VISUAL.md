@@ -109,3 +109,22 @@ refinamento visual antes da campanha PF ≥ 1,9. PRs #79/#80 continuam separados
   saída 0; 6 testes focados aprovados. Doctor do principal aprovado. Worktree
   offline acusa caminho MT5 vazio. Capturas reais e pendências críticas em
   [auditoria](AUDITORIA_UI_20261016.md). Sem merge; sem aceite visual global.
+
+## T17.9 — Laboratório responsivo e resultados roláveis
+
+Registro anterior à implementação. Dependências T17.1–T17.3/T17.7, PR próprio
+empilhado sobre #81, sem merge. Baseline instalada no Linux e suíte aprovada antes
+de alterações. Evidência real em DPI144/1280×800: botão Atualizar cortado, notícias
+fora da largura, matriz sem altura.
+
+- **Arquivos:** ui/laboratory.py, ui/components.py, ui/relations.py (extração do
+  contêiner rolável existente), testes de componentes/Laboratório/Relações, plano,
+  continuidade e capturas.
+- **Passos:** extrair área rolável existente para componente compartilhado; manter
+  filtros de seleção fora dela; reorganizar cabeçalho e filtros por largura real;
+  permitir rolagem da área de KPIs/avisos/resultados; testar resize/teclado/temas;
+  operar no host em DPI96/144, 1280×800/1920×1080; corrigir após inspeção; suíte e
+  doctor; commit/PR próprio.
+- **Aceite:** todos os botões/filtros acessíveis, resultados com altura útil por
+  rolagem, contexto selecionado visível, valores/callbacks/Tk GC preservados; nenhuma
+  alteração de cálculo, fixture ou suavização (T17.8 separada). Windows real pendente.

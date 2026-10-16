@@ -72,3 +72,33 @@ janela reduzida/DPI alto/nomes longos/muitas séries e resolver os achados crít
 Um recorte visual entregue não representa o aceite integral solicitado pelo dono.
 
 ![Pendência crítica de responsividade, DPI144](../img/interface-visual/T17.7/pendencia-dpi144-1280.png)
+
+## T17.9 — refinamento de responsividade
+
+Baseline: 838 aprovados/9 ignorados em 697,62 s, saída 0, antes das alterações.
+Ambiente instalado Linux sem MT5, Python 3.11.15. Branch empilhada sobre T17.7,
+sem merge. Cabeçalho/filtros reorganizados pela largura real; seleção permanece
+visível; KPIs, avisos e guias usam área rolável extraída do componente existente
+de Relações. PageUp/PageDown no canvas com foco visível.
+
+Primeira inspeção real após a implementação revelou aviso cortado e valores da
+matriz largos demais para as colunas em DPI144. Corrigidos na segunda rodada:
+quebra do aviso pela largura disponível, colunas pela fonte medida e rolagem
+horizontal. Nenhum valor/contagem/preset/ordem/cálculo mudou.
+
+Testes focados finais: **31 aprovados em 44,07 s**. Duas falhas iniciais nos testes
+novos: posição inicial do canvas inclui borda de 1 pixel, e `orient` retorna objeto
+Tcl em vez de string; corrigidas as expectativas de representação, preservando
+a verificação de retorno à posição inicial e da barra horizontal. A suíte
+completa posterior em 972658c passou: **840 aprovados, 9 ignorados em 733,11 s**, saída 0. Doctor isolado: 15 OK/2 avisos/1 falha
+(caminho MT5 deliberadamente vazio); principal permanece validado separadamente.
+Windows real pendente. Não houve alteração shell.
+
+![Antes DPI144](../img/interface-visual/T17.9/antes-dpi144-1280.png)
+![Depois claro](../img/interface-visual/T17.9/depois-dpi144-claro.png)
+![Resultados rolados](../img/interface-visual/T17.9/depois-dpi144-rolado-escuro.png)
+
+A regra nova do dono para destacar positivos discretamente, atenuar negativos e
+reduzir a atenção das ausências fica em T17.12 própria, reutilizando seletivamente
+T17.6 preservada. Não se importa sua suavização. Aceite visual integral permanece
+pendente das correções semânticas e dos percursos restantes.
