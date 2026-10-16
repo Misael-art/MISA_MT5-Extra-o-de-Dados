@@ -753,3 +753,25 @@ continua PF0,87; testes visuais controlados identificados verificam sem perdas
 e razão2000, com motivo legível em144DPI. Não demonstram meta financeira.
 Detalhes de escopo, limites e compatibilidade em
 [PF definido](propostas/T13_9_PF_DEFINIDO.md).
+
+## T17.22 — análise local explícita no ponto de entrada (2026-10-16)
+
+Opção `--offline` implementada, sem persistência no INI. O app usa a lista
+local de símbolos, inventário e análises; o conector dispensa SDK e caminho de
+terminal nessa sessão. Inicialização/encerramento/erro não alcançam o SDK.
+Cabeçalho neutro identifica análise local, ações de conexão/abertura/admin são
+desativadas e explicam como reabrir; chamadas diretas também são guardadas,
+inclusive a oferta de conta demo. O modo padrão permanece disponível. O fim
+do programa encerra apenas seu próprio conector, em lugar de resolver o SDK
+global incondicionalmente. Não altera estratégia, dados ou risco.
+
+Baseline 8bacadf:890 aprovados/9 ignorados em810,86s, saída0, antes do código.
+Focados iniciais13/12,14s; após contagem explícita das chamadas bloqueadas,
+parser/default/help/cleanup e guardas de UI:8 aprovados em16,56s. Subprocesso
+com a classe real/main abriu600 barras sintéticas de teste, desenhou análises
+e encerrou sem chamada ao SDK/diálogos, mantendo o INI idêntico. Testes de
+conector simulam Windows/Linux e preservam outro backend já existente.
+Recebeu a cadeia T13.9/T17.18, com diff próprio restrito ao início local;
+15 focados combinados em53,78s. Suíte final, CI, operação instalada pelo
+lançador e diagnóstico serão registrados no PR. Windows real permanece
+pendente; nenhum terminal/conta do usuário foi iniciado ou encerrado.
