@@ -479,3 +479,11 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Próximos problemas:T17.16 contexto/backtestbotão;T17.13 retornozeroemAnálise;
   T17.10/T17.11 semântica deempates/lacunas exige núcleo. Revisão/integração
   ainda pendentes; #79/#80 fora da autorização nova solicitada, nenhuma conta.
+
+- Inspeção adicionalDPI144/1280: PageDown pelo teclado e rolagem levam ao
+  detalhe empilhado; seleção OOS atualiza o detalhe. Sessão própria encerrada0.
+  Doctoroffline15 OK/2 avisos/1 falha deliberada deMT5.path vazio; hostprincipal
+  comdiagnóstico separado21 OK/1 aviso/0 falhas. PR #88 draft, semmerge.
+- CI da dependência #86: primeiratentativaWindowstimeout60 s emfixtureSQL
+  inalterada; uma reexecução no mesmo8246686 passou, todoschecksverdes. Falha
+  inicial preservada nos logs e descrição, sem alterar timeout ou testes.
