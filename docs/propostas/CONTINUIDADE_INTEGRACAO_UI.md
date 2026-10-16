@@ -18,7 +18,7 @@ baseline, preservando as integrações existentes.
 
 ## Estado verificado da integração
 
-Snapshot da principal `7925b8b`, em 2026-10-16. Cada PR abaixo foi revisado
+Snapshot da principal `e8988d9`, em 2026-10-16. Cada PR abaixo foi revisado
 tecnicamente pelo agente executor, teve os checks conferidos no head final,
 foi integrado separadamente e confirmado no remoto. Não houve revisão por
 outro agente. CI foi usado como evidência adicional à leitura dos diffs.
@@ -42,6 +42,7 @@ outro agente. CI foi usado como evidência adicional à leitura dos diffs.
 | [#97](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/97) | T13.9: PF definido sem teto artificial | `aacd05f` | 276 runs, 14 vazios indefinidos; PF real 0,87 preservado; projeção não altera SQLite |
 | [#96](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/96) | T17.18: Análise/cabeçalho responsivos | `323decb` | EURUSD H1: 1.537 barras, dois temas e DPI, 1920/1280/900, altura limitada/hover/rolagem |
 | [#98](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/98) | T17.22: abertura offline explícita | `7925b8b` | **Lançador principal real** com configuração/base existentes, Minha base/Análise/Relações, detalhes por mouse/Escape, Sair normal0 |
+| [#99](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/99) | T17.23: agregação e comprovação | `e8988d9` | **Lançador principal real**: 10.445 BBRSI/31 runs, campos ausentes/queda com capital, ícone mouse/Escape, números reconciliados com a base real e Sair0 |
 
 
 Os smokes executaram o módulo da instalação principal e sua venv no host,
@@ -97,7 +98,7 @@ A inspeção visual do relatório HTML permanece pendente: a navegação fileURL
 foi bloqueada pelo navegador interno. O arquivo foi gerado pela CLI com saída
 0; isso não substitui a conferência renderizada nem autoriza contornar a política.
 
-O clipping da Análise foi resolvido no #96. O aviso parcial incorretamente atribuído a MQL5 e a contextualização da agregação/queda estão no PR #99 (T17.23), ainda em validação neste snapshot: 10.777 operações Python, 32 runs e 5.729 parciais. O PF 0,32 e a queda descritiva 3.163,7% permanecem iguais; contexto essencial visível e comprovação recolhida. Restam expansão da hierarquia visual a superfícies secundárias, densidade de alguns rótulos e metadados não disponíveis nos registros antigos. Relações mantém aviso explícito de dados
+O clipping da Análise foi resolvido no #96. O aviso parcial incorretamente atribuído a MQL5 e a contextualização da agregação/queda foram integrados no #99: suíte956/9 em902,53s, saída0; CI final8777a49 aprovado incluindo Windows; revisão técnica própria e lançador instalado conferidos. O perfil privado de QA tinha10.777 operações/32runs e queda3.163,7%; a base original do usuário tem10.445/31 e queda3.235,1%. A diferença é uma execução histórica adicional na cópia de QA, não divergência de cálculo. O roteiro instalado corrigiu a expectativa ao consultar a população original: PF0,30 e demais números iguais ao núcleo. Contexto essencial permanece visível, detalhes recolhidos por padrão e F16 oculto em Relações sintéticas. Restam expansão da hierarquia visual a superfícies secundárias, densidade de alguns rótulos e metadados não disponíveis nos registros antigos. Relações mantém aviso explícito de dados
 sintéticos enquanto DTO/produtor/serviço reais da F18 não estiverem ligados.
 
 ## Pesquisa e autorização operacional
@@ -122,6 +123,9 @@ continuam separados desta autorização de integração visual.
 
 ## Escopo do próximo ciclo
 
-T17.23 deve concluir suíte/CI/revisão/merge e smoke instalado antes do aceite crítico da UI. T13.10 está somente preparando ambiente/baseline e protocolo de estudo limitado; nenhuma nova campanha foi executada. A base e resultados já expostos não permitem alegar reserva independente. O estudo deve publicar resultados reais após custos **modelados**, limitações de moeda/custos e critérios não cumpridos; nenhum PF pontual isolado aprova um candidato.
+O aceite crítico da UI foi registrado depois do lançador instalado #99, com ressalvas explícitas: F18 sintética identificada, custos/moeda antigos desconhecidos, WindowsMT5 manual e refinamentos secundários pendentes. O estudo T13.10/PR100 então executou as oito tentativas pré-registradas, em15,87s de comando: zero candidatos, todos os resultados modelados negativos, maiorPF0,875849 (DonchianM15,669operações). Não é OOS independente nem PF líquido certificado. Relatório, oito livros/logs/hashes e próximo experimento estão no PR próprio; implementação e resultados ainda aguardam suíte/CI/revisão/integração. Nenhuma ampliação da busca foi feita após o fracasso da meta.
 
 Revisão somente leitura do ecossistema reconfirmou 11 fontes Safety idênticos entre origem e cópia 1.5.0. O exportador MQL5 ainda emite cinco colunas (T16.2b pendente). A chamada legada direta no plugin de risco, linha503, permanece registrada; a busca não encontrou include desse plugin nos MQ5/MQH locais, mas isso não o exclui da regra nem prova ausência de consumidores externos. Há ainda chamadas CTrade legadas fora do executor. Não se alterou proteção nem publicou release; aceites operacionais/demonstração/netting/Windows da Safety continuam pendentes.
+
+
+Na abertura principal #99, o hash da configuração permaneceu igual e nenhum terminal foi aberto. Comparação lógica contra backup imutável anterior ao #98 confirmou dados brutos, runs, ledger e especificações preservados. Só o cache derivado ganhou369features e3runs de cache ao abrir BBRSI; não se apagou/reescreveu dado primário. A verificação principal anterior #98 havia mantido todas as27tabelas idênticas.

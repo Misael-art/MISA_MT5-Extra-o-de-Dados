@@ -1,6 +1,6 @@
 # Continuidade: harmonização de 2026-10-14
 
-> Estado atual da frente visual (snapshot7925b8b, 2026-10-16): PRs #81–#93, #95/#96/#97/#98 integrados separadamente, com revisão própria e CI. Detalhes recolhíveis já funcionam; abertura real por `./run.sh --offline` verificada e encerrada0, configuração preservada. T17.23/PR99 valida contexto da agregação; campanha PF ainda pendente de aceite. Consulte [o relatório reconciliado](propostas/CONTINUIDADE_INTEGRACAO_UI.md); as seções abaixo também conservam snapshots históricos, cujas pendências não substituem este estado atual.
+> Estado atual da frente visual (snapshote8988d9, 2026-10-16): PRs #81–#93, #95/#96/#97/#98/#99 integrados separadamente, com revisão própria e CI. Detalhes recolhíveis já funcionam; abertura real por `./run.sh --offline` verificada e encerrada0, configuração preservada. T17.23/PR99 integrado e operado pelo lançador real; aceite críticoUI registrado com ressalvas. T13.10/PR100 executou oito casos retrospectivos sem candidato (maiorPFmodelado0,875849), ainda em validação/integração própria. Consulte [o relatório reconciliado](propostas/CONTINUIDADE_INTEGRACAO_UI.md); as seções abaixo também conservam snapshots históricos, cujas pendências não substituem este estado atual.
 
 
 ## Retomada T18.8 — 2026-10-15
