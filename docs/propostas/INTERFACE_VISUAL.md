@@ -350,6 +350,70 @@ Rodar backtest aparece cortado em1280×800.
   resultado atual depois do teste e anterior após mudar período, rolagemPageDown.
   Exposição registrada, semcampanhaPF19 ouOOSindependente. Suíte58cb114:859 aprovados/9 ignorados em937,37 s, saída0.
 
+## T17.13 — sinal e atenção do retorno de mercado
+
+Registrado antes do código. A UI real de Análise foi operada emEURUSDH1
+(1537barras). Cenário controlado identificado, fornecendo retornozero ao resumo
+sem alterar banco, reproduziu `▲0,00%`/Good.TLabel. Dados reais e cenário
+controlado foram capturados separadamente; resumo real preservado.
+
+- Dependências:T17.12tokens e cadeiaUI atéT17.16/#89. Ambiente próprio
+  instalado/dev e baselinef6436b6:859 aprovados/9 ignorados em905,65 s, saída0.
+- Arquivos:ui/analysis.py, tokens/tema apenas se necessários à reutilização,
+  testes deAnálise/janela e proposta/painel/continuidade/capturas.
+- Passos: usar sinal/ausência explícitos e atenção compartilhada; zero neutro
+  semseta ascendente, ausência semnúmero inventado, perdas legíveis discretas;
+  legenda curta explicando retorno depreço (não resultado doExpert/validação).
+  Reproduzir real/zero/ausente nos temas eDPI96/144/1280/1920, validar contraste,
+  precisão e atualização; suíte/doctor ePRpróprio.
+- Aceite: valores reais idênticos, sem alterar fórmulas/candles/dados; nenhum
+  sinal positivo emzero; cores representam sinal e não aprovação. Respeitar
+  arquitetura existente, semestatísticas/widgetsouduplicar análise.
+
+### T17.10 — classificação fiel de resultados por faixa horária
+
+Achado: Tempo e calendário → Vitórias e perdas agrupa `win_flag=0` como
+perdedoras, incluindo resultados exatamente zerados. `stats.metrics` já usa
+perdas estritamente negativas. Há zeros no ledger real; reprodução usa cópia
+consistente da base, sem novos testes históricos.
+
+Recorte: núcleo `trade_analytics.aggregate` fornece contagens por dimensão de
+ganhos (>0), perdas (<0), zeradas (=0) e resultados ausentes/não finitos. A UI
+renderiza a agregação pronta com rótulos/sinais, cores discretas para negativos
+e neutras para zero/ausência. Dimensões ausentes devem permanecer explícitas;
+população e soma das séries precisam reconciliar. Não mudar PF, expectativa,
+equity, schema/cache ou definição existente de `win_flag`. Sem estatísticas
+novas calculadas no widget.
+
+Aceite: testes núcleo para vazio, zeros, ganhos, perdas, mistos, ausentes e
+dimensões ausentes; números existentes preservados. Comparar contagens da
+base com barras/legenda, ambos temas, 96/144 DPI, 1280/1920, interação e
+exportação do gráfico. Suíte inicial antes do código e final, doctor e
+evidências reais. Uma branch/PR própria. Campanha PF19 permanece pendente.
+
+### T17.11 — grade horária e lacunas sem interpolação
+
+Reprodução real:263 operações parciais de MQLExemplo,37 faixas observadas.
+O gráfico usa posições consecutivas para00:00 e02:30, embora sejam150 minutos,
+e liga esses pontos. As referências são saídas; não serão inferidas entradas.
+
+Recorte: o núcleo fornece grade de24h usando o mesmo time_bucket_min do
+enriquecimento. Faixas sem medida têm n=0, expectativa/acerto ausentes e
+marca de amostra pequena desligada. Faixas inválidas/ausentes ficam com
+população explicitada, sem descartar silenciosamente. As métricas das faixas
+observadas permanecem iguais. UI apenas renderiza grade/metadata recebidas e
+a linha quebra em NaN. O componente comum de barras deve preservar ausência
+em vez de converter None/nonfinite em zero, sem anotações de medida ausente;
+valores finitos continuam iguais. Não alterar ledger, cache, PF ou fórmulas.
+
+Aceite: grades configuráveis/default/fallback e população; comparação dos
+valores reais antes/depois; zero observado distinto de ausência; segmentos
+Matplotlib e marcadores nas posições corretas; temas claro/escuro,96/144 DPI,
+1280/1920, teclado/rolagem/export; testes focados e completos, doctor e
+evidências. Baseline1851b1d:875 aprovados/9 ignorados em917,57s, saída0.
+Uma tarefa/branch/PR. Densidade geral dos ticks e metadata completa dos
+exports continuam em recortes próprios. Sem novo backtest ou campanhaPF19.
+
 ### T17.20 — sincronização da verificação de restauração
 
 O CI Windows do a893f54 falhou duas vezes na verificação de restauração de
@@ -366,3 +430,32 @@ Não substituir por sleep maior nem mudar o comportamento da aplicação.
 Ambiente próprio instalado; baseline b9e54c9: 860 aprovados/9 ignorados em
 868,84 s, saída 0, antes do código. Aceite: cenários rápido/lento aprovados,
 suíte completa, doctor, revisão técnica e CI no SHA exato em PR próprio.
+
+### T17.21 — informação sob demanda, com espaço devolvido à análise
+
+Pedido explícito do usuário: detalhes de seleção/aquecimento e comprovação
+não devem disputar atenção com a análise. Reutilizar DetailsPanel com variante
+informativa: ícone ℹ, texto curto de ação, foco nativo, Enter/Espaço e fechamento
+por Escape. Seis detalhes de Relações começam recolhidos; o gráfico/tabela
+recebe a largura liberada. Abrir conserva o reflow legível de T17.17. Mudar a
+seleção atualiza o texto completo sem abrir sozinho nem perder a escolha.
+
+Legenda longa dos critérios e explicação extensa do traçado usam o mesmo
+padrão. Presença ≠ evidência ≠ autorização, unidades, denominadores e lacunas
+não interpoladas continuam no contexto primário. Avisos DADOS SINTÉTICOS,
+custos incompletos, amostra/ausência e validade não ficam dentro de recolhimento.
+Nenhum dado, fixture, fórmula, produtor/DTO ou autorização é alterado.
+
+Ambiente isolado instalado/dev; baseline eed5f34: 861 aprovados/9 ignorados em
+653,15 s, saída 0, antes do código. Anexos temporários ausentes; a descrição e
+as telas atuais fundamentam o recorte, sem alegar inspeção das imagens ausentes.
+Arquivos: ui/components.py, ui/relations.py, testes de ambos, documentação e
+capturas. Aceite: mouse/teclado, preservação de texto/seleção/gráfico/tabelas,
+ganho de área, duas paletas e 96/144 DPI em1280/1920/820, scroll, fechamento e
+reabertura. Suíte focada/completa, doctor, revisão/CI e PR próprio.
+
+Achado na validação T17.21: o caractere ℹ estava no texto do botão, mas não
+apareceu nas capturas reais com a fonte do host. O mesmo recorte inclui agora
+`ui/icons.py`, reutilizando o desenho Pillow/PhotoImage existente, sem nova
+dependência. Ícone de informação com texto acessível, tamanho pela fonte e
+atualização de cor no tema; teste exige imagem não vazia, além do rótulo.

@@ -180,6 +180,10 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.16 | Backtest: contexto do resultado e controles acessíveis no detalhe | T17.17 | integrada #89; backtest/contexto e paridade do ledger verificados |
 | ORG05 | Continuidade documental da integração visual e evidências no host | T17.16 | documentação operacional atualizada; snapshot datado e validação no PR |
 | T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | integrada #93; 861 aprovados/9 ignorados; CI Windows e dois cenários instalados aprovados |
+| T17.13 | Análise: sinal do retorno zero e atenção visual coerente | T17.16 | baseline 859/9; 8 focados; suíte 865/9 saída 0; UI real conferida; PR #90 draft |
+| T17.10 | Laboratório: ganhos, perdas, zeradas e resultado ausente no núcleo e gráfico | T17.13 | implementada; PR #91 draft; 875 aprovados/9 ignorados; operação real conferida; integração pendente |
+| T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | implementada; PR #92 draft; 886 aprovados/9 ignorados; operação real conferida; integração pendente |
+| T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; UI real conferida; suíte final registrada no PR |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

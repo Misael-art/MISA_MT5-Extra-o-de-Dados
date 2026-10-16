@@ -4,7 +4,7 @@ Os contêineres expõem seus widgets internos para que as telas possam conservar
 callbacks e cálculos próprios sem duplicar o padrão visual.
 """
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, font as tkfont
 
 from mt5_extracao.ui.visual_tokens import SPACING, result_attention_colors
 
@@ -484,28 +484,84 @@ class ComparisonSummary(ContentPanel):
 class DetailsPanel(ttk.Frame):
     """Painel recolhível acionável por mouse, Enter ou Espaço."""
 
-    def __init__(self, parent, title, expanded=True, padding=SPACING["md"], **kwargs):
+    def __init__(self, parent, title, expanded=True, padding=SPACING["md"],
+                 information=False, on_toggle=None, theme=None, **kwargs):
+        if on_toggle is not None and not callable(on_toggle):
+            raise ValueError("O callback de expansão precisa ser executável.")
         super().__init__(parent, style="Card.TFrame", padding=padding, **kwargs)
         self.expanded = bool(expanded)
+        self.information = information
+        self.on_toggle = on_toggle
+        self.theme = theme
+        self.information_icon = None
         self.header = ttk.Frame(self, style="Surface.TFrame")
         self.header.pack(fill=tk.X)
-        self.title_label = ttk.Label(self.header, text=title, style="Heading.TLabel")
-        self.title_label.pack(side=tk.LEFT)
-        self.toggle_button = ttk.Button(self.header, command=self.toggle, takefocus=True)
-        self.toggle_button.pack(side=tk.RIGHT)
+        self.header.columnconfigure(0, weight=1)
+        self.title_label = ttk.Label(self.header, text=title, justify=tk.LEFT,
+                                     style="Muted.TLabel" if information else "Heading.TLabel")
+        self.title_label.grid(row=0, column=0, sticky="w")
+        self.toggle_button = ttk.Button(self.header, command=self.toggle, takefocus=True,
+                                        style="Toolbutton" if information else "TButton")
+        self.toggle_button.grid(row=0, column=1, sticky="ne", padx=(SPACING["xs"], 0))
+        self.toggle_button.bind("<Return>", self._activate)
+        self.toggle_button.bind("<Escape>", self.collapse)
+        self.header.bind("<Configure>", self._wrap_title, add="+")
         self.body = ttk.Frame(self, style="Surface.TFrame")
         self._sync()
+        if information:
+            self._refresh_information_icon()
+            if theme:
+                theme.on_change(self._refresh_information_icon)
+
+    def _refresh_information_icon(self):
+        if not self.toggle_button.winfo_exists():
+            return
+        from mt5_extracao.ui import icons
+
+        font = self.theme.font if self.theme else tkfont.nametofont("TkDefaultFont", root=self)
+        color = (self.theme.colors["ink2"] if self.theme else
+                 ttk.Style(self).lookup("Toolbutton", "foreground") or "black")
+        rgb = self.winfo_rgb(color)
+        color = "#" + "".join(f"{channel // 257:02x}" for channel in rgb)
+        self.information_icon = icons.information(color, size=max(14, int(font.metrics("linespace") * .8)))
+        self.toggle_button.configure(image=self.information_icon, compound=tk.LEFT)
+
+    def _wrap_title(self, event):
+        self.title_label.configure(wraplength=max(1, event.width - self.toggle_button.winfo_reqwidth() - SPACING["xs"]))
+
+    def _activate(self, _event=None):
+        self.toggle_button.invoke()
+        return "break"
 
     def _sync(self):
-        self.toggle_button.configure(text="Ocultar detalhes" if self.expanded else "Mostrar detalhes")
+        text = "Ocultar detalhes" if self.expanded else "Mostrar detalhes"
+        if self.information:
+            text = "Recolher" if self.expanded else "Detalhes"
+        self.toggle_button.configure(text=text)
         if self.expanded:
             self.body.pack(fill=tk.BOTH, expand=True, pady=(SPACING["sm"], 0))
         else:
             self.body.pack_forget()
 
     def toggle(self):
-        self.expanded = not self.expanded
+        self.set_expanded(not self.expanded)
+
+    def set_expanded(self, expanded):
+        expanded = bool(expanded)
+        if expanded == self.expanded:
+            return
+        focus = self.focus_get()
+        if not expanded and focus is not None and str(focus).startswith(str(self.body) + "."):
+            self.toggle_button.focus_set()
+        self.expanded = expanded
         self._sync()
+        if self.on_toggle:
+            self.on_toggle(self.expanded)
+
+    def collapse(self, _event=None):
+        self.set_expanded(False)
+        self.toggle_button.focus_set()
+        return "break"
 
 
 class ScrollableContent(ttk.Frame):

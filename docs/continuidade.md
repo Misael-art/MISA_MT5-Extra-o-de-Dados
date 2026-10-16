@@ -533,6 +533,85 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - DoctorofflineT17.16:15 OK/2 avisos/1 falha deliberadaMT5.pathvazio;
   principal preservada comdiagnóstico separado21 OK/1 aviso/0 falhas.
 
+## T17.13 — retorno de mercado com atenção coerente (2026-10-16)
+
+- Branch `codex/t17-13-retorno-mercado`, base T17.16/#89. Ambiente próprio
+  instalado e baseline 859 aprovados/9 ignorados, saída 0, antes do código.
+- Retorno positivo recebe azul suave, negativo discreto, zero neutro e ausência
+  explícita. Sinais textuais preservam a leitura sem depender da cor. Legenda
+  distingue retorno de preço e lucro de robô. Mesmos tokens de T17.12; sem
+  mudança em fórmulas, candles ou banco.
+- Oito testes focados aprovados em 42,24 s; incluem zero, ausência, NaN/Inf,
+  tema, limpeza e contraste mínimo 4,5. Suíte final 65b13d0: 865 aprovados/9 ignorados em1251,92 s, saída0. PR #90 draft.
+- Interface operada em cópia consistente da base real EURUSD H1: resumo
+  idêntico ao anterior após normalizar somente datas para JSON. Dois temas,
+  96/144 DPI, 1280×800/1920×1080; cenários zero/ausência rotulados CONTROLLED.
+  Capturas em docs/img/interface-visual/T17.13. Tentativas do roteiro com
+  serialização incorreta/rodapé antigo foram retidas nos logs e substituídas
+  por novas capturas, sem editar imagens.
+- Doctor isolado: 15 OK/2 avisos/1 falha de MT5.path vazio deliberado.
+  Nenhuma operação em conta, nenhum merge. Clipping preexistente da Análise
+  em 144 DPI/1280 permanece achado separado, sem ampliar este recorte.
+
+## T17.10 — operações zeradas distintas de perdas (2026-10-16)
+
+- Branch `codex/t17-10-resultados-zerados`, base T17.13/#90. Ambiente próprio
+  instalado; baseline no88cbe6c:865 aprovados/9 ignorados em1114,07 s, saída0,
+  antes do código. Correção de espaçamento da dependência T17.17 reconciliada.
+- Reprodução real BBRSI:10.777 operações,4.071 ganhos,6.366 perdas,340 zeradas;
+  o gráfico anterior mostrava6.706 perdedoras. Novo `aggregate.outcome_counts`
+  classifica o PnL no núcleo (>0/<0/=0/ausente ou inválido), preservando a
+  dimensão ausente e a população. A UI renderiza as séries prontas e omite
+  categorias sem operações da legenda. Ganhos em azul, perdas discretas com
+  trama, zeradas neutras. Não muda PF, expectativa, equity ou ledger/schema.
+- Quatorze testes do núcleo aprovados em3,00 s e oito de Laboratório em31,62 s;
+  incluem zero, ausentes/não finitos/booleanos, categoria vazia, dimensão ausente,
+  métricas preservadas, dois temas e atualização da seleção sem série antiga.
+  Suíte completa no85b81ef:875 aprovados/9 ignorados em944,54 s, saída0; PR #91 draft.
+- Aplicação real em cópia consistente, ambos temas,96/144 DPI e1280/1920:
+  barras reconciliadas com4.071/6.366/340 e soma10.777. Ledger antes/depois
+  com hash idêntico; quick_check dos dois bancos OK. Contagens CSV geradas pela API do núcleo e gráfico
+  exportado conferidos nos artefatos privados. PageDown e rolagem alcançam a
+  base do gráfico em144 DPI; sessões próprias encerradas0. Capturas em
+  docs/img/interface-visual/T17.10. Dados existentes expostos, sem novo backtest
+  ou campanha financeira; esses agregados não são evidência OOS.
+- Doctor isolado:15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Principal
+  integrada até #87 tem diagnóstico separado21 OK/1 aviso/0 falhas, ponte
+  consultada em modo somente leitura; nenhuma operação em conta.
+- Pendências separadas observadas: aviso parcial atribui origem só a MQL5 mesmo
+  na seleção Python; densidade dos rótulos horários em DPI alto e contexto
+  completo nos exports de gráficos exigem recortes próprios. Não é aceite
+  visual global, nem demonstração da meta financeira.
+
+## T17.11 — grade temporal e lacunas explícitas (2026-10-16)
+
+- Branch `codex/t17-11-lacunas-horarias`, base T17.10/#91. Ambiente próprio
+  instalado; baseline no 1851b1d: 875 aprovados/9 ignorados em 917,57 s, saída 0,
+  antes do código. Pai e5ec314 reconciliado, com documentação adicional.
+- Reprodução real MQLExemplo: 263 operações parciais, 37 faixas; 00:00 e 02:30
+  apareciam em posições consecutivas e conectadas. Novo `hourly_summary` fornece
+  grade de 24 h pela configuração do enriquecimento. Faixas com n=0 têm medidas
+  ausentes. Metadados separam horário inválido e PnL indisponível; as medidas
+  observadas continuam vindo de `by_dimension`.
+- O componente de barras preserva None/nonfinite como ausência. A linha quebra
+  em NaN; o espaçamento dos rótulos do eixo preserva todas as faixas e medidas.
+  n=0 é distinto de amostra pequena e retorno zero. Ledger, cache, fórmulas
+  financeiras e parâmetros foram preservados.
+- 29 testes de núcleo/desenho aprovados em 7,78 s e 9 de UI em 38,51 s, incluindo
+  grades configuráveis, vazio, exclusões, zero observado, segmentos e temas.
+  Suíte completa no 3b4e6d1: 886 aprovados/9 ignorados em 879,42 s, saída 0. PR #92 draft.
+- Operação real nos dois temas, 96/144 DPI e 1280×800/1920×1080: 48 posições,
+  37 medidas, 11 lacunas e 4 segmentos. Expectativa, acerto, n e marca de amostra
+  dos grupos observados comparados com a tabela original e preservados. Rótulos
+  sem sobreposição medidos no renderer; PageDown/rolagem exercitados. CSV de
+  verificação da API e gráfico exportado conferidos. Referência permanece Saída,
+  sem inferir entrada. Capturas em docs/img/interface-visual/T17.11.
+- Sessões encerradas com saída 0. A primeira gravação da auditoria falhou ao
+  serializar um escalar NumPy; erro preservado e normalização corrigida no
+  roteiro, mantendo valores e capturas. Doctor isolado: 15 OK/2 avisos/1 falha
+  deliberada de MT5.path vazio. Não houve novo backtest, campanha PF19 ou
+  operação em conta nesta tarefa.
+
 ## T17.20 — restauração com sincronização observável (2026-10-16)
 
 - Branch `codex/t17-20-sincronizacao-arranjo`, base da principal após #89.
@@ -578,3 +657,41 @@ ignorados em 591,95 s, saída 0, após repetir a execução interrompida por reb
 Depois recebeu #93, mantendo diff próprio somente documental. Doctor atual da
 principal após restaurar apenas o servidor RPC: 21 OK/1 aviso/0 falhas. Pedido
 de informações recolhíveis registrado em T17.21, ainda sem código neste snapshot.
+
+## T17.21 — informação recolhível sem perder a seleção (2026-10-16)
+
+- Ambiente próprio instalado/dev; baseline eed5f34 com 861 aprovados/9 ignorados
+  em653,15 s, saída0, antes do código. Reutiliza DetailsPanel, sem dependências.
+- Variante de informação com botão ℹ e texto de ação, Enter/Espaço e Escape;
+  recolher conserva o texto e devolve foco ao botão quando necessário. Seis
+  detalhes de seleção começam fechados; mudança de seleção atualiza o conteúdo
+  sem expansão automática. O split devolve largura/altura à análise e conserva
+  a largura de leitura de T17.17 quando aberto.
+- Critérios extensos dos estados e explicação do traçado ficam sob informação;
+  contexto primário e avisos sintéticos/custos/ausência/validade permanecem
+  expostos. Recorte avançado mantém seus dados e passa ao mesmo botão informativo.
+- Trinta testes existentes de componentes/Relações passaram em23,42 s; com
+  os novos contratos de teclado, foco, texto fechado, seleção e ganho de área,
+  33 passaram em28,97 s. Verificações anteriores de detalhe legível permanecem
+  exercitadas com o painel explicitamente aberto; assertivas do componente
+  original conferidas por AST. Suíte final/operação visual/doctor pendentes.
+- As referências são a descrição do usuário e as telas atuais; anexos temporários
+  ausentes não foram alegados como inspecionados. Relações continua demonstração
+  sintética, sem ligação ao DTO/serviço F18. Não houve cálculo ou mudança de dados.
+
+- Suíte no43a14b5 concluída: 864 passed, 9 skipped in 609.05s (0:10:09), saída0. Nas capturas da
+  operação visual, texto/seleção/gráfico/tabelas permaneceram idênticos; clique
+  real por mouse e Escape/foco funcionaram em96/144 DPI e três larguras.
+  O glifo ℹ, apesar de presente no texto, não apareceu na fonte do host. Antes
+  do aceite final, será substituído pelo ícone desenhado do sistema existente
+  (`ui/icons.py`), com imagem não vazia e atualização por tema verificadas.
+  A suíte anterior permanece evidência da versão anterior, não da correção.
+
+- Ícone desenhado implementado no sistema Pillow/PhotoImage existente, com
+  tamanho pela fonte, contraste do tema e rótulo acessível. Trinta e três
+  focados passaram em27,72 s; tentativa anterior teve NameError na variável
+  do próprio teste, corrigida sem mudar o contrato. Fotos novas96/144 DPI
+  mostram o ícone; clique real, Escape/foco, paridade de texto/gráfico/tabela
+  e seis perfis por escala passaram. As duas sessões encerraram0.
+- Validação final após a correção e reconciliação com a principal é registrada
+  no PR desta tarefa; a suíte864/9 anterior não substitui essa execução.
