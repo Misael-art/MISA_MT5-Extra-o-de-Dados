@@ -175,6 +175,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.12 | Atenção discreta a positivos/negativos/ausências em Horários e Minha base | T17.9, T17.12a | implementada; PR #84 draft; 852 aprovados/9 ignorados; integração pendente |
 | T17.8 | Relações: remover suavização e preservar pontos/lacunas observados | T17.12 | implementada; PR #85 draft; 852 aprovados/1 falha intermitente/9 ignorados |
 | T17.15 | Teste de conexão: aguardar conclusão observável das tentativas | T17.8 | em implementação; falha repetida da baseline registrada |
+| T17.14 | Área analítica: preencher altura disponível e preservar rolagem | T17.15 | escopo registrado; baseline própria em andamento |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

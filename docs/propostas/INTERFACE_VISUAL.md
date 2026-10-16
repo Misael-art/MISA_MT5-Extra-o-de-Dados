@@ -238,3 +238,23 @@ passou em6,04 s. Não há evidência de defeito do conector nesta reprodução.
 - Focados: 5 aprovados em23,75 s, incluindo worker0/1 s e casos adjacentes
   de abertura/terminal existente/falha de organização. Todas as asserções de
   resultado preservadas; nenhuma mudança de runtime. Suíte completa pendente.
+
+## T17.14 — altura disponível da área analítica
+
+Recorte registrado antes do código. Auditoria real em1920×1080/DPI96 mede832px
+no viewport externo e629px no conteúdo, deixando203px ociosos; a timeline
+permanece com267px de viewport e575px de conteúdo. O componente compartilhado
+ScrollableContent ajusta largura, mas não altura da janela Canvas.
+
+- Dependências: T17.15 (teste), T17.8 e T17.12. Ambiente próprio instalado/dev,
+  baseline completa em andamento no20765d8, antes de alterar runtime.
+- Arquivos: ui/components.py, tests/test_ui_components.py e, se necessário ao
+  aceite, teste de Laboratório; proposta/painel/continuidade/capturas.
+- Passos: definir altura do conteúdo como máximo entre requisito e viewport;
+  atualizar scrollregion sem ciclos; testar curto/alto e resize grande→pequeno→
+  grande; operar ambos os temas,1280×800/1920×1080,DPI96/144; suíte/doctor/PR.
+- Aceite: sem espaço vertical ocioso no contêiner quando o conteúdo cabe;
+  conteúdo maior continua rolável, gráficos/tabelas não comprimidos, teclado e
+  callbacks preservados. Nenhuma alteração de dados ou cálculos.
+- EmDPI144 o conteúdo já excede o viewport; a largura de detalhe de143px é
+  problema independente da divisão em colunas e foi separado comoT17.17.
