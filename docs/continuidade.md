@@ -337,3 +337,23 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   preservada, sem importar suavização. Pré-requisito T17.12a preserva métricas
   ausentes e distingue zero/perda/sem resultado na apresentação compartilhada.
   Aceite visual global e campanha PF ≥ 1,9 continuam pendentes.
+
+## T17.12a — disponibilidade e apresentação dos resultados (2026-10-16)
+
+- PR #83 draft, branch `codex/t17-12a-disponibilidade-resultados`, base #82.
+  `asset_table` preserva métricas ausentes/não finitas como indisponíveis, mantém
+  o run mais recente e mostra zero e percentuais negativos explicitamente.
+  Nenhuma fórmula financeira, banco, risco ou ordem muda.
+- Baseline: 840 aprovados/9 ignorados em 745,70 s. Focados: 14 aprovados em 1,87 s.
+  Primeira suíte posterior: 847 aprovados/1 falha/9 ignorados em 553,43 s: feedback
+  de conexão ainda em andamento após espera fixa de 0,8 s no teste de falta de
+  internet, já registrado como intermitente. Repetição isolada passou em 5,64 s;
+  repetição completa no mesmo a886351: **848 aprovados, 9 ignorados em 556,06 s**,
+  saída 0. Nenhum teste foi removido, pulado ou enfraquecido.
+- 271 runs completos/13 séries reais mantêm células e retornos iguais; UI Minha
+  base inspecionada, com zero/perda existentes agora visíveis. Capturas
+  `docs/img/interface-visual/T17.12a/`. Doctor offline: 15 OK/2 avisos/1 falha
+  por caminho MT5 vazio deliberado; principal validado separadamente.
+- T17.12 aplica a hierarquia discreta de atenção pedida pelo dono. Uma prévia
+  privada com dados reais confirmou o estilo; o código visual ainda não foi
+  incorporado nesta tarefa. WIP T17.6 preservada. Sem merge; PF pendente do aceite.
