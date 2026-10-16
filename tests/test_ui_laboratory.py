@@ -85,6 +85,19 @@ def test_empty_book_explains_how_to_start(panel):
     assert panel._note_kind == "empty"
 
 
+@pytest.mark.parametrize("values,shown,reason", [([1, 5], "—", "Sem perdas"),
+                                                ([2000, -1], "2.000,00", "")])
+def test_pf_card_keeps_undefined_reason_or_full_finite_ratio(panel, values, shown, reason):
+    panel.view = pd.DataFrame({"pnl": values, "run_id": ["controlled"] * len(values),
+                               "completeness": ["completo"] * len(values)})
+    before = panel.view.copy(deep=True)
+    panel._show_kpis()
+    card = panel.metric_cards["profit_factor"]
+    assert card.value_label.cget("text") == shown
+    assert card.detail_label.cget("text") == reason
+    pd.testing.assert_frame_equal(panel.view, before)
+
+
 def test_relations_view_is_available_without_ledger_and_restores_trade_filters(panel):
     from mt5_extracao.ui.laboratory import RELATIONS_TAB
 

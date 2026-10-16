@@ -46,7 +46,7 @@ def test_robustness_varies_each_numeric_param_20pct():
     assert ("fast", 0.8) in params and ("trail_atr", 1.2) in params
     fast = {x["factor"]: x["value"] for x in rob["variants"] if x["param"] == "fast"}
     assert fast == {0.8: 16, 1.2: 24}
-    assert rob["robust"] == all(x["profit_factor"] > 1 for x in rob["variants"])
+    assert rob["robust"] == all(x["profit_factor"] is not None and x["profit_factor"] > 1 for x in rob["variants"])
 
 
 def _trade(ret, equity=100.0):

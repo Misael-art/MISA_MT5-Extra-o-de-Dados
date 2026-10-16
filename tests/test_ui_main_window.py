@@ -99,6 +99,50 @@ def test_inventory_and_analysis_tabs(ui):
     assert "Barras analisadas: 600" in panel.quality_text.get("1.0", "end")
 
 
+def test_offline_mode_keeps_terminal_actions_disabled_and_blocks_direct_calls(ui, monkeypatch):
+    from tkinter import ttk
+    from mt5_extracao import ui_manager
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("ação de terminal/conta em modo offline")
+
+    ui.app.offline = True
+    ui.app.mt5_connector.initialize = forbidden
+    ui.app.mt5_connector.account_summary = forbidden
+    ui.mt5_admin_button = ttk.Button(ui.mt5_view_button.master, text="Admin simulado")
+    monkeypatch.setattr(ui, "run_bg", forbidden)
+    monkeypatch.setattr(ui, "_missing_account", forbidden)
+    monkeypatch.setattr(ui_manager.messagebox, "askyesno", forbidden)
+    monkeypatch.setattr(ui_manager.messagebox, "showerror", forbidden)
+    for _ in range(2):
+        assert not ui.refresh_mt5_status()
+        assert not ui._mt5_connected()
+        for button in (ui.mt5_view_button, ui.check_button, ui.mt5_admin_button, ui.get_history_button,
+                       ui.start_button, ui.stop_button):
+            assert button.instate(["disabled"])
+        assert ui.mt5_status_value.cget("text") == "Análise local (offline)"
+        assert "sem --offline" in ui.status_label.cget("text")
+        ui.check_mt5_status()
+        ui.connect_mt5(startup=True)
+        completed = []
+        ui.open_mt5_view(on_done=completed.append)
+        assert completed == [None]
+        ui._offer_demo_account()
+        ui._reconnect_mt5()
+        ui.launch_mt5_as_admin()
+        ui._check_admin_mode()
+        ui.start_collection()
+        ui.extract_historical_data()
+        ui.toggle_collection_buttons(False)
+        ui.filter_symbols()
+        assert "configurados" in ui.symbols_label.cget("text")
+        assert "na conta" not in ui.symbols_label.cget("text")
+        assert calls == []
+        ui.toggle_theme()
+
+
 def test_theme_toggle_redraws_without_errors(ui):
     ui.open_analysis("WIN$N")
     ui.pump(1.2)
@@ -994,3 +1038,154 @@ def test_market_return_attention_preserves_zero_missing_and_theme(ui, value, exp
     assert "Não mede lucro do robô" in panel.return_legend.cget("text")
     panel._empty("Sem dados")
     assert panel.tile_values["return_pct"].cget("text") == "—"
+
+
+def _set_ui_scaling(ui, scaling):
+    ui.root.tk.call("tk", "scaling", scaling)
+    for name in ("font", "font_small", "font_bold", "font_section", "font_title", "font_value"):
+        font = getattr(ui.theme, name)
+        font.configure(size=font.cget("size"))
+    if scaling >= 2:
+        # Também cobre a fonte maior usada pela aplicação real, não apenas o Tk padrão da fixture.
+        ui.theme.font.configure(size=13)
+        ui.theme.font_bold.configure(size=13)
+    ui._schedule_header_layout()
+    ui.analysis_panel._schedule_layout()
+
+
+@pytest.mark.parametrize("scaling", [96 / 72, 144 / 72])
+def test_analysis_figure_height_does_not_follow_backend_initial_request(ui, monkeypatch, scaling):
+    from matplotlib.backends import backend_tkagg
+
+    _set_ui_scaling(ui, scaling)
+    original = backend_tkagg.FigureCanvasTkAgg
+
+    class InflatedCanvas(original):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.get_tk_widget().configure(height=1920)
+
+    monkeypatch.setattr(backend_tkagg, "FigureCanvasTkAgg", InflatedCanvas)
+    panel = ui.analysis_panel
+    assert ui.open_analysis("WIN$N", "1 minuto")
+    deadline = time.monotonic() + 10
+    while panel.data is None and time.monotonic() < deadline:
+        ui.pump(.05)
+    assert panel.data is not None
+    panel.redraw()
+    # Também reproduz a página maior que o viewport retida pelo Notebook nativo.
+    panel.tabs.configure(height=2048)
+    for width in (1280, 900, 1920, 1280):
+        ui.root.geometry(f"{width}x800")
+        ui.pump(.15)
+        widget = panel._canvases["chart"].get_tk_widget()
+        assert widget.winfo_height() >= ui.theme.font.metrics("linespace") * 24
+        assert widget.winfo_height() <= max(480, ui.theme.font.metrics("linespace") * 24,
+                                            panel.results_viewport.canvas.winfo_height())
+
+
+@pytest.mark.parametrize("scaling", [96 / 72, 144 / 72])
+def test_analysis_keeps_native_text_and_chart_size_through_resize(ui, scaling):
+    import pandas as pd
+    from matplotlib.backend_bases import MouseEvent
+
+    _set_ui_scaling(ui, scaling)
+    panel = ui.analysis_panel
+    assert ui.open_analysis("WIN$N", "1 minuto")
+    deadline = time.monotonic() + 10
+    while panel.data is None and time.monotonic() < deadline:
+        ui.pump(.05)
+    assert panel.data is not None
+    original = panel.data.copy(deep=True)
+    summary = dict(panel.result["summary"])
+    for _ in range(2):
+        for width in (1920, 1280, 900, 1920):
+            ui.root.geometry(f"{width}x800")
+            ui.pump(.15)
+            for cell in panel.filter_cells:
+                assert cell.winfo_rootx() >= panel.controls.winfo_rootx()
+                assert cell.winfo_rootx() + cell.winfo_width() <= panel.controls.winfo_rootx() + panel.controls.winfo_width()
+                for widget in cell.winfo_children():
+                    assert widget.winfo_width() >= widget.winfo_reqwidth()
+            for card in panel.metric_cards:
+                for label in (card.title_label, card.value_label):
+                    assert label.winfo_width() >= label.winfo_reqwidth()
+            canvas = panel._canvases["chart"]
+            assert canvas.get_tk_widget().winfo_height() >= ui.theme.font.metrics("linespace") * 24
+            assert canvas.get_tk_widget().winfo_height() <= max(
+                480, ui.theme.font.metrics("linespace") * 24, panel.results_viewport.canvas.winfo_height())
+            price = canvas.figure.axes[0]
+            x, y = price.transData.transform((10, sum(price.get_ylim()) / 2))
+            canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", canvas, x, y))
+            ui.pump(.05)
+            assert "Abertura" in panel.readout.cget("text")
+            assert int(panel.readout.cget("wraplength")) <= panel.chart_tab.winfo_width()
+            viewport = panel.results_viewport
+            if width == 900:
+                assert viewport.scrollbar.winfo_manager() == "grid"
+                before = viewport.canvas.yview()[0]
+                viewport.canvas.focus_force()
+                viewport.canvas.event_generate("<Next>")
+                ui.pump(.05)
+                assert viewport.canvas.yview()[0] > before
+            viewport.canvas.yview_moveto(0)
+            assert panel.result["summary"] == summary
+            pd.testing.assert_frame_equal(panel.data, original)
+        ui.toggle_theme()
+
+
+@pytest.mark.parametrize("scaling", [96 / 72, 144 / 72])
+def test_header_preserves_connection_actions_and_whole_caption_when_it_fits(ui, scaling):
+    from tkinter import ttk
+
+    _set_ui_scaling(ui, scaling)
+    # Exercita também a ação exclusiva do Windows sem abrir um terminal real.
+    if len(ui.header_action_buttons) == 2:
+        ui.header_action_buttons.insert(0, ttk.Button(ui._header_actions, text="Iniciar MT5 como administrador"))
+    for text in ("MetaTrader 5 desconectado", "Conectado: conta 123 em Servidor de demonstração com identificação extensa"):
+        ui.mt5_status_value.configure(text=text)
+        for width in (1920, 1280, 900, 1920):
+            ui.root.geometry(f"{width}x800")
+            ui._schedule_header_layout()
+            ui.pump(.12)
+            widgets = [ui.brand_label, ui.mt5_status_value, *ui.header_action_buttons]
+            for widget in widgets:
+                assert widget.winfo_ismapped()
+                assert widget.winfo_width() >= widget.winfo_reqwidth()
+                assert widget.winfo_rootx() >= ui.main_header.winfo_rootx()
+                assert widget.winfo_rootx() + widget.winfo_width() <= ui.main_header.winfo_rootx() + ui.main_header.winfo_width()
+            if ui.caption_label.winfo_ismapped():
+                assert ui.caption_label.winfo_width() >= ui.caption_label.winfo_reqwidth()
+            # Nenhum par de controles essenciais ocupa o mesmo retângulo.
+            for index, first in enumerate(widgets):
+                for second in widgets[index + 1:]:
+                    assert (first.winfo_rootx() + first.winfo_width() <= second.winfo_rootx() or
+                            second.winfo_rootx() + second.winfo_width() <= first.winfo_rootx() or
+                            first.winfo_rooty() + first.winfo_height() <= second.winfo_rooty() or
+                            second.winfo_rooty() + second.winfo_height() <= first.winfo_rooty())
+
+
+def test_analysis_cancels_scheduled_geometry_when_destroyed(ui):
+    panel = ui.analysis_panel
+    panel._schedule_layout()
+    job = panel._layout_job
+    assert job is not None
+    panel.frame.destroy()
+    assert panel._layout_job is None
+    assert job not in ui.root.tk.call("after", "info")
+
+
+def test_analysis_refits_cards_after_a_large_display_value(ui):
+    _set_ui_scaling(ui, 2)
+    panel = ui.analysis_panel
+    ui.notebook.select(panel.frame)
+    ui.root.geometry("1280x800")
+    summary = {"last": 123456789012345.0, "return_pct": 0, "volatility_pct": 2,
+               "max_drawdown_pct": -3, "mean_range_pct": .1, "up_bars_pct": 50}
+    original = dict(summary)
+    panel._show_summary(summary)
+    ui.pump(.2)
+    label = panel.tile_values["last"]
+    assert label.winfo_width() >= label.winfo_reqwidth()
+    assert label.winfo_rootx() + label.winfo_width() <= panel.results_viewport.canvas.winfo_rootx() + panel.results_viewport.canvas.winfo_width()
+    assert summary == original

@@ -49,14 +49,16 @@ class MT5Connector:
     """
     Gerencia a conexão com a plataforma MetaTrader 5.
     """
-    def __init__(self, config_path=DEFAULT_CONFIG_PATH, ask_user=None):
+    def __init__(self, config_path=DEFAULT_CONFIG_PATH, ask_user=None, offline=False):
         """
         Args:
             config_path: caminho do config.ini.
             ask_user: callback opcional (titulo, mensagem) -> bool para perguntas ao usuário.
                       A interface gráfica passa um diálogo; sem callback a resposta é "não".
+            offline: usa somente os dados locais, sem resolver SDK ou conectar ao terminal.
         """
         self.config_path = config_path
+        self.offline = bool(offline)
         self.ask_user = ask_user
         # Chamado, se definido, antes de cada tentativa de conexão. A interface põe aqui a abertura do terminal já
         # organizado: sem isso, quando a pessoa fecha o MT5 com o programa aberto, a reconexão automática o reabre
@@ -64,15 +66,18 @@ class MT5Connector:
         self.prepare_terminal = None
         self.mt5_windows_path = None
         global mt5
-        if mt5 is None:
+        if mt5 is None and not self.offline:
             mt5 = get_mt5(config_path)
         self.mt5_path = None
         self.is_initialized = False
-        self.connection_mode = "Desconectado" # Ex: Conectado, Compatibilidade, Limitado, Fallback
-        self._load_config()
+        self.connection_mode = "Análise local (offline)" if self.offline else "Desconectado"
+        if not self.offline:
+            self._load_config()
 
     def last_error(self):
         """Último erro do MT5 (código, descrição) ou None se o MT5 estiver indisponível."""
+        if getattr(self, "offline", False):
+            return None
         try:
             return mt5.last_error() if mt5 is not None else None
         except Exception as e:
@@ -190,6 +195,9 @@ class MT5Connector:
         Raises:
             MT5ConnectionError: Se não for possível inicializar a conexão
         """
+        if getattr(self, "offline", False):
+            log.info("Conexão MT5 desativada nesta sessão de análise local.")
+            return False
         # Evitar recursão infinita
         if recursion_count > 2:  # Limitar a 3 tentativas (0, 1, 2)
             log.error("Limite de recursão atingido em initialize. Abortando.")
@@ -760,6 +768,8 @@ class MT5Connector:
 
     def shutdown(self):
         """Encerra a conexão com o MetaTrader 5."""
+        if getattr(self, "offline", False):
+            return
         if self.is_initialized and mt5:
             try:
                 mt5.shutdown()

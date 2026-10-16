@@ -183,7 +183,8 @@ tr.sel td { background: var(--none-bg); }
     (children || []).forEach(function (c) { node.appendChild(typeof c === "string" ? document.createTextNode(c) : c); });
     return node;
   }
-  function num(x, digits) { return Number(x).toLocaleString("pt-BR", {minimumFractionDigits: digits, maximumFractionDigits: digits}); }
+  function num(x, digits) { return x == null || !Number.isFinite(Number(x)) ? "—" : Number(x).toLocaleString("pt-BR", {minimumFractionDigits: digits, maximumFractionDigits: digits}); }
+  function pfOrder(x) { return x == null || !Number.isFinite(Number(x)) ? -Infinity : Number(x); }
   function pct(x) { return (x > 0 ? "+" : "") + num(x * 100, 1) + "%"; }
   function metric(cell, key) {
     if (key === "profit_factor") return num(cell.profit_factor, 2);
@@ -220,6 +221,7 @@ tr.sel td { background: var(--none-bg); }
       ["Queda máxima", num(cell.max_drawdown_pct * 100, 1) + "%"], ["Período testado", cell.period], ["Testado em", cell.tested_at],
       ["Origem do número", cell.origin], ["Veredito", cell.verdict || "ainda sem bateria nem validação"]];
     if (cell.preset) rows.push(["Preset", cell.preset]);
+    if (cell.profit_factor_note) rows.push(["Qualidade do PF", cell.profit_factor_note]);
     var dl = el("dl");
     rows.forEach(function (r) { dl.appendChild(el("div", {}, [el("dt", {text: r[0]}), el("dd", {text: r[1]})])); });
     box.appendChild(dl);
@@ -285,7 +287,7 @@ tr.sel td { background: var(--none-bg); }
   }
   function positives(robot) {
     return M.cells.filter(function (c) { return c.robot === robot && (c.status === "aprovado" || c.status === "promissor"); })
-      .sort(function (a, b) { return (a.status !== "aprovado") - (b.status !== "aprovado") || b.profit_factor - a.profit_factor; });
+      .sort(function (a, b) { return (a.status !== "aprovado") - (b.status !== "aprovado") || pfOrder(b.profit_factor) - pfOrder(a.profit_factor); });
   }
   function renderRobot(root) {
     var all = el("div", {"class": "card"});

@@ -132,6 +132,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
+| T13.9 | PF definido, sem teto artificial e consumo coerente | T6.4, T8.3, T16.4 | implementada; [contrato e compatibilidade](propostas/T13_9_PF_DEFINIDO.md); validação final e integração no PR #97; sem campanha financeira |
 | T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
 | T15.0 | Plano da gestão de recursos (aba Recursos) registrado em `docs/propostas/GESTAO_RECURSOS.md` | — | ✅ concluída |
 | T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ concluída no Linux (aba vista em tela virtual, temas claro e escuro); Windows não visto |
@@ -183,7 +184,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.13 | Análise: sinal do retorno zero e atenção visual coerente | T17.16 | baseline 859/9; 8 focados; suíte 865/9 saída 0; UI real conferida; PR #90 draft |
 | T17.10 | Laboratório: ganhos, perdas, zeradas e resultado ausente no núcleo e gráfico | T17.13 | implementada; PR #91 draft; 875 aprovados/9 ignorados; operação real conferida; integração pendente |
 | T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | implementada; PR #92 draft; 886 aprovados/9 ignorados; operação real conferida; integração pendente |
+| T17.18 | Cabeçalho e Análise: reflow pela fonte e área analítica percorrível | T17.13 | implementada; fonte/teclado/rolagem e UI real conferidos; suíte final registrada no PR |
 | T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; UI real conferida; suíte final registrada no PR |
+| T17.22 | Iniciar análise local pelo lançador sem conectar o MT5 | T2.2, T17.3 | implementada; baseline 890/9 e focados aprovados; [contrato e aceite](propostas/T17_22_INICIO_OFFLINE.md); validação final/integração no PR próprio |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
@@ -2709,7 +2712,6 @@ plano do HADOUKEN continuam valendo para o conjunto)
 |---|---|---|
 | T12.L1 | Organização da janela configurável por partes, devolução sem regravar o arquivo inteiro | T12.L |
 | T12.L2 | Opções da organização da janela na interface (diálogo Configurações) | T12.L1 |
-| T12.6a | Fechar o que ficou sem conferência no painel v7 e fixar o vocabulário ✅ 2026-10-14 | T12.P |
 | T12.6b | Estado recolhido (botão `H`), quebra de linha do log e a aba Configuração | T12.6a, G-02 (arquitetura modular do painel) |
 | T12.6c | Abas que dependem de outras etapas: Boleta e Gradiente (T12.4), Carteira (T12.2), Risco e Alertas (T12.3), Estatísticas (T12.6A), IA (T12.7), Inteligência do Ativo (T13.6) | cada aba, a sua |
 
