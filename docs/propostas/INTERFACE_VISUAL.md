@@ -178,3 +178,15 @@ e ausências sem competir por atenção. Recorte registrado antes da implementa�
   sinal, não magnitude. Outras telas recebem aplicação progressiva com semântica
   coerente, sem confundir verde de dados na base em Ativos com retorno positivo.
   Windows real pendente; esta tarefa não declara aceite visual integral.
+
+- **Implementação:** tokens compartilhados pelo sinal, sem gradiente de magnitude;
+  MatrixTable com foco único por Tab, setas/Home/End, rolagem e cabeçalho fixo;
+  ausência sem operações mostra traço discreto, com n=0 explicado na legenda;
+  zero e contagens presentes continuam explícitos. Minha base mantém ordenação,
+  seleção e estados de qualidade independentes do retorno.
+- **Validação inicial:** 30 testes focados aprovados (duração no log privado t1712-focused-final); contraste >=4,5:1
+  nos dois temas; base real com 263 operações parciais e 15 séries, em 96/144 DPI
+  e 1280×800/1920×1080. Capturas em docs/img/interface-visual/T17.12/.
+  Suíte completa no código 5388ec8 em andamento. Doctor offline: 15 OK, 2 avisos,
+  1 falha esperada por caminho MT5 deliberadamente vazio; não é diagnóstico verde.
+  A dependência #83 passou Linux/Windows/PostgreSQL/instaladores/lint no CI.
