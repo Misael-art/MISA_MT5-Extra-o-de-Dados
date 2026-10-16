@@ -304,3 +304,33 @@ preenchimento. T17.14 resolve altura, não resolve essa largura independente.
   Capturasdocs/img/interface-visual/T17.17; fonte sintética declarada.
 - Baseline856/9,732,12 s, saída0; suíte completae8bdb11 em andamento.
   Ainda não constitui aceite visual global nem integração aoF18real.
+
+## T17.16 — seleção e resultado de Backtest no detalhe do robô
+
+Registrado antes de implementar, após reprodução com dados reais: seletor
+EURUSD/4horas/Tudo e resultadoEURUSDH1; título informaH1, porém não diferencia
+explicitamente o resultado armazenado da seleção para o próximo teste. Botão
+Rodar backtest aparece cortado em1280×800.
+
+- Dependência:T17.17/#88 e anteriores; ambiente próprio instalado/dev, baseline
+  9f40e96 em andamento antes do código. Evidência privada do lote históricoUI.
+- Arquivos:ui/robot_detail.py, tests/test_ui_main_window.py, proposta/painel/
+  continuidade/capturas. Sem alteração de engine, métricas, banco ou risco.
+- Passos: controles refluem pela largura real; seleção para próximo teste e
+  resultado exibido têm textos distintos; mudar filtro marca resultado anterior,
+  sem inventar equivalência de período para runs históricos; processamento não
+  bloqueiaTk nem permite duplicar pedido; erro conserva resultado anterior
+  identificado; callback não atribui teste a outro robô.
+- A leitura do código encontrou ausência de rolagem no conteúdo da abaBacktest
+  do detalhe. Será usada ScrollableContent daT17.14 no conteúdo já existente,
+  preservando gráficos/validações e evitando compressão após o reflow. Nenhuma
+  tela/estatística paralela. Esse refinamento foi registrado antes do código.
+- Aceite: controles/botão visíveis e acionáveis em1280/1920,DPI96/144, teclado,
+  seleção e resultados preservados; estado de carregamento/erro/anterior claro;
+  runs históricos não chamados atuais sem comprovação do recorte; testes semMT5
+  real e operação históricaPython somente emcópia privada, exposição registrada.
+
+- Leitura anterior ao código confirmou que o callback do detalhe não chama
+  `UIManager.backtest_recorded`, embora a execução em lote use esse hook para
+  atualizar Ativos/Minha base. O recorte reutilizará o hook existente ao concluir
+  o teste, com regressão da atualização imediata; não criará cálculos na UI.
