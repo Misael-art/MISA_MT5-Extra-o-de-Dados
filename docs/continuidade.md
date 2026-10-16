@@ -586,27 +586,28 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 ## T17.11 — grade temporal e lacunas explícitas (2026-10-16)
 
 - Branch `codex/t17-11-lacunas-horarias`, base T17.10/#91. Ambiente próprio
-  instalado; baseline1851b1d:875 aprovados/9 ignorados em917,57s, saída0,
-  antes do código. Pai e5ec314 reconciliado, somente documentação adicional.
-- Reprodução real MQLExemplo:263 operações parciais,37 faixas;00:00 e02:30
+  instalado; baseline no 1851b1d: 875 aprovados/9 ignorados em 917,57 s, saída 0,
+  antes do código. Pai e5ec314 reconciliado, com documentação adicional.
+- Reprodução real MQLExemplo: 263 operações parciais, 37 faixas; 00:00 e 02:30
   apareciam em posições consecutivas e conectadas. Novo `hourly_summary` fornece
-  grade de24h pela mesma configuração do enriquecimento; n=0 tem medidas
-  ausentes, sem barra/ponto inventados. Metadata separa horário inválido e PnL
-  indisponível. Valores observados continuam vindo de `by_dimension`.
+  grade de 24 h pela configuração do enriquecimento. Faixas com n=0 têm medidas
+  ausentes. Metadados separam horário inválido e PnL indisponível; as medidas
+  observadas continuam vindo de `by_dimension`.
 - O componente de barras preserva None/nonfinite como ausência. A linha quebra
-  em NaN; rótulos do eixo espaçados não removem faixas ou medidas. n=0 não é
-  tratado como amostra pequena nem como retorno zero. Nenhuma mudança de ledger,
-  cache, fórmulas ou parâmetros financeiros.
--29 testes núcleo/desenho aprovados em7,78s e9 UI em38,51s, incluindo grades
-  configuráveis, vazio, exclusões, zero observado, segmentos, atualização/temas.
-  Suíte completa no3b4e6d1 em execução; resultado final ainda pendente.
-- Operação real nos dois temas,96/144DPI e1280/1920:48 posições,37 medidas,
-  11 lacunas e4 segmentos. Expectativa, acerto, n e marca de amostra dos grupos
-  observados comparados com a tabela original e preservados. Rótulos sem
-  sobreposição medidos no renderer; PageDown/rolagem exercitados. CSV de
+  em NaN; o espaçamento dos rótulos do eixo preserva todas as faixas e medidas.
+  n=0 é distinto de amostra pequena e retorno zero. Ledger, cache, fórmulas
+  financeiras e parâmetros foram preservados.
+- 29 testes de núcleo/desenho aprovados em 7,78 s e 9 de UI em 38,51 s, incluindo
+  grades configuráveis, vazio, exclusões, zero observado, segmentos e temas.
+  Suíte completa no 3b4e6d1 em execução; resultado final ainda pendente.
+- Operação real nos dois temas, 96/144 DPI e 1280×800/1920×1080: 48 posições,
+  37 medidas, 11 lacunas e 4 segmentos. Expectativa, acerto, n e marca de amostra
+  dos grupos observados comparados com a tabela original e preservados. Rótulos
+  sem sobreposição medidos no renderer; PageDown/rolagem exercitados. CSV de
   verificação da API e gráfico exportado conferidos. Referência permanece Saída,
   sem inferir entrada. Capturas em docs/img/interface-visual/T17.11.
-- Sessões encerradas0. Primeira gravação da auditoria falhou ao serializar um
-  escalar NumPy; erro preservado e normalização corrigida no roteiro, sem mudar
-  os valores nem as capturas. Doctor isolado:15 OK/2 avisos/1 falha deliberada
-  de MT5.path vazio. Sem novo backtest/campanhaPF19 ou operação em conta.
+- Sessões encerradas com saída 0. A primeira gravação da auditoria falhou ao
+  serializar um escalar NumPy; erro preservado e normalização corrigida no
+  roteiro, mantendo valores e capturas. Doctor isolado: 15 OK/2 avisos/1 falha
+  deliberada de MT5.path vazio. Não houve novo backtest, campanha PF19 ou
+  operação em conta nesta tarefa.
