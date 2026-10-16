@@ -669,3 +669,25 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   e seis perfis por escala passaram. As duas sessões encerraram0.
 - Validação final após a correção e reconciliação com a principal é registrada
   no PR desta tarefa; a suíte864/9 anterior não substitui essa execução.
+
+## T13.9 — PF definido e compatibilidade histórica (2026-10-16)
+
+Implementação em PR97, sem campanha financeira. Um contrato comum remove tetos
+99/999, representa vazio/sem perdas/inválido como null com motivo e conserva
+razões finitas. Validação/bateria não aprovam por indefinição; consumidores
+aceitam ausência. Projeções antigas recalculam PF quando o livro está completo
+e mantêm os registros originais, inclusive aprovações de bateria que precisam
+ser refeitas quando vinculadas a PF indefinido. Banco antigo continua abrindo.
+
+Ambiente instalado/dev e baseline887/9 anteriores ao código. Focados156, depois
+93 e56 nas revisões; suíte240f92a com926/9 em681,75s, saída0. O head final recebe
+ajuste de proveniência JSON/ordenação, com validação específica e integral no
+PR. Uma suíte anterior foi encerrada241 para incorporar a revisão, não contada
+como aprovação. Doctor isolado15/2/1deliberado; principal21/1/0 separado.
+
+Cópia pré-exposta:276 execuções e chaves únicas,14 vazias com PF0 sem denominador;
+276 livros e4.140 valores de outras métricas preservados. UI real263operações
+continua PF0,87; testes visuais controlados identificados verificam sem perdas
+e razão2000, com motivo legível em144DPI. Não demonstram meta financeira.
+Detalhes de escopo, limites e compatibilidade em
+[PF definido](propostas/T13_9_PF_DEFINIDO.md).

@@ -14,10 +14,10 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
+from mt5_extracao import profit_factor
 from . import catalog, contract, mql, store
 
 MAX_CURVE_POINTS = 240
-PF_CAP = 99.0     # profit factor sem nenhuma perda é infinito; guardamos um teto legível
 
 
 def equity_curve(trades, initial_equity: float, start=None) -> List[list]:
@@ -85,7 +85,6 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
             raise ValueError(f"Não há barras a partir de {trade_from} no período pedido.")
     result = run_backtest(df, strategy, spec, settings, start_index=start_index)
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
-    metrics["profit_factor"] = min(float(metrics["profit_factor"]), PF_CAP)
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
                    spec_known=bool(spec.known), real_spread=bool(settings.real_spread and spec.spread_by_hour),
                    initial_equity=float(settings.initial_equity),
@@ -191,7 +190,6 @@ def metrics_from_results(results: List[list], initial_equity: float) -> dict:
     pnl = [float(r[1]) for r in results]
     wins, losses = [x for x in pnl if x > 0], [x for x in pnl if x < 0]
     gross_profit, gross_loss = sum(wins), -sum(losses)
-    profit_factor = gross_profit / gross_loss if gross_loss > 0 else (PF_CAP if gross_profit > 0 else 0.0)
     equity = peak = float(initial_equity)
     drawdown = 0.0
     for value in pnl:
@@ -200,7 +198,7 @@ def metrics_from_results(results: List[list], initial_equity: float) -> dict:
         if peak > 0:
             drawdown = max(drawdown, (peak - equity) / peak)
     return {"trades": len(pnl), "win_rate": len(wins) / len(pnl) if pnl else 0.0,
-            "profit_factor": min(profit_factor, PF_CAP),
+            **profit_factor.fields(pnl),
             "payoff": (gross_profit / len(wins)) / (gross_loss / len(losses)) if wins and losses else 0.0,
             "expectancy_r": None, "expectancy": sum(pnl) / len(pnl) if pnl else 0.0,
             "net_profit": sum(pnl), "return_pct": sum(pnl) / initial_equity if initial_equity else 0.0,

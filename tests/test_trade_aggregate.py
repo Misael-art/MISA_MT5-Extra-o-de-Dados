@@ -38,7 +38,7 @@ def test_metrics_match_the_backtester():
     mine = stats.metrics([t.pnl for t in trades], 100_000)
     ref = compute_metrics(trades, 100_000)
     assert mine["n"] == ref["trades"] and mine["win_rate"] == pytest.approx(ref["win_rate"])
-    assert mine["profit_factor"] == pytest.approx(min(ref["profit_factor"], stats.PF_CAP))
+    assert mine["profit_factor"] == pytest.approx(ref["profit_factor"])
     assert mine["payoff"] == pytest.approx(ref["payoff"]) and mine["net"] == pytest.approx(ref["net_profit"])
     assert mine["max_drawdown_pct"] == pytest.approx(ref["max_drawdown_pct"])
 

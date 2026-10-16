@@ -9,21 +9,22 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 
-PF_CAP = 99.0                 # o mesmo teto do card (robots/backtest.py)
+from mt5_extracao import profit_factor
+
 MIN_TRADES = 30               # [TRADE_ANALYTICS] min_trades_cell
 
 
 def metrics(pnl, initial_equity: float = 100_000.0, r=None) -> dict:
     """n, acerto, fator de lucro, payoff, expectativa (por operação), resultado e queda máxima (% do pico)."""
+    pnl = list(pnl)
+    pf = profit_factor.fields(pnl)
     pnl = np.asarray(pd.Series(pnl, dtype=float).dropna(), dtype=float)
     n = len(pnl)
     wins, losses = pnl[pnl > 0], pnl[pnl < 0]
-    gross_profit, gross_loss = float(wins.sum()), float(-losses.sum())
-    pf = gross_profit / gross_loss if gross_loss > 0 else (PF_CAP if gross_profit > 0 else 0.0)
     equity = initial_equity + np.concatenate([[0.0], np.cumsum(pnl)])
     peak = np.maximum.accumulate(equity)
     dd = np.where(peak > 0, (peak - equity) / peak, 0.0)
-    out = {"n": n, "win_rate": float(len(wins) / n) if n else 0.0, "profit_factor": float(min(pf, PF_CAP)),
+    out = {"n": n, "win_rate": float(len(wins) / n) if n else 0.0, **pf,
            "payoff": float(wins.mean() / -losses.mean()) if len(wins) and len(losses) else 0.0,
            "expectancy": float(pnl.mean()) if n else 0.0, "net": float(pnl.sum()),
            "max_drawdown_pct": float(dd.max()) if n else 0.0}
