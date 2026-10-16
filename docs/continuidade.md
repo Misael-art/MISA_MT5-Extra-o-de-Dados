@@ -5,7 +5,7 @@
 Pedido do dono para relações entre indicadores, preço futuro, ganhos/perdas e aderência temporal dos Experts.
 T18.0 registra [especificação](propostas/RELACOES_INDICADORES_SETUP.md), tarefas no plano/roadmap/matriz e prompts
 separados de [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
-T18.1 está em implementação local na branch `tarefa/T18.1-registry-indicadores`; T18.8 tem protótipo visual integrado
+T18.1 e T18.2 foram concluídas em branches locais separadas; T18.8 tem protótipo visual integrado
 ao `master` pela PR #78, ainda com dados sintéticos porque T18.6 não existe nesta base. Nenhuma relação real foi
 calculada nem preset, Expert ou ordem foi alterado.
 
@@ -341,3 +341,26 @@ Para T13.5, a proposta concreta da Decisão 7 (CSV inicial, validade por caracte
 - Fixture estática lida do disco e validada como schema v1, sintética e sem efeito calculado; `git diff --check`
   passou. Próximo passo: continuar as tarefas elegíveis do plano em branches separadas. Não publicar esta branch nem
   fazer merge externo.
+
+## Checkpoint T18.2 — associações e movimento futuro — 2026-10-15
+
+- Branch local `tarefa/T18.2-associacoes`, worktree `../MISA_MT5-Extra-o-de-Dados-T18.2`, baseada no commit T18.1
+  `f45618f`. A implementação segue sem push, PR ou merge externo.
+- `analytics.associations` calcula associações contínuas Pearson/Spearman em uma única combinação por chamada e exige
+  ativo/timeframe homogêneo, valores disponíveis na decisão, corte `as_of`, alvo maduro e recibo do alvo não anterior
+  ao encerramento. Escopos mistos e tipos categóricos são rejeitados; ausências, maturidade e violações temporais são
+  contadas.
+- Alvos forward usam `close[t+h] / close[t] - 1`, carregam fim, revisão-fonte, disponibilidade e motivos explícitos;
+  maturidade incompleta, barra inválida, denominador inválido e revisão recebida depois do corte não viram zero. A
+  inferência usa bootstrap circular de blocos de sessões para IC95% e wild sign-flip em blocos para p bruto. Bonferroni
+  conta a família completa, inclusive comparações inválidas.
+- Auditoria T13.4: sua infraestrutura de bootstrap por blocos e Bonferroni foi reaproveitada conceitualmente; o teste
+  de T13.4 é para diferença em taxa binária e o bootstrap de T16.4 é para média por dia, então nenhum foi chamado como
+  inferência Pearson/Spearman.
+- O construtor recebe a série de revisões atuais e filtra por `as_of`; para reconstrução histórica de uma revisão
+  anterior será preciso selecionar a versão point-in-time antes da chamada. Sem serviço, persistência, CLI ou ligação
+  UI: o protótipo de `master` continua sintético até T18.6.
+- Baseline antes das mudanças sob Xvfb: **875 aprovados, 10 ignorados em 622,46 s**. Focados T18.2: **10 aprovados em
+  3,41 s**; suíte integral após as mudanças: **885 aprovados, 10 ignorados em 663,28 s**; `doctor`: **16 OK, 2 avisos,
+  0 falhas**; `git diff --check` passou. PostgreSQL e Windows real permanecem pendentes.
+- Próxima tarefa elegível: T18.3 depende ainda de T16.1 e T16.3b, portanto auditar essas dependências antes de iniciá-la.

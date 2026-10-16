@@ -160,7 +160,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T16.12 | Laboratório: `mt5x trades enrich/report/simulate/insights/export` com `--json` | T16.11b | ✅ implementação local em `tarefa/T16.12-cli-relatorio` (código `e99becd`); preserva `compare`, `report --by`, simulação por filtros e `insights --save`. Focados 15; suíte 794/9; doctor 16/2/0. Windows pendente; relatório HTML opcional não feito |
 | T18.0 | Plano de relações entre indicadores e aderência temporal, com prompts coordenados | Pedido do dono | ✅ registro documental; nenhuma funcionalidade implementada |
 | T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | ✅ concluída localmente em `tarefa/T18.1-registry-indicadores`; 41 focados, suíte 875/10, doctor 16 OK/2 avisos/0 falhas; PostgreSQL e Windows reais pendentes |
-| T18.2 | Indicador × indicador e × movimento futuro | T18.1, infraestrutura validada T13.4 | planejada |
+| T18.2 | Indicador × indicador e × movimento futuro | T18.1, infraestrutura validada T13.4 | ✅ implementação local em `tarefa/T18.2-associacoes`; focados 10, suíte 885/10, doctor 16 OK/2 avisos/0 falhas; PostgreSQL e Windows reais pendentes; detalhes em `analytics/T18.2_ASSOCIATIONS.md` |
 | T18.3 | Indicador × resultado do Expert (compra/venda, ganho/loss) | T18.2, T16.1, T16.3b | planejada |
 | T18.4 | Convergências de fatores e utilidade incremental OOS | T18.3, T13.4 | planejada |
 | T18.5 | Janelas móveis, aderência temporal e jobs incrementais | T18.2, T13.3b, T15.9; T18.3/4 para trilhas de Expert/conjunto | planejada |
