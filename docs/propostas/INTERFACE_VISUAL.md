@@ -302,8 +302,12 @@ preenchimento. T17.14 resolve altura, não resolve essa largura independente.
   resize1920→1280→820→1920. EmDPI144/1920, detalhe143→441px (mínimo388);
   em1280e820, empilhado1154/774px. Gráfico mantém344px de altura em144DPI.
   Capturasdocs/img/interface-visual/T17.17; fonte sintética declarada.
-- Baseline856/9,732,12 s, saída0; suíte completae8bdb11 em andamento.
+- Baseline856/9,732,12 s, saída0; suíte completae8bdb11:857 aprovados/9 ignorados em808,56 s, saída0.
   Ainda não constitui aceite visual global nem integração aoF18real.
+
+- PageDown/rolagem/seleção OOS no detalhe empilhado operados emDPI144/1280,
+  captura adicional versionada; encerramento0. Doctoroffline15OK/2avisos/1falha
+  esperada porpath vazio. CI#86 verde após repetição limitada no mesmoSHA.
 
 ## T17.16 — seleção e resultado de Backtest no detalhe do robô
 
