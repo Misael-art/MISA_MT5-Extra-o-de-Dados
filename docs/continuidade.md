@@ -532,3 +532,26 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 
 - DoctorofflineT17.16:15 OK/2 avisos/1 falha deliberadaMT5.pathvazio;
   principal preservada comdiagnóstico separado21 OK/1 aviso/0 falhas.
+
+## ORG05 — estado da integração visual (2026-10-16)
+
+A principal b9e54c9 reúne os PRs #81–#89, integrados separadamente após revisão
+técnica do agente executor, checks no head final e smoke no módulo instalado com
+configuração/dados privados. O trabalho original T17.6, as configurações e as
+bases do usuário foram preservados. Nenhum agente adicional foi acionado.
+
+Estado por PR, commits de merge, verificações no host, falhas preservadas e
+pendências estão em [Continuidade da integração visual](propostas/CONTINUIDADE_INTEGRACAO_UI.md).
+O painel do plano foi reconciliado com essas integrações. #90 aguarda a correção
+separada do teste assíncrono (#93); #91/#92 possuem implementação, testes e
+operação real registrados, mas ainda dependem da cadeia de integração.
+
+O smoke histórico do #89 manteve as 129 operações, PF 0,637667 e resultado
+negativo da execução anterior; ledger reconciliado e contexto anterior após
+alterar período. São dados previamente expostos, sem campanha/OOS. A meta
+financeira não foi demonstrada. Aceite global da UI, dados/custos e pesquisa
+permanecem frentes explícitas. #79/#80, releases e contas seguem separados.
+
+ORG05 altera somente documentação. Baseline a13c2c6: 856 aprovados/9 ignorados,
+saída 0; base depois reconciliada com b9e54c9. Verificação final desta unidade
+será registrada no PR, junto ao diagnóstico e à conferência de consistência.
