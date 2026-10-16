@@ -82,3 +82,19 @@ def test_theme_selects_available_font_and_updates_scale_listeners(root):
     assert isinstance(theme.colors, dict)
     assert theme.colors == DARK
     assert changes == [1.15, 1.15]
+
+
+@pytest.mark.parametrize("palette", [LIGHT, DARK])
+def test_result_attention_preserves_contrast_and_distinguishes_absence(palette):
+    from mt5_extracao.ui.visual_tokens import result_attention_colors, result_attention_role
+    for background in ("surface", "field"):
+        for value, expected in ((1, "positive"), (-1, "negative"), (0, "zero"), (None, "absent"),
+                                (float("nan"), "absent"), (float("inf"), "absent"), (True, "absent")):
+            assert result_attention_role(value) == expected
+            fill, text = result_attention_colors(value, palette, background)
+            assert contrast_ratio(text, fill) >= 4.5
+            assert contrast_ratio(palette["accent"], fill) >= 3
+        assert result_attention_colors(None, palette, background)[0] == palette[background]
+        assert result_attention_colors(0, palette, background)[0] == palette[background]
+        assert result_attention_colors(1, palette, background)[0] != palette[background]
+    assert result_attention_colors(1, palette) == result_attention_colors(100000, palette)  # sinal, não confiança

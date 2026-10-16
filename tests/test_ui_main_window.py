@@ -838,3 +838,38 @@ def test_connector_calls_the_prepare_hook_before_connecting(monkeypatch, tmp_pat
         raise RuntimeError("terminal.ini ilegível")
     connector.prepare_terminal = broken
     connector.initialize()                                   # falha ao preparar não impede a tentativa de conexão
+
+
+def test_inventory_attention_keeps_sort_selection_refresh_and_theme(ui):
+    from mt5_extracao import asset_table
+    from mt5_extracao.ui.visual_tokens import result_attention_colors
+    ui.profit_cells = {("WIN$N", "M1"): {"python:a": (10, .01)}}
+    panel = ui.inventory_panel
+    panel.show(ui.inventory)
+    key = next(iter(panel.rows))
+    assert panel.tree.item(key, "tags") == ("result.positive",)
+    ui.notebook.select(panel.frame)
+    ui.pump(0.2)
+    ui.root.focus_force()
+    panel.tree.focus_set()
+    end = time.monotonic() + 5
+    while ui.root.focus_get() is not panel.tree and time.monotonic() < end:
+        ui.pump(0.05)
+    assert ui.root.focus_get() is panel.tree
+    panel.tree.selection_set(key)
+    panel.tree.event_generate("<space>")
+    panel.sort_by(asset_table.COL_PROFIT)
+    assert panel.tree.selection() == (key,) and key in panel.checked
+    ui.profit_cells[("WIN$N", "M1")]["python:a"] = (-10, -.01)
+    panel.profit_changed("WIN$N")
+    assert panel.tree.item(key, "tags") == ("result.negative",)
+    assert "-1,0%" in panel.tree.set(key, asset_table.COL_PROFIT)
+    ui.theme.toggle()
+    fill, text = result_attention_colors(-1, ui.theme.colors, background="field")
+    assert str(panel.tree.tag_configure("result.negative", "background")) == fill
+    assert str(panel.tree.tag_configure("result.negative", "foreground")) == text
+
+    from tkinter import ttk
+    style = ttk.Style(ui.root)
+    assert str(style.lookup(panel.tree.cget("style"), "background", ("selected",))) == ui.theme.colors["accent"]
+    assert str(style.lookup(panel.tree.cget("style"), "foreground", ("selected",))) == ui.theme.colors["on_accent"]

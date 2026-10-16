@@ -18,9 +18,10 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.ui import charts
-from mt5_extracao.ui.components import ChartPanel, FilterBar, MetricCard, Notice, PageHeader, ScrollableContent, TablePanel
+from mt5_extracao.ui.components import (ChartPanel, ContentPanel, FilterBar, MatrixTable, MetricCard, Notice,
+                                       PageHeader, ScrollableContent, TablePanel)
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
-from mt5_extracao.ui.visual_tokens import SPACING
+from mt5_extracao.ui.visual_tokens import SPACING, result_attention_colors
 from mt5_extracao.ui.visual_tokens import TYPOGRAPHY
 
 log = logging.getLogger(__name__)
@@ -476,53 +477,50 @@ class LaboratoryPanel:
         return "Referência temporal indisponível"
 
     def _overview_matrix(self, parent, view):
-        """Tabela rolável para a matriz horária de 24 linhas, sem comprimir rótulos ou contagens."""
+        """Matriz com atenção pelo sinal, sem atribuir confiança à cor do resultado."""
         table = self._crosstab(view, "time_bucket", "day_of_week")
         values = table["value"].reindex(columns=range(7))
         counts = table["n"].reindex(index=values.index, columns=range(7), fill_value=0).fillna(0)
         small = table["small"].reindex(index=values.index, columns=range(7), fill_value=False).fillna(False)
         if not hasattr(self, "overview_heat_table"):
-            day_names = tuple(WEEKDAYS[day] for day in range(7))
-            self.overview_heat_table = TablePanel(
-                parent, "Expectativa por faixa horária × dia", ("Faixa", *day_names),
-                (80, 150, 150, 150, 150, 150, 150, 150),
-                ("w",) + ("center",) * 7, height=9, xscroll=True, subtitle="Referência temporal · moeda da conta",
-                padding=SPACING["xs"])
+            self.overview_heat_table = ContentPanel(
+                parent, "Expectativa por faixa horária × dia", subtitle="Moeda da conta", padding=SPACING["xs"])
             self.overview_heat_table.grid(row=0, column=0, sticky="nsew", padx=SPACING["xs"], pady=SPACING["xs"])
-            self.overview_heat_notice = Notice(
-                self.overview_heat_table.body,
-                "Cada célula mostra resultado · n=operações. * = amostra positiva abaixo do mínimo; n=0 = sem operações.",
-                kind="info", theme=self.theme)
-            self.overview_heat_notice.pack(fill=tk.X, pady=(0, SPACING["xs"]),
-                                           before=self.overview_heat_table.table_frame)
+            self.overview_heat_notice = Notice(self.overview_heat_table.body, "", kind="neutral", theme=self.theme)
+            self.overview_heat_notice.badge.set_status("Contexto", kind="neutral")
+            self.overview_heat_notice.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+            self.overview_heat_matrix = MatrixTable(
+                self.overview_heat_table.body, ("Faixa", *(WEEKDAYS[day] for day in range(7))),
+                (80, 150, 150, 150, 150, 150, 150, 150), theme=self.theme,
+                height=9, row_height=max(32, self.theme.font.metrics("linespace") + 12))
+            self.overview_heat_matrix.pack(fill=tk.BOTH, expand=True)
             parent.rowconfigure(0, weight=1)
             parent.columnconfigure(0, weight=1)
-        self.overview_heat_table.subtitle_label.configure(text="Moeda da conta")
         excluded = len(self.view) - len(view)
         population = f"{self._temporal_context(view)} · {fmt_int(len(view))} operações na matriz."
         if excluded:
             population += f" {fmt_int(excluded)} operações sem entrada ficam fora desta matriz; KPIs incluem o recorte inteiro."
         self.overview_heat_notice.message.configure(
-            text=population + " Cada célula: resultado · n=operações. * = amostra pequena; n=0 = sem operações.")
+            text=population + " Azul suave: resultado positivo; tom discreto: negativo; neutro: zero/sem operações. "
+                 "— = sem operações (n=0); n=operações; * = pouca amostra. Cor indica sinal, não validação.")
         self.overview_heat_notice.message.bind(
             "<Configure>", lambda event: self.overview_heat_notice.message.configure(wraplength=max(180, event.width)))
-        tree = self.overview_heat_table.tree
-        tree.delete(*tree.get_children())
+        rows = []
         for hour in values.index:
-            row = [hour]
+            row = []
             for day in range(7):
                 value = values.loc[hour, day]
                 count = int(counts.loc[hour, day])
                 marker = "*" if count > 0 and bool(small.loc[hour, day]) else ""
-                amount = charts.money(value) if pd.notna(value) else "—"
-                row.append(f"{amount} · n={count}{marker}")
-            tree.insert("", tk.END, values=tuple(row))
-        # Largura de apresentação pela fonte real; os valores e a população não mudam.
-        for index, column in enumerate(tree.cget("columns")):
-            texts = [tree.heading(column, "text")] + [
-                tree.item(item, "values")[index] for item in tree.get_children()]
-            width = max(self.theme.font.measure(text) for text in texts) + 2 * SPACING["md"]
-            tree.column(column, width=max(80, width), minwidth=max(80, width), stretch=False)
+                amount = ("+" if pd.notna(value) and value > 0 else "") + charts.money(value)
+                background, foreground = result_attention_colors(value if count else None, self.theme.colors)
+                text = f"{amount} · n={count}{marker}" if count else "—"
+                row.append((text, background, foreground))
+            rows.append(row)
+        self.overview_heat_matrix.set_rows(values.index, rows)
+        for i, cells in enumerate(self.overview_heat_matrix.cells):
+            for j, cell in enumerate(cells):
+                cell.configure(font=self.theme.font_small if not counts.iloc[i, j] or pd.isna(values.iloc[i, j]) else self.theme.font)
 
     def _overview(self):
         from mt5_extracao.trade_analytics import aggregate

@@ -9,8 +9,9 @@ from tkinter import messagebox, simpledialog, ttk
 from mt5_extracao import asset_table
 from mt5_extracao.asset_table import COL_FAVORITE, COL_SELECTED, COLUMNS
 from mt5_extracao.robots import catalog, runner
-from mt5_extracao.ui.components import FilterBar
+from mt5_extracao.ui.components import configure_result_tags, FilterBar
 from mt5_extracao.ui.backtest_dialog import BacktestDialog
+from mt5_extracao.ui.visual_tokens import SPACING, result_attention_role
 from mt5_extracao.ui.theme import Tooltip, card, fmt_int, scrolled_tree
 
 log = logging.getLogger(__name__)
@@ -84,8 +85,16 @@ class InventoryPanel:
         self.progress_label = ttk.Label(self.progress_frame, text="", style="Muted.TLabel")
         self.progress_label.pack(anchor="w")
 
+        self.result_legend = ttk.Label(
+            body, text="Retorno histórico: azul suave = positivo · discreto = negativo · 0,0% = zero · N/A = indisponível. Não indica aprovação.",
+            style="Muted.TLabel", wraplength=1000)
+        self.result_legend.pack(fill=tk.X, pady=(0, 8))
+        self.result_legend.bind("<Configure>", lambda event: self.result_legend.configure(wraplength=max(180, event.width)))
         self.tree_frame, self.tree = scrolled_tree(body, COLUMNS, WIDTHS, ANCHORS, height=14, xscroll=True)
         self.tree.column(COL_FAVORITE, stretch=False)
+        self.tree.column(asset_table.COL_PROFIT, anchor="e")
+        self._apply_attention_theme()
+        ui.theme.on_change(self._apply_attention_theme)
         self.tree.heading(COL_FAVORITE, text=ui.theme.glyphs(COL_FAVORITE))
         self.tree_frame.pack(fill=tk.BOTH, expand=True)
         for col in COLUMNS:
@@ -97,6 +106,13 @@ class InventoryPanel:
         self._update_buttons()
 
     # --- tabela -----------------------------------------------------------------------
+
+    def _apply_attention_theme(self):
+        configure_result_tags(self.tree, self.ui.theme)
+        # O destaque de retorno não pode cortar a informação independente de qualidade.
+        status_width = max(self.ui.theme.font.measure(self.ui.theme.glyphs(asset_table.fmt_status(state)))
+                           for state in (None, False, True)) + 2 * SPACING["sm"]
+        self.tree.column(asset_table.COL_STATUS, minwidth=status_width)
 
     def sort_by(self, column):
         self._sort = (column, not self._sort[1] if self._sort[0] == column else False)
@@ -114,7 +130,8 @@ class InventoryPanel:
         self.tree.delete(*self.tree.get_children())
         self.rows = {}
         for row in frame.itertuples():
-            self.tree.insert("", tk.END, iid=row.key, values=ui.cell_texts(row))
+            self.tree.insert("", tk.END, iid=row.key, values=ui.cell_texts(row),
+                             tags=(f"result.{result_attention_role(row.profit)}",))
             self.rows[row.key] = by_table[row.key]
         if selection and selection[0] in self.rows:
             self.tree.selection_set(selection[0])
@@ -199,8 +216,9 @@ class InventoryPanel:
         for iid, item in self.rows.items():
             if item["symbol"] == symbol:
                 tf = timeframes.parse(item["timeframe"])
-                self.tree.set(iid, asset_table.COL_PROFIT, self.ui.theme.glyphs(asset_table.fmt_profit(
-                    asset_table.profit_of(self.ui.profit_cells, symbol, tf.name if tf else None))))
+                value = asset_table.profit_of(self.ui.profit_cells, symbol, tf.name if tf else None)
+                self.tree.set(iid, asset_table.COL_PROFIT, self.ui.theme.glyphs(asset_table.fmt_profit(value)))
+                self.tree.item(iid, tags=(f"result.{result_attention_role(value)}",))
 
     # --- ações da linha em destaque ---------------------------------------------------
 

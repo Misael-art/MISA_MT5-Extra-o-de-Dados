@@ -367,3 +367,24 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - T17.12 aplica a hierarquia discreta de atenção pedida pelo dono. Uma prévia
   privada com dados reais confirmou o estilo; o código visual ainda não foi
   incorporado nesta tarefa. WIP T17.6 preservada. Sem merge; PF pendente do aceite.
+
+## T17.12 — hierarquia discreta de atenção (2026-10-16)
+
+- Branch `codex/t17-12-hierarquia-atencao`, dependente de #83. Horários recebe
+  destaque azul suave nos positivos, perdas sóbrias e ausência neutra. Minha base
+  usa a mesma semântica, com seleção nativa destacada e qualidade legível.
+- Sem mudança de cálculos ou dados: n e asterisco de pouca amostra permanecem;
+  traço sem operações remete a n=0 na legenda. Positivo não significa validação.
+- MatrixTable reutilizada seletivamente do WIP T17.6, preservado integralmente;
+  nenhum gradiente por magnitude ou suavização importado. Teclado e cabeçalho fixo
+  validados. 30 testes focados aprovados; suíte completa no 5388ec8: 852 aprovados,
+  9 ignorados em 598,30 s, saída 0. PR #84 draft.
+- Operação real com cópia consistente da base, sem terminal, em ambos os temas,
+  DPI96/144 e resoluções 1280×800/1920×1080; capturas em
+  `docs/img/interface-visual/T17.12/`. Doctor offline tem falha deliberada de path
+  MT5; Windows visual manual e aceite global pendentes. #83 CI completo verde.
+- Nenhum PR foi mesclado. Campanha PF ≥1,9 continua posterior ao aceite visual
+  e à contabilidade de custos; nenhum resultado financeiro novo foi produzido.
+
+- Revalidação do host principal após T17.12: doctor 21 OK/1 aviso/0 falhas.
+  T17.6 preservada, incluindo 22 arquivos não rastreados e diffs staged/unstaged.

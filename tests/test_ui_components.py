@@ -201,3 +201,26 @@ def test_scrollable_content_preserves_height_and_keyboard_access(app):
     assert viewport.canvas.yview()[0] == initial
     theme.toggle()
     assert viewport.canvas.cget("background") == theme.colors["surface"]
+
+
+def test_matrix_cells_preserve_values_and_one_keyboard_entry(app):
+    from mt5_extracao.ui.components import MatrixTable
+    root, theme = app
+    root.geometry("300x200")
+    matrix = MatrixTable(root, ("Hora", "Seg", "Ter"), (80, 160, 160), theme, height=3)
+    matrix.pack(fill=tk.BOTH, expand=True)
+    rows = [[("+1,00 · n=2*", theme.colors["surface"], theme.colors["ink"])] * 2 for _ in range(20)]
+    matrix.set_rows([str(i) for i in range(20)], rows)
+    root.update()
+    assert sum(bool(int(cell.cget("takefocus"))) for row in matrix.cells for cell in row) == 1
+    header_y = matrix.headers[0].winfo_rooty()
+    root.focus_force();matrix.cells[0][0].focus_set();root.update()
+    matrix.cells[0][0].event_generate("<End>");root.update()
+    assert root.focus_get() is matrix.cells[-1][0]
+    assert matrix.canvas.yview()[0] > 0
+    assert matrix.headers[0].winfo_rooty() == header_y
+    assert sum(bool(int(cell.cget("takefocus"))) for row in matrix.cells for cell in row) == 1
+    assert matrix.cells[-1][0].cget("text") == "+1,00 · n=2*"
+    matrix.set_rows(["única"], rows[:1]);root.update()
+    assert len(matrix.cells) == 1
+    assert matrix.content.winfo_reqheight() < 200
