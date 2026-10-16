@@ -430,3 +430,32 @@ Não substituir por sleep maior nem mudar o comportamento da aplicação.
 Ambiente próprio instalado; baseline b9e54c9: 860 aprovados/9 ignorados em
 868,84 s, saída 0, antes do código. Aceite: cenários rápido/lento aprovados,
 suíte completa, doctor, revisão técnica e CI no SHA exato em PR próprio.
+
+### T17.21 — informação sob demanda, com espaço devolvido à análise
+
+Pedido explícito do usuário: detalhes de seleção/aquecimento e comprovação
+não devem disputar atenção com a análise. Reutilizar DetailsPanel com variante
+informativa: ícone ℹ, texto curto de ação, foco nativo, Enter/Espaço e fechamento
+por Escape. Seis detalhes de Relações começam recolhidos; o gráfico/tabela
+recebe a largura liberada. Abrir conserva o reflow legível de T17.17. Mudar a
+seleção atualiza o texto completo sem abrir sozinho nem perder a escolha.
+
+Legenda longa dos critérios e explicação extensa do traçado usam o mesmo
+padrão. Presença ≠ evidência ≠ autorização, unidades, denominadores e lacunas
+não interpoladas continuam no contexto primário. Avisos DADOS SINTÉTICOS,
+custos incompletos, amostra/ausência e validade não ficam dentro de recolhimento.
+Nenhum dado, fixture, fórmula, produtor/DTO ou autorização é alterado.
+
+Ambiente isolado instalado/dev; baseline eed5f34: 861 aprovados/9 ignorados em
+653,15 s, saída 0, antes do código. Anexos temporários ausentes; a descrição e
+as telas atuais fundamentam o recorte, sem alegar inspeção das imagens ausentes.
+Arquivos: ui/components.py, ui/relations.py, testes de ambos, documentação e
+capturas. Aceite: mouse/teclado, preservação de texto/seleção/gráfico/tabelas,
+ganho de área, duas paletas e 96/144 DPI em1280/1920/820, scroll, fechamento e
+reabertura. Suíte focada/completa, doctor, revisão/CI e PR próprio.
+
+Achado na validação T17.21: o caractere ℹ estava no texto do botão, mas não
+apareceu nas capturas reais com a fonte do host. O mesmo recorte inclui agora
+`ui/icons.py`, reutilizando o desenho Pillow/PhotoImage existente, sem nova
+dependência. Ícone de informação com texto acessível, tamanho pela fonte e
+atualização de cor no tema; teste exige imagem não vazia, além do rótulo.

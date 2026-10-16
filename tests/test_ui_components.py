@@ -166,6 +166,55 @@ def test_progress_comparison_and_details_are_presentation_only(app):
     assert details.body.winfo_manager() == ""
 
 
+def test_information_details_support_keyboard_and_keep_hidden_content(app):
+    import time
+
+    root, theme = app
+    states = []
+    details = DetailsPanel(root, "Comprovação da seleção", expanded=False,
+                           information=True, on_toggle=states.append, theme=theme)
+    details.pack(fill=tk.X)
+    text = tk.Text(details.body, height=3)
+    text.insert("1.0", "Aquecimento · n=0 · motivo completo preservado")
+    text.pack(fill=tk.X)
+    root.geometry("640x360")
+    root.update()
+    assert details.toggle_button.cget("text") == "Detalhes"
+    icon = details.information_icon
+    assert str(icon) in details.toggle_button.cget("image")
+    assert icon.width() >= 14
+    assert sum(not icon.transparency_get(x, y) for x in range(icon.width()) for y in range(icon.height())) > 20
+    assert details.body.winfo_manager() == ""
+    details.toggle_button.focus_force()
+    details.toggle_button.event_generate("<Return>")
+    root.update()
+    assert details.expanded and details.body.winfo_ismapped()
+    details.toggle_button.event_generate("<KeyPress-space>")
+    details.toggle_button.event_generate("<KeyRelease-space>")
+    deadline = time.monotonic() + 2
+    while details.expanded and time.monotonic() < deadline:
+        root.update()
+        time.sleep(.01)
+    assert not details.expanded
+    details.toggle_button.invoke()
+    text.focus_force()
+    root.update()
+    details.set_expanded(False)
+    root.update()
+    assert root.focus_get() is details.toggle_button
+    assert text.get("1.0", "end-1c") == "Aquecimento · n=0 · motivo completo preservado"
+    details.toggle_button.invoke()
+    details.toggle_button.event_generate("<Escape>")
+    root.update()
+    assert not details.expanded
+    assert states == [True, False, True, False, True, False]
+    theme.rich_glyphs = False
+    theme.toggle()
+    assert str(details.information_icon) != str(icon)
+    assert str(details.information_icon) in details.toggle_button.cget("image")
+    assert text.get("1.0", "end-1c") == "Aquecimento · n=0 · motivo completo preservado"
+
+
 @pytest.mark.parametrize("palette", [LIGHT, DARK])
 def test_semantic_component_styles_have_readable_foreground(app, palette):
     root, theme = app
