@@ -3,10 +3,9 @@ import os
 
 import pandas as pd
 import pytest
-from sqlalchemy import create_engine, text
 
-from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.trade_analytics import ledger
+from tests.postgres_helpers import isolated_postgresql_database
 
 PG_URL = os.environ.get("MT5X_TEST_PG_URL")
 pytestmark = pytest.mark.skipif(not PG_URL, reason="defina MT5X_TEST_PG_URL para testar com PostgreSQL")
@@ -15,14 +14,9 @@ pytestmark = pytest.mark.skipif(not PG_URL, reason="defina MT5X_TEST_PG_URL para
 @pytest.fixture
 def pg():
     pytest.importorskip("psycopg")
-    engine = create_engine(PG_URL)
-    with engine.begin() as conn:
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-    engine.dispose()
-    db = DatabaseManager(db_type="postgresql", db_path=PG_URL)
-    yield db
-    db.engine.dispose()
+    with isolated_postgresql_database(PG_URL) as db:
+        assert db.is_connected()
+        yield db
 
 
 def test_ledger_round_trip(pg):

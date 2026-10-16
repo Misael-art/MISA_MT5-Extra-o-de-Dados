@@ -3488,7 +3488,7 @@ As regras permanentes — fontes canônicas, fila de integração e política de
 | ORG-01 | Inventário e preservação Git (bundles, restauração verificada, patches e tar do WIP da T17.6) | — | ✅ realizada; a segunda cópia verificada de backup é gate da limpeza (ORG-09) |
 | ORG-02 | PR documental de fontes canônicas, fila e política Git (este registro) | ORG-01 | ⏳ em revisão (branch `docs/org-02-fontes-fila-politica`): fontes canônicas explícitas, nenhuma tarefa aponta ao checkout reservado; dono, branch, PR, base e estado por tarefa |
 | ORG-03 | Checkpoint da T17.6 pelo responsável e backup dos dados ignorados relevantes | ORG-01 | a fazer (depende do responsável da T17.6) |
-| ORG-04 | Isolamento de schemas PostgreSQL na base atual (recorte do commit de isolamento, sem ancestrais Analytics) | ORG-02 | a fazer |
+| ORG-04 | Isolamento de schemas PostgreSQL na base atual (recorte do commit de isolamento, sem ancestrais Analytics) | ORG-02 | ⏳ recorte implementado; validação em contêiner exclusivo e revisão em andamento. Ver [aceites](analytics/ORG04_ISOLAMENTO_POSTGRESQL.md) |
 | ORG-05 | Integrar F13/F16/T18 na ordem da fila e ligar a UI ao serviço real | ORG-04 | a fazer |
 | ORG-06 | Integrar o HADOUKEN pendente, verificar a Safety e publicar as distribuições revisadas | ORG-02 | a fazer |
 | ORG-07 | Contratos de exportação (T16.2b) e verificação automática da sincronia Safety | ORG-06 conforme contrato | a fazer |

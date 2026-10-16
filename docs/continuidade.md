@@ -313,3 +313,14 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   MT5 desligada); `git diff --check` passou.
 - A Fase 17 está concluída no Linux. Windows real, DPI de 125%/150%, maximização pelo sistema e glifos/fontes do Tk
   continuam na pendência T17.1–T17.5 de `docs/validacao_instaladores.md`; não se declara validação Windows.
+
+
+## Retomada ORG-04 — 2026-10-16
+
+Recorte isolado de `80fd2f3`, empilhado sobre ORG-02 (`c390b04`), sem ancestrais
+Analytics. Helper e ambas as fixtures preservam `public`; testes UTC e de serviços
+também deixam de abrir URL bruta. Novos aceites de concorrência, sentinela e limpeza
+estão em [ORG04_ISOLAMENTO_POSTGRESQL.md](analytics/ORG04_ISOLAMENTO_POSTGRESQL.md).
+Baseline local: 837 aprovados, 9 ignorados, saída 0, Python 3.11.15/Xvfb.
+Validações posteriores e SHA estão no PR. Integração depende da revisão da ORG-02
+e deste recorte; código em branch não está instalado no principal.

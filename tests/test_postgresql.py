@@ -11,15 +11,15 @@ import os
 
 import pandas as pd
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 import mt5_extracao.historical_extractor as he_module
 import mt5_extracao.mt5_connector as connector_module
 from mt5_extracao import services
-from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.historical_extractor import HistoricalExtractor
 from mt5_extracao.indicator_calculator import IndicatorCalculator
 from tests.market_data import random_walk
+from tests.postgres_helpers import isolated_postgresql_database
 
 PG_URL = os.environ.get("MT5X_TEST_PG_URL")
 pytestmark = pytest.mark.skipif(not PG_URL, reason="defina MT5X_TEST_PG_URL para testar com PostgreSQL")
@@ -28,15 +28,9 @@ pytestmark = pytest.mark.skipif(not PG_URL, reason="defina MT5X_TEST_PG_URL para
 @pytest.fixture
 def pg():
     pytest.importorskip("psycopg")
-    engine = create_engine(PG_URL)
-    with engine.begin() as conn:   # banco limpo a cada teste
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-    engine.dispose()
-    db = DatabaseManager(db_type="postgresql", db_path=PG_URL)
-    assert db.is_connected()
-    yield db
-    db.engine.dispose()
+    with isolated_postgresql_database(PG_URL) as db:
+        assert db.is_connected()
+        yield db
 
 
 @pytest.fixture(autouse=True)
@@ -110,14 +104,13 @@ def test_extraction_with_resume(pg, connector, fake_mt5):
         assert c.execute(text("SELECT COUNT(*) FROM win_n_1_minuto")).scalar() == 3 * 540
 
 
-def test_utc_time_basis(pg):
-    utc = DatabaseManager(db_type="postgresql", db_path=PG_URL, time_basis="utc", broker_utc_offset=-3)
-    utc.save_ohlcv_data("WIN$N", "1 hora", random_walk(5, freq="h", start="2024-01-02 09:00"))
-    with utc.engine.connect() as c:
-        first = c.execute(text("SELECT MIN(time) FROM win_n_1_hora")).scalar()
-    assert first == dt.datetime(2024, 1, 2, 12, 0)
-    assert utc.load_ohlcv("WIN$N", "1 hora")["time"].iloc[0] == pd.Timestamp("2024-01-02 09:00")
-    utc.engine.dispose()
+def test_utc_time_basis():
+    with isolated_postgresql_database(PG_URL, time_basis="utc", broker_utc_offset=-3) as utc:
+        utc.save_ohlcv_data("WIN$N", "1 hora", random_walk(5, freq="h", start="2024-01-02 09:00"))
+        with utc.engine.connect() as c:
+            first = c.execute(text("SELECT MIN(time) FROM win_n_1_hora")).scalar()
+        assert first == dt.datetime(2024, 1, 2, 12, 0)
+        assert utc.load_ohlcv("WIN$N", "1 hora")["time"].iloc[0] == pd.Timestamp("2024-01-02 09:00")
 
 
 def test_strategy_validation_storage(pg):
@@ -130,11 +123,11 @@ def test_strategy_validation_storage(pg):
     assert len(v.load_validations(pg, ["WIN$N"], "D1")) == 1
 
 
-def test_services_builds_url_with_password_from_env(monkeypatch):
+def test_services_builds_url_with_password_from_env(monkeypatch, pg):
     from sqlalchemy.engine import make_url
-    real = make_url(PG_URL)
+    real = make_url(pg.db_path)
     monkeypatch.setenv("DB_PASSWORD", real.password or "")
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     no_password = real.set(password=None).set(drivername="postgresql").render_as_string(hide_password=False)
     cfg.read_string(f"[DATABASE]\ntype = postgresql\nurl = {no_password}\n")
     db = services.create_db_manager(cfg)
