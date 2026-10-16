@@ -390,3 +390,26 @@ dimensões ausentes; números existentes preservados. Comparar contagens da
 base com barras/legenda, ambos temas, 96/144 DPI, 1280/1920, interação e
 exportação do gráfico. Suíte inicial antes do código e final, doctor e
 evidências reais. Uma branch/PR própria. Campanha PF19 permanece pendente.
+
+### T17.11 — grade horária e lacunas sem interpolação
+
+Reprodução real:263 operações parciais de MQLExemplo,37 faixas observadas.
+O gráfico usa posições consecutivas para00:00 e02:30, embora sejam150 minutos,
+e liga esses pontos. As referências são saídas; não serão inferidas entradas.
+
+Recorte: o núcleo fornece grade de24h usando o mesmo time_bucket_min do
+enriquecimento. Faixas sem medida têm n=0, expectativa/acerto ausentes e
+marca de amostra pequena desligada. Faixas inválidas/ausentes ficam com
+população explicitada, sem descartar silenciosamente. As métricas das faixas
+observadas permanecem iguais. UI apenas renderiza grade/metadata recebidas e
+a linha quebra em NaN. O componente comum de barras deve preservar ausência
+em vez de converter None/nonfinite em zero, sem anotações de medida ausente;
+valores finitos continuam iguais. Não alterar ledger, cache, PF ou fórmulas.
+
+Aceite: grades configuráveis/default/fallback e população; comparação dos
+valores reais antes/depois; zero observado distinto de ausência; segmentos
+Matplotlib e marcadores nas posições corretas; temas claro/escuro,96/144 DPI,
+1280/1920, teclado/rolagem/export; testes focados e completos, doctor e
+evidências. Baseline1851b1d:875 aprovados/9 ignorados em917,57s, saída0.
+Uma tarefa/branch/PR. Densidade geral dos ticks e metadata completa dos
+exports continuam em recortes próprios. Sem novo backtest ou campanhaPF19.
