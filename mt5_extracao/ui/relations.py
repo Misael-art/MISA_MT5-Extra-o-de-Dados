@@ -732,7 +732,7 @@ class RelationsPanel:
         self._style_tree_states(self.timeline_table.tree)
         self.timeline_table.tree.bind("<<TreeviewSelect>>", self._timeline_selected, add="+")
         self.timeline_detail = self._page_detail(detail, "timeline", visible_lines=15)
-        self.timeline_detail.pack(fill=tk.BOTH, expand=True, padx=(SPACING["xs"], 0))
+        self.timeline_detail.pack(fill=tk.BOTH, expand=True)
         self._draw_timeline()
 
     def _current_timeline_series(self):
@@ -859,7 +859,7 @@ class RelationsPanel:
         self._style_tree_states(self.distribution_table.tree)
         self.distribution_table.tree.bind("<<TreeviewSelect>>", self._distribution_selected, add="+")
         self.distribution_detail = self._page_detail(detail, "distribution", visible_lines=15)
-        self.distribution_detail.pack(fill=tk.BOTH, expand=True, padx=(SPACING["xs"], 0))
+        self.distribution_detail.pack(fill=tk.BOTH, expand=True)
         self._draw_distribution()
 
     def _draw_distribution(self):
@@ -970,7 +970,7 @@ class RelationsPanel:
         self._style_tree_states(self.convergence_table.tree)
         self.convergence_table.tree.bind("<<TreeviewSelect>>", self._convergence_selected, add="+")
         self.convergence_detail = self._page_detail(detail, "convergence", visible_lines=15)
-        self.convergence_detail.pack(fill=tk.BOTH, expand=True, padx=(SPACING["xs"], 0))
+        self.convergence_detail.pack(fill=tk.BOTH, expand=True)
         self._draw_convergence()
 
     def _current_pair(self):
