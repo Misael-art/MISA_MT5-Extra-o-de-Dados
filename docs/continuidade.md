@@ -567,10 +567,10 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Quatorze testes do núcleo aprovados em3,00 s e oito de Laboratório em31,62 s;
   incluem zero, ausentes/não finitos/booleanos, categoria vazia, dimensão ausente,
   métricas preservadas, dois temas e atualização da seleção sem série antiga.
-  Suíte completa no85b81ef em execução; resultado final ainda pendente.
+  Suíte completa no85b81ef:875 aprovados/9 ignorados em944,54 s, saída0; PR #91 draft.
 - Aplicação real em cópia consistente, ambos temas,96/144 DPI e1280/1920:
   barras reconciliadas com4.071/6.366/340 e soma10.777. Ledger antes/depois
-  com hash idêntico; quick_check dos dois bancos OK. Contagens CSV e gráfico
+  com hash idêntico; quick_check dos dois bancos OK. Contagens CSV geradas pela API do núcleo e gráfico
   exportado conferidos nos artefatos privados. PageDown e rolagem alcançam a
   base do gráfico em144 DPI; sessões próprias encerradas0. Capturas em
   docs/img/interface-visual/T17.10. Dados existentes expostos, sem novo backtest
