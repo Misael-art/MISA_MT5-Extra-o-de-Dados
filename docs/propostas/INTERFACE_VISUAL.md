@@ -187,6 +187,6 @@ e ausências sem competir por atenção. Recorte registrado antes da implementa�
 - **Validação inicial:** 30 testes focados aprovados (duração no log privado t1712-focused-final); contraste >=4,5:1
   nos dois temas; base real com 263 operações parciais e 15 séries, em 96/144 DPI
   e 1280×800/1920×1080. Capturas em docs/img/interface-visual/T17.12/.
-  Suíte completa no código 5388ec8 em andamento. Doctor offline: 15 OK, 2 avisos,
+  Suíte completa no código 5388ec8: 852 aprovados/9 ignorados, 598,30 s, saída 0. Doctor offline: 15 OK, 2 avisos,
   1 falha esperada por caminho MT5 deliberadamente vazio; não é diagnóstico verde.
   A dependência #83 passou Linux/Windows/PostgreSQL/instaladores/lint no CI.

@@ -377,10 +377,14 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   traço sem operações remete a n=0 na legenda. Positivo não significa validação.
 - MatrixTable reutilizada seletivamente do WIP T17.6, preservado integralmente;
   nenhum gradiente por magnitude ou suavização importado. Teclado e cabeçalho fixo
-  validados. 30 testes focados aprovados; suíte completa em andamento no 5388ec8.
+  validados. 30 testes focados aprovados; suíte completa no 5388ec8: 852 aprovados,
+  9 ignorados em 598,30 s, saída 0. PR #84 draft.
 - Operação real com cópia consistente da base, sem terminal, em ambos os temas,
   DPI96/144 e resoluções 1280×800/1920×1080; capturas em
   `docs/img/interface-visual/T17.12/`. Doctor offline tem falha deliberada de path
   MT5; Windows visual manual e aceite global pendentes. #83 CI completo verde.
 - Nenhum PR foi mesclado. Campanha PF ≥1,9 continua posterior ao aceite visual
   e à contabilidade de custos; nenhum resultado financeiro novo foi produzido.
+
+- Revalidação do host principal após T17.12: doctor 21 OK/1 aviso/0 falhas.
+  T17.6 preservada, incluindo 22 arquivos não rastreados e diffs staged/unstaged.
