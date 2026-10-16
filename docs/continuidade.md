@@ -435,3 +435,25 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - T17.14 preparada em worktree próprio, baseline rodando antes de modificar
   layout. T17.16 proposta após seletor H4 mostrar resultado H1 anterior e botão
   cortado no detalhe do robô; sem mudança de cálculos. Nenhum merge realizado.
+
+## T17.14 — altura da área analítica (2026-10-16)
+
+- Branch `codex/t17-14-altura-analitica`, baseT17.15/#86, ambiente próprio
+  instalado/dev e baseline854 aprovados/9 ignorados em768,23 s, saída0.
+- ScrollableContent preenche altura disponível sem suprimir altura requerida;
+  cálculo desconta borda e usa layout estabilizado para textos com quebra de
+  linhas. Callback único, cancelado ao destruir o componente. Sem dados/cálculos.
+- Rodadas: primeiro teste detectou2px de rolagem artificial e foi corrigido;
+  teste de limite passou. Rodada seguinte34 focados aprovados em44,07 s; inspeção
+  de resize detectou atraso na altura após wrap, corrigido e coberto por novo
+  teste. Três casos de rolagem/wrap/Destroy passaram em0,79 s. Focados finais:
+  35 aprovados em52,74 s; suíte40853f2 em andamento. Suíte anterior60d8cc2 foi interrompida143 por
+  código supersedido, sem afirmar sucesso.
+- Operação antes/depois clara/escura,DPI96/144,1280×800/1920×1080 e ciclo de
+  resize: contêiner maior preenche830 dos832px em96DPI (2px são borda); viewport
+  interno sobe267→468px. Medidas exatas preservadas após estreitar/alargar,
+  gráficos com altura mínima preservada. Capturasdocs/img/interface-visual/T17.14.
+  Relações continua explicitamente sintética, sem vínculo à base local vazia.
+- Limites independentes: detalhe lateral143px emDPI144(T17.17), seletor/resultado
+  e botão de Backtest(T17.16), retornozero emAnálise(T17.13), empates/lacunas
+  temporais(T17.10/T17.11). Aceite global, revisão/merge e PF19 pendentes.

@@ -248,7 +248,7 @@ permanece com267px de viewport e575px de conteúdo. O componente compartilhado
 ScrollableContent ajusta largura, mas não altura da janela Canvas.
 
 - Dependências: T17.15 (teste), T17.8 e T17.12. Ambiente próprio instalado/dev,
-  baseline completa em andamento no20765d8, antes de alterar runtime.
+  baseline completa20765d8:854 aprovados/9 ignorados em768,23 s, saída0.
 - Arquivos: ui/components.py, tests/test_ui_components.py e, se necessário ao
   aceite, teste de Laboratório; proposta/painel/continuidade/capturas.
 - Passos: definir altura do conteúdo como máximo entre requisito e viewport;
@@ -259,3 +259,18 @@ ScrollableContent ajusta largura, mas não altura da janela Canvas.
   callbacks preservados. Nenhuma alteração de dados ou cálculos.
 - EmDPI144 o conteúdo já excede o viewport; a largura de detalhe de143px é
   problema independente da divisão em colunas e foi separado comoT17.17.
+
+- Implementado no40853f2: conteúdo preenche max(requisito,altura interna),
+  sincronizado após cálculo de layout do Tk, com callback cancelado noDestroy.
+  Primeiro teste detectou2px de rolagem artificial; corrigida a borda e testado
+  o limite. Inspeção seguinte detectou altura antiga após quebra de linha; novo
+  teste de wrap/resize/destruição passou (3 focados em0,79 s).
+- Medição posteriorDPI96/1920: conteúdo830px/viewport832px com2px de borda,
+  viewport interno468px em vez de267px. Resize1280→1920 restaura alturas exatas
+  nos doisDPIs, sem comprimir gráficos. Largura do detalheDPI144 continua143px
+  (T17.17). Fonte de Relações é sintética declarada, base local vazia de auditoria.
+- Primeira suíte posterior60d8cc2 interrompida por alteração necessária (exit143),
+  não é aprovação. Nova suíte completa40853f2 em andamento. Capturas antes/depois
+  em docs/img/interface-visual/T17.14/. Aceite visual global continua pendente.
+
+- Focados finais:35 aprovados em52,74 s, incluindoLaboratório/Relações/componentes.
