@@ -77,6 +77,7 @@ class AnalysisPanel:
 
         self.results_viewport = ScrollableContent(self.frame, self.theme)
         self.results_viewport.pack(fill=tk.BOTH, expand=True)
+        self.results_viewport.canvas.bind("<Configure>", self._schedule_layout, add="+")
         results = self.results_viewport.content
         tiles = ttk.Frame(results, style="Surface.TFrame")
         tiles.pack(fill=tk.X, pady=10)
@@ -105,6 +106,7 @@ class AnalysisPanel:
         self.frame.bind("<Configure>", self._resize_status, add="+")
         self.tabs = ttk.Notebook(results)
         self.tabs.pack(fill=tk.BOTH, expand=True)
+        self.tabs.bind("<<NotebookTabChanged>>", self._schedule_layout, add="+")
         self.chart_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
         self.season_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
         self.returns_tab = ttk.Frame(self.tabs, style="Surface.TFrame")
@@ -116,6 +118,7 @@ class AnalysisPanel:
         self.readout = ttk.Label(self.chart_tab, text="", style="Muted.TLabel", justify=tk.LEFT)
         self.readout.pack(fill=tk.X, padx=12, pady=(8, 0))
         self.readout.bind("<Configure>", lambda event: self.readout.configure(wraplength=max(1, event.width)))
+        self.readout.bind("<Configure>", self._schedule_layout, add="+")
         self.quality_text = self.theme.classic(tk.Text(self.quality_tab, wrap=tk.WORD, height=10, padx=10, pady=10))
         self.quality_text.pack(fill=tk.BOTH, expand=True)
         self.quality_text.configure(state=tk.DISABLED)
@@ -136,7 +139,25 @@ class AnalysisPanel:
         self.frame.update_idletasks()
         self._layout_controls()
         self._layout_metrics()
+        self._layout_figures()
         self._layout_job = None
+
+    def _layout_figures(self):
+        if not self._figure_frames:
+            return
+        selected = self.tabs.nametowidget(self.tabs.select())
+        notebook_trim = max(0, self.tabs.winfo_height() - selected.winfo_height())
+        fixed = (self.metric_cards[0].master.winfo_reqheight() + 20
+                 + self.return_legend.winfo_reqheight() + 4 + notebook_trim + 12)
+        minimum = max(480, self.theme.font.metrics("linespace") * 24)
+        for key, frame in self._figure_frames.items():
+            readout = self.readout.winfo_reqheight() + 8 if key == "chart" else 0
+            inset = 2 * int(self.results_viewport.canvas.cget("highlightthickness"))
+            available = self.results_viewport.canvas.winfo_height() - inset - fixed - readout
+            height = max(minimum, available) if frame.master is selected else minimum
+            if int(frame.cget("height")) != height:
+                frame.configure(height=height)
+                frame.rowconfigure(0, minsize=height)
 
     def _layout_controls(self):
         widths = [cell.winfo_reqwidth() for cell in self.filter_cells]
@@ -343,7 +364,9 @@ class AnalysisPanel:
         # O backend pode mudar o tamanho pedido pelo Canvas ao aplicar o DPI real.
         # O contêiner conserva a altura legível sem disputar configure() com ele.
         frame = ttk.Frame(parent, style="Surface.TFrame")
-        frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        # O Notebook nativo pode dar à página a altura requisitada por outra aba.
+        # Só a largura vem do pack; a altura segue fonte e espaço útil do viewport.
+        frame.pack(fill=tk.X, expand=False, padx=6, pady=6)
         frame.grid_propagate(False)
         frame.columnconfigure(0, weight=1)
         self._figure_frames[key] = frame
@@ -356,6 +379,7 @@ class AnalysisPanel:
         widget.configure(background=c["surface"], highlightthickness=0)
         widget.grid(row=0, column=0, sticky="nsew")
         self._canvases[key] = canvas
+        self._schedule_layout()
         return fig, canvas
 
     def _style_axis(self, ax, title=None):

@@ -717,3 +717,15 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   inicial de1920px e conserva as mesmas exigências de limite mínimo/máximo em
   duas escalas. As execuções anteriores ficam preservadas; resultado final do
   novo código e novo CI serão registrados antes da integração.
+
+- O CI Windows do acb617f ainda encontrou excesso de altura:989px na regressão
+  injetada e892px no resize, para teto864px. O diagnóstico local confirmou que
+  o pack podia expandir a figura pela área atribuída à página do Notebook.
+  Agora somente a largura vem do pack; a altura é calculada pela fonte e pelo
+  espaço útil do viewport, descontando cartões, legenda, abas e leitura OHLC.
+  Abas ocultas conservam o mínimo e a seleção/resize recalcula a aba visível.
+  A regressão também força uma página de2048px: o fonte imutável acb617f falha
+  nas duas escalas no host (2009>550 e2002>744); o novo código passa nos mesmos
+  cenários. Cinco focados finais:38,37s. O primeiro roteiro de reprodução teve
+  erro de importação de fakes (saída4), corrigido somente no harness; não foi
+  contado como demonstração da regressão. Nenhum limite foi relaxado.

@@ -1029,6 +1029,8 @@ def test_analysis_figure_height_does_not_follow_backend_initial_request(ui, monk
         ui.pump(.05)
     assert panel.data is not None
     panel.redraw()
+    # Também reproduz a página maior que o viewport retida pelo Notebook nativo.
+    panel.tabs.configure(height=2048)
     for width in (1280, 900, 1920, 1280):
         ui.root.geometry(f"{width}x800")
         ui.pump(.15)
