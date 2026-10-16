@@ -178,6 +178,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.14 | Área analítica: preencher altura disponível e preservar rolagem | T17.15 | implementada; PR #87 draft; 856 aprovados/9 ignorados; integração pendente |
 | T17.17 | Relações: detalhe legível e reflow pela largura efetiva | T17.14 | implementada; PR #88 draft; 858 aprovados/9 ignorados; Windows aprovado após corrigir espaçamento; integração pendente |
 | T17.16 | Backtest: contexto do resultado e controles acessíveis no detalhe | T17.17 | implementada; PR #89 draft; 859 aprovados/9 ignorados; integração pendente |
+| T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | escopo registrado; baseline 860/9 aprovada; em implementação |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
