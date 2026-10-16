@@ -18,7 +18,7 @@ baseline, preservando as integrações existentes.
 
 ## Estado verificado da integração
 
-Snapshot da principal `eed5f34`, em 2026-10-16. Cada PR abaixo foi revisado
+Snapshot da principal `7925b8b`, em 2026-10-16. Cada PR abaixo foi revisado
 tecnicamente pelo agente executor, teve os checks conferidos no head final,
 foi integrado separadamente e confirmado no remoto. Não houve revisão por
 outro agente. CI foi usado como evidência adicional à leitura dos diffs.
@@ -35,11 +35,19 @@ outro agente. CI foi usado como evidência adicional à leitura dos diffs.
 | [#88](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/88) | T17.17: detalhe legível | `3471dbe` | Detalhe acima do mínimo, quatro larguras, 144 DPI |
 | [#89](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/89) | T17.16: contexto do Backtest | `b9e54c9` | Execução histórica, atualização e resultado anterior verificados |
 | [#93](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/93) | T17.20: sincronização da restauração nos testes | `eed5f34` | Dois cenários falsos aprovados na principal, 8,75 s |
+| [#90](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/90) | T17.13: retorno de mercado | `7a13d57` | EURUSD H1 real: −0,898355% preservado, estados nos dois temas |
+| [#91](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/91) | T17.10: ganhos/perdas/zeradas | `dda98b8` | BBRSI: 4.071 ganhos, 6.366 perdas e 340 zeradas; SQL/ledger reconciliados |
+| [#92](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/92) | T17.11: grade horária/lacunas | `24faa35` | 48 posições, 37 medidas, 11 lacunas, quatro segmentos; valores exatos |
+| [#95](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/95) | T17.21: detalhes recolhíveis | `8bacadf` | Seis detalhes fechados, ícone visível, mouse/teclado, seleção/aquecimento e dados preservados |
+| [#97](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/97) | T13.9: PF definido sem teto artificial | `aacd05f` | 276 runs, 14 vazios indefinidos; PF real 0,87 preservado; projeção não altera SQLite |
+| [#96](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/96) | T17.18: Análise/cabeçalho responsivos | `323decb` | EURUSD H1: 1.537 barras, dois temas e DPI, 1920/1280/900, altura limitada/hover/rolagem |
+| [#98](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/98) | T17.22: abertura offline explícita | `7925b8b` | **Lançador principal real** com configuração/base existentes, Minha base/Análise/Relações, detalhes por mouse/Escape, Sair normal0 |
+
 
 Os smokes executaram o módulo da instalação principal e sua venv no host,
 com cópia consistente dos dados reais e configuração isolada que desativa a
 abertura do terminal. Configuração e bases do usuário foram preservadas.
-As sessões de inspeção foram encerradas com saída 0. O diagnóstico separado
+As sessões de inspeção foram encerradas com saída 0. Além dos perfis, o #98 foi aberto pelo `./run.sh --offline` na principal, com backup consistente prévio da base, configuração real e display próprio. O hash da configuração e a lista de terminais permaneceram idênticos (nenhum terminal aberto). Minha base mostrou 15 séries; Análise abriu EURUSD H1 por seleção e botão reais; Relações conservou o aviso sintético e o detalhe expandiu/recolheu. O diagnóstico separado
 da principal consultou a ponte em modo somente leitura: 21 OK, um aviso e
 nenhuma falha. Isso não certifica todas as combinações de ambiente ou uso.
 
@@ -48,22 +56,11 @@ Os checks finais de merge foram conferidos nos respectivos PRs. Validação
 manual com MT5 no Windows continua pendência própria; os jobs Windows do CI
 usam provedores falsos e instaladores sem MT5.
 
-## Implementações ainda na cadeia de integração
+## Integração e evidências recentes
 
-- [#90](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/90), T17.13:
-  retorno de mercado distingue alta, queda, zero e ausência. Suíte reconciliada
-  `a893f54`: 866 aprovados/9 ignorados, saída 0. O job Windows falhou duas vezes
-  no teste antigo de restauração, com feedback ainda pendente após 0,6 s.
-  A correção foi integrada no #93 e recebida no `0a23687`; checks novos em curso. Não se repetirá o SHA antigo indefinidamente.
-- [#91](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/91), T17.10:
-  zeradas separadas de perdas. Suíte `85b81ef`: 875 aprovados/9 ignorados,
-  saída 0. BBRSI real: 4.071 ganhos, 6.366 perdas, 340 zeradas; o gráfico anterior
-  mostrava 6.706 perdas. Ledger com hash idêntico antes/depois; SQL independente
-  confirma as 48 faixas exportadas. Recebeu o pai corrigido em `fd94893`; CI novo em curso. Integração depende do #90.
-- [#92](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/92), T17.11:
-  grade horária explícita. Suíte `3b4e6d1`: 886 aprovados/9 ignorados, saída 0.
-  Dados reais: 263 operações, 48 posições, 37 medidas e quatro segmentos;
-  valores observados preservados. Recebeu o pai corrigido em `06c92d3`; CI novo em curso. Integração depende do #91.
+Os PRs #90/#91/#92 receberam a correção test-only #93 e foram integrados com os checks finais aprovados. No #90, as duas falhas anteriores no teste antigo de restauração com espera fixa de 0,6 s foram preservadas; o #93 sincroniza pelo callback e pela atualização observáveis. No #91 a contagem anterior de 6.706 perdas incluía 340 zeradas; a correção preservou o ledger e reconciliou 48 faixas com SQL independente.
+
+Suítes finais: #95 890/9 em636,45s; #97 931/9 em729,91s no d921540; #96 939/9 em763,62s no b0b68f9; #98 947/9 em830,26s no d012758. Todos com saída0 e checks finais aprovados, inclusive Windows. No #96, dois heads falharam em Windows por alocação excessiva do canvas; a solução final mede viewport/fonte e limita o contêiner. O teste novo também reproduziu a falha no fonte antigo, sem afrouxar limites. Uma suíte intermediária do #98 foi interrompida ao se observar rótulo de conta e extração habilitada no offline; o head final corrige os dois.
 
 A suíte documental c3d3785 terminou com 860 aprovados/9 ignorados em
 591,95 s, saída 0. A execução anterior foi interrompida pelo reboot do host
@@ -81,7 +78,7 @@ separado da geometria da Análise T17.18. Os anexos temporários não estão
 disponíveis; nenhuma imagem ausente foi alegada como inspecionada. Detalhes,
 critérios longos e explicações secundárias devem liberar área sem esconder
 avisos sintéticos, custos incompletos, denominadores ou contexto primário.
-Ambos os recortes ainda aguardam implementação neste snapshot.
+Ambos foram implementados, testados, integrados (#95/#96) e operados no módulo instalado. O ícone Unicode não aparecia na fonte do host; o #95 desenha o símbolo na infraestrutura existente, sem dependência nova. Não houve uso de imagens ausentes.
 
 ## Falhas e limitações preservadas
 
@@ -100,9 +97,7 @@ A inspeção visual do relatório HTML permanece pendente: a navegação fileURL
 foi bloqueada pelo navegador interno. O arquivo foi gerado pela CLI com saída
 0; isso não substitui a conferência renderizada nem autoriza contornar a política.
 
-Permanecem recortes para clipping da Análise em DPI alto, aplicação do princípio
-visual aos resultados restantes, aviso de origem parcial, densidade de alguns
-rótulos e proveniência dos exports. Relações mantém aviso explícito de dados
+O clipping da Análise foi resolvido no #96. O aviso parcial incorretamente atribuído a MQL5 e a contextualização da agregação/queda estão no PR #99 (T17.23), ainda em validação neste snapshot: 10.777 operações Python, 32 runs e 5.729 parciais. O PF 0,32 e a queda descritiva 3.163,7% permanecem iguais; contexto essencial visível e comprovação recolhida. Restam expansão da hierarquia visual a superfícies secundárias, densidade de alguns rótulos e metadados não disponíveis nos registros antigos. Relações mantém aviso explícito de dados
 sintéticos enquanto DTO/produtor/serviço reais da F18 não estiverem ligados.
 
 ## Pesquisa e autorização operacional
@@ -124,3 +119,9 @@ risco e custos precisam de proveniência e capital coerentes. Comissões/taxas
 incompletas e PF sem perdas exigem tratamento próprio antes de aprovação.
 Não houve operação em conta, publicação de pacote ou release. PRs #79/#80
 continuam separados desta autorização de integração visual.
+
+## Escopo do próximo ciclo
+
+T17.23 deve concluir suíte/CI/revisão/merge e smoke instalado antes do aceite crítico da UI. T13.10 está somente preparando ambiente/baseline e protocolo de estudo limitado; nenhuma nova campanha foi executada. A base e resultados já expostos não permitem alegar reserva independente. O estudo deve publicar resultados reais após custos **modelados**, limitações de moeda/custos e critérios não cumpridos; nenhum PF pontual isolado aprova um candidato.
+
+Revisão somente leitura do ecossistema reconfirmou 11 fontes Safety idênticos entre origem e cópia 1.5.0. O exportador MQL5 ainda emite cinco colunas (T16.2b pendente). A chamada legada direta no plugin de risco, linha503, permanece registrada; a busca não encontrou include desse plugin nos MQ5/MQH locais, mas isso não o exclui da regra nem prova ausência de consumidores externos. Há ainda chamadas CTrade legadas fora do executor. Não se alterou proteção nem publicou release; aceites operacionais/demonstração/netting/Windows da Safety continuam pendentes.

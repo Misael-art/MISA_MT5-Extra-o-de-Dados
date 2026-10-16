@@ -132,7 +132,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
-| T13.9 | PF definido, sem teto artificial e consumo coerente | T6.4, T8.3, T16.4 | implementada; [contrato e compatibilidade](propostas/T13_9_PF_DEFINIDO.md); validação final e integração no PR #97; sem campanha financeira |
+| T13.9 | PF definido, sem teto artificial e consumo coerente | T6.4, T8.3, T16.4 | ✅ integrada no PR #97; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
 | T15.0 | Plano da gestão de recursos (aba Recursos) registrado em `docs/propostas/GESTAO_RECURSOS.md` | — | ✅ concluída |
 | T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ concluída no Linux (aba vista em tela virtual, temas claro e escuro); Windows não visto |
@@ -170,23 +170,23 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.7 | Candidatos a filtros/presets para otimização, sem aplicação automática | T18.4, T18.6 | planejada |
 | T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; integração T18.1/T18.6 pendente |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
-| T17.7 | Laboratório: referência temporal e população explícitas | T16.3, T17.3 | integrada #81; smoke real e checks finais aprovados |
-| T17.9 | Laboratório responsivo em DPI alto e área de resultados rolável | T17.1–T17.3, T17.7 | integrada #82; filtros/rolagem verificados no host |
-| T17.12a | Tabelas: preservar ausência e distinguir zero/perda na apresentação | T17.9 | integrada #83; ausência/zero/perda e métricas conferidas |
-| T17.12 | Atenção discreta a positivos/negativos/ausências em Horários e Minha base | T17.9, T17.12a | integrada #84; contraste/teclado/temas conferidos |
-| T17.8 | Relações: remover suavização e preservar pontos/lacunas observados | T17.12 | integrada #85; sem suavização; sincronização do teste corrigida em #86 |
-| T17.15 | Teste de conexão: aguardar conclusão observável das tentativas | T17.8 | integrada #86; 854 aprovados/9 ignorados; recuperação verificada |
-| T17.14 | Área analítica: preencher altura disponível e preservar rolagem | T17.15 | integrada #87; altura útil e rolagem verificadas |
-| T17.17 | Relações: detalhe legível e reflow pela largura efetiva | T17.14 | integrada #88; 858 aprovados/9 ignorados; espaçamento validado em Windows |
-| T17.16 | Backtest: contexto do resultado e controles acessíveis no detalhe | T17.17 | integrada #89; backtest/contexto e paridade do ledger verificados |
+| T17.7 | Laboratório: referência temporal e população explícitas | T16.3, T17.3 | ✅ integrada no PR #81; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.9 | Laboratório responsivo em DPI alto e área de resultados rolável | T17.1–T17.3, T17.7 | ✅ integrada no PR #82; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.12a | Tabelas: preservar ausência e distinguir zero/perda na apresentação | T17.9 | ✅ integrada no PR #83; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.12 | Atenção discreta a positivos/negativos/ausências em Horários e Minha base | T17.9, T17.12a | ✅ integrada no PR #84; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.8 | Relações: remover suavização e preservar pontos/lacunas observados | T17.12 | ✅ integrada no PR #85; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.15 | Teste de conexão: aguardar conclusão observável das tentativas | T17.8 | ✅ integrada no PR #86; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.14 | Área analítica: preencher altura disponível e preservar rolagem | T17.15 | ✅ integrada no PR #87; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.17 | Relações: detalhe legível e reflow pela largura efetiva | T17.14 | ✅ integrada no PR #88; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.16 | Backtest: contexto do resultado e controles acessíveis no detalhe | T17.17 | ✅ integrada no PR #89; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | ORG05 | Continuidade documental da integração visual e evidências no host | T17.16 | documentação operacional atualizada; snapshot datado e validação no PR |
-| T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | integrada #93; 861 aprovados/9 ignorados; CI Windows e dois cenários instalados aprovados |
-| T17.13 | Análise: sinal do retorno zero e atenção visual coerente | T17.16 | baseline 859/9; 8 focados; suíte 865/9 saída 0; UI real conferida; PR #90 draft |
-| T17.10 | Laboratório: ganhos, perdas, zeradas e resultado ausente no núcleo e gráfico | T17.13 | implementada; PR #91 draft; 875 aprovados/9 ignorados; operação real conferida; integração pendente |
-| T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | implementada; PR #92 draft; 886 aprovados/9 ignorados; operação real conferida; integração pendente |
-| T17.18 | Cabeçalho e Análise: reflow pela fonte e área analítica percorrível | T17.13 | implementada; fonte/teclado/rolagem e UI real conferidos; suíte final registrada no PR |
-| T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | implementada; 33 focados aprovados; UI real conferida; suíte final registrada no PR |
-| T17.22 | Iniciar análise local pelo lançador sem conectar o MT5 | T2.2, T17.3 | implementada; baseline 890/9 e focados aprovados; [contrato e aceite](propostas/T17_22_INICIO_OFFLINE.md); validação final/integração no PR próprio |
+| T17.20 | Teste de restauração: aguardar término observável do callback | T17.16 | ✅ integrada no PR #93; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.13 | Análise: sinal do retorno zero e atenção visual coerente | T17.16 | ✅ integrada no PR #90; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.10 | Laboratório: ganhos, perdas, zeradas e resultado ausente no núcleo e gráfico | T17.13 | ✅ integrada no PR #91; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.11 | Laboratório: grade horária explícita e linha sem atravessar lacunas | T17.10 | ✅ integrada no PR #92; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.18 | Cabeçalho e Análise: reflow pela fonte e área analítica percorrível | T17.13 | ✅ integrada no PR #96; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | ✅ integrada no PR #95; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
+| T17.22 | Iniciar análise local pelo lançador sem conectar o MT5 | T2.2, T17.3 | ✅ integrada no PR #98; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

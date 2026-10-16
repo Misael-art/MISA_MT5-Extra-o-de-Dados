@@ -1,5 +1,8 @@
 # Continuidade: harmonização de 2026-10-14
 
+> Estado atual da frente visual (snapshot7925b8b, 2026-10-16): PRs #81–#93, #95/#96/#97/#98 integrados separadamente, com revisão própria e CI. Detalhes recolhíveis já funcionam; abertura real por `./run.sh --offline` verificada e encerrada0, configuração preservada. T17.23/PR99 valida contexto da agregação; campanha PF ainda pendente de aceite. Consulte [o relatório reconciliado](propostas/CONTINUIDADE_INTEGRACAO_UI.md); as seções abaixo também conservam snapshots históricos, cujas pendências não substituem este estado atual.
+
+
 ## Retomada T18.8 — 2026-10-15
 
 A apresentação local da T18.8 foi implementada. A aba Laboratório tem as visões Matriz (Indicador × indicador e Indicador × alvo),
