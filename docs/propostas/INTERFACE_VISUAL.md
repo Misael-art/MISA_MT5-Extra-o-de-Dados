@@ -155,3 +155,26 @@ próprio. Sem nova estatística dentro de widgets.
   reais, cobrindo 13 séries: células e retornos idênticos antes/depois; somente
   apresentação textual de zero/perda mudou. Captura real em
   `docs/img/interface-visual/T17.12a/`. Suíte completa posterior pendente.
+
+## T17.12 — Hierarquia discreta de atenção
+
+Pedido do dono com capturas: positivos destacados suavemente, negativos discretos
+e ausências sem competir por atenção. Recorte registrado antes da implementação.
+
+- **Dependências:** T17.9 e T17.12a presentes; ambiente 3.11.15 preparado e
+  dependências dev instaladas. Baseline de código a886351: 848 aprovados/9
+  ignorados em 556,06 s; commit posterior 35321b3 alterou somente documentação.
+- **Arquivos:** ui/visual_tokens.py, ui/components.py, ui/laboratory.py,
+  ui/inventory.py; testes de tokens/componentes/Laboratório/Minha base; plano,
+  continuidade e capturas.
+- **Passos:** extrair seletivamente MatrixTable do WIP T17.6 preservado, sem
+  suavização, gradientes ou ancestrais; centralizar cores de atenção pelo sinal;
+  aplicar a Horários e Minha base, preservar contagens/sinais/ausências/baixa amostra;
+  garantir teclado/rolagem/seleção/ordenação/tema/atualização; operar claro/escuro
+  e DPI96/144,1280×800/1920×1080; medir contraste; suíte/doctor; commit/PR próprio.
+- **Aceite:** positivo azul suave, negativo sóbrio e ausência neutra, contraste
+  textual >=4,5:1, sinal e n visíveis, zero distinto de ausência, sem inferir
+  aprovação/significância/autorização; métricas inalteradas. Cores representam
+  sinal, não magnitude. Outras telas recebem aplicação progressiva com semântica
+  coerente, sem confundir verde de dados na base em Ativos com retorno positivo.
+  Windows real pendente; esta tarefa não declara aceite visual integral.

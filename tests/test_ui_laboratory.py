@@ -111,13 +111,11 @@ def test_lenses_filters_and_tabs(panel):
     assert panel.selected.get() == "python:a" and panel.kpi["n"][0].cget("text") == "240"
     assert [panel.overview_notebook.tab(i, "text") for i in range(3)] == ["Horários", "Curvas", "Calendário"]
     assert panel.overview_heat_table.master is panel.overview_views["heat"]
-    assert len(panel.overview_heat_table.tree.get_children()) == 24
-    first_cell = panel.overview_heat_table.tree.item(panel.overview_heat_table.tree.get_children()[0], "values")[1]
-    assert "n=" in first_cell
-    cells = [panel.overview_heat_table.tree.item(row, "values")[1:] for row in
-             panel.overview_heat_table.tree.get_children()]
-    empty_cells = [cell for row in cells for cell in row if "n=0" in cell]
-    assert empty_cells and all(cell.endswith("n=0") and "—" in cell for cell in empty_cells)
+    assert len(panel.overview_heat_matrix.cells) == 24
+    cells = [[cell.cget("text") for cell in row] for row in panel.overview_heat_matrix.cells]
+    assert any("n=" in cell for row in cells for cell in row)
+    empty_cells = [cell for row in cells for cell in row if cell == "—"]
+    assert empty_cells and "sem operações (n=0)" in panel.overview_heat_notice.message.cget("text")
     assert any(cell.endswith("*") and "n=0" not in cell for row in cells for cell in row)
     for k, name in enumerate(("Tempo e calendário", "Microestrutura", "Comparativo")):
         panel.tabs.select(k + 1)
@@ -199,22 +197,20 @@ def test_temporal_population_updates_without_changing_matrix_values(panel):
     original = panel.view.copy(deep=True)
     parent = panel.overview_views["heat"]
     panel._overview_matrix(parent, original)
-    rows = [panel.overview_heat_table.tree.item(i, "values") for i in panel.overview_heat_table.tree.get_children()]
+    rows = [[cell.cget("text") for cell in row] for row in panel.overview_heat_matrix.cells]
     assert "Entrada · 3 operações" in panel.overview_heat_notice.message.cget("text")
     partial = original.copy(deep=True)
     partial["time_ref"] = "saida"
     panel.view = partial
     panel._overview_matrix(parent, partial)
     assert "Saída (entrada indisponível) · 3 operações" in panel.overview_heat_notice.message.cget("text")
-    assert rows == [panel.overview_heat_table.tree.item(i, "values") for i in
-                    panel.overview_heat_table.tree.get_children()]
+    assert rows == [[cell.cget("text") for cell in row] for row in panel.overview_heat_matrix.cells]
     mixed = pd.concat([original, partial], ignore_index=True)
     panel.view = mixed
     panel._overview()
     text = panel.overview_heat_notice.message.cget("text")
     assert "Entrada · 3 operações" in text and "3 operações sem entrada ficam fora" in text
-    assert rows == [panel.overview_heat_table.tree.item(i, "values") for i in
-                    panel.overview_heat_table.tree.get_children()]
+    assert rows == [[cell.cget("text") for cell in row] for row in panel.overview_heat_matrix.cells]
     panel._time()
     for key in ("t_week", "t_month", "t_hours", "t_winloss"):
         text = panel._chart_panels[key].notice.message.cget("text")
@@ -248,13 +244,11 @@ def test_small_window_keeps_filters_and_scrollable_results_reachable(panel):
     root.update()
     assert panel.filter_bar.winfo_ismapped()
     assert panel.selector.winfo_ismapped()
-    tree = panel.overview_heat_table.tree
-    assert tree.winfo_height() >= 100
-    for index, column in enumerate(tree.cget("columns")):
-        for item in tree.get_children():
-            assert tree.column(column, "minwidth") >= panel.theme.font.measure(tree.item(item, "values")[index])
-    assert any(str(child.cget("orient")) == "horizontal" for child in
-               panel.overview_heat_table.table_frame.winfo_children() if child.winfo_class() == "TScrollbar")
+    matrix = panel.overview_heat_matrix
+    assert matrix.canvas.winfo_height() >= 100
+    for row in matrix.cells:
+        assert all(cell.winfo_width() >= cell.winfo_reqwidth() for cell in row)
+    assert str(matrix.horizontal.cget("orient")) == "horizontal"
     root.geometry("1920x1080")
     root.update()
     assert panel._filter_columns == 4

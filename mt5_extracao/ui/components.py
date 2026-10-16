@@ -6,7 +6,7 @@ callbacks e cálculos próprios sem duplicar o padrão visual.
 import tkinter as tk
 from tkinter import ttk
 
-from mt5_extracao.ui.visual_tokens import SPACING
+from mt5_extracao.ui.visual_tokens import SPACING, result_attention_colors
 
 
 _STATUS = {
@@ -216,6 +216,200 @@ class ChartPanel(ContentPanel):
             self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.chart_area)
 
 
+class MatrixTable(ttk.Frame):
+    """Tabela matricial rolável com fundo e texto configuráveis por célula."""
+
+    def __init__(self, parent, columns, widths, theme, height=9, row_height=32, **kwargs):
+        if not columns or len(columns) != len(widths):
+            raise ValueError("Cada coluna da matriz precisa ter uma largura definida.")
+        super().__init__(parent, style="Surface.TFrame", **kwargs)
+        self.columns = tuple(columns)
+        self.widths = tuple(int(width) for width in widths)
+        self.theme = theme
+        self.row_height = int(row_height)
+        self.header_canvas = tk.Canvas(self, height=self.row_height, highlightthickness=0,
+                                       background=theme.colors["surface"], takefocus=False)
+        self.header_canvas.grid(row=0, column=0, sticky="ew")
+        self.header_frame = tk.Frame(self.header_canvas, background=theme.colors["surface"])
+        self.header_window = self.header_canvas.create_window((0, 0), window=self.header_frame, anchor="nw")
+        self.canvas = tk.Canvas(self, height=height * self.row_height, highlightthickness=0,
+                                background=theme.colors["surface"], takefocus=False)
+        self.canvas.grid(row=1, column=0, sticky="nsew")
+        self.vertical = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.vertical.grid(row=1, column=1, sticky="ns")
+        self.horizontal = ttk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        self.horizontal.grid(row=2, column=0, sticky="ew")
+        self.canvas.configure(yscrollcommand=self.vertical.set, xscrollcommand=self._set_xview)
+        self.rowconfigure(1, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.content = tk.Frame(self.canvas, background=theme.colors["surface"], takefocus=False)
+        self.window = self.canvas.create_window((0, 0), window=self.content, anchor="nw")
+        self.headers = []
+        self.row_headers = []
+        self.cells = []
+        self._build_header()
+        self.content.bind("<Configure>", self._content_configured, add="+")
+        self.canvas.bind("<Configure>", self._canvas_configured, add="+")
+        for widget in (self.canvas, self.content):
+            widget.bind("<MouseWheel>", self._mousewheel, add="+")
+            widget.bind("<Button-4>", self._wheel_up, add="+")
+            widget.bind("<Button-5>", self._wheel_down, add="+")
+
+    def _build_header(self):
+        colors = self.theme.colors
+        for column, (text, width) in enumerate(zip(self.columns, self.widths)):
+            self.content.grid_columnconfigure(column, minsize=width, weight=1 if column else 0)
+            header = tk.Label(self.header_frame, text=text, background=colors["surface"], foreground=colors["ink2"],
+                              font=self.theme.font_bold, anchor="center", padx=6, pady=5,
+                              highlightthickness=1, highlightbackground=colors["border"], takefocus=False)
+            header.grid(row=0, column=column, sticky="nsew")
+            self.headers.append(header)
+        self.header_frame.grid_rowconfigure(0, minsize=self.row_height)
+
+    def _build_rows(self, count):
+        for row in range(len(self.cells)):
+            self.content.grid_rowconfigure(row, minsize=0)
+        for widget in self.content.grid_slaves():
+            widget.destroy()
+        self.row_headers = []
+        self.cells = []
+        self._focus_cell = None
+        colors = self.theme.colors
+        for row in range(count):
+            row_index = row
+            self.content.grid_rowconfigure(row_index, minsize=self.row_height)
+            row_header = tk.Label(self.content, text="", background=colors["surface"], foreground=colors["ink2"],
+                                  font=self.theme.font, anchor="w", padx=8, pady=4,
+                                  highlightthickness=1, highlightbackground=colors["border"], takefocus=False)
+            row_header.grid(row=row_index, column=0, sticky="nsew")
+            self.row_headers.append(row_header)
+            row_cells = []
+            for column in range(len(self.columns) - 1):
+                cell = tk.Label(self.content, text="", background=colors["surface"], foreground=colors["ink"],
+                                font=self.theme.font, anchor="center", padx=4, pady=4,
+                                highlightthickness=1, highlightbackground=colors["surface"],
+                                highlightcolor=colors["accent"], takefocus=(row == 0 and column == 0))
+                cell.grid(row=row_index, column=column + 1, sticky="nsew")
+                cell.bind("<FocusIn>", lambda event, r=row, c=column: self._reveal(r, c), add="+")
+                cell.bind("<FocusOut>", self._restore_cell_border, add="+")
+                cell.bind("<Button-1>", lambda _event, widget=cell: widget.focus_set(), add="+")
+                cell.bind("<Left>", lambda event, r=row, c=column: self._move_focus(r, c - 1), add="+")
+                cell.bind("<Right>", lambda event, r=row, c=column: self._move_focus(r, c + 1), add="+")
+                cell.bind("<Up>", lambda event, r=row, c=column: self._move_focus(r - 1, c), add="+")
+                cell.bind("<Down>", lambda event, r=row, c=column: self._move_focus(r + 1, c), add="+")
+                cell.bind("<Home>", lambda event, c=column: self._move_focus(0, c), add="+")
+                cell.bind("<End>", lambda event, c=column: self._move_focus(len(self.cells) - 1, c), add="+")
+                cell.bind("<MouseWheel>", self._mousewheel, add="+")
+                cell.bind("<Button-4>", self._wheel_up, add="+")
+                cell.bind("<Button-5>", self._wheel_down, add="+")
+                row_cells.append(cell)
+            self.cells.append(row_cells)
+
+    def set_rows(self, row_labels, rows):
+        """Atualiza os rótulos e as tuplas (texto, fundo, primeiro plano) das células."""
+        if len(row_labels) != len(rows) or any(len(row) != len(self.columns) - 1 for row in rows):
+            raise ValueError("As linhas da matriz precisam corresponder aos cabeçalhos.")
+        if len(self.cells) != len(rows):
+            self._build_rows(len(rows))
+        colors = self.theme.colors
+        self.canvas.configure(background=colors["surface"])
+        self.header_canvas.configure(background=colors["surface"])
+        self.header_frame.configure(background=colors["surface"])
+        self.content.configure(background=colors["surface"])
+        for header in self.headers:
+            header.configure(background=colors["surface"], foreground=colors["ink2"],
+                              highlightbackground=colors["border"])
+        for row_index, (label, row) in enumerate(zip(row_labels, rows)):
+            self.row_headers[row_index].configure(text=str(label), background=colors["surface"],
+                                                  foreground=colors["ink2"], highlightbackground=colors["border"])
+            for cell, (text, background, foreground) in zip(self.cells[row_index], row):
+                cell.configure(text=str(text), background=background, foreground=foreground,
+                               highlightbackground=colors["accent"] if self.focus_get() is cell else background,
+                               highlightcolor=colors["accent"])
+        self.after_idle(self._sync_geometry)
+
+    def _content_configured(self, _event=None):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self._sync_header()
+
+    def _canvas_configured(self, event):
+        width = max(self.content.winfo_reqwidth(), event.width)
+        self.canvas.itemconfigure(self.window, width=width)
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _sync_geometry(self):
+        width = max(self.content.winfo_reqwidth(), self.canvas.winfo_width())
+        self.canvas.itemconfigure(self.window, width=width)
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        self._sync_header()
+
+    def _sync_header(self):
+        width = max(self.content.winfo_reqwidth(), self.canvas.winfo_width())
+        for column in range(len(self.columns)):
+            bounds = self.content.grid_bbox(column, 0, column, max(0, len(self.cells) - 1))
+            self.header_frame.grid_columnconfigure(column, minsize=max(self.widths[column], bounds[2]))
+        height = max(self.row_height, *(header.winfo_reqheight() for header in self.headers))
+        self.header_canvas.configure(height=height, scrollregion=(0, 0, width, height))
+        self.header_canvas.itemconfigure(self.header_window, width=width)
+        self.header_canvas.xview_moveto(self.canvas.xview()[0])
+
+    def _set_xview(self, first, last):
+        self.horizontal.set(first, last)
+        self.header_canvas.xview_moveto(float(first))
+        if float(last) - float(first) >= 0.999:
+            self.horizontal.grid_remove()
+        else:
+            self.horizontal.grid()
+
+    def _move_focus(self, row, column):
+        if 0 <= row < len(self.cells) and 0 <= column < len(self.columns) - 1:
+            self.cells[row][column].focus_set()
+        return "break"
+
+    def _reveal(self, row, column):
+        self.cells[row][column].configure(highlightbackground=self.theme.colors["accent"])
+        cell = self.cells[row][column]
+        previous = getattr(self, "_focus_cell", None)
+        if previous is not None and previous is not cell and previous.winfo_exists():
+            previous.configure(takefocus=False)
+        cell.configure(takefocus=True)
+        self._focus_cell = cell
+        x0, y0 = cell.winfo_x(), cell.winfo_y()
+        x1, y1 = x0 + cell.winfo_width(), y0 + cell.winfo_height()
+        bbox = self.canvas.bbox("all") or (0, 0, 1, 1)
+        self._reveal_axis(self.canvas.xview, self.canvas.xview_moveto, x0, x1,
+                          max(1, bbox[2] - bbox[0]))
+        self._reveal_axis(self.canvas.yview, self.canvas.yview_moveto, y0, y1,
+                          max(1, bbox[3] - bbox[1]))
+
+    @staticmethod
+    def _reveal_axis(view, move, start, end, total):
+        first, last = (float(value) for value in view())
+        start_fraction, end_fraction = start / total, end / total
+        viewport = last - first
+        if start_fraction < first:
+            move(max(0, start_fraction))
+        elif end_fraction > last:
+            move(max(0, end_fraction - viewport))
+
+    @staticmethod
+    def _restore_cell_border(event):
+        event.widget.configure(highlightbackground=event.widget.cget("background"))
+
+    def _mousewheel(self, event):
+        if event.delta:
+            self.canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+        return "break"
+
+    def _wheel_up(self, _event):
+        self.canvas.yview_scroll(-1, "units")
+        return "break"
+
+    def _wheel_down(self, _event):
+        self.canvas.yview_scroll(1, "units")
+        return "break"
+
+
 class TablePanel(ContentPanel):
     """Painel de conteúdo tabular com cabeçalhos, colunas e rolagem explícitos."""
 
@@ -362,3 +556,15 @@ class ScrollableContent(ttk.Frame):
             self.scrollbar.grid(row=0, column=1, sticky="ns")
         elif not needs_scroll and self.scrollbar.winfo_manager():
             self.scrollbar.grid_remove()
+
+
+def configure_result_tags(tree, theme):
+    """Hierarquia de resultados com seleção nativa claramente distinta dos tons suaves."""
+    style = ttk.Style(tree)
+    style.configure("ResultAttention.Treeview.Cell", padding=(SPACING["xs"], 0, SPACING["sm"], 0))
+    style.map("ResultAttention.Treeview", background=[("selected", theme.colors["accent"])],
+              foreground=[("selected", theme.colors["on_accent"])])
+    tree.configure(style="ResultAttention.Treeview")
+    for role, value in (("positive", 1), ("negative", -1), ("zero", 0), ("absent", None)):
+        background, foreground = result_attention_colors(value, theme.colors, background="field")
+        tree.tag_configure(f"result.{role}", background=background, foreground=foreground)

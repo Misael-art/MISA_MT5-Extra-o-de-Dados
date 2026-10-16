@@ -3,6 +3,7 @@
 Os tamanhos de fonte são pontos tipográficos. O Tk aplica a escala de DPI do sistema; `font_scale`
 é apenas o ajuste de leitura escolhido pela aplicação e não deve multiplicar o DPI novamente.
 """
+import math
 from types import MappingProxyType
 
 
@@ -124,3 +125,29 @@ def contrast_ratio(foreground, background):
 
     first, second = sorted((luminance(foreground), luminance(background)), reverse=True)
     return (first + 0.05) / (second + 0.05)
+
+
+ATTENTION_TINTS = MappingProxyType({"positive": 0.12, "negative": 0.035, "zero": 0.0, "absent": 0.0})
+
+
+def result_attention_role(value):
+    """Papel de apresentação pelo sinal de um resultado já recebido, sem estimar evidência."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return "absent"
+    if isinstance(value, bool) or not math.isfinite(number):
+        return "absent"
+    return "positive" if number > 0 else "negative" if number < 0 else "zero"
+
+
+def result_attention_colors(value, palette, background="surface"):
+    """Destaque contido; ausência neutra e texto opaco com contraste preservado."""
+    role = result_attention_role(value)
+    base = palette[background]
+    target = palette["accent"] if role == "positive" else palette["bad"] if role == "negative" else base
+    weight = ATTENTION_TINTS[role]
+    fill = "#" + "".join(f"{round(int(base[i:i + 2], 16) * (1 - weight) + int(target[i:i + 2], 16) * weight):02X}"
+                         for i in (1, 3, 5))
+    text = palette["ink"] if role == "positive" else palette["muted"] if role == "absent" else palette["ink2"]
+    return fill, text
