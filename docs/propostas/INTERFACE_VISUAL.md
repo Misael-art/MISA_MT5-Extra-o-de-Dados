@@ -348,7 +348,7 @@ Rodar backtest aparece cortado em1280×800.
 - Três focados aprovados em21,68 s; geometria repetidaDPI144:1 em11,82 s.
   Operação real emcópia privada, temas/DPI96/144/1280/1920, testePythonH1,
   resultado atual depois do teste e anterior após mudar período, rolagemPageDown.
-  Exposição registrada, semcampanhaPF19 ouOOSindependente. Suíte58cb114emcurso.
+  Exposição registrada, semcampanhaPF19 ouOOSindependente. Suíte58cb114:859 aprovados/9 ignorados em937,37 s, saída0.
 
 ## T17.13 — sinal e atenção do retorno de mercado
 
@@ -358,7 +358,7 @@ sem alterar banco, reproduziu `▲0,00%`/Good.TLabel. Dados reais e cenário
 controlado foram capturados separadamente; resumo real preservado.
 
 - Dependências:T17.12tokens e cadeiaUI atéT17.16/#89. Ambiente próprio
-  instalado/dev e baselinef6436b6 em andamento, antes de alterar código.
+  instalado/dev e baselinef6436b6:859 aprovados/9 ignorados em905,65 s, saída0.
 - Arquivos:ui/analysis.py, tokens/tema apenas se necessários à reutilização,
   testes deAnálise/janela e proposta/painel/continuidade/capturas.
 - Passos: usar sinal/ausência explícitos e atenção compartilhada; zero neutro
