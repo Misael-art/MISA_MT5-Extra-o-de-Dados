@@ -656,3 +656,17 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Roteiros passaram a aguardar a base disponível antes de abrir o ativo;
   abrir cedo acionava o diálogo informativo previsto, não falha no produto.
   Suíte completa/doctor/CI e integração ainda pendentes neste snapshot.
+
+- A revisão dos valores de geometria revelou aumento de1347→2051 px após
+  redimensionar/alternar tema em DPI real. O full076053b foi interrompido com
+  saída143 antes de alterar código; esse resultado não é aprovação. Contêiner
+  agora conserva requisito próprio e desliga propagação do grid, evitando
+  realimentação do requisito do backend. Teste verifica limites mínimo E máximo.
+- Cinco focados com fonte maior, valor extenso e limites passaram em29,24 s.
+  Operação real repetida:144 DPI ficou em600 px nos dois temas e1920/1280/900;
+  96 DPI em480 px nas janelas menores e609 px quando há área. Texto/candles e
+  resumo das1.537 barras idênticos; hover por mouse real, teclado e rolagem
+  conferidos. Duas sessões encerradas0. Capturas finais substituem somente as
+  imagens geradas nesta tarefa; tentativas anteriores mantidas nos artefatos.
+- Resultado da suíte final/doctor/CI e revisão é atualizado no PR; não houve
+  operação em conta, nova pesquisa financeira ou modificação de base do usuário.

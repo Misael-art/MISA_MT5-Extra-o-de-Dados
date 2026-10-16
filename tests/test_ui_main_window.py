@@ -1037,6 +1037,8 @@ def test_analysis_keeps_native_text_and_chart_size_through_resize(ui, scaling):
                     assert label.winfo_width() >= label.winfo_reqwidth()
             canvas = panel._canvases["chart"]
             assert canvas.get_tk_widget().winfo_height() >= ui.theme.font.metrics("linespace") * 24
+            assert canvas.get_tk_widget().winfo_height() <= max(
+                480, ui.theme.font.metrics("linespace") * 24, panel.results_viewport.canvas.winfo_height())
             price = canvas.figure.axes[0]
             x, y = price.transData.transform((10, sum(price.get_ylim()) / 2))
             canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", canvas, x, y))

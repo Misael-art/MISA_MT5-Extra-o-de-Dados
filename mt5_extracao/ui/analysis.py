@@ -344,11 +344,14 @@ class AnalysisPanel:
         # O contêiner conserva a altura legível sem disputar configure() com ele.
         frame = ttk.Frame(parent, style="Surface.TFrame")
         frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
-        frame.rowconfigure(0, weight=1, minsize=self.theme.font.metrics("linespace") * 24)
+        frame.grid_propagate(False)
         frame.columnconfigure(0, weight=1)
         self._figure_frames[key] = frame
         canvas = FigureCanvasTkAgg(fig, master=frame)
         widget = canvas.get_tk_widget()
+        height = max(widget.winfo_reqheight(), self.theme.font.metrics("linespace") * 24)
+        frame.configure(height=height)
+        frame.rowconfigure(0, weight=1, minsize=height)
         widget.configure(background=c["surface"], highlightthickness=0)
         widget.grid(row=0, column=0, sticky="nsew")
         self._canvases[key] = canvas
