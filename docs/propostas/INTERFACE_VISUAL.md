@@ -270,7 +270,7 @@ ScrollableContent ajusta largura, mas não altura da janela Canvas.
   nos doisDPIs, sem comprimir gráficos. Largura do detalheDPI144 continua143px
   (T17.17). Fonte de Relações é sintética declarada, base local vazia de auditoria.
 - Primeira suíte posterior60d8cc2 interrompida por alteração necessária (exit143),
-  não é aprovação. Nova suíte completa40853f2 em andamento. Capturas antes/depois
+  não é aprovação. Nova suíte completa40853f2:856 aprovados/9 ignorados em713,62 s, saída0. Capturas antes/depois
   em docs/img/interface-visual/T17.14/. Aceite visual global continua pendente.
 
 - Focados finais:35 aprovados em52,74 s, incluindoLaboratório/Relações/componentes.

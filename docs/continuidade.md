@@ -447,7 +447,8 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
   teste de limite passou. Rodada seguinte34 focados aprovados em44,07 s; inspeção
   de resize detectou atraso na altura após wrap, corrigido e coberto por novo
   teste. Três casos de rolagem/wrap/Destroy passaram em0,79 s. Focados finais:
-  35 aprovados em52,74 s; suíte40853f2 em andamento. Suíte anterior60d8cc2 foi interrompida143 por
+  35 aprovados em52,74 s; suíte40853f2:856 aprovados/9 ignorados
+  em713,62 s, saída0. Suíte anterior60d8cc2 foi interrompida143 por
   código supersedido, sem afirmar sucesso.
 - Operação antes/depois clara/escura,DPI96/144,1280×800/1920×1080 e ciclo de
   resize: contêiner maior preenche830 dos832px em96DPI (2px são borda); viewport
