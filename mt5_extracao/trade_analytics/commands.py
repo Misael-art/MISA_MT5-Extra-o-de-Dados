@@ -136,14 +136,17 @@ def _lab(args, ctx):
 def _analysis(args, ctx) -> int:
     import json
     from mt5_extracao import cli
-    from mt5_extracao.trade_analytics import aggregate, export, insights, rules
+    from mt5_extracao.trade_analytics import aggregate, context, export, insights, rules
     out, data = cli._print, cli._data
     lab, scope = _lab(args, ctx)
+    population_context = context.population(lab, aggregate._initial_equity(ctx.config))
     if args.trades_command == "report":
         total = aggregate.summarize(lab, aggregate._initial_equity(ctx.config), aggregate.min_trades(ctx.config))
         out(f"{scope}: {total['n']} operações, acerto {total['win_rate'] * 100:.1f}%, fator de lucro "
             f"{profit_factor.text(total['profit_factor'])}, expectativa {total['expectancy']:.2f} (90%: {total['ci_low']} a "
             f"{total['ci_high']})")
+        out(context.summary(population_context))
+        out(context.details(population_context))
         tables = {}
         for dim in [d.strip() for d in args.by.split(",") if d.strip()]:
             if dim not in lab:
@@ -155,7 +158,7 @@ def _analysis(args, ctx) -> int:
                 out(f"  {getattr(r, dim)}\t{r.n} op.\tacerto {r.win_rate * 100:.0f}%\texpectativa {r.expectancy:.2f}"
                     + ("\t(amostra pequena)" if r.small else ""))
         lens = aggregate.robot_view(lab, ctx.config) if args.robot else aggregate.asset_view(lab, ctx.config)
-        data(scope=scope, total=total, by=tables, lens=lens.to_dict("records"))
+        data(scope=scope, total=total, by=tables, lens=lens.to_dict("records"), context=population_context)
         return cli.EXIT_OK
     if args.trades_command == "insights":
         found = insights.discover(lab, ctx.config)
@@ -187,10 +190,10 @@ def _analysis(args, ctx) -> int:
             f"{profit_factor.text(b['profit_factor'])} -> {profit_factor.text(a['profit_factor'])}; queda {b['max_drawdown_pct'] * 100:.1f}% -> "
             f"{a['max_drawdown_pct'] * 100:.1f}%")
     out(f"Provas do walk-forward: melhorou em {ev['folds_improved']} de {len(ev['folds'])}. {ev['note']}")
-    path = export.proposal(scope, chosen, ev) if args.export else None
+    path = export.proposal(scope, chosen, ev, context=population_context) if args.export else None
     if path:
         out(f"Proposta gravada em {path} (proposta: para virar preset passa por validate, bateria e paridade).")
-    data(scope=scope, rules=chosen, evaluation=ev, proposal=str(path) if path else None)
+    data(scope=scope, rules=chosen, evaluation=ev, context=population_context, proposal=str(path) if path else None)
     return cli.EXIT_OK
 
 

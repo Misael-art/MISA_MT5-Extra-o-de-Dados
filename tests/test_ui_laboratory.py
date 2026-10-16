@@ -200,6 +200,10 @@ def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
     monkeypatch.setattr(export, "_folder", lambda: tmp_path)
     panel.export_proposal()
     assert list(tmp_path.glob("robot_python_donchian_*.json"))
+    import json
+    from mt5_extracao.trade_analytics import context
+    exported = json.loads(next(tmp_path.glob("robot_python_donchian_*.json")).read_text())
+    assert exported["contexto_populacao"] == context.population(panel.view)
 
 
 def test_temporal_population_updates_without_changing_matrix_values(panel):
@@ -340,3 +344,42 @@ def test_hourly_curve_preserves_real_spacing_and_gaps_in_both_themes(panel):
     assert len(chart.figure.axes) == 1 and not chart.figure.axes[0].lines
     assert "Sem operações com horário e resultado válidos" in chart.figure.axes[0].texts[0].get_text()
     assert "4 operações sem faixa horária válida ficam fora" in panel._chart_panels["t_hours"].notice.message.cget("text")
+
+
+def test_population_details_stay_collapsed_refresh_and_hide_for_synthetic_relations(panel):
+    from mt5_extracao.trade_analytics import context
+    from mt5_extracao.ui.laboratory import RELATIONS_TAB
+    from tests.test_trade_context import book
+
+    panel.view = book()
+    panel._drawn.add("Visão geral")  # Este teste exercita o contexto, sem fornecer features de gráficos.
+    original = panel.view.copy(deep=True)
+    panel._show_kpis()
+    panel.ui.root.update()
+    assert panel.population_context == context.population(panel.view)
+    assert panel.context_text.cget("text") == context.details(panel.population_context)
+    assert panel.context_details.expanded is False
+    assert not panel.context_details.body.winfo_manager()
+    assert "MQL5" not in panel.note.cget("text")
+    assert "não carteira executável" in panel.note.cget("text")
+    assert "Capital ref." in panel.metric_cards["max_drawdown_pct"].detail_label.cget("text")
+    assert panel.metric_cards["max_drawdown_pct"].detail_label.winfo_manager()
+    panel.context_details.toggle_button.invoke()
+    assert panel.context_details.body.winfo_manager()
+    panel.context_details.collapse()
+    panel.view = panel.view.iloc[[0]].copy()
+    panel._show_kpis()
+    assert panel.context_details.expanded is False
+    assert panel.population_context["n"] == 1
+    assert "sem horário de entrada" not in panel.note.cget("text")
+    panel.tabs.select(panel.tab_frames[RELATIONS_TAB])
+    panel.render_visible()
+    assert not panel.context_details.winfo_manager()
+    panel.tabs.select(panel.tab_frames["Visão geral"])
+    panel._drawn.add("Visão geral")
+    panel.render_visible()
+    assert panel.context_details.winfo_manager()
+    panel.view = pd.DataFrame()
+    panel._show_kpis()
+    assert panel.population_context is None and not panel.context_details.winfo_manager()
+    pd.testing.assert_frame_equal(book(), original)
