@@ -190,3 +190,22 @@ e ausências sem competir por atenção. Recorte registrado antes da implementa�
   Suíte completa no código 5388ec8: 852 aprovados/9 ignorados, 598,30 s, saída 0. Doctor offline: 15 OK, 2 avisos,
   1 falha esperada por caminho MT5 deliberadamente vazio; não é diagnóstico verde.
   A dependência #83 passou Linux/Windows/PostgreSQL/instaladores/lint no CI.
+
+## T17.8 — linha do tempo com coordenadas observadas
+
+Recorte registrado antes da implementação: retirar interpolação cúbica existente
+na timeline de Relações, conforme instrução de não suavizar resultados.
+
+- Dependência: T17.12/PR #84, código igual ao 5388ec8 validado integralmente
+  (852 aprovados/9 ignorados); ambiente próprio instalado com dev. Baseline própria
+  53484c2: 851 aprovados/1 falha/9 ignorados em 653,29 s, falha já intermitente de
+  conexão que aguarda somente 0,8 s; supervisor terminou 143 antes do filho, que
+  completou e escreveu o resumo. Código de saída do filho não foi capturado.
+- Arquivos: ui/relations.py, tests/test_ui_relations.py, plano, proposta,
+  continuidade e capturas. Fixture sintética continua explicitamente identificada.
+- Passos: remover helper de suavização, desenhar somente centros/valores recebidos
+  com NaN nas lacunas; ajustar legenda; verificar coordenadas exatas/ausências
+  internas/temas/seleção; operar UI e capturar; suíte completa/doctor; PR próprio.
+- Aceite: um ponto por janela recebida, sem pontos inventados; gaps não conectados,
+  estados/marcadores/tabelas preservados. Sem cálculos, engine, contas ou integração
+  F18; esta apresentação não demonstra resultado financeiro nem validação.
