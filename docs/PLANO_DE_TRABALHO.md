@@ -171,6 +171,10 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
+A frente administrativa **ORG** (organização do ecossistema, 2026-10-15) tem painel e regras registrados no fim
+deste documento e em [organizacao_ecossistema.md](organizacao_ecossistema.md): fontes canônicas, fila de integração e
+política de commits/PRs/merges. Ela não substitui tarefas `T` do roadmap.
+
 ---
 
 ## Fase 0 — Fundação
@@ -3469,6 +3473,31 @@ em claro/escuro, 1280×800, 1920×1080, janela estreita 820×800 e escala simula
 Prompts de continuidade:
 [Analytics](analytics/PROMPT_F18_ANALYTICS.md) e [UI](analytics/PROMPT_F18_UI.md).
 T18.8 reutiliza a implementação visual da F17 integrada nesta branch.
+
+---
+
+## Frente administrativa ORG — organização do ecossistema (2026-10-15)
+
+**Não é uma fase do roadmap.** São unidades administrativas para preservar, integrar e limpar o trabalho espalhado
+entre os três repositórios (mt5x, HADOUKEN e mt5x-safety), registradas a partir da auditoria local de 2026-10-15.
+As regras permanentes — fontes canônicas, fila de integração e política de commits/PRs/merges — estão em
+[organizacao_ecossistema.md](organizacao_ecossistema.md).
+
+| Unidade | Tarefa | Depende de | Status |
+|---|---|---|---|
+| ORG-01 | Inventário e preservação Git (bundles, restauração verificada, patches e tar do WIP da T17.6) | — | ✅ realizada; a segunda cópia verificada de backup é gate da limpeza (ORG-09) |
+| ORG-02 | PR documental de fontes canônicas, fila e política Git (este registro) | ORG-01 | ⏳ em revisão (branch `docs/org-02-fontes-fila-politica`): fontes canônicas explícitas, nenhuma tarefa aponta ao checkout reservado; dono, branch, PR, base e estado por tarefa |
+| ORG-03 | Checkpoint da T17.6 pelo responsável e backup dos dados ignorados relevantes | ORG-01 | a fazer (depende do responsável da T17.6) |
+| ORG-04 | Isolamento de schemas PostgreSQL na base atual (recorte do commit de isolamento, sem ancestrais Analytics) | ORG-02 | a fazer |
+| ORG-05 | Integrar F13/F16/T18 na ordem da fila e ligar a UI ao serviço real | ORG-04 | a fazer |
+| ORG-06 | Integrar o HADOUKEN pendente, verificar a Safety e publicar as distribuições revisadas | ORG-02 | a fazer |
+| ORG-07 | Contratos de exportação (T16.2b) e verificação automática da sincronia Safety | ORG-06 conforme contrato | a fazer |
+| ORG-08 | CI MQL5 em ambiente isolado e trilha de validação operacional | ORG-06/07 | a fazer |
+| ORG-09 | Mover/remover worktrees classificados, com gates de preservação e liberação | ORG-03 + integração/preservação das pastas | a fazer |
+| ORG-10 | ADR da migração opcional para repositório dedicado | base estável e fila controlada | a fazer |
+
+Cada unidade é uma tarefa por PR, com os critérios de aceite da auditoria registrada e a política acima. Nenhuma
+unidade autoriza limpeza física de worktree antes de ORG-09 e dos gates de preservação.
 
 ---
 
