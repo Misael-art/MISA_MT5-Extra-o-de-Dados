@@ -1,4 +1,5 @@
 import os
+import argparse
 import sys
 import configparser
 import sqlite3
@@ -27,7 +28,7 @@ from mt5_extracao.logging_setup import setup_logging
 setup_logging()
 
 # Função para verificar dependências críticas antes de continuar
-def verificar_dependencias_criticas():
+def verificar_dependencias_criticas(offline=False):
     """Verifica se as dependências críticas estão disponíveis"""
     dependencias_faltantes = []
 
@@ -45,9 +46,10 @@ def verificar_dependencias_criticas():
             logging.error(f"Erro ao instalar psutil: {str(e)}")
 
     # MetaTrader5 é essencial: módulo local (Windows) ou ponte RPyC (Linux)
-    from mt5_extracao.mt5_backend import get_mt5
-    if get_mt5("config/config.ini") is None:
-        dependencias_faltantes.append("MetaTrader5 (Windows: pacote MetaTrader5; Linux: ./scripts/mt5-bridge.sh start)")
+    if not offline:
+        from mt5_extracao.mt5_backend import get_mt5
+        if get_mt5("config/config.ini") is None:
+            dependencias_faltantes.append("MetaTrader5 (Windows: pacote MetaTrader5; Linux: ./scripts/mt5-bridge.sh start)")
 
     # Outras dependências críticas
     try:
@@ -144,7 +146,8 @@ except ImportError as e:
 
 # Função verificar_mt5_em_execucao() removida - Lógica movida para MT5Connector
 class MT5Extracao:
-    def __init__(self, root):
+    def __init__(self, root, offline=False):
+        self.offline = bool(offline)
         """
         Inicializa a aplicação principal.
         
@@ -170,7 +173,7 @@ class MT5Extracao:
         
         try:
             # Verificar dependências críticas
-            if not verificar_dependencias_criticas():
+            if not verificar_dependencias_criticas(offline=self.offline):
                 messagebox.showerror("Erro de Dependências", 
                                    "Uma ou mais dependências críticas não estão instaladas.\n\n"
                                    "Execute pip install -r requirements.txt e tente novamente.")
@@ -183,9 +186,10 @@ class MT5Extracao:
                 return
             
             # Inicializar conexão com MT5
-            logging.info("Inicializando conexão MT5 via Connector...")
+            logging.info("Análise local: conexão MT5 desativada nesta sessão." if self.offline
+                         else "Inicializando conexão MT5 via Connector...")
             self.mt5_connector = MT5Connector(config_path=self.config_path,
-                                              ask_user=lambda t, m: messagebox.askyesno(t, m))
+                                              ask_user=lambda t, m: messagebox.askyesno(t, m), offline=self.offline)
             
             # A conexão com o MT5 é feita depois que a janela aparece, em segundo plano (UIManager.connect_mt5):
             # conectar aqui deixava o programa sem janela por minutos quando o MT5 demorava ou não conectava.
@@ -319,6 +323,12 @@ class MT5Extracao:
             # Lógica de fallback DB removida - Simplificando para MT5 -> JSON -> Mínimo
             # A lógica de fallback DB pode ser reintroduzida se necessário,
             # mas agora focaremos em carregar do MT5 ou do JSON.
+
+            if self.offline:
+                self.symbols = sorted(simbolos_do_json or fallback_minimo)
+                logging.info("Modo offline: usando a lista local de símbolos.")
+                self.setup_timeframes()
+                return
 
             # Se não estamos em modo fallback, verifica se o conector está inicializado
             # A verificação self.mt5_connector já garante que o objeto existe
@@ -895,14 +905,23 @@ class MT5Extracao:
         # Encerrar a aplicação após um breve delay
         self.root.after(100, self.root.destroy)
 
-if __name__ == "__main__":
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Analise sua base local ou conecte ao MetaTrader 5.")
+    parser.add_argument("--offline", action="store_true",
+                        help="Abre a base local com a conexão MT5 desativada nesta sessão.")
+    args = parser.parse_args(argv)
+    app = None
     try:
         root = tk.Tk()
-        app = MT5Extracao(root)
+        app = MT5Extracao(root, offline=args.offline)
         root.mainloop()
+        return 0
     finally:
-        # Desconectar MT5 ao sair
-        from mt5_extracao.mt5_backend import get_mt5
-        _mt5 = get_mt5("config/config.ini")
-        if _mt5 is not None:
-            _mt5.shutdown()
+        # Só o conector que pertence a esta sessão pode encerrar sua conexão.
+        connector = getattr(app, "mt5_connector", None)
+        if connector is not None:
+            connector.shutdown()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

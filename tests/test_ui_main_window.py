@@ -99,6 +99,50 @@ def test_inventory_and_analysis_tabs(ui):
     assert "Barras analisadas: 600" in panel.quality_text.get("1.0", "end")
 
 
+def test_offline_mode_keeps_terminal_actions_disabled_and_blocks_direct_calls(ui, monkeypatch):
+    from tkinter import ttk
+    from mt5_extracao import ui_manager
+    calls = []
+
+    def forbidden(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("ação de terminal/conta em modo offline")
+
+    ui.app.offline = True
+    ui.app.mt5_connector.initialize = forbidden
+    ui.app.mt5_connector.account_summary = forbidden
+    ui.mt5_admin_button = ttk.Button(ui.mt5_view_button.master, text="Admin simulado")
+    monkeypatch.setattr(ui, "run_bg", forbidden)
+    monkeypatch.setattr(ui, "_missing_account", forbidden)
+    monkeypatch.setattr(ui_manager.messagebox, "askyesno", forbidden)
+    monkeypatch.setattr(ui_manager.messagebox, "showerror", forbidden)
+    for _ in range(2):
+        assert not ui.refresh_mt5_status()
+        assert not ui._mt5_connected()
+        for button in (ui.mt5_view_button, ui.check_button, ui.mt5_admin_button, ui.get_history_button,
+                       ui.start_button, ui.stop_button):
+            assert button.instate(["disabled"])
+        assert ui.mt5_status_value.cget("text") == "Análise local (offline)"
+        assert "sem --offline" in ui.status_label.cget("text")
+        ui.check_mt5_status()
+        ui.connect_mt5(startup=True)
+        completed = []
+        ui.open_mt5_view(on_done=completed.append)
+        assert completed == [None]
+        ui._offer_demo_account()
+        ui._reconnect_mt5()
+        ui.launch_mt5_as_admin()
+        ui._check_admin_mode()
+        ui.start_collection()
+        ui.extract_historical_data()
+        ui.toggle_collection_buttons(False)
+        ui.filter_symbols()
+        assert "configurados" in ui.symbols_label.cget("text")
+        assert "na conta" not in ui.symbols_label.cget("text")
+        assert calls == []
+        ui.toggle_theme()
+
+
 def test_theme_toggle_redraws_without_errors(ui):
     ui.open_analysis("WIN$N")
     ui.pump(1.2)
