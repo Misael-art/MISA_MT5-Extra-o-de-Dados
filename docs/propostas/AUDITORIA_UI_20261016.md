@@ -44,7 +44,10 @@ terminado; isso não prova um defeito de encerramento do aplicativo.
   medição, sem limpeza/arquivo/automação; medição grava retrato somente na cópia de auditoria.
 - T17.7: claro/escuro em 1280×800 e 1920×1080, redesenho repetido sem duplicação
   da mensagem. Variação de scaling em processo existente é exploratória; DPI alto
-  iniciado desde a criação do Tk ainda precisa de validação específica.
+  iniciado desde a criação do Tk foi validado depois: 143,86 DPI, scaling 1,998.
+  Em 1280×800 há problema crítico: cabeçalho/botão Atualizar cortados, filtro de
+  notícias fora da largura e tabela praticamente sem altura. T17.9 proposta para
+  responsividade; aceite visual global NÃO concluído. Veja a captura abaixo.
 
 Contraste medido, texto/superfície: claro ink 16,29:1, muted 5,14:1, accent 6,46:1;
 escuro ink 14,39:1, muted 7,19:1, accent 7,41:1. Não é uma declaração de contraste
@@ -65,3 +68,5 @@ Concluir inspeção de diálogos/relatórios, reprodução de estudos, comparaç
 por preset/custos/moeda, zoom/exportação dos gráficos, vazios/erros/cancelamento,
 janela reduzida/DPI alto/nomes longos/muitas séries e resolver os achados críticos.
 Um recorte visual entregue não representa o aceite integral solicitado pelo dono.
+
+![Pendência crítica de responsividade, DPI144](../img/interface-visual/T17.7/pendencia-dpi144-1280.png)
