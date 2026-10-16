@@ -274,3 +274,23 @@ ScrollableContent ajusta largura, mas não altura da janela Canvas.
   em docs/img/interface-visual/T17.14/. Aceite visual global continua pendente.
 
 - Focados finais:35 aprovados em52,74 s, incluindoLaboratório/Relações/componentes.
+
+## T17.17 — detalhe legível nas divisões de Relações
+
+Registrado antes da implementação. Medição real da UI emDPI144 encontra detalhe
+com143px em1920×1080 e1280×800, por pesos de colunas sem reserva de largura;
+texto quebra por palavra. FonteLato11 mede364px para28 dígitos, ou388px com
+preenchimento. T17.14 resolve altura, não resolve essa largura independente.
+
+- Dependência:T17.14/#87 e ancestrais. Ambiente próprio instalado/dev, baseline
+  ad31f06 em andamento; nenhum código será alterado antes de concluir a rodada.
+- Arquivos:ui/relations.py, tests/test_ui_relations.py, proposta/painel/
+  continuidade/capturas. Não mudar valores, semântica de estados,engine ou fonte.
+- Passos: largura mínima de detalhe pela fonte real, divisão proporcional que
+  respeita a reserva ou empilhamento quando não couber; testar posições/medidas
+  reais após resize1920→1280→820→1920, nos doisDPIs/temas; preservar seleção,
+  rolagem e mínimos de gráficos/tabelas; suíte/doctor/PR próprio.
+- Aceite: texto do detalhe tem largura legível emduascolunas; caso contrário
+  empilha e permanece rolável. Sem fixar número de colunas por resolução
+  nominal quando font/DPI/largura efetiva exigirem reflow. A fonte continua
+  explicitamente sintética, não há conexão aoDTO/serviçoF18 ainda pendente.
