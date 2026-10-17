@@ -307,3 +307,11 @@ def test_native_visual_stop_in_local_agent_journal_is_cancelled_not_completed(tm
     with agent.open("a", encoding="utf-16") as handle:
         handle.write("CS\t3\t09:29:14.716\tTester\tstopped by user\n")
     assert sessions.native_interrupted(tmp_path)
+
+
+def test_generated_experts_refuse_the_wrong_execution_environment(robot):
+    historical = sessions.telemetry_source(robot, "observer.txt")
+    assert "int OnInit() { if(!(MQLInfoInteger(MQL_TESTER))) return INIT_FAILED;" in historical
+    account = {"login": 123, "server": "FakeDemo", "demo": True}
+    active = sessions.telemetry_source(robot, "observer.txt", account=account, lease_filename="lease.txt")
+    assert "int OnInit() { if(!(!MQLInfoInteger(MQL_TESTER) && AccountInfoInteger(ACCOUNT_LOGIN)==123" in active

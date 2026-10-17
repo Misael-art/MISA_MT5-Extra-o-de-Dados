@@ -225,13 +225,13 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
                           "FolderClean": "FolderClean", "FileGetInteger": "Property", "FileFindFirst": "Find"}
         definitions += "\n" + "\n".join(f"#define {name} MT5X_Common{suffix}" for name, suffix in file_functions.items())
         undefs += "\n" + "\n".join(f"#undef {name}" for name in file_functions)
-    guard = "true"
+    guard = "MQLInfoInteger(MQL_TESTER)"  # wrapper histórico nunca inicializa como Expert de conta
     lease_code = ""
     if account:
         # No código só há identidade não secreta; a conta e o tipo são conferidos a cada evento.
         server = str(account["server"]).replace("\\", "\\\\").replace('"', '\\"')
         mode = "ACCOUNT_TRADE_MODE_DEMO" if account["demo"] else "ACCOUNT_TRADE_MODE_REAL"
-        guard = f'AccountInfoInteger(ACCOUNT_LOGIN)=={int(account["login"])} && AccountInfoString(ACCOUNT_SERVER)=="{server}" && AccountInfoInteger(ACCOUNT_TRADE_MODE)=={mode}'
+        guard = f'!MQLInfoInteger(MQL_TESTER) && AccountInfoInteger(ACCOUNT_LOGIN)=={int(account["login"])} && AccountInfoString(ACCOUNT_SERVER)=="{server}" && AccountInfoInteger(ACCOUNT_TRADE_MODE)=={mode}'
         if lease_filename:
             guard += " && MT5X_Lease()"
             lease_code = f'''bool MT5X_Lease() {{
