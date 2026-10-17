@@ -1,6 +1,6 @@
 """Sessões portáteis próprias dos cards. O terminal do usuário e a ponte continuam abertos.
 
-Sem order_send e sem encerramento global. O EA MQL5 continua responsável por
+Sem envio de ordens Python ou encerramento global. O EA MQL5 continua responsável por
 ordens e Safety; a instrumentação só publica posições do próprio magic/símbolo.
 """
 import configparser
