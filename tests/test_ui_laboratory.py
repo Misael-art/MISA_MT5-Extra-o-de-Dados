@@ -28,6 +28,7 @@ def panel(tmp_path):
         root = tk.Tk()
     except tk.TclError as e:
         pytest.skip(f"sem display gráfico: {e}")
+    original_scaling = root.tk.call("tk", "scaling")
     pytest.importorskip("matplotlib")
     from tkinter import ttk
     from mt5_extracao.ui.laboratory import LaboratoryPanel
@@ -70,6 +71,7 @@ def panel(tmp_path):
             time.sleep(0.02)
     p.pump, p.db = pump, db
     yield p
+    root.tk.call("tk", "scaling", original_scaling)
     root.destroy()
     # lixo do Tk tem de ser coletado AQUI, na thread principal: se sobrar, o coletor pode rodar numa thread de
     # segundo plano do próximo teste e o Tk derruba o processo ("Illegal instruction")

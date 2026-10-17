@@ -122,6 +122,7 @@ def test_native_dpi_mapping_and_resize_keep_complete_legend(dpi, width, height, 
         root = tk.Tk()
     except tk.TclError as error:
         pytest.skip(f"sem display gráfico: {error}")
+    original_scaling = root.tk.call("tk", "scaling")
     root.withdraw()
     try:
         root.tk.call("tk", "scaling", dpi / 72)
@@ -166,6 +167,8 @@ def test_native_dpi_mapping_and_resize_keep_complete_legend(dpi, width, height, 
             for name in curves:
                 pd.testing.assert_series_equal(curves[name], expected[name])
     finally:
+        # Tk mantém a escala no display mesmo quando a próxima janela usa outro Tk().
+        root.tk.call("tk", "scaling", original_scaling)
         root.destroy()
         import gc
         gc.collect()
