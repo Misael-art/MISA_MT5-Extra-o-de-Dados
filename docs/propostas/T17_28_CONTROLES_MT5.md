@@ -98,6 +98,18 @@ pasta da sessão, inclusive quando há erro ou interrupção após sua preparaç
 - A inspeção 1280/1920 levou seletores para diálogos pesquisáveis e botões para
   o topo. Métricas ausentes em histórico antigo ficam desconhecidas, sem zero
   inventado. Testes falsos cobrem conta REAL, consentimentos e lucro/perda.
+- REPLAY iniciado pelo card concluiu sem intervenção para fechar o visualizador:
+  livro de 16 posições e variação de saldo diferem só por arredondamento
+  binário (<0,01 USD); relatório apareceu na aplicação. Capturas comprovaram
+  contorno verde em lucro e vermelho em perda, com resultado/moeda em texto.
+  STOP pelo card interrompeu uma outra passagem sem gravar resultado elegível.
+- PLAY iniciado pelo card percorreu revisão, conta digitada e confirmação
+  adicional negativa no DEMO nativo. A telemetria publicou sem posição e STOP
+  encerrou somente a cópia. Campo de confirmação fica fixo acima dos botões,
+  fora da rolagem de detalhes. Reabrir relatório conserva a duração final.
+- A extensão opcional do executor foi documentada em [SDK](../sdk/api.md), com
+  teste dos defaults anteriores preservados. Não remover a guarda de API para
+  aceitar a nova assinatura sem atualizar sua referência.
 
 A suíte integral, revisão do patch, CI no SHA final, integração e lançador
 instalado serão registrados no PR e na continuidade após sua conclusão.

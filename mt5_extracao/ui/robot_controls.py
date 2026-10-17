@@ -453,14 +453,18 @@ class ExecutionDialog:
                 self.consent.reviewed = True
                 self.stage = 2
                 self.button.configure(text="Confirmar PLAY · 2/2")
-                self._label("CONFIRMAÇÃO 2 DE 2 · digite o número da conta para autorizar este lançamento.", "Heading.TLabel")
-                self.account_entry = ttk.Entry(self.content)
+                confirmation = ttk.Frame(self.body)
+                confirmation.pack(side=tk.BOTTOM, fill=tk.X, before=self.viewport, pady=(8, 0))
+                prompt = ttk.Label(confirmation, text="CONFIRMAÇÃO 2 DE 2 · digite o número da conta para autorizar este lançamento.",
+                                   style="Heading.TLabel", wraplength=680)
+                prompt.pack(fill=tk.X)
+                prompt.bind("<Configure>", lambda e: prompt.configure(wraplength=max(80, e.width - 8)))
+                self.account_entry = ttk.Entry(confirmation)
                 self.account_entry.pack(fill=tk.X)
                 self.account_entry.focus_set()
                 if not self.account.get("demo"):
                     self.real_var = tk.BooleanVar(value=False)
-                    ttk.Checkbutton(self.content, text="Autorizo esta execução com dinheiro REAL", variable=self.real_var).pack(anchor="w")
-                self.window.after_idle(lambda: self.viewport.canvas.yview_moveto(1))
+                    ttk.Checkbutton(confirmation, text="Autorizo esta execução com dinheiro REAL", variable=self.real_var).pack(anchor="w")
                 return
             if self.account_entry.get().strip() != str(self.account["login"]):
                 messagebox.showerror("Confirmação", "O número da conta não confere.", parent=self.window)
@@ -502,15 +506,15 @@ class ReportDialog:
         state = {"completed": "Concluído", "failed": "Falhou", "cancelled": "Interrompido"}.get(session.state, "Em andamento")
         parts = [f"{session.mode.upper()} · {state}",
                  f"{session.robot.name} · {session.symbol} {session.timeframe} · {session.preset or controls.DEFAULT_PRESET}",
-                 f"Tempo total da sessão: {fmt_num(time.time() - session.started, 1)} s"]
+                 f"Tempo total da sessão: {fmt_num((getattr(session, 'finished', None) or time.time()) - session.started, 1)} s"]
         if session.error:
             parts.append(session.error)
         if session.record:
             run, m = session.record, session.record["metrics"]
             parts += [f"Período: {run['data_start']} a {run['data_end']}",
-                      f"{fmt_int(m.get('trades'))} operações · acerto {fmt_num((m.get('win_rate') or 0)*100)}%",
-                      f"Resultado {fmt_num(m.get('net_profit'))} · PF {fmt_num(m.get('profit_factor'))}",
-                      f"Queda máxima {fmt_num((m.get('max_drawdown_pct') or 0)*100)}% · "
+                      f"{fmt_int(m.get('trades'))} operações · acerto {fmt_num(m['win_rate']*100 if m.get('win_rate') is not None else None)}%",
+                      f"Resultado {fmt_num(m.get('net_profit'))} {m.get('currency') or '(moeda não identificada)'} · PF {fmt_num(m.get('profit_factor'))}",
+                      f"Queda máxima {fmt_num(m['max_drawdown_pct']*100 if m.get('max_drawdown_pct') is not None else None)}% · "
                       f"saldo inicial {fmt_num(m.get('initial_equity'))}",
                       f"Expectativa por operação {fmt_num(m.get('expectancy'))} {m.get('currency') or '(moeda não identificada)'} · "
                       f"{fmt_int(m.get('losses'))} perdas",

@@ -1,5 +1,18 @@
 # Continuidade: harmonização de 2026-10-14
 
+> **T17.28 — comandos dos cards MT5 (2026-10-17):** seletores pesquisáveis de
+> ativo/timeframe e preset governam a evidência mostrada. PLAY tem revisão da
+> carteira/risco, duas confirmações e alerta negativo adicional. REAL mantém
+> opt-in, tarja e gates, testados somente com provedores falsos. Sessões próprias
+> preservam o terminal original; REPLAY visual/Model4 concluiu com 16 posições,
+> -2.342,53 USD e PF0,47995551 reconciliados com saldo nativo, sem aprovação
+> financeira. Cor e texto acompanharam lucro/perda simulados. PLAY/STOP pelo
+> card foram exercitados no demo, sem posições/ordens; fechamento não liquida
+> exposição existente. Suíte/CI finais, revisão própria e lançador instalado
+> são gates do PR105, sem revisão independente presumida. Um CSV de ensaio foi
+> restaurado de backup verificado e a causa corrigida; 23 arquivos compartilhados
+> preservados nos ensaios seguintes. [Escopo, incidentes e limites](propostas/T17_28_CONTROLES_MT5.md).
+
 > **T17.27 — layout nativo (2026-10-17):** o gráfico recalcula margens após resize da figura, inclusive mudança de DPI sem Configure Tk. A área conserva altura própria pela fonte, como em Análise, impedindo crescimento ao alternar páginas. Baseline998/9 em árvore/pacotes idênticos, 34 focados e 32 cenários de cópia real DPI144 passaram; figuras em600px, legendas completas. Suíte/CI/revisão e lançador instalado são gates explícitos do PR. [Recorte e evidências](propostas/T17_27_LAYOUT_DPI_LABORATORIO.md).
 
 > **T17.26 — ativos e sinal dos backtests (2026-10-17):** os cards contam ativos

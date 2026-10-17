@@ -65,6 +65,22 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`. Pela CLI, `--symbols A,B,C`
 roda o mesmo teste em vários ativos.
 
+Desde T17.28, `run_mql5` aceita ao final seis opções compatíveis com chamadas
+anteriores: `visual=None`, `read_csv=True`, `trades_csv_override=None`,
+`compiled_override=None`, `export_trades=True`, `tester_port=None`. Sem essas
+opções, preserva o fluxo anterior. `visual=True/False` explicita modo visual e
+somente agentes locais; `tester_port` escolhe porta local de 1024 a 65535.
+`read_csv=False` desliga a leitura do CSV legado; `export_trades=False` impede
+que o parâmetro de exportação reconhecido seja forçado a true.
+
+As sessões dos cards passam seu binário instrumentado em `compiled_override`
+e seu CSV exclusivo em `trades_csv_override`, dentro da instalação portátil
+preparada. CSV já existente é preservado e recusado; CSV ausente ou livro que
+não reconcilia com a variação do saldo nativo impede gravar o resultado. Essas
+opções não preparam/isolam terminais por si mesmas nem autorizam contas.
+`API_VERSION=1` permanece: nenhum parâmetro anterior mudou de posição, padrão
+ou significado. Fonte, parâmetros e binário devem corresponder ao mesmo Expert.
+
 ## Bateria e ciclo completo
 
 | Nome | O que faz |

@@ -304,6 +304,7 @@ class Session:
         self.process = None
         self.child_config = None
         self.started = time.time()
+        self.finished = None
         self.telemetry_file = f"mt5x_session_{self.id}.txt"
         self.trades_file = f"mt5x_session_{self.id}_trades.csv"
         self.lease_file = f"mt5x_session_{self.id}_lease.txt"
@@ -522,6 +523,7 @@ class Session:
                 self._stop_owned()
             log.exception("Falha na sessão %s do robô %s", self.mode, self.robot.key)
         finally:
+            self.finished = time.time()
             if historical_lock:
                 _TESTER_LOCK.release()
             if self.directory.exists():
@@ -530,7 +532,7 @@ class Session:
                            "preset": self.preset or "", "parameters": controls.effective_values(self.robot, self.preset),
                            "account": self.account if self.mode == "play" else None,
                            "started_at": datetime.fromtimestamp(self.started).isoformat(),
-                           "finished_at": datetime.now().isoformat(), "elapsed_seconds": time.time() - self.started,
+                           "finished_at": datetime.fromtimestamp(self.finished).isoformat(), "elapsed_seconds": self.finished - self.started,
                            "run": self.record, "limitations": ["Histórico não garante resultado futuro.",
                            "Custos e disponibilidade de ticks reais dependem do relatório/diário da corretora.",
                            "STOP desanexa o Expert ao encerrar só esta sessão; posições existentes não são liquidadas."]}

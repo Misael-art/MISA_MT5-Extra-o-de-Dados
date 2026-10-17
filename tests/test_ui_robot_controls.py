@@ -100,6 +100,7 @@ def test_play_dialog_requires_typed_account_double_step_and_separate_negative_co
     dialog.confirm()
     ui.pump(.1)
     assert dialog.stage == 2 and dialog.consent.reviewed and not calls
+    assert dialog.account_entry.winfo_rooty() + dialog.account_entry.winfo_height() < dialog.button.winfo_rooty()
     dialog.account_entry.insert(0, "wrong")
     dialog.confirm()
     assert prompts and not calls
@@ -170,3 +171,17 @@ def test_session_status_pulses_by_scoped_telemetry_with_text_and_stops_own_job(u
     assert panel.controls.widgets[robot.key]["stop"].winfo_manager()
     panel.controls.stop(robot.key)
     assert cancelled == [True]
+
+
+def test_reopened_report_preserves_finished_duration_and_explains_incomplete_work(ui):
+    panel, robot, preset = _tested(ui)
+    session = SimpleNamespace(robot=robot, symbol="WIN$N", timeframe="H1", preset=preset, mode="replay",
+                              state="cancelled", started=100, finished=112, error="Interrompido pelo usuário",
+                              record=None, report=Path("missing"))
+    for _ in range(2):
+        robot_controls.ReportDialog(ui, session)
+        window = next(w for w in ui.root.winfo_children() if w.winfo_class() == "Toplevel" and w.title().startswith("Relatório"))
+        text = "\n".join(_labels(window))
+        assert "Tempo total da sessão: 12,0 s" in text
+        assert "Não há métricas finais" in text
+        window.destroy()
