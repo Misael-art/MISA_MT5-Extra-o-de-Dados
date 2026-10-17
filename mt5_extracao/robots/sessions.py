@@ -140,9 +140,9 @@ def prepare(config, robot, directory, symbol):
     # barra de reprodução preservada. A pessoa pode reabri-los pelo menu View.
     visual = directory / "Tester" / "config" / "metatester.ini"
     visual.parent.mkdir(parents=True, exist_ok=True)
-    text = "[Visualization]\r\nchartmode=1\r\n[PaneState-Summary]\r\nPaneStateVersion=500\r\n"
-    for pane, visible in ((32793, 0), (32794, 0), (32795, 0), (32792, 1)):
-        text += f"[Pane-{pane}]\r\nID={pane}\r\nIsVisible={visible}\r\n"
+    # IsVisible isolado é ignorado pelo build nativo: preservar também o
+    # grafo de docking, sem preferências, identidades ou caminhos do host.
+    text = "[Visualization]\r\nchartmode=1\r\n" + (Path(__file__).parent / "templates" / "visual_tester.ini.tmpl").read_text(encoding="utf-8")
     visual.write_bytes(text.encode("utf-16"))
     return child
 

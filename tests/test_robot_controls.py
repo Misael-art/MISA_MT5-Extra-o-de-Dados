@@ -198,6 +198,11 @@ def test_prepare_preserves_originals_and_case_and_uses_catalog_includes_last(rob
     assert (destination / "Bases" / "Demo" / "history" / "EURUSD" / "2026.hcc").read_bytes() == b"history"
     assert "Password" not in (destination / "Config" / "common.ini").read_text(encoding="utf-16")
     assert "Experts" not in (destination / "Config" / "common.ini").read_text(encoding="utf-16")
+    visual = configparser.ConfigParser()
+    visual.read(destination / "Tester" / "config" / "metatester.ini", encoding="utf-16")
+    assert visual.has_option("Docking", "Dividers-0")
+    assert all(visual.getint(f"Pane-{pane}", "IsVisible") == 0 for pane in (32793, 32794, 32795))
+    assert visual.getint("Pane-32792", "IsVisible") == 1  # controles de pausa/stop acessíveis
     assert before == {str(p.relative_to(source)): p.read_bytes() for p in source.rglob("*") if p.is_file()}
 
 
