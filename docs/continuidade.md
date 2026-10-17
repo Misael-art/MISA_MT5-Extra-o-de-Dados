@@ -1,5 +1,13 @@
 # Continuidade: harmonização de 2026-10-14
 
+> **T17.24 — correção do erro informado em 2026-10-16:** a projeção de bateria
+> com PF indefinido passa a incluir o ícone exigido pelo detalhe do robô. A aba
+> Bateria reutiliza a rolagem existente e ajusta o texto à largura útil. Baseline
+> 963/9, 51 focados de PF/bateria e quatro regressões de UI passaram; a cópia da
+> base real passou em 60 seleções nos dois temas e resoluções, com registros
+> preservados. Suíte final, CI, revisão e smoke instalado são gates rastreados no
+> PR da T17.24. [Escopo e evidências](propostas/T17_24_BATERIA_PERSISTIDA.md).
+
 > Estado atual da frente visual (snapshot854af32, 2026-10-16): PRs #81–#93, #95/#96/#97/#98/#99/#100 integrados separadamente, com revisão própria e CI. Detalhes recolhíveis já funcionam; abertura real por `./run.sh --offline` verificada e encerrada0, configuração preservada. T17.23/PR99 integrado e operado pelo lançador real; aceite críticoUI registrado com ressalvas. T13.10/PR100 integrado e CLI instalada verificada: oito casos retrospectivos, nenhum candidato (maiorPFmodelado0,875849);963/9 e CI final aprovados. Consulte [o relatório reconciliado](propostas/CONTINUIDADE_INTEGRACAO_UI.md); as seções abaixo também conservam snapshots históricos, cujas pendências não substituem este estado atual.
 
 

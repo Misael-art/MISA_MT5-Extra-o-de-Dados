@@ -47,12 +47,16 @@ A suíte intermediária foi interrompida para essa revisão e não vale como ace
 
 ## Critérios de aceite
 
-- [ ] O clique no card e a aba Bateria não geram `KeyError` nem erro de callback.
-- [ ] PF indefinido continua reprovado, com motivo e orientação visíveis no texto.
-- [ ] A consulta repetida não acumula itens nem modifica os registros históricos.
-- [ ] O fim de uma bateria longa fica acessível pela rolagem, em claro e escuro.
-- [ ] Regressão falha no código anterior e passa com a correção.
-- [ ] Suíte, doctor, operação no host e preservação registrados.
+- [x] O clique no card e a aba Bateria não geram `KeyError` nem erro de callback.
+- [x] PF indefinido continua reprovado, com motivo e orientação visíveis no texto.
+- [x] A consulta repetida não acumula itens nem modifica os registros históricos.
+- [x] O fim de uma bateria longa fica acessível pela rolagem, em claro e escuro.
+- [x] Regressão falha no código anterior e passa com a correção.
+
+O aceite de integração exige a suíte completa após a correção, CI no SHA final,
+revisão e verificação da versão instalada. Esses resultados e o estado de
+integração são registrados no PR da tarefa; os testes focados abaixo não
+substituem esses gates.
 
 ## Verificação
 
@@ -67,3 +71,26 @@ display Xvfb próprio. Nenhum teste automatizado exige MT5 ou conta reais.
 
 A conferência manual no host usa os dados existentes, sem executar novas
 baterias financeiras ou ordens. Evidências privadas não entram no repositório.
+
+## Evidências da correção
+
+- Baseline sem a alteração: **963 aprovados e 9 pulos existentes**, saída 0,
+  antes da implementação. Ambiente/dev instalados em worktree isolada.
+- Reprodução anterior: três falhas por `KeyError: 'icon'`, inclusive o callback
+  do clique; a cópia real reproduziu o defeito nas oito baterias do painel.
+- Após a correção: **51 testes de PF/bateria** e **quatro regressões de UI**
+  aprovados. O teste da largura também falhou antes de ajustar a quebra de linha
+  à largura útil. Page Down é exercitado com o foco no canvas.
+- Interface real, em modo local sobre cópia consistente da base: 15 robôs ×
+  claro/escuro × 1280×800/1920×1080, **60 seleções**, com motivo final acessível
+  e oito capturas geradas, com inspeção do texto longo nas quatro combinações.
+  Baterias, execuções e ledger permaneceram
+  idênticos na comparação antes/depois. O processo da aplicação encerrou com 0.
+- Doctor da instalação operacional: **21 OK, um aviso (`pandas-ta` opcional
+  ausente), nenhuma falha**. Na worktree sem MT5, a falta deliberada do terminal
+  é registrada separadamente, com saída 1 por essa pendência de instalação.
+- As suítes intermediárias interrompidas durante a inspeção da bateria não
+  contam como aceite. A suíte completa final e o CI são condições do merge.
+- A conferência conectada à DEMO pelo `run.sh` instalado pertence ao smoke de
+  integração registrado no PR; a cópia local acima não é apresentada como esse smoke.
+- Windows físico permanece pendente no checklist; CI Windows é evidência distinta.
