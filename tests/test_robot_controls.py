@@ -297,3 +297,13 @@ def test_native_stop_and_download_cancellation_are_not_success_or_trade_stop(tmp
     assert sessions.native_interrupted(tmp_path)
     log.write_text("Tester\ttesting stopped by user", encoding="utf-8")
     assert sessions.native_interrupted(tmp_path)
+
+
+def test_native_visual_stop_in_local_agent_journal_is_cancelled_not_completed(tmp_path):
+    agent = tmp_path / "Tester" / "Agent-127.0.0.1-40651" / "logs" / "20261017.log"
+    agent.parent.mkdir(parents=True)
+    agent.write_text("CS\t0\t09:28:19\tTester\tposition closed by stop loss\n", encoding="utf-16")
+    assert not sessions.native_interrupted(tmp_path)
+    with agent.open("a", encoding="utf-16") as handle:
+        handle.write("CS\t3\t09:29:14.716\tTester\tstopped by user\n")
+    assert sessions.native_interrupted(tmp_path)

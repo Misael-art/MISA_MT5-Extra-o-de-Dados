@@ -110,6 +110,10 @@ pasta da sessão, inclusive quando há erro ou interrupção após sua preparaç
 - A extensão opcional do executor foi documentada em [SDK](../sdk/api.md), com
   teste dos defaults anteriores preservados. Não remover a guarda de API para
   aceitar a nova assinatura sem atualizar sua referência.
+- STOP no próprio visualizador grava `stopped by user` no diário do agente
+  local. O leitor agora verifica esse diário também; o primeiro ensaio recusou
+  o livro incompleto, mas apresentou falha em vez de interrupção. A regressão
+  distingue essa parada de um stop loss normal de posição.
 
 A suíte integral, revisão do patch, CI no SHA final, integração e lançador
 instalado serão registrados no PR e na continuidade após sua conclusão.

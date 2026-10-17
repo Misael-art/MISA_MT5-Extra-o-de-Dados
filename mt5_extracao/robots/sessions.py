@@ -30,7 +30,10 @@ def native_interrupted(directory):
     """Cancelamento explícito no Tester, sem confundir stop de uma posição com parada do teste."""
     import re
     pattern = re.compile(r"(?:testing|test|downloading)[^\r\n]{0,150}(?:canceled|cancelled|stopped by user|terminated by user)", re.I)
-    for path in (Path(directory) / "Tester" / "logs").glob("*.log"):
+    tester = Path(directory) / "Tester"
+    logs = list((tester / "logs").glob("*.log"))
+    logs.extend(tester.glob("Agent-*/logs/*.log"))  # STOP visual é registrado pelo agente local no build 6272
+    for path in logs:
         try:
             with path.open("rb") as handle:
                 handle.seek(max(0, path.stat().st_size - 65536))
