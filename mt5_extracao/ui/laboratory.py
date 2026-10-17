@@ -235,13 +235,17 @@ class LaboratoryPanel:
             panel = ChartPanel(chart_parent, padding=SPACING["xs"])
             panel.grid(row=row, column=col, rowspan=rowspan, columnspan=colspan, sticky="nsew",
                        padx=SPACING["xs"], pady=SPACING["xs"])
+            # Como em Análise: o Canvas/DPI não define a altura pedida pela página.
+            # Outras abas podem requisitar mais espaço; só a largura se expande.
+            panel.chart_area.pack_configure(fill=tk.X, expand=False)
+            panel.chart_area.pack_propagate(False)
             chart = charts.Chart(panel.chart_area, self.theme, height)
             chart.widget.pack(fill=tk.BOTH, expand=True)
-            chart.widget.bind("<Configure>", lambda _event, target=chart: target.draw(), add="+")
             self._chart_panels[key] = panel
             chart_parent.rowconfigure(row, weight=1)
             chart_parent.columnconfigure(col, weight=1)
             self._charts[key] = chart
+        self._chart_panels[key].chart_area.configure(height=max(480, self.theme.font.metrics("linespace") * 24))
         return chart
 
     def _overview_view(self, key, title):

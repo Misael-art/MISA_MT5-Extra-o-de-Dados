@@ -131,6 +131,7 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | T17.24 | Bateria histórica ligada a PF indefinido | Selecionar o card do painel HADOUKEN, abrir Bateria e percorrer texto longo pela barra e Page Down, em claro/escuro e 1280×800/1920×1080 | Sem erro fatal; reprovação, motivo final e ação de refazer acessíveis; consulta preserva registros e aprovações históricas gravadas | — | ⏳ pendente (Windows real) |
 | T17.25 | Microestrutura e comparação com contexto completo/parcial | Abrir quatro gráficos e comparar modos, trocar seleção durante cálculo e redimensionar em claro/escuro | População explícita, dados completos preenchidos, parcial com ação útil, identidades/contagens coerentes e figuras percorríveis | — | ⏳ pendente (Windows real com MT5); CI Windows é distinto |
 | T17.26 | Ativos e sinal nos cards | Conferir último backtest por ativo, negativo, zero e sem resultado; alternar tema e escala, clicar no ícone | Contagens distintas, setas acompanhadas de texto e seleção funcionando sem promover aprovação | — | ⏳ pendente (Windows real) |
+| T17.27 | Layout no DPI nativo | Alternar gráficos/tema e redimensionar nas duas resoluções/DPI; reabrir página após ocultar | Legendas completas fora dos dados e altura estável pela fonte, sem crescimento acumulado | — | ⏳ pendente (Windows físico com MT5); CI é distinto |
 | Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
 
 A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
