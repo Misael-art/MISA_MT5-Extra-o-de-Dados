@@ -38,3 +38,5 @@ Uma primeira cópia privada da importação de manutenção gerou curva em forma
 ## Refinamento observado na inspeção com dados completos
 
 Na primeira renderização funcional, a tabela exibiu três modos com 119 operações e os frames mantiveram todas as 119 identidades. Os quatro gráficos de microestrutura foram preenchidos e a cobertura explicitou as 161 operações antigas sem entrada. Entretanto, as duas figuras de execução ficaram comprimidas abaixo da tabela. Antes de implementar o refinamento, fica registrado: reutilizar o notebook de subvisões existente para **Resultados, Curvas e Horários**, mantendo seleção e modos acima. Testar e inspecionar área útil dos gráficos em ambas as resoluções; sem mudar os cálculos.
+
+A inspeção das capturas também mostrou margem excessiva da legenda após redimensionar: o layout matplotlib tinha sido calculado antes do tamanho final do canvas. Registrar antes da alteração: redesenhar o layout dos gráficos do Laboratório no Configure existente, com regressão de largura útil. A rolagem continua disponível em janelas pequenas.
