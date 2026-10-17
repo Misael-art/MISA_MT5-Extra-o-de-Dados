@@ -127,4 +127,7 @@ Telemetria sem atualização é desconhecida. A observação de posições é po
 e ativo: instâncias externas com os mesmos identificadores precisam ser evitadas.
 O observador não substitui Safety, e um teste isolado não prova rentabilidade.
 O gate REAL conserva bateria completa, teto e pelo menos sete dias acompanhados
-em demo, configuráveis em ROBOTS.min_demo_days. Não houve campanha financeira.
+em demo, configuráveis em ROBOTS.min_demo_days. A chave ROBOTS.allow_real,
+conferida pela auditoria, continua falsa por padrão e também bloqueia PLAY REAL;
+liberá-la exige decisão financeira explícita e não substitui consentimento por
+lançamento. A configuração do proprietário não foi liberada. Não houve campanha financeira.

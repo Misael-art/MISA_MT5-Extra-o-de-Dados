@@ -224,6 +224,8 @@ def play_issues(config, robot, symbol, timeframe, preset, account, db=None):
     if live.stop_active(config):
         issues.append("PARAR TUDO está ativo. Sua liberação exige decisão explícita.")
     if account and account.get("demo") is False:
+        if config.get("ROBOTS", "allow_real", fallback="false").strip().lower() != "true":
+            issues.append("Conta REAL está bloqueada em ROBOTS.allow_real. Sua liberação na configuração exige decisão financeira explícita; as confirmações por lançamento continuam obrigatórias.")
         if not checks or not checks[0].get("allows_real") or checks[0].get("symbol") != symbol or checks[0].get("timeframe") != timeframe:
             issues.append("Conta REAL exige bateria completa aprovada.")
         maximum = config.getfloat("ROBOTS", "max_real_risk_pct", fallback=1.0)

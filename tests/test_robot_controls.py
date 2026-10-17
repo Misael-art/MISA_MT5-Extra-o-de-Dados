@@ -226,7 +226,13 @@ def test_demo_negative_can_proceed_after_static_safety_but_real_keeps_operationa
     identity = controls.context_digest(robot, "EURUSD", "H1", "A", {}, None)
     monkeypatch.setattr(store, "load_records", lambda db: {robot.key: {"meta": {"demo_sessions": [
         {"identity": identity, "verified_demo": True, "observed_seconds": 7*86400}]}}})
+    issues = controls.play_issues(config, robot, "EURUSD", "H1", "A", real, db=object())
+    assert len(issues) == 1 and "allow_real" in issues[0]  # ausência da chave também bloqueia, mesmo com evidência completa
+    config["ROBOTS"]["allow_real"] = "true"
     assert controls.play_issues(config, robot, "EURUSD", "H1", "A", real, db=object()) == []
+    config["ROBOTS"]["allow_real"] = "false"
+    assert any("allow_real" in x for x in controls.play_issues(config, robot, "EURUSD", "H1", "A", real, db=object()))
+    config["ROBOTS"]["allow_real"] = "true"
     robot.presets["A"]["Risk"] = ".3"
     assert controls.play_issues(config, robot, "EURUSD", "H1", "A", real, db=object())
 
