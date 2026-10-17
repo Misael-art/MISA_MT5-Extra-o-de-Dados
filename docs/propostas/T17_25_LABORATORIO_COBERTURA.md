@@ -20,11 +20,11 @@ Pedido de 2026-10-17: gráficos de microestrutura vazios e comparação sem resu
 
 ## Aceite
 
-- [ ] Contexto se atualiza quando chegam barras ou ocorre correção dentro da mesma faixa; segunda consulta sem alteração usa cache.
-- [ ] Run antigo não gera `KeyError`, tabela vazia sem explicação ou zeros apresentados como resultado calculado.
-- [ ] Operações simultâneas, aproximadas e exclusões preservam a identidade original e a concordância entre tabela e curvas.
-- [ ] Trocar run/filtro durante cálculo não mantém resultados anteriores ou aceita callback antigo.
-- [ ] Os quatro gráficos usam operações com contexto disponível, com população e limites explícitos.
+- [x] Contexto se atualiza quando chegam barras ou ocorre correção dentro da mesma faixa; segunda consulta sem alteração usa cache.
+- [x] Run antigo não gera `KeyError`, tabela vazia sem explicação ou zeros apresentados como resultado calculado.
+- [x] Operações simultâneas, aproximadas e exclusões preservam a identidade original e a concordância entre tabela e curvas.
+- [x] Trocar run/filtro durante cálculo não mantém resultados anteriores ou aceita callback antigo.
+- [x] Os quatro gráficos usam operações com contexto disponível, com população e limites explícitos.
 - [ ] Testes novos, suíte completa, doctor, CI exato, revisão e integração documentados no PR.
 - [ ] Lançador principal com base real e DEMO existente: gráficos e comparação exercitados; registros/configuração e terminal preservados.
 
@@ -40,3 +40,12 @@ Uma primeira cópia privada da importação de manutenção gerou curva em forma
 Na primeira renderização funcional, a tabela exibiu três modos com 119 operações e os frames mantiveram todas as 119 identidades. Os quatro gráficos de microestrutura foram preenchidos e a cobertura explicitou as 161 operações antigas sem entrada. Entretanto, as duas figuras de execução ficaram comprimidas abaixo da tabela. Antes de implementar o refinamento, fica registrado: reutilizar o notebook de subvisões existente para **Resultados, Curvas e Horários**, mantendo seleção e modos acima. Testar e inspecionar área útil dos gráficos em ambas as resoluções; sem mudar os cálculos.
 
 A inspeção das capturas também mostrou margem excessiva da legenda após redimensionar: o layout matplotlib tinha sido calculado antes do tamanho final do canvas. Registrar antes da alteração: redesenhar o layout dos gráficos do Laboratório no Configure existente, com regressão de largura útil. A rolagem continua disponível em janelas pequenas.
+
+
+## Verificação da implementação
+
+35 testes iniciais do núcleo e 55 testes focados passaram; as regressões adicionais da área útil, das contagens reais do mapa e do resize também passaram. A inspeção final da aplicação sobre cópia consistente da base concluiu **28 casos** (quatro gráficos de microestrutura e três visões de execução, dois temas e 1280×800/1920×1080), saída 0. No Donchian: 119 operações com contexto, entre 280 no recorte; três modos com 119 resultados/identidades cada. O teste antigo de 81 operações voltou com motivo e ação, sem `seq`. A altura dos gráficos é percorrível pela rolagem em janelas pequenas.
+
+Na cópia, as 12 baterias, 271 execuções e 39.261 linhas originais do livro permaneceram idênticas. Somente as cinco novas execuções verificadas e suas 769 operações foram acrescidas. O importador de manutenção usa parâmetros/intervalo/timeframe do relatório/INI preservados, hash dos artefatos e curva no contrato do produtor existente. A tentativa EMA com estado FAILED não entrou.
+
+Nenhum teste foi removido ou desativado. Nenhum script shell ou dependência mudou. Suíte final, CI no SHA exato, revisão própria, confirmação remota e teste instalado com a DEMO são gates rastreados no PR. As capturas privadas offline complementam esse teste instalado. A comparação mantém as hipóteses existentes do motor sobre barras; não demonstra paridade do PnL com o Tester nativo.

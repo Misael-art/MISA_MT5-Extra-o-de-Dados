@@ -61,6 +61,7 @@ class LaboratoryPanel:
         self.view = None           # com os filtros de tela
         self.loaded = False
         self._request = 0
+        self._compare_request = 0
         self._charts = {}
         self._chart_panels = {}
         self._analysis_notebooks = {}
@@ -235,6 +236,7 @@ class LaboratoryPanel:
                        padx=SPACING["xs"], pady=SPACING["xs"])
             chart = charts.Chart(panel.chart_area, self.theme, height)
             chart.widget.pack(fill=tk.BOTH, expand=True)
+            chart.widget.bind("<Configure>", lambda _event, target=chart: target.draw(), add="+")
             self._chart_panels[key] = panel
             chart_parent.rowconfigure(row, weight=1)
             chart_parent.columnconfigure(col, weight=1)
@@ -352,13 +354,18 @@ class LaboratoryPanel:
             view = view[pd.to_numeric(view["event_impact"], errors="coerce").fillna(0) < 3]
         self.view = view
         self._drawn = set()
-        self.mode_results, self.mode_metrics, self.evaluation = {}, {}, None
+        self._clear_execution()
+        self.evaluation = None
         self._show_kpis()
         self.render_visible()
 
     # --- desenho -----------------------------------------------------------------------
 
     def _empty(self, text):
+        self._clear_execution()
+        self._run_labels = {}
+        self.run_combo.configure(values=())
+        self.run_var.set("")
         for key in ("n", "win_rate", "profit_factor", "expectancy", "max_drawdown_pct"):
             self.metric_cards[key].set_value("—", "", style="Value.TLabel")
         self.context_details.pack_forget()
@@ -675,59 +682,76 @@ class LaboratoryPanel:
         from mt5_extracao.trade_analytics import aggregate
         view, tab, cfg = self.view, "Microestrutura", self._config()
         complete = view[view["time_ref"] == "entrada"]
-        if complete.empty or pd.to_numeric(complete["atr_pct"], errors="coerce").isna().all():
-            missing = ("Sem horário de entrada ou sem barras na base para estas operações: a microestrutura precisa "
-                       "dos dois (extraia o ativo no timeframe do backtest).")
-            for key, view_key, title in (("m_scatter", "scatter", "Volatilidade × resultado"),
-                                         ("m_vol", "volatility", "Faixa de volatilidade"),
-                                         ("m_volume", "volume", "Volume na entrada"),
-                                         ("m_heat", "heat", "Volatilidade × horário")):
-                chart = self._chart(tab, key, 0, 0, height=4.0,
-                                    parent=self._analysis_view(tab, view_key, title))
-                chart.message(missing)
-            return
-        chart = self._chart(tab, "m_scatter", 0, 0, height=4.0,
-                            parent=self._analysis_view(tab, "scatter", "Volatilidade × resultado"))
-        chart.clear()
-        charts.scatter_win_loss(chart, chart.figure.add_subplot(111), pd.to_numeric(complete["atr_pct"]) * 100,
-                                complete["pnl"], "Volatilidade na entrada (ATR %) × resultado", "ATR % do preço")
-        chart.figure.tight_layout()
-        chart.draw()
-        order = {"baixa": 0, "média": 1, "alta": 2}
-        vol = aggregate.by_dimension(complete, ["volatility_bucket"], cfg, ci=False)
-        vol = vol.assign(o=vol["volatility_bucket"].map(order)).sort_values("o")
-        chart = self._chart(tab, "m_vol", 0, 0, height=4.0,
-                            parent=self._analysis_view(tab, "volatility", "Faixa de volatilidade"))
-        chart.clear()
-        charts.bars(chart, chart.figure.add_subplot(111),
-                    [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto" for b, w in zip(vol["volatility_bucket"], vol["win_rate"])],
-                    vol["expectancy"], vol["n"], vol["small"], "Faixa de volatilidade (percentil nas 250 barras anteriores)")
-        self._sample_notice(chart, vol["small"])
-        chart.figure.tight_layout()
-        chart.draw()
-        ranked = complete.assign(volume_band=pd.cut(pd.to_numeric(complete["volume_rank"], errors="coerce"),
+
+        def plot(key, view_key, title, valid, description, render):
+            data = complete.loc[valid]
+            chart = self._chart(tab, key, 0, 0, height=4.0,
+                                parent=self._analysis_view(tab, view_key, title))
+            chart.clear()
+            self._sample_notice(chart, None)
+            if data.empty:
+                chart.message("Microestrutura indisponível neste recorte.")
+                action = ("Refaça o backtest com exportação completa; o histórico antigo só permite análise pela saída."
+                          if complete.empty else
+                          "Extraia o ativo no timeframe do backtest e atualize; são necessárias barras anteriores à entrada.")
+            else:
+                render(chart, chart.figure.add_subplot(111), data)
+                chart.figure.tight_layout()
+                chart.draw()
+                action = "Contexto usa apenas barras anteriores à entrada."
+            panel = self._chart_panels[key]
+            sample = panel.notice.message.cget("text") if panel.notice is not None else ""
+            population = (f"{len(data)} de {len(view)} operações com {description}; "
+                          f"{len(view) - len(complete)} sem horário de entrada. ")
+            panel.set_notice(population + action + (" " + sample if sample else ""),
+                             kind="warning" if data.empty else "info", theme=self.theme)
+            panel.notice.message.bind("<Configure>", lambda event, label=panel.notice.message:
+                                      label.configure(wraplength=max(180, event.width)))
+
+        def scatter(chart, ax, data):
+            charts.scatter_win_loss(chart, ax, pd.to_numeric(data["atr_pct"]) * 100, data["pnl"],
+                                    "Volatilidade na entrada (ATR %) × resultado", "ATR % do preço")
+
+        def volatility(chart, ax, data):
+            order = {"baixa": 0, "média": 1, "alta": 2}
+            table = aggregate.by_dimension(data, ["volatility_bucket"], cfg, ci=False)
+            table = table.assign(o=table["volatility_bucket"].map(order)).sort_values("o")
+            charts.bars(chart, ax,
+                        [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto"
+                         for b, w in zip(table["volatility_bucket"], table["win_rate"])],
+                        table["expectancy"], table["n"], table["small"],
+                        "Faixa de volatilidade (percentil nas 250 barras anteriores)")
+            self._sample_notice(chart, table["small"])
+
+        def volume(chart, ax, data):
+            ranked = data.assign(volume_band=pd.cut(pd.to_numeric(data["volume_rank"], errors="coerce"),
                                                     [0, 0.25, 0.5, 0.75, 1.0], include_lowest=True,
                                                     labels=["baixo", "médio-baixo", "médio-alto", "alto"]))
-        volume = aggregate.by_dimension(ranked.dropna(subset=["volume_band"]).assign(
-            volume_band=lambda d: d["volume_band"].astype(str)), ["volume_band"], cfg, ci=False)
-        order = {"baixo": 0, "médio-baixo": 1, "médio-alto": 2, "alto": 3}
-        volume = volume.assign(o=volume["volume_band"].map(order)).sort_values("o")
-        chart = self._chart(tab, "m_volume", 0, 0, height=4.0,
-                            parent=self._analysis_view(tab, "volume", "Volume na entrada"))
-        chart.clear()
-        charts.bars(chart, chart.figure.add_subplot(111),
-                    [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto" for b, w in zip(volume["volume_band"], volume["win_rate"])],
-                    volume["expectancy"], volume["n"], volume["small"], "Volume na entrada (quartil nas 20 barras anteriores)")
-        self._sample_notice(chart, volume["small"])
-        chart.figure.tight_layout()
-        chart.draw()
-        chart = self._chart(tab, "m_heat", 0, 0, height=4.0,
-                            parent=self._analysis_view(tab, "heat", "Volatilidade × horário"))
-        chart.clear()
-        self._heat(chart, chart.figure.add_subplot(111), complete, "volatility_bucket", "time_bucket",
-                   "Volatilidade × faixa horária", row_order=("baixa", "média", "alta"))
-        chart.figure.tight_layout()
-        chart.draw()
+            table = aggregate.by_dimension(ranked.assign(volume_band=lambda d: d["volume_band"].astype(str)),
+                                           ["volume_band"], cfg, ci=False)
+            order = {"baixo": 0, "médio-baixo": 1, "médio-alto": 2, "alto": 3}
+            table = table.assign(o=table["volume_band"].map(order)).sort_values("o")
+            charts.bars(chart, ax,
+                        [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto"
+                         for b, w in zip(table["volume_band"], table["win_rate"])],
+                        table["expectancy"], table["n"], table["small"],
+                        "Volume na entrada (quartil nas 20 barras anteriores)")
+            self._sample_notice(chart, table["small"])
+
+        atr = pd.to_numeric(complete["atr_pct"], errors="coerce")
+        rank = pd.to_numeric(complete["volume_rank"], errors="coerce")
+        bands = complete["volatility_bucket"].isin(("baixa", "média", "alta"))
+        valid_pnl = np.isfinite(pd.to_numeric(complete["pnl"], errors="coerce"))
+        plot("m_scatter", "scatter", "Volatilidade × resultado", np.isfinite(atr) & valid_pnl,
+             "ATR e resultado disponíveis", scatter)
+        plot("m_vol", "volatility", "Faixa de volatilidade", bands & valid_pnl,
+             "faixa de volatilidade e resultado disponíveis", volatility)
+        plot("m_volume", "volume", "Volume na entrada", rank.between(0, 1) & valid_pnl,
+             "volume relativo e resultado disponíveis", volume)
+        plot("m_heat", "heat", "Volatilidade × horário", bands & complete["time_bucket"].notna() & valid_pnl,
+             "volatilidade, horário e resultado disponíveis",
+             lambda chart, ax, data: self._heat(chart, ax, data, "volatility_bucket", "time_bucket",
+                                                "Volatilidade × faixa horária", row_order=("baixa", "média", "alta")))
 
     def _compare(self):
         from mt5_extracao.trade_analytics import aggregate
@@ -785,7 +809,7 @@ class LaboratoryPanel:
         ttk.Label(bar, text="Run:", style="Surface.TLabel").pack(side=tk.LEFT)
         self.run_var = tk.StringVar()
         self.run_combo = ttk.Combobox(bar, textvariable=self.run_var, state="readonly", width=38)
-        self.run_combo.pack(side=tk.LEFT, padx=(6, 12))
+        self.run_combo.pack(side=tk.LEFT, padx=(6, 12), fill=tk.X, expand=True)
         self.mode_vars = {}
         self.modes_box = ttk.Frame(tab, style="Surface.TFrame")      # linha própria: quebra quando não cabe
         self.modes_box.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 4))
@@ -797,29 +821,57 @@ class LaboratoryPanel:
         self.exec_note = ttk.Label(tab, text="Escolha um run e os modos e clique em \"Comparar modos\".",
                                    style="Muted.TLabel", wraplength=1000, justify=tk.LEFT)
         self.exec_note.grid(row=2, column=0, columnspan=2, sticky="w")
+        notebook = ttk.Notebook(tab, style="Compact.TNotebook")
+        notebook.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(SPACING["sm"], 0))
+        self._analysis_notebooks["Execução"] = notebook
+        self._analysis_views["Execução"] = {}
+        tab.rowconfigure(3, weight=1)
+        results = self._analysis_view("Execução", "results", "Resultados")
+        results.rowconfigure(0, weight=1)
+        results.columnconfigure(0, weight=1)
         self.mode_panel = TablePanel(
-            tab, "Resultados por modo",
+            results, "Resultados por modo",
             ("Modo", "Operações", "Acerto", "Fator de lucro", "Payoff", "Expectativa", "Queda máxima",
              "Melhor faixa", "Observação"), (210, 80, 70, 100, 70, 100, 100, 100, 260),
             ("w", "e", "e", "e", "e", "e", "e", "w", "w"), height=6, padding=SPACING["xs"])
-        self.mode_panel.grid(row=3, column=0, columnspan=2, sticky="nsew", pady=(SPACING["sm"], 0))
+        self.mode_panel.grid(row=0, column=0, sticky="nsew")
         self.mode_tree = self.mode_panel.tree
         self.mode_tree.tag_configure("study", foreground=self.theme.colors["warn"])
         tab.columnconfigure(0, weight=1)
         tab.columnconfigure(1, weight=1)
+        self.run_var.trace_add("write", self._clear_execution)
+
+    def _clear_execution(self, *_args):
+        self._compare_request += 1
+        self.mode_results, self.mode_metrics = {}, {}
+        self._mode_lab = None
+        self.mode_tree.delete(*self.mode_tree.get_children())
+        self.compare_button.state(["!disabled"])
+        self.exec_note.configure(text="Escolha um run com entradas disponíveis e clique em Comparar modos.")
+        for key in ("e_curves", "e_heat"):
+            if key in self._charts:
+                self._charts[key].message("Compare os modos para esta seleção.")
+                self._chart_panels[key].set_notice(None, theme=self.theme)
 
     def _fill_runs(self):
+        previous = getattr(self, "_run_labels", {}).get(self.run_var.get())
         view = self.view
-        if view is None or view.empty:
-            return
-        runs = view.groupby("run_id").agg(symbol=("symbol", "first"), timeframe=("timeframe", "first"),
-                                          robot=("robot_key", "first"), n=("pnl", "size"),
-                                          complete=("completeness", lambda c: (c == "completo").all()))
-        self._run_labels = {f"{r.robot} · {r.symbol} {r.timeframe} · {r.n} op." + ("" if r.complete else " (parcial)"):
-                            run_id for run_id, r in runs.iterrows()}
+        self._run_labels = {}
+        if view is not None and not view.empty:
+            runs = view.groupby("run_id").agg(symbol=("symbol", "first"), timeframe=("timeframe", "first"),
+                                              robot=("robot_key", "first"), n=("pnl", "size"),
+                                              complete=("completeness", lambda c: (c == "completo").all()))
+            for run_id, row in runs.sort_values("complete", ascending=False, kind="stable").iterrows():
+                label = (f"{row.robot} · {row.symbol} {row.timeframe} · {row.n} op."
+                         + ("" if row.complete else " (parcial)") + f" · {run_id[-8:]}")
+                if label in self._run_labels:
+                    label += f" · {run_id}"
+                self._run_labels[label] = run_id
         self.run_combo.configure(values=list(self._run_labels))
-        if self.run_var.get() not in self._run_labels and self._run_labels:
-            self.run_var.set(next(iter(self._run_labels)))
+        target = next((label for label, run_id in self._run_labels.items() if run_id == previous),
+                      next(iter(self._run_labels), ""))
+        if self.run_var.get() != target:
+            self.run_var.set(target)
 
     def _fill_modes(self, robot=None):
         from mt5_extracao.trade_analytics.execution import modes
@@ -836,7 +888,8 @@ class LaboratoryPanel:
                     value=key in ("ponto_fixo", "trailing_atr", "gradiente_dinamico"))
             var = self._all_mode_vars[key]
             self.mode_vars[key] = var
-            w = ttk.Checkbutton(self.modes_box, text=mode.name.split(" (")[0], variable=var)
+            w = ttk.Checkbutton(self.modes_box, text=mode.name.split(" (")[0], variable=var,
+                                command=self._clear_execution)
             w.grid(row=k // per_row, column=k % per_row, sticky="w", padx=(0, 10))
             Tooltip(w, mode.help, self.theme)
 
@@ -851,6 +904,11 @@ class LaboratoryPanel:
         db, config = self._db(), self._config()
         run_id = getattr(self, "_run_labels", {}).get(self.run_var.get())
         wanted = [k for k, v in self.mode_vars.items() if v.get()]
+        self._clear_execution()
+        request = self._compare_request
+        if self.view is None or self.view.empty:
+            self.exec_note.configure(text="Nenhuma operação nesta seleção. Atualize ou escolha outro período.")
+            return
         if db is None or not run_id or not wanted:
             self.exec_note.config(text="Escolha um run na lista." if not run_id else "Marque ao menos um modo.")
             return
@@ -871,21 +929,12 @@ class LaboratoryPanel:
             except Exception:
                 robot = None
             table = runner.compare(db, config, run_id, wanted, robot=robot)
-            frames = {}
-            entries = base[["seq", "entry_time"]].dropna().set_index("entry_time")["seq"]
-            for key, item in table.items():
-                if item["result"] is not None:
-                    rows = [{"run_id": run_id, "seq": entries.get(t.entry_time), "pnl": t.pnl,
-                             "exit_time": t.exit_time, "entry_time": t.entry_time} for t in item["result"].trades]
-                else:
-                    seq = item["sequence"]["trades"]
-                    rows = [{"run_id": run_id, "seq": entries.get(t.entry_time), "pnl": t.pnl,
-                             "exit_time": t.exit_time, "entry_time": t.entry_time}
-                            for t in seq[~seq["skipped"]].itertuples()]
-                frames[key] = pd.DataFrame(rows).dropna(subset=["seq"])
+            frames = {key: item["frame"] for key, item in table.items()}
             return robot, table, frames
 
         def done(result, error):
+            if request != self._compare_request:
+                return
             self.compare_button.state(["!disabled"])
             if error is not None:
                 self.exec_note.config(text=f"Não foi possível re-simular: {error}")
@@ -898,11 +947,13 @@ class LaboratoryPanel:
         self.ui.run_bg(work, done)
 
     def _show_modes(self):
+        from mt5_extracao.trade_analytics import aggregate
         tree = self.mode_tree
+        tree.tag_configure("study", foreground=self.theme.colors["warn"])
         tree.delete(*tree.get_children())
         lab = getattr(self, "_mode_lab", None)
         buckets = lab["time_bucket"] if lab is not None and "time_bucket" in lab else None
-        curves, heat = {}, {}
+        curves, hourly = {}, []
         for key, item in self.mode_metrics.items():
             m, frame = item["metrics"], self.mode_results.get(key)
             best = "—"
@@ -910,7 +961,8 @@ class LaboratoryPanel:
                 rows_key = frame["seq"].map(buckets)
                 if rows_key.nunique() > 16:            # muitas faixas: agrupa por hora para o heatmap caber
                     rows_key = rows_key.str[:2] + "h"
-                heat[SHORT_MODES.get(key, key)] = frame.assign(b=rows_key).groupby("b")["pnl"].mean()
+                hourly.append(frame.assign(time_bucket=rows_key, mode=SHORT_MODES.get(key, key)).dropna(
+                    subset=["time_bucket"]))
                 by = frame.assign(b=frame["seq"].map(buckets)).groupby("b")["pnl"]
                 counts = by.size()
                 ok = by.mean()[counts >= 5]
@@ -919,6 +971,12 @@ class LaboratoryPanel:
                 curves[item["name"].split(" (")[0]] = pd.Series(ordered["pnl"].cumsum().values,
                                                                 index=pd.to_datetime(ordered["exit_time"]))
             note = []
+            simulated = item.get("result")
+            if simulated is not None:
+                if simulated.skipped:
+                    note.append(f"{simulated.skipped} operações excluídas por dados indisponíveis")
+                if simulated.approximate:
+                    note.append(f"{simulated.approximate} entradas sem barra no horário exato")
             if item.get("study_only"):
                 note.append("só estudo (a bateria reprova para conta real)")
                 trig = (item.get("sequence") or {}).get("triggers", {})
@@ -932,18 +990,23 @@ class LaboratoryPanel:
                                             charts.money(m["expectancy"]), fmt_num(m["max_drawdown_pct"] * 100, 1, "%"),
                                             best, "; ".join(note)),
                         tags=("study",) if item.get("study_only") else ())
-        chart = self._chart("Execução", "e_curves", 4, 0, height=2.8)
+        chart = self._chart("Execução", "e_curves", 0, 0, height=3.5,
+                            parent=self._analysis_view("Execução", "curves", "Curvas"))
         chart.clear()
         charts.overlay(chart, chart.figure.add_subplot(111), curves, "Mesmas entradas, modos diferentes: resultado acumulado")
         chart.draw()
-        chart = self._chart("Execução", "e_heat", 4, 1, height=2.8)
+        chart = self._chart("Execução", "e_heat", 0, 0, height=3.5,
+                            parent=self._analysis_view("Execução", "hours", "Horários"))
         chart.clear()
-        if heat:
-            value = pd.DataFrame(heat).sort_index()
-            n = value.notna().astype(int) * 0
-            charts.heatmap(chart, chart.figure.add_subplot(111), value, n, value.isna(),
+        timed = pd.concat(hourly, ignore_index=True) if hourly else pd.DataFrame()
+        if not timed.empty:
+            table = aggregate.crosstab(timed, "time_bucket", "mode", config=self._config())
+            charts.heatmap(chart, chart.figure.add_subplot(111), table["value"], table["n"], table["small"],
                            "Expectativa: faixa horária × modo", show_counts=False)
+            self._sample_notice(chart, table["small"])
             chart.figure.tight_layout()
+        else:
+            chart.message("Sem faixas horárias disponíveis para estas operações.")
         chart.draw()
         base = self.mode_metrics.get("ponto_fixo", {}).get("metrics")
         if base:

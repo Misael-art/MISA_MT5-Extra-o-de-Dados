@@ -186,10 +186,36 @@ def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
     panel.tabs.select(4)
     panel.pump(lambda: "Execução" in panel._drawn, 10)
     assert panel.run_var.get() and "martingale" not in panel.mode_vars          # Python: sem martingale
+    from mt5_extracao.ui import charts as lab_charts
+    actual_heatmap = lab_charts.heatmap
+    matrices = []
+
+    def record_heatmap(chart, ax, value, n, small, title, *args, **kwargs):
+        if title == "Expectativa: faixa horária × modo":
+            matrices.append(n.copy())
+        return actual_heatmap(chart, ax, value, n, small, title, *args, **kwargs)
+
+    monkeypatch.setattr(lab_charts, "heatmap", record_heatmap)
     panel.compare_modes()
     panel.pump(lambda: bool(panel.mode_metrics), 60)
     assert {"ponto_fixo", "trailing_atr"} <= set(panel.mode_metrics)
     assert len(panel.mode_tree.get_children()) == len(panel.mode_metrics)
+    assert matrices and all(n == panel.mode_metrics["ponto_fixo"]["metrics"]["n"]
+                            for n in matrices[-1].sum())
+    execution = panel._analysis_notebooks["Execução"]
+    assert [execution.tab(i, "text") for i in range(3)] == ["Resultados", "Curvas", "Horários"]
+    panel.frame.master.pack_configure(fill=tk.BOTH, expand=True)
+    panel.ui.root.geometry("1280x800")
+    for index, key in ((1, "e_curves"), (2, "e_heat")):
+        execution.select(index)
+        panel.pump(lambda: panel._charts[key].widget.winfo_ismapped() and
+                   panel._charts[key].widget.winfo_height() >= 200)
+        assert panel._charts[key].widget.winfo_height() >= 200
+    execution.select(1)
+    panel.ui.root.geometry("1920x1080")
+    panel.pump(lambda: panel._charts["e_curves"].widget.winfo_width() > 1400)
+    curve = panel._charts["e_curves"]
+    assert curve.figure.axes[0].bbox.width > curve.widget.winfo_width() * .45
     panel.tabs.select(5)
     panel.find_insights()
     panel.pump(lambda: "candidato" in panel.insight_note.cget("text"), 60)
@@ -383,3 +409,64 @@ def test_population_details_stay_collapsed_refresh_and_hide_for_synthetic_relati
     panel._show_kpis()
     assert panel.population_context is None and not panel.context_details.winfo_manager()
     pd.testing.assert_frame_equal(book(), original)
+
+
+
+def test_legacy_comparison_explains_unavailability_without_seq_error(panel):
+    ledger.save_trades(panel.db, "old", [{"exit_time": "2025-01-06 10:00", "pnl": -2.0}],
+                       robot_key="mql5:legacy", symbol="X", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel.tabs.select(panel.tab_frames["Execução"])
+    panel.pump(lambda: "Execução" in panel._drawn)
+    panel.compare_button.invoke()
+    panel.pump(lambda: not panel.compare_button.instate(["disabled"]))
+    assert "horário de entrada" in panel.exec_note.cget("text")
+    assert "refaça o backtest" in panel.exec_note.cget("text")
+    assert not panel.mode_metrics and not panel.mode_tree.get_children()
+
+
+def test_execution_choices_are_distinct_prefer_complete_and_ignore_stale_callback(panel, monkeypatch):
+    from tests.market_data import random_walk
+    bars = random_walk(50, seed=4, vol=.2, freq="5min")
+    panel.db.save_ohlcv_data("X", "5 minutos", bars)
+    full = {"entry_time": bars.time.iloc[30], "exit_time": bars.time.iloc[35], "direction": 1,
+            "entry_price": 100, "stop_price": 1, "volume": 1, "pnl": 5, "exit_reason": "fim dos dados"}
+    for run_id, rows in (("a-old", [{"exit_time": bars.time.iloc[35], "pnl": 2}]),
+                          ("b-old", [{"exit_time": bars.time.iloc[35], "pnl": 2}]), ("z-full", [full])):
+        ledger.save_trades(panel.db, run_id, rows, robot_key="mql5:r", symbol="X", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel.tabs.select(panel.tab_frames["Execução"])
+    panel.pump(lambda: "Execução" in panel._drawn)
+    assert len(panel._run_labels) == 3
+    assert panel._run_labels[panel.run_var.get()] == "z-full"
+    pending = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: pending.append((work, done)))
+    panel.compare_button.invoke()
+    panel.run_var.set(next(k for k, v in panel._run_labels.items() if v == "a-old"))
+    work, done = pending[0]
+    done(work(), None)
+    assert not panel.mode_metrics and not panel.mode_tree.get_children()
+    assert not panel.compare_button.instate(["disabled"])
+    assert "Escolha um run" in panel.exec_note.cget("text")
+
+
+def test_microstructure_reports_population_and_handles_each_missing_feature(panel):
+    ledger.save_trades(panel.db, "old", [{"exit_time": "2025-01-06 10:00", "pnl": -2.0}],
+                       robot_key="mql5:legacy", symbol="X", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel._micro()
+    for key in ("m_scatter", "m_vol", "m_volume", "m_heat"):
+        message = panel._chart_panels[key].notice.message.cget("text")
+        assert "0 de 1 operações" in message and "Refaça o backtest" in message
+    panel.view.loc[:, "time_ref"] = "entrada"
+    panel.view.loc[:, "atr_pct"] = .01
+    panel.view.loc[:, "volume_rank"] = .5
+    panel.view.loc[:, "volatility_bucket"] = None
+    panel._micro()
+    assert "1 de 1 operações" in panel._chart_panels["m_scatter"].notice.message.cget("text")
+    assert "1 de 1 operações" in panel._chart_panels["m_volume"].notice.message.cget("text")
+    assert "0 de 1 operações" in panel._chart_panels["m_vol"].notice.message.cget("text")
+    assert "0 de 1 operações" in panel._chart_panels["m_heat"].notice.message.cget("text")

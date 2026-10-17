@@ -31,6 +31,9 @@ def inputs(db, config, run_id: str) -> dict:
     trades = ledger.load(db, run_id=run_id)
     if trades.empty:
         raise ValueError(f"Run {run_id} não está no livro de operações.")
+    if trades["entry_time"].isna().all():
+        raise ValueError(f"Nenhuma das {len(trades)} operações tem horário de entrada. Este run antigo só permite "
+                         "análise pela saída. Escolha um run completo ou refaça o backtest com exportação completa.")
     first = trades.iloc[0]
     tf = timeframes.parse(first["timeframe"]) if first["timeframe"] else None
     if tf is None:
@@ -64,6 +67,15 @@ def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = No
     return result
 
 
+def _frame(result):
+    """Uma linha por saída, identificada pelo seq do livro (nunca pelo horário arredondado)."""
+    import pandas as pd
+    if not result.trades:
+        raise ValueError(f"Nenhuma operação pôde ser re-simulada ({result.skipped} excluídas). Confira entrada, "
+                         "direção, preço, stop, volume e cobertura das barras; refaça o backtest se faltarem dados.")
+    return pd.DataFrame([dict(vars(trade), seq=seq) for trade, seq in zip(result.trades, result.source_seqs)])
+
+
 def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] = None, save: bool = False,
             robot=None, preset: Optional[str] = None) -> dict:
     """
@@ -71,7 +83,6 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
     `params` = {modo: {parâmetro: valor}}. As barras e custos são lidos uma vez só. Martingale e anti-martingale só
     entram com `robot` que os suporte (as travas vêm dele); pedidos sem suporte são recusados com ValueError.
     """
-    import pandas as pd
     from mt5_extracao.trade_analytics import stats
     from mt5_extracao.trade_analytics.execution import modes as registry, sizing
     data = inputs(db, config, run_id)
@@ -90,14 +101,14 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
         values = dict(mode.params, **(params or {}).get(key, {}))
         if key in registry.SEQUENCE:
             base_result = base_result or resimulate(db, config, run_id, base, "ponto_fixo", data=data)
-            frame = pd.DataFrame([vars(t) for t in base_result.trades])
+            frame = _frame(base_result)
             support = sizing.martingale_support(robot, preset)
             safety = sizing.robot_safety(robot, preset, config, data["spec"])
             safety.max_levels = int(values.get("niveis", safety.max_levels))
             seq = sizing.apply(frame, initial, support["multiplier"], safety, anti=registry.SEQUENCE[key])
             rows = seq["trades"][~seq["trades"]["skipped"]]
             out[key] = {"result": None, "name": mode.name, "study_only": True, "sequence": seq,
-                        "safety_notes": safety.notes,
+                        "safety_notes": safety.notes, "frame": rows[["seq", "pnl", "entry_time", "exit_time"]].assign(run_id=run_id),
                         "metrics": stats.metrics(rows["pnl"], initial,
                                                  rows["r_multiple"] * rows["volume"] / frame.loc[rows.index, "volume"])}
             if save:
@@ -108,8 +119,10 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
         result = resimulate(db, config, run_id, policy, key, save=save, data=data)
         if key == "ponto_fixo":
             base_result = result
+        frame = _frame(result)
         pnl = [t.pnl for t in result.trades]
         out[key] = {"result": result, "name": mode.name, "study_only": mode.study_only,
                     "metrics": stats.metrics(pnl, initial, [t.r_multiple for t in result.trades]),
-                    "adds": result.adds, "capped": result.capped, "max_volume": result.max_volume}
+                    "adds": result.adds, "capped": result.capped, "max_volume": result.max_volume,
+                    "frame": frame[["seq", "pnl", "entry_time", "exit_time"]].assign(run_id=run_id)}
     return out

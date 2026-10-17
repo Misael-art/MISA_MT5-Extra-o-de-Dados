@@ -16,6 +16,7 @@ from typing import Optional
 import pandas as pd
 from sqlalchemy import inspect, text
 
+from mt5_extracao import timeframes
 from mt5_extracao.trade_analytics import enrich
 
 log = logging.getLogger(__name__)
@@ -41,13 +42,29 @@ def _calendar_part(db) -> str:
 
 
 def _trades_part(part: pd.DataFrame) -> str:
-    cols = [c for c in ("seq", "entry_time", "exit_time", "pnl", "entry_price", "symbol", "timeframe") if c in part]
+    cols = [c for c in ("seq", "entry_time", "exit_time", "pnl", "entry_price", "direction", "symbol", "timeframe") if c in part]
     return pd.util.hash_pandas_object(part[cols].astype(str), index=False).sum().__str__()
 
 
-def signature(db, config, part: pd.DataFrame, common: Optional[str] = None) -> str:
+def _bars_part(db, part: pd.DataFrame, known: dict) -> str:
+    """A chegada ou correção de barras muda o contexto, mesmo sem alterar operações."""
+    entries = part[part["entry_time"].notna()]
+    pieces = []
+    for symbol, timeframe in sorted(set(zip(entries["symbol"], entries["timeframe"])), key=str):
+        key = (symbol, timeframe)
+        if key not in known:
+            tf = timeframes.parse(timeframe) if timeframe else None
+            bars = db.load_ohlcv(symbol, tf.label) if symbol and tf else pd.DataFrame()
+            raw = pd.util.hash_pandas_object(bars, index=False).values.tobytes() if not bars.empty else b"sem-barras"
+            known[key] = hashlib.sha256(raw).hexdigest()
+        pieces.append(f"{key}:{known[key]}")
+    return "|".join(pieces)
+
+
+def signature(db, config, part: pd.DataFrame, common: Optional[str] = None, *, bars_cache=None) -> str:
     common = common if common is not None else f"{enrich.FEATURE_VERSION}|{_settings_part(config)}|{_calendar_part(db)}"
-    return hashlib.sha1(f"{common}|{_trades_part(part)}".encode("utf-8")).hexdigest()[:20]
+    bars = _bars_part(db, part, {} if bars_cache is None else bars_cache)
+    return hashlib.sha1(f"{common}|{_trades_part(part)}|{bars}".encode("utf-8")).hexdigest()[:20]
 
 
 def _ensure(db) -> None:
@@ -85,8 +102,9 @@ def features(db, config, trades: pd.DataFrame) -> pd.DataFrame:
     with db.engine.connect() as conn:
         known = dict(conn.execute(text(f"SELECT run_id, signature FROM {RUNS}")).fetchall())
     fresh, stale = [], []
+    bars_cache = {}
     for run_id, part in trades.groupby("run_id", sort=False):
-        sig = signature(db, config, part, common)
+        sig = signature(db, config, part, common, bars_cache=bars_cache)
         (fresh if known.get(run_id) == sig else stale).append((run_id, part, sig))
     parts = []
     if fresh:

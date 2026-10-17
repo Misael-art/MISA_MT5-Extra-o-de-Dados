@@ -16,7 +16,7 @@ torna o modo base idêntico ao backtest (paridade testada) e os outros modos com
     result = simulate(trades, bars, spec, cfg, policy, atr)    # trades = ledger.load(...) de um run
 """
 import math
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import List, Optional
 
 import numpy as np
@@ -71,6 +71,7 @@ class SimResult:
     adds: int = 0                 # entradas adicionais do gradiente
     capped: int = 0               # níveis não abertos por causa do teto de exposição
     max_volume: float = 0.0       # maior exposição (lotes somados) numa operação
+    source_seqs: List[Optional[int]] = field(default_factory=list)  # identidade original; horário pode ser aproximado
 
 
 def _bar_index(times: pd.Series, when) -> Optional[int]:
@@ -91,6 +92,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     last_of_day = np.append(days[1:] != days[:-1], True) if len(days) else np.array([], dtype=bool)
     atr_v = np.asarray(atr, dtype=float) if atr is not None else np.full(len(data), np.nan)
     out: List[Trade] = []
+    source_seqs = []
     skipped = approximate = adds = capped = 0
     stats_volume = [0.0]
     n = len(data)
@@ -191,6 +193,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                              r_multiple=float(pos["pnl"] / (risk_px * ppu * volume)), bars=i - i0 + 1,
                              exit_reason=EXIT_REASONS[reason], equity_before=float("nan"), stop_price=stop,
                              target_price=target))
+            source_seqs.append(getattr(t, "seq", None))
 
         closed = False
         stats_volume[0] = max(stats_volume[0], volume)
@@ -256,4 +259,4 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 break
         if not closed:
             close_all(n - 1, fill_exit(c[n - 1], spr_close[n - 1]), "end")
-    return SimResult(out, skipped, approximate, adds, capped, stats_volume[0])
+    return SimResult(out, skipped, approximate, adds, capped, stats_volume[0], source_seqs=source_seqs)
