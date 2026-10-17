@@ -58,5 +58,57 @@ Principal f49851f limpo. Instalador --yes --no-mt5 e requirements-dev em ambient
 à suíte 99fb95b: 1008 aprovados, 9 ignorados existentes, 3 avisos, saída0.
 Prova privada t1728-baseline-reuse.json. Não reutilizar após alterações.
 
-Implementação e aceites finais serão registrados aqui e no PR, com limitações
-declaradas; planejamento não equivale a validação.
+## Implementação
+
+Cards MQL5 têm seletores pesquisáveis, contexto visível, comandos responsivos,
+ícones desenhados e detalhes de risco/estágio recolhíveis. A revisão do PLAY
+mostra carteira, orçamento de risco e histórico exato. Consentimento expira em
+três minutos e é vinculado a código, valores, teste, identidade e exposição.
+Conta e fontes são relidas depois da compilação. Sem backtest correspondente,
+o PLAY permanece desabilitado; seleção não transforma teste em aprovação.
+
+Cada execução usa instalação portátil própria. BACKTEST fica no display oculto
+Linux; REPLAY mantém controles nativos e gráfico de velas. Model=4, Visual=1/0,
+agentes locais e porta própria são explícitos. STOP, prazo e fechamento da UI
+alcançam somente os processos dessa instalação. A presença do aplicativo é
+revalidada no Expert em conta; ausência prolongada impede novas ações.
+
+O observador é somente leitura: acompanha magic/ativo, exporta posições com
+custos de entrada/saída e inclui fechamento final do Tester com magic zero.
+Livro e variação do saldo nativo precisam reconciliar antes da gravação.
+Cancelamento não habilita PLAY. Relatório JSON e arquivos nativos ficam na
+pasta da sessão, inclusive quando há erro ou interrupção após sua preparação.
+
+## Ensaios e correções encontrados no host
+
+- Compilação nativa do wrapper: respeitar callbacks em includes e usar nome
+  próprio, porque a recompilação automática pode substituir o binário original.
+- Reconciliar a última posição, fechada pela plataforma com magic zero: o livro
+  completo tem 16 posições, resultado líquido -2.342,53 USD, PF0,47995551 no
+  cenário EURUSD H1, 01/09–01/10/2026. Isso é QA de software, sem evidência OOS.
+- Um ensaio inicial regravou um CSV compartilhado porque o executor legado
+  forçava exportação. O arquivo original foi restaurado de backup verificado;
+  todos os 14 CSVs originais voltaram a coincidir byte a byte. O fluxo novo
+  desliga essa exportação depois dos defaults e isola File/Folder Common do
+  histórico por UUID. Regressão preserva sentinela e recusa CSV de sessão já
+  existente. Ensaios corrigidos preservaram todos os 23 arquivos monitorados.
+- PLAY real no terminal DEMO iniciou o Expert e publicou estado sem posição;
+  STOP encerrou somente a sessão, mantendo zero posições/ordens e saldo. Por
+  estar fora do mercado, esse ensaio não demonstra abertura/fechamento ao vivo.
+- A inspeção 1280/1920 levou seletores para diálogos pesquisáveis e botões para
+  o topo. Métricas ausentes em histórico antigo ficam desconhecidas, sem zero
+  inventado. Testes falsos cobrem conta REAL, consentimentos e lucro/perda.
+
+A suíte integral, revisão do patch, CI no SHA final, integração e lançador
+instalado serão registrados no PR e na continuidade após sua conclusão.
+
+## Limites
+
+Nenhuma conta REAL foi operada. Windows físico permanece pendente: caminhos e
+ownership são simulados nos testes; CI não substitui MT5 nativo Windows. Não há
+liquidação automática ao parar: posições/ordens já existentes continuam na conta.
+Telemetria sem atualização é desconhecida. A observação de posições é por magic
+e ativo: instâncias externas com os mesmos identificadores precisam ser evitadas.
+O observador não substitui Safety, e um teste isolado não prova rentabilidade.
+O gate REAL conserva bateria completa, teto e pelo menos sete dias acompanhados
+em demo, configuráveis em ROBOTS.min_demo_days. Não houve campanha financeira.

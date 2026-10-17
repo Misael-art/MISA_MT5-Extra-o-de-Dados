@@ -434,7 +434,8 @@ def tester_model(config) -> str:
 
 
 def tester_ini(expert: str, symbol: str, period: str, date_from, date_to, deposit: float, report: str,
-               model: str = "1", parameters: str = "") -> str:
+               model: str = "1", parameters: str = "", visual: Optional[bool] = None,
+               port: Optional[int] = None) -> str:
     """Texto do .ini de um teste único (sem otimização) que fecha o terminal ao terminar."""
     lines = ["[Tester]", f"Expert={expert}"]
     if parameters:
@@ -442,6 +443,12 @@ def tester_ini(expert: str, symbol: str, period: str, date_from, date_to, deposi
     lines += [f"Symbol={symbol}", f"Period={period}", "Optimization=0", f"Model={model}",
               f"FromDate={date_from:%Y.%m.%d}", f"ToDate={date_to:%Y.%m.%d}", "ForwardMode=0",
               f"Deposit={deposit:.2f}", f"Report={report}", "ReplaceReport=1", "ShutdownTerminal=1"]
+    if visual is not None:
+        lines += [f"Visual={int(visual)}", "UseLocal=1", "UseRemote=0", "UseCloud=0"]
+    if port is not None:
+        if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535:
+            raise ValueError("Porta do agente local inválida.")
+        lines.append(f"Port={port}")
     return "\r\n".join(lines) + "\r\n"
 
 
@@ -660,7 +667,7 @@ def kill_file(config) -> Path:
 
 
 def startup_ini(expert: str, symbol: str, period: str, login, server: str, parameters: str = "",
-                live_trading: bool = True) -> str:
+                live_trading: bool = True, protect_context: bool = False) -> str:
     """
     .ini que abre o terminal na conta conferida e coloca o robô num gráfico. Fixar Login e Server impede que o
     robô suba em outra conta que não a verificada como demo. DLL fica desligada. Com `live_trading=False` o robô
@@ -671,6 +678,9 @@ def startup_ini(expert: str, symbol: str, period: str, login, server: str, param
              "[StartUp]", f"Expert={expert}", f"Symbol={symbol}", f"Period={period}"]
     if parameters:
         lines.append(f"ExpertParameters={parameters}")
+    if protect_context:
+        # As chaves pertencem a Experts; desligam EAs quando muda conta ou perfil.
+        lines[lines.index("[StartUp]"):lines.index("[StartUp]")] = ["Account=1", "Profile=1"]
     return "\r\n".join(lines) + "\r\n"
 
 

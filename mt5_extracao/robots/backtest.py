@@ -167,6 +167,20 @@ def parse_report(text: str) -> Tuple[Optional[float], List[list]]:
     return deposit, results
 
 
+def report_cash_result(text: str) -> Optional[float]:
+    """Variação do saldo no relatório nativo; inclui cobranças sem posição que o CSV pode não alocar."""
+    deposit, final = None, None
+    for row in _ROW.findall(text):
+        cells = [_TAG.sub("", c).replace("&nbsp;", " ").strip() for c in _CELL.findall(row)]
+        if len(cells) != _DEAL_COLUMNS or not _TIME.match(cells[0]):
+            continue
+        if cells[3].lower() == "balance" and deposit is None:
+            deposit = _number(cells[10])
+        if cells[11]:
+            final = _number(cells[11])
+    return final - deposit if deposit is not None and final is not None else None
+
+
 def read_hdk_trades(path) -> List[list]:
     """
     Operações fechadas do HADOUKEN (Common\\Files\\HDK_trades_<magic>.csv): separador ';' e colunas
@@ -233,7 +247,9 @@ def tester_values(robot, preset: Optional[str] = None, params: Optional[dict] = 
 def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=None, preset: Optional[str] = None,
              params: Optional[dict] = None, run: Optional[Callable] = None,
              is_running: Optional[Callable] = None, source: str = TESTER_SOURCE,
-             model: Optional[str] = None) -> dict:
+             model: Optional[str] = None, visual: Optional[bool] = None, read_csv: bool = True,
+             trades_csv_override=None, compiled_override=None, export_trades: bool = True,
+             tester_port: Optional[int] = None) -> dict:
     """
     Roda o robô MQL5 no Strategy Tester (o terminal precisa estar fechado) e grava a execução. O robô tem de
     estar instalado e compilado na pasta de dados do MT5 ('mt5x robots compile').
@@ -253,7 +269,7 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     slug = robot.key.split(":", 1)[1]
     data = mt5_tools.data_dir(config)
     source_file = mt5_tools.install_plan(robot, data)[0].target
-    compiled = source_file.with_suffix(".ex5")
+    compiled = Path(compiled_override) if compiled_override is not None else source_file.with_suffix(".ex5")
     if not compiled.is_file() or (source_file.suffix.lower() == ".mq5" and source_file.is_file()
                                   and compiled.stat().st_mtime < source_file.stat().st_mtime):
         raise ValueError(f"{robot.name} não está compilado na pasta do MT5. Rode antes: mt5x robots compile {slug}")
@@ -266,6 +282,9 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
         raise ValueError(f"O código de {robot.name} mudou desde a última compilação (" + ", ".join(stale[:4]) +
                          f"). Rode antes: mt5x robots compile {slug}")
     values = tester_values(robot, preset, params)
+    export_input = contract.input_name(robot, "export_trades") or "InpExportTrades"
+    if not export_trades and export_input in {i.name for i in robot.inputs}:
+        values[export_input] = "false"  # o observador da sessão publica seu próprio CSV, sem sobrescrever o legado
     name = f"mt5x_{slug}"
     parameters = mt5_tools.write_tester_set(data, name, values) if values else ""
     deposit = float(research.backtest_config(config).initial_equity)
@@ -276,14 +295,22 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     magic_input = contract.input_name(robot, "magic") or "InpMagicNumber"
     magic = str(values.get(magic_input, defaults.get(magic_input, ""))).split("|")[0].strip()
     common = mt5_tools.common_files_dir(config)
-    trades_csv = common / f"HDK_trades_{magic}.csv" if common is not None and magic.isdigit() else None
-    if trades_csv is not None:
+    trades_csv = common / f"HDK_trades_{magic}.csv" if read_csv and common is not None and magic.isdigit() else None
+    if trades_csv_override is not None:
+        trades_csv = Path(trades_csv_override)
+        if trades_csv.exists():
+            raise ValueError("Já existe um CSV para esta sessão. Use uma sessão nova; o arquivo foi preservado.")
+    elif trades_csv is not None:
         trades_csv.unlink(missing_ok=True)        # o de um teste anterior não pode passar por resultado deste
     run_id = uuid.uuid4().hex
     ini = mt5_tools.tester_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, start, end, deposit, name,
-                               model, parameters)
+                               model, parameters, **({"visual": visual} if visual is not None else {}),
+                               **({"port": tester_port} if tester_port is not None else {}))
     report = mt5_tools.run_tester(config, data, ini, name, run, is_running=is_running, run_id=run_id)
     report_text = mql.read_text(report)
+    if trades_csv_override is not None and not trades_csv.is_file():
+        raise RuntimeError("O Tester não publicou o livro desta sessão. O teste pode ter sido interrompido; "
+                           "consulte o diário. Nenhum resultado foi habilitado para PLAY.")
     report_deposit, results = parse_report(report_text)
     entries, without_stop = entries_without_stop(report_text)
     trades_source = REPORT_SOURCE
@@ -291,12 +318,30 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
         results, trades_source = read_hdk_trades(trades_csv), CSV_SOURCE
     initial = report_deposit or deposit
     metrics = metrics_from_results(results, initial)
+    if trades_csv_override is not None and trades_csv.is_file():
+        import csv
+        rows = list(csv.DictReader(mql.read_text(trades_csv).splitlines(), delimiter=";"))
+        currencies = {r.get("currency") for r in rows if r.get("currency")}
+        if len(currencies) == 1:
+            metrics["currency"] = currencies.pop()
+        metrics["costs"] = {key: sum(_number(r.get(key, "0") or "0") for r in rows)
+                            for key in ("commission", "swap", "fee")}
+        metrics["trades_csv"] = str(trades_csv)
+        metrics["observation_unit"] = "posição encerrada, incluindo custos de entrada e saída"
+        native_cash = report_cash_result(report_text)
+        if native_cash is None or not math.isclose(native_cash, metrics["net_profit"], rel_tol=1e-9, abs_tol=.01):
+            raise ValueError("O livro da sessão não reconcilia com a variação do saldo no relatório MT5. "
+                             "Confira taxas, ativos adicionais e o diário; nenhum resultado foi habilitado para PLAY.")
+        metrics.update(native_cash_result=native_cash, cash_reconciled=True,
+                       cash_reconciliation_difference=metrics["net_profit"] - native_cash)
     tester_log = mt5_tools.tester_run_log(data, run_id)
     metrics.update(trades_source=trades_source, tester_model=mt5_tools.TESTER_MODELS[model], report=str(report),
                    tester_model_code=model, entries=entries, entries_without_stop=without_stop,
                    source_fingerprint=catalog.fingerprint(robot),
                    tester_log=str(tester_log) if tester_log.is_file() else "",
                    tester_log_captured=tester_log.is_file())
+    if visual is not None:
+        metrics.update(visual=visual, session_state="completed")
     equity, points = float(initial), [[start.strftime("%Y-%m-%d %H:%M:%S"), float(initial)]]
     for stamp, value, _ in results:
         equity += float(value)

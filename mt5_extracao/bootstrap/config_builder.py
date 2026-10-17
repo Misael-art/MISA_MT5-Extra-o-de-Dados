@@ -95,6 +95,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("metaeditor_path", ""),         # vazio = MetaEditor64.exe da instalação do MT5 ([MT5] path)
         ("tester_model", "4"),           # Strategy Tester: 4 ticks reais (padrão), 0 cada tick; 1 e 2 não valem na bateria
         ("max_real_risk_pct", "1.0"),    # teto de risco por operação (%) aceito pela bateria de segurança
+        ("min_demo_days", "7"),          # período comprovado em demo antes de disponibilizar PLAY real
         ("max_account_risk_pct", "0"),   # mt5x portfolio: avisa se o risco da conta até o stop passar disso (%; 0 = desligado)
         ("account_exposure_groups", ""), # mt5x portfolio: grupos fixos; grupos separados por ; e padrões de símbolos por ,
         ("safety_lib_dir", ""),          # clone local da biblioteca mt5x-safety (vazio = não instalada)

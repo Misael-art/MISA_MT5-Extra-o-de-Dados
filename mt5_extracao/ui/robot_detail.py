@@ -48,15 +48,14 @@ def battery_text(robot) -> str:
     return "\n".join(lines)
 
 LIVE_TEXT_MQL5 = (
-    "Quem envia as ordens é o robô, dentro do MetaTrader 5. Este programa instala, inicia, acompanha e para.\n\n"
-    "Para iniciar em demo: robô compilado sem erros e bateria de segurança aprovada.\n"
-    "Para iniciar em conta real: tudo isso, mais um período em demo com resultado dentro do esperado, risco por "
-    "operação dentro do teto e confirmação digitando o número da conta. Conta real vem desligada de fábrica "
-    "e ainda não está disponível.\n\n"
-    "Conta demo, por enquanto pela linha de comando:\n\n"
-    "  mt5x robots start <robô> --symbol <ativo> --tf <timeframe> --close-terminal\n"
-    "  mt5x robots monitor <robô>\n"
-    "  mt5x robots stop        (PARAR TUDO)")
+    "Use PLAY no card para revisar ativo, preset, histórico, carteira e riscos antes de autorizar a conta. "
+    "São duas confirmações; histórico negativo exige uma adicional.\n\n"
+    "Demo permite histórico negativo após as confirmações e a conferência de segurança. Conta REAL exige "
+    "bateria completa, período comprovado em demo e autorização específica, com tarja vermelha.\n\n"
+    "O Expert MQL5 envia as ordens pela Safety. STOP encerra só sua sessão; posições e ordens existentes "
+    "permanecem na conta e precisam de acompanhamento. PARAR TUDO continua disponível pela CLI: mt5x robots stop.\n\n"
+    "REPLAY e BACKTEST são simulações históricas no Strategy Tester, sem ordens na conta. O REPLAY abre o modo "
+    "visual para assistir, pausar e parar. Ambos geram relatório e preservam o terminal já aberto.")
 
 LIVE_TEXT_PYTHON = (
     "Esta é uma estratégia de pesquisa: roda backtest com a sua base e não opera no MetaTrader 5.\n\n"
@@ -372,15 +371,15 @@ class RobotDetail:
         self.validations_box.pack_forget()
         if robot.kind == catalog.MQL5:
             slug = robot.key.split(":", 1)[1]
-            text = ("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5, com o MT5 fechado. "
-                    f"Por enquanto, pela linha de comando:\n\n  mt5x robots compile {slug}\n"
-                    f"  mt5x robots backtest {slug} --symbol <ativo> --tf <timeframe>")
+            text = ("Use BACKTEST no card para testar o ativo e preset selecionados no Strategy Tester, em uma sessão própria do MT5. "
+                    "REPLAY usa o mesmo Tester com ticks reais e modo visual. O terminal já aberto é preservado.\n\n"
+                    f"Também disponível pela CLI: mt5x robots backtest {slug} --symbol <ativo> --tf <timeframe>.")
             if robot.runs:
                 last, m = robot.runs[0], robot.runs[0]["metrics"]
                 text += (f"\n\nÚltimo teste ({last['created_at'][:10]}, {last['symbol']} {last['timeframe']}): "
-                         f"{fmt_int(m['trades'])} operações, profit factor {fmt_num(m['profit_factor'])}, resultado "
-                         f"{fmt_num(m['return_pct'] * 100, 1, '%')}, queda máxima "
-                         f"{fmt_num(m['max_drawdown_pct'] * 100, 1, '%')}.")
+                         f"{fmt_int(m.get('trades'))} operações, profit factor {fmt_num(m.get('profit_factor'))}, resultado "
+                         f"{fmt_num(m['return_pct'] * 100 if m.get('return_pct') is not None else None, 1, '%')}, queda máxima "
+                         f"{fmt_num(m['max_drawdown_pct'] * 100 if m.get('max_drawdown_pct') is not None else None, 1, '%')}.")
             self.tests_text.config(text=text)
             return
         self.tests_text.config(text="Backtest com as barras da sua base, custos e lote pelo risco. "
