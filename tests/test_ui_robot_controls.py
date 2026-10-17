@@ -80,6 +80,12 @@ def test_card_actions_reflow_without_truncation_and_missing_metrics_are_dashes(u
         for button in buttons.values():
             assert button.winfo_width() >= button.winfo_reqwidth()
         assert buttons["backtest"].winfo_rooty() >= buttons["play"].winfo_rooty()
+    ui.theme.font_small.configure(size=ui.theme.font_small.cget("size") + 6)
+    panel.render()
+    ui.pump(.2)
+    buttons = panel.controls.widgets[robot.key]["buttons"]
+    assert buttons["backtest"].winfo_rooty() > buttons["replay"].winfo_rooty() > buttons["play"].winfo_rooty()
+    assert all(button.winfo_width() >= button.winfo_reqwidth() for button in buttons.values())
     assert "—" in _labels(panel.cards[robot.key])
 
 

@@ -74,18 +74,22 @@ class CardControls:
         layout_state = [None]
 
         def fit_actions(event):
-            stacked = event.width < sum(b.winfo_reqwidth() for b in buttons.values()) + 6
-            if stacked == layout_state[0]:
+            widths = {mode: button.winfo_reqwidth() for mode, button in buttons.items()}
+            pair_width = max(widths["play"], 2*max(widths["replay"], widths["backtest"])+3)
+            layout = ("inline" if event.width >= sum(widths.values())+6 else
+                      "pair" if event.width >= pair_width else "column")
+            if layout == layout_state[0]:
                 return
-            layout_state[0] = stacked
+            layout_state[0] = layout
             for column in range(3):
-                row.columnconfigure(column, weight=1 if not stacked or column < 2 else 0,
-                                    uniform="" if not stacked else "commands" if column < 2 else "")
-            buttons["play"].grid_configure(row=0, column=0, columnspan=2 if stacked else 1, padx=0)
-            buttons["replay"].grid_configure(row=1 if stacked else 0, column=0 if stacked else 1,
-                                            columnspan=1, padx=(0 if stacked else 3, 0), pady=(3 if stacked else 0, 0))
-            buttons["backtest"].grid_configure(row=1 if stacked else 0, column=1 if stacked else 2,
-                                              columnspan=1, padx=(3, 0), pady=(3 if stacked else 0, 0))
+                used = layout == "inline" or column == 0 or layout == "pair" and column == 1
+                row.columnconfigure(column, weight=int(used), uniform="commands" if layout == "pair" and used else "")
+            positions = {"inline": ((0, 0, 1), (0, 1, 1), (0, 2, 1)),
+                         "pair": ((0, 0, 2), (1, 0, 1), (1, 1, 1)),
+                         "column": ((0, 0, 1), (1, 0, 1), (2, 0, 1))}[layout]
+            for button, (line, column, span) in zip(buttons.values(), positions):
+                button.grid_configure(row=line, column=column, columnspan=span,
+                                      padx=(3 if column else 0, 0), pady=(3 if line else 0, 0))
         row.bind("<Configure>", fit_actions, add="+")
         context = self.context(robot)
         offline = bool(getattr(self.ui.app, "offline", False))
