@@ -51,3 +51,16 @@ Na cópia, as 12 baterias, 271 execuções e 39.261 linhas originais do livro pe
 Nenhum teste foi removido ou desativado. Nenhum script shell ou dependência mudou. Suíte final, CI no SHA exato, revisão própria, confirmação remota e teste instalado com a DEMO são gates rastreados no PR. As capturas privadas offline complementam esse teste instalado. A comparação mantém as hipóteses existentes do motor sobre barras; não demonstra paridade do PnL com o Tester nativo.
 
 A revisão própria acrescentou a regressão da troca de robô enquanto a comparação antiga ainda termina. A população, métricas, avisos e comparação são limpos no início da leitura; a conclusão antiga é descartada, e um run previamente escolhido é recuperado quando ainda existe. A suíte final que havia acabado de iniciar foi interrompida antes dessa correção e não conta como aceite. A repetição deve usar o novo SHA publicado.
+
+
+## Revisão externa de 2026-10-17 — recorte adicional antes de alterar
+
+A suíte de `191d80f` terminou com 976 aprovados/9 pulos existentes, e seus seis jobs de CI passaram. A revisão automática Sourcery apontou cinco cenários a verificar antes do merge, sem dispensar revisão própria:
+
+1. Dimensionamento de sequência: a segunda ordenação pode trocar entradas simultâneas e reiniciar índices; ligar o volume base pelo `seq` original ao calcular múltiplos de risco. Registrar regressão com volumes distintos e entradas simultâneas; não alterar políticas ou regras de sizing.
+2. Cache: assinatura e linhas eram gravadas em transações separadas. Reproduzir falha de append e tornar a gravação atômica, para não marcar como atual um contexto ausente/incompleto. Manter recuperação sem bloquear a análise computada.
+3. Lente sem opções: invalidar o carregamento anterior quando o contexto é esvaziado; seu callback não pode restaurar a seleção antiga.
+4. Erro na leitura do contexto: verificar recuperação pelo Atualizar. Com a seleção limpa, habilitar Comparar sem run válido não recupera o contexto. A ação de tentar a leitura novamente deve ficar explícita, e a comparação volta após leitura válida. Testar erro → atualização → sucesso.
+5. Duas atualizações do livro concluídas fora de ordem: somente a lista mais recente pode preencher o seletor. Testar conclusão invertida.
+
+As confirmações/descartes, testes e novos hashes serão registrados no PR. Repetir suíte e CI no SHA final após as correções confirmadas; o resultado anterior permanece válido apenas para seu próprio SHA. Não integrar o snapshot anterior como se cobrisse estes cenários.
