@@ -1251,3 +1251,44 @@ def test_robot_card_click_opens_persisted_pf_rejection_in_both_themes(ui, monkey
         ui.toggle_theme()
     with ui.app.db_manager.engine.connect() as conn:
         assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, "[]")
+
+
+def test_long_persisted_battery_reaches_final_reason_in_small_and_large_windows(ui):
+    import json
+    from sqlalchemy import text
+
+    _save_legacy_pf_check(ui.app.db_manager, "mql5:demoguard", [])
+    items = [{"group": "estática", "id": f"item-{index}", "name": f"Verificação {index}",
+              "icon": "✓", "status": "ok", "detail": "Explicação longa de um resultado anterior. " * 5,
+              "fix": ""} for index in range(25)]
+    recorded = json.dumps(items, ensure_ascii=False)
+    with ui.app.db_manager.engine.begin() as conn:
+        conn.execute(text("UPDATE _robot_checks SET items_json = :items"), {"items": recorded})
+    panel = ui.robots_panel
+    panel.reload()
+    ui.notebook.select(panel.frame)
+    panel.select("mql5:demoguard")
+    for geometry, dark in [("1280x800", False), ("1920x1080", True)]:
+        ui.root.geometry(geometry)
+        if ui.theme.dark != dark:
+            ui.toggle_theme()
+        panel.detail.tabs.select(2)
+        ui.pump(.3)
+        viewport = panel.detail.battery_viewport
+        assert viewport.scrollbar.winfo_manager() == "grid"
+        viewport.canvas.yview_moveto(0)
+        viewport.canvas.focus_force()
+        ui.pump(.1)
+        viewport.canvas.event_generate("<Next>")
+        ui.pump(.1)
+        assert viewport.canvas.yview()[0] > 0
+        viewport.canvas.yview_moveto(1.0)
+        ui.pump(.1)
+        assert viewport.canvas.yview()[0] > 0 and viewport.canvas.yview()[1] == 1.0
+        label = panel.detail.battery_text
+        assert label.winfo_rooty() + label.winfo_height() <= (
+            viewport.canvas.winfo_rooty() + viewport.canvas.winfo_height() + 2)
+        assert "✗ PF definido na execução vinculada:" in label.cget("text")
+        assert "Rode novamente" in label.cget("text")
+    with ui.app.db_manager.engine.connect() as conn:
+        assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, recorded)

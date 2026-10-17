@@ -259,7 +259,10 @@ class RobotDetail:
         tests_frame.pack(fill=tk.X)
 
         # Bateria e tempo real
-        self.battery_text = ttk.Label(battery, text="", style="Surface.TLabel", wraplength=400, justify=tk.LEFT)
+        self.battery_viewport = ScrollableContent(battery, self.theme)
+        self.battery_viewport.pack(fill=tk.BOTH, expand=True)
+        self.battery_text = ttk.Label(self.battery_viewport.content, text="", style="Surface.TLabel",
+                                      wraplength=400, justify=tk.LEFT)
         self.battery_text.pack(anchor="w")
         self.live_text = ttk.Label(live, text="", style="Surface.TLabel", wraplength=400, justify=tk.LEFT)
         self.live_text.pack(anchor="w")
