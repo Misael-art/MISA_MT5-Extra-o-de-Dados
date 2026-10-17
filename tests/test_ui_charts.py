@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import pytest
 from matplotlib.figure import Figure
 
 from mt5_extracao.ui import charts
@@ -107,3 +108,64 @@ def test_bars_keep_missing_measurements_distinct_from_observed_zero():
     missing = chart.hover[0](SimpleNamespace(inaxes=ax, xdata=0))
     assert "—" in missing and "n=0" in missing and "amostra pequena" not in missing
     assert "0,00" in chart.hover[0](SimpleNamespace(inaxes=ax, xdata=3))
+
+
+@pytest.mark.parametrize("dpi", [100, 144])
+@pytest.mark.parametrize("width,height", [(1280, 800), (1920, 1080)])
+@pytest.mark.parametrize("dark", [False, True])
+def test_native_dpi_mapping_and_resize_keep_complete_legend(dpi, width, height, dark):
+    """DPI pode mudar no Map sem Configure Tk: o layout deve seguir a figura real."""
+    tk = pytest.importorskip("tkinter")
+    from mt5_extracao.ui.theme import Theme
+
+    try:
+        root = tk.Tk()
+    except tk.TclError as error:
+        pytest.skip(f"sem display gráfico: {error}")
+    root.withdraw()
+    try:
+        root.tk.call("tk", "scaling", dpi / 72)
+        root.geometry(f"{width}x{height}")
+        theme = Theme(root)
+        if theme.dark != dark:
+            theme.toggle()
+        chart = charts.Chart(root, theme, height=3.5)
+        chart.widget.pack(fill=tk.BOTH, expand=True)
+        ax = chart.figure.add_subplot(111)
+        dates = pd.date_range("2025-01-01", periods=3)
+        curves = {name: pd.Series([0.0, -29953.75 + index * 12000, -4366.9 - index * 7000], index=dates)
+                  for index, name in enumerate(["Trailing por ATR", "Ponto fixo", "Gradiente dinâmico por ATR"])}
+        expected = {name: series.copy() for name, series in curves.items()}
+        charts.overlay(chart, ax, curves, "Mesmas entradas, modos diferentes: resultado acumulado")
+        chart.draw()
+        root.deiconify()
+        root.update()
+        # Nenhum draw/layout corretivo no teste: a primeira renderização é a observada pelo usuário.
+        for index, geometry in enumerate((f"{width}x{height}", "1000x650", f"{width}x{height}")):
+            if index == 1:
+                theme.toggle()
+                chart.clear()
+                ax = chart.figure.add_subplot(111)
+                charts.overlay(chart, ax, curves, "Mesmas entradas, modos diferentes: resultado acumulado")
+                chart.draw()
+            root.geometry(geometry)
+            root.update()
+            renderer = chart.canvas.get_renderer()
+            legend = ax.get_legend().get_window_extent(renderer)
+            bounds = chart.figure.bbox
+            assert bounds.contains(legend.x0, legend.y0)
+            assert bounds.contains(legend.x1, legend.y1), (bounds.bounds, legend.bounds)
+            assert legend.x0 >= ax.bbox.x1
+            assert ax.bbox.width >= bounds.width * .35
+            labels = [text.get_text() for text in ax.get_legend().get_texts()]
+            assert len(labels) == len(curves)
+            for line in ax.lines[:len(curves)]:
+                name = next(name for name in curves if line.get_label().startswith(name + " ("))
+                np.testing.assert_array_equal(line.get_ydata(), expected[name].values)
+                assert charts.plain(f"{name} ({charts.money(expected[name].iloc[-1])})") in labels
+            for name in curves:
+                pd.testing.assert_series_equal(curves[name], expected[name])
+    finally:
+        root.destroy()
+        import gc
+        gc.collect()

@@ -34,6 +34,12 @@ class Chart:
         self.hover: List[Callable] = []          # cada desenho registra f(event) -> texto ou None
         self._tip = None
         self.canvas.mpl_connect("motion_notify_event", self._moved)
+        # O Map pode atualizar o DPI nativo sem emitir Configure no widget Tk.
+        # O evento da figura ocorre depois de seu tamanho físico ser atualizado.
+        self.canvas.mpl_connect("resize_event", self._resized)
+
+    def _resized(self, _event):
+        self.draw()
 
     def clear(self):
         self.figure.clear()

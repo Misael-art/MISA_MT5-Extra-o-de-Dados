@@ -172,6 +172,37 @@ def test_import_button_brings_old_runs(panel):
     assert panel._note_kind == "partial"
 
 
+@pytest.mark.parametrize("dpi", [100, 144])
+def test_chart_height_does_not_follow_backend_or_other_notebook_pages(panel, dpi):
+    """DPI/Map e página grande não podem realimentar a altura pedida dos gráficos."""
+    from mt5_extracao.ui import charts
+
+    root = panel.ui.root
+    root.tk.call("tk", "scaling", dpi / 72)
+    panel.frame.master.pack_configure(fill=tk.BOTH, expand=True)
+    series = pd.Series([0.0, -12.0, 3.0], index=pd.date_range("2025-01-01", periods=3))
+    chart_list = []
+    for tab in ("Microestrutura", "Execução"):
+        parent = panel._analysis_view(tab, "test_dpi", "Geometria controlada")
+        chart = panel._chart(tab, "controlled_" + tab, 0, 0, parent=parent)
+        charts.overlay(chart, chart.figure.add_subplot(111), {"Ativo controlado": series}, "Resultado")
+        chart.draw()
+        chart_list.append((tab, parent, chart))
+    for geometry, oversized in (("1920x1080", True), ("1280x800", False), ("1920x1080", False)):
+        root.geometry(geometry)
+        panel.tabs.configure(height=2000 if oversized else 0)
+        panel.ui.theme.toggle()
+        for tab, parent, chart in chart_list:
+            panel.tabs.select(panel.tab_frames[tab])
+            panel._analysis_notebooks[tab].select(parent)
+            root.update()
+            minimum = max(480, panel.theme.font.metrics("linespace") * 24)
+            assert chart.widget.winfo_height() <= minimum + 2
+            assert chart.widget.winfo_height() >= minimum
+            assert chart.widget.winfo_width() > 800
+            np.testing.assert_array_equal(chart.figure.axes[0].lines[0].get_ydata(), series.values)
+
+
 def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
     """T16.11b: comparar modos de um run real, procurar insights, simular uma regra e exportar a proposta."""
     from mt5_extracao import robots

@@ -1,5 +1,7 @@
 # Continuidade: harmonização de 2026-10-14
 
+> **T17.27 — layout nativo (2026-10-17):** o gráfico recalcula margens após resize da figura, inclusive mudança de DPI sem Configure Tk. A área conserva altura própria pela fonte, como em Análise, impedindo crescimento ao alternar páginas. Baseline998/9 em árvore/pacotes idênticos, 34 focados e 32 cenários de cópia real DPI144 passaram; figuras em600px, legendas completas. Suíte/CI/revisão e lançador instalado são gates explícitos do PR. [Recorte e evidências](propostas/T17_27_LAYOUT_DPI_LABORATORIO.md).
+
 > **T17.26 — ativos e sinal dos backtests (2026-10-17):** os cards contam ativos
 > distintos, classificando o último teste de cada ativo; ganho e perda têm setas
 > próprias, zero e ausência ficam separados e discretos. A política é visível.
