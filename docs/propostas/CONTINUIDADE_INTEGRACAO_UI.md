@@ -18,7 +18,7 @@ baseline, preservando as integrações existentes.
 
 ## Estado verificado da integração
 
-Snapshot da principal `e8988d9`, em 2026-10-16. Cada PR abaixo foi revisado
+Snapshot da principal `854af32`, em 2026-10-16. Cada PR abaixo foi revisado
 tecnicamente pelo agente executor, teve os checks conferidos no head final,
 foi integrado separadamente e confirmado no remoto. Não houve revisão por
 outro agente. CI foi usado como evidência adicional à leitura dos diffs.
@@ -43,6 +43,7 @@ outro agente. CI foi usado como evidência adicional à leitura dos diffs.
 | [#96](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/96) | T17.18: Análise/cabeçalho responsivos | `323decb` | EURUSD H1: 1.537 barras, dois temas e DPI, 1920/1280/900, altura limitada/hover/rolagem |
 | [#98](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/98) | T17.22: abertura offline explícita | `7925b8b` | **Lançador principal real** com configuração/base existentes, Minha base/Análise/Relações, detalhes por mouse/Escape, Sair normal0 |
 | [#99](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/99) | T17.23: agregação e comprovação | `e8988d9` | **Lançador principal real**: 10.445 BBRSI/31 runs, campos ausentes/queda com capital, ícone mouse/Escape, números reconciliados com a base real e Sair0 |
+| [#100](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/100) | T13.10: estudoPF19 limitado | `854af32` | Oito casos reais modelados, todos negativos; origem/protocolo inalterados; CLI/help/import instalados sem SDK/Tk e sem nona tentativa |
 
 
 Os smokes executaram o módulo da instalação principal e sua venv no host,
@@ -123,9 +124,12 @@ continuam separados desta autorização de integração visual.
 
 ## Escopo do próximo ciclo
 
-O aceite crítico da UI foi registrado depois do lançador instalado #99, com ressalvas explícitas: F18 sintética identificada, custos/moeda antigos desconhecidos, WindowsMT5 manual e refinamentos secundários pendentes. O estudo T13.10/PR100 então executou as oito tentativas pré-registradas, em15,87s de comando: zero candidatos, todos os resultados modelados negativos, maiorPF0,875849 (DonchianM15,669operações). Não é OOS independente nem PF líquido certificado. Relatório, oito livros/logs/hashes e próximo experimento estão no PR próprio; implementação e resultados ainda aguardam suíte/CI/revisão/integração. Nenhuma ampliação da busca foi feita após o fracasso da meta.
+O aceite crítico da UI foi registrado depois do lançador instalado #99, com ressalvas explícitas: F18 sintética identificada, custos/moeda antigos desconhecidos, WindowsMT5 manual e refinamentos secundários pendentes. O estudo T13.10/PR100 então executou as oito tentativas pré-registradas, em15,87s de comando: zero candidatos, todos os resultados modelados negativos, maiorPF0,875849 (DonchianM15,669operações). Não é OOS independente nem PF líquido certificado. Relatório, oito livros/logs/hashes e próximo experimento estão no PR próprio; implementação e resultados foram integrados no #100 após963/9 em764,57s, saída0, revisão própria e CIexato271b integral aprovado incluindoWindows. A CLI instalada tem o mesmo hash do código que executou os oito casos; help/import passaram sem carregar SDK/Tk ou executar nova tentativa. Nenhuma ampliação da busca foi feita após o fracasso da meta.
 
 Revisão somente leitura do ecossistema reconfirmou 11 fontes Safety idênticos entre origem e cópia 1.5.0. O exportador MQL5 ainda emite cinco colunas (T16.2b pendente). A chamada legada direta no plugin de risco, linha503, permanece registrada; a busca não encontrou include desse plugin nos MQ5/MQH locais, mas isso não o exclui da regra nem prova ausência de consumidores externos. Há ainda chamadas CTrade legadas fora do executor. Não se alterou proteção nem publicou release; aceites operacionais/demonstração/netting/Windows da Safety continuam pendentes.
 
 
 Na abertura principal #99, o hash da configuração permaneceu igual e nenhum terminal foi aberto. Comparação lógica contra backup imutável anterior ao #98 confirmou dados brutos, runs, ledger e especificações preservados. Só o cache derivado ganhou369features e3runs de cache ao abrir BBRSI; não se apagou/reescreveu dado primário. A verificação principal anterior #98 havia mantido todas as27tabelas idênticas.
+
+
+T16.2b está implementada no [PR12 do HADOUKEN](https://github.com/Misael-art/projeto-indicadores-mt5/pull/12), **draft e sem integração**: recorte sobre masterfc4d531, preservando a branch original480d310/T12.3; nove fontes dessa base compilaram sem erros/avisos. Componente de fonte idêntico passou17checksMQL5 e CSVsintético→ledger, mas cinco probes do Tester isolado falharam191 antes de carregar a estratégia. Isso não prova HistoryAPI/CSVreal nem paridade dos seis. As tentativas com cache demo tinham egressobloqueado; o cache temporário sensível foi removido, origem preservada e nenhuma conta recebeu ordem/autenticação. Não forçar integração/release com esse aceite faltante.

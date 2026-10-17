@@ -1,6 +1,6 @@
 # Continuidade: harmonização de 2026-10-14
 
-> Estado atual da frente visual (snapshote8988d9, 2026-10-16): PRs #81–#93, #95/#96/#97/#98/#99 integrados separadamente, com revisão própria e CI. Detalhes recolhíveis já funcionam; abertura real por `./run.sh --offline` verificada e encerrada0, configuração preservada. T17.23/PR99 integrado e operado pelo lançador real; aceite críticoUI registrado com ressalvas. T13.10/PR100 executou oito casos retrospectivos sem candidato (maiorPFmodelado0,875849), ainda em validação/integração própria. Consulte [o relatório reconciliado](propostas/CONTINUIDADE_INTEGRACAO_UI.md); as seções abaixo também conservam snapshots históricos, cujas pendências não substituem este estado atual.
+> Estado atual da frente visual (snapshot854af32, 2026-10-16): PRs #81–#93, #95/#96/#97/#98/#99/#100 integrados separadamente, com revisão própria e CI. Detalhes recolhíveis já funcionam; abertura real por `./run.sh --offline` verificada e encerrada0, configuração preservada. T17.23/PR99 integrado e operado pelo lançador real; aceite críticoUI registrado com ressalvas. T13.10/PR100 integrado e CLI instalada verificada: oito casos retrospectivos, nenhum candidato (maiorPFmodelado0,875849);963/9 e CI final aprovados. Consulte [o relatório reconciliado](propostas/CONTINUIDADE_INTEGRACAO_UI.md); as seções abaixo também conservam snapshots históricos, cujas pendências não substituem este estado atual.
 
 
 ## Retomada T18.8 — 2026-10-15
@@ -811,3 +811,9 @@ pendente; nenhum terminal/conta do usuário foi iniciado ou encerrado.
   continuam disponíveis. Oito focados passaram em16,47s após esse ajuste.
   A suíte56f73b2 foi interrompida241 antes da revisão, sem alegar aprovação;
   novo head tem suíte/CI próprios. Primeira inspeção offline1537barras saiu0.
+
+## T13.10 — estudo PF19 limitado (2026-10-16)
+
+Protocolo2383efd registrado antes dos resultados. Depois do aceite críticoUI e do lançador real99 (10.445BBRSI/31runs, configuração preservada), oito backtests EURUSD H1/M15, EMAATR/Donchian padrão e custos base/adverso foram executados sequencialmente no ce9fae9. Todos tiveram resultado modelado negativo; maiorPF0,875849 noDonchianM15/669operações. Nenhum OOS independente e custos/moeda não certificados; zero candidatos aprovados. Não ampliar a busca para forçar1,9. [Relatório, ICs, gates e reprodução](pesquisa/PF19_RELATORIO_20261016.md).
+
+A base de origem e o protocolo mantiveram os hashes; os oito livros foram reconciliados independentemente por contagem/GP/GL/resultado/PF. O código reusa backtester/estratégias/PF, sem SDK/terminal/contas ou mudança de parâmetros/risco. Baseline947/9 e sete focados (incluindo subprocessos CLI sintéticos) passaram; suíte geral e CI do PR100 em curso. Não confundir execução de pesquisa com integração ou aprovação financeira.

@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "status": "REGISTERED_PENDING_UI_ACCEPTANCE",
+  "task": "T13.10",
+  "objective": "Pesquisa limitada e retrospectiva de PF após custos modelados; aprovação PF líquido1.9 exige critérios originais completos",
+  "known_exposure": "Toda a base atual e resultados prévios já foram vistos; nenhuma partição é OOS independente. Não recriar reserva por renomear datas.",
+  "universe": {
+    "symbols": [
+      "EURUSD"
+    ],
+    "timeframes": [
+      "H1",
+      "M15"
+    ],
+    "strategies": [
+      "ema_atr",
+      "donchian"
+    ],
+    "params": "defaults do código, sem ajuste ou seleção por resultados"
+  },
+  "periods": {
+    "evaluation_start": "2025-10-01 00:00:00",
+    "evaluation_end_exclusive": "2026-10-01 00:00:00",
+    "warmup_bars": 256,
+    "diagnostic_context_before_evaluation": "Somente aquecimento disponível, sem fit; H1 possui histórico desde2024-10-01, M15 inicia2025-10-01 e portanto aquece dentro da janela se não houver barras anteriores. Registrar início efetivo e não inventar cobertura.",
+    "quarters": "2025Q4/2026Q1/Q2/Q3, diagnóstico retrospectivo; não são prova de mudança de regime executável"
+  },
+  "simulation": {
+    "initial_equity": 100000.0,
+    "risk_per_trade": 0.01,
+    "compound": true,
+    "max_drawdown": 0.2,
+    "base_commission_per_lot_per_side": 0.0,
+    "base_slippage_points": 0.0,
+    "swap": true,
+    "real_spread_profile": true,
+    "unit": "U: unidade monetária do simulador; moeda de lucro do contrato USD não confirma moeda da conta",
+    "costs_certified": false,
+    "cost_limitations": "Spread por barra mínimo e perfil de apenas23dias distribuídos entre2025-11 e2026-09, medido depois de parte da janela, não é calibração ponto-no-tempo. Comissão0configurada não prova isenção; fees não modeladas; swap conforme modo suportado apenas.",
+    "stress": {
+      "name": "adverso_modelado",
+      "spread_multiplier": 2.0,
+      "extra_slippage_points_per_market_fill": 1.0,
+      "commission_per_lot_per_side": 3.5,
+      "interpretation": "hipótese administrativa de custo, não tarifa verificada da corretora; reexecutar cadeia inteira/volumes/sinais"
+    }
+  },
+  "budget": {
+    "max_trials": 8,
+    "trial_order": "H1,M15; ema_atr,donchian; base,adverso_modelado; todos registrados inclusive falhas",
+    "max_wall_seconds": 600,
+    "max_trial_seconds": 60,
+    "max_workers": 1,
+    "max_rss_mb": 1536,
+    "additional_optimizations": 0,
+    "parameter_perturbations": 0,
+    "tester_runs": 0,
+    "explanation": "Sem candidato elegível independente/custos conhecidos, não avançar para confirmação MT5 nem gerar novos parâmetros no histórico exposto."
+  },
+  "inference": {
+    "bootstrap": "circular moving blocks de sessões observadas na base, incluindo sessões sem trades; GP e GL diários calculados dos PnLs individuais, nunca PF dos saldos diários",
+    "block_sessions": 5,
+    "resamples": 2000,
+    "seed": 20261016,
+    "ci_level": 0.95,
+    "undefined_replicates": "reportar quantidade/fração; se qualquer denominador indefinido, não usar IC condicional para aprovação",
+    "selection_adjustment": "8 avaliações descritivas; nenhum p-valor/IC tratado como correção de busca; limites não permitem aprovação pós-seleção"
+  },
+  "acceptance": {
+    "independent_untouched_oos": true,
+    "costs_and_currency_verified": true,
+    "min_closed_trades": 200,
+    "min_trading_sessions": 60,
+    "min_losses": 30,
+    "min_pf": 1.9,
+    "pf_ci95_lower_gt": 1.0,
+    "positive_net_expectancy": true,
+    "max_drawdown": 0.2,
+    "concentration_top5_gross_profit_max_share": 0.5,
+    "min_positive_quarters": 3,
+    "cost_stress_and_parameter_delay_stability_required": true,
+    "equity_intratrade_and_margin_required": "quando disponíveis; indisponibilidade limita risco e aprovação",
+    "annual_coverage": "publicar cobertura efetiva; não afirmar anual no M15 se faltarem aquecimento/barras",
+    "no_losses": "PF indefinido e inadequado para aprovação"
+  },
+  "next_independent_experiment": "Depois de registrar resultado, congelar hipótese/preset sem buscar no histórico atual; coletar futuro sem ordens (sinais/paper fora da conta), mínimo60sessões,200operações,30perdas e proveniência de moeda/custos. Dados já vistos seguem exploratórios.",
+  "registered_utc": "2026-10-16T23:21:36.523951+00:00"
+}
