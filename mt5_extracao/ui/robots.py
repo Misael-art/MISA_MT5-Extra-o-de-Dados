@@ -6,8 +6,9 @@ from tkinter import filedialog, messagebox, ttk
 from mt5_extracao import robots as robots_core
 from mt5_extracao.robots import catalog, risk
 from mt5_extracao.ui import icons
-from mt5_extracao.ui.components import FilterBar
+from mt5_extracao.ui.components import FilterBar, DetailsPanel
 from mt5_extracao.ui.robot_detail import RISK_STYLES, RobotDetail, draw_equity
+from mt5_extracao.ui.robot_controls import CardControls
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 from mt5_extracao.ui.visual_tokens import result_attention_colors
 
@@ -21,8 +22,8 @@ def result_tiles(headline):
     """(valor, legenda) das estatísticas do card, a partir de Robot.headline."""
     return ((fmt_num(headline["profit_factor"]), "profit factor"),
             (fmt_int(headline["trades"]), "operações"),
-            (fmt_num(headline["max_drawdown"] * 100, 1, "%"), "drawdown"),
-            (fmt_num(headline["extra"] * 100, 0, "%"), headline["extra_label"]))
+            (fmt_num(headline["max_drawdown"] * 100 if headline["max_drawdown"] is not None else None, 1, "%"), "drawdown"),
+            (fmt_num(headline["extra"] * 100 if headline["extra"] is not None else None, 0, "%"), headline["extra_label"]))
 
 
 class RobotsPanel:
@@ -34,8 +35,10 @@ class RobotsPanel:
         self._asset_icons = {}   # referências vivas; imagens Tk permanecem na thread principal
         self.cards = {}          # chave do robô -> frame do card
         self.selected_key = None
+        self._card_details = {}
         self._columns = 0
         self.frame = ttk.Frame(parent, padding=12)
+        self.controls = CardControls(self)
 
         bar = FilterBar(self.frame, padding=10)
         bar.pack(fill=tk.X)
@@ -121,6 +124,7 @@ class RobotsPanel:
         self._bind_wheel(self.canvas)
 
         self.detail = RobotDetail(body, ui)
+        self.detail.source_combo.bind("<<ComboboxSelected>>", self._detail_preset_changed, add="+")
         self.detail.frame.grid(row=0, column=1, sticky="nsew")
         self._body_stacked = None
         body.bind("<Configure>", self._responsive_body, add="+")
@@ -218,6 +222,7 @@ class RobotsPanel:
         for child in self.inner.winfo_children():
             child.destroy()
         self.cards = {}
+        self.controls.widgets = {}
         self.visible = [r for r in self.robots if self._matches(r)]
         mql5 = sum(r.kind == catalog.MQL5 for r in self.robots)
         text = (f"{len(self.robots)} robô(s): {mql5} MQL5 e {len(self.robots) - mql5} Python. "
@@ -237,6 +242,7 @@ class RobotsPanel:
             self.selected_key = keys[0] if keys else None
         self._mark_selected()
         self.detail.show(next((r for r in self.visible if r.key == self.selected_key), None))
+        self._sync_detail_selection()
         self.canvas.after_idle(lambda: self._reveal(self.selected_key))
 
     def _build_card(self, robot):
@@ -252,19 +258,20 @@ class RobotsPanel:
         ttk.Label(outer, text=" · ".join(f for f in facts if f) or "tipo de estratégia não informado",
                   style="Muted.TLabel", wraplength=wrap, justify=tk.LEFT).pack(anchor="w", pady=(2, 8))
 
-        icon, label, style = RISK_STYLES[robot.risk.level]
+        context = self.controls.context(robot) if robot.kind == catalog.MQL5 else None
+        if context is not None:
+            self.controls.build(outer, robot)
+        rating = context["risk"] if context else robot.risk
+        icon, label, style = RISK_STYLES[rating.level]
         ttk.Label(outer, text=f"{icon} {label}", style=style).pack(anchor="w")
-        reasons = robot.risk.summary
+        reasons = rating.summary
         if robot.preset_risks:
             levels = [r.level for r in robot.preset_risks.values()]
             ordered = [level for level in risk.LEVELS if level in levels]
             span = ordered[0] if len(ordered) == 1 else f"{ordered[0]} a {ordered[-1]}"
             reasons += f"\n{len(levels)} preset(s): risco {span}"
-        ttk.Label(outer, text=reasons, style="Muted.TLabel", wraplength=wrap, justify=tk.LEFT).pack(
-            anchor="w", pady=(1, 8))
-
         ttk.Separator(outer).pack(fill=tk.X, pady=(0, 8))
-        headline = robot.headline
+        headline = context["headline"] if context else robot.headline
         if headline:
             tiles = ttk.Frame(outer, style="Surface.TFrame")
             tiles.pack(fill=tk.X)
@@ -274,13 +281,16 @@ class RobotsPanel:
             for column, (value, caption) in enumerate(result_tiles(headline)):
                 tiles.columnconfigure(column, weight=1, uniform="tile")
                 ttk.Label(tiles, text=value, style="Heading.TLabel").grid(row=0, column=column, sticky="w")
-                ttk.Label(tiles, text=caption, style="Muted.TLabel", wraplength=70, justify=tk.LEFT).grid(
-                    row=1, column=column, sticky="nw")
-            if robot.runs and len(robot.runs[0]["equity"]) > 2:
+                short = {"profit factor": "PF", "operações": "Oper.", "drawdown": "Queda"}.get(caption, caption)
+                label = ttk.Label(tiles, text=short, style="Muted.TLabel", wraplength=70, justify=tk.LEFT)
+                label.grid(row=1, column=column, sticky="nw")
+                Tooltip(label, {"profit factor": "Fator de lucro", "drawdown": "Queda máxima"}.get(caption, caption), self.theme)
+            shown_run = context["run"] if context else (robot.runs[0] if robot.runs else None)
+            if shown_run and len(shown_run.get("equity") or []) > 2:
                 spark = tk.Canvas(outer, height=30, highlightthickness=0, borderwidth=0,
                                   background=self.theme.colors["surface"])
                 spark.pack(fill=tk.X, pady=(6, 0))
-                spark.bind("<Configure>", lambda e, c=spark, run=robot.runs[0]: draw_equity(
+                spark.bind("<Configure>", lambda e, c=spark, run=shown_run: draw_equity(
                     c, run["equity"], self.theme, labels=False))
                 if headline["kind"] != "backtest":      # os números acima vêm da validação, a curva não
                     last = robot.runs[0]
@@ -296,23 +306,32 @@ class RobotsPanel:
                 ttk.Label(outer, text=f"{verdict} {where}{more}",
                           style="Good.TLabel" if headline["approved"] else "Bad.TLabel").pack(anchor="w", pady=(6, 0))
         else:
-            ttk.Label(outer, text="Sem teste gravado", style="Surface.TLabel").pack(anchor="w")
-            ttk.Label(outer, text="As estatísticas aparecem aqui depois do primeiro teste.", style="Muted.TLabel",
+            ttk.Label(outer, text="Sem teste desta seleção" if context and robot.runs else "Sem teste gravado",
+                      style="Surface.TLabel").pack(anchor="w")
+            ttk.Label(outer, text="Escolha uma configuração testada ou execute BACKTEST." if context and robot.runs
+                      else "As estatísticas aparecem aqui depois do primeiro teste.", style="Muted.TLabel",
                       wraplength=wrap, justify=tk.LEFT).pack(anchor="w")
 
         self._asset_summary(outer, robot, wrap)
-        ttk.Separator(outer).pack(fill=tk.X, pady=(8, 8))
-        trail = tk.Canvas(outer, height=16, highlightthickness=0, borderwidth=0,
+        detail = DetailsPanel(outer, "Risco e estágio", expanded=self._card_details.get(robot.key, False),
+                              padding=5, information=True,
+                              on_toggle=lambda value, key=robot.key: self._card_details.__setitem__(key, value))
+        detail.pack(fill=tk.X, pady=(8, 0))
+        ttk.Label(detail.body, text=reasons, style="Muted.TLabel", wraplength=wrap, justify=tk.LEFT).pack(
+            anchor="w", pady=(1, 8))
+        trail = tk.Canvas(detail.body, height=16, highlightthickness=0, borderwidth=0,
                           background=self.theme.colors["surface"])
         trail.pack(fill=tk.X)
         trail.bind("<Configure>", lambda e, r=robot, c=trail: self._draw_trail(c, r))
         step = f" · falta: {robot.next_step}" if robot.next_step else ""
         position = robot.stages.index(robot.stage) + 1 if robot.stage in robot.stages else 1
-        ttk.Label(outer, text=f"Estágio {position} de {len(robot.stages)}: {robot.stage_label}{step}",
+        ttk.Label(detail.body, text=f"Estágio {position} de {len(robot.stages)}: {robot.stage_label}{step}",
                   style="Muted.TLabel", wraplength=wrap, justify=tk.LEFT).pack(anchor="w", pady=(4, 0))
         if robot.notes:
             ttk.Label(outer, text="⚠ " + robot.notes[0], style="Muted.TLabel", wraplength=wrap,
                       justify=tk.LEFT).pack(anchor="w", pady=(4, 0))
+        detail.body.bind("<Configure>", lambda e: [w.configure(wraplength=max(80, e.width - 8)) for w in detail.body.winfo_children()
+                                                    if w.winfo_class() == "TLabel"], add="+")
 
         # O texto acompanha a largura do card (a grade muda o número de colunas com a janela)
         wrapped = [w for w in outer.winfo_children() if w.winfo_class() == "TLabel" and str(w.cget("wraplength")) != ""
@@ -414,6 +433,26 @@ class RobotsPanel:
         self._mark_selected()
         self._reveal(key)
         self.detail.show(next((r for r in self.robots if r.key == key), None))
+        self._sync_detail_selection()
+
+    def _sync_detail_selection(self):
+        robot = self.detail.robot
+        if robot and robot.kind == catalog.MQL5:
+            from mt5_extracao.ui.robot_detail import SOURCE_DEFAULTS
+            preset = self.controls.chosen[robot.key][2]
+            self.detail.source_var.set(f"Preset {preset}" if preset else SOURCE_DEFAULTS)
+            self.detail._show_values()
+            session = self.controls.sessions.get(robot.key)
+            self.detail.source_combo.configure(state="disabled" if session and session.active else "readonly")
+
+    def _detail_preset_changed(self, _event=None):
+        robot = self.detail.robot
+        if robot and robot.kind == catalog.MQL5:
+            source = self.detail.source_var.get()
+            preset = source[len("Preset "):] if source.startswith("Preset ") else None
+            symbol, timeframe, _ = self.controls.chosen[robot.key]
+            self.controls.chosen[robot.key] = symbol, timeframe, preset
+            self.render()
 
     def _reveal(self, key):
         """Rola a grade até o card, se ele estiver fora da área visível."""

@@ -23,7 +23,8 @@ SURFACE = {
     "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params", "strategy", "source",
                    "trade_from", "real_spread"],                # T10.12: novo no fim, com padrão
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
-                 "is_running", "source", "model"],              # parâmetros novos no fim, com padrão
+                 "is_running", "source", "model", "visual", "read_csv", "trades_csv_override", "compiled_override",
+                 "export_trades", "tester_port"],               # T17.28: opcionais no fim; defaults legados preservados
     "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running", "symbol"],
     "check": ["db", "config", "robot", "robots", "symbol", "timeframe", "start", "end", "preset", "run", "is_running"],
     "write_junit": ["result", "path"],
@@ -49,6 +50,15 @@ def test_signatures_did_not_change():
     for name, expected in SURFACE.items():
         if expected is not None:
             assert list(inspect.signature(getattr(sdk, name)).parameters) == expected, name
+
+
+def test_mql5_session_options_are_optional_and_preserve_legacy_defaults():
+    parameters = inspect.signature(sdk.run_mql5).parameters
+    expected = {"visual": None, "read_csv": True, "trades_csv_override": None,
+                "compiled_override": None, "export_trades": True, "tester_port": None}
+    assert {key: parameters[key].default for key in expected} == expected
+    assert parameters["model"].default is None
+    assert parameters["source"].default == "strategy tester"
 
 
 def test_every_public_name_is_in_the_reference():

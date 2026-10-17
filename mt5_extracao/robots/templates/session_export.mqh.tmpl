@@ -1,0 +1,101 @@
+// Observador de sessão mt5x. Somente leitura de histórico e escrita de CSV próprio.
+// Não envia, altera ou fecha ordens. Uma linha por posição encerrada.
+struct MT5X_TradeRow
+{
+   long id, entry_order;
+   datetime opened, closed;
+   double in_volume, out_volume, in_value, out_value, result, commission, swap, fee, sl, tp;
+   int direction;
+   bool ambiguous;
+   string reason;
+};
+
+void MT5X_SortRows(MT5X_TradeRow &rows[],const int first,const int last)
+{
+   int left=first,right=last;
+   datetime pivot=rows[(first+last)/2].closed;
+   while(left<=right)
+   {
+      while(rows[left].closed<pivot) left++;
+      while(rows[right].closed>pivot) right--;
+      if(left<=right) { MT5X_TradeRow temp=rows[left]; rows[left]=rows[right]; rows[right]=temp; left++; right--; }
+   }
+   if(first<right) MT5X_SortRows(rows,first,right);
+   if(left<last) MT5X_SortRows(rows,left,last);
+}
+
+bool MT5X_Export(const string filename, const long magic)
+{
+   if(!HistorySelect(0, TimeCurrent()+1)) return false;
+   MT5X_TradeRow rows[];
+   // A plataforma pode fechar a última posição com magic=0 ao terminar o
+   // teste. A propriedade vem da entrada, não do magic do negócio de saída.
+   for(int i=0;i<HistoryDealsTotal();i++)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0 || HistoryDealGetInteger(deal,DEAL_MAGIC)!=magic || HistoryDealGetString(deal,DEAL_SYMBOL)!=_Symbol) continue;
+      long entry=HistoryDealGetInteger(deal,DEAL_ENTRY);
+      if(entry!=DEAL_ENTRY_IN && entry!=DEAL_ENTRY_INOUT) continue;
+      long id=HistoryDealGetInteger(deal,DEAL_POSITION_ID);
+      if(id==0) continue;
+      int at=-1;
+      for(int k=0;k<ArraySize(rows);k++) if(rows[k].id==id) { at=k; break; }
+      if(at<0) { at=ArraySize(rows); ArrayResize(rows,at+1,128); ZeroMemory(rows[at]); rows[at].id=id; }
+   }
+   for(int i=0;i<HistoryDealsTotal();i++)
+   {
+      ulong deal=HistoryDealGetTicket(i);
+      if(deal==0) continue;
+      long id=HistoryDealGetInteger(deal,DEAL_POSITION_ID);
+      int at=-1;
+      for(int k=0;k<ArraySize(rows);k++) if(rows[k].id==id) { at=k; break; }
+      if(at<0) continue;
+      long entry=HistoryDealGetInteger(deal,DEAL_ENTRY), kind=HistoryDealGetInteger(deal,DEAL_TYPE);
+      double volume=HistoryDealGetDouble(deal,DEAL_VOLUME), price=HistoryDealGetDouble(deal,DEAL_PRICE);
+      datetime stamp=(datetime)HistoryDealGetInteger(deal,DEAL_TIME);
+      rows[at].commission+=HistoryDealGetDouble(deal,DEAL_COMMISSION);
+      rows[at].swap+=HistoryDealGetDouble(deal,DEAL_SWAP);
+      rows[at].fee+=HistoryDealGetDouble(deal,DEAL_FEE);
+      rows[at].result+=HistoryDealGetDouble(deal,DEAL_PROFIT)+HistoryDealGetDouble(deal,DEAL_SWAP)+HistoryDealGetDouble(deal,DEAL_COMMISSION)+HistoryDealGetDouble(deal,DEAL_FEE);
+      if(entry==DEAL_ENTRY_IN)
+      {
+         long order=HistoryDealGetInteger(deal,DEAL_ORDER);
+         int direction=kind==DEAL_TYPE_BUY ? 1 : kind==DEAL_TYPE_SELL ? -1 : 0;
+         if(rows[at].in_volume>0 && (rows[at].entry_order!=order || rows[at].direction!=direction)) rows[at].ambiguous=true;
+         if(rows[at].opened==0 || stamp<rows[at].opened)
+         {
+            rows[at].opened=stamp; rows[at].entry_order=order; rows[at].direction=direction;
+            rows[at].sl=HistoryOrderGetDouble(order,ORDER_SL); rows[at].tp=HistoryOrderGetDouble(order,ORDER_TP);
+         }
+         rows[at].in_volume+=volume; rows[at].in_value+=volume*price;
+      }
+      else if(entry==DEAL_ENTRY_OUT || entry==DEAL_ENTRY_OUT_BY)
+      {
+         rows[at].out_volume+=volume; rows[at].out_value+=volume*price;
+         if(stamp>=rows[at].closed)
+         {
+            rows[at].closed=stamp;
+            long reason=HistoryDealGetInteger(deal,DEAL_REASON);
+            rows[at].reason=reason==DEAL_REASON_SL ? "sl" : reason==DEAL_REASON_TP ? "tp" : HistoryDealGetString(deal,DEAL_COMMENT)=="end of test" ? "fim" : "";
+         }
+      }
+      else rows[at].ambiguous=true;
+   }
+   if(ArraySize(rows)>1) MT5X_SortRows(rows,0,ArraySize(rows)-1);
+   int handle=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,';');
+   if(handle==INVALID_HANDLE) return false;
+   FileWrite(handle,"time","symbol","type","volume","result","entry_time","entry_price","exit_price","sl","tp","direction","exit_reason","position_id","commission","swap","fee","currency");
+   for(int i=0;i<ArraySize(rows);i++)
+   {
+      MT5X_TradeRow r=rows[i];
+      if(r.closed==0 || r.out_volume==0) continue;
+      bool complete=!r.ambiguous && r.opened>0 && r.in_volume>0 && MathAbs(r.in_volume-r.out_volume)<0.00000001;
+      FileWrite(handle,TimeToString(r.closed,TIME_DATE|TIME_SECONDS),_Symbol,r.direction>0 ? "close_buy" : "close_sell",
+                DoubleToString(r.out_volume,8),DoubleToString(r.result,8),complete ? TimeToString(r.opened,TIME_DATE|TIME_SECONDS) : "",
+                complete ? DoubleToString(r.in_value/r.in_volume,_Digits) : "",DoubleToString(r.out_value/r.out_volume,_Digits),
+                complete ? DoubleToString(r.sl,_Digits) : "",complete ? DoubleToString(r.tp,_Digits) : "",
+                complete ? (r.direction>0 ? "buy" : "sell") : "",r.reason,r.id,
+                DoubleToString(r.commission,8),DoubleToString(r.swap,8),DoubleToString(r.fee,8),AccountInfoString(ACCOUNT_CURRENCY));
+   }
+   FileClose(handle); return true;
+}

@@ -193,6 +193,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.25 | Laboratório: recuperar contexto após atualizar barras e comparar execuções sem perder operações | T16.2b, T16.5, T16.11b, T17.24 | ✅ implementação, regressões e cópia real verificadas no Linux; suíte final, CI, revisão e integração rastreados no PR; [escopo e aceite](propostas/T17_25_LABORATORIO_COBERTURA.md) registrados antes do código |
 | T17.26 | Robôs: ativos testados, resultados recentes por ativo e ícones de sinal | T8.2, T17.12 | ✅ contagem distinta por último teste e ícones implementados; 37 focados + regressão de UI aprovados, SQL independente e 12 capturas reais; composição, suíte final, CI e host rastreados no PR; [política e aceite](propostas/T17_26_ROBOS_ATIVOS_RESULTADOS.md) |
 | T17.27 | Laboratório: recalcular layout após DPI nativo e resize da figura | T17.25 | ✅ layout segue a figura/DPI e altura não realimenta; 34 focados e 32 cenários reais DPI144, suite/CI/host rastreados no PR; [aceite](propostas/T17_27_LAYOUT_DPI_LABORATORIO.md) |
+| T17.28 | Cards MT5: seletores, PLAY confirmado, REPLAY visual, BACKTEST discreto e acompanhamento | T8.5/T8.7, T11.3, T12.2/L, T17.26 | ✅ implementado; PLAY/STOP demo e REPLAY nativos, seletores e consentimento; suíte final, CI, revisão e lançador instalado rastreados no PR105; [aceite e limites](propostas/T17_28_CONTROLES_MT5.md) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

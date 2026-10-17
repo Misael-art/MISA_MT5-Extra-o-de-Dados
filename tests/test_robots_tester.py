@@ -185,6 +185,52 @@ def test_run_mql5_records_the_run_from_the_report(home):
     assert robot.stage == catalog.TESTED and robot.headline["trades"] == 3 and robot.headline["approved"] is None
 
 
+def test_session_export_is_explicitly_disabled_and_shared_original_csv_is_preserved(home):
+    """Regressão nativa: tester_values religava a exportação mesmo com params=false."""
+    from mt5_extracao.robots.mql import MqlInput
+    from mt5_extracao.robots import battery
+    home.robot.inputs.append(MqlInput(name="InpExportTrades", type="bool", default="true"))
+    magic = battery.magic_number(home.robot)
+    original = home.common / f"HDK_trades_{magic}.csv"
+    original.write_bytes(b"original sentinel, never delete or overwrite")
+    owned = home.common / "unique-session.csv"
+    calls = []
+
+    def terminal(*args):
+        html = report_html([DEALS[0], ("2025.01.09 10:00:00", "EURUSD", "buy", "in", "-2", "0", "0", "9998"),
+                            ("2025.01.10 11:00:00", "EURUSD", "sell", "out", "0", "-1", "-9", "9988")])
+        result = fake_terminal(html, calls)(*args)
+        ini = calls[-1][1]
+        preset = (home.mt5 / "MQL5" / "Profiles" / "Tester" / ini["ExpertParameters"]).read_text(encoding="utf-16")
+        assert "InpExportTrades=false" in preset
+        owned.write_text("time;symbol;type;volume;result;entry_time;direction;currency;commission;swap;fee\n"
+                         "2025.01.10 11:00;EURUSD;close_buy;0.19;-12;2025.01.09 10:00;buy;USD;-2;-1;0\n")
+        return result
+    record = backtest.run_mql5(home.db, home.config, home.robot, "EURUSD", "H1",
+                              dt.datetime(2025, 1, 1), dt.datetime(2025, 2, 1),
+                              params={"InpExportTrades": "false"}, read_csv=False, export_trades=False,
+                              trades_csv_override=owned, run=terminal, is_running=lambda: False, visual=True)
+    assert original.read_bytes() == b"original sentinel, never delete or overwrite"
+    assert record["metrics"]["net_profit"] == -12
+    assert record["metrics"]["currency"] == "USD" and record["metrics"]["costs"]["commission"] == -2
+    assert record["metrics"]["native_cash_result"] == -12 and record["metrics"]["cash_reconciled"]
+    assert calls[0][1]["Visual"] == "1" and calls[0][1]["UseCloud"] == "0"
+    with pytest.raises(ValueError, match="preservado"):
+        backtest.run_mql5(home.db, home.config, home.robot, "EURUSD", "H1", read_csv=False,
+                          export_trades=False, trades_csv_override=owned, run=terminal, is_running=lambda: False)
+    assert original.read_bytes() == b"original sentinel, never delete or overwrite"
+
+
+def test_unallocated_cost_or_missing_position_blocks_session_run_persistence(home):
+    owned = home.common / "unreconciled.csv"
+    csv = "time;result;volume\n2025.01.10 11:00;1;0.19\n"
+    with pytest.raises(ValueError, match="não reconcilia"):
+        backtest.run_mql5(home.db, home.config, home.robot, "EURUSD", "H1", read_csv=False,
+                          export_trades=False, trades_csv_override=owned,
+                          run=fake_terminal(report_html(), csv=(owned, csv)), is_running=lambda: False)
+    assert not store.load_runs(home.db, home.robot.key)
+
+
 def test_run_mql5_records_the_tester_log_delta_per_run(home):
     daily = home.mt5 / "Tester" / "Agent-127.0.0.1-3000" / "logs" / "20261014.log"
     daily.parent.mkdir(parents=True)

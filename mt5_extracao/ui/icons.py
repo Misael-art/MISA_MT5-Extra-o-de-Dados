@@ -61,3 +61,28 @@ def result_direction(direction: str, color: str, size: int = 18) -> tk.PhotoImag
     draw.line(path, fill=color, width=stroke)
     draw.line(head, fill=color, width=stroke, joint="curve")
     return _photo(image, size)
+
+
+def robot_action(action: str, color: str, size: int = 18) -> tk.PhotoImage:
+    """Comandos de execução desenhados, com rótulos textuais sempre junto ao ícone."""
+    if action not in ("play", "replay", "backtest", "stop", "selector"):
+        raise ValueError("Comando de robô desconhecido.")
+    s = size * _SCALE
+    picture = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(picture)
+    stroke = max(2, s // 10)
+    if action == "play":
+        draw.polygon([(s*.25, s*.15), (s*.85, s*.5), (s*.25, s*.85)], fill=color)
+    elif action == "stop":
+        draw.rounded_rectangle((s*.2, s*.2, s*.8, s*.8), radius=s*.07, fill=color)
+    elif action == "replay":
+        draw.arc((s*.12, s*.12, s*.88, s*.88), 30, 315, fill=color, width=stroke)
+        draw.polygon([(s*.12, s*.14), (s*.12, s*.48), (s*.46, s*.25)], fill=color)
+    elif action == "selector":
+        for x, y in ((.25, .65), (.5, .35), (.75, .55)):
+            draw.line((s*x, s*.15, s*x, s*.85), fill=color, width=stroke//2)
+            draw.ellipse((s*(x-.1), s*(y-.1), s*(x+.1), s*(y+.1)), fill=color)
+    else:
+        draw.line((s*.15, s*.12, s*.15, s*.85, s*.9, s*.85), fill=color, width=stroke)
+        draw.line([(s*.28, s*.7), (s*.46, s*.45), (s*.64, s*.55), (s*.85, s*.22)], fill=color, width=stroke)
+    return _photo(picture, size)
