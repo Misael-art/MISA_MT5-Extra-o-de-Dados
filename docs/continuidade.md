@@ -1,5 +1,8 @@
 # Continuidade: harmonização de 2026-10-14
 
+> Estado atual da frente visual (snapshot854af32, 2026-10-16): PRs #81–#93, #95/#96/#97/#98/#99/#100 integrados separadamente, com revisão própria e CI. Detalhes recolhíveis já funcionam; abertura real por `./run.sh --offline` verificada e encerrada0, configuração preservada. T17.23/PR99 integrado e operado pelo lançador real; aceite críticoUI registrado com ressalvas. T13.10/PR100 integrado e CLI instalada verificada: oito casos retrospectivos, nenhum candidato (maiorPFmodelado0,875849);963/9 e CI final aprovados. Consulte [o relatório reconciliado](propostas/CONTINUIDADE_INTEGRACAO_UI.md); as seções abaixo também conservam snapshots históricos, cujas pendências não substituem este estado atual.
+
+
 ## Retomada T18.8 — 2026-10-15
 
 A apresentação local da T18.8 foi implementada. A aba Laboratório tem as visões Matriz (Indicador × indicador e Indicador × alvo),
@@ -632,6 +635,31 @@ seleção ou rolagem foi retirada. Windows manual continua pendente.
 - Doctor isolado: 15 OK/2 avisos/1 falha deliberada de MT5.path vazio. Nenhuma
   conta, configuração ou arquivo do terminal do usuário foi alterado.
 
+## ORG05 — estado da integração visual (2026-10-16)
+
+A principal eed5f34 reúne os PRs #81–#89 e #93, integrados separadamente após revisão
+técnica do agente executor, checks no head final e smoke no módulo instalado com
+configuração/dados privados. O trabalho original T17.6, as configurações e as
+bases do usuário foram preservados. Nenhum agente adicional foi acionado.
+
+Estado por PR, commits de merge, verificações no host, falhas preservadas e
+pendências estão em [Continuidade da integração visual](propostas/CONTINUIDADE_INTEGRACAO_UI.md).
+O painel do plano foi reconciliado com essas integrações. #90 recebeu a correção
+separada do teste assíncrono (#93) e aguarda novo CI; #91/#92 possuem implementação, testes e
+operação real registrados, mas ainda dependem da cadeia de integração.
+
+O smoke histórico do #89 manteve as 129 operações, PF 0,637667 e resultado
+negativo da execução anterior; ledger reconciliado e contexto anterior após
+alterar período. São dados previamente expostos, sem campanha/OOS. A meta
+financeira não foi demonstrada. Aceite global da UI, dados/custos e pesquisa
+permanecem frentes explícitas. #79/#80, releases e contas seguem separados.
+
+ORG05 altera somente documentação. Baseline a13c2c6: 856 aprovados/9 ignorados,
+saída 0; base depois reconciliada com b9e54c9. Suíte final c3d3785: 860 aprovados/9
+ignorados em 591,95 s, saída 0, após repetir a execução interrompida por reboot.
+Depois recebeu #93, mantendo diff próprio somente documental. Doctor atual da
+principal após restaurar apenas o servidor RPC: 21 OK/1 aviso/0 falhas. Pedido
+de informações recolhíveis registrado em T17.21, ainda sem código neste snapshot.
 ## T17.18 — Análise e cabeçalho respeitam a fonte (2026-10-16)
 
 - Ambiente isolado instalado/dev; baseline a893f54 repetida após reboot com
