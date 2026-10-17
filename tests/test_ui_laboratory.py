@@ -480,3 +480,53 @@ def test_microstructure_reports_population_and_handles_each_missing_feature(pane
     assert "1 de 1 operações" in panel._chart_panels["m_volume"].notice.message.cget("text")
     assert "0 de 1 operações" in panel._chart_panels["m_vol"].notice.message.cget("text")
     assert "0 de 1 operações" in panel._chart_panels["m_heat"].notice.message.cget("text")
+
+
+def test_empty_lens_cannot_be_repopulated_by_context_already_loading(panel, monkeypatch):
+    ledger.save_trades(panel.db, "r", _trades(1, 3), robot_key="python:r", symbol="X", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    pending = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: pending.append((work, done)))
+    panel.load_lab()
+    work, done = pending[-1]
+    panel.runs = []
+    panel._lens_changed()
+    done(work(), None)
+    assert panel.lab is None and panel.view is None
+    assert not panel.selected.get() and not panel.selector.cget("values")
+    assert "ainda não tem operações" in panel.note.cget("text")
+
+
+def test_only_newest_book_reload_can_replace_choices(panel, monkeypatch):
+    pending = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: pending.append((work, done)))
+    panel.reload()
+    first = pending[-1][1]
+    panel.reload()
+    newest = pending[-1][1]
+    newest([{"robot_key": "mql5:new", "symbol": "NEW"}], None)
+    first([{"robot_key": "mql5:old", "symbol": "OLD"}], None)
+    assert panel._options() == ["mql5:new"] and panel.selected.get() == "mql5:new"
+
+
+def test_context_error_has_retry_action_and_refresh_restores_comparison(panel, monkeypatch):
+    ledger.save_trades(panel.db, "r", _trades(1, 3), robot_key="python:r", symbol="X", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    original = panel.lab
+    panel.tabs.select(panel.tab_frames["Execução"])
+    panel.pump(lambda: "Execução" in panel._drawn)
+    pending = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: pending.append((work, done)))
+    panel.load_lab()
+    pending[-1][1](None, RuntimeError("falha controlada de leitura"))
+    assert panel.compare_button.instate(["disabled"]) and not panel._run_labels
+    assert "Atualizar" in panel.note.cget("text")
+    panel.reload()
+    work, done = pending[-1]
+    done(work(), None)
+    pending[-1][1](original, None)
+    assert panel.view is not None and len(panel.view) == 3
+    assert not panel.compare_button.instate(["disabled"])
+    assert len(panel._run_labels) == 1 and "falha controlada" not in panel.note.cget("text")

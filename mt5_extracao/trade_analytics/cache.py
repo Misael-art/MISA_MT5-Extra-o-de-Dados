@@ -87,10 +87,10 @@ def _store(db, run_id: str, sig: str, feats: pd.DataFrame) -> None:
         if inspect(conn).has_table(TABLE):
             conn.execute(text(f"DELETE FROM {TABLE} WHERE run_id = :r"), {"r": run_id})
         conn.execute(text(f"DELETE FROM {RUNS} WHERE run_id = :r"), {"r": run_id})
+        feats.astype(object).where(pd.notna(feats), None).to_sql(TABLE, conn, if_exists="append", index=False)
         conn.execute(text(f"INSERT INTO {RUNS} VALUES (:r, :s, :v, :t)"),
                      {"r": run_id, "s": sig, "v": enrich.FEATURE_VERSION,
                       "t": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")})
-    feats.astype(object).where(pd.notna(feats), None).to_sql(TABLE, db.engine, if_exists="append", index=False)
 
 
 def features(db, config, trades: pd.DataFrame) -> pd.DataFrame:

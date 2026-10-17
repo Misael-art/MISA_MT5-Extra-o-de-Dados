@@ -107,10 +107,11 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
             safety.max_levels = int(values.get("niveis", safety.max_levels))
             seq = sizing.apply(frame, initial, support["multiplier"], safety, anti=registry.SEQUENCE[key])
             rows = seq["trades"][~seq["trades"]["skipped"]]
+            base_volume = rows["seq"].map(frame.set_index("seq")["volume"])
             out[key] = {"result": None, "name": mode.name, "study_only": True, "sequence": seq,
                         "safety_notes": safety.notes, "frame": rows[["seq", "pnl", "entry_time", "exit_time"]].assign(run_id=run_id),
                         "metrics": stats.metrics(rows["pnl"], initial,
-                                                 rows["r_multiple"] * rows["volume"] / frame.loc[rows.index, "volume"])}
+                                                 rows["r_multiple"] * rows["volume"] / base_volume)}
             if save:
                 ledger.save_trades(db, f"{run_id}#{key}", rows.to_dict("records"), robot_key=data["robot_key"],
                                    symbol=data["symbol"], timeframe=data["timeframe"], source=RESIM_PREFIX + key)

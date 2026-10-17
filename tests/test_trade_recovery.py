@@ -92,3 +92,56 @@ def test_comparison_frames_keep_every_original_seq_and_explain_skips(db):
         assert item["frame"]["seq"].tolist() == [0, 1]
         assert item["frame"]["run_id"].tolist() == ["r", "r"]
         assert item["result"].skipped == 1 and item["result"].approximate == 2
+
+
+@pytest.mark.parametrize("warm", [False, True])
+@pytest.mark.parametrize("point", ["before", "after"])
+def test_failed_feature_append_never_marks_incomplete_cache_as_fresh(db, monkeypatch, warm, point):
+    from mt5_extracao.trade_analytics import cache
+    from sqlalchemy import text
+    bars = random_walk(50, seed=4, vol=.2, freq="5min")
+    db.save_ohlcv_data("X", "5 minutos", bars)
+    _save(db, [_trade(bars)])
+    if warm:
+        aggregate.frame(db, None)
+    with db.engine.connect() as conn:
+        before = conn.execute(text(f"SELECT * FROM {cache.RUNS}")).fetchall() if warm else []
+    changed = bars.copy()
+    changed.loc[29, "real_volume"] = 987654
+    db.save_ohlcv_data("X", "5 minutos", changed)
+    original = pd.DataFrame.to_sql
+    calls = []
+    def fail_after_append(frame, *args, **kwargs):
+        calls.append(len(frame))
+        if len(calls) == 1 and point == "before":
+            raise RuntimeError("falha de armazenamento antes de inserir linhas")
+        result = original(frame, *args, **kwargs)
+        if len(calls) == 1:
+            raise RuntimeError("falha de armazenamento após inserir linhas")
+        return result
+    monkeypatch.setattr(pd.DataFrame, "to_sql", fail_after_append)
+    assert aggregate.frame(db, None).entry_volume.iloc[0] == 987654
+    with db.engine.connect() as conn:
+        assert conn.execute(text(f"SELECT * FROM {cache.RUNS}")).fetchall() == before
+    assert aggregate.frame(db, None).entry_volume.iloc[0] == 987654
+    assert calls == [1, 1]      # a falha exige recomputar; só a segunda gravação torna o cache atual
+
+
+def test_sequence_risk_metrics_match_original_operations_after_entry_reordering(db):
+    import numpy as np
+    from tests.test_trade_sizing import _robot
+    bars = random_walk(50, seed=4, vol=.2, freq="5min")
+    db.save_ohlcv_data("X", "5 minutos", bars)
+    offsets = np.random.default_rng(17).integers(0, 4, 20)
+    _save(db, [_trade(bars, entry_time=bars.time.iloc[30 + offset],
+                      exit_time=bars.time.iloc[40], volume=float(k + 1), stop_price=50+k)
+               for k, offset in enumerate(offsets)])
+    robot = _robot([("InpLotMultiplier", 2, "multiplicador de lote")], facts={"risk_pct": 1.0})
+    table = runner.compare(db, None, "r", ["ponto_fixo", "martingale"], robot=robot)
+    base = table["ponto_fixo"]["result"]
+    original = dict(zip(base.source_seqs, base.trades))
+    sequence = table["martingale"]["sequence"]["trades"]
+    assert set(sequence.seq) == set(original) and len(sequence) == 20
+    expected = [original[row.seq].r_multiple * row.volume / original[row.seq].volume
+                for row in sequence.itertuples() if not row.skipped]
+    assert table["martingale"]["metrics"]["expectancy_r"] == pytest.approx(sum(expected) / len(expected))

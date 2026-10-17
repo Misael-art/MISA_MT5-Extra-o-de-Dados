@@ -61,6 +61,7 @@ class LaboratoryPanel:
         self.view = None           # com os filtros de tela
         self.loaded = False
         self._request = 0
+        self._reload_request = 0
         self._compare_request = 0
         self._charts = {}
         self._chart_panels = {}
@@ -282,6 +283,9 @@ class LaboratoryPanel:
             self.reload()
 
     def reload(self):
+        self._reload_request += 1
+        request = self._reload_request
+        self._request += 1
         db = self._db()
         if db is None:
             self.set_note("Base de dados indisponível.")
@@ -290,6 +294,8 @@ class LaboratoryPanel:
         from mt5_extracao.trade_analytics import ledger
 
         def done(runs, error):
+            if request != self._reload_request:
+                return
             if error is not None:
                 self.set_note(f"Não foi possível ler o livro de operações: {error}")
                 return
@@ -340,7 +346,7 @@ class LaboratoryPanel:
             if request != self._request:
                 return                  # o usuário já escolheu outra coisa
             if error is not None:
-                self.set_note(f"Erro ao montar o Laboratório: {error}")
+                self.set_note(f"Erro ao montar o Laboratório: {error}. Clique em Atualizar para tentar novamente.")
                 return
             self.lab = lab
             self.apply_filters()
@@ -365,6 +371,7 @@ class LaboratoryPanel:
     # --- desenho -----------------------------------------------------------------------
 
     def _empty(self, text):
+        self._request += 1
         self._clear_execution()
         self._run_labels = {}
         self.run_combo.configure(values=())
