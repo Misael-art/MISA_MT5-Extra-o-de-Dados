@@ -33,3 +33,8 @@ Pedido de 2026-10-17: gráficos de microestrutura vazios e comparação sem resu
 Não muda a metodologia de custos, a resolução usada pelo motor nem as regras financeiras. Não preenche entradas antigas por inferência, não aprova estratégia por lucro observado, não envia ordens e não repete campanha financeira. Windows físico com MT5 permanece no checklist; CI Windows é uma evidência distinta.
 
 Uma primeira cópia privada da importação de manutenção gerou curva em formato incorreto. O teste foi encerrado, a evidência de falha foi preservada e o driver foi corrigido para o contrato `[horário, patrimônio]`. A base instalada não foi alterada por esse ensaio. Só a repetição corrigida pode servir como aceite.
+
+
+## Refinamento observado na inspeção com dados completos
+
+Na primeira renderização funcional, a tabela exibiu três modos com 119 operações e os frames mantiveram todas as 119 identidades. Os quatro gráficos de microestrutura foram preenchidos e a cobertura explicitou as 161 operações antigas sem entrada. Entretanto, as duas figuras de execução ficaram comprimidas abaixo da tabela. Antes de implementar o refinamento, fica registrado: reutilizar o notebook de subvisões existente para **Resultados, Curvas e Horários**, mantendo seleção e modos acima. Testar e inspecionar área útil dos gráficos em ambas as resoluções; sem mudar os cálculos.
