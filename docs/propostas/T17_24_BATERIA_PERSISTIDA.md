@@ -16,9 +16,18 @@ cálculos, critérios de aprovação, presets, risco, Experts ou operações em 
 
 Dependências: T8.6 e T13.9. Uma tarefa e um PR, sem outras melhorias da interface.
 
+### Ajuste do escopo após inspeção da mesma bateria
+
+Com o ícone corrigido, a inspeção real em 1280×800 mostrou que o texto longo da
+bateria cortava o motivo final e a orientação de recuperação. Antes de alterar
+esse trecho, fica registrado o uso do `ScrollableContent` já existente somente
+na aba Bateria, com teste de acesso ao fim do texto em janela pequena e grande.
+A suíte intermediária foi interrompida para essa revisão e não vale como aceite.
+
 ## Arquivos
 
 - `mt5_extracao/robots/store.py`.
+- `mt5_extracao/ui/robot_detail.py` (rolagem da própria bateria).
 - `tests/test_ui_main_window.py`.
 - Este plano, painel de status, continuidade e checklist de Windows.
 
@@ -27,7 +36,8 @@ Dependências: T8.6 e T13.9. Uma tarefa e um PR, sem outras melhorias da interfa
 1. Preservar o erro e a base real; instalar ambiente/dev e executar a suíte antes
    de alterar o produto. Reproduzir a falha por persistência/leitura e pelo clique
    no card, incluindo ausência de operações e amostra sem perdas.
-2. Completar o contrato do item `profit_factor_contract` com seu ícone de falha.
+2. Completar o contrato do item `profit_factor_contract` com seu ícone de falha
+   e reutilizar a área rolável para alcançar o motivo final da bateria.
 3. Acrescentar regressões de renderização e de seleção do card/aba Bateria em
    claro e escuro, verificando que a projeção rejeita e os registros continuam iguais.
 4. Rodar os testes focados, a suíte completa e o doctor; operar a interface com
@@ -40,6 +50,7 @@ Dependências: T8.6 e T13.9. Uma tarefa e um PR, sem outras melhorias da interfa
 - [ ] O clique no card e a aba Bateria não geram `KeyError` nem erro de callback.
 - [ ] PF indefinido continua reprovado, com motivo e orientação visíveis no texto.
 - [ ] A consulta repetida não acumula itens nem modifica os registros históricos.
+- [ ] O fim de uma bateria longa fica acessível pela rolagem, em claro e escuro.
 - [ ] Regressão falha no código anterior e passa com a correção.
 - [ ] Suíte, doctor, operação no host e preservação registrados.
 
