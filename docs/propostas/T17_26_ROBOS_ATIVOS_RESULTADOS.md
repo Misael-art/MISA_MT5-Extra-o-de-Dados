@@ -21,10 +21,22 @@ Pedido de 2026-10-17: mostrar quantos ativos cada Expert/robô testou, em quanto
 
 ## Aceite
 
-- [ ] Ativos distintos e sinal do último teste corretos; política legível.
-- [ ] Sem resultado difere de zero e perda; não altera headline, estágio ou aprovação.
-- [ ] Ícones e textos acompanham tema/resize, com ausência discreta.
-- [ ] Consulta SQL independente e captura real confirmam as contagens.
+- [x] Ativos distintos e sinal do último teste corretos; política legível.
+- [x] Sem resultado difere de zero e perda; não altera headline, estágio ou aprovação.
+- [x] Ícones e textos acompanham tema/resize, com ausência discreta.
+- [x] Consulta SQL independente e captura real confirmam as contagens na cópia consistente; falta repetir o lançador instalado após integração.
 - [ ] Suíte, doctor, CI exato, revisão e operação instalada documentados no PR.
 
 Não muda execução, exposição, configuração ou dados históricos. Não envia ordens. Windows físico com MT5 continua pendente, distinto do CI Windows.
+
+## Observação → correção → evidência
+
+| Fluxo/ação | Esperado e observado | Gravidade/tarefa | Correção e verificação |
+|---|---|---|---|
+| Robôs: inspecionar abrangência dos testes | Antes só último teste e quantidade de execuções; ativos e saldo por ativo ausentes | Legibilidade/análise; T17.26 | Resumo puro deduplica símbolos pelo teste mais recente; 13 casos de núcleo aprovados, sem mutar registros ou confundir validação |
+| Robôs: diferenciar ganho, perda e ausência | Falta de sinal por ativo dificultava analisar abrangência | Legibilidade; T17.26 | Setas vetoriais rasterizadas pelo sistema existente, textos e tons discretos; regressão verifica tema, resize, ícone vivo e seleção do detalhe |
+| Base real: comparar com SQL | 15 robôs, com históricos repetidos e testes sem operações | Verificação de dados; T17.26 | Consulta independente com ROW_NUMBER por robô/símbolo coincide exatamente; cópia contém os cinco relatórios nativos preservados recuperados na T17.25, não campanha nova |
+
+Baseline: 967/9 no SHA inicial idêntico; ambiente preparado e pacotes comparados. Foco: **37 aprovados** e uma regressão de UI que passou após corrigir o preparo do próprio teste (faltavam campos obrigatórios de `save_run`); a primeira falha permanece no log, sem ajuste no produto para contorná-la. Os 24 focados iniciais também passaram. Cópia consistente da base real: **12 casos aprovados**, dois temas × duas resoluções × três robôs (MQL5 com ganho/perda/ausência, Python com dez ativos, Guardião sem resultado), encerramento normal e comparação SQL exata dos 15 robôs. Inspeção visual confirmou textos, setas e ausência sem destaque.
+
+Evidências privadas fora do Git: `t1726-baseline-reuse.json`, `t1726-baseline-focused-repeat.*`, `t1726-focused-v1.*`, `t1726-new-ui-fixed.*`, `t1726-ui-realdata-v1/visual-acceptance.json` e `independent-SQL-counts.json`. Revisão própria, suíte e CI no SHA final composto, confirmação remota do merge e operação instalada devem constar no PR; não substituídos pelas capturas privadas. Não houve mudança de `.sh`, dependência, configuração, risco ou schema. Não foram enviadas ordens.

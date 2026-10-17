@@ -41,3 +41,23 @@ def information(color: str, size: int = 18) -> tk.PhotoImage:
     draw.ellipse((s * .44, s * .25, s * .56, s * .37), fill=color)
     draw.line((s * .50, s * .46, s * .50, s * .75), fill=color, width=stroke)
     return _photo(image, size)
+
+
+
+def result_direction(direction: str, color: str, size: int = 18) -> tk.PhotoImage:
+    """Seta de ganho/perda observados, sem confundir sinal com aprovação ou depender de glifo."""
+    if direction not in ("positive", "negative"):
+        raise ValueError("Direção do resultado desconhecida.")
+    s = size * _SCALE
+    image = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    stroke = max(2, s // 9)
+    if direction == "positive":
+        path = [(s * .18, s * .78), (s * .78, s * .22)]
+        head = [(s * .42, s * .22), path[-1], (s * .78, s * .58)]
+    else:
+        path = [(s * .18, s * .22), (s * .78, s * .78)]
+        head = [(s * .42, s * .78), path[-1], (s * .78, s * .42)]
+    draw.line(path, fill=color, width=stroke)
+    draw.line(head, fill=color, width=stroke, joint="curve")
+    return _photo(image, size)

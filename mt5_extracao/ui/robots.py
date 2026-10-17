@@ -5,9 +5,11 @@ from tkinter import filedialog, messagebox, ttk
 
 from mt5_extracao import robots as robots_core
 from mt5_extracao.robots import catalog, risk
+from mt5_extracao.ui import icons
 from mt5_extracao.ui.components import FilterBar
 from mt5_extracao.ui.robot_detail import RISK_STYLES, RobotDetail, draw_equity
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
+from mt5_extracao.ui.visual_tokens import result_attention_colors
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +31,7 @@ class RobotsPanel:
         self.theme = ui.theme
         self.robots = []
         self.visible = []        # robôs que passam nos filtros, na ordem dos cards
+        self._asset_icons = {}   # referências vivas; imagens Tk permanecem na thread principal
         self.cards = {}          # chave do robô -> frame do card
         self.selected_key = None
         self._columns = 0
@@ -297,6 +300,7 @@ class RobotsPanel:
             ttk.Label(outer, text="As estatísticas aparecem aqui depois do primeiro teste.", style="Muted.TLabel",
                       wraplength=wrap, justify=tk.LEFT).pack(anchor="w")
 
+        self._asset_summary(outer, robot, wrap)
         ttk.Separator(outer).pack(fill=tk.X, pady=(8, 8))
         trail = tk.Canvas(outer, height=16, highlightthickness=0, borderwidth=0,
                           background=self.theme.colors["surface"])
@@ -316,6 +320,50 @@ class RobotsPanel:
         outer.bind("<Configure>", lambda e: [w.configure(wraplength=max(120, e.width - 30)) for w in wrapped], add="+")
         self._bind_tree(outer, lambda e, key=robot.key: self.select(key))
         return outer
+
+    def _asset_summary(self, parent, robot, wrap):
+        summary = robot.backtest_summary
+        if not summary["tested"]:
+            if robot.runs:
+                ttk.Label(parent, text="Ativos dos backtests não informados", style="Muted.TLabel",
+                          wraplength=wrap).pack(anchor="w", pady=(6, 0))
+            return
+        total = summary["tested"]
+        noun = "ativo testado" if total == 1 else "ativos testados"
+        heading = ttk.Label(parent, text=f"{fmt_int(total)} {noun}", style="Surface.TLabel", wraplength=wrap)
+        heading.pack(anchor="w", pady=(8, 0))
+        ttk.Label(parent, text="Último backtest por ativo", style="Muted.TLabel", wraplength=wrap).pack(anchor="w")
+        Tooltip(heading, "Cada ativo conta uma vez, pelo último backtest gravado, incluindo todos os timeframes e "
+                        "presets. Lucro/prejuízo seguem o saldo e os custos desse teste; não são aprovação nem "
+                        "validação fora da amostra.", self.theme)
+        if summary["positive"] or summary["negative"]:
+            row = ttk.Frame(parent, style="Surface.TFrame")
+            row.pack(fill=tk.X, pady=(3, 0))
+            labels = []
+            size = max(12, int(self.theme.font.metrics("linespace") * .8))
+            for column, (state, singular, plural, value) in enumerate((
+                    ("positive", "positivo", "positivos", 1), ("negative", "negativo", "negativos", -1))):
+                count = summary[state]
+                fill, foreground = result_attention_colors(value if count else None, self.theme.colors)
+                color = self.theme.colors["accent"] if state == "positive" and count else self.theme.colors["ink2"]
+                key = (state, color, size)
+                if key not in self._asset_icons:
+                    self._asset_icons[key] = icons.result_direction(state, color, size)
+                label = ttk.Label(row, text=f"{fmt_int(count)} {singular if count == 1 else plural}",
+                                  image=self._asset_icons[key], compound=tk.LEFT, style="Surface.TLabel",
+                                  foreground=foreground, background=fill, padding=3, wraplength=wrap // 2 - 24)
+                label.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else 4, 0))
+                row.columnconfigure(column, weight=1, uniform="asset-result")
+                labels.append(label)
+            row.bind("<Configure>", lambda event: [label.configure(wraplength=max(40, event.width // 2 - 30))
+                                                   for label in labels], add="+")
+        extra = []
+        if summary["flat"]:
+            extra.append(f"{fmt_int(summary['flat'])} zerado(s)")
+        if summary["unavailable"]:
+            extra.append(f"{fmt_int(summary['unavailable'])} sem resultado")
+        if extra:
+            ttk.Label(parent, text=" · ".join(extra), style="Muted.TLabel", wraplength=wrap).pack(anchor="w")
 
     def _draw_trail(self, canvas, robot):
         """Trilha do ciclo de vida: pontos cheios até o estágio atual, vazados daí em diante."""

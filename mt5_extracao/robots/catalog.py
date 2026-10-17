@@ -6,6 +6,7 @@ Catálogo de robôs: estratégias Python do projeto e Expert Advisors MQL5 lidos
 Nada aqui fala com o MT5 nem envia ordens: é leitura de arquivos e do banco.
 """
 import json
+import math
 import logging
 import re
 from dataclasses import dataclass, field
@@ -106,6 +107,36 @@ class Robot:
     @property
     def result(self) -> Optional[dict]:
         return self.results[0] if self.results else None
+
+    @property
+    def backtest_summary(self) -> dict:
+        """Ativos distintos pelo último backtest de cada um; lucro observado não é aprovação."""
+        latest = {}
+        for run in self.runs:
+            symbol = run.get("symbol")
+            if run.get("source") in HIDDEN_RUN_SOURCES or not isinstance(symbol, str) or not symbol.strip():
+                continue
+            symbol = symbol.strip()
+            order = (str(run.get("created_at") or ""), str(run.get("run_id") or ""))
+            if symbol not in latest or order > latest[symbol][0]:
+                latest[symbol] = (order, run)
+        counts = {"tested": len(latest), "positive": 0, "negative": 0, "flat": 0, "unavailable": 0}
+        assets = []
+        for symbol, (_, run) in sorted(latest.items()):
+            metrics = run.get("metrics") or {}
+            net, trades = metrics.get("net_profit"), metrics.get("trades")
+            try:
+                valid = not isinstance(net, bool) and not isinstance(trades, bool)
+                net, trades = float(net), float(trades)
+                valid = valid and math.isfinite(net) and math.isfinite(trades) and trades > 0 and trades.is_integer()
+            except (TypeError, ValueError, OverflowError):
+                valid = False
+            state = "positive" if valid and net > 0 else "negative" if valid and net < 0 else "flat" if valid else "unavailable"
+            counts[state] += 1
+            assets.append({"symbol": symbol, "run_id": run.get("run_id"), "timeframe": run.get("timeframe"),
+                           "state": state, "net_profit": net if valid else None,
+                           "trades": int(trades) if valid else None})
+        return dict(counts, assets=assets)
 
     @property
     def headline(self) -> Optional[dict]:
