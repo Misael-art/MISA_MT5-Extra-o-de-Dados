@@ -323,10 +323,13 @@ class LaboratoryPanel:
         db, config, choice = self._db(), self._config(), self.selected.get()
         if db is None or not choice:
             return
+        self._preferred_run_id = getattr(self, "_run_labels", {}).get(self.run_var.get())
+        self.lab = self.view = None
+        self._empty("Calculando o contexto das operações...")
+        self.compare_button.state(["disabled"])
         self._request += 1
         request = self._request
         lens = self.lens.get()
-        self.set_note("Calculando o contexto das operações...")
         from mt5_extracao.trade_analytics import aggregate
 
         def work():
@@ -372,8 +375,9 @@ class LaboratoryPanel:
         self.population_context = None
         self.set_note(text)
         self._drawn = set()
-        for chart in self._charts.values():
+        for key, chart in self._charts.items():
             chart.message(text)
+            self._chart_panels[key].set_notice(None, theme=self.theme)
 
     def _show_kpis(self):
         from mt5_extracao import profit_factor
@@ -854,7 +858,8 @@ class LaboratoryPanel:
                 self._chart_panels[key].set_notice(None, theme=self.theme)
 
     def _fill_runs(self):
-        previous = getattr(self, "_run_labels", {}).get(self.run_var.get())
+        previous = (getattr(self, "_run_labels", {}).get(self.run_var.get())
+                    or getattr(self, "_preferred_run_id", None))
         view = self.view
         self._run_labels = {}
         if view is not None and not view.empty:
@@ -870,6 +875,7 @@ class LaboratoryPanel:
         self.run_combo.configure(values=list(self._run_labels))
         target = next((label for label, run_id in self._run_labels.items() if run_id == previous),
                       next(iter(self._run_labels), ""))
+        self._preferred_run_id = None
         if self.run_var.get() != target:
             self.run_var.set(target)
 

@@ -450,6 +450,16 @@ def test_execution_choices_are_distinct_prefer_complete_and_ignore_stale_callbac
     assert not panel.mode_metrics and not panel.mode_tree.get_children()
     assert not panel.compare_button.instate(["disabled"])
     assert "Escolha um run" in panel.exec_note.cget("text")
+    panel.run_var.set(next(k for k, v in panel._run_labels.items() if v == "z-full"))
+    panel.compare_button.invoke()
+    previous_work, previous_done = pending[-1]
+    panel.selected.set("mql5:outro")
+    panel.load_lab()
+    previous_done(previous_work(), None)
+    assert not panel.mode_metrics and not panel.mode_tree.get_children()
+    assert panel.view is None
+    assert panel.kpi["n"][0].cget("text") == "—"
+    assert all(not item.notice or not item.notice.winfo_manager() for item in panel._chart_panels.values())
 
 
 def test_microstructure_reports_population_and_handles_each_missing_feature(panel):
