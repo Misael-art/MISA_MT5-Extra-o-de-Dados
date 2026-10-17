@@ -40,3 +40,12 @@ Não muda execução, exposição, configuração ou dados históricos. Não env
 Baseline: 967/9 no SHA inicial idêntico; ambiente preparado e pacotes comparados. Foco: **37 aprovados** e uma regressão de UI que passou após corrigir o preparo do próprio teste (faltavam campos obrigatórios de `save_run`); a primeira falha permanece no log, sem ajuste no produto para contorná-la. Os 24 focados iniciais também passaram. Cópia consistente da base real: **12 casos aprovados**, dois temas × duas resoluções × três robôs (MQL5 com ganho/perda/ausência, Python com dez ativos, Guardião sem resultado), encerramento normal e comparação SQL exata dos 15 robôs. Inspeção visual confirmou textos, setas e ausência sem destaque.
 
 Evidências privadas fora do Git: `t1726-baseline-reuse.json`, `t1726-baseline-focused-repeat.*`, `t1726-focused-v1.*`, `t1726-new-ui-fixed.*`, `t1726-ui-realdata-v1/visual-acceptance.json` e `independent-SQL-counts.json`. Revisão própria, suíte e CI no SHA final composto, confirmação remota do merge e operação instalada devem constar no PR; não substituídos pelas capturas privadas. Não houve mudança de `.sh`, dependência, configuração, risco ou schema. Não foram enviadas ordens.
+
+
+## Composição e verificação nativa antecipada
+
+O Laboratório foi integrado separadamente no PR #102, merge `2ec2688`, após 984 aprovados/9 pulos existentes, seis jobs de CI no SHA4cfa447 e revisão dos cinco apontamentos externos (quatro corrigidos, recuperação por Atualizar documentada no quinto). A instalação foi atualizada por fast-forward e seu runtime conferido com o testado. A composição desta tarefa preserva ambas as linhas do plano, continuidade e checklist; os conflitos foram exclusivamente documentais. Os três arquivos de runtime dos cards mantêm os hashes testados em4704180. Suíte e CI serão repetidos no SHA composto desta branch.
+
+Antecipação com aplicação real e SDK nativo conectado à mesma conta DEMO, usando cópia consistente:12 casos aprovados, SQL exato para15 robôs, encerramento0, mesma instância do terminal e0posições/0ordens. O primeiro verificador auxiliar apontava para um banco inexistente; a falha permanece preservada, e a repetição corrigida é a evidência válida. Não substitui a verificação de ./run.sh e da base instalada após o merge.
+
+CI preliminar4704180:seis jobs aprovados. Sourcery recusou revisão adicional por cota do serviço, portanto SKIPPED não foi tratado como revisão aprovada. Revisão própria (não independente) registrada por patch/hash; nova revisão própria da composição e checks exatos permanecem gates do PR.
