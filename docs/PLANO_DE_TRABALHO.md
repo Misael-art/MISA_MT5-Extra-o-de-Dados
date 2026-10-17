@@ -189,6 +189,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.21 | Informação recolhível: detalhes de seleção e textos secundários | T17.17 | ✅ integrada no PR #95; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.22 | Iniciar análise local pelo lançador sem conectar o MT5 | T2.2, T17.3 | ✅ integrada no PR #98; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.23 | Contexto verificável da agregação e comprovação recolhível no Laboratório | T17.21, T17.22 | ✅ integrada no PR #99;956/9, CI Linux/Windows e lançador real conferidos; dados primários preservados |
+| T17.24 | Robôs: exibir bateria persistida com PF indefinido sem encerrar a interface | T8.6, T13.9 | ✅ implementação e regressões verificadas no Linux; suíte final, CI e integração rastreados no PR; [plano e aceite](propostas/T17_24_BATERIA_PERSISTIDA.md) |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

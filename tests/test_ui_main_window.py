@@ -1189,3 +1189,109 @@ def test_analysis_refits_cards_after_a_large_display_value(ui):
     assert label.winfo_width() >= label.winfo_reqwidth()
     assert label.winfo_rootx() + label.winfo_width() <= panel.results_viewport.canvas.winfo_rootx() + panel.results_viewport.canvas.winfo_width()
     assert summary == original
+
+
+def _save_legacy_pf_check(db, key, pnls):
+    from mt5_extracao.robots import store
+    run = {"run_id": "legacy-pf", "robot_key": key, "source": "backtest", "symbol": "WIN$N",
+           "timeframe": "M1", "data_start": "2024-01-02", "data_end": "2024-01-03", "bars": 600,
+           "metrics": {"trades": len(pnls), "profit_factor": 99 if pnls else 0,
+                       "max_drawdown_pct": 0.0, "win_rate": 1.0 if pnls else 0,
+                       "return_pct": 0.0, "net_profit": sum(pnls), "expectancy_r": 0.0},
+           "equity": [], "trades": [["2024-01-02T10:00:00", pnl, 1] for pnl in pnls],
+           "created_at": "2026-01-01"}
+    store.save_run(db, run)
+    store.save_check(db, {"check_id": "legacy-check", "robot_key": key, "approved": True,
+                         "allows_real": True, "static_status": "aprovada", "statistical_status": "aprovada",
+                         "run_id": run["run_id"], "items": [], "created_at": "2026-01-02"})
+
+
+@pytest.mark.parametrize("pnls", [[], [5.0, 2.0]])
+def test_persisted_pf_guard_renders_rejection_without_rewriting_saved_approval(tmp_path, pnls):
+    from sqlalchemy import text
+    from mt5_extracao.robots import store
+    from mt5_extracao.ui.robot_detail import battery_text
+    db = DatabaseManager(db_path=str(tmp_path / "checks.db"))
+    try:
+        _save_legacy_pf_check(db, "mql5:painel", pnls)
+        for _ in range(2):
+            check = store.load_checks(db, "mql5:painel")[0]
+            rendered = battery_text(types.SimpleNamespace(key="mql5:painel", checks=[check]))
+            assert rendered.startswith("✗ Reprovada")
+            assert "✗ PF definido na execução vinculada:" in rendered
+            assert "Rode novamente a validação/bateria com uma amostra adequada." in rendered
+            assert not check["approved"] and not check["allows_real"]
+            assert len(check["items"]) == 1
+        with db.engine.connect() as conn:
+            assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, "[]")
+    finally:
+        db.close()
+
+
+def test_robot_card_click_opens_persisted_pf_rejection_in_both_themes(ui, monkeypatch):
+    from sqlalchemy import text
+    errors = []
+    monkeypatch.setattr(ui.root, "report_callback_exception", lambda kind, error, tb: errors.append((kind, str(error))))
+    panel = ui.robots_panel
+    panel.select("python:donchian")
+    _save_legacy_pf_check(ui.app.db_manager, "mql5:demoguard", [])
+    panel.reload()
+    ui.notebook.select(panel.frame)
+    ui.pump(.1)
+    for _ in range(2):
+        panel.cards["mql5:demoguard"].event_generate("<Button-1>", x=5, y=5)
+        ui.pump(.1)
+        assert errors == []
+        assert panel.detail.robot.key == "mql5:demoguard"
+        panel.detail.tabs.select(2)
+        shown = panel.detail.battery_text.cget("text")
+        assert shown.startswith("✗ Reprovada") and "✗ PF definido na execução vinculada:" in shown
+        assert "Rode novamente" in shown
+        panel.select("python:donchian")
+        ui.toggle_theme()
+    with ui.app.db_manager.engine.connect() as conn:
+        assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, "[]")
+
+
+def test_long_persisted_battery_reaches_final_reason_in_small_and_large_windows(ui):
+    import json
+    from sqlalchemy import text
+
+    _save_legacy_pf_check(ui.app.db_manager, "mql5:demoguard", [])
+    items = [{"group": "estática", "id": f"item-{index}", "name": f"Verificação {index}",
+              "icon": "✓", "status": "ok", "detail": "Explicação longa de um resultado anterior. " * 5,
+              "fix": ""} for index in range(25)]
+    recorded = json.dumps(items, ensure_ascii=False)
+    with ui.app.db_manager.engine.begin() as conn:
+        conn.execute(text("UPDATE _robot_checks SET items_json = :items"), {"items": recorded})
+    panel = ui.robots_panel
+    panel.reload()
+    ui.notebook.select(panel.frame)
+    panel.select("mql5:demoguard")
+    for geometry, dark in [("1280x800", False), ("1920x1080", True)]:
+        ui.root.geometry(geometry)
+        if ui.theme.dark != dark:
+            ui.toggle_theme()
+        panel.detail.tabs.select(2)
+        ui.pump(.3)
+        viewport = panel.detail.battery_viewport
+        assert viewport.scrollbar.winfo_manager() == "grid"
+        viewport.canvas.yview_moveto(0)
+        viewport.canvas.focus_force()
+        ui.pump(.1)
+        viewport.canvas.event_generate("<Next>")
+        ui.pump(.1)
+        assert viewport.canvas.yview()[0] > 0
+        viewport.canvas.yview_moveto(1.0)
+        ui.pump(.1)
+        assert viewport.canvas.yview()[0] > 0 and viewport.canvas.yview()[1] == 1.0
+        label = panel.detail.battery_text
+        assert int(label.cget("wraplength")) <= viewport.content.winfo_width()
+        assert label.winfo_rootx() + label.winfo_width() <= (
+            viewport.canvas.winfo_rootx() + viewport.canvas.winfo_width() + 2)
+        assert label.winfo_rooty() + label.winfo_height() <= (
+            viewport.canvas.winfo_rooty() + viewport.canvas.winfo_height() + 2)
+        assert "✗ PF definido na execução vinculada:" in label.cget("text")
+        assert "Rode novamente" in label.cget("text")
+    with ui.app.db_manager.engine.connect() as conn:
+        assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, recorded)

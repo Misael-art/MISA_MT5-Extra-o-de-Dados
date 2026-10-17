@@ -213,7 +213,7 @@ def load_checks(db, robot_key: str = None, *, runs=None) -> list:
             row["approved"] = row["allows_real"] = False
             row["statistical_status"] = "reprovada"
             row["items"].append({"group": "estatística", "id": "profit_factor_contract",
-                                 "name": "PF definido na execução vinculada", "status": "falha",
+                                 "name": "PF definido na execução vinculada", "status": "falha", "icon": "✗",
                                  "detail": profit_factor.reason(metrics),
                                  "fix": "Rode novamente a validação/bateria com uma amostra adequada."})
     return rows
