@@ -25,3 +25,9 @@ Instalador --yes --no-mt5 e requirements-dev executados com Python3.11 em XDG/Wi
 - [ ] Suíte, CI, doctor e aplicação instalada registrados no PR.
 
 Não muda cálculos, filtros, população, hipóteses de execução, schema, configuração, número de séries nem métodos financeiros. Não redesenha mapas nem inclui mudanças nos cards. A densidade vertical pode continuar exigindo rolagem e fica registrada como limite, sem corte de dados. Sem ordens, sem campanha PF. Windows físico com MT5 continua pendente; CI Windows é evidência distinta.
+
+## Segundo ciclo observado — altura realimentada pelo backend
+
+Os primeiros32 testes focados passaram e16 casos com cópia real confirmaram as legendas inteiras em DPI144. Porém a própria inspeção registrou figuras de911→2784px ao alternar quatro visões. Isso não é aceite visual: corrigir a legenda não resolveu a ocupação. Registra-se antes de alterar: o tamanho solicitado pelo Canvas/DPI se propaga ao Notebook/viewport, que expande os outros canvas. Reutilizar o princípio já adotado em Análise/T17.18: chart_area com altura própria pela fonte, propagação desligada e somente largura expandida; o backend conserva liberdade para redimensionar a figura dentro dessa área. Nada de modificar backend ou reduzir fontes.
+
+Extensão deste mesmo recorte de layout: regressão de limites mínimo e máximo ao alternar abas/tema/resize, inclusive Notebook com altura artificialmente grande; conferir todos os gráficos de microestrutura e execução com dados reais. Manter rolagem quando os controles e o gráfico legível excedem a janela. O primeiro lote de capturas fica preservado como diagnóstico, não aceite da altura.
