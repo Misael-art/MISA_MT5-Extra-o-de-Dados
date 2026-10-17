@@ -18,6 +18,53 @@ def by_name(items, name):
     return next(r for r in items if r.name == name)
 
 
+def test_backtest_summary_counts_assets_by_latest_test_without_cherry_picking():
+    import copy
+    def run(symbol, net, date, ident, **extra):
+        return dict(symbol=symbol, created_at=date, run_id=ident, timeframe="H1",
+                    metrics={"net_profit": net, "trades": 12}, **extra)
+    runs = [run("EURUSD", 800, "2026-01-01", "a"),
+            run("EURUSD", -20, "2026-01-02", "b"),
+            run("BTCUSD", 40, "2026-01-01", "c"),
+            run("BTCUSD", 0, "2026-01-01", "d"),
+            run("WIN$N", 10, "2026-01-01", "e"),
+            run("EURUSD", 9999, "2026-12-01", "f", source=catalog.HIDDEN_RUN_SOURCES[0]),
+            run("PETR4", 9999, "2026-12-01", "g", source=catalog.HIDDEN_RUN_SOURCES[1]),
+            run(" ", 100, "2026-01-01", "h")]
+    robot = catalog.Robot("python:donchian", "python", "Donchian", runs=runs)
+    before = copy.deepcopy(runs)
+    summary = robot.backtest_summary
+    assert {k: v for k, v in summary.items() if k != "assets"} == {
+        "tested": 3, "positive": 1, "negative": 1, "flat": 1, "unavailable": 0}
+    assert [(a["symbol"], a["run_id"], a["state"]) for a in summary["assets"]] == [
+        ("BTCUSD", "d", "flat"), ("EURUSD", "b", "negative"), ("WIN$N", "e", "positive")]
+    assert robot.runs == before and robot.stage == catalog.IMPORTED and robot.result is None
+    robot.runs.reverse()
+    assert robot.backtest_summary == summary
+
+
+@pytest.mark.parametrize("net,trades", [(None, 4), (float("nan"), 4), (float("inf"), 4),
+    (True, 4), ("inválido", 4), (10, 0), (10, None), (10, True), (10, -1), (10, 1.5), (10, float("inf"))])
+def test_backtest_summary_missing_or_invalid_result_is_neither_loss_nor_flat(net, trades):
+    robot = catalog.Robot("mql5:x", "mql5", "X", runs=[
+        {"symbol": "AAA", "metrics": {"net_profit": net, "trades": trades}}])
+    summary = robot.backtest_summary
+    assert summary["tested"] == summary["unavailable"] == 1
+    assert summary["positive"] == summary["negative"] == summary["flat"] == 0
+    assert summary["assets"][0]["net_profit"] is None
+
+
+def test_backtest_summary_accepts_numeric_storage_and_does_not_confuse_validation():
+    robot = catalog.Robot("python:x", "python", "X", runs=[
+        {"symbol": " AAA ", "metrics": {"net_profit": "2.50", "trades": "3"}}])
+    assert robot.backtest_summary["assets"] == [{"symbol": "AAA", "run_id": None, "timeframe": None,
+        "state": "positive", "net_profit": 2.5, "trades": 3}]
+    robot.runs.clear()
+    robot.results.append({"approved": True})
+    assert robot.backtest_summary == {"tested": 0, "positive": 0, "negative": 0, "flat": 0,
+                                       "unavailable": 0, "assets": []}
+
+
 # --- mql.py ---------------------------------------------------------------------------
 
 def test_parse_source_reads_properties_inputs_and_includes():

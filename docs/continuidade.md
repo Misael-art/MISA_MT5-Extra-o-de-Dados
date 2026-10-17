@@ -1,5 +1,13 @@
 # Continuidade: harmonização de 2026-10-14
 
+> **T17.26 — ativos e sinal dos backtests (2026-10-17):** os cards contam ativos
+> distintos, classificando o último teste de cada ativo; ganho e perda têm setas
+> próprias, zero e ausência ficam separados e discretos. A política é visível.
+> Consulta SQL independente coincide nos 15 robôs da cópia real; 12 capturas em
+> claro/escuro e 1280×800/1920×1080 verificadas, com clique e troca de tema em
+> regressão de widgets. A composição com T17.25, suíte, CI exato e smoke instalado
+> permanecem gates registrados no PR desta tarefa. [Política e evidências](propostas/T17_26_ROBOS_ATIVOS_RESULTADOS.md).
+
 > **T17.25 — recuperação do Laboratório (2026-10-17):** assinatura do contexto inclui barras; comparação preserva a sequência original, explica ausência de entrada e descarta callbacks antigos. Execução reutiliza subvisões Resultados/Curvas/Horários, com contagens reais no mapa e layout recalculado no resize. Baseline 967/9, regressões e 28 cenários com cópia real foram conferidos. Suíte final, CI, revisão e operação instalada são gates rastreados no PR. [Escopo, evidências e limites](propostas/T17_25_LABORATORIO_COBERTURA.md).
 
 > **T17.24 — correção do erro informado em 2026-10-16:** a projeção de bateria

@@ -250,6 +250,50 @@ def test_robots_tab_shows_recorded_validation_and_imports(ui, tmp_path):
     assert panel.detail.title.cget("text") == "Avulso"
 
 
+def test_robot_asset_results_icons_survive_theme_resize_and_select_detail(ui):
+    from mt5_extracao.robots import store
+    for ident, symbol, net, trades in [("a", "EURUSD", 100, 10), ("b", "EURUSD", -20, 10),
+                                      ("c", "WIN$N", 50, 10), ("d", "WDO$N", 0, 10),
+                                      ("e", "PETR4", 0, 0)]:
+        store.save_run(ui.app.db_manager, dict(run_id=ident, robot_key="python:donchian",
+            symbol=symbol, timeframe="H1", source="backtest python", created_at="2026-01-01T00:00:00",
+            data_start="2025-01-01", data_end="2026-01-01", bars=600,
+            params={}, metrics=dict(net_profit=net, trades=trades, profit_factor=1.2,
+                max_drawdown_pct=.1, win_rate=.5), equity=[], trades=[]))
+    panel = ui.robots_panel
+    panel.reload()
+    ui.notebook.select(panel.frame)
+    ui.pump()
+    def descendants(widget):
+        for child in widget.winfo_children():
+            yield child
+            yield from descendants(child)
+    for geometry in ("1280x800", "1920x1080"):
+        ui.root.geometry(geometry)
+        for _ in range(2):
+            panel.search_var.set("Donchian")
+            ui.pump(.3)
+            card = panel.cards["python:donchian"]
+            text = " | ".join(_labels(card))
+            assert all(t in text for t in ("4 ativos testados", "Último backtest por ativo", "1 positivo",
+                                           "1 negativo", "1 zerado(s)", "1 sem resultado"))
+            signals = {w.cget("text"): w for w in descendants(card)
+                       if w.winfo_class() == "TLabel" and w.cget("text") in ("1 positivo", "1 negativo")}
+            assert len(signals) == 2
+            for label in signals.values():
+                image = label.cget("image")
+                assert image and ui.root.tk.call("image", "width", image[0]) > 0
+                assert label.winfo_height() >= label.winfo_reqheight()
+            assert signals["1 positivo"].cget("background") != signals["1 negativo"].cget("background")
+            panel.select(None)
+            signals["1 positivo"].event_generate("<Button-1>")
+            ui.pump(.1)
+            assert panel.selected_key == panel.detail.robot.key == "python:donchian"
+            assert panel.detail.robot.headline["approved"] is None
+            ui.toggle_theme()
+            ui.pump(.2)
+
+
 def test_robots_tab_survives_theme_toggle(ui):
     ui.toggle_theme()
     ui.pump(0.4)
