@@ -1,0 +1,1235 @@
+{
+  "task": "T13.10",
+  "captured_utc": "2026-10-16T23:35:01.536041+00:00",
+  "verdict": "PF líquido >=1.9 NÃO demonstrado; zero candidatos aprovados",
+  "classification": "retrospective exploration; modeled costs, not independent OOS",
+  "protocol_sha256": "5b8e57e45bba055e07dac5547bac4a93eaa7acdc504a6acf8f233c837e73390b",
+  "code_git_sha": "ce9fae9de78897f7114f7089ffbdf8d5bb6dfd1a",
+  "source_sha256": {
+    "strategies/__init__.py": "8be349e8548751489df9a91652c7da77bb5e2e18e3c1381ac300d13e11a65a30",
+    "strategies/asset_screener.py": "88d73b7e3a32a11be98d5abb369fb50bced1b1232314a74664e231a464d37714",
+    "strategies/backtester.py": "c738c9a47b325b4557731b3317eb01e480f6c5a5215f67d2a51f737483772d77",
+    "strategies/base.py": "ec12ef15ee5a41a9864a446bc9c8bc6316cb327d21739f5b580e66df0a2747b4",
+    "strategies/bb_rsi.py": "cb3359361aa1a8e57c04dc363d3025beb509a8b8358e55b0f5e6b94239f7001d",
+    "strategies/declared.py": "7961f8fac10fae35a72b92bd196eab6d5a17bc54c208cc0efb6a9514346dc24f",
+    "strategies/donchian.py": "f3ca2ed48ebab578af46cf03bf5c1ad2937df6df0681d6ff949ebe2ed4158ea1",
+    "strategies/ema_atr.py": "105067b4f2ea1b00e6a34ef549cd5af0a842c487fb2ee021990fccb15a195598",
+    "strategies/indicators.py": "b29cb4a734dbb8b9b01089c034dba50984d1c5f9e7822d42c31c755a0181f68c",
+    "strategies/orb.py": "6b305380674911be15407a4ea0e9e394ffd04611411e9a8cc1355e48aec3626a",
+    "strategies/pf19_study.py": "2f800c43c73ae878e5c495a94b9259ca29530ba31c3b902cb549bf48ce21bcdf",
+    "strategies/pullback.py": "2d76a3674397469d3dbb6927a3f40190efe37b991b19cfe9eebe7acd9adb7d14",
+    "strategies/report.py": "7a15b35bae3d54c298117854710459b58224d96350b788201817093ea8d0a3aa",
+    "strategies/research.py": "0f3dd9f94fcfed69f93a603151e707b1f61c8cdb0e9b50c3f3e217bf89fc42f0",
+    "strategies/specs.py": "54868259f4f700cfb5833abb9d3043b3bf88a1c5ec180f0d79e6a00efb579bbe",
+    "strategies/squeeze.py": "1f2d19912f8a8212cc31f28cbe7e3bc34935db77f0e1b30ace674fc8a4ea0f43",
+    "strategies/validation.py": "a6b7a2bb050f81f07a0726885a4cbd977a454bdaacb2ffc8113e3c7a3c22b831",
+    "profit_factor.py": "671e2e6b1484600478913824efd8166c30e5bbbd86790ce5cc21c4c5a0ad9090",
+    "trade_analytics/stats.py": "f48c3073b0065894781c937af502f705440e3773806487b567f1ca069e614dc3"
+  },
+  "frozen_input_sha256": "e8139b05faf5e09b1f080dc84a3ad6dcae06fbccd0df65a60aecafa841e6dc06",
+  "runtime": {
+    "status": "COMPLETED",
+    "attempts": [
+      {
+        "case": [
+          "H1",
+          "ema_atr",
+          "base"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-01-result.json",
+        "peak_rss_mb": 134.9296875,
+        "sampled_cpu_seconds": 1.3699999999999999,
+        "seconds": 1.464294602001246
+      },
+      {
+        "case": [
+          "H1",
+          "ema_atr",
+          "adverso_modelado"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-02-result.json",
+        "peak_rss_mb": 140.19921875,
+        "sampled_cpu_seconds": 1.23,
+        "seconds": 1.3148823169995012
+      },
+      {
+        "case": [
+          "H1",
+          "donchian",
+          "base"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-03-result.json",
+        "peak_rss_mb": 133.62109375,
+        "sampled_cpu_seconds": 1.38,
+        "seconds": 1.4630275229992549
+      },
+      {
+        "case": [
+          "H1",
+          "donchian",
+          "adverso_modelado"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-04-result.json",
+        "peak_rss_mb": 146.33984375,
+        "sampled_cpu_seconds": 1.3199999999999998,
+        "seconds": 1.4124029070007964
+      },
+      {
+        "case": [
+          "M15",
+          "ema_atr",
+          "base"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-05-result.json",
+        "peak_rss_mb": 146.46875,
+        "sampled_cpu_seconds": 1.52,
+        "seconds": 1.6189908630003629
+      },
+      {
+        "case": [
+          "M15",
+          "ema_atr",
+          "adverso_modelado"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-06-result.json",
+        "peak_rss_mb": 138.30859375,
+        "sampled_cpu_seconds": 1.33,
+        "seconds": 1.4113752949997433
+      },
+      {
+        "case": [
+          "M15",
+          "donchian",
+          "base"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-07-result.json",
+        "peak_rss_mb": 147.265625,
+        "sampled_cpu_seconds": 1.33,
+        "seconds": 1.4109367760011082
+      },
+      {
+        "case": [
+          "M15",
+          "donchian",
+          "adverso_modelado"
+        ],
+        "state": "COMPLETED",
+        "exit_code": 0,
+        "result": "trial-08-result.json",
+        "peak_rss_mb": 143.74609375,
+        "sampled_cpu_seconds": 1.4600000000000002,
+        "seconds": 1.567182489001425
+      }
+    ],
+    "seconds": 12.240176704000987,
+    "approved": 0
+  },
+  "monetary_unit": "U, unidade do simulador; moeda/custos reais não certificados",
+  "trials": [
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "H1",
+        "strategy": "ema_atr",
+        "scenario": "base"
+      },
+      "params": {
+        "fast": 20,
+        "slow": 50,
+        "trend": 200,
+        "stop_atr": 2.0,
+        "trail_atr": 3.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 0.0,
+        "commission_per_lot": 0.0,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-09-16 08:00:00",
+        "source_last": "2026-09-30 23:00:00",
+        "trade_from": "2025-10-01 00:00:00",
+        "warmup_rows": 256,
+        "bars": 6463,
+        "market_sessions": 259,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "2ddc8c9a620bfa9f221ca4f6a5faecc777ae80cc6e9b2984bd223df9a137f901",
+      "raw_data_sha256": "2ddc8c9a620bfa9f221ca4f6a5faecc777ae80cc6e9b2984bd223df9a137f901",
+      "metrics": {
+        "trades": 62,
+        "win_rate": 0.2903225806451613,
+        "profit_factor": 0.6649842628513803,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 23837.463011612588,
+        "gross_loss": 35846.65734704778,
+        "losses": 44,
+        "payoff": 1.625517086970041,
+        "expectancy_r": -0.19871415138155488,
+        "total_r": -12.320277385656402,
+        "net_profit": -12009.194335435193,
+        "return_pct": -0.12009194335435193,
+        "max_drawdown_pct": 0.18312240761864151,
+        "avg_bars": 21.161290322580644,
+        "exit_reasons": {
+          "stop": 28,
+          "stop móvel": 32,
+          "sinal de saída": 2
+        },
+        "expectancy": -193.6966828295999
+      },
+      "pf_ci95": {
+        "low": 0.28983393169061245,
+        "high": 1.404191220133886,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 259,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 54,
+      "top5_gross_profit_share": 0.6023729517590627,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.9707448423784918,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 6052.436798681653,
+          "gross_loss": 6234.83796612521,
+          "losses": 7,
+          "trades": 11,
+          "net": -182.40116744355691
+        },
+        "2026Q1": {
+          "profit_factor": 0.8776030429239047,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 6710.7172821309505,
+          "gross_loss": 7646.6431335207035,
+          "losses": 8,
+          "trades": 11,
+          "net": -935.9258513897524
+        },
+        "2026Q2": {
+          "profit_factor": 0.5465151362423561,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 6562.831263019954,
+          "gross_loss": 12008.507775546072,
+          "losses": 14,
+          "trades": 23,
+          "net": -5445.676512526117
+        },
+        "2026Q3": {
+          "profit_factor": 0.4531111667052574,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 4511.477667780031,
+          "gross_loss": 9956.668471855794,
+          "losses": 15,
+          "trades": 17,
+          "net": -5445.190804075762
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": false,
+        "sessions_traded": false,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": true,
+        "concentration": false,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.2913318310002069
+    },
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "H1",
+        "strategy": "ema_atr",
+        "scenario": "adverso_modelado"
+      },
+      "params": {
+        "fast": 20,
+        "slow": 50,
+        "trend": 200,
+        "stop_atr": 2.0,
+        "trail_atr": 3.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 1.0,
+        "commission_per_lot": 3.5,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-09-16 08:00:00",
+        "source_last": "2026-09-30 23:00:00",
+        "trade_from": "2025-10-01 00:00:00",
+        "warmup_rows": 256,
+        "bars": 6463,
+        "market_sessions": 259,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "c79c6507870b6d0e7a9536edc28fa54783cddf6d0703c9aa21a0058b7f4f8318",
+      "raw_data_sha256": "2ddc8c9a620bfa9f221ca4f6a5faecc777ae80cc6e9b2984bd223df9a137f901",
+      "metrics": {
+        "trades": 62,
+        "win_rate": 0.27419354838709675,
+        "profit_factor": 0.6094084933990351,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 22627.444512336384,
+        "gross_loss": 37130.175830221226,
+        "losses": 45,
+        "payoff": 1.6131401295856809,
+        "expectancy_r": -0.24518010872190318,
+        "total_r": -15.201166740757998,
+        "net_profit": -14502.731317884844,
+        "return_pct": -0.14502731317884843,
+        "max_drawdown_pct": 0.19930357658578773,
+        "avg_bars": 20.661290322580644,
+        "exit_reasons": {
+          "stop": 28,
+          "stop móvel": 32,
+          "sinal de saída": 2
+        },
+        "expectancy": -233.91502125620715
+      },
+      "pf_ci95": {
+        "low": 0.2586790597861662,
+        "high": 1.2924064422817445,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 259,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 54,
+      "top5_gross_profit_share": 0.6126928361937616,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.8976508688036803,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 5778.686145191632,
+          "gross_loss": 6437.565367583299,
+          "losses": 7,
+          "trades": 11,
+          "net": -658.8792223916676
+        },
+        "2026Q1": {
+          "profit_factor": 0.839351856769147,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 6541.723690873409,
+          "gross_loss": 7793.779972148946,
+          "losses": 8,
+          "trades": 11,
+          "net": -1252.0562812755365
+        },
+        "2026Q2": {
+          "profit_factor": 0.48913801309344235,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 6068.311850854787,
+          "gross_loss": 12406.13423699607,
+          "losses": 15,
+          "trades": 23,
+          "net": -6337.822386141286
+        },
+        "2026Q3": {
+          "profit_factor": 0.40396888683454724,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 4238.722825416556,
+          "gross_loss": 10492.696253492912,
+          "losses": 15,
+          "trades": 17,
+          "net": -6253.973428076356
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": false,
+        "sessions_traded": false,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": true,
+        "concentration": false,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.28170674800094275
+    },
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "H1",
+        "strategy": "donchian",
+        "scenario": "base"
+      },
+      "params": {
+        "entry_period": 20,
+        "exit_period": 10,
+        "adx_min": 20.0,
+        "atr_avg": 50,
+        "stop_atr": 2.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 0.0,
+        "commission_per_lot": 0.0,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-09-16 08:00:00",
+        "source_last": "2026-09-30 23:00:00",
+        "trade_from": "2025-10-01 00:00:00",
+        "warmup_rows": 256,
+        "bars": 6463,
+        "market_sessions": 259,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "2ddc8c9a620bfa9f221ca4f6a5faecc777ae80cc6e9b2984bd223df9a137f901",
+      "raw_data_sha256": "2ddc8c9a620bfa9f221ca4f6a5faecc777ae80cc6e9b2984bd223df9a137f901",
+      "metrics": {
+        "trades": 184,
+        "win_rate": 0.266304347826087,
+        "profit_factor": 0.7165482253438958,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 69417.48784999944,
+        "gross_loss": 96877.62162369968,
+        "losses": 135,
+        "payoff": 1.9741634779882848,
+        "expectancy_r": -0.1654694176355948,
+        "total_r": -30.446372844949444,
+        "net_profit": -27460.133773700247,
+        "return_pct": -0.27460133773700246,
+        "max_drawdown_pct": 0.3430066644078335,
+        "avg_bars": 19.5,
+        "exit_reasons": {
+          "stop": 75,
+          "sinal de saída": 108,
+          "fim dos dados": 1
+        },
+        "expectancy": -149.2398574657622
+      },
+      "pf_ci95": {
+        "low": 0.4688486884016663,
+        "high": 1.0617426374540366,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 259,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 157,
+      "top5_gross_profit_share": 0.30575753541908257,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.7474405559963819,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 18834.05813999992,
+          "gross_loss": 25198.068246234005,
+          "losses": 30,
+          "trades": 42,
+          "net": -6364.010106234084
+        },
+        "2026Q1": {
+          "profit_factor": 1.0698837878009502,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 19680.932409999943,
+          "gross_loss": 18395.392690688703,
+          "losses": 26,
+          "trades": 40,
+          "net": 1285.5397193112376
+        },
+        "2026Q2": {
+          "profit_factor": 0.6961580966880561,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 20165.392549999753,
+          "gross_loss": 28966.68536347676,
+          "losses": 38,
+          "trades": 51,
+          "net": -8801.292813477008
+        },
+        "2026Q3": {
+          "profit_factor": 0.44153863043964414,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 10737.104749999819,
+          "gross_loss": 24317.475323300212,
+          "losses": 41,
+          "trades": 51,
+          "net": -13580.370573300397
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": false,
+        "sessions_traded": true,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": false,
+        "concentration": true,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.3238248739999108
+    },
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "H1",
+        "strategy": "donchian",
+        "scenario": "adverso_modelado"
+      },
+      "params": {
+        "entry_period": 20,
+        "exit_period": 10,
+        "adx_min": 20.0,
+        "atr_avg": 50,
+        "stop_atr": 2.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 1.0,
+        "commission_per_lot": 3.5,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-09-16 08:00:00",
+        "source_last": "2026-09-30 23:00:00",
+        "trade_from": "2025-10-01 00:00:00",
+        "warmup_rows": 256,
+        "bars": 6463,
+        "market_sessions": 259,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "c79c6507870b6d0e7a9536edc28fa54783cddf6d0703c9aa21a0058b7f4f8318",
+      "raw_data_sha256": "2ddc8c9a620bfa9f221ca4f6a5faecc777ae80cc6e9b2984bd223df9a137f901",
+      "metrics": {
+        "trades": 184,
+        "win_rate": 0.2554347826086957,
+        "profit_factor": 0.6600548481076596,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 64547.086759997765,
+        "gross_loss": 97790.4896010546,
+        "losses": 137,
+        "payoff": 1.923989663632965,
+        "expectancy_r": -0.21074366122881236,
+        "total_r": -38.776833666101474,
+        "net_profit": -33243.40284105686,
+        "return_pct": -0.33243402841056857,
+        "max_drawdown_pct": 0.3854968297470812,
+        "avg_bars": 19.36413043478261,
+        "exit_reasons": {
+          "stop": 77,
+          "sinal de saída": 106,
+          "fim dos dados": 1
+        },
+        "expectancy": -180.67066761443945
+      },
+      "pf_ci95": {
+        "low": 0.4319288272331993,
+        "high": 0.9756274504794814,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 259,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 157,
+      "top5_gross_profit_share": 0.30793053749898575,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.6896893546330248,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 18006.118659999476,
+          "gross_loss": 26107.57805531203,
+          "losses": 30,
+          "trades": 42,
+          "net": -8101.459395312557
+        },
+        "2026Q1": {
+          "profit_factor": 0.981954159032409,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 18487.1672599996,
+          "gross_loss": 18826.914769846644,
+          "losses": 26,
+          "trades": 40,
+          "net": -339.7475098470404
+        },
+        "2026Q2": {
+          "profit_factor": 0.6458497617981929,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 18612.732919999384,
+          "gross_loss": 28818.982402621463,
+          "losses": 39,
+          "trades": 51,
+          "net": -10206.24948262208
+        },
+        "2026Q3": {
+          "profit_factor": 0.39277207116439317,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 9441.067919999303,
+          "gross_loss": 24037.014373274473,
+          "losses": 42,
+          "trades": 51,
+          "net": -14595.946453275172
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": false,
+        "sessions_traded": true,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": false,
+        "concentration": true,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.2703215839992481
+    },
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "M15",
+        "strategy": "ema_atr",
+        "scenario": "base"
+      },
+      "params": {
+        "fast": 20,
+        "slow": 50,
+        "trend": 200,
+        "stop_atr": 2.0,
+        "trail_atr": 3.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 0.0,
+        "commission_per_lot": 0.0,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-10-01 00:00:00",
+        "source_last": "2026-09-30 23:45:00",
+        "trade_from": "2025-10-03 16:00:00",
+        "warmup_rows": 256,
+        "bars": 24819,
+        "market_sessions": 257,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "79e5daaa02818638cbe17735bb933b3737264259ae4f19dbdd03238ab1268de9",
+      "raw_data_sha256": "79e5daaa02818638cbe17735bb933b3737264259ae4f19dbdd03238ab1268de9",
+      "metrics": {
+        "trades": 293,
+        "win_rate": 0.32764505119453924,
+        "profit_factor": 0.8366214299412863,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 107152.00012081821,
+        "gross_loss": 128077.0445102489,
+        "losses": 197,
+        "payoff": 1.7168168926920144,
+        "expectancy_r": -0.06768991936416797,
+        "total_r": -19.83314637370122,
+        "net_profit": -20925.044389430695,
+        "return_pct": -0.20925044389430694,
+        "max_drawdown_pct": 0.34164695820179786,
+        "avg_bars": 23.64505119453925,
+        "exit_reasons": {
+          "stop móvel": 171,
+          "stop": 86,
+          "sinal de saída": 35,
+          "fim dos dados": 1
+        },
+        "expectancy": -71.41653375232319
+      },
+      "pf_ci95": {
+        "low": 0.5599537553075518,
+        "high": 1.2123823758822507,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 257,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 176,
+      "top5_gross_profit_share": 0.30301616111824764,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.4286007594170237,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 19751.003883043377,
+          "gross_loss": 46082.52190198728,
+          "losses": 65,
+          "trades": 87,
+          "net": -26331.5180189439
+        },
+        "2026Q1": {
+          "profit_factor": 0.8568584688757633,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 25587.698860207747,
+          "gross_loss": 29862.223213805606,
+          "losses": 48,
+          "trades": 67,
+          "net": -4274.52435359786
+        },
+        "2026Q2": {
+          "profit_factor": 1.3309395672534885,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 30330.330158524237,
+          "gross_loss": 22788.66066106484,
+          "losses": 37,
+          "trades": 64,
+          "net": 7541.669497459393
+        },
+        "2026Q3": {
+          "profit_factor": 1.0729060395368506,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 31482.967219042846,
+          "gross_loss": 29343.63873339117,
+          "losses": 47,
+          "trades": 75,
+          "net": 2139.3284856516725
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": true,
+        "sessions_traded": true,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": false,
+        "concentration": true,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.45663362800041796
+    },
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "M15",
+        "strategy": "ema_atr",
+        "scenario": "adverso_modelado"
+      },
+      "params": {
+        "fast": 20,
+        "slow": 50,
+        "trend": 200,
+        "stop_atr": 2.0,
+        "trail_atr": 3.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 1.0,
+        "commission_per_lot": 3.5,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-10-01 00:00:00",
+        "source_last": "2026-09-30 23:45:00",
+        "trade_from": "2025-10-03 16:00:00",
+        "warmup_rows": 256,
+        "bars": 24819,
+        "market_sessions": 257,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "73d887f2cc3e95e97566aea517a749562873907d307df997612fda0e30597d92",
+      "raw_data_sha256": "79e5daaa02818638cbe17735bb933b3737264259ae4f19dbdd03238ab1268de9",
+      "metrics": {
+        "trades": 293,
+        "win_rate": 0.27303754266211605,
+        "profit_factor": 0.6680737329090908,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 84564.9461480519,
+        "gross_loss": 126580.25900796673,
+        "losses": 213,
+        "payoff": 1.778746313870454,
+        "expectancy_r": -0.1742105587646009,
+        "total_r": -51.04369371802807,
+        "net_profit": -42015.31285991485,
+        "return_pct": -0.4201531285991485,
+        "max_drawdown_pct": 0.43370866003509173,
+        "avg_bars": 23.061433447098977,
+        "exit_reasons": {
+          "stop móvel": 170,
+          "stop": 89,
+          "sinal de saída": 33,
+          "fim dos dados": 1
+        },
+        "expectancy": -143.3969722181394
+      },
+      "pf_ci95": {
+        "low": 0.4416784166485548,
+        "high": 0.9838921706043462,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 257,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 176,
+      "top5_gross_profit_share": 0.3131853892259711,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.3537912813714518,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 17340.739636442147,
+          "gross_loss": 49014.03892493267,
+          "losses": 68,
+          "trades": 87,
+          "net": -31673.299288490518
+        },
+        "2026Q1": {
+          "profit_factor": 0.7392605473757092,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 21662.37153481412,
+          "gross_loss": 29302.756128016124,
+          "losses": 50,
+          "trades": 67,
+          "net": -7640.384593202008
+        },
+        "2026Q2": {
+          "profit_factor": 1.1020725061780048,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 23538.641086256874,
+          "gross_loss": 21358.523104699387,
+          "losses": 41,
+          "trades": 64,
+          "net": 2180.1179815574847
+        },
+        "2026Q3": {
+          "profit_factor": 0.8185557445772269,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 22023.193890538747,
+          "gross_loss": 26904.940850318548,
+          "losses": 54,
+          "trades": 75,
+          "net": -4881.746959779799
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": true,
+        "sessions_traded": true,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": false,
+        "concentration": true,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.4038190899991605
+    },
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "M15",
+        "strategy": "donchian",
+        "scenario": "base"
+      },
+      "params": {
+        "entry_period": 20,
+        "exit_period": 10,
+        "adx_min": 20.0,
+        "atr_avg": 50,
+        "stop_atr": 2.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 0.0,
+        "commission_per_lot": 0.0,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-10-01 00:00:00",
+        "source_last": "2026-09-30 23:45:00",
+        "trade_from": "2025-10-03 16:00:00",
+        "warmup_rows": 256,
+        "bars": 24819,
+        "market_sessions": 257,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "79e5daaa02818638cbe17735bb933b3737264259ae4f19dbdd03238ab1268de9",
+      "raw_data_sha256": "79e5daaa02818638cbe17735bb933b3737264259ae4f19dbdd03238ab1268de9",
+      "metrics": {
+        "trades": 669,
+        "win_rate": 0.3243647234678625,
+        "profit_factor": 0.8758491709560448,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 260489.98382000136,
+        "gross_loss": 297414.20378997456,
+        "losses": 452,
+        "payoff": 1.8243494252171992,
+        "expectancy_r": -0.05650408663654781,
+        "total_r": -37.801233959850485,
+        "net_profit": -36924.21996997322,
+        "return_pct": -0.3692421996997322,
+        "max_drawdown_pct": 0.46943997467594145,
+        "avg_bars": 21.28101644245142,
+        "exit_reasons": {
+          "sinal de saída": 379,
+          "stop": 289,
+          "fim dos dados": 1
+        },
+        "expectancy": -55.193153916252946
+      },
+      "pf_ci95": {
+        "low": 0.7087051259148743,
+        "high": 1.0710844228075789,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 257,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 248,
+      "top5_gross_profit_share": 0.137659673950375,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.7545912040437444,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 65258.8432000012,
+          "gross_loss": 86482.3799300715,
+          "losses": 109,
+          "trades": 160,
+          "net": -21223.5367300703
+        },
+        "2026Q1": {
+          "profit_factor": 0.870677032630888,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 75549.71536999967,
+          "gross_loss": 86771.22806572063,
+          "losses": 127,
+          "trades": 175,
+          "net": -11221.512695720954
+        },
+        "2026Q2": {
+          "profit_factor": 0.9532073304554416,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 60456.739610000346,
+          "gross_loss": 63424.543305929226,
+          "losses": 106,
+          "trades": 162,
+          "net": -2967.803695928884
+        },
+        "2026Q3": {
+          "profit_factor": 0.975115820236335,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 59224.68564000013,
+          "gross_loss": 60736.05248825321,
+          "losses": 110,
+          "trades": 172,
+          "net": -1511.3668482530816
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": true,
+        "sessions_traded": true,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": false,
+        "concentration": true,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.4429617670011794
+    },
+    {
+      "case": {
+        "symbol": "EURUSD",
+        "timeframe": "M15",
+        "strategy": "donchian",
+        "scenario": "adverso_modelado"
+      },
+      "params": {
+        "entry_period": 20,
+        "exit_period": 10,
+        "adx_min": 20.0,
+        "atr_avg": 50,
+        "stop_atr": 2.0
+      },
+      "config": {
+        "initial_equity": 100000.0,
+        "risk_per_trade": 0.01,
+        "slippage_points": 1.0,
+        "commission_per_lot": 3.5,
+        "compound": true,
+        "swap": true,
+        "real_spread": true
+      },
+      "period": {
+        "source_first": "2025-10-01 00:00:00",
+        "source_last": "2026-09-30 23:45:00",
+        "trade_from": "2025-10-03 16:00:00",
+        "warmup_rows": 256,
+        "bars": 24819,
+        "market_sessions": 257,
+        "timezone": "broker; not independently verified"
+      },
+      "modeled_data_sha256": "73d887f2cc3e95e97566aea517a749562873907d307df997612fda0e30597d92",
+      "raw_data_sha256": "79e5daaa02818638cbe17735bb933b3737264259ae4f19dbdd03238ab1268de9",
+      "metrics": {
+        "trades": 671,
+        "win_rate": 0.2906110283159464,
+        "profit_factor": 0.7205332111111356,
+        "profit_factor_version": 1,
+        "profit_factor_status": "defined",
+        "gross_profit": 178409.6103199914,
+        "gross_loss": 247607.75432525255,
+        "losses": 476,
+        "payoff": 1.7588400435328229,
+        "expectancy_r": -0.1638130866875601,
+        "total_r": -109.91858116735283,
+        "net_profit": -69198.14400526116,
+        "return_pct": -0.6919814400526115,
+        "max_drawdown_pct": 0.7198725404279938,
+        "avg_bars": 21.02682563338301,
+        "exit_reasons": {
+          "sinal de saída": 372,
+          "stop": 298,
+          "fim dos dados": 1
+        },
+        "expectancy": -103.12689121499427
+      },
+      "pf_ci95": {
+        "low": 0.5655094393320146,
+        "high": 0.8926840385541197,
+        "level": 0.95,
+        "resamples": 2000,
+        "defined": 2000,
+        "undefined": 0,
+        "block_sessions": 5,
+        "market_sessions": 257,
+        "seed": 20261016,
+        "method": "circular moving blocks of observed sessions; trade GP/GL sums",
+        "exploratory": true
+      },
+      "sessions_traded": 249,
+      "top5_gross_profit_share": 0.15692970468229608,
+      "quarters": {
+        "2025Q4": {
+          "profit_factor": 0.6274988834223407,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 55874.17557999752,
+          "gross_loss": 89042.6693275742,
+          "losses": 112,
+          "trades": 160,
+          "net": -33168.49374757668
+        },
+        "2026Q1": {
+          "profit_factor": 0.764773182123367,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 56081.7950399976,
+          "gross_loss": 73331.27828082097,
+          "losses": 130,
+          "trades": 175,
+          "net": -17249.483240823363
+        },
+        "2026Q2": {
+          "profit_factor": 0.7810404266196742,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 37445.98087999792,
+          "gross_loss": 47943.71661664596,
+          "losses": 114,
+          "trades": 164,
+          "net": -10497.73573664804
+        },
+        "2026Q3": {
+          "profit_factor": 0.7778918941210572,
+          "profit_factor_version": 1,
+          "profit_factor_status": "defined",
+          "gross_profit": 29007.658819998338,
+          "gross_loss": 37290.09010021141,
+          "losses": 120,
+          "trades": 172,
+          "net": -8282.431280213075
+        }
+      },
+      "gates": {
+        "independent_untouched_oos": false,
+        "costs_and_currency_verified": false,
+        "closed_trades": true,
+        "sessions_traded": true,
+        "losses": true,
+        "profit_factor": false,
+        "pf_ci95_lower": false,
+        "positive_expectancy": false,
+        "closed_equity_drawdown": false,
+        "concentration": true,
+        "positive_quarters": false,
+        "parameter_and_delay_stability": false,
+        "intratrade_equity_and_margin": false,
+        "mt5_reconciliation": false
+      },
+      "approved": false,
+      "independent_oos": false,
+      "costs_certified": false,
+      "elapsed_seconds": 0.5397502409996378
+    }
+  ],
+  "limitations": [
+    "Histórico e resultados anteriores já expostos; nenhuma avaliação é OOS intocada",
+    "Perfil de spread de23dias, posterior a parte da janela; não é custo ponto-no-tempo",
+    "Comissão base zero configurada não comprova isenção; taxas/moneda de conta/cobertura efetiva de ticks não certificados",
+    "IC percentil nominal95%, blocos5sessões, sem ajuste por seleção/múltiplas comparações; dependência residual possível",
+    "Drawdown de operações fechadas; patrimônio intraposição/margem não medidos",
+    "Perturbação de parâmetros/atraso e reconciliação MT5 não executadas porque nenhum candidato elegível avançou"
+  ],
+  "next_experiment": "Congelar uma hipótese/preset antes de dados futuros, coletar sinais e simulação fora de conta por >=60sessões e >=200operações/30perdas, documentar custos/moeda/fuso/feed e reservar avaliação independente. Nenhuma ordem em conta."
+}
