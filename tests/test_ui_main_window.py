@@ -1286,6 +1286,9 @@ def test_long_persisted_battery_reaches_final_reason_in_small_and_large_windows(
         ui.pump(.1)
         assert viewport.canvas.yview()[0] > 0 and viewport.canvas.yview()[1] == 1.0
         label = panel.detail.battery_text
+        assert int(label.cget("wraplength")) <= viewport.content.winfo_width()
+        assert label.winfo_rootx() + label.winfo_width() <= (
+            viewport.canvas.winfo_rootx() + viewport.canvas.winfo_width() + 2)
         assert label.winfo_rooty() + label.winfo_height() <= (
             viewport.canvas.winfo_rooty() + viewport.canvas.winfo_height() + 2)
         assert "✗ PF definido na execução vinculada:" in label.cget("text")

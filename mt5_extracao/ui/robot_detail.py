@@ -263,12 +263,14 @@ class RobotDetail:
         self.battery_viewport.pack(fill=tk.BOTH, expand=True)
         self.battery_text = ttk.Label(self.battery_viewport.content, text="", style="Surface.TLabel",
                                       wraplength=400, justify=tk.LEFT)
-        self.battery_text.pack(anchor="w")
+        self.battery_text.pack(anchor="w", fill=tk.X)
+        self.battery_viewport.content.bind(
+            "<Configure>", lambda event: self.battery_text.configure(wraplength=max(1, event.width - 4)), add="+")
         self.live_text = ttk.Label(live, text="", style="Surface.TLabel", wraplength=400, justify=tk.LEFT)
         self.live_text.pack(anchor="w")
 
         self._wrapped = (self.title, self.subtitle, self.description, self.notes, self.risk_reasons,
-                         self.tests_text, self.run_status, self.live_text, self.battery_text,
+                         self.tests_text, self.run_status, self.live_text,
                          self.result_context, self.execution_status)
         self.theme.on_change(self._theme_changed)
         body.bind("<Configure>", self._rewrap)
