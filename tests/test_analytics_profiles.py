@@ -419,6 +419,53 @@ def test_late_bar_correction_is_not_anticipated(db):
     assert new > old
 
 
+def test_late_reference_correction_invalidates_rvol_that_becomes_unavailable(db):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=8, minutes=60))
+    resampling.resample_symbol(db, "TEST", ["M15"], symbol_info=INFO)
+    params = {"lookback": 1, "min_sessions": 1, "same_weekday": False}
+    producers.compute(db, "TEST", "M15", families=["rvol"], volume_source="real",
+                      overrides={"rvol": params})
+
+    before_bars = resampling.latest_bars(db, "TEST", "M15")
+    sessions = (before_bars.groupby("session_id")["bar_start_utc"].min().sort_values().index.tolist())
+    reference_session, current_session = sessions[-2:]
+    current_observations = before_bars.loc[before_bars.session_id == current_session, "bar_start_utc"]
+    old = feature_store.query_as_of(db, "2030-01-01T00:00:00Z", symbol="TEST", timeframe="M15",
+                                    feature_id="rvol.real")
+    old = old[old.observation_time.isin(current_observations)]
+    assert len(old) == len(current_observations)
+    assert old["numeric_value"].notna().all()
+
+    reference = before_bars[before_bars.session_id == reference_session]
+    m1 = db.load_ohlcv("TEST", Timeframe.M1.label)
+    raw_times = pd.to_datetime(m1["time"])
+    start = reference["bar_start_utc"].min().tz_convert(None)
+    end = reference["bar_end_utc"].max().tz_convert(None)
+    hit = (raw_times >= start) & (raw_times < end)
+    assert hit.any()
+    m1.loc[hit, "real_volume"] = 0
+    db.save_ohlcv_data("TEST", Timeframe.M1.label, m1.loc[hit])
+    resampling.resample_symbol(db, "TEST", ["M15"], symbol_info=INFO)
+    all_bars = resampling.latest_bars(db, "TEST", "M15", closed_only=False)
+    corrected_at = all_bars.loc[all_bars.session_id == reference_session, "computed_at_utc"].max()
+    assert pd.notna(corrected_at)
+
+    producers.compute(db, "TEST", "M15", families=["rvol"], volume_source="real",
+                      overrides={"rvol": params})
+
+    historical = feature_store.query_as_of(db, corrected_at - pd.Timedelta(nanoseconds=1), symbol="TEST",
+                                           timeframe="M15", feature_id="rvol.real")
+    historical = historical[historical.observation_time.isin(current_observations)]
+    assert historical["numeric_value"].notna().all()
+    current = feature_store.query_as_of(db, "2030-01-01T00:00:00Z", symbol="TEST", timeframe="M15",
+                                        feature_id="rvol.real")
+    current = current[current.observation_time.isin(current_observations)]
+    assert len(current) == len(current_observations)
+    assert current["quality"].eq("INVALIDATED").all()
+    assert current["numeric_value"].isna().all() and current["categorical_value"].isna().all()
+    assert current["available_at_utc"].eq(corrected_at).all()
+
+
 def test_write_guard_blocks_before_writing(db):
     db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=2))
     resampling.resample_symbol(db, "TEST", ["M15"], symbol_info=INFO)

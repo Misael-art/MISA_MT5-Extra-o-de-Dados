@@ -11,7 +11,7 @@ import threading
 from datetime import datetime, timezone
 
 import pandas as pd
-from sqlalchemy import inspect, text
+from sqlalchemy import bindparam, inspect, text
 
 DEFINITIONS_TABLE = "_feature_definitions"
 VALUES_TABLE = "_feature_values"
@@ -316,6 +316,51 @@ def query_history(db, *, symbol=None, timeframe=None, feature_id=None, algorithm
     return frame
 
 
+def latest_values(db, *, symbol=None, timeframe=None, feature_ids=None, algorithm_version=None):
+    """Devolve a última revisão gravada de cada valor, sem carregar o histórico inteiro."""
+    _require_db(db)
+    if not inspect(db.engine).has_table(VALUES_TABLE):
+        return _empty_values()
+    where, params = [], {}
+    for column, value, parameter in (("symbol", symbol, "symbol"), ("tf", timeframe, "tf"),
+                                     ("algorithm_version", algorithm_version, "algorithm_version")):
+        if value is not None:
+            where.append(f"{column} = :{parameter}")
+            params[parameter] = str(value)
+    expanding = False
+    if feature_ids is not None:
+        ids = sorted({str(item) for item in feature_ids if str(item)})
+        if not ids:
+            return _empty_values()
+        where.append("feature_id IN :feature_ids")
+        params["feature_ids"] = ids
+        expanding = True
+    sql = f"""
+        WITH ranked AS (
+            SELECT {', '.join(VALUE_COLUMNS)},
+                   ROW_NUMBER() OVER (
+                       PARTITION BY symbol, tf, observation_time, feature_id, algorithm_version
+                       ORDER BY revision DESC
+                   ) AS value_rank
+            FROM {VALUES_TABLE}
+            {"WHERE " + " AND ".join(where) if where else ""}
+        )
+        SELECT {', '.join(VALUE_COLUMNS)} FROM ranked WHERE value_rank = 1
+        ORDER BY symbol, tf, feature_id, algorithm_version, observation_time
+    """
+    statement = text(sql)
+    if expanding:
+        statement = statement.bindparams(bindparam("feature_ids", expanding=True))
+    with db.engine.connect() as conn:
+        frame = pd.read_sql(statement, conn, params=params)
+    if frame.empty:
+        return _empty_values()
+    for name in ("observation_time", "available_at_utc", "observed_at_utc", "valid_until_utc"):
+        frame[name] = pd.to_datetime(frame[name], utc=True, errors="coerce")
+    frame["revision"] = frame["revision"].astype(int)
+    return frame
+
+
 def _value_record(symbol, timeframe, feature_id, algorithm_version, observation_time, value, *, available_at=None,
                   observed_at=None, valid_until=None, source_revision="0", quality="VALID", metadata=None):
     """Valida um valor como ``save_value`` e devolve a linha pronta, ainda sem número de revisão."""
@@ -334,7 +379,12 @@ def _value_record(symbol, timeframe, feature_id, algorithm_version, observation_
         raise ValueError("available_at não pode ser anterior a observed_at.")
     if until is not None and until <= available:
         raise ValueError("valid_until precisa ser posterior a available_at.")
-    numeric, categorical = _normalize_value(value)
+    if value is None:
+        if quality != "INVALIDATED":
+            raise ValueError("Valor ausente só é permitido com quality='INVALIDATED'.")
+        numeric, categorical = None, None
+    else:
+        numeric, categorical = _normalize_value(value)
     if (source_revision is None or isinstance(source_revision, bool)
             or not isinstance(source_revision, (str, int)) or not str(source_revision).strip()):
         raise ValueError("source_revision precisa identificar a revisão da origem (use '0' se não houver revisão).")
