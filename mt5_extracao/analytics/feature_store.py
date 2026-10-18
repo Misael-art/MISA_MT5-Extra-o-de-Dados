@@ -80,14 +80,18 @@ def _canonical_json(value, label):
         raise ValueError(f"{label} precisa conter apenas valores JSON válidos.") from exc
 
 
-def _utc_text(value, label):
+def _utc_timestamp(value, label):
     try:
         stamp = pd.Timestamp(value)
     except (TypeError, ValueError, OverflowError) as exc:
         raise ValueError(f"{label} precisa ser uma data e hora válida em UTC.") from exc
     if pd.isna(stamp) or stamp.tzinfo is None:
         raise ValueError(f"{label} precisa incluir fuso horário (use UTC, por exemplo 2026-10-14T17:25:00Z).")
-    return stamp.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
+    return stamp.tz_convert("UTC")
+
+
+def _utc_text(value, label):
+    return _utc_timestamp(value, label).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
 
 
 def ensure_schema(db):
@@ -429,7 +433,8 @@ def asof_join(decisions, values, *, by=None):
     if "decision_time" not in decisions:
         raise ValueError("decisions precisa conter decision_time.")
     frame = decisions.copy()
-    times = pd.to_datetime(frame["decision_time"], utc=True)
+    times = pd.to_datetime(frame["decision_time"].map(
+        lambda value: _utc_timestamp(value, "decision_time")), utc=True)
     if times.isna().any():
         raise ValueError("decision_time precisa ser uma data e hora válida com fuso.")
     frame["decision_time"] = times
@@ -458,7 +463,9 @@ def asof_join(decisions, values, *, by=None):
         raise ValueError("values sem dimensões de série: " + ", ".join(sorted(missing_keys)))
     history = values.copy()
     for name in ("observation_time", "available_at_utc", "valid_until_utc"):
-        history[name] = pd.to_datetime(history[name], utc=True, errors="coerce")
+        history[name] = pd.to_datetime(history[name].map(
+            lambda value: pd.NaT if name == "valid_until_utc" and pd.isna(value)
+            else _utc_timestamp(value, name)), utc=True)
     if history[["observation_time", "available_at_utc"]].isna().any().any():
         raise ValueError("values contém observation_time ou available_at_utc inválido.")
     keys = history[by].drop_duplicates().to_dict("records") if by else [{}]

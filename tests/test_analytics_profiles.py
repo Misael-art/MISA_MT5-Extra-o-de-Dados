@@ -451,3 +451,37 @@ def test_cli_compute_reports_families(db, monkeypatch, capsys):
     assert args.func(args, ctx) == cli.EXIT_OK
     out = capsys.readouterr().out
     assert "regime" in out and "calendar" in out and "reconstruídos" in out
+
+
+@pytest.mark.parametrize("empty", [False, True])
+def test_asof_join_rejects_decisions_without_timezone(empty):
+    values = pd.DataFrame() if empty else _join_clock_values()
+    with pytest.raises(ValueError, match="fuso"):
+        feature_store.asof_join(pd.DataFrame({"decision_time": ["2026-10-01T12:00:00"]}), values)
+
+
+def _join_clock_values():
+    return pd.DataFrame({"observation_time": ["2026-10-01T11:00:00Z"],
+                         "available_at_utc": ["2026-10-01T12:00:00.000000901Z"],
+                         "valid_until_utc": [None], "numeric_value": [7.0]})
+
+
+@pytest.mark.parametrize("column", ["observation_time", "available_at_utc", "valid_until_utc"])
+@pytest.mark.parametrize("invalid", ["2026-10-01T12:00:00", "data inválida"])
+def test_asof_join_rejects_invalid_or_naive_history(column, invalid):
+    values = _join_clock_values()
+    values[column] = invalid
+    with pytest.raises(ValueError, match=column):
+        feature_store.asof_join(pd.DataFrame({"decision_time": ["2026-10-01T13:00:00Z"]}), values)
+
+
+def test_asof_join_preserves_nanosecond_boundary_and_input_frames():
+    values = _join_clock_values()
+    decisions = pd.DataFrame({"decision_time": ["2026-10-01T09:00:00.000000900-03:00",
+                                                 "2026-10-01T09:00:00.000000901-03:00"]})
+    original_values, original_decisions = values.copy(deep=True), decisions.copy(deep=True)
+    result = feature_store.asof_join(decisions, values)
+    assert pd.isna(result.iloc[0].numeric_value)
+    assert result.iloc[1].numeric_value == 7
+    pd.testing.assert_frame_equal(values, original_values)
+    pd.testing.assert_frame_equal(decisions, original_decisions)
