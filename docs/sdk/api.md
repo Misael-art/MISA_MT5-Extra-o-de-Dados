@@ -165,3 +165,12 @@ Não é um tradutor de Python: só o que está na declaração é gerado. A prov
 | `BacktestConfig` | Capital inicial, risco por operação, slippage e corretagem |
 | `run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None, cashflows=None)` | Backtest com custos e lote pelo risco; `start_index` e `signals` servem à validação, e `cashflows` identifica fluxos no fechamento |
 | `validate_strategy(df, key, spec=None, config=None, criteria=None, params=None)` | Walk-forward, robustez e Monte Carlo (Filtro C) |
+
+
+T20.5 qualifica a especificação consumida com `instrument_context`,
+`spec_historical_known` e `series_role` nas métricas e metadados de avaliação.
+`spec_known` conserva disponibilidade da especificação, sem comprovar vigência
+histórica. Manifestos novos usam formato 2, preservando leitura/exportação do
+formato 1. APIs públicas e chamadas posicionais permanecem as mesmas; metadados
+opcionais foram acrescentados à dataclass interna `SymbolSpec`.
+[Regras de vigência, fontes e limitações](../analytics/T20.5_VIGENCIA_INSTRUMENTOS.md).

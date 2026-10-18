@@ -56,6 +56,7 @@ class SymbolSpec:
     spread_by_hour: Optional[tuple] = None   # spread real por hora do dia, em pontos (mt5x specs --calibrate)
     spread_at_open: Optional[tuple] = None   # spread no primeiro tick de cada hora (o que a abertura da barra paga)
     known: bool = True            # False = especificação genérica (rode `mt5x specs`)
+    provenance: dict = field(default_factory=dict)  # Vigência/conhecimento separados da disponibilidade atual.
 
     def swap_nights(self, entry_time, exit_time) -> int:
         """Viradas de dia entre a entrada e a saída, contando três na noite do swap triplo; fim de semana não conta."""
@@ -223,6 +224,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     dos indicadores; usado no walk-forward).
     """
     spec = spec or SymbolSpec(known=False)
+    from mt5_extracao.analytics.instruments import require_supported_spec
+    require_supported_spec(spec)
     cfg = config or BacktestConfig()
     data = df.reset_index(drop=True)
     sig = (signals if signals is not None else strategy.gerar_sinais(data)).reset_index(drop=True)

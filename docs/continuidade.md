@@ -1,5 +1,19 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.5 — vigência de instrumentos (2026-10-18)
+
+[Fonte e decisões](analytics/T20.5_VIGENCIA_INSTRUMENTOS.md). Histórico aditivo de
+especificações, ajustes/rolagens, papel da série e universo, com vigência e
+conhecimento independentes. Manifesto 2 preserva os fatos; produtor anterior
+formato 1 importado/exportado por bytes no teste, sem regravar revisões antigas.
+Especificação atual não recebe vigência retroativa. Cobertura histórica constante
+usa os fatos, mesmo com cache atual diferente. Variação de propriedades é
+identificada e recusada pelos motores de especificação constante. Série contínua
+permanece estudo; eventos declarados não são transformações ou ordens implícitas.
+Regressão direcionada: 80 aprovados; PostgreSQL 16 isolado: 7 aprovados; doctor
+16 OK/2 avisos/0 falhas. Suíte completa em execução. Windows físico pendente.
+Uma tarefa por PR sobre T20.4; nenhuma alteração de produção H/S ou contratação.
+
 ## T20.4 — revisões de dados (2026-10-18)
 
 Serviço canônico aditivo de blocos/manifestos/referências, captura em uma imagem

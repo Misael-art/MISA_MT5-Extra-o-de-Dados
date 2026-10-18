@@ -537,6 +537,13 @@ class DatabaseManager:
         with self.engine.begin() as conn:
             done = conn.execute(text("UPDATE _symbol_specs SET spread_profile = :p WHERE symbol = :s"),
                                 {"p": json.dumps(profile, ensure_ascii=False), "s": symbol})
+            if done.rowcount:
+                from mt5_extracao.analytics import instruments
+                from datetime import timezone
+                row = self.get_symbol_spec(symbol, connection=conn)
+                values = {key: row.get(key) for key in (*self.SPEC_FIELDS, "spread_profile")}
+                instruments.record(self, symbol, "specification", values, source="tick_spread_calibration",
+                                   known_at=datetime.now(timezone.utc), connection=conn)
         return done.rowcount > 0
 
     def load_tick_spreads(self, table_name):
@@ -547,13 +554,17 @@ class DatabaseManager:
             return pd.read_sql(text(f'SELECT time_msc, bid, ask FROM "{table_name}" WHERE bid > 0 AND ask > 0 '
                                     "ORDER BY time_msc"), conn)
 
-    def save_symbol_spec(self, symbol, spec):
+    def save_symbol_spec(self, symbol, spec, *, source="local_observation", known_at=None):
         """Grava (ou atualiza) a especificação do símbolo (dict com as chaves de SPEC_FIELDS)."""
         values = {k: spec.get(k) for k in self.SPEC_FIELDS}
         cols = ", ".join(self.SPEC_FIELDS)
         params = ", ".join(f":{k}" for k in self.SPEC_FIELDS)
         updates = ", ".join(f"{k} = excluded.{k}" for k in self.SPEC_FIELDS)
         with self.engine.begin() as conn:
+            from mt5_extracao.analytics import instruments
+            from datetime import timezone
+            instruments.record(self, symbol, "specification", values, source=source,
+                               known_at=known_at or datetime.now(timezone.utc), connection=conn)
             conn.execute(text(
                 f"INSERT INTO _symbol_specs (symbol, {cols}, updated_at) VALUES (:symbol, {params}, :updated_at) "
                 f"ON CONFLICT(symbol) DO UPDATE SET {updates}, updated_at = excluded.updated_at"),

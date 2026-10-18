@@ -50,7 +50,10 @@ def to_symbol_spec(symbol: str, row: dict) -> SymbolSpec:
                       swap_mode=int(row.get("swap_mode") or 0),
                       swap_triple_day=int(row["swap_rollover3days"]) if row.get("swap_rollover3days") is not None else 3,
                       spread_by_hour=_hours(row.get("spread_profile"), "hours"),
-                      spread_at_open=_hours(row.get("spread_profile"), "open"), known=True)
+                      spread_at_open=_hours(row.get("spread_profile"), "open"), known=True,
+                      provenance=dict(row.get("provenance") or {
+                          "specification_status": "unknown", "source": "current_cache",
+                          "observed_at": row.get("updated_at"), "historical_validity": "not_established"}))
 
 
 def _hours(raw, key: str):
@@ -127,6 +130,8 @@ def fetch_and_save_specs(connector, db, symbols: List[str]) -> Dict[str, str]:
         if info is None:
             result[symbol] = "não encontrado no MT5 (confira o nome e se está na Observação de Mercado)"
             continue
-        db.save_symbol_spec(symbol, spec_from_symbol_info(info))
+        server_name = getattr(connector, "server_name", None)
+        server = server_name() if callable(server_name) else ""
+        db.save_symbol_spec(symbol, spec_from_symbol_info(info), source=f"mt5:{server}" if server else "mt5:unknown_server")
         result[symbol] = "ok"
     return result
