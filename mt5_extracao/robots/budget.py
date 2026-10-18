@@ -221,12 +221,18 @@ class Budget:
             return [by_key[entry["key"]] for entry in entries]
         native_end = end or datetime.now()
         native_start = start or native_end - timedelta(days=365)
+        # Um plano compartilha a primeira revisão capturada de cada fonte.
+        # O memo vive só neste preparo; outro lote consulta a origem novamente.
+        manifests = {}
         for entry in entries:
             self.check()
             if entry["kind"] == catalog.PYTHON and self.db is not None:
                 try:
-                    snapshot = datasets.capture(self.db, entry["symbol"], entry["timeframe"], start, end)
-                    entry["data_manifest_id"] = snapshot.manifest_id
+                    source = (entry["symbol"], entry["timeframe"])
+                    if source not in manifests:
+                        snapshot = datasets.capture(self.db, *source, start, end)
+                        manifests[source] = snapshot.manifest_id
+                    entry["data_manifest_id"] = manifests[source]
                 except (ValueError, OSError):
                     entry["preparation_error"] = ("Sem revisão utilizável de {} {}; ".format(entry["symbol"], entry["timeframe"]) +
                                                   "confira o histórico e inicie outro lote após corrigir os dados.")
