@@ -115,10 +115,15 @@ def test_active_owner_and_changed_plan_are_not_silently_replaced(local):
 def test_failure_history_is_not_erased_on_retry(local, monkeypatch):
     db, robot = local
     real = backtest.run_python
-    monkeypatch.setattr(backtest, "run_python", lambda *a, **kw: (_ for _ in ()).throw(ValueError("falha plantada")))
+    failing = [True]
+    def transient(*args, **kwargs):
+        if failing[0]:
+            raise ValueError("falha plantada")
+        return real(*args, **kwargs)
+    monkeypatch.setattr(backtest, "run_python", transient)
     first = budget.Budget(db, sample=sample)
     assert run(local, first)[0]["error"] == "falha plantada"
-    monkeypatch.setattr(backtest, "run_python", real)
+    failing[0] = False
     again = budget.Budget(db, batch_id=first.batch_id, sample=sample)
     assert run(local, again)[0]["run"]
     history = budget.checkpoint(db, first.batch_id)["jobs"][0]["history"]
@@ -170,9 +175,18 @@ def test_crash_after_publication_recovers_run_without_reexecution(local, monkeyp
     with db.engine.begin() as conn:
         conn.execute(text("UPDATE _robot_batch_queue SET status='running', owner_json=:o WHERE batch_id=:b"),
                      dict(o=json.dumps(dict(host=__import__('socket').gethostname(), pid=999999999, started=0)), b=first.batch_id))
-    monkeypatch.setattr(backtest, "run_python", lambda *a, **kw: pytest.fail("resultado já publicado foi repetido"))
+    import sys
+    code = backtest.run_python.__code__
+    def observe(frame, event, arg):
+        if event == "call" and frame.f_code is code:
+            pytest.fail("resultado já publicado foi repetido")
     resumed = budget.Budget(db, batch_id=first.batch_id, sample=sample)
-    again = run(local, resumed)
+    previous = sys.getprofile()
+    sys.setprofile(observe)
+    try:
+        again = run(local, resumed)
+    finally:
+        sys.setprofile(previous)
     assert again[0]["skipped"] and again[0]["run"]["run_id"] == results[0]["run"]["run_id"]
 
 
@@ -181,7 +195,8 @@ def test_native_cancel_waits_for_call_and_rejects_publication(env):
     control = budget.Budget(env.db, env.config, sample=sample)
     def terminal(*args):
         code = env.terminal(*args)
-        control.cancel()
+        if "/config:" in args[0]:
+            control.cancel()
         return code
     result = backtest.run_batch(env.db, env.config, [robot], ["EURUSD"], [Timeframe.H1],
                                 run=terminal, is_running=lambda: False, budget=control)

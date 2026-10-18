@@ -155,7 +155,7 @@ class PanelApp:
         from . import mt5_tools
         bridge_was_running = False
         try:
-            if mql5 and mt5_tools.terminal_running(self.config):      # a confirmação já foi conferida em _precheck
+            if mql5 and params.get("confirm") == "close_mt5" and mt5_tools.terminal_running(self.config):
                 job.say("Fechando o MetaTrader 5 para rodar os testes...")
                 bridge_was_running = mt5_tools.release_terminal(self.config)
             results = backtest.run_batch(self.db, self.config, robots, symbols, tfs,
@@ -268,18 +268,9 @@ class PanelApp:
         return f"{saved} de {len(symbols)} especificação(ões) gravada(s). Teste de novo as estratégias Python desses ativos."
 
     def _precheck(self, action: str, params: dict) -> None:
-        """Antes de aceitar: o que fecha o MetaTrader 5 precisa de `confirm: "close_mt5"` no pedido."""
-        if action != "backtest":
-            return
-        from . import catalog, mt5_tools
-        keys = params.get("robots") if isinstance(params.get("robots"), list) else []
-        by_key = {r.key: r for r in self.catalog()}
-        if not any(getattr(by_key.get(k), "kind", "") == catalog.MQL5 for k in keys):
-            return
-        if mt5_tools.terminal_running(self.config) and params.get("confirm") != "close_mt5":
-            raise NeedsConfirmation("O teste de robô MQL5 usa o Strategy Tester e precisa FECHAR o MetaTrader 5 desta "
-                                    "instalação (a ponte é religada no fim). Se houver um robô operando nele, não "
-                                    "confirme.", "close_mt5")
+        """Fechar a instalação operacional é uma escolha explícita; o teste usa perfil privado."""
+        if action == "backtest" and params.get("confirm") not in (None, "", "close_mt5"):
+            raise ActionError("Confirmação de fechamento inválida; omita confirm para usar somente o perfil privado.")
 
     def _stop_all(self, params: dict, job: Job) -> str:
         from . import live

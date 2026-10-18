@@ -19,7 +19,6 @@ from mt5_extracao.bootstrap import display, paths
 from . import backtest, battery, catalog, contract, controls, live, mql, mt5_tools
 
 log = logging.getLogger(__name__)
-_TESTER_LOCK = threading.Lock()  # respeitar CPU/RAM do host: uma passagem histórica nativa por aplicação
 
 
 class Cancelled(RuntimeError):
@@ -47,52 +46,100 @@ def native_interrupted(directory):
     return False
 
 
-def owned_processes(config, names=(paths.MT5_TERMINAL_EXE,)):
+def owned_processes(config, names=(paths.MT5_TERMINAL_EXE,), *, strict=False, launchers=False):
     """Mesmo prefixo Wine não significa mesma instalação. Exigir também o executável exato."""
     expected_paths = [mt5_tools.install_dir(config) / name for name in names]
     prefix = mt5_tools.wine_prefix(config)
     expected_paths = {mt5_tools._windows_path(p, prefix).replace("\\", "/").rstrip("/").lower() for p in expected_paths}
     found = []
     import psutil
+    expected_names = {name.lower() for name in names}
+    launch_path = mt5_tools._windows_path(mt5_tools.install_dir(config) / "launch.bat", prefix).replace("\\", "/").lower()
+    if launchers:
+        expected_names.update(("cmd.exe", "wine", "wine64"))
     for process in psutil.process_iter():
+        candidate = False
         try:
-            if paths.is_windows():
-                executable = process.exe()
-            else:
+            executable = process.exe() if paths.is_windows() else process.cmdline()[0]
+            candidate = str(executable).replace("\\", "/").rstrip("/").lower() in expected_paths
+            if not candidate and launchers:
+                candidate = any(str(arg).strip('"').replace("\\", "/").lower() == launch_path
+                                for arg in process.cmdline())
+            if not candidate:
+                continue
+            if not paths.is_windows():
                 theirs = process.environ().get("WINEPREFIX") or str(Path.home() / ".wine")
                 if Path(theirs).expanduser().resolve() != prefix.resolve():
                     continue
-                executable = process.cmdline()[0]
-            if str(executable).replace("\\", "/").rstrip("/").lower() in expected_paths:
-                found.append(process)
-        except (OSError, IndexError, psutil.Error):
+            found.append(process)
+        except psutil.NoSuchProcess:
             continue
+        except (OSError, IndexError, psutil.Error) as error:
+            if strict:
+                if not candidate:
+                    try:
+                        candidate = process.name().lower() in expected_names
+                    except psutil.NoSuchProcess:
+                        continue
+                    except (OSError, psutil.Error):
+                        candidate = True
+                if candidate:
+                    raise RuntimeError("Não foi possível conferir um processo nativo; mantenha a sessão e confira as permissões antes de liberar seus arquivos.") from error
     return found
 
 
-def _copy_file(source, target):
+def _copy_file(source, target, *, check=None):
+    source, target = Path(source), Path(target)
     if not source.is_file():
         return
+    if check is not None:
+        check(path=target, reserve_bytes=source.stat().st_size)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, target)
     target.chmod(0o600)
 
 
-def prepare(config, robot, directory, symbol):
+def _private_config(config, directory):
+    child = configparser.ConfigParser(interpolation=None)
+    child.read_dict({s: dict(config[s]) for s in config.sections()})
+    if not child.has_section("MT5"):
+        child.add_section("MT5")
+    child["MT5"]["path"] = str(directory / "terminal64.exe")
+    # A configuração da cópia nunca aponta o compilador para a instância operacional.
+    if child.has_option("ROBOTS", "metaeditor_path"):
+        child["ROBOTS"]["metaeditor_path"] = ""
+    return child
+
+
+def prepare(config, robot, directory, symbol, *, require_source=True, check=None, _child=None):
     """Cópias privadas, sem links graváveis, senhas em INI ou argumentos de login."""
+    if require_source and not robot.has_source:
+        raise ValueError("Estes comandos precisam do fonte para conferir segurança e acompanhar o Expert.")
+    from pathlib import PurePosixPath, PureWindowsPath
+    symbol = str(symbol)
+    components = (PurePosixPath(symbol), PureWindowsPath(symbol))
+    if (not symbol or any(char in symbol for char in "\r\n\0") or
+            any(part.is_absolute() or part.drive or ".." in part.parts for part in components)):
+        raise ValueError("Símbolo inválido para preparar o perfil privado; escolha um ativo do catálogo.")
     directory = Path(directory)
+    if check is not None:
+        check(path=directory, reserve_bytes=1024)
+    from functools import partial
+    copy_file = partial(_copy_file, check=check)
     directory.mkdir(parents=True, exist_ok=False, mode=0o700)
+    (directory / "relatorio.json").write_text(json.dumps({"artifact_owner": "mt5x-session", "artifact_version": 1,
+        "session": directory.name, "state": "preparing"}, ensure_ascii=False), encoding="utf-8")
     source = mt5_tools.install_dir(config)
     data = mt5_tools.data_dir(config)
     for name in ("terminal64.exe", "metatester64.exe", "MetaEditor64.exe", "metaeditor64.exe"):
-        _copy_file(source / name, directory / name)
+        copy_file(source / name, directory / name)
     for file in source.glob("*.dll"):
-        _copy_file(file, directory / file.name)
+        copy_file(file, directory / file.name)
     # Cache nativo cifrado; nunca convertido em credenciais de texto.
     for folder in ("config", "Config"):
         for file in (data / folder).glob("*"):
             if file.is_file() and file.suffix.lower() in (".dat", ".srv"):
-                _copy_file(file, directory / folder / file.name)
+                copy_file(file, directory / folder / file.name)
         common_ini = data / folder / "common.ini"
         if common_ini.is_file():
             # Somente identidade do último login, nunca copiar opções de Expert ou senhas.
@@ -102,6 +149,8 @@ def prepare(config, robot, directory, symbol):
                                               for key in ("Login", "Server") if native.has_option("Common", key))
             destination = directory / folder / "common.ini"
             destination.parent.mkdir(parents=True, exist_ok=True)
+            if check is not None:
+                check(path=destination, reserve_bytes=len(text.encode("utf-16")))
             destination.write_bytes(text.encode("utf-16"))
             destination.chmod(0o600)
     bases = next((p for p in data.iterdir() if p.is_dir() and p.name.lower() == "bases"), data / "Bases")
@@ -112,33 +161,32 @@ def prepare(config, robot, directory, symbol):
             actual = next((p for p in server.iterdir() if p.is_dir() and p.name.lower() == folder), server / folder)
             selected = actual / symbol
             if selected.is_dir():
-                shutil.copytree(selected, directory / bases.name / server.name / actual.name / symbol)
+                shutil.copytree(selected, directory / bases.name / server.name / actual.name / symbol,
+                                copy_function=copy_file)
         for file in server.glob("*"):
             if file.is_file():
-                _copy_file(file, directory / bases.name / server.name / file.name)
+                copy_file(file, directory / bases.name / server.name / file.name)
     target = mt5_tools.install_plan(robot, directory)
-    if not robot.has_source:
-        raise ValueError("Estes comandos precisam do fonte para conferir segurança e acompanhar o Expert.")
     for item in target:
-        _copy_file(item.source, item.target)
+        if not item.target.resolve().is_relative_to(directory.resolve()):
+            raise ValueError("O plano de instalação alcança arquivos fora do perfil privado; revise o catálogo.")
+        copy_file(item.source, item.target)
     # Includes do compilador são somente cópias, inclusive a biblioteca padrão.
     includes = data / "MQL5" / "Include"
     if includes.is_dir():
-        shutil.copytree(includes, directory / "MQL5" / "Include", dirs_exist_ok=True)
-    child = configparser.ConfigParser(interpolation=None)
-    child.read_dict({s: dict(config[s]) for s in config.sections()})
-    if not child.has_section("MT5"):
-        child.add_section("MT5")
-    child["MT5"]["path"] = str(directory / "terminal64.exe")
-    # A configuração da cópia nunca aponta o compilador para a instância operacional.
-    if child.has_option("ROBOTS", "metaeditor_path"):
-        child["ROBOTS"]["metaeditor_path"] = ""
+        shutil.copytree(includes, directory / "MQL5" / "Include", dirs_exist_ok=True,
+                        copy_function=copy_file)
+    child = _child if _child is not None else _private_config(config, directory)
     from . import safety_lib
+    if check is not None:
+        check(path=directory)
     safety_lib.ensure(child, robot, directory)
     # O catálogo resolve includes locais antes da biblioteca instalada. A cópia
     # avaliada precisa conservar exatamente esses bytes, inclusive WIP do dono.
     for item in target:
-        _copy_file(item.source, item.target)
+        if not item.target.resolve().is_relative_to(directory.resolve()):
+            raise ValueError("O plano de instalação alcança arquivos fora do perfil privado; revise o catálogo.")
+        copy_file(item.source, item.target)
     # Formato observado no visualizador nativo: panes secundários recolhidos,
     # barra de reprodução preservada. A pessoa pode reabri-los pelo menu View.
     visual = directory / "Tester" / "config" / "metatester.ini"
@@ -146,6 +194,8 @@ def prepare(config, robot, directory, symbol):
     # IsVisible isolado é ignorado pelo build nativo: preservar também o
     # grafo de docking, sem preferências, identidades ou caminhos do host.
     text = "[Visualization]\r\nchartmode=1\r\n" + (Path(__file__).parent / "templates" / "visual_tester.ini.tmpl").read_text(encoding="utf-8")
+    if check is not None:
+        check(path=visual, reserve_bytes=len(text.encode("utf-16")))
     visual.write_bytes(text.encode("utf-16"))
     return child
 
@@ -289,19 +339,25 @@ void MT5X_Publish() {{
 '''
 
 
+def session_root(config):
+    """Raiz dos perfis privados do executor; a retenção usa a mesma origem."""
+    prefix = mt5_tools.wine_prefix(config)
+    return prefix / "drive_c" / "mt5x_sessions" if prefix else paths.PROJECT_ROOT / "exports" / "robot_sessions"
+
+
 class Session:
     """Uma execução, controlada fora da thread Tk; STOP nunca alcança outros terminais."""
     def __init__(self, db, config, robot, symbol, timeframe, preset=None, mode="backtest", start=None, end=None,
-                 account=None, consent=None, root=None):
+                 account=None, consent=None, root=None, native_options=None):
         if mode not in ("play", "replay", "backtest"):
             raise ValueError("Modo de execução inválido.")
         self.db, self.config, self.robot = db, config, robot
+        self.native_options, self.exception = native_options, None
+        self.instrumented = False
         self.symbol, self.timeframe, self.preset, self.mode = symbol, timeframe, preset, mode
         self.start, self.end, self.account, self.consent = start, end, account, consent
         self.id = uuid.uuid4().hex
-        prefix = mt5_tools.wine_prefix(config)
-        default_root = prefix / "drive_c" / "mt5x_sessions" if prefix else paths.PROJECT_ROOT / "exports" / "robot_sessions"
-        self.directory = Path(root or default_root) / self.id
+        self.directory = Path(root or session_root(config)) / self.id
         self.cancelled = threading.Event()
         self.state, self.error, self.record = "created", "", None
         self.process = None
@@ -324,7 +380,14 @@ class Session:
         if self.active:
             self.state = "stopping"
 
-    def _check_cancel(self):
+    def _check_cancel(self, **kwargs):
+        if self.native_options is not None and self.native_options.get("control") is not None:
+            if kwargs.get("path") is not None:
+                parent = Path(kwargs["path"])
+                while not parent.exists() and parent.parent != parent:
+                    parent = parent.parent
+                kwargs["path"] = parent
+            self.native_options["control"].check(**kwargs)
         if self.cancelled.is_set():
             raise Cancelled("Execução interrompida pelo usuário.")
 
@@ -334,11 +397,26 @@ class Session:
                 self._write_lease("0")
             except (OSError, ValueError):
                 log.exception("Não foi possível revogar a presença da sessão; encerrando seu terminal.")
-        for proc in owned_processes(self.child_config, ("terminal64.exe", "MetaEditor64.exe", "metatester64.exe")):
-            if proc.create_time() >= self.started - 2:
-                proc.terminate()
+        import psutil
+        targets = []
+        for proc in owned_processes(self.child_config, ("terminal64.exe", "MetaEditor64.exe", "metatester64.exe"), launchers=True):
+            try:
+                if proc.create_time() >= self.started - 2:
+                    proc.terminate()
+                    targets.append(proc)
+            except psutil.NoSuchProcess:
+                continue
         if self.process and self.process.poll() is None:
             self.process.terminate()
+            targets.append(self.process)
+        deadline = time.monotonic() + 15
+        for proc in targets:
+            try:
+                proc.wait(timeout=max(.01, deadline - time.monotonic()))
+            except (psutil.NoSuchProcess, ProcessLookupError):
+                continue
+            except (psutil.TimeoutExpired, subprocess.TimeoutExpired):
+                log.warning("Um processo próprio ainda não encerrou; a sessão permanece protegida contra limpeza e nova execução.")
 
     def _write_lease(self, value=None):
         common = mt5_tools.common_files_dir(self.config)
@@ -377,6 +455,7 @@ class Session:
             parent_seen, last_process_check = False, 0.0
             self.state = "preparing" if compiling else "running"
             while self.process.poll() is None:
+                self._check_cancel()
                 if self.cancelled.wait(.2):
                     self._stop_owned()
                     self.process.wait(timeout=15)
@@ -429,16 +508,56 @@ class Session:
         except (OSError, ValueError, TypeError, AttributeError, IndexError):
             return controls.activity_state(self.active), None, None
 
+    def _prepare_expert(self, *, allow_binary=False, compiled_override=None):
+        """Preparação única dos executores existentes; o binário legado não ganha observador fictício."""
+        self._check_cancel()
+        if not allow_binary and not self.robot.has_source:
+            raise ValueError("Estes comandos precisam do fonte para conferir segurança e acompanhar o Expert.")
+        # Registrar a posse antes de copiar: uma preparação recusada pelo orçamento
+        # ainda é nossa e pode comprovar que nenhum processo foi iniciado.
+        self.child_config = _private_config(self.config, self.directory)
+        if self.mode != "play":
+            mt5_tools.register_native_context(self)
+        self.child_config = prepare(self.config, self.robot, self.directory, self.symbol,
+                                    require_source=not allow_binary, check=self._check_cancel,
+                                    _child=self.child_config)
+        self.child_config._mt5x_session = self
+        self._check_cancel()
+        if not self.robot.has_source or compiled_override is not None:
+            origin = Path(compiled_override) if compiled_override is not None else mt5_tools.install_plan(
+                self.robot, mt5_tools.data_dir(self.config))[0].target.with_suffix(".ex5")
+            if not origin.is_file():
+                raise ValueError("Binário instalado indisponível; instale/compile antes de iniciar o teste isolado.")
+            target = mt5_tools.install_plan(self.robot, self.directory)[0].target.with_suffix(".ex5")
+            _copy_file(origin, target, check=self._check_cancel)
+            self.instrumented = False
+            return target
+        plan = mt5_tools.install_plan(self.robot, self.directory)
+        wrapper = plan[0].target.with_name("mt5x_session.mq5")
+        wrapper.write_text(telemetry_source(self.robot, self.telemetry_file,
+                                          self.account if self.mode == "play" else None,
+                                          self.trades_file if self.mode != "play" else None,
+                                          self.lease_file if self.mode == "play" else None,
+                                          "mt5x_sessions\\" + self.id + "\\" if self.mode != "play" else None), encoding="utf-8")
+        result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
+                                          mt5_tools.wine_prefix(self.child_config),
+                                          run=(self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
+                                               lambda command, cwd, prefix, timeout: self._run_command(command, cwd, prefix, timeout, compiling=True)))
+        if not result.ok:
+            raise RuntimeError(result.summary)
+        self.instrumented = True
+        return wrapper
+
     def run(self, read_account=None):
         self.state = "preparing"
-        historical_lock = False
+        native_lease = None
         try:
             self._check_cancel()
             if self.mode != "play":
                 self.state = "queued"
-                while not _TESTER_LOCK.acquire(timeout=.2):
-                    self._check_cancel()
-                historical_lock = True
+                lease = mt5_tools.tester_lease(self._check_cancel)
+                lease.__enter__()
+                native_lease = lease
                 self._check_cancel()
                 self.state = "preparing"
             if self.mode == "play":
@@ -455,20 +574,8 @@ class Session:
                 if issues:
                     raise ValueError("\n".join(issues))
                 self.account = current
-            self.child_config = prepare(self.config, self.robot, self.directory, self.symbol)
-            self._check_cancel()
-            plan = mt5_tools.install_plan(self.robot, self.directory)
-            wrapper = plan[0].target.with_name("mt5x_session.mq5")
-            wrapper.write_text(telemetry_source(self.robot, self.telemetry_file,
-                                              self.account if self.mode == "play" else None,
-                                              self.trades_file if self.mode != "play" else None,
-                                              self.lease_file if self.mode == "play" else None,
-                                              "mt5x_sessions\\" + self.id + "\\" if self.mode != "play" else None), encoding="utf-8")
-            result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
-                                              mt5_tools.wine_prefix(self.child_config),
-                                              run=lambda command, cwd, prefix, timeout: self._run_command(command, cwd, prefix, timeout, compiling=True))
-            if not result.ok:
-                raise RuntimeError(result.summary)
+            wrapper = self._prepare_expert(allow_binary=self.native_options is not None,
+                                           compiled_override=self.native_options.get("compiled_override") if self.native_options else None)
             # Usar o nome próprio: a recompilação automática do MT5 pode regenerar
             # o binário original, sem os observadores, ao abrir uma instalação nova.
             self._check_cancel()
@@ -507,30 +614,60 @@ class Session:
                     port_socket.bind(("127.0.0.1", 0))
                     tester_port = port_socket.getsockname()[1]
                 common = mt5_tools.common_files_dir(self.config)
-                if common is None:
+                if common is None and self.native_options is None:
                     raise ValueError("A pasta Common/Files não está disponível para o relatório da sessão.")
-                self.record = backtest.run_mql5(self.db, self.child_config, self.robot, self.symbol, self.timeframe,
-                                                self.start, self.end, self.preset, values, run=self._run_command,
-                                                model="4", visual=self.mode == "replay", read_csv=False,
-                                                export_trades=False,
-                                                tester_port=tester_port,
-                                                compiled_override=wrapper.with_suffix(".ex5"),
-                                                trades_csv_override=common / self.trades_file,
-                                                is_running=lambda: bool(owned_processes(self.child_config)))
+                options = self.native_options
+                if options is None:
+                    self.record = backtest.run_mql5(self.db, self.child_config, self.robot, self.symbol, self.timeframe,
+                                                    self.start, self.end, self.preset, values, run=self._run_command,
+                                                    model="4", visual=self.mode == "replay", read_csv=False,
+                                                    export_trades=False,
+                                                    tester_port=tester_port,
+                                                    compiled_override=wrapper.with_suffix(".ex5"),
+                                                    trades_csv_override=common / self.trades_file,
+                                                    is_running=lambda: bool(owned_processes(self.child_config)))
+                else:
+                    call = dict(options)
+                    call.update(config=self.child_config, timeframe=self.timeframe, start=self.start, end=self.end,
+                                run=options.get("run") or self._run_command,
+                                export_trades=False,
+                                compiled_override=wrapper.with_suffix(".ex5"),
+                                tester_port=options.get("tester_port") or tester_port,
+                                is_running=lambda: bool(owned_processes(self.child_config)))
+                    self.record = backtest.run_mql5(**call)
             self.state = "completed"
         except Cancelled as error:
+            if self.child_config is not None:
+                self._stop_owned()
+            self.exception = error if self.native_options is not None else None
             self.state, self.error = "cancelled", str(error)
         except Exception as error:
+            self.exception = error if self.native_options is not None else None
             self.state, self.error = "failed", str(error) or type(error).__name__
-            if self.child_config is not None and self.process and self.process.poll() is None:
+            if self.child_config is not None:
                 self._stop_owned()
             log.exception("Falha na sessão %s do robô %s", self.mode, self.robot.key)
         finally:
             self.finished = time.time()
-            if historical_lock:
-                _TESTER_LOCK.release()
+            resources_released, resource_error = False, ""
+            try:
+                if self.child_config is not None:
+                    if native_lease is not None:
+                        resources_released = mt5_tools.release_native_context(self)
+                    else:
+                        resources_released = not owned_processes(self.child_config,
+                            ("terminal64.exe", "MetaEditor64.exe", "metatester64.exe"), strict=True, launchers=True)
+            except Exception as error:
+                resource_error = str(error)
+                log.exception("Recursos da sessão ainda não puderam ser liberados; preservando seus arquivos.")
+            finally:
+                if native_lease is not None:
+                    native_lease.__exit__(None, None, None)
             if self.directory.exists():
-                payload = {"session": self.id, "mode": self.mode, "state": self.state, "error": self.error,
+                payload = {"artifact_owner": "mt5x-session", "artifact_version": 1,
+                           "resources_released": resources_released, "resource_error": resource_error,
+                           "wine_prefix": str(mt5_tools.wine_prefix(self.config) or ""),
+                           "session": self.id, "mode": self.mode, "state": self.state, "error": self.error,
                            "robot": self.robot.key, "symbol": self.symbol, "timeframe": self.timeframe,
                            "preset": self.preset or "", "parameters": controls.effective_values(self.robot, self.preset),
                            "account": self.account if self.mode == "play" else None,

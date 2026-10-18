@@ -123,6 +123,7 @@ class Budget:
     def __init__(self, db=None, config=None, *, limits=None, sample=None, clock=time.monotonic, batch_id=None):
         self.db, self.config = db, config
         self.limits = limits or Limits.from_config(config)
+        self.explicit_id = batch_id is not None
         self.batch_id = batch_id or uuid.uuid4().hex
         self._clock, self._start = clock, clock()
         self._sample = sample or (lambda path: _sample(path, cpu_interval=.05 if self.limits.hard_cpu_pct else None))
@@ -140,6 +141,7 @@ class Budget:
         self._previous_elapsed = 0.0
         self._admitted = 0
         self._jobs = {}
+        self._plan = {"jobs": []}
 
     def cancel(self, reason="Cancelado pelo usuário; retome o lote para continuar o que falta."):
         # A UI não espera por I/O de publicação nem pela leitura de recursos.
@@ -182,18 +184,18 @@ class Budget:
             if self._stop.is_set():
                 raise Interrupted(self.reason)
 
-    def prepare(self, jobs, *, start=None, end=None, preset=None):
+    def prepare(self, jobs, *, start=None, end=None, preset=None, resume_latest=False):
         """Fixa o plano uma vez; retomada relê os mesmos manifests, não a base atual."""
         from dataclasses import asdict
         from datetime import timedelta
         from mt5_extracao import timeframes
         from mt5_extracao.strategies import research
         from mt5_extracao.analytics import datasets
-        from . import catalog, mt5_tools
+        from . import catalog, mt5_tools, backtest as backtest_mod
         entries, signatures = [], []
         # Hashes do código, sem caminhos pessoais no checkpoint.
         root = Path(__file__).resolve().parents[1]
-        code = {str(p.relative_to(root)): hashlib.sha256(p.read_bytes()).hexdigest()
+        code = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                 for p in sorted(root.rglob("*.py"))}
         for robot, symbol, timeframe in jobs:
             tf = timeframes.parse(timeframe)
@@ -209,7 +211,8 @@ class Budget:
         signature = hashlib.sha256(_json(dict(jobs=sorted(entries, key=lambda x: x["key"]),
                                  sources=sorted(signatures, key=lambda x: x["key"]), code=code, preset=preset,
                                  start=str(start), end=str(end), settings=asdict(research.backtest_config(self.config)),
-                                 tester_model=mt5_tools.tester_model(self.config))).encode()).hexdigest()
+                                 tester_model=mt5_tools.tester_model(self.config),
+                                 runtime_code=backtest_mod._execution_code_digest())).encode()).hexdigest()
         previous = checkpoint(self.db, self.batch_id) if self.db is not None else None
         if previous is not None:
             if previous["plan"].get("version") != 1:
@@ -232,6 +235,25 @@ class Budget:
                                                   "confira o histórico e inicie outro lote após corrigir os dados.")
             if entry["kind"] == catalog.MQL5:
                 entry.update(start=native_start.isoformat(), end=native_end.isoformat())
+        if resume_latest and not self.explicit_id and self.db is not None and inspect(self.db.engine).has_table("_robot_batch_queue"):
+            with self.db.engine.connect() as conn:
+                candidates = conn.execute(text("SELECT batch_id,plan_json FROM _robot_batch_queue "
+                                               "ORDER BY updated_at DESC,batch_id DESC")).mappings().all()
+            current_data = {entry["key"]: entry.get("data_manifest_id") for entry in entries if entry["kind"] == catalog.PYTHON}
+            for candidate in candidates:
+                try:
+                    old = json.loads(candidate["plan_json"])
+                except (TypeError, ValueError):
+                    continue
+                if old.get("version") != 1 or old.get("signature") != signature:
+                    continue
+                old_data = {entry["key"]: entry.get("data_manifest_id") for entry in old["jobs"] if entry["kind"] == catalog.PYTHON}
+                if old_data != current_data:
+                    continue
+                self.batch_id = candidate["batch_id"]
+                self.begin(old)
+                by_key = {entry["key"]: entry for entry in old["jobs"]}
+                return [by_key[entry["key"]] for entry in entries]
         plan = dict(version=1, signature=signature, jobs=entries)
         self.begin(plan)
         return entries
@@ -262,6 +284,7 @@ class Budget:
             self._jobs = {x["job_key"]: dict(x) for x in conn.execute(text("SELECT * FROM _robot_batch_jobs WHERE batch_id=:b"), {"b": self.batch_id}).mappings()}
         self._admitted = sum(sum(event["status"] == "running" for event in json.loads(job["history_json"]))
                              for job in self._jobs.values())
+        self._plan = plan
         self._claimed = True
 
     def admit(self, key):
@@ -286,7 +309,20 @@ class Budget:
             return None
         records = store.load_runs(self.db, run_id=prior["run_id"])
         if records:
-            return records[0]
+            from . import catalog
+            record = records[0]
+            expected = next((entry for entry in self._plan["jobs"] if entry["key"] == key), None)
+            valid = expected is not None and all(record[field] == expected[name] for field, name in
+                                                  (("robot_key", "robot"), ("symbol", "symbol"), ("timeframe", "timeframe")))
+            if valid and expected["kind"] == catalog.PYTHON:
+                valid = record["source"] == "backtest" and record.get("data_manifest_id") == expected.get("data_manifest_id")
+            elif valid:
+                valid = record["source"] == "strategy tester" and all(
+                    record["data_" + name] == datetime.fromisoformat(expected[name]).strftime("%Y-%m-%d %H:%M:%S")
+                    for name in ("start", "end"))
+            if not valid:
+                raise ValueError("Resultado do checkpoint não corresponde ao plano/revisão; restaure a referência antes de retomar.")
+            return record
         if prior["status"] == "completed":
             raise ValueError("Resultado do checkpoint está ausente; restaure o artefato antes de retomar.")
         return None
@@ -307,14 +343,14 @@ class Budget:
             self._jobs[key] = dict(job_key=key, run_id=run_id, status=state, history_json=params["h"])
 
     def remember(self, key, record):
-        """Mantém a referência exata pulada pelo --resume legado, sem regravá-la."""
+        """Mantém a referência exata reutilizada, sem regravar o resultado."""
         if self.db is not None:
             with self._lock:
                 prior = self._jobs.get(key)
                 if prior is not None and prior["run_id"] != record["run_id"]:
                     raise ValueError("Checkpoint já reservou outro resultado; retome sem o cache legado.")
                 if prior is None:
-                    self._record(key, record["run_id"], "completed", "reutilizado pelo --resume legado; confira a origem do run")
+                    self._record(key, record["run_id"], "completed", "reutilizado pela identidade de execução; origem preservada")
 
     def finish(self, *, failed=False):
         if self.db is not None and self._claimed:

@@ -743,10 +743,7 @@ def _robots_backtest_many(args, ctx, robot, tf, start, end):
         params = _parse_params(args.param)
     bridge_was_running = False
     try:
-        if mql5 and mt5_tools.terminal_running(ctx.config):
-            if not args.close_terminal:       # um aviso só, em vez do mesmo erro repetido em cada ativo
-                raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
-                                   "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
+        if mql5 and args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
             _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
@@ -795,7 +792,7 @@ def _robots_backtest_batch(args, ctx, items):
     names = {r.key: r.name for r in robots}
     mql5 = any(r.kind == catalog.MQL5 for r in robots)
     _print(f"Lote: {len(robots)} robô(s) × {len(symbols)} ativo(s) × {len(tfs)} timeframe(s) = {total} teste(s), "
-           "um por vez." + (" Robôs MQL5 usam o Strategy Tester: o MetaTrader 5 fica fechado enquanto isso."
+           "um por vez." + (" Robôs MQL5 usam o Strategy Tester em um perfil privado, um teste por vez."
                             if mql5 else ""))
     count = {"n": 0}
 
@@ -806,16 +803,13 @@ def _robots_backtest_batch(args, ctx, items):
             _print(head + "não testado: " + item["error"])
             return
         m = item["run"]["metrics"]
+        reused = " (checkpoint recuperado)" if item.get("reuse_basis") == "checkpoint" else " (identidade conferida; pulado)"
         _print(head + f"{m['trades']} operações, profit factor {_fmt_num(m['profit_factor'])}, resultado "
-               f"{_fmt_pct(m['return_pct'])}" + (" (já testado; pulado)" if item["skipped"] else ""))
+               f"{_fmt_pct(m['return_pct'])}" + (reused if item["skipped"] else ""))
     budget = Budget(ctx.db, ctx.config, batch_id=getattr(args, "batch_id", None))
-    _print(f"Checkpoint do lote: {budget.batch_id}. Retome com --batch-id {budget.batch_id}.")
     bridge_was_running = False
     try:
-        if mql5 and mt5_tools.terminal_running(ctx.config):
-            if not args.close_terminal:
-                raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
-                                   "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
+        if mql5 and args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
             _notify(ctx, "MetaTrader 5 fechado para um lote de testes", "A ponte é religada no fim.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
@@ -825,9 +819,11 @@ def _robots_backtest_batch(args, ctx, items):
     finally:
         if bridge_was_running:
             mt5_tools.restart_bridge()
+    _print(f"Checkpoint do lote: {budget.batch_id}. Retome com --batch-id {budget.batch_id}.")
     failed = [r for r in results if r["run"] is None]
     skipped = sum(1 for r in results if r["skipped"])
     _data(batch=[{**{k: r[k] for k in ("robot", "symbol", "timeframe", "error", "skipped")},
+                  "reuse_basis": r.get("reuse_basis", ""),
                   "run": {k: v for k, v in r["run"].items() if k not in ("trades", "equity")} if r["run"] else None}
                  for r in results],
           summary={"total": total, "tested": len(results) - len(failed) - skipped, "skipped": skipped, "failed": len(failed)})
@@ -1261,7 +1257,7 @@ def _robots_battery(args, ctx, items):
         if robot.kind == catalog.MQL5 and runs and runs[0].get("trades"):
             count = len(battery.deep_plan(robot, runs[0]))
             _print(f"Bateria completa: {count} testes no Strategy Tester, cerca de "
-                   f"{max(1, round(count * battery.SECONDS_PER_TEST / 60))} min. O MetaTrader 5 fica fechado enquanto isso.")
+                   f"{max(1, round(count * battery.SECONDS_PER_TEST / 60))} min. Os testes usam um perfil privado, um por vez.")
         if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
             _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")

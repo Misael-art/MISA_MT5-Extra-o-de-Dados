@@ -3,6 +3,7 @@ import configparser
 from types import SimpleNamespace
 
 import pytest
+from tests.native_process import compile_observer, logical_expert, configure_test_safety
 
 from mt5_extracao import cli
 from mt5_extracao.bootstrap import paths
@@ -66,16 +67,20 @@ def test_result_difference_and_sign_agreement_decide():
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
+    from tests.native_process import fake_session_commands
+    fake_session_commands(monkeypatch)
     monkeypatch.setattr(paths, "is_windows", lambda: False)
     prefix = tmp_path / "wine"
     mt5 = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     (mt5 / "MQL5" / "Experts").mkdir(parents=True)
     (mt5 / "terminal64.exe").write_bytes(b"")
+    (mt5 / "MetaEditor64.exe").write_bytes(b"")
     robots_dir = tmp_path / "robos"
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"path": str(mt5), "wine_prefix": str(prefix)},
                       "DATABASE": {"type": "sqlite", "path": str(tmp_path / "db.sqlite")},
                       "ROBOTS": {"library_dirs": str(robots_dir)}})
+    configure_test_safety(config, tmp_path)
     scaffold.create("Gemeo", robots_dir, magic=990001)
     cfg = tmp_path / "config.ini"
     with open(cfg, "w", encoding="utf-8") as f:
@@ -90,6 +95,9 @@ def env(tmp_path, monkeypatch):
     def terminal(trades):
         """Devolve, como relatório do Strategy Tester, as operações dadas (as do próprio Python, nos testes)."""
         def run(command_line, cwd, prefix_, timeout):
+            compiled = compile_observer(command_line, prefix_)
+            if compiled is not None:
+                return compiled
             ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix_)
             ini = configparser.ConfigParser()
             ini.optionxform = str

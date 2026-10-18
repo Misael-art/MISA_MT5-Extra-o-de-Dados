@@ -160,7 +160,7 @@ def test_owned_processes_requires_executable_and_prefix_and_stop_never_touches_m
     def proc(name, exe, own_prefix=prefix):
         return SimpleNamespace(exe=lambda: exe, cmdline=lambda: [exe],
                                environ=lambda: {"WINEPREFIX": str(own_prefix)}, create_time=lambda: time.time(),
-                               terminate=lambda: killed.append(name))
+                               terminate=lambda: killed.append(name), wait=lambda timeout: 0)
     main = proc("main", str(tmp_path / "mt5" / "terminal64.exe") if windows else r"C:\Program Files\MT5\terminal64.exe")
     ours = proc("ours", expected)
     unknown = proc("different-prefix", expected, tmp_path / "other")

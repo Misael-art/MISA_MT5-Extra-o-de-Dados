@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from types import SimpleNamespace
 
 import pytest
+from tests.native_process import configure_test_safety
 
 from mt5_extracao import cli
 from mt5_extracao.bootstrap import paths
@@ -30,6 +31,8 @@ GOOD = [30.0, -10.0, 25.0, -10.0, 20.0] * 60
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
+    from tests.native_process import fake_session_commands
+    fake_session_commands(monkeypatch)
     monkeypatch.setattr(paths, "is_windows", lambda: False)
     prefix = tmp_path / "wine"
     mt5 = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
@@ -48,6 +51,7 @@ def env(tmp_path, monkeypatch):
                       "DATABASE": {"type": "sqlite", "path": str(tmp_path / "db.sqlite")},
                       "STRATEGY": {"initial_equity": "10000"},
                       "ROBOTS": {"library_dirs": str(robots_dir), "safety_lib_dir": str(lib)}})
+    configure_test_safety(config, tmp_path)
     scaffold.create("Ciclo", robots_dir, config=config, magic=777001)
     cfg = tmp_path / "config.ini"
     with open(cfg, "w", encoding="utf-8") as f:
@@ -90,7 +94,7 @@ def test_check_runs_the_four_steps_in_order(env):
     assert [(s.id, s.status) for s in result.steps] == [
         ("contract", pipeline.PASSED), ("compile", pipeline.PASSED), ("backtest", pipeline.PASSED),
         ("battery", pipeline.WARNED)]                                  # avisos da bateria não reprovam
-    assert result.ok and env.calls == ["compile", "tester"] and result.report.approved
+    assert result.ok and env.calls == ["compile", "compile", "tester"] and result.report.approved
     assert "300 operações" in result.steps[2].detail and result.steps[2].data["run_id"]
     assert env.robot().stage == catalog.APPROVED and len(store.load_runs(env.db)) == 1
     assert result.to_dict()["battery"]["approved"] is True
@@ -112,7 +116,7 @@ def test_each_later_step_can_fail_with_its_reason(env):
     assert not losing.ok and not losing.report.approved
     busy = pipeline.check(env.db, env.config, env.robot(), env.catalog(), "EURUSD", "H1", run=env.fake(),
                           is_running=lambda: True)
-    assert busy.steps[2].status == pipeline.FAILED and "--close-terminal" in busy.steps[2].detail
+    assert busy.steps[2].status == pipeline.FAILED and "terminal informado pelo executor" in busy.steps[2].detail
 
 
 def test_contract_step_fails_on_a_broken_robot_json_and_warns_without_one(env):
