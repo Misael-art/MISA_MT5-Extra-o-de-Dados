@@ -138,7 +138,7 @@ def test_postgresql_checkpoint_recovers_committed_batch_and_appends_new_session(
     resumed = producers.compute(pg, "TEST", "M5", families=["calendar"], batch_size=1)
     assert resumed[0]["job"]["status"] == "COMPLETE"
     assert len(feature_store.query_history(pg, symbol="TEST", timeframe="M5",
-                                           algorithm_version=producers.ALGORITHM_VERSION)) == 16
+                                           algorithm_version=resumed[0]["algorithm_version"])) == 16
 
     pg.save_ohlcv_data("TEST", "1 minuto", _m1_minutes("2026-09-02 09:00"))
     resampling.resample_symbol(pg, "TEST", ["M5"], symbol_info=INFO)
@@ -150,7 +150,7 @@ def test_postgresql_checkpoint_recovers_committed_batch_and_appends_new_session(
     unchanged = producers.compute(pg, "TEST", "M5", families=["calendar"], batch_size=1)
     assert unchanged[0]["skipped"]
     history = feature_store.query_history(pg, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION)
+                                          algorithm_version=resumed[0]["algorithm_version"])
     assert len(history) == 32
 
 

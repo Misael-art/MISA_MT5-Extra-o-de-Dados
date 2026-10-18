@@ -467,7 +467,7 @@ def test_calendar_append_uses_only_changed_bars_and_matches_full_recompute(db, m
                  pd.Timestamp(row["available_at"]), row["source_revision"])
                 for row in full_rows if pd.Timestamp(row["observation_time"]) >= start}
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION)
+                                          algorithm_version=result[0]["algorithm_version"])
     actual = {(row.feature_id, row.observation_time, row.numeric_value if pd.notna(row.numeric_value)
                else row.categorical_value, row.available_at_utc, row.source_revision)
               for row in history.itertuples() if row.observation_time >= start}
@@ -502,7 +502,7 @@ def test_volume_and_rvol_append_reuse_bounded_session_context(db, monkeypatch):
                  pd.Timestamp(row["available_at"]), row["source_revision"])
                 for row in full_rows if row["observation_time"] in new_starts}
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION,
+                                          algorithm_version=next(item["algorithm_version"] for item in result if item["family"] == "rvol"),
                                           start="2026-09-08T09:20:00Z")
     actual = {(row.feature_id, row.observation_time, row.numeric_value if pd.notna(row.numeric_value)
                else row.categorical_value, row.available_at_utc, row.source_revision)
@@ -513,7 +513,7 @@ def test_volume_and_rvol_append_reuse_bounded_session_context(db, monkeypatch):
 def test_auto_volume_source_switches_version_when_new_history_is_unknown(db):
     db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=8, minutes=20))
     resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
-    producers.compute(db, "TEST", "M5", families=["volume", "rvol"])
+    initial = producers.compute(db, "TEST", "M5", families=["volume", "rvol"])
     new_bars = m1_days(days=1, minutes=20, start="2026-09-08 09:20")
     new_bars.loc[0, "real_volume"] = None
     db.save_ohlcv_data("TEST", "1 minuto", new_bars)
@@ -521,12 +521,18 @@ def test_auto_volume_source_switches_version_when_new_history_is_unknown(db):
 
     updated = producers.compute(db, "TEST", "M5", families=["volume", "rvol"])
     assert all(item["volume_source"] == "tick" for item in updated)
-    assert all(item["algorithm_version"] == f"{producers.ALGORITHM_VERSION}+tick" for item in updated)
+    before_versions = {item["family"]: item["algorithm_version"] for item in initial}
+    after_versions = {item["family"]: item["algorithm_version"] for item in updated}
+    assert set(before_versions) == set(after_versions) == {"volume", "rvol"}
+    assert all(before_versions[family] != after_versions[family] for family in before_versions)
     definitions = feature_store.list_definitions(db)
-    assert any(item["algorithm_version"] == producers.ALGORITHM_VERSION and
-               item["parameters"].get("volume_source") == "real" for item in definitions)
-    assert any(item["algorithm_version"] == f"{producers.ALGORITHM_VERSION}+tick" and
-               item["parameters"].get("volume_source") == "tick" for item in definitions)
+    for family in before_versions:
+        assert any(item["algorithm_version"] == before_versions[family] and
+                   item["parameters"].get("family") == family and
+                   item["parameters"].get("volume_source") == "real" for item in definitions)
+        assert any(item["algorithm_version"] == after_versions[family] and
+                   item["parameters"].get("family") == family and
+                   item["parameters"].get("volume_source") == "tick" for item in definitions)
 
 
 def test_session_transition_incrementally_completes_volume_and_structure(db, monkeypatch):
@@ -563,7 +569,8 @@ def test_session_transition_incrementally_completes_volume_and_structure(db, mon
                 expected[(row["feature_id"], pd.Timestamp(row["observation_time"]))] = (
                     row["value"], pd.Timestamp(row["available_at"]), row["source_revision"])
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION)
+                                          )
+    history = history[history.algorithm_version.isin({item["algorithm_version"] for item in result})]
     actual_all = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
                   else row.categorical_value, row.available_at_utc, row.source_revision)
                   for row in history.itertuples()}
@@ -600,7 +607,7 @@ def test_volatility_append_continues_recursive_atr_and_matches_full_recompute(db
                 (row["value"], pd.Timestamp(row["available_at"]), row["source_revision"])
                 for row in full_rows if row["observation_time"] >= start}
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION,
+                                          algorithm_version=result[0]["algorithm_version"],
                                           start=start)
     actual = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
               else row.categorical_value, row.available_at_utc, row.source_revision)
@@ -641,7 +648,7 @@ def test_regime_append_continues_adx_and_confirmation_state(db, monkeypatch):
                 (row["value"], pd.Timestamp(row["available_at"]), row["source_revision"], row["metadata"])
                 for row in full_rows if row["observation_time"] >= start}
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION, start=start)
+                                          algorithm_version=result[0]["algorithm_version"], start=start)
     actual = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
               else row.categorical_value, row.available_at_utc, row.source_revision,
               json.loads(row.metadata_json)) for row in history.itertuples()}
@@ -681,7 +688,7 @@ def test_structure_append_continues_atr_and_matches_full_recompute(db, monkeypat
                 (row["value"], pd.Timestamp(row["available_at"]), row["source_revision"])
                 for row in full_rows if row["observation_time"] >= start}
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION, start=start)
+                                          algorithm_version=result[0]["algorithm_version"], start=start)
     actual = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
               else row.categorical_value, row.available_at_utc, row.source_revision)
               for row in history.itertuples()}
@@ -716,7 +723,7 @@ def test_late_correction_forces_full_recompute_and_revises_dependent_rvol(db, mo
     assert calls == [1, None]  # change histórico detectada; as seis famílias usam a reconstrução completa
     assert sum(item["revised"] for item in result) > 0
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5", feature_id="rvol.real",
-                                          algorithm_version=producers.ALGORITHM_VERSION)
+                                          algorithm_version=next(item["algorithm_version"] for item in result if item["family"] == "rvol"))
     revised = history[history["revision"] > 1]
     assert not revised.empty
     assert revised["available_at_utc"].max() >= correction_available
@@ -750,7 +757,7 @@ def test_producer_batch_failure_resumes_after_committed_checkpoint(db, monkeypat
     checkpoint = producer_jobs.get_checkpoint(db, "TEST", "M5", "calendar")
     assert checkpoint["status"] == "COMPLETE" and checkpoint["source_sequence"] == 1
     history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
-                                          algorithm_version=producers.ALGORITHM_VERSION)
+                                          algorithm_version=result[0]["algorithm_version"])
     assert len(history) == 16
 
 
