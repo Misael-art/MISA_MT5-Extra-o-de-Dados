@@ -154,3 +154,40 @@ def test_analytics_features_cli_lists_queries_and_reports_dependents(db, tmp_pat
                      "2026-10-14T10:00:00Z"]) == 0
     output = json.loads(capsys.readouterr().out)
     assert output["data"]["values"][0]["numeric_value"] == 1.5
+
+
+def test_shared_source_recalculates_parent_before_child_and_keeps_as_of_history(db):
+    features.register(db, "z_parent", "Parent", "1", dependencies=["bars:M1"])
+    features.register(db, "a_child", "Child", "1",
+                      dependencies=["bars:M1", "feature:z_parent"])
+    features.register(db, "unrelated", "Unrelated", "1", dependencies=["calendar"])
+    observation = "2026-10-14T09:59:00Z"
+    first = "2026-10-14T10:00:00Z"
+    revised = "2026-10-14T11:00:00Z"
+
+    def write(name, value, available, revision):
+        return feature_store.save_value(
+            db, "QA", "M1", name, "1", observation, value,
+            available_at=available, observed_at=available, source_revision=revision,
+        )
+
+    write("z_parent", 3, first, "1")
+    write("a_child", 6, first, "1")
+    calls = []
+
+    def parent(manager, definition):
+        calls.append(definition["feature_id"])
+        return write("z_parent", 7, revised, "2")
+
+    def child(manager, definition):
+        calls.append(definition["feature_id"])
+        current = feature_store.query_as_of(manager, revised, feature_id="z_parent")
+        return write("a_child", 2 * current.iloc[0]["numeric_value"], revised, "2")
+
+    results = features.recalculate_affected(
+        db, ["bars:M1"], {"z_parent": parent, "a_child": child},
+    )
+    assert calls == ["z_parent", "a_child"]
+    assert [item["feature_id"] for item in results] == calls
+    assert feature_store.query_as_of(db, revised, feature_id="a_child")["numeric_value"].tolist() == [14]
+    assert feature_store.query_as_of(db, first, feature_id="a_child")["numeric_value"].tolist() == [6]

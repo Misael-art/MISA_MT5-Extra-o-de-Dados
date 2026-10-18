@@ -120,7 +120,19 @@ def affected_by(db, changed_dependencies):
             definition = remaining.pop(feature_id)
             affected.append(definition)
             changed.add(f"feature:{feature_id}")
-    return affected
+    # A fonte pode atingir pai e filho diretamente na mesma rodada. A seleção
+    # transitiva acima não garante que o pai tenha sido calculado primeiro.
+    pending = {item["feature_id"]: item for item in affected}
+    ordered = []
+    while pending:
+        ready = [feature_id for feature_id, definition in sorted(pending.items())
+                 if not any(_feature_dependency(item) in pending
+                            for item in definition["dependencies"])]
+        if not ready:
+            raise ValueError("Dependências de características não podem formar ciclos.")
+        for feature_id in ready:
+            ordered.append(pending.pop(feature_id))
+    return ordered
 
 
 def recalculate_affected(db, changed_dependencies, recalculators):

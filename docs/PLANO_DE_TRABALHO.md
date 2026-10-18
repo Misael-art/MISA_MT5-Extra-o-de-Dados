@@ -132,8 +132,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
-| T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ✅ concluída no Linux; MT5 real e Windows pendentes |
-| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ implementação concluída no Linux; PostgreSQL e Windows real pendentes de execução |
+| T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ⏳ implementação pronta; 20 testes focados passaram e EURUSD teve paridade; repetição da suíte completa ficou inconclusiva nos testes Tk/conector; MT5 real e Windows pendentes |
+| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | em integração da implementação canônica843a85a; baseline integrada1388/12/3 aprovada; ordem topológica e isolamento PostgreSQL em validação |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | a fazer |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
@@ -3293,10 +3293,13 @@ real por corretora.
   contra o terminal. Detalhe de funcionamento, limitações e evidência: [T13.1_CALENDARIO_OBSERVADO.md](analytics/T13.1_CALENDARIO_OBSERVADO.md).
 - **Verificação desta entrega:** 20 testes focados (11 da T13.1 + 9 legados do `resample`) passaram. Na base local
   lida em modo somente leitura, 3.133 M5, 1.044 M15, 261 H1, 65 H4 e 11 sessões diárias EURUSD tiveram OHLCV igual
-  ao agregador legado. As primeiras tentativas da suíte completa ficaram inconclusivas por espaço no temporário e
-  display inacessível; após a harmonização, a suíte integrada foi executada com `TMPDIR=/tmp xvfb-run -a` e passou:
-  **802 aprovados, 9 pulados em 510 s**. O `doctor` terminou com 16 OK, 2 avisos e 0 falhas; avisos: `pandas-ta`
-  ausente e ponte Wine desativada. Nenhuma conexão com conta MT5 foi feita; Windows real e MT5 real seguem pendentes.
+  ao agregador legado. Duas repetições integrais ficaram inconclusivas: a primeira terminou aos 79% com 413
+  aprovados, 8 pulados, 85 falhas e 98 erros após `OSError: [Errno 28] No space left on device` no tmpfs; a segunda
+  chegou à bateria de UI/conector, emitiu marcadores `E` e encerrou com status 143 após cerca de 32 minutos, sem
+  resumo final. Os temporários próprios foram removidos; o tmpfs tinha 604 MB livres quando a segunda execução
+  terminou. Não há resultado global aprovado nem diagnóstico final das falhas de UI/conector. Nenhuma conexão com
+  conta MT5 foi feita. O `doctor` terminou com 16 OK, 2 avisos e 0 falhas; avisos: `pandas-ta` ausente e ponte Wine
+  desativada.
 - **Armadilha:** não trocar o `resample` atual por este. Os backtests gravados e a paridade usam as barras de hoje.
 
 ### T13.2 — Guarda de características com data de disponibilidade (A2)
@@ -3308,12 +3311,12 @@ real por corretora.
   `_feature_values`, `cli.py` e testes.
 - **Passos:** registro imutável por versão de algoritmo com dependências; gravação append-only com revisão e origem;
   consulta *as-of* pelo instante em que o valor ficou disponível; execução apenas dos recálculos afetados.
-- **Critérios de aceite:** testes 4, 6 e 7 da especificação, adaptados à interface da feature store.
+- **Critérios de aceite:** testes 4, 6 e 7 da especificação. A cobertura do recorte e a integração com produtores/publicação estão discriminadas no contrato da tarefa.
 - **Decisões:** SQLite para o primeiro ciclo, com SQL e tabelas portáveis pelo SQLAlchemy a PostgreSQL. A base local
   medida tem 329,6 MB e 23 tabelas; PostgreSQL fica para quando volume ou concorrência justificarem. Comandos
   decididos: `mt5x analytics features list|show|values|affected`. Detalhe e limitações:
   [T13.2_FEATURE_STORE.md](analytics/T13.2_FEATURE_STORE.md).
-- **Verificação desta entrega:** testes focados — 20 aprovados, 2 pulados; suíte completa com Xvfb e `/tmp` —
+- **Verificação histórica da origem (2026-10-14):** testes focados — 20 aprovados, 2 pulados; suíte completa com Xvfb e `/tmp` —
   **809 aprovados, 10 pulados em 521,99 s**; `doctor` — 16 OK, 2 avisos, 0 falhas (`pandas-ta` ausente e ponte
   Wine desativada). Os dois testes de PostgreSQL desta frente foram pulados porque `MT5X_TEST_PG_URL` não está
   configurada no host; há teste de integração para o job PostgreSQL do CI. CLI `analytics features --help` e
