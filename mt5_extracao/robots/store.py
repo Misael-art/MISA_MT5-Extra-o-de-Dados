@@ -127,7 +127,7 @@ def _has_trades_column(conn) -> bool:
     return any(c["name"] == "trades_json" for c in inspect(conn).get_columns("_robot_runs"))
 
 
-def load_runs(db, robot_key: str = None) -> list:
+def load_runs(db, robot_key: str = None, *, run_id: str = None) -> list:
     """Execuções gravadas, a mais recente primeiro (lista vazia se a tabela ainda não existir)."""
     from sqlalchemy import inspect, text
     if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_robot_runs"):
@@ -138,9 +138,15 @@ def load_runs(db, robot_key: str = None) -> list:
         columns = (_RUN_COLUMNS + (("trades_json",) if _has_trades_column(conn) else ()) +
                    tuple(c for c in _VALUATION_COLUMNS if c in existing))
         sql = f"SELECT {', '.join(columns)} FROM _robot_runs"
+        where = []
         if robot_key:
-            sql += " WHERE robot_key = :k"
+            where.append("robot_key = :k")
             params["k"] = robot_key
+        if run_id is not None:
+            where.append("run_id = :r")
+            params["r"] = run_id
+        if where:
+            sql += " WHERE " + " AND ".join(where)
         rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, run_id DESC"), params).mappings()]
     for row in rows:
         row["trades"] = json.loads(row.pop("trades_json", None) or "[]")      # [[horário, resultado, volume], ...]

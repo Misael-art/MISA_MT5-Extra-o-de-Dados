@@ -200,5 +200,18 @@ def test_python_run_persists_complete_valuation_with_separate_closed_curve(tmp_p
         assert loaded["account_cashflows"] == [[str(data.time[1]), 950]]
         assert [p[1] for p in loaded["equity"]] == [1000, 1050]
         assert loaded["metrics"]["max_floating_drawdown_pct"] == 0.05
+        from mt5_extracao.trade_analytics.execution import runner
+        replay = runner.resimulate(db, cfg, run["run_id"], policy=ExitPolicy())
+        assert replay.account_balance.tolist() == [1000, 1950, 2000]
+        assert replay.performance_equity.tolist() == [1000, 950, 1000]
+        assert replay.valuation["cashflow_source"] == "recorded_run"
+        runner.resimulate(db, cfg, run["run_id"], policy=ExitPolicy(), save=True)
+        descendant = runner.resimulate(db, cfg, run["run_id"] + "#ponto_fixo", policy=ExitPolicy())
+        assert descendant.account_balance.tolist() == [1000, 1950, 2000]
+        with db.engine.begin() as conn:
+            conn.execute(text("UPDATE _robot_runs SET account_cashflows_json=:flows WHERE run_id=:run"),
+                         {"flows": '[["2099-01-01",100]]', "run": run["run_id"]})
+        with pytest.raises(ValueError, match="Fluxos externos"):
+            runner.resimulate(db, cfg, run["run_id"], policy=ExitPolicy())
     finally:
         db.close()
