@@ -5,7 +5,7 @@
 Serviço canônico aditivo de blocos/manifestos/referências, captura em uma imagem
 de leitura, replay Python/livro e cache com revisão fixada. Export/import verifica
 hashes sem substituir barras do destino. [Contrato e limites](analytics/T20.4_MANIFESTOS_DADOS.md).
-PostgreSQL 16 isolado: sete testes aprovados; suíte completa Linux em execução.
+[PR #108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108) em revisão sobre #107. PostgreSQL 16 isolado: sete testes aprovados; suíte completa Linux: 1114 aprovados, 9 pulos existentes e 3 avisos em 1009,24 s, saída 0. Doctor 16/2/0; 28 direcionados aprovados. Próxima T20.5.
 T20.3 recebeu correção do leitor de fluxos/descendentes no PR #107: suíte final
 1103 aprovados/9 pulos existentes/3 avisos em 1009,28 s, doctor 16/2/0.
 Windows físico pendente; nenhuma alegação de integração ou roadmap concluído.

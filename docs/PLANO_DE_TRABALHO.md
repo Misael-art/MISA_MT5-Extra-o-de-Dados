@@ -27,7 +27,7 @@ Comando de testes padrão (use o Python do `.venv`):
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
-| T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | implementação local em validação: [manifestos](analytics/T20.4_MANIFESTOS_DADOS.md), revisões deduplicadas, replay/cache fixados; PostgreSQL 7 aprovados; suíte completa pendente |
+| T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | em revisão: [PR #108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108), [manifestos](analytics/T20.4_MANIFESTOS_DADOS.md), revisões deduplicadas, replay/cache fixados; 1114 aprovados/9 pulos existentes/3 avisos; PostgreSQL 7 aprovados; doctor 16/2/0 |
 | T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 (#106) | em revisão local: [PR #107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107), 1103 aprovados/9 pendências/3 avisos; curvas/fluxos por cotas e prova nativa |
 | T20.2 | Referências financeiras independentes dos motores atuais | T20.1 (mapa documental em revisão local) | em revisão local: [PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), 1081 aprovados/9 pendências/3 avisos; referências, lote/passo e swap por parcela/lote |
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
