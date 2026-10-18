@@ -163,7 +163,7 @@ Não é um tradutor de Python: só o que está na declaração é gerado. A prov
 | `Strategy`, `StrategyInfo` | Classe base de uma estratégia e a sua ficha ([estrategias.md](../estrategias.md), "Para desenvolvedores") |
 | `get_strategy(key, **params)` | Instância de uma das estratégias registradas |
 | `BacktestConfig` | Capital inicial, risco por operação, slippage e corretagem |
-| `run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None, cashflows=None, check=None)` | Backtest com custos e lote pelo risco; `start_index` e `signals` servem à validação, e `cashflows` identifica fluxos no fechamento |
+| `run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None, cashflows=None, check=None, observation_timeframe=None)` | Backtest com custos e lote pelo risco; `start_index` e `signals` servem à validação, e `cashflows` identifica fluxos no fechamento |
 | `validate_strategy(df, key, spec=None, config=None, criteria=None, params=None)` | Walk-forward, robustez e Monte Carlo (Filtro C) |
 
 
@@ -272,4 +272,6 @@ nominal e intervalo intrabarra; não é exportação de ticks reais.
 unit="money", thresholds=(), ages=())` é a consulta de serviço do CLI
 `mt5x trades trajectory`. Ela não executa estratégias nem ordens.
 [Contrato e estado do recorte](../analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).
-O contrato MQL5 1 permanece o mesmo.
+O contrato MQL5 1 permanece o mesmo. `observation_timeframe=None` é opcional
+no fim da assinatura de `sdk.run_backtest`; chamadas posicionais anteriores
+continuam válidas e `API_VERSION=1` é preservada.

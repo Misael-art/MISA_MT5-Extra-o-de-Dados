@@ -35,7 +35,7 @@ SURFACE = {
     "build_matrix": ["db", "config", "robots"],                                                  # T11.6
     "matrix_positives": ["matrix", "robot_key"],
     "get_strategy": ["key", "params"],
-    "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals", "cashflows", "check"],
+    "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals", "cashflows", "check", "observation_timeframe"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],
 }
 
@@ -94,3 +94,13 @@ def test_budget_callbacks_append_optional_arguments_without_breaking_old_calls()
         bound = signature.bind(*([None] * count))
         bound.apply_defaults()
         assert bound.arguments[option] is None
+
+
+def test_trajectory_capture_is_optional_and_preserves_previous_sdk_calls():
+    signature = inspect.signature(sdk.run_backtest)
+    assert signature.parameters["observation_timeframe"].default is None
+    bound = signature.bind(*([None] * 8))  # chamada anterior incluindo check
+    bound.apply_defaults()
+    assert bound.arguments["observation_timeframe"] is None
+    explicit = signature.bind(*([None] * 8), observation_timeframe="M15")
+    assert explicit.arguments["observation_timeframe"] == "M15"
