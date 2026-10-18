@@ -1040,3 +1040,24 @@ ausente na base atual; seu conteúdo canônico foi incorporado como registro
 histórico datado, com os resultados atuais discriminados no plano/contrato.
 Os números833/10 e os dois mercados de2026-10-15 são evidência histórica,
 não aceite desta composição. Novos testes/medições e PR próprios pendentes.
+
+
+## T13.3 — integração validada (2026-10-18; PR115)
+
+Perfis, RVOL, volatilidade, regimes, estrutura e calendário canônicos integrados
+com UTC explícito, histórico de invalidações e versões por configuração/TF.
+Código `a1c2a77`: suíte final 1438/16/3 em 1.836,34 s, saída 0, cobertura 77,44%;
+seis checks de execução aprovados (CI Ubuntu 1309/145, Windows 1421/33/5,
+PostgreSQL 20; lint e dois instaladores sem MT5). Os resultados anteriores
+1433/15/3 são pré-identidade e foram arquivados separadamente.
+
+Ambiente principal: 70 focados e 20 PostgreSQL aprovados; 11 arquivos Python
+copiados com guards/backup, sem mudar HEAD/índice/configuração/`.env`. Doctor
+16/2/0 e CLI compute --help aprovados. EURUSD/AGG: 156.249 registros preservados
+exceto algorithm_version; base original somente leitura e SHA igual. Detalhes
+e limites em [T13.3_PERFIS_REGIMES](analytics/T13.3_PERFIS_REGIMES.md).
+
+Windows físico/MT5 e decisão da confiança continuam pendentes; sem ordens,
+sem alterações em H/S e sem certificar publicação/leitor ou a cadeia completa.
+Próxima: T13.3b, runtime 03570b0/docs 4ede7fa; preservar identidade por TF,
+algoritmo-base 1.2, UTC explícito e helper de schemas PG isolados.
