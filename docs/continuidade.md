@@ -1,5 +1,22 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.6 — qualidade por consumidor (2026-10-18)
+
+[Contrato e limites](analytics/T20.6_QUALIDADE_CAPACIDADES.md). Famílias e motivos
+por consumidor, sem substituição real/tick-volume ou inferência de fila. Hashes
+de respostas de barras/ticks/DOM conferem a origem declarada; contagem capturada
+não comprova toda a história. Captura3 congela qualidade/provas/revisões e aceita
+raw ticks/book apenas quando solicitados; leitura/exportação1/2 preservadas.
+Seleção temporal exige fechamento/recepção explícitos por ativo/timeframe.
+Relatório diferencia qualidade histórica genérica de percentual explicitamente
+rotulado de ticks reais; configuração sozinha não prova cobertura. Expert sem
+requisitos declarados permanece não qualificado como robô completo.
+Resultados e UI transportam decisão ou ausência legada. O registry T18.1 ainda
+está em branch; adaptador usa suas definições reais, sem outra implementação.
+Composição/fluxo esperam os consumidores canônicos T19.2/T18.1; store causal
+continua com T13.2. 117 direcionados e PostgreSQL16isolado7 aprovados; suíte
+completa final pendente. Windows físico pendente; nenhuma mudança H/S ou feed.
+
 ## T20.5 — vigência de instrumentos (2026-10-18)
 
 [Fonte e decisões](analytics/T20.5_VIGENCIA_INSTRUMENTOS.md). Histórico aditivo de

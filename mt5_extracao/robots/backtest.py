@@ -82,6 +82,15 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
         raise ValueError(f"Poucas barras para {strategy.info.name}: {len(df)} no período (mínimo {strategy.min_bars}). "
                          "Escolha um período maior ou extraia mais histórico.")
     spec = snapshot.spec
+    from mt5_extracao.analytics import data_eligibility
+    from mt5_extracao.strategies.base import REQUIRED_COLUMNS
+    required = data_eligibility.requirements({"source_id": "bars", "required_columns": getattr(strategy, "required_columns", REQUIRED_COLUMNS)})
+    required = sorted(set(required) | {"ohlcv"})  # O motor também usa OHLC para abertura/stop/alvo.
+    data_quality = snapshot.quality
+    data_quality["eligibility"] = data_eligibility.evaluate(data_quality, required)
+    data_quality["data_manifest_id"] = snapshot.manifest_id
+    if not data_quality["eligibility"]["eligible"]:
+        raise ValueError("Dados incompatíveis com a estratégia: " + " ".join(data_quality["eligibility"]["reasons"]))
     settings = research.backtest_config(config)
     if not real_spread:
         import dataclasses
@@ -96,6 +105,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
                    data_manifest_id=snapshot.manifest_id, data_provenance_status="frozen_reference",
+                   data_quality=data_quality,
                    instrument_context=dict(spec.provenance),
                    spec_historical_known=spec.provenance.get("specification_status") == "known",
                    series_role=spec.provenance.get("series_role", "unknown"),
@@ -354,6 +364,8 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
         metrics.update(native_cash_result=native_cash, cash_reconciled=True,
                        cash_reconciliation_difference=metrics["net_profit"] - native_cash)
     tester_log = mt5_tools.tester_run_log(data, run_id)
+    from mt5_extracao.analytics import data_eligibility
+    metrics["data_quality"] = data_eligibility.tester_report(report_text, model)
     metrics.update(trades_source=trades_source, tester_model=mt5_tools.TESTER_MODELS[model], report=str(report),
                    tester_model_code=model, entries=entries, entries_without_stop=without_stop,
                    source_fingerprint=catalog.fingerprint(robot),

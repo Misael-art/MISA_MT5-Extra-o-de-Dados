@@ -4,7 +4,7 @@ import traceback
 import pandas as pd
 from threading import Thread, Lock
 from typing import Optional # Adicionado
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Importar componentes necessários (ajustar caminhos se necessário)
@@ -348,8 +348,11 @@ class HistoricalExtractor:
                     continue
 
             # 4. Salva o bloco imediatamente (memória constante; uma falha não perde os blocos anteriores)
+            from mt5_extracao.analytics import data_eligibility
+            provider = self.connector if source == 'mt5' else self.external_source
             saved_rows, quality = self._save_block(symbol, timeframe_name, table_name, block_df, current_start,
-                                                   include_indicators, timeframe_val)
+                                                   include_indicators, timeframe_val,
+                                                   origin=data_eligibility.provider_origin(provider, symbol))
             if saved_rows is None:
                 self.db_manager.record_block(table_name, current_start, block_end, 0, 'failed', source)
                 failed_blocks += 1
@@ -371,7 +374,7 @@ class HistoricalExtractor:
         return True
 
     def _save_block(self, symbol, timeframe_name, table_name, block_df, block_start, include_indicators,
-                    timeframe_val=None):
+                    timeframe_val=None, *, origin="unknown"):
         """
         Calcula indicadores (com aquecimento a partir das barras já salvas), verifica a qualidade e grava o bloco.
 
@@ -404,6 +407,10 @@ class HistoricalExtractor:
             quality = data_quality.check_quality(df, TIMEFRAME_MINUTES.get(timeframe_val, 1), *self.session)
             if data_quality.has_problems(quality):
                 log.warning(f"[{symbol}] Qualidade do bloco {block_start:%Y-%m-%d}: {data_quality.summarize(quality)}")
+            from mt5_extracao.analytics import data_eligibility
+            tf = mt5.parse(timeframe_name)
+            quality.update(data_eligibility.acquisition(block_df, "bars", origin=origin, symbol=symbol,
+                           received_at=datetime.now(timezone.utc).isoformat(), timeframe=tf.name if tf else None))
         except Exception as q_err:
             log.warning(f"[{symbol}] Não foi possível verificar a qualidade do bloco: {q_err}")
 

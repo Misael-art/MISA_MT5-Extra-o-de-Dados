@@ -317,6 +317,8 @@ def test_backtest_from_the_robot_card(ui):
     assert detail.shown_run is not None and detail.shown_run["symbol"] == "WIN$N"
     assert detail.run_tiles["trades"].cget("text") != "—"
     assert "WIN$N M1 · 600 barras" in detail.run_status.cget("text")
+    assert "Dados com limitações" in detail.run_status.cget("text")
+    assert detail.shown_run["metrics"]["data_quality"]["eligibility"]["eligible"]
     assert "para esta seleção" in detail.result_context.cget("text")
     assert ui.profit_cells  # o detalhe usa o mesmo hook de atualização imediata do lote
     text = " | ".join(_labels(panel.cards["python:donchian"]))
@@ -1011,6 +1013,7 @@ def test_robot_backtest_keeps_result_context_and_pending_request(ui, monkeypatch
            "created_at": "2024-02-01 12:00", "metrics": {"trades": 2, "return_pct": -0.1},
            "equity": [["2024-01-02", 100], ["2024-01-03", 90]]}
     detail.show_run(run)
+    assert "Qualidade dos dados não registrada" in detail.run_status.cget("text")
     assert "Resultado armazenado" in detail.result_context.cget("text")
     pending, recorded = [], []
     monkeypatch.setattr(ui, "run_bg", lambda work, done: pending.append((work, done)))

@@ -578,6 +578,36 @@ class DatabaseManager:
         row = connection.execute(text("SELECT * FROM _symbol_specs WHERE symbol = :s"), {"s": symbol}).mappings().fetchone()
         return dict(row) if row else None
 
+    def load_market_frame(self, symbol, family, start_utc, end_utc, *, connection=None):
+        """Ticks/DOM do intervalo UTC [início,fim), sem converter seu epoch pelo fuso do broker."""
+        from mt5_extracao.analytics.data_eligibility import TICK_FIELDS, BOOK_FIELDS
+        if family not in ("ticks", "book"):
+            raise ValueError("Fonte de mercado inválida; use ticks ou book.")
+        if connection is None:
+            with self.consistent_read() as conn:
+                return self.load_market_frame(symbol, family, start_utc, end_utc, connection=conn)
+        fields = TICK_FIELDS if family == "ticks" else BOOK_FIELDS
+        table = self.find_table_for_symbol(symbol, family, connection=connection)
+        if table is None:
+            return pd.DataFrame(columns=[*fields, "symbol", "event_time_utc"])
+        available = {col["name"] for col in inspect(connection).get_columns(table)}
+        if "time_msc" not in available:
+            raise ValueError("Fonte de mercado sem time_msc; confira o schema antes de consumir.")
+        columns = [col for col in fields if col in available]
+        begin, end = pd.Timestamp(start_utc), pd.Timestamp(end_utc)
+        if begin.tzinfo is None or end.tzinfo is None or end <= begin:
+            raise ValueError("Intervalo de mercado precisa de fuso explícito e fim posterior ao início.")
+        quote = self.engine.dialect.identifier_preparer.quote
+        ordering = ("time_msc", "seq") if family == "ticks" else ("time_msc", "type", "price")
+        order = ",".join(col for col in ordering if col in available)
+        frame = pd.read_sql(text(f"SELECT {','.join(columns)} FROM {quote(table)} "
+                                 f"WHERE time_msc>=:start AND time_msc<:end ORDER BY {order}"), connection,
+                            params={"start": int(begin.value // 1_000_000), "end": int(end.value // 1_000_000)})
+        frame["event_time_utc"] = pd.to_datetime(frame.time_msc, unit="ms", utc=True)
+        frame["symbol"] = symbol
+        frame = frame[[*columns, "symbol", "event_time_utc"]]
+        return frame
+
     def find_table_for_symbol(self, symbol, timeframe_name, *, connection=None):
         """Tabela existente do símbolo/timeframe, sem registrar nada (None se ainda não foi extraído)."""
         if not self.is_connected():

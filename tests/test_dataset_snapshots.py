@@ -224,7 +224,7 @@ def test_python_run_replay_cache_and_resimulation_use_the_bound_revision(db):
     old_signature = cache.signature(db, cfg, trades)
     table = db.find_table_for_symbol("X", "1 hora")
     with db.engine.begin() as conn:
-        conn.execute(text(f'UPDATE "{table}" SET close=50'))
+        conn.execute(text(f'UPDATE "{table}" SET close=100.5'))
         conn.execute(text("UPDATE _symbol_specs SET tick_value=2 WHERE symbol='X'"))
         conn.execute(text("UPDATE _economic_events SET impact=3"))
     reproduced = run(data_manifest_id=pinned.manifest_id)

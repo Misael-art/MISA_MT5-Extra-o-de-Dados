@@ -88,6 +88,20 @@ def test_save_upsert_and_read_back(pg):
     assert historical.spec.point == 2
     assert historical.spec.provenance["specification_revisions"] == [revision]
     assert historical.spec.provenance["specification_status"] == "known"
+    # T20.6: famílias cruas e prova de origem são capturadas juntas, sem promover completude.
+    from mt5_extracao.analytics import data_eligibility
+    start = instruments.broker_utc(pg.load_ohlcv("WIN$N", "1 minuto").time.iloc[0], pg.broker_utc_offset)
+    epoch = int(start.value // 1_000_000)
+    raw = pd.DataFrame(dict(time_msc=[epoch + 1000, epoch + 2000], bid=[100., 100.], ask=[101., 101.],
+                            last=[100., 101.], volume=[1, 1], volume_real=[1., 1.], flags=[56, 88]))
+    table = pg.get_table_name_for_symbol("WIN$N", "ticks")
+    pg.save_ticks(table, raw)
+    proof = data_eligibility.acquisition(raw, "ticks", origin="observed", symbol="WIN$N",
+                                       received_at="2024-01-03T00:00:00Z")
+    pg.record_block(table, start.to_pydatetime(), (start + pd.Timedelta(minutes=1)).to_pydatetime(), 2, "ok", "fixture", quality=proof)
+    qualified = datasets.capture(pg, "WIN$N", "M1", families=["ticks"])
+    assert qualified.quality["capabilities"]["ticks"]["observed_rows"] == 2
+    assert qualified.quality["capabilities"]["complete_real_ticks"]["coverage_fraction"] is None
 
 
 def test_control_tables_and_helpers(pg):

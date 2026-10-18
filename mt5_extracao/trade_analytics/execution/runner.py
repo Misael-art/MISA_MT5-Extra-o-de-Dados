@@ -87,9 +87,15 @@ def inputs(db, config, run_id: str) -> dict:
     if atr is None:
         atr = indicators.atr(bars, 14)
     flows = _cashflows(record, bars)
+    from mt5_extracao.analytics import data_eligibility
+    quality = snapshot.quality if snapshot is not None else None
+    if quality is not None:
+        quality["eligibility"] = data_eligibility.evaluate(quality, ("ohlcv",))
+        quality["data_manifest_id"] = snapshot.manifest_id
     return {"trades": trades, "bars": bars, "spec": snapshot.spec if snapshot is not None else specs.load_spec(db, first["symbol"]),
             "data_manifest_id": snapshot.manifest_id if snapshot is not None else None,
             "data_provenance_status": "frozen_reference" if snapshot is not None else "legacy_current_data",
+            "data_quality": quality,
             "cfg": research.backtest_config(config), "atr": atr, "robot_key": first["robot_key"],
             "symbol": first["symbol"], "timeframe": first["timeframe"], "cashflows": flows,
             "source_run_id": record["run_id"] if record else None,
@@ -100,9 +106,13 @@ def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = No
                save: bool = False, data: Optional[dict] = None) -> engine.SimResult:
     data = data or inputs(db, config, run_id)
     policy = policy or base_policy(data["robot_key"])
+    quality = data.get("data_quality")
+    if quality is not None and not quality["eligibility"]["eligible"]:
+        raise ValueError("Dados incompatíveis com a re-simulação: " + " ".join(quality["eligibility"]["reasons"]))
     result = engine.simulate(data["trades"], data["bars"], data["spec"], data["cfg"], policy, data["atr"],
                              cashflows=data.get("cashflows"))
     result.valuation["cashflow_source"] = data.get("cashflow_source", "unspecified")
+    result.valuation["data_quality"] = quality
     if result.valuation["cashflow_source"] in ("legacy_unknown", "unspecified"):
         result.valuation["status"] = "limited"
     if save:
