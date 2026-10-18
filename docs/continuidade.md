@@ -20,8 +20,12 @@ tests/fixtures/equity_reference. Só Strategy Tester em cópia própria; Python
 não enviou ordens. A prova não certifica todos os Experts/custos/moedas/contas.
 
 Baseline 1081/9 pendências/3 avisos confirmada antes das alterações; ambiente
-preparado novamente. Suíte completa final em execução em logs/t20-3/pytest-final.log,
-após substituir rodadas preliminares pelos ajustes de DTOs e fluxos externos. Doctor 16 OK/2 avisos/0
+preparado novamente. Suíte completa final: 1103 aprovados, nove pendências existentes, três avisos,
+1035,47 s, saída 0 (logs/t20-3/pytest-final.log). SDK/fluxos/docs: 30 aprovados;
+parâmetro cashflows opcional ao final documentado e testado com bindings antigos.
+[PR #107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107) em revisão
+como rascunho sobre #106. Rodadas preliminares foram substituídas pelos ajustes
+de DTOs, fluxos externos e referência do SDK. Doctor 16 OK/2 avisos/0
 falhas. Windows físico pendente; artefatos em logs/t20-3. Próxima independente:
 T20.4, respeitando store/registry de branches existentes.
 

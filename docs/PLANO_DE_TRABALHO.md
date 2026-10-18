@@ -27,7 +27,7 @@ Comando de testes padrão (use o Python do `.venv`):
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
-| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 (#106) | em validação local: curvas, fluxos por cotas, legado aditivo, 24 pontos nativos; suíte completa em execução |
+| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 (#106) | em revisão local: [PR #107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107), 1103 aprovados/9 pendências/3 avisos; curvas/fluxos por cotas e prova nativa |
 | T20.2 | Referências financeiras independentes dos motores atuais | T20.1 (mapa documental em revisão local) | em revisão local: [PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), 1081 aprovados/9 pendências/3 avisos; referências, lote/passo e swap por parcela/lote |
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
