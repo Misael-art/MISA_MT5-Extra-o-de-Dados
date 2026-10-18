@@ -10,7 +10,10 @@ re-simulação. Métricas recusam PnL inválido, mantendo PF canônico v1 e os
 estados legítimos sem operações/sem perdas. Sem mudança de banco ou contratos H/S.
 
 Verificação direcionada: 96 aprovados, uma pendência PostgreSQL existente.
-Suíte completa do runtime alterado em execução em logs/t20-2/pytest-final.log.
+Suíte completa do runtime alterado: 1081 aprovados, nove pendências existentes,
+três avisos, 1179,37 s, saída 0. Doctor: 16 OK/2 avisos/0 falhas.
+[PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106) em revisão
+como rascunho, separado da base documental. Próximo recorte: T20.3.
 Baseline completa anterior ao runtime: 1058 aprovados/9 pendências/3 avisos.
 A execução documental T20.1 foi iniciada antes deste runtime; não substitui
 a verificação final T20.2. Evidências/patch separados em logs/t20-2.

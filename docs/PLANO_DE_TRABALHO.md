@@ -27,7 +27,7 @@ Comando de testes padrão (use o Python do `.venv`):
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
-| T20.2 | Referências financeiras independentes dos motores atuais | T20.1 (mapa documental em revisão local) | em validação: lote/teto/passo, custos e swap por parcela/lote; PnL inválido recusado; ver docs/analytics/T20.2_REFERENCIAS_FINANCEIRAS.md |
+| T20.2 | Referências financeiras independentes dos motores atuais | T20.1 (mapa documental em revisão local) | em revisão local: [PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), 1081 aprovados/9 pendências/3 avisos; referências, lote/passo e swap por parcela/lote |
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
 | T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ parcial: Linux (família Arch) validado com MT5 real; demais ambientes pendentes (docs/validacao_instaladores.md) |
