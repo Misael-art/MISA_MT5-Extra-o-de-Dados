@@ -66,3 +66,23 @@ def test_producer_higher_timeframe_closes_before_join(pg):
     assert first.available_at_utc >= bar.bar_end_utc
     repeat = producers.compute(pg, "TEST", "H1", families=["calendar", "volatility"])
     assert all(row["inserted"] == row["revised"] == 0 for row in repeat)
+
+
+def test_producer_timeframes_and_configurations_coexist_without_mutating_history(pg):
+    pg.broker_utc_offset = 0
+    pg.save_ohlcv_data("TEST", "1 minuto", m1_days(days=2))
+    resampling.resample_symbol(pg, "TEST", ["M15", "H1"], symbol_info=INFO)
+    m15 = producers.compute(pg, "TEST", "M15", families=["volatility"])[0]
+    original = feature_store.query_history(pg, timeframe="M15")
+    h1 = producers.compute(pg, "TEST", "H1", families=["volatility"])[0]
+    alternate = producers.compute(pg, "TEST", "M15", families=["volatility"],
+                                  overrides={"volatility": {"atr_n": 7}})[0]
+    assert len({row["algorithm_version"] for row in [m15, h1, alternate]}) == 3
+    pd.testing.assert_frame_equal(feature_store.query_history(pg, timeframe="M15",
+                                  algorithm_version=m15["algorithm_version"]), original)
+    # A versão H1 mais recente não esconde M15; a configuração alternativa também não.
+    selected = producers.recalculate_affected(pg, "TEST", "M15", ["bars_derived:M15"])
+    assert selected
+    assert all(item["algorithm_version"] == m15["algorithm_version"] for item in selected)
+    assert all(item["result"][0]["inserted"] == item["result"][0]["revised"] == 0 for item in selected)
+    assert producers.recalculate_affected(pg, "TEST", "M15", ["bars_derived:H1"]) == []

@@ -532,3 +532,90 @@ def test_asof_join_preserves_nanosecond_boundary_and_input_frames():
     assert result.iloc[1].numeric_value == 7
     pd.testing.assert_frame_equal(values, original_values)
     pd.testing.assert_frame_equal(decisions, original_decisions)
+
+
+def test_compute_preserves_legacy_definitions_and_supports_multiple_timeframes(db):
+    features.register(db, "calendar.hour_utc", "calendar hour_utc", "1.1",
+                      parameters=producers._definition_parameters("calendar", {}, None),
+                      dependencies=["bars_derived:M15", "market_calendar"])
+    legacy = feature_store.list_definitions(db)
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=2))
+    resampling.resample_symbol(db, "TEST", ["M15", "H1"], symbol_info=INFO)
+    first = producers.compute(db, "TEST", "M15", families=["calendar"])
+    before = feature_store.query_history(db, symbol="TEST", timeframe="M15")
+    second = producers.compute(db, "TEST", "H1", families=["calendar"])
+    after = feature_store.query_history(db, symbol="TEST", timeframe="M15")
+    pd.testing.assert_frame_equal(before, after)
+    assert first[0]["algorithm_version"] != second[0]["algorithm_version"]
+    assert first[0]["algorithm_version"] != "1.1"
+    assert feature_store.list_definitions(db)[0] == legacy[0]
+    repeat = producers.compute(db, "TEST", "15min", families=["calendar"])
+    assert repeat[0]["algorithm_version"] == first[0]["algorithm_version"]
+    assert repeat[0]["inserted"] == repeat[0]["revised"] == 0
+    assert set(feature_store.query_history(db)["tf"]) == {"M15", "H1"}
+
+
+def test_compute_configuration_versions_coexist_and_reuse_the_same_store(db):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=2))
+    resampling.resample_symbol(db, "TEST", ["M15"], symbol_info=INFO)
+    first = producers.compute(db, "TEST", "M15", families=["volatility"])
+    old = feature_store.query_history(db, algorithm_version=first[0]["algorithm_version"])
+    second = producers.compute(db, "TEST", "M15", families=["volatility"],
+                               overrides={"volatility": {"atr_n": 7}})
+    assert first[0]["algorithm_version"] != second[0]["algorithm_version"]
+    pd.testing.assert_frame_equal(feature_store.query_history(db,
+                                  algorithm_version=first[0]["algorithm_version"]), old)
+    repeat = producers.compute(db, "TEST", "M15", families=["volatility"],
+                               overrides={"volatility": {"atr_n": 7}})
+    assert repeat[0]["algorithm_version"] == second[0]["algorithm_version"]
+    assert repeat[0]["inserted"] == repeat[0]["revised"] == 0
+    # A versão global mais nova não pode substituir a configuração solicitada.
+    default_results = producers.recalculate_affected(db, "TEST", "M15", ["bars_derived:M15"])
+    assert default_results
+    assert all(item["algorithm_version"] == first[0]["algorithm_version"] for item in default_results)
+    assert all(item["result"][0]["inserted"] == item["result"][0]["revised"] == 0 for item in default_results)
+    alternate_results = producers.recalculate_affected(db, "TEST", "M15", ["bars_derived:M15"],
+                                                     overrides={"volatility": {"atr_n": 7}})
+    assert alternate_results
+    assert all(item["algorithm_version"] == second[0]["algorithm_version"] for item in alternate_results)
+
+
+def test_scoped_recalculation_after_newer_h1_definition_keeps_h1_unchanged(db):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=2))
+    resampling.resample_symbol(db, "TEST", ["M15", "H1"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M15", families=["volatility"])
+    producers.compute(db, "TEST", "H1", families=["volatility"])
+    h1 = feature_store.query_history(db, symbol="TEST", timeframe="H1")
+    initial = feature_store.query_history(db, symbol="TEST", timeframe="M15",
+                                         feature_id="volatility.range_pct")
+    observed = initial.iloc[0].observation_time
+    history = feature_store.query_history(db, symbol="TEST", feature_id="volatility.range_pct")
+    first_m15, first_h1 = initial.iloc[0].available_at_utc, h1[h1.feature_id == "volatility.range_pct"].iloc[0].available_at_utc
+    joined = feature_store.asof_join(pd.DataFrame({"decision_time": [first_m15, first_h1]}), history)
+    joined = joined.set_index(["decision_time", "tf"])
+    assert pd.notna(joined.loc[(first_m15, "M15"), "numeric_value"])
+    assert pd.isna(joined.loc[(first_m15, "H1"), "numeric_value"])
+    assert pd.notna(joined.loc[(first_h1, "H1"), "numeric_value"])
+    for increase in [10, 20]:
+        raw = db.load_ohlcv("TEST", Timeframe.M1.label)
+        hit = raw.time == observed.tz_convert(None) + pd.Timedelta(minutes=3)
+        raw.loc[hit, "high"] += increase
+        db.save_ohlcv_data("TEST", "1 minuto", raw.loc[hit])
+        resampling.resample_symbol(db, "TEST", ["M15"], symbol_info=INFO)
+        results = producers.recalculate_affected(db, "TEST", "M15", ["bars_derived:M15"])
+        assert results
+        assert all(item["result"][0]["timeframe"] == "M15" for item in results)
+        assert any(item["result"][0]["revised"] > 0 for item in results)
+        pd.testing.assert_frame_equal(feature_store.query_history(db, symbol="TEST", timeframe="H1"), h1)
+    revised = feature_store.query_history(db, symbol="TEST", timeframe="M15",
+                                         feature_id="volatility.range_pct")
+    assert revised[revised.observation_time == observed].revision.tolist() == [1, 2, 3]
+    old = feature_store.asof_join(pd.DataFrame({"decision_time": [initial.iloc[0].available_at_utc]}), revised)
+    assert old.iloc[0].numeric_value == initial.iloc[0].numeric_value
+    # Uma origem H1 não deve disparar os produtores de M15 neste contexto.
+    assert producers.recalculate_affected(db, "TEST", "M15", ["bars_derived:H1"]) == []
+
+
+def test_scoped_recalculation_without_derived_bars_has_actionable_error(db):
+    with pytest.raises(ValueError, match="mt5x resample"):
+        producers.recalculate_affected(db, "TEST", "M15", ["bars_derived:M15"])

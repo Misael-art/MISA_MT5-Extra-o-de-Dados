@@ -96,19 +96,24 @@ def get_feature(db, feature_id, algorithm_version=None):
     return matches[0]
 
 
-def affected_by(db, changed_dependencies):
+def affected_by(db, changed_dependencies, *, definition_filter=None):
     """Retorna as definições atuais que precisam ser recalculadas após uma mudança.
 
     Os itens de ``changed_dependencies`` podem ser fontes como ``bars:M1`` ou
     chaves ``feature:<id>``. O retorno é topológico e não inclui características
     sem relação com as fontes alteradas.
+    ``definition_filter`` restringe as versões registradas antes de escolher a
+    atual por ID; sem filtro, a seleção global anterior permanece igual.
     """
     if isinstance(changed_dependencies, str):
         changed_dependencies = [changed_dependencies]
     changed = {str(item).strip() for item in changed_dependencies or () if str(item).strip()}
     if not changed:
         return []
-    latest = _latest_by_id(feature_store.list_definitions(db))
+    definitions = feature_store.list_definitions(db)
+    if definition_filter is not None:
+        definitions = [item for item in definitions if definition_filter(item)]
+    latest = _latest_by_id(definitions)
     remaining = dict(latest)
     affected = []
     while True:
@@ -135,14 +140,14 @@ def affected_by(db, changed_dependencies):
     return ordered
 
 
-def recalculate_affected(db, changed_dependencies, recalculators):
+def recalculate_affected(db, changed_dependencies, recalculators, *, definition_filter=None):
     """Executa somente os recálculos afetados, em ordem de dependência.
 
     ``recalculators`` mapeia ``feature_id`` para uma função ``(db, definition)``.
     A lista completa é validada antes da primeira chamada, para evitar um recálculo
     parcial causado por um handler ausente.
     """
-    affected = affected_by(db, changed_dependencies)
+    affected = affected_by(db, changed_dependencies, definition_filter=definition_filter)
     missing = [item["feature_id"] for item in affected if item["feature_id"] not in recalculators]
     if missing:
         raise ValueError("Faltam recálculos registrados para: " + ", ".join(missing))

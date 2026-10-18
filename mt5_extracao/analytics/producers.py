@@ -355,12 +355,28 @@ def _family_rows(family, bars, params, volume_source):
     raise ValueError(f"Família desconhecida: {family}. Use: {', '.join(FAMILIES)}.")
 
 
-def register_definitions(db, family, feature_ids, params, timeframe, volume_source=None):
+def register_definitions(db, family, feature_ids, params, timeframe, volume_source=None, algorithm_version=None):
+    timeframe = resampling.parse_target(timeframe).label
     dependencies = [f"bars_derived:{timeframe}", "market_calendar"]
+    algorithm_version = algorithm_version or _feature_algorithm_version(family, params, volume_source, timeframe)
     for feature_id in sorted(feature_ids):
         parameters = _definition_parameters(family, params, volume_source)
-        features.register(db, feature_id, feature_id.replace(".", " "), ALGORITHM_VERSION, parameters=parameters,
+        features.register(db, feature_id, feature_id.replace(".", " "), algorithm_version, parameters=parameters,
                           dependencies=dependencies)
+
+
+def _config_hash(family, params, volume_source, timeframe):
+    # Mesmo mecanismo de identidade por configuração da origem canônica T13.3b
+    # (03570b0), incluindo o timeframe declarado nas dependências imutáveis.
+    value = json.dumps({"family": family, "parameters": params, "volume_source": volume_source,
+                        "timeframe": resampling.parse_target(timeframe).label,
+                        "algorithm_version": ALGORITHM_VERSION}, ensure_ascii=False, sort_keys=True,
+                       separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _feature_algorithm_version(family, params, volume_source, timeframe):
+    return f"{ALGORITHM_VERSION}+{_config_hash(family, params, volume_source, timeframe)[:12]}"
 
 
 def _definition_parameters(family, params, volume_source):
@@ -370,7 +386,7 @@ def _definition_parameters(family, params, volume_source):
     return parameters
 
 
-def _invalidated_records(db, symbol, timeframe, family, params, volume_source, rows):
+def _invalidated_records(db, symbol, timeframe, family, params, volume_source, algorithm_version, rows):
     """Gera revisões ``INVALIDATED`` quando um recálculo deixa de produzir valores antigos.
 
     Uma ausência é persistida como fato temporal próprio: consultas anteriores à mudança ainda
@@ -382,12 +398,12 @@ def _invalidated_records(db, symbol, timeframe, family, params, volume_source, r
                                                 allow_nan=False))
     feature_ids = {
         item["feature_id"] for item in feature_store.list_definitions(db)
-        if item["algorithm_version"] == ALGORITHM_VERSION and item["parameters"] == expected_parameters
+        if item["algorithm_version"] == algorithm_version and item["parameters"] == expected_parameters
     }
     if not feature_ids:
         return []
     previous = feature_store.latest_values(db, symbol=symbol, timeframe=timeframe, feature_ids=feature_ids,
-                                           algorithm_version=ALGORITHM_VERSION)
+                                           algorithm_version=algorithm_version)
     if previous.empty:
         return []
     current_keys = pd.MultiIndex.from_tuples(
@@ -446,16 +462,18 @@ def compute(db, symbol, timeframe, *, families=None, volume_source="auto", overr
             blocked = write_guard()
             if blocked:
                 raise WriteBlocked(f"Gravação bloqueada pelo limite de recursos: {blocked}")
-        register_definitions(db, family, feature_ids, params, label, source)
+        feature_version = _feature_algorithm_version(family, params, source, label)
+        register_definitions(db, family, feature_ids, params, label, source, feature_version)
         records = [{"symbol": symbol, "timeframe": label, "feature_id": row["feature_id"],
-                    "algorithm_version": ALGORITHM_VERSION, "observation_time": row["observation_time"],
+                    "algorithm_version": feature_version, "observation_time": row["observation_time"],
                     "value": row["value"], "available_at": row["available_at"], "observed_at": row["available_at"],
                     "source_revision": row["source_revision"],
                     "metadata": dict(row["metadata"], reconstructed=True)}
                    for row in rows]
-        invalidations = _invalidated_records(db, symbol, label, family, params, source, rows)
+        invalidations = _invalidated_records(db, symbol, label, family, params, source, feature_version, rows)
         counts = feature_store.save_values(db, records + invalidations)
-        summary.append({"family": family, "symbol": symbol, "timeframe": label, "features": len(feature_ids),
+        summary.append({"family": family, "symbol": symbol, "timeframe": label, "algorithm_version": feature_version,
+                        "features": len(feature_ids),
                         "values": len(records), "invalidations": len(invalidations), "volume_source": source,
                         **counts})
         log.info("%s %s %s: %s valores, %s invalidações (%s novos, %s revisados, %s inalterados)", symbol, label,
@@ -477,3 +495,30 @@ def recalculators(db, symbol, timeframe, **kwargs):
 
     return {item["feature_id"]: handler(item["parameters"]["family"]) for item in features.list_features(db)
             if item["parameters"].get("family") in FAMILIES}
+
+
+def recalculate_affected(db, symbol, timeframe, changed_dependencies, **kwargs):
+    """Recalcula o contexto solicitado no registro canônico, com mapa novo por execução.
+
+    Versões de outro timeframe/configuração permanecem consultáveis e não são
+    selecionadas. O registro sem filtro mantém a seleção global atual por ID.
+    """
+    label = resampling.parse_target(timeframe).label
+    bars = resampling.latest_bars(db, symbol, label)
+    if bars.empty:
+        raise ValueError(f"Não há barras derivadas de {symbol} {label}. Gere antes com mt5x resample.")
+    _, volume_source = volume_profiles.resolve_source(bars, kwargs.get("volume_source", "auto"))
+    versions = {}
+    for family in FAMILIES:
+        params = dict(DEFAULTS[family], **(kwargs.get("overrides") or {}).get(family, {}))
+        source = volume_source if family in {"volume", "rvol"} else None
+        versions[family] = _feature_algorithm_version(family, params, source, label)
+
+    def in_context(definition):
+        family = definition["parameters"].get("family")
+        return (f"bars_derived:{label}" in definition["dependencies"]
+                and definition["algorithm_version"] == versions.get(family))
+
+    return features.recalculate_affected(db, changed_dependencies,
+                                        recalculators(db, symbol, label, **kwargs),
+                                        definition_filter=in_context)

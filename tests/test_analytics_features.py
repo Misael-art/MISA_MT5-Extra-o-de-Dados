@@ -225,3 +225,20 @@ def test_shared_source_recalculates_parent_before_child_and_keeps_as_of_history(
     assert [item["feature_id"] for item in results] == calls
     assert feature_store.query_as_of(db, revised, feature_id="a_child")["numeric_value"].tolist() == [14]
     assert feature_store.query_as_of(db, first, feature_id="a_child")["numeric_value"].tolist() == [6]
+
+
+def test_scoped_definitions_keep_topological_order_without_changing_default_selection(db):
+    for tf, version in [("M15", "1"), ("H1", "2")]:
+        source = f"bars_derived:{tf}"
+        features.register(db, "z_parent", "Pai", version, dependencies=[source])
+        features.register(db, "a_child", "Filho", version, dependencies=[source, "feature:z_parent"])
+    assert features.affected_by(db, ["bars_derived:M15"]) == []
+    selected = lambda item: "bars_derived:M15" in item["dependencies"]
+    result = features.affected_by(db, ["bars_derived:M15"], definition_filter=selected)
+    assert [(item["feature_id"], item["algorithm_version"]) for item in result] == [("z_parent", "1"), ("a_child", "1")]
+    calls = []
+    handlers = {name: (lambda db_, definition: calls.append(definition["feature_id"]))
+                for name in ["z_parent", "a_child"]}
+    features.recalculate_affected(db, ["bars_derived:M15"], handlers, definition_filter=selected)
+    assert calls == ["z_parent", "a_child"]
+    assert features.affected_by(db, ["unrelated"], definition_filter=selected) == []
