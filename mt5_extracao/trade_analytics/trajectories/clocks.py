@@ -83,7 +83,7 @@ def bar_intervals(starts, timeframe, clock):
         finish = bar_end_in_source(begin.tz_convert(clock.zone), tf).tz_convert("UTC")
         rows.append((begin, finish))
     frame = pd.DataFrame(rows, columns=["start_utc", "end_utc"]).sort_values("start_utc").reset_index(drop=True)
-    if len(frame) > 1 and any(frame.start_utc.iloc[i] < frame.end_utc.iloc[i - 1] for i in range(1, len(frame))):
+    if len(frame) > 1 and (frame.start_utc.array[1:] < frame.end_utc.array[:-1]).any():
         raise ValueError("Barras duplicadas ou sobrepostas; confira a resolução e a revisão dos dados.")
     return frame
 

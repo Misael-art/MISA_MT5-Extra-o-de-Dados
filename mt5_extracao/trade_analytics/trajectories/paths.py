@@ -96,6 +96,10 @@ def _bar_points(bars, intervals, entry, finish, price, direction, scale, limitat
     if not set(columns) <= set(bars.columns):
         limitations.append("missing_bid_bars" if direction == 1 else "missing_ask_bars")
         return []
+    # Só visitar barras que possam contribuir para esta posição. A validação
+    # dos intervalos continua abrangendo a fonte completa, antes deste recorte.
+    selected = ((intervals.end_utc > entry) & (intervals.start_utc <= finish)).to_numpy()
+    bars, intervals = bars.iloc[selected], intervals.iloc[selected]
     # intervals e barras usam a mesma ordenação estável de abertura.
     points = []
     for (_, row), interval in zip(bars.iterrows(), intervals.itertuples(index=False)):
@@ -132,7 +136,8 @@ def _bar_points(bars, intervals, entry, finish, price, direction, scale, limitat
 
 
 def reconstruct(trade, *, clock, quotes=None, bars=None, as_of=None, unit="price", point=None,
-                risk_distance=None, thresholds=(), sessions=None, session_coverage=None, exit_window=None):
+                risk_distance=None, thresholds=(), sessions=None, session_coverage=None, exit_window=None,
+                _bar_cache=None):
     """Desfechos de uma linha do ledger, sem consultar a base nem alterar a operação.
 
     Quotes usam event_time_utc/bid/ask; barras usam time no relógio declarado e o TF
@@ -215,10 +220,19 @@ def reconstruct(trade, *, clock, quotes=None, bars=None, as_of=None, unit="price
         points = _quote_points(quotes, entry, prefix_end, price, direction, scale, limits,
                                inclusive_end=censored)
     elif bars is not None:
-        data = bars.copy(deep=True)
-        data["_sort"] = [clock.timestamp(t) for t in data.time]
-        data = data.sort_values("_sort", kind="stable").reset_index(drop=True)
-        intervals = bar_intervals(data.time, trade.get("timeframe"), clock)
+        # Cache privado ao serviço e à consulta, nunca global nem persistente.
+        # Guardar a referência original também impede reutilização de seu id.
+        key = (id(bars), trade.get("timeframe"), clock)
+        prepared = _bar_cache.get(key) if _bar_cache is not None else None
+        if prepared is None:
+            data = bars.copy(deep=True)
+            data["_sort"] = [clock.timestamp(t) for t in data.time]
+            data = data.sort_values("_sort", kind="stable").reset_index(drop=True)
+            intervals = bar_intervals(data.time, trade.get("timeframe"), clock)
+            if _bar_cache is not None:
+                _bar_cache[key] = (bars, data, intervals)
+        else:
+            _, data, intervals = prepared
         result["complete_bars"] = complete_bars(entry, prefix_end, intervals, UTC)
         points = _bar_points(data, intervals, entry, prefix_end, price, direction, scale, limits,
                              boundary_open=exit_window is not None and exit_window.get("phase") == "intrabar")

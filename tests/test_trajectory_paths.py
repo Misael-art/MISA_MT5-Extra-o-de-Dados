@@ -200,3 +200,29 @@ def test_quote_at_exit_boundary_does_not_extend_position_after_known_fill():
     result = reconstruct(trade(exit_time="2026-01-05 10:02", exit_price=102), clock=UTC, quotes=data)
     assert result["mfe_observed"] == 2
     assert result["points"][-1]["basis"] == "ledger_execution_endpoint"
+
+
+def test_query_preparation_keeps_source_clock_and_frame_identity_separate():
+    data = pd.DataFrame({"time": ["2026-01-05 10:01", "2026-01-05 10:00"],
+                         "open": [100, 100], "high": [103, 102], "low": [99, 99],
+                         "close": [102, 101]}, index=[9, 2])
+    original = data.copy(deep=True)
+    raw = trade(exit_price=102)
+    reference = reconstruct(raw, clock=UTC, bars=data, thresholds=[2, -1])
+    cache = {}
+    assert reconstruct(raw, clock=UTC, bars=data, thresholds=[2, -1], _bar_cache=cache) == reference
+    assert reconstruct(raw, clock=UTC, bars=data, thresholds=[2, -1], _bar_cache=cache) == reference
+    shifted = reconstruct(raw, clock=Clock("broker", 2), bars=data, _bar_cache=cache)
+    assert shifted["start_utc"].startswith("2026-01-05T08:00")
+    assert shifted["mfe_observed"] == reference["mfe_observed"] == 3
+    changed = data.copy(deep=True)
+    changed.loc[9, "high"] = 109
+    assert reconstruct(raw, clock=UTC, bars=changed, _bar_cache=cache)["mfe_observed"] == 9
+    pd.testing.assert_frame_equal(data, original)
+
+
+def test_window_selection_does_not_hide_overlapping_bars_outside_position():
+    data = pd.DataFrame({"time": ["2026-01-05 10:00", "2026-01-05 10:05", "2026-01-05 10:05"],
+                         "open": [100] * 3, "high": [103] * 3, "low": [99] * 3, "close": [102] * 3})
+    with pytest.raises(ValueError, match="duplicadas ou sobrepostas"):
+        reconstruct(trade(exit_time="2026-01-05 10:02"), clock=UTC, bars=data, _bar_cache={})

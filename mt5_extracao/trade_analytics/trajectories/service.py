@@ -68,6 +68,7 @@ def query(db, run_id, *, seq=None, as_of=None, unit="money", thresholds=(), ages
         model_units = {u["identity"]["seq"]: u for u in cycles.summarize(
             record["observations"], run_id=run_id, source=record["source"], clock=clock, as_of=as_of)} if record is not None else {}
         units = []
+        bar_cache, captured_frames = {}, {}
         for _, trade in part.iterrows():
             if seq is not None and trade.seq != seq and not ages:
                 continue
@@ -99,14 +100,23 @@ def query(db, run_id, *, seq=None, as_of=None, unit="money", thresholds=(), ages
                 manifest = snapshot.manifest
                 tf = timeframes.parse(trade.timeframe)
                 if trade.symbol == manifest["symbol"] and tf is not None and tf.name == manifest["timeframe"]:
-                    ticks = snapshot.market_frame("ticks") if "ticks" in manifest["derivation"].get("market_families", []) else None
+                    ticks = None
+                    if "ticks" in manifest["derivation"].get("market_families", []):
+                        if "ticks" not in captured_frames:
+                            captured_frames["ticks"] = snapshot.market_frame("ticks")
+                        ticks = captured_frames["ticks"]
                     gate = data_eligibility.evaluate(snapshot.quality, ("ticks",))
                     quote_gate = gate
                     if ticks is not None and not ticks.empty and gate["eligible"]:
                         source, resolution_reason = {"quotes": ticks}, "captured_quotes"
                     else:
                         gate = data_eligibility.evaluate(snapshot.quality, ("ohlc_prices",))
-                        source = {"bars": snapshot.bars} if gate["eligible"] else {}
+                        if gate["eligible"]:
+                            if "bars" not in captured_frames:
+                                captured_frames["bars"] = snapshot.bars
+                            source = {"bars": captured_frames["bars"]}
+                        else:
+                            source = {}
                         resolution_reason = "qualified_ohlc_fallback" if gate["eligible"] else "no_qualified_price_source"
             elif (trade.symbol, trade.timeframe) in frames:
                 if record is None or clock.zone == Clock("broker", db.broker_utc_offset).zone:
@@ -114,7 +124,7 @@ def query(db, run_id, *, seq=None, as_of=None, unit="money", thresholds=(), ages
                 else:
                     resolution_reason = "producer_market_clocks_not_aligned"
             item = paths.reconstruct(effective_trade, clock=clock, as_of=effective_as_of, unit=unit, thresholds=thresholds,
-                                     **source, **options)
+                                     _bar_cache=bar_cache, **source, **options)
             if modeled is not None and modeled["status"] == "observed":
                 item["sequence_basis"] = "modeled_execution_order"
                 item["position_timing_source"] = "producer_observations"

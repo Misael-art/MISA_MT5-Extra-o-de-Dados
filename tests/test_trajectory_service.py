@@ -27,13 +27,23 @@ def test_cli_consults_saved_cycle_without_changing_ledger(setup, capsys):
     json.dumps(result, allow_nan=False)
 
 
-def test_price_query_uses_frozen_data_and_rejects_unqualified_conversion(setup):
+def test_price_query_uses_frozen_data_and_rejects_unqualified_conversion(setup, monkeypatch):
+    from mt5_extracao.trade_analytics.trajectories import paths
     db, run, _ = setup
+    original = paths.bar_intervals
+    preparations = []
+    def counted(*args, **kwargs):
+        preparations.append(len(args[0]))
+        return original(*args, **kwargs)
+    monkeypatch.setattr(paths, "bar_intervals", counted)
     first = service.query(db, run["run_id"], unit="price")
+    assert len(first["units"]) > 1
+    assert preparations == [3000]  # uma preparação da fonte por consulta, não por trade
     with db.engine.begin() as conn:
         table = db.find_table_for_symbol("BBB", "15 minutos")
         conn.execute(text(f'UPDATE "{table}" SET high=high+100000'))
     assert service.query(db, run["run_id"], unit="price") == first
+    assert preparations == [3000, 3000]  # não há cache global entre consultas
     with pytest.raises(ValueError, match="historicamente qualificada"):
         service.query(db, run["run_id"], unit="points")
 
