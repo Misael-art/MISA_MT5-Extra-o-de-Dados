@@ -782,7 +782,8 @@ _TESTER_LEASE = threading.local()
 
 def _lock_tester_file(handle, *, release=False):
     handle.seek(0)
-    if paths.is_windows():
+    # A API do kernel segue o host, mesmo quando caminhos Wine são simulados.
+    if os.name == "nt":
         import msvcrt
         msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK if release else msvcrt.LK_NBLCK, 1)
     else:

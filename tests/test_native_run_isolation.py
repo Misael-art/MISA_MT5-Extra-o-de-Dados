@@ -98,6 +98,7 @@ def test_windows_branch_locks_the_same_byte_and_releases_only_its_lease(monkeypa
     def locking(fd,mode,count):
         calls.append((mode,count,os.lseek(fd,0,os.SEEK_CUR)))
     monkeypatch.setattr(paths,"is_windows",lambda:True)
+    monkeypatch.setattr(mt5_tools,"os",SimpleNamespace(**{**vars(os),"name":"nt"}))
     monkeypatch.setitem(sys.modules,"msvcrt",SimpleNamespace(LK_NBLCK=1,LK_UNLCK=0,locking=locking))
     with mt5_tools.tester_lease():
         pass
