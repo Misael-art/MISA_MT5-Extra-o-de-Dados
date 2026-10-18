@@ -88,14 +88,17 @@ _VALUATION_COLUMNS = ("account_balance_json", "floating_equity_json", "valuation
 _SCHEMA_LOCK = threading.Lock()
 
 
-def save_run(db, run: dict) -> None:
+def save_run(db, run: dict, *, control=None) -> None:
     """Grava um backtest: métricas e curva de capital (já reduzida a poucos pontos)."""
-    with _SCHEMA_LOCK:
-        _save_run(db, run)
+    from contextlib import nullcontext
+    with (control.publication() if control is not None else nullcontext()), _SCHEMA_LOCK:
+        _save_run(db, run, control)
 
 
-def _save_run(db, run: dict) -> None:
+def _save_run(db, run: dict, control=None) -> None:
     from sqlalchemy import text
+    if control is not None:
+        control.check()
     row = {"run_id": run["run_id"], "robot_key": run["robot_key"], "source": run["source"],
            "symbol": run["symbol"], "timeframe": run["timeframe"], "data_start": run["data_start"],
            "data_end": run["data_end"], "bars": int(run["bars"]),
@@ -124,6 +127,8 @@ def _save_run(db, run: dict) -> None:
         if manifest_id is not None:
             from mt5_extracao.analytics import datasets
             datasets.bind(db, run["run_id"], manifest_id, connection=conn)
+        if control is not None:
+            control.result("completed", conn=conn)
 
 
 def _has_trades_column(conn) -> bool:

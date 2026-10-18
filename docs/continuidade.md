@@ -1,5 +1,21 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.24 — orçamento e checkpoint das filas (2026-10-18)
+
+[Contrato e limites](analytics/T20.24_ORCAMENTO_FILA.md). `run_batch` e
+`BatchRunner` usam um orçamento comum; sem outro agendador/registro estatístico.
+Limites de admissões/tempo/CPU/RAM/disco, guarda F15 e planos com manifests fixos.
+Publicação e conclusão do item compartilham transação/run_id reservado; retomada
+recupera resultados sem repetir publicação e preserva falhas. Teto de admissões
+não cancela os já admitidos. Cancelamento explícito é cooperativo; Tester nativo
+retorna antes da conferência, sem encerramento de terminal alheio. UI/CLI exibem
+estado parcial/ID/motivo, não lote completo. 40 fila/UI e integração anterior107
+aprovados; suíte final em execução. Medição local4jobs700barras:2,780s/147MiB RSS
+amostrado, não promessa universal. Regressão final110 e PostgreSQL16isolado8
+aprovados (contêiner removido); doctor16/2/0. Windows físico pendente.
+Próxima T20.25, isolamento/cache nas implementações atuais. T20.7/T20.12 mantêm
+as dependências de contratos/registro canônicos ainda não integrados.
+
 ## T20.6 — qualidade por consumidor (2026-10-18)
 
 [Contrato e limites](analytics/T20.6_QUALIDADE_CAPACIDADES.md). Famílias e motivos
