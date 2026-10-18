@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.strategies.backtester import EXIT_REASONS, BacktestConfig, SymbolSpec, Trade, execution_spreads
+from mt5_extracao.strategies.equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 _PRICE_EXITS = {EXIT_REASONS[k] for k in ("stop", "breakeven", "trailing", "target")}
 _OPEN_EXITS = {EXIT_REASONS["signal"]}                         # saem na abertura da barra
@@ -72,6 +73,12 @@ class SimResult:
     capped: int = 0               # níveis não abertos por causa do teto de exposição
     max_volume: float = 0.0       # maior exposição (lotes somados) numa operação
     source_seqs: List[Optional[int]] = field(default_factory=list)  # identidade original; horário pode ser aproximado
+    account_balance: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    floating_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    performance_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    account_cashflows: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    metrics: dict = field(default_factory=dict)
+    valuation: dict = field(default_factory=dict)
 
 
 def _bar_index(times: pd.Series, when) -> Optional[int]:
@@ -80,10 +87,11 @@ def _bar_index(times: pd.Series, when) -> Optional[int]:
 
 
 def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: BacktestConfig,
-             policy: ExitPolicy, atr: Optional[pd.Series] = None) -> SimResult:
+             policy: ExitPolicy, atr: Optional[pd.Series] = None, cashflows=None) -> SimResult:
     """Re-simula cada operação (independentes: o motor não abre posição nova, só gere as que o run abriu)."""
     data = bars.reset_index(drop=True)
     times = pd.to_datetime(data["time"]).reset_index(drop=True)
+    flows = cashflow_values(cashflows, times)
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
     spr, spr_open, spr_close = execution_spreads(data, spec, cfg)
     slip = cfg.slippage_points * spec.point
@@ -96,6 +104,9 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     skipped = approximate = adds = capped = 0
     stats_volume = [0.0]
     n = len(data)
+    balances = np.zeros(n, dtype=float)
+    floating = np.zeros(n, dtype=float)
+    closed_changes = np.zeros(n + 1, dtype=float)
 
     for t in trades.sort_values("entry_time").itertuples(index=False):
         d = int(t.direction) if t.direction in (1, -1) else 0
@@ -194,6 +205,9 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                              exit_reason=EXIT_REASONS[reason], equity_before=float("nan"), stop_price=stop,
                              target_price=target))
             source_seqs.append(getattr(t, "seq", None))
+            balances[i] += pos["pnl"]
+            floating[i] += pos["pnl"]
+            closed_changes[i + 1] += pos["pnl"]
 
         closed = False
         stats_volume[0] = max(stats_volume[0], volume)
@@ -257,6 +271,25 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 close_all(i, fill_exit(c[i], spr_close[i]), kind)
                 closed = True
                 break
+            if i < n - 1:
+                balances[i] += pos["pnl"]
+                mark = c[i] + (spr_close[i] if d < 0 else 0)
+                floating[i] += pos["pnl"]
+                for price, vol, opened in pos["lots"]:
+                    floating[i] += (mark - price) * d * ppu * vol
+                    if cfg.swap:
+                        floating[i] += spec.swap_money(d, vol, times.iloc[opened], times.iloc[i])
         if not closed:
             close_all(n - 1, fill_exit(c[n - 1], spr_close[n - 1]), "end")
-    return SimResult(out, skipped, approximate, adds, capped, stats_volume[0], source_seqs=source_seqs)
+    closed_balance = cfg.initial_equity + np.cumsum(closed_changes[:-1]) + np.cumsum(flows)
+    balances += closed_balance
+    floating += closed_balance
+    performance = unitized_equity(floating, flows, cfg.initial_equity)
+    return SimResult(out, skipped, approximate, adds, capped, stats_volume[0], source_seqs=source_seqs,
+                     account_balance=pd.Series(balances, index=pd.DatetimeIndex(times), dtype=float),
+                     floating_equity=pd.Series(floating, index=pd.DatetimeIndex(times), dtype=float),
+                     performance_equity=pd.Series(performance, index=pd.DatetimeIndex(times), dtype=float),
+                     account_cashflows=pd.Series(flows, index=pd.DatetimeIndex(times), dtype=float),
+                     metrics={**floating_metrics(performance, cfg.initial_equity),
+                              "floating_drawdown_basis": "unitized_initial_capital" if np.any(flows) else "account_equity"},
+                     valuation=valuation_metadata(spec, cfg))

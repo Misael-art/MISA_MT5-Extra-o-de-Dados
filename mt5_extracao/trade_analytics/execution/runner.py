@@ -109,6 +109,10 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
             rows = seq["trades"][~seq["trades"]["skipped"]]
             base_volume = rows["seq"].map(frame.set_index("seq")["volume"])
             out[key] = {"result": None, "name": mode.name, "study_only": True, "sequence": seq,
+                        "account_balance": None, "floating_equity": None,
+                        "performance_equity": None, "account_cashflows": None,
+                        "valuation": {"status": "unavailable", "closed_curve_basis": "closed_trades",
+                                      "reason": "Estudo sequencial sem trajetória das posições abertas."},
                         "safety_notes": safety.notes, "frame": rows[["seq", "pnl", "entry_time", "exit_time"]].assign(run_id=run_id),
                         "metrics": stats.metrics(rows["pnl"], initial,
                                                  rows["r_multiple"] * rows["volume"] / base_volume)}
@@ -123,7 +127,11 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
         frame = _frame(result)
         pnl = [t.pnl for t in result.trades]
         out[key] = {"result": result, "name": mode.name, "study_only": mode.study_only,
-                    "metrics": stats.metrics(pnl, initial, [t.r_multiple for t in result.trades]),
+                    "metrics": {**stats.metrics(pnl, initial, [t.r_multiple for t in result.trades]),
+                                **result.metrics},
+                    "account_balance": result.account_balance, "floating_equity": result.floating_equity,
+                    "performance_equity": result.performance_equity, "account_cashflows": result.account_cashflows,
+                    "valuation": result.valuation,
                     "adds": result.adds, "capped": result.capped, "max_volume": result.max_volume,
                     "frame": frame[["seq", "pnl", "entry_time", "exit_time"]].assign(run_id=run_id)}
     return out

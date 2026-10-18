@@ -46,7 +46,7 @@ def downsample(points: List[list], max_points: int = MAX_CURVE_POINTS) -> List[l
 
 def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
                params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None,
-               real_spread: bool = True) -> dict:
+               real_spread: bool = True, cashflows=None) -> dict:
     """
     Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia').
     `strategy` permite passar a estratégia já montada (ex.: uma DeclaredStrategy), em vez de buscá-la pela chave
@@ -83,7 +83,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
         start_index = int((pd.to_datetime(df["time"]) < pd.Timestamp(trade_from)).sum())
         if start_index >= len(df):
             raise ValueError(f"Não há barras a partir de {trade_from} no período pedido.")
-    result = run_backtest(df, strategy, spec, settings, start_index=start_index)
+    result = run_backtest(df, strategy, spec, settings, start_index=start_index, cashflows=cashflows)
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
                    spec_known=bool(spec.known), real_spread=bool(settings.real_spread and spec.spread_by_hour),
@@ -93,6 +93,11 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,
            "equity": downsample(equity_curve(result.trades, settings.initial_equity, df["time"].iloc[0])),
+           "account_balance": [[str(t), float(v)] for t, v in result.account_balance.items()],
+           "floating_equity": [[str(t), float(v)] for t, v in result.floating_equity.items()],
+           "performance_equity": [[str(t), float(v)] for t, v in result.performance_equity.items()],
+           "account_cashflows": [[str(t), float(v)] for t, v in result.account_cashflows.items() if v != 0],
+           "valuation": {**result.valuation, "stored_cashflow_encoding": "sparse_bar_close_events"},
            "trades": [[str(t.exit_time), float(t.pnl), float(t.volume)] for t in result.trades],
            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
     store.save_run(db, run)

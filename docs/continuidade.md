@@ -1,5 +1,30 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.3 — curvas patrimoniais e comparação nativa (2026-10-17)
+
+[Decisões e limites](analytics/T20.3_PATRIMONIO_FLUTUANTE.md). Mantida a curva
+de operações encerradas; acrescentados saldo realizado e patrimônio por
+fechamento de barra, BID/ASK, custos realizados e swap acumulado. DD novo
+identificado, percentual indefinido se o pico não for positivo, fluxos externos
+separados e neutralizados por cotas na grade de fechamento. Re-simulação soma posições sobrepostas no mesmo capital; não cria
+carteira com margem compartilhada. Persistência em cinco colunas aditivas;
+legado lê sem inventar trajetória ou regravar linhas/schema. Modos sequenciais
+de lote declaram trajetória indisponível; specs genéricas/swap não suportado
+marcam capacidade limitada. Sem alteração de UI ou produção H/S.
+
+Referências direcionadas com fluxos, persistência e DTOs: 85 aprovados.
+Native fixture: MetaTester 6272/Wine 11.17, EURUSD H1 MetaQuotes-Demo, 2025-01-06,
+24 observações; diferença de saldo zero e de equity 1,14e-13 USD. Fonte final
+compilado sem erros/avisos. Verificador e CSV/hashes versionados em
+tests/fixtures/equity_reference. Só Strategy Tester em cópia própria; Python
+não enviou ordens. A prova não certifica todos os Experts/custos/moedas/contas.
+
+Baseline 1081/9 pendências/3 avisos confirmada antes das alterações; ambiente
+preparado novamente. Suíte completa final em execução em logs/t20-3/pytest-final.log,
+após substituir rodadas preliminares pelos ajustes de DTOs e fluxos externos. Doctor 16 OK/2 avisos/0
+falhas. Windows físico pendente; artefatos em logs/t20-3. Próxima independente:
+T20.4, respeitando store/registry de branches existentes.
+
 ## T20.2 — referências financeiras e correções locais (2026-10-17)
 
 [Contas independentes](analytics/T20.2_REFERENCIAS_FINANCEIRAS.md) e testes dedicados.

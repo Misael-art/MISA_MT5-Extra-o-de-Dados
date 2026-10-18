@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 
 from .base import Strategy
+from .equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 EXIT_REASONS = {
     "stop": "stop", "breakeven": "stop no zero a zero", "trailing": "stop móvel", "target": "alvo",
@@ -140,6 +141,11 @@ class BacktestResult:
     skipped_min_lot: int = 0
     skipped_gap: int = 0
     config: BacktestConfig = field(default_factory=BacktestConfig)
+    account_balance: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    floating_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    performance_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    account_cashflows: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    valuation: dict = field(default_factory=dict)
 
     def trades_frame(self) -> pd.DataFrame:
         rows = [asdict(t) for t in self.trades]
@@ -157,7 +163,7 @@ def compute_metrics(trades: List[Trade], initial_equity: float) -> Dict[str, flo
     wins, losses = pnl[pnl > 0], pnl[pnl < 0]
     equity = initial_equity + np.concatenate([[0.0], np.cumsum(pnl)])
     peak = np.maximum.accumulate(equity)
-    dd = np.where(peak > 0, (peak - equity) / peak, 0.0)
+    dd = np.divide(peak - equity, peak, out=np.zeros_like(peak), where=peak > 0)
     reasons: Dict[str, int] = {}
     for t in trades:
         reasons[t.exit_reason] = reasons.get(t.exit_reason, 0) + 1
@@ -211,7 +217,7 @@ def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConf
 
 def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
                  config: Optional[BacktestConfig] = None, start_index: int = 0,
-                 signals: Optional[pd.DataFrame] = None) -> BacktestResult:
+                 signals: Optional[pd.DataFrame] = None, cashflows=None) -> BacktestResult:
     """
     start_index: só abre operações a partir desta barra (as anteriores servem de aquecimento
     dos indicadores; usado no walk-forward).
@@ -225,6 +231,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
 
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
     times = pd.to_datetime(data["time"])
+    flows = cashflow_values(cashflows, times)
+    cash_total = 0.0
     spr, spr_open, spr_close = execution_spreads(data, spec, cfg)
     slip = cfg.slippage_points * spec.point
     ppu = spec.money_per_price_unit
@@ -243,6 +251,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     pos: Optional[dict] = None
     pending_entry = 0
     pending_exit = False
+    balances = np.full(n, cfg.initial_equity, dtype=float)
+    floating = np.full(n, cfg.initial_equity, dtype=float)
 
     def fill_exit(d, bid_price, spread, market=True):
         price = bid_price + (spread if d < 0 else 0.0)   # venda a descoberto recompra no ask
@@ -281,7 +291,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
             if not np.isfinite(risk_px) or risk_px <= 0:
                 skipped_gap += 1     # abriu além do stop
             else:
-                base = equity if cfg.compound else cfg.initial_equity
+                base = equity + cash_total if cfg.compound else cfg.initial_equity
                 volume = spec.lots_for_risk(base * cfg.risk_per_trade, risk_px)
                 if volume <= 0:
                     skipped_min_lot += 1
@@ -293,7 +303,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                            "target": target if np.isfinite(target) else None, "volume": volume,
                            "remaining": volume, "risk_px": risk_px, "risk_money": risk_px * ppu * volume,
                            "pnl": -cfg.commission_per_lot * volume, "i": i, "partial_done": False,
-                           "equity_before": equity}
+                           "equity_before": equity + cash_total}
         pending_entry = 0
 
         # 3) stop, parcial e alvo dentro da barra
@@ -342,12 +352,34 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 if want and (pos is None or want != pos["dir"]):
                     pending_entry = want
 
+        # Marcação no fechamento: saldo inclui parciais/custos realizados; patrimônio inclui a posição aberta.
+        balances[i] = equity
+        floating[i] = equity
+        if pos is not None:
+            balances[i] += pos["pnl"]
+            mark = c[i] + (spr_close[i] if pos["dir"] < 0 else 0)
+            floating[i] = balances[i] + (mark - pos["entry"]) * pos["dir"] * ppu * pos["remaining"]
+            if cfg.swap:
+                floating[i] += spec.swap_money(pos["dir"], pos["remaining"], times.iloc[pos["i"]], times.iloc[i])
+        cash_total += flows[i]
+        balances[i] += cash_total
+        floating[i] += cash_total
+
     if pos is not None:
         close_all(n - 1, fill_exit(pos["dir"], c[n - 1], spr_close[n - 1]), "end")
+        balances[-1] = floating[-1] = equity + cash_total
 
     eq_times = [times.iloc[0]] + [t.exit_time for t in trades] if n else []
     eq_vals = [cfg.initial_equity] + list(cfg.initial_equity + np.cumsum([t.pnl for t in trades])) if n else []
+    performance = unitized_equity(floating, flows, cfg.initial_equity)
     return BacktestResult(strategy=strategy.describe(), trades=trades,
                           equity=pd.Series(eq_vals, index=pd.DatetimeIndex(eq_times), dtype=float),
-                          metrics=compute_metrics(trades, cfg.initial_equity),
-                          skipped_min_lot=skipped_min_lot, skipped_gap=skipped_gap, config=cfg)
+                          metrics={**compute_metrics(trades, cfg.initial_equity),
+                                   **floating_metrics(performance, cfg.initial_equity),
+                                   "floating_drawdown_basis": "unitized_initial_capital" if np.any(flows) else "account_equity"},
+                          skipped_min_lot=skipped_min_lot, skipped_gap=skipped_gap, config=cfg,
+                          account_balance=pd.Series(balances, index=pd.DatetimeIndex(times), dtype=float),
+                          floating_equity=pd.Series(floating, index=pd.DatetimeIndex(times), dtype=float),
+                          performance_equity=pd.Series(performance, index=pd.DatetimeIndex(times), dtype=float),
+                          account_cashflows=pd.Series(flows, index=pd.DatetimeIndex(times), dtype=float),
+                          valuation=valuation_metadata(spec, cfg))
