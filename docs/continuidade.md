@@ -965,7 +965,7 @@ Protocolo2383efd registrado antes dos resultados. Depois do aceite críticoUI e 
 
 A base de origem e o protocolo mantiveram os hashes; os oito livros foram reconciliados independentemente por contagem/GP/GL/resultado/PF. O código reusa backtester/estratégias/PF, sem SDK/terminal/contas ou mudança de parâmetros/risco. Baseline947/9 e sete focados (incluindo subprocessos CLI sintéticos) passaram; suíte geral e CI do PR100 em curso. Não confundir execução de pesquisa com integração ou aprovação financeira.
 
-## T20.25 — Cache e isolamento das execuções (em revisão local)
+## T20.25 — Cache e isolamento das execuções (em revisão)
 
 A entrega amplia cache F16, manifests T20.4, fila T20.24, sessões T17.28 e
 retenção F15. Identidade e checksum precedem reuso; o SDK padrão usa perfil
@@ -983,6 +983,6 @@ origem/CSV compartilhado preservados e processos liberados. Quarentena e
 restauração real preservaram o manifesto. A composição final segue em validação
 completa. Windows físico permanece pendência no checklist.
 
-Branch codex/t20.25-cache-isolamento empilhada sobre a T20.24/PR111. Não consome
+[PR #112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), branch codex/t20.25-cache-isolamento, empilhado sobre a T20.24/PR111. Não consome
 registry/Composer/registro estatístico ausentes; o histórico nativo continua sem
 identidade suficiente para cache entre experimentos. [Contratos e limites](analytics/T20.25_CACHE_ISOLAMENTO.md).
