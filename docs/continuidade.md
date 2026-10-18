@@ -1,5 +1,23 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.2 — referências financeiras e correções locais (2026-10-17)
+
+[Contas independentes](analytics/T20.2_REFERENCIAS_FINANCEIRAS.md) e testes dedicados.
+Reprodução inicial: 7 falhas/8 aprovados, antes das correções; novos casos de
+replay reproduziram mais duas divergências. Corrigidos teto de lote fora do passo,
+epsilon que elevava risco, swap por parcela e por entrada de cada lote na
+re-simulação. Métricas recusam PnL inválido, mantendo PF canônico v1 e os
+estados legítimos sem operações/sem perdas. Sem mudança de banco ou contratos H/S.
+
+Verificação direcionada: 96 aprovados, uma pendência PostgreSQL existente.
+Suíte completa do runtime alterado em execução em logs/t20-2/pytest-final.log.
+Baseline completa anterior ao runtime: 1058 aprovados/9 pendências/3 avisos.
+A execução documental T20.1 foi iniciada antes deste runtime; não substitui
+a verificação final T20.2. Evidências/patch separados em logs/t20-2.
+Windows físico/nativo não executados; parcial inviável continua em T19.57.
+Não declarar toda F20 ou Q01 concluído por estas contas.
+
+
 > **T17.28 — comandos dos cards MT5 (2026-10-17):** seletores pesquisáveis de
 > ativo/timeframe e preset governam a evidência mostrada. PLAY tem revisão da
 > carteira/risco, duas confirmações e alerta negativo adicional. REAL mantém

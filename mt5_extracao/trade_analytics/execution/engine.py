@@ -122,7 +122,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
         exit_orig = _bar_index(times, t.exit_time) if not pd.isna(t.exit_time) else None
         reason_orig = t.exit_reason
         pos = {"stop": stop, "kind": "stop", "remaining": volume, "pnl": -cfg.commission_per_lot * volume,
-               "partial": False, "be": False, "lots": [[entry, volume]], "next_level": 1}
+               "partial": False, "be": False, "lots": [[entry, volume, i0]], "next_level": 1}
         grid = policy.grid_levels > 0
         spacing = None
         if grid:
@@ -138,13 +138,15 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
             price = bid_price + (spread if d < 0 else 0.0)
             return price - d * slip if market else price
 
-        def close_part(vol, price):
+        def close_part(vol, price, i):
             # fecha `vol` lotes, do mais antigo para o mais novo (com gradiente há vários preços de entrada)
             left = vol
             for lot in pos["lots"]:
                 take = min(lot[1], left)
                 if take <= 0:
                     continue
+                if cfg.swap:
+                    pos["pnl"] += spec.swap_money(d, take, times.iloc[lot[2]], times.iloc[i])
                 pos["pnl"] += (price - lot[0]) * d * ppu * take - cfg.commission_per_lot * take
                 lot[1] = round(lot[1] - take, 8)
                 left = round(left - take, 8)
@@ -172,7 +174,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 # os níveis são medidos no lado que fecha a posição (bid na compra, ask na venda); entrar é o outro lado
                 price = price + spr[i] if d > 0 else price - spr[i]
                 previous = pos["lots"][-1][0]
-                pos["lots"].append([price, lot])
+                pos["lots"].append([price, lot, i])
                 pos["remaining"] = round(pos["remaining"] + lot, 8)
                 pos["pnl"] -= cfg.commission_per_lot * lot
                 pos["next_level"] = k + 1
@@ -185,9 +187,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
 
         def close_all(i, price, reason):
             pos["peak_volume"] = max(volume, stats_volume_trade[0])
-            if cfg.swap:
-                pos["pnl"] += spec.swap_money(d, pos["remaining"], times.iloc[i0], times.iloc[i])
-            close_part(pos["remaining"], price)
+            close_part(pos["remaining"], price, i)
             out.append(Trade(direction=d, entry_time=times.iloc[i0], exit_time=times.iloc[i], entry_price=entry,
                              exit_price=float(price), volume=float(pos["peak_volume"]), pnl=float(pos["pnl"]),
                              r_multiple=float(pos["pnl"] / (risk_px * ppu * volume)), bars=i - i0 + 1,
@@ -220,7 +220,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                     step = spec.volume_step or spec.volume_min
                     part = math.floor(volume * policy.partial_fraction / step + 1e-9) * step
                     if part >= spec.volume_min and pos["remaining"] - part >= spec.volume_min - 1e-12:
-                        close_part(part, max(op, level) if d > 0 else min(op, level))
+                        close_part(part, max(op, level) if d > 0 else min(op, level), i)
                     if policy.breakeven_after_partial:
                         pos["stop"] = max(pos["stop"], entry) if d > 0 else min(pos["stop"], entry)
                         pos["kind"] = "breakeven"
