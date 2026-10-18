@@ -30,9 +30,11 @@ def broker_utc(value, offset):
         stamp.tz_localize("UTC") - pd.Timedelta(hours=float(offset)))
 
 
-def _label(value, name):
+def _label(value, name, *, symbol=False):
     if not isinstance(value, str) or not value.strip() or len(value) > 256 or any(
-            c in value for c in ("/", "\\", "@", "\n", "\r")):
+            c in value for c in (("\n", "\r", "\t") if symbol else ("/", "\\", "@", "\n", "\r"))):
+        if symbol:
+            raise ValueError(f"{name} precisa ser um nome válido, sem quebras de linha ou tabulação.")
         raise ValueError(f"{name} precisa ser um rótulo sem caminhos, URLs ou credenciais.")
     return value
 
@@ -77,7 +79,7 @@ def _payload(kind, payload, *, historical=False):
                 raise ValueError("Fator/deslocamento contradiz o método declarado; concilie a fonte.")
         if kind == "rollover":
             for key in ("from_contract", "to_contract"):
-                _label(data.get(key), key)
+                _label(data.get(key), key, symbol=True)
             if data["from_contract"] == data["to_contract"]:
                 raise ValueError("Rolagem precisa distinguir os dois contratos.")
         if kind == "universe":
@@ -88,7 +90,7 @@ def _payload(kind, payload, *, historical=False):
             if data.get("role") not in ("continuous_study", "executable_contract"):
                 raise ValueError("Separe série contínua de estudo e contrato executável.")
             if data["role"] == "executable_contract":
-                _label(data.get("execution_symbol"), "Contrato executável")
+                _label(data.get("execution_symbol"), "Contrato executável", symbol=True)
     _json(data)  # Recusar NaN/Infinity e tipos não serializáveis antes de escrever.
     return data
 
@@ -103,7 +105,7 @@ def ensure_schema(connection):
 def record(db, symbol, kind, payload, *, source, known_at, valid_from=None, valid_to=None,
            event_key=None, connection=None):
     """Acrescenta fato declarado. Sem valid_from é observação atual, nunca prova histórica."""
-    _label(symbol, "Símbolo")
+    _label(symbol, "Símbolo", symbol=True)
     _label(source, "Fonte")
     if kind not in KINDS:
         raise ValueError("Tipo de fato do instrumento desconhecido.")
@@ -245,7 +247,7 @@ def validate_history(frame):
     if list(frame.columns) != _COLUMNS:
         raise ValueError("Histórico do instrumento sem integridade; colunas desconhecidas.")
     for row in frame.to_dict("records"):
-        _label(row["symbol"], "Símbolo")
+        _label(row["symbol"], "Símbolo", symbol=True)
         _label(row["source"], "Fonte")
         _label(row["event_key"], "Chave do evento")
         if row["kind"] not in KINDS:

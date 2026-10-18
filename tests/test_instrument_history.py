@@ -265,3 +265,16 @@ def test_import_does_not_attach_valid_facts_to_the_wrong_instrument(db, tmp_path
     path.write_text(json.dumps(bundle))
     with pytest.raises(ValueError, match="integridade"):
         datasets.import_snapshot(db, path)
+
+
+def test_existing_symbol_names_with_separators_remain_valid(db):
+    symbol = "BRK/B"
+    db.save_symbol_spec(symbol, properties())
+    db.save_ohlcv_data(symbol, "1 hora", db.load_ohlcv("X", "1 hora"))
+    revision = instruments.record(db, symbol, "specification", properties(), source="fixture",
+                                  valid_from=FIRST, known_at=OBSERVED)
+    instruments.record(db, symbol, "rollover", {"from_contract": "OLD/A", "to_contract": symbol, "method": "none"},
+                       source="fixture", valid_from=FIRST, known_at=OBSERVED)
+    snapshot = datasets.capture(db, symbol, "H1")
+    assert snapshot.spec.symbol == symbol and snapshot.spec.volume_step == 1
+    assert snapshot.spec.provenance["specification_revisions"] == [revision]
