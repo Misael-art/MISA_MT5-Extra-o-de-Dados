@@ -133,7 +133,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ⏳ implementação pronta; 20 testes focados passaram e EURUSD teve paridade; repetição da suíte completa ficou inconclusiva nos testes Tk/conector; MT5 real e Windows pendentes |
-| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | implementação canônica integrada no Linux no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114); completa1398/13/3, saída0/cobertura77,44%; PostgreSQL17 e doctor16/2/0; workspace preservado por hash; CI Windows acompanhado no PR, Windows físico pendente; fluxo ponta a ponta segue T13.3/5 |
+| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | implementação canônica integrada no Linux no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114); completa1398/13/3, saída0/cobertura77,44%; PostgreSQL17 e doctor16/2/0; workspace preservado por hash; seis checks de execução aprovados no código4b3302c, Windows físico pendente; fluxo ponta a ponta segue T13.3/5 |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | a fazer |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
@@ -3323,7 +3323,7 @@ real por corretora.
   `git diff --check` passaram. Não foram usados MT5 real, Windows nem fontes externas. O cálculo das características
   continua fora da T13.2; os produtores entram na T13.3.
 
-- **Integração F19/F20 (2026-10-18):** origem canônica843a85a e helper PostgreSQL80fd2f3; correção topológica com histórico preservado. Linha de base1388/12/3; final1398/13/3 em1930,28s, saída0 e cobertura77,44%. PostgreSQL17/13,73s com sentinela público preservado e schemas privados removidos; doctor16/2/0. CLI e fontes do workspace principal conferidos por hash; índice/HEAD/configuração preservados. CI Ubuntu1269/142 aprovado no código4b3302c; Windows físico permanece pendência. O contrato discrimina a cobertura do store e o fluxo ponta a ponta ainda dependente de produtores/publicação.
+- **Integração F19/F20 (2026-10-18):** origem canônica843a85a e helper PostgreSQL80fd2f3; correção topológica com histórico preservado. Linha de base1388/12/3; final1398/13/3 em1930,28s, saída0 e cobertura77,44%. PostgreSQL17/13,73s com sentinela público preservado e schemas privados removidos; doctor16/2/0. CLI e fontes do workspace principal conferidos por hash; índice/HEAD/configuração preservados. CI no código4b3302c: Ubuntu1269/142 e Windows1381/30/5, seis checks de execução aprovados; Windows físico permanece pendência. O contrato discrimina a cobertura do store e o fluxo ponta a ponta ainda dependente de produtores/publicação.
 
 ### T13.3 — Perfis de volume, sazonalidade e regimes (A3)
 

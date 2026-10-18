@@ -1025,6 +1025,6 @@ real60,47→39,86s, quatro livros/curvas idênticos por hash. A tentativa
 reprovada1396/13/3+1falha foi preservada. Dez arquivos Python integrados
 ao workspace principal com HEAD/índice/INI/.env preservados; CLI help saiu0.
 Ubuntu1269/142 e jobs PostgreSQL/lint/instaladores aprovados em4b3302c;
-Windows CI acompanhado no PR e Windows físico pendente. Próxima integração:
+Windows CI1381/30/5 e seis checks de execução aprovados em4b3302c; Windows físico pendente. Próxima integração:
 T13.3 canônica bde3652; preservar a ordenação e o helper de schemas.
 O aceite ponta a ponta dos testes4/7 inclui os produtores/publicador seguintes.
