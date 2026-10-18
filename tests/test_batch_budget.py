@@ -333,3 +333,38 @@ def test_cancellation_does_not_wait_for_publication_io():
         release.set(); thread.join(2)
     with pytest.raises(budget.Interrupted):
         control.check()
+
+
+def test_prepare_shares_one_frozen_manifest_per_source_and_timeframe(local, monkeypatch):
+    from mt5_extracao.analytics import datasets
+    db, robot = local
+    other = next(r for r in catalog.python_robots() if r.key == "python:donchian")
+    db.save_ohlcv_data("QB", "1 hora", trend(12, freq="h", spread=2))
+    db.save_ohlcv_data("QA", "15 minutos", trend(12, freq="15min", spread=2))
+    original = datasets.capture
+    calls = []
+
+    def capture(*args, **kwargs):
+        snapshot = original(*args, **kwargs)
+        calls.append((args[1], args[2]))
+        if len(calls) == 1:
+            corrected = db.load_ohlcv("QA", "1 hora")
+            corrected.loc[0, "close"] += .001
+            assert db.save_ohlcv_data("QA", "1 hora", corrected)
+        return snapshot
+
+    monkeypatch.setattr(datasets, "capture", capture)
+    control = budget.Budget(db, sample=sample)
+    jobs = [(robot, "QA", "1 hora"), (other, "QA", "H1"),
+            (robot, "QB", "H1"), (other, "QB", "1 hora"),
+            (robot, "QA", "M15")]
+    plan = control.prepare(jobs)
+    assert calls == [("QA", "H1"), ("QB", "H1"), ("QA", "M15")]
+    assert plan[0]["data_manifest_id"] == plan[1]["data_manifest_id"]
+    assert plan[2]["data_manifest_id"] == plan[3]["data_manifest_id"]
+    assert len({item["data_manifest_id"] for item in plan}) == 3
+    first = datasets.load(db, plan[0]["data_manifest_id"])
+    assert first.bars.iloc[0]["close"] != db.load_ohlcv("QA", "1 hora").iloc[0]["close"]
+    fresh = budget.Budget(db, sample=sample).prepare([(robot, "QA", "H1")])
+    assert len(calls) == 4 and calls[-1] == ("QA", "H1")
+    assert fresh[0]["data_manifest_id"] != plan[0]["data_manifest_id"]
