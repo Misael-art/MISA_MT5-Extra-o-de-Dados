@@ -154,3 +154,11 @@ A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
   quarentena e restauração sem sobrescrever destino, inclusive locks de arquivos.
 
 Linux/Wine e caminhos Windows simulados não substituem esses ensaios físicos.
+
+### T19.14 — Consulta temporal (pendência Windows físico)
+
+- [ ] Em Windows real, publicar backtest Python e consultar `mt5x --json trades trajectory --run ID`,
+  conferindo relógio da fonte, parciais/ciclos e corte `--as-of`. Não equivale a validar fills nativos.
+- [ ] Conferir base antiga sem diário e recusa de resultado adulterado, preservando ledger/snapshot.
+
+Linux e PostgreSQL isolado têm provas dirigidas; a suíte final da tarefa está pendente.

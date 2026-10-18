@@ -10,6 +10,13 @@ def add_parser(sub) -> None:
     q = ts.add_parser("import", help="traz para o livro os backtests já gravados que ainda não estão nele")
     q.add_argument("--include-hidden", action="store_true", help="inclui execuções auxiliares (bateria, paridade)")
     ts.add_parser("runs", help="lista os runs do livro (robô, ativo, timeframe, operações, completo ou parcial)")
+    q = ts.add_parser("trajectory", help="consulta trajetória, extremos e limites temporais de um run")
+    q.add_argument("--run", required=True, help="run_id do ledger")
+    q.add_argument("--seq", type=int, help="operação do ledger; omitir consulta todas")
+    q.add_argument("--as-of", help="corte no relógio da fonte; obrigatório para operações abertas")
+    q.add_argument("--unit", choices=("money", "price", "points", "R"), default="money")
+    q.add_argument("--threshold", type=float, action="append", default=[], help="limiar assinado na unidade escolhida; repetível")
+    q.add_argument("--age", type=float, action="append", default=[], help="idade em minutos para a distribuição do run completo; repetível")
     c = ts.add_parser("calendar", help="calendário econômico de várias fontes (CSV e MT5)")
     cs = c.add_subparsers(dest="calendar_command", required=True)
     q = cs.add_parser("import", help="importa uma fonte para o calendário unido")
@@ -69,6 +76,17 @@ def run(args: argparse.Namespace, ctx) -> int:
         return cli.EXIT_OK
     if args.trades_command == "calendar":
         return _calendar(args, ctx)
+    if args.trades_command == "trajectory":
+        from mt5_extracao.trade_analytics import aggregate
+        from mt5_extracao.trade_analytics.trajectories import service
+        result = service.query(db, args.run, seq=args.seq, as_of=args.as_of, unit=args.unit, thresholds=args.threshold,
+                               ages=args.age, minimum=aggregate.min_trades(ctx.config))
+        out(f"{args.run}: {len(result['units'])} unidade(s); estado {result['status']}.")
+        if result["reason"]:
+            out({"no_trades": "Nenhuma operação no ledger para esse run.",
+                 "missing_producer_observations": "Run sem observações do produtor. Refaça a execução para consultar caixa por ciclo; preço pode ser consultado separadamente."}[result["reason"]])
+        data(trajectory=result)
+        return cli.EXIT_OK
     if args.trades_command in ("report", "insights", "simulate"):
         return _analysis(args, ctx)
     if args.trades_command == "compare":

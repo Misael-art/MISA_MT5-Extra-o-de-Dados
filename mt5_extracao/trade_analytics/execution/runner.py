@@ -54,7 +54,7 @@ def base_policy(robot_key: str, params: Optional[dict] = None) -> engine.ExitPol
     return engine.ExitPolicy()
 
 
-def inputs(db, config, run_id: str) -> dict:
+def inputs(db, config, run_id: str, *, freeze_current: bool = False) -> dict:
     """{"trades", "bars", "spec", "cfg", "atr", "robot_key", "symbol", "timeframe"} de um run do livro."""
     from mt5_extracao.strategies import indicators, research, specs
     trades = ledger.load(db, run_id=run_id)
@@ -72,6 +72,10 @@ def inputs(db, config, run_id: str) -> dict:
     snapshot = datasets.for_run(db, run_id)
     if snapshot is None and record is not None and record.get("data_manifest_id"):
         snapshot = datasets.for_run(db, record["run_id"])
+    captured_current = snapshot is None and freeze_current
+    if captured_current:
+        # Esta revisão pertence à nova re-simulação, não ao backtest antigo.
+        snapshot = datasets.capture(db, first["symbol"], tf)
     bars = snapshot.view().load_ohlcv(first["symbol"], tf.label) if snapshot is not None else db.load_ohlcv(
         first["symbol"], tf.label)
     if bars.empty:
@@ -94,7 +98,8 @@ def inputs(db, config, run_id: str) -> dict:
         quality["data_manifest_id"] = snapshot.manifest_id
     return {"trades": trades, "bars": bars, "spec": snapshot.spec if snapshot is not None else specs.load_spec(db, first["symbol"]),
             "data_manifest_id": snapshot.manifest_id if snapshot is not None else None,
-            "data_provenance_status": "frozen_reference" if snapshot is not None else "legacy_current_data",
+            "data_provenance_status": "current_data_captured_for_resimulation" if captured_current else
+                                      "frozen_reference" if snapshot is not None else "legacy_current_data",
             "data_quality": quality,
             "cfg": research.backtest_config(config), "atr": atr, "robot_key": first["robot_key"],
             "symbol": first["symbol"], "timeframe": first["timeframe"], "cashflows": flows,
@@ -104,13 +109,14 @@ def inputs(db, config, run_id: str) -> dict:
 
 def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = None, mode: str = "ponto_fixo",
                save: bool = False, data: Optional[dict] = None) -> engine.SimResult:
-    data = data or inputs(db, config, run_id)
+    data = data or inputs(db, config, run_id, freeze_current=save)
     policy = policy or base_policy(data["robot_key"])
     quality = data.get("data_quality")
     if quality is not None and not quality["eligibility"]["eligible"]:
         raise ValueError("Dados incompatíveis com a re-simulação: " + " ".join(quality["eligibility"]["reasons"]))
     result = engine.simulate(data["trades"], data["bars"], data["spec"], data["cfg"], policy, data["atr"],
-                             cashflows=data.get("cashflows"))
+                             cashflows=data.get("cashflows"),
+                             observation_timeframe=data["timeframe"] if save else None)
     result.valuation["cashflow_source"] = data.get("cashflow_source", "unspecified")
     result.valuation["data_quality"] = quality
     if result.valuation["cashflow_source"] in ("legacy_unknown", "unspecified"):
@@ -121,6 +127,16 @@ def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = No
             datasets.bind(db, f"{run_id}#{mode}", data["data_manifest_id"])
         ledger.save_trades(db, f"{run_id}#{mode}", result.trades, robot_key=data["robot_key"], symbol=data["symbol"],
                            timeframe=data["timeframe"], source=RESIM_PREFIX + mode)
+        from dataclasses import asdict
+        from mt5_extracao.robots.backtest import _execution_code_digest
+        from mt5_extracao.trade_analytics.trajectories import store as trajectory_store
+        from mt5_extracao.trade_analytics.trajectories.clocks import Clock
+        result.trajectory["valuation"] = dict(result.valuation)
+        trajectory_store.save(db, f"{run_id}#{mode}", result.trajectory, source=RESIM_PREFIX + mode,
+                              clock=Clock("broker", db.broker_utc_offset) if data.get("data_manifest_id") is None else None,
+                              producer_identity={"source_run_id": run_id, "code": _execution_code_digest(),
+                                                 "data_provenance_status": data.get("data_provenance_status"),
+                                                 "policy": asdict(policy), "settings": asdict(data["cfg"])})
     return result
 
 
@@ -142,7 +158,7 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
     """
     from mt5_extracao.trade_analytics import stats
     from mt5_extracao.trade_analytics.execution import modes as registry, sizing
-    data = inputs(db, config, run_id)
+    data = inputs(db, config, run_id, freeze_current=save)
     base = base_policy(data["robot_key"])
     initial = data["cfg"].initial_equity
     allowed = registry.available(robot, preset)

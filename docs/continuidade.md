@@ -987,3 +987,25 @@ local completa. Windows físico e revisão independente permanecem pendentes.
 [PR #112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), branch codex/t20.25-cache-isolamento, empilhado sobre a T20.24/PR111. Não consome
 registry/Composer/registro estatístico ausentes; o histórico nativo continua sem
 identidade suficiente para cache entre experimentos. [Contratos e limites](analytics/T20.25_CACHE_ISOLAMENTO.md).
+
+## T19.14 — Trajetórias temporais (em validação final)
+
+Relógios explícitos, trajetórias disponíveis de preço e diários de ciclos/parciais
+foram integrados ao ledger por sidecar aditivo versionado. Publicação Python e
+re-simulações salvas registram o diário; `mt5x trades trajectory` consulta caixa
+por ciclo, preço, limiares e distribuição de duração. Saída intrabarra permanece
+intervalar; cortes anteriores não usam a saída futura. Snapshots novos de uma
+re-simulação antiga pertencem só à derivada. Cobertura contínua, sessão histórica,
+moeda/custos ausentes e precisão nativa não são presumidos.
+
+Baseline: 1280/11/3. Dirigidos finais: 100 em 98,61 s; PostgreSQL16 isolado:
+10 em 12,69 s, container removido; doctor: 16 OK/2 avisos/0 falhas. Medição ABBA
+BENCH/M15/4000 barras: hashes de trades/curvas/métricas iguais; publicação
+0,968→1,737 s e banco 1,137→2,070 MiB, com 2733 observações. Leitura de cópia de
+artefato nativo anterior preservou origem e explicitou cobertura só de endpoints;
+não foi novo replay nem trajetória contínua. Suíte completa final em execução,
+com fontes congeladas por hash. Windows físico e revisão independente pendentes.
+
+O dono é `trade_analytics`, consumindo ledger F16, snapshots T20.4/6 e motores
+existentes. A exportação permanente H/T16.2b-H e o registro T20.12 não são
+reimplementados. [Contrato do recorte](analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).

@@ -258,3 +258,18 @@ da compilação quando nenhum processo permaneceu ativo.
 O manifesto da sessão contém `owner_store`, vínculo sem URI/senha ao banco criador.
 `list_sessions/move_session` preservam perfis de outro banco e perfis antigos sem
 vínculo verificável, mesmo quando dois bancos usam o mesmo prefixo Wine.
+
+## T19.14 — Observações e consulta de trajetórias (em implementação)
+
+`run_backtest(..., observation_timeframe="M15")` e
+`execution.engine.simulate(..., observation_timeframe="M15")` acrescentam
+`result.trajectory`. O argumento é opcional no motor bruto; a publicação normal
+Python e re-simulações salvas já registram o diário. Preenchimentos e cálculos
+legados são preservados. O diário modelado distingue abertura, fechamento
+nominal e intervalo intrabarra; não é exportação de ticks reais.
+
+`trade_analytics.trajectories.service.query(db, run_id, seq=None, as_of=None,
+unit="money", thresholds=(), ages=())` é a consulta de serviço do CLI
+`mt5x trades trajectory`. Ela não executa estratégias nem ordens.
+[Contrato e estado do recorte](../analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).
+O contrato MQL5 1 permanece o mesmo.
