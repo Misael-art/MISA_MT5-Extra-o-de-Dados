@@ -286,10 +286,11 @@ def test_alerts():
 
 # --- CLI -----------------------------------------------------------------------------------
 
-def _cli(tmp_path, db, *args):
+def _cli(tmp_path, db, *args, resources=None):
     cfg = tmp_path / "config.ini"
     cfg.write_text(f"[DATABASE]\ntype = sqlite\npath = {db.db_path}\n[RESOURCES]\narchive_dir = "
-                   f"{tmp_path / 'arquivo'}\n", encoding="utf-8")
+                   f"{tmp_path / 'arquivo'}\n" +
+                   "".join(f"{key} = {value}\n" for key, value in (resources or {}).items()), encoding="utf-8")
     return cli.main(["--config", str(cfg), "--json", "resources", *args])
 
 
@@ -374,10 +375,27 @@ def test_cycle_makes_backup_only_with_opt_in(db, tmp_path):
     assert len(files.list_backups(db, cfg)) == 1
 
 
-def test_cli_backup_and_files(db, tmp_path, capsys):
+def test_cli_backup_and_files(db, tmp_path, capsys, monkeypatch):
+    import os
+    root = tmp_path / "project"
+    logs = root / "logs"
+    logs.mkdir(parents=True)
+    monkeypatch.setattr(storage, "_project_root", lambda: root)
+    orphan, protected, recent = (logs / name for name in ("orphan.txt", "referenced.txt", "recent.txt"))
+    for path in (orphan, protected, recent):
+        path.write_bytes(b"preservar")
+    old = (datetime.now() - timedelta(days=400)).timestamp()
+    for path in (orphan, protected):
+        os.utime(path, (old, old))
+    store.save_run(db, {"run_id": "retention", "robot_key": "qa", "source": "strategy tester", "symbol": "QA",
+                       "timeframe": "D1", "data_start": "", "data_end": "", "bars": 0,
+                       "metrics": {"artifact_files": [str(protected)]}, "equity": [], "created_at": "2026-10-01"})
     assert _cli(tmp_path, db, "backup") == cli.EXIT_USAGE
     assert _cli(tmp_path, db, "backups") == cli.EXIT_OK
-    assert _cli(tmp_path, db, "files") == cli.EXIT_OK
+    assert _cli(tmp_path, db, "files", resources={"logs_keep_days": 1, "exports_keep_days": 0}) == cli.EXIT_OK
+    payload = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert {item["path"] for item in payload["data"]["files"]} == {str(orphan)}
+    assert all(path.read_bytes() == b"preservar" for path in (orphan, protected, recent))
 
 
 # --- T15.8: parquet, aparar, limite por série, voltar a uma cópia ---------------------------

@@ -201,14 +201,16 @@ def old_files(db, config, now: Optional[datetime] = None) -> List[dict]:
                 if label == "Logs" and name in ACTIVE_LOGS:
                     continue
                 path = Path(root) / name
-                if _artifact_protected(path, protected_files, protected_dirs):
-                    continue
                 try:
                     stat = path.stat()
                 except OSError:
                     continue
                 modified = datetime.fromtimestamp(stat.st_mtime)
                 if modified < cutoff:
+                    # Arquivo recente não é candidato. Resolver referências só
+                    # após o corte evita percorrer seus ancestrais sem necessidade.
+                    if _artifact_protected(path, protected_files, protected_dirs):
+                        continue
                     found.append({"path": str(path), "folder": label, "bytes": stat.st_size, "modified": modified})
     return sorted(found, key=lambda f: f["modified"])
 

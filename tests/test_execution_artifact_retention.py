@@ -109,3 +109,23 @@ def test_native_book_referenced_outside_private_profile_is_protected(artifacts):
     assert files.old_files(db, config) == []
     assert files.clean_files(db, config)["removed"] == 0
     assert book.read_bytes() == b"preservar"
+
+
+def test_recent_files_do_not_resolve_protection_but_old_files_still_do(artifacts, monkeypatch):
+    db, config, exports, logs, old = artifacts
+    recent = logs / "recent.txt"
+    recent.write_bytes(b"recent")
+    protected = old(logs / "referenced.txt")
+    orphan = old(logs / "orphan.txt")
+    record(db, {"tester_log": str(protected)})
+    original = files._artifact_protected
+    checked = []
+    def counted(path, *args):
+        checked.append(path)
+        return original(path, *args)
+    monkeypatch.setattr(files, "_artifact_protected", counted)
+    assert {item["path"] for item in files.old_files(db, config)} == {str(orphan)}
+    assert set(checked) == {protected, orphan}
+    assert files.clean_files(db, config)["removed"] == 1
+    assert recent.read_bytes() == b"recent" and protected.read_bytes() == b"preservar"
+    assert not orphan.exists()
