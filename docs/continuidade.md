@@ -14,8 +14,12 @@ requisitos declarados permanece não qualificado como robô completo.
 Resultados e UI transportam decisão ou ausência legada. O registry T18.1 ainda
 está em branch; adaptador usa suas definições reais, sem outra implementação.
 Composição/fluxo esperam os consumidores canônicos T19.2/T18.1; store causal
-continua com T13.2. 117 direcionados e PostgreSQL16isolado7 aprovados; suíte
-completa final pendente. Windows físico pendente; nenhuma mudança H/S ou feed.
+continua com T13.2. [PR #110](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/110):
+1174 aprovados, 9 pulos existentes e 3 avisos em 1062,21 s, saída 0; 117
+direcionados, checagem congelada 71, PostgreSQL 16 isolado 7 e doctor 16/2/0.
+Windows físico pendente; nenhuma mudança H/S ou feed. Próxima frente independente:
+T20.24 na fila existente. T20.7 aguarda T19.2/B-11; T20.12 deve estender o registro
+T13.4 ainda não integrado, sem outro store.
 
 ## T20.5 — vigência de instrumentos (2026-10-18)
 
