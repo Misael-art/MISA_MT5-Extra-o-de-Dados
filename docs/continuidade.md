@@ -975,14 +975,14 @@ cooperativo. Perfis recusados antes da compilação podem comprovar liberação 
 ser recolhidos por quarentena reversível. Referências SQL, inclusive o livro CSV
 fora do perfil, permanecem protegidas.
 
-Suíte após proteção do livro CSV:1277aprovados/11pulos/3avisos1349,91s, saída0.
-O vínculo ao banco criador passou em133testes dirigidos e15de retenção; outro
+Suíte completa final: 1280 aprovados, 11 pulos esperados e 3 avisos em 1334.28 s, saída 0, com Xvfb privado.
+O vínculo ao banco criador passou em 133 testes dirigidos e 15 de retenção; outro
 banco não pode recolher o perfil e identidades desconhecidas são preservadas.
-114 testes cobrem preparação/posse/budget/tester. PostgreSQL9 e doctor16/2/0
+114 testes cobrem preparação/posse/budget/tester. PostgreSQL: 9 aprovados; doctor: 16 OK, 2 avisos e 0 falhas
 aprovados. Ensaio real Wine repetido: SDK padrão, uma operação reconciliada,
 origem/CSV compartilhado preservados e processos liberados. Quarentena e
-restauração real preservaram o manifesto. A composição final segue em validação
-completa. Windows físico permanece pendência no checklist.
+restauração real preservaram o manifesto. A composição final passou na validação
+local completa. Windows físico e revisão independente permanecem pendentes.
 
 [PR #112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), branch codex/t20.25-cache-isolamento, empilhado sobre a T20.24/PR111. Não consome
 registry/Composer/registro estatístico ausentes; o histórico nativo continua sem
