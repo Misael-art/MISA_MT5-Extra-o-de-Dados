@@ -1014,12 +1014,17 @@ O dono é `trade_analytics`, consumindo ledger F16, snapshots T20.4/6 e motores
 existentes. A exportação permanente H/T16.2b-H e o registro T20.12 não são
 reimplementados. [Contrato do recorte](analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).
 
-## Integração canônica T13.2 — 2026-10-18 (em validação)
+## Integração canônica T13.2 — 2026-10-18
 
-A implementação local843a85a foi reaplicada com atribuição preservada sobre
-a composição F19/F20, sem criar outro store/registro. Instalação e dependências
-de desenvolvimento precederam a linha de base integrada1388/12/3, saída0,
-cobertura77,44%; hashes de fontes/testes coincidem com o estado anterior a
-esta integração. A ordenação topológica e os testes PostgreSQL em schemas
-isolados estão em validação. Os resultados históricos de2026-10-14 não
-certificam esta composição; suíte final e PR próprios ainda pendentes.
+Origem843a85a reaplicada com atribuição no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114),
+com ordenação topológica corrigida e schemas PostgreSQL privados do helper80fd2f3.
+Baseline1388/12/3; final Linux/Xvfb1398/13/3 em1930,28s, saída0,
+cobertura77,44% e fontes/testes intactos por hash. PostgreSQL17 e doctor16/2/0.
+O timeout herdado de captura duplicada foi corrigido na T20.24/PR111; lote
+real60,47→39,86s, quatro livros/curvas idênticos por hash. A tentativa
+reprovada1396/13/3+1falha foi preservada. Dez arquivos Python integrados
+ao workspace principal com HEAD/índice/INI/.env preservados; CLI help saiu0.
+Ubuntu1269/142 e jobs PostgreSQL/lint/instaladores aprovados em4b3302c;
+Windows CI acompanhado no PR e Windows físico pendente. Próxima integração:
+T13.3 canônica bde3652; preservar a ordenação e o helper de schemas.
+O aceite ponta a ponta dos testes4/7 inclui os produtores/publicador seguintes.
