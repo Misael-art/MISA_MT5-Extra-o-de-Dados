@@ -59,11 +59,33 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 
 | Nome | O que faz |
 |---|---|
-| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True)` | Backtest de uma estratégia Python com as barras da base. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
+| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True, cashflows=None)` | Backtest de uma estratégia Python com as barras da base. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
 | `run_mql5(db, config, robot, symbol, timeframe, start=None, end=None, preset=None, params=None, ...)` | Backtest de um robô MQL5 pelo Strategy Tester. O MT5 precisa estar fechado |
 
 Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`. Pela CLI, `--symbols A,B,C`
 roda o mesmo teste em vários ativos.
+
+Desde T20.3, `run_python` e `run_backtest` aceitam `cashflows=None` ao final.
+O padrão é ausência de fluxos, preservando chamadas posicionais e padrões
+anteriores (`API_VERSION=1`). Um vetor fornece uma quantia por fechamento de
+barra, na moeda da conta; Series com índice temporal precisa corresponder às
+barras do período selecionado. Depósitos são positivos e saques negativos.
+Fluxos alteram caixa e o risco composto da próxima barra, sem entrar no PnL.
+Valores inválidos, patrimônio/cotas não positivos no fluxo ou resgate integral
+produzem `ValueError`, sem gravar um run parcialmente calculado.
+
+O retorno Python acrescenta `account_balance`, `floating_equity`,
+`performance_equity`, `account_cashflows` e `valuation`. No dicionário gravado,
+curvas são pares horário/valor; fluxos são eventos esparsos (lista vazia significa
+sem fluxo). A série de desempenho usa cotas para o TWR e para o novo drawdown;
+`floating_drawdown_basis` identifica se o valor monetário é do patrimônio da
+conta ou equivalente normalizado ao capital inicial. `equity` e
+`max_drawdown_pct` antigos mantêm significado de operações encerradas, e
+`return_pct` antigo continua PnL sobre capital inicial, distinto do novo
+`time_weighted_return_pct`. A marcação é no fechamento, sem observar risco
+intrabarra; status/limitações ficam em `valuation`. Run legado sem trajetória
+retorna `None` nos novos campos e motivo, sem regravação. Veja
+[marcação, fluxos e prova nativa T20.3](../analytics/T20.3_PATRIMONIO_FLUTUANTE.md).
 
 Desde T17.28, `run_mql5` aceita ao final seis opções compatíveis com chamadas
 anteriores: `visual=None`, `read_csv=True`, `trades_csv_override=None`,
@@ -127,5 +149,5 @@ Não é um tradutor de Python: só o que está na declaração é gerado. A prov
 | `Strategy`, `StrategyInfo` | Classe base de uma estratégia e a sua ficha ([estrategias.md](../estrategias.md), "Para desenvolvedores") |
 | `get_strategy(key, **params)` | Instância de uma das estratégias registradas |
 | `BacktestConfig` | Capital inicial, risco por operação, slippage e corretagem |
-| `run_backtest(df, strategy, spec=None, config=None, ...)` | Backtest com custos e lote pelo risco (os dois últimos parâmetros, `start_index` e `signals`, servem à validação) |
+| `run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None, cashflows=None)` | Backtest com custos e lote pelo risco; `start_index` e `signals` servem à validação, e `cashflows` identifica fluxos no fechamento |
 | `validate_strategy(df, key, spec=None, config=None, criteria=None, params=None)` | Walk-forward, robustez e Monte Carlo (Filtro C) |

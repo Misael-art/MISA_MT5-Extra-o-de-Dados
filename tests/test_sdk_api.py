@@ -21,7 +21,7 @@ SURFACE = {
     "install_robot": ["config", "robot", "mt5", "overwrite_presets", "upgrade_safety"],
     "compile_robot": ["config", "robot", "mt5", "run", "overwrite_presets", "upgrade_safety"],
     "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params", "strategy", "source",
-                   "trade_from", "real_spread"],                # T10.12: novo no fim, com padrão
+                   "trade_from", "real_spread", "cashflows"],   # T20.3: opcional no fim, None = sem fluxos
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
                  "is_running", "source", "model", "visual", "read_csv", "trades_csv_override", "compiled_override",
                  "export_trades", "tester_port"],               # T17.28: opcionais no fim; defaults legados preservados
@@ -35,7 +35,7 @@ SURFACE = {
     "build_matrix": ["db", "config", "robots"],                                                  # T11.6
     "matrix_positives": ["matrix", "robot_key"],
     "get_strategy": ["key", "params"],
-    "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals"],
+    "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals", "cashflows"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],
 }
 
@@ -50,6 +50,15 @@ def test_signatures_did_not_change():
     for name, expected in SURFACE.items():
         if expected is not None:
             assert list(inspect.signature(getattr(sdk, name)).parameters) == expected, name
+
+
+def test_cashflow_options_are_optional_and_old_positional_calls_still_bind():
+    for function, legacy_count in ((sdk.run_python, 12), (sdk.run_backtest, 6)):
+        signature = inspect.signature(function)
+        assert signature.parameters["cashflows"].default is None
+        bound = signature.bind(*([None] * legacy_count))
+        bound.apply_defaults()
+        assert bound.arguments["cashflows"] is None
 
 
 def test_mql5_session_options_are_optional_and_preserve_legacy_defaults():
