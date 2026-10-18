@@ -5,6 +5,8 @@ do Strategy Tester: MetaTrader/MetaTester build 6272, Wine 11.17, EURUSD H1,
 MetaQuotes-Demo, conta de teste USD 1.000, 6 de janeiro de 2025, modelo 4.
 O log do agente confirmou ticks reais desde `2025.01.06 00:00:00`.
 O fonte final compilou sem erros nem avisos. Hashes e escopo estão no manifesto.
+O `.gitattributes` local preserva os bytes do fonte e do CSV no checkout, inclusive
+com `core.autocrlf=true`; não normalizar finais de linha desses dois arquivos.
 
 Uma compra de 0,01 lote abre na segunda barra e fecha na sexta. A execução é
 intradiária; o custo líquido zero foi conciliado por preço/tick/lote contra a

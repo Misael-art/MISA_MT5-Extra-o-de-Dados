@@ -1,0 +1,3 @@
+# Preservar os bytes usados nos hashes da prova, inclusive sob core.autocrlf=true.
+MT5X_EquityReference.mq5 -text
+native.csv -text
