@@ -10,7 +10,9 @@ recupera resultados sem repetir publicação e preserva falhas. Teto de admissõ
 não cancela os já admitidos. Cancelamento explícito é cooperativo; Tester nativo
 retorna antes da conferência, sem encerramento de terminal alheio. UI/CLI exibem
 estado parcial/ID/motivo, não lote completo. 40 fila/UI e integração anterior107
-aprovados; suíte final em execução. Medição local4jobs700barras:2,780s/147MiB RSS
+aprovados. [PR #111](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/111):
+1200 aprovados, 10 pulos e 3 avisos em 1099,06 s, saída 0; 9 pulos anteriores
+e 1 PostgreSQL novo, coberto no ensaio separado. Medição local4jobs700barras:2,780s/147MiB RSS
 amostrado, não promessa universal. Regressão final110 e PostgreSQL16isolado8
 aprovados (contêiner removido); doctor16/2/0. Windows físico pendente.
 Próxima T20.25, isolamento/cache nas implementações atuais. T20.7/T20.12 mantêm

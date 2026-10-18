@@ -179,7 +179,7 @@ opcionais foram acrescentados à dataclass interna `SymbolSpec`.
 T20.6 acrescenta `data_quality` às métricas Python/MQL e à avaliação de
 re-simulação. Capacidade de dados, requisitos do consumidor e limitações de
 origem/cobertura são explícitos; relatório nativo sem requisitos do Expert
-não o qualifica automaticamente. `run_python` conserva a assinatura e exige
+não o qualifica automaticamente. `run_python` mantém os argumentos anteriores e exige
 OHLCV para o motor, além das `required_columns` opcionais da estratégia.
 `Strategy.required_columns` tem o padrão anterior; componentes de fechamento
 podem ser qualificados separadamente de OHLCV completo.
