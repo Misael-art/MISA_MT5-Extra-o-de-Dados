@@ -7,7 +7,7 @@ import pandas as pd
 from sqlalchemy import inspect, text
 
 TABLE = "_instrument_facts"
-KINDS = frozenset({"specification", "adjustment", "rollover", "universe", "series"})
+KINDS = frozenset({"specification", "adjustment", "expiration", "rollover", "universe", "series"})
 _COLUMNS = ["revision_id", "symbol", "kind", "event_key", "valid_from", "valid_to", "known_at",
             "source", "payload_json", "recorded_at"]
 
@@ -59,6 +59,7 @@ def _payload(kind, payload, *, historical=False):
         allowed = {
             "adjustment": {"method", "factor", "offset", "reason"},
             "rollover": {"from_contract", "to_contract", "method", "factor", "offset"},
+            "expiration": {"contract", "settlement"},
             "universe": {"member", "universe"},
             "series": {"role", "execution_symbol", "adjustment_basis"},
         }[kind]
@@ -82,6 +83,10 @@ def _payload(kind, payload, *, historical=False):
                 _label(data.get(key), key, symbol=True)
             if data["from_contract"] == data["to_contract"]:
                 raise ValueError("Rolagem precisa distinguir os dois contratos.")
+        if kind == "expiration":
+            _label(data.get("contract"), "Contrato", symbol=True)
+            if data.get("settlement", "unknown") not in ("cash", "physical", "unknown"):
+                raise ValueError("Informe liquidação cash, physical ou unknown conforme a fonte.")
         if kind == "universe":
             if type(data.get("member")) is not bool:
                 raise ValueError("Participação no universo precisa ser true ou false, sem inferir pela base atual.")
@@ -115,6 +120,8 @@ def record(db, symbol, kind, payload, *, source, known_at, valid_from=None, vali
     if end is not None and (begin is None or pd.Timestamp(end) <= pd.Timestamp(begin)):
         raise ValueError("Fim da vigência precisa ser posterior ao início.")
     data = _payload(kind, payload, historical=begin is not None)
+    if kind == "expiration" and begin is None:
+        raise ValueError("Vencimento exige instante UTC declarado em valid_from; não infira a data pelo símbolo.")
     default_key = f"{data['universe']}:{begin}" if kind == "universe" else begin or "current_observation"
     key = _label(event_key or default_key, "Chave do evento")
     content = dict(symbol=symbol, kind=kind, event_key=key, valid_from=begin, valid_to=end,
@@ -210,34 +217,56 @@ def universe_at(db, universe, at, *, known_at=None):
 
 def context(frame, bars, offset):
     """Qualifica o período por conhecimento em cada barra, sem aplicar transformações implícitas."""
-    refs, payloads, missing = [], set(), 0
+    refs, payloads, missing, late = [], set(), 0, set()
+    retrospective_cutoff = max(frame.known_at) if not frame.empty else None
     times = pd.DatetimeIndex(pd.to_datetime(bars.time))
     times = times.tz_localize("UTC") - pd.Timedelta(hours=float(offset)) if times.tz is None else times.tz_convert("UTC")
     # Uma seleção só muda nas fronteiras de vigência/conhecimento, não em cada barra.
     boundaries = pd.DatetimeIndex(pd.to_datetime(frame[["valid_from", "valid_to", "known_at"]].stack(), utc=True, format="ISO8601")).unique().sort_values()
     slots = pd.Series(boundaries.searchsorted(times, side="right"))
     samples = [(times[group.index[0]], len(group)) for _, group in slots.groupby(slots)]
-    roles = set()
+    roles, execution_symbols = set(), set()
     for instant, count in samples:
         fact = specification(frame, instant)
+        retrospective = specification(frame, instant, known_at=retrospective_cutoff) if retrospective_cutoff else None
+        if retrospective is not None and (fact is None or fact["payload_json"] != retrospective["payload_json"]):
+            late.add(retrospective["revision_id"])
+        elif fact is not None and retrospective is None:
+            corrections = frame[(frame.kind == "specification") & (frame.event_key == fact["event_key"]) &
+                                (pd.to_datetime(frame.known_at, utc=True, format="ISO8601") > instant)]
+            late.update(corrections.revision_id.tolist())
         if fact is None:
             missing += count
         else:
             refs.append(fact["revision_id"])
             payloads.add(fact["payload_json"])
     status = "unknown" if missing == len(bars) else "partial" if missing else "varying" if len(payloads) > 1 else "known"
+    if late:
+        status = "late_revision"
     kinds = set(frame.kind) if not frame.empty else set()
     for instant, _ in samples:
         for _, row in select(frame, "series", instant).iterrows():
-            roles.add(json.loads(row.payload_json)["role"])
+            payload = json.loads(row.payload_json)
+            roles.add(payload["role"])
+            if payload["role"] == "executable_contract":
+                execution_symbols.add(payload["execution_symbol"])
+    expired = set()
+    for instant, _ in samples:
+        for _, row in select(frame, "expiration", instant, known_at=retrospective_cutoff).iterrows():
+            expired.add(json.loads(row.payload_json)["contract"])
     return {"version": 1, "specification_status": status, "specification_revisions": sorted(set(refs)),
             "current_observation_revisions": sorted(frame.loc[
                 (frame.kind == "specification") & frame.valid_from.isna(), "revision_id"].tolist()),
+            "late_specification_revisions": sorted(late),
             "missing_specification_bars": missing, "specification_value_sets": len(payloads),
             "knowledge_basis": "bar_time", "interval_basis": "utc_half_open",
             "series_role": next(iter(roles)) if len(roles) == 1 else "mixed" if roles else "unknown",
+            "execution_symbols": sorted(execution_symbols),
             "adjustments_status": "declared_not_applied" if "adjustment" in kinds else "source_unavailable",
             "rollovers_status": "declared_not_executed" if "rollover" in kinds else "source_unavailable",
+            "expirations_status": "declared_not_settled" if "expiration" in kinds else "source_unavailable",
+            "expired_contracts": sorted(expired),
+            "expiration_knowledge_basis": "latest_declared_fact_not_strategy_input",
             "universe_status": "declared" if "universe" in kinds else "source_unavailable",
             "session_basis": "observed_calendar_separate"}
 
@@ -260,6 +289,8 @@ def validate_history(frame):
             utc(row["valid_to"])
             if row["valid_from"] is None or pd.Timestamp(row["valid_to"]) <= pd.Timestamp(row["valid_from"]):
                 raise ValueError("Histórico do instrumento sem integridade; intervalo inválido.")
+        if row["kind"] == "expiration" and row["valid_from"] is None:
+            raise ValueError("Histórico do vencimento sem integridade; instante ausente.")
         _payload(row["kind"], json.loads(row["payload_json"]), historical=row["valid_from"] is not None)
         content = {k: row[k] for k in _COLUMNS if k not in ("revision_id", "recorded_at")}
         if hashlib.sha256(_json(content).encode("utf-8")).hexdigest() != row["revision_id"]:
@@ -267,6 +298,12 @@ def validate_history(frame):
 
 
 def require_supported_spec(spec):
+    if spec.provenance.get("late_specification_revisions"):
+        raise ValueError("Revisão tardia contradiz a especificação disponível nas barras; o motor não concilia "
+                         "conhecimento e execução dessas propriedades. Separe a evidência antes de simular.")
+    if {spec.symbol, *spec.provenance.get("execution_symbols", ())} & set(spec.provenance.get("expired_contracts", ())):
+        raise ValueError("O contrato vence no período ou já estava vencido; o motor não modela a liquidação. "
+                         "Selecione período anterior ao vencimento ou um contrato vigente.")
     if spec.provenance.get("specification_value_sets", 0) > 1:
         raise ValueError("Propriedades de contrato variam no período; o motor usa especificação constante. "
                          "Separe períodos por vigência antes de simular; não use a propriedade atual como histórica.")

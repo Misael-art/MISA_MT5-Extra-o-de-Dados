@@ -130,12 +130,15 @@ def test_rollover_adjustment_and_continuous_series_are_facts_not_implicit_orders
     options = dict(source="reference_bulletin", valid_from=FIRST, known_at=OBSERVED)
     instruments.record(db, "X", "series", {"role": "continuous_study", "adjustment_basis": "ratio"}, **options)
     instruments.record(db, "X", "rollover", {"from_contract": "XF25", "to_contract": "XG25", "method": "none"}, **options)
+    instruments.record(db, "X", "expiration", {"contract": "XF25", "settlement": "cash"}, **options)
     instruments.record(db, "X", "adjustment", {"method": "ratio", "factor": 0.5, "reason": "declared_split"}, **options)
     after = datasets.capture(db, "X", "H1")
     assert before.manifest_id != after.manifest_id
     context = after.spec.provenance
     assert context["series_role"] == "continuous_study"
     assert context["rollovers_status"] == "declared_not_executed"
+    assert context["expirations_status"] == "declared_not_settled"
+    assert context["expired_contracts"] == ["XF25"]
     assert context["adjustments_status"] == "declared_not_applied"
     pd.testing.assert_frame_equal(before.bars, after.bars)  # Nenhum ajuste inventado/aplicado duas vezes.
     instruments.record(db, "XF25", "series", {"role": "executable_contract", "execution_symbol": "XF25"}, **options)
@@ -278,3 +281,36 @@ def test_existing_symbol_names_with_separators_remain_valid(db):
     snapshot = datasets.capture(db, symbol, "H1")
     assert snapshot.spec.symbol == symbol and snapshot.spec.volume_step == 1
     assert snapshot.spec.provenance["specification_revisions"] == [revision]
+
+
+@pytest.mark.parametrize("known_at", [OBSERVED, "2025-01-07T00:00:00Z"])
+def test_expiration_is_explicit_and_period_after_maturity_is_not_simulated_as_executable(db, known_at):
+    from mt5_extracao.strategies.backtester import run_backtest
+    record(db)
+    instruments.record(db, "X", "series", {"role": "executable_contract", "execution_symbol": "X"},
+                       source="exchange", valid_from=FIRST, known_at=OBSERVED)
+    instruments.record(db, "X", "expiration", {"contract": "X", "settlement": "physical"}, source="exchange",
+                       valid_from="2025-01-06T03:00:00Z", known_at=known_at)
+    snapshot = datasets.capture(db, "X", "H1")
+    assert snapshot.spec.provenance["expired_contracts"] == ["X"]
+    assert snapshot.spec.provenance["execution_symbols"] == ["X"]
+    with pytest.raises(ValueError, match="vence no período"):
+        run_backtest(snapshot.bars, Manual(), snapshot.spec)
+    before = datasets.capture(db, "X", "H1", end="2025-01-06 02:00:00")
+    assert before.spec.provenance["expired_contracts"] == []
+    assert run_backtest(before.bars, Manual(), before.spec).trades == []
+
+
+@pytest.mark.parametrize("correction", ["changed_value", "withdrawn_validity"])
+def test_late_correction_is_not_reported_as_historically_known_execution(db, correction):
+    from mt5_extracao.strategies.backtester import run_backtest
+    record(db)
+    if correction == "changed_value":
+        revision = record(db, 2, valid_from="2025-01-06T03:00:00Z", known_at="2025-01-07T00:00:00Z")
+    else:
+        revision = record(db, valid_to="2025-01-06T03:00:00Z", known_at="2025-01-07T00:00:00Z")
+    snapshot = datasets.capture(db, "X", "H1")
+    assert snapshot.spec.provenance["specification_status"] == "late_revision"
+    assert snapshot.spec.provenance["late_specification_revisions"] == [revision]
+    with pytest.raises(ValueError, match="Revisão tardia"):
+        run_backtest(snapshot.bars, Manual(), snapshot.spec)

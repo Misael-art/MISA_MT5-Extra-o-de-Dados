@@ -3,14 +3,14 @@
 ## T20.5 — vigência de instrumentos (2026-10-18)
 
 [Fonte e decisões](analytics/T20.5_VIGENCIA_INSTRUMENTOS.md). Histórico aditivo de
-especificações, ajustes/rolagens, papel da série e universo, com vigência e
+especificações, ajustes/vencimentos/rolagens, papel da série e universo, com vigência e
 conhecimento independentes. Manifesto 2 preserva os fatos; produtor anterior
 formato 1 importado/exportado por bytes no teste, sem regravar revisões antigas.
 Especificação atual não recebe vigência retroativa. Cobertura histórica constante
 usa os fatos, mesmo com cache atual diferente. Variação de propriedades é
 identificada e recusada pelos motores de especificação constante. Série contínua
 permanece estudo; eventos declarados não são transformações ou ordens implícitas.
-Regressão direcionada: 81 aprovados; PostgreSQL 16 isolado: 7 aprovados; doctor
+Regressão direcionada: 85 aprovados; PostgreSQL 16 isolado: 7 aprovados; doctor
 16 OK/2 avisos/0 falhas. Suíte completa em execução. Windows físico pendente.
 [PR #109](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/109) sobre T20.4; nenhuma alteração de produção H/S ou contratação.
 
@@ -63,7 +63,7 @@ re-simulação. Métricas recusam PnL inválido, mantendo PF canônico v1 e os
 estados legítimos sem operações/sem perdas. Sem mudança de banco ou contratos H/S.
 
 Verificação direcionada: 96 aprovados, uma pendência PostgreSQL existente.
-Suíte completa do runtime alterado: 1081 aprovados, nove pendências existentes,
+Suíte completa do runtime alterado: 1085 aprovados, nove pendências existentes,
 três avisos, 1179,37 s, saída 0. Doctor: 16 OK/2 avisos/0 falhas.
 [PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106) em revisão
 como rascunho, separado da base documental. Próximo recorte: T20.3.
