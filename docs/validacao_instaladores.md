@@ -161,4 +161,6 @@ Linux/Wine e caminhos Windows simulados não substituem esses ensaios físicos.
   conferindo relógio da fonte, parciais/ciclos e corte `--as-of`. Não equivale a validar fills nativos.
 - [ ] Conferir base antiga sem diário e recusa de resultado adulterado, preservando ledger/snapshot.
 
-Linux e PostgreSQL isolado têm provas dirigidas; a suíte final da tarefa está pendente.
+Linux: suíte final 1381 aprovados/12 pulos/3 avisos, saída 0; PostgreSQL
+isolado: 10 aprovados, container removido; doctor:16 OK/2 avisos/0 falhas.
+Essas provas não substituem Windows físico.

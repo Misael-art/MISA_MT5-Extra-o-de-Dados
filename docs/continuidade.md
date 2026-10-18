@@ -988,7 +988,7 @@ local completa. Windows físico e revisão independente permanecem pendentes.
 registry/Composer/registro estatístico ausentes; o histórico nativo continua sem
 identidade suficiente para cache entre experimentos. [Contratos e limites](analytics/T20.25_CACHE_ISOLAMENTO.md).
 
-## T19.14 — Trajetórias temporais (em validação final)
+## T19.14 — Trajetórias temporais (em revisão)
 
 Relógios explícitos, trajetórias disponíveis de preço e diários de ciclos/parciais
 foram integrados ao ledger por sidecar aditivo versionado. Publicação Python e
@@ -1003,8 +1003,12 @@ Baseline: 1280/11/3. Dirigidos finais: 100 em 98,61 s; PostgreSQL16 isolado:
 BENCH/M15/4000 barras: hashes de trades/curvas/métricas iguais; publicação
 0,968→1,737 s e banco 1,137→2,070 MiB, com 2733 observações. Leitura de cópia de
 artefato nativo anterior preservou origem e explicitou cobertura só de endpoints;
-não foi novo replay nem trajetória contínua. Suíte completa final em execução,
-com fontes congeladas por hash. Windows físico e revisão independente pendentes.
+não foi novo replay nem trajetória contínua. Suíte completa final: 1381 aprovados,
+12 pulos e 3 avisos em 1378,80 s, saída 0, com Xvfb privado e fontes intactas
+por hash. Omissão inicial na expectativa da assinatura SDK foi corrigida
+com oito testes de compatibilidade, preservando a tentativa reprovada.
+[PR113](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/113), sobre
+T20.25/PR112. Windows físico e revisão independente pendentes.
 
 O dono é `trade_analytics`, consumindo ledger F16, snapshots T20.4/6 e motores
 existentes. A exportação permanente H/T16.2b-H e o registro T20.12 não são

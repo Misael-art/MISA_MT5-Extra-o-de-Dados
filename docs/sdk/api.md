@@ -259,7 +259,7 @@ O manifesto da sessão contém `owner_store`, vínculo sem URI/senha ao banco cr
 `list_sessions/move_session` preservam perfis de outro banco e perfis antigos sem
 vínculo verificável, mesmo quando dois bancos usam o mesmo prefixo Wine.
 
-## T19.14 — Observações e consulta de trajetórias (em implementação)
+## T19.14 — Observações e consulta de trajetórias
 
 `run_backtest(..., observation_timeframe="M15")` e
 `execution.engine.simulate(..., observation_timeframe="M15")` acrescentam
