@@ -61,9 +61,25 @@ def _bars_part(db, part: pd.DataFrame, known: dict) -> str:
     return "|".join(pieces)
 
 
-def signature(db, config, part: pd.DataFrame, common: Optional[str] = None, *, bars_cache=None) -> str:
-    common = common if common is not None else f"{enrich.FEATURE_VERSION}|{_settings_part(config)}|{_calendar_part(db)}"
-    bars = _bars_part(db, part, {} if bars_cache is None else bars_cache)
+def _snapshot(db, part):
+    from mt5_extracao.analytics import datasets
+    ids = part["run_id"].drop_duplicates().tolist()
+    snapshots = [datasets.for_run(db, ident) for ident in ids]
+    if any(s is not None for s in snapshots) and len(ids) != 1:
+        raise ValueError("Agrupe por run antes de consultar uma revisão fixada de dados.")
+    return snapshots[0] if len(snapshots) == 1 else None
+
+
+def signature(db, config, part: pd.DataFrame, common: Optional[str] = None, *, bars_cache=None, snapshot=...) -> str:
+    snapshot = _snapshot(db, part) if snapshot is ... else snapshot
+    source = "snapshot" if snapshot is not None else _calendar_part(db)
+    common = common if common is not None else f"{enrich.FEATURE_VERSION}|{_settings_part(config)}|{source}"
+    if snapshot is not None:
+        for symbol, tf in set(zip(part["symbol"], part["timeframe"])):
+            snapshot.view().load_ohlcv(symbol, tf)
+        bars = snapshot.manifest_id
+    else:
+        bars = _bars_part(db, part, {} if bars_cache is None else bars_cache)
     return hashlib.sha1(f"{common}|{_trades_part(part)}|{bars}".encode("utf-8")).hexdigest()[:20]
 
 
@@ -98,20 +114,22 @@ def features(db, config, trades: pd.DataFrame) -> pd.DataFrame:
     if trades is None or trades.empty:
         return pd.DataFrame(columns=list(enrich.COLUMNS))
     _ensure(db)
-    common = f"{enrich.FEATURE_VERSION}|{_settings_part(config)}|{_calendar_part(db)}"
+    common = f"{enrich.FEATURE_VERSION}|{_settings_part(config)}"
     with db.engine.connect() as conn:
         known = dict(conn.execute(text(f"SELECT run_id, signature FROM {RUNS}")).fetchall())
     fresh, stale = [], []
     bars_cache = {}
     for run_id, part in trades.groupby("run_id", sort=False):
-        sig = signature(db, config, part, common, bars_cache=bars_cache)
-        (fresh if known.get(run_id) == sig else stale).append((run_id, part, sig))
+        snapshot = _snapshot(db, part)
+        source = "snapshot" if snapshot is not None else _calendar_part(db)
+        sig = signature(db, config, part, common + "|" + source, bars_cache=bars_cache, snapshot=snapshot)
+        (fresh if known.get(run_id) == sig else stale).append((run_id, part, sig, snapshot))
     parts = []
     if fresh:
-        cached = _load(db, [r for r, _, _ in fresh])
+        cached = _load(db, [r for r, _, _, _ in fresh])
         parts.append(cached)
-    for run_id, part, sig in stale:
-        feats = enrich.enrich(db, config, part)
+    for run_id, part, sig, snapshot in stale:
+        feats = enrich.enrich(snapshot.view() if snapshot is not None else db, config, part)
         try:
             _store(db, run_id, sig, feats)
         except Exception as e:            # cache é otimização: falhar ao gravar não impede a análise

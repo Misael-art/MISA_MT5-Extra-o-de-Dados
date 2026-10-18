@@ -46,7 +46,7 @@ def downsample(points: List[list], max_points: int = MAX_CURVE_POINTS) -> List[l
 
 def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
                params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None,
-               real_spread: bool = True, cashflows=None) -> dict:
+               real_spread: bool = True, cashflows=None, data_manifest_id=None) -> dict:
     """
     Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia').
     `strategy` permite passar a estratégia já montada (ex.: uma DeclaredStrategy), em vez de buscá-la pela chave
@@ -59,12 +59,21 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     from mt5_extracao import timeframes
     from mt5_extracao.strategies import get_strategy, research, specs
     from mt5_extracao.strategies.backtester import run_backtest
+    from mt5_extracao.analytics import datasets
     if strategy is None and robot.kind != catalog.PYTHON:
         raise ValueError("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5: use run_mql5.")
     tf = timeframes.parse(timeframe)
     if tf is None:
         raise ValueError(f"Timeframe inválido: {timeframe}")
-    df = db.load_ohlcv(symbol, tf.label, start, end)
+    snapshot = datasets.load(db, data_manifest_id) if data_manifest_id is not None else datasets.capture(
+        db, symbol, tf.name, start, end)
+    if snapshot.manifest["symbol"] != symbol or snapshot.manifest["timeframe"] != tf.name:
+        raise ValueError("Manifesto não corresponde ao ativo/timeframe; escolha a revisão correta.")
+    if data_manifest_id is not None:
+        for key, value in (("start", start), ("end", end)):
+            if value is not None and datasets.selection_time(value) != snapshot.manifest["selection"][key]:
+                raise ValueError("Manifesto não corresponde ao período pedido; capture outra seleção de dados.")
+    df = snapshot.bars
     if df.empty:
         raise ValueError(research.missing_message([symbol], tf))
     if strategy is None:
@@ -72,7 +81,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     if len(df) < strategy.min_bars:
         raise ValueError(f"Poucas barras para {strategy.info.name}: {len(df)} no período (mínimo {strategy.min_bars}). "
                          "Escolha um período maior ou extraia mais histórico.")
-    spec = specs.load_spec(db, symbol)
+    spec = snapshot.spec
     settings = research.backtest_config(config)
     if not real_spread:
         import dataclasses
@@ -86,12 +95,14 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     result = run_backtest(df, strategy, spec, settings, start_index=start_index, cashflows=cashflows)
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
+                   data_manifest_id=snapshot.manifest_id, data_provenance_status="frozen_reference",
                    spec_known=bool(spec.known), real_spread=bool(settings.real_spread and spec.spread_by_hour),
                    initial_equity=float(settings.initial_equity),
                    risk_per_trade=float(settings.risk_per_trade))
     run = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,
+           "data_manifest_id": snapshot.manifest_id, "data_provenance_status": "frozen_reference",
            "equity": downsample(equity_curve(result.trades, settings.initial_equity, df["time"].iloc[0])),
            "account_balance": [[str(t), float(v)] for t, v in result.account_balance.items()],
            "floating_equity": [[str(t), float(v)] for t, v in result.floating_equity.items()],

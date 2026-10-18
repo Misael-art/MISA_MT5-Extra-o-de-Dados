@@ -157,7 +157,10 @@ def test_martingale_only_for_robots_that_support_it(tmp_path):
     assert all(v["metrics"]["n"] == grids["ponto_fixo"]["metrics"]["n"] for v in grids.values())
     assert grids["gradiente_fixo"]["adds"] >= 0 and grids["gradiente_fixo"]["max_volume"] >= 1
     mart = _robot([("InpLotMultiplier", 2, "multiplicador de lote")], facts={"risk_pct": 1.0})
-    table = runner.compare(db, None, run["run_id"], ["ponto_fixo", "martingale", "anti_martingale"], robot=mart)
+    table = runner.compare(db, None, run["run_id"], ["ponto_fixo", "martingale", "anti_martingale"], robot=mart, save=True)
+    from mt5_extracao.analytics import datasets
+    for mode in ("ponto_fixo", "martingale", "anti_martingale"):
+        assert datasets.for_run(db, run["run_id"] + "#" + mode).manifest_id == run["data_manifest_id"]
     assert table["martingale"]["study_only"] and "triggers" in table["martingale"]["sequence"]
     assert table["martingale"]["floating_equity"] is None
     assert table["martingale"]["valuation"]["status"] == "unavailable"

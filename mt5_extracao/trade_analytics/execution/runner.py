@@ -67,7 +67,13 @@ def inputs(db, config, run_id: str) -> dict:
     tf = timeframes.parse(first["timeframe"]) if first["timeframe"] else None
     if tf is None:
         raise ValueError(f"Run {run_id} sem timeframe conhecido.")
-    bars = db.load_ohlcv(first["symbol"], tf.label)
+    from mt5_extracao.analytics import datasets
+    record = _source_record(db, run_id, first.get("source"))
+    snapshot = datasets.for_run(db, run_id)
+    if snapshot is None and record is not None and record.get("data_manifest_id"):
+        snapshot = datasets.for_run(db, record["run_id"])
+    bars = snapshot.view().load_ohlcv(first["symbol"], tf.label) if snapshot is not None else db.load_ohlcv(
+        first["symbol"], tf.label)
     if bars.empty:
         raise ValueError(f"Sem barras de {first['symbol']} {tf.label} na base: extraia o histórico antes de re-simular.")
     bars = bars.sort_values("time").reset_index(drop=True)
@@ -80,9 +86,10 @@ def inputs(db, config, run_id: str) -> dict:
             atr = None
     if atr is None:
         atr = indicators.atr(bars, 14)
-    record = _source_record(db, run_id, first.get("source"))
     flows = _cashflows(record, bars)
-    return {"trades": trades, "bars": bars, "spec": specs.load_spec(db, first["symbol"]),
+    return {"trades": trades, "bars": bars, "spec": snapshot.spec if snapshot is not None else specs.load_spec(db, first["symbol"]),
+            "data_manifest_id": snapshot.manifest_id if snapshot is not None else None,
+            "data_provenance_status": "frozen_reference" if snapshot is not None else "legacy_current_data",
             "cfg": research.backtest_config(config), "atr": atr, "robot_key": first["robot_key"],
             "symbol": first["symbol"], "timeframe": first["timeframe"], "cashflows": flows,
             "source_run_id": record["run_id"] if record else None,
@@ -99,6 +106,9 @@ def resimulate(db, config, run_id: str, policy: Optional[engine.ExitPolicy] = No
     if result.valuation["cashflow_source"] in ("legacy_unknown", "unspecified"):
         result.valuation["status"] = "limited"
     if save:
+        if data.get("data_manifest_id") is not None:
+            from mt5_extracao.analytics import datasets
+            datasets.bind(db, f"{run_id}#{mode}", data["data_manifest_id"])
         ledger.save_trades(db, f"{run_id}#{mode}", result.trades, robot_key=data["robot_key"], symbol=data["symbol"],
                            timeframe=data["timeframe"], source=RESIM_PREFIX + mode)
     return result
@@ -154,6 +164,9 @@ def compare(db, config, run_id: str, modes_wanted=None, params: Optional[dict] =
                         "metrics": stats.metrics(rows["pnl"], initial,
                                                  rows["r_multiple"] * rows["volume"] / base_volume)}
             if save:
+                if data.get("data_manifest_id") is not None:
+                    from mt5_extracao.analytics import datasets
+                    datasets.bind(db, f"{run_id}#{key}", data["data_manifest_id"])
                 ledger.save_trades(db, f"{run_id}#{key}", rows.to_dict("records"), robot_key=data["robot_key"],
                                    symbol=data["symbol"], timeframe=data["timeframe"], source=RESIM_PREFIX + key)
             continue

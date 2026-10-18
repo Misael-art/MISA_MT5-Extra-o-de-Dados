@@ -1,5 +1,15 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.4 — revisões de dados (2026-10-18)
+
+Serviço canônico aditivo de blocos/manifestos/referências, captura em uma imagem
+de leitura, replay Python/livro e cache com revisão fixada. Export/import verifica
+hashes sem substituir barras do destino. [Contrato e limites](analytics/T20.4_MANIFESTOS_DADOS.md).
+PostgreSQL 16 isolado: sete testes aprovados; suíte completa Linux em execução.
+T20.3 recebeu correção do leitor de fluxos/descendentes no PR #107: suíte final
+1103 aprovados/9 pulos existentes/3 avisos em 1009,28 s, doctor 16/2/0.
+Windows físico pendente; nenhuma alegação de integração ou roadmap concluído.
+
 ## T20.3 — curvas patrimoniais e comparação nativa (2026-10-17)
 
 [Decisões e limites](analytics/T20.3_PATRIMONIO_FLUTUANTE.md). Mantida a curva

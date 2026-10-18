@@ -60,6 +60,23 @@ def test_save_upsert_and_read_back(pg):
     assert pg.get_last_timestamp("win_n_1_minuto") == dt.datetime(2024, 1, 2, 13, 59)
     before = pg.get_rows_before("win_n_1_minuto", df["time"][100], 20)
     assert len(before) == 20 and before["time"].iloc[-1] == df["time"][99]
+    # T20.4: capturar e reler uma revisão não segue as correções da tabela atual.
+    from mt5_extracao.analytics import datasets
+    snapshot = datasets.capture(pg, "WIN$N", "M1")
+    with pg.engine.begin() as conn:
+        conn.execute(text("UPDATE win_n_1_minuto SET close=9"))
+    assert datasets.load(pg, snapshot.manifest_id).bars.close.iloc[0] == 1
+    assert datasets.capture(pg, "WIN$N", "M1").manifest_id != snapshot.manifest_id
+    # O isolamento declarado precisa existir no backend, não só numa configuração Python.
+    with pg.consistent_read() as conn:
+        assert conn.exec_driver_sql("SHOW transaction_isolation").scalar() == "repeatable read"
+        assert conn.exec_driver_sql("SHOW transaction_read_only").scalar() == "on"
+        assert pg.load_ohlcv("WIN$N", "1 minuto", connection=conn).close.iloc[0] == 9
+        # Outra conexão publica uma correção enquanto a imagem anterior permanece aberta.
+        with pg.engine.begin() as writer:
+            writer.execute(text("UPDATE win_n_1_minuto SET close=10"))
+        assert pg.load_ohlcv("WIN$N", "1 minuto", connection=conn).close.iloc[0] == 9
+    assert pg.load_ohlcv("WIN$N", "1 minuto").close.iloc[0] == 10
 
 
 def test_control_tables_and_helpers(pg):

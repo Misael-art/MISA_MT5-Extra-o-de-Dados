@@ -88,7 +88,9 @@ def _percentile(window: np.ndarray, value: float) -> Optional[float]:
 def _events_index(db, config, symbols):
     """Eventos unidos por ativo (vazio se não houver calendário)."""
     from mt5_extracao.trade_analytics import calendar as cal
-    events = cal.merged(db)
+    events = getattr(db, "snapshot_events", None)
+    if events is None:
+        events = cal.merged(db)
     if events.empty:
         return {}
     mapping = cal.parse_mapping(config.get(SECTION, "event_symbols", fallback="") if config is not None else "")
