@@ -975,8 +975,9 @@ cooperativo. Perfis recusados antes da compilação podem comprovar liberação 
 ser recolhidos por quarentena reversível. Referências SQL, inclusive o livro CSV
 fora do perfil, permanecem protegidas.
 
-Suíte após a proteção de cópias:1276aprovados/11pulos/3avisos1590,28s, saída0.
-A proteção adicional do campo trades_csv passou em65testes de retenção/recursos;
+Suíte após proteção do livro CSV:1277aprovados/11pulos/3avisos1349,91s, saída0.
+O vínculo ao banco criador passou em133testes dirigidos e15de retenção; outro
+banco não pode recolher o perfil e identidades desconhecidas são preservadas.
 114 testes cobrem preparação/posse/budget/tester. PostgreSQL9 e doctor16/2/0
 aprovados. Ensaio real Wine repetido: SDK padrão, uma operação reconciliada,
 origem/CSV compartilhado preservados e processos liberados. Quarentena e

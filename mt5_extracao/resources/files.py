@@ -287,6 +287,31 @@ def restore_backup(db, config, backup_path, origin: str = "ui") -> dict:
 
 # --- perfis privados: retirada reversível, sem apagar relatórios -----------------------------
 
+def session_owner_key(db):
+    """Vínculo ao banco criador, sem guardar URI nem credenciais no manifesto."""
+    import hashlib
+    try:
+        url = db.engine.url
+        backend = url.get_backend_name()
+        if backend == "sqlite":
+            if not url.database or url.database == ":memory:" or url.query.get("mode") == "memory":
+                return None
+            path = Path(url.database).expanduser().resolve()
+            info = path.stat()
+            identity = [backend, os.path.normcase(str(path)), info.st_dev, info.st_ino]
+        elif backend == "postgresql":
+            # Usuário/options distinguem namespaces/RLS; senha não faz parte da identidade.
+            if not url.host:
+                return None
+            identity = [backend, url.host, url.port or 5432, url.database,
+                        url.username, url.query.get("options", "")]
+        else:
+            return None
+        return hashlib.sha256(json.dumps(identity, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+    except (AttributeError, OSError, TypeError, ValueError):
+        return None
+
+
 def _session_path(config, session_id, quarantined=False):
     import re
     from mt5_extracao.robots.sessions import session_root
@@ -360,6 +385,9 @@ def list_sessions(db, config):
                 _session_path(config, directory.name, quarantined)
                 payload = _session_manifest(directory)
                 item["state"] = payload["state"]
+                owner = session_owner_key(db)
+                if owner is None or payload.get("owner_store") != owner:
+                    raise ValueError("Perfil de outro banco ou sem vínculo verificável; arquivos preservados.")
                 if not quarantined and _session_referenced(db, config, directory):
                     item["reason"] = "Artefatos referenciados por execução ou catálogo."
                 else:
@@ -382,6 +410,9 @@ def move_session(db, config, session_id, *, restore=False, origin="ui"):
                 source = _session_path(config, session_id, restore)
                 destination = _session_path(config, session_id, not restore)
                 payload = _session_manifest(source)
+                owner = session_owner_key(db)
+                if owner is None or payload.get("owner_store") != owner:
+                    raise ValueError("Perfil de outro banco ou sem vínculo verificável; arquivos preservados.")
                 if not restore and _session_referenced(db, config, source):
                     raise ValueError("A sessão tem artefatos referenciados; nenhum arquivo foi movido.")
                 if mt5_tools._native_context_processes({"directory": str(source),

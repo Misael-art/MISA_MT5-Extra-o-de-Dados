@@ -352,6 +352,8 @@ class Session:
         if mode not in ("play", "replay", "backtest"):
             raise ValueError("Modo de execução inválido.")
         self.db, self.config, self.robot = db, config, robot
+        from mt5_extracao.resources.files import session_owner_key
+        self.owner_store = session_owner_key(db)
         self.native_options, self.exception = native_options, None
         self.instrumented = False
         self.symbol, self.timeframe, self.preset, self.mode = symbol, timeframe, preset, mode
@@ -665,6 +667,7 @@ class Session:
                     native_lease.__exit__(None, None, None)
             if self.directory.exists():
                 payload = {"artifact_owner": "mt5x-session", "artifact_version": 1,
+                           "owner_store": self.owner_store,
                            "resources_released": resources_released, "resource_error": resource_error,
                            "wine_prefix": str(mt5_tools.wine_prefix(self.config) or ""),
                            "session": self.id, "mode": self.mode, "state": self.state, "error": self.error,

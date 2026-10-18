@@ -25,6 +25,7 @@ def context(tmp_path, monkeypatch):
     directory = sessions.session_root(config) / session_id
     directory.mkdir(parents=True)
     payload = {"artifact_owner": "mt5x-session", "artifact_version": 1, "session": session_id,
+               "owner_store": files.session_owner_key(db),
                "state": "completed", "resources_released": True, "finished_at": "2026-10-18T10:00:00",
                "wine_prefix": str(prefix)}
     (directory / "relatorio.json").write_text(json.dumps(payload))
@@ -105,3 +106,40 @@ def test_cli_lists_moves_and_restores_only_with_explicit_flag(context, tmp_path,
     assert cli.main(args + ["--quarantine", directory.name, "--yes"]) == cli.EXIT_OK
     assert "não libera espaço" in capsys.readouterr().out
     assert cli.main(args + ["--restore", directory.name, "--yes"]) == cli.EXIT_OK and directory.exists()
+
+
+def test_profile_referenced_by_another_database_is_preserved(context, tmp_path):
+    db, config, directory, payload = context
+    store.save_run(db, {"run_id": "source-result", "robot_key": "mql5:own", "source": "strategy tester",
+        "symbol": "EURUSD", "timeframe": "H1", "data_start": "", "data_end": "", "bars": 0,
+        "created_at": "2026-10-18", "metrics": {"artifact_directory": str(directory)}, "equity": []})
+    other = DatabaseManager(db_path=str(tmp_path / "other.sqlite"))
+    try:
+        result = files.move_session(other, config, directory.name)
+        assert not result["ok"] and "outro banco" in result["error"] and directory.exists()
+        assert not files.list_sessions(other, config)[0]["eligible"]
+    finally:
+        other.close()
+
+
+def test_legacy_profile_without_store_binding_is_preserved(context):
+    db, config, directory, payload = context
+    payload.pop("owner_store")
+    (directory / "relatorio.json").write_text(json.dumps(payload))
+    assert not files.move_session(db, config, directory.name)["ok"] and directory.exists()
+    assert not files.list_sessions(db, config)[0]["eligible"]
+
+
+def test_postgresql_owner_binding_does_not_depend_on_password():
+    from sqlalchemy.engine import make_url
+    from types import SimpleNamespace
+    first = make_url("postgresql+psycopg://analyst:dummy-first@localhost/research")
+    def wrapped(url):
+        return SimpleNamespace(engine=SimpleNamespace(url=url))
+    key = files.session_owner_key(wrapped(first))
+    assert key and len(key) == 64
+    assert files.session_owner_key(wrapped(first.set(password="dummy-second"))) == key
+    assert files.session_owner_key(wrapped(first.set(database="another"))) != key
+    assert files.session_owner_key(wrapped(first.set(username="another"))) != key
+    # O host pode ser um diretório de socket; casefold misturaria endereços POSIX.
+    assert files.session_owner_key(wrapped(first.set(host="/pg/A"))) != files.session_owner_key(wrapped(first.set(host="/pg/a")))

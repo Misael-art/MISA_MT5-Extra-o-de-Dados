@@ -253,3 +253,8 @@ consulta com volume de destino/reserva antes de copiar arquivos. O cancelamento
 é observado entre arquivos; a espera por processos mantém suas checagens atuais.
 A posse começa antes da preparação, permitindo recolher uma cópia recusada antes
 da compilação quando nenhum processo permaneceu ativo.
+
+
+O manifesto da sessão contém `owner_store`, vínculo sem URI/senha ao banco criador.
+`list_sessions/move_session` preservam perfis de outro banco e perfis antigos sem
+vínculo verificável, mesmo quando dois bancos usam o mesmo prefixo Wine.
