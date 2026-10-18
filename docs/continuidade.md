@@ -11,7 +11,8 @@ usa os fatos, mesmo com cache atual diferente. Variação de propriedades é
 identificada e recusada pelos motores de especificação constante. Série contínua
 permanece estudo; eventos declarados não são transformações ou ordens implícitas.
 Regressão direcionada: 85 aprovados; PostgreSQL 16 isolado: 7 aprovados; doctor
-16 OK/2 avisos/0 falhas. Suíte completa em execução. Windows físico pendente.
+16 OK/2 avisos/0 falhas. Suíte completa: 1137 aprovados, 9 pulos existentes e
+3 avisos em 1019,35 s, saída 0. Windows físico pendente. Próxima T20.6.
 [PR #109](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/109) sobre T20.4; nenhuma alteração de produção H/S ou contratação.
 
 ## T20.4 — revisões de dados (2026-10-18)
