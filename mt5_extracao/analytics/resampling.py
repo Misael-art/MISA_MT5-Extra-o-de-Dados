@@ -370,11 +370,14 @@ def _save_bars(db, bars):
 
 def latest_source_sequence(db, symbol, timeframe, *, connection=None):
     """Geração monotônica das últimas revisões derivadas, sem ler o histórico de barras."""
-    if db is None or getattr(db, "engine", None) is None or \
-            not inspect(db.engine).has_table("_analytics_source_sequences"):
+    if db is None or getattr(db, "engine", None) is None:
         return None
     target = parse_target(timeframe)
     with (nullcontext(connection) if connection is not None else db.engine.connect()) as conn:
+        # A guarda pode já deter lock de escrita: inclusive a inspeção precisa
+        # usar sua conexão, sem abrir outra conexão que bloqueie no próprio writer.
+        if not inspect(conn).has_table("_analytics_source_sequences"):
+            return None
         value = conn.execute(text(
             "SELECT sequence FROM _analytics_source_sequences WHERE symbol = :symbol AND tf = :tf"),
             {"symbol": str(symbol), "tf": target.label}).scalar()

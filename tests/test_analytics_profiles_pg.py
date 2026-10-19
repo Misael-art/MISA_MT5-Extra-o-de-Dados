@@ -288,3 +288,9 @@ def test_ao_ac_closed_bar_availability(pg):
 def test_ao_ac_late_revision_preserves_history(pg):
     from tests.test_ao_ac import test_late_source_correction_preserves_previous_asof
     test_late_source_correction_preserves_previous_asof(pg)
+
+
+
+def test_source_sequence_schema_inspection_stays_in_snapshot_transaction(pg):
+    from tests.test_indicator_consistency import test_source_sequence_uses_the_supplied_transaction_for_schema_inspection
+    test_source_sequence_uses_the_supplied_transaction_for_schema_inspection(pg)
