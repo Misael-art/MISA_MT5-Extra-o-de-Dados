@@ -137,7 +137,21 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         if any(not set(frame.observation_time).issubset(raw_starts) for frame in previous.values()):
             raise ValueError("O histórico derivado perdeu observações já materializadas. Restaure ou reconcilie "
                              "a revisão da fonte antes de retomar; valores anteriores foram preservados.")
-        chains = producers._prefix_source_revisions(producers._source_tokens(bars)) if not bars.empty else []
+        value_chains = producers._prefix_source_revisions(producers._source_tokens(bars)) if not bars.empty else []
+        chains, pivot_bars = value_chains, bars
+        has_pivots = any(ident.startswith("structure.") for ident in ids)
+        if has_pivots and not bars.empty:
+            # Não comprimir uma ausência conhecida na janela de pivôs. Gaps de
+            # calendário sem barra observada não são candles sintetizados.
+            raw_positions = {start: index for index, start in enumerate(raw.bar_start_utc)}
+            positions = [raw_positions[start] for start in bars.bar_start_utc]
+            pivot_bars = bars.copy()
+            pivot_bars["_pivot_reset_before"] = [i > 0 and position > positions[i - 1] + 1
+                                                 for i, position in enumerate(positions)]
+            raw_chains = producers._prefix_source_revisions(producers._source_tokens(raw))
+            # Mesmo inserir uma barra inelegível entre observações antigas muda
+            # o prefixo/checkpoint; os tokens elegíveis sozinhos não detectariam isso.
+            chains = [raw_chains[position] for position in positions]
         digest = hashlib.sha256(_json({"chain": chains[-1] if chains else None,
                                       "bars": len(bars), "sequence": sequence}).encode()).hexdigest()
         last_bar = bars.iloc[-1].bar_start_utc.isoformat() if not bars.empty else None
@@ -155,21 +169,28 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         # Inclui revisões que tornaram uma barra inelegível, sem antecipar sua remoção.
         corrections = []
         latest_correction = None
+        pivot_latest_correction, pivot_correction_by_start = None, {}
+        eligible_starts = set(bars.bar_start_utc) if not bars.empty else set()
         if not raw.empty:
             for row in raw.itertuples():
                 if row.revision > 1:
                     latest_correction = max(latest_correction, row.computed_at_utc) if latest_correction is not None else row.computed_at_utc
                 corrections.append((row.bar_start_utc, latest_correction))
+                if row.revision > 1 or row.bar_start_utc not in eligible_starts:
+                    pivot_latest_correction = max(pivot_latest_correction, row.computed_at_utc) if pivot_latest_correction is not None else row.computed_at_utc
+                pivot_correction_by_start[row.bar_start_utc] = pivot_latest_correction
         correction_by_start = dict(corrections)
 
         def records():
             if not bars.empty:
-                for item in indicator_registry.iter_core(bars, feature_ids=ids):
+                for item in indicator_registry.iter_core(pivot_bars, feature_ids=ids):
                     position = item["bar_index"]
                     if position < write_from:
                         continue
                     bar = bars.iloc[position]
-                    available = max(bar.bar_end_utc, correction_by_start.get(bar.bar_start_utc) or bar.bar_end_utc)
+                    is_pivot = "pivot_metadata" in item
+                    receipts = pivot_correction_by_start if is_pivot else correction_by_start
+                    available = max(bar.bar_end_utc, receipts.get(bar.bar_start_utc) or bar.bar_end_utc)
                     # real_volume_known prevalece sobre zero/valor preenchido pela fonte.
                     if item["feature_id"] == "volume.real" and (pd.isna(bar.get("real_volume_known")) or
                                                                  bar.get("real_volume_known") != 1):
@@ -187,13 +208,14 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                     if "pivot_metadata" in item:
                         pivot = item["pivot_metadata"]
                         metadata.update(pivot)
+                        metadata["source_scope"] = "causal_prefix_including_known_ineligible_bars"
                         metadata.update(calculation_bar_start_utc=bar.bar_start_utc.isoformat(),
                                         calculation_bar_end_utc=bar.bar_end_utc.isoformat())
                         if pivot.get("pivot_status") == "CONFIRMED":
                             origin = bars.iloc[pivot["pivot_origin_position"]]
                             confirmation = bars.iloc[pivot["pivot_confirmation_position"]]
                             known = max(confirmation.bar_end_utc,
-                                        correction_by_start.get(confirmation.bar_start_utc) or confirmation.bar_end_utc)
+                                        pivot_correction_by_start.get(confirmation.bar_start_utc) or confirmation.bar_end_utc)
                             metadata.update(pivot_origin_time_utc=origin.bar_start_utc.isoformat(),
                                             pivot_confirmation_time_utc=confirmation.bar_end_utc.isoformat(),
                                             pivot_known_at_utc=known.isoformat(),
@@ -206,7 +228,7 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                     yield dict(symbol=symbol, timeframe=label, feature_id=item["feature_id"],
                                algorithm_version=algorithm_version(item["feature_id"], implementation),
                                observation_time=bar.bar_start_utc, value=item["value"], available_at=available,
-                               observed_at=available, source_revision=chains[position],
+                               observed_at=available, source_revision=chains[position] if is_pivot else value_chains[position],
                                quality="VALID" if item["state"] == "AVAILABLE" else "UNAVAILABLE",
                                metadata=metadata)
             current = set(bars.bar_start_utc) if not bars.empty else set()

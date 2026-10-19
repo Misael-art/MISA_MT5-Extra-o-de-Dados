@@ -101,7 +101,7 @@ def _pivot_definitions():
     )
     result = []
     for prefix, name, warmup, params, formula in variants:
-        common = {**params, "missing_policy": "reset_window_and_levels", "value_basis": "confirmation_snapshot",
+        common = {**params, "missing_policy": "reset_window_and_levels_including_known_ineligible_bars", "value_basis": "confirmation_snapshot",
                   "plot_rule": "origin_only_with_confirmation_time; provisional_is_not_a_signal"}
         for output in ("top", "bottom", "provisional"):
             item = _definition("structure." + prefix + "_" + output, name + " " + output,

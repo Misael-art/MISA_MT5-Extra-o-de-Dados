@@ -288,3 +288,48 @@ def test_empty_missing_nonpositive_and_registry_future_extension(monkeypatch):
         raise AssertionError("Pivôs não dependem de cálculos legados")
     monkeypatch.setattr(indicator_registry, "_legacy_calculated_series", legacy_forbidden)
     assert indicator_registry.compute_core(frame, feature_ids=IDS) == whole
+
+
+
+def test_known_ineligible_bar_breaks_pivot_window_and_preserves_asof(db, monkeypatch):
+    seed(db, source_trap(50))
+    materializer.materialize(db, "TEST", "M5", feature_ids=IDS)
+    before = feature_store.query_as_of(db, "2026-09-02T00:00Z", symbol="TEST")
+    raw = resampling.latest_bars(db, "TEST", "M5", closed_only=False)
+    cutoff = pd.Timestamp("2026-10-20T12:00Z")
+    raw.loc[30, "quality_status"] = "PARTIAL"
+    raw.loc[30, "revision"] = 2
+    raw.loc[30, "computed_at_utc"] = cutoff
+    closed = raw.drop(index=30).reset_index(drop=True)
+    monkeypatch.setattr(resampling, "latest_source_sequence", lambda *a, **k: 2)
+    monkeypatch.setattr(resampling, "latest_bars", lambda *a, closed_only=True, **k: closed.copy() if closed_only else raw.copy())
+    materializer.materialize(db, "TEST", "M5", feature_ids=IDS)
+    pd.testing.assert_frame_equal(before, feature_store.query_as_of(db, cutoff - pd.Timedelta(nanoseconds=1), symbol="TEST"))
+    after = feature_store.query_as_of(db, cutoff, symbol="TEST")
+    for prefix, warmup in ((F, 5), (Z, 12)):
+        first = after[(after.feature_id == prefix + "top") & (after.observation_time == raw.iloc[31].bar_start_utc)].iloc[0]
+        assert first.quality == "UNAVAILABLE" and json.loads(first.metadata_json)["state"] == "WARMUP"
+        for offset in range(1, warmup):
+            row = after[(after.feature_id == prefix + "top") & (after.observation_time == raw.iloc[30 + offset].bar_start_utc)].iloc[0]
+            assert row.quality == "UNAVAILABLE"
+
+
+
+def test_new_known_ineligible_bar_invalidates_unchanged_eligible_prefix(db, monkeypatch):
+    seed(db, source_trap(50))
+    raw = resampling.latest_bars(db, "TEST", "M5", closed_only=False)
+    gap = raw.drop(index=30).reset_index(drop=True)
+    monkeypatch.setattr(resampling, "latest_source_sequence", lambda *a, **k: 1)
+    monkeypatch.setattr(resampling, "latest_bars", lambda *a, **k: gap.copy())
+    materializer.materialize(db, "TEST", "M5", feature_ids=IDS)
+    before = feature_store.query_as_of(db, "2026-09-02T00:00Z", symbol="TEST")
+    raw.loc[30, "quality_status"] = "PARTIAL"
+    raw.loc[30, "computed_at_utc"] = pd.Timestamp("2026-10-20T12:00Z")
+    raw.loc[30, "revision"] = 1
+    monkeypatch.setattr(resampling, "latest_source_sequence", lambda *a, **k: 2)
+    monkeypatch.setattr(resampling, "latest_bars", lambda *a, closed_only=True, **k: gap.copy() if closed_only else raw.copy())
+    result = materializer.materialize(db, "TEST", "M5", feature_ids=IDS)
+    assert result["write_from"] == 0 and result["revised"] > 0
+    pd.testing.assert_frame_equal(before, feature_store.query_as_of(db, "2026-10-20T11:59Z", symbol="TEST"))
+    after = feature_store.query_as_of(db, "2026-10-21T00:00Z", symbol="TEST")
+    assert json.loads(after[(after.feature_id == F+"top") & (after.observation_time == raw.iloc[31].bar_start_utc)].iloc[0].metadata_json)["state"] == "WARMUP"

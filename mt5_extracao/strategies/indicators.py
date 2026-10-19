@@ -256,7 +256,8 @@ def _pivot_inputs(bars):
     """Valores por posição, sem preencher ausências nem inferir ordem intrabarra."""
     columns = [pd.to_numeric(bars.get(name, pd.Series(np.nan, index=bars.index)), errors="coerce")
                .to_numpy(dtype=float) for name in ("high", "low")]
-    return columns[0], columns[1]
+    reset = bars.get("_pivot_reset_before", pd.Series(False, index=bars.index)).fillna(False).to_numpy(dtype=bool)
+    return columns[0], columns[1], reset
 
 
 def causal_fractals(bars, width=2):
@@ -268,9 +269,11 @@ def causal_fractals(bars, width=2):
     """
     if isinstance(width, bool) or not isinstance(width, int) or width < 1:
         raise ValueError("A largura do fractal precisa ser um inteiro positivo.")
-    high, low = _pivot_inputs(bars)
+    high, low, reset = _pivot_inputs(bars)
     result, start, levels = [], 0, {"top": None, "bottom": None}
     for i, (h, l) in enumerate(zip(high, low)):
+        if reset[i]:
+            start, levels = i, {"top": None, "bottom": None}
         valid = np.isfinite(h) and np.isfinite(l) and h >= l
         if not valid:
             start, levels = i + 1, {"top": None, "bottom": None}
@@ -307,10 +310,12 @@ def causal_zigzag(bars, depth=12, deviation=0.01, backstep=3):
             isinstance(deviation, bool) or not isinstance(deviation, (int, float, np.integer, np.floating)) or
             not np.isfinite(deviation) or not 0 < deviation < 1):
         raise ValueError("Confira depth>=2, 1<=backstep<depth e desvio percentual entre 0 e 1.")
-    high, low = _pivot_inputs(bars)
+    high, low, reset = _pivot_inputs(bars)
     result, start, candidate = [], 0, None
     levels = {"top": None, "bottom": None}
     for i, (h, l) in enumerate(zip(high, low)):
+        if reset[i]:
+            start, candidate, levels = i, None, {"top": None, "bottom": None}
         valid = np.isfinite(h) and np.isfinite(l) and h >= l > 0
         if not valid:
             start, candidate, levels = i + 1, None, {"top": None, "bottom": None}

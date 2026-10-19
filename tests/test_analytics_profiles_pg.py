@@ -305,3 +305,14 @@ def test_causal_pivots_source_correction_preserves_old_decisions(pg, tmp_path):
 def test_source_sequence_schema_inspection_stays_in_snapshot_transaction(pg):
     from tests.test_indicator_consistency import test_source_sequence_uses_the_supplied_transaction_for_schema_inspection
     test_source_sequence_uses_the_supplied_transaction_for_schema_inspection(pg)
+
+
+
+def test_pivot_known_ineligible_source_breaks_window(pg, monkeypatch):
+    from tests.test_causal_pivots import test_known_ineligible_bar_breaks_pivot_window_and_preserves_asof
+    test_known_ineligible_bar_breaks_pivot_window_and_preserves_asof(pg, monkeypatch)
+
+
+def test_pivot_new_ineligible_source_invalidates_prefix(pg, monkeypatch):
+    from tests.test_causal_pivots import test_new_known_ineligible_bar_invalidates_unchanged_eligible_prefix
+    test_new_known_ineligible_bar_invalidates_unchanged_eligible_prefix(pg, monkeypatch)
