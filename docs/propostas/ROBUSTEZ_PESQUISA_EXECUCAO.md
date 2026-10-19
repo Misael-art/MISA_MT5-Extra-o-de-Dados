@@ -49,7 +49,8 @@ apenas por existir uma implementação sem as provas adicionais exigidas.
 | Q15 | Orçamento, retomada e isolamento de tarefas | T11.5/6, F15, runner/cache/sessões | T20.24/25 |
 | Q16 | Extensibilidade, segurança e restauração | SDK/B-09/B-11, T9.2/3, J-09, F15 | T20.26–29 |
 
-T20.1 reconcilia cobertura e T20.30 aceita um percurso completo do recorte entregue.
+T20.1 registra a reconciliação Q01–Q16 na seção 8 do [mapa único](INVENTARIO_F19.md),
+em revisão local, sem aprovação de runtime. T20.30 aceita um percurso completo do recorte entregue.
 Os IDs Q são requisitos, não notas de maturidade nem probabilidades de sucesso.
 
 ## 3. Dados e cálculos certificados

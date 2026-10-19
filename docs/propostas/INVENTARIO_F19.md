@@ -1,8 +1,8 @@
 # T19.1 — Inventário reconciliado e decisões de contrato
 
 Recorte documental de 2026-10-17, para revisão. Não implementa F19/F20 nem
-qualifica operação financeira. T20.1 estenderá **este mesmo mapa** com Q01–Q16,
-seus testes e consumidores; sua matriz ainda não foi executada aqui.
+qualifica operação financeira. T20.1 estende **este mesmo mapa** com Q01–Q16,
+seus testes e consumidores (seção 8). O mapa não aprova os requisitos de runtime.
 
 ## 1. Base e proveniência
 
@@ -278,3 +278,76 @@ reprodução sintética, saídas das suítes e diagnóstico.
 Nenhum ensaio visual, benchmark ou replay/DEMO é exigido por esta ficha
 exclusivamente documental. Windows físico não executado; pendências operacionais
 existentes permanecem no [checklist Windows](../validacao_instaladores.md).
+
+## 8. T20.1 — cobertura Q01–Q16, donos e provas necessárias
+
+Extensão documental do mapa T19.1, em revisão local. Base M/H/S e branches
+continuam as identificadas nas seções 1–2; nenhuma integração presumida.
+“Base” indica código lido e regressões existentes, não aceite integral do Q.
+O dono executor é o ID que altera a capacidade; as demais fichas consomem e
+qualificam a mesma entrega. Não há segundo store/ledger/Composer/experimento.
+
+| Q | Base concreta / alcance observado | Extensão com dono executor único por recorte | Consumidores | Prova que falta para o aceite |
+|---|---|---|---|---|
+| Q01 | M `strategies/backtester.py`, `profit_factor.py`, `trade_analytics/stats.py`; métricas de encerradas e PF v1. `tests/test_backtester.py`/`test_profit_factor.py` são regressões | T20.2: referências financeiras; T20.3: patrimônio; T20.13: protocolo estatístico | T19.24/28/56/57, T20.8/14/23 | Contas independentes de bid/ask, custos, tick/lote e parcela; perdas flutuantes com recuperação; calibração/intervalos do protocolo. Suíte verde não certifica risco intrabarra |
+| Q02 | M `analytics/calendar.py`/`resampling.py`, `_bars_derived` com revisão; `_symbol_specs` representa propriedades capturadas. Store T13.2 somente em branch | T20.4: manifesto/snapshot; T20.5: vigência/specs; T13.2 conserva dono do store | T19.3/25, T20.6/12/16 | Leitura concorrente consistente, revisão tardia reproduzível, specs vigentes e ausência histórica explícita; não usar hash de DB em gravação como snapshot |
+| Q03 | M `data_quality.py`, calendário derivado e extração ticks/book; não há gate integrado por capacidade. Registry T18.1 em branch | T20.6: gate/qualidade/cobertura; I-08 permanece dono da infraestrutura nativa consumida | T19.11–13/21/29, T20.9/30 | Duplicata/gap, agressor desconhecido, real/tick-volume distintos; relatório Model4 com origem observada/gerada/desconhecida e motivo de bloqueio apenas do consumidor incompatível |
+| Q04 | M `robots/contract.py`, `controls.py` e specs; seleção verifica código/parâmetros/TF. H/S sem contratos B. Não há matriz contextual completa | T20.7: matriz; T19.2: composição; T19.23: mapper H; B-11: política contratual | T19.25/29/53, T20.8/11/20/26 | Combinações/versões/contas inválidas recusadas; netting não herda hedging; round-trip legado e requisito desconhecido com motivo |
+| Q05 | M `SymbolSpec`, `execution_spreads`, sizing e re-simulação; margem conjunta não modelada. H/S orçamento/reserva parcial, sem prova concorrente | T20.8: margem; T20.9: cenários; T20.10: volume; T19.56/57: lote/parcela; F-04/05: guardas nativas | T19.24/28/42/44/45, T20.21/30 | Contas de margem compartilhada/câmbio/custos, pendentes e saldo aberto; gap/rejeição/fill parcial; cenários sem fonte não certificam capacidade. Não confundir parcela voluntária com fill parcial |
+| Q06 | M `robots/parity.py` casa saída/resultado, sem direção; exportador de sessão amplia posição/entrada, mas importador perde colunas extras. H CSV legado agregado | T20.11: comparador por evento; H-01/H-14 e T16.2b-H: eventos/exportação; T19.29: reconciliação do preset | T20.17/18/20/23/30 | Primeira divergência plantada por direção/volume/tempo/custo; intenção→risco→ordem→deal→posição→ciclo com IDs; nativo reconciliado. Preservar seis pares e critérios, sem dizer que todos já passam |
+| Q07 | M `strategies/validation.py`, F16 rules/insights e estudo PF19 têm avaliações próprias; T13.4 em branch; não existe registro único de todas as tentativas/reserva | T20.12: registro único; T20.13: auditoria/protocolo; T13.4/I-09 consomem a mesma infraestrutura | T19.27/28/52, T20.14/15/16 | Falha/descarte/manual/cache/reexecução/consulta à reserva rastreados; purga/embargo justificados; ruído e efeito conhecido com intervalo/poder. Reserva usada para ajuste deixa de ser teste final |
+| Q08 | PF canônico integrado; objetivos F19 e comparação de elegíveis não implementados | T19.28: seleção; T19.54: Ultra; T20.14: compromissos, sem objetivo paralelo | T19.32, T20.22 | Pequeno conjunto com dominância/empate conhecido, candidato inválido/sem perdas/zero atividade excluído; Defensivo com risco patrimonial; manter token FatorLucro |
+| Q09 | M lote/matriz/validation; F18 em branches e apresentação sintética. Re-simulação fixa entradas, não reexecuta oportunidades | T20.15: ablação sobre backtest completo T19.24; I-02/I-05 são bases consumidas | T19.27/52/54, futuros estudos FRP | Componente útil/redundante/danoso conhecido, interação e custos comparáveis; tentativas registradas e evidência OOS. FRP não iniciado |
+| Q10 | M fingerprint/catálogo/pipeline; `.set` legado e JSON `trade_analytics/export.proposal`, sem pacote reproduzível F19 | T19.25: compiler; T19.50: identidade; T19.55: Default; T20.16: manifesto ampliado; T20.17: estados/invalidação | T19.26/29/32/53, T20.18/22/27/28/30 | Round-trip isolado com binário trocado/referência ausente; hashes separados; mudança semântica invalida consumidores; rótulo não altera config; cálculo/estatística/replay/autorização separados |
+| Q11 | M `robots/live.py` monitor de posições/deals; `notify.py`. Não há observador completo de intenções nem diagnóstico calibrado | T20.18: observação; T20.19: diagnóstico; I-12/T13.8/J-05/J-08 consomem eventos e serviços | Acompanhamento do preset, UI e alertas | Registro causal antes do desfecho, modo sem executor, virtual identificado; série estável/degradada/custo/dado vencido e alarmes calibrados; forward exige janela futura própria |
+| Q12 | M `robots/sessions.py` separa sessões; H/S persistência de risco/reservas parcial. Agenda geral de parcelas e recuperação E-13/F-12 pendentes | T20.20: bateria; E-10/E-13/F-10/F-12: mecanismos nativos; T19.57: estado de parcelas | T19.23/29/44/53/57, T20.30 | Timeout/restart/duplicata/evento fora de ordem, reconciliação antes de novas ações, sem repetir parcial ou tocar terceiros; rede/fill ao vivo mantém ensaio DEMO específico |
+| Q13 | M matriz de testes independentes e `portfolio.py` de leitura; não há pesquisa síncrona com capital compartilhado | T20.21: piloto de pesquisa, após T19.48/T20.3/8; épico F conserva guardião | Pesquisa de carteira posterior | Dois sinais disputando capital/margem, FX/exposição conjunta e concentração; pesos sem futuro. Somar curvas independentes não é prova de execução simultânea |
+| Q14 | M componentes/tokens/gráficos F17, Laboratório F16 e Ativo / TF T17.28; Relações fixture sintética, DTO real não integrado | T19.30: editor; T19.31: temporal; T19.32: presets; T19.33: TF; T19.34: adaptação; T20.22: percurso/layout; T20.23: inspetor | T20.30 e investigação de cada capacidade | DTO×tabela×gráfico×export, seleção bidirecional/cursor, estados/rascunho/contexto antigo; dois temas, teclado, fonte, tamanhos/DPI F19. T20.22 não depende de T20.23; UI-P/UI-X permanecem posteriores |
+| Q15 | M `robots/runner.py` limita início de jobs por CPU/RAM; `cancel()` impede pendentes, não cancela trabalho ativo. Cache F16 assina barras/calendário/config; sessões isolam destino | T20.24: orçamento/cancelamento/checkpoint; T20.25: cache/isolamento; F15 conserva medição/retenção | T19.24/27/52, lotes de pesquisa | Disco/tentativas/tempo, cancelamento cooperativo, restart sem duplicação; mudança de código/dados/spec/protocolo/seed/custo invalida cache; não limpar artefatos de terceiros |
+| Q16 | M SDK/contract/scaffold/audit e ponte restrita; F15 `resources/files.py` faz backup SQLite/quick_check/restore; nenhuma biblioteca de módulos B integrada | T20.26: conformidade; T20.27: origem/permissões; T20.28: restore de pesquisa; T20.29: release; B-11/J-09 conservam políticas | SDK/Composer, pacotes e release | Módulo causal/incompatível, terceiro adulterado/licença/permissão, restore completo isolado com vínculos, formatos/builds/idiomas e instalador 2×; Windows físico explicitamente pendente |
+
+### Resolução dos status contraditórios
+
+- F13 “nada implementado” é snapshot anterior à T13.1 integrada; os caminhos
+  T13.2/T13.3/T13.4/T18.1 da seção 2 são branches verificadas, sem integração.
+- F16 “nada implementado” no topo da proposta é histórico: ledger/enrich/cache/
+  re-simulação/UI estão no HEAD. Isso não aprova trajetória/ciclos nem F19/F20.
+- I-05 “MQL5 não avaliado” descreve a bateria simples; `battery --deep` T10.5
+  já mede vizinhos e período final. Não comprova o protocolo ampliado T20.13.
+- SDK/exatidão T8.7 “nunca rodou no terminal” é anterior aos ensaios T8.7 e
+  T17.28 registrados; houve prova de mecânica e replay histórico, não novo
+  forward ou aprovação financeira dos seis robôs. As quatro condições da
+  paridade permanecem; não equiparar MQL5 antigo×novo a Python×MQL5 aprovado.
+- T12.3/F-04/F-05 têm código e harness sem ordens, ainda parciais. “Só observa”
+  nos diagnósticos antigos não descreve todo o código atual; não inferir
+  reserva do plano inteiro ou concorrência operacional como validadas.
+- Exportação ampliada de sessão T17.28 não conclui o exportador permanente
+  H/T16.2b nem garante persistência de todas as colunas extras no ledger.
+- UI Relações mantém origem sintética; correção T17.8 já removeu suavização.
+  Nenhum consumidor recebe prova real por haver uma captura histórica.
+
+Essas resoluções valem para este snapshot. Os documentos históricos são
+preservados; novos consumidores devem citar a linha correspondente deste mapa.
+
+### Sequência elegível e primeiro aceite
+
+A T20.2 é o próximo recorte P0 elegível sobre o motor atual, após entrega da
+T20.1: contas independentes primeiro, execução contra o código em seguida e
+correções somente das divergências daquele recorte. T20.4 e T20.24 são trilhas
+independentes após T20.1; usar o mesmo registro/store/fila, sem duplicá-los.
+T19.2 continua condicionada a B-11 e definição B-09/B-10; T19.3 à integração
+T13.2/T18.1. A existência das branches não autoriza marcá-las integradas.
+
+O aceite inicial T20.30 mantém S09 → Default → Manual nomeado → backtest
+completo → pacote → replay nativo reconciliado → UI real, com as dependências
+T20.3/6/8/11/16/17/22 e políticas realmente usadas. Não espera Ultra, carteira,
+FRP, book, todos os indicadores ou seleção automática T19.28. Não conclui
+T19.35 (piloto ampliado). Cada prova mantém modalidade/ambiente/versão próprios.
+
+### Verificação T20.1
+
+Ambiente Linux preparado novamente; baseline de código da sessão anterior
+1058 aprovados/9 ignorados existentes/3 avisos, saída 0, precede estas edições.
+Nenhum runtime/teste/dependência mudou entre essa execução e esta tarefa.
+Suíte final e checagem documental registradas na continuidade ao concluir.
+Sem novo ensaio visual/nativo/DEMO/Windows físico: o recorte é documental.

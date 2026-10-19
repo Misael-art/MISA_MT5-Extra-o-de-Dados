@@ -1,5 +1,21 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.1 — cobertura Q01–Q16 no mapa único (2026-10-17)
+
+Seção 8 do [inventário F19/F20](propostas/INVENTARIO_F19.md) ampliada com base
+concreta, dono executor por extensão, consumidor, lacuna e prova necessária para
+cada Q. Resolvidos no mapa snapshots contraditórios de F13/F16, I-05/--deep,
+T8.7/paridade, T12.3 e exportação T17.28, preservando os relatos históricos.
+Não houve implementação ou aprovação de um Q por existência de código.
+
+Ambiente Linux preparado; baseline anterior da mesma sessão 1058/9/3 avisos,
+saída 0, com runtime idêntico. Suíte final em execução. Próximo P0: T20.2,
+referências financeiras independentes sobre motor atual. T20.4/24 são trilhas
+elegíveis; contratos B e integração store/registry mantêm suas dependências.
+Uma tarefa por entrega; patch próprio em logs/t20-1, separado da T19.1 e da
+base documental preexistente. Sem mudança H/S/runtime/testes/scripts, sem
+ShellCheck aplicável ou ensaio visual/nativo/Windows físico nesta ficha.
+
 ## T19.1 — inventário reconciliado para revisão local (2026-10-17)
 
 [Inventário único F19](propostas/INVENTARIO_F19.md): SHAs M/H/S, estado integrado
@@ -924,3 +940,14 @@ a sobreposição da continuidade foi resolvida inserindo somente as linhas novas
 do patch, sem incorporar os registros preexistentes como autoria T19.1. Sem
 reinterpretação de inventário, contratos ou aceites. Divergência e conciliação
 registradas em logs/integracao-base-106-20261019/, sem tocar o trabalho original.
+
+
+### T20.1 — publicação do mapa e conferência da base (2026-10-19)
+
+Patch próprio original conciliado em três vias, sem conflitos, sobre a cadeia
+documental T19.0→T20.0→T19.1. Conferidos 57 fichas F19, 30 fichas F20 e 16 Qs;
+nenhum novo link sem destino. Três links históricos de evidência ficam resolvidos
+pela cadeia de runtime já existente. Sem alterações de fonte/teste/script/dep,
+sem nova suíte ou campanha numérica. Registros originais de testes/doctor são
+históricos, não novas execuções. Conteúdo do proprietário e patches próprios
+separados; a árvore local original não foi alterada por esta publicação.

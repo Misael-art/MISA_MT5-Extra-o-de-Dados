@@ -1,6 +1,6 @@
 # F20 — Plano executável de robustez e reprodução
 
-**T20.0: documentação entregue em 2026-10-17. T20.1–T20.30: PLANEJADAS.**
+**T20.0 documental. T20.1: mapa em revisão local; T20.2–T20.30 planejadas.**
 Uma tarefa por PR; nenhuma implementação ou validação financeira nesta entrega.
 
 [Requisitos Q01–Q16 e arquitetura](ROBUSTEZ_PESQUISA_EXECUCAO.md),
@@ -53,6 +53,11 @@ T20.30 aceita o recorte declarado, não marca as outras 29 fichas como concluíd
 ## 3. Fichas de implementação
 
 ### T20.1 — Mapa único de cobertura, donos e evidência
+
+**Estado: em revisão local.** A seção 8 do [inventário único](INVENTARIO_F19.md)
+confronta Q01–Q16 com código/provas, atribui dono por extensão e consumidor,
+registra testes faltantes e resolve status históricos sem promover runtime.
+Próximo recorte elegível: T20.2. Resultados na continuidade.
 
 - **Repo/prioridade:** M, leitura H/S; P0. **Depende de:** T20.0, T19.1.
 - **Integra:** todos os Q; inventário F19 e índice A–J.
