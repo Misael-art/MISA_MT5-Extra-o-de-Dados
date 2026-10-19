@@ -117,3 +117,13 @@ Artefatos próprios: logs/extr-01/{before,after}.json, baseline-equivalence.json
 regression-red.log, targeted.log, journey-tests.log, ui-cancel-green.log,
 doctor-final.log e full-final.*. O relatório versionado é autossuficiente; logs
 não são versionados. Não iniciar novo benchmark/campanha numérica sem defeito novo.
+
+
+## Atualização nativa — 2026-10-19
+
+A pendência de acesso à ponte foi resolvida: serviço restrito local iniciado,
+configuração efetiva habilitada e conta DEMO comprovada. Jornada real EURUSD/M1:
+2880→3600 barras, atualização repetida idempotente, reabertura e CSV exatos ao
+provedor. UI real: extração/atualização/cancelamento/retomada/exportação aprovados.
+Doctor 21 OK/1 aviso/0 falhas. [Prova e cadeia de integração](EXTR-01_VALIDACAO_NATIVA.md).
+Sem novas suítes, benchmark ou alteração de código; sem merge remoto.

@@ -1094,3 +1094,20 @@ para revisão, sem merge. Ponte desativada com
 conexão local recusada limita apenas prova nativa;
 Windows físico pendente. Workspace principal preservado, sem merge.
 [Relatório e limites](extrator/EXTR-01_CICLO_RETOMADA.md).
+
+
+## EXTR-01 — prova nativa e integração preparada (2026-10-19)
+
+Ponte efetiva estava desativada e sem serviço; servidor restrito existente
+iniciado em 127.0.0.1:18812, habilitado e conta MetaQuotes-Demo/trade_mode=0
+comprovada. Credenciais, Safety e sessões de terceiros preservados; sem ordens.
+Jornada real EURUSD/M1 14–16/10: 2880→3600, repetição idempotente, reabertura
+e CSV exatamente iguais ao provedor em relógio/OHLCV/volumes/spread. UI Tk real
+com cancelamento/retomada/exportação, 4652 timestamps únicos. Doctor 21/1/0.
+Não houve mudança de runtime nem repetição de suítes ou benchmark.
+Revisão local de #116/#117 sem impedimento nos caminhos percorridos; revisões
+externas ainda não registradas. Branch de preparação preserva master489591c
+e a cadeia aberta #106→#117; não houve merge remoto nem cópia de fontes ao
+workspace principal. Próxima tarefa: revisão/integração da base #106/T20.2 e
+progressão ordenada dos dependentes. Windows físico permanece pendente.
+[Prova e limites](extrator/EXTR-01_VALIDACAO_NATIVA.md).
