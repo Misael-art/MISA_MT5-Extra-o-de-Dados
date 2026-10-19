@@ -21,10 +21,10 @@ SURFACE = {
     "install_robot": ["config", "robot", "mt5", "overwrite_presets", "upgrade_safety"],
     "compile_robot": ["config", "robot", "mt5", "run", "overwrite_presets", "upgrade_safety"],
     "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params", "strategy", "source",
-                   "trade_from", "real_spread", "cashflows", "data_manifest_id"],  # T20.4: revisão opcional
+                   "trade_from", "real_spread", "cashflows", "data_manifest_id", "control"],  # T20.24: orçamento opcional
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
                  "is_running", "source", "model", "visual", "read_csv", "trades_csv_override", "compiled_override",
-                 "export_trades", "tester_port"],               # T17.28: opcionais no fim; defaults legados preservados
+                 "export_trades", "tester_port", "control"],               # T17.28: opcionais no fim; defaults legados preservados
     "run_battery": ["db", "config", "robot", "robots", "preset", "deep", "runner", "is_running", "symbol"],
     "check": ["db", "config", "robot", "robots", "symbol", "timeframe", "start", "end", "preset", "run", "is_running"],
     "write_junit": ["result", "path"],
@@ -35,7 +35,7 @@ SURFACE = {
     "build_matrix": ["db", "config", "robots"],                                                  # T11.6
     "matrix_positives": ["matrix", "robot_key"],
     "get_strategy": ["key", "params"],
-    "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals", "cashflows"],
+    "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals", "cashflows", "check"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],
 }
 
@@ -84,3 +84,13 @@ def test_every_public_name_is_in_the_reference():
 def test_sdk_never_sends_orders_and_exposes_no_order_function():
     forbidden = re.compile(r"order|ordem", re.I)
     assert [name for name in sdk.__all__ if forbidden.search(name)] == []
+
+
+def test_budget_callbacks_append_optional_arguments_without_breaking_old_calls():
+    for function, count, option in ((sdk.run_python, 14, "control"), (sdk.run_mql5, 19, "control"),
+                                    (sdk.run_backtest, 7, "check")):
+        signature = inspect.signature(function)
+        assert signature.parameters[option].default is None
+        bound = signature.bind(*([None] * count))
+        bound.apply_defaults()
+        assert bound.arguments[option] is None

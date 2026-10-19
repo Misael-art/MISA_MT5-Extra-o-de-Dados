@@ -780,6 +780,7 @@ def _robots_backtest_many(args, ctx, robot, tf, start, end):
 def _robots_backtest_batch(args, ctx, items):
     """Lote: robôs × ativos × timeframes, em fila. Preenche a matriz do painel (mt5x panel)."""
     from mt5_extracao.robots import backtest, catalog, mt5_tools
+    from mt5_extracao.robots.budget import Budget
     robots = [catalog.get_robot(items, key) for key in args.path.split(",") if key.strip()]
     symbols = _parse_symbols(args.symbols or args.symbol)
     tfs = [_parse_tf(t) for t in (args.tfs or args.tf or "").split(",") if t.strip()]
@@ -807,6 +808,8 @@ def _robots_backtest_batch(args, ctx, items):
         m = item["run"]["metrics"]
         _print(head + f"{m['trades']} operações, profit factor {_fmt_num(m['profit_factor'])}, resultado "
                f"{_fmt_pct(m['return_pct'])}" + (" (já testado; pulado)" if item["skipped"] else ""))
+    budget = Budget(ctx.db, ctx.config, batch_id=getattr(args, "batch_id", None))
+    _print(f"Checkpoint do lote: {budget.batch_id}. Retome com --batch-id {budget.batch_id}.")
     bridge_was_running = False
     try:
         if mql5 and mt5_tools.terminal_running(ctx.config):
@@ -817,7 +820,8 @@ def _robots_backtest_batch(args, ctx, items):
             _notify(ctx, "MetaTrader 5 fechado para um lote de testes", "A ponte é religada no fim.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
         results = backtest.run_batch(ctx.db, ctx.config, robots, symbols, tfs, start, end, args.preset,
-                                     resume=args.resume, progress=progress)
+                                     resume=args.resume, progress=progress, budget=budget,
+                                     batch_id=getattr(args, "batch_id", None))
     finally:
         if bridge_was_running:
             mt5_tools.restart_bridge()
@@ -826,13 +830,17 @@ def _robots_backtest_batch(args, ctx, items):
     _data(batch=[{**{k: r[k] for k in ("robot", "symbol", "timeframe", "error", "skipped")},
                   "run": {k: v for k, v in r["run"].items() if k not in ("trades", "equity")} if r["run"] else None}
                  for r in results],
-          summary={"total": total, "tested": total - len(failed) - skipped, "skipped": skipped, "failed": len(failed)})
-    _print(f"\nLote concluído: {total - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem "
+          summary={"total": total, "tested": len(results) - len(failed) - skipped, "skipped": skipped, "failed": len(failed)})
+    partial = bool(budget.reason) or len(results) < total
+    _data(batch_id=budget.batch_id, batch_status="interrupted" if partial else "failed" if failed else "completed",
+          reason=budget.reason, remaining=total-sum(r["run"] is not None for r in results), resources=budget.measurements)
+    label = "Lote interrompido" if partial else "Lote concluído"
+    _print(f"\n{label}: {len(results) - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem "
            "teste. Veja o conjunto com: mt5x panel")
-    _notify(ctx, "Lote de backtests concluído",
-            f"{total - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem teste",
+    _notify(ctx, "Lote de backtests interrompido" if partial else "Lote de backtests concluído",
+            f"{len(results) - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem teste",
             "aviso" if failed else None)
-    return EXIT_FAIL if failed else EXIT_OK
+    return EXIT_FAIL if failed or partial else EXIT_OK
 
 
 def _robots_backtest(args, ctx, items):
@@ -1823,6 +1831,7 @@ def build_parser():
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
+    p.add_argument("--batch-id", help="backtest em lote: retoma o checkpoint deste identificador, com os mesmos dados")
     p.add_argument("--tfs", help="backtest em lote: vários timeframes separados por vírgula (ex.: M15,H1,D1)")
     p.add_argument("--resume", action="store_true",
                    help="backtest em lote: pula a combinação que já tem execução gravada da mesma configuração")

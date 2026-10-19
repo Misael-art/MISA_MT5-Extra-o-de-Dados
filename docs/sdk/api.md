@@ -59,7 +59,7 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 
 | Nome | O que faz |
 |---|---|
-| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True, cashflows=None, data_manifest_id=None)` | Backtest de uma estratégia Python com revisão fixada das barras. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
+| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True, cashflows=None, data_manifest_id=None, control=None)` | Backtest de uma estratégia Python com revisão fixada das barras. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
 | `run_mql5(db, config, robot, symbol, timeframe, start=None, end=None, preset=None, params=None, ...)` | Backtest de um robô MQL5 pelo Strategy Tester. O MT5 precisa estar fechado |
 
 Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`. Pela CLI, `--symbols A,B,C`
@@ -163,7 +163,7 @@ Não é um tradutor de Python: só o que está na declaração é gerado. A prov
 | `Strategy`, `StrategyInfo` | Classe base de uma estratégia e a sua ficha ([estrategias.md](../estrategias.md), "Para desenvolvedores") |
 | `get_strategy(key, **params)` | Instância de uma das estratégias registradas |
 | `BacktestConfig` | Capital inicial, risco por operação, slippage e corretagem |
-| `run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None, cashflows=None)` | Backtest com custos e lote pelo risco; `start_index` e `signals` servem à validação, e `cashflows` identifica fluxos no fechamento |
+| `run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None, cashflows=None, check=None)` | Backtest com custos e lote pelo risco; `start_index` e `signals` servem à validação, e `cashflows` identifica fluxos no fechamento |
 | `validate_strategy(df, key, spec=None, config=None, criteria=None, params=None)` | Walk-forward, robustez e Monte Carlo (Filtro C) |
 
 
@@ -179,7 +179,7 @@ opcionais foram acrescentados à dataclass interna `SymbolSpec`.
 T20.6 acrescenta `data_quality` às métricas Python/MQL e à avaliação de
 re-simulação. Capacidade de dados, requisitos do consumidor e limitações de
 origem/cobertura são explícitos; relatório nativo sem requisitos do Expert
-não o qualifica automaticamente. `run_python` conserva a assinatura e exige
+não o qualifica automaticamente. `run_python` mantém os argumentos anteriores e exige
 OHLCV para o motor, além das `required_columns` opcionais da estratégia.
 `Strategy.required_columns` tem o padrão anterior; componentes de fechamento
 podem ser qualificados separadamente de OHLCV completo.
@@ -190,3 +190,34 @@ consomem os contratos/provas existentes, sem outro registry ou feature store.
 explicitamente; `Snapshot.quality/market_frame` permitem inspeção da revisão.
 Formato3 lê/exporta1/2 sem converter metadados livres antigos em prova atual.
 [Regras e fronteiras reais](../analytics/T20.6_QUALIDADE_CAPACIDADES.md).
+
+
+## Orçamento cooperativo de lotes (T20.24)
+
+`robots.backtest.run_batch` e `robots.runner.BatchRunner` usam o mesmo
+`robots.budget.Budget`, sem outro agendador. `batch_id` identifica o checkpoint
+operacional. `Budget.prepare` fixa o plano e os manifests Python; `checkpoint`
+consulta estado/histórico/medições. A retomada recupera os run_ids publicados,
+sem reexecutar nem regravar o resultado. Falhas permanecem no histórico. Esse
+checkpoint não é um registro estatístico de alternativas/consultas à reserva.
+
+`run_python(..., control=None)` e `run_mql5(..., control=None)` acrescentam um
+`JobBudget` opcional; `run_backtest(..., check=None)` aceita callback cooperativo
+que pode levantar uma interrupção. Os argumentos anteriores continuam na mesma
+ordem e todos os novos defaults são `None`. A publicação controlada em
+`store.save_run(..., control=...)` grava o resultado e o checkpoint do item na
+mesma transação, com o run_id reservado. Cancelamento não publica um resultado
+parcial. O limite de admissões permite terminar os já admitidos; tempo/CPU/RAM
+ou cancelamento explícito interrompem no próximo ponto cooperativo.
+
+O motor confere antes/depois dos sinais e entre blocos de até 256 barras; uma
+chamada atômica de indicador não é interrompida internamente. O Tester nativo
+retorna antes da conferência de cancelamento e continua sujeito ao timeout
+existente: não há promessa de interrupção imediata nem encerramento de terminal
+alheio. Executores injetados pelo argumento legado `run` do `BatchRunner` não
+recebem o callback novo; precisam adotar o protocolo controlado para publicação
+recuperável. A fila nunca certifica efeitos externos de um executor arbitrário.
+
+Limites `[ROBOTS]`, seus defaults e a distinção da concorrência estão em
+[T20.24](../analytics/T20.24_ORCAMENTO_FILA.md). Orçamento e status aparecem na
+CLI/UI; Windows físico continua no checklist de validação.

@@ -1342,3 +1342,21 @@ def test_long_persisted_battery_reaches_final_reason_in_small_and_large_windows(
         assert "Rode novamente" in label.cget("text")
     with ui.app.db_manager.engine.connect() as conn:
         assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, recorded)
+
+
+def test_batch_budget_is_shown_as_interrupted_and_keeps_checkpoint(ui):
+    from mt5_extracao.robots import budget, store
+    panel = ui.inventory_panel
+    ui.app.config.set("ROBOTS", "batch_max_jobs", "1")
+    chosen = [robot for robot in ui.robots_panel.robots if robot.key in ("python:ema_atr", "python:donchian")]
+    batch = panel.run_backtests([dict(symbol="WIN$N", timeframe="1 minuto")], chosen)
+    deadline = time.time() + 30
+    while (batch.running or panel.progress_frame.winfo_manager()) and time.time() < deadline:
+        ui.pump(.1)
+    assert not batch.running
+    assert "Backtests interrompidos" in ui.status_label.cget("text")
+    assert "Orçamento" in ui.status_label.cget("text")
+    assert len(store.load_runs(ui.app.db_manager)) == 1
+    saved = budget.checkpoint(ui.app.db_manager, batch.batch_id)
+    assert saved["status"] == "interrupted" and saved["owner"] == {}
+    assert not panel.progress_frame.winfo_manager()

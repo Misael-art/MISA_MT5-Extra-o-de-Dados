@@ -1,5 +1,36 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #111 — T20.24 (2026-10-19)
+
+Base master `aed0f77` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos cancelamento cooperativo sem bloquear UI, posse do checkpoint, publicação transacional, retomada sem duplicação e compartilhamento de um manifesto por fonte/TF durante o preparo. O resultado histórico isolado não é atribuído ao complemento; CI atual e composição final cobrem a revisão.
+Aceite reaproveitado: 1200/10/3 históricos; complemento 39 direcionados, regressão composta 1398/13/3 saída 0 com arquivos donos idênticos; doctor 16/2/0; seis checks aprovados no HEAD `90d63d48506aef87afd79c224cbcebc6b0f8de22`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
+## T20.24 — orçamento e checkpoint das filas (2026-10-18)
+
+[Contrato e limites](analytics/T20.24_ORCAMENTO_FILA.md). `run_batch` e
+`BatchRunner` usam um orçamento comum; sem outro agendador/registro estatístico.
+Limites de admissões/tempo/CPU/RAM/disco, guarda F15 e planos com manifests fixos.
+Publicação e conclusão do item compartilham transação/run_id reservado; retomada
+recupera resultados sem repetir publicação e preserva falhas. Teto de admissões
+não cancela os já admitidos. Cancelamento explícito é cooperativo; Tester nativo
+retorna antes da conferência, sem encerramento de terminal alheio. UI/CLI exibem
+estado parcial/ID/motivo, não lote completo. 40 fila/UI e integração anterior107
+aprovados. [PR #111](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/111):
+1200 aprovados, 10 pulos e 3 avisos em 1099,06 s, saída 0; 9 pulos anteriores
+e 1 PostgreSQL novo, coberto no ensaio separado. Medição local4jobs700barras:2,780s/147MiB RSS
+amostrado, não promessa universal. Regressão final110 e PostgreSQL16isolado8
+aprovados (contêiner removido); doctor16/2/0. Windows físico pendente.
+Próxima T20.25, isolamento/cache nas implementações atuais. T20.7/T20.12 mantêm
+as dependências de contratos/registro canônicos ainda não integrados.
+
 ## Revisão/integração PR #110 — T20.6 (2026-10-19)
 
 Base master `1b2cd34` conciliada por merge Git na worktree da tarefa.

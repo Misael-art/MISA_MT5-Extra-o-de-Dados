@@ -46,7 +46,7 @@ def downsample(points: List[list], max_points: int = MAX_CURVE_POINTS) -> List[l
 
 def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
                params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None,
-               real_spread: bool = True, cashflows=None, data_manifest_id=None) -> dict:
+               real_spread: bool = True, cashflows=None, data_manifest_id=None, control=None) -> dict:
     """
     Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia').
     `strategy` permite passar a estratégia já montada (ex.: uma DeclaredStrategy), em vez de buscá-la pela chave
@@ -62,6 +62,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     from mt5_extracao.analytics import datasets
     if strategy is None and robot.kind != catalog.PYTHON:
         raise ValueError("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5: use run_mql5.")
+    if control is not None:
+        control.check()
     tf = timeframes.parse(timeframe)
     if tf is None:
         raise ValueError(f"Timeframe inválido: {timeframe}")
@@ -101,7 +103,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
         start_index = int((pd.to_datetime(df["time"]) < pd.Timestamp(trade_from)).sum())
         if start_index >= len(df):
             raise ValueError(f"Não há barras a partir de {trade_from} no período pedido.")
-    result = run_backtest(df, strategy, spec, settings, start_index=start_index, cashflows=cashflows)
+    result = run_backtest(df, strategy, spec, settings, start_index=start_index, cashflows=cashflows,
+                          **({"check": control.check} if control is not None else {}))
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
                    data_manifest_id=snapshot.manifest_id, data_provenance_status="frozen_reference",
@@ -112,7 +115,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
                    spec_known=bool(spec.known), real_spread=bool(settings.real_spread and spec.spread_by_hour),
                    initial_equity=float(settings.initial_equity),
                    risk_per_trade=float(settings.risk_per_trade))
-    run = {"run_id": uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
+    run = {"run_id": control.run_id if control is not None else uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,
            "data_manifest_id": snapshot.manifest_id, "data_provenance_status": "frozen_reference",
@@ -124,7 +127,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
            "valuation": {**result.valuation, "stored_cashflow_encoding": "sparse_bar_close_events"},
            "trades": [[str(t.exit_time), float(t.pnl), float(t.volume)] for t in result.trades],
            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
-    store.save_run(db, run)
+    store.save_run(db, run, **({"control": control} if control is not None else {}))
     from mt5_extracao.trade_analytics import importers       # Laboratório (T16.2): operações completas no livro
     importers.safely(importers.record_python_run, db, run, result.trades)
     return run
@@ -278,7 +281,7 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
              is_running: Optional[Callable] = None, source: str = TESTER_SOURCE,
              model: Optional[str] = None, visual: Optional[bool] = None, read_csv: bool = True,
              trades_csv_override=None, compiled_override=None, export_trades: bool = True,
-             tester_port: Optional[int] = None) -> dict:
+             tester_port: Optional[int] = None, control=None) -> dict:
     """
     Roda o robô MQL5 no Strategy Tester (o terminal precisa estar fechado) e grava a execução. O robô tem de
     estar instalado e compilado na pasta de dados do MT5 ('mt5x robots compile').
@@ -286,6 +289,8 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     from mt5_extracao import timeframes
     from mt5_extracao.strategies import research
     from . import mt5_tools
+    if control is not None:
+        control.check()
     if robot.kind != catalog.MQL5:
         raise ValueError("Estratégias Python usam o backtester do projeto: use run_python.")
     tf = timeframes.parse(timeframe)
@@ -315,6 +320,8 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
     if not export_trades and export_input in {i.name for i in robot.inputs}:
         values[export_input] = "false"  # o observador da sessão publica seu próprio CSV, sem sobrescrever o legado
     name = f"mt5x_{slug}"
+    if control is not None:
+        control.check(path=data, reserve_bytes=len(str(values).encode("utf-8")) * 2)
     parameters = mt5_tools.write_tester_set(data, name, values) if values else ""
     deposit = float(research.backtest_config(config).initial_equity)
     if model is not None and model not in mt5_tools.TESTER_MODELS:
@@ -331,11 +338,15 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
             raise ValueError("Já existe um CSV para esta sessão. Use uma sessão nova; o arquivo foi preservado.")
     elif trades_csv is not None:
         trades_csv.unlink(missing_ok=True)        # o de um teste anterior não pode passar por resultado deste
-    run_id = uuid.uuid4().hex
+    run_id = control.run_id if control is not None else uuid.uuid4().hex
     ini = mt5_tools.tester_ini(mt5_tools.expert_name(compiled, data), symbol, tf.name, start, end, deposit, name,
                                model, parameters, **({"visual": visual} if visual is not None else {}),
                                **({"port": tester_port} if tester_port is not None else {}))
+    if control is not None:
+        control.check(path=data, reserve_bytes=len(ini.encode("utf-16")))
     report = mt5_tools.run_tester(config, data, ini, name, run, is_running=is_running, run_id=run_id)
+    if control is not None:
+        control.check()
     report_text = mql.read_text(report)
     if trades_csv_override is not None and not trades_csv.is_file():
         raise RuntimeError("O Tester não publicou o livro desta sessão. O teste pode ter sido interrompido; "
@@ -383,7 +394,7 @@ def run_mql5(db, config, robot, symbol: str, timeframe: str, start=None, end=Non
               "params": dict(values, **({"preset": preset} if preset else {})), "metrics": metrics,
               "equity": downsample(points), "trades": [[_iso(t), float(v), float(vol)] for t, v, vol in results],
               "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
-    store.save_run(db, record)
+    store.save_run(db, record, **({"control": control} if control is not None else {}))
     from mt5_extracao.trade_analytics import importers       # Laboratório (T16.2): operações no livro
     importers.safely(importers.record_mql5_run, db, record,
                      trades_csv if trades_source == CSV_SOURCE else None)
@@ -438,34 +449,62 @@ def already_tested(db, robot, symbol: str, timeframe_name: str, preset: Optional
 
 def run_batch(db, config, robots, symbols, timeframes, start=None, end=None, preset: Optional[str] = None,
               resume: bool = False, progress: Optional[Callable] = None, run: Optional[Callable] = None,
-              is_running: Optional[Callable] = None) -> List[dict]:
+              is_running: Optional[Callable] = None, budget=None, batch_id=None) -> List[dict]:
+    """Fila sequencial existente, com orçamento/checkpoint e retomada explícita por batch_id.
+
+    --resume legado continua consultando already_tested; um checkpoint explícito
+    recupera somente os seus run_ids e revisões. Falhas anteriores ficam no histórico.
     """
-    Lote: cada robô em cada ativo e em cada timeframe, em fila (um teste por vez). Uma falha não interrompe o
-    resto. Com `resume`, a combinação que já tem execução gravada da mesma configuração é pulada. Devolve, na
-    ordem em que rodou, [{"robot", "symbol", "timeframe", "run" (ou None), "error", "skipped"}]; `progress` é
-    chamado com cada item assim que ele termina.
-    """
-    from . import mt5_tools
+    from . import budget as budget_mod, mt5_tools
+    budget = budget or budget_mod.Budget(db, config, batch_id=batch_id)
+    jobs = [(robot, symbol, tf.name) for robot in robots for tf in timeframes for symbol in symbols]
     results = []
     model = mt5_tools.tester_model(config) if any(r.kind == catalog.MQL5 for r in robots) else ""
-    for robot in robots:
-        for tf in timeframes:
-            for symbol in symbols:
-                item = {"robot": robot.key, "symbol": symbol, "timeframe": tf.name, "run": None, "error": "",
-                        "skipped": False}
-                done = already_tested(db, robot, symbol, tf.name, preset, model) if resume else None
+    failed = False
+    try:
+        plan = budget.prepare(jobs, start=start, end=end, preset=preset)
+        for (robot, symbol, timeframe), entry in zip(jobs, plan):
+            item = {"robot": robot.key, "symbol": symbol, "timeframe": timeframe, "run": None, "error": "", "skipped": False}
+            control = None
+            try:
+                budget.check()
+                done = budget.recovered(entry["key"])
+                if done is None and resume and batch_id is None:
+                    done = already_tested(db, robot, symbol, timeframe, preset, model)
                 if done is not None:
+                    budget.remember(entry["key"], done)
                     item.update(run=done, skipped=True)
                 else:
-                    try:
-                        if robot.kind == catalog.MQL5:
-                            item["run"] = run_mql5(db, config, robot, symbol, tf.label, start, end, preset, run=run,
-                                                   is_running=is_running)
-                        else:
-                            item["run"] = run_python(db, config, robot, symbol, tf.label, start, end)
-                    except (OSError, RuntimeError, ValueError) as e:
-                        item["error"] = str(e)
+                    control = budget.admit(entry["key"])
+                    if entry.get("preparation_error"):
+                        raise ValueError(entry["preparation_error"])
+                    if robot.kind == catalog.MQL5:
+                        item["run"] = run_mql5(db, config, robot, symbol, timeframe,
+                                              datetime.fromisoformat(entry["start"]), datetime.fromisoformat(entry["end"]),
+                                              preset, run=run, is_running=is_running, control=control)
+                    else:
+                        item["run"] = run_python(db, config, robot, symbol, timeframe, start, end,
+                                                data_manifest_id=entry.get("data_manifest_id"), control=control)
+            except budget_mod.Interrupted as exc:
+                item.update(error=str(exc), status="interrupted")
+                if control is not None:
+                    control.result("interrupted", str(exc))
                 results.append(item)
                 if progress:
                     progress(item)
+                break
+            except (OSError, RuntimeError, ValueError) as exc:
+                item["error"] = str(exc)
+                failed = True
+                if control is not None:
+                    control.result("failed", str(exc))
+            results.append(item)
+            if progress:
+                progress(item)
+    except KeyboardInterrupt:
+        budget.cancel()
+    except budget_mod.Interrupted:
+        pass
+    finally:
+        budget.finish(failed=failed)
     return results

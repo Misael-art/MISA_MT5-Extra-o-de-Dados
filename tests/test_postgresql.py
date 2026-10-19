@@ -183,3 +183,21 @@ def test_services_builds_url_with_password_from_env(monkeypatch):
     assert db.is_connected() and db.dialect == "postgresql"
     assert "***" in db._safe_location() or real.password is None
     db.engine.dispose()
+
+
+def test_batch_checkpoint_publication_and_resume(pg):
+    from mt5_extracao.robots import backtest, budget, catalog, store
+    from mt5_extracao.timeframes import Timeframe
+    from tests.market_data import trend
+    for symbol in ("QA", "QB"):
+        assert pg.save_ohlcv_data(symbol, "1 hora", trend(350, freq="h"))
+    robots = [r for r in catalog.python_robots() if r.key == "python:ema_atr"]
+    first = budget.Budget(pg, limits=budget.Limits(max_jobs=1))
+    results = backtest.run_batch(pg, None, robots, ["QA", "QB"], [Timeframe.H1], budget=first)
+    assert results[0]["run"] and results[1]["status"] == "interrupted"
+    again = budget.Budget(pg, batch_id=first.batch_id, limits=budget.Limits(max_jobs=2))
+    results = backtest.run_batch(pg, None, robots, ["QA", "QB"], [Timeframe.H1], budget=again, batch_id=first.batch_id)
+    assert results[0]["skipped"] and results[1]["run"]
+    assert len(store.load_runs(pg)) == 2
+    saved = budget.checkpoint(pg, first.batch_id)
+    assert saved["status"] == "completed" and all(x["status"] == "completed" for x in saved["jobs"])

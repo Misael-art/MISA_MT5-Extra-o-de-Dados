@@ -218,17 +218,21 @@ def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConf
 
 def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
                  config: Optional[BacktestConfig] = None, start_index: int = 0,
-                 signals: Optional[pd.DataFrame] = None, cashflows=None) -> BacktestResult:
+                 signals: Optional[pd.DataFrame] = None, cashflows=None, check=None) -> BacktestResult:
     """
     start_index: só abre operações a partir desta barra (as anteriores servem de aquecimento
     dos indicadores; usado no walk-forward).
     """
+    if check is not None:
+        check()
     spec = spec or SymbolSpec(known=False)
     from mt5_extracao.analytics.instruments import require_supported_spec
     require_supported_spec(spec)
     cfg = config or BacktestConfig()
     data = df.reset_index(drop=True)
     sig = (signals if signals is not None else strategy.gerar_sinais(data)).reset_index(drop=True)
+    if check is not None:
+        check()
     rules = strategy.exit_rules()
     n = len(data)
 
@@ -280,6 +284,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         pos = None
 
     for i in range(n):
+        if check is not None and i % 256 == 0:
+            check()
         # 1) saída por sinal pendente, na abertura
         if pos is not None and pending_exit:
             close_all(i, fill_exit(pos["dir"], o[i], spr_open[i]), "signal")
