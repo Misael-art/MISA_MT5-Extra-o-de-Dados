@@ -41,6 +41,36 @@ estrutura e cálculos usam suas verificações/testes/backtests, conforme a matr
 T19.56/57 detalham gestão de lotes/exposição e saídas parciais simples/múltiplas, com
 saldo protegido, UI/preset/HADOUKEN compatíveis e reconciliação de volumes/custos/métricas.
 
+## Extensão Fase 20 — robustez transversal
+
+As dezesseis sugestões de qualificação da plataforma foram aceitas em 2026-10-17.
+[Requisitos Q01–Q16](ROBUSTEZ_PESQUISA_EXECUCAO.md), [fichas T20.1–T20.30](PLANO_F20_ROBUSTEZ.md)
+e [prompt único executor](PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) detalham cálculos/patrimônio, dados/experimentos
+reproduzíveis, qualidade/compatibilidade, margem/custos/capacidade, paridade por evento,
+protocolo/seleção/ablação, pacote/evidências, observação/recuperação, carteira posterior,
+UI investigativa, recursos e conformidade/segurança/restore/release.
+
+**T20.0 entregue como documentação; implementação e qualificação pendentes.** O mapa T20.1
+estende T19.1 e vincula cada alteração ao dono anterior ou à extensão F20, sem dois PRs
+para o mesmo escopo. Não altera a contagem histórica de 10 épicos/133 tarefas nem as
+57 fichas F19. O primeiro ciclo Manual não espera catálogo completo/Ultra/carteira/FRP;
+seleção automática exige registro/protocolo qualificados e risco defensivo considera
+patrimônio aberto. Cálculos/estrutura, OOS, replay funcional e DEMO ao vivo mantêm aceites
+próprios. Não há autorização de operação REAL nem promoção automática por este registro.
+
+**UI priorizada:** [requisitos atuais e propostas posteriores](UI_ORGANIZACAO_GRAFICOS_PRIORIDADES.md)
+detalham UI-A01–A10 nos donos T19.30–34/T20.22/23. Organização por modos/contexto/editor,
+gráficos e inspeção ligados, legibilidade, adaptação e recuperação acompanham capacidades
+reais. Alternância de densidade/perfis completos UI-P01/P02 ficam P2; componente financeiro
+especializado UI-X01 fica EXPERIMENTO/P3 não iniciado. Sem nova fase, alteração de contagem,
+migração ou troca de renderer agora; primeiro validar a tela de referência na base atual.
+
+O prompt único reúne F19/F20/UI, nomes/Default/lotes/parciais e validação em ambiente
+MT5 DEMO com replay aceito fora do pregão. Enviar apenas seu bloco ao agente; os caminhos
+PROMPT_F19_EXECUCAO.md/PROMPT_F20_EXECUCAO.md são referências de compatibilidade, sem
+blocos concorrentes. O anexo antigo que exigia execução ao vivo em todos os casos foi
+retificado; replay histórico não comprova condições específicas de rede/fill ao vivo.
+
 ## Onde está cada épico
 
 | Épico | Assunto | Repositório responsável | Documento | Tarefas |

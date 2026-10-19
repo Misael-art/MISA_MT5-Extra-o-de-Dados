@@ -864,3 +864,13 @@ sem alterações em mt5_extracao/tests/dependências/scripts. Aceite automatizad
 1058/9/3 registrado na base documental reaproveitado, sem repetição de suíte.
 Verificação deste recorte: diff e links locais, com ausências das bases seguintes
 registradas até a conferência da cadeia completa. Nenhuma operação ou experimento.
+
+
+## T20.0 — publicação isolada da base documental (2026-10-19)
+
+Publica requisitos Q01–Q16 e fichas F20 preparados pelo proprietário, usando
+a base anterior à extensão T20.1 preservada em logs/t20-1/base. Não transporta
+runtime nem o inventário da tarefa seguinte. T19.0 permanece base documental
+e T19.1/T20.1 serão publicados por seus patches próprios. Aceite de código
+master489591c reaproveitado; conferência documental e ausência de alterações
+em fontes/testes/dependências/scripts, sem repetir suíte ou pesquisa numérica.
