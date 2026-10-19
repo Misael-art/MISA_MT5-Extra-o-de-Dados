@@ -111,8 +111,6 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.2 | Carteira somente leitura: registro, sentinela da conta e `mt5x portfolio` (etapa 2) | T12.1 | ⏳ parcial: implementação F-03 em curso; conciliação demo com posições e netting pendentes |
 | T12.L | Organização da janela do MT5 ao iniciar um robô (janelas laterais fechadas, perfil próprio, gráfico maximizado) | T8.7 | ✅ concluída no Linux (vista em 1280×800, ligada e desligada) |
 | T12.P | Painel v7 responsivo (compacto, normal, amplo) e bateria de testes dos dois painéis | T12.2 | ✅ concluída no Linux; tema claro e disposição normal vistos na T12.6a; Windows pendente |
-| T12.L1 | Organização da janela configurável por partes (janelas laterais, barras, perfil próprio) e devolução sem regravar o `terminal.ini` inteiro | T12.L | ✅ concluída; partes e devolução vistas no terminal real nos testes da T12.L3 |
-| T12.L2 | Opções da organização da janela na interface (diálogo Configurações), gravando o `config.ini` sem perder comentários | T12.L1 | ✅ concluída no Linux (vista em tela virtual, temas claro e escuro); Windows não visto |
 | T12.L3 | "Abrir visão MT5": botão na interface e `mt5x mt5 view`, que aplicam a organização quando o usuário pedir; disposição do painel nas opções | T12.L2 | ✅ concluída e testada no MT5 real do host (tela virtual); a disposição do painel com robô de verdade e o Windows não foram vistos |
 | T12.L4 | Painel manual liberado para operar em conta demo, com opção de religar o bloqueio | T12.L3 | ✅ concluída (o painel operando em demo não foi exercitado) |
 | T12.6a | Painel v7: conferir o que ficou sem ver (disposição normal, tema claro, tela real) e fixar o vocabulário | T12.P | ✅ concluída no Linux (2026-10-14): normal forçada, ajuste derivado em 70%, paleta clara e tela eDP-1 1280×800 vistos; linha de base sem painel registrada; tentativa de VENDA bloqueada, sem execução nem mudança de posição; Windows pendente |
@@ -193,9 +191,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | planejada; mínimo/passo/margem/risco, unidade e entradas adicionais explícitos |
 | T20.0 | Incorporar as 16 sugestões aceitas, mapa Q01–Q16, fichas e prompt de robustez | Pedido de 2026-10-17 | ✅ documentação, prioridades UI e prompt único F19/F20/MT5; 30 fichas planejadas; sem implementação ou ensaio de conta |
 | T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | ✅ documentação integrada no PR121; Q01–Q16 no mapa único, sem runtime novo |
-| T20.2 | Referências independentes dos cálculos financeiros | T20.1 | ✅ integrada no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), master f477e43; runtime fc9e593, 1081/9/3 e seis checks reaproveitados; bases documentais PR118–121 integradas |
-| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | validada, pronta para integração no [PR107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107); runtime 91b2ec4 preservado, 1103 aprovados/9 pulos existentes/3 avisos, saída 0, seis checks aprovados e prova nativa de 24 marcas; conciliação apenas documental com master f477e43 |
-| T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | planejada; Q02 |
+| T20.2 | Referências independentes dos cálculos financeiros | T20.1 | ✅ integrada no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), merge f477e43; evidências compatíveis reaproveitadas; Windows físico pendente |
+| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | ✅ integrada no [PR107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107), merge 9fbd5f5; evidências compatíveis reaproveitadas; Windows físico pendente |
+| T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | validada para integração no [PR108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108); 1114 aprovados/9 pulos existentes/3 avisos, saída 0; 28 direcionados, PostgreSQL 7, doctor 16/2/0; código aprovado c991b04 preservado; seis checks reaproveitados; Windows físico pendente |
 | T20.5 | Vigência de especificações, ajustes e transformações de séries | T20.4 | planejada; Q02, sem inventar fonte histórica |
 | T20.6 | Qualidade por capacidade e cobertura efetiva de ticks | T20.4 | planejada; Q03 |
 | T20.7 | Compatibilidade por ativo/corretora/conta/versão | T20.1, T19.2/B-11 | planejada; Q04 |
@@ -2769,8 +2767,8 @@ plano do HADOUKEN continuam valendo para o conjunto)
 
 | Passo | O que é | Depende de |
 |---|---|---|
-| T12.L1 | Organização da janela configurável por partes, devolução sem regravar o arquivo inteiro | T12.L |
-| T12.L2 | Opções da organização da janela na interface (diálogo Configurações) | T12.L1 |
+| T12.L1 | Organização da janela configurável por partes, devolução sem regravar o arquivo inteiro | ✅ concluída; partes e devolução vistas no terminal real nos testes da T12.L3 |
+| T12.L2 | Opções da organização da janela na interface (diálogo Configurações) | ✅ concluída no Linux (vista em tela virtual, temas claro e escuro); Windows não visto |
 | T12.6b | Estado recolhido (botão `H`), quebra de linha do log e a aba Configuração | T12.6a, G-02 (arquitetura modular do painel) |
 | T12.6c | Abas que dependem de outras etapas: Boleta e Gradiente (T12.4), Carteira (T12.2), Risco e Alertas (T12.3), Estatísticas (T12.6A), IA (T12.7), Inteligência do Ativo (T13.6) | cada aba, a sua |
 

@@ -100,8 +100,13 @@ def save(db, source: str, rows: Iterable[dict]) -> int:
     return len(clean)
 
 
-def load(db, start=None, end=None, source: Optional[str] = None) -> pd.DataFrame:
-    if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table(TABLE):
+def load(db, start=None, end=None, source: Optional[str] = None, *, connection=None) -> pd.DataFrame:
+    if db is None or getattr(db, "engine", None) is None:
+        return pd.DataFrame(columns=list(COLUMNS))
+    if connection is None:
+        with db.engine.connect() as conn:
+            return load(db, start, end, source, connection=conn)
+    if not inspect(connection).has_table(TABLE):
         return pd.DataFrame(columns=list(COLUMNS))
     where, params = [], {}
     if start is not None:
@@ -113,9 +118,8 @@ def load(db, start=None, end=None, source: Optional[str] = None) -> pd.DataFrame
     if source:
         where.append("source = :src")
         params["src"] = source
-    with db.engine.connect() as conn:
-        frame = pd.read_sql(text(f"SELECT * FROM {TABLE}" + (" WHERE " + " AND ".join(where) if where else "") +
-                                 " ORDER BY event_time"), conn, params=params)
+    frame = pd.read_sql(text(f"SELECT * FROM {TABLE}" + (" WHERE " + " AND ".join(where) if where else "") +
+                             " ORDER BY event_time"), connection, params=params)
     frame["event_time"] = pd.to_datetime(frame["event_time"])
     return frame
 
@@ -192,12 +196,12 @@ def _same_event(a: dict, b: dict) -> bool:
     return True        # uma das fontes não tem nome (CSV antigo): mesmo horário e mesma moeda bastam
 
 
-def merged(db, start=None, end=None) -> pd.DataFrame:
+def merged(db, start=None, end=None, *, connection=None) -> pd.DataFrame:
     """
     Uma linha por evento: as fontes unidas (coluna `sources`), o impacto escolhido (marcado à mão > MT5 > maior) e a
     surpresa (real − previsto, quando os dois existem).
     """
-    raw = load(db, start, end)
+    raw = load(db, start, end, connection=connection)
     cols = ["event_time", "name", "country", "currency", "symbol", "impact", "actual", "forecast", "previous",
             "surprise", "sources"]
     if raw.empty:

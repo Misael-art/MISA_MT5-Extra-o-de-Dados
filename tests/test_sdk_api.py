@@ -21,7 +21,7 @@ SURFACE = {
     "install_robot": ["config", "robot", "mt5", "overwrite_presets", "upgrade_safety"],
     "compile_robot": ["config", "robot", "mt5", "run", "overwrite_presets", "upgrade_safety"],
     "run_python": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "params", "strategy", "source",
-                   "trade_from", "real_spread", "cashflows"],   # T20.3: opcional no fim, None = sem fluxos
+                   "trade_from", "real_spread", "cashflows", "data_manifest_id"],  # T20.4: revisão opcional
     "run_mql5": ["db", "config", "robot", "symbol", "timeframe", "start", "end", "preset", "params", "run",
                  "is_running", "source", "model", "visual", "read_csv", "trades_csv_override", "compiled_override",
                  "export_trades", "tester_port"],               # T17.28: opcionais no fim; defaults legados preservados
@@ -59,6 +59,11 @@ def test_cashflow_options_are_optional_and_old_positional_calls_still_bind():
         bound = signature.bind(*([None] * legacy_count))
         bound.apply_defaults()
         assert bound.arguments["cashflows"] is None
+    signature = inspect.signature(sdk.run_python)
+    assert signature.parameters["data_manifest_id"].default is None
+    bound = signature.bind(*([None] * 13))  # chamada anterior incluindo cashflows
+    bound.apply_defaults()
+    assert bound.arguments["data_manifest_id"] is None
 
 
 def test_mql5_session_options_are_optional_and_preserve_legacy_defaults():

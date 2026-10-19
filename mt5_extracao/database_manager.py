@@ -7,6 +7,7 @@ import json
 import threading
 import traceback
 from datetime import datetime
+from contextlib import contextmanager
 from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -93,6 +94,23 @@ class DatabaseManager:
         """Libera as conexões com o banco (chamado ao encerrar o aplicativo). Pode ser chamado mais de uma vez."""
         if self.engine is not None:
             self.engine.dispose()
+
+    @contextmanager
+    def consistent_read(self):
+        """Uma imagem de leitura para barras e metadados, sem mudar o isolamento global."""
+        if not self.is_connected():
+            raise ValueError("Banco indisponível; confira a conexão antes de capturar os dados.")
+        with self.engine.connect() as conn:
+            if self.dialect == "postgresql":
+                conn = conn.execution_options(isolation_level="REPEATABLE READ")
+            with conn.begin():
+                if self.dialect == "sqlite":
+                    # sqlite3 legado não inicia transação em SELECT; SQLAlchemy.begin é lógico.
+                    if not conn.connection.driver_connection.in_transaction:
+                        conn.exec_driver_sql("BEGIN")
+                elif self.dialect == "postgresql":
+                    conn.exec_driver_sql("SET TRANSACTION READ ONLY")
+                yield conn
 
     def _safe_location(self):
         """Caminho/URL para logs, sem a senha."""
@@ -541,22 +559,26 @@ class DatabaseManager:
                 f"ON CONFLICT(symbol) DO UPDATE SET {updates}, updated_at = excluded.updated_at"),
                 {"symbol": symbol, **values, "updated_at": datetime.now().strftime('%Y-%m-%d %H:%M:%S')})
 
-    def get_symbol_spec(self, symbol):
+    def get_symbol_spec(self, symbol, *, connection=None):
         """Especificação gravada do símbolo (dict, inclui updated_at) ou None."""
-        with self.engine.connect() as conn:
-            row = conn.execute(text("SELECT * FROM _symbol_specs WHERE symbol = :s"), {"s": symbol}).mappings().fetchone()
+        if connection is None:
+            with self.engine.connect() as conn:
+                return self.get_symbol_spec(symbol, connection=conn)
+        row = connection.execute(text("SELECT * FROM _symbol_specs WHERE symbol = :s"), {"s": symbol}).mappings().fetchone()
         return dict(row) if row else None
 
-    def find_table_for_symbol(self, symbol, timeframe_name):
+    def find_table_for_symbol(self, symbol, timeframe_name, *, connection=None):
         """Tabela existente do símbolo/timeframe, sem registrar nada (None se ainda não foi extraído)."""
         if not self.is_connected():
             return None
+        if connection is None:
+            with self.engine.connect() as conn:
+                return self.find_table_for_symbol(symbol, timeframe_name, connection=conn)
         timeframe_key = self._normalize_name(timeframe_name)
-        with self.engine.connect() as conn:
-            row = conn.execute(text("SELECT table_name FROM _symbol_tables WHERE symbol = :s AND timeframe = :t"),
-                               {"s": symbol, "t": timeframe_key}).fetchone()
+        row = connection.execute(text("SELECT table_name FROM _symbol_tables WHERE symbol = :s AND timeframe = :t"),
+                                 {"s": symbol, "t": timeframe_key}).fetchone()
         name = row[0] if row else self._normalize_name(f"{symbol}_{timeframe_name}")
-        return name if inspect(self.engine).has_table(name) else None
+        return name if inspect(connection).has_table(name) else None
 
     def symbols_with_data(self, symbols, timeframe_name):
         """
@@ -614,16 +636,21 @@ class DatabaseManager:
                     "end": self._from_storage(pd.to_datetime(end)).to_pydatetime() if end is not None else None})
         return result
 
-    def load_ohlcv(self, symbol, timeframe_name, start=None, end=None):
+    def load_ohlcv(self, symbol, timeframe_name, start=None, end=None, *, connection=None):
         """
         Barras OHLCV (time, open, high, low, close, tick_volume, spread, real_volume) do símbolo, em
         ordem de tempo, no horário da corretora. DataFrame vazio se não houver dados.
         """
         wanted = ["time", "open", "high", "low", "close", "tick_volume", "spread", "real_volume"]
-        table = self.find_table_for_symbol(symbol, timeframe_name)
+        if not self.is_connected():
+            return pd.DataFrame(columns=wanted)
+        if connection is None:
+            with self.engine.connect() as conn:
+                return self.load_ohlcv(symbol, timeframe_name, start, end, connection=conn)
+        table = self.find_table_for_symbol(symbol, timeframe_name, connection=connection)
         if table is None:
             return pd.DataFrame(columns=wanted)
-        present = {c["name"] for c in inspect(self.engine).get_columns(table)}
+        present = {c["name"] for c in inspect(connection).get_columns(table)}
         cols = [c for c in wanted if c in present]
         where, params = [], {}
         if start is not None:
@@ -633,11 +660,10 @@ class DatabaseManager:
             where.append("time <= :end")
             params["end"] = self._to_storage(pd.Timestamp(end)).strftime(self._TIME_FMT)
         quoted = ", ".join(f'"{c}"' for c in cols)
-        sql = f'SELECT {quoted} FROM "{table}"'
+        sql = f'SELECT {quoted} FROM {connection.dialect.identifier_preparer.quote(table)}'
         if where:
             sql += " WHERE " + " AND ".join(where)
-        with self.engine.connect() as conn:
-            df = pd.read_sql(text(sql + " ORDER BY time"), conn, params=params)
+        df = pd.read_sql(text(sql + " ORDER BY time"), connection, params=params)
         if not df.empty:
             df["time"] = self._from_storage(pd.to_datetime(df["time"]))
         return df

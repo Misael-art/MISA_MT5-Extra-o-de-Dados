@@ -120,6 +120,10 @@ def _save_run(db, run: dict) -> None:
         columns = _RUN_COLUMNS + ("trades_json",) + _VALUATION_COLUMNS
         conn.execute(text(f"INSERT INTO _robot_runs ({', '.join(columns)}) "
                           f"VALUES ({', '.join(':' + c for c in columns)})"), row)
+        manifest_id = run["metrics"].get("data_manifest_id")
+        if manifest_id is not None:
+            from mt5_extracao.analytics import datasets
+            datasets.bind(db, run["run_id"], manifest_id, connection=conn)
 
 
 def _has_trades_column(conn) -> bool:
@@ -152,6 +156,8 @@ def load_runs(db, robot_key: str = None, *, run_id: str = None) -> list:
         row["trades"] = json.loads(row.pop("trades_json", None) or "[]")      # [[horário, resultado, volume], ...]
         row["params"] = json.loads(row.pop("params_json") or "{}")
         row["metrics"] = json.loads(row.pop("metrics_json") or "{}")
+        row["data_manifest_id"] = row["metrics"].get("data_manifest_id")
+        row["data_provenance_status"] = "frozen_reference" if row["data_manifest_id"] else "legacy_current_data"
         from mt5_extracao import profit_factor
         try:
             pnl = [t[1] for t in row["trades"]]

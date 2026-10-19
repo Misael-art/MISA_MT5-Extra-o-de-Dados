@@ -59,7 +59,7 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 
 | Nome | O que faz |
 |---|---|
-| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True, cashflows=None)` | Backtest de uma estratégia Python com as barras da base. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
+| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True, cashflows=None, data_manifest_id=None)` | Backtest de uma estratégia Python com revisão fixada das barras. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
 | `run_mql5(db, config, robot, symbol, timeframe, start=None, end=None, preset=None, params=None, ...)` | Backtest de um robô MQL5 pelo Strategy Tester. O MT5 precisa estar fechado |
 
 Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`. Pela CLI, `--symbols A,B,C`
@@ -86,6 +86,20 @@ conta ou equivalente normalizado ao capital inicial. `equity` e
 intrabarra; status/limitações ficam em `valuation`. Run legado sem trajetória
 retorna `None` nos novos campos e motivo, sem regravação. Veja
 [marcação, fluxos e prova nativa T20.3](../analytics/T20.3_PATRIMONIO_FLUTUANTE.md).
+
+Desde T20.4, `run_python` acrescenta ao final `data_manifest_id=None`. Por padrão,
+captura barras/especificação/calendários numa imagem consistente e fixa sua
+identidade no run. Com um ID anterior, lê aquela revisão, sem usar dados atuais;
+ativo/TF e limites explicitamente informados devem corresponder à seleção do
+manifesto. As grafias equivalentes de data/timeframe são normalizadas.
+Os retornos acrescentam `data_manifest_id` e `data_provenance_status`. A origem
+local e servidor desconhecido ficam explícitos; hash não certifica corretora,
+qualidade, causalidade ou estratégia. Referência ausente/corrompida gera erro.
+Runs legados sem revisão continuam identificados como `legacy_current_data`.
+Veja [manifestos e reprodução dos dados](../analytics/T20.4_MANIFESTOS_DADOS.md).
+O contrato 1 permanece compatível: o argumento novo é opcional e vem após os
+anteriores. A reprodução de código/custos/configuração/protocolo é tratada nos
+donos T20.12/16/25, além desta identidade de dados.
 
 Desde T17.28, `run_mql5` aceita ao final seis opções compatíveis com chamadas
 anteriores: `visual=None`, `read_csv=True`, `trades_csv_override=None`,
