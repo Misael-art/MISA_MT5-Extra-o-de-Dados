@@ -252,3 +252,13 @@ def test_native_registry_late_correction_is_point_in_time(pg):
 def test_native_registry_export_retains_states_and_destination(pg, tmp_path):
     from tests.test_indicator_materialization import test_export_preserves_states_version_and_previous_destination
     test_export_preserves_states_version_and_previous_destination(pg, tmp_path)
+
+
+def test_alligator_calculation_close_and_plot_anchor_are_independent(pg):
+    from tests.test_alligator import test_closed_calculation_time_is_not_replaced_by_visual_offset
+    test_closed_calculation_time_is_not_replaced_by_visual_offset(pg)
+
+
+def test_alligator_late_revision_preserves_history_and_plot_anchor(pg):
+    from tests.test_alligator import test_late_alligator_correction_preserves_previous_time_and_plot_anchor
+    test_late_alligator_correction_preserves_previous_time_and_plot_anchor(pg)

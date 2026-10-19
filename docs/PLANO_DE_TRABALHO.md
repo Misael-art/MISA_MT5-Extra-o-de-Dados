@@ -177,7 +177,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | ✅ documentação integrada no PR120; inventário original e proveniência preservados, sem runtime novo |
 | T19.2 | Composição canônica e capacidades tipadas, preservando contrato 1 | T19.1, B-11/B-09/B-10 conforme recorte | planejada |
 | T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | ✅ [PR125](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/125), aceite/revisão concluídos no eaec23b;1528 casos distintos CI+UI,34 PostgreSQL, cov77,64%,27 focados, doctor21/1/0 e seis checks aprovados; consumidor com avaliação exact_prefix e limites explícitos; Windows físico pendente |
-| T19.4–T19.13 | Todos os indicadores do TXT: Bill Williams, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
+| T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | 🟡 candidata sobre master2b27b1f;62 casos focados, doctor21/1/0, referência independente e CSV exato; custo90/append30/cache=279/216/2ms; CI/revisão pendentes; Windows físico pendente |
+| T19.5–T19.13 | Todos os indicadores do TXT: Demais Bill Williams, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
 | T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | planejadas |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | planejadas; gates operacionais das grades preservados |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |

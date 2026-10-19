@@ -1,3 +1,16 @@
+## T19.4 — Alligator em validação, 2026-10-19
+
+Base master2b27b1f da T19.3/#125,290 fontes/testes do baseline exatamente compatíveis.
+Ambiente instalado, aceite1528 Linux/34PG/1497Windows e seis checks reaproveitados antes da mudança.
+SMMA própria com semente SMA, mediano,13/8/5 e desenho8/5/3; rma legado preservado.
+Cinco saídas novas no registry/store/CSV existente, sem estratégia/presets ou Relações real.
+62 focados distintos aprovados, doctor21/1/0, referência racional e doubles CSV/store exatos.
+Custo em três jobs já registrados, uma amostra cada:279/216/2ms para90 M5/append30/cache.
+Medição e prova CLI usaram600 M1 DEMO arquivadas, sem reextração/ordens; RSS total explícita.
+Dois casos PG novos aguardam CI; revisão/aceite CI ainda pendentes. Windows físico é pendência
+específica. Relatório: analytics/T19.4_ALLIGATOR.md. Root/índice/WIP e ponte preservados.
+Após concluir a ficha, próxima dependência elegível T19.5 (AO/AC), com PR separada.
+
 ## Fechamento T19.3 — seis checks aprovados, 2026-10-19
 
 PR125/eaec23b: revisão e aceite concluídos, inclusive o check Windows existente.

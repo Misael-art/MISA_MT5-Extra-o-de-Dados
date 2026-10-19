@@ -154,15 +154,22 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                     if item["feature_id"] == "volume.real" and (pd.isna(bar.get("real_volume_known")) or
                                                                  bar.get("real_volume_known") != 1):
                         item = dict(item, value=None, state="SOURCE_VALUE_MISSING", reason="REAL_VOLUME_NOT_OBSERVED")
+                    metadata = {"state": item["state"], "reason": item["reason"], "reconstructed": True,
+                                "registry_version": item["algorithm_version"],
+                                "implementation_sha256": implementation,
+                                "bar_end_utc": bar.bar_end_utc.isoformat(), "source_scope": "causal_prefix"}
+                    if "display_offset_bars" in item:
+                        metadata.update(calculation_bar_start_utc=bar.bar_start_utc.isoformat(),
+                                        calculation_bar_end_utc=bar.bar_end_utc.isoformat(),
+                                        display_anchor_bar_start_utc=bar.bar_start_utc.isoformat(),
+                                        display_offset_bars=item["display_offset_bars"], display_time_utc=None,
+                                        display_time_rule="source_bar_ordinal_plus_offset; no UTC forecast")
                     yield dict(symbol=symbol, timeframe=label, feature_id=item["feature_id"],
                                algorithm_version=algorithm_version(item["feature_id"], implementation),
                                observation_time=bar.bar_start_utc, value=item["value"], available_at=available,
                                observed_at=available, source_revision=chains[position],
                                quality="VALID" if item["state"] == "AVAILABLE" else "UNAVAILABLE",
-                               metadata={"state": item["state"], "reason": item["reason"], "reconstructed": True,
-                                         "registry_version": item["algorithm_version"],
-                                         "implementation_sha256": implementation,
-                                         "bar_end_utc": bar.bar_end_utc.isoformat(), "source_scope": "causal_prefix"})
+                               metadata=metadata)
             current = set(bars.bar_start_utc) if not bars.empty else set()
             for ident in ids:
                 for old in previous[ident].itertuples():

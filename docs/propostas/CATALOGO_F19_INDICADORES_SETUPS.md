@@ -101,6 +101,13 @@ O registro-base é T18.1; materialização/consulta e seus consumidores entram p
 - **Saídas:** linhas, alinhamento, separação e estado de tendência/consolidação objetivamente definido.
 - **Aceite específico:** deslocamento de desenho não autoriza usar barras futuras; registrar
   tempo do cálculo e tempo da exibição separadamente; paridade com variante escolhida.
+- **Contrato T19.4:** mediano `(high+low)/2`; SMMA com semente SMA de n valores finitos
+  consecutivos; recorrência `(anterior*(n-1)+preço)/n`. Mandíbula13/desenho+8,
+  dentes8/+5, lábios5/+3. Lacuna reinicia semente. Valores consumidos não deslocados,
+  disponíveis no fechamento/recebimento; desenho usa âncora+offset, sem prever UTC futuro.
+  Alinhamento estrutural ±1/0 e separação máximo−mínimo exigem as três linhas; mistura/empate
+  não certifica regime de consolidação nem gera ordem. Referências primárias e limites:
+  [contrato/aceite](../analytics/T19.4_ALLIGATOR.md).
 - **Tarefa:** T19.4.
 
 ### I07 — Awesome Oscillator / AO
