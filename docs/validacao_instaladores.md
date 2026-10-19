@@ -178,3 +178,13 @@ CI Windows: 1421 aprovados/33 ignorados/5 avisos, cobertura 73,09%, no código
 a1c2a77. Linux local: 1438/16/3, cobertura 77,44%; PostgreSQL real isolado: 20
 aprovados. Esses resultados não substituem Windows físico nem MT5 conectado;
 a T13.3 não introduz leitor MQL5 ou autorização de negociação.
+
+### EXTR-01 integrada — pendência específica de Windows físico
+
+- [ ] Em Windows físico com MT5 DEMO comprovado, reproduzir a jornada curta de
+  extração/atualização/repetição/reabertura/consulta/exportação e Cancelar/retomada
+  da UI, sem ordens e em banco de teste próprio. Não usar conta REAL.
+
+Linux/Wine no master a92cd8a: sete casos dirigidos aprovados; conector DEMO e UI
+reais passaram. CI Windows aprovado na PR117 foi reaproveitado por igualdade de
+código; não equivale à prova física acima. Relatório: EXTR-01_VALIDACAO_NATIVA.md.

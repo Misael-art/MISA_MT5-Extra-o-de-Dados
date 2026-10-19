@@ -39,7 +39,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ✅ concluída |
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ✅ concluída |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ✅ concluída |
-| EXTR-01 | Qualificar o ciclo do extrator e corrigir a primeira lacuna comprovada | Fluxo F1/F3; candidata T13.3b | validada para integração no [PR117](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/117); 1468 aprovados/18 pulos/3 avisos, saída 0, cobertura 77,64%; 279 hashes conferidos; 34 focados, quatro casos novos e três Tk; doctor 16/2/0; código aprovado d5916ee preservado; seis checks reaproveitados; Windows físico pendente |
+| EXTR-01 | Qualificar o ciclo do extrator e corrigir a primeira lacuna comprovada | Fluxo F1/F3; candidata T13.3b | ✅ concluída Linux/Wine, [PR117](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/117), merge a92cd8a; 1468/18/3 e seis checks reaproveitados; sete casos em master aprovados; DEMO CLI 2880→3600, repetição/reabertura/CSV exatos e UI Cancelar/retomada/exportação 4736 únicas; doctor 21/1/0; Windows físico pendente |
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
 | T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |

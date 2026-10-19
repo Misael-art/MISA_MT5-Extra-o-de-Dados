@@ -1,5 +1,22 @@
 # Continuidade: harmonização de 2026-10-14
 
+## EXTR-01 concluída em master; cadeia #108–#117 integrada (2026-10-19)
+
+[Fechamento, merges e prova em master](extrator/EXTR-01_VALIDACAO_NATIVA.md).
+As dez PRs foram integradas por Git, preservando o código aprovado e o trabalho
+local. #117 merge a92cd8a: sete casos de recuperação/falha/CLI/Cancelar passaram
+em 14,03 s; suíte global 1468/18/3 e seis checks compatíveis reaproveitados.
+Jornada nativa DEMO em master: 2880→3600 barras, repetir/reabrir/consultar/CSV
+exatos ao provedor. UI Tk nativa: Cancelar reconhecido, confirmados preservados,
+retomada e 4736 timestamps únicos exportados. Zero ordens/replay. Doctor 21 OK,
+um aviso pandas-ta opcional, nenhuma falha. Dez workflows redundantes dos merges
+cancelados por SHA, sem atribuir novo verde a master. Windows físico pendente.
+A ponte restrita funciona em foreground; o start em segundo plano abriu a porta,
+mas não permaneceu. Próximo recorte operacional: esclarecer essa saída e validar
+permanência pelo gerenciador, sem ampliar permissões ou afetar outros terminais.
+Sem nova campanha numérica ou refatoração do produto para encerrar esta jornada.
+
+
 ## Revisão/integração PR #117 — EXTR-01 (2026-10-19)
 
 Base master `814ded9` conciliada por merge Git na worktree da tarefa.
