@@ -88,3 +88,29 @@ def test_global_version_transition_keeps_explicit_legacy_context(db, monkeypatch
     pinned = indicator_context.context(db, decisions, symbol="TEST", timeframe="M5", feature_ids=[ident], algorithm_version=legacy)
     assert pinned.iloc[0][ident + "::state"] == "AVAILABLE" and pinned.iloc[0][ident + "::value"] is not None
     assert facts(db) == original
+
+
+
+def test_source_sequence_uses_the_supplied_transaction_for_schema_inspection(db):
+    """Uma guarda de snapshot não pode abrir outra conexão sob lock SQLite."""
+    from sqlalchemy import event
+
+    # Banco legado sem o schema Analytics: inspeção não pode ser omitida.
+    with db.engine.begin() as transaction:
+        def same_empty_connection(conn, cursor, statement, parameters, context, executemany):
+            assert conn is transaction, "A inspeção da tabela ausente saiu da transação"
+        event.listen(db.engine, "before_cursor_execute", same_empty_connection)
+        try:
+            assert resampling.latest_source_sequence(db, "TEST", "M5", connection=transaction) is None
+        finally:
+            event.remove(db.engine, "before_cursor_execute", same_empty_connection)
+    seed(db, source(15))
+    expected = resampling.latest_source_sequence(db, "TEST", "M5")
+    with db.engine.begin() as transaction:
+        def same_connection(conn, cursor, statement, parameters, context, executemany):
+            assert conn is transaction, "A inspeção saiu da transação de consistência"
+        event.listen(db.engine, "before_cursor_execute", same_connection)
+        try:
+            assert resampling.latest_source_sequence(db, "TEST", "M5", connection=transaction) == expected
+        finally:
+            event.remove(db.engine, "before_cursor_execute", same_connection)
