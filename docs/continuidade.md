@@ -1072,7 +1072,7 @@ intactos. Focados 99, PostgreSQL 22, limites/retomada 7 e doctor 16/2/0 aprovado
 Benchmark compute: 25398 registros exatamente iguais, inclusive hashes;
 12187/1521 ms, sem aquisição/resampling e sem ganho demonstrado de RSS.
 A tentativa extra EURUSD/AGG permanece inconclusiva, com artefatos preservados.
-Cinco checks aprovados; Windows CI ainda em curso. PR116 rascunho, sem merge
+Seis checks do runtime 40fbef5 aprovados, incluindo Windows. PR116 pronta para revisão, sem merge
 e sem aplicação ao workspace principal. Próxima prioridade do proprietário:
 EXTR-01, conforme propostas/PROMPT_RETOMADA_EXTRATOR.md; não repetir a
 investigação numérica corrigida. Windows físico permanece pendente.
