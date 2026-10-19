@@ -45,6 +45,29 @@ def no_sleep(monkeypatch):
     monkeypatch.setattr(connector_module.time, "sleep", lambda s: None)
 
 
+def test_trajectory_preserves_double_observations_and_legacy_real_ledger(pg):
+    from mt5_extracao.strategies.backtester import BacktestConfig, SymbolSpec, run_backtest
+    from mt5_extracao.trade_analytics import ledger
+    from mt5_extracao.trade_analytics.trajectories import store
+    from mt5_extracao.trade_analytics.trajectories.clocks import Clock
+    from tests.test_backtester import Manual, bars
+    data = bars([[100, 101, 99, 100], [100.123456789, 101, 99, 100.4],
+                 [101.1, 104, 100, 102.456789123]], start="2026-01-05 10:00", freq="min")
+    result = run_backtest(data, Manual(long=[0], stop={0: 90}),
+                          SymbolSpec(point=1, tick_size=1, tick_value=1),
+                          BacktestConfig(initial_equity=10000), observation_timeframe="M1")
+    ledger.save_trades(pg, "precise", result.trades, symbol="X", timeframe="M1", source="python")
+    before = ledger.load(pg, run_id="precise")
+    assert before.iloc[0].entry_price != result.trades[0].entry_price  # REAL legado é float32
+    identity = store.save(pg, "precise", result.trajectory, source="python", clock=Clock("utc"))
+    loaded = store.load(pg, "precise")
+    assert loaded["trajectory_id"] == identity
+    assert loaded["observations"]["records"][-1]["net_pnl"] == result.trades[0].pnl
+    assert loaded["ledger_precision"] == "postgresql_storage_projection"
+    assert store.save(pg, "precise", result.trajectory, source="python", clock=Clock("utc")) == identity
+    pd.testing.assert_frame_equal(before, ledger.load(pg, run_id="precise"))
+
+
 def test_save_upsert_and_read_back(pg):
     df = random_walk(300, freq="min", start="2024-01-02 09:00")
     assert pg.save_ohlcv_data("WIN$N", "1 minuto", df)

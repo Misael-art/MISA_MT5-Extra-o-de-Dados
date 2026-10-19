@@ -12,6 +12,7 @@ entrada ou sem direção entra com completeness = "parcial" (ex.: robôs MQL5 cu
 """
 import logging
 import threading
+from contextlib import nullcontext
 from dataclasses import asdict, is_dataclass
 from typing import Iterable, List, Optional
 
@@ -117,13 +118,13 @@ def save_trades(db, run_id: str, trades: Iterable, robot_key: Optional[str] = No
 
 def load(db, robot_key: Optional[str] = None, symbol: Optional[str] = None, timeframe: Optional[str] = None,
          source: Optional[str] = None, run_id: Optional[str] = None, start=None, end=None,
-         completeness: Optional[str] = None, include_resim: bool = False) -> pd.DataFrame:
+         completeness: Optional[str] = None, include_resim: bool = False, *, connection=None) -> pd.DataFrame:
     """
     Operações filtradas (entrada em [start, end)), ordenadas por entrada; DataFrame vazio com as colunas se não houver.
     Re-simulações (source "resim:...") ficam de fora, salvo `include_resim` ou um `source`/`run_id` pedido.
     """
     empty = pd.DataFrame(columns=list(COLUMNS))
-    if not _usable(db) or not inspect(db.engine).has_table(TABLE):
+    if not _usable(db) or not inspect(connection if connection is not None else db.engine).has_table(TABLE):
         return empty
     where, params = [], {}
     for name, value in (("robot_key", robot_key), ("symbol", symbol), ("timeframe", timeframe),
@@ -141,10 +142,10 @@ def load(db, robot_key: Optional[str] = None, symbol: Optional[str] = None, time
         params["end"] = pd.Timestamp(end).to_pydatetime()
     sql = f"SELECT * FROM {TABLE}" + (" WHERE " + " AND ".join(where) if where else "") + \
         " ORDER BY COALESCE(entry_time, exit_time), run_id, seq"
-    with db.engine.connect() as conn:
+    with (nullcontext(connection) if connection is not None else db.engine.connect()) as conn:
         frame = pd.read_sql(text(sql), conn, params=params)
     for name in _TIMES:
-        frame[name] = pd.to_datetime(frame[name], errors="coerce")
+        frame[name] = pd.to_datetime(frame[name], format="ISO8601", errors="coerce")
     return frame
 
 

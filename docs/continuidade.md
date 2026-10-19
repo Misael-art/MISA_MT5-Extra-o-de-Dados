@@ -1,5 +1,18 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #113 — T19.14 (2026-10-19)
+
+Base master `b7c8fd5` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos relógios/fuso explícitos, censura e população do run, janelas intrabarra, sidecar aditivo ligado ao ledger/snapshot e recusa de dados divergentes; nenhum limite temporal ou financeiro ampliado. A suíte composta inclui T13.2; o aceite próprio atual é o CI do SHA 4373cea.
+Aceite reaproveitado: 1388/12/3 históricos; complemento de preparo coberto pelo CI atual e composição 1398/13/3 saída 0 em 4b3302c; PostgreSQL 10 e doctor 16/2/0; seis checks aprovados no HEAD `4373cea683781171a3ec5aaf717ccb8c65a3ff26`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## Revisão/integração PR #112 — T20.25 (2026-10-19)
 
 Base master `541c1c3` conciliada por merge Git na worktree da tarefa.
@@ -1125,6 +1138,32 @@ local completa. Windows físico e revisão independente permanecem pendentes.
 [PR #112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), branch codex/t20.25-cache-isolamento, empilhado sobre a T20.24/PR111. Não consome
 registry/Composer/registro estatístico ausentes; o histórico nativo continua sem
 identidade suficiente para cache entre experimentos. [Contratos e limites](analytics/T20.25_CACHE_ISOLAMENTO.md).
+
+## T19.14 — Trajetórias temporais (em revisão)
+
+Relógios explícitos, trajetórias disponíveis de preço e diários de ciclos/parciais
+foram integrados ao ledger por sidecar aditivo versionado. Publicação Python e
+re-simulações salvas registram o diário; `mt5x trades trajectory` consulta caixa
+por ciclo, preço, limiares e distribuição de duração. Saída intrabarra permanece
+intervalar; cortes anteriores não usam a saída futura. Snapshots novos de uma
+re-simulação antiga pertencem só à derivada. Cobertura contínua, sessão histórica,
+moeda/custos ausentes e precisão nativa não são presumidos.
+
+Baseline: 1280/11/3. Dirigidos finais: 100 em 98,61 s; PostgreSQL16 isolado:
+10 em 12,69 s, container removido; doctor: 16 OK/2 avisos/0 falhas. Medição ABBA
+BENCH/M15/4000 barras: hashes de trades/curvas/métricas iguais; publicação
+0,968→1,737 s e banco 1,137→2,070 MiB, com 2733 observações. Leitura de cópia de
+artefato nativo anterior preservou origem e explicitou cobertura só de endpoints;
+não foi novo replay nem trajetória contínua. Suíte completa final: 1381 aprovados,
+12 pulos e 3 avisos em 1378,80 s, saída 0, com Xvfb privado e fontes intactas
+por hash. Omissão inicial na expectativa da assinatura SDK foi corrigida
+com oito testes de compatibilidade, preservando a tentativa reprovada.
+[PR113](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/113), sobre
+T20.25/PR112. Windows físico e revisão independente pendentes.
+
+O dono é `trade_analytics`, consumindo ledger F16, snapshots T20.4/6 e motores
+existentes. A exportação permanente H/T16.2b-H e o registro T20.12 não são
+reimplementados. [Contrato do recorte](analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).
 
 ## T19.0 — publicação isolada da base documental (2026-10-19)
 

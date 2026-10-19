@@ -165,6 +165,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
         if start_index >= len(df):
             raise ValueError(f"Não há barras a partir de {trade_from} no período pedido.")
     result = run_backtest(df, strategy, spec, settings, start_index=start_index, cashflows=cashflows,
+                          observation_timeframe=tf.name if source not in catalog.HIDDEN_RUN_SOURCES else None,
                           **({"check": control.check} if control is not None else {}))
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
@@ -192,7 +193,7 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")}
     store.save_run(db, run, **({"control": control} if control is not None else {}))
     from mt5_extracao.trade_analytics import importers       # Laboratório (T16.2): operações completas no livro
-    importers.safely(importers.record_python_run, db, run, result.trades)
+    importers.safely(importers.record_python_run, db, run, result.trades, trajectory=result.trajectory)
     return run
 
 
