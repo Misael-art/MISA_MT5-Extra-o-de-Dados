@@ -28,6 +28,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
 | T19.3 (conexão) | Inspeção e leitura de geração na transação recebida | T19.3 | ✅ concluída, [PR130](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/130); seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis; [causa e evidência](analytics/T19.3_CONEXAO_SNAPSHOT.md); Windows físico pendente |
+| T19.6 | Pivôs causais Fractals/ZigZag | T19.3 | ✅ concluída, [PR131](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/131); #130 integrada antes; seis checks6a9d580:1467Ubuntu/48PG/1569WindowsCI;117 locais compatíveis/61 caminhos finais, doctor21/1/0;720 fatos atuais+720 anteriores preservados; [contrato e rematerialização](analytics/T19.6_PIVOS_CAUSAIS.md); Windows físico pendente |
 | T19.14 | Trajetórias temporais de trades e ciclos | T19.1, T16.1/2/3 | ✅ integrada no [PR113](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/113), merge bd5cb6d; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |

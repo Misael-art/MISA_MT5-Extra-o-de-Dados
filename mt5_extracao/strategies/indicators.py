@@ -249,3 +249,100 @@ def swing_low(df: pd.DataFrame, n: int = 10) -> pd.Series:
 
 def swing_high(df: pd.DataFrame, n: int = 10) -> pd.Series:
     return df["high"].rolling(n, min_periods=n).max()
+
+
+
+def _pivot_inputs(bars):
+    """Valores por posição, sem preencher ausências nem inferir ordem intrabarra."""
+    columns = [pd.to_numeric(bars.get(name, pd.Series(np.nan, index=bars.index)), errors="coerce")
+               .to_numpy(dtype=float) for name in ("high", "low")]
+    reset = bars.get("_pivot_reset_before", pd.Series(False, index=bars.index)).fillna(False).to_numpy(dtype=bool)
+    return columns[0], columns[1], reset
+
+
+def causal_fractals(bars, width=2):
+    """Fractal estrito: origem central, publicação duas barras depois (width=2).
+
+    Empates rejeitam o pivô; uma fonte inválida reinicia a janela e os níveis.
+    Cada snapshot contém apenas o que era conhecido naquele prefixo. Candidatos
+    são desenho provisório e nunca níveis confirmados para uma estratégia.
+    """
+    if isinstance(width, bool) or not isinstance(width, int) or width < 1:
+        raise ValueError("A largura do fractal precisa ser um inteiro positivo.")
+    high, low, reset = _pivot_inputs(bars)
+    result, start, levels = [], 0, {"top": None, "bottom": None}
+    for i, (h, l) in enumerate(zip(high, low)):
+        if reset[i]:
+            start, levels = i, {"top": None, "bottom": None}
+        valid = np.isfinite(h) and np.isfinite(l) and h >= l
+        if not valid:
+            start, levels = i + 1, {"top": None, "bottom": None}
+        count = i - start + 1
+        if count >= 2 * width + 1:
+            origin = i - width
+            for kind, values, greater in (("top", high, True), ("bottom", low, False)):
+                others = [values[j] for j in range(origin - width, i + 1) if j != origin]
+                if all(values[origin] > x if greater else values[origin] < x for x in others):
+                    levels[kind] = dict(kind=kind, price=float(values[origin]), origin=origin, confirmation=i)
+        pending = []
+        if valid:
+            for origin in range(max(start + width, i - width + 1), i + 1):
+                for kind, values, greater in (("top", high, True), ("bottom", low, False)):
+                    others = [values[j] for j in range(origin - width, i + 1) if j != origin]
+                    if all(values[origin] > x if greater else values[origin] < x for x in others):
+                        pending.append(dict(kind=kind, price=float(values[origin]), origin=origin, confirmation=None))
+        result.append(dict(valid=bool(valid), ready=count >= 2 * width + 1,
+                           **levels, provisional=pending))
+    return result
+
+
+def causal_zigzag(bars, depth=12, deviation=0.01, backstep=3):
+    """Variante causal de reversão percentual, distinta do ZigZag retrospectivo MT5.
+
+    Depth exige uma janela válida e qualifica a reversão como extremo da janela.
+    Backstep exige esse número de barras entre candidato e reversão. O candidato
+    move-se só com extremo estritamente melhor; empate conserva a primeira origem.
+    Uma barra que melhora o candidato não o confirma, mesmo que também reverta:
+    OHLC não informa a ordem intrabarra. Confirmados nunca são apagados por append.
+    """
+    if (isinstance(depth, bool) or not isinstance(depth, int) or depth < 2 or
+            isinstance(backstep, bool) or not isinstance(backstep, int) or not 1 <= backstep < depth or
+            isinstance(deviation, bool) or not isinstance(deviation, (int, float, np.integer, np.floating)) or
+            not np.isfinite(deviation) or not 0 < deviation < 1):
+        raise ValueError("Confira depth>=2, 1<=backstep<depth e desvio percentual entre 0 e 1.")
+    high, low, reset = _pivot_inputs(bars)
+    result, start, candidate = [], 0, None
+    levels = {"top": None, "bottom": None}
+    for i, (h, l) in enumerate(zip(high, low)):
+        if reset[i]:
+            start, candidate, levels = i, None, {"top": None, "bottom": None}
+        valid = np.isfinite(h) and np.isfinite(l) and h >= l > 0
+        if not valid:
+            start, candidate, levels = i + 1, None, {"top": None, "bottom": None}
+        ready = i - start + 1 >= depth
+        if valid and ready:
+            left = i - depth + 1
+            hi = max(range(left, i + 1), key=lambda j: high[j])
+            lo = min(range(left, i + 1), key=lambda j: low[j])
+            if candidate is None:
+                # Empate de origens (inclui janela plana/outside) não define direção.
+                if hi != lo:
+                    kind, origin = ("top", hi) if hi < lo else ("bottom", lo)
+                    candidate = dict(kind=kind, origin=origin,
+                                     price=float(high[origin] if kind == "top" else low[origin]), confirmation=None)
+            if candidate is not None:
+                top = candidate["kind"] == "top"
+                improved = h > candidate["price"] if top else l < candidate["price"]
+                if improved:
+                    candidate = dict(kind=candidate["kind"], origin=i, price=float(h if top else l), confirmation=None)
+                else:
+                    age = i - candidate["origin"]
+                    reversal = (l <= low[lo] and l / candidate["price"] <= 1 - deviation if top else
+                                h >= high[hi] and candidate["price"] / h <= 1 / (1 + deviation))
+                    if age >= backstep and reversal:
+                        levels[candidate["kind"]] = {**candidate, "confirmation": i}
+                        candidate = dict(kind="bottom" if top else "top", origin=i,
+                                         price=float(l if top else h), confirmation=None)
+        result.append(dict(valid=bool(valid), ready=bool(ready), **levels,
+                           provisional=[dict(candidate)] if candidate is not None else []))
+    return result

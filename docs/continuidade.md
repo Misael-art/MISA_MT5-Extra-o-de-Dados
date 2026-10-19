@@ -1,3 +1,15 @@
+# T19.6 — aceite temporal concluído — 2026-10-19
+
+PR130 integrada antes, merge c27ef93; PR131 com base master, seis checks6a9d580 aprovados:
+1467Ubuntu/48PG/1569WindowsCI, coberturas77,64%/73,36%;117 casos locais distintos
+compatíveis,61 nos caminhos finais e doctor21/1/0.294 fontes/testes idênticos no
+fechamento documental.720 fatos DEMO atuais e720 anteriores preservados; CSV/contexto
+conciliados com referência independente. Origem, confirmação e conhecimento separados;
+provisórios não são sinais e ausência conhecida interrompe a janela. [Contrato e
+rematerialização](analytics/T19.6_PIVOS_CAUSAIS.md). Próxima elegível:T19.7. Relações
+segue sintética; nenhuma estratégia/preset. Windows físico continua pendente específico.
+Trabalho local e ponte preservados.
+
 # T19.3: conexão do snapshot aceita — 2026-10-19
 
 Correção necessária para T19.6: inspeção de schema usa a transação recebida. [Causa e evidências](analytics/T19.3_CONEXAO_SNAPSHOT.md). PR130 aceita: seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis, doctor21/1/0. Windows físico pendente. T19.6/#131 depende desta integração.
