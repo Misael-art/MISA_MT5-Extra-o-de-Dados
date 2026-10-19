@@ -1,3 +1,13 @@
+<!-- T19.2: branch dependente; não substitui o estado de master abaixo. -->
+
+T19.2 preparada sobre B-11/PR132, vinculada a HADOUKEN14: composição/capacidades v1,
+validação explícita SDK1 e adaptador de backtest base reutilizando Strategy/BacktestConfig.
+112 aprovados na seleção inicial; 80 composição/SDK no fechamento após modos explícitos.
+CI final/integração pendentes. Não há preset ou UI operacional
+nova. Pullback bloqueado somente no novo adaptador até T19.57; legado preservado.
+Próximo consumidor: contratos/adaptador nativo real e S09, seguido do percurso Default/Manual.
+[Contrato e limites](sdk/composicao.md).
+
 # Prioridade do proprietário: primeiro ciclo Manual — 2026-10-19
 
 Master4f7a046 confirmado. T19.7 continua no backlog; percurso M19-B/T20.30 priorizado.

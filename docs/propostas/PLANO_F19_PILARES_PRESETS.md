@@ -107,6 +107,12 @@ base documental T19.0/T20.0 ainda pendente. Ver resultados na continuidade.
 
 ### T19.2 — Composição canônica e capacidades tipadas
 
+**Estado (2026-10-19): implementação em revisão, dependente da política B-11.**
+[Schema/capacidades e adaptador base](../sdk/composicao.md) funcionam em Python sobre
+as estratégias existentes; rascunhos sem adaptador têm motivo. Pullback fica indisponível
+no novo caminho até T19.57 (confirmação de parcial/BE). SDK1 e caminhos legados preservados.
+CI final e integração pendentes; não conclui preset Default/Manual nem execução modular nativa.
+
 - **Repo/prioridade:** M; P0. **Depende de:** T19.1, política B-11 e definição correspondente B-09/B-10.
 - **Arquivos:** propostas `composition/schema.py`, `composition/registry.py`; integração `robots/contract.py`;
   schema separado de capacidades ou migração formal, nunca campo solto no contrato 1.

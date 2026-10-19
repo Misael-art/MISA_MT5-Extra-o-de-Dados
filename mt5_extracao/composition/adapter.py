@@ -1,0 +1,77 @@
+"""Adaptador base: delega sinal, regras de saída e backtest ao motor existente."""
+from dataclasses import dataclass, replace
+
+from .registry import BASE_MODES, EXECUTION_ORDER
+from .schema import Composition, Problem
+
+
+def base_composition(strategy_key, *, symbol, timeframe, params=None, risk_fraction=0.01, compound=True):
+    """Retrato dos parâmetros efetivos; não cria nem persiste o preset Default (T19.55)."""
+    from ..strategies import get_strategy
+
+    strategy = get_strategy(strategy_key, **({} if params is None else params))
+    data = {
+        "composition_schema_version": 1,
+        "strategy": {"key": strategy.key, "params": dict(strategy.params)},
+        "context": {"symbol": symbol, "timeframe": timeframe},
+        **{slot: {"mode": mode, "params": {}} for slot, mode in BASE_MODES.items()},
+        "filters": [], "execution_order": list(EXECUTION_ORDER),
+        "bar_policy": {"intrabar_priority": "stop_first", "position_limit": 1},
+    }
+    data["sizing"]["params"] = {"risk_fraction": risk_fraction, "compound": compound}
+    return Composition(data)
+
+
+def compatibility(composition, *, backend="python"):
+    """Suporte do adaptador instalado; um sidecar externo não concede suporte."""
+    if not isinstance(composition, Composition):
+        composition = Composition(composition)
+    if backend != "python":
+        return [Problem("backend", "adaptador modular nativo indisponível (T19.23/B-08/B-10); "
+                                   "use os fluxos legados ou o backtest Python. Declaração não autoriza execução.")]
+    data = composition.to_dict()
+    problems = [Problem(slot, f"modo {data[slot]['mode']} sem adaptador Python; use {mode} ou aguarde a capacidade.")
+                for slot, mode in BASE_MODES.items() if data[slot]["mode"] != mode]
+    if data["strategy"]["key"] == "pullback":
+        problems.append(Problem("partial_exit_plan", "Pullback legado usa parcial ainda não qualificada (T19.57); "
+                                                    "o novo adaptador não libera esse modo até corrigir confirmação/BE."))
+    if data["filters"]:
+        problems.append(Problem("filters", "filtros adicionais sem adaptador; remova-os do modo base. "
+                                           "Filtros internos da estratégia continuam ativos."))
+    return problems
+
+
+@dataclass(frozen=True)
+class BaseAdapter:
+    composition: Composition
+
+    def __post_init__(self):
+        if not isinstance(self.composition, Composition):
+            object.__setattr__(self, "composition", Composition(self.composition))
+        problems = compatibility(self.composition)
+        if problems:
+            raise ValueError("; ".join(f"{p.field}: {p.message}" for p in problems))
+
+    def strategy(self):
+        from ..strategies import get_strategy
+
+        value = self.composition.to_dict()["strategy"]
+        return get_strategy(value["key"], **value["params"])
+
+    def backtest_config(self, config=None):
+        from ..strategies.backtester import BacktestConfig
+
+        sizing = self.composition.to_dict()["sizing"]["params"]
+        # Fração 0.01 é 1%, sem conversão implícita para input percentual MQL5.
+        return replace(config if config is not None else BacktestConfig(),
+                       risk_per_trade=sizing["risk_fraction"], compound=sizing["compound"])
+
+    def run(self, bars, spec, config=None, *, timeframe):
+        from ..strategies.backtester import run_backtest
+
+        context = self.composition.to_dict()["context"]
+        if spec.symbol != context["symbol"]:
+            raise ValueError("context.symbol: especificação de outro ativo; carregue o contrato do símbolo selecionado.")
+        if timeframe != context["timeframe"]:
+            raise ValueError("context.timeframe: série difere da composição; carregue a série selecionada.")
+        return run_backtest(bars, self.strategy(), spec, self.backtest_config(config))

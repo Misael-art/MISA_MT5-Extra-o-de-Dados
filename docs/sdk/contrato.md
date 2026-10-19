@@ -110,3 +110,5 @@ A [política de versionamento](versionamento-contratos.md) preserva este contrat
 e define a separação de versões de composição/capacidades. Leitores desconhecidos
 recusam o formato; não há migração automática nem campo capabilities neste JSON.
 T19.2 entrega os leitores laterais em tarefa própria.
+
+Composição/capacidades são sidecars separados: [API T19.2](composicao.md).
