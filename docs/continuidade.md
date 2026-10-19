@@ -1,3 +1,24 @@
+## Fechamento da correção EXTR-02 — PR127, 2026-10-19
+
+Aceite concluído no63e717f: seis checks existentes aprovados,1395 Ubuntu/34 PostgreSQL/1497
+Windows CI; cobertura77,64%/73,36%.17 focados e doctor21/1/0 reaproveitados. Revisão sem
+pendências; fechamento somente documental [skip ci], fontes/testes preservados.
+Integração por merge Git antes da PR126; registrar SHA real no diário após resposta do GitHub.
+A composição runtime70b2191 da PR126 passou34 casos Alligator+ponte/doctor21/1/0 e está no CI
+39284170300. Não repetir referência/custo/extração aprovados. Root/WIP/ponte preservados.
+Windows físico permanece pendência específica.
+
+## Impedimento da PR126 — correção isolada EXTR-02
+
+Ubuntu da PR126:1408 aprovados/168 skips/1falha, cobertura77,64%. Falha no teste de stop/libc
+reproduzida por corrida entre perda do ambiente e saída da identidade; não foi erro Alligator.
+Correção em worktree codex/extr-02-confirmacao-saida sobre master2b27b1f: aguardar identidade,
+revalidando posse em cada sinal, com prazos e registros preservados.17 testes aprovados,
+determinístico antes falhou, doctor21/1/0. CI Linux/revisão pendentes. Windows nativo não foi
+alterado; aceites compatíveis são reaproveitados. Não refazer cálculos/custo da PR126.
+Incorporar a correção pelo fluxo Git antes de integrar T19.4; Root/ponte/WIP preservados.
+Relatório: extrator/EXTR-02_CONFIRMACAO_SAIDA.md. Windows físico continua pendente específico.
+
 ## Fechamento T19.3 — seis checks aprovados, 2026-10-19
 
 PR125/eaec23b: revisão e aceite concluídos, inclusive o check Windows existente.

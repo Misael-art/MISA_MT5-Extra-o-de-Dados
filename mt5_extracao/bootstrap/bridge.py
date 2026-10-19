@@ -225,15 +225,18 @@ class Bridge:
             print('Ponte MT5 já está parada.')
             return 0
         self._signal(record, signal.SIGTERM)
+        target = record['identity']
+        # O ambiente pode ser desmontado antes de /proc/stat marcar a saída.
+        # Perder o token não confirma término; identidade nova jamais recebe sinal.
         deadline = time.monotonic() + 5
-        while self.owned(record) and time.monotonic() < deadline:
+        while identity(target['pid']) == target and time.monotonic() < deadline:
             time.sleep(.1)
-        if self.owned(record):
-            self._signal(record, signal.SIGKILL)
+        if identity(target['pid']) == target:
+            self._signal(record, signal.SIGKILL)  # Revalida posse antes de sinalizar.
             deadline = time.monotonic() + 2
-            while self.owned(record) and time.monotonic() < deadline:
+            while identity(target['pid']) == target and time.monotonic() < deadline:
                 time.sleep(.1)
-        if self.owned(record):
+        if identity(target['pid']) == target:
             raise BridgeError('A ponte própria não encerrou. Confira logs/mt5_bridge.log; terminal e demais processos foram preservados.')
         self._clear()
         print('Ponte MT5 parada; terminal, Wine e display preservados.')
