@@ -96,6 +96,9 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
                    data_manifest_id=snapshot.manifest_id, data_provenance_status="frozen_reference",
+                   instrument_context=dict(spec.provenance),
+                   spec_historical_known=spec.provenance.get("specification_status") == "known",
+                   series_role=spec.provenance.get("series_role", "unknown"),
                    spec_known=bool(spec.known), real_spread=bool(settings.real_spread and spec.spread_by_hour),
                    initial_equity=float(settings.initial_equity),
                    risk_per_trade=float(settings.risk_per_trade))

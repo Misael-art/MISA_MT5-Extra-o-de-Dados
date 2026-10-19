@@ -89,6 +89,8 @@ def _bar_index(times: pd.Series, when) -> Optional[int]:
 def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: BacktestConfig,
              policy: ExitPolicy, atr: Optional[pd.Series] = None, cashflows=None) -> SimResult:
     """Re-simula cada operação (independentes: o motor não abre posição nova, só gere as que o run abriu)."""
+    from mt5_extracao.analytics.instruments import require_supported_spec
+    require_supported_spec(spec)
     data = bars.reset_index(drop=True)
     times = pd.to_datetime(data["time"]).reset_index(drop=True)
     flows = cashflow_values(cashflows, times)

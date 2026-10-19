@@ -1,5 +1,33 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #109 — T20.5 (2026-10-19)
+
+Base master `2bd7a11` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos vigência UTC distinta do conhecimento, revisões aditivas sem lookahead, compatibilidade de snapshots v1 e limites explícitos para fonte histórica ausente, ajuste/rolagem não executados.
+Aceite reaproveitado: 1137 aprovados/9 pulos existentes/3 avisos, saída 0; 85 direcionados, PostgreSQL 7, doctor 16/2/0; seis checks aprovados no HEAD `16eddef5576043ccbfc83469fcb8f1bbd42d21b9`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
+## T20.5 — vigência de instrumentos (2026-10-18)
+
+[Fonte e decisões](analytics/T20.5_VIGENCIA_INSTRUMENTOS.md). Histórico aditivo de
+especificações, ajustes/vencimentos/rolagens, papel da série e universo, com vigência e
+conhecimento independentes. Manifesto 2 preserva os fatos; produtor anterior
+formato 1 importado/exportado por bytes no teste, sem regravar revisões antigas.
+Especificação atual não recebe vigência retroativa. Cobertura histórica constante
+usa os fatos, mesmo com cache atual diferente. Variação de propriedades é
+identificada e recusada pelos motores de especificação constante. Série contínua
+permanece estudo; eventos declarados não são transformações ou ordens implícitas.
+Regressão direcionada: 85 aprovados; PostgreSQL 16 isolado: 7 aprovados; doctor
+16 OK/2 avisos/0 falhas. Suíte completa: 1137 aprovados, 9 pulos existentes e
+3 avisos em 1019,35 s, saída 0. Windows físico pendente. Próxima T20.6.
+[PR #109](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/109) sobre T20.4; nenhuma alteração de produção H/S ou contratação.
+
 ## Revisão/integração PR #108 — T20.4 (2026-10-19)
 
 Base master `9fbd5f5` conciliada por merge Git na worktree da tarefa.
@@ -80,7 +108,7 @@ re-simulação. Métricas recusam PnL inválido, mantendo PF canônico v1 e os
 estados legítimos sem operações/sem perdas. Sem mudança de banco ou contratos H/S.
 
 Verificação direcionada: 96 aprovados, uma pendência PostgreSQL existente.
-Suíte completa do runtime alterado: 1081 aprovados, nove pendências existentes,
+Suíte completa do runtime alterado: 1085 aprovados, nove pendências existentes,
 três avisos, 1179,37 s, saída 0. Doctor: 16 OK/2 avisos/0 falhas.
 [PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106) em revisão
 como rascunho, separado da base documental. Próximo recorte: T20.3.

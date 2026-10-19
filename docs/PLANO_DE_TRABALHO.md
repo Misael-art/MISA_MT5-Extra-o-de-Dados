@@ -193,8 +193,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | ✅ documentação integrada no PR121; Q01–Q16 no mapa único, sem runtime novo |
 | T20.2 | Referências independentes dos cálculos financeiros | T20.1 | ✅ integrada no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), merge f477e43; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | ✅ integrada no [PR107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107), merge 9fbd5f5; evidências compatíveis reaproveitadas; Windows físico pendente |
-| T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | validada para integração no [PR108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108); 1114 aprovados/9 pulos existentes/3 avisos, saída 0; 28 direcionados, PostgreSQL 7, doctor 16/2/0; código aprovado c991b04 preservado; seis checks reaproveitados; Windows físico pendente |
-| T20.5 | Vigência de especificações, ajustes e transformações de séries | T20.4 | planejada; Q02, sem inventar fonte histórica |
+| T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | ✅ integrada no [PR108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108), merge 2bd7a11; evidências compatíveis reaproveitadas; Windows físico pendente |
+| T20.5 | Vigência de especificações, ajustes e transformações de séries | T20.4 | validada para integração no [PR109](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/109); 1137 aprovados/9 pulos existentes/3 avisos, saída 0; 85 direcionados, PostgreSQL 7, doctor 16/2/0; código aprovado 16eddef preservado; seis checks reaproveitados; Windows físico pendente |
 | T20.6 | Qualidade por capacidade e cobertura efetiva de ticks | T20.4 | planejada; Q03 |
 | T20.7 | Compatibilidade por ativo/corretora/conta/versão | T20.1, T19.2/B-11 | planejada; Q04 |
 | T20.8 | Margem e exposição conjunta no motor canônico | T20.3/7, interfaces do recorte | planejada; Q05, integra I-07 e preserva guardas |

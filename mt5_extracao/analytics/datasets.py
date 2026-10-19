@@ -16,7 +16,7 @@ from sqlalchemy import inspect, text
 
 from mt5_extracao import timeframes
 
-VERSION = 1
+VERSION = 2
 BLOCK_ROWS = 512
 _LOCK = threading.RLock()
 _TABLES = ("_dataset_origin", "_dataset_blocks", "_dataset_manifests", "_dataset_references")
@@ -112,7 +112,7 @@ def _source(source, origin):
 def _blocks(frame, time_column, blocks):
     # Agrupar por dia evita deslocar todo o histórico se uma barra antiga chegar tarde.
     groups = [frame] if frame.empty else [group for _, group in frame.groupby(
-        pd.to_datetime(frame[time_column]).dt.strftime("%Y-%m-%d"), sort=True, dropna=False)]
+        pd.to_datetime(frame[time_column], format="ISO8601").dt.strftime("%Y-%m-%d"), sort=True, dropna=False)]
     ids = []
     for group in groups:
         for begin in range(0, max(1, len(group)), BLOCK_ROWS):
@@ -146,6 +146,11 @@ class Snapshot:
         return self._frames["market_calendar"].copy(deep=True)
 
     @property
+    def instrument_history(self):
+        frame = self._frames.get("instrument_history")
+        return frame.copy(deep=True) if frame is not None else None
+
+    @property
     def spec_row(self):
         row = self._manifest["specification"]
         return {key: _restore(value) for key, value in row.items()} if row else None
@@ -154,9 +159,18 @@ class Snapshot:
     def spec(self):
         from mt5_extracao.strategies.backtester import SymbolSpec
         from mt5_extracao.strategies.specs import to_symbol_spec
+        from mt5_extracao.analytics import instruments
+        provenance = self._manifest["derivation"].get("instrument_context", {
+            "specification_status": "unknown", "historical_validity": "legacy_snapshot_without_history"})
         row = self.spec_row
-        return to_symbol_spec(self._manifest["symbol"], row) if row else SymbolSpec(
+        if provenance["specification_status"] == "known":
+            fact = instruments.specification(self._frames["instrument_history"], instruments.broker_utc(
+                self.bars.time.iloc[0], self._manifest["time"]["broker_utc_offset_hours"]))
+            row = fact["payload"]
+        result = to_symbol_spec(self._manifest["symbol"], row) if row else SymbolSpec(
             symbol=self._manifest["symbol"], known=False)
+        result.provenance = copy.deepcopy(provenance)
+        return result
 
     def view(self):
         return SnapshotView(self)
@@ -186,7 +200,13 @@ class SnapshotView:
     def get_symbol_spec(self, symbol):
         if symbol != self.snapshot._manifest["symbol"]:
             raise ValueError("Snapshot não contém a especificação desse ativo.")
-        return self.snapshot.spec_row
+        from mt5_extracao.analytics import instruments
+        row = self.snapshot.spec_row
+        spec = self.snapshot.spec
+        if spec.provenance.get("specification_status") == "known":
+            row = instruments.specification(self.snapshot._frames["instrument_history"], instruments.broker_utc(
+                self.snapshot.bars.time.iloc[0], self.snapshot._manifest["time"]["broker_utc_offset_hours"]))["payload"]
+        return dict(row, provenance=spec.provenance) if row else None
 
 
 def capture(db, symbol, timeframe, start=None, end=None, *, source=None):
@@ -199,11 +219,14 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None):
     _source(source, "validation")  # Rejeitar configuração pessoal antes de qualquer escrita.
     origin = _schema(db)
     from mt5_extracao.trade_analytics import calendar
+    from mt5_extracao.analytics import instruments
     with db.consistent_read() as conn:
         bars = db.load_ohlcv(symbol, tf.label, start, end, connection=conn)
         if bars.empty:
             raise ValueError(f"Sem barras de {symbol} {tf.name}; extraia o período antes de capturar os dados.")
         spec = db.get_symbol_spec(symbol, connection=conn)
+        instrument_history = instruments.history(db, symbol, connection=conn)
+        instruments.validate_history(instrument_history)
         if spec:
             fields = set(db.SPEC_FIELDS) | {"symbol", "updated_at", "spread_profile"}
             spec = {key: value for key, value in spec.items() if key in fields}
@@ -217,6 +240,10 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None):
                                         " FROM _market_calendar WHERE symbol=:symbol "
                                         "ORDER BY open_utc,session_id,revision"), conn, params={"symbol": symbol})
     blocks = {}
+    instrument_context = instruments.context(instrument_history, bars, db.broker_utc_offset)
+    if instrument_context["specification_status"] == "known":
+        fact = instruments.specification(instrument_history, instruments.broker_utc(bars.time.iloc[0], db.broker_utc_offset))
+        spec = dict(fact["payload"], symbol=symbol)
     manifest = {"schema_version": VERSION, "source": _source(source, origin), "symbol": symbol,
                 "timeframe": tf.name, "selection": {"start": selection_time(start), "end": selection_time(end)},
                 "period": {"first": str(bars.time.iloc[0]), "last": str(bars.time.iloc[-1]), "rows": len(bars)},
@@ -224,12 +251,14 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None):
                          "broker_utc_offset_hours": db.broker_utc_offset},
                 "specification": {key: _value(value) for key, value in spec.items()} if spec else None,
                 "derivation": {"ohlcv_reader": 1, "economic_calendar_merge": 1,
-                               "session_free_metadata": "omitted_input_hash_retained"},
+                               "session_free_metadata": "omitted_input_hash_retained",
+                               "instrument_context": instrument_context},
                 "frames": {"bars": _blocks(bars, "time", blocks),
                            "events": _blocks(events, "event_time", blocks),
-                           "market_calendar": _blocks(sessions, "open_utc", blocks)}}
+                           "market_calendar": _blocks(sessions, "open_utc", blocks),
+                           "instrument_history": _blocks(instrument_history, "known_at", blocks)}}
     payload = _json(manifest)
-    bundle = {"format": "mt5x.dataset.v1", "manifest_id": _hash(payload), "manifest": manifest, "blocks": blocks}
+    bundle = {"format": f"mt5x.dataset.v{VERSION}", "manifest_id": _hash(payload), "manifest": manifest, "blocks": blocks}
     _persist(db, bundle)
     return load(db, bundle["manifest_id"])
 
@@ -239,7 +268,8 @@ def _validated(bundle):
         if set(bundle) != {"format", "manifest_id", "manifest", "blocks"}:
             raise ValueError("envelope desconhecido")
         manifest = bundle["manifest"]
-        if bundle["format"] != "mt5x.dataset.v1" or manifest["schema_version"] != VERSION:
+        version = manifest["schema_version"]
+        if version not in (1, 2) or bundle["format"] != f"mt5x.dataset.v{version}":
             raise ValueError("versão desconhecida")
         if _hash(_json(manifest)) != bundle["manifest_id"]:
             raise ValueError("hash do manifesto divergente")
@@ -253,8 +283,9 @@ def _validated(bundle):
             raise ValueError("proveniência inválida")
         frames = {}
         referenced = set()
+        roles = {"bars", "events", "market_calendar"} | ({"instrument_history"} if version == 2 else set())
         for role, ids in manifest["frames"].items():
-            if role not in ("bars", "events", "market_calendar") or not ids:
+            if role not in roles or not ids:
                 raise ValueError("coleção desconhecida")
             chunks = []
             for digest in ids:
@@ -264,7 +295,7 @@ def _validated(bundle):
                     raise ValueError("hash do bloco divergente")
                 chunks.append(_decode_frame(json.loads(payload)))
             frames[role] = pd.concat(chunks, ignore_index=True) if len(chunks) > 1 else chunks[0]
-        if set(frames) != {"bars", "events", "market_calendar"}:
+        if set(frames) != roles:
             raise ValueError("coleção ausente")
         if set(bundle["blocks"]) != referenced:
             raise ValueError("blocos não cobertos pelo manifesto")
@@ -273,6 +304,20 @@ def _validated(bundle):
                 manifest["period"]["first"] != str(bars.time.iloc[0]) or
                 manifest["period"]["last"] != str(bars.time.iloc[-1])):
             raise ValueError("período divergente do conteúdo")
+        if version == 2:
+            from mt5_extracao.analytics import instruments
+            instruments.validate_history(frames["instrument_history"])
+            if any(frames["instrument_history"].symbol != manifest["symbol"]):
+                raise ValueError("histórico pertence a outro instrumento")
+            context = instruments.context(frames["instrument_history"], bars, manifest["time"]["broker_utc_offset_hours"])
+            if manifest["derivation"].get("instrument_context") != context:
+                raise ValueError("vigência do instrumento divergente do histórico")
+            if context["specification_status"] == "known":
+                fact = instruments.specification(frames["instrument_history"], instruments.broker_utc(
+                    bars.time.iloc[0], manifest["time"]["broker_utc_offset_hours"]))
+                expected = {k: _value(v) for k, v in dict(fact["payload"], symbol=manifest["symbol"]).items()}
+                if manifest["specification"] != expected:
+                    raise ValueError("propriedades divergentes da vigência declarada")
         return Snapshot(bundle["manifest_id"], copy.deepcopy(manifest), frames)
     except (KeyError, TypeError, ValueError, AttributeError, IndexError, OverflowError) as error:
         raise ValueError("Snapshot sem integridade; reimporte uma cópia íntegra ou recapture a origem.") from error
@@ -323,7 +368,7 @@ def _bundle(db, manifest_id):
                     blocks[digest] = value
         except (KeyError, TypeError, ValueError) as error:
             raise ValueError("Snapshot sem integridade; reimporte uma cópia íntegra.") from error
-    return {"format": "mt5x.dataset.v1", "manifest_id": manifest_id, "manifest": manifest, "blocks": blocks}
+    return {"format": f"mt5x.dataset.v{manifest['schema_version']}", "manifest_id": manifest_id, "manifest": manifest, "blocks": blocks}
 
 
 def load(db, manifest_id):

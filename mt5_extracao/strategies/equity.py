@@ -51,13 +51,17 @@ def unitized_equity(equity, flows, initial_equity):
 def valuation_metadata(spec, cfg):
     return {
         "version": 1, "resolution": "bar_close", "timestamp_basis": "bar_start",
-        "status": "limited" if not spec.known or (cfg.swap and spec.swap_mode not in (0, 1)) else "modeled",
+        "status": "limited" if not spec.known or (cfg.swap and spec.swap_mode not in (0, 1)) or
+                  (spec.provenance and spec.provenance.get("specification_status") != "known") or
+                  spec.provenance.get("series_role") in ("continuous_study", "mixed") else "modeled",
         "intrabar_observed": False, "price_side": "long_bid_short_ask",
         "cost_basis": "executed_commissions_and_slippage_accrued_swap",
         "hypothetical_exit_costs": False, "currency_basis": "tick_value_account_currency",
         "fx_conversion": "not_performed", "external_cashflows": "unitized",
         "cashflow_timing": "after_bar_close", "legacy_return_basis": "pnl_over_initial_capital",
         "spec_known": bool(spec.known),
+        "instrument_context": dict(spec.provenance),
+        "specification_historical_status": spec.provenance.get("specification_status", "unverified_manual_input"),
         "swap_status": "disabled" if not cfg.swap else
                        "points_model" if spec.swap_mode == 1 else
                        "disabled_by_symbol" if spec.swap_mode == 0 else "unsupported_mode",
