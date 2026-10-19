@@ -2,9 +2,9 @@
 
 Origem e confirmação separadas; candidatos não são sinais. [Contrato, versão e limites](analytics/T19.6_PIVOS_CAUSAIS.md). 117 casos distintos compatíveis, 61 nos caminhos finais, doctor21/1/0; 720 fatos DEMO atuais e 720 anteriores preservados, contexto/CSV conciliados. Ausência conhecida interrompe pivôs e invalida o prefixo no instante recebido. Base anterior reaproveitada. CI e revisão final pendentes; integrar #130 primeiro. Trabalho local e ponte preservados.
 
-# T19.3: conexão do snapshot — 2026-10-19
+# T19.3: conexão do snapshot aceita — 2026-10-19
 
-Correção necessária para T19.6: inspeção de schema usa a transação recebida. [Causa e evidências](analytics/T19.3_CONEXAO_SNAPSHOT.md). Uma tarefa por PR; verificação da nova fonte em andamento.
+Correção necessária para T19.6: inspeção de schema usa a transação recebida. [Causa e evidências](analytics/T19.3_CONEXAO_SNAPSHOT.md). PR130 aceita: seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis, doctor21/1/0. Windows físico pendente. T19.6/#131 depende desta integração.
 
 ## Fechamento final T19.5 — PR128, 2026-10-19
 
