@@ -1,3 +1,27 @@
+## Fechamento do follow-up T19.3 — PR129, 2026-10-19
+
+Seis checks existentes aprovados no1039690:1417 Ubuntu/173 skips,41PG,1519Windows CI/71 skips/
+5avisos; cov77,64%/73,36%. Revisão sem pendências.292 fontes/testes idênticos preservados no
+fechamento documental [skip ci], sem outra campanha. Integração desta base antecede128;
+registrar SHA real após resposta do GitHub e incorporar master por Git.
+128 tem correções locais672b45b/83 focados; após compor, verificar casos/prova/assinatura final
+porque mudou runtime, preservando os aceites compatíveis. Nenhuma nova medição/campanha.
+Versão global conservadora/antiga explícita e dados preservados; Windows físico pendente.
+
+## Follow-up T19.3 — consistência do snapshot, 2026-10-19
+
+Revisão da #128 confirmou em mastereab717d um job COMPLETE com fonte antiga1 após correção2.
+Correção isolada no serviço compartilhado: confirmação atômica de geração em lote/conclusão/cache,
+rollback com SourceChanged e retomada; escrita em lote serializa revisão por backend.135 casos
+distintos compatíveis aprovados e doctor21/1/0. Cinco casos PG novos aguardam CI dedicado.
+A prova de barreira SQLite foi inconclusiva, não é alegada reprodução de chave duplicada.
+Versão global segue o contrato existente: mudança de implementação exige rematerialização da
+versão atual ou seleção explícita da antiga, sem perda dos fatos. Sem novo fingerprint improvisado.
+Este follow-up precede o fechamento da #128. Nela, medianos finitos grandes e cálculo sob demanda
+foram corrigidos localmente com83 focados, sem publicar antes de compor a base compartilhada.
+Sem estratégia/preset/Relações real/campanha de custo; Windows físico delimitado.
+Ver analytics/T19.3_CONSISTENCIA_SNAPSHOT.md. Root/WIP/índice/ponte preservados.
+
 ## Fechamento T19.4 — PR126 após127, 2026-10-19
 
 A correção127 foi integrada em master2d7412f antes desta ficha. Composição70b2191 com seis

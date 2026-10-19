@@ -505,12 +505,16 @@ def save_values(db, records, *, transaction_hook=None):
         return counts
     ensure_schema(db)
     with db.engine.begin() as conn:
+        # Seleção da revisão e inserção pertencem à mesma exclusão de escrita.
+        if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
         pairs = {(row["feature_id"], row["algorithm_version"]) for row in rows}
         definitions = {}
-        for feature_id, version in pairs:
+        for feature_id, version in sorted(pairs):
+            lock = " FOR UPDATE" if conn.dialect.name == "postgresql" else ""
             definition = conn.execute(text(
                 f"SELECT value_type FROM {DEFINITIONS_TABLE} WHERE feature_id = :feature_id "
-                "AND algorithm_version = :version"),
+                "AND algorithm_version = :version" + lock),
                 {"feature_id": feature_id, "version": version}).first()
             if not definition:
                 raise ValueError(f"Característica não registrada: {feature_id}@{version}.")

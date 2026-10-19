@@ -262,3 +262,19 @@ def test_alligator_calculation_close_and_plot_anchor_are_independent(pg):
 def test_alligator_late_revision_preserves_history_and_plot_anchor(pg):
     from tests.test_alligator import test_late_alligator_correction_preserves_previous_time_and_plot_anchor
     test_late_alligator_correction_preserves_previous_time_and_plot_anchor(pg)
+
+
+@pytest.mark.parametrize("boundary", ["first_batch", "completion", "cache_skip"])
+def test_native_registry_rejects_concurrent_source_change(pg, monkeypatch, boundary):
+    from tests.test_indicator_consistency import test_source_change_aborts_snapshot_and_resume_uses_current_source
+    test_source_change_aborts_snapshot_and_resume_uses_current_source(pg, monkeypatch, boundary)
+
+
+def test_feature_store_overlapping_retries_are_idempotent(pg):
+    from tests.test_indicator_consistency import test_overlapping_store_retries_are_idempotent
+    test_overlapping_store_retries_are_idempotent(pg)
+
+
+def test_explicit_legacy_registry_version_remains_queryable(pg, monkeypatch):
+    from tests.test_indicator_consistency import test_global_version_transition_keeps_explicit_legacy_context
+    test_global_version_transition_keeps_explicit_legacy_context(pg, monkeypatch)
