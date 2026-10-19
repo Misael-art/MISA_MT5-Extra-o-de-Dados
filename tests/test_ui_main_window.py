@@ -1360,3 +1360,44 @@ def test_batch_budget_is_shown_as_interrupted_and_keeps_checkpoint(ui):
     saved = budget.checkpoint(ui.app.db_manager, batch.batch_id)
     assert saved["status"] == "interrupted" and saved["owner"] == {}
     assert not panel.progress_frame.winfo_manager()
+
+
+@pytest.mark.parametrize("result", [(1, 0, 0), (0, 1, 0), (0, 0, 1)])
+def test_extraction_dialog_update_progress_cancel_and_result_are_coherent(ui, result):
+    from tkinter import ttk
+    calls = []
+    class Extractor:
+        def update_symbols(self, **kwargs):
+            calls.append(kwargs)
+            kwargs["update_progress_callback"](35, "Retomando bloco pendente")
+        def cancel_extraction(self):
+            calls.append("cancel")
+    ui.app.historical_extractor = Extractor()
+    ui.app.selected_symbols = ["WIN$N"]
+    ui.extract_historical_data()
+    dialog = next(w for w in ui.root.winfo_children()
+                  if isinstance(w, tk.Toplevel) and w.title() == "Configurar Extração de Dados Históricos")
+    def descendants(w):
+        for child in w.winfo_children():
+            yield child
+            yield from descendants(child)
+    widgets = list(descendants(dialog))
+    buttons = {w.cget("text"): w for w in widgets if isinstance(w, ttk.Button)}
+    buttons["Atualizar até agora"].invoke()
+    kwargs = calls[0]
+    assert kwargs["symbols"] == ["WIN$N"] and kwargs["timeframe_val"] == 1
+    def texts():
+        return [ui.root.getvar(w.cget("textvariable")) for w in widgets
+                if isinstance(w, ttk.Label) and w.cget("textvariable")]
+    assert "Retomando bloco pendente" in texts()
+    assert str(buttons["Atualizar até agora"].cget("state")) == "disabled"
+    if result[2]:
+        buttons["Cancelar"].invoke()
+        assert calls[-1] == "cancel" and "Cancelando..." in texts()
+    kwargs["finished_callback"](*result)
+    summary = next(str(t) for t in texts() if str(t).startswith("Concluído:"))
+    assert f"{result[0]} ativo(s) com sucesso" in summary
+    assert ("com falha" in summary) == bool(result[1])
+    assert ("cancelado(s)" in summary) == bool(result[2])
+    assert str(buttons["Atualizar até agora"].cget("state")) == "normal"
+    dialog.destroy()

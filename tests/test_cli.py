@@ -116,3 +116,45 @@ def test_no_warning_when_symbols_exist(env, fake_mt5, capsys):
     symbol = list(fake_mt5.symbols)[0]
     cli.main(env + ["extract", "--symbols", symbol, "--tf", "M1", "--from", "2024-01-02", "--to", "2024-01-03"])
     assert "não tem:" not in capsys.readouterr().out
+
+
+def test_update_recovers_failed_history_and_reopened_export_matches_provider(env, fake_mt5, tmp_path, capsys):
+    import calendar
+    import pandas as pd
+    from sqlalchemy import text
+    from mt5_extracao.database_manager import DatabaseManager
+
+    epoch = lambda d: calendar.timegm(d.timetuple())
+    fake_mt5.fail_ranges = [(epoch(dt.datetime(2024, 1, 2, 9)), epoch(dt.datetime(2024, 1, 2, 18)))]
+    extract = ["extract", "--symbols", "WIN$N", "--tf", "M1",
+               "--from", "2024-01-02", "--to", "2024-01-03"]
+    update = ["update", "--symbols", "WIN$N", "--tf", "M1"]
+    assert cli.main(env + extract) == cli.EXIT_FAIL
+    capsys.readouterr()
+    db = DatabaseManager(db_path=str(tmp_path / "db.sqlite"))
+    confirmed = db.execute_query("SELECT * FROM win_n_1_minuto ORDER BY time")
+    assert len(confirmed) == 540
+    db.engine.dispose()
+    assert cli.main(env + update) == cli.EXIT_FAIL
+    assert "1 com falha" in capsys.readouterr().out
+    fake_mt5.fail_ranges = []
+    assert cli.main(env + update) == cli.EXIT_OK
+    assert "1 ok, 0 com falha" in capsys.readouterr().out
+    assert cli.main(env + update) == cli.EXIT_OK
+    reopened = DatabaseManager(db_path=str(tmp_path / "db.sqlite"))
+    with reopened.engine.connect() as c:
+        count, distinct = c.execute(text("SELECT count(*), count(DISTINCT time) FROM win_n_1_minuto")).one()
+        assert count == distinct == 1261
+        assert c.execute(text("SELECT count(*) FROM _extraction_log WHERE status='failed'")).scalar() == 0
+    persisted = reopened.execute_query("SELECT * FROM win_n_1_minuto ORDER BY time")
+    pd.testing.assert_frame_equal(confirmed, persisted[persisted.time.isin(confirmed.time)].reset_index(drop=True))
+    reopened.engine.dispose()
+    target = tmp_path / "journey.csv"
+    assert cli.main(env + ["export", "--table", "win_n_1_minuto", "--out", str(target)]) == cli.EXIT_OK
+    exported = pd.read_csv(target, float_precision="round_trip").sort_values("time").reset_index(drop=True)
+    expected = pd.DataFrame(fake_mt5.copy_rates_range("WIN$N", 1, dt.datetime(2024, 1, 2), dt.datetime(2024, 1, 4, 12)))
+    expected["time"] = pd.to_datetime(expected.time, unit="s")
+    exported["time"] = pd.to_datetime(exported.time)
+    fields = ["time", "open", "high", "low", "close", "tick_volume", "spread", "real_volume"]
+    pd.testing.assert_frame_equal(exported[fields], expected[fields], check_dtype=False, check_exact=True)
+    assert not exported.time.duplicated().any()
