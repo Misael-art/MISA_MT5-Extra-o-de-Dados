@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sqlalchemy import inspect, text
 
 from mt5_extracao.analytics import feature_store, features, indicator_registry, producer_jobs, producers, resampling
 from mt5_extracao.strategies import indicators
@@ -59,6 +60,23 @@ class Cancelled(RuntimeError):
     pass
 
 
+class SourceChanged(RuntimeError):
+    pass
+
+
+def _confirm_source(conn, db, symbol, label, sequence):
+    # SQLite já tem reserva de escrita; PostgreSQL bloqueia a geração que o
+    # produtor atualiza na mesma transação das barras, até o commit deste lote.
+    if conn.dialect.name == "postgresql" and inspect(conn).has_table("_analytics_source_sequences"):
+        conn.execute(text("SELECT sequence FROM _analytics_source_sequences "
+                          "WHERE symbol = :symbol AND tf = :tf FOR UPDATE"),
+                     {"symbol": str(symbol), "tf": label}).scalar()
+    current = resampling.latest_source_sequence(db, symbol, label, connection=conn) or 0
+    if current != sequence:
+        raise SourceChanged("A fonte mudou durante a materialização. Reexecute o comando para usar "
+                            "a revisão atual; lotes confirmados foram preservados.")
+
+
 def _guard(run, write_guard, cancel_check, timeout_seconds, max_memory_mb):
     if cancel_check is not None and cancel_check():
         raise Cancelled("Materialização cancelada; lotes confirmados preservados para retomada.")
@@ -99,6 +117,8 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                 prior["last_bar_start_utc"] and
                 not resampling.has_closed_bars_after(db, symbol, label, prior["last_bar_start_utc"],
                                                      require_complete_session=False)):
+            feature_store.save_values(db, [], transaction_hook=lambda conn, _counts:
+                                      _confirm_source(conn, db, symbol, label, sequence))
             job = producer_jobs.finish_run(db, run, source_sequence=sequence, status="SKIPPED")
             return dict(symbol=symbol, timeframe=label, features=len(ids), skipped=True, **counts, job=job)
         _guard(run, write_guard, cancel_check, timeout_seconds, max_memory_mb)
@@ -191,6 +211,7 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                          bar_count=len(bars), prefix_chain=chains[-1] if chains else None,
                          implementation_sha256=implementation)
             def hook(conn, _counts):
+                _confirm_source(conn, db, symbol, label, sequence)
                 producer_jobs.advance_checkpoint(conn, symbol=symbol, timeframe=label, family=FAMILY,
                                                  algorithm_version=version, config_hash=config_hash,
                                                  source_sequence=sequence, last_bar_start=last_bar,

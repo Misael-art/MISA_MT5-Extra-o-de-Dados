@@ -1,3 +1,17 @@
+## Follow-up T19.3 — consistência do snapshot, 2026-10-19
+
+Revisão da #128 confirmou em mastereab717d um job COMPLETE com fonte antiga1 após correção2.
+Correção isolada no serviço compartilhado: confirmação atômica de geração em lote/conclusão/cache,
+rollback com SourceChanged e retomada; escrita em lote serializa revisão por backend.135 casos
+distintos compatíveis aprovados e doctor21/1/0. Cinco casos PG novos aguardam CI dedicado.
+A prova de barreira SQLite foi inconclusiva, não é alegada reprodução de chave duplicada.
+Versão global segue o contrato existente: mudança de implementação exige rematerialização da
+versão atual ou seleção explícita da antiga, sem perda dos fatos. Sem novo fingerprint improvisado.
+Este follow-up precede o fechamento da #128. Nela, medianos finitos grandes e cálculo sob demanda
+foram corrigidos localmente com83 focados, sem publicar antes de compor a base compartilhada.
+Sem estratégia/preset/Relações real/campanha de custo; Windows físico delimitado.
+Ver analytics/T19.3_CONSISTENCIA_SNAPSHOT.md. Root/WIP/índice/ponte preservados.
+
 ## Fechamento T19.4 — PR126 após127, 2026-10-19
 
 A correção127 foi integrada em master2d7412f antes desta ficha. Composição70b2191 com seis

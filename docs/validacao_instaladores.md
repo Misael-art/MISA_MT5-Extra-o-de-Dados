@@ -246,3 +246,11 @@ Isso não encerra a conferência no Windows físico; bootstrap nativo permanece 
 
 Aceite final T19.4/70b2191: seis checks aprovados, incluindo1514 Windows CI/66 skips/5avisos.
 Os291 arquivos de produção/testes correspondem ao código final; isso não substitui Windows físico.
+
+### T19.3 — consistência do snapshot (follow-up)
+
+- [ ] No Windows físico, repetir a atualização interrompida por correção da fonte e retomar,
+  conferindo ausência de COMPLETE/SKIPPED obsoleto e preservação dos lotes confirmados.
+
+135 casos locais distintos compatíveis e doctor21/1/0; novos casos SQLite e wrappers PG.
+CI Windows deste follow-up ainda pendente; não é prova de Windows físico. Ponte não reiniciada.
