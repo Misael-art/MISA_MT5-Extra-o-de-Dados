@@ -192,7 +192,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.55 | Default da estratégia como primeiro preset e referência versionada | T19.2/25/50, padrões efetivos conhecidos | planejada; reusar padrões existentes, preservar seleção e Salvar como Manual nomeado |
 | T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | planejada; mínimo/passo/margem/risco, unidade e entradas adicionais explícitos |
 | T20.0 | Incorporar as 16 sugestões aceitas, mapa Q01–Q16, fichas e prompt de robustez | Pedido de 2026-10-17 | ✅ documentação, prioridades UI e prompt único F19/F20/MT5; 30 fichas planejadas; sem implementação ou ensaio de conta |
-| T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | planejada; estende o inventário F19, sem refazê-lo |
+| T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | em revisão local: Q01–Q16 no [mapa único](propostas/INVENTARIO_F19.md), donos/consumidores/lacunas/testes; próximo P0 T20.2 |
 | T20.2 | Referências independentes dos cálculos financeiros | T20.1 | planejada; Q01 |
 | T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | planejada; Q01, métrica aditiva sem reescrever legado |
 | T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | planejada; Q02 |
