@@ -25,6 +25,15 @@ def _state(row):
     return "UNAVAILABLE", "NO_VALUE_AVAILABLE_AT_DECISION"
 
 
+def _contract(contracts, ident, version, explicit_version):
+    persisted = contracts.get((ident, version))
+    if persisted is not None:
+        return persisted
+    if explicit_version is not None:
+        raise ValueError(f"Característica não registrada: {ident}@{version}. Confira a versão disponível no store.")
+    return indicator_registry.get_definition(ident)
+
+
 def context(db, decisions, *, symbol, timeframe, feature_ids=None, algorithm_version=None):
     """Uma linha por decisão, com valor/estado/proveniência; exige horários com fuso.
 
@@ -40,10 +49,11 @@ def context(db, decisions, *, symbol, timeframe, feature_ids=None, algorithm_ver
     frame["_context_order"] = range(len(frame))
     frame["symbol"], frame["tf"] = symbol, timeframe
     implementation = indicator_materializer.implementation_signature()
+    contracts = {(item["feature_id"], item["algorithm_version"]): item for item in feature_store.list_definitions(db)}
     columns = {}
     for ident in ids:
-        spec = indicator_registry.get_definition(ident)
         version = algorithm_version or indicator_materializer.algorithm_version(ident, implementation)
+        spec = _contract(contracts, ident, version, algorithm_version)
         history = feature_store.query_history(db, symbol=symbol, timeframe=timeframe, feature_id=ident,
                                               algorithm_version=version)
         joined = feature_store.asof_join(frame[["decision_time", "_context_order", "symbol", "tf"]], history)
@@ -76,14 +86,15 @@ def projection(db, *, symbol, timeframe, as_of, feature_ids=None, algorithm_vers
     ids = indicator_materializer.selected_features(feature_ids)
     timeframe = resampling.parse_target(timeframe).label
     implementation = indicator_materializer.implementation_signature()
+    contracts = {(item["feature_id"], item["algorithm_version"]): item for item in feature_store.list_definitions(db)}
     parts = []
     for ident in ids:
         version = algorithm_version or indicator_materializer.algorithm_version(ident, implementation)
+        spec = _contract(contracts, ident, version, algorithm_version)
         rows = feature_store.query_as_of(db, as_of, symbol=symbol, timeframe=timeframe, feature_id=ident,
                                          algorithm_version=version, start=start, end=end)
         if rows.empty:
             continue
-        spec = indicator_registry.get_definition(ident)
         part = rows.set_index("observation_time")
         states = [_state(row) for row in rows.to_dict("records")]
         out = pd.DataFrame(index=part.index)

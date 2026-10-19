@@ -218,6 +218,6 @@ T18.1 não muda os caminhos/instaladores nem exige conexão MT5.
   conferir cabeçalho completo, foco e diálogo nativo. Relações continua sintética e ação desabilitada.
 - [ ] Legado sem relógio e run fixado sem materialização vinculada exibem motivo de ausência.
 
-Linux:24 testes focados, oito capturas/casos Tk sob Xvfb e CLI com 600 barras DEMO arquivadas
+Linux:27 testes focados, oito capturas/casos Tk sob Xvfb e CLI com 600 barras DEMO arquivadas
 →120 M5. Isso não comprova desktop físico Windows. Instaladores/caminhos não alterados;
 nenhum terminal/credencial ou processo de terceiros modificado por esta tarefa.

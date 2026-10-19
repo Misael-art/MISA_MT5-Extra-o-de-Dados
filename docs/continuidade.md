@@ -12,7 +12,7 @@ Consulta causal/exportação no store existente; ER reutilizado; escrita increme
 numérica exact_prefix, sem promessa O(delta). Relógio desconhecido e manifesto sem vínculo
 retornam ausência explícita; o serviço de relações continua pendente. Ver
 [relatório T19.3](analytics/T19.3_MATERIALIZACAO_INDICADORES.md).
-24 testes focados finais aprovados; doctor21OK/1opcional/0falhas; CLI reutilizou 600 barras DEMO
+27 testes focados finais aprovados; doctor21OK/1opcional/0falhas; CLI reutilizou 600 barras DEMO
 arquivadas, 120 M5 e exportação, sem nova extração ou ordens; oito casos de UI nos dois temas,
 DPI96/144 e larguras820/1280. Suíte completa/CI e revisão ainda pendentes neste registro.
 Windows físico é pendência específica. Ponte própria da Root preservada em segundo plano.

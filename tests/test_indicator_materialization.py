@@ -323,3 +323,30 @@ def test_missing_source_observation_requires_reconciliation_without_rewriting_hi
     with pytest.raises(ValueError, match="Restaure ou reconcilie"):
         materializer.materialize(db, "TEST", "M5", feature_ids=["volume.real"])
     assert facts(db) == before
+
+
+def test_explicit_old_version_uses_its_persisted_contract(tmp_path):
+    from mt5_extracao.analytics import features
+    db = DatabaseManager(db_path=str(tmp_path / "old-contract.sqlite"))
+    try:
+        ident = "price.return_1"
+        features.register(db, ident, "Legacy percent return", "legacy-percent", parameters={"period": 1, "scale": 100}, unit="percent", value_type="NUMBER")
+        feature_store.save_values(db, [dict(symbol="TEST", timeframe="M5", feature_id=ident, algorithm_version="legacy-percent", observation_time="2026-09-01T09:00Z", available_at="2026-09-01T09:05Z", observed_at="2026-09-01T09:05Z", value=2.0)])
+        frame = indicator_context.context(db, pd.DataFrame({"decision_time": ["2026-09-01T09:05Z"]}), symbol="TEST", timeframe="M5", feature_ids=[ident], algorithm_version="legacy-percent")
+        assert frame.iloc[0][ident + "::unit"] == "percent"
+        assert json.loads(frame.iloc[0][ident + "::parameters"]) == {"period": 1, "scale": 100}
+        exported = indicator_context.projection(db, symbol="TEST", timeframe="M5", as_of="2026-09-01T09:05Z", feature_ids=[ident], algorithm_version="legacy-percent")
+        assert exported.iloc[0][ident + "::unit"] == "percent"
+        assert json.loads(exported.iloc[0][ident + "::parameters"]) == {"period": 1, "scale": 100}
+    finally:
+        db.close()
+
+
+@pytest.mark.parametrize("operation", ["context", "projection"])
+def test_explicit_unknown_version_is_rejected(db, operation):
+    kwargs = dict(symbol="TEST", timeframe="M5", feature_ids=["price.return_1"], algorithm_version="unknown")
+    with pytest.raises(ValueError, match="Confira a versão"):
+        if operation == "context":
+            indicator_context.context(db, pd.DataFrame({"decision_time": ["2026-09-01T09:05Z"]}), **kwargs)
+        else:
+            indicator_context.projection(db, as_of="2026-09-01T09:05Z", **kwargs)
