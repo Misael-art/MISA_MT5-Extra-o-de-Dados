@@ -1,7 +1,7 @@
 # Proposta: onde moram os contratos do framework e de onde vem o calendário de sessões
 
-> A decisão de calendário da T13.1 foi adotada em 2026-10-14 e está registrada abaixo. A decisão sobre contratos
-> (seção 2) continua como proposta. O documento foi pedido pelo dono do projeto em 2026-10-13 ("faça uma busca das
+> A decisão de calendário da T13.1 foi adotada em 2026-10-14 e está registrada abaixo. A política B-11 está em revisão no [documento específico](../sdk/versionamento-contratos.md);
+> sua implementação/distribuição nativa continua nas tarefas B correspondentes. O documento foi pedido pelo dono do projeto em 2026-10-13 ("faça uma busca das
 > fontes e proponha como viabilizar"). São as decisões 3 e 4 do [índice do roadmap](README.md). Cada afirmação diz
 > se foi conferida no código, lida em uma fonte externa ou é recomendação.
 
@@ -136,3 +136,10 @@ Os contratos são `MarketContext`, `SignalIntent`, `ExecutionPlan`, `PositionPol
 - Fórum MQL5, sessão de cotação e sessão de negociação: https://www.mql5.com/en/forum/23529/852751
 - `exchange_calendars`: https://github.com/gerrymanoim/exchange_calendars
 - B3, calendário de negociação de 2026: https://www.b3.com.br/pt_br/noticias/calendario-de-negociacao-da-b3-confira-o-funcionamento-da-bolsa-em-2026.htm
+
+## Encaminhamento B-11 para o primeiro Manual
+
+A política está materializada em [versionamento de contratos](../sdk/versionamento-contratos.md):
+SDK1 preservado, artefatos laterais versionados e distribuição futura sem mudança
+informal do instalador. T19.2 pode entregar seu adaptador base e schema sem declarar
+B-09/B-10 completos; capacidades nativas só serão habilitadas pelos seus donos.
