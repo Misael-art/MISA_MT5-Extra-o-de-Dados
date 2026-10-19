@@ -850,3 +850,17 @@ pendente; nenhum terminal/conta do usuário foi iniciado ou encerrado.
 Protocolo2383efd registrado antes dos resultados. Depois do aceite críticoUI e do lançador real99 (10.445BBRSI/31runs, configuração preservada), oito backtests EURUSD H1/M15, EMAATR/Donchian padrão e custos base/adverso foram executados sequencialmente no ce9fae9. Todos tiveram resultado modelado negativo; maiorPF0,875849 noDonchianM15/669operações. Nenhum OOS independente e custos/moeda não certificados; zero candidatos aprovados. Não ampliar a busca para forçar1,9. [Relatório, ICs, gates e reprodução](pesquisa/PF19_RELATORIO_20261016.md).
 
 A base de origem e o protocolo mantiveram os hashes; os oito livros foram reconciliados independentemente por contagem/GP/GL/resultado/PF. O código reusa backtester/estratégias/PF, sem SDK/terminal/contas ou mudança de parâmetros/risco. Baseline947/9 e sete focados (incluindo subprocessos CLI sintéticos) passaram; suíte geral e CI do PR100 em curso. Não confundir execução de pesquisa com integração ou aprovação financeira.
+
+
+## T19.0 — publicação isolada da base documental (2026-10-19)
+
+Publica a especificação/catálogo/plano e adendos já preparados pelo proprietário,
+com a base preservada em logs/t19-1/base; os documentos comuns de prompt/validação
+conservam a prioridade posterior do extrator. Sem atribuir criação desse conteúdo
+a esta consolidação e sem transportar runtime ou o diff local inteiro. F20 e o
+mapa T19.1/T20.1 têm PRs separados na sequência; referências futuras são dependências
+documentais explícitas, não alegações de implementação. Base de código master489591c,
+sem alterações em mt5_extracao/tests/dependências/scripts. Aceite automatizado vigente
+1058/9/3 registrado na base documental reaproveitado, sem repetição de suíte.
+Verificação deste recorte: diff e links locais, com ausências das bases seguintes
+registradas até a conferência da cadeia completa. Nenhuma operação ou experimento.
