@@ -247,6 +247,18 @@ Isso não encerra a conferência no Windows físico; bootstrap nativo permanece 
 Aceite final T19.4/70b2191: seis checks aprovados, incluindo1514 Windows CI/66 skips/5avisos.
 Os291 arquivos de produção/testes correspondem ao código final; isso não substitui Windows físico.
 
+### T19.3 — consistência do snapshot (follow-up)
+
+- [ ] No Windows físico, repetir a atualização interrompida por correção da fonte e retomar,
+  conferindo ausência de COMPLETE/SKIPPED obsoleto e preservação dos lotes confirmados.
+
+135 casos locais distintos compatíveis e doctor21/1/0; novos casos SQLite e wrappers PG.
+CI Windows deste follow-up ainda pendente; não é prova de Windows físico. Ponte não reiniciada.
+
+CI final do follow-up T19.3/1039690: seis checks aprovados,1519 Windows CI/71 skips/5avisos.
+SQLite e PostgreSQL exercitaram geração/retomada e retries em lote; Windows físico segue pendente.
+
+
 ### T19.5 — AO/AC (pendência Windows físico)
 
 - [ ] Em Windows físico, consultar/exportar AO/AC materializados pelo serviço existente,

@@ -3665,3 +3665,13 @@ Follow-up para o impedimento do Ubuntu da PR126: stop passa a aguardar identidad
 não perda do token.17 testes de ciclo de vida aprovados e doctor21/1/0; sem mudar prazos,
 instalador, credenciais ou sessões. Ver docs/extrator/EXTR-02_CONFIRMACAO_SAIDA.md.
 CI Linux/revisão ainda pendentes; caminho Windows nativo inalterado, prova física pendente.
+
+### T19.3 — confirmação do snapshot e retries (follow-up de 2026-10-19)
+
+🟢 Aceite concluído na [PR129](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/129), fonte1039690: seis checks,1417 Ubuntu/41PG/1519Windows CI.
+Correção isolada do impedimento herdado encontrado na revisão da #128. Confirma geração
+antes de cada commit/conclusão/cache; lote/checkpoint obsoleto é revertido com ação de retomada.
+Escrita em lote serializa seleção de revisões em SQLite/PostgreSQL.135 casos locais distintos
+compatíveis e doctor21/1/0; CI/revisão concluídos. Versionamento global conservador preservado,
+com consulta explícita de versão antiga testada. Sem AO/AC, estratégia/preset ou nova campanha.
+Ver [relatório](analytics/T19.3_CONSISTENCIA_SNAPSHOT.md). Windows físico pendente específico.
