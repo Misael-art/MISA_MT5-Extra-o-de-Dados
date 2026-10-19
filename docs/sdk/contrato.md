@@ -95,3 +95,11 @@ A bateria de segurança reprova:
 
 Uma mudança que invalide um `robot.json` existente cria a versão 2; o `mt5x` continuará lendo a versão 1.
 O esquema de referência está em `mt5_extracao/robots/robot.schema.json`.
+
+## Inventário de extensões F19
+
+A [reconciliação T19.1](../propostas/INVENTARIO_F19.md) registra os seis Experts,
+inputs, presets, exportações e donos B/F19 no snapshot inspecionado. Composição
+e capacidades novas exigem artefato lateral versionado ou migração formal por
+B-11; não são campos adicionais aceitos por este contrato 1. O inventário é
+documental, sem mudança do schema/validador nem aprovação operacional.
