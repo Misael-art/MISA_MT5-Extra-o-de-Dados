@@ -1,3 +1,14 @@
+## Impedimento da PR126 — correção isolada EXTR-02
+
+Ubuntu da PR126:1408 aprovados/168 skips/1falha, cobertura77,64%. Falha no teste de stop/libc
+reproduzida por corrida entre perda do ambiente e saída da identidade; não foi erro Alligator.
+Correção em worktree codex/extr-02-confirmacao-saida sobre master2b27b1f: aguardar identidade,
+revalidando posse em cada sinal, com prazos e registros preservados.17 testes aprovados,
+determinístico antes falhou, doctor21/1/0. CI Linux/revisão pendentes. Windows nativo não foi
+alterado; aceites compatíveis são reaproveitados. Não refazer cálculos/custo da PR126.
+Incorporar a correção pelo fluxo Git antes de integrar T19.4; Root/ponte/WIP preservados.
+Relatório: extrator/EXTR-02_CONFIRMACAO_SAIDA.md. Windows físico continua pendente específico.
+
 ## T19.4 — Alligator em validação, 2026-10-19
 
 Base master2b27b1f da T19.3/#125,290 fontes/testes do baseline exatamente compatíveis.

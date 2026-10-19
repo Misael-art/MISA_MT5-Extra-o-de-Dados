@@ -220,3 +220,63 @@ def test_pidfd_uses_libc_when_python_does_not_expose_it(managed, monkeypatch):
     monkeypatch.delattr(signal, 'pidfd_send_signal', raising=False)
     assert managed.stop() == 0
     assert bridge.identity(record['identity']['pid']) is None
+
+
+def test_stop_waits_for_identity_exit_after_environment_is_unmapped(tmp_path, monkeypatch):
+    manager = bridge.Bridge(tmp_path)
+    target = {"pid": 12345, "start_ticks": "1", "boot_id": "test", "uid": os.getuid()}
+    manager._write(target, "a" * 32)
+    state = {"alive": True, "owned": True, "waits": 0}
+    sent = []
+    monkeypatch.setattr(bridge, "identity", lambda pid: target if state["alive"] else None)
+    monkeypatch.setattr(manager, "owned", lambda record: state["owned"])
+    def send(record, sig):
+        sent.append(sig)
+        state["owned"] = False  # /proc/environ desaparece antes do fim da identidade.
+    def wait(_seconds):
+        assert manager.record() is not None
+        state["waits"] += 1
+        state["alive"] = False
+    monkeypatch.setattr(manager, "_signal", send)
+    monkeypatch.setattr(bridge.time, "sleep", wait)
+    assert manager.stop() == 0
+    assert state["waits"] == 1 and not state["alive"]
+    assert sent == [signal.SIGTERM]
+    assert not manager.record_file.exists()
+
+
+def test_stop_does_not_signal_replacement_identity_during_wait(tmp_path, monkeypatch):
+    manager = bridge.Bridge(tmp_path)
+    target = {"pid": 12345, "start_ticks": "1", "boot_id": "test", "uid": os.getuid()}
+    manager._write(target, "b" * 32)
+    replacement = dict(target, start_ticks="2")
+    state = {"identity": target}
+    sent = []
+    monkeypatch.setattr(bridge, "identity", lambda pid: state["identity"])
+    monkeypatch.setattr(manager, "owned", lambda record: state["identity"] == target)
+    monkeypatch.setattr(manager, "_signal", lambda record, sig: sent.append(sig))
+    monkeypatch.setattr(bridge.time, "sleep", lambda seconds: state.update(identity=replacement))
+    assert manager.stop() == 0
+    assert state["identity"] == replacement and sent == [signal.SIGTERM]
+
+
+def test_stop_preserves_record_without_escalating_if_token_is_lost(tmp_path, monkeypatch):
+    manager = bridge.Bridge(tmp_path)
+    target = {"pid": 12345, "start_ticks": "1", "boot_id": "test", "uid": os.getuid()}
+    manager._write(target, "c" * 32)
+    state = {"owned": True, "clock": 0}
+    sent = []
+    monkeypatch.setattr(bridge, "identity", lambda pid: target)
+    monkeypatch.setattr(manager, "owned", lambda record: state["owned"])
+    monkeypatch.setattr(bridge, "pidfd_open", lambda pid: os.open(os.devnull, os.O_RDONLY))
+    def send(fd, sig):
+        sent.append(sig)
+        state["owned"] = False
+    def clock():
+        state["clock"] += 6
+        return state["clock"]
+    monkeypatch.setattr(bridge, "pidfd_send_signal", send)
+    monkeypatch.setattr(bridge.time, "monotonic", clock)
+    with pytest.raises(bridge.BridgeError, match="identidade"):
+        manager.stop()
+    assert sent == [signal.SIGTERM] and manager.record_file.exists()

@@ -234,3 +234,9 @@ Aceite Linux final T19.3:1392 Ubuntu +132 UI Xvfb +4 UI compatíveis reaproveita
 
 Linux:62 focados e prova CLI em120 M5 de DEMO arquivada; doctor21/1/0. Sem alterações na UI,
 instaladores/caminhos; evidência gráfica anterior compatível reaproveitada. CI ainda pendente.
+
+### EXTR-02 — confirmação de saída do processo (follow-up)
+
+Correção Linux-only em Bridge.stop: simulação do caminho Windows nativo passou no teste
+existente; esse caminho não foi modificado. A prova física anterior permanece pendente,
+sem novo stop da ponte real ou sessão de terceiros.17 testes Linux e doctor21/1/0.
