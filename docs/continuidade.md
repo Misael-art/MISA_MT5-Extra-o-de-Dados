@@ -1,5 +1,18 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #114 — T13.2 (2026-10-19)
+
+Base master `bd5cb6d` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos store canônico aditivo, definições imutáveis, consultas por disponibilidade, ordem topológica pai/filho antes dos handlers e helper PostgreSQL com schema UUID e sentinela pública preservada. Árvore não documental idêntica ao runtime da suíte final 4b3302c.
+Aceite reaproveitado: 1398 aprovados/13 pulos/3 avisos, saída 0, cobertura 77,44% em 4b3302c; PostgreSQL 17 e doctor 16/2/0; seis checks aprovados no HEAD `08850c083bc4975e09a0f412c33607b4d5c3a43e`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## Revisão/integração PR #113 — T19.14 (2026-10-19)
 
 Base master `b7c8fd5` conciliada por merge Git na worktree da tarefa.
@@ -1164,6 +1177,21 @@ T20.25/PR112. Windows físico e revisão independente pendentes.
 O dono é `trade_analytics`, consumindo ledger F16, snapshots T20.4/6 e motores
 existentes. A exportação permanente H/T16.2b-H e o registro T20.12 não são
 reimplementados. [Contrato do recorte](analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).
+
+## Integração canônica T13.2 — 2026-10-18
+
+Origem843a85a reaplicada com atribuição no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114),
+com ordenação topológica corrigida e schemas PostgreSQL privados do helper80fd2f3.
+Baseline1388/12/3; final Linux/Xvfb1398/13/3 em1930,28s, saída0,
+cobertura77,44% e fontes/testes intactos por hash. PostgreSQL17 e doctor16/2/0.
+O timeout herdado de captura duplicada foi corrigido na T20.24/PR111; lote
+real60,47→39,86s, quatro livros/curvas idênticos por hash. A tentativa
+reprovada1396/13/3+1falha foi preservada. Dez arquivos Python integrados
+ao workspace principal com HEAD/índice/INI/.env preservados; CLI help saiu0.
+Ubuntu1269/142 e jobs PostgreSQL/lint/instaladores aprovados em4b3302c;
+Windows CI1381/30/5 e seis checks de execução aprovados em4b3302c; Windows físico pendente. Próxima integração:
+T13.3 canônica bde3652; preservar a ordenação e o helper de schemas.
+O aceite ponta a ponta dos testes4/7 inclui os produtores/publicador seguintes.
 
 ## T19.0 — publicação isolada da base documental (2026-10-19)
 

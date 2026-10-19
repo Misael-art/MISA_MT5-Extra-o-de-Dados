@@ -27,7 +27,7 @@ Comando de testes padrão (use o Python do `.venv`):
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
-| T19.14 | Trajetórias temporais de trades e ciclos | T19.1, T16.1/2/3 | validada para integração no [PR113](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/113); 1388/12/3 históricos; complemento de preparo coberto pelo CI atual e composição 1398/13/3 saída 0 em 4b3302c; PostgreSQL 10 e doctor 16/2/0; código aprovado 4373cea preservado; seis checks reaproveitados; Windows físico pendente |
+| T19.14 | Trajetórias temporais de trades e ciclos | T19.1, T16.1/2/3 | ✅ integrada no [PR113](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/113), merge bd5cb6d; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
 | T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ parcial: Linux (família Arch) validado com MT5 real; demais ambientes pendentes (docs/validacao_instaladores.md) |
@@ -124,7 +124,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ⏳ implementação pronta; 20 testes focados passaram e EURUSD teve paridade; repetição da suíte completa ficou inconclusiva nos testes Tk/conector; MT5 real e Windows pendentes |
-| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | a fazer |
+| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | validada para integração no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114); 1398 aprovados/13 pulos/3 avisos, saída 0, cobertura 77,44% em 4b3302c; PostgreSQL 17 e doctor 16/2/0; código aprovado 08850c0 preservado; seis checks reaproveitados; Windows físico pendente |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | a fazer |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
@@ -3350,13 +3350,23 @@ real por corretora.
 - **Objetivo:** gravar cada fato com quando foi observado, quando ficou disponível, até quando vale, de qual
   revisão dos dados saiu e com qual versão do algoritmo; e consultar "o que se sabia em tal instante".
 - **Depende de:** T13.1.
-- **Arquivos previstos:** `analytics/feature_store.py`, `analytics/features.py` (registro de características e
-  dependências), tabelas `feature_definitions` e `feature_values`, `cli.py` (`mt5x analytics ...`, nomes decididos
-  aqui), testes.
-- **Passos:** registro de características com dependências; gravação com revisão (correção tardia gera revisão nova,
-  a anterior fica); consulta *as-of*; recálculo só do que depende do que mudou.
-- **Critérios de aceite:** testes 4, 6 e 7 da especificação.
-- **Decide antes de começar:** SQLite ou PostgreSQL para estas tabelas, medindo com a base real (decisão em aberto 6).
+- **Arquivos:** `analytics/feature_store.py`, `analytics/features.py`, tabelas internas `_feature_definitions` e
+  `_feature_values`, `cli.py` e testes.
+- **Passos:** registro imutável por versão de algoritmo com dependências; gravação append-only com revisão e origem;
+  consulta *as-of* pelo instante em que o valor ficou disponível; execução apenas dos recálculos afetados.
+- **Critérios de aceite:** testes 4, 6 e 7 da especificação. A cobertura do recorte e a integração com produtores/publicação estão discriminadas no contrato da tarefa.
+- **Decisões:** SQLite para o primeiro ciclo, com SQL e tabelas portáveis pelo SQLAlchemy a PostgreSQL. A base local
+  medida tem 329,6 MB e 23 tabelas; PostgreSQL fica para quando volume ou concorrência justificarem. Comandos
+  decididos: `mt5x analytics features list|show|values|affected`. Detalhe e limitações:
+  [T13.2_FEATURE_STORE.md](analytics/T13.2_FEATURE_STORE.md).
+- **Verificação histórica da origem (2026-10-14):** testes focados — 20 aprovados, 2 pulados; suíte completa com Xvfb e `/tmp` —
+  **809 aprovados, 10 pulados em 521,99 s**; `doctor` — 16 OK, 2 avisos, 0 falhas (`pandas-ta` ausente e ponte
+  Wine desativada). Os dois testes de PostgreSQL desta frente foram pulados porque `MT5X_TEST_PG_URL` não está
+  configurada no host; há teste de integração para o job PostgreSQL do CI. CLI `analytics features --help` e
+  `git diff --check` passaram. Não foram usados MT5 real, Windows nem fontes externas. O cálculo das características
+  continua fora da T13.2; os produtores entram na T13.3.
+
+- **Integração F19/F20 (2026-10-18):** origem canônica843a85a e helper PostgreSQL80fd2f3; correção topológica com histórico preservado. Linha de base1388/12/3; final1398/13/3 em1930,28s, saída0 e cobertura77,44%. PostgreSQL17/13,73s com sentinela público preservado e schemas privados removidos; doctor16/2/0. CLI e fontes do workspace principal conferidos por hash; índice/HEAD/configuração preservados. CI no código4b3302c: Ubuntu1269/142 e Windows1381/30/5, seis checks de execução aprovados; Windows físico permanece pendência. O contrato discrimina a cobertura do store e o fluxo ponta a ponta ainda dependente de produtores/publicação.
 
 ### T13.3 — Perfis de volume, sazonalidade e regimes (A3)
 
@@ -3443,9 +3453,9 @@ real por corretora.
 | 1 | De onde vem o calendário de sessões e quem mantém feriados e horários especiais | T13.1 |
 | 2 | Série contínua de WIN/WDO: só para estudo ou também para características de execução (nunca executar em preço ajustado) | T13.1, quando houver ativos da B3 |
 | 3 | Aceitar timeframes que o MT5 não tem (M7, M45...) ou só os do enum `Timeframe` | T13.1 |
-| 4 | Nomes dos comandos `mt5x analytics ...`, dado que `validate`, `analyze` e `report` já existem | T13.2 |
+| 4 | Nomes dos comandos `mt5x analytics ...`, dado que `validate`, `analyze` e `report` já existem | T13.2 — resolvida: `features list/show/values/affected` |
 | 5 | O que "confiança" significa em cada característica publicada | T13.3 |
-| 6 | SQLite ou PostgreSQL para as tabelas novas; CSV ou SQLite para o retrato lido pelo MT5 (medindo) | T13.2 e T13.5 |
+| 6 | SQLite ou PostgreSQL para as tabelas novas; CSV ou SQLite para o retrato lido pelo MT5 (medindo) | T13.2 — resolvida: SQLite com SQLAlchemy; formato do retrato fica para T13.5 |
 | 7 | Prazo de validade do retrato por frequência e o que cada estratégia faz com dado vencido | T13.5 |
 | 8 | Consentimento explícito para uma evidência alterar limite operacional | T13.7 |
 | 9 | Retenção, versionamento e cópia de segurança de características e hipóteses aprovadas | T13.8 |
