@@ -1,3 +1,13 @@
+## Aceite T19.3 — aguarda Windows existente
+
+PR125/eaec23b: revisão concluída. Aceite Linux composto1528 casos distintos
+(1392 Ubuntu +132 UI Xvfb +4 UI da bateria27 reaproveitados), cobertura77,64%.
+Fonte290 idêntica, doctor21/1/0, oito casos visuais e prova CLI arquivada preservados.
+A suíte local completa foi encerrada após aceite Ubuntu para evitar duplicação; seu exit1
+é interrupção com teardown do pytest, não é registrado como passe. Só a cobertura gráfica
+ausente foi executada. Cinco checks aprovados, check Windows existente ainda em execução.
+Não disparar outro workflow, não integrar antes do resultado Windows. Ver relatório T19.3.
+
 ## Retomada T19.3 — 2026-10-19
 
 PR #124 integrada em master791f15caeee43d9ff792966e5c591f7b1c5b3d48 depois do check

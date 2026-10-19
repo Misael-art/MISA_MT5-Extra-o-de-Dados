@@ -221,3 +221,6 @@ T18.1 não muda os caminhos/instaladores nem exige conexão MT5.
 Linux:27 testes focados, oito capturas/casos Tk sob Xvfb e CLI com 600 barras DEMO arquivadas
 →120 M5. Isso não comprova desktop físico Windows. Instaladores/caminhos não alterados;
 nenhum terminal/credencial ou processo de terceiros modificado por esta tarefa.
+
+Aceite Linux final T19.3:1392 Ubuntu +132 UI Xvfb +4 UI compatíveis reaproveitados =1528 casos
+únicos, cobertura77,64%; check Windows CI ainda em execução, prova física continua pendente.
