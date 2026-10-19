@@ -171,6 +171,27 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.7 | Candidatos a filtros/presets para otimização, sem aplicação automática | T18.4, T18.6 | planejada |
 | T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; integração T18.1/T18.6 pendente |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
+| T19.0 | Estrutura documental dos pilares, catálogo integral dos estudos e roadmap de presets | Pedido de 2026-10-17 | ✅ documentação com adendos: presets, replay, lotes e parciais; 57 fichas; sem implementação; verificações próprias na continuidade |
+| T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | planejada; primeira tarefa da F19 |
+| T19.2 | Composição canônica e capacidades tipadas, preservando contrato 1 | T19.1, B-11/B-09/B-10 conforme recorte | planejada |
+| T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | planejada |
+| T19.4–T19.13 | Todos os indicadores do TXT: Bill Williams, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | planejadas |
+| T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | planejadas; gates operacionais das grades preservados |
+| T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
+| T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | planejadas |
+| T19.30–T19.35 | Editor operacional, gráficos temporais, gerador na UI, coerência de TF, responsividade e piloto | Serviços/DTOs reais e T17.28; plano F19 | planejadas; T19.33 reaproveita o seletor já existente |
+| T19.36–T19.47 | Setups S01–S11, infraestrutura/ferramentas e lacunas 37/48 do estudo | Indicadores, execução e contratos por ficha | planejadas; S09/T19.37 é o primeiro piloto; Black Box/regras ausentes não inventadas |
+| T19.48 | Diagnóstico e plano de robustecimento posterior da gestão da conta | T12.2/T12.3 e épico F | planejada para segundo momento; travas de segurança não adiadas |
+| T19.49 | Aceite integrado e reconciliação da documentação por versão | T19.35 e recorte do catálogo entregue | planejada; restante pendente permanece explícito |
+| T19.50 | Nomes padronizados no Default e categorias; nome escolhido no Manual e identificação | T19.2/25 | planejada; rótulo/slug/ID, colisões/round-trip e legado na especificação §8.4 |
+| T19.51 | Inversão experimental do sinal compra↔venda, desligada por padrão | T19.2/17/19 e adaptador H | planejada; direção efetiva e plano recalculados; distinta da reversão de posição |
+| T19.52 | Ultra: descoberta limitada e contrato de regras condicionais de calendário/mercado | T19.2/21/24/27; T19.51 se usar inversão | planejada; sem escolher vencedores após conhecer o futuro |
+| T19.53 | Ultra: política executável no HADOUKEN, pacote e rastro de decisões | T19.52/23/25/29/50 e capacidades usadas | planejada; prioridade/fallback/estado/compatibilidade explícitos |
+| T19.54 | Ultra: backtest completo/OOS, comparação e UI de regras | T19.53/24/27/28/32/34 | planejada; quarta categoria sem promessa de máximo garantido |
+| T19.55 | Default da estratégia como primeiro preset e referência versionada | T19.2/25/50, padrões efetivos conhecidos | planejada; reusar padrões existentes, preservar seleção e Salvar como Manual nomeado |
+| T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | planejada; mínimo/passo/margem/risco, unidade e entradas adicionais explícitos |
+| T19.57 | Parciais simples/múltiplas, proteção e contabilização do saldo | T19.56/18/19/24, livro/eventos e suporte H | planejada; UI/preset/Expert, etapas/ack/restart e reconciliação; replay nativo/DEMO |
 | T17.7 | Laboratório: referência temporal e população explícitas | T16.3, T17.3 | ✅ integrada no PR #81; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.9 | Laboratório responsivo em DPI alto e área de resultados rolável | T17.1–T17.3, T17.7 | ✅ integrada no PR #82; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.12a | Tabelas: preservar ausência e distinguir zero/perda na apresentação | T17.9 | ✅ integrada no PR #83; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
@@ -3504,3 +3525,26 @@ T18.8 reutiliza a implementação visual da F17 integrada nesta branch.
 - [ ] Nenhum segredo, caminho pessoal, `config.ini`, `.env` ou `.db` no commit.
 - [ ] Windows **e** Linux considerados (caminhos com `pathlib`/`os.path`, nada de `\\` fixo fora de strings do Windows).
 - [ ] Painel de status deste documento atualizado.
+
+
+## Fase 19 — Pilares de dados, operação, estratégias e presets
+
+**T19.0 entregue como documentação em 2026-10-17, com adendos. T19.1–T19.57 planejadas.**
+O pedido do proprietário integra enriquecimento do histórico extraído e de operações,
+gestão temporal, composição independente de entrada/ganho/stop/filtros, geração de presets
+Default primeiro e Manual nomeado/Defensivo/Maximalista(PF)/Ultra, nomes padronizados,
+gestão de lotes/exposição e realização parcial com saldo protegido,
+inversão experimental, setups no HADOUKEN e UI moderna/responsiva. Gestão da conta permanece
+etapa posterior, preservando os pré-requisitos de segurança dos mecanismos multiordem.
+
+- [Especificação e contratos propostos](propostas/PILARES_DADOS_OPERACAO_PRESETS.md).
+- [Catálogo rastreável de todos os indicadores e setups fornecidos](propostas/CATALOGO_F19_INDICADORES_SETUPS.md).
+- [Fichas individuais T19.1–T19.57, passos, dependências, testes e roteiro de retomada](propostas/PLANO_F19_PILARES_PRESETS.md).
+- [Prompt único de execução](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) e [matriz de validação com replay](propostas/VALIDACAO_F19.md).
+
+O detalhe operacional dessas tarefas mora no plano F19, sem duplicar fichas aqui.
+T19.1 é a próxima tarefa desta frente; sua dependência documental está atendida.
+O primeiro ciclo completo usa S09/T19.37 e capacidades simples para gerar/conferir preset manual;
+não espera todos os indicadores nem libera grades antes da política de risco correspondente.
+Registry/store/contratos B e Composer mantêm os donos anteriores, conferidos antes de consumir.
+T17.28 já permite selecionar timeframe em “Ativo / TF”; T19.33 verifica propagação e descoberta.

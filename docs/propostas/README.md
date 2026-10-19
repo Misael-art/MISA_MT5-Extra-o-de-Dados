@@ -16,6 +16,31 @@ Não altera a contagem original dos dez épicos; é uma frente detalhada ligada 
 Especificação e tarefas T18.0–T18.9: [RELACOES_INDICADORES_SETUP.md](RELACOES_INDICADORES_SETUP.md).
 **Só o planejamento foi entregue; as funcionalidades estão pendentes.**
 
+## Extensão Fase 19 — pilares, presets e catálogo de estudos
+
+Planejada em 2026-10-17 para integrar os pilares de dados (mercado e operações), operacional
+(entrada, orientação normal/invertida, ganho, stop, filtros) e estratégico (setups HADOUKEN),
+com Default como primeiro preset e categorias Manual, Defensivo, Maximalista (Fator de lucro)
+e Ultra, nome do Manual escolhido pelo usuário e padronização portável para identificação.
+Gestão da conta tem etapa posterior.
+Não muda a contagem histórica dos dez épicos nem duplica seus contratos/store/Composer.
+
+Referências: [especificação](PILARES_DADOS_OPERACAO_PRESETS.md),
+[catálogo completo](CATALOGO_F19_INDICADORES_SETUPS.md) e
+[plano T19.0–T19.57](PLANO_F19_PILARES_PRESETS.md),
+[prompt único para o executor](PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) e [matriz de validação](VALIDACAO_F19.md).
+Só documentação entregue; cada capacidade nova precisa de implementação e evidência própria.
+Primeiro passo: T19.1 reconcilia donos e dependências com B/C/D/E/F/H/I e F13/F16/F18.
+A seleção de timeframe já existe pela T17.28; a integração de presets será verificada sem
+criar seletor duplicado. Regras ausentes de Madrid/Black Box/37–48 setups ficam explícitas.
+T19.50–54 detalham o adendo de nomes, inversão experimental e Ultra condicional;
+Ultra exige política causal reproduzível, não seleção retrospectiva dos melhores intervalos.
+T19.55 define o Default; T19.26/50 detalham o nome informado no Manual.
+Replay operacional nativo é aceito quando o ativo não estiver disponível online;
+estrutura e cálculos usam suas verificações/testes/backtests, conforme a matriz.
+T19.56/57 detalham gestão de lotes/exposição e saídas parciais simples/múltiplas, com
+saldo protegido, UI/preset/HADOUKEN compatíveis e reconciliação de volumes/custos/métricas.
+
 ## Onde está cada épico
 
 | Épico | Assunto | Repositório responsável | Documento | Tarefas |

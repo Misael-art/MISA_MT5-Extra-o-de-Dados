@@ -41,6 +41,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F14** Plataforma modular | Backlog integrado do HADOUKEN e do mt5x: framework modular de estratégias, mecanismos de execução, gestão de posições e de carteira, painel, estatísticas, pesquisa e validação, IA. Índice em [propostas/README.md](propostas/README.md) | T14.0 (registro); as tarefas têm identificador próprio (`A-01` a `J-09`) | F12, F13 | T14.0 ✅ (backlog registrado). **Nada implementado**: cada tarefa entra no plano quando for a próxima |
 | **F17** Modernização visual do mt5x | Sistema visual e tipográfico, componentes reutilizáveis, Laboratório e gráficos, aplicação progressiva às abas e validação visual | T17.1–T17.5 | F7, F8, F15, F16 | T17.1–T17.5 ✅ Linux; validação Windows pendente |
 | **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0 documental; T18.8 com apresentação local sintética; Analytics e integração pendentes |
+| **F19** Pilares e presets | Dados de mercado/operações; entrada/orientação, lotes/parciais, ganho, stop e filtros; Default primeiro, Manual nomeado/Defensivo/Maximalista(PF)/Ultra; setups HADOUKEN e UI coerente | T19.0–T19.57 | F13/F16/F18 conforme capacidade; contratos B e Safety para consumo MQL5; F17 para UI | T19.0 documental com adendos; implementação planejada. Gestão da conta em etapa posterior, sem adiar suas travas de segurança |
 
 ## Fase 18 — Relações entre indicadores e aderência dos setups
 
@@ -117,3 +118,63 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 - Otimização de parâmetros por ativo, a partir das características do backtest: ideia registrada pelo dono do
   projeto em 2026-10-12, para pensar depois. Sem tarefa nem desenho ainda; hoje os parâmetros só variam na
   grade pequena do walk-forward (`param_grid`).
+
+
+## Fase 19 — Dados, operação, estratégias e presets
+
+Pedido do proprietário em 2026-10-17. **Entrega atual somente documental (T19.0).**
+Integra as frentes já existentes, com dois ramos de dados (histórico extraído e operações de
+backtest/demo/real), blocos operacionais de entrada/orientação, lotes/parciais, ganho,
+stop e filtros, e módulos
+de estratégia compatíveis com o HADOUKEN. O resultado é um preset manual ou selecionado
+automaticamente por objetivo defensivo/fator de lucro ou uma política **Ultra** condicional,
+com composição e evidência reproduzíveis. Default vem primeiro como referência da estratégia;
+as quatro categorias de trabalho têm nome padronizado, incluindo o nome escolhido no Manual.
+
+- [Especificação funcional e técnica](propostas/PILARES_DADOS_OPERACAO_PRESETS.md).
+- [Catálogo integral dos indicadores, gestão temporal e setups](propostas/CATALOGO_F19_INDICADORES_SETUPS.md).
+- [Tarefas, dependências, marcos e critérios de aceite](propostas/PLANO_F19_PILARES_PRESETS.md).
+
+Começar por T19.1 (reconciliação), contratos e um percurso simples completo com S09/T19.37
+e preset manual. Depois gestão temporal, objetivos automáticos e ampliação do catálogo.
+Não exigir fluxo/Renko para o piloto nem presumir contratos F13/F18/B implementados.
+A T17.28 já oferece timeframe em “Ativo / TF”; T19.33 verifica descoberta e coerência
+em Play/Replay/Backtest e presets. Gestão global da conta fica para etapa posterior;
+grades/scale-in mantêm os pré-requisitos próprios de risco, reserva e política.
+
+Re-simulação das entradas antigas e backtest completo são evidências diferentes.
+Geração de preset não inicia operação nem altera os critérios de bateria/autorização.
+Sem dados/regras/candidato elegível, o resultado registra a limitação; não inventa capacidade.
+O catálogo cobre os 18 indicadores distintos do TXT, métricas temporais e os 11 itens
+detalhados do Markdown; os alegados 37/48 setups não enumerados permanecem lacuna explícita.
+A ideia de otimização por ativo, registrada em 2026-10-12 como futura, passa a este escopo
+planejado. A grade atual do walk-forward (`param_grid`) não equivale ao gerador novo.
+
+**Adendo de 2026-10-17:** T19.50 define nomes claros e portáveis; T19.51 acrescenta a flag
+experimental de inversão compra↔venda, desligada por padrão. T19.52–54 entregam o Ultra:
+regras por hora/dia/semana/mês e contexto causal, que escolhem configurações suportadas
+com prioridade, fallback e rastreio. Avaliar a política inteira em backtest completo/OOS;
+não concatenar vencedores escolhidos retrospectivamente. Inversão de intenção não é
+reversão de posição aberta. O primeiro preset manual não depende da conclusão do Ultra.
+
+**Complemento:** T19.55 entrega o Default versionado e prioritário; T19.26/50 incluem Nome do
+preset informado pelo usuário e identificação automática por metadados. Maximalista é o
+rótulo do perfil FatorLucro. [Prompt único F19/F20/UI](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) e
+[matriz de validação](propostas/VALIDACAO_F19.md) aceitam replay operacional nativo MT5/DEMO
+com recorte histórico ágil quando o ativo estiver indisponível online, sem exigir operação
+ao vivo para cálculos/estrutura e sem substituir backtest estatístico por replay de QA.
+
+**Lotes e parciais:** T19.56/57 estruturam volume fixo/por risco, entrada com mais de um
+lote e agenda de reduções por quantidade/% com saldo e proteção explícitos. Reaproveitar
+dimensionamento e parcial simples existentes; validar parciais múltiplas/gradiente antes
+de declarar suporte. Implementação inclui UI/preset/Expert e reconciliação de custos/PnL,
+sem inflar contagem de operações a partir das parcelas. Detalhe na especificação §6.3.
+
+### Pesquisa futura — FRP, Fluxo Relativo do Preço
+
+Registrar grupos de 3/4 indicadores correlacionados entre si e com movimento do preço,
+com concordância direcional e possível utilidade no Expert. Coeficientes exemplificativos
+0,60/0,70/0,80/0,90 serão estudados; não representam taxa de acerto ou segurança operacional.
+[Conceito e etapas FRP-00–04](pesquisa/FRP_FLUXO_RELATIVO_PRECO.md).
+**ESTUDO FUTURO/P3, após consolidação da base F13/F18.** Sem implementação ou fórmula
+definitiva e sem bloquear F19/presets/Ultra; primeiro avaliar redundância e contribuição OOS.
