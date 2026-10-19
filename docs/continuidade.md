@@ -1,5 +1,17 @@
 # Continuidade: harmonização de 2026-10-14
 
+## EXTR-02 — ponte destacada do iniciador (2026-10-19)
+
+[Recorte e prova](extrator/EXTR-02_PONTE_BACKGROUND.md). Mesma entrada
+mt5-bridge.sh, sessão própria/log, trava exclusiva e identidade de nascimento/posse;
+stop só sinaliza a ponte própria por pidfd. Não encerra terminal/Wine/display.
+14 casos finais do gerenciador e ShellCheck aprovados; ciclo Wine real e consulta
+DEMO de11barras passaram, ponte acessível depois do iniciador terminar. Suíte final1482/18/3, saída0 e cobertura77,64%, fontes intactos; doctor21/1/0.
+Ponte principal migrada para background pelo patch Git de dois arquivos próprios,
+com DEMO11barras e identidade do terminal preservada; seis checks CI aprovados no43a4035. Root e credenciais preservados; Windows físico pendente.
+T18.1 retomada em worktree separada pelo cherry-pick revisado de80fd887; nova composição em validação.
+
+
 ## EXTR-01 concluída em master; cadeia #108–#117 integrada (2026-10-19)
 
 [Fechamento, merges e prova em master](extrator/EXTR-01_VALIDACAO_NATIVA.md).
@@ -11,7 +23,7 @@ exatos ao provedor. UI Tk nativa: Cancelar reconhecido, confirmados preservados,
 retomada e 4736 timestamps únicos exportados. Zero ordens/replay. Doctor 21 OK,
 um aviso pandas-ta opcional, nenhuma falha. Dez workflows redundantes dos merges
 cancelados por SHA, sem atribuir novo verde a master. Windows físico pendente.
-A ponte restrita funciona em foreground; o start em segundo plano abriu a porta,
+Estado histórico ao fechar EXTR-01, superado pelo aceite EXTR-02 acima: a ponte restrita funcionava em foreground; o start em segundo plano abriu a porta,
 mas não permaneceu. Próximo recorte operacional: esclarecer essa saída e validar
 permanência pelo gerenciador, sem ampliar permissões ou afetar outros terminais.
 Sem nova campanha numérica ou refatoração do produto para encerrar esta jornada.

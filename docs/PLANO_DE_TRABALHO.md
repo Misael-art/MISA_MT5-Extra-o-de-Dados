@@ -40,6 +40,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ✅ concluída |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ✅ concluída |
 | EXTR-01 | Qualificar o ciclo do extrator e corrigir a primeira lacuna comprovada | Fluxo F1/F3; candidata T13.3b | ✅ concluída Linux/Wine, [PR117](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/117), merge a92cd8a; 1468/18/3 e seis checks reaproveitados; sete casos em master aprovados; DEMO CLI 2880→3600, repetição/reabertura/CSV exatos e UI Cancelar/retomada/exportação 4736 únicas; doctor 21/1/0; Windows físico pendente |
+| EXTR-02 | Ponte em segundo plano, idempotência e posse do processo | EXTR-01 | validada no Linux, [PR123](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/123); 1482/18/3 saída0, cobertura77,64%; 14 focados, ShellCheck e doctor21/1/0; ciclo Wine real + consulta DEMO11barras; seis checks CI aprovados no43a4035; Windows físico pendente |
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
 | T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
@@ -275,7 +276,7 @@ Valores que precisam ficar **iguais** em mais de um arquivo (se mudar um, mude t
 |---|---|
 | Versão do rpyc (`6.0.2`) | `requirements.txt`, `scripts/install/linux.sh` (`RPYC_VERSION`) |
 | Pasta do Python no Wine (`C:\Python311`) | `mt5_extracao/bootstrap/paths.py` (`WINE_PYTHON_WINDOWS_DIR`), `scripts/install/linux.sh` (`WIN_PYTHON_DIR_WIN`, `WIN_PYTHON_DIR_UNIX_REL`) |
-| Porta da ponte (`18812`) | `paths.py` (`DEFAULT_BRIDGE_PORT`), `scripts/mt5_bridge_server.py` |
+| Porta da ponte (`18812`) | `paths.py` (`DEFAULT_BRIDGE_PORT`), `scripts/mt5_bridge_server.py`, `bootstrap/bridge.py` e `mt5_backend.py` (fallbacks) |
 | Faixa de Python aceita (3.9–3.13) | `doctor.py` (`MIN_PYTHON`, `MAX_TESTED_PYTHON`), `linux.sh` (`MIN_PY_MINOR`), `windows.ps1` (`$PythonMinor`, `$PythonMaxMinor`) |
 
 ### T0.2 — CI ✅
