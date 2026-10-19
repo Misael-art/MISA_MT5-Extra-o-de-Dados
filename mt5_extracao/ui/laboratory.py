@@ -12,7 +12,7 @@ desenhada.
 import logging
 import tkinter as tk
 from datetime import timedelta
-from tkinter import ttk
+from tkinter import filedialog, ttk
 
 import numpy as np
 import pandas as pd
@@ -63,6 +63,7 @@ class LaboratoryPanel:
         self._request = 0
         self._reload_request = 0
         self._compare_request = 0
+        self._indicator_context_revision = 0
         self._charts = {}
         self._chart_panels = {}
         self._analysis_notebooks = {}
@@ -78,6 +79,11 @@ class LaboratoryPanel:
             tooltip="Traz para o Laboratório os backtests gravados antes dele existir. Os de robôs MQL5 entram sem o "
                     "horário de entrada (análise só por horário de saída).", theme=self.theme)
         self.refresh_button = head.add_action("Atualizar", self.reload, style="Accent.TButton")
+        self.indicators_button = head.add_action(
+            "Indicadores (CSV)", self.export_indicator_context,
+            tooltip="Exporta o contexto anterior às entradas, com versão, disponibilidade e motivos de ausência.",
+            theme=self.theme)
+        self.indicators_button.state(["disabled"])
 
         # Cabeçalho e seleção permanecem fora da área rolável de resultados.
         for widget in (head.title_label, head.subtitle_label, head.action_frame):
@@ -86,7 +92,17 @@ class LaboratoryPanel:
         head.action_frame.grid(row=0, column=1, sticky="e")
         head.subtitle_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(SPACING["xs"], 0))
         head.columnconfigure(0, weight=1)
-        head.bind("<Configure>", lambda event: head.subtitle_label.configure(wraplength=max(180, event.width)))
+        header_stacked = False
+        def layout_header(event):
+            nonlocal header_stacked
+            head.subtitle_label.configure(wraplength=max(180, event.width))
+            stacked = event.width < head.title_label.winfo_reqwidth() + head.action_frame.winfo_reqwidth() + SPACING["md"]
+            if stacked != header_stacked:
+                header_stacked = stacked
+                head.action_frame.grid_configure(row=2 if stacked else 0, column=0 if stacked else 1,
+                                                 columnspan=2 if stacked else 1, sticky="w" if stacked else "e",
+                                                 pady=(SPACING["xs"], 0) if stacked else 0)
+        head.bind("<Configure>", layout_header)
         self._build_filters()
         self.results_viewport = ScrollableContent(self.frame, self.theme)
         self.results_viewport.pack(fill=tk.BOTH, expand=True)
@@ -275,6 +291,33 @@ class LaboratoryPanel:
 
     # --- leitura -----------------------------------------------------------------------
 
+    def export_indicator_context(self):
+        if self.view is None or self.view.empty or self.tabs.tab(self.tabs.select(), "text") == RELATIONS_TAB:
+            return
+        path = filedialog.asksaveasfilename(title="Exportar contexto dos indicadores", defaultextension=".csv",
+                                          filetypes=[("CSV", "*.csv")], initialfile="contexto_indicadores.csv")
+        if not path:
+            return
+        from mt5_extracao.data_exporter import DataExporter
+        from mt5_extracao.resources import guard
+        from mt5_extracao.trade_analytics import indicator_context
+
+        revision = self._indicator_context_revision
+        trades, db, config = self.view.copy(deep=True), self._db(), self._config()
+        def work():
+            frame = indicator_context.for_trades(db, trades)
+            return DataExporter(db).export_indicator_frame(
+                frame, path, write_guard=guard.make(db, config),
+                cancel_check=lambda: revision != self._indicator_context_revision)
+        def done(result, error):
+            if revision != self._indicator_context_revision:
+                return
+            if error is not None:
+                self.set_note(f"Erro ao exportar indicadores: {error}. Confira o destino e tente novamente.")
+            else:
+                self.set_note("Contexto dos indicadores exportado. Valores indisponíveis mantêm seu motivo no CSV.")
+        self.ui.run_bg(work, done)
+
     def _db(self):
         db = getattr(self.ui.app, "db_manager", None)
         return db if db is not None and db.is_connected() else None
@@ -333,6 +376,8 @@ class LaboratoryPanel:
         db, config, choice = self._db(), self._config(), self.selected.get()
         if db is None or not choice:
             return
+        self._indicator_context_revision += 1
+        self.indicators_button.state(["disabled"])
         self._preferred_run_id = getattr(self, "_run_labels", {}).get(self.run_var.get())
         self.lab = self.view = None
         self._empty("Calculando o contexto das operações...")
@@ -357,6 +402,7 @@ class LaboratoryPanel:
         self.ui.run_bg(work, done)
 
     def apply_filters(self):
+        self._indicator_context_revision += 1
         if self.lab is None:
             return
         view = self.lab
@@ -366,6 +412,7 @@ class LaboratoryPanel:
         if self.hide_news.get() and "event_impact" in view:
             view = view[pd.to_numeric(view["event_impact"], errors="coerce").fillna(0) < 3]
         self.view = view
+        self.indicators_button.state(["disabled"] if view.empty else ["!disabled"])
         self._drawn = set()
         self._clear_execution()
         self.evaluation = None
@@ -460,11 +507,13 @@ class LaboratoryPanel:
     def _sync_tab_context(self, name):
         """Não exibe filtros/KPIs de operações como se filtrassem as relações de indicadores."""
         if name == RELATIONS_TAB:
+            self.indicators_button.state(["disabled"])
             self.filter_bar.pack_forget()
             self.kpi_row.pack_forget()
             self.notice.pack_forget()
             self.context_details.pack_forget()
             return
+        self.indicators_button.state(["!disabled"] if self.view is not None and not self.view.empty else ["disabled"])
         if self.population_context is not None and not self.context_details.winfo_manager():
             self.context_details.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.tabs)
         if not self.kpi_row.winfo_manager():

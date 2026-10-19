@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import re
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Optional
 
@@ -367,13 +368,13 @@ def _save_bars(db, bars):
     return counts
 
 
-def latest_source_sequence(db, symbol, timeframe):
+def latest_source_sequence(db, symbol, timeframe, *, connection=None):
     """Geração monotônica das últimas revisões derivadas, sem ler o histórico de barras."""
     if db is None or getattr(db, "engine", None) is None or \
             not inspect(db.engine).has_table("_analytics_source_sequences"):
         return None
     target = parse_target(timeframe)
-    with db.engine.connect() as conn:
+    with (nullcontext(connection) if connection is not None else db.engine.connect()) as conn:
         value = conn.execute(text(
             "SELECT sequence FROM _analytics_source_sequences WHERE symbol = :symbol AND tf = :tf"),
             {"symbol": str(symbol), "tf": target.label}).scalar()
@@ -384,7 +385,7 @@ def latest_source_sequence(db, symbol, timeframe):
     return int(value) if value is not None else 0
 
 
-def has_closed_bars_after(db, symbol, timeframe, bar_start_utc):
+def has_closed_bars_after(db, symbol, timeframe, bar_start_utc, *, require_complete_session=True):
     """Checa, sem carregar o histórico, se uma barra nova ficou elegível pelo relógio."""
     if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_bars_derived"):
         return False
@@ -412,16 +413,17 @@ def has_closed_bars_after(db, symbol, timeframe, bar_start_utc):
     latest_incomplete = "NOT EXISTS (SELECT 1 FROM _bars_derived newer WHERE newer.symbol = incomplete.symbol " \
                         "AND newer.tf = incomplete.tf AND newer.session_id = incomplete.session_id " \
                         "AND newer.bar_start_utc = incomplete.bar_start_utc AND newer.revision > incomplete.revision)"
-    sql = f"""
-        SELECT 1 FROM _bars_derived candidate
-        WHERE candidate.symbol = :symbol AND candidate.tf = :tf
-          AND {latest_candidate} AND {eligibility} {cursor_clause}
-          AND NOT EXISTS (
+    session_clause = f"""AND NOT EXISTS (
               SELECT 1 FROM _bars_derived incomplete
               WHERE incomplete.symbol = candidate.symbol AND incomplete.tf = candidate.tf
                 AND incomplete.session_id = candidate.session_id AND {latest_incomplete}
                 AND NOT ({eligibility.replace('candidate.', 'incomplete.')})
-          )
+          )""" if require_complete_session else ""
+    sql = f"""
+        SELECT 1 FROM _bars_derived candidate
+        WHERE candidate.symbol = :symbol AND candidate.tf = :tf
+          AND {latest_candidate} AND {eligibility} {cursor_clause}
+          {session_clause}
         LIMIT 1
     """
     params = {"symbol": str(symbol), "tf": target.label, "as_of": _utc_now().strftime(
@@ -469,7 +471,8 @@ def resample_symbol(db, symbol, targets, symbol_info=None, session_gap_minutes=c
     return summary
 
 
-def latest_bars(db, symbol, timeframe, *, closed_only=True, source_seq_after=None, bar_start_after=None):
+def latest_bars(db, symbol, timeframe, *, closed_only=True, source_seq_after=None, bar_start_after=None,
+                connection=None):
     """Última revisão de cada barra derivada, em ordem cronológica.
 
     As colunas de horário UTC voltam como ``Timestamp`` com fuso. ``computed_at_utc``
@@ -522,7 +525,7 @@ def latest_bars(db, symbol, timeframe, *, closed_only=True, source_seq_after=Non
         if stamp.tzinfo is None:
             raise ValueError("bar_start_after precisa incluir fuso horário.")
         params["bar_start_after"] = stamp.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
-    with db.engine.connect() as conn:
+    with (nullcontext(connection) if connection is not None else db.engine.connect()) as conn:
         frame = pd.read_sql(text(sql), conn, params=params)
     if frame.empty:
         return frame

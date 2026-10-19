@@ -234,7 +234,7 @@ def _normalize_value(value):
 
 def _validate_declared_value_type(value, value_type, *, quality="VALID"):
     """Confere o valor contra o tipo declarado; definições legadas sem tipo seguem aceitas."""
-    if value_type is None or (value is None and quality == "INVALIDATED"):
+    if value_type is None or (value is None and quality in {"INVALIDATED", "UNAVAILABLE"}):
         return
     if hasattr(value, "item"):
         try:
@@ -458,8 +458,8 @@ def _value_record(symbol, timeframe, feature_id, algorithm_version, observation_
     if until is not None and until <= available:
         raise ValueError("valid_until precisa ser posterior a available_at.")
     if value is None:
-        if quality != "INVALIDATED":
-            raise ValueError("Valor ausente só é permitido com quality='INVALIDATED'.")
+        if quality not in {"INVALIDATED", "UNAVAILABLE"}:
+            raise ValueError("Valor ausente só é permitido com quality='INVALIDATED' ou 'UNAVAILABLE'.")
         numeric, categorical = None, None
     else:
         numeric, categorical = _normalize_value(value)

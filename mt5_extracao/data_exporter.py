@@ -5,6 +5,7 @@ from pathlib import Path
 from datetime import datetime
 import re
 import json
+import tempfile
 
 from mt5_extracao.error_handler import with_error_handling, ExportError
 
@@ -103,6 +104,33 @@ class DataExporter:
         from mt5_extracao.analytics import datasets
         path = caminho_arquivo or self.export_dir / f"dataset_{manifest_id}.json"
         return datasets.export_snapshot(self.db_manager, manifest_id, path)
+
+    def export_indicator_frame(self, frame, caminho_arquivo, *, write_guard=None, cancel_check=None):
+        """Publica CSV de indicadores/contexto com estados e proveniência no mesmo arquivo."""
+        target = Path(caminho_arquivo)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = None
+        try:
+            if write_guard is not None and (reason := write_guard()):
+                raise ExportError(f"Exportação bloqueada: {reason}. Libere recursos e tente novamente.")
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", newline="", dir=target.parent,
+                                             prefix=".indicator-", suffix=".csv", delete=False) as output:
+                temporary = Path(output.name)
+                frame.to_csv(output, index=False)
+            if cancel_check is not None and cancel_check():
+                raise ExportError("Contexto alterado; exportação cancelada. Selecione o recorte e tente novamente.")
+            if write_guard is not None and (reason := write_guard()):
+                raise ExportError(f"Exportação bloqueada: {reason}. O destino anterior foi preservado.")
+            os.replace(temporary, target)
+            return str(target)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
+
+    def export_indicator_values(self, caminho_arquivo, *, write_guard=None, **query):
+        from mt5_extracao.analytics import indicator_context
+        frame = indicator_context.projection(self.db_manager, **query)
+        return self.export_indicator_frame(frame, caminho_arquivo, write_guard=write_guard)
 
     def _default_path(self, tabela, ext, adicionar_timestamp=True):
         tabela_limpa = self._limpar_nome_tabela(tabela)
@@ -388,4 +416,4 @@ class DataExporter:
         timeframe_sufixo = timeframe_map.get(timeframe, timeframe)
         
         # Construir nome da tabela no formato simbolo_timeframe
-        return f"{simbolo_limpo}_{timeframe_sufixo}" 
+        return f"{simbolo_limpo}_{timeframe_sufixo}"

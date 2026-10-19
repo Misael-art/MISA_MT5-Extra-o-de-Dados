@@ -90,6 +90,9 @@ _DEFINITIONS = (
     _definition("trend.ema20_distance_atr14", "EMA (20) distance / ATR (14)", "trend",
                 "(close - EMA(close, 20)) / ATR(14)", {"ema_period": 20, "atr_period": 14}, "atr_units", 20,
                 "bars.high_low_close", ("high", "low", "close"), denominator="atr"),
+    _definition("trend.efficiency_ratio_20", "Kaufman ER (20)", "trend",
+                "abs(close[t] - close[t-20]) / sum(abs(diff(close)), 20); flat path = 0",
+                {"period": 20, "flat_path": "zero"}, "fraction", 21, "bars.close", ("close",)),
     _definition("volume.real", "Real volume", "volume", "real_volume from source bar; never replaced by ticks",
                 {"column": "real_volume", "source_kind": "real"}, "volume_units:instrument", 0,
                 "bars.real_volume", ("real_volume",)),
@@ -168,6 +171,7 @@ def _calculated_series(bars):
         "price.return_5": close / close.shift(5).where(close.shift(5) > 0) - 1.0,
         "price.return_20": close / close.shift(20).where(close.shift(20) > 0) - 1.0,
         "trend.ema20_distance_atr14": (close - technical.ema(close, 20)) / atr14.where(atr14 > 0),
+        "trend.efficiency_ratio_20": technical.efficiency_ratio(close, 20),
         "volume.real": _column(bars, "real_volume"),
         "volume.ticks": _column(bars, "tick_volume"),
     }
@@ -198,7 +202,7 @@ def _bad_denominator(feature_id, position, bars, close, atr14, bb, kc):
     return False
 
 
-def compute_core(bars, *, feature_ids=None):
+def iter_core(bars, *, feature_ids=None):
     """Calcula indicadores nativos e devolve linhas tipadas com ausência explícita.
 
     ``bar_index`` preserva o índice da série. A função não infere timestamp de
@@ -225,7 +229,6 @@ def compute_core(bars, *, feature_ids=None):
         bb = pd.DataFrame({"mid": np.nan, "upper": np.nan, "lower": np.nan}, index=bars.index)
         kc = pd.DataFrame({"mid": np.nan, "upper": np.nan, "lower": np.nan}, index=bars.index)
 
-    rows = []
     for feature_id in selected:
         spec = _BY_ID[feature_id]
         missing_columns = [column for column in spec["required_columns"] if column not in bars.columns]
@@ -249,10 +252,14 @@ def compute_core(bars, *, feature_ids=None):
                 state, reason = "INVALID_RESULT", "FORMULA_RETURNED_NON_FINITE_VALUE"
             else:
                 value = float(raw)
-            rows.append({"bar_index": bar_index, "feature_id": feature_id,
-                         "algorithm_version": spec["algorithm_version"], "value": value, "state": state,
-                         "reason": reason})
-    return rows
+            yield {"bar_index": bar_index, "feature_id": feature_id,
+                   "algorithm_version": spec["algorithm_version"], "value": value, "state": state,
+                   "reason": reason}
+
+
+def compute_core(bars, *, feature_ids=None):
+    """API em lote preservada; o consumidor incremental pode iterar sem acumular as linhas."""
+    return list(iter_core(bars, feature_ids=feature_ids))
 
 
 def register_core(db, timeframe, *, write_guard=None):

@@ -232,3 +232,23 @@ def test_typed_registry_upgrade_preserves_legacy_checkpoint_and_values(pg, monke
     from tests.test_analytics_profiles import test_typed_contract_upgrade_preserves_legacy_values_and_rebuilds_checkpoint
 
     test_typed_contract_upgrade_preserves_legacy_values_and_rebuilds_checkpoint(pg, monkeypatch)
+
+
+def test_native_registry_materialization_preserves_raw_and_missing_states(pg):
+    from tests.test_indicator_materialization import test_materialize_preserves_raw_bars_and_explicit_missing_states
+    test_materialize_preserves_raw_bars_and_explicit_missing_states(pg)
+
+
+def test_native_registry_failed_ack_recovers_checkpoint(pg, monkeypatch):
+    from tests.test_indicator_materialization import test_failed_ack_resumes_only_confirmed_cursor
+    test_failed_ack_resumes_only_confirmed_cursor(pg, monkeypatch)
+
+
+def test_native_registry_late_correction_is_point_in_time(pg):
+    from tests.test_indicator_materialization import test_late_revision_never_changes_previous_asof
+    test_late_revision_never_changes_previous_asof(pg)
+
+
+def test_native_registry_export_retains_states_and_destination(pg, tmp_path):
+    from tests.test_indicator_materialization import test_export_preserves_states_version_and_previous_destination
+    test_export_preserves_states_version_and_previous_destination(pg, tmp_path)

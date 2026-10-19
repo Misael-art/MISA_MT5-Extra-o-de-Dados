@@ -1,3 +1,45 @@
+## Fechamento T19.3 — seis checks aprovados, 2026-10-19
+
+PR125/eaec23b: revisão e aceite concluídos, inclusive o check Windows existente.
+1528 casos distintos CI+UI,34 PostgreSQL, cov77,64%,27 focados, doctor21/1/0;
+290 fontes/testes idênticos preservados no fechamento documental [skip ci].
+A integração é preparada por merge Git com guarda do HEAD/base/threads; o SHA real será
+registrado no diário local depois da resposta do GitHub. Não repetir verificações aprovadas
+sem mudança de fonte, falha nova ou cobertura obrigatória ausente.
+T19.3 entrega materialização/contexto/CSV com avaliação numérica exact_prefix explícita;
+clock desconhecido e manifesto sem vínculo retornam ausência. Relações segue sintética até
+T18.6; presets, Analytics completo e Windows físico não foram concluídos. Próxima ficha
+dependente após integração: T19.4, conforme preço/SMMA/semente/deslocamentos especificados.
+
+## Aceite T19.3 — aguarda Windows existente
+
+PR125/eaec23b: revisão concluída. Aceite Linux composto1528 casos distintos
+(1392 Ubuntu +132 UI Xvfb +4 UI da bateria27 reaproveitados), cobertura77,64%.
+Fonte290 idêntica, doctor21/1/0, oito casos visuais e prova CLI arquivada preservados.
+A suíte local completa foi encerrada após aceite Ubuntu para evitar duplicação; seu exit1
+é interrupção com teardown do pytest, não é registrado como passe. Só a cobertura gráfica
+ausente foi executada. Cinco checks aprovados, check Windows existente ainda em execução.
+Não disparar outro workflow, não integrar antes do resultado Windows. Ver relatório T19.3.
+
+## Retomada T19.3 — 2026-10-19
+
+PR #124 integrada em master791f15caeee43d9ff792966e5c591f7b1c5b3d48 depois do check
+Windows já existente e da revisão. Nenhum workflow adicional foi disparado para ela.
+Seis checks aprovados no ecfe057, suíte1501/26/3 e fontes285 idênticas foram reaproveitados.
+Registry (18 definições) e DTO (schema1) importados na nova worktree de master antes de editar.
+A tela provisória de Relações permanece sintética até T18.6; Analytics/presets não estão concluídos.
+
+Próximo consumidor elegível: T19.3, pois T19.1/#120, T13.2/#114 e T18.1/#124 estão integradas.
+Candidata isolada codex/t19.3-consumo-registry, sem copiar a árvore ou alterar HEAD/índice da Root.
+Consulta causal/exportação no store existente; ER reutilizado; escrita incremental com avaliação
+numérica exact_prefix, sem promessa O(delta). Relógio desconhecido e manifesto sem vínculo
+retornam ausência explícita; o serviço de relações continua pendente. Ver
+[relatório T19.3](analytics/T19.3_MATERIALIZACAO_INDICADORES.md).
+27 testes focados finais aprovados; doctor21OK/1opcional/0falhas; CLI reutilizou 600 barras DEMO
+arquivadas, 120 M5 e exportação, sem nova extração ou ordens; oito casos de UI nos dois temas,
+DPI96/144 e larguras820/1280. Suíte completa/CI e revisão ainda pendentes neste registro.
+Windows físico é pendência específica. Ponte própria da Root preservada em segundo plano.
+
 ## Retomada T18.1 — 2026-10-19
 
 Integração isolada do commit canônico 80fd887 sobre EXTR-02/43a4035, preservando a worktree original.
