@@ -240,3 +240,12 @@ instaladores/caminhos; evidência gráfica anterior compatível reaproveitada. C
 Correção Linux-only em Bridge.stop: simulação do caminho Windows nativo passou no teste
 existente; esse caminho não foi modificado. A prova física anterior permanece pendente,
 sem novo stop da ponte real ou sessão de terceiros.17 testes Linux e doctor21/1/0.
+
+### T19.5 — AO/AC (pendência Windows físico)
+
+- [ ] Em Windows físico, consultar/exportar AO/AC materializados pelo serviço existente,
+  incluindo aquecimento, ausência e arquivo CSV em pasta com espaço.
+
+Linux:78 casos focados distintos compatíveis e doctor21OK/1opcional/0falhas.32 definições
+no registry, interface de exportação preservada; quatro testes atuais da ação da UI aprovados.
+CI Windows desta ficha ainda pendente; resultados locais não são prova de Windows físico.

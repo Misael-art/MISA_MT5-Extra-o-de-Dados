@@ -116,6 +116,11 @@ O registro-base é T18.1; materialização/consulta e seus consumidores entram p
 - **Parâmetros:** períodos, preço, aquecimento; manter defaults de referência separados de variantes.
 - **Operações:** nível, inclinação, cruzamento e aceleração, quando disponíveis.
 - **Aceite específico:** série constante, aquecimento e diferenças entre cálculo/formatação.
+- **Contrato implementado:** SMA por janela completa finita, mediano (high+low)/2; AO aquece em
+  34 observações. Inclinação/cor e cruzamento exigem 35, segunda diferença exige 36. Cor é
+  sinal da variação, com empate neutro explícito; toque em zero não cruza, saída de zero pode
+  cruzar. Transformações não alteram o nível. Ausência não vira zero e disponibilidade é no
+  fechamento/recebimento de revisão, sem deslocamento. [Referência e aceite](../analytics/T19.5_AO_AC.md).
 - **Tarefa:** T19.5.
 
 ### I08 — Fractals
@@ -129,9 +134,12 @@ O registro-base é T18.1; materialização/consulta e seus consumidores entram p
 
 ### I09 — Accelerator/Decelerator / AC
 
-- **Mercado:** variante de referência proposta AO menos SMA5 do AO.
+- **Mercado:** variante de referência fixada AO menos SMA5 do mesmo AO (5/34 no mediano).
 - **Parâmetros:** períodos do AO e suavização do AC, inclinação/cor como transformações separadas.
 - **Aceite específico:** paridade do encadeamento e aquecimento total, sem antecipar mudança de cor.
+- **Contrato implementado:** 38 observações para AC, 39 para inclinação/cor. Janelas finitas
+  completas, ausência explícita, cor separada do nível e disponibilidade causal no serviço
+  existente; detalhes e limite da paleta em [T19.5](../analytics/T19.5_AO_AC.md).
 - **Tarefa:** T19.5.
 
 ### I10 — Donchian Channels

@@ -1,3 +1,14 @@
+## Preparação T19.5 — AO/AC, 2026-10-19
+
+Worktree isolada sobre70b2191, sem publicar antes de integrar127→126. Dependência funcional
+T19.3/#125 integrada. AO SMA5−SMA34 do mediano e AC AO−SMA5(AO);8 saídas no registry,
+aquecimento34/38, transformações separadas, ausência/causalidade explícitas.78 testes focados
+distintos compatíveis aprovados e doctor21/1/0. Referência racional independente, lote/append,
+reabertura/skip, correção tardia e CSV/store/cálculo exatos. CLI com120 M5 DEMO arquivadas,
+960 fatos revision1, sem nova extração/ordens/benchmark. CI e revisão final pendentes.
+Relações permanece sintética; nenhuma estratégia/preset. Windows físico específico pendente.
+Ver analytics/T19.5_AO_AC.md e diário privado logs/t19-5-ao-ac-20261019.
+
 ## Impedimento da PR126 — correção isolada EXTR-02
 
 Ubuntu da PR126:1408 aprovados/168 skips/1falha, cobertura77,64%. Falha no teste de stop/libc

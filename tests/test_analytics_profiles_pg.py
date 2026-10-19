@@ -262,3 +262,13 @@ def test_alligator_calculation_close_and_plot_anchor_are_independent(pg):
 def test_alligator_late_revision_preserves_history_and_plot_anchor(pg):
     from tests.test_alligator import test_late_alligator_correction_preserves_previous_time_and_plot_anchor
     test_late_alligator_correction_preserves_previous_time_and_plot_anchor(pg)
+
+
+def test_ao_ac_closed_bar_availability(pg):
+    from tests.test_ao_ac import test_ao_ac_are_available_at_calculation_close_and_never_before
+    test_ao_ac_are_available_at_calculation_close_and_never_before(pg)
+
+
+def test_ao_ac_late_revision_preserves_history(pg):
+    from tests.test_ao_ac import test_late_source_correction_preserves_previous_asof
+    test_late_source_correction_preserves_previous_asof(pg)
