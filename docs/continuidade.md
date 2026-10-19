@@ -1,6 +1,6 @@
-# T19.3: conexão do snapshot — 2026-10-19
+# T19.3: conexão do snapshot aceita — 2026-10-19
 
-Correção necessária para T19.6: inspeção de schema usa a transação recebida. [Causa e evidências](analytics/T19.3_CONEXAO_SNAPSHOT.md). Uma tarefa por PR; verificação da nova fonte em andamento.
+Correção necessária para T19.6: inspeção de schema usa a transação recebida. [Causa e evidências](analytics/T19.3_CONEXAO_SNAPSHOT.md). PR130 aceita: seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis, doctor21/1/0. Windows físico pendente. T19.6/#131 depende desta integração.
 
 ## Fechamento final T19.5 — PR128, 2026-10-19
 
