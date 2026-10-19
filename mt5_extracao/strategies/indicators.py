@@ -26,6 +26,56 @@ def rma(series: pd.Series, n: int) -> pd.Series:
     return series.ewm(alpha=1.0 / n, adjust=False, min_periods=n).mean()
 
 
+ALLIGATOR_LINES = (("jaw", 13, 8), ("teeth", 8, 5), ("lips", 5, 3))
+
+
+def smma(series: pd.Series, n: int) -> pd.Series:
+    """SMMA com semente SMA de n valores consecutivos; lacuna reinicia a semente.
+
+    Variante MetaQuotes: (anterior * (n - 1) + preço) / n. Não substitui o
+    rma legado, cuja semente e tratamento de lacunas são diferentes.
+    """
+    if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or n < 1:
+        raise ValueError("O período da SMMA precisa ser um inteiro positivo.")
+    values = pd.to_numeric(series, errors="coerce").to_numpy(dtype=float, na_value=np.nan)
+    result = np.full(len(values), np.nan)
+    seed, previous = [], None
+    for position, value in enumerate(values):
+        if not np.isfinite(value):
+            seed, previous = [], None
+        elif previous is None:
+            seed.append(float(value))
+            if len(seed) == n:
+                previous = math.fsum(seed) / n
+                result[position] = previous
+                seed = []
+        else:
+            previous = (previous * (n - 1) + value) / n
+            result[position] = previous
+    return pd.Series(result, index=series.index, dtype=float)
+
+
+def alligator(df: pd.DataFrame) -> pd.DataFrame:
+    """Linhas NÃO deslocadas: só usam high/low da barra de cálculo e anteriores.
+
+    ALLIGATOR_LINES declara o deslocamento exclusivamente visual. Alinhamento
+    é +1 para lips>teeth>jaw, -1 para lips<teeth<jaw, 0 para mistura/empate;
+    não é ordem nem diagnóstico estatístico de regime. Ausência nunca vira 0.
+    """
+    high = pd.to_numeric(df["high"], errors="coerce")
+    low = pd.to_numeric(df["low"], errors="coerce")
+    valid = np.isfinite(high) & np.isfinite(low) & high.ge(low)
+    median = ((high + low) / 2.0).where(valid)
+    lines = pd.DataFrame({name: smma(median, period) for name, period, _shift in ALLIGATOR_LINES}, index=df.index)
+    available = lines.notna().all(axis=1)
+    up = (lines.lips > lines.teeth) & (lines.teeth > lines.jaw)
+    down = (lines.lips < lines.teeth) & (lines.teeth < lines.jaw)
+    lines["alignment"] = (up.astype(float) - down.astype(float)).where(available)
+    lines["separation"] = (lines[["jaw", "teeth", "lips"]].max(axis=1, skipna=False) -
+                           lines[["jaw", "teeth", "lips"]].min(axis=1, skipna=False))
+    return lines
+
+
 def true_range(df: pd.DataFrame) -> pd.Series:
     prev_close = df["close"].shift(1)
     ranges = pd.concat([df["high"] - df["low"],

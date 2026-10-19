@@ -1,3 +1,15 @@
+## Fechamento T19.4 — PR126 após127, 2026-10-19
+
+A correção127 foi integrada em master2d7412f antes desta ficha. Composição70b2191 com seis
+checks aprovados:1412 Ubuntu/168 skips,36PG,1514Windows CI/66 skips/5avisos, cov77,64%/73,36%.
+Revisão sem pendências. Master incorporado por merge Git sem conflitos novos;291 fontes/testes
+idênticos ao commit do CI. Fechamento somente documental [skip ci], sem outra campanha.
+34 Alligator+ponte/doctor21/1/0,62 focados originais e UI compatível reaproveitados. Referência
+independente, CSV/store e medição local279/216/2ms preservados; não são metas universais.
+Integrar pelo SHA revisado e registrar SHA real no diário. Próxima ficha T19.5 AO/AC, em
+worktree isolada, usando o serviço existente e referência racional; sem estratégia/presets.
+Relações continua sintética e Windows físico é pendência específica. Root/ponte/WIP preservados.
+
 ## Fechamento da correção EXTR-02 — PR127, 2026-10-19
 
 Aceite concluído no63e717f: seis checks existentes aprovados,1395 Ubuntu/34 PostgreSQL/1497
@@ -18,6 +30,19 @@ determinístico antes falhou, doctor21/1/0. CI Linux/revisão pendentes. Windows
 alterado; aceites compatíveis são reaproveitados. Não refazer cálculos/custo da PR126.
 Incorporar a correção pelo fluxo Git antes de integrar T19.4; Root/ponte/WIP preservados.
 Relatório: extrator/EXTR-02_CONFIRMACAO_SAIDA.md. Windows físico continua pendente específico.
+
+## T19.4 — Alligator em validação, 2026-10-19
+
+Base master2b27b1f da T19.3/#125,290 fontes/testes do baseline exatamente compatíveis.
+Ambiente instalado, aceite1528 Linux/34PG/1497Windows e seis checks reaproveitados antes da mudança.
+SMMA própria com semente SMA, mediano,13/8/5 e desenho8/5/3; rma legado preservado.
+Cinco saídas novas no registry/store/CSV existente, sem estratégia/presets ou Relações real.
+62 focados distintos aprovados, doctor21/1/0, referência racional e doubles CSV/store exatos.
+Custo em três jobs já registrados, uma amostra cada:279/216/2ms para90 M5/append30/cache.
+Medição e prova CLI usaram600 M1 DEMO arquivadas, sem reextração/ordens; RSS total explícita.
+Dois casos PG novos aguardam CI; revisão/aceite CI ainda pendentes. Windows físico é pendência
+específica. Relatório: analytics/T19.4_ALLIGATOR.md. Root/índice/WIP e ponte preservados.
+Após concluir a ficha, próxima dependência elegível T19.5 (AO/AC), com PR separada.
 
 ## Fechamento T19.3 — seis checks aprovados, 2026-10-19
 

@@ -225,6 +225,16 @@ nenhum terminal/credencial ou processo de terceiros modificado por esta tarefa.
 Aceite Linux final T19.3:1392 Ubuntu +132 UI Xvfb +4 UI compatíveis reaproveitados =1528 casos
 únicos, cobertura77,64%; check Windows CI aprovado na execução existente do eaec23b; prova física continua pendente.
 
+### T19.4 — Alligator (pendência Windows físico)
+
+- [ ] Em base de teste no Windows físico, materializar Alligator M5, consultar/reabrir e
+  exportar CSV; conferir semente/aquecimento, estados de ausência, âncora e offset separados.
+- [ ] Confirmar diálogo/caminho com espaço e valores do CSV; não usar offset visual para
+  antecipar disponibilidade. Não há consumidor operacional H exposto por esta ficha.
+
+Linux:62 focados e prova CLI em120 M5 de DEMO arquivada; doctor21/1/0. Sem alterações na UI,
+instaladores/caminhos; evidência gráfica anterior compatível reaproveitada. CI ainda pendente.
+
 ### EXTR-02 — confirmação de saída do processo (follow-up)
 
 Correção Linux-only em Bridge.stop: simulação do caminho Windows nativo passou no teste
@@ -233,3 +243,6 @@ sem novo stop da ponte real ou sessão de terceiros.17 testes Linux e doctor21/1
 
 CI da PR127/63e717f: seis checks aprovados;1497 testes Windows CI/64 skips/5avisos.
 Isso não encerra a conferência no Windows físico; bootstrap nativo permanece preservado.
+
+Aceite final T19.4/70b2191: seis checks aprovados, incluindo1514 Windows CI/66 skips/5avisos.
+Os291 arquivos de produção/testes correspondem ao código final; isso não substitui Windows físico.

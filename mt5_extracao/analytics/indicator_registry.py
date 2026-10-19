@@ -38,6 +38,29 @@ def _definition(feature_id, name, family, formula, parameters, unit, warmup_coun
     }
 
 
+def _alligator_definitions():
+    common = {"price": "(high + low) / 2", "method": "SMMA", "seed": "SMA_first_n_consecutive_finite",
+              "missing_policy": "reset_and_reseed", "value_basis": "unshifted_calculation_bar",
+              "plot_time_rule": "calculation_bar_ordinal_plus_shift; no UTC forecast"}
+    lines = {name: {"period": period, "plot_shift_bars": shift}
+             for name, period, shift in technical.ALLIGATOR_LINES}
+    items = [_definition(f"trend.alligator_{name}_{period}", f"Alligator {name} ({period})", "trend",
+                         f"SMMA((high + low) / 2, {period}); SMA seed; visual shift={shift}, value unshifted",
+                         {**common, "period": period, "plot_shift_bars": shift}, "price_units", period,
+                         "bars.high_low", ("high", "low"))
+             for name, period, shift in technical.ALLIGATOR_LINES]
+    items.append(_definition("trend.alligator_alignment", "Alligator alignment", "trend",
+                             "1 if lips>teeth>jaw; -1 if lips<teeth<jaw; 0 otherwise; unshifted lines",
+                             {**common, "lines": lines, "plot_shift_bars": 0,
+                              "states": {"1": "ALIGNED_UP", "-1": "ALIGNED_DOWN", "0": "INTERTWINED_OR_TIED"}},
+                             "direction_code_-1_0_1", 13, "bars.high_low", ("high", "low")))
+    items.append(_definition("trend.alligator_separation", "Alligator separation", "trend",
+                             "max(jaw, teeth, lips) - min(jaw, teeth, lips); all unshifted lines required",
+                             {**common, "lines": lines, "plot_shift_bars": 0}, "price_units", 13,
+                             "bars.high_low", ("high", "low")))
+    return tuple(items)
+
+
 _DEFINITIONS = (
     _definition("momentum.rsi_14", "RSI (14)", "momentum", "Wilder RSI(14) applied to close",
                 {"period": 14, "method": "Wilder", "source": "close"}, "points_0_100", 15, "bars.close",
@@ -99,7 +122,7 @@ _DEFINITIONS = (
     _definition("volume.ticks", "Tick volume", "volume", "tick_volume from source bar; never mixed with real volume",
                 {"column": "tick_volume", "source_kind": "ticks"}, "ticks", 0,
                 "bars.tick_volume", ("tick_volume",)),
-)
+) + _alligator_definitions()
 _BY_ID = {item["feature_id"]: item for item in _DEFINITIONS}
 
 
@@ -154,6 +177,7 @@ def _calculated_series(bars):
     macd_hist = macd_frame["histogram"]
     bb_width = bb["upper"] - bb["lower"]
     kc_width = kc["upper"] - kc["lower"]
+    alligator = technical.alligator(ohlc)
     return {
         "momentum.rsi_14": rsi14,
         "momentum.rsi_14_slope_3": rsi14 - rsi14.shift(3),
@@ -174,6 +198,10 @@ def _calculated_series(bars):
         "trend.efficiency_ratio_20": technical.efficiency_ratio(close, 20),
         "volume.real": _column(bars, "real_volume"),
         "volume.ticks": _column(bars, "tick_volume"),
+        **{f"trend.alligator_{name}_{period}": alligator[name]
+           for name, period, _shift in technical.ALLIGATOR_LINES},
+        "trend.alligator_alignment": alligator["alignment"],
+        "trend.alligator_separation": alligator["separation"],
     }
 
 
@@ -216,6 +244,9 @@ def iter_core(bars, *, feature_ids=None):
     if unknown:
         raise ValueError("Indicadores nativos desconhecidos: " + ", ".join(unknown))
     series_by_id = _calculated_series(bars)
+    high, low = _column(bars, "high"), _column(bars, "low")
+    alligator_source_valid = (np.isfinite(high) & np.isfinite(low) & high.ge(low)
+                              if high is not None and low is not None else None)
     close = _column(bars, "close")
     if close is None:
         close = pd.Series(np.nan, index=bars.index, dtype=float)
@@ -240,6 +271,8 @@ def iter_core(bars, *, feature_ids=None):
             value = None
             if missing_columns:
                 state, reason = "SOURCE_UNAVAILABLE", "MISSING_COLUMNS:" + ",".join(missing_columns)
+            elif feature_id.startswith("trend.alligator_") and not alligator_source_valid.iloc[position]:
+                state, reason = "SOURCE_VALUE_MISSING", "FINITE_HIGH_GE_LOW_REQUIRED"
             elif position + 1 < spec["warmup_count"]:
                 state, reason = "WARMUP", f"REQUIRES_{spec['warmup_count']}_{spec['warmup_unit'].upper()}"
             elif any(pd.isna(bars[column].iloc[position]) for column in spec["required_columns"]):
@@ -248,13 +281,18 @@ def iter_core(bars, *, feature_ids=None):
                 state, reason = "INVALID_DENOMINATOR", "DENOMINATOR_MUST_BE_POSITIVE"
             elif raw is None or pd.isna(raw):
                 state, reason = "DEPENDENCY_UNAVAILABLE", "INPUT_WINDOW_OR_DEPENDENCY_IS_INCOMPLETE"
+                if feature_id.startswith("trend.alligator_"):
+                    reason = "REQUIRES_CONSECUTIVE_FINITE_MEDIAN_BARS"
             elif not np.isfinite(float(raw)):
                 state, reason = "INVALID_RESULT", "FORMULA_RETURNED_NON_FINITE_VALUE"
             else:
                 value = float(raw)
-            yield {"bar_index": bar_index, "feature_id": feature_id,
-                   "algorithm_version": spec["algorithm_version"], "value": value, "state": state,
-                   "reason": reason}
+            record = {"bar_index": bar_index, "feature_id": feature_id,
+                      "algorithm_version": spec["algorithm_version"], "value": value, "state": state,
+                      "reason": reason}
+            if feature_id.startswith("trend.alligator_"):
+                record["display_offset_bars"] = spec["parameters"]["plot_shift_bars"]
+            yield record
 
 
 def compute_core(bars, *, feature_ids=None):
