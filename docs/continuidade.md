@@ -1,3 +1,70 @@
+## Fechamento final T19.5 — PR128, 2026-10-19
+
+Seis checks existentes aprovados no11b6c53:1438 Ubuntu/175 skips,43PG,1540Windows CI/73 skips/
+5avisos; cov77,64%/73,36%. Revisão atual sem pendências; cinco threads anteriores tratadas
+e decisões documentadas. Fechamento só documental [skip ci],293 fontes/testes idênticos.
+Integrar pelo SHA revisado após129/masterd0b9c5e, preservando as bases127→126 já integradas;
+registrar SHA real após resposta do GitHub.88 focados/doctor21/1/0 e prova final04f94b5b
+preservados:120M5/8saídas/960fatos, reabrir SKIPPED, referência racional e doubles exatos
+cálculo/store/CSV. Não repetir custo/extração/benchmark. Versões antigas continuam explícitas,
+sem perda de fatos; padrão usa a implementação atual e pode exigir rematerialização.
+32 definições no registry; sem estratégia/presets/Analytics completo ou Relações real.
+Próxima ficha elegível T19.6, pivôs causais, em PR própria. Windows físico permanece pendente.
+Root/WIP/índice/ponte preservados.
+
+## Publicação final corrigida T19.5 — 2026-10-19
+
+Base129 integrada emd0b9c5e; composição7cfdc81 preserva código do serviço de master e
+as correções AO/AC de672b45b.88 focados em58,85s, doctor21/1/0. Prova CLI atual com
+assinatura04f94b5b:120M5/8features/960fatos, reabrir SKIPPED, cálculo/store/CSV exatos e
+referência racional conciliada. CSVs inicial/final têm mesmos valores/estados para esta fonte
+normal; metadados de versão mudam por contrato. Nada foi apagado nem medição repetida.
+Esta publicação altera runtime desdecee301c: novo CI pertinente, uma execução sobre o código
+final, incluindo os wrappers PG preservados no conflito. Depois, somente fechar docs [skip ci]
+com fonte293 idêntica; revisar threads/head/base antes de integrar128. Windows físico pendente.
+Sem estratégia/presets ou Relações real; sem ordens, reextração ou benchmark.
+
+## Composição final de T19.5 com129 — 2026-10-19
+
+PR129 integrada emd0b9c5e após seis checks/revisão; incorporada na128 por Git. Preservados
+os conflitos de continuidade/checklist e os wrappers PG de ambas as bases, com AST conferido.
+Serviço/coretest idênticos a master129; fórmulas/registry/teste AO/AC idênticos ao672b45b.
+Verificação da composição e prova com nova assinatura antes de publicar runtime final128;
+CIcee301c é histórico. Sem campanha de custo, estratégia/preset ou Relações real.
+Windows físico permanece pendente específico; Root/WIP/índice/ponte preservados.
+
+## Revisão T19.5 — base de consistência isolada, 2026-10-19
+
+PR128 fica em rascunho enquanto a PR129/T19.3 corrige o serviço compartilhado: corrida de
+fonte reproduzida no mastereab717d e escrita em lote serializada por backend. Probe SQLite
+concorrente inconclusiva, sem alegação de chave duplicada reproduzida. Não misturar tarefas.
+Na T19.5, mediano grande e despacho sob demanda corrigidos localmente:83 testes aprovados,
+21 próprios de AO/AC. CIcee301c é histórico da fonte anterior; não representa correções ainda
+não publicadas. Depois de129, merge Git, checar runtime/prova e executar verificação pertinente
+da composição final. Versão global conservadora mantida, antigas explícitas sem perda dos fatos.
+Sem nova campanha de custo, estratégia/presets ou Relações real. Windows físico permanece pendente.
+
+## Publicação T19.5 após as integrações — 2026-10-19
+
+PR127 integrada em2d7412f e PR126 emeab717d após seis checks/revisão de cada fonte.
+Master incorporado na T19.5 por Git; três conflitos só documentais resolvidos preservando ambos
+os registros.292 fontes/testes idênticos ao b267d8d:78 focados compatíveis/doctor21-1-0,
+referência racional, prova CLI/store/CSV120M5/960fatos e assinatura57c632d4 preservados.
+Esta ficha recebe uma PR própria sobre master; CI obrigatório da nova mudança de runtime,
+sem reexecutar custo, extração ou campanhas numéricas. Relações segue sintética e Windows
+físico permanece pendência específica. Nenhuma estratégia/preset ou consumidor H antecipado.
+
+## Preparação T19.5 — AO/AC, 2026-10-19
+
+Worktree isolada sobre70b2191, sem publicar antes de integrar127→126. Dependência funcional
+T19.3/#125 integrada. AO SMA5−SMA34 do mediano e AC AO−SMA5(AO);8 saídas no registry,
+aquecimento34/38, transformações separadas, ausência/causalidade explícitas.78 testes focados
+distintos compatíveis aprovados e doctor21/1/0. Referência racional independente, lote/append,
+reabertura/skip, correção tardia e CSV/store/cálculo exatos. CLI com120 M5 DEMO arquivadas,
+960 fatos revision1, sem nova extração/ordens/benchmark. CI e revisão final pendentes.
+Relações permanece sintética; nenhuma estratégia/preset. Windows físico específico pendente.
+Ver analytics/T19.5_AO_AC.md e diário privado logs/t19-5-ao-ac-20261019.
+
 ## Fechamento do follow-up T19.3 — PR129, 2026-10-19
 
 Seis checks existentes aprovados no1039690:1417 Ubuntu/173 skips,41PG,1519Windows CI/71 skips/

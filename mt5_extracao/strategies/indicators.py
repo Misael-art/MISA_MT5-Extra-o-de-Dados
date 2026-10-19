@@ -76,6 +76,43 @@ def alligator(df: pd.DataFrame) -> pd.DataFrame:
     return lines
 
 
+def ao_ac(df: pd.DataFrame) -> pd.DataFrame:
+    """AO 5/34 e AC com SMA5 do mesmo AO, sem deslocamento ou sinal de ordem.
+
+    Janelas completas de medianos finitos; ausência nunca vira zero. Cor é uma
+    transformação separada da variação: +1 subida/verde, -1 descida/vermelho,
+    0 empate/neutro. Essa política de empate é explícita, não uma paleta nativa.
+    """
+    high = pd.to_numeric(df["high"], errors="coerce")
+    low = pd.to_numeric(df["low"], errors="coerce")
+    valid = np.isfinite(high) & np.isfinite(low) & high.ge(low)
+    median = (high + low) / 2.0
+    # Preserva o caminho normal/subnormal; só a soma excessiva usa metades.
+    median = median.mask(valid & ~np.isfinite(median), high / 2.0 + low / 2.0).where(valid)
+    median = median.where(np.isfinite(median))
+    def finite_mean(values):
+        try:
+            return _finite_window_mean(values)
+        except OverflowError:
+            # A soma pode exceder float64 mesmo quando a média é finita.
+            scale = max(abs(float(value)) for value in values)
+            return math.fsum(float(value) / scale for value in values) / len(values) * scale
+    def mean(series, period):
+        return series.rolling(period, min_periods=period).apply(finite_mean, raw=True)
+    ao = mean(median, 5) - mean(median, 34)
+    ac = ao - mean(ao, 5)
+    result = pd.DataFrame({"ao": ao, "ac": ac}, index=df.index)
+    for name in ("ao", "ac"):
+        slope = result[name].diff()
+        result[name + "_slope_1"] = slope
+        result[name + "_color"] = np.sign(slope)
+    result["ao_acceleration_1"] = result["ao_slope_1"].diff()
+    previous = ao.shift(1)
+    result["ao_zero_cross"] = (((previous <= 0) & (ao > 0)).astype(float) -
+                                ((previous >= 0) & (ao < 0)).astype(float)).where(ao.notna() & previous.notna())
+    return result
+
+
 def true_range(df: pd.DataFrame) -> pd.Series:
     prev_close = df["close"].shift(1)
     ranges = pd.concat([df["high"] - df["low"],

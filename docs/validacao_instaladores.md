@@ -257,3 +257,20 @@ CI Windows deste follow-up ainda pendente; não é prova de Windows físico. Pon
 
 CI final do follow-up T19.3/1039690: seis checks aprovados,1519 Windows CI/71 skips/5avisos.
 SQLite e PostgreSQL exercitaram geração/retomada e retries em lote; Windows físico segue pendente.
+
+
+### T19.5 — AO/AC (pendência Windows físico)
+
+- [ ] Em Windows físico, consultar/exportar AO/AC materializados pelo serviço existente,
+  incluindo aquecimento, ausência e arquivo CSV em pasta com espaço.
+
+Linux:78 casos focados distintos compatíveis e doctor21OK/1opcional/0falhas.32 definições
+no registry, interface de exportação preservada; quatro testes atuais da ação da UI aprovados.
+CI Windows desta ficha ainda pendente; resultados locais não são prova de Windows físico.
+
+Composição corrigida de T19.5 após129:88 focados/doctor21/1/0; nova prova CLI/store/CSV
+120M5/960fatos com assinatura04f94b5b. CI final deste runtime pendente; físico não encerrado.
+
+Aceite final T19.5/11b6c53: seis checks aprovados,1540 Windows CI/73 skips/5avisos,43PG.
+293 fontes/testes correspondem ao código final;88 focados e prova CLI04f94b5b preservados.
+CI virtual não substitui a validação Windows físico que permanece no checklist acima.

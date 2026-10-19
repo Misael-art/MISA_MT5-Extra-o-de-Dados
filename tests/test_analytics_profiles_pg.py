@@ -278,3 +278,13 @@ def test_feature_store_overlapping_retries_are_idempotent(pg):
 def test_explicit_legacy_registry_version_remains_queryable(pg, monkeypatch):
     from tests.test_indicator_consistency import test_global_version_transition_keeps_explicit_legacy_context
     test_global_version_transition_keeps_explicit_legacy_context(pg, monkeypatch)
+
+
+def test_ao_ac_closed_bar_availability(pg):
+    from tests.test_ao_ac import test_ao_ac_are_available_at_calculation_close_and_never_before
+    test_ao_ac_are_available_at_calculation_close_and_never_before(pg)
+
+
+def test_ao_ac_late_revision_preserves_history(pg):
+    from tests.test_ao_ac import test_late_source_correction_preserves_previous_asof
+    test_late_source_correction_preserves_previous_asof(pg)

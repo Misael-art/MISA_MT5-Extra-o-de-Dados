@@ -61,6 +61,29 @@ def _alligator_definitions():
     return tuple(items)
 
 
+def _ao_ac_definitions():
+    common = {"price": "(high + low) / 2", "fast": 5, "slow": 34, "ac_smoothing": 5,
+              "method": "SMA_full_finite_window", "missing_policy": "require_complete_consecutive_window",
+              "value_basis": "unshifted_calculation_bar"}
+    outputs = (
+        ("ao_5_34", "AO (5, 34)", "SMA(median,5) - SMA(median,34)", 34, "price_units", {}),
+        ("ao_5_34_slope_1", "AO slope (1)", "AO[t] - AO[t-1]", 35, "price_units_per_bar", {}),
+        ("ao_5_34_acceleration_1", "AO second difference", "AO[t] - 2*AO[t-1] + AO[t-2]", 36,
+         "price_units_per_bar_squared", {}),
+        ("ao_5_34_zero_cross", "AO zero crossing", "1 if previous<=0 and AO>0; -1 if previous>=0 and AO<0; else 0",
+         35, "direction_code_-1_0_1", {"zero_touch": "no_crossing; departure_from_zero_can_cross"}),
+        ("ao_5_34_color", "AO color direction", "sign(AO[t] - AO[t-1]); flat=0", 35,
+         "direction_code_-1_0_1", {"colors": {"1": "UP_GREEN", "-1": "DOWN_RED", "0": "FLAT_NEUTRAL"}}),
+        ("ac_5_34_5", "AC (5, 34, 5)", "AO - SMA(AO,5)", 38, "price_units", {}),
+        ("ac_5_34_5_slope_1", "AC slope (1)", "AC[t] - AC[t-1]", 39, "price_units_per_bar", {}),
+        ("ac_5_34_5_color", "AC color direction", "sign(AC[t] - AC[t-1]); flat=0", 39,
+         "direction_code_-1_0_1", {"colors": {"1": "UP_GREEN", "-1": "DOWN_RED", "0": "FLAT_NEUTRAL"}}),
+    )
+    return tuple(_definition("momentum." + ident, name, "momentum", formula, {**common, **extra},
+                             unit, warmup, "bars.high_low", ("high", "low"))
+                 for ident, name, formula, warmup, unit, extra in outputs)
+
+
 _DEFINITIONS = (
     _definition("momentum.rsi_14", "RSI (14)", "momentum", "Wilder RSI(14) applied to close",
                 {"period": 14, "method": "Wilder", "source": "close"}, "points_0_100", 15, "bars.close",
@@ -122,7 +145,7 @@ _DEFINITIONS = (
     _definition("volume.ticks", "Tick volume", "volume", "tick_volume from source bar; never mixed with real volume",
                 {"column": "tick_volume", "source_kind": "ticks"}, "ticks", 0,
                 "bars.tick_volume", ("tick_volume",)),
-) + _alligator_definitions()
+) + _alligator_definitions() + _ao_ac_definitions()
 _BY_ID = {item["feature_id"]: item for item in _DEFINITIONS}
 
 
@@ -158,7 +181,7 @@ def _column(bars, name):
     return pd.to_numeric(bars[name], errors="coerce").astype(float)
 
 
-def _calculated_series(bars):
+def _legacy_calculated_series(bars):
     close = _column(bars, "close")
     high, low = _column(bars, "high"), _column(bars, "low")
     if close is None:
@@ -205,6 +228,27 @@ def _calculated_series(bars):
     }
 
 
+def _calculated_series(bars, feature_ids=None):
+    selected = set(_BY_ID if feature_ids is None else feature_ids)
+    oscillator_ids = {ident for ident in _BY_ID if ident.startswith(("momentum.ao_", "momentum.ac_"))}
+    values = _legacy_calculated_series(bars) if selected - oscillator_ids else {}
+    if selected & oscillator_ids:
+        inputs = {}
+        for name in ("high", "low"):
+            column = _column(bars, name)
+            inputs[name] = column if column is not None else pd.Series(np.nan, index=bars.index, dtype=float)
+        oscillators = technical.ao_ac(pd.DataFrame(inputs, index=bars.index))
+        values.update({"momentum.ao_5_34": oscillators["ao"],
+                       "momentum.ao_5_34_slope_1": oscillators["ao_slope_1"],
+                       "momentum.ao_5_34_acceleration_1": oscillators["ao_acceleration_1"],
+                       "momentum.ao_5_34_zero_cross": oscillators["ao_zero_cross"],
+                       "momentum.ao_5_34_color": oscillators["ao_color"],
+                       "momentum.ac_5_34_5": oscillators["ac"],
+                       "momentum.ac_5_34_5_slope_1": oscillators["ac_slope_1"],
+                       "momentum.ac_5_34_5_color": oscillators["ac_color"]})
+    return values
+
+
 def _bad_denominator(feature_id, position, bars, close, atr14, bb, kc):
     if feature_id in {"volatility.atr_pct_14", "price.return_1", "price.return_5", "price.return_20"}:
         denominator = close.iloc[position] if feature_id == "volatility.atr_pct_14" else None
@@ -243,7 +287,7 @@ def iter_core(bars, *, feature_ids=None):
     unknown = sorted(set(selected) - set(_BY_ID))
     if unknown:
         raise ValueError("Indicadores nativos desconhecidos: " + ", ".join(unknown))
-    series_by_id = _calculated_series(bars)
+    series_by_id = _calculated_series(bars, selected)
     high, low = _column(bars, "high"), _column(bars, "low")
     alligator_source_valid = (np.isfinite(high) & np.isfinite(low) & high.ge(low)
                               if high is not None and low is not None else None)
@@ -272,6 +316,8 @@ def iter_core(bars, *, feature_ids=None):
             if missing_columns:
                 state, reason = "SOURCE_UNAVAILABLE", "MISSING_COLUMNS:" + ",".join(missing_columns)
             elif feature_id.startswith("trend.alligator_") and not alligator_source_valid.iloc[position]:
+                state, reason = "SOURCE_VALUE_MISSING", "FINITE_HIGH_GE_LOW_REQUIRED"
+            elif feature_id.startswith(("momentum.ao_", "momentum.ac_")) and not alligator_source_valid.iloc[position]:
                 state, reason = "SOURCE_VALUE_MISSING", "FINITE_HIGH_GE_LOW_REQUIRED"
             elif position + 1 < spec["warmup_count"]:
                 state, reason = "WARMUP", f"REQUIRES_{spec['warmup_count']}_{spec['warmup_unit'].upper()}"
