@@ -1,3 +1,16 @@
+## Fechamento T19.3 — seis checks aprovados, 2026-10-19
+
+PR125/eaec23b: revisão e aceite concluídos, inclusive o check Windows existente.
+1528 casos distintos CI+UI,34 PostgreSQL, cov77,64%,27 focados, doctor21/1/0;
+290 fontes/testes idênticos preservados no fechamento documental [skip ci].
+A integração é preparada por merge Git com guarda do HEAD/base/threads; o SHA real será
+registrado no diário local depois da resposta do GitHub. Não repetir verificações aprovadas
+sem mudança de fonte, falha nova ou cobertura obrigatória ausente.
+T19.3 entrega materialização/contexto/CSV com avaliação numérica exact_prefix explícita;
+clock desconhecido e manifesto sem vínculo retornam ausência. Relações segue sintética até
+T18.6; presets, Analytics completo e Windows físico não foram concluídos. Próxima ficha
+dependente após integração: T19.4, conforme preço/SMMA/semente/deslocamentos especificados.
+
 ## Aceite T19.3 — aguarda Windows existente
 
 PR125/eaec23b: revisão concluída. Aceite Linux composto1528 casos distintos
