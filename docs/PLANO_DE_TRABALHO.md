@@ -27,8 +27,6 @@ Comando de testes padrão (use o Python do `.venv`):
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
-| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 (#106) | em revisão local: [PR #107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107), 1103 aprovados/9 pendências/3 avisos; curvas/fluxos por cotas e prova nativa |
-| T20.2 | Referências financeiras independentes dos motores atuais | T20.1 (mapa documental em revisão local) | em revisão local: [PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), 1081 aprovados/9 pendências/3 avisos; referências, lote/passo e swap por parcela/lote |
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
 | T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ parcial: Linux (família Arch) validado com MT5 real; demais ambientes pendentes (docs/validacao_instaladores.md) |
@@ -173,6 +171,58 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.7 | Candidatos a filtros/presets para otimização, sem aplicação automática | T18.4, T18.6 | planejada |
 | T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; integração T18.1/T18.6 pendente |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
+| T19.0 | Estrutura documental dos pilares, catálogo integral dos estudos e roadmap de presets | Pedido de 2026-10-17 | ✅ documentação com adendos: presets, replay, lotes e parciais; 57 fichas; sem implementação; verificações próprias na continuidade |
+| T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | ✅ documentação integrada no PR120; inventário original e proveniência preservados, sem runtime novo |
+| T19.2 | Composição canônica e capacidades tipadas, preservando contrato 1 | T19.1, B-11/B-09/B-10 conforme recorte | planejada |
+| T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | planejada |
+| T19.4–T19.13 | Todos os indicadores do TXT: Bill Williams, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | planejadas |
+| T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | planejadas; gates operacionais das grades preservados |
+| T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
+| T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | planejadas |
+| T19.30–T19.35 | Editor operacional, gráficos temporais, gerador na UI, coerência de TF, responsividade e piloto | Serviços/DTOs reais e T17.28; plano F19 | planejadas; T19.33 reaproveita o seletor já existente |
+| T19.36–T19.47 | Setups S01–S11, infraestrutura/ferramentas e lacunas 37/48 do estudo | Indicadores, execução e contratos por ficha | planejadas; S09/T19.37 é o primeiro piloto; Black Box/regras ausentes não inventadas |
+| T19.48 | Diagnóstico e plano de robustecimento posterior da gestão da conta | T12.2/T12.3 e épico F | planejada para segundo momento; travas de segurança não adiadas |
+| T19.49 | Aceite integrado e reconciliação da documentação por versão | T19.35 e recorte do catálogo entregue | planejada; restante pendente permanece explícito |
+| T19.50 | Nomes padronizados no Default e categorias; nome escolhido no Manual e identificação | T19.2/25 | planejada; rótulo/slug/ID, colisões/round-trip e legado na especificação §8.4 |
+| T19.51 | Inversão experimental do sinal compra↔venda, desligada por padrão | T19.2/17/19 e adaptador H | planejada; direção efetiva e plano recalculados; distinta da reversão de posição |
+| T19.52 | Ultra: descoberta limitada e contrato de regras condicionais de calendário/mercado | T19.2/21/24/27; T19.51 se usar inversão | planejada; sem escolher vencedores após conhecer o futuro |
+| T19.53 | Ultra: política executável no HADOUKEN, pacote e rastro de decisões | T19.52/23/25/29/50 e capacidades usadas | planejada; prioridade/fallback/estado/compatibilidade explícitos |
+| T19.54 | Ultra: backtest completo/OOS, comparação e UI de regras | T19.53/24/27/28/32/34 | planejada; quarta categoria sem promessa de máximo garantido |
+| T19.55 | Default da estratégia como primeiro preset e referência versionada | T19.2/25/50, padrões efetivos conhecidos | planejada; reusar padrões existentes, preservar seleção e Salvar como Manual nomeado |
+| T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | planejada; mínimo/passo/margem/risco, unidade e entradas adicionais explícitos |
+| T20.0 | Incorporar as 16 sugestões aceitas, mapa Q01–Q16, fichas e prompt de robustez | Pedido de 2026-10-17 | ✅ documentação, prioridades UI e prompt único F19/F20/MT5; 30 fichas planejadas; sem implementação ou ensaio de conta |
+| T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | ✅ documentação integrada no PR121; Q01–Q16 no mapa único, sem runtime novo |
+| T20.2 | Referências independentes dos cálculos financeiros | T20.1 | ✅ integrada no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), master f477e43; runtime fc9e593, 1081/9/3 e seis checks reaproveitados; bases documentais PR118–121 integradas |
+| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | validada, pronta para integração no [PR107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107); runtime 91b2ec4 preservado, 1103 aprovados/9 pulos existentes/3 avisos, saída 0, seis checks aprovados e prova nativa de 24 marcas; conciliação apenas documental com master f477e43 |
+| T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | planejada; Q02 |
+| T20.5 | Vigência de especificações, ajustes e transformações de séries | T20.4 | planejada; Q02, sem inventar fonte histórica |
+| T20.6 | Qualidade por capacidade e cobertura efetiva de ticks | T20.4 | planejada; Q03 |
+| T20.7 | Compatibilidade por ativo/corretora/conta/versão | T20.1, T19.2/B-11 | planejada; Q04 |
+| T20.8 | Margem e exposição conjunta no motor canônico | T20.3/7, interfaces do recorte | planejada; Q05, integra I-07 e preserva guardas |
+| T20.9 | Custos e preenchimento em cenários adversos | T20.6/8 | planejada; Q05 |
+| T20.10 | Curvas de capacidade por volume | T20.9; liquidez qualificada se usada | planejada; Q05, cenários sem certificação indevida |
+| T20.11 | Paridade pela primeira divergência de evento | T20.2/7, exportação nativa integrada | planejada; Q06 |
+| T20.12 | Registro único de experimentos e consultas à reserva | T20.1/4 | planejada; Q07, consumidor T19.27 |
+| T20.13 | Qualificação matemática do protocolo estatístico | T20.2/12 | planejada; Q01/Q07, integra I-03/04/09/11/13 |
+| T20.14 | Compromissos entre presets elegíveis | T20.3/13, T19.28 | planejada; Q08, sem categoria ou objetivo PF paralelo |
+| T20.15 | Ablação e contribuição incremental | T20.12/13, T19.24 e módulos usados | planejada; Q09, FRP continua futuro |
+| T20.16 | Pacote reproduzível de estratégia/preset | T20.4/7/12, T19.25/50 | planejada; Q10, amplia pacote F19 |
+| T20.17 | Evidências e invalidação por dependência | T20.11/16 | planejada; Q10 |
+| T20.18 | Observação sem ordens e comparação prospectiva | T20.11/17, sinal integrado | planejada; Q11, virtual distinto de execução DEMO |
+| T20.19 | Diagnóstico de degradação e alarmes calibrados | T20.13/18 | planejada; Q11 |
+| T20.20 | Falhas, retomada e reconciliação operacional | T20.7/11, estado/ownership/guardas do recorte | planejada; Q12 |
+| T20.21 | Piloto posterior de pesquisa de carteira síncrona | T20.3/8, T19.48 | planejada; Q13, segundo momento |
+| T20.22 | Percurso de pesquisa na UI | T20.17, T19.26/30 e serviços do recorte | planejada; Q14/UI-A: modos, referência de layout, editor/tabelas/estados; Manual não espera objetivos automáticos |
+| T20.23 | Inspetor de decisões e gráficos temporais vinculados | T20.3/11/22 | planejada; Q14/UI-A: seleção/cursor/zoom/eventos, catálogo por serviço; sem trocar renderer |
+| T20.24 | Orçamento/cancelamento/retomada da fila | T20.1 | planejada; Q15, reusa T11.5/F15 |
+| T20.25 | Cache verificável e isolamento de execuções | T20.4/24 | planejada; Q15 |
+| T20.26 | Conformidade de módulos SDK/Composer | T20.2/7 e interfaces B integradas | planejada; Q16 |
+| T20.27 | Artefatos de terceiros: integridade e permissões | T20.16 | planejada; Q16 |
+| T20.28 | Restauração coerente do patrimônio de pesquisa | T20.4/16, F15 | planejada; Q16 |
+| T20.29 | Qualificação de release, instalação e leitores MT5 | T20.16/27/28 | planejada; Q16, Windows físico é pendência delimitada |
+| T20.30 | Aceite do primeiro percurso Manual reproduzível | Piloto simples F19 e T20.3/6/8/11/16/17/22; ficha F20 | planejada; aceita o recorte, não conclui toda F20 nem o piloto ampliado T19.35 |
+| T19.57 | Parciais simples/múltiplas, proteção e contabilização do saldo | T19.56/18/19/24, livro/eventos e suporte H | planejada; UI/preset/Expert, etapas/ack/restart e reconciliação; replay nativo/DEMO |
 | T17.7 | Laboratório: referência temporal e população explícitas | T16.3, T17.3 | ✅ integrada no PR #81; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.9 | Laboratório responsivo em DPI alto e área de resultados rolável | T17.1–T17.3, T17.7 | ✅ integrada no PR #82; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.12a | Tabelas: preservar ausência e distinguir zero/perda na apresentação | T17.9 | ✅ integrada no PR #83; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
@@ -3497,6 +3547,92 @@ Prompts de continuidade:
 T18.8 reutiliza a implementação visual da F17 integrada nesta branch.
 
 ---
+
+## Checklist de revisão (use em todo PR)
+
+- [ ] Só os arquivos listados na tarefa foram alterados (ou justificativa no PR).
+- [ ] `pytest` passa localmente; nenhum teste foi removido ou marcado como `skip` sem motivo técnico.
+- [ ] Mensagens ao usuário em português, com a ação de correção.
+- [ ] Nenhum segredo, caminho pessoal, `config.ini`, `.env` ou `.db` no commit.
+- [ ] Windows **e** Linux considerados (caminhos com `pathlib`/`os.path`, nada de `\\` fixo fora de strings do Windows).
+- [ ] Painel de status deste documento atualizado.
+
+
+## Fase 19 — Pilares de dados, operação, estratégias e presets
+
+**T19.0 documental, com adendos. T19.1 com inventário entregue para revisão local em 2026-10-17; T19.2–T19.57 planejadas.**
+O pedido do proprietário integra enriquecimento do histórico extraído e de operações,
+gestão temporal, composição independente de entrada/ganho/stop/filtros, geração de presets
+Default primeiro e Manual nomeado/Defensivo/Maximalista(PF)/Ultra, nomes padronizados,
+gestão de lotes/exposição e realização parcial com saldo protegido,
+inversão experimental, setups no HADOUKEN e UI moderna/responsiva. Gestão da conta permanece
+etapa posterior, preservando os pré-requisitos de segurança dos mecanismos multiordem.
+
+- [Especificação e contratos propostos](propostas/PILARES_DADOS_OPERACAO_PRESETS.md).
+- [Catálogo rastreável de todos os indicadores e setups fornecidos](propostas/CATALOGO_F19_INDICADORES_SETUPS.md).
+- [Fichas individuais T19.1–T19.57, passos, dependências, testes e roteiro de retomada](propostas/PLANO_F19_PILARES_PRESETS.md).
+- [Prompt único de execução](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) e [matriz de validação com replay](propostas/VALIDACAO_F19.md).
+
+O detalhe operacional dessas tarefas mora no plano F19, sem duplicar fichas aqui.
+T19.1 registra o [inventário real e os donos](propostas/INVENTARIO_F19.md), com base documental
+ainda local. Após revisão/integração, T20.1 estende esse mapa para Q01–Q16; T19.2
+aguarda B-11/B-09/B-10 e T19.3 aguarda integração T13.2/T18.1, sem duplicá-las.
+O primeiro ciclo completo usa S09/T19.37 e capacidades simples para gerar/conferir preset manual;
+não espera todos os indicadores nem libera grades antes da política de risco correspondente.
+Registry/store/contratos B e Composer mantêm os donos anteriores, conferidos antes de consumir.
+T17.28 já permite selecionar timeframe em “Ativo / TF”; T19.33 verifica propagação e descoberta.
+
+
+## Fase 20 — Robustez da pesquisa, execução e ciclo de estratégias
+
+**T20.0 documental entregue em 2026-10-17. T20.1–T20.30 planejadas.** Incorpora
+integralmente as dezesseis sugestões aceitas pelo proprietário, com requisitos Q01–Q16,
+donos, dependências, passos, critérios de aceite e verificação por tarefa.
+
+- [Especificação e matriz de rastreabilidade](propostas/ROBUSTEZ_PESQUISA_EXECUCAO.md).
+- [Trinta fichas e ordem por marcos](propostas/PLANO_F20_ROBUSTEZ.md).
+- [Prompt único F19/F20/UI e validação MT5](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md).
+- [Priorização específica da UI e dos gráficos](propostas/UI_ORGANIZACAO_GRAFICOS_PRIORIDADES.md).
+
+F20 qualifica/amplia os módulos anteriores; não cria motores/registros concorrentes nem
+renumera F19/A–J. T20.1 usa o mapa T19.1; tarefa anterior já responsável conserva o trabalho
+base e seu ID executor é registrado. Os caminhos novos das fichas são propostas, não
+declarações de API implementada. Uma tarefa por PR, com evidência da capacidade entregue.
+
+Priorizar cálculos/patrimônio/dados, compatibilidade/margem/custos/eventos, reprodução e
+protocolo, ciclo com preset/UI e acompanhamento/recuperação. T20.30 aceita o Manual simples
+sem esperar seleção automática, Ultra ou todo o catálogo; T19.35 mantém o piloto ampliado.
+Seleção automática exige T20.12/13; alegação defensiva exige risco patrimonial identificado.
+Recursos podem antecipar lotes pesados; carteira T20.21 é posterior, sem adiar guardas
+necessárias à operação multiordem. FRP e autonomia avançada permanecem futuros/P3.
+
+Validação segue a matriz F19: cálculo/estrutura com provas próprias, pesquisa com backtest
+completo/OOS, UI real e comportamento operacional no MT5 nativo por replay/DEMO disponível.
+Rede/fill ao vivo só se comprovam pelo ensaio correspondente. Nenhuma operação REAL é
+autorizada por esta documentação; nenhuma capacidade foi implementada nesta entrega.
+
+**Adendo UI:** UI-A01–A10 integram as tarefas atuais, uma por PR: organizar o Laboratório
+em Analisar/Compor/Validar e comparar, contexto compacto, composição recolhível por grupos,
+gráfico principal e inspetor/tabela conectados, resumos/legibilidade e recuperação de
+contexto. Os gráficos entram por capacidade de dados real. T20.22 é referência de
+navegação/layout; T20.23 acrescenta a ligação temporal, sem depender de volta em T20.22.
+Os IDs UI são requisitos, não novas fichas; continuam 30 tarefas F20 e 57 F19.
+
+| Classificação | Itens | Estado e condição |
+|---|---|---|
+| Atual/P1 | UI-A01–A10 | Incorporados aos donos T19.30–34/T20.22/23, com testes/aceites; preservar Tkinter/ttk/Matplotlib |
+| Posterior/P2 | UI-P01/P02: densidade alternável e perfis completos de disposição | Após o percurso básico; detalhar ficha quando selecionados; não bloqueiam o piloto |
+| Experimento/P3 | UI-X01: componente financeiro especializado, candidato Lightweight Charts | Registrado, não iniciado; prova comparável e decisão arquitetural futura antes de adoção |
+
+Não iniciar experimento nem instalar biblioteca nova ao implementar requisitos atuais.
+O padrão visual é validado em uma tela de referência antes de ampliar o percurso.
+
+**Ponto de entrada do agente:** usar somente o bloco do prompt único acima. Ele reúne
+o contexto antes enviado em parcelas, sem depender do histórico do chat. Prompts F19/F20
+anteriores agora apontam para ele; não concatenar versões. Replay nativo em ambiente
+DEMO satisfaz o aceite funcional histórico coberto, inclusive fora de pregão, sem alegar
+execução ao vivo. Pendências de rede/fill ao vivo permanecem delimitadas. Esta consolidação
+é adendo documental T20.0, sem alterar contagem de tarefas nem autorizar conta REAL.
 
 ## Checklist de revisão (use em todo PR)
 
