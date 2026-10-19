@@ -1,5 +1,16 @@
 # Continuidade: harmonização de 2026-10-14
 
+## EXTR-02 — ponte destacada do iniciador (2026-10-19)
+
+[Recorte e prova](extrator/EXTR-02_PONTE_BACKGROUND.md). Mesma entrada
+mt5-bridge.sh, sessão própria/log, trava exclusiva e identidade de nascimento/posse;
+stop só sinaliza a ponte própria por pidfd. Não encerra terminal/Wine/display.
+14 casos finais do gerenciador e ShellCheck aprovados; ciclo Wine real e consulta
+DEMO de11barras passaram, ponte acessível depois do iniciador terminar. Suíte final
+e doctor em validação. Root e credenciais preservados; Windows físico pendente.
+Depois do fechamento, conferir T18.1 canônica com dependências agora integradas.
+
+
 ## EXTR-01 concluída em master; cadeia #108–#117 integrada (2026-10-19)
 
 [Fechamento, merges e prova em master](extrator/EXTR-01_VALIDACAO_NATIVA.md).

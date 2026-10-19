@@ -188,3 +188,12 @@ a T13.3 não introduz leitor MQL5 ou autorização de negociação.
 Linux/Wine no master a92cd8a: sete casos dirigidos aprovados; conector DEMO e UI
 reais passaram. CI Windows aprovado na PR117 foi reaproveitado por igualdade de
 código; não equivale à prova física acima. Relatório: EXTR-01_VALIDACAO_NATIVA.md.
+
+### EXTR-02 — gerenciador Linux/Wine
+
+- [ ] Windows físico: confirmar que a conexão nativa/instalador continuam usando
+  o caminho Windows; a ponte de processos Linux não é usada nessa plataforma.
+
+No Linux, teste com caminhos de espaços e simulação de paths.is_windows. Prova
+Wine real de start/status/stop/repetição e consulta curta DEMO; nenhum sinal a
+terminal ou wineserver. Veja docs/extrator/EXTR-02_PONTE_BACKGROUND.md.
