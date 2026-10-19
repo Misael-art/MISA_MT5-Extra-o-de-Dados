@@ -1792,6 +1792,27 @@ def build_parser():
                    help="chaves separadas por vírgula, por exemplo bars:M1,bars_derived:M15,feature:returns")
     q.set_defaults(func=cmd_analytics)
 
+    q = features_sub.add_parser("materialize", help="materializa o registry canônico em barras derivadas fechadas")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--tf", required=True)
+    q.add_argument("--features", help="IDs do registry separados por vírgula; padrão: todos")
+    q.add_argument("--batch-size", type=int, default=5000)
+    q.set_defaults(func=cmd_analytics)
+
+    for action in ("context", "export"):
+        q = features_sub.add_parser(action, help="consulta por decisão UTC" if action == "context" else
+                                   "exporta colunas versionadas do store, com estados e proveniência")
+        q.add_argument("--symbol", required=True)
+        q.add_argument("--tf", required=True)
+        q.add_argument("--as-of", required=True, help="instante com fuso, por exemplo 2026-10-14T17:25:00Z")
+        q.add_argument("--features", help="IDs do registry separados por vírgula; padrão: todos")
+        q.add_argument("--algorithm-version", help="versão antiga explícita; padrão: implementação atual")
+        if action == "export":
+            q.add_argument("--out", required=True, help="destino CSV")
+            q.add_argument("--from", dest="date_from")
+            q.add_argument("--to", dest="date_to")
+        q.set_defaults(func=cmd_analytics)
+
     p = sub.add_parser("tables", help="lista tabelas do banco e o último registro de cada uma")
     p.set_defaults(func=cmd_tables)
 
@@ -1971,6 +1992,34 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action in {"materialize", "context", "export"}:
+        import pandas as pd
+        from mt5_extracao.analytics import indicator_context, indicator_materializer
+        from mt5_extracao.resources import guard
+
+        ids = [item.strip() for item in (args.features or "").split(",") if item.strip()] or None
+        if args.features_action == "materialize":
+            result = indicator_materializer.materialize(ctx.db, args.symbol, args.tf, feature_ids=ids,
+                                                        batch_size=args.batch_size,
+                                                        write_guard=guard.make(ctx.db, ctx.config))
+            _print(f"Registry: {result['inserted']} novos, {result['revised']} revisados; {result['job']['status']}.")
+            _data(materialization=result)
+        elif args.features_action == "context":
+            frame = indicator_context.context(ctx.db, pd.DataFrame({"decision_time": [args.as_of]}),
+                                              symbol=args.symbol, timeframe=args.tf, feature_ids=ids,
+                                              algorithm_version=args.algorithm_version)
+            _print(frame.to_string(index=False))
+            _data(schema_version=1, context=indicator_context.records(frame))
+        else:
+            from mt5_extracao.data_exporter import DataExporter
+            path = DataExporter(ctx.db).export_indicator_values(
+                args.out, symbol=args.symbol, timeframe=args.tf, as_of=args.as_of, feature_ids=ids,
+                algorithm_version=args.algorithm_version, start=args.date_from, end=args.date_to,
+                write_guard=guard.make(ctx.db, ctx.config))
+            _print(f"Indicadores exportados: {path}")
+            _data(path=path)
+        return EXIT_OK
 
     if args.features_action == "list":
         items = features.list_features(ctx.db, include_versions=args.all_versions)

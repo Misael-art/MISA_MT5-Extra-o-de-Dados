@@ -1,3 +1,22 @@
+## Retomada T19.3 — 2026-10-19
+
+PR #124 integrada em master791f15caeee43d9ff792966e5c591f7b1c5b3d48 depois do check
+Windows já existente e da revisão. Nenhum workflow adicional foi disparado para ela.
+Seis checks aprovados no ecfe057, suíte1501/26/3 e fontes285 idênticas foram reaproveitados.
+Registry (18 definições) e DTO (schema1) importados na nova worktree de master antes de editar.
+A tela provisória de Relações permanece sintética até T18.6; Analytics/presets não estão concluídos.
+
+Próximo consumidor elegível: T19.3, pois T19.1/#120, T13.2/#114 e T18.1/#124 estão integradas.
+Candidata isolada codex/t19.3-consumo-registry, sem copiar a árvore ou alterar HEAD/índice da Root.
+Consulta causal/exportação no store existente; ER reutilizado; escrita incremental com avaliação
+numérica exact_prefix, sem promessa O(delta). Relógio desconhecido e manifesto sem vínculo
+retornam ausência explícita; o serviço de relações continua pendente. Ver
+[relatório T19.3](analytics/T19.3_MATERIALIZACAO_INDICADORES.md).
+24 testes focados finais aprovados; doctor21OK/1opcional/0falhas; CLI reutilizou 600 barras DEMO
+arquivadas, 120 M5 e exportação, sem nova extração ou ordens; oito casos de UI nos dois temas,
+DPI96/144 e larguras820/1280. Suíte completa/CI e revisão ainda pendentes neste registro.
+Windows físico é pendência específica. Ponte própria da Root preservada em segundo plano.
+
 ## Retomada T18.1 — 2026-10-19
 
 Integração isolada do commit canônico 80fd887 sobre EXTR-02/43a4035, preservando a worktree original.

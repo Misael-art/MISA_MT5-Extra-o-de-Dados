@@ -164,19 +164,19 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.4 | Aplicação progressiva do sistema às abas Ativos, Minha base, Análise, Robôs, Recursos e Atividade | T17.2, T17.3, T8.2, T15.1–T15.6 | ✅ concluída no Linux; Windows pendente |
 | T17.5 | Validação visual integrada, capturas comparáveis e documentação | T17.1–T17.4 | ✅ concluída no Linux; Windows pendente |
 | T18.0 | Plano de relações entre indicadores e aderência temporal, com prompts coordenados | Pedido do dono | ✅ registro documental; nenhuma funcionalidade implementada |
-| T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | 🟡 [PR124](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/124), canônica80fd887 sobre master60d7d13; Linux aceito1501/26/3 saída0 cov77,64%,90 focados, doctor21/1/0; seis checks CI aprovados no ecfe057; pronta para integração; físico pendente |
+| T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | ✅ PR124 integrada em master791f15c; Linux1501/26/3 cov77,64% e seis checks CI reaproveitados no ecfe057; imports do registry/DTO confirmados; Windows físico pendente |
 | T18.2 | Indicador × indicador e × movimento futuro | T18.1, infraestrutura validada T13.4 | planejada |
 | T18.3 | Indicador × resultado do Expert (compra/venda, ganho/loss) | T18.2, T16.1, T16.3b | planejada |
 | T18.4 | Convergências de fatores e utilidade incremental OOS | T18.3, T13.4 | planejada |
 | T18.5 | Janelas móveis, aderência temporal e jobs incrementais | T18.2, T13.3b, T15.9; T18.3/4 para trilhas de Expert/conjunto | planejada |
 | T18.6 | Consulta local, CLI, projeções de colunas e DTO versionado | T18.2, T18.5; T18.3/4 para respectivos resultados | planejada |
 | T18.7 | Candidatos a filtros/presets para otimização, sem aplicação automática | T18.4, T18.6 | planejada |
-| T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; integração T18.1/T18.6 pendente |
+| T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; registry T18.1 integrado; serviço T18.6 pendente |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
 | T19.0 | Estrutura documental dos pilares, catálogo integral dos estudos e roadmap de presets | Pedido de 2026-10-17 | ✅ documentação com adendos: presets, replay, lotes e parciais; 57 fichas; sem implementação; verificações próprias na continuidade |
 | T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | ✅ documentação integrada no PR120; inventário original e proveniência preservados, sem runtime novo |
 | T19.2 | Composição canônica e capacidades tipadas, preservando contrato 1 | T19.1, B-11/B-09/B-10 conforme recorte | planejada |
-| T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | planejada |
+| T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | 🟡 candidata sobre master791f15c; 24 testes focados finais, doctor21/1/0, CLI com 600 barras DEMO arquivadas → 120 M5, oito casos de UI; suíte completa/CI e revisão pendentes; limites no relatório T19.3 |
 | T19.4–T19.13 | Todos os indicadores do TXT: Bill Williams, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
 | T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | planejadas |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | planejadas; gates operacionais das grades preservados |
@@ -3589,7 +3589,7 @@ etapa posterior, preservando os pré-requisitos de segurança dos mecanismos mul
 O detalhe operacional dessas tarefas mora no plano F19, sem duplicar fichas aqui.
 T19.1 registra o [inventário real e os donos](propostas/INVENTARIO_F19.md), com base documental
 ainda local. Após revisão/integração, T20.1 estende esse mapa para Q01–Q16; T19.2
-aguarda B-11/B-09/B-10 e T19.3 aguarda integração T13.2/T18.1, sem duplicá-las.
+aguarda B-11/B-09/B-10 e T19.3 consome T13.2/T18.1 já integradas, sem duplicá-las; candidata em validação.
 O primeiro ciclo completo usa S09/T19.37 e capacidades simples para gerar/conferir preset manual;
 não espera todos os indicadores nem libera grades antes da política de risco correspondente.
 Registry/store/contratos B e Composer mantêm os donos anteriores, conferidos antes de consumir.

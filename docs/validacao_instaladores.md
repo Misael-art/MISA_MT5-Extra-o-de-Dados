@@ -209,3 +209,15 @@ terminal ou wineserver. Veja docs/extrator/EXTR-02_PONTE_BACKGROUND.md.
 Linux PR124:1501/26/3, saída0, cobertura77,64%; PostgreSQL dedicado aprovado.
 O pytest Windows da PR124 passou no ecfe057, na execução existente. CI e Linux são evidências distintas dessa prova física.
 T18.1 não muda os caminhos/instaladores nem exige conexão MT5.
+
+### T19.3 — consumidor de indicadores (pendência Windows físico)
+
+- [ ] Em base de teste no Windows físico, materializar M5, repetir sem novas linhas,
+  reabrir e consultar/exportar indicadores versionados; confirmar destino preservado em cancelamento.
+- [ ] Laboratório: ação Indicadores (CSV), dois temas, DPI96/144, janela estreita/larga;
+  conferir cabeçalho completo, foco e diálogo nativo. Relações continua sintética e ação desabilitada.
+- [ ] Legado sem relógio e run fixado sem materialização vinculada exibem motivo de ausência.
+
+Linux:24 testes focados, oito capturas/casos Tk sob Xvfb e CLI com 600 barras DEMO arquivadas
+→120 M5. Isso não comprova desktop físico Windows. Instaladores/caminhos não alterados;
+nenhum terminal/credencial ou processo de terceiros modificado por esta tarefa.
