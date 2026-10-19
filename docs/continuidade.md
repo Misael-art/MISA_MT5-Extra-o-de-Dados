@@ -1,5 +1,18 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #109 — T20.5 (2026-10-19)
+
+Base master `2bd7a11` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos vigência UTC distinta do conhecimento, revisões aditivas sem lookahead, compatibilidade de snapshots v1 e limites explícitos para fonte histórica ausente, ajuste/rolagem não executados.
+Aceite reaproveitado: 1137 aprovados/9 pulos existentes/3 avisos, saída 0; 85 direcionados, PostgreSQL 7, doctor 16/2/0; seis checks aprovados no HEAD `16eddef5576043ccbfc83469fcb8f1bbd42d21b9`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## T20.5 — vigência de instrumentos (2026-10-18)
 
 [Fonte e decisões](analytics/T20.5_VIGENCIA_INSTRUMENTOS.md). Histórico aditivo de
@@ -15,6 +28,19 @@ Regressão direcionada: 85 aprovados; PostgreSQL 16 isolado: 7 aprovados; doctor
 3 avisos em 1019,35 s, saída 0. Windows físico pendente. Próxima T20.6.
 [PR #109](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/109) sobre T20.4; nenhuma alteração de produção H/S ou contratação.
 
+## Revisão/integração PR #108 — T20.4 (2026-10-19)
+
+Base master `9fbd5f5` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos captura transacional SQLite/PostgreSQL, manifesto/blocos imutáveis, importação com integridade e replay/cache sem fallback à revisão corrente.
+Aceite reaproveitado: 1114 aprovados/9 pulos existentes/3 avisos, saída 0; 28 direcionados, PostgreSQL 7, doctor 16/2/0; seis checks aprovados no HEAD `c991b04c85029824e74a0861fb82947ade3d227c`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## T20.4 — revisões de dados (2026-10-18)
 
 Serviço canônico aditivo de blocos/manifestos/referências, captura em uma imagem
@@ -24,6 +50,24 @@ hashes sem substituir barras do destino. [Contrato e limites](analytics/T20.4_MA
 T20.3 recebeu correção do leitor de fluxos/descendentes no PR #107: suíte final
 1103 aprovados/9 pulos existentes/3 avisos em 1009,28 s, doctor 16/2/0.
 Windows físico pendente; nenhuma alegação de integração ou roadmap concluído.
+
+## Revisão de integração T20.3 (2026-10-19)
+
+A base T20.2 foi integrada em master pelo PR #106 (f477e43), após as bases
+documentais #118–#121. A revisão da #107 conferiu curvas separadas, fluxos por
+cotas, colunas aditivas, leitura legada, recuperação dos fluxos em re-simulações
+e compatibilidade das chamadas do SDK, sem novo impedimento identificado.
+
+A conciliação com master alterou somente documentação. O conflito no painel
+foi resolvido transferindo os aceites das linhas provisórias para as linhas
+canônicas de T20.2/T20.3, preservando os relatos de continuidade. Runtime,
+testes e fixtures permanecem iguais ao HEAD aprovado c0f1846 (runtime 91b2ec4).
+Reaproveitados 1.103 aprovados, nove pulos existentes, três avisos, saída 0,
+91 direcionados do complemento, doctor 16 OK/2 avisos/0 falhas e seis checks
+aprovados, inclusive Windows CI. Hashes e árvore não documental conferidos;
+nenhuma suíte ou campanha numérica repetida. A prova nativa existente mantém
+seu recorte de 24 marcas EURUSD H1 no Wine; Windows físico permanece pendente.
+
 
 ## T20.3 — curvas patrimoniais e comparação nativa (2026-10-17)
 
@@ -74,6 +118,61 @@ a verificação final T20.2. Evidências/patch separados em logs/t20-2.
 Windows físico/nativo não executados; parcial inviável continua em T19.57.
 Não declarar toda F20 ou Q01 concluído por estas contas.
 
+## T20.1 — cobertura Q01–Q16 no mapa único (2026-10-17)
+
+Seção 8 do [inventário F19/F20](propostas/INVENTARIO_F19.md) ampliada com base
+concreta, dono executor por extensão, consumidor, lacuna e prova necessária para
+cada Q. Resolvidos no mapa snapshots contraditórios de F13/F16, I-05/--deep,
+T8.7/paridade, T12.3 e exportação T17.28, preservando os relatos históricos.
+Não houve implementação ou aprovação de um Q por existência de código.
+
+Ambiente Linux preparado; baseline anterior da mesma sessão 1058/9/3 avisos,
+saída 0, com runtime idêntico. Suíte final em execução. Próximo P0: T20.2,
+referências financeiras independentes sobre motor atual. T20.4/24 são trilhas
+elegíveis; contratos B e integração store/registry mantêm suas dependências.
+Uma tarefa por entrega; patch próprio em logs/t20-1, separado da T19.1 e da
+base documental preexistente. Sem mudança H/S/runtime/testes/scripts, sem
+ShellCheck aplicável ou ensaio visual/nativo/Windows físico nesta ficha.
+
+## T19.1 — inventário reconciliado para revisão local (2026-10-17)
+
+[Inventário único F19](propostas/INVENTARIO_F19.md): SHAs M/H/S, estado integrado
+versus branches, donos/consumidores, contratos, inputs/presets e cobertura
+I01–I18/TM01–TM08/S01–S11/AX01–AX09. Os estudos preservam seus hashes.
+T13.2/T18.1 e produtores existem em branches não integradas; não reimplementá-los.
+Contratos B/Composer ainda são propostos. T17.28 já fornece seletor Ativo / TF
+e exportador de sessão ampliado; não equivale ao exportador permanente T16.2b-H
+nem ao livro de todos os eventos/ciclos. Onze fontes Safety H/S são idênticas,
+versão S 1.5.0; instalação no terminal não foi conferida.
+
+Reprodução sintética confirmou parcial de 50% inviável com mínimo/passo 1
+ativando break-even sem redução. Dono T19.57; padrão semelhante lido no
+backtester e H, sem ensaio nativo ou correção neste recorte documental.
+Contrato 1 preservado; composição/capacidades via artefato lateral versionado,
+com schema final T19.2 e distribuição condicionada à política B-11.
+
+Instalador Linux --yes --no-mt5 e requirements-dev executados. Suíte inicial
+antes das edições: **1058 aprovados/9 ignorados existentes/3 avisos em 1045,42 s**,
+saída 0. Xvfb próprio, 640×480, aproximadamente 100 DPI, sem WM; temporários
+exclusivos em disco, 66 GiB disponíveis no início. Doctor inicial 16 OK/2 avisos/
+0 falhas (pandas-ta opcional ausente, ponte desligada). Suíte final: **1058
+aprovados/9 ignorados existentes/3 avisos em 1265,91 s**, saída 0. SDK docs:
+3 aprovados em 0,89 s; doctor final 16 OK/2 avisos/0 falhas. Conferidos 36
+links locais novos, cobertura integral do catálogo e dependências F19 inalteradas;
+57 fichas F19/30 F20 preservadas. git diff --check aprovado.
+
+Nenhum runtime/teste/schema/script/Expert/preset foi alterado. H/S e estudos
+somente lidos; sem prova visual/performance/MT5/replay/DEMO/Windows físico nesta
+ficha documental. ShellCheck não aplicável. Pendências Windows operacionais
+permanecem no checklist existente; nenhum comportamento novo por plataforma.
+
+Árvore inicial tinha 8 documentos modificados e 11 novos de T19.0/T20.0 e
+referências, preservados. Branch tarefa/T19.1-inventario-contratos; incremento
+próprio separado do diff preexistente em logs/t19-1. Sem commit/push/PR para
+não incorporar a base documental alheia: publicar/integrar essa base primeiro,
+depois aplicar o incremento em PR próprio T19.1. Após revisão/integração, próxima
+ficha independente: T20.1, estendendo este mapa para Q01–Q16; T19.2 aguarda
+contratos B e T19.3 aguarda store/registry integrados.
 
 > **T17.28 — comandos dos cards MT5 (2026-10-17):** seletores pesquisáveis de
 > ativo/timeframe e preset governam a evidência mostrada. PLAY tem revisão da
@@ -925,3 +1024,61 @@ pendente; nenhum terminal/conta do usuário foi iniciado ou encerrado.
 Protocolo2383efd registrado antes dos resultados. Depois do aceite críticoUI e do lançador real99 (10.445BBRSI/31runs, configuração preservada), oito backtests EURUSD H1/M15, EMAATR/Donchian padrão e custos base/adverso foram executados sequencialmente no ce9fae9. Todos tiveram resultado modelado negativo; maiorPF0,875849 noDonchianM15/669operações. Nenhum OOS independente e custos/moeda não certificados; zero candidatos aprovados. Não ampliar a busca para forçar1,9. [Relatório, ICs, gates e reprodução](pesquisa/PF19_RELATORIO_20261016.md).
 
 A base de origem e o protocolo mantiveram os hashes; os oito livros foram reconciliados independentemente por contagem/GP/GL/resultado/PF. O código reusa backtester/estratégias/PF, sem SDK/terminal/contas ou mudança de parâmetros/risco. Baseline947/9 e sete focados (incluindo subprocessos CLI sintéticos) passaram; suíte geral e CI do PR100 em curso. Não confundir execução de pesquisa com integração ou aprovação financeira.
+
+
+## T19.0 — publicação isolada da base documental (2026-10-19)
+
+Publica a especificação/catálogo/plano e adendos já preparados pelo proprietário,
+com a base preservada em logs/t19-1/base; os documentos comuns de prompt/validação
+conservam a prioridade posterior do extrator. Sem atribuir criação desse conteúdo
+a esta consolidação e sem transportar runtime ou o diff local inteiro. F20 e o
+mapa T19.1/T20.1 têm PRs separados na sequência; referências futuras são dependências
+documentais explícitas, não alegações de implementação. Base de código master489591c,
+sem alterações em mt5_extracao/tests/dependências/scripts. Aceite automatizado vigente
+1058/9/3 registrado na base documental reaproveitado, sem repetição de suíte.
+Verificação deste recorte: diff e links locais, com ausências das bases seguintes
+registradas até a conferência da cadeia completa. Nenhuma operação ou experimento.
+
+
+## T20.0 — publicação isolada da base documental (2026-10-19)
+
+Publica requisitos Q01–Q16 e fichas F20 preparados pelo proprietário, usando
+a base anterior à extensão T20.1 preservada em logs/t20-1/base. Não transporta
+runtime nem o inventário da tarefa seguinte. T19.0 permanece base documental
+e T19.1/T20.1 serão publicados por seus patches próprios. Aceite de código
+master489591c reaproveitado; conferência documental e ausência de alterações
+em fontes/testes/dependências/scripts, sem repetir suíte ou pesquisa numérica.
+
+
+### Publicação T19.1 — conciliação de contexto (2026-10-19)
+
+O patch preservado não aplicava diretamente ao painel/continuidade da nova base.
+Comparação em três vias com logs/t19-1/base preservou os textos existentes;
+a sobreposição da continuidade foi resolvida inserindo somente as linhas novas
+do patch, sem incorporar os registros preexistentes como autoria T19.1. Sem
+reinterpretação de inventário, contratos ou aceites. Divergência e conciliação
+registradas em logs/integracao-base-106-20261019/, sem tocar o trabalho original.
+
+
+### T20.1 — publicação do mapa e conferência da base (2026-10-19)
+
+Patch próprio original conciliado em três vias, sem conflitos, sobre a cadeia
+documental T19.0→T20.0→T19.1. Conferidos 57 fichas F19, 30 fichas F20 e 16 Qs;
+nenhum novo link sem destino. Três links históricos de evidência ficam resolvidos
+pela cadeia de runtime já existente. Sem alterações de fonte/teste/script/dep,
+sem nova suíte ou campanha numérica. Registros originais de testes/doctor são
+históricos, não novas execuções. Conteúdo do proprietário e patches próprios
+separados; a árvore local original não foi alterada por esta publicação.
+
+
+## T20.2 — revisão e integração da base documental (2026-10-19)
+
+Pré-requisitos publicados/integrados por PR118/T19.0, PR119/T20.0, PR120/T19.1
+e PR121/T20.1, com conteúdo do proprietário e patches próprios separados.
+Na conciliação com a PR106, somente a continuidade conflitou; ambos os relatos
+foram preservados e a linha T20.2 foi unificada no painel F20. Runtime/testes
+continuam exatamente os do head1ad3755 e runtimefc9e593 já aprovados:1081/9/3,
+saída0, seis checks CI, incluindo Windows. Sem nova suíte ou campanha numérica.
+Revisão do diff sem achado bloqueante nesse recorte; limites financeiros/nativos
+explicitados no relatório permanecem. B-11 continua proposto, sem aprovação
+implícita. Base documental não autoriza operação REAL. Próxima dependente: PR107.

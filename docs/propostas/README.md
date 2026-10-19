@@ -16,6 +16,61 @@ Não altera a contagem original dos dez épicos; é uma frente detalhada ligada 
 Especificação e tarefas T18.0–T18.9: [RELACOES_INDICADORES_SETUP.md](RELACOES_INDICADORES_SETUP.md).
 **Só o planejamento foi entregue; as funcionalidades estão pendentes.**
 
+## Extensão Fase 19 — pilares, presets e catálogo de estudos
+
+Planejada em 2026-10-17 para integrar os pilares de dados (mercado e operações), operacional
+(entrada, orientação normal/invertida, ganho, stop, filtros) e estratégico (setups HADOUKEN),
+com Default como primeiro preset e categorias Manual, Defensivo, Maximalista (Fator de lucro)
+e Ultra, nome do Manual escolhido pelo usuário e padronização portável para identificação.
+Gestão da conta tem etapa posterior.
+Não muda a contagem histórica dos dez épicos nem duplica seus contratos/store/Composer.
+
+Referências: [especificação](PILARES_DADOS_OPERACAO_PRESETS.md),
+[catálogo completo](CATALOGO_F19_INDICADORES_SETUPS.md) e
+[plano T19.0–T19.57](PLANO_F19_PILARES_PRESETS.md),
+[prompt único para o executor](PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) e [matriz de validação](VALIDACAO_F19.md).
+Só documentação entregue; cada capacidade nova precisa de implementação e evidência própria.
+Primeiro passo: T19.1 reconcilia donos e dependências com B/C/D/E/F/H/I e F13/F16/F18.
+A seleção de timeframe já existe pela T17.28; a integração de presets será verificada sem
+criar seletor duplicado. Regras ausentes de Madrid/Black Box/37–48 setups ficam explícitas.
+T19.50–54 detalham o adendo de nomes, inversão experimental e Ultra condicional;
+Ultra exige política causal reproduzível, não seleção retrospectiva dos melhores intervalos.
+T19.55 define o Default; T19.26/50 detalham o nome informado no Manual.
+Replay operacional nativo é aceito quando o ativo não estiver disponível online;
+estrutura e cálculos usam suas verificações/testes/backtests, conforme a matriz.
+T19.56/57 detalham gestão de lotes/exposição e saídas parciais simples/múltiplas, com
+saldo protegido, UI/preset/HADOUKEN compatíveis e reconciliação de volumes/custos/métricas.
+
+## Extensão Fase 20 — robustez transversal
+
+As dezesseis sugestões de qualificação da plataforma foram aceitas em 2026-10-17.
+[Requisitos Q01–Q16](ROBUSTEZ_PESQUISA_EXECUCAO.md), [fichas T20.1–T20.30](PLANO_F20_ROBUSTEZ.md)
+e [prompt único executor](PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) detalham cálculos/patrimônio, dados/experimentos
+reproduzíveis, qualidade/compatibilidade, margem/custos/capacidade, paridade por evento,
+protocolo/seleção/ablação, pacote/evidências, observação/recuperação, carteira posterior,
+UI investigativa, recursos e conformidade/segurança/restore/release.
+
+**T20.0 entregue como documentação; implementação e qualificação pendentes.** O mapa T20.1
+estende T19.1 e vincula cada alteração ao dono anterior ou à extensão F20, sem dois PRs
+para o mesmo escopo. Não altera a contagem histórica de 10 épicos/133 tarefas nem as
+57 fichas F19. O primeiro ciclo Manual não espera catálogo completo/Ultra/carteira/FRP;
+seleção automática exige registro/protocolo qualificados e risco defensivo considera
+patrimônio aberto. Cálculos/estrutura, OOS, replay funcional e DEMO ao vivo mantêm aceites
+próprios. Não há autorização de operação REAL nem promoção automática por este registro.
+
+**UI priorizada:** [requisitos atuais e propostas posteriores](UI_ORGANIZACAO_GRAFICOS_PRIORIDADES.md)
+detalham UI-A01–A10 nos donos T19.30–34/T20.22/23. Organização por modos/contexto/editor,
+gráficos e inspeção ligados, legibilidade, adaptação e recuperação acompanham capacidades
+reais. Alternância de densidade/perfis completos UI-P01/P02 ficam P2; componente financeiro
+especializado UI-X01 fica EXPERIMENTO/P3 não iniciado. Sem nova fase, alteração de contagem,
+migração ou troca de renderer agora; primeiro validar a tela de referência na base atual.
+
+O prompt único reúne F19/F20/UI, nomes/Default/lotes/parciais e validação em ambiente
+MT5 DEMO com replay aceito fora do pregão. Enviar apenas seu bloco ao agente; os caminhos
+PROMPT_F19_EXECUCAO.md/PROMPT_F20_EXECUCAO.md são referências de compatibilidade, sem
+blocos concorrentes. O anexo antigo que exigia execução ao vivo em todos os casos foi
+retificado; replay histórico não comprova condições específicas de rede/fill ao vivo.
+
 ## Onde está cada épico
 
 | Épico | Assunto | Repositório responsável | Documento | Tarefas |
