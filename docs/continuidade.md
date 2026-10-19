@@ -5,7 +5,7 @@ Cinco conflitos registrados e resolvidos por preservação da base documental e 
 Contrato tipado de produtores usa versão 1.3, sem mudar fórmulas/precisão nem apagar definições/valores 1.2.1.
 Baseline 1482/18/3 reaproveitada por identidade de 281 fontes/testes. PR124 em rascunho; 90 focados
 aprovados e doctor21/1/0. Global final f342a61:1501/26/3, saída0, cobertura77,64%,285 fontes/testes intactos.
-Cinco checks CI aprovados; pytest Windows na execução existente;
+Seis checks CI aprovados no ecfe057; Windows concluiu na execução existente;
 master60d7d13 integrado por merge Git sem mudar fontes/testes.
 Ver [T18.1_REGISTRY_DTO.md](analytics/T18.1_REGISTRY_DTO.md). EXTR-02 permanece separado na PR #123.
 

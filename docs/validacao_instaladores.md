@@ -207,5 +207,5 @@ terminal ou wineserver. Veja docs/extrator/EXTR-02_PONTE_BACKGROUND.md.
   a fixture como relação calculada nem ligar a UI a serviço inexistente.
 
 Linux PR124:1501/26/3, saída0, cobertura77,64%; PostgreSQL dedicado aprovado.
-O pytest Windows da PR124 ainda está em execução. CI e Linux são evidências distintas dessa prova física.
+O pytest Windows da PR124 passou no ecfe057, na execução existente. CI e Linux são evidências distintas dessa prova física.
 T18.1 não muda os caminhos/instaladores nem exige conexão MT5.
