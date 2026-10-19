@@ -1,6 +1,6 @@
 # F19 — Plano executável: pilares, presets e integração HADOUKEN
 
-**T19.0: entrega documental com adendos. T19.1–T19.57: planejadas, sem implementação nesta entrega.**
+**T19.0 documental com adendos. T19.1: inventário em revisão local; T19.2–T19.57 planejadas, sem runtime novo.**
 Pedido do proprietário em 2026-10-17. Uma tarefa por PR, sem misturar correções externas.
 Não há autorização de operação financeira, alteração de limites ou instalação de presets por este plano.
 
@@ -90,6 +90,12 @@ Nas fichas, **V** significa verificação comum da seção 4 mais os testes list
 Todos os IDs abaixo começam em PLANEJADO. Campos “IDs” remetem ao catálogo integral.
 
 ### T19.1 — Inventário reconciliado e decisões de contrato
+
+**Estado (2026-10-17): em revisão local.** [Entrega, evidências e decisões](INVENTARIO_F19.md).
+Conferidos HEAD/branches H/M/S, seis contratos/inputs/presets e exportações,
+11 fontes Safety idênticas, catálogo e lacunas. Sem alteração de runtime.
+T20.1 estende este mapa após integração, sem novo inventário; publicação da
+base documental T19.0/T20.0 ainda pendente. Ver resultados na continuidade.
 
 - **Repo/prioridade:** M, leitura H/S; P0. **Depende de:** T19.0.
 - **Arquivos:** documentos F19, plano principal, contratos SDK e backlog B/D/E/F/I.

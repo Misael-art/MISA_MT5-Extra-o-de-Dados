@@ -172,7 +172,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; integração T18.1/T18.6 pendente |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
 | T19.0 | Estrutura documental dos pilares, catálogo integral dos estudos e roadmap de presets | Pedido de 2026-10-17 | ✅ documentação com adendos: presets, replay, lotes e parciais; 57 fichas; sem implementação; verificações próprias na continuidade |
-| T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | planejada; primeira tarefa da F19 |
+| T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | em revisão local: [inventário reconciliado](propostas/INVENTARIO_F19.md), SHAs/donos/consumidores e lacunas; sem runtime novo; publicação depende da base documental T19.0 |
 | T19.2 | Composição canônica e capacidades tipadas, preservando contrato 1 | T19.1, B-11/B-09/B-10 conforme recorte | planejada |
 | T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | planejada |
 | T19.4–T19.13 | Todos os indicadores do TXT: Bill Williams, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
@@ -3560,7 +3560,7 @@ T18.8 reutiliza a implementação visual da F17 integrada nesta branch.
 
 ## Fase 19 — Pilares de dados, operação, estratégias e presets
 
-**T19.0 entregue como documentação em 2026-10-17, com adendos. T19.1–T19.57 planejadas.**
+**T19.0 documental, com adendos. T19.1 com inventário entregue para revisão local em 2026-10-17; T19.2–T19.57 planejadas.**
 O pedido do proprietário integra enriquecimento do histórico extraído e de operações,
 gestão temporal, composição independente de entrada/ganho/stop/filtros, geração de presets
 Default primeiro e Manual nomeado/Defensivo/Maximalista(PF)/Ultra, nomes padronizados,
@@ -3574,7 +3574,9 @@ etapa posterior, preservando os pré-requisitos de segurança dos mecanismos mul
 - [Prompt único de execução](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) e [matriz de validação com replay](propostas/VALIDACAO_F19.md).
 
 O detalhe operacional dessas tarefas mora no plano F19, sem duplicar fichas aqui.
-T19.1 é a próxima tarefa desta frente; sua dependência documental está atendida.
+T19.1 registra o [inventário real e os donos](propostas/INVENTARIO_F19.md), com base documental
+ainda local. Após revisão/integração, T20.1 estende esse mapa para Q01–Q16; T19.2
+aguarda B-11/B-09/B-10 e T19.3 aguarda integração T13.2/T18.1, sem duplicá-las.
 O primeiro ciclo completo usa S09/T19.37 e capacidades simples para gerar/conferir preset manual;
 não espera todos os indicadores nem libera grades antes da política de risco correspondente.
 Registry/store/contratos B e Composer mantêm os donos anteriores, conferidos antes de consumir.
