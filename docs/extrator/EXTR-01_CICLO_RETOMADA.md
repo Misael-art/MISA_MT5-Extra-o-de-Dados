@@ -98,15 +98,20 @@ Runtime corrigido: 677dfe3. Testes focados: 34 aprovados em 43,97 s;
 quatro provas adicionais de consulta/CLI/UI passaram e a nova falha de Cancelar
 foi corrigida; seus três cenários passaram em 10,09 s. A tentativa reprovada
 (1 falha/4 aprovados) foi preservada. Doctor 16 OK, dois avisos, zero falhas.
-Suíte completa de fechamento em execução única; aceite global pendente.
+Suíte completa única: **1468 aprovados, 18 pulos, 3 avisos em 2237,29 s**,
+saída **0**, cobertura **77,64%**, fontes intactos. Os seis checks do código
+6096ff8 passaram: Ubuntu, Windows, PostgreSQL, lint e os dois instaladores.
+Implementação encerrada e PR117 pronta para revisão, sem merge. Esse commit tem os mesmos
+fontes/testes de 677dfe3; os commits posteriores alteram apenas documentação.
 ShellCheck não se aplica: nenhum .sh alterado. Windows físico pendente.
 
 A prova MT5 nativa permanece pendente porque a ponte está desativada na
-configuração disponível. Não se alteraram terminal, conta, credenciais ou Safety.
+configuração disponível e a porta local configurada recusou a conexão
+(ConnectionRefusedError). Não se alteraram terminal, conta, credenciais ou Safety.
 Fakes demonstram persistência/retomada e fidelidade estrutural; não acesso ao feed.
 Não houve ordens nem operações em conta real. Nenhum conteúdo deste recorte foi
-aplicado ao workspace principal. PR116 tem suíte local aprovada; seu Windows CI
-continuava em andamento ao iniciar EXTR-01. Não houve merge.
+aplicado ao workspace principal. PR116 está pronta para revisão, com sua suíte única
+1461/18/3 e seis checks do runtime 40fbef5 aprovados. Não houve merge.
 
 Artefatos próprios: logs/extr-01/{before,after}.json, baseline-equivalence.json,
 regression-red.log, targeted.log, journey-tests.log, ui-cancel-green.log,
