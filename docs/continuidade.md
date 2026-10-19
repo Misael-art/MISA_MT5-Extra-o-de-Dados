@@ -1,6 +1,14 @@
-# T19.6 em revisão temporal — 2026-10-19
+# T19.6 — aceite temporal concluído — 2026-10-19
 
-Origem e confirmação separadas; candidatos não são sinais. [Contrato, versão e limites](analytics/T19.6_PIVOS_CAUSAIS.md). 117 casos distintos compatíveis, 61 nos caminhos finais, doctor21/1/0; 720 fatos DEMO atuais e 720 anteriores preservados, contexto/CSV conciliados. Ausência conhecida interrompe pivôs e invalida o prefixo no instante recebido. Base anterior reaproveitada. CI e revisão final pendentes; integrar #130 primeiro. Trabalho local e ponte preservados.
+PR130 integrada antes, merge c27ef93; PR131 com base master, seis checks6a9d580 aprovados:
+1467Ubuntu/48PG/1569WindowsCI, coberturas77,64%/73,36%;117 casos locais distintos
+compatíveis,61 nos caminhos finais e doctor21/1/0.294 fontes/testes idênticos no
+fechamento documental.720 fatos DEMO atuais e720 anteriores preservados; CSV/contexto
+conciliados com referência independente. Origem, confirmação e conhecimento separados;
+provisórios não são sinais e ausência conhecida interrompe a janela. [Contrato e
+rematerialização](analytics/T19.6_PIVOS_CAUSAIS.md). Próxima elegível:T19.7. Relações
+segue sintética; nenhuma estratégia/preset. Windows físico continua pendente específico.
+Trabalho local e ponte preservados.
 
 # T19.3: conexão do snapshot aceita — 2026-10-19
 

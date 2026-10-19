@@ -277,4 +277,4 @@ CI virtual não substitui a validação Windows físico que permanece no checkli
 
 ## T19.6 — Pivôs causais
 
-Windows CI será verificado no código final. Windows físico continua pendente: instalar/abrir banco existente, materializar pivôs e consultar/exportar origem/confirmacão pelo serviço; sem ordens. Não bloqueia o aceite Linux. [Escopo](analytics/T19.6_PIVOS_CAUSAIS.md).
+Windows CI aprovado na fonte6a9d580:1569 testes/78 skips/5 avisos; cobertura73,36%. Windows físico continua pendente: instalar/abrir banco existente, materializar pivôs e consultar/exportar origem/confirmação pelo serviço; sem ordens. Não bloqueia o aceite Linux. [Escopo](analytics/T19.6_PIVOS_CAUSAIS.md).

@@ -125,7 +125,7 @@ O registro-base é T18.1; materialização/consulta e seus consumidores entram p
 
 ### I08 — Fractals
 
-- **Variante em revisão:** [T19.6: origem, confirmação, empates e limites](../analytics/T19.6_PIVOS_CAUSAIS.md).
+- **Contrato implementado:** [T19.6: origem, confirmação, empates e limites](../analytics/T19.6_PIVOS_CAUSAIS.md).
 
 - **Mercado:** pivô central em sequência de cinco candles, com duas barras de cada lado.
 - **Parâmetros:** largura, regras para máximas/mínimas iguais e instante de confirmação.
@@ -184,7 +184,7 @@ O registro-base é T18.1; materialização/consulta e seus consumidores entram p
 
 ### I14 — ZigZag
 
-- **Variante em revisão:** [T19.6: origem, confirmação, empates e limites](../analytics/T19.6_PIVOS_CAUSAIS.md).
+- **Contrato implementado:** [T19.6: origem, confirmação, empates e limites](../analytics/T19.6_PIVOS_CAUSAIS.md).
 
 - **Mercado:** swings segundo desvio, profundidade e backstep definidos.
 - **Saídas distintas:** desenho retrospectivo sujeito a repaint e sequência de pivôs confirmados.
