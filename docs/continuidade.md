@@ -1,3 +1,25 @@
+## Fechamento T19.4 — PR126 após127, 2026-10-19
+
+A correção127 foi integrada em master2d7412f antes desta ficha. Composição70b2191 com seis
+checks aprovados:1412 Ubuntu/168 skips,36PG,1514Windows CI/66 skips/5avisos, cov77,64%/73,36%.
+Revisão sem pendências. Master incorporado por merge Git sem conflitos novos;291 fontes/testes
+idênticos ao commit do CI. Fechamento somente documental [skip ci], sem outra campanha.
+34 Alligator+ponte/doctor21/1/0,62 focados originais e UI compatível reaproveitados. Referência
+independente, CSV/store e medição local279/216/2ms preservados; não são metas universais.
+Integrar pelo SHA revisado e registrar SHA real no diário. Próxima ficha T19.5 AO/AC, em
+worktree isolada, usando o serviço existente e referência racional; sem estratégia/presets.
+Relações continua sintética e Windows físico é pendência específica. Root/ponte/WIP preservados.
+
+## Fechamento da correção EXTR-02 — PR127, 2026-10-19
+
+Aceite concluído no63e717f: seis checks existentes aprovados,1395 Ubuntu/34 PostgreSQL/1497
+Windows CI; cobertura77,64%/73,36%.17 focados e doctor21/1/0 reaproveitados. Revisão sem
+pendências; fechamento somente documental [skip ci], fontes/testes preservados.
+Integração por merge Git antes da PR126; registrar SHA real no diário após resposta do GitHub.
+A composição runtime70b2191 da PR126 passou34 casos Alligator+ponte/doctor21/1/0 e está no CI
+39284170300. Não repetir referência/custo/extração aprovados. Root/WIP/ponte preservados.
+Windows físico permanece pendência específica.
+
 ## Impedimento da PR126 — correção isolada EXTR-02
 
 Ubuntu da PR126:1408 aprovados/168 skips/1falha, cobertura77,64%. Falha no teste de stop/libc
