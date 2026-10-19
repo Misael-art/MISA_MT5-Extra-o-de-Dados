@@ -1076,3 +1076,18 @@ Cinco checks aprovados; Windows CI ainda em curso. PR116 rascunho, sem merge
 e sem aplicação ao workspace principal. Próxima prioridade do proprietário:
 EXTR-01, conforme propostas/PROMPT_RETOMADA_EXTRATOR.md; não repetir a
 investigação numérica corrigida. Windows físico permanece pendente.
+
+
+## EXTR-01 — ciclo do extrator em fechamento (2026-10-18)
+
+Prioridade atual do proprietário registrada em propostas/PROMPT_RETOMADA_EXTRATOR.md.
+Runtime 677dfe3 corrige atualização que informava sucesso ignorando bloco falho
+anterior ao último timestamp, e o acionamento de Cancelar no diálogo ttk.
+A prova isolada recupera 540 barras, termina com 1801 timestamps únicos e CSV
+exatamente igual ao provedor falso. Atualização 0,910 s; repetição 0,050 s;
+jornada medida 2,418 s, sem Analytics/resampling ou feed nativo. Não alegar
+ganho global: o antes era incompleto. Focados 34 e provas adicionais de CLI/UI;
+doctor 16/2/0. Baseline PR116 reutilizado por equivalência exata antes da edição.
+Suíte final em execução única. Ponte desativada limita apenas prova nativa;
+Windows físico pendente. Workspace principal preservado, sem merge.
+[Relatório e limites](extrator/EXTR-01_CICLO_RETOMADA.md).

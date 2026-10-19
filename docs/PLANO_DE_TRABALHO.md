@@ -46,6 +46,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ✅ concluída |
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ✅ concluída |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ✅ concluída |
+| EXTR-01 | Qualificar o ciclo do extrator e corrigir a primeira lacuna comprovada | Fluxo F1/F3; candidata T13.3b | em fechamento: recuperação de blocos falhos, CLI/reabertura/CSV e cancelamento Tk validados; suíte final única em curso; feed real/Windows físico pendentes; [relatório](extrator/EXTR-01_CICLO_RETOMADA.md) |
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
 | T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
