@@ -474,6 +474,16 @@ class DatabaseManager:
                 "WHERE table_name = :t AND status IN ('ok', 'empty')"), {"t": table_name}).fetchall()
         return {(self._as_datetime(a), self._as_datetime(b)) for a, b in rows}
 
+    def failed_blocks(self, table_name, until):
+        """Intervalos falhos já encerrados, isolados por tabela, para retomada exata."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(text(
+                "SELECT block_start, block_end FROM _extraction_log "
+                "WHERE table_name = :t AND status = 'failed' AND block_end <= :end "
+                "ORDER BY block_start, block_end"),
+                {"t": table_name, "end": until.strftime(self._TIME_FMT)}).fetchall()
+        return [(self._as_datetime(a), self._as_datetime(b)) for a, b in rows]
+
     TICK_FIELDS = ("time", "time_msc", "seq", "bid", "ask", "last", "volume", "volume_real", "flags")
 
     def save_ticks(self, table_name, df):

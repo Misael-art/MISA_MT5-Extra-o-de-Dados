@@ -1754,7 +1754,7 @@ class UIManager:
             )
 
         def cancel_extraction_logic():
-             if extract_button.cget('state') == tk.DISABLED:
+             if str(extract_button.cget('state')) == tk.DISABLED:
                  # Chama a lógica de cancelamento na app principal
                  self.app.historical_extractor.cancel_extraction()
                  status_var.set("Cancelando...")

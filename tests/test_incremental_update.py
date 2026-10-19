@@ -73,3 +73,48 @@ def test_update_symbol_without_data_starts_default_days_ago(connector, fake_mt5,
     assert starts["PETR4"] == now - dt.timedelta(days=30)
     assert result["success"] == 1
     assert _count(db, "petr4_1_minuto")[0] > 0
+
+
+@pytest.mark.parametrize("recover", [True, False])
+def test_update_recovers_older_failed_block_before_reporting_success(connector, fake_mt5, tmp_path, recover):
+    import calendar
+    ext, db = _setup(connector, tmp_path)
+    ext.chunk_config["m1"] = 1
+    failed_range = (calendar.timegm(dt.datetime(2024, 1, 3, 9).timetuple()),
+                    calendar.timegm(dt.datetime(2024, 1, 3, 18).timetuple()))
+    fake_mt5.fail_ranges = [failed_range]
+    assert not ext._process_symbol("WIN$N", M1, "1 minuto", dt.datetime(2024, 1, 2),
+                                   dt.datetime(2024, 1, 5), False, False)
+    assert _count(db) == (1080, 1080)
+    if recover:
+        fake_mt5.fail_ranges = []
+    fake_mt5.calls.clear()
+    _, result = _update(ext, ["WIN$N"], dt.datetime(2024, 1, 5, 12))
+    assert result == dict(success=int(recover), failed=int(not recover), canceled=0)
+    assert _count(db) == ((1801, 1801) if recover else (1261, 1261))
+    with db.engine.connect() as c:
+        statuses = [r[0] for r in c.execute(text("SELECT status FROM _extraction_log ORDER BY block_start"))]
+    assert ("failed" not in statuses) == recover
+    fetched = fake_mt5.calls_named("copy_rates_range")
+    assert any(call[1][2] == calendar.timegm(dt.datetime(2024, 1, 3, 0, 0, 1).timetuple())
+               for call in fetched)
+    # Os blocos confirmados dos dias 02 e 04 não são reextraídos integralmente.
+    assert not any(call[1][2] in [calendar.timegm(dt.datetime(2024, 1, 2).timetuple()),
+                                 calendar.timegm(dt.datetime(2024, 1, 4, 0, 0, 2).timetuple())]
+                   for call in fetched)
+    if recover:
+        before = _count(db)
+        _update(ext, ["WIN$N"], dt.datetime(2024, 1, 5, 12))
+        assert _count(db) == before
+
+
+def test_failed_blocks_are_scoped_ordered_and_do_not_read_future_intervals(tmp_path):
+    db = DatabaseManager(db_path=str(tmp_path / "pending.db"))
+    a, b, c = dt.datetime(2024, 1, 2), dt.datetime(2024, 1, 3), dt.datetime(2024, 1, 4)
+    db.record_block("one", b, c, 0, "failed", "mt5")
+    db.record_block("one", a, b, 0, "failed", "mt5")
+    db.record_block("two", a, b, 0, "failed", "mt5")
+    db.record_block("one", c, c + dt.timedelta(days=1), 0, "failed", "mt5")
+    assert db.failed_blocks("one", c) == [(a, b), (b, c)]
+    db.record_block("one", a, b, 10, "ok", "mt5")
+    assert db.failed_blocks("one", c) == [(b, c)]

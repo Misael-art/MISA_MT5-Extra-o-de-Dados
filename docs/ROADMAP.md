@@ -12,6 +12,10 @@ O detalhamento de cada tarefa (arquivos, passos, código de referência, critér
 de aceite e testes) está em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md).
 As regras para agentes estão em [../AGENTS.md](../AGENTS.md).
 
+**Prioridade do proprietário (2026-10-18):** fechar T13.3b/PR116 sem duplicar
+suíte; depois EXTR-01, ciclo de extração/atualização/persistência/consulta/exportação
+e recuperação. [Diretriz e limites](propostas/PROMPT_RETOMADA_EXTRATOR.md).
+
 ## Fases
 
 ```

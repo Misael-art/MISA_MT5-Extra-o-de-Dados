@@ -1,5 +1,18 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #117 — EXTR-01 (2026-10-19)
+
+Base master `814ded9` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos recuperação dos intervalos falhos antes da cauda incremental, ausência de sucesso falso quando a recuperação falha, escopo por tabela/limite temporal e comparação str do estado Tcl para Cancelar. Prova CLI/UI DEMO anterior preservada; conferência curta explícita em master após o merge, sem suíte global ou benchmark novos.
+Aceite reaproveitado: 1468 aprovados/18 pulos/3 avisos, saída 0, cobertura 77,64%; 279 hashes conferidos; 34 focados, quatro casos novos e três Tk; doctor 16/2/0; seis checks aprovados no HEAD `d5916ee582dd0386ae11e10bf748065f0e35dac0`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## Revisão/integração PR #116 — T13.3b (2026-10-19)
 
 Base master `2ca2fc0` conciliada por merge Git na worktree da tarefa.
@@ -1266,6 +1279,41 @@ Seis checks do runtime 40fbef5 aprovados, incluindo Windows. PR116 pronta para r
 e sem aplicação ao workspace principal. Próxima prioridade do proprietário:
 EXTR-01, conforme propostas/PROMPT_RETOMADA_EXTRATOR.md; não repetir a
 investigação numérica corrigida. Windows físico permanece pendente.
+
+
+## EXTR-01 — implementação encerrada, em revisão (2026-10-18)
+
+Prioridade atual do proprietário registrada em propostas/PROMPT_RETOMADA_EXTRATOR.md.
+Runtime 677dfe3 corrige atualização que informava sucesso ignorando bloco falho
+anterior ao último timestamp, e o acionamento de Cancelar no diálogo ttk.
+A prova isolada recupera 540 barras, termina com 1801 timestamps únicos e CSV
+exatamente igual ao provedor falso. Atualização 0,910 s; repetição 0,050 s;
+jornada medida 2,418 s, sem Analytics/resampling ou feed nativo. Não alegar
+ganho global: o antes era incompleto. Focados 34 e provas adicionais de CLI/UI;
+doctor 16/2/0. Baseline PR116 reutilizado por equivalência exata antes da edição.
+Suíte única final 1468/18/3 em 2237,29 s, saída 0, cobertura 77,64%, fontes
+intactos. Seis checks do código 6096ff8 aprovados, incluindo Windows; PR117 pronta
+para revisão, sem merge. Ponte desativada com
+conexão local recusada limita apenas prova nativa;
+Windows físico pendente. Workspace principal preservado, sem merge.
+[Relatório e limites](extrator/EXTR-01_CICLO_RETOMADA.md).
+
+
+## EXTR-01 — prova nativa e integração preparada (2026-10-19)
+
+Ponte efetiva estava desativada e sem serviço; servidor restrito existente
+iniciado em 127.0.0.1:18812, habilitado e conta MetaQuotes-Demo/trade_mode=0
+comprovada. Credenciais, Safety e sessões de terceiros preservados; sem ordens.
+Jornada real EURUSD/M1 14–16/10: 2880→3600, repetição idempotente, reabertura
+e CSV exatamente iguais ao provedor em relógio/OHLCV/volumes/spread. UI Tk real
+com cancelamento/retomada/exportação, 4652 timestamps únicos. Doctor 21/1/0.
+Não houve mudança de runtime nem repetição de suítes ou benchmark.
+Revisão local de #116/#117 sem impedimento nos caminhos percorridos; revisões
+externas ainda não registradas. Branch de preparação preserva master489591c
+e a cadeia aberta #106→#117; não houve merge remoto nem cópia de fontes ao
+workspace principal. Próxima tarefa: revisão/integração da base #106/T20.2 e
+progressão ordenada dos dependentes. Windows físico permanece pendente.
+[Prova e limites](extrator/EXTR-01_VALIDACAO_NATIVA.md).
 
 ## T19.0 — publicação isolada da base documental (2026-10-19)
 

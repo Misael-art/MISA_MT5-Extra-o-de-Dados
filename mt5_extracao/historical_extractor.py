@@ -70,7 +70,7 @@ class HistoricalExtractor:
                      include_indicators: bool, overwrite: bool,
                      max_workers: int = 4, # Número de workers paralelos
                      update_progress_callback=None, finished_callback=None,
-                     start_dates: Optional[dict] = None):
+                     start_dates: Optional[dict] = None, recover_failed: bool = False):
         """
         Inicia a extração de dados históricos em uma thread separada.
 
@@ -85,6 +85,7 @@ class HistoricalExtractor:
             max_workers: Número máximo de threads para paralelização por símbolo.
             start_dates: Opcional, {símbolo: data inicial} que substitui start_date por símbolo
                          (usado pela atualização incremental).
+            recover_failed: Retoma os blocos falhos registrados antes da atualização.
             update_progress_callback: Função chamada para atualizar o progresso (progresso, mensagem).
             finished_callback: Função chamada ao finalizar (sucesso, falha).
         """
@@ -102,14 +103,14 @@ class HistoricalExtractor:
         extraction_thread = Thread(target=self._run_extraction,
                                    args=(symbols, timeframe_val, timeframe_name, start_date, end_date,
                                          include_indicators, overwrite, max_workers,
-                                         update_progress_callback, finished_callback, start_dates))
+                                         update_progress_callback, finished_callback, start_dates, recover_failed))
         extraction_thread.daemon = True
         extraction_thread.start()
 
     def _run_extraction(self, symbols: list, timeframe_val: int, timeframe_name: str,
                         start_date: datetime, end_date: datetime,
                         include_indicators: bool, overwrite: bool, max_workers: int,
-                        update_progress_callback=None, finished_callback=None, start_dates=None):
+                        update_progress_callback=None, finished_callback=None, start_dates=None, recover_failed=False):
         """Lógica principal da extração executada na thread."""
         total_symbols = len(symbols)
         successful_symbols = 0
@@ -119,7 +120,8 @@ class HistoricalExtractor:
         try:
             # Usar ThreadPoolExecutor para paralelizar por símbolo
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = {executor.submit(self._process_symbol, symbol, timeframe_val, timeframe_name,
+                process = self._process_update_symbol if recover_failed else self._process_symbol
+                futures = {executor.submit(process, symbol, timeframe_val, timeframe_name,
                                            (start_dates or {}).get(symbol, start_date), end_date,
                                            include_indicators, overwrite): symbol
                            for symbol in symbols}
@@ -191,7 +193,8 @@ class HistoricalExtractor:
                        update_progress_callback=None, finished_callback=None, now: Optional[datetime] = None):
         """
         Atualização incremental: busca, para cada símbolo, só o que falta desde o último registro
-        salvo até agora (sobreposição de 1 barra, resolvida pelo upsert). Símbolos sem dados
+        salvo até agora (sobreposição de 1 barra, resolvida pelo upsert), retomando também
+        os blocos falhos registrados. Símbolos sem dados
         começam `default_days` dias atrás. Roda em segundo plano, como extract_data.
 
         Returns:
@@ -209,8 +212,26 @@ class HistoricalExtractor:
                           start_date=min(start_dates.values()) if start_dates else now,
                           end_date=now, include_indicators=include_indicators, overwrite=False,
                           max_workers=max_workers, update_progress_callback=update_progress_callback,
-                          finished_callback=finished_callback, start_dates=start_dates)
+                          finished_callback=finished_callback, start_dates=start_dates, recover_failed=True)
         return start_dates
+
+    def _process_update_symbol(self, symbol, timeframe_val, timeframe_name,
+                               start_date, end_date, include_indicators, overwrite):
+        """Recupera os blocos falhos antes da cauda incremental, sem refazer os confirmados."""
+        table_name = self.db_manager.get_table_name_for_symbol(symbol, timeframe_name)
+        recovered = True
+        for block_start, block_end in self.db_manager.failed_blocks(table_name, end_date):
+            if self.cancel_requested:
+                return False
+            log.info(f"[{symbol}] Retomando bloco pendente de {block_start} a {block_end}.")
+            ok = self._process_symbol(symbol, timeframe_val, timeframe_name,
+                                      block_start, block_end, include_indicators, False)
+            recovered = ok and recovered
+        if self.cancel_requested:
+            return False
+        tail_ok = self._process_symbol(symbol, timeframe_val, timeframe_name,
+                                       start_date, end_date, include_indicators, overwrite)
+        return tail_ok and recovered
 
     def _process_symbol(self, symbol: str, timeframe_val: int, timeframe_name: str,
                         start_date: datetime, end_date: datetime,

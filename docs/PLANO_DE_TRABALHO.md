@@ -39,6 +39,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T1.6 | Base de tempo (fuso) explícita | T1.1 | ✅ concluída |
 | T1.7 | Nomes de tabela sem colisão | T1.1 | ✅ concluída |
 | T1.8 | Relatório de qualidade dos dados | T1.2 | ✅ concluída |
+| EXTR-01 | Qualificar o ciclo do extrator e corrigir a primeira lacuna comprovada | Fluxo F1/F3; candidata T13.3b | validada para integração no [PR117](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/117); 1468 aprovados/18 pulos/3 avisos, saída 0, cobertura 77,64%; 279 hashes conferidos; 34 focados, quatro casos novos e três Tk; doctor 16/2/0; código aprovado d5916ee preservado; seis checks reaproveitados; Windows físico pendente |
 | T2.1 | `mt5_backend`: MT5 local (Windows) ou via ponte (Linux) | T0.1 | ✅ concluída |
 | T2.2 | Usar o backend em todo o código (sem `import MetaTrader5` direto) | T2.1 | ✅ concluída |
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
@@ -124,7 +125,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ⏳ implementação pronta; 20 testes focados passaram e EURUSD teve paridade; repetição da suíte completa ficou inconclusiva nos testes Tk/conector; MT5 real e Windows pendentes |
-| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | validada para integração no [PR116](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/116); 1461 aprovados/18 pulos/3 avisos, saída 0, cobertura 77,44%; 279 hashes da suíte final conferidos; 99 focados, PostgreSQL 22, limites/retomada 7, doctor 16/2/0; código aprovado d952d4c preservado; seis checks reaproveitados; Windows físico pendente |
+| T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ integrada no [PR116](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/116), merge 814ded9; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ integrada no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114), merge 2efdabf; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ integrada no [PR115](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/115), merge 2ca2fc0; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
