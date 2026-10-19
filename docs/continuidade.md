@@ -1,5 +1,52 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão de integração T20.3 (2026-10-19)
+
+A base T20.2 foi integrada em master pelo PR #106 (f477e43), após as bases
+documentais #118–#121. A revisão da #107 conferiu curvas separadas, fluxos por
+cotas, colunas aditivas, leitura legada, recuperação dos fluxos em re-simulações
+e compatibilidade das chamadas do SDK, sem novo impedimento identificado.
+
+A conciliação com master alterou somente documentação. O conflito no painel
+foi resolvido transferindo os aceites das linhas provisórias para as linhas
+canônicas de T20.2/T20.3, preservando os relatos de continuidade. Runtime,
+testes e fixtures permanecem iguais ao HEAD aprovado c0f1846 (runtime 91b2ec4).
+Reaproveitados 1.103 aprovados, nove pulos existentes, três avisos, saída 0,
+91 direcionados do complemento, doctor 16 OK/2 avisos/0 falhas e seis checks
+aprovados, inclusive Windows CI. Hashes e árvore não documental conferidos;
+nenhuma suíte ou campanha numérica repetida. A prova nativa existente mantém
+seu recorte de 24 marcas EURUSD H1 no Wine; Windows físico permanece pendente.
+
+
+## T20.3 — curvas patrimoniais e comparação nativa (2026-10-17)
+
+[Decisões e limites](analytics/T20.3_PATRIMONIO_FLUTUANTE.md). Mantida a curva
+de operações encerradas; acrescentados saldo realizado e patrimônio por
+fechamento de barra, BID/ASK, custos realizados e swap acumulado. DD novo
+identificado, percentual indefinido se o pico não for positivo, fluxos externos
+separados e neutralizados por cotas na grade de fechamento. Re-simulação soma posições sobrepostas no mesmo capital; não cria
+carteira com margem compartilhada. Persistência em cinco colunas aditivas;
+legado lê sem inventar trajetória ou regravar linhas/schema. Modos sequenciais
+de lote declaram trajetória indisponível; specs genéricas/swap não suportado
+marcam capacidade limitada. Sem alteração de UI ou produção H/S.
+
+Referências direcionadas com fluxos, persistência e DTOs: 85 aprovados.
+Native fixture: MetaTester 6272/Wine 11.17, EURUSD H1 MetaQuotes-Demo, 2025-01-06,
+24 observações; diferença de saldo zero e de equity 1,14e-13 USD. Fonte final
+compilado sem erros/avisos. Verificador e CSV/hashes versionados em
+tests/fixtures/equity_reference. Só Strategy Tester em cópia própria; Python
+não enviou ordens. A prova não certifica todos os Experts/custos/moedas/contas.
+
+Baseline 1081/9 pendências/3 avisos confirmada antes das alterações; ambiente
+preparado novamente. Suíte completa final: 1103 aprovados, nove pendências existentes, três avisos,
+1035,47 s, saída 0 (logs/t20-3/pytest-final.log). SDK/fluxos/docs: 30 aprovados;
+parâmetro cashflows opcional ao final documentado e testado com bindings antigos.
+[PR #107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107) em revisão
+como rascunho sobre #106. Rodadas preliminares foram substituídas pelos ajustes
+de DTOs, fluxos externos e referência do SDK. Doctor 16 OK/2 avisos/0
+falhas. Windows físico pendente; artefatos em logs/t20-3. Próxima independente:
+T20.4, respeitando store/registry de branches existentes.
+
 ## T20.2 — referências financeiras e correções locais (2026-10-17)
 
 [Contas independentes](analytics/T20.2_REFERENCIAS_FINANCEIRAS.md) e testes dedicados.

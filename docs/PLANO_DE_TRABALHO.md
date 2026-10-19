@@ -193,8 +193,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | planejada; mínimo/passo/margem/risco, unidade e entradas adicionais explícitos |
 | T20.0 | Incorporar as 16 sugestões aceitas, mapa Q01–Q16, fichas e prompt de robustez | Pedido de 2026-10-17 | ✅ documentação, prioridades UI e prompt único F19/F20/MT5; 30 fichas planejadas; sem implementação ou ensaio de conta |
 | T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | ✅ documentação integrada no PR121; Q01–Q16 no mapa único, sem runtime novo |
-| T20.2 | Referências independentes dos cálculos financeiros | T20.1 | validada, pronta para integração no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106); runtime fc9e593 inalterado, 1081/9/3, saída0, seis checks aprovados; bases documentais PR118–121 integradas |
-| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | planejada; Q01, métrica aditiva sem reescrever legado |
+| T20.2 | Referências independentes dos cálculos financeiros | T20.1 | ✅ integrada no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), master f477e43; runtime fc9e593, 1081/9/3 e seis checks reaproveitados; bases documentais PR118–121 integradas |
+| T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | validada, pronta para integração no [PR107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107); runtime 91b2ec4 preservado, 1103 aprovados/9 pulos existentes/3 avisos, saída 0, seis checks aprovados e prova nativa de 24 marcas; conciliação apenas documental com master f477e43 |
 | T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | planejada; Q02 |
 | T20.5 | Vigência de especificações, ajustes e transformações de séries | T20.4 | planejada; Q02, sem inventar fonte histórica |
 | T20.6 | Qualidade por capacidade e cobertura efetiva de ticks | T20.4 | planejada; Q03 |

@@ -159,5 +159,9 @@ def test_martingale_only_for_robots_that_support_it(tmp_path):
     mart = _robot([("InpLotMultiplier", 2, "multiplicador de lote")], facts={"risk_pct": 1.0})
     table = runner.compare(db, None, run["run_id"], ["ponto_fixo", "martingale", "anti_martingale"], robot=mart)
     assert table["martingale"]["study_only"] and "triggers" in table["martingale"]["sequence"]
+    assert table["martingale"]["floating_equity"] is None
+    assert table["martingale"]["valuation"]["status"] == "unavailable"
+    assert table["ponto_fixo"]["valuation"]["resolution"] == "bar_close"
+    assert table["ponto_fixo"]["floating_equity"] is not None
     assert table["martingale"]["metrics"]["n"] <= table["ponto_fixo"]["metrics"]["n"]
     db.close()
