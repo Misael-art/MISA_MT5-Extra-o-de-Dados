@@ -136,7 +136,7 @@ base documental T19.0/T20.0 ainda pendente. Ver resultados na continuidade.
 
 ### T19.5 — AO e AC (I07/I09)
 
-**Estado (2026-10-19): implementação e aceite local em worktree isolada; publicação após127→126.**
+**Estado (2026-10-19): implementação e aceite local; bases127→126 integradas em mastereab717d.**
 78 casos focados distintos compatíveis, doctor21/1/0 e prova CLI/store/CSV com referência racional.
 CI e revisão final pendentes; Windows físico delimitado. [Contrato e evidências](../analytics/T19.5_AO_AC.md).
 

@@ -177,8 +177,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | ✅ documentação integrada no PR120; inventário original e proveniência preservados, sem runtime novo |
 | T19.2 | Composição canônica e capacidades tipadas, preservando contrato 1 | T19.1, B-11/B-09/B-10 conforme recorte | planejada |
 | T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | ✅ [PR125](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/125), aceite/revisão concluídos no eaec23b;1528 casos distintos CI+UI,34 PostgreSQL, cov77,64%,27 focados, doctor21/1/0 e seis checks aprovados; consumidor com avaliação exact_prefix e limites explícitos; Windows físico pendente |
-| T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | 🟡 candidata sobre master2b27b1f;62 casos focados, doctor21/1/0, referência independente e CSV exato; custo90/append30/cache=279/216/2ms; CI/revisão pendentes; Windows físico pendente |
-| T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | 🟡 aceite local:78 focados distintos compatíveis, doctor21/1/0, referência racional, causalidade/reprocessamento e CLI120 M5/960 fatos; publicação após127→126, CI/revisão pendentes; Windows físico pendente |
+| T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | ✅ [PR126](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/126), aceite final70b2191 após correção127/master2d7412f; seis checks,1412 Ubuntu/36PG/1514Windows CI, cov77,64%/73,36%;291 fontes/testes idênticos;62 focados+34 composição/doctor21/1/0; custo local279/216/2ms, sem meta universal; Windows físico pendente |
+| T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | 🟡 aceite local:78 focados distintos compatíveis, doctor21/1/0, referência racional, causalidade/reprocessamento e CLI120 M5/960 fatos; bases127→126 integradas/mastereab717d; CI/revisão pendentes; Windows físico pendente |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
 | T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | planejadas |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | planejadas; gates operacionais das grades preservados |
@@ -3660,7 +3660,8 @@ execução ao vivo. Pendências de rede/fill ao vivo permanecem delimitadas. Est
 
 ### EXTR-02 — correção de confirmação de saída (2026-10-19)
 
-🟡 Follow-up isolado para o impedimento do Ubuntu da PR126: stop passa a aguardar identidade,
+🟢 Aceite concluído na [PR127](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/127): seis checks existentes aprovados no63e717f;1395 Ubuntu/34PG/1497Windows CI.
+Follow-up para o impedimento do Ubuntu da PR126: stop passa a aguardar identidade,
 não perda do token.17 testes de ciclo de vida aprovados e doctor21/1/0; sem mudar prazos,
 instalador, credenciais ou sessões. Ver docs/extrator/EXTR-02_CONFIRMACAO_SAIDA.md.
 CI Linux/revisão ainda pendentes; caminho Windows nativo inalterado, prova física pendente.
