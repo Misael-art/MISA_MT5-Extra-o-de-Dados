@@ -1067,3 +1067,76 @@ def test_scoped_recalculation_after_newer_h1_definition_keeps_h1_unchanged(db):
 def test_scoped_recalculation_without_derived_bars_has_actionable_error(db):
     with pytest.raises(ValueError, match="mt5x resample"):
         producers.recalculate_affected(db, "TEST", "M15", ["bars_derived:M15"])
+
+
+def test_long_history_bollinger_append_matches_full_without_relaxing_precision():
+    bars = bars_frame(sessions=161, bars_per_session=6, minutes=5, start="2026-01-05 09:00")
+    minute_offsets = np.arange(30)
+    intraday = np.cumsum(0.00002 * np.sin(minute_offsets / 9.0) + 0.000003)
+    close = np.concatenate([(1.1 + day * 0.0001 + intraday)[4::5] for day in range(161)])
+    bars["close"] = close
+    bars["open"], bars["high"], bars["low"] = close - 0.00001, close + 0.00003, close - 0.00003
+    params = producers.DEFAULTS["volatility"]
+    initial, delta = bars.iloc[:-6].copy(), bars.iloc[-6:].copy()
+    prior = {"state": producers._family_checkpoint_state("volatility", initial, params)}
+    actual, _ = producers._volatility_append_rows(prior, delta, params, initial.bar_start_utc.iloc[-1])
+    complete, _ = producers._family_rows("volatility", bars, params, "auto")
+    expected = {(row["feature_id"], row["observation_time"]): row for row in complete
+                if row["observation_time"] >= delta.bar_start_utc.iloc[0]}
+    assert len(actual) == len(expected)
+    for row in actual:
+        reference = expected[(row["feature_id"], row["observation_time"])]
+        assert row["available_at"] == reference["available_at"]
+        assert row["source_revision"] == reference["source_revision"]
+        assert row["metadata"] == reference["metadata"]
+        if row["feature_id"] in {"volatility.bb_width", "volatility.realized_vol"}:
+            assert row["value"] == reference["value"]
+        if isinstance(reference["value"], (float, int)):
+            assert row["value"] == pytest.approx(reference["value"], rel=1e-12, abs=1e-14)
+        else:
+            assert row["value"] == reference["value"]
+
+
+def test_stable_bollinger_uses_same_finite_window_and_matches_decimal_oracle():
+    from decimal import Decimal, localcontext
+    import math
+    close = pd.Series(np.concatenate([(1.1 + day * 0.0001 + np.cumsum(
+        0.00002 * np.sin(np.arange(30) / 9.0) + 0.000003))[4::5] for day in range(161)]))
+    full = indicators.bollinger(close, 20, stable_window=True)
+    tail = indicators.bollinger(close.iloc[-25:], 20, stable_window=True)
+    pd.testing.assert_frame_equal(full.iloc[-6:], tail.iloc[-6:], check_exact=True)
+    with localcontext() as context:
+        context.prec = 80
+        for position in range(len(close) - 6, len(close)):
+            values = [Decimal.from_float(float(value)) for value in close.iloc[position-19:position+1]]
+            mean = sum(values) / Decimal(20)
+            std = (sum((value - mean) ** 2 for value in values) / Decimal(20)).sqrt()
+            for name, expected in [("mid", mean), ("upper", mean + 2 * std), ("lower", mean - 2 * std)]:
+                assert abs(full.iloc[position][name] - float(expected)) <= 4 * math.ulp(float(mean))
+    returns = np.log(close).diff()
+    realized = indicators.rolling_std(returns, 20, stable_window=True)
+    realized_tail = indicators.rolling_std(returns.iloc[-25:], 20, stable_window=True)
+    pd.testing.assert_series_equal(realized.iloc[-6:], realized_tail.iloc[-6:], check_exact=True)
+    with localcontext() as context:
+        context.prec = 80
+        for position in range(len(returns) - 6, len(returns)):
+            values = [Decimal.from_float(float(value)) for value in returns.iloc[position-19:position+1]]
+            mean = sum(values) / Decimal(20)
+            expected = (sum((value - mean) ** 2 for value in values) / Decimal(19)).sqrt()
+            assert abs(realized.iloc[position] - float(expected)) <= 4 * math.ulp(float(expected))
+    pd.testing.assert_series_equal(indicators.rolling_std(returns, 20),
+                                   returns.rolling(20, min_periods=20).std(), check_exact=True)
+    # A opção nova não altera a definição padrão usada pelas estratégias.
+    default = indicators.bollinger(close, 20)
+    mid = close.rolling(20, min_periods=20).mean()
+    std = close.rolling(20, min_periods=20).std(ddof=0)
+    pd.testing.assert_frame_equal(default, pd.DataFrame({"mid": mid, "upper": mid + 2 * std,
+                                                       "lower": mid - 2 * std}), check_exact=True)
+
+
+@pytest.mark.parametrize("invalid", [-1, 6, 5.9, float("nan"), float("inf"), "2"])
+def test_producer_retries_reject_invalid_counts_before_job_or_feature_writes(db, invalid):
+    with pytest.raises(ValueError, match="max_retries"):
+        producers.compute(db, "TEST", "M5", families=["calendar"], max_retries=invalid)
+    assert not inspect(db.engine).has_table("_analytics_producer_runs")
+    assert not inspect(db.engine).has_table("_feature_values")

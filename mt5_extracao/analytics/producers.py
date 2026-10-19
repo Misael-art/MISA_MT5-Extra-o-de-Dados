@@ -34,7 +34,7 @@ from mt5_extracao.analytics import (feature_store, features, market_regimes, res
 
 log = logging.getLogger(__name__)
 
-ALGORITHM_VERSION = "1.2"
+ALGORITHM_VERSION = "1.2.1"
 FAMILIES = ("volume", "rvol", "volatility", "regime", "structure", "calendar")
 WILDER_MEMORY = 5
 MAX_BATCH_SIZE = 50_000
@@ -742,19 +742,18 @@ def _volatility_append_rows(prior, delta, params, cursor):
         closes_for_bb = closes_for_bb[-int(params["bb_n"]):]
         if len(closes_for_bb) >= int(params["bb_n"]):
             close_window = pd.Series(closes_for_bb, dtype=float)
-            bb_mean = float(close_window.rolling(int(params["bb_n"]), min_periods=int(params["bb_n"])).mean().iloc[-1])
-            bb_std = float(close_window.rolling(int(params["bb_n"]), min_periods=int(params["bb_n"])).std(
-                ddof=0).iloc[-1])
+            bands = market_regimes.ind.bollinger(close_window, int(params["bb_n"]), 2.0,
+                                                stable_window=True).iloc[-1]
             with np.errstate(divide="ignore", invalid="ignore"):
-                bb_width = float(np.divide(4.0 * bb_std, bb_mean))
+                bb_width = float(np.divide(bands["upper"] - bands["lower"], bands["mid"]))
         else:
             bb_width = np.nan
         log_close = float(np.log(close)) if close > 0 else np.nan
         previous_log = float(np.log(prior_close)) if np.isfinite(prior_close) and prior_close > 0 else np.nan
         returns.append(log_close - previous_log if np.isfinite(log_close) and np.isfinite(previous_log) else np.nan)
         returns = returns[-int(params["rv_n"]):]
-        realized_series = pd.Series(returns, dtype=float).rolling(int(params["rv_n"]),
-                                                                  min_periods=int(params["rv_n"])).std()
+        realized_series = market_regimes.ind.rolling_std(pd.Series(returns, dtype=float),
+                                                         int(params["rv_n"]), stable_window=True)
         realized = float(realized_series.iloc[-1]) if len(returns) >= int(params["rv_n"]) else np.nan
         atr_pct_pct = _prior_percentile_value(atr_history, atr_pct, percentile_window)
         bb_width_pct = _prior_percentile_value(bb_history, bb_width, percentile_window)
@@ -1096,7 +1095,14 @@ def compute(db, symbol, timeframe, *, families=None, volume_source="auto", overr
     unknown = [name for name in families if name not in FAMILIES]
     if unknown:
         raise ValueError(f"Família desconhecida: {', '.join(unknown)}. Use: {', '.join(FAMILIES)}.")
-    if not (1 <= int(batch_size) <= MAX_BATCH_SIZE) or not (0 <= int(max_retries) <= MAX_BATCH_RETRIES) or \
+    try:
+        retries = int(max_retries)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"max_retries precisa ser inteiro entre 0 e {MAX_BATCH_RETRIES}.") from exc
+    if retries != max_retries or not 0 <= retries <= MAX_BATCH_RETRIES:
+        raise ValueError(f"max_retries precisa ser inteiro entre 0 e {MAX_BATCH_RETRIES}.")
+    max_retries = retries
+    if not (1 <= int(batch_size) <= MAX_BATCH_SIZE) or \
             not (0 < float(timeout_seconds) <= MAX_JOB_TIMEOUT_SECONDS) or \
             not (0 < float(max_memory_mb) <= MAX_JOB_MEMORY_MB):
         raise ValueError("batch_size, timeout e memória precisam estar dentro dos limites do job; "
