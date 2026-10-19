@@ -164,7 +164,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.4 | Aplicação progressiva do sistema às abas Ativos, Minha base, Análise, Robôs, Recursos e Atividade | T17.2, T17.3, T8.2, T15.1–T15.6 | ✅ concluída no Linux; Windows pendente |
 | T17.5 | Validação visual integrada, capturas comparáveis e documentação | T17.1–T17.4 | ✅ concluída no Linux; Windows pendente |
 | T18.0 | Plano de relações entre indicadores e aderência temporal, com prompts coordenados | Pedido do dono | ✅ registro documental; nenhuma funcionalidade implementada |
-| T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | 🟡 integração canônica 80fd887 sobre EXTR-02; conflitos registrados, validação atual em execução |
+| T18.1 | Registry de indicadores/transformações, alvos, schema e DTO | T13.2, T13.3 | 🟡 [PR124](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/124), canônica80fd887 sobre master60d7d13; Linux aceito1501/26/3 saída0 cov77,64%,90 focados, doctor21/1/0; cinco checks aprovados, pytest Windows em execução; físico pendente |
 | T18.2 | Indicador × indicador e × movimento futuro | T18.1, infraestrutura validada T13.4 | planejada |
 | T18.3 | Indicador × resultado do Expert (compra/venda, ganho/loss) | T18.2, T16.1, T16.3b | planejada |
 | T18.4 | Convergências de fatores e utilidade incremental OOS | T18.3, T13.4 | planejada |

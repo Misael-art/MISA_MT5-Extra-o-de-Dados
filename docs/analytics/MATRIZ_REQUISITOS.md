@@ -92,5 +92,6 @@ modo sombra → pilotos autorizados → monitoramento.
 Registro tipado, alvos forward e DTO v1 adotados do commit canônico 80fd887 por cherry-pick revisado.
 Migração somente aditiva; contratos antigos preservados; novos produtores com versão 1.3 e escopo
 concreto por timeframe/configuração de T13.3b. Testes atuais cobrem tipagem, tombstones e transição de checkpoint;
-aceite final em execução. Resultados históricos 875/10 não substituem a composição atual.
+aceite Linux1501/26/3, saída0, cinco checks aprovados e pytest Windows ainda em execução.
+Resultados históricos875/10 não substituem a composição atual.
 Associações, serviço e UI real permanecem tarefas posteriores.
