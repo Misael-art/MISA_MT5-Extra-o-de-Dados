@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 import pytest
-from sqlalchemy import inspect, text
+from sqlalchemy import event, inspect, text
 
 from mt5_extracao import cli
 from mt5_extracao.analytics import feature_store, features
@@ -35,6 +35,8 @@ def test_schema_is_additive_and_internal(db):
     assert {"_feature_definitions", "_feature_values"} <= names
     assert not {"feature_definitions", "feature_values"} & names
     assert feature_store.list_definitions(db) == []
+    assert "ix_feature_values_key_revision" in {index["name"]
+                                                 for index in inspect(db.engine).get_indexes("_feature_values")}
 
 
 def test_definitions_are_versioned_immutable_and_validate_dependencies(db):
@@ -110,6 +112,30 @@ def test_invalidated_value_hides_old_value_only_after_invalidation_time(db):
     )
     assert joined.iloc[0]["quality"] == "INVALIDATED"
     assert pd.isna(joined.iloc[0]["numeric_value"])
+
+def test_save_values_only_reads_existing_rows_for_observations_in_the_batch(db):
+    register_close(db)
+    start = pd.Timestamp("2026-10-01T00:00:00Z")
+    history = [{"symbol": "EURUSD", "timeframe": "M1", "feature_id": "close_m1",
+                "algorithm_version": "1.0", "observation_time": stamp, "value": float(index),
+                "available_at": stamp, "observed_at": stamp, "source_revision": "seed"}
+               for index, stamp in enumerate(pd.date_range(start, periods=1000, freq="min"))]
+    assert feature_store.save_values(db, history)["inserted"] == 1000
+    statements = []
+
+    def capture(_conn, _cursor, statement, _parameters, _context, _executemany):
+        if "SELECT observation_time, revision, value_hash, available_at_utc" in statement:
+            statements.append(statement)
+
+    event.listen(db.engine, "before_cursor_execute", capture)
+    next_observation = start + pd.Timedelta(minutes=1000)
+    result = feature_store.save_values(db, [{"symbol": "EURUSD", "timeframe": "M1", "feature_id": "close_m1",
+                                             "algorithm_version": "1.0", "observation_time": next_observation,
+                                             "value": 1000.0, "available_at": next_observation,
+                                             "observed_at": next_observation, "source_revision": "append"}])
+    event.remove(db.engine, "before_cursor_execute", capture)
+    assert result["inserted"] == 1
+    assert len(statements) == 1 and "observation_time IN (" in statements[0]
 
 
 def test_point_in_time_does_not_expose_close_before_it_is_available(db):

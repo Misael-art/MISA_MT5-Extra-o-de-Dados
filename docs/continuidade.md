@@ -1,5 +1,18 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #116 — T13.3b (2026-10-19)
+
+Base master `2ca2fc0` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos checkpoints e confirmação transacional dos lotes, retomada/invalidação, identidade contextual, revisão da fonte, limite de retries e versão 1.2.1. Benchmark existente de 25398 registros exatos preservado, sem repetição; tentativa nativa adicional inconclusiva e Windows físico continuam delimitados.
+Aceite reaproveitado: 1461 aprovados/18 pulos/3 avisos, saída 0, cobertura 77,44%; 279 hashes da suíte final conferidos; 99 focados, PostgreSQL 22, limites/retomada 7, doctor 16/2/0; seis checks aprovados no HEAD `d952d4c3b767450fc01fd0cafcc22fdb7cc2b745`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## Revisão/integração PR #115 — T13.3 (2026-10-19)
 
 Base master `2efdabf` conciliada por merge Git na worktree da tarefa.
@@ -1238,6 +1251,21 @@ Windows físico/MT5 e decisão da confiança continuam pendentes; sem ordens,
 sem alterações em H/S e sem certificar publicação/leitor ou a cadeia completa.
 Próxima: T13.3b, runtime 03570b0/docs 4ede7fa; preservar identidade por TF,
 algoritmo-base 1.2, UTC explícito e helper de schemas PG isolados.
+
+
+## T13.3b — fechamento da implementação (2026-10-18; PR116)
+
+Runtime 40fbef5: produtores incrementais/retomáveis com identidade contextual,
+limites e algoritmo 1.2.1 de janela finita estável. Uma única suíte final: 1461
+aprovados, 18 pulos, 3 avisos em 2154,08 s, saída 0, cobertura 77,44%, fontes
+intactos. Focados 99, PostgreSQL 22, limites/retomada 7 e doctor 16/2/0 aprovados.
+Benchmark compute: 25398 registros exatamente iguais, inclusive hashes;
+12187/1521 ms, sem aquisição/resampling e sem ganho demonstrado de RSS.
+A tentativa extra EURUSD/AGG permanece inconclusiva, com artefatos preservados.
+Seis checks do runtime 40fbef5 aprovados, incluindo Windows. PR116 pronta para revisão, sem merge
+e sem aplicação ao workspace principal. Próxima prioridade do proprietário:
+EXTR-01, conforme propostas/PROMPT_RETOMADA_EXTRATOR.md; não repetir a
+investigação numérica corrigida. Windows físico permanece pendente.
 
 ## T19.0 — publicação isolada da base documental (2026-10-19)
 

@@ -1,5 +1,6 @@
 """T13.3: volume, RVOL, volatilidade, regime e estrutura da sessão, com disponibilidade point-in-time."""
 from types import SimpleNamespace
+import json
 
 import numpy as np
 import pandas as pd
@@ -156,7 +157,7 @@ def test_calendar_features_reuse_existing_calendar_columns():
     assert by_feature["calendar.hour_utc"] == expected["hour"].astype(float).tolist()
 
 
-def test_calendar_session_minute_tracks_late_session_corrections():
+def test_calendar_session_minute_uses_only_its_open_time_dependency():
     bars = bars_frame(sessions=2, bars_per_session=4)
     bars["computed_at_utc"] = pd.Timestamp("2026-09-01", tz=UTC)
     bars.loc[1, "revision"] = 2
@@ -165,20 +166,25 @@ def test_calendar_session_minute_tracks_late_session_corrections():
     rows = producers.calendar_rows(bars)
     minute = [row for row in rows if row["feature_id"] == "calendar.minute_of_session"]
     clock = [row for row in rows if row["feature_id"] == "calendar.hour_utc"]
-    assert all(row["available_at"] == correction for row in minute if row["observation_time"].date() ==
-               bars[bars.session_id == "s0"]["bar_start_utc"].iloc[0].date())
+    first_end = bars[bars.session_id == "s0"]["bar_end_utc"].iloc[0]
+    assert minute[0]["available_at"] == first_end
+    assert minute[1]["available_at"] == minute[1]["observation_time"]
     assert clock[0]["available_at"] == bars["bar_start_utc"].iloc[0]
-    assert minute[0]["source_revision"].startswith("bars:")
+    assert minute[0]["source_revision"].startswith("calendar:")
 
 
-def test_ensure_schema_adds_partial_flag_to_legacy_derived_table(db):
-    legacy_schema = resampling._CREATE_BARS.replace("    is_partial INTEGER NOT NULL DEFAULT 0,\n", "")
+def test_ensure_schema_adds_partial_flag_and_source_sequence_to_legacy_table(db):
+    legacy_schema = resampling._CREATE_BARS.replace("    is_partial INTEGER NOT NULL DEFAULT 0,\n", "").replace(
+        "    source_seq BIGINT NOT NULL DEFAULT 0,\n", "")
     with db.engine.begin() as conn:
         conn.execute(text(legacy_schema))
     resampling.ensure_schema(db)
     with db.engine.connect() as conn:
         columns = {column["name"] for column in inspect(conn).get_columns("_bars_derived")}
     assert "is_partial" in columns
+    assert "source_seq" in columns
+    assert "ix_bars_derived_source_sequence" in {index["name"]
+                                                   for index in inspect(db.engine).get_indexes("_bars_derived")}
 
 
 def test_legacy_corrected_partial_bar_stays_excluded_without_partial_column(db):
@@ -254,9 +260,7 @@ def test_late_session_corrections_propagate_only_to_dependent_outputs():
     assert level["available_at"] == correction
 
 
-def test_wilder_correction_window_has_a_tested_residual_bound():
-    assert producers._wilder_residual_fraction(14, 5) < 0.007
-    assert producers._wilder_residual_fraction(14, 10, layers=2) < 0.001
+def test_finite_correction_window_expires_but_recursive_provenance_does_not():
     bars = bars_frame(sessions=1, bars_per_session=100)
     correction = pd.Timestamp("2026-10-01", tz=UTC)
     bars.loc[2, "revision"] = 2
@@ -264,6 +268,8 @@ def test_wilder_correction_window_has_a_tested_residual_bound():
     available = producers._correction_times(bars, window=70)
     assert available.iloc[2] == correction and available.iloc[71] == correction
     assert pd.isna(available.iloc[72])
+    recursive = producers._correction_times(bars, cumulative=True)
+    assert recursive.iloc[2] == correction and recursive.iloc[-1] == correction
 
 
 def test_corrected_regime_state_propagates_beyond_adx_memory_until_reconfirmed():
@@ -281,8 +287,8 @@ def test_corrected_regime_state_propagates_beyond_adx_memory_until_reconfirmed()
     adx = next(row for row in rows if row["feature_id"] == "regime.adx" and
                row["observation_time"] == last_start)
     assert state["available_at"] == correction
-    assert adx["available_at"] == bars["bar_end_utc"].iloc[-1]
-    assert state["source_revision"] != adx["source_revision"]
+    assert adx["available_at"] == correction
+    assert state["source_revision"] == adx["source_revision"]
     assert state["metadata"]["source_window_bars"] == len(bars)
 
 
@@ -342,6 +348,430 @@ def test_compute_writes_point_in_time_values_and_is_idempotent(db):
     meta = feature_store.query_as_of(db, bar["bar_end_utc"], symbol="TEST", timeframe="M15",
                                      feature_id="volatility.atr")["metadata_json"].iloc[-1]
     assert '"reconstructed":true' in meta
+
+
+def test_resampling_source_sequence_advances_only_for_new_revisions(db):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    assert resampling.latest_source_sequence(db, "TEST", "M5") == 1
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    assert resampling.latest_source_sequence(db, "TEST", "M5") == 1
+
+    m1 = db.load_ohlcv("TEST", Timeframe.M1.label)
+    hit = m1["time"] == m1["time"].iloc[2]
+    m1.loc[hit, "high"] = m1.loc[hit, "high"] + 1
+    db.save_ohlcv_data("TEST", "1 minuto", m1[hit])
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    assert resampling.latest_source_sequence(db, "TEST", "M5") == 2
+    with db.engine.connect() as conn:
+        sequences = conn.execute(text(
+            "SELECT DISTINCT source_seq FROM _bars_derived WHERE symbol = 'TEST' AND tf = 'M5' "
+            "ORDER BY source_seq")).scalars().all()
+    assert sequences == [1, 2]
+
+
+def test_producer_checkpoint_skips_unchanged_source_before_loading_history(db, monkeypatch):
+    from mt5_extracao.analytics import producer_jobs
+
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    first = producers.compute(db, "TEST", "M5", families=["calendar"])
+    assert first[0]["job"]["status"] == "COMPLETE"
+    checkpoint = producer_jobs.get_checkpoint(db, "TEST", "M5", "calendar")
+    assert checkpoint["source_sequence"] == 1 and checkpoint["status"] == "COMPLETE"
+    run = producer_jobs.latest_run(db, "TEST", "M5", "calendar")
+    assert run["status"] == "COMPLETE" and run["duration_ms"] >= 0
+    assert run["peak_rss_bytes"] > 0 and run["database_bytes_after"] >= run["database_bytes_before"]
+
+    monkeypatch.setattr(resampling, "latest_bars", lambda *args, **kwargs: pytest.fail(
+        "compute recarregou histórico apesar do checkpoint válido"))
+    again = producers.compute(db, "TEST", "M5", families=["calendar"])
+    assert again[0]["skipped"] and again[0]["job"]["status"] == "SKIPPED"
+
+
+def test_compute_reprocesses_newly_closed_bars_without_a_source_revision(db, monkeypatch):
+    from mt5_extracao.analytics import producer_jobs
+
+    first = pd.date_range("2026-09-01 09:00", periods=10, freq="min")
+    second = pd.date_range("2026-09-02 09:00", periods=5, freq="min")
+    times = first.append(second)
+    close = 100 + np.arange(len(times), dtype=float) / 100.0
+    m1 = pd.DataFrame({"time": times, "open": close - 0.01, "high": close + 0.02,
+                       "low": close - 0.02, "close": close, "tick_volume": 10,
+                       "spread": 2, "real_volume": 10})
+    db.save_ohlcv_data("TEST", "1 minuto", m1)
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    clock = {"now": pd.Timestamp("2026-09-01 09:11", tz=UTC)}
+    monkeypatch.setattr(resampling, "_utc_now", lambda: clock["now"])
+
+    first_run = producers.compute(db, "TEST", "M5", families=["calendar"])
+    assert first_run[0]["inserted"] == 8
+    source_sequence = resampling.latest_source_sequence(db, "TEST", "M5")
+    checkpoint = producer_jobs.get_checkpoint(db, "TEST", "M5", "calendar")
+    assert checkpoint["source_sequence"] == source_sequence == 1
+
+    clock["now"] = pd.Timestamp("2026-09-02 09:16", tz=UTC)
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        frame = original(db_, symbol, timeframe, **kwargs)
+        calls.append((kwargs, len(frame)))
+        return frame
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    next_run = producers.compute(db, "TEST", "M5", families=["calendar"])
+    assert resampling.latest_source_sequence(db, "TEST", "M5") == source_sequence
+    assert calls[0][0]["source_seq_after"] == source_sequence
+    assert calls[0][0]["bar_start_after"] == checkpoint["last_bar_start_utc"]
+    assert calls[0][1] == 1  # uma barra lida apesar de o histórico conter três
+    assert next_run[0]["inserted"] == 4 and not next_run[0].get("skipped", False)
+
+
+def test_write_guard_is_checked_for_each_output_batch_and_final_checkpoint(db):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    calls = []
+
+    def guard():
+        calls.append(1)
+        return None
+
+    producers.compute(db, "TEST", "M5", families=["calendar"], batch_size=1, write_guard=guard)
+    assert len(calls) == 5  # quatro instantes com quatro características, mais o checkpoint final
+
+
+def test_calendar_append_uses_only_changed_bars_and_matches_full_recompute(db, monkeypatch):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M5", families=["calendar"])
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20, start="2026-09-02 09:00"))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        calls.append(kwargs.get("source_seq_after"))
+        return original(db_, symbol, timeframe, **kwargs)
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    result = producers.compute(db, "TEST", "M5", families=["calendar"])
+    assert calls == [1] and result[0]["inserted"] == 16
+
+    all_bars = original(db, "TEST", "M5")
+    full_rows = producers.calendar_rows(all_bars)
+    current_session = all_bars["session_id"].iloc[-1]
+    start = all_bars.loc[all_bars.session_id == current_session, "bar_start_utc"].min()
+    expected = {(row["feature_id"], pd.Timestamp(row["observation_time"]), row["value"],
+                 pd.Timestamp(row["available_at"]), row["source_revision"])
+                for row in full_rows if pd.Timestamp(row["observation_time"]) >= start}
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
+                                          algorithm_version=result[0]["algorithm_version"])
+    actual = {(row.feature_id, row.observation_time, row.numeric_value if pd.notna(row.numeric_value)
+               else row.categorical_value, row.available_at_utc, row.source_revision)
+              for row in history.itertuples() if row.observation_time >= start}
+    assert actual == expected
+
+
+def test_volume_and_rvol_append_reuse_bounded_session_context(db, monkeypatch):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=8, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M5", families=["volume", "rvol"])
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20, start="2026-09-08 09:20"))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        calls.append(kwargs.get("source_seq_after"))
+        return original(db_, symbol, timeframe, **kwargs)
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    result = producers.compute(db, "TEST", "M5", families=["volume", "rvol"])
+    assert calls == [1]
+    assert result[0]["inserted"] == 0  # sessão atual continua excluída do perfil diário
+    assert result[1]["inserted"] == 8  # dois fatos por cada uma das quatro barras novas
+
+    all_bars = original(db, "TEST", "M5")
+    full_rows, _ = producers._family_rows("rvol", all_bars, producers.DEFAULTS["rvol"], "real")
+    new_starts = set(all_bars[all_bars["bar_start_utc"] >= pd.Timestamp("2026-09-08T09:20:00Z")]
+                     ["bar_start_utc"])
+    expected = {(row["feature_id"], pd.Timestamp(row["observation_time"]), row["value"],
+                 pd.Timestamp(row["available_at"]), row["source_revision"])
+                for row in full_rows if row["observation_time"] in new_starts}
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
+                                          algorithm_version=next(item["algorithm_version"] for item in result if item["family"] == "rvol"),
+                                          start="2026-09-08T09:20:00Z")
+    actual = {(row.feature_id, row.observation_time, row.numeric_value if pd.notna(row.numeric_value)
+               else row.categorical_value, row.available_at_utc, row.source_revision)
+              for row in history.itertuples()}
+    assert actual == expected
+
+
+def test_auto_volume_source_switches_version_when_new_history_is_unknown(db):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=8, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    initial = producers.compute(db, "TEST", "M5", families=["volume", "rvol"])
+    new_bars = m1_days(days=1, minutes=20, start="2026-09-08 09:20")
+    new_bars.loc[0, "real_volume"] = None
+    db.save_ohlcv_data("TEST", "1 minuto", new_bars)
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+
+    updated = producers.compute(db, "TEST", "M5", families=["volume", "rvol"])
+    assert all(item["volume_source"] == "tick" for item in updated)
+    before_versions = {item["family"]: item["algorithm_version"] for item in initial}
+    after_versions = {item["family"]: item["algorithm_version"] for item in updated}
+    assert set(before_versions) == set(after_versions) == {"volume", "rvol"}
+    assert all(before_versions[family] != after_versions[family] for family in before_versions)
+    definitions = feature_store.list_definitions(db)
+    for family in before_versions:
+        assert any(item["algorithm_version"] == before_versions[family] and
+                   item["parameters"].get("family") == family and
+                   item["parameters"].get("volume_source") == "real" for item in definitions)
+        assert any(item["algorithm_version"] == after_versions[family] and
+                   item["parameters"].get("family") == family and
+                   item["parameters"].get("volume_source") == "tick" for item in definitions)
+
+
+def test_session_transition_incrementally_completes_volume_and_structure(db, monkeypatch):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=8, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M5", families=["volume", "rvol", "structure"])
+    prior_bars = resampling.latest_bars(db, "TEST", "M5")
+    old_session = str(prior_bars["session_id"].iloc[-1])
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20, start="2026-09-09 09:00"))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        calls.append(kwargs.get("source_seq_after"))
+        return original(db_, symbol, timeframe, **kwargs)
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    result = producers.compute(db, "TEST", "M5", families=["volume", "rvol", "structure"])
+    assert calls == [1] and all(item["inserted"] > 0 for item in result)
+
+    all_bars = original(db, "TEST", "M5")
+    current_session = str(all_bars["session_id"].iloc[-1])
+    current_open = all_bars.loc[all_bars.session_id == current_session, "bar_start_utc"].min()
+    expected = {}
+    for family in ("volume", "rvol", "structure"):
+        rows, _ = producers._family_rows(family, all_bars, producers.DEFAULTS[family], "real")
+        for row in rows:
+            newly_relevant = (row.get("session_id") == old_session and family == "volume") or \
+                (pd.Timestamp(row["observation_time"]) >= current_open) or \
+                (row.get("feature_id") == "session.return" and row.get("session_id") == old_session)
+            if newly_relevant:
+                expected[(row["feature_id"], pd.Timestamp(row["observation_time"]))] = (
+                    row["value"], pd.Timestamp(row["available_at"]), row["source_revision"])
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
+                                          )
+    history = history[history.algorithm_version.isin({item["algorithm_version"] for item in result})]
+    actual_all = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
+                  else row.categorical_value, row.available_at_utc, row.source_revision)
+                  for row in history.itertuples()}
+    actual = {key: actual_all[key] for key in expected if key in actual_all}
+    assert actual.keys() == expected.keys()
+    for key, (expected_value, expected_available, expected_revision) in expected.items():
+        actual_value, actual_available, actual_revision = actual[key]
+        assert actual_available == expected_available and actual_revision == expected_revision
+        assert actual_value == pytest.approx(expected_value, rel=1e-12, abs=1e-14)
+
+
+def test_volatility_append_continues_recursive_atr_and_matches_full_recompute(db, monkeypatch):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=12, minutes=180))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M5", families=["volatility"])
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=30, start="2026-09-12 12:00"))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        calls.append(kwargs.get("source_seq_after"))
+        return original(db_, symbol, timeframe, **kwargs)
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    result = producers.compute(db, "TEST", "M5", families=["volatility"])
+    assert calls == [1] and result[0]["inserted"] > 0
+
+    all_bars = original(db, "TEST", "M5")
+    full_rows, _ = producers._family_rows("volatility", all_bars, producers.DEFAULTS["volatility"], "auto")
+    start = pd.Timestamp("2026-09-12T12:00:00Z")
+    expected = {(row["feature_id"], pd.Timestamp(row["observation_time"])):
+                (row["value"], pd.Timestamp(row["available_at"]), row["source_revision"])
+                for row in full_rows if row["observation_time"] >= start}
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
+                                          algorithm_version=result[0]["algorithm_version"],
+                                          start=start)
+    actual = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
+              else row.categorical_value, row.available_at_utc, row.source_revision)
+              for row in history.itertuples()}
+    assert actual.keys() == expected.keys()
+    for key, (expected_value, expected_available, expected_revision) in expected.items():
+        actual_value, actual_available, actual_revision = actual[key]
+        assert actual_available == expected_available and actual_revision == expected_revision
+        if isinstance(expected_value, (float, int)):
+            # Pinned to below 1e-12 relative: only IEEE summation order may differ in rolling std.
+            assert actual_value == pytest.approx(expected_value, rel=1e-12, abs=1e-14)
+        else:
+            assert actual_value == expected_value
+
+
+def test_regime_append_continues_adx_and_confirmation_state(db, monkeypatch):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=12, minutes=180))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M5", families=["regime"])
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=30, start="2026-09-12 12:00"))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        calls.append(kwargs.get("source_seq_after"))
+        return original(db_, symbol, timeframe, **kwargs)
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    result = producers.compute(db, "TEST", "M5", families=["regime"])
+    assert calls == [1] and result[0]["inserted"] > 0
+
+    all_bars = original(db, "TEST", "M5")
+    full_rows, _ = producers._family_rows("regime", all_bars, producers.DEFAULTS["regime"], "auto")
+    start = pd.Timestamp("2026-09-12T12:00:00Z")
+    expected = {(row["feature_id"], pd.Timestamp(row["observation_time"])):
+                (row["value"], pd.Timestamp(row["available_at"]), row["source_revision"], row["metadata"])
+                for row in full_rows if row["observation_time"] >= start}
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
+                                          algorithm_version=result[0]["algorithm_version"], start=start)
+    actual = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
+              else row.categorical_value, row.available_at_utc, row.source_revision,
+              json.loads(row.metadata_json)) for row in history.itertuples()}
+    assert actual.keys() == expected.keys()
+    for key, (expected_value, expected_available, expected_revision, expected_metadata) in expected.items():
+        actual_value, actual_available, actual_revision, actual_metadata = actual[key]
+        assert actual_available == expected_available and actual_revision == expected_revision
+        assert actual_metadata["source_window_bars"] == expected_metadata["source_window_bars"]
+        if isinstance(expected_value, (float, int)):
+            assert actual_value == pytest.approx(expected_value, rel=1e-12, abs=1e-14)
+        else:
+            assert actual_value == expected_value
+
+
+def test_structure_append_continues_atr_and_matches_full_recompute(db, monkeypatch):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=12, minutes=180))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M5", families=["structure"])
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=30, start="2026-09-12 12:00"))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        calls.append(kwargs.get("source_seq_after"))
+        return original(db_, symbol, timeframe, **kwargs)
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    result = producers.compute(db, "TEST", "M5", families=["structure"])
+    assert calls == [1] and result[0]["inserted"] > 0
+
+    all_bars = original(db, "TEST", "M5")
+    full_rows, _ = producers._family_rows("structure", all_bars, producers.DEFAULTS["structure"], "auto")
+    start = pd.Timestamp("2026-09-12T12:00:00Z")
+    expected = {(row["feature_id"], pd.Timestamp(row["observation_time"])):
+                (row["value"], pd.Timestamp(row["available_at"]), row["source_revision"])
+                for row in full_rows if row["observation_time"] >= start}
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
+                                          algorithm_version=result[0]["algorithm_version"], start=start)
+    actual = {(row.feature_id, row.observation_time): (row.numeric_value if pd.notna(row.numeric_value)
+              else row.categorical_value, row.available_at_utc, row.source_revision)
+              for row in history.itertuples()}
+    assert actual.keys() == expected.keys()
+    for key, (expected_value, expected_available, expected_revision) in expected.items():
+        actual_value, actual_available, actual_revision = actual[key]
+        assert actual_available == expected_available and actual_revision == expected_revision
+        assert actual_value == pytest.approx(expected_value, rel=1e-12, abs=1e-14)
+
+
+def test_late_correction_forces_full_recompute_and_revises_dependent_rvol(db, monkeypatch):
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=12, minutes=180))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    producers.compute(db, "TEST", "M5")
+    m1 = db.load_ohlcv("TEST", Timeframe.M1.label)
+    hit = m1["time"] == m1["time"].iloc[2]
+    m1.loc[hit, "real_volume"] = 100
+    db.save_ohlcv_data("TEST", "1 minuto", m1[hit])
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    corrected_bars = resampling.latest_bars(db, "TEST", "M5", closed_only=False)
+    correction_available = corrected_bars["computed_at_utc"].max()
+
+    original = resampling.latest_bars
+    calls = []
+
+    def spy(db_, symbol, timeframe, **kwargs):
+        calls.append(kwargs.get("source_seq_after"))
+        return original(db_, symbol, timeframe, **kwargs)
+
+    monkeypatch.setattr(resampling, "latest_bars", spy)
+    result = producers.compute(db, "TEST", "M5")
+    assert calls == [1, None]  # change histórico detectada; as seis famílias usam a reconstrução completa
+    assert sum(item["revised"] for item in result) > 0
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5", feature_id="rvol.real",
+                                          algorithm_version=next(item["algorithm_version"] for item in result if item["family"] == "rvol"))
+    revised = history[history["revision"] > 1]
+    assert not revised.empty
+    assert revised["available_at_utc"].max() >= correction_available
+
+
+def test_producer_batch_failure_resumes_after_committed_checkpoint(db, monkeypatch):
+    from mt5_extracao.analytics import producer_jobs
+
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    original = feature_store.save_values
+    calls = {"count": 0}
+
+    def fail_after_first_commit(db_, records, **kwargs):
+        counts = original(db_, records, **kwargs)
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("falha simulada após lote confirmado")
+        return counts
+
+    monkeypatch.setattr(feature_store, "save_values", fail_after_first_commit)
+    with pytest.raises(RuntimeError, match="falha simulada"):
+        producers.compute(db, "TEST", "M5", families=["calendar"], batch_size=1, max_retries=0)
+    checkpoint = producer_jobs.get_checkpoint(db, "TEST", "M5", "calendar")
+    assert checkpoint["status"] == "RUNNING" and checkpoint["last_bar_start_utc"] is not None
+    assert producer_jobs.latest_run(db, "TEST", "M5", "calendar")["status"] == "FAILED"
+
+    monkeypatch.setattr(feature_store, "save_values", original)
+    result = producers.compute(db, "TEST", "M5", families=["calendar"], batch_size=1)
+    assert result[0]["job"]["status"] == "COMPLETE"
+    checkpoint = producer_jobs.get_checkpoint(db, "TEST", "M5", "calendar")
+    assert checkpoint["status"] == "COMPLETE" and checkpoint["source_sequence"] == 1
+    history = feature_store.query_history(db, symbol="TEST", timeframe="M5",
+                                          algorithm_version=result[0]["algorithm_version"])
+    assert len(history) == 16
+
+
+def test_producer_memory_limit_fails_before_feature_writes(db, monkeypatch):
+    from mt5_extracao.analytics import producer_jobs
+
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    monkeypatch.setattr(producer_jobs, "current_rss_bytes", lambda: 2 * 1024 * 1024)
+    with pytest.raises(MemoryError, match="limite de memória"):
+        producers.compute(db, "TEST", "M5", families=["calendar"], max_memory_mb=1)
+    assert feature_store.query_history(db, symbol="TEST", timeframe="M5").empty
+    run = producer_jobs.latest_run(db, "TEST", "M5", "calendar")
+    assert run["status"] == "FAILED" and "limite de memória" in run["error"]
 
 
 def test_asof_join_across_timeframes_never_uses_open_higher_bar(db):
@@ -419,7 +849,7 @@ def test_late_bar_correction_is_not_anticipated(db):
     assert new > old
 
 
-def test_late_reference_correction_invalidates_rvol_that_becomes_unavailable(db):
+def test_late_reference_correction_invalidates_rvol_after_incremental_resume(db, monkeypatch):
     db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=8, minutes=60))
     resampling.resample_symbol(db, "TEST", ["M15"], symbol_info=INFO)
     params = {"lookback": 1, "min_sessions": 1, "same_weekday": False}
@@ -450,8 +880,26 @@ def test_late_reference_correction_invalidates_rvol_that_becomes_unavailable(db)
     corrected_at = all_bars.loc[all_bars.session_id == reference_session, "computed_at_utc"].max()
     assert pd.notna(corrected_at)
 
-    producers.compute(db, "TEST", "M15", families=["rvol"], volume_source="real",
-                      overrides={"rvol": params})
+    original_save = feature_store.save_values
+    committed = {"batches": 0}
+
+    def fail_after_first_batch(db_, records, **kwargs):
+        counts = original_save(db_, records, **kwargs)
+        if records:
+            committed["batches"] += 1
+            if committed["batches"] == 1:
+                raise RuntimeError("falha simulada após lote confirmado")
+        return counts
+
+    monkeypatch.setattr(feature_store, "save_values", fail_after_first_batch)
+    with pytest.raises(RuntimeError, match="falha simulada após lote confirmado"):
+        producers.compute(db, "TEST", "M15", families=["rvol"], volume_source="real",
+                          overrides={"rvol": params}, batch_size=1, max_retries=0)
+    monkeypatch.setattr(feature_store, "save_values", original_save)
+    result = producers.compute(db, "TEST", "M15", families=["rvol"], volume_source="real",
+                               overrides={"rvol": params}, batch_size=1)
+    assert result[0]["invalidations"] > 0
+    assert result[0]["job"]["status"] == "COMPLETE"
 
     historical = feature_store.query_as_of(db, corrected_at - pd.Timedelta(nanoseconds=1), symbol="TEST",
                                            timeframe="M15", feature_id="rvol.real")
@@ -619,3 +1067,76 @@ def test_scoped_recalculation_after_newer_h1_definition_keeps_h1_unchanged(db):
 def test_scoped_recalculation_without_derived_bars_has_actionable_error(db):
     with pytest.raises(ValueError, match="mt5x resample"):
         producers.recalculate_affected(db, "TEST", "M15", ["bars_derived:M15"])
+
+
+def test_long_history_bollinger_append_matches_full_without_relaxing_precision():
+    bars = bars_frame(sessions=161, bars_per_session=6, minutes=5, start="2026-01-05 09:00")
+    minute_offsets = np.arange(30)
+    intraday = np.cumsum(0.00002 * np.sin(minute_offsets / 9.0) + 0.000003)
+    close = np.concatenate([(1.1 + day * 0.0001 + intraday)[4::5] for day in range(161)])
+    bars["close"] = close
+    bars["open"], bars["high"], bars["low"] = close - 0.00001, close + 0.00003, close - 0.00003
+    params = producers.DEFAULTS["volatility"]
+    initial, delta = bars.iloc[:-6].copy(), bars.iloc[-6:].copy()
+    prior = {"state": producers._family_checkpoint_state("volatility", initial, params)}
+    actual, _ = producers._volatility_append_rows(prior, delta, params, initial.bar_start_utc.iloc[-1])
+    complete, _ = producers._family_rows("volatility", bars, params, "auto")
+    expected = {(row["feature_id"], row["observation_time"]): row for row in complete
+                if row["observation_time"] >= delta.bar_start_utc.iloc[0]}
+    assert len(actual) == len(expected)
+    for row in actual:
+        reference = expected[(row["feature_id"], row["observation_time"])]
+        assert row["available_at"] == reference["available_at"]
+        assert row["source_revision"] == reference["source_revision"]
+        assert row["metadata"] == reference["metadata"]
+        if row["feature_id"] in {"volatility.bb_width", "volatility.realized_vol"}:
+            assert row["value"] == reference["value"]
+        if isinstance(reference["value"], (float, int)):
+            assert row["value"] == pytest.approx(reference["value"], rel=1e-12, abs=1e-14)
+        else:
+            assert row["value"] == reference["value"]
+
+
+def test_stable_bollinger_uses_same_finite_window_and_matches_decimal_oracle():
+    from decimal import Decimal, localcontext
+    import math
+    close = pd.Series(np.concatenate([(1.1 + day * 0.0001 + np.cumsum(
+        0.00002 * np.sin(np.arange(30) / 9.0) + 0.000003))[4::5] for day in range(161)]))
+    full = indicators.bollinger(close, 20, stable_window=True)
+    tail = indicators.bollinger(close.iloc[-25:], 20, stable_window=True)
+    pd.testing.assert_frame_equal(full.iloc[-6:], tail.iloc[-6:], check_exact=True)
+    with localcontext() as context:
+        context.prec = 80
+        for position in range(len(close) - 6, len(close)):
+            values = [Decimal.from_float(float(value)) for value in close.iloc[position-19:position+1]]
+            mean = sum(values) / Decimal(20)
+            std = (sum((value - mean) ** 2 for value in values) / Decimal(20)).sqrt()
+            for name, expected in [("mid", mean), ("upper", mean + 2 * std), ("lower", mean - 2 * std)]:
+                assert abs(full.iloc[position][name] - float(expected)) <= 4 * math.ulp(float(mean))
+    returns = np.log(close).diff()
+    realized = indicators.rolling_std(returns, 20, stable_window=True)
+    realized_tail = indicators.rolling_std(returns.iloc[-25:], 20, stable_window=True)
+    pd.testing.assert_series_equal(realized.iloc[-6:], realized_tail.iloc[-6:], check_exact=True)
+    with localcontext() as context:
+        context.prec = 80
+        for position in range(len(returns) - 6, len(returns)):
+            values = [Decimal.from_float(float(value)) for value in returns.iloc[position-19:position+1]]
+            mean = sum(values) / Decimal(20)
+            expected = (sum((value - mean) ** 2 for value in values) / Decimal(19)).sqrt()
+            assert abs(realized.iloc[position] - float(expected)) <= 4 * math.ulp(float(expected))
+    pd.testing.assert_series_equal(indicators.rolling_std(returns, 20),
+                                   returns.rolling(20, min_periods=20).std(), check_exact=True)
+    # A opção nova não altera a definição padrão usada pelas estratégias.
+    default = indicators.bollinger(close, 20)
+    mid = close.rolling(20, min_periods=20).mean()
+    std = close.rolling(20, min_periods=20).std(ddof=0)
+    pd.testing.assert_frame_equal(default, pd.DataFrame({"mid": mid, "upper": mid + 2 * std,
+                                                       "lower": mid - 2 * std}), check_exact=True)
+
+
+@pytest.mark.parametrize("invalid", [-1, 6, 5.9, float("nan"), float("inf"), "2"])
+def test_producer_retries_reject_invalid_counts_before_job_or_feature_writes(db, invalid):
+    with pytest.raises(ValueError, match="max_retries"):
+        producers.compute(db, "TEST", "M5", families=["calendar"], max_retries=invalid)
+    assert not inspect(db.engine).has_table("_analytics_producer_runs")
+    assert not inspect(db.engine).has_table("_feature_values")

@@ -50,9 +50,9 @@ def volatility_frame(bars, *, atr_n=14, rv_n=20, bb_n=20, percentile_window=100,
     out = pd.DataFrame(index=data.index)
     out["atr"] = ind.atr(data, atr_n)
     out["atr_pct"] = out["atr"] / close
-    out["realized_vol"] = np.log(close).diff().rolling(rv_n, min_periods=rv_n).std()
+    out["realized_vol"] = ind.rolling_std(np.log(close).diff(), rv_n, stable_window=True)
     out["range_pct"] = (data["high"] - data["low"]) / close
-    bands = ind.bollinger(close, bb_n, 2.0)
+    bands = ind.bollinger(close, bb_n, 2.0, stable_window=True)
     out["bb_width"] = (bands["upper"] - bands["lower"]) / bands["mid"]
     out["atr_pct_percentile"] = prior_percentile(out["atr_pct"], percentile_window)
     out["bb_width_percentile"] = prior_percentile(out["bb_width"], percentile_window)

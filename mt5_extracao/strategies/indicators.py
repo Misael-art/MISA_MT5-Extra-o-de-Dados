@@ -7,6 +7,8 @@ Convenções:
 - Médias de Wilder (ATR, RSI, ADX) usam ewm(alpha=1/n, adjust=False), como o MT5/TradingView.
 - O valor na barra i usa somente dados até a barra i (sem olhar o futuro).
 """
+import math
+
 import numpy as np
 import pandas as pd
 
@@ -64,9 +66,39 @@ def adx(df: pd.DataFrame, n: int = 14) -> pd.DataFrame:
     return pd.DataFrame({"plus_di": plus_di, "minus_di": minus_di, "adx": rma(dx, n)})
 
 
-def bollinger(close: pd.Series, n: int = 20, k: float = 2.0) -> pd.DataFrame:
-    mid = sma(close, n)
-    std = close.rolling(n, min_periods=n).std(ddof=0)
+def _finite_window_mean(values):
+    return math.fsum(float(value) for value in values) / len(values) if len(values) else np.nan
+
+
+def _finite_window_std(values, ddof=0):
+    if len(values) <= ddof:
+        return np.nan
+    mean = _finite_window_mean(values)
+    return math.sqrt(math.fsum((float(value) - mean) ** 2 for value in values) / (len(values) - ddof))
+
+
+def rolling_std(series: pd.Series, n: int, *, ddof: int = 1, stable_window: bool = False) -> pd.Series:
+    """Desvio por janela; o modo estável usa somente os valores da própria janela."""
+    window = series.rolling(n, min_periods=n)
+    if stable_window:
+        return window.apply(lambda values: _finite_window_std(values, ddof), raw=True)
+    return window.std(ddof=ddof)
+
+
+def bollinger(close: pd.Series, n: int = 20, k: float = 2.0, *, stable_window: bool = False) -> pd.DataFrame:
+    """Bandas populacionais; stable_window independe do prefixo anterior à janela.
+
+    O modo padrão preserva o cálculo pandas das estratégias existentes. O modo
+    finito usa soma compensada e variância centrada em duas passagens, para que
+    reconstrução e retomada usem exatamente a mesma janela e ordem de operações.
+    """
+    if stable_window:
+        window = close.rolling(n, min_periods=n)
+        mid = window.apply(_finite_window_mean, raw=True)
+        std = rolling_std(close, n, ddof=0, stable_window=True)
+    else:
+        mid = sma(close, n)
+        std = close.rolling(n, min_periods=n).std(ddof=0)
     return pd.DataFrame({"mid": mid, "upper": mid + k * std, "lower": mid - k * std})
 
 
