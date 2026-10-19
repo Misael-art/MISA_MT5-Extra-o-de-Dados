@@ -1,3 +1,17 @@
+## Fechamento final T19.5 — PR128, 2026-10-19
+
+Seis checks existentes aprovados no11b6c53:1438 Ubuntu/175 skips,43PG,1540Windows CI/73 skips/
+5avisos; cov77,64%/73,36%. Revisão atual sem pendências; cinco threads anteriores tratadas
+e decisões documentadas. Fechamento só documental [skip ci],293 fontes/testes idênticos.
+Integrar pelo SHA revisado após129/masterd0b9c5e, preservando as bases127→126 já integradas;
+registrar SHA real após resposta do GitHub.88 focados/doctor21/1/0 e prova final04f94b5b
+preservados:120M5/8saídas/960fatos, reabrir SKIPPED, referência racional e doubles exatos
+cálculo/store/CSV. Não repetir custo/extração/benchmark. Versões antigas continuam explícitas,
+sem perda de fatos; padrão usa a implementação atual e pode exigir rematerialização.
+32 definições no registry; sem estratégia/presets/Analytics completo ou Relações real.
+Próxima ficha elegível T19.6, pivôs causais, em PR própria. Windows físico permanece pendente.
+Root/WIP/índice/ponte preservados.
+
 ## Publicação final corrigida T19.5 — 2026-10-19
 
 Base129 integrada emd0b9c5e; composição7cfdc81 preserva código do serviço de master e

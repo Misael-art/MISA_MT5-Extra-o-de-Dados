@@ -136,10 +136,10 @@ base documental T19.0/T20.0 ainda pendente. Ver resultados na continuidade.
 
 ### T19.5 — AO e AC (I07/I09)
 
-**Estado (2026-10-19): implementação e aceite local; bases127→126 integradas em mastereab717d.**
+**Estado (2026-10-19): aceite final concluído na PR128/11b6c53, após129/masterd0b9c5e.**
 88 focados na composição corrigida após129/masterd0b9c5e; doctor21/1/0 e prova CLI/store/CSV racional.
-PR128 aguarda o CI pertinente ao runtime final, assinatura04f94b5b.
-CI e revisão final pendentes; Windows físico delimitado. [Contrato e evidências](../analytics/T19.5_AO_AC.md).
+Seis checks aprovados:1438 Ubuntu/43PG/1540Windows CI; assinatura04f94b5b e293 fontes/testes preservados.
+CI e revisão final concluídos; Windows físico delimitado. [Contrato e evidências](../analytics/T19.5_AO_AC.md).
 
 - **Repo/prioridade:** M/H; P1. **Depende de:** T19.3.
 - **Arquivos:** indicadores puros, registry e matemática H.

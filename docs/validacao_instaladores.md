@@ -270,3 +270,7 @@ CI Windows desta ficha ainda pendente; resultados locais não são prova de Wind
 
 Composição corrigida de T19.5 após129:88 focados/doctor21/1/0; nova prova CLI/store/CSV
 120M5/960fatos com assinatura04f94b5b. CI final deste runtime pendente; físico não encerrado.
+
+Aceite final T19.5/11b6c53: seis checks aprovados,1540 Windows CI/73 skips/5avisos,43PG.
+293 fontes/testes correspondem ao código final;88 focados e prova CLI04f94b5b preservados.
+CI virtual não substitui a validação Windows físico que permanece no checklist acima.
