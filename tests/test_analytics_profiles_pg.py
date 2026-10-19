@@ -211,3 +211,24 @@ def test_postgresql_late_correction_invalidation_survives_resume(pg, monkeypatch
     assert current["numeric_value"].isna().all() and current["categorical_value"].isna().all()
     assert current["available_at_utc"].eq(corrected_at).all()
 
+
+
+def test_typed_registry_additive_migration_and_target_idempotency(pg):
+    from tests import test_analytics_relations_contract as contracts
+
+    contracts.test_feature_definition_migration_only_adds_typed_columns(pg)
+    contracts.test_target_registry_tracks_horizon_maturity_and_write_guard(pg)
+
+
+@pytest.mark.parametrize("bulk", [False, True])
+@pytest.mark.parametrize("value_type,value", [("NUMBER", 0.25), ("CATEGORY", "TREND"), ("BOOLEAN", True)])
+def test_typed_registry_invalidation_is_point_in_time(pg, bulk, value_type, value):
+    from tests import test_analytics_relations_contract as contracts
+
+    contracts.test_typed_invalidation_preserves_asof_history(pg, bulk, value_type, value)
+
+
+def test_typed_registry_upgrade_preserves_legacy_checkpoint_and_values(pg, monkeypatch):
+    from tests.test_analytics_profiles import test_typed_contract_upgrade_preserves_legacy_values_and_rebuilds_checkpoint
+
+    test_typed_contract_upgrade_preserves_legacy_values_and_rebuilds_checkpoint(pg, monkeypatch)

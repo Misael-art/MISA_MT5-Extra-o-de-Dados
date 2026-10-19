@@ -197,3 +197,15 @@ código; não equivale à prova física acima. Relatório: EXTR-01_VALIDACAO_NAT
 No Linux, teste com caminhos de espaços e simulação de paths.is_windows. Prova
 Wine real de start/status/stop/repetição e consulta curta DEMO; nenhum sinal a
 terminal ou wineserver. Veja docs/extrator/EXTR-02_PONTE_BACKGROUND.md.
+
+### T18.1 — registry tipado/DTO (pendência Windows físico)
+
+- [ ] Em cópia de base antiga no Windows físico, registrar o core e os produtores tipados;
+  conferir consulta por versão/timeframe, coexistência com definições 1.2.1 e reconstrução
+  do contrato 1.3 sem alterar fatos antigos. Conferir repetição e reabertura.
+- [ ] Serializar a fixture de DTO v1 com ausência explícita e sem NaN; não apresentar
+  a fixture como relação calculada nem ligar a UI a serviço inexistente.
+
+Linux PR124:1501/26/3, saída0, cobertura77,64%; PostgreSQL dedicado aprovado.
+O pytest Windows da PR124 passou no ecfe057, na execução existente. CI e Linux são evidências distintas dessa prova física.
+T18.1 não muda os caminhos/instaladores nem exige conexão MT5.

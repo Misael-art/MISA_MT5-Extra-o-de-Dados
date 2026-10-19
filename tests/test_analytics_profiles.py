@@ -1140,3 +1140,48 @@ def test_producer_retries_reject_invalid_counts_before_job_or_feature_writes(db,
         producers.compute(db, "TEST", "M5", families=["calendar"], max_retries=invalid)
     assert not inspect(db.engine).has_table("_analytics_producer_runs")
     assert not inspect(db.engine).has_table("_feature_values")
+
+
+def test_typed_contract_upgrade_preserves_legacy_values_and_rebuilds_checkpoint(db, monkeypatch):
+    from mt5_extracao.analytics import indicator_registry, producer_jobs
+
+    db.save_ohlcv_data("TEST", "1 minuto", m1_days(days=1, minutes=20))
+    resampling.resample_symbol(db, "TEST", ["M5"], symbol_info=INFO)
+    # O algoritmo numérico é o mesmo; simula o registro sem metadados da base 1.2.1.
+    with monkeypatch.context() as legacy:
+        legacy.setattr(producers, "ALGORITHM_VERSION", "1.2.1")
+        legacy.setattr(indicator_registry, "producer_contract", lambda *a, **k: {})
+        producers.compute(db, "TEST", "M5", families=["calendar"])
+    old = feature_store.latest_values(db, symbol="TEST", timeframe="M5")
+    with db.engine.connect() as conn:
+        original_hashes = conn.execute(text(
+            "SELECT feature_id, observation_time, value_hash, revision FROM _feature_values "
+            "ORDER BY feature_id, observation_time")).all()
+    definitions = feature_store.list_definitions(db)
+    old_checkpoint = producer_jobs.get_checkpoint(db, "TEST", "M5", "calendar")
+    assert old_checkpoint["algorithm_version"] == "1.2.1"
+    assert all(item["value_type"] is None for item in definitions)
+    upgraded = producers.compute(db, "TEST", "M5", families=["calendar"])
+    assert not upgraded[0].get("skipped", False)
+    assert upgraded[0]["job"]["status"] == "COMPLETE"
+    current_checkpoint = producer_jobs.get_checkpoint(db, "TEST", "M5", "calendar")
+    assert current_checkpoint["algorithm_version"] == producers.ALGORITHM_VERSION
+    assert current_checkpoint["config_hash"] != old_checkpoint["config_hash"]
+    assert {item["algorithm_version"] for item in definitions} <= {
+        item["algorithm_version"] for item in feature_store.list_definitions(db)}
+    legacy_rows = feature_store.latest_values(db, symbol="TEST", timeframe="M5")
+    legacy_rows = legacy_rows[legacy_rows.algorithm_version.str.startswith("1.2.1+")]
+    pd.testing.assert_frame_equal(old.reset_index(drop=True), legacy_rows.reset_index(drop=True))
+    new = feature_store.latest_values(db, symbol="TEST", timeframe="M5")
+    new = new[new.algorithm_version.str.startswith(producers.ALGORITHM_VERSION + "+")]
+    keys = ["feature_id", "observation_time"]
+    compare = ["numeric_value", "categorical_value", "revision", "metadata_json"]
+    pd.testing.assert_frame_equal(old.set_index(keys)[compare].sort_index(), new.set_index(keys)[compare].sort_index())
+    with db.engine.connect() as conn:
+        for version_prefix in ("1.2.1+%", producers.ALGORITHM_VERSION + "+%"):
+            hashes = conn.execute(text(
+                "SELECT feature_id, observation_time, value_hash, revision FROM _feature_values "
+                "WHERE algorithm_version LIKE :version ORDER BY feature_id, observation_time"),
+                {"version": version_prefix}).all()
+            assert hashes == original_hashes
+    assert producers.compute(db, "TEST", "M5", families=["calendar"])[0]["skipped"]

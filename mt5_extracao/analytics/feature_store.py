@@ -24,9 +24,30 @@ CREATE TABLE IF NOT EXISTS {DEFINITIONS_TABLE} (
     parameters_json TEXT NOT NULL,
     dependencies_json TEXT NOT NULL,
     registered_at_utc TEXT NOT NULL,
+    family TEXT,
+    formula TEXT,
+    unit TEXT,
+    warmup_count INTEGER,
+    warmup_unit TEXT,
+    source_id TEXT,
+    timeframe TEXT,
+    availability_rule TEXT,
+    value_type TEXT,
     PRIMARY KEY (feature_id, algorithm_version)
 )
 """
+
+_DEFINITION_METADATA_COLUMNS = {
+    "family": "TEXT",
+    "formula": "TEXT",
+    "unit": "TEXT",
+    "warmup_count": "INTEGER",
+    "warmup_unit": "TEXT",
+    "source_id": "TEXT",
+    "timeframe": "TEXT",
+    "availability_rule": "TEXT",
+    "value_type": "TEXT",
+}
 
 _CREATE_VALUES = f"""
 CREATE TABLE IF NOT EXISTS {VALUES_TABLE} (
@@ -97,17 +118,23 @@ def _utc_text(value, label):
 
 
 def ensure_schema(db):
-    """Cria somente as tabelas internas novas; não altera tabelas históricas."""
+    """Cria as tabelas internas e migra metadados de definição somente por adição."""
     _require_db(db)
     with _SCHEMA_LOCK, db.engine.begin() as conn:
         conn.execute(text(_CREATE_DEFINITIONS))
+        columns = {column["name"] for column in inspect(conn).get_columns(DEFINITIONS_TABLE)}
+        for name, sql_type in _DEFINITION_METADATA_COLUMNS.items():
+            if name not in columns:
+                conn.execute(text(f"ALTER TABLE {DEFINITIONS_TABLE} ADD COLUMN {name} {sql_type}"))
         conn.execute(text(_CREATE_VALUES))
         conn.execute(text(_CREATE_ASOF_INDEX))
         conn.execute(text(_CREATE_KEY_INDEX))
         conn.execute(text(_CREATE_SOURCE_INDEX))
 
 
-def register_definition(db, feature_id, name, algorithm_version, parameters, dependencies):
+def register_definition(db, feature_id, name, algorithm_version, parameters, dependencies, *, family=None,
+                        formula=None, unit=None, warmup_count=None, warmup_unit=None, source_id=None, timeframe=None,
+                        availability_rule=None, value_type=None):
     """Registra uma definição imutável; para mudar algoritmo ou parâmetros, crie outra versão."""
     _require_db(db)
     if feature_id is None or name is None or algorithm_version is None:
@@ -119,24 +146,48 @@ def register_definition(db, feature_id, name, algorithm_version, parameters, dep
         raise ValueError("feature_id, name e algorithm_version são obrigatórios.")
     parameters_json = _canonical_json(parameters, "parameters")
     dependencies_json = _canonical_json(dependencies, "dependencies")
+    metadata = {"family": family, "formula": formula, "unit": unit, "warmup_count": warmup_count,
+                "warmup_unit": warmup_unit, "source_id": source_id, "timeframe": timeframe,
+                "availability_rule": availability_rule, "value_type": value_type}
+    for name in ("family", "formula", "unit", "warmup_unit", "source_id", "timeframe", "availability_rule",
+                 "value_type"):
+        value = metadata[name]
+        if value is not None:
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} precisa ser texto não vazio quando informado.")
+            metadata[name] = value.strip()
+    if warmup_count is not None:
+        if isinstance(warmup_count, bool) or not isinstance(warmup_count, int) or warmup_count < 0:
+            raise ValueError("warmup_count precisa ser um inteiro maior ou igual a zero.")
+        if metadata["warmup_unit"] is None:
+            raise ValueError("warmup_unit é obrigatório quando warmup_count é informado.")
+    elif warmup_unit is not None:
+        raise ValueError("warmup_count é obrigatório quando warmup_unit é informado.")
+    if value_type is not None and metadata["value_type"] not in {"NUMBER", "CATEGORY", "BOOLEAN"}:
+        raise ValueError("value_type precisa ser NUMBER, CATEGORY ou BOOLEAN.")
     registered_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
     ensure_schema(db)
     with db.engine.begin() as conn:
         existing = conn.execute(text(
-            f"SELECT name, parameters_json, dependencies_json FROM {DEFINITIONS_TABLE} "
+            f"SELECT name, parameters_json, dependencies_json, family, formula, unit, warmup_count, warmup_unit, source_id, "
+            f"timeframe, availability_rule, value_type FROM {DEFINITIONS_TABLE} "
             "WHERE feature_id = :feature_id AND algorithm_version = :version"),
             {"feature_id": feature_id, "version": algorithm_version}).mappings().first()
         if existing:
-            if (existing["name"], existing["parameters_json"], existing["dependencies_json"]) == (
-                    name, parameters_json, dependencies_json):
+            existing_metadata = {key: existing[key] for key in metadata}
+            if (existing["name"], existing["parameters_json"], existing["dependencies_json"], existing_metadata) == (
+                    name, parameters_json, dependencies_json, metadata):
                 return False
-            raise ValueError("A definição já existe com este algoritmo; use uma nova algorithm_version.")
+            raise ValueError("A definição já existe com este algoritmo; use uma nova versão do algoritmo.")
         conn.execute(text(
             f"INSERT INTO {DEFINITIONS_TABLE} "
-            "(feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc) "
-            "VALUES (:feature_id, :version, :name, :parameters, :dependencies, :registered_at)"),
+            "(feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc, family, "
+            "formula, unit, warmup_count, warmup_unit, source_id, timeframe, availability_rule, value_type) "
+            "VALUES (:feature_id, :version, :name, :parameters, :dependencies, :registered_at, :family, :formula, "
+            ":unit, :warmup_count, :warmup_unit, :source_id, :timeframe, :availability_rule, :value_type)"),
             {"feature_id": feature_id, "version": algorithm_version, "name": name,
-             "parameters": parameters_json, "dependencies": dependencies_json, "registered_at": registered_at})
+             "parameters": parameters_json, "dependencies": dependencies_json, "registered_at": registered_at,
+             **metadata})
     return True
 
 
@@ -144,9 +195,13 @@ def list_definitions(db):
     """Devolve todas as versões registradas, com JSON já decodificado."""
     if not _usable(db) or not inspect(db.engine).has_table(DEFINITIONS_TABLE):
         return []
+    columns = {column["name"] for column in inspect(db.engine).get_columns(DEFINITIONS_TABLE)}
+    metadata_columns = ", ".join(name if name in columns else f"NULL AS {name}"
+                                  for name in _DEFINITION_METADATA_COLUMNS)
     with db.engine.connect() as conn:
         rows = conn.execute(text(
-            f"SELECT feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc "
+            f"SELECT feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc, "
+            f"{metadata_columns} "
             f"FROM {DEFINITIONS_TABLE} ORDER BY registered_at_utc, feature_id, algorithm_version")).mappings()
         result = []
         for row in rows:
@@ -177,6 +232,25 @@ def _normalize_value(value):
     raise ValueError("O valor categórico precisa ser texto não vazio.")
 
 
+def _validate_declared_value_type(value, value_type, *, quality="VALID"):
+    """Confere o valor contra o tipo declarado; definições legadas sem tipo seguem aceitas."""
+    if value_type is None or (value is None and quality == "INVALIDATED"):
+        return
+    if hasattr(value, "item"):
+        try:
+            value = value.item()
+        except (ValueError, AttributeError):
+            pass
+    valid = {
+        "NUMBER": (not isinstance(value, bool) and isinstance(value, (int, float))
+                   and math.isfinite(float(value))),
+        "CATEGORY": isinstance(value, str) and bool(value.strip()),
+        "BOOLEAN": isinstance(value, bool),
+    }.get(value_type, False)
+    if not valid:
+        raise ValueError(f"O valor informado não corresponde ao value_type {value_type} da definição.")
+
+
 def save_value(db, symbol, timeframe, feature_id, algorithm_version, observation_time, value, *,
                available_at=None, observed_at=None, valid_until=None, source_revision="0", quality="VALID",
                metadata=None):
@@ -197,10 +271,11 @@ def save_value(db, symbol, timeframe, feature_id, algorithm_version, observation
     key = {name: row[name] for name in ("symbol", "tf", "observation_time", "feature_id", "algorithm_version")}
     with db.engine.begin() as conn:
         definition = conn.execute(text(
-            f"SELECT 1 FROM {DEFINITIONS_TABLE} WHERE feature_id = :feature_id AND algorithm_version = :version"),
+            f"SELECT value_type FROM {DEFINITIONS_TABLE} WHERE feature_id = :feature_id AND algorithm_version = :version"),
             {"feature_id": feature_id, "version": algorithm_version}).first()
         if not definition:
             raise ValueError(f"Característica não registrada: {feature_id}@{algorithm_version}.")
+        _validate_declared_value_type(value, definition[0], quality=row["quality"])
         current = conn.execute(text(
             f"SELECT revision, value_hash, available_at_utc FROM {VALUES_TABLE} WHERE symbol = :symbol AND tf = :tf "
             "AND observation_time = :observation_time AND feature_id = :feature_id "
@@ -418,10 +493,12 @@ def save_values(db, records, *, transaction_hook=None):
     """
     _require_db(db)
     rows = []
+    typed_values = []
     for item in records:
         item = dict(item)
         args = [item.pop(name) for name in ("symbol", "timeframe", "feature_id", "algorithm_version",
                                              "observation_time", "value")]
+        typed_values.append((args[2], args[3], args[5]))
         rows.append(_value_record(*args, **item))
     counts = {"inserted": 0, "revised": 0, "unchanged": 0}
     if not rows and transaction_hook is None:
@@ -429,11 +506,17 @@ def save_values(db, records, *, transaction_hook=None):
     ensure_schema(db)
     with db.engine.begin() as conn:
         pairs = {(row["feature_id"], row["algorithm_version"]) for row in rows}
+        definitions = {}
         for feature_id, version in pairs:
-            if not conn.execute(text(
-                    f"SELECT 1 FROM {DEFINITIONS_TABLE} WHERE feature_id = :feature_id AND algorithm_version = :version"),
-                    {"feature_id": feature_id, "version": version}).first():
+            definition = conn.execute(text(
+                f"SELECT value_type FROM {DEFINITIONS_TABLE} WHERE feature_id = :feature_id "
+                "AND algorithm_version = :version"),
+                {"feature_id": feature_id, "version": version}).first()
+            if not definition:
                 raise ValueError(f"Característica não registrada: {feature_id}@{version}.")
+            definitions[(feature_id, version)] = definition[0]
+        for (feature_id, version, value), row in zip(typed_values, rows):
+            _validate_declared_value_type(value, definitions[(feature_id, version)], quality=row["quality"])
         current = {}
         requested_times = {}
         for row in rows:

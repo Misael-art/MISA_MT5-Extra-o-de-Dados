@@ -86,3 +86,12 @@ modo sombra → pilotos autorizados → monitoramento.
    concordam com o estado; RVOL: número de sessões na mediana. Nenhuma é probabilidade. Confirmar ou trocar.
 2. **T13.7a (modo sombra) como tarefa nova** entre T13.5 e T13.7: confirmar a inclusão no plano.
 3. **Pilotos (T13.7):** qualquer piloto em conta demo exige autorização específica; conta real não está autorizada.
+
+## Integração T18.1 em 2026-10-19
+
+Registro tipado, alvos forward e DTO v1 adotados do commit canônico 80fd887 por cherry-pick revisado.
+Migração somente aditiva; contratos antigos preservados; novos produtores com versão 1.3 e escopo
+concreto por timeframe/configuração de T13.3b. Testes atuais cobrem tipagem, tombstones e transição de checkpoint;
+aceite Linux1501/26/3, saída0, seis checks CI aprovados no ecfe057.
+Resultados históricos875/10 não substituem a composição atual.
+Associações, serviço e UI real permanecem tarefas posteriores.
