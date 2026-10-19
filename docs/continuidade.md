@@ -1061,3 +1061,18 @@ Windows físico/MT5 e decisão da confiança continuam pendentes; sem ordens,
 sem alterações em H/S e sem certificar publicação/leitor ou a cadeia completa.
 Próxima: T13.3b, runtime 03570b0/docs 4ede7fa; preservar identidade por TF,
 algoritmo-base 1.2, UTC explícito e helper de schemas PG isolados.
+
+
+## T13.3b — fechamento da implementação (2026-10-18; PR116)
+
+Runtime 40fbef5: produtores incrementais/retomáveis com identidade contextual,
+limites e algoritmo 1.2.1 de janela finita estável. Uma única suíte final: 1461
+aprovados, 18 pulos, 3 avisos em 2154,08 s, saída 0, cobertura 77,44%, fontes
+intactos. Focados 99, PostgreSQL 22, limites/retomada 7 e doctor 16/2/0 aprovados.
+Benchmark compute: 25398 registros exatamente iguais, inclusive hashes;
+12187/1521 ms, sem aquisição/resampling e sem ganho demonstrado de RSS.
+A tentativa extra EURUSD/AGG permanece inconclusiva, com artefatos preservados.
+Cinco checks aprovados; Windows CI ainda em curso. PR116 rascunho, sem merge
+e sem aplicação ao workspace principal. Próxima prioridade do proprietário:
+EXTR-01, conforme propostas/PROMPT_RETOMADA_EXTRATOR.md; não repetir a
+investigação numérica corrigida. Windows físico permanece pendente.
