@@ -1,5 +1,10 @@
 # Roadmap: construtor de bases MT5 completo (Windows + Linux)
 
+**Fechamento em 2026-10-19:** cadeia #108–#117 integrada em master; EXTR-01
+concluída no Linux/Wine com DEMO CLI/UI, recuperação e Cancelar conferidos em
+master. [Evidência e limites](extrator/EXTR-01_VALIDACAO_NATIVA.md). Persistência
+da ponte em segundo plano e Windows físico continuam pendências delimitadas.
+
 Visão: com um duplo clique (Windows) ou `./install.sh` (Linux), o usuário instala
 tudo e constrói e mantém bases históricas confiáveis (OHLCV, indicadores, ticks)
 do MetaTrader 5, pela interface gráfica ou por linha de comando agendada.
