@@ -1,5 +1,39 @@
 # EXTR-02 — Ponte em segundo plano
 
+## Aceite final Linux e aplicação no workspace
+
+Código43a4035: suíte completa1482 aprovados,18 ignorados,3 avisos em1948,46s,
+saída0, cobertura77,64%;281 fontes/testes inalterados durante a execução.
+Timeout60s e mínimo de cobertura60% preservados. ShellCheck integral passou.
+Doctor na candidata e no workspace:21OK,1aviso pandas-ta opcional,0falhas.
+A primeira verificação da worktree detectou apenas a pasta database/ ausente;
+ensure_work_dirs existente preparou o destino e o doctor seguinte passou.
+Nenhum fonte foi alterado por esse ajuste do ambiente.
+
+Depois do aceite Linux, git apply --check confirmou que o patch dos dois arquivos
+próprios (entrada shell e módulo bootstrap.bridge) não conflita no Root. Aplicado
+apenas esse patch Git, sem copiar árvores, trocar a branch, alterar HEAD/índice ou
+substituir trabalho local. A suíte é da worktree de master, não uma afirmação de
+igualdade da árvore inteira do Root; os dois arquivos aplicados são byte a byte
+iguais ao código avaliado. Arquivos de configuração/credenciais conservaram hashes.
+
+Antes da troca, a ponte antiga foi confirmada DEMO/conectada e identificada por
+PID/nascimento/comando, conforme o registro da sessão própria anterior. Somente
+esse processo foreground foi encerrado via pidfd; um terminal conservou sua
+identidade. O novo start na porta habitual127.0.0.1:18812 retornou; execução
+posterior confirmou status ativo e start repetido com o mesmo PID. Conta
+MetaQuotes-Demo/trade_mode0 comprovada antes/depois, conectada, negociação
+automática desabilitada. A aplicação consultou11barras EURUSD/M1 no intervalo
+histórico de10minutos. Zero ordens/replay, nenhuma escrita na base principal.
+A ponte própria de teste18813 foi parada pelo gerenciador; a principal permaneceu
+em segundo plano. Não há dependência de uma célula foreground para servi-la.
+PID/identidades ficam apenas nos artefatos privados.
+
+Os seis checks do CI passaram no código43a4035: Ubuntu, Windows, PostgreSQL, lint e instaladores Linux/Windows sem MT5.
+O fechamento documental não muda fontes/testes/scripts; evidências do mesmo runtime são reaproveitadas.
+Windows físico permanece pendência específica.
+
+
 Recorte solicitado pelo proprietário após EXTR-01. Uma tarefa por PR.
 
 O start anterior abria a porta, mas a ponte não permanecia após a célula iniciadora.
@@ -37,8 +71,7 @@ aprovados em7,55s. Após corrigir a seleção do checkout no lançador, os14 cas
 do gerenciador passaram em3,70s. Provedores/executáveis Wine falsos, incluindo
 saída do iniciador, início repetido/concorrente, porta alheia, PID legado/reutilizado,
 falha de startup/log e erro acionável, estado parado e simulação Windows nativo.
-ShellCheck integral dos scripts passou. A suíte global final é necessária porque
-houve alteração de runtime e está registrada nos artefatos próprios.
+ShellCheck integral dos scripts passou. A suíte global final1482/18/3 foi executada porque houve alteração de runtime; resultado e fontes congelados estão registrados nos artefatos próprios.
 
 ## Prova Linux/Wine real
 
@@ -54,7 +87,7 @@ foi preservado e corrigido somente para argumentos nomeados start_dt/end_dt.
 Status0, start repetido0, stop0, status3, stop repetido0, start0, status0,
 start repetido0. O processo posterior ao stop tem novo PID; repetições do mesmo
 start conservam identidade. Um terminal preexistente conservou PID/nascimento.
-A prova final continua acessível após o roteiro terminar. Logs/identidades/bases
+A ponte principal18812 continua acessível após os iniciadores terminarem; a ponte privada18813 foi encerrada pelo próprio gerenciador após a migração. Logs/identidades/bases
 locais em logs/extr-02-ponte-background/, nunca versionados.
 
 ## Limites e continuidade
