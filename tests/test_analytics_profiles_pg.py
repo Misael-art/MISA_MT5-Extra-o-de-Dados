@@ -299,3 +299,9 @@ def test_causal_pivots_confirmation_boundary(pg):
 def test_causal_pivots_source_correction_preserves_old_decisions(pg, tmp_path):
     from tests.test_causal_pivots import test_source_correction_preserves_old_decisions_and_exports_revision
     test_source_correction_preserves_old_decisions_and_exports_revision(pg, tmp_path)
+
+
+
+def test_source_sequence_schema_inspection_stays_in_snapshot_transaction(pg):
+    from tests.test_indicator_consistency import test_source_sequence_uses_the_supplied_transaction_for_schema_inspection
+    test_source_sequence_uses_the_supplied_transaction_for_schema_inspection(pg)

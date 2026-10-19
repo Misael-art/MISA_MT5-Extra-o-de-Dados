@@ -2,6 +2,10 @@
 
 Origem e confirmação separadas; candidatos não são sinais. [Contrato, versão e limites](analytics/T19.6_PIVOS_CAUSAIS.md). Base e verificações anteriores reaproveitadas; nova fonte em verificação. Trabalho local e ponte preservados.
 
+# T19.3: conexão do snapshot — 2026-10-19
+
+Correção necessária para T19.6: inspeção de schema usa a transação recebida. [Causa e evidências](analytics/T19.3_CONEXAO_SNAPSHOT.md). Uma tarefa por PR; verificação da nova fonte em andamento.
+
 ## Fechamento final T19.5 — PR128, 2026-10-19
 
 Seis checks existentes aprovados no11b6c53:1438 Ubuntu/175 skips,43PG,1540Windows CI/73 skips/
