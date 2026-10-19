@@ -1,3 +1,15 @@
+## Publicação final corrigida T19.5 — 2026-10-19
+
+Base129 integrada emd0b9c5e; composição7cfdc81 preserva código do serviço de master e
+as correções AO/AC de672b45b.88 focados em58,85s, doctor21/1/0. Prova CLI atual com
+assinatura04f94b5b:120M5/8features/960fatos, reabrir SKIPPED, cálculo/store/CSV exatos e
+referência racional conciliada. CSVs inicial/final têm mesmos valores/estados para esta fonte
+normal; metadados de versão mudam por contrato. Nada foi apagado nem medição repetida.
+Esta publicação altera runtime desdecee301c: novo CI pertinente, uma execução sobre o código
+final, incluindo os wrappers PG preservados no conflito. Depois, somente fechar docs [skip ci]
+com fonte293 idêntica; revisar threads/head/base antes de integrar128. Windows físico pendente.
+Sem estratégia/presets ou Relações real; sem ordens, reextração ou benchmark.
+
 ## Composição final de T19.5 com129 — 2026-10-19
 
 PR129 integrada emd0b9c5e após seis checks/revisão; incorporada na128 por Git. Preservados

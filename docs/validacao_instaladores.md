@@ -267,3 +267,6 @@ SQLite e PostgreSQL exercitaram geração/retomada e retries em lote; Windows f�
 Linux:78 casos focados distintos compatíveis e doctor21OK/1opcional/0falhas.32 definições
 no registry, interface de exportação preservada; quatro testes atuais da ação da UI aprovados.
 CI Windows desta ficha ainda pendente; resultados locais não são prova de Windows físico.
+
+Composição corrigida de T19.5 após129:88 focados/doctor21/1/0; nova prova CLI/store/CSV
+120M5/960fatos com assinatura04f94b5b. CI final deste runtime pendente; físico não encerrado.
