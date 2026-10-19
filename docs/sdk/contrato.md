@@ -103,3 +103,10 @@ inputs, presets, exportações e donos B/F19 no snapshot inspecionado. Composiç
 e capacidades novas exigem artefato lateral versionado ou migração formal por
 B-11; não são campos adicionais aceitos por este contrato 1. O inventário é
 documental, sem mudança do schema/validador nem aprovação operacional.
+
+## Política B-11 e formatos laterais
+
+A [política de versionamento](versionamento-contratos.md) preserva este contrato1
+e define a separação de versões de composição/capacidades. Leitores desconhecidos
+recusam o formato; não há migração automática nem campo capabilities neste JSON.
+T19.2 entrega os leitores laterais em tarefa própria.

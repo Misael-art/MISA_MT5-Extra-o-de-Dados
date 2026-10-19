@@ -1,3 +1,13 @@
+# Prioridade do proprietário: primeiro ciclo Manual — 2026-10-19
+
+Master4f7a046 confirmado. T19.7 continua no backlog; percurso M19-B/T20.30 priorizado.
+B-11 em revisão vinculada M/H: SDK1 preservado, sidecars separados, distribuição
+nativa futura delimitada. [Política](sdk/versionamento-contratos.md). Próxima tarefa
+funcional:T19.2, composição/capacidades tipadas e adaptador base. Baseline6a9d580
+compatível com master294 fontes/testes; ambiente válido reutilizado. Sem alteração
+de runtime, nova campanha, instalação ou ensaio nativo nesta política. Windows físico
+permanece pendente; Relações sintética e gradientes do Laboratório simulados.
+
 # T19.6 — aceite temporal concluído — 2026-10-19
 
 PR130 integrada antes, merge c27ef93; PR131 com base master, seis checks6a9d580 aprovados:
