@@ -41,7 +41,7 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F14** Plataforma modular | Backlog integrado do HADOUKEN e do mt5x: framework modular de estratégias, mecanismos de execução, gestão de posições e de carteira, painel, estatísticas, pesquisa e validação, IA. Índice em [propostas/README.md](propostas/README.md) | T14.0 (registro); as tarefas têm identificador próprio (`A-01` a `J-09`) | F12, F13 | T14.0 ✅ (backlog registrado). **Nada implementado**: cada tarefa entra no plano quando for a próxima |
 | **F17** Modernização visual do mt5x | Sistema visual e tipográfico, componentes reutilizáveis, Laboratório e gráficos, aplicação progressiva às abas e validação visual | T17.1–T17.5 | F7, F8, F15, F16 | T17.1–T17.5 ✅ Linux; validação Windows pendente |
 | **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0 documental; T18.8 com apresentação local sintética; Analytics e integração pendentes |
-| **F19** Pilares e presets | Dados de mercado/operações; entrada/orientação, lotes/parciais, ganho, stop e filtros; Default primeiro, Manual nomeado/Defensivo/Maximalista(PF)/Ultra; setups HADOUKEN e UI coerente | T19.0–T19.57 | F13/F16/F18 conforme capacidade; contratos B e Safety para consumo MQL5; F17 para UI | T19.0 documental com adendos; implementação planejada. Gestão da conta em etapa posterior, sem adiar suas travas de segurança |
+| **F19** Pilares e presets | Dados de mercado/operações; entrada/orientação, lotes/parciais, ganho, stop e filtros; Default primeiro, Manual nomeado/Defensivo/Maximalista(PF)/Ultra; setups HADOUKEN e UI coerente | T19.0–T19.57 | F13/F16/F18 conforme capacidade; contratos B e Safety para consumo MQL5; F17 para UI | T19.0 documental com adendos; T19.1 em revisão local ([inventário](propostas/INVENTARIO_F19.md)); runtime planejado. Gestão da conta posterior, sem adiar travas |
 | **F20** Robustez transversal | Cálculos certificados, dados/experimentos reproduzíveis, fidelidade econômica/eventos, evidências/presets, observação/recuperação, UI investigativa, recursos/SDK/restore e carteira posterior | T20.0–T20.30 | F19 e donos F1/F5/F12–18/B–J por capacidade; não espera todas as fases | T20.0 documental; 30 fichas planejadas, sem capacidade nova implementada |
 
 ## Fase 18 — Relações entre indicadores e aderência dos setups
@@ -123,7 +123,10 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 
 ## Fase 19 — Dados, operação, estratégias e presets
 
-Pedido do proprietário em 2026-10-17. **Entrega atual somente documental (T19.0).**
+Pedido do proprietário em 2026-10-17. **T19.0 documental; T19.1 com
+[inventário reconciliado](propostas/INVENTARIO_F19.md) em revisão local, sem runtime novo.**
+A publicação depende da base documental preexistente. T20.1 estende o mesmo mapa
+após integração; store/registry localizados em branches não são dependências integradas.
 Integra as frentes já existentes, com dois ramos de dados (histórico extraído e operações de
 backtest/demo/real), blocos operacionais de entrada/orientação, lotes/parciais, ganho,
 stop e filtros, e módulos

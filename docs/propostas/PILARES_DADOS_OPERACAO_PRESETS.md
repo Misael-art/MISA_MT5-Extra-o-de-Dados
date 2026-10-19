@@ -48,6 +48,12 @@ não são indicadores de mercado calculáveis apenas com OHLCV sem uma operaçã
 
 ## 2. Estado conferido nesta base
 
+**Reconciliação T19.1 (2026-10-17):** [inventário com SHAs, donos e consumidores](INVENTARIO_F19.md),
+em revisão local. T13.2/T18.1 e produtores foram localizados em branches, sem integração
+no HEAD inspecionado; o exportador isolado T17.28 já amplia os dados de sessões,
+sem concluir o CSV permanente T16.2b-H nem o livro completo de eventos/ciclos.
+O snapshot abaixo é histórico; o inventário discrimina essas situações.
+
 Snapshot inicial: commit `489591c` (merge do PR #105). Leitura de código em 2026-10-17;
 existência de arquivo não equivale a validação operacional.
 

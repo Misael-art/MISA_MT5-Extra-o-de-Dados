@@ -1,5 +1,45 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T19.1 — inventário reconciliado para revisão local (2026-10-17)
+
+[Inventário único F19](propostas/INVENTARIO_F19.md): SHAs M/H/S, estado integrado
+versus branches, donos/consumidores, contratos, inputs/presets e cobertura
+I01–I18/TM01–TM08/S01–S11/AX01–AX09. Os estudos preservam seus hashes.
+T13.2/T18.1 e produtores existem em branches não integradas; não reimplementá-los.
+Contratos B/Composer ainda são propostos. T17.28 já fornece seletor Ativo / TF
+e exportador de sessão ampliado; não equivale ao exportador permanente T16.2b-H
+nem ao livro de todos os eventos/ciclos. Onze fontes Safety H/S são idênticas,
+versão S 1.5.0; instalação no terminal não foi conferida.
+
+Reprodução sintética confirmou parcial de 50% inviável com mínimo/passo 1
+ativando break-even sem redução. Dono T19.57; padrão semelhante lido no
+backtester e H, sem ensaio nativo ou correção neste recorte documental.
+Contrato 1 preservado; composição/capacidades via artefato lateral versionado,
+com schema final T19.2 e distribuição condicionada à política B-11.
+
+Instalador Linux --yes --no-mt5 e requirements-dev executados. Suíte inicial
+antes das edições: **1058 aprovados/9 ignorados existentes/3 avisos em 1045,42 s**,
+saída 0. Xvfb próprio, 640×480, aproximadamente 100 DPI, sem WM; temporários
+exclusivos em disco, 66 GiB disponíveis no início. Doctor inicial 16 OK/2 avisos/
+0 falhas (pandas-ta opcional ausente, ponte desligada). Suíte final: **1058
+aprovados/9 ignorados existentes/3 avisos em 1265,91 s**, saída 0. SDK docs:
+3 aprovados em 0,89 s; doctor final 16 OK/2 avisos/0 falhas. Conferidos 36
+links locais novos, cobertura integral do catálogo e dependências F19 inalteradas;
+57 fichas F19/30 F20 preservadas. git diff --check aprovado.
+
+Nenhum runtime/teste/schema/script/Expert/preset foi alterado. H/S e estudos
+somente lidos; sem prova visual/performance/MT5/replay/DEMO/Windows físico nesta
+ficha documental. ShellCheck não aplicável. Pendências Windows operacionais
+permanecem no checklist existente; nenhum comportamento novo por plataforma.
+
+Árvore inicial tinha 8 documentos modificados e 11 novos de T19.0/T20.0 e
+referências, preservados. Branch tarefa/T19.1-inventario-contratos; incremento
+próprio separado do diff preexistente em logs/t19-1. Sem commit/push/PR para
+não incorporar a base documental alheia: publicar/integrar essa base primeiro,
+depois aplicar o incremento em PR próprio T19.1. Após revisão/integração, próxima
+ficha independente: T20.1, estendendo este mapa para Q01–Q16; T19.2 aguarda
+contratos B e T19.3 aguarda store/registry integrados.
+
 > **T17.28 — comandos dos cards MT5 (2026-10-17):** seletores pesquisáveis de
 > ativo/timeframe e preset governam a evidência mostrada. PLAY tem revisão da
 > carteira/risco, duas confirmações e alerta negativo adicional. REAL mantém
@@ -874,3 +914,13 @@ runtime nem o inventário da tarefa seguinte. T19.0 permanece base documental
 e T19.1/T20.1 serão publicados por seus patches próprios. Aceite de código
 master489591c reaproveitado; conferência documental e ausência de alterações
 em fontes/testes/dependências/scripts, sem repetir suíte ou pesquisa numérica.
+
+
+### Publicação T19.1 — conciliação de contexto (2026-10-19)
+
+O patch preservado não aplicava diretamente ao painel/continuidade da nova base.
+Comparação em três vias com logs/t19-1/base preservou os textos existentes;
+a sobreposição da continuidade foi resolvida inserindo somente as linhas novas
+do patch, sem incorporar os registros preexistentes como autoria T19.1. Sem
+reinterpretação de inventário, contratos ou aceites. Divergência e conciliação
+registradas em logs/integracao-base-106-20261019/, sem tocar o trabalho original.

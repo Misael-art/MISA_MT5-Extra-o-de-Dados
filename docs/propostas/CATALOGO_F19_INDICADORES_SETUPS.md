@@ -6,6 +6,10 @@ Responsáveis, passos, dependências e testes: [plano F19](PLANO_F19_PILARES_PRE
 
 ## 1. Proveniência e cobertura
 
+A [reconciliação T19.1](INVENTARIO_F19.md) registra código integrado/branches,
+donos, consumidores e lacunas de todos os IDs abaixo. Entrega documental em
+revisão local; nenhum indicador/setup é promovido a implementado por esse mapa.
+
 Fontes fornecidas pelo proprietário no repositório HADOUKEN `projeto-indicadores-mt5`,
 pasta `ESTUDOS/`, lidas integralmente nesta sessão:
 
