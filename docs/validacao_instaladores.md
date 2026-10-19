@@ -230,3 +230,6 @@ Aceite Linux final T19.3:1392 Ubuntu +132 UI Xvfb +4 UI compatíveis reaproveita
 Correção Linux-only em Bridge.stop: simulação do caminho Windows nativo passou no teste
 existente; esse caminho não foi modificado. A prova física anterior permanece pendente,
 sem novo stop da ponte real ou sessão de terceiros.17 testes Linux e doctor21/1/0.
+
+CI da PR127/63e717f: seis checks aprovados;1497 testes Windows CI/64 skips/5avisos.
+Isso não encerra a conferência no Windows físico; bootstrap nativo permanece preservado.

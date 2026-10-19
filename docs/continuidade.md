@@ -1,3 +1,13 @@
+## Fechamento da correção EXTR-02 — PR127, 2026-10-19
+
+Aceite concluído no63e717f: seis checks existentes aprovados,1395 Ubuntu/34 PostgreSQL/1497
+Windows CI; cobertura77,64%/73,36%.17 focados e doctor21/1/0 reaproveitados. Revisão sem
+pendências; fechamento somente documental [skip ci], fontes/testes preservados.
+Integração por merge Git antes da PR126; registrar SHA real no diário após resposta do GitHub.
+A composição runtime70b2191 da PR126 passou34 casos Alligator+ponte/doctor21/1/0 e está no CI
+39284170300. Não repetir referência/custo/extração aprovados. Root/WIP/ponte preservados.
+Windows físico permanece pendência específica.
+
 ## Impedimento da PR126 — correção isolada EXTR-02
 
 Ubuntu da PR126:1408 aprovados/168 skips/1falha, cobertura77,64%. Falha no teste de stop/libc

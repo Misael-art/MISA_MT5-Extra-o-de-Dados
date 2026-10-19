@@ -34,3 +34,17 @@ aguardados antes da integração. A ponte real da Root é preservada em segundo 
 Artefatos privados: logs/extr-02-confirmacao-saida-20261019/{blocker.json,regression-before.log,
 focused-bridge.log,doctor-result.json}. O diário da PR126 registra a falha original Ubuntu;
 sua integração só prossegue após incorporar esta correção por Git, preservando trabalho local.
+
+## Aceite final dos checks existentes
+
+Os seis checks do run39278788779, commit63e717f, concluíram com sucesso, incluindo o Windows
+já existente. Ubuntu:1395 aprovados/166 skips em959,19s, cobertura77,64%; PostgreSQL:34
+aprovados em26,24s; Windows CI:1497 aprovados/64 skips/5avisos em2856,50s, cobertura73,36%.
+Lint e ambos os instaladores aprovados. Revisão sem pendências. O teste libc original e os
+três casos novos passaram; nenhuma asserção foi relaxada. O fechamento modifica só documentos,
+com fontes/testes idênticos ao commit aprovado e [skip ci], preservando os checks existentes.
+
+A PR126 já incorpora esta correção por merge Git; composição70b2191 validada com34 testes
+Alligator+ponte e doctor21/1/0. Seu novo CI é justificado pela mudança de runtime e pela falha
+Ubuntu anterior. Integração em master respeita127 antes de126; SHA real fica no diário da
+integração. A ponte própria permanece em segundo plano; Windows físico continua pendente.
