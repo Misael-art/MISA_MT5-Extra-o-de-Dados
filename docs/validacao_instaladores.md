@@ -254,3 +254,6 @@ Os291 arquivos de produção/testes correspondem ao código final; isso não sub
 
 135 casos locais distintos compatíveis e doctor21/1/0; novos casos SQLite e wrappers PG.
 CI Windows deste follow-up ainda pendente; não é prova de Windows físico. Ponte não reiniciada.
+
+CI final do follow-up T19.3/1039690: seis checks aprovados,1519 Windows CI/71 skips/5avisos.
+SQLite e PostgreSQL exercitaram geração/retomada e retries em lote; Windows físico segue pendente.

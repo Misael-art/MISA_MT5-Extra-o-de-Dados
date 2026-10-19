@@ -1,3 +1,13 @@
+## Fechamento do follow-up T19.3 — PR129, 2026-10-19
+
+Seis checks existentes aprovados no1039690:1417 Ubuntu/173 skips,41PG,1519Windows CI/71 skips/
+5avisos; cov77,64%/73,36%. Revisão sem pendências.292 fontes/testes idênticos preservados no
+fechamento documental [skip ci], sem outra campanha. Integração desta base antecede128;
+registrar SHA real após resposta do GitHub e incorporar master por Git.
+128 tem correções locais672b45b/83 focados; após compor, verificar casos/prova/assinatura final
+porque mudou runtime, preservando os aceites compatíveis. Nenhuma nova medição/campanha.
+Versão global conservadora/antiga explícita e dados preservados; Windows físico pendente.
+
 ## Follow-up T19.3 — consistência do snapshot, 2026-10-19
 
 Revisão da #128 confirmou em mastereab717d um job COMPLETE com fonte antiga1 após correção2.
