@@ -3655,3 +3655,10 @@ execução ao vivo. Pendências de rede/fill ao vivo permanecem delimitadas. Est
 - [ ] Nenhum segredo, caminho pessoal, `config.ini`, `.env` ou `.db` no commit.
 - [ ] Windows **e** Linux considerados (caminhos com `pathlib`/`os.path`, nada de `\\` fixo fora de strings do Windows).
 - [ ] Painel de status deste documento atualizado.
+
+### EXTR-02 — correção de confirmação de saída (2026-10-19)
+
+🟡 Follow-up isolado para o impedimento do Ubuntu da PR126: stop passa a aguardar identidade,
+não perda do token.17 testes de ciclo de vida aprovados e doctor21/1/0; sem mudar prazos,
+instalador, credenciais ou sessões. Ver docs/extrator/EXTR-02_CONFIRMACAO_SAIDA.md.
+CI Linux/revisão ainda pendentes; caminho Windows nativo inalterado, prova física pendente.
