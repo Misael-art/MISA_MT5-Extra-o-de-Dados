@@ -1,5 +1,39 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #110 — T20.6 (2026-10-19)
+
+Base master `1b2cd34` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos requisitos do registry, gates por capacidade, origem desconhecida explícita, integridade das provas por barra/minuto e distinção entre qualidade histórica e ticks reais no relatório nativo.
+Aceite reaproveitado: 1174 aprovados/9 pulos existentes/3 avisos, saída 0; 117 direcionados, PostgreSQL 7, doctor 16/2/0; seis checks aprovados no HEAD `79b9d30aa5cca35f69bc1aa47ce4be6713c174d2`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
+## T20.6 — qualidade por consumidor (2026-10-18)
+
+[Contrato e limites](analytics/T20.6_QUALIDADE_CAPACIDADES.md). Famílias e motivos
+por consumidor, sem substituição real/tick-volume ou inferência de fila. Hashes
+de respostas de barras/ticks/DOM conferem a origem declarada; contagem capturada
+não comprova toda a história. Captura3 congela qualidade/provas/revisões e aceita
+raw ticks/book apenas quando solicitados; leitura/exportação1/2 preservadas.
+Seleção temporal exige fechamento/recepção explícitos por ativo/timeframe.
+Relatório diferencia qualidade histórica genérica de percentual explicitamente
+rotulado de ticks reais; configuração sozinha não prova cobertura. Expert sem
+requisitos declarados permanece não qualificado como robô completo.
+Resultados e UI transportam decisão ou ausência legada. O registry T18.1 ainda
+está em branch; adaptador usa suas definições reais, sem outra implementação.
+Composição/fluxo esperam os consumidores canônicos T19.2/T18.1; store causal
+continua com T13.2. [PR #110](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/110):
+1174 aprovados, 9 pulos existentes e 3 avisos em 1062,21 s, saída 0; 117
+direcionados, checagem congelada 71, PostgreSQL 16 isolado 7 e doctor 16/2/0.
+Windows físico pendente; nenhuma mudança H/S ou feed. Próxima frente independente:
+T20.24 na fila existente. T20.7 aguarda T19.2/B-11; T20.12 deve estender o registro
+T13.4 ainda não integrado, sem outro store.
+
 ## Revisão/integração PR #109 — T20.5 (2026-10-19)
 
 Base master `2bd7a11` conciliada por merge Git na worktree da tarefa.

@@ -16,7 +16,7 @@ from sqlalchemy import inspect, text
 
 from mt5_extracao import timeframes
 
-VERSION = 2
+VERSION = 3
 BLOCK_ROWS = 512
 _LOCK = threading.RLock()
 _TABLES = ("_dataset_origin", "_dataset_blocks", "_dataset_manifests", "_dataset_references")
@@ -151,6 +151,24 @@ class Snapshot:
         return frame.copy(deep=True) if frame is not None else None
 
     @property
+    def quality(self):
+        from mt5_extracao.analytics import data_eligibility
+        recorded = self._manifest["derivation"].get("data_quality")
+        if self._manifest["schema_version"] >= 3 and recorded is not None:
+            return copy.deepcopy(recorded)
+        tf = timeframes.parse(self._manifest["timeframe"])
+        report = data_eligibility.assess(self.bars, bar_minutes=tf.minutes or 1440)
+        report["evidence_basis"] = "legacy_snapshot_no_acquisition_proof"
+        return report
+
+    def market_frame(self, family):
+        if family not in ("ticks", "book"):
+            raise ValueError("Família de mercado inválida.")
+        if family not in self._frames:
+            raise ValueError("Família não capturada nesta revisão; capture-a antes de consumir.")
+        return self._frames[family].copy(deep=True)
+
+    @property
     def spec_row(self):
         row = self._manifest["specification"]
         return {key: _restore(value) for key, value in row.items()} if row else None
@@ -208,8 +226,92 @@ class SnapshotView:
                 self.snapshot.bars.time.iloc[0], self.snapshot._manifest["time"]["broker_utc_offset_hours"]))["payload"]
         return dict(row, provenance=spec.provenance) if row else None
 
+    def load_market_frame(self, symbol, family, start_utc=None, end_utc=None):
+        if symbol != self.snapshot._manifest["symbol"]:
+            raise ValueError("Snapshot não contém esse ativo.")
+        frame = self.snapshot.market_frame(family)
+        if start_utc is not None:
+            frame = frame[frame.event_time_utc >= pd.Timestamp(start_utc)]
+        if end_utc is not None:
+            frame = frame[frame.event_time_utc < pd.Timestamp(end_utc)]
+        return frame.reset_index(drop=True)
 
-def capture(db, symbol, timeframe, start=None, end=None, *, source=None):
+
+_EVIDENCE_COLUMNS = ["table_name", "block_start", "block_end", "rows", "status", "quality_json"]
+_QUALITY_KEYS = {"quality_version", "family", "origin", "origin_basis", "reported_fields", "minute_proofs",
+                 "received_at", "complete_market_coverage", "clock_basis", "symbol", "bar_proofs", "duplicate_bar_times", "timeframe"}
+_DERIVED_FIELDS = ["symbol", "tf", "session_id", "bar_start_utc", "bar_start_broker", "bar_end_utc", "open", "high",
+                   "low", "close", "tick_volume", "real_volume", "real_volume_known", "quality_status",
+                   "coverage_ratio", "revision", "input_hash", "computed_at_utc"]
+
+
+def _derived_evidence(symbol, tf, conn):
+    if not inspect(conn).has_table("_bars_derived"):
+        return pd.DataFrame(columns=_DERIVED_FIELDS)
+    return pd.read_sql(text("SELECT " + ",".join(_DERIVED_FIELDS) + " FROM _bars_derived "
+                             "WHERE symbol=:symbol AND tf=:tf ORDER BY bar_start_utc,session_id,revision"), conn,
+                       params={"symbol": symbol, "tf": "1D" if tf.name == "D1" else tf.name})
+
+
+def _evidence_items(frame):
+    items = []
+    for raw in frame.quality_json.dropna():
+        item = json.loads(raw)
+        if item.get("quality_version") == 1 and item.get("family") in ("ticks", "book", "bars"):
+            if set(item) - _QUALITY_KEYS:
+                raise ValueError("Metadados de coleta desconhecidos; confira o contrato de evidência.")
+            items.append(item)
+    return items
+
+
+def _acquisition_evidence(db, symbol, families, conn, first_utc, end_utc, bars):
+    frame = pd.DataFrame(columns=_EVIDENCE_COLUMNS)
+    if not families or not inspect(conn).has_table("_extraction_log"):
+        return frame
+    tables = [db.find_table_for_symbol(symbol, family, connection=conn) for family in families]
+    tables = [table for table in tables if table is not None]
+    if not tables:
+        return frame
+    marks = ",".join(f":t{i}" for i in range(len(tables)))
+    frame = pd.read_sql(text(f"SELECT {','.join(_EVIDENCE_COLUMNS)} FROM _extraction_log "
+                             f"WHERE table_name IN ({marks}) ORDER BY table_name,block_start,block_end"),
+                        conn, params={f"t{i}": table for i, table in enumerate(tables)})
+    first_minute = int(first_utc.value // 60_000_000_000)
+    last_minute = int((end_utc.value - 1) // 60_000_000_000)
+    times = {pd.Timestamp(value).isoformat() for value in bars.time}
+    tf = timeframes.parse(families[0])
+    for index, value in frame.quality_json.items():
+        # Nunca exportar configuração/metadados livres de um importador externo.
+        try:
+            source = json.loads(value) if value else {}
+            clean = {"quality_version": source.get("quality_version") if source.get("quality_version") == 1 else None,
+                     "family": source.get("family") if source.get("family") in ("ticks", "book", "bars") else None,
+                     "origin": source.get("origin") if source.get("origin") in ("observed", "generated") else "unknown",
+                     "origin_basis": "provider_declaration_api_response_not_independent_venue_validation",
+                     "symbol": symbol if source.get("symbol") == symbol else None,
+                     "timeframe": tf.name if tf is not None and source.get("timeframe") == tf.name else None,
+                     "complete_market_coverage": None}
+            clean["minute_proofs"] = [dict(minute=proof["minute"], rows=proof["rows"], sha256=proof["sha256"])
+                                      for proof in source.get("minute_proofs", ())
+                                      if type(proof.get("minute")) is int and type(proof.get("rows")) is int and proof["rows"] >= 0
+                                      and re.fullmatch(r"[a-f0-9]{64}", str(proof.get("sha256", "")))
+                                      and first_minute <= proof["minute"] <= last_minute]
+            clean["reported_fields"] = [field for field in source.get("reported_fields", ())
+                                        if field in {"time", "open", "high", "low", "close", "spread", "real_volume", "tick_volume", *db.TICK_FIELDS, *db.BOOK_FIELDS}]
+            clean["bar_proofs"] = [dict(time=proof["time"], sha256=proof["sha256"]) for proof in source.get("bar_proofs", ())
+                                   if proof.get("time") in times and re.fullmatch(r"[a-f0-9]{64}", str(proof.get("sha256", "")))]
+            clean["duplicate_bar_times"] = [value for value in source.get("duplicate_bar_times", ()) if value in times]
+            received = pd.Timestamp(source.get("received_at")) if source.get("received_at") else pd.NaT
+            clean["received_at"] = received.tz_convert("UTC").isoformat() if pd.notna(received) and received.tzinfo else None
+            if source.get("clock_basis") == "collector_request_utc_not_venue_event_time":
+                clean["clock_basis"] = source["clock_basis"]
+            frame.at[index, "quality_json"] = _json(clean)
+        except (ValueError, TypeError, KeyError, AttributeError):
+            frame.at[index, "quality_json"] = None
+    return frame
+
+
+def capture(db, symbol, timeframe, start=None, end=None, *, source=None, families=()):
     """Captura dados consistentes e grava blocos deduplicados após encerrar a leitura."""
     tf = timeframes.parse(timeframe)
     if tf is None:
@@ -217,13 +319,24 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None):
     if db is None or getattr(db, "engine", None) is None:
         raise ValueError("Banco indisponível; confira a conexão antes de capturar os dados.")
     _source(source, "validation")  # Rejeitar configuração pessoal antes de qualquer escrita.
+    if isinstance(families, str) or set(families) - {"ticks", "book"}:
+        raise ValueError("Famílias adicionais aceitas: ticks e book; informe uma lista explícita.")
     origin = _schema(db)
     from mt5_extracao.trade_analytics import calendar
     from mt5_extracao.analytics import instruments
+    from mt5_extracao.analytics import data_eligibility
     with db.consistent_read() as conn:
         bars = db.load_ohlcv(symbol, tf.label, start, end, connection=conn)
         if bars.empty:
             raise ValueError(f"Sem barras de {symbol} {tf.name}; extraia o período antes de capturar os dados.")
+        first_utc = instruments.broker_utc(bars.time.iloc[0], db.broker_utc_offset)
+        last = pd.Timestamp(bars.time.iloc[-1])
+        close = last + (pd.offsets.MonthBegin(1) if tf.name == "MN1" else pd.Timedelta(minutes=tf.minutes or 1440))
+        end_utc = instruments.broker_utc(close, db.broker_utc_offset)
+        market = {family: db.load_market_frame(symbol, family, first_utc, end_utc, connection=conn)
+                  for family in sorted(set(families))}
+        acquisition_evidence = _acquisition_evidence(db, symbol, (tf.label, *families), conn, first_utc, end_utc, bars)
+        derived = _derived_evidence(symbol, tf, conn)
         spec = db.get_symbol_spec(symbol, connection=conn)
         instrument_history = instruments.history(db, symbol, connection=conn)
         instruments.validate_history(instrument_history)
@@ -252,11 +365,17 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None):
                 "specification": {key: _value(value) for key, value in spec.items()} if spec else None,
                 "derivation": {"ohlcv_reader": 1, "economic_calendar_merge": 1,
                                "session_free_metadata": "omitted_input_hash_retained",
-                               "instrument_context": instrument_context},
+                               "instrument_context": instrument_context,
+                               "market_families": sorted(set(families)),
+                               "data_quality": data_eligibility.assess(bars, bar_minutes=tf.minutes or 1440,
+                                   ticks=market.get("ticks"), book=market.get("book"), evidence=_evidence_items(acquisition_evidence), derived=derived, symbol=symbol, timeframe=tf.name)},
                 "frames": {"bars": _blocks(bars, "time", blocks),
                            "events": _blocks(events, "event_time", blocks),
                            "market_calendar": _blocks(sessions, "open_utc", blocks),
-                           "instrument_history": _blocks(instrument_history, "known_at", blocks)}}
+                           "instrument_history": _blocks(instrument_history, "known_at", blocks),
+                           "acquisition_evidence": _blocks(acquisition_evidence, "block_start", blocks),
+                           "derived_bars": _blocks(derived, "bar_start_utc", blocks),
+                           **{family: _blocks(frame, "event_time_utc", blocks) for family, frame in market.items()}}}
     payload = _json(manifest)
     bundle = {"format": f"mt5x.dataset.v{VERSION}", "manifest_id": _hash(payload), "manifest": manifest, "blocks": blocks}
     _persist(db, bundle)
@@ -269,7 +388,7 @@ def _validated(bundle):
             raise ValueError("envelope desconhecido")
         manifest = bundle["manifest"]
         version = manifest["schema_version"]
-        if version not in (1, 2) or bundle["format"] != f"mt5x.dataset.v{version}":
+        if version not in (1, 2, 3) or bundle["format"] != f"mt5x.dataset.v{version}":
             raise ValueError("versão desconhecida")
         if _hash(_json(manifest)) != bundle["manifest_id"]:
             raise ValueError("hash do manifesto divergente")
@@ -283,7 +402,12 @@ def _validated(bundle):
             raise ValueError("proveniência inválida")
         frames = {}
         referenced = set()
-        roles = {"bars", "events", "market_calendar"} | ({"instrument_history"} if version == 2 else set())
+        roles = {"bars", "events", "market_calendar"} | ({"instrument_history"} if version >= 2 else set())
+        if version == 3:
+            families = manifest["derivation"]["market_families"]
+            if not isinstance(families, list) or families != sorted(set(families)) or set(families) - {"ticks", "book"}:
+                raise ValueError("famílias de mercado inválidas")
+            roles |= {"acquisition_evidence", "derived_bars", *families}
         for role, ids in manifest["frames"].items():
             if role not in roles or not ids:
                 raise ValueError("coleção desconhecida")
@@ -304,7 +428,7 @@ def _validated(bundle):
                 manifest["period"]["first"] != str(bars.time.iloc[0]) or
                 manifest["period"]["last"] != str(bars.time.iloc[-1])):
             raise ValueError("período divergente do conteúdo")
-        if version == 2:
+        if version >= 2:
             from mt5_extracao.analytics import instruments
             instruments.validate_history(frames["instrument_history"])
             if any(frames["instrument_history"].symbol != manifest["symbol"]):
@@ -318,6 +442,20 @@ def _validated(bundle):
                 expected = {k: _value(v) for k, v in dict(fact["payload"], symbol=manifest["symbol"]).items()}
                 if manifest["specification"] != expected:
                     raise ValueError("propriedades divergentes da vigência declarada")
+        if version == 3:
+            from mt5_extracao.analytics import data_eligibility
+            if list(frames["acquisition_evidence"].columns) != _EVIDENCE_COLUMNS:
+                raise ValueError("colunas de evidência desconhecidas")
+            if list(frames["derived_bars"].columns) != _DERIVED_FIELDS:
+                raise ValueError("colunas de derivação desconhecidas")
+            for role in ("ticks", "book", "derived_bars"):
+                if role in frames and ("symbol" not in frames[role] or any(frames[role].symbol != manifest["symbol"])):
+                    raise ValueError("família de outro ativo")
+            tf = timeframes.parse(manifest["timeframe"])
+            quality = data_eligibility.assess(bars, bar_minutes=tf.minutes or 1440, ticks=frames.get("ticks"),
+                         book=frames.get("book"), evidence=_evidence_items(frames["acquisition_evidence"]), derived=frames["derived_bars"], symbol=manifest["symbol"], timeframe=tf.name)
+            if quality != manifest["derivation"].get("data_quality"):
+                raise ValueError("qualidade divergente dos dados capturados")
         return Snapshot(bundle["manifest_id"], copy.deepcopy(manifest), frames)
     except (KeyError, TypeError, ValueError, AttributeError, IndexError, OverflowError) as error:
         raise ValueError("Snapshot sem integridade; reimporte uma cópia íntegra ou recapture a origem.") from error

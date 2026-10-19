@@ -174,3 +174,19 @@ histórica. Manifestos novos usam formato 2, preservando leitura/exportação do
 formato 1. APIs públicas e chamadas posicionais permanecem as mesmas; metadados
 opcionais foram acrescentados à dataclass interna `SymbolSpec`.
 [Regras de vigência, fontes e limitações](../analytics/T20.5_VIGENCIA_INSTRUMENTOS.md).
+
+
+T20.6 acrescenta `data_quality` às métricas Python/MQL e à avaliação de
+re-simulação. Capacidade de dados, requisitos do consumidor e limitações de
+origem/cobertura são explícitos; relatório nativo sem requisitos do Expert
+não o qualifica automaticamente. `run_python` conserva a assinatura e exige
+OHLCV para o motor, além das `required_columns` opcionais da estratégia.
+`Strategy.required_columns` tem o padrão anterior; componentes de fechamento
+podem ser qualificados separadamente de OHLCV completo.
+
+Ferramentas avançadas: `analytics.data_eligibility.requirements/evaluate/as_of`
+consomem os contratos/provas existentes, sem outro registry ou feature store.
+`datasets.capture(..., families=["ticks", "book"])` captura fontes extras
+explicitamente; `Snapshot.quality/market_frame` permitem inspeção da revisão.
+Formato3 lê/exporta1/2 sem converter metadados livres antigos em prova atual.
+[Regras e fronteiras reais](../analytics/T20.6_QUALIDADE_CAPACIDADES.md).
