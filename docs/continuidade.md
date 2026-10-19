@@ -1,6 +1,6 @@
 # T19.6 em revisão temporal — 2026-10-19
 
-Origem e confirmação separadas; candidatos não são sinais. [Contrato, versão e limites](analytics/T19.6_PIVOS_CAUSAIS.md). Base e verificações anteriores reaproveitadas; nova fonte em verificação. Trabalho local e ponte preservados.
+Origem e confirmação separadas; candidatos não são sinais. [Contrato, versão e limites](analytics/T19.6_PIVOS_CAUSAIS.md). 115 focados e doctor21/1/0 aprovados; 720 fatos DEMO arquivados conciliados. Base anterior reaproveitada. CI e revisão final pendentes; integrar #130 primeiro. Trabalho local e ponte preservados.
 
 # T19.3: conexão do snapshot — 2026-10-19
 
