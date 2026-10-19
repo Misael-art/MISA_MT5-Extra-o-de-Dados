@@ -1,4 +1,29 @@
-<!-- T19.2: branch dependente; não substitui o estado de master abaixo. -->
+# T19.2 — aceite final do contrato e adaptador base — 2026-10-19
+
+B-11 integrada nas PRs M132/7e2178a e H14/d018f6c. PR133 com código final9b3d3f5:
+seis checks existentes aprovados na execução39336237236; revisão técnica própria
+concluída e sem threads de revisão impeditivas. Candidato após retarget para master
+idêntico à árvore testada, sem conflito. Fechamento somente documental, com fonte,
+testes, fixtures, dependências e configuração de CI preservados; sem nova campanha.
+
+Disponível pelo serviço: composição/capacidades v1 com erros acionáveis, JSON/hash,
+base Python de cinco estratégias reutilizando o motor e regras legadas. Sem UI/preset
+novo, sem liberação nativa. Pullback continua bloqueado até T19.57.
+[Contrato e limites](sdk/composicao.md).
+
+Primeiro percurso Default→Manual nomeado→backtest→preset→Tester→reconciliação continua
+prioritário. HADOUKEN15/B-01,16/B-02 e17/B-03 preparados em PRs próprias e aguardam
+autorização específica de merge. B-01 é documental; B-02/B-03 têm CI e provas de
+contrato no Tester DEMO simulado.
+Próximo contrato B-04/ExecutionPlan e depois adaptador/S09 conforme dependências;
+nenhum dos seis Experts passou a consumir os novos contratos. T19.7/Ultra em backlog.
+
+Ponte acessível127.0.0.1:18812; IPC da conta configurada indisponível (-10001/-10004),
+sem login/restart ou ordens. Ensaios de contrato usaram Tester privado, bloqueado fora
+de DEMO simulada, sem negócios; não certificam o percurso operacional da estratégia.
+Windows físico permanece pendente, Relações sintética e gradientes simulados.
+
+## Registro anterior de preparação da T19.2 (antes do aceite acima)
 
 T19.2 preparada sobre B-11/PR132, vinculada a HADOUKEN14: composição/capacidades v1,
 validação explícita SDK1 e adaptador de backtest base reutilizando Strategy/BacktestConfig.

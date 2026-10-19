@@ -1,6 +1,6 @@
 # T19.2 — Composição operacional e capacidades v1
 
-Implementação em branch dependente da B-11, sem liberação nativa. O SDK1 continua
+Aceite final da T19.2 na PR133, com B-11 integrada (M132/H14), sem liberação nativa. O SDK1 continua
 fechado e seus caminhos legados permanecem disponíveis. Os dois sidecars seguem a
 [política de versões](versionamento-contratos.md).
 
@@ -105,8 +105,10 @@ Após completar a declaração explícita de modos por capacidade, 80 testes de 
 aprovados no fechamento (`pytest -q tests/test_composition.py tests/test_robots_contract.py
 --no-cov`). Consumidores sem alteração reaproveitados da seleção inicial.
 
-CI obrigatório do código final deve ser acompanhado uma vez; essa execução local não
-é atribuída aos checks antigos nem certifica Windows físico. Sem nova instalação,
+CI obrigatório da fonte9b3d3f5 concluído na execução39336237236: seis checks aprovados,
+incluindo Ubuntu, PostgreSQL e Windows CI. Fechamento só documental mantém todos os
+fontes/testes/configuração/dependências idênticos; evidência reaproveitada sem outro
+workflow. Windows CI não certifica Windows físico. Sem nova instalação,
 doctor, benchmark, PostgreSQL local ou jornada nativa porque esses caminhos não mudam.
 
 Próximos consumidores: contratos/adaptador nativos usados por T19.23 e variante S09
