@@ -121,3 +121,45 @@ def facts(robot, values: Optional[Dict[str, str]] = None) -> dict:
         else:
             result[role] = number
     return result
+
+
+def validate_composition(robot, composition, capabilities) -> List[Problem]:
+    """Valida sidecars explicitamente; não estende SDK1 nem comprova suporte nativo.
+
+    `robot` vem do catálogo: versão, inputs e fingerprint são conferidos contra o
+    fonte atual. Gerar/carregar preset continua exigindo o adaptador de T19.23/25.
+    """
+    from ..composition import Capabilities, Composition, CompositionError
+    from .catalog import MQL5, fingerprint
+
+    problems = validate(robot)
+    try:
+        comp = composition if isinstance(composition, Composition) else Composition(composition)
+        # Revalidar contra esta composição mesmo se o chamador entregou objeto já lido.
+        caps = Capabilities(capabilities.to_dict() if isinstance(capabilities, Capabilities) else capabilities, comp)
+    except CompositionError as exc:
+        return problems + [Problem(p.field, p.message) for p in exc.problems]
+    data = caps.to_dict()
+    actual = {"key": robot.key, "version": robot.version, "fingerprint": fingerprint(robot)}
+    if robot.kind != MQL5:
+        problems.append(Problem("capabilities.backend", "sidecar de inputs exige robô MQL5 do catálogo."))
+    for key, value in actual.items():
+        if not value or data["robot"][key] != value:
+            problems.append(Problem(f"capabilities.robot.{key}", "difere do robô/fonte atual; atualize a declaração e revalide."))
+    comp_data = comp.to_dict()
+    for slot, modes in data["modules"].items():
+        requested = ([module["mode"] for module in comp_data[slot]] if slot == "filters"
+                     else [comp_data[slot]["mode"]])
+        if any(mode not in modes for mode in requested):
+            problems.append(Problem(f"capabilities.modules.{slot}",
+                                    "modo solicitado não declarado; escolha capacidade compatível com este robô."))
+    inputs = {item.name: item for item in robot.inputs}
+    types = {"int": {"int", "uint", "long", "ulong", "short", "ushort", "char", "uchar"},
+             "number": {"double", "float"}, "bool": {"bool"}}
+    for path, binding in data["bindings"].items():
+        item = inputs.get(binding["input"])
+        if item is None:
+            problems.append(Problem(f"bindings.{path}.input", "input não existe no fonte; declare o nome exato do catálogo."))
+        elif item.type not in types[binding["type"]]:
+            problems.append(Problem(f"bindings.{path}.type", "tipo incompatível com o input MQL5; conversão/enum exige adaptador próprio."))
+    return problems

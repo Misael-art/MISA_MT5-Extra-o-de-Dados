@@ -1,6 +1,6 @@
 # B-11 — Versionamento e migração dos contratos
 
-Política do recorte M19-B, em revisão. Preserva o SDK1 e permite definir a
+Política do recorte M19-B integrada pelas PRs M132/7e2178a e H14/d018f6c. Preserva o SDK1 e permite definir a
 composição canônica em T19.2 sem esperar todo o Composer. Esta política não
 implementa contratos nativos, módulos de execução ou autorização para operar.
 
