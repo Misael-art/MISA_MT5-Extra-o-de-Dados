@@ -85,7 +85,10 @@ def ao_ac(df: pd.DataFrame) -> pd.DataFrame:
     """
     high = pd.to_numeric(df["high"], errors="coerce")
     low = pd.to_numeric(df["low"], errors="coerce")
-    median = ((high + low) / 2.0).where(np.isfinite(high) & np.isfinite(low) & high.ge(low))
+    valid = np.isfinite(high) & np.isfinite(low) & high.ge(low)
+    median = (high + low) / 2.0
+    # Preserva o caminho normal/subnormal; só a soma excessiva usa metades.
+    median = median.mask(valid & ~np.isfinite(median), high / 2.0 + low / 2.0).where(valid)
     median = median.where(np.isfinite(median))
     def finite_mean(values):
         try:

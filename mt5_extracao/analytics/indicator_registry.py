@@ -181,7 +181,7 @@ def _column(bars, name):
     return pd.to_numeric(bars[name], errors="coerce").astype(float)
 
 
-def _calculated_series(bars):
+def _legacy_calculated_series(bars):
     close = _column(bars, "close")
     high, low = _column(bars, "high"), _column(bars, "low")
     if close is None:
@@ -201,7 +201,6 @@ def _calculated_series(bars):
     bb_width = bb["upper"] - bb["lower"]
     kc_width = kc["upper"] - kc["lower"]
     alligator = technical.alligator(ohlc)
-    oscillators = technical.ao_ac(ohlc)
     return {
         "momentum.rsi_14": rsi14,
         "momentum.rsi_14_slope_3": rsi14 - rsi14.shift(3),
@@ -226,15 +225,28 @@ def _calculated_series(bars):
            for name, period, _shift in technical.ALLIGATOR_LINES},
         "trend.alligator_alignment": alligator["alignment"],
         "trend.alligator_separation": alligator["separation"],
-        "momentum.ao_5_34": oscillators["ao"],
-        "momentum.ao_5_34_slope_1": oscillators["ao_slope_1"],
-        "momentum.ao_5_34_acceleration_1": oscillators["ao_acceleration_1"],
-        "momentum.ao_5_34_zero_cross": oscillators["ao_zero_cross"],
-        "momentum.ao_5_34_color": oscillators["ao_color"],
-        "momentum.ac_5_34_5": oscillators["ac"],
-        "momentum.ac_5_34_5_slope_1": oscillators["ac_slope_1"],
-        "momentum.ac_5_34_5_color": oscillators["ac_color"],
     }
+
+
+def _calculated_series(bars, feature_ids=None):
+    selected = set(_BY_ID if feature_ids is None else feature_ids)
+    oscillator_ids = {ident for ident in _BY_ID if ident.startswith(("momentum.ao_", "momentum.ac_"))}
+    values = _legacy_calculated_series(bars) if selected - oscillator_ids else {}
+    if selected & oscillator_ids:
+        inputs = {}
+        for name in ("high", "low"):
+            column = _column(bars, name)
+            inputs[name] = column if column is not None else pd.Series(np.nan, index=bars.index, dtype=float)
+        oscillators = technical.ao_ac(pd.DataFrame(inputs, index=bars.index))
+        values.update({"momentum.ao_5_34": oscillators["ao"],
+                       "momentum.ao_5_34_slope_1": oscillators["ao_slope_1"],
+                       "momentum.ao_5_34_acceleration_1": oscillators["ao_acceleration_1"],
+                       "momentum.ao_5_34_zero_cross": oscillators["ao_zero_cross"],
+                       "momentum.ao_5_34_color": oscillators["ao_color"],
+                       "momentum.ac_5_34_5": oscillators["ac"],
+                       "momentum.ac_5_34_5_slope_1": oscillators["ac_slope_1"],
+                       "momentum.ac_5_34_5_color": oscillators["ac_color"]})
+    return values
 
 
 def _bad_denominator(feature_id, position, bars, close, atr14, bb, kc):
@@ -275,7 +287,7 @@ def iter_core(bars, *, feature_ids=None):
     unknown = sorted(set(selected) - set(_BY_ID))
     if unknown:
         raise ValueError("Indicadores nativos desconhecidos: " + ", ".join(unknown))
-    series_by_id = _calculated_series(bars)
+    series_by_id = _calculated_series(bars, selected)
     high, low = _column(bars, "high"), _column(bars, "low")
     alligator_source_valid = (np.isfinite(high) & np.isfinite(low) & high.ge(low)
                               if high is not None and low is not None else None)

@@ -99,6 +99,36 @@ def test_registry_warmup_prefix_causality_and_transform_contracts():
     assert list(indicators.ao_ac(frame.iloc[:0]).columns) == list(out.columns)
 
 
+@pytest.mark.parametrize("price", [1e308, -1e308])
+def test_large_finite_midpoint_remains_available(price):
+    frame = pd.DataFrame({"high": np.full(45, price), "low": np.full(45, price)})
+    result = indicators.ao_ac(frame)
+    assert result.ao.iloc[33:].eq(0).all() and result.ac.iloc[37:].eq(0).all()
+    rows = indicator_registry.compute_core(frame, feature_ids=["momentum.ao_5_34", "momentum.ac_5_34_5"])
+    assert all(r["state"] == "AVAILABLE" and r["value"] == 0 for r in rows if r["bar_index"] >= 37)
+
+
+def test_unrelated_selection_does_not_calculate_ao_ac(monkeypatch):
+    monkeypatch.setattr(indicators, "ao_ac", lambda frame: pytest.fail("AO/AC não foi solicitado"))
+    rows = indicator_registry.compute_core(pd.DataFrame({"tick_volume": [3., 5.]}), feature_ids=["volume.ticks"])
+    assert [r["value"] for r in rows] == [3., 5.]
+
+
+def test_ao_ac_selection_does_not_calculate_legacy_families(monkeypatch):
+    monkeypatch.setattr(indicators, "alligator", lambda frame: pytest.fail("Alligator não foi solicitado"))
+    frame = pd.DataFrame({"high": np.arange(45.) + 101, "low": np.arange(45.) + 99})
+    rows = indicator_registry.compute_core(frame, feature_ids=IDS)
+    assert all(r["state"] == "AVAILABLE" for r in rows if r["bar_index"] >= 38)
+
+
+def test_mixed_selection_matches_separate_family_requests():
+    frame = pd.DataFrame({"high": np.arange(45.) + 101, "low": np.arange(45.) + 99, "tick_volume": np.arange(45.)})
+    selected = ["volume.ticks", "momentum.ac_5_34_5", "momentum.ao_5_34"]
+    mixed = indicator_registry.compute_core(frame, feature_ids=selected)
+    for ident in selected:
+        assert [r for r in mixed if r["feature_id"] == ident] == indicator_registry.compute_core(frame, feature_ids=[ident])
+
+
 def test_zero_touch_departure_crossing_and_acceleration_have_manual_reference():
     prices = np.concatenate([np.zeros(40), np.ones(40), -np.ones(40)])
     frame = pd.DataFrame({"high": prices, "low": prices})

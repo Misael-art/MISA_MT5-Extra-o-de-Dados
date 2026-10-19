@@ -1,3 +1,14 @@
+## Revisão T19.5 — base de consistência isolada, 2026-10-19
+
+PR128 fica em rascunho enquanto a PR129/T19.3 corrige o serviço compartilhado: corrida de
+fonte reproduzida no mastereab717d e escrita em lote serializada por backend. Probe SQLite
+concorrente inconclusiva, sem alegação de chave duplicada reproduzida. Não misturar tarefas.
+Na T19.5, mediano grande e despacho sob demanda corrigidos localmente:83 testes aprovados,
+21 próprios de AO/AC. CIcee301c é histórico da fonte anterior; não representa correções ainda
+não publicadas. Depois de129, merge Git, checar runtime/prova e executar verificação pertinente
+da composição final. Versão global conservadora mantida, antigas explícitas sem perda dos fatos.
+Sem nova campanha de custo, estratégia/presets ou Relações real. Windows físico permanece pendente.
+
 ## Publicação T19.5 após as integrações — 2026-10-19
 
 PR127 integrada em2d7412f e PR126 emeab717d após seis checks/revisão de cada fonte.
