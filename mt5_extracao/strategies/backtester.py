@@ -5,7 +5,8 @@ Backtester barra a barra com custos reais e dimensionamento por risco.
     resultado.metrics["profit_factor"]
 
 Premissas (conservadoras; ver docs/estrategias.md):
-1. Barras do MT5 são BID. Compra entra/sai no ASK = bid + spread × point; venda no bid.
+1. Barras do MT5 são BID. Compra entra no ASK e sai no BID; venda entra no BID e sai no ASK.
+   ASK = bid + spread × point.
    O spread vem da coluna `spread` de cada barra (pontos) ou de spec.spread_points. Essa coluna é o MENOR
    spread do período da barra; com o spread medido nos ticks (spec.spread_by_hour, de `mt5x specs --calibrate`),
    cada execução paga o maior dos dois: o da barra ou o típico daquela hora (na abertura de uma barra que
@@ -20,6 +21,7 @@ Premissas (conservadoras; ver docs/estrategias.md):
 """
 import math
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal, ROUND_FLOOR
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -82,13 +84,19 @@ class SymbolSpec:
 
     def lots_for_risk(self, risk_money: float, stop_distance: float) -> float:
         """Maior lote (múltiplo de volume_step) cuja perda no stop não passa de risk_money; 0 se < mínimo."""
+        if not all(math.isfinite(v) for v in (risk_money, stop_distance)):
+            raise ValueError("Risco e distância do stop devem ser finitos; confira os dados da operação.")
         if stop_distance <= 0 or risk_money <= 0:
             return 0.0
-        raw = risk_money / (stop_distance * self.money_per_price_unit)
-        step = self.volume_step if self.volume_step > 0 else self.volume_min
-        vol = math.floor(raw / step + 1e-9) * step
-        vol = min(round(vol, 8), self.volume_max)
-        return vol if vol >= self.volume_min - 1e-12 else 0.0
+        values = (self.tick, self.tick_value, self.volume_min, self.volume_step, self.volume_max)
+        if not all(math.isfinite(v) and v > 0 for v in values) or self.volume_max < self.volume_min:
+            raise ValueError("Especificação de tick/lote inválida; atualize o contrato do símbolo com mt5x specs.")
+        tick, tick_value, minimum, step, maximum = (Decimal(str(v)) for v in values)
+        raw = Decimal(str(risk_money)) * tick / (Decimal(str(stop_distance)) * tick_value)
+        # Aplicar o teto ANTES de quantizar preserva o passo mesmo se o teto não for múltiplo.
+        # Decimal evita promover um volume acima do orçamento com um epsilon absoluto.
+        vol = (min(raw, maximum) / step).to_integral_value(rounding=ROUND_FLOOR) * step
+        return float(vol) if vol >= minimum else 0.0
 
 
 @dataclass
@@ -141,6 +149,9 @@ class BacktestResult:
 
 def compute_metrics(trades: List[Trade], initial_equity: float) -> Dict[str, float]:
     from mt5_extracao import profit_factor
+    pf = profit_factor.fields(t.pnl for t in trades)
+    if pf["profit_factor_status"] == "invalid_pnl":
+        raise ValueError("PnL ausente ou inválido; confira as operações antes de calcular métricas.")
     pnl = np.array([t.pnl for t in trades], dtype=float)
     r = np.array([t.r_multiple for t in trades], dtype=float)
     wins, losses = pnl[pnl > 0], pnl[pnl < 0]
@@ -153,7 +164,7 @@ def compute_metrics(trades: List[Trade], initial_equity: float) -> Dict[str, flo
     return {
         "trades": int(len(trades)),
         "win_rate": float(len(wins) / len(trades)) if trades else 0.0,
-        **profit_factor.fields(pnl),
+        **pf,
         "payoff": float(wins.mean() / -losses.mean()) if len(wins) and len(losses) else 0.0,
         "expectancy_r": float(r.mean()) if len(r) else 0.0,
         "total_r": float(r.sum()),
@@ -237,15 +248,15 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         price = bid_price + (spread if d < 0 else 0.0)   # venda a descoberto recompra no ask
         return price - d * slip if market else price
 
-    def close_part(volume, price):
+    def close_part(volume, price, i):
+        if cfg.swap:
+            pos["pnl"] += spec.swap_money(pos["dir"], volume, times.iloc[pos["i"]], times.iloc[i])
         pos["pnl"] += (price - pos["entry"]) * pos["dir"] * ppu * volume - cfg.commission_per_lot * volume
         pos["remaining"] = round(pos["remaining"] - volume, 8)
 
     def close_all(i, price, reason):
         nonlocal equity, pos
-        if cfg.swap:
-            pos["pnl"] += spec.swap_money(pos["dir"], pos["remaining"], times.iloc[pos["i"]], times.iloc[i])
-        close_part(pos["remaining"], price)
+        close_part(pos["remaining"], price, i)
         equity += pos["pnl"]
         trades.append(Trade(direction=pos["dir"], entry_time=times.iloc[pos["i"]], exit_time=times.iloc[i],
                             entry_price=pos["entry"], exit_price=float(price), volume=pos["volume"],
@@ -302,7 +313,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                         step = spec.volume_step or spec.volume_min
                         part = math.floor(pos["volume"] * rules.partial_fraction / step + 1e-9) * step
                         if part >= spec.volume_min and pos["remaining"] - part >= spec.volume_min - 1e-12:
-                            close_part(part, max(op, level) if d > 0 else min(op, level))
+                            close_part(part, max(op, level) if d > 0 else min(op, level), i)
                         if rules.breakeven_after_partial:
                             pos["stop"] = max(pos["stop"], pos["entry"]) if d > 0 else min(pos["stop"], pos["entry"])
                             pos["stop_kind"] = "breakeven"

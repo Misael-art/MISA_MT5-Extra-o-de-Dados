@@ -172,7 +172,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T18.8 | UI Relações e aderência no Laboratório | T18.1 (fixture), T18.6 (integração), T17.1–T17.5 | 🟡 apresentação local implementada com fixture sintética; integração T18.1/T18.6 pendente |
 | T18.9 | API local opt-in, somente leitura | T18.6 | planejada |
 | T19.0 | Estrutura documental dos pilares, catálogo integral dos estudos e roadmap de presets | Pedido de 2026-10-17 | ✅ documentação com adendos: presets, replay, lotes e parciais; 57 fichas; sem implementação; verificações próprias na continuidade |
-| T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | em revisão local: [inventário reconciliado](propostas/INVENTARIO_F19.md), SHAs/donos/consumidores e lacunas; sem runtime novo; publicação depende da base documental T19.0 |
+| T19.1 | Reconciliar inventário, contratos, responsáveis e lacunas | T19.0 | ✅ documentação integrada no PR120; inventário original e proveniência preservados, sem runtime novo |
 | T19.2 | Composição canônica e capacidades tipadas, preservando contrato 1 | T19.1, B-11/B-09/B-10 conforme recorte | planejada |
 | T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | planejada |
 | T19.4–T19.13 | Todos os indicadores do TXT: Bill Williams, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
@@ -192,8 +192,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.55 | Default da estratégia como primeiro preset e referência versionada | T19.2/25/50, padrões efetivos conhecidos | planejada; reusar padrões existentes, preservar seleção e Salvar como Manual nomeado |
 | T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | planejada; mínimo/passo/margem/risco, unidade e entradas adicionais explícitos |
 | T20.0 | Incorporar as 16 sugestões aceitas, mapa Q01–Q16, fichas e prompt de robustez | Pedido de 2026-10-17 | ✅ documentação, prioridades UI e prompt único F19/F20/MT5; 30 fichas planejadas; sem implementação ou ensaio de conta |
-| T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | em revisão local: Q01–Q16 no [mapa único](propostas/INVENTARIO_F19.md), donos/consumidores/lacunas/testes; próximo P0 T20.2 |
-| T20.2 | Referências independentes dos cálculos financeiros | T20.1 | planejada; Q01 |
+| T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | ✅ documentação integrada no PR121; Q01–Q16 no mapa único, sem runtime novo |
+| T20.2 | Referências independentes dos cálculos financeiros | T20.1 | validada, pronta para integração no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106); runtime fc9e593 inalterado, 1081/9/3, saída0, seis checks aprovados; bases documentais PR118–121 integradas |
 | T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | planejada; Q01, métrica aditiva sem reescrever legado |
 | T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | planejada; Q02 |
 | T20.5 | Vigência de especificações, ajustes e transformações de séries | T20.4 | planejada; Q02, sem inventar fonte histórica |

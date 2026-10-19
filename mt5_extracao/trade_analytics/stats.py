@@ -18,7 +18,9 @@ def metrics(pnl, initial_equity: float = 100_000.0, r=None) -> dict:
     """n, acerto, fator de lucro, payoff, expectativa (por operação), resultado e queda máxima (% do pico)."""
     pnl = list(pnl)
     pf = profit_factor.fields(pnl)
-    pnl = np.asarray(pd.Series(pnl, dtype=float).dropna(), dtype=float)
+    if pf["profit_factor_status"] == "invalid_pnl":
+        raise ValueError("PnL ausente ou inválido; confira as operações antes de calcular métricas.")
+    pnl = np.asarray(pnl, dtype=float)
     n = len(pnl)
     wins, losses = pnl[pnl > 0], pnl[pnl < 0]
     equity = initial_equity + np.concatenate([[0.0], np.cumsum(pnl)])

@@ -1,5 +1,25 @@
 # Continuidade: harmonização de 2026-10-14
 
+## T20.2 — referências financeiras e correções locais (2026-10-17)
+
+[Contas independentes](analytics/T20.2_REFERENCIAS_FINANCEIRAS.md) e testes dedicados.
+Reprodução inicial: 7 falhas/8 aprovados, antes das correções; novos casos de
+replay reproduziram mais duas divergências. Corrigidos teto de lote fora do passo,
+epsilon que elevava risco, swap por parcela e por entrada de cada lote na
+re-simulação. Métricas recusam PnL inválido, mantendo PF canônico v1 e os
+estados legítimos sem operações/sem perdas. Sem mudança de banco ou contratos H/S.
+
+Verificação direcionada: 96 aprovados, uma pendência PostgreSQL existente.
+Suíte completa do runtime alterado: 1081 aprovados, nove pendências existentes,
+três avisos, 1179,37 s, saída 0. Doctor: 16 OK/2 avisos/0 falhas.
+[PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106) em revisão
+como rascunho, separado da base documental. Próximo recorte: T20.3.
+Baseline completa anterior ao runtime: 1058 aprovados/9 pendências/3 avisos.
+A execução documental T20.1 foi iniciada antes deste runtime; não substitui
+a verificação final T20.2. Evidências/patch separados em logs/t20-2.
+Windows físico/nativo não executados; parcial inviável continua em T19.57.
+Não declarar toda F20 ou Q01 concluído por estas contas.
+
 ## T20.1 — cobertura Q01–Q16 no mapa único (2026-10-17)
 
 Seção 8 do [inventário F19/F20](propostas/INVENTARIO_F19.md) ampliada com base
@@ -951,3 +971,16 @@ pela cadeia de runtime já existente. Sem alterações de fonte/teste/script/dep
 sem nova suíte ou campanha numérica. Registros originais de testes/doctor são
 históricos, não novas execuções. Conteúdo do proprietário e patches próprios
 separados; a árvore local original não foi alterada por esta publicação.
+
+
+## T20.2 — revisão e integração da base documental (2026-10-19)
+
+Pré-requisitos publicados/integrados por PR118/T19.0, PR119/T20.0, PR120/T19.1
+e PR121/T20.1, com conteúdo do proprietário e patches próprios separados.
+Na conciliação com a PR106, somente a continuidade conflitou; ambos os relatos
+foram preservados e a linha T20.2 foi unificada no painel F20. Runtime/testes
+continuam exatamente os do head1ad3755 e runtimefc9e593 já aprovados:1081/9/3,
+saída0, seis checks CI, incluindo Windows. Sem nova suíte ou campanha numérica.
+Revisão do diff sem achado bloqueante nesse recorte; limites financeiros/nativos
+explicitados no relatório permanecem. B-11 continua proposto, sem aprovação
+implícita. Base documental não autoriza operação REAL. Próxima dependente: PR107.
