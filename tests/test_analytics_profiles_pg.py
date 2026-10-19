@@ -288,3 +288,14 @@ def test_ao_ac_closed_bar_availability(pg):
 def test_ao_ac_late_revision_preserves_history(pg):
     from tests.test_ao_ac import test_late_source_correction_preserves_previous_asof
     test_late_source_correction_preserves_previous_asof(pg)
+
+
+
+def test_causal_pivots_confirmation_boundary(pg):
+    from tests.test_causal_pivots import test_pivot_origin_confirmation_and_context_boundary
+    test_pivot_origin_confirmation_and_context_boundary(pg)
+
+
+def test_causal_pivots_source_correction_preserves_old_decisions(pg, tmp_path):
+    from tests.test_causal_pivots import test_source_correction_preserves_old_decisions_and_exports_revision
+    test_source_correction_preserves_old_decisions_and_exports_revision(pg, tmp_path)

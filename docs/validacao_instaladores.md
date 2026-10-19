@@ -274,3 +274,7 @@ Composição corrigida de T19.5 após129:88 focados/doctor21/1/0; nova prova CLI
 Aceite final T19.5/11b6c53: seis checks aprovados,1540 Windows CI/73 skips/5avisos,43PG.
 293 fontes/testes correspondem ao código final;88 focados e prova CLI04f94b5b preservados.
 CI virtual não substitui a validação Windows físico que permanece no checklist acima.
+
+## T19.6 — Pivôs causais
+
+Windows CI será verificado no código final. Windows físico continua pendente: instalar/abrir banco existente, materializar pivôs e consultar/exportar origem/confirmacão pelo serviço; sem ordens. Não bloqueia o aceite Linux. [Escopo](analytics/T19.6_PIVOS_CAUSAIS.md).

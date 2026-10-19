@@ -1,3 +1,7 @@
+# T19.6 em revisão temporal — 2026-10-19
+
+Origem e confirmação separadas; candidatos não são sinais. [Contrato, versão e limites](analytics/T19.6_PIVOS_CAUSAIS.md). Base e verificações anteriores reaproveitadas; nova fonte em verificação. Trabalho local e ponte preservados.
+
 ## Fechamento final T19.5 — PR128, 2026-10-19
 
 Seis checks existentes aprovados no11b6c53:1438 Ubuntu/175 skips,43PG,1540Windows CI/73 skips/

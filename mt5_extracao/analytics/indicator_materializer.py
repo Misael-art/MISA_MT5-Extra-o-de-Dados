@@ -184,6 +184,25 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                                         display_anchor_bar_start_utc=bar.bar_start_utc.isoformat(),
                                         display_offset_bars=item["display_offset_bars"], display_time_utc=None,
                                         display_time_rule="source_bar_ordinal_plus_offset; no UTC forecast")
+                    if "pivot_metadata" in item:
+                        pivot = item["pivot_metadata"]
+                        metadata.update(pivot)
+                        metadata.update(calculation_bar_start_utc=bar.bar_start_utc.isoformat(),
+                                        calculation_bar_end_utc=bar.bar_end_utc.isoformat())
+                        if pivot.get("pivot_status") == "CONFIRMED":
+                            origin = bars.iloc[pivot["pivot_origin_position"]]
+                            confirmation = bars.iloc[pivot["pivot_confirmation_position"]]
+                            known = max(confirmation.bar_end_utc,
+                                        correction_by_start.get(confirmation.bar_start_utc) or confirmation.bar_end_utc)
+                            metadata.update(pivot_origin_time_utc=origin.bar_start_utc.isoformat(),
+                                            pivot_confirmation_time_utc=confirmation.bar_end_utc.isoformat(),
+                                            pivot_known_at_utc=known.isoformat(),
+                                            display_time_utc=origin.bar_start_utc.isoformat())
+                        if "pivot_candidates" in pivot:
+                            metadata["pivot_candidates"] = [
+                                {**candidate, "origin_time_utc": bars.iloc[candidate["origin"]].bar_start_utc.isoformat(),
+                                 "confirmation_time_utc": None, "known_at_utc": None}
+                                for candidate in pivot["pivot_candidates"]]
                     yield dict(symbol=symbol, timeframe=label, feature_id=item["feature_id"],
                                algorithm_version=algorithm_version(item["feature_id"], implementation),
                                observation_time=bar.bar_start_utc, value=item["value"], available_at=available,

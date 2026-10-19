@@ -84,6 +84,35 @@ def _ao_ac_definitions():
                  for ident, name, formula, warmup, unit, extra in outputs)
 
 
+
+def _pivot_definitions():
+    variants = (
+        ("fractals_5_strict", "Fractals estritos (5)", 5,
+         {"width": 2, "ties": "reject", "confirmation": "second_right_bar_close"},
+         "Strict central high/low in five valid observations; known only at second right close"),
+        ("zigzag_causal_d12_pct1_b3", "ZigZag causal percentual (12, 1%, 3)", 12,
+         {"depth": 12, "deviation_fraction": 0.01, "backstep": 3, "ties": "earliest_origin",
+          "variant": "causal_percent_reversal_v1; not MT5 retrospective ZigZag",
+          "depth_rule": "valid_window_and_reversal_at_trailing_extreme",
+          "backstep_rule": "minimum_candidate_age_at_reversal",
+          "outside_bar": "improve_candidate_first; never_confirm_on_same_bar",
+          "seed": "earlier_of_distinct_window_extrema; same_origin_waits"},
+         "Freeze running candidate on opposite trailing-depth extreme, percent reversal and backstep age"),
+    )
+    result = []
+    for prefix, name, warmup, params, formula in variants:
+        common = {**params, "missing_policy": "reset_window_and_levels", "value_basis": "confirmation_snapshot",
+                  "plot_rule": "origin_only_with_confirmation_time; provisional_is_not_a_signal"}
+        for output in ("top", "bottom", "provisional"):
+            item = _definition("structure." + prefix + "_" + output, name + " " + output,
+                               "structure", formula + "; last confirmed " + output if output != "provisional" else
+                               formula + "; provisional drawing only, strategy value unavailable",
+                               {**common, "output": output}, "price_units", warmup, "bars.high_low", ("high", "low"))
+            item["availability_rule"] = "confirmation_bar_close_or_late_revision_receipt; never_pivot_origin"
+            result.append(item)
+    return tuple(result)
+
+
 _DEFINITIONS = (
     _definition("momentum.rsi_14", "RSI (14)", "momentum", "Wilder RSI(14) applied to close",
                 {"period": 14, "method": "Wilder", "source": "close"}, "points_0_100", 15, "bars.close",
@@ -145,7 +174,7 @@ _DEFINITIONS = (
     _definition("volume.ticks", "Tick volume", "volume", "tick_volume from source bar; never mixed with real volume",
                 {"column": "tick_volume", "source_kind": "ticks"}, "ticks", 0,
                 "bars.tick_volume", ("tick_volume",)),
-) + _alligator_definitions() + _ao_ac_definitions()
+) + _alligator_definitions() + _ao_ac_definitions() + _pivot_definitions()
 _BY_ID = {item["feature_id"]: item for item in _DEFINITIONS}
 
 
@@ -231,7 +260,8 @@ def _legacy_calculated_series(bars):
 def _calculated_series(bars, feature_ids=None):
     selected = set(_BY_ID if feature_ids is None else feature_ids)
     oscillator_ids = {ident for ident in _BY_ID if ident.startswith(("momentum.ao_", "momentum.ac_"))}
-    values = _legacy_calculated_series(bars) if selected - oscillator_ids else {}
+    pivot_ids = {ident for ident in _BY_ID if ident.startswith("structure.")}
+    values = _legacy_calculated_series(bars) if selected - oscillator_ids - pivot_ids else {}
     if selected & oscillator_ids:
         inputs = {}
         for name in ("high", "low"):
@@ -274,6 +304,43 @@ def _bad_denominator(feature_id, position, bars, close, atr14, bb, kc):
     return False
 
 
+
+def _iter_pivots(bars, selected):
+    groups = (("structure.fractals_5_strict_", technical.causal_fractals),
+              ("structure.zigzag_causal_d12_pct1_b3_", technical.causal_zigzag))
+    for prefix, calculate in groups:
+        ids = [ident for ident in selected if ident.startswith(prefix)]
+        if not ids:
+            continue
+        snapshots = calculate(bars)
+        missing = [name for name in ("high", "low") if name not in bars]
+        for ident in ids:
+            output = _BY_ID[ident]["parameters"]["output"]
+            for position, (bar_index, snapshot) in enumerate(zip(bars.index, snapshots)):
+                value, metadata = None, {"pivot_status": "UNCONFIRMED"}
+                if missing:
+                    state, reason = "SOURCE_UNAVAILABLE", "MISSING_COLUMNS:" + ",".join(missing)
+                elif not snapshot["valid"]:
+                    state, reason = "SOURCE_VALUE_MISSING", "FINITE_ORDERED_HIGH_LOW_REQUIRED; zigzag_requires_positive"
+                elif not snapshot["ready"]:
+                    state, reason = "WARMUP", "REQUIRES_CONSECUTIVE_VALID_BARS"
+                elif output == "provisional":
+                    state, reason = "PROVISIONAL", "DRAWING_ONLY_NOT_A_STRATEGY_VALUE"
+                elif snapshot[output] is None:
+                    state, reason = "DEPENDENCY_UNAVAILABLE", "NO_CONFIRMED_PIVOT"
+                else:
+                    pivot = snapshot[output]
+                    state, reason, value = "AVAILABLE", None, pivot["price"]
+                    metadata = {"pivot_status": "CONFIRMED", "pivot_kind": pivot["kind"],
+                                "pivot_origin_position": pivot["origin"],
+                                "pivot_confirmation_position": pivot["confirmation"],
+                                "new_confirmation": pivot["confirmation"] == position}
+                if output == "provisional":
+                    metadata.update(pivot_status="PROVISIONAL", pivot_candidates=snapshot["provisional"])
+                yield dict(bar_index=bar_index, feature_id=ident, algorithm_version=_BY_ID[ident]["algorithm_version"],
+                           value=value, state=state, reason=reason, pivot_metadata=metadata)
+
+
 def iter_core(bars, *, feature_ids=None):
     """Calcula indicadores nativos e devolve linhas tipadas com ausência explícita.
 
@@ -287,6 +354,11 @@ def iter_core(bars, *, feature_ids=None):
     unknown = sorted(set(selected) - set(_BY_ID))
     if unknown:
         raise ValueError("Indicadores nativos desconhecidos: " + ", ".join(unknown))
+    pivot_ids = [ident for ident in selected if ident.startswith("structure.")]
+    yield from _iter_pivots(bars, pivot_ids)
+    selected = [ident for ident in selected if ident not in pivot_ids]
+    if not selected:
+        return
     series_by_id = _calculated_series(bars, selected)
     high, low = _column(bars, "high"), _column(bars, "low")
     alligator_source_valid = (np.isfinite(high) & np.isfinite(low) & high.ge(low)

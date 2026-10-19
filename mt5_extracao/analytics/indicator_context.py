@@ -72,7 +72,7 @@ def context(db, decisions, *, symbol, timeframe, feature_ids=None, algorithm_ver
         columns[prefix + "algorithm_version"] = version
         columns[prefix + "unit"] = spec["unit"]
         columns[prefix + "parameters"] = json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":"))
-        for name in ("observation_time", "available_at_utc", "source_revision", "metadata_json"):
+        for name in ("observation_time", "available_at_utc", "source_revision", "revision", "metadata_json"):
             columns[prefix + name] = list(joined[name]) if name in joined else None
     return pd.concat([frame.drop(columns="_context_order"), pd.DataFrame(columns, index=frame.index)], axis=1)
 
@@ -105,7 +105,7 @@ def projection(db, *, symbol, timeframe, as_of, feature_ids=None, algorithm_vers
         out["algorithm_version"] = version
         out["unit"] = spec["unit"]
         out["parameters"] = json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":"))
-        for name in ("available_at_utc", "source_revision", "metadata_json"):
+        for name in ("available_at_utc", "source_revision", "revision", "metadata_json"):
             out[name] = part[name]
         parts.append(out.add_prefix(ident + "::"))
     if not parts:

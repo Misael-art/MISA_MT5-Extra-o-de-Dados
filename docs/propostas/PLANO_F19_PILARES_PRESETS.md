@@ -149,6 +149,8 @@ CI e revisão final concluídos; Windows físico delimitado. [Contrato e evidên
 
 ### T19.6 — Pivôs causais: Fractals e ZigZag (I08/I14)
 
+- **Estado:** implementação e revisão temporal em andamento; [contratos e evidências](../analytics/T19.6_PIVOS_CAUSAIS.md).
+
 - **Repo/prioridade:** M/H; P1. **Depende de:** T19.3.
 - **Arquivos:** indicadores/registry, persistência de confirmação e revisões.
 - **Passos:** definir empate/confirmação → separar retrospectivo/provisório/confirmado → integrar consumidores.
