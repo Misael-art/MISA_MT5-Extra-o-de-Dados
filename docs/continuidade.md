@@ -1,5 +1,18 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #115 — T13.3 (2026-10-19)
+
+Base master `2efdabf` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos UTC estrito/nanossegundos, revisões de invalidação, identidade contextual por configuração/TF e recálculo delimitado no registro existente; seis famílias reutilizam store/calendário/indicadores canônicos. Confiança de regime continua proposta de pesquisa, sem promoção operacional. Árvore não documental igual a a1c2a77.
+Aceite reaproveitado: 1438 aprovados/16 pulos/3 avisos, saída 0, cobertura 77,44% em a1c2a77; 70 focados, PostgreSQL 20, doctor 16/2/0; seis checks aprovados no HEAD `e653b6134f16041116c45a2d8dc34cc630e054c6`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## Revisão/integração PR #114 — T13.2 (2026-10-19)
 
 Base master `bd5cb6d` conciliada por merge Git na worktree da tarefa.
@@ -1192,6 +1205,39 @@ Ubuntu1269/142 e jobs PostgreSQL/lint/instaladores aprovados em4b3302c;
 Windows CI1381/30/5 e seis checks de execução aprovados em4b3302c; Windows físico pendente. Próxima integração:
 T13.3 canônica bde3652; preservar a ordenação e o helper de schemas.
 O aceite ponta a ponta dos testes4/7 inclui os produtores/publicador seguintes.
+
+## Integração canônica T13.3 — 2026-10-18 (em validação)
+
+Origem bde3652 reaplicada sobre a T13.2 integrada. A linha de base compartilhada
+1398/13/3, saída0 e cobertura77,44%, foi conferida por hash antes das mudanças;
+ambiente e requirements permanecem os mesmos da regressão aprovada.
+A ordenação topológica e as fixtures PostgreSQL privadas foram preservadas.
+O arquivo de matriz genérica da origem dependia do commit documental e8657fe,
+ausente na base atual; seu conteúdo canônico foi incorporado como registro
+histórico datado, com os resultados atuais discriminados no plano/contrato.
+Os números833/10 e os dois mercados de2026-10-15 são evidência histórica,
+não aceite desta composição. Novos testes/medições e PR próprios pendentes.
+
+
+## T13.3 — integração validada (2026-10-18; PR115)
+
+Perfis, RVOL, volatilidade, regimes, estrutura e calendário canônicos integrados
+com UTC explícito, histórico de invalidações e versões por configuração/TF.
+Código `a1c2a77`: suíte final 1438/16/3 em 1.836,34 s, saída 0, cobertura 77,44%;
+seis checks de execução aprovados (CI Ubuntu 1309/145, Windows 1421/33/5,
+PostgreSQL 20; lint e dois instaladores sem MT5). Os resultados anteriores
+1433/15/3 são pré-identidade e foram arquivados separadamente.
+
+Ambiente principal: 70 focados e 20 PostgreSQL aprovados; 11 arquivos Python
+copiados com guards/backup, sem mudar HEAD/índice/configuração/`.env`. Doctor
+16/2/0 e CLI compute --help aprovados. EURUSD/AGG: 156.249 registros preservados
+exceto algorithm_version; base original somente leitura e SHA igual. Detalhes
+e limites em [T13.3_PERFIS_REGIMES](analytics/T13.3_PERFIS_REGIMES.md).
+
+Windows físico/MT5 e decisão da confiança continuam pendentes; sem ordens,
+sem alterações em H/S e sem certificar publicação/leitor ou a cadeia completa.
+Próxima: T13.3b, runtime 03570b0/docs 4ede7fa; preservar identidade por TF,
+algoritmo-base 1.2, UTC explícito e helper de schemas PG isolados.
 
 ## T19.0 — publicação isolada da base documental (2026-10-19)
 

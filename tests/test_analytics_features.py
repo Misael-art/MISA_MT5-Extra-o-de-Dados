@@ -78,6 +78,40 @@ def test_late_correction_adds_revision_and_as_of_keeps_old_knowledge(db):
         assert conn.execute(text("SELECT COUNT(*) FROM _feature_values")).scalar() == 2
 
 
+def test_invalidated_value_hides_old_value_only_after_invalidation_time(db):
+    features.register(db, "context.test", "Contexto de teste", "1.0", dependencies=["bars:M1"])
+    observation = "2026-10-14T09:00:00Z"
+    available = "2026-10-14T09:05:00Z"
+    invalidated = "2026-10-14T10:00:00Z"
+    first = {"symbol": "TEST", "timeframe": "M1", "feature_id": "context.test",
+             "algorithm_version": "1.0", "observation_time": observation, "value": 1.25,
+             "available_at": available, "observed_at": available, "source_revision": "before"}
+
+    assert feature_store.save_values(db, [first]) == {"inserted": 1, "revised": 0, "unchanged": 0}
+    tombstone = {"symbol": "TEST", "timeframe": "M1", "feature_id": "context.test",
+                 "algorithm_version": "1.0", "observation_time": observation, "value": None,
+                 "available_at": invalidated, "observed_at": invalidated, "source_revision": "after",
+                 "quality": "INVALIDATED", "metadata": {"reason": "entrada corrigida"}}
+    assert feature_store.save_values(db, [tombstone]) == {"inserted": 0, "revised": 1, "unchanged": 0}
+
+    before = feature_store.query_as_of(db, "2026-10-14T09:59:59.999999Z", symbol="TEST", timeframe="M1",
+                                      feature_id="context.test")
+    assert before[["numeric_value", "revision"]].iloc[0].tolist() == [1.25, 1]
+    after = feature_store.query_as_of(db, "2026-10-14T10:00:00.000001Z", symbol="TEST", timeframe="M1",
+                                     feature_id="context.test")
+    assert len(after) == 1
+    assert pd.isna(after.iloc[0]["numeric_value"])
+    assert pd.isna(after.iloc[0]["categorical_value"])
+    assert after.iloc[0]["quality"] == "INVALIDATED"
+    assert feature_store.save_values(db, [tombstone]) == {"inserted": 0, "revised": 0, "unchanged": 1}
+    joined = feature_store.asof_join(
+        pd.DataFrame({"decision_time": [pd.Timestamp("2026-10-14T10:00:00.000001Z")]}),
+        feature_store.query_history(db, symbol="TEST", timeframe="M1", feature_id="context.test"),
+    )
+    assert joined.iloc[0]["quality"] == "INVALIDATED"
+    assert pd.isna(joined.iloc[0]["numeric_value"])
+
+
 def test_point_in_time_does_not_expose_close_before_it_is_available(db):
     register_close(db)
     feature_store.save_value(
@@ -191,3 +225,20 @@ def test_shared_source_recalculates_parent_before_child_and_keeps_as_of_history(
     assert [item["feature_id"] for item in results] == calls
     assert feature_store.query_as_of(db, revised, feature_id="a_child")["numeric_value"].tolist() == [14]
     assert feature_store.query_as_of(db, first, feature_id="a_child")["numeric_value"].tolist() == [6]
+
+
+def test_scoped_definitions_keep_topological_order_without_changing_default_selection(db):
+    for tf, version in [("M15", "1"), ("H1", "2")]:
+        source = f"bars_derived:{tf}"
+        features.register(db, "z_parent", "Pai", version, dependencies=[source])
+        features.register(db, "a_child", "Filho", version, dependencies=[source, "feature:z_parent"])
+    assert features.affected_by(db, ["bars_derived:M15"]) == []
+    selected = lambda item: "bars_derived:M15" in item["dependencies"]
+    result = features.affected_by(db, ["bars_derived:M15"], definition_filter=selected)
+    assert [(item["feature_id"], item["algorithm_version"]) for item in result] == [("z_parent", "1"), ("a_child", "1")]
+    calls = []
+    handlers = {name: (lambda db_, definition: calls.append(definition["feature_id"]))
+                for name in ["z_parent", "a_child"]}
+    features.recalculate_affected(db, ["bars_derived:M15"], handlers, definition_filter=selected)
+    assert calls == ["z_parent", "a_child"]
+    assert features.affected_by(db, ["unrelated"], definition_filter=selected) == []

@@ -164,3 +164,17 @@ Linux/Wine e caminhos Windows simulados não substituem esses ensaios físicos.
 Linux: suíte final 1381 aprovados/12 pulos/3 avisos, saída 0; PostgreSQL
 isolado: 10 aprovados, container removido; doctor:16 OK/2 avisos/0 falhas.
 Essas provas não substituem Windows físico.
+
+
+### T13.3 — Perfis e regimes (pendência Windows físico)
+
+- [ ] Em Windows físico, executar os testes de features/perfis, inclusive UTC
+  explícito, limite de nanossegundos, invalidação, legado e contextos M15/H1.
+- [ ] Em cópia de uma base antiga, conferir `analytics features compute`,
+  `list --all-versions` e `values` por versão/TF, preservando zero/ausência,
+  histórico, configurações e credenciais. Conferir os caminhos do instalador.
+
+CI Windows: 1421 aprovados/33 ignorados/5 avisos, cobertura 73,09%, no código
+a1c2a77. Linux local: 1438/16/3, cobertura 77,44%; PostgreSQL real isolado: 20
+aprovados. Esses resultados não substituem Windows físico nem MT5 conectado;
+a T13.3 não introduz leitor MQL5 ou autorização de negociação.

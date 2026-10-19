@@ -124,8 +124,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
 | T13.0 | Plano do MT5x Analytics registrado e levantamento do que já existe | T11.1 | ✅ concluída (o HADOUKEN não foi lido) |
 | T13.1 | Calendário de sessões e barras derivadas do M1 por sessão, com estado de qualidade (A1) | T11.1 | ⏳ implementação pronta; 20 testes focados passaram e EURUSD teve paridade; repetição da suíte completa ficou inconclusiva nos testes Tk/conector; MT5 real e Windows pendentes |
-| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | validada para integração no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114); 1398 aprovados/13 pulos/3 avisos, saída 0, cobertura 77,44% em 4b3302c; PostgreSQL 17 e doctor 16/2/0; código aprovado 08850c0 preservado; seis checks reaproveitados; Windows físico pendente |
-| T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | a fazer |
+| T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ integrada no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114), merge 2efdabf; evidências compatíveis reaproveitadas; Windows físico pendente |
+| T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | validada para integração no [PR115](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/115); 1438 aprovados/16 pulos/3 avisos, saída 0, cobertura 77,44% em a1c2a77; 70 focados, PostgreSQL 20, doctor 16/2/0; código aprovado e653b61 preservado; seis checks reaproveitados; Windows físico pendente |
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
