@@ -95,6 +95,15 @@ def test_source_sequence_uses_the_supplied_transaction_for_schema_inspection(db)
     """Uma guarda de snapshot não pode abrir outra conexão sob lock SQLite."""
     from sqlalchemy import event
 
+    # Banco legado sem o schema Analytics: inspeção não pode ser omitida.
+    with db.engine.begin() as transaction:
+        def same_empty_connection(conn, cursor, statement, parameters, context, executemany):
+            assert conn is transaction, "A inspeção da tabela ausente saiu da transação"
+        event.listen(db.engine, "before_cursor_execute", same_empty_connection)
+        try:
+            assert resampling.latest_source_sequence(db, "TEST", "M5", connection=transaction) is None
+        finally:
+            event.remove(db.engine, "before_cursor_execute", same_empty_connection)
     seed(db, source(15))
     expected = resampling.latest_source_sequence(db, "TEST", "M5")
     with db.engine.begin() as transaction:
