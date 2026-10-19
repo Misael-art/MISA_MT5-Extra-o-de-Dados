@@ -1,10 +1,23 @@
 # Continuidade: harmonização de 2026-10-14
 
+## Revisão/integração PR #112 — T20.25 (2026-10-19)
+
+Base master `541c1c3` conciliada por merge Git na worktree da tarefa.
+Revisão: Conferidos integridade e identidade do cache, perfil por tentativa, posse/trava conforme kernel, encerramento restrito a processos próprios e retenção/quarentena com referência e banco criador protegidos. Resultados históricos separados dos complementos; composição 4b3302c contém alterações posteriores, sem alegar igualdade de árvore com a PR112.
+Aceite reaproveitado: 1280/11/3 históricos; complementos com CI atual aprovado e regressão composta 1398/13/3 saída 0 em 4b3302c; doctor 16/2/0; seis checks aprovados no HEAD `4aea3029a9fe6d7eacaa85ae9b652f6a2c53369c`,
+incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
+Conflitos resolvidos somente no painel/continuidade, preservando relatos e
+consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
+idênticos ao HEAD aprovado fora de docs/. Sem nova campanha numérica ou suíte.
+O commit apenas documental usa [skip ci]; não atribui novos verdes ao HEAD.
+Windows físico permanece pendente. Histórico anterior mantido abaixo.
+
+
 ## Revisão/integração PR #111 — T20.24 (2026-10-19)
 
 Base master `aed0f77` conciliada por merge Git na worktree da tarefa.
 Revisão: Conferidos cancelamento cooperativo sem bloquear UI, posse do checkpoint, publicação transacional, retomada sem duplicação e compartilhamento de um manifesto por fonte/TF durante o preparo. O resultado histórico isolado não é atribuído ao complemento; CI atual e composição final cobrem a revisão.
-Aceite reaproveitado: 1200/10/3 históricos; complemento 39 direcionados, regressão composta 1398/13/3 saída 0 com arquivos donos idênticos; doctor 16/2/0; seis checks aprovados no HEAD `90d63d48506aef87afd79c224cbcebc6b0f8de22`,
+Aceite reaproveitado: 1200/10/3 históricos; complemento 39 direcionados, regressão composta 1398/13/3 saída 0 contendo o complemento e alterações posteriores; aceite próprio pelo CI do SHA 90d63d4; doctor 16/2/0; seis checks aprovados no HEAD `90d63d48506aef87afd79c224cbcebc6b0f8de22`,
 incluindo Linux, Windows e PostgreSQL. Nenhuma revisão/comentário pendente.
 Conflitos resolvidos somente no painel/continuidade, preservando relatos e
 consolidando linhas por ID. Código, testes, fixtures, scripts e dependências
@@ -1090,6 +1103,28 @@ Protocolo2383efd registrado antes dos resultados. Depois do aceite críticoUI e 
 
 A base de origem e o protocolo mantiveram os hashes; os oito livros foram reconciliados independentemente por contagem/GP/GL/resultado/PF. O código reusa backtester/estratégias/PF, sem SDK/terminal/contas ou mudança de parâmetros/risco. Baseline947/9 e sete focados (incluindo subprocessos CLI sintéticos) passaram; suíte geral e CI do PR100 em curso. Não confundir execução de pesquisa com integração ou aprovação financeira.
 
+## T20.25 — Cache e isolamento das execuções (em revisão)
+
+A entrega amplia cache F16, manifests T20.4, fila T20.24, sessões T17.28 e
+retenção F15. Identidade e checksum precedem reuso; o SDK padrão usa perfil
+privado, arquivo por tentativa e posse entre processos com proteção contra
+filhos órfãos. A preparação reserva espaço por arquivo e mantém cancelamento
+cooperativo. Perfis recusados antes da compilação podem comprovar liberação e
+ser recolhidos por quarentena reversível. Referências SQL, inclusive o livro CSV
+fora do perfil, permanecem protegidas.
+
+Suíte completa final: 1280 aprovados, 11 pulos esperados e 3 avisos em 1334.28 s, saída 0, com Xvfb privado.
+O vínculo ao banco criador passou em 133 testes dirigidos e 15 de retenção; outro
+banco não pode recolher o perfil e identidades desconhecidas são preservadas.
+114 testes cobrem preparação/posse/budget/tester. PostgreSQL: 9 aprovados; doctor: 16 OK, 2 avisos e 0 falhas
+aprovados. Ensaio real Wine repetido: SDK padrão, uma operação reconciliada,
+origem/CSV compartilhado preservados e processos liberados. Quarentena e
+restauração real preservaram o manifesto. A composição final passou na validação
+local completa. Windows físico e revisão independente permanecem pendentes.
+
+[PR #112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), branch codex/t20.25-cache-isolamento, empilhado sobre a T20.24/PR111. Não consome
+registry/Composer/registro estatístico ausentes; o histórico nativo continua sem
+identidade suficiente para cache entre experimentos. [Contratos e limites](analytics/T20.25_CACHE_ISOLAMENTO.md).
 
 ## T19.0 — publicação isolada da base documental (2026-10-19)
 

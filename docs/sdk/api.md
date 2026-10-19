@@ -211,13 +211,50 @@ parcial. O limite de admissões permite terminar os já admitidos; tempo/CPU/RAM
 ou cancelamento explícito interrompem no próximo ponto cooperativo.
 
 O motor confere antes/depois dos sinais e entre blocos de até 256 barras; uma
-chamada atômica de indicador não é interrompida internamente. O Tester nativo
-retorna antes da conferência de cancelamento e continua sujeito ao timeout
-existente: não há promessa de interrupção imediata nem encerramento de terminal
-alheio. Executores injetados pelo argumento legado `run` do `BatchRunner` não
+chamada atômica de indicador não é interrompida internamente. O executor nativo padrão usa a sessão privada T20.25, confere o controle
+durante a espera e encerra somente seus processos. Executores nativos injetados
+continuam sujeitos ao próprio contrato: a fila confere o orçamento após o retorno,
+sem promessa de interrupção interna de uma chamada arbitrária. Executores injetados pelo argumento legado `run` do `BatchRunner` não
 recebem o callback novo; precisam adotar o protocolo controlado para publicação
 recuperável. A fila nunca certifica efeitos externos de um executor arbitrário.
 
 Limites `[ROBOTS]`, seus defaults e a distinção da concorrência estão em
 [T20.24](../analytics/T20.24_ORCAMENTO_FILA.md). Orçamento e status aparecem na
 CLI/UI; Windows físico continua no checklist de validação.
+
+
+## Cache e perfis privados (T20.25)
+
+`trade_analytics.cache.features` mantém a API anterior e verifica identidade e
+integridade antes de reutilizar contexto. O schema acrescenta colunas de checksum
+e contagem, sem apagar tabelas existentes. `robots.backtest.already_tested` aceita
+configuração, período e manifest para conferir a identidade Python; legado sem
+prova retorna ausência de hit. Resultado nativo não vira cache entre experimentos.
+A recuperação do mesmo checkpoint permanece disponível e informa `reuse_basis`.
+
+`run_mql5` mantém a assinatura e passa pelo executor `Session` existente, com
+terminal/perfil privado por tentativa. Metadados distinguem `run_id`, `artifact_id`,
+`artifact_directory`, `native_profile_isolated` e captura por observador ou
+relatório. `is_running` injetado continua sendo uma recusa explícita do executor;
+o terminal operacional aberto não é impedimento automático no caminho padrão.
+
+`resources.files.list_sessions(db, config)` inspeciona os perfis canônicos;
+`move_session(db, config, session_id, restore=False, origin="ui")` move para
+quarentena ou restaura, retornando `ok/path/error`. Nenhuma dessas APIs apaga um
+perfil. Referências, ownership, encerramento, links e processos são conferidos;
+a movimentação reversível usa a auditoria F15. A CLI correspondente está em
+`mt5x resources sessions --help`.
+
+[Contratos, critérios de reuso, limites de binários e validação](../analytics/T20.25_CACHE_ISOLAMENTO.md).
+
+
+A preparação privada aceita o callback cooperativo existente de orçamento e o
+consulta com volume de destino/reserva antes de copiar arquivos. O cancelamento
+é observado entre arquivos; a espera por processos mantém suas checagens atuais.
+A posse começa antes da preparação, permitindo recolher uma cópia recusada antes
+da compilação quando nenhum processo permaneceu ativo.
+
+
+O manifesto da sessão contém `owner_store`, vínculo sem URI/senha ao banco criador.
+`list_sessions/move_session` preservam perfis de outro banco e perfis antigos sem
+vínculo verificável, mesmo quando dois bancos usam o mesmo prefixo Wine.

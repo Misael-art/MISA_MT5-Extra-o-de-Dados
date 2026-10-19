@@ -142,3 +142,15 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
 
 A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
+
+### Pendência Windows físico — T20.25
+
+- [ ] Conferir posse de um byte com `msvcrt` entre processos, reentrada e queda do
+  controlador com MetaEditor/Tester/launcher ainda vivo; só liberar após conferir
+  executável e identidade da sessão, sem tomar posse por idade/PID.
+- [ ] Executar o backtest padrão com perfil privado, mantendo o terminal principal
+  aberto; conferir report/SET/livro próprios, custos reconciliados e origem intacta.
+- [ ] Verificar STOP/timeout e espera de filhos próprios, referências protegidas,
+  quarentena e restauração sem sobrescrever destino, inclusive locks de arquivos.
+
+Linux/Wine e caminhos Windows simulados não substituem esses ensaios físicos.

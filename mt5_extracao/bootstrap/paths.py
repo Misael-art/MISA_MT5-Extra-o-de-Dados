@@ -130,3 +130,14 @@ def terminal_owner(proc, terminal_exe=None, wine_prefix=None) -> str:
         return OURS if _same_path(Path(theirs).expanduser(), Path(wine_prefix).expanduser()) else OTHER
     except Exception:           # acesso negado, processo que sumiu...
         return UNKNOWN
+
+
+def state_dir(env=None) -> Path:
+    """Estado local por usuário, comum às cópias do app e independente do Wine/TMPDIR."""
+    env = os.environ if env is None else env
+    if is_windows():
+        root = env.get("LOCALAPPDATA") or env.get("APPDATA")
+        root = Path(root) if root else Path.home() / "AppData" / "Local"
+    else:
+        root = Path(env["XDG_STATE_HOME"]) if env.get("XDG_STATE_HOME") else Path.home() / ".local" / "state"
+    return root.expanduser() / "mt5-extracao"

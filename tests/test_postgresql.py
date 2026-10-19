@@ -201,3 +201,34 @@ def test_batch_checkpoint_publication_and_resume(pg):
     assert len(store.load_runs(pg)) == 2
     saved = budget.checkpoint(pg, first.batch_id)
     assert saved["status"] == "completed" and all(x["status"] == "completed" for x in saved["jobs"])
+
+
+def test_feature_cache_identity_and_additive_legacy_schema(pg, monkeypatch):
+    """T20.25: precisão SQL, hit verificado, corrupção e migração aditiva reais."""
+    from mt5_extracao.trade_analytics import cache, enrich, ledger
+    bars = random_walk(90, freq="5min", start="2025-01-06 09:00")
+    pg.save_ohlcv_data("CACHE", "5 minutos", bars)
+    ledger.save_trades(pg, "cache-run", [dict(direction=1, entry_time=bars.time.iloc[40], exit_time=bars.time.iloc[45],
+        entry_price=100., exit_price=101., stop_price=99., target_price=102., volume=1., pnl=1.,
+        mae=-1., mfe=2., bars=5)], robot_key="python:cache", symbol="CACHE", timeframe="M5")
+    with pg.engine.begin() as conn:
+        conn.execute(text("CREATE TABLE _trade_features_runs (run_id TEXT PRIMARY KEY, signature TEXT NOT NULL, feature_version INTEGER, computed_at TEXT)"))
+        conn.execute(text("CREATE TABLE _trade_features (run_id TEXT, seq INTEGER, legacy_note TEXT)"))
+        conn.execute(text("INSERT INTO _trade_features VALUES ('foreign', 0, 'preservar')"))
+    trades = ledger.load(pg)
+    expected = cache.features(pg, None, trades)
+    calls = []
+    real = enrich.enrich
+    monkeypatch.setattr(enrich, "enrich", lambda *args: calls.append(1) or real(*args))
+    actual = cache.features(pg, None, trades)
+    assert calls == []
+    pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
+    with pg.engine.begin() as conn:
+        assert conn.execute(text("SELECT legacy_note FROM _trade_features WHERE run_id='foreign'")).scalar() == 'preservar'
+        assert len(conn.execute(text("SELECT signature FROM _trade_features_runs WHERE run_id='cache-run'")).scalar()) == 64
+        conn.execute(text("UPDATE _trade_features SET atr=123456 WHERE run_id='cache-run'"))
+    repaired = cache.features(pg, None, trades)
+    assert calls == [1]
+    pd.testing.assert_frame_equal(repaired, expected, check_dtype=False)
+    cache.features(pg, None, trades)
+    assert calls == [1]

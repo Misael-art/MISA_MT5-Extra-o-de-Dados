@@ -7,6 +7,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from tests.native_process import compile_observer, logical_expert, configure_test_safety
 
 from mt5_extracao.bootstrap import paths
 from mt5_extracao.database_manager import DatabaseManager
@@ -35,16 +36,20 @@ def report_html(pnl, stop="1.10000"):
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
+    from tests.native_process import fake_session_commands
+    fake_session_commands(monkeypatch)
     monkeypatch.setattr(paths, "is_windows", lambda: False)
     prefix = tmp_path / "wine"
     mt5 = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     (mt5 / "MQL5" / "Experts").mkdir(parents=True)
     (mt5 / "terminal64.exe").write_bytes(b"")
+    (mt5 / "MetaEditor64.exe").write_bytes(b"")
     robots_dir = tmp_path / "robos"
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"path": str(mt5), "wine_prefix": str(prefix)},
                       "DATABASE": {"type": "sqlite", "path": str(tmp_path / "db.sqlite")},
                       "STRATEGY": {"initial_equity": "10000"}, "ROBOTS": {"library_dirs": str(robots_dir)}})
+    configure_test_safety(config, tmp_path)
     files = scaffold.create("Exato", robots_dir, magic=440001)
     db = DatabaseManager(db_type="sqlite", db_path=str(tmp_path / "db.sqlite"))
     env = SimpleNamespace(config=config, db=db, mt5=mt5, source=files[0], preset_file=files[3], prefix=prefix)
@@ -58,6 +63,9 @@ def env(tmp_path, monkeypatch):
 
     def terminal(html):
         def run(command_line, cwd, prefix_, timeout):
+            compiled = compile_observer(command_line, prefix_)
+            if compiled is not None:
+                return compiled
             ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix_)
             ini = configparser.ConfigParser()
             ini.optionxform = str

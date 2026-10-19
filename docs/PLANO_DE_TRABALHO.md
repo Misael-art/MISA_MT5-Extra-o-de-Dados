@@ -213,8 +213,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.21 | Piloto posterior de pesquisa de carteira síncrona | T20.3/8, T19.48 | planejada; Q13, segundo momento |
 | T20.22 | Percurso de pesquisa na UI | T20.17, T19.26/30 e serviços do recorte | planejada; Q14/UI-A: modos, referência de layout, editor/tabelas/estados; Manual não espera objetivos automáticos |
 | T20.23 | Inspetor de decisões e gráficos temporais vinculados | T20.3/11/22 | planejada; Q14/UI-A: seleção/cursor/zoom/eventos, catálogo por serviço; sem trocar renderer |
-| T20.24 | Orçamento/cancelamento/retomada da fila | T20.1 | validada para integração no [PR111](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/111); 1200/10/3 históricos; complemento 39 direcionados, regressão composta 1398/13/3 saída 0 com arquivos donos idênticos; doctor 16/2/0; código aprovado 90d63d4 preservado; seis checks reaproveitados; Windows físico pendente |
-| T20.25 | Cache verificável e isolamento de execuções | T20.4/24 | planejada; Q15 |
+| T20.24 | Orçamento/cancelamento/retomada da fila | T20.1 | ✅ integrada no [PR111](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/111), merge 541c1c3; evidências compatíveis reaproveitadas; Windows físico pendente |
+| T20.25 | Cache verificável e isolamento de execuções | T20.4/24 | validada para integração no [PR112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112); 1280/11/3 históricos; complementos com CI atual aprovado e regressão composta 1398/13/3 saída 0 em 4b3302c; doctor 16/2/0; código aprovado 4aea302 preservado; seis checks reaproveitados; Windows físico pendente |
 | T20.26 | Conformidade de módulos SDK/Composer | T20.2/7 e interfaces B integradas | planejada; Q16 |
 | T20.27 | Artefatos de terceiros: integridade e permissões | T20.16 | planejada; Q16 |
 | T20.28 | Restauração coerente do patrimônio de pesquisa | T20.4/16, F15 | planejada; Q16 |

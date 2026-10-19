@@ -23,6 +23,8 @@ import shutil
 import subprocess
 import tempfile
 import time
+import threading
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -771,3 +773,109 @@ def start_terminal(config, data: Path, ini_text: str, name: str, spawn: Optional
         command_line += ' /config:"{}"'.format(_windows_path(ini, prefix))
     (spawn or spawn_windows_command)(command_line, terminal.parent, prefix)
     return ini
+
+
+# Uma passagem histórica por usuário/host, inclusive entre processos do app.
+# A trava fica aberta até sair do contexto; não é removida por idade/PID.
+_TESTER_LEASE = threading.local()
+
+
+def _lock_tester_file(handle, *, release=False):
+    handle.seek(0)
+    # A API do kernel segue o host, mesmo quando caminhos Wine são simulados.
+    if os.name == "nt":
+        import msvcrt
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK if release else msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN if release else fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
+def _native_context_processes(context):
+    import configparser
+    from .sessions import owned_processes
+    config = configparser.ConfigParser(interpolation=None)
+    config.read_dict({"MT5": {"path": context["directory"], "wine_prefix": context["prefix"]}})
+    return owned_processes(config, ("terminal64.exe", "MetaEditor64.exe", "metatester64.exe"), strict=True, launchers=True)
+
+
+def _check_native_context():
+    import json
+    target = paths.state_dir() / "native-active.json"
+    if not target.exists():
+        return
+    try:
+        context = json.loads(target.read_text(encoding="utf-8"))
+        processes = _native_context_processes(context)
+    except (ValueError, KeyError, TypeError, OSError) as error:
+        raise RuntimeError("Estado do Tester ilegível; confira native-active.json antes de iniciar outro teste.") from error
+    if processes:
+        raise RuntimeError("Uma sessão privada anterior ainda está em execução. Encerre essa sessão antes de iniciar outro Tester.")
+    target.unlink()  # só após adquirir a posse e comprovar ausência de processos
+
+
+def register_native_context(session):
+    """A posse de arquivo pode terminar antes de um processo Wine filho."""
+    import json
+    if not getattr(_TESTER_LEASE, "depth", 0):
+        raise RuntimeError("A sessão histórica precisa reservar o Tester antes de iniciar processos.")
+    target = paths.state_dir() / "native-active.json"
+    prefix = wine_prefix(session.child_config)
+    payload = {"version": 1, "session": session.id, "directory": str(session.directory.resolve()),
+               "prefix": str(prefix) if prefix is not None else ""}
+    temporary = target.with_suffix(".tmp")
+    temporary.write_text(json.dumps(payload), encoding="utf-8")
+    os.replace(temporary, target)
+
+
+def release_native_context(session):
+    import json
+    target = paths.state_dir() / "native-active.json"
+    if not target.exists():
+        return False  # nenhuma prova de que esta sessão registrou e liberou seus filhos
+    context = json.loads(target.read_text(encoding="utf-8"))
+    if context.get("session") == session.id and not _native_context_processes(context):
+        target.unlink()
+        return True
+    return False
+
+
+@contextmanager
+def tester_lease(check=None):
+    """Espera cooperativa; reentrada na mesma thread não abre outra posse."""
+    import errno
+    depth = getattr(_TESTER_LEASE, "depth", 0)
+    if depth:
+        _TESTER_LEASE.depth = depth + 1
+        try:
+            if check is not None:
+                check()
+            yield
+        finally:
+            _TESTER_LEASE.depth -= 1
+        return
+    folder = paths.state_dir()
+    folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+    target = folder / "native-tester.lock"
+    with target.open("a+b") as handle:
+        if target.stat().st_size == 0:
+            handle.write(b"0"); handle.flush()
+        while True:
+            if check is not None:
+                check()
+            try:
+                _lock_tester_file(handle)
+                break
+            except OSError as error:
+                if error.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                    raise RuntimeError("Não foi possível reservar o Tester; confira as permissões da pasta de estado.") from error
+                time.sleep(.2)
+        _TESTER_LEASE.depth = 1
+        try:
+            _check_native_context()
+            if check is not None:
+                check()
+            yield
+        finally:
+            _TESTER_LEASE.depth = 0
+            _lock_tester_file(handle, release=True)

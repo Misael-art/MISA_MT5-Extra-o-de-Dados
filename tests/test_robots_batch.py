@@ -2,8 +2,10 @@
 import configparser
 import json
 from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
+from tests.native_process import compile_observer, logical_expert, configure_test_safety
 
 from mt5_extracao import cli
 from mt5_extracao.bootstrap import paths
@@ -26,16 +28,20 @@ def report_html(symbol):
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
+    from tests.native_process import fake_session_commands
+    fake_session_commands(monkeypatch)
     monkeypatch.setattr(paths, "is_windows", lambda: False)
     prefix = tmp_path / "wine"
     mt5 = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     (mt5 / "MQL5" / "Experts").mkdir(parents=True)
     (mt5 / "terminal64.exe").write_bytes(b"")
+    (mt5 / "MetaEditor64.exe").write_bytes(b"")
     robots_dir = tmp_path / "robos"
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"path": str(mt5), "wine_prefix": str(prefix)},
                       "DATABASE": {"type": "sqlite", "path": str(tmp_path / "db.sqlite")},
                       "ROBOTS": {"library_dirs": str(robots_dir)}})
+    configure_test_safety(config, tmp_path)
     for name, magic in (("Alfa", 610001), ("Beta", 610002)):
         scaffold.create(name, robots_dir, magic=magic)
     cfg = tmp_path / "config.ini"
@@ -50,12 +56,15 @@ def env(tmp_path, monkeypatch):
         target.with_suffix(".ex5").write_bytes(b"ex5")
 
     def terminal(command_line, cwd, prefix_, timeout):
+        compiled = compile_observer(command_line, prefix_)
+        if compiled is not None:
+            return compiled
         ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix_)
         ini = configparser.ConfigParser()
         ini.optionxform = str
         ini.read_string(ini_path.read_bytes().decode("utf-16"))
         t = ini["Tester"]
-        env.tested.append((t["Expert"].split("\\")[-1], t["Symbol"], t["Period"]))
+        env.tested.append((logical_expert(ini_path.parent,t["Expert"]), t["Symbol"], t["Period"]))
         if (t["Symbol"], t["Period"]) not in env.fail:
             (ini_path.parent / (t["Report"] + ".htm")).write_bytes(report_html(t["Symbol"]).encode("utf-16"))
         return 0
@@ -92,17 +101,29 @@ def test_one_failure_does_not_stop_the_batch_and_resume_runs_only_what_is_missin
     assert len(env.tested) == 4
 
 
-def test_resume_reruns_when_code_preset_or_model_changed(env):
+def test_native_checkpoint_requires_same_code_preset_and_model(env):
+    from mt5_extracao.robots import budget
     alfa = env.robots("alfa")
-    batch(env, alfa)
-    record = lambda robot, **kw: backtest.already_tested(env.db, robot, "EURUSD", "H1", kw.get("preset"), kw.get("model", "4"))
-    assert record(alfa[0]) is not None
-    assert record(alfa[0], preset="Alfa_Conservador") is None and record(alfa[0], model="0") is None
-    assert backtest.already_tested(env.db, alfa[0], "EURUSD", "D1", None, "4") is None
-    source = alfa[0].path
-    with open(source, "a", encoding="utf-8") as f:
-        f.write("\n// mudou\n")
-    assert record(env.robots("alfa")[0]) is None                                          # código novo: testa de novo
+    first = budget.Budget(env.db, env.config)
+    args = (env.db, env.config, alfa, ["EURUSD"], [Timeframe.H1])
+    results = backtest.run_batch(*args, budget=first, run=env.terminal, is_running=lambda: False)
+    assert results[0]["run"]["metrics"]["execution_identity"]["cache_eligible"] is False
+    # Recuperar o experimento não certifica fonte nativa para um novo experimento.
+    assert backtest.already_tested(env.db, alfa[0], "EURUSD", "H1", None, "4", config=env.config) is None
+    env.tested.clear()
+    recovered = backtest.run_batch(*args, batch_id=first.batch_id, run=env.terminal, is_running=lambda: False)
+    assert recovered[0]["skipped"] and env.tested == []
+    env.config.set("ROBOTS", "tester_model", "0")
+    with pytest.raises(ValueError, match="outro plano"):
+        backtest.run_batch(*args, batch_id=first.batch_id)
+    env.config.set("ROBOTS", "tester_model", "4")
+    with pytest.raises(ValueError, match="outro plano"):
+        backtest.run_batch(*args, preset="Alfa_Conservador", batch_id=first.batch_id)
+    source = Path(alfa[0].path)
+    source.write_text(source.read_text(encoding="utf-8") + "\n// mudou\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="outro plano"):
+        backtest.run_batch(env.db, env.config, env.robots("alfa"), ["EURUSD"], [Timeframe.H1], batch_id=first.batch_id)
+    assert env.tested == []
 
 
 def test_python_strategies_in_the_same_batch(env):
@@ -128,7 +149,8 @@ def test_cli_batch(env, monkeypatch, capsys):
     assert summary == {"total": 8, "tested": 0, "skipped": 8, "failed": 0}
     assert cli.main(env.args + argv + ["--param", "InpRiskPct=2"]) == cli.EXIT_USAGE
     assert cli.main(env.args + ["robots", "backtest", "alfa,beta", "--tfs", "H1"]) == cli.EXIT_USAGE
+    capsys.readouterr()
     monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: True)
     env.tested[:] = []
-    assert cli.main(env.args + argv) == cli.EXIT_FAIL and env.tested == []
-    assert capsys.readouterr().err.count("--close-terminal") == 1
+    assert cli.main(env.args + argv) == cli.EXIT_OK and len(env.tested) == 8
+    assert not capsys.readouterr().err

@@ -35,3 +35,10 @@ def _collect_tk_garbage_on_main_thread():
     import gc
     gc.enable()          # a janela principal desliga a coleta automática (ui_manager.setup_ui); religa entre testes
     gc.collect()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_native_tester_state(tmp_path, monkeypatch):
+    """Os terminais falsos nunca disputam a posse nativa do usuário real."""
+    from mt5_extracao.bootstrap import paths
+    monkeypatch.setattr(paths, "state_dir", lambda: tmp_path / "native-state")

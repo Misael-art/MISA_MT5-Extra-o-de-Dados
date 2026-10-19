@@ -286,20 +286,8 @@ class InventoryPanel:
         return self.runner
 
     def _mql5_setup(self, config, robots, mt5_tools):
-        """Robôs MQL5 precisam do MT5 fechado: pergunta antes; sem o aceite, ficam só as estratégias Python."""
-        if not mt5_tools.terminal_running(config):
-            return None, robots
-        if not messagebox.askyesno(
-                "Backtest", "Os robôs MQL5 rodam no Strategy Tester e o MetaTrader 5 precisa estar fechado.\n\n"
-                            "Fechar o MetaTrader 5 agora? (Coleta e extração em andamento serão interrompidas; "
-                            "depois, use \"Verificar conexão\" para reconectar.)\n\n"
-                            "Respondendo Não, só as estratégias Python são testadas.", parent=self.frame):
-            return None, [r for r in robots if r.kind != catalog.MQL5]
-
-        def setup():
-            bridge_was_running = mt5_tools.release_terminal(config)
-            return mt5_tools.restart_bridge if bridge_was_running else None
-        return setup, robots
+        """O executor prepara um perfil privado e mantém o terminal operacional aberto."""
+        return None, robots
 
     def cancel_backtest(self):
         if self.runner is not None:

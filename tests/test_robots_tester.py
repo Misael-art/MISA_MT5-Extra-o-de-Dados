@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from tests.native_process import compile_observer, logical_expert
 
 from mt5_extracao import cli
 from mt5_extracao.bootstrap import paths
@@ -44,6 +45,8 @@ def report_html(deals=DEALS):
 
 @pytest.fixture
 def home(tmp_path, monkeypatch):
+    from tests.native_process import fake_session_commands
+    fake_session_commands(monkeypatch)
     """Prefixo Wine falso: MT5 portátil com o DemoGuard já instalado e 'compilado', e a pasta Common\\Files."""
     monkeypatch.setattr(paths, "is_windows", lambda: False)
     prefix = tmp_path / "wine"
@@ -71,6 +74,9 @@ def home(tmp_path, monkeypatch):
 def fake_terminal(html=None, calls=None, csv=None):
     """Faz o papel do terminal: lê o .ini indicado na linha de comando e grava o relatório (UTF-16)."""
     def run(command_line, cwd, prefix, timeout):
+        compiled = compile_observer(command_line, prefix)
+        if compiled is not None:
+            return compiled
         ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix)
         ini = configparser.ConfigParser()
         ini.optionxform = str
@@ -168,9 +174,9 @@ def test_run_mql5_records_the_run_from_the_report(home):
                             dt.datetime(2025, 2, 1), preset="Demo_Conservador", params={"InpRiskPct": "0.25"},
                             run=fake_terminal(report_html(), calls), is_running=lambda: False)
     ini = calls[0][1]
-    assert (ini["Expert"], ini["Symbol"], ini["Period"], ini["Model"]) == ("Demo\\DemoGuard", "EURUSD", "H1", "4")
+    assert (ini["Expert"], ini["Symbol"], ini["Period"], ini["Model"]) == ("Demo\\mt5x_session", "EURUSD", "H1", "4")
     assert (ini["FromDate"], ini["ToDate"], ini["Deposit"]) == ("2025.01.01", "2025.02.01", "10000.00")
-    preset = (home.mt5 / "MQL5" / "Profiles" / "Tester" / ini["ExpertParameters"]).read_bytes().decode("utf-16")
+    preset = (Path(run["metrics"]["report"]).parent / "MQL5" / "Profiles" / "Tester" / ini["ExpertParameters"]).read_bytes().decode("utf-16")
     assert "InpRiskPct=0.25\r\n" in preset                                       # --param vence o preset
     m = run["metrics"]
     assert (m["trades"], m["trades_source"], m["tester_model"]) == (3, backtest.REPORT_SOURCE, "cada tick com ticks reais")
@@ -200,8 +206,11 @@ def test_session_export_is_explicitly_disabled_and_shared_original_csv_is_preser
         html = report_html([DEALS[0], ("2025.01.09 10:00:00", "EURUSD", "buy", "in", "-2", "0", "0", "9998"),
                             ("2025.01.10 11:00:00", "EURUSD", "sell", "out", "0", "-1", "-9", "9988")])
         result = fake_terminal(html, calls)(*args)
+        if "/compile:" in args[0]:
+            return result
         ini = calls[-1][1]
-        preset = (home.mt5 / "MQL5" / "Profiles" / "Tester" / ini["ExpertParameters"]).read_text(encoding="utf-16")
+        directory=paths.wine_to_linux_path(args[0].split('"')[3],args[2]).parent
+        preset = (directory / "MQL5" / "Profiles" / "Tester" / ini["ExpertParameters"]).read_text(encoding="utf-16")
         assert "InpExportTrades=false" in preset
         owned.write_text("time;symbol;type;volume;result;entry_time;direction;currency;commission;swap;fee\n"
                          "2025.01.10 11:00;EURUSD;close_buy;0.19;-12;2025.01.09 10:00;buy;USD;-2;-1;0\n")
@@ -239,7 +248,12 @@ def test_run_mql5_records_the_tester_log_delta_per_run(home):
 
     def run_and_append_log(*args):
         result = fake(*args)
-        with daily.open("ab") as handle:
+        if "/compile:" in args[0]:
+            return result
+        directory=paths.wine_to_linux_path(args[0].split('"')[3],args[2]).parent
+        private=directory/"Tester"/"Agent-127.0.0.1-3000"/"logs"/"20261014.log"
+        private.parent.mkdir(parents=True,exist_ok=True)
+        with private.open("ab") as handle:
             handle.write(b"current backtest: 0 errors, 0 warnings\n")
         return result
 
@@ -254,7 +268,7 @@ def test_run_mql5_records_the_tester_log_delta_per_run(home):
     assert saved["metrics"]["tester_log"] == str(isolated)
 
 
-def test_run_mql5_prefers_the_hadouken_csv_and_drops_a_stale_one(home, tmp_path):
+def test_run_mql5_preserves_shared_csv_and_reads_only_private_observer(home, tmp_path):
     library = tmp_path / "lib"
     ea = library / "Experts" / "Hdk.mq5"
     ea.parent.mkdir(parents=True)
@@ -268,11 +282,23 @@ def test_run_mql5_prefers_the_hadouken_csv_and_drops_a_stale_one(home, tmp_path)
     stale.write_text("time;symbol;type;volume;result\n2020.01.01 00:00;X;close_buy;1;999.00\n", encoding="cp1252")
     kwargs = dict(start=dt.datetime(2025, 1, 1), end=dt.datetime(2025, 2, 1), is_running=lambda: False)
     run = backtest.run_mql5(home.db, home.config, robot, "EURUSD", "H1", run=fake_terminal(report_html()), **kwargs)
-    assert run["metrics"]["trades_source"] == backtest.REPORT_SOURCE and not stale.exists()
-    assert run["params"] == {"InpExportTrades": "true"}                          # ligado sozinho para o HADOUKEN
-    fresh = "time;symbol;type;volume;result\n2025.01.05 00:00;EURUSD;close_sell;0.10;19.90\n"
-    run = backtest.run_mql5(home.db, home.config, robot, "EURUSD", "H1",
-                            run=fake_terminal(report_html(), csv=(stale, fresh)), **kwargs)
+    assert run["metrics"]["trades_source"] == backtest.REPORT_SOURCE and stale.exists()
+    assert run["params"] == {"InpExportTrades": "false"}                          # ligado sozinho para o HADOUKEN
+    original = stale.read_bytes()
+    fresh = "time;symbol;type;volume;result;currency;commission;swap;fee\n2025.01.05 00:00;EURUSD;close_sell;0.10;19.90;USD;0;0;0\n"
+    def terminal(command, cwd, prefix, timeout):
+        html = report_html([DEALS[0], ("2025.01.05 00:00:00", "EURUSD", "sell", "out", "0", "0", "19.90", "10019.90")])
+        code = fake_terminal(html)(command, cwd, prefix, timeout)
+        if "/config:" in command:
+            import re
+            directory = paths.wine_to_linux_path(command.split('"')[3], prefix).parent
+            wrapper = next(directory.glob("MQL5/Experts/**/mt5x_session.mq5"))
+            name = re.search(r'MT5X_Export\("([^" ]+)"', wrapper.read_text()).group(1)
+            (home.common / name).write_text(fresh, encoding="cp1252")
+        return code
+    run = backtest.run_mql5(home.db, home.config, robot, "EURUSD", "H1", run=terminal, **kwargs)
+    assert stale.read_bytes() == original
+    assert run["metrics"]["cash_reconciled"] is True
     assert (run["metrics"]["trades_source"], run["metrics"]["trades"]) == (backtest.CSV_SOURCE, 1)
     assert run["equity"][-1] == ["2025-01-05 00:00:00", pytest.approx(10019.9)]
 
@@ -314,9 +340,10 @@ def test_cli_backtest_with_the_terminal_open(home, monkeypatch, capsys):
     monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: "closed" not in events)
     monkeypatch.setattr(mt5_tools, "run_windows_command", fake_terminal(report_html()))
     argv = home.args + ["robots", "backtest", "demoguard", "--symbol", "EURUSD", "--tf", "H1"]
-    assert cli.main(argv) == cli.EXIT_FAIL
-    assert "--close-terminal" in capsys.readouterr().err and store.load_runs(home.db) == []
+    assert cli.main(argv) == cli.EXIT_OK
+    assert events == [] and len(store.load_runs(home.db)) == 1
+    capsys.readouterr()
     monkeypatch.setattr(mt5_tools, "release_terminal", lambda *a: events.append("closed") or True)
     monkeypatch.setattr(mt5_tools, "restart_bridge", lambda: events.append("bridge"))
     assert cli.main(argv + ["--close-terminal"]) == cli.EXIT_OK
-    assert events == ["closed", "bridge"] and len(store.load_runs(home.db)) == 1   # fecha, testa e religa a ponte
+    assert events == ["closed", "bridge"] and len(store.load_runs(home.db)) == 2   # fecha, testa e religa a ponte

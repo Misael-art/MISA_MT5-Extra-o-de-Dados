@@ -149,19 +149,26 @@ def test_page_matrix_and_refresh_after_a_backtest(server):
 def mql5_robot(server, tmp_path, monkeypatch, running):
     """Um robô MQL5 'compilado' num MT5 falso; `running` diz se o terminal está aberto. Devolve o registro de eventos."""
     import configparser
+    from tests.native_process import compile_observer, configure_test_safety, fake_session_commands
+    fake_session_commands(monkeypatch)
     from mt5_extracao.bootstrap import paths
     from mt5_extracao.robots import catalog, mt5_tools, scaffold
     mt5 = server.prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     (mt5 / "MQL5" / "Experts").mkdir(parents=True)
     (mt5 / "terminal64.exe").write_bytes(b"")
+    (mt5 / "MetaEditor64.exe").write_bytes(b"")
     scaffold.create("Vivo", tmp_path / "robos", magic=730001)
     server.app.config["ROBOTS"] = {"library_dirs": str(tmp_path / "robos")}
     server.app.config["MT5"]["path"] = str(mt5)
+    configure_test_safety(server.app.config, tmp_path)
     robot = catalog.get_robot(catalog.load_catalog(server.app.config, server.db), "vivo")
     mt5_tools.install(robot, mt5)[0].target.with_suffix(".ex5").write_bytes(b"ex5")
     events, state = [], {"running": running}
 
     def terminal(command_line, cwd, prefix, timeout):
+        compiled = compile_observer(command_line, prefix)
+        if compiled is not None:
+            return compiled
         ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix)
         ini = configparser.ConfigParser()
         ini.optionxform = str
@@ -185,14 +192,15 @@ def mql5_robot(server, tmp_path, monkeypatch, running):
     return events
 
 
-def test_mql5_backtest_needs_explicit_confirmation_before_closing_mt5(server, tmp_path, monkeypatch):
+def test_mql5_backtest_uses_private_profile_and_only_explicit_confirmation_closes_main(server, tmp_path, monkeypatch):
     events = mql5_robot(server, tmp_path, monkeypatch, running=True)
     body = {"action": "backtest", "params": {"robots": ["mql5:vivo"], "symbols": ["EURUSD"], "tfs": ["M15"]}}
-    status, answer = call(server, "POST", "/api/action", body)
-    assert status == 428 and answer["confirm"] == "close_mt5" and "FECHAR o MetaTrader 5" in answer["error"]
-    assert events == [] and call(server, "GET", "/api/job")[1]["job"] is None            # nada rodou, nada fechou
-    body["params"]["confirm"] = "sim"                                                    # confirmação errada não vale
-    assert call(server, "POST", "/api/action", body)[0] == 428 and events == []
+    assert call(server, "POST", "/api/action", body)[0] == 202
+    assert wait(server)["result"].startswith("1 testado(s)")
+    assert events == ["teste EURUSD"]
+    events.clear()
+    body["params"]["confirm"] = "sim"
+    assert call(server, "POST", "/api/action", body)[0] == 400 and events == []
     body["params"]["confirm"] = "close_mt5"
     assert call(server, "POST", "/api/action", body)[0] == 202
     job = wait(server)

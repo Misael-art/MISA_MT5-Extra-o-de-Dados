@@ -40,6 +40,11 @@ def add_parser(sub) -> None:
     q = rs.add_parser("files", help="logs e exportações mais velhos que [RESOURCES] logs_keep_days / "
                                     "exports_keep_days (--yes apaga)")
     q.add_argument("--yes", action="store_true")
+    q = rs.add_parser("sessions", help="perfis privados: listar, guardar em quarentena ou restaurar sem sobrescrever")
+    move = q.add_mutually_exclusive_group()
+    move.add_argument("--quarantine", metavar="ID", help="mover uma sessão própria encerrada e sem referências")
+    move.add_argument("--restore", metavar="ID", help="restaurar uma sessão da quarentena")
+    q.add_argument("--yes", action="store_true")
     q = rs.add_parser("history", help="medições gravadas e ações executadas")
     q.add_argument("--limit", type=int, default=30)
     p.set_defaults(func=run)
@@ -62,6 +67,26 @@ def run(args: argparse.Namespace, ctx) -> int:
         out("Aviso: " + message)
     hb = storage.human_bytes
     command = args.resources_command
+
+    if command == "sessions":
+        session_id = args.quarantine or args.restore
+        if session_id:
+            if not args.yes:
+                err("nada foi alterado: confirme com --yes")
+                return cli.EXIT_USAGE
+            result = files.move_session(db, config, session_id, restore=bool(args.restore), origin="cli")
+            out(("Sessão restaurada: " if args.restore else "Sessão guardada em quarentena: ") + result["path"]
+                if result["ok"] else "Sessão preservada: " + result["error"])
+            if result["ok"] and not args.restore:
+                out("A movimentação é reversível e não libera espaço em disco. Restaure com resources sessions --restore ID --yes.")
+            data(**result)
+            return cli.EXIT_OK if result["ok"] else cli.EXIT_FAIL
+        items = files.list_sessions(db, config)
+        for item in items:
+            out(item["session"] + (" (quarentena)" if item["quarantined"] else "") + ": " +
+                ("disponível" if item["eligible"] else item["reason"]))
+        data(sessions=items)
+        return cli.EXIT_OK
 
     if command == "status":
         report = storage.measure(db, policy_mod.archive_dir(db, policy), config=config)
