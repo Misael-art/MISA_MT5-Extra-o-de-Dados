@@ -2089,3 +2089,16 @@ agora recusam canal ativo sem max_seconds positivo desde primeiro fill; teste
 específico aprovado. Ensaio preliminar sem teto preservado, sem aceite final.
 Novo ensaio mantém janela/sizing/SL/TP e acrescenta teto3600s: nova verificação
 justificada por mudança de proteção/runtime, sem busca estatística.
+
+
+T19.16/TM06 — aceite dirigido final concluído: S09v1.50/b39a586b622e4713,
+H runtimeeaaa059 e M runtimea9c2b66. UI configura idle30s e teto obrigatório3600s,
+lote0,25/SL500/TP1000. Um backtest e um replay finais no mesmo dia EURUSD/M5:
+2 posições/4fills, uma saída absoluta e uma Donchian por execução;18observações,
+33inputs carregados, journal/livro/fills/caixa conciliados. Fonte/23includes/binários
+conferidos;12PIDs próprios encerrados, ponte/principal e trabalho original preservados.
+Consulta/reabertura/exportação UI conferidas; preliminar sem teto excluído do aceite.
+H#29 tem dois checks aprovados; M#157→M#158 aguardam checks existentes/integração.
+Recibo T19_16_DONCHIAN_20261020.json; sem aceite para ATR adaptativo ou Pullback
+temporal, live DEMO, carteira/gradientes/cache. Próxima dependência elegível após
+fechamento: TM07, horizonte ATR limitado, mantendo os contratos e aceites próprios.

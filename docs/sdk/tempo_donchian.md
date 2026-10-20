@@ -35,4 +35,11 @@ somente Tester e Windows físico pendente específico.
 Testes dirigidos dos dois motores, registry/UI/recibos, buy/sell, N−1/N/N+1,
 ausência, não romper/empate, renovações, reinício/parcial/hash/cobertura e confirmação
 falha aprovados. Provedor: 27 Tools, verificador estático123 e compilação isolada.
-Aceite nativo próprio e checks obrigatórios pendentes; não repetir a campanha ER.
+Aceite nativo próprio concluído no código corrigido; checks existentes em curso.
+EURUSD/M5,14→15/10/2026, lote0,25/SL500/TP1000, idle30s/max3600s fixados antes do
+ensaio final.2 operações por execução, uma saída absoluta e outra Donchian;
+18 observações/33inputs por execução; journal e livro exatamente iguais,
+caixa/fills conciliados. Fonte/23includes/instrumentação/binários conferidos.
+Consulta/reabertura/exportação UI aprovadas,12PIDs próprios encerrados e ponte/principal
+preservados. Recibo: ../evidencias/T19_16_DONCHIAN_20261020.json.
+O preliminar sem teto permanece preservado e sem aceite final. Sem campanha ER repetida.
