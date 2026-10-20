@@ -1,3 +1,27 @@
+# T19.56 — lotes em preparação; corretivo #148 integrado — 2026-10-20
+
+PR148 integrada em 5e3c443, fonte final aa0d8fd: seis checks obrigatórios SUCCESS,
+revisão técnica concluída, árvore integrada inteira idêntica à testada. Produção
+permanece igual à prova Wine b27da93: dois Testers sequenciais, PIDs privados
+observados/encerrados, resultados reabertos no banco/UI, ponte e principal DEMO
+preservados. A falha Windows foi timeout de teste agregado no commit SQLite;
+três cenários independentes mantiveram dados/asserções/limite60s. Não repetir a
+campanha histórica. [Integração](evidencias/T20_25_INTEGRACAO_20261020.json).
+
+T19.56 inicial prepara lote fixo/por risco na UI, Manual/revisão/.set e eventos
+nativos de volume/risco/margem. H24 está em rascunho com checks aprovados, fonte
+6120466/fingerprint8fcc5dfacc9118fa, somente Tester DEMO. A aplicação preserva o
+perfil1.00 e seus resultados, sem migrar parâmetros para1.10. Prévia indisponível
+não cria dependência de IPC: dados reais continuam obrigatórios no Tester.
+A prova de novos lotes em UI/backtest/replay com negócios permanece pendente;
+registry/compilação não encerram a ficha. [Escopo](sdk/lotes_s09.md).
+
+Próxima T19.57: corrigir a confirmação da parcial e contabilizar o saldo antes
+de desbloquear Pullback. O exportador existente já agrega saídas/custos por
+posição, sem contar cada parcial como nova operação. Cache nativo segue inelegível;
+DEMO ao vivo e Windows físico mantêm aceites próprios. Trabalho/configuração/dados
+locais preservados; não retomar lotes contra bibliotecas de branches divergentes.
+
 # T20.25 — corretivo de encerramento do backtest em revisão — 2026-10-20
 
 O primeiro percurso Manual histórico está concluído; preservar suas evidências,

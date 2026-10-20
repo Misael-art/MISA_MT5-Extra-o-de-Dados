@@ -6,6 +6,7 @@ import calendar
 import configparser
 import copy
 from datetime import datetime,timezone
+from decimal import Decimal,ROUND_FLOOR
 import hashlib
 import json
 import math
@@ -28,6 +29,44 @@ _EVIDENCE="""CREATE TABLE IF NOT EXISTS _preset_native_runs (
  status TEXT NOT NULL,evidence_json TEXT NOT NULL,created_at TEXT NOT NULL)"""
 _SIGNAL=re.compile(r"S09_SIGNAL event_at=(\d+) confirmed_at=(\d+) available_at=(\d+) direction=(-?\d+) opened=([01]) "
                    r"execution_state=(\d+) volume=([^ ]+) order=(\d+) deal=(\d+) reason=(.*)")
+_SIZING=re.compile(r"S09_SIZING event_at=(\d+) lot_mode=([01]) requested_volume=([^ ]+) planned_volume=([^ ]+) "
+                   r"risk_money=([^ ]+) risk_budget=([^ ]+) margin_required=([^ ]+) margin_free=([^ ]+) "
+                   r"volume_min=([^ ]+) volume_max=([^ ]+) volume_step=([^\s]+)")
+
+
+def native_sizing(directory,signals,expected):
+    rows=[]
+    for path in (Path(directory)/"Tester").glob("Agent-*/logs/*.log"):
+        for match in _SIZING.finditer(mql.read_text(path)):
+            at,mode,*numbers=match.groups()
+            values=[None if i in (4,5) and v=="unavailable" else float(v) for i,v in enumerate(numbers)]
+            if not all(v is None or math.isfinite(v) for v in values):
+                raise ValueError("Evento de lote contém número inválido; preserve o diário nativo.")
+            requested,planned,risk,budget,margin,free,minimum,maximum,step=values
+            signal=next((s for s in signals if s["event_at"]==int(at)),None)
+            if (signal is None or int(mode)!=int(expected["InpLotMode"]) or budget<=0 or risk<0 or planned<0
+                    or requested!=(float(expected["InpFixedLot"]) if mode=="0" else 0)):
+                raise ValueError("Evento de lote não corresponde ao sinal/input carregado; confira a origem antes de executar.")
+            known=margin is not None and free is not None
+            spec_known=minimum>0 and maximum>=minimum and step>0
+            if signal["opened"] and (planned!=signal["filled_volume"] or planned<=0 or risk<=0 or risk>budget
+                    or (mode=="0" and planned>requested) or not known or margin<0 or free<=0
+                    or margin>free*.8+2e-8 or not spec_known or not minimum<=planned<=maximum):
+                raise ValueError("Volume/risco/margem nativos não conciliam com o preenchimento; não aprovar este resultado.")
+            if signal["opened"]:
+                p,s=Decimal(str(planned)),Decimal(str(step))
+                normalized=(min(Decimal(str(requested)),Decimal(str(maximum)))/s).to_integral_value(rounding=ROUND_FLOOR)*s if mode=="0" else p
+                if p%s or p!=normalized:
+                    raise ValueError("Volume preenchido diverge da normalização independente pelo passo/máximo nativos.")
+            rows.append(dict(event_at=int(at),mode="fixed_volume" if mode=="0" else "risk_fraction",
+                requested_volume=requested if mode=="0" else None,planned_volume=planned,
+                filled_volume=signal["filled_volume"],risk_money=risk,risk_budget=budget,
+                margin_required=margin if known else None,margin_free=free if known else None,margin_known=known,
+                volume_min=minimum if spec_known else None,volume_max=maximum if spec_known else None,
+                volume_step=step if spec_known else None,spec_known=spec_known))
+    if len(rows)!=len(signals) or len({r["event_at"] for r in rows})!=len(rows):
+        raise ValueError("Agenda de lotes ausente ou duplicada no diário nativo; preserve os eventos para revisão.")
+    return rows
 
 
 def native_signals(directory):
@@ -69,9 +108,10 @@ def _semantic_signals(signals):
     return [{key:value for key,value in row.items() if key not in ("order_ticket","deal_ticket")} for row in signals]
 
 
-def first_difference(reference,rows,signals):
-    for section,expected,actual in (("ledger",reference["ledger"],rows),
-                                    ("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))):
+def first_difference(reference,rows,signals,sizing=None):
+    sections=[("ledger",reference["ledger"],rows),("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))]
+    if sizing is not None:sections.append(("sizing",reference.get("sizing",[]),sizing))
+    for section,expected,actual in sections:
         if len(expected)!=len(actual):
             return dict(section=section,field="count",expected=len(expected),observed=len(actual))
         for index,(old,new) in enumerate(zip(expected,actual)):
@@ -233,6 +273,7 @@ class PresetExecution:
         if actual_mode["visual"]!=(self.mode=="replay"):
             raise ValueError("Modo Visual nativo difere do solicitado; replay continua pendente.")
         signals=native_signals(job.directory)
+        sizing=native_sizing(job.directory,signals,native["expected_native_inputs"]) if native["profile_version"]>=2 else None
         rows=_ledger_rows(self.db,job.record,signals)
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
@@ -240,12 +281,12 @@ class PresetExecution:
         status=("reconciled_"+self.mode) if active else "contract_only"
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
-        difference=first_difference(prior,rows,signals) if prior is not None else None
+        difference=first_difference(prior,rows,signals,sizing) if prior is not None else None
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"
         report=getattr(job,"report",job.directory/"relatorio.json")
         resource_report=json.loads(Path(report).read_text(encoding="utf-8")) if Path(report).is_file() else {}
-        return dict(resources_released=resource_report.get("resources_released"),preset_native_evidence_schema_version=1,run_id=job.record["run_id"],session=job.id,
+        proof=dict(resources_released=resource_report.get("resources_released"),preset_native_evidence_schema_version=1,run_id=job.record["run_id"],session=job.id,
             preset=package["identity"],config_hash=package["config_hash"],execution_hash=self.package.execution_hash,
             package_hash=self.package.package_hash,set_sha256=package["parameters_sha256"],source=native["robot"],
             context=package["composition"]["context"],test_context=package["test_context"],mode=self.mode,status=status,
@@ -257,3 +298,5 @@ class PresetExecution:
             functional_native_activity=active,functional_cycle=(active and self.mode=="replay" and match is True),
             allows_live=False,statistical_approval=False,cache_eligible=False,history_revision="unavailable",
             created_at=datetime.now(timezone.utc).isoformat())
+        if sizing is not None:proof["sizing"]=sizing
+        return proof

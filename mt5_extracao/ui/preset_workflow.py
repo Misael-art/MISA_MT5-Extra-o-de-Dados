@@ -6,6 +6,8 @@ from tkinter import ttk,filedialog,messagebox
 
 from mt5_extracao.bootstrap import paths
 from mt5_extracao.composition import Composition
+from mt5_extracao.composition import native
+from mt5_extracao.composition.sizing import preview_sizing,SizingPreviewUnavailable
 from mt5_extracao.robots import store as robot_store
 from mt5_extracao.presets import defaults,store,manual,execution
 from mt5_extracao.presets.compiler import PresetIdentity,TestContext,compile_package
@@ -17,7 +19,8 @@ FIELDS=(("fast","EMA curta (barras)"),("slow","EMA longa (barras)"),("warmup_bar
         ("stop_points","SL fixo (pontos)"),("target_points","TP fixo (pontos)"))
 INPUT_LABELS={"InpFastPeriod":"EMA curta","InpSlowPeriod":"EMA longa","InpWarmupBars":"Aquecimento",
  "InpStopPoints":"SL (pontos)","InpTargetPoints":"TP (pontos)","InpRiskPct":"Risco (%)",
- "InpMagic":"Magic","InpDeviationPoints":"Desvio (pontos)","InpPresetId":"ID do preset","InpConfigHash":"Hash da configuração"}
+ "InpMagic":"Magic","InpDeviationPoints":"Desvio (pontos)","InpPresetId":"ID do preset","InpConfigHash":"Hash da configuração",
+ "InpLotMode":"Modo de lotes (0 fixo / 1 risco)","InpFixedLot":"Volume fixo solicitado (lotes)"}
 
 
 class NameDialog:
@@ -55,6 +58,8 @@ class PresetWorkflow:
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
+        self.lots_enabled=robot.version==native.LOTS_ROBOT_VERSION
+        self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
         content=ScrollableContent(self.window,self.ui.theme);content.pack(fill=tk.BOTH,expand=True)
@@ -79,6 +84,23 @@ class PresetWorkflow:
             self.fields[key]=value;self.entries.append(entry)
         for col in range(3):form.columnconfigure(col,weight=1)
         self.save=ttk.Button(form,text="Salvar revisão",command=self.save_revision);self.save.grid(row=3,column=2,sticky="e")
+        if self.lots_enabled:
+            lots=ttk.LabelFrame(body,text="Lotes · uma única entrada",padding=12);lots.pack(fill=tk.X,padx=12,pady=4)
+            fields=ttk.Frame(lots);fields.pack(fill=tk.X)
+            mode_field,fixed_field,risk_field=(ttk.Frame(fields) for _ in range(3))
+            self.lot_mode=tk.StringVar(value="Por risco");self.fixed_volume=tk.StringVar(value="0.01");self.risk_pct=tk.StringVar(value="0.5")
+            ttk.Label(mode_field,text="Modo de dimensionamento").pack(anchor="w")
+            self.lot_combo=ttk.Combobox(mode_field,textvariable=self.lot_mode,values=("Por risco","Volume fixo"),state="readonly",width=20)
+            self.lot_combo.pack(fill=tk.X)
+            ttk.Label(fixed_field,text="Volume fixo solicitado (lotes)").pack(anchor="w")
+            self.fixed_entry=ttk.Entry(fixed_field,textvariable=self.fixed_volume,width=16);self.fixed_entry.pack(fill=tk.X)
+            ttk.Label(risk_field,text="Orçamento (% do saldo, até 0,5)").pack(anchor="w")
+            risk_entry=ttk.Entry(risk_field,textvariable=self.risk_pct,width=16);risk_entry.pack(fill=tk.X)
+            self.flow(fields,(mode_field,fixed_field,risk_field))
+            self.entries.extend((self.fixed_entry,risk_entry))
+            self.lot_preview=tk.StringVar(value="Aguardando especificação atual do símbolo…")
+            ttk.Label(lots,textvariable=self.lot_preview,wraplength=850).pack(fill=tk.X,pady=(8,0))
+            for variable in (self.lot_mode,self.fixed_volume,self.risk_pct):variable.trace_add("write",lambda *_:self.mark_dirty())
         self.protection=ttk.Label(body,text="",style="Muted.TLabel",wraplength=850);self.protection.pack(fill=tk.X,padx=12,pady=4)
         ctx=ttk.LabelFrame(body,text="Contexto do ensaio histórico",padding=12);ctx.pack(fill=tk.X,padx=12,pady=6)
         now=datetime.now();self.start=tk.StringVar(value=(now-timedelta(days=1)).date().isoformat());self.end=tk.StringVar(value=now.date().isoformat())
@@ -109,6 +131,7 @@ class PresetWorkflow:
         self.trades=self.tree("Negócios",("entrada","saída","lado","lotes","resultado","SL","TP"))
         self.inputs=self.tree("Inputs carregados",("input","esperado","lido no MT5"))
         self.signals=self.tree("Sinais · horário do servidor",("origem","confirmação","disponível","lado","entrada","motivo"))
+        self.sizing=self.tree("Lotes e risco · eventos nativos",("origem do sinal","modo","solicitado","plano","preenchido","risco até SL","orçamento","margem requerida","margem livre","mín/passo/máx nativos")) if self.lots_enabled else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -152,11 +175,17 @@ class PresetWorkflow:
         self.reopen.state(["disabled" if busy else "!disabled"])
         self.clone.state(["disabled" if busy or not loaded or self.dirty else "!disabled"])
         self.export.state(["disabled" if busy or not loaded or self.dirty else "!disabled"])
-        for entry in self.entries:entry.configure(state="normal" if is_manual and not busy else "disabled")
-        for entry in self.context_entries:entry.configure(state="disabled" if busy else "normal")
+        editable=is_manual and not busy and self.source_compatible
+        for entry in self.entries:entry.configure(state="normal" if editable else "disabled")
+        if self.lots_enabled:
+            self.lot_combo.configure(state="readonly" if editable else "disabled")
+            self.fixed_entry.configure(state="normal" if editable and self.lot_mode.get()=="Volume fixo" else "disabled")
+        for entry in self.context_entries:entry.configure(state="disabled" if busy or not self.source_compatible else "normal")
         self.save.state(["!disabled" if is_manual and self.dirty and not busy else "disabled"])
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
-        disabled=busy or not loaded or self.dirty or bool(getattr(self.ui.app,"offline",False))
+        if not self.source_compatible:
+            for button in (self.clone,self.export,self.save):button.state(["disabled"])
+        disabled=busy or not loaded or self.dirty or not self.source_compatible or self.preview_error or bool(getattr(self.ui.app,"offline",False))
         for button in (self.backtest,self.replay):button.state(["disabled" if disabled else "!disabled"])
         self.stop.state(["!disabled" if active else "disabled"])
         self.files.state(["!disabled" if self.artifacts.get("artifact_directory") else "disabled"])
@@ -181,11 +210,14 @@ class PresetWorkflow:
         if chosen and chosen.identity.id==wanted and chosen.identity.revision!=selected.identity.revision:
             selected=manual.get_manual(self.db,wanted,chosen.identity.revision) if chosen.identity.category=="Manual" else chosen
             items=[item for item in items if item.identity.id!=wanted]+[selected]
-        return items,selected
+        connector=getattr(self.ui.app,"mt5_connector",None)
+        info=connector.get_symbol_info(self.symbol) if self.lots_enabled and connector is not None else None
+        return items,selected,info
     def reload(self,preferred=None):
         self.work(lambda:self._load(preferred),self.loaded)
     def loaded(self,data):
-        items,selected=data
+        items,selected,*extra=data
+        self.symbol_info=extra[0] if extra else None
         self.options={}
         for item in items:
             label=("Default · Padrão do código" if item.identity.category=="Default" else "Manual · "+item.identity.label)+f" · v{item.identity.revision}"
@@ -194,29 +226,68 @@ class PresetWorkflow:
         self.combo.configure(values=list(self.options));self.set_current(selected)
     def set_current(self,item):
         self.current=item;self.setting=True
+        source=item.manifest["native"]["robot"]
+        self.source_compatible=source["version"]==self.robot.version and source["fingerprint"]==native._require_robot(self.robot)[0]
         for key,_ in FIELDS:self.fields[key].set(str(item.composition.to_dict()["strategy"]["params"][key]))
+        if self.lots_enabled:
+            sizing=item.composition.to_dict()["sizing"]
+            self.lot_mode.set("Volume fixo" if sizing["mode"]=="fixed_volume" else "Por risco")
+            self.fixed_volume.set(str(sizing["params"].get("volume",.01)))
+            self.risk_pct.set(str(sizing["params"]["risk_fraction"]*100))
         self.selected.set(next(label for label,value in self.options.items() if value.identity==item.identity))
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
         self.status.set(label)
+        if not self.source_compatible:
+            self.status.set("Fonte anterior preservada: parâmetros não serão migrados. Selecione o novo Default para criar outro Manual; consulta histórica continua disponível.")
         self.protection.configure(text="Risco por saldo: até 0,5% · uma posição · SL obrigatório · parcial/BE/trailing indisponíveis. Proteções não são editadas aqui.")
         self.details.configure(text=(f"Nome: {item.identity.label}\nRevisão: {item.identity.revision}\n"
                                     f"Arquivo: {item.name.filename}\nConfiguração: {item.composition.config_hash}\n"
                                     f"Origem Default: {item.identity.default_origin or item.identity.id}"))
-        self.clear_result();self.update_buttons()
+        self.clear_result();self.refresh_preview();self.update_buttons()
     def choose(self):
         if self.pending:return
         item=self.options[self.selected.get()]
         self.work(lambda:(store.select_preset(self.db,self.robot.key,self.symbol,self.timeframe,item.identity.id,item.identity.revision),item)[1],self.set_current)
     def mark_dirty(self):
         if self.setting or self.current is None:return
-        self.dirty=True;self.status.set("Alterações não salvas · salve uma revisão antes de executar.");self.update_buttons();self.clear_result()
+        self.dirty=True;self.status.set("Alterações não salvas · salve uma revisão antes de executar.");self.refresh_preview();self.update_buttons();self.clear_result()
     def context_changed(self):
         if self.setting:return
-        self.clear_result()
+        self.clear_result();self.refresh_preview();self.update_buttons()
+    def composition_from_fields(self):
+        data=self.current.composition.to_dict()
+        for key,_ in FIELDS:data["strategy"]["params"][key]=int(self.fields[key].get().strip())
+        if self.lots_enabled:
+            params={"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}
+            mode="fixed_volume" if self.lot_mode.get()=="Volume fixo" else "risk_fraction"
+            if mode=="fixed_volume":params["volume"]=float(self.fixed_volume.get().replace(",","."))
+            data["sizing"]={"mode":mode,"params":params}
+        return Composition(data)
+    def refresh_preview(self):
+        if not self.lots_enabled or self.current is None:return
+        if not self.source_compatible:
+            self.preview_error=True;self.lot_preview.set("Revisão de outra fonte: somente consulta; nenhuma conversão automática de lotes.");return
+        try:
+            data=self.composition_from_fields().to_dict()
+            native.S09NativeAdapter(Composition(data),self.robot)
+            context=self.context()
+            stop=data["protection"]["params"]["stop_points"] if data["protection"]["mode"]=="fixed_points" else data["strategy"]["params"]["stop_points"]
+            value=preview_sizing(data["sizing"],info=self.symbol_info,stop_points=stop,deposit=context.deposit)
+            requested="calculado por risco" if value["requested"] is None else str(value["requested"])
+            self.lot_preview.set(f"Prévia no capital inicial: solicitado {requested} → {value['effective']} lotes. "
+                f"Mín {value['minimum']} · passo {value['step']} · máx {value['maximum']}. Risco estimado {fmt_num(value['risk_money'])} / orçamento {fmt_num(value['risk_budget'])}. "
+                "Especificação atual; margem e preenchimento serão conferidos no Tester. Não autoriza execução ao vivo.")
+            self.preview_error=False
+        except SizingPreviewUnavailable as error:
+            self.preview_error=False
+            self.lot_preview.set("Prévia indisponível: "+str(error)+" O Tester deve confirmar especificação, risco e margem antes de qualquer entrada; não há aprovação antecipada.")
+        except (ValueError,TypeError,OverflowError) as error:
+            self.preview_error=True;self.lot_preview.set("Prévia indisponível/recusada: "+str(error))
     def clear_result(self):
         self.last_evidence=None;self.artifacts={};self.result.set("Sem conferência nativa neste contexto.")
         for tree in (self.trades,self.inputs,self.signals):tree.delete(*tree.get_children())
+        if self.sizing is not None:self.sizing.delete(*self.sizing.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -234,9 +305,7 @@ class PresetWorkflow:
         self.work(lambda:(manual.rename_manual(self.db,current.identity.id,name),self._load(current.identity.id))[1],self.loaded)
     def save_revision(self):
         try:
-            data=self.current.composition.to_dict()
-            for key,_ in FIELDS:data["strategy"]["params"][key]=int(self.fields[key].get().strip())
-            comp=Composition(data);current=self.current
+            comp=self.composition_from_fields();current=self.current
         except ValueError as error:self.status.set("Confira períodos/pontos inteiros. "+str(error));return
         def action():
             item=manual.save_revision(self.db,self.robot,current.identity.id,comp,expected_revision=current.identity.revision)
@@ -266,6 +335,8 @@ class PresetWorkflow:
         self.work(action,self.loaded)
     def start_native(self,mode):
         if self.pending:return
+        if not self.source_compatible or self.preview_error:
+            self.status.set("Confira a fonte e a prévia de lotes antes de iniciar o Tester.");return
         if getattr(self.ui.app,"offline",False):self.status.set("Reabra sem --offline para executar o MT5; edição/exportação continuam locais.");return
         if self.controller.chosen[self.robot.key][:2]!=(self.symbol,self.timeframe):self.status.set("Ativo/TF mudou no card; reabra o percurso no contexto selecionado.");return
         existing=self.controller.sessions.get(self.robot.key)
@@ -288,6 +359,22 @@ class PresetWorkflow:
     def consult(self):
         if self.current is None or self.pending:return
         if self.dirty:self.status.set("Salve a revisão antes de consultar este contexto.");return
+        if not self.source_compatible:
+            current=self.current
+            def previous_source():
+                rows=[row for row in execution.load_evidence(self.db)
+                      if row["preset"]["id"]==current.identity.id and row["preset"]["revision"]==current.identity.revision
+                      and row["source"]==current.manifest["native"]["robot"]
+                      and row["context"]==current.composition.to_dict()["context"]]
+                if not rows:return None
+                runs=robot_store.load_runs(self.db,run_id=rows[0]["run_id"])
+                return rows[0],runs[0]["metrics"] if runs else {}
+            def previous_loaded(value):
+                if value:
+                    self.show_evidence(*value)
+                    self.status.set("Consulta da revisão/fonte anterior preservada; os campos de contexto da tela não filtram esta consulta. Confira o período original nos arquivos do resultado.")
+                else:self.result.set("Sem resultado salvo para esta revisão/fonte anterior.")
+            self.work(previous_source,previous_loaded);return
         try:
             context=self.context();current=self.current
             package=compile_package(current.composition,self.robot,current.identity,context,canonical_filename=True)
@@ -314,6 +401,13 @@ class PresetWorkflow:
         for key,value in proof["inputs"]["values"].items():self.inputs.insert("","end",values=(INPUT_LABELS.get(key,key),expected.get(key,"—"),value))
         def clock(value):return datetime.fromtimestamp(value,timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         for row in proof["signals"]:self.signals.insert("","end",values=(clock(row["event_at"]),clock(row["confirmed_at"]),clock(row["available_at"]),"Compra" if row["direction"]>0 else "Venda","Sim" if row["opened"] else "Recusada",row["reason"]))
+        if self.sizing is not None:
+            for row in proof.get("sizing",[]):
+                self.sizing.insert("","end",values=(clock(row["event_at"]),"Fixo" if row["mode"]=="fixed_volume" else "Por risco",
+                    row["requested_volume"] if row["requested_volume"] is not None else "Calculado",row["planned_volume"],
+                    row["filled_volume"] if row["filled_volume"] is not None else "Sem fill confirmado",row["risk_money"],row["risk_budget"],
+                    row["margin_required"] if row["margin_known"] else "Indisponível",row["margin_free"] if row["margin_known"] else "Indisponível",
+                    f"{row['volume_min']} / {row['volume_step']} / {row['volume_max']}" if row["spec_known"] else "Indisponível"))
         if proof.get("first_difference"):self.status.set("Primeira divergência: "+str(proof["first_difference"])+". Confira os arquivos; tolerância não foi ampliada.")
     def open_files(self):
         value=self.artifacts.get("artifact_directory")
