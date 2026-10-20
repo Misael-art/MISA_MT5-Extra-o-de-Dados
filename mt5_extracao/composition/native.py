@@ -67,6 +67,20 @@ ATR_INPUTS={"atr_base_seconds":("InpTimeATRBaseSeconds","int","second"),
             "atr_min_seconds":("InpTimeATRMinSeconds","int","second")}
 ATR_TEMPORAL_INPUT_TYPES={**DONCHIAN_TEMPORAL_INPUT_TYPES,**{name:kind for name,kind,unit in ATR_INPUTS.values()}}
 
+SESSION_ROBOT_VERSION="1.70"
+SESSION_APPROVED_FINGERPRINT="ad7a304b82ff8084"
+SESSION_HADOUKEN_REVISION="8a3b9d284b716e4a14a3d1bcaf95670a1544330a"
+SESSION_INPUTS={key:(name,"int",unit) for key,name,unit in (
+    ("start_minute","InpSessionStartMinute","broker_minute"),
+    ("end_minute","InpSessionEndMinute","broker_minute"),
+    ("exclude_start_minute","InpSessionExcludeStartMinute","broker_minute"),
+    ("exclude_end_minute","InpSessionExcludeEndMinute","broker_minute"),
+    ("weekdays","InpSessionWeekdays","session_weekday_mask"),
+    ("anchor_minute","InpSessionAnchorMinute","broker_minute"),
+    ("max_cycles","InpSessionMaxCycles","first_fill_cycle"))}
+SESSION_INPUT_TYPES={**ATR_TEMPORAL_INPUT_TYPES,"InpSessionEnabled":"bool",
+                     **{name:kind for name,kind,unit in SESSION_INPUTS.values()}}
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
@@ -75,7 +89,8 @@ def _require_robot(robot):
                 TEMPORAL_ROBOT_VERSION:(TEMPORAL_APPROVED_FINGERPRINT,TEMPORAL_INPUT_TYPES,4,TEMPORAL_HADOUKEN_REVISION),
                 ER_TEMPORAL_ROBOT_VERSION:(ER_TEMPORAL_APPROVED_FINGERPRINT,ER_TEMPORAL_INPUT_TYPES,5,ER_TEMPORAL_HADOUKEN_REVISION),
                 DONCHIAN_TEMPORAL_ROBOT_VERSION:(DONCHIAN_TEMPORAL_APPROVED_FINGERPRINT,DONCHIAN_TEMPORAL_INPUT_TYPES,6,DONCHIAN_TEMPORAL_HADOUKEN_REVISION),
-                ATR_TEMPORAL_ROBOT_VERSION:(ATR_TEMPORAL_APPROVED_FINGERPRINT,ATR_TEMPORAL_INPUT_TYPES,7,ATR_TEMPORAL_HADOUKEN_REVISION)}
+                ATR_TEMPORAL_ROBOT_VERSION:(ATR_TEMPORAL_APPROVED_FINGERPRINT,ATR_TEMPORAL_INPUT_TYPES,7,ATR_TEMPORAL_HADOUKEN_REVISION),
+                SESSION_ROBOT_VERSION:(SESSION_APPROVED_FINGERPRINT,SESSION_INPUT_TYPES,8,SESSION_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
@@ -129,8 +144,11 @@ class S09NativeAdapter:
                 allowed.update(("fixed_r","staged_lots","staged_fraction"))
             if data[slot]["mode"] not in allowed:
                 raise ValueError(f"{slot}: modo sem suporte no perfil S09 nativo; use {', '.join(sorted(allowed))}.")
-        if data["filters"] or data["execution_order"] != list(EXECUTION_ORDER):
+        if (data["filters"] and profile[2]<8) or data["execution_order"] != list(EXECUTION_ORDER):
             raise ValueError("S09 nativa exige ordem de execução base e nenhum filtro adicional; remova a capacidade sem suporte.")
+        if profile[2]>=8:
+            from ..strategies.session_entry import from_filters
+            from_filters(data["filters"])
         if data["bar_policy"] != {"intrabar_priority": "stop_first", "position_limit": 1}:
             raise ValueError("S09 nativa admite uma posição e política base; não ampliar exposição.")
         sizing = data["sizing"]["params"]
@@ -194,6 +212,14 @@ class S09NativeAdapter:
             for key,(name,kind,unit) in ATR_INPUTS.items():
                 values[name]=str(getattr(policy,key,0))
                 if data["conditional_policy"]["mode"]=="temporal_atr_v1":bindings["conditional_policy.params."+key]={"input":name,"type":"int","unit":unit}
+        if profile_version>=8:
+            from ..strategies.session_entry import SessionEntryPolicy,from_filters
+            session=from_filters(data["filters"])
+            values["InpSessionEnabled"]="true" if session is not None else "false"
+            params=(session or SessionEntryPolicy()).to_dict()
+            for key,(name,kind,unit) in SESSION_INPUTS.items():
+                values[name]=str(params[key])
+                if session is not None:bindings["filters.0.params."+key]={"input":name,"type":"int","unit":unit}
         return _description(self.composition,self.robot,data,values,bindings,inactive,preset_id,
                             fingerprint,input_types,profile_version,hadouken_revision,PROFILE_ID)
 
@@ -237,6 +263,7 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
     if profile_version>=5:modules["conditional_policy"].append("temporal_er_v1")
     if profile_version>=6:modules["conditional_policy"].append("temporal_donchian_v1")
     if profile_version>=7:modules["conditional_policy"].append("temporal_atr_v1")
+    if profile_version>=8:modules["filters"]=["session_v1"]
     capabilities = Capabilities({"capabilities_schema_version": 1,
         "robot": {"key": robot.key, "version": robot.version, "fingerprint": fingerprint},
         "backend": "mql5", "strategy_key": data["strategy"]["key"], "modules": modules, "bindings": bindings}, composition)

@@ -40,3 +40,6 @@ mt5x robots parity    o robô faz as mesmas operações que a versão em Python?
 - O Python **nunca envia ordens**: quem opera é o robô, dentro do MetaTrader 5.
 - O exemplo em [exemplo/](exemplo/) é didático: o cruzamento de médias perde dinheiro no teste e é reprovado pela
   bateria. Não é uma estratégia para operar.
+
+T19.20 inicial: [filtro de entradas por horários, dias e ciclos confirmados](sessao_entradas.md),
+perfil S09v1.70 com contrato de relógio/âncora explícitos; somente Tester.

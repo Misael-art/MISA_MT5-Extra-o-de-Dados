@@ -2193,3 +2193,16 @@ G-02 precede a implementação do painel e as extensões seguem suas dependênci
 Registro integrado em fila documental após TM07, sem MT5/compilação/runtime nesta
 entrega. S09 somente Tester; cache de execução/evidência inelegível; histórico/replay
 não habilitam live DEMO. Carteira concorrente e Windows físico mantêm aceites próprios.
+
+
+T19.20 inicial em revisão: filtro de novas entradas por janela permitida/excluída,
+dias do dia lógico ancorado e cota0/1/3/N por primeiro fill de posição. S09v1.70,
+43inputs, registry/adaptadores/persistência/exportação existentes reutilizados.
+Gerenciamento de SL/parcial/saídas precede o gate. Histórico/persistência/identidade
+ausentes bloqueiam somente entradas; reinício não devolve cota e redução não cria
+ciclo. UI Default→Manual/salvar/reabrir/validação e referência independente dos
+fills conferidas. Compilação isolada aprovada,2PIDs próprios encerrados. Ensaio
+funcional e checks finais pendentes; nenhuma campanha histórica repetida.
+Contrato docs/sdk/sessao_entradas.md. S09 somente Tester; cache inelegível; cooldown,
+fechamento por horário, Pullback neste gate, DST/calendário futuro, live DEMO,
+Windows físico e carteira/gradientes mantêm seus próprios recortes/aceites.

@@ -121,13 +121,14 @@ def _semantic_signals(signals):
     return [{key:value for key,value in row.items() if key not in ("order_ticket","deal_ticket")} for row in signals]
 
 
-def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None,temporal=None,channel=None,atr=None):
+def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None,temporal=None,channel=None,atr=None,session=None):
     sections=[("ledger",reference["ledger"],rows),("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))]
     if sizing is not None:sections.append(("sizing",reference.get("sizing",[]),sizing))
     if partials is not None:sections.append(("partials",partial_events.semantic(reference.get("partials",[])),partial_events.semantic(partials)))
     if deals is not None:sections.append(("deals",partial_events.semantic(reference.get("deals",[])),partial_events.semantic(deals)))
     if temporal is not None:sections.append(("temporal_events",partial_events.semantic(reference.get("temporal_events",[])),partial_events.semantic(temporal)))
     if atr is not None:sections.append(("atr_observations",partial_events.semantic(reference.get("atr_observations",[])),partial_events.semantic(atr)))
+    if session is not None:sections.append(("session_events",reference.get("session_events",[]),session))
     if channel is not None:sections.append(("channel_observations",partial_events.semantic(reference.get("channel_observations",[])),partial_events.semantic(channel)))
     for section,expected,actual in sections:
         if len(expected)!=len(actual):
@@ -307,13 +308,17 @@ class PresetExecution:
         if native["profile_version"]>=4:
             from .temporal_events import read_events
             temporal=read_events(job.directory,package["composition"]["conditional_policy"],signals,sizing,deals,channel_observations=channel,atr_observations=atr)
+        session=None
+        if native["profile_id"]=="hadouken.s09_reference" and native["profile_version"]>=8:
+            from .session_events import read_events as read_session_events
+            session=read_session_events(job.directory,package["composition"]["filters"],signals,deals)
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
             raise ValueError("Entradas e posições encerradas não conciliam; conferir última posição e respostas antes de aceitar.")
         status=("reconciled_"+self.mode) if active else "contract_only"
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
-        difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel,atr) if prior is not None else None
+        difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel,atr,session) if prior is not None else None
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"
         report=getattr(job,"report",job.directory/"relatorio.json")
@@ -331,6 +336,10 @@ class PresetExecution:
             allows_live=False,statistical_approval=False,cache_eligible=False,history_revision="unavailable",
             created_at=datetime.now(timezone.utc).isoformat())
         if sizing is not None:proof["sizing"]=sizing
+        if session is not None:
+            session_activity=any(not row["allowed"] for row in session if row["event"]=="check")
+            proof.update(session_events=session,session_enabled=bool(package["composition"]["filters"]),
+                         session_acceptance=active and match is True and session_activity)
         if partials is not None:proof.update(partials=partials,deals=deals,partial_activity=any(r["state"]=="confirmed" for r in partials))
         if temporal is not None:
             proof.update(temporal_events=temporal,temporal_activity=any(r['state']=='confirmed' for r in temporal),
