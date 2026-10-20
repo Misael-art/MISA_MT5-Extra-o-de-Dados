@@ -2136,3 +2136,17 @@ passou com a correção. 16 testes de recibo incluindo blocos ausentes/repetidos
 truncados aprovados. Perfil corrigido db930f548c8e10d0. Recompilação e mesmo par
 funcional serão repetidos pela mudança concreta de runtime; preliminar preservado
 sem aceite. CI final será o da revisão corrigida, sem reaproveitar fonte invalidada.
+
+TM07 — aceite dirigido corrigido concluído no perfil1.60/db930f548c8e10d0,
+H runtime8b40cac e M runtime295c323. Mesmo EURUSD/M5 14→15/10/2026,
+base600/min60/teto3600s; lote0,25/SL500/TP1000 fixados antes do ensaio.
+Backtest e replay:4 posições/8fills cada,4 saídas ATR,9 contextos e35inputs
+carregados por execução; horizontes588–626s observados, contexto/livro/fills/
+caixa7,75USD conciliados. Fonte/24includes/wrapper/binários conferidos.
+22PIDs próprios observados encerrados,5 perfis vazios (inclui preliminar/compilações),
+ponte/principal preservados. UI: Manual salvo/reaberto, consulta e exportação
+conferidas sem novo ensaio. Preliminar recusado preservado sem aceite.
+H#31: dois checks corrigidos aprovados; M#159: aguardar workflow39485700757
+existente no código295c323. CI92d6aac cancelado após mudança concreta de runtime.
+Recibo docs/evidencias/T19_16_ATR_20261020.json. Sem liberação live, Pullback
+temporal, carteira/gradientes ou relógios volumétricos; Windows físico pendente.
