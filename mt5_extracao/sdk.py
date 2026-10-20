@@ -31,9 +31,19 @@ from mt5_extracao.robots.parity import run as run_parity
 from mt5_extracao.robots.pipeline import CheckResult, check, write_junit
 from mt5_extracao.robots.scaffold import create as new_robot
 from mt5_extracao.strategies import Strategy, StrategyInfo, get_strategy
-from mt5_extracao.strategies.backtester import BacktestConfig, run_backtest
+from mt5_extracao.strategies.backtester import BacktestConfig, run_backtest as _run_backtest
 from mt5_extracao.strategies.declared import DeclaredStrategy, SignalSpec
 from mt5_extracao.strategies.validation import validate as validate_strategy
+
+def run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None,
+                 cashflows=None, check=None, observation_timeframe=None):
+    """Executa o motor existente com a assinatura publicada do SDK 1.
+
+    Políticas de composição são extensões internas do serviço de composição.
+    """
+    return _run_backtest(df, strategy, spec, config, start_index, signals, cashflows,
+                         check, observation_timeframe)
+
 
 API_VERSION = 1
 

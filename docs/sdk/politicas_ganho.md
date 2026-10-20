@@ -47,3 +47,7 @@ não mudou após a execução focada, demais aprovações foram reaproveitadas. 
 obrigatório da fonte final ainda pendente. Bootstrap/instaladores/config/dependências
 não mudaram; evidências compatíveis preservadas, sem repetir doctor/campanhas.
 Windows físico permanece específico; nenhuma ordem foi enviada nesta tarefa.
+
+A assinatura pública `sdk.run_backtest` do SDK 1 permanece inalterada. O override
+opcional de regras pertence ao motor interno consumido pelo serviço de composição;
+o SDK encaminha os argumentos anteriores ao mesmo motor, sem duplicar cálculos.
