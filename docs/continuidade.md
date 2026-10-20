@@ -1,3 +1,19 @@
+## T19.57 — prova final disponível, 2026-10-20
+
+H#25/M#150: fonte H89139c8/fingerprint60bf18181739612d/Safety1.7,
+M8a08e4c. UI/backtest/replay final com2posições/3reduções confirmadas/7fills/22inputs,
+CSV/livro/custos/saldo e eventos iguais; consultas persistem após reabrir.
+QA de reinit/pending após3→2 não reenviou nem alterou SL; NaN/zero/negativo recusados.
+Isso não prova restart de SO/terminal ou Windows físico. Artefatos e patch QA em
+`docs/evidencias/T19_57_PARCIAIS_20261020.json` e guia `docs/sdk/parciais_s09.md`.
+Fonte final efetivamente ensaiada; antigo candidato0fce/7e71 guardado localmente.
+162focados +14leitor estrito +39vínculo final;21Tools/115check_repo; doctor20OK/1aviso/0falhas.
+H891 checks verdes; aguardar M7e1b existente (compatível: só literais de fonte até8a08).
+Run M0fce obsoleto cancelado após correção concreta do leitor; nenhum workflow novo
+para literais/documentação. M149 ainda aguarda seu Windows existente,5checks verdes.
+Integrar pela ordem real M149, depois H25/M150 com revisão/checks; preservar raízes WIP.
+Cache inelegível, S09 Tester, Pullback bloqueado, ao vivo DEMO/Windows físico próprios.
+
 ## T19.57 — preparação após T19.56, 2026-10-20
 
 Corretivo148 integrado e prova de lotes concluída; H24 integrada e M149 aguarda check
