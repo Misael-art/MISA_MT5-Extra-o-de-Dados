@@ -29,8 +29,8 @@ INPUT_TYPES = {"InpFastPeriod": "int", "InpSlowPeriod": "int", "InpWarmupBars": 
 RECEIPT_FIELDS = {name: "int" if kind in ("int", "long") else "number" if kind == "double" else "bool" if kind == "bool" else "token"
                   for name, kind in INPUT_TYPES.items()}
 PARTIALS_ROBOT_VERSION = "1.20"
-PARTIALS_APPROVED_FINGERPRINT = "7e71e0039cfc87ef"
-PARTIALS_HADOUKEN_REVISION = "5eb48a5b96c7a8f95e1faf3b4c65cc80eb284963"
+PARTIALS_APPROVED_FINGERPRINT = "60bf18181739612d"
+PARTIALS_HADOUKEN_REVISION = "89139c8134fca00461ada8850257a0dbd8d7763d"
 LOTS_INPUT_TYPES = {**INPUT_TYPES, "InpLotMode": "int", "InpFixedLot": "double"}
 
 PARTIALS_INPUT_TYPES = {**LOTS_INPUT_TYPES, "InpPartialStages":"int", "InpPartialBreakeven":"bool",
