@@ -237,7 +237,8 @@ def _fixed_point_distance(points, spec, *, label):
 def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
                  config: Optional[BacktestConfig] = None, start_index: int = 0,
                  signals: Optional[pd.DataFrame] = None, cashflows=None, check=None,
-                 observation_timeframe=None, exit_rules_override: Optional[ExitRules] = None) -> BacktestResult:
+                 observation_timeframe=None, exit_rules_override: Optional[ExitRules] = None,
+                 entry_policy=None, entry_time_basis=None) -> BacktestResult:
     """
     start_index: só abre operações a partir desta barra (as anteriores servem de aquecimento
     dos indicadores; usado no walk-forward).
@@ -263,6 +264,16 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
 
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
     times = pd.to_datetime(data["time"])
+    session_trace, session_counts = [], {}
+    if entry_policy is not None:
+        from .session_entry import SessionEntryPolicy, source_seconds
+        if not isinstance(entry_policy, SessionEntryPolicy):
+            raise ValueError("Filtro de sessão exige contrato tipado.")
+        if entry_time_basis != "broker":
+            raise ValueError("Filtro de sessão exige entry_time_basis='broker' declarado; não inferir fuso/UTC da série.")
+        source_times = [source_seconds(t) for t in times]
+        if any(b <= a for a, b in zip(source_times, source_times[1:])):
+            raise ValueError("Relógio de sessão repetido/regrediu; confira a fonte, sem presumir DST.")
     journal = None
     if observation_timeframe is not None:
         from mt5_extracao.trade_analytics.trajectories.observations import Journal
@@ -345,6 +356,14 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         pending_exit = False
 
         # 2) entrada pendente, na abertura
+        session_decision = None
+        if pos is None and pending_entry and entry_policy is not None:
+            at = source_times[i]
+            session = entry_policy.session_start(at)
+            session_decision = entry_policy.decide(at, session_counts.get(session, 0))
+            session_trace.append(dict(event="check", at=at, direction=pending_entry, **session_decision))
+            if not session_decision["allowed"]:
+                pending_entry = 0
         if pos is None and pending_entry:
             d, s = pending_entry, i - 1
             entry = o[i] + spr_open[i] + slip if d > 0 else o[i] - slip
@@ -366,6 +385,11 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                            "remaining": volume, "risk_px": risk_px, "risk_money": risk_px * ppu * volume,
                            "pnl": -cfg.commission_per_lot * volume, "i": i, "partial_done": False,
                            "equity_before": equity + cash_total}
+                    if entry_policy is not None:
+                        session = session_decision["session_start"]
+                        session_counts[session] = session_counts.get(session, 0) + 1
+                        session_trace.append(dict(event="fill", at=source_times[i], direction=d,
+                                                  session_start=session, cycles=session_counts[session]))
                     if journal is not None:
                         journal.record(len(trades), i, "entry", "open", volume, pos["pnl"],
                                        direction=d,
@@ -460,6 +484,9 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     eq_vals = [cfg.initial_equity] + list(cfg.initial_equity + np.cumsum([t.pnl for t in trades])) if n else []
     performance = unitized_equity(floating, flows, cfg.initial_equity)
     trajectory=journal.payload(valuation_metadata(spec,cfg)) if journal is not None else {}
+    if entry_policy is not None:
+        trajectory.update(session_events=session_trace, session_entry_policy=entry_policy.to_dict(),
+                          session_time_basis="broker_source_clock; fixed anchored day; no inferred UTC/DST")
     if temporal is not None and temporal.enabled:
         trajectory.update(temporal_decisions=temporal_trace,temporal_policy=temporal.to_dict(),temporal_time_basis="source_clock_elapsed; not qualified session time")
     return BacktestResult(strategy=strategy.describe(), trades=trades,

@@ -74,12 +74,13 @@ class PresetWorkflow:
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
-        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
-        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
-        self.er_enabled=not self.pullback and robot.version in (native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
-        self.donchian_enabled=not self.pullback and robot.version in (native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
-        self.atr_enabled=not self.pullback and robot.version==native.ATR_TEMPORAL_ROBOT_VERSION
+        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
+        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
+        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
+        self.er_enabled=not self.pullback and robot.version in (native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
+        self.donchian_enabled=not self.pullback and robot.version in (native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
+        self.atr_enabled=not self.pullback and robot.version in (native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
+        self.session_available=not self.pullback and robot.version==native.SESSION_ROBOT_VERSION
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -189,6 +190,8 @@ class PresetWorkflow:
                     var.trace_add("write",lambda *_:self.mark_dirty())
                 self.atr_on.trace_add("write",lambda *_:self.mark_dirty())
             self.time_on.trace_add("write",lambda *_:self.mark_dirty())
+        if self.session_available:
+            self.build_session_fields(body)
         self.protection=ttk.Label(body,text="",style="Muted.TLabel",wraplength=850);self.protection.pack(fill=tk.X,padx=12,pady=4)
         ctx=ttk.LabelFrame(body,text="Contexto do ensaio histórico",padding=12);ctx.pack(fill=tk.X,padx=12,pady=6)
         now=datetime.now();self.start=tk.StringVar(value=(now-timedelta(days=1)).date().isoformat());self.end=tk.StringVar(value=now.date().isoformat())
@@ -225,6 +228,7 @@ class PresetWorkflow:
         self.temporal=self.tree("Tempo · decisão e confirmação",("origem","instante","motivo","estado","idade (s)","PnL observado","antes","reduzido","saldo","resultado da saída","ER(20)","ER observado em")) if self.temporal_enabled else None
         self.channel=self.tree("Donchian · contexto conhecido",("instante conhecido","barra de origem","limite superior anterior","limite inferior anterior","close","renovou","rompimento observado","relógio desde")) if self.donchian_enabled else None
         self.atr_context=self.tree("ATR · horizonte conhecido",("instante conhecido","semente de origem","barra fechada","ATR base congelado","ATR atual","prazo (s)")) if self.atr_enabled else None
+        self.session_events=self.tree("Sessão · entradas e cota",("origem","instante servidor","evento","dia de sessão","ciclos preenchidos","entrada permitida","motivo")) if self.session_available else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -250,6 +254,43 @@ class PresetWorkflow:
                 if isinstance(child,ttk.Label) and int(child.cget("wraplength") or 0)>0:child.configure(wraplength=max(120,event.width-48))
                 walk(child)
         walk(self.body)
+    def build_session_fields(self,body):
+        box=ttk.LabelFrame(body,text="Entradas · horários, dias e ciclos por sessão",padding=12);box.pack(fill=tk.X,padx=12,pady=4)
+        self.session_on=tk.BooleanVar(value=False);self.session_fields={};self.session_widgets=[]
+        self.session_toggle=ttk.Checkbutton(box,text="Ativar filtro de entradas e cota por sessão",variable=self.session_on);self.session_toggle.pack(anchor="w")
+        ttk.Label(box,text="Horário do servidor da corretora, sem conversão UTC ou horário de verão. Dias e cota usam a sessão iniciada na âncora. Este filtro não encerra posições nem suspende SL, parciais ou saídas.",wraplength=850).pack(fill=tk.X,pady=4)
+        form=ttk.Frame(box);form.pack(fill=tk.X)
+        fields=(("start_minute","Permitir a partir de (HH:MM)","00:00"),("end_minute","Permitir até, exclusivo (HH:MM)","00:00"),
+                ("exclude_start_minute","Excluir a partir de (HH:MM)","00:00"),("exclude_end_minute","Excluir até, exclusivo (HH:MM)","00:00"),
+                ("anchor_minute","Início do dia de sessão (HH:MM)","00:00"),("max_cycles","Cota de ciclos preenchidos (0 sem cota)","0"))
+        for index,(key,label,value) in enumerate(fields):
+            row,col=divmod(index,2);ttk.Label(form,text=label).grid(row=row*2,column=col,sticky="w",padx=(0,8))
+            var=tk.StringVar(value=value);self.session_fields[key]=var
+            widget=ttk.Entry(form,textvariable=var,width=24);widget.grid(row=row*2+1,column=col,sticky="ew",padx=(0,8),pady=(2,6));self.session_widgets.append(widget)
+            var.trace_add("write",lambda *_:self.mark_dirty())
+        for col in range(2):form.columnconfigure(col,weight=1)
+        days=ttk.Frame(box);days.pack(fill=tk.X);self.session_days=[]
+        for label in ("Seg","Ter","Qua","Qui","Sex","Sáb","Dom"):
+            var=tk.BooleanVar(value=True);self.session_days.append(var)
+            widget=ttk.Checkbutton(days,text=label,variable=var);widget.pack(side=tk.LEFT);self.session_widgets.append(widget)
+            var.trace_add("write",lambda *_:self.mark_dirty())
+        ttk.Label(box,text="Janela com início=fim permite24h; exclusão com início=fim fica desativada. Janelas noturnas são aceitas. Uma posição conta no primeiro fill; redução e ordem sem preenchimento não criam outro ciclo.",wraplength=850).pack(fill=tk.X,pady=4)
+        self.session_on.trace_add("write",lambda *_:self.mark_dirty())
+
+    def session_selection(self):
+        if not self.session_on.get():return []
+        from mt5_extracao.strategies.session_entry import SessionEntryPolicy
+        params={"weekdays":sum((1<<i) for i,var in enumerate(self.session_days) if var.get())}
+        for key,var in self.session_fields.items():
+            value=var.get().strip()
+            if key=="max_cycles":params[key]=int(value);continue
+            if len(value)!=5 or value[2]!=":" or not value[:2].isdigit() or not value[3:].isdigit():
+                raise ValueError("Horários de entrada/sessão exigem HH:MM entre00:00 e23:59.")
+            hour,minute=map(int,value.split(":"))
+            if not (0<=hour<24 and 0<=minute<60):raise ValueError("Horário inválido; use00:00 a23:59.")
+            params[key]=hour*60+minute
+        return [{"mode":"session_v1","params":SessionEntryPolicy(**params).to_dict()}]
+
     def tree(self,label,columns):
         frame=ttk.Frame(self.tables);self.tables.add(frame,text=label)
         tree=ttk.Treeview(frame,columns=columns,show="headings",height=6)
@@ -293,6 +334,9 @@ class PresetWorkflow:
             if self.atr_enabled:
                 self.atr_toggle.state(["!disabled" if editable and self.time_on.get() else "disabled"])
                 for widget in self.atr_widgets:widget.configure(state="normal" if editable and self.time_on.get() and self.atr_on.get() else "disabled")
+        if self.session_available:
+            self.session_toggle.state(["!disabled" if editable else "disabled"])
+            for widget in self.session_widgets:widget.state(["!disabled" if editable and self.session_on.get() else "disabled"])
         for entry in self.context_entries:entry.configure(state="disabled" if busy or not self.source_compatible else "normal")
         self.save.state(["!disabled" if is_manual and self.dirty and not busy else "disabled"])
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
@@ -369,6 +413,13 @@ class PresetWorkflow:
         if self.atr_enabled:
             self.atr_on.set(policy["mode"]=="temporal_atr_v1")
             for key,var in self.atr_fields.items():var.set(str(values.get(key,300 if key=="atr_base_seconds" else 60)))
+        if self.session_available:
+            from mt5_extracao.strategies.session_entry import SessionEntryPolicy,from_filters
+            selection=from_filters(item.composition.to_dict()["filters"])
+            self.session_on.set(selection is not None);params=(selection or SessionEntryPolicy()).to_dict()
+            for key,var in self.session_fields.items():
+                value=params[key];var.set(str(value) if key=="max_cycles" else f"{value//60:02d}:{value%60:02d}")
+            for i,var in enumerate(self.session_days):var.set(bool(params["weekdays"] & (1<<i)))
         self.selected.set(next(label for label,value in self.options.items() if value.identity==item.identity))
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
@@ -422,6 +473,7 @@ class PresetWorkflow:
                 params.update(er_min_seconds=params.get("er_min_seconds",0),maximum_er=params.get("maximum_er",0),channel_idle_seconds=params.get("channel_idle_seconds",0))
                 params.update({key:int(var.get()) for key,var in self.atr_fields.items()});mode="temporal_atr_v1"
             data["conditional_policy"]={"mode":mode,"params":params}
+        if self.session_available:data["filters"]=self.session_selection()
         return Composition(data)
     def refresh_preview(self):
         if not self.lots_enabled or self.current is None:return
@@ -463,6 +515,7 @@ class PresetWorkflow:
         if self.temporal is not None:self.temporal.delete(*self.temporal.get_children())
         if self.channel is not None:self.channel.delete(*self.channel.get_children())
         if self.atr_context is not None:self.atr_context.delete(*self.atr_context.get_children())
+        if self.session_events is not None:self.session_events.delete(*self.session_events.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -585,6 +638,9 @@ class PresetWorkflow:
         if "efficiency_enabled" in proof:
             count=sum(r["state"]=="confirmed" and r["reason"]=="time_er" for r in proof.get("temporal_events",[]))
             self.result.set(self.result.get()+f"\nSaídas por ER confirmadas: {count}."+(" Replay de ER reconciliado neste cenário." if proof.get("efficiency_acceptance") else " Sem aceite de ER neste resultado."))
+        if proof.get("session_enabled"):
+            count=sum(not row["allowed"] for row in proof.get("session_events",[]) if row["event"]=="check")
+            self.result.set(self.result.get()+f"\nRecusas pelo filtro de sessão: {count}."+(" Entradas/cota e replay conciliados neste cenário." if proof.get("session_acceptance") else " Sem aceite deste filtro neste resultado."))
         self.status.set("Inputs realmente carregados e modo nativo conferidos. Histórico/revisão da corretora sem certificação; cobertura de ticks reais depende do relatório.")
         for row in proof["ledger"]:self.trades.insert("","end",values=(row["entry_time"],row["exit_time"],"Compra" if row["direction"]>0 else "Venda",row["volume"],row["pnl"],row["stop_price"],row["target_price"]))
         expected=self.current.manifest["native"]["expected_native_inputs"]
@@ -613,6 +669,10 @@ class PresetWorkflow:
         if self.atr_context is not None:
             for row in proof.get("atr_observations",[]):
                 self.atr_context.insert("","end",values=(clock(row["at_msc"]/1000),clock(row["seed"]),clock(row["times"][-1]),row["baseline"],row["current"],row["horizon"]))
+        if self.session_events is not None:
+            labels={"allowed":"Permitida","disabled":"Filtro desativado","weekday":"Dia excluído","outside_window":"Fora da janela","excluded_window":"Intervalo excluído","quota":"Cota preenchida","history_unavailable":"Histórico indisponível","clock_reversal":"Relógio regrediu","unsupported_history":"Histórico sem suporte"}
+            for row in proof.get("session_events",[]):
+                self.session_events.insert("","end",values=(clock(row["event_at"]),clock(row["at"]),"Preenchimento" if row["event"]=="fill" else "Entrada",clock(row["session_start"]),row["cycles"] if row["cycles"]>=0 else "Indisponível","Sim" if row["allowed"] else "Não",labels.get(row["reason"],row["reason"])))
         if proof.get("first_difference"):self.status.set("Primeira divergência: "+str(proof["first_difference"])+". Confira os arquivos; tolerância não foi ampliada.")
     def open_files(self):
         value=self.artifacts.get("artifact_directory")

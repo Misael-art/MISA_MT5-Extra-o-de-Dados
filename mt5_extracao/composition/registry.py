@@ -107,6 +107,12 @@ MODULE_PARAMETERS["conditional_policy"]["temporal_atr_v1"]={
     "atr_min_seconds":Parameter("int","second",1,2147483647)}
 
 FILTER_PARAMETERS = {"adx_min": {"period": PERIOD, "threshold": OSCILLATOR}}
+FILTER_PARAMETERS["session_v1"] = {
+    **{key: Parameter("int", "broker_minute", 0, 1439) for key in (
+        "start_minute", "end_minute", "exclude_start_minute", "exclude_end_minute", "anchor_minute")},
+    "weekdays": Parameter("int", "session_weekday_mask", 1, 127),
+    "max_cycles": Parameter("int", "first_fill_cycle", 0, 1000000),
+}
 BASE_MODES = {slot: next(iter(modes)) for slot, modes in MODULE_PARAMETERS.items()}
 TIMEFRAMES = frozenset(("M1", "M2", "M3", "M4", "M5", "M6", "M10", "M12", "M15", "M20", "M30",
                         "H1", "H2", "H3", "H4", "H6", "H8", "H12", "D1", "W1", "MN1"))
