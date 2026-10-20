@@ -24,50 +24,46 @@ recebida produz novo contexto atual, sem reescrever as decisões já registradas
 Adições/gradientes, relógios volumétricos/por amplitude não são suportados neste
 recorte. Relógio é segundos reais incluindo gaps, não conversão implícita de volume.
 
+Journal: cabeçalho HDK_ATR e fonte HDK_ATR_SOURCE em blocos de até800
+caracteres de dados, identificados por posição/instante/campo/offset/contagem.
+O recibo exige todos os blocos completos e ordenados; rejeita ausência, repetição,
+truncamento ou associação a outra observação.
+
 Novo perfil S09, Manual opt-in e recibo próprios. Perfis anteriores preservados;
 Pullback temporal não é liberado. S09 somente Tester; live DEMO, Windows físico,
 carteira e gradientes exigem aceites próprios. Cache continua inelegível.
 
-Estado: aceite funcional dirigido corrigido concluído; checks da aplicação/integração pendentes.
+## Evidência final e limites
 
-Correção do ensaio preliminar: snapshots ATR extensos não apareceram no journal
-real do agente, embora a saída tenha ocorrido. O consumidor recusou o aceite e
-o replay dependente não iniciou. Fonte passa a usar cabeçalho + blocos limitados
-a800 caracteres de dados, com posição/instante/campo/offset/contagem completos;
-o recibo rejeita bloco ausente/repetido/truncado ou de outra observação.
-O ensaio preliminar é preservado sem aceite. O par final será repetido somente
-pela mudança concreta deste protocolo de runtime.
+Revisão final: HADOUKEN `52c10013365cf3c73682cc433b82bb82fefa957d`, aplicação
+`f5583f7306e395a381fb646279108114689a7391`; S09v1.60, fingerprint `4afcfe4bcef17c18`.
+Na mesma janela EURUSD/M5 de14→15/10/2026, lote0,25/SL500/TP1000 e
+base600/mínimo60/teto3600s, backtest e replay encerraram4 posições/8fills cada,
+com4 saídas ATR,9 contextos e35inputs carregados por execução. Contextos,
+livro/fills e caixa7,75USD conciliados; horizontes observados588–626s.
+É um aceite funcional do cenário exercitado, sem aprovação estatística.
 
-TM07 — aceite dirigido corrigido concluído no perfil1.60/db930f548c8e10d0,
-H runtime8b40cac e M runtime295c323. Mesmo EURUSD/M5 14→15/10/2026,
-base600/min60/teto3600s; lote0,25/SL500/TP1000 fixados antes do ensaio.
-Backtest e replay:4 posições/8fills cada,4 saídas ATR,9 contextos e35inputs
-carregados por execução; horizontes588–626s observados, contexto/livro/fills/
-caixa7,75USD conciliados. Fonte/24includes/wrapper/binários conferidos.
-22PIDs próprios observados encerrados,5 perfis vazios (inclui preliminar/compilações),
-ponte/principal preservados. UI: Manual salvo/reaberto, consulta e exportação
-conferidas sem novo ensaio. Preliminar recusado preservado sem aceite.
-H#31: dois checks corrigidos aprovados; M#159: aguardar workflow39485700757
-existente no código295c323. CI92d6aac cancelado após mudança concreta de runtime.
-Recibo docs/evidencias/T19_16_ATR_20261020.json. Sem liberação live, Pullback
-temporal, carteira/gradientes ou relógios volumétricos; Windows físico pendente.
+Fontes,24includes por execução, wrapper e executáveis foram conferidos por hash.
+No conjunto das execuções preservadas e da final,36PIDs próprios foram observados
+encerrados e8 perfis ficaram vazios. Ponte e terminal principal permaneceram
+intactos; não restou marcador nativo ativo. Manual salvo/reaberto, consulta do
+resultado persistido e exportação da UI foram conferidos sem outro ensaio.
 
-Achado de recuperação antes do merge: perder somente a base ATR recusava
-a reinicialização do controlador inteiro. Teste dirigido reproduziu a falha.
-Agora, após validar a identidade/idade temporal no pai, base ATR ausente fica
-inelegível sem reconstrução; SL e prazos conhecidos continuam gerenciados.
-Troca de hash ou ausência da identidade temporal continuam recusadas.
-O par8b40cac/295c323 continua preservado como aceite do caminho normal;
-o código final desta guarda exige alinhamento/ensaio próprios, em andamento.
+Dois defeitos encontrados antes da integração justificaram novas verificações:
+snapshots extensos ausentes do journal passaram a blocos limitados e completos;
+perda isolada da base ATR deixou de recusar todo o controlador. O consumidor
+recusou a evidência incompleta e não iniciou o replay dependente. As versões
+anteriores e seus resultados permanecem preservados; não substituem o aceite
+do fonte final. Testes com header MQL real/plataforma falsa cobrem perda de base,
+confirmação falha, fronteiras e reinício. O par nativo final exercitou o caminho
+normal, sem provocar corrupção ou crash.
 
-TM07 — fonte final após guarda de recuperação: H52c1001/Mf5583f7,
-S09v1.60/4afcfe4bcef17c18. Compilação e novo par alinhados na mesma janela
-e parâmetros:4 posições/8fills/9contextos cada,35inputs; replay/caixa7,75USD
-conciliados, horizontes588–626s.24includes/wrapper/binários exatos.36PIDs
-próprios observados encerrados em8 perfis no conjunto (inclui versões preservadas),
-ponte/principal intactos; nenhuma sessão nativa ativa. Manual/consulta/exportação
-UI reabertos no banco existente, sem novo ensaio. Falha de perda de base ATR
-validada por header real/plataforma falsa; par nativo final exercitou caminho
-normal, sem forçar corrupção/crash. Checks H finais aprovados; M aguarda somente
-workflow39488078713 existente. Revisões substituídas canceladas pelos defeitos
-concretos registrados. Recibo T19_16_ATR_20261020.json; limites permanecem.
+Estado: HADOUKEN #31 integrada em `fe0e6e9`; seis checks obrigatórios da aplicação
+aprovados no runtime `f5583f7`, workflow39488078713. Revisão final concluída;
+delta posterior apenas documental. Integração do consumidor segue a dependência
+H#31 → M#159, conferindo a base/árvore final. Nenhuma campanha adicional.
+
+Recibo público no extrator: `docs/evidencias/T19_16_ATR_20261020.json`.
+S09 permanece **somente Tester**. Pullback temporal, live DEMO, Windows físico,
+carteira concorrente e gradientes mantêm aceites próprios. Cache inelegível.
+Relógios volumétricos/por amplitude não fazem parte desta variante.

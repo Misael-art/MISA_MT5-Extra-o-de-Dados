@@ -2171,6 +2171,19 @@ workflow39488078713 existente. Revisões substituídas canceladas pelos defeitos
 concretos registrados. Recibo T19_16_ATR_20261020.json; limites permanecem.
 
 
+Fechamento TM07: H#31 integrada em fe0e6e9, runtime52c1001. Os seis checks
+obrigatórios existentes aprovaram Mf5583f7, workflow39488078713. Código final
+revisado e ensaio funcional com negócios/35inputs conciliados; alterações
+posteriores só documentais. M#159 segue essa dependência e a conferência da árvore
+final. Recibo T19_16_ATR_20261020.json;36 processos próprios encerrados e8 perfis
+vazios comprovados, ponte/principal preservados. Manual configura base/mínimo/teto
+ATR, salva/reabre, consulta contextos conhecidos e exporta pelo serviço existente.
+Próxima ficha: T19.20, intervalos/dias/ciclos por sessão com fuso e contadores
+de primeiro fill explícitos; calendário observado T13.1 reutilizado sem presumir
+DST ou sessões futuras. S09 somente Tester, cache inelegível; live DEMO, Windows
+físico, Pullback temporal, carteira/gradientes e relógios volumétricos continuam
+com aceites próprios. Não houve nova campanha histórica nem dispatch duplicado.
+
 Painel modular — planejamento: layout de fichário/compacto/expansão aprovado pelo proprietário.
 [Inventário estático e atividades PM-00–PM-12](propostas/PAINEL_MODULAR_COBERTURA.md)
 fixam M b139f04/H 596f2c8/S dbff0d2 como bases documentais; Safety não foi promovido

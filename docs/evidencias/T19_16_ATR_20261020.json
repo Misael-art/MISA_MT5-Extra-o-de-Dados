@@ -7,7 +7,8 @@
     "provider_pr": 31,
     "consumer_pr": 159,
     "base_provider": "596f2c8ce132789095d6b718bd75bd46cecabd08",
-    "base_consumer": "b139f04f1f884f4606c0742bbb6945989e2655a2"
+    "base_consumer": "b139f04f1f884f4606c0742bbb6945989e2655a2",
+    "provider_merge": "fe0e6e9bd9aeaf7ba38c8657fb73468febf680de"
   },
   "window": {
     "symbol": "EURUSD",
@@ -1470,7 +1471,7 @@
   "ci": {
     "workflow": 39488078713,
     "source": "f5583f7306e395a381fb646279108114689a7391",
-    "status": "pending; no claim of integration until required checks pass",
+    "status": "success",
     "superseded": [
       {
         "run": 39485055788,
@@ -1486,6 +1487,40 @@
         "conclusion": "cancelled",
         "reason": "ATR-only anchor loss recovery guard changed, with final provider binding"
       }
-    ]
+    ],
+    "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39488078713",
+    "checks": [
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39488078713/job/118853643207"
+      },
+      {
+        "name": "Lint dos instaladores",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39488078713/job/118853643412"
+      },
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39488078713/job/118853643425"
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39488078713/job/118853643476"
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39488078713/job/118853643609"
+      },
+      {
+        "name": "Testes (windows-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39488078713/job/118853643651"
+      }
+    ],
+    "runtime_to_final_head": "docs only; no new runtime campaign"
   }
 }

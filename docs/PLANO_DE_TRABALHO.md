@@ -184,7 +184,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
 | T19.7 inicial/I10 | Donchian(20), referências atual/anterior, store/contexto/CSV | T19.3 | ✅ PR157: seis checks no fonte1b50519; Envelopes/regressão e consumidor temporal mantêm aceites separados |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
-| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER entregue na PR156: seis checks e replay conferidos; H28 integrada. Donchian/TM06 integrado M#157→H#29→M#158; ATR/TM07 em desenvolvimento H#31 e consumidor próprio |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER entregue na PR156: seis checks e replay conferidos; H28 integrada. Donchian/TM06 integrado M#157→H#29→M#158; ATR/TM07 inicial concluído na PR159: UI/35inputs/backtest/replay conciliados; H#31 integrada fe0e6e9, seis checks Mf5583f7 aprovados; relógios volumétricos/por amplitude e Pullback temporal mantêm aceites próprios |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
 | T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
@@ -4020,3 +4020,17 @@ validada por header real/plataforma falsa; par nativo final exercitou caminho
 normal, sem forçar corrupção/crash. Checks H finais aprovados; M aguarda somente
 workflow39488078713 existente. Revisões substituídas canceladas pelos defeitos
 concretos registrados. Recibo T19_16_ATR_20261020.json; limites permanecem.
+
+
+Fechamento TM07: H#31 integrada em fe0e6e9, runtime52c1001. Os seis checks
+obrigatórios existentes aprovaram Mf5583f7, workflow39488078713. Código final
+revisado e ensaio funcional com negócios/35inputs conciliados; alterações
+posteriores só documentais. M#159 segue essa dependência e a conferência da árvore
+final. Recibo T19_16_ATR_20261020.json;36 processos próprios encerrados e8 perfis
+vazios comprovados, ponte/principal preservados. Manual configura base/mínimo/teto
+ATR, salva/reabre, consulta contextos conhecidos e exporta pelo serviço existente.
+Próxima ficha: T19.20, intervalos/dias/ciclos por sessão com fuso e contadores
+de primeiro fill explícitos; calendário observado T13.1 reutilizado sem presumir
+DST ou sessões futuras. S09 somente Tester, cache inelegível; live DEMO, Windows
+físico, Pullback temporal, carteira/gradientes e relógios volumétricos continuam
+com aceites próprios. Não houve nova campanha histórica nem dispatch duplicado.

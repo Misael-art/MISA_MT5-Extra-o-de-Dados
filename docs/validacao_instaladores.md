@@ -334,3 +334,7 @@ carteira ou gradientes. S09 permanece restrito ao Tester; cache inelegível.
   carregar os35 inputs, conferir semente/base imutáveis e contexto conhecido,
   backtest/replay com negócios e reconciliação, liberação somente dos processos
   próprios. Linux/Wine e CI Windows não substituem este aceite.
+
+TM07: CI Windows do workflow39488078713 aprovado em Mf5583f7; não equivale
+a executar o terminal/Tester no Windows físico. Checklist manual acima permanece
+pendente. Ensaio real realizado no Linux/Wine com ponte e terminal preservados.
