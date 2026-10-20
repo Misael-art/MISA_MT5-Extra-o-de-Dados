@@ -18,8 +18,12 @@ Se um filho sobreviver, o contexto continua protegido e o próximo Tester é rec
 Baseline dirigido: 48 aprovados. Dois casos novos reproduziram a falha antes da
 correção (card/preset); depois, 127 testes pertinentes e dois casos adicionais de
 filho sobrevivente passaram. Doctor sem probe: 20 OK, um aviso de pandas-ta opcional,
-nenhuma falha. Revisão local concluída; CI do código final e ensaio dirigido Wine
-de backtest com filho sobrevivente permanecem pendentes. Não houve nova campanha
+nenhuma falha. Revisão local concluída; CI obrigatório existente no código b27da93 em andamento.
+O ensaio dirigido Wine passou: dois Testers sequenciais, resultados reabertos no banco
+e consultados na UI, PIDs privados observados e ausentes ao final. Na segunda sessão,
+a limpeza encerrou um MetaEditor ainda ativo após a importação. Ponte e terminal
+principal mantiveram PID/criação, com DEMO conectada antes/depois.
+[Evidência efetiva](evidencias/T20_25_BACKTEST_LIBERACAO_20261020.json). Não houve nova campanha
 financeira nem repetição do percurso aceito. Windows físico continua específico.
 
 A aplicação do teste manual usou a árvore local de trabalho, enquanto master estava
