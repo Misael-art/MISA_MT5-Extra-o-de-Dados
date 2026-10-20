@@ -247,13 +247,16 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     require_supported_spec(spec)
     cfg = config or BacktestConfig()
     data = df.reset_index(drop=True)
+    if exit_rules_override is not None and not isinstance(exit_rules_override, ExitRules):
+        raise ValueError("Política de saída inválida; use as regras tipadas do motor existente.")
+    if signals is None and exit_rules_override is not None and exit_rules_override.stop_points is not None:
+        signals = strategy.gerar_sinais(data, exit_rules_override=exit_rules_override)
     sig = (signals if signals is not None else strategy.gerar_sinais(data)).reset_index(drop=True)
     if check is not None:
         check()
-    if exit_rules_override is not None and not isinstance(exit_rules_override, ExitRules):
-        raise ValueError("Política de saída inválida; use as regras tipadas do motor existente.")
     rules = exit_rules_override if exit_rules_override is not None else strategy.exit_rules()
     fixed_target = _fixed_point_distance(getattr(rules, "target_points", None), spec, label="Alvo")
+    fixed_stop = _fixed_point_distance(getattr(rules, "stop_points", None), spec, label="Stop")
     n = len(data)
 
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
@@ -325,7 +328,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         if pos is None and pending_entry:
             d, s = pending_entry, i - 1
             entry = o[i] + spr_open[i] + slip if d > 0 else o[i] - slip
-            stop = stop_long[s] if d > 0 else stop_short[s]
+            stop = (entry - d * fixed_stop) if fixed_stop is not None else (stop_long[s] if d > 0 else stop_short[s])
             risk_px = (entry - stop) * d
             if not np.isfinite(risk_px) or risk_px <= 0:
                 skipped_gap += 1     # abriu além do stop

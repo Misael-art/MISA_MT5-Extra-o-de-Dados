@@ -32,7 +32,8 @@ def compatibility(composition, *, backend="python"):
     data = composition.to_dict()
     problems = [Problem(slot, f"modo {data[slot]['mode']} sem adaptador Python; use {mode} ou aguarde a capacidade.")
                 for slot, mode in BASE_MODES.items()
-                if data[slot]["mode"] not in ({mode, "fixed_points", "fixed_r"} if slot == "profit_exit" else {mode})]
+                if data[slot]["mode"] not in ({mode, "fixed_points", "fixed_r"} if slot == "profit_exit"
+                                             else {mode, "fixed_points"} if slot == "protection" else {mode})]
     if data["strategy"]["key"] == "pullback":
         problems.append(Problem("partial_exit_plan", "Pullback legado usa parcial ainda não qualificada (T19.57); "
                                                     "o novo adaptador não libera esse modo até corrigir confirmação/BE."))
@@ -76,15 +77,21 @@ class BaseAdapter:
         if timeframe != context["timeframe"]:
             raise ValueError("context.timeframe: série difere da composição; carregue a série selecionada.")
         strategy = self.strategy()
-        profit = self.composition.to_dict()["profit_exit"]
-        if profit["mode"] == "strategy_default":
+        value = self.composition.to_dict()
+        profit, protection = value["profit_exit"], value["protection"]
+        if profit["mode"] == protection["mode"] == "strategy_default":
             return run_backtest(bars, strategy, spec, self.backtest_config(config))
-        selection = {"target_r": None, "target_points": None}
-        key = "target_points" if profit["mode"] == "fixed_points" else "target_r"
-        selection[key] = profit["params"][key]
+        selection = {}
+        if profit["mode"] != "strategy_default":
+            selection.update(target_r=None, target_points=None)
+            key = "target_points" if profit["mode"] == "fixed_points" else "target_r"
+            selection[key] = profit["params"][key]
+        if protection["mode"] == "fixed_points":
+            selection["stop_points"] = protection["params"]["stop_points"]
         rules = replace(strategy.exit_rules(), **selection)
-        signals = strategy.gerar_sinais(bars).copy()
-        # Módulo explícito substitui o alvo da estratégia; sinais de saída/proteções mantêm sua precedência.
-        signals[["target_long", "target_short"]] = float("nan")
+        signals = (strategy.gerar_sinais(bars, exit_rules_override=rules) if rules.stop_points is not None
+                   else strategy.gerar_sinais(bars)).copy()
+        if profit["mode"] != "strategy_default":
+            signals[["target_long", "target_short"]] = float("nan")
         return run_backtest(bars, strategy, spec, self.backtest_config(config),
                             signals=signals, exit_rules_override=rules)

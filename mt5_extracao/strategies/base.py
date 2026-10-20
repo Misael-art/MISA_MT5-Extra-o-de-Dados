@@ -44,14 +44,15 @@ class ExitRules:
     max_bars: Optional[int] = None        # saída por tempo
     eod_exit: bool = False                # zera no fim do dia (intradiário)
     target_points: Optional[float] = None  # pontos de cotação, ancorados no fill de entrada (T19.18)
+    stop_points: Optional[float] = None    # proteção inicial calculada no fill, antes do lote (T19.19)
 
     def __post_init__(self):
-        if self.target_points is not None:
-            if (isinstance(self.target_points, bool) or not isinstance(self.target_points, Real)
-                    or not math.isfinite(self.target_points) or self.target_points <= 0):
-                raise ValueError("Alvo fixo requer pontos positivos e finitos; confira a política de ganho.")
-            if self.target_r is not None:
-                raise ValueError("Escolha alvo em pontos ou em R; não declare duas fontes concorrentes.")
+        for label, points in (("Alvo", self.target_points), ("Stop", self.stop_points)):
+            if points is not None and (isinstance(points, bool) or not isinstance(points, Real)
+                                      or not math.isfinite(points) or points <= 0):
+                raise ValueError(f"{label} fixo requer pontos positivos e finitos; confira a política de saída.")
+        if self.target_points is not None and self.target_r is not None:
+            raise ValueError("Escolha alvo em pontos ou em R; não declare duas fontes concorrentes.")
 
 
 
@@ -79,7 +80,9 @@ class Strategy:
         return ExitRules()
 
     # --- interface pública ---
-    def gerar_sinais(self, df: pd.DataFrame) -> pd.DataFrame:
+    def gerar_sinais(self, df: pd.DataFrame, *, exit_rules_override: Optional[ExitRules] = None) -> pd.DataFrame:
+        if exit_rules_override is not None and not isinstance(exit_rules_override, ExitRules):
+            raise ValueError("Política de saída inválida; use as regras tipadas do motor existente.")
         missing = [c for c in self.required_columns if c not in df.columns]
         if missing:
             raise ValueError(f"Faltam colunas nos dados: {', '.join(missing)}")
@@ -92,9 +95,11 @@ class Strategy:
         self._signals(df, out)
         for col in ("entry_long", "entry_short", "exit_long", "exit_short"):
             out[col] = out[col].fillna(False).astype(bool)
-        # Entrada sem stop válido não é operável
-        out["entry_long"] &= out["stop_long"].notna() & (out["stop_long"] < df["close"])
-        out["entry_short"] &= out["stop_short"].notna() & (out["stop_short"] > df["close"])
+        rules = exit_rules_override if exit_rules_override is not None else self.exit_rules()
+        # Stop fixo tipado só existe no fill; não fabricar nível futuro na barra do sinal.
+        if getattr(rules, "stop_points", None) is None:
+            out["entry_long"] &= out["stop_long"].notna() & (out["stop_long"] < df["close"])
+            out["entry_short"] &= out["stop_short"].notna() & (out["stop_short"] > df["close"])
         return out[list(SIGNAL_COLUMNS)]
 
     generate_signals = gerar_sinais

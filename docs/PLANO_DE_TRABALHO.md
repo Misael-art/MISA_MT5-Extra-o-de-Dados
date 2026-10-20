@@ -3690,3 +3690,7 @@ Ver [relatório](analytics/T19.3_CONSISTENCIA_SNAPSHOT.md). Windows físico pend
 ### T19.18 inicial — alvo fixo pontos/R em revisão (2026-10-19)
 
 [Políticas de ganho](sdk/politicas_ganho.md): regra opcional no backtester e módulo explícito no BaseAdapter, âncora no fill, point/tick conhecido, stop/custos/dimensionamento preservados. Referência independente long/short, gap/spread/slip, conflito, ausência, prefixo e CSV aprovados; CI obrigatório pendente. Não conclui catálogo/ UI/preset/nativo; próxima dependência fixa T19.19 e serviço T19.23/S09. Pullback bloqueado, Windows físico específico.
+
+### T19.19 inicial — proteção fixa em revisão (2026-10-19)
+
+[Stop no fill](sdk/protecao_inicial.md), dependente da PR136/T19.18: pontos/tick conhecidos, proteção antes do lote, sem nível futuro no sinal.142testes focados aprovados, CI obrigatório pendente. Trailing legado monotônico preservado; catálogo ampliado/BE/High-Low/UI não concluídos. Próximo: serviço T19.23/perfil S09/Default/Manual/preset/replay com negócios reconciliados. Pullback bloqueado e Windows físico específico.
