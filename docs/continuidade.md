@@ -1683,3 +1683,16 @@ preservados. Referência independente e quatro sinais iguais aos do ensaio H,
 sem alegar paridade financeira, fidelidade à fonte, Default/Manual gerado/replay
 visual/UI ou aceite estatístico. Ver `docs/sdk/s09_referencia.md`.
 Suporte nativo do mapper ainda indisponível; Pullback bloqueado; Windows físico pendente.
+T19.23 inicial: conferência opt-in dos inputs efetivamente carregados no Tester
+DEMO, pelo Session existente; recibo versionado e tabela aditiva, sem regravar
+resultados. Ainda não é adaptador de composição/S09/preset/UI nem aceite operacional.
+Pullback bloqueado; Windows físico pendente. Ver `docs/sdk/inputs_nativos.md`.
+
+### T19.23 — perfil nativo S09 inicial
+
+Em revisão, dependente de #138 (recibo) e #139 (S09), com HADOUKEN #23 integrada.
+Mapper explícito da composição para os dez inputs da fonte aprovada, defaults do
+perfil, conversão fração→percentual e gates de modos/limites/fingerprint. Sem escrita
+de preset, UI, operação ao vivo ou aceite; identidade carregada ainda deve ser
+comprovada no pacote/replay. Não conclui adoção dos seis. Ver `docs/sdk/perfil_s09_nativo.md`.
+Pullback bloqueado; Windows físico pendente.

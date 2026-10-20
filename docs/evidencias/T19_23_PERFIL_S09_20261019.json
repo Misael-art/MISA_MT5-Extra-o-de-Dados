@@ -1,0 +1,17 @@
+{
+  "profile": "hadouken.s09_reference",
+  "version": 1,
+  "hadouken_revision": "d60e42185471f0e5bc94ec17dcfe8e11f94bbf2b",
+  "robot": {
+    "fingerprint": "91ff0ec8a7bba77e",
+    "key": "mql5:hdk_s09_referencia",
+    "version": "1.00"
+  },
+  "config_hash": "7edeaabfb5460e210d9d676e5b10dcea509a80ada0c94629a889c102d2185c15",
+  "all_8_operational_inputs_equal_native_accepted_reference": true,
+  "native_reference_session": "837f392ad53843bd8edd2dcb2392b17e",
+  "new_identity_fields_load_requires_future_package_replay": true,
+  "focused": "131passed; one old message reference T19.23 restored and its test passed; no logic change after run",
+  "operational_acceptance": false,
+  "physical_windows": "pending"
+}
