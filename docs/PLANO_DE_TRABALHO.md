@@ -3718,3 +3718,12 @@ perfil, conversão fração→percentual e gates de modos/limites/fingerprint. S
 de preset, UI, operação ao vivo ou aceite; identidade carregada ainda deve ser
 comprovada no pacote/replay. Não conclui adoção dos seis. Ver `docs/sdk/perfil_s09_nativo.md`.
 Pullback bloqueado; Windows físico pendente.
+
+### T19.25 inicial — pacote tipado do preset S09
+
+Em revisão, dependente do perfil #140. Manifesto v1 fechado + .set UTF-16 pelo
+serializador/leitor existentes; identidade/revisão/linhagem, contexto explícito e
+hashes distintos de composição/pacote/execução.60 testes focados aprovados, sem
+instalar/iniciar Expert ou escrever no usuário. Nome final T19.50, Default T19.55,
+Manual T19.26 e replay/UI ainda pendentes. Ver `docs/sdk/pacote_preset.md`.
+Pullback bloqueado; Windows físico pendente.
