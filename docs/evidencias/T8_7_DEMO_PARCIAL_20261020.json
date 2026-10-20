@@ -1,0 +1,141 @@
+{
+  "task": "T8.7 — complemento de aceite operacional DEMO",
+  "at": "2026-10-20T22:55:18.044216+00:00",
+  "status": "blocked before live launch; no DEMO orders submitted",
+  "owner_authorized_demo": true,
+  "live_started": false,
+  "operational_acceptance": false,
+  "robot": "mql5:hdk_emaatr",
+  "source_fingerprint": "00f678fa65f41d05",
+  "symbol": "EURUSD",
+  "timeframe": "H1",
+  "preset": "HDK_EmaAtr_Conservador",
+  "limits": {
+    "InpMagicNumber": "20251212",
+    "InpRiskPct": "0.25",
+    "InpDailyLossPct": "1.0",
+    "InpWeeklyLossPct": "2.0",
+    "InpMaxDrawdownPct": "5.0",
+    "InpFastPeriod": "20",
+    "InpSlowPeriod": "50",
+    "InpTrendPeriod": "200",
+    "InpStopAtrMult": "2.0",
+    "InpTrailAtrMult": "3.0",
+    "InpDeviationPoints": "20",
+    "InpExportTrades": "false"
+  },
+  "historical": {
+    "run_id": "266496ad91f24389ab86639ad90b01bd",
+    "window": [
+      "2026-10-13",
+      "2026-10-15"
+    ],
+    "trades": 1,
+    "entries": 1,
+    "entries_without_stop": 0,
+    "net_profit": -250.92,
+    "currency": "USD",
+    "cash_reconciled": true,
+    "source_fingerprint": "00f678fa65f41d05",
+    "real_ticks_reported": 1.0,
+    "execution_cache_eligible": false,
+    "play_issues": [],
+    "statistical_approval": false
+  },
+  "replay": {
+    "session": "c5adf5a719b744719ccfef2fb689f2d2",
+    "status": "failed",
+    "tester_started": false,
+    "reason": "Private terminal did not confirm native synchronization within90s, even with matching DEMO/build symbol metadata. Stopped before Tester/EA launch."
+  },
+  "preflight": {
+    "demo": true,
+    "account_trade_allowed": true,
+    "account_expert_allowed": true,
+    "symbol_trade_mode": 4,
+    "quote_updated": true,
+    "bid_positive": true,
+    "ask_gte_bid": true,
+    "positions_total": 0,
+    "orders_total": 0,
+    "checked_at": 1792536555.7879658
+  },
+  "resources": {
+    "observed": {
+      "gone": 14,
+      "reused": 0,
+      "zombie": 0
+    },
+    "own_profiles_without_processes": 2,
+    "bridge_demo_connected": true,
+    "bridge_created": 1792407851.97,
+    "principal_created": 1792460506.1,
+    "native_marker_absent": true,
+    "live_started": false,
+    "operational_acceptance": false
+  },
+  "alignment": [
+    {
+      "session": "3855322ea3814a52a409fd67f3d7422a",
+      "includes": 12,
+      "source_and_wrapper_exact": true,
+      "wrapper_sha256": "3d301a315877ca52a10fd4f7551c46217268288c0e42dde36ac0aab9477fce57",
+      "binary_sha256": "11f7e887a7eac6a1bbff3aebadbbb1b94282b135274c4e536f7bb5c605a5ebfb",
+      "actual_inputs_verified": {
+        "InpMagicNumber": "20251212",
+        "InpRiskPct": "0.25",
+        "InpDailyLossPct": "1.0",
+        "InpWeeklyLossPct": "2.0",
+        "InpMaxDrawdownPct": "5.0",
+        "InpFastPeriod": "20",
+        "InpSlowPeriod": "50",
+        "InpTrendPeriod": "200",
+        "InpStopAtrMult": "2.0",
+        "InpTrailAtrMult": "3.0",
+        "InpDeviationPoints": "20",
+        "InpExportTrades": "false"
+      }
+    },
+    {
+      "session": "c5adf5a719b744719ccfef2fb689f2d2",
+      "includes": 12,
+      "source_and_wrapper_exact": true,
+      "wrapper_sha256": "8d49077df953d9543eef778528ce8bb59510f7c0c63a5d6504aaec64f621b87c",
+      "binary_sha256": "97a8eaa41580a408445b68435826e43cf56ee5c9dcf9d9c8dde679ccb8716b29"
+    }
+  ],
+  "runtime_compatibility": {
+    "base": "46f31b61f07a2d2ed85f760461de2ea184343b5a",
+    "consumer": "4517299f7c9e23aa8c0a45f6059ec5a8738f388d",
+    "files_unchanged": [
+      "mt5_extracao/robots/sessions.py",
+      "mt5_extracao/robots/live.py",
+      "mt5_extracao/robots/controls.py",
+      "mt5_extracao/robots/catalog.py",
+      "mt5_extracao/robots/battery.py",
+      "mt5_extracao/robots/backtest.py",
+      "mt5_extracao/robots/mt5_tools.py",
+      "mt5_extracao/ui/robot_controls.py"
+    ],
+    "live_runtime_changes": false,
+    "baseline_approved_workflow": 39499390366
+  },
+  "required_action": "Establish stable verified synchronization of the own private terminal, without changing main bridge/terminal/third-party sessions, then complete only missing exact-context replay; revalidate DEMO identity/preset/protections/portfolio and execute bounded live observation through UI. No new native attempt without changed precondition.",
+  "limits_preserved": [
+    "no REAL",
+    "S09/Pullback native/base adapter Tester-only",
+    "no financial limit increases",
+    "no protection disabled or kill switch released",
+    "no global stop or third-party session termination",
+    "cache ineligible",
+    "physical Windows and portfolio/gradients keep own acceptance"
+  ],
+  "dependency_integration": {
+    "h35": "e5f48424b6c088e4d9d706ea462e8e5f6ca8a80c",
+    "m162": "a0cd3c4762a37c334d64f53a82db05d4c2ce7b7b",
+    "runtime_source": "4517299f7c9e23aa8c0a45f6059ec5a8738f388d",
+    "required_checks_approved": 6,
+    "workflow": 39507890504,
+    "runtime_unchanged_in_this_pr": true
+  }
+}
