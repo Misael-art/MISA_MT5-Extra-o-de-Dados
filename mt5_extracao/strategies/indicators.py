@@ -201,6 +201,35 @@ def donchian(df: pd.DataFrame, n: int) -> pd.DataFrame:
                          "lower": df["low"].rolling(n, min_periods=n).min()})
 
 
+def donchian_context(df: pd.DataFrame, n: int = 20, *, reference: str = "previous") -> pd.DataFrame:
+    """Canal fechado explícito; não modifica a função Donchian legada.
+
+    previous exclui o high/low da barra de avaliação. Ausências conhecidas não
+    são comprimidas em uma janela fictícia; limites empatados não rompem.
+    """
+    if type(n) is not int or n < 1 or reference not in ("current", "previous"):
+        raise ValueError("Informe período inteiro positivo e referência current ou previous.")
+    source = pd.DataFrame(index=df.index)
+    for name in ("high", "low", "close"):
+        source[name] = pd.to_numeric(df[name], errors="coerce") if name in df else np.nan
+    valid = np.isfinite(source.high) & np.isfinite(source.low) & source.high.ge(source.low)
+    clean = source[["high", "low"]].where(valid, np.nan)
+    shift = int(reference == "previous")
+    channel = donchian(clean, n).shift(shift)
+    if "_channel_reset_before" in df:
+        group = df["_channel_reset_before"].fillna(False).astype(bool).cumsum()
+        channel = channel.where(group.eq(group.shift(n - 1 + shift)), np.nan)
+    channel = channel.where(valid, np.nan)
+    # Metade de cada limite evita overflow desnecessário de upper+lower.
+    channel["mid"] = channel.upper / 2 + channel.lower / 2
+    channel["width"] = channel.upper - channel.lower
+    close = source.close.where(np.isfinite(source.close))
+    channel["position"] = (close - channel.lower) / channel.width.where(np.isfinite(channel.width) & channel.width.gt(0))
+    channel["distance_upper"] = close - channel.upper
+    channel["distance_lower"] = close - channel.lower
+    return channel
+
+
 def efficiency_ratio(close: pd.Series, n: int = 10) -> pd.Series:
     """Kaufman: |variação em n barras| / soma das variações absolutas. 1 = movimento limpo."""
     change = (close - close.shift(n)).abs()
