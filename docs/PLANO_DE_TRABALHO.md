@@ -4006,3 +4006,15 @@ só ATR inelegível, idade/teto/SL conhecidos preservados. Hash/identidade difer
 continuam recusados. Par8b40cac/295c323 preservado para caminho normal, sem substituir
 aceite do novo fonte. Novo alinhamento e checks obrigatórios necessários pela mudança
 de runtime; não há busca de outra janela nem campanha histórica ampliada.
+
+TM07 — fonte final após guarda de recuperação: H52c1001/Mf5583f7,
+S09v1.60/4afcfe4bcef17c18. Compilação e novo par alinhados na mesma janela
+e parâmetros:4 posições/8fills/9contextos cada,35inputs; replay/caixa7,75USD
+conciliados, horizontes588–626s.24includes/wrapper/binários exatos.36PIDs
+próprios observados encerrados em8 perfis no conjunto (inclui versões preservadas),
+ponte/principal intactos; nenhuma sessão nativa ativa. Manual/consulta/exportação
+UI reabertos no banco existente, sem novo ensaio. Falha de perda de base ATR
+validada por header real/plataforma falsa; par nativo final exercitou caminho
+normal, sem forçar corrupção/crash. Checks H finais aprovados; M aguarda somente
+workflow39488078713 existente. Revisões substituídas canceladas pelos defeitos
+concretos registrados. Recibo T19_16_ATR_20261020.json; limites permanecem.

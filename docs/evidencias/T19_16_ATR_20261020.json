@@ -1,8 +1,8 @@
 {
   "task": "T19.16/TM07 initial bounded ATR",
-  "provider_runtime": "8b40cacf14d2ebcd283191d880f854fe0964317f",
-  "consumer_runtime": "295c3237378c6b324af25e398dc60d721f347e1d",
-  "fingerprint": "db930f548c8e10d0",
+  "provider_runtime": "52c10013365cf3c73682cc433b82bb82fefa957d",
+  "consumer_runtime": "f5583f7306e395a381fb646279108114689a7391",
+  "fingerprint": "4afcfe4bcef17c18",
   "dependencies": {
     "provider_pr": 31,
     "consumer_pr": 159,
@@ -37,15 +37,15 @@
   "scenarios": [
     {
       "mode": "backtest",
-      "run_id": "524ce71344574330958ab4a73ba79727",
+      "run_id": "2709e78e4d3b467f8fd18a17751f7d87",
       "trades": 4,
       "source": {
-        "fingerprint": "db930f548c8e10d0",
+        "fingerprint": "4afcfe4bcef17c18",
         "key": "mql5:hdk_s09_referencia",
         "version": "1.60"
       },
       "status": "reconciled_backtest",
-      "set_sha256": "47e327e57f241db374e29f59dc20b00f84930d86058fe5c3418d624f35d53d12",
+      "set_sha256": "10ce74d5d014b81b9949d05d0c849ba5cd2e8ba858dac51384419731593769e4",
       "net_profit": 7.75,
       "currency": "USD",
       "ledger": [
@@ -630,7 +630,7 @@
       "cash_reconciled": true,
       "inputs": {
         "schema_version": 1,
-        "session": "91fcad8ec27042c5a04e27e741d1d536",
+        "session": "56bc2b2a5a15430aac83b4b093ca71eb",
         "symbol": "EURUSD",
         "timeframe": "M5",
         "tester": true,
@@ -653,7 +653,7 @@
           "InpPartialStages": 0,
           "InpPartialTrigger1": 0.5,
           "InpPartialTrigger2": 1.0,
-          "InpPresetId": "21031e038fec45489f9971ad87b2212f",
+          "InpPresetId": "8dc0762771de4a0abffb56a10f3786f4",
           "InpRiskPct": 0.5,
           "InpSlowPeriod": 50,
           "InpStopPoints": 500,
@@ -677,7 +677,7 @@
         "compared": true,
         "preset_verified": true,
         "operational_acceptance": false,
-        "sha256": "0557ae02d04ba2a43d8b717084b04a4eeec0c47627499ca40c618b4684f8acb4"
+        "sha256": "b17ad49501e3becff0dd5d23a3534e89c462ca038fc9317d6c12addedde6a3e1"
       },
       "reviewed_source_and_wrapper_exact": true,
       "installed_includes": {
@@ -696,7 +696,7 @@
         "MQL5/Include/Framework/HADOUKEN/Safety/HDK_RiskGuard.mqh": "fb8e733f47908db9e3e200387baf2a9b75f6d2164aed8490bad0f7cd67418126",
         "MQL5/Include/Framework/HADOUKEN/Safety/HDK_SafeExecutor.mqh": "148df0db66aa75d5ce8e231538e1f9451ece41d9cfcc359eccc005e42173912a",
         "MQL5/Include/Framework/HADOUKEN/Safety/HDK_SafetyTypes.mqh": "6140f903bf44553fec912f37ad6b0fbbcb45d80349f75baf64337306dce541ad",
-        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeAtrTemporalPolicy.mqh": "a31525cb632bc98e85832adcc2d7375d1dcd135c7e2fb3693d55cf4cb54b775d",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeAtrTemporalPolicy.mqh": "d7c7be05361f6a16471af5066f481d3beb50fd193b2c37df3f41bee11d9fec06",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeBaseAdapter.mqh": "57b23648269dbb402113d4e0f287154c755e18ddea1f74b06159419ce6023979",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeDonchianTemporalPolicy.mqh": "5b6a79cb71acdd58a218ea2f2f5449184ae255db5237dba8ce1662c8795e3c0a",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeEfficiencyTemporalPolicy.mqh": "fd9bd6a81c06a2bd2d9d797c915975f2c24e04e10f05b0a08f0694c3136da665",
@@ -706,8 +706,8 @@
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh": "efbb1ab0488ce1b49509d496de961ad394e85ace1ffb4b3b8bdc7612413382c3",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd"
       },
-      "binary_sha256": "302249b4f724e17f81e02341c8744c1e47530bd7712478a492dbbf5353ed4cd2",
-      "wrapper_sha256": "5d0971ed5b9a362b9823ebdd05dfff3b474a2751417454785e7619a70ffe7352",
+      "binary_sha256": "25e492a6d83b466ca2d61718b135cbc12d22f08b423b5df3e2c68032fe16cca7",
+      "wrapper_sha256": "13ba76ac5135b460e1f02ff5e35944c0ca486aac982b71379813f62bfc474635",
       "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session",
       "source_framing": {
         "mode": "backtest",
@@ -720,15 +720,15 @@
     },
     {
       "mode": "replay",
-      "run_id": "e4a7714b635c4344919abac49706f896",
+      "run_id": "51299e4a1f2841ed929b81fc469c8294",
       "trades": 4,
       "source": {
-        "fingerprint": "db930f548c8e10d0",
+        "fingerprint": "4afcfe4bcef17c18",
         "key": "mql5:hdk_s09_referencia",
         "version": "1.60"
       },
       "status": "reconciled_replay",
-      "set_sha256": "47e327e57f241db374e29f59dc20b00f84930d86058fe5c3418d624f35d53d12",
+      "set_sha256": "10ce74d5d014b81b9949d05d0c849ba5cd2e8ba858dac51384419731593769e4",
       "net_profit": 7.75,
       "currency": "USD",
       "ledger": [
@@ -1313,7 +1313,7 @@
       "cash_reconciled": true,
       "inputs": {
         "schema_version": 1,
-        "session": "86175f6cb8674fb481be6f7044641be5",
+        "session": "93245be05071433eb97269350ee44297",
         "symbol": "EURUSD",
         "timeframe": "M5",
         "tester": true,
@@ -1336,7 +1336,7 @@
           "InpPartialStages": 0,
           "InpPartialTrigger1": 0.5,
           "InpPartialTrigger2": 1.0,
-          "InpPresetId": "21031e038fec45489f9971ad87b2212f",
+          "InpPresetId": "8dc0762771de4a0abffb56a10f3786f4",
           "InpRiskPct": 0.5,
           "InpSlowPeriod": 50,
           "InpStopPoints": 500,
@@ -1360,7 +1360,7 @@
         "compared": true,
         "preset_verified": true,
         "operational_acceptance": false,
-        "sha256": "e85b1440fae31e1ac13a9f541c82a608184b0206c4e4566848347b3e39414ddc"
+        "sha256": "367dae8b7063e1b1e31fe41c0086fe28a26a9a0066bb095ba46e04350bf745d0"
       },
       "reviewed_source_and_wrapper_exact": true,
       "installed_includes": {
@@ -1379,7 +1379,7 @@
         "MQL5/Include/Framework/HADOUKEN/Safety/HDK_RiskGuard.mqh": "fb8e733f47908db9e3e200387baf2a9b75f6d2164aed8490bad0f7cd67418126",
         "MQL5/Include/Framework/HADOUKEN/Safety/HDK_SafeExecutor.mqh": "148df0db66aa75d5ce8e231538e1f9451ece41d9cfcc359eccc005e42173912a",
         "MQL5/Include/Framework/HADOUKEN/Safety/HDK_SafetyTypes.mqh": "6140f903bf44553fec912f37ad6b0fbbcb45d80349f75baf64337306dce541ad",
-        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeAtrTemporalPolicy.mqh": "a31525cb632bc98e85832adcc2d7375d1dcd135c7e2fb3693d55cf4cb54b775d",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeAtrTemporalPolicy.mqh": "d7c7be05361f6a16471af5066f481d3beb50fd193b2c37df3f41bee11d9fec06",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeBaseAdapter.mqh": "57b23648269dbb402113d4e0f287154c755e18ddea1f74b06159419ce6023979",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeDonchianTemporalPolicy.mqh": "5b6a79cb71acdd58a218ea2f2f5449184ae255db5237dba8ce1662c8795e3c0a",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeEfficiencyTemporalPolicy.mqh": "fd9bd6a81c06a2bd2d9d797c915975f2c24e04e10f05b0a08f0694c3136da665",
@@ -1389,8 +1389,8 @@
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh": "efbb1ab0488ce1b49509d496de961ad394e85ace1ffb4b3b8bdc7612413382c3",
         "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd"
       },
-      "binary_sha256": "243a2ef5a5b2ecf0e8067475a28659d7a6e125d8ed8270542acc28cc656c05d6",
-      "wrapper_sha256": "761110f0d845875d07c909ba89177e47fe5cd972739bbe0d467f3fae465ff147",
+      "binary_sha256": "6bc51494b6c665ce6e019d96ec6581121a459d11f4975df1a743b916dc5f58a2",
+      "wrapper_sha256": "fca3155a298dc8558b12d9e20bc0c9fbf1fce4741ed1882d67926cb76850de3d",
       "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session",
       "source_framing": {
         "mode": "replay",
@@ -1406,16 +1406,16 @@
   "ledger_exact_match": true,
   "resources": {
     "observed": {
-      "gone": 22,
+      "gone": 36,
       "reused": 0,
       "zombie": 0
     },
-    "own_profiles_without_processes": 5,
+    "own_profiles_without_processes": 8,
     "native_context_marker_absent": true,
     "bridge_and_principal_preserved": true
   },
   "ui": {
-    "run": "e4a7714b635c4344919abac49706f896",
+    "run": "51299e4a1f2841ed929b81fc469c8294",
     "policy": {
       "max_seconds": "3600",
       "progress_seconds": "0",
@@ -1451,7 +1451,41 @@
     "live DEMO and physical Windows separate acceptance",
     "Pullback temporal not enabled",
     "portfolio/gradients/additions and volume/amplitude clocks unsupported",
-    "ATR seed250 explicit; not certification of broker history or equivalence with another seed"
+    "ATR seed250 explicit; not certification of broker history or equivalence with another seed",
+    "ATR-only anchor-loss fault validated in real MQL header against fake platform; final native pair did not force terminal crash or anchor corruption"
   ],
-  "statistical_approval": false
+  "statistical_approval": false,
+  "recovery_review": {
+    "finding": "Losing only stored ATR anchor refused entire controller initialization despite valid known temporal identity/age; prior deadlines would not be managed.",
+    "reproduction": "New real-header/platform-shim regression failed before correction and passed after.",
+    "resolution": "ATR becomes persistently ineligible without reconstructing baseline; known temporal controller, absolute deadline and SL remain active. Changed hash/missing temporal identity still refused.",
+    "compatible_previous_normal_path": {
+      "provider_runtime": "8b40cacf14d2ebcd283191d880f854fe0964317f",
+      "consumer_runtime": "295c3237378c6b324af25e398dc60d721f347e1d",
+      "accepted_for_final_revision": false,
+      "receipt_sha256": "be8f7791d6e77ddad2460cbdacb945990a5c278f9d90e785b7ce7955f6006675"
+    },
+    "final_aligned_pair": "same fixed window and parameters; repeated only because corrected runtime/provider identity changed"
+  },
+  "ci": {
+    "workflow": 39488078713,
+    "source": "f5583f7306e395a381fb646279108114689a7391",
+    "status": "pending; no claim of integration until required checks pass",
+    "superseded": [
+      {
+        "run": 39485055788,
+        "head": "92d6aac3083f7c23d20e056b97b3901599311d66",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "reason": "journal framing changed after missing native source snapshots"
+      },
+      {
+        "run": 39485700757,
+        "head": "295c3237378c6b324af25e398dc60d721f347e1d",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "reason": "ATR-only anchor loss recovery guard changed, with final provider binding"
+      }
+    ]
+  }
 }
