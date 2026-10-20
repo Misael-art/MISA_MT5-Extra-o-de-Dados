@@ -32,7 +32,8 @@ Recibo `docs/evidencias/T19_57_PULLBACK_20261020.json`.20 PIDs próprios observa
 sumiram, lease seguinte disponível, ponte e terminal principal DEMO preservados.
 94 testes pertinentes M e23 Tools H compatíveis; doctor20OK/1 opcional/0 falhas.
 Fonte/includes ae07e7b e aplicação c33fa1e identificadas;19 includes e fonte real
-comparados por SHA nas duas sessões. M151 aguarda apenas o Windows CI existente.
+comparados por SHA nas duas sessões. M151 tem os seis checks existentes aprovados no runtimec33fa1e, incluindo Windows CI;
+H26 integrada em master8ee507b. Recibo de integração T19_57_PULLBACK_INTEGRACAO_20261020.json.
 Compras não foram exercitadas nesse replay; possuem referência Decimal/header e
 cobertura compartilhada. A prova cobre somente o perfil/contexto/volume e cenários exercitados;
 não otimiza a estratégia nem comprova performance, carteira, gradientes ou live.

@@ -1941,3 +1941,13 @@ Integração aguarda o Windows CI existente de M151, sem novo workflow.
 Próxima ficha prioritária: T19.14 inicial, identidade/relógio e trajetória observada
 para embasar T19.15 (stop temporal/time gain/loss), sem inferir extremos entre fills.
 Cache inelegível; S09 somente Tester; DEMO ao vivo, Windows físico e carteira específicos.
+
+
+Fechamento T19.57 Pullback — H#26 integrada em8ee507b; M#151 com revisão concluída
+e seis checks existentes aprovados no runtimec33fa1e (inclusive Windows CI).
+HEAD posterior altera apenas documentação/evidência, mantendo o código exercitado.
+Aceite histórico do novo perfil: entrada/swing/R, lote1, parcial1→0,5, BE após
+confirmação, encerramentos SL/TP, fills/custos e caixa reconciliados; sem promover
+legado/Python, cache, live, carteira ou Windows físico. Ver recibos T19_57_PULLBACK_*.
+Próxima dependência concreta para políticas temporais: T19.14 inicial (relógio,
+identidade e trajetória observada), seguida de T19.15; sem fabricar extremos futuros.
