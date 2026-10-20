@@ -51,7 +51,7 @@ def read_events(directory,plan,signals,sizing,ledger):
                 or opened['price']!=expected['entry_price'] or abs(price-Decimal(str(expected['exit_price'])))>quantum/2):
             raise ValueError('Volume/preço/custos dos fills não reconciliam com a posição/CSV/saldo.')
         by_origin[signal['event_at']]=(pid,opened,exits,expected)
-    schedule=stages(plan);state={};last_stage={}
+    schedule=stages(plan);state={};last_stage={};matched_deals=set()
     for m in PARTIAL.finditer(text):
         origin,at,stage,status,before,requested,filled,remaining,old_sl,new_sl,be_req,be_ok,pid,history,price,net,costs=m.groups()
         origin,at,stage,pid=map(int,(origin,at,stage,pid))
@@ -68,7 +68,8 @@ def read_events(directory,plan,signals,sizing,ledger):
         previous=state.get(key)
         if status=='pending':
             expected_before=entry['volume'] if stage==1 else state.get((origin,stage-1),{}).get('remaining')
-            if previous or last_stage.get(origin,0)!=stage-1 or before!=expected_before or filled!=0 or remaining!=before or old_sl!=new_sl or be_ok!='0':
+            if (previous or last_stage.get(origin,0)!=stage-1 or before!=expected_before or filled!=0
+                    or remaining!=before or old_sl!=new_sl or be_ok!='0' or any(v!=0 for v in (history,price,net,costs))):
                 raise ValueError('Intenção parcial repetida ou sem confirmação da etapa anterior.')
             last_stage[origin]=stage
         else:
@@ -77,14 +78,24 @@ def read_events(directory,plan,signals,sizing,ledger):
             matching=[d for d in exits if d['at_msc']//1000==at and d['volume']==filled and d['price']==price]
             if len(matching)!=1:raise ValueError('Redução não corresponde a um fill histórico inequívoco.')
             deal=matching[0];actual_cost=sum((Decimal(str(deal[k])) for k in ('commission','swap','fee')),Decimal(0))
+            if deal['deal'] in matched_deals:raise ValueError('Fill reutilizado por mais de uma etapa parcial.')
+            matched_deals.add(deal['deal'])
             if (filled!=requested or history!=filled or Decimal(str(before))-Decimal(str(filled))!=Decimal(str(remaining))
                     or remaining<spec['volume_min'] or (be_ok=='1' and (be_req!='1' or (new_sl-entry['price'])*trade['direction']<0))
+                    or (be_req=='1' and be_ok!='1')
                     or Decimal(str(net))!=Decimal(str(deal['profit']))+actual_cost or Decimal(str(costs))!=actual_cost):
                 raise ValueError('Redução/saldo/BE/custos não demonstram parcial confirmada.')
         row=dict(event_at=origin,at=at,stage=stage,state=status,before=before,requested=requested,filled=filled,remaining=remaining,
                  stop_before=old_sl,stop_after=new_sl,be_requested=be_req=='1',be_confirmed=be_ok=='1',position=pid,history_reduction=history,price=price,net=net,costs=costs)
         state[key]=row;partials.append(row)
     if any(row['state']!='confirmed' for row in state.values()):raise ValueError('Confirmação parcial ausente; não aprovar resultado.')
+    for origin,(_,entry,exits,_) in by_origin.items():
+        ordered=sorted(exits,key=lambda row:(row['at_msc'],row['deal']))
+        expected_partial={row['deal'] for row in ordered[:-1]}
+        observed_partial={row['deal'] for row in ordered if row['deal'] in matched_deals}
+        remaining=state[(origin,last_stage[origin])]['remaining'] if origin in last_stage else entry['volume']
+        if expected_partial!=observed_partial or ordered[-1]['volume']!=remaining:
+            raise ValueError('Reduções intermediárias sem agenda/ack ou saldo final incompatível; conferir os fills antes de repetir.')
     return partials,deals
 
 def semantic(rows):

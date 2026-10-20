@@ -34,10 +34,12 @@ def test_fills_costs_volume_and_confirmation_reconcile_as_one_trade(prepared):
     assert sum(d['profit']+d['commission']+d['swap']+d['fee'] for d in deals)==344
     assert 'position' not in semantic(partials)[0] and 'deal' not in semantic(deals)[0]
 
-@pytest.mark.parametrize('fault',['missing_confirmation','duplicate_intention','accepted_only','partial_fill','changed_owner','no_stop','false_be','changed_cost','changed_ledger','extra_entry','missing_deal'])
+@pytest.mark.parametrize('fault',['missing_confirmation','missing_events','unconfirmed_be','duplicate_intention','accepted_only','partial_fill','changed_owner','no_stop','false_be','changed_cost','changed_ledger','extra_entry','missing_deal'])
 def test_fault_never_publishes_partial_acceptance(prepared,fault):
     _,path,_,_,ledger=prepared;text=path.read_text()
     if fault=='missing_confirmation':text='\n'.join(l for l in text.splitlines() if 'state=confirmed' not in l)
+    if fault=='missing_events':text='\n'.join(l for l in text.splitlines() if 'S09_PARTIAL' not in l)
+    if fault=='unconfirmed_be':text=text.replace('be_confirmed=1','be_confirmed=0')
     if fault=='duplicate_intention':text+='\n'+next(l for l in text.splitlines() if 'state=pending' in l)
     if fault=='accepted_only':text=text.replace('state=confirmed','state=uncertain')
     if fault=='partial_fill':text=text.replace('filled=1','filled=0.5')
