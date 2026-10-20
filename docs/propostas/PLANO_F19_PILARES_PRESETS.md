@@ -166,7 +166,7 @@ CI e revisão final concluídos; Windows físico delimitado. [Contrato e evidên
 
 ### T19.7 — Donchian, Envelopes e regressão (I10/I11/I12)
 
-- **Recorte I10:** Donchian(20) em revisão isolada; [contrato](../analytics/T19.7_DONCHIAN.md). Envelopes/regressão e saída temporal ainda pendentes.
+- **Recorte I10:** Donchian(20) entregue na PR157, seis checks no fonte1b50519; [contrato](../analytics/T19.7_DONCHIAN.md). Envelopes/regressão e saída temporal ainda pendentes.
 
 - **Repo/prioridade:** M/H; P1. **Depende de:** T19.3.
 - **Arquivos:** `strategies/indicators.py`, registry, canais e consumidores.

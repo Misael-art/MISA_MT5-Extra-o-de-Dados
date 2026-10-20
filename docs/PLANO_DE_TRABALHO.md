@@ -182,6 +182,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.3 | Materialização, exportação e consumo de indicadores no store/registry canônicos | T19.1, T13.2, T18.1 | ✅ [PR125](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/125), aceite/revisão concluídos no eaec23b;1528 casos distintos CI+UI,34 PostgreSQL, cov77,64%,27 focados, doctor21/1/0 e seis checks aprovados; consumidor com avaliação exact_prefix e limites explícitos; Windows físico pendente |
 | T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | ✅ [PR126](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/126), aceite final70b2191 após correção127/master2d7412f; seis checks,1412 Ubuntu/36PG/1514Windows CI, cov77,64%/73,36%;291 fontes/testes idênticos;62 focados+34 composição/doctor21/1/0; custo local279/216/2ms, sem meta universal; Windows físico pendente |
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
+| T19.7 inicial/I10 | Donchian(20), referências atual/anterior, store/contexto/CSV | T19.3 | ✅ PR157: seis checks no fonte1b50519; Envelopes/regressão e consumidor temporal mantêm aceites separados |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
 | T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER entregue na PR156: seis checks e replay conferidos; H28 integrada. Donchian/ATR pendentes |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
@@ -3923,3 +3924,12 @@ explicitamente declarado. Revisões/gaps conhecidos preservam disponibilidade/as
 Testes dirigidos e doctor aprovados; checks/revisão em curso. Não conclui Envelopes,
 regressão ou TM06. Nenhum replay aprovado repetido; ER/M#156 preservado.
 Contrato e limites: docs/analytics/T19.7_DONCHIAN.md.
+
+
+Fechamento T19.7 inicial/I10 na PR157: seis checks obrigatórios aprovados no
+runtime1b50519e1baf831867d1f729b9900e86a47d9ec9, workflow39469169508. Revisão
+sem pendências impeditivas; delta posterior só documental. Donchian(20) publicado
+em14IDs, consulta/store/CSV/ação UI conferidos. Envelopes/regressão continuam
+pendentes; TM06 tem aceite separado no consumidor M158/H29. Fonte de teste controlada
+não é aceite operacional MT5. Recibo T19_7_DONCHIAN_20261020.json; nenhuma campanha
+histórica ou replay ER repetidos. Windows físico/cache/live mantêm seus limites.
