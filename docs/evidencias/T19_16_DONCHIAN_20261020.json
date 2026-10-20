@@ -4064,5 +4064,56 @@
     "pullback_temporal": false,
     "adaptive_atr": false
   },
-  "statistical_approval": false
+  "statistical_approval": false,
+  "checks": {
+    "workflow": 39471926683,
+    "runtime": "a9c2b6631f3356486219abc63cdc2e430fc87620",
+    "required": [
+      {
+        "name": "Lint dos instaladores",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39471926683/job/118797911759"
+      },
+      {
+        "name": "Testes (windows-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39471926683/job/118797911786"
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39471926683/job/118797911788"
+      },
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39471926683/job/118797911966"
+      },
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39471926683/job/118797912075"
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39471926683/job/118797912179"
+      }
+    ],
+    "tests": {
+      "ubuntu": {
+        "passed": 1895,
+        "skipped": 199
+      },
+      "windows_ci": {
+        "passed": 2012,
+        "skipped": 82,
+        "warnings": 5
+      },
+      "postgresql": {
+        "passed": 52
+      }
+    },
+    "physical_windows": "pendente específico; CI não substitui ensaio físico"
+  }
 }

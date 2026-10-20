@@ -3955,7 +3955,14 @@ lote0,25/SL500/TP1000. Um backtest e um replay finais no mesmo dia EURUSD/M5:
 33inputs carregados, journal/livro/fills/caixa conciliados. Fonte/23includes/binários
 conferidos;12PIDs próprios encerrados, ponte/principal e trabalho original preservados.
 Consulta/reabertura/exportação UI conferidas; preliminar sem teto excluído do aceite.
-H#29 tem dois checks aprovados; M#157→M#158 aguardam checks existentes/integração.
+H#29 tem dois checks aprovados; M#157/H#29 integradas, M#158 com seis checks aprovados.
 Recibo T19_16_DONCHIAN_20261020.json; sem aceite para ATR adaptativo ou Pullback
 temporal, live DEMO, carteira/gradientes/cache. Próxima dependência elegível após
 fechamento: TM07, horizonte ATR limitado, mantendo os contratos e aceites próprios.
+
+Fechamento TM06: dependências M#157 (bd11940) e H#29 (596f2c8) integradas antes
+do consumidor M#158. Seis checks existentes aprovados no runtimea9c2b66:
+Ubuntu1895/199 skips, Windows CI2012/82 skips, PostgreSQL52; sem novo workflow
+ou repetição de campanha. Base master incorporada por merge, conflitos somente
+documentais resolvidos preservando I10 e TM06; código final idêntico ao fonte
+revisado/testado/nativo. Delta posterior somente docs. Windows físico segue pendente.
