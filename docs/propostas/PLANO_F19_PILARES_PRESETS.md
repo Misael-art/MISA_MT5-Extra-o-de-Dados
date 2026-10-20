@@ -875,3 +875,12 @@ nome canônico estável com hash12, limites/nomes Windows e chave de colisão; l
 não é reescrito e alias Maximalista é reconhecido sem novo gerador.51 testes focados
 aprovados. Persistência/exportador/UI são consumidores; ver `docs/sdk/nomes_presets.md`.
 Sem estratégia/preset automático ou aceite novo; Windows físico pendente.
+
+### T19.55 inicial — Default imutável e seleção persistida
+
+Em revisão, dependente de #142. Snapshot dos defaults efetivos do perfil S09 por
+versão/fonte/contexto, IDs estáveis, schema aditivo e criação/reabertura idempotente.
+Seleção por contexto não é substituída ao criar Default.87 testes focados aprovados;
+PostgreSQL pelo job existente. Ver `docs/sdk/default_versionado.md`.
+Manual, exportação e UI ainda são consumidores; sem operação/aceite novo, Pullback
+bloqueado e Windows físico pendente.
