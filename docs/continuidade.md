@@ -2183,3 +2183,13 @@ de primeiro fill explícitos; calendário observado T13.1 reutilizado sem presum
 DST ou sessões futuras. S09 somente Tester, cache inelegível; live DEMO, Windows
 físico, Pullback temporal, carteira/gradientes e relógios volumétricos continuam
 com aceites próprios. Não houve nova campanha histórica nem dispatch duplicado.
+
+Painel modular — planejamento: layout de fichário/compacto/expansão aprovado pelo proprietário.
+[Inventário estático e atividades PM-00–PM-12](propostas/PAINEL_MODULAR_COBERTURA.md)
+fixam M b139f04/H 596f2c8/S dbff0d2 como bases documentais; Safety não foi promovido
+para executável/snapshot. Previstos: painel padrão a incorporar a cada EA e identidade
+por gráfico com degradê e marca d'água; serviços faltantes não bloqueiam o núcleo.
+G-02 precede a implementação do painel e as extensões seguem suas dependências.
+Registro integrado em fila documental após TM07, sem MT5/compilação/runtime nesta
+entrega. S09 somente Tester; cache de execução/evidência inelegível; histórico/replay
+não habilitam live DEMO. Carteira concorrente e Windows físico mantêm aceites próprios.

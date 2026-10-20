@@ -123,7 +123,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T12.3 | Guardião global: orçamentos por robô, reserva, líder, parada e auditoria (etapa 3) | T12.2 | ⏳ em implementação autorizada; operações supervisionadas serão exercitadas depois da etapa, apenas em demo |
 | T12.4 | Gradiente Linear básico: ordens pendentes no executor, boleta, grade fixa (etapa 4) | T12.3 | ⏳ parcial: ordens pendentes no executor (D-02) e boleta de ordem pendente no painel (G-05, limite e stop, exercitada em conta demo) entregues; a grade não começou |
 | T12.5 | Gradiente Linear dinâmico (etapa 5) | T12.4 | a fazer |
-| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | ⏳ parcial: T12.6a concluída; T12.6b e T12.6c a fazer (dividida na revisão de 2026-10-13) |
+| T12.6 | Painel completo: recolhido, compacto, abas e boletas (etapa 6) | T12.6a; cada aba depende da sua etapa (veja "Revisão das etapas do painel") | ⏳ parcial: T12.6a concluída; T12.6b e T12.6c a fazer (dividida na revisão de 2026-10-13); design único aprovado em 2026-10-20, [cobertura PM-00–PM-12](propostas/PAINEL_MODULAR_COBERTURA.md) documentada; G-02 permanece fundação, runtime não iniciado |
 | T12.6A | Estatísticas: livro por operação e por grade, KPIs, exportação e relatório no mt5x (etapa 6A) | T12.2 | a fazer |
 | T12.7 | Copiloto de IA somente leitura (etapa 7) | T12.6A | a fazer |
 | T12.8 | Demo controlada da operação integrada (etapa 8) | T12.3 a T12.6A | a fazer |
@@ -3217,6 +3217,8 @@ netting; ativo da B3; Windows. A paleta clara e a saída física eDP-1 1280×800
   `Documentation/HADOUKEN_2/TESTES_PAINEL_V7.md` no repositório HADOUKEN.
 
 ### T12.6b e T12.6c
+
+Design do painel único aprovado em 2026-10-20; [cobertura PM-00–PM-12](propostas/PAINEL_MODULAR_COBERTURA.md) documentada. G-02 continua fundação; analytics ao vivo, cestas/Close By, Monte Carlo de metas e drift têm recortes próprios. Runtime não iniciado.
 
 Detalhadas no plano do HADOUKEN. A T12.6b depende de G-02 (arquitetura modular), conforme as dependências de
 G-03/G-04 no épico; G-02 é a próxima tarefa elegível e T12.6b aguarda sua conclusão. Registro desta revisão: o
