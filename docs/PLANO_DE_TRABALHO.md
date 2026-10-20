@@ -3817,3 +3817,8 @@ vivo sem identidade mantém recusa, com PID e ação na mensagem. Windows contin
 identificado pelo executável. 69 testes de isolamento/controles aprovados; nenhuma
 liberação de recursos inferida, nenhuma sessão alheia encerrada. Retomar apenas os
 casos temporais pendentes após incorporar este corretivo pelo Git.
+
+Windows CI de M#153 revelou timeout em test_cli_batch: o processo falso simulava
+Linux mas varria processos reais do runner. A fixture de comandos falsos agora
+usa inventário vazio, substituível pelos testes explícitos de ownership. 74 testes
+de lote/isolamento/controles aprovados; código de proteção real preservado.
