@@ -19,6 +19,7 @@ class SizedSession(FakeSession):
                     volume_min=.01,volume_max=100,volume_step=.01)
         if self.sizing_fault=="margin":values["margin_required"]="unavailable"
         if self.sizing_fault=="risk":values["risk_money"]=501
+        if self.sizing_fault=="budget":values["risk_budget"]=1000
         if self.sizing_fault=="volume":values["planned_volume"]=2
         line="S09_SIZING "+" ".join(f"{k}={v}" for k,v in values.items())+"\n"
         if self.sizing_fault=="missing":line=""
@@ -52,7 +53,7 @@ def test_lots_are_materialized_reopened_and_compared_in_replay(prepared,monkeypa
     assert replay.evidence["functional_cycle"] and replay.evidence["sizing"]==backtest.evidence["sizing"]
     assert not replay.evidence["cache_eligible"] and not replay.evidence["allows_live"]
 
-@pytest.mark.parametrize("fault",["margin","risk","volume","missing","duplicate"])
+@pytest.mark.parametrize("fault",["margin","risk","budget","volume","missing","duplicate"])
 def test_unqualified_sizing_cannot_publish_acceptance(prepared,monkeypatch,fault):
     monkeypatch.setattr(SizedSession,"sizing_fault",fault)
     result=run(prepared)

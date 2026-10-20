@@ -30,6 +30,9 @@ a quantização por Decimal, o CSV/livro/saldo e a primeira divergência com o r
 A aba Lotes e risco exibe esses fatos; ausência não vira valor preenchido ou
 margem zero. Valores de margem no diário têm precisão de oito casas; a conferência
 admite apenas 2e-8 de representação, sem alterar a decisão nativa de risco/margem.
+O orçamento das entradas também deve corresponder ao percentual do preset aplicado
+ao depósito mais o resultado das posições já encerradas, com a mesma precisão de
+representação. Um input lido não basta se o estado efetivo do executor o substituiu.
 
 Compatibilidade: perfil1.00/fingerprint91ff0ec8a7bba77e permanece reconhecido;
 perfil1.10/fingerprint8fcc5dfacc9118fa corresponde à fonte H6120466 e Safety1.7.

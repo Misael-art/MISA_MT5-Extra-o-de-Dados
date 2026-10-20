@@ -69,6 +69,18 @@ def native_sizing(directory,signals,expected):
     return rows
 
 
+def validate_sizing_budgets(sizing,signals,rows,*,deposit,risk_pct):
+    """Uma posição por vez: saldo antes da entrada = depósito + posições já encerradas."""
+    signals_by_origin={row["event_at"]:row for row in signals}
+    for item in sizing:
+        if item["filled_volume"] is None:continue
+        entered=datetime.fromtimestamp(signals_by_origin[item["event_at"]]["available_at"],timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        previous=sum((Decimal(str(row["pnl"])) for row in rows if row["entry_time"]<entered and row["exit_time"]<=entered),Decimal(0))
+        budget=(Decimal(str(deposit))+previous)*Decimal(str(risk_pct))/100
+        if abs(Decimal(str(item["risk_budget"]))-budget)>Decimal("0.00000002"):
+            raise ValueError("Orçamento efetivo do Tester difere do depósito/saldo e percentual do preset; confira estado persistido e contexto antes de repetir.")
+
+
 def native_signals(directory):
     paths=list((Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     result=[]
@@ -275,6 +287,9 @@ class PresetExecution:
         signals=native_signals(job.directory)
         sizing=native_sizing(job.directory,signals,native["expected_native_inputs"]) if native["profile_version"]>=2 else None
         rows=_ledger_rows(self.db,job.record,signals)
+        if sizing is not None:
+            validate_sizing_budgets(sizing,signals,rows,deposit=package["test_context"]["deposit"],
+                                   risk_pct=native["expected_native_inputs"]["InpRiskPct"])
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
             raise ValueError("Entradas e posições encerradas não conciliam; conferir última posição e respostas antes de aceitar.")
