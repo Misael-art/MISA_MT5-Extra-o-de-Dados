@@ -290,3 +290,9 @@ T19.29 — Windows físico pendente: validar Session/INI e .set canônicos, flag
 real, cancelamento só do processo próprio, diário/recibo, fechamento final e
 reconciliação do Manual entre backtest e replay. Sem operação REAL; ensaio sem
 negócios só cobre contratos exercitados. O CI/fake e Linux/Wine não substituem isso.
+
+
+### T20.22 inicial — editor Default/Manual e resultados nativos
+
+- [ ] Windows físico: abrir pelo card S09, nome/revisão/seleção persistida, rolagem em DPI alto, NTFS/Unicode, Cancelar somente sessão própria, inputs realmente carregados e visual nativo com negócios reconciliados.
+- CI e ensaio Wine não substituem essa pendência específica; o recorte não altera instaladores.

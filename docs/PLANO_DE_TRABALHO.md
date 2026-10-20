@@ -220,7 +220,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.19 | Diagnóstico de degradação e alarmes calibrados | T20.13/18 | planejada; Q11 |
 | T20.20 | Falhas, retomada e reconciliação operacional | T20.7/11, estado/ownership/guardas do recorte | planejada; Q12 |
 | T20.21 | Piloto posterior de pesquisa de carteira síncrona | T20.3/8, T19.48 | planejada; Q13, segundo momento |
-| T20.22 | Percurso de pesquisa na UI | T20.17, T19.26/30 e serviços do recorte | planejada; Q14/UI-A: modos, referência de layout, editor/tabelas/estados; Manual não espera objetivos automáticos |
+| T20.22 | Percurso de pesquisa na UI | T20.17, T19.26/30 e serviços do recorte | consumidor inicial S09 em revisão: Default somente leitura → Manual nomeado → pacote → Tester → conferência; ver docs/presets/T20_22_PERCURSO_MANUAL_UI.md; modos/layout/inspetores completos pendentes |
 | T20.23 | Inspetor de decisões e gráficos temporais vinculados | T20.3/11/22 | planejada; Q14/UI-A: seleção/cursor/zoom/eventos, catálogo por serviço; sem trocar renderer |
 | T20.24 | Orçamento/cancelamento/retomada da fila | T20.1 | ✅ integrada no [PR111](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/111), merge 541c1c3; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T20.25 | Cache verificável e isolamento de execuções | T20.4/24 | ✅ integrada no [PR112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), merge b7c8fd5; evidências compatíveis reaproveitadas; Windows físico pendente |
