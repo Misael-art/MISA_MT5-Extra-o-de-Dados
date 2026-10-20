@@ -17,7 +17,9 @@
       "H35",
       "M162"
     ],
-    "merged": false
+    "merged": false,
+    "h_merge": "e5f48424b6c088e4d9d706ea462e8e5f6ca8a80c",
+    "provider_integrated": true
   },
   "ui": {
     "run": "06b9dae1d40a4bc3a00bb6fba740e6c7",
