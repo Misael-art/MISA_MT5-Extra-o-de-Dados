@@ -1,0 +1,60 @@
+{
+  "task": "T19.57 inicial",
+  "state": "aceite funcional/revisão/checks concluídos nesta PR150",
+  "M_logic_ci_source": "7e1b1a0d0f95f8eef09f3c74367086015f4e2865",
+  "M_final_native_binding": "8a08e4c8156b989ed3288eef037b54cf6841172e",
+  "H_native_source": "89139c8134fca00461ada8850257a0dbd8d7763d",
+  "H_merge": "47f05b18162ced5883de63c8652c023291226357",
+  "M149_merge": "08c1ad5ed1cf576f27f3d0391dfd9efb5ad1f4f5",
+  "fingerprint": "60bf18181739612d",
+  "checks": [
+    {
+      "name": "Lint dos instaladores",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39412714724/job/118594164970"
+    },
+    {
+      "name": "Testes (ubuntu-latest)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39412714724/job/118594164836"
+    },
+    {
+      "name": "Testes (windows-latest)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39412714724/job/118594164713"
+    },
+    {
+      "name": "Testes PostgreSQL",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39412714724/job/118594164668"
+    },
+    {
+      "name": "Instalador Linux (sem MT5)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39412714724/job/118594164311"
+    },
+    {
+      "name": "Instalador Windows (sem MT5)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39412714724/job/118594165045"
+    }
+  ],
+  "compatibility": "From7e1b only native fingerprint/revision literals changed in Python;39targeted tests and actual final UI/backtest/replay validate the binding. Remaining changes are documentation and real base merge without file conflict.",
+  "evidence": "T19_57_PARCIAIS_20261020.json",
+  "base_reference": "T19_57_BASE_REFERENCE.json",
+  "functional_scope": "one/two stages, same quantity unit per plan, one position, Tester DEMO only",
+  "partial_confirmation": "observed volume, history, ownership and remaining SL before BE; uncertain/pending frozen, controller reinit tested",
+  "limits": [
+    "Pullback still blocked pending its own native profile/acceptance",
+    "cache ineligible",
+    "no live DEMO acceptance",
+    "physical Windows and process/OS restart not claimed"
+  ],
+  "new_workflow": false
+}

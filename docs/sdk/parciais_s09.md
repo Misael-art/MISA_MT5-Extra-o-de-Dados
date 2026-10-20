@@ -71,3 +71,8 @@ Referência suplementar de base: `../evidencias/T19_57_BASE_REFERENCE.cpp` execu
 o header H891 real pelo mesmo shim C++ dos testes, contra Decimal independente.
 Com inicial3/saldo2/fração50%/passo0,1, reduz1,5 pela base inicial e1,0 pelo saldo.
 Resultados/hashes em `../evidencias/T19_57_BASE_REFERENCE.json`; sem novo Tester.
+
+Fechamento do recorte: seis checks obrigatórios da lógica7e1b aprovados (incluindo
+Windows), revisão concluída, dependênciasM149/H25 integradas. O vínculo8a08 muda
+apenas literais de fonte e tem39testes/prova final próprios. Registro de aceite
+`../evidencias/T19_57_ACEITE_20261020.json`; sem nova campanha/workflow documental.

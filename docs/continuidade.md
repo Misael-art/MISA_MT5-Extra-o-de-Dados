@@ -1,3 +1,24 @@
+## T19.57 — aceite funcional e checks concluídos, 2026-10-20
+
+Recorte entregue na PR#150. Seis checks da lógica7e1b aprovados, incluindo Windows,
+no run existente39412714724; revisão final concluída. Vínculo nativo final8a08 com
+H89139c8/fingerprint60bf18181739612d/Safety1.7 verificado por39focados e UI/Tester
+reais; deltas posteriores só documentais e merge Git da base sem mudança de arquivos.
+H25 integrada47f05b1, M149 integrada08c1ad5. Cabe ao fechamento GitHub da PR150
+registrar seu merge exato; a árvore candidata é conferida antes da integração.
+`docs/evidencias/T19_57_ACEITE_20261020.json` reúne checks, fontes, evidência e limites.
+
+Na UI: Manual nomeado configura lotes e até duas parciais, base inicial/saldo e BE
+após confirmação. Agenda inviável é recusada, pedido não vira fill. Replay conferiu
+2posições/3reduções/7fills/22inputs, saldo/custos/CSV/livro e reabertura. QA de reinit
+não repetiu parcial confirmada/intenção pendente; NaN/zero/negativo recusados antes
+do executor. Fonte final compilada0erros/avisos; seis legados também compilados.
+Cache inelegível, S09 Tester. Pullback permanece bloqueado até perfil/aceite próprio;
+ao vivo DEMO, restart de processo e Windows físico conservam aceites específicos.
+Não repetir campanha histórica por rotina. Próximo recorte elegível: validar o
+Pullback no perfil próprio com redução real confirmada e proteção do remanescente,
+sem liberar por consequência do piloto S09; políticas temporais seguem dependências.
+
 ## Integrações registradas — T19.56 e fonte parcial, 2026-10-20
 
 M#149 integrada em08c1ad5, fonteec398eb com seis checks obrigatórios aprovados;
