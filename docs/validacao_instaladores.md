@@ -356,3 +356,6 @@ T19.20/02 — Windows físico: conferir Manual S09v1.80/44inputs, salvar/reabrir
 cooldown, tick milissegundo/fechamento total versus parcial, replay com recusa e nova
 entrada, persistência/consulta e liberação dos processos próprios preservando ponte/
 principal. Linux/Wine e CI não substituem este aceite. S09 somente Tester.
+
+
+Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronização do perfil privado, seleção EMA+ATR/ativo/TF/preset e inputs reais, identidade DEMO a cada etapa, PLAY/STOP por sessão, eventos/SL/fills/resultados próprios. A preparação Linux/Wine ficou parcial antes do replay por falta de sincronização; nenhum aceite ao vivo foi promovido. S09 e adaptador piloto continuam somente Tester.

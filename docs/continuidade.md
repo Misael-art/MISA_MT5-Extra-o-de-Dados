@@ -2250,3 +2250,18 @@ alinhados nas duas execuções aceitas. Próximo passo: concluir workflow3950789
 existente no runtime4517299 e integrar H35→M162 após revisão/6checks.
 S09 permanece somente Tester; Pullback neste gate/live DEMO/Windows físico/carteira/
 gradientes mantêm aceites próprios. Recibo T19_20_COOLDOWN_20261020.json.
+
+
+Complemento T8.7 solicitado pelo proprietário: ao vivo DEMO tem aceite próprio.
+Expert compatível proposto EMA+ATR/EURUSD/H1, preset conservador existente0,25%,
+sem novos limites. UI/backtest dirigido13→15/10/2026:1posição/-250,92USD/12inputs,
+CSV/caixa conciliados; gates atuais do PLAY passaram. Replay próprio nem iniciou:
+perfil privado não confirmou sincronização em90s apesar de catálogo nativo preparado.
+Mitigação do cooldown não é universal; causa final da intermitência não comprovada.
+14PIDs próprios ausentes/2perfis vazios; ponte/principal conectados DEMO e preservados.
+Nenhuma operação ao vivo enviada, nenhum aceite operacional, nenhum runtime alterado.
+Próximo passo: pré-condição nativa estável → replay faltante compatível → revalidar
+conta/contexto/proteções/carteira → observação DEMO pela UI. Não repetir tentativa
+sem mudança da pré-condição. S09/Pullback Nativo/adaptador piloto seguem Tester-only;
+cache inelegível, REAL proibida, Windows físico/carteira/gradientes próprios.
+Contrato docs/sdk/demo_operacional.md; recibo T8_7_DEMO_PARCIAL_20261020.json.

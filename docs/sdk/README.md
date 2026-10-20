@@ -43,3 +43,5 @@ mt5x robots parity    o robô faz as mesmas operações que a versão em Python?
 
 T19.20 inicial: [filtro de entradas por horários, dias e ciclos confirmados](sessao_entradas.md),
 perfil S09v1.70 com contrato de relógio/âncora explícitos; somente Tester.
+
+T8.7: [estado do aceite próprio ao vivo DEMO](demo_operacional.md), atualmente bloqueado antes do lançamento por sincronização do perfil privado; não altera os gates Tester do piloto.
