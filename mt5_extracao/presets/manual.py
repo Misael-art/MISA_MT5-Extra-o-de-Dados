@@ -3,7 +3,6 @@ from dataclasses import dataclass,replace
 import base64
 import os
 from pathlib import Path
-import re
 import tempfile
 import uuid
 
@@ -11,10 +10,10 @@ from sqlalchemy import inspect,text
 from sqlalchemy.exc import IntegrityError
 
 from . import store
-from .compiler import PresetIdentity,TestContext,compile_package,load_package
+from .compiler import PresetIdentity,TestContext,compile_package,load_package,read_package
 from .names import portable_slug
 from ..composition import Composition
-from ..composition.schema import canonical_json,_decode
+from ..composition.schema import canonical_json
 
 _LABELS="""CREATE TABLE IF NOT EXISTS _preset_labels (
  preset_id TEXT PRIMARY KEY,robot_key TEXT NOT NULL,symbol TEXT NOT NULL,timeframe TEXT NOT NULL,
@@ -222,17 +221,7 @@ def _definition(package):
 
 def import_manual(db,robot,manifest_path):
     store._require_db(db)
-    manifest_path=Path(manifest_path)
-    if manifest_path.is_symlink():
-        raise ValueError("Importe pacote local regular; link simbólico não concede acesso a outro arquivo.")
-    manifest=_decode(manifest_path.read_text(encoding="utf-8"))
-    filename=manifest.get("parameters_file") if isinstance(manifest,dict) else None
-    if not isinstance(filename,str) or not re.fullmatch(r"[A-Za-z0-9_-]+\.set",filename):
-        raise ValueError("Pacote exige .set local com nome portátil, sem caminhos; preserve o arquivo original.")
-    set_path=manifest_path.parent/filename
-    if set_path.is_symlink():
-        raise ValueError("Arquivo .set é link simbólico; preserve o original e importe uma cópia regular.")
-    package=load_package(manifest,set_path.read_bytes(),robot)
+    package=read_package(manifest_path,robot)
     identity=PresetIdentity(**package.manifest["identity"])
     if identity.category!="Manual":
         raise ValueError("Importação inicial trata Manual nomeado; o Default efetivo é criado pelo serviço local, sem substituir referência.")

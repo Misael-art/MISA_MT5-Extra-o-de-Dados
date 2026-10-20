@@ -90,7 +90,11 @@ bool MT5X_RecordInputs() {{
             IntegerToString(MQLInfoInteger(MQL_TESTER)),IntegerToString(AccountInfoInteger(ACCOUNT_TRADE_MODE)),
             IntegerToString((long)TimeCurrent()),"{len(fields)}");
   {body}
-  FileWrite(f,"end","{len(fields)}"); FileFlush(f); FileClose(f); return true;
+  FileWrite(f,"end","{len(fields)}"); FileFlush(f); FileClose(f);
+  Print("MT5X_NATIVE_MODE session={session_id} tester=",MQLInfoInteger(MQL_TESTER),
+        " visual=",MQLInfoInteger(MQL_VISUAL_MODE)," demo=",
+        AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO ? 1 : 0);
+  return true;
 }}
 '''
 

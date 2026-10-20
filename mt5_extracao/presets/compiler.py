@@ -4,6 +4,7 @@ from datetime import date
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 import tempfile
 
@@ -142,3 +143,18 @@ def load_package(manifest, set_bytes, robot):
     if type(set_bytes) is not bytes or set_bytes!=expected.set_bytes or canonical_json(manifest)!=expected.to_json():
         raise ValueError("Pacote divergente do contrato/inputs/fonte atuais; preserve o original e compile uma nova revisão.")
     return expected
+
+
+def read_package(manifest_path,robot):
+    """Lê os arquivos exportados reais; não instala, importa no banco ou inicia sessão."""
+    manifest_path=Path(manifest_path)
+    if manifest_path.is_symlink():
+        raise ValueError("Importe pacote local regular; link simbólico não concede acesso a outro arquivo.")
+    manifest=_decode(manifest_path.read_text(encoding="utf-8"))
+    filename=manifest.get("parameters_file") if isinstance(manifest,dict) else None
+    if not isinstance(filename,str) or not re.fullmatch(r"[A-Za-z0-9_-]+\.set",filename):
+        raise ValueError("Pacote exige .set local com nome portátil, sem caminhos; preserve o arquivo original.")
+    set_path=manifest_path.parent/filename
+    if set_path.is_symlink():
+        raise ValueError("Arquivo .set é link simbólico; preserve o original e importe uma cópia regular.")
+    return load_package(manifest,set_path.read_bytes(),robot)

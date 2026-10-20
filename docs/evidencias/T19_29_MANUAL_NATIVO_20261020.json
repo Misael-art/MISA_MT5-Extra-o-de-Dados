@@ -1,0 +1,437 @@
+{
+  "schema_version": 1,
+  "scope": "historical functional native Manual cycle, not statistical/live acceptance",
+  "platform": "Linux / Wine 11.17 / MT5 build6274",
+  "preset": {
+    "id": "f1516943f4eb467489b24b74deec6ff4",
+    "revision": 1,
+    "category": "Manual",
+    "label": "Piloto S09",
+    "default_origin": "7bebcda5351f56c5b4b20e4fee050ff2"
+  },
+  "backtest": {
+    "resources_released": true,
+    "preset_native_evidence_schema_version": 1,
+    "run_id": "0ce48c97a8564bd19e184085172c4fad",
+    "session": "8c20a192c50f4066bae4796aa7ff5d84",
+    "preset": {
+      "category": "Manual",
+      "default_origin": "7bebcda5351f56c5b4b20e4fee050ff2",
+      "id": "f1516943f4eb467489b24b74deec6ff4",
+      "label": "Piloto S09",
+      "revision": 1
+    },
+    "config_hash": "7edeaabfb5460e210d9d676e5b10dcea509a80ada0c94629a889c102d2185c15",
+    "execution_hash": "60fcd8ce9c1b77674dd9cd5b8838bbcb4a28f3eb0c27a6a9563847bdae2dcf6f",
+    "package_hash": "bccf4adc0368fb37cc21fd24960745d287bb632fea7a974ec2c764936f39cbd6",
+    "set_sha256": "4d2bb0e1635bd130ddb01897d157f25dcf8aef559e45343a7177950d7bf4cfcd",
+    "source": {
+      "fingerprint": "91ff0ec8a7bba77e",
+      "key": "mql5:hdk_s09_referencia",
+      "version": "1.00"
+    },
+    "context": {
+      "symbol": "EURUSD",
+      "timeframe": "M5"
+    },
+    "test_context": {
+      "deposit": 100000.0,
+      "end": "2026-10-15",
+      "model": "0",
+      "start": "2026-10-14"
+    },
+    "mode": "backtest",
+    "status": "reconciled_backtest",
+    "inputs": {
+      "schema_version": 1,
+      "session": "8c20a192c50f4066bae4796aa7ff5d84",
+      "symbol": "EURUSD",
+      "timeframe": "M5",
+      "tester": true,
+      "demo": true,
+      "known_at": 1791936000,
+      "values": {
+        "InpConfigHash": "7edeaabfb5460e210d9d676e5b10dcea509a80ada0c94629a889c102d2185c15",
+        "InpDeviationPoints": 20,
+        "InpFastPeriod": 20,
+        "InpMagic": 909202610,
+        "InpPresetId": "f1516943f4eb467489b24b74deec6ff4",
+        "InpRiskPct": 0.5,
+        "InpSlowPeriod": 50,
+        "InpStopPoints": 100,
+        "InpTargetPoints": 200,
+        "InpWarmupBars": 250
+      },
+      "complete": true,
+      "compared": true,
+      "preset_verified": true,
+      "operational_acceptance": false,
+      "sha256": "cee785a3dd221de1ab6ff9f4dc75b09d6ffaab30e16401cc1726b2a6cc32a1c9"
+    },
+    "tester_capture": {
+      "parameters_file": "mt5x_0ce48c97a8564bd19e184085172c4fad_b610e2446c6546a38e2e80cb3cd9dcca.set",
+      "parameters_sha256": "4d2bb0e1635bd130ddb01897d157f25dcf8aef559e45343a7177950d7bf4cfcd",
+      "ini_sha256": "a9f806428199825ca2e4dc882355edf327a0a9f0740cb694ce705d881cd9c7c8",
+      "matches_exported_set": true
+    },
+    "actual_mode": {
+      "tester": true,
+      "visual": false,
+      "demo": true
+    },
+    "signals": [
+      {
+        "event_at": 1791969300,
+        "confirmed_at": 1791969600,
+        "available_at": 1791969600,
+        "direction": -1,
+        "opened": true,
+        "execution_state": 4,
+        "filled_volume": 5.0,
+        "order_ticket": 2,
+        "deal_ticket": 2,
+        "reason": ""
+      },
+      {
+        "event_at": 1791970200,
+        "confirmed_at": 1791970500,
+        "available_at": 1791970500,
+        "direction": 1,
+        "opened": false,
+        "execution_state": 0,
+        "filled_volume": null,
+        "order_ticket": 0,
+        "deal_ticket": 0,
+        "reason": "máximo de 1 posições abertas"
+      },
+      {
+        "event_at": 1791972600,
+        "confirmed_at": 1791972900,
+        "available_at": 1791972900,
+        "direction": -1,
+        "opened": false,
+        "execution_state": 0,
+        "filled_volume": null,
+        "order_ticket": 0,
+        "deal_ticket": 0,
+        "reason": "máximo de 1 posições abertas"
+      },
+      {
+        "event_at": 1792011900,
+        "confirmed_at": 1792012200,
+        "available_at": 1792012200,
+        "direction": 1,
+        "opened": true,
+        "execution_state": 4,
+        "filled_volume": 5.05,
+        "order_ticket": 4,
+        "deal_ticket": 4,
+        "reason": ""
+      }
+    ],
+    "ledger": [
+      {
+        "direction": -1,
+        "entry_time": "2026-10-14 09:20:00",
+        "exit_time": "2026-10-14 15:30:31",
+        "entry_price": 1.12064,
+        "exit_price": 1.11864,
+        "stop_price": 1.12164,
+        "target_price": 1.11864,
+        "volume": 5.0,
+        "pnl": 1000.0,
+        "exit_reason": "tp"
+      },
+      {
+        "direction": 1,
+        "entry_time": "2026-10-14 21:10:00",
+        "exit_time": "2026-10-14 23:59:59",
+        "entry_price": 1.11412,
+        "exit_price": 1.11569,
+        "stop_price": 1.11312,
+        "target_price": 1.11612,
+        "volume": 5.05,
+        "pnl": 792.85,
+        "exit_reason": "fim"
+      }
+    ],
+    "trades": 2,
+    "cash_reconciled": true,
+    "net_profit": 1792.85,
+    "native_cash_result": 1792.8500000000058,
+    "currency": "USD",
+    "tester_model": "cada tick",
+    "data_quality": {
+      "version": 1,
+      "evidence_basis": "native_report_not_requested_model",
+      "report_sha256": "a1fa3bfa3a48852fac3daf4ea64846a57d7bed14376a9f11f7dbfb6e128beae9",
+      "requested_model": "0",
+      "origin": "unknown",
+      "real_tick_fraction_reported": null,
+      "history_quality_pct_reported": 100.0,
+      "real_tick_coverage_status": "not_reported",
+      "capabilities": {
+        "complete_real_ticks": {
+          "state": "unknown",
+          "reason": "Cobertura de ticks reais não informada ou conflitante."
+        },
+        "queue": {
+          "state": "missing",
+          "reason": "Relatório de ticks não comprova fila de ordens."
+        }
+      },
+      "eligibility": {
+        "status": "unqualified",
+        "eligible": null,
+        "required": null,
+        "reasons": [],
+        "limitations": [
+          "Cobertura efetiva de ticks reais não informada ou conflitante.",
+          "Requisitos específicos do Expert não declarados no contrato atual."
+        ]
+      }
+    },
+    "clock_basis": "native_server",
+    "intrabar_basis": "native_MT5_ticks; stop_first is Python OHLC policy",
+    "reference_backtest_run_id": null,
+    "reference_match": null,
+    "first_difference": null,
+    "functional_native_activity": true,
+    "functional_cycle": false,
+    "allows_live": false,
+    "statistical_approval": false,
+    "cache_eligible": false,
+    "history_revision": "unavailable",
+    "created_at": "2026-10-20T03:31:57.129262+00:00"
+  },
+  "replay": {
+    "resources_released": false,
+    "preset_native_evidence_schema_version": 1,
+    "run_id": "a7a48ce0669d42c1a11ebd672258cda6",
+    "session": "1b49c632e3e043c7901cfb931244ba2a",
+    "preset": {
+      "category": "Manual",
+      "default_origin": "7bebcda5351f56c5b4b20e4fee050ff2",
+      "id": "f1516943f4eb467489b24b74deec6ff4",
+      "label": "Piloto S09",
+      "revision": 1
+    },
+    "config_hash": "7edeaabfb5460e210d9d676e5b10dcea509a80ada0c94629a889c102d2185c15",
+    "execution_hash": "60fcd8ce9c1b77674dd9cd5b8838bbcb4a28f3eb0c27a6a9563847bdae2dcf6f",
+    "package_hash": "bccf4adc0368fb37cc21fd24960745d287bb632fea7a974ec2c764936f39cbd6",
+    "set_sha256": "4d2bb0e1635bd130ddb01897d157f25dcf8aef559e45343a7177950d7bf4cfcd",
+    "source": {
+      "fingerprint": "91ff0ec8a7bba77e",
+      "key": "mql5:hdk_s09_referencia",
+      "version": "1.00"
+    },
+    "context": {
+      "symbol": "EURUSD",
+      "timeframe": "M5"
+    },
+    "test_context": {
+      "deposit": 100000.0,
+      "end": "2026-10-15",
+      "model": "0",
+      "start": "2026-10-14"
+    },
+    "mode": "replay",
+    "status": "reconciled_replay",
+    "inputs": {
+      "schema_version": 1,
+      "session": "1b49c632e3e043c7901cfb931244ba2a",
+      "symbol": "EURUSD",
+      "timeframe": "M5",
+      "tester": true,
+      "demo": true,
+      "known_at": 1791936000,
+      "values": {
+        "InpConfigHash": "7edeaabfb5460e210d9d676e5b10dcea509a80ada0c94629a889c102d2185c15",
+        "InpDeviationPoints": 20,
+        "InpFastPeriod": 20,
+        "InpMagic": 909202610,
+        "InpPresetId": "f1516943f4eb467489b24b74deec6ff4",
+        "InpRiskPct": 0.5,
+        "InpSlowPeriod": 50,
+        "InpStopPoints": 100,
+        "InpTargetPoints": 200,
+        "InpWarmupBars": 250
+      },
+      "complete": true,
+      "compared": true,
+      "preset_verified": true,
+      "operational_acceptance": false,
+      "sha256": "1bd60140346317075cc6a8b324d36a69c0aa519ee78c778a12f4b5ecfe889d21"
+    },
+    "tester_capture": {
+      "parameters_file": "mt5x_a7a48ce0669d42c1a11ebd672258cda6_705964c806c94d608cc0a735f9eabc74.set",
+      "parameters_sha256": "4d2bb0e1635bd130ddb01897d157f25dcf8aef559e45343a7177950d7bf4cfcd",
+      "ini_sha256": "4e1ced7e4dfbe08aa3981ed6b1773093e0c93ede91bd0fb624d2296a858e280c",
+      "matches_exported_set": true
+    },
+    "actual_mode": {
+      "tester": true,
+      "visual": true,
+      "demo": true
+    },
+    "signals": [
+      {
+        "event_at": 1791969300,
+        "confirmed_at": 1791969600,
+        "available_at": 1791969600,
+        "direction": -1,
+        "opened": true,
+        "execution_state": 4,
+        "filled_volume": 5.0,
+        "order_ticket": 2,
+        "deal_ticket": 2,
+        "reason": ""
+      },
+      {
+        "event_at": 1791970200,
+        "confirmed_at": 1791970500,
+        "available_at": 1791970500,
+        "direction": 1,
+        "opened": false,
+        "execution_state": 0,
+        "filled_volume": null,
+        "order_ticket": 0,
+        "deal_ticket": 0,
+        "reason": "máximo de 1 posições abertas"
+      },
+      {
+        "event_at": 1791972600,
+        "confirmed_at": 1791972900,
+        "available_at": 1791972900,
+        "direction": -1,
+        "opened": false,
+        "execution_state": 0,
+        "filled_volume": null,
+        "order_ticket": 0,
+        "deal_ticket": 0,
+        "reason": "máximo de 1 posições abertas"
+      },
+      {
+        "event_at": 1792011900,
+        "confirmed_at": 1792012200,
+        "available_at": 1792012200,
+        "direction": 1,
+        "opened": true,
+        "execution_state": 4,
+        "filled_volume": 5.05,
+        "order_ticket": 4,
+        "deal_ticket": 4,
+        "reason": ""
+      }
+    ],
+    "ledger": [
+      {
+        "direction": -1,
+        "entry_time": "2026-10-14 09:20:00",
+        "exit_time": "2026-10-14 15:30:31",
+        "entry_price": 1.12064,
+        "exit_price": 1.11864,
+        "stop_price": 1.12164,
+        "target_price": 1.11864,
+        "volume": 5.0,
+        "pnl": 1000.0,
+        "exit_reason": "tp"
+      },
+      {
+        "direction": 1,
+        "entry_time": "2026-10-14 21:10:00",
+        "exit_time": "2026-10-14 23:59:59",
+        "entry_price": 1.11412,
+        "exit_price": 1.11569,
+        "stop_price": 1.11312,
+        "target_price": 1.11612,
+        "volume": 5.05,
+        "pnl": 792.85,
+        "exit_reason": "fim"
+      }
+    ],
+    "trades": 2,
+    "cash_reconciled": true,
+    "net_profit": 1792.85,
+    "native_cash_result": 1792.8500000000058,
+    "currency": "USD",
+    "tester_model": "cada tick",
+    "data_quality": {
+      "version": 1,
+      "evidence_basis": "native_report_not_requested_model",
+      "report_sha256": "cd649d30213b87d22f6dfb031e2c45397032ba475a3e33e7f09b39cdcd763aed",
+      "requested_model": "0",
+      "origin": "unknown",
+      "real_tick_fraction_reported": null,
+      "history_quality_pct_reported": 100.0,
+      "real_tick_coverage_status": "not_reported",
+      "capabilities": {
+        "complete_real_ticks": {
+          "state": "unknown",
+          "reason": "Cobertura de ticks reais não informada ou conflitante."
+        },
+        "queue": {
+          "state": "missing",
+          "reason": "Relatório de ticks não comprova fila de ordens."
+        }
+      },
+      "eligibility": {
+        "status": "unqualified",
+        "eligible": null,
+        "required": null,
+        "reasons": [],
+        "limitations": [
+          "Cobertura efetiva de ticks reais não informada ou conflitante.",
+          "Requisitos específicos do Expert não declarados no contrato atual."
+        ]
+      }
+    },
+    "clock_basis": "native_server",
+    "intrabar_basis": "native_MT5_ticks; stop_first is Python OHLC policy",
+    "reference_backtest_run_id": "0ce48c97a8564bd19e184085172c4fad",
+    "reference_match": true,
+    "first_difference": null,
+    "functional_native_activity": true,
+    "functional_cycle": true,
+    "allows_live": false,
+    "statistical_approval": false,
+    "cache_eligible": false,
+    "history_revision": "unavailable",
+    "created_at": "2026-10-20T03:35:09.607055+00:00"
+  },
+  "bridge": {
+    "demo_connected_before": true,
+    "demo_connected_after": true,
+    "same_principal_and_bridge_processes": true,
+    "no_initialize_shutdown_login_or_live_order": true
+  },
+  "cleanup": {
+    "session": "1b49c632e3e043c7901cfb931244ba2a",
+    "resources_released_now": true,
+    "original_completion_resources_released": false,
+    "immutable_native_evidence_preserved": true,
+    "principal_demo": true,
+    "principal_connected": true
+  },
+  "failures_preserved": [
+    {
+      "session": "073e10d925334781b27f927fe210a408",
+      "reason": "X_UnmapWindow BadWindow before Expert init on private Xvfb"
+    },
+    {
+      "session": "8b06ed8375454733b36c4f4e032563e6",
+      "reason": "same error with twm, no Expert init; WM hypothesis not supported"
+    }
+  ],
+  "resolution": "Only failed replay retried on existing Wine display :0; successful backtest reused. Existing Session._stop_owned closed only completed own viewer; callback now invoked after imported replay before context release.",
+  "checks": "82 focused lifecycle/isolation/preset/controller tests passed after callback correction; mandatory final-source CI awaited",
+  "limits": [
+    "physical Windows pending",
+    "broker history revision unavailable; real tick coverage not reported",
+    "Python modeled execution differs from native MT5 ticks",
+    "live DEMO not exercised",
+    "REAL never operated",
+    "Pullback adapter blocked pending T19.57",
+    "two trades do not qualify statistical performance"
+  ]
+}
