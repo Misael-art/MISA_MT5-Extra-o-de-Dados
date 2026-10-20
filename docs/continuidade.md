@@ -1,3 +1,34 @@
+# T20.25 — corretivo de encerramento do backtest em revisão — 2026-10-20
+
+O primeiro percurso Manual histórico está concluído; preservar suas evidências,
+sem repetir a campanha por rotina. A próxima capacidade proposta é T19.56 inicial
+(lotes fixos/por risco, uma entrada, UI/preset/nativo), seguida da correção/validação
+da parcial T19.57 antes de desbloquear Pullback. Cache qualificado não é dependência
+desses comportamentos; cache nativo continua inelegível por identidade histórica ausente.
+S09 permanece restrito ao Tester; execução ao vivo DEMO exige aceite próprio.
+
+Os logs do teste manual de 20/10 distinguem dois problemas: lotes de 45/60 tentativas
+com 27/36 recusas por fontes/includes diferentes dos executáveis instalados; depois,
+cinco sessões recusadas porque o backtest Donchian anterior concluiu com
+`resources_released=False`. O encerramento após relatório importado cobria apenas
+replay. Este corretivo reutiliza `_stop_owned` também no backtest, antes de liberar
+contexto/posse, sem alterar livro, cálculos, proteções ou processos de outra instalação.
+Se um filho sobreviver, o contexto continua protegido e o próximo Tester é recusado.
+
+Baseline dirigido: 48 aprovados. Dois casos novos reproduziram a falha antes da
+correção (card/preset); depois, 127 testes pertinentes e dois casos adicionais de
+filho sobrevivente passaram. Doctor sem probe: 20 OK, um aviso de pandas-ta opcional,
+nenhuma falha. Revisão local concluída; CI do código final e ensaio dirigido Wine
+de backtest com filho sobrevivente permanecem pendentes. Não houve nova campanha
+financeira nem repetição do percurso aceito. Windows físico continua específico.
+
+A aplicação do teste manual usou a árvore local de trabalho, enquanto master estava
+em 2447259. Suas bibliotecas configuradas também apontam para branches de trabalho;
+não recompilar/copiar todos os fontes indiscriminadamente nem sobrescrever o WIP.
+Alinhar explicitamente a instalação utilizada aos fontes revisados antes de repetir
+somente uma tentativa afetada. O marcador antigo não foi removido manualmente e,
+na inspeção após as falhas, já não havia processo privado daquela sessão.
+
 # T19.2 — aceite final do contrato e adaptador base — 2026-10-19
 
 B-11 integrada nas PRs M132/7e2178a e H14/d018f6c. PR133 com código final9b3d3f5:
