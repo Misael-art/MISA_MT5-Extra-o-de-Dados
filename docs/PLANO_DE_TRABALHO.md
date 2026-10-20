@@ -3682,3 +3682,7 @@ Ver [relatório](analytics/T19.3_CONSISTENCIA_SNAPSHOT.md). Windows físico pend
 ### Dependência B06 do primeiro percurso — em revisão (2026-10-19)
 
 [Decisão de risco nativa e SDK1](sdk/decisao_risco_nativa.md): origem e distribuição versionada H/S, leitor/instalador atual preservado. T19.23/B08, S09 fixo, Default/Manual, preset carregado e replay com negócios reconciliados ainda pendentes. Parcial/Pullback bloqueados; Windows físico específico. Sem alteração de runtime Python ou nova campanha numérica.
+
+### Dependência B07 do primeiro percurso — em revisão (2026-10-19)
+
+[Resultado observado nativo](sdk/resultado_execucao_nativa.md): B06 integrado H20/S5/M134; B07 registra resposta/fill/ausência sem novo executor. CI H39347476261, QA com1operação simulada e compilação dos seis aprovados. Sem runtime Python novo ou aceite S09/preset/UI; próximo consumidor B08/T19.23. Pullback bloqueado; Windows físico específico.
