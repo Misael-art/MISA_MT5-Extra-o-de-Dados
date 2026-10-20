@@ -7,6 +7,8 @@ Interface comum das estratégias.
 Sinais são gerados no FECHAMENTO da barra; o backtester executa na abertura da
 próxima. Nenhuma coluna pode usar dados de barras futuras.
 """
+import math
+from numbers import Real
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -41,6 +43,16 @@ class ExitRules:
     trailing_atr: Optional[float] = None  # stop móvel a N × ATR do fechamento
     max_bars: Optional[int] = None        # saída por tempo
     eod_exit: bool = False                # zera no fim do dia (intradiário)
+    target_points: Optional[float] = None  # pontos de cotação, ancorados no fill de entrada (T19.18)
+
+    def __post_init__(self):
+        if self.target_points is not None:
+            if (isinstance(self.target_points, bool) or not isinstance(self.target_points, Real)
+                    or not math.isfinite(self.target_points) or self.target_points <= 0):
+                raise ValueError("Alvo fixo requer pontos positivos e finitos; confira a política de ganho.")
+            if self.target_r is not None:
+                raise ValueError("Escolha alvo em pontos ou em R; não declare duas fontes concorrentes.")
+
 
 
 class Strategy:

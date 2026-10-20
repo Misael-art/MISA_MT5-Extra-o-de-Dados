@@ -27,7 +27,7 @@ from typing import Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from .base import Strategy
+from .base import ExitRules, Strategy
 from .equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 EXIT_REASONS = {
@@ -217,10 +217,25 @@ def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConf
     return spr, spr_open, spr_close
 
 
+def _fixed_point_distance(points, spec, *, label):
+    """Conversão de unidade de preço; o lote/PnL continuam no serviço existente."""
+    if points is None:
+        return None
+    if (not spec.known or not spec.symbol or not math.isfinite(spec.point) or spec.point <= 0
+            or not math.isfinite(spec.tick_size) or spec.tick_size < 0):
+        raise ValueError(f"{label} fixo requer especificação conhecida de point/tick; atualize o ativo com mt5x specs.")
+    distance = float(points) * spec.point
+    ratio = distance / spec.tick
+    if (not math.isfinite(distance) or distance <= 0 or not math.isfinite(ratio)
+            or not math.isclose(ratio, round(ratio), rel_tol=0, abs_tol=1e-6)):
+        raise ValueError(f"{label} em pontos não é múltiplo do tick do ativo; escolha uma distância válida.")
+    return distance
+
+
 def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
                  config: Optional[BacktestConfig] = None, start_index: int = 0,
                  signals: Optional[pd.DataFrame] = None, cashflows=None, check=None,
-                 observation_timeframe=None) -> BacktestResult:
+                 observation_timeframe=None, exit_rules_override: Optional[ExitRules] = None) -> BacktestResult:
     """
     start_index: só abre operações a partir desta barra (as anteriores servem de aquecimento
     dos indicadores; usado no walk-forward).
@@ -235,7 +250,10 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     sig = (signals if signals is not None else strategy.gerar_sinais(data)).reset_index(drop=True)
     if check is not None:
         check()
-    rules = strategy.exit_rules()
+    if exit_rules_override is not None and not isinstance(exit_rules_override, ExitRules):
+        raise ValueError("Política de saída inválida; use as regras tipadas do motor existente.")
+    rules = exit_rules_override if exit_rules_override is not None else strategy.exit_rules()
+    fixed_target = _fixed_point_distance(getattr(rules, "target_points", None), spec, label="Alvo")
     n = len(data)
 
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
@@ -317,7 +335,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 if volume <= 0:
                     skipped_min_lot += 1
                 else:
-                    target = tgt_long[s] if d > 0 else tgt_short[s]
+                    target = (entry + d * fixed_target) if fixed_target is not None else (tgt_long[s] if d > 0 else tgt_short[s])
                     if not np.isfinite(target) and rules.target_r:
                         target = entry + d * rules.target_r * risk_px
                     pos = {"dir": d, "entry": entry, "stop": stop, "stop_kind": "stop", "initial_stop": stop,

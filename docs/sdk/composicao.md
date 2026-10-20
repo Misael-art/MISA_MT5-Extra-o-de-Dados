@@ -62,7 +62,8 @@ conservador usa stop antes do alvo e uma posição. Isso não afirma sequência 
 | Orientação normal, entrada a mercado na próxima abertura, risco fracionário | Suportado no backtest Python |
 | Ganho, proteção e parcial `strategy_default` | Preserva exatamente regras internas; não desliga trailing, filtros nem saídas legadas |
 | Pullback | Retrato preservado; execução pelo novo adaptador indisponível até T19.57 |
-| Inversão, limit/stop, alvo R, stop em pontos, filtro ADX adicional, parcial R | Rascunho tipado com round-trip; adaptador recusa com motivo |
+| Alvo fixo em pontos ou R (T19.18 inicial) | [Serviço Python](politicas_ganho.md), ancorado no fill e com fonte única; nativo depende de perfil T19.23 |
+| Inversão, limit/stop, stop em pontos, filtro ADX adicional, parcial R | Rascunho tipado com round-trip; adaptador recusa com motivo |
 | Condicional, gradientes, multiordem, Renko | Não implementados; modo desconhecido é recusado |
 | Montagem/execução modular MQL5 | Indisponível até T19.23/B-08/B-10; sidecar não habilita suporte |
 

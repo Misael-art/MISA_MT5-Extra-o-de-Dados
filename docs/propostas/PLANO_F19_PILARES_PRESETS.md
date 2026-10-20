@@ -261,6 +261,9 @@ CI e revisão final concluídos; Windows físico delimitado. [Contrato e evidên
 
 ### T19.18 — Catálogo de ganho e Fibonacci (AX06)
 
+**Recorte inicial em revisão (2026-10-19):** [ganho fixo pontos/R](../sdk/politicas_ganho.md), no serviço/backtester existentes. Âncora no fill, fonte única, proteção preservada; demais variantes e UI continuam pendentes. Não conclui T19.18 integral nem libera nativo por sidecar.
+
+
 - **Repo/prioridade:** M/H; P1. **Depende de:** T19.2; T19.6 para Fibonacci por pivô;
   indicador correspondente para cada variante.
 - **Arquivos:** políticas de ganho, mapeamento/preset e implementação H.
