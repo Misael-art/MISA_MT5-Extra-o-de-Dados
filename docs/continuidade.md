@@ -1977,3 +1977,10 @@ Depende de MPR153 (parcial inviável na re-simulação) e HADOUKENPR27; protóti
 concede aceite até replay próprio com saídas/fills reconciliados.176 testes pertinentes
 M compatíveis e testes do controlador/header H; ver docs/sdk/saidas_temporais.md.
 Cache inelegível; S09 Tester, live DEMO/Windows físico/carteira permanecem específicos.
+T20.25 — scanner durante encerramento (2026-10-20): ensaio dirigido T19.15
+interrompido antes do Tester ao observar cmdline vazio de processo em término.
+Linux agora ignora somente zombie ou processo comprovadamente ausente; processo
+vivo sem identidade mantém recusa, com PID e ação na mensagem. Windows continua
+identificado pelo executável. 69 testes de isolamento/controles aprovados; nenhuma
+liberação de recursos inferida, nenhuma sessão alheia encerrada. Retomar apenas os
+casos temporais pendentes após incorporar este corretivo pelo Git.
