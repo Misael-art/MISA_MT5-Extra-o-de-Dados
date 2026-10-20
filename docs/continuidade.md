@@ -2084,3 +2084,36 @@ em14IDs, consulta/store/CSV/ação UI conferidos. Envelopes/regressão continuam
 pendentes; TM06 tem aceite separado no consumidor M158/H29. Fonte de teste controlada
 não é aceite operacional MT5. Recibo T19_7_DONCHIAN_20261020.json; nenhuma campanha
 histórica ou replay ER repetidos. Windows físico/cache/live mantêm seus limites.
+
+T19.16/TM06 em revisão dependente de M#157/I10: novo perfil S09v1.50 configura
+prazo desde último close favorável além do canal anterior20; exige rompimento
+observado e retorno inclusivo. Idade/SL/prazos antigos preservados. UI/33inputs,
+contexto/journal com instante conhecido e reconciliação; testes dirigidos e compilação
+aprovados, aceite nativo/checks pendentes. H runtimeeaaa059; sem liberação live,
+Pullback temporal, ATR adaptativo, gradientes ou carteira. Contrato tempo_donchian.md.
+
+Revisão TM06 identificou falta de teto absoluto obrigatório. Guardas Python/nativo
+agora recusam canal ativo sem max_seconds positivo desde primeiro fill; teste
+específico aprovado. Ensaio preliminar sem teto preservado, sem aceite final.
+Novo ensaio mantém janela/sizing/SL/TP e acrescenta teto3600s: nova verificação
+justificada por mudança de proteção/runtime, sem busca estatística.
+
+
+T19.16/TM06 — aceite dirigido final concluído: S09v1.50/b39a586b622e4713,
+H runtimeeaaa059 e M runtimea9c2b66. UI configura idle30s e teto obrigatório3600s,
+lote0,25/SL500/TP1000. Um backtest e um replay finais no mesmo dia EURUSD/M5:
+2 posições/4fills, uma saída absoluta e uma Donchian por execução;18observações,
+33inputs carregados, journal/livro/fills/caixa conciliados. Fonte/23includes/binários
+conferidos;12PIDs próprios encerrados, ponte/principal e trabalho original preservados.
+Consulta/reabertura/exportação UI conferidas; preliminar sem teto excluído do aceite.
+H#29 tem dois checks aprovados; M#157/H#29 integradas, M#158 com seis checks aprovados.
+Recibo T19_16_DONCHIAN_20261020.json; sem aceite para ATR adaptativo ou Pullback
+temporal, live DEMO, carteira/gradientes/cache. Próxima dependência elegível após
+fechamento: TM07, horizonte ATR limitado, mantendo os contratos e aceites próprios.
+
+Fechamento TM06: dependências M#157 (bd11940) e H#29 (596f2c8) integradas antes
+do consumidor M#158. Seis checks existentes aprovados no runtimea9c2b66:
+Ubuntu1895/199 skips, Windows CI2012/82 skips, PostgreSQL52; sem novo workflow
+ou repetição de campanha. Base master incorporada por merge, conflitos somente
+documentais resolvidos preservando I10 e TM06; código final idêntico ao fonte
+revisado/testado/nativo. Delta posterior somente docs. Windows físico segue pendente.

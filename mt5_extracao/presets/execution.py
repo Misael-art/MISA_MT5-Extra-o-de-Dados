@@ -121,12 +121,13 @@ def _semantic_signals(signals):
     return [{key:value for key,value in row.items() if key not in ("order_ticket","deal_ticket")} for row in signals]
 
 
-def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None,temporal=None):
+def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None,temporal=None,channel=None):
     sections=[("ledger",reference["ledger"],rows),("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))]
     if sizing is not None:sections.append(("sizing",reference.get("sizing",[]),sizing))
     if partials is not None:sections.append(("partials",partial_events.semantic(reference.get("partials",[])),partial_events.semantic(partials)))
     if deals is not None:sections.append(("deals",partial_events.semantic(reference.get("deals",[])),partial_events.semantic(deals)))
     if temporal is not None:sections.append(("temporal_events",partial_events.semantic(reference.get("temporal_events",[])),partial_events.semantic(temporal)))
+    if channel is not None:sections.append(("channel_observations",partial_events.semantic(reference.get("channel_observations",[])),partial_events.semantic(channel)))
     for section,expected,actual in sections:
         if len(expected)!=len(actual):
             return dict(section=section,field="count",expected=len(expected),observed=len(actual))
@@ -301,17 +302,17 @@ class PresetExecution:
         if native["profile_id"]=="hadouken.pullback":
             from .pullback_events import validate
             strategy_reference=validate(job.directory,package["composition"]["strategy"]["params"],signals,rows)
-        temporal=None
+        temporal=None;channel=[] if native["profile_version"]>=6 else None
         if native["profile_version"]>=4:
             from .temporal_events import read_events
-            temporal=read_events(job.directory,package["composition"]["conditional_policy"],signals,sizing,deals)
+            temporal=read_events(job.directory,package["composition"]["conditional_policy"],signals,sizing,deals,channel_observations=channel)
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
             raise ValueError("Entradas e posições encerradas não conciliam; conferir última posição e respostas antes de aceitar.")
         status=("reconciled_"+self.mode) if active else "contract_only"
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
-        difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal) if prior is not None else None
+        difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel) if prior is not None else None
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"
         report=getattr(job,"report",job.directory/"relatorio.json")
@@ -338,5 +339,10 @@ class PresetExecution:
             er_activity=any(r['state']=='confirmed' and r['reason']=='time_er' for r in (temporal or []))
             proof.update(efficiency_activity=er_activity,efficiency_enabled=package['composition']['conditional_policy']['mode']=='temporal_er_v1',
                          efficiency_acceptance=active and match is True and er_activity)
+        if channel is not None:
+            channel_activity=any(r['state']=='confirmed' and r['reason']=='time_donchian' for r in (temporal or []))
+            proof.update(channel_observations=channel,channel_activity=channel_activity,
+                channel_enabled=package['composition']['conditional_policy']['mode']=='temporal_donchian_v1',
+                channel_acceptance=active and match is True and channel_activity)
         if strategy_reference is not None:proof["strategy_reference"]=strategy_reference
         return proof

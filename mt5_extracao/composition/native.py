@@ -54,13 +54,20 @@ ER_INPUTS={"er_min_seconds":("InpTimeERMinSeconds","int","second"),
            "maximum_er":("InpTimeERMaximum","double","fraction")}
 ER_TEMPORAL_INPUT_TYPES={**TEMPORAL_INPUT_TYPES,**{name:kind for name,kind,unit in ER_INPUTS.values()}}
 
+DONCHIAN_TEMPORAL_ROBOT_VERSION="1.50"
+DONCHIAN_TEMPORAL_APPROVED_FINGERPRINT="b39a586b622e4713"
+DONCHIAN_TEMPORAL_HADOUKEN_REVISION="eaaa059c58802930fb1e6c351a4cc01e6ac78fb6"
+DONCHIAN_INPUTS={"channel_idle_seconds":("InpTimeDonchianIdleSeconds","int","second")}
+DONCHIAN_TEMPORAL_INPUT_TYPES={**ER_TEMPORAL_INPUT_TYPES,**{name:kind for name,kind,unit in DONCHIAN_INPUTS.values()}}
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
                 LOTS_ROBOT_VERSION: (LOTS_APPROVED_FINGERPRINT, LOTS_INPUT_TYPES, 2, LOTS_HADOUKEN_REVISION),
                 PARTIALS_ROBOT_VERSION:(PARTIALS_APPROVED_FINGERPRINT,PARTIALS_INPUT_TYPES,3,PARTIALS_HADOUKEN_REVISION),
                 TEMPORAL_ROBOT_VERSION:(TEMPORAL_APPROVED_FINGERPRINT,TEMPORAL_INPUT_TYPES,4,TEMPORAL_HADOUKEN_REVISION),
-                ER_TEMPORAL_ROBOT_VERSION:(ER_TEMPORAL_APPROVED_FINGERPRINT,ER_TEMPORAL_INPUT_TYPES,5,ER_TEMPORAL_HADOUKEN_REVISION)}
+                ER_TEMPORAL_ROBOT_VERSION:(ER_TEMPORAL_APPROVED_FINGERPRINT,ER_TEMPORAL_INPUT_TYPES,5,ER_TEMPORAL_HADOUKEN_REVISION),
+                DONCHIAN_TEMPORAL_ROBOT_VERSION:(DONCHIAN_TEMPORAL_APPROVED_FINGERPRINT,DONCHIAN_TEMPORAL_INPUT_TYPES,6,DONCHIAN_TEMPORAL_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
@@ -108,6 +115,7 @@ class S09NativeAdapter:
                 allowed.add("fixed_volume")
             if slot=="conditional_policy" and profile[2]>=4:allowed.add("temporal_v1")
             if slot=="conditional_policy" and profile[2]>=5:allowed.add("temporal_er_v1")
+            if slot=="conditional_policy" and profile[2]>=6:allowed.add("temporal_donchian_v1")
             if slot=="partial_exit_plan" and profile[2]>=3:
                 allowed.update(("fixed_r","staged_lots","staged_fraction"))
             if data[slot]["mode"] not in allowed:
@@ -159,7 +167,7 @@ class S09NativeAdapter:
         if profile_version>=4:
             from ..strategies.temporal import TemporalPolicy
             from ..strategies.temporal_er import from_selection,EfficiencyTemporalPolicy
-            enabled=data["conditional_policy"]["mode"] in ("temporal_v1","temporal_er_v1")
+            enabled=data["conditional_policy"]["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1")
             policy=from_selection(data["conditional_policy"]) if enabled else TemporalPolicy()
             for key,(name,kind,unit) in TIME_INPUTS.items():
                 values[name]=format(Decimal(str(getattr(policy,key))),"f")
@@ -168,7 +176,11 @@ class S09NativeAdapter:
             er_policy=policy if isinstance(policy,EfficiencyTemporalPolicy) else EfficiencyTemporalPolicy()
             for key,(name,kind,unit) in ER_INPUTS.items():
                 values[name]=format(Decimal(str(getattr(er_policy,key))),"f")
-                if data["conditional_policy"]["mode"]=="temporal_er_v1":bindings["conditional_policy.params."+key]={"input":name,"type":"int" if kind=="int" else "number","unit":unit}
+                if data["conditional_policy"]["mode"] in ("temporal_er_v1","temporal_donchian_v1"):bindings["conditional_policy.params."+key]={"input":name,"type":"int" if kind=="int" else "number","unit":unit}
+        if profile_version>=6:
+            values["InpTimeDonchianIdleSeconds"]=str(getattr(policy,"channel_idle_seconds",0))
+            if data["conditional_policy"]["mode"]=="temporal_donchian_v1":
+                bindings["conditional_policy.params.channel_idle_seconds"]={"input":"InpTimeDonchianIdleSeconds","type":"int","unit":"second"}
         return _description(self.composition,self.robot,data,values,bindings,inactive,preset_id,
                             fingerprint,input_types,profile_version,hadouken_revision,PROFILE_ID)
 
@@ -210,6 +222,7 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
     if profile_version>=3:modules["partial_exit_plan"]=["strategy_default","fixed_r","staged_lots","staged_fraction"]
     if profile_version>=4:modules["conditional_policy"]=["disabled","temporal_v1"]
     if profile_version>=5:modules["conditional_policy"].append("temporal_er_v1")
+    if profile_version>=6:modules["conditional_policy"].append("temporal_donchian_v1")
     capabilities = Capabilities({"capabilities_schema_version": 1,
         "robot": {"key": robot.key, "version": robot.version, "fingerprint": fingerprint},
         "backend": "mql5", "strategy_key": data["strategy"]["key"], "modules": modules, "bindings": bindings}, composition)

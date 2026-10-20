@@ -8,10 +8,10 @@ from ..strategies.temporal import REASONS
 from ..strategies.temporal_er import from_selection,EfficiencyTemporalPolicy
 from .efficiency_events import read_context
 
-EVENT=re.compile(r"HDK_TIME event_at=(\d+) at_msc=(\d+) decision_msc=(\d+) reason=([1-6]) state=(\w+) age_ms=(\d+) net=([^ ]+) before=([^ ]+) filled=([^ ]+) remaining=([^ ]+) position=(\d+) history_reduction=([^ ]+) price=([^ ]+) cash=([^ ]+) costs=([^ ]+) realized=([^ ]+) floating=([^ ]+) swap=([^ ]+) history_count=(\d+)")
+EVENT=re.compile(r"HDK_TIME event_at=(\d+) at_msc=(\d+) decision_msc=(\d+) reason=([1-7]) state=(\w+) age_ms=(\d+) net=([^ ]+) before=([^ ]+) filled=([^ ]+) remaining=([^ ]+) position=(\d+) history_reduction=([^ ]+) price=([^ ]+) cash=([^ ]+) costs=([^ ]+) realized=([^ ]+) floating=([^ ]+) swap=([^ ]+) history_count=(\d+)")
 D=lambda v:Decimal(str(v))
 
-def read_events(directory,selection,signals,sizing,deals):
+def read_events(directory,selection,signals,sizing,deals,*,channel_observations=None):
     text="\n".join(mql.read_text(p) for p in (Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     if "HDK_TIME_ANCHOR missing" in text:raise ValueError("Âncora temporal ausente; não reiniciar idade nem inferir configuração.")
     matches=list(EVENT.finditer(text))
@@ -27,6 +27,10 @@ def read_events(directory,selection,signals,sizing,deals):
         found=[(pid,fs) for pid,fs in grouped.items() if any(f['deal']==signal['deal_ticket'] and f['entry']==0 for f in fs)]
         if len(found)!=1:raise ValueError("Entrada temporal não identificada nos fills.")
         by_origin[signal['event_at']]=found[0]
+    from ..strategies.temporal_donchian import DonchianTemporalPolicy
+    from . import donchian_events
+    channel_rows=donchian_events.observations(directory,by_origin,{s['event_at']:s['direction'] for s in signals if s['opened']}) if isinstance(policy,DonchianTemporalPolicy) else []
+    if channel_observations is not None:channel_observations.extend(channel_rows)
     pending={};confirmed=set();result=[]
     for match in matches:
         origin,at,decision,code,state,age,net,before,filled,remaining,pid,history,price,cash,costs,realized,floating,swap,count=match.groups()
@@ -45,9 +49,17 @@ def read_events(directory,selection,signals,sizing,deals):
         er_context={}
         if isinstance(policy,EfficiencyTemporalPolicy):
             suffix=match.string[match.end():].partition("\n")[0]
+            dc_context={};idle=None;returned=False
+            if isinstance(policy,DonchianTemporalPolicy):
+                er_suffix,marker,dc_suffix=suffix.partition(' dc_known=')
+                if not marker:raise ValueError('Contexto Donchian da decisão ausente.')
+                dc_context,idle,returned=donchian_events.context('dc_known='+dc_suffix,decision,pid,channel_rows)
+                suffix=er_suffix
             er_context,reference_er=read_context(suffix,decision)
-            actual_decision=policy.decision(age,net,er=er_context['er_value'])
-            reference_decision=policy.decision(age,net,er=reference_er)
+            extra=dict(idle_ms=idle,returned=returned) if isinstance(policy,DonchianTemporalPolicy) else {}
+            actual_decision=policy.decision(age,net,er=er_context['er_value'],**extra)
+            reference_decision=policy.decision(age,net,er=reference_er,**extra)
+            er_context.update(dc_context)
             if actual_decision!=reason or reference_decision!=reason:raise ValueError("Condição ER/idade/prioridade diverge do contexto conhecido e da referência independente.")
         elif policy.decision(age,net)!=reason:raise ValueError("Motivo/prazo temporal diverge da referência independente ou do PnL conhecido.")
         previous_exits=exits[:-1]

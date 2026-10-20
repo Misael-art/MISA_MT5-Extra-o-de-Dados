@@ -320,3 +320,12 @@ carteira ou gradientes. S09 permanece restrito ao Tester; cache inelegível.
 - [ ] Windows físico: exportar pelo Laboratório contexto Donchian materializado com
   relógio declarado, conferir 14 IDs/estados e destinos Unicode/NTFS. Teste Xvfb com
   fonte controlada não comprova este host. Este recorte não habilita TM06 ou live.
+
+
+### T19.16/TM06 — S09 v1.50
+
+- [ ] Windows físico: configurar prazo Donchian no Manual, salvar/reabrir/exportar,
+  conferir 33 inputs e contexto/barra versus instante conhecido no journal/aba.
+- [ ] Windows físico: demonstrar rompimento confirmado, retorno, saída e replay
+  conciliados, reinício sem reset e encerramento só dos processos próprios.
+  Não libera live DEMO, Pullback temporal, carteira ou cache.

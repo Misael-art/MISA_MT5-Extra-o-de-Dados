@@ -184,7 +184,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
 | T19.7 inicial/I10 | Donchian(20), referências atual/anterior, store/contexto/CSV | T19.3 | ✅ PR157: seis checks no fonte1b50519; Envelopes/regressão e consumidor temporal mantêm aceites separados |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
-| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER entregue na PR156: seis checks e replay conferidos; H28 integrada. Donchian/ATR pendentes |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER entregue na PR156: seis checks e replay conferidos; H28 integrada. Donchian/TM06 em revisão dependente de I10/M157; ATR pendente |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
 | T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
@@ -3933,3 +3933,36 @@ em14IDs, consulta/store/CSV/ação UI conferidos. Envelopes/regressão continuam
 pendentes; TM06 tem aceite separado no consumidor M158/H29. Fonte de teste controlada
 não é aceite operacional MT5. Recibo T19_7_DONCHIAN_20261020.json; nenhuma campanha
 histórica ou replay ER repetidos. Windows físico/cache/live mantêm seus limites.
+
+T19.16/TM06 em revisão dependente de M#157/I10: novo perfil S09v1.50 configura
+prazo desde último close favorável além do canal anterior20; exige rompimento
+observado e retorno inclusivo. Idade/SL/prazos antigos preservados. UI/33inputs,
+contexto/journal com instante conhecido e reconciliação; testes dirigidos e compilação
+aprovados, aceite nativo/checks pendentes. H runtimeeaaa059; sem liberação live,
+Pullback temporal, ATR adaptativo, gradientes ou carteira. Contrato tempo_donchian.md.
+
+Revisão TM06 identificou falta de teto absoluto obrigatório. Guardas Python/nativo
+agora recusam canal ativo sem max_seconds positivo desde primeiro fill; teste
+específico aprovado. Ensaio preliminar sem teto preservado, sem aceite final.
+Novo ensaio mantém janela/sizing/SL/TP e acrescenta teto3600s: nova verificação
+justificada por mudança de proteção/runtime, sem busca estatística.
+
+
+T19.16/TM06 — aceite dirigido final concluído: S09v1.50/b39a586b622e4713,
+H runtimeeaaa059 e M runtimea9c2b66. UI configura idle30s e teto obrigatório3600s,
+lote0,25/SL500/TP1000. Um backtest e um replay finais no mesmo dia EURUSD/M5:
+2 posições/4fills, uma saída absoluta e uma Donchian por execução;18observações,
+33inputs carregados, journal/livro/fills/caixa conciliados. Fonte/23includes/binários
+conferidos;12PIDs próprios encerrados, ponte/principal e trabalho original preservados.
+Consulta/reabertura/exportação UI conferidas; preliminar sem teto excluído do aceite.
+H#29 tem dois checks aprovados; M#157/H#29 integradas, M#158 com seis checks aprovados.
+Recibo T19_16_DONCHIAN_20261020.json; sem aceite para ATR adaptativo ou Pullback
+temporal, live DEMO, carteira/gradientes/cache. Próxima dependência elegível após
+fechamento: TM07, horizonte ATR limitado, mantendo os contratos e aceites próprios.
+
+Fechamento TM06: dependências M#157 (bd11940) e H#29 (596f2c8) integradas antes
+do consumidor M#158. Seis checks existentes aprovados no runtimea9c2b66:
+Ubuntu1895/199 skips, Windows CI2012/82 skips, PostgreSQL52; sem novo workflow
+ou repetição de campanha. Base master incorporada por merge, conflitos somente
+documentais resolvidos preservando I10 e TM06; código final idêntico ao fonte
+revisado/testado/nativo. Delta posterior somente docs. Windows físico segue pendente.
