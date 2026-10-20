@@ -10,7 +10,7 @@ from tests.test_trade_resim import _ledger_rows
 
 @pytest.mark.parametrize('idle,expected',[(59999,'hold'),(60000,'time_donchian'),(60001,'time_donchian')])
 def test_idle_boundary_requires_return_and_preserves_old_deadline(idle,expected):
-    p=DonchianTemporalPolicy(channel_idle_seconds=60)
+    p=DonchianTemporalPolicy(max_seconds=3600,channel_idle_seconds=60)
     assert p.decision(90000,0,idle_ms=idle,returned=True)==expected
     assert p.decision(90000,0,idle_ms=idle,returned=False)=='hold'
     assert p.decision(-1,0,idle_ms=idle,returned=True)=='unavailable'
@@ -22,7 +22,7 @@ def test_closed_breakout_return_and_existing_engines(direction):
     data.loc[21,['high','close']]=[111,110]
     if direction<0:
         high=data.high.copy();data['open']=200-data.open;data['close']=200-data.close;data['high']=200-data.low;data['low']=200-high
-    p=DonchianTemporalPolicy(channel_idle_seconds=60)
+    p=DonchianTemporalPolicy(max_seconds=3600,channel_idle_seconds=60)
     values=observations(p,data)
     assert decide(p,60000,0,values,20,direction=direction,opened_index=20)[0]=='hold'
     assert decide(p,120000,0,values,21,direction=direction,opened_index=20)[0]=='hold'
@@ -40,6 +40,10 @@ def test_closed_breakout_return_and_existing_engines(direction):
 
 def test_no_favorable_close_breakout_means_no_return_signal():
     data=bars([[100,101,99,100]]*25);data['time']=pd.date_range('2026-10-14',periods=25,freq='min')
-    p=DonchianTemporalPolicy(channel_idle_seconds=1)
+    p=DonchianTemporalPolicy(max_seconds=3600,channel_idle_seconds=1)
     result,context=decide(p,999999,0,observations(p,data),24,direction=1,opened_index=20)
     assert result=='hold' and not context['channel_breakout_seen'] and context['channel_idle_ms'] is None
+
+
+def test_idle_rule_without_absolute_ceiling_is_refused():
+    with pytest.raises(ValueError,match='prazo absoluto'):DonchianTemporalPolicy(channel_idle_seconds=30)

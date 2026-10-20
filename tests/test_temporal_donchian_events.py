@@ -21,7 +21,7 @@ def channel_capture(capture):
     suffix=' er_value=unavailable er_observed_msc=0 er_source_count=0 er_bar_open_at=0 er_times=none er_closes=none dc_known=1 dc_anchor=22000 dc_seen=1 dc_bar=22 dc_upper=111 dc_lower=99 dc_close=100 dc_observed=24000 dc_context=23000'
     text='\n'.join([observation(),observation(True)]+[line.replace('event_at=0','event_at=20').replace('reason=4','reason=7').replace('at_msc=11000','at_msc=24000').replace('decision_msc=11000','decision_msc=24000').replace('age_ms=10000','age_ms=3000')+suffix for line in (pending,confirmed)])
     file.write_text(text)
-    return root,file,dict(mode='temporal_donchian_v1',params=DonchianTemporalPolicy(channel_idle_seconds=2).to_dict()),signals,sizing,deals,text
+    return root,file,dict(mode='temporal_donchian_v1',params=DonchianTemporalPolicy(max_seconds=3600,channel_idle_seconds=2).to_dict()),signals,sizing,deals,text
 
 
 def test_independent_window_journal_anchor_and_full_close(channel_capture):

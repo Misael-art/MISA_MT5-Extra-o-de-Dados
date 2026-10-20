@@ -13,6 +13,8 @@ class DonchianTemporalPolicy(EfficiencyTemporalPolicy):
         super().__post_init__()
         if type(self.channel_idle_seconds) is not int or not 0<=self.channel_idle_seconds<=2147483647:
             raise ValueError("Tempo sem renovação deve ser segundos inteiros entre0 e2147483647.")
+        if self.channel_idle_seconds and not self.max_seconds:
+            raise ValueError("Donchian requer prazo absoluto positivo desde o primeiro fill; renovação não pode estender a posição indefinidamente.")
     @property
     def enabled(self):return super().enabled or self.channel_idle_seconds>0
     def decision(self,age_ms,net,er=None,*,idle_ms=None,returned=False):

@@ -2081,5 +2081,11 @@ T19.16/TM06 em revisão dependente de M#157/I10: novo perfil S09v1.50 configura
 prazo desde último close favorável além do canal anterior20; exige rompimento
 observado e retorno inclusivo. Idade/SL/prazos antigos preservados. UI/33inputs,
 contexto/journal com instante conhecido e reconciliação; testes dirigidos e compilação
-aprovados, aceite nativo/checks pendentes. H runtimecf9558b; sem liberação live,
+aprovados, aceite nativo/checks pendentes. H runtimeeaaa059; sem liberação live,
 Pullback temporal, ATR adaptativo, gradientes ou carteira. Contrato tempo_donchian.md.
+
+Revisão TM06 identificou falta de teto absoluto obrigatório. Guardas Python/nativo
+agora recusam canal ativo sem max_seconds positivo desde primeiro fill; teste
+específico aprovado. Ensaio preliminar sem teto preservado, sem aceite final.
+Novo ensaio mantém janela/sizing/SL/TP e acrescenta teto3600s: nova verificação
+justificada por mudança de proteção/runtime, sem busca estatística.

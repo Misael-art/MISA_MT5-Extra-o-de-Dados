@@ -18,7 +18,7 @@ def robot(er_robot,tmp_path,monkeypatch):
     out=replace(er_robot,version='1.50',path=str(source),files=[str(source)],inputs=er_robot.inputs+inputs)
     monkeypatch.setattr(native,'DONCHIAN_TEMPORAL_APPROVED_FINGERPRINT',catalog.fingerprint(out));return out
 
-def selection():return dict(mode='temporal_donchian_v1',params=DonchianTemporalPolicy(channel_idle_seconds=30).to_dict())
+def selection():return dict(mode='temporal_donchian_v1',params=DonchianTemporalPolicy(max_seconds=3600,channel_idle_seconds=30).to_dict())
 
 def test_new_profile_maps_33_inputs_and_old_er_profile_stays_blocked(robot,er_robot):
     data=native.default_composition(robot,symbol='EURUSD',timeframe='M5').to_dict();data['conditional_policy']=selection()
@@ -29,7 +29,7 @@ def test_new_profile_maps_33_inputs_and_old_er_profile_stays_blocked(robot,er_ro
 
 def test_default_readonly_named_channel_editor_reopens_and_invalid_time_blocks(view):
     assert view.donchian_enabled and view.dc_toggle.instate(['disabled'])
-    named(view);view.time_on.set(True);view.dc_on.set(True);view.dc_seconds.set('30')
+    named(view);view.time_on.set(True);view.dc_on.set(True);view.dc_seconds.set('30');view.time_fields['max_seconds'].set('3600')
     assert not view.preview_error,view.lot_preview.get()
     view.save.invoke();assert not view.dirty,view.status.get();view.reopen.invoke()
     assert view.dc_on.get() and view.current.composition.to_dict()['conditional_policy']==selection()
