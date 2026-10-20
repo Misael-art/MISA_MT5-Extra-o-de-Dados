@@ -183,7 +183,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | ✅ [PR126](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/126), aceite final70b2191 após correção127/master2d7412f; seis checks,1412 Ubuntu/36PG/1514Windows CI, cov77,64%/73,36%;291 fontes/testes idênticos;62 focados+34 composição/doctor21/1/0; custo local279/216/2ms, sem meta universal; Windows físico pendente |
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
-| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER entregue na PR156: seis checks e replay conferidos; H28 integrada. Donchian/ATR pendentes |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER entregue na PR156: seis checks e replay conferidos; H28 integrada. Donchian/TM06 em revisão dependente de I10/M157; ATR pendente |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
 | T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
@@ -3923,3 +3923,11 @@ explicitamente declarado. Revisões/gaps conhecidos preservam disponibilidade/as
 Testes dirigidos e doctor aprovados; checks/revisão em curso. Não conclui Envelopes,
 regressão ou TM06. Nenhum replay aprovado repetido; ER/M#156 preservado.
 Contrato e limites: docs/analytics/T19.7_DONCHIAN.md.
+
+
+T19.16/TM06 em revisão dependente de M#157/I10: novo perfil S09v1.50 configura
+prazo desde último close favorável além do canal anterior20; exige rompimento
+observado e retorno inclusivo. Idade/SL/prazos antigos preservados. UI/33inputs,
+contexto/journal com instante conhecido e reconciliação; testes dirigidos e compilação
+aprovados, aceite nativo/checks pendentes. H runtimecf9558b; sem liberação live,
+Pullback temporal, ATR adaptativo, gradientes ou carteira. Contrato tempo_donchian.md.

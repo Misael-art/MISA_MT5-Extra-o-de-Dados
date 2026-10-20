@@ -33,7 +33,7 @@ from .equity import cashflow_values, floating_metrics, unitized_equity, valuatio
 EXIT_REASONS = {
     "stop": "stop", "breakeven": "stop no zero a zero", "trailing": "stop móvel", "target": "alvo",
     "time_absolute":"prazo absoluto", "time_progress":"prazo sem lucro mínimo",
-    "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate", "time_er":"eficiência baixa após idade mínima",
+    "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate", "time_er":"eficiência baixa após idade mínima", "time_donchian":"retorno ao canal sem renovação",
     "signal": "sinal de saída", "time": "tempo máximo", "eod": "fim do dia", "end": "fim dos dados",
 }
 
@@ -420,7 +420,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 mark=c[i]+(spr_close[i] if d<0 else 0)
                 net=pos["pnl"]+(mark-pos["entry"])*d*ppu*pos["remaining"]
                 if cfg.swap:net+=spec.swap_money(d,pos["remaining"],times.iloc[pos["i"]],times.iloc[i])
-                decision,er_context=decide(temporal,age,float(net),er_values,i)
+                decision,er_context=decide(temporal,age,float(net),er_values,i,direction=d,opened_index=pos["i"])
                 if decision not in ("hold","unavailable"):
                     pos["pending_temporal"]=decision
                     temporal_trace.append(dict(event="decision",cycle_seq=len(trades),available_at=available.isoformat(),opened_at=times.iloc[pos["i"]].isoformat(),age_ms=age,net_observed=float(net),reason=decision,**er_context))

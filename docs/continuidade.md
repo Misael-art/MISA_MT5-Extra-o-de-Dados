@@ -2075,3 +2075,11 @@ explicitamente declarado. Revisões/gaps conhecidos preservam disponibilidade/as
 Testes dirigidos e doctor aprovados; checks/revisão em curso. Não conclui Envelopes,
 regressão ou TM06. Nenhum replay aprovado repetido; ER/M#156 preservado.
 Contrato e limites: docs/analytics/T19.7_DONCHIAN.md.
+
+
+T19.16/TM06 em revisão dependente de M#157/I10: novo perfil S09v1.50 configura
+prazo desde último close favorável além do canal anterior20; exige rompimento
+observado e retorno inclusivo. Idade/SL/prazos antigos preservados. UI/33inputs,
+contexto/journal com instante conhecido e reconciliação; testes dirigidos e compilação
+aprovados, aceite nativo/checks pendentes. H runtimecf9558b; sem liberação live,
+Pullback temporal, ATR adaptativo, gradientes ou carteira. Contrato tempo_donchian.md.

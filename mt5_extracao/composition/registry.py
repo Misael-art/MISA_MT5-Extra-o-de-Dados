@@ -94,6 +94,12 @@ MODULE_PARAMETERS["conditional_policy"]["temporal_er_v1"]={
     "er_min_seconds":Parameter("int","second",1,2147483647),
     "maximum_er":Parameter("number","fraction",0,1)}
 
+MODULE_PARAMETERS["conditional_policy"]["temporal_donchian_v1"]={
+    **MODULE_PARAMETERS["conditional_policy"]["temporal_v1"],
+    "er_min_seconds":Parameter("int","second",0,2147483647),
+    "maximum_er":Parameter("number","fraction",0,1),
+    "channel_idle_seconds":Parameter("int","second",1,2147483647)}
+
 FILTER_PARAMETERS = {"adx_min": {"period": PERIOD, "threshold": OSCILLATOR}}
 BASE_MODES = {slot: next(iter(modes)) for slot, modes in MODULE_PARAMETERS.items()}
 TIMEFRAMES = frozenset(("M1", "M2", "M3", "M4", "M5", "M6", "M10", "M12", "M15", "M20", "M30",

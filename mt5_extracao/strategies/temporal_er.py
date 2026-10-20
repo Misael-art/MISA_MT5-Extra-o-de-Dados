@@ -40,10 +40,15 @@ class EfficiencyTemporalPolicy(TemporalPolicy):
 
 def observation_values(policy, data):
     """Mesma fórmula do registry; série causal, aquecimento de21 closes."""
+    from .temporal_donchian import DonchianTemporalPolicy,observations
+    if isinstance(policy,DonchianTemporalPolicy):return observations(policy,data)
     return efficiency_ratio(data["close"], ER_PERIOD) if isinstance(policy, EfficiencyTemporalPolicy) else None
 
 
-def decide(policy, age_ms, net, values, index):
+def decide(policy, age_ms, net, values, index, **context):
+    if isinstance(values,dict):
+        from .temporal_donchian import decide as channel_decide
+        return channel_decide(policy,age_ms,net,values,index,**context)
     if values is None:
         return policy.decision(age_ms, net), {}
     raw = float(values.iloc[index])
@@ -52,5 +57,6 @@ def decide(policy, age_ms, net, values, index):
 
 
 def from_selection(selection):
-    cls = EfficiencyTemporalPolicy if selection["mode"] == "temporal_er_v1" else TemporalPolicy
+    from .temporal_donchian import DonchianTemporalPolicy
+    cls = DonchianTemporalPolicy if selection["mode"]=="temporal_donchian_v1" else EfficiencyTemporalPolicy if selection["mode"] == "temporal_er_v1" else TemporalPolicy
     return cls(**selection["params"])
