@@ -2208,3 +2208,59 @@ explícitos e sem consumir/reiniciar por parcial ou ordem recusada. Fechamento
 por horário permanece separado. S09 somente Tester; cache inelegível; Pullback
 neste gate, live DEMO, Windows físico, carteira/gradientes e DST/calendário futuro
 conservam seus próprios aceites. Nenhuma campanha numérica nova.
+
+
+T19.20/02 em revisão isolada: espera em segundos após fechamento total confirmado,
+S09v1.80/44inputs. Parcial não inicia/reinicia; histórico/saldo/identidade incertos
+bloqueiam apenas entradas. UI Manual/save/reopen/export e recibo independente
+reutilizam os serviços. Gestão temporal/SL/parciais preservados. Perfil anterior
+sem migração; fechamento agendado separado. Contrato docs/sdk/cooldown_entradas.md.
+S09 somente Tester; cache inelegível; live DEMO/Windows físico/Pullback neste gate/
+carteira/gradientes mantêm aceites próprios. Par nativo e checks finais pendentes.
+
+
+T19.20/02 — estado parcial em H35→M162, sem merge: S09v1.80/44inputs,
+Manual salvo/reaberto/exportado, consulta pós-iniciador conferida. Backtest dirigido
+EURUSD/M5 14→15/10/2026:2posições/4fills,2recusas de cooldown,18USD conciliados;
+parciais/ausência/fronteira1ms/reinício cobertos por header real/plataforma falsa.
+Replay não gerou relatório: terminal privado autorizou DEMO mas não sincronizou
+(connect status3,100). Preparação própria sem EA/ordens limitada90s também sem
+confirmação; replay dependente interrompido. LiveUpdate observado não comprova causa.
+18PIDs próprios ausentes,0zombies,4perfis vazios, ponte/principal preservados;
+27includes/wrapper/binário/INI do backtest alinhados.124+63 testes sobrepostos,
+30Tools/estática127/doctor21OK aprovados. H2checks aprovados; M workflow39507890504
+existente no fonte4517299 com4checks aprovados, Ubuntu/Windows em andamento.
+Próximo passo concreto: recuperar sincronização do perfil isolado, conferir
+compatibilidade de fontes/binário/parâmetros/plataforma e executar somente replay
+faltante se o backtest continuar compatível; depois integrar H35→M162 com6checks.
+Recibo docs/evidencias/T19_20_COOLDOWN_20261020.json. Sem nova rodada antes de corrigir
+pré-condição; S09 somente Tester/cache inelegível/live DEMO e Windows físico próprios.
+
+
+T19.20/02 — aceite funcional concluído: S09v1.80/44inputs, H e232bef/M4517299,
+Manual salvo/reaberto/exportado e consulta pós-iniciador. Backtest preservado
+8fefd89e e replay06b9dae1:2posições/4fills/4decisões,2recusas por espera e nova
+entrada posterior, caixa18USD/eventos/livro/CSV iguais.27PIDs próprios ausentes,
+0zombies/0reutilizados,5perfis vazios; ponte/principal e raízes preservados.
+Duas falhas preliminares de sincronização continuam arquivadas. Pré-condição
+corrigida somente no perfil próprio: catálogo nativo de símbolos da mesma DEMO/build,
+sem qualificar cache de execução/evidência; sincronização confirmada antes do Tester.
+Não afirma recuperação automática nem promoção para live.27includes/wrappers/binários
+alinhados nas duas execuções aceitas. Próximo passo: concluir workflow39507890504
+existente no runtime4517299 e integrar H35→M162 após revisão/6checks.
+S09 permanece somente Tester; Pullback neste gate/live DEMO/Windows físico/carteira/
+gradientes mantêm aceites próprios. Recibo T19_20_COOLDOWN_20261020.json.
+
+
+Fechamento T19.20/02: seis checks existentes aprovados no runtime4517299,
+workflow39507890504, com Windows CI. H35 integrada e5f4842; consumidor M162 revisado,
+fonte/testes e par nativo conciliados. Alterações posteriores somente documentais.
+Manual configura espera após fechamento total, salva/reabre/exporta e consulta
+origem/fechamento/liberação; parcial não inicia/reinicia. Aceite limitado ao cenário
+com catálogo nativo preparado; recuperação automática universal não entregue.
+Pedido posterior de ao vivo DEMO tem estado próprio: EMA+ATR/Conservador passou no
+backtest do contexto, mas replay de pré-aceite não iniciou por sincronização privada
+indisponível em90s. Nenhuma ordem ao vivo foi enviada. S09/Pullback Nativo/adaptador
+piloto seguem somente Tester; cache inelegível, REAL proibida e Windows físico próprio.
+Próximo bloqueador operacional: sincronização nativa estável do perfil próprio;
+sem nova tentativa dependente até mudar a pré-condição. Sem nova campanha numérica.
