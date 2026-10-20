@@ -1,3 +1,17 @@
+## Integrações registradas — T19.56 e fonte parcial, 2026-10-20
+
+M#149 integrada em08c1ad5, fonteec398eb com seis checks obrigatórios aprovados;
+H#24 já integrada ema310a5a. T19.56 inicial entregue.
+H#25 integrada em47f05b1, fonte89139c8/fingerprint60bf18181739612d com checks,
+compilações e prova consumidora final. M#150 recebeu master por merge Git6a87a2e,
+árvore de arquivos inalterada/sem conflitos, e foi retargetada para master.
+Sem cópia de arquivos do usuário nem nova suíte/workflow por integração documental.
+M#150 aguarda somente Windows do run existente39412714724; cinco checks aprovados.
+Não iniciar outro workflow; falha concreta exige diagnóstico pertinente antes do merge.
+Registro `docs/evidencias/T19_56_57_INTEGRACOES_20261020.json`.
+Raízes originais preservadas (HEAD/índice/status: M124entradas, H1, S0).
+Pullback bloqueado; cache inelegível; S09 Tester, ao vivo DEMO/Windows físico próprios.
+
 ## T19.57 — prova final disponível, 2026-10-20
 
 H#25/M#150: fonte H89139c8/fingerprint60bf18181739612d/Safety1.7,
