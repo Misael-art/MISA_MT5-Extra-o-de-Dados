@@ -3744,3 +3744,13 @@ Seleção por contexto não é substituída ao criar Default.87 testes focados a
 PostgreSQL pelo job existente. Ver `docs/sdk/default_versionado.md`.
 Manual, exportação e UI ainda são consumidores; sem operação/aceite novo, Pullback
 bloqueado e Windows físico pendente.
+
+### T19.26 inicial — Manual nomeado, revisão e pacote preservado
+
+Em revisão, dependente de #143. Clone Default→Manual com ID/nome/linhagem, salvar e
+reabrir, revisão imutável/Salvar idempotente, rename de apresentação preservando
+identidade de execução. Exportação canônica atômica sem overwrite e importação
+verificada/identidade preservada; rascunho compilado sem aceite.71 testes focados
+mais4 verificações pertinentes aprovados; PostgreSQL pelo job existente.
+Ver `docs/sdk/manual_nomeado.md`; UI/execução/recibo e negócios reais no Tester ainda
+pendentes. Nenhuma operação ao vivo; Pullback bloqueado; Windows físico pendente.

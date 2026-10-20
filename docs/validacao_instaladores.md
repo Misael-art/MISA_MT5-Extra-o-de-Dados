@@ -278,3 +278,9 @@ CI virtual não substitui a validação Windows físico que permanece no checkli
 ## T19.6 — Pivôs causais
 
 Windows CI aprovado na fonte6a9d580:1569 testes/78 skips/5 avisos; cobertura73,36%. Windows físico continua pendente: instalar/abrir banco existente, materializar pivôs e consultar/exportar origem/confirmação pelo serviço; sem ordens. Não bloqueia o aceite Linux. [Escopo](analytics/T19.6_PIVOS_CAUSAIS.md).
+
+
+Pendência delimitada T19.26: no Windows físico, conferir publicação por hardlink no
+volume de exportação, mensagens em volume sem suporte/caminho longo, .set UTF-16,
+filename canônico, repetição sem overwrite e importação. CI Windows/fakes não
+substituem esse ensaio; o recorte pode fechar funcionalmente no host Linux/Wine.
