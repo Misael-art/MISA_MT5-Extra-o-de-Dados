@@ -3815,3 +3815,15 @@ BE só acompanha close_part efetivo. Corrige dois casos long/short de lote indiv
 com controles de redução viável.19 testes pertinentes aprovados; código nativo e
 backtester já aprovados preservados, sem repetir seus ensaios. Dados/resultados antigos
 não são regravados. Cache permanece inelegível e modalidades mantêm aceites próprios.
+T20.25 — scanner durante encerramento (2026-10-20): ensaio dirigido T19.15
+interrompido antes do Tester ao observar cmdline vazio de processo em término.
+Linux agora ignora somente zombie ou processo comprovadamente ausente; processo
+vivo sem identidade mantém recusa, com PID e ação na mensagem. Windows continua
+identificado pelo executável. 69 testes de isolamento/controles aprovados; nenhuma
+liberação de recursos inferida, nenhuma sessão alheia encerrada. Retomar apenas os
+casos temporais pendentes após incorporar este corretivo pelo Git.
+
+Windows CI de M#153 revelou timeout em test_cli_batch: o processo falso simulava
+Linux mas varria processos reais do runner. A fixture de comandos falsos agora
+usa inventário vazio, substituível pelos testes explícitos de ownership. 74 testes
+de lote/isolamento/controles aprovados; código de proteção real preservado.

@@ -327,3 +327,32 @@ def test_copy_reservation_uses_existing_destination_volume_with_real_budget(home
             assert not (session.directory / "terminal64.exe").exists() and measured
         finally:
             mt5_tools.release_native_context(session)
+
+
+@pytest.mark.parametrize('status,running', [('zombie',True),('running',False)])
+def test_empty_linux_command_line_is_ignored_only_after_observed_exit(home,monkeypatch,status,running):
+    import psutil
+    from mt5_extracao.robots import sessions
+    process=SimpleNamespace(cmdline=lambda:[],name=lambda:'wine',status=lambda:status,is_running=lambda:running,
+                            terminate=lambda:pytest.fail('Não encerrar processo sem identidade'))
+    monkeypatch.setattr(paths,'is_windows',lambda:False)
+    monkeypatch.setattr(psutil,'process_iter',lambda:iter([process]))
+    assert sessions.owned_processes(home.config,strict=True,launchers=True)==[]
+
+
+def test_live_empty_linux_command_line_keeps_strict_ownership_refusal(home,monkeypatch):
+    import psutil
+    from mt5_extracao.robots import sessions
+    process=SimpleNamespace(cmdline=lambda:[],name=lambda:'wine',status=lambda:'running',is_running=lambda:True)
+    monkeypatch.setattr(paths,'is_windows',lambda:False)
+    monkeypatch.setattr(psutil,'process_iter',lambda:iter([process]))
+    with pytest.raises(RuntimeError,match='processo nativo'):sessions.owned_processes(home.config,strict=True,launchers=True)
+
+
+def test_windows_exact_executable_does_not_depend_on_nonempty_arguments(home,monkeypatch):
+    import psutil
+    from mt5_extracao.robots import sessions
+    process=SimpleNamespace(exe=lambda:str(home.mt5/'terminal64.exe'),cmdline=lambda:[],name=lambda:'terminal64.exe')
+    monkeypatch.setattr(paths,'is_windows',lambda:True)
+    monkeypatch.setattr(psutil,'process_iter',lambda:iter([process]))
+    assert sessions.owned_processes(home.config,strict=True)==[process]

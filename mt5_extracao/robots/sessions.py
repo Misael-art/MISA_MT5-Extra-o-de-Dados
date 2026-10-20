@@ -60,11 +60,22 @@ def owned_processes(config, names=(paths.MT5_TERMINAL_EXE,), *, strict=False, la
     for process in psutil.process_iter():
         candidate = False
         try:
-            executable = process.exe() if paths.is_windows() else process.cmdline()[0]
+            arguments = None
+            if paths.is_windows():
+                executable = process.exe()
+            else:
+                arguments = process.cmdline()
+                if not arguments:
+                    # Linux deixa cmdline vazio após sair. Só dispensar com evidência
+                    # de término; um processo vivo/ilegível continua bloqueando strict.
+                    if process.status() == psutil.STATUS_ZOMBIE or not process.is_running():
+                        continue
+                    raise IndexError("linha de comando vazia em processo ativo")
+                executable = arguments[0]
             candidate = str(executable).replace("\\", "/").rstrip("/").lower() in expected_paths
             if not candidate and launchers:
                 candidate = any(str(arg).strip('"').replace("\\", "/").lower() == launch_path
-                                for arg in process.cmdline())
+                                for arg in (process.cmdline() if arguments is None else arguments))
             if not candidate:
                 continue
             if not paths.is_windows():
@@ -84,7 +95,7 @@ def owned_processes(config, names=(paths.MT5_TERMINAL_EXE,), *, strict=False, la
                     except (OSError, psutil.Error):
                         candidate = True
                 if candidate:
-                    raise RuntimeError("Não foi possível conferir um processo nativo; mantenha a sessão e confira as permissões antes de liberar seus arquivos.") from error
+                    raise RuntimeError(f"Não foi possível conferir um processo nativo (PID {getattr(process, 'pid', 'desconhecido')}); mantenha a sessão, aguarde o encerramento ou confira as permissões antes de liberar seus arquivos.") from error
     return found
 
 
