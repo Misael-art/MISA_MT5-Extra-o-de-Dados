@@ -1,0 +1,73 @@
+{
+  "task": "integrações T19.56 e dependência nativa T19.57",
+  "M149": {
+    "merge": "08c1ad5ed1cf576f27f3d0391dfd9efb5ad1f4f5",
+    "source": "ec398ebadfd0cc50f9f5970f6bd5658a46a76cf5",
+    "head": "dfd01b1",
+    "checks": [
+      {
+        "name": "Lint dos instaladores",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39409527432/job/118583568467"
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39409527432/job/118583568867"
+      },
+      {
+        "name": "Testes (windows-latest)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39409527432/job/118583569513"
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39409527432/job/118583568731"
+      },
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39409527432/job/118583569753"
+      },
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39409527432/job/118583568372"
+      }
+    ],
+    "proof": "T19_56_LOTES_20261020.json"
+  },
+  "H25": {
+    "merge": "47f05b18162ced5883de63c8652c023291226357",
+    "source": "89139c8134fca00461ada8850257a0dbd8d7763d",
+    "head": "70e357c",
+    "checks": [
+      {
+        "name": "Checagem estática MQL5 + ferramentas",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39413683382/job/118597396985"
+      },
+      {
+        "name": "Checagem estática MQL5 + ferramentas",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS",
+        "detailsUrl": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39413678888/job/118597382023"
+      }
+    ],
+    "proof": "T19_57_PARCIAIS_20261020.json"
+  },
+  "integration_flow": "real Git merge of M149 master into M150, unchanged file tree, no conflicts; retargeted M150 to master; no copying user files",
+  "M150_base_integration": "6a87a2ed9e887223975b173af01c5f300802594b",
+  "new_workflow": false,
+  "cache_eligible": false,
+  "live_demo": false,
+  "physical_windows_pending": true
+}

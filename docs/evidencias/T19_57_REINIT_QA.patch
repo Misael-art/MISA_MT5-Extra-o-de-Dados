@@ -1,0 +1,49 @@
+--- HDK_S09_Referencia.mq5@89139c8
++++ HDK_S09_Restart_QA.mq5@f890498c
+@@ -27,6 +27,7 @@
+ input int InpPartialMode2=0;
+ input int InpPartialBase2=1;
+ input bool InpPartialBreakeven=false; // somente após redução confirmada
++bool qa_restart_done=false;
+ CHDKNativePartialPolicy s09_partial;
+ CHDKNativeBaseAdapter s09_engine;
+ datetime s09_anchor=0,s09_last_bar=0;
+@@ -68,6 +69,38 @@
+    string reason;
+    if(!s09_engine.GuardTick(reason))return;
+    s09_partial.Manage();
++   // QA somente: injetar reinit e intenção pendente após uma redução real.
++   if(!qa_restart_done)
++   {
++      for(int qi=0;qi<PositionsTotal();qi++)
++      {
++         ulong qt=PositionGetTicket(qi);
++         if(PositionGetInteger(POSITION_MAGIC)!=InpMagic || PositionGetString(POSITION_SYMBOL)!=_Symbol ||
++            MathAbs(PositionGetDouble(POSITION_VOLUME)-2)>0.00000001)continue;
++         long id=PositionGetInteger(POSITION_IDENTIFIER);
++         string key="HDKP."+IntegerToString(InpMagic)+"."+IntegerToString(id)+"."+StringSubstr(InpConfigHash,0,8);
++         if(!GlobalVariableCheck(key+".s1") || GlobalVariableGet(key+".s1")!=1)continue;
++         qa_restart_done=true;
++         double volume=PositionGetDouble(POSITION_VOLUME),stop=PositionGetDouble(POSITION_SL),exits_before=0,exits_after=0;
++         HDKPartialExitVolume(id,InpMagic,_Symbol,exits_before);
++         double negative=-1;double invalid=MathSqrt(negative);
++         bool finite_guard=!MathIsValidNumber(invalid) && !s09_engine.ReduceOwn(qt,invalid) &&
++                           !s09_engine.ReduceOwn(qt,0) && !s09_engine.ReduceOwn(qt,-1);
++         PositionSelectByTicket(qt);finite_guard=finite_guard && PositionGetDouble(POSITION_VOLUME)==volume;
++         int init1=OnInit();s09_partial.Manage();PositionSelectByTicket(qt);
++         bool skip=PositionGetDouble(POSITION_VOLUME)==volume && GlobalVariableGet(key+".s1")==1;
++         GlobalVariableSet(key+".s2",0);
++         GlobalVariableSet("HDKPU."+IntegerToString(InpMagic)+"."+StringSubstr(InpConfigHash,0,8),1);GlobalVariablesFlush();
++         int init2=OnInit();s09_partial.Manage();PositionSelectByTicket(qt);
++         bool pending=PositionGetDouble(POSITION_VOLUME)==volume && GlobalVariableGet(key+".s2")==0;
++         bool protected_balance=PositionGetDouble(POSITION_SL)==stop && stop>0;
++         HDKPartialExitVolume(id,InpMagic,_Symbol,exits_after);
++         Print("QA_PARTIAL_REINIT confirmed_skip=",skip ? 1 : 0," pending_no_resend=",pending ? 1 : 0,
++               " stop_preserved=",protected_balance ? 1 : 0," init_ok=",(init1==INIT_SUCCEEDED && init2==INIT_SUCCEEDED) ? 1 : 0,
++               " before=",volume," after=",PositionGetDouble(POSITION_VOLUME)," exits_before=",exits_before," exits_after=",exits_after," invalid_rejected=",finite_guard ? 1 : 0);
++         break;
++      }
++   }
+    HDKMarketContextV1 context;
+    if(!s09_engine.ClosedContext(context) || context.bar_open_at<=s09_last_bar)return;
+    MqlRates bars[];ArraySetAsSeries(bars,false);

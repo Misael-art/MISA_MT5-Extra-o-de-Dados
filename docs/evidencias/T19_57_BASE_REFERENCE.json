@@ -1,0 +1,22 @@
+{
+  "scope": "Independent Decimal reference vs actual reviewed MQL header compiled through existing C++ shim; distinct initial/remaining bases, no Tester/campaign",
+  "hadouken": "89139c8134fca00461ada8850257a0dbd8d7763d",
+  "header_sha256": "8fe173ac45ec60c99b29c3f935c38c2f48580b8132eda8bedb5407f1d4460329",
+  "reference_source": "T19_57_BASE_REFERENCE.cpp",
+  "reference_sha256": "a6c8b7027623132a12a0b244821ab73164023d53ad7b7be077e28193a130f192",
+  "inputs": {
+    "initial": 3,
+    "remaining": 2,
+    "fraction": 0.5,
+    "minimum": 0.1,
+    "maximum": 100,
+    "step": 0.1
+  },
+  "expected_initial": "1.5",
+  "expected_remaining": "1.0",
+  "observed": [
+    "1.5",
+    "1"
+  ],
+  "complete": true
+}

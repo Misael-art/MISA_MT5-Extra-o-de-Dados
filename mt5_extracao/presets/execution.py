@@ -21,6 +21,7 @@ from ..robots import mql,sessions
 from ..robots import store as robot_store
 from ..trade_analytics import ledger
 from .compiler import read_package
+from . import partial_events
 from .manual import _publish
 
 _EVIDENCE_LOCK=threading.Lock()
@@ -120,9 +121,11 @@ def _semantic_signals(signals):
     return [{key:value for key,value in row.items() if key not in ("order_ticket","deal_ticket")} for row in signals]
 
 
-def first_difference(reference,rows,signals,sizing=None):
+def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None):
     sections=[("ledger",reference["ledger"],rows),("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))]
     if sizing is not None:sections.append(("sizing",reference.get("sizing",[]),sizing))
+    if partials is not None:sections.append(("partials",partial_events.semantic(reference.get("partials",[])),partial_events.semantic(partials)))
+    if deals is not None:sections.append(("deals",partial_events.semantic(reference.get("deals",[])),partial_events.semantic(deals)))
     for section,expected,actual in sections:
         if len(expected)!=len(actual):
             return dict(section=section,field="count",expected=len(expected),observed=len(actual))
@@ -290,13 +293,16 @@ class PresetExecution:
         if sizing is not None:
             validate_sizing_budgets(sizing,signals,rows,deposit=package["test_context"]["deposit"],
                                    risk_pct=native["expected_native_inputs"]["InpRiskPct"])
+        partials=deals=None
+        if native["profile_version"]>=3:
+            partials,deals=partial_events.read_events(job.directory,package["composition"]["partial_exit_plan"],signals,sizing,rows)
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
             raise ValueError("Entradas e posições encerradas não conciliam; conferir última posição e respostas antes de aceitar.")
         status=("reconciled_"+self.mode) if active else "contract_only"
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
-        difference=first_difference(prior,rows,signals,sizing) if prior is not None else None
+        difference=first_difference(prior,rows,signals,sizing,partials,deals) if prior is not None else None
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"
         report=getattr(job,"report",job.directory/"relatorio.json")
@@ -314,4 +320,5 @@ class PresetExecution:
             allows_live=False,statistical_approval=False,cache_eligible=False,history_revision="unavailable",
             created_at=datetime.now(timezone.utc).isoformat())
         if sizing is not None:proof["sizing"]=sizing
+        if partials is not None:proof.update(partials=partials,deals=deals,partial_activity=any(r["state"]=="confirmed" for r in partials))
         return proof

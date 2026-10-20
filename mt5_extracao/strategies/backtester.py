@@ -366,15 +366,16 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 if rules.partial_r and not pos["partial_done"]:
                     level = pos["entry"] + d * rules.partial_r * pos["risk_px"]
                     if (hi >= level) if d > 0 else (lo <= level):
-                        pos["partial_done"] = True
                         step = spec.volume_step or spec.volume_min
                         part = math.floor(pos["volume"] * rules.partial_fraction / step + 1e-9) * step
                         if part >= spec.volume_min and pos["remaining"] - part >= spec.volume_min - 1e-12:
                             close_part(part, max(op, level) if d > 0 else min(op, level), i,
                                        phase="open" if (op >= level if d > 0 else op <= level) else "intrabar")
-                        if rules.breakeven_after_partial:
-                            pos["stop"] = max(pos["stop"], pos["entry"]) if d > 0 else min(pos["stop"], pos["entry"])
-                            pos["stop_kind"] = "breakeven"
+                            # Só o preenchimento válido confirma a parcial e autoriza proteger o saldo.
+                            pos["partial_done"] = True
+                            if rules.breakeven_after_partial:
+                                pos["stop"] = max(pos["stop"], pos["entry"]) if d > 0 else min(pos["stop"], pos["entry"])
+                                pos["stop_kind"] = "breakeven"
                 tgt = pos["target"]
                 if tgt is not None and ((hi >= tgt) if d > 0 else (lo <= tgt)):
                     close_all(i, max(op, tgt) if d > 0 else min(op, tgt), "target",

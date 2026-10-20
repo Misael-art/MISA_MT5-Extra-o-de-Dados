@@ -1,3 +1,68 @@
+## T19.57 — aceite funcional e checks concluídos, 2026-10-20
+
+Recorte entregue na PR#150. Seis checks da lógica7e1b aprovados, incluindo Windows,
+no run existente39412714724; revisão final concluída. Vínculo nativo final8a08 com
+H89139c8/fingerprint60bf18181739612d/Safety1.7 verificado por39focados e UI/Tester
+reais; deltas posteriores só documentais e merge Git da base sem mudança de arquivos.
+H25 integrada47f05b1, M149 integrada08c1ad5. Cabe ao fechamento GitHub da PR150
+registrar seu merge exato; a árvore candidata é conferida antes da integração.
+`docs/evidencias/T19_57_ACEITE_20261020.json` reúne checks, fontes, evidência e limites.
+
+Na UI: Manual nomeado configura lotes e até duas parciais, base inicial/saldo e BE
+após confirmação. Agenda inviável é recusada, pedido não vira fill. Replay conferiu
+2posições/3reduções/7fills/22inputs, saldo/custos/CSV/livro e reabertura. QA de reinit
+não repetiu parcial confirmada/intenção pendente; NaN/zero/negativo recusados antes
+do executor. Fonte final compilada0erros/avisos; seis legados também compilados.
+Cache inelegível, S09 Tester. Pullback permanece bloqueado até perfil/aceite próprio;
+ao vivo DEMO, restart de processo e Windows físico conservam aceites específicos.
+Não repetir campanha histórica por rotina. Próximo recorte elegível: validar o
+Pullback no perfil próprio com redução real confirmada e proteção do remanescente,
+sem liberar por consequência do piloto S09; políticas temporais seguem dependências.
+
+## Integrações registradas — T19.56 e fonte parcial, 2026-10-20
+
+M#149 integrada em08c1ad5, fonteec398eb com seis checks obrigatórios aprovados;
+H#24 já integrada ema310a5a. T19.56 inicial entregue.
+H#25 integrada em47f05b1, fonte89139c8/fingerprint60bf18181739612d com checks,
+compilações e prova consumidora final. M#150 recebeu master por merge Git6a87a2e,
+árvore de arquivos inalterada/sem conflitos, e foi retargetada para master.
+Sem cópia de arquivos do usuário nem nova suíte/workflow por integração documental.
+M#150 aguarda somente Windows do run existente39412714724; cinco checks aprovados.
+Não iniciar outro workflow; falha concreta exige diagnóstico pertinente antes do merge.
+Registro `docs/evidencias/T19_56_57_INTEGRACOES_20261020.json`.
+Raízes originais preservadas (HEAD/índice/status: M124entradas, H1, S0).
+Pullback bloqueado; cache inelegível; S09 Tester, ao vivo DEMO/Windows físico próprios.
+
+## T19.57 — prova final disponível, 2026-10-20
+
+H#25/M#150: fonte H89139c8/fingerprint60bf18181739612d/Safety1.7,
+M8a08e4c. UI/backtest/replay final com2posições/3reduções confirmadas/7fills/22inputs,
+CSV/livro/custos/saldo e eventos iguais; consultas persistem após reabrir.
+QA de reinit/pending após3→2 não reenviou nem alterou SL; NaN/zero/negativo recusados.
+Isso não prova restart de SO/terminal ou Windows físico. Artefatos e patch QA em
+`docs/evidencias/T19_57_PARCIAIS_20261020.json` e guia `docs/sdk/parciais_s09.md`.
+Fonte final efetivamente ensaiada; antigo candidato0fce/7e71 guardado localmente.
+162focados +14leitor estrito +39vínculo final;21Tools/115check_repo; doctor20OK/1aviso/0falhas.
+H891 checks verdes; aguardar M7e1b existente (compatível: só literais de fonte até8a08).
+Run M0fce obsoleto cancelado após correção concreta do leitor; nenhum workflow novo
+para literais/documentação. M149 ainda aguarda seu Windows existente,5checks verdes.
+Integrar pela ordem real M149, depois H25/M150 com revisão/checks; preservar raízes WIP.
+Cache inelegível, S09 Tester, Pullback bloqueado, ao vivo DEMO/Windows físico próprios.
+
+## T19.57 — preparação após T19.56, 2026-10-20
+
+Corretivo148 integrado e prova de lotes concluída; H24 integrada e M149 aguarda check
+Windows existente. Próxima árvore isolada prepara confirmação parcial/saldo:
+S09 1.20, até duas etapas; agenda UI, volume/passo/saldo, intenção persistida antes
+do envio, redução/histórico/ownership/proteção antes de confirmar ou solicitar BE.
+Pendente/incerto congela tentativas, restart não repete fechamento. Fonte H5eb48a5,
+fingerprint7e71e0039cfc87ef, Safety1.7. Defeito legado Python reproduzido nos dois
+sentidos (meia unidade indivisível), corrigido; sem BE quando não existe redução.
+Leitura de fills/custos por posição, sem contar parciais como vitórias. Compilação
+S09 final privada0erros/avisos; cobertura nativa/legada e checks ainda pendentes.
+Ver `docs/sdk/parciais_s09.md`. Não desbloquear Pullback; cache inelegível, S09 Tester,
+ao vivo DEMO e Windows físico conservam seus aceites. Nenhuma campanha repetida.
+
 ## T19.56 — prova consumidora de lotes, 2026-10-20
 
 M#148 integrada em5e3c443, fonte aa0d8fd com seis checks aprovados.
