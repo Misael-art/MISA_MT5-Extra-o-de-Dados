@@ -33,6 +33,7 @@ INPUT_LABELS={"InpFastPeriod":"EMA curta","InpSlowPeriod":"EMA longa","InpWarmup
 INPUT_LABELS.update({"InpTimeMaxSeconds":"Prazo absoluto (s)","InpTimeProgressSeconds":"Prazo de progresso (s)",
  "InpTimeMinimumProfit":"Lucro mínimo (moeda)","InpTimeGainSeconds":"Prazo de ganho (s)","InpTimeLossSeconds":"Prazo de perda (s)",
  "InpTimeTieSeconds":"Prazo de empate (s)","InpTimeFlatBand":"Faixa de empate (moeda)","InpTimeMoneyDigits":"Casas da moeda", "InpTimeDonchianIdleSeconds":"Tempo sem renovação Donchian (s)",
+ "InpTimeATRBaseSeconds":"Prazo base ATR (s)","InpTimeATRMinSeconds":"Mínimo ATR (s)",
  "InpTimeERMinSeconds":"Idade mínima ER (s)","InpTimeERMaximum":"ER abaixo de (fração)"})
 
 class NameDialog:
@@ -73,11 +74,12 @@ class PresetWorkflow:
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION)
-        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION)
-        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION)
-        self.er_enabled=not self.pullback and robot.version in (native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION)
-        self.donchian_enabled=not self.pullback and robot.version==native.DONCHIAN_TEMPORAL_ROBOT_VERSION
+        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
+        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
+        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
+        self.er_enabled=not self.pullback and robot.version in (native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
+        self.donchian_enabled=not self.pullback and robot.version in (native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION)
+        self.atr_enabled=not self.pullback and robot.version==native.ATR_TEMPORAL_ROBOT_VERSION
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -177,6 +179,15 @@ class PresetWorkflow:
                 self.dc_entry=ttk.Entry(box,textvariable=self.dc_seconds);self.dc_entry.pack(fill=tk.X)
                 self.dc_on.trace_add("write",lambda *_:self.mark_dirty());self.dc_seconds.trace_add("write",lambda *_:self.mark_dirty())
 
+            if self.atr_enabled:
+                self.atr_on=tk.BooleanVar(value=False);self.atr_fields={};self.atr_widgets=[]
+                self.atr_toggle=ttk.Checkbutton(box,text="ATR(14) fechado: horizonte adaptativo com mínimo e teto absoluto",variable=self.atr_on);self.atr_toggle.pack(anchor="w",pady=(6,0))
+                ttk.Label(box,text="Prazo base × ATR da entrada / ATR conhecido; conta desde o primeiro fill. Base congelada; sem ATR válido, SL e teto continuam.",wraplength=850).pack(fill=tk.X)
+                for key,label,value in (("atr_base_seconds","Prazo base ATR (s)",300),("atr_min_seconds","Mínimo ATR (s)",60)):
+                    ttk.Label(box,text=label).pack(anchor="w");var=tk.StringVar(value=str(value));self.atr_fields[key]=var
+                    entry=ttk.Entry(box,textvariable=var);entry.pack(fill=tk.X);self.atr_widgets.append(entry)
+                    var.trace_add("write",lambda *_:self.mark_dirty())
+                self.atr_on.trace_add("write",lambda *_:self.mark_dirty())
             self.time_on.trace_add("write",lambda *_:self.mark_dirty())
         self.protection=ttk.Label(body,text="",style="Muted.TLabel",wraplength=850);self.protection.pack(fill=tk.X,padx=12,pady=4)
         ctx=ttk.LabelFrame(body,text="Contexto do ensaio histórico",padding=12);ctx.pack(fill=tk.X,padx=12,pady=6)
@@ -213,6 +224,7 @@ class PresetWorkflow:
         self.deals=self.tree("Preenchimentos e custos",("instante servidor","posição","entrada/saída","lotes","preço","resultado bruto","comissão","swap","taxa")) if self.partials_enabled else None
         self.temporal=self.tree("Tempo · decisão e confirmação",("origem","instante","motivo","estado","idade (s)","PnL observado","antes","reduzido","saldo","resultado da saída","ER(20)","ER observado em")) if self.temporal_enabled else None
         self.channel=self.tree("Donchian · contexto conhecido",("instante conhecido","barra de origem","limite superior anterior","limite inferior anterior","close","renovou","rompimento observado","relógio desde")) if self.donchian_enabled else None
+        self.atr_context=self.tree("ATR · horizonte conhecido",("instante conhecido","semente de origem","barra fechada","ATR base congelado","ATR atual","prazo (s)")) if self.atr_enabled else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -278,6 +290,9 @@ class PresetWorkflow:
             if self.donchian_enabled:
                 self.dc_toggle.state(["!disabled" if editable and self.time_on.get() else "disabled"])
                 self.dc_entry.configure(state="normal" if editable and self.time_on.get() and self.dc_on.get() else "disabled")
+            if self.atr_enabled:
+                self.atr_toggle.state(["!disabled" if editable and self.time_on.get() else "disabled"])
+                for widget in self.atr_widgets:widget.configure(state="normal" if editable and self.time_on.get() and self.atr_on.get() else "disabled")
         for entry in self.context_entries:entry.configure(state="disabled" if busy or not self.source_compatible else "normal")
         self.save.state(["!disabled" if is_manual and self.dirty and not busy else "disabled"])
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
@@ -343,14 +358,17 @@ class PresetWorkflow:
                 self.partial_fields[f"base{i}"].set("Inicial" if stage["base"]==0 else "Saldo")
         if self.temporal_enabled:
             from mt5_extracao.strategies.temporal import TemporalPolicy
-            policy=item.composition.to_dict()["conditional_policy"];active=policy["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1")
+            policy=item.composition.to_dict()["conditional_policy"];active=policy["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1","temporal_atr_v1")
             self.time_on.set(active);values=policy["params"] if active else TemporalPolicy().to_dict()
             for key,var in self.time_fields.items():var.set(str(values[key]))
             if self.er_enabled:
-                self.er_on.set(policy["mode"]=="temporal_er_v1" or (policy["mode"]=="temporal_donchian_v1" and values.get("er_min_seconds",0)>0))
+                self.er_on.set(policy["mode"]=="temporal_er_v1" or (policy["mode"] in ("temporal_donchian_v1","temporal_atr_v1") and values.get("er_min_seconds",0)>0))
                 for key,var in self.er_fields.items():var.set(str(values.get(key,0)))
             if self.donchian_enabled:
-                self.dc_on.set(policy["mode"]=="temporal_donchian_v1");self.dc_seconds.set(str(values.get("channel_idle_seconds",30)))
+                self.dc_on.set(policy["mode"] in ("temporal_donchian_v1","temporal_atr_v1") and values.get("channel_idle_seconds",0)>0);self.dc_seconds.set(str(values.get("channel_idle_seconds",30)))
+        if self.atr_enabled:
+            self.atr_on.set(policy["mode"]=="temporal_atr_v1")
+            for key,var in self.atr_fields.items():var.set(str(values.get(key,300 if key=="atr_base_seconds" else 60)))
         self.selected.set(next(label for label,value in self.options.items() if value.identity==item.identity))
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
@@ -400,6 +418,9 @@ class PresetWorkflow:
             if self.donchian_enabled and self.time_on.get() and self.dc_on.get():
                 params.update(er_min_seconds=params.get("er_min_seconds",0),maximum_er=params.get("maximum_er",0),channel_idle_seconds=int(self.dc_seconds.get()))
                 mode="temporal_donchian_v1"
+            if self.atr_enabled and self.time_on.get() and self.atr_on.get():
+                params.update(er_min_seconds=params.get("er_min_seconds",0),maximum_er=params.get("maximum_er",0),channel_idle_seconds=params.get("channel_idle_seconds",0))
+                params.update({key:int(var.get()) for key,var in self.atr_fields.items()});mode="temporal_atr_v1"
             data["conditional_policy"]={"mode":mode,"params":params}
         return Composition(data)
     def refresh_preview(self):
@@ -441,6 +462,7 @@ class PresetWorkflow:
         if self.deals is not None:self.deals.delete(*self.deals.get_children())
         if self.temporal is not None:self.temporal.delete(*self.temporal.get_children())
         if self.channel is not None:self.channel.delete(*self.channel.get_children())
+        if self.atr_context is not None:self.atr_context.delete(*self.atr_context.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -557,6 +579,9 @@ class PresetWorkflow:
         if "channel_enabled" in proof:
             count=sum(r["state"]=="confirmed" and r["reason"]=="time_donchian" for r in proof.get("temporal_events",[]))
             self.result.set(self.result.get()+f"\nSaídas Donchian confirmadas: {count}."+(" Replay conciliado neste cenário." if proof.get("channel_acceptance") else " Sem aceite Donchian neste resultado."))
+        if "atr_enabled" in proof:
+            count=sum(r["state"]=="confirmed" and r["reason"]=="time_atr" for r in proof.get("temporal_events",[]))
+            self.result.set(self.result.get()+f"\nSaídas ATR confirmadas: {count}."+(" Replay ATR conciliado neste cenário." if proof.get("atr_acceptance") else " Sem aceite ATR neste resultado."))
         if "efficiency_enabled" in proof:
             count=sum(r["state"]=="confirmed" and r["reason"]=="time_er" for r in proof.get("temporal_events",[]))
             self.result.set(self.result.get()+f"\nSaídas por ER confirmadas: {count}."+(" Replay de ER reconciliado neste cenário." if proof.get("efficiency_acceptance") else " Sem aceite de ER neste resultado."))
@@ -585,6 +610,9 @@ class PresetWorkflow:
         if self.channel is not None:
             for row in proof.get("channel_observations",[]):
                 self.channel.insert("","end",values=(clock(row["at_msc"]/1000),clock(row["bar"]),row["upper"],row["lower"],row["close"],"Sim" if row["renewed"] else "Não","Sim" if row["seen"] else "Não",clock(row["anchor"]/1000)))
+        if self.atr_context is not None:
+            for row in proof.get("atr_observations",[]):
+                self.atr_context.insert("","end",values=(clock(row["at_msc"]/1000),clock(row["seed"]),clock(row["times"][-1]),row["baseline"],row["current"],row["horizon"]))
         if proof.get("first_difference"):self.status.set("Primeira divergência: "+str(proof["first_difference"])+". Confira os arquivos; tolerância não foi ampliada.")
     def open_files(self):
         value=self.artifacts.get("artifact_directory")

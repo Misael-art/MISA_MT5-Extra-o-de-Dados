@@ -2117,3 +2117,69 @@ Ubuntu1895/199 skips, Windows CI2012/82 skips, PostgreSQL52; sem novo workflow
 ou repetição de campanha. Base master incorporada por merge, conflitos somente
 documentais resolvidos preservando I10 e TM06; código final idêntico ao fonte
 revisado/testado/nativo. Delta posterior somente docs. Windows físico segue pendente.
+
+T19.16/TM07 — ATR limitado em implementação/revisão: novo perfil S09v1.60,
+35 inputs; prazo base × ATR de entrada/ATR conhecido, mínimo e teto absoluto
+obrigatórios desde primeiro fill. Base/semente250 fechadas congeladas; ATR14
+canônico/Decimal, sem reset por parcial/reinício/correção. UI Manual opt-in,
+consulta de contexto e recibo/replay pelo serviço existente. 180 testes focados
+Python/UI/contratos/recibos, 28 Tools nativos e estática124 aprovados; compilação
+isolada aprovada, 2 PIDs próprios observados encerrados. Ensaio funcional dirigido
+e checks finais pendentes. H#31/runtime11d0c40; não altera painel ou Pullback.
+S09 somente Tester; cache inelegível; live DEMO/Windows físico/carteira/gradientes
+e relógios volumétricos mantêm aceites próprios. Contrato docs/sdk/tempo_atr.md.
+
+Ensaio TM07 preliminar recusado: saídas ATR ocorreram, mas snapshots extensos
+da fonte não apareceram no journal real; replay dependente interrompido. Fonte
+agora em blocos curtos identificados; teste de tamanho reproduziu o defeito e
+passou com a correção. 16 testes de recibo incluindo blocos ausentes/repetidos/
+truncados aprovados. Perfil corrigido db930f548c8e10d0. Recompilação e mesmo par
+funcional serão repetidos pela mudança concreta de runtime; preliminar preservado
+sem aceite. CI final será o da revisão corrigida, sem reaproveitar fonte invalidada.
+
+TM07 — aceite dirigido corrigido concluído no perfil1.60/db930f548c8e10d0,
+H runtime8b40cac e M runtime295c323. Mesmo EURUSD/M5 14→15/10/2026,
+base600/min60/teto3600s; lote0,25/SL500/TP1000 fixados antes do ensaio.
+Backtest e replay:4 posições/8fills cada,4 saídas ATR,9 contextos e35inputs
+carregados por execução; horizontes588–626s observados, contexto/livro/fills/
+caixa7,75USD conciliados. Fonte/24includes/wrapper/binários conferidos.
+22PIDs próprios observados encerrados,5 perfis vazios (inclui preliminar/compilações),
+ponte/principal preservados. UI: Manual salvo/reaberto, consulta e exportação
+conferidas sem novo ensaio. Preliminar recusado preservado sem aceite.
+H#31: dois checks corrigidos aprovados; M#159: aguardar workflow39485700757
+existente no código295c323. CI92d6aac cancelado após mudança concreta de runtime.
+Recibo docs/evidencias/T19_16_ATR_20261020.json. Sem liberação live, Pullback
+temporal, carteira/gradientes ou relógios volumétricos; Windows físico pendente.
+
+TM07 — novo achado concreto de recuperação: base ATR perdida na reinicialização
+recusava controlador inteiro. Teste real de header reproduziu e passou após correção:
+só ATR inelegível, idade/teto/SL conhecidos preservados. Hash/identidade diferentes
+continuam recusados. Par8b40cac/295c323 preservado para caminho normal, sem substituir
+aceite do novo fonte. Novo alinhamento e checks obrigatórios necessários pela mudança
+de runtime; não há busca de outra janela nem campanha histórica ampliada.
+
+TM07 — fonte final após guarda de recuperação: H52c1001/Mf5583f7,
+S09v1.60/4afcfe4bcef17c18. Compilação e novo par alinhados na mesma janela
+e parâmetros:4 posições/8fills/9contextos cada,35inputs; replay/caixa7,75USD
+conciliados, horizontes588–626s.24includes/wrapper/binários exatos.36PIDs
+próprios observados encerrados em8 perfis no conjunto (inclui versões preservadas),
+ponte/principal intactos; nenhuma sessão nativa ativa. Manual/consulta/exportação
+UI reabertos no banco existente, sem novo ensaio. Falha de perda de base ATR
+validada por header real/plataforma falsa; par nativo final exercitou caminho
+normal, sem forçar corrupção/crash. Checks H finais aprovados; M aguarda somente
+workflow39488078713 existente. Revisões substituídas canceladas pelos defeitos
+concretos registrados. Recibo T19_16_ATR_20261020.json; limites permanecem.
+
+
+Fechamento TM07: H#31 integrada em fe0e6e9, runtime52c1001. Os seis checks
+obrigatórios existentes aprovaram Mf5583f7, workflow39488078713. Código final
+revisado e ensaio funcional com negócios/35inputs conciliados; alterações
+posteriores só documentais. M#159 segue essa dependência e a conferência da árvore
+final. Recibo T19_16_ATR_20261020.json;36 processos próprios encerrados e8 perfis
+vazios comprovados, ponte/principal preservados. Manual configura base/mínimo/teto
+ATR, salva/reabre, consulta contextos conhecidos e exporta pelo serviço existente.
+Próxima ficha: T19.20, intervalos/dias/ciclos por sessão com fuso e contadores
+de primeiro fill explícitos; calendário observado T13.1 reutilizado sem presumir
+DST ou sessões futuras. S09 somente Tester, cache inelegível; live DEMO, Windows
+físico, Pullback temporal, carteira/gradientes e relógios volumétricos continuam
+com aceites próprios. Não houve nova campanha histórica nem dispatch duplicado.

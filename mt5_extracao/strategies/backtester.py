@@ -33,7 +33,7 @@ from .equity import cashflow_values, floating_metrics, unitized_equity, valuatio
 EXIT_REASONS = {
     "stop": "stop", "breakeven": "stop no zero a zero", "trailing": "stop móvel", "target": "alvo",
     "time_absolute":"prazo absoluto", "time_progress":"prazo sem lucro mínimo",
-    "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate", "time_er":"eficiência baixa após idade mínima", "time_donchian":"retorno ao canal sem renovação",
+    "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate", "time_er":"eficiência baixa após idade mínima", "time_donchian":"retorno ao canal sem renovação", "time_atr":"horizonte ATR limitado",
     "signal": "sinal de saída", "time": "tempo máximo", "eod": "fim do dia", "end": "fim dos dados",
 }
 

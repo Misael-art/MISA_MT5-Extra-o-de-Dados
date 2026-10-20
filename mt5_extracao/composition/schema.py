@@ -125,7 +125,7 @@ class Composition:
             _fail("bar_policy.intrabar_priority", "o motor OHLC exige stop_first; não presumir ordem real dos ticks.")
         if type(value["bar_policy"]["position_limit"]) is not int or value["bar_policy"]["position_limit"] != 1:
             _fail("bar_policy.position_limit", "modo base exige uma posição; multiordem depende dos gates próprios.")
-        if value["conditional_policy"]["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1"):
+        if value["conditional_policy"]["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1","temporal_atr_v1"):
             from ..strategies.temporal_er import from_selection
             policy=from_selection(value["conditional_policy"])
             if not policy.enabled:_fail("conditional_policy","Ative ao menos um prazo; para nenhum prazo use disabled.")

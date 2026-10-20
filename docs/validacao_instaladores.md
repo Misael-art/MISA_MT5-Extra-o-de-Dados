@@ -329,3 +329,12 @@ carteira ou gradientes. S09 permanece restrito ao Tester; cache inelegível.
 - [ ] Windows físico: demonstrar rompimento confirmado, retorno, saída e replay
   conciliados, reinício sem reset e encerramento só dos processos próprios.
   Não libera live DEMO, Pullback temporal, carteira ou cache.
+
+- [ ] TM07/S09v1.60 em Windows físico: configurar prazo ATR base/mínimo/teto,
+  carregar os35 inputs, conferir semente/base imutáveis e contexto conhecido,
+  backtest/replay com negócios e reconciliação, liberação somente dos processos
+  próprios. Linux/Wine e CI Windows não substituem este aceite.
+
+TM07: CI Windows do workflow39488078713 aprovado em Mf5583f7; não equivale
+a executar o terminal/Tester no Windows físico. Checklist manual acima permanece
+pendente. Ensaio real realizado no Linux/Wine com ponte e terminal preservados.
