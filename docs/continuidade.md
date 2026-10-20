@@ -1967,6 +1967,16 @@ BE só acompanha close_part efetivo. Corrige dois casos long/short de lote indiv
 com controles de redução viável.19 testes pertinentes aprovados; código nativo e
 backtester já aprovados preservados, sem repetir seus ensaios. Dados/resultados antigos
 não são regravados. Cache permanece inelegível e modalidades mantêm aceites próprios.
+
+
+T19.15 inicial em revisão isolada: política temporal tipada (segundos desde o fill),
+limite absoluto/progresso e prazos gain/loss/tie; moeda e região de empate explícitas.
+S09v1.30/30 inputs, UI Default/Manual e recibo de decisão/ack; usa guardas, execução,
+parciais e trajetórias existentes, preservando max_bars e perfis anteriores.
+Depende de MPR153 (parcial inviável na re-simulação) e HADOUKENPR27; protótipo não
+concede aceite até replay próprio com saídas/fills reconciliados.176 testes pertinentes
+M compatíveis e testes do controlador/header H; ver docs/sdk/saidas_temporais.md.
+Cache inelegível; S09 Tester, live DEMO/Windows físico/carteira permanecem específicos.
 T20.25 — scanner durante encerramento (2026-10-20): ensaio dirigido T19.15
 interrompido antes do Tester ao observar cmdline vazio de processo em término.
 Linux agora ignora somente zombie ou processo comprovadamente ausente; processo
@@ -1979,3 +1989,42 @@ Windows CI de M#153 revelou timeout em test_cli_batch: o processo falso simulava
 Linux mas varria processos reais do runner. A fixture de comandos falsos agora
 usa inventário vazio, substituível pelos testes explícitos de ownership. 74 testes
 de lote/isolamento/controles aprovados; código de proteção real preservado.
+
+
+T19.15 inicial — aceite histórico dirigido concluído: S09v1.30 permite configurar
+Manual nomeado com prazo absoluto, lucro mínimo e gain/loss/empate; salvar/reabrir/
+exportar e conferir decisões/confirmações na UI. Quatro recortes, oito resultados
+persistidos,4 posições/8fills cada;30 inputs reais, CSV/livro/saldo reconciliados.
+42 PIDs próprios observados ausentes, scanner final vazio, ponte/principal e WIP
+preservados. Backtest de progresso recuperado dos artefatos após SIGTERM do coordenador
+(causa não comprovada), sem reexecutar Tester; ausência de recursos conferida após
+a interrupção. H#27 integrada7759344; depende de M155→M153, checks M existentes
+aguardados antes de integrar M154. Fonte Mffcbb0c/H09068ad; fixture/docs posteriores
+não alteram runtime. Recibo T19_15_TEMPORAL_20261020.json. Cache inelegível; S09
+Tester; live DEMO, Windows físico, carteira e gradientes específicos. Próxima ficha
+elegível a delimitar: T19.16 depende de T19.15 e dos contratos ER/Donchian/ATR;
+confirmar dependências antes de implementar, sem qualificar cache por otimização.
+
+Próximo recorte T19.16: ER(20) já existe no registry canônico M
+(analytics/indicator_registry.py); ATR Wilder já existe em HDK_StrategyMath sobre
+barras fechadas. Falta consumidor ER causal tipado no perfil nativo e contrato de
+atualização do prazo, sem reiniciar idade/afastar SL. A variante com canal continua
+dependente de T19.7; reutilizar Donchian existente, sem declarar essa ficha concluída.
+Inspeção delimitada de dependências, sem código/campanha nova dessa próxima tarefa.
+
+Integrações pré-T19.15 concluídas: M#155 emcec01c1 (varredura/fixture) → M#153
+em133eaa6 (parcial/BE na re-simulação), ambas com seis checks no fonte final e
+árvore inteira idêntica ao HEAD revisado. H#27 já em7759344. M#154 retarget para
+master com runtime inalterado; aguardar o Windows existente no fonte8f9c36c.
+Recursos: após todos os iniciadores saírem,42 PIDs ausentes,0zombies/0reutilizados,
+oito perfis vazios e ponte/principal preservados. Cópias do cache cifrado de login
+do perfil recuperado também limpas pela mesma regra da rotina de encerramento.
+
+Fechamento T19.15 inicial: seis checks obrigatórios aprovados no fonte8f9c36c,
+inclusive Windows CI; revisão técnica e aceite funcional concluídos. HEADs
+posteriores só documentam evidência/dependências, mantendo código e testes idênticos.
+Dependências integradas H27/7759344 → M155/cec01c1 → M153/133eaa6. M154 final
+pronta para merge em master, candidato inteiro conferido contra a árvore revisada.
+UI e oito resultados históricos preservados; próxima lacuna é consumidor ER causal
+de T19.16, seguido da variante de canal condicionada a T19.7. Sem campanha repetida.
+Cache inelegível; S09 Tester; live DEMO/Windows físico/carteira/gradientes separados.

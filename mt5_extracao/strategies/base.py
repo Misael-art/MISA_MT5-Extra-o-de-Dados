@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 
 from . import indicators as ind
+from .temporal import TemporalPolicy
 
 SIGNAL_COLUMNS = ("entry_long", "entry_short", "exit_long", "exit_short",
                   "stop_long", "stop_short", "target_long", "target_short", "atr")
@@ -46,7 +47,11 @@ class ExitRules:
     target_points: Optional[float] = None  # pontos de cotação, ancorados no fill de entrada (T19.18)
     stop_points: Optional[float] = None    # proteção inicial calculada no fill, antes do lote (T19.19)
 
+    temporal: Optional[TemporalPolicy] = None
+
     def __post_init__(self):
+        if self.temporal is not None and not isinstance(self.temporal,TemporalPolicy):
+            raise ValueError("Política temporal exige contrato tipado, sem conversão implícita.")
         for label, points in (("Alvo", self.target_points), ("Stop", self.stop_points)):
             if points is not None and (isinstance(points, bool) or not isinstance(points, Real)
                                       or not math.isfinite(points) or points <= 0):
