@@ -228,7 +228,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.27 | Artefatos de terceiros: integridade e permissões | T20.16 | planejada; Q16 |
 | T20.28 | Restauração coerente do patrimônio de pesquisa | T20.4/16, F15 | planejada; Q16 |
 | T20.29 | Qualificação de release, instalação e leitores MT5 | T20.16/27/28 | planejada; Q16, Windows físico é pendência delimitada |
-| T20.30 | Aceite do primeiro percurso Manual reproduzível | Piloto simples F19 e T20.3/6/8/11/16/17/22; ficha F20 | planejada; aceita o recorte, não conclui toda F20 nem o piloto ampliado T19.35 |
+| T20.30 | Aceite do primeiro percurso Manual reproduzível | Piloto simples F19 e T20.3/6/8/11/16/17/22; ficha F20 | relatório inicial do percurso funcional em revisão: docs/aceite/PRIMEIRO_PERCURSO_MANUAL.md; negócios/replay/UI comprovados, integração final e pendências Q explicitadas; não conclui toda F20/T19.35 |
 | T19.57 | Parciais simples/múltiplas, proteção e contabilização do saldo | T19.56/18/19/24, livro/eventos e suporte H | planejada; UI/preset/Expert, etapas/ack/restart e reconciliação; replay nativo/DEMO |
 | T17.7 | Laboratório: referência temporal e população explícitas | T16.3, T17.3 | ✅ integrada no PR #81; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.9 | Laboratório responsivo em DPI alto e área de resultados rolável | T17.1–T17.3, T17.7 | ✅ integrada no PR #82; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
