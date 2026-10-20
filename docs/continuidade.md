@@ -2235,3 +2235,18 @@ compatibilidade de fontes/binário/parâmetros/plataforma e executar somente rep
 faltante se o backtest continuar compatível; depois integrar H35→M162 com6checks.
 Recibo docs/evidencias/T19_20_COOLDOWN_20261020.json. Sem nova rodada antes de corrigir
 pré-condição; S09 somente Tester/cache inelegível/live DEMO e Windows físico próprios.
+
+
+T19.20/02 — aceite funcional concluído: S09v1.80/44inputs, H e232bef/M4517299,
+Manual salvo/reaberto/exportado e consulta pós-iniciador. Backtest preservado
+8fefd89e e replay06b9dae1:2posições/4fills/4decisões,2recusas por espera e nova
+entrada posterior, caixa18USD/eventos/livro/CSV iguais.27PIDs próprios ausentes,
+0zombies/0reutilizados,5perfis vazios; ponte/principal e raízes preservados.
+Duas falhas preliminares de sincronização continuam arquivadas. Pré-condição
+corrigida somente no perfil próprio: catálogo nativo de símbolos da mesma DEMO/build,
+sem qualificar cache de execução/evidência; sincronização confirmada antes do Tester.
+Não afirma recuperação automática nem promoção para live.27includes/wrappers/binários
+alinhados nas duas execuções aceitas. Próximo passo: concluir workflow39507890504
+existente no runtime4517299 e integrar H35→M162 após revisão/6checks.
+S09 permanece somente Tester; Pullback neste gate/live DEMO/Windows físico/carteira/
+gradientes mantêm aceites próprios. Recibo T19_20_COOLDOWN_20261020.json.

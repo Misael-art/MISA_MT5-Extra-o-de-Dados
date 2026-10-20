@@ -44,23 +44,24 @@ sem chamar o predicado de produção. Replay compara eventos, inputs, posições
 reduções/fills/custos e resultado. Aceite requer negócios, recusa durante espera
 e nova entrada posterior conciliados, não apenas ensaio sem negócios.
 
-Estado parcial registrado em `docs/evidencias/T19_20_COOLDOWN_20261020.json`.
+Aceite funcional dirigido registrado em `docs/evidencias/T19_20_COOLDOWN_20261020.json`.
 UI salvou/reabriu/exportou Manual;44inputs efetivamente carregados. EURUSD/M5,
-14→15/10/2026, espera3600s/saída absoluta600s: backtest2posições/4fills,
-2recusas por espera e nova entrada posterior; livro/CSV/caixa18USD conciliados.
+14→15/10/2026, espera3600s/saída absoluta600s: backtest e replay2posições/4fills,
+2recusas e nova entrada posterior;4decisões/eventos/livro/CSV/caixa18USD iguais.
 Consulta após fim do iniciador:4decisões/4fills/44inputs, sem outro ensaio.
 
-**Replay bloqueado, sem aceite funcional e sem integração das PRs H35→M162.**
-Perfil privado autenticou, mas Tester recusou por falta de sincronização com servidor
-(connect status3,100). Uma preparação limitada a90s, sem Expert/ordens, também não
-confirmou sincronização; replay dependente nem iniciou. LiveUpdate disponível foi
-observado, sem atribuir-lhe causa comprovada. Não haverá outra tentativa sem corrigir
-esta pré-condição; preservar backtest e conferir compatibilidade antes de reutilizá-lo.
+Pré-condição nativa: catálogo de símbolos da mesma conta DEMO/build6274 preparado
+somente no perfil próprio, sem credenciais em texto ou alteração de principal/ponte.
+A sincronização foi explicitamente confirmada antes do replay; duas falhas anteriores
+permanecem arquivadas, sem aceite. Recuperação automática não foi implementada.
+Este catálogo nativo não qualifica cache de execução/evidência, que segue inelegível.
 
-18PIDs próprios observados ausentes/0reutilizados/0zombies,4perfis vazios e contexto
-nativo liberado; ponte e principal preservados/conectados DEMO.27includes, wrapper,
-binário e INI do backtest conferidos.124 testes dirigidos e63 regressões pertinentes
-aprovados (grupos sobrepostos),30Tools/estática127 e doctor21OK/1opcional/0falhas.
-H35 tem2checks aprovados; M162 mantém workflow39507890504 existente no runtime4517299:
-4checks aprovados, Ubuntu/Windows em andamento neste registro; não duplicar workflow.
-Revisão técnica sem achados impeditivos de código; aceite nativo continua pendente.
+27PIDs próprios observados ausentes/0reutilizados/0zombies,5perfis vazios e contexto
+nativo liberado; ponte e principal preservados/conectados DEMO.27includes, wrappers,
+binários e INIs conferidos nos dois resultados aceitos.124 testes dirigidos e63
+regressões pertinentes aprovados (grupos sobrepostos),30Tools/estática127 e doctor
+21OK/1opcional/0falhas. H35 tem2checks aprovados; M162 mantém workflow39507890504
+existente no runtime4517299, sem novo dispatch. Integração H35→M162 condicionada
+à revisão e aos6checks. Aceite limitado ao perfil/cenário: S09 continua somente Tester.
+Pedido posterior de execução ao vivo DEMO tem avaliação/aceite próprios, com Expert
+compatível; não remove os bloqueios do S09 ou do adaptador piloto.

@@ -1,7 +1,7 @@
 {
   "task": "T19.20/02",
-  "status": "partial_native_backtest_reconciled_replay_infrastructure_blocked",
-  "at": "2026-10-20T22:30:55.706292+00:00",
+  "status": "functional_native_backtest_replay_accepted_checks_pending",
+  "at": "2026-10-20T22:40:07.211561+00:00",
   "source": {
     "m": "4517299f7c9e23aa8c0a45f6059ec5a8738f388d",
     "h": "e232bef65cef23bff34df99ce572751aa1d73976",
@@ -20,7 +20,7 @@
     "merged": false
   },
   "ui": {
-    "run": "8fefd89ec97742389b32715567399ba4",
+    "run": "06b9dae1d40a4bc3a00bb6fba740e6c7",
     "policy": [
       {
         "mode": "cooldown_v1",
@@ -302,7 +302,7 @@
     "cache_eligible": false
   },
   "replay": {
-    "accepted": false,
+    "accepted": true,
     "initial_failure": "Tester not synchronized with trade server [connect status3,100]; no report/agent run",
     "bounded_recovery": "Own private terminal authenticated but did not confirm synchronization in90s; replay not started",
     "attempts": [
@@ -322,15 +322,289 @@
     "main_bridge_connected_demo": true,
     "liveupdate_available_observed": true,
     "liveupdate_is_proven_cause": false,
-    "required_action": "Restore verified synchronization of isolated native terminal before a single directed replay; verify platform/source/inputs compatibility before reusing backtest. Do not touch bridge/main/third-party sessions or repeat dependent attempts without changed precondition."
+    "required_action": "Native replay completed; finish existing required checks and integrate H35 then M162. Native symbol synchronization remains a precondition; automatic recovery not claimed.",
+    "resolved": {
+      "precondition": "matching DEMO/build native symbol metadata copied only into own isolated profile; synchronization explicitly confirmed before Tester",
+      "execution_cache_eligible": false,
+      "platform_build": 6274,
+      "metadata": [
+        {
+          "kind": "symbols",
+          "bytes": 5521408,
+          "sha256": "562711bea1a9f387e22bff97450f8d2d4c490219dc080b2e494a98cdaae45074"
+        },
+        {
+          "kind": "selected",
+          "bytes": 51682,
+          "sha256": "2f80e2ff672c10cd46312d5d025ab33061c84b32eb1938d8c999ffd52019bafd"
+        }
+      ]
+    },
+    "evidence": {
+      "run_id": "06b9dae1d40a4bc3a00bb6fba740e6c7",
+      "mode": "replay",
+      "status": "reconciled_replay",
+      "trades": 2,
+      "net_profit": 18.0,
+      "currency": "USD",
+      "cooldown_events": [
+        {
+          "event_at": 1791969300,
+          "at_msc": 1791969600000,
+          "direction": -1,
+          "last_close_msc": 0,
+          "seconds": 3600,
+          "allowed": true,
+          "reason": "allowed"
+        },
+        {
+          "event_at": 1791970200,
+          "at_msc": 1791970500000,
+          "direction": 1,
+          "last_close_msc": 1791970200000,
+          "seconds": 3600,
+          "allowed": false,
+          "reason": "cooldown"
+        },
+        {
+          "event_at": 1791972600,
+          "at_msc": 1791972900000,
+          "direction": -1,
+          "last_close_msc": 1791970200000,
+          "seconds": 3600,
+          "allowed": false,
+          "reason": "cooldown"
+        },
+        {
+          "event_at": 1792011900,
+          "at_msc": 1792012200000,
+          "direction": 1,
+          "last_close_msc": 1791970200000,
+          "seconds": 3600,
+          "allowed": true,
+          "reason": "allowed"
+        }
+      ],
+      "cooldown_enabled": true,
+      "cooldown_acceptance": true,
+      "reference_match": true,
+      "ledger": [
+        {
+          "direction": -1,
+          "entry_time": "2026-10-14 09:20:00",
+          "exit_time": "2026-10-14 09:30:00",
+          "entry_price": 1.12064,
+          "exit_price": 1.12066,
+          "stop_price": 1.12564,
+          "target_price": 1.11064,
+          "volume": 0.25,
+          "pnl": -0.5,
+          "exit_reason": null
+        },
+        {
+          "direction": 1,
+          "entry_time": "2026-10-14 21:10:00",
+          "exit_time": "2026-10-14 21:20:00",
+          "entry_price": 1.11412,
+          "exit_price": 1.11486,
+          "stop_price": 1.10912,
+          "target_price": 1.12412,
+          "volume": 0.25,
+          "pnl": 18.5,
+          "exit_reason": null
+        }
+      ],
+      "deals": [
+        {
+          "position": 2,
+          "deal": 2,
+          "at_msc": 1791969600000,
+          "entry": 0,
+          "type": 1,
+          "volume": 0.25,
+          "price": 1.12064,
+          "profit": 0.0,
+          "commission": 0.0,
+          "swap": 0.0,
+          "fee": 0.0,
+          "digits": 5
+        },
+        {
+          "position": 2,
+          "deal": 3,
+          "at_msc": 1791970200000,
+          "entry": 1,
+          "type": 0,
+          "volume": 0.25,
+          "price": 1.12066,
+          "profit": -0.5,
+          "commission": 0.0,
+          "swap": 0.0,
+          "fee": 0.0,
+          "digits": 5
+        },
+        {
+          "position": 4,
+          "deal": 4,
+          "at_msc": 1792012200000,
+          "entry": 0,
+          "type": 0,
+          "volume": 0.25,
+          "price": 1.11412,
+          "profit": 0.0,
+          "commission": 0.0,
+          "swap": 0.0,
+          "fee": 0.0,
+          "digits": 5
+        },
+        {
+          "position": 4,
+          "deal": 5,
+          "at_msc": 1792012800000,
+          "entry": 1,
+          "type": 1,
+          "volume": 0.25,
+          "price": 1.11486,
+          "profit": 18.5,
+          "commission": 0.0,
+          "swap": 0.0,
+          "fee": 0.0,
+          "digits": 5
+        }
+      ],
+      "sizing": [
+        {
+          "event_at": 1791969300,
+          "mode": "fixed_volume",
+          "requested_volume": 0.25,
+          "planned_volume": 0.25,
+          "filled_volume": 0.25,
+          "risk_money": 125.0,
+          "risk_budget": 500.0,
+          "margin_required": 280.16,
+          "margin_free": 100000.0,
+          "margin_known": true,
+          "volume_min": 0.01,
+          "volume_max": 500.0,
+          "volume_step": 0.01,
+          "spec_known": true
+        },
+        {
+          "event_at": 1792011900,
+          "mode": "fixed_volume",
+          "requested_volume": 0.25,
+          "planned_volume": 0.25,
+          "filled_volume": 0.25,
+          "risk_money": 125.0,
+          "risk_budget": 499.9975,
+          "margin_required": 278.53,
+          "margin_free": 99999.5,
+          "margin_known": true,
+          "volume_min": 0.01,
+          "volume_max": 500.0,
+          "volume_step": 0.01,
+          "spec_known": true
+        }
+      ],
+      "temporal_events": [
+        {
+          "event_at": 1791969300,
+          "at_msc": 1791970200000,
+          "decision_msc": 1791970200000,
+          "reason": "time_absolute",
+          "state": "pending",
+          "age_ms": 600000,
+          "net_observed": -0.5,
+          "before": 0.25,
+          "filled": 0.0,
+          "remaining": 0.25,
+          "position": 2,
+          "history_reduction": 0.0,
+          "price": 0.0,
+          "cash": 0.0,
+          "costs": 0.0,
+          "realized": 0.0,
+          "floating": -0.5,
+          "swap": 0.0,
+          "history_count": 1
+        },
+        {
+          "event_at": 1791969300,
+          "at_msc": 1791970200000,
+          "decision_msc": 1791970200000,
+          "reason": "time_absolute",
+          "state": "confirmed",
+          "age_ms": 600000,
+          "net_observed": -0.5,
+          "before": 0.25,
+          "filled": 0.25,
+          "remaining": 0.0,
+          "position": 2,
+          "history_reduction": 0.25,
+          "price": 1.12066,
+          "cash": -0.5,
+          "costs": 0.0,
+          "realized": 0.0,
+          "floating": -0.5,
+          "swap": 0.0,
+          "history_count": 1
+        },
+        {
+          "event_at": 1792011900,
+          "at_msc": 1792012800000,
+          "decision_msc": 1792012800000,
+          "reason": "time_absolute",
+          "state": "pending",
+          "age_ms": 600000,
+          "net_observed": 18.5,
+          "before": 0.25,
+          "filled": 0.0,
+          "remaining": 0.25,
+          "position": 4,
+          "history_reduction": 0.0,
+          "price": 0.0,
+          "cash": 0.0,
+          "costs": 0.0,
+          "realized": 0.0,
+          "floating": 18.5,
+          "swap": 0.0,
+          "history_count": 1
+        },
+        {
+          "event_at": 1792011900,
+          "at_msc": 1792012800000,
+          "decision_msc": 1792012800000,
+          "reason": "time_absolute",
+          "state": "confirmed",
+          "age_ms": 600000,
+          "net_observed": 18.5,
+          "before": 0.25,
+          "filled": 0.25,
+          "remaining": 0.0,
+          "position": 4,
+          "history_reduction": 0.25,
+          "price": 1.11486,
+          "cash": 18.5,
+          "costs": 0.0,
+          "realized": 0.0,
+          "floating": 18.5,
+          "swap": 0.0,
+          "history_count": 1
+        }
+      ],
+      "cash_reconciled": true,
+      "functional_cycle": true,
+      "allows_live": false,
+      "cache_eligible": false
+    }
   },
   "resources": {
     "observed": {
-      "gone": 18,
+      "gone": 27,
       "reused": 0,
       "zombie": 0
     },
-    "own_profiles_without_processes": 4,
+    "own_profiles_without_processes": 5,
     "bridge_after_all_initiators_exited": {
       "demo": true,
       "connected": true,
@@ -338,8 +612,8 @@
       "principal_created": 1792460506.1
     },
     "native_context_marker_absent": true,
-    "functional_acceptance": false,
-    "replay_pending": true
+    "functional_acceptance": true,
+    "replay_pending": false
   },
   "alignment": [
     {
@@ -377,8 +651,44 @@
       },
       "binary_sha256": "b2964d756252cedd2ed246747fabb211edaa0a5c3db79224f7c56068544b671e",
       "wrapper_sha256": "837a900121ff580386eeb16cbb59c19cb8ba92d478b8ea27b437cc95f13c46c1",
-      "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session",
-      "includes_count": 27
+      "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session"
+    },
+    {
+      "mode": "replay",
+      "session": "e9a5a28f4dd54642825b647a9207ddd0",
+      "reviewed_source_and_wrapper_exact": true,
+      "installed_includes": {
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_SessionEntryPolicy.mqh": "9f23287f4d1ee9eb21a9feda254861b3ea8cb1908a911bc0dc1a1fb677a930dc",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_ExecutionPlan.mqh": "fb213bdf295804e93d21d7ceaf898ed81ae746b2f3331b04a9eeb560a1289639",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_MarketContext.mqh": "fd1b0ea9e3a0f53b8e96fe4e03428f986a9a50a4f249e98be2c775890b3ac924",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_NativeBase.mqh": "1236a3fbcbeac07b8e9a7e388e68e34a68184b1267da194b54ac11719f788672",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_PartialPolicy.mqh": "8fe173ac45ec60c99b29c3f935c38c2f48580b8132eda8bedb5407f1d4460329",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_PositionPolicy.mqh": "b182eeacca3c5d1f17c49b915531ba139672bb269d09459b687a47a97779d717",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_SignalIntent.mqh": "7e4808bd839dd96bc7a05cd8d9f63c1a6cf0611628d5877ead17a7ec535002f8",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_TemporalErPolicy.mqh": "291ccb0d986b85e06a108d6d372ddd7ecd1f02ecbb033625e187e162b409b335",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_TemporalPolicy.mqh": "c92097a640923fb2b61143392ba278f2f7727fe4724a92134814e80cf1abf528",
+        "MQL5/Include/Framework/HADOUKEN/Contracts/HDK_VolumePolicy.mqh": "099e6cd2b5ed314bab113800a4347813a61b579ed32fa3db7183b420709df600",
+        "MQL5/Include/Framework/HADOUKEN/Safety/HDK_ExecutionResult.mqh": "9b39b93139a9a3e2f84c7434d66ecbbf9c911678af1c29270e007ae0bf2f944c",
+        "MQL5/Include/Framework/HADOUKEN/Safety/HDK_Logger.mqh": "9412465708b5fb3fb597a41fb879308a34ca091b9d5ecc8779da7b55fb1199d0",
+        "MQL5/Include/Framework/HADOUKEN/Safety/HDK_RiskDecision.mqh": "ad26a96120daf9a4ad87405f7511c1353ea3b75626065cb9c00b7140c5477966",
+        "MQL5/Include/Framework/HADOUKEN/Safety/HDK_RiskGuard.mqh": "fb8e733f47908db9e3e200387baf2a9b75f6d2164aed8490bad0f7cd67418126",
+        "MQL5/Include/Framework/HADOUKEN/Safety/HDK_SafeExecutor.mqh": "148df0db66aa75d5ce8e231538e1f9451ece41d9cfcc359eccc005e42173912a",
+        "MQL5/Include/Framework/HADOUKEN/Safety/HDK_SafetyTypes.mqh": "6140f903bf44553fec912f37ad6b0fbbcb45d80349f75baf64337306dce541ad",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeAtrTemporalPolicy.mqh": "d7c7be05361f6a16471af5066f481d3beb50fd193b2c37df3f41bee11d9fec06",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeBaseAdapter.mqh": "57b23648269dbb402113d4e0f287154c755e18ddea1f74b06159419ce6023979",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeCooldownEntryPolicy.mqh": "d37de3c1c823f590a0b72303a50902097715f7e225c806899e660e10ace47e1b",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeDonchianTemporalPolicy.mqh": "5b6a79cb71acdd58a218ea2f2f5449184ae255db5237dba8ce1662c8795e3c0a",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeEfficiencyTemporalPolicy.mqh": "fd9bd6a81c06a2bd2d9d797c915975f2c24e04e10f05b0a08f0694c3136da665",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativePartialPolicy.mqh": "60a80ee5d3f298f0b6f0cf3cf2b2f82d2bd6c5971a35ba55c32475f24e27ab8b",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeSessionEntryPolicy.mqh": "e263cf19970a5487f2d0764b90ce433870f38928a73bf25c6fff7d3a50409d9d",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_NativeTemporalPolicy.mqh": "030cca8a1eba32298813f09055205c6c6fe5cadac132151e8ff3637dd5ebc0bf",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_PartialObservation.mqh": "bfd22221a1067a15fd8ab89c164ce9900c37504e9a76750f9f7b3c2fe6bb0fff",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh": "efbb1ab0488ce1b49509d496de961ad394e85ace1ffb4b3b8bdc7612413382c3",
+        "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd"
+      },
+      "binary_sha256": "c1c9fe85263a3ae29dc43dab648a67adb5b1f87ab3a0e65100b0eec4ef8e9ed6",
+      "wrapper_sha256": "ad60218b43c928f700ea085f911b55dff0ac23fcfa3d2a500732b1a4f733678f",
+      "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session"
     }
   ],
   "checks": {
@@ -414,7 +724,6 @@
   "limits": [
     "S09 Tester only",
     "cache ineligible",
-    "no functional cooldown replay acceptance",
     "Pullback this gate/live DEMO/physical Windows/portfolio/gradients keep own acceptance",
     "no scheduled close policy in this slice"
   ]
