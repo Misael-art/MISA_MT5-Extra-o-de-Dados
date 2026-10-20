@@ -2252,6 +2252,20 @@ S09 permanece somente Tester; Pullback neste gate/live DEMO/Windows físico/cart
 gradientes mantêm aceites próprios. Recibo T19_20_COOLDOWN_20261020.json.
 
 
+Fechamento T19.20/02: seis checks existentes aprovados no runtime4517299,
+workflow39507890504, com Windows CI. H35 integrada e5f4842; consumidor M162 revisado,
+fonte/testes e par nativo conciliados. Alterações posteriores somente documentais.
+Manual configura espera após fechamento total, salva/reabre/exporta e consulta
+origem/fechamento/liberação; parcial não inicia/reinicia. Aceite limitado ao cenário
+com catálogo nativo preparado; recuperação automática universal não entregue.
+Pedido posterior de ao vivo DEMO tem estado próprio: EMA+ATR/Conservador passou no
+backtest do contexto, mas replay de pré-aceite não iniciou por sincronização privada
+indisponível em90s. Nenhuma ordem ao vivo foi enviada. S09/Pullback Nativo/adaptador
+piloto seguem somente Tester; cache inelegível, REAL proibida e Windows físico próprio.
+Próximo bloqueador operacional: sincronização nativa estável do perfil próprio;
+sem nova tentativa dependente até mudar a pré-condição. Sem nova campanha numérica.
+
+
 Complemento T8.7 solicitado pelo proprietário: ao vivo DEMO tem aceite próprio.
 Expert compatível proposto EMA+ATR/EURUSD/H1, preset conservador existente0,25%,
 sem novos limites. UI/backtest dirigido13→15/10/2026:1posição/-250,92USD/12inputs,
@@ -2265,3 +2279,5 @@ conta/contexto/proteções/carteira → observação DEMO pela UI. Não repetir 
 sem mudança da pré-condição. S09/Pullback Nativo/adaptador piloto seguem Tester-only;
 cache inelegível, REAL proibida, Windows físico/carteira/gradientes próprios.
 Contrato docs/sdk/demo_operacional.md; recibo T8_7_DEMO_PARCIAL_20261020.json.
+
+Integração anterior conferida: H35/e5f4842 → M162/a0cd3c4, seis checks no runtime4517299, árvore final revisada idêntica. Este complemento T8.7 altera apenas documentação e não promove execução/aceite ao vivo.

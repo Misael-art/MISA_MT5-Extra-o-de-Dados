@@ -952,3 +952,17 @@ alinhados nas duas execuções aceitas. Próximo passo: concluir workflow3950789
 existente no runtime4517299 e integrar H35→M162 após revisão/6checks.
 S09 permanece somente Tester; Pullback neste gate/live DEMO/Windows físico/carteira/
 gradientes mantêm aceites próprios. Recibo T19_20_COOLDOWN_20261020.json.
+
+
+Fechamento T19.20/02: seis checks existentes aprovados no runtime4517299,
+workflow39507890504, com Windows CI. H35 integrada e5f4842; consumidor M162 revisado,
+fonte/testes e par nativo conciliados. Alterações posteriores somente documentais.
+Manual configura espera após fechamento total, salva/reabre/exporta e consulta
+origem/fechamento/liberação; parcial não inicia/reinicia. Aceite limitado ao cenário
+com catálogo nativo preparado; recuperação automática universal não entregue.
+Pedido posterior de ao vivo DEMO tem estado próprio: EMA+ATR/Conservador passou no
+backtest do contexto, mas replay de pré-aceite não iniciou por sincronização privada
+indisponível em90s. Nenhuma ordem ao vivo foi enviada. S09/Pullback Nativo/adaptador
+piloto seguem somente Tester; cache inelegível, REAL proibida e Windows físico próprio.
+Próximo bloqueador operacional: sincronização nativa estável do perfil próprio;
+sem nova tentativa dependente até mudar a pré-condição. Sem nova campanha numérica.

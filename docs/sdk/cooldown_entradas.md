@@ -61,7 +61,8 @@ nativo liberado; ponte e principal preservados/conectados DEMO.27includes, wrapp
 binários e INIs conferidos nos dois resultados aceitos.124 testes dirigidos e63
 regressões pertinentes aprovados (grupos sobrepostos),30Tools/estática127 e doctor
 21OK/1opcional/0falhas. H35 tem2checks aprovados; M162 mantém workflow39507890504
-existente no runtime4517299, sem novo dispatch. Integração H35→M162 condicionada
-à revisão e aos6checks. Aceite limitado ao perfil/cenário: S09 continua somente Tester.
+existente no runtime4517299, aprovado nos seis checks sem novo dispatch. H35 integrada
+e5f4842; M162 revisada e pronta para integração. Aceite limitado ao perfil/cenário:
+S09 continua somente Tester.
 Pedido posterior de execução ao vivo DEMO tem avaliação/aceite próprios, com Expert
 compatível; não remove os bloqueios do S09 ou do adaptador piloto.

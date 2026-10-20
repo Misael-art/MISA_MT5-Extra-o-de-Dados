@@ -1,7 +1,7 @@
 {
   "task": "T19.20/02",
-  "status": "functional_native_backtest_replay_accepted_checks_pending",
-  "at": "2026-10-20T22:40:07.211561+00:00",
+  "status": "functional_native_accepted_all_required_checks_passed_ready_to_integrate",
+  "at": "2026-10-20T23:14:21.898288+00:00",
   "source": {
     "m": "4517299f7c9e23aa8c0a45f6059ec5a8738f388d",
     "h": "e232bef65cef23bff34df99ce572751aa1d73976",
@@ -696,11 +696,8 @@
   "checks": {
     "h_mandatory_success": 2,
     "m_workflow": 39507890504,
-    "m_mandatory_success": 4,
-    "m_existing_pending": [
-      "Testes (ubuntu-latest)",
-      "Testes (windows-latest)"
-    ],
+    "m_mandatory_success": 6,
+    "m_existing_pending": [],
     "m_checked_source": "4517299f7c9e23aa8c0a45f6059ec5a8738f388d",
     "new_dispatches": 0,
     "local_directed": {
@@ -721,7 +718,44 @@
       "ok": 21,
       "optional_warning": 1,
       "failures": 0
-    }
+    },
+    "detailed_log_status": "TLS handshake timeout retrieving optional full run log; no rerun, no invented counters; all6required job results verified by API",
+    "m_workflow_status": "success",
+    "m_workflow_url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39507890504",
+    "jobs": [
+      {
+        "name": "Lint dos instaladores",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39507890504/job/118921319879"
+      },
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39507890504/job/118921320233"
+      },
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39507890504/job/118921320308"
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39507890504/job/118921320348"
+      },
+      {
+        "name": "Testes (windows-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39507890504/job/118921320374"
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39507890504/job/118921320380"
+      }
+    ],
+    "test_summaries": [],
+    "runtime_to_final_head": "documentation only; runtime/tests unchanged after checked source"
   },
   "limits": [
     "S09 Tester only",

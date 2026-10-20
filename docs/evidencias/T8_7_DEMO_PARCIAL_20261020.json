@@ -129,5 +129,13 @@
     "no global stop or third-party session termination",
     "cache ineligible",
     "physical Windows and portfolio/gradients keep own acceptance"
-  ]
+  ],
+  "dependency_integration": {
+    "h35": "e5f48424b6c088e4d9d706ea462e8e5f6ca8a80c",
+    "m162": "a0cd3c4762a37c334d64f53a82db05d4c2ce7b7b",
+    "runtime_source": "4517299f7c9e23aa8c0a45f6059ec5a8738f388d",
+    "required_checks_approved": 6,
+    "workflow": 39507890504,
+    "runtime_unchanged_in_this_pr": true
+  }
 }
