@@ -2117,3 +2117,14 @@ Ubuntu1895/199 skips, Windows CI2012/82 skips, PostgreSQL52; sem novo workflow
 ou repetição de campanha. Base master incorporada por merge, conflitos somente
 documentais resolvidos preservando I10 e TM06; código final idêntico ao fonte
 revisado/testado/nativo. Delta posterior somente docs. Windows físico segue pendente.
+
+T19.16/TM07 — ATR limitado em implementação/revisão: novo perfil S09v1.60,
+35 inputs; prazo base × ATR de entrada/ATR conhecido, mínimo e teto absoluto
+obrigatórios desde primeiro fill. Base/semente250 fechadas congeladas; ATR14
+canônico/Decimal, sem reset por parcial/reinício/correção. UI Manual opt-in,
+consulta de contexto e recibo/replay pelo serviço existente. 180 testes focados
+Python/UI/contratos/recibos, 28 Tools nativos e estática124 aprovados; compilação
+isolada aprovada, 2 PIDs próprios observados encerrados. Ensaio funcional dirigido
+e checks finais pendentes. H#31/runtime11d0c40; não altera painel ou Pullback.
+S09 somente Tester; cache inelegível; live DEMO/Windows físico/carteira/gradientes
+e relógios volumétricos mantêm aceites próprios. Contrato docs/sdk/tempo_atr.md.

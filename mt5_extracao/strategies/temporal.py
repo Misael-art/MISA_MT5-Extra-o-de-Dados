@@ -3,7 +3,7 @@ from dataclasses import dataclass,asdict
 from decimal import Decimal,ROUND_HALF_UP
 import math
 
-REASONS=("hold","time_absolute","time_progress","time_gain","time_loss","time_tie","time_er","time_donchian")
+REASONS=("hold","time_absolute","time_progress","time_gain","time_loss","time_tie","time_er","time_donchian","time_atr")
 CLOCK_FIELDS=("max_seconds","progress_seconds","gain_seconds","loss_seconds","tie_seconds")
 @dataclass(frozen=True)
 class TemporalPolicy:

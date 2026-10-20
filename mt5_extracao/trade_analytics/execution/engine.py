@@ -27,7 +27,7 @@ from mt5_extracao.strategies.temporal import TemporalPolicy,source_age_ms
 from mt5_extracao.strategies.equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 _PRICE_EXITS = {EXIT_REASONS[k] for k in ("stop", "breakeven", "trailing", "target")}
-_OPEN_EXITS = {EXIT_REASONS[k] for k in ("signal","time_absolute","time_progress","time_gain","time_loss","time_tie","time_er","time_donchian")}                         # saem na abertura da barra
+_OPEN_EXITS = {EXIT_REASONS[k] for k in ("signal","time_absolute","time_progress","time_gain","time_loss","time_tie","time_er","time_donchian","time_atr")}                         # saem na abertura da barra
 _CLOSE_EXITS = {EXIT_REASONS[k] for k in ("time", "eod", "end")}   # saem no fechamento da barra
 
 
