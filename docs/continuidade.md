@@ -1962,6 +1962,11 @@ nativo. Reutilizar trajetórias/relógios existentes; não recriar T19.14 ou qua
 cache para prosseguir. Os limites do aceite histórico permanecem os do recibo.
 
 
+T19.57 — corretivo pré-T19.15 na re-simulação: parcial inviável preserva SL/estado;
+BE só acompanha close_part efetivo. Corrige dois casos long/short de lote indivisível,
+com controles de redução viável.19 testes pertinentes aprovados; código nativo e
+backtester já aprovados preservados, sem repetir seus ensaios. Dados/resultados antigos
+não são regravados. Cache permanece inelegível e modalidades mantêm aceites próprios.
 T20.25 — scanner durante encerramento (2026-10-20): ensaio dirigido T19.15
 interrompido antes do Tester ao observar cmdline vazio de processo em término.
 Linux agora ignora somente zombie ou processo comprovadamente ausente; processo
