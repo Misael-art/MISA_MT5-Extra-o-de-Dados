@@ -1989,3 +1989,18 @@ Windows CI de M#153 revelou timeout em test_cli_batch: o processo falso simulava
 Linux mas varria processos reais do runner. A fixture de comandos falsos agora
 usa inventário vazio, substituível pelos testes explícitos de ownership. 74 testes
 de lote/isolamento/controles aprovados; código de proteção real preservado.
+
+
+T19.15 inicial — aceite histórico dirigido concluído: S09v1.30 permite configurar
+Manual nomeado com prazo absoluto, lucro mínimo e gain/loss/empate; salvar/reabrir/
+exportar e conferir decisões/confirmações na UI. Quatro recortes, oito resultados
+persistidos,4 posições/8fills cada;30 inputs reais, CSV/livro/saldo reconciliados.
+42 PIDs próprios observados ausentes, scanner final vazio, ponte/principal e WIP
+preservados. Backtest de progresso recuperado dos artefatos após SIGTERM do coordenador
+(causa não comprovada), sem reexecutar Tester; ausência de recursos conferida após
+a interrupção. H#27 integrada7759344; depende de M155→M153, checks M existentes
+aguardados antes de integrar M154. Fonte Mffcbb0c/H09068ad; fixture/docs posteriores
+não alteram runtime. Recibo T19_15_TEMPORAL_20261020.json. Cache inelegível; S09
+Tester; live DEMO, Windows físico, carteira e gradientes específicos. Próxima ficha
+elegível a delimitar: T19.16 depende de T19.15 e dos contratos ER/Donchian/ATR;
+confirmar dependências antes de implementar, sem qualificar cache por otimização.

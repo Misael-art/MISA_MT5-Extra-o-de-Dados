@@ -183,7 +183,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | ✅ [PR126](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/126), aceite final70b2191 após correção127/master2d7412f; seis checks,1412 Ubuntu/36PG/1514Windows CI, cov77,64%/73,36%;291 fontes/testes idênticos;62 focados+34 composição/doctor21/1/0; custo local279/216/2ms, sem meta universal; Windows físico pendente |
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
-| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | planejadas |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial com UI/S09/replay conciliado na PR154, H27 integrada; CI M final pendente. T19.16 ainda planejada |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
 | T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
@@ -3837,3 +3837,18 @@ Windows CI de M#153 revelou timeout em test_cli_batch: o processo falso simulava
 Linux mas varria processos reais do runner. A fixture de comandos falsos agora
 usa inventário vazio, substituível pelos testes explícitos de ownership. 74 testes
 de lote/isolamento/controles aprovados; código de proteção real preservado.
+
+
+T19.15 inicial — aceite histórico dirigido concluído: S09v1.30 permite configurar
+Manual nomeado com prazo absoluto, lucro mínimo e gain/loss/empate; salvar/reabrir/
+exportar e conferir decisões/confirmações na UI. Quatro recortes, oito resultados
+persistidos,4 posições/8fills cada;30 inputs reais, CSV/livro/saldo reconciliados.
+42 PIDs próprios observados ausentes, scanner final vazio, ponte/principal e WIP
+preservados. Backtest de progresso recuperado dos artefatos após SIGTERM do coordenador
+(causa não comprovada), sem reexecutar Tester; ausência de recursos conferida após
+a interrupção. H#27 integrada7759344; depende de M155→M153, checks M existentes
+aguardados antes de integrar M154. Fonte Mffcbb0c/H09068ad; fixture/docs posteriores
+não alteram runtime. Recibo T19_15_TEMPORAL_20261020.json. Cache inelegível; S09
+Tester; live DEMO, Windows físico, carteira e gradientes específicos. Próxima ficha
+elegível a delimitar: T19.16 depende de T19.15 e dos contratos ER/Donchian/ATR;
+confirmar dependências antes de implementar, sem qualificar cache por otimização.
