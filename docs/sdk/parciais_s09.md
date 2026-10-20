@@ -66,3 +66,8 @@ aprovados. Aguardar checks obrigatórios M antes de integrar; uma tarefa por PR.
 Registro T19_57_PARCIAIS_20261020.json. Cache inelegível; S09 somente Tester.
 Pullback permanece bloqueado no adaptador até seu aceite específico. Ao vivo DEMO,
 restart de processo e Windows físico mantêm suas coberturas próprias.
+
+Referência suplementar de base: `../evidencias/T19_57_BASE_REFERENCE.cpp` executa
+o header H891 real pelo mesmo shim C++ dos testes, contra Decimal independente.
+Com inicial3/saldo2/fração50%/passo0,1, reduz1,5 pela base inicial e1,0 pelo saldo.
+Resultados/hashes em `../evidencias/T19_57_BASE_REFERENCE.json`; sem novo Tester.
