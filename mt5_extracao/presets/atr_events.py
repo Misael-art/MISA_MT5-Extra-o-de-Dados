@@ -4,8 +4,8 @@ from pathlib import Path
 import re
 from ..robots import mql
 
-FIELDS=set("event_at position at_msc initial base_known seed baseline_bar current_open baseline current horizon times highs lows closes".split())
-INTS=set("event_at position at_msc initial base_known seed baseline_bar current_open horizon".split())
+FIELDS=set("event_at position at_msc initial base_known seed baseline_bar current_open baseline current horizon count".split())
+INTS=set("event_at position at_msc initial base_known seed baseline_bar current_open horizon count".split())
 
 def reference(highs,lows,closes):
     with localcontext() as ctx:
@@ -26,11 +26,24 @@ def observations(directory,by_origin,policy):
     text="\n".join(mql.read_text(p) for p in (Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     matches=list(re.finditer(r"HDK_ATR (event_at=[^\r\n]+)",text));result=[];first={};last={}
     if text.count("HDK_ATR event_at=")!=len(matches):raise ValueError("Journal ATR truncado/desconhecido; preserve os logs.")
-    for match in matches:
+    packets=list(re.finditer(r"HDK_ATR_SOURCE position=(\d+) at_msc=(\d+) field=(times|highs|lows|closes) offset=(\d+) values=([^\s]+)",text))
+    if text.count("HDK_ATR_SOURCE ")!=len(packets):raise ValueError("Bloco de fonte ATR truncado/desconhecido.")
+    used=0
+    for index,match in enumerate(matches):
         tokens=[part.split("=",1) for part in match.group(1).split()];row=dict(tokens)
         if len(tokens)!=len(row) or set(row)!=FIELDS:raise ValueError("Campos do journal ATR ausentes/desconhecidos.")
         for key in INTS:row[key]=int(row[key])
         for key in ("baseline","current"):row[key]=Decimal(row[key])
+        end=matches[index+1].start() if index+1<len(matches) else len(text)
+        source={k:[] for k in ("times","highs","lows","closes")}
+        for packet in packets:
+            if not match.end()<=packet.start()<end:continue
+            pid,at,field,offset,values=packet.groups()
+            if int(pid)!=row["position"] or int(at)!=row["at_msc"] or int(offset)!=len(source[field]):
+                raise ValueError("Bloco ATR fora de ordem, repetido ou de outra observação/posição.")
+            source[field].extend(values.split(","));used+=1
+        if any(len(v)!=row["count"] for v in source.values()):raise ValueError("Fonte ATR incompleta; não qualificar decisão sem todos os blocos.")
+        row.update({k:",".join(v) for k,v in source.items()})
         row["times"]=[int(v) for v in row["times"].split(",")]
         vectors={k:[Decimal(v) for v in row[k].split(",")] for k in ("highs","lows","closes")}
         n=len(row["times"]);origin,pid,at=row["event_at"],row["position"],row["at_msc"]
@@ -61,6 +74,7 @@ def observations(directory,by_origin,policy):
         for key,values in vectors.items():row[key]=[str(v) for v in values]
         for key in ("baseline","current"):row[key]=str(row[key])
         result.append(row);last[pid]=row
+    if used!=len(packets):raise ValueError("Fonte ATR sem cabeçalho próprio; preserve o journal.")
     return result
 
 def context(suffix,decision,pid,rows):

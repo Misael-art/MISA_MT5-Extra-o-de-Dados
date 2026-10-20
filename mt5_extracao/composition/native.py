@@ -61,8 +61,8 @@ DONCHIAN_INPUTS={"channel_idle_seconds":("InpTimeDonchianIdleSeconds","int","sec
 DONCHIAN_TEMPORAL_INPUT_TYPES={**ER_TEMPORAL_INPUT_TYPES,**{name:kind for name,kind,unit in DONCHIAN_INPUTS.values()}}
 
 ATR_TEMPORAL_ROBOT_VERSION="1.60"
-ATR_TEMPORAL_APPROVED_FINGERPRINT="de49a084eb081a6b"
-ATR_TEMPORAL_HADOUKEN_REVISION="11d0c40b8c11559a7578cc6e1e5703753d5c6e81"
+ATR_TEMPORAL_APPROVED_FINGERPRINT="db930f548c8e10d0"
+ATR_TEMPORAL_HADOUKEN_REVISION="8b40cacf14d2ebcd283191d880f854fe0964317f"
 ATR_INPUTS={"atr_base_seconds":("InpTimeATRBaseSeconds","int","second"),
             "atr_min_seconds":("InpTimeATRMinSeconds","int","second")}
 ATR_TEMPORAL_INPUT_TYPES={**DONCHIAN_TEMPORAL_INPUT_TYPES,**{name:kind for name,kind,unit in ATR_INPUTS.values()}}

@@ -2128,3 +2128,11 @@ isolada aprovada, 2 PIDs próprios observados encerrados. Ensaio funcional dirig
 e checks finais pendentes. H#31/runtime11d0c40; não altera painel ou Pullback.
 S09 somente Tester; cache inelegível; live DEMO/Windows físico/carteira/gradientes
 e relógios volumétricos mantêm aceites próprios. Contrato docs/sdk/tempo_atr.md.
+
+Ensaio TM07 preliminar recusado: saídas ATR ocorreram, mas snapshots extensos
+da fonte não apareceram no journal real; replay dependente interrompido. Fonte
+agora em blocos curtos identificados; teste de tamanho reproduziu o defeito e
+passou com a correção. 16 testes de recibo incluindo blocos ausentes/repetidos/
+truncados aprovados. Perfil corrigido db930f548c8e10d0. Recompilação e mesmo par
+funcional serão repetidos pela mudança concreta de runtime; preliminar preservado
+sem aceite. CI final será o da revisão corrigida, sem reaproveitar fonte invalidada.

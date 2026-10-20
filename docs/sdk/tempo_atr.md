@@ -29,3 +29,11 @@ Pullback temporal não é liberado. S09 somente Tester; live DEMO, Windows físi
 carteira e gradientes exigem aceites próprios. Cache continua inelegível.
 
 Estado inicial: implementação/validação em andamento; sem aceite operacional TM07.
+
+Correção do ensaio preliminar: snapshots ATR extensos não apareceram no journal
+real do agente, embora a saída tenha ocorrido. O consumidor recusou o aceite e
+o replay dependente não iniciou. Fonte passa a usar cabeçalho + blocos limitados
+a800 caracteres de dados, com posição/instante/campo/offset/contagem completos;
+o recibo rejeita bloco ausente/repetido/truncado ou de outra observação.
+O ensaio preliminar é preservado sem aceite. O par final será repetido somente
+pela mudança concreta deste protocolo de runtime.
