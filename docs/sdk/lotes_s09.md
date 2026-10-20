@@ -1,8 +1,16 @@
 # T19.56 inicial — lotes S09 no Tester
 
-Em preparação, dependente do corretivo #148 e da HADOUKEN #24. Não é aceite
-operacional por aprovação de registry ou compilação. A prova consumidora com
-negócios, inputs carregados e eventos em backtest/replay ainda está pendente.
+Corretivo #148 integrado em 5e3c443; dependência nativa HADOUKEN #24.
+Prova consumidora funcional concluída na fonte ec398eb com H6120466/Safety1.7:
+UI real, Manual nomeado e reaberto, backtest por risco, backtest e replay visual
+com volume fixo2,35. Cada sessão fechou duas posições; quatro eventos de lotes,
+doze inputs e CSV/livro/saldo conferidos. Replay fixo idêntico ao backtest;
+UI/banco reabertos com resultados consultáveis. Recusa de7lotes acima do orçamento
+antes de iniciar outro Tester. PIDs próprios efetivamente encerrados nas três
+sessões; ponte e terminal principal preservados. Evidência versionada em
+[registro T19.56](../evidencias/T19_56_LOTES_20261020.json).
+Checks obrigatórios/revisão da PR149 devem concluir antes da integração.
+Esses valores são observações locais, sem metas universais ou aceite estatístico.
 
 O editor Default/Manual acrescenta modo Por risco ou Volume fixo, volume em lotes
 e orçamento em percentual do saldo, até 0,5%. O Default é imutável; o Manual

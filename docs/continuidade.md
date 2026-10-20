@@ -1,3 +1,18 @@
+## T19.56 — prova consumidora de lotes, 2026-10-20
+
+M#148 integrada em5e3c443, fonte aa0d8fd com seis checks aprovados.
+T19.56 em revisão H#24/M#149. Fontes isoladas H6120466/fingerprint8fcc5dfacc9118fa,
+Mec398eb e Safety1.7. UI real: Default imutável, Manual nomeado, volume fixo/risco,
+reabertura/exportação, recusa de volume acima do orçamento e consulta de eventos.
+Backtest por risco, backtest fixo2,35 e replay fixo: duas posições encerradas em cada,
+12inputs/quatro eventos, CSV/livro/saldo conciliados; fixo replay igual ao backtest.
+Três resultados persistem após reabrir; PIDs próprios encerrados, ponte/principal
+preservados. Sem repetir campanha histórica; valores são observações locais.
+Registro `docs/evidencias/T19_56_LOTES_20261020.json` e contrato `docs/sdk/lotes_s09.md`.
+Aguardar checks existentes M149, concluir revisão e integrar H24→M149.
+Próxima T19.57: parcial/saldo, confirmação efetiva antes de BE e desbloqueio Pullback.
+Cache inelegível; S09 somente Tester. Ao vivo DEMO/Windows físico com aceites próprios.
+
 # T19.56 — lotes em preparação; corretivo #148 integrado — 2026-10-20
 
 PR148 integrada em 5e3c443, fonte final aa0d8fd: seis checks obrigatórios SUCCESS,
