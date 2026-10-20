@@ -919,3 +919,21 @@ reutilizam os serviços. Gestão temporal/SL/parciais preservados. Perfil anteri
 sem migração; fechamento agendado separado. Contrato docs/sdk/cooldown_entradas.md.
 S09 somente Tester; cache inelegível; live DEMO/Windows físico/Pullback neste gate/
 carteira/gradientes mantêm aceites próprios. Par nativo e checks finais pendentes.
+
+
+T19.20/02 — estado parcial em H35→M162, sem merge: S09v1.80/44inputs,
+Manual salvo/reaberto/exportado, consulta pós-iniciador conferida. Backtest dirigido
+EURUSD/M5 14→15/10/2026:2posições/4fills,2recusas de cooldown,18USD conciliados;
+parciais/ausência/fronteira1ms/reinício cobertos por header real/plataforma falsa.
+Replay não gerou relatório: terminal privado autorizou DEMO mas não sincronizou
+(connect status3,100). Preparação própria sem EA/ordens limitada90s também sem
+confirmação; replay dependente interrompido. LiveUpdate observado não comprova causa.
+18PIDs próprios ausentes,0zombies,4perfis vazios, ponte/principal preservados;
+27includes/wrapper/binário/INI do backtest alinhados.124+63 testes sobrepostos,
+30Tools/estática127/doctor21OK aprovados. H2checks aprovados; M workflow39507890504
+existente no fonte4517299 com4checks aprovados, Ubuntu/Windows em andamento.
+Próximo passo concreto: recuperar sincronização do perfil isolado, conferir
+compatibilidade de fontes/binário/parâmetros/plataforma e executar somente replay
+faltante se o backtest continuar compatível; depois integrar H35→M162 com6checks.
+Recibo docs/evidencias/T19_20_COOLDOWN_20261020.json. Sem nova rodada antes de corrigir
+pré-condição; S09 somente Tester/cache inelegível/live DEMO e Windows físico próprios.
