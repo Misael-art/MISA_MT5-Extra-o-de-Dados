@@ -840,7 +840,10 @@
         "Include/Framework/HADOUKEN/Strategies/HDK_PartialObservation.mqh": "bfd22221a1067a15fd8ab89c164ce9900c37504e9a76750f9f7b3c2fe6bb0fff",
         "Include/Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh": "efbb1ab0488ce1b49509d496de961ad394e85ace1ffb4b3b8bdc7612413382c3",
         "Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd"
-      }
+      },
+      "wrapper_matches_reviewed_instrumentation": true,
+      "tester_expert": "HADOUKEN/Estrategias/mt5x_session",
+      "compile_log_sha256": "57f7075de5a4be79248765679287a9857603ddc917639b345eddeb102b63e06a"
     },
     {
       "mode": "replay",
@@ -1668,7 +1671,10 @@
         "Include/Framework/HADOUKEN/Strategies/HDK_PartialObservation.mqh": "bfd22221a1067a15fd8ab89c164ce9900c37504e9a76750f9f7b3c2fe6bb0fff",
         "Include/Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh": "efbb1ab0488ce1b49509d496de961ad394e85ace1ffb4b3b8bdc7612413382c3",
         "Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd"
-      }
+      },
+      "wrapper_matches_reviewed_instrumentation": true,
+      "tester_expert": "HADOUKEN/Estrategias/mt5x_session",
+      "compile_log_sha256": "a4443500b877cc83eec273f5f098dede20db4e357799f3c0cc2cac152fa4764b"
     }
   ],
   "resource_proof": {
@@ -1710,5 +1716,7 @@
     "gradients": false,
     "donchian_atr_adaptive": false
   },
-  "acceptance": "fixed functional scenario only; not optimization or statistical approval"
+  "acceptance": "fixed functional scenario only; not optimization or statistical approval",
+  "safety_runtime": "92c52085dfd4ee7f5f504afc2f22bfdf5223a09d",
+  "original_work_preserved": true
 }

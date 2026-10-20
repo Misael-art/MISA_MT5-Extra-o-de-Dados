@@ -3898,3 +3898,9 @@ Recibo: docs/evidencias/T19_16_ER_20261020.json. Sem repetir campanha anterior.
 Aceite restrito ao cenário; não habilita Pullback ER, canal/ATR, carteira, gradientes,
 cache ou live. Próximo recorte elegível após integração: TM06, canal Donchian + tempo,
 com T19.7 verificada. S09 somente Tester; Windows físico/live DEMO separados.
+
+Integração T19.16 provedor: H#28 emc58d8ba, dois checks no runtime994d1ba;
+árvore final idêntica à revisada e fonte preservado. M#156 aguarda somente
+suítes Ubuntu/Windows existentes; demais quatro checks aprovados. Alinhamento
+dos dois executáveis instrumentados ao fonte revisado/22includes e INI do Tester
+conferido no recibo. Trabalho original preservado (HEAD/index/branch/status).
