@@ -288,7 +288,7 @@ CI e revisão final concluídos; Windows físico delimitado. [Contrato e evidên
 
 ### T19.20 — Horários, dias e frequência por sessão
 
-**Recorte inicial em revisão:** [sessão ancorada e ciclos por primeiro fill](../sdk/sessao_entradas.md), S09v1.70/43inputs e UI Manual. Gaps do calendário observado não reiniciam cota diária; sem inferir DST/pregão futuro. Cooldown e fechamento por horário continuam separados. Ensaio nativo e checks finais pendentes.
+**Recorte inicial em revisão:** [sessão ancorada e ciclos por primeiro fill](../sdk/sessao_entradas.md), S09v1.70/43inputs e UI Manual. Gaps do calendário observado não reiniciam cota diária; sem inferir DST/pregão futuro. Cooldown e fechamento por horário continuam separados. Par nativo conciliado com negócios e quatro motivos de recusa; H34 integrada e checks finais M161 pendentes.
 
 - **Repo/prioridade:** M/H; P1. **Depende de:** T19.2, calendário T13.1 e contadores de eventos necessários.
 - **Arquivos:** `trade_analytics/rules.py`, filtros de composição e estado de sessão H.

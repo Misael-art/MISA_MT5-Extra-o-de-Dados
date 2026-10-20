@@ -36,7 +36,30 @@ conjuntos de primeiros fills, sem chamar o predicado de produção. Bloco ausent
 duplicado, truncado, contador/motivo adulterado ou envio após recusa impede aceite.
 Resultado e eventos usam persistência/consulta/exportação existentes.
 
-Estado: implementação/testes dirigidos e compilação isolada aprovados; ensaio
-nativo funcional e checks finais ainda pendentes. Não declara aceite operacional.
+Estado: aceite funcional dirigido e revisão concluídos conforme registro abaixo;
+checks existentes da aplicação pendentes. Não declara aceite ao vivo.
 S09 somente Tester; cache inelegível. Cooldown/fechamento por horário, Pullback
 neste filtro, live DEMO, carteira/gradientes, DST e Windows físico têm aceites próprios.
+
+
+## Aceite funcional dirigido da revisão final
+
+Runtimes H8a3b9d284b716e4a14a3d1bcaf95670a1544330a /
+M372b762615abf4955b9198a574e88da1cb3193e4, fingerprintad7a304b82ff8084.
+EURUSD/M5 13→15/10/2026; quarta,09–12h/exclusão09:15–09:25/âncora00h/cota1;
+lote0,25/SL500/TP1000/teto600s. Backtest e replay:1 posição/2fills e10 eventos
+de sessão cada. Oito recusas:5 por dia,1 por intervalo excluído,1 por cota e1
+fora da janela. Eventos, fills, livro/CSV/saldo e resultado2,00USD coincidiram.
+43inputs efetivos,26includes por execução e wrapper/INI/binários conferidos.
+No conjunto com a compilação:14PIDs próprios encerrados,3perfis vazios,
+ponte/principal com identidades preservadas; nenhum marcador nativo restante.
+UI consultou, reabriu resultados e exportou depois do iniciador terminar, sem
+outra execução. Cotas3/7, reinício/parcial e falhas estão nos testes do header real;
+o par nativo exerceu a cota1 e não forçou corrupção/reinicialização. Proteções
+fora da janela são preservadas pela ordem do controlador e pelos testes do motor.
+
+Revisão técnica final concluída, sem pendência impeditiva; dois checks H aprovados.
+Consumidor M#161 aguarda as suítes Ubuntu/Windows do workflow39499390366 existente;
+outros quatro checks passaram. Recibo no extrator: docs/evidencias/T19_20_SESSAO_20261020.json.
+Alterações posteriores aos runtimes acima são apenas documentais. Este é um
+aceite funcional deste cenário/perfil, sem aprovação estatística ou ao vivo.

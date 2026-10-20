@@ -2202,7 +2202,9 @@ Gerenciamento de SL/parcial/saídas precede o gate. Histórico/persistência/ide
 ausentes bloqueiam somente entradas; reinício não devolve cota e redução não cria
 ciclo. UI Default→Manual/salvar/reabrir/validação e referência independente dos
 fills conferidas. Compilação isolada aprovada,2PIDs próprios encerrados. Ensaio
-funcional e checks finais pendentes; nenhuma campanha histórica repetida.
+funcional concluído:1posição/2fills/10eventos por execução,8recusas e caixa2USD
+conciliados;14PIDs próprios encerrados,3perfis vazios. H34 integrada08cf58b;
+checks finais M161 pendentes, sem campanha histórica repetida.
 Contrato docs/sdk/sessao_entradas.md. S09 somente Tester; cache inelegível; cooldown,
 fechamento por horário, Pullback neste gate, DST/calendário futuro, live DEMO,
 Windows físico e carteira/gradientes mantêm seus próprios recortes/aceites.
