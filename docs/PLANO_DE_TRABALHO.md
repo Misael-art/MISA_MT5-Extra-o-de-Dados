@@ -3852,3 +3852,10 @@ não alteram runtime. Recibo T19_15_TEMPORAL_20261020.json. Cache inelegível; S
 Tester; live DEMO, Windows físico, carteira e gradientes específicos. Próxima ficha
 elegível a delimitar: T19.16 depende de T19.15 e dos contratos ER/Donchian/ATR;
 confirmar dependências antes de implementar, sem qualificar cache por otimização.
+
+Próximo recorte T19.16: ER(20) já existe no registry canônico M
+(analytics/indicator_registry.py); ATR Wilder já existe em HDK_StrategyMath sobre
+barras fechadas. Falta consumidor ER causal tipado no perfil nativo e contrato de
+atualização do prazo, sem reiniciar idade/afastar SL. A variante com canal continua
+dependente de T19.7; reutilizar Donchian existente, sem declarar essa ficha concluída.
+Inspeção delimitada de dependências, sem código/campanha nova dessa próxima tarefa.
