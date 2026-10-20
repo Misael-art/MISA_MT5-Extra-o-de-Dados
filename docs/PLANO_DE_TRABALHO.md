@@ -3808,3 +3808,17 @@ novo no merge. Correção do próximo recorte: T19.14 já está integrada (PR113
 a próxima ficha é T19.15 inicial, consumo de política temporal pela UI e perfil
 nativo. Reutilizar trajetórias/relógios existentes; não recriar T19.14 ou qualificar
 cache para prosseguir. Os limites do aceite histórico permanecem os do recibo.
+
+
+T20.25 — scanner durante encerramento (2026-10-20): ensaio dirigido T19.15
+interrompido antes do Tester ao observar cmdline vazio de processo em término.
+Linux agora ignora somente zombie ou processo comprovadamente ausente; processo
+vivo sem identidade mantém recusa, com PID e ação na mensagem. Windows continua
+identificado pelo executável. 69 testes de isolamento/controles aprovados; nenhuma
+liberação de recursos inferida, nenhuma sessão alheia encerrada. Retomar apenas os
+casos temporais pendentes após incorporar este corretivo pelo Git.
+
+Windows CI de M#153 revelou timeout em test_cli_batch: o processo falso simulava
+Linux mas varria processos reais do runner. A fixture de comandos falsos agora
+usa inventário vazio, substituível pelos testes explícitos de ownership. 74 testes
+de lote/isolamento/controles aprovados; código de proteção real preservado.

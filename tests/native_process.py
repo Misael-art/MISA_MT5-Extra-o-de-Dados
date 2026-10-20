@@ -38,6 +38,10 @@ def configure_test_safety(config, folder, version="1.4.0"):
 def fake_session_commands(monkeypatch):
     """Liga as sessões privadas ao processo falso escolhido pelo ensaio."""
     from mt5_extracao.robots import sessions, mt5_tools
+    import psutil
+    # O processo é falso: não varrer processos reais do host (inclusive Windows).
+    # Ensaios de ownership instalam seu inventário explícito após esta fixture.
+    monkeypatch.setattr(psutil, "process_iter", lambda: iter(()))
     def command(self, command, cwd, prefix, timeout, compiling=False):
         return mt5_tools.run_windows_command(command, cwd, prefix, timeout)
     monkeypatch.setattr(sessions.Session, "_run_command", command)
