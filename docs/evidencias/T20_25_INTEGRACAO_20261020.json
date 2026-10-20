@@ -1,0 +1,53 @@
+{
+  "pull_request": 148,
+  "source": "aa0d8fdcb999d87152b3cf02abe68b5fcbcf0502",
+  "merge": "5e3c4434d66a815ae80ac18379169b8710dc13d2",
+  "candidate_tree": "dcc2509974c6796cef5ba925d7c8f9dd9e993637",
+  "checked_tree": "dcc2509974c6796cef5ba925d7c8f9dd9e993637",
+  "entire_tree_matches_checks": true,
+  "mandatory_checks": {
+    "Lint dos instaladores": {
+      "name": "Lint dos instaladores",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39398915417/job/118548440716"
+    },
+    "Testes (ubuntu-latest)": {
+      "name": "Testes (ubuntu-latest)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39398915417/job/118548442059"
+    },
+    "Testes (windows-latest)": {
+      "name": "Testes (windows-latest)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39398915417/job/118548440364"
+    },
+    "Testes PostgreSQL": {
+      "name": "Testes PostgreSQL",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39398915417/job/118548440734"
+    },
+    "Instalador Linux (sem MT5)": {
+      "name": "Instalador Linux (sem MT5)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39398915417/job/118548440685"
+    },
+    "Instalador Windows (sem MT5)": {
+      "name": "Instalador Windows (sem MT5)",
+      "status": "COMPLETED",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39398915417/job/118548440696"
+    }
+  },
+  "native_directed_evidence": "T20_25_BACKTEST_LIBERACAO_20261020.json",
+  "native_runtime_source": "b27da9333309291aba71cc42c87e8512acc9ac75",
+  "production_unchanged_after_native": true,
+  "windows_first_attempt": "timeout60s in three aggregated scenarios/19 fake Testers during SQLite commit; preserved, then split without dropping assertions or changing timeout",
+  "new_historical_campaign": false,
+  "physical_windows_pending": true,
+  "live_demo_acceptance": false
+}

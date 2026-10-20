@@ -19,20 +19,28 @@ ROBOT_KEY = "mql5:hdk_s09_referencia"
 ROBOT_VERSION = "1.00"
 APPROVED_FINGERPRINT = "91ff0ec8a7bba77e"
 HADOUKEN_REVISION = "d60e42185471f0e5bc94ec17dcfe8e11f94bbf2b"
+LOTS_ROBOT_VERSION = "1.10"
+LOTS_APPROVED_FINGERPRINT = "8fcc5dfacc9118fa"
+LOTS_HADOUKEN_REVISION = "6120466bc2b23ac20684263f2d607120ee48b85e"
 INPUT_TYPES = {"InpFastPeriod": "int", "InpSlowPeriod": "int", "InpWarmupBars": "int",
                "InpStopPoints": "int", "InpTargetPoints": "int", "InpRiskPct": "double",
                "InpMagic": "long", "InpDeviationPoints": "int", "InpPresetId": "string", "InpConfigHash": "string"}
 RECEIPT_FIELDS = {name: "int" if kind in ("int", "long") else "number" if kind == "double" else "token"
                   for name, kind in INPUT_TYPES.items()}
+LOTS_INPUT_TYPES = {**INPUT_TYPES, "InpLotMode": "int", "InpFixedLot": "double"}
 
 
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
-    if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY
-            or robot.version != ROBOT_VERSION or catalog.fingerprint(robot) != APPROVED_FINGERPRINT
-            or actual != INPUT_TYPES or len(robot.inputs) != len(INPUT_TYPES) or robot.missing_includes):
+    profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
+                LOTS_ROBOT_VERSION: (LOTS_APPROVED_FINGERPRINT, LOTS_INPUT_TYPES, 2, LOTS_HADOUKEN_REVISION)}
+    profile = profiles.get(robot.version)
+    if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
+            or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
+            or len(robot.inputs) != len(profile[1]) or robot.missing_includes):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
+    return profile
 
 
 def default_composition(robot, *, symbol, timeframe):
@@ -59,13 +67,15 @@ class S09NativeAdapter:
         self._validate()
 
     def _validate(self):
-        _require_robot(self.robot)
+        profile = _require_robot(self.robot)
         data = self.composition.to_dict()
         if data["strategy"]["key"] != "s09_reference":
             raise ValueError("Perfil nativo disponível somente para S09 referência; Pullback permanece bloqueado até T19.57.")
         get_strategy("s09_reference", **data["strategy"]["params"])
         for slot, base in BASE_MODES.items():
             allowed = {base, "fixed_points"} if slot in ("profit_exit", "protection") else {base}
+            if slot == "sizing" and profile[2] >= 2:
+                allowed.add("fixed_volume")
             if data[slot]["mode"] not in allowed:
                 raise ValueError(f"{slot}: modo sem suporte no perfil S09 nativo; use {', '.join(sorted(allowed))}.")
         if data["filters"] or data["execution_order"] != list(EXECUTION_ORDER):
@@ -83,6 +93,7 @@ class S09NativeAdapter:
     def describe(self, preset_id):
         """Novo snapshot tipado; revalida fonte para detectar edição após construir o adaptador."""
         data = self._validate()
+        fingerprint, input_types, profile_version, hadouken_revision = _require_robot(self.robot)
         preset_id = native_inputs.scalar(preset_id, "token")
         if not preset_id or len(preset_id) > 80:
             raise ValueError("Identidade pública do preset deve ter de 1 a 80 caracteres portáteis.")
@@ -106,15 +117,25 @@ class S09NativeAdapter:
             if explicit:
                 inactive.append("strategy.params."+name)
         bindings["sizing.params.risk_fraction"] = {"input": "InpRiskPct", "type": "number", "unit": "fraction"}
+        if profile_version >= 2:
+            fixed = data["sizing"]["mode"] == "fixed_volume"
+            values.update(InpLotMode="0" if fixed else "1",
+                          InpFixedLot=format(Decimal(str(data["sizing"]["params"]["volume"])), "f") if fixed else "0.01")
+            if fixed:
+                bindings["sizing.params.volume"] = {"input": "InpFixedLot", "type": "number", "unit": "lot"}
         modules = {slot: [base] for slot, base in BASE_MODES.items()}
         modules.update(profit_exit=["strategy_default", "fixed_points"], protection=["strategy_default", "fixed_points"], filters=[])
+        if profile_version >= 2:
+            modules["sizing"] = ["risk_fraction", "fixed_volume"]
         capabilities = Capabilities({"capabilities_schema_version": 1,
-            "robot": {"key": self.robot.key, "version": self.robot.version, "fingerprint": APPROVED_FINGERPRINT},
+            "robot": {"key": self.robot.key, "version": self.robot.version, "fingerprint": fingerprint},
             "backend": "mql5", "strategy_key": "s09_reference", "modules": modules, "bindings": bindings}, self.composition)
-        return {"native_profile_schema_version": 1, "profile_id": PROFILE_ID, "profile_version": PROFILE_VERSION,
-                "hadouken_revision": HADOUKEN_REVISION, "robot": capabilities.to_dict()["robot"],
-                "capabilities": capabilities.to_dict(), "parameters": values, "receipt_fields": dict(RECEIPT_FIELDS),
-                "expected_native_inputs": native_inputs.expected_values(values, RECEIPT_FIELDS),
+        fields = {name: "int" if kind in ("int", "long") else "number" if kind == "double" else "token"
+                  for name, kind in input_types.items()}
+        return {"native_profile_schema_version": 1, "profile_id": PROFILE_ID, "profile_version": profile_version,
+                "hadouken_revision": hadouken_revision, "robot": capabilities.to_dict()["robot"],
+                "capabilities": capabilities.to_dict(), "parameters": values, "receipt_fields": fields,
+                "expected_native_inputs": native_inputs.expected_values(values, fields),
                 "inactive_paths": inactive, "conversions": {"sizing.params.risk_fraction": "fraction × 100 → InpRiskPct percent"},
                 "fixed_constraints": {"compound": True, "positions": 1, "daily_loss_pct": 2, "weekly_loss_pct": 4,
                                       "max_dd_pct": 10, "max_open_risk_pct": .5, "margin_buffer_pct": 20,

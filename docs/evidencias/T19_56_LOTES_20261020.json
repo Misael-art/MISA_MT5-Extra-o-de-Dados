@@ -1,0 +1,1165 @@
+{
+  "task": "T19.56 recorte inicial",
+  "scope": "T19.56 directed new lots capability through UI and native service; not a repeated historical campaign",
+  "application": "ec398ebadfd0cc50f9f5970f6bd5658a46a76cf5",
+  "hadouken": "6120466bc2b23ac20684263f2d607120ee48b85e",
+  "fingerprint": "8fcc5dfacc9118fa",
+  "safety_revision": "92c52085dfd4ee7f5f504afc2f22bfdf5223a09d",
+  "safety_version": "1.7",
+  "compiler": {
+    "binary_sha256": "5e3b8604db4e94c8a67d1a79c228d1d313215ddd25a27ef6fff41ffb22c01d49",
+    "errors": 0,
+    "warnings": 0
+  },
+  "sources": {
+    "fingerprint": "8fcc5dfacc9118fa",
+    "files": {
+      "Include/Framework/HADOUKEN/Contracts/HDK_ExecutionPlan.mqh": "fb213bdf295804e93d21d7ceaf898ed81ae746b2f3331b04a9eeb560a1289639",
+      "Include/Framework/HADOUKEN/Contracts/HDK_MarketContext.mqh": "fd1b0ea9e3a0f53b8e96fe4e03428f986a9a50a4f249e98be2c775890b3ac924",
+      "Include/Framework/HADOUKEN/Contracts/HDK_NativeBase.mqh": "1236a3fbcbeac07b8e9a7e388e68e34a68184b1267da194b54ac11719f788672",
+      "Include/Framework/HADOUKEN/Contracts/HDK_PositionPolicy.mqh": "b182eeacca3c5d1f17c49b915531ba139672bb269d09459b687a47a97779d717",
+      "Include/Framework/HADOUKEN/Contracts/HDK_SignalIntent.mqh": "7e4808bd839dd96bc7a05cd8d9f63c1a6cf0611628d5877ead17a7ec535002f8",
+      "Include/Framework/HADOUKEN/Contracts/HDK_VolumePolicy.mqh": "099e6cd2b5ed314bab113800a4347813a61b579ed32fa3db7183b420709df600",
+      "Include/Framework/HADOUKEN/Strategies/HDK_LegacyPositionAdapter.mqh": "4a34cdda00a01cb381ea5897148733f334d33985600297911678e9c6ce0530b7",
+      "Include/Framework/HADOUKEN/Strategies/HDK_LegacySignalAdapter.mqh": "b9089febe4d39d6ed73df26bf251ede99098271e164c674e827be34736daf61a",
+      "Include/Framework/HADOUKEN/Strategies/HDK_NativeBaseAdapter.mqh": "1ab82a6dfe0ba574821af7fbc599e631dbedb9755a647d651e8c7f0fd3dd98d7",
+      "Include/Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh": "efbb1ab0488ce1b49509d496de961ad394e85ace1ffb4b3b8bdc7612413382c3",
+      "Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd",
+      "Include/Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh": "99caaea6a13c7804050641210ba49b9a5c192da7823358214fef1319db3fcbd2",
+      "Include/Framework/HADOUKEN/Strategies/HDK_TradeExport.mqh": "40af6c5b94f4c78e5af8916f2bec1ae94985adc0b4077c3181c0726a32d3ce8c",
+      "Experts/HADOUKEN/Estrategias/HDK_S09_Referencia.mq5": "07bede406e81e62114d991afd349017b0dab7d2bb2dbf8934080175c56dc808f",
+      "Include/Framework/HADOUKEN/Safety/HDK_GuardianPanel.mqh": "6e8c2f07193543ecd99ab7782457ecea78963111212b5cc64d82ae8048cdeb52",
+      "Include/Framework/HADOUKEN/Safety/HDK_Logger.mqh": "9412465708b5fb3fb597a41fb879308a34ca091b9d5ecc8779da7b55fb1199d0",
+      "Include/Framework/HADOUKEN/Safety/HDK_MarketFilter.mqh": "5e065f6476e9533879585879defcc8043d28ec9c9f9df2ca9ce6d0e2ebcf9d56",
+      "Include/Framework/HADOUKEN/Safety/HDK_PanelUi.mqh": "fc7bb184c24805762ccc7067e64d1ab6557ed52c2d9f76932e05d40b7e22eb4e",
+      "Include/Framework/HADOUKEN/Safety/HDK_PortfolioRegistry.mqh": "d8a375bfde908a28df438af1dc996cf017ee393b0a75fae3c74b9d906d7f0302",
+      "Include/Framework/HADOUKEN/Safety/HDK_RiskDecision.mqh": "ad26a96120daf9a4ad87405f7511c1353ea3b75626065cb9c00b7140c5477966",
+      "Include/Framework/HADOUKEN/Safety/HDK_RiskGuard.mqh": "fb8e733f47908db9e3e200387baf2a9b75f6d2164aed8490bad0f7cd67418126",
+      "Include/Framework/HADOUKEN/Safety/HDK_SafeExecutor.mqh": "148df0db66aa75d5ce8e231538e1f9451ece41d9cfcc359eccc005e42173912a",
+      "Include/Framework/HADOUKEN/Safety/HDK_SafetyTypes.mqh": "6140f903bf44553fec912f37ad6b0fbbcb45d80349f75baf64337306dce541ad",
+      "Include/Framework/HADOUKEN/Safety/HDK_TradeStats.mqh": "9a35590eb11493279661b10780ca9ebf5b3781105f56353f11839447b9655bb8",
+      "Include/Framework/HADOUKEN/Safety/HDK_ExecutionResult.mqh": "9b39b93139a9a3e2f84c7434d66ecbbf9c911678af1c29270e007ae0bf2f944c"
+    }
+  },
+  "bridge_before": {
+    "demo": true,
+    "connected": true,
+    "bridge_created": 1792407851.97,
+    "principal_created": 1792460506.1
+  },
+  "bridge_after": {
+    "demo": true,
+    "connected": true,
+    "bridge_created": 1792407851.97,
+    "principal_created": 1792460506.1
+  },
+  "invalid_volume_ui": {
+    "message": "Prévia indisponível/recusada: Volume fixo excede o orçamento de risco; reduza o volume ou o SL, sem elevar o limite.",
+    "native_disabled": true,
+    "no_new_tester": true
+  },
+  "queried_ui": {
+    "run": "b6e6ee7ed7d842e4943c65d9383a06dd",
+    "sizing_rows": 4,
+    "inputs": 12
+  },
+  "reopened_results": [
+    "b6e6ee7ed7d842e4943c65d9383a06dd",
+    "c78573b2a754473bb3145086d8edcfaf",
+    "0caac3e9f4484b82a4941341644a3218"
+  ],
+  "attempts": [
+    {
+      "label": "risk-backtest",
+      "session": "57c98791e94d41aebaa0ad777347615c",
+      "observed_processes": {
+        "3977373": {
+          "pid": 3977373,
+          "created": 1792492849.89,
+          "executable": "C:\\windows\\system32\\cmd.exe"
+        },
+        "3977378": {
+          "pid": 3977378,
+          "created": 1792492849.99,
+          "executable": "C:\\mt5x_sessions\\57c98791e94d41aebaa0ad777347615c\\MetaEditor64.exe"
+        },
+        "3977620": {
+          "pid": 3977620,
+          "created": 1792492854.62,
+          "executable": "C:\\windows\\system32\\cmd.exe"
+        },
+        "3977626": {
+          "pid": 3977626,
+          "created": 1792492854.71,
+          "executable": "C:\\mt5x_sessions\\57c98791e94d41aebaa0ad777347615c\\terminal64.exe"
+        },
+        "3977718": {
+          "pid": 3977718,
+          "created": 1792492856.97,
+          "executable": "C:\\mt5x_sessions\\57c98791e94d41aebaa0ad777347615c\\metaeditor64.exe"
+        },
+        "3978027": {
+          "pid": 3978027,
+          "created": 1792492863.08,
+          "executable": "C:\\mt5x_sessions\\57c98791e94d41aebaa0ad777347615c\\metatester64.exe"
+        }
+      },
+      "cleanup": [
+        {
+          "before": [],
+          "after": []
+        }
+      ],
+      "remaining": [],
+      "evidence": {
+        "resources_released": true,
+        "preset_native_evidence_schema_version": 1,
+        "run_id": "0caac3e9f4484b82a4941341644a3218",
+        "session": "57c98791e94d41aebaa0ad777347615c",
+        "preset": {
+          "category": "Manual",
+          "default_origin": "c635f9a02cb15f51a4342ebdbf25310b",
+          "id": "da139accc3df4223ba3d60a090ab1569",
+          "label": "Lotes S09",
+          "revision": 1
+        },
+        "config_hash": "7edeaabfb5460e210d9d676e5b10dcea509a80ada0c94629a889c102d2185c15",
+        "execution_hash": "46e9e070108a31ce6a9a2f1d4100a98a0b485f91a9851e5c1645f5cffbe0accc",
+        "package_hash": "ffe0b9a88408ddf3cb0779d3e533bdb67c9c7dbf8412ec0af2a305451441dc67",
+        "set_sha256": "7689cb766a83fbf96a3bdc31ce515b0adb89f21ccd3c3d557694614dafe177b8",
+        "source": {
+          "fingerprint": "8fcc5dfacc9118fa",
+          "key": "mql5:hdk_s09_referencia",
+          "version": "1.10"
+        },
+        "context": {
+          "symbol": "EURUSD",
+          "timeframe": "M5"
+        },
+        "test_context": {
+          "deposit": 100000.0,
+          "end": "2026-10-15",
+          "model": "0",
+          "start": "2026-10-14"
+        },
+        "mode": "backtest",
+        "status": "reconciled_backtest",
+        "inputs": {
+          "schema_version": 1,
+          "session": "57c98791e94d41aebaa0ad777347615c",
+          "symbol": "EURUSD",
+          "timeframe": "M5",
+          "tester": true,
+          "demo": true,
+          "known_at": 1791936000,
+          "values": {
+            "InpConfigHash": "7edeaabfb5460e210d9d676e5b10dcea509a80ada0c94629a889c102d2185c15",
+            "InpDeviationPoints": 20,
+            "InpFastPeriod": 20,
+            "InpFixedLot": 0.01,
+            "InpLotMode": 1,
+            "InpMagic": 909202610,
+            "InpPresetId": "da139accc3df4223ba3d60a090ab1569",
+            "InpRiskPct": 0.5,
+            "InpSlowPeriod": 50,
+            "InpStopPoints": 100,
+            "InpTargetPoints": 200,
+            "InpWarmupBars": 250
+          },
+          "complete": true,
+          "compared": true,
+          "preset_verified": true,
+          "operational_acceptance": false,
+          "sha256": "f070e46d1f5ca202a96ecc51b0d0f0af56805616157997bfba768e707f5598eb"
+        },
+        "tester_capture": {
+          "parameters_file": "mt5x_0caac3e9f4484b82a4941341644a3218_cbd8c37177534b2baa8d0a7a93c3955e.set",
+          "parameters_sha256": "7689cb766a83fbf96a3bdc31ce515b0adb89f21ccd3c3d557694614dafe177b8",
+          "ini_sha256": "83c5b847da2ce0b2959ff7f8e7d3b3af713f28ec82ce6e5dad81d3a4a8771c37",
+          "matches_exported_set": true
+        },
+        "actual_mode": {
+          "tester": true,
+          "visual": false,
+          "demo": true
+        },
+        "signals": [
+          {
+            "event_at": 1791969300,
+            "confirmed_at": 1791969600,
+            "available_at": 1791969600,
+            "direction": -1,
+            "opened": true,
+            "execution_state": 4,
+            "filled_volume": 5.0,
+            "order_ticket": 2,
+            "deal_ticket": 2,
+            "reason": ""
+          },
+          {
+            "event_at": 1791970200,
+            "confirmed_at": 1791970500,
+            "available_at": 1791970500,
+            "direction": 1,
+            "opened": false,
+            "execution_state": 0,
+            "filled_volume": null,
+            "order_ticket": 0,
+            "deal_ticket": 0,
+            "reason": "máximo de 1 posições abertas"
+          },
+          {
+            "event_at": 1791972600,
+            "confirmed_at": 1791972900,
+            "available_at": 1791972900,
+            "direction": -1,
+            "opened": false,
+            "execution_state": 0,
+            "filled_volume": null,
+            "order_ticket": 0,
+            "deal_ticket": 0,
+            "reason": "máximo de 1 posições abertas"
+          },
+          {
+            "event_at": 1792011900,
+            "confirmed_at": 1792012200,
+            "available_at": 1792012200,
+            "direction": 1,
+            "opened": true,
+            "execution_state": 4,
+            "filled_volume": 5.05,
+            "order_ticket": 4,
+            "deal_ticket": 4,
+            "reason": ""
+          }
+        ],
+        "ledger": [
+          {
+            "direction": -1,
+            "entry_time": "2026-10-14 09:20:00",
+            "exit_time": "2026-10-14 15:30:31",
+            "entry_price": 1.12064,
+            "exit_price": 1.11864,
+            "stop_price": 1.12164,
+            "target_price": 1.11864,
+            "volume": 5.0,
+            "pnl": 1000.0,
+            "exit_reason": "tp"
+          },
+          {
+            "direction": 1,
+            "entry_time": "2026-10-14 21:10:00",
+            "exit_time": "2026-10-14 23:59:59",
+            "entry_price": 1.11412,
+            "exit_price": 1.11569,
+            "stop_price": 1.11312,
+            "target_price": 1.11612,
+            "volume": 5.05,
+            "pnl": 792.85,
+            "exit_reason": "fim"
+          }
+        ],
+        "trades": 2,
+        "cash_reconciled": true,
+        "net_profit": 1792.85,
+        "native_cash_result": 1792.8500000000058,
+        "currency": "USD",
+        "tester_model": "cada tick",
+        "data_quality": {
+          "version": 1,
+          "evidence_basis": "native_report_not_requested_model",
+          "report_sha256": "e0832d1e0a48ca4c786a92393ab41dcf6c22c4781d796256181476963c30b1dd",
+          "requested_model": "0",
+          "origin": "unknown",
+          "real_tick_fraction_reported": null,
+          "history_quality_pct_reported": 100.0,
+          "real_tick_coverage_status": "not_reported",
+          "capabilities": {
+            "complete_real_ticks": {
+              "state": "unknown",
+              "reason": "Cobertura de ticks reais não informada ou conflitante."
+            },
+            "queue": {
+              "state": "missing",
+              "reason": "Relatório de ticks não comprova fila de ordens."
+            }
+          },
+          "eligibility": {
+            "status": "unqualified",
+            "eligible": null,
+            "required": null,
+            "reasons": [],
+            "limitations": [
+              "Cobertura efetiva de ticks reais não informada ou conflitante.",
+              "Requisitos específicos do Expert não declarados no contrato atual."
+            ]
+          }
+        },
+        "clock_basis": "native_server",
+        "intrabar_basis": "native_MT5_ticks; stop_first is Python OHLC policy",
+        "reference_backtest_run_id": null,
+        "reference_match": null,
+        "first_difference": null,
+        "functional_native_activity": true,
+        "functional_cycle": false,
+        "allows_live": false,
+        "statistical_approval": false,
+        "cache_eligible": false,
+        "history_revision": "unavailable",
+        "created_at": "2026-10-20T10:41:09.960036+00:00",
+        "sizing": [
+          {
+            "event_at": 1791969300,
+            "mode": "risk_fraction",
+            "requested_volume": null,
+            "planned_volume": 5.0,
+            "filled_volume": 5.0,
+            "risk_money": 500.0,
+            "risk_budget": 500.0,
+            "margin_required": 8809.6,
+            "margin_free": 100000.0,
+            "margin_known": true,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1791970200,
+            "mode": "risk_fraction",
+            "requested_volume": null,
+            "planned_volume": 0.0,
+            "filled_volume": null,
+            "risk_money": 0.0,
+            "risk_budget": 500.0,
+            "margin_required": null,
+            "margin_free": null,
+            "margin_known": false,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1791972600,
+            "mode": "risk_fraction",
+            "requested_volume": null,
+            "planned_volume": 0.0,
+            "filled_volume": null,
+            "risk_money": 0.0,
+            "risk_budget": 500.0,
+            "margin_required": null,
+            "margin_free": null,
+            "margin_known": false,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1792011900,
+            "mode": "risk_fraction",
+            "requested_volume": null,
+            "planned_volume": 5.05,
+            "filled_volume": 5.05,
+            "risk_money": 505.0,
+            "risk_budget": 505.0,
+            "margin_required": 8878.92,
+            "margin_free": 101000.0,
+            "margin_known": true,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          }
+        ]
+      },
+      "artifact_sha256": {
+        "preset_tester.ini": "83c5b847da2ce0b2959ff7f8e7d3b3af713f28ec82ce6e5dad81d3a4a8771c37",
+        "native_inputs.csv": "f070e46d1f5ca202a96ecc51b0d0f0af56805616157997bfba768e707f5598eb",
+        "preset_evidence.json": "642aba812751bed622129f18adfc49640649290355c3fbcfd853bd2307f60e17",
+        "Config/common.ini": "b95353c8f2976b473a14e7e85998bd2fca41736dd40213109f9c0bac8841a9cf",
+        "Config/terminal.ini": "9c2b6b04959561e1d2a5e78afea2790ac1b1bd1b0327260e8d686f5b6584c632",
+        "Config/assistant.ini": "2a1abc0c687896c48985c780d8159e743e2297522ea519b925df84aad679b5c2",
+        "Config/hotkeys.ini": "b3d510ef04275ca8e698e5b3cbb0ece3949ef9252f0cdc839e9ee347409a2209",
+        "Config/settings.ini": "23877645f032b2a0467ed76534dd57a43b5263b686af7f9757e34df0da1c2fb3",
+        "Tester/config/metatester.ini": "f4c6d4c0cf0fa98295a1207db6dbba77ff673c623d78cac83948bb8a5943fd33",
+        "MQL5/Profiles/Tester/mt5x_0caac3e9f4484b82a4941341644a3218_cbd8c37177534b2baa8d0a7a93c3955e.set": "7689cb766a83fbf96a3bdc31ce515b0adb89f21ccd3c3d557694614dafe177b8",
+        "MQL5/Profiles/Tester/mt5x_session.set": "141ba2194b71b8003ca198ec5add0477d00c773b05a2b49dcb22c0f7565f742d",
+        "MQL5/Experts/Advisors/ExpertMACD.ex5": "f083e5152d1710abf3731919af6d2f93b2f0d24b6d7ab1851d3eeaa8de564e75",
+        "MQL5/Experts/Advisors/ExpertMAMA.ex5": "d321530decb1ce6e97ca5dd9c31164ba7899a9c2cbca2eb0951e89e6de65031e",
+        "MQL5/Experts/Advisors/ExpertMAPSAR.ex5": "de2d0cd91b0f2a82b355932956faf5f9cfdd56d69a2d5a95527445fa951eb6f8",
+        "MQL5/Experts/Advisors/ExpertMAPSARSizeOptimized.ex5": "848fabe3207034ac5880a58b6b59a73696e439f1e781cfe49ab98db27a91a234",
+        "MQL5/Experts/Examples/ChartInChart/ChartInChart.ex5": "095232dc49a54c405aa3de67516b07d3a516c105e7242c250d652cf1e03292ac",
+        "MQL5/Experts/Examples/Math 3D/Sets/Chomolungma.set": "127338edc08d7e8917be3e3c12374ea87292bbf99e48232080883d449194049b",
+        "MQL5/Experts/Examples/Math 3D/Sets/ClimberDream.set": "2694ebac06d59a71ddd81e7271ba6967c9a75a1d859541028027bbd5485c88cf",
+        "MQL5/Experts/Examples/Math 3D/Sets/DoubleScrew.set": "d1f57e586fe6183d12ef3005250577c3736264c4f78c2e1a7d281c2cbd2f579d",
+        "MQL5/Experts/Examples/Math 3D/Sets/Granite.set": "f6fff43e9e51df34394355abb5762c67734b16b71d17317d6bf8308620f8dbf1",
+        "MQL5/Experts/Examples/Math 3D/Sets/Hedgehog.set": "e570c593568c176d70db615ec9332e518f331478ba074fe9a97a2e56d4075821",
+        "MQL5/Experts/Examples/Math 3D/Sets/Hill.set": "91f64db113aa14e6cb1a11e7b21210ad0a2e6bec01c36044fd1861c251710ba7",
+        "MQL5/Experts/Examples/Math 3D/Sets/Josephine.set": "b9e296e738cec9399858f0776ec494e85b66b831f8a671ecd595ee5ba2c2c40e",
+        "MQL5/Experts/Examples/Math 3D/Sets/MultyExtremalScrew.set": "e675f036fc883d068270faa944c117cc2bc6852c962d47133136a6340c4e79ae",
+        "MQL5/Experts/Examples/Math 3D/Sets/Screw.set": "39521ca3764d174f76884ff40b11b9d075414401112c8590acd2c0501a3a9358",
+        "MQL5/Experts/Examples/Math 3D/Sets/Sink.set": "fc14a76be7899185562be8fe8f54198077f0eb00323fe9e7b2ddde29538bc4c3",
+        "MQL5/Experts/Examples/Math 3D/Sets/Skin.set": "f274ed976510f11069ffcc7a2c0026989e2d83e38de78d54e700a4ed619c82ec",
+        "MQL5/Experts/Examples/Math 3D/Sets/Trapfall.set": "f8fd9cca752b40edb574990a675912b2ea73dc3a13d6b0f77d1d126a091f86e1",
+        "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.ex5": "cccf4f2296e58f95e728dbb3c9ac019c4eeeb81a0234eba9acdb26f1b42a47fb"
+      }
+    },
+    {
+      "label": "fixed-backtest",
+      "session": "8ad1c557c2a14972b936674ce775e0a3",
+      "observed_processes": {
+        "3978638": {
+          "pid": 3978638,
+          "created": 1792492876.48,
+          "executable": "C:\\windows\\system32\\cmd.exe"
+        },
+        "3978643": {
+          "pid": 3978643,
+          "created": 1792492876.58,
+          "executable": "C:\\mt5x_sessions\\8ad1c557c2a14972b936674ce775e0a3\\MetaEditor64.exe"
+        },
+        "3978864": {
+          "pid": 3978864,
+          "created": 1792492881.96,
+          "executable": "C:\\windows\\system32\\cmd.exe"
+        },
+        "3978869": {
+          "pid": 3978869,
+          "created": 1792492882.06,
+          "executable": "C:\\mt5x_sessions\\8ad1c557c2a14972b936674ce775e0a3\\terminal64.exe"
+        },
+        "3978950": {
+          "pid": 3978950,
+          "created": 1792492884.28,
+          "executable": "C:\\mt5x_sessions\\8ad1c557c2a14972b936674ce775e0a3\\metaeditor64.exe"
+        },
+        "3979411": {
+          "pid": 3979411,
+          "created": 1792492891.95,
+          "executable": "C:\\mt5x_sessions\\8ad1c557c2a14972b936674ce775e0a3\\metatester64.exe"
+        }
+      },
+      "cleanup": [
+        {
+          "before": [],
+          "after": []
+        }
+      ],
+      "remaining": [],
+      "evidence": {
+        "resources_released": true,
+        "preset_native_evidence_schema_version": 1,
+        "run_id": "c78573b2a754473bb3145086d8edcfaf",
+        "session": "8ad1c557c2a14972b936674ce775e0a3",
+        "preset": {
+          "category": "Manual",
+          "default_origin": "c635f9a02cb15f51a4342ebdbf25310b",
+          "id": "da139accc3df4223ba3d60a090ab1569",
+          "label": "Lotes S09",
+          "revision": 2
+        },
+        "config_hash": "cc77d59b7706628f421e1c3bfb65bcce383b5ebacfd8f1c83dff0c04abb92b94",
+        "execution_hash": "c4e31fc5b5c0ccf029e15fdfa2614963f5c0930d55af8421c1080ccbfb39a2ad",
+        "package_hash": "b4f75aef70ad79ed4a9c6f01b264e090187fbe716b9a6baa070cb7f8c92a307e",
+        "set_sha256": "143645ac08900b3d18d7ade14fbffb427c4e6e84c502cebba8d26a361b7e3006",
+        "source": {
+          "fingerprint": "8fcc5dfacc9118fa",
+          "key": "mql5:hdk_s09_referencia",
+          "version": "1.10"
+        },
+        "context": {
+          "symbol": "EURUSD",
+          "timeframe": "M5"
+        },
+        "test_context": {
+          "deposit": 100000.0,
+          "end": "2026-10-15",
+          "model": "0",
+          "start": "2026-10-14"
+        },
+        "mode": "backtest",
+        "status": "reconciled_backtest",
+        "inputs": {
+          "schema_version": 1,
+          "session": "8ad1c557c2a14972b936674ce775e0a3",
+          "symbol": "EURUSD",
+          "timeframe": "M5",
+          "tester": true,
+          "demo": true,
+          "known_at": 1791936000,
+          "values": {
+            "InpConfigHash": "cc77d59b7706628f421e1c3bfb65bcce383b5ebacfd8f1c83dff0c04abb92b94",
+            "InpDeviationPoints": 20,
+            "InpFastPeriod": 20,
+            "InpFixedLot": 2.35,
+            "InpLotMode": 0,
+            "InpMagic": 909202610,
+            "InpPresetId": "da139accc3df4223ba3d60a090ab1569",
+            "InpRiskPct": 0.25,
+            "InpSlowPeriod": 50,
+            "InpStopPoints": 100,
+            "InpTargetPoints": 200,
+            "InpWarmupBars": 250
+          },
+          "complete": true,
+          "compared": true,
+          "preset_verified": true,
+          "operational_acceptance": false,
+          "sha256": "69af5bdcaa951487b97139228f9588b6ee72b4048a34909e0207e51c39973df1"
+        },
+        "tester_capture": {
+          "parameters_file": "mt5x_c78573b2a754473bb3145086d8edcfaf_e58d89d5d00044b185471e57aec1c189.set",
+          "parameters_sha256": "143645ac08900b3d18d7ade14fbffb427c4e6e84c502cebba8d26a361b7e3006",
+          "ini_sha256": "b3cad9b4993a00aec3aa345f8a9cfc78fd085bfad49270ced94176ecfd587538",
+          "matches_exported_set": true
+        },
+        "actual_mode": {
+          "tester": true,
+          "visual": false,
+          "demo": true
+        },
+        "signals": [
+          {
+            "event_at": 1791969300,
+            "confirmed_at": 1791969600,
+            "available_at": 1791969600,
+            "direction": -1,
+            "opened": true,
+            "execution_state": 4,
+            "filled_volume": 2.35,
+            "order_ticket": 2,
+            "deal_ticket": 2,
+            "reason": ""
+          },
+          {
+            "event_at": 1791970200,
+            "confirmed_at": 1791970500,
+            "available_at": 1791970500,
+            "direction": 1,
+            "opened": false,
+            "execution_state": 0,
+            "filled_volume": null,
+            "order_ticket": 0,
+            "deal_ticket": 0,
+            "reason": "máximo de 1 posições abertas"
+          },
+          {
+            "event_at": 1791972600,
+            "confirmed_at": 1791972900,
+            "available_at": 1791972900,
+            "direction": -1,
+            "opened": false,
+            "execution_state": 0,
+            "filled_volume": null,
+            "order_ticket": 0,
+            "deal_ticket": 0,
+            "reason": "máximo de 1 posições abertas"
+          },
+          {
+            "event_at": 1792011900,
+            "confirmed_at": 1792012200,
+            "available_at": 1792012200,
+            "direction": 1,
+            "opened": true,
+            "execution_state": 4,
+            "filled_volume": 2.35,
+            "order_ticket": 4,
+            "deal_ticket": 4,
+            "reason": ""
+          }
+        ],
+        "ledger": [
+          {
+            "direction": -1,
+            "entry_time": "2026-10-14 09:20:00",
+            "exit_time": "2026-10-14 15:30:31",
+            "entry_price": 1.12064,
+            "exit_price": 1.11864,
+            "stop_price": 1.12164,
+            "target_price": 1.11864,
+            "volume": 2.35,
+            "pnl": 470.0,
+            "exit_reason": "tp"
+          },
+          {
+            "direction": 1,
+            "entry_time": "2026-10-14 21:10:00",
+            "exit_time": "2026-10-14 23:59:59",
+            "entry_price": 1.11412,
+            "exit_price": 1.11569,
+            "stop_price": 1.11312,
+            "target_price": 1.11612,
+            "volume": 2.35,
+            "pnl": 368.95,
+            "exit_reason": "fim"
+          }
+        ],
+        "trades": 2,
+        "cash_reconciled": true,
+        "net_profit": 838.95,
+        "native_cash_result": 838.9499999999971,
+        "currency": "USD",
+        "tester_model": "cada tick",
+        "data_quality": {
+          "version": 1,
+          "evidence_basis": "native_report_not_requested_model",
+          "report_sha256": "a9cdf3468bb099ca724710dc5c62ae8a2afb9ce332e3d54bf54ca36360dab46c",
+          "requested_model": "0",
+          "origin": "unknown",
+          "real_tick_fraction_reported": null,
+          "history_quality_pct_reported": 100.0,
+          "real_tick_coverage_status": "not_reported",
+          "capabilities": {
+            "complete_real_ticks": {
+              "state": "unknown",
+              "reason": "Cobertura de ticks reais não informada ou conflitante."
+            },
+            "queue": {
+              "state": "missing",
+              "reason": "Relatório de ticks não comprova fila de ordens."
+            }
+          },
+          "eligibility": {
+            "status": "unqualified",
+            "eligible": null,
+            "required": null,
+            "reasons": [],
+            "limitations": [
+              "Cobertura efetiva de ticks reais não informada ou conflitante.",
+              "Requisitos específicos do Expert não declarados no contrato atual."
+            ]
+          }
+        },
+        "clock_basis": "native_server",
+        "intrabar_basis": "native_MT5_ticks; stop_first is Python OHLC policy",
+        "reference_backtest_run_id": null,
+        "reference_match": null,
+        "first_difference": null,
+        "functional_native_activity": true,
+        "functional_cycle": false,
+        "allows_live": false,
+        "statistical_approval": false,
+        "cache_eligible": false,
+        "history_revision": "unavailable",
+        "created_at": "2026-10-20T10:41:38.502905+00:00",
+        "sizing": [
+          {
+            "event_at": 1791969300,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 2.35,
+            "filled_volume": 2.35,
+            "risk_money": 235.0,
+            "risk_budget": 250.0,
+            "margin_required": 2633.5,
+            "margin_free": 100000.0,
+            "margin_known": true,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1791970200,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 0.0,
+            "filled_volume": null,
+            "risk_money": 0.0,
+            "risk_budget": 250.0,
+            "margin_required": null,
+            "margin_free": null,
+            "margin_known": false,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1791972600,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 0.0,
+            "filled_volume": null,
+            "risk_money": 0.0,
+            "risk_budget": 250.0,
+            "margin_required": null,
+            "margin_free": null,
+            "margin_known": false,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1792011900,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 2.35,
+            "filled_volume": 2.35,
+            "risk_money": 235.0,
+            "risk_budget": 251.175,
+            "margin_required": 2618.18,
+            "margin_free": 100470.0,
+            "margin_known": true,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          }
+        ]
+      },
+      "artifact_sha256": {
+        "preset_tester.ini": "b3cad9b4993a00aec3aa345f8a9cfc78fd085bfad49270ced94176ecfd587538",
+        "native_inputs.csv": "69af5bdcaa951487b97139228f9588b6ee72b4048a34909e0207e51c39973df1",
+        "preset_evidence.json": "6abdd7164f2f462c2d3c0fa7a4e92d334a8e8718f255f69e8a44c859004169e4",
+        "Config/common.ini": "b95353c8f2976b473a14e7e85998bd2fca41736dd40213109f9c0bac8841a9cf",
+        "Config/terminal.ini": "0648cb11b479e72ef6f2141b52ba48e636d829de3374438a9fd26a12a1d8f5a5",
+        "Config/assistant.ini": "9844ad30831968fc8d026bd58a5b9561ed047ace009a8b44b01bc3b2f815af1b",
+        "Config/hotkeys.ini": "b3d510ef04275ca8e698e5b3cbb0ece3949ef9252f0cdc839e9ee347409a2209",
+        "Config/settings.ini": "3e100730673037f5db8fd8710f3b61a98b88bc170bf10a253cd6d2e3f9604441",
+        "Tester/config/metatester.ini": "f4c6d4c0cf0fa98295a1207db6dbba77ff673c623d78cac83948bb8a5943fd33",
+        "MQL5/Profiles/Tester/mt5x_c78573b2a754473bb3145086d8edcfaf_e58d89d5d00044b185471e57aec1c189.set": "143645ac08900b3d18d7ade14fbffb427c4e6e84c502cebba8d26a361b7e3006",
+        "MQL5/Profiles/Tester/mt5x_session.set": "5d7ba6442a40d33e4e0eaad2cd2a44836630e2a0ecdd116c3a2aa6024713450f",
+        "MQL5/Experts/Advisors/ExpertMACD.ex5": "008fe35de5063cfc431d1abab9381e073e1b47e5483845ab9e4919f157acfea8",
+        "MQL5/Experts/Advisors/ExpertMAMA.ex5": "1adb8fbf61ca1240c0978f4429c271b4270c03f4c83c0145fa2fc4f98ba857b3",
+        "MQL5/Experts/Advisors/ExpertMAPSAR.ex5": "da737ce8f24cc16f219ebcb3cc36a2b631a4ef4159172b354f4cd1f2c9db2ab7",
+        "MQL5/Experts/Advisors/ExpertMAPSARSizeOptimized.ex5": "d58d8589942c914a599aa9707e67f7be48fafb629dcb11adf52a891cb31f3e2b",
+        "MQL5/Experts/Examples/ChartInChart/ChartInChart.ex5": "b3b2c53c5450bbc53d28a2de9f48a013a91c994e9c0900932c2e2169710d54a8",
+        "MQL5/Experts/Examples/Controls/Controls.ex5": "b0e84f3516c51f6515706f2e87ce956826de6a86455128106109281d6f7eaa41",
+        "MQL5/Experts/Examples/Math 3D/Sets/Chomolungma.set": "127338edc08d7e8917be3e3c12374ea87292bbf99e48232080883d449194049b",
+        "MQL5/Experts/Examples/Math 3D/Sets/ClimberDream.set": "2694ebac06d59a71ddd81e7271ba6967c9a75a1d859541028027bbd5485c88cf",
+        "MQL5/Experts/Examples/Math 3D/Sets/DoubleScrew.set": "d1f57e586fe6183d12ef3005250577c3736264c4f78c2e1a7d281c2cbd2f579d",
+        "MQL5/Experts/Examples/Math 3D/Sets/Granite.set": "f6fff43e9e51df34394355abb5762c67734b16b71d17317d6bf8308620f8dbf1",
+        "MQL5/Experts/Examples/Math 3D/Sets/Hedgehog.set": "e570c593568c176d70db615ec9332e518f331478ba074fe9a97a2e56d4075821",
+        "MQL5/Experts/Examples/Math 3D/Sets/Hill.set": "91f64db113aa14e6cb1a11e7b21210ad0a2e6bec01c36044fd1861c251710ba7",
+        "MQL5/Experts/Examples/Math 3D/Sets/Josephine.set": "b9e296e738cec9399858f0776ec494e85b66b831f8a671ecd595ee5ba2c2c40e",
+        "MQL5/Experts/Examples/Math 3D/Sets/MultyExtremalScrew.set": "e675f036fc883d068270faa944c117cc2bc6852c962d47133136a6340c4e79ae",
+        "MQL5/Experts/Examples/Math 3D/Sets/Screw.set": "39521ca3764d174f76884ff40b11b9d075414401112c8590acd2c0501a3a9358",
+        "MQL5/Experts/Examples/Math 3D/Sets/Sink.set": "fc14a76be7899185562be8fe8f54198077f0eb00323fe9e7b2ddde29538bc4c3",
+        "MQL5/Experts/Examples/Math 3D/Sets/Skin.set": "f274ed976510f11069ffcc7a2c0026989e2d83e38de78d54e700a4ed619c82ec",
+        "MQL5/Experts/Examples/Math 3D/Sets/Trapfall.set": "f8fd9cca752b40edb574990a675912b2ea73dc3a13d6b0f77d1d126a091f86e1",
+        "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.ex5": "6f50baad6bcee835c68aa6f755f59ce3275819db1147975e11517d41a28ba03b"
+      }
+    },
+    {
+      "label": "fixed-replay",
+      "session": "20a869dc6a304b7d8124d065d895955e",
+      "observed_processes": {
+        "3980008": {
+          "pid": 3980008,
+          "created": 1792492903.01,
+          "executable": "C:\\windows\\system32\\cmd.exe"
+        },
+        "3980018": {
+          "pid": 3980018,
+          "created": 1792492903.13,
+          "executable": "C:\\mt5x_sessions\\20a869dc6a304b7d8124d065d895955e\\MetaEditor64.exe"
+        },
+        "3980244": {
+          "pid": 3980244,
+          "created": 1792492908.02,
+          "executable": "C:\\windows\\system32\\cmd.exe"
+        },
+        "3980249": {
+          "pid": 3980249,
+          "created": 1792492908.11,
+          "executable": "C:\\mt5x_sessions\\20a869dc6a304b7d8124d065d895955e\\terminal64.exe"
+        },
+        "3980321": {
+          "pid": 3980321,
+          "created": 1792492910.17,
+          "executable": "C:\\mt5x_sessions\\20a869dc6a304b7d8124d065d895955e\\metaeditor64.exe"
+        },
+        "3980537": {
+          "pid": 3980537,
+          "created": 1792492915.8,
+          "executable": "C:\\mt5x_sessions\\20a869dc6a304b7d8124d065d895955e\\metatester64.exe"
+        }
+      },
+      "cleanup": [
+        {
+          "before": [
+            {
+              "pid": 3980537,
+              "created": 1792492915.8,
+              "executable": "C:\\mt5x_sessions\\20a869dc6a304b7d8124d065d895955e\\metatester64.exe"
+            }
+          ],
+          "after": []
+        }
+      ],
+      "remaining": [],
+      "evidence": {
+        "resources_released": true,
+        "preset_native_evidence_schema_version": 1,
+        "run_id": "b6e6ee7ed7d842e4943c65d9383a06dd",
+        "session": "20a869dc6a304b7d8124d065d895955e",
+        "preset": {
+          "category": "Manual",
+          "default_origin": "c635f9a02cb15f51a4342ebdbf25310b",
+          "id": "da139accc3df4223ba3d60a090ab1569",
+          "label": "Lotes S09",
+          "revision": 2
+        },
+        "config_hash": "cc77d59b7706628f421e1c3bfb65bcce383b5ebacfd8f1c83dff0c04abb92b94",
+        "execution_hash": "c4e31fc5b5c0ccf029e15fdfa2614963f5c0930d55af8421c1080ccbfb39a2ad",
+        "package_hash": "b4f75aef70ad79ed4a9c6f01b264e090187fbe716b9a6baa070cb7f8c92a307e",
+        "set_sha256": "143645ac08900b3d18d7ade14fbffb427c4e6e84c502cebba8d26a361b7e3006",
+        "source": {
+          "fingerprint": "8fcc5dfacc9118fa",
+          "key": "mql5:hdk_s09_referencia",
+          "version": "1.10"
+        },
+        "context": {
+          "symbol": "EURUSD",
+          "timeframe": "M5"
+        },
+        "test_context": {
+          "deposit": 100000.0,
+          "end": "2026-10-15",
+          "model": "0",
+          "start": "2026-10-14"
+        },
+        "mode": "replay",
+        "status": "reconciled_replay",
+        "inputs": {
+          "schema_version": 1,
+          "session": "20a869dc6a304b7d8124d065d895955e",
+          "symbol": "EURUSD",
+          "timeframe": "M5",
+          "tester": true,
+          "demo": true,
+          "known_at": 1791936000,
+          "values": {
+            "InpConfigHash": "cc77d59b7706628f421e1c3bfb65bcce383b5ebacfd8f1c83dff0c04abb92b94",
+            "InpDeviationPoints": 20,
+            "InpFastPeriod": 20,
+            "InpFixedLot": 2.35,
+            "InpLotMode": 0,
+            "InpMagic": 909202610,
+            "InpPresetId": "da139accc3df4223ba3d60a090ab1569",
+            "InpRiskPct": 0.25,
+            "InpSlowPeriod": 50,
+            "InpStopPoints": 100,
+            "InpTargetPoints": 200,
+            "InpWarmupBars": 250
+          },
+          "complete": true,
+          "compared": true,
+          "preset_verified": true,
+          "operational_acceptance": false,
+          "sha256": "0aadfeefc3063bf7c4babfd47f7bcf862f38870ef84802ea306b6df0e1e49045"
+        },
+        "tester_capture": {
+          "parameters_file": "mt5x_b6e6ee7ed7d842e4943c65d9383a06dd_e6ee88452a75481592e3421d368cc234.set",
+          "parameters_sha256": "143645ac08900b3d18d7ade14fbffb427c4e6e84c502cebba8d26a361b7e3006",
+          "ini_sha256": "c3a270896dfc4230a35cc8d84c7ce2c408607940f9bcac48987900fe6f42d8f0",
+          "matches_exported_set": true
+        },
+        "actual_mode": {
+          "tester": true,
+          "visual": true,
+          "demo": true
+        },
+        "signals": [
+          {
+            "event_at": 1791969300,
+            "confirmed_at": 1791969600,
+            "available_at": 1791969600,
+            "direction": -1,
+            "opened": true,
+            "execution_state": 4,
+            "filled_volume": 2.35,
+            "order_ticket": 2,
+            "deal_ticket": 2,
+            "reason": ""
+          },
+          {
+            "event_at": 1791970200,
+            "confirmed_at": 1791970500,
+            "available_at": 1791970500,
+            "direction": 1,
+            "opened": false,
+            "execution_state": 0,
+            "filled_volume": null,
+            "order_ticket": 0,
+            "deal_ticket": 0,
+            "reason": "máximo de 1 posições abertas"
+          },
+          {
+            "event_at": 1791972600,
+            "confirmed_at": 1791972900,
+            "available_at": 1791972900,
+            "direction": -1,
+            "opened": false,
+            "execution_state": 0,
+            "filled_volume": null,
+            "order_ticket": 0,
+            "deal_ticket": 0,
+            "reason": "máximo de 1 posições abertas"
+          },
+          {
+            "event_at": 1792011900,
+            "confirmed_at": 1792012200,
+            "available_at": 1792012200,
+            "direction": 1,
+            "opened": true,
+            "execution_state": 4,
+            "filled_volume": 2.35,
+            "order_ticket": 4,
+            "deal_ticket": 4,
+            "reason": ""
+          }
+        ],
+        "ledger": [
+          {
+            "direction": -1,
+            "entry_time": "2026-10-14 09:20:00",
+            "exit_time": "2026-10-14 15:30:31",
+            "entry_price": 1.12064,
+            "exit_price": 1.11864,
+            "stop_price": 1.12164,
+            "target_price": 1.11864,
+            "volume": 2.35,
+            "pnl": 470.0,
+            "exit_reason": "tp"
+          },
+          {
+            "direction": 1,
+            "entry_time": "2026-10-14 21:10:00",
+            "exit_time": "2026-10-14 23:59:59",
+            "entry_price": 1.11412,
+            "exit_price": 1.11569,
+            "stop_price": 1.11312,
+            "target_price": 1.11612,
+            "volume": 2.35,
+            "pnl": 368.95,
+            "exit_reason": "fim"
+          }
+        ],
+        "trades": 2,
+        "cash_reconciled": true,
+        "net_profit": 838.95,
+        "native_cash_result": 838.9499999999971,
+        "currency": "USD",
+        "tester_model": "cada tick",
+        "data_quality": {
+          "version": 1,
+          "evidence_basis": "native_report_not_requested_model",
+          "report_sha256": "16bbab3ad5c86976d5f811f3a3efca5bc0624491e5846d6a1b0d94771974c267",
+          "requested_model": "0",
+          "origin": "unknown",
+          "real_tick_fraction_reported": null,
+          "history_quality_pct_reported": 100.0,
+          "real_tick_coverage_status": "not_reported",
+          "capabilities": {
+            "complete_real_ticks": {
+              "state": "unknown",
+              "reason": "Cobertura de ticks reais não informada ou conflitante."
+            },
+            "queue": {
+              "state": "missing",
+              "reason": "Relatório de ticks não comprova fila de ordens."
+            }
+          },
+          "eligibility": {
+            "status": "unqualified",
+            "eligible": null,
+            "required": null,
+            "reasons": [],
+            "limitations": [
+              "Cobertura efetiva de ticks reais não informada ou conflitante.",
+              "Requisitos específicos do Expert não declarados no contrato atual."
+            ]
+          }
+        },
+        "clock_basis": "native_server",
+        "intrabar_basis": "native_MT5_ticks; stop_first is Python OHLC policy",
+        "reference_backtest_run_id": "c78573b2a754473bb3145086d8edcfaf",
+        "reference_match": true,
+        "first_difference": null,
+        "functional_native_activity": true,
+        "functional_cycle": true,
+        "allows_live": false,
+        "statistical_approval": false,
+        "cache_eligible": false,
+        "history_revision": "unavailable",
+        "created_at": "2026-10-20T10:42:51.659035+00:00",
+        "sizing": [
+          {
+            "event_at": 1791969300,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 2.35,
+            "filled_volume": 2.35,
+            "risk_money": 235.0,
+            "risk_budget": 250.0,
+            "margin_required": 2633.5,
+            "margin_free": 100000.0,
+            "margin_known": true,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1791970200,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 0.0,
+            "filled_volume": null,
+            "risk_money": 0.0,
+            "risk_budget": 250.0,
+            "margin_required": null,
+            "margin_free": null,
+            "margin_known": false,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1791972600,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 0.0,
+            "filled_volume": null,
+            "risk_money": 0.0,
+            "risk_budget": 250.0,
+            "margin_required": null,
+            "margin_free": null,
+            "margin_known": false,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          },
+          {
+            "event_at": 1792011900,
+            "mode": "fixed_volume",
+            "requested_volume": 2.35,
+            "planned_volume": 2.35,
+            "filled_volume": 2.35,
+            "risk_money": 235.0,
+            "risk_budget": 251.175,
+            "margin_required": 2618.18,
+            "margin_free": 100470.0,
+            "margin_known": true,
+            "volume_min": 0.01,
+            "volume_max": 500.0,
+            "volume_step": 0.01,
+            "spec_known": true
+          }
+        ]
+      },
+      "artifact_sha256": {
+        "preset_tester.ini": "c3a270896dfc4230a35cc8d84c7ce2c408607940f9bcac48987900fe6f42d8f0",
+        "native_inputs.csv": "0aadfeefc3063bf7c4babfd47f7bcf862f38870ef84802ea306b6df0e1e49045",
+        "preset_evidence.json": "42626947bda42640ecabe66fdb38b8e93fcb0dfea8ce0d2e9d72a745a750cc65",
+        "Config/common.ini": "b95353c8f2976b473a14e7e85998bd2fca41736dd40213109f9c0bac8841a9cf",
+        "Config/terminal.ini": "6217b841e7711da725ce2b7463cb39d1d9b90dddc428727c3525dddaf897ad66",
+        "Config/assistant.ini": "47cbd15b0349285087f09c9b3651fc467c96e823aad3452fdf1a8ebb269f0832",
+        "Config/hotkeys.ini": "b3d510ef04275ca8e698e5b3cbb0ece3949ef9252f0cdc839e9ee347409a2209",
+        "Config/settings.ini": "6750f30f6cb69b0003ff7e4b0f8686eb1c4139468ff8be5829a811c8f9a5ad25",
+        "Tester/config/metatester.ini": "f4c6d4c0cf0fa98295a1207db6dbba77ff673c623d78cac83948bb8a5943fd33",
+        "MQL5/Indicators/Examples/Accelerator.ex5": "e2371d504aa0abc639d882b6084fd5f4fa15b5333e4f3fd8f4ce5b2741e080d4",
+        "MQL5/Indicators/Examples/AD.ex5": "08a7ec36e6f5352e9113721d90e60c826ee68696bf8a9475c9e04ac945bd3096",
+        "MQL5/Indicators/Examples/ADX.ex5": "1d0bbae63e52e536815690fca88011959cad31525ddfe21bfd3949e51d6e92e3",
+        "MQL5/Indicators/Examples/ADXW.ex5": "2c52c02dc6b18d31c39fa58e06dbb47abfa00fde50cc23e3190c8e4e805b57fa",
+        "MQL5/Indicators/Examples/Alligator.ex5": "1067b60ee8d94af38f55341ca4fb8d974a08e5c005168f254cf2187844be830b",
+        "MQL5/Indicators/Examples/AMA.ex5": "be26cb67137ae305cac1d63fa0aed6f24e1d7ea19d1327b0ed96da7093a852c2",
+        "MQL5/Indicators/Examples/ASI.ex5": "1d18c51a4ab0164338b2333a285e7afc642c4ece0e8a95725b9ebaf26adf7b99",
+        "MQL5/Indicators/Examples/ATR.ex5": "09da76aabe74abedc74264485c7105a86e2a06ef322c8335c9b79b98d1456f2c",
+        "MQL5/Indicators/Examples/Awesome_Oscillator.ex5": "bd4f6e3a6acbaee595fb7bd6fa50df455da759aa1c845861ae6ec9ba1d9f1a8f",
+        "MQL5/Indicators/Examples/BB.ex5": "c663823628b5c6f5a57cb06c3ff4ced91075db89b56c97530e702a514758da64",
+        "MQL5/Indicators/Examples/Bears.ex5": "8bac6863454584aca9b816f5f03116f6b185164fb5d597b33340317f35efcead",
+        "MQL5/Indicators/Examples/Bulls.ex5": "f96b31101bc47b340c010bf68c538e910ed237ce7827433f96571fab38ec9f31",
+        "MQL5/Indicators/Examples/BW-ZoneTrade.ex5": "49cab0a9ea19b1d53bb02a7567fc584f52ba4fcb98df918749eb4e5f821b476b",
+        "MQL5/Indicators/Examples/CCI.ex5": "f690ab6494178c2fff872ca2622108f99862099511c930acad00eef4fc294a83",
+        "MQL5/Indicators/Examples/CHO.ex5": "bb6e683ac17c3749b880771d8a6378f2e89b56e2e955065e109d9893e781fa45",
+        "MQL5/Indicators/Examples/CHV.ex5": "14af3ced609b537aa54221fd7e7b99637e054beef5f82a5d76a5541c292ee555",
+        "MQL5/Indicators/Examples/ColorBars.ex5": "3c07bec1a8831d7981aec57af41b3aa6c7005b6144df52d3fcccdb10e55765df",
+        "MQL5/Indicators/Examples/ColorCandlesDaily.ex5": "3eb872a06f46276fdd87b77c8e83f000e0f4b4ad90aad659b7d02a34bf2533aa",
+        "MQL5/Indicators/Examples/ColorLine.ex5": "870b25d952dc6885a17277995b83ac0f15db148383d6075a225a0a431e333262",
+        "MQL5/Indicators/Examples/Custom Moving Average.ex5": "eb28cc0ab620c9dc9ca2d61f4729c363d03ea65d38b37897e0b2c293051c9fe6",
+        "MQL5/Indicators/Examples/DEMA.ex5": "ac14c08942ef6e581378af475b58914f286c99eadd43eba49df02c488dff87dd",
+        "MQL5/Indicators/Examples/DeMarker.ex5": "45a9f4e29abebc1369d5d09d68fc0e7c0e126dea016541f2937d8e7478c84a6b",
+        "MQL5/Indicators/Examples/DPO.ex5": "4591618eaaf81ff771ae3aec27227a6ff9c030702ba22ccb94fd20235c5e78c1",
+        "MQL5/Indicators/Examples/Envelopes.ex5": "eee4b6894fed03e0bc8e7a6b8b8d7e93720fc94300d06d84ebf9f7611de703b0",
+        "MQL5/Indicators/Examples/Force_Index.ex5": "0e7c5a21f6e14e6063e8a1f6768adf506d02f8fd07085ac5a78e0a4b7886814a",
+        "MQL5/Indicators/Examples/Fractals.ex5": "ab59e90f0880832025c36b91a5880e9b71dfd58373c6595919ac2255a7ce3322",
+        "MQL5/Indicators/Examples/FrAMA.ex5": "4a9fc595308797c40baef3340a182f2f4be9dd56957e2246b8c3438a74895695",
+        "MQL5/Indicators/Examples/Gator.ex5": "7e7e8d8b726a0d8f8c3484acc1410380fbd52129eea28fa4db930cc3d0c7d476",
+        "MQL5/Indicators/Examples/Canvas/FlameChart.ex5": "85ca58a99bd1742676040f9bf4372b96236855eb80c0caac7b71fe2f117ae2ec",
+        "MQL5/Profiles/Tester/mt5x_b6e6ee7ed7d842e4943c65d9383a06dd_e6ee88452a75481592e3421d368cc234.set": "143645ac08900b3d18d7ade14fbffb427c4e6e84c502cebba8d26a361b7e3006",
+        "MQL5/Profiles/Tester/mt5x_session.set": "8762de5ba5d7db7e1dcedcd1a568a0ff40bce81a81fc9dc602ad56504e19c78e",
+        "MQL5/Experts/Advisors/ExpertMACD.ex5": "4fbd17ea87287c4063123028bfa0dd9e8337321d07ef06b337763b62aec128e5",
+        "MQL5/Experts/Advisors/ExpertMAMA.ex5": "9f9fc0834d6cd8bd638d8951215f5b8737a38ed8f2ed48b681ae00d52f0453d3",
+        "MQL5/Experts/Advisors/ExpertMAPSAR.ex5": "85a94b05bd6abf2af35e4a270e2e4f7b2096542ae4437ebe9fe168e58b5e03aa",
+        "MQL5/Experts/Advisors/ExpertMAPSARSizeOptimized.ex5": "138e0358ac94caad187954b72e7503761e658d9f4370eb2af99ccf8a912d7243",
+        "MQL5/Experts/Free Robots/BlackCrows WhiteSoldiers CCI.ex5": "b38286dd143eb84e7aa02bf5410e37a84c8bb0f6fd40446372fa51a81ec34abd",
+        "MQL5/Experts/Free Robots/BlackCrows WhiteSoldiers MFI.ex5": "3b3b87f773407587ed1793f58bbf3b0e9b8f61f0294cb83790f8f8a9cdac0b16",
+        "MQL5/Experts/Free Robots/BlackCrows WhiteSoldiers RSI.ex5": "06c774ed2531dc45145e67abe19491446708b74668aff4e9d98255fdac05b608",
+        "MQL5/Experts/Free Robots/BlackCrows WhiteSoldiers Stoch.ex5": "6f4964a9aa00ecd48b98aa1edfa5ac9a77cd738be9663963e430081635463ea5",
+        "MQL5/Experts/Free Robots/BullishBearish Engulfing CCI.ex5": "038b6043902e358755492672b857a8b25106f094e0c6b755ef1a8d61c0897363",
+        "MQL5/Experts/Free Robots/BullishBearish Engulfing MFI.ex5": "1305d3d63f530899b688ad2004a65d452b8ba6de6fd3aad504871bc4921924c2",
+        "MQL5/Experts/Free Robots/BullishBearish Engulfing RSI.ex5": "28a37e0871d661b090061ee3491cde4a773b51e77a264d1dc12b11a3d83884d7",
+        "MQL5/Experts/Free Robots/BullishBearish Engulfing Stoch.ex5": "5ef2cd07af184ad987adc6032e1dae4f32a9813dc2f72885bd31abe4f6662afe",
+        "MQL5/Experts/Free Robots/BullishBearish Harami CCI.ex5": "2470d2ed5d2f77dfe153447469766be8203d175ce3915a6010480e29ac371eec",
+        "MQL5/Experts/Free Robots/BullishBearish Harami MFI.ex5": "4adc66d88d31ee276b3263a4c75911cd716b004ff21252902cb09c700ae68167",
+        "MQL5/Experts/Free Robots/BullishBearish Harami RSI.ex5": "702f556f1f2688edc4a4892d9380e03fe6e348d544c27971e8c166ff67805985",
+        "MQL5/Experts/Free Robots/BullishBearish Harami Stoch.ex5": "8a6c2d47f87b585fc329cbe2ec5a124077611ea9e03053c1f84c98f9d1154e25",
+        "MQL5/Experts/Free Robots/BullishBearish MeetingLines CCI.ex5": "b16ec602d73ce6496e8913b1d97999c171c46e869b84d9448c933c1a3d7aeb37",
+        "MQL5/Experts/Free Robots/BullishBearish MeetingLines MFI.ex5": "5aad60cf636f09a5264e160ab8d317f66e66a248361dec8f24f85ee5e4f30ab9",
+        "MQL5/Experts/Free Robots/BullishBearish MeetingLines RSI.ex5": "c59c95d29d15396d6efb9708ecb26a9fc47f3b0053e8356fcd89d5601b89bce7",
+        "MQL5/Experts/Free Robots/BullishBearish MeetingLines Stoch.ex5": "325ea542a28a842dd1319de7f82d730538c20fb3586eb3e40e243fc641bc4135",
+        "MQL5/Experts/Free Robots/DarkCloud PiercingLine CCI.ex5": "dab695e8793ee9201f520cebd057c0d48efc9eea462b9d064dc6106ce9c4ae05",
+        "MQL5/Experts/Free Robots/DarkCloud PiercingLine MFI.ex5": "eaec6db2b5a707e9aededa98a47ba0a23365eb10590e5fa2eeae1a1f45b916c5",
+        "MQL5/Experts/Free Robots/DarkCloud PiercingLine RSI.ex5": "8d0866b24295cf857a8c373874bb3c616fcea7a551c0d5c608f9670b2b9e5c42",
+        "MQL5/Experts/Free Robots/DarkCloud PiercingLine Stoch.ex5": "be8bdbdfc6c0e41d02b0c9819d4a9aef341f8d4fdaea9a00552cb5eea1a492fe",
+        "MQL5/Experts/Free Robots/HangingMan Hammer CCI.ex5": "d3d3b96af31e6a587128943feed1c4dfb4b9cfcad69f7671f9eed2f9c2ca430f",
+        "MQL5/Experts/Free Robots/HangingMan Hammer MFI.ex5": "043ee35e565541f9ce0d7c64a7fd9432d03bcb99b782171fd2a3a0a91839fc1a",
+        "MQL5/Experts/Free Robots/HangingMan Hammer RSI.ex5": "846e995fbda90ef8fa4120c844002efa9958a7788a4454940607142ea6fd9ca8",
+        "MQL5/Experts/Free Robots/HangingMan Hammer Stoch.ex5": "bfe6a9d6aa52569d77b6e738edca9a0d396c85ad8948bc75a0d48a190df839b2",
+        "MQL5/Experts/Free Robots/MorningEvening StarDoji CCI.ex5": "0a5b960089aba3d2b36cb07d1580a31c5219ee475b148342203d509ae499d205",
+        "MQL5/Experts/Free Robots/MorningEvening StarDoji MFI.ex5": "64a9a289c481eaca5757a74989cdadbc00a0433bb1eb6e03a985b8fec281a8e1",
+        "MQL5/Experts/Free Robots/MorningEvening StarDoji RSI.ex5": "e6c1454dacc5bfa81bf975738705b15f0a88256b22b757e3dfe280758d72954f",
+        "MQL5/Experts/Free Robots/MorningEvening StarDoji Stoch.ex5": "6c5e56cb7f5c37e27b2d039fd6adce9193fe974d0cd71c6409c0446e805745f1",
+        "MQL5/Experts/Examples/ChartInChart/ChartInChart.ex5": "44a23265e85414df21a923fdd1387ede341ac5944d80b97e87701239671e842d",
+        "MQL5/Experts/Examples/Controls/Controls.ex5": "86c2c4423237ec1d16b4ee2ab2cc1d19aea1c40dd685eef0434685003996d3db",
+        "MQL5/Experts/Examples/Correlation Matrix 3D/Correlation Matrix 3D.ex5": "a9d03057f3a96bfddb313a3b86b6375973a6a01101ab4f2b7d917aa409248a34",
+        "MQL5/Experts/Examples/MACD/MACD Sample.ex5": "0aaa851b706ac49f9842c09398c12dfe7840040137101b0d71e01ff8266c1a4b",
+        "MQL5/Experts/Examples/Math 3D/Math 3D.ex5": "c47b3ee112fecd9a88c63da10c94690abc6e170cd07bdf5fe27091b98ce4d26c",
+        "MQL5/Experts/Examples/Math 3D Morpher/Math 3D Morpher.ex5": "a7381816e532dc7033115d2cc4201e37b9ff17470b19ec35478bf51970f0af88",
+        "MQL5/Experts/Examples/Moving Average/Moving Average.ex5": "fb2b70d1a955039fe41f751b60e883b787c679fbe1050906b7439c615f171527",
+        "MQL5/Experts/Examples/Math 3D/Sets/Chomolungma.set": "127338edc08d7e8917be3e3c12374ea87292bbf99e48232080883d449194049b",
+        "MQL5/Experts/Examples/Math 3D/Sets/ClimberDream.set": "2694ebac06d59a71ddd81e7271ba6967c9a75a1d859541028027bbd5485c88cf",
+        "MQL5/Experts/Examples/Math 3D/Sets/DoubleScrew.set": "d1f57e586fe6183d12ef3005250577c3736264c4f78c2e1a7d281c2cbd2f579d",
+        "MQL5/Experts/Examples/Math 3D/Sets/Granite.set": "f6fff43e9e51df34394355abb5762c67734b16b71d17317d6bf8308620f8dbf1",
+        "MQL5/Experts/Examples/Math 3D/Sets/Hedgehog.set": "e570c593568c176d70db615ec9332e518f331478ba074fe9a97a2e56d4075821",
+        "MQL5/Experts/Examples/Math 3D/Sets/Hill.set": "91f64db113aa14e6cb1a11e7b21210ad0a2e6bec01c36044fd1861c251710ba7",
+        "MQL5/Experts/Examples/Math 3D/Sets/Josephine.set": "b9e296e738cec9399858f0776ec494e85b66b831f8a671ecd595ee5ba2c2c40e",
+        "MQL5/Experts/Examples/Math 3D/Sets/MultyExtremalScrew.set": "e675f036fc883d068270faa944c117cc2bc6852c962d47133136a6340c4e79ae",
+        "MQL5/Experts/Examples/Math 3D/Sets/Screw.set": "39521ca3764d174f76884ff40b11b9d075414401112c8590acd2c0501a3a9358",
+        "MQL5/Experts/Examples/Math 3D/Sets/Sink.set": "fc14a76be7899185562be8fe8f54198077f0eb00323fe9e7b2ddde29538bc4c3",
+        "MQL5/Experts/Examples/Math 3D/Sets/Skin.set": "f274ed976510f11069ffcc7a2c0026989e2d83e38de78d54e700a4ed619c82ec",
+        "MQL5/Experts/Examples/Math 3D/Sets/Trapfall.set": "f8fd9cca752b40edb574990a675912b2ea73dc3a13d6b0f77d1d126a091f86e1",
+        "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.ex5": "e43378ed7a04f51f5b81be8cd2a6324901d8eee10c4c60e0a299ef85f82769ea",
+        "MQL5/Experts/HADOUKEN/Estrategias/HDK_S09_Referencia.ex5": "fc6c029eba080a553b7ff6547a55971064db0de8a68c67c3257e4c36cef4c4b4"
+      }
+    }
+  ],
+  "complete": true,
+  "cache_eligible": false,
+  "allows_live": false,
+  "physical_windows_pending": true,
+  "limits": [
+    "uma posição, sem grids/adições",
+    "parcial/Pullback indisponíveis",
+    "S09 somente Strategy Tester DEMO",
+    "medição local e recorte funcional; sem aceite estatístico"
+  ]
+}

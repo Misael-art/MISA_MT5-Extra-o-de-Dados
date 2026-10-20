@@ -66,6 +66,9 @@ MODULE_PARAMETERS = {
                     "fixed_points": {"target_points": Parameter("number", "point", exclusive_minimum=True)}},
     "protection": {"strategy_default": {}, "fixed_points": {"stop_points": Parameter("number", "point", exclusive_minimum=True)}},
     "sizing": {"risk_fraction": {"risk_fraction": Parameter("number", "fraction", 0, 1, True),
+                                "compound": Parameter("bool", "boolean")},
+               "fixed_volume": {"volume": Parameter("number", "lot", exclusive_minimum=True),
+                                "risk_fraction": Parameter("number", "fraction", 0, 1, True),
                                 "compound": Parameter("bool", "boolean")}},
     "partial_exit_plan": {"strategy_default": {}, "fixed_r": {
         "trigger_r": Parameter("number", "R", exclusive_minimum=True),
