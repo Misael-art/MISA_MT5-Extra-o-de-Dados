@@ -682,6 +682,11 @@ class Session:
                                 tester_port=options.get("tester_port") or tester_port,
                                 is_running=lambda: bool(owned_processes(self.child_config)))
                     self.record = backtest.run_mql5(**call)
+                if self.mode == "replay":
+                    # O launcher pode terminar antes do visualizador. O relatório
+                    # já foi importado: encerrar somente processos deste perfil
+                    # antes de liberar o contexto/lease e publicar o resultado.
+                    self._stop_owned()
                 if self.input_fields is not None:
                     self._verify_input_receipt(common)
             self.state = "completed"
