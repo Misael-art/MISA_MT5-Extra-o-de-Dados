@@ -817,7 +817,41 @@
   "ci": {
     "workflow": 39499390366,
     "source": "372b762615abf4955b9198a574e88da1cb3193e4",
-    "status": "pending final existing consumer checks; provider two success"
+    "status": "success",
+    "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39499390366",
+    "checks": [
+      {
+        "name": "Testes (windows-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39499390366/job/118892711443"
+      },
+      {
+        "name": "Lint dos instaladores",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39499390366/job/118892711909"
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39499390366/job/118892711930"
+      },
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39499390366/job/118892712128"
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39499390366/job/118892712190"
+      },
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39499390366/job/118892712253"
+      }
+    ],
+    "runtime_to_final_head": "documentation only; no runtime changes after tested source"
   },
   "limits": [
     "S09 Tester only",

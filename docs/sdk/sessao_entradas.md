@@ -37,7 +37,7 @@ duplicado, truncado, contador/motivo adulterado ou envio após recusa impede ace
 Resultado e eventos usam persistência/consulta/exportação existentes.
 
 Estado: aceite funcional dirigido e revisão concluídos conforme registro abaixo;
-checks existentes da aplicação pendentes. Não declara aceite ao vivo.
+seis checks existentes aprovados no runtime372b762, workflow39499390366. Não declara aceite ao vivo.
 S09 somente Tester; cache inelegível. Cooldown/fechamento por horário, Pullback
 neste filtro, live DEMO, carteira/gradientes, DST e Windows físico têm aceites próprios.
 
@@ -59,7 +59,7 @@ o par nativo exerceu a cota1 e não forçou corrupção/reinicialização. Prote
 fora da janela são preservadas pela ordem do controlador e pelos testes do motor.
 
 Revisão técnica final concluída, sem pendência impeditiva; dois checks H aprovados.
-Consumidor M#161 aguarda as suítes Ubuntu/Windows do workflow39499390366 existente;
-outros quatro checks passaram. Recibo no extrator: docs/evidencias/T19_20_SESSAO_20261020.json.
+Consumidor M#161: seis checks obrigatórios aprovados no workflow39499390366
+existente, no runtime372b762; H34 integrada08cf58b. Recibo no extrator: docs/evidencias/T19_20_SESSAO_20261020.json.
 Alterações posteriores aos runtimes acima são apenas documentais. Este é um
 aceite funcional deste cenário/perfil, sem aprovação estatística ou ao vivo.

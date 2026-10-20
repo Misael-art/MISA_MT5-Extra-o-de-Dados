@@ -2195,16 +2195,16 @@ entrega. S09 somente Tester; cache de execução/evidência inelegível; histór
 não habilitam live DEMO. Carteira concorrente e Windows físico mantêm aceites próprios.
 
 
-T19.20 inicial em revisão: filtro de novas entradas por janela permitida/excluída,
-dias do dia lógico ancorado e cota0/1/3/N por primeiro fill de posição. S09v1.70,
-43inputs, registry/adaptadores/persistência/exportação existentes reutilizados.
-Gerenciamento de SL/parcial/saídas precede o gate. Histórico/persistência/identidade
-ausentes bloqueiam somente entradas; reinício não devolve cota e redução não cria
-ciclo. UI Default→Manual/salvar/reabrir/validação e referência independente dos
-fills conferidas. Compilação isolada aprovada,2PIDs próprios encerrados. Ensaio
-funcional concluído:1posição/2fills/10eventos por execução,8recusas e caixa2USD
-conciliados;14PIDs próprios encerrados,3perfis vazios. H34 integrada08cf58b;
-checks finais M161 pendentes, sem campanha histórica repetida.
-Contrato docs/sdk/sessao_entradas.md. S09 somente Tester; cache inelegível; cooldown,
-fechamento por horário, Pullback neste gate, DST/calendário futuro, live DEMO,
-Windows físico e carteira/gradientes mantêm seus próprios recortes/aceites.
+T19.20 inicial aceita na PR161, após H34/08cf58b: horários permitidos/excluídos,
+dias ancorados e cota por primeiros fills no perfil S09v1.70/43inputs. Seis checks
+existentes aprovaram o runtime372b762, workflow39499390366; revisão técnica concluída
+e delta posterior somente documental. Um backtest e um replay dirigidos:1posição,
+2fills,10eventos e8recusas (5dia+1exclusão+1cota+1janela) por execução; livro/CSV/
+caixa2USD e eventos iguais.14PIDs próprios encerrados,3perfis vazios, ponte/principal
+preservados. Manual salvo/reaberto e consulta/exportação após fim do iniciador,
+sem novo ensaio. Recibo docs/evidencias/T19_20_SESSAO_20261020.json.
+Próximo recorte: cooldown após encerramento confirmado, com relógio/âncora
+explícitos e sem consumir/reiniciar por parcial ou ordem recusada. Fechamento
+por horário permanece separado. S09 somente Tester; cache inelegível; Pullback
+neste gate, live DEMO, Windows físico, carteira/gradientes e DST/calendário futuro
+conservam seus próprios aceites. Nenhuma campanha numérica nova.

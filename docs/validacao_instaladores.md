@@ -338,3 +338,15 @@ carteira ou gradientes. S09 permanece restrito ao Tester; cache inelegível.
 TM07: CI Windows do workflow39488078713 aprovado em Mf5583f7; não equivale
 a executar o terminal/Tester no Windows físico. Checklist manual acima permanece
 pendente. Ensaio real realizado no Linux/Wine com ponte e terminal preservados.
+
+### T19.20 inicial — filtro de entrada e cota (Windows físico pendente)
+
+- [ ] Carregar S09v1.70/43inputs, configurar janela/exclusão/dias/âncora/cota1/3/N
+  em Manual, salvar/reabrir/exportar e conferir campos e horários do servidor.
+- [ ] No Tester, reconciliar recusas/primeiros fills, contador após parcial/reinício,
+  SL/saídas fora da janela e liberação somente dos processos próprios; preservar ponte/principal.
+- [ ] Rejeitar histórico/identidade ausentes sem devolver cota nem suspender proteções;
+  registrar limite de DST/calendário futuro, sem inferir do relógio do host.
+
+CI Windows do workflow39499390366 aprovado no runtime372b762; não substitui este
+aceite manual do terminal no Windows físico. Par nativo efetivo exercitado em Wine.
