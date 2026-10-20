@@ -71,6 +71,13 @@ PROMPT_F19_EXECUCAO.md/PROMPT_F20_EXECUCAO.md são referências de compatibilida
 blocos concorrentes. O anexo antigo que exigia execução ao vivo em todos os casos foi
 retificado; replay histórico não comprova condições específicas de rede/fill ao vivo.
 
+## Painel modular — design aprovado e cobertura
+
+[Painel modular — design aprovado, cobertura e atividades](PAINEL_MODULAR_COBERTURA.md):
+mockup aprovado e 13 recortes PM-00–PM-12 com donos, dependências e critérios de aceite.
+Planejamento documental; implementação começa por G-02, sem promover capacidades
+operacionais pelo inventário.
+
 ## Onde está cada épico
 
 | Épico | Assunto | Repositório responsável | Documento | Tarefas |

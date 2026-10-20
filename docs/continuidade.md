@@ -2169,3 +2169,14 @@ validada por header real/plataforma falsa; par nativo final exercitou caminho
 normal, sem forçar corrupção/crash. Checks H finais aprovados; M aguarda somente
 workflow39488078713 existente. Revisões substituídas canceladas pelos defeitos
 concretos registrados. Recibo T19_16_ATR_20261020.json; limites permanecem.
+
+
+Painel modular — planejamento: layout de fichário/compacto/expansão aprovado pelo proprietário.
+[Inventário estático e atividades PM-00–PM-12](propostas/PAINEL_MODULAR_COBERTURA.md)
+fixam M b139f04/H 596f2c8/S dbff0d2 como bases documentais; Safety não foi promovido
+para executável/snapshot. Previstos: painel padrão a incorporar a cada EA e identidade
+por gráfico com degradê e marca d'água; serviços faltantes não bloqueiam o núcleo.
+G-02 precede a implementação do painel e as extensões seguem suas dependências.
+Registro integrado em fila documental após TM07, sem MT5/compilação/runtime nesta
+entrega. S09 somente Tester; cache de execução/evidência inelegível; histórico/replay
+não habilitam live DEMO. Carteira concorrente e Windows físico mantêm aceites próprios.
