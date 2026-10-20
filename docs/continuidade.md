@@ -1683,3 +1683,7 @@ preservados. Referência independente e quatro sinais iguais aos do ensaio H,
 sem alegar paridade financeira, fidelidade à fonte, Default/Manual gerado/replay
 visual/UI ou aceite estatístico. Ver `docs/sdk/s09_referencia.md`.
 Suporte nativo do mapper ainda indisponível; Pullback bloqueado; Windows físico pendente.
+T19.23 inicial: conferência opt-in dos inputs efetivamente carregados no Tester
+DEMO, pelo Session existente; recibo versionado e tabela aditiva, sem regravar
+resultados. Ainda não é adaptador de composição/S09/preset/UI nem aceite operacional.
+Pullback bloqueado; Windows físico pendente. Ver `docs/sdk/inputs_nativos.md`.

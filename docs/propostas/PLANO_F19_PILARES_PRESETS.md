@@ -843,3 +843,9 @@ preservados. Referência independente e quatro sinais iguais aos do ensaio H,
 sem alegar paridade financeira, fidelidade à fonte, Default/Manual gerado/replay
 visual/UI ou aceite estatístico. Ver `docs/sdk/s09_referencia.md`.
 Suporte nativo do mapper ainda indisponível; Pullback bloqueado; Windows físico pendente.
+### Recorte T19.23 — conferência dos inputs no Tester DEMO
+
+Implementação inicial em revisão: [contrato e limites](../sdk/inputs_nativos.md).
+Reutiliza Session/compilação/isolamento, recibo opt-in tipado e persistência aditiva.
+Não conclui o adaptador de composição, a adoção dos seis, S09 ou aceite operacional.
+Sem mudança dos limites, PLAY, SDK 1 ou fontes dos Experts legados. Windows físico pendente.

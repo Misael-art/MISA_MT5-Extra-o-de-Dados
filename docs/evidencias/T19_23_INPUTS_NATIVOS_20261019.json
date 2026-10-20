@@ -1,0 +1,36 @@
+{
+  "session": "89fe49d36fae4de3a77fd3541a649d73",
+  "inputs": {
+    "compared": true,
+    "complete": true,
+    "demo": true,
+    "known_at": 1791936000,
+    "operational_acceptance": false,
+    "preset_verified": true,
+    "schema_version": 1,
+    "session": "89fe49d36fae4de3a77fd3541a649d73",
+    "sha256": "115f3ea0ffef82156ee1347fb2c7d9c71c5b10215798dd398fddd7a372fe50a6",
+    "symbol": "EURUSD",
+    "tester": true,
+    "timeframe": "M1",
+    "values": {
+      "Enabled": true,
+      "InpPeriod": 21,
+      "PresetId": "manual_01",
+      "Risk": 0.25
+    }
+  },
+  "state": "completed",
+  "scope": "input contract QA only; no operational acceptance, S09 not exercised",
+  "resources_released": true,
+  "focused": "124 passed; session/isolation/retention/tester/SDK; no repeat of approved baseline",
+  "physical_windows": "pending",
+  "first_attempt": "fixture Period collided with MQL5 built-in,2errors0warnings; preserved; corrected to InpPeriod",
+  "compile": "0 errors, 0 warnings",
+  "runtime_sha256": {
+    "mt5_extracao/robots/native_inputs.py": "5ee9c15d8941066775db4589350a6140dfc2cc46bf8b909500ba2a0c5b5b2c2e",
+    "mt5_extracao/robots/sessions.py": "0b8f1765d256a6c47369bc761633d5041116a5244a07fd378d34bad4f8961fda",
+    "mt5_extracao/robots/store.py": "dc6663b90d4d64d7df2b4a19b911a81f9c6d809cf7cea7bc0c2bf768d8b54153",
+    "tests/fixtures/native_input_qa.mq5": "041690632299bef09ff985d8354edaad039661692816fbdb40ca7016337be17d"
+  }
+}
