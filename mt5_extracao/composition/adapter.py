@@ -33,7 +33,7 @@ def compatibility(composition, *, backend="python"):
     problems = [Problem(slot, f"modo {data[slot]['mode']} sem adaptador Python; use {mode} ou aguarde a capacidade.")
                 for slot, mode in BASE_MODES.items()
                 if data[slot]["mode"] not in ({mode, "fixed_points", "fixed_r"} if slot == "profit_exit"
-                                             else {mode, "fixed_points"} if slot == "protection" else {mode,"temporal_v1"} if slot=="conditional_policy" else {mode})]
+                                             else {mode, "fixed_points"} if slot == "protection" else {mode,"temporal_v1","temporal_er_v1"} if slot=="conditional_policy" else {mode})]
     if data["strategy"]["key"] == "pullback":
         problems.append(Problem("partial_exit_plan", "Pullback legado usa parcial ainda não qualificada (T19.57); "
                                                     "o novo adaptador não libera esse modo até corrigir confirmação/BE."))
@@ -83,9 +83,9 @@ class BaseAdapter:
         if profit["mode"] == protection["mode"] == "strategy_default" and temporal["mode"]=="disabled":
             return run_backtest(bars, strategy, spec, self.backtest_config(config))
         selection = {}
-        if temporal["mode"]=="temporal_v1":
-            from ..strategies.temporal import TemporalPolicy
-            selection["temporal"]=TemporalPolicy(**temporal["params"])
+        if temporal["mode"] in ("temporal_v1","temporal_er_v1"):
+            from ..strategies.temporal_er import from_selection
+            selection["temporal"]=from_selection(temporal)
         if profit["mode"] != "strategy_default":
             selection.update(target_r=None, target_points=None)
             key = "target_points" if profit["mode"] == "fixed_points" else "target_r"
@@ -99,4 +99,4 @@ class BaseAdapter:
             signals[["target_long", "target_short"]] = float("nan")
         return run_backtest(bars, strategy, spec, self.backtest_config(config),
                             signals=signals, exit_rules_override=rules,
-                            **({"observation_timeframe":timeframe} if temporal["mode"]=="temporal_v1" else {}))
+                            **({"observation_timeframe":timeframe} if temporal["mode"] in ("temporal_v1","temporal_er_v1") else {}))

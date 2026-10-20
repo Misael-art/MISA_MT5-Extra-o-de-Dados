@@ -89,6 +89,11 @@ for _mode,_unit in (("staged_lots","lot"),("staged_fraction","fraction")):
         "quantity2":Parameter("number",_unit,exclusive_minimum=True),"base2":Parameter("int","volume_base",0,1),
         "breakeven_after_confirmation":Parameter("bool","boolean")}
 
+MODULE_PARAMETERS["conditional_policy"]["temporal_er_v1"]={
+    **MODULE_PARAMETERS["conditional_policy"]["temporal_v1"],
+    "er_min_seconds":Parameter("int","second",1,2147483647),
+    "maximum_er":Parameter("number","fraction",0,1)}
+
 FILTER_PARAMETERS = {"adx_min": {"period": PERIOD, "threshold": OSCILLATOR}}
 BASE_MODES = {slot: next(iter(modes)) for slot, modes in MODULE_PARAMETERS.items()}
 TIMEFRAMES = frozenset(("M1", "M2", "M3", "M4", "M5", "M6", "M10", "M12", "M15", "M20", "M30",

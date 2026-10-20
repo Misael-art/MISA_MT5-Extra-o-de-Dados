@@ -2028,3 +2028,10 @@ pronta para merge em master, candidato inteiro conferido contra a árvore revisa
 UI e oito resultados históricos preservados; próxima lacuna é consumidor ER causal
 de T19.16, seguido da variante de canal condicionada a T19.7. Sem campanha repetida.
 Cache inelegível; S09 Tester; live DEMO/Windows físico/carteira/gradientes separados.
+
+
+T19.16 inicial em árvore isolada: TM05, ER(20) canônico após idade mínima explícita.
+Novo perfil S09v1.40 opt-in; controlador temporal compartilhado conserva âncora,
+prioridade, confirmação e congelamento. UI/32 inputs e recibo independente de21
+closes fechados. Revisão, checks e aceite dirigido pendentes; sem aceite de canal/ATR,
+Pullback ER ou live. Detalhes em docs/sdk/tempo_er.md.

@@ -47,12 +47,20 @@ TIME_INPUTS={"max_seconds":("InpTimeMaxSeconds","int","second"),
  "money_digits":("InpTimeMoneyDigits","int","currency_decimal")}
 TEMPORAL_INPUT_TYPES={**PARTIALS_INPUT_TYPES,**{name:kind for name,kind,unit in TIME_INPUTS.values()}}
 
+ER_TEMPORAL_ROBOT_VERSION="1.40"
+ER_TEMPORAL_APPROVED_FINGERPRINT="24a4d21ae609d9c7"
+ER_TEMPORAL_HADOUKEN_REVISION="994d1bafd20f729daa1a292c1cdd79515c66e39c"
+ER_INPUTS={"er_min_seconds":("InpTimeERMinSeconds","int","second"),
+           "maximum_er":("InpTimeERMaximum","double","fraction")}
+ER_TEMPORAL_INPUT_TYPES={**TEMPORAL_INPUT_TYPES,**{name:kind for name,kind,unit in ER_INPUTS.values()}}
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
                 LOTS_ROBOT_VERSION: (LOTS_APPROVED_FINGERPRINT, LOTS_INPUT_TYPES, 2, LOTS_HADOUKEN_REVISION),
                 PARTIALS_ROBOT_VERSION:(PARTIALS_APPROVED_FINGERPRINT,PARTIALS_INPUT_TYPES,3,PARTIALS_HADOUKEN_REVISION),
-                TEMPORAL_ROBOT_VERSION:(TEMPORAL_APPROVED_FINGERPRINT,TEMPORAL_INPUT_TYPES,4,TEMPORAL_HADOUKEN_REVISION)}
+                TEMPORAL_ROBOT_VERSION:(TEMPORAL_APPROVED_FINGERPRINT,TEMPORAL_INPUT_TYPES,4,TEMPORAL_HADOUKEN_REVISION),
+                ER_TEMPORAL_ROBOT_VERSION:(ER_TEMPORAL_APPROVED_FINGERPRINT,ER_TEMPORAL_INPUT_TYPES,5,ER_TEMPORAL_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
@@ -99,6 +107,7 @@ class S09NativeAdapter:
             if slot == "sizing" and profile[2] >= 2:
                 allowed.add("fixed_volume")
             if slot=="conditional_policy" and profile[2]>=4:allowed.add("temporal_v1")
+            if slot=="conditional_policy" and profile[2]>=5:allowed.add("temporal_er_v1")
             if slot=="partial_exit_plan" and profile[2]>=3:
                 allowed.update(("fixed_r","staged_lots","staged_fraction"))
             if data[slot]["mode"] not in allowed:
@@ -149,11 +158,17 @@ class S09NativeAdapter:
         _sizing_parameters(data, profile_version, values, bindings, inactive)
         if profile_version>=4:
             from ..strategies.temporal import TemporalPolicy
-            enabled=data["conditional_policy"]["mode"]=="temporal_v1"
-            policy=TemporalPolicy(**data["conditional_policy"]["params"]) if enabled else TemporalPolicy()
+            from ..strategies.temporal_er import from_selection,EfficiencyTemporalPolicy
+            enabled=data["conditional_policy"]["mode"] in ("temporal_v1","temporal_er_v1")
+            policy=from_selection(data["conditional_policy"]) if enabled else TemporalPolicy()
             for key,(name,kind,unit) in TIME_INPUTS.items():
                 values[name]=format(Decimal(str(getattr(policy,key))),"f")
                 if enabled:bindings["conditional_policy.params."+key]={"input":name,"type":"int" if kind=="int" else "number","unit":unit}
+        if profile_version>=5:
+            er_policy=policy if isinstance(policy,EfficiencyTemporalPolicy) else EfficiencyTemporalPolicy()
+            for key,(name,kind,unit) in ER_INPUTS.items():
+                values[name]=format(Decimal(str(getattr(er_policy,key))),"f")
+                if data["conditional_policy"]["mode"]=="temporal_er_v1":bindings["conditional_policy.params."+key]={"input":name,"type":"int" if kind=="int" else "number","unit":unit}
         return _description(self.composition,self.robot,data,values,bindings,inactive,preset_id,
                             fingerprint,input_types,profile_version,hadouken_revision,PROFILE_ID)
 
@@ -194,6 +209,7 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
         modules["sizing"] = ["risk_fraction", "fixed_volume"]
     if profile_version>=3:modules["partial_exit_plan"]=["strategy_default","fixed_r","staged_lots","staged_fraction"]
     if profile_version>=4:modules["conditional_policy"]=["disabled","temporal_v1"]
+    if profile_version>=5:modules["conditional_policy"].append("temporal_er_v1")
     capabilities = Capabilities({"capabilities_schema_version": 1,
         "robot": {"key": robot.key, "version": robot.version, "fingerprint": fingerprint},
         "backend": "mql5", "strategy_key": data["strategy"]["key"], "modules": modules, "bindings": bindings}, composition)

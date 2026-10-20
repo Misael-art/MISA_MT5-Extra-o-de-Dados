@@ -27,7 +27,7 @@ from mt5_extracao.strategies.temporal import TemporalPolicy,source_age_ms
 from mt5_extracao.strategies.equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 _PRICE_EXITS = {EXIT_REASONS[k] for k in ("stop", "breakeven", "trailing", "target")}
-_OPEN_EXITS = {EXIT_REASONS[k] for k in ("signal","time_absolute","time_progress","time_gain","time_loss","time_tie")}                         # saem na abertura da barra
+_OPEN_EXITS = {EXIT_REASONS[k] for k in ("signal","time_absolute","time_progress","time_gain","time_loss","time_tie","time_er")}                         # saem na abertura da barra
 _CLOSE_EXITS = {EXIT_REASONS[k] for k in ("time", "eod", "end")}   # saem no fechamento da barra
 
 
@@ -111,6 +111,8 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     last_of_day = np.append(days[1:] != days[:-1], True) if len(days) else np.array([], dtype=bool)
     atr_v = np.asarray(atr, dtype=float) if atr is not None else np.full(len(data), np.nan)
     temporal=policy.temporal;temporal_trace=[]
+    from mt5_extracao.strategies.temporal_er import observation_values,decide
+    er_values=observation_values(temporal,data)
     if temporal is not None:
         if not isinstance(temporal,TemporalPolicy):raise ValueError("Política temporal exige contrato tipado.")
         if temporal.enabled and (observation_timeframe is None or policy.grid_levels):
@@ -320,10 +322,10 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 mark=c[i]+(spr_close[i] if d<0 else 0)
                 net=pos["pnl"]+sum((mark-price)*d*ppu*vol for price,vol,opened in pos["lots"])
                 if cfg.swap:net+=sum(spec.swap_money(d,vol,times.iloc[opened],times.iloc[i]) for price,vol,opened in pos["lots"])
-                decision=temporal.decision(age,float(net))
+                decision,er_context=decide(temporal,age,float(net),er_values,i)
                 if decision not in ("hold","unavailable"):
                     pending_temporal=decision
-                    temporal_trace.append(dict(event="decision",cycle_seq=len(out),available_at=available.isoformat(),opened_at=times.iloc[i0].isoformat(),age_ms=age,net_observed=float(net),reason=decision))
+                    temporal_trace.append(dict(event="decision",cycle_seq=len(out),available_at=available.isoformat(),opened_at=times.iloc[i0].isoformat(),age_ms=age,net_observed=float(net),reason=decision,**er_context))
             if i < n - 1:
                 balances[i] += pos["pnl"]
                 mark = c[i] + (spr_close[i] if d < 0 else 0)

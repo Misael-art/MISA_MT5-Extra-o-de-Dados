@@ -4,9 +4,11 @@ from decimal import Decimal
 from pathlib import Path
 import math,re
 from ..robots import mql
-from ..strategies.temporal import TemporalPolicy,REASONS
+from ..strategies.temporal import REASONS
+from ..strategies.temporal_er import from_selection,EfficiencyTemporalPolicy
+from .efficiency_events import read_context
 
-EVENT=re.compile(r"HDK_TIME event_at=(\d+) at_msc=(\d+) decision_msc=(\d+) reason=([1-5]) state=(\w+) age_ms=(\d+) net=([^ ]+) before=([^ ]+) filled=([^ ]+) remaining=([^ ]+) position=(\d+) history_reduction=([^ ]+) price=([^ ]+) cash=([^ ]+) costs=([^ ]+) realized=([^ ]+) floating=([^ ]+) swap=([^ ]+) history_count=(\d+)")
+EVENT=re.compile(r"HDK_TIME event_at=(\d+) at_msc=(\d+) decision_msc=(\d+) reason=([1-6]) state=(\w+) age_ms=(\d+) net=([^ ]+) before=([^ ]+) filled=([^ ]+) remaining=([^ ]+) position=(\d+) history_reduction=([^ ]+) price=([^ ]+) cash=([^ ]+) costs=([^ ]+) realized=([^ ]+) floating=([^ ]+) swap=([^ ]+) history_count=(\d+)")
 D=lambda v:Decimal(str(v))
 
 def read_events(directory,selection,signals,sizing,deals):
@@ -17,7 +19,7 @@ def read_events(directory,selection,signals,sizing,deals):
     if selection["mode"]=="disabled":
         if matches:raise ValueError("Saída temporal foi executada apesar da política desabilitada.")
         return []
-    policy=TemporalPolicy(**selection["params"]);grouped=defaultdict(list)
+    policy=from_selection(selection);grouped=defaultdict(list)
     for fill in deals:grouped[fill["position"]].append(fill)
     by_origin={}
     for signal in signals:
@@ -40,7 +42,14 @@ def read_events(directory,selection,signals,sizing,deals):
         if at<decision or decision<entry['at_msc'] or age!=decision-entry['at_msc'] or before<=0:
             raise ValueError("Idade/relógio temporal diverge do primeiro preenchimento; parcial não reinicia a idade.")
         reason=REASONS[code]
-        if policy.decision(age,net)!=reason:raise ValueError("Motivo/prazo temporal diverge da referência independente ou do PnL conhecido.")
+        er_context={}
+        if isinstance(policy,EfficiencyTemporalPolicy):
+            suffix=match.string[match.end():].partition("\n")[0]
+            er_context,reference_er=read_context(suffix,decision)
+            actual_decision=policy.decision(age,net,er=er_context['er_value'])
+            reference_decision=policy.decision(age,net,er=reference_er)
+            if actual_decision!=reason or reference_decision!=reason:raise ValueError("Condição ER/idade/prioridade diverge do contexto conhecido e da referência independente.")
+        elif policy.decision(age,net)!=reason:raise ValueError("Motivo/prazo temporal diverge da referência independente ou do PnL conhecido.")
         previous_exits=exits[:-1]
         expected_before=D(entry['volume'])-sum((D(f['volume']) for f in previous_exits),D(0))
         if D(before)!=expected_before:raise ValueError("Saldo antes da saída temporal diverge das reduções anteriores.")
@@ -54,14 +63,14 @@ def read_events(directory,selection,signals,sizing,deals):
                 raise ValueError("PnL temporal omite/dobra custos ou reduções observados.")
         row=dict(event_at=origin,at_msc=at,decision_msc=decision,reason=reason,state=state,age_ms=age,net_observed=net,
                  before=before,filled=filled,remaining=remaining,position=pid,history_reduction=history,price=price,cash=cash,costs=costs,
-                 realized=realized if net is not None else None,floating=floating if net is not None else None,swap=swap if net is not None else None,history_count=count)
+                 realized=realized if net is not None else None,floating=floating if net is not None else None,swap=swap if net is not None else None,history_count=count,**er_context)
         if state=='pending':
             if origin in pending or origin in confirmed or at!=decision or remaining!=before or any(v!=0 for v in (filled,history,price,cash,costs)):
                 raise ValueError("Intenção temporal repetida ou contém fill antes da confirmação.")
             pending[origin]=row
         else:
             first=pending.get(origin)
-            if first is None or origin in confirmed or any(row[k]!=first[k] for k in ('decision_msc','reason','age_ms','net_observed','before','history_count','realized','floating','swap')):
+            if first is None or origin in confirmed or any(row[k]!=first[k] for k in ('decision_msc','reason','age_ms','net_observed','before','history_count','realized','floating','swap',*er_context)):
                 raise ValueError("Confirmação temporal sem intenção única/imutável; não repetir envio.")
             spec=next(s for s in sizing if s['event_at']==origin);volume_epsilon=D(spec['volume_step'])*D('1e-8')
             fill=exits[-1];profit=sum((D(fill[k]) for k in ('profit','commission','swap','fee')),D(0));fees=sum((D(fill[k]) for k in ('commission','swap','fee')),D(0))
