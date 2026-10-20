@@ -189,7 +189,7 @@ def test_robots_tab_shows_cards_and_detail(ui):
     """T8.2: cards de robôs MQL5 e Python, filtros, e o painel que abre ao clicar no card."""
     panel = ui.robots_panel
     assert ui.notebook.tab(panel.frame, "text") == "Robôs"
-    assert len(panel.cards) == 8 and {"mql5:demoguard", "mql5:martingale", "python:donchian"} <= set(panel.cards)
+    assert len(panel.cards) == 9 and {"mql5:demoguard", "mql5:martingale", "python:donchian", "python:s09_reference"} <= set(panel.cards)
     card_text = " | ".join(_labels(panel.cards["mql5:demoguard"]))
     assert "DemoGuard" in card_text and "MQL5" in card_text and "v1.20" in card_text
     assert "Risco moderado" in card_text and "3 preset(s): risco Baixo a Alto" in card_text
@@ -297,7 +297,7 @@ def test_robot_asset_results_icons_survive_theme_resize_and_select_detail(ui):
 def test_robots_tab_survives_theme_toggle(ui):
     ui.toggle_theme()
     ui.pump(0.4)
-    assert len(ui.robots_panel.cards) == 8
+    assert len(ui.robots_panel.cards) == 9
     assert ui.robots_panel.canvas.cget("background") == ui.theme.colors["page"]
 
 
@@ -459,9 +459,9 @@ def test_backtest_button_follows_the_checked_rows_and_runs_in_background(ui):
 
     chosen = []
     dialog = BacktestDialog(ui, panel.checked_items(), ui.robots_panel.robots, chosen.extend)
-    assert dialog.run_button.instate(["disabled"]) and len(dialog.vars) == 8
+    assert dialog.run_button.instate(["disabled"]) and len(dialog.vars) == 9
     dialog.set_all(True)
-    assert dialog.run_button.cget("text") == "Executar 8 Backtest(s)" and "MQL5" in dialog.note.cget("text")
+    assert dialog.run_button.cget("text") == "Executar 9 Backtest(s)" and "MQL5" in dialog.note.cget("text")
     dialog.set_all(False)
     for key in ("python:donchian", "python:ema_atr"):
         dialog.vars[key].set(True)
