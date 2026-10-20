@@ -39,6 +39,9 @@ ATR = Parameter("number", "ATR", exclusive_minimum=True)
 OSCILLATOR = Parameter("number", "index_0_100", 0, 100)
 # Nomes explícitos: não converter nome Python em nome de input MQL5.
 STRATEGY_PARAMETERS = {
+    "s09_reference": {"fast": PERIOD, "slow": PERIOD, "warmup_bars": PERIOD,
+                      "stop_points": Parameter("int", "point", 1),
+                      "target_points": Parameter("int", "point", 1)},
     "ema_atr": {"fast": PERIOD, "slow": PERIOD, "trend": PERIOD, "stop_atr": ATR, "trail_atr": ATR},
     "donchian": {"entry_period": PERIOD, "exit_period": PERIOD, "adx_min": OSCILLATOR,
                  "atr_avg": PERIOD, "stop_atr": ATR},

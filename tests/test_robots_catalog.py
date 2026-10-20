@@ -181,7 +181,9 @@ def test_python_strategies_are_in_the_catalog():
     config = configparser.ConfigParser()
     config.read_string("[STRATEGY]\nrisk_per_trade = 0.02\n")
     items = catalog.python_robots(config)
-    assert len(items) == 6 and all(r.kind == "python" and r.regime and r.timeframes for r in items)
+    assert [r.key for r in items] == ["python:"+key for key in
+        ["ema_atr","donchian","bb_rsi","orb","pullback","squeeze","s09_reference"]]
+    assert all(r.kind == "python" and r.regime and r.timeframes for r in items)
     donchian = robots.get_robot(items, "donchian")
     assert donchian.key == "python:donchian" and donchian.risk.level == risk.HIGH        # 2%/trade na configuração
     assert [i.name for i in donchian.inputs]
