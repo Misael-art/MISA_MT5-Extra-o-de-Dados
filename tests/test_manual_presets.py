@@ -76,7 +76,7 @@ def test_export_load_import_is_verified_idempotent_and_preserves_context_identit
     exported=manual.export_manual(db,robot,own.identity.id,tmp_path/"exports",test_context=context)
     assert "__Manual__Manual-demo__" in exported["set_path"].name
     assert exported["package"].manifest["parameters_file"]==exported["set_path"].name
-    assert load_package(exported["manifest_path"].read_text(),exported["set_path"].read_bytes(),robot)==exported["package"]
+    assert load_package(exported["manifest_path"].read_text(encoding="utf-8"),exported["set_path"].read_bytes(),robot)==exported["package"]
     before={p:p.read_bytes() for p in exported["set_path"].parent.iterdir()}
     assert manual.export_manual(db,robot,own.identity.id,tmp_path/"exports",test_context=context)==exported
     assert {p:p.read_bytes() for p in exported["set_path"].parent.iterdir()}==before
@@ -116,7 +116,7 @@ def test_existing_divergent_file_is_never_overwritten_and_partial_publish_can_re
 def test_malformed_import_and_unsupported_choice_do_not_install_execute_or_change_saved_preset(robot,db,tmp_path):
     own=manual.save_as_manual(db,robot,source(db,robot).identity.id,"Preservado")
     exported=manual.export_manual(db,robot,own.identity.id,tmp_path/"exports")
-    m=json.loads(exported["manifest_path"].read_text());m["parameters_file"]="../outside.set"
+    m=json.loads(exported["manifest_path"].read_text(encoding="utf-8"));m["parameters_file"]="../outside.set"
     bad=tmp_path/"bad.json";bad.write_text(json.dumps(m))
     with pytest.raises(ValueError,match="sem caminhos"):manual.import_manual(db,robot,bad)
     comp=own.composition.to_dict();comp["sizing"]["params"]["risk_fraction"]=.01
@@ -129,7 +129,7 @@ def test_default_export_uses_canonical_name_without_editing_reference(robot,db,t
     default=source(db,robot)
     exported=manual.export_preset(db,robot,default.identity.id,tmp_path/"exports")
     assert "__Default__Normal__v001__" in exported["set_path"].name
-    assert load_package(exported["manifest_path"].read_text(),exported["set_path"].read_bytes(),robot)==exported["package"]
+    assert load_package(exported["manifest_path"].read_text(encoding="utf-8"),exported["set_path"].read_bytes(),robot)==exported["package"]
     assert store.get_preset(db,default.identity.id)==default
     with pytest.raises(ValueError,match="Manual/revisão"):
         manual.rename_manual(db,default.identity.id,"não editar Default")
