@@ -76,6 +76,16 @@ MODULE_PARAMETERS = {
         "breakeven_after_confirmation": Parameter("bool", "boolean")}},
     "conditional_policy": {"disabled": {}},
 }
+# T19.57 inicial: até duas etapas, mesma unidade na agenda; base por etapa.
+for _mode,_unit in (("staged_lots","lot"),("staged_fraction","fraction")):
+    MODULE_PARAMETERS["partial_exit_plan"][_mode]={
+        "count":Parameter("int","stage",1,2),
+        "trigger1_r":Parameter("number","R",exclusive_minimum=True),
+        "quantity1":Parameter("number",_unit,exclusive_minimum=True),"base1":Parameter("int","volume_base",0,1),
+        "trigger2_r":Parameter("number","R",exclusive_minimum=True),
+        "quantity2":Parameter("number",_unit,exclusive_minimum=True),"base2":Parameter("int","volume_base",0,1),
+        "breakeven_after_confirmation":Parameter("bool","boolean")}
+
 FILTER_PARAMETERS = {"adx_min": {"period": PERIOD, "threshold": OSCILLATOR}}
 BASE_MODES = {slot: next(iter(modes)) for slot, modes in MODULE_PARAMETERS.items()}
 TIMEFRAMES = frozenset(("M1", "M2", "M3", "M4", "M5", "M6", "M10", "M12", "M15", "M20", "M30",

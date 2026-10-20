@@ -1,3 +1,17 @@
+## T19.57 — preparação após T19.56, 2026-10-20
+
+Corretivo148 integrado e prova de lotes concluída; H24 integrada e M149 aguarda check
+Windows existente. Próxima árvore isolada prepara confirmação parcial/saldo:
+S09 1.20, até duas etapas; agenda UI, volume/passo/saldo, intenção persistida antes
+do envio, redução/histórico/ownership/proteção antes de confirmar ou solicitar BE.
+Pendente/incerto congela tentativas, restart não repete fechamento. Fonte H5eb48a5,
+fingerprint7e71e0039cfc87ef, Safety1.7. Defeito legado Python reproduzido nos dois
+sentidos (meia unidade indivisível), corrigido; sem BE quando não existe redução.
+Leitura de fills/custos por posição, sem contar parciais como vitórias. Compilação
+S09 final privada0erros/avisos; cobertura nativa/legada e checks ainda pendentes.
+Ver `docs/sdk/parciais_s09.md`. Não desbloquear Pullback; cache inelegível, S09 Tester,
+ao vivo DEMO e Windows físico conservam seus aceites. Nenhuma campanha repetida.
+
 ## T19.56 — prova consumidora de lotes, 2026-10-20
 
 M#148 integrada em5e3c443, fonte aa0d8fd com seis checks aprovados.

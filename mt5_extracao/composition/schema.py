@@ -126,6 +126,8 @@ class Composition:
         if type(value["bar_policy"]["position_limit"]) is not int or value["bar_policy"]["position_limit"] != 1:
             _fail("bar_policy.position_limit", "modo base exige uma posição; multiordem depende dos gates próprios.")
         partial = value["partial_exit_plan"]
+        from .partials import stages
+        stages(partial)
         if partial["mode"] == "fixed_r" and partial["params"]["fraction"] >= 1:
             _fail("partial_exit_plan.params.fraction", "parcial deve ser menor que 1; fechamento total não é parcial.")
         if partial["mode"] == "fixed_r" and value["profit_exit"]["mode"] == "fixed_r" and (

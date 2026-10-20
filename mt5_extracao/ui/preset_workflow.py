@@ -7,6 +7,7 @@ from tkinter import ttk,filedialog,messagebox
 from mt5_extracao.bootstrap import paths
 from mt5_extracao.composition import Composition
 from mt5_extracao.composition import native
+from mt5_extracao.composition.partials import stages,preview_plan
 from mt5_extracao.composition.sizing import preview_sizing,SizingPreviewUnavailable
 from mt5_extracao.robots import store as robot_store
 from mt5_extracao.presets import defaults,store,manual,execution
@@ -58,7 +59,8 @@ class PresetWorkflow:
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=robot.version==native.LOTS_ROBOT_VERSION
+        self.lots_enabled=robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION)
+        self.partials_enabled=robot.version==native.PARTIALS_ROBOT_VERSION
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -101,6 +103,32 @@ class PresetWorkflow:
             self.lot_preview=tk.StringVar(value="Aguardando especificação atual do símbolo…")
             ttk.Label(lots,textvariable=self.lot_preview,wraplength=850).pack(fill=tk.X,pady=(8,0))
             for variable in (self.lot_mode,self.fixed_volume,self.risk_pct):variable.trace_add("write",lambda *_:self.mark_dirty())
+        if self.partials_enabled:
+            box=ttk.LabelFrame(body,text="Parciais · saldo protegido",padding=12);box.pack(fill=tk.X,padx=12,pady=4)
+            self.partial_mode=tk.StringVar(value="Desabilitada");self.partial_count=tk.StringVar(value="1")
+            self.partial_be=tk.BooleanVar(value=False);self.partial_fields={};self.partial_widgets=[]
+            first=ttk.Frame(box);first.pack(fill=tk.X)
+            for label,var,choices in (("Unidade da agenda",self.partial_mode,("Desabilitada","Fração (%)","Lotes")),("Etapas",self.partial_count,("1","2"))):
+                field=ttk.Frame(first);field.pack(side=tk.LEFT,fill=tk.X,expand=True,padx=(0,8))
+                ttk.Label(field,text=label).pack(anchor="w");widget=ttk.Combobox(field,textvariable=var,values=choices,state="readonly",width=20);widget.pack(fill=tk.X)
+                self.partial_widgets.append(widget)
+            self.partial_stage_widgets={}
+            for i in (1,2):
+                row=ttk.Frame(box);row.pack(fill=tk.X,pady=5)
+                group=[]
+                for key,label,default in ((f"trigger{i}_r",f"Etapa {i} · gatilho R",str(.5*i)),(f"quantity{i}","Quantidade na unidade acima","50"),(f"base{i}","Base da fração","Inicial" if i==1 else "Saldo")):
+                    field=ttk.Frame(row);ttk.Label(field,text=label).pack(anchor="w")
+                    var=tk.StringVar(value=default);self.partial_fields[key]=var
+                    widget=ttk.Combobox(field,textvariable=var,values=("Inicial","Saldo"),state="readonly",width=16) if key.startswith("base") else ttk.Entry(field,textvariable=var,width=16)
+                    widget.pack(fill=tk.X);group.append(field);self.partial_widgets.append(widget)
+                    self.partial_stage_widgets.setdefault(i,[]).append(widget)
+                    var.trace_add("write",lambda *_:self.mark_dirty())
+                self.flow(row,group)
+            self.partial_check=ttk.Checkbutton(box,text="Solicitar break-even somente após redução confirmada",variable=self.partial_be);self.partial_check.pack(anchor="w")
+            self.partial_widgets.append(self.partial_check)
+            self.partial_preview=tk.StringVar(value="Parciais desabilitadas.")
+            ttk.Label(box,textvariable=self.partial_preview,wraplength=850).pack(fill=tk.X,pady=5)
+            for var in (self.partial_mode,self.partial_count,self.partial_be):var.trace_add("write",lambda *_:self.mark_dirty())
         self.protection=ttk.Label(body,text="",style="Muted.TLabel",wraplength=850);self.protection.pack(fill=tk.X,padx=12,pady=4)
         ctx=ttk.LabelFrame(body,text="Contexto do ensaio histórico",padding=12);ctx.pack(fill=tk.X,padx=12,pady=6)
         now=datetime.now();self.start=tk.StringVar(value=(now-timedelta(days=1)).date().isoformat());self.end=tk.StringVar(value=now.date().isoformat())
@@ -132,6 +160,8 @@ class PresetWorkflow:
         self.inputs=self.tree("Inputs carregados",("input","esperado","lido no MT5"))
         self.signals=self.tree("Sinais · horário do servidor",("origem","confirmação","disponível","lado","entrada","motivo"))
         self.sizing=self.tree("Lotes e risco · eventos nativos",("origem do sinal","modo","solicitado","plano","preenchido","risco até SL","orçamento","margem requerida","margem livre","mín/passo/máx nativos")) if self.lots_enabled else None
+        self.partials=self.tree("Parciais · confirmação e saldo",("origem","instante","etapa","estado","antes","solicitado","reduzido","saldo","SL antes","SL depois","BE confirmado","resultado da redução")) if self.partials_enabled else None
+        self.deals=self.tree("Preenchimentos e custos",("instante servidor","posição","entrada/saída","lotes","preço","resultado bruto","comissão","swap","taxa")) if self.partials_enabled else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -180,6 +210,14 @@ class PresetWorkflow:
         if self.lots_enabled:
             self.lot_combo.configure(state="readonly" if editable else "disabled")
             self.fixed_entry.configure(state="normal" if editable and self.lot_mode.get()=="Volume fixo" else "disabled")
+        if self.partials_enabled:
+            for widget in self.partial_widgets:
+                if isinstance(widget,ttk.Combobox):widget.configure(state="readonly" if editable else "disabled")
+                else:widget.state(["!disabled" if editable else "disabled"])
+            if self.partial_mode.get()=="Desabilitada":
+                for widget in self.partial_widgets[1:]:widget.state(["disabled"])
+            elif self.partial_count.get()=="1":
+                for widget in self.partial_stage_widgets[2]:widget.state(["disabled"])
         for entry in self.context_entries:entry.configure(state="disabled" if busy or not self.source_compatible else "normal")
         self.save.state(["!disabled" if is_manual and self.dirty and not busy else "disabled"])
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
@@ -234,6 +272,15 @@ class PresetWorkflow:
             self.lot_mode.set("Volume fixo" if sizing["mode"]=="fixed_volume" else "Por risco")
             self.fixed_volume.set(str(sizing["params"].get("volume",.01)))
             self.risk_pct.set(str(sizing["params"]["risk_fraction"]*100))
+        if self.partials_enabled:
+            plan=item.composition.to_dict()["partial_exit_plan"];items=stages(plan)
+            self.partial_mode.set("Desabilitada" if not items else "Lotes" if items[0]["mode"]==1 else "Fração (%)")
+            self.partial_count.set(str(len(items) or 1));self.partial_be.set(plan["params"].get("breakeven_after_confirmation",False))
+            for i in (1,2):
+                stage=items[i-1] if i<=len(items) else dict(trigger_r=.5*i,quantity=.5,mode=0,base=0 if i==1 else 1)
+                self.partial_fields[f"trigger{i}_r"].set(str(stage["trigger_r"]))
+                self.partial_fields[f"quantity{i}"].set(str(stage["quantity"]*(100 if stage["mode"]==0 else 1)))
+                self.partial_fields[f"base{i}"].set("Inicial" if stage["base"]==0 else "Saldo")
         self.selected.set(next(label for label,value in self.options.items() if value.identity==item.identity))
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
@@ -244,6 +291,7 @@ class PresetWorkflow:
         self.details.configure(text=(f"Nome: {item.identity.label}\nRevisão: {item.identity.revision}\n"
                                     f"Arquivo: {item.name.filename}\nConfiguração: {item.composition.config_hash}\n"
                                     f"Origem Default: {item.identity.default_origin or item.identity.id}"))
+        if self.partials_enabled:self.protection.configure(text="Risco até 0,5% · uma posição · SL obrigatório · parcial só após redução/histórico confirmados; trailing e Pullback indisponíveis.")
         self.clear_result();self.refresh_preview();self.update_buttons()
     def choose(self):
         if self.pending:return
@@ -263,6 +311,16 @@ class PresetWorkflow:
             mode="fixed_volume" if self.lot_mode.get()=="Volume fixo" else "risk_fraction"
             if mode=="fixed_volume":params["volume"]=float(self.fixed_volume.get().replace(",","."))
             data["sizing"]={"mode":mode,"params":params}
+        if self.partials_enabled:
+            mode=self.partial_mode.get()
+            if mode=="Desabilitada":data["partial_exit_plan"]={"mode":"strategy_default","params":{}}
+            else:
+                params={"count":int(self.partial_count.get()),"breakeven_after_confirmation":self.partial_be.get()}
+                for i in (1,2):
+                    params[f"trigger{i}_r"]=float(self.partial_fields[f"trigger{i}_r"].get().replace(",","."))
+                    params[f"quantity{i}"]=float(self.partial_fields[f"quantity{i}"].get().replace(",","."))/(100 if mode=="Fração (%)" else 1)
+                    params[f"base{i}"]=0 if self.partial_fields[f"base{i}"].get()=="Inicial" else 1
+                data["partial_exit_plan"]={"mode":"staged_fraction" if mode=="Fração (%)" else "staged_lots","params":params}
         return Composition(data)
     def refresh_preview(self):
         if not self.lots_enabled or self.current is None:return
@@ -278,16 +336,23 @@ class PresetWorkflow:
             self.lot_preview.set(f"Prévia no capital inicial: solicitado {requested} → {value['effective']} lotes. "
                 f"Mín {value['minimum']} · passo {value['step']} · máx {value['maximum']}. Risco estimado {fmt_num(value['risk_money'])} / orçamento {fmt_num(value['risk_budget'])}. "
                 "Especificação atual; margem e preenchimento serão conferidos no Tester. Não autoriza execução ao vivo.")
+            if self.partials_enabled:
+                schedule=preview_plan(data["partial_exit_plan"],volume=value['effective'],minimum=value['minimum'],maximum=value['maximum'],step=value['step'])
+                self.partial_preview.set("Prévia: "+" → ".join(map(str,[value['effective']]+[r['remaining'] for r in schedule]))+" lotes. Gatilhos em R do SL inicial; confirmação e saldo serão conferidos no Tester." if schedule else "Parciais desabilitadas.")
             self.preview_error=False
         except SizingPreviewUnavailable as error:
             self.preview_error=False
+            if self.partials_enabled:self.partial_preview.set("Agenda requer confirmação nativa de volume, histórico e proteção; prévia atual indisponível.")
             self.lot_preview.set("Prévia indisponível: "+str(error)+" O Tester deve confirmar especificação, risco e margem antes de qualquer entrada; não há aprovação antecipada.")
         except (ValueError,TypeError,OverflowError) as error:
             self.preview_error=True;self.lot_preview.set("Prévia indisponível/recusada: "+str(error))
+            if self.partials_enabled:self.partial_preview.set(str(error))
     def clear_result(self):
         self.last_evidence=None;self.artifacts={};self.result.set("Sem conferência nativa neste contexto.")
         for tree in (self.trades,self.inputs,self.signals):tree.delete(*tree.get_children())
         if self.sizing is not None:self.sizing.delete(*self.sizing.get_children())
+        if self.partials is not None:self.partials.delete(*self.partials.get_children())
+        if self.deals is not None:self.deals.delete(*self.deals.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -395,6 +460,9 @@ class PresetWorkflow:
         self.result.set(f"{text} · {trades} operações encerradas\n"
                         f"Resultado {fmt_num(proof['net_profit'])} {proof.get('currency') or ''} · CSV/livro/saldo conciliados.\n"
                         "Simulação Python é outro motor; execução ao vivo DEMO não foi realizada por este percurso.")
+        if "partials" in proof:
+            confirmed=sum(r["state"]=="confirmed" for r in proof["partials"])
+            self.result.set(self.result.get()+f"\nParciais confirmadas: {confirmed}; saldo e custos por fill nas abas próprias." if confirmed else self.result.get()+"\nNenhuma parcial confirmada neste ensaio; sem aceite dessa capacidade.")
         self.status.set("Inputs realmente carregados e modo nativo conferidos. Histórico/revisão da corretora sem certificação; cobertura de ticks reais depende do relatório.")
         for row in proof["ledger"]:self.trades.insert("","end",values=(row["entry_time"],row["exit_time"],"Compra" if row["direction"]>0 else "Venda",row["volume"],row["pnl"],row["stop_price"],row["target_price"]))
         expected=self.current.manifest["native"]["expected_native_inputs"]
@@ -408,6 +476,12 @@ class PresetWorkflow:
                     row["filled_volume"] if row["filled_volume"] is not None else "Sem fill confirmado",row["risk_money"],row["risk_budget"],
                     row["margin_required"] if row["margin_known"] else "Indisponível",row["margin_free"] if row["margin_known"] else "Indisponível",
                     f"{row['volume_min']} / {row['volume_step']} / {row['volume_max']}" if row["spec_known"] else "Indisponível"))
+        if self.partials is not None:
+            for row in proof.get("partials",[]):
+                self.partials.insert("","end",values=(clock(row['event_at']),clock(row['at']),row['stage'],row['state'],row['before'],row['requested'],row['filled'],row['remaining'],row['stop_before'],row['stop_after'],"Sim" if row['be_confirmed'] else "Não",row['net']))
+        if self.deals is not None:
+            for row in proof.get("deals",[]):
+                self.deals.insert("","end",values=(clock(row['at_msc']/1000),row['position'],"Entrada" if row['entry']==0 else "Saída",row['volume'],row['price'],row['profit'],row['commission'],row['swap'],row['fee']))
         if proof.get("first_difference"):self.status.set("Primeira divergência: "+str(proof["first_difference"])+". Confira os arquivos; tolerância não foi ampliada.")
     def open_files(self):
         value=self.artifacts.get("artifact_directory")
