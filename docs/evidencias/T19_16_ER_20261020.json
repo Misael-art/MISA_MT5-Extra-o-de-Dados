@@ -1718,5 +1718,56 @@
   },
   "acceptance": "fixed functional scenario only; not optimization or statistical approval",
   "safety_runtime": "92c52085dfd4ee7f5f504afc2f22bfdf5223a09d",
-  "original_work_preserved": true
+  "original_work_preserved": true,
+  "backtest_replay_er_context_exact_match": true,
+  "backtest_replay_ledger_exact_match": true,
+  "provider_merge": "c58d8bad79678cc928e51243e73758a73d2908fd",
+  "checked_application_runtime": "75846d1d699010ffcf84011f7c5f4586b62dc332",
+  "mandatory_checks": [
+    {
+      "name": "Testes (windows-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39458567536/job/118751726638"
+    },
+    {
+      "name": "Lint dos instaladores",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39458567536/job/118751726607"
+    },
+    {
+      "name": "Testes PostgreSQL",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39458567536/job/118751726604"
+    },
+    {
+      "name": "Instalador Linux (sem MT5)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39458567536/job/118751726580"
+    },
+    {
+      "name": "Testes (ubuntu-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39458567536/job/118751726523"
+    },
+    {
+      "name": "Instalador Windows (sem MT5)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39458567536/job/118751726329"
+    }
+  ],
+  "ci_results": {
+    "ubuntu": {
+      "passed": 1866,
+      "platform_skips": 197,
+      "core_coverage": 77.64
+    },
+    "windows": {
+      "passed": 1981,
+      "platform_skips": 82,
+      "core_coverage": 73.36
+    },
+    "postgresql": {
+      "passed": 52
+    }
+  }
 }

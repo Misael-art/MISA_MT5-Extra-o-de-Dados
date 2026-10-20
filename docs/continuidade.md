@@ -2056,3 +2056,12 @@ Integração T19.16 provedor: H#28 emc58d8ba, dois checks no runtime994d1ba;
 suítes Ubuntu/Windows existentes; demais quatro checks aprovados. Alinhamento
 dos dois executáveis instrumentados ao fonte revisado/22includes e INI do Tester
 conferido no recibo. Trabalho original preservado (HEAD/index/branch/status).
+
+
+Fechamento T19.16 inicial/TM05: seis checks obrigatórios aprovados no runtime
+75846d1d699010ffcf84011f7c5f4586b62dc332 (workflow39458567536). H#28 integrada
+c58d8ba; M#156 entrega o consumidor revisado, com delta posterior apenas documental.
+Aceite funcional ER e igualdade de contextos/livro backtest↔replay preservados,
+sem nova execução/campanha. Windows físico detalhado no checklist específico;
+S09 somente Tester, cache inelegível e demais limites mantidos. TM06/Donchian+tempo
+é o próximo recorte, condicionado à ficha/canal T19.7; T19.16 completa não foi aceita.

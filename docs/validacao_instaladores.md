@@ -296,3 +296,20 @@ negócios só cobre contratos exercitados. O CI/fake e Linux/Wine não substitue
 
 - [ ] Windows físico: abrir pelo card S09, nome/revisão/seleção persistida, rolagem em DPI alto, NTFS/Unicode, Cancelar somente sessão própria, inputs realmente carregados e visual nativo com negócios reconciliados.
 - CI e ensaio Wine não substituem essa pendência específica; o recorte não altera instaladores.
+
+
+### T19.16 inicial — ER com idade no S09 v1.40
+
+Aceite dirigido Linux/Wine: Manual nomeado, salvar/reabrir/exportar, 32 inputs
+carregados; EURUSD/M5, 14→15/10/2026, backtest e replay conciliados com quatro
+saídas ER por execução. Doze processos próprios encerrados, ponte/principal
+preservados. Recibo: `docs/evidencias/T19_16_ER_20261020.json`. O check automatizado
+Windows valida código com provedores simulados e não substitui o host físico.
+
+- [ ] Windows físico: conferir campos idade mínima/limiar ER, leitura da janela e
+  instante conhecido, 32 inputs do S09 v1.40 e resultado persistido no Tester nativo.
+- [ ] Windows físico: conferir rolagem/DPI, exportação Unicode/NTFS e encerramento
+  somente dos processos próprios, mantendo ponte e terminal principal.
+
+Este checklist não autoriza execução ao vivo DEMO nem herda aceite para Pullback ER,
+carteira ou gradientes. S09 permanece restrito ao Tester; cache inelegível.
