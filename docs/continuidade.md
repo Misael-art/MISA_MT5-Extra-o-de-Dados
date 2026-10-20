@@ -1705,3 +1705,11 @@ hashes distintos de composição/pacote/execução.60 testes focados aprovados, 
 instalar/iniciar Expert ou escrever no usuário. Nome final T19.50, Default T19.55,
 Manual T19.26 e replay/UI ainda pendentes. Ver `docs/sdk/pacote_preset.md`.
 Pullback bloqueado; Windows físico pendente.
+
+### T19.50 inicial — nomes portáteis de Default/Manual
+
+Em revisão, dependente de #141. Rótulo Unicode, slug/ID/revisão/hash separados,
+nome canônico estável com hash12, limites/nomes Windows e chave de colisão; legado
+não é reescrito e alias Maximalista é reconhecido sem novo gerador.51 testes focados
+aprovados. Persistência/exportador/UI são consumidores; ver `docs/sdk/nomes_presets.md`.
+Sem estratégia/preset automático ou aceite novo; Windows físico pendente.
