@@ -1,0 +1,50 @@
+{
+  "matrix": [
+    {
+      "dark": false,
+      "width": 1280,
+      "height": 800,
+      "requested_dpi": 96,
+      "reported_dpi": 96.02537909018355,
+      "page_down": true,
+      "selected_manual_preserved": true,
+      "result_preserved": true
+    },
+    {
+      "dark": true,
+      "width": 900,
+      "height": 620,
+      "requested_dpi": 96,
+      "reported_dpi": 96.02537909018355,
+      "page_down": true,
+      "selected_manual_preserved": true,
+      "result_preserved": true
+    },
+    {
+      "dark": false,
+      "width": 820,
+      "height": 700,
+      "requested_dpi": 144,
+      "reported_dpi": 143.9232057416268,
+      "page_down": true,
+      "selected_manual_preserved": true,
+      "result_preserved": true
+    },
+    {
+      "dark": true,
+      "width": 1280,
+      "height": 800,
+      "requested_dpi": 144,
+      "reported_dpi": 143.9232057416268,
+      "page_down": true,
+      "selected_manual_preserved": true,
+      "result_preserved": true
+    }
+  ],
+  "keyboard_tab": true,
+  "unsaved_preserved_across_theme": true,
+  "callback_errors": [],
+  "source": "d8a48448cb72fa0f1483abc6347d4ded1ccf1314",
+  "scope": "actual UIManager reopened native evidence; read-only UI tests, no MT5 rerun",
+  "native_proof": "T19_29_MANUAL_NATIVO_20261020.json"
+}

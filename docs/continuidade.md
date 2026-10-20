@@ -1744,3 +1744,36 @@ Master já integra políticas iniciais #136 b976ffa e #137 cc58de4 com árvore i
 igual aos respectivos HEADs/seis checks aprovados. H23 d60e421 integra S09 nativa.
 Zero negócios/ensaio de contrato não fecha o percurso. Pullback bloqueado e Windows
 físico pendente específico.
+
+
+## 2026-10-20 — primeiro percurso Manual histórico
+
+[Relatório T20.30 inicial](aceite/PRIMEIRO_PERCURSO_MANUAL.md): HADOUKEN #15–#23,
+Safety #5–#6 e Extrator #136–#146 integrados; revisão própria e seis checks do código
+final, com árvore inteira idêntica por integração. #138 incorporada por ancestralidade
+na #140. Recibo T20_30_INTEGRACOES_20261020.json conserva ordem/fontes/merges/checks.
+Marcações anteriores datadas “em revisão” ficam como histórico; o painel e este
+snapshot registram o estado atual. Trabalho local, configuração e dados preservados.
+O painel agrupa os IDs F19; preservados seus grupos e explicitados apenas os recortes
+entregues, sem inventar linhas/conclusão de capacidades planejadas.
+
+UI: Default somente leitura → Manual nomeado/revisões → pacote → backtest nativo →
+Replay Visual → consulta/arquivos/CSV. Piloto S09 EURUSD/M5: dois negócios encerrados
+em cada passagem, dez inputs carregados e sinais/CSV/livro/saldo sem divergência.
+Falhas Xvfb anteriores preservadas; usar a tela do Wine resolveu o replay, sem
+repetir backtest aprovado. O gerenciamento existente encerra só o visualizador
+próprio após relatório importado. Ponte/terminal principal permaneceram os mesmos,
+DEMO conectada, sem initialize/shutdown/login no SDK principal. UI reaberta em dois
+temas/DPI96/144, com teclado/rolagem e campos não salvos preservados.
+
+Windows144 inicialmente teve duas falhas de fixture: leitura de manifesto UTF-8 pela
+codificação padrão. Três leituras ficaram explícitas, dois casos pertinentes passaram;
+nenhum runtime mudou. A correção seguiu por merge para145/146 e os seis checks de cada
+HEAD final passaram. Evidências compatíveis e negócios nativos foram reaproveitados;
+workflows próprios dos HEADs supersedidos foram cancelados, sem duplicar o novo run.
+
+Python modelado não recebe paridade financeira por essa prova. Histórico nativo com
+negócios está comprovado; ao vivo DEMO não exercitado. Dois negócios não certificam
+performance/OOS; histórico/realticks não qualificados e cache inelegível. Pullback
+bloqueado até T19.57. Windows físico específico. Relações permanece sintética; este
+recorte não conclui Analytics, catálogo, Ultra, seleção automática ou toda F19/F20.

@@ -1,0 +1,146 @@
+{
+  "scope": "initial functional historical Manual cycle; no full F19/F20/statistical/live acceptance",
+  "integrations": [
+    {
+      "pr": 139,
+      "source": "8bc9b3515b04d7048072df7e52fa8c40245b890b",
+      "merge": "0b62de5dbb9b69d72b25dc0678c8d2369431a1b2",
+      "tree": "ef7198942a098ed29425f5ca82accca2fbb33291",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    },
+    {
+      "pr": 140,
+      "source": "0aa9e337d39a3b1b165a28a708df1a4f8ed21978",
+      "merge": "b69d112771acd8e350d710c725a79e03bdc3838a",
+      "tree": "4944fd6e53ff099cf664707825d50761604fdbc8",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    },
+    {
+      "pr": 141,
+      "source": "f5fd0f4b2165cec38bf6682fef8c41338d9123ad",
+      "merge": "fe9e202311b3844d92d33402701d98b73ecc5f19",
+      "tree": "b0a946fdb8ff45bd58b8d88ae7010d54251ae0e8",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    },
+    {
+      "pr": 142,
+      "source": "83eeafffde3913010133a43269afdd7a98b12731",
+      "merge": "b3cb9089b32392757cfc79ff7c8f36863f533515",
+      "tree": "663bc32d9d07ce6ef76489cbb660d52a8eaed649",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    },
+    {
+      "pr": 143,
+      "source": "c6aeae003af455d3c78526df454324fb64c7123b",
+      "merge": "e8f765fa117ecfe58e12a0744354566361fd0cf9",
+      "tree": "c4fbac555c64349fdef390b5f5b3c13f8d918caa",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    },
+    {
+      "pr": 144,
+      "source": "5dbeae28e2c4b85920d786a3f729c3ffbbdbe408",
+      "merge": "dd2d2d163447e2ea131403f71921be5d239855ec",
+      "tree": "76f92f1551a4dc43bad263f1c7f51085999f4c13",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    },
+    {
+      "pr": 145,
+      "source": "e20fd793084bf08a2eb0dc65fae9bd16c2e931b0",
+      "merge": "27dfb759ccd8d7371f79c6af2ae50176810df3ae",
+      "tree": "a35d1338fdbcf2edbc32a9f9d4278fe529f77943",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    },
+    {
+      "pr": 146,
+      "source": "85118159628b39ff1e0f237d60729e490ae78e63",
+      "merge": "50e54714735de2f266efae07d83ba957665ebd96",
+      "tree": "c005d98ae465856ec060980acf0c805281583cff",
+      "entire_tree_identical": true,
+      "checks": {
+        "Lint dos instaladores": "SUCCESS",
+        "Testes (ubuntu-latest)": "SUCCESS",
+        "Testes (windows-latest)": "SUCCESS",
+        "Testes PostgreSQL": "SUCCESS",
+        "Instalador Linux (sem MT5)": "SUCCESS",
+        "Instalador Windows (sem MT5)": "SUCCESS"
+      }
+    }
+  ],
+  "consolidated_receipt": {
+    "pr": 138,
+    "source": "cc614f85d167ac293ac0c39bc1f4a025b48c0c69",
+    "github_merge_commit": "f369dff7108150a043a10f4183846eb343397a0b",
+    "actual_master_integration": "b69d112771acd8e350d710c725a79e03bdc3838a",
+    "by_real_ancestry": true
+  },
+  "final_runtime_source": "85118159628b39ff1e0f237d60729e490ae78e63",
+  "native": "T19_29_MANUAL_NATIVO_20261020.json",
+  "ui": "T20_30_UI_REABERTURA_20261020.json",
+  "numeric_campaign_rerun": false,
+  "test_fixture_correction": {
+    "failure_pr": 144,
+    "old_result": "1793 passed,2 failed,81 skipped; Windows default text decoding of UTF8 manifest",
+    "changed_only": "tests/test_manual_presets.py",
+    "affected_cases_passed": 2,
+    "runtime_changed": false,
+    "native_or_ui_recalculation": false,
+    "final_runtime_source": "85118159628b39ff1e0f237d60729e490ae78e63",
+    "ui_producer_source": "d8a48448cb72fa0f1483abc6347d4ded1ccf1314"
+  }
+}
