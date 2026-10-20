@@ -104,3 +104,13 @@ def test_trajectory_capture_is_optional_and_preserves_previous_sdk_calls():
     assert bound.arguments["observation_timeframe"] is None
     explicit = signature.bind(*([None] * 8), observation_timeframe="M15")
     assert explicit.arguments["observation_timeframe"] == "M15"
+
+
+def test_sdk_backtest_forwards_legacy_arguments_without_composition_extension(monkeypatch):
+    captured = []
+    sentinel = object()
+    monkeypatch.setattr(sdk, "_run_backtest", lambda *args: captured.append(args) or sentinel)
+    arguments = tuple(object() for _ in range(9))
+    assert sdk.run_backtest(*arguments) is sentinel
+    assert captured == [arguments]
+    assert "exit_rules_override" not in inspect.signature(sdk.run_backtest).parameters
