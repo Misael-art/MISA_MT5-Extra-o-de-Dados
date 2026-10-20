@@ -3786,8 +3786,8 @@ fonte runtime Hae07e7b/Mc33fa1e. Evidência T19_57_PULLBACK_20261020.json.
 20 processos próprios ausentes, ponte/principal preservados; trabalho local preservado.
 Compra nativa não exercitada neste recorte; Python/legado têm restrições próprias.
 Integração aguarda o Windows CI existente de M151, sem novo workflow.
-Próxima ficha prioritária: T19.14 inicial, identidade/relógio e trajetória observada
-para embasar T19.15 (stop temporal/time gain/loss), sem inferir extremos entre fills.
+Próxima ficha prioritária: T19.15 inicial (stop temporal/time gain/loss), reutilizando
+T19.14 já integrada pela PR113/bd5cb6d; falta consumo no perfil nativo/UI, sem inferir extremos entre fills.
 Cache inelegível; S09 somente Tester; DEMO ao vivo, Windows físico e carteira específicos.
 
 
@@ -3797,5 +3797,14 @@ HEAD posterior altera apenas documentação/evidência, mantendo o código exerc
 Aceite histórico do novo perfil: entrada/swing/R, lote1, parcial1→0,5, BE após
 confirmação, encerramentos SL/TP, fills/custos e caixa reconciliados; sem promover
 legado/Python, cache, live, carteira ou Windows físico. Ver recibos T19_57_PULLBACK_*.
-Próxima dependência concreta para políticas temporais: T19.14 inicial (relógio,
-identidade e trajetória observada), seguida de T19.15; sem fabricar extremos futuros.
+Próxima lacuna concreta: T19.15, políticas temporais no perfil nativo e na UI.
+Reutilizar relógios/identidades/trajetórias de T19.14 (já integrada), sem fabricar extremos futuros.
+
+
+Integrações Pullback concluídas: HADOUKEN#26 em8ee507b, seguida de Extrator#151
+em9c28c35; árvores inteiras iguais aos HEADs revisados e código igual aos runtimes
+Hae07e7b/Mc33fa1e, com evidências compatíveis reutilizadas. Nenhum conflito/runtime
+novo no merge. Correção do próximo recorte: T19.14 já está integrada (PR113/bd5cb6d);
+a próxima ficha é T19.15 inicial, consumo de política temporal pela UI e perfil
+nativo. Reutilizar trajetórias/relógios existentes; não recriar T19.14 ou qualificar
+cache para prosseguir. Os limites do aceite histórico permanecem os do recibo.
