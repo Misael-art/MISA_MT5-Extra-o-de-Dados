@@ -1,4 +1,6 @@
 """T16.6: motor de re-simulação — o modo base reproduz o backtester (paridade) e as regras conservadoras valem."""
+from dataclasses import replace
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -22,10 +24,13 @@ def _ledger_rows(trades):
 def test_base_mode_reproduces_the_backtester(key):
     strategy = get_strategy(key)
     bars = random_walk(4000, seed=11, vol=0.6, freq="15min", spread=10)
-    result = run_backtest(bars, strategy, SPEC, CFG)
+    # A S09 usa distâncias em pontos e exige especificação conhecida. Os seis casos
+    # anteriores conservam a fixture desconhecida e sua cobertura original.
+    spec = replace(SPEC, known=True, tick_size=.01) if key == "s09_reference" else SPEC
+    result = run_backtest(bars, strategy, spec, CFG)
     assert result.trades, f"{key}: o cenário precisa gerar operações"
     atr = strategy.gerar_sinais(bars.reset_index(drop=True))["atr"]
-    sim = engine.simulate(_ledger_rows(result.trades), bars, SPEC, CFG,
+    sim = engine.simulate(_ledger_rows(result.trades), bars, spec, CFG,
                           engine.ExitPolicy.from_rules(strategy.exit_rules()), atr)
     assert sim.skipped == 0 and sim.approximate == 0 and len(sim.trades) == len(result.trades)
     for real, again in zip(result.trades, sim.trades):
