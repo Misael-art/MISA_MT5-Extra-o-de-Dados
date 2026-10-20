@@ -1,3 +1,43 @@
+# T20.25 — corretivo de encerramento do backtest em revisão — 2026-10-20
+
+O primeiro percurso Manual histórico está concluído; preservar suas evidências,
+sem repetir a campanha por rotina. A próxima capacidade proposta é T19.56 inicial
+(lotes fixos/por risco, uma entrada, UI/preset/nativo), seguida da correção/validação
+da parcial T19.57 antes de desbloquear Pullback. Cache qualificado não é dependência
+desses comportamentos; cache nativo continua inelegível por identidade histórica ausente.
+S09 permanece restrito ao Tester; execução ao vivo DEMO exige aceite próprio.
+
+Os logs do teste manual de 20/10 distinguem dois problemas: lotes de 45/60 tentativas
+com 27/36 recusas por fontes/includes diferentes dos executáveis instalados; depois,
+cinco sessões recusadas porque o backtest Donchian anterior concluiu com
+`resources_released=False`. O encerramento após relatório importado cobria apenas
+replay. Este corretivo reutiliza `_stop_owned` também no backtest, antes de liberar
+contexto/posse, sem alterar livro, cálculos, proteções ou processos de outra instalação.
+Se um filho sobreviver, o contexto continua protegido e o próximo Tester é recusado.
+
+Baseline dirigido: 48 aprovados. Dois casos novos reproduziram a falha antes da
+correção (card/preset); depois, 127 testes pertinentes e dois casos adicionais de
+filho sobrevivente passaram. Doctor sem probe: 20 OK, um aviso de pandas-ta opcional,
+nenhuma falha. Revisão local concluída. Cinco checks da fonte b27da93 passaram; Windows excedeu
+60 s em um teste que reunia três cenários/19 Testers falsos, durante commit SQLite.
+A regressão foi separada em três cenários independentes com todas as asserções e
+o limite de 60 s mantidos; três casos passaram localmente. Não mudou runtime,
+banco do usuário, cálculo ou limite financeiro. CI do código final novamente pendente
+após essa falha concreta; sem disparo manual de workflow ou repetição nativa.
+O ensaio dirigido Wine passou: dois Testers sequenciais, resultados reabertos no banco
+e consultados na UI, PIDs privados observados e ausentes ao final. Na segunda sessão,
+a limpeza encerrou um MetaEditor ainda ativo após a importação. Ponte e terminal
+principal mantiveram PID/criação, com DEMO conectada antes/depois.
+[Evidência efetiva](evidencias/T20_25_BACKTEST_LIBERACAO_20261020.json). Não houve nova campanha
+financeira nem repetição do percurso aceito. Windows físico continua específico.
+
+A aplicação do teste manual usou a árvore local de trabalho, enquanto master estava
+em 2447259. Suas bibliotecas configuradas também apontam para branches de trabalho;
+não recompilar/copiar todos os fontes indiscriminadamente nem sobrescrever o WIP.
+Alinhar explicitamente a instalação utilizada aos fontes revisados antes de repetir
+somente uma tentativa afetada. O marcador antigo não foi removido manualmente e,
+na inspeção após as falhas, já não havia processo privado daquela sessão.
+
 # T19.2 — aceite final do contrato e adaptador base — 2026-10-19
 
 B-11 integrada nas PRs M132/7e2178a e H14/d018f6c. PR133 com código final9b3d3f5:

@@ -1,0 +1,230 @@
+{
+  "scope": "T20.25 directed backtest lifecycle, two sequential Testers; not a repeated historical campaign or new operational strategy acceptance",
+  "application": "b27da9333309291aba71cc42c87e8512acc9ac75",
+  "hadouken": "807fde08dc31b4ed5c85d28596c3744444bdc3c9",
+  "safety": "92c52085dfd4ee7f5f504afc2f22bfdf5223a09d",
+  "source_manifest": {
+    "Experts/HADOUKEN/Estrategias/HDK_S09_Referencia.mq5": "50edab5718bd628ad69a966ac57c43eb1b9ad04f69331c30d02c9961a3a722f6",
+    "Include/Framework/HADOUKEN/Contracts/HDK_ExecutionPlan.mqh": "fb213bdf295804e93d21d7ceaf898ed81ae746b2f3331b04a9eeb560a1289639",
+    "Include/Framework/HADOUKEN/Contracts/HDK_MarketContext.mqh": "fd1b0ea9e3a0f53b8e96fe4e03428f986a9a50a4f249e98be2c775890b3ac924",
+    "Include/Framework/HADOUKEN/Contracts/HDK_NativeBase.mqh": "1236a3fbcbeac07b8e9a7e388e68e34a68184b1267da194b54ac11719f788672",
+    "Include/Framework/HADOUKEN/Contracts/HDK_PositionPolicy.mqh": "b182eeacca3c5d1f17c49b915531ba139672bb269d09459b687a47a97779d717",
+    "Include/Framework/HADOUKEN/Contracts/HDK_SignalIntent.mqh": "7e4808bd839dd96bc7a05cd8d9f63c1a6cf0611628d5877ead17a7ec535002f8",
+    "Include/Framework/HADOUKEN/Safety/HDK_ExecutionResult.mqh": "9b39b93139a9a3e2f84c7434d66ecbbf9c911678af1c29270e007ae0bf2f944c",
+    "Include/Framework/HADOUKEN/Safety/HDK_GuardianPanel.mqh": "6e8c2f07193543ecd99ab7782457ecea78963111212b5cc64d82ae8048cdeb52",
+    "Include/Framework/HADOUKEN/Safety/HDK_Logger.mqh": "9412465708b5fb3fb597a41fb879308a34ca091b9d5ecc8779da7b55fb1199d0",
+    "Include/Framework/HADOUKEN/Safety/HDK_MarketFilter.mqh": "5e065f6476e9533879585879defcc8043d28ec9c9f9df2ca9ce6d0e2ebcf9d56",
+    "Include/Framework/HADOUKEN/Safety/HDK_PanelUi.mqh": "fc7bb184c24805762ccc7067e64d1ab6557ed52c2d9f76932e05d40b7e22eb4e",
+    "Include/Framework/HADOUKEN/Safety/HDK_PortfolioRegistry.mqh": "d8a375bfde908a28df438af1dc996cf017ee393b0a75fae3c74b9d906d7f0302",
+    "Include/Framework/HADOUKEN/Safety/HDK_RiskDecision.mqh": "ad26a96120daf9a4ad87405f7511c1353ea3b75626065cb9c00b7140c5477966",
+    "Include/Framework/HADOUKEN/Safety/HDK_RiskGuard.mqh": "fb8e733f47908db9e3e200387baf2a9b75f6d2164aed8490bad0f7cd67418126",
+    "Include/Framework/HADOUKEN/Safety/HDK_SafeExecutor.mqh": "148df0db66aa75d5ce8e231538e1f9451ece41d9cfcc359eccc005e42173912a",
+    "Include/Framework/HADOUKEN/Safety/HDK_SafetyTypes.mqh": "6140f903bf44553fec912f37ad6b0fbbcb45d80349f75baf64337306dce541ad",
+    "Include/Framework/HADOUKEN/Safety/HDK_TradeStats.mqh": "9a35590eb11493279661b10780ca9ebf5b3781105f56353f11839447b9655bb8",
+    "Include/Framework/HADOUKEN/Strategies/HDK_LegacyPositionAdapter.mqh": "4a34cdda00a01cb381ea5897148733f334d33985600297911678e9c6ce0530b7",
+    "Include/Framework/HADOUKEN/Strategies/HDK_LegacySignalAdapter.mqh": "b9089febe4d39d6ed73df26bf251ede99098271e164c674e827be34736daf61a",
+    "Include/Framework/HADOUKEN/Strategies/HDK_NativeBaseAdapter.mqh": "a7355b5b472e7978421a5e826c1981a62549ba31b69dd9bb9f5767313753b0c3",
+    "Include/Framework/HADOUKEN/Strategies/HDK_S09Reference.mqh": "efbb1ab0488ce1b49509d496de961ad394e85ace1ffb4b3b8bdc7612413382c3",
+    "Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd",
+    "Include/Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh": "99caaea6a13c7804050641210ba49b9a5c192da7823358214fef1319db3fcbd2",
+    "Include/Framework/HADOUKEN/Strategies/HDK_TradeExport.mqh": "40af6c5b94f4c78e5af8916f2bec1ae94985adc0b4077c3181c0726a32d3ce8c"
+  },
+  "robot_fingerprint": "91ff0ec8a7bba77e",
+  "complete": true,
+  "cache_eligible": false,
+  "allows_live": false,
+  "physical_windows_pending": true,
+  "principal_preserved": true,
+  "bridge_before": {
+    "demo": true,
+    "connected": true,
+    "bridge_pid": 195627,
+    "bridge_created": 1792407851.97,
+    "principal_pid": 2439894,
+    "principal_created": 1792460506.1,
+    "last_error": [
+      1,
+      "Success"
+    ]
+  },
+  "bridge_after": {
+    "demo": true,
+    "connected": true,
+    "bridge_pid": 195627,
+    "bridge_created": 1792407851.97,
+    "principal_pid": 2439894,
+    "principal_created": 1792460506.1,
+    "last_error": [
+      1,
+      "Success"
+    ]
+  },
+  "attempts": [
+    {
+      "index": 1,
+      "session": "a8c0d46b7a614366b50f0651b44d49cb",
+      "run_id": "9be3af0673ea4fd9b9065db418dfdd8d",
+      "status": "reconciled_backtest",
+      "observed_processes": {
+        "3470478": {
+          "pid": 3470478,
+          "created": 1792485602.38
+        },
+        "3470485": {
+          "pid": 3470485,
+          "created": 1792485602.48
+        },
+        "3470897": {
+          "pid": 3470897,
+          "created": 1792485607.29
+        },
+        "3470905": {
+          "pid": 3470905,
+          "created": 1792485607.39
+        },
+        "3471052": {
+          "pid": 3471052,
+          "created": 1792485609.75
+        },
+        "3471400": {
+          "pid": 3471400,
+          "created": 1792485615.2
+        }
+      },
+      "cleanup": [
+        {
+          "before": [],
+          "after": []
+        }
+      ],
+      "observed_pids_still_alive": [],
+      "resources_released": true,
+      "owner_marker_present_after": false,
+      "next_tester_lease_acquired": true,
+      "compiled_artifacts": [
+        {
+          "file": "MQL5/Profiles/Tester/mt5x_session.set",
+          "sha256": "f150b8a777eaa4455251da6dd4c3e07cd6772879b602c41617b6dce4829dd74f",
+          "size": 1170
+        },
+        {
+          "file": "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.mq5",
+          "sha256": "fed1544d8e9631d828fb7728b1637faba5505ed9afe2103caee8ee77880ae10d",
+          "size": 12434
+        },
+        {
+          "file": "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.log",
+          "sha256": "22148204b9650179ee9c7bb94aa1e78cdb46b60a8dcf38bf3df0ec1be12e1e29",
+          "size": 10602
+        },
+        {
+          "file": "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.ex5",
+          "sha256": "fd6ff7847cc4368a5e5fbc73973707dd3ff8c2e919b387ccd57bf75f50b1e6c3",
+          "size": 97692
+        }
+      ],
+      "compile_result": "Result: 0 errors, 0 warnings, 3653 ms elapsed, cpu='X64 Regular'",
+      "actual_mode": {
+        "tester": true,
+        "visual": false,
+        "demo": true
+      },
+      "native_inputs_verified": true,
+      "trades": 2,
+      "cash_reconciled": true
+    },
+    {
+      "index": 2,
+      "session": "74d31e0cf62e4449bedcfffe93d378d2",
+      "run_id": "468e236b13174b3399007f93dfc39995",
+      "status": "reconciled_backtest",
+      "observed_processes": {
+        "3472152": {
+          "pid": 3472152,
+          "created": 1792485624.69
+        },
+        "3472160": {
+          "pid": 3472160,
+          "created": 1792485624.78
+        },
+        "3472470": {
+          "pid": 3472470,
+          "created": 1792485629.13
+        },
+        "3472477": {
+          "pid": 3472477,
+          "created": 1792485629.22
+        },
+        "3472615": {
+          "pid": 3472615,
+          "created": 1792485631.33
+        },
+        "3473028": {
+          "pid": 3473028,
+          "created": 1792485637.53
+        }
+      },
+      "cleanup": [
+        {
+          "before": [
+            {
+              "pid": 3472615,
+              "created": 1792485631.33
+            }
+          ],
+          "after": []
+        }
+      ],
+      "observed_pids_still_alive": [],
+      "resources_released": true,
+      "owner_marker_present_after": false,
+      "next_tester_lease_acquired": true,
+      "compiled_artifacts": [
+        {
+          "file": "MQL5/Profiles/Tester/mt5x_session.set",
+          "sha256": "66a57e2be9dcae8edc6599caad0889435ee51bf8397400c1a11c9b8d2c6ebad8",
+          "size": 1170
+        },
+        {
+          "file": "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.mq5",
+          "sha256": "22d21015b6c56b5ee6360d60b55e53c0ebead51de9adc1c3e30d378ceda43f9f",
+          "size": 12434
+        },
+        {
+          "file": "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.log",
+          "sha256": "9543a1b2c9cda6447dfa7ab41b2614f6f150f8486b9c8f4b2550899866531fbd",
+          "size": 10602
+        },
+        {
+          "file": "MQL5/Experts/HADOUKEN/Estrategias/mt5x_session.ex5",
+          "sha256": "dfb5d8a91bfcc71193f62f459542d4154d7b54360cd77a855a423c8f89b1e891",
+          "size": 97684
+        }
+      ],
+      "compile_result": "Result: 0 errors, 0 warnings, 3433 ms elapsed, cpu='X64 Regular'",
+      "actual_mode": {
+        "tester": true,
+        "visual": false,
+        "demo": true
+      },
+      "native_inputs_verified": true,
+      "trades": 2,
+      "cash_reconciled": true
+    }
+  ],
+  "reopened_result_ids": [
+    "9be3af0673ea4fd9b9065db418dfdd8d",
+    "468e236b13174b3399007f93dfc39995"
+  ],
+  "ui_readback": {
+    "complete": true,
+    "run_id": "468e236b13174b3399007f93dfc39995",
+    "rows": 2,
+    "inputs": 10,
+    "status": "Inputs realmente carregados e modo nativo conferidos. Histórico/revisão da corretora sem certificação; cobertura de ticks reais depende do relatório.",
+    "callback_errors": [],
+    "new_tester_started": false,
+    "scope": "actual UI readback of directed native backtest after process/storage reopen"
+  },
+  "ui_screenshot_sha256": "ae65a9d215458ed1339c2320c310bf0f2729a59a105dfa29f576d128b3f6fc0f"
+}
