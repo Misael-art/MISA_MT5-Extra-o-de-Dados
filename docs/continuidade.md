@@ -1732,3 +1732,15 @@ verificada/identidade preservada; rascunho compilado sem aceite.71 testes focado
 mais4 verificações pertinentes aprovados; PostgreSQL pelo job existente.
 Ver `docs/sdk/manual_nomeado.md`; UI/execução/recibo e negócios reais no Tester ainda
 pendentes. Nenhuma operação ao vivo; Pullback bloqueado; Windows físico pendente.
+
+### T19.29 inicial — conferência nativa do pacote real
+
+Em revisão, dependente de #144. Arquivo .set/INI efetivamente enviados, recibo de
+inputs e modo Visual lidos do MQL5, Session/observador/livro/saldo existentes,
+evidência aditiva e primeira divergência.46 testes focados mais3 pertinentes
+aprovados com fakes; não constituem aceite nativo. Jornada real com negócios e UI
+segue pendente; ver `docs/sdk/conferencia_preset_nativo.md`.
+Master já integra políticas iniciais #136 b976ffa e #137 cc58de4 com árvore inteira
+igual aos respectivos HEADs/seis checks aprovados. H23 d60e421 integra S09 nativa.
+Zero negócios/ensaio de contrato não fecha o percurso. Pullback bloqueado e Windows
+físico pendente específico.

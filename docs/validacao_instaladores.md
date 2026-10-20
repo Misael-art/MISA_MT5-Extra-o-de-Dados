@@ -284,3 +284,9 @@ Pendência delimitada T19.26: no Windows físico, conferir publicação por hard
 volume de exportação, mensagens em volume sem suporte/caminho longo, .set UTF-16,
 filename canônico, repetição sem overwrite e importação. CI Windows/fakes não
 substituem esse ensaio; o recorte pode fechar funcionalmente no host Linux/Wine.
+
+
+T19.29 — Windows físico pendente: validar Session/INI e .set canônicos, flag Visual
+real, cancelamento só do processo próprio, diário/recibo, fechamento final e
+reconciliação do Manual entre backtest e replay. Sem operação REAL; ensaio sem
+negócios só cobre contratos exercitados. O CI/fake e Linux/Wine não substituem isso.
