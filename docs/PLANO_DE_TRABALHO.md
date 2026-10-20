@@ -183,7 +183,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | ✅ [PR126](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/126), aceite final70b2191 após correção127/master2d7412f; seis checks,1412 Ubuntu/36PG/1514Windows CI, cov77,64%/73,36%;291 fontes/testes idênticos;62 focados+34 composição/doctor21/1/0; custo local279/216/2ms, sem meta universal; Windows físico pendente |
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
-| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial com UI/S09/replay conciliado na PR154, H27 integrada; CI M final pendente. T19.16 ainda planejada |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 ainda planejada |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
 | T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
@@ -3859,3 +3859,20 @@ barras fechadas. Falta consumidor ER causal tipado no perfil nativo e contrato d
 atualização do prazo, sem reiniciar idade/afastar SL. A variante com canal continua
 dependente de T19.7; reutilizar Donchian existente, sem declarar essa ficha concluída.
 Inspeção delimitada de dependências, sem código/campanha nova dessa próxima tarefa.
+
+Integrações pré-T19.15 concluídas: M#155 emcec01c1 (varredura/fixture) → M#153
+em133eaa6 (parcial/BE na re-simulação), ambas com seis checks no fonte final e
+árvore inteira idêntica ao HEAD revisado. H#27 já em7759344. M#154 retarget para
+master com runtime inalterado; aguardar o Windows existente no fonte8f9c36c.
+Recursos: após todos os iniciadores saírem,42 PIDs ausentes,0zombies/0reutilizados,
+oito perfis vazios e ponte/principal preservados. Cópias do cache cifrado de login
+do perfil recuperado também limpas pela mesma regra da rotina de encerramento.
+
+Fechamento T19.15 inicial: seis checks obrigatórios aprovados no fonte8f9c36c,
+inclusive Windows CI; revisão técnica e aceite funcional concluídos. HEADs
+posteriores só documentam evidência/dependências, mantendo código e testes idênticos.
+Dependências integradas H27/7759344 → M155/cec01c1 → M153/133eaa6. M154 final
+pronta para merge em master, candidato inteiro conferido contra a árvore revisada.
+UI e oito resultados históricos preservados; próxima lacuna é consumidor ER causal
+de T19.16, seguido da variante de canal condicionada a T19.7. Sem campanha repetida.
+Cache inelegível; S09 Tester; live DEMO/Windows físico/carteira/gradientes separados.

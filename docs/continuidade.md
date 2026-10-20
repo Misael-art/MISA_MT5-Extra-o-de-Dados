@@ -2011,3 +2011,20 @@ barras fechadas. Falta consumidor ER causal tipado no perfil nativo e contrato d
 atualização do prazo, sem reiniciar idade/afastar SL. A variante com canal continua
 dependente de T19.7; reutilizar Donchian existente, sem declarar essa ficha concluída.
 Inspeção delimitada de dependências, sem código/campanha nova dessa próxima tarefa.
+
+Integrações pré-T19.15 concluídas: M#155 emcec01c1 (varredura/fixture) → M#153
+em133eaa6 (parcial/BE na re-simulação), ambas com seis checks no fonte final e
+árvore inteira idêntica ao HEAD revisado. H#27 já em7759344. M#154 retarget para
+master com runtime inalterado; aguardar o Windows existente no fonte8f9c36c.
+Recursos: após todos os iniciadores saírem,42 PIDs ausentes,0zombies/0reutilizados,
+oito perfis vazios e ponte/principal preservados. Cópias do cache cifrado de login
+do perfil recuperado também limpas pela mesma regra da rotina de encerramento.
+
+Fechamento T19.15 inicial: seis checks obrigatórios aprovados no fonte8f9c36c,
+inclusive Windows CI; revisão técnica e aceite funcional concluídos. HEADs
+posteriores só documentam evidência/dependências, mantendo código e testes idênticos.
+Dependências integradas H27/7759344 → M155/cec01c1 → M153/133eaa6. M154 final
+pronta para merge em master, candidato inteiro conferido contra a árvore revisada.
+UI e oito resultados históricos preservados; próxima lacuna é consumidor ER causal
+de T19.16, seguido da variante de canal condicionada a T19.7. Sem campanha repetida.
+Cache inelegível; S09 Tester; live DEMO/Windows físico/carteira/gradientes separados.

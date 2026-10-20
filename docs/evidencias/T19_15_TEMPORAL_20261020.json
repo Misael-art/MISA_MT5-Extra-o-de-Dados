@@ -1447,7 +1447,55 @@
       "native_execution_started": false
     }
   },
-  "checks": "aguardando checks existentes nas fontes identificadas; não integrar M antes de aprovar",
+  "checks": {
+    "checked_source": "8f9c36cc44f719683e292c308838ea01ce670e1e",
+    "mandatory": [
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "conclusion": "success",
+        "status": "completed",
+        "details_url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39447726823/job/118713991441",
+        "id": 118713991441
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "conclusion": "success",
+        "status": "completed",
+        "details_url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39447726823/job/118713991157",
+        "id": 118713991157
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "conclusion": "success",
+        "status": "completed",
+        "details_url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39447726823/job/118713991071",
+        "id": 118713991071
+      },
+      {
+        "name": "Testes (windows-latest)",
+        "conclusion": "success",
+        "status": "completed",
+        "details_url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39447726823/job/118713991021",
+        "id": 118713991021
+      },
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "conclusion": "success",
+        "status": "completed",
+        "details_url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39447726823/job/118713990731",
+        "id": 118713990731
+      },
+      {
+        "name": "Lint dos instaladores",
+        "conclusion": "success",
+        "status": "completed",
+        "details_url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39447726823/job/118713990526",
+        "id": 118713990526
+      }
+    ],
+    "final_head_delta": "documentation/evidence only; code and tests unchanged since checked source",
+    "review": "technical review completed; no blocking finding; native acceptance limited to exercised profile/scenarios"
+  },
   "limitations": [
     "Python OHLC decide no fechamento e executa abertura seguinte; não há paridade financeira alegada com ticks MT5",
     "Prazos de relógio da fonte desde primeiro fill; sem sessão/DST ou relógio negociável qualificados",
@@ -1543,5 +1591,17 @@
       "name": "MQL5/Include/Framework/HADOUKEN/Strategies/HDK_StrategyMath.mqh",
       "sha256": "ebe0b65ba1869362b49e67c0c62ca9ae10114301d3f3f8e6d742a6579681eecd"
     }
-  ]
+  ],
+  "prerequisite_integrations": {
+    "155": "cec01c11a9bd7f1d259400bcbffd484e2d80d72f",
+    "153": "133eaa66ee868e1de36bde285054d1f9728e21e9"
+  },
+  "final_resource_observation": {
+    "gone": 42,
+    "reused": 0,
+    "zombie": 0,
+    "profiles_empty": 8,
+    "bridge_principal_preserved": true,
+    "own_copied_credential_cache_cleaned": true
+  }
 }
