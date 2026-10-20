@@ -1960,3 +1960,10 @@ novo no merge. Correção do próximo recorte: T19.14 já está integrada (PR113
 a próxima ficha é T19.15 inicial, consumo de política temporal pela UI e perfil
 nativo. Reutilizar trajetórias/relógios existentes; não recriar T19.14 ou qualificar
 cache para prosseguir. Os limites do aceite histórico permanecem os do recibo.
+
+
+T19.57 — corretivo pré-T19.15 na re-simulação: parcial inviável preserva SL/estado;
+BE só acompanha close_part efetivo. Corrige dois casos long/short de lote indivisível,
+com controles de redução viável.19 testes pertinentes aprovados; código nativo e
+backtester já aprovados preservados, sem repetir seus ensaios. Dados/resultados antigos
+não são regravados. Cache permanece inelegível e modalidades mantêm aceites próprios.

@@ -253,15 +253,15 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
             if policy.partial_r and not pos["partial"] and not grid:
                 level = entry + d * policy.partial_r * risk_px
                 if (hi >= level) if d > 0 else (lo <= level):
-                    pos["partial"] = True
                     step = spec.volume_step or spec.volume_min
                     part = math.floor(volume * policy.partial_fraction / step + 1e-9) * step
                     if part >= spec.volume_min and pos["remaining"] - part >= spec.volume_min - 1e-12:
+                        pos["partial"] = True
                         close_part(part, max(op, level) if d > 0 else min(op, level), i,
                                    phase="open" if (op >= level if d > 0 else op <= level) else "intrabar")
-                    if policy.breakeven_after_partial:
-                        pos["stop"] = max(pos["stop"], entry) if d > 0 else min(pos["stop"], entry)
-                        pos["kind"] = "breakeven"
+                        if policy.breakeven_after_partial:
+                            pos["stop"] = max(pos["stop"], entry) if d > 0 else min(pos["stop"], entry)
+                            pos["kind"] = "breakeven"
             if policy.breakeven_r and not pos["be"]:
                 level = entry + d * policy.breakeven_r * risk_px
                 if (hi >= level) if d > 0 else (lo <= level):

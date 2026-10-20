@@ -76,3 +76,13 @@ Fechamento do recorte: seis checks obrigatórios da lógica7e1b aprovados (inclu
 Windows), revisão concluída, dependênciasM149/H25 integradas. O vínculo8a08 muda
 apenas literais de fonte e tem39testes/prova final próprios. Registro de aceite
 `../evidencias/T19_57_ACEITE_20261020.json`; sem nova campanha/workflow documental.
+
+
+### Corretivo da re-simulação antes de T19.15
+
+O motor legado de entradas fixas ainda marcava parcial e BE antes da verificação de
+mínimo/passo/saldo. Agora altera estado e proteção somente no ramo que executa close_part.
+Prova dirigida: long/short com1 lote indivisível mantém SL90/110 e perda10;2 lotes
+reduzem1 e só então habilitam BE.19 testes de parcial/re-simulação aprovados, incluindo
+paridade do modo base. Isso é simulação Python, sem novo aceite de replay ou live;
+o mecanismo nativo compartilhado e suas provas anteriores são reutilizados intactos.
