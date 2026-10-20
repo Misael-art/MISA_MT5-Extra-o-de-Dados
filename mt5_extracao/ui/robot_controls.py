@@ -15,6 +15,7 @@ class CardControls:
         self.panel, self.ui, self.theme = panel, panel.ui, panel.theme
         self.style = ttk.Style(panel.frame)
         self.chosen, self.sessions, self.widgets, self.images = {}, {}, {}, {}
+        self.preset_windows = {}
         self._pulse = None
         self._bright = False
         panel.frame.bind("<Destroy>", self._destroyed, add="+")
@@ -53,12 +54,13 @@ class CardControls:
         series_row.columnconfigure(1, weight=1)
         self.style.configure("Robot.Command.TButton", font=self.theme.font_small, padding=(5, 6))
         for column, (kind, text) in enumerate((("asset", "Ativo / TF"), ("preset", "Preset"))):
-            selector = ttk.Button(series_row, text=text, image=self._icon("selector"), compound=tk.LEFT,
-                                  style="Robot.Command.TButton", command=lambda k=kind: SelectionDialog(self, robot, k))
+            selector = ttk.Button(series_row, text="Default / Manual" if kind == "preset" and self._has_native_presets(robot) else text, image=self._icon("selector"), compound=tk.LEFT,
+                                  style="Robot.Command.TButton", command=lambda k=kind: (self.open_presets(robot) if k == "preset" and self._has_native_presets(robot)
+                                                         else SelectionDialog(self, robot, k)))
             selector.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else 4, 0))
             if busy:
                 selector.state(["disabled"])
-        chosen = ttk.Label(box, text=f"{symbol or 'Escolha um ativo'} · {timeframe}\n{preset or controls.DEFAULT_PRESET}",
+        chosen = ttk.Label(box, text=f"{symbol or 'Escolha um ativo'} · {timeframe}\n{('Default / Manual · seleção no editor' if self._has_native_presets(robot) else preset or controls.DEFAULT_PRESET)}",
                            style="Muted.TLabel", justify=tk.LEFT, wraplength=260)
         chosen.pack(anchor="w", fill=tk.X, pady=(4, 0))
         chosen.bind("<Configure>", lambda e: chosen.configure(wraplength=max(40, e.width)))
@@ -93,7 +95,7 @@ class CardControls:
         row.bind("<Configure>", fit_actions, add="+")
         context = self.context(robot)
         offline = bool(getattr(self.ui.app, "offline", False))
-        if not context["run"] or busy or offline:
+        if not context["run"] or busy or offline or self._has_native_presets(robot):
             buttons["play"].state(["disabled"])
             buttons["play"].configure(image=self._icon("play", disabled=True))
         for mode in ("replay", "backtest"):
@@ -101,7 +103,8 @@ class CardControls:
                 buttons[mode].state(["disabled"])
                 buttons[mode].configure(image=self._icon(mode, disabled=True))
         reason = ("Sessão em andamento · seleção bloqueada até encerrar." if busy else
-                  "Análise local: reabra sem --offline para usar o MT5." if offline else context["reason"])
+                  "Análise local: reabra sem --offline para usar o MT5." if offline else "Default/Manual · backtest e replay no Tester DEMO; ao vivo indisponível."
+                  if self._has_native_presets(robot) else context["reason"])
         hint = ttk.Label(box, text=reason or "PLAY disponível para revisão · duas confirmações", style="Muted.TLabel",
                          wraplength=260, justify=tk.LEFT)
         hint.pack(anchor="w", fill=tk.X, pady=(4, 0))
@@ -119,7 +122,9 @@ class CardControls:
                        style="Robot.Command.TButton").pack(anchor="w", pady=(4, 0))
         self.widgets[robot.key] = {"buttons": buttons, "status": status, "stop": stop, "hint": hint}
         Tooltip(buttons["play"], "Revisa conta, carteira, preset e risco. Histórico negativo pede confirmação adicional.", self.theme)
-        Tooltip(buttons["replay"], "Strategy Tester visual: cada tick baseado em ticks reais. Simulação histórica.", self.theme)
+        Tooltip(buttons["replay"], ("Strategy Tester visual: modelo/cobertura conferidos no percurso do preset."
+                                    if self._has_native_presets(robot) else
+                                    "Strategy Tester visual: cada tick baseado em ticks reais. Simulação histórica."), self.theme)
         Tooltip(buttons["backtest"], "Strategy Tester em sessão própria oculta/minimizada, sem fechar seu MT5.", self.theme)
         self._schedule()
 
@@ -140,7 +145,33 @@ class CardControls:
         from mt5_extracao.mt5_backend import get_mt5
         return controls.account_identity(get_mt5())
 
+    @staticmethod
+    def _has_native_presets(robot):
+        return robot.key == "mql5:hdk_s09_referencia"
+
+    def open_presets(self, robot):
+        from .preset_workflow import PresetWorkflow
+        symbol, timeframe, _ = self.chosen[robot.key]
+        key = robot.key, symbol, timeframe
+        previous = self.preset_windows.get(key)
+        if previous and previous.exists():
+            previous.window.deiconify()
+            previous.window.lift()
+            return previous
+        try:
+            window = PresetWorkflow(self, robot)
+        except ValueError as error:
+            messagebox.showerror("Presets", str(error), parent=self.ui.root)
+            return None
+        self.preset_windows[key] = window
+        return window
+
     def launch(self, robot, mode):
+        if self._has_native_presets(robot):
+            if mode == "play":
+                messagebox.showinfo("S09", "O piloto permite backtest e replay no Tester DEMO. Ao vivo indisponível.", parent=self.ui.root)
+                return
+            return self.open_presets(robot)
         if getattr(self.ui.app, "offline", False):
             messagebox.showinfo("MT5", "Reabra sem --offline para executar o MT5.", parent=self.ui.root)
             return
@@ -524,7 +555,8 @@ class ReportDialog:
                       f"{fmt_int(m.get('losses'))} perdas",
                       "Custos registrados: " + (" · ".join(f"{key} {fmt_num(value)}" for key, value in m["costs"].items())
                                                   if m.get("costs") else "consulte o relatório nativo"),
-                      "Método: cada tick baseado em ticks reais. Consulte a cobertura efetiva no relatório/diário nativo."]
+                      f"Método registrado: {m.get('tester_model') or 'não identificado'}. "
+                      "Consulte a cobertura efetiva de ticks reais no relatório/diário nativo."]
         elif session.mode != "play":
             parts.append("Não há métricas finais: a passagem não foi concluída. O diário preserva o trabalho executado.")
         parts += ["Histórico não garante resultado futuro. Custos/moeda e posições dependem do relatório nativo.",
