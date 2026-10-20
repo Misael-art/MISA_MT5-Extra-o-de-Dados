@@ -100,17 +100,25 @@ def _serialize_set(parameters):
         return data
 
 
-def compile_package(composition, robot, identity, test_context=None):
+def compile_package(composition, robot, identity, test_context=None, *, canonical_filename=False):
     if not isinstance(identity,PresetIdentity):
         raise ValueError("Compile com identidade tipada do preset; não adivinhar nome/versão.")
     if test_context is not None and not isinstance(test_context,TestContext):
         raise ValueError("Use contexto tipado de teste ou mantenha o preset como rascunho sem janela.")
     composition=composition if isinstance(composition,Composition) else Composition(composition)
     native=S09NativeAdapter(composition,robot).describe(identity.id)
+    if type(canonical_filename) is not bool:
+        raise ValueError("Convenção do filename exige escolha explícita booleana.")
+    filename="parameters.set"
+    if canonical_filename:
+        from .names import make_name
+        ctx=composition.to_dict()["context"]
+        filename=make_name(robot.key.split(":",1)[-1],ctx["symbol"],ctx["timeframe"],identity,
+                           composition.config_hash,orientation=composition.to_dict()["orientation"]["mode"]).filename
     data=_serialize_set(native["parameters"])
     manifest={"preset_package_schema_version":PACKAGE_SCHEMA_VERSION,"identity":identity.to_dict(),
               "composition":composition.to_dict(),"config_hash":composition.config_hash,"native":native,
-              "parameters_file":"parameters.set","parameters_encoding":"utf-16",
+              "parameters_file":filename,"parameters_encoding":"utf-16",
               "parameters_sha256":hashlib.sha256(data).hexdigest(),
               "test_context":test_context.to_dict() if test_context is not None else None}
     return PresetPackage(canonical_json(manifest),data)
@@ -129,7 +137,8 @@ def load_package(manifest, set_bytes, robot):
     if context is not None:
         _object(context,("start","end","model","deposit"),"test_context")
         context=TestContext(**context)
-    expected=compile_package(manifest["composition"],robot,identity,context)
+    expected=compile_package(manifest["composition"],robot,identity,context,
+                             canonical_filename=manifest["parameters_file"]!="parameters.set")
     if type(set_bytes) is not bytes or set_bytes!=expected.set_bytes or canonical_json(manifest)!=expected.to_json():
         raise ValueError("Pacote divergente do contrato/inputs/fonte atuais; preserve o original e compile uma nova revisão.")
     return expected
