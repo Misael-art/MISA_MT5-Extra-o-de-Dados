@@ -32,6 +32,8 @@ from .equity import cashflow_values, floating_metrics, unitized_equity, valuatio
 
 EXIT_REASONS = {
     "stop": "stop", "breakeven": "stop no zero a zero", "trailing": "stop móvel", "target": "alvo",
+    "time_absolute":"prazo absoluto", "time_progress":"prazo sem lucro mínimo",
+    "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate",
     "signal": "sinal de saída", "time": "tempo máximo", "eod": "fim do dia", "end": "fim dos dados",
 }
 
@@ -265,6 +267,13 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     if observation_timeframe is not None:
         from mt5_extracao.trade_analytics.trajectories.observations import Journal
         journal = Journal(times, observation_timeframe, "python_model")
+    temporal=rules.temporal
+    temporal_trace=[]
+    if temporal is not None and temporal.enabled and observation_timeframe is None:
+        raise ValueError("Política temporal requer timeframe explícito para a disponibilidade do fechamento.")
+    if temporal is not None and temporal.enabled:
+        from .temporal import source_age_ms
+        from mt5_extracao.trade_analytics.trajectories.clocks import bar_end_in_source
     flows = cashflow_values(cashflows, times)
     cash_total = 0.0
     spr, spr_open, spr_close = execution_spreads(data, spec, cfg)
@@ -319,6 +328,15 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     for i in range(n):
         if check is not None and i % 256 == 0:
             check()
+        # Nova decisão do fechamento anterior só atua na próxima abertura.
+        # SL/TP já atravessados no gap precedem a ordem temporal; high/low futuros não entram.
+        if pos is not None and pos.get("pending_temporal"):
+            d=pos["dir"];op=o[i]+(spr_open[i] if d<0 else 0)
+            stop_gap=op<=pos["stop"] if d>0 else op>=pos["stop"]
+            target_gap=pos["target"] is not None and (op>=pos["target"] if d>0 else op<=pos["target"])
+            reason=pos["stop_kind"] if stop_gap else "target" if target_gap else pos["pending_temporal"]
+            temporal_trace.append(dict(event="execution",cycle_seq=len(trades),available_at=times.iloc[i].isoformat(),requested=pos["pending_temporal"],reason=reason))
+            close_all(i,op if target_gap and not stop_gap else fill_exit(d,o[i],spr_open[i]),reason,"open")
         # 1) saída por sinal pendente, na abertura
         if pos is not None and pending_exit:
             close_all(i, fill_exit(pos["dir"], o[i], spr_open[i]), "signal")
@@ -394,6 +412,16 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 close_all(i, fill_exit(d, c[i], spr_close[i]), "eod")
             elif (exit_long[i] if d > 0 else exit_short[i]):
                 pending_exit = True
+            if pos is not None and not pending_exit and temporal is not None and temporal.enabled:
+                available=bar_end_in_source(times.iloc[i],observation_timeframe)
+                age=source_age_ms(times.iloc[pos["i"]],available)
+                mark=c[i]+(spr_close[i] if d<0 else 0)
+                net=pos["pnl"]+(mark-pos["entry"])*d*ppu*pos["remaining"]
+                if cfg.swap:net+=spec.swap_money(d,pos["remaining"],times.iloc[pos["i"]],times.iloc[i])
+                decision=temporal.decision(age,float(net))
+                if decision not in ("hold","unavailable"):
+                    pos["pending_temporal"]=decision
+                    temporal_trace.append(dict(event="decision",cycle_seq=len(trades),available_at=available.isoformat(),opened_at=times.iloc[pos["i"]].isoformat(),age_ms=age,net_observed=float(net),reason=decision))
 
         # 5) novos sinais de entrada (executados na próxima abertura)
         if i + 1 >= start_index and i < n - 1 and (pos is None or pending_exit):
@@ -429,6 +457,9 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     eq_times = [times.iloc[0]] + [t.exit_time for t in trades] if n else []
     eq_vals = [cfg.initial_equity] + list(cfg.initial_equity + np.cumsum([t.pnl for t in trades])) if n else []
     performance = unitized_equity(floating, flows, cfg.initial_equity)
+    trajectory=journal.payload(valuation_metadata(spec,cfg)) if journal is not None else {}
+    if temporal is not None and temporal.enabled:
+        trajectory.update(temporal_decisions=temporal_trace,temporal_policy=temporal.to_dict(),temporal_time_basis="source_clock_elapsed; not qualified session time")
     return BacktestResult(strategy=strategy.describe(), trades=trades,
                           equity=pd.Series(eq_vals, index=pd.DatetimeIndex(eq_times), dtype=float),
                           metrics={**compute_metrics(trades, cfg.initial_equity),
@@ -440,4 +471,4 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                           performance_equity=pd.Series(performance, index=pd.DatetimeIndex(times), dtype=float),
                           account_cashflows=pd.Series(flows, index=pd.DatetimeIndex(times), dtype=float),
                           valuation=valuation_metadata(spec, cfg),
-                          trajectory=journal.payload(valuation_metadata(spec, cfg)) if journal is not None else {})
+                          trajectory=trajectory)

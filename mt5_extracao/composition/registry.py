@@ -74,7 +74,10 @@ MODULE_PARAMETERS = {
         "trigger_r": Parameter("number", "R", exclusive_minimum=True),
         "fraction": Parameter("number", "fraction", 0, 1, True),
         "breakeven_after_confirmation": Parameter("bool", "boolean")}},
-    "conditional_policy": {"disabled": {}},
+    "conditional_policy": {"disabled": {}, "temporal_v1": {
+        **{name:Parameter("int","second",0,2147483647) for name in ("max_seconds","progress_seconds","gain_seconds","loss_seconds","tie_seconds")},
+        "minimum_profit":Parameter("number","account_money"),"flat_band":Parameter("number","account_money"),
+        "money_digits":Parameter("int","currency_decimal",0,8)}},
 }
 # T19.57 inicial: até duas etapas, mesma unidade na agenda; base por etapa.
 for _mode,_unit in (("staged_lots","lot"),("staged_fraction","fraction")):

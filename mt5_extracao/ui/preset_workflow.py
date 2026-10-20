@@ -30,6 +30,9 @@ INPUT_LABELS={"InpFastPeriod":"EMA curta","InpSlowPeriod":"EMA longa","InpWarmup
  "InpMagic":"Magic","InpDeviationPoints":"Desvio (pontos)","InpPresetId":"ID do preset","InpConfigHash":"Hash da configuração",
  "InpLotMode":"Modo de lotes (0 fixo / 1 risco)","InpFixedLot":"Volume fixo solicitado (lotes)"}
 
+INPUT_LABELS.update({"InpTimeMaxSeconds":"Prazo absoluto (s)","InpTimeProgressSeconds":"Prazo de progresso (s)",
+ "InpTimeMinimumProfit":"Lucro mínimo (moeda)","InpTimeGainSeconds":"Prazo de ganho (s)","InpTimeLossSeconds":"Prazo de perda (s)",
+ "InpTimeTieSeconds":"Prazo de empate (s)","InpTimeFlatBand":"Faixa de empate (moeda)","InpTimeMoneyDigits":"Casas da moeda"})
 
 class NameDialog:
     def __init__(self,parent,robot,current,callback,*,rename=False):
@@ -69,8 +72,9 @@ class PresetWorkflow:
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION)
-        self.partials_enabled=self.pullback or robot.version==native.PARTIALS_ROBOT_VERSION
+        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION)
+        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION)
+        self.temporal_enabled=not self.pullback and robot.version==native.TEMPORAL_ROBOT_VERSION
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -139,6 +143,21 @@ class PresetWorkflow:
             self.partial_preview=tk.StringVar(value="Parciais desabilitadas.")
             ttk.Label(box,textvariable=self.partial_preview,wraplength=850).pack(fill=tk.X,pady=5)
             for var in (self.partial_mode,self.partial_count,self.partial_be):var.trace_add("write",lambda *_:self.mark_dirty())
+        if self.temporal_enabled:
+            from mt5_extracao.strategies.temporal import TemporalPolicy
+            box=ttk.LabelFrame(body,text="Saídas temporais · SL físico permanece obrigatório",padding=12);box.pack(fill=tk.X,padx=12,pady=4)
+            self.time_on=tk.BooleanVar(value=False);self.time_fields={};self.time_widgets=[]
+            self.time_toggle=ttk.Checkbutton(box,text="Ativar prazos desde o primeiro preenchimento",variable=self.time_on);self.time_toggle.pack(anchor="w")
+            ttk.Label(box,text="Segundos de relógio, incluindo gaps; zero desabilita cada prazo. Parciais não reiniciam a idade. PnL observado inclui custos já lançados nos fills; custo da saída será conferido no preenchimento.",wraplength=850).pack(fill=tk.X,pady=4)
+            form=ttk.Frame(box);form.pack(fill=tk.X)
+            labels={"max_seconds":"Limite absoluto (s)","progress_seconds":"Prazo do lucro mínimo (s)","minimum_profit":"Lucro mínimo (moeda do Tester)","gain_seconds":"Prazo em ganho (s)","loss_seconds":"Prazo em perda (s)","tie_seconds":"Prazo em empate (s)","flat_band":"Faixa de empate ± (moeda)","money_digits":"Casas da moeda no Tester"}
+            for index,(key,value) in enumerate(TemporalPolicy().to_dict().items()):
+                row,col=divmod(index,3);ttk.Label(form,text=labels[key]).grid(row=row*2,column=col,sticky="w",padx=(0,8))
+                var=tk.StringVar(value=str(value));self.time_fields[key]=var
+                widget=ttk.Entry(form,textvariable=var,width=22);widget.grid(row=row*2+1,column=col,sticky="ew",padx=(0,8),pady=(2,6));self.time_widgets.append(widget)
+                var.trace_add("write",lambda *_:self.mark_dirty())
+            for col in range(3):form.columnconfigure(col,weight=1)
+            self.time_on.trace_add("write",lambda *_:self.mark_dirty())
         self.protection=ttk.Label(body,text="",style="Muted.TLabel",wraplength=850);self.protection.pack(fill=tk.X,padx=12,pady=4)
         ctx=ttk.LabelFrame(body,text="Contexto do ensaio histórico",padding=12);ctx.pack(fill=tk.X,padx=12,pady=6)
         now=datetime.now();self.start=tk.StringVar(value=(now-timedelta(days=1)).date().isoformat());self.end=tk.StringVar(value=now.date().isoformat())
@@ -172,6 +191,7 @@ class PresetWorkflow:
         self.sizing=self.tree("Lotes e risco · eventos nativos",("origem do sinal","modo","solicitado","plano","preenchido","risco até SL","orçamento","margem requerida","margem livre","mín/passo/máx nativos")) if self.lots_enabled else None
         self.partials=self.tree("Parciais · confirmação e saldo",("origem","instante","etapa","estado","antes","solicitado","reduzido","saldo","SL antes","SL depois","BE confirmado","resultado da redução")) if self.partials_enabled else None
         self.deals=self.tree("Preenchimentos e custos",("instante servidor","posição","entrada/saída","lotes","preço","resultado bruto","comissão","swap","taxa")) if self.partials_enabled else None
+        self.temporal=self.tree("Tempo · decisão e confirmação",("origem","instante","motivo","estado","idade (s)","PnL observado","antes","reduzido","saldo","resultado da saída")) if self.temporal_enabled else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -228,6 +248,9 @@ class PresetWorkflow:
                 for widget in self.partial_widgets[1:]:widget.state(["disabled"])
             elif self.partial_count.get()=="1":
                 for widget in self.partial_stage_widgets[2]:widget.state(["disabled"])
+        if self.temporal_enabled:
+            self.time_toggle.state(["!disabled" if editable else "disabled"])
+            for widget in self.time_widgets:widget.configure(state="normal" if editable and self.time_on.get() else "disabled")
         for entry in self.context_entries:entry.configure(state="disabled" if busy or not self.source_compatible else "normal")
         self.save.state(["!disabled" if is_manual and self.dirty and not busy else "disabled"])
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
@@ -291,6 +314,11 @@ class PresetWorkflow:
                 self.partial_fields[f"trigger{i}_r"].set(str(stage["trigger_r"]))
                 self.partial_fields[f"quantity{i}"].set(str(stage["quantity"]*(100 if stage["mode"]==0 else 1)))
                 self.partial_fields[f"base{i}"].set("Inicial" if stage["base"]==0 else "Saldo")
+        if self.temporal_enabled:
+            from mt5_extracao.strategies.temporal import TemporalPolicy
+            policy=item.composition.to_dict()["conditional_policy"];active=policy["mode"]=="temporal_v1"
+            self.time_on.set(active);values=policy["params"] if active else TemporalPolicy().to_dict()
+            for key,var in self.time_fields.items():var.set(str(values[key]))
         self.selected.set(next(label for label,value in self.options.items() if value.identity==item.identity))
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
@@ -331,6 +359,9 @@ class PresetWorkflow:
                     params[f"quantity{i}"]=float(self.partial_fields[f"quantity{i}"].get().replace(",","."))/(100 if mode=="Fração (%)" else 1)
                     params[f"base{i}"]=0 if self.partial_fields[f"base{i}"].get()=="Inicial" else 1
                 data["partial_exit_plan"]={"mode":"staged_fraction" if mode=="Fração (%)" else "staged_lots","params":params}
+        if self.temporal_enabled:
+            params={key:(float if key in ("minimum_profit","flat_band") else int)(var.get().replace(",",".")) for key,var in self.time_fields.items()} if self.time_on.get() else {}
+            data["conditional_policy"]={"mode":"temporal_v1" if self.time_on.get() else "disabled","params":params}
         return Composition(data)
     def refresh_preview(self):
         if not self.lots_enabled or self.current is None:return
@@ -369,6 +400,7 @@ class PresetWorkflow:
         if self.sizing is not None:self.sizing.delete(*self.sizing.get_children())
         if self.partials is not None:self.partials.delete(*self.partials.get_children())
         if self.deals is not None:self.deals.delete(*self.deals.get_children())
+        if self.temporal is not None:self.temporal.delete(*self.temporal.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -479,6 +511,9 @@ class PresetWorkflow:
         if "partials" in proof:
             confirmed=sum(r["state"]=="confirmed" for r in proof["partials"])
             self.result.set(self.result.get()+f"\nParciais confirmadas: {confirmed}; saldo e custos por fill nas abas próprias." if confirmed else self.result.get()+"\nNenhuma parcial confirmada neste ensaio; sem aceite dessa capacidade.")
+        if "temporal_events" in proof:
+            count=sum(r["state"]=="confirmed" for r in proof["temporal_events"])
+            self.result.set(self.result.get()+f"\nSaídas temporais confirmadas: {count}."+("" if count else " Sem aceite dessa capacidade neste ensaio."))
         self.status.set("Inputs realmente carregados e modo nativo conferidos. Histórico/revisão da corretora sem certificação; cobertura de ticks reais depende do relatório.")
         for row in proof["ledger"]:self.trades.insert("","end",values=(row["entry_time"],row["exit_time"],"Compra" if row["direction"]>0 else "Venda",row["volume"],row["pnl"],row["stop_price"],row["target_price"]))
         expected=self.current.manifest["native"]["expected_native_inputs"]
@@ -498,6 +533,9 @@ class PresetWorkflow:
         if self.deals is not None:
             for row in proof.get("deals",[]):
                 self.deals.insert("","end",values=(clock(row['at_msc']/1000),row['position'],"Entrada" if row['entry']==0 else "Saída",row['volume'],row['price'],row['profit'],row['commission'],row['swap'],row['fee']))
+        if self.temporal is not None:
+            for row in proof.get("temporal_events",[]):
+                self.temporal.insert("","end",values=(clock(row["event_at"]),clock(row["at_msc"]/1000),row["reason"],row["state"],row["age_ms"]/1000,row["net_observed"] if row["net_observed"] is not None else "Indisponível",row["before"],row["filled"],row["remaining"],row["cash"]))
         if proof.get("first_difference"):self.status.set("Primeira divergência: "+str(proof["first_difference"])+". Confira os arquivos; tolerância não foi ampliada.")
     def open_files(self):
         value=self.artifacts.get("artifact_directory")

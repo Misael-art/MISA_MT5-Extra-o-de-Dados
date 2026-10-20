@@ -3815,3 +3815,13 @@ BE só acompanha close_part efetivo. Corrige dois casos long/short de lote indiv
 com controles de redução viável.19 testes pertinentes aprovados; código nativo e
 backtester já aprovados preservados, sem repetir seus ensaios. Dados/resultados antigos
 não são regravados. Cache permanece inelegível e modalidades mantêm aceites próprios.
+
+
+T19.15 inicial em revisão isolada: política temporal tipada (segundos desde o fill),
+limite absoluto/progresso e prazos gain/loss/tie; moeda e região de empate explícitas.
+S09v1.30/30 inputs, UI Default/Manual e recibo de decisão/ack; usa guardas, execução,
+parciais e trajetórias existentes, preservando max_bars e perfis anteriores.
+Depende de MPR153 (parcial inviável na re-simulação) e HADOUKENPR27; protótipo não
+concede aceite até replay próprio com saídas/fills reconciliados.176 testes pertinentes
+M compatíveis e testes do controlador/header H; ver docs/sdk/saidas_temporais.md.
+Cache inelegível; S09 Tester, live DEMO/Windows físico/carteira permanecem específicos.

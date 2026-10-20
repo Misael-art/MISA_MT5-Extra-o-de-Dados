@@ -36,11 +36,23 @@ LOTS_INPUT_TYPES = {**INPUT_TYPES, "InpLotMode": "int", "InpFixedLot": "double"}
 PARTIALS_INPUT_TYPES = {**LOTS_INPUT_TYPES, "InpPartialStages":"int", "InpPartialBreakeven":"bool",
     **{f"InpPartial{name}{i}":kind for i in (1,2) for name,kind in (("Trigger","double"),("Quantity","double"),("Mode","int"),("Base","int"))}}
 
+TEMPORAL_ROBOT_VERSION="1.30"
+TEMPORAL_APPROVED_FINGERPRINT="f73f751ee93cc7f2"
+TEMPORAL_HADOUKEN_REVISION="09068ad0045e3b8500bb20547f2a413dc1bb7c8c"
+TIME_INPUTS={"max_seconds":("InpTimeMaxSeconds","int","second"),
+ "progress_seconds":("InpTimeProgressSeconds","int","second"),
+ "minimum_profit":("InpTimeMinimumProfit","double","account_money"),
+ "gain_seconds":("InpTimeGainSeconds","int","second"),"loss_seconds":("InpTimeLossSeconds","int","second"),
+ "tie_seconds":("InpTimeTieSeconds","int","second"),"flat_band":("InpTimeFlatBand","double","account_money"),
+ "money_digits":("InpTimeMoneyDigits","int","currency_decimal")}
+TEMPORAL_INPUT_TYPES={**PARTIALS_INPUT_TYPES,**{name:kind for name,kind,unit in TIME_INPUTS.values()}}
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
                 LOTS_ROBOT_VERSION: (LOTS_APPROVED_FINGERPRINT, LOTS_INPUT_TYPES, 2, LOTS_HADOUKEN_REVISION),
-                PARTIALS_ROBOT_VERSION:(PARTIALS_APPROVED_FINGERPRINT,PARTIALS_INPUT_TYPES,3,PARTIALS_HADOUKEN_REVISION)}
+                PARTIALS_ROBOT_VERSION:(PARTIALS_APPROVED_FINGERPRINT,PARTIALS_INPUT_TYPES,3,PARTIALS_HADOUKEN_REVISION),
+                TEMPORAL_ROBOT_VERSION:(TEMPORAL_APPROVED_FINGERPRINT,TEMPORAL_INPUT_TYPES,4,TEMPORAL_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
@@ -86,6 +98,7 @@ class S09NativeAdapter:
             allowed = {base, "fixed_points"} if slot in ("profit_exit", "protection") else {base}
             if slot == "sizing" and profile[2] >= 2:
                 allowed.add("fixed_volume")
+            if slot=="conditional_policy" and profile[2]>=4:allowed.add("temporal_v1")
             if slot=="partial_exit_plan" and profile[2]>=3:
                 allowed.update(("fixed_r","staged_lots","staged_fraction"))
             if data[slot]["mode"] not in allowed:
@@ -134,6 +147,13 @@ class S09NativeAdapter:
             if explicit:
                 inactive.append("strategy.params."+name)
         _sizing_parameters(data, profile_version, values, bindings, inactive)
+        if profile_version>=4:
+            from ..strategies.temporal import TemporalPolicy
+            enabled=data["conditional_policy"]["mode"]=="temporal_v1"
+            policy=TemporalPolicy(**data["conditional_policy"]["params"]) if enabled else TemporalPolicy()
+            for key,(name,kind,unit) in TIME_INPUTS.items():
+                values[name]=format(Decimal(str(getattr(policy,key))),"f")
+                if enabled:bindings["conditional_policy.params."+key]={"input":name,"type":"int" if kind=="int" else "number","unit":unit}
         return _description(self.composition,self.robot,data,values,bindings,inactive,preset_id,
                             fingerprint,input_types,profile_version,hadouken_revision,PROFILE_ID)
 
@@ -173,6 +193,7 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
     if profile_version >= 2:
         modules["sizing"] = ["risk_fraction", "fixed_volume"]
     if profile_version>=3:modules["partial_exit_plan"]=["strategy_default","fixed_r","staged_lots","staged_fraction"]
+    if profile_version>=4:modules["conditional_policy"]=["disabled","temporal_v1"]
     capabilities = Capabilities({"capabilities_schema_version": 1,
         "robot": {"key": robot.key, "version": robot.version, "fingerprint": fingerprint},
         "backend": "mql5", "strategy_key": data["strategy"]["key"], "modules": modules, "bindings": bindings}, composition)

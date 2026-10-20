@@ -23,10 +23,11 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.strategies.backtester import EXIT_REASONS, BacktestConfig, SymbolSpec, Trade, execution_spreads
+from mt5_extracao.strategies.temporal import TemporalPolicy,source_age_ms
 from mt5_extracao.strategies.equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 _PRICE_EXITS = {EXIT_REASONS[k] for k in ("stop", "breakeven", "trailing", "target")}
-_OPEN_EXITS = {EXIT_REASONS["signal"]}                         # saem na abertura da barra
+_OPEN_EXITS = {EXIT_REASONS[k] for k in ("signal","time_absolute","time_progress","time_gain","time_loss","time_tie")}                         # saem na abertura da barra
 _CLOSE_EXITS = {EXIT_REASONS[k] for k in ("time", "eod", "end")}   # saem no fechamento da barra
 
 
@@ -53,12 +54,14 @@ class ExitPolicy:
     grid_max_volume: Optional[float] = None        # teto de exposição (lotes somados)
     grid_trail_stop: bool = False                  # piramidação: o stop do conjunto sobe para a entrada anterior
 
+    temporal: Optional[TemporalPolicy] = None
+
     @classmethod
     def from_rules(cls, rules) -> "ExitPolicy":
         """O modo base de uma estratégia Python: as regras de saída dela."""
         return cls(target_r=None, use_original_target=True, partial_r=rules.partial_r,
                    partial_fraction=rules.partial_fraction, breakeven_after_partial=rules.breakeven_after_partial,
-                   trailing_atr=rules.trailing_atr, max_bars=rules.max_bars, eod_exit=rules.eod_exit)
+                   trailing_atr=rules.trailing_atr, max_bars=rules.max_bars, eod_exit=rules.eod_exit,temporal=rules.temporal)
 
     def with_(self, **changes) -> "ExitPolicy":
         return replace(self, **changes)
@@ -107,6 +110,12 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     days = times.dt.normalize().to_numpy()
     last_of_day = np.append(days[1:] != days[:-1], True) if len(days) else np.array([], dtype=bool)
     atr_v = np.asarray(atr, dtype=float) if atr is not None else np.full(len(data), np.nan)
+    temporal=policy.temporal;temporal_trace=[]
+    if temporal is not None:
+        if not isinstance(temporal,TemporalPolicy):raise ValueError("Política temporal exige contrato tipado.")
+        if temporal.enabled and (observation_timeframe is None or policy.grid_levels):
+            raise ValueError("Política temporal requer timeframe explícito e ciclo sem gradiente neste recorte.")
+        from mt5_extracao.trade_analytics.trajectories.clocks import bar_end_in_source
     out: List[Trade] = []
     source_seqs = []
     skipped = approximate = adds = capped = 0
@@ -234,9 +243,18 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
             journal.record(len(out), i0, "entry", "open", volume, pos["pnl"],
                            direction=d,
                            source_seq=getattr(t, "seq", None), fill_price=entry, fill_volume=volume)
+        pending_temporal=None
         for i in range(i0, n):
+            if pending_temporal:
+                op=o[i]+(spr_open[i] if d<0 else 0)
+                stop_gap=op<=pos["stop"] if d>0 else op>=pos["stop"]
+                target_gap=target is not None and (op>=target if d>0 else op<=target)
+                reason=pos["kind"] if stop_gap else "target" if target_gap else pending_temporal
+                temporal_trace.append(dict(event="execution",cycle_seq=len(out),available_at=times.iloc[i].isoformat(),requested=pending_temporal,reason=reason))
+                close_all(i,op if target_gap and not stop_gap else fill_exit(o[i],spr_open[i]),reason,"open");closed=True;break
             if policy.keep_original_exits and i == exit_orig and reason_orig in _OPEN_EXITS and i > i0:
-                close_all(i, fill_exit(o[i], spr_open[i]), "signal")
+                kind=next(k for k,v in EXIT_REASONS.items() if v==reason_orig)
+                close_all(i, fill_exit(o[i], spr_open[i]), kind,"open")
                 closed = True
                 break
             lo, hi, op = (l[i], h[i], o[i]) if d > 0 else (l[i] + spr[i], h[i] + spr[i], o[i] + spr[i])
@@ -296,6 +314,16 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 close_all(i, fill_exit(c[i], spr_close[i]), kind)
                 closed = True
                 break
+            if temporal is not None and temporal.enabled:
+                available=bar_end_in_source(times.iloc[i],observation_timeframe)
+                age=source_age_ms(times.iloc[i0],available)
+                mark=c[i]+(spr_close[i] if d<0 else 0)
+                net=pos["pnl"]+sum((mark-price)*d*ppu*vol for price,vol,opened in pos["lots"])
+                if cfg.swap:net+=sum(spec.swap_money(d,vol,times.iloc[opened],times.iloc[i]) for price,vol,opened in pos["lots"])
+                decision=temporal.decision(age,float(net))
+                if decision not in ("hold","unavailable"):
+                    pending_temporal=decision
+                    temporal_trace.append(dict(event="decision",cycle_seq=len(out),available_at=available.isoformat(),opened_at=times.iloc[i0].isoformat(),age_ms=age,net_observed=float(net),reason=decision))
             if i < n - 1:
                 balances[i] += pos["pnl"]
                 mark = c[i] + (spr_close[i] if d < 0 else 0)
@@ -318,6 +346,9 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     balances += closed_balance
     floating += closed_balance
     performance = unitized_equity(floating, flows, cfg.initial_equity)
+    trajectory=journal.payload(valuation_metadata(spec,cfg)) if journal is not None else {}
+    if temporal is not None and temporal.enabled:
+        trajectory.update(temporal_decisions=temporal_trace,temporal_policy=temporal.to_dict(),temporal_time_basis="source_clock_elapsed; not qualified session time")
     return SimResult(out, skipped, approximate, adds, capped, stats_volume[0], source_seqs=source_seqs,
                      account_balance=pd.Series(balances, index=pd.DatetimeIndex(times), dtype=float),
                      floating_equity=pd.Series(floating, index=pd.DatetimeIndex(times), dtype=float),
@@ -326,4 +357,4 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                      metrics={**floating_metrics(performance, cfg.initial_equity),
                               "floating_drawdown_basis": "unitized_initial_capital" if np.any(flows) else "account_equity"},
                      valuation=valuation_metadata(spec, cfg),
-                     trajectory=journal.payload(valuation_metadata(spec, cfg)) if journal is not None else {})
+                     trajectory=trajectory)
