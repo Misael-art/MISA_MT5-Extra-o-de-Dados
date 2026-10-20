@@ -1,0 +1,33 @@
+{
+  "native_session": "837f392ad53843bd8edd2dcb2392b17e",
+  "bars_sha256": "38d31d98d1e55620810f2b5fd717f6745f1b8b17cafdbad374c82e4bede36f9d",
+  "bars": 538,
+  "all_four_native_signal_event_direction_confirmation_match": true,
+  "signals": [
+    {
+      "event_at": 1791969300,
+      "confirmed_at": 1791969600,
+      "direction": -1
+    },
+    {
+      "event_at": 1791970200,
+      "confirmed_at": 1791970500,
+      "direction": 1
+    },
+    {
+      "event_at": 1791972600,
+      "confirmed_at": 1791972900,
+      "direction": -1
+    },
+    {
+      "event_at": 1792011900,
+      "confirmed_at": 1792012200,
+      "direction": 1
+    }
+  ],
+  "independent_reference": "Decimal40 recursion before M strategy calculation",
+  "scope": "signal parity; financial Python/native parity not claimed",
+  "focused": "148passed initial;3 test assumptions corrected;17passed S09+2consumers and catalog1passed, source runtime unchanged",
+  "native_history_revision": "unqualified",
+  "physical_windows": "pending"
+}

@@ -72,7 +72,7 @@ def test_robots_list_and_backtest_as_json(env, capsys):
 
 def test_validate_and_status_point_to_the_next_action(env, capsys):
     state = run(capsys, env + ["status"])["data"]
-    assert state["base"]["series"] == 2 and state["robots"]["python"] == 6 and state["robots"]["mql5"] == 2
+    assert state["base"]["series"] == 2 and state["robots"]["python"] == 7 and state["robots"]["mql5"] == 2
     assert state["robots"]["high_risk"] == ["mql5:martingale"]
     ids = [a["id"] for a in state["next_actions"]]
     assert ids[0] == "atualizar" and "especificacoes" in ids and "validar" in ids      # séries de teste são antigas

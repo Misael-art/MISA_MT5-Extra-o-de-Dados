@@ -834,3 +834,12 @@ Somente documentação nesta entrega; verificações próprias registradas na co
 SDK docs 3 aprovados antes/3 depois (0,75/0,82 s); doctor 16 OK/2 avisos/0 falhas;
 57 fichas/145 dependências sem ciclos, 65 links novos válidos e diff --check limpo.
 Sem alteração de runtime/testes/dependências ou ensaio nativo/financeiro neste registro.
+
+### T19.37 inicial — S09 referência mínima
+
+Em revisão: estratégia `s09_reference`, EMA20/50 fechada com aquecimento250,
+SL100/TP200 pontos no fill, composição/backtester/CSV existentes; seis anteriores
+preservados. Referência independente e quatro sinais iguais aos do ensaio H,
+sem alegar paridade financeira, fidelidade à fonte, Default/Manual gerado/replay
+visual/UI ou aceite estatístico. Ver `docs/sdk/s09_referencia.md`.
+Suporte nativo do mapper ainda indisponível; Pullback bloqueado; Windows físico pendente.

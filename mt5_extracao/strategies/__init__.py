@@ -12,9 +12,10 @@ from .ema_atr import EmaAtrTrend
 from .orb import OpeningRangeBreakout
 from .pullback import PullbackMomentum
 from .squeeze import Squeeze
+from .s09 import S09Reference
 
 REGISTRY = {cls.key: cls for cls in (EmaAtrTrend, DonchianTurtle, BollingerRsiReversion,
-                                     OpeningRangeBreakout, PullbackMomentum, Squeeze)}
+                                     OpeningRangeBreakout, PullbackMomentum, Squeeze, S09Reference)}
 
 # Práticas a evitar no início (exibidas na CLI, no relatório e na documentação)
 AVOID = (

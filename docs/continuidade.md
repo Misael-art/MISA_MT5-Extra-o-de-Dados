@@ -1674,3 +1674,12 @@ B06 integrado H20 (`ef4e401`) → S5 (`405e3b3`) → M134 (`9a2a79c`). [Resultad
 ## T19.19 inicial — stop antes do lote (2026-10-19)
 
 PR136/T19.18 aguardando seus checks existentes. [Proteção fixa](sdk/protecao_inicial.md) tem142testes focados aprovados: fill com gap/spread/slip, nível antes do risco/lote, ausência, tick, fonte única, CSV, prefixo e trailing que não recua. Fonte base e SDK1 preservados; nenhuma operação ao vivo. H22 (`8cca516`) integrou consumidor nativo inicial dos contratos, sem migrar os seis; setupS09/serviço/Default/Manual/preset/UI ainda pendentes. Stop segue em PR separada sobre136; não duplicar workflows. Windows físico específico, Pullback bloqueado.
+
+### T19.37 inicial — S09 referência mínima
+
+Em revisão: estratégia `s09_reference`, EMA20/50 fechada com aquecimento250,
+SL100/TP200 pontos no fill, composição/backtester/CSV existentes; seis anteriores
+preservados. Referência independente e quatro sinais iguais aos do ensaio H,
+sem alegar paridade financeira, fidelidade à fonte, Default/Manual gerado/replay
+visual/UI ou aceite estatístico. Ver `docs/sdk/s09_referencia.md`.
+Suporte nativo do mapper ainda indisponível; Pullback bloqueado; Windows físico pendente.

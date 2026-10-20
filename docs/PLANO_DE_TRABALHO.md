@@ -3694,3 +3694,12 @@ Ver [relatório](analytics/T19.3_CONSISTENCIA_SNAPSHOT.md). Windows físico pend
 ### T19.19 inicial — proteção fixa em revisão (2026-10-19)
 
 [Stop no fill](sdk/protecao_inicial.md), dependente da PR136/T19.18: pontos/tick conhecidos, proteção antes do lote, sem nível futuro no sinal.142testes focados aprovados, CI obrigatório pendente. Trailing legado monotônico preservado; catálogo ampliado/BE/High-Low/UI não concluídos. Próximo: serviço T19.23/perfil S09/Default/Manual/preset/replay com negócios reconciliados. Pullback bloqueado e Windows físico específico.
+
+### T19.37 inicial — S09 referência mínima
+
+Em revisão: estratégia `s09_reference`, EMA20/50 fechada com aquecimento250,
+SL100/TP200 pontos no fill, composição/backtester/CSV existentes; seis anteriores
+preservados. Referência independente e quatro sinais iguais aos do ensaio H,
+sem alegar paridade financeira, fidelidade à fonte, Default/Manual gerado/replay
+visual/UI ou aceite estatístico. Ver `docs/sdk/s09_referencia.md`.
+Suporte nativo do mapper ainda indisponível; Pullback bloqueado; Windows físico pendente.
