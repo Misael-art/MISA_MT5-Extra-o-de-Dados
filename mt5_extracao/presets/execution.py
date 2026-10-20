@@ -334,5 +334,9 @@ class PresetExecution:
             proof.update(temporal_events=temporal,temporal_activity=any(r['state']=='confirmed' for r in temporal),
                          temporal_enabled=package['composition']['conditional_policy']['mode']=='temporal_v1',
                          temporal_acceptance=active and match is True and any(r['state']=='confirmed' for r in temporal))
+        if native["profile_version"]>=5:
+            er_activity=any(r['state']=='confirmed' and r['reason']=='time_er' for r in (temporal or []))
+            proof.update(efficiency_activity=er_activity,efficiency_enabled=package['composition']['conditional_policy']['mode']=='temporal_er_v1',
+                         efficiency_acceptance=active and match is True and er_activity)
         if strategy_reference is not None:proof["strategy_reference"]=strategy_reference
         return proof

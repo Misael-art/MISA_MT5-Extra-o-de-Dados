@@ -33,7 +33,7 @@ from .equity import cashflow_values, floating_metrics, unitized_equity, valuatio
 EXIT_REASONS = {
     "stop": "stop", "breakeven": "stop no zero a zero", "trailing": "stop móvel", "target": "alvo",
     "time_absolute":"prazo absoluto", "time_progress":"prazo sem lucro mínimo",
-    "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate",
+    "time_gain":"prazo de ganho", "time_loss":"prazo de perda", "time_tie":"prazo de empate", "time_er":"eficiência baixa após idade mínima",
     "signal": "sinal de saída", "time": "tempo máximo", "eod": "fim do dia", "end": "fim dos dados",
 }
 
@@ -269,6 +269,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         journal = Journal(times, observation_timeframe, "python_model")
     temporal=rules.temporal
     temporal_trace=[]
+    from mt5_extracao.strategies.temporal_er import observation_values,decide
+    er_values=observation_values(temporal,data)
     if temporal is not None and temporal.enabled and observation_timeframe is None:
         raise ValueError("Política temporal requer timeframe explícito para a disponibilidade do fechamento.")
     if temporal is not None and temporal.enabled:
@@ -418,10 +420,10 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 mark=c[i]+(spr_close[i] if d<0 else 0)
                 net=pos["pnl"]+(mark-pos["entry"])*d*ppu*pos["remaining"]
                 if cfg.swap:net+=spec.swap_money(d,pos["remaining"],times.iloc[pos["i"]],times.iloc[i])
-                decision=temporal.decision(age,float(net))
+                decision,er_context=decide(temporal,age,float(net),er_values,i)
                 if decision not in ("hold","unavailable"):
                     pos["pending_temporal"]=decision
-                    temporal_trace.append(dict(event="decision",cycle_seq=len(trades),available_at=available.isoformat(),opened_at=times.iloc[pos["i"]].isoformat(),age_ms=age,net_observed=float(net),reason=decision))
+                    temporal_trace.append(dict(event="decision",cycle_seq=len(trades),available_at=available.isoformat(),opened_at=times.iloc[pos["i"]].isoformat(),age_ms=age,net_observed=float(net),reason=decision,**er_context))
 
         # 5) novos sinais de entrada (executados na próxima abertura)
         if i + 1 >= start_index and i < n - 1 and (pos is None or pending_exit):

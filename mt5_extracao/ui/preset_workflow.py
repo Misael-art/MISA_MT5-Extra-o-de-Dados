@@ -32,7 +32,7 @@ INPUT_LABELS={"InpFastPeriod":"EMA curta","InpSlowPeriod":"EMA longa","InpWarmup
 
 INPUT_LABELS.update({"InpTimeMaxSeconds":"Prazo absoluto (s)","InpTimeProgressSeconds":"Prazo de progresso (s)",
  "InpTimeMinimumProfit":"Lucro mínimo (moeda)","InpTimeGainSeconds":"Prazo de ganho (s)","InpTimeLossSeconds":"Prazo de perda (s)",
- "InpTimeTieSeconds":"Prazo de empate (s)","InpTimeFlatBand":"Faixa de empate (moeda)","InpTimeMoneyDigits":"Casas da moeda"})
+ "InpTimeTieSeconds":"Prazo de empate (s)","InpTimeFlatBand":"Faixa de empate (moeda)","InpTimeMoneyDigits":"Casas da moeda", "InpTimeERMinSeconds":"Idade mínima ER (s)","InpTimeERMaximum":"ER abaixo de (fração)"})
 
 class NameDialog:
     def __init__(self,parent,robot,current,callback,*,rename=False):
@@ -72,9 +72,10 @@ class PresetWorkflow:
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION)
-        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION)
-        self.temporal_enabled=not self.pullback and robot.version==native.TEMPORAL_ROBOT_VERSION
+        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION)
+        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION)
+        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION)
+        self.er_enabled=not self.pullback and robot.version==native.ER_TEMPORAL_ROBOT_VERSION
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -157,6 +158,16 @@ class PresetWorkflow:
                 widget=ttk.Entry(form,textvariable=var,width=22);widget.grid(row=row*2+1,column=col,sticky="ew",padx=(0,8),pady=(2,6));self.time_widgets.append(widget)
                 var.trace_add("write",lambda *_:self.mark_dirty())
             for col in range(3):form.columnconfigure(col,weight=1)
+            if self.er_enabled:
+                self.er_on=tk.BooleanVar(value=False);self.er_fields={};self.er_widgets=[]
+                self.er_toggle=ttk.Checkbutton(box,text="ER(20) de barras fechadas após idade mínima · empate mantém",variable=self.er_on);self.er_toggle.pack(anchor="w",pady=(6,0))
+                er_form=ttk.Frame(box);er_form.pack(fill=tk.X)
+                for key,label in (("er_min_seconds","Idade mínima desde o fill (s)"),("maximum_er","ER estritamente abaixo de (0..1)")):
+                    field=ttk.Frame(er_form);field.pack(side=tk.LEFT,fill=tk.X,expand=True,padx=(0,8))
+                    ttk.Label(field,text=label).pack(anchor="w");var=tk.StringVar(value="0");self.er_fields[key]=var
+                    entry=ttk.Entry(field,textvariable=var);entry.pack(fill=tk.X);self.er_widgets.append(entry)
+                    var.trace_add("write",lambda *_:self.mark_dirty())
+                self.er_on.trace_add("write",lambda *_:self.mark_dirty())
             self.time_on.trace_add("write",lambda *_:self.mark_dirty())
         self.protection=ttk.Label(body,text="",style="Muted.TLabel",wraplength=850);self.protection.pack(fill=tk.X,padx=12,pady=4)
         ctx=ttk.LabelFrame(body,text="Contexto do ensaio histórico",padding=12);ctx.pack(fill=tk.X,padx=12,pady=6)
@@ -191,7 +202,7 @@ class PresetWorkflow:
         self.sizing=self.tree("Lotes e risco · eventos nativos",("origem do sinal","modo","solicitado","plano","preenchido","risco até SL","orçamento","margem requerida","margem livre","mín/passo/máx nativos")) if self.lots_enabled else None
         self.partials=self.tree("Parciais · confirmação e saldo",("origem","instante","etapa","estado","antes","solicitado","reduzido","saldo","SL antes","SL depois","BE confirmado","resultado da redução")) if self.partials_enabled else None
         self.deals=self.tree("Preenchimentos e custos",("instante servidor","posição","entrada/saída","lotes","preço","resultado bruto","comissão","swap","taxa")) if self.partials_enabled else None
-        self.temporal=self.tree("Tempo · decisão e confirmação",("origem","instante","motivo","estado","idade (s)","PnL observado","antes","reduzido","saldo","resultado da saída")) if self.temporal_enabled else None
+        self.temporal=self.tree("Tempo · decisão e confirmação",("origem","instante","motivo","estado","idade (s)","PnL observado","antes","reduzido","saldo","resultado da saída","ER(20)","ER observado em")) if self.temporal_enabled else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -251,6 +262,9 @@ class PresetWorkflow:
         if self.temporal_enabled:
             self.time_toggle.state(["!disabled" if editable else "disabled"])
             for widget in self.time_widgets:widget.configure(state="normal" if editable and self.time_on.get() else "disabled")
+            if self.er_enabled:
+                self.er_toggle.state(["!disabled" if editable and self.time_on.get() else "disabled"])
+                for widget in self.er_widgets:widget.configure(state="normal" if editable and self.time_on.get() and self.er_on.get() else "disabled")
         for entry in self.context_entries:entry.configure(state="disabled" if busy or not self.source_compatible else "normal")
         self.save.state(["!disabled" if is_manual and self.dirty and not busy else "disabled"])
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
@@ -316,9 +330,12 @@ class PresetWorkflow:
                 self.partial_fields[f"base{i}"].set("Inicial" if stage["base"]==0 else "Saldo")
         if self.temporal_enabled:
             from mt5_extracao.strategies.temporal import TemporalPolicy
-            policy=item.composition.to_dict()["conditional_policy"];active=policy["mode"]=="temporal_v1"
+            policy=item.composition.to_dict()["conditional_policy"];active=policy["mode"] in ("temporal_v1","temporal_er_v1")
             self.time_on.set(active);values=policy["params"] if active else TemporalPolicy().to_dict()
             for key,var in self.time_fields.items():var.set(str(values[key]))
+            if self.er_enabled:
+                self.er_on.set(policy["mode"]=="temporal_er_v1")
+                for key,var in self.er_fields.items():var.set(str(values.get(key,0)))
         self.selected.set(next(label for label,value in self.options.items() if value.identity==item.identity))
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
@@ -361,7 +378,11 @@ class PresetWorkflow:
                 data["partial_exit_plan"]={"mode":"staged_fraction" if mode=="Fração (%)" else "staged_lots","params":params}
         if self.temporal_enabled:
             params={key:(float if key in ("minimum_profit","flat_band") else int)(var.get().replace(",",".")) for key,var in self.time_fields.items()} if self.time_on.get() else {}
-            data["conditional_policy"]={"mode":"temporal_v1" if self.time_on.get() else "disabled","params":params}
+            mode="temporal_v1" if self.time_on.get() else "disabled"
+            if self.er_enabled and self.time_on.get() and self.er_on.get():
+                params.update({key:(int if key=="er_min_seconds" else float)(var.get().replace(",",".")) for key,var in self.er_fields.items()})
+                mode="temporal_er_v1"
+            data["conditional_policy"]={"mode":mode,"params":params}
         return Composition(data)
     def refresh_preview(self):
         if not self.lots_enabled or self.current is None:return
@@ -514,6 +535,9 @@ class PresetWorkflow:
         if "temporal_events" in proof:
             count=sum(r["state"]=="confirmed" for r in proof["temporal_events"])
             self.result.set(self.result.get()+f"\nSaídas temporais confirmadas: {count}."+("" if count else " Sem aceite dessa capacidade neste ensaio."))
+        if "efficiency_enabled" in proof:
+            count=sum(r["state"]=="confirmed" and r["reason"]=="time_er" for r in proof.get("temporal_events",[]))
+            self.result.set(self.result.get()+f"\nSaídas por ER confirmadas: {count}."+(" Replay de ER reconciliado neste cenário." if proof.get("efficiency_acceptance") else " Sem aceite de ER neste resultado."))
         self.status.set("Inputs realmente carregados e modo nativo conferidos. Histórico/revisão da corretora sem certificação; cobertura de ticks reais depende do relatório.")
         for row in proof["ledger"]:self.trades.insert("","end",values=(row["entry_time"],row["exit_time"],"Compra" if row["direction"]>0 else "Venda",row["volume"],row["pnl"],row["stop_price"],row["target_price"]))
         expected=self.current.manifest["native"]["expected_native_inputs"]
@@ -535,7 +559,7 @@ class PresetWorkflow:
                 self.deals.insert("","end",values=(clock(row['at_msc']/1000),row['position'],"Entrada" if row['entry']==0 else "Saída",row['volume'],row['price'],row['profit'],row['commission'],row['swap'],row['fee']))
         if self.temporal is not None:
             for row in proof.get("temporal_events",[]):
-                self.temporal.insert("","end",values=(clock(row["event_at"]),clock(row["at_msc"]/1000),row["reason"],row["state"],row["age_ms"]/1000,row["net_observed"] if row["net_observed"] is not None else "Indisponível",row["before"],row["filled"],row["remaining"],row["cash"]))
+                self.temporal.insert("","end",values=(clock(row["event_at"]),clock(row["at_msc"]/1000),row["reason"],row["state"],row["age_ms"]/1000,row["net_observed"] if row["net_observed"] is not None else "Indisponível",row["before"],row["filled"],row["remaining"],row["cash"],row.get("er_value","—"),clock(row["er_observed_msc"]/1000) if row.get("er_observed_msc") else "—"))
         if proof.get("first_difference"):self.status.set("Primeira divergência: "+str(proof["first_difference"])+". Confira os arquivos; tolerância não foi ampliada.")
     def open_files(self):
         value=self.artifacts.get("artifact_directory")
