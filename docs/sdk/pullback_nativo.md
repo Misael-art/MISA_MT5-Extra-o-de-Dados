@@ -24,7 +24,16 @@ S09 v1.00/1.10/1.20 e seus presets/recibos continuam preservados, sem migração
 Os marcadores S09_* são o formato compartilhado de eventos v1; perfil/fingerprint,
 magic e recibo identificam inequivocamente o consumidor Pullback. Não são estratégia S09.
 
-Aceite próprio ainda pendente do ensaio final alinhado e dos checks. Mesmo após
-aprovação, a prova cobre somente o perfil/contexto/volume e cenários exercitados;
+Ensaio alinhado concluído no Linux/Wine: EURUSD/M5,14→15/10/2026, lote fixo1,
+alvo2R: cinco posições vendidas encerradas, duas reduções1→0,5, BE confirmado,
+12 fills e23 inputs efetivos. Backtest/replay/CSV/livro/caixa iguais, resultado local
+-73,50USD. Resultados reabertos na UI (4 eventos de parcial,12 fills,9 eventos de lote).
+Recibo `docs/evidencias/T19_57_PULLBACK_20261020.json`.20 PIDs próprios observados
+sumiram, lease seguinte disponível, ponte e terminal principal DEMO preservados.
+94 testes pertinentes M e23 Tools H compatíveis; doctor20OK/1 opcional/0 falhas.
+Fonte/includes ae07e7b e aplicação c33fa1e identificadas;19 includes e fonte real
+comparados por SHA nas duas sessões. M151 aguarda apenas o Windows CI existente.
+Compras não foram exercitadas nesse replay; possuem referência Decimal/header e
+cobertura compartilhada. A prova cobre somente o perfil/contexto/volume e cenários exercitados;
 não otimiza a estratégia nem comprova performance, carteira, gradientes ou live.
 Cache inelegível; S09 somente Tester; DEMO ao vivo e Windows físico específicos.

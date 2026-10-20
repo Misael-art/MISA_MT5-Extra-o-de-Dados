@@ -3776,3 +3776,16 @@ com UI Default/Manual, swing/alvoR, lote e metade em1R com confirmação/BE comp
 Legado e Python continuam com bloqueio próprio; não há desbloqueio por herança do
 aceite S09. Ver `docs/sdk/pullback_nativo.md`. Aceite final do replay/checks pendente;
 cache inelegível, S09 somente Tester, DEMO ao vivo/Windows físico/carteira específicos.
+
+
+T19.57 Pullback — aceite dirigido Linux/Wine:5 posições vendidas encerradas,
+2 parciais1→0,5 com BE confirmado e12 fills; backtest/replay/CSV/livro/saldo conciliados.
+23 inputs reais, fontes/includes/executáveis identificados; UI Manual salvo/reaberto,
+parcial inviável bloqueada antes de outro Tester, consulta persistente. H#26→M#151;
+fonte runtime Hae07e7b/Mc33fa1e. Evidência T19_57_PULLBACK_20261020.json.
+20 processos próprios ausentes, ponte/principal preservados; trabalho local preservado.
+Compra nativa não exercitada neste recorte; Python/legado têm restrições próprias.
+Integração aguarda o Windows CI existente de M151, sem novo workflow.
+Próxima ficha prioritária: T19.14 inicial, identidade/relógio e trajetória observada
+para embasar T19.15 (stop temporal/time gain/loss), sem inferir extremos entre fills.
+Cache inelegível; S09 somente Tester; DEMO ao vivo, Windows físico e carteira específicos.
