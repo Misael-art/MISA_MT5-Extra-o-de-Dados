@@ -37,7 +37,7 @@ def compatibility(composition, *, backend="python"):
     if data["strategy"]["key"] == "pullback":
         problems.append(Problem("partial_exit_plan", "Pullback legado usa parcial ainda não qualificada (T19.57); "
                                                     "o novo adaptador não libera esse modo até corrigir confirmação/BE."))
-    if any(module["mode"] != "session_v1" for module in data["filters"]):
+    if any(module["mode"] not in ("session_v1","cooldown_v1") for module in data["filters"]):
         problems.append(Problem("filters", "filtros adicionais sem adaptador; remova-os do modo base. "
                                            "Filtros internos da estratégia continuam ativos."))
     return problems
@@ -82,9 +82,13 @@ class BaseAdapter:
         temporal=value["conditional_policy"]
         from ..strategies.session_entry import from_filters
         entry_policy = from_filters(value["filters"])
+        from ..strategies.cooldown import from_filters as cooldown_from_filters
+        cooldown = cooldown_from_filters(value["filters"])
+        entry_options = dict(entry_policy=entry_policy,cooldown=cooldown,entry_time_basis=time_basis) if entry_policy is not None or cooldown is not None else {}
+        if cooldown is not None:entry_options["observation_timeframe"]=timeframe
         if profit["mode"] == protection["mode"] == "strategy_default" and temporal["mode"]=="disabled":
             return run_backtest(bars, strategy, spec, self.backtest_config(config),
-                                **({"entry_policy":entry_policy,"entry_time_basis":time_basis} if entry_policy is not None else {}))
+                                **entry_options)
         selection = {}
         if temporal["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1","temporal_atr_v1"):
             from ..strategies.temporal_er import from_selection
@@ -100,7 +104,7 @@ class BaseAdapter:
                    else strategy.gerar_sinais(bars)).copy()
         if profit["mode"] != "strategy_default":
             signals[["target_long", "target_short"]] = float("nan")
+        if temporal["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1","temporal_atr_v1"):entry_options["observation_timeframe"]=timeframe
         return run_backtest(bars, strategy, spec, self.backtest_config(config),
                             signals=signals, exit_rules_override=rules,
-                            **({"entry_policy":entry_policy,"entry_time_basis":time_basis} if entry_policy is not None else {}),
-                            **({"observation_timeframe":timeframe} if temporal["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1","temporal_atr_v1") else {}))
+                            **entry_options)

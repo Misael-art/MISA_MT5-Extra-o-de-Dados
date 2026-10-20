@@ -2208,3 +2208,12 @@ explícitos e sem consumir/reiniciar por parcial ou ordem recusada. Fechamento
 por horário permanece separado. S09 somente Tester; cache inelegível; Pullback
 neste gate, live DEMO, Windows físico, carteira/gradientes e DST/calendário futuro
 conservam seus próprios aceites. Nenhuma campanha numérica nova.
+
+
+T19.20/02 em revisão isolada: espera em segundos após fechamento total confirmado,
+S09v1.80/44inputs. Parcial não inicia/reinicia; histórico/saldo/identidade incertos
+bloqueiam apenas entradas. UI Manual/save/reopen/export e recibo independente
+reutilizam os serviços. Gestão temporal/SL/parciais preservados. Perfil anterior
+sem migração; fechamento agendado separado. Contrato docs/sdk/cooldown_entradas.md.
+S09 somente Tester; cache inelegível; live DEMO/Windows físico/Pullback neste gate/
+carteira/gradientes mantêm aceites próprios. Par nativo e checks finais pendentes.

@@ -74,13 +74,14 @@ class PresetWorkflow:
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
-        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
-        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
-        self.er_enabled=not self.pullback and robot.version in (native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
-        self.donchian_enabled=not self.pullback and robot.version in (native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
-        self.atr_enabled=not self.pullback and robot.version in (native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION)
-        self.session_available=not self.pullback and robot.version==native.SESSION_ROBOT_VERSION
+        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
+        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
+        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
+        self.er_enabled=not self.pullback and robot.version in (native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
+        self.donchian_enabled=not self.pullback and robot.version in (native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
+        self.atr_enabled=not self.pullback and robot.version in (native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
+        self.session_available=not self.pullback and robot.version in (native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
+        self.cooldown_available=not self.pullback and robot.version==native.COOLDOWN_ROBOT_VERSION
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -229,6 +230,7 @@ class PresetWorkflow:
         self.channel=self.tree("Donchian · contexto conhecido",("instante conhecido","barra de origem","limite superior anterior","limite inferior anterior","close","renovou","rompimento observado","relógio desde")) if self.donchian_enabled else None
         self.atr_context=self.tree("ATR · horizonte conhecido",("instante conhecido","semente de origem","barra fechada","ATR base congelado","ATR atual","prazo (s)")) if self.atr_enabled else None
         self.session_events=self.tree("Sessão · entradas e cota",("origem","instante servidor","evento","dia de sessão","ciclos preenchidos","entrada permitida","motivo")) if self.session_available else None
+        self.cooldown_events=self.tree("Espera · fechamento confirmado",("origem","instante conhecido","fechamento total","libera em","espera (s)","entrada permitida","motivo")) if self.cooldown_available else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -275,10 +277,21 @@ class PresetWorkflow:
             widget=ttk.Checkbutton(days,text=label,variable=var);widget.pack(side=tk.LEFT);self.session_widgets.append(widget)
             var.trace_add("write",lambda *_:self.mark_dirty())
         ttk.Label(box,text="Janela com início=fim permite24h; exclusão com início=fim fica desativada. Janelas noturnas são aceitas. Uma posição conta no primeiro fill; redução e ordem sem preenchimento não criam outro ciclo.",wraplength=850).pack(fill=tk.X,pady=4)
+        if self.cooldown_available:
+            self.cooldown_seconds=tk.StringVar(value="0")
+            ttk.Label(box,text="Espera após fechamento total confirmado (segundos; 0 desativa)").pack(anchor="w",pady=(8,0))
+            self.cooldown_entry=ttk.Entry(box,textvariable=self.cooldown_seconds,width=24);self.cooldown_entry.pack(anchor="w")
+            ttk.Label(box,text="Libera em fechamento conhecido + espera, inclusive. Parcial não inicia a espera. Histórico/identidade ausentes impedem só novas entradas; SL e gestão continuam ativos. S09 somente Tester.",wraplength=850).pack(fill=tk.X,pady=4)
+            self.cooldown_seconds.trace_add("write",lambda *_:self.mark_dirty())
         self.session_on.trace_add("write",lambda *_:self.mark_dirty())
 
     def session_selection(self):
-        if not self.session_on.get():return []
+        extras=[]
+        if self.cooldown_available:
+            from mt5_extracao.strategies.cooldown import CooldownPolicy
+            seconds=int(self.cooldown_seconds.get())
+            if seconds!=0:extras=[{"mode":"cooldown_v1","params":{"seconds":CooldownPolicy(seconds).seconds}}]
+        if not self.session_on.get():return extras
         from mt5_extracao.strategies.session_entry import SessionEntryPolicy
         params={"weekdays":sum((1<<i) for i,var in enumerate(self.session_days) if var.get())}
         for key,var in self.session_fields.items():
@@ -289,7 +302,7 @@ class PresetWorkflow:
             hour,minute=map(int,value.split(":"))
             if not (0<=hour<24 and 0<=minute<60):raise ValueError("Horário inválido; use00:00 a23:59.")
             params[key]=hour*60+minute
-        return [{"mode":"session_v1","params":SessionEntryPolicy(**params).to_dict()}]
+        return [{"mode":"session_v1","params":SessionEntryPolicy(**params).to_dict()}]+extras
 
     def tree(self,label,columns):
         frame=ttk.Frame(self.tables);self.tables.add(frame,text=label)
@@ -337,6 +350,7 @@ class PresetWorkflow:
         if self.session_available:
             self.session_toggle.state(["!disabled" if editable else "disabled"])
             for widget in self.session_widgets:widget.state(["!disabled" if editable and self.session_on.get() else "disabled"])
+        if self.cooldown_available:self.cooldown_entry.state(["!disabled" if editable else "disabled"])
         for entry in self.context_entries:entry.configure(state="disabled" if busy or not self.source_compatible else "normal")
         self.save.state(["!disabled" if is_manual and self.dirty and not busy else "disabled"])
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
@@ -420,6 +434,10 @@ class PresetWorkflow:
             for key,var in self.session_fields.items():
                 value=params[key];var.set(str(value) if key=="max_cycles" else f"{value//60:02d}:{value%60:02d}")
             for i,var in enumerate(self.session_days):var.set(bool(params["weekdays"] & (1<<i)))
+        if self.cooldown_available:
+            from mt5_extracao.strategies.cooldown import from_filters as cooldown_from_filters
+            cooldown=cooldown_from_filters(item.composition.to_dict()["filters"])
+            self.cooldown_seconds.set(str(cooldown.seconds if cooldown else 0))
         self.selected.set(next(label for label,value in self.options.items() if value.identity==item.identity))
         self.setting=False;self.dirty=False
         label="Default preservado · use Salvar como Manual para editar." if item.identity.category=="Default" else "Rascunho compilado · aguarda conferência nativa deste contexto."
@@ -516,6 +534,7 @@ class PresetWorkflow:
         if self.channel is not None:self.channel.delete(*self.channel.get_children())
         if self.atr_context is not None:self.atr_context.delete(*self.atr_context.get_children())
         if self.session_events is not None:self.session_events.delete(*self.session_events.get_children())
+        if self.cooldown_events is not None:self.cooldown_events.delete(*self.cooldown_events.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -641,6 +660,8 @@ class PresetWorkflow:
         if proof.get("session_enabled"):
             count=sum(not row["allowed"] for row in proof.get("session_events",[]) if row["event"]=="check")
             self.result.set(self.result.get()+f"\nRecusas pelo filtro de sessão: {count}."+(" Entradas/cota e replay conciliados neste cenário." if proof.get("session_acceptance") else " Sem aceite deste filtro neste resultado."))
+        if proof.get("cooldown_enabled"):
+            self.result.set(self.result.get()+"\nEspera após fechamento total: "+("recusa, nova entrada e replay conciliados neste cenário." if proof.get("cooldown_acceptance") else "sem aceite funcional neste resultado."))
         self.status.set("Inputs realmente carregados e modo nativo conferidos. Histórico/revisão da corretora sem certificação; cobertura de ticks reais depende do relatório.")
         for row in proof["ledger"]:self.trades.insert("","end",values=(row["entry_time"],row["exit_time"],"Compra" if row["direction"]>0 else "Venda",row["volume"],row["pnl"],row["stop_price"],row["target_price"]))
         expected=self.current.manifest["native"]["expected_native_inputs"]
@@ -674,6 +695,10 @@ class PresetWorkflow:
             for row in proof.get("session_events",[]):
                 self.session_events.insert("","end",values=(clock(row["event_at"]),clock(row["at"]),"Preenchimento" if row["event"]=="fill" else "Entrada",clock(row["session_start"]),row["cycles"] if row["cycles"]>=0 else "Indisponível","Sim" if row["allowed"] else "Não",labels.get(row["reason"],row["reason"])))
         if proof.get("first_difference"):self.status.set("Primeira divergência: "+str(proof["first_difference"])+". Confira os arquivos; tolerância não foi ampliada.")
+        if self.cooldown_events is not None:
+            def milliseconds(at):return datetime.fromtimestamp(at/1000,timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            for row in proof.get("cooldown_events",[]):
+                self.cooldown_events.insert("","end",values=(clock(row["event_at"]),milliseconds(row["at_msc"]),milliseconds(row["last_close_msc"]) if row["last_close_msc"] else "Sem encerramento anterior",milliseconds(row["last_close_msc"]+row["seconds"]*1000) if row["last_close_msc"] else "Já permitida",row["seconds"],"Sim" if row["allowed"] else "Não",row["reason"]))
     def open_files(self):
         value=self.artifacts.get("artifact_directory")
         if value:self.ui._open_path(str(value))

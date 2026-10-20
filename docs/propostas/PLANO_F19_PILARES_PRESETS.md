@@ -910,3 +910,12 @@ Master já integra políticas iniciais #136 b976ffa e #137 cc58de4 com árvore i
 igual aos respectivos HEADs/seis checks aprovados. H23 d60e421 integra S09 nativa.
 Zero negócios/ensaio de contrato não fecha o percurso. Pullback bloqueado e Windows
 físico pendente específico.
+
+
+T19.20/02 em revisão isolada: espera em segundos após fechamento total confirmado,
+S09v1.80/44inputs. Parcial não inicia/reinicia; histórico/saldo/identidade incertos
+bloqueiam apenas entradas. UI Manual/save/reopen/export e recibo independente
+reutilizam os serviços. Gestão temporal/SL/parciais preservados. Perfil anterior
+sem migração; fechamento agendado separado. Contrato docs/sdk/cooldown_entradas.md.
+S09 somente Tester; cache inelegível; live DEMO/Windows físico/Pullback neste gate/
+carteira/gradientes mantêm aceites próprios. Par nativo e checks finais pendentes.

@@ -39,13 +39,14 @@ def _reason(params, minute, weekday, cycles):
     return "allowed"
 
 
-def read_events(directory, filters, signals, deals):
+def read_events(directory, filters, signals, deals, blocked_origins=()):
     text = "\n".join(mql.read_text(path) for path in (Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     matches = list(EVENT.finditer(text))
     if len(matches) != text.count("HDK_SESSION event="):
         raise ValueError("Evento de sessão truncado/inválido; preserve a sessão.")
-    enabled = bool(filters)
-    params = filters[0]["params"] if enabled else dict(anchor_minute=0)
+    selected = [row for row in filters if row["mode"]=="session_v1"]
+    enabled = bool(selected)
+    params = selected[0]["params"] if enabled else dict(anchor_minute=0)
     by_origin = {signal["event_at"]: signal for signal in signals}
     entries = [row for row in deals if row["entry"] == 0]
     rows, checks, fills = [], {}, {}
@@ -77,7 +78,7 @@ def read_events(directory, filters, signals, deals):
             if (row["cycles"] != expected_cycles or reason != expected_reason or
                     row["allowed"] != (reason in ("allowed","disabled"))):
                 raise ValueError("Dia/janela/cota divergem da referência independente e dos primeiros fills.")
-            if row["allowed"] != (signal is not None):
+            if row["allowed"] != (signal is not None or origin in blocked_origins):
                 raise ValueError("Filtro sem tentativa correspondente ou entrada enviada após recusa de sessão.")
             checks[origin] = row
         else:

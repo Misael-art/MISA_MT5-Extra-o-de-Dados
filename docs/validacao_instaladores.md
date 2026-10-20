@@ -350,3 +350,9 @@ pendente. Ensaio real realizado no Linux/Wine com ponte e terminal preservados.
 
 CI Windows do workflow39499390366 aprovado no runtime372b762; não substitui este
 aceite manual do terminal no Windows físico. Par nativo efetivo exercitado em Wine.
+
+
+T19.20/02 — Windows físico: conferir Manual S09v1.80/44inputs, salvar/reabrir/exportar
+cooldown, tick milissegundo/fechamento total versus parcial, replay com recusa e nova
+entrada, persistência/consulta e liberação dos processos próprios preservando ponte/
+principal. Linux/Wine e CI não substituem este aceite. S09 somente Tester.

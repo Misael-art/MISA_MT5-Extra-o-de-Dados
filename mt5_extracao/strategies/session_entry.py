@@ -68,8 +68,9 @@ def inside(minute, start, end):
 
 
 def from_filters(filters):
-    if not filters:
-        return None
-    if len(filters) != 1 or filters[0]["mode"] != "session_v1":
-        raise ValueError("Este adaptador suporta somente o filtro session_v1; outros filtros mantêm seus gates.")
-    return SessionEntryPolicy(**filters[0]["params"])
+    if any(row["mode"] not in ("session_v1", "cooldown_v1") for row in filters):
+        raise ValueError("Este adaptador suporta somente session_v1 e cooldown_v1; demais filtros mantêm seus gates.")
+    sessions = [row for row in filters if row["mode"] == "session_v1"]
+    if len(sessions) > 1:
+        raise ValueError("Use apenas um filtro session_v1.")
+    return SessionEntryPolicy(**sessions[0]["params"]) if sessions else None
