@@ -708,7 +708,15 @@
       },
       "binary_sha256": "302249b4f724e17f81e02341c8744c1e47530bd7712478a492dbbf5353ed4cd2",
       "wrapper_sha256": "5d0971ed5b9a362b9823ebdd05dfff3b474a2751417454785e7619a70ffe7352",
-      "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session"
+      "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session",
+      "source_framing": {
+        "mode": "backtest",
+        "headers": 9,
+        "source_chunks": 198,
+        "max_payload_characters": 797,
+        "max_complete_log_line_characters": 940,
+        "all_sources_verified_by_independent_reader": true
+      }
     },
     {
       "mode": "replay",
@@ -1383,7 +1391,15 @@
       },
       "binary_sha256": "243a2ef5a5b2ecf0e8067475a28659d7a6e125d8ed8270542acc28cc656c05d6",
       "wrapper_sha256": "761110f0d845875d07c909ba89177e47fe5cd972739bbe0d467f3fae465ff147",
-      "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session"
+      "tester_expert": "HADOUKEN\\Estrategias\\mt5x_session",
+      "source_framing": {
+        "mode": "replay",
+        "headers": 9,
+        "source_chunks": 198,
+        "max_payload_characters": 797,
+        "max_complete_log_line_characters": 940,
+        "all_sources_verified_by_independent_reader": true
+      }
     }
   ],
   "observations_exact_match": true,

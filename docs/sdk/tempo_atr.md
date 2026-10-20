@@ -51,3 +51,11 @@ H#31: dois checks corrigidos aprovados; M#159: aguardar workflow39485700757
 existente no código295c323. CI92d6aac cancelado após mudança concreta de runtime.
 Recibo docs/evidencias/T19_16_ATR_20261020.json. Sem liberação live, Pullback
 temporal, carteira/gradientes ou relógios volumétricos; Windows físico pendente.
+
+Achado de recuperação antes do merge: perder somente a base ATR recusava
+a reinicialização do controlador inteiro. Teste dirigido reproduziu a falha.
+Agora, após validar a identidade/idade temporal no pai, base ATR ausente fica
+inelegível sem reconstrução; SL e prazos conhecidos continuam gerenciados.
+Troca de hash ou ausência da identidade temporal continuam recusadas.
+O par8b40cac/295c323 continua preservado como aceite do caminho normal;
+o código final desta guarda exige alinhamento/ensaio próprios, em andamento.
