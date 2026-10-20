@@ -126,8 +126,8 @@ def test_module_roundtrip_and_support_matches_backend(slot, module):
     data[slot] = module
     draft = Composition(data)
     assert Composition(draft.to_json()).to_dict() == data
-    if slot == "profit_exit":
-        # T19.18 implementou esse modo em Python; contrato e artefatos antigos preservados.
+    if slot in {"profit_exit", "protection"}:
+        # T19.18/19 implementaram estes modos em Python; artefatos antigos preservados.
         assert compatibility(draft) == []
         BaseAdapter(draft)
     else:

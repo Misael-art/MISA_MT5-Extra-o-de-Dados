@@ -1670,3 +1670,7 @@ B06 integrado H20 (`ef4e401`) → S5 (`405e3b3`) → M134 (`9a2a79c`). [Resultad
 ## T19.18 inicial — suporte fixo antes do S09 (2026-10-19)
 
 [Alvo em pontos/R](sdk/politicas_ganho.md) no motor/composição existentes; comportamento base e seis hashes canônicos antigos preservados. Referências de preço de entrada efetivo, conflito e exportação aprovadas; só expectativa antiga de R sem adaptador foi atualizada e revalidada. CI obrigatório pendente; sem UI nova, preset carregado, liberação Pullback ou aceite operacional. O consumidor H22 inicial de contratos já tem QA nativo com1operação sintética protegida; S09 ainda precisa ser implementado e demonstrado com preset. Próxima política mínima: stop fixo T19.19 e serviço nativo T19.23, sem esperar variantes do catálogo.
+
+## T19.19 inicial — stop antes do lote (2026-10-19)
+
+PR136/T19.18 aguardando seus checks existentes. [Proteção fixa](sdk/protecao_inicial.md) tem142testes focados aprovados: fill com gap/spread/slip, nível antes do risco/lote, ausência, tick, fonte única, CSV, prefixo e trailing que não recua. Fonte base e SDK1 preservados; nenhuma operação ao vivo. H22 (`8cca516`) integrou consumidor nativo inicial dos contratos, sem migrar os seis; setupS09/serviço/Default/Manual/preset/UI ainda pendentes. Stop segue em PR separada sobre136; não duplicar workflows. Windows físico específico, Pullback bloqueado.

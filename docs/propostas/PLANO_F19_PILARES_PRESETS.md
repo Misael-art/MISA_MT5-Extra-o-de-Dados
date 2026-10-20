@@ -275,6 +275,9 @@ CI e revisão final concluídos; Windows físico delimitado. [Contrato e evidên
 
 ### T19.19 — Stops e proteção por indicador
 
+**Recorte inicial em revisão (2026-10-19):** [stop fixo no fill](../sdk/protecao_inicial.md), antes do lote e sem preço futuro nos sinais. Trailing existente preservado; novas variantes/BE/High-Low e UI seguem pendentes. Não conclui T19.19 integral.
+
+
 - **Repo/prioridade:** M/H/S se afetar executor; P1. **Depende de:** T19.2, indicadores correspondentes.
 - **Arquivos:** políticas de posição, motor existente e Safety quando necessário.
 - **Passos:** stop fixo/ATR → trailing fixo/ATR/barras/média → break-even/trava de avanço → integração.
