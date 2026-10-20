@@ -828,3 +828,10 @@ Somente documentação nesta entrega; verificações próprias registradas na co
 SDK docs 3 aprovados antes/3 depois (0,75/0,82 s); doctor 16 OK/2 avisos/0 falhas;
 57 fichas/145 dependências sem ciclos, 65 links novos válidos e diff --check limpo.
 Sem alteração de runtime/testes/dependências ou ensaio nativo/financeiro neste registro.
+
+### Recorte T19.23 — conferência dos inputs no Tester DEMO
+
+Implementação inicial em revisão: [contrato e limites](../sdk/inputs_nativos.md).
+Reutiliza Session/compilação/isolamento, recibo opt-in tipado e persistência aditiva.
+Não conclui o adaptador de composição, a adoção dos seis, S09 ou aceite operacional.
+Sem mudança dos limites, PLAY, SDK 1 ou fontes dos Experts legados. Windows físico pendente.

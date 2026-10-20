@@ -3686,3 +3686,10 @@ Ver [relatório](analytics/T19.3_CONSISTENCIA_SNAPSHOT.md). Windows físico pend
 ### Dependência B07 do primeiro percurso — em revisão (2026-10-19)
 
 [Resultado observado nativo](sdk/resultado_execucao_nativa.md): B06 integrado H20/S5/M134; B07 registra resposta/fill/ausência sem novo executor. CI H39347476261, QA com1operação simulada e compilação dos seis aprovados. Sem runtime Python novo ou aceite S09/preset/UI; próximo consumidor B08/T19.23. Pullback bloqueado; Windows físico específico.
+
+### Recorte T19.23 — conferência dos inputs no Tester DEMO
+
+Implementação inicial em revisão: [contrato e limites](sdk/inputs_nativos.md).
+Reutiliza Session/compilação/isolamento, recibo opt-in tipado e persistência aditiva.
+Não conclui o adaptador de composição, a adoção dos seis, S09 ou aceite operacional.
+Sem mudança dos limites, PLAY, SDK 1 ou fontes dos Experts legados. Windows físico pendente.

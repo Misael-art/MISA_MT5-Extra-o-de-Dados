@@ -131,6 +131,32 @@ def _save_run(db, run: dict, control=None) -> None:
             control.result("completed", conn=conn)
 
 
+def save_native_input_receipt(db, run_id, receipt, *, artifact_directory, robot_key):
+    """Anexa prova própria em tabela aditiva; não regrava métricas/trades do run."""
+    from pathlib import Path
+    from sqlalchemy import text
+    encoded = json.dumps(receipt, ensure_ascii=False, sort_keys=True, allow_nan=False)
+    with _SCHEMA_LOCK, db.engine.begin() as conn:
+        row = conn.execute(text("SELECT robot_key,symbol,timeframe,metrics_json FROM _robot_runs "
+                                "WHERE run_id=:id"), {"id": run_id}).mappings().one_or_none()
+        metrics = json.loads(row["metrics_json"] or "{}") if row else {}
+        if (row is None or row["robot_key"] != robot_key or row["symbol"] != receipt["symbol"]
+                or row["timeframe"] != receipt["timeframe"] or not metrics.get("artifact_directory")
+                or Path(metrics["artifact_directory"]).resolve() != Path(artifact_directory).resolve()
+                or Path(artifact_directory).name != receipt["session"]):
+            raise ValueError("Recibo não pertence à execução e ao diretório próprios; execute uma nova sessão isolada.")
+        conn.execute(text("CREATE TABLE IF NOT EXISTS _native_input_receipts "
+                          "(run_id TEXT PRIMARY KEY, receipt_json TEXT NOT NULL)"))
+        old = conn.execute(text("SELECT receipt_json FROM _native_input_receipts WHERE run_id=:id"),
+                           {"id": run_id}).scalar_one_or_none()
+        if old is not None:
+            if old != encoded:
+                raise ValueError("Execução já possui outro recibo; preserve a prova anterior e crie nova sessão.")
+            return
+        conn.execute(text("INSERT INTO _native_input_receipts(run_id,receipt_json) VALUES(:id,:receipt)"),
+                     {"id": run_id, "receipt": encoded})
+
+
 def _has_trades_column(conn) -> bool:
     from sqlalchemy import inspect
     return any(c["name"] == "trades_json" for c in inspect(conn).get_columns("_robot_runs"))
@@ -157,6 +183,14 @@ def load_runs(db, robot_key: str = None, *, run_id: str = None) -> list:
         if where:
             sql += " WHERE " + " AND ".join(where)
         rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, run_id DESC"), params).mappings()]
+        if rows and inspect(conn).has_table("_native_input_receipts"):
+            from sqlalchemy import bindparam
+            query = text("SELECT run_id,receipt_json FROM _native_input_receipts WHERE run_id IN :ids").bindparams(
+                bindparam("ids", expanding=True))
+            receipts = {r[0]: json.loads(r[1]) for r in conn.execute(query, {"ids": [r["run_id"] for r in rows]})}
+            for row in rows:
+                if row["run_id"] in receipts:
+                    row["native_inputs"] = receipts[row["run_id"]]
     for row in rows:
         row["trades"] = json.loads(row.pop("trades_json", None) or "[]")      # [[horário, resultado, volume], ...]
         row["params"] = json.loads(row.pop("params_json") or "{}")

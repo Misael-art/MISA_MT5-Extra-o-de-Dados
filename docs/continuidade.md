@@ -1666,3 +1666,8 @@ A UI atual mantém seus serviços anteriores; não há novo Default/Manual/prese
 ## Continuidade B07 / primeiro percurso — 2026-10-19
 
 B06 integrado H20 (`ef4e401`) → S5 (`405e3b3`) → M134 (`9a2a79c`). [Resultado nativo B07](sdk/resultado_execucao_nativa.md) tem teste focado, CI H39347476261, SDK1(11+0), smoke e seis compilações nativas sem erros/avisos. QA do contrato:1entrada comSL e1operação fechada simuladas, preços/volumes/dono no histórico,0falhas. Sem ordem ao vivo ou nova campanha financeira. Integração vinculada B07 em revisão; nenhuma UI S09/Default/Manual ainda entregue. Próximo: consumidor nativo mínimo B08/T19.23 → S09 fixo → preset e replay efetivo reconciliado; Pullback bloqueado e Windows físico específico.
+
+T19.23 inicial: conferência opt-in dos inputs efetivamente carregados no Tester
+DEMO, pelo Session existente; recibo versionado e tabela aditiva, sem regravar
+resultados. Ainda não é adaptador de composição/S09/preset/UI nem aceite operacional.
+Pullback bloqueado; Windows físico pendente. Ver `docs/sdk/inputs_nativos.md`.

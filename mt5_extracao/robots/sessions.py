@@ -200,7 +200,8 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
     return child
 
 
-def telemetry_source(robot, filename, account=None, trades_filename=None, lease_filename=None, common_namespace=None):
+def telemetry_source(robot, filename, account=None, trades_filename=None, lease_filename=None, common_namespace=None,
+                     input_receipt=None):
     """Preserva timers da estratégia; em conta, cria heartbeat próprio quando ela não usa timer."""
     import re
     source_graph = "\n".join(mql.read_text(Path(p)) for p in dict.fromkeys([robot.path] + robot.files)
@@ -294,8 +295,17 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
 '''
     wrappers = "\n".join(f"void {name}({args}) {{ if(!({guard})) {{ ExpertRemove(); return; }} "
                            f"MT5X_{name}({call}); MT5X_Publish(); }}" for name, args, call in events)
+    receipt_source = ""
+    if input_receipt is not None:
+        from . import native_inputs
+        if account is not None:
+            raise ValueError("Conferência de inputs disponível somente no Tester DEMO.")
+        receipt_source = native_inputs.source(robot, **input_receipt)
+        guard += " && AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO"
     timer_start = "EventSetTimer(1);" if own_timer else ""
     init_call = "int result=MT5X_OnInit();" if init.group(1) == "int" else "MT5X_OnInit(); int result=INIT_SUCCEEDED;"
+    if input_receipt is not None:
+        init_call += " if(result==INIT_SUCCEEDED && !MT5X_RecordInputs()) return INIT_FAILED;"
     init_call += f" if(result==INIT_SUCCEEDED) {{ {timer_start} MT5X_Chart(); MT5X_Publish(); }} return result;"
     wrappers += f"\nint OnInit() {{ if(!({guard})) return INIT_FAILED; {init_call} }}"
     if own_timer:
@@ -306,6 +316,7 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
     if trades_filename:
         observer = (Path(__file__).parent / "templates" / "session_export.mqh.tmpl").read_text(encoding="utf-8")
         wrappers += f'\ndouble OnTester() {{ double result={"MT5X_OnTester()" if tester else "0"}; MT5X_Export("{trades_filename}",{magic_expr}); return result; }}'
+    lease_code += receipt_source
     # Atualização de estado limitada a ~4Hz de parede, sem importar o relógio histórico.
     return f'''{common_code}
 {definitions}
@@ -348,12 +359,23 @@ def session_root(config):
 class Session:
     """Uma execução, controlada fora da thread Tk; STOP nunca alcança outros terminais."""
     def __init__(self, db, config, robot, symbol, timeframe, preset=None, mode="backtest", start=None, end=None,
-                 account=None, consent=None, root=None, native_options=None):
+                 account=None, consent=None, root=None, native_options=None,
+                 input_receipt_fields=None, expected_native_inputs=None):
         if mode not in ("play", "replay", "backtest"):
             raise ValueError("Modo de execução inválido.")
         self.db, self.config, self.robot = db, config, robot
         from mt5_extracao.resources.files import session_owner_key
         self.owner_store = session_owner_key(db)
+        from . import native_inputs
+        if (input_receipt_fields is not None or expected_native_inputs is not None) and mode == "play":
+            raise ValueError("Conferência de inputs disponível somente no Tester DEMO.")
+        if expected_native_inputs is not None and input_receipt_fields is None:
+            raise ValueError("Informe os inputs públicos do perfil antes de conferir o preset.")
+        self.input_fields = (native_inputs.fields_for(robot, input_receipt_fields)
+                             if input_receipt_fields is not None else None)
+        self.expected_inputs = (native_inputs.expected_values(expected_native_inputs, self.input_fields)
+                                if self.input_fields is not None else None)
+        self.native_input_receipt = None
         self.native_options, self.exception = native_options, None
         self.instrumented = False
         self.symbol, self.timeframe, self.preset, self.mode = symbol, timeframe, preset, mode
@@ -368,6 +390,7 @@ class Session:
         self.finished = None
         self.telemetry_file = f"mt5x_session_{self.id}.txt"
         self.trades_file = f"mt5x_session_{self.id}_trades.csv"
+        self.input_receipt_file = f"mt5x_session_{self.id}_inputs.csv"
         self.lease_file = f"mt5x_session_{self.id}_lease.txt"
         self.report = self.directory / "relatorio.json"
         self.observed_seconds = 0.0
@@ -525,6 +548,8 @@ class Session:
                                     _child=self.child_config)
         self.child_config._mt5x_session = self
         self._check_cancel()
+        if self.input_fields is not None and (not self.robot.has_source or compiled_override is not None):
+            raise ValueError("Conferência dos inputs exige fonte instrumentável; remova o binário externo ou forneça a fonte revisada.")
         if not self.robot.has_source or compiled_override is not None:
             origin = Path(compiled_override) if compiled_override is not None else mt5_tools.install_plan(
                 self.robot, mt5_tools.data_dir(self.config))[0].target.with_suffix(".ex5")
@@ -540,7 +565,9 @@ class Session:
                                           self.account if self.mode == "play" else None,
                                           self.trades_file if self.mode != "play" else None,
                                           self.lease_file if self.mode == "play" else None,
-                                          "mt5x_sessions\\" + self.id + "\\" if self.mode != "play" else None), encoding="utf-8")
+                                          "mt5x_sessions\\" + self.id + "\\" if self.mode != "play" else None,
+                                          input_receipt=({"filename": self.input_receipt_file, "session_id": self.id,
+                                                          "fields": self.input_fields} if self.input_fields is not None else None)), encoding="utf-8")
         result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
                                           mt5_tools.wine_prefix(self.child_config),
                                           run=(self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
@@ -549,6 +576,24 @@ class Session:
             raise RuntimeError(result.summary)
         self.instrumented = True
         return wrapper
+
+    def _verify_input_receipt(self, common):
+        from . import native_inputs, store
+        self._check_cancel()
+        origin = common / self.input_receipt_file if common is not None else None
+        if origin is None or not origin.is_file():
+            raise ValueError("Recibo de inputs não encontrado; confira OnInit, o .set e os logs desta sessão.")
+        target = self.directory / "native_inputs.csv"
+        _copy_file(origin, target, check=self._check_cancel)
+        receipt = native_inputs.read(target, session_id=self.id, symbol=self.symbol, timeframe=self.timeframe,
+                                     fields=self.input_fields, expected=self.expected_inputs,
+                                     complete=set(self.input_fields) == {item.name for item in self.robot.inputs})
+        if self.record is None:
+            raise ValueError("Execução nativa ausente; recibo não pode aprovar um resultado inexistente.")
+        store.save_native_input_receipt(self.db, self.record["run_id"], receipt,
+                                        artifact_directory=self.directory, robot_key=self.robot.key)
+        self.record["native_inputs"] = receipt
+        self.native_input_receipt = receipt
 
     def run(self, read_account=None):
         self.state = "preparing"
@@ -637,6 +682,8 @@ class Session:
                                 tester_port=options.get("tester_port") or tester_port,
                                 is_running=lambda: bool(owned_processes(self.child_config)))
                     self.record = backtest.run_mql5(**call)
+                if self.input_fields is not None:
+                    self._verify_input_receipt(common)
             self.state = "completed"
         except Cancelled as error:
             if self.child_config is not None:
@@ -679,6 +726,8 @@ class Session:
                            "run": self.record, "limitations": ["Histórico não garante resultado futuro.",
                            "Custos e disponibilidade de ticks reais dependem do relatório/diário da corretora.",
                            "STOP desanexa o Expert ao encerrar só esta sessão; posições existentes não são liquidadas."]}
+                if self.input_fields is not None:
+                    payload["native_inputs"] = self.native_input_receipt
                 self.report.write_text(json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
                 if self.mode == "play" and self.account and self.account.get("demo") and self.observed_seconds > 0:
                     from . import store
