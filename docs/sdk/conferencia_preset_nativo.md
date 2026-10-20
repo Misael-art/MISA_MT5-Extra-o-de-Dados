@@ -47,3 +47,30 @@ com fakes determinísticos: são provas dos contratos, **não aceite nativo**.
 PostgreSQL no job existente. Jornada real do Manual pela UI/backtest/replay é a
 cobertura consumidora seguinte; não repetir QA de zero negócios ou campanha numérica.
 Pullback segue bloqueado; nenhum ensaio ao vivo; Windows físico permanece pendente.
+
+
+## Percurso nativo observado — 2026-10-20
+
+`docs/evidencias/T19_29_MANUAL_NATIVO_20261020.json` conserva o Manual “Piloto S09”,
+EURUSD/M5, 2026-10-14→15, modelo cada tick, depósito simulado 100000 USD. O mesmo
+.set/hash foi efetivamente carregado em backtest e Replay Visual: dez inputs,
+Tester/Visual/DEMO lidos no MQL5, dois negócios encerrados com SL/TP, quatro sinais
+causais e livro/CSV/saldo conciliados. A comparação entre as duas passagens não
+apresentou diferença de negócios/sinais semânticos. Resultado local 1792,85 USD,
+sem qualificação estatística ou meta universal; cobertura real de ticks ausente.
+
+As duas primeiras tentativas visuais em Xvfb privado falharam com BadWindow antes
+do Expert; twm não resolveu. Reutilizar a tela :0 já usada pelo Wine resolveu o
+replay, sem repetir backtest nem alterar prefixo/ponte/sessões de terceiros.
+
+O launcher terminou antes do visualizador próprio. A evidência original registra
+`resources_released=false` e permanece imutável; o recibo adicional registra o
+encerramento posterior somente desse visualizador pelo `_stop_owned` existente.
+O caminho normal agora chama esse mecanismo depois de importar o relatório de
+Replay, antes de liberar contexto/lease. 82 testes pertinentes passaram após a
+correção; provas financeiras não foram recalculadas. A ponte e o terminal principal
+continuaram os mesmos, conectados em DEMO, sem initialize/shutdown/login.
+
+O consumidor UI é uma tarefa própria (T20.22 inicial); o resultado foi consultado
+nele a partir da base de teste. Ao vivo DEMO, Windows físico e promoção estatística
+continuam fora deste aceite histórico. Pullback permanece bloqueado.

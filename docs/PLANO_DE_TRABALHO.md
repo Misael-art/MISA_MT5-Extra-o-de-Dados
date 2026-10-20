@@ -3766,3 +3766,6 @@ Master já integra políticas iniciais #136 b976ffa e #137 cc58de4 com árvore i
 igual aos respectivos HEADs/seis checks aprovados. H23 d60e421 integra S09 nativa.
 Zero negócios/ensaio de contrato não fecha o percurso. Pullback bloqueado e Windows
 físico pendente específico.
+
+
+T19.29 — complemento de revisão 2026-10-20: percurso Manual nativo com dois negócios em backtest e Replay Visual conciliados; evidência `docs/evidencias/T19_29_MANUAL_NATIVO_20261020.json`. Corrigido encerramento do visualizador próprio após relatório importado; 82 testes pertinentes aprovados, aguardando CI do código final. Ao vivo DEMO/Windows físico permanecem específicos.
