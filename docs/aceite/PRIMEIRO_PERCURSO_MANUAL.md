@@ -1,7 +1,7 @@
 # T20.30 inicial — primeiro percurso Manual histórico
 
-Estado: percurso funcional observado no host; publicação em master aguarda a cadeia
-#138–#146 e os checks do código final. Este relatório não conclui toda F19/F20,
+Estado: percurso funcional histórico observado e runtime integrado em master pelas
+PRs #138–#146, após revisão e seis checks obrigatórios do respectivo código final. Este relatório não conclui toda F19/F20,
 a seleção automática T19.35, nem todos os requisitos Q01–Q16.
 
 ## O que a pessoa consegue fazer
@@ -111,15 +111,46 @@ A conversão de `wraplength` vazio foi corrigida após falha real dessa consulta
 
 ## Integração e continuidade
 
-HADOUKEN #15→#23 e Safety #5→#6 já integrados. Extrator #136→#137 integrado;
-#138/#139/#140→#141→#142→#143→#144→#145→#146 aguardam seus checks finais e integração.
-A dependência do recibo #138 está em ancestral real da #140; sua composição usa merge
-Git e não cópia de arquivos. O fechamento registrará os merges e a identidade entre
-o runtime integrado e os commits efetivamente aprovados. Alteração apenas documental
-não invalida os checks do código; mudança relevante é verificada proporcionalmente.
+HADOUKEN #15→#23, Safety #5→#6 e Extrator #136→#146 estão integrados.
+A #139 entrou após #137. A #140 incorporou a #138 por ancestralidade real, mantendo
+seu HEAD/commits; GitHub confirma ambas integradas. Depois, #141→#142→#143→#144→#145→#146
+seguiram suas dependências. Cada árvore final ficou inteira idêntica à fonte com
+seis checks SUCCESS. [Recibo de integração](../evidencias/T20_30_INTEGRACOES_20261020.json)
+conserva HEADs/árvores/checks/merges. Não houve cópia indiscriminada, force, reset ou
+substituição de trabalho local. O fechamento somente documental reaproveita os
+checks do runtime final; sem repetir suíte/workflow/jornada por documentação.
+
 
 Pullback continua bloqueado no novo adaptador até correção/validação da parcial
 (T19.57). Não se bloqueia o piloto S09 por isso. Windows físico permanece pendência
 específica (DPI/foco/NTFS/visual/cancelamento em host real); não bloqueia a entrega no
 Linux. Este aceite funcional não conclui catálogo, Analytics, presets automáticos,
 Ultra, estratégias complexas ou todas as fichas T19/T20.
+
+
+### Registro por PR
+
+| PR | Fonte aprovada (6 checks) | Merge |
+|---|---|---|
+| [#139](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/139) | `8bc9b3515b04d7048072df7e52fa8c40245b890b` | `0b62de5dbb9b69d72b25dc0678c8d2369431a1b2` |
+| [#140](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/140) | `0aa9e337d39a3b1b165a28a708df1a4f8ed21978` | `b69d112771acd8e350d710c725a79e03bdc3838a` |
+| [#141](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/141) | `f5fd0f4b2165cec38bf6682fef8c41338d9123ad` | `fe9e202311b3844d92d33402701d98b73ecc5f19` |
+| [#142](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/142) | `83eeafffde3913010133a43269afdd7a98b12731` | `b3cb9089b32392757cfc79ff7c8f36863f533515` |
+| [#143](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/143) | `c6aeae003af455d3c78526df454324fb64c7123b` | `e8f765fa117ecfe58e12a0744354566361fd0cf9` |
+| [#144](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/144) | `5dbeae28e2c4b85920d786a3f729c3ffbbdbe408` | `dd2d2d163447e2ea131403f71921be5d239855ec` |
+| [#145](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/145) | `e20fd793084bf08a2eb0dc65fae9bd16c2e931b0` | `27dfb759ccd8d7371f79c6af2ae50176810df3ae` |
+| [#146](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/146) | `85118159628b39ff1e0f237d60729e490ae78e63` | `50e54714735de2f266efae07d83ba957665ebd96` |
+
+O recibo #138 tem merge interno `f369dff7108150a043a10f4183846eb343397a0b` e chegou a master pela #140 (`b69d112771acd8e350d710c725a79e03bdc3838a`), com a árvore consolidada aprovada.
+
+
+O fechamento encontrou grupos de tarefas no painel (T19.17–23, T19.25–29 e
+T19.36–47), não linhas individuais para cada recorte. A diferença foi registrada
+na PR147; os grupos foram preservados e somente a cobertura entregue foi atualizada.
+
+O check Windows144 anterior falhou em dois testes que liam o manifesto UTF-8 com
+a codificação padrão; o loader real já usa UTF-8. Três leituras da fixture ficaram
+explícitas e dois casos passaram. Os HEADs finais144/145/146 têm seis checks SUCCESS;
+a propagação mudou somente tests/test_manual_presets.py. A prova de UI produzida
+no d8a4844 e os negócios nativos continuam compatíveis: runtime inalterado após
+esse ajuste de teste, sem nova campanha nativa.

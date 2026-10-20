@@ -184,19 +184,19 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
 | T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | planejadas |
-| T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | planejadas; gates operacionais das grades preservados |
+| T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
-| T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | planejadas |
-| T19.30–T19.35 | Editor operacional, gráficos temporais, gerador na UI, coerência de TF, responsividade e piloto | Serviços/DTOs reais e T17.28; plano F19 | planejadas; T19.33 reaproveita o seletor já existente |
-| T19.36–T19.47 | Setups S01–S11, infraestrutura/ferramentas e lacunas 37/48 do estudo | Indicadores, execução e contratos por ficha | planejadas; S09/T19.37 é o primeiro piloto; Black Box/regras ausentes não inventadas |
+| T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
+| T19.30–T19.35 | Editor operacional, gráficos temporais, gerador na UI, coerência de TF, responsividade e piloto | Serviços/DTOs reais e T17.28; plano F19 | editor inicial do percurso S09 integrado na #146/T20.22; demais modos/gráficos/geradores/piloto ampliado pendentes; T19.33 reaproveita seletor existente |
+| T19.36–T19.47 | Setups S01–S11, infraestrutura/ferramentas e lacunas 37/48 do estudo | Indicadores, execução e contratos por ficha | S09/T19.37 referência mínima integrada em HADOUKEN #23/Extrator #139; demais setups e fidelidade EMA/ATR original não concluídos; regras ausentes não inventadas |
 | T19.48 | Diagnóstico e plano de robustecimento posterior da gestão da conta | T12.2/T12.3 e épico F | planejada para segundo momento; travas de segurança não adiadas |
 | T19.49 | Aceite integrado e reconciliação da documentação por versão | T19.35 e recorte do catálogo entregue | planejada; restante pendente permanece explícito |
-| T19.50 | Nomes padronizados no Default e categorias; nome escolhido no Manual e identificação | T19.2/25 | planejada; rótulo/slug/ID, colisões/round-trip e legado na especificação §8.4 |
+| T19.50 | Nomes padronizados no Default e categorias; nome escolhido no Manual e identificação | T19.2/25 | convenção portátil inicial Default/Manual integrada na #142; legado não renomeado |
 | T19.51 | Inversão experimental do sinal compra↔venda, desligada por padrão | T19.2/17/19 e adaptador H | planejada; direção efetiva e plano recalculados; distinta da reversão de posição |
 | T19.52 | Ultra: descoberta limitada e contrato de regras condicionais de calendário/mercado | T19.2/21/24/27; T19.51 se usar inversão | planejada; sem escolher vencedores após conhecer o futuro |
 | T19.53 | Ultra: política executável no HADOUKEN, pacote e rastro de decisões | T19.52/23/25/29/50 e capacidades usadas | planejada; prioridade/fallback/estado/compatibilidade explícitos |
 | T19.54 | Ultra: backtest completo/OOS, comparação e UI de regras | T19.53/24/27/28/32/34 | planejada; quarta categoria sem promessa de máximo garantido |
-| T19.55 | Default da estratégia como primeiro preset e referência versionada | T19.2/25/50, padrões efetivos conhecidos | planejada; reusar padrões existentes, preservar seleção e Salvar como Manual nomeado |
+| T19.55 | Default da estratégia como primeiro preset e referência versionada | T19.2/25/50, padrões efetivos conhecidos | Default versionado S09 integrado na #143; referência somente leitura, seleção preservada |
 | T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | planejada; mínimo/passo/margem/risco, unidade e entradas adicionais explícitos |
 | T20.0 | Incorporar as 16 sugestões aceitas, mapa Q01–Q16, fichas e prompt de robustez | Pedido de 2026-10-17 | ✅ documentação, prioridades UI e prompt único F19/F20/MT5; 30 fichas planejadas; sem implementação ou ensaio de conta |
 | T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | ✅ documentação integrada no PR121; Q01–Q16 no mapa único, sem runtime novo |
@@ -220,7 +220,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.19 | Diagnóstico de degradação e alarmes calibrados | T20.13/18 | planejada; Q11 |
 | T20.20 | Falhas, retomada e reconciliação operacional | T20.7/11, estado/ownership/guardas do recorte | planejada; Q12 |
 | T20.21 | Piloto posterior de pesquisa de carteira síncrona | T20.3/8, T19.48 | planejada; Q13, segundo momento |
-| T20.22 | Percurso de pesquisa na UI | T20.17, T19.26/30 e serviços do recorte | consumidor inicial S09 em revisão: Default somente leitura → Manual nomeado → pacote → Tester → conferência; ver docs/presets/T20_22_PERCURSO_MANUAL_UI.md; modos/layout/inspetores completos pendentes |
+| T20.22 | Percurso de pesquisa na UI | T20.17, T19.26/30 e serviços do recorte | consumidor inicial S09 integrado na #146: Default → Manual → pacote → Tester → consulta; UI real em 2 temas/DPI96/144; modos/gráficos/inspetores completos pendentes |
 | T20.23 | Inspetor de decisões e gráficos temporais vinculados | T20.3/11/22 | planejada; Q14/UI-A: seleção/cursor/zoom/eventos, catálogo por serviço; sem trocar renderer |
 | T20.24 | Orçamento/cancelamento/retomada da fila | T20.1 | ✅ integrada no [PR111](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/111), merge 541c1c3; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T20.25 | Cache verificável e isolamento de execuções | T20.4/24 | ✅ integrada no [PR112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), merge b7c8fd5; evidências compatíveis reaproveitadas; Windows físico pendente |
@@ -228,7 +228,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.27 | Artefatos de terceiros: integridade e permissões | T20.16 | planejada; Q16 |
 | T20.28 | Restauração coerente do patrimônio de pesquisa | T20.4/16, F15 | planejada; Q16 |
 | T20.29 | Qualificação de release, instalação e leitores MT5 | T20.16/27/28 | planejada; Q16, Windows físico é pendência delimitada |
-| T20.30 | Aceite do primeiro percurso Manual reproduzível | Piloto simples F19 e T20.3/6/8/11/16/17/22; ficha F20 | relatório inicial do percurso funcional em revisão: docs/aceite/PRIMEIRO_PERCURSO_MANUAL.md; negócios/replay/UI comprovados, integração final e pendências Q explicitadas; não conclui toda F20/T19.35 |
+| T20.30 | Aceite do primeiro percurso Manual reproduzível | Piloto simples F19 e T20.3/6/8/11/16/17/22; ficha F20 | aceite funcional histórico inicial em docs/aceite/PRIMEIRO_PERCURSO_MANUAL.md; Q01–Q16 com cobertura/limites; não conclui F20/T19.35/ao vivo DEMO |
 | T19.57 | Parciais simples/múltiplas, proteção e contabilização do saldo | T19.56/18/19/24, livro/eventos e suporte H | planejada; UI/preset/Expert, etapas/ack/restart e reconciliação; replay nativo/DEMO |
 | T17.7 | Laboratório: referência temporal e população explícitas | T16.3, T17.3 | ✅ integrada no PR #81; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
 | T17.9 | Laboratório responsivo em DPI alto e área de resultados rolável | T17.1–T17.3, T17.7 | ✅ integrada no PR #82; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
