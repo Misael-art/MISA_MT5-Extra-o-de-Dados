@@ -48,6 +48,10 @@ Pullback histórico e S09 temporal/ER/Donchian integrados não qualificam cartei
 concorrente, cestas, equity isolada ao vivo ou os recursos probabilísticos pedidos.
 TM07 ATR (H#31/M#159) estava em revisão, fora destas bases; não é capacidade entregue
 por este documento. Nenhum MT5, compilador ou Tester foi usado nesta avaliação.
+O recorte S09 permanece **somente Tester**; backtest, histórico e replay de QA não
+habilitam S09 em live DEMO. O cache atual de execução/evidência continua **inelegível**.
+Reutilização futura exige identidade verificável de dados, especificações e execução,
+com critérios de invalidação; a existência de um arquivo em cache não basta.
 
 Há diferenças materiais entre as fontes reutilizáveis: `live.status` soma custos dos
 deals de saída selecionados e não inclui `fee` nessa projeção; o exportador de sessão
@@ -229,6 +233,10 @@ evidência integrada no caminho ativo examinado; não afirma inexistência em to
 - **Operação:** cálculo no serviço Python em segundo plano, cache por amostra/regra/versão,
   atualização ao fechar novas operações ou sob solicitação; nenhum Monte Carlo por tick
   ou em cada painel simultaneamente. O resultado estatístico não muda o risco sozinho.
+  Esse cache é requisito futuro: o cache atual de execução/evidência permanece inelegível.
+  Qualquer reutilização futura exige identidade verificável de dados, especificações,
+  execução, amostra e regras, com invalidação por mudança ou ausência dessas referências.
+  O recorte S09 continua somente Tester; histórico/replay não habilitam live DEMO.
 - **Provas:** casos determinísticos de meta/perda/horizonte, seed reprodutível,
   reset/limite móvel, amostra curta, ciclos, custos já líquidos sem dupla dedução,
   cancelamento e resposta vencida descartada.
@@ -448,7 +456,7 @@ Acrescentar na continuidade, sem reescrever aceites anteriores:
 
 > Painel modular: layout de fichário/compacto/expansão aprovado pelo proprietário.
 > Inventário estático M b139f04/H 596f2c8/S dbff0d2 e atividades PM-00–PM-12 registrados.
-> Painel padrão incorporado a cada EA; identidade por gráfico com degradê e marca d'água;
+> Previstos: painel padrão a incorporar a cada EA e identidade por gráfico com degradê e marca d'água;
 > serviços faltantes não bloqueiam o núcleo. Sem MT5/compilação/runtime nesta entrega.
 > Integrar este registro na fila documental, uma tarefa por PR.
 
