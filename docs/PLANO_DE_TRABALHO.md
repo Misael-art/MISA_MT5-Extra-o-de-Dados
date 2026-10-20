@@ -3686,3 +3686,7 @@ Ver [relatório](analytics/T19.3_CONSISTENCIA_SNAPSHOT.md). Windows físico pend
 ### Dependência B07 do primeiro percurso — em revisão (2026-10-19)
 
 [Resultado observado nativo](sdk/resultado_execucao_nativa.md): B06 integrado H20/S5/M134; B07 registra resposta/fill/ausência sem novo executor. CI H39347476261, QA com1operação simulada e compilação dos seis aprovados. Sem runtime Python novo ou aceite S09/preset/UI; próximo consumidor B08/T19.23. Pullback bloqueado; Windows físico específico.
+
+### T19.18 inicial — alvo fixo pontos/R em revisão (2026-10-19)
+
+[Políticas de ganho](sdk/politicas_ganho.md): regra opcional no backtester e módulo explícito no BaseAdapter, âncora no fill, point/tick conhecido, stop/custos/dimensionamento preservados. Referência independente long/short, gap/spread/slip, conflito, ausência, prefixo e CSV aprovados; CI obrigatório pendente. Não conclui catálogo/ UI/preset/nativo; próxima dependência fixa T19.19 e serviço T19.23/S09. Pullback bloqueado, Windows físico específico.

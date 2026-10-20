@@ -121,14 +121,20 @@ def test_incompatible_partial_and_target_and_duplicate_filter():
         "trigger_r": 1, "fraction": 0.5, "breakeven_after_confirmation": True}}),
     ("filters", [{"mode": "adx_min", "params": {"period": 14, "threshold": 20}}]),
 ])
-def test_unsupported_drafts_roundtrip_but_never_execute(slot, module):
+def test_module_roundtrip_and_support_matches_backend(slot, module):
     data = base().to_dict()
     data[slot] = module
     draft = Composition(data)
     assert Composition(draft.to_json()).to_dict() == data
-    assert any(p.field == slot for p in compatibility(draft))
-    with pytest.raises(ValueError, match="sem adaptador"):
+    if slot == "profit_exit":
+        # T19.18 implementou esse modo em Python; contrato e artefatos antigos preservados.
+        assert compatibility(draft) == []
         BaseAdapter(draft)
+    else:
+        assert any(p.field == slot for p in compatibility(draft))
+        with pytest.raises(ValueError, match="sem adaptador"):
+            BaseAdapter(draft)
+    assert compatibility(draft, backend="mql5")  # declaração não libera executor nativo.
 
 
 def test_native_support_cannot_be_granted_by_sidecar():
