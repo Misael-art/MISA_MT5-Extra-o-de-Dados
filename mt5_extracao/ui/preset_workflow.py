@@ -131,7 +131,7 @@ class PresetWorkflow:
     def wrap(self,event):
         def walk(widget):
             for child in widget.winfo_children():
-                if isinstance(child,ttk.Label) and int(child.cget("wraplength"))>0:child.configure(wraplength=max(120,event.width-48))
+                if isinstance(child,ttk.Label) and int(child.cget("wraplength") or 0)>0:child.configure(wraplength=max(120,event.width-48))
                 walk(child)
         walk(self.body)
     def tree(self,label,columns):

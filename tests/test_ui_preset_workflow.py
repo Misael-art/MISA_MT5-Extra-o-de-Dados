@@ -16,6 +16,8 @@ def view(robot,db,tmp_path):
     from mt5_extracao.ui.preset_workflow import PresetWorkflow
     try:root=tk.Tk()
     except tk.TclError as error:pytest.skip(f"sem display gráfico: {error}")
+    callbacks=[]
+    root.report_callback_exception=lambda kind,value,trace:callbacks.append(value)
     config=configparser.ConfigParser();config.read_string("[STRATEGY]\ninitial_equity=100000\n")
     def bg(action,done):
         try:value=action()
@@ -29,6 +31,7 @@ def view(robot,db,tmp_path):
     window.export_dir.set(str(tmp_path/"exports"));window.start.set("2026-10-14");window.end.set("2026-10-15")
     yield window
     root.destroy()
+    assert not callbacks,callbacks
     import gc
     gc.collect()
 

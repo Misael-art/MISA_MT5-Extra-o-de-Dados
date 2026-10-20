@@ -58,3 +58,5 @@ Este é o acesso inicial ao primeiro percurso: não conclui o layout e todos os
 modos/gráficos/inspetores de T20.22/23, Analytics, Relações ou o catálogo inteiro.
 Windows físico continua pendente: foco/rolagem/DPI, exportação em NTFS e visual
 nativo; CI Windows simulado/automatizado não substitui esse ensaio.
+
+A consulta real posterior expôs um callback de reflow com `wraplength` vazio no Tk. A conversão trata esse valor como zero; os seis testes agora capturam exceções de callback em vez de apenas ler stderr. Essa correção é de UI e não invalida cálculos/negócios nativos registrados.
