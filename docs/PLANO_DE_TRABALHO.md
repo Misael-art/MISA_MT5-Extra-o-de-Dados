@@ -3678,3 +3678,7 @@ Escrita em lote serializa seleção de revisões em SQLite/PostgreSQL.135 casos 
 compatíveis e doctor21/1/0; CI/revisão concluídos. Versionamento global conservador preservado,
 com consulta explícita de versão antiga testada. Sem AO/AC, estratégia/preset ou nova campanha.
 Ver [relatório](analytics/T19.3_CONSISTENCIA_SNAPSHOT.md). Windows físico pendente específico.
+
+### Dependência B06 do primeiro percurso — em revisão (2026-10-19)
+
+[Decisão de risco nativa e SDK1](sdk/decisao_risco_nativa.md): origem e distribuição versionada H/S, leitor/instalador atual preservado. T19.23/B08, S09 fixo, Default/Manual, preset carregado e replay com negócios reconciliados ainda pendentes. Parcial/Pullback bloqueados; Windows físico específico. Sem alteração de runtime Python ou nova campanha numérica.
