@@ -3912,4 +3912,14 @@ c58d8ba; M#156 entrega o consumidor revisado, com delta posterior apenas documen
 Aceite funcional ER e igualdade de contextos/livro backtest↔replay preservados,
 sem nova execução/campanha. Windows físico detalhado no checklist específico;
 S09 somente Tester, cache inelegível e demais limites mantidos. TM06/Donchian+tempo
-é o próximo recorte, condicionado à ficha/canal T19.7; T19.16 completa não foi aceita.
+é condicionado à publicação Donchian da ficha T19.7, encontrada ainda pendente; T19.16 completa não foi aceita.
+
+
+T19.7 inicial/I10 — dependência concreta encontrada ao retomar TM06: função Donchian
+existia, mas canal não estava publicado no registry/store. Recorte isolado adiciona
+14 IDs de Donchian(20), referências atual/anterior explícitas, posição/distâncias,
+materialização, consulta e CSV existentes; UI exporta valores do store com relógio
+explicitamente declarado. Revisões/gaps conhecidos preservam disponibilidade/as-of.
+Testes dirigidos e doctor aprovados; checks/revisão em curso. Não conclui Envelopes,
+regressão ou TM06. Nenhum replay aprovado repetido; ER/M#156 preservado.
+Contrato e limites: docs/analytics/T19.7_DONCHIAN.md.

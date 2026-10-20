@@ -140,7 +140,8 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         value_chains = producers._prefix_source_revisions(producers._source_tokens(bars)) if not bars.empty else []
         chains, pivot_bars = value_chains, bars
         has_pivots = any(ident.startswith("structure.") for ident in ids)
-        if has_pivots and not bars.empty:
+        has_channels = any(ident.startswith("channel.donchian_") for ident in ids)
+        if (has_pivots or has_channels) and not bars.empty:
             # Não comprimir uma ausência conhecida na janela de pivôs. Gaps de
             # calendário sem barra observada não são candles sintetizados.
             raw_positions = {start: index for index, start in enumerate(raw.bar_start_utc)}
@@ -148,6 +149,8 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
             pivot_bars = bars.copy()
             pivot_bars["_pivot_reset_before"] = [i > 0 and position > positions[i - 1] + 1
                                                  for i, position in enumerate(positions)]
+            if has_channels:
+                pivot_bars["_channel_reset_before"] = pivot_bars["_pivot_reset_before"]
             raw_chains = producers._prefix_source_revisions(producers._source_tokens(raw))
             # Mesmo inserir uma barra inelegível entre observações antigas muda
             # o prefixo/checkpoint; os tokens elegíveis sozinhos não detectariam isso.
@@ -189,7 +192,8 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                         continue
                     bar = bars.iloc[position]
                     is_pivot = "pivot_metadata" in item
-                    receipts = pivot_correction_by_start if is_pivot else correction_by_start
+                    is_window = "window_metadata" in item
+                    receipts = pivot_correction_by_start if is_pivot or is_window else correction_by_start
                     available = max(bar.bar_end_utc, receipts.get(bar.bar_start_utc) or bar.bar_end_utc)
                     # real_volume_known prevalece sobre zero/valor preenchido pela fonte.
                     if item["feature_id"] == "volume.real" and (pd.isna(bar.get("real_volume_known")) or
@@ -199,6 +203,8 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                                 "registry_version": item["algorithm_version"],
                                 "implementation_sha256": implementation,
                                 "bar_end_utc": bar.bar_end_utc.isoformat(), "source_scope": "causal_prefix"}
+                    if "window_metadata" in item:
+                        metadata.update(item["window_metadata"])
                     if "display_offset_bars" in item:
                         metadata.update(calculation_bar_start_utc=bar.bar_start_utc.isoformat(),
                                         calculation_bar_end_utc=bar.bar_end_utc.isoformat(),
@@ -228,7 +234,7 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                     yield dict(symbol=symbol, timeframe=label, feature_id=item["feature_id"],
                                algorithm_version=algorithm_version(item["feature_id"], implementation),
                                observation_time=bar.bar_start_utc, value=item["value"], available_at=available,
-                               observed_at=available, source_revision=chains[position] if is_pivot else value_chains[position],
+                               observed_at=available, source_revision=chains[position] if is_pivot or is_window else value_chains[position],
                                quality="VALID" if item["state"] == "AVAILABLE" else "UNAVAILABLE",
                                metadata=metadata)
             current = set(bars.bar_start_utc) if not bars.empty else set()

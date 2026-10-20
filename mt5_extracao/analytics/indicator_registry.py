@@ -113,6 +113,25 @@ def _pivot_definitions():
     return tuple(result)
 
 
+def _donchian_definitions():
+    result = []
+    for reference, shift in (("current", 0), ("previous", 1)):
+        for output in ("upper", "lower", "mid", "width", "position", "distance_upper", "distance_lower"):
+            has_close = output in ("position", "distance_upper", "distance_lower")
+            result.append(_definition(f"channel.donchian_20_{reference}_{output}",
+                f"Donchian (20, {reference}) {output}", "channel",
+                "rolling max(high)/min(low), N=20; " + reference +
+                "; mid=upper/2+lower/2; width=upper-lower; position=(close-lower)/width; signed distance=close-boundary",
+                {"period": 20, "reference": reference, "reference_shift_bars": shift, "output": output,
+                 "current_bar_in_levels": not shift, "breakout_basis": "strict high>previous upper or low<previous lower; ties do not renew",
+                 "missing_policy": "full_finite_ordered_window; known_ineligible_bar_resets; current_high_low_required",
+                 "position_basis": "current_closed_close; inclusive_boundaries; no_clip", "value_basis": "closed_calculation_bar"},
+                "channel_fraction" if output == "position" else "price_units", 20 + shift,
+                "bars.high_low_close" if has_close else "bars.high_low", ("high", "low", "close") if has_close else ("high", "low"),
+                denominator="channel_width" if output == "position" else None))
+    return tuple(result)
+
+
 _DEFINITIONS = (
     _definition("momentum.rsi_14", "RSI (14)", "momentum", "Wilder RSI(14) applied to close",
                 {"period": 14, "method": "Wilder", "source": "close"}, "points_0_100", 15, "bars.close",
@@ -174,7 +193,7 @@ _DEFINITIONS = (
     _definition("volume.ticks", "Tick volume", "volume", "tick_volume from source bar; never mixed with real volume",
                 {"column": "tick_volume", "source_kind": "ticks"}, "ticks", 0,
                 "bars.tick_volume", ("tick_volume",)),
-) + _alligator_definitions() + _ao_ac_definitions() + _pivot_definitions()
+) + _alligator_definitions() + _ao_ac_definitions() + _pivot_definitions() + _donchian_definitions()
 _BY_ID = {item["feature_id"]: item for item in _DEFINITIONS}
 
 
@@ -341,6 +360,42 @@ def _iter_pivots(bars, selected):
                            value=value, state=state, reason=reason, pivot_metadata=metadata)
 
 
+def _iter_donchian(bars, selected):
+    for reference in ("current", "previous"):
+        ids = [ident for ident in selected if ident.startswith(f"channel.donchian_20_{reference}_")]
+        if not ids:
+            continue
+        frame = technical.donchian_context(bars, 20, reference=reference)
+        high, low = _column(bars, "high"), _column(bars, "low")
+        valid = np.isfinite(high) & np.isfinite(low) & high.ge(low) if high is not None and low is not None else None
+        close = _column(bars, "close")
+        for ident in ids:
+            spec = _BY_ID[ident];missing = [c for c in spec["required_columns"] if c not in bars]
+            output = spec["parameters"]["output"]
+            for position, bar_index in enumerate(bars.index):
+                value = None;raw = frame[output].iloc[position];reason = None;state = "AVAILABLE"
+                if missing:
+                    state, reason = "SOURCE_UNAVAILABLE", "MISSING_COLUMNS:" + ",".join(missing)
+                elif not valid.iloc[position] or ("close" in spec["required_columns"] and not np.isfinite(close.iloc[position])):
+                    state, reason = "SOURCE_VALUE_MISSING", "FINITE_ORDERED_SOURCE_REQUIRED"
+                elif position + 1 < spec["warmup_count"]:
+                    state, reason = "WARMUP", "REQUIRES_" + str(spec["warmup_count"]) + "_BARS"
+                elif output == "position" and frame.width.iloc[position] == 0:
+                    state, reason = "INVALID_DENOMINATOR", "CHANNEL_WIDTH_IS_ZERO"
+                elif output == "position" and not pd.isna(frame.width.iloc[position]) and not np.isfinite(frame.width.iloc[position]):
+                    state, reason = "INVALID_RESULT", "CHANNEL_WIDTH_IS_NON_FINITE"
+                elif pd.isna(raw):
+                    state, reason = "DEPENDENCY_UNAVAILABLE", "FULL_CONSECUTIVE_REFERENCE_WINDOW_REQUIRED"
+                elif not np.isfinite(raw):
+                    state, reason = "INVALID_RESULT", "FORMULA_RETURNED_NON_FINITE_VALUE"
+                else:
+                    value = float(raw)
+                yield dict(bar_index=bar_index, feature_id=ident, algorithm_version=spec["algorithm_version"],
+                           value=value, state=state, reason=reason,
+                           window_metadata={"channel_reference": reference, "reference_shift_bars": int(reference=="previous"),
+                                            "source_scope": "causal_prefix_including_known_ineligible_bars"})
+
+
 def iter_core(bars, *, feature_ids=None):
     """Calcula indicadores nativos e devolve linhas tipadas com ausência explícita.
 
@@ -354,6 +409,9 @@ def iter_core(bars, *, feature_ids=None):
     unknown = sorted(set(selected) - set(_BY_ID))
     if unknown:
         raise ValueError("Indicadores nativos desconhecidos: " + ", ".join(unknown))
+    channel_ids = [ident for ident in selected if ident.startswith("channel.donchian_")]
+    yield from _iter_donchian(bars, channel_ids)
+    selected = [ident for ident in selected if ident not in channel_ids]
     pivot_ids = [ident for ident in selected if ident.startswith("structure.")]
     yield from _iter_pivots(bars, pivot_ids)
     selected = [ident for ident in selected if ident not in pivot_ids]

@@ -313,3 +313,10 @@ Windows valida código com provedores simulados e não substitui o host físico.
 
 Este checklist não autoriza execução ao vivo DEMO nem herda aceite para Pullback ER,
 carteira ou gradientes. S09 permanece restrito ao Tester; cache inelegível.
+
+
+### T19.7 inicial — publicação Donchian
+
+- [ ] Windows físico: exportar pelo Laboratório contexto Donchian materializado com
+  relógio declarado, conferir 14 IDs/estados e destinos Unicode/NTFS. Teste Xvfb com
+  fonte controlada não comprova este host. Este recorte não habilita TM06 ou live.

@@ -164,7 +164,7 @@ def test_registry_contract_and_provisional_values_are_never_strategy_signals():
             pivot = row["pivot_metadata"]
             assert pivot["pivot_origin_position"] < pivot["pivot_confirmation_position"] <= row["bar_index"]
     assert {d["feature_id"] for d in indicator_registry.definitions()}.issuperset(IDS)
-    assert len(indicator_registry.definitions()) == 38
+    assert len(indicator_registry.definitions()) == 52
 
 
 def source_trap(count=60):
