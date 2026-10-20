@@ -8,13 +8,20 @@ from mt5_extracao.bootstrap import paths
 from mt5_extracao.composition import Composition
 from mt5_extracao.composition import native
 from mt5_extracao.composition.partials import stages,preview_plan
-from mt5_extracao.composition.sizing import preview_sizing,SizingPreviewUnavailable
+from mt5_extracao.composition.sizing import preview_sizing,preview_fixed_volume,SizingPreviewUnavailable
 from mt5_extracao.robots import store as robot_store
 from mt5_extracao.presets import defaults,store,manual,execution
 from mt5_extracao.presets.compiler import PresetIdentity,TestContext,compile_package
 from mt5_extracao.presets.names import make_name
 from .components import ScrollableContent,DetailsPanel
 from .theme import fmt_num
+
+def native_adapter_profile(robot):
+    if robot.key=="mql5:hdk_pullback_nativo":
+        from mt5_extracao.composition.pullback_native import require_robot
+        return require_robot(robot)
+    return native._require_robot(robot)
+
 
 FIELDS=(("fast","EMA curta (barras)"),("slow","EMA longa (barras)"),("warmup_bars","Aquecimento (barras)"),
         ("stop_points","SL fixo (pontos)"),("target_points","TP fixo (pontos)"))
@@ -55,19 +62,22 @@ class PresetWorkflow:
         self.db,self.config=self.ui.app.db_manager,self.ui.app.config
         self.symbol,self.timeframe,_=controller.chosen[robot.key]
         if not self.symbol:raise ValueError("Escolha Ativo / TF antes de abrir os presets.")
-        self.window=tk.Toplevel(self.ui.root);self.window.title("S09 · Default e Manual")
+        self.pullback=robot.key=="mql5:hdk_pullback_nativo"
+        self.strategy_fields=(("trend","EMA de tendência (barras)"),("adx_min","ADX mínimo"),("rsi_period","RSI (barras)"),("rsi_pullback","RSI de recuo"),("swing_bars","Fundo/topo (barras)"),("target_r","Alvo em R")) if self.pullback else FIELDS
+        self.profile_label="Pullback" if self.pullback else "S09"
+        self.window=tk.Toplevel(self.ui.root);self.window.title(self.profile_label+" · Default e Manual")
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION)
-        self.partials_enabled=robot.version==native.PARTIALS_ROBOT_VERSION
+        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION)
+        self.partials_enabled=self.pullback or robot.version==native.PARTIALS_ROBOT_VERSION
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
         content=ScrollableContent(self.window,self.ui.theme);content.pack(fill=tk.BOTH,expand=True)
         self.body=body=content.content
-        ttk.Label(body,text="S09 · Default → Manual → backtest → replay",style="Title.TLabel",wraplength=850).pack(anchor="w",padx=12,pady=(12,4))
-        ttk.Label(body,text=f"{self.symbol} · {self.timeframe} · variante mínima EMA com SL/TP fixos",style="Heading.TLabel",wraplength=850).pack(anchor="w",padx=12)
+        ttk.Label(body,text=self.profile_label+" · Default → Manual → backtest → replay",style="Title.TLabel",wraplength=850).pack(anchor="w",padx=12,pady=(12,4))
+        ttk.Label(body,text=f"{self.symbol} · {self.timeframe} · "+("EMA/ADX/RSI · stop no swing · alvo em R · metade em 1R" if self.pullback else "variante mínima EMA com SL/TP fixos"),style="Heading.TLabel",wraplength=850).pack(anchor="w",padx=12)
         ttk.Label(body,text="Histórico no Strategy Tester DEMO · execução ao vivo não faz parte deste percurso.",style="Info.TLabel",wraplength=850).pack(anchor="w",padx=12,pady=4)
         row=ttk.Frame(body,padding=12);row.pack(fill=tk.X);row.columnconfigure(0,weight=1)
         self.selected=tk.StringVar();self.combo=ttk.Combobox(row,textvariable=self.selected,state="readonly")
@@ -79,13 +89,13 @@ class PresetWorkflow:
         self.flow(choices,(self.reopen,self.clone,self.rename))
         form=ttk.LabelFrame(body,text="Parâmetros da estratégia",padding=12);form.pack(fill=tk.X,padx=12,pady=4)
         self.fields={};self.entries=[]
-        for index,(key,label) in enumerate(FIELDS):
+        for index,(key,label) in enumerate(self.strategy_fields):
             ttk.Label(form,text=label).grid(row=index//3*2,column=index%3,sticky="w",padx=(0,12))
             value=tk.StringVar();value.trace_add("write",lambda *_:self.mark_dirty())
             entry=ttk.Entry(form,textvariable=value,width=16);entry.grid(row=index//3*2+1,column=index%3,sticky="ew",padx=(0,12),pady=(2,8))
             self.fields[key]=value;self.entries.append(entry)
         for col in range(3):form.columnconfigure(col,weight=1)
-        self.save=ttk.Button(form,text="Salvar revisão",command=self.save_revision);self.save.grid(row=3,column=2,sticky="e")
+        self.save=ttk.Button(form,text="Salvar revisão",command=self.save_revision);self.save.grid(row=5 if self.pullback else 3,column=2,sticky="e")
         if self.lots_enabled:
             lots=ttk.LabelFrame(body,text="Lotes · uma única entrada",padding=12);lots.pack(fill=tk.X,padx=12,pady=4)
             fields=ttk.Frame(lots);fields.pack(fill=tk.X)
@@ -212,8 +222,8 @@ class PresetWorkflow:
             self.fixed_entry.configure(state="normal" if editable and self.lot_mode.get()=="Volume fixo" else "disabled")
         if self.partials_enabled:
             for widget in self.partial_widgets:
-                if isinstance(widget,ttk.Combobox):widget.configure(state="readonly" if editable else "disabled")
-                else:widget.state(["!disabled" if editable else "disabled"])
+                if isinstance(widget,ttk.Combobox):widget.configure(state="readonly" if editable and not self.pullback else "disabled")
+                else:widget.state(["!disabled" if editable and not self.pullback else "disabled"])
             if self.partial_mode.get()=="Desabilitada":
                 for widget in self.partial_widgets[1:]:widget.state(["disabled"])
             elif self.partial_count.get()=="1":
@@ -265,8 +275,8 @@ class PresetWorkflow:
     def set_current(self,item):
         self.current=item;self.setting=True
         source=item.manifest["native"]["robot"]
-        self.source_compatible=source["version"]==self.robot.version and source["fingerprint"]==native._require_robot(self.robot)[0]
-        for key,_ in FIELDS:self.fields[key].set(str(item.composition.to_dict()["strategy"]["params"][key]))
+        self.source_compatible=source["version"]==self.robot.version and source["fingerprint"]==(native_adapter_profile(self.robot))[0]
+        for key,_ in self.strategy_fields:self.fields[key].set(str(item.composition.to_dict()["strategy"]["params"][key]))
         if self.lots_enabled:
             sizing=item.composition.to_dict()["sizing"]
             self.lot_mode.set("Volume fixo" if sizing["mode"]=="fixed_volume" else "Por risco")
@@ -291,7 +301,7 @@ class PresetWorkflow:
         self.details.configure(text=(f"Nome: {item.identity.label}\nRevisão: {item.identity.revision}\n"
                                     f"Arquivo: {item.name.filename}\nConfiguração: {item.composition.config_hash}\n"
                                     f"Origem Default: {item.identity.default_origin or item.identity.id}"))
-        if self.partials_enabled:self.protection.configure(text="Risco até 0,5% · uma posição · SL obrigatório · parcial só após redução/histórico confirmados; trailing e Pullback indisponíveis.")
+        if self.partials_enabled:self.protection.configure(text="Risco até 0,5% · uma posição · SL obrigatório · parcial só após redução/histórico confirmados; trailing indisponível."+(" Pullback: metade em 1R; BE somente após confirmação." if self.pullback else ""))
         self.clear_result();self.refresh_preview();self.update_buttons()
     def choose(self):
         if self.pending:return
@@ -305,13 +315,13 @@ class PresetWorkflow:
         self.clear_result();self.refresh_preview();self.update_buttons()
     def composition_from_fields(self):
         data=self.current.composition.to_dict()
-        for key,_ in FIELDS:data["strategy"]["params"][key]=int(self.fields[key].get().strip())
+        for key,_ in self.strategy_fields:data["strategy"]["params"][key]=(float if key in ("adx_min","rsi_pullback","target_r") else int)(self.fields[key].get().strip())
         if self.lots_enabled:
             params={"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}
             mode="fixed_volume" if self.lot_mode.get()=="Volume fixo" else "risk_fraction"
             if mode=="fixed_volume":params["volume"]=float(self.fixed_volume.get().replace(",","."))
             data["sizing"]={"mode":mode,"params":params}
-        if self.partials_enabled:
+        if self.partials_enabled and not self.pullback:
             mode=self.partial_mode.get()
             if mode=="Desabilitada":data["partial_exit_plan"]={"mode":"strategy_default","params":{}}
             else:
@@ -328,8 +338,14 @@ class PresetWorkflow:
             self.preview_error=True;self.lot_preview.set("Revisão de outra fonte: somente consulta; nenhuma conversão automática de lotes.");return
         try:
             data=self.composition_from_fields().to_dict()
-            native.S09NativeAdapter(Composition(data),self.robot)
+            native.native_adapter(Composition(data),self.robot)
             context=self.context()
+            if self.pullback:
+                if data["sizing"]["mode"]=="fixed_volume":
+                    volume=preview_fixed_volume(data["sizing"]["params"]["volume"],info=self.symbol_info)
+                    preview_plan(data["partial_exit_plan"],volume=volume["effective"],minimum=volume["minimum"],maximum=volume["maximum"],step=volume["step"])
+                self.partial_preview.set("Métade do volume inicial em 1R; saldo protegido; BE somente após confirmação. Agenda fixa neste perfil.")
+                raise SizingPreviewUnavailable("SL depende do fundo/topo confirmado e da cotação de entrada; lote, parcial e risco são validados no Tester.")
             stop=data["protection"]["params"]["stop_points"] if data["protection"]["mode"]=="fixed_points" else data["strategy"]["params"]["stop_points"]
             value=preview_sizing(data["sizing"],info=self.symbol_info,stop_points=stop,deposit=context.deposit)
             requested="calculado por risco" if value["requested"] is None else str(value["requested"])

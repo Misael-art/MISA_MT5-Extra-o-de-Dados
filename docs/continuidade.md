@@ -1921,3 +1921,10 @@ negócios está comprovado; ao vivo DEMO não exercitado. Dois negócios não ce
 performance/OOS; histórico/realticks não qualificados e cache inelegível. Pullback
 bloqueado até T19.57. Windows físico específico. Relações permanece sintética; este
 recorte não conclui Analytics, catálogo, Ultra, seleção automática ou toda F19/F20.
+
+
+T19.57 — recorte Pullback próprio (2026-10-20): perfil nativo em revisão isolada,
+com UI Default/Manual, swing/alvoR, lote e metade em1R com confirmação/BE compartilhados.
+Legado e Python continuam com bloqueio próprio; não há desbloqueio por herança do
+aceite S09. Ver `docs/sdk/pullback_nativo.md`. Aceite final do replay/checks pendente;
+cache inelegível, S09 somente Tester, DEMO ao vivo/Windows físico/carteira específicos.

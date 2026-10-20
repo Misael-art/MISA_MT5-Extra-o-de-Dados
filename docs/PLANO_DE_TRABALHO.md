@@ -3769,3 +3769,10 @@ físico pendente específico.
 
 
 T19.29 — complemento de revisão 2026-10-20: percurso Manual nativo com dois negócios em backtest e Replay Visual conciliados; evidência `docs/evidencias/T19_29_MANUAL_NATIVO_20261020.json`. Corrigido encerramento do visualizador próprio após relatório importado; 82 testes pertinentes aprovados, aguardando CI do código final. Ao vivo DEMO/Windows físico permanecem específicos.
+
+
+T19.57 — recorte Pullback próprio (2026-10-20): perfil nativo em revisão isolada,
+com UI Default/Manual, swing/alvoR, lote e metade em1R com confirmação/BE compartilhados.
+Legado e Python continuam com bloqueio próprio; não há desbloqueio por herança do
+aceite S09. Ver `docs/sdk/pullback_nativo.md`. Aceite final do replay/checks pendente;
+cache inelegível, S09 somente Tester, DEMO ao vivo/Windows físico/carteira específicos.

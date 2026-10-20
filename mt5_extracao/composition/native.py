@@ -52,6 +52,9 @@ def _require_robot(robot):
 
 def default_composition(robot, *, symbol, timeframe):
     """Defaults efetivos do perfil nativo; não é persistência do preset Default."""
+    if robot.key=="mql5:hdk_pullback_nativo":
+        from .pullback_native import default_composition as pullback_default
+        return pullback_default(robot,symbol=symbol,timeframe=timeframe)
     _require_robot(robot)
     return base_composition("s09_reference", symbol=symbol, timeframe=timeframe, risk_fraction=.005, compound=True)
 
@@ -130,48 +133,64 @@ class S09NativeAdapter:
             bindings[path] = {"input": target, "type": "number" if explicit else "int", "unit": "point"}
             if explicit:
                 inactive.append("strategy.params."+name)
-        bindings["sizing.params.risk_fraction"] = {"input": "InpRiskPct", "type": "number", "unit": "fraction"}
-        if profile_version >= 2:
-            fixed = data["sizing"]["mode"] == "fixed_volume"
-            values.update(InpLotMode="0" if fixed else "1",
-                          InpFixedLot=format(Decimal(str(data["sizing"]["params"]["volume"])), "f") if fixed else "0.01")
-            if fixed:
-                bindings["sizing.params.volume"] = {"input": "InpFixedLot", "type": "number", "unit": "lot"}
-        if profile_version>=3:
-            plan=data["partial_exit_plan"];partial_stages=stages(plan)
-            values.update(InpPartialStages=str(len(partial_stages)),InpPartialBreakeven="true" if plan["params"].get("breakeven_after_confirmation",False) else "false")
-            for i in (1,2):
-                stage=partial_stages[i-1] if i<=len(partial_stages) else dict(trigger_r=.5 if i==1 else 1.,quantity=.5,mode=0,base=0 if i==1 else 1)
-                for key,name in (("trigger_r","Trigger"),("quantity","Quantity"),("mode","Mode"),("base","Base")):
-                    values[f"InpPartial{name}{i}"]=format(Decimal(str(stage[key])),"f")
-            params=plan["params"]
-            if partial_stages:
-                bindings["partial_exit_plan.params.breakeven_after_confirmation"]={"input":"InpPartialBreakeven","type":"bool","unit":"boolean"}
-                if plan["mode"]=="fixed_r":
-                    for key,target,unit in (("trigger_r","InpPartialTrigger1","R"),("fraction","InpPartialQuantity1","fraction")):
-                        bindings["partial_exit_plan.params."+key]={"input":target,"type":"number","unit":unit}
-                else:
-                    bindings["partial_exit_plan.params.count"]={"input":"InpPartialStages","type":"int","unit":"stage"}
-                    for i in (1,2):
-                        for key,name,kind,unit in ((f"trigger{i}_r","Trigger","number","R"),(f"quantity{i}","Quantity","number","lot" if plan["mode"]=="staged_lots" else "fraction"),(f"base{i}","Base","int","volume_base")):
-                            if i<=len(partial_stages):bindings["partial_exit_plan.params."+key]={"input":f"InpPartial{name}{i}","type":kind,"unit":unit}
-                            else:inactive.append("partial_exit_plan.params."+key)
-        modules = {slot: [base] for slot, base in BASE_MODES.items()}
-        modules.update(profit_exit=["strategy_default", "fixed_points"], protection=["strategy_default", "fixed_points"], filters=[])
-        if profile_version >= 2:
-            modules["sizing"] = ["risk_fraction", "fixed_volume"]
-        if profile_version>=3:modules["partial_exit_plan"]=["strategy_default","fixed_r","staged_lots","staged_fraction"]
-        capabilities = Capabilities({"capabilities_schema_version": 1,
-            "robot": {"key": self.robot.key, "version": self.robot.version, "fingerprint": fingerprint},
-            "backend": "mql5", "strategy_key": "s09_reference", "modules": modules, "bindings": bindings}, self.composition)
-        fields = {name: "int" if kind in ("int", "long") else "number" if kind == "double" else "bool" if kind == "bool" else "token"
-                  for name, kind in input_types.items()}
-        return {"native_profile_schema_version": 1, "profile_id": PROFILE_ID, "profile_version": profile_version,
-                "hadouken_revision": hadouken_revision, "robot": capabilities.to_dict()["robot"],
-                "capabilities": capabilities.to_dict(), "parameters": values, "receipt_fields": fields,
-                "expected_native_inputs": native_inputs.expected_values(values, fields),
-                "inactive_paths": inactive, "conversions": {"sizing.params.risk_fraction": "fraction × 100 → InpRiskPct percent"},
-                "fixed_constraints": {"compound": True, "positions": 1, "daily_loss_pct": 2, "weekly_loss_pct": 4,
-                                      "max_dd_pct": 10, "max_open_risk_pct": .5, "margin_buffer_pct": 20,
-                                      "block_averaging": True, "partial": profile_version>=3, "breakeven": profile_version>=3, "trailing": False},
-                "modality": "native_tester_demo_only", "operational_acceptance": False}
+        _sizing_parameters(data, profile_version, values, bindings, inactive)
+        return _description(self.composition,self.robot,data,values,bindings,inactive,preset_id,
+                            fingerprint,input_types,profile_version,hadouken_revision,PROFILE_ID)
+
+
+def _sizing_parameters(data,profile_version,values,bindings,inactive):
+    bindings["sizing.params.risk_fraction"] = {"input": "InpRiskPct", "type": "number", "unit": "fraction"}
+    if profile_version >= 2:
+        fixed = data["sizing"]["mode"] == "fixed_volume"
+        values.update(InpLotMode="0" if fixed else "1",
+                      InpFixedLot=format(Decimal(str(data["sizing"]["params"]["volume"])), "f") if fixed else "0.01")
+        if fixed:
+            bindings["sizing.params.volume"] = {"input": "InpFixedLot", "type": "number", "unit": "lot"}
+    if profile_version>=3:
+        plan=data["partial_exit_plan"];partial_stages=stages(plan)
+        values.update(InpPartialStages=str(len(partial_stages)),InpPartialBreakeven="true" if plan["params"].get("breakeven_after_confirmation",False) else "false")
+        for i in (1,2):
+            stage=partial_stages[i-1] if i<=len(partial_stages) else dict(trigger_r=.5 if i==1 else 1.,quantity=.5,mode=0,base=0 if i==1 else 1)
+            for key,name in (("trigger_r","Trigger"),("quantity","Quantity"),("mode","Mode"),("base","Base")):
+                values[f"InpPartial{name}{i}"]=format(Decimal(str(stage[key])),"f")
+        params=plan["params"]
+        if partial_stages:
+            bindings["partial_exit_plan.params.breakeven_after_confirmation"]={"input":"InpPartialBreakeven","type":"bool","unit":"boolean"}
+            if plan["mode"]=="fixed_r":
+                for key,target,unit in (("trigger_r","InpPartialTrigger1","R"),("fraction","InpPartialQuantity1","fraction")):
+                    bindings["partial_exit_plan.params."+key]={"input":target,"type":"number","unit":unit}
+            else:
+                bindings["partial_exit_plan.params.count"]={"input":"InpPartialStages","type":"int","unit":"stage"}
+                for i in (1,2):
+                    for key,name,kind,unit in ((f"trigger{i}_r","Trigger","number","R"),(f"quantity{i}","Quantity","number","lot" if plan["mode"]=="staged_lots" else "fraction"),(f"base{i}","Base","int","volume_base")):
+                        if i<=len(partial_stages):bindings["partial_exit_plan.params."+key]={"input":f"InpPartial{name}{i}","type":kind,"unit":unit}
+                        else:inactive.append("partial_exit_plan.params."+key)
+
+
+def _description(composition,robot,data,values,bindings,inactive,preset_id,fingerprint,input_types,profile_version,hadouken_revision,profile_id):
+    modules = {slot: [base] for slot, base in BASE_MODES.items()}
+    modules.update(profit_exit=["strategy_default", "fixed_points"], protection=["strategy_default", "fixed_points"], filters=[])
+    if profile_version >= 2:
+        modules["sizing"] = ["risk_fraction", "fixed_volume"]
+    if profile_version>=3:modules["partial_exit_plan"]=["strategy_default","fixed_r","staged_lots","staged_fraction"]
+    capabilities = Capabilities({"capabilities_schema_version": 1,
+        "robot": {"key": robot.key, "version": robot.version, "fingerprint": fingerprint},
+        "backend": "mql5", "strategy_key": data["strategy"]["key"], "modules": modules, "bindings": bindings}, composition)
+    fields = {name: "int" if kind in ("int", "long") else "number" if kind == "double" else "bool" if kind == "bool" else "token"
+              for name, kind in input_types.items()}
+    return {"native_profile_schema_version": 1, "profile_id": profile_id, "profile_version": profile_version,
+            "hadouken_revision": hadouken_revision, "robot": capabilities.to_dict()["robot"],
+            "capabilities": capabilities.to_dict(), "parameters": values, "receipt_fields": fields,
+            "expected_native_inputs": native_inputs.expected_values(values, fields),
+            "inactive_paths": inactive, "conversions": {"sizing.params.risk_fraction": "fraction × 100 → InpRiskPct percent"},
+            "fixed_constraints": {"compound": True, "positions": 1, "daily_loss_pct": 2, "weekly_loss_pct": 4,
+                                  "max_dd_pct": 10, "max_open_risk_pct": .5, "margin_buffer_pct": 20,
+                                  "block_averaging": True, "partial": profile_version>=3, "breakeven": profile_version>=3, "trailing": False},
+            "modality": "native_tester_demo_only", "operational_acceptance": False}
+
+
+def native_adapter(composition,robot):
+    if robot.key=="mql5:hdk_pullback_nativo":
+        from .pullback_native import PullbackNativeAdapter
+        return PullbackNativeAdapter(composition,robot)
+    return S09NativeAdapter(composition,robot)

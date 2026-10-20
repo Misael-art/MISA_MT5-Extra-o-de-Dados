@@ -30,8 +30,7 @@ def preview_sizing(sizing, *, info, stop_points, deposit):
     effective = maximum_risk_volume
     if sizing["mode"] == "fixed_volume":
         requested = params["volume"]
-        raw, step, maximum = map(lambda v: Decimal(str(v)), (requested, spec.volume_step, spec.volume_max))
-        effective = float((min(raw, maximum) / step).to_integral_value(rounding=ROUND_FLOOR) * step)
+        effective = preview_fixed_volume(requested,info=info)["effective"]
         if effective > maximum_risk_volume:
             raise ValueError("Volume fixo excede o orçamento de risco; reduza o volume ou o SL, sem elevar o limite.")
     if effective < spec.volume_min:
@@ -39,3 +38,16 @@ def preview_sizing(sizing, *, info, stop_points, deposit):
     return dict(requested=requested, effective=effective, minimum=spec.volume_min, maximum=spec.volume_max,
                 step=spec.volume_step, risk_money=effective * distance * spec.money_per_price_unit,
                 risk_budget=budget, margin_known=False, source="current_symbol_info", historical_qualification=False)
+
+
+def preview_fixed_volume(volume,*,info):
+    """Somente grade de volume atual, sem inventar SL, margem ou orçamento."""
+    if info is None:raise SizingPreviewUnavailable("Especificação atual de volume indisponível.")
+    minimum,maximum,step=(getattr(info,name,None) for name in ("volume_min","volume_max","volume_step"))
+    if any(type(v) not in (int,float) or not math.isfinite(v) or v<=0 for v in (minimum,maximum,step)) or maximum<minimum:
+        raise SizingPreviewUnavailable("Confira mínimo, máximo e passo atuais do símbolo.")
+    raw,st,maximum_d=map(lambda v:Decimal(str(v)),(volume,step,maximum))
+    if not raw.is_finite() or raw<=0:raise ValueError("Volume solicitado deve ser positivo e finito.")
+    effective=float((min(raw,maximum_d)/st).to_integral_value(rounding=ROUND_FLOOR)*st)
+    if effective<minimum:raise ValueError("Volume efetivo abaixo do mínimo; ajuste o volume antes do Tester.")
+    return dict(effective=effective,minimum=minimum,maximum=maximum,step=step)

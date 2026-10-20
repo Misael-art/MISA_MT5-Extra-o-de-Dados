@@ -4,7 +4,7 @@ import uuid
 
 from sqlalchemy import text
 
-from ..composition.native import S09NativeAdapter,default_composition
+from ..composition.native import native_adapter,default_composition
 from ..composition.schema import canonical_json
 from .compiler import PresetIdentity,compile_package
 from . import store
@@ -13,7 +13,7 @@ from . import store
 def ensure_default(db,robot,*,symbol,timeframe):
     store._require_db(db)
     composition=default_composition(robot,symbol=symbol,timeframe=timeframe)
-    native=S09NativeAdapter(composition,robot).describe("default_scope")
+    native=native_adapter(composition,robot).describe("default_scope")
     scope={"robot":native["robot"],"profile_id":native["profile_id"],"profile_version":native["profile_version"],
            "context":composition.to_dict()["context"],"default_config_hash":composition.config_hash}
     key=hashlib.sha256(canonical_json(scope).encode("utf-8")).hexdigest()
