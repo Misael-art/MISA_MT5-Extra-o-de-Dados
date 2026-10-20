@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 import tempfile
 
-from ..composition.native import S09NativeAdapter
+from ..composition.native import native_adapter
 from ..composition.schema import Composition, canonical_json, _decode, _object
 from ..robots import mql, mt5_tools, native_inputs
 
@@ -107,7 +107,7 @@ def compile_package(composition, robot, identity, test_context=None, *, canonica
     if test_context is not None and not isinstance(test_context,TestContext):
         raise ValueError("Use contexto tipado de teste ou mantenha o preset como rascunho sem janela.")
     composition=composition if isinstance(composition,Composition) else Composition(composition)
-    native=S09NativeAdapter(composition,robot).describe(identity.id)
+    native=native_adapter(composition,robot).describe(identity.id)
     if type(canonical_filename) is not bool:
         raise ValueError("Convenção do filename exige escolha explícita booleana.")
     filename="parameters.set"

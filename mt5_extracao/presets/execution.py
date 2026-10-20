@@ -296,6 +296,10 @@ class PresetExecution:
         partials=deals=None
         if native["profile_version"]>=3:
             partials,deals=partial_events.read_events(job.directory,package["composition"]["partial_exit_plan"],signals,sizing,rows)
+        strategy_reference=None
+        if native["profile_id"]=="hadouken.pullback":
+            from .pullback_events import validate
+            strategy_reference=validate(job.directory,package["composition"]["strategy"]["params"],signals,rows)
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
             raise ValueError("Entradas e posições encerradas não conciliam; conferir última posição e respostas antes de aceitar.")
@@ -321,4 +325,5 @@ class PresetExecution:
             created_at=datetime.now(timezone.utc).isoformat())
         if sizing is not None:proof["sizing"]=sizing
         if partials is not None:proof.update(partials=partials,deals=deals,partial_activity=any(r["state"]=="confirmed" for r in partials))
+        if strategy_reference is not None:proof["strategy_reference"]=strategy_reference
         return proof

@@ -147,7 +147,7 @@ class CardControls:
 
     @staticmethod
     def _has_native_presets(robot):
-        return robot.key == "mql5:hdk_s09_referencia"
+        return robot.key in ("mql5:hdk_s09_referencia","mql5:hdk_pullback_nativo")
 
     def open_presets(self, robot):
         from .preset_workflow import PresetWorkflow
@@ -169,7 +169,7 @@ class CardControls:
     def launch(self, robot, mode):
         if self._has_native_presets(robot):
             if mode == "play":
-                messagebox.showinfo("S09", "O piloto permite backtest e replay no Tester DEMO. Ao vivo indisponível.", parent=self.ui.root)
+                messagebox.showinfo("Perfil nativo", "O piloto permite backtest e replay no Tester DEMO. Ao vivo indisponível.", parent=self.ui.root)
                 return
             return self.open_presets(robot)
         if getattr(self.ui.app, "offline", False):

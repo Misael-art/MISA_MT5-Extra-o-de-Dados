@@ -1,0 +1,103 @@
+{
+  "task": "T19.57 Pullback own acceptance and integration",
+  "order": [
+    "HADOUKEN26",
+    "Extrator151"
+  ],
+  "H_merge": "8ee507b43920ec1fc7cc8c95ea654db920e1f05a",
+  "H_reviewed_head": "ccab73e043cf15d7dcd40ef9a7ff7443bded4ff4",
+  "H_runtime": "ae07e7bda3a3dc156563e13918b486a0f1cb4843",
+  "M_runtime": "c33fa1e27e5faf8aad6c7cf79fe352dd6de19cbb",
+  "checks": {
+    "m": {
+      "state": "SUCCESS",
+      "contexts": {
+        "nodes": [
+          {
+            "__typename": "CheckRun",
+            "name": "Lint dos instaladores",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39430543618/job/118654145656"
+          },
+          {
+            "__typename": "CheckRun",
+            "name": "Testes (ubuntu-latest)",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39430543618/job/118654145702"
+          },
+          {
+            "__typename": "CheckRun",
+            "name": "Testes (windows-latest)",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39430543618/job/118654145420"
+          },
+          {
+            "__typename": "CheckRun",
+            "name": "Testes PostgreSQL",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39430543618/job/118654145698"
+          },
+          {
+            "__typename": "CheckRun",
+            "name": "Instalador Linux (sem MT5)",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39430543618/job/118654145482"
+          },
+          {
+            "__typename": "CheckRun",
+            "name": "Instalador Windows (sem MT5)",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39430543618/job/118654144867"
+          },
+          {
+            "__typename": "StatusContext"
+          }
+        ]
+      }
+    },
+    "h": {
+      "state": "SUCCESS",
+      "contexts": {
+        "nodes": [
+          {
+            "__typename": "CheckRun",
+            "name": "Checagem estática MQL5 + ferramentas",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39430494741/job/118653976764"
+          },
+          {
+            "__typename": "CheckRun",
+            "name": "Checagem estática MQL5 + ferramentas",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+            "detailsUrl": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39430207005/job/118652975142"
+          },
+          {
+            "__typename": "StatusContext"
+          }
+        ]
+      }
+    }
+  },
+  "compatibility": "H final delta: docs and independently run mirrored reference test; M final delta: documentation/evidence only. Runtime byte equality verified to source commits.",
+  "review": "complete; no blocking findings/unresolved threads",
+  "functional_evidence": "T19_57_PULLBACK_20261020.json",
+  "delivered": "Default/Manual own Pullback Tester profile, swing/R SLTP, shared sizing/partial, BE only after confirmation, persisted inputs/positions/reductions/fills/result",
+  "limits": {
+    "native_short_window_only": true,
+    "cache_eligible": false,
+    "S09": "Tester only",
+    "Python_legacy": "own restriction preserved",
+    "live_demo": "not accepted",
+    "physical_windows": "pending",
+    "concurrent_portfolio": "not accepted"
+  },
+  "next": "T19.14 initial observable timeline/clock/identity, then T19.15 temporal exit policies; no inferred intrabar extrema"
+}

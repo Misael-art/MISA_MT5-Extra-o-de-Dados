@@ -1921,3 +1921,33 @@ negócios está comprovado; ao vivo DEMO não exercitado. Dois negócios não ce
 performance/OOS; histórico/realticks não qualificados e cache inelegível. Pullback
 bloqueado até T19.57. Windows físico específico. Relações permanece sintética; este
 recorte não conclui Analytics, catálogo, Ultra, seleção automática ou toda F19/F20.
+
+
+T19.57 — recorte Pullback próprio (2026-10-20): perfil nativo em revisão isolada,
+com UI Default/Manual, swing/alvoR, lote e metade em1R com confirmação/BE compartilhados.
+Legado e Python continuam com bloqueio próprio; não há desbloqueio por herança do
+aceite S09. Ver `docs/sdk/pullback_nativo.md`. Aceite final do replay/checks pendente;
+cache inelegível, S09 somente Tester, DEMO ao vivo/Windows físico/carteira específicos.
+
+
+T19.57 Pullback — aceite dirigido Linux/Wine:5 posições vendidas encerradas,
+2 parciais1→0,5 com BE confirmado e12 fills; backtest/replay/CSV/livro/saldo conciliados.
+23 inputs reais, fontes/includes/executáveis identificados; UI Manual salvo/reaberto,
+parcial inviável bloqueada antes de outro Tester, consulta persistente. H#26→M#151;
+fonte runtime Hae07e7b/Mc33fa1e. Evidência T19_57_PULLBACK_20261020.json.
+20 processos próprios ausentes, ponte/principal preservados; trabalho local preservado.
+Compra nativa não exercitada neste recorte; Python/legado têm restrições próprias.
+Integração aguarda o Windows CI existente de M151, sem novo workflow.
+Próxima ficha prioritária: T19.14 inicial, identidade/relógio e trajetória observada
+para embasar T19.15 (stop temporal/time gain/loss), sem inferir extremos entre fills.
+Cache inelegível; S09 somente Tester; DEMO ao vivo, Windows físico e carteira específicos.
+
+
+Fechamento T19.57 Pullback — H#26 integrada em8ee507b; M#151 com revisão concluída
+e seis checks existentes aprovados no runtimec33fa1e (inclusive Windows CI).
+HEAD posterior altera apenas documentação/evidência, mantendo o código exercitado.
+Aceite histórico do novo perfil: entrada/swing/R, lote1, parcial1→0,5, BE após
+confirmação, encerramentos SL/TP, fills/custos e caixa reconciliados; sem promover
+legado/Python, cache, live, carteira ou Windows físico. Ver recibos T19_57_PULLBACK_*.
+Próxima dependência concreta para políticas temporais: T19.14 inicial (relógio,
+identidade e trajetória observada), seguida de T19.15; sem fabricar extremos futuros.
