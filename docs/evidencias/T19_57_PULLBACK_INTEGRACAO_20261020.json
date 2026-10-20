@@ -99,5 +99,8 @@
     "physical_windows": "pending",
     "concurrent_portfolio": "not accepted"
   },
-  "next": "T19.14 initial observable timeline/clock/identity, then T19.15 temporal exit policies; no inferred intrabar extrema"
+  "next": "T19.15 initial native/UI temporal policy consumer; reuse T19.14 trajectories and clocks already integrated by PR113/bd5cb6d. Do not recreate the producer or infer intrabar extrema.",
+  "M_merge": "9c28c35bc03b3244a524061182b17c1937bc9543",
+  "M_reviewed_head": "24d7de6b81c6da1cc6faad0e7b20a00cc93c6e1e",
+  "M_full_tree_matches_reviewed_head": true
 }
