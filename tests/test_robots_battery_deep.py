@@ -112,17 +112,27 @@ def test_deep_battery_runs_every_test_and_measures_both_items(env):
     assert len(report.items) == len({i.id for i in report.items})                      # itens trocados, não somados
 
 
-def test_fragile_parameter_and_weak_final_period_fail(env):
+@pytest.mark.parametrize("scenario,item_id,status,detail", [
+    ("fragile", "robustness", battery.FAIL, "InpAtrPeriod = 17 (profit factor 0,83)"),
+    ("fading", "out_of_sample", battery.FAIL, "0,83 na parte final"),
+    ("few", "out_of_sample", battery.WARN, None),
+])
+def test_fragile_parameter_and_weak_final_period_fail(env, scenario, item_id, status, detail):
+    # Cada cenário tem seu próprio banco/base. Juntá-los executava 19 Testers
+    # falsos no mesmo limite de 60 s, excedido no commit SQLite do CI Windows.
     env.base()
-    fragile = deep(env, lambda ini, values: BAD if values.get("InpAtrPeriod") == "17" else GOOD)
-    item = {i.id: i for i in fragile.items}["robustness"]
-    assert item.status == battery.FAIL and "InpAtrPeriod = 17 (profit factor 0,83)" in item.detail
-    assert fragile.statistical_status == battery.REJECTED
-    fading = deep(env, lambda ini, values: BAD if ini["FromDate"] == "2025.08.01" else GOOD)
-    item = {i.id: i for i in fading.items}["out_of_sample"]
-    assert item.status == battery.FAIL and "0,83 na parte final" in item.detail
-    few = deep(env, lambda ini, values: GOOD[:10] if ini["FromDate"] == "2025.08.01" else GOOD)
-    assert {i.id: i for i in few.items}["out_of_sample"].status == battery.WARN
+    scenarios = {
+        "fragile": lambda ini, values: BAD if values.get("InpAtrPeriod") == "17" else GOOD,
+        "fading": lambda ini, values: BAD if ini["FromDate"] == "2025.08.01" else GOOD,
+        "few": lambda ini, values: GOOD[:10] if ini["FromDate"] == "2025.08.01" else GOOD,
+    }
+    report = deep(env, scenarios[scenario])
+    item = {i.id: i for i in report.items}[item_id]
+    assert item.status == status
+    if detail is not None:
+        assert detail in item.detail
+    if scenario == "fragile":
+        assert report.statistical_status == battery.REJECTED
 
 
 def test_extra_runs_do_not_become_the_card_backtest(env):

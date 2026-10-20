@@ -18,7 +18,12 @@ Se um filho sobreviver, o contexto continua protegido e o próximo Tester é rec
 Baseline dirigido: 48 aprovados. Dois casos novos reproduziram a falha antes da
 correção (card/preset); depois, 127 testes pertinentes e dois casos adicionais de
 filho sobrevivente passaram. Doctor sem probe: 20 OK, um aviso de pandas-ta opcional,
-nenhuma falha. Revisão local concluída; CI obrigatório existente no código b27da93 em andamento.
+nenhuma falha. Revisão local concluída. Cinco checks da fonte b27da93 passaram; Windows excedeu
+60 s em um teste que reunia três cenários/19 Testers falsos, durante commit SQLite.
+A regressão foi separada em três cenários independentes com todas as asserções e
+o limite de 60 s mantidos; três casos passaram localmente. Não mudou runtime,
+banco do usuário, cálculo ou limite financeiro. CI do código final novamente pendente
+após essa falha concreta; sem disparo manual de workflow ou repetição nativa.
 O ensaio dirigido Wine passou: dois Testers sequenciais, resultados reabertos no banco
 e consultados na UI, PIDs privados observados e ausentes ao final. Na segunda sessão,
 a limpeza encerrou um MetaEditor ainda ativo após a importação. Ponte e terminal
