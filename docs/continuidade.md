@@ -1654,3 +1654,11 @@ saída0, seis checks CI, incluindo Windows. Sem nova suíte ou campanha numéric
 Revisão do diff sem achado bloqueante nesse recorte; limites financeiros/nativos
 explicitados no relatório permanecem. B-11 continua proposto, sem aprovação
 implícita. Base documental não autoriza operação REAL. Próxima dependente: PR107.
+
+## Continuidade B06 / primeiro percurso — 2026-10-19
+
+HADOUKEN #15→#16→#17 integradas em ordem, depois B04 #18 (`db933dd`) e B05 #19 (`4db5e8f`), com revisão, CI de fonte e QA nativo de contratos. Fechamentos apenas documentais não repetiram campanhas. [B06/SDK1](sdk/decisao_risco_nativa.md) liga H20 e Safety5; API nova validada, integração vinculada em revisão. Nenhum novo runtime Python.
+
+IPC da ponte existente recuperado com initialize portátil compatível; conta DEMO e terminal conectado comprovados antes/depois. Serviço HistoricalExtractor extraiu60 barras M1 EURUSD em banco privado e leitura em outro processo confirmou60 tempos únicos, sem ordens/login/reinício. Evidência local ignorada em logs/m19-b-primeiro-ciclo-20261019/ipc-historical-short-proof.json. Callback de verificação corrigido por readback, sem repetir extração já gravada.
+
+A UI atual mantém seus serviços anteriores; não há novo Default/Manual/preset operacional ou S09 entregue por B06. Simulação Python, QA de contratos no Tester e operação ao vivo DEMO continuam distintos. Próximo: B07/adapter nativo, S09 com SL/TP fixos, depois Default→Manual nomeado→backtest→preset carregado→replay com negócios e resultado reconciliado. Aceite nativo do percurso permanece pendente, Pullback bloqueado até T19.57 e Windows físico pendente específico.
