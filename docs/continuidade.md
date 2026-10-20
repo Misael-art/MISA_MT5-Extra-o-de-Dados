@@ -2035,3 +2035,18 @@ Novo perfil S09v1.40 opt-in; controlador temporal compartilhado conserva âncora
 prioridade, confirmação e congelamento. UI/32 inputs e recibo independente de21
 closes fechados. Revisão, checks e aceite dirigido pendentes; sem aceite de canal/ATR,
 Pullback ER ou live. Detalhes em docs/sdk/tempo_er.md.
+
+
+T19.16 inicial — TM05/ER com idade: aceite funcional dirigido concluído no S09v1.40,
+fingerprint24a4d21ae609d9c7, H#28 runtime994d1ba; M#156 runtime75846d1.
+Manual configura idade mínima/limiar, salva/reabre/exporta; consulta mostra ER e
+instante conhecido. EURUSD/M5,14→15/10/2026: um backtest e um replay,4 posições/8fills
+por execução,4 saídas ER reais e32inputs conferidos; referência Decimal/canônica,
+fonte/22includes/binários identificados, caixa/livro/eventos conciliados.
+12PIDs próprios encerrados, zero zombies/sobras; ponte/principal preservados.
+147 testes dirigidos e doctor20OK/1opcional/0falhas;26Tools no provedor.
+Checks existentes do consumidor em curso; integração H#28→M#156 ainda pendente.
+Recibo: docs/evidencias/T19_16_ER_20261020.json. Sem repetir campanha anterior.
+Aceite restrito ao cenário; não habilita Pullback ER, canal/ATR, carteira, gradientes,
+cache ou live. Próximo recorte elegível após integração: TM06, canal Donchian + tempo,
+com T19.7 verificada. S09 somente Tester; Windows físico/live DEMO separados.

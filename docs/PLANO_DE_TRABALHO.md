@@ -183,7 +183,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.4 | Alligator I06 no registry/store, deslocamento visual separado da disponibilidade | T19.3 | ✅ [PR126](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/126), aceite final70b2191 após correção127/master2d7412f; seis checks,1412 Ubuntu/36PG/1514Windows CI, cov77,64%/73,36%;291 fontes/testes idênticos;62 focados+34 composição/doctor21/1/0; custo local279/216/2ms, sem meta universal; Windows físico pendente |
 | T19.5 | AO/AC I07/I09 e transformações no registry/store/CSV existente | T19.3 | ✅ [PR128](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/128), aceite final11b6c53 após129/masterd0b9c5e; seis checks,1438 Ubuntu/43PG/1540Windows CI, cov77,64%/73,36%;293 fontes/testes idênticos,88 focados/doctor21-1-0 e CLI120M5/8saídas/960fatos exatos; assinatura04f94b5b; físico pendente |
 | T19.6–T19.13 | Demais indicadores do TXT: pivôs, canais, osciladores e fluxo | T19.3; fontes qualificadas conforme indicador | planejadas; fichas individuais no plano F19 |
-| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER em implementação isolada; aceite pendente |
+| T19.14–T19.16 | Trajetórias/estatísticas temporais e time de gain/loss, ER, Donchian e ATR | Livro F16, T19.2/3; dependências por ficha | T19.14 integrada; T19.15 inicial entregue na PR154: UI/S09/replay conciliados, seis checks no fonte8f9c36c e H27 integrada7759344. T19.16 inicial ER com aceite funcional dirigido; H28→M156 aguardam integração/checks |
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | planejada |
 | T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
@@ -3883,3 +3883,18 @@ Novo perfil S09v1.40 opt-in; controlador temporal compartilhado conserva âncora
 prioridade, confirmação e congelamento. UI/32 inputs e recibo independente de21
 closes fechados. Revisão, checks e aceite dirigido pendentes; sem aceite de canal/ATR,
 Pullback ER ou live. Detalhes em docs/sdk/tempo_er.md.
+
+
+T19.16 inicial — TM05/ER com idade: aceite funcional dirigido concluído no S09v1.40,
+fingerprint24a4d21ae609d9c7, H#28 runtime994d1ba; M#156 runtime75846d1.
+Manual configura idade mínima/limiar, salva/reabre/exporta; consulta mostra ER e
+instante conhecido. EURUSD/M5,14→15/10/2026: um backtest e um replay,4 posições/8fills
+por execução,4 saídas ER reais e32inputs conferidos; referência Decimal/canônica,
+fonte/22includes/binários identificados, caixa/livro/eventos conciliados.
+12PIDs próprios encerrados, zero zombies/sobras; ponte/principal preservados.
+147 testes dirigidos e doctor20OK/1opcional/0falhas;26Tools no provedor.
+Checks existentes do consumidor em curso; integração H#28→M#156 ainda pendente.
+Recibo: docs/evidencias/T19_16_ER_20261020.json. Sem repetir campanha anterior.
+Aceite restrito ao cenário; não habilita Pullback ER, canal/ATR, carteira, gradientes,
+cache ou live. Próximo recorte elegível após integração: TM06, canal Donchian + tempo,
+com T19.7 verificada. S09 somente Tester; Windows físico/live DEMO separados.

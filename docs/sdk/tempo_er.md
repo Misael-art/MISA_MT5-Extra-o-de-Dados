@@ -31,5 +31,10 @@ Ambiente e baseline T19.15 já aprovados e compatíveis são reutilizados. Verif
 novas: ausência/zero, N−1/N/N+1, igualdade/faixa, prefixo e correção da fonte,
 prioridade/SL, parcial sem reset, reinit/falta de confirmação e UI. Ensaio dirigido
 somente dos ramos novos, após conferir fontes/includes/executável/inputs; sem repetir
-campanha histórica. Aceite ainda pendente. Cache inelegível; S09 somente Tester;
+campanha histórica. Aceite funcional dirigido concluído, integração/checks em curso.
+Recibo em ../evidencias/T19_16_ER_20261020.json: 4 operações no backtest e 4 no replay,
+4 fechamentos ER por execução; 32 inputs, caixa e eventos reconciliados.
+Fontes e 22 includes instalados conferidos; binários identificados, 12 processos
+próprios encerrados e ponte/principal preservados. 147 testes dirigidos aprovados.
+Cache inelegível; S09 somente Tester;
 live DEMO, Windows físico, carteira e gradientes separados.
