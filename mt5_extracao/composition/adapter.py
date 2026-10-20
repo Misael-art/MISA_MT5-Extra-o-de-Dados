@@ -27,7 +27,7 @@ def compatibility(composition, *, backend="python"):
     if not isinstance(composition, Composition):
         composition = Composition(composition)
     if backend != "python":
-        return [Problem("backend", "adaptador modular nativo indisponível (T19.23/B-08/B-10); "
+        return [Problem("backend", "adaptador modular nativo genérico indisponível (T19.23); o perfil S09 requer S09NativeAdapter com fonte aprovada; "
                                    "use os fluxos legados ou o backtest Python. Declaração não autoriza execução.")]
     data = composition.to_dict()
     problems = [Problem(slot, f"modo {data[slot]['mode']} sem adaptador Python; use {mode} ou aguarde a capacidade.")
