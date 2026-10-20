@@ -2077,6 +2077,14 @@ regressão ou TM06. Nenhum replay aprovado repetido; ER/M#156 preservado.
 Contrato e limites: docs/analytics/T19.7_DONCHIAN.md.
 
 
+Fechamento T19.7 inicial/I10 na PR157: seis checks obrigatórios aprovados no
+runtime1b50519e1baf831867d1f729b9900e86a47d9ec9, workflow39469169508. Revisão
+sem pendências impeditivas; delta posterior só documental. Donchian(20) publicado
+em14IDs, consulta/store/CSV/ação UI conferidos. Envelopes/regressão continuam
+pendentes; TM06 tem aceite separado no consumidor M158/H29. Fonte de teste controlada
+não é aceite operacional MT5. Recibo T19_7_DONCHIAN_20261020.json; nenhuma campanha
+histórica ou replay ER repetidos. Windows físico/cache/live mantêm seus limites.
+
 T19.16/TM06 em revisão dependente de M#157/I10: novo perfil S09v1.50 configura
 prazo desde último close favorável além do canal anterior20; exige rompimento
 observado e retorno inclusivo. Idade/SL/prazos antigos preservados. UI/33inputs,

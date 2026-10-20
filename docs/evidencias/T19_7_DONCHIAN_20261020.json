@@ -1,0 +1,56 @@
+{
+  "task": "T19.7 initial I10 Donchian",
+  "runtime": "1b50519e1baf831867d1f729b9900e86a47d9ec9",
+  "workflow": 39469169508,
+  "mandatory_checks": [
+    {
+      "name": "Instalador Windows (sem MT5)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39469169508/job/118788381761"
+    },
+    {
+      "name": "Testes PostgreSQL",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39469169508/job/118788381899"
+    },
+    {
+      "name": "Testes (ubuntu-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39469169508/job/118788382023"
+    },
+    {
+      "name": "Instalador Linux (sem MT5)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39469169508/job/118788382078"
+    },
+    {
+      "name": "Testes (windows-latest)",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39469169508/job/118788382092"
+    },
+    {
+      "name": "Lint dos instaladores",
+      "conclusion": "success",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39469169508/job/118788382212"
+    }
+  ],
+  "features": 14,
+  "registry_total": 52,
+  "variants": {
+    "current": "20 closed bars including evaluation bar",
+    "previous": "20 preceding closed bars, excludes evaluation high/low"
+  },
+  "proof": [
+    "independent Decimal window reference",
+    "warmup, absent, constant, overflow and future prefix",
+    "known ineligible source resets window; late correction preserves as-of",
+    "append/idempotent/reopen and calculation-store-CSV exact equality",
+    "existing UI CSV action exports store values with controlled data and explicit UTC clock",
+    "Alligator, AO/AC, causal pivot and materializer regressions"
+  ],
+  "native_operational_acceptance": false,
+  "consumer": "T19.16 TM06 / M158 with H29; separate native receipt",
+  "rematerialization": "explicit selected IDs under new implementation version; previous versions retained",
+  "windows_physical": "pending",
+  "cache_eligible": false
+}
