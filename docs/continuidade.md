@@ -1,3 +1,15 @@
+## PM12 — consumidores nativos, 2026-10-21
+
+H#44/H1024cee0 acrescenta painel próprio S09 1.90/Pullback Nativo1.10, com as mesmas
+instâncias de risco/executor. Pausa conserva gestão; entrada continua revalidada e
+congelamento não é destravado. Ambos compilados6276/Wine0/0; revisão técnica favorável,
+aceite visual pendente. Novos perfis Python e pins preservam todos os perfis anteriores;
+89 testes dirigidos/Tk aprovados e catálogo real44/23inputs conferido. Canvas padrão é
+externo permitido pelo nome exato nesses novos perfis; qualquer header próprio ausente
+bloqueia. Exportação estática não equivale a recibo de parâmetros carregados.
+[Contrato e limites](sdk/painel_nativo.md). Tester-only, cache inelegível, ao vivo/Windows
+físico e integração/instalação final continuam com seus critérios próprios.
+
 ## PM-12 — integração visual e distribuição, 2026-10-21
 
 Fundações H32→36→37→38→39 integradas em288063fe, com revisão técnica de manutenção,

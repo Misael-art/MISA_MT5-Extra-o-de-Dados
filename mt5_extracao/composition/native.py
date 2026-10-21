@@ -86,6 +86,13 @@ COOLDOWN_APPROVED_FINGERPRINT="4105b77410984148"
 COOLDOWN_HADOUKEN_REVISION="e232bef65cef23bff34df99ce572751aa1d73976"
 COOLDOWN_INPUT_TYPES={**SESSION_INPUT_TYPES,"InpCooldownSeconds":"int"}
 
+# PM12: mesma capacidade operacional, apresentação pelo host do próprio adapter.
+PANEL_ROBOT_VERSION="1.90"
+PANEL_APPROVED_FINGERPRINT="b069f6b52c76c77d"
+PANEL_HADOUKEN_REVISION="1024cee0ec49a29d16b48c1c46d80adaa3259013"
+PANEL_INPUT_TYPES=COOLDOWN_INPUT_TYPES
+PANEL_STANDARD_INCLUDES=frozenset({"Canvas/Canvas.mqh"})
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
@@ -96,11 +103,13 @@ def _require_robot(robot):
                 DONCHIAN_TEMPORAL_ROBOT_VERSION:(DONCHIAN_TEMPORAL_APPROVED_FINGERPRINT,DONCHIAN_TEMPORAL_INPUT_TYPES,6,DONCHIAN_TEMPORAL_HADOUKEN_REVISION),
                 ATR_TEMPORAL_ROBOT_VERSION:(ATR_TEMPORAL_APPROVED_FINGERPRINT,ATR_TEMPORAL_INPUT_TYPES,7,ATR_TEMPORAL_HADOUKEN_REVISION),
                 SESSION_ROBOT_VERSION:(SESSION_APPROVED_FINGERPRINT,SESSION_INPUT_TYPES,8,SESSION_HADOUKEN_REVISION),
-                COOLDOWN_ROBOT_VERSION:(COOLDOWN_APPROVED_FINGERPRINT,COOLDOWN_INPUT_TYPES,9,COOLDOWN_HADOUKEN_REVISION)}
+                COOLDOWN_ROBOT_VERSION:(COOLDOWN_APPROVED_FINGERPRINT,COOLDOWN_INPUT_TYPES,9,COOLDOWN_HADOUKEN_REVISION),
+                PANEL_ROBOT_VERSION:(PANEL_APPROVED_FINGERPRINT,PANEL_INPUT_TYPES,10,PANEL_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
-            or len(robot.inputs) != len(profile[1]) or robot.missing_includes):
+            or len(robot.inputs) != len(profile[1])
+            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version==PANEL_ROBOT_VERSION else set())):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
     return profile
