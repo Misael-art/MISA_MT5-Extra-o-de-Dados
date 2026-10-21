@@ -1,0 +1,22 @@
+{
+  "task": "T20.12 metadata UI composition with corrected robot page",
+  "base": "2109ba230fd9873fb68b2cb8813902bec43752c6",
+  "dependency": "9e070335ef1d72e0e4681513972fe63092cceeae",
+  "merge": "e3c7b8d7ead5a20d98a5f8e8279d76b81c09218e",
+  "runtime_sha256": {
+    "mt5_extracao/ui/experiments.py": "6210157463183df200bd16aa505d138924e2cd61d76b6ca357961f0544e40368",
+    "mt5_extracao/experiments/store.py": "3309adae0c768e77bb0113d4049f9fd53ed6c8a7c144f93e15edb41c2f26bc23",
+    "mt5_extracao/ui_manager.py": "2580f52c4a5b185b7cfeada2bc837101db2abdc796feb293c6870f25eaddf918"
+  },
+  "protected_runtime_unchanged_from": "2109ba230fd9873fb68b2cb8813902bec43752c6",
+  "conflicts": "append-only continuity/checklist, both retained",
+  "interaction": {
+    "passed": 10,
+    "seconds": 67.44
+  },
+  "real_metadata_menu_proof_reused_by_exact_runtime": true,
+  "evaluation_or_reserve_access_created": false,
+  "owner_database_restore": false,
+  "new_ci_or_installation_qualified": false,
+  "sdk_sha256": "c81963718288e16e236d9a3a1aae84561604aaa026fd22c55e966c0c847d264a"
+}

@@ -44,3 +44,12 @@ registrado. Retomada somente de leitura da cópia existente com -d terminou0, se
 reclonar nem recalcular. Falha intermediária do helper por diretório config existente
 foi corrigida no helper, sem mudança de dados/runtime financeiro. CI e instalação
 são etapas próprias ainda pendentes; não há aprovação estatística/financeira.
+
+
+Composição por Git com174/9e07033, incluindo a correção de página172/bfc422 e173:
+conflitos de append em continuidade/checklist preservam ambos os textos. As três
+fontes da consulta (store, módulo UI, UIManager) permanecem byte-idênticas ao2109.
+Dez testes de interação passaram67,44s (registro/contexto/viewport/Recursos); não
+repetiu avaliação ou recópia do journal. Prova de menu/metadados real permanece
+compatível por esses hashes. Novo código da página ainda exige novaCI/instalação;
+nenhum cache anterior ganha waiver e nenhum orçamento/critério é promovido.
