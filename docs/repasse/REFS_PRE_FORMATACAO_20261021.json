@@ -1,0 +1,1261 @@
+{
+  "schema_version": 1,
+  "snapshot_at": "2026-10-21T17:22:17.999070+00:00",
+  "note": "Inventário de nomes locais; não substituir master/main pela referência local antiga. Recriar nomes somente em namespace archive/local após conferir o SHA. Todos os objetos foram conferidos em clones de rede.",
+  "repositories": {
+    "app": {
+      "refs": [
+        {
+          "sha": "1ca7306cc3eff0389c5c1b9dde8d55d7d64a9eba",
+          "ref": "refs/heads/claude/adoring-hopper-qdtf34"
+        },
+        {
+          "sha": "4d7fbab9e9f91a31517b58f8c16570b471f50034",
+          "ref": "refs/heads/codex/analytics-continuity-reconciliation"
+        },
+        {
+          "sha": "ae8a51f4e83c24c30622c84c12fafc75158968a3",
+          "ref": "refs/heads/codex/analytics-docs-before-latest-evidence"
+        },
+        {
+          "sha": "68749729d509158dfb8b9b1d887013c534e8ce77",
+          "ref": "refs/heads/codex/b06-contrato-risco-nativo"
+        },
+        {
+          "sha": "46f144d5a07241473612496d719bdb85c01bf1ba",
+          "ref": "refs/heads/codex/b07-contrato-resultado-nativo"
+        },
+        {
+          "sha": "72fcd87323873220e8a9aa8456b439787f59c25a",
+          "ref": "refs/heads/codex/b11-politica-contratos"
+        },
+        {
+          "sha": "4212f5935d690420a1b3d44ea4ffb8ae108e8e3e",
+          "ref": "refs/heads/codex/b11-versionamento-sidecars"
+        },
+        {
+          "sha": "2463744b37f350f0aa40a653cdcf9608c479aa80",
+          "ref": "refs/heads/codex/extr-01-ciclo-extrator"
+        },
+        {
+          "sha": "ebc567267f9ae9cf0416fe29302e1b0accdfa43c",
+          "ref": "refs/heads/codex/extr-01-fechamento-master"
+        },
+        {
+          "sha": "35a653b6ff7f4caa044dcb114ead80aba165de5f",
+          "ref": "refs/heads/codex/extr-02-confirmacao-saida"
+        },
+        {
+          "sha": "75f84d3aa20bca1dca3f33494fe449dc05b9baff",
+          "ref": "refs/heads/codex/extr-02-ponte-background"
+        },
+        {
+          "sha": "d5916ee582dd0386ae11e10bf748065f0e35dac0",
+          "ref": "refs/heads/codex/integracao-extrator-116-117"
+        },
+        {
+          "sha": "d7f42a051efb56d8070a1da6b0049d1757fabc59",
+          "ref": "refs/heads/codex/org-05-continuidade-ui"
+        },
+        {
+          "sha": "bbf7cb5c2b1c9d8aaec8584d22c25ea288d52527",
+          "ref": "refs/heads/codex/painel-modular-cobertura"
+        },
+        {
+          "sha": "1dbfd8a43ac3e31387b4edbba9c568d577eed781",
+          "ref": "refs/heads/codex/painel-modular-integracao"
+        },
+        {
+          "sha": "6c633296e9a274ecdd6eb54d41a4b9312d5a59bb",
+          "ref": "refs/heads/codex/pm12-distribuicao"
+        },
+        {
+          "sha": "3addcad548b3537b353bf8991027784558531dc0",
+          "ref": "refs/heads/codex/pm12-perfis-painel-nativo"
+        },
+        {
+          "sha": "80fd2f377af5a0cfaf4bb519f8eb75a08802045e",
+          "ref": "refs/heads/codex/postgresql-test-schema-isolation"
+        },
+        {
+          "sha": "a6f5dc2d989fa8a83b22e7f1e0e089c58a5cc690",
+          "ref": "refs/heads/codex/repasse-integracao-20261021"
+        },
+        {
+          "sha": "db6ca9f730d36d7f026431690dec308685f577cb",
+          "ref": "refs/heads/codex/t12-3-orcamento-global"
+        },
+        {
+          "sha": "271b376f41f1cbdfd55a88641c289cf37e6f08f7",
+          "ref": "refs/heads/codex/t13-10-estudo-pf19-limitado"
+        },
+        {
+          "sha": "d9215400822be3e11d91e1fa1551b3332cea9921",
+          "ref": "refs/heads/codex/t13-9-pf-definido"
+        },
+        {
+          "sha": "843a85a642cbe768950f64a443334dea31932c48",
+          "ref": "refs/heads/codex/t13.2-feature-store"
+        },
+        {
+          "sha": "f214f28bb139c03a44c856933cbdac81437ae2bb",
+          "ref": "refs/heads/codex/t13.2-integracao-f19"
+        },
+        {
+          "sha": "714dcabef45d23f8ff631779094c7009e8ee38b8",
+          "ref": "refs/heads/codex/t13.3-integracao-f19"
+        },
+        {
+          "sha": "7a1faca77a798b8c45f155d140d9d2524d4f9adb",
+          "ref": "refs/heads/codex/t13.3b-before-t13.3-reconcile"
+        },
+        {
+          "sha": "c1255dcd41fb54410676f891ec53b0d2985c3fbc",
+          "ref": "refs/heads/codex/t13.3b-integracao-f19"
+        },
+        {
+          "sha": "03570b032d2a5e3b50f2f932d163408328178389",
+          "ref": "refs/heads/codex/t13.3b-reconciled"
+        },
+        {
+          "sha": "8edf3cb5707305a3e724bf7a5120622fd7737280",
+          "ref": "refs/heads/codex/t13.4-before-t13.3-reconcile"
+        },
+        {
+          "sha": "4d3f560660b7b5e8a5394145172942f1d0899cf5",
+          "ref": "refs/heads/codex/t15-1-recursos-varredura"
+        },
+        {
+          "sha": "20f8a87c90d53067c5f0b3a64e238db1a9d3ec84",
+          "ref": "refs/heads/codex/t16.3c-before-t16.3b-boundary-test"
+        },
+        {
+          "sha": "fd948930febc69af69ab0394e19762f2de3aa228",
+          "ref": "refs/heads/codex/t17-10-resultados-zerados"
+        },
+        {
+          "sha": "06c92d31c976811e536bf9773fd5f8bc00f235a6",
+          "ref": "refs/heads/codex/t17-11-lacunas-horarias"
+        },
+        {
+          "sha": "bb1c15b9999f7947e6195db5de6c68e35d6a3f4a",
+          "ref": "refs/heads/codex/t17-12-hierarquia-atencao"
+        },
+        {
+          "sha": "fc4da549e4547fb6ec40d1e8b29c8fe7689dc797",
+          "ref": "refs/heads/codex/t17-12a-disponibilidade-resultados"
+        },
+        {
+          "sha": "0a2368748b97573748d0c2e663a3446c92a5fdff",
+          "ref": "refs/heads/codex/t17-13-retorno-mercado"
+        },
+        {
+          "sha": "6f8368648206facc010aafa80699cab3c36621b3",
+          "ref": "refs/heads/codex/t17-14-altura-analitica"
+        },
+        {
+          "sha": "8246686df93056d0dc9d953683b02c6e887f3bcb",
+          "ref": "refs/heads/codex/t17-15-sincronizacao-conexao"
+        },
+        {
+          "sha": "380cf366e409e729ac90ae4d83e037316d2f83a2",
+          "ref": "refs/heads/codex/t17-16-contexto-backtest"
+        },
+        {
+          "sha": "9810664633facf2c4d0f2d0b1e09bb9ba7f3a66f",
+          "ref": "refs/heads/codex/t17-17-detalhe-legivel"
+        },
+        {
+          "sha": "b0b68f92c435c559def2418ee0999468d2a2db54",
+          "ref": "refs/heads/codex/t17-18-analise-responsiva"
+        },
+        {
+          "sha": "8b7dca47a17ace3202bf4de0cf1b3f213fc98475",
+          "ref": "refs/heads/codex/t17-20-sincronizacao-arranjo"
+        },
+        {
+          "sha": "8b8dfbf70d7b32c8d0f8dd0d92718e95383643c6",
+          "ref": "refs/heads/codex/t17-21-detalhes-recolhiveis"
+        },
+        {
+          "sha": "d01275888d7140ec783f8eefefc946ebb8f0338b",
+          "ref": "refs/heads/codex/t17-22-inicio-offline"
+        },
+        {
+          "sha": "8777a49ee1a48f958b0c696791c2c52052fb3d28",
+          "ref": "refs/heads/codex/t17-23-contexto-agregacao"
+        },
+        {
+          "sha": "b6cb04dea52938be5045bbacd9e00c347136c1b2",
+          "ref": "refs/heads/codex/t17-24-bateria-pf-indefinido"
+        },
+        {
+          "sha": "4cfa447c9368aea2be797e79f03fe24c7a79fa29",
+          "ref": "refs/heads/codex/t17-25-laboratorio-cobertura"
+        },
+        {
+          "sha": "4f1588061f85d160281437fd5039eee2df975a49",
+          "ref": "refs/heads/codex/t17-26-ativos-resultado-cards"
+        },
+        {
+          "sha": "99fb95b31e08e2a04beb8a2eba08344ca3d65c20",
+          "ref": "refs/heads/codex/t17-27-legendas-laboratorio"
+        },
+        {
+          "sha": "3bdfa262c189dd2a21cd8e5e6de4319257c5b5f7",
+          "ref": "refs/heads/codex/t17-28-controles-robo"
+        },
+        {
+          "sha": "165fbaa3b429d1e7dbaf831608777dfd51bded83",
+          "ref": "refs/heads/codex/t17-7-contexto-temporal"
+        },
+        {
+          "sha": "2b2dbdc94e11b04b4e4049bd442173ccc89ac2a9",
+          "ref": "refs/heads/codex/t17-8-traco-observado"
+        },
+        {
+          "sha": "96a68a287585b26e7fede42d233c91d3d2dcad9b",
+          "ref": "refs/heads/codex/t17-9-laboratorio-responsivo"
+        },
+        {
+          "sha": "97220045642d34c8c52d9241573d52da1ab5d5df",
+          "ref": "refs/heads/codex/t18.1-integracao-canonica"
+        },
+        {
+          "sha": "d7020ace9622c5e0b95be08e673fb2768fbee5b9",
+          "ref": "refs/heads/codex/t19-24-composicoes-inicial"
+        },
+        {
+          "sha": "4ab87025e1e829021cbe4b6bb2e380ee7b67ee85",
+          "ref": "refs/heads/codex/t19-34-cabecalho-catalogo"
+        },
+        {
+          "sha": "bfc422a523386ecd6b9e8448b963e638151fb552",
+          "ref": "refs/heads/codex/t19-34-contexto-responsivo"
+        },
+        {
+          "sha": "e7656daba8a3156b26b7cf8983484c20b9c9bcea",
+          "ref": "refs/heads/codex/t19-34-navegacao-adaptavel"
+        },
+        {
+          "sha": "6981fd65b3492941284e3045433b2d98e9f4d7a2",
+          "ref": "refs/heads/codex/t19-36-consumidor"
+        },
+        {
+          "sha": "48feaf8be5f785b1fa84a6b007fea8ed46c146e1",
+          "ref": "refs/heads/codex/t19-36-python"
+        },
+        {
+          "sha": "b4bdf24f423371acca578bd98220cd911ca71026",
+          "ref": "refs/heads/codex/t19-38-consumidor"
+        },
+        {
+          "sha": "d4b084de0e73e2b99ded3d734957288954643385",
+          "ref": "refs/heads/codex/t19-38-python"
+        },
+        {
+          "sha": "43234c6a9786a089e767c27862dadbfe760849da",
+          "ref": "refs/heads/codex/t19-39-consumidor"
+        },
+        {
+          "sha": "111ae036c4685e01bcab8e1abe3270f3d68fa712",
+          "ref": "refs/heads/codex/t19-39-python"
+        },
+        {
+          "sha": "469dc79880ca20c73b7582e380265e664a758236",
+          "ref": "refs/heads/codex/t19-40-consumidor"
+        },
+        {
+          "sha": "515a3b9052c613eefe722d4d1b1ae6a28934d285",
+          "ref": "refs/heads/codex/t19-40-python"
+        },
+        {
+          "sha": "039c3e15a225deddc741991b7ab7d5b00e06f102",
+          "ref": "refs/heads/codex/t19.0-base-documental"
+        },
+        {
+          "sha": "3e28229e19406dbd38411b33a53f21b4541558b6",
+          "ref": "refs/heads/codex/t19.1-inventario-publicacao"
+        },
+        {
+          "sha": "1ba89b13c69e20448291549716cfd99d5b329a15",
+          "ref": "refs/heads/codex/t19.14-trajetorias-temporais"
+        },
+        {
+          "sha": "bc9cbfa937e4019e98983d40a9e922b829147f44",
+          "ref": "refs/heads/codex/t19.15-politica-temporal"
+        },
+        {
+          "sha": "7b78958564a2289415611b247018a58a0ce1240f",
+          "ref": "refs/heads/codex/t19.16-atr-temporal"
+        },
+        {
+          "sha": "003bbca1ad0d0e5a60ec5c41cf4c8e15a1e77c9e",
+          "ref": "refs/heads/codex/t19.16-donchian-temporal"
+        },
+        {
+          "sha": "977a110e580dacc9e72bce758a70f7ae7ff66130",
+          "ref": "refs/heads/codex/t19.16-er-temporal"
+        },
+        {
+          "sha": "0603a3b4817ab577c1299e281ae321d5e87e604c",
+          "ref": "refs/heads/codex/t19.18-alvo-fixo-inicial"
+        },
+        {
+          "sha": "0267c102364f6506091059fd9930887ae52fa6e8",
+          "ref": "refs/heads/codex/t19.19-stop-fixo-inicial"
+        },
+        {
+          "sha": "ba1c1d1fd373fffcbb612f07b22619bdb9fa7da9",
+          "ref": "refs/heads/codex/t19.2-composicao-capacidades"
+        },
+        {
+          "sha": "8a0a28b40124679aff4a9d311721f1799d4715bd",
+          "ref": "refs/heads/codex/t19.20-cooldown"
+        },
+        {
+          "sha": "56460c2104cc8865fa49c760594544b3668a7923",
+          "ref": "refs/heads/codex/t19.20-session-entry"
+        },
+        {
+          "sha": "cc614f85d167ac293ac0c39bc1f4a025b48c0c69",
+          "ref": "refs/heads/codex/t19.23-leitura-inputs-nativos"
+        },
+        {
+          "sha": "0aa9e337d39a3b1b165a28a708df1a4f8ed21978",
+          "ref": "refs/heads/codex/t19.23-perfil-s09-nativo"
+        },
+        {
+          "sha": "f5fd0f4b2165cec38bf6682fef8c41338d9123ad",
+          "ref": "refs/heads/codex/t19.25-pacote-preset-inicial"
+        },
+        {
+          "sha": "5dbeae28e2c4b85920d786a3f729c3ffbbdbe408",
+          "ref": "refs/heads/codex/t19.26-manual-nomeado"
+        },
+        {
+          "sha": "e20fd793084bf08a2eb0dc65fae9bd16c2e931b0",
+          "ref": "refs/heads/codex/t19.29-conferencia-preset-nativo"
+        },
+        {
+          "sha": "c27ef93fa0887058c7c47b2b987454966eb9fcea",
+          "ref": "refs/heads/codex/t19.3-conexao-snapshot"
+        },
+        {
+          "sha": "58d3d4af5c670e0993c07140f3ae5317955125df",
+          "ref": "refs/heads/codex/t19.3-consistencia-snapshot"
+        },
+        {
+          "sha": "d608817b085348400bde29690fa8bffee5d00392",
+          "ref": "refs/heads/codex/t19.3-consumo-registry"
+        },
+        {
+          "sha": "8bc9b3515b04d7048072df7e52fa8c40245b890b",
+          "ref": "refs/heads/codex/t19.37-s09-referencia-python"
+        },
+        {
+          "sha": "135c9c2924482d21cd56c648ab4d92cfb34edf2a",
+          "ref": "refs/heads/codex/t19.4-alligator"
+        },
+        {
+          "sha": "6f169a530b51694e6cd7e2236db0b1aeff48ee51",
+          "ref": "refs/heads/codex/t19.5-ao-ac"
+        },
+        {
+          "sha": "83eeafffde3913010133a43269afdd7a98b12731",
+          "ref": "refs/heads/codex/t19.50-nomes-presets"
+        },
+        {
+          "sha": "c6aeae003af455d3c78526df454324fb64c7123b",
+          "ref": "refs/heads/codex/t19.55-default-versionado"
+        },
+        {
+          "sha": "dfd01b11649e905998fe1a6086424012d4d51bb8",
+          "ref": "refs/heads/codex/t19.56-lotes-ui"
+        },
+        {
+          "sha": "4ca5e9acd2806858fb2e4914642d4b4b25016d70",
+          "ref": "refs/heads/codex/t19.57-fechamento-pullback"
+        },
+        {
+          "sha": "681a0348a3ca32d9013437eae8737f9ab6cfb830",
+          "ref": "refs/heads/codex/t19.57-parcial-ressimulacao"
+        },
+        {
+          "sha": "a95d7990728dc923993d6e3ad6ff8c806daa5142",
+          "ref": "refs/heads/codex/t19.57-parcial-saldo"
+        },
+        {
+          "sha": "24d7de6b81c6da1cc6faad0e7b20a00cc93c6e1e",
+          "ref": "refs/heads/codex/t19.57-perfil-pullback"
+        },
+        {
+          "sha": "4f7a0465a069927b532324103f5f484cd2737968",
+          "ref": "refs/heads/codex/t19.6-pivos-causais"
+        },
+        {
+          "sha": "8c3ac166d34371d21548ae852178391aa8295055",
+          "ref": "refs/heads/codex/t19.7-donchian-context"
+        },
+        {
+          "sha": "9e070335ef1d72e0e4681513972fe63092cceeae",
+          "ref": "refs/heads/codex/t2-5-conexao-preservada"
+        },
+        {
+          "sha": "e174cc789b614f7403c82eb439b829ff008929a5",
+          "ref": "refs/heads/codex/t20-12-consulta-ui"
+        },
+        {
+          "sha": "97c3bafdc261a4794bc386045dc1d4c76f9e881f",
+          "ref": "refs/heads/codex/t20-12-experimentos"
+        },
+        {
+          "sha": "833de994569fb5b1a4ff41863fd519da501122f0",
+          "ref": "refs/heads/codex/t20-12-integracao"
+        },
+        {
+          "sha": "a22edfe27a644defa19b8c1c5f0d572c8a0296fd",
+          "ref": "refs/heads/codex/t20.0-base-documental"
+        },
+        {
+          "sha": "7e893fa5329033a4205bfa901ab909c69e2167dc",
+          "ref": "refs/heads/codex/t20.1-mapa-publicacao"
+        },
+        {
+          "sha": "e4f75f03a176186d93a6f34e69a1a58832f449c2",
+          "ref": "refs/heads/codex/t20.2-revisao-integracao"
+        },
+        {
+          "sha": "85118159628b39ff1e0f237d60729e490ae78e63",
+          "ref": "refs/heads/codex/t20.22-primeiro-percurso-presets"
+        },
+        {
+          "sha": "d5cdb4ec4dc62e94a3063afa05024fba445dc62f",
+          "ref": "refs/heads/codex/t20.24-orcamento-fila"
+        },
+        {
+          "sha": "3260a286ad535afb15577abe11dd0161e24233eb",
+          "ref": "refs/heads/codex/t20.25-cache-isolamento"
+        },
+        {
+          "sha": "aa0d8fdcb999d87152b3cf02abe68b5fcbcf0502",
+          "ref": "refs/heads/codex/t20.25-liberacao-backtest"
+        },
+        {
+          "sha": "52abee0867d22d6a274c6eda73f56a1b976b7b3a",
+          "ref": "refs/heads/codex/t20.25-processo-encerrando"
+        },
+        {
+          "sha": "bcf5064699fbcb17c902c6f089a4e82645129bd3",
+          "ref": "refs/heads/codex/t20.3-revisao-integracao"
+        },
+        {
+          "sha": "2137175194a47c7638632fa5497b8960ff06ffa2",
+          "ref": "refs/heads/codex/t20.30-aceite-manual-inicial"
+        },
+        {
+          "sha": "1bc03dd44ac9c899f786fd8d7851c95a34bb32b4",
+          "ref": "refs/heads/codex/t20.4-manifestos-dados"
+        },
+        {
+          "sha": "db2335233ed8f22e961aab6d39f44169affe590d",
+          "ref": "refs/heads/codex/t20.5-vigencia-instrumentos"
+        },
+        {
+          "sha": "d95cbe1ffa236c92a34f2d5cad1b9d87cc74eaa1",
+          "ref": "refs/heads/codex/t20.6-qualidade-por-consumidor"
+        },
+        {
+          "sha": "e91aaf9c8496de7b47131cb197ccad201a5d85b7",
+          "ref": "refs/heads/codex/t8.7-live-demo-acceptance"
+        },
+        {
+          "sha": "48ca375990d9de5af8f16f7148cee2d75d625bb1",
+          "ref": "refs/heads/codex/ui-f18-pr-chain"
+        },
+        {
+          "sha": "58280202bed9baca0334630c6c3cd2ed0aa98bf5",
+          "ref": "refs/heads/correcao/ci-windows"
+        },
+        {
+          "sha": "90b3ca18624478b0f9f19cf41c62c5a4f9361888",
+          "ref": "refs/heads/correcao/criterio-paridade"
+        },
+        {
+          "sha": "c22b3d1267e29f5d7126476547a81e5a31a8032e",
+          "ref": "refs/heads/correcao/exatidao-operacao"
+        },
+        {
+          "sha": "b027237962f578c5edc18dc5e35b112d738a083d",
+          "ref": "refs/heads/correcao/lacunas-entrega"
+        },
+        {
+          "sha": "533942af368c7d08832bdf84abe356f429e283be",
+          "ref": "refs/heads/correcao/painel-horario"
+        },
+        {
+          "sha": "1493d1b14be8214d5ad9f271b410ac144a5e5efb",
+          "ref": "refs/heads/correcao/painel-resultados-achados"
+        },
+        {
+          "sha": "91362e39225cf1a37b24d84a9f71ff3a5bb92580",
+          "ref": "refs/heads/correcao/paridade-estrategia"
+        },
+        {
+          "sha": "c9e2b65b5d8b5616edfdcd5c1eba093b0ec18baf",
+          "ref": "refs/heads/correcao/terminal-aberto-wine"
+        },
+        {
+          "sha": "d83e268844ae379e80b4e89f2b0f3409767754fb",
+          "ref": "refs/heads/correcao/validacao-real-sdk"
+        },
+        {
+          "sha": "c390b0451df418ae45eea4d098eface48d709cb4",
+          "ref": "refs/heads/docs/org-02-fontes-fila-politica"
+        },
+        {
+          "sha": "95554f781ba605faac37106b141cf30dc9e9ba84",
+          "ref": "refs/heads/docs/pendencia-custo-backtester"
+        },
+        {
+          "sha": "205375a8a0aaff45ff27651a953388cfc1a6ac84",
+          "ref": "refs/heads/docs/roadmap-plataforma-modular"
+        },
+        {
+          "sha": "179ad2db5f5d51cdec88ae050a14672ecedc64e6",
+          "ref": "refs/heads/integracao/fase16-t13.1"
+        },
+        {
+          "sha": "489591c0940c93c5e3766e7fa2febefad96b1717",
+          "ref": "refs/heads/master"
+        },
+        {
+          "sha": "db6ca9f730d36d7f026431690dec308685f577cb",
+          "ref": "refs/heads/tarefa/F-03-exposicao"
+        },
+        {
+          "sha": "7e2d330f5d9724d1a111fcd483cdb78db74496b0",
+          "ref": "refs/heads/tarefa/ORG-04-isolamento-schemas-pg"
+        },
+        {
+          "sha": "0d065207c4989cc413b54d71b533fa00196e4b9a",
+          "ref": "refs/heads/tarefa/T10.0-plano-sdk"
+        },
+        {
+          "sha": "98a678ddb546e824effe92d28a8f968122365d7f",
+          "ref": "refs/heads/tarefa/T10.1-contrato"
+        },
+        {
+          "sha": "1d93a1768a19a36d986e004132cd73f3bca8413a",
+          "ref": "refs/heads/tarefa/T10.10-gerar-mql5"
+        },
+        {
+          "sha": "b2dc33ca1216da8a00b91bcfc6c3b1dcbd16eb70",
+          "ref": "refs/heads/tarefa/T10.11-preparacao-market"
+        },
+        {
+          "sha": "28de1b4d0795a13c125d35dfb2568ada52005bc4",
+          "ref": "refs/heads/tarefa/T10.12-custo-real"
+        },
+        {
+          "sha": "020c5191bca7661b6d7fb8f2a1799aaf667c4211",
+          "ref": "refs/heads/tarefa/T10.2-biblioteca-seguranca"
+        },
+        {
+          "sha": "2d94e9612a923a5890aa5dc975f23b606d1faa05",
+          "ref": "refs/heads/tarefa/T10.3-robots-new"
+        },
+        {
+          "sha": "e384b7bd873bad5af1a660d69e2417e9b90233b3",
+          "ref": "refs/heads/tarefa/T10.4-robots-check"
+        },
+        {
+          "sha": "062aa0a9725a95cdfe24251558bb5df76ad66b92",
+          "ref": "refs/heads/tarefa/T10.5-bateria-completa"
+        },
+        {
+          "sha": "5c200063d1499b6a24588fad20978b5ae9237b4c",
+          "ref": "refs/heads/tarefa/T10.6-paridade"
+        },
+        {
+          "sha": "6a9c8077923e222fcf30d3fa5ccd0cb2207dc1e6",
+          "ref": "refs/heads/tarefa/T10.7-api-publica"
+        },
+        {
+          "sha": "833e77bba35bc958d559fbe8d1df7fd17ffe173e",
+          "ref": "refs/heads/tarefa/T10.8-documentacao"
+        },
+        {
+          "sha": "e02eb8e60da4fe05db6d6b47cd15c022f46fefe4",
+          "ref": "refs/heads/tarefa/T11.0-plano-operacao-discreta"
+        },
+        {
+          "sha": "0cfcced5529cd5e063c6a10bd224d045c56fe6bc",
+          "ref": "refs/heads/tarefa/T11.1-resample"
+        },
+        {
+          "sha": "59e35797f6b880c91616c1fd82387e80cfe482de",
+          "ref": "refs/heads/tarefa/T11.10-painel-mt5"
+        },
+        {
+          "sha": "87b8ed6000ffa58fdddf12314e35c2bad64c2f48",
+          "ref": "refs/heads/tarefa/T11.2-varios-ativos"
+        },
+        {
+          "sha": "f0df21305e9857d22510179bd6356dff4541bd0a",
+          "ref": "refs/heads/tarefa/T11.3-mt5-oculto"
+        },
+        {
+          "sha": "da64a5f05c38ebe3366ea9d640bb72fffe4407bf",
+          "ref": "refs/heads/tarefa/T11.4-avisos"
+        },
+        {
+          "sha": "c8d58181c8f94ecc4aadf562c746baea152b47ce",
+          "ref": "refs/heads/tarefa/T11.5-lote"
+        },
+        {
+          "sha": "78bf3f06357f7a1828146358320e6c46c077aa53",
+          "ref": "refs/heads/tarefa/T11.6-matriz"
+        },
+        {
+          "sha": "d57081cd12123f1fccbc86ec1166c641218424af",
+          "ref": "refs/heads/tarefa/T11.7-painel"
+        },
+        {
+          "sha": "e1aa96992f0ca23afbde0215cc20bd2664115c96",
+          "ref": "refs/heads/tarefa/T11.8-botao-painel"
+        },
+        {
+          "sha": "76dfe0f59b9727d83b78d523001591b493bc08a3",
+          "ref": "refs/heads/tarefa/T11.9-painel-vivo"
+        },
+        {
+          "sha": "f43c52ba69d823ae7c8046bd710f4a9ebf5cbc9b",
+          "ref": "refs/heads/tarefa/T12-carteira-leitura"
+        },
+        {
+          "sha": "99ff17df8739443ecc4bbf06fb1d4778a05a37ab",
+          "ref": "refs/heads/tarefa/T12-layout-terminal"
+        },
+        {
+          "sha": "28046261383902bb9293739add69b386032cb37a",
+          "ref": "refs/heads/tarefa/T12-revisao-painel-layout"
+        },
+        {
+          "sha": "bf55ad8931dd040333c0df5348579fbd3df771e7",
+          "ref": "refs/heads/tarefa/T12.1-safety-ampliada"
+        },
+        {
+          "sha": "3257b15e775d775dd75f74be99d5bbbdace09918",
+          "ref": "refs/heads/tarefa/T12.3-guardiao-global"
+        },
+        {
+          "sha": "b0fe5ca65b65953c16d2d7b6236b2bc8c3b097bb",
+          "ref": "refs/heads/tarefa/T12.4-ordens-pendentes-sdk"
+        },
+        {
+          "sha": "013c72355c952f3fa17ce3ca887e237754999581",
+          "ref": "refs/heads/tarefa/T12.6a-painel-v7"
+        },
+        {
+          "sha": "5d17e0097b5161294751332303195031b88189ba",
+          "ref": "refs/heads/tarefa/T12.L4-painel-demo-liberado"
+        },
+        {
+          "sha": "1ac017c8ee9dafe4c501c891d5e03b76966bdd3f",
+          "ref": "refs/heads/tarefa/T13.0-plano-analytics"
+        },
+        {
+          "sha": "05506ee05e748a7df91e1721916d1268e19cad81",
+          "ref": "refs/heads/tarefa/T13.1-calendario-sessoes"
+        },
+        {
+          "sha": "3f9e333450278b3eced39addaed60e3a9b4ef2d2",
+          "ref": "refs/heads/tarefa/T13.3-perfis-regimes"
+        },
+        {
+          "sha": "00f67705e806550b720f97c36c69405874d7db38",
+          "ref": "refs/heads/tarefa/T13.3b-producers-incrementais"
+        },
+        {
+          "sha": "827afab1618ccf53a37212e772dc80eb067feee9",
+          "ref": "refs/heads/tarefa/T13.4-hipoteses-walk-forward"
+        },
+        {
+          "sha": "ab5b8a96545a896ddaaafcdbf06a2c71dc3cd72e",
+          "ref": "refs/heads/tarefa/T13.5-publicador-candidato"
+        },
+        {
+          "sha": "dba30d7a2cf9e498cedffa50c39bcafa20381fb8",
+          "ref": "refs/heads/tarefa/T13.6-contrato-ui"
+        },
+        {
+          "sha": "2525ab4cab682c326b1ef178e0c11834b5f2ccb7",
+          "ref": "refs/heads/tarefa/T13.7a-especificacao-sombra"
+        },
+        {
+          "sha": "e8657fed0ffd0040c6da23cb955db6677782e478",
+          "ref": "refs/heads/tarefa/T13.R-matriz-requisitos"
+        },
+        {
+          "sha": "e92c9404523d02aa0f698786a4645756873a36ab",
+          "ref": "refs/heads/tarefa/T15-gestao-recursos"
+        },
+        {
+          "sha": "ad25fdc82a1aa172d8a95a4b2532488a08f9b4e3",
+          "ref": "refs/heads/tarefa/T15.7-copias-e-arquivos"
+        },
+        {
+          "sha": "73066fc462b1d35a0f104d658fd6dc7ea7697832",
+          "ref": "refs/heads/tarefa/T15.8-retencao-parquet"
+        },
+        {
+          "sha": "20224e195e9936c0b31d62bdc0b1d334e20ffa80",
+          "ref": "refs/heads/tarefa/T15.9-limites-retencao"
+        },
+        {
+          "sha": "d466541834d64fa64dcb4f5ecb717fd598f14a6d",
+          "ref": "refs/heads/tarefa/T16.0-plano-analytics"
+        },
+        {
+          "sha": "f0ef3ca9c7d9371265e6ae18fa066bfba72822dc",
+          "ref": "refs/heads/tarefa/T16.1-livro-operacoes"
+        },
+        {
+          "sha": "5d1004582dfb43a2265b672f2a8f29709ca543e7",
+          "ref": "refs/heads/tarefa/T16.10-insights"
+        },
+        {
+          "sha": "e2f81d5c7fa73244d3cc45ae60005fd34caf64c5",
+          "ref": "refs/heads/tarefa/T16.11a-aba-laboratorio"
+        },
+        {
+          "sha": "d243b2a28f8dc0fd6369f5a20049506c5b0c7fa2",
+          "ref": "refs/heads/tarefa/T16.11b-execucao-insights"
+        },
+        {
+          "sha": "701f4fd7c2b15bf6fc8d60876a66e76754e785d4",
+          "ref": "refs/heads/tarefa/T16.11c-interacoes-laboratorio"
+        },
+        {
+          "sha": "f94d1c5e5327f24c0553cddd4c97548f7e49257b",
+          "ref": "refs/heads/tarefa/T16.12-cli"
+        },
+        {
+          "sha": "adff6eb6027e0d43d74997588f01868a8055defd",
+          "ref": "refs/heads/tarefa/T16.12-cli-relatorio"
+        },
+        {
+          "sha": "21f79b3328a053b94a61b68696304ff8ee6fc26c",
+          "ref": "refs/heads/tarefa/T16.2-importadores"
+        },
+        {
+          "sha": "0fbf7d42b05b3ff67ff81e1b9312a31fd86a6329",
+          "ref": "refs/heads/tarefa/T16.3-enriquecimento"
+        },
+        {
+          "sha": "5d573b89e4729f7ff12a1f92b5944e85a5093eef",
+          "ref": "refs/heads/tarefa/T16.3a-calendario"
+        },
+        {
+          "sha": "af6281ab75d870cd88739a091c39977ac49b8781",
+          "ref": "refs/heads/tarefa/T16.3b-enriquecimento-temporal"
+        },
+        {
+          "sha": "6d9de5f8b6b31046018c7e4c28c19a68553d4494",
+          "ref": "refs/heads/tarefa/T16.3c-calendario-point-in-time"
+        },
+        {
+          "sha": "98ea88110a540e727c7067448958a4b741088f4c",
+          "ref": "refs/heads/tarefa/T16.4-agregacoes"
+        },
+        {
+          "sha": "5a1a8b2f5c45ad1aef4c2587a393490dbe409aa7",
+          "ref": "refs/heads/tarefa/T16.5-cache"
+        },
+        {
+          "sha": "53c23c902e88285cbae8e7d1cd93d26b74b48061",
+          "ref": "refs/heads/tarefa/T16.6-resimulacao"
+        },
+        {
+          "sha": "d3b8f174cd4744e022f01abb8e879e890794aed7",
+          "ref": "refs/heads/tarefa/T16.7-modos-saida"
+        },
+        {
+          "sha": "9e1586d24255d4b7876b1a83f9aab1a046e1c86e",
+          "ref": "refs/heads/tarefa/T16.8-dimensionamento"
+        },
+        {
+          "sha": "348354dc901c9dd06098077f50cb0793c6b8c72e",
+          "ref": "refs/heads/tarefa/T16.9-regras-simulador"
+        },
+        {
+          "sha": "a1ad9feeb6a85b10cb7dc5cda925fb2ab1f2ff29",
+          "ref": "refs/heads/tarefa/T17.1-sistema-visual"
+        },
+        {
+          "sha": "0d81adbabc945b26bb11d8f672388c481a8dbb88",
+          "ref": "refs/heads/tarefa/T17.2-componentes-apresentacao"
+        },
+        {
+          "sha": "ccde9ceb7076a96a34e16c0ec9b359b90d195289",
+          "ref": "refs/heads/tarefa/T17.3-laboratorio-graficos"
+        },
+        {
+          "sha": "c3f625b4bac43c4fd747fc5ca93587e2ed1572f5",
+          "ref": "refs/heads/tarefa/T17.4-aplicacao-abas"
+        },
+        {
+          "sha": "8ba93dacc9d194238267ff6bb80fdf9af9c42874",
+          "ref": "refs/heads/tarefa/T17.5-validacao-visual"
+        },
+        {
+          "sha": "8ba93dacc9d194238267ff6bb80fdf9af9c42874",
+          "ref": "refs/heads/tarefa/T17.6-laboratorio-legibilidade"
+        },
+        {
+          "sha": "cfe34dc8f6a35a92baf0c576835f44258d56a534",
+          "ref": "refs/heads/tarefa/T18.0-plano-associacoes"
+        },
+        {
+          "sha": "f45618f9059feb8e0f54fa75f70f8159995891ab",
+          "ref": "refs/heads/tarefa/T18.1-registry-indicadores"
+        },
+        {
+          "sha": "76404a16bc879cab05eb7cb6db6483d49d49b04b",
+          "ref": "refs/heads/tarefa/T18.2-associacoes"
+        },
+        {
+          "sha": "a0237b42c35d7edff9138053120a8c0ab47d8eff",
+          "ref": "refs/heads/tarefa/T18.8-relacoes-aderencia"
+        },
+        {
+          "sha": "489591c0940c93c5e3766e7fa2febefad96b1717",
+          "ref": "refs/heads/tarefa/T19.1-inventario-contratos"
+        },
+        {
+          "sha": "e4f75f03a176186d93a6f34e69a1a58832f449c2",
+          "ref": "refs/heads/tarefa/T20.2-referencias-financeiras"
+        },
+        {
+          "sha": "bcf5064699fbcb17c902c6f089a4e82645129bd3",
+          "ref": "refs/heads/tarefa/T20.3-patrimonio-flutuante"
+        },
+        {
+          "sha": "8b1042d1d4936896fffbbba91ceab6230a45a6c0",
+          "ref": "refs/heads/tarefa/T7.2-tabelas-ativos-backtest-lote"
+        },
+        {
+          "sha": "fa559d684ed05a3c9c8547eafcab95970e6f2ca8",
+          "ref": "refs/heads/tarefa/T8.0-plano-robos"
+        },
+        {
+          "sha": "225f9f81d4d847b8a692f2fb5abd8d7c3424b5e6",
+          "ref": "refs/heads/tarefa/T8.1-catalogo-robos"
+        },
+        {
+          "sha": "a56ddf7d1b2a9b063017bceb0de711e350846730",
+          "ref": "refs/heads/tarefa/T8.2-aba-robos"
+        },
+        {
+          "sha": "1ca7306cc3eff0389c5c1b9dde8d55d7d64a9eba",
+          "ref": "refs/heads/tarefa/T8.3-backtest-card"
+        },
+        {
+          "sha": "4fb50d4d147eb258a18aca378734442ef3766bff",
+          "ref": "refs/heads/tarefa/T8.4-ferramentas-mt5"
+        },
+        {
+          "sha": "48d71af3de9772d747ecfb20913370d36d0bcc12",
+          "ref": "refs/heads/tarefa/T8.5-backtest-mql5"
+        },
+        {
+          "sha": "0f60ad98e5f74f00714503fd8903dd86bbfa9c9a",
+          "ref": "refs/heads/tarefa/T8.6-bateria-seguranca"
+        },
+        {
+          "sha": "58589972ecf49c4f672fae19c2b9fd665b146daa",
+          "ref": "refs/heads/tarefa/T8.7-demo"
+        },
+        {
+          "sha": "c3ef89928f6b75665a3cf5361bc4e60182b94d06",
+          "ref": "refs/heads/tarefa/T8.7-validacao-demo"
+        },
+        {
+          "sha": "e441524a3f5892cd4ba266a98f1fa4848d147efc",
+          "ref": "refs/heads/tarefa/T9.1-cli-para-agentes"
+        },
+        {
+          "sha": "c4c9bc57e0163b00194d6950fb19c2474aeb0fea",
+          "ref": "refs/heads/tarefa/T9.2-auditoria"
+        },
+        {
+          "sha": "6925ca90904053099cd2e5d1cb589dd11a95cb67",
+          "ref": "refs/heads/tarefa/T9.3-ponte-restrita"
+        }
+      ],
+      "all_commits_reachable_in_fresh_github_clone": true,
+      "local_commit_count_in_github": 780
+    },
+    "hadouken": {
+      "refs": [
+        {
+          "sha": "b3a4bef0d288fd60b4b42bcacb33a22bb996e8e7",
+          "ref": "refs/heads/claude/ecstatic-galileo-mg82be"
+        },
+        {
+          "sha": "75170349acb213f1d24857d2e8419fbaf7081642",
+          "ref": "refs/heads/codex/b01-responsabilidades-framework"
+        },
+        {
+          "sha": "2948faa344abc4829eb40d5e6c489a3802f5c028",
+          "ref": "refs/heads/codex/b02-market-context-v1"
+        },
+        {
+          "sha": "1a117139d000ce8eba89afe5eaef8bfe476d4ddf",
+          "ref": "refs/heads/codex/b03-signal-intent-v1"
+        },
+        {
+          "sha": "5f8c4347a11cc69c2b0c9505eddaa1fddda8fac9",
+          "ref": "refs/heads/codex/b04-execution-plan-v1"
+        },
+        {
+          "sha": "946312fbfec215eb35b72090fc6a3aaca22d1442",
+          "ref": "refs/heads/codex/b05-position-policy-v1"
+        },
+        {
+          "sha": "492b861ee882e90e3f3997dc30ec9d1b668fb5d5",
+          "ref": "refs/heads/codex/b06-risk-decision-v1"
+        },
+        {
+          "sha": "3490a5e6684e696a332d84bb4e6c3013df43d96e",
+          "ref": "refs/heads/codex/b07-execution-result-v1"
+        },
+        {
+          "sha": "0efa12f0996fd9d224b9fb99831c66f977c37f30",
+          "ref": "refs/heads/codex/b08-native-base-v1"
+        },
+        {
+          "sha": "162277598c79a982f4594ae72670ef787c61d317",
+          "ref": "refs/heads/codex/b11-versionamento-sidecars"
+        },
+        {
+          "sha": "d4a2330929e91b862518f3c67145ccce0458f3a2",
+          "ref": "refs/heads/codex/g02-painel-host"
+        },
+        {
+          "sha": "7b095c0758e52354ce5d801f92ac9bceba962680",
+          "ref": "refs/heads/codex/g14-candle-degrade"
+        },
+        {
+          "sha": "be30b291a208ccd430687c34cc81bd0d79f33cbc",
+          "ref": "refs/heads/codex/g14-candle-time"
+        },
+        {
+          "sha": "8a69755b844611674497f69014c11ba95ecf52d4",
+          "ref": "refs/heads/codex/g14-temas-marcas"
+        },
+        {
+          "sha": "aa384d0097cb82ff6417a454c8fbfdbda687f304",
+          "ref": "refs/heads/codex/pm12-aceite-integracao"
+        },
+        {
+          "sha": "51a34237a96f64e42b0f5ef6b3d840bab44efdbc",
+          "ref": "refs/heads/codex/pm12-painel-compacto"
+        },
+        {
+          "sha": "d710503a47c7fc8e9115c25fed085de5a0d88143",
+          "ref": "refs/heads/codex/pm12-painel-estrategias"
+        },
+        {
+          "sha": "93de9c4d1b5298aa7a675599d5f3ee330a528390",
+          "ref": "refs/heads/codex/pm12-painel-nativo"
+        },
+        {
+          "sha": "480d31048ee00e92628e615848d97b20406b442b",
+          "ref": "refs/heads/codex/t12-3-orcamento-global"
+        },
+        {
+          "sha": "ff922aaef31ca484fea87d635964b94c0f731506",
+          "ref": "refs/heads/codex/t16-2b-csv-completo"
+        },
+        {
+          "sha": "a391088ac790f4e62d2ddc20fc17dcffe8ea447c",
+          "ref": "refs/heads/codex/t16-2b-csv-completo-main"
+        },
+        {
+          "sha": "0ca3448c37c81c2d0f52fa999f158fc2e705af20",
+          "ref": "refs/heads/codex/t16-2c-fechamento-final"
+        },
+        {
+          "sha": "855baec99a80a8c320897dd63ab3154e37251d0e",
+          "ref": "refs/heads/codex/t19-36-integracao"
+        },
+        {
+          "sha": "dc789710f57a54260c0243ceb1716b66ae523ea9",
+          "ref": "refs/heads/codex/t19-36-observacao"
+        },
+        {
+          "sha": "b40e5bef0470d5fab74667833981b2bb76c658a7",
+          "ref": "refs/heads/codex/t19-38-integracao"
+        },
+        {
+          "sha": "9a003dd051f4b40f9c6f1effcf749aecb0122f51",
+          "ref": "refs/heads/codex/t19-38-observacao"
+        },
+        {
+          "sha": "f7357c61adc18023b116399486c457c2bbe04909",
+          "ref": "refs/heads/codex/t19-39-integracao"
+        },
+        {
+          "sha": "6677bce1a4d08f6f92d51ad6caccd078d2e33ef5",
+          "ref": "refs/heads/codex/t19-39-observacao"
+        },
+        {
+          "sha": "3c5fb55ec5b4a5ab06c69e2f37c64d564ff94a85",
+          "ref": "refs/heads/codex/t19-40-integracao"
+        },
+        {
+          "sha": "6b4f9ec8800afcd50158e5991dfde89a14b28264",
+          "ref": "refs/heads/codex/t19-40-observacao"
+        },
+        {
+          "sha": "b8e8de99975375b041eb20fb23472e7a4591345a",
+          "ref": "refs/heads/codex/t19-move-guard"
+        },
+        {
+          "sha": "ab96ecc516708aec7326e5a4faff3de50b81fed8",
+          "ref": "refs/heads/codex/t19-move-guard-integracao"
+        },
+        {
+          "sha": "c0c73c96bab9663a55b7ae16c900b66e37f57e5f",
+          "ref": "refs/heads/codex/t19-move-guard-numericos"
+        },
+        {
+          "sha": "ac5613c7711f995f3adb52fa937d0c391456bbd8",
+          "ref": "refs/heads/codex/t19.15-politica-temporal"
+        },
+        {
+          "sha": "55ab0d8107ed1a4d009162f5c373286862b950c4",
+          "ref": "refs/heads/codex/t19.16-atr-temporal"
+        },
+        {
+          "sha": "0146fc5e0baa88a263a2b65eec4ff486736cb6e4",
+          "ref": "refs/heads/codex/t19.16-donchian-temporal"
+        },
+        {
+          "sha": "426302243b94a498d57157e4ce107fd57896242f",
+          "ref": "refs/heads/codex/t19.16-er-temporal"
+        },
+        {
+          "sha": "109036af47ec3c6ce839f6117f99a68ea0415e12",
+          "ref": "refs/heads/codex/t19.20-cooldown"
+        },
+        {
+          "sha": "05f04c7d746a07e1bff5f04704fa9b8bf951e166",
+          "ref": "refs/heads/codex/t19.20-session-entry"
+        },
+        {
+          "sha": "87c6298760abaccd8ebebf73b64d8b7d1b3d41e7",
+          "ref": "refs/heads/codex/t19.36-vwap-bands"
+        },
+        {
+          "sha": "807fde08dc31b4ed5c85d28596c3744444bdc3c9",
+          "ref": "refs/heads/codex/t19.37-s09-referencia"
+        },
+        {
+          "sha": "46d86885d30a64bb66e6a9f322a85e5f32a1ec37",
+          "ref": "refs/heads/codex/t19.38-estocastico-ema9"
+        },
+        {
+          "sha": "94e3de07f55dc929f010db3ee9e558f0dd0687c5",
+          "ref": "refs/heads/codex/t19.39-madrid"
+        },
+        {
+          "sha": "3dcf284cf138df2e86faed40383d7bef6260f21e",
+          "ref": "refs/heads/codex/t19.40-ha-hilo"
+        },
+        {
+          "sha": "da32c3414d140aec3c37bbc4dce919d24f056c3e",
+          "ref": "refs/heads/codex/t19.56-lotes-nativos"
+        },
+        {
+          "sha": "70e357ce587ec73c5f6e00578df78d12f71b0d09",
+          "ref": "refs/heads/codex/t19.57-parcial-nativa"
+        },
+        {
+          "sha": "ccab73e043cf15d7dcd40ef9a7ff7443bded4ff4",
+          "ref": "refs/heads/codex/t19.57-pullback-nativo"
+        },
+        {
+          "sha": "3e9b7c0fb207a15050e0020c6f988d98b6da5629",
+          "ref": "refs/heads/codex/t20.1-tsmom"
+        },
+        {
+          "sha": "92b587cc53b56c133284d692d416b8b5f949e81a",
+          "ref": "refs/heads/codex/t20.2-momentum-intradiario"
+        },
+        {
+          "sha": "292a271a912c0a4ca8bb9bda079fe26cd104eca4",
+          "ref": "refs/heads/codex/t20.3-donchian-tendencia"
+        },
+        {
+          "sha": "4594d791300606ee6ba0c99ddde3d4211bcc4cba",
+          "ref": "refs/heads/codex/t21.0-registro-frente-estrategia"
+        },
+        {
+          "sha": "3f16b72395153e39dd93d48910de14c708c64f60",
+          "ref": "refs/heads/codex/t21.1-turtle-soup"
+        },
+        {
+          "sha": "a32bba54af9f02d251cf0531d5ca87770bf63eee",
+          "ref": "refs/heads/codex/t21.11-classificador-regime"
+        },
+        {
+          "sha": "86c8159f18c3603c053e268f87aac316db6ef285",
+          "ref": "refs/heads/codex/t21.2-rsi2-tendencia"
+        },
+        {
+          "sha": "d6ffbd8aea1a67ff6df5c24e0ec0d42d49a095e2",
+          "ref": "refs/heads/codex/t21.3-area-de-valor"
+        },
+        {
+          "sha": "8dd038a65fc806b1651e585abbfdc36288a9e62f",
+          "ref": "refs/heads/codex/t21.4-nr7-rompimento"
+        },
+        {
+          "sha": "4251fb961452634630a74e75e549b50e4cabaf0c",
+          "ref": "refs/heads/codex/t21.5-gap-abertura"
+        },
+        {
+          "sha": "f5919b164c46817d9ba0c0dd766f16eefb3efe39",
+          "ref": "refs/heads/codex/t21.6-faixa-asia-orb"
+        },
+        {
+          "sha": "af331593b39a33d52ae78a4cadc5fa292e67f525",
+          "ref": "refs/heads/codex/t21.9-overnight"
+        },
+        {
+          "sha": "ec550d77caae74e9f5f4ffe30cea5ccd29621624",
+          "ref": "refs/heads/codex/t22-continuidade-formatacao"
+        },
+        {
+          "sha": "95921fe9b1798384a2dfd6a98ab2d47826f2a5ca",
+          "ref": "refs/heads/correcao/lacunas-entrega"
+        },
+        {
+          "sha": "720a4897eed0c52a77317e55c24acc3cc50af036",
+          "ref": "refs/heads/docs/backlog-prs-mesclados"
+        },
+        {
+          "sha": "b2971b4d744c556c752fc1ea355fb16920203cc2",
+          "ref": "refs/heads/docs/g16-painel-demo"
+        },
+        {
+          "sha": "ee2de3f8847484448be5c227fae0d4d262ac4585",
+          "ref": "refs/heads/docs/g17-resposta-do-painel"
+        },
+        {
+          "sha": "64f466329b67f0175845d721546a719fc4130345",
+          "ref": "refs/heads/docs/roadmap-plataforma-modular"
+        },
+        {
+          "sha": "91e46f6e3ff0e55d3c5cc5a9daa64366de8f6b85",
+          "ref": "refs/heads/feat/D-02-ordens-pendentes"
+        },
+        {
+          "sha": "ecae3a7edac72cd0abce1488830a06187d589e28",
+          "ref": "refs/heads/hadouken2/painel-responsivo"
+        },
+        {
+          "sha": "005e31f91cad54bb42cd530d65d3375d5ca5eb27",
+          "ref": "refs/heads/hadouken2/safety-carteira"
+        },
+        {
+          "sha": "b173bec8b580df88ed0859eae4275d0dfc217a91",
+          "ref": "refs/heads/master"
+        },
+        {
+          "sha": "225fa7b75c646e530990a1b3f027ea535b70b686",
+          "ref": "refs/heads/tarefa/F-03-exposicao"
+        },
+        {
+          "sha": "8d06844552def3bd8e01862dc2bf7b1b9ce9ad10",
+          "ref": "refs/heads/tarefa/G-02-painel-modular"
+        },
+        {
+          "sha": "d2ba9c3d24fb8c9585a64a53c1583cfa29ed0a1f",
+          "ref": "refs/heads/tarefa/T12.1-safety-ampliada"
+        },
+        {
+          "sha": "fe1bdd184a89da913b9fc6717ce370a7fbbaf760",
+          "ref": "refs/heads/tarefa/T12.6a-painel-v7"
+        },
+        {
+          "sha": "d02ebcdfca3e2f77532ec25bc2f658d752744647",
+          "ref": "refs/heads/tarefa/T8.9-estrategias"
+        }
+      ],
+      "all_commits_reachable_in_fresh_github_clone": true,
+      "local_commit_count_in_github": 253
+    },
+    "safety": {
+      "refs": [
+        {
+          "sha": "2cc175fa9a43102879bfc7ad42b302bcc32cb499",
+          "ref": "refs/heads/codex/b06-risk-decision-v1"
+        },
+        {
+          "sha": "92c52085dfd4ee7f5f504afc2f22bfdf5223a09d",
+          "ref": "refs/heads/codex/b07-execution-result-v1"
+        },
+        {
+          "sha": "d2595ea45adf38c82234bdd69b9597fcc2ab6334",
+          "ref": "refs/heads/codex/pm12-painel-distribuicao"
+        },
+        {
+          "sha": "d45257b13f20332ade8d811eb2aec87f70178563",
+          "ref": "refs/heads/codex/t12-3-orcamento-global"
+        },
+        {
+          "sha": "8bc2c6daee09f26767a0fd84dff2106c57a9a980",
+          "ref": "refs/heads/docs/roadmap-plataforma-modular"
+        },
+        {
+          "sha": "2ed3866cf44044072d477f750aa03f20f276c26f",
+          "ref": "refs/heads/main"
+        },
+        {
+          "sha": "fc93bba11eb95c776f1d62e4fac3a9b00a199777",
+          "ref": "refs/heads/tarefa/F-03-exposicao"
+        },
+        {
+          "sha": "d6f88e45f08ecc01a3be0d5c5ea6911cec37f39b",
+          "ref": "refs/heads/versao/1.1.0"
+        },
+        {
+          "sha": "b5d6f7e59ab39120808a4327bea4c9e59a786c36",
+          "ref": "refs/heads/versao/1.2.0"
+        },
+        {
+          "sha": "619603fa30c0a456b975da83a2084309bc1043e5",
+          "ref": "refs/tags/v1.0.0"
+        },
+        {
+          "sha": "9f8639765ab109140746a97cf459709684803c0d",
+          "ref": "refs/tags/v1.1.0"
+        },
+        {
+          "sha": "53278eba112e8067cd58f16d302cbf144b00fb7a",
+          "ref": "refs/tags/v1.2.0"
+        },
+        {
+          "sha": "2ed3866cf44044072d477f750aa03f20f276c26f",
+          "ref": "refs/tags/v1.3.0"
+        }
+      ],
+      "all_commits_reachable_in_fresh_github_clone": true,
+      "local_commit_count_in_github": 18
+    }
+  }
+}

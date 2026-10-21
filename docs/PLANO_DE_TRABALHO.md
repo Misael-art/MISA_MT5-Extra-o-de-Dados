@@ -25,6 +25,14 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+**Continuidade pré-formatação (2026-10-21):** clones GitHub/pins/WIP e ensaio
+SQLite conferidos no host atual; [roteiro](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
+e verificador somente leitura conferidos. Complemento privado de142 MB salvo no SD
+que o proprietário manterá fora da formatação: hashes,43 tabelas e leitura do histórico
+verificados a partir da mídia. Preservação de desenvolvimento concluída; ambientes/caches
+são recriados. Validação no novo SO e aceites operacionais permanecem pendentes.
+A frente HADOUKEN49–60 está no mapa de pendências, sem integração automática.
+
 **Repasse de 2026-10-21:** instalação consolidada até AppPR171/ac7af2c3,
 Hec550d77/Safety1.8.0; fila172–177 ainda não integrada/instalada. Registro de
 entregas, limites, evidências e limpeza segura no [repasse](repasse/INTEGRACAO_20261021.md).

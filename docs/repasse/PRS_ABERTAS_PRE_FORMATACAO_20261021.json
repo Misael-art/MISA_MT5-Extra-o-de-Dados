@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "snapshot_at": "2026-10-21T18:03:30.499279+00:00",
+  "all_open_prs": {
+    "MISA_MT5-Extra-o-de-Dados": [
+      {
+        "number": 79,
+        "title": "docs: ORG-02 — fontes canônicas, fila de integração e política Git",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/79",
+        "head": "c390b0451df418ae45eea4d098eface48d709cb4",
+        "branch": "docs/org-02-fontes-fila-politica",
+        "base": "master",
+        "draft": true
+      },
+      {
+        "number": 80,
+        "title": "test(ORG-04): isola schemas PostgreSQL sem apagar public",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/80",
+        "head": "7e2d330f5d9724d1a111fcd483cdb78db74496b0",
+        "branch": "tarefa/ORG-04-isolamento-schemas-pg",
+        "base": "docs/org-02-fontes-fila-politica",
+        "draft": true
+      },
+      {
+        "number": 172,
+        "title": "T19.34: manter o contexto do robô dentro da largura disponível",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/172",
+        "head": "bfc422a523386ecd6b9e8448b963e638151fb552",
+        "branch": "codex/t19-34-contexto-responsivo",
+        "base": "master",
+        "draft": true
+      },
+      {
+        "number": 173,
+        "title": "T15.1: manter cópias acessíveis com leitura de pastas incompleta",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/173",
+        "head": "4d3f560660b7b5e8a5394145172942f1d0899cf5",
+        "branch": "codex/t15-1-recursos-varredura",
+        "base": "codex/t19-34-contexto-responsivo",
+        "draft": true
+      },
+      {
+        "number": 174,
+        "title": "T2.5: reutilizar a ligação MT5 correspondente sem desligar API compartilhada",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/174",
+        "head": "9e070335ef1d72e0e4681513972fe63092cceeae",
+        "branch": "codex/t2-5-conexao-preservada",
+        "base": "codex/t15-1-recursos-varredura",
+        "draft": true
+      },
+      {
+        "number": 175,
+        "title": "T20.12: consultar o registro canônico de estudos pela interface",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/175",
+        "head": "e174cc789b614f7403c82eb439b829ff008929a5",
+        "branch": "codex/t20-12-consulta-ui",
+        "base": "codex/t2-5-conexao-preservada",
+        "draft": true
+      },
+      {
+        "number": 176,
+        "title": "T19.34: navegação e mensagens legíveis com fonte ampliada",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/176",
+        "head": "e7656daba8a3156b26b7cf8983484c20b9c9bcea",
+        "branch": "codex/t19-34-navegacao-adaptavel",
+        "base": "codex/t20-12-consulta-ui",
+        "draft": true
+      },
+      {
+        "number": 177,
+        "title": "T19.34: resumo e erros do catálogo na largura real",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/177",
+        "head": "4ab87025e1e829021cbe4b6bb2e380ee7b67ee85",
+        "branch": "codex/t19-34-cabecalho-catalogo",
+        "base": "codex/t19-34-navegacao-adaptavel",
+        "draft": true
+      },
+      {
+        "number": 178,
+        "title": "docs: registrar repasse da integração e limpeza segura",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/178",
+        "head": "a6f5dc2d989fa8a83b22e7f1e0e089c58a5cc690",
+        "branch": "codex/repasse-integracao-20261021",
+        "base": "master",
+        "draft": false
+      }
+    ],
+    "projeto-indicadores-mt5": [
+      {
+        "number": 49,
+        "title": "T20.1: HDK_Tsmom — momentum de série temporal",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/49",
+        "head": "3e9b7c0fb207a15050e0020c6f988d98b6da5629",
+        "branch": "codex/t20.1-tsmom",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 50,
+        "title": "T20.2: HDK_IntradayMomentum — momentum intradiário de sessão",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/50",
+        "head": "92b587cc53b56c133284d692d416b8b5f949e81a",
+        "branch": "codex/t20.2-momentum-intradiario",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 51,
+        "title": "T20.3: preset Donchian tendência H4 + registro das sugestões T20",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/51",
+        "head": "292a271a912c0a4ca8bb9bda079fe26cd104eca4",
+        "branch": "codex/t20.3-donchian-tendencia",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 52,
+        "title": "T21.1: HDK_TurtleSoup — falso rompimento",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/52",
+        "head": "3f16b72395153e39dd93d48910de14c708c64f60",
+        "branch": "codex/t21.1-turtle-soup",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 53,
+        "title": "T21.2: HDK_Rsi2Trend — RSI(2) a favor da tendência",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/53",
+        "head": "86c8159f18c3603c053e268f87aac316db6ef285",
+        "branch": "codex/t21.2-rsi2-tendencia",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 54,
+        "title": "T21.6: preset HDK_Orb — faixa da madrugada (Ásia)",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/54",
+        "head": "f5919b164c46817d9ba0c0dd766f16eefb3efe39",
+        "branch": "codex/t21.6-faixa-asia-orb",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 55,
+        "title": "T21.4: HDK_Nr7Breakout — NR7 de Crabel",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/55",
+        "head": "8dd038a65fc806b1651e585abbfdc36288a9e62f",
+        "branch": "codex/t21.4-nr7-rompimento",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 56,
+        "title": "T21.5: HDK_GapFade — gap de abertura",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/56",
+        "head": "4251fb961452634630a74e75e549b50e4cabaf0c",
+        "branch": "codex/t21.5-gap-abertura",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 57,
+        "title": "T21.3: HDK_ValueArea — área de valor e regra dos 80%",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/57",
+        "head": "d6ffbd8aea1a67ff6df5c24e0ec0d42d49a095e2",
+        "branch": "codex/t21.3-area-de-valor",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 58,
+        "title": "T21.9: HDK_OvernightDrift — deriva noturna",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/58",
+        "head": "af331593b39a33d52ae78a4cadc5fa292e67f525",
+        "branch": "codex/t21.9-overnight",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 59,
+        "title": "T21.11: classificador de regime (referência para o gestor)",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/59",
+        "head": "a32bba54af9f02d251cf0531d5ca87770bf63eee",
+        "branch": "codex/t21.11-classificador-regime",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 60,
+        "title": "T21.0: registro da frente Estratégia (cobertura, C-13 a C-24, passagem ao coordenador)",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/60",
+        "head": "4594d791300606ee6ba0c99ddde3d4211bcc4cba",
+        "branch": "codex/t21.0-registro-frente-estrategia",
+        "base": "master",
+        "draft": false
+      },
+      {
+        "number": 61,
+        "title": "T22: continuidade pós-formatação do host",
+        "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/61",
+        "head": "a94f0156c3a84516d9731f6439b2ee10541446d3",
+        "branch": "codex/t22-continuidade-formatacao",
+        "base": "master",
+        "draft": false
+      }
+    ],
+    "mt5x-safety": []
+  },
+  "note": "Preservação de contexto: PR aberta não implica elegibilidade/aceite. Incluir79/80legadas e61decontinuidade; não mesclar indiscriminadamente."
+}
