@@ -41,6 +41,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| Continuidade 2026-10-21 | Validar host, clones e restauração preservada | Repasse App179 e SD | Validada no host encontrado: três clones/fsck, 43 tabelas e histórico reabertos em leitura; 56 testes, doctor20/1/0. [Registro](repasse/RETOMADA_VALIDADA_20261021.md); novo SO não comprovado |
 | B-11 | Política de versões SDK/sidecars e migração | — | ✅ política integrada M132/7e2178a e H14/d018f6c; SDK1 preservado; [política](sdk/versionamento-contratos.md); sem mudança de runtime |
 | T19.3 (conexão) | Inspeção e leitura de geração na transação recebida | T19.3 | ✅ concluída, [PR130](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/130); seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis; [causa e evidência](analytics/T19.3_CONEXAO_SNAPSHOT.md); Windows físico pendente |
 | T19.6 | Pivôs causais Fractals/ZigZag | T19.3 | ✅ concluída, [PR131](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/131); #130 integrada antes; seis checks6a9d580:1467Ubuntu/48PG/1569WindowsCI;117 locais compatíveis/61 caminhos finais, doctor21/1/0;720 fatos atuais+720 anteriores preservados; [contrato e rematerialização](analytics/T19.6_PIVOS_CAUSAIS.md); Windows físico pendente |
