@@ -1,5 +1,12 @@
 # Validação dos instaladores com o MT5 real (T0.3 e T2.6)
 
+Pendência T19.34 (2026-10-21): conferir o contexto de Robôs em Windows físico,
+com96/144DPI, fontes ampliadas, dois temas e rolagem/teclado em900×620. O runner
+Windows da ponta8056fd6 teve uma falha de mapeamento no ensaio144DPI; o ensaio
+passou a percorrer ambas as rolagens e aguardar geometria por prazo limitado,
+preservando os limites e acrescentando visibilidade. Novo CI obrigatório ainda
+pendente; Tk/Xvfb local e CI não substituem este checklist físico.
+
 Registro das execuções manuais que o CI não cobre (download e instalação do MT5, Wine,
 ponte com o MT5 real). Roteiro em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md), seções T0.3 e T2.6.
 

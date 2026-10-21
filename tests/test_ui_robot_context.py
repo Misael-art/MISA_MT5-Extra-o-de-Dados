@@ -1,10 +1,46 @@
 """Textos do resultado cabem no viewport real, inclusive com fonte ampliada."""
 from copy import deepcopy
+import json
+import time
 
 import pytest
 
 from mt5_extracao.composition import base_composition
 from tests.test_ui_main_window import ui, _set_ui_scaling
+
+
+def _reach_label(ui, detail, label):
+    # Em janela empilhada, o detalhe fica depois dos cards. Percorre as duas
+    # áreas, como o usuário, antes de exigir o mapeamento do rótulo. O Tk pode
+    # concluir o resize/map em eventos posteriores; 150 ms não é esse contrato.
+    outer = ui.robots_panel.body_canvas
+    inner = detail.tests_viewport.canvas
+    deadline = time.monotonic() + 5
+    while True:
+        content = detail.tests_viewport.content
+        inner.yview_moveto(label.winfo_y() / max(1, content.winfo_height()))
+        ui.pump(.02)
+        body = ui.robots_panel.body
+        outer.yview_moveto((label.winfo_rooty() - body.winfo_rooty()) / max(1, body.winfo_height()))
+        ui.pump(.05)
+        top = max(label.winfo_rooty(), inner.winfo_rooty(), outer.winfo_rooty())
+        bottom = min(label.winfo_rooty() + label.winfo_height(),
+                     inner.winfo_rooty() + inner.winfo_height(),
+                     outer.winfo_rooty() + outer.winfo_height())
+        if (label.winfo_ismapped() and label.winfo_viewable()
+                and top < bottom
+                and label.winfo_reqwidth() <= label.master.winfo_width()
+                and int(float(label.cget("wraplength"))) <= label.winfo_width()):
+            return
+        assert time.monotonic() < deadline, json.dumps({
+            "geometry": ui.root.geometry(), "tab": detail.tabs.select(),
+            "label": str(label), "mapped": label.winfo_ismapped(),
+            "requested": (label.winfo_reqwidth(), label.winfo_reqheight()),
+            "allocated": (label.winfo_width(), label.winfo_height()),
+            "parent": (label.master.winfo_width(), label.master.winfo_height()),
+            "visible_vertical_intersection": (top, bottom),
+            "outer_scroll": outer.yview(), "inner_scroll": inner.yview(),
+        })
 
 
 @pytest.mark.parametrize("scaling", [96 / 72, 144 / 72])
@@ -40,6 +76,7 @@ def test_backtest_context_wraps_inside_actual_viewport_and_remains_scrollable(ui
             ui.root.geometry(f"{width}x{height}")
             ui.pump(.15)
             for label in labels:
+                _reach_label(ui, detail, label)
                 assert label.winfo_ismapped()
                 assert label.winfo_reqwidth() <= label.master.winfo_width(), (
                     width, height, str(label), label.winfo_reqwidth(), label.master.winfo_width())

@@ -1,5 +1,13 @@
 ## T19.34 — Contexto do robô sem corte horizontal, em revisão (2026-10-21)
 
+PR172 permanece sem merge: CI39581746127 teve uma falha Windows no novo ensaio
+144DPI (`winfo_ismapped=0`), com2.753 aprovados/85skips. Linux passou2.619/220skips;
+PG55. O ensaio passou a percorrer as duas rolagens e aguardar o mapeamento e
+a geometria por prazo limitado, mantendo os asserts e acrescentando visibilidade
+real.12 testes Tk/SDK passaram localmente; runtime visual/financeiro inalterado.
+Novo CI da correção obrigatório; a causa exata do evento no runner continua
+indeterminada, sem alegação de aceite Windows físico.
+
 Recorte isolado sobre T19.24: rótulos do detalhe usam sua largura real, em vez do
 cartão externo. Regressão reproduziu688px de quebra em594px disponíveis; ajuste
 aprovado em dois temas/escalas96/144 simuladas e1920/1280/900/820, incluindo900×620,
@@ -15,11 +23,20 @@ SDK+matriz visual+exibição da composição passaram13 testes em29,68s após co
 A nova ponta exige CI próprio; a execução anterior permanece como evidência do
 snapshot anterior, sem conceder aceite ao SDK que vazava o argumento interno.
 
-Fila de instalação permanece serial: T20.12 PR170833de99 e T19.24 PR171da05937
-em CI; PG54/55 aprovados. Linux da170 passou; Windows e checks restantes ainda
-precisam concluir. App1691612301/Hec550/Safety1.8.0 segue instalado. Nesta versão,
+T20.12/PR170 foi integrado em86ae848 e T19.24/PR171 emac7af2c, com seis checks
+aprovados nas pontas833de99/d7020ac. T19.24: Linux2.619/218skips, Windows2.752/85skips,
+PG55. Appac7af2c/Hec550/Safety1.8.0 está instalado, com configurações/preferências,
+atalho, ponte e terminal preservados; exposição0/0 antes e depois. Avaliação
+registrada na instalação: Madrid408barras/3operações/111,0875, reabertura do mesmo
+run e nova consulta/cache auditadas, com livro numericamente conciliado; isso não
+qualifica livro transacional, fonte, reserva final ou estatística. Interface reabriu
+o resultado sem novo cálculo. T19.34 aguarda sua própria correção/CI antes da troca.
+Na instalação anterior,
 a UI local reabriu/exportou12.405 barras EURUSD/H1; CSV completo e backup existente
 conferidos, sem extrair/atualizar na corretora nem restaurar o banco do proprietário.
+
+As seções seguintes preservam os snapshots anteriores de revisão; o estado
+integrado/instalado acima prevalece sobre suas indicações históricas de pendência.
 
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
