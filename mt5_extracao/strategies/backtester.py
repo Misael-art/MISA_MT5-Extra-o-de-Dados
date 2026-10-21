@@ -296,6 +296,9 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     signal_target_distance = (_signal_point_distance(rules.signal_target_points, spec)
                               if rules.signal_target_points is not None
                               and fixed_target is None and rules.target_r is None else None)
+    absolute_target = rules.absolute_signal_target and fixed_target is None and rules.target_r is None
+    if absolute_target and not signal_stop_levels:
+        _signal_point_distance(0, spec)  # também exige tick/point conhecidos para o alvo absoluto
     n = len(data)
 
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
@@ -421,9 +424,13 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 stop = _signal_stop_price(stop, d, stop_offset, spec.tick)
             signal_target = (None if signal_target_distance is None else
                              _signal_price(c[s] + d * signal_target_distance, spec.tick))
+            if absolute_target:
+                signal_target = _signal_price(tgt_long[s] if d > 0 else tgt_short[s], spec.tick)
             stop_side = o[i] + (spr_open[i] if d < 0 else 0)
             invalid_signal_stop = signal_stop_levels and (
-                not np.isfinite(stop) or not 0 < stop < np.finfo(float).max or (stop_side-stop)*d <= 0)
+                not np.isfinite(stop) or not 0 < stop < np.finfo(float).max or (stop_side-stop)*d <= 0
+                or (fixed_stop is None and (not np.isfinite(c[s]) or c[s]==np.finfo(float).max
+                                            or (c[s]-stop)*d <= 0)))
             invalid_signal_target = signal_target is not None and (
                 not np.isfinite(signal_target) or (signal_target-entry)*d <= 0)
             risk_px = (entry - stop) * d
@@ -437,6 +444,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 else:
                     target = (signal_target if signal_target is not None else
                               (entry + d * fixed_target) if fixed_target is not None else
+                              (entry + d * rules.target_r * risk_px) if rules.absolute_signal_target and rules.target_r is not None else
                               (tgt_long[s] if d > 0 else tgt_short[s]))
                     if not np.isfinite(target) and rules.target_r:
                         target = entry + d * rules.target_r * risk_px

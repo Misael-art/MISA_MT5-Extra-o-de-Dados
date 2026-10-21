@@ -5,20 +5,11 @@ conferidos pelo serviço de execução. Não comprova sucesso do Move Guard nem 
 """
 import hashlib
 import math
-from pathlib import Path
-import re
 import pandas as pd
-from ..robots import mql
 from ..strategies import get_strategy
 from ..composition.schema import canonical_json
-from .protocol import strict_events
+from .strategy_context import read_journal, windows
 
-_CONTEXT=re.compile(r"HDK_STRATEGY_CONTEXT ([^\r\n]+)")
-_BAR=re.compile(r"HDK_STRATEGY_BAR event_at=(\d+) at=(\d+) open=([^ ]+) high=([^ ]+) low=([^ ]+) close=([^\s]+)")
-_FIELDS={"event_at","confirmed_at","available_at","count","reset","point","tick","long","short",
-         "stop_long","stop_short","target_long","target_short","guard_long","guard_short"}
-_INTS={"event_at","confirmed_at","available_at","count","reset","long","short"}
-_EMPTY=float.fromhex("0x1.fffffffffffffp+1023")
 
 
 def _fail():
@@ -26,41 +17,11 @@ def _fail():
 
 
 def validate(directory, params, signals):
-    text="\n".join(mql.read_text(p) for p in sorted((Path(directory)/"Tester").glob("Agent-*/logs/*.log")))
-    contexts=[]
-    for match in strict_events(text,"HDK_STRATEGY_CONTEXT",_CONTEXT):
-        raw=match.group(1)
-        pairs=[item.split("=",1) for item in raw.strip().split()]
-        if any(len(pair)!=2 for pair in pairs) or len(pairs)!=len(_FIELDS) or {p[0] for p in pairs}!=_FIELDS:_fail()
-        try:row={key:(int(value) if key in _INTS else float(value)) for key,value in pairs}
-        except (ValueError,OverflowError):_fail()
-        if (not all(math.isfinite(v) and v!=_EMPTY for v in row.values()) or
-                row["long"] not in (0,1) or row["short"] not in (0,1) or row["reset"] not in (0,1) or
-                not row["event_at"]<row["confirmed_at"]<=row["available_at"] or
-                not 300<=row["count"]<=1500 or row["point"]<=0 or row["tick"]<=0):_fail()
-        contexts.append(row)
-    if not contexts or [r["event_at"] for r in contexts]!=sorted({r["event_at"] for r in contexts}):_fail()
-    bars={}
-    try:
-        for match in strict_events(text,"HDK_STRATEGY_BAR",_BAR):
-            event,at,*values=match.groups()
-            bars.setdefault(int(event),[]).append((int(at),*map(float,values)))
-    except (ValueError,OverflowError):_fail()
-    if set(bars)!={r["event_at"] for r in contexts}:_fail()
-    window=[];decisions=[];digest=hashlib.sha256();strategy=get_strategy("stoch_ema9",**params)
-    by_event={}
-    for row in contexts:
-        new=bars[row["event_at"]]
-        if row["reset"]:
-            if len(new)!=row["count"]:_fail()
-            window=new
-        else:
-            if len(new)!=1 or not window or row["count"] not in (len(window),len(window)+1):_fail()
-            window=(window+new)[-row["count"]:]
-        if (len(window)!=row["count"] or window[-1][0]!=row["event_at"] or
-                [r[0] for r in window]!=sorted({r[0] for r in window}) or
-                any(not math.isfinite(v) or v<=0 or v==_EMPTY for r in window for v in r[1:]) or
-                any(r[2]<max(r[1],r[3],r[4]) or r[3]>min(r[1],r[2],r[4]) for r in window)):_fail()
+    text=read_journal(directory)
+    decisions=[];digest=hashlib.sha256();strategy=get_strategy("stoch_ema9",**params)
+    by_event={};count=0
+    for row,window in windows(text,_fail):
+        count+=1
         frame=pd.DataFrame(window,columns=["at","open","high","low","close"])
         frame["time"]=pd.to_datetime(frame["at"],unit="s")
         expected=strategy.gerar_sinais(frame).iloc[-1]
@@ -85,5 +46,5 @@ def validate(directory, params, signals):
         if (row is None or not row["long" if signal["direction"]==1 else "short"] or
                 signal["confirmed_at"]!=row["confirmed_at"] or signal["available_at"]<row["available_at"]):_fail()
     return {"strategy":"stoch_ema9","reference":"Python variant on each observed native closed window",
-            "contexts":len(contexts),"trace_sha256":digest.hexdigest(),"decisions":decisions,
+            "contexts":count,"trace_sha256":digest.hexdigest(),"decisions":decisions,
             "native_window_bars":1500,"external_parity":False,"move_guard_execution_qualified":False,"source_qualified":False}

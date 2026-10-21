@@ -12,7 +12,7 @@ from mt5_extracao.robots import catalog, mql, risk, store
 
 LIBRARY = Path(__file__).parent / "robots_library"
 EA = LIBRARY / "Experts" / "Demo" / "DemoGuard.mq5"
-PYTHON_KEYS = ("ema_atr", "donchian", "bb_rsi", "orb", "pullback", "squeeze", "s09_reference", "stoch_ema9")
+PYTHON_KEYS = ("ema_atr", "donchian", "bb_rsi", "orb", "pullback", "squeeze", "s09_reference", "stoch_ema9", "vwap_bands")
 
 
 def by_name(items, name):
