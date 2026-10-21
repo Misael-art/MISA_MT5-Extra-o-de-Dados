@@ -1,3 +1,21 @@
+## Recuperação após reinstalação — corte de 2026-10-21
+
+O [roteiro independente do host](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
+registra clones novos, pins, dependências, WIP e dados privados. Três clones de
+rede passaram fsck; commits/HEADs locais estavam alcançáveis no GitHub; cinco
+árvores WIP reais foram reconstruídas por bundle/patch/arquivos com hashes iguais.
+A restauração privada SQLite preservou43tabelas e o histórico foi reaberto pelo
+store importado do clone novo, sem nova execução. Isso foi no Linux atual, não
+no novo SO. A cópia privada externa ainda precisa de destino confirmado e validação;
+`ready_to_format=false` permanece no [estado](repasse/RECUPERACAO_ESTADO_20261021.json).
+
+A fila HADOUKEN49–60 também foi localizada e conferida no GitHub:12PRs abertas,
+dois checks aprovados cada no snapshot, sem integração/replay/consumidor Python
+ou revisão desta frente. App172–176 tem seis checks;177 e178 têm falha Windows
+analítica preservada. O mapa de retomada distingue essas filas e a instalação171.
+O verificador `scripts/verify_recovery.py` usa só stdlib, confere o pacote privado
+sem extrair/executar e não anuncia por si só mídia externa/restore/aceite operacional.
+
 ## Repasse do integrador e limpeza segura — 2026-10-21
 
 O [repasse consolidado](repasse/INTEGRACAO_20261021.md) registra entregas, versões,

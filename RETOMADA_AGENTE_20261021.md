@@ -1,5 +1,7 @@
 # Retomada da integração — 21/10/2026
 
+**Reinstalação do host:** leia primeiro o [roteiro de recuperação](docs/repasse/RECUPERACAO_POS_FORMATACAO_20261021.md) e o [estado da preservação](docs/repasse/RECUPERACAO_ESTADO_20261021.json). GitHub sozinho não preserva banco/configuração/evidências privadas; a cópia externa precisa de confirmação e hashes. Não interpretar o repasse como liberação para formatar.
+
 Comece pelo [repasse completo](docs/repasse/INTEGRACAO_20261021.md): entregas integradas e instaladas, fila de PRs, testes, restrições e próximos passos. O [resumo verificável da limpeza](docs/evidencias/REPASSE_LIMPEZA_20261021.json) registra o escopo e as medições sem dados privados.
 
 - Instalação no corte do repasse: aplicação PR171/ac7af2c3, HADOUKEN ec550d77 e Safety3988df13/v1.8.0.
