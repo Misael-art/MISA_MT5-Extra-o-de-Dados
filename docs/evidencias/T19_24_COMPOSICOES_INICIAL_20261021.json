@@ -1,0 +1,144 @@
+{
+  "task": "T19.24 initial persisted full Python composition backtest",
+  "date": "2026-10-21",
+  "base": "bb90b488191cb0a42335374fd4c4d7ec82040a4f",
+  "dependency_correction": "833de994569fb5b1a4ff41863fd519da501122f0",
+  "runtime_freeze": "ae44bed855f7a7f54fabe7911aa1ca0961de329c",
+  "history": [
+    "f64aea2 initial runtime/tests",
+    "cf8b320 presenter/PG regression",
+    "6dd4479 SDK/central status",
+    "ae44bed Git composition of restart identity correction; no conflicts"
+  ],
+  "scope": "One explicit supported Python composition through existing BaseAdapter/Backtester/run store/Budget/journal; stored selection presented by existing Backtest UI. No new engine/scheduler/cache/financial threshold/native/order path.",
+  "contract": {
+    "api": "run_python(..., composition=Composition), rejects ambiguous params/strategy and mismatched robot/context before publication",
+    "adapter": "Forwards existing start_index/cashflows/check/observation timeframe and declared snapshot clock; own math/exit rules unchanged",
+    "journal": "Explicit executor=composition_v1, base_v1 default payload/restrictions unchanged; unknown versions refused",
+    "identity": "Existing eligibility gates plus canonical composition and loaded adapter code; code interning correction833 preserved; no old cache/checkpoint waiver",
+    "persistence": "metrics composition/hash/executor/compound via original run/control/store; no schema migration",
+    "capital": "risk_fraction and compound effective, including compoundFalse; existing economic settings/costs/spec used",
+    "ui": "Stored configuration described by pure presenter, no sizing/price/financial computation in widgets; no new editor or implicit rerun",
+    "publication": "run_recorded remains ledger_qualified=False/statistical_approval=False/qualified_final_holdout=False; importer outside transaction",
+    "limits": "Existing compatibility only, one position; partial/grid/multiasset/batch/campaign/margin/statistical selection not delivered"
+  },
+  "validation": [
+    {
+      "phase": "baseline",
+      "passed": 2,
+      "seconds": 24.56,
+      "note": "focused before changes; existing152 compatible service regression also available"
+    },
+    {
+      "phase": "legacy focused after API changes",
+      "passed": 5,
+      "seconds": 44.45
+    },
+    {
+      "phase": "core+originalservice+CLI",
+      "passed": 66,
+      "seconds": 199.86,
+      "runtime": "f64aea2;14 new composition cases plus original52"
+    },
+    {
+      "phase": "presentation+Tk+identity",
+      "passed": 6,
+      "seconds": 12.64,
+      "note": "plus3 pure presenter tests after adding explicit deadline text"
+    },
+    {
+      "phase": "relevant legacy full-regression selection",
+      "passed": 125,
+      "skipped": 1,
+      "seconds": 98.03,
+      "files": [
+        "test_composition.py",
+        "test_robots_backtest.py",
+        "test_temporal_execution.py",
+        "test_session_entry.py",
+        "test_cooldown.py",
+        "test_composed_backtest_pg.py"
+      ]
+    },
+    {
+      "phase": "final interaction after composing833",
+      "passed": 25,
+      "seconds": 101.67,
+      "selection": "all14composition +3presentation +3crossprocess identity +2Tk +loaded-code invalidation +2actual process-death phases; Xvfb",
+      "runtime": "ae44bed; subsequent edits documentation only"
+    },
+    {
+      "phase": "doctor_no_probe_existing_environment",
+      "ok": 20,
+      "warnings": 1,
+      "failed": 0,
+      "note": "optional pandas-ta absent; --root existing configured app; isolated missing config diagnosed without installer"
+    }
+  ],
+  "test_count_note": "Selections overlap; do not add as independent tests or evidence. Earlier broad own selection was stopped after54 passes because source changed; retained as nonfinal, not claimed accepted. Only owned Python pytest process signaled; no terminal/bridge/third-party process.",
+  "behavior_proofs": [
+    "Early temporal exit releases4trades versusBASE1 from controlled signal fixture",
+    "Session quota returns1trade; capital basis changes subsequent lots from2.5fixed to2.51 compounded",
+    "trade_from uses warmup without early trades; cancellation after signals publishes none and retry keeps reserved runid",
+    "Different composition/loaded callback invalidates identity; existingS10 ineligibility preserved",
+    "CLI explicit executor records compoundFalse; originalBASE rejects same unsupported modes; unknown executor not silently reinterpreted"
+  ],
+  "historical_cli": {
+    "source_runtime": "f64aea2 before pure presenter and identity serialization correction; financial/persistence interaction compatible, no claim old code identity remains reusable after edits",
+    "database": "private consistent copy of already explored historical data, no ownerDB/MT5",
+    "strategy": "Madrid",
+    "symbol": "EURUSD",
+    "timeframe": "H1",
+    "bars": 408,
+    "trades": 3,
+    "net_profit": 111.08749999999556,
+    "run_id": "48fede65272345e3a30d5d1b513dc7ab",
+    "composition": {
+      "risk_fraction": 0.0025,
+      "compound": false,
+      "stop_points": 100,
+      "target_r": 1.5,
+      "max_seconds": 3600,
+      "max_cycles": 1
+    },
+    "same_published_request_reopens": true,
+    "new_deliberate_query_reuses_same_observation": true,
+    "accesses": "Two linked evaluation accesses audited; inherited overlapping exposure preserved/used_for_tuning, not incorrectly reset to2",
+    "driver_assertion_corrected": "Initial proof assumed global access count2 despite existing copied journal; readonly continuation filtered exact request IDs/purpose. No new run/request or financial rule change.",
+    "ledger_qualified": false,
+    "qualified_final_holdout": false,
+    "source_certified": false,
+    "historical_specification_known": false,
+    "statistical_approval": false
+  },
+  "ui_proof": {
+    "tool": "Real Tk components/Xvfb reopening stored privateDB run, offline",
+    "screenshot_sha256": "898cd90e674c49c160a8a7da13253325caaadf43ef7f6e37c4bbcd81d17a1f6d",
+    "visually_inspected": true,
+    "display": "1440x1000",
+    "physical_interaction": false,
+    "native_started": false
+  },
+  "pending": [
+    "Technical review/final mandatory CI/controlled owner installation",
+    "PostgreSQL composed consumer test in existing test_*_pg.py CI job; local URL unavailable",
+    "Fullbatch/matrix/portfolio/margin/unsupported modes",
+    "Statistical criteria/qualified source/ledger/broker/physical Windows/native/live acceptance"
+  ],
+  "sha256": {
+    "docs/PLANO_DE_TRABALHO.md": "d40e8dc85807785b191245fbd885565db575f8239ca676741e8840b5cdf075cc",
+    "docs/continuidade.md": "0412133a8b2b88f643475b30d3fc5019cc9fd7045def7379cf93d4763bdbdef0",
+    "docs/sdk/composed_backtest.md": "a629d19033cb36ca37a2a31c60651a552911e094b45dc6840e95fd34eb8de95b",
+    "docs/sdk/experiments.md": "80b504d6e7b257f72b2b8ae1c116057710921923cd50b8b72987e8c5480cd07f",
+    "mt5_extracao/composition/adapter.py": "3a31319a020ebd965066d150b796bec6f2ce20246b53861c7b9eb568ab58b37a",
+    "mt5_extracao/composition/presentation.py": "e5bf5437217519025a2be3a32756f8e963e31796379eae0dbf9e4f1fb11ae117",
+    "mt5_extracao/experiments/commands.py": "cab0b96aabf7b642ce775d3ad911490d9e29d9a8f4ee32a066cc3e1edd3e229e",
+    "mt5_extracao/experiments/service.py": "b02b85269aca3e9e5fecb4cf392011d8e9b7f9736bc7eaff42df382a89221a0b",
+    "mt5_extracao/robots/backtest.py": "5c3013ffd2d7c29fd94303f4e42076b0997a2751c6d9a46bb8b4f89e991e918f",
+    "mt5_extracao/ui/robot_detail.py": "905e4656e487ff8b7b922cbd6570b81df63cf0f224aa937fe88a83eed67e0b42",
+    "tests/test_composed_backtest.py": "c08c2a86671c1528ee3ba42624f4d11fbd34712530a57f85a66247729b10b488",
+    "tests/test_composed_backtest_pg.py": "8648fdaff74c22f365e3ae70263fae90ecce21ca553dde756ec290610a22c5a7",
+    "tests/test_composition_presentation.py": "7f62db2b1e6679b8caaea386ef4978ad10d450376d0f552402cee1b2be7e3272",
+    "tests/test_ui_main_window.py": "f5bb781ab9109a403d001263191ceea096e081773e6dc35c06c681a85e464ad2"
+  }
+}

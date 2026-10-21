@@ -1046,6 +1046,23 @@ def test_robot_backtest_keeps_result_context_and_pending_request(ui, monkeypatch
     assert recorded[-1] is run
 
 
+def test_robot_backtest_displays_stored_composition_without_recalculating(ui):
+    from mt5_extracao.composition import base_composition
+    panel = ui.robots_panel
+    panel.select("python:donchian")
+    value = base_composition("donchian", symbol="WIN$N", timeframe="M1", risk_fraction=.0025, compound=False).to_dict()
+    value["protection"] = {"mode": "fixed_points", "params": {"stop_points": 100}}
+    value["profit_exit"] = {"mode": "fixed_r", "params": {"target_r": 1.5}}
+    run = {"run_id": "composed", "robot_key": "python:donchian", "symbol": "WIN$N", "timeframe": "M1",
+           "bars": 600, "data_start": "2024-01-02", "data_end": "2024-01-03", "created_at": "2024-02-01",
+           "metrics": {"trades": 2, "composition": value}, "equity": [["2024-01-02", 100], ["2024-01-03", 90]]}
+    panel.detail.show_run(run)
+    text = panel.detail.run_status.cget("text")
+    for expected in ("Composição registrada", "capital inicial", "100 pontos", "1,5 R"):
+        assert expected in text
+    assert panel.detail.shown_run is run and run["equity"][-1][1] == 90
+
+
 def test_robot_backtest_controls_reflow_inside_available_width(ui):
     ui.notebook.select(ui.robots_panel.frame)
     ui.robots_panel.select("python:donchian")

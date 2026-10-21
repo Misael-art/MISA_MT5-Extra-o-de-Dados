@@ -64,6 +64,7 @@ def _execution_code_digest():
     modules = {cls.__module__ for cls in REGISTRY.values()} | {
         __name__, "mt5_extracao.strategies.base", "mt5_extracao.strategies.backtester",
         "mt5_extracao.strategies.indicators", "mt5_extracao.strategies.equity",
+        "mt5_extracao.composition.adapter",
         "mt5_extracao.analytics.instruments", "mt5_extracao.analytics.data_eligibility"}
     for name in sorted(modules):
         module = importlib.import_module(name)
@@ -80,7 +81,7 @@ def _execution_code_digest():
 
 
 def _python_execution_identity(snapshot, strategy, settings, *, source="backtest", trade_from=None,
-                               real_spread=True, cashflows=None):
+                               real_spread=True, cashflows=None, composition=None):
     """Identidade do motor existente; não cria protocolo estatístico nem outro cache."""
     import hashlib
     import json
@@ -101,6 +102,8 @@ def _python_execution_identity(snapshot, strategy, settings, *, source="backtest
                       settings=asdict(settings), trade_from=str(trade_from) if trade_from is not None else None,
                       real_spread_requested=bool(real_spread), source=source,
                       runtime=dict(python=platform.python_version(), pandas=pd.__version__, numpy=np.__version__))
+        if composition is not None:
+            inputs["composition"] = composition.to_dict()
         raw = json.dumps(inputs, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (OSError, TypeError, ValueError):
         return dict(unknown, reason="execution_identity_unavailable")
@@ -110,7 +113,8 @@ def _python_execution_identity(snapshot, strategy, settings, *, source="backtest
 
 def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
                params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None,
-               real_spread: bool = True, cashflows=None, data_manifest_id=None, control=None) -> dict:
+               real_spread: bool = True, cashflows=None, data_manifest_id=None, control=None,
+               composition=None) -> dict:
     """
     Roda e grava o backtest de uma estratégia Python. `timeframe` é o rótulo da base (ex.: '1 dia').
     `strategy` permite passar a estratégia já montada (ex.: uma DeclaredStrategy), em vez de buscá-la pela chave
@@ -124,6 +128,16 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     from mt5_extracao.strategies import get_strategy, research, specs
     from mt5_extracao.strategies.backtester import run_backtest
     from mt5_extracao.analytics import datasets
+    adapter = None
+    if composition is not None:
+        from mt5_extracao.composition import BaseAdapter, Composition
+        if strategy is not None or params is not None:
+            raise ValueError("Composição já contém estratégia/parâmetros; não combine com strategy ou params.")
+        composition = composition if isinstance(composition, Composition) else Composition(composition)
+        adapter = BaseAdapter(composition)
+        strategy = adapter.strategy()
+        if robot.kind != catalog.PYTHON or robot.key != "python:" + strategy.key:
+            raise ValueError("Composição exige o robô Python registrado correspondente à estratégia.")
     if strategy is None and robot.kind != catalog.PYTHON:
         raise ValueError("O backtest de robôs MQL5 roda no Strategy Tester do MetaTrader 5: use run_mql5.")
     if control is not None:
@@ -131,6 +145,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     tf = timeframes.parse(timeframe)
     if tf is None:
         raise ValueError(f"Timeframe inválido: {timeframe}")
+    if adapter is not None and composition.to_dict()["context"] != {"symbol": symbol, "timeframe": tf.name}:
+        raise ValueError("Composição não corresponde ao ativo/timeframe do backtest.")
     snapshot = datasets.load(db, data_manifest_id) if data_manifest_id is not None else datasets.capture(
         db, symbol, tf.name, start, end)
     if snapshot.manifest["symbol"] != symbol or snapshot.manifest["timeframe"] != tf.name:
@@ -158,6 +174,8 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
     if not data_quality["eligibility"]["eligible"]:
         raise ValueError("Dados incompatíveis com a estratégia: " + " ".join(data_quality["eligibility"]["reasons"]))
     settings = research.backtest_config(config)
+    if adapter is not None:
+        settings = adapter.backtest_config(settings)
     if not real_spread:
         import dataclasses
         settings = dataclasses.replace(settings, real_spread=False)
@@ -167,21 +185,32 @@ def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=N
         start_index = int((pd.to_datetime(df["time"]) < pd.Timestamp(trade_from)).sum())
         if start_index >= len(df):
             raise ValueError(f"Não há barras a partir de {trade_from} no período pedido.")
-    result = run_backtest(df, strategy, spec, settings, start_index=start_index, cashflows=cashflows,
-                          observation_timeframe=tf.name if source not in catalog.HIDDEN_RUN_SOURCES else None,
-                          **({"check": control.check} if control is not None else {}))
+    if adapter is None:
+        result = run_backtest(df, strategy, spec, settings, start_index=start_index, cashflows=cashflows,
+                              observation_timeframe=tf.name if source not in catalog.HIDDEN_RUN_SOURCES else None,
+                              **({"check": control.check} if control is not None else {}))
+    else:
+        result = adapter.run(df, spec, settings, timeframe=tf.name,
+                             time_basis=snapshot.manifest["time"].get("consumer_basis"),
+                             start_index=start_index, cashflows=cashflows,
+                             observation_timeframe=tf.name if source not in catalog.HIDDEN_RUN_SOURCES else None,
+                             check=control.check if control is not None else None)
     metrics = {k: v for k, v in result.metrics.items() if k != "exit_reasons"}
     metrics.update(exit_reasons=result.metrics["exit_reasons"], skipped_min_lot=int(result.skipped_min_lot),
                    data_manifest_id=snapshot.manifest_id, data_provenance_status="frozen_reference",
                    data_quality=data_quality,
                    execution_identity=_python_execution_identity(snapshot, strategy, settings, source=source,
-                                                                 trade_from=trade_from, real_spread=real_spread, cashflows=cashflows),
+                                                                 trade_from=trade_from, real_spread=real_spread, cashflows=cashflows,
+                                                                 **({"composition": composition} if composition is not None else {})),
                    instrument_context=dict(spec.provenance),
                    spec_historical_known=spec.provenance.get("specification_status") == "known",
                    series_role=spec.provenance.get("series_role", "unknown"),
                    spec_known=bool(spec.known), real_spread=bool(settings.real_spread and spec.spread_by_hour),
                    initial_equity=float(settings.initial_equity),
                    risk_per_trade=float(settings.risk_per_trade))
+    if composition is not None:
+        metrics.update(composition=composition.to_dict(), composition_hash=composition.config_hash,
+                       composition_executor="composition_v1", compound=bool(settings.compound))
     run = {"run_id": control.run_id if control is not None else uuid.uuid4().hex, "robot_key": robot.key, "source": source, "symbol": symbol,
            "timeframe": tf.name, "data_start": str(df["time"].iloc[0]), "data_end": str(df["time"].iloc[-1]),
            "bars": int(len(df)), "params": dict(strategy.params), "metrics": metrics,

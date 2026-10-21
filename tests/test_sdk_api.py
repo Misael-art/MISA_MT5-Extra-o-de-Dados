@@ -114,3 +114,15 @@ def test_sdk_backtest_forwards_legacy_arguments_without_composition_extension(mo
     assert sdk.run_backtest(*arguments) is sentinel
     assert captured == [arguments]
     assert "exit_rules_override" not in inspect.signature(sdk.run_backtest).parameters
+
+
+def test_sdk_python_run_keeps_legacy_surface_and_forwards_all_arguments(monkeypatch):
+    captured = []
+    sentinel = object()
+    monkeypatch.setattr(sdk, "_run_python", lambda *args: captured.append(args) or sentinel)
+    arguments = tuple(object() for _ in range(15))
+    assert sdk.run_python(*arguments) is sentinel
+    assert captured == [arguments]
+    assert "composition" not in inspect.signature(sdk.run_python).parameters
+    assert sdk.run_python(*arguments[:5]) is sentinel
+    assert captured[-1] == (*arguments[:5], None, None, None, None, "backtest", None, True, None, None, None)

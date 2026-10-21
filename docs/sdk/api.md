@@ -275,3 +275,9 @@ unit="money", thresholds=(), ages=())` é a consulta de serviço do CLI
 O contrato MQL5 1 permanece o mesmo. `observation_timeframe=None` é opcional
 no fim da assinatura de `sdk.run_backtest`; chamadas posicionais anteriores
 continuam válidas e `API_VERSION=1` é preservada.
+
+T19.24 mantém também a assinatura publicada de `sdk.run_python` por um wrapper
+explícito, como em `sdk.run_backtest`. O argumento interno `composition` não
+é promovido ao SDK 1; todos os quinze argumentos e defaults anteriores continuam
+encaminhados ao mesmo produtor. O novo consumidor composto usa o serviço/CLI
+versionado `composition_v1`, descrito em [backtest composto](composed_backtest.md).

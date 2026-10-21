@@ -1,3 +1,37 @@
+## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
+
+Corretivo do SDK: CI39576824302 teve uma falha de assinatura pública (2.617 testes
+passaram/218 skips). O reexport direto de `run_python` expunha o argumento interno
+`composition`. Wrapper explícito agora conserva os quinze argumentos/defaults do
+SDK1, sem alterar `SURFACE`/`API_VERSION` ou o produtor interno. Nova prova confere
+encaminhamento legado; SDK e composição passaram24 testes em27,84s. O CI final
+da ponta corrigida permanece obrigatório; falha anterior preservada. Composição
+continua opt-in do serviço/CLI, sem promoção silenciosa ao SDK público.
+
+Opt-in `composition_v1` usa o BaseAdapter e o Backtester existentes, com políticas,
+filtros, risco/capitalização e identidade da seleção persistidos no run. Saída
+antecipada, sinais seguintes, cota e lotes são recalculados na sequência completa;
+não é filtragem posterior de ledger. O padrão BASE do T20.12 mantém suas restrições.
+A tela de Backtest exibe escolhas do resultado gravado sem recalcular preços/lotes.
+Nenhum editor, motor, scheduler/cache paralelo ou capacidade nativa foi criado.
+
+Validação local:66 testes de serviço/CLI/composição e125 regressões pertinentes;
+seis verificações de apresentação/Tk/identidade e25 dirigidos após compor o
+corretivo de identidade833de99, com sobreposição documentada. Uma
+prova CLI em cópia histórica isolada Madrid408barras/3operações/111,0875 reabriu o
+mesmo run e auditou nova consulta/cache; tela Tk/Xvfb conferida visualmente.
+PG do novo consumidor, CI/revisão/instalação correspondentes continuam pendentes.
+[Contrato, uso e limites](sdk/composed_backtest.md).
+
+T19.24 permanece parcial: lote/matriz, carteira/margem agregada e modos sem adaptador
+não foram entregues. `run_recorded` não qualifica livro/reserva/estatística. App169
+1612301/Hec550/Safety1.8.0 segue instalado; T20.12/PR170 ainda não foi instalado:
+CI Linux detectou divergência de assinatura na retomada após morte de processo;
+corretivo833de99 publicado e composto por Git nesta frente.86 testes de identidade/
+serviço e dois casos sob cobertura passaram; novo CI obrigatório em curso antes
+do merge. A falha e a evidência anterior foram preservadas.
+Sem nova sondagem privada/MT5; sincronização e aceites nativos continuam pendentes.
+
 ## T20.12 — Registro de uma avaliação explícita, em revisão (2026-10-21)
 
 PR170 ainda sem merge/instalação: CI39569538013 teve uma falha Linux na retomada

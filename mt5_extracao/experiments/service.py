@@ -9,7 +9,7 @@ import pandas as pd
 from sqlalchemy import text
 
 from ..analytics import datasets
-from ..composition import Composition, compatibility
+from ..composition import BaseAdapter, Composition, compatibility
 from ..composition.registry import BASE_MODES
 from ..robots import backtest, budget as budgets, catalog, store as runs
 from ..strategies import get_strategy, research
@@ -47,7 +47,11 @@ def create(db, definition):
     return store.put_protocol(db, revision, context)
 
 
-def _mapping(composition):
+def _mapping(composition, executor="base_v1"):
+    if executor == "composition_v1":
+        return BaseAdapter(composition).strategy()
+    if executor != "base_v1":
+        raise ValueError("Executor desconhecido; não reinterpretar um pedido de outra versão.")
     value = composition.to_dict()
     if any(value[slot]["mode"] != mode for slot, mode in BASE_MODES.items()) or value["filters"]:
         raise ValueError("Avaliação inicial aceita somente composição BASE sem filtros ou overrides.")
@@ -60,24 +64,30 @@ def _mapping(composition):
 
 
 def request(db, protocol_id, key, composition, *, role="train", origin="manual", purpose="evaluation",
-            use_cache=True, discard_reason="", config=None):
+            use_cache=True, discard_reason="", config=None, executor="base_v1"):
     token(key, "Chave do pedido")
     p = store.protocol(db, protocol_id)
+    if executor not in ("base_v1", "composition_v1"):
+        raise ValueError("Executor desconhecido; use base_v1 ou composition_v1 explicitamente.")
     if role not in p["definition"]["roles"] or origin not in ("manual", "automatic") or purpose not in ("evaluation", "tuning") or type(use_cache) is not bool:
         raise ValueError("Declare papel existente, origem manual/automatic, finalidade evaluation/tuning e cache booleano.")
     value = composition.to_dict() if isinstance(composition, Composition) else json.loads(encoded(composition))
     payload = dict(composition=value, role=role, origin=origin, purpose=purpose, use_cache=use_cache,
                    discard_reason=str(discard_reason), settings=None)
+    if executor != "base_v1":
+        payload["executor"] = executor
     error = ""
     try:
         composition = Composition(value)
         value = composition.to_dict()
         payload["composition"] = value
         settings = replace(research.backtest_config(config), risk_per_trade=value["sizing"]["params"]["risk_fraction"])
+        if executor == "composition_v1":
+            settings = BaseAdapter(composition).backtest_config(settings)
         if any(type(number) in (int, float) and not math.isfinite(number) for number in asdict(settings).values()):
             raise ValueError("Configuração econômica exige números finitos.")
         payload["settings"] = asdict(settings)
-        _mapping(composition)
+        _mapping(composition, executor)
         if value["context"] != {"symbol": p["context"]["identity"]["symbol"], "timeframe": p["context"]["identity"]["timeframe"]}:
             raise ValueError("Composição não corresponde ao ativo/timeframe dos papéis.")
     except ValueError as exc:
@@ -148,15 +158,21 @@ def _evaluate(db, request_id, *, config=None, budget=None):
             else:
                 cleanup.finish()
         return _delivery(db, item)
-    strategy = _mapping(Composition(payload["composition"]))
+    composition = Composition(payload["composition"])
+    executor = payload.get("executor", "base_v1")
+    strategy = _mapping(composition, executor)
+    adapter = BaseAdapter(composition) if executor == "composition_v1" else None
     role = p["definition"]["roles"][payload["role"]]
     snapshot = datasets.load(db, role["data_manifest_id"])
     frozen = configparser.ConfigParser()
     frozen["STRATEGY"] = {key: str(payload["settings"][key]) for key in ("initial_equity", "risk_per_trade", "commission_per_lot", "slippage_points")}
     settings = research.backtest_config(frozen)
+    if adapter is not None:
+        settings = adapter.backtest_config(settings)
     if asdict(settings) != payload["settings"]:
         raise ValueError("Configuração econômica não é mapeável para run_python.")
-    identity = backtest._python_execution_identity(snapshot, strategy, settings, trade_from=role["evaluation_start"])
+    identity = backtest._python_execution_identity(snapshot, strategy, settings, trade_from=role["evaluation_start"],
+                                                   **({"composition": composition} if adapter is not None else {}))
     symbol, timeframe = p["context"]["identity"]["symbol"], p["context"]["identity"]["timeframe"]
     robot = next(r for r in catalog.python_robots() if r.key == "python:"+strategy.key)
     job_key = item["request_id"]
@@ -194,7 +210,8 @@ def _evaluate(db, request_id, *, config=None, budget=None):
             conn.execute(text("UPDATE _experiment_executions SET state='interrupted',error='execução anterior sem publicação' WHERE request_id=:i AND state='running'"), {"i": request_id})
             store.start(conn, item, job.run_id, identity, execution_id)
         control = _Publication(db, item, job, execution_id, identity)
-        backtest.run_python(db, frozen, robot, symbol, timeframe, strategy=strategy,
+        execution = {"composition": composition} if adapter is not None else {"strategy": strategy}
+        backtest.run_python(db, frozen, robot, symbol, timeframe, **execution,
                             data_manifest_id=snapshot.manifest_id, trade_from=role["evaluation_start"], control=control)
         return _delivery(db, store.request(db, request_id))
     except BaseException as exc:
