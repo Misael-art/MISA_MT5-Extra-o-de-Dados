@@ -19,6 +19,17 @@ def _layout_y(widget, ancestor):
     return y
 
 
+
+def _ancestor_layout(widget):
+    result = []
+    while widget is not None:
+        result.append(dict(widget=str(widget), mapped=widget.winfo_ismapped(),
+            allocated=(widget.winfo_width(), widget.winfo_height()),
+            requested=(widget.winfo_reqwidth(), widget.winfo_reqheight())))
+        widget = widget.master
+    return result
+
+
 def _reach_label(ui, detail, label):
     # Em janela empilhada, o detalhe fica depois dos cards. Percorre as duas
     # áreas, como o usuário, antes de exigir o mapeamento do rótulo. O Tk pode
@@ -35,13 +46,17 @@ def _reach_label(ui, detail, label):
         # pelo Canvas; sua posição global não serve de entrada para a rolagem.
         outer.yview_moveto(_layout_y(inner, body) / max(1, body.winfo_height()))
         ui.pump(.05)
+        page = ui.robots_panel.page_viewport
+        page.canvas.yview_moveto(_layout_y(outer, page.content) / max(1, page.content.winfo_height()))
+        ui.pump(.05)
         mapped = label.winfo_ismapped() and label.winfo_viewable()
         top = bottom = None
         if mapped:
-            top = max(label.winfo_rooty(), inner.winfo_rooty(), outer.winfo_rooty())
+            top = max(label.winfo_rooty(), inner.winfo_rooty(), outer.winfo_rooty(), page.canvas.winfo_rooty())
             bottom = min(label.winfo_rooty() + label.winfo_height(),
                          inner.winfo_rooty() + inner.winfo_height(),
-                         outer.winfo_rooty() + outer.winfo_height())
+                         outer.winfo_rooty() + outer.winfo_height(),
+                         page.canvas.winfo_rooty() + page.canvas.winfo_height())
         if (mapped
                 and top < bottom
                 and label.winfo_reqwidth() <= label.master.winfo_width()
@@ -58,6 +73,8 @@ def _reach_label(ui, detail, label):
             "inner_layout_y": _layout_y(inner, body), "body_height": body.winfo_height(),
             "outer_bounds": (outer.winfo_rooty(), outer.winfo_height()),
             "inner_bounds": (inner.winfo_rooty(), inner.winfo_height()),
+            "page_bounds": (page.canvas.winfo_rooty(), page.canvas.winfo_height()),
+            "ancestors": _ancestor_layout(label),
         })
 
 

@@ -46,3 +46,36 @@ coordenadas globais apenas depois do mapeamento, para verificar visibilidade.
 Preserva prazo5s, larguras, texto, duas rolagens, temas e escalas.12 testes locais
 passaram em32,04s; a confirmação Windows depende da nova ponta, sem assumir que
 esse diagnóstico local reproduz integralmente o gerenciador de janelas do runner.
+
+
+## Altura da página e fonte ampliada
+
+1b0/CI39600576958 e a composição e070/39601150443 falharam no MESMO caso Windows:
+144DPI/900×620, wrap835 dentro de892, rótulo desmapeado. Logs preservados; a largura
+isoladamente não prova acesso. Hipóteses de apenas corpo de fonte13/16/18 e coluna
+arrastada1000px passaram localmente e não foram usadas como correções.
+
+Reprodução adicional Linux/Xvfb com escala de leitura1,5 já suportada: filtros
+consomem a altura e body_view/body_canvas ficam desmapeados (1falha9,08s). A causa
+exata do caso Windows ainda depende do CI novo; trata-se de uma falha de acesso
+reproduzida na mesma classe de altura limitada, não alegação de paridade física.
+
+RobotsPanel agora põe filtros, resumo e corpo dentro do ScrollableContent existente.
+A rolagem da página mantém caminho até o corpo quando os controles excedem a altura.
+As áreas anteriores de cards/detalhe permanecem; não altera seleção, filtros, eventos
+financeiros ou modelos. O operador do teste percorre também essa página, preservando
+TODAS as asserções de largura/texto/mapeamento/interseção/resultado/teclado e5s.
+Há diagnóstico de ancestrais e regressão da escala1,5, incluindo restauração do DPI.
+
+CI ganha somente um processo dirigido Windows com os3casos visuais ANTES da suíte
+existente, para distinguir falha isolada de interação sem esperar toda a bateria.
+A suíte completa, a cobertura mínima60% e os seis jobs continuam obrigatórios e
+inalterados. Não houve dispatch manual, remoção de teste ou aumento de timeout.
+
+Prova local:3contexto/viewport44,70s,4adjacentes cards/tema/resize28,36s; contagens
+complementares à evidência anterior, sem somar todas as seleções. Leitura de histórico
+privado existente48fede,3trades/111,0875:24medições,2temas/1920,1280,900,820 e captura
+adicional144DPI/escala1,5; sem cálculo ou banco do proprietário. Capturas900normal e
+máxima inspecionadas, mesmo run/status preservado. Fonte muito ampliada ainda corta
+nomes da navegação global/resumo/status; este recorte melhora o acesso ao contexto,
+não conclui toda T19.34 nem acessibilidade/DPI físico. Novo CI e instalação pendentes.

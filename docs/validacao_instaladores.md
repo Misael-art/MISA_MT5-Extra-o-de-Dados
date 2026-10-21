@@ -385,3 +385,8 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] T19.40/HA-HiLo: Windows físico com fonte1.20/pin5dad3bbabab0343f/10inputs,
   Canvas padrão, Default/Manual3campos, exportação/recibo, semTP e SL obrigatório.
   Wine/Tk simulado não prova reversão, histórico do servidor ou comportamento físico.
+
+- [ ] T19.34 altura: conferir Windows físico com fontes ampliadas e página rolável;
+  corpo acessível via scroll externo, contexto por scroll do detalhe, filtros/seleção
+  preservados. Escala1,5 em900×620 ainda tem cortes na navegação/resumo/status global;
+  este recorte não os qualifica nem substitui o CI Windows final.
