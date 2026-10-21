@@ -1,3 +1,23 @@
+## PM-12 — integração visual e distribuição, 2026-10-21
+
+Fundações H32→36→37→38→39 integradas em288063fe, com revisão técnica de manutenção,
+checks existentes verdes e cinco árvores de merge conferidas por Git. Consumidor33
+atualizado sem reescrever histórico:3005b85 corrige statuscaps0/QA;8538ea6 incorpora
+master/cooldown,46Tools/checker135 aprovados. Seu aceite nativo permanece próprio.
+Safety1.8 em revisão separada: seis headers selecionados, nove arquivos de risco,
+executor/contratos preservados; quinze arquivos idênticos à fonte H3005b85, smoke
+standalone0erros/0avisos e dois testes do pacote. Aplicação confere todo o conjunto
+antes da cópia e hashes quando declarados; baseline10→15 testes dirigidos aprovados.
+[Contrato, evidências e limites](sdk/distribuicao_painel.md).
+
+API reconectada ao principal6276 sem restart, DEMO/conectada e identidade preservada.
+Duas hipóteses delimitadas de preparação do perfil não fecharam a sincronização:
+autorização sem confirmação nativa; nenhum Tester/ordem iniciado, processos próprios
+encerrados. Não repetir sondagem sem mudança observável. S09/Pullback/adaptador
+continuam Tester-only; cache inelegível, ao vivo DEMO e Windows físico próprios.
+Instalação utilizada pelo proprietário ainda será alinhada após checks/revisão,
+com configuração, dados, raízes WIP e retorno preservados.
+
 ## T19.57 — aceite funcional e checks concluídos, 2026-10-20
 
 Recorte entregue na PR#150. Seis checks da lógica7e1b aprovados, incluindo Windows,

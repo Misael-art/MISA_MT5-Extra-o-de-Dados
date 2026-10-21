@@ -1,0 +1,43 @@
+{
+  "task": "T12.6/PM-12 distribution consumer",
+  "application_base": "8ea5de9d2edf2297b099c22eedf2ba0d2b41c128",
+  "hadouken_visual_integrated": "288063fea7e4c6e750435f2d55bb92fcfdba4de8",
+  "hadouken_consumer_candidate": "8538ea6c1303f66c40e6f8b38d7c2ba6c01c1b2a",
+  "safety_pr": 7,
+  "safety_source": "d2595ea45adf38c82234bdd69b9597fcc2ab6334",
+  "safety_version": "1.8.0",
+  "baseline_focused": 10,
+  "final_focused": 38,
+  "candidate_module_identity_checked": true,
+  "actual_bundle_install": {
+    "files": 15,
+    "second_install_copies": 0,
+    "marker_hashes_match": true
+  },
+  "rejection_preserves_installed_bytes": [
+    "missing final header",
+    "hash mismatch",
+    "incomplete hash map"
+  ],
+  "legacy_unhashed_manifest_compatible": true,
+  "doctor": {
+    "OK": 20,
+    "AVISO": 1,
+    "FALHA": 0
+  },
+  "native_smoke": {
+    "errors": 0,
+    "warnings": 0,
+    "build": 6276,
+    "framework_directory_unavailable": true
+  },
+  "tester_started": false,
+  "orders_sent": false,
+  "constraints": [
+    "operational consumer acceptance pending private synchronization",
+    "Tester-only S09/Pullback/adapter unchanged",
+    "execution evidence cache ineligible",
+    "physical Windows unverified"
+  ],
+  "runtime_sha256": "36436cf34bd2455e2b6d99e05a86a95f1eeb0bb8c545587b4968dcc777e37d28"
+}

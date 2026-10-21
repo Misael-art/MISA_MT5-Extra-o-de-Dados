@@ -7,6 +7,7 @@ A biblioteca mora em repositório próprio (https://github.com/Misael-art/mt5x-s
 `[ROBOTS] safety_lib_dir` aponta para um clone local; `safety.json`, na raiz dele, diz a versão, a pasta de include
 e os arquivos. Nada é baixado automaticamente e uma versão já instalada nunca é trocada em silêncio.
 """
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -75,18 +76,34 @@ def install(folder, data_dir, upgrade: bool = False) -> List[Path]:
                              "passam a compilar com a versão nova).")
     source_dir = Path(folder) / "Include" / manifest["include_dir"]
     target_dir = include / manifest["include_dir"]
-    copied = []
+    hashes = manifest.get("sha256")
+    if hashes is not None and (not isinstance(hashes, dict) or set(hashes) != set(manifest["files"])):
+        raise SafetyLibError(f"O manifesto em {folder} tem hashes incompletos: restaure a distribuição "
+                             f"mt5x-safety {manifest['version']} antes de instalar.")
+    # Conferir o conjunto inteiro antes de alterar a instalação. Um último header
+    # ausente/divergente não pode deixar metade do novo painel sobre a versão antiga.
+    sources = []
     for name in manifest["files"]:
         source = source_dir / name
         if not source.is_file():
             raise SafetyLibError(f"A biblioteca em {folder} está incompleta: falta {source}.")
+        content = source.read_bytes()
+        if hashes is not None and hashlib.sha256(content).hexdigest() != hashes[name]:
+            raise SafetyLibError(f"O arquivo {source} diverge do hash do manifesto: restaure a distribuição "
+                                 f"mt5x-safety {manifest['version']} antes de instalar.")
+        sources.append((source, name, content))
+    copied = []
+    for source, name, content in sources:
         target = target_dir / name
-        if not target.is_file() or target.read_bytes() != source.read_bytes():
+        if not target.is_file() or target.read_bytes() != content:
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
+            target.write_bytes(content)
+            shutil.copystat(source, target)
             copied.append(target)
     marker = {"name": manifest.get("name", "mt5x-safety"), "version": manifest["version"],
               "include_dir": manifest["include_dir"], "files": manifest["files"]}
+    if hashes is not None:
+        marker["sha256"] = hashes
     include.mkdir(parents=True, exist_ok=True)
     (include / MARKER_NAME).write_text(json.dumps(marker, ensure_ascii=False, indent=2), encoding="utf-8")
     return copied
