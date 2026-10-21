@@ -1,3 +1,15 @@
+## T19.39 — Madrid Python e consumidor em revisão, 2026-10-21
+
+Núcleo111ae036 composto por Git; fonte Madrid1.20/fp870c0f8db71c3d5a integrada no
+HADOUKEN PR47. Perfil fechado de13 inputs, Default/Manual e orçamento até0,5%;
+leitor confere propostas por janela observada, inclusive guards sem sinal e TP
+escolhido inválido. TP fixo e reset por gatilho são variantes, sem FC/FV persistente.
+Contrato/evidência: [Madrid nativo](sdk/madrid_nativo.md). Histórico Python isolado
+EURUSD/H1:528 barras/10 operações/105,10, reaberto e conciliado; não qualifica
+financeiramente nem substitui Tester. Cache genérico Python pode reconhecer
+identidade completa, sem novo aceite operacional. S10/VWAP conservam sua fila
+revisão/CI/instalação; sincronização privada e aceites nativos continuam pendentes.
+
 ## T19.36 — VWAP Python e consumidor em revisão, 2026-10-21
 
 Fundação48feaf8 composta por Git, perfil VWAP1.20/fp7139d746ab6b2c1d ligado a

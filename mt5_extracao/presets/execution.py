@@ -299,7 +299,8 @@ class PresetExecution:
             raise ValueError("Modo Visual nativo difere do solicitado; replay continua pendente.")
         stoch=native["profile_id"]=="hadouken.stoch_ema9"
         vwap=native["profile_id"]=="hadouken.vwap_bands"
-        signals=native_signals(job.directory,marker="HDK_STRATEGY_SIGNAL" if stoch or vwap else "S09_SIGNAL")
+        madrid=native["profile_id"]=="hadouken.madrid"
+        signals=native_signals(job.directory,marker="HDK_STRATEGY_SIGNAL" if stoch or vwap or madrid else "S09_SIGNAL")
         sizing=native_sizing(job.directory,signals,native["expected_native_inputs"]) if native["profile_version"]>=2 else None
         rows=_ledger_rows(self.db,job.record,signals,target_required=not stoch or package["composition"]["strategy"]["params"]["target_points"]>0)
         if stoch and package["composition"]["strategy"]["params"]["target_points"]==0 and any(row["target_price"]!=0 for row in rows):
@@ -320,6 +321,9 @@ class PresetExecution:
         if vwap:
             from .vwap_events import validate
             strategy_reference=validate(job.directory,package["composition"]["strategy"]["params"],signals)
+        if madrid:
+            from .madrid_events import validate
+            strategy_reference=validate(job.directory,package["composition"]["strategy"]["params"],signals)
         temporal=None;channel=[] if native["profile_version"]>=6 else None;atr=[] if native["profile_version"]>=7 else None
         if native["profile_version"]>=4:
             from .temporal_events import read_events
@@ -338,7 +342,7 @@ class PresetExecution:
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
         difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel,atr,session,cooldown) if prior is not None else None
-        if (stoch or vwap) and prior is not None and difference is None and prior.get("strategy_reference")!=strategy_reference:
+        if (stoch or vwap or madrid) and prior is not None and difference is None and prior.get("strategy_reference")!=strategy_reference:
             difference=dict(section="strategy_reference",field="observed_context",expected=prior.get("strategy_reference"),observed=strategy_reference)
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"

@@ -102,7 +102,7 @@ class BaseAdapter:
         rules = replace(strategy.exit_rules(), **selection)
         signals = (strategy.gerar_sinais(bars, exit_rules_override=rules) if rules.stop_points is not None
                    else strategy.gerar_sinais(bars)).copy()
-        if profit["mode"] != "strategy_default":
+        if profit["mode"] != "strategy_default" and rules.signal_reference_distance_points is None:
             signals[["target_long", "target_short"]] = float("nan")
         if temporal["mode"] in ("temporal_v1","temporal_er_v1","temporal_donchian_v1","temporal_atr_v1"):entry_options["observation_timeframe"]=timeframe
         return run_backtest(bars, strategy, spec, self.backtest_config(config),

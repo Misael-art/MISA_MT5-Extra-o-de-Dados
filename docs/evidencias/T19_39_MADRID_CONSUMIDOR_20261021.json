@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "task": "T19.39",
+  "date": "2026-10-21",
+  "scope": "Madrid consumer composed with published Python core; source/export/compile and simulated service, not native operational acceptance",
+  "python_core": "111ae036c4685e01bcab8e1abe3270f3d68fa712",
+  "consumer_base": "6981fd65b3492941284e3045433b2d98e9f4d7a2",
+  "hadouken": {
+    "source": "6677bce1a4d08f6f92d51ad6caccd078d2e33ef5",
+    "merge": "87469b3d3d066b02863acdfac414b6888a8594e4",
+    "version": "1.20",
+    "fingerprint": "870c0f8db71c3d5a",
+    "inputs": 13
+  },
+  "validation": {
+    "integration_xvfb": 165,
+    "additional_xvfb_overlapping": 95,
+    "final_directed": 38,
+    "doctor": {
+      "ok": 20,
+      "warning": 1,
+      "failure": 0,
+      "scope": "consumer code with existing owner configuration --no-probe",
+      "prior_missing_worktree_config": "15/1/1 in isolated tree without config; no installer/config mutation"
+    },
+    "core_reused": {
+      "final_post_merge": 257,
+      "madrid": 129,
+      "gui": 3
+    },
+    "wrapper": {
+      "build": 6276,
+      "errors": 0,
+      "warnings": 0,
+      "binary_sha256": "bfd7ca3601ad8eecd3fc224966c2d03edcc310ce7900bb37c6646e694a474244",
+      "context_released": true,
+      "remaining": [],
+      "principal_unchanged": true
+    },
+    "real_package": "13 inputs/Default preserved/Manual rev2/export read back on isolated DB; no loaded receipt",
+    "history": {
+      "run_id": "4fb3e7df16c341d189406bda606f161a",
+      "bars": 528,
+      "trades": 10,
+      "net_profit": 105.09999999994096,
+      "manifest": "7522bbb71090309a73960807fa78e3d1e1fcb4e7042bfebebb8886fe67849c68",
+      "reopened": true,
+      "ledger_reconciled": true,
+      "risk_fraction": 0.0025,
+      "spec_historical_known": false,
+      "execution_identity": {
+        "version": 1,
+        "cache_eligible": true,
+        "status": "frozen_reference",
+        "data_manifest_id": "7522bbb71090309a73960807fa78e3d1e1fcb4e7042bfebebb8886fe67849c68",
+        "code_sha256": "f31900d0e548b154c2c114c68841add595fd01a50f45e767f802ae2941425852",
+        "digest": "4e396803bfc7d37f50963d5b9a50e9e1e6ca91b944d2796488d3f008c34726d0"
+      }
+    },
+    "ci": "required on final published head; pending",
+    "technical_review": "pending frozen consumer head"
+  },
+  "limits": [
+    "declared variant: fixed TP, no persistent FC/FV",
+    "Python fixed frame differs from native sliding1500; reference recomputed per observed window",
+    "trace proposals are not ModifySL confirmation or broker/source qualification",
+    "final OpenObserved response is not history of all retries; latch only per instance",
+    "no sequence/hash completeness proof, asynchronous reconciliation or concurrency acceptance",
+    "generic Python identity cache gate preserved; does not newly qualify operational/native/live reuse",
+    "T16.6 refuses signal-dependent MoveGuard without context, including Madrid",
+    "Tester/replay real, panel, Windows physical and live pending; no owner activation"
+  ],
+  "sha256": {
+    "mt5_extracao/composition/madrid_native.py": "e87cf22f85db1d0e08dd321610ece44348b99f38d080b73208b0f02d4c4ab164",
+    "mt5_extracao/composition/native.py": "ed5d3e7eab45deefcbc6b4deea571d36a429f61e1648650de2784554e6fb0e14",
+    "mt5_extracao/presets/madrid_events.py": "b5208e521c670456308d3cbe34cf2eaf54902e3d97b9bf21b23829cd03646eb5",
+    "mt5_extracao/presets/execution.py": "d5d77a43a990df0658956df4ba93751ec61fecb1a1e5cc0b849c10d079e7adef",
+    "mt5_extracao/ui/preset_workflow.py": "6404cacc38857b2c0488d23d440e020dddce8e00139b6cdc02a88ff4b05e7f40",
+    "mt5_extracao/ui/robot_controls.py": "bc126ada4e754d575167f4f0f2c79f91f327bba6bc725fdbd1b28b86747ecf97",
+    "tests/test_madrid_native_profile.py": "93595bb796a649442d34f8b0f5b09f17e8afdc77f7490637ffe148c565607a16",
+    "tests/test_madrid_preset_execution.py": "c374410046fc6ef93f66fabdac6872141fba4b3be716824f49176a68897875ae",
+    "tests/test_madrid_events.py": "b23d317bdee65e6b373813e95fb1fd2e1d1d75426fe092593770444cd1358fff",
+    "docs/sdk/madrid_nativo.md": "61644184e60c05019b76ef15b589d369b982976c93a7c8974aa2e39df70d9751",
+    "docs/PLANO_DE_TRABALHO.md": "4b1c4382510f916af74d27ac52b82a4e16efb823afe2daab03658a2272778bed",
+    "docs/continuidade.md": "e60ff1db1b299a149e3cfdfdc453d0bf078d3311c694888df718c33899eaf4e0",
+    "docs/validacao_instaladores.md": "9955615d1b6e68a1c4b23437a62a4645e0e676e9d21a3c0aedfe4c16555dd736"
+  }
+}

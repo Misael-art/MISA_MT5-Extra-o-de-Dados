@@ -15,9 +15,10 @@ from .squeeze import Squeeze
 from .s09 import S09Reference
 from .stoch_ema9 import StochEma9
 from .vwap_bands import VwapBands
+from .madrid import Madrid
 
 REGISTRY = {cls.key: cls for cls in (EmaAtrTrend, DonchianTurtle, BollingerRsiReversion,
-                                     OpeningRangeBreakout, PullbackMomentum, Squeeze, S09Reference, StochEma9, VwapBands)}
+                                     OpeningRangeBreakout, PullbackMomentum, Squeeze, S09Reference, StochEma9, VwapBands, Madrid)}
 
 # Práticas a evitar no início (exibidas na CLI, no relatório e na documentação)
 AVOID = (
