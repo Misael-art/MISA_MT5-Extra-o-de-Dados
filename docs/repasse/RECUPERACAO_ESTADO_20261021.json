@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "snapshot_at": "2026-10-21T17:48:46.107947+00:00",
+  "snapshot_at": "2026-10-21T18:45:31.142882+00:00",
   "scope": "Recuperação do desenvolvimento mt5x/HADOUKEN/Safety após reinstalação",
   "baseline": {
     "app": {
@@ -134,27 +134,50 @@
     "final_cutoff_comparison_at": "2026-10-21T18:08:55.266699+00:00"
   },
   "external_private_backup": {
-    "status": "pending_destination_confirmation_and_verified_copy",
-    "verified": false,
-    "ready_to_format": false,
-    "contents_required": [
-      "Consistent owner database snapshot",
-      "Configuration/.env and complete project evidence/export history",
-      "Git bundles/WIP/index patches and agent context",
-      "Native session reports/receipts/source/binaries excluding recreated caches",
-      "Reference toolchain and deployment metadata"
+    "status": "verified_on_owner_preserved_sd_for_source_development",
+    "preservation_profile": "source_development_v1",
+    "verified": true,
+    "ready_to_format": true,
+    "readiness_scope": "Only mt5x/HADOUKEN/Safety source development at the recorded cut; not an OS image or operational qualification",
+    "user_confirmed_sd_excluded_from_format": true,
+    "relative_directory": "Backups/MT5X/2026-10-21-desenvolvimento",
+    "payload_bytes": 141562607,
+    "payload_file_count": 12,
+    "source_and_destination_devices_differ": true,
+    "hashes_read_back_from_sd": true,
+    "restore_from_sd": {
+      "quick_check": "ok",
+      "tables": 43,
+      "all_table_counts_equal": true,
+      "fresh_github_application_history_reopened": true,
+      "trades_reopened": 3,
+      "journal_requests": 2,
+      "journal_events": 9,
+      "git_bundles_verified": 3,
+      "config_context_archives_tested": true,
+      "restored_database_unchanged": true
+    },
+    "contents": [
+      "Consistent development SQLite with prepared data/presets/history/journal",
+      "Private effective configuration",
+      "Three compact Git bundles and five real WIP snapshots",
+      "Essential handoffs, guarded helper sources, QA receipts and CI diagnostics"
     ],
-    "local_preparation": {
-      "complete": true,
-      "compressed_archive_count": 6,
-      "total_payload_bytes": 16538528930,
-      "location": "still on original system disk; not an off-host copy",
-      "external_copy_verified": false,
-      "full_wine_cache_copy_included": false,
-      "whole_os_image": false,
-      "payload_file_count": 8,
-      "all_archive_and_payload_hashes_verified_by_stdlib_verifier": true
-    }
+    "deliberately_recreated": [
+      "OS dependencies and virtualenvs",
+      "Wine/MT5 installations and binaries",
+      "regenerable terminal/provider caches and exports",
+      "raw chat transcripts and extensive nested execution logs"
+    ],
+    "full_16_5GB_package_not_migrated": true,
+    "credentials_not_published": true,
+    "new_operating_system_tested": false,
+    "current_source_database_matches_archived_snapshot_at": "2026-10-21T18:40:42.182630+00:00",
+    "old_paths_to_omitted_artifacts_do_not_become_restored_files": true,
+    "operational_acceptance": false,
+    "superseded_preparation_removed_after_verified_copy": true,
+    "inventory_is_cutoff_snapshot": true,
+    "current_complete_inventory_is_sd_manifest": true
   },
   "after_os_installation": {
     "pending": true,
@@ -948,5 +971,69 @@
     }
   ],
   "versioned_recovery_branch": "codex/recuperacao-pos-formatacao-20261021",
-  "snapshot_finalized_at": "2026-10-21T18:11:14.937933+00:00"
+  "snapshot_finalized_at": "2026-10-21T18:11:14.937933+00:00",
+  "recovery_verifier_validation": {
+    "baseline": "23 passed",
+    "final": "28 passed in 3.05s",
+    "legacy_full_profile_requirements_preserved": true,
+    "explicit_source_development_profile": true,
+    "unknown_profiles_rejected": true,
+    "windows_physical_pending": true,
+    "doctor_current_host_existing_config": "20 OK / 1 optional pandas-ta warning / 0 failures; --root original project --no-probe",
+    "doctor_isolated_checkout_without_private_config": "15 OK / 1 warning / 1 expected missing config; preserved, not a new OS test"
+  },
+  "recovery_publication_previous_head_checks": {
+    "at": "2026-10-21T18:42:48.613Z",
+    "pr": 179,
+    "head": "3debbae65b65bed6a68e56b0fe9e056b386fb30c",
+    "base": "codex/repasse-integracao-20261021",
+    "draft": true,
+    "state": "open",
+    "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/179",
+    "checks": [
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881192"
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881120"
+      },
+      {
+        "name": "Testes (windows-latest)",
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881102"
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881037"
+      },
+      {
+        "name": "Lint dos instaladores",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881011"
+      },
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397880698"
+      }
+    ]
+  },
+  "recovery_cleanup": {
+    "only_disposable_copies_created_by_this_task": true,
+    "logical_bytes_removed": 17579945676,
+    "observed_free_bytes_increase": 16622886912,
+    "original_user_sources_database_config_and_evidence_preserved": true,
+    "btrfs_not_logical_sum": true
+  }
 }

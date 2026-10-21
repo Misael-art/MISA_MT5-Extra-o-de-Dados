@@ -115,3 +115,29 @@ def test_link_to_external_folder_is_not_accepted_as_a_backup_copy(package, tmp_p
     with pytest.raises(recovery.VerificationError):
         recovery.verify(root, manifest)
     assert (outside / "archive.tar.zst").read_bytes() == original.read_bytes()
+
+
+def test_development_profile_is_explicit_and_does_not_qualify_native_archives(package):
+    root, manifest = package
+    manifest["files"] = [item for item in manifest["files"]
+                         if item["group"] in recovery.PROFILES["source_development_v1"]]
+    # Legacy/default manifests still require native evidence and toolchain.
+    with pytest.raises(recovery.VerificationError, match="categorias"):
+        recovery.verify(root, manifest)
+    manifest["preservation_profile"] = "source_development_v1"
+    result = recovery.verify(root, manifest)
+    assert len(result["files_verified"]) == 3
+    assert result["preservation_profile"] == "source_development_v1"
+    assert "native_evidence" not in result["groups_verified"]
+    assert not result["operational_acceptance"]
+    manifest["files"].pop()
+    with pytest.raises(recovery.VerificationError, match="categorias"):
+        recovery.verify(root, manifest)
+
+
+@pytest.mark.parametrize("profile", (None, True, "source", {"name": "source_development_v1"}))
+def test_unknown_or_malformed_profile_cannot_reduce_requirements(package, profile):
+    root, manifest = package
+    manifest["preservation_profile"] = profile
+    with pytest.raises(recovery.VerificationError, match="Perfil"):
+        recovery.verify(root, manifest)

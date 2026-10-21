@@ -15,6 +15,10 @@ import re
 REQUIRED_GROUPS = frozenset((
     "database", "project_state", "git_and_context", "native_evidence", "toolchain",
 ))
+PROFILES = {
+    "full_state_v1": REQUIRED_GROUPS,
+    "source_development_v1": frozenset(("database", "project_state", "git_and_context")),
+}
 
 
 class VerificationError(ValueError):
@@ -38,6 +42,10 @@ def verify(backup_dir, manifest):
         raise VerificationError("Manifesto ausente/inválido; use schema_version=1.")
     if manifest.get("complete") is not True:
         raise VerificationError("O manifesto não registra um pacote completo.")
+    profile = manifest.get("preservation_profile", "full_state_v1")
+    if not isinstance(profile, str) or profile not in PROFILES:
+        raise VerificationError("Perfil de preservação desconhecido no manifesto.")
+    required_groups = PROFILES[profile]
     files = manifest.get("files")
     if not isinstance(files, list) or not files:
         raise VerificationError("O manifesto precisa listar todos os arquivos do pacote.")
@@ -69,8 +77,8 @@ def verify(backup_dir, manifest):
         destinations.add(key)
         groups.add(group)
         planned.append((target, name, expected, size))
-    if not REQUIRED_GROUPS.issubset(groups):
-        missing = ", ".join(sorted(REQUIRED_GROUPS - groups))
+    if not required_groups.issubset(groups):
+        missing = ", ".join(sorted(required_groups - groups))
         raise VerificationError(f"Faltam categorias obrigatórias no backup: {missing}.")
     for target, name, expected, size in planned:
         before = target.stat()
@@ -82,6 +90,7 @@ def verify(backup_dir, manifest):
             raise VerificationError(f"Arquivo alterado durante a conferência: {name}.")
         verified.append(name)
     return {"files_verified": verified, "groups_verified": sorted(groups),
+            "preservation_profile": profile,
             "archive_integrity_verified": True,
             "external_storage_location_verified": False,
             "restore_exercised_by_this_command": False,

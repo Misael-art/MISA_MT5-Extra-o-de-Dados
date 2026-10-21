@@ -4,10 +4,13 @@ O [roteiro independente do host](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
 registra clones novos, pins, dependências, WIP e dados privados. Três clones de
 rede passaram fsck; commits/HEADs locais estavam alcançáveis no GitHub; cinco
 árvores WIP reais foram reconstruídas por bundle/patch/arquivos com hashes iguais.
-A restauração privada SQLite preservou43tabelas e o histórico foi reaberto pelo
+A restauração privada SQLite preservou43 tabelas e o histórico foi reaberto pelo
 store importado do clone novo, sem nova execução. Isso foi no Linux atual, não
-no novo SO. A cópia privada externa ainda precisa de destino confirmado e validação;
-`ready_to_format=false` permanece no [estado](repasse/RECUPERACAO_ESTADO_20261021.json).
+no novo SO. Após confirmação do proprietário, o complemento privado de142 MB foi
+copiado ao SD preservado: hashes relidos,43 tabelas restauradas e histórico/journal
+reabertos sem execução. `ready_to_format=true` no [estado](repasse/RECUPERACAO_ESTADO_20261021.json)
+vale para desenvolvimento no corte declarado; novo SO/aceite operacional pendentes.
+Wine, ambientes e caches são recriados; o pacote amplo16,5 GB não foi migrado.
 
 A fila HADOUKEN49–60 também foi localizada e conferida no GitHub:12PRs abertas,
 dois checks aprovados cada no snapshot, sem integração/replay/consumidor Python

@@ -27,8 +27,10 @@ Comando de testes padrão (use o Python do `.venv`):
 
 **Continuidade pré-formatação (2026-10-21):** clones GitHub/pins/WIP e ensaio
 SQLite conferidos no host atual; [roteiro](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
-e verificador somente leitura preparados. Preservação privada fora do SSD e
-validação no novo SO ainda pendentes; não qualifica formatação ou operação.
+e verificador somente leitura conferidos. Complemento privado de142 MB salvo no SD
+que o proprietário manterá fora da formatação: hashes,43 tabelas e leitura do histórico
+verificados a partir da mídia. Preservação de desenvolvimento concluída; ambientes/caches
+são recriados. Validação no novo SO e aceites operacionais permanecem pendentes.
 A frente HADOUKEN49–60 está no mapa de pendências, sem integração automática.
 
 **Repasse de 2026-10-21:** instalação consolidada até AppPR171/ac7af2c3,

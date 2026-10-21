@@ -8,24 +8,30 @@ contexto e dados privados; não conceder aceite operacional ou financeiro.
 
 ## Antes de formatar
 
-**GitHub preserva o código; os dados privados exigem uma cópia independente.**
-No corte deste documento, a cópia privada externa ainda depende de destino
-confirmado e conferência. `ready_to_format=false` é deliberado. Um arquivo
-compactado no mesmo SSD, um snapshot Btrfs ou um commit de documentação não
-protegem contra a formatação desse disco.
+**Preservação para retomar o desenvolvimento concluída no corte registrado.**
+O proprietário confirmou que o SD ficará fora da formatação e pediu somente o
+necessário: fontes, contexto e bases úteis. O complemento privado está em
+`Backups/MT5X/2026-10-21-desenvolvimento` nessa mídia, com `LEIA_PRIMEIRO.md`,
+manifesto, verificador e recibos. São aproximadamente 142 MB, em vez do pacote
+amplo de 16,5 GB preparado anteriormente. O SD foi identificado como dispositivo
+separado do SSD; todos os arquivos foram relidos e conferidos por SHA-256.
 
-Antes de apagar o sistema, concluir e registrar:
+O banco restaurado **a partir do SD** passou quick_check, hash e contagens das 43
+tabelas. O store do clone GitHub reabriu 3 trades existentes e o journal sem criar
+backtest ou consulta. Os três bundles foram verificados. `ready_to_format=true`
+no estado JSON refere-se apenas ao escopo de desenvolvimento declarado, nesse
+corte. O novo SO ainda não foi instalado/testado; não é aceite operacional nem
+imagem do host ou promessa de preservar caches de corretora.
 
-1. Encerrar alterações de desenvolvimento e definir o corte final do backup.
-   Se alguém continuar escrevendo depois, capturar as diferenças novamente.
-2. Conferir que os commits, as pontas e o conteúdo WIP daquele corte estão no
-   GitHub ou em um pacote privado recuperável. Preservar também staged/unstaged,
-   arquivos novos e os arquivos de estudo. Não fazer reset/clean para isso.
-3. Copiar o pacote privado para dispositivo ou serviço que **não** será apagado.
-   Conferir hashes a partir da cópia externa e fazer um ensaio de restauração.
-   Guardar qualquer chave de criptografia também fora do disco a apagar.
-4. Guardar o endereço deste roteiro e o recibo final da cópia externa fora do host.
-   Sem esse recibo, não considerar a preservação privada concluída.
+Depois desse ensaio, as grandes cópias temporárias preparadas nesta tarefa foram
+removidas do SSD. O aumento de espaço livre observado foi 16,6 GB; a soma lógica
+removida foi 17,58 GB e difere do espaço físico em Btrfs. Fontes, banco, configuração
+e evidências originais do proprietário foram preservados. O recibo privado da
+limpeza identifica os diretórios descartáveis; nenhuma limpeza global foi executada.
+
+Se houver novas alterações depois desse corte, atualizar a preservação antes de
+apagar o SSD. Manter o SD fora da seleção de discos a formatar. O recibo em
+`receipts/` registra a mídia e o ensaio; conservar esse diretório com o pacote.
 
 Não colocar banco, configuração privada, `.env`, logs brutos, arquivos compactados
 privados ou credenciais no repositório público. Reautenticar as ferramentas após a
@@ -63,9 +69,17 @@ em `Include/<include_dir>/<nome>`. Os erros do ensaio foram preservados; nenhum
 header, manifesto, executor ou risco foi alterado para obter sucesso.
 
 **Todos esses ensaios usaram o Linux atual e o ambiente existente.** Ainda falta
-validar a instalação no novo sistema, a transferência privada externa e os
+validar a instalação no novo sistema e os
 aceites nativos já pendentes. Não descrever este ensaio como Windows físico,
 novo SO testado, Tester executado ou prova de negociação.
+
+O verificador passou 23 testes no baseline e 28 após acrescentar o perfil explícito
+mínimo (cinco casos adicionais). O perfil completo continua exigindo suas cinco
+categorias. Doctor com configuração existente: 20 OK/1 aviso pandas-ta opcional/0 falhas,
+sem probe. A primeira chamada na worktree isolada registrou 15 OK/1 aviso/1 falha por
+configuração privada ausente; foi mantida como diagnóstico daquele diretório,
+sem copiar credenciais para o checkout. A chamada com `--root` explícito usou a
+configuração existente em leitura. CI da nova ponta continua obrigatório para merge.
 
 ## Código aceito e trabalho que continua em fila
 
@@ -144,26 +158,34 @@ separada a partir do snapshot correspondente. Nada disso equivale a integração
 
 ## Conferir e restaurar o pacote privado
 
-O pacote deve conter `recovery-manifest.json` e arquivos das categorias:
+O perfil explícito `source_development_v1` exige três categorias:
 
-| Categoria | Conteúdo a preservar |
+| Categoria | Conteúdo efetivamente salvo no SD |
 |---|---|
-| database | snapshot SQLite consistente e prova de restauração |
-| project_state | configuração/`.env`, exportações e histórico completo de evidências/logs do projeto |
-| git_and_context | bundles, patches staged/unstaged, arquivos novos, mapas de refs, contexto dos agentes e metadados de implantação |
-| native_evidence | fontes/bináriosQA, relatórios, recibos, presets e logs de sessões; caches regeneráveis identificados |
-| toolchain | executáveis/biblioteca padrão de referência e versões, sem presumir que a sessão antiga continuará válida |
+| database | snapshot SQLite consistente, dados preparados, presets, históricos e journal; 96 MB comprimidos |
+| project_state | configuração efetiva e preferências; `.env` somente se existisse no corte |
+| git_and_context | três bundles, cinco WIPs reais, mapas de refs, repasse, helpers e recibos essenciais |
 
-O pacote preserva o estado do projeto, não é uma imagem integral do sistema. Ele
-omite dependências regeneráveis e caches `Bases/temp` de sessões privadas. Um
-novo download do provedor pode ter revisões: não prometer replay bit a bit desses
-caches omitidos. Para preservar também todo o prefixo Wine de forma literal, é
-necessário copiá-lo integralmente para a mídia externa em um corte sem escrita;
-essa cópia integral não foi executada por este ensaio.
+O banco é útil para agilidade: preserva 43 tabelas, 381 runs, 18 revisões de presets,
+8 manifests de datasets, dados preparados e o journal de experimentos. Uma nova
+extração continua possível. Não é necessário transportar cada exportação ou cache.
+O contexto compacto inclui os arquivos do nível principal do repasse do integrador
+(JSON/Markdown/scripts/diagnósticos/capturas), o estado de sincronização e os patches
+WIP. Helpers arquivados têm caminhos/SHAs antigos e exigem revisão; não executar
+merge/ativação/sondagem automaticamente ao restaurar.
 
-Categorias podem ocupar mais de um arquivo. Links para `.venv`, banco ou prefixo
-Wine não são cópias dos seus conteúdos. O manifesto deve enumerar o pacote inteiro,
-incluindo suplementos de implantação e memória, quando presentes.
+Por orientação explícita do proprietário, não foram migrados Wine/MT5, binários
+repetidos, `.venv`, node_modules, bytecode, caches pytest/provedor, exportações
+regeneráveis, transcrições brutas dos chats nem logs extensos aninhados de execução.
+Não alegar preservação integral dos artefatos nativos históricos ou replay literal
+de dados externos baixados novamente. Os recibos principais foram mantidos; os
+fontes permitem recompilar. Caminhos antigos no banco podem apontar para artefatos
+omitidos: o registro persiste, o arquivo deve ser recriado ou requalificado.
+
+Manifestos antigos sem `preservation_profile` continuam no perfil `full_state_v1`,
+que exige também `native_evidence` e `toolchain`; esses requisitos não foram
+relaxados. O perfil reduzido é uma escolha explícita de escopo. Nenhum dos dois
+perfis transforma hash de arquivo em prova de conteúdo sem o ensaio de restore.
 
 O verificador usa só a biblioteca padrão e pode rodar antes de instalar o app:
 
@@ -180,7 +202,7 @@ origem do manifesto e não comprova sozinho mídia externa ou restauração.**
 
 Listar os arquivos compactados antes de extrair. Extrair um pacote confiável para
 uma pasta nova e vazia, mantendo o original intocado. O snapshot principal está
-em `database.tar.zst`, como `owner-database.sqlite`; conferir SHA e `quick_check`
+em `data/database.tar.zst`, como `owner-database.sqlite`; conferir SHA e `quick_check`
 antes de colocá-lo na pasta `database/` do checkout novo. Se já houver outro banco
 na instalação, não sobrescrevê-lo: fazer o ensaio em outro diretório.
 
@@ -236,7 +258,7 @@ pelo instalador, sem executar cegamente um `.desktop` antigo com caminho inváli
 
 MT5/Wine é uma etapa posterior: instalar a plataforma em uma área nova, entrar em
 DEMO com negociação automática desativada e conferir conta/servidor/build/símbolos.
-O arquivo de toolchain é referência, não um lançador pronto. Não iniciar perfis,
+A toolchain não foi transportada no pacote reduzido. Não iniciar perfis,
 EAs, `terminal64.exe` ou `launch.bat` arquivados antes dessas conferências.
 Instalar Safety/headers como conjunto e compilar a partir das fontes/pins aceitos.
 Compilar não comprova Expert ou `.set` efetivamente carregado.
@@ -251,11 +273,12 @@ não transforma testes sintéticos em aceite de execução.
 
 > Leia AGENTS.md, este roteiro, RECUPERACAO_ESTADO_20261021.json e o repasse da
 > integração. Confirme os três clones e os pins; localize o pacote privado e seu
-> recibo de cópia externa. Não anuncie ausência de perdas com base apenas no GitHub.
+> recibo de cópia externa. O SD preserva o complemento de desenvolvimento; os
+> componentes regeneráveis omitidos estão explícitos, sem promessa de imagem integral.
 > Recrie dependências e configuração do novo SO, confira a cópia dos dados em uma
 > pasta de ensaio e reabra os registros existentes antes de escrever no banco.
 > Preserve snapshots WIP sem mesclá-los indiscriminadamente. App172–177 tem uma fila
-> serial própria; HADOUKEN49–60 tem consumidores/contratos e aceites pendentes.
+> serial própria; HADOUKEN49–60 tem consumidores/contratos e aceites pendentes;61 registra sua continuidade.
 > Atualize os checks das pontas exatas, sem GO novo para ações já autorizadas e sem
 > contornar verificações obrigatórias. Não opere REAL, eleve limites ou repita a
 > sondagem de sincronização sem nova pré-condição. Nenhum teste no Linux antigo
