@@ -1,0 +1,188 @@
+{
+  "task": "T19.39",
+  "date": "2026-10-21",
+  "scope": {
+    "own_runtime_files": 6,
+    "own_tests": [
+      "tests/test_madrid.py",
+      "tests/test_madrid_execution.py",
+      "tests/test_strategies.py",
+      "tests/test_robots_catalog.py"
+    ],
+    "untouched_by_own_edits": [
+      "native adapters/UI/presets/pins",
+      "S10/VWAP consumers",
+      "principal DB/config/WIP",
+      "central PLANO/continuidade",
+      "Safety/MQL/executables/native sessions/lease"
+    ],
+    "upstream_changes": "Preserved through Git only; owner b4/6981 includes central docs/test fixtures/generic resim guard. Parent evidence remains frozen at its original commits."
+  },
+  "branch": "codex/t19-39-python",
+  "exact_base": "d10e2b0b89d5bcd4f60551355cde7e300c2c83ed",
+  "git_composition": {
+    "upstream": "6981fd65b3492941284e3045433b2d98e9f4d7a2",
+    "upstream_s10_fix": "b4bdf24f423371acca578bd98220cd911ca71026",
+    "merge": "ca823defc304179ef04bbf4061a025056c170618",
+    "conflicts": false,
+    "base_preserved_as_ancestor": true
+  },
+  "native_reference": {
+    "foundation": "94e3de07f55dc929f010db3ee9e558f0dd0687c5",
+    "correction_read_only": "f7357c61adc18023b116399486c457c2bbe04909",
+    "integrated": "1305bc9635bf44b9e093081af09139a7e813beaf",
+    "original_spec_item": 5,
+    "operational_acceptance": false
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "pandas": "2.3.3",
+    "numpy": "2.4.6",
+    "platform": "Linux pure Python and Tk/Xvfb; no native process"
+  },
+  "sha256": {
+    "mt5_extracao/strategies/base.py": "c6ca9c0bf12d1284cad6a91e3a988107a8f460e8c7bc47da79e5bc9190c822fe",
+    "mt5_extracao/strategies/backtester.py": "0b627a4162e0365010f1abab30c18a8e5a77dc8fdc56931ef3b6d749987fa13f",
+    "mt5_extracao/strategies/__init__.py": "901d4d0684fe683b752b76192cc5ec665cb994876e5dc5696c238e119766c56a",
+    "mt5_extracao/strategies/madrid.py": "9322a83e02fc0c66b7232c04b4c03d06b7900492af8b897b07e2e507d77dd3d8",
+    "mt5_extracao/composition/registry.py": "aa45bc9df2ae812632d83bf164555933129ed4d0e6494428b3a7e1b40523a6c2",
+    "mt5_extracao/composition/adapter.py": "be0f2cd942baebe489c4dc85c6e62076f882ce12054a35f99803a8911672c5f0",
+    "tests/test_madrid.py": "83a261db83da6ec7cc4c6d7905d4670d8fbc7f11b89dd635ac8f116f1c1160e7",
+    "tests/test_madrid_execution.py": "a793215fa0a7a36e109d559c3c45fb4c662cf47fd025e47bd31ac9a96fa65ef1",
+    "tests/test_strategies.py": "2492b04e6e5ff9a6ce1f96452e68786b9ee91834d986aeb2d7e528bfe087e1b1",
+    "tests/test_robots_catalog.py": "9a9f48e0a00106a1ecb561dea0fd61d70fdc3261986db17f7b5e577b67793aa9",
+    "docs/sdk/madrid.md": "96f4ed71fcce7c5e7770883fa72b1dc4e06240f7792047e4dcec98b0dd8dd79f"
+  },
+  "checks": [
+    {
+      "phase": "baseline_before_edits",
+      "command": ".venv/bin/python -m pytest -q tests/test_backtester.py tests/test_fixed_profit_exit.py tests/test_fixed_initial_stop.py tests/test_stoch_move_guard.py tests/test_vwap_execution.py tests/test_strategies.py tests/test_composition.py --tb=short",
+      "passed": 222,
+      "failed": 0,
+      "seconds": 24.74
+    },
+    {
+      "phase": "initial_math",
+      "command": ".venv/bin/python -m pytest -q tests/test_madrid.py --tb=short",
+      "passed": 49,
+      "failed": 0,
+      "seconds": 5.21
+    },
+    {
+      "phase": "focused_core_and_legacy",
+      "command": ".venv/bin/python -m pytest -q tests/test_madrid.py tests/test_madrid_execution.py tests/test_backtester.py tests/test_fixed_profit_exit.py tests/test_fixed_initial_stop.py tests/test_stoch_move_guard.py tests/test_vwap_execution.py tests/test_strategies.py tests/test_composition.py --tb=short",
+      "passed": 340,
+      "failed": 0,
+      "seconds": 33.5
+    },
+    {
+      "phase": "math_and_relevant_regressions",
+      "command": ".venv/bin/python -m pytest -q tests/test_madrid.py tests/test_madrid_execution.py tests/test_validation.py tests/test_cli_strategies.py tests/test_asset_screener.py tests/test_robots_backtest.py tests/test_robots_generate.py tests/test_floating_equity.py tests/test_partial_confirmation.py tests/test_lots_execution.py tests/test_temporal_execution.py tests/test_temporal_er.py tests/test_temporal_donchian.py tests/test_temporal_atr.py tests/test_session_entry.py tests/test_cooldown.py --tb=short",
+      "passed": 288,
+      "failed": 0,
+      "seconds": 182.64
+    },
+    {
+      "phase": "numeric_followup",
+      "command": ".venv/bin/python -m pytest -q tests/test_madrid.py tests/test_madrid_execution.py --tb=short",
+      "passed": 119,
+      "failed": 0,
+      "seconds": 10.51,
+      "compatibility": "Madrid-only sentinel parameter rejection and float conversion of ATR scales; legacy paths unchanged."
+    },
+    {
+      "phase": "exact_cross_boundaries",
+      "command": ".venv/bin/python -m pytest -q tests/test_madrid.py -k \"real_first_bar or current_equality\" --tb=short",
+      "passed": 10,
+      "failed": 0,
+      "deselected": 51,
+      "seconds": 1.31
+    },
+    {
+      "phase": "final_after_git_composition",
+      "command": ".venv/bin/python -m pytest -q tests/test_madrid.py tests/test_madrid_execution.py tests/test_robots_catalog.py tests/test_cli_agent.py tests/test_trade_resim.py tests/test_composition.py --tb=short",
+      "passed": 257,
+      "failed": 0,
+      "seconds": 79.55,
+      "madrid_cases": 129
+    },
+    {
+      "phase": "affected_gui_counts",
+      "command": "xvfb-run -a .venv/bin/python -m pytest -q tests/test_ui_main_window.py -k \"robots_tab_shows_cards_and_detail or robots_tab_survives_theme_toggle or backtest_button_follows_the_checked_rows\" --tb=short",
+      "passed": 3,
+      "failed": 0,
+      "deselected": 61,
+      "seconds": 27.54
+    },
+    {
+      "phase": "doctor_no_probe",
+      "command": ".venv/bin/python -m mt5_extracao.bootstrap --root <existing-app-root> doctor --no-probe",
+      "ok": 20,
+      "warnings": 1,
+      "failed": 0,
+      "warning": "optional pandas-ta unavailable",
+      "access": "Read-only existing config/files/stat; no database open or bridge/native connection."
+    },
+    {
+      "phase": "diff_check",
+      "command": "git diff --check",
+      "failed": 0
+    }
+  ],
+  "contract": {
+    "key": "madrid",
+    "default_params": {
+      "first_period": 5,
+      "period_step": 5,
+      "distance_atr": 1.0,
+      "distance_points": 0,
+      "trail_line": 10,
+      "offset_atr": 0.25
+    },
+    "warmup_bars": 300,
+    "warmup_fixed": true,
+    "signal_columns_unchanged": true,
+    "new_exit_rule": {
+      "signal_reference_distance_points": null
+    },
+    "move_guard": "Existing shared Backtester, true for both Madrid modes; no second manager",
+    "atr_mode": "Raw TP M1±distance_atr×ATR14, absolute_signal_target true; offset ATR already in price stop columns. Operability validated before lot. Explicit profit overrides may replace invalid default TP.",
+    "points_mode": "Target columns are M1 reference, not TP. Candidates lack a symbol conversion until shared Backtester validates abs(signal close−M1)<=N×SymbolSpec.point and normalizes default TP M1±N×point before lot.",
+    "overrides": "Explicit fill target_points / fill-and-initial-risk target_r have higher priority; reference-distance entry filter remains active. Fixed stop replaces only initial stop; shared median guard remains.",
+    "adapter_change": "Owner authorized sixth runtime: preserve target/reference columns under profit override only if new reference field is non-None; legacy/S10/VWAP clearing unchanged.",
+    "seeds": "EMA0=C0; EMA alpha2/(period+1). ATR0=TR0=H0−L0; ATR RMA alpha1/14; no SMA seed.",
+    "prefix": "HLC positive finite non-sentinel and recursive finite values; invalid prefix blocks remainder. Flat zero ATR may recover. Fixed frame differs from native rolling1500.",
+    "cycle_variant": "Previous equality permits trigger; no persistent FC/FV or restart deduplication. Fixed TP, not dynamic TP from study."
+  },
+  "coverage": [
+    "Independent Decimal all10EMA/ATR seeds and all signals",
+    "prefix/future mutation/nondefault index, fixed300 even M10=1000, P1=1 legitimately no trades",
+    "special HLC, sentinel/type/period bounds and overflow products",
+    "real EMA3 and constantATR64 equality/distance boundaries at first eligible bar",
+    "real Backtester point!=tick, normalized reference target before lot, both sides and gaps",
+    "real BaseAdapter.run valid profit overrides with valid references and invalid/over-distance references refused before lot",
+    "real Madrid ATR and points compositions with both profit and initial protection overrides",
+    "ATR default TP nonpositive refused; explicit profit override can replace it",
+    "single monotonic guard preserves TP and cannot trigger retroactively in same bar",
+    "legacy None/off equivalence, S10/VWAP/fixed exits, temporal/partials/equity/session/cooldown regressions",
+    "explicit catalog10 and generic MoveGuard T16.6 fail-closed via engine and Runner"
+  ],
+  "limits": {
+    "native_parity": false,
+    "external_parity": false,
+    "rolling_window_parity": false,
+    "broker_stops_freeze": false,
+    "persistent_fc_fv": false,
+    "dynamic_take_profit": false,
+    "operational_acceptance": false,
+    "live_authorization": false,
+    "physical_windows": false,
+    "cache_qualification": false,
+    "cache_gate_unchanged": true,
+    "generic_cache_eligibility_may_be_true": "Existing verified snapshot/code/rules/spec/runtime identity gate may issue frozen_reference/cache_eligible; no waiver or new operational cache claim.",
+    "safety_distribution_required_for_python": false,
+    "t16_6_resimulation": "MoveGuard needs per-bar signal context; existing upstream fix refuses projection without it."
+  },
+  "setup": "Authorized reuse of prepared prior venv via own unversioned symlink; no shared venv mutation/global installer rewrite. No full suite/manual workflow or visual palette/clock QA repeated.",
+  "counting": "Selections overlap. Do not sum as unique tests; final257 contains all129 Madrid cases."
+}

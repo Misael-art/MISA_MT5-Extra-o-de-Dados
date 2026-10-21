@@ -54,6 +54,8 @@ class ExitRules:
     # Alvo padrão da estratégia no fechamento do sinal. Alvos explícitos points/R têm prioridade.
     signal_target_points: Optional[float] = None
     absolute_signal_target: bool = False  # alvo absoluto das colunas: normalizar/validar antes do lote
+    # Colunas target contêm a referência em preço, não TP; limite de entrada permanece sob overrides.
+    signal_reference_distance_points: Optional[float] = None
 
     def __post_init__(self):
         if self.temporal is not None and not isinstance(self.temporal,TemporalPolicy):
@@ -70,6 +72,16 @@ class ExitRules:
             raise ValueError("Alvo absoluto do sinal requer opção booleana explícita.")
         if self.absolute_signal_target and self.signal_target_points is not None:
             raise ValueError("Escolha uma única fonte padrão de alvo: preço absoluto ou pontos desde o sinal.")
+        reference = self.signal_reference_distance_points
+        if reference is not None:
+            try:
+                valid_reference = not isinstance(reference, bool) and isinstance(reference, Real) and math.isfinite(reference) and reference > 0
+            except OverflowError:
+                valid_reference = False
+            if not valid_reference:
+                raise ValueError("Distância da referência requer pontos positivos e finitos; use None para desligar.")
+            if self.absolute_signal_target or self.signal_target_points is not None:
+                raise ValueError("Referência em pontos exige uma única fonte padrão de alvo.")
         offset = self.signal_stop_offset_points
         if (isinstance(offset, bool) or not isinstance(offset, Real)
                 or not math.isfinite(offset) or offset < 0):
