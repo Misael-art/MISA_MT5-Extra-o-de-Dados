@@ -7,6 +7,16 @@ Este plano não substitui validação, bateria, paridade, guardião nem autoriza
 
 Critérios resumidos de aceite: [Matriz de requisitos F18](../analytics/MATRIZ_REQUISITOS_F18.md).
 
+**Qualificação transversal aceita em 2026-10-17:** [F20/Q01–Q16](ROBUSTEZ_PESQUISA_EXECUCAO.md)
+amplia reprodução/qualidade dos dados e registro/protocolo de experimentos; T20.15 mede
+contribuição incremental. Reusar store/registry/serviços F13/F18, sem outro motor de
+correlações. Esses vínculos não implementam Analytics nem transformam associação em causalidade.
+
+**Pesquisa futura registrada em 2026-10-17:** [FRP — Fluxo Relativo do Preço](../pesquisa/FRP_FLUXO_RELATIVO_PRECO.md).
+Investigar grupos de 3/4 indicadores correlacionados entre si e com o movimento do preço,
+e sua utilidade incremental no Expert. Depende da consolidação desta base analítica;
+não amplia as interações do primeiro ciclo F18 nem autoriza tratar correlação como segurança.
+
 ## 1. Objetivo e significado
 
 Pré-calcular relações por ativo, corretora/contrato, timeframe, Expert/versão/preset e direção, para:

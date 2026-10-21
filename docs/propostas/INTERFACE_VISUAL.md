@@ -2,6 +2,12 @@
 
 **Pedido do dono do projeto (2026-10-14):** tornar a interface Tkinter existente mais legível, consistente e profissional, com estética de aplicativo SaaS desktop. Preservar arquitetura, cálculos, dados, callbacks e regras de segurança. Este plano organiza a frente em tarefas pequenas; cada uma corresponde a uma entrega revisável.
 
+**Complemento documental de 2026-10-17:** [organização e gráficos por prioridade](UI_ORGANIZACAO_GRAFICOS_PRIORIDADES.md)
+detalha a evolução nas tarefas F19/F20. UI-A01–A10 entram com as capacidades atuais;
+UI-P01/P02 são refinamentos posteriores e UI-X01 é experimento futuro de componente
+financeiro especializado. Não reabre a F17 concluída, não altera os limites abaixo nem
+autoriza migração tecnológica. Reusar tokens/componentes/Matplotlib e preservar a evidência histórica.
+
 ## 1. Limites e convivência
 
 - Permanecem Tkinter/ttk e matplotlib; sem migração para web, Electron, Qt ou toolkit novo.

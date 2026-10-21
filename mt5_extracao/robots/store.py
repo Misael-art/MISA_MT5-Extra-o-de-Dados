@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS _robot_runs (
 """
 _RUN_COLUMNS = ("run_id", "robot_key", "source", "symbol", "timeframe", "data_start", "data_end", "bars",
                 "params_json", "metrics_json", "equity_json", "created_at")
+_VALUATION_COLUMNS = ("account_balance_json", "floating_equity_json", "valuation_json",
+                      "performance_equity_json", "account_cashflows_json")
 
 
 # A bateria de backtests da interface grava de várias threads. Criar a tabela e acrescentar a coluna nova são
@@ -86,28 +88,47 @@ _RUN_COLUMNS = ("run_id", "robot_key", "source", "symbol", "timeframe", "data_st
 _SCHEMA_LOCK = threading.Lock()
 
 
-def save_run(db, run: dict) -> None:
+def save_run(db, run: dict, *, control=None) -> None:
     """Grava um backtest: métricas e curva de capital (já reduzida a poucos pontos)."""
-    with _SCHEMA_LOCK:
-        _save_run(db, run)
+    from contextlib import nullcontext
+    with (control.publication() if control is not None else nullcontext()), _SCHEMA_LOCK:
+        _save_run(db, run, control)
 
 
-def _save_run(db, run: dict) -> None:
+def _save_run(db, run: dict, control=None) -> None:
     from sqlalchemy import text
+    if control is not None:
+        control.check()
     row = {"run_id": run["run_id"], "robot_key": run["robot_key"], "source": run["source"],
            "symbol": run["symbol"], "timeframe": run["timeframe"], "data_start": run["data_start"],
            "data_end": run["data_end"], "bars": int(run["bars"]),
            "params_json": json.dumps(run.get("params", {}), ensure_ascii=False),
            "metrics_json": json.dumps(run["metrics"], ensure_ascii=False),
            "equity_json": json.dumps(run["equity"]), "created_at": run["created_at"],
-           "trades_json": json.dumps(run.get("trades", []))}
+           "trades_json": json.dumps(run.get("trades", [])),
+           "account_balance_json": json.dumps(run.get("account_balance"), allow_nan=False),
+           "floating_equity_json": json.dumps(run.get("floating_equity"), allow_nan=False),
+           "performance_equity_json": json.dumps(run.get("performance_equity"), allow_nan=False),
+           "account_cashflows_json": json.dumps(run.get("account_cashflows"), allow_nan=False),
+           "valuation_json": json.dumps(run.get("valuation"), ensure_ascii=False, allow_nan=False)}
     with db.engine.begin() as conn:
         conn.execute(text(_CREATE_RUNS))
         if not _has_trades_column(conn):          # base criada antes da T8.6: coluna nova, nada é apagado
             conn.execute(text("ALTER TABLE _robot_runs ADD COLUMN trades_json TEXT"))
-        columns = _RUN_COLUMNS + ("trades_json",)
+        from sqlalchemy import inspect
+        existing = {c["name"] for c in inspect(conn).get_columns("_robot_runs")}
+        for column in _VALUATION_COLUMNS:
+            if column not in existing:
+                conn.execute(text(f"ALTER TABLE _robot_runs ADD COLUMN {column} TEXT"))
+        columns = _RUN_COLUMNS + ("trades_json",) + _VALUATION_COLUMNS
         conn.execute(text(f"INSERT INTO _robot_runs ({', '.join(columns)}) "
                           f"VALUES ({', '.join(':' + c for c in columns)})"), row)
+        manifest_id = run["metrics"].get("data_manifest_id")
+        if manifest_id is not None:
+            from mt5_extracao.analytics import datasets
+            datasets.bind(db, run["run_id"], manifest_id, connection=conn)
+        if control is not None:
+            control.result("completed", conn=conn)
 
 
 def _has_trades_column(conn) -> bool:
@@ -115,23 +136,33 @@ def _has_trades_column(conn) -> bool:
     return any(c["name"] == "trades_json" for c in inspect(conn).get_columns("_robot_runs"))
 
 
-def load_runs(db, robot_key: str = None) -> list:
+def load_runs(db, robot_key: str = None, *, run_id: str = None) -> list:
     """Execuções gravadas, a mais recente primeiro (lista vazia se a tabela ainda não existir)."""
     from sqlalchemy import inspect, text
     if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_robot_runs"):
         return []
     params = {}
     with db.engine.connect() as conn:
-        columns = _RUN_COLUMNS + (("trades_json",) if _has_trades_column(conn) else ())
+        existing = {c["name"] for c in inspect(conn).get_columns("_robot_runs")}
+        columns = (_RUN_COLUMNS + (("trades_json",) if _has_trades_column(conn) else ()) +
+                   tuple(c for c in _VALUATION_COLUMNS if c in existing))
         sql = f"SELECT {', '.join(columns)} FROM _robot_runs"
+        where = []
         if robot_key:
-            sql += " WHERE robot_key = :k"
+            where.append("robot_key = :k")
             params["k"] = robot_key
+        if run_id is not None:
+            where.append("run_id = :r")
+            params["r"] = run_id
+        if where:
+            sql += " WHERE " + " AND ".join(where)
         rows = [dict(r) for r in conn.execute(text(sql + " ORDER BY created_at DESC, run_id DESC"), params).mappings()]
     for row in rows:
         row["trades"] = json.loads(row.pop("trades_json", None) or "[]")      # [[horário, resultado, volume], ...]
         row["params"] = json.loads(row.pop("params_json") or "{}")
         row["metrics"] = json.loads(row.pop("metrics_json") or "{}")
+        row["data_manifest_id"] = row["metrics"].get("data_manifest_id")
+        row["data_provenance_status"] = "frozen_reference" if row["data_manifest_id"] else "legacy_current_data"
         from mt5_extracao import profit_factor
         try:
             pnl = [t[1] for t in row["trades"]]
@@ -139,6 +170,14 @@ def load_runs(db, robot_key: str = None) -> list:
             pnl = None
         row["metrics"].update(profit_factor.read_fields(row["metrics"], pnl, row["metrics"].get("trades")))
         row["equity"] = json.loads(row.pop("equity_json") or "[]")
+        row["account_balance"] = json.loads(row.pop("account_balance_json", None) or "null")
+        row["floating_equity"] = json.loads(row.pop("floating_equity_json", None) or "null")
+        row["performance_equity"] = json.loads(row.pop("performance_equity_json", None) or "null")
+        row["account_cashflows"] = json.loads(row.pop("account_cashflows_json", None) or "null")
+        row["valuation"] = json.loads(row.pop("valuation_json", None) or "null") or {
+            "version": 1, "status": "unavailable", "closed_curve_basis": "legacy_closed_results",
+            "reason": "Registro sem trajetória patrimonial; refaça o backtest para medi-la.",
+        }
     return rows
 
 

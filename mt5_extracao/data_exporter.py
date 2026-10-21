@@ -98,6 +98,12 @@ class DataExporter:
             df["time"] = pd.to_datetime(df["time"])   # no SQLite o horário é texto
         return df
 
+    def export_snapshot(self, manifest_id, caminho_arquivo=None):
+        """Exporta uma revisão verificada, com blocos e metadados, sem copiar a base inteira."""
+        from mt5_extracao.analytics import datasets
+        path = caminho_arquivo or self.export_dir / f"dataset_{manifest_id}.json"
+        return datasets.export_snapshot(self.db_manager, manifest_id, path)
+
     def _default_path(self, tabela, ext, adicionar_timestamp=True):
         tabela_limpa = self._limpar_nome_tabela(tabela)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") if adicionar_timestamp else ""

@@ -11,7 +11,7 @@ import os
 
 import pandas as pd
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
 import mt5_extracao.historical_extractor as he_module
 import mt5_extracao.mt5_connector as connector_module
@@ -20,6 +20,7 @@ from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.historical_extractor import HistoricalExtractor
 from mt5_extracao.indicator_calculator import IndicatorCalculator
 from tests.market_data import random_walk
+from tests.postgres_helpers import isolated_postgresql_database
 
 PG_URL = os.environ.get("MT5X_TEST_PG_URL")
 pytestmark = pytest.mark.skipif(not PG_URL, reason="defina MT5X_TEST_PG_URL para testar com PostgreSQL")
@@ -28,21 +29,37 @@ pytestmark = pytest.mark.skipif(not PG_URL, reason="defina MT5X_TEST_PG_URL para
 @pytest.fixture
 def pg():
     pytest.importorskip("psycopg")
-    engine = create_engine(PG_URL)
-    with engine.begin() as conn:   # banco limpo a cada teste
-        conn.execute(text("DROP SCHEMA public CASCADE"))
-        conn.execute(text("CREATE SCHEMA public"))
-    engine.dispose()
-    db = DatabaseManager(db_type="postgresql", db_path=PG_URL)
-    assert db.is_connected()
-    yield db
-    db.engine.dispose()
+    with isolated_postgresql_database(PG_URL) as db:
+        yield db
 
 
 @pytest.fixture(autouse=True)
 def no_sleep(monkeypatch):
     monkeypatch.setattr(he_module.time, "sleep", lambda s: None)
     monkeypatch.setattr(connector_module.time, "sleep", lambda s: None)
+
+
+def test_trajectory_preserves_double_observations_and_legacy_real_ledger(pg):
+    from mt5_extracao.strategies.backtester import BacktestConfig, SymbolSpec, run_backtest
+    from mt5_extracao.trade_analytics import ledger
+    from mt5_extracao.trade_analytics.trajectories import store
+    from mt5_extracao.trade_analytics.trajectories.clocks import Clock
+    from tests.test_backtester import Manual, bars
+    data = bars([[100, 101, 99, 100], [100.123456789, 101, 99, 100.4],
+                 [101.1, 104, 100, 102.456789123]], start="2026-01-05 10:00", freq="min")
+    result = run_backtest(data, Manual(long=[0], stop={0: 90}),
+                          SymbolSpec(point=1, tick_size=1, tick_value=1),
+                          BacktestConfig(initial_equity=10000), observation_timeframe="M1")
+    ledger.save_trades(pg, "precise", result.trades, symbol="X", timeframe="M1", source="python")
+    before = ledger.load(pg, run_id="precise")
+    assert before.iloc[0].entry_price != result.trades[0].entry_price  # REAL legado é float32
+    identity = store.save(pg, "precise", result.trajectory, source="python", clock=Clock("utc"))
+    loaded = store.load(pg, "precise")
+    assert loaded["trajectory_id"] == identity
+    assert loaded["observations"]["records"][-1]["net_pnl"] == result.trades[0].pnl
+    assert loaded["ledger_precision"] == "postgresql_storage_projection"
+    assert store.save(pg, "precise", result.trajectory, source="python", clock=Clock("utc")) == identity
+    pd.testing.assert_frame_equal(before, ledger.load(pg, run_id="precise"))
 
 
 def test_save_upsert_and_read_back(pg):
@@ -60,6 +77,48 @@ def test_save_upsert_and_read_back(pg):
     assert pg.get_last_timestamp("win_n_1_minuto") == dt.datetime(2024, 1, 2, 13, 59)
     before = pg.get_rows_before("win_n_1_minuto", df["time"][100], 20)
     assert len(before) == 20 and before["time"].iloc[-1] == df["time"][99]
+    # T20.4: capturar e reler uma revisão não segue as correções da tabela atual.
+    from mt5_extracao.analytics import datasets
+    snapshot = datasets.capture(pg, "WIN$N", "M1")
+    with pg.engine.begin() as conn:
+        conn.execute(text("UPDATE win_n_1_minuto SET close=9"))
+    assert datasets.load(pg, snapshot.manifest_id).bars.close.iloc[0] == 1
+    assert datasets.capture(pg, "WIN$N", "M1").manifest_id != snapshot.manifest_id
+    # O isolamento declarado precisa existir no backend, não só numa configuração Python.
+    with pg.consistent_read() as conn:
+        assert conn.exec_driver_sql("SHOW transaction_isolation").scalar() == "repeatable read"
+        assert conn.exec_driver_sql("SHOW transaction_read_only").scalar() == "on"
+        assert pg.load_ohlcv("WIN$N", "1 minuto", connection=conn).close.iloc[0] == 9
+        # Outra conexão publica uma correção enquanto a imagem anterior permanece aberta.
+        with pg.engine.begin() as writer:
+            writer.execute(text("UPDATE win_n_1_minuto SET close=10"))
+        assert pg.load_ohlcv("WIN$N", "1 minuto", connection=conn).close.iloc[0] == 9
+    assert pg.load_ohlcv("WIN$N", "1 minuto").close.iloc[0] == 10
+    # T20.5: fonte/vigência separadas do cache atual, também no PostgreSQL real.
+    from types import SimpleNamespace
+    from mt5_extracao.analytics import instruments
+    from mt5_extracao.strategies.specs import spec_from_symbol_info
+    payload = spec_from_symbol_info(SimpleNamespace(point=2, trade_tick_size=2, trade_tick_value=1))
+    revision = instruments.record(pg, "WIN$N", "specification", payload, source="pg_fixture",
+                                  valid_from="2020-01-01T00:00:00Z", known_at="2019-12-31T00:00:00Z")
+    historical = datasets.capture(pg, "WIN$N", "M1")
+    assert historical.spec.point == 2
+    assert historical.spec.provenance["specification_revisions"] == [revision]
+    assert historical.spec.provenance["specification_status"] == "known"
+    # T20.6: famílias cruas e prova de origem são capturadas juntas, sem promover completude.
+    from mt5_extracao.analytics import data_eligibility
+    start = instruments.broker_utc(pg.load_ohlcv("WIN$N", "1 minuto").time.iloc[0], pg.broker_utc_offset)
+    epoch = int(start.value // 1_000_000)
+    raw = pd.DataFrame(dict(time_msc=[epoch + 1000, epoch + 2000], bid=[100., 100.], ask=[101., 101.],
+                            last=[100., 101.], volume=[1, 1], volume_real=[1., 1.], flags=[56, 88]))
+    table = pg.get_table_name_for_symbol("WIN$N", "ticks")
+    pg.save_ticks(table, raw)
+    proof = data_eligibility.acquisition(raw, "ticks", origin="observed", symbol="WIN$N",
+                                       received_at="2024-01-03T00:00:00Z")
+    pg.record_block(table, start.to_pydatetime(), (start + pd.Timedelta(minutes=1)).to_pydatetime(), 2, "ok", "fixture", quality=proof)
+    qualified = datasets.capture(pg, "WIN$N", "M1", families=["ticks"])
+    assert qualified.quality["capabilities"]["ticks"]["observed_rows"] == 2
+    assert qualified.quality["capabilities"]["complete_real_ticks"]["coverage_fraction"] is None
 
 
 def test_control_tables_and_helpers(pg):
@@ -111,7 +170,7 @@ def test_extraction_with_resume(pg, connector, fake_mt5):
 
 
 def test_utc_time_basis(pg):
-    utc = DatabaseManager(db_type="postgresql", db_path=PG_URL, time_basis="utc", broker_utc_offset=-3)
+    utc = DatabaseManager(db_type="postgresql", db_path=pg.db_path, time_basis="utc", broker_utc_offset=-3)
     utc.save_ohlcv_data("WIN$N", "1 hora", random_walk(5, freq="h", start="2024-01-02 09:00"))
     with utc.engine.connect() as c:
         first = c.execute(text("SELECT MIN(time) FROM win_n_1_hora")).scalar()
@@ -130,14 +189,66 @@ def test_strategy_validation_storage(pg):
     assert len(v.load_validations(pg, ["WIN$N"], "D1")) == 1
 
 
-def test_services_builds_url_with_password_from_env(monkeypatch):
+def test_services_builds_url_with_password_from_env(monkeypatch, pg):
     from sqlalchemy.engine import make_url
-    real = make_url(PG_URL)
+    real = make_url(pg.db_path)
     monkeypatch.setenv("DB_PASSWORD", real.password or "")
-    cfg = configparser.ConfigParser()
+    cfg = configparser.ConfigParser(interpolation=None)
     no_password = real.set(password=None).set(drivername="postgresql").render_as_string(hide_password=False)
     cfg.read_string(f"[DATABASE]\ntype = postgresql\nurl = {no_password}\n")
     db = services.create_db_manager(cfg)
     assert db.is_connected() and db.dialect == "postgresql"
+    with db.engine.connect() as connected, pg.engine.connect() as scoped:
+        assert connected.execute(text("SELECT current_schema()")).scalar() == scoped.execute(
+            text("SELECT current_schema()")).scalar()
     assert "***" in db._safe_location() or real.password is None
     db.engine.dispose()
+
+
+def test_batch_checkpoint_publication_and_resume(pg):
+    from mt5_extracao.robots import backtest, budget, catalog, store
+    from mt5_extracao.timeframes import Timeframe
+    from tests.market_data import trend
+    for symbol in ("QA", "QB"):
+        assert pg.save_ohlcv_data(symbol, "1 hora", trend(350, freq="h"))
+    robots = [r for r in catalog.python_robots() if r.key == "python:ema_atr"]
+    first = budget.Budget(pg, limits=budget.Limits(max_jobs=1))
+    results = backtest.run_batch(pg, None, robots, ["QA", "QB"], [Timeframe.H1], budget=first)
+    assert results[0]["run"] and results[1]["status"] == "interrupted"
+    again = budget.Budget(pg, batch_id=first.batch_id, limits=budget.Limits(max_jobs=2))
+    results = backtest.run_batch(pg, None, robots, ["QA", "QB"], [Timeframe.H1], budget=again, batch_id=first.batch_id)
+    assert results[0]["skipped"] and results[1]["run"]
+    assert len(store.load_runs(pg)) == 2
+    saved = budget.checkpoint(pg, first.batch_id)
+    assert saved["status"] == "completed" and all(x["status"] == "completed" for x in saved["jobs"])
+
+
+def test_feature_cache_identity_and_additive_legacy_schema(pg, monkeypatch):
+    """T20.25: precisão SQL, hit verificado, corrupção e migração aditiva reais."""
+    from mt5_extracao.trade_analytics import cache, enrich, ledger
+    bars = random_walk(90, freq="5min", start="2025-01-06 09:00")
+    pg.save_ohlcv_data("CACHE", "5 minutos", bars)
+    ledger.save_trades(pg, "cache-run", [dict(direction=1, entry_time=bars.time.iloc[40], exit_time=bars.time.iloc[45],
+        entry_price=100., exit_price=101., stop_price=99., target_price=102., volume=1., pnl=1.,
+        mae=-1., mfe=2., bars=5)], robot_key="python:cache", symbol="CACHE", timeframe="M5")
+    with pg.engine.begin() as conn:
+        conn.execute(text("CREATE TABLE _trade_features_runs (run_id TEXT PRIMARY KEY, signature TEXT NOT NULL, feature_version INTEGER, computed_at TEXT)"))
+        conn.execute(text("CREATE TABLE _trade_features (run_id TEXT, seq INTEGER, legacy_note TEXT)"))
+        conn.execute(text("INSERT INTO _trade_features VALUES ('foreign', 0, 'preservar')"))
+    trades = ledger.load(pg)
+    expected = cache.features(pg, None, trades)
+    calls = []
+    real = enrich.enrich
+    monkeypatch.setattr(enrich, "enrich", lambda *args: calls.append(1) or real(*args))
+    actual = cache.features(pg, None, trades)
+    assert calls == []
+    pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
+    with pg.engine.begin() as conn:
+        assert conn.execute(text("SELECT legacy_note FROM _trade_features WHERE run_id='foreign'")).scalar() == 'preservar'
+        assert len(conn.execute(text("SELECT signature FROM _trade_features_runs WHERE run_id='cache-run'")).scalar()) == 64
+        conn.execute(text("UPDATE _trade_features SET atr=123456 WHERE run_id='cache-run'"))
+    repaired = cache.features(pg, None, trades)
+    assert calls == [1]
+    pd.testing.assert_frame_equal(repaired, expected, check_dtype=False)
+    cache.features(pg, None, trades)
+    assert calls == [1]

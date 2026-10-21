@@ -13,7 +13,7 @@ Extração de ticks (bid/ask/last) por blocos, com retomada.
 """
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Callable, Optional
 
 log = logging.getLogger(__name__)
@@ -76,8 +76,11 @@ class TickExtractor:
                 result["empty"] += 1
                 msg = f"{symbol}: sem ticks em {a:%Y-%m-%d %H:%M}"
             else:
+                from mt5_extracao.analytics import data_eligibility as quality
+                evidence = quality.acquisition(df, "ticks", origin=quality.provider_origin(self.connector, symbol),
+                                               received_at=datetime.now(timezone.utc).isoformat(), symbol=symbol)
                 rows = self.db.save_ticks(table, df)
-                self.db.record_block(table, a, b, rows, "ok", "mt5")
+                self.db.record_block(table, a, b, rows, "ok", "mt5", quality=evidence)
                 result["ok"] += 1
                 result["rows"] += rows
                 msg = f"{symbol}: {rows} ticks em {a:%Y-%m-%d %H:%M}"

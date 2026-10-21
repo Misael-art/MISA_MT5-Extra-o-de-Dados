@@ -5,7 +5,8 @@ Backtester barra a barra com custos reais e dimensionamento por risco.
     resultado.metrics["profit_factor"]
 
 Premissas (conservadoras; ver docs/estrategias.md):
-1. Barras do MT5 são BID. Compra entra/sai no ASK = bid + spread × point; venda no bid.
+1. Barras do MT5 são BID. Compra entra no ASK e sai no BID; venda entra no BID e sai no ASK.
+   ASK = bid + spread × point.
    O spread vem da coluna `spread` de cada barra (pontos) ou de spec.spread_points. Essa coluna é o MENOR
    spread do período da barra; com o spread medido nos ticks (spec.spread_by_hour, de `mt5x specs --calibrate`),
    cada execução paga o maior dos dois: o da barra ou o típico daquela hora (na abertura de uma barra que
@@ -20,12 +21,14 @@ Premissas (conservadoras; ver docs/estrategias.md):
 """
 import math
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal, ROUND_FLOOR
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
 from .base import Strategy
+from .equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 EXIT_REASONS = {
     "stop": "stop", "breakeven": "stop no zero a zero", "trailing": "stop móvel", "target": "alvo",
@@ -53,6 +56,7 @@ class SymbolSpec:
     spread_by_hour: Optional[tuple] = None   # spread real por hora do dia, em pontos (mt5x specs --calibrate)
     spread_at_open: Optional[tuple] = None   # spread no primeiro tick de cada hora (o que a abertura da barra paga)
     known: bool = True            # False = especificação genérica (rode `mt5x specs`)
+    provenance: dict = field(default_factory=dict)  # Vigência/conhecimento separados da disponibilidade atual.
 
     def swap_nights(self, entry_time, exit_time) -> int:
         """Viradas de dia entre a entrada e a saída, contando três na noite do swap triplo; fim de semana não conta."""
@@ -82,13 +86,19 @@ class SymbolSpec:
 
     def lots_for_risk(self, risk_money: float, stop_distance: float) -> float:
         """Maior lote (múltiplo de volume_step) cuja perda no stop não passa de risk_money; 0 se < mínimo."""
+        if not all(math.isfinite(v) for v in (risk_money, stop_distance)):
+            raise ValueError("Risco e distância do stop devem ser finitos; confira os dados da operação.")
         if stop_distance <= 0 or risk_money <= 0:
             return 0.0
-        raw = risk_money / (stop_distance * self.money_per_price_unit)
-        step = self.volume_step if self.volume_step > 0 else self.volume_min
-        vol = math.floor(raw / step + 1e-9) * step
-        vol = min(round(vol, 8), self.volume_max)
-        return vol if vol >= self.volume_min - 1e-12 else 0.0
+        values = (self.tick, self.tick_value, self.volume_min, self.volume_step, self.volume_max)
+        if not all(math.isfinite(v) and v > 0 for v in values) or self.volume_max < self.volume_min:
+            raise ValueError("Especificação de tick/lote inválida; atualize o contrato do símbolo com mt5x specs.")
+        tick, tick_value, minimum, step, maximum = (Decimal(str(v)) for v in values)
+        raw = Decimal(str(risk_money)) * tick / (Decimal(str(stop_distance)) * tick_value)
+        # Aplicar o teto ANTES de quantizar preserva o passo mesmo se o teto não for múltiplo.
+        # Decimal evita promover um volume acima do orçamento com um epsilon absoluto.
+        vol = (min(raw, maximum) / step).to_integral_value(rounding=ROUND_FLOOR) * step
+        return float(vol) if vol >= minimum else 0.0
 
 
 @dataclass
@@ -132,6 +142,12 @@ class BacktestResult:
     skipped_min_lot: int = 0
     skipped_gap: int = 0
     config: BacktestConfig = field(default_factory=BacktestConfig)
+    account_balance: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    floating_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    performance_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    account_cashflows: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    valuation: dict = field(default_factory=dict)
+    trajectory: dict = field(default_factory=dict)
 
     def trades_frame(self) -> pd.DataFrame:
         rows = [asdict(t) for t in self.trades]
@@ -141,19 +157,22 @@ class BacktestResult:
 
 def compute_metrics(trades: List[Trade], initial_equity: float) -> Dict[str, float]:
     from mt5_extracao import profit_factor
+    pf = profit_factor.fields(t.pnl for t in trades)
+    if pf["profit_factor_status"] == "invalid_pnl":
+        raise ValueError("PnL ausente ou inválido; confira as operações antes de calcular métricas.")
     pnl = np.array([t.pnl for t in trades], dtype=float)
     r = np.array([t.r_multiple for t in trades], dtype=float)
     wins, losses = pnl[pnl > 0], pnl[pnl < 0]
     equity = initial_equity + np.concatenate([[0.0], np.cumsum(pnl)])
     peak = np.maximum.accumulate(equity)
-    dd = np.where(peak > 0, (peak - equity) / peak, 0.0)
+    dd = np.divide(peak - equity, peak, out=np.zeros_like(peak), where=peak > 0)
     reasons: Dict[str, int] = {}
     for t in trades:
         reasons[t.exit_reason] = reasons.get(t.exit_reason, 0) + 1
     return {
         "trades": int(len(trades)),
         "win_rate": float(len(wins) / len(trades)) if trades else 0.0,
-        **profit_factor.fields(pnl),
+        **pf,
         "payoff": float(wins.mean() / -losses.mean()) if len(wins) and len(losses) else 0.0,
         "expectancy_r": float(r.mean()) if len(r) else 0.0,
         "total_r": float(r.sum()),
@@ -200,20 +219,33 @@ def execution_spreads(data: pd.DataFrame, spec: "SymbolSpec", cfg: "BacktestConf
 
 def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
                  config: Optional[BacktestConfig] = None, start_index: int = 0,
-                 signals: Optional[pd.DataFrame] = None) -> BacktestResult:
+                 signals: Optional[pd.DataFrame] = None, cashflows=None, check=None,
+                 observation_timeframe=None) -> BacktestResult:
     """
     start_index: só abre operações a partir desta barra (as anteriores servem de aquecimento
     dos indicadores; usado no walk-forward).
     """
+    if check is not None:
+        check()
     spec = spec or SymbolSpec(known=False)
+    from mt5_extracao.analytics.instruments import require_supported_spec
+    require_supported_spec(spec)
     cfg = config or BacktestConfig()
     data = df.reset_index(drop=True)
     sig = (signals if signals is not None else strategy.gerar_sinais(data)).reset_index(drop=True)
+    if check is not None:
+        check()
     rules = strategy.exit_rules()
     n = len(data)
 
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
     times = pd.to_datetime(data["time"])
+    journal = None
+    if observation_timeframe is not None:
+        from mt5_extracao.trade_analytics.trajectories.observations import Journal
+        journal = Journal(times, observation_timeframe, "python_model")
+    flows = cashflow_values(cashflows, times)
+    cash_total = 0.0
     spr, spr_open, spr_close = execution_spreads(data, spec, cfg)
     slip = cfg.slippage_points * spec.point
     ppu = spec.money_per_price_unit
@@ -232,20 +264,28 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     pos: Optional[dict] = None
     pending_entry = 0
     pending_exit = False
+    balances = np.full(n, cfg.initial_equity, dtype=float)
+    floating = np.full(n, cfg.initial_equity, dtype=float)
 
     def fill_exit(d, bid_price, spread, market=True):
         price = bid_price + (spread if d < 0 else 0.0)   # venda a descoberto recompra no ask
         return price - d * slip if market else price
 
-    def close_part(volume, price):
+    def close_part(volume, price, i, kind="partial", phase="intrabar"):
+        if cfg.swap:
+            pos["pnl"] += spec.swap_money(pos["dir"], volume, times.iloc[pos["i"]], times.iloc[i])
         pos["pnl"] += (price - pos["entry"]) * pos["dir"] * ppu * volume - cfg.commission_per_lot * volume
         pos["remaining"] = round(pos["remaining"] - volume, 8)
+        if journal is not None:
+            journal.record(len(trades), i, kind, phase, pos["remaining"], pos["pnl"],
+                           direction=pos["dir"],
+                           net_pnl=pos["pnl"] if kind == "exit" else None,
+                           fill_price=price, fill_volume=volume)
 
-    def close_all(i, price, reason):
+    def close_all(i, price, reason, phase=None):
         nonlocal equity, pos
-        if cfg.swap:
-            pos["pnl"] += spec.swap_money(pos["dir"], pos["remaining"], times.iloc[pos["i"]], times.iloc[i])
-        close_part(pos["remaining"], price)
+        phase = phase or ("open" if reason == "signal" else "close" if reason in ("time", "eod", "end") else "intrabar")
+        close_part(pos["remaining"], price, i, "exit", phase)
         equity += pos["pnl"]
         trades.append(Trade(direction=pos["dir"], entry_time=times.iloc[pos["i"]], exit_time=times.iloc[i],
                             entry_price=pos["entry"], exit_price=float(price), volume=pos["volume"],
@@ -256,6 +296,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
         pos = None
 
     for i in range(n):
+        if check is not None and i % 256 == 0:
+            check()
         # 1) saída por sinal pendente, na abertura
         if pos is not None and pending_exit:
             close_all(i, fill_exit(pos["dir"], o[i], spr_open[i]), "signal")
@@ -270,7 +312,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
             if not np.isfinite(risk_px) or risk_px <= 0:
                 skipped_gap += 1     # abriu além do stop
             else:
-                base = equity if cfg.compound else cfg.initial_equity
+                base = equity + cash_total if cfg.compound else cfg.initial_equity
                 volume = spec.lots_for_risk(base * cfg.risk_per_trade, risk_px)
                 if volume <= 0:
                     skipped_min_lot += 1
@@ -282,7 +324,11 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                            "target": target if np.isfinite(target) else None, "volume": volume,
                            "remaining": volume, "risk_px": risk_px, "risk_money": risk_px * ppu * volume,
                            "pnl": -cfg.commission_per_lot * volume, "i": i, "partial_done": False,
-                           "equity_before": equity}
+                           "equity_before": equity + cash_total}
+                    if journal is not None:
+                        journal.record(len(trades), i, "entry", "open", volume, pos["pnl"],
+                                       direction=d,
+                                       fill_price=entry, fill_volume=volume)
         pending_entry = 0
 
         # 3) stop, parcial e alvo dentro da barra
@@ -293,7 +339,8 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
             stop_hit = lo <= pos["stop"] if d > 0 else hi >= pos["stop"]
             if stop_hit:
                 level = min(op, pos["stop"]) if d > 0 else max(op, pos["stop"])
-                close_all(i, level - d * slip, pos["stop_kind"])
+                close_all(i, level - d * slip, pos["stop_kind"],
+                          "open" if (op <= pos["stop"] if d > 0 else op >= pos["stop"]) else "intrabar")
             else:
                 if rules.partial_r and not pos["partial_done"]:
                     level = pos["entry"] + d * rules.partial_r * pos["risk_px"]
@@ -302,13 +349,15 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                         step = spec.volume_step or spec.volume_min
                         part = math.floor(pos["volume"] * rules.partial_fraction / step + 1e-9) * step
                         if part >= spec.volume_min and pos["remaining"] - part >= spec.volume_min - 1e-12:
-                            close_part(part, max(op, level) if d > 0 else min(op, level))
+                            close_part(part, max(op, level) if d > 0 else min(op, level), i,
+                                       phase="open" if (op >= level if d > 0 else op <= level) else "intrabar")
                         if rules.breakeven_after_partial:
                             pos["stop"] = max(pos["stop"], pos["entry"]) if d > 0 else min(pos["stop"], pos["entry"])
                             pos["stop_kind"] = "breakeven"
                 tgt = pos["target"]
                 if tgt is not None and ((hi >= tgt) if d > 0 else (lo <= tgt)):
-                    close_all(i, max(op, tgt) if d > 0 else min(op, tgt), "target")
+                    close_all(i, max(op, tgt) if d > 0 else min(op, tgt), "target",
+                              "open" if (op >= tgt if d > 0 else op <= tgt) else "intrabar")
 
         # 4) no fechamento: trailing, tempo, fim do dia, sinal
         if pos is not None:
@@ -331,12 +380,42 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 if want and (pos is None or want != pos["dir"]):
                     pending_entry = want
 
+        # Marcação no fechamento: saldo inclui parciais/custos realizados; patrimônio inclui a posição aberta.
+        balances[i] = equity
+        floating[i] = equity
+        if pos is not None:
+            balances[i] += pos["pnl"]
+            mark = c[i] + (spr_close[i] if pos["dir"] < 0 else 0)
+            marked = (mark - pos["entry"]) * pos["dir"] * ppu * pos["remaining"]
+            floating[i] = balances[i] + marked
+            marked_pnl = pos["pnl"] + marked
+            if cfg.swap:
+                accrued_swap = spec.swap_money(pos["dir"], pos["remaining"], times.iloc[pos["i"]], times.iloc[i])
+                floating[i] += accrued_swap
+                marked_pnl += accrued_swap
+            if journal is not None:
+                journal.record(len(trades), i, "mark", "close", pos["remaining"], pos["pnl"],
+                               net_pnl=marked_pnl, direction=pos["dir"])
+        cash_total += flows[i]
+        balances[i] += cash_total
+        floating[i] += cash_total
+
     if pos is not None:
         close_all(n - 1, fill_exit(pos["dir"], c[n - 1], spr_close[n - 1]), "end")
+        balances[-1] = floating[-1] = equity + cash_total
 
     eq_times = [times.iloc[0]] + [t.exit_time for t in trades] if n else []
     eq_vals = [cfg.initial_equity] + list(cfg.initial_equity + np.cumsum([t.pnl for t in trades])) if n else []
+    performance = unitized_equity(floating, flows, cfg.initial_equity)
     return BacktestResult(strategy=strategy.describe(), trades=trades,
                           equity=pd.Series(eq_vals, index=pd.DatetimeIndex(eq_times), dtype=float),
-                          metrics=compute_metrics(trades, cfg.initial_equity),
-                          skipped_min_lot=skipped_min_lot, skipped_gap=skipped_gap, config=cfg)
+                          metrics={**compute_metrics(trades, cfg.initial_equity),
+                                   **floating_metrics(performance, cfg.initial_equity),
+                                   "floating_drawdown_basis": "unitized_initial_capital" if np.any(flows) else "account_equity"},
+                          skipped_min_lot=skipped_min_lot, skipped_gap=skipped_gap, config=cfg,
+                          account_balance=pd.Series(balances, index=pd.DatetimeIndex(times), dtype=float),
+                          floating_equity=pd.Series(floating, index=pd.DatetimeIndex(times), dtype=float),
+                          performance_equity=pd.Series(performance, index=pd.DatetimeIndex(times), dtype=float),
+                          account_cashflows=pd.Series(flows, index=pd.DatetimeIndex(times), dtype=float),
+                          valuation=valuation_metadata(spec, cfg),
+                          trajectory=journal.payload(valuation_metadata(spec, cfg)) if journal is not None else {})

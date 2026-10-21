@@ -1,0 +1,97 @@
+{
+  "source_revision": "f45618f9059feb8e0f54fa75f70f8159995891ab",
+  "source_sha256": "eb900773761ff290d7eca36ea62d666252334887bfe9b3e327754de11f5c66c9",
+  "definitions": [
+    {
+      "feature_id": "volume.real",
+      "name": "Real volume",
+      "family": "volume",
+      "algorithm_version": "1.0",
+      "formula": "real_volume from source bar; never replaced by ticks",
+      "parameters": {
+        "column": "real_volume",
+        "source_kind": "real"
+      },
+      "unit": "volume_units:instrument",
+      "warmup_count": 0,
+      "warmup_unit": "bars",
+      "source_id": "bars.real_volume",
+      "timeframe_policy": "same_as_source",
+      "availability_rule": "closed_bar_received; late revisions become available when received",
+      "value_type": "NUMBER",
+      "required_columns": [
+        "real_volume"
+      ],
+      "denominator": null
+    },
+    {
+      "feature_id": "volume.ticks",
+      "name": "Tick volume",
+      "family": "volume",
+      "algorithm_version": "1.0",
+      "formula": "tick_volume from source bar; never mixed with real volume",
+      "parameters": {
+        "column": "tick_volume",
+        "source_kind": "ticks"
+      },
+      "unit": "ticks",
+      "warmup_count": 0,
+      "warmup_unit": "bars",
+      "source_id": "bars.tick_volume",
+      "timeframe_policy": "same_as_source",
+      "availability_rule": "closed_bar_received; late revisions become available when received",
+      "value_type": "NUMBER",
+      "required_columns": [
+        "tick_volume"
+      ],
+      "denominator": null
+    },
+    {
+      "feature_id": "momentum.rsi_14",
+      "name": "RSI (14)",
+      "family": "momentum",
+      "algorithm_version": "1.0",
+      "formula": "Wilder RSI(14) applied to close",
+      "parameters": {
+        "period": 14,
+        "method": "Wilder",
+        "source": "close"
+      },
+      "unit": "points_0_100",
+      "warmup_count": 15,
+      "warmup_unit": "bars",
+      "source_id": "bars.close",
+      "timeframe_policy": "same_as_source",
+      "availability_rule": "closed_bar_received; late revisions become available when received",
+      "value_type": "NUMBER",
+      "required_columns": [
+        "close"
+      ],
+      "denominator": null
+    },
+    {
+      "feature_id": "volatility.atr_14",
+      "name": "ATR (14)",
+      "family": "volatility",
+      "algorithm_version": "1.0",
+      "formula": "Wilder RMA(14) of true range",
+      "parameters": {
+        "period": 14,
+        "method": "Wilder"
+      },
+      "unit": "price_units",
+      "warmup_count": 14,
+      "warmup_unit": "bars",
+      "source_id": "bars.high_low_close",
+      "timeframe_policy": "same_as_source",
+      "availability_rule": "closed_bar_received; late revisions become available when received",
+      "value_type": "NUMBER",
+      "required_columns": [
+        "high",
+        "low",
+        "close"
+      ],
+      "denominator": null
+    }
+  ]
+}

@@ -59,11 +59,47 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 
 | Nome | O que faz |
 |---|---|
-| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True)` | Backtest de uma estratégia Python com as barras da base. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
+| `run_python(db, config, robot, symbol, timeframe, start=None, end=None, params=None, ..., real_spread=True, cashflows=None, data_manifest_id=None, control=None)` | Backtest de uma estratégia Python com revisão fixada das barras. `real_spread=False` cobra o spread das barras em vez do medido nos ticks (é o que a paridade usa) |
 | `run_mql5(db, config, robot, symbol, timeframe, start=None, end=None, preset=None, params=None, ...)` | Backtest de um robô MQL5 pelo Strategy Tester. O MT5 precisa estar fechado |
 
 Os dois gravam a execução e devolvem um dicionário com `metrics`, `equity` e `trades`. Pela CLI, `--symbols A,B,C`
 roda o mesmo teste em vários ativos.
+
+Desde T20.3, `run_python` e `run_backtest` aceitam `cashflows=None` ao final.
+O padrão é ausência de fluxos, preservando chamadas posicionais e padrões
+anteriores (`API_VERSION=1`). Um vetor fornece uma quantia por fechamento de
+barra, na moeda da conta; Series com índice temporal precisa corresponder às
+barras do período selecionado. Depósitos são positivos e saques negativos.
+Fluxos alteram caixa e o risco composto da próxima barra, sem entrar no PnL.
+Valores inválidos, patrimônio/cotas não positivos no fluxo ou resgate integral
+produzem `ValueError`, sem gravar um run parcialmente calculado.
+
+O retorno Python acrescenta `account_balance`, `floating_equity`,
+`performance_equity`, `account_cashflows` e `valuation`. No dicionário gravado,
+curvas são pares horário/valor; fluxos são eventos esparsos (lista vazia significa
+sem fluxo). A série de desempenho usa cotas para o TWR e para o novo drawdown;
+`floating_drawdown_basis` identifica se o valor monetário é do patrimônio da
+conta ou equivalente normalizado ao capital inicial. `equity` e
+`max_drawdown_pct` antigos mantêm significado de operações encerradas, e
+`return_pct` antigo continua PnL sobre capital inicial, distinto do novo
+`time_weighted_return_pct`. A marcação é no fechamento, sem observar risco
+intrabarra; status/limitações ficam em `valuation`. Run legado sem trajetória
+retorna `None` nos novos campos e motivo, sem regravação. Veja
+[marcação, fluxos e prova nativa T20.3](../analytics/T20.3_PATRIMONIO_FLUTUANTE.md).
+
+Desde T20.4, `run_python` acrescenta ao final `data_manifest_id=None`. Por padrão,
+captura barras/especificação/calendários numa imagem consistente e fixa sua
+identidade no run. Com um ID anterior, lê aquela revisão, sem usar dados atuais;
+ativo/TF e limites explicitamente informados devem corresponder à seleção do
+manifesto. As grafias equivalentes de data/timeframe são normalizadas.
+Os retornos acrescentam `data_manifest_id` e `data_provenance_status`. A origem
+local e servidor desconhecido ficam explícitos; hash não certifica corretora,
+qualidade, causalidade ou estratégia. Referência ausente/corrompida gera erro.
+Runs legados sem revisão continuam identificados como `legacy_current_data`.
+Veja [manifestos e reprodução dos dados](../analytics/T20.4_MANIFESTOS_DADOS.md).
+O contrato 1 permanece compatível: o argumento novo é opcional e vem após os
+anteriores. A reprodução de código/custos/configuração/protocolo é tratada nos
+donos T20.12/16/25, além desta identidade de dados.
 
 Desde T17.28, `run_mql5` aceita ao final seis opções compatíveis com chamadas
 anteriores: `visual=None`, `read_csv=True`, `trades_csv_override=None`,
@@ -127,5 +163,115 @@ Não é um tradutor de Python: só o que está na declaração é gerado. A prov
 | `Strategy`, `StrategyInfo` | Classe base de uma estratégia e a sua ficha ([estrategias.md](../estrategias.md), "Para desenvolvedores") |
 | `get_strategy(key, **params)` | Instância de uma das estratégias registradas |
 | `BacktestConfig` | Capital inicial, risco por operação, slippage e corretagem |
-| `run_backtest(df, strategy, spec=None, config=None, ...)` | Backtest com custos e lote pelo risco (os dois últimos parâmetros, `start_index` e `signals`, servem à validação) |
+| `run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None, cashflows=None, check=None, observation_timeframe=None)` | Backtest com custos e lote pelo risco; `start_index` e `signals` servem à validação, e `cashflows` identifica fluxos no fechamento |
 | `validate_strategy(df, key, spec=None, config=None, criteria=None, params=None)` | Walk-forward, robustez e Monte Carlo (Filtro C) |
+
+
+T20.5 qualifica a especificação consumida com `instrument_context`,
+`spec_historical_known` e `series_role` nas métricas e metadados de avaliação.
+`spec_known` conserva disponibilidade da especificação, sem comprovar vigência
+histórica. Manifestos novos usam formato 2, preservando leitura/exportação do
+formato 1. APIs públicas e chamadas posicionais permanecem as mesmas; metadados
+opcionais foram acrescentados à dataclass interna `SymbolSpec`.
+[Regras de vigência, fontes e limitações](../analytics/T20.5_VIGENCIA_INSTRUMENTOS.md).
+
+
+T20.6 acrescenta `data_quality` às métricas Python/MQL e à avaliação de
+re-simulação. Capacidade de dados, requisitos do consumidor e limitações de
+origem/cobertura são explícitos; relatório nativo sem requisitos do Expert
+não o qualifica automaticamente. `run_python` mantém os argumentos anteriores e exige
+OHLCV para o motor, além das `required_columns` opcionais da estratégia.
+`Strategy.required_columns` tem o padrão anterior; componentes de fechamento
+podem ser qualificados separadamente de OHLCV completo.
+
+Ferramentas avançadas: `analytics.data_eligibility.requirements/evaluate/as_of`
+consomem os contratos/provas existentes, sem outro registry ou feature store.
+`datasets.capture(..., families=["ticks", "book"])` captura fontes extras
+explicitamente; `Snapshot.quality/market_frame` permitem inspeção da revisão.
+Formato3 lê/exporta1/2 sem converter metadados livres antigos em prova atual.
+[Regras e fronteiras reais](../analytics/T20.6_QUALIDADE_CAPACIDADES.md).
+
+
+## Orçamento cooperativo de lotes (T20.24)
+
+`robots.backtest.run_batch` e `robots.runner.BatchRunner` usam o mesmo
+`robots.budget.Budget`, sem outro agendador. `batch_id` identifica o checkpoint
+operacional. `Budget.prepare` fixa o plano e os manifests Python; `checkpoint`
+consulta estado/histórico/medições. A retomada recupera os run_ids publicados,
+sem reexecutar nem regravar o resultado. Falhas permanecem no histórico. Esse
+checkpoint não é um registro estatístico de alternativas/consultas à reserva.
+
+`run_python(..., control=None)` e `run_mql5(..., control=None)` acrescentam um
+`JobBudget` opcional; `run_backtest(..., check=None)` aceita callback cooperativo
+que pode levantar uma interrupção. Os argumentos anteriores continuam na mesma
+ordem e todos os novos defaults são `None`. A publicação controlada em
+`store.save_run(..., control=...)` grava o resultado e o checkpoint do item na
+mesma transação, com o run_id reservado. Cancelamento não publica um resultado
+parcial. O limite de admissões permite terminar os já admitidos; tempo/CPU/RAM
+ou cancelamento explícito interrompem no próximo ponto cooperativo.
+
+O motor confere antes/depois dos sinais e entre blocos de até 256 barras; uma
+chamada atômica de indicador não é interrompida internamente. O executor nativo padrão usa a sessão privada T20.25, confere o controle
+durante a espera e encerra somente seus processos. Executores nativos injetados
+continuam sujeitos ao próprio contrato: a fila confere o orçamento após o retorno,
+sem promessa de interrupção interna de uma chamada arbitrária. Executores injetados pelo argumento legado `run` do `BatchRunner` não
+recebem o callback novo; precisam adotar o protocolo controlado para publicação
+recuperável. A fila nunca certifica efeitos externos de um executor arbitrário.
+
+Limites `[ROBOTS]`, seus defaults e a distinção da concorrência estão em
+[T20.24](../analytics/T20.24_ORCAMENTO_FILA.md). Orçamento e status aparecem na
+CLI/UI; Windows físico continua no checklist de validação.
+
+
+## Cache e perfis privados (T20.25)
+
+`trade_analytics.cache.features` mantém a API anterior e verifica identidade e
+integridade antes de reutilizar contexto. O schema acrescenta colunas de checksum
+e contagem, sem apagar tabelas existentes. `robots.backtest.already_tested` aceita
+configuração, período e manifest para conferir a identidade Python; legado sem
+prova retorna ausência de hit. Resultado nativo não vira cache entre experimentos.
+A recuperação do mesmo checkpoint permanece disponível e informa `reuse_basis`.
+
+`run_mql5` mantém a assinatura e passa pelo executor `Session` existente, com
+terminal/perfil privado por tentativa. Metadados distinguem `run_id`, `artifact_id`,
+`artifact_directory`, `native_profile_isolated` e captura por observador ou
+relatório. `is_running` injetado continua sendo uma recusa explícita do executor;
+o terminal operacional aberto não é impedimento automático no caminho padrão.
+
+`resources.files.list_sessions(db, config)` inspeciona os perfis canônicos;
+`move_session(db, config, session_id, restore=False, origin="ui")` move para
+quarentena ou restaura, retornando `ok/path/error`. Nenhuma dessas APIs apaga um
+perfil. Referências, ownership, encerramento, links e processos são conferidos;
+a movimentação reversível usa a auditoria F15. A CLI correspondente está em
+`mt5x resources sessions --help`.
+
+[Contratos, critérios de reuso, limites de binários e validação](../analytics/T20.25_CACHE_ISOLAMENTO.md).
+
+
+A preparação privada aceita o callback cooperativo existente de orçamento e o
+consulta com volume de destino/reserva antes de copiar arquivos. O cancelamento
+é observado entre arquivos; a espera por processos mantém suas checagens atuais.
+A posse começa antes da preparação, permitindo recolher uma cópia recusada antes
+da compilação quando nenhum processo permaneceu ativo.
+
+
+O manifesto da sessão contém `owner_store`, vínculo sem URI/senha ao banco criador.
+`list_sessions/move_session` preservam perfis de outro banco e perfis antigos sem
+vínculo verificável, mesmo quando dois bancos usam o mesmo prefixo Wine.
+
+## T19.14 — Observações e consulta de trajetórias
+
+`run_backtest(..., observation_timeframe="M15")` e
+`execution.engine.simulate(..., observation_timeframe="M15")` acrescentam
+`result.trajectory`. O argumento é opcional no motor bruto; a publicação normal
+Python e re-simulações salvas já registram o diário. Preenchimentos e cálculos
+legados são preservados. O diário modelado distingue abertura, fechamento
+nominal e intervalo intrabarra; não é exportação de ticks reais.
+
+`trade_analytics.trajectories.service.query(db, run_id, seq=None, as_of=None,
+unit="money", thresholds=(), ages=())` é a consulta de serviço do CLI
+`mt5x trades trajectory`. Ela não executa estratégias nem ordens.
+[Contrato e estado do recorte](../analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).
+O contrato MQL5 1 permanece o mesmo. `observation_timeframe=None` é opcional
+no fim da assinatura de `sdk.run_backtest`; chamadas posicionais anteriores
+continuam válidas e `API_VERSION=1` é preservada.

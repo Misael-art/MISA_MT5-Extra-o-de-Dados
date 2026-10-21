@@ -50,6 +50,7 @@ class Strategy:
     # Grade pequena usada pela otimização do walk-forward (mantenha ≤ 12 combinações)
     param_grid: Dict[str, List[float]] = {}
     min_bars: int = 250
+    required_columns = REQUIRED_COLUMNS
 
     def __init__(self, **params):
         unknown = set(params) - set(self.default_params)
@@ -67,7 +68,7 @@ class Strategy:
 
     # --- interface pública ---
     def gerar_sinais(self, df: pd.DataFrame) -> pd.DataFrame:
-        missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+        missing = [c for c in self.required_columns if c not in df.columns]
         if missing:
             raise ValueError(f"Faltam colunas nos dados: {', '.join(missing)}")
         out = pd.DataFrame(index=df.index)

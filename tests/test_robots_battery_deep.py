@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from tests.native_process import compile_observer, logical_expert, configure_test_safety
 
 from mt5_extracao import cli
 from mt5_extracao.bootstrap import paths
@@ -26,17 +27,21 @@ def report_html(pnl):
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
+    from tests.native_process import fake_session_commands
+    fake_session_commands(monkeypatch)
     """Robô criado por `robots new`, 'compilado', com um backtest gravado; o terminal é simulado."""
     monkeypatch.setattr(paths, "is_windows", lambda: False)
     prefix = tmp_path / "wine"
     mt5 = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     (mt5 / "MQL5" / "Experts").mkdir(parents=True)
     (mt5 / "terminal64.exe").write_bytes(b"")
+    (mt5 / "MetaEditor64.exe").write_bytes(b"")
     robots_dir = tmp_path / "robos"
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"path": str(mt5), "wine_prefix": str(prefix)},
                       "DATABASE": {"type": "sqlite", "path": str(tmp_path / "db.sqlite")},
                       "STRATEGY": {"initial_equity": "10000"}, "ROBOTS": {"library_dirs": str(robots_dir)}})
+    configure_test_safety(config, tmp_path)
     files = scaffold.create("Fundo", robots_dir, magic=880001)
     manifest = json.loads(files[1].read_text(encoding="utf-8"))
     files[1].write_text(json.dumps({**manifest, "tunable": ["InpStopAtrMult", "InpAtrPeriod"]}), encoding="utf-8")
@@ -51,6 +56,9 @@ def env(tmp_path, monkeypatch):
 
     def terminal(pnl_for=lambda ini, values: GOOD):
         def run(command_line, cwd, prefix_, timeout):
+            compiled = compile_observer(command_line, prefix_)
+            if compiled is not None:
+                return compiled
             ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix_)
             ini = configparser.ConfigParser()
             ini.optionxform = str
@@ -58,7 +66,7 @@ def env(tmp_path, monkeypatch):
             section = dict(ini["Tester"])
             values = {}
             if section.get("ExpertParameters"):
-                text = (mt5 / "MQL5" / "Profiles" / "Tester" / section["ExpertParameters"]).read_bytes().decode("utf-16")
+                text = (ini_path.parent / "MQL5" / "Profiles" / "Tester" / section["ExpertParameters"]).read_bytes().decode("utf-16")
                 values = dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
             env.tests.append((section["FromDate"], section["ToDate"], values))
             html = report_html(pnl_for(section, values))
@@ -87,7 +95,7 @@ def test_deep_plan_splits_the_period_and_varies_each_tunable(env):
     first, last = plan[0], plan[1]
     assert first["start"] == backtest.datetime(2025, 1, 1) and last["end"] == backtest.datetime(2025, 11, 1)
     assert first["end"] == last["start"] and str(first["end"])[:10] == "2025-08-01"      # 70% de 304 dias
-    assert plan[2]["params"]["InpStopAtrMult"] == "1.2" and plan[2]["params"]["InpExportTrades"] == "true"
+    assert plan[2]["params"]["InpStopAtrMult"] == "1.2" and plan[2]["params"]["InpExportTrades"] == "false"
 
 
 def test_deep_battery_runs_every_test_and_measures_both_items(env):
@@ -147,10 +155,13 @@ def test_cli_battery_deep_announces_the_cost_first(env, monkeypatch, capsys):
     env.base()
     monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: False)
     monkeypatch.setattr(mt5_tools, "run_windows_command", env.terminal())
-    cli.main(env.args + ["robots", "battery", "fundo", "--deep"])
+    original_exit = cli.main(env.args + ["robots", "battery", "fundo", "--deep"])
     out = capsys.readouterr().out
     assert "6 testes no Strategy Tester, cerca de 2 min" in out and "✓ Robustez com parâmetros ±20%" in out
     assert "Estatística: aprovada" in out and out.index("6 testes") < out.index("Bateria de segurança de")
     monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: True)
-    assert cli.main(env.args + ["robots", "battery", "fundo", "--deep"]) == cli.EXIT_FAIL
-    assert "--close-terminal" in capsys.readouterr().err
+    env.tests.clear()
+    assert cli.main(env.args + ["robots", "battery", "fundo", "--deep"]) == original_exit
+    output = capsys.readouterr()
+    assert not output.err and "✓ Robustez com parâmetros ±20%" in output.out
+    assert len(env.tests) == 6

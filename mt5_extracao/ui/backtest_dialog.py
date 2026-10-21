@@ -78,7 +78,7 @@ class BacktestDialog:
         self.run_button.state(["!disabled"] if total else ["disabled"])
         mql5 = sum(r.kind == catalog.MQL5 for r in robots)
         self.note.config(text=f"{len(self.series)} série(s) × {len(robots)} robô(s). " +
-                         ("Robôs MQL5 rodam no Strategy Tester, um por vez, com o MetaTrader 5 fechado."
+                         ("Robôs MQL5 rodam no Strategy Tester, um por vez, em um perfil privado."
                           if mql5 else ""))
 
     def confirm(self):

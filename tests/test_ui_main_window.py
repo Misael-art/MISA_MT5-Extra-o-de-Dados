@@ -317,6 +317,8 @@ def test_backtest_from_the_robot_card(ui):
     assert detail.shown_run is not None and detail.shown_run["symbol"] == "WIN$N"
     assert detail.run_tiles["trades"].cget("text") != "—"
     assert "WIN$N M1 · 600 barras" in detail.run_status.cget("text")
+    assert "Dados com limitações" in detail.run_status.cget("text")
+    assert detail.shown_run["metrics"]["data_quality"]["eligibility"]["eligible"]
     assert "para esta seleção" in detail.result_context.cget("text")
     assert ui.profit_cells  # o detalhe usa o mesmo hook de atualização imediata do lote
     text = " | ".join(_labels(panel.cards["python:donchian"]))
@@ -1011,6 +1013,7 @@ def test_robot_backtest_keeps_result_context_and_pending_request(ui, monkeypatch
            "created_at": "2024-02-01 12:00", "metrics": {"trades": 2, "return_pct": -0.1},
            "equity": [["2024-01-02", 100], ["2024-01-03", 90]]}
     detail.show_run(run)
+    assert "Qualidade dos dados não registrada" in detail.run_status.cget("text")
     assert "Resultado armazenado" in detail.result_context.cget("text")
     pending, recorded = [], []
     monkeypatch.setattr(ui, "run_bg", lambda work, done: pending.append((work, done)))
@@ -1339,3 +1342,21 @@ def test_long_persisted_battery_reaches_final_reason_in_small_and_large_windows(
         assert "Rode novamente" in label.cget("text")
     with ui.app.db_manager.engine.connect() as conn:
         assert conn.execute(text("SELECT approved,allows_real,items_json FROM _robot_checks")).one() == (1, 1, recorded)
+
+
+def test_batch_budget_is_shown_as_interrupted_and_keeps_checkpoint(ui):
+    from mt5_extracao.robots import budget, store
+    panel = ui.inventory_panel
+    ui.app.config.set("ROBOTS", "batch_max_jobs", "1")
+    chosen = [robot for robot in ui.robots_panel.robots if robot.key in ("python:ema_atr", "python:donchian")]
+    batch = panel.run_backtests([dict(symbol="WIN$N", timeframe="1 minuto")], chosen)
+    deadline = time.time() + 30
+    while (batch.running or panel.progress_frame.winfo_manager()) and time.time() < deadline:
+        ui.pump(.1)
+    assert not batch.running
+    assert "Backtests interrompidos" in ui.status_label.cget("text")
+    assert "Orçamento" in ui.status_label.cget("text")
+    assert len(store.load_runs(ui.app.db_manager)) == 1
+    saved = budget.checkpoint(ui.app.db_manager, batch.batch_id)
+    assert saved["status"] == "interrupted" and saved["owner"] == {}
+    assert not panel.progress_frame.winfo_manager()

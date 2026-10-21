@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 from mt5_extracao.analytics import calendar
 from mt5_extracao.timeframes import Timeframe
@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS _bars_derived (
     spread_min REAL,
     bar_count INTEGER NOT NULL,
     coverage_ratio REAL NOT NULL,
+    is_partial INTEGER NOT NULL DEFAULT 0,
     quality_status TEXT NOT NULL,
     revision INTEGER NOT NULL,
     source_timeframe TEXT NOT NULL,
@@ -94,10 +95,13 @@ def parse_target(value):
 
 
 def ensure_schema(db):
-    """Cria ``_bars_derived`` sem alterar ou migrar tabelas históricas existentes."""
+    """Cria a tabela interna e acrescenta colunas novas sem reescrever dados antigos."""
     calendar.ensure_schema(db)
     with db.engine.begin() as conn:
         conn.execute(text(_CREATE_BARS))
+        existing = {column["name"] for column in inspect(conn).get_columns("_bars_derived")}
+        if "is_partial" not in existing:
+            conn.execute(text("ALTER TABLE _bars_derived ADD COLUMN is_partial INTEGER NOT NULL DEFAULT 0"))
         conn.execute(text(_CREATE_BARS_INDEX))
 
 
@@ -224,6 +228,7 @@ def _make_bar(symbol, target, session_id, group, start_broker, end_broker, expec
         "tick_volume": tick_volume, "real_volume": real_volume, "real_volume_observed": real_observed,
         "real_volume_known": int(real_known), "real_volume_known_count": len(known_values),
         "spread_min": spread_min, "bar_count": int(len(group)), "coverage_ratio": float(coverage),
+        "is_partial": int(bool(is_partial)),
         "quality_status": quality, "source_timeframe": "M1",
         "input_hash": _input_hash(group, target, start_broker, end_broker, coverage, quality,
                                    total_expected, failed_missing, is_partial),
@@ -361,3 +366,68 @@ def resample_symbol(db, symbol, targets, symbol_info=None, session_gap_minutes=c
         log.info("%s %s: %s barras derivadas de M1 (%s novas, %s corrigidas, %s inalteradas)",
                  symbol, target.label, len(bars), counts["inserted"], counts["corrected"], counts["unchanged"])
     return summary
+
+
+def latest_bars(db, symbol, timeframe, *, closed_only=True):
+    """Última revisão de cada barra derivada, em ordem cronológica.
+
+    As colunas de horário UTC voltam como ``Timestamp`` com fuso. ``computed_at_utc``
+    diz quando aquela revisão foi gravada: numa correção (``revision > 1``) é o
+    instante a partir do qual o valor corrigido existia, e os produtores de
+    características usam isso para não antecipar a correção. Por padrão, barras
+    incompletas, com cobertura faltante, parciais de sessão ou ainda abertas no
+    relógio local são excluídas. ``closed_only=False`` serve à inspeção de qualidade.
+    """
+    target = parse_target(timeframe)
+    if db is None or getattr(db, "engine", None) is None or not inspect(db.engine).has_table("_bars_derived"):
+        return pd.DataFrame()
+    columns = {column["name"] for column in inspect(db.engine).get_columns("_bars_derived")}
+    current_partial = "COALESCE(latest.is_partial, 0)" if "is_partial" in columns else "0"
+    sql = f"""
+        WITH ranked AS (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY symbol, tf, session_id, bar_start_utc
+                                         ORDER BY revision DESC) AS latest_rank
+            FROM _bars_derived WHERE symbol = :symbol AND tf = :tf
+        ), latest AS (
+            SELECT * FROM ranked WHERE latest_rank = 1
+        )
+        SELECT latest.*,
+               CASE WHEN {current_partial} = 1 OR EXISTS (
+                   SELECT 1 FROM _bars_derived previous
+                   WHERE previous.symbol = latest.symbol AND previous.tf = latest.tf
+                     AND previous.session_id = latest.session_id
+                     AND previous.bar_start_utc = latest.bar_start_utc
+                     AND previous.revision < latest.revision
+                     AND previous.quality_status = 'PARTIAL'
+                     AND previous.coverage_ratio >= 0.999999999
+               ) THEN 1 ELSE 0 END AS _partial_from_history
+        FROM latest ORDER BY latest.bar_start_utc
+    """
+    with db.engine.connect() as conn:
+        frame = pd.read_sql(text(sql), conn, params={"symbol": str(symbol), "tf": target.label})
+    if frame.empty:
+        return frame
+    frame = frame.drop(columns="latest_rank")
+    for name in ("bar_start_utc", "bar_end_utc", "computed_at_utc"):
+        frame[name] = pd.to_datetime(frame[name], utc=True, format="ISO8601")
+    historical_partial = pd.to_numeric(frame.pop("_partial_from_history"), errors="coerce").fillna(1).eq(1)
+    if "is_partial" not in frame:
+        frame["is_partial"] = historical_partial.astype(int)
+    else:
+        frame["is_partial"] = (pd.to_numeric(frame["is_partial"], errors="coerce").fillna(1).eq(1) |
+                               historical_partial).astype(int)
+    if closed_only:
+        acceptable = frame["quality_status"].isin(("COMPLETE", "NO_TRADES", "CORRECTED"))
+        acceptable &= pd.to_numeric(frame["coverage_ratio"], errors="coerce").ge(1.0 - 1e-9)
+        acceptable &= pd.to_numeric(frame["is_partial"], errors="coerce").fillna(1).eq(0)
+        if target.mode == "intraday":
+            duration = (frame["bar_end_utc"] - frame["bar_start_utc"]).dt.total_seconds() / 60.0
+            acceptable &= duration.ge(float(target.minutes) - 1e-9)
+        elif target.mode == "fixed_24h":
+            duration = (frame["bar_end_utc"] - frame["bar_start_utc"]).dt.total_seconds() / 60.0
+            acceptable &= duration.ge(1440.0 - 1e-9)
+        acceptable &= frame["bar_end_utc"] <= pd.Timestamp.now(tz="UTC")
+        incomplete_sessions = set(frame.loc[~acceptable, "session_id"])
+        frame = frame.loc[acceptable].copy()
+        frame["session_complete"] = ~frame["session_id"].isin(incomplete_sessions)
+    return frame.reset_index(drop=True)

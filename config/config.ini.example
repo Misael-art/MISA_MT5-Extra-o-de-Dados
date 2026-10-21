@@ -149,6 +149,16 @@ batch_max_cpu_pct = 75
 batch_max_ram_pct = 85
 # Máximo de backtests ao mesmo tempo. 0 = número de núcleos do processador menos um. Robôs MQL5 rodam sempre um por vez.
 batch_max_workers = 0
+# tentativas admitidas no lote, inclusive falhas; 0 = sem teto (acumulado na retomada)
+batch_max_jobs = 0
+# tempo cooperativo acumulado do lote em segundos; 0 = sem teto
+batch_max_seconds = 0
+# interrompe o lote no próximo ponto cooperativo; 0 = desligado
+batch_hard_cpu_pct = 0
+# RAM do host; 0 = desligado (batch_max_ram_pct continua regulando concorrência)
+batch_hard_ram_pct = 0
+# reserva livre no disco da base e no diretório nativo de trabalho, em MiB
+batch_min_free_mb = 256
 
 [RESOURCES]
 # Gestão de recursos (aba Recursos; mt5x resources). Nada roda sozinho enquanto auto_enabled = false.

@@ -24,6 +24,8 @@ Linha de comando do MT5 Extração (sem interface gráfica).
     mt5x resample --symbols X --base M1 --tf M5,M15,H1    # mantém o resample pelo relógio já existente
     mt5x resample --symbols X --base M1 --tf M3,1D,1440min --session-aware
                                                         # barras analíticas por sessão observada
+    mt5x analytics features list|show|values|affected     # características versionadas e consulta point-in-time
+    mt5x analytics features compute --symbol X --tf M5    # volume, RVOL, volatilidade, regime e estrutura (T13.3)
     mt5x panel [--open]                                # painel visual: ativos x timeframes x robôs
     mt5x panel --serve --open                          # painel vivo: atualiza sozinho e tem botões de ação
     mt5x robots [list|import|backtest|market] ...     # catálogo, importação, backtest e pré-check Market
@@ -743,10 +745,7 @@ def _robots_backtest_many(args, ctx, robot, tf, start, end):
         params = _parse_params(args.param)
     bridge_was_running = False
     try:
-        if mql5 and mt5_tools.terminal_running(ctx.config):
-            if not args.close_terminal:       # um aviso só, em vez do mesmo erro repetido em cada ativo
-                raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
-                                   "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
+        if mql5 and args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
             _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
@@ -780,6 +779,7 @@ def _robots_backtest_many(args, ctx, robot, tf, start, end):
 def _robots_backtest_batch(args, ctx, items):
     """Lote: robôs × ativos × timeframes, em fila. Preenche a matriz do painel (mt5x panel)."""
     from mt5_extracao.robots import backtest, catalog, mt5_tools
+    from mt5_extracao.robots.budget import Budget
     robots = [catalog.get_robot(items, key) for key in args.path.split(",") if key.strip()]
     symbols = _parse_symbols(args.symbols or args.symbol)
     tfs = [_parse_tf(t) for t in (args.tfs or args.tf or "").split(",") if t.strip()]
@@ -794,7 +794,7 @@ def _robots_backtest_batch(args, ctx, items):
     names = {r.key: r.name for r in robots}
     mql5 = any(r.kind == catalog.MQL5 for r in robots)
     _print(f"Lote: {len(robots)} robô(s) × {len(symbols)} ativo(s) × {len(tfs)} timeframe(s) = {total} teste(s), "
-           "um por vez." + (" Robôs MQL5 usam o Strategy Tester: o MetaTrader 5 fica fechado enquanto isso."
+           "um por vez." + (" Robôs MQL5 usam o Strategy Tester em um perfil privado, um teste por vez."
                             if mql5 else ""))
     count = {"n": 0}
 
@@ -805,34 +805,40 @@ def _robots_backtest_batch(args, ctx, items):
             _print(head + "não testado: " + item["error"])
             return
         m = item["run"]["metrics"]
+        reused = " (checkpoint recuperado)" if item.get("reuse_basis") == "checkpoint" else " (identidade conferida; pulado)"
         _print(head + f"{m['trades']} operações, profit factor {_fmt_num(m['profit_factor'])}, resultado "
-               f"{_fmt_pct(m['return_pct'])}" + (" (já testado; pulado)" if item["skipped"] else ""))
+               f"{_fmt_pct(m['return_pct'])}" + (reused if item["skipped"] else ""))
+    budget = Budget(ctx.db, ctx.config, batch_id=getattr(args, "batch_id", None))
     bridge_was_running = False
     try:
-        if mql5 and mt5_tools.terminal_running(ctx.config):
-            if not args.close_terminal:
-                raise RuntimeError("O MetaTrader 5 está aberto e não roda o teste em uma segunda janela. Feche o MT5 "
-                                   "(e pare a ponte: ./scripts/mt5-bridge.sh stop) ou repita com --close-terminal.")
+        if mql5 and args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
             _notify(ctx, "MetaTrader 5 fechado para um lote de testes", "A ponte é religada no fim.", "aviso")
             bridge_was_running = mt5_tools.release_terminal(ctx.config)
         results = backtest.run_batch(ctx.db, ctx.config, robots, symbols, tfs, start, end, args.preset,
-                                     resume=args.resume, progress=progress)
+                                     resume=args.resume, progress=progress, budget=budget,
+                                     batch_id=getattr(args, "batch_id", None))
     finally:
         if bridge_was_running:
             mt5_tools.restart_bridge()
+    _print(f"Checkpoint do lote: {budget.batch_id}. Retome com --batch-id {budget.batch_id}.")
     failed = [r for r in results if r["run"] is None]
     skipped = sum(1 for r in results if r["skipped"])
     _data(batch=[{**{k: r[k] for k in ("robot", "symbol", "timeframe", "error", "skipped")},
+                  "reuse_basis": r.get("reuse_basis", ""),
                   "run": {k: v for k, v in r["run"].items() if k not in ("trades", "equity")} if r["run"] else None}
                  for r in results],
-          summary={"total": total, "tested": total - len(failed) - skipped, "skipped": skipped, "failed": len(failed)})
-    _print(f"\nLote concluído: {total - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem "
+          summary={"total": total, "tested": len(results) - len(failed) - skipped, "skipped": skipped, "failed": len(failed)})
+    partial = bool(budget.reason) or len(results) < total
+    _data(batch_id=budget.batch_id, batch_status="interrupted" if partial else "failed" if failed else "completed",
+          reason=budget.reason, remaining=total-sum(r["run"] is not None for r in results), resources=budget.measurements)
+    label = "Lote interrompido" if partial else "Lote concluído"
+    _print(f"\n{label}: {len(results) - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem "
            "teste. Veja o conjunto com: mt5x panel")
-    _notify(ctx, "Lote de backtests concluído",
-            f"{total - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem teste",
+    _notify(ctx, "Lote de backtests interrompido" if partial else "Lote de backtests concluído",
+            f"{len(results) - len(failed) - skipped} testado(s), {skipped} pulado(s), {len(failed)} sem teste",
             "aviso" if failed else None)
-    return EXIT_FAIL if failed else EXIT_OK
+    return EXIT_FAIL if failed or partial else EXIT_OK
 
 
 def _robots_backtest(args, ctx, items):
@@ -1253,7 +1259,7 @@ def _robots_battery(args, ctx, items):
         if robot.kind == catalog.MQL5 and runs and runs[0].get("trades"):
             count = len(battery.deep_plan(robot, runs[0]))
             _print(f"Bateria completa: {count} testes no Strategy Tester, cerca de "
-                   f"{max(1, round(count * battery.SECONDS_PER_TEST / 60))} min. O MetaTrader 5 fica fechado enquanto isso.")
+                   f"{max(1, round(count * battery.SECONDS_PER_TEST / 60))} min. Os testes usam um perfil privado, um por vez.")
         if args.close_terminal and mt5_tools.terminal_running(ctx.config):
             _print("Fechando o MetaTrader 5 para rodar os testes...")
             _notify(ctx, "MetaTrader 5 fechado para um teste", "Ele é fechado só durante o teste; a ponte é religada depois.", "aviso")
@@ -1748,6 +1754,44 @@ def build_parser():
                    help="--session-aware: inclui (padrão) ou descarta o candle final parcial de cada sessão")
     p.set_defaults(func=cmd_resample)
 
+    p = sub.add_parser("analytics", help="características analíticas versionadas e consultas point-in-time")
+    analytics_sub = p.add_subparsers(dest="analytics_domain", required=True)
+    p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
+    features_sub = p_features.add_subparsers(dest="features_action", required=True)
+
+    q = features_sub.add_parser("list", help="lista as definições de características registradas")
+    q.add_argument("--all-versions", action="store_true", help="mostra também versões antigas do algoritmo")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("show", help="mostra a definição e as dependências de uma característica")
+    q.add_argument("feature_id")
+    q.add_argument("--algorithm-version", help="versão do algoritmo (padrão: a definição mais recente)")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("values", help="consulta o último valor que já estava disponível no instante dado")
+    q.add_argument("--as-of", required=True, help="instante de decisão com fuso, por exemplo 2026-10-14T17:25:00Z")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--tf", required=True, help="timeframe do valor, por exemplo M1")
+    q.add_argument("--feature", dest="feature_id", help="limita a uma característica")
+    q.add_argument("--algorithm-version", help="limita a uma versão do algoritmo")
+    q.add_argument("--from", dest="date_from", help="início inclusivo de observation_time, com fuso")
+    q.add_argument("--to", dest="date_to", help="fim exclusivo de observation_time, com fuso")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("compute", help="calcula volume, RVOL, volatilidade, regime e estrutura da sessão")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--tf", required=True, help="timeframe de _bars_derived (gere antes com resample --session-aware)")
+    q.add_argument("--families", help="lista separada por vírgula (padrão: todas): "
+                                      "volume,rvol,volatility,regime,structure,calendar")
+    q.add_argument("--volume-source", choices=("auto", "real", "tick"), default="auto",
+                   help="auto usa o volume real só se todas as barras o conhecem; nunca mistura os dois")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("affected", help="lista características dependentes de fontes alteradas")
+    q.add_argument("--changed", required=True,
+                   help="chaves separadas por vírgula, por exemplo bars:M1,bars_derived:M15,feature:returns")
+    q.set_defaults(func=cmd_analytics)
+
     p = sub.add_parser("tables", help="lista tabelas do banco e o último registro de cada uma")
     p.set_defaults(func=cmd_tables)
 
@@ -1823,6 +1867,7 @@ def build_parser():
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
+    p.add_argument("--batch-id", help="backtest em lote: retoma o checkpoint deste identificador, com os mesmos dados")
     p.add_argument("--tfs", help="backtest em lote: vários timeframes separados por vírgula (ex.: M15,H1,D1)")
     p.add_argument("--resume", action="store_true",
                    help="backtest em lote: pula a combinação que já tem execução gravada da mesma configuração")
@@ -1920,6 +1965,73 @@ def build_parser():
     p.add_argument("--open", action="store_true", help="abre o relatório no navegador")
     p.set_defaults(func=cmd_report)
     return parser
+
+
+def cmd_analytics(args, ctx):
+    """Inspeciona o registro de características e consulta valores point-in-time."""
+    import json
+    from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action == "list":
+        items = features.list_features(ctx.db, include_versions=args.all_versions)
+        if not items:
+            _print("Nenhuma característica registrada.")
+        else:
+            for item in items:
+                _print(f"{item['feature_id']}@{item['algorithm_version']}\t{item['name']}\t"
+                       f"dependências: {', '.join(item['dependencies']) or 'nenhuma'}")
+        _print(f"\n{len(items)} definição(ões).")
+        _data(features=items)
+        return EXIT_OK
+
+    if args.features_action == "show":
+        item = features.get_feature(ctx.db, args.feature_id, args.algorithm_version)
+        _print(json.dumps(_jsonable(item), ensure_ascii=False, indent=2))
+        _data(feature=item)
+        return EXIT_OK
+
+    if args.features_action == "values":
+        frame = feature_store.query_as_of(
+            ctx.db, args.as_of, symbol=args.symbol, timeframe=args.tf, feature_id=args.feature_id,
+            algorithm_version=args.algorithm_version, start=args.date_from, end=args.date_to,
+        )
+        if frame.empty:
+            _print("Nenhum valor disponível para os filtros e o instante informado.")
+        else:
+            _print(frame.to_string(index=False))
+        _data(values=frame.to_dict("records"))
+        return EXIT_OK
+
+    if args.features_action == "compute":
+        from mt5_extracao.analytics import producers
+        from mt5_extracao.resources import guard
+
+        families = [item.strip() for item in (args.families or "").split(",") if item.strip()] or None
+        summary = producers.compute(ctx.db, args.symbol, args.tf, families=families,
+                                    volume_source=args.volume_source, write_guard=guard.make(ctx.db, ctx.config))
+        for item in summary:
+            _print(f"{item['family']}\t{item['features']} características\t{item['values']} valores "
+                   f"({item['inserted']} novos, {item['revised']} revisados, {item['unchanged']} inalterados)"
+                   + (f"\tvolume: {item['volume_source']}" if item["volume_source"] else ""))
+        _print("\nValores históricos são reconstruídos: disponíveis no fim da barra ou da sessão, "
+               "como se as barras de hoje já existissem então.")
+        _data(summary=summary)
+        return EXIT_OK
+
+    if args.features_action == "affected":
+        changed = [item.strip() for item in args.changed.split(",") if item.strip()]
+        if not changed:
+            raise ValueError("informe ao menos uma fonte em --changed")
+        items = features.affected_by(ctx.db, changed)
+        if not items:
+            _print("Nenhuma característica depende das fontes informadas.")
+        else:
+            for item in items:
+                _print(f"{item['feature_id']}@{item['algorithm_version']}\t{item['name']}")
+        _data(changed=changed, affected=items)
+        return EXIT_OK
+
+    raise ValueError(f"subcomando analytics desconhecido: {args.features_action}")
 
 
 def _tolerant_streams():

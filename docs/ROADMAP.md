@@ -12,6 +12,13 @@ O detalhamento de cada tarefa (arquivos, passos, código de referência, critér
 de aceite e testes) está em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md).
 As regras para agentes estão em [../AGENTS.md](../AGENTS.md).
 
+**Prioridade de retomada, 2026-10-18:** fechar T13.3b/PR116 aproveitando a suíte existente;
+depois executar EXTR-01 para comprovar/corrigir o ciclo de extrair, atualizar, persistir,
+consultar/exportar e recuperar dados. [Avaliação, aceite e prompt](propostas/PROMPT_RETOMADA_EXTRATOR.md).
+Não duplicar execuções nem manter investigação numérica já corrigida sem defeito novo.
+O benchmark de `compute` isolado não certifica desempenho de aquisição/resampling.
+F19/F20 seguem preservados, mas pesquisas estatísticas adicionais não precedem essa entrega.
+
 ## Fases
 
 ```
@@ -41,6 +48,8 @@ F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação �
 | **F14** Plataforma modular | Backlog integrado do HADOUKEN e do mt5x: framework modular de estratégias, mecanismos de execução, gestão de posições e de carteira, painel, estatísticas, pesquisa e validação, IA. Índice em [propostas/README.md](propostas/README.md) | T14.0 (registro); as tarefas têm identificador próprio (`A-01` a `J-09`) | F12, F13 | T14.0 ✅ (backlog registrado). **Nada implementado**: cada tarefa entra no plano quando for a próxima |
 | **F17** Modernização visual do mt5x | Sistema visual e tipográfico, componentes reutilizáveis, Laboratório e gráficos, aplicação progressiva às abas e validação visual | T17.1–T17.5 | F7, F8, F15, F16 | T17.1–T17.5 ✅ Linux; validação Windows pendente |
 | **F18** Relações e aderência | Indicador × indicador, movimentos futuros, ganhos/perdas, convergências e estabilidade temporal; UI, candidatos e API de leitura | T18.0–T18.9 | F13, F16, F15; F17 para UI | T18.0 documental; T18.8 com apresentação local sintética; Analytics e integração pendentes |
+| **F19** Pilares e presets | Dados de mercado/operações; entrada/orientação, lotes/parciais, ganho, stop e filtros; Default primeiro, Manual nomeado/Defensivo/Maximalista(PF)/Ultra; setups HADOUKEN e UI coerente | T19.0–T19.57 | F13/F16/F18 conforme capacidade; contratos B e Safety para consumo MQL5; F17 para UI | T19.0 documental com adendos; T19.1 em revisão local ([inventário](propostas/INVENTARIO_F19.md)); runtime planejado. Gestão da conta posterior, sem adiar travas |
+| **F20** Robustez transversal | Cálculos certificados, dados/experimentos reproduzíveis, fidelidade econômica/eventos, evidências/presets, observação/recuperação, UI investigativa, recursos/SDK/restore e carteira posterior | T20.0–T20.30 | F19 e donos F1/F5/F12–18/B–J por capacidade; não espera todas as fases | T20.0 documental; T20.1 em revisão local no mapa único; T20.2 em revisão local no PR #106; T20.3 em revisão local no PR #107 com prova nativa declarada; T20.4 em revisão no PR #108 com snapshots/replay validados; T20.5 em revisão no PR #109; T20.6–30 planejadas |
 
 ## Fase 18 — Relações entre indicadores e aderência dos setups
 
@@ -56,6 +65,123 @@ Ver dependências detalhadas no plano.
 Dados insuficientes não são incompatibilidade; associação não implica causalidade ou lucro.
 Primeiro consumo na base/CLI e Laboratório; depois propostas de pesquisa para presets/agentes e API opt-in.
 Nenhuma mudança automática de risco, preset ou ordem.
+
+## Fase 19 — Dados, operação, estratégias e presets
+
+Pedido do proprietário em 2026-10-17. **T19.0 documental; T19.1 com
+[inventário reconciliado](propostas/INVENTARIO_F19.md) em revisão local, sem runtime novo.**
+A publicação depende da base documental preexistente. T20.1 estende o mesmo mapa
+após integração; store/registry localizados em branches não são dependências integradas.
+Integra as frentes já existentes, com dois ramos de dados (histórico extraído e operações de
+backtest/demo/real), blocos operacionais de entrada/orientação, lotes/parciais, ganho,
+stop e filtros, e módulos
+de estratégia compatíveis com o HADOUKEN. O resultado é um preset manual ou selecionado
+automaticamente por objetivo defensivo/fator de lucro ou uma política **Ultra** condicional,
+com composição e evidência reproduzíveis. Default vem primeiro como referência da estratégia;
+as quatro categorias de trabalho têm nome padronizado, incluindo o nome escolhido no Manual.
+
+- [Especificação funcional e técnica](propostas/PILARES_DADOS_OPERACAO_PRESETS.md).
+- [Catálogo integral dos indicadores, gestão temporal e setups](propostas/CATALOGO_F19_INDICADORES_SETUPS.md).
+- [Tarefas, dependências, marcos e critérios de aceite](propostas/PLANO_F19_PILARES_PRESETS.md).
+
+Começar por T19.1 (reconciliação), contratos e um percurso simples completo com S09/T19.37
+e preset manual. Depois gestão temporal, objetivos automáticos e ampliação do catálogo.
+Não exigir fluxo/Renko para o piloto nem presumir contratos F13/F18/B implementados.
+A T17.28 já oferece timeframe em “Ativo / TF”; T19.33 verifica descoberta e coerência
+em Play/Replay/Backtest e presets. Gestão global da conta fica para etapa posterior;
+grades/scale-in mantêm os pré-requisitos próprios de risco, reserva e política.
+
+Re-simulação das entradas antigas e backtest completo são evidências diferentes.
+Geração de preset não inicia operação nem altera os critérios de bateria/autorização.
+Sem dados/regras/candidato elegível, o resultado registra a limitação; não inventa capacidade.
+O catálogo cobre os 18 indicadores distintos do TXT, métricas temporais e os 11 itens
+detalhados do Markdown; os alegados 37/48 setups não enumerados permanecem lacuna explícita.
+A ideia de otimização por ativo, registrada em 2026-10-12 como futura, passa a este escopo
+planejado. A grade atual do walk-forward (`param_grid`) não equivale ao gerador novo.
+
+**Adendo de 2026-10-17:** T19.50 define nomes claros e portáveis; T19.51 acrescenta a flag
+experimental de inversão compra↔venda, desligada por padrão. T19.52–54 entregam o Ultra:
+regras por hora/dia/semana/mês e contexto causal, que escolhem configurações suportadas
+com prioridade, fallback e rastreio. Avaliar a política inteira em backtest completo/OOS;
+não concatenar vencedores escolhidos retrospectivamente. Inversão de intenção não é
+reversão de posição aberta. O primeiro preset manual não depende da conclusão do Ultra.
+
+**Complemento:** T19.55 entrega o Default versionado e prioritário; T19.26/50 incluem Nome do
+preset informado pelo usuário e identificação automática por metadados. Maximalista é o
+rótulo do perfil FatorLucro. [Prompt único F19/F20/UI](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md) e
+[matriz de validação](propostas/VALIDACAO_F19.md) aceitam replay operacional nativo MT5/DEMO
+com recorte histórico ágil quando o ativo estiver indisponível online, sem exigir operação
+ao vivo para cálculos/estrutura e sem substituir backtest estatístico por replay de QA.
+
+**Lotes e parciais:** T19.56/57 estruturam volume fixo/por risco, entrada com mais de um
+lote e agenda de reduções por quantidade/% com saldo e proteção explícitos. Reaproveitar
+dimensionamento e parcial simples existentes; validar parciais múltiplas/gradiente antes
+de declarar suporte. Implementação inclui UI/preset/Expert e reconciliação de custos/PnL,
+sem inflar contagem de operações a partir das parcelas. Detalhe na especificação §6.3.
+
+### Pesquisa futura — FRP, Fluxo Relativo do Preço
+
+Registrar grupos de 3/4 indicadores correlacionados entre si e com movimento do preço,
+com concordância direcional e possível utilidade no Expert. Coeficientes exemplificativos
+0,60/0,70/0,80/0,90 serão estudados; não representam taxa de acerto ou segurança operacional.
+[Conceito e etapas FRP-00–04](pesquisa/FRP_FLUXO_RELATIVO_PRECO.md).
+**ESTUDO FUTURO/P3, após consolidação da base F13/F18.** Sem implementação ou fórmula
+definitiva e sem bloquear F19/presets/Ultra; primeiro avaliar redundância e contribuição OOS.
+
+## Fase 20 — Robustez da pesquisa, execução e ciclo de estratégias
+
+**Todas as dezesseis sugestões da avaliação foram aceitas pelo proprietário em
+2026-10-17. Entrega atual: documentação T20.0, sem implementação.**
+F20 qualifica as frentes existentes, com mapa de cobertura Q01–Q16 e trinta fichas
+T20.1–T20.30. Não cria outros backtester/store/ledger/registro de presets/executor/fila.
+Cada extensão tem dono único e consome a base anterior integrada; o backlog A–J conserva
+sua identidade. As 57 fichas F19 não foram renumeradas nem substituídas.
+
+- [Requisitos, contratos, rastreabilidade e marcos](propostas/ROBUSTEZ_PESQUISA_EXECUCAO.md).
+- [Fichas de implementação e verificação](propostas/PLANO_F20_ROBUSTEZ.md).
+- [Prompt único para o agente executor](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md).
+- [UI: requisitos atuais, refinamentos posteriores e experimento gráfico](propostas/UI_ORGANIZACAO_GRAFICOS_PRIORIDADES.md).
+
+Ordem de investimento: referências de cálculo/patrimônio flutuante e dados identificáveis;
+compatibilidade/margem/custos/paridade por evento; reprodução e protocolo de pesquisa;
+percurso completo até preset validado/UI; acompanhamento/recuperação; carteira no segundo
+momento. Recursos podem antecipar lotes pesados. Primeiro passo T19.1 se pendente; T20.1
+estende seu mesmo mapa. Inventário já comprovado não é refeito.
+
+T20.3 distingue drawdown patrimonial de saldo encerrado; T20.6 registra qualidade efetiva
+e cobertura desconhecida de ticks; T20.12/13 controlam tentativas/reserva e revisam
+critérios estatísticos sem prometer zero falso positivo ou uma ordenação universal de
+Monte Carlo. T20.14/15 expõem compromissos e contribuição incremental, preservando as
+categorias/objetivos F19. Pacotes e evidências T20.16/17 são versionados e invalidados
+por dependência; aprovação não equivale a autorização operacional.
+
+O piloto Manual T20.30 não espera Ultra, carteira, FRP ou todo o catálogo; não conclui
+o piloto ampliado T19.35, que também exige seleção automática. Seleção automática só é
+aceita com protocolo/registro qualificados, e alegação defensiva exige risco patrimonial
+explicitado. T20.18–29 tratam acompanhamento, falhas, UI investigativa, recursos, módulos,
+terceiros, restauração e release conforme o recorte e suas dependências.
+
+Replay MT5 nativo continua aceito para QA operacional quando o ativo estiver fora de
+pregão; rede/fill ao vivo mantêm prova DEMO própria quando necessária. Sem testes REAL.
+FRP, agentes autônomos de criação/promoção, aprendizado por reforço, reotimização contínua,
+alta frequência e expansão indiscriminada de indicadores permanecem posteriores/P3.
+
+**Priorização da UI:** UI-A01–A10 entram em T19.30–34/T20.22/23 com seus serviços:
+modos Analisar/Compor/Validar e comparar, contexto compacto, editor operacional por grupos,
+gráfico principal, tabela/inspetor ligados, hierarquia visual, estados/seleção preservados
+e adaptação/teclado/performance. A primeira tela de referência usa o percurso simples;
+gráficos de sensibilidade, comparação e relações entram quando suas análises existirem.
+T20.22 define o padrão de layout e T20.23 conecta inspeção temporal, sem ciclo de dependência.
+Continuam Tkinter/ttk/Matplotlib. Densidade alternável e perfis completos de disposição
+(UI-P01/P02) são refinamentos P2; Lightweight Charts (UI-X01) é experimento P3 não iniciado,
+com futura prova comparável/decisão arquitetural. Nenhum desses itens futuros bloqueia
+o aceite atual ou autoriza migração de tecnologia agora.
+
+**Execução consolidada:** enviar somente o bloco do prompt único, sem concatenar os
+antigos prompts F19/F20 ou mensagens do chat. Inclui Default/Manual nomeado/lotes/parciais,
+Q01–Q16/UI e a retificação de validação: replay nativo pode concluir aceite funcional
+histórico fora do pregão; só aspectos específicos de execução ao vivo ficam pendentes.
+Prompts parciais mantêm seus caminhos como referências para o documento único.
 
 ## Marcos (cada marco = versão publicável)
 
@@ -96,6 +222,13 @@ Nenhuma mudança automática de risco, preset ou ordem.
 14. F14 (plataforma modular), backlog: a ordem em dez etapas está em [propostas/README.md](propostas/README.md); começa pelas decisões e travas
     (etapa 0) e pelos dados (etapa 1, que é a F13)
 15. F17 (modernização visual): T17.1 → T17.2 → T17.3 → T17.4 → T17.5; apresentação somente, sem alterar cálculos, contratos ou regras operacionais
+16. F19, evolução pedida em 2026-10-17: T19.1 → contratos/dados → piloto manual → gestão temporal
+    e geração defensiva/PF → catálogo completo e UI integrada. A ordem por capacidade e os
+    gates entre repositórios estão no [plano F19](propostas/PLANO_F19_PILARES_PRESETS.md).
+17. F20, qualificação transversal aceita em 2026-10-17: mapa T20.1 sobre T19.1 → cálculos/
+    dados/fidelidade → protocolo/reprodução → percurso Manual com UI/replay → observação/
+    recuperação; carteira posterior. Não esperar toda F19 para iniciar referências e
+    recursos; seguir [as dependências por ficha](propostas/PLANO_F20_ROBUSTEZ.md).
 
 As fases F1 e F2 são independentes e podem ser executadas em paralelo por
 agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
@@ -114,6 +247,3 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 - Envio automático ao MQL5 Market e licenciamento: a T10.11 confere e empacota; o envio é feito pela pessoa, na
   área do vendedor do MQL5.com.
 - Bases em nuvem gerenciadas (AWS RDS etc.): basta apontar T5.2 para o host.
-- Otimização de parâmetros por ativo, a partir das características do backtest: ideia registrada pelo dono do
-  projeto em 2026-10-12, para pensar depois. Sem tarefa nem desenho ainda; hoje os parâmetros só variam na
-  grade pequena do walk-forward (`param_grid`).

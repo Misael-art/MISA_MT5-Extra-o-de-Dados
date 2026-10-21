@@ -1,0 +1,26 @@
+{
+  "task": "T20.3",
+  "source": "AccountInfoDouble(ACCOUNT_BALANCE/ACCOUNT_EQUITY), Strategy Tester",
+  "date_observed": "2026-10-17",
+  "symbol": "EURUSD",
+  "timeframe": "H1",
+  "history_from": "2025-01-06",
+  "history_to": "2025-01-07",
+  "tester_model": 4,
+  "native_builds": [
+    "6272"
+  ],
+  "wine": "11.17",
+  "currency": "USD",
+  "initial_balance": 1000,
+  "scope": "One long 0.01 lot, intraday; bar-close marks. No native proof of every strategy, broker, currency, partial or intrabar risk.",
+  "alignment": "Keys are bar starts; values are last tick snapshots. Native deal timestamps are also retained.",
+  "compiler_errors": 0,
+  "compiler_warnings": 0,
+  "sha256": {
+    "MT5X_EquityReference.mq5": "5c44353ff3d3bf260889b09543904f2820323923dd936d43212472a01082ffd6",
+    "native.csv": "01865a4ead3b31642b4c5199a38a6c3064db3f4aaec1da6dd4ae55f66fff0962"
+  },
+  "server": "MetaQuotes-Demo",
+  "tick_source_observed": "real ticks begin from 2025.01.06 00:00:00"
+}

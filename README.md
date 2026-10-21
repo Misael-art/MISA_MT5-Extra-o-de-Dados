@@ -119,6 +119,8 @@ Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 - [Robôs: catálogo, backtest, bateria de segurança e conta demo](docs/robos.md)
 - [SDK para desenvolver robôs MQL5](docs/sdk/README.md): tutorial, contrato, API e o que ainda é lacuna
 - [Roadmap](docs/ROADMAP.md) e [Plano de trabalho detalhado](docs/PLANO_DE_TRABALHO.md)
+- [Evolução planejada: dados, operação, estratégias e geração de presets (F19)](docs/propostas/PILARES_DADOS_OPERACAO_PRESETS.md)
+- [Robustez planejada: cálculos, reprodução, execução, UI e acompanhamento (F20)](docs/propostas/ROBUSTEZ_PESQUISA_EXECUCAO.md)
 - [Regras para agentes/contribuidores](AGENTS.md)
 
 - [Plano de Extração Histórica (Original)](docs/plano_extracao_historica.md)

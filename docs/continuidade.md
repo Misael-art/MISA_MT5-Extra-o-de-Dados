@@ -1,4 +1,754 @@
+# T19.6 integrada — 2026-10-19
+
+[PR130](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/130) integrada
+em master `c27ef93`, depois [PR131](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/131)
+em `4f7a046`. Correção da conexão do snapshot separada da ficha de pivôs. Seis checks
+por fonte aprovados; fonte final T19.6:1467Ubuntu/48PG/1569WindowsCI, coberturas
+77,64%/73,36%.117 casos locais distintos compatíveis,61 nos caminhos finais,
+doctor21/1/0;132 regressões gráficas compatíveis reaproveitadas. Fechamentos e merge
+de base somente documentais,294 fontes/testes idênticos ao6a9d580.
+
+Origem, confirmação e instante conhecido separados; candidatos provisórios não são
+valores disponíveis. Ausência conhecida interrompe a janela e invalida o prefixo;
+revisões da fonte preservam decisões históricas.38 definições em master,32 antigas
+preservadas; assinatura7a06cf9749ae1f2cc309464e152862ec9b3a4d1b652eee55a9f8aeb2fa212d6c
+confirmada em import frio da base integrada. CLI/contexto/CSV reconciliados em DEMO
+arquivado:120M5,720 fatos atuais+720 anteriores preservados;24 Fractals e zero
+reversões ZigZag1% na amostra, confirmações ZigZag cobertas por referência determinística.
+Versões antigas seguem consultáveis explicitamente; a nova versão padrão exige
+materializar as features escolhidas, sem excluir dados anteriores.
+
+Ponte própria conferida ativa em127.0.0.1:18812; sem reinício. Trabalho local, HEAD e
+índice preservados; apenas este registro e as linhas do painel foram atualizados.
+Windows físico continua pendente específico; Relações continua sintética. Próxima
+tarefa concreta elegível: **T19.7 — Donchian, Envelopes e regressão**.
+
+## T19.5 integrada e recorte concluído — 2026-10-19
+
+Ordem real:127/2d7412f →126/eab717d; follow-up129/d0b9c5e →128/eae8f0ac54a7568a42b1955e67aacde3415311b8.
+Cada integração teve revisão e checks existentes aprovados. Fonte final128/11b6c53:1438 Ubuntu/
+175 skips,43PG,1540Windows CI/73 skips/5avisos, cobertura77,64%/73,36%. Fechamento6f169a5
+só docs [skip ci],293 fontes/testes idênticos ao código do CI39303613947 e ao master integrado.
+Importação fria comprovou32 definições,8 AO/AC e5 Alligator; assinatura04f94b5b igual à prova.
+88 focados/doctor21/1/0, referência racional e CLI/store/CSV120M5/8saídas/960fatos exatos,
+reabrir SKIPPED. Fonte DEMO arquivada preservada; sem reextração, ordens ou nova campanha de custo.
+129 corrigiu a corrida de fonte/snapshot e serialização de retries em lote em PR própria, com
+1417 Ubuntu/41PG/1519Windows CI. Os cinco apontamentos128 foram tratados/documentados.
+Versões antigas permanecem consultáveis/exportáveis explicitamente; padrão atual pode exigir
+rematerialização por hash global, sem perda dos fatos nem fallback silencioso.
+Windows físico permanece pendente específico, Relações continua sintética e nenhum consumidor
+operacional H/estratégia/preset foi antecipado. Tempos da T19.4 são amostras locais daquela versão.
+Próxima elegível: T19.6 — pivôs causais Fractals/ZigZag, com confirmação temporal, em PR própria.
+Root/HEAD/índice/WIP preservados; ponte própria mantida em segundo plano, sem restart.
+
+## Fonte final de128 após129 integrada — 2026-10-19
+
+PR129 integrada emd0b9c5e8f87d34d0993b5b10bcd4755f19452db0 com seis checks1039690:1417
+Ubuntu/41PG/1519Windows CI. Fechamento58d3d4a só docs,292 fontes/testes idênticos ao aceite.
+128 incorporou129 por Git, preservando conflitos em docs e wrappers PG (AST de ambas as bases).
+Runtime final publicado11b6c53,293 fontes/testes idênticos à composição7cfdc81:88 focados,
+doctor21/1/0 e prova atualCLI/store/CSV120M5/8features/960fatos exatos, reabrir SKIPPED.
+Assinatura04f94b5b; CSVs inicial/final normais têm mesmos doubles/estados, versões distintas
+por contrato.43PG finais aprovados; Linux/Windows existentes no run39303613947 em execução.
+Cinco threads anteriores tratadas/documentadas: dois fixes AO/AC, dois na base129 e contrato
+global de versões explícito/testado. Revisão atual sem pendências; conferir novamente antes
+da integração. Não atribuir checkscee301c ao novo runtime. Depois, fechar só docs [skip ci]
+com fonte293 idêntica e integrar pelo SHA revisado. Root/WIP/índice/ponte preservados;
+sem estratégia/presets, Relações real, ordem, reextração ou benchmark. Windows físico pendente.
+
+## Revisão de128 e follow-up de consistência129 — 2026-10-19
+
+127 e126 permanecem integradas em2d7412f/eab717d. A revisão128 identificou corrida herdada
+de fonte: reprodução em master terminou COMPLETE snapshot1 após fonte2, com valor divergente.
+Correção em PR129/T19.3, fonte1039690: confirma geração na transação de lote/conclusão/cache,
+rollback/retomada e serialização de revisões por backend.135 casos locais distintos compatíveis,
+doctor21/1/0 e41 PostgreSQL aprovados; Linux/Windows existentes em execução39296281422.
+Probe de barreira SQLite inconclusiva, não é alegada reprodução de chave duplicada.
+PR128 rascunho: code publicadocee301c/1428Ubuntu/38PG, Windows existente preservado; correções
+locais672b45b de mediano grande/despacho têm83 focados. Não atribuir checkscee às correções.
+Depois de integrar129, incorporar master por Git, verificar composição/casos/prova com novo
+hash e publicar runtime final em128. Versões globais continuam conservadoras: materializar
+a atual ou consultar/exportar antiga explícita, sem perder fatos ou fallback silencioso.
+Sem campanha de custo, estratégia/preset, Relações real ou operação de conta. Windows físico
+continua pendente específico. Root/WIP/índice e ponte em segundo plano preservados.
+
+## Integrações127→126 concluídas; T19.5 publicada — 2026-10-19
+
+PR127 integrada em2d7412f e PR126 emeab717dd75cfe1452f0a963c02d96ec9caddf033, nessa ordem,
+após seis checks e revisão de cada código. Fechamento135c9c2 preservou291 fontes/testes do
+CI70b2191:1412 Ubuntu/36PG/1514Windows CI. Registry24 e5 saídas Alligator importados e
+verificados iguais a master; assinatura medida3df4baf5 preservada, sem nova campanha.
+T19.5/#128 publicada emcee301c, após incorporar master por Git. Três conflitos documentais
+resolvidos preservando registros;292 fontes/testes idênticos ao b267d8d aprovado localmente.
+78 focados compatíveis, doctor21/1/0 e CLI/store/CSV120M5/8features/960fatos; nova suíte CI
+aguardada por mudança de runtime. Sem estratégia/presets/Relações real; referência racional,
+aquecimento/ausência, causalidade e reprocessamento conferidos. Root/WIP/índice/ponte preservados;
+apenas bridge.py recebeu patch pontual integrado127. Windows físico é pendência específica.
+
+## Integração PR127 e composição final T19.4 — 2026-10-19
+
+PR127 integrada em master2d7412f851b1c9d8090b0372dfacfc6e00188b30 após seis checks existentes
+aprovados:1395 Ubuntu/34PG/1497Windows CI,17 focados e doctor21/1/0. Fechamento35a653b
+somente documental,290 fontes/testes idênticos ao63e717f. Revisão sem pendências.
+Root recebeu apenas patch Git de bridge.py, byte a byte igual ao integrado, sem reiniciar/sinalizar
+a ponte própria, ativa em127.0.0.1:18812. HEAD/índice/WIP preservados.
+PR126: composição70b2191, master127 incorporado por Git sem conflitos novos;291 fontes/testes
+idênticos ao CI atual.1412 Ubuntu/36PG e instaladores/lint aprovados; Windows existente pendente.
+34 casos da composição/doctor21/1/0 aprovados; custo/referência/CSV da T19.4 preservados.
+T19.5 preparada isoladamente, commit localb267d8d, sem publicação antes de127→126:78 casos
+distintos compatíveis, referência racional e CLI/store/CSV de8 features/120M5/960fatos.
+Não repetir campanhas aprovadas sem falha/código novo; tempos da T19.4 são amostras locais.
+Windows físico e Relações real permanecem pendências específicas; sem estratégia/presets.
+
+## Impedimento T19.4 isolado — PR127/EXTR-02
+
+A PR126 permanece fonte9f2ffc3:62 focados aprovados, referência/custo/CSV preservados.
+CI Ubuntu teve1408aprovados/168skips e uma falha no teste legado stop/libc. Corrida de
+encerramento foi reproduzida deterministicamente: perder ambiente/token não prova fim da
+identidade. Correção isolada na PR127, fonte63e717f sobre master2b27b1f; aguarda identidade,
+revalida posse antes de cada sinal e preserva prazos5/2s.17 testes passaram sem enfraquecer
+asserções antigas, doctor21/1/0. Só Bridge.stop mudou; Windows nativo/AST main inalterados,
+caminho simulado aprovado e evidência compatível da base reaproveitável. Windows físico pendente.
+Incorporar PR127 por Git e resolver somente conflitos reais antes de fechar PR126.
+Nenhuma materialização/benchmark foi repetida. Root/índice/ponte real seguem preservados.
+Artefatos em logs/extr-02-confirmacao-saida-20261019 e logs/t19-4-alligator-20261019.
+
+## T19.4 — PR126 pronta, aguarda CI existente
+
+Fonte9f2ffc331954478ebcd0b21773cab6cb1eeb2251, base master2b27b1f após T19.3/#125.
+SMMA com semente SMA, mediano,13/8/5 e desenho8/5/3 separados da disponibilidade.
+62 casos focados distintos aprovados, referência racional e CSV/store/cálculo exatos;
+19 contratos anteriores intactos, doctor21/1/0,132 casos gráficos compatíveis reaproveitados
+(quatro casos da ação CSV executados no código atual). Medição pelo diário, uma amostra/fase:
+90 M5 iniciais279ms; append30/prefixo120:216ms; cache2ms; RSS total152–156MiB, sem O(delta).
+CLI conferiu120 M5 de600 M1 DEMO arquivadas, sem extração/ordens. Revisão concluída;
+quatro checks aprovados, Ubuntu/Windows na execução existente. Não reiniciar workflows.
+Artefatos: logs/t19-4-alligator-20261019/current-state.json e materialization-cost.json.
+Root HEAD/índice/WIP e ponte preservados; runtime Alligator restrito à worktree até integrar.
+Após fechar a ficha, próxima elegível T19.5 (AO/AC), em PR separada. Relações segue sintética,
+sem estratégia/preset Alligator; Windows físico permanece pendência delimitada.
+
+## Integração T19.3 concluída — 2026-10-19
+
+PR125 integrada por merge Git em master2b27b1ff25afe260ba1231a4ea8679b42a480e68.
+Pré-requisito T18.1/PR124 já integrado em791f15c, registry/DTO confirmados em master.
+Código aceito eaec23b, fechamento documental d608817 [skip ci], nenhuma diferença não documental
+entre master e a fonte aceita;290 arquivos Python/testes preservados. Seis checks aprovados.
+Linux:1528 casos distintos (1392 Ubuntu +132 UI Xvfb +4 UI compatíveis reaproveitados),
+cov77,64%; PostgreSQL dedicado34 aprovados; Windows CI1497/61/5, cov73,36%, piso60%.
+Doctor21/1/0,27 focados, oito cenários visuais e CLI com600 barras DEMO arquivadas→120M5.
+A suíte completa local interrompida não é contabilizada como passe; evidências compatíveis
+substituíram a parte redundante e só a cobertura de display ausente foi concluída.
+Root HEAD/índice/WIP e ponte própria preservados, sem copiar runtime da worktree.
+Registro real: logs/t19-3-consumo-registry-20261019/integration-final.json.
+
+Próxima ficha dependente elegível: T19.4 (Alligator), seguindo preço/SMMA/semente/períodos e
+deslocamento causal antes de consumo. T18.2 exige T13.4 validada/integrada; T19.2 aguarda
+contratos B correspondentes. Relações permanece sintética até T18.6. Avaliação exact_prefix,
+vínculo de manifesto ausente e relógio desconhecido mantêm limites explícitos; presets,
+Analytics completo e Windows físico não foram concluídos.
+
+## T19.3 — pronta; somente check Windows existente pendente
+
+PR125: código eaec23b, documentação2e2d3e9 [skip ci], base master791f15c da PR124.
+Revisão concluída;1528 casos distintos aprovados (1392 CI Ubuntu +132 UI sob Xvfb +4 UI
+compatíveis reaproveitados);34 PostgreSQL no job dedicado, cov77,64%,27 focados, doctor21/1/0.
+Processos locais de testes encerrados. A suíte completa local não é contada como passe: foi
+interrompida após aceite Ubuntu para evitar duplicação; o teardown de pytest gerou exit1
+por SIGINT, sem falha de teste anterior. Cobertura de display ausente concluída com132/0.
+Cinco checks aprovados no eaec23b; somente Testes (windows-latest), job118085092630,
+segue na execução39260070639. Não iniciar outro workflow. Integrar apenas quando passar,
+com revisão/threads e fontes conferidas. Root/índice e ponte própria preservados.
+Artefatos em logs/t19-3-consumo-registry-20261019/current-state.json e suite-acceptance.json.
+Relações continua sintética até T18.6; Windows físico, presets e Analytics completo pendentes.
+
+## Consumidor T19.3 — candidata em validação, 2026-10-19
+
+PR124 integrada em master791f15c, reutilizando o check Windows existente e os seis checks aprovados.
+Registry/DTO confirmados na worktree de master. Próximo consumidor elegível T19.3 está na
+[PR125](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/125), eaec23b sobre essa base.
+27 testes focados e doctor21/1/0; aplicação CLI reutilizou600 barras DEMO arquivadas→120M5,
+sem extração/ordens novas; oito casos UI do novo cabeçalho/ação. Uma falha de contrato antigo
+foi reproduzida/corrigida; somente a suíte local anterior foi encerrada e o aceite final está em execução.
+Logs e runner próprios em logs/t19-3-consumo-registry-20261019. Revisão registrada; suíte completa
+final e CI ainda pendentes. Não integrar antes de passar. Relações segue sintética até T18.6;
+presets/Analytics completo e Windows físico permanecem pendentes. Runtime T19.3 restrito à worktree,
+sem alterar HEAD/índice ou substituir trabalho local da Root. Ponte própria preservada ativa.
+
 # Continuidade: harmonização de 2026-10-14
+
+## EXTR-02 — ponte principal em segundo plano (2026-10-19)
+
+[PR123](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/123), código43a4035,
+validado na worktree de master:1482 aprovados/18 ignorados/3 avisos em1948,46s,
+saída0, cobertura77,64%,281 fontes/testes inalterados. Os14 casos finais do
+novo ciclo de vida e ShellCheck passaram; doctor na candidata e no Root21/1/0.
+PR123 integrada em master60d7d13; seis checks CI aprovados no código43a4035,
+fechamento documental75f84d3. Windows físico é pendência específica, sem
+afirmação de MT5 real nessa plataforma.
+
+Mantida a entrada scripts/mt5-bridge.sh; helpers em bootstrap.bridge, só stdlib,
+reutilizam paths/display. Sessão própria, stdin nulo e log para permanecer após
+o iniciador; trava exclusiva, PID/nascimento/boot/usuário/token para posse.
+Stop via pidfd só da instância própria, sem pkill, Wine/terminal/display preservados.
+
+Após os aceites Linux, git apply --check confirmou ausência de conflito: aplicado
+somente patch Git do lançador e módulo novo no Root. Nenhuma cópia de árvore;
+HEAD489591c/índice e outras alterações locais preservados, credenciais/configuração
+com hashes iguais. A suíte completa é da candidata, não de toda a árvore Root.
+Os dois arquivos aplicados coincidem byte a byte com o código aprovado.
+
+A antiga ponte foreground própria PID60845 teve conta DEMO/terminal conectado e
+identidade novamente comprovados antes de encerrar apenas esse processo via pidfd.
+Um terminal manteve PID/nascimento. Nova ponte background PID195627 na porta usual
+127.0.0.1:18812; outro comando confirmou status e start repetido no mesmo PID.
+Aplicação MT5Connector consultou11barras EURUSD/M1,14/10/2026 10:00–10:10UTC;
+MetaQuotes-Demo/trade_mode0 comprovado antes/depois, conectado,trade_allowed=false,
+zero ordens/replay, sem escrita na base principal. Ponte de teste18813 encerrada
+pelo gerenciador; principal preservada. Primeiro roteiro passou datas posicionais
+incorretas; preservado/corrigido apenas para argumentos nomeados. O lançador também
+recebeu regressão por ser chamado de outro checkout. Não repetida a jornada EXTR-01.
+
+Sem auto-start de boot/login ou política de reinício; comprovação é da permanência
+após o comando iniciador. Migração de PID legado sem identidade exige confirmação
+da instância original; nunca sinalizar wineserver pelo PID do socket. A preparação
+própria de database/ faltante na worktree usou ensure_work_dirs; doctor passou.
+Artefatos privados:logs/extr-02-ponte-background/. T18.1 já retomada na PR124 por
+cherry-pick revisado80fd887, sobre master60d7d13.90 focados aprovados, doctor21/1/0,
+Suíte global1501/26/3 saída0, cobertura77,64%,285 fontes/testes intactos.
+PR124 integrada em master791f15c; seis checks CI aprovados, Windows concluiu na execução existente.
+Registry/DTO disponíveis na nova base; Analytics/presets e serviço/UI de Relações permanecem pendentes.
+T19.3 retomada em worktree própria como consumidor do registry/store. Contrato tipado1.3 preserva definições/valores legados1.2.1; não altera
+fórmulas/precisão. Worktree original e WIP principal preservados; código T18.1
+permanece na worktree própria, sem aplicação indiscriminada no Root. Sem campanha
+estatística ou mudança de UI. Artefatos:logs/t18-1-integracao-20261019/.
+
+
+## Cadeia #108–#117 e EXTR-01 concluídas em master (2026-10-19)
+
+Master remoto `ed81ca2755b823893f7439beb29489f2bf4861d8`: [fechamento documental PR #122](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/122).
+[Evidência final integrada](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/blob/master/docs/extrator/EXTR-01_VALIDACAO_NATIVA.md).
+Uma tarefa por PR, merges Git com as bases anteriores integradas primeiro.
+Árvore fora de docs/ igual aos HEADs aprovados antes/após cada merge; seis checks
+por PR compatíveis reaproveitados. Os 279 hashes da suíte final da #116/#117
+conferiram. Nenhuma suíte global, PostgreSQL ou campanha numérica nova. Os dez
+workflows dos merges que repetiam runtimes aprovados foram cancelados por SHA;
+conclusão cancelled confirmada, sem alegar verde novo no merge.
+
+| PR | Tarefa | Merge em master |
+|---|---|---|
+| #108 | T20.4 | `2bd7a11` |
+| #109 | T20.5 | `1b2cd34` |
+| #110 | T20.6 | `aed0f77` |
+| #111 | T20.24 | `541c1c3` |
+| #112 | T20.25 | `b7c8fd5` |
+| #113 | T19.14 | `bd5cb6d` |
+| #114 | T13.2 | `2efdabf` |
+| #115 | T13.3 | `2ca2fc0` |
+| #116 | T13.3b | `814ded9` |
+| #117 | EXTR-01 | `a92cd8a` |
+
+No master de runtime `a92cd8a`, sete casos existentes passaram em 14,03 s: falha
+persistente sem sucesso falso, recuperação histórica/idempotência, escopo/teto
+temporal, CLI/reabertura/exportação e Cancelar Tk. Testes globais da #117:
+1468/18/3, saída 0, cobertura 77,64%, preservados. O master documental final é
+idêntico fora de docs/ à árvore desta prova e ao runtime aprovado `677dfe3`.
+
+Primeira tentativa nativa foi bloqueada antes da extração por ausência do serviço
+127.0.0.1:18812. Configuração já enabled=true, sem Wine/terminal ativo. O start
+existente abriu a porta mas não permaneceu após a célula; logs preservados, causa
+interna não comprovada. Foreground existente corrigiu o acesso, sem ampliar
+permissões, modificar credenciais/configuração ou encerrar processos alheios.
+PID python.exe60845 e instante de criação conferidos; controle existente atualizado.
+Ponte mt5x-bridge/2, loopback, sem --allow; MetaQuotes-Demo/trade_mode0, conectada,
+trade_allowed=false. Zero ordens/replay. Foreground ativo na sessão própria16242.
+
+Jornada EURUSD/M1 14/10/2026 00:00 a16/10 12:00UTC, banco próprio:2880→3600,
+720 anexadas; repetição leu2 e conservou valores/contagem. Reabrir/consultar/CSV
+exatos ao provedor em OHLCV/volumes/spread/timestamps, sem arredondar/fabricar barras.
+Extrair2,889s; atualizar0,737s; repetir0,047s; reabrir0,047s; CSV0,095s; total4,178s
+incluindo confronto adicional. Fonte/escrita discriminadas, Analytics/resampling
+fora desta jornada. UI Tk real/conector nativo: seleção/período/extração, Cancelar
+reconhecido, confirmados preservados, retomada e4736timestamps únicos exportados.
+Doctor21OK/1aviso pandas-ta opcional/0falhas, saída0. Windows físico pendente.
+
+Root permanece na branch tarefa/T19.1-inventario-contratos, HEAD489591c e índice
+anteriores, sem copiar runtimes ou substituir trabalho local. A prova usou worktree
+de master. Próximo recorte operacional: diagnosticar a saída do start em segundo
+plano e validar permanência pelo gerenciador, preservando terminal/conta/permissões.
+Essa durabilidade não foi comprovada e não impede a jornada já concluída.
+Artefatos:logs/integracao-108-117-20261019/; códigos/bancos/CSV/configurações privados
+não versionados. Nenhum teste local em execução ao encerrar; ponte útil preservada.
+
+
+
+## T20.3 integrada; próxima revisão T20.4 (2026-10-19)
+
+A [PR #107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107) foi
+integrada em master no commit `9fbd5f5dcc91189f9bc37dd88ee5975165e8d993`, após
+T20.2/#106 e bases documentais #118–#121. Revisados os caminhos de patrimônio,
+fluxos por cotas, persistência aditiva, leitura legada, re-simulação e SDK, sem
+novo impedimento identificado. Sem revisões ou comentários de revisão pendentes.
+
+A conciliação `bcf5064` trouxe a base por merge Git em worktree própria;
+o conflito do painel foi resolvido preservando os aceites na linha canônica.
+Código, testes e fixtures não foram alterados: árvore inteira fora de docs/
+idêntica ao HEAD aprovado `c0f1846` (runtime `91b2ec4`), inclusive após o merge
+em master; nove hashes registrados conferidos. Reaproveitados 1.103 aprovados,
+nove pulos existentes, três avisos, saída 0, 91 direcionados do complemento,
+doctor 16 OK/2 avisos/0 falhas e seis checks aprovados no run 39093597075.
+Nenhuma suíte ou campanha numérica repetida. O commit somente documental usou
+`[skip ci]`; os verdes reaproveitados pertencem ao SHA de código aprovado.
+
+A prova nativa existente conserva o recorte de 24 marcas EURUSD H1 no Wine,
+MetaQuotes-Demo: saldo sem diferença e patrimônio com máximo 1,14e-13 USD.
+Não houve nova execução nativa ou envio de ordens. Windows físico permanece
+pendência delimitada; a evidência não amplia capacidades para todos os Experts,
+moedas, margem ou extremos intrabarra.
+
+A [PR #108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108),
+T20.4, foi apontada para master somente após a integração da #107, preservando
+HEAD `c991b04c85029824e74a0861fb82947ade3d227c`. Próxima tarefa concreta:
+revisar seus manifestos/snapshots e integrar, reaproveitando os aceites existentes
+se a árvore de código permanecer igual. Sem bloqueio concreto para essa revisão.
+Root mantém HEAD `489591c`, branch e índice anteriores; trabalho local preservado.
+Nenhum processo de testes ou investigação foi iniciado nesta retomada.
+Artefatos de integração: `logs/integracao-107-20261019/`.
+
+## Retomada do extrator com critérios proporcionais 2026-10-18
+
+O proprietário priorizou extração, atualização, persistência, consulta/exportação e
+recuperação sobre novas campanhas de precisão analítica. A avaliação e o
+[prompt de retomada](propostas/PROMPT_RETOMADA_EXTRATOR.md) identificam a atividade como
+T13.3b e preservam suas entregas de estado/checkpoint/invalidação. O benchmark corrigido
+tem 25.398 registros iguais; seu tempo exclui aquisição/resampling, sem prova de economia
+de memória. A divergência de Bollinger também afetava hashes; corrigida, não justifica
+investigação adicional sem falha nova. O prompt anterior contribuía para a dispersão
+ao enfatizar qualificação sem um critério de encerramento suficientemente claro.
+
+Última situação lida/informada da PR116: rascunho, commit de referência40fbef5, uma suíte
+completa a14% sem falha registrada naquele ponto; aceite ainda pendente do resultado.
+Artefatos em logs/t13-3b-integracao. Esta avaliação não reiniciou, cancelou ou alterou
+essa execução, sua worktree ou a PR. Código aplicado ao workspace principal continua
+distinto de merge: HEAD489591c e mudanças locais preexistentes foram preservados.
+
+EXTR-01 foi registrada como próxima prioridade no painel/roadmap: jornada curta real
+do extrator, medir etapas, corrigir a primeira lacuna comprovada e concluir sem refatorar
+por conveniência. Falha/recuperação determinísticas e UI/CLI coerentes; base de teste
+gravável isolada, sem novas cópias/hashes integrais a cada comando. Precisão de origem,
+contratos, causalidade e segurança continuam obrigatórias; repetição exige gatilho concreto.
+O prompt consolidado aponta à nova prioridade; F19/F20 e planos futuros não foram removidos.
+
+Verificação desta avaliação: 29 testes existentes do núcleo de extração/atualização/
+retomada/banco passaram em39,94s, saída0; SDK docs3 antes/3 depois (1,36s/0,91s), saída0;
+doctor16OK/2avisos/0falhas, saída0 (pandas-ta opcional ausente e ponte desativada).
+Links locais da documentação revista e cercas de código conferidos; git diff --check
+limpo. Logs próprios em logs/avaliacao-retomada-extrator-20261018. Sem execução de nova
+suíte integral, acesso nativo MT5, ordens, benchmark ou alteração de runtime/testes por
+esta avaliação. O teste focado não substitui aceite global da candidata nem prova
+extração do servidor real. Preparação e evidência integral da sessão anterior não são
+atribuídas a esta entrega. Nenhum .sh alterado; ShellCheck não aplicável.
+
+## T20.24 — orçamento e checkpoint das filas (2026-10-18)
+
+[Contrato e limites](analytics/T20.24_ORCAMENTO_FILA.md). `run_batch` e
+`BatchRunner` usam um orçamento comum; sem outro agendador/registro estatístico.
+Limites de admissões/tempo/CPU/RAM/disco, guarda F15 e planos com manifests fixos.
+Publicação e conclusão do item compartilham transação/run_id reservado; retomada
+recupera resultados sem repetir publicação e preserva falhas. Teto de admissões
+não cancela os já admitidos. Cancelamento explícito é cooperativo; Tester nativo
+retorna antes da conferência, sem encerramento de terminal alheio. UI/CLI exibem
+estado parcial/ID/motivo, não lote completo. 40 fila/UI e integração anterior107
+aprovados. [PR #111](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/111):
+1200 aprovados, 10 pulos e 3 avisos em 1099,06 s, saída 0; 9 pulos anteriores
+e 1 PostgreSQL novo, coberto no ensaio separado. Medição local4jobs700barras:2,780s/147MiB RSS
+amostrado, não promessa universal. Regressão final110 e PostgreSQL16isolado8
+aprovados (contêiner removido); doctor16/2/0. Windows físico pendente.
+Próxima T20.25, isolamento/cache nas implementações atuais. T20.7/T20.12 mantêm
+as dependências de contratos/registro canônicos ainda não integrados.
+
+## T20.6 — qualidade por consumidor (2026-10-18)
+
+[Contrato e limites](analytics/T20.6_QUALIDADE_CAPACIDADES.md). Famílias e motivos
+por consumidor, sem substituição real/tick-volume ou inferência de fila. Hashes
+de respostas de barras/ticks/DOM conferem a origem declarada; contagem capturada
+não comprova toda a história. Captura3 congela qualidade/provas/revisões e aceita
+raw ticks/book apenas quando solicitados; leitura/exportação1/2 preservadas.
+Seleção temporal exige fechamento/recepção explícitos por ativo/timeframe.
+Relatório diferencia qualidade histórica genérica de percentual explicitamente
+rotulado de ticks reais; configuração sozinha não prova cobertura. Expert sem
+requisitos declarados permanece não qualificado como robô completo.
+Resultados e UI transportam decisão ou ausência legada. O registry T18.1 ainda
+está em branch; adaptador usa suas definições reais, sem outra implementação.
+Composição/fluxo esperam os consumidores canônicos T19.2/T18.1; store causal
+continua com T13.2. [PR #110](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/110):
+1174 aprovados, 9 pulos existentes e 3 avisos em 1062,21 s, saída 0; 117
+direcionados, checagem congelada 71, PostgreSQL 16 isolado 7 e doctor 16/2/0.
+Windows físico pendente; nenhuma mudança H/S ou feed. Próxima frente independente:
+T20.24 na fila existente. T20.7 aguarda T19.2/B-11; T20.12 deve estender o registro
+T13.4 ainda não integrado, sem outro store.
+
+## T20.5 — vigência de instrumentos (2026-10-18)
+
+[Fonte e decisões](analytics/T20.5_VIGENCIA_INSTRUMENTOS.md). Histórico aditivo de
+especificações, ajustes/vencimentos/rolagens, papel da série e universo, com vigência e
+conhecimento independentes. Manifesto 2 preserva os fatos; produtor anterior
+formato 1 importado/exportado por bytes no teste, sem regravar revisões antigas.
+Especificação atual não recebe vigência retroativa. Cobertura histórica constante
+usa os fatos, mesmo com cache atual diferente. Variação de propriedades é
+identificada e recusada pelos motores de especificação constante. Série contínua
+permanece estudo; eventos declarados não são transformações ou ordens implícitas.
+Regressão direcionada: 85 aprovados; PostgreSQL 16 isolado: 7 aprovados; doctor
+16 OK/2 avisos/0 falhas. Suíte completa: 1137 aprovados, 9 pulos existentes e
+3 avisos em 1019,35 s, saída 0. Windows físico pendente. Próxima T20.6.
+[PR #109](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/109) sobre T20.4; nenhuma alteração de produção H/S ou contratação.
+
+## T20.4 — revisões de dados (2026-10-18)
+
+Serviço canônico aditivo de blocos/manifestos/referências, captura em uma imagem
+de leitura, replay Python/livro e cache com revisão fixada. Export/import verifica
+hashes sem substituir barras do destino. [Contrato e limites](analytics/T20.4_MANIFESTOS_DADOS.md).
+[PR #108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108) em revisão sobre #107. PostgreSQL 16 isolado: sete testes aprovados; suíte completa Linux: 1114 aprovados, 9 pulos existentes e 3 avisos em 1009,24 s, saída 0. Doctor 16/2/0; 28 direcionados aprovados. Próxima T20.5.
+T20.3 recebeu correção do leitor de fluxos/descendentes no PR #107: suíte final
+1103 aprovados/9 pulos existentes/3 avisos em 1009,28 s, doctor 16/2/0.
+Windows físico pendente; nenhuma alegação de integração ou roadmap concluído.
+
+## T20.3 — curvas patrimoniais e comparação nativa (2026-10-17)
+
+[Decisões e limites](analytics/T20.3_PATRIMONIO_FLUTUANTE.md). Mantida a curva
+de operações encerradas; acrescentados saldo realizado e patrimônio por
+fechamento de barra, BID/ASK, custos realizados e swap acumulado. DD novo
+identificado, percentual indefinido se o pico não for positivo, fluxos externos
+separados e neutralizados por cotas na grade de fechamento. Re-simulação soma posições sobrepostas no mesmo capital; não cria
+carteira com margem compartilhada. Persistência em cinco colunas aditivas;
+legado lê sem inventar trajetória ou regravar linhas/schema. Modos sequenciais
+de lote declaram trajetória indisponível; specs genéricas/swap não suportado
+marcam capacidade limitada. Sem alteração de UI ou produção H/S.
+
+Referências direcionadas com fluxos, persistência e DTOs: 85 aprovados.
+Native fixture: MetaTester 6272/Wine 11.17, EURUSD H1 MetaQuotes-Demo, 2025-01-06,
+24 observações; diferença de saldo zero e de equity 1,14e-13 USD. Fonte final
+compilado sem erros/avisos. Verificador e CSV/hashes versionados em
+tests/fixtures/equity_reference. Só Strategy Tester em cópia própria; Python
+não enviou ordens. A prova não certifica todos os Experts/custos/moedas/contas.
+
+Baseline 1081/9 pendências/3 avisos confirmada antes das alterações; ambiente
+preparado novamente. Suíte completa final: 1103 aprovados, nove pendências existentes, três avisos,
+1035,47 s, saída 0 (logs/t20-3/pytest-final.log). SDK/fluxos/docs: 30 aprovados;
+parâmetro cashflows opcional ao final documentado e testado com bindings antigos.
+[PR #107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107) em revisão
+como rascunho sobre #106. Rodadas preliminares foram substituídas pelos ajustes
+de DTOs, fluxos externos e referência do SDK. Doctor 16 OK/2 avisos/0
+falhas. Windows físico pendente; artefatos em logs/t20-3. Próxima independente:
+T20.4, respeitando store/registry de branches existentes.
+
+## T20.2 — referências financeiras e correções locais (2026-10-17)
+
+[Contas independentes](analytics/T20.2_REFERENCIAS_FINANCEIRAS.md) e testes dedicados.
+Reprodução inicial: 7 falhas/8 aprovados, antes das correções; novos casos de
+replay reproduziram mais duas divergências. Corrigidos teto de lote fora do passo,
+epsilon que elevava risco, swap por parcela e por entrada de cada lote na
+re-simulação. Métricas recusam PnL inválido, mantendo PF canônico v1 e os
+estados legítimos sem operações/sem perdas. Sem mudança de banco ou contratos H/S.
+
+Verificação direcionada: 96 aprovados, uma pendência PostgreSQL existente.
+Suíte completa do runtime alterado: 1085 aprovados, nove pendências existentes,
+três avisos, 1179,37 s, saída 0. Doctor: 16 OK/2 avisos/0 falhas.
+[PR #106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106) em revisão
+como rascunho, separado da base documental. Próximo recorte: T20.3.
+Baseline completa anterior ao runtime: 1058 aprovados/9 pendências/3 avisos.
+A execução documental T20.1 foi iniciada antes deste runtime; não substitui
+a verificação final T20.2. Evidências/patch separados em logs/t20-2.
+Windows físico/nativo não executados; parcial inviável continua em T19.57.
+Não declarar toda F20 ou Q01 concluído por estas contas.
+
+## T20.1 — cobertura Q01–Q16 no mapa único (2026-10-17)
+
+Seção 8 do [inventário F19/F20](propostas/INVENTARIO_F19.md) ampliada com base
+concreta, dono executor por extensão, consumidor, lacuna e prova necessária para
+cada Q. Resolvidos no mapa snapshots contraditórios de F13/F16, I-05/--deep,
+T8.7/paridade, T12.3 e exportação T17.28, preservando os relatos históricos.
+Não houve implementação ou aprovação de um Q por existência de código.
+
+Ambiente Linux preparado; baseline anterior da mesma sessão 1058/9/3 avisos,
+saída 0, com runtime idêntico. Suíte final em execução. Próximo P0: T20.2,
+referências financeiras independentes sobre motor atual. T20.4/24 são trilhas
+elegíveis; contratos B e integração store/registry mantêm suas dependências.
+Uma tarefa por entrega; patch próprio em logs/t20-1, separado da T19.1 e da
+base documental preexistente. Sem mudança H/S/runtime/testes/scripts, sem
+ShellCheck aplicável ou ensaio visual/nativo/Windows físico nesta ficha.
+
+## T19.1 — inventário reconciliado para revisão local (2026-10-17)
+
+[Inventário único F19](propostas/INVENTARIO_F19.md): SHAs M/H/S, estado integrado
+versus branches, donos/consumidores, contratos, inputs/presets e cobertura
+I01–I18/TM01–TM08/S01–S11/AX01–AX09. Os estudos preservam seus hashes.
+T13.2/T18.1 e produtores existem em branches não integradas; não reimplementá-los.
+Contratos B/Composer ainda são propostos. T17.28 já fornece seletor Ativo / TF
+e exportador de sessão ampliado; não equivale ao exportador permanente T16.2b-H
+nem ao livro de todos os eventos/ciclos. Onze fontes Safety H/S são idênticas,
+versão S 1.5.0; instalação no terminal não foi conferida.
+
+Reprodução sintética confirmou parcial de 50% inviável com mínimo/passo 1
+ativando break-even sem redução. Dono T19.57; padrão semelhante lido no
+backtester e H, sem ensaio nativo ou correção neste recorte documental.
+Contrato 1 preservado; composição/capacidades via artefato lateral versionado,
+com schema final T19.2 e distribuição condicionada à política B-11.
+
+Instalador Linux --yes --no-mt5 e requirements-dev executados. Suíte inicial
+antes das edições: **1058 aprovados/9 ignorados existentes/3 avisos em 1045,42 s**,
+saída 0. Xvfb próprio, 640×480, aproximadamente 100 DPI, sem WM; temporários
+exclusivos em disco, 66 GiB disponíveis no início. Doctor inicial 16 OK/2 avisos/
+0 falhas (pandas-ta opcional ausente, ponte desligada). Suíte final: **1058
+aprovados/9 ignorados existentes/3 avisos em 1265,91 s**, saída 0. SDK docs:
+3 aprovados em 0,89 s; doctor final 16 OK/2 avisos/0 falhas. Conferidos 36
+links locais novos, cobertura integral do catálogo e dependências F19 inalteradas;
+57 fichas F19/30 F20 preservadas. git diff --check aprovado.
+
+Nenhum runtime/teste/schema/script/Expert/preset foi alterado. H/S e estudos
+somente lidos; sem prova visual/performance/MT5/replay/DEMO/Windows físico nesta
+ficha documental. ShellCheck não aplicável. Pendências Windows operacionais
+permanecem no checklist existente; nenhum comportamento novo por plataforma.
+
+Árvore inicial tinha 8 documentos modificados e 11 novos de T19.0/T20.0 e
+referências, preservados. Branch tarefa/T19.1-inventario-contratos; incremento
+próprio separado do diff preexistente em logs/t19-1. Sem commit/push/PR para
+não incorporar a base documental alheia: publicar/integrar essa base primeiro,
+depois aplicar o incremento em PR próprio T19.1. Após revisão/integração, próxima
+ficha independente: T20.1, estendendo este mapa para Q01–Q16; T19.2 aguarda
+contratos B e T19.3 aguarda store/registry integrados.
+
+## Prompt único — F19/F20/UI e validação MT5 consolidados (2026-10-17)
+
+Pedido do proprietário e anexo lidos; conteúdo reunido no
+[prompt único de desenvolvimento mt5x/HADOUKEN](propostas/PROMPT_CONSOLIDADO_DESENVOLVIMENTO_MT5.md).
+Um bloco copiável, com oito seções e contexto independente do histórico do chat: leitura,
+estado real/ordem, pilares, presets/nomes/lotes/parciais, cálculos/dados/pesquisa Q01–Q16,
+UI atual/posterior/experimental, validação e entrega. Planos continuam especificação.
+
+Retificada a regra antiga do anexo que exigia execução ao vivo DEMO em todo caso:
+replay nativo MT5/Strategy Tester visual em ambiente DEMO pode concluir o aceite
+funcional histórico coberto/reconciliado, inclusive fora de pregão. Rede/latência/fill
+ao vivo mantêm ensaio DEMO específico e pendência delimitada. Mocks/Python complementam
+a evidência nativa; QA histórico não é OOS/forward/fill ao vivo. Nunca conta REAL,
+sem aumentar limites/afrouxar guardas ou interferir em operações/sessões de terceiros.
+
+PROMPT_F19_EXECUCAO.md/PROMPT_F20_EXECUCAO.md mantêm os caminhos como referências de
+compatibilidade e agora apontam ao prompt único, sem blocos concorrentes. Seus conteúdos
+anteriores foram preservados em logs/prompt-consolidado-20261017/anteriores, fora do Git;
+anexo original não foi alterado. Roadmap, painel, índices, planos, matriz e documento UI
+apontam à entrada única. T20.0 recebe adendo documental; preservadas 57 fichas F19,
+30 F20 e prioridades UI, sem novas tarefas/implementação/execução de ordens.
+
+Verificação própria: SDK docs **3 aprovados antes (0,81 s) e 3 depois (0,85 s)**,
+saída 0; doctor **16 OK/2 avisos/0 falhas**, saída 0 (pandas-ta opcional ausente e ponte
+desligada). Um bloco completo/oito seções, leituras locais e requisitos centrais,
+redirecionamentos sem recursão, links/campos/IDs e dependências sem ciclos conferidos;
+relatório em logs/prompt-consolidado-20261017, fora do versionamento. git diff --check
+limpo. Runtime/testes/dependências sem diff, nenhum .sh alterado; ambiente preparado e
+suíte integral anterior da mesma sessão não repetidos nem atribuídos a esta consolidação.
+Sem implementação, ensaio MT5/replay/DEMO, validação visual/Windows físico ou medição de
+performance: a entrega ajusta as instruções para o agente executor, não as executa.
+
+## UI — prioridades atuais, refinamentos e experimento separados (2026-10-17)
+
+Pedido do proprietário registrado em [organização e gráficos por prioridade](propostas/UI_ORGANIZACAO_GRAFICOS_PRIORIDADES.md)
+e vinculado a roadmap/painel, F17/F19/Q14-F20, matriz de validação e prompts F19/F20.
+Adendo documental T20.0; nenhuma tela, renderer, cálculo ou dependência implementada.
+
+UI-A01–A10 são requisitos atuais por capacidade: modos Analisar/Compor/Validar e comparar,
+contexto compacto, editor recolhível por grupos, hierarquia/legibilidade, catálogo de
+gráficos com dados reais, seleção/inspetor, tabelas/insights, rascunho/resultado e
+preservação de contexto, adaptação/acessibilidade/performance e tela de referência.
+Donos permanecem T19.30–34/T20.22/23; as 57 fichas F19 e 30 F20 foram preservadas.
+Sensibilidade/presets/relações entram com seus serviços, sem bloquear o primeiro Manual.
+
+UI-P01/P02 (densidade alternável e perfis completos de disposição) ficam POSTERIOR/P2.
+UI-X01 (candidato Lightweight Charts) fica EXPERIMENTO/P3, não iniciado, fora do caminho
+crítico: exige futura prova comparável e decisão arquitetural antes de adoção. Continuam
+Tkinter/ttk/Matplotlib; não instalar nova biblioteca nem migrar toolkit no PR da UI atual.
+T20.22 define o padrão de navegação/layout; T20.23 liga a inspeção temporal e depende da
+primeira, sem dependência inversa. Uma tarefa por PR, sem reabrir a F17 histórica.
+
+Verificação própria: SDK docs **3 aprovados antes (0,81 s) e 3 depois (0,86 s)**,
+saída 0; doctor **16 OK/2 avisos/0 falhas**, saída 0 (pandas-ta opcional ausente e ponte
+desligada). Campos/IDs, 10 requisitos atuais/2 posteriores/1 experimento, links locais
+novos, cercas/whitespace e dependências F19/F20 sem ciclos conferidos; relatório em
+logs/ui-prioridades-20261017, fora do versionamento. git diff --check limpo; runtime,
+testes e dependências sem diff. Ambiente preparado e suíte integral anterior da mesma
+sessão não repetidos nem atribuídos ao adendo. Nenhum .sh alterado; ShellCheck não
+aplicável. Sem execução/validação visual de UI, benchmark, MT5/replay/DEMO ou Windows
+físico nesta entrega documental; provas futuras permanecem nos respectivos donos.
+
+## F20 — dezesseis sugestões de robustez incorporadas (2026-10-17)
+
+Proprietário aceitou todas as sugestões da avaliação. T20.0 registra
+[Q01–Q16 e marcos](propostas/ROBUSTEZ_PESQUISA_EXECUCAO.md),
+[trinta fichas T20.1–T20.30](propostas/PLANO_F20_ROBUSTEZ.md) e
+[prompt de execução F19/F20](propostas/PROMPT_F20_EXECUCAO.md), com painel e roadmap.
+Somente documentação entregue; nenhuma capacidade nova implementada ou validada em conta.
+
+Cobertura: referências matemáticas/patrimônio flutuante, dados/specs reproduzíveis,
+qualidade/capacidades, margem/custos/capacidade por volume, paridade por evento,
+tentativas/reserva/protocolo, compromissos/ablação, pacote/estados/invalidação,
+observação/diagnóstico, falhas/retomada, carteira posterior, UI investigativa,
+orçamento/cache/isolamento, conformidade/terceiros/restore/release.
+As 57 fichas F19 e catálogo integral são preservados, sem novas categorias de preset,
+stores/ledgers/executores concorrentes ou antecipação de FRP/IA avançada.
+
+Retomada: T19.1 se pendente; T20.1 estende o mesmo inventário e define dono único para
+cada extensão, sem refazer base já entregue. T20.12/13 integram o protocolo T19.27/28/52;
+T20.3 explicita risco patrimonial para Defensivo. Primeiro aceite Manual T20.30 pode
+anteceder o piloto ampliado T19.35 e não o conclui. Mercado fechado continua permitindo
+replay nativo com cobertura; QA não é OOS/forward/fill DEMO ao vivo. Gestão da carteira
+é posterior sem adiar travas de múltiplas ordens; nenhum ensaio REAL autorizado.
+
+I-04/I-09/I-11 foram harmonizados documentalmente: não exigir ordenação universal de
+drawdowns Monte Carlo nem zero falsos positivos em toda realização de ruído. Registrar
+hipóteses, calibração/intervalo/poder e versão de critérios. Bateria/código não mudaram;
+implementação futura segue I-13, regressões e guardas, sem relaxar testes para passar.
+
+Verificação própria deste complemento: SDK docs **3 aprovados antes (0,71 s) e
+3 depois (0,85 s)**, saída 0; doctor **16 OK/2 avisos/0 falhas**, saída 0
+(pandas-ta opcional ausente e ponte desligada). Conferidas fichas/campos Q01–Q16,
+57 tarefas F19 e 30 F20, dependências sem ciclos e links locais novos; relatório
+documental em logs/f20-documentacao-20261017, fora do versionamento. git diff --check
+limpo. Ambiente instalado e suíte integral anterior da mesma sessão não repetidos
+nem atribuídos a esta edição: runtime, testes e dependências continuam sem diff.
+Nenhum .sh alterado; ShellCheck não aplicável. Sem ensaio MT5/replay/DEMO, Windows
+físico, medição de performance ou certificação financeira nesta entrega documental.
+
+## F19 — gestão de lotes e parciais estruturada (2026-10-17)
+
+Requisito adicional explicitado na especificação §6.3, catálogo, UI/schema/preset, prompt
+e matriz de validação. T19.56/57 ampliam o plano para 57 fichas: lote fixo/por risco,
+volume maior que um em uma entrada, adições distintas e saídas parciais simples/múltiplas
+por quantidade/% com base definida, etapas/ack, saldo protegido e reconciliação.
+
+Leitura de código confirmou SymbolSpec.lots_for_risk e ExitRules.partial_r/partial_fraction;
+re-simulador executa a parcial existente somente sem grid. Não declarar suporte geral a
+parciais múltiplas/gradiente por essa base simples existir. A implementação futura amplia
+esses módulos e preserva o legado, sem duplicar sizing/engine ou adiar gestão local para a conta.
+
+Contas conhecidas e backtests validam volume/risco/custos/métricas; replay nativo/DEMO observa
+volume maior que um, parcelas, saldo e proteção. Não tratar cada parcela como novo trade/PF.
+Somente documentação alterada nesta entrega. SDK docs: 3 aprovados antes (0,75 s) e 3 depois
+(0,82 s), saída 0; doctor 16 OK/2 avisos/0 falhas, saída 0; 57 fichas completas,
+145 dependências sem ciclos, 65 links locais novos válidos e git diff --check limpo.
+Runtime/testes/dependências sem diff; ambiente da mesma sessão e suíte integral anterior
+não repetida/atribuída a este adendo. Nenhum ensaio MT5/replay/conta, Windows físico ou
+validação financeira foi executado nesta entrega documental; nenhum .sh mudou.
+
+## F19 — Default, Manual nomeado e prompt/replay retificados (2026-10-17)
+
+Default da estratégia é o primeiro preset de referência, versionado, sem otimização;
+reusar seleção de padrões existente, preservar escolha explícita e criar Manual por cópia.
+Usuário informa Nome do preset no Manual: texto/slug/ID e nome canônico têm papéis separados,
+com prévia, detecção de duplicatas e preservação no round-trip. Maximalista é o rótulo de
+apresentação do perfil FatorLucro, sem objetivo/categoria duplicados. Especificação §§8.4.1/8.4.2;
+T19.26/32/50 ampliadas e T19.55 adicionada. São 55 fichas planejadas, FRP segue futuro.
+
+[Prompt completo do executor](propostas/PROMPT_F19_EXECUCAO.md) agora salvo no projeto e
+[matriz de validação](propostas/VALIDACAO_F19.md) retificam a exigência de operação ao vivo:
+estrutura/cálculos por testes/backtests apropriados; gradientes/stops e demais comportamentos
+operacionais observados no MT5 nativo, em replay visual ou DEMO ao vivo disponível. Agente
+pode escolher recorte curto com aquecimento/eventos suficientes para QA; não constitui OOS.
+Mercado fechado/ativo indisponível online não bloqueia replay com fonte válida; limitações
+específicas permanecem delimitadas. Nenhuma validação de conta REAL autorizada.
+
+Atualização somente documental, sem ensaio MT5/conta ou implementação de presets.
+Verificações próprias: SDK docs 3 aprovados antes (0,74 s) e 3 depois (0,79 s), saída 0;
+doctor 16 OK/2 avisos/0 falhas, saída 0; 55 fichas completas, 138 dependências sem ciclos,
+65 links locais novos válidos e git diff --check limpo. Runtime/testes/dependências sem diff.
+Ambiente preparado na mesma sessão; suíte integral anterior não foi repetida nem atribuída
+a este complemento. Resultados abaixo permanecem históricos; nenhum ensaio operacional
+ou Windows físico foi executado por esta entrega documental. Nenhum .sh alterado.
+
+## FRP — registro de pesquisa futura (2026-10-17)
+
+Ideia do proprietário registrada em [FRP — Fluxo Relativo do Preço](pesquisa/FRP_FLUXO_RELATIVO_PRECO.md)
+e ligada a roadmap, painel principal, F18, especificação/catálogo/plano F19 e índice de propostas.
+FRP-00 é somente registro; FRP-01–04 têm estado ESTUDO FUTURO/P3, após consolidar a base.
+Grupos de 3/4 indicadores correlacionados entre si e com movimento do preço; explorar
+limiares 0,60/0,70/0,80/0,90 e concordância ascendente, com possível relação ao Expert.
+Fórmula/normalização/horizonte ainda serão concebidos; estudar redundância, alvos maduros,
+contribuição incremental e validação OOS. Coeficientes não são percentuais de segurança.
+Não iniciar pesquisa aplicada/integração agora nem tornar FRP dependência dos presets/Ultra;
+as 54 fichas F19 permanecem. Nenhum código, schema, dado, Expert ou preset alterado.
+Verificações próprias: SDK docs 3 aprovados antes (0,81 s) e 3 depois (0,75 s), saída 0;
+doctor 16 OK/2 avisos/0 falhas, saída 0; 44 links locais novos do conjunto documental
+conferidos, 54 fichas F19 preservadas e git diff --check limpo. A suíte integral 1058/9
+e verificações dos adendos abaixo permanecem evidências históricas distintas, sem nova
+execução integral atribuída ao FRP. Runtime/testes/dependências sem diff; ambiente da mesma sessão.
+
+## Adendo F19 / T19.0 — nomes, Ultra e inversão (2026-10-17)
+
+Pedido adicional incorporado à [especificação](propostas/PILARES_DADOS_OPERACAO_PRESETS.md)
+§§6.2/8.4/8.5, [catálogo](propostas/CATALOGO_F19_INDICADORES_SETUPS.md),
+[plano](propostas/PLANO_F19_PILARES_PRESETS.md), roadmap, índice e painel principal.
+Agora são quatro categorias: Manual, Defensivo, Fator de lucro e Ultra.
+T19.50–54 ampliam para 54 fichas planejadas, sem renumerar as anteriores.
+
+Nomes têm robô/ativo/série/categoria/orientação/revisão/hash, rótulo legível, ID independente,
+normalização portável, proteção contra colisão e preservação dos legados. Ultra é política
+condicional por calendário/contexto causal, com prioridade, fallback, rastro e backtest
+completo da política congelada; não é costura retrospectiva de vencedores. A flag experimental
+de inversão troca compra↔venda antes do plano, recalcula níveis/risco e fica desligada por padrão;
+não reverte posição aberta. Entrada Fibonacci também foi explicitada.
+
+Adendo somente documental. A suíte integral 1058/9 abaixo é a linha de base anterior,
+não foi repetida/atribuída a este adendo. Runtime/testes/dependências seguem sem diff;
+ambiente instalado na mesma sessão. Focados SDK antes da edição: 3 aprovados em 0,77 s.
+Focados finais SDK: **3 aprovados em 0,73 s**, saída 0; doctor **16 OK/2 avisos/0 falhas**,
+saída 0. Verificados 54 fichas completas, 134 dependências sem ciclos e 32 links locais novos;
+git diff --check limpo. Nenhum arquivo de runtime, teste ou dependência foi alterado.
+Somente documentação atualizada; Windows físico/MT5 e resultados financeiros não foram
+validados por este adendo. Nenhum .sh mudou, portanto ShellCheck não se aplica.
+
+## F19 / T19.0 — planejamento dos pilares e geração de presets (2026-10-17)
+
+Pedido do proprietário estruturado em [especificação](propostas/PILARES_DADOS_OPERACAO_PRESETS.md),
+[catálogo completo](propostas/CATALOGO_F19_INDICADORES_SETUPS.md) e
+[plano executável](propostas/PLANO_F19_PILARES_PRESETS.md). Somente documentação nesta entrega;
+T19.1–T19.49 planejadas, nenhuma capacidade nova declarada implementada.
+
+Dois ramos de dados (mercado e operações); composição de entrada, ganho, stop e filtros;
+tempo de trade descritivo e executável; presets manual/defensivo/PF; integração com contratos
+HADOUKEN; UI operacional organizada, gráficos e responsividade. O catálogo cobre I01–I18,
+TM01–TM08, AX01–AX09 e S01–S11, mantendo a lacuna dos supostos 37/48 setups não enumerados.
+Gestão da conta tem planejamento em segundo momento, sem dispensar travas multiordem.
+
+Base inspecionada: 489591c, merge PR105. Timeframe já está no seletor “Ativo / TF” da T17.28;
+T19.33 verifica coerência/descoberta, sem duplicar a entrega. Store T13.2, registry T18.1 e
+contratos B/Composer não foram presumidos disponíveis; T19.1 reconcilia donos/estado e é a
+próxima tarefa desta frente. Primeiro piloto: S09/T19.37 com preset manual e conferência nativa.
+
+Ambiente Linux preparado com instalador --yes --no-mt5 e requirements-dev antes das edições.
+Baseline integral antes dos documentos: **1052 aprovados, 9 ignorados existentes, 6 falhas,
+3 avisos em 858,39 s**, saída 1. Falhas preexistentes nesta execução: reflow 900px da janela
+principal, largura 820px de Relações e quatro diálogos de Robôs com erro Tk “window not viewable”.
+Não houve mudança de código/teste para corrigi-las ou ocultá-las. As seis passaram em
+Xvfb (6 aprovados, 1 aviso, 16,75 s). A primeira repetição integral em Xvfb esgotou o
+tmpfs de runtime de 1,5 GB: 86 falhas, 527 aprovados, 8 ignorados e 101 erros em 228,40 s,
+saída 1/Errno 28; não é validação do código. Os três diretórios pytest criados por esta
+sessão foram preservados em disco, liberando o runtime, sem apagar artefatos de terceiros.
+A repetição integral em Xvfb com TMPDIR exclusivo em disco terminou com **1058 aprovados,
+9 ignorados existentes, 3 avisos em 875,34 s**, saída 0. Nenhum teste foi modificado,
+desativado ou pulado nesta entrega. Os avisos são de tight_layout em gráficos existentes.
+Não somar os testes focados à suíte nem confundir validação do software com campanha financeira.
+
+Doctor final: **16 OK, 2 avisos, 0 falhas**, saída 0 (pandas-ta opcional ausente e ponte
+desativada). Conferidos 29 links locais novos, 49 fichas completas, 111 dependências internas
+explícitas sem ciclos e a cobertura integral do catálogo; git diff --check passou.
+A checagem ampla também encontrou referência histórica ausente de T13.2, registrada na
+especificação sem inventar o arquivo. Logs e artefatos próprios estão em logs/f19-validation-20261017,
+fora do versionamento. Nenhum arquivo de runtime/teste teve diff.
+
+Fontes dos estudos lidas integralmente e identificadas por SHA-256 no catálogo; originais
+preservados. Nenhum script, código, banco, Expert ou preset foi editado nesta tarefa.
+Nenhuma conta foi operada; Windows físico não executado. ShellCheck não se aplica sem .sh alterado.
+
+## Estado recente das demais frentes
 
 > **T17.28 — comandos dos cards MT5 (2026-10-17):** seletores pesquisáveis de
 > ativo/timeframe e preset governam a evidência mostrada. PLAY tem revisão da
@@ -850,3 +1600,189 @@ pendente; nenhum terminal/conta do usuário foi iniciado ou encerrado.
 Protocolo2383efd registrado antes dos resultados. Depois do aceite críticoUI e do lançador real99 (10.445BBRSI/31runs, configuração preservada), oito backtests EURUSD H1/M15, EMAATR/Donchian padrão e custos base/adverso foram executados sequencialmente no ce9fae9. Todos tiveram resultado modelado negativo; maiorPF0,875849 noDonchianM15/669operações. Nenhum OOS independente e custos/moeda não certificados; zero candidatos aprovados. Não ampliar a busca para forçar1,9. [Relatório, ICs, gates e reprodução](pesquisa/PF19_RELATORIO_20261016.md).
 
 A base de origem e o protocolo mantiveram os hashes; os oito livros foram reconciliados independentemente por contagem/GP/GL/resultado/PF. O código reusa backtester/estratégias/PF, sem SDK/terminal/contas ou mudança de parâmetros/risco. Baseline947/9 e sete focados (incluindo subprocessos CLI sintéticos) passaram; suíte geral e CI do PR100 em curso. Não confundir execução de pesquisa com integração ou aprovação financeira.
+
+## T20.25 — Cache e isolamento das execuções (em revisão)
+
+A entrega amplia cache F16, manifests T20.4, fila T20.24, sessões T17.28 e
+retenção F15. Identidade e checksum precedem reuso; o SDK padrão usa perfil
+privado, arquivo por tentativa e posse entre processos com proteção contra
+filhos órfãos. A preparação reserva espaço por arquivo e mantém cancelamento
+cooperativo. Perfis recusados antes da compilação podem comprovar liberação e
+ser recolhidos por quarentena reversível. Referências SQL, inclusive o livro CSV
+fora do perfil, permanecem protegidas.
+
+Suíte completa final: 1280 aprovados, 11 pulos esperados e 3 avisos em 1334.28 s, saída 0, com Xvfb privado.
+O vínculo ao banco criador passou em 133 testes dirigidos e 15 de retenção; outro
+banco não pode recolher o perfil e identidades desconhecidas são preservadas.
+114 testes cobrem preparação/posse/budget/tester. PostgreSQL: 9 aprovados; doctor: 16 OK, 2 avisos e 0 falhas
+aprovados. Ensaio real Wine repetido: SDK padrão, uma operação reconciliada,
+origem/CSV compartilhado preservados e processos liberados. Quarentena e
+restauração real preservaram o manifesto. A composição final passou na validação
+local completa. Windows físico e revisão independente permanecem pendentes.
+
+[PR #112](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/112), branch codex/t20.25-cache-isolamento, empilhado sobre a T20.24/PR111. Não consome
+registry/Composer/registro estatístico ausentes; o histórico nativo continua sem
+identidade suficiente para cache entre experimentos. [Contratos e limites](analytics/T20.25_CACHE_ISOLAMENTO.md).
+
+## T19.14 — Trajetórias temporais (em revisão)
+
+Relógios explícitos, trajetórias disponíveis de preço e diários de ciclos/parciais
+foram integrados ao ledger por sidecar aditivo versionado. Publicação Python e
+re-simulações salvas registram o diário; `mt5x trades trajectory` consulta caixa
+por ciclo, preço, limiares e distribuição de duração. Saída intrabarra permanece
+intervalar; cortes anteriores não usam a saída futura. Snapshots novos de uma
+re-simulação antiga pertencem só à derivada. Cobertura contínua, sessão histórica,
+moeda/custos ausentes e precisão nativa não são presumidos.
+
+Baseline: 1280/11/3. Dirigidos finais: 100 em 98,61 s; PostgreSQL16 isolado:
+10 em 12,69 s, container removido; doctor: 16 OK/2 avisos/0 falhas. Medição ABBA
+BENCH/M15/4000 barras: hashes de trades/curvas/métricas iguais; publicação
+0,968→1,737 s e banco 1,137→2,070 MiB, com 2733 observações. Leitura de cópia de
+artefato nativo anterior preservou origem e explicitou cobertura só de endpoints;
+não foi novo replay nem trajetória contínua. Suíte completa final: 1381 aprovados,
+12 pulos e 3 avisos em 1378,80 s, saída 0, com Xvfb privado e fontes intactas
+por hash. Omissão inicial na expectativa da assinatura SDK foi corrigida
+com oito testes de compatibilidade, preservando a tentativa reprovada.
+[PR113](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/113), sobre
+T20.25/PR112. Windows físico e revisão independente pendentes.
+
+O dono é `trade_analytics`, consumindo ledger F16, snapshots T20.4/6 e motores
+existentes. A exportação permanente H/T16.2b-H e o registro T20.12 não são
+reimplementados. [Contrato do recorte](analytics/T19.14_TRAJETORIAS_TEMPORAIS.md).
+
+## Integração canônica T13.2 — 2026-10-18
+
+Origem843a85a reaplicada com atribuição no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114),
+com ordenação topológica corrigida e schemas PostgreSQL privados do helper80fd2f3.
+Baseline1388/12/3; final Linux/Xvfb1398/13/3 em1930,28s, saída0,
+cobertura77,44% e fontes/testes intactos por hash. PostgreSQL17 e doctor16/2/0.
+O timeout herdado de captura duplicada foi corrigido na T20.24/PR111; lote
+real60,47→39,86s, quatro livros/curvas idênticos por hash. A tentativa
+reprovada1396/13/3+1falha foi preservada. Dez arquivos Python integrados
+ao workspace principal com HEAD/índice/INI/.env preservados; CLI help saiu0.
+Ubuntu1269/142 e jobs PostgreSQL/lint/instaladores aprovados em4b3302c;
+Windows CI1381/30/5 e seis checks de execução aprovados em4b3302c; Windows físico pendente. Próxima integração:
+T13.3 canônica bde3652; preservar a ordenação e o helper de schemas.
+O aceite ponta a ponta dos testes4/7 inclui os produtores/publicador seguintes.
+
+
+## T13.3 — integração validada (2026-10-18; PR115)
+
+Perfis, RVOL, volatilidade, regimes, estrutura e calendário canônicos integrados
+com UTC explícito, histórico de invalidações e versões por configuração/TF.
+Código `a1c2a77`: suíte final 1438/16/3 em 1.836,34 s, saída 0, cobertura 77,44%;
+seis checks de execução aprovados (CI Ubuntu 1309/145, Windows 1421/33/5,
+PostgreSQL 20; lint e dois instaladores sem MT5). Os resultados anteriores
+1433/15/3 são pré-identidade e foram arquivados separadamente.
+
+Ambiente principal: 70 focados e 20 PostgreSQL aprovados; 11 arquivos Python
+copiados com guards/backup, sem mudar HEAD/índice/configuração/`.env`. Doctor
+16/2/0 e CLI compute --help aprovados. EURUSD/AGG: 156.249 registros preservados
+exceto algorithm_version; base original somente leitura e SHA igual. Detalhes
+e limites em [T13.3_PERFIS_REGIMES](analytics/T13.3_PERFIS_REGIMES.md).
+
+Windows físico/MT5 e decisão da confiança continuam pendentes; sem ordens,
+sem alterações em H/S e sem certificar publicação/leitor ou a cadeia completa.
+Próxima: T13.3b, runtime 03570b0/docs 4ede7fa; preservar identidade por TF,
+algoritmo-base 1.2, UTC explícito e helper de schemas PG isolados.
+
+
+## Retomada do extrator — T13.3b e EXTR-01 (2026-10-18)
+
+Prioridade atual do proprietário: propostas/PROMPT_RETOMADA_EXTRATOR.md, lido
+integralmente. A execução existente da PR116 foi aproveitada sem duplicar suíte
+local: 1461/18/3 em 2154,08 s, saída 0, cobertura 77,44%, fontes intactos.
+Hashes vinculados ao runtime 40fbef5; seis checks de execução aprovados, incluindo
+Windows. PR116 pronta para revisão, sem merge. A investigação numérica encerrou;
+benchmark exato de 25398 registros permanece válido. A tentativa real extra
+interrompida continua inconclusiva, preservada e não repetida.
+
+EXTR-01/PR117: runtime 677dfe3 recupera intervalos failed anteriores ao último
+timestamp antes da cauda incremental e conserva falha quando a fonte não volta.
+A prova do diálogo Tk revelou Cancelar inoperante por comparação de estado Tcl;
+correção limitada a uma linha e regressão mantida. Banco/extrator/UI são os únicos
+módulos de produção alterados. Baseline reutilizado da PR116 somente após
+comprovar fontes, Python e pacotes iguais no worktree isolado antes da edição.
+
+Jornada FakeMT5/M1 em banco gravável próprio: falha intermediária preserva 1080
+barras, retomada recupera 540 e cauda, termina com 1801 timestamps únicos e CSV
+exatamente igual ao provedor em OHLCV/volumes/spread. Atualização correta 0,910 s,
+repetição idempotente 0,050 s, total medido 2,418 s; sem Analytics/resampling
+neste percurso e sem alegar ganho sobre o antes incompleto. CLI, reabertura/CSV
+e resultados/cancelamento do diálogo Tk cobertos. Focados 34, novas provas
+específicas e três cenários Tk aprovados; doctor 16 OK/2 avisos/0 falhas.
+Suíte final única 1468/18/3 em 2237,29 s, saída 0, cobertura 77,64%, fontes
+intactos. Seis checks do código 6096ff8 aprovados, incluindo Windows. PR117 pronta
+para revisão; implementação encerrada, sem merge.
+
+Prova nativa delimitada: ponte desativada e conexão recusada na porta local
+configurada; terminal, conta e credenciais não alterados. Fakes não certificam
+feed real; Windows físico segue pendente. Código das PR116/117 permanece nas
+worktrees logs/t13-3b-integracao/pr e logs/extr-01/pr, sem aplicação ao workspace
+principal e sem merge. Logs/checkpoints próprios preservados. Relatório EXTR-01:
+PR117, docs/extrator/EXTR-01_CICLO_RETOMADA.md. Próximo passo: revisão das PRs; prova DEMO nativa quando houver ponte disponível,
+sem iniciar outra campanha numérica ou novas frentes F19/F20 agora.
+
+
+## EXTR-01 — jornada DEMO nativa aprovada (2026-10-19)
+
+Ponte antes desativada e sem listener foi corrigida com o servidor restrito
+existente em 127.0.0.1:18812 e somente enabled=true na configuração efetiva.
+Wine/Python/terminal já instalados; nenhum processo/sessão de terceiros foi
+encerrado. PID próprio registrado no controle existente. Conta MetaQuotes-Demo,
+trade_mode=0, conexão e negociação automática desabilitada comprovadas. Sem
+credenciais em argumentos/relatórios, sem ordens e sem replay. Doctor 21 OK,
+um aviso opcional, zero falhas, saída 0. Base principal preservada.
+
+Código das PR116/117 sem mudanças; seus aceites automatizados foram reutilizados.
+Revisão técnica local dos contratos/lotes/transações/UTC/retomada/cancelamento
+sem achado bloqueante nos caminhos percorridos; nenhuma revisão externa
+registrada. master489591c contido na candidata. Preparação Git em
+codex/integracao-extrator-116-117, com a cadeia aberta #106→#117 preservada;
+evidência d5916ee avançada por fast-forward para a PR117. Nenhum merge remoto
+nem cópia de fontes para o workspace principal; HEAD/índice mantidos.
+
+Jornada nativa EURUSD/M1: 14/10 a 16/10/2026 12h UTC, 2880→3600 barras,
+720 novas, repetição sem duplicação ou mudança de valores, banco fechado e
+reaberto e CSV exato ao provedor em relógio/OHLCV/volumes/spread. Extrair
+3,628 s, atualizar 0,944 s, repetir 0,066 s, consultar 0,060 s e CSV 0,115 s.
+Sem Analytics/resampling ou campanha de benchmark. UI Tk real/conector nativo:
+seleção/período, extração, atualização, cancelamento reconhecido, blocos
+confirmados preservados, retomada e CSV (4652 timestamps únicos). A primeira
+observação do arquivo assíncrono foi inconclusiva; roteiro corrigido para
+aguardar on_success, única repetição justificada dessa checagem, log mantido.
+
+Prova/limites: PR117, docs/extrator/EXTR-01_VALIDACAO_NATIVA.md; artefatos
+privados logs/retomada-nativa-20261019/. Próxima tarefa concreta: revisão e
+integração da base #106/T20.2, seguindo #107…#117 na ordem aplicável. Windows
+físico continua pendente e nenhuma nova pesquisa numérica foi iniciada.
+
+
+## Integração da base T20.2 — 2026-10-19
+
+A revisão da PR106 confirmou seis checks aprovados, incluindo Windows, e o
+runtime fc9e593/head1ad3755 inalterado (hashes e diff conferidos). Seu rascunho
+dependia de documentação preexistente ainda local. Essa base foi publicada e
+integrada separadamente, sem transportar o diff inteiro do workspace: PR118
+T19.0, PR119 T20.0, PR120 T19.1 e PR121 T20.1. Conteúdo do proprietário e patches
+originais preservados; 57 fichas F19,30 F20,16 Qs e links conferidos. O patch
+T19.1 não aplicava em dois contextos; conciliação em três vias e preservação
+das linhas novas/relatos foram registradas. T20.1 conciliou sem conflitos.
+
+Quatro jobs CI redundantes disparados para essas mudanças exclusivamente
+documentais foram cancelados, com aceites anteriores mantidos; merges docs
+identificados skip ci para não reiniciar suítes de código inalterado. Não houve
+remoção de teste, tolerância ampliada, novo oráculo, benchmark ou campanha.
+Na PR106, somente continuidade conflitou; ambos os relatos foram preservados
+e o painel T20.2 unificado. Código/testes/dependências/scripts continuam
+exatamente os aprovados:1081/9/3 em1179,37s,saída0,seis checks.
+
+PR106 retirada do rascunho e integrada em master pelo merge
+f477e4351c9e0060a047cb3dade996010843ceee. Fonte não documental de master
+conferida igual a1ad3755. Evidências privadas logs/integracao-base-106-20261019/.
+Root permanece em489591c, com alterações locais/índice preservados e sem copiar
+fontes ou trocar seu branch. Nenhuma aprovação implícita de B-11 ou liberação
+REAL. A prova DEMO do extrator da PR117 não certifica paridade financeira deste
+motor. Windows físico e limites de swap/moeda/margem permanecem pendentes.
+Próxima tarefa concreta: revisar/conciliar PR107 T20.3 sobre master com #106
+integrada e seguir as dependentes na ordem.

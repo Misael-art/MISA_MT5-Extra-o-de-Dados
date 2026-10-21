@@ -466,6 +466,8 @@ class RobotDetail:
                 notes.append(f"{m['skipped_min_lot']} sinal(is) ignorado(s): lote para o risco abaixo do mínimo.")
             if not m.get("spec_known", True):
                 notes.append("Especificação do contrato ausente: valores em dinheiro são aproximados (mt5x specs).")
+            from mt5_extracao.analytics.data_eligibility import summary as data_quality_summary
+            notes.append(data_quality_summary(m.get("data_quality")))
             if m.get("trades", 0) < 30:
                 notes.append("Poucas operações: o resultado diz pouco. Use um período maior e a validação.")
             self.run_status.config(text="\n".join(notes))

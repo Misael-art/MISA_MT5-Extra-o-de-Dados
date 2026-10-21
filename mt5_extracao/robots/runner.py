@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from typing import Callable, List, Optional, Tuple
 
 from . import backtest, catalog
+from . import budget as budget_mod
 
 log = logging.getLogger(__name__)
 
@@ -87,10 +88,13 @@ class ResourceGovernor:
             self.limit = min(self.max_workers, self.limit + 1)
 
 
-def run_job(db, config, job: Job) -> dict:
+def run_job(db, config, job: Job, *, control=None, entry=None) -> dict:
     if job.robot.kind == catalog.MQL5:
-        return backtest.run_mql5(db, config, job.robot, job.symbol, job.timeframe)
-    return backtest.run_python(db, config, job.robot, job.symbol, job.timeframe)
+        from datetime import datetime
+        dates = {key: datetime.fromisoformat(entry[key]) for key in ("start", "end")} if entry else {}
+        return backtest.run_mql5(db, config, job.robot, job.symbol, job.timeframe, control=control, **dates)
+    return backtest.run_python(db, config, job.robot, job.symbol, job.timeframe, control=control,
+                               data_manifest_id=entry.get("data_manifest_id") if entry else None)
 
 
 class BatchRunner:
@@ -105,17 +109,23 @@ class BatchRunner:
 
     def __init__(self, db, config, jobs: List[Job], on_event: Optional[Callable] = None,
                  governor: Optional[ResourceGovernor] = None, run: Optional[Callable] = None,
-                 mql5_setup: Optional[Callable] = None):
+                 mql5_setup: Optional[Callable] = None, budget=None, batch_id=None):
         self.db, self.config, self.jobs = db, config, list(jobs)
         self.on_event = on_event or (lambda event: None)
         self.governor = governor or ResourceGovernor(**limits_from_config(config))
-        self._run = run or run_job
+        self._run = run
+        self.budget = budget or budget_mod.Budget(db, config, batch_id=batch_id)
+        self.batch_id = self.budget.batch_id
+        self._entries = {}
+        self.error = ""
         self._mql5_setup = mql5_setup
         self._cancel = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self.results: List[dict] = []
 
     def start(self) -> "BatchRunner":
+        if self.running:
+            raise ValueError("Este executor já está em andamento; aguarde antes de iniciar outro lote.")
         self._thread = threading.Thread(target=self._coordinate, name="mt5x-backtests", daemon=True)
         self._thread.start()
         return self
@@ -123,6 +133,8 @@ class BatchRunner:
     def cancel(self) -> None:
         """Não começa mais nenhum teste; os que já estão rodando terminam."""
         self._cancel.set()
+        if self._run is None:
+            self.budget.cancel()
 
     def join(self, timeout: Optional[float] = None) -> bool:
         if self._thread is not None:
@@ -139,12 +151,21 @@ class BatchRunner:
         except Exception:
             log.exception("Erro ao avisar o andamento dos backtests")
 
-    def _execute(self, job: Job) -> dict:
+    def _execute(self, job: Job, control) -> dict:
         try:
-            return {"job": job, "run": self._run(self.db, self.config, job), "error": ""}
-        except Exception as e:           # qualquer falha de um teste fica nele: os outros continuam
-            log.warning(f"Backtest de {job.robot.name} em {job.symbol} ({job.timeframe}) falhou: {e}")
-            return {"job": job, "run": None, "error": str(e) or type(e).__name__}
+            entry = self._entries[id(job)]
+            if entry.get("preparation_error"):
+                raise ValueError(entry["preparation_error"])
+            record = self._run(self.db, self.config, job) if self._run is not None else run_job(
+                self.db, self.config, job, control=control, entry=entry)
+            return {"job": job, "run": record, "error": ""}
+        except budget_mod.Interrupted as exc:
+            control.result("interrupted", str(exc))
+            return {"job": job, "run": None, "error": str(exc), "interrupted": True}
+        except Exception as exc:
+            control.result("failed", str(exc))
+            log.warning(f"Backtest de {job.robot.name} em {job.symbol} ({job.timeframe}) falhou: {exc}")
+            return {"job": job, "run": None, "error": str(exc) or type(exc).__name__}
 
     def _next(self, pending: List[Job], mql5_busy: bool) -> Optional[Job]:
         for job in pending:
@@ -155,16 +176,34 @@ class BatchRunner:
 
     def _coordinate(self) -> None:
         total, pending, running = len(self.jobs), list(self.jobs), {}
-        started = failed = 0
+        started = failed = interrupted = 0
         cleanup = None
         governor = self.governor
         try:
+            plan = self.budget.prepare([(job.robot, job.symbol, job.timeframe) for job in self.jobs])
+            self._entries = {id(job): entry for job, entry in zip(self.jobs, plan)}
+            recovered = []
+            for job in pending:
+                record = self.budget.recovered(self._entries[id(job)]["key"])
+                if record is not None:
+                    result = dict(job=job, run=record, error="")
+                    self.results.append(result)
+                    recovered.append(job)
+                    cpu, ram = governor.read()
+                    self._emit(kind=DONE, completed=len(self.results), total=total, cpu=cpu, ram=ram, **result)
+            pending = [job for job in pending if job not in recovered]
             with ThreadPoolExecutor(max_workers=governor.max_workers, thread_name_prefix="mt5x-backtest") as pool:
                 while (pending and not self._cancel.is_set()) or running:
                     cpu, ram = governor.read()
                     while pending and not self._cancel.is_set() and len(running) < max(1, governor.limit):
                         job = self._next(pending, any(j.robot.kind == catalog.MQL5 for j in running.values()))
                         if job is None:
+                            break
+                        try:
+                            control = self.budget.admit(self._entries[id(job)]["key"])
+                        except budget_mod.Interrupted as exc:
+                            self.error = str(exc)
+                            self._cancel.set()
                             break
                         if job.robot.kind == catalog.MQL5 and self._mql5_setup is not None:
                             setup, self._mql5_setup = self._mql5_setup, None
@@ -175,7 +214,7 @@ class BatchRunner:
                         started += 1
                         self._emit(kind=STARTED, index=started, total=total, job=job, cpu=cpu, ram=ram,
                                    workers=len(running) + 1)
-                        running[pool.submit(self._execute, job)] = job
+                        running[pool.submit(self._execute, job, control)] = job
                     if not running:
                         continue
                     finished, _ = wait(list(running), timeout=SAMPLE_INTERVAL, return_when=FIRST_COMPLETED)
@@ -183,14 +222,32 @@ class BatchRunner:
                         running.pop(future)
                         result = future.result()
                         self.results.append(result)
-                        failed += result["run"] is None
+                        interrupted += bool(result.get("interrupted"))
+                        failed += result["run"] is None and not result.get("interrupted")
+                        if result.get("interrupted"):
+                            self._cancel.set()
+                            self.error = result["error"]
                         cpu, ram = governor.read()
                         self._emit(kind=DONE, completed=len(self.results), total=total, cpu=cpu, ram=ram, **result)
+        except budget_mod.Interrupted as exc:
+            self.error = str(exc)
+            self._cancel.set()
+        except Exception as exc:
+            self.error = str(exc)
+            self.budget.cancel("O lote falhou antes de terminar; consulte o checkpoint e retome.")
+            log.exception("Não foi possível concluir o lote de backtests")
         finally:
+            if self._cancel.is_set() and not self.budget.reason:
+                self.budget.cancel()
+            try:
+                self.budget.finish(failed=bool(failed))
+            except Exception:
+                self.error = "Não foi possível gravar o checkpoint; confira o disco e reinicie o aplicativo antes de retomar."
+                log.exception("Falha ao gravar o estado final do lote")
             if cleanup is not None:
                 try:
                     cleanup()
                 except Exception as e:
                     log.warning(f"Não foi possível desfazer o preparo dos robôs MQL5: {e}")
             done = len(self.results)
-            self._emit(kind=FINISHED, total=total, ok=done - failed, failed=failed, canceled=total - done)
+            self._emit(kind=FINISHED, total=total, ok=done - failed - interrupted, failed=failed, canceled=total - done + interrupted)

@@ -23,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.strategies.backtester import EXIT_REASONS, BacktestConfig, SymbolSpec, Trade, execution_spreads
+from mt5_extracao.strategies.equity import cashflow_values, floating_metrics, unitized_equity, valuation_metadata
 
 _PRICE_EXITS = {EXIT_REASONS[k] for k in ("stop", "breakeven", "trailing", "target")}
 _OPEN_EXITS = {EXIT_REASONS["signal"]}                         # saem na abertura da barra
@@ -72,6 +73,13 @@ class SimResult:
     capped: int = 0               # níveis não abertos por causa do teto de exposição
     max_volume: float = 0.0       # maior exposição (lotes somados) numa operação
     source_seqs: List[Optional[int]] = field(default_factory=list)  # identidade original; horário pode ser aproximado
+    account_balance: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    floating_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    performance_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    account_cashflows: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    metrics: dict = field(default_factory=dict)
+    valuation: dict = field(default_factory=dict)
+    trajectory: dict = field(default_factory=dict)
 
 
 def _bar_index(times: pd.Series, when) -> Optional[int]:
@@ -80,10 +88,18 @@ def _bar_index(times: pd.Series, when) -> Optional[int]:
 
 
 def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: BacktestConfig,
-             policy: ExitPolicy, atr: Optional[pd.Series] = None) -> SimResult:
+             policy: ExitPolicy, atr: Optional[pd.Series] = None, cashflows=None,
+             observation_timeframe=None) -> SimResult:
     """Re-simula cada operação (independentes: o motor não abre posição nova, só gere as que o run abriu)."""
+    from mt5_extracao.analytics.instruments import require_supported_spec
+    require_supported_spec(spec)
     data = bars.reset_index(drop=True)
     times = pd.to_datetime(data["time"]).reset_index(drop=True)
+    journal = None
+    if observation_timeframe is not None:
+        from mt5_extracao.trade_analytics.trajectories.observations import Journal
+        journal = Journal(times, observation_timeframe, "resimulation_model")
+    flows = cashflow_values(cashflows, times)
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
     spr, spr_open, spr_close = execution_spreads(data, spec, cfg)
     slip = cfg.slippage_points * spec.point
@@ -96,6 +112,9 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
     skipped = approximate = adds = capped = 0
     stats_volume = [0.0]
     n = len(data)
+    balances = np.zeros(n, dtype=float)
+    floating = np.zeros(n, dtype=float)
+    closed_changes = np.zeros(n + 1, dtype=float)
 
     for t in trades.sort_values("entry_time").itertuples(index=False):
         d = int(t.direction) if t.direction in (1, -1) else 0
@@ -122,7 +141,7 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
         exit_orig = _bar_index(times, t.exit_time) if not pd.isna(t.exit_time) else None
         reason_orig = t.exit_reason
         pos = {"stop": stop, "kind": "stop", "remaining": volume, "pnl": -cfg.commission_per_lot * volume,
-               "partial": False, "be": False, "lots": [[entry, volume]], "next_level": 1}
+               "partial": False, "be": False, "lots": [[entry, volume, i0]], "next_level": 1}
         grid = policy.grid_levels > 0
         spacing = None
         if grid:
@@ -138,18 +157,25 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
             price = bid_price + (spread if d < 0 else 0.0)
             return price - d * slip if market else price
 
-        def close_part(vol, price):
+        def close_part(vol, price, i, kind="partial", phase="intrabar"):
             # fecha `vol` lotes, do mais antigo para o mais novo (com gradiente há vários preços de entrada)
             left = vol
             for lot in pos["lots"]:
                 take = min(lot[1], left)
                 if take <= 0:
                     continue
+                if cfg.swap:
+                    pos["pnl"] += spec.swap_money(d, take, times.iloc[lot[2]], times.iloc[i])
                 pos["pnl"] += (price - lot[0]) * d * ppu * take - cfg.commission_per_lot * take
                 lot[1] = round(lot[1] - take, 8)
                 left = round(left - take, 8)
             pos["lots"] = [lot for lot in pos["lots"] if lot[1] > 1e-12]
             pos["remaining"] = round(pos["remaining"] - vol, 8)
+            if journal is not None:
+                journal.record(len(out), i, kind, phase, pos["remaining"], pos["pnl"],
+                               direction=d,
+                               source_seq=getattr(t, "seq", None), fill_price=price, fill_volume=vol,
+                               net_pnl=pos["pnl"] if kind == "exit" else None)
 
         def add_levels(i, lo, hi, op):
             """Abre os níveis do gradiente tocados nesta barra (ordem limite/stop, preenchida no nível ou na abertura)."""
@@ -172,32 +198,42 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 # os níveis são medidos no lado que fecha a posição (bid na compra, ask na venda); entrar é o outro lado
                 price = price + spr[i] if d > 0 else price - spr[i]
                 previous = pos["lots"][-1][0]
-                pos["lots"].append([price, lot])
+                pos["lots"].append([price, lot, i])
                 pos["remaining"] = round(pos["remaining"] + lot, 8)
                 pos["pnl"] -= cfg.commission_per_lot * lot
                 pos["next_level"] = k + 1
                 adds += 1
+                if journal is not None:
+                    journal.record(len(out), i, "add", "open" if gapped or op == level else "intrabar",
+                                   pos["remaining"], pos["pnl"], source_seq=getattr(t, "seq", None),
+                                   fill_price=price, fill_volume=lot, direction=d)
                 if sign > 0 and policy.grid_trail_stop:
                     if (previous > pos["stop"]) if d > 0 else (previous < pos["stop"]):
                         pos["stop"], pos["kind"] = previous, "trailing"
             stats_volume[0] = max(stats_volume[0], pos["remaining"])
             stats_volume_trade[0] = max(stats_volume_trade[0], pos["remaining"])
 
-        def close_all(i, price, reason):
+        def close_all(i, price, reason, phase=None):
             pos["peak_volume"] = max(volume, stats_volume_trade[0])
-            if cfg.swap:
-                pos["pnl"] += spec.swap_money(d, pos["remaining"], times.iloc[i0], times.iloc[i])
-            close_part(pos["remaining"], price)
+            phase = phase or ("open" if reason == "signal" else "close" if reason in ("time", "eod", "end") else "intrabar")
+            close_part(pos["remaining"], price, i, "exit", phase)
             out.append(Trade(direction=d, entry_time=times.iloc[i0], exit_time=times.iloc[i], entry_price=entry,
                              exit_price=float(price), volume=float(pos["peak_volume"]), pnl=float(pos["pnl"]),
                              r_multiple=float(pos["pnl"] / (risk_px * ppu * volume)), bars=i - i0 + 1,
                              exit_reason=EXIT_REASONS[reason], equity_before=float("nan"), stop_price=stop,
                              target_price=target))
             source_seqs.append(getattr(t, "seq", None))
+            balances[i] += pos["pnl"]
+            floating[i] += pos["pnl"]
+            closed_changes[i + 1] += pos["pnl"]
 
         closed = False
         stats_volume[0] = max(stats_volume[0], volume)
         stats_volume_trade = [volume]
+        if journal is not None:
+            journal.record(len(out), i0, "entry", "open", volume, pos["pnl"],
+                           direction=d,
+                           source_seq=getattr(t, "seq", None), fill_price=entry, fill_volume=volume)
         for i in range(i0, n):
             if policy.keep_original_exits and i == exit_orig and reason_orig in _OPEN_EXITS and i > i0:
                 close_all(i, fill_exit(o[i], spr_open[i]), "signal")
@@ -208,7 +244,8 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 add_levels(i, lo, hi, op)       # contra: assume o pior caso (o nível enche antes do stop)
             if (lo <= pos["stop"]) if d > 0 else (hi >= pos["stop"]):
                 level = min(op, pos["stop"]) if d > 0 else max(op, pos["stop"])
-                close_all(i, level - d * slip, pos["kind"])
+                close_all(i, level - d * slip, pos["kind"],
+                          "open" if (op <= pos["stop"] if d > 0 else op >= pos["stop"]) else "intrabar")
                 closed = True
                 break
             if grid and sign > 0:
@@ -220,7 +257,8 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                     step = spec.volume_step or spec.volume_min
                     part = math.floor(volume * policy.partial_fraction / step + 1e-9) * step
                     if part >= spec.volume_min and pos["remaining"] - part >= spec.volume_min - 1e-12:
-                        close_part(part, max(op, level) if d > 0 else min(op, level))
+                        close_part(part, max(op, level) if d > 0 else min(op, level), i,
+                                   phase="open" if (op >= level if d > 0 else op <= level) else "intrabar")
                     if policy.breakeven_after_partial:
                         pos["stop"] = max(pos["stop"], entry) if d > 0 else min(pos["stop"], entry)
                         pos["kind"] = "breakeven"
@@ -231,7 +269,8 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                     if (entry > pos["stop"]) if d > 0 else (entry < pos["stop"]):
                         pos["stop"], pos["kind"] = entry, "breakeven"
             if target is not None and ((hi >= target) if d > 0 else (lo <= target)):
-                close_all(i, max(op, target) if d > 0 else min(op, target), "target")
+                close_all(i, max(op, target) if d > 0 else min(op, target), "target",
+                          "open" if (op >= target if d > 0 else op <= target) else "intrabar")
                 closed = True
                 break
             # no fechamento
@@ -257,6 +296,34 @@ def simulate(trades: pd.DataFrame, bars: pd.DataFrame, spec: SymbolSpec, cfg: Ba
                 close_all(i, fill_exit(c[i], spr_close[i]), kind)
                 closed = True
                 break
+            if i < n - 1:
+                balances[i] += pos["pnl"]
+                mark = c[i] + (spr_close[i] if d < 0 else 0)
+                floating[i] += pos["pnl"]
+                marked_pnl = pos["pnl"]
+                for price, vol, opened in pos["lots"]:
+                    marked = (mark - price) * d * ppu * vol
+                    floating[i] += marked
+                    marked_pnl += marked
+                    if cfg.swap:
+                        accrued_swap = spec.swap_money(d, vol, times.iloc[opened], times.iloc[i])
+                        floating[i] += accrued_swap
+                        marked_pnl += accrued_swap
+                if journal is not None:
+                    journal.record(len(out), i, "mark", "close", pos["remaining"], pos["pnl"],
+                                   source_seq=getattr(t, "seq", None), net_pnl=marked_pnl, direction=d)
         if not closed:
             close_all(n - 1, fill_exit(c[n - 1], spr_close[n - 1]), "end")
-    return SimResult(out, skipped, approximate, adds, capped, stats_volume[0], source_seqs=source_seqs)
+    closed_balance = cfg.initial_equity + np.cumsum(closed_changes[:-1]) + np.cumsum(flows)
+    balances += closed_balance
+    floating += closed_balance
+    performance = unitized_equity(floating, flows, cfg.initial_equity)
+    return SimResult(out, skipped, approximate, adds, capped, stats_volume[0], source_seqs=source_seqs,
+                     account_balance=pd.Series(balances, index=pd.DatetimeIndex(times), dtype=float),
+                     floating_equity=pd.Series(floating, index=pd.DatetimeIndex(times), dtype=float),
+                     performance_equity=pd.Series(performance, index=pd.DatetimeIndex(times), dtype=float),
+                     account_cashflows=pd.Series(flows, index=pd.DatetimeIndex(times), dtype=float),
+                     metrics={**floating_metrics(performance, cfg.initial_equity),
+                              "floating_drawdown_basis": "unitized_initial_capital" if np.any(flows) else "account_equity"},
+                     valuation=valuation_metadata(spec, cfg),
+                     trajectory=journal.payload(valuation_metadata(spec, cfg)) if journal is not None else {})

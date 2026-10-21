@@ -279,40 +279,33 @@ class InventoryPanel:
         ui.log(f"Bateria de backtests iniciada: {len(series)} série(s) × {len(robots)} robô(s) = {len(jobs)} teste(s).")
         self.runner = runner.BatchRunner(db, config, jobs, governor=governor, mql5_setup=setup,
                                          on_event=lambda event: ui.call_in_ui(self._batch_event, event))
+        ui.log(f"Checkpoint do lote: {self.runner.batch_id}. Retomada pela CLI com --batch-id.")
         self._update_buttons()
         self.runner.start()
         self._update_buttons()
         return self.runner
 
     def _mql5_setup(self, config, robots, mt5_tools):
-        """Robôs MQL5 precisam do MT5 fechado: pergunta antes; sem o aceite, ficam só as estratégias Python."""
-        if not mt5_tools.terminal_running(config):
-            return None, robots
-        if not messagebox.askyesno(
-                "Backtest", "Os robôs MQL5 rodam no Strategy Tester e o MetaTrader 5 precisa estar fechado.\n\n"
-                            "Fechar o MetaTrader 5 agora? (Coleta e extração em andamento serão interrompidas; "
-                            "depois, use \"Verificar conexão\" para reconectar.)\n\n"
-                            "Respondendo Não, só as estratégias Python são testadas.", parent=self.frame):
-            return None, [r for r in robots if r.kind != catalog.MQL5]
-
-        def setup():
-            bridge_was_running = mt5_tools.release_terminal(config)
-            return mt5_tools.restart_bridge if bridge_was_running else None
-        return setup, robots
+        """O executor prepara um perfil privado e mantém o terminal operacional aberto."""
+        return None, robots
 
     def cancel_backtest(self):
         if self.runner is not None:
             self.runner.cancel()
             self.cancel_button.state(["disabled"])
-            self.progress_label.config(text="Cancelando: os testes em andamento terminam e os demais não começam...")
+            self.progress_label.config(text="Cancelando: Python para entre blocos; o Tester nativo retorna antes de liberar o terminal...")
 
     def _batch_event(self, event):
         ui, kind = self.ui, event["kind"]
         if kind == runner.FINISHED:
             self.progress_frame.pack_forget()
-            text = f"Backtests concluídos: {event['ok']} testado(s), {event['failed']} com falha"
+            partial = bool(self.runner and (self.runner.budget.reason or self.runner.error))
+            label = "Backtests interrompidos" if partial else "Backtests concluídos"
+            text = f"{label}: {event['ok']} testado(s), {event['failed']} com falha"
             if event["canceled"]:
                 text += f", {event['canceled']} cancelado(s)"
+            if partial:
+                text += ": " + (self.runner.error or self.runner.budget.reason)
             ui.update_status(text + ".")
             ui.log(text + ". Veja o resultado na coluna Robô Lucrativo e na aba Robôs.")
             self._update_buttons()

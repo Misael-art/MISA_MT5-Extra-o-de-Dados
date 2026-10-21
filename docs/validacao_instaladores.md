@@ -133,6 +133,49 @@ Use um EA de exemplo do próprio MT5 (`Examples\Moving Average`) e uma conta de 
 | T17.26 | Ativos e sinal nos cards | Conferir último backtest por ativo, negativo, zero e sem resultado; alternar tema e escala, clicar no ícone | Contagens distintas, setas acompanhadas de texto e seleção funcionando sem promover aprovação | — | ⏳ pendente (Windows real) |
 | T17.27 | Layout no DPI nativo | Alternar gráficos/tema e redimensionar nas duas resoluções/DPI; reabrir página após ocultar | Legendas completas fora dos dados e altura estável pela fonte, sem crescimento acumulado | — | ⏳ pendente (Windows físico com MT5); CI é distinto |
 | T17.28 | Comandos dos cards no MT5 nativo Windows | Em DEMO: selecionar ativo/preset, revisar PLAY em duas etapas e alerta negativo, parar; REPLAY visual/ticks reais e STOP; BACKTEST minimizado com outro terminal aberto | Contexto/relatório coerentes, pulso acompanha posições, apenas a instalação da sessão é encerrada e terminal original preservado | — | ⏳ pendente (Windows físico); caminhos simulados/CI são distintos |
+| T20.2 | Referências financeiras dos motores Python | `.venv\Scripts\python -m pytest -q tests/test_financial_references.py tests/test_backtester.py tests/test_real_costs.py tests/test_trade_resim.py` | Contas manuais de lote/teto/passo, bid/ask, comissões, swap por parcela/lote e recusa de PnL inválido; sem exigir MT5 | — | ⏳ pendente (Windows físico); cálculos sem ramificações por sistema, referências verificadas no Linux |
+| T20.3 | Patrimônio flutuante e legado | `.venv\Scripts\python -m pytest -q tests/test_floating_equity.py` e `.venv\Scripts\python tests/fixtures/equity_reference/verify.py` | Curvas BID/ASK, parcial/swap, sobreposição, pico não positivo, fluxos por cotas e legado preservado; fixture nativo conciliado | — | ⏳ pendente (Windows físico); Linux/Wine observado separadamente |
+| T20.4 | Manifestos e replay de dados | `.venv\Scripts\python -m pytest -q tests/test_dataset_snapshots.py tests/test_sdk_api.py` | Mesma revisão após correção/importação, ausência explícita, serialização e caminhos portáveis | — | ⏳ pendente (Windows físico); SQLite/Linux e PostgreSQL 16 isolado observados |
+| T20.5 | Vigência de instrumentos e legado | `.venv\Scripts\python -m pytest -q tests/test_instrument_history.py tests/test_symbol_specs.py tests/test_dataset_snapshots.py` | Conhecimento tardio/vigência, replay histórico, universo descontinuado, contrato/série de estudo, importação formato 1 e backup | — | ⏳ pendente (Windows físico); Linux e PostgreSQL 16 isolado observados |
+| T20.6 | Qualidade por consumidor e formatos 1/2/3 | `.venv\Scripts\python -m pytest -q tests/test_data_eligibility.py tests/test_ticks.py tests/test_book_collector.py tests/test_historical_extractor.py tests/test_dataset_snapshots.py` | Volume real/ticks distintos, fonte ausente/gerada/observada, origem por hashes, UTC/causalidade, campo de qualidade ausente e legados preservados | — | ⏳ pendente (Windows físico); Linux e PostgreSQL16 isolado observados |
+| T20.24 | Orçamento, cancelamento e retomada da fila | `.venv\Scripts\python -m pytest -q tests/test_batch_budget.py tests/test_robots_batch.py tests/test_robots_runner.py tests/test_sdk_api.py` | Checkpoints/publicação atômicos, orçamento, cancelamento responsivo, legados e caminhos simulados; conferir ciclo nativo/recursos no Windows físico | — | ⏳ pendente (Windows físico); Linux 1200 aprovados e PostgreSQL16 isolado 8 aprovados |
 | Geral | Suíte de testes | `.venv\Scripts\python -m pytest -q` | Mesmos aprovados do Linux, menos os específicos de Linux | — | ⏳ pendente |
 
 A ponte restrita (T9.3) é só do Linux e não entra nesta lista.
+
+
+### Pendência Windows físico — T20.25
+
+- [ ] Conferir posse de um byte com `msvcrt` entre processos, reentrada e queda do
+  controlador com MetaEditor/Tester/launcher ainda vivo; só liberar após conferir
+  executável e identidade da sessão, sem tomar posse por idade/PID.
+- [ ] Executar o backtest padrão com perfil privado, mantendo o terminal principal
+  aberto; conferir report/SET/livro próprios, custos reconciliados e origem intacta.
+- [ ] Verificar STOP/timeout e espera de filhos próprios, referências protegidas,
+  quarentena e restauração sem sobrescrever destino, inclusive locks de arquivos.
+
+Linux/Wine e caminhos Windows simulados não substituem esses ensaios físicos.
+
+### T19.14 — Consulta temporal (pendência Windows físico)
+
+- [ ] Em Windows real, publicar backtest Python e consultar `mt5x --json trades trajectory --run ID`,
+  conferindo relógio da fonte, parciais/ciclos e corte `--as-of`. Não equivale a validar fills nativos.
+- [ ] Conferir base antiga sem diário e recusa de resultado adulterado, preservando ledger/snapshot.
+
+Linux: suíte final 1381 aprovados/12 pulos/3 avisos, saída 0; PostgreSQL
+isolado: 10 aprovados, container removido; doctor:16 OK/2 avisos/0 falhas.
+Essas provas não substituem Windows físico.
+
+
+### T13.3 — Perfis e regimes (pendência Windows físico)
+
+- [ ] Em Windows físico, executar os testes de features/perfis, inclusive UTC
+  explícito, limite de nanossegundos, invalidação, legado e contextos M15/H1.
+- [ ] Em cópia de uma base antiga, conferir `analytics features compute`,
+  `list --all-versions` e `values` por versão/TF, preservando zero/ausência,
+  histórico, configurações e credenciais. Conferir os caminhos do instalador.
+
+CI Windows: 1421 aprovados/33 ignorados/5 avisos, cobertura 73,09%, no código
+a1c2a77. Linux local: 1438/16/3, cobertura 77,44%; PostgreSQL real isolado: 20
+aprovados. Esses resultados não substituem Windows físico nem MT5 conectado;
+a T13.3 não introduz leitor MQL5 ou autorização de negociação.

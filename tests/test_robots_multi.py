@@ -4,6 +4,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+from tests.native_process import compile_observer, logical_expert, configure_test_safety
 
 from mt5_extracao import cli
 from mt5_extracao.bootstrap import paths
@@ -31,16 +32,20 @@ def report_html(pnl, symbol):
 
 @pytest.fixture
 def env(tmp_path, monkeypatch):
+    from tests.native_process import fake_session_commands
+    fake_session_commands(monkeypatch)
     monkeypatch.setattr(paths, "is_windows", lambda: False)
     prefix = tmp_path / "wine"
     mt5 = prefix / "drive_c" / "Program Files" / "MetaTrader 5"
     (mt5 / "MQL5" / "Experts").mkdir(parents=True)
     (mt5 / "terminal64.exe").write_bytes(b"")
+    (mt5 / "MetaEditor64.exe").write_bytes(b"")
     robots_dir = tmp_path / "robos"
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"path": str(mt5), "wine_prefix": str(prefix)},
                       "DATABASE": {"type": "sqlite", "path": str(tmp_path / "db.sqlite")},
                       "STRATEGY": {"initial_equity": "10000"}, "ROBOTS": {"library_dirs": str(robots_dir)}})
+    configure_test_safety(config, tmp_path)
     scaffold.create("Varios", robots_dir, magic=550001)
     cfg = tmp_path / "config.ini"
     with open(cfg, "w", encoding="utf-8") as f:
@@ -53,6 +58,9 @@ def env(tmp_path, monkeypatch):
     store.save_record(db, "mql5:varios", catalog.MQL5, "Varios", env.robot().path, catalog.COMPILED)
 
     def terminal(command_line, cwd, prefix_, timeout):
+        compiled = compile_observer(command_line, prefix_)
+        if compiled is not None:
+            return compiled
         """EURUSD ganha, GBPUSD perde, XAUUSD não existe na corretora (o Tester não gera relatório)."""
         ini_path = paths.wine_to_linux_path(command_line.split('"')[3], prefix_)
         ini = configparser.ConfigParser()
@@ -129,9 +137,10 @@ def test_cli_table_exit_code_and_json(env, monkeypatch, capsys):
     assert data["summary"] == {"tested": 2, "failed": 0} and "trades" not in data["runs"][0]["run"]
     assert cli.main(env.args + ["robots", "backtest", "varios", "--symbol", "EURUSD", "--symbols", "GBPUSD", "--tf",
                                 "H1"]) == cli.EXIT_USAGE
-    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: True)       # MT5 aberto: um aviso só, nada roda
+    capsys.readouterr()
+    monkeypatch.setattr(mt5_tools, "terminal_running", lambda *a: True)
     env.tested.clear()
-    assert cli.main(env.args + argv) == cli.EXIT_FAIL
-    assert capsys.readouterr().err.count("--close-terminal") == 1 and env.tested == []
+    assert cli.main(env.args + argv) == cli.EXIT_OK
+    assert not capsys.readouterr().err and len(env.tested) == 2
     assert cli.main(env.args + ["robots", "battery", "varios", "--symbol", "EURUSD"]) in (cli.EXIT_OK, cli.EXIT_FAIL)
     assert "sobre o backtest de EURUSD H1" in capsys.readouterr().out

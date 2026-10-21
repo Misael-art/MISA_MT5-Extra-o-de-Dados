@@ -46,7 +46,19 @@ class BookCollector:
     def _flush(self, summary):
         for symbol, rows in self._buffers.items():
             if rows:
+                import pandas as pd
+                from mt5_extracao.analytics import data_eligibility as quality
+                evidence = quality.acquisition(pd.DataFrame(rows), "book",
+                    origin=quality.provider_origin(self.connector, symbol),
+                    received_at=datetime.now(timezone.utc).isoformat(), symbol=symbol)
+                evidence["clock_basis"] = "collector_request_utc_not_venue_event_time"
                 summary[symbol]["rows"] += self.db.save_book(self.table_name(symbol), rows)
+                first, last = min(r["time_msc"] for r in rows), max(r["time_msc"] for r in rows)
+                try:
+                    self.db.record_block(self.table_name(symbol), datetime.fromtimestamp(first / 1000, timezone.utc),
+                                         datetime.fromtimestamp(last / 1000, timezone.utc), len(rows), "ok", "mt5.book", quality=evidence)
+                except Exception:
+                    log.warning(f"{symbol}: DOM gravado sem evidência de origem; confira a conexão do banco antes de usar consumidores estritos.")
                 rows.clear()
 
     def run(self, symbols: List[str], duration: Optional[float] = None, max_snapshots: Optional[int] = None,
@@ -92,7 +104,9 @@ class BookCollector:
         except KeyboardInterrupt:
             log.info("Coleta do book interrompida pelo usuário.")
         finally:
-            self._flush(summary)
-            for symbol in active:
-                self.connector.book_release(symbol)
+            try:
+                self._flush(summary)
+            finally:
+                for symbol in active:
+                    self.connector.book_release(symbol)
         return summary

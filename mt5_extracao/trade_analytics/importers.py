@@ -41,12 +41,17 @@ def _kind(robot_key: str) -> str:
     return PYTHON if str(robot_key).startswith("python:") else MQL5
 
 
-def record_python_run(db, run: dict, trades: Iterable) -> int:
+def record_python_run(db, run: dict, trades: Iterable, *, trajectory=None) -> int:
     """Operações completas de um backtest Python. 0 se o run for auxiliar."""
     if _hidden(run):
         return 0
-    return ledger.save_trades(db, run["run_id"], trades, robot_key=run["robot_key"], symbol=run["symbol"],
-                              timeframe=run["timeframe"], source=PYTHON, params_hash=params_hash(run.get("params")))
+    count = ledger.save_trades(db, run["run_id"], trades, robot_key=run["robot_key"], symbol=run["symbol"],
+                               timeframe=run["timeframe"], source=PYTHON, params_hash=params_hash(run.get("params")))
+    if trajectory:
+        from mt5_extracao.trade_analytics.trajectories import store
+        store.save(db, run["run_id"], trajectory, source=PYTHON,
+                   producer_identity=(run.get("metrics") or {}).get("execution_identity"))
+    return count
 
 
 def _direction(value: str) -> Optional[int]:

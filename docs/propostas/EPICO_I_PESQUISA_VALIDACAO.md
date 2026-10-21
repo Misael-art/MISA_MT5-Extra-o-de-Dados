@@ -7,6 +7,14 @@ Repositório responsável: **mt5x**. Índice, convenções e regras comuns: [REA
 [sdk/exatidao.md](../sdk/exatidao.md)) continuam valendo como estão. Toda mudança de critério proposta aqui está
 marcada como tal e só entra com aprovação (I-13).
 
+**Harmonização de 2026-10-17:** as sugestões de robustez foram aceitas pelo proprietário
+e detalhadas em [F20/Q01–Q16](ROBUSTEZ_PESQUISA_EXECUCAO.md) e
+[T20.1–T20.30](PLANO_F20_ROBUSTEZ.md). F20 usa os motores/registros e donos existentes:
+T20.8/9 qualificam I-07/I-08, T20.11 detalha I-06, T20.12/13 detalham registro/protocolo
+I-03/I-04/I-09, T20.14/15 acrescentam compromissos/ablação e T20.18/19 qualificam I-12.
+T19.27/28/52 consomem a mesma infraestrutura. A correção dos critérios propostos abaixo
+é documental; não altera gates ou bateria em execução sem implementação versionada/testada.
+
 ### I-01 — Backtests por ativo e timeframe
 - **O quê e por quê:** manter e estender o lote de backtests e a matriz de resultados para os módulos novos (sinal, execução, saída).
 - **Repositório:** mt5x · **Prioridade:** P1 · **Complexidade:** P · **Status:** PLANEJADO (base entregue nas T11.5 e T11.6; extensão a módulos é nova)
@@ -36,8 +44,11 @@ marcada como tal e só entra com aprovação (I-13).
 - **Repositório:** mt5x · **Prioridade:** P2 · **Complexidade:** M · **Status:** PROPOSTO na parte de ciclos; existe para operações
 - **Módulos existentes:** `strategies/validation.monte_carlo`, bateria (`robots/battery.py`) · **Depende de:** H-01 · **Pré-requisitos:** livro que distingue operação de ciclo
 - **Riscos:** embaralhar níveis de uma mesma grade esconde a perda concentrada.
-- **Aceite:** drawdown de Monte Carlo por ciclo é igual ou pior que o por operação no mesmo conjunto.
-- **Testes:** conjunto sintético de grades com perda concentrada.
+- **Aceite:** reamostragem preserva unidade/dependência de ciclos, declara hipótese/seed
+  e informa distribuição/quantis de risco. Não há exigência universal de que o drawdown
+  por ciclo seja sempre maior ou igual ao por operação; comparar métodos com limites explícitos.
+- **Testes:** ciclos sintéticos com perda concentrada, associação preservada, reprodução
+  por seed e casos de diferentes ordenações; qualificação T20.13.
 
 ### I-05 — Análise de robustez
 - **O quê e por quê:** robustez a parâmetros vizinhos, custo dobrado e subperíodos; hoje a de parâmetros não é avaliada para robôs MQL5.
@@ -77,7 +88,9 @@ marcada como tal e só entra com aprovação (I-13).
 - **Módulos existentes:** nenhum · **Depende de:** I-01, I-03 · **Pré-requisitos:** catálogo de tudo o que foi testado, inclusive o rejeitado
 - **Riscos:** critério novo reprovar o que hoje aprova (é mudança de critério: passa pela I-13).
 - **Aceite:** o número de tentativas entra na conta; aprovação informa quantas alternativas foram testadas.
-- **Testes:** ruído puro testado mil vezes não pode aprovar.
+- **Testes:** protocolo congelado em múltiplas realizações de ruído e de efeito conhecido,
+  medindo taxa de falsos positivos com intervalo e poder. Não prometer zero aprovações
+  em toda realização aleatória; tentativas e pressupostos entram no relatório T20.12/13.
 
 ### I-10 — Comparação de estratégias por regime
 - **O quê e por quê:** resultado de cada estratégia condicionado ao regime, fora da amostra.
@@ -89,11 +102,14 @@ marcada como tal e só entra com aprovação (I-13).
 
 ### I-11 — Otimização dos parâmetros dos módulos
 - **O quê e por quê:** busca de parâmetros por módulo, com a validação fora da amostra como juiz. Hoje só existe a grade pequena do walk-forward.
-- **Repositório:** mt5x · **Prioridade:** P3 · **Complexidade:** G · **Status:** PROPOSTO (a ideia está em "Fora do escopo" do [ROADMAP](../ROADMAP.md) desde 2026-10-12)
+- **Repositório:** mt5x · **Prioridade:** P3 no registro original; implementação por capacidade
+  na F19 após protocolo · **Complexidade:** G · **Status:** PLANEJADO em T19.27/28/52,
+  sem implementação presumida. A ideia de 2026-10-12 foi incorporada à F19 em 2026-10-17.
 - **Módulos existentes:** `param_grid` das estratégias · **Depende de:** I-03, I-09 · **Pré-requisitos:** I-09 pronta (otimizar sem ela é fabricar sobreajuste)
 - **Riscos:** o maior do épico: melhor parâmetro do passado apresentado como resultado.
 - **Aceite:** todo parâmetro otimizado sai com o resultado fora da amostra e o número de tentativas.
-- **Testes:** em ruído, a otimização não pode produzir aprovação.
+- **Testes:** busca em ruído/efeito conhecido, reserva reutilizada e parâmetros frágeis;
+  taxa de falso positivo/intervalo/poder conforme T20.13, sem garantia universal de zero.
 
 ### I-12 — Monitoramento de degradação de desempenho
 - **O quê e por quê:** comparar o que o robô faz em demo com o que o backtest previa e avisar quando se afasta.

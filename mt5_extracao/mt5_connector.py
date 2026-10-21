@@ -743,6 +743,7 @@ class MT5Connector:
         if not self.is_initialized or not mt5:
             log.warning(f"Tentativa de obter ticks de {symbol} sem conexão MT5 inicializada.")
             return None
+
         try:
             ticks = mt5.copy_ticks_range(symbol, date_from, date_to, mt5.COPY_TICKS_ALL)
             if ticks is None:
@@ -757,6 +758,11 @@ class MT5Connector:
             log.error(f"Erro ao obter ticks de {symbol}: {e}")
             log.debug(traceback.format_exc())
             return None
+
+    def data_origin(self, symbol):
+        """Declara origem da resposta do broker; símbolo customizado não comprova mercado real."""
+        info = self.get_symbol_info(symbol)
+        return "observed" if info is not None and getattr(info, "custom", None) is False else "unknown"
 
     def get_available_timeframes(self):
         """Retorna a lista de timeframes disponíveis como tuplas (nome_legivel, valor_mt5).
