@@ -18,10 +18,10 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.ui import charts
-from mt5_extracao.ui.components import ChartPanel, FilterBar, MetricCard, Notice, PageHeader, TablePanel
+from mt5_extracao.ui.components import (ChartPanel, ContentPanel, FilterBar, MatrixTable, MetricCard, Notice,
+                                       PageHeader, TablePanel)
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
-from mt5_extracao.ui.visual_tokens import SPACING
-from mt5_extracao.ui.visual_tokens import TYPOGRAPHY
+from mt5_extracao.ui.visual_tokens import SPACING, TYPOGRAPHY, contrast_ratio
 
 log = logging.getLogger(__name__)
 
@@ -46,6 +46,47 @@ NOTE_STYLE = {"success": "Success", "warning": "Warning", "error": "Error", "inf
 NOTE_LABEL = {"success": "Concluído", "warning": "Aviso", "error": "Erro", "info": "Informação",
               "neutral": "Status", "partial": "Parcial", "loading": "Carregando", "empty": "Sem dados",
               "unavailable": "Indisponível"}
+
+
+def _blend_hex(start, end, weight):
+    """Mistura duas cores sRGB hexadecimais pelo peso do tom de destino."""
+    weight = min(1.0, max(0.0, float(weight)))
+    start_rgb = tuple(int(start[index:index + 2], 16) for index in (1, 3, 5))
+    end_rgb = tuple(int(end[index:index + 2], 16) for index in (1, 3, 5))
+    blended = tuple(round(a + (b - a) * weight) for a, b in zip(start_rgb, end_rgb))
+    return "#" + "".join(f"{channel:02X}" for channel in blended)
+
+
+def _relative_matrix_colors(values, palette):
+    """Escala ganhos e perdas separadamente sobre os valores visíveis da matriz."""
+    values = np.asarray(values, dtype=float)
+    finite = values[np.isfinite(values)]
+    positive_max = float(finite[finite > 0].max()) if np.any(finite > 0) else 0.0
+    negative_max = float(abs(finite[finite < 0].min())) if np.any(finite < 0) else 0.0
+    backgrounds, foregrounds = [], []
+    text_candidates = (palette["ink"], palette["on_accent"], "#000000", "#FFFFFF")
+    for row in values:
+        bg_row, fg_row = [], []
+        for value in row:
+            if not np.isfinite(value):
+                background, foreground = palette["surface"], palette["muted"]
+            elif value > 0:
+                strength = value / positive_max if positive_max else 0.0
+                weight = 0.12 + 0.88 * strength
+                background = _blend_hex(palette["surface"], palette["up"], weight)
+                foreground = max(text_candidates, key=lambda color: contrast_ratio(color, background))
+            elif value < 0:
+                strength = abs(value) / negative_max if negative_max else 0.0
+                weight = 0.12 + 0.88 * strength
+                background = _blend_hex(palette["surface"], palette["down"], weight)
+                foreground = max(text_candidates, key=lambda color: contrast_ratio(color, background))
+            else:
+                background, foreground = palette["surface"], palette["ink"]
+            bg_row.append(background)
+            fg_row.append(foreground)
+        backgrounds.append(bg_row)
+        foregrounds.append(fg_row)
+    return backgrounds, foregrounds
 
 
 class LaboratoryPanel:
@@ -386,6 +427,31 @@ class LaboratoryPanel:
             text = "Hachura diagonal = amostra positiva abaixo do mínimo; n = operações neste grupo."
         panel.set_notice(text, kind="partial", theme=self.theme)
 
+    def _bar_legend(self, key, include_rate=False):
+        items = [("Expectativa ≥ 0", self.theme.colors["series"][0], "square"),
+                 ("Expectativa < 0", self.theme.colors["series"][1], "square")]
+        if include_rate:
+            items.append(("Acerto (%)", self.theme.colors["ink2"], "line"))
+        self._chart_panels[key].set_legend(items, self.theme)
+
+    def _draw_overview_scale(self):
+        colors = self.theme.colors
+        canvas = self.overview_heat_scale
+        canvas.configure(background=colors["surface"])
+        canvas.delete("all")
+        width, height, steps = int(canvas.cget("width")), int(canvas.cget("height")), 64
+        for index in range(steps):
+            ratio = ((index + 0.5) / steps) * 2 - 1
+            if ratio < 0:
+                fill = _blend_hex(colors["surface"], colors["down"], abs(ratio))
+            else:
+                fill = _blend_hex(colors["surface"], colors["up"], ratio)
+            x0, x1 = width * index / steps, width * (index + 1) / steps + 1
+            canvas.create_rectangle(x0, 0, x1, height, fill=fill, outline=fill)
+        canvas.create_line(width / 2, 0, width / 2, height, fill=colors["axis"], width=1)
+        canvas.create_text(width / 2, height / 2, text="0", fill=colors["ink2"],
+                           font=TYPOGRAPHY["chart_tick"])
+
     def _overview_matrix(self, parent, view):
         """Tabela rolável para a matriz horária de 24 linhas, sem comprimir rótulos ou contagens."""
         table = self._crosstab(view, "time_bucket", "day_of_week")
@@ -394,31 +460,43 @@ class LaboratoryPanel:
         small = table["small"].reindex(index=values.index, columns=range(7), fill_value=False).fillna(False)
         if not hasattr(self, "overview_heat_table"):
             day_names = tuple(WEEKDAYS[day] for day in range(7))
-            self.overview_heat_table = TablePanel(
-                parent, "Expectativa por faixa horária × dia", ("Faixa", *day_names),
-                (80, 150, 150, 150, 150, 150, 150, 150),
-                ("w",) + ("center",) * 7, height=9, subtitle="Entrada · moeda da conta",
+            self.overview_heat_table = ContentPanel(
+                parent, "Expectativa por faixa horária × dia", subtitle="Entrada · moeda da conta",
                 padding=SPACING["xs"])
             self.overview_heat_table.grid(row=0, column=0, sticky="nsew", padx=SPACING["xs"], pady=SPACING["xs"])
             self.overview_heat_notice = Notice(
                 self.overview_heat_table.body,
-                "Cada célula mostra resultado · n=operações. * = amostra positiva abaixo do mínimo; n=0 = sem operações.",
+                "n = operações; * = amostra abaixo do mínimo; n=0 = sem operações. Intensidade relativa ao extremo de cada sinal.",
                 kind="info", theme=self.theme)
-            self.overview_heat_notice.pack(fill=tk.X, pady=(0, SPACING["xs"]),
-                                           before=self.overview_heat_table.table_frame)
+            self.overview_heat_notice.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+            scale_row = ttk.Frame(self.overview_heat_notice, style="Info.Notice.TFrame")
+            scale_row.pack(side=tk.RIGHT, padx=(SPACING["sm"], 0))
+            ttk.Label(scale_row, text="Perda", style="Info.Notice.TLabel").pack(side=tk.LEFT,
+                                                                                  padx=(0, SPACING["2xs"]))
+            self.overview_heat_scale = tk.Canvas(scale_row, width=150, height=14, highlightthickness=1,
+                                                 highlightbackground=self.theme.colors["border"], takefocus=False)
+            self.overview_heat_scale.pack(side=tk.LEFT, padx=(0, SPACING["2xs"]))
+            ttk.Label(scale_row, text="Ganho", style="Info.Notice.TLabel").pack(side=tk.LEFT,
+                                                                                  padx=(0, SPACING["sm"]))
+            self.overview_heat_matrix = MatrixTable(
+                self.overview_heat_table.body, ("Faixa", *day_names), (80, 150, 150, 150, 150, 150, 150, 150),
+                theme=self.theme, height=9)
+            self.overview_heat_matrix.pack(fill=tk.BOTH, expand=True)
             parent.rowconfigure(0, weight=1)
             parent.columnconfigure(0, weight=1)
-        tree = self.overview_heat_table.tree
-        tree.delete(*tree.get_children())
-        for hour in values.index:
-            row = [hour]
+        backgrounds, foregrounds = _relative_matrix_colors(values.to_numpy(), self.theme.colors)
+        rows = []
+        for i, hour in enumerate(values.index):
+            row = []
             for day in range(7):
                 value = values.loc[hour, day]
                 count = int(counts.loc[hour, day])
                 marker = "*" if count > 0 and bool(small.loc[hour, day]) else ""
                 amount = charts.money(value) if pd.notna(value) else "—"
-                row.append(f"{amount} · n={count}{marker}")
-            tree.insert("", tk.END, values=tuple(row))
+                row.append((f"{amount} · n={count}{marker}", backgrounds[i][day], foregrounds[i][day]))
+            rows.append(row)
+        self.overview_heat_matrix.set_rows([str(hour) for hour in values.index], rows)
+        self._draw_overview_scale()
 
     def _overview(self):
         from mt5_extracao.trade_analytics import aggregate
@@ -450,6 +528,7 @@ class LaboratoryPanel:
             charts.bars(chart, ax, labels, table["expectancy"], table["n"], table["small"],
                         "Notícias do calendário × expectativa por operação")
             self._sample_notice(chart, table["small"])
+            self._bar_legend("ov_news")
             chart.figure.tight_layout()
             chart.draw()
 
@@ -463,6 +542,7 @@ class LaboratoryPanel:
         charts.bars(chart, chart.figure.add_subplot(111), [WEEKDAYS.get(int(d), d) for d in days["day_of_week"]],
                     days["expectancy"], days["n"], days["small"], "Dia da semana: expectativa por operação")
         self._sample_notice(chart, days["small"])
+        self._bar_legend("t_week")
         chart.figure.tight_layout()
         chart.draw()
         month = aggregate.by_dimension(view, ["day_of_month"], cfg, ci=False)
@@ -472,9 +552,10 @@ class LaboratoryPanel:
         charts.bars(chart, chart.figure.add_subplot(111), [str(int(d)) for d in month["day_of_month"]],
                     month["expectancy"], month["n"], month["small"], "Dia do mês: expectativa por operação")
         self._sample_notice(chart, month["small"])
+        self._bar_legend("t_month")
         chart.figure.tight_layout()
         chart.draw()
-        hours = aggregate.by_dimension(view, ["time_bucket"], cfg, ci=False)
+        hours = aggregate.by_dimension(view, ["time_bucket"], cfg, ci=False).sort_values("time_bucket")
         chart = self._chart(tab, "t_hours", 0, 0, height=4.0,
                             parent=self._analysis_view(tab, "hours", "Expectativa e acerto"))
         chart.clear()
@@ -482,9 +563,18 @@ class LaboratoryPanel:
         charts.bars(chart, ax, list(hours["time_bucket"]), hours["expectancy"], hours["n"], hours["small"],
                     "Faixa horária: expectativa (barras) e acerto % (linha)")
         self._sample_notice(chart, hours["small"])
+        self._bar_legend("t_hours", include_rate=True)
         twin = ax.twinx()
-        twin.plot(range(len(hours)), hours["win_rate"] * 100, color=self.theme.colors["ink2"], linewidth=1.2,
-                  marker="o", markersize=3)
+        bucket_minutes = [int(str(bucket)[:2]) * 60 + int(str(bucket)[3:5]) for bucket in hours["time_bucket"]]
+        try:
+            bucket_width = max(1, int(cfg.get("TRADE_ANALYTICS", "time_bucket_min", fallback="60")))
+        except (AttributeError, TypeError, ValueError):
+            bucket_width = 60
+        breaks = np.zeros(len(bucket_minutes), dtype=bool)
+        if len(bucket_minutes) > 1:
+            breaks[1:] = np.diff(bucket_minutes) > bucket_width
+        charts.smooth_line(twin, np.arange(len(hours)), hours["win_rate"].to_numpy() * 100,
+                           color=self.theme.colors["ink2"], break_before=breaks)
         twin.set_ylabel("Acerto (%)", color=self.theme.colors["muted"], fontsize=TYPOGRAPHY["chart_label"])
         twin.set_ylim(0, 100)
         twin.tick_params(colors=self.theme.colors["muted"], labelsize=TYPOGRAPHY["chart_tick"], length=0)
@@ -554,6 +644,7 @@ class LaboratoryPanel:
                     [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto" for b, w in zip(vol["volatility_bucket"], vol["win_rate"])],
                     vol["expectancy"], vol["n"], vol["small"], "Faixa de volatilidade (percentil nas 250 barras anteriores)")
         self._sample_notice(chart, vol["small"])
+        self._bar_legend("m_vol")
         chart.figure.tight_layout()
         chart.draw()
         ranked = complete.assign(volume_band=pd.cut(pd.to_numeric(complete["volume_rank"], errors="coerce"),
@@ -570,6 +661,7 @@ class LaboratoryPanel:
                     [f"{b}\n{fmt_num(w * 100, 0, '%')} acerto" for b, w in zip(volume["volume_band"], volume["win_rate"])],
                     volume["expectancy"], volume["n"], volume["small"], "Volume na entrada (quartil nas 20 barras anteriores)")
         self._sample_notice(chart, volume["small"])
+        self._bar_legend("m_volume")
         chart.figure.tight_layout()
         chart.draw()
         chart = self._chart(tab, "m_heat", 0, 0, height=4.0,

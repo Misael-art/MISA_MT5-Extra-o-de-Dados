@@ -93,3 +93,36 @@ def test_curve_and_scatter_legends_are_outside_the_data_axes():
     legend_box = ax.get_legend().get_bbox_to_anchor().transformed(ax.transAxes.inverted())
     assert legend_box.x0 >= 1.0
     assert "moeda da conta" in ax.get_ylabel()
+
+
+def test_smoothed_line_preserves_observed_points_and_stays_within_their_range():
+    chart = _chart()
+    ax = chart.figure.add_subplot(111)
+    observed_x = np.arange(5, dtype=float)
+    observed_y = np.asarray((10.0, 35.0, 45.0, 82.0, 90.0))
+
+    curves, markers = charts.smooth_line(ax, observed_x, observed_y, color=LIGHT["ink2"])
+
+    assert len(curves) == len(markers) == 1
+    assert len(curves[0].get_xdata()) > len(observed_x)
+    assert list(markers[0].get_xdata()) == list(observed_x)
+    assert list(markers[0].get_ydata()) == list(observed_y)
+    assert min(curves[0].get_ydata()) >= observed_y.min()
+    assert max(curves[0].get_ydata()) <= observed_y.max()
+    assert curves[0].get_xdata()[0] == observed_x[0]
+    assert curves[0].get_xdata()[-1] == observed_x[-1]
+
+
+def test_smoothed_line_keeps_gaps_between_missing_or_unobserved_buckets():
+    chart = _chart()
+    ax = chart.figure.add_subplot(111)
+    x = np.arange(7, dtype=float)
+    y = np.asarray((10.0, 20.0, 30.0, np.nan, 60.0, 70.0, 80.0))
+    breaks = np.asarray((False, False, False, False, False, True, False))
+
+    curves, markers = charts.smooth_line(ax, x, y, color=LIGHT["ink2"], break_before=breaks)
+
+    assert len(curves) == 2
+    assert len(markers) == 3
+    assert all(curve.get_xdata()[-1] <= 2 for curve in curves[:1])
+    assert all(curve.get_xdata()[0] >= 4 for curve in curves[1:])

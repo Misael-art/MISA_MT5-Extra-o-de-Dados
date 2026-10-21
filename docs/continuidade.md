@@ -245,3 +245,31 @@ completa: **802 aprovados, 9 pulados, ~7,5 min** com `xvfb-run -a`.
   MT5 desligada); `git diff --check` passou.
 - A Fase 17 está concluída no Linux. Windows real, DPI de 125%/150%, maximização pelo sistema e glifos/fontes do Tk
   continuam na pendência T17.1–T17.5 de `docs/validacao_instaladores.md`; não se declara validação Windows.
+
+## Conclusão da T17.6 — 2026-10-15
+
+- Refinamento feito na worktree `../MISA_MT5-Extra-o-de-Dados-T17.6`, branch `tarefa/T17.6-laboratorio-legibilidade`,
+  baseada no commit T17.5 `8ba93da`. A matriz Horários colore a expectativa por célula: verde para valores positivos,
+  vermelho para negativos e superfície neutra para zero/ausência. A intensidade é relativa ao extremo de cada sinal
+  no conjunto inteiro de células visíveis. O primeiro plano escolhe a cor de maior contraste entre as paletas do tema
+  e preto/branco; o contraste medido fica em pelo menos 4,5:1. Contagem `n`, marcador `*`, estados sem operações,
+  rolagem e navegação por teclado continuam disponíveis.
+- Legendas compactas identificam o sinal das barras em Calendário, Tempo e Microestrutura e mostram a linha de acerto
+  em Tempo. As curvas e dispersões que já tinham legenda mantêm a sua. A linha de acerto usa PCHIP shape-preserving
+  entre pontos observados, mantém os marcadores nos valores originais e não atravessa faixas sem operações.
+- Capturas de validação em 1280×800, fixture sintética de 672 operações e MT5 desconectado, estão em
+  `docs/img/interface-visual/T17.6/`: matriz Horários e gráfico Expectativa e acerto, em tema claro e escuro.
+- Galeria completa com 17 telas/subtelas em tema claro e 1920×1200, incluindo as duas lentes de Comparativo,
+  está em `docs/img/interface-visual/T17.6/galeria-laboratorio/`; `galeria-contato.png` reúne as miniaturas. As
+  tabelas e gráficos usam fixture sintética multiativo/multirrobô; Execução e Insights usam um backtest Python local.
+  MT5 permaneceu desconectado e a base do usuário não foi usada.
+- Ambiente preparado com `./install.sh --yes --no-mt5` e `pip install -r requirements-dev.txt`. O primeiro `ensurepip`
+  falhou porque o `/tmp` estava quase cheio; a instalação concluiu com `TMPDIR=/var/tmp/mt5x-t176-tmp`. `doctor`:
+  **16 OK, 2 avisos esperados, 0 falhas** (`pandas-ta` ausente e ponte MT5 desligada). Testes focados: **13 aprovados
+  em 59,66 s**; suíte final em Xvfb 1280×800: **837 aprovados, 10 pulados em 568,76 s**. `py_compile` e
+  `git diff --check` passaram.
+- Baseline executada diretamente no desktop: **832 aprovados, 10 pulados, 1 falha** em
+  `test_dense_tabs_reflow_and_assets_remain_reachable_in_a_small_window`; repetição isolada falhou da mesma forma por
+  não conseguir reduzir a janela. A suíte final em Xvfb passou integralmente. Nenhum `.sh` foi alterado; ShellCheck
+  não se aplica. Windows real e DPI alto continuam pendentes em `docs/validacao_instaladores.md`.
+- Nenhum MT5 real foi conectado e nenhuma base do usuário foi usada para as capturas.

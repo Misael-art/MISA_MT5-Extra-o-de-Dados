@@ -210,6 +210,55 @@ def bars(chart: Chart, ax, labels, values, n=None, small=None, title="", fmt=mon
     chart.hover.append(hover)
 
 
+def smooth_line(ax, x, y, color, break_before=None, linewidth=1.8, markersize=3.5):
+    """Desenha uma linha PCHIP sem extrapolar nem atravessar valores ou faixas ausentes.
+
+    Os marcadores continuam nos valores observados; a interpolação serve apenas para suavizar o traço entre eles.
+    `break_before` permite separar períodos sem operações mesmo quando as categorias do eixo estão comprimidas.
+    """
+    from scipy.interpolate import PchipInterpolator
+
+    x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+    if x.ndim != 1 or y.ndim != 1 or x.shape != y.shape:
+        raise ValueError("Os eixos da linha precisam ter o mesmo formato unidimensional.")
+    breaks = np.zeros(x.shape, dtype=bool) if break_before is None else np.asarray(break_before, dtype=bool)
+    if breaks.shape != x.shape:
+        raise ValueError("Os pontos de quebra precisam corresponder aos valores da linha.")
+    valid = np.isfinite(x) & np.isfinite(y)
+    groups = []
+    current = []
+    for index in range(len(x)):
+        if not valid[index]:
+            if current:
+                groups.append(current)
+                current = []
+            continue
+        if breaks[index] and current:
+            groups.append(current)
+            current = []
+        current.append(index)
+    if current:
+        groups.append(current)
+
+    curves, markers = [], []
+    for indices in groups:
+        xs, ys = x[indices], y[indices]
+        if len(xs) > 1:
+            if np.any(np.diff(xs) <= 0):
+                raise ValueError("Os pontos da linha precisam estar em ordem crescente.")
+            if len(xs) > 2:
+                dense_x = np.linspace(xs[0], xs[-1], max(25, (len(xs) - 1) * 12 + 1))
+                dense_y = PchipInterpolator(xs, ys)(dense_x)
+            else:
+                dense_x, dense_y = xs, ys
+            curve, = ax.plot(dense_x, dense_y, color=color, linewidth=linewidth, solid_capstyle="round",
+                             zorder=3)
+            curves.append(curve)
+        marker, = ax.plot(xs, ys, linestyle="None", marker="o", markersize=markersize, color=color, zorder=4)
+        markers.append(marker)
+    return curves, markers
+
+
 def overlay(chart: Chart, ax, curves: Dict[str, pd.Series], title=""):
     """Curvas acumuladas com valores finais identificados fora da área de dados."""
     theme = chart.theme

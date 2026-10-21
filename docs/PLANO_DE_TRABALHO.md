@@ -161,6 +161,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T17.3 | Laboratório e gráficos: hierarquia, estados de qualidade, amostra e legibilidade | T17.1, T17.2, T16.11a, T16.11b | ✅ concluída no Linux; Windows pendente |
 | T17.4 | Aplicação progressiva do sistema às abas Ativos, Minha base, Análise, Robôs, Recursos e Atividade | T17.2, T17.3, T8.2, T15.1–T15.6 | ✅ concluída no Linux; Windows pendente |
 | T17.5 | Validação visual integrada, capturas comparáveis e documentação | T17.1–T17.4 | ✅ concluída no Linux; Windows pendente |
+| T17.6 | Laboratório: escala condicional acessível na matriz de horários, legenda dos gráficos de expectativa/acerto e suavização shape-preserving da linha | T17.5 | ✅ concluída no Linux; validação Windows pendente |
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---

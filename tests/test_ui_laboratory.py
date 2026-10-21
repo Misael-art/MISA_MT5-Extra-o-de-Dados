@@ -94,18 +94,21 @@ def test_lenses_filters_and_tabs(panel):
     assert panel.selected.get() == "python:a" and panel.kpi["n"][0].cget("text") == "240"
     assert [panel.overview_notebook.tab(i, "text") for i in range(3)] == ["Horários", "Curvas", "Calendário"]
     assert panel.overview_heat_table.master is panel.overview_views["heat"]
-    assert len(panel.overview_heat_table.tree.get_children()) == 24
-    first_cell = panel.overview_heat_table.tree.item(panel.overview_heat_table.tree.get_children()[0], "values")[1]
+    assert panel.overview_heat_scale.master.master is panel.overview_heat_notice
+    assert len(panel.overview_heat_matrix.cells) == 24
+    first_cell = panel.overview_heat_matrix.cells[0][0].cget("text")
     assert "n=" in first_cell
-    cells = [panel.overview_heat_table.tree.item(row, "values")[1:] for row in
-             panel.overview_heat_table.tree.get_children()]
+    cells = [[cell.cget("text") for cell in row] for row in panel.overview_heat_matrix.cells]
     empty_cells = [cell for row in cells for cell in row if "n=0" in cell]
     assert empty_cells and all(cell.endswith("n=0") and "—" in cell for cell in empty_cells)
     assert any(cell.endswith("*") and "n=0" not in cell for row in cells for cell in row)
+    assert panel.overview_heat_matrix.cells[0][0].cget("takefocus") in (1, "1", True)
     for k, name in enumerate(("Tempo e calendário", "Microestrutura", "Comparativo")):
         panel.tabs.select(k + 1)
         panel.pump(lambda: name in panel._drawn, 10)
         assert name in panel._drawn
+    assert [item[0] for item in panel._chart_panels["t_hours"].legend_items] == [
+        "Expectativa ≥ 0", "Expectativa < 0", "Acerto (%)"]
     assert [panel._analysis_notebooks["Comparativo"].tab(i, "text") for i in range(2)] == [
         "Ativos e timeframes", "Correlação"]
     assert [panel._analysis_notebooks["Tempo e calendário"].tab(i, "text") for i in range(4)] == [
@@ -144,6 +147,23 @@ def test_import_button_brings_old_runs(panel):
     assert panel._note_kind == "partial"
 
 
+def test_colored_matrix_is_keyboard_navigable_and_reveals_focused_cells(panel):
+    ledger.save_trades(panel.db, "matrix", _trades(8), robot_key="python:matrix", symbol="WIN$N", timeframe="M5")
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    matrix = panel.overview_heat_matrix
+    first = matrix.cells[0][0]
+    first.focus_set()
+    panel.pump()
+    first.event_generate("<Right>")
+    panel.pump()
+    assert panel.ui.root.focus_get() is matrix.cells[0][1]
+
+    matrix.cells[-1][-1].focus_set()
+    panel.pump()
+    assert matrix.canvas.yview()[0] > 0
+
+
 def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
     """T16.11b: comparar modos de um run real, procurar insights, simular uma regra e exportar a proposta."""
     from mt5_extracao import robots
@@ -172,3 +192,21 @@ def test_execution_insights_simulate_and_export(panel, tmp_path, monkeypatch):
     monkeypatch.setattr(export, "_folder", lambda: tmp_path)
     panel.export_proposal()
     assert list(tmp_path.glob("robot_python_donchian_*.json"))
+
+
+def test_conditional_matrix_uses_relative_sign_colors_and_contrasting_text():
+    from mt5_extracao.ui.laboratory import _relative_matrix_colors
+    from mt5_extracao.ui.visual_tokens import DARK, LIGHT, contrast_ratio
+
+    values = np.asarray([[-12.0, -3.0, 0.0, 2.0, 9.0, np.nan]])
+    for palette in (LIGHT, DARK):
+        backgrounds, foregrounds = _relative_matrix_colors(values, palette)
+        row_backgrounds, row_foregrounds = backgrounds[0], foregrounds[0]
+        assert row_backgrounds[0] == palette["down"]
+        assert row_backgrounds[1] != row_backgrounds[0]
+        assert row_backgrounds[2] == palette["surface"]
+        assert row_backgrounds[4] == palette["up"]
+        assert row_backgrounds[3] != row_backgrounds[4]
+        assert row_backgrounds[5] == palette["surface"]
+        for index in (0, 1, 2, 3, 4):
+            assert contrast_ratio(row_foregrounds[index], row_backgrounds[index]) >= 4.5

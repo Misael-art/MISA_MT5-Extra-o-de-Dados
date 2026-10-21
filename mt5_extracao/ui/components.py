@@ -204,6 +204,8 @@ class ChartPanel(ContentPanel):
     def __init__(self, parent, title=None, subtitle=None, padding=SPACING["md"], **kwargs):
         super().__init__(parent, title=title, subtitle=subtitle, padding=padding, **kwargs)
         self.notice = None
+        self.legend_frame = None
+        self.legend_items = ()
         self.chart_area = ttk.Frame(self.body, style="Surface.TFrame")
         self.chart_area.pack(fill=tk.BOTH, expand=True)
 
@@ -214,6 +216,197 @@ class ChartPanel(ContentPanel):
         if text:
             self.notice = Notice(self.body, text, kind=kind, theme=theme)
             self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]), before=self.chart_area)
+
+    def set_legend(self, items, theme=None):
+        """Mostra uma legenda pequena com amostras de cor ou linha, fora da área dos dados."""
+        items = tuple(items)
+        if self.legend_frame is not None:
+            self.legend_frame.destroy()
+            self.legend_frame = None
+        self.legend_items = items
+        if not items:
+            return
+        self.legend_frame = ttk.Frame(self.body, style="Surface.TFrame")
+        self.legend_frame.pack(fill=tk.X, pady=(0, SPACING["xs"]), before=self.chart_area)
+        surface = theme.colors["surface"] if theme is not None else "#FFFFFF"
+        for text, color, kind in items:
+            if kind not in ("square", "line"):
+                raise ValueError(f"Tipo de legenda desconhecido: {kind}")
+            swatch = tk.Canvas(self.legend_frame, width=18, height=12, bg=surface, highlightthickness=0,
+                               takefocus=False)
+            if kind == "line":
+                swatch.create_line(1, 6, 17, 6, fill=color, width=2)
+                swatch.create_oval(7, 3, 11, 9, fill=color, outline=color)
+            else:
+                swatch.create_rectangle(3, 2, 15, 10, fill=color, outline=color)
+            swatch.pack(side=tk.LEFT, padx=(0, SPACING["2xs"]))
+            ttk.Label(self.legend_frame, text=text, style="Muted.TLabel").pack(side=tk.LEFT,
+                                                                                padx=(0, SPACING["md"]))
+
+
+class MatrixTable(ttk.Frame):
+    """Tabela matricial rolável com fundo e texto configuráveis por célula."""
+
+    def __init__(self, parent, columns, widths, theme, height=9, row_height=32, **kwargs):
+        if not columns or len(columns) != len(widths):
+            raise ValueError("Cada coluna da matriz precisa ter uma largura definida.")
+        super().__init__(parent, style="Surface.TFrame", **kwargs)
+        self.columns = tuple(columns)
+        self.widths = tuple(int(width) for width in widths)
+        self.theme = theme
+        self.row_height = int(row_height)
+        self.canvas = tk.Canvas(self, height=height * self.row_height, highlightthickness=0,
+                                background=theme.colors["surface"], takefocus=False)
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+        self.vertical = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.canvas.yview)
+        self.vertical.grid(row=0, column=1, sticky="ns")
+        self.horizontal = ttk.Scrollbar(self, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        self.horizontal.grid(row=1, column=0, sticky="ew")
+        self.canvas.configure(yscrollcommand=self.vertical.set, xscrollcommand=self._set_xview)
+        self.rowconfigure(0, weight=1)
+        self.columnconfigure(0, weight=1)
+        self.content = tk.Frame(self.canvas, background=theme.colors["surface"], takefocus=False)
+        self.window = self.canvas.create_window((0, 0), window=self.content, anchor="nw")
+        self.headers = []
+        self.row_headers = []
+        self.cells = []
+        self._build_header()
+        self.content.bind("<Configure>", self._content_configured, add="+")
+        self.canvas.bind("<Configure>", self._canvas_configured, add="+")
+        for widget in (self.canvas, self.content):
+            widget.bind("<MouseWheel>", self._mousewheel, add="+")
+            widget.bind("<Button-4>", self._wheel_up, add="+")
+            widget.bind("<Button-5>", self._wheel_down, add="+")
+
+    def _build_header(self):
+        colors = self.theme.colors
+        for column, (text, width) in enumerate(zip(self.columns, self.widths)):
+            self.content.grid_columnconfigure(column, minsize=width, weight=1 if column else 0)
+            header = tk.Label(self.content, text=text, background=colors["surface"], foreground=colors["ink2"],
+                              font=self.theme.font_bold, anchor="center", padx=6, pady=5,
+                              highlightthickness=1, highlightbackground=colors["border"], takefocus=False)
+            header.grid(row=0, column=column, sticky="nsew")
+            self.headers.append(header)
+        self.content.grid_rowconfigure(0, minsize=self.row_height)
+
+    def _build_rows(self, count):
+        for widget in self.content.grid_slaves():
+            if int(widget.grid_info().get("row", 0)) > 0:
+                widget.destroy()
+        self.row_headers = []
+        self.cells = []
+        colors = self.theme.colors
+        for row in range(count):
+            row_index = row + 1
+            self.content.grid_rowconfigure(row_index, minsize=self.row_height)
+            row_header = tk.Label(self.content, text="", background=colors["surface"], foreground=colors["ink2"],
+                                  font=self.theme.font, anchor="w", padx=8, pady=4,
+                                  highlightthickness=1, highlightbackground=colors["border"], takefocus=False)
+            row_header.grid(row=row_index, column=0, sticky="nsew")
+            self.row_headers.append(row_header)
+            row_cells = []
+            for column in range(len(self.columns) - 1):
+                cell = tk.Label(self.content, text="", background=colors["surface"], foreground=colors["ink"],
+                                font=self.theme.font, anchor="center", padx=4, pady=4,
+                                highlightthickness=1, highlightbackground=colors["surface"],
+                                highlightcolor=colors["accent"], takefocus=True)
+                cell.grid(row=row_index, column=column + 1, sticky="nsew")
+                cell.bind("<FocusIn>", lambda event, r=row, c=column: self._reveal(r, c), add="+")
+                cell.bind("<FocusOut>", self._restore_cell_border, add="+")
+                cell.bind("<Button-1>", lambda _event, widget=cell: widget.focus_set(), add="+")
+                cell.bind("<Left>", lambda event, r=row, c=column: self._move_focus(r, c - 1), add="+")
+                cell.bind("<Right>", lambda event, r=row, c=column: self._move_focus(r, c + 1), add="+")
+                cell.bind("<Up>", lambda event, r=row, c=column: self._move_focus(r - 1, c), add="+")
+                cell.bind("<Down>", lambda event, r=row, c=column: self._move_focus(r + 1, c), add="+")
+                cell.bind("<MouseWheel>", self._mousewheel, add="+")
+                cell.bind("<Button-4>", self._wheel_up, add="+")
+                cell.bind("<Button-5>", self._wheel_down, add="+")
+                row_cells.append(cell)
+            self.cells.append(row_cells)
+
+    def set_rows(self, row_labels, rows):
+        """Atualiza os rótulos e as tuplas (texto, fundo, primeiro plano) das células."""
+        if len(row_labels) != len(rows) or any(len(row) != len(self.columns) - 1 for row in rows):
+            raise ValueError("As linhas da matriz precisam corresponder aos cabeçalhos.")
+        if len(self.cells) != len(rows):
+            self._build_rows(len(rows))
+        colors = self.theme.colors
+        self.canvas.configure(background=colors["surface"])
+        self.content.configure(background=colors["surface"])
+        for header in self.headers:
+            header.configure(background=colors["surface"], foreground=colors["ink2"],
+                              highlightbackground=colors["border"])
+        for row_index, (label, row) in enumerate(zip(row_labels, rows)):
+            self.row_headers[row_index].configure(text=str(label), background=colors["surface"],
+                                                  foreground=colors["ink2"], highlightbackground=colors["border"])
+            for cell, (text, background, foreground) in zip(self.cells[row_index], row):
+                cell.configure(text=str(text), background=background, foreground=foreground,
+                               highlightbackground=background, highlightcolor=colors["accent"])
+        self.after_idle(self._sync_geometry)
+
+    def _content_configured(self, _event=None):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _canvas_configured(self, event):
+        width = max(self.content.winfo_reqwidth(), event.width)
+        self.canvas.itemconfigure(self.window, width=width)
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _sync_geometry(self):
+        width = max(self.content.winfo_reqwidth(), self.canvas.winfo_width())
+        self.canvas.itemconfigure(self.window, width=width)
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def _set_xview(self, first, last):
+        self.horizontal.set(first, last)
+        if float(last) - float(first) >= 0.999:
+            self.horizontal.grid_remove()
+        else:
+            self.horizontal.grid()
+
+    def _move_focus(self, row, column):
+        if 0 <= row < len(self.cells) and 0 <= column < len(self.columns) - 1:
+            self.cells[row][column].focus_set()
+        return "break"
+
+    def _reveal(self, row, column):
+        self.cells[row][column].configure(highlightbackground=self.theme.colors["accent"])
+        x0 = sum(self.widths[:column + 1])
+        x1 = x0 + self.widths[column + 1]
+        y0 = (row + 1) * self.row_height
+        y1 = y0 + self.row_height
+        bbox = self.canvas.bbox("all") or (0, 0, 1, 1)
+        self._reveal_axis(self.canvas.xview, self.canvas.xview_moveto, x0, x1,
+                          max(1, bbox[2] - bbox[0]))
+        self._reveal_axis(self.canvas.yview, self.canvas.yview_moveto, y0, y1,
+                          max(1, bbox[3] - bbox[1]))
+
+    @staticmethod
+    def _reveal_axis(view, move, start, end, total):
+        first, last = (float(value) for value in view())
+        start_fraction, end_fraction = start / total, end / total
+        viewport = last - first
+        if start_fraction < first:
+            move(max(0, start_fraction))
+        elif end_fraction > last:
+            move(max(0, end_fraction - viewport))
+
+    @staticmethod
+    def _restore_cell_border(event):
+        event.widget.configure(highlightbackground=event.widget.cget("background"))
+
+    def _mousewheel(self, event):
+        if event.delta:
+            self.canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+        return "break"
+
+    def _wheel_up(self, _event):
+        self.canvas.yview_scroll(-1, "units")
+        return "break"
+
+    def _wheel_down(self, _event):
+        self.canvas.yview_scroll(1, "units")
+        return "break"
 
 
 class TablePanel(ContentPanel):
