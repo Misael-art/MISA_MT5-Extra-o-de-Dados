@@ -3,13 +3,16 @@ from dataclasses import dataclass
 from .adapter import base_composition
 from .schema import Composition
 from .registry import BASE_MODES,EXECUTION_ORDER
-from .native import PARTIALS_INPUT_TYPES,_sizing_parameters,_description
+from .native import PARTIALS_INPUT_TYPES,PANEL_STANDARD_INCLUDES,_sizing_parameters,_description
 from ..robots import catalog,native_inputs
 
 ROBOT_KEY="mql5:hdk_pullback_nativo"
 ROBOT_VERSION="1.00"
 APPROVED_FINGERPRINT="93da50a5dc8c952f"
 HADOUKEN_REVISION="ae07e7bda3a3dc156563e13918b486a0f1cb4843"
+PANEL_ROBOT_VERSION="1.10"
+PANEL_APPROVED_FINGERPRINT="e1b14494047477b2"
+PANEL_HADOUKEN_REVISION="1024cee0ec49a29d16b48c1c46d80adaa3259013"
 STRATEGY_INPUTS={"trend":("InpTrendPeriod","int","bar"),"adx_min":("InpAdxMin","double","index_0_100"),
  "rsi_period":("InpRsiPeriod","int","bar"),"rsi_pullback":("InpRsiPullback","double","index_0_100"),
  "swing_bars":("InpSwingBars","int","bar"),"target_r":("InpTakeProfitR","double","R")}
@@ -18,11 +21,15 @@ INPUT_TYPES.update({name:kind for name,kind,_ in STRATEGY_INPUTS.values()})
 PARTIAL={"mode":"fixed_r","params":{"trigger_r":1.0,"fraction":.5,"breakeven_after_confirmation":True}}
 
 def require_robot(robot):
-    if (robot.key!=ROBOT_KEY or robot.version!=ROBOT_VERSION or robot.kind!=catalog.MQL5 or not robot.has_source
-        or robot.missing_includes or catalog.fingerprint(robot)!=APPROVED_FINGERPRINT
+    profiles={ROBOT_VERSION:(APPROVED_FINGERPRINT,INPUT_TYPES,3,HADOUKEN_REVISION),
+              PANEL_ROBOT_VERSION:(PANEL_APPROVED_FINGERPRINT,INPUT_TYPES,3,PANEL_HADOUKEN_REVISION)}
+    profile=profiles.get(robot.version)
+    if (robot.key!=ROBOT_KEY or profile is None or robot.kind!=catalog.MQL5 or not robot.has_source
+        or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version==PANEL_ROBOT_VERSION else set())
+        or catalog.fingerprint(robot)!=profile[0]
         or len(robot.inputs)!=len(INPUT_TYPES) or {i.name:i.type for i in robot.inputs}!=INPUT_TYPES):
         raise ValueError("Pullback bloqueado: exige fonte, includes, versão e inputs do perfil nativo aprovado; legado não é promovido.")
-    return APPROVED_FINGERPRINT,INPUT_TYPES,3,HADOUKEN_REVISION
+    return profile
 
 def default_composition(robot,*,symbol,timeframe):
     require_robot(robot)
