@@ -1,0 +1,20 @@
+{
+  "task": "T15.1 resource composition with full page viewport",
+  "base": "e070897ca3e7c07956774b902b343863128ae0da",
+  "dependency": "bfc422a523386ecd6b9e8448b963e638151fb552",
+  "merge": "c54c2a83e0f24b781df0f940069c0f9f45eada4b",
+  "runtime_sha256": {
+    "mt5_extracao/resources/storage.py": "a4d0c0c9cf89bb7bf631aec4cbc1cbfc0f2904e74389d4bda333c75506cad682",
+    "mt5_extracao/resources/files.py": "1ca631c6e770eb0ae86906efef57a748b0a3012aea41854e35c28d250ed63bb0",
+    "mt5_extracao/ui/resources.py": "9d11fdf81385b87a98fa413e3f596812a0c77e4a2c209118127c73172c8c758d"
+  },
+  "interaction": {
+    "passed": 4,
+    "seconds": 51.11
+  },
+  "private_full_backup_restore_export_reused": true,
+  "owner_restore_performed": false,
+  "prior_e070_windows_failure": "same context2.0/900x620 mapped0, preserved",
+  "new_ci_or_installation_qualified": false,
+  "sdk_sha256": "47d195c567146252aa776cf91231d5b60f5f3dd85963f9ca4b33999dd015f561"
+}
