@@ -1,3 +1,20 @@
+## T19.34 — Contexto do robô sem corte horizontal, em revisão (2026-10-21)
+
+Recorte isolado sobre T19.24: rótulos do detalhe usam sua largura real, em vez do
+cartão externo. Regressão reproduziu688px de quebra em594px disponíveis; ajuste
+aprovado em dois temas/escalas96/144 simuladas e1920/1280/900/820, incluindo900×620,
+com texto longo/resize/teclado. Três testes anteriores reaproveitados no mesmo
+runtime, sem alteração de métricas, seleção ou conteúdo. Prova Tk/Xvfb reabre o
+mesmo histórico privado sem recalcular; capturas/medidas preservadas em evidência.
+Não conclui T19.34 nem qualifica gráficos/fluxos futuros/DPI ou Windows físicos.
+[Contrato](sdk/robot_context_layout.md).
+
+Fila de instalação permanece serial: T20.12 PR170833de99 e T19.24 PR171da05937
+em CI; PG54/55 aprovados. Linux da170 passou; Windows e checks restantes ainda
+precisam concluir. App1691612301/Hec550/Safety1.8.0 segue instalado. Nesta versão,
+a UI local reabriu/exportou12.405 barras EURUSD/H1; CSV completo e backup existente
+conferidos, sem extrair/atualizar na corretora nem restaurar o banco do proprietário.
+
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
 Opt-in `composition_v1` usa o BaseAdapter e o Backtester existentes, com políticas,

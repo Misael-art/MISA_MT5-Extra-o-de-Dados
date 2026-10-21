@@ -8,7 +8,9 @@ from tests.test_ui_main_window import ui, _set_ui_scaling
 
 
 @pytest.mark.parametrize("scaling", [96 / 72, 144 / 72])
-def test_backtest_context_wraps_inside_actual_viewport_and_remains_scrollable(ui, scaling):
+def test_backtest_context_wraps_inside_actual_viewport_and_remains_scrollable(ui, scaling, request):
+    previous_scaling = float(ui.root.tk.call("tk", "scaling"))
+    request.addfinalizer(lambda: ui.root.tk.call("tk", "scaling", previous_scaling))
     _set_ui_scaling(ui, scaling)
     ui.notebook.select(ui.robots_panel.frame)
     ui.robots_panel.select("python:donchian")
