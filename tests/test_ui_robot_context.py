@@ -9,6 +9,16 @@ from mt5_extracao.composition import base_composition
 from tests.test_ui_main_window import ui, _set_ui_scaling
 
 
+def _layout_y(widget, ancestor):
+    """Posição dentro do conteúdo, sem coordenadas globais de janela desmapeada."""
+    y = 0
+    while widget is not ancestor:
+        assert widget.master is not None, "O viewport deixou de pertencer ao detalhe."
+        y += widget.winfo_y()
+        widget = widget.master
+    return y
+
+
 def _reach_label(ui, detail, label):
     # Em janela empilhada, o detalhe fica depois dos cards. Percorre as duas
     # áreas, como o usuário, antes de exigir o mapeamento do rótulo. O Tk pode
@@ -21,13 +31,18 @@ def _reach_label(ui, detail, label):
         inner.yview_moveto(label.winfo_y() / max(1, content.winfo_height()))
         ui.pump(.02)
         body = ui.robots_panel.body
-        outer.yview_moveto((label.winfo_rooty() - body.winfo_rooty()) / max(1, body.winfo_height()))
+        # Primeiro revela o próprio viewport. O rótulo pode estar desmapeado
+        # pelo Canvas; sua posição global não serve de entrada para a rolagem.
+        outer.yview_moveto(_layout_y(inner, body) / max(1, body.winfo_height()))
         ui.pump(.05)
-        top = max(label.winfo_rooty(), inner.winfo_rooty(), outer.winfo_rooty())
-        bottom = min(label.winfo_rooty() + label.winfo_height(),
-                     inner.winfo_rooty() + inner.winfo_height(),
-                     outer.winfo_rooty() + outer.winfo_height())
-        if (label.winfo_ismapped() and label.winfo_viewable()
+        mapped = label.winfo_ismapped() and label.winfo_viewable()
+        top = bottom = None
+        if mapped:
+            top = max(label.winfo_rooty(), inner.winfo_rooty(), outer.winfo_rooty())
+            bottom = min(label.winfo_rooty() + label.winfo_height(),
+                         inner.winfo_rooty() + inner.winfo_height(),
+                         outer.winfo_rooty() + outer.winfo_height())
+        if (mapped
                 and top < bottom
                 and label.winfo_reqwidth() <= label.master.winfo_width()
                 and int(float(label.cget("wraplength"))) <= label.winfo_width()):
@@ -40,6 +55,9 @@ def _reach_label(ui, detail, label):
             "parent": (label.master.winfo_width(), label.master.winfo_height()),
             "visible_vertical_intersection": (top, bottom),
             "outer_scroll": outer.yview(), "inner_scroll": inner.yview(),
+            "inner_layout_y": _layout_y(inner, body), "body_height": body.winfo_height(),
+            "outer_bounds": (outer.winfo_rooty(), outer.winfo_height()),
+            "inner_bounds": (inner.winfo_rooty(), inner.winfo_height()),
         })
 
 

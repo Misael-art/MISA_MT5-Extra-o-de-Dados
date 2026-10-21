@@ -1,6 +1,8 @@
 # Validação dos instaladores com o MT5 real (T0.3 e T2.6)
 
 Pendência T19.34 (2026-10-21): conferir o contexto de Robôs em Windows físico,
+após concluir também o novo CI: rodada66571c4 falhou no alcance do viewport em
+900×620/144DPI; ensaio passou a usar posições internas antes do mapeamento.
 com96/144DPI, fontes ampliadas, dois temas e rolagem/teclado em900×620. O runner
 Windows da ponta8056fd6 teve uma falha de mapeamento no ensaio144DPI; o ensaio
 passou a percorrer ambas as rolagens e aguardar geometria por prazo limitado,
