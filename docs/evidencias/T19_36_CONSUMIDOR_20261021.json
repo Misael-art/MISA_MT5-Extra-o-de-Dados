@@ -58,7 +58,8 @@
       "ledger_reconciled": true,
       "source_certified": false,
       "historical_spec_known": false
-    }
+    },
+    "additional_catalog_ui_resimulation_tests": 59
   },
   "limitations": [
     "Native receipt, Tester/replay, visual panel, Windows hardware and live remain pending.",
@@ -83,6 +84,8 @@
     "tests/test_vwap_events.py": "fc1b54ec8b9329b7387113ba41489470ae66ba69da126fda2725609b1d58cc62",
     "tests/test_vwap_native_profile.py": "eec03a53da075fc5607ca737e9373abca90713bad94cd08a30a4c9ba6a4ea53e",
     "tests/test_vwap_preset_execution.py": "c31aa9c033cde1d82091bffd00e58ca49b7c592a4b9edfc9e9091f5579830205",
-    "docs/sdk/vwap_bands_nativo.md": "36017a7427d62630950414ae944e2fffa3b4d97c9e9c27da84d0b75f13be940a"
-  }
+    "docs/sdk/vwap_bands_nativo.md": "0a8f7fbaa5c13defb636704ad03a84ee561aa32f426fb128ac6fbd3c37049487",
+    "tests/test_robots_catalog.py": "ae4abd9e5f3c48e87595190fd32734ebcf8de30850eeb6008ec4d3d3c04e2eb6"
+  },
+  "s10_ci_correction": "b4bdf24f423371acca578bd98220cd911ca71026"
 }

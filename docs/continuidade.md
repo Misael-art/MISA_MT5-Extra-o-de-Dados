@@ -10,7 +10,7 @@ de execução. Contrato e limites em [VWAP nativo](sdk/vwap_bands_nativo.md).
 
 App165 integrado328cae e instalado com H741058/Safety1.8.0; dois Manuals reais S09/PB
 reabertos/exportados, principal/ponte preservados, sem novo binário carregado. App166
-S10ce09fe6 permanece sob CI final; não confundir fonte preparada com release ativa.
+S10b4bdf24 (correção após CIce09fe6 recusado) permanece sob novo CI final; não confundir fonte preparada com release ativa.
 VWAP também aguarda revisão/CI e instalação do conjunto. Tester/replay real, painel
 visual e live DEMO seguem dependentes da sincronização privada não estabelecida;
 nenhuma nova sondagem sem pré-condição observável. Windows físico/cache pendentes.
