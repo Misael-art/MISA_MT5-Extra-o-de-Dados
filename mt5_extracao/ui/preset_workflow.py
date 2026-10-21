@@ -68,20 +68,21 @@ class PresetWorkflow:
         self.symbol,self.timeframe,_=controller.chosen[robot.key]
         if not self.symbol:raise ValueError("Escolha Ativo / TF antes de abrir os presets.")
         self.pullback=robot.key=="mql5:hdk_pullback_nativo"
+        profile_level=native_adapter_profile(robot)[2]
         self.strategy_fields=(("trend","EMA de tendência (barras)"),("adx_min","ADX mínimo"),("rsi_period","RSI (barras)"),("rsi_pullback","RSI de recuo"),("swing_bars","Fundo/topo (barras)"),("target_r","Alvo em R")) if self.pullback else FIELDS
         self.profile_label="Pullback" if self.pullback else "S09"
         self.window=tk.Toplevel(self.ui.root);self.window.title(self.profile_label+" · Default e Manual")
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
         self.current=None;self.options={};self.pending=False;self.dirty=False;self.setting=False
-        self.lots_enabled=self.pullback or robot.version in (native.LOTS_ROBOT_VERSION,native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
-        self.partials_enabled=self.pullback or robot.version in (native.PARTIALS_ROBOT_VERSION,native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
-        self.temporal_enabled=not self.pullback and robot.version in (native.TEMPORAL_ROBOT_VERSION,native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
-        self.er_enabled=not self.pullback and robot.version in (native.ER_TEMPORAL_ROBOT_VERSION,native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
-        self.donchian_enabled=not self.pullback and robot.version in (native.DONCHIAN_TEMPORAL_ROBOT_VERSION,native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
-        self.atr_enabled=not self.pullback and robot.version in (native.ATR_TEMPORAL_ROBOT_VERSION,native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
-        self.session_available=not self.pullback and robot.version in (native.SESSION_ROBOT_VERSION,native.COOLDOWN_ROBOT_VERSION)
-        self.cooldown_available=not self.pullback and robot.version==native.COOLDOWN_ROBOT_VERSION
+        self.lots_enabled=profile_level>=2
+        self.partials_enabled=profile_level>=3
+        self.temporal_enabled=not self.pullback and profile_level>=4
+        self.er_enabled=not self.pullback and profile_level>=5
+        self.donchian_enabled=not self.pullback and profile_level>=6
+        self.atr_enabled=not self.pullback and profile_level>=7
+        self.session_available=not self.pullback and profile_level>=8
+        self.cooldown_available=not self.pullback and profile_level>=9
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")

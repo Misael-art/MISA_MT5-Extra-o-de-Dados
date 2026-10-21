@@ -64,6 +64,9 @@ def robot(request, cooldown_robot, pullback_robot, tmp_path, monkeypatch):
 
 
 def test_ui_new_profile_default_manual_reopen_and_export(view):
+    assert view.lots_enabled and view.partials_enabled
+    for name in ("temporal_enabled", "er_enabled", "donchian_enabled", "atr_enabled", "session_available", "cooldown_available"):
+        assert getattr(view, name) is (view.robot.key == native.ROBOT_KEY), name
     default = view.current
     own = named(view)
     view.save.invoke()
@@ -76,3 +79,26 @@ def test_ui_new_profile_default_manual_reopen_and_export(view):
     assert "Pacote exportado" in view.status.get(), view.status.get()
     from mt5_extracao.presets import store
     assert store.get_preset(view.db, default.identity.id) == default
+
+
+def test_ui_s09_panel_keeps_cooldown_and_partial_controls(view):
+    if view.robot.key != native.ROBOT_KEY:
+        assert view.pullback and not view.cooldown_available
+        return
+    from tests.test_volume_sizing import info
+    view.ui.app.mt5_connector = type("Connector", (), {"get_symbol_info": lambda self, symbol: info()})()
+    view.reopen.invoke()
+    named(view)
+    view.cooldown_seconds.set("3600")
+    view.partial_mode.set("Fração (%)")
+    view.partial_fields["trigger1_r"].set("0.5")
+    view.partial_fields["quantity1"].set("50")
+    view.partial_be.set(True)
+    assert not view.preview_error, view.lot_preview.get()
+    view.save.invoke()
+    assert not view.dirty, view.status.get()
+    view.reopen.invoke()
+    assert view.cooldown_seconds.get() == "3600"
+    assert view.current.manifest["native"]["expected_native_inputs"]["InpCooldownSeconds"] == 3600
+    assert view.current.manifest["native"]["expected_native_inputs"]["InpPartialQuantity1"] == 0.5
+    assert view.current.manifest["native"]["expected_native_inputs"]["InpPartialBreakeven"] is True

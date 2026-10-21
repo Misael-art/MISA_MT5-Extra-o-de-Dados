@@ -4,7 +4,7 @@ H#44/H1024cee0 acrescenta painel próprio S09 1.90/Pullback Nativo1.10, com as m
 instâncias de risco/executor. Pausa conserva gestão; entrada continua revalidada e
 congelamento não é destravado. Ambos compilados6276/Wine0/0; revisão técnica favorável,
 aceite visual pendente. Novos perfis Python e pins preservam todos os perfis anteriores;
-89 testes dirigidos/Tk aprovados e catálogo real44/23inputs conferido. Canvas padrão é
+125 testes dirigidos/Tk aprovados e catálogo real44/23inputs conferido. Canvas padrão é
 externo permitido pelo nome exato nesses novos perfis; qualquer header próprio ausente
 bloqueia. Exportação estática não equivale a recibo de parâmetros carregados.
 [Contrato e limites](sdk/painel_nativo.md). Tester-only, cache inelegível, ao vivo/Windows
@@ -12,11 +12,11 @@ físico e integração/instalação final continuam com seus critérios próprio
 
 ## PM-12 — integração visual e distribuição, 2026-10-21
 
-Fundações H32→36→37→38→39 integradas em288063fe, com revisão técnica de manutenção,
-checks existentes verdes e cinco árvores de merge conferidas por Git. Consumidor33
-atualizado sem reescrever histórico:3005b85 corrige statuscaps0/QA;8538ea6 incorpora
-master/cooldown,46Tools/checker135 aprovados. Seu aceite nativo permanece próprio.
-Safety1.8 em revisão separada: seis headers selecionados, nove arquivos de risco,
+Fundações H32→36→37→38→39 integradas em288063fe. Move Guard40 integrado d94e11f8;
+consumidor33 integrado422e1045, com52Tools/checker135/QA0erros0avisos e checks verdes.
+Statuscaps0 e critério de trailing pós-pausa corrigidos, revisão técnica registrada.
+O aceite nativo visual permanece pendente;26OK/3FAIL não visual continua reprovado.
+Safety1.8 integrada3988df13: seis headers selecionados, nove arquivos de risco,
 executor/contratos preservados; quinze arquivos idênticos à fonte H3005b85, smoke
 standalone0erros/0avisos e dois testes do pacote. Aplicação confere todo o conjunto
 antes da cópia e hashes quando declarados; baseline10→15 testes dirigidos aprovados.
@@ -27,8 +27,14 @@ Duas hipóteses delimitadas de preparação do perfil não fecharam a sincroniza
 autorização sem confirmação nativa; nenhum Tester/ordem iniciado, processos próprios
 encerrados. Não repetir sondagem sem mudança observável. S09/Pullback/adaptador
 continuam Tester-only; cache inelegível, ao vivo DEMO e Windows físico próprios.
-Instalação utilizada pelo proprietário ainda será alinhada após checks/revisão,
-com configuração, dados, raízes WIP e retorno preservados.
+M164 integrada710976b com seis checks verdes, incluindo Windows. Atalho do proprietário
+ativado para app710/H422/Safety3988(1.8), com backup de configuração/atalho/includes e
+base. Quinze hashes instalados conferidos; segunda cópia0. UI real reabriu a mesma base,
+mostrou18 robôs e EMA+ATR da revisão fixada com12inputs/Conservador, sem erro de callback.
+Ponte mantida no mesmo PID/identidade/token; registro de posse transferido sob lock para
+a release ativa, sem restart. Nenhum EA novo carregado ou operação iniciado por isso.
+Raízes WIP/configurações financeiras preservadas. H44 e perfis desta revisão só serão
+ativados juntos após checks; até lá S09/Pullback anteriores continuam na instalação.
 
 ## T19.57 — aceite funcional e checks concluídos, 2026-10-20
 

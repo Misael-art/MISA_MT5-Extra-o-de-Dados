@@ -21,8 +21,11 @@ biblioteca padrão MT5: o catálogo o registra como externo; somente esse nome e
 A compilação no destino continua exigindo a biblioteca padrão instalada; esta exceção
 não concede compilação, carregamento nem aceite operacional por si só.
 
-Validação local: baseline8 testes não gráficos; depois89 testes com Tk em Xvfb,
-incluindo perfil/pins, UI Default/Manual nomeado/reabrir/exportar, inputs e isolamento.
+Validação local: baseline8 testes não gráficos; depois125 testes com Tk em Xvfb,
+incluindo perfil/pins, UI Default/Manual nomeado/reabrir/exportar, inputs, isolamento
+e regressões de todas as revisões temporais/sessão/lotes. A tela usa o nível validado
+do perfil, preservando lotes, parciais, temporal e cooldown no S09 1.90; Manual com
+cooldown3600 e parcial50%/0.5R/BE foi salvo e reaberto.
 O catálogo real das duas fontes confirmou fingerprints,44/23 inputs e exportação dos
 valores esperados. É conferência estática; não é recibo dos inputs carregados.
 Os dois Experts compilaram0erros/0avisos no MetaEditor6276/Wine em árvore isolada.
