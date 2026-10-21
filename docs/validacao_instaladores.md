@@ -1,5 +1,12 @@
 # Validação dos instaladores com o MT5 real (T0.3 e T2.6)
 
+Pendência Recursos (2026-10-21): conferir em Windows físico a leitura incompleta
+de pastas, com backups/restauração acessíveis e limpeza indisponível.49 regressões,
+24 testes de retenção, três de interação UI e cinco próprios finais passaram no
+Linux (seleções sobrepostas); recuperação/exportação foram QA em SQLite privado,
+com fonte candidata. Rede/I/O bloqueado e duração total de operações não recebem
+garantia pelo prazo cooperativo da leitura opcional. CI final próprio pendente.
+
 Pendência T19.34 (2026-10-21): conferir o contexto de Robôs em Windows físico,
 após concluir também o novo CI: rodada66571c4 falhou no alcance do viewport em
 900×620/144DPI; ensaio passou a usar posições internas antes do mapeamento.
