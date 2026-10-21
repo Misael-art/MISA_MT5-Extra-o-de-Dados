@@ -120,6 +120,9 @@ def default_composition(robot, *, symbol, timeframe):
     if robot.key=="mql5:hdk_pullback_nativo":
         from .pullback_native import default_composition as pullback_default
         return pullback_default(robot,symbol=symbol,timeframe=timeframe)
+    if robot.key=="mql5:hdk_stochema9":
+        from .stoch_native import default_composition as stoch_default
+        return stoch_default(robot,symbol=symbol,timeframe=timeframe)
     _require_robot(robot)
     return base_composition("s09_reference", symbol=symbol, timeframe=timeframe, risk_fraction=.005, compound=True)
 
@@ -310,4 +313,7 @@ def native_adapter(composition,robot):
     if robot.key=="mql5:hdk_pullback_nativo":
         from .pullback_native import PullbackNativeAdapter
         return PullbackNativeAdapter(composition,robot)
+    if robot.key=="mql5:hdk_stochema9":
+        from .stoch_native import StochNativeAdapter
+        return StochNativeAdapter(composition,robot)
     return S09NativeAdapter(composition,robot)

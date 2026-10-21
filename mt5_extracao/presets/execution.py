@@ -82,11 +82,14 @@ def validate_sizing_budgets(sizing,signals,rows,*,deposit,risk_pct):
             raise ValueError("Orçamento efetivo do Tester difere do depósito/saldo e percentual do preset; confira estado persistido e contexto antes de repetir.")
 
 
-def native_signals(directory):
+def native_signals(directory, *, marker="S09_SIGNAL"):
+    if marker not in ("S09_SIGNAL", "HDK_STRATEGY_SIGNAL"):
+        raise ValueError("Contrato de sinal nativo desconhecido.")
+    pattern=_SIGNAL if marker=="S09_SIGNAL" else re.compile(_SIGNAL.pattern.replace("S09_SIGNAL", marker))
     paths=list((Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     result=[]
     for path in paths:
-        for match in _SIGNAL.finditer(mql.read_text(path)):
+        for match in pattern.finditer(mql.read_text(path)):
             event,confirmed,available,direction,opened,state,volume,order,deal,reason=match.groups()
             item=dict(event_at=int(event),confirmed_at=int(confirmed),available_at=int(available),direction=int(direction),
                       opened=opened=="1",execution_state=int(state),filled_volume=float(volume) if state=="4" else None,
@@ -146,7 +149,7 @@ def _epoch(value):
     return calendar.timegm(value.to_pydatetime().timetuple())
 
 
-def _ledger_rows(db,record,signals):
+def _ledger_rows(db,record,signals, *, target_required=True):
     frame=ledger.load(db,run_id=record["run_id"])
     if len(frame)!=record["metrics"]["trades"] or not frame["completeness"].eq(ledger.COMPLETE).all():
         raise ValueError("Livro da aplicação ausente/incompleto; confira importação do CSV sem alterar o resultado financeiro.")
@@ -156,14 +159,15 @@ def _ledger_rows(db,record,signals):
     output=[]
     for row in frame.itertuples():
         numbers=[row.entry_price,row.exit_price,row.stop_price,row.target_price,row.volume,row.pnl]
-        if not all(value is not None and math.isfinite(value) for value in numbers) or min(numbers[:5])<=0:
+        if not all(value is not None and math.isfinite(value) for value in numbers) or min(numbers[:3])<=0 or row.volume<=0 or row.target_price<0 or (target_required and row.target_price==0):
             raise ValueError("Livro sem preços, volume ou SL/TP nativos completos; não aprovar por preenchimento presumido.")
         matches=[s for s in filled if s["direction"]==row.direction and s["available_at"]==_epoch(row.entry_time)
                  and s["filled_volume"]==row.volume]
         if len(matches)!=1 or row.exit_time<row.entry_time:
             raise ValueError("Posição não corresponde a uma entrada disponível após confirmação; confira relógio/volume e diário.")
-        if not ((row.stop_price<row.entry_price<row.target_price) if row.direction==1 else
-                (row.target_price<row.entry_price<row.stop_price)):
+        stop_valid=row.stop_price<row.entry_price if row.direction==1 else row.stop_price>row.entry_price
+        target_valid=(not target_required and row.target_price==0) or (row.target_price>row.entry_price if row.direction==1 else 0<row.target_price<row.entry_price)
+        if not stop_valid or not target_valid:
             raise ValueError("SL/TP histórico não protege o preenchimento observado; revisar a divergência sem ampliar limites.")
         output.append(dict(direction=int(row.direction),entry_time=row.entry_time.strftime("%Y-%m-%d %H:%M:%S"),
              exit_time=row.exit_time.strftime("%Y-%m-%d %H:%M:%S"),entry_price=float(row.entry_price),exit_price=float(row.exit_price),
@@ -292,9 +296,12 @@ class PresetExecution:
         actual_mode=native_mode(job.directory,job.id)
         if actual_mode["visual"]!=(self.mode=="replay"):
             raise ValueError("Modo Visual nativo difere do solicitado; replay continua pendente.")
-        signals=native_signals(job.directory)
+        stoch=native["profile_id"]=="hadouken.stoch_ema9"
+        signals=native_signals(job.directory,marker="HDK_STRATEGY_SIGNAL" if stoch else "S09_SIGNAL")
         sizing=native_sizing(job.directory,signals,native["expected_native_inputs"]) if native["profile_version"]>=2 else None
-        rows=_ledger_rows(self.db,job.record,signals)
+        rows=_ledger_rows(self.db,job.record,signals,target_required=not stoch or package["composition"]["strategy"]["params"]["target_points"]>0)
+        if stoch and package["composition"]["strategy"]["params"]["target_points"]==0 and any(row["target_price"]!=0 for row in rows):
+            raise ValueError("S10: alvo desabilitado no preset, mas o livro informa TP; preserve a divergência.")
         if sizing is not None:
             validate_sizing_budgets(sizing,signals,rows,deposit=package["test_context"]["deposit"],
                                    risk_pct=native["expected_native_inputs"]["InpRiskPct"])
@@ -305,6 +312,9 @@ class PresetExecution:
         if native["profile_id"]=="hadouken.pullback":
             from .pullback_events import validate
             strategy_reference=validate(job.directory,package["composition"]["strategy"]["params"],signals,rows)
+        if stoch:
+            from .stoch_events import validate
+            strategy_reference=validate(job.directory,package["composition"]["strategy"]["params"],signals)
         temporal=None;channel=[] if native["profile_version"]>=6 else None;atr=[] if native["profile_version"]>=7 else None
         if native["profile_version"]>=4:
             from .temporal_events import read_events
@@ -323,6 +333,8 @@ class PresetExecution:
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
         difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel,atr,session,cooldown) if prior is not None else None
+        if stoch and prior is not None and difference is None and prior.get("strategy_reference")!=strategy_reference:
+            difference=dict(section="strategy_reference",field="observed_context",expected=prior.get("strategy_reference"),observed=strategy_reference)
         match=None if prior is None else difference is None
         if match is False:status="native_divergence"
         report=getattr(job,"report",job.directory/"relatorio.json")

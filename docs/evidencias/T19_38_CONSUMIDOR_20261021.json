@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "task": "T19.38 S10 consumer",
+  "application_base": "3addcad548b3537b353bf8991027784558531dc0",
+  "python_source": "d4b084de0e73e2b99ded3d734957288954643385",
+  "hadouken_source": "9a003dd051f4b40f9c6f1effcf749aecb0122f51",
+  "hadouken_merged": "9334c1a5f43faf6116c038695b575a24cacba3d7",
+  "fingerprint": "26545f544c784c39",
+  "robot_version": "1.30",
+  "inputs": 15,
+  "artifacts": {
+    "mt5_extracao/composition/native.py": "feed220053ac2c36bbd974c17790b56b9fe3998d7df4c7602de8d36af9ce614b",
+    "mt5_extracao/composition/stoch_native.py": "578a9307b22ab2a8479eb5552051acbbb7092098d7fef4601767647ad67596e6",
+    "mt5_extracao/presets/execution.py": "3744db0b4b0e6355238de2baca19440fa54ac7216f4d041fab5416d0c1e4ed64",
+    "mt5_extracao/presets/stoch_events.py": "c8fd7479b78a1c7a235b4b1c9970ddace892fc8dc49d7a61015e053583b244f7",
+    "mt5_extracao/ui/preset_workflow.py": "ec5f7fe5087056512312d0d1ec65cba3da6636f769a09370953e63ca2648a04b",
+    "mt5_extracao/ui/robot_controls.py": "9254e2d0aa77c36528973b3bed3a291b688820277a65130286fd8d66c953c390",
+    "tests/test_stoch_native_profile.py": "efe6117edb74f78da1ef91f3d8aec688218a248c74238fa87165d81b31b4371f",
+    "tests/test_stoch_events.py": "7982f5d0dff6686b55f56cc5b5152edec31c4f334807532ec2d375aee378382e",
+    "tests/test_stoch_preset_execution.py": "694feb3405e18a60294eb2f277b8af0b8f65b338494f3f3a137d0f853e2c04d2"
+  },
+  "validation": {
+    "focused_integration_previous": 187,
+    "final_directed": 51,
+    "doctor_no_probe": {
+      "ok": 20,
+      "warning": 1,
+      "failed": 0,
+      "warning_reason": "pandas-ta optional not installed"
+    },
+    "python_foundation_reused": {
+      "focused": 240,
+      "expanded": 171
+    },
+    "wrapper_compile": {
+      "errors": 0,
+      "warnings": 0,
+      "build": 6276,
+      "wine": true,
+      "binary_sha256": "c2fa728d0d2abf69ee815e52b309097203c2afc540b97034a0b833b98bd2e6aa",
+      "wrapper_sha256": "7b629ceced9a0b1b3f4c6862dff9a8337437b49701c7c7536cc4a76af690fa07",
+      "remaining": [],
+      "context_released": true,
+      "principal_unchanged": true
+    },
+    "final_integration": 193
+  },
+  "python_actual_history": {
+    "isolated_consistent_database_copy": true,
+    "symbol": "EURUSD",
+    "timeframe": "H1",
+    "selection": [
+      "2026-09-01",
+      "2026-09-30"
+    ],
+    "trade_from": "2026-09-15",
+    "bars": 528,
+    "trades": 5,
+    "initial_equity": 100000.0,
+    "net_profit": -819.2899999999871,
+    "risk_fraction": 0.0025,
+    "ledger_reconciled": true,
+    "reopened": true,
+    "data_manifest_id": "7522bbb71090309a73960807fa78e3d1e1fcb4e7042bfebebb8886fe67849c68",
+    "spec_historical_known": false,
+    "native_parity": false
+  },
+  "native_loaded_receipt": false,
+  "operational_acceptance": false,
+  "cache_eligible": false,
+  "allows_live": false,
+  "pending": [
+    "CI final consumer",
+    "technical review consumer",
+    "controlled owner installation",
+    "native Tester/replay/visual acceptance",
+    "physical Windows",
+    "native MoveGuard execution both sides",
+    "live DEMO acceptance separately authorized context"
+  ],
+  "material_limits": [
+    "OpenObserved final response does not certify every earlier retry",
+    "context guard is proposed, not ModifySL receipt",
+    "Python fixed prefix differs from native rolling window unless reconstructed per trace",
+    "S10 instance latch does not qualify restart/multi-instance recovery"
+  ]
+}
