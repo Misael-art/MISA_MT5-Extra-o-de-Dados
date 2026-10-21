@@ -1,3 +1,29 @@
+## Recursos — Cópias disponíveis com leitura de pastas incompleta, em revisão (2026-10-21)
+
+A prova de recuperação encontrou a aba ocupada na varredura de pastas, antes de
+listar cópias. O corretivo limita cooperativamente a leitura opcional de tamanhos
+e arquivos antigos. O relatório do banco e os backups permanecem disponíveis;
+tamanho desconhecido fica indisponível e lista parcial não libera limpeza.
+Não há novo scheduler, cache, lock, orçamento financeiro ou alteração de SQL/schema.
+
+Baseline45 casos passaram; quatro regressões novas falharam antes do ajuste.
+Seleção49 passou59,05s; mais24 proteções de retenção passaram12,65s. Após compor
+o layout66571c4, três casos de interação UI passaram38,09s; cinco próprios finais
+passaram11,81s, incluindo interrupção após um arquivo. Há sobreposição entre seleções.
+
+Na candidata, UI/SQLite privado criou backup verificado455,6MB, preservou a cópia
+anterior, restaurou e exportou12.405barras com todas as colunas conferidas. Mesmo
+run preservado, três cópias reabertas e limpeza parcial bloqueada. Um prazo inicial
+curto do ensaio foi registrado como incompleto; retomada concluiu auditoria e
+verificação. Banco original aberto só para leitura, configuração/preferências intactas.
+Não qualifica restauração no banco do proprietário, PG, Windows físico ou operação.
+
+Fonte candidata ainda sem integração/instalação: Appac7af2c/Hec550/Safety1.8.0
+permanece ativo. PR172/layout66571c4 tem cinco checks aprovados e aguarda Windows;
+este corretivo conserva a ordem serial e exige seus próprios seis checks finais.
+O prazo é cooperativo entre chamadas de filesystem, sem teto absoluto para I/O,
+SQL ou backup/restauração. [Contrato e evidência](sdk/recursos_leitura_parcial.md).
+
 ## T19.34 — Contexto do robô sem corte horizontal, em revisão (2026-10-21)
 
 PR172 permanece sem merge: CI39581746127 teve uma falha Windows no novo ensaio

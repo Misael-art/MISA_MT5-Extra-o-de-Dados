@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 hb = storage.human_bytes
 TICK_MS = 60_000            # o agendador confere a cada minuto se um ciclo está vencido
+DIRECTORY_SCAN_SECONDS = 1  # leitura opcional da tela; não limita SQLite nem ações de manutenção
 CHECK_ON, CHECK_OFF = "☑", "☐"
 
 SPACE_COLUMNS = ("Tabela", "Tipo", "Ativo", "Timeframe", "Linhas", "Tamanho", "% da base", "Última barra")
@@ -302,6 +303,7 @@ class ResourcesPanel:
                                                 ("w", "e", "w"), height=10)
         frame.pack(fill=tk.BOTH, expand=True)
         self.backups, self.old_files = [], []
+        self.old_files_complete = True
 
     def _show_files(self):
         tree = self.backup_tree
@@ -311,10 +313,13 @@ class ResourcesPanel:
         size = sum(f["bytes"] for f in self.old_files)
         text = (f"{len(self.backups)} cópia(s), {hb(sum(b['bytes'] for b in self.backups))}. " if self.backups
                 else "Nenhuma cópia de segurança ainda. ")
-        text += (f"Arquivos antigos de logs e exportações: {len(self.old_files)} ({hb(size)})." if self.old_files
-                 else "Nenhum arquivo antigo de logs ou exportações pelos dias da guia Automação.")
+        if not self.old_files_complete:
+            text += "Leitura de arquivos antigos incompleta; limpeza indisponível nesta leitura."
+        else:
+            text += (f"Arquivos antigos de logs e exportações: {len(self.old_files)} ({hb(size)})." if self.old_files
+                     else "Nenhum arquivo antigo de logs ou exportações pelos dias da guia Automação.")
         self.files_summary.config(text=text)
-        if not self.old_files:
+        if not self.old_files or not self.old_files_complete:
             self.files_button.state(["disabled"])
 
     def backup(self):
@@ -331,7 +336,7 @@ class ResourcesPanel:
 
     def clean_files(self):
         db, config = self._db(), self._config()
-        if not db or not self.old_files:
+        if not db or not self.old_files or not self.old_files_complete:
             return
         by_folder = {}
         for f in self.old_files:
@@ -517,14 +522,22 @@ class ResourcesPanel:
 
         def work():
             policy = policy_mod.load(config)
-            report = storage.measure(db, policy_mod.archive_dir(db, policy), config=config)
+            directory_check = storage.scan_deadline(DIRECTORY_SCAN_SECONDS)
+            report = storage.measure(db, policy_mod.archive_dir(db, policy), config=config,
+                                     directory_check=directory_check)
             storage.record_snapshot(db, report, policy.keep_snapshots_days)
             sizes = {t["table"]: t["bytes"] for t in report["tables"]}
+            try:
+                old_files = files.old_files(db, config, check=directory_check)
+                old_files_complete = True
+            except TimeoutError:
+                old_files, old_files_complete = [], False
+                report["warnings"].append("Leitura de arquivos antigos incompleta; limpeza indisponível nesta leitura.")
             return {"report": report, "policy": policy,
                     "scan": hygiene.scan(db, policy, selected, sizes),
                     "archives": actions.list_archives(db, config),
                     "backups": files.list_backups(db, config),
-                    "old_files": files.old_files(db, config),
+                    "old_files": old_files, "old_files_complete": old_files_complete,
                     "snapshots": storage.load_snapshots(db, 365),
                     "actions": actions.load_actions(db, 200),
                     "last_cycle": automation.last_cycle(db)}
@@ -539,6 +552,7 @@ class ResourcesPanel:
         self.archives, self.snapshots = result["archives"], result["snapshots"]
         self.last_cycle = result["last_cycle"]
         self.backups, self.old_files = result["backups"], result["old_files"]
+        self.old_files_complete = result.get("old_files_complete", True)
         policy = result["policy"]
         self.measured_label.config(text=f"medido às {self.report['measured_at']:%H:%M:%S}")
         self._show_kpis(policy)
@@ -608,6 +622,7 @@ class ResourcesPanel:
                         tags=("internal",) if t["kind"] == storage.KIND_INTERNAL else ())
         dirs = self.report["dirs"]
         self.dirs_label.config(text="Pastas: " + " · ".join(f"{k} {hb(v['bytes'])}" for k, v in dirs.items()) +
+                               (" · medição incompleta" if self.report.get("dirs_complete") is False else "") +
                                ("   (* tamanho estimado pelas linhas)" if any(t["estimated"]
                                                                             for t in self.report["tables"]) else ""))
 
