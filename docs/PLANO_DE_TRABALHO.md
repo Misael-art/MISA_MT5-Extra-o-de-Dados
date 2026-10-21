@@ -4037,3 +4037,22 @@ de primeiro fill explícitos; calendário observado T13.1 reutilizado sem presum
 DST ou sessões futuras. S09 somente Tester, cache inelegível; live DEMO, Windows
 físico, Pullback temporal, carteira/gradientes e relógios volumétricos continuam
 com aceites próprios. Não houve nova campanha histórica nem dispatch duplicado.
+
+
+### T19.38 — S10/EMA, consumidor em revisão (2026-10-21)
+
+Variante declarada e Move Guard único no Backtester; perfil nativo fechado1.30,
+Default/Manual/orçamento e oito parâmetros, exportação e validação de janelas/recibo/livro.
+H#30/#45 integradas; aplicação dependente dos perfis PM12/#165. Ver
+[sdk/stoch_ema9_nativo.md](sdk/stoch_ema9_nativo.md). Cinco negócios Python em528 barras
+reais, resultado−819,29 e reabertura reconciliados, em base copiada. Não é paridade nativa
+nem aprovação financeira. Compilação isolada0/0 não é binário carregado; CI final/revisão,
+instalação e aceite nativo/replay/visual seguem pendentes. Cache/live/Windows físico não
+qualificados; T19.38 completa permanece aberta.
+
+
+Correção T19.38 do CI39548192469/ce09fe6: contagens de catálogo atualizadas por lista
+explícita, fixture exige especificação tipada nos novos níveis; projeção T16.6 recusa
+Move Guard sem série/contexto, preservando paridade legada e sem gestor paralelo.
+58 focados Tk/Xvfb e14 re-simulação passaram. Fonte/pin MQL e backtester intactos;
+CI final, revisão do corretivo e instalação continuam pendentes.

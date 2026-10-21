@@ -147,7 +147,7 @@ class CardControls:
 
     @staticmethod
     def _has_native_presets(robot):
-        return robot.key in ("mql5:hdk_s09_referencia","mql5:hdk_pullback_nativo")
+        return robot.key in ("mql5:hdk_s09_referencia","mql5:hdk_pullback_nativo","mql5:hdk_stochema9")
 
     def open_presets(self, robot):
         from .preset_workflow import PresetWorkflow

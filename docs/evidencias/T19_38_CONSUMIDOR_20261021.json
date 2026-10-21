@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "task": "T19.38 S10 consumer",
+  "application_base": "3addcad548b3537b353bf8991027784558531dc0",
+  "python_source": "d4b084de0e73e2b99ded3d734957288954643385",
+  "hadouken_source": "9a003dd051f4b40f9c6f1effcf749aecb0122f51",
+  "hadouken_merged": "9334c1a5f43faf6116c038695b575a24cacba3d7",
+  "fingerprint": "26545f544c784c39",
+  "robot_version": "1.30",
+  "inputs": 15,
+  "artifacts": {
+    "mt5_extracao/composition/native.py": "feed220053ac2c36bbd974c17790b56b9fe3998d7df4c7602de8d36af9ce614b",
+    "mt5_extracao/composition/stoch_native.py": "578a9307b22ab2a8479eb5552051acbbb7092098d7fef4601767647ad67596e6",
+    "mt5_extracao/presets/execution.py": "425ef3cb396356ac9bdb32c8eb069fea11673f8d53e722e4f53204d6a9b474fd",
+    "mt5_extracao/presets/stoch_events.py": "fe57a1a98186f83cd0901c31fd997cc3e35299c687883d74fa7c710ff61713e3",
+    "mt5_extracao/ui/preset_workflow.py": "ec5f7fe5087056512312d0d1ec65cba3da6636f769a09370953e63ca2648a04b",
+    "mt5_extracao/ui/robot_controls.py": "9254e2d0aa77c36528973b3bed3a291b688820277a65130286fd8d66c953c390",
+    "tests/test_stoch_native_profile.py": "efe6117edb74f78da1ef91f3d8aec688218a248c74238fa87165d81b31b4371f",
+    "tests/test_stoch_events.py": "a750e902e91bd8515143e6dcaa765ee87aa462b3f2a428c5b546eeaf7d47506c",
+    "tests/test_stoch_preset_execution.py": "96f66493338f8338b174f558e278d4fe190ce644d13f020a22180af0187d88df",
+    "mt5_extracao/presets/protocol.py": "bf2b8456e533c0fd92c4930b7e7e727d96372a548a6376af88aa104055d8405f",
+    "mt5_extracao/trade_analytics/execution/engine.py": "1e1e4d51c0bb5829980c1c3e23057056a2408cbf240a243146c337653366fdc3",
+    "tests/test_cli_agent.py": "7db39ad447b3ba184cf83a72bc418ae4350d5f753a16311a1630a0a877d82917",
+    "tests/test_robots_catalog.py": "c0a7ea2512790ca7c1a0ba8f60fd975de28d474e22114f25ef5e2a18f9f2422d",
+    "tests/test_trade_resim.py": "97c91290d63c0e893aac7e90a6eea8834edf3b254829739bfd44822c156f9d3e",
+    "tests/test_ui_main_window.py": "be5edba36c48948674f2a2d08f1ece2f58fc588d157e5b368a2761df54910ee4",
+    "docs/sdk/stoch_ema9_nativo.md": "6d7643947798ff6e64e852de64ed76d95d81e85fe6fe3b39ae25be10f92fa827"
+  },
+  "validation": {
+    "focused_integration_previous": 187,
+    "final_directed": 51,
+    "doctor_no_probe": {
+      "ok": 20,
+      "warning": 1,
+      "failed": 0,
+      "warning_reason": "pandas-ta optional not installed"
+    },
+    "python_foundation_reused": {
+      "focused": 240,
+      "expanded": 171
+    },
+    "wrapper_compile": {
+      "errors": 0,
+      "warnings": 0,
+      "build": 6276,
+      "wine": true,
+      "binary_sha256": "c2fa728d0d2abf69ee815e52b309097203c2afc540b97034a0b833b98bd2e6aa",
+      "wrapper_sha256": "7b629ceced9a0b1b3f4c6862dff9a8337437b49701c7c7536cc4a76af690fa07",
+      "remaining": [],
+      "context_released": true,
+      "principal_unchanged": true
+    },
+    "final_integration": 203,
+    "strict_protocol_markers": true,
+    "incremental_same_or_plus_one": true,
+    "ci_correction": {
+      "rejected_run": 39548192469,
+      "rejected_head": "ce09fe669f0dec60d79c97c90a83640ff3c8cb6c",
+      "linux_failures": 5,
+      "windows_failures": 8,
+      "causes": [
+        "old Python catalog counts/list",
+        "generic unknown symbol fixture for new signal point levels",
+        "base re-simulation does not reconstruct signal MoveGuard context"
+      ],
+      "focused_tk_tests": 58,
+      "final_resimulation_tests": 14,
+      "tests_skipped_or_deleted": false,
+      "new_final_ci_required": true
+    }
+  },
+  "python_actual_history": {
+    "isolated_consistent_database_copy": true,
+    "symbol": "EURUSD",
+    "timeframe": "H1",
+    "selection": [
+      "2026-09-01",
+      "2026-09-30"
+    ],
+    "trade_from": "2026-09-15",
+    "bars": 528,
+    "trades": 5,
+    "initial_equity": 100000.0,
+    "net_profit": -819.2899999999871,
+    "risk_fraction": 0.0025,
+    "ledger_reconciled": true,
+    "reopened": true,
+    "data_manifest_id": "7522bbb71090309a73960807fa78e3d1e1fcb4e7042bfebebb8886fe67849c68",
+    "spec_historical_known": false,
+    "native_parity": false
+  },
+  "native_loaded_receipt": false,
+  "operational_acceptance": false,
+  "cache_eligible": false,
+  "allows_live": false,
+  "pending": [
+    "CI final consumer",
+    "technical review consumer",
+    "controlled owner installation",
+    "native Tester/replay/visual acceptance",
+    "physical Windows",
+    "native MoveGuard execution both sides",
+    "live DEMO acceptance separately authorized context",
+    "Signal-driven MoveGuard base resimulation requires qualified per-bar context; projection now refuses"
+  ],
+  "material_limits": [
+    "OpenObserved final response does not certify every earlier retry",
+    "context guard is proposed, not ModifySL receipt",
+    "Python fixed prefix differs from native rolling window unless reconstructed per trace",
+    "S10 instance latch does not qualify restart/multi-instance recovery",
+    "No native sequence counter/hash: missing complete context/bar pairs are not independently certified"
+  ]
+}

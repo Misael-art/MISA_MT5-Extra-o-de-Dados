@@ -39,6 +39,13 @@ ATR = Parameter("number", "ATR", exclusive_minimum=True)
 OSCILLATOR = Parameter("number", "index_0_100", 0, 100)
 # Nomes explícitos: não converter nome Python em nome de input MQL5.
 STRATEGY_PARAMETERS = {
+    "stoch_ema9": {"k_period": Parameter("int", "bar", 2, 1000),
+                   "slowing": Parameter("int", "bar", 1, 100),
+                   "d_period": Parameter("int", "bar", 1, 100),
+                   "ema_period": Parameter("int", "bar", 1, 1000),
+                   "upper_level": OSCILLATOR, "lower_level": OSCILLATOR,
+                   "stop_offset_points": Parameter("int", "point", 0, 2147483647),
+                   "target_points": Parameter("int", "point", 0, 2147483647)},
     "s09_reference": {"fast": PERIOD, "slow": PERIOD, "warmup_bars": PERIOD,
                       "stop_points": Parameter("int", "point", 1),
                       "target_points": Parameter("int", "point", 1)},

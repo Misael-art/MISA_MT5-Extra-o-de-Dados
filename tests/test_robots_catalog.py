@@ -12,6 +12,7 @@ from mt5_extracao.robots import catalog, mql, risk, store
 
 LIBRARY = Path(__file__).parent / "robots_library"
 EA = LIBRARY / "Experts" / "Demo" / "DemoGuard.mq5"
+PYTHON_KEYS = ("ema_atr", "donchian", "bb_rsi", "orb", "pullback", "squeeze", "s09_reference", "stoch_ema9")
 
 
 def by_name(items, name):
@@ -181,8 +182,7 @@ def test_python_strategies_are_in_the_catalog():
     config = configparser.ConfigParser()
     config.read_string("[STRATEGY]\nrisk_per_trade = 0.02\n")
     items = catalog.python_robots(config)
-    assert [r.key for r in items] == ["python:"+key for key in
-        ["ema_atr","donchian","bb_rsi","orb","pullback","squeeze","s09_reference"]]
+    assert [r.key for r in items] == ["python:"+key for key in PYTHON_KEYS]
     assert all(r.kind == "python" and r.regime and r.timeframes for r in items)
     donchian = robots.get_robot(items, "donchian")
     assert donchian.key == "python:donchian" and donchian.risk.level == risk.HIGH        # 2%/trade na configuração
@@ -203,7 +203,7 @@ def test_load_catalog_merges_python_library_and_imported(tmp_path):
     assert robots.import_robot(db, loose).key == "mql5:avulso"
     robots.import_robot(db, loose)                                            # importar de novo não duplica
     items = robots.load_catalog(config, db)
-    assert len(items) == 10 and len({r.key for r in items}) == 10             # 7 Python + 2 da pasta + 1 avulso
+    assert len(items) == len(PYTHON_KEYS)+3 and len({r.key for r in items}) == len(PYTHON_KEYS)+3
     assert robots.get_robot(items, "avulso").risk.level == risk.LOW
 
     store.save_record(db, "mql5:demoguard", "mql5", "DemoGuard", str(EA), stage="testado")
@@ -212,7 +212,7 @@ def test_load_catalog_merges_python_library_and_imported(tmp_path):
     gone = robots.get_robot(robots.load_catalog(config, db), "avulso")
     assert gone.risk.level == risk.UNKNOWN and gone.notes
     store.delete_record(db, "mql5:avulso")
-    assert len(robots.load_catalog(config, db)) == 9
+    assert len(robots.load_catalog(config, db)) == len(PYTHON_KEYS)+2
 
 
 # --- CLI ------------------------------------------------------------------------------
@@ -279,7 +279,7 @@ def test_folder_import_validations_and_display_values(tmp_path):
     validation.save_validation(db, "AAA", "D1", verdict(False, 2.5))
     validation.save_validation(db, "BBB", "D1", verdict(True, 1.4))
     items = robots.load_catalog(None, db)
-    assert len(items) == 9
+    assert len(items) == len(PYTHON_KEYS)+2
     donchian = robots.get_robot(items, "donchian")
     assert [r["symbol"] for r in donchian.results] == ["BBB", "AAA"]          # aprovada vem antes do maior PF
     assert donchian.result["max_drawdown"] == 0.15 and donchian.stage == "testado"

@@ -1,3 +1,20 @@
+## T19.38 — consumidor S10 em revisão, 2026-10-21
+
+CI39548192469/ce09fe6 recusado: fixtures antigas de contagem e caso de re-simulação
+sem especificação/contexto de Move Guard. Correção tipa a fixture, mantém lista
+explícita do catálogo e recusa projeção silenciosa dessa gestão no re-simulador;
+58 focados Tk/Xvfb e14 re-sim aprovados. Novo CI final/revisão exigidos antes de
+integrar/instalar. Backtester, MQL/pin e protocolos nativos não mudaram.
+
+S10 Python/Move Guard compartilhado composto por Git a partir de d4b084de, com perfil
+nativo fechado1.30/fp26545f544c784c39 e Default/Manual/editor/exportação. H#30 e H#45
+integradas; S09/Pullback/pins anteriores preservados. [Contrato e limites](sdk/stoch_ema9_nativo.md).
+Cinco operações Python em528 barras reais de cópia consistente: −819,29; livro/reabertura
+conciliados, sem aprovação financeira. Fonte/binário/pacote não substituem inputs carregados.
+CI final, revisão do consumidor, instalação e Tester/replay/visual permanecem próprios.
+Não repetir sondagem privada de sincronização sem nova hipótese/estado. Cache/live/Windows
+físico seguem pendentes; raiz/WIP/configurações preservados.
+
 ## PM12 — consumidores nativos, 2026-10-21
 
 H#44/H1024cee0 acrescenta painel próprio S09 1.90/Pullback Nativo1.10, com as mesmas

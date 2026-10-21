@@ -21,7 +21,7 @@ Premissas (conservadoras; ver docs/estrategias.md):
 """
 import math
 from dataclasses import asdict, dataclass, field
-from decimal import Decimal, ROUND_FLOOR
+from decimal import Decimal, ROUND_FLOOR, ROUND_HALF_UP
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -234,6 +234,36 @@ def _fixed_point_distance(points, spec, *, label):
     return distance
 
 
+def _signal_point_distance(points, spec):
+    """Pontos do sinal → preço; o nível absoluto será normalizado no tick.
+
+    Não exige distância múltipla de tick: uma EMA já pode estar entre ticks.
+    Não infere stops/freeze do broker, ausentes do SymbolSpec.
+    """
+    if (not spec.known or not spec.symbol or not math.isfinite(spec.point) or spec.point <= 0
+            or not math.isfinite(spec.tick_size) or spec.tick_size < 0):
+        raise ValueError("Níveis do sinal requerem especificação conhecida de point/tick; atualize com mt5x specs.")
+    distance = float(points) * spec.point
+    if not math.isfinite(distance):
+        raise ValueError("Distância do sinal excedeu o preço finito; confira pontos e especificação.")
+    return distance
+
+
+def _signal_price(level, tick):
+    """Nível de sinal válido e positivo, no tick mais próximo (empate para cima)."""
+    if not math.isfinite(level) or level == np.finfo(float).max or level <= 0:
+        return np.nan
+    value = float((Decimal(str(level)) / Decimal(str(tick))).to_integral_value(rounding=ROUND_HALF_UP)
+                  * Decimal(str(tick)))
+    return value if math.isfinite(value) and 0 < value < np.finfo(float).max else np.nan
+
+
+def _signal_stop_price(raw, direction, offset, tick):
+    if not math.isfinite(raw) or raw == np.finfo(float).max:
+        return np.nan
+    return _signal_price(raw - direction * offset, tick)
+
+
 def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec] = None,
                  config: Optional[BacktestConfig] = None, start_index: int = 0,
                  signals: Optional[pd.DataFrame] = None, cashflows=None, check=None,
@@ -260,6 +290,12 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
     rules = exit_rules_override if exit_rules_override is not None else strategy.exit_rules()
     fixed_target = _fixed_point_distance(getattr(rules, "target_points", None), spec, label="Alvo")
     fixed_stop = _fixed_point_distance(getattr(rules, "stop_points", None), spec, label="Stop")
+    signal_stop_levels = rules.move_guard_from_signal_stop or rules.signal_stop_offset_points > 0
+    stop_offset = _signal_point_distance(rules.signal_stop_offset_points, spec) if signal_stop_levels else 0.0
+    # Overrides explícitos T19.18 continuam ancorados no fill e substituem o padrão S10.
+    signal_target_distance = (_signal_point_distance(rules.signal_target_points, spec)
+                              if rules.signal_target_points is not None
+                              and fixed_target is None and rules.target_r is None else None)
     n = len(data)
 
     o, h, l, c = (data[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
@@ -381,8 +417,17 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
             d, s = pending_entry, i - 1
             entry = o[i] + spr_open[i] + slip if d > 0 else o[i] - slip
             stop = (entry - d * fixed_stop) if fixed_stop is not None else (stop_long[s] if d > 0 else stop_short[s])
+            if fixed_stop is None and signal_stop_levels:
+                stop = _signal_stop_price(stop, d, stop_offset, spec.tick)
+            signal_target = (None if signal_target_distance is None else
+                             _signal_price(c[s] + d * signal_target_distance, spec.tick))
+            stop_side = o[i] + (spr_open[i] if d < 0 else 0)
+            invalid_signal_stop = signal_stop_levels and (
+                not np.isfinite(stop) or not 0 < stop < np.finfo(float).max or (stop_side-stop)*d <= 0)
+            invalid_signal_target = signal_target is not None and (
+                not np.isfinite(signal_target) or (signal_target-entry)*d <= 0)
             risk_px = (entry - stop) * d
-            if not np.isfinite(risk_px) or risk_px <= 0:
+            if not np.isfinite(risk_px) or risk_px <= 0 or invalid_signal_stop or invalid_signal_target:
                 skipped_gap += 1     # abriu além do stop
             else:
                 base = equity + cash_total if cfg.compound else cfg.initial_equity
@@ -390,7 +435,9 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 if volume <= 0:
                     skipped_min_lot += 1
                 else:
-                    target = (entry + d * fixed_target) if fixed_target is not None else (tgt_long[s] if d > 0 else tgt_short[s])
+                    target = (signal_target if signal_target is not None else
+                              (entry + d * fixed_target) if fixed_target is not None else
+                              (tgt_long[s] if d > 0 else tgt_short[s]))
                     if not np.isfinite(target) and rules.target_r:
                         target = entry + d * rules.target_r * risk_px
                     pos = {"dir": d, "entry": entry, "stop": stop, "stop_kind": "stop", "initial_stop": stop,
@@ -445,6 +492,16 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 new = c[i] - d * rules.trailing_atr * atr[i]
                 if (new > pos["stop"]) if d > 0 else (new < pos["stop"]):
                     pos["stop"], pos["stop_kind"] = new, "trailing"
+            if rules.move_guard_from_signal_stop:
+                raw = stop_long[i] if d > 0 else stop_short[i]
+                guard = _signal_stop_price(raw, d, stop_offset, spec.tick)
+                current, mark = pos["stop"], c[i] + (spr_close[i] if d < 0 else 0)
+                # Avaliado APÓS ATR/BE e os toques intrabar. Só protege barras seguintes.
+                # Recusa local mantém SL/TP/volume; não simula aceite do executor/broker.
+                if (np.isfinite(guard) and np.isfinite(current) and 0 < current < np.finfo(float).max
+                        and np.isfinite(mark) and mark != np.finfo(float).max
+                        and (mark-guard)*d > 0 and (guard-current)*d > 0):
+                    pos["stop"], pos["stop_kind"] = guard, "trailing"
             if rules.max_bars and i - pos["i"] + 1 >= rules.max_bars:
                 close_all(i, fill_exit(d, c[i], spr_close[i]), "time")
             elif rules.eod_exit and last_of_day[i]:
