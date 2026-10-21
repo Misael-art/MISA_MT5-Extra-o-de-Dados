@@ -4049,3 +4049,10 @@ reais, resultado−819,29 e reabertura reconciliados, em base copiada. Não é p
 nem aprovação financeira. Compilação isolada0/0 não é binário carregado; CI final/revisão,
 instalação e aceite nativo/replay/visual seguem pendentes. Cache/live/Windows físico não
 qualificados; T19.38 completa permanece aberta.
+
+
+Correção T19.38 do CI39548192469/ce09fe6: contagens de catálogo atualizadas por lista
+explícita, fixture exige especificação tipada nos novos níveis; projeção T16.6 recusa
+Move Guard sem série/contexto, preservando paridade legada e sem gestor paralelo.
+58 focados Tk/Xvfb e14 re-simulação passaram. Fonte/pin MQL e backtester intactos;
+CI final, revisão do corretivo e instalação continuam pendentes.

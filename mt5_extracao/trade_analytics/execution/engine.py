@@ -59,6 +59,10 @@ class ExitPolicy:
     @classmethod
     def from_rules(cls, rules) -> "ExitPolicy":
         """O modo base de uma estratégia Python: as regras de saída dela."""
+        if getattr(rules, "move_guard_from_signal_stop", False):
+            raise ValueError("Re-simulação base com Move Guard exige os níveis do sinal por barra; "
+                             "este percurso ainda não os reconstrói. Use o backtest da estratégia; "
+                             "o replay nativo mantém seu aceite próprio.")
         return cls(target_r=None, use_original_target=True, partial_r=rules.partial_r,
                    partial_fraction=rules.partial_fraction, breakeven_after_partial=rules.breakeven_after_partial,
                    trailing_atr=rules.trailing_atr, max_bars=rules.max_bars, eod_exit=rules.eod_exit,temporal=rules.temporal)

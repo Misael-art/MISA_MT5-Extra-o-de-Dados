@@ -18,7 +18,13 @@
     "tests/test_stoch_native_profile.py": "efe6117edb74f78da1ef91f3d8aec688218a248c74238fa87165d81b31b4371f",
     "tests/test_stoch_events.py": "a750e902e91bd8515143e6dcaa765ee87aa462b3f2a428c5b546eeaf7d47506c",
     "tests/test_stoch_preset_execution.py": "96f66493338f8338b174f558e278d4fe190ce644d13f020a22180af0187d88df",
-    "mt5_extracao/presets/protocol.py": "bf2b8456e533c0fd92c4930b7e7e727d96372a548a6376af88aa104055d8405f"
+    "mt5_extracao/presets/protocol.py": "bf2b8456e533c0fd92c4930b7e7e727d96372a548a6376af88aa104055d8405f",
+    "mt5_extracao/trade_analytics/execution/engine.py": "1e1e4d51c0bb5829980c1c3e23057056a2408cbf240a243146c337653366fdc3",
+    "tests/test_cli_agent.py": "7db39ad447b3ba184cf83a72bc418ae4350d5f753a16311a1630a0a877d82917",
+    "tests/test_robots_catalog.py": "c0a7ea2512790ca7c1a0ba8f60fd975de28d474e22114f25ef5e2a18f9f2422d",
+    "tests/test_trade_resim.py": "97c91290d63c0e893aac7e90a6eea8834edf3b254829739bfd44822c156f9d3e",
+    "tests/test_ui_main_window.py": "be5edba36c48948674f2a2d08f1ece2f58fc588d157e5b368a2761df54910ee4",
+    "docs/sdk/stoch_ema9_nativo.md": "6d7643947798ff6e64e852de64ed76d95d81e85fe6fe3b39ae25be10f92fa827"
   },
   "validation": {
     "focused_integration_previous": 187,
@@ -46,7 +52,22 @@
     },
     "final_integration": 203,
     "strict_protocol_markers": true,
-    "incremental_same_or_plus_one": true
+    "incremental_same_or_plus_one": true,
+    "ci_correction": {
+      "rejected_run": 39548192469,
+      "rejected_head": "ce09fe669f0dec60d79c97c90a83640ff3c8cb6c",
+      "linux_failures": 5,
+      "windows_failures": 8,
+      "causes": [
+        "old Python catalog counts/list",
+        "generic unknown symbol fixture for new signal point levels",
+        "base re-simulation does not reconstruct signal MoveGuard context"
+      ],
+      "focused_tk_tests": 58,
+      "final_resimulation_tests": 14,
+      "tests_skipped_or_deleted": false,
+      "new_final_ci_required": true
+    }
   },
   "python_actual_history": {
     "isolated_consistent_database_copy": true,
@@ -79,7 +100,8 @@
     "native Tester/replay/visual acceptance",
     "physical Windows",
     "native MoveGuard execution both sides",
-    "live DEMO acceptance separately authorized context"
+    "live DEMO acceptance separately authorized context",
+    "Signal-driven MoveGuard base resimulation requires qualified per-bar context; projection now refuses"
   ],
   "material_limits": [
     "OpenObserved final response does not certify every earlier retry",

@@ -7,6 +7,7 @@ import pytest
 from mt5_extracao import cli
 from mt5_extracao.database_manager import DatabaseManager
 from tests.market_data import random_walk, trend
+from tests.test_robots_catalog import PYTHON_KEYS
 
 LIBRARY = Path(__file__).parent / "robots_library"
 
@@ -72,7 +73,7 @@ def test_robots_list_and_backtest_as_json(env, capsys):
 
 def test_validate_and_status_point_to_the_next_action(env, capsys):
     state = run(capsys, env + ["status"])["data"]
-    assert state["base"]["series"] == 2 and state["robots"]["python"] == 7 and state["robots"]["mql5"] == 2
+    assert state["base"]["series"] == 2 and state["robots"]["python"] == len(PYTHON_KEYS) and state["robots"]["mql5"] == 2
     assert state["robots"]["high_risk"] == ["mql5:martingale"]
     ids = [a["id"] for a in state["next_actions"]]
     assert ids[0] == "atualizar" and "especificacoes" in ids and "validar" in ids      # séries de teste são antigas
