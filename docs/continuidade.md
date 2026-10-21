@@ -2510,3 +2510,16 @@ cache inelegível, REAL proibida, Windows físico/carteira/gradientes próprios.
 Contrato docs/sdk/demo_operacional.md; recibo T8_7_DEMO_PARCIAL_20261020.json.
 
 Integração anterior conferida: H35/e5f4842 → M162/a0cd3c4, seis checks no runtime4517299, árvore final revisada idêntica. Este complemento T8.7 altera apenas documentação e não promove execução/aceite ao vivo.
+
+
+### T19.34 — corpo desmapeado por altura (2026-10-21)
+
+1b0 e e070 falharam Windows no mesmo900×620/144DPI, widthfits mas mapped0.
+Nenhum foi integrado/instalado. Novo recorte em172 usa ScrollableContent já existente
+em volta da página (filtros/resumo/corpo), mantendo as rolagens anteriores e modelos.
+Reprodução Linux escala suportada1,5 deixou o corpo semmapa antes;3dirigidos44,70 e
+4adjacentes28,36 passaram após. Primeiro Windows isolado3casos antecede a suíte CI
+completa/60%inalterada, sem waiver/dispatch. Nova captura histórica privada48fede,
+3trades/111,0875,24bounds/2temas+escala1,5, sem cálculo; contexto acessível, navegação
+/globalstatus ainda têm cortes com fonte extrema. T19.34 ampla/Windows físico pendentes.
+Compor por Git em173/174/175 antes de promover qualquer ponta; nova CI/instalação próprias.
