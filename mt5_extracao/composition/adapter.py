@@ -68,14 +68,19 @@ class BaseAdapter:
         return replace(config if config is not None else BacktestConfig(),
                        risk_per_trade=sizing["risk_fraction"], compound=sizing["compound"])
 
-    def run(self, bars, spec, config=None, *, timeframe, time_basis=None):
+    def run(self, bars, spec, config=None, *, timeframe, time_basis=None,
+            start_index=0, cashflows=None, check=None, observation_timeframe=None):
         from ..strategies.backtester import run_backtest
 
+        if check is not None:
+            check()
         context = self.composition.to_dict()["context"]
         if spec.symbol != context["symbol"]:
             raise ValueError("context.symbol: especificação de outro ativo; carregue o contrato do símbolo selecionado.")
         if timeframe != context["timeframe"]:
             raise ValueError("context.timeframe: série difere da composição; carregue a série selecionada.")
+        if observation_timeframe is not None and observation_timeframe != timeframe:
+            raise ValueError("observation_timeframe: observação difere do timeframe da composição.")
         strategy = self.strategy()
         value = self.composition.to_dict()
         profit, protection = value["profit_exit"], value["protection"]
@@ -85,6 +90,14 @@ class BaseAdapter:
         from ..strategies.cooldown import from_filters as cooldown_from_filters
         cooldown = cooldown_from_filters(value["filters"])
         entry_options = dict(entry_policy=entry_policy,cooldown=cooldown,entry_time_basis=time_basis) if entry_policy is not None or cooldown is not None else {}
+        if start_index:
+            entry_options["start_index"] = start_index
+        if cashflows is not None:
+            entry_options["cashflows"] = cashflows
+        if check is not None:
+            entry_options["check"] = check
+        if observation_timeframe is not None:
+            entry_options["observation_timeframe"] = observation_timeframe
         if cooldown is not None:entry_options["observation_timeframe"]=timeframe
         if profit["mode"] == protection["mode"] == "strategy_default" and temporal["mode"]=="disabled":
             return run_backtest(bars, strategy, spec, self.backtest_config(config),

@@ -34,7 +34,9 @@ def add_parser(sub):
     p.add_argument("--purpose", choices=("evaluation", "tuning"), default="evaluation")
     p.add_argument("--no-cache", action="store_true")
     p.add_argument("--discard-reason", default="")
-    p = commands.add_parser("evaluate", help="avalia um pedido BASE, com orçamento por pedido e journal prévio")
+    p.add_argument("--executor", choices=("base_v1", "composition_v1"), default="base_v1",
+                   help="base_v1 preserva o inicial; composition_v1 aplica modos Python já suportados")
+    p = commands.add_parser("evaluate", help="avalia o pedido com o executor declarado, orçamento e journal prévios")
     p.add_argument("request_id")
     p = commands.add_parser("status", help="consulta journal e exposição; não entrega métricas financeiras")
     p.add_argument("protocol_id")
@@ -56,7 +58,7 @@ def run(args, ctx):
         composition = _read(args.composition)
         result = service.request(ctx.db, args.protocol, args.key, composition, role=args.role,
                                  origin=args.origin, purpose=args.purpose, use_cache=not args.no_cache,
-                                 discard_reason=args.discard_reason, config=ctx.config)
+                                 discard_reason=args.discard_reason, config=ctx.config, executor=args.executor)
     elif action == "evaluate":
         result = service.evaluate(ctx.db, args.request_id, config=ctx.config)
     elif action == "status":
