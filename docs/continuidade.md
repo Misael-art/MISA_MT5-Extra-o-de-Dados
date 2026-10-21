@@ -1,3 +1,18 @@
+## T19.40 — HA/HiLo Python e consumidor em revisão, 2026-10-21
+
+Núcleo515a3b9 composto por Git; HA/HiLo1.20/fp5dad3bbabab0343f/H6b4f integrado no
+HADOUKEN PR48. Perfil fechado10inputs, Default/Manual/três parâmetros e risco<=0,5%.
+TP ausente exclusivo deste perfil, SL obrigatório; propostas por janela e intenção
+reconstruída não comprovam fechamento/reversão. Variante com SL inicial fixo, sem
+trailing/sempre posicionado. [Contrato e limites](sdk/ha_hilo_nativo.md).
+
+S10/App166 d6bb557 e VWAP/App1679579a62 passaram checks finais e foram instalados
+com H9334/H11bb correspondentes; configuração/atalho/ponte195627/principal preservados,
+posições/ordens0 antes/depois. S10Manual rev2 e histórico528barras/5trades/−819,29
+reaberto na UI instalada. Madrid/App168 em revisão/CI, ainda não instalado. HA/HiLo
+histórico isolado528barras/24trades/−382,223 conciliado, sem aceite financeiro/nativo.
+Sincronização privada/painel/Tester/replay/Windows físico/live continuam pendentes.
+
 ## T19.39 — Madrid Python e consumidor em revisão, 2026-10-21
 
 Núcleo111ae036 composto por Git; fonte Madrid1.20/fp870c0f8db71c3d5a integrada no

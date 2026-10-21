@@ -120,6 +120,9 @@ def default_composition(robot, *, symbol, timeframe):
     if robot.key=="mql5:hdk_pullback_nativo":
         from .pullback_native import default_composition as pullback_default
         return pullback_default(robot,symbol=symbol,timeframe=timeframe)
+    if robot.key=="mql5:hdk_hahilo":
+        from .ha_hilo_native import default_composition as ha_hilo_default
+        return ha_hilo_default(robot,symbol=symbol,timeframe=timeframe)
     if robot.key=="mql5:hdk_madrid":
         from .madrid_native import default_composition as madrid_default
         return madrid_default(robot,symbol=symbol,timeframe=timeframe)
@@ -319,6 +322,9 @@ def native_adapter(composition,robot):
     if robot.key=="mql5:hdk_pullback_nativo":
         from .pullback_native import PullbackNativeAdapter
         return PullbackNativeAdapter(composition,robot)
+    if robot.key=="mql5:hdk_hahilo":
+        from .ha_hilo_native import HaHiLoNativeAdapter
+        return HaHiLoNativeAdapter(composition,robot)
     if robot.key=="mql5:hdk_madrid":
         from .madrid_native import MadridNativeAdapter
         return MadridNativeAdapter(composition,robot)

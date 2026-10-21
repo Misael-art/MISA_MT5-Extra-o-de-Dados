@@ -4092,3 +4092,25 @@ contexto próprio. [Limites e evidência](sdk/madrid_nativo.md).
 Tarefa integral permanece aberta: variante sem FC/FV persistente/TP móvel, CI final,
 instalação correspondente, Tester/replay real, Windows físico e DEMO operacional.
 S10/VWAP não perdem seus pins/guardas nem seus resultados anteriores.
+
+
+### T19.40 — HA/HiLo, variante e consumidor em revisão (2026-10-21)
+
+Núcleo515a3b9 composto por Git, somente3 runtimes e políticas compartilhadas existentes.
+Perfil HA/HiLo1.20/fp5dad3bbabab0343f/H6b4f,10inputs fechados,3params e risco composto
+até0,5%, Default preservado e Manual revisionado/exportado. Leitor recompõe propostas
+porjanela, buffer/SLbrutos, TPzero obrigatório nesteperfil; não infere execução da
+reversão pela intenção reconstruída. Fontes do observador mantêm mesmosrisk/executor.
+
+220 testes integraçãoTk/service/regressões passaram,80próprios/432núcleo compatíveis
+reutilizados. Expert/wrapper6276Wine0/0, contexto liberado/principal preservado; pacote
+real10inputs relido em base isolada. HistóriaPython528barras/24trades/−382,223
+reaberta/conciliada, spechistórica desconhecida; não financeira/paridade. Cachegenérico
+pode reconhecer identidade, sem qualificaçãooperacional/nativa. Tarefa integral
+continua aberta: variante/CI/revisão/instalação, reversão broker/Tester/replay/painel,
+Windowsfísico e DEMO. [Limites](sdk/ha_hilo_nativo.md).
+
+Dependências já instaladas: App166d6bb557/H9334 (S10) e App1679579a62/H11bb (VWAP),
+checks finais verdes, mesma configuração/atalho/ponte/principal e exposição0. S10Manual
+rev2/export15inputs e backtest negativo reabertos na UI do proprietário. Madrid
+mantém sua fila App168; não foi promovido por este registro.
