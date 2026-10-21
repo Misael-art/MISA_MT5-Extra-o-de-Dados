@@ -317,8 +317,15 @@ def test_corrected_manifest_cannot_wash_overlapping_holdout_exposure(source):
 @pytest.mark.parametrize("phase", ["before", "after"])
 def test_process_death_recovers_exact_reserved_run_without_duplicate_publication(source, monkeypatch, phase):
     from tests import experiment_helpers
+    from mt5_extracao.strategies import indicators
     db, _, _, _, _ = source
     item = asked(source)
+    # Internar a MESMA constante não altera código/semântica; o processo filho
+    # começa sem esse detalhe de memória do pai. Não pode invalidar a retomada.
+    constant = next(value for value in indicators.smma.__code__.co_consts[1:]
+                    if type(value) is str and not value.isidentifier())
+    held_constant = sys.intern(constant)
+    assert held_constant == constant
     original = backtest.run_python
     monkeypatch.setattr(experiment_helpers, "original_run", original)
     monkeypatch.setattr(backtest, "run_python", experiment_helpers.process_crash)

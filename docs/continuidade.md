@@ -1,5 +1,16 @@
 ## T20.12 — Registro de uma avaliação explícita, em revisão (2026-10-21)
 
+PR170 ainda sem merge/instalação: CI39569538013 teve uma falha Linux na retomada
+após morte do processo (2.597 passaram/216 skips); PostgreSQL, lint e instaladores
+passaram nessa ponta. O integrador reproduziu o erro com internação de uma constante
+textual sem alteração de código/valor e corrigiu somente a serialização da assinatura
+de código carregado (`marshal` protocolo0). A regressão preserva a morte real do
+processo e a mesma reserva, agora com estados de internação diferentes entre pai
+e filho. Checks finais da nova ponta continuam obrigatórios; nenhuma guarda de
+checkpoint/identidade foi afrouxada e nenhum checkpoint antigo foi migrado.
+O corretivo passou86 testes focados (52 serviço/schema/CLI,31 identidade/cache e3
+processos/seeds; contagens sobrepostas com provas anteriores); PG2 depende do novo CI.
+
 O próximo recorte usa um único registro de protocolo, alternativa, pedido deliberado,
 execução técnica e acesso aos dados. Delega uma avaliação Python BASE ao `run_python`
 e ao `Budget` existentes, com snapshots imutáveis escolhidos no protocolo. Aceita

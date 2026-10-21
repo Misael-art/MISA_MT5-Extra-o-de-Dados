@@ -74,6 +74,18 @@ real, com mesmo banco/configuração/batch e limites exatos, sem posse ativa.
 `begin` confere o plano; a injeção não concede limite diferente. Código/dados/
 configuração alterados não são aceitos como a retomada do plano antigo.
 
+O CI da primeira ponta identificou divergência de assinatura entre o processo
+interrompido e o processo que retoma. O integrador reproduziu o mesmo erro ao
+internar uma constante textual do código carregado: `marshal` no protocolo padrão
+incluía uma flag de memória, embora fonte, código e valor fossem iguais. A assinatura
+agora usa o protocolo 0 ao serializar código normalizado, sem flags de internação
+ou referências compartilhadas. Continua incluindo fontes, código carregado,
+constantes, runtime, dados e settings; uma alteração real continua invalidando.
+Não há migração/aceitação automática de checkpoints gerados por outro código ou
+pela implementação anterior da assinatura. A operação que internou a constante
+no CI original não foi identificada; o cenário equivalente foi reproduzido e
+coberto pela regressão de morte/retomada.
+
 Se o processo morrer antes da publicação, outra admissão técnica recupera a
 reserva do mesmo `run_id`, dentro dos limites restantes; a execução abandonada
 fica marcada como interrompida. Se morrer após o commit e antes de encerrar o
