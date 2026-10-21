@@ -12,6 +12,9 @@ Não é uma implementação de busca/seleção T19.27/28 nem uma qualificação 
 
 ## Execução e capacidades
 
+Esta extensão pertence ao serviço interno e à CLI explícita. A assinatura pública
+`sdk.run_python` do SDK 1 é preservada por wrapper e não recebe `composition`.
+
 `robots.backtest.run_python(..., composition=...)` recebe uma `Composition` válida
 ou seu objeto JSON. Ela já contém estratégia, parâmetros, ativo, timeframe,
 dimensionamento, políticas e filtros; combinar com `strategy=` ou `params=` é

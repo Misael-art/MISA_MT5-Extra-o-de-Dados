@@ -1,5 +1,13 @@
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
+Corretivo do SDK: CI39576824302 teve uma falha de assinatura pública (2.617 testes
+passaram/218 skips). O reexport direto de `run_python` expunha o argumento interno
+`composition`. Wrapper explícito agora conserva os quinze argumentos/defaults do
+SDK1, sem alterar `SURFACE`/`API_VERSION` ou o produtor interno. Nova prova confere
+encaminhamento legado; SDK e composição passaram24 testes em27,84s. O CI final
+da ponta corrigida permanece obrigatório; falha anterior preservada. Composição
+continua opt-in do serviço/CLI, sem promoção silenciosa ao SDK público.
+
 Opt-in `composition_v1` usa o BaseAdapter e o Backtester existentes, com políticas,
 filtros, risco/capitalização e identidade da seleção persistidos no run. Saída
 antecipada, sinais seguintes, cota e lotes são recalculados na sequência completa;
