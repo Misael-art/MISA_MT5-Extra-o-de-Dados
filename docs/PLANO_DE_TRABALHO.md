@@ -4049,3 +4049,20 @@ reais, resultado−819,29 e reabertura reconciliados, em base copiada. Não é p
 nem aprovação financeira. Compilação isolada0/0 não é binário carregado; CI final/revisão,
 instalação e aceite nativo/replay/visual seguem pendentes. Cache/live/Windows físico não
 qualificados; T19.38 completa permanece aberta.
+
+
+### T19.36 — VWAP percentual, consumidor em revisão (2026-10-21)
+
+Fundação Python48feaf8 composta por Git e perfil nativo VWAP1.20/fp7139d746ab6b2c1d
+sobre Hdc789710/PR46: Default preservado, Manual/revisão/exportação, parâmetros e
+orçamento fechado, TP central obrigatório quando banda0. Conferência estrita de
+janelas OHLC+real/ticks e fonte efetiva; leitor compartilhado preserva S10. 152 testes
+Tk/integração;110 novos Python/240 regressões compatíveis; doctor20/1/0; Expert e
+wrapper de recibo compilados6276/Wine0/0. Histórico real copiado2112barras M15,
+volume ticks explicitamente escolhido após recusa Auto pelo gate real_volumeunknown:
+0operações/resultado0, salvo/reaberto; sem aceite financeiro/negociação.
+
+[Contrato, evidências e limites](sdk/vwap_bands_nativo.md). Revisão/CI/instalação do
+consumidor e recibo/Tester/replay real permanecem próprios. Auto Python não recebe
+waiver de fonte; cache, completude, broker, Windows físico e live não qualificados.
+T19.36 completa permanece aberta. S10/App166 conserva sua fila de CI separada.

@@ -1,3 +1,20 @@
+## T19.36 — VWAP Python e consumidor em revisão, 2026-10-21
+
+Fundação48feaf8 composta por Git, perfil VWAP1.20/fp7139d746ab6b2c1d ligado a
+Hdc789710 (PR46 integrada11bbbd76), Default/Manual/exportação e conferência de
+duas janelas OHLC/volumes/fonte. 152 testes de integração Tk/Xvfb,110 novos Python e
+240 regressões reutilizados, doctor20/1/0 e duas compilações0/0. Histórico real copiado
+EURUSD/M15setembro: Auto recusado por capacidade real_volume desconhecida; seleção
+explícita ticks teve2112 barras/0operações/resultado0, salvo e reaberto. Não é aceite
+de execução. Contrato e limites em [VWAP nativo](sdk/vwap_bands_nativo.md).
+
+App165 integrado328cae e instalado com H741058/Safety1.8.0; dois Manuals reais S09/PB
+reabertos/exportados, principal/ponte preservados, sem novo binário carregado. App166
+S10ce09fe6 permanece sob CI final; não confundir fonte preparada com release ativa.
+VWAP também aguarda revisão/CI e instalação do conjunto. Tester/replay real, painel
+visual e live DEMO seguem dependentes da sincronização privada não estabelecida;
+nenhuma nova sondagem sem pré-condição observável. Windows físico/cache pendentes.
+
 ## T19.38 — consumidor S10 em revisão, 2026-10-21
 
 S10 Python/Move Guard compartilhado composto por Git a partir de d4b084de, com perfil

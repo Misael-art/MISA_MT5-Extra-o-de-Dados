@@ -1,0 +1,88 @@
+{
+  "task": "T19.36",
+  "date": "2026-10-21",
+  "scope": "Python VWAP composed by Git plus closed native preset/UI/strict two-window decision reference; not operational acceptance",
+  "python_foundation": "48feaf8be5f785b1fa84a6b007fea8ed46c146e1",
+  "native": {
+    "revision": "dc789710f57a54260c0243ceb1716b66ae523ea9",
+    "merged": "11bbbd7633de2fa6b2666b06f521d19d2142359e",
+    "version": "1.20",
+    "fingerprint": "7139d746ab6b2c1d",
+    "inputs": 11,
+    "compile_expert": {
+      "build": 6276,
+      "platform": "Linux Wine",
+      "errors": 0,
+      "warnings": 0,
+      "binary_sha256": "cbc1aff4a0716f75139d90017992ef704b7599ac5169bc0acb70f4fa7df33fae"
+    },
+    "compile_wrapper": {
+      "errors": 0,
+      "warnings": 0,
+      "binary_sha256": "4ffcbdddbcc0560ebbdf7daf0c2b20dbaa7c457510f944bbd47036fdaa03e84c"
+    },
+    "context_released": true,
+    "own_processes_remaining": [],
+    "principal_unchanged": true
+  },
+  "validation": {
+    "integration_tk_tests": 152,
+    "python_new_reused": 110,
+    "composition_regression_reused": 240,
+    "doctor": {
+      "ok": 20,
+      "warning_optional": 1,
+      "failure": 0
+    },
+    "real_source_package": {
+      "default_preserved": true,
+      "manual_revision": 2,
+      "export_read_back": true,
+      "inputs": 11,
+      "loaded_receipt": false
+    },
+    "historical": {
+      "database": "consistent isolated copy of owner data",
+      "symbol": "EURUSD",
+      "timeframe": "M15",
+      "start": "2026-09-01",
+      "end": "2026-09-30",
+      "trade_from": "2026-09-15",
+      "risk_fraction": 0.0025,
+      "auto": "refused: real_volume zeros means unknown capability; refusal preserved",
+      "explicit_volume_source": 1,
+      "bars": 2112,
+      "trades": 0,
+      "net_profit": 0,
+      "reopened": true,
+      "ledger_reconciled": true,
+      "source_certified": false,
+      "historical_spec_known": false
+    }
+  },
+  "limitations": [
+    "Native receipt, Tester/replay, visual panel, Windows hardware and live remain pending.",
+    "Auto Python remains ineligible when real-volume capability is unknown; no quality waiver.",
+    "Fixed-prefix Python differs from native sliding1500; actual selected volume source is recorded.",
+    "No producer sequence/hash: whole lost context pairs can evade completeness proof.",
+    "Entry observation is last response per call, not all attempts; latch is instance-local.",
+    "Proposed levels are not final SL/TP or ModifySL receipts.",
+    "No cache/source/external parity/broker/portfolio qualification."
+  ],
+  "operational_acceptance": false,
+  "sha256": {
+    "mt5_extracao/composition/native.py": "c0dbb309a4e6dc0f0cef852274d9200ccaaa80fc65f77c9746b98e843e169d2e",
+    "mt5_extracao/composition/vwap_native.py": "96a9719fddede0621f570691556be98a069e0f33beed8c2dabdc3fe545eeece3",
+    "mt5_extracao/presets/execution.py": "ce724c1a2713dd2f69564343a783ea3dff82c9cfd20ecae8ea4aaded0a8daf09",
+    "mt5_extracao/presets/stoch_events.py": "3eb84c99dc2f78e67e98dc18cc84e45266df9c1b63a7bce158345e0b123327e2",
+    "mt5_extracao/presets/strategy_context.py": "64b550fabc121b07d1117209f8a867962007d19f52137165ef77a689b9a52394",
+    "mt5_extracao/presets/vwap_events.py": "68f6ee31b97e347b043271dfb9568eafd8b95994be1500bfd30a450d64b99cc3",
+    "mt5_extracao/presets/protocol.py": "bf2b8456e533c0fd92c4930b7e7e727d96372a548a6376af88aa104055d8405f",
+    "mt5_extracao/ui/robot_controls.py": "edce016b06684089e2d710b830c8efd2c10e2affc3a65a555439d229cac3f801",
+    "mt5_extracao/ui/preset_workflow.py": "722e0efdf2c95710eb02608396f33ef293a225462993d1ff69a5d573527d0d3a",
+    "tests/test_vwap_events.py": "fc1b54ec8b9329b7387113ba41489470ae66ba69da126fda2725609b1d58cc62",
+    "tests/test_vwap_native_profile.py": "eec03a53da075fc5607ca737e9373abca90713bad94cd08a30a4c9ba6a4ea53e",
+    "tests/test_vwap_preset_execution.py": "c31aa9c033cde1d82091bffd00e58ca49b7c592a4b9edfc9e9091f5579830205",
+    "docs/sdk/vwap_bands_nativo.md": "36017a7427d62630950414ae944e2fffa3b4d97c9e9c27da84d0b75f13be940a"
+  }
+}

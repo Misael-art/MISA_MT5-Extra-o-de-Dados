@@ -20,6 +20,9 @@ def native_adapter_profile(robot):
     if robot.key=="mql5:hdk_pullback_nativo":
         from mt5_extracao.composition.pullback_native import require_robot
         return require_robot(robot)
+    if robot.key=="mql5:hdk_vwapbands":
+        from mt5_extracao.composition.vwap_native import require_robot
+        return require_robot(robot)
     if robot.key=="mql5:hdk_stochema9":
         from mt5_extracao.composition.stoch_native import require_robot
         return require_robot(robot)
@@ -43,6 +46,7 @@ INPUT_LABELS.update({"InpMagicNumber":"Magic", "InpDailyLossPct":"Perda máxima 
  "InpWeeklyLossPct":"Perda máxima semanal (%)", "InpMaxDrawdownPct":"Drawdown máximo (%)",
  "InpKPeriod":"Período K", "InpSlowing":"Desaceleração K", "InpDPeriod":"Período D SMA", "InpEmaPeriod":"Período EMA",
  "InpUpperLevel":"Nível de compra", "InpLowerLevel":"Nível de venda", "InpStopOffsetPoints":"Offset EMA (pontos)",
+ "InpEntryBandPct":"Banda de entrada (%)", "InpTargetBandPct":"Banda de alvo (%; 0 central)", "InpVolumeSource":"Fonte de volume (0/1/2)",
  "InpExportTrades":"Exportação adicional do Expert"})
 
 class NameDialog:
@@ -78,12 +82,16 @@ class PresetWorkflow:
         if not self.symbol:raise ValueError("Escolha Ativo / TF antes de abrir os presets.")
         self.pullback=robot.key=="mql5:hdk_pullback_nativo"
         self.stoch=robot.key=="mql5:hdk_stochema9"
+        self.vwap=robot.key=="mql5:hdk_vwapbands"
         profile_level=native_adapter_profile(robot)[2]
         self.strategy_fields=(("trend","EMA de tendência (barras)"),("adx_min","ADX mínimo"),("rsi_period","RSI (barras)"),("rsi_pullback","RSI de recuo"),("swing_bars","Fundo/topo (barras)"),("target_r","Alvo em R")) if self.pullback else FIELDS
         if self.stoch:
             from mt5_extracao.composition.stoch_native import STRATEGY_FIELDS
             self.strategy_fields=STRATEGY_FIELDS
-        self.profile_label="S10 · Estocástico/EMA" if self.stoch else "Pullback" if self.pullback else "S09"
+        if self.vwap:
+            from mt5_extracao.composition.vwap_native import STRATEGY_FIELDS
+            self.strategy_fields=STRATEGY_FIELDS
+        self.profile_label="VWAP Bands" if self.vwap else "S10 · Estocástico/EMA" if self.stoch else "Pullback" if self.pullback else "S09"
         self.window=tk.Toplevel(self.ui.root);self.window.title(self.profile_label+" · Default e Manual")
         self.window.geometry("920x780");self.window.minsize(650,550);self.window.transient(self.ui.root)
         self.window.protocol("WM_DELETE_WINDOW",self.close)
@@ -102,7 +110,7 @@ class PresetWorkflow:
         content=ScrollableContent(self.window,self.ui.theme);content.pack(fill=tk.BOTH,expand=True)
         self.body=body=content.content
         ttk.Label(body,text=self.profile_label+" · Default → Manual → backtest → replay",style="Title.TLabel",wraplength=850).pack(anchor="w",padx=12,pady=(12,4))
-        ttk.Label(body,text=f"{self.symbol} · {self.timeframe} · "+("K lento por razão de somas · D SMA · stop/Move Guard EMA · alvo desde o sinal" if self.stoch else "EMA/ADX/RSI · stop no swing · alvo em R · metade em 1R" if self.pullback else "variante mínima EMA com SL/TP fixos"),style="Heading.TLabel",wraplength=850).pack(anchor="w",padx=12)
+        ttk.Label(body,text=f"{self.symbol} · {self.timeframe} · "+("HLC3 ponderado · bandas percentuais · offset além da banda · alvo fixado no sinal" if self.vwap else "K lento por razão de somas · D SMA · stop/Move Guard EMA · alvo desde o sinal" if self.stoch else "EMA/ADX/RSI · stop no swing · alvo em R · metade em 1R" if self.pullback else "variante mínima EMA com SL/TP fixos"),style="Heading.TLabel",wraplength=850).pack(anchor="w",padx=12)
         ttk.Label(body,text="Histórico no Strategy Tester DEMO · execução ao vivo não faz parte deste percurso.",style="Info.TLabel",wraplength=850).pack(anchor="w",padx=12,pady=4)
         row=ttk.Frame(body,padding=12);row.pack(fill=tk.X);row.columnconfigure(0,weight=1)
         self.selected=tk.StringVar();self.combo=ttk.Combobox(row,textvariable=self.selected,state="readonly")
@@ -115,7 +123,7 @@ class PresetWorkflow:
         form=ttk.LabelFrame(body,text="Parâmetros da estratégia",padding=12);form.pack(fill=tk.X,padx=12,pady=4)
         self.fields={};self.entries=[]
         for index,(key,label) in enumerate(self.strategy_fields):
-            ttk.Label(form,text=label,wraplength=180 if self.stoch else 0).grid(row=index//3*2,column=index%3,sticky="w",padx=(0,12))
+            ttk.Label(form,text=label,wraplength=180 if self.stoch or self.vwap else 0).grid(row=index//3*2,column=index%3,sticky="w",padx=(0,12))
             value=tk.StringVar();value.trace_add("write",lambda *_:self.mark_dirty())
             entry=ttk.Entry(form,textvariable=value,width=16);entry.grid(row=index//3*2+1,column=index%3,sticky="ew",padx=(0,12),pady=(2,8))
             self.fields[key]=value;self.entries.append(entry)
@@ -138,7 +146,7 @@ class PresetWorkflow:
             self.lot_preview=tk.StringVar(value="Aguardando especificação atual do símbolo…")
             ttk.Label(lots,textvariable=self.lot_preview,wraplength=850).pack(fill=tk.X,pady=(8,0))
             for variable in (self.lot_mode,self.fixed_volume,self.risk_pct):variable.trace_add("write",lambda *_:self.mark_dirty())
-        if self.stoch:
+        if self.stoch or self.vwap:
             budget=ttk.LabelFrame(body,text="Orçamento por entrada",padding=12);budget.pack(fill=tk.X,padx=12,pady=4)
             self.risk_pct=tk.StringVar(value="0.5")
             ttk.Label(budget,text="Percentual do saldo · até 0,5% · dimensionamento por risco").pack(anchor="w")
@@ -425,7 +433,7 @@ class PresetWorkflow:
             self.lot_mode.set("Volume fixo" if sizing["mode"]=="fixed_volume" else "Por risco")
             self.fixed_volume.set(str(sizing["params"].get("volume",.01)))
             self.risk_pct.set(str(sizing["params"]["risk_fraction"]*100))
-        if self.stoch:self.risk_pct.set(str(item.composition.to_dict()["sizing"]["params"]["risk_fraction"]*100))
+        if self.stoch or self.vwap:self.risk_pct.set(str(item.composition.to_dict()["sizing"]["params"]["risk_fraction"]*100))
         if self.partials_enabled:
             plan=item.composition.to_dict()["partial_exit_plan"];items=stages(plan)
             self.partial_mode.set("Desabilitada" if not items else "Lotes" if items[0]["mode"]==1 else "Fração (%)")
@@ -471,6 +479,7 @@ class PresetWorkflow:
                                     f"Origem Default: {item.identity.default_origin or item.identity.id}"))
         if self.partials_enabled:self.protection.configure(text="Risco até 0,5% · uma posição · SL obrigatório · parcial só após redução/histórico confirmados; trailing indisponível."+(" Pullback: metade em 1R; BE somente após confirmação." if self.pullback else ""))
         if self.stoch:self.protection.configure(text="Uma posição · SL obrigatório na EMA com offset · Move Guard só aperta em barra fechada. Alvo opcional desde o fechamento do sinal; 0 desliga. Parciais/BE indisponíveis. Tester DEMO; aceite operacional pendente.")
+        if self.vwap:self.protection.configure(text="Uma posição · entrada a mercado · SL obrigatório além da banda. Alvo percentual fixado no sinal: 0 é VWAP central COM TP. Volume 0 Auto, 1 ticks, 2 real. Parciais/BE/trailing indisponíveis. Tester DEMO; aceite pendente.")
         self.clear_result();self.refresh_preview();self.update_buttons()
     def choose(self):
         if self.pending:return
@@ -486,14 +495,14 @@ class PresetWorkflow:
         data=self.current.composition.to_dict()
         for key,_ in self.strategy_fields:
             raw=self.fields[key].get().strip()
-            if self.stoch:raw=raw.replace(",",".")
-            data["strategy"]["params"][key]=(float if key in ("adx_min","rsi_pullback","target_r","upper_level","lower_level") else int)(raw)
+            if self.stoch or self.vwap:raw=raw.replace(",",".")
+            data["strategy"]["params"][key]=(float if key in ("adx_min","rsi_pullback","target_r","upper_level","lower_level","entry_band_pct","target_band_pct") else int)(raw)
         if self.lots_enabled:
             params={"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}
             mode="fixed_volume" if self.lot_mode.get()=="Volume fixo" else "risk_fraction"
             if mode=="fixed_volume":params["volume"]=float(self.fixed_volume.get().replace(",","."))
             data["sizing"]={"mode":mode,"params":params}
-        if self.stoch:data["sizing"]={"mode":"risk_fraction","params":{"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}}
+        if self.stoch or self.vwap:data["sizing"]={"mode":"risk_fraction","params":{"risk_fraction":float(self.risk_pct.get().replace(",","."))/100,"compound":True}}
         if self.partials_enabled and not self.pullback:
             mode=self.partial_mode.get()
             if mode=="Desabilitada":data["partial_exit_plan"]={"mode":"strategy_default","params":{}}
@@ -691,7 +700,7 @@ class PresetWorkflow:
         self.status.set("Inputs realmente carregados e modo nativo conferidos. Histórico/revisão da corretora sem certificação; cobertura de ticks reais depende do relatório.")
         for row in proof["ledger"]:self.trades.insert("","end",values=(row["entry_time"],row["exit_time"],"Compra" if row["direction"]>0 else "Venda",row["volume"],row["pnl"],row["stop_price"],row["target_price"]))
         expected=self.current.manifest["native"]["expected_native_inputs"]
-        for key,value in proof["inputs"]["values"].items():self.inputs.insert("","end",values=(INPUT_LABELS.get(key,key),expected.get(key,"—"),value))
+        for key,value in proof["inputs"]["values"].items():self.inputs.insert("","end",values=(("Offset além da banda (pontos)" if self.vwap and key=="InpStopPoints" else INPUT_LABELS.get(key,key)),expected.get(key,"—"),value))
         def clock(value):return datetime.fromtimestamp(value,timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         for row in proof["signals"]:self.signals.insert("","end",values=(clock(row["event_at"]),clock(row["confirmed_at"]),clock(row["available_at"]),"Compra" if row["direction"]>0 else "Venda","Sim" if row["opened"] else "Recusada",row["reason"]))
         if self.sizing is not None:
