@@ -399,3 +399,14 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
   corpo acessível via scroll externo, contexto por scroll do detalhe, filtros/seleção
   preservados. Escala1,5 em900×620 ainda tem cortes na navegação/resumo/status global;
   este recorte não os qualifica nem substitui o CI Windows final.
+
+## T19.34 — navegação e status (2026-10-21)
+
+- [x] Linux/Tk/Xvfb: nomes completos, foco/teclado, mensagens integrais, duas paletas,
+  quatro tamanhos,96/144DPI simulados e fonte1,0/1,5;10 finais aprovados131,60s.
+- [x] Histórico privado reaberto sem recálculo; banco owner/MT5 não utilizados;
+  fonte e scrollbar do detalhe corrigidas após inspeção de captura.
+- [ ] CI próprio da ponta e instalação serial depois das PRs172–175.
+- [ ] Windows físico: fonte/DPI/troca de área/Detalhes com teclado.
+
+Não altera instaladores nem qualifica acessibilidade completa, cálculos ou operação.

@@ -309,13 +309,13 @@ class UIManager:
         self.theme.on_change(self._schedule_header_layout)
         self._schedule_header_layout()
 
-        # Barra de status
-        status_bar = ttk.Frame(outer)
-        status_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
-        self.status_label = ttk.Label(status_bar, text="Status: Iniciando...", style="Page.Muted.TLabel")
-        self.status_label.pack(side=tk.LEFT)
-        self.base_label = ttk.Label(status_bar, text="", style="Page.Muted.TLabel")
-        self.base_label.pack(side=tk.RIGHT)
+        # As mensagens conservam texto integral no componente, com detalhe por teclado.
+        from mt5_extracao.ui.components import AdaptiveStatusBar
+        self.status_bar = AdaptiveStatusBar(outer, self.theme)
+        self.status_bar.pack(fill=tk.X, side=tk.BOTTOM, pady=(8, 0))
+        self.status_label = self.status_bar.status_label
+        self.base_label = self.status_bar.base_label
+        self.status_details_button = self.status_bar.details_button
 
         self.notebook = ttk.Notebook(outer)
         self.notebook.pack(fill=tk.BOTH, expand=True)
@@ -340,6 +340,9 @@ class UIManager:
         # Recursos só lê a base na primeira vez que a aba é aberta
         self.notebook.bind("<<NotebookTabChanged>>", lambda e: self.notebook.select() == str(
             self.resources_panel.frame) and self.resources_panel.on_show(), add="+")
+
+        from mt5_extracao.ui.components import AreaNavigation
+        self.area_navigation = AreaNavigation(outer, self.notebook, self.theme)
 
         self._build_symbols_tab(symbols_tab)
         self._build_log_tab(log_tab)
@@ -669,7 +672,7 @@ class UIManager:
         db = self.app.db_manager
         if not db or not db.is_connected():
             log.warning("Não foi possível ler a base: banco de dados não conectado")
-            self.base_label.config(text="Base de dados indisponível")
+            self.status_bar.set_base("Base de dados indisponível")
             return
         def work():
             from mt5_extracao.robots import store
@@ -711,7 +714,7 @@ class UIManager:
         self.robots_panel.detail.inventory_changed()
         self.filter_symbols()
         total = sum(item["rows"] for item in inventory)
-        self.base_label.config(text=f"Base: {len(self.symbols_with_data)} ativo(s), {fmt_int(total)} barras"
+        self.status_bar.set_base(f"Base: {len(self.symbols_with_data)} ativo(s), {fmt_int(total)} barras"
                                if inventory else "Base vazia: extraia o histórico de um ativo para começar")
         if self.detail_symbol:
             self.update_symbol_details(self.detail_symbol)
@@ -1231,7 +1234,10 @@ class UIManager:
         # Atualizar widget apenas se estiver disponível
         if hasattr(self, 'status_label') and self.status_label:
             try:
-                self.status_label.config(text=status_text)
+                if hasattr(self, "status_bar"):
+                    self.status_bar.set_status(status_text)
+                else:
+                    self.status_label.config(text=status_text)
             except Exception as e:
                 log.warning(f"Erro ao atualizar widget de status: {e}")
         else:
