@@ -391,6 +391,10 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
   recusa após identidade alterada. Linux/Wine real e caminhos local/Windows simulados
   estão no recorte de2026-10-21; isso não conclui paridade física T2.6 nem concorrência.
 
+- [ ] T20.12 consulta UI: verificar no Windows físico menu Exibir → Registro de estudos,
+  temas/teclado/rolagem, callbacks após fechar e ausência de escrita por consulta.
+  Tk/Xvfb Linux e teste PostgreSQL do job têm escopos próprios, sem aceite físico.
+
 - [ ] T19.34 altura: conferir Windows físico com fontes ampliadas e página rolável;
   corpo acessível via scroll externo, contexto por scroll do detalhe, filtros/seleção
   preservados. Escala1,5 em900×620 ainda tem cortes na navegação/resumo/status global;
