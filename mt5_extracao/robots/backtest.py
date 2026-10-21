@@ -57,6 +57,9 @@ def _execution_code_digest():
     def normalized(code):
         return code.replace(co_filename="", co_consts=tuple(normalized(value) if isinstance(value, types.CodeType) else value
                                                             for value in code.co_consts))
+    # O protocolo 0 grava valores sem flags de strings internadas/referências
+    # compartilhadas. Essas flags de memória podem divergir após um restart,
+    # embora o código/constantes sejam iguais; não fazem parte da identidade.
     loaded = {}
     modules = {cls.__module__ for cls in REGISTRY.values()} | {
         __name__, "mt5_extracao.strategies.base", "mt5_extracao.strategies.backtester",
@@ -67,13 +70,13 @@ def _execution_code_digest():
         module = importlib.import_module(name)
         for key, value in sorted(vars(module).items()):
             if isinstance(value, types.FunctionType):
-                loaded[name + ":" + key] = hashlib.sha256(marshal.dumps(normalized(value.__code__))).hexdigest()
+                loaded[name + ":" + key] = hashlib.sha256(marshal.dumps(normalized(value.__code__), 0)).hexdigest()
             elif isinstance(value, type) and value.__module__ == name:
                 for method, function in sorted(vars(value).items()):
                     if isinstance(function, (classmethod, staticmethod)):
                         function = function.__func__
                     if isinstance(function, types.FunctionType):
-                        loaded[name + ":" + key + ":" + method] = hashlib.sha256(marshal.dumps(normalized(function.__code__))).hexdigest()
+                        loaded[name + ":" + key + ":" + method] = hashlib.sha256(marshal.dumps(normalized(function.__code__), 0)).hexdigest()
     return hashlib.sha256(json.dumps(dict(sources=sources, loaded=loaded), sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 

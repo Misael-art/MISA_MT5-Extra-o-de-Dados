@@ -1,0 +1,54 @@
+{
+  "task": "T20.12 initial restart identity correction",
+  "date": "2026-10-21",
+  "base": "bb90b488191cb0a42335374fd4c4d7ec82040a4f",
+  "original_core": "97c3bafdc261a4794bc386045dc1d4c76f9e881f",
+  "scope": "Only loaded-code serialization changes: marshal protocol0 for functions/methods. Source/runtime/data/settings/plan hashing, Budget, journal and all financial/native math unchanged. No old checkpoint migration.",
+  "finding": {
+    "original_ci": 39569538013,
+    "linux_job": 119119964465,
+    "result": "1 failed,2597 passed,216 skipped; before-publication process death resumes with checkpoint signature mismatch",
+    "exact_prior_ci_interning_actor": "unknown; not claimed as identified",
+    "demonstrated_mechanism": "sys.intern of existing nonidentifier SMMA code string changes default marshal flags and execution digest without changing code/value; explicit parent-only interning reproduces real before-death checkpoint failure",
+    "pre_fix_actual_failure": {
+      "failed": 1,
+      "seconds": 9.44
+    },
+    "other_probes": "Three hashseeds alone and focused covered test/full collection selected test passed before stress; not evidence of exact CI predecessor."
+  },
+  "validation": [
+    {
+      "selection": "tests/test_execution_identity_stability.py tests/test_execution_cache_identity.py tests/test_experiments.py tests/test_experiments_schema.py tests/test_experiments_cli.py tests/test_experiments_pg.py",
+      "passed": 86,
+      "skipped": 2,
+      "seconds": 212.42,
+      "coverage": "Same-object constant interning; fresh processes with three PYTHONHASHSEED values; actual owned-process death before/after commit; changed loaded callbacks/source/data/settings still invalidate; service/schema/CLI/cache/reserved run."
+    },
+    {
+      "selection": "tests/test_experiments.py -k process_death with same three CI --cov modules, focused invocation without full-suite global coverage claim",
+      "passed": 2,
+      "deselected": 26,
+      "seconds": 32.26,
+      "notes": "Both actual process death phases with parent-only string interning; global60percent minimum remains responsibility of full required CI."
+    }
+  ],
+  "test_count_note": "Selections overlap; do not sum independent observations. PG2 lacks local URL; old immutable-head PG job success does not grant final-head CI.",
+  "runtime": "3.14.7",
+  "review": {
+    "owner": "integration owner, implementation/review same front; no independent authorship claim",
+    "reasoning": "Protocol0 retains serialized code values and normalizes preexisting path differences while removing incidental intern/reference flags; all other identity gates and loaded-patch invalidation retained. Seven runtime diff lines only; no order/price/signal/financial rule change."
+  },
+  "pending": [
+    "Final-head six mandatory CI checks including PG/Windows",
+    "Merge and controlled owner installation after checks",
+    "Remaining consumers/campaign/statistics/ledger qualification/physical Windows/native acceptance"
+  ],
+  "sha256": {
+    "mt5_extracao/robots/backtest.py": "40abc4bc0f9459840e9f31161e2f80404cbaebfa86e9f771b8298a6e2900e582",
+    "tests/test_experiments.py": "213ada67552bbecf6a8dac5aedca9ee84bef3c18345464070b4b7595c0d010b2",
+    "tests/test_execution_identity_stability.py": "09bc779e1b6aaef58859204a0f3902e701a74a0458b4a7a93305c1a4c2366163",
+    "docs/sdk/experiments.md": "e210d87bba5b5e68ae499a98e5cf3ba051b522d5d76f77dbf043d5c20c162083",
+    "docs/continuidade.md": "83806729f94c37325015b5526de2c1a755e0fcfa4debe9325dd998a7559a1585",
+    "docs/PLANO_DE_TRABALHO.md": "1ee18119dd6dfa3723aa13d0d99369d2d27402bac177134a2386e43263d656f8"
+  }
+}
