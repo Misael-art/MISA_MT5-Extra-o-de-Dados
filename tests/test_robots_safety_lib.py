@@ -1,5 +1,6 @@
 """T10.2: biblioteca de segurança (mt5x-safety) instalada na versão que o robô declara, sem MT5."""
 import configparser
+import hashlib
 import json
 from pathlib import Path
 
@@ -123,3 +124,43 @@ def test_cli_install_reports_the_library_and_its_errors(env, capsys):
     assert "--upgrade-safety" in capsys.readouterr().err
     assert cli.main(env.args() + ["robots", "install", "usa", "--upgrade-safety"]) == cli.EXIT_OK
     assert safety_lib.installed_version(env.mt5) == "1.1.0"
+
+
+def _add_hashes(folder):
+    path = folder / "safety.json"
+    manifest = json.loads(path.read_text())
+    base = folder / "Include" / manifest["include_dir"]
+    manifest["sha256"] = {name: hashlib.sha256((base / name).read_bytes()).hexdigest()
+                          for name in manifest["files"]}
+    path.write_text(json.dumps(manifest))
+    return manifest
+
+
+@pytest.mark.parametrize("windows", [False, True])
+def test_hashed_distribution_is_verified_and_idempotent(env, monkeypatch, windows):
+    monkeypatch.setattr(paths, "is_windows", lambda: windows)
+    manifest = _add_hashes(env.lib)
+    assert len(safety_lib.install(env.lib, env.mt5)) == 2
+    assert safety_lib.installed(env.mt5)["sha256"] == manifest["sha256"]
+    assert safety_lib.install(env.lib, env.mt5) == []
+
+
+@pytest.mark.parametrize("failure", ["missing_last", "wrong_hash", "incomplete_hashes"])
+def test_invalid_distribution_preserves_every_installed_file_and_marker(env, failure):
+    safety_lib.install(env.lib, env.mt5)
+    include = env.mt5 / "MQL5" / "Include"
+    before = {str(path.relative_to(include)): path.read_bytes() for path in include.rglob("*") if path.is_file()}
+    newer = make_lib(env.tmp / "newer", "1.8.0")
+    manifest = _add_hashes(newer)
+    last = newer / "Include" / "MT5X" / "Safety" / "Guard.mqh"
+    if failure == "missing_last":
+        last.unlink()
+    elif failure == "wrong_hash":
+        last.write_text("// fonte de outra revisão\n")
+    else:
+        del manifest["sha256"]["Guard.mqh"]
+        (newer / "safety.json").write_text(json.dumps(manifest))
+    with pytest.raises(safety_lib.SafetyLibError, match="incompleta|hash"):
+        safety_lib.install(newer, env.mt5, upgrade=True)
+    after = {str(path.relative_to(include)): path.read_bytes() for path in include.rglob("*") if path.is_file()}
+    assert after == before
