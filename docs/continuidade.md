@@ -9,6 +9,12 @@ mesmo histórico privado sem recalcular; capturas/medidas preservadas em evidên
 Não conclui T19.34 nem qualifica gráficos/fluxos futuros/DPI ou Windows físicos.
 [Contrato](sdk/robot_context_layout.md).
 
+Corretivo SDK1 de T19.24d7020ac composto por Git sobre esta frente, sem conflitos
+ou alteração do layout já validado. Os quinze argumentos públicos permanecem;
+SDK+matriz visual+exibição da composição passaram13 testes em29,68s após compor.
+A nova ponta exige CI próprio; a execução anterior permanece como evidência do
+snapshot anterior, sem conceder aceite ao SDK que vazava o argumento interno.
+
 Fila de instalação permanece serial: T20.12 PR170833de99 e T19.24 PR171da05937
 em CI; PG54/55 aprovados. Linux da170 passou; Windows e checks restantes ainda
 precisam concluir. App1691612301/Hec550/Safety1.8.0 segue instalado. Nesta versão,
