@@ -39,6 +39,9 @@ ATR = Parameter("number", "ATR", exclusive_minimum=True)
 OSCILLATOR = Parameter("number", "index_0_100", 0, 100)
 # Nomes explícitos: não converter nome Python em nome de input MQL5.
 STRATEGY_PARAMETERS = {
+    "ha_hilo": {"hilo_period": Parameter("int", "bar", 2, 500),
+                "hilo_offset": Parameter("int", "bar", 0, 0),
+                "stop_buffer_points": Parameter("int", "point", 0, 2147483647)},
     "madrid": {"first_period": Parameter("int", "bar", 1, 1000),
                "period_step": Parameter("int", "bar", 1, 111),
                "distance_atr": ATR, "distance_points": Parameter("int", "point", 0, 2147483647),
