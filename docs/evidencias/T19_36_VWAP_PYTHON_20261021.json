@@ -1,0 +1,160 @@
+{
+  "task": "T19.36",
+  "date": "2026-10-21",
+  "scope": "Python declared HLC3 daily percentage VWAP; existing shared Backtester",
+  "base": "ce09fe669f0dec60d79c97c90a83640ff3c8cb6c",
+  "branch": "codex/t19-36-python",
+  "native_reference": {
+    "repository": "projeto-indicadores-mt5",
+    "source": "855baec99a80a8c320897dd63ab3154e37251d0e",
+    "integrated": "de9018d768dfc28411d66613639e8dc6d6c66c7e",
+    "path": "Include/Framework/HADOUKEN/Strategies/HDK_VwapBandsReference.mqh",
+    "original_spec_item": 1
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "platform": "Linux; pure Python tests; prepared environment reused with authorization"
+  },
+  "sha256": {
+    "mt5_extracao/strategies/vwap_bands.py": "777d5473f13d1ad69de2c3f04d9a63a571c91de14218ffb62d992b2185d8933b",
+    "mt5_extracao/strategies/base.py": "54636b47174cfbc8914a35aa09ba17643cb3f3d2a7b41d7013e7dd26a46d19f1",
+    "mt5_extracao/strategies/backtester.py": "bd0d23335f11b3a0c4c4785e8a3d85666c0b9aa1b0bee8ae8a533fdd0722e411",
+    "mt5_extracao/strategies/__init__.py": "b35390ef8bc8750d8b870a20612cc330451220077380cbfab48140e7f86fa168",
+    "mt5_extracao/composition/registry.py": "f38c840e048fe8081244dfcd0a9a1c26348763c051624e24a53b6c5856399f9e",
+    "tests/test_vwap_bands.py": "75480062ae2572c1f3e9c7855e0a0f35c9e7883fc6f4fe3a3ced1fb50bb1925c",
+    "tests/test_vwap_execution.py": "22dc722bc92dd0e931cdf6842a32aae8c21e7e24bd8501baebccadd712890f76",
+    "tests/test_strategies.py": "90a167219f21d26983b58b49886186376c4afc571016aa9d55a2ff2028f63690",
+    "tests/test_composition.py": "8b5ac7eef199e74f71ceeadeb66d104784b55ee835de07969044fffc04a1e02b",
+    "docs/sdk/vwap_bands.md": "ab9cd80dab9e5b08cc6bbdc4789df97222c6034e75213aad167934bc815ea073"
+  },
+  "checks": [
+    {
+      "phase": "baseline_before_changes",
+      "command": ".venv/bin/python -m pytest -q tests/test_backtester.py tests/test_fixed_profit_exit.py tests/test_fixed_initial_stop.py tests/test_stoch_move_guard.py tests/test_strategies.py tests/test_composition.py --tb=short",
+      "passed": 181,
+      "failed": 0,
+      "seconds": 19.48
+    },
+    {
+      "phase": "initial_new_tests",
+      "passed": 84,
+      "failed": 21,
+      "seconds": 17.27,
+      "diagnosis": "20 fixture mixed-date parsing failures and one incorrect expectation that Composition alone enforces strategy cross-constraints; fixed fixtures and exercised BaseAdapter.strategy for cross-validation; no product workaround."
+    },
+    {
+      "phase": "focused_existing_and_new",
+      "command": ".venv/bin/python -m pytest -q tests/test_vwap_bands.py tests/test_vwap_execution.py tests/test_backtester.py tests/test_fixed_profit_exit.py tests/test_fixed_initial_stop.py tests/test_stoch_move_guard.py tests/test_stoch_ema9.py tests/test_strategies.py tests/test_composition.py --tb=short",
+      "passed": 331,
+      "failed": 1,
+      "seconds": 34.24,
+      "failure": "Generic composition fixture requires trades for all registry entries; daily800 VWAP generated70 long/81 short signals,151 bracket/gap refusals and0 trades. Correct empty result; direct and adapter equivalent. Owner authorized ONLY VWAP fixture selection adjustment in test_composition.py; final regression run below passed it.",
+      "compatibility": "Runtime logic unchanged after this run; only daily_vwap docstring clarified prefix-wide has_real. Five additional selected-real invalid-volume cases passed in final_new_tests."
+    },
+    {
+      "phase": "final_new_tests",
+      "command": ".venv/bin/python -m pytest -q tests/test_vwap_bands.py tests/test_vwap_execution.py --tb=short",
+      "passed": 110,
+      "failed": 0,
+      "seconds": 14.6
+    },
+    {
+      "phase": "final_composition_and_relevant_regressions",
+      "command": ".venv/bin/python -m pytest -q tests/test_composition.py tests/test_validation.py tests/test_cli_strategies.py tests/test_asset_screener.py tests/test_robots_backtest.py tests/test_robots_generate.py tests/test_floating_equity.py tests/test_partial_confirmation.py tests/test_lots_execution.py tests/test_temporal_execution.py tests/test_temporal_er.py tests/test_temporal_donchian.py tests/test_temporal_atr.py tests/test_session_entry.py tests/test_cooldown.py --tb=short",
+      "passed": 240,
+      "failed": 0,
+      "seconds": 142.53
+    },
+    {
+      "phase": "doctor_no_probe",
+      "command": ".venv/bin/python -m mt5_extracao.bootstrap --root <existing-app-root> doctor --no-probe",
+      "ok": 20,
+      "warnings": 1,
+      "failed": 0,
+      "warning": "optional pandas-ta unavailable",
+      "access": "read-only config/files/stat; no database open, bridge connection, native process or lease"
+    },
+    {
+      "phase": "diff_check",
+      "command": "git diff --check",
+      "failed": 0
+    }
+  ],
+  "contracts": {
+    "strategy_key": "vwap_bands",
+    "default_params": {
+      "entry_band_pct": 1.0,
+      "target_band_pct": 0.5,
+      "stop_offset_points": 200,
+      "volume_source": 0
+    },
+    "min_bars": 300,
+    "signal_columns_unchanged": true,
+    "new_exit_rule": {
+      "absolute_signal_target": false
+    },
+    "vwap_exit_rules": {
+      "signal_stop_offset_points": 200,
+      "absolute_signal_target": true,
+      "move_guard_from_signal_stop": false
+    },
+    "target_band_zero": "central VWAP with mandatory TP, never target off",
+    "level_columns": "raw entry band prices for SL, raw target band prices for TP; absolute quantization and symbol point conversion in existing Backtester before lot",
+    "override_precedence": "Explicit target_points uses fill; target_r uses fill and initial risk. Explicit stop_points replaces initial band+offset without duplicating offset.",
+    "timestamp_convention": "Strictly increasing unique valid naive timestamps supplied in declared server calendar; no epoch/tz/DST inference, sorting, gap repair or auction claim",
+    "volume_columns": {
+      "0": [
+        "real_volume",
+        "tick_volume"
+      ],
+      "1": [
+        "tick_volume"
+      ],
+      "2": [
+        "real_volume"
+      ]
+    },
+    "auto_selection": "One complete series for each known fixed prefix; has_real persists across dates. Two independent daily accumulators; no mixed ticks/real or future selection. Native rolling1500 may return to ticks when old real leaves window.",
+    "anchor": "Initial mid-day prefix unavailable until next observed date; midnight or observed transition starts approximation at first available bar",
+    "invalidity": "Invalid HLC/selected volume or nonfinite/sentinel aggregation poisons selected date until observed transition; valid zero volume carries prior mean"
+  },
+  "coverage": [
+    "Independent Decimal recomputation of every prefix/day for Auto/ticks/real and all signal levels",
+    "HLC3 vs close-weighted; zero volume carry, no real volume, causal source switch, persistent source across dates and native rolling distinction",
+    "Required volume columns, explicit clock convention, strict chronology, partial first day and observed transition approximation",
+    "NaN, positive/negative infinity, EMPTY_VALUE, negative/zero HLC, invalid ticks/real and independent poison per source, accumulation overflow",
+    "Fixed-prefix and future-mutation causality with nondefault index, warmup300, exact touch and double-touch neutral, central TP",
+    "Real Backtester both directions: raw stop deferral, signal-close final stop validation, symbol point/tick/offset/lot, gap refusal before sizing",
+    "Absolute TP normalization and invalid/sentinel/negative/equal/gapped target rejection before lot; initial band TP remains fixed; Move Guard off",
+    "Real BaseAdapter fixed-points/fixed-R/fixed-stop precedence and no duplicate offset; direct typed R override",
+    "Default-off absolute TP preserves legacy target-gap/unknown-spec behavior; existing S10, legacy sizing, temporal, partial, equity and session/cooldown regressions"
+  ],
+  "limits": {
+    "cache_eligible": false,
+    "cache_reason": "Existing robots/backtest.py identity gate rejects additional instance required_columns; no gate changes or cache waiver.",
+    "native_parity": false,
+    "external_parity": false,
+    "rolling_window_parity": false,
+    "broker_stop_freeze_qualification": false,
+    "operational_acceptance": false,
+    "statistical_approval": false,
+    "physical_windows": false,
+    "live_authorization": false,
+    "safety_distribution_required_for_python": false
+  },
+  "untouched": [
+    "UI",
+    "presets",
+    "composition/native.py",
+    "owner native consumers and pins",
+    "principal database/configuration/WIP",
+    "HDKSignal and SIGNAL_COLUMNS",
+    "Safety and shared MQL headers",
+    "native binaries/terminal/bridge/lease",
+    "central PLANO/continuidade"
+  ],
+  "setup": "Own worktree reuses prepared prior venv through local unversioned symlink; no shared venv writes, global install or shortcut/config rewrite. No complete suite or manual workflow repeated.",
+  "counting": "Test selections overlap. Do not sum them as unique cases. Earlier failed runs are diagnostic, not acceptance; corrected final fixture passed without runtime relaxation."
+}

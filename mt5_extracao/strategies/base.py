@@ -53,6 +53,7 @@ class ExitRules:
     move_guard_from_signal_stop: bool = False
     # Alvo padrão da estratégia no fechamento do sinal. Alvos explícitos points/R têm prioridade.
     signal_target_points: Optional[float] = None
+    absolute_signal_target: bool = False  # alvo absoluto das colunas: normalizar/validar antes do lote
 
     def __post_init__(self):
         if self.temporal is not None and not isinstance(self.temporal,TemporalPolicy):
@@ -65,6 +66,10 @@ class ExitRules:
             raise ValueError("Escolha alvo em pontos ou em R; não declare duas fontes concorrentes.")
         if type(self.move_guard_from_signal_stop) is not bool:
             raise ValueError("Move Guard requer opção booleana explícita.")
+        if type(self.absolute_signal_target) is not bool:
+            raise ValueError("Alvo absoluto do sinal requer opção booleana explícita.")
+        if self.absolute_signal_target and self.signal_target_points is not None:
+            raise ValueError("Escolha uma única fonte padrão de alvo: preço absoluto ou pontos desde o sinal.")
         offset = self.signal_stop_offset_points
         if (isinstance(offset, bool) or not isinstance(offset, Real)
                 or not math.isfinite(offset) or offset < 0):
@@ -118,8 +123,14 @@ class Strategy:
         rules = exit_rules_override if exit_rules_override is not None else self.exit_rules()
         # Stop fixo tipado só existe no fill; não fabricar nível futuro na barra do sinal.
         if getattr(rules, "stop_points", None) is None:
-            out["entry_long"] &= out["stop_long"].notna() & (out["stop_long"] < df["close"])
-            out["entry_short"] &= out["stop_short"].notna() & (out["stop_short"] > df["close"])
+            if rules.signal_stop_offset_points > 0:
+                # Só o motor conhece point: o nível bruto pode estar além do close,
+                # mas o stop com offset ser válido. Validar o SL final antes do lote.
+                for side in ("long", "short"):
+                    out["entry_"+side] &= np.isfinite(out["stop_"+side]) & out["stop_"+side].ne(np.finfo(float).max)
+            else:
+                out["entry_long"] &= out["stop_long"].notna() & (out["stop_long"] < df["close"])
+                out["entry_short"] &= out["stop_short"].notna() & (out["stop_short"] > df["close"])
         return out[list(SIGNAL_COLUMNS)]
 
     generate_signals = gerar_sinais
