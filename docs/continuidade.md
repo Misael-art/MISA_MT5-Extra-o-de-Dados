@@ -1,3 +1,10 @@
+## Nova conferência do host — 2026-10-21
+
+[Continuidade validada](repasse/RETOMADA_VALIDADA_20261021.md): clones independentes,
+SD e restauração em leitura conferidos; ambiente preservado funcional, 56 testes
+e doctor20/1/0. Novo SO não comprovado. Próximo recorte autorizado: exibição do
+painel no REPLAY; melhorias de seleção/lotes e comparação entram no roadmap.
+
 ## Recuperação após reinstalação — corte de 2026-10-21
 
 O [roteiro independente do host](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
