@@ -359,3 +359,8 @@ principal. Linux/Wine e CI não substituem este aceite. S09 somente Tester.
 
 
 Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronização do perfil privado, seleção EMA+ATR/ativo/TF/preset e inputs reais, identidade DEMO a cada etapa, PLAY/STOP por sessão, eventos/SL/fills/resultados próprios. A preparação Linux/Wine ficou parcial antes do replay por falta de sincronização; nenhum aceite ao vivo foi promovido. S09 e adaptador piloto continuam somente Tester.
+
+
+- [ ] T19.39/Madrid: validar em Windows físico editor Default/Manual com seis campos,
+  fonte1.20/pin870c0f8db71c3d5a/13 inputs e Canvas padrão, exportação e recibo do Tester.
+  Tk/Xvfb Linux e compilação6276Wine0/0 não substituem esse aceite; CI final separado.

@@ -4072,3 +4072,23 @@ volume ticks explicitamente escolhido após recusa Auto pelo gate real_volumeunk
 consumidor e recibo/Tester/replay real permanecem próprios. Auto Python não recebe
 waiver de fonte; cache, completude, broker, Windows físico e live não qualificados.
 T19.36 completa permanece aberta. S10/App166 conserva sua fila de CI separada.
+
+
+### T19.39 — Madrid, variante e consumidor em revisão (2026-10-21)
+
+Núcleo Python111ae036 composto por Git preservando d10/6981. Perfil Madrid1.20,
+H6677bce1/fp870c0f8db71c3d5a,13 inputs fechados; seis parâmetros, orçamento até0,5%,
+Default preservado e Manual revisionado/exportado. Recalcula cada janela observada
+com sementes C0/TR0; point mode converte M1 e N×point, guard é proposta inclusive
+sem entrada, TP escolhido inválido não vira TPoff. Motor/Move Guard únicos mantidos.
+
+165 integrações Tk/service/regressões aprovadas, mais dirigidos finais; Expert e
+wrapper6276Wine0/0, sem terminal/Tester; pacote real13 inputs relido em base isolada.
+Histórico Python528 barras/10 trades/105,10 reconciliado e reaberto, sem paridade ou
+aprovação financeira. Identidade Python pode ser frozen_reference no gate genérico;
+nenhuma qualificação nova de cache nativo/live. T16.6 recusa gestão por sinal sem
+contexto próprio. [Limites e evidência](sdk/madrid_nativo.md).
+
+Tarefa integral permanece aberta: variante sem FC/FV persistente/TP móvel, CI final,
+instalação correspondente, Tester/replay real, Windows físico e DEMO operacional.
+S10/VWAP não perdem seus pins/guardas nem seus resultados anteriores.
