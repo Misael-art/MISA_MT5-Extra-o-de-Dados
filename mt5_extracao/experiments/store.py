@@ -173,3 +173,13 @@ def status(db, protocol_id):
         row["payload"] = json.loads(row.pop("payload_json"))
     return dict(protocol=p, requests=requests, events=events, exposure=exposures,
                 statistical_approval=False, qualified_final_holdout=False, ledger_qualified=False)
+
+
+def list_protocols(db):
+    """Índice de metadados para descoberta; não cria schema nem entrega resultados."""
+    if not inspect(db.engine).has_table("_experiment_protocols"):
+        return []
+    with db.engine.connect() as conn:
+        return [dict(row) for row in conn.execute(text(
+            "SELECT protocol_id,name,revision,created_at FROM _experiment_protocols "
+            "ORDER BY created_at DESC,protocol_id")).mappings()]

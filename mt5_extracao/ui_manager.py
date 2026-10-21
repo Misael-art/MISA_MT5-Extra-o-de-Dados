@@ -1844,6 +1844,7 @@ class UIManager:
         view_menu.add_command(label="Análise", command=lambda: self.notebook.select(2))
         view_menu.add_command(label="Robôs", command=lambda: self.notebook.select(self.robots_panel.frame))
         view_menu.add_command(label="Laboratório", command=lambda: self.notebook.select(self.laboratory_panel.frame))
+        view_menu.add_command(label="Registro de estudos...", command=self.open_experiment_registry)
         view_menu.add_command(label="Recursos", command=lambda: self.notebook.select(self.resources_panel.frame))
         view_menu.add_command(label="Atividade", command=lambda: self.notebook.select(self.log_tab))
         view_menu.add_separator()
@@ -2547,6 +2548,10 @@ class UIManager:
         connector = self.app.mt5_connector
         if hasattr(connector, "prepare_terminal") and connector.prepare_terminal is None:
             connector.prepare_terminal = self._open_organized_terminal
+
+    def open_experiment_registry(self):
+        from mt5_extracao.ui.experiments import ExperimentsDialog
+        return ExperimentsDialog(self)
 
     def connect_mt5(self, startup=False):
         """

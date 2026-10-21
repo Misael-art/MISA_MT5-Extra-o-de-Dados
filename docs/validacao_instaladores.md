@@ -390,3 +390,7 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
   correspondência de conta/servidor/data_path, fechamento local sem SDKshutdown e
   recusa após identidade alterada. Linux/Wine real e caminhos local/Windows simulados
   estão no recorte de2026-10-21; isso não conclui paridade física T2.6 nem concorrência.
+
+- [ ] T20.12 consulta UI: verificar no Windows físico menu Exibir → Registro de estudos,
+  temas/teclado/rolagem, callbacks após fechar e ausência de escrita por consulta.
+  Tk/Xvfb Linux e teste PostgreSQL do job têm escopos próprios, sem aceite físico.

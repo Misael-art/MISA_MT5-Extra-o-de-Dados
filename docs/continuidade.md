@@ -2556,3 +2556,17 @@ opcionais do CSV mantêm semântica de ausência, sem cálculo sintético/substi
 SDK documenta limites e evidência própria registra testes. CI final e instalação
 continuam pendentes; sincronização privada/Tester/aceite financeiro e Windows físico
 não qualificados, sem repetir sondagem nativa.
+
+
+### T20.12 — consulta do journal na UI (2026-10-21)
+
+Complemento em revisão sobre174/c0e0f9c: Exibir → Registro de estudos abre nomes,
+revisões, pedidos/recusas/descarte/reutilização, eventos e exposição compartilhada.
+Usa store.status existente e um índice SELECT sem criar schema em base antiga.
+Só metadados: não calcula, consulta resultado financeiro nem registra falso acesso
+à reserva. Critérios/orçamento/snapshots e limites de qualificação vêm do canônico.
+Sem novo cache/journal/motor. Serviço/economia/robots/SDK/estratégias preservados.
+6finais UI,30seleção/1PGlocalpendente (sobrepostos);2protocolos/4pedidos/17eventos
+reais em cópia só das cinco tabelas de metadados, menu real/capturas inspecionadas,
+mesmo bf4d/status inalterado. Não repetiu avaliação ou restore. CI, instalação,
+Windows físico e demais consumidores/estatísticaT20.13 permanecem pendentes.

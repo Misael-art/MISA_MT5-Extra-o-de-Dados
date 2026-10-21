@@ -262,6 +262,8 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ---
 
+Consulta T20.12 em revisão: [Registro de estudos na UI](sdk/experiments_consulta_ui.md), com metadados do store canônico, sem nova avaliação. CI/instalação e demais consumidores/qualificação continuam pendentes.
+
 ## Fase 0 — Fundação
 
 ### T0.1 — Instaladores automáticos + bootstrap ✅
