@@ -1,0 +1,36 @@
+{
+  "task": "T20.12 initial integration",
+  "date": "2026-10-21",
+  "source": "97c3bafdc261a4794bc386045dc1d4c76f9e881f",
+  "integrated_master": "1612301ff693e4c4998e16b71f45e7fb8858ddac",
+  "composition_merge": "68aa13b438e238e7e91e596d00df7d8bf6107d7f",
+  "review": {
+    "type": "integration owner static review",
+    "result": "favorable within declared initial scope; no blocking defect identified",
+    "reviewed": "13source artifacts,12hashes, real transaction seam/control APIs, budget/reservation/cache/exposure and CLI; protected legacy runtime changes only2parser registration lines",
+    "not_claimed": "No independent reexecution of52own/152legacy; PG2 needs finalCI. Does not qualify financial criteria, source, independent samples, ledger or native operation."
+  },
+  "reused_evidence": "T20_12_EXPERIMENTOS_INICIAL_20261021.json",
+  "additional_validation": {
+    "kind": "actual composed CLI on private consistent copy of existing historical DB, no ownerDB write or MT5",
+    "protocol_id": "5df37e66929af9966d3a81e9b2b43b038fe7a7e771426a84f7d4bbe775ef5c59",
+    "run_id": "6aa9ea2546d14f3f95b7ecc220243038",
+    "strategy": "madrid BASE",
+    "risk_fraction": 0.0025,
+    "bars": 408,
+    "trades": 4,
+    "net_profit": 154.8899999999662,
+    "same_request_idempotent": true,
+    "distinct_deliberate_request_reused_same_run": true,
+    "ledger_qualified": false,
+    "qualified_final_holdout": false,
+    "historical_source_certified": false,
+    "statistical_approval": false
+  },
+  "status": "ready for frozen integration review and finalCI; not installed",
+  "sha256": {
+    "docs/PLANO_DE_TRABALHO.md": "dfd0628ae32ea37470033751a749f3cf6b295463e66515d98e88465a274f3846",
+    "docs/continuidade.md": "e99680b23ae34d0cd1143eca1d998225648cdedca1f7470cb8122e7b6d51f0e2",
+    "docs/propostas/VALIDACAO_F19.md": "30f90464987d3709920bf7fe7b9d8226e82fbc3185e354474c91f26c57cb41ce"
+  }
+}

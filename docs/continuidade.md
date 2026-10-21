@@ -1,3 +1,51 @@
+## T20.12 — Registro de uma avaliação explícita, em revisão (2026-10-21)
+
+PR170 ainda sem merge/instalação: CI39569538013 teve uma falha Linux na retomada
+após morte do processo (2.597 passaram/216 skips); PostgreSQL, lint e instaladores
+passaram nessa ponta. O integrador reproduziu o erro com internação de uma constante
+textual sem alteração de código/valor e corrigiu somente a serialização da assinatura
+de código carregado (`marshal` protocolo0). A regressão preserva a morte real do
+processo e a mesma reserva, agora com estados de internação diferentes entre pai
+e filho. Checks finais da nova ponta continuam obrigatórios; nenhuma guarda de
+checkpoint/identidade foi afrouxada e nenhum checkpoint antigo foi migrado.
+O corretivo passou86 testes focados (52 serviço/schema/CLI,31 identidade/cache e3
+processos/seeds; contagens sobrepostas com provas anteriores); PG2 depende do novo CI.
+
+O próximo recorte usa um único registro de protocolo, alternativa, pedido deliberado,
+execução técnica e acesso aos dados. Delega uma avaliação Python BASE ao `run_python`
+e ao `Budget` existentes, com snapshots imutáveis escolhidos no protocolo. Aceita
+somente `compound=True`; filtros e modos sem mapeamento fiel são recusados e registrados.
+O orçamento tem escopo explícito `evaluation_request`, incluindo retentativas daquele
+pedido; não constitui teto agregado de campanha nem busca automática.
+
+Run, vínculo ao manifesto e journal compartilham a transação existente. O estado
+`run_recorded` não afirma conciliação do livro, cuja importação ocorre depois. Cache
+e retomada não transformam a mesma execução em amostras independentes; um novo pedido
+deliberado continua auditado. Consulta à reserva deve ser durável antes de calcular,
+reutilizar ou revelar resultado, sem apagar exposição ao mudar protocolo. Dados já
+explorados ou de exposição desconhecida não recebem status de reserva intocada;
+`qualified_final_holdout=False` permanece explícito neste inicial.
+
+T20.12 completa ainda depende dos demais consumidores; T20.13, T19.27/28 e seleção de
+Defensivo/Fator de Lucro/Ultra permanecem pendentes. Não há novo scheduler, cache,
+motor financeiro, UI ou caminho nativo neste recorte.
+
+Núcleo `97c3baf` composto por Git sobre master `1612301`, sem conflitos. Seus12hashes
+foram conferidos;52testes próprios finais e152regressões legadas compatíveis são
+reaproveitados, com sobreposição documentada. PostgreSQL2 ainda exige o CI final.
+Uma prova adicional da CLI composta, em cópia isolada do histórico legado, registrou
+Madrid BASE/risco0,25%:408barras/4operações/154,89; reabriu o mesmo pedido e auditou
+um segundo pedido que reutilizou o mesmo run, sem nova execução/amostra. É QA de
+persistência, sem qualificação de fonte, desempenho ou livro. [Contrato](sdk/experiments.md).
+
+Estado instalado: App169 `1612301` com H `ec550d7`, Safety1.8.0 preservada. S10,
+VWAP, Madrid e HA/HiLo têm Default/Manual/exportação e resultados reabertos na
+aplicação instalada. HA/HiLo preserva528barras/24operações/−382,223; Madrid preserva
+528barras/10operações/105,10. Configuração, atalho, ponte e principal preservados.
+O registro T20.12 ainda não está instalado. Sincronização privada/Tester/replay/painel,
+Windows físico e aceite ao vivo continuam pendentes; nenhum Expert novo foi carregado
+por consequência dessas instalações.
+
 ## T19.40 — HA/HiLo Python e consumidor em revisão, 2026-10-21
 
 Núcleo515a3b9 composto por Git; HA/HiLo1.20/fp5dad3bbabab0343f/H6b4f integrado no

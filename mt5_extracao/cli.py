@@ -1932,6 +1932,8 @@ def build_parser():
 
     from mt5_extracao.resources import commands as resources_commands
     resources_commands.add_parser(sub)
+    from mt5_extracao.experiments import commands as experiments_commands
+    experiments_commands.add_parser(sub)
     from mt5_extracao.trade_analytics import commands as trades_commands
     trades_commands.add_parser(sub)
 

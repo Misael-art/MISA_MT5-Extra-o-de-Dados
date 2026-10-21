@@ -102,3 +102,24 @@ passar um ensaio ou fechar posições/processos de terceiros.
 Este documento retifica a exigência genérica anterior de testar tudo com mercado aberto.
 Não altera a arquitetura nem certifica presets/retornos; implementação e evidências
 continuam sendo entregues por tarefa.
+
+## 5. Registro inicial de experimentos ([T20.12](../sdk/experiments.md))
+
+Separar protocolo, alternativa, pedido deliberado e execução técnica. Uma alternativa
+manual também é registrada; uma nova consulta deliberada não desaparece por usar cache,
+e retentativa ou reexecução idêntica não vira amostra independente. O orçamento inicial
+é por `evaluation_request`, incluindo suas retentativas; o teto agregado de campanha
+permanece fora deste recorte.
+
+Registrar o acesso aos dados de reserva antes do cálculo ou da entrega de resultado,
+inclusive em cache. Falha desse registro impede o acesso. Consulta para ajuste e
+exposição de intervalos compartilhados não podem ser apagadas por nova revisão ou
+novo protocolo. Dados legados não ganham condição de reserva intocada retroativamente.
+O registro inicial mantém `qualified_final_holdout=False`; ele não calibra critérios,
+não seleciona candidatos e não substitui T20.13/T19.27.
+
+A publicação atômica do run, manifesto e journal recebe o estado `run_recorded`.
+Importação posterior do livro não faz parte dessa garantia e exige conferência própria.
+Testes de migração, concorrência, idempotência, falhas, acesso e retomada provam esse
+contrato de persistência; não requerem MT5 nem constituem aprovação estatística ou
+operacional.
