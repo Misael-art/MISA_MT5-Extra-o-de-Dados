@@ -49,6 +49,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
 | T2.4 | Gestão de processos multiplataforma | T2.2 | ✅ concluída |
 | T2.5 | `initialize()` com `windows_path` no Linux | T2.2 | ✅ concluída (validação com MT5 real: T0.3/T2.6) |
+| T2.5 (corretivo) | Reutilizar ligação MT5 correspondente e preservar sessão emprestada | T2.5 | ⏳ implementado/em revisão: [contrato e limites](sdk/conexao_reutilizada.md); provedor DEMO real25→49barras em base privada, reabertura/recuperação/exportação e UI online; CI e instalação pendentes; não conclui T2.6 |
 | T2.6 | Teste de paridade Windows × Linux | T2.5 | ⏳ parcial: `scripts/parity_check.py` criado e lado Linux extraído; falta o lado Windows |
 | T3.1 | CLI `mt5x` | T1.3, T2.2 | ✅ concluída |
 | T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ✅ concluída (cron e schtasks; systemd não) |
