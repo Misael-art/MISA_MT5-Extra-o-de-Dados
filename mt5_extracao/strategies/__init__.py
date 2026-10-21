@@ -13,9 +13,10 @@ from .orb import OpeningRangeBreakout
 from .pullback import PullbackMomentum
 from .squeeze import Squeeze
 from .s09 import S09Reference
+from .stoch_ema9 import StochEma9
 
 REGISTRY = {cls.key: cls for cls in (EmaAtrTrend, DonchianTurtle, BollingerRsiReversion,
-                                     OpeningRangeBreakout, PullbackMomentum, Squeeze, S09Reference)}
+                                     OpeningRangeBreakout, PullbackMomentum, Squeeze, S09Reference, StochEma9)}
 
 # Práticas a evitar no início (exibidas na CLI, no relatório e na documentação)
 AVOID = (

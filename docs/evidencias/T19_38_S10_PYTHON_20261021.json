@@ -1,0 +1,124 @@
+{
+  "task": "T19.38",
+  "date": "2026-10-21",
+  "scope": "Python S10 declared variant; shared Backtester Move Guard",
+  "base": "3addcad548b3537b353bf8991027784558531dc0",
+  "branch": "codex/t19-38-python",
+  "native_reference": {
+    "repository": "projeto-indicadores-mt5",
+    "source": "b40e5bef0470d5fab74667833981b2bb76c658a7",
+    "integrated": "1e09f7f5541598de584d8c126efd7f0d50e74b00",
+    "path": "Include/Framework/HADOUKEN/Strategies/HDK_StochEma9Reference.mqh"
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "pandas": "2.3.3",
+    "numpy": "2.4.6",
+    "platform": "Linux; pure Python tests"
+  },
+  "sha256": {
+    "mt5_extracao/strategies/base.py": "e3893936ab5684f286863ea5ad01fded7825900727ba2fe1739e006fa01d8bc7",
+    "mt5_extracao/strategies/backtester.py": "5511772ebeb9b6ff77fdacf4c04f9e9114025a76cbb9161528f94cf4f9c04b24",
+    "mt5_extracao/strategies/__init__.py": "52dcc3a61f6ed96e86e75f8ddd108f86cfbdda2f0cc447b333ec89f4920977bd",
+    "mt5_extracao/strategies/stoch_ema9.py": "fc99567e5687425aefee3e822c59a73647f334e18e284f520df9c706adf2298c",
+    "mt5_extracao/composition/registry.py": "d5330e2d15f763f3a0fa75ba752dd824e1d2228d4c171a8e0c6e4cd59148cfce",
+    "tests/test_strategies.py": "25034569bf8a046e8f69daf1221d0f74fa5f42061af73b075667549e2ce1374b",
+    "tests/test_stoch_ema9.py": "53a42a3b1b9a4d1b260b9214eaba40e467c51bc485b9cf2b013bd5b7a2cb9d8f",
+    "tests/test_stoch_move_guard.py": "b634cb3bc53cef0909afe4762dbf98a9b2f0f0a86e71de48d82d44f2ace793ed",
+    "docs/sdk/stoch_ema9.md": "c4f7f38b26a9f59d3aacf22b1e5ea06705b8e46cf831719794453e4b37f11307"
+  },
+  "checks": [
+    {
+      "phase": "baseline_before_changes",
+      "command": ".venv/bin/python -m pytest -q tests/test_strategies.py tests/test_s09_reference.py tests/test_backtester.py tests/test_fixed_profit_exit.py tests/test_fixed_initial_stop.py tests/test_composition.py",
+      "passed": 142,
+      "failed": 0,
+      "seconds": 13.9
+    },
+    {
+      "phase": "focused_final",
+      "command": ".venv/bin/python -m pytest -q tests/test_stoch_ema9.py tests/test_stoch_move_guard.py tests/test_strategies.py tests/test_s09_reference.py tests/test_backtester.py tests/test_fixed_profit_exit.py tests/test_fixed_initial_stop.py tests/test_composition.py --tb=short",
+      "passed": 240,
+      "failed": 0,
+      "seconds": 18.24,
+      "new_s10_tests": 96
+    },
+    {
+      "phase": "relevant_regressions",
+      "command": ".venv/bin/python -m pytest -q tests/test_validation.py tests/test_cli_strategies.py tests/test_asset_screener.py tests/test_robots_backtest.py tests/test_robots_generate.py tests/test_floating_equity.py tests/test_partial_confirmation.py tests/test_lots_execution.py tests/test_temporal_execution.py tests/test_temporal_er.py tests/test_temporal_donchian.py tests/test_temporal_atr.py tests/test_session_entry.py tests/test_cooldown.py --tb=short",
+      "passed": 171,
+      "failed": 0,
+      "seconds": 148.76,
+      "compatibility": "Final follow-up only rejects nonpositive initial stops in the opt-in guard path, covered by focused_final; legacy path tested here unchanged."
+    },
+    {
+      "phase": "doctor_no_probe",
+      "command": ".venv/bin/python -m mt5_extracao.bootstrap --root <existing-app-root> doctor --no-probe",
+      "ok": 20,
+      "warnings": 1,
+      "failed": 0,
+      "warning": "optional pandas-ta unavailable",
+      "access": "read-only config/files/stat; no bridge connection, database open, native process or lease"
+    },
+    {
+      "phase": "final_metadata",
+      "change": "StrategyInfo uses the existing H suggested M5/M15/H1 labels only; no qualification or signal/execution change.",
+      "test_invalidation": false
+    }
+  ],
+  "contracts": {
+    "strategy_key": "stoch_ema9",
+    "default_params": {
+      "k_period": 14,
+      "slowing": 3,
+      "d_period": 3,
+      "ema_period": 9,
+      "upper_level": 75.0,
+      "lower_level": 25.0,
+      "stop_offset_points": 50,
+      "target_points": 0
+    },
+    "signal_columns_unchanged": true,
+    "exit_rules_defaults": {
+      "signal_stop_offset_points": 0.0,
+      "move_guard_from_signal_stop": false,
+      "signal_target_points": null
+    },
+    "target_precedence": "Explicit fill-anchored target_points/target_r overrides strategy signal-close target; explicit fixed stop overrides initial EMA offset only.",
+    "ema_anchor": "first close of fixed input frame; invalid OHLC blocks the remaining prefix; no silent restart"
+  },
+  "coverage": [
+    "independent Decimal ratio-of-sums K, SMA D and first-close-seeded EMA",
+    "prefix causality and unchanged historical signals",
+    "warmup300/305, strict current thresholds and previous equality",
+    "HLC windows and OHLC EMA prefix: NaN, positive/negative infinity, EMPTY_VALUE, overflow, flat range and window recovery",
+    "real Backtester long/short, point/tick/offset/risk/lot, no retroactive SL touch",
+    "guard zero-offset enabled vs explicit off, monotonicity, equal/invalid/wrong-side rejection, BID/ASK",
+    "ATR and confirmed partial/BE cannot be loosened; TP and volume preserved",
+    "signal-close TP vs fill gap and existing fill/R overrides in real BaseAdapter",
+    "composition registry units, JSON roundtrip and materialized trade levels"
+  ],
+  "limits": {
+    "cache_eligible": false,
+    "cache_reason": "Existing run_python identity gate rejects extra instance state min_bars; no gate changes or historical cache waiver.",
+    "native_parity": false,
+    "external_parity": false,
+    "rolling_window_parity": false,
+    "broker_stop_freeze_qualification": false,
+    "operational_acceptance": false,
+    "physical_windows": false,
+    "live_authorization": false,
+    "safety_distribution_required_for_python": false
+  },
+  "untouched": [
+    "UI",
+    "presets",
+    "composition/native.py",
+    "runtime165 pins",
+    "principal database/configuration/WIP",
+    "HDKSignal and SIGNAL_COLUMNS",
+    "Safety and shared MQL headers",
+    "native binaries/terminal/bridge/lease"
+  ],
+  "setup": "Own venv; prepared dependency packages read via local .pth, pip requirements-dev satisfied; no shared venv mutation or global installer/shortcut rewrite."
+}

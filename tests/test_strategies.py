@@ -22,8 +22,8 @@ def intraday(days=30, seed=3, bars_per_day=60, minutes=5):
     return pd.concat(frames, ignore_index=True)
 
 
-def test_registry_preserves_six_strategies_and_adds_s09_with_info():
-    assert list(REGISTRY) == KEYS + ["s09_reference"]
+def test_registry_preserves_six_strategies_and_adds_declared_s09_s10_with_info():
+    assert list(REGISTRY) == KEYS + ["s09_reference", "stoch_ema9"]
     for key, cls in REGISTRY.items():
         s = cls()
         assert s.key == key
@@ -64,7 +64,7 @@ def test_unknown_param_and_strategy_messages():
         get_strategy("donchian", periodo=3)
     with pytest.raises(ValueError, match="Estratégia desconhecida"):
         get_strategy("martingale")
-    assert parse_keys("all") == KEYS + ["s09_reference"]
+    assert parse_keys("all") == KEYS + ["s09_reference", "stoch_ema9"]
     assert parse_keys("orb, donchian") == ["orb", "donchian"]
 
 
