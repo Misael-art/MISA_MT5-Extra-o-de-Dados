@@ -1,3 +1,21 @@
+## T19.34 — Navegação e mensagens com fonte ampliada, em revisão (2026-10-21)
+
+Nova candidata sobre175/e174cc7: seletor Área substitui nomes comprimidos e mantém
+as páginas/seleção existentes; status/base se reorganizam e Detalhes expõe texto
+integral selecionável, com fonte ampliada e rolagem. Sem cálculo financeiro ou
+alteração de dados/configuração/native.10Tk finais passaram131,60s;6 dirigidos do
+entorno passaram52,37s (sobreposição); doctor20/1opcional/0. Histórico privado
+reaberto, sem novo cálculo ou banco do proprietário; capturas inspecionadas.
+[Contrato e limites](sdk/navegacao_adaptavel.md).
+
+Permanece instalado171/ac7af2c.172bfc teve3 visuais Windows isolados aprovados45,06s,
+mas a suíte parou antes da UI por timeout num commit SQLite de materialização
+inalterada. Teste dirigido local passou16,84s; causa do runner não comprovada.
+Reexecução seletiva do job falho no mesmo commit foi solicitada, preservando os
+cinco checks aprovados. Nenhum172–175 foi integrado/instalado neste snapshot.
+A fila serial e os seis checks próprios continuam obrigatórios; Windows físico,
+T19.34 ampla e aceite nativo/financeiro/operacional não são conferidos.
+
 ## Recursos — Cópias disponíveis com leitura de pastas incompleta, em revisão (2026-10-21)
 
 A prova de recuperação encontrou a aba ocupada na varredura de pastas, antes de

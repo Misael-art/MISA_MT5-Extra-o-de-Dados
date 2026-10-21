@@ -644,3 +644,182 @@ def configure_result_tags(tree, theme):
     for role, value in (("positive", 1), ("negative", -1), ("zero", 0), ("absent", None)):
         background, foreground = result_attention_colors(value, theme.colors, background="field")
         tree.tag_configure(f"result.{role}", background=background, foreground=foreground)
+
+
+class AreaNavigation(ttk.Frame):
+    """Nomes completos das páginas quando as abas não cabem na largura atual."""
+    def __init__(self, parent, notebook, theme):
+        super().__init__(parent)
+        self.notebook, self.theme = notebook, theme
+        self.original_style = notebook.cget("style")
+        self._job = None
+        self._key = None
+        ttk.Label(self, text="Área:", style="Page.Muted.TLabel").pack(side=tk.LEFT, padx=(0, 8))
+        self.combo = ttk.Combobox(self, state="readonly", width=1)
+        self.combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.combo.bind("<<ComboboxSelected>>", self._choose)
+        notebook.bind("<Configure>", self._schedule, add="+")
+        notebook.bind("<<NotebookTabChanged>>", self._selected, add="+")
+        self.bind("<Destroy>", self._destroyed, add="+")
+        theme.on_change(self._schedule)
+        self._schedule()
+
+    def _destroyed(self, event):
+        if event.widget is self and self._job is not None:
+            self.after_cancel(self._job)
+            self._job = None
+
+    def _schedule(self, event=None):
+        if self.winfo_exists() and self._job is None:
+            self._job = self.after_idle(self._layout)
+
+    def _selected(self, event=None):
+        tabs = self.notebook.tabs()
+        selected = self.notebook.select()
+        if selected in tabs:
+            self.combo.configure(values=tuple(self.notebook.tab(tab, "text") for tab in tabs))
+            self.combo.current(tabs.index(selected))
+        self._schedule()
+
+    def _choose(self, event=None):
+        index = self.combo.current()
+        tabs = self.notebook.tabs()
+        if 0 <= index < len(tabs):
+            self.notebook.select(tabs[index])
+
+    def _layout(self):
+        self._job = None
+        names = tuple(self.notebook.tab(tab, "text") for tab in self.notebook.tabs())
+        width = self.notebook.winfo_width()
+        if width <= 1:
+            return
+        needed = sum(self.theme.font_bold.measure(name) + 2 * SPACING["xl"] + 4 for name in names)
+        key = width, needed, names, self.theme.dark
+        if key == self._key:
+            return
+        self._key = key
+        self.combo.configure(values=names)
+        if needed > width:
+            ttk.Style(self).layout("AreaOnly.TNotebook.Tab", [])
+            self.notebook.configure(style="AreaOnly.TNotebook")
+            self.pack(fill=tk.X, before=self.notebook, pady=(0, 6))
+        else:
+            if self.focus_get() is self.combo:
+                self.notebook.focus_set()
+            self.pack_forget()
+            self.notebook.configure(style=self.original_style)
+        tabs = self.notebook.tabs()
+        selected = self.notebook.select()
+        if selected in tabs:
+            self.combo.current(tabs.index(selected))
+
+
+class AdaptiveStatusBar(ttk.Frame):
+    """Duas mensagens originais, com detalhe integral quando o espaço é insuficiente."""
+    def __init__(self, parent, theme):
+        super().__init__(parent)
+        self.theme = theme
+        self.status_text, self.base_text = "Status: Iniciando...", ""
+        self._job = None
+        self._key = None
+        self.status_label = ttk.Label(self, style="Page.Muted.TLabel")
+        self.base_label = ttk.Label(self, style="Page.Muted.TLabel")
+        self.details_button = ttk.Button(self, text="Detalhes...", command=self.show_details)
+        self.columnconfigure(0, weight=1)
+        self.bind("<Configure>", self._schedule, add="+")
+        self.bind("<Destroy>", self._destroyed, add="+")
+        theme.on_change(self._schedule)
+        self._schedule()
+
+    def _destroyed(self, event):
+        if event.widget is self and self._job is not None:
+            self.after_cancel(self._job)
+            self._job = None
+
+    def set_status(self, text):
+        if text is not None:
+            self.status_text = str(text)
+            self._layout()
+            self._schedule()
+
+    def set_base(self, text):
+        if text is not None:
+            self.base_text = str(text)
+            self._layout()
+            self._schedule()
+
+    def _schedule(self, event=None):
+        if self.winfo_exists() and self._job is None:
+            self._job = self.after_idle(self._layout)
+
+    def _fit(self, text, width):
+        # O texto integral permanece no modelo e no detalhe, sem alterar seu significado.
+        font = self.theme.font_small
+        single = text.replace("\r", " ").replace("\n", " ").replace("\t", " ")
+        if font.measure(single) <= width:
+            return single
+        low, high = 0, len(single)
+        while low < high:
+            middle = (low + high + 1) // 2
+            if font.measure(single[:middle] + "…") <= width:
+                low = middle
+            else:
+                high = middle - 1
+        return single[:low] + "…"
+
+    def _layout(self):
+        if self._job is not None:
+            self.after_cancel(self._job)
+            self._job = None
+        width = self.winfo_width()
+        if width <= 1:
+            return
+        font = self.theme.font_small
+        status_width = font.measure(self.status_text.replace("\r", " ").replace("\n", " ").replace("\t", " "))
+        base_width = font.measure(self.base_text.replace("\r", " ").replace("\n", " ").replace("\t", " "))
+        key = width, self.status_text, self.base_text, status_width, base_width
+        if key == self._key:
+            return
+        self._key = key
+        multiline = any(char in self.status_text + self.base_text for char in "\n\r\t")
+        clipped = max(status_width, base_width) > width - 8 or multiline
+        stacked = status_width + base_width + 16 > width or clipped
+        reserve = self.details_button.winfo_reqwidth() + 8 if clipped else 0
+        if stacked:
+            status = self._fit(self.status_text, max(1, width - reserve - 8))
+            base = self._fit(self.base_text, max(1, width - 8))
+            self.status_label.grid(row=0, column=0, columnspan=2, sticky="w")
+            self.base_label.grid(row=1, column=0, columnspan=3, sticky="w")
+        else:
+            status, base = self.status_text, self.base_text
+            self.status_label.grid(row=0, column=0, columnspan=1, sticky="w")
+            self.base_label.grid(row=0, column=1, columnspan=1, sticky="e", padx=(8, 0))
+        self.status_label.configure(text=status)
+        self.base_label.configure(text=base)
+        if clipped:
+            self.details_button.grid(row=0, column=2, sticky="e", padx=(8, 0))
+        else:
+            self.details_button.grid_remove()
+
+    def show_details(self):
+        window = tk.Toplevel(self.winfo_toplevel())
+        window.title("Status da aplicação")
+        window.geometry("800x500")
+        window.minsize(400, 240)
+        window.transient(self.winfo_toplevel())
+        caption = ttk.Label(window, text="Mensagens no momento da abertura", style="Page.Muted.TLabel", wraplength=760)
+        caption.pack(fill=tk.X, padx=12, pady=8)
+        caption.bind("<Configure>", lambda e: caption.configure(wraplength=max(1, e.width - 4))
+                     if int(float(caption.cget("wraplength"))) != max(1, e.width - 4) else None)
+        ttk.Button(window, text="Fechar", command=window.destroy).pack(side=tk.BOTTOM, anchor="e", padx=12, pady=8)
+        window.bind("<Escape>", lambda event: window.destroy())
+        body = ttk.Frame(window, padding=12)
+        body.pack(fill=tk.BOTH, expand=True)
+        text = self.theme.classic(tk.Text(body, wrap="word", padx=8, pady=8, font=self.theme.font))
+        bar = ttk.Scrollbar(body, command=text.yview)
+        text.configure(yscrollcommand=bar.set)
+        bar.pack(side=tk.RIGHT, fill=tk.Y)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        text.insert("1.0", self.status_text + "\n\n" + self.base_text)
+        text.configure(state="disabled")
+        return window
