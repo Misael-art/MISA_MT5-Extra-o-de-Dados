@@ -1,3 +1,26 @@
+## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
+
+Opt-in `composition_v1` usa o BaseAdapter e o Backtester existentes, com políticas,
+filtros, risco/capitalização e identidade da seleção persistidos no run. Saída
+antecipada, sinais seguintes, cota e lotes são recalculados na sequência completa;
+não é filtragem posterior de ledger. O padrão BASE do T20.12 mantém suas restrições.
+A tela de Backtest exibe escolhas do resultado gravado sem recalcular preços/lotes.
+Nenhum editor, motor, scheduler/cache paralelo ou capacidade nativa foi criado.
+
+Validação local:66 testes de serviço/CLI/composição e125 regressões pertinentes;
+seis verificações de apresentação/Tk/identidade, com sobreposição documentada. Uma
+prova CLI em cópia histórica isolada Madrid408barras/3operações/111,0875 reabriu o
+mesmo run e auditou nova consulta/cache; tela Tk/Xvfb conferida visualmente.
+PG do novo consumidor, CI/revisão/instalação correspondentes continuam pendentes.
+[Contrato, uso e limites](sdk/composed_backtest.md).
+
+T19.24 permanece parcial: lote/matriz, carteira/margem agregada e modos sem adaptador
+não foram entregues. `run_recorded` não qualifica livro/reserva/estatística. App169
+1612301/Hec550/Safety1.8.0 segue instalado; T20.12/PR170 ainda não foi instalado:
+CI Linux detectou divergência de assinatura na retomada após morte de processo,
+em diagnóstico antes do merge. A falha e a evidência anterior foram preservadas.
+Sem nova sondagem privada/MT5; sincronização e aceites nativos continuam pendentes.
+
 ## T20.12 — Registro de uma avaliação explícita, em revisão (2026-10-21)
 
 O próximo recorte usa um único registro de protocolo, alternativa, pedido deliberado,

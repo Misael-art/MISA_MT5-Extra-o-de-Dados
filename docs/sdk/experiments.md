@@ -38,6 +38,10 @@ barras não constitui maturidade/purga/embargo estatisticamente qualificados.
 
 ## Uma composição BASE explícita
 
+O padrão `base_v1` abaixo conserva o contrato inicial. T19.24 acrescenta o opt-in
+`composition_v1` para os modos já suportados pelo adaptador Python, sem alterar
+pedidos antigos ou qualificar estatística. Veja o [consumidor composto](composed_backtest.md).
+
 `request` recebe `Composition`, papel, chave idempotente, origem `manual` ou
 `automatic` e finalidade `evaluation` ou `tuning`. Origem automática é apenas um
 fato declarado pelo chamador; não liga um seletor. A alternativa usa composição
