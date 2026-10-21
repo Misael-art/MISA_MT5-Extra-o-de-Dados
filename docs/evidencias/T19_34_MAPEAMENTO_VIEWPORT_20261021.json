@@ -1,0 +1,47 @@
+{
+  "task": "T19.34 bounded mapping and actual two-viewport reachability in the UI test",
+  "date": "2026-10-21",
+  "base": "8056fd6640c330ff32791c2d6574af9ab71da585",
+  "ci_failure": {
+    "workflow": 39581746127,
+    "windows_job": 119160757388,
+    "passed": 2753,
+    "failed": 1,
+    "skipped": 85,
+    "seconds": 3115.18,
+    "case": "test_backtest_context_wraps_inside_actual_viewport_and_remains_scrollable[2.0]",
+    "observed": "winfo_ismapped returned0 after fixed150ms; exact runner event/order not reproduced on Linux",
+    "preserved": true
+  },
+  "change": "Test traverses inner and outer scroll positions for each label; bounded event pumping requires mapped+viewable+vertical intersection+original width bounds. Original assertions/text/themes/scales/sizes/PageDown/model checks retained. Runtime byte-identical to8056.",
+  "validation": {
+    "tests": "tests/test_ui_robot_context.py tests/test_sdk_api.py",
+    "passed": 12,
+    "seconds": 33.04,
+    "environment": "Linux Tk/Xvfb,96/144 simulatedDPI,2themes,4sizes/resize/keyboard + originalSDK surface",
+    "nonfinal_diagnostics": "Earlier mapping-only helper2passed29.18s is superseded. Additional fixture reachability experiments failed or were interrupted on owned pytest544181 only; not counted as acceptance. No native process signaled."
+  },
+  "installed_dependencies": {
+    "application_merge": "ac7af2c392611bb1bd262c7806810eb4289559b3",
+    "experiments_merge": "86ae848e6bf6326ca9920f7c1020c5a0f98fe39f",
+    "hadouken": "ec550d77caae74e9f5f4ffe30cea5ccd29621624",
+    "safety": "1.8.0",
+    "composition_ci": "2619passed218skippedLinux;2752passed85skippedWindows;55PG;all6checksSuccess",
+    "owner_scope": "InstalledCLI registered/reopened/cache;408bars3trades111.0875;book numerically reconciled, ledger/statistical/finalholdout false;source/spec not certified;UIreopened without recalculation"
+  },
+  "pending": [
+    "six checks at new final head",
+    "layout controlled install and actual ownerUI bounds",
+    "Windowsphysical/DPIhardware",
+    "native panel/Tester/replay/live sync prerequisite",
+    "future UI/catalog/portfolio/statistical scopes"
+  ],
+  "sha256": {
+    "mt5_extracao/ui/robot_detail.py": "0cf7b759ca8a8e9af43d40c3aa4c1680faba442fe938af19ca3024385c6bf887",
+    "tests/test_ui_robot_context.py": "c8cce734a4368439c94a2e2cb8b55ced5d38785b3845a2694d66481c54cc75a6",
+    "docs/sdk/robot_context_layout.md": "d311d6a189e93b0da7cd7551038838a2e17fbe705e85046cb672632a289fb322",
+    "docs/continuidade.md": "68b403f71e611e07f355943634d87451ef7afd0f5b218794854f6ed3421b729e",
+    "docs/PLANO_DE_TRABALHO.md": "c25fe1fdc497b9454f7942f1145ee6664e1153e320666d6006bf9a22a0d4adbb",
+    "docs/validacao_instaladores.md": "4fb01e2667695fb1ea919c6c3bac8673d53bf14e8a2e8231fc4462a214bfb7e6"
+  }
+}

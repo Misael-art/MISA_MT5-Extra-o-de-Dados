@@ -38,6 +38,9 @@ jobs:
           python-version: "3.11"
       - name: Dependências
         run: python -m pip install -r requirements-dev.txt
+      - name: Contexto visual (processo isolado antes da suíte)
+        if: runner.os == 'Windows'
+        run: python -m pytest -v tests/test_ui_robot_context.py tests/test_ui_robot_viewport.py
       - name: pytest (com cobertura mínima de 60% no núcleo)
         run: >-
           python -m pytest -v

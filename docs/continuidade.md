@@ -1,3 +1,51 @@
+## T19.34 — Contexto do robô sem corte horizontal, em revisão (2026-10-21)
+
+Nova evidência: CI39589919928/66571c4 também falhou no ensaio144DPI em900×620,
+com largura835/892válida, rótulo desmapeado e interseção563..293 (2.753passaram/
+85skips). O cálculo de alcance usava coordenadas globais do rótulo antes de ele
+ser mapeado. O ensaio agora revela o viewport por posições internas dos ancestrais
+e mede coordenadas globais após mapear; prazo/asserts/temas preservados.12Tk/SDK
+passaram32,04s; runtime inalterado, novo CI Windows obrigatório. Ambas as falhas
+permanecem preservadas; não há merge/instalação172. PR173 depende desta correção.
+
+PR172 permanece sem merge: CI39581746127 teve uma falha Windows no novo ensaio
+144DPI (`winfo_ismapped=0`), com2.753 aprovados/85skips. Linux passou2.619/220skips;
+PG55. O ensaio passou a percorrer as duas rolagens e aguardar o mapeamento e
+a geometria por prazo limitado, mantendo os asserts e acrescentando visibilidade
+real.12 testes Tk/SDK passaram localmente; runtime visual/financeiro inalterado.
+Novo CI da correção obrigatório; a causa exata do evento no runner continua
+indeterminada, sem alegação de aceite Windows físico.
+
+Recorte isolado sobre T19.24: rótulos do detalhe usam sua largura real, em vez do
+cartão externo. Regressão reproduziu688px de quebra em594px disponíveis; ajuste
+aprovado em dois temas/escalas96/144 simuladas e1920/1280/900/820, incluindo900×620,
+com texto longo/resize/teclado. Três testes anteriores reaproveitados no mesmo
+runtime, sem alteração de métricas, seleção ou conteúdo. Prova Tk/Xvfb reabre o
+mesmo histórico privado sem recalcular; capturas/medidas preservadas em evidência.
+Não conclui T19.34 nem qualifica gráficos/fluxos futuros/DPI ou Windows físicos.
+[Contrato](sdk/robot_context_layout.md).
+
+Corretivo SDK1 de T19.24d7020ac composto por Git sobre esta frente, sem conflitos
+ou alteração do layout já validado. Os quinze argumentos públicos permanecem;
+SDK+matriz visual+exibição da composição passaram13 testes em29,68s após compor.
+A nova ponta exige CI próprio; a execução anterior permanece como evidência do
+snapshot anterior, sem conceder aceite ao SDK que vazava o argumento interno.
+
+T20.12/PR170 foi integrado em86ae848 e T19.24/PR171 emac7af2c, com seis checks
+aprovados nas pontas833de99/d7020ac. T19.24: Linux2.619/218skips, Windows2.752/85skips,
+PG55. Appac7af2c/Hec550/Safety1.8.0 está instalado, com configurações/preferências,
+atalho, ponte e terminal preservados; exposição0/0 antes e depois. Avaliação
+registrada na instalação: Madrid408barras/3operações/111,0875, reabertura do mesmo
+run e nova consulta/cache auditadas, com livro numericamente conciliado; isso não
+qualifica livro transacional, fonte, reserva final ou estatística. Interface reabriu
+o resultado sem novo cálculo. T19.34 aguarda sua própria correção/CI antes da troca.
+Na instalação anterior,
+a UI local reabriu/exportou12.405 barras EURUSD/H1; CSV completo e backup existente
+conferidos, sem extrair/atualizar na corretora nem restaurar o banco do proprietário.
+
+As seções seguintes preservam os snapshots anteriores de revisão; o estado
+integrado/instalado acima prevalece sobre suas indicações históricas de pendência.
+
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
 Corretivo do SDK: CI39576824302 teve uma falha de assinatura pública (2.617 testes
@@ -2462,3 +2510,16 @@ cache inelegível, REAL proibida, Windows físico/carteira/gradientes próprios.
 Contrato docs/sdk/demo_operacional.md; recibo T8_7_DEMO_PARCIAL_20261020.json.
 
 Integração anterior conferida: H35/e5f4842 → M162/a0cd3c4, seis checks no runtime4517299, árvore final revisada idêntica. Este complemento T8.7 altera apenas documentação e não promove execução/aceite ao vivo.
+
+
+### T19.34 — corpo desmapeado por altura (2026-10-21)
+
+1b0 e e070 falharam Windows no mesmo900×620/144DPI, widthfits mas mapped0.
+Nenhum foi integrado/instalado. Novo recorte em172 usa ScrollableContent já existente
+em volta da página (filtros/resumo/corpo), mantendo as rolagens anteriores e modelos.
+Reprodução Linux escala suportada1,5 deixou o corpo semmapa antes;3dirigidos44,70 e
+4adjacentes28,36 passaram após. Primeiro Windows isolado3casos antecede a suíte CI
+completa/60%inalterada, sem waiver/dispatch. Nova captura histórica privada48fede,
+3trades/111,0875,24bounds/2temas+escala1,5, sem cálculo; contexto acessível, navegação
+/globalstatus ainda têm cortes com fonte extrema. T19.34 ampla/Windows físico pendentes.
+Compor por Git em173/174/175 antes de promover qualquer ponta; nova CI/instalação próprias.

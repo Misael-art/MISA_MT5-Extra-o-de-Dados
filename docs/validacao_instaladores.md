@@ -1,5 +1,14 @@
 # Validação dos instaladores com o MT5 real (T0.3 e T2.6)
 
+Pendência T19.34 (2026-10-21): conferir o contexto de Robôs em Windows físico,
+após concluir também o novo CI: rodada66571c4 falhou no alcance do viewport em
+900×620/144DPI; ensaio passou a usar posições internas antes do mapeamento.
+com96/144DPI, fontes ampliadas, dois temas e rolagem/teclado em900×620. O runner
+Windows da ponta8056fd6 teve uma falha de mapeamento no ensaio144DPI; o ensaio
+passou a percorrer ambas as rolagens e aguardar geometria por prazo limitado,
+preservando os limites e acrescentando visibilidade. Novo CI obrigatório ainda
+pendente; Tk/Xvfb local e CI não substituem este checklist físico.
+
 Registro das execuções manuais que o CI não cobre (download e instalação do MT5, Wine,
 ponte com o MT5 real). Roteiro em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md), seções T0.3 e T2.6.
 
@@ -369,3 +378,8 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] T19.40/HA-HiLo: Windows físico com fonte1.20/pin5dad3bbabab0343f/10inputs,
   Canvas padrão, Default/Manual3campos, exportação/recibo, semTP e SL obrigatório.
   Wine/Tk simulado não prova reversão, histórico do servidor ou comportamento físico.
+
+- [ ] T19.34 altura: conferir Windows físico com fontes ampliadas e página rolável;
+  corpo acessível via scroll externo, contexto por scroll do detalhe, filtros/seleção
+  preservados. Escala1,5 em900×620 ainda tem cortes na navegação/resumo/status global;
+  este recorte não os qualifica nem substitui o CI Windows final.
