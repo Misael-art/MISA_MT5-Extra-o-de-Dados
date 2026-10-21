@@ -36,3 +36,13 @@ escalas e Page Down. Nenhuma asserção anterior foi removida e o runtime contin
 byte a byte igual à ponta8056fd6. A causa exata do mapeamento no runner não foi
 reproduzida no Linux;12 testes locais passaram após o ajuste do ensaio. O novo
 CI Windows continua obrigatório; isso não qualifica Windows/DPI físicos.
+
+A rodada39589919928 da ponta66571c4 também falhou no alcance em900×620/144DPI
+(2.753 passaram/85skips). O diagnóstico mostrou largura válida835/892px, mas
+rótulo desmapeado e interseção vertical vazia563..293. O ensaio usava a posição
+global do próprio rótulo ainda desmapeado para revelar o viewport externo. Agora
+calcula a posição do viewport dentro do conteúdo pelos seus ancestrais e consulta
+coordenadas globais apenas depois do mapeamento, para verificar visibilidade.
+Preserva prazo5s, larguras, texto, duas rolagens, temas e escalas.12 testes locais
+passaram em32,04s; a confirmação Windows depende da nova ponta, sem assumir que
+esse diagnóstico local reproduz integralmente o gerenciador de janelas do runner.

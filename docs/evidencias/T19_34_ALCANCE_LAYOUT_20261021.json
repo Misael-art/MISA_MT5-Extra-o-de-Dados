@@ -1,0 +1,47 @@
+{
+  "task": "T19.34 reveal unmapped context from local layout coordinates",
+  "date": "2026-10-21",
+  "base": "66571c4dc15eeea05b9cff6a33521af73513f7a0",
+  "ci_failure": {
+    "workflow": 39589919928,
+    "windows_job": 119188030281,
+    "passed": 2753,
+    "failed": 1,
+    "skipped": 85,
+    "seconds": 3617.84,
+    "geometry": "900x620",
+    "simulated_dpi": 144,
+    "label_width_requested_allocated": [
+      835,
+      892
+    ],
+    "parent_size": [
+      892,
+      1126
+    ],
+    "mapped": false,
+    "visible_intersection": [
+      563,
+      293
+    ],
+    "logs_preserved": true
+  },
+  "change": "Test reveals inner viewport using ancestor-relative layout y, then reads root coordinates only after mapped/viewable to assert intersection. Original5sdeadline/widths/scrolling/text/themes/scales/model invariants retained. Runtime byte-identical665/8056.",
+  "validation": {
+    "tests": "test_ui_robot_context.py test_sdk_api.py",
+    "passed": 12,
+    "seconds": 32.04,
+    "environment": "Linux Tk/Xvfb; actualWindowsrootwindowbehavior notclaimed reproduced locally"
+  },
+  "runtime_sha256": {
+    "mt5_extracao/ui/robot_detail.py": "0cf7b759ca8a8e9af43d40c3aa4c1680faba442fe938af19ca3024385c6bf887"
+  },
+  "pending": "six finalhead checks, actualWindowsCI, serialmerge/install;physicalWindows/DPI/native unqualified",
+  "sha256": {
+    "tests/test_ui_robot_context.py": "fa3460d0a99e9c112bb25f2236464ad14f47d5cac8b6d5712af8b108439eed42",
+    "docs/sdk/robot_context_layout.md": "d420aeb8cb8156c88ed6b390b0d61dd8241a6247803fc8ea5dcb210cc526b54d",
+    "docs/continuidade.md": "2a2b2b49c09e137e10094dc19c09397f68452e56c00985f3abbd1e782609c9c8",
+    "docs/PLANO_DE_TRABALHO.md": "8106188f676f56d22a38b22b02ebc403c4301948d42beb316b518f8dd743a8f6",
+    "docs/validacao_instaladores.md": "3d815a177c0dfb83a910f74b51fcbfca3e5fa1f2b4db1d0dac4a18b363255303"
+  }
+}

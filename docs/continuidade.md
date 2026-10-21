@@ -26,6 +26,14 @@ SQL ou backup/restauração. [Contrato e evidência](sdk/recursos_leitura_parcia
 
 ## T19.34 — Contexto do robô sem corte horizontal, em revisão (2026-10-21)
 
+Nova evidência: CI39589919928/66571c4 também falhou no ensaio144DPI em900×620,
+com largura835/892válida, rótulo desmapeado e interseção563..293 (2.753passaram/
+85skips). O cálculo de alcance usava coordenadas globais do rótulo antes de ele
+ser mapeado. O ensaio agora revela o viewport por posições internas dos ancestrais
+e mede coordenadas globais após mapear; prazo/asserts/temas preservados.12Tk/SDK
+passaram32,04s; runtime inalterado, novo CI Windows obrigatório. Ambas as falhas
+permanecem preservadas; não há merge/instalação172. PR173 depende desta correção.
+
 PR172 permanece sem merge: CI39581746127 teve uma falha Windows no novo ensaio
 144DPI (`winfo_ismapped=0`), com2.753 aprovados/85skips. Linux passou2.619/220skips;
 PG55. O ensaio passou a percorrer as duas rolagens e aguardar o mapeamento e
