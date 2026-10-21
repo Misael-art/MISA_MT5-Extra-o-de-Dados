@@ -11,6 +11,7 @@ import pandas as pd
 from ..robots import mql
 from ..strategies import get_strategy
 from ..composition.schema import canonical_json
+from .protocol import strict_events
 
 _CONTEXT=re.compile(r"HDK_STRATEGY_CONTEXT ([^\r\n]+)")
 _BAR=re.compile(r"HDK_STRATEGY_BAR event_at=(\d+) at=(\d+) open=([^ ]+) high=([^ ]+) low=([^ ]+) close=([^\s]+)")
@@ -27,7 +28,8 @@ def _fail():
 def validate(directory, params, signals):
     text="\n".join(mql.read_text(p) for p in sorted((Path(directory)/"Tester").glob("Agent-*/logs/*.log")))
     contexts=[]
-    for raw in _CONTEXT.findall(text):
+    for match in strict_events(text,"HDK_STRATEGY_CONTEXT",_CONTEXT):
+        raw=match.group(1)
         pairs=[item.split("=",1) for item in raw.strip().split()]
         if any(len(pair)!=2 for pair in pairs) or len(pairs)!=len(_FIELDS) or {p[0] for p in pairs}!=_FIELDS:_fail()
         try:row={key:(int(value) if key in _INTS else float(value)) for key,value in pairs}
@@ -40,7 +42,9 @@ def validate(directory, params, signals):
     if not contexts or [r["event_at"] for r in contexts]!=sorted({r["event_at"] for r in contexts}):_fail()
     bars={}
     try:
-        for event,at,*values in _BAR.findall(text):bars.setdefault(int(event),[]).append((int(at),*map(float,values)))
+        for match in strict_events(text,"HDK_STRATEGY_BAR",_BAR):
+            event,at,*values=match.groups()
+            bars.setdefault(int(event),[]).append((int(at),*map(float,values)))
     except (ValueError,OverflowError):_fail()
     if set(bars)!={r["event_at"] for r in contexts}:_fail()
     window=[];decisions=[];digest=hashlib.sha256();strategy=get_strategy("stoch_ema9",**params)
@@ -51,7 +55,7 @@ def validate(directory, params, signals):
             if len(new)!=row["count"]:_fail()
             window=new
         else:
-            if len(new)!=1 or not window:_fail()
+            if len(new)!=1 or not window or row["count"] not in (len(window),len(window)+1):_fail()
             window=(window+new)[-row["count"]:]
         if (len(window)!=row["count"] or window[-1][0]!=row["event_at"] or
                 [r[0] for r in window]!=sorted({r[0] for r in window}) or

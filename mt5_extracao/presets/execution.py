@@ -22,6 +22,7 @@ from ..robots import store as robot_store
 from ..trade_analytics import ledger
 from .compiler import read_package
 from . import partial_events
+from .protocol import strict_events
 from .manual import _publish
 
 _EVIDENCE_LOCK=threading.Lock()
@@ -89,7 +90,7 @@ def native_signals(directory, *, marker="S09_SIGNAL"):
     paths=list((Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     result=[]
     for path in paths:
-        for match in pattern.finditer(mql.read_text(path)):
+        for match in strict_events(mql.read_text(path),marker,pattern):
             event,confirmed,available,direction,opened,state,volume,order,deal,reason=match.groups()
             item=dict(event_at=int(event),confirmed_at=int(confirmed),available_at=int(available),direction=int(direction),
                       opened=opened=="1",execution_state=int(state),filled_volume=float(volume) if state=="4" else None,

@@ -54,7 +54,7 @@ def test_reconstructs_append_and_revised_seed_on_both_sides(tmp_path):
     assert all(r["target_long"]==r["target_short"]==0 for r in validate(tmp_path,params,signals)["decisions"])
 
 
-@pytest.mark.parametrize("fault",["no_context","missing_bar","duplicate_bar","bad_bar","bad_clock","bad_stop","wrong_side","false_append","orphan_bar","missing_key","nonfinite","bad_count"])
+@pytest.mark.parametrize("fault",["no_context","missing_bar","duplicate_bar","bad_bar","bad_clock","bad_stop","wrong_side","false_append","orphan_bar","missing_key","nonfinite","bad_count","malformed_extra_bar","trailing_bar","malformed_extra_context"])
 def test_rejects_incomplete_changed_or_invalid_context(tmp_path,fault):
     path,rows,signals=trace(tmp_path);text=path.read_text()
     if fault=="no_context":text=""
@@ -69,8 +69,11 @@ def test_rejects_incomplete_changed_or_invalid_context(tmp_path,fault):
     elif fault=="missing_key":text=text.replace("tick=0.25 ","",1)
     elif fault=="nonfinite":text=text.replace("point=0.01","point=nan",1)
     elif fault=="bad_count":text=text.replace("count=300","count=299",1)
+    elif fault=="malformed_extra_bar":text+="\nHDK_STRATEGY_BAR event_at=oops at=1 open=100 high=110 low=90 close=100"
+    elif fault=="trailing_bar":text=text.replace("close=100.0","close=100.0 unexpected=1",1)
+    elif fault=="malformed_extra_context":text+="\nHDK_STRATEGY_CONTEXT"
     path.write_text(text)
-    with pytest.raises(ValueError,match="S10"):validate(tmp_path,PARAMS,signals)
+    with pytest.raises(ValueError,match="S10|marcador"):validate(tmp_path,PARAMS,signals)
 
 
 def test_no_target_is_an_explicit_profile_choice_and_stop_stays_required(monkeypatch):
@@ -86,3 +89,40 @@ def test_no_target_is_an_explicit_profile_choice_and_stop_stays_required(monkeyp
     assert execution._ledger_rows(None,record,signals,target_required=False)[0]["target_price"]==0
     frame.loc[0,"stop_price"]=0
     with pytest.raises(ValueError):execution._ledger_rows(None,record,signals,target_required=False)
+
+
+def write_contexts(path,contexts,snapshots):
+    lines=[]
+    for row,bars in zip(contexts,snapshots):
+        lines.append("prefix MT5\tHDK_STRATEGY_CONTEXT "+" ".join(f"{key}={value}" for key,value in row.items()))
+        for at,op,high,low,close in bars:
+            lines.append(f"prefix MT5\tHDK_STRATEGY_BAR event_at={row['event_at']} at={at} open={op} high={high} low={low} close={close}")
+    path.parent.mkdir(parents=True,exist_ok=True);path.write_text("\r\n".join(lines))
+
+
+def test_incremental_shrink_is_refused_even_when_constant_prices_hide_the_lost_bars(tmp_path):
+    bars=[(1792454400+i*300,100.,110.,90.,100.) for i in range(302)]
+    first=bars[:301];next_window=bars[2:302]
+    rows=[context(first,reset=True),context(next_window,reset=False)]
+    path=tmp_path/"Tester/Agent-1/logs/test.log"
+    write_contexts(path,rows,[first,[next_window[-1]]])
+    with pytest.raises(ValueError,match="S10"):validate(tmp_path,PARAMS,[])
+
+
+def test_rolling_1500_bar_window_matches_the_producer_and_keeps_mt5_prefixes(tmp_path):
+    bars=[(1792454400+i*300,100.,110.,90.,100.) for i in range(1501)]
+    bars[1499]=(*bars[1499][:-1],106.);bars[1500]=(*bars[1500][:-1],94.)
+    first=bars[:1500];rolling=bars[1:1501]
+    rows=[context(first,reset=True),context(rolling,reset=False)]
+    path=tmp_path/"Tester/Agent-1/logs/test.log"
+    write_contexts(path,rows,[first,[rolling[-1]]])
+    proof=validate(tmp_path,PARAMS,[])
+    assert proof["contexts"]==2 and [r["direction"] for r in proof["decisions"]]==[1,-1]
+
+
+@pytest.mark.parametrize("marker",["S09_SIGNAL","HDK_STRATEGY_SIGNAL"])
+def test_every_selected_signal_marker_must_be_consumed(tmp_path,marker):
+    path=tmp_path/"Tester/Agent-1/logs/test.log";path.parent.mkdir(parents=True)
+    path.write_text(f"MT5 prefix {marker} event_at=100 confirmed_at=200 available_at=200 direction=1 opened=1 execution_state=4 volume=1 order=2 deal=2 reason=ok\n"
+                    f"MT5 prefix {marker} event_at=200 confirmed_at=300 available_at=300 direction=-1 opened=0 execution_state=6 volume=0 order=0 deal=0\n")
+    with pytest.raises(ValueError,match="marcador"):execution.native_signals(tmp_path,marker=marker)

@@ -26,6 +26,9 @@ class S10Session(FakeSession):
         row=contexts[0];epoch=row["available_at"]
         mode=f"MT5X_NATIVE_MODE session={self.id} tester=1 visual={int(self.mode=='replay')} demo=1\n"
         signal=f"HDK_STRATEGY_SIGNAL event_at={row['event_at']} confirmed_at={row['confirmed_at']} available_at={epoch} direction=1 opened=1 execution_state=4 volume=1 order=2 deal=2 reason=\n"
+        if self.fault.startswith("truncated_state"):
+            state=int(self.fault[-1])
+            signal+=f"HDK_STRATEGY_SIGNAL event_at={epoch} confirmed_at={epoch+300} available_at={epoch+300} direction=-1 opened=0 execution_state={state} volume=0 order=0 deal=0\n"
         text=path.read_text()
         if self.fault=="changed_context":text=text.replace("open=100.0","open=100.01",1)
         if self.fault=="missing_context":text=""
@@ -68,7 +71,7 @@ def test_s10_service_reconciles_no_tp_replay_and_retains_negative_result(prepare
     assert replay.evidence["ledger"][0]["target_price"]==0
 
 
-@pytest.mark.parametrize("fault",["missing_context","uncertain","unexpected_tp"])
+@pytest.mark.parametrize("fault",["missing_context","uncertain","unexpected_tp","truncated_state3","truncated_state5","truncated_state6"])
 def test_s10_service_keeps_incomplete_or_divergent_evidence_unaccepted(prepared,monkeypatch,fault):
     monkeypatch.setattr(S10Session,"fault",fault)
     run=prepared().run()

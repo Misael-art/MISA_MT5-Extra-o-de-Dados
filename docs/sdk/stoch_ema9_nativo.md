@@ -57,7 +57,7 @@ no SymbolSpec e não substitui a recusa/aceite do broker.
 
 A fundação Python foi preservada pelo commit `d4b084de0e73e2b99ded3d734957288954643385`
 e composição Git; seus240 testes focados/171 ampliados são reutilizados nos arquivos
-inalterados. A seleção final de integração passou em193 testes, com Tk/Xvfb. Os testes próprios cobrem limiares,
+inalterados. A seleção final de integração passou em203 testes, com Tk/Xvfb. Os testes próprios cobrem limiares,
 janela revisada, ambos os lados, Manual/reabrir/exportar, recusa de dados/estado incerto,
 TP desligado e divergência no replay. Session simulada não é passagem nativa.
 
@@ -73,3 +73,11 @@ sem terminal/Tester/ordens; processos próprios encerrados e contexto liberado. 
 real, novo backtest/replay nativos, painel visual, Windows físico e live DEMO continuam
 pendentes. A instalação do proprietário só recebe o conjunto após revisão e CI final;
 nenhuma branch WIP é promovida como release.
+
+
+Correção da revisão: o consumidor exige crescimento incremental de zero ou uma barra
+na contagem, como o produtor, e testa a rolagem de1500. Toda ocorrência reservada de
+SIGNAL/CONTEXT/BAR deve ser interpretada; linha truncada ou conteúdo extra reprova a
+sessão, preservando prefixos normais do diário MT5. Isso não certifica completude quando
+pares inteiros CONTEXT+BAR se perdem: não há contador/hash de sequência do produtor.
+Os flags de fonte/guard/cache não são promovidos por essa conferência.
