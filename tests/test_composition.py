@@ -159,7 +159,11 @@ def test_parameter_contract_covers_all_existing_defaults(key):
 
 @pytest.mark.parametrize("key", [key for key in REGISTRY if key != "pullback"])
 def test_base_adapter_exact_legacy_parity_signals_exits_and_complete_backtest(key):
-    bars = intraday(days=8) if key == "orb" else random_walk(800, seed=5)
+    if key == "vwap_bands":
+        from tests.test_vwap_execution import band_market
+        bars = band_market()
+    else:
+        bars = intraday(days=8) if key == "orb" else random_walk(800, seed=5)
     composition = base_composition(key, symbol="EURUSD", timeframe="M5", risk_fraction=0.005, compound=False)
     adapter = BaseAdapter(composition)
     legacy = get_strategy(key)

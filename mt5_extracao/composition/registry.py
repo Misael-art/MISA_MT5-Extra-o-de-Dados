@@ -39,6 +39,10 @@ ATR = Parameter("number", "ATR", exclusive_minimum=True)
 OSCILLATOR = Parameter("number", "index_0_100", 0, 100)
 # Nomes explícitos: não converter nome Python em nome de input MQL5.
 STRATEGY_PARAMETERS = {
+    "vwap_bands": {"entry_band_pct": Parameter("number", "percent", 0, 10, True),
+                   "target_band_pct": Parameter("number", "percent", 0, 10),
+                   "stop_offset_points": Parameter("int", "point", 1, 2147483647),
+                   "volume_source": Parameter("int", "volume_source_0_auto_1_ticks_2_real", 0, 2)},
     "stoch_ema9": {"k_period": Parameter("int", "bar", 2, 1000),
                    "slowing": Parameter("int", "bar", 1, 100),
                    "d_period": Parameter("int", "bar", 1, 100),
