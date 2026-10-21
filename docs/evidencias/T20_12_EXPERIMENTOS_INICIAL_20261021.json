@@ -1,0 +1,187 @@
+{
+  "task": "T20.12 initial",
+  "date": "2026-10-21",
+  "status": "partial; ready for integration owner review, not merged",
+  "branch": "codex/t20-12-experimentos",
+  "exact_parent": "469dc79880ca20c73b7582e380265e664a758236",
+  "scope": {
+    "runtime": [
+      "mt5_extracao/cli.py",
+      "mt5_extracao/experiments/__init__.py",
+      "mt5_extracao/experiments/commands.py",
+      "mt5_extracao/experiments/schema.py",
+      "mt5_extracao/experiments/service.py",
+      "mt5_extracao/experiments/store.py"
+    ],
+    "runtime_existing_diff": "Only two CLI parser registration lines; five new package files",
+    "central_docs_owner": "Integration task edits PLANO/continuidade/VALIDACAO_F19 separately",
+    "untouched": [
+      "robots/backtest.py, robots/budget.py, robots/store.py",
+      "analytics/datasets.py and composition/strategies/validation mathematics",
+      "trade_analytics execution/importers, UI/native/presets/Safety/MQL/executables",
+      "owner DB/config/WIP; no install or virtual environment change"
+    ],
+    "master_merge": false,
+    "extra_pr": false,
+    "native_session_or_lease": false,
+    "foreign_process_terminated": false
+  },
+  "contract": {
+    "api": [
+      "ProtocolRevision",
+      "create",
+      "request",
+      "evaluate",
+      "status",
+      "holdout_access"
+    ],
+    "cli": "experiments create/request/evaluate/status/holdout_access",
+    "immutable": "Versioned criteria/objective, declared grid/seed, explicit limits and existing snapshot roles; declarations do not qualify financial criteria",
+    "roles": "Existing immutable snapshots with evaluation_start -> trade_from; same origin/symbol/TF/time convention, ordered disjoint evaluation intervals; warmup may overlap",
+    "mapping": "BASE without filters/overrides, existing compatibility guard, exact registered params; compound=True only; risk_fraction and economic settings frozen explicitly",
+    "budget": {
+      "scope": "evaluation_request",
+      "implementation": "Existing Budget.begin closed plan + admit + JobBudget",
+      "aggregate_campaign_cap": false,
+      "injection": "Exact Budget type, same db/config/batch, exact frozen limits, inactive ownership; begin validates the plan",
+      "retries": "Existing accumulated cooperative budget and reserved run_id; technical admissions remain distinct from deliberate requests"
+    },
+    "publication": {
+      "state": "run_recorded",
+      "atomic": [
+        "_robot_runs",
+        "datasets.bind",
+        "job completion",
+        "experiment journal"
+      ],
+      "seam": "Existing control.result(..., conn=...) in save_run; no change to backtest/store/Budget",
+      "ledger_import_inside_transaction": false,
+      "ledger_qualified": false,
+      "statistical_approval": false
+    },
+    "cache": "Uses canonical run store and existing _python_execution_identity; only eligible identity reused between requests, never replaces a previously admitted reservation; no new result cache",
+    "unqualified_identity": "No independent-observation digest or cross-request cache reuse; exact published request remains idempotent by run_id",
+    "recovery": "Owned Python process death before publication resumes same reservation; death after commit recovers checkpoint without recalculation; active ownership is preserved",
+    "exposure": "Durable access before calculation/cache/delivery, linked request_id; shared origin+symbol/TF+overlapping evaluation interval across protocols/revisions/data corrections; tuning/new proposal after access sticky",
+    "exposure_without_event": "no_recorded_access; prior/external exposure unknown, never retroactively untouched",
+    "qualified_final_holdout": false,
+    "tables": [
+      "_experiment_protocols",
+      "_experiment_requests",
+      "_experiment_executions",
+      "_experiment_events",
+      "_experiment_lock"
+    ]
+  },
+  "environment": {
+    "reuse": "Existing project environment per integration instruction, no install/full-suite repetition",
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "sqlalchemy": "2.0.54",
+    "platform": "Linux, pure Python with temporary SQLite only"
+  },
+  "checks": [
+    {
+      "phase": "baseline_before_edits",
+      "command": "<venv>/bin/python -m pytest -q tests/test_batch_budget.py tests/test_execution_cache_identity.py tests/test_robots_backtest.py tests/test_cli_agent.py --tb=short",
+      "passed": 68,
+      "failed": 0,
+      "seconds": 176.72
+    },
+    {
+      "phase": "proportional_regression_before_final_service_correction",
+      "command": "<venv>/bin/python -m pytest -q tests/test_experiments_schema.py tests/test_experiments.py tests/test_experiments_cli.py tests/test_experiments_pg.py tests/test_batch_budget.py tests/test_execution_cache_identity.py tests/test_robots_backtest.py tests/test_cli_agent.py tests/test_composition.py tests/test_dataset_snapshots.py --tb=short",
+      "passed": 201,
+      "skipped": 2,
+      "failed": 0,
+      "seconds": 405.18,
+      "reuse": "152 legacy regressions remain compatible: final correction only modifies new experiment service; final service tests rerun below"
+    },
+    {
+      "phase": "reservation_cache_regression_reproduced_before_fix",
+      "command": "<venv>/bin/python -m pytest -q tests/test_experiments.py -k retry_preserves_reserved --tb=short -x",
+      "expected_failure": 1,
+      "deselected": 27,
+      "seconds": 8.39,
+      "finding": "Failed reserved request reused another request cache and changed journal run_id; now cache is only used before first admission"
+    },
+    {
+      "phase": "directed_after_correction",
+      "command": "<venv>/bin/python -m pytest -q tests/test_experiments.py -k \"retry_preserves_reserved or idempotency_concurrent or injected_budget_cannot_disable or unavailable_access_journal\" --tb=short -x",
+      "passed": 4,
+      "deselected": 24,
+      "failed": 0,
+      "seconds": 21.08
+    },
+    {
+      "phase": "final_new_service_schema_cli_and_pg_collection",
+      "command": "<venv>/bin/python -m pytest -q tests/test_experiments_schema.py tests/test_experiments.py tests/test_experiments_cli.py tests/test_experiments_pg.py --tb=short",
+      "passed": 52,
+      "skipped": 2,
+      "failed": 0,
+      "seconds": 152.49,
+      "coverage": [
+        "immutability/additive old data preservation",
+        "SQLite concurrency/idempotency",
+        "manual/automatic origin and refusal/discard",
+        "cache and ineligible identity",
+        "journal-before-compute and existing result delivery",
+        "run+bind+journal rollback",
+        "cancel/retry and per-request limits",
+        "owned process death before/after commit",
+        "shared sticky exposure across protocols/revisions/data corrections",
+        "real CLI with isolated config/database, no MT5"
+      ]
+    },
+    {
+      "phase": "doctor_no_probe",
+      "command": "<venv>/bin/python -m mt5_extracao.bootstrap --root <existing-app-root> doctor --no-probe",
+      "ok": 20,
+      "warnings": 1,
+      "failed": 0,
+      "warning": "Optional pandas-ta absent",
+      "access": "Existing config/environment/files/stat only; no owner DB opening, MT5 launch or bridge probe"
+    },
+    {
+      "phase": "staged_diff_check",
+      "command": "git diff --cached --check",
+      "failed": 0
+    }
+  ],
+  "test_count_note": "Runs overlap; do not sum as independent tests/observations. Two PostgreSQL skips are environmental, not acceptance.",
+  "postgresql": {
+    "local_url_configured": false,
+    "executed_locally": false,
+    "existing_ci_job": ".github/workflows/ci.yml tests-postgresql: tests/test_*_pg.py",
+    "fixture": "Existing isolated_postgresql_database helper uses private UUID schema only",
+    "tests": [
+      "concurrent idempotency + immutable revision + shared tuning",
+      "publication rollback + same reserved run retry"
+    ],
+    "ci_workflow_changed": false,
+    "ci_acceptance": "pending"
+  },
+  "pending": [
+    "Integration owner review, central status documentation, Git composition and existing PR/CI",
+    "PostgreSQL CI execution and physical Windows validation",
+    "Remaining experiment consumers, external access interception and statistical holdout qualification",
+    "Campaign budget/qualified selectors/T20.13/T19.27/28/Defensivo/PF/Ultra",
+    "Ledger atomicity/reconciliation outside run transaction; no ledger qualification claimed",
+    "Native/broker/live acceptance is outside this pure-Python initial journal"
+  ],
+  "sha256": {
+    "mt5_extracao/cli.py": "023c65f95d1b7797a513cb84b1b1290f27e38ab660a6b8208e16630dd038b585",
+    "mt5_extracao/experiments/__init__.py": "8ef6577ae8b8cc55a97158492c0a9fb282180dc351f76aaa12603e3c6eb87cff",
+    "mt5_extracao/experiments/commands.py": "12249f0a7bb908de56627da4375bcd6097d1c088788a1ecfe5fb2e8f0d481e10",
+    "mt5_extracao/experiments/schema.py": "0d9afff5cb2b0abffb4eac5e7828d48b1418fc57c4dd789b4876831d85e2a59c",
+    "mt5_extracao/experiments/service.py": "512ff3e2e3b1d50fc78d41a17cf8657150378575a588deb2dfd181597d03e78a",
+    "mt5_extracao/experiments/store.py": "444446aff8ce421732fdcf3748c30aed6f061f31752811bcacfbd4d433c675e1",
+    "tests/experiment_helpers.py": "6fcfe64420ee782c35d59c0a10da974030f7741ca8919b49d8231d0ef76e7b82",
+    "tests/test_experiments.py": "ad70af57fce2ba8809d8fd4e3bbd96f099ca29cf20e38630d0791e789f0ca963",
+    "tests/test_experiments_cli.py": "e40421e5d7183808797bddfa20816781b1b580b15d3a5b2256941e256c64f917",
+    "tests/test_experiments_pg.py": "105327dc69a301f6b7832b124feba5f22d8b8b8d967c099306799d987fdaf52f",
+    "tests/test_experiments_schema.py": "f48e4a11db86bdfcf6a7bcfee5de8a608931bbf2ea7bb322b8ddf8070c0e6329",
+    "docs/sdk/experiments.md": "f6a35220cbbed8ed89d8c78dba9ce1031567d4460ae732714eb360bd0e211eca"
+  }
+}
