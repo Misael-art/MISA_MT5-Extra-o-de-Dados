@@ -56,3 +56,13 @@ reconferem a identidade já emprestada sem introduzir login automático em chama
 que antes não o faziam. initialize explícito continua respeitando auto_login.
 Casos próprios cobrem essa opção; initialize, conferência de identidade e shutdown
 usados na prova real não mudaram. Não se repetiu extração/restauração por esse ajuste.
+
+
+Composição por Git com173/4d3f560 (inclui172/bfc422): conflitos somente de append
+em continuidade/checklist resolvidos preservando ambos os recortes. Runtime do
+conector permanece byte-idêntico ao c0e0;48testes de interação passaram31,70s
+(46próprios, viewport máximo e gancho UI), com64casos alheios desse arquivo não
+selecionados. Reusa a prova candidata real25→49/restore/export/online, sem repeti-la.
+Nova CI/instalação da composição ainda obrigatórias; Windows isolado de172 passou
+sem substituir a suíte completa. Fonte global atual muda a identidade de código;
+isto não concede waiver de cache antigo ou nova qualificação financeira.

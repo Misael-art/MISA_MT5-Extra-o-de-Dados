@@ -394,3 +394,8 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] T20.12 consulta UI: verificar no Windows físico menu Exibir → Registro de estudos,
   temas/teclado/rolagem, callbacks após fechar e ausência de escrita por consulta.
   Tk/Xvfb Linux e teste PostgreSQL do job têm escopos próprios, sem aceite físico.
+
+- [ ] T19.34 altura: conferir Windows físico com fontes ampliadas e página rolável;
+  corpo acessível via scroll externo, contexto por scroll do detalhe, filtros/seleção
+  preservados. Escala1,5 em900×620 ainda tem cortes na navegação/resumo/status global;
+  este recorte não os qualifica nem substitui o CI Windows final.

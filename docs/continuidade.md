@@ -2570,3 +2570,15 @@ Sem novo cache/journal/motor. Serviço/economia/robots/SDK/estratégias preserva
 reais em cópia só das cinco tabelas de metadados, menu real/capturas inspecionadas,
 mesmo bf4d/status inalterado. Não repetiu avaliação ou restore. CI, instalação,
 Windows físico e demais consumidores/estatísticaT20.13 permanecem pendentes.
+
+### T19.34 — corpo desmapeado por altura (2026-10-21)
+
+1b0 e e070 falharam Windows no mesmo900×620/144DPI, widthfits mas mapped0.
+Nenhum foi integrado/instalado. Novo recorte em172 usa ScrollableContent já existente
+em volta da página (filtros/resumo/corpo), mantendo as rolagens anteriores e modelos.
+Reprodução Linux escala suportada1,5 deixou o corpo semmapa antes;3dirigidos44,70 e
+4adjacentes28,36 passaram após. Primeiro Windows isolado3casos antecede a suíte CI
+completa/60%inalterada, sem waiver/dispatch. Nova captura histórica privada48fede,
+3trades/111,0875,24bounds/2temas+escala1,5, sem cálculo; contexto acessível, navegação
+/globalstatus ainda têm cortes com fonte extrema. T19.34 ampla/Windows físico pendentes.
+Compor por Git em173/174/175 antes de promover qualquer ponta; nova CI/instalação próprias.
