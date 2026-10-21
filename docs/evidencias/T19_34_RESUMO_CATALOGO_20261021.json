@@ -1,0 +1,87 @@
+{
+  "task": "T19.34 catalog summary/error width",
+  "base": "e7656daba8a3156b26b7cf8983484c20b9c9bcea",
+  "sha256": {
+    "mt5_extracao/ui/robots.py": "0f425c5a0f346e0a82364a3c278685a2c8961a35e35cd6739166e69e5cc5c36a",
+    "tests/test_ui_robot_catalog_header.py": "9f9adac35baa717dd822abcde18f80ad6db0c97b9db6408f764a4a355365c23c",
+    "docs/sdk/cabecalho_catalogo.md": "ce96b4311198870d8ef7022ec26d4c9fb83df49920827b9c20c0e8f5af5ec583",
+    "docs/PLANO_DE_TRABALHO.md": "5ad1f98cfc43f6930eced9435fae33faa7fc7fce94cc53ba14b6f403c38f6ece",
+    "docs/continuidade.md": "359f3578500e662aecb80f3f0ca84e6cec8a436940d4de58c4d87acbb76ebf0b",
+    "docs/validacao_instaladores.md": "19ff0af578ac5eaea371d3c545e28c12ad91472a7a1e8411819d5fb8fc1cd1a6"
+  },
+  "protected_byte_identical": {
+    "mt5_extracao/strategies/base.py": "c6ca9c0bf12d1284cad6a91e3a988107a8f460e8c7bc47da79e5bc9190c822fe",
+    "mt5_extracao/strategies/backtester.py": "0b627a4162e0365010f1abab30c18a8e5a77dc8fdc56931ef3b6d749987fa13f",
+    "mt5_extracao/composition/adapter.py": "3a31319a020ebd965066d150b796bec6f2ce20246b53861c7b9eb568ab58b37a",
+    "mt5_extracao/composition/registry.py": "c58ee9fc0088d3e0214f2d729b090d85761fc44616e0e3f48d6530a99b2e9ce5",
+    "mt5_extracao/composition/schema.py": "bb9cc5beb06c0b5d113d8fc444754f76c283f16b95e590a444b0757126d26a42",
+    "mt5_extracao/robots/backtest.py": "5c3013ffd2d7c29fd94303f4e42076b0997a2751c6d9a46bb8b4f89e991e918f",
+    "mt5_extracao/robots/budget.py": "6f7b5f9ea7739c43c1a2caf860cd815fe37ad0a7265d0d3ee5ce7007e6abc859",
+    "mt5_extracao/robots/store.py": "dc6663b90d4d64d7df2b4a19b911a81f9c6d809cf7cea7bc0c2bf768d8b54153",
+    "mt5_extracao/experiments/schema.py": "0d9afff5cb2b0abffb4eac5e7828d48b1418fc57c4dd789b4876831d85e2a59c",
+    "mt5_extracao/experiments/service.py": "b02b85269aca3e9e5fecb4cf392011d8e9b7f9736bc7eaff42df382a89221a0b",
+    "mt5_extracao/experiments/store.py": "3309adae0c768e77bb0113d4049f9fd53ed6c8a7c144f93e15edb41c2f26bc23",
+    "mt5_extracao/strategies/stoch_ema9.py": "fc99567e5687425aefee3e822c59a73647f334e18e284f520df9c706adf2298c",
+    "mt5_extracao/strategies/vwap_bands.py": "777d5473f13d1ad69de2c3f04d9a63a571c91de14218ffb62d992b2185d8933b",
+    "mt5_extracao/strategies/madrid.py": "9322a83e02fc0c66b7232c04b4c03d06b7900492af8b897b07e2e507d77dd3d8",
+    "mt5_extracao/strategies/ha_hilo.py": "db939dec9ebda150998a9b7d61d2cf33da776a98c5ba6bf2e7fcbb653cbd1fd2",
+    "mt5_extracao/mt5_connector.py": "3304b5513594f5fe2437ca04bb56570b9e3d30c1448a254f70869531f04de9f4",
+    "mt5_extracao/ui_manager.py": "1554f03bd9d31a225dbaf23cc8867943b753939b467727ae287023acc7f186ac",
+    "mt5_extracao/ui/components.py": "f709c313ac53cc89df605674738d6dafffa1a52b5386a2a8c9eb2eebf95ee93e"
+  },
+  "before": {
+    "failed": 1,
+    "passed": 1,
+    "seconds": 31.67,
+    "summary_required": 1178,
+    "page_width": 823,
+    "search_actions_passed": true
+  },
+  "validation": {
+    "initial_passed": 2,
+    "initial_seconds": 20.32,
+    "final_passed": 11,
+    "final_seconds": 159.1,
+    "own_cases": 5,
+    "context_page": 3,
+    "adjacent": 3,
+    "counts_overlap": true,
+    "doctor_reused_from_176": {
+      "ok": 20,
+      "optional": 1,
+      "fail": 0,
+      "bootstrap_environment_configuration_unchanged": true
+    }
+  },
+  "private_readback": {
+    "run_id": "48fede65272345e3a30d5d1b513dc7ab",
+    "trades": 3,
+    "net_profit": 111.08749999999556,
+    "calculation_repeated": false,
+    "owner_database_used": false,
+    "native_started": false,
+    "two_themes": true,
+    "size": "900x620",
+    "dpi_simulated": 144,
+    "reading_scale": 1.5,
+    "summary_required": 782,
+    "page_width": 823,
+    "controlled_error_identified": true,
+    "run_selection_unchanged": true,
+    "images_inspected": true
+  },
+  "artifact_sha256": {
+    "catalog-header-ui-proof.json": "224808ee5238f4da3e83e3b6eab3ee71a968db308be60b9c0cf16ccf60954d3f",
+    "catalog-header-900-light.png": "2ee0c34d2ec41c5a8e807d73785d2bd5067b60a51ab703b72d26b0e25f0fe001",
+    "catalog-header-900-dark.png": "ccdafa5c7490b13047d4faff930f4ce17c6ed83c2f8e6f47f7851e6f4bde07ae",
+    "catalog-header-controlled-error.png": "36a16b1480a03524656572501723e80e6906cc9c0516f81a3b2834db0efa2a28",
+    "catalog-header-final-focused.log": "a4c07a3be480f552feb100ab3f50cae6a886ab230628321b2a474b2fe65b7507"
+  },
+  "qualified": {
+    "installed": false,
+    "own_final_ci": false,
+    "physical_windows": false,
+    "whole_T19_34": false,
+    "financial_native_live": false
+  }
+}

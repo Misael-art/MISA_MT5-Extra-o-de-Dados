@@ -1,3 +1,15 @@
+## T19.34 — Resumo e erro do catálogo legíveis, em revisão (2026-10-21)
+
+Complemento sobre176/e7656da, somente o rótulo do resumo/erro:1178px requisitados
+em823px reproduziram o corte. Busca/botões passaram e permaneceram inalterados.
+O resumo acompanha a largura real, com quebra à esquerda; conteúdo, modelos,
+filtros e seleção preservados.11Tk finais aprovados159,10s; dois temas/quatro
+larguras/fontes e erros longos, mais interação com contexto/página/cards. Histórico
+privado reaberto sem cálculo; capturas inspecionadas, sem banco owner ou MT5.
+[Contrato](sdk/cabecalho_catalogo.md). App171/ac7af2c segue instalado neste snapshot;
+checks/integração/instalação serial172–176 e deste complemento continuam próprios.
+Nenhum aceite de T19.34 ampla/Windows físico/financeiro/nativo/live.
+
 ## T19.34 — Navegação e mensagens com fonte ampliada, em revisão (2026-10-21)
 
 Nova candidata sobre175/e174cc7: seletor Área substitui nomes comprimidos e mantém

@@ -410,3 +410,14 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] Windows físico: fonte/DPI/troca de área/Detalhes com teclado.
 
 Não altera instaladores nem qualifica acessibilidade completa, cálculos ou operação.
+
+## T19.34 — resumo/erro do catálogo (2026-10-21)
+
+- [x] Linux/Tk/Xvfb:11 testes finais, resumo/erro completos na largura real, seleção
+  preservada, temas/fonte/DPI simulados e quatro tamanhos; histórico privado sem
+  recálculo, capturas normais e mensagem de QA inspecionadas. Busca inalterada.
+- [ ] CI da ponta e instalação serial depois de176.
+- [ ] Windows físico: quebra do resumo/erro e alcance pela rolagem da página.
+
+Doctor20/1opcional/0 reaproveitado da mesma base/ambiente com bootstrap idêntico.
+Sem alteração de instalador ou qualificação financeira/nativa/operacional.
