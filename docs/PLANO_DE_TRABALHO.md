@@ -214,7 +214,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.9 | Custos e preenchimento em cenários adversos | T20.6/8 | planejada; Q05 |
 | T20.10 | Curvas de capacidade por volume | T20.9; liquidez qualificada se usada | planejada; Q05, cenários sem certificação indevida |
 | T20.11 | Paridade pela primeira divergência de evento | T20.2/7, exportação nativa integrada | planejada; Q06 |
-| T20.12 | Registro único de experimentos e consultas à reserva | T20.1/4 | recorte inicial em revisão: protocolo, pedido explícito Python BASE e auditoria; integração dos demais consumidores e qualificação estatística pendentes |
+| T20.12 | Registro único de experimentos e consultas à reserva | T20.1/4 | recorte inicial em revisão: protocolo, pedido explícito Python BASE e auditoria;52 próprios/152 legados compatíveis e CLI histórica isolada; PG/CI final e demais consumidores pendentes. [Contrato](sdk/experiments.md) |
 | T20.13 | Qualificação matemática do protocolo estatístico | T20.2/12 | planejada; Q01/Q07, integra I-03/04/09/11/13 |
 | T20.14 | Compromissos entre presets elegíveis | T20.3/13, T19.28 | planejada; Q08, sem categoria ou objetivo PF paralelo |
 | T20.15 | Ablação e contribuição incremental | T20.12/13, T19.24 e módulos usados | planejada; Q09, FRP continua futuro |

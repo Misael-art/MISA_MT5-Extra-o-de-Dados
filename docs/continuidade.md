@@ -1,4 +1,4 @@
-## T20.12 — Registro de uma avaliação explícita, em elaboração (2026-10-21)
+## T20.12 — Registro de uma avaliação explícita, em revisão (2026-10-21)
 
 O próximo recorte usa um único registro de protocolo, alternativa, pedido deliberado,
 execução técnica e acesso aos dados. Delega uma avaliação Python BASE ao `run_python`
@@ -19,12 +19,21 @@ T20.12 completa ainda depende dos demais consumidores; T20.13, T19.27/28 e sele�
 Defensivo/Fator de Lucro/Ultra permanecem pendentes. Não há novo scheduler, cache,
 motor financeiro, UI ou caminho nativo neste recorte.
 
-Estado instalado: App168 `c5ba334` com H `87469b3`, Safety1.8.0 preservada. Madrid
-Default/Manual/exportação13inputs e histórico528barras/10operações/105,10 foram
-reabertos na aplicação instalada; configuração, atalho, ponte e principal preservados.
-HA/HiLo App169 ainda aguarda checks finais. Sincronização privada/Tester/replay/painel,
+Núcleo `97c3baf` composto por Git sobre master `1612301`, sem conflitos. Seus12hashes
+foram conferidos;52testes próprios finais e152regressões legadas compatíveis são
+reaproveitados, com sobreposição documentada. PostgreSQL2 ainda exige o CI final.
+Uma prova adicional da CLI composta, em cópia isolada do histórico legado, registrou
+Madrid BASE/risco0,25%:408barras/4operações/154,89; reabriu o mesmo pedido e auditou
+um segundo pedido que reutilizou o mesmo run, sem nova execução/amostra. É QA de
+persistência, sem qualificação de fonte, desempenho ou livro. [Contrato](sdk/experiments.md).
+
+Estado instalado: App169 `1612301` com H `ec550d7`, Safety1.8.0 preservada. S10,
+VWAP, Madrid e HA/HiLo têm Default/Manual/exportação e resultados reabertos na
+aplicação instalada. HA/HiLo preserva528barras/24operações/−382,223; Madrid preserva
+528barras/10operações/105,10. Configuração, atalho, ponte e principal preservados.
+O registro T20.12 ainda não está instalado. Sincronização privada/Tester/replay/painel,
 Windows físico e aceite ao vivo continuam pendentes; nenhum Expert novo foi carregado
-por consequência da instalação.
+por consequência dessas instalações.
 
 ## T19.40 — HA/HiLo Python e consumidor em revisão, 2026-10-21
 

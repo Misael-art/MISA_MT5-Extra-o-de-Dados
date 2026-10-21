@@ -103,7 +103,7 @@ Este documento retifica a exigência genérica anterior de testar tudo com merca
 Não altera a arquitetura nem certifica presets/retornos; implementação e evidências
 continuam sendo entregues por tarefa.
 
-## 5. Registro inicial de experimentos (T20.12)
+## 5. Registro inicial de experimentos ([T20.12](../sdk/experiments.md))
 
 Separar protocolo, alternativa, pedido deliberado e execução técnica. Uma alternativa
 manual também é registrada; uma nova consulta deliberada não desaparece por usar cache,
