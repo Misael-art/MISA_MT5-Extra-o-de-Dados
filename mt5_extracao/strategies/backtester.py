@@ -297,6 +297,10 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                               if rules.signal_target_points is not None
                               and fixed_target is None and rules.target_r is None else None)
     absolute_target = rules.absolute_signal_target and fixed_target is None and rules.target_r is None
+    reference_distance = (_signal_point_distance(rules.signal_reference_distance_points, spec)
+                          if rules.signal_reference_distance_points is not None else None)
+    if reference_distance is not None and reference_distance <= 0:
+        raise ValueError("Distância da referência deve produzir preço positivo; confira pontos e especificação.")
     if absolute_target and not signal_stop_levels:
         _signal_point_distance(0, spec)  # também exige tick/point conhecidos para o alvo absoluto
     n = len(data)
@@ -426,6 +430,14 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                              _signal_price(c[s] + d * signal_target_distance, spec.tick))
             if absolute_target:
                 signal_target = _signal_price(tgt_long[s] if d > 0 else tgt_short[s], spec.tick)
+            invalid_reference = False
+            if reference_distance is not None:
+                reference = tgt_long[s] if d > 0 else tgt_short[s]
+                invalid_reference = (not np.isfinite(reference) or not 0 < reference < np.finfo(float).max
+                                     or not np.isfinite(c[s]) or not 0 < c[s] < np.finfo(float).max
+                                     or abs(c[s]-reference) > reference_distance)
+                if fixed_target is None and rules.target_r is None:
+                    signal_target = _signal_price(reference + d * reference_distance, spec.tick)
             stop_side = o[i] + (spr_open[i] if d < 0 else 0)
             invalid_signal_stop = signal_stop_levels and (
                 not np.isfinite(stop) or not 0 < stop < np.finfo(float).max or (stop_side-stop)*d <= 0
@@ -434,7 +446,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
             invalid_signal_target = signal_target is not None and (
                 not np.isfinite(signal_target) or (signal_target-entry)*d <= 0)
             risk_px = (entry - stop) * d
-            if not np.isfinite(risk_px) or risk_px <= 0 or invalid_signal_stop or invalid_signal_target:
+            if not np.isfinite(risk_px) or risk_px <= 0 or invalid_signal_stop or invalid_signal_target or invalid_reference:
                 skipped_gap += 1     # abriu além do stop
             else:
                 base = equity + cash_total if cfg.compound else cfg.initial_equity
@@ -444,7 +456,7 @@ def run_backtest(df: pd.DataFrame, strategy: Strategy, spec: Optional[SymbolSpec
                 else:
                     target = (signal_target if signal_target is not None else
                               (entry + d * fixed_target) if fixed_target is not None else
-                              (entry + d * rules.target_r * risk_px) if rules.absolute_signal_target and rules.target_r is not None else
+                              (entry + d * rules.target_r * risk_px) if (rules.absolute_signal_target or reference_distance is not None) and rules.target_r is not None else
                               (tgt_long[s] if d > 0 else tgt_short[s]))
                     if not np.isfinite(target) and rules.target_r:
                         target = entry + d * rules.target_r * risk_px
