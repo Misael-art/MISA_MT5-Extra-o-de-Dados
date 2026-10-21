@@ -21,14 +21,26 @@ def _ledger_rows(trades):
 
 
 @pytest.mark.parametrize("key", sorted(REGISTRY))
-def test_base_mode_reproduces_the_backtester(key):
+def test_base_mode_reproduces_backtester_or_refuses_missing_signal_management_context(key):
     strategy = get_strategy(key)
     bars = random_walk(4000, seed=11, vol=0.6, freq="15min", spread=10)
-    # A S09 usa distâncias em pontos e exige especificação conhecida. Os seis casos
-    # anteriores conservam a fixture desconhecida e sua cobertura original.
-    spec = replace(SPEC, known=True, tick_size=.01) if key == "s09_reference" else SPEC
+    # Distâncias em pontos exigem especificação conhecida. Os seis casos anteriores
+    # conservam a fixture desconhecida e sua cobertura original.
+    rules = strategy.exit_rules()
+    units_required = (rules.target_points is not None or rules.stop_points is not None
+                      or rules.signal_target_points is not None or rules.signal_stop_offset_points>0
+                      or rules.move_guard_from_signal_stop or getattr(rules,"absolute_signal_target",False))
+    spec = replace(SPEC, known=True, tick_size=.01) if units_required else SPEC
     result = run_backtest(bars, strategy, spec, CFG)
     assert result.trades, f"{key}: o cenário precisa gerar operações"
+    if rules.move_guard_from_signal_stop:
+        # Não projetar silenciosamente uma política que perde a gestão EMA do sinal.
+        with pytest.raises(ValueError, match="Move Guard exige os níveis"):
+            engine.ExitPolicy.from_rules(rules)
+        from mt5_extracao.trade_analytics.execution.runner import base_policy
+        with pytest.raises(ValueError, match="Move Guard exige os níveis"):
+            base_policy("python:"+key)
+        return
     atr = strategy.gerar_sinais(bars.reset_index(drop=True))["atr"]
     sim = engine.simulate(_ledger_rows(result.trades), bars, spec, CFG,
                           engine.ExitPolicy.from_rules(strategy.exit_rules()), atr)

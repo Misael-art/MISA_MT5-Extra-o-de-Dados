@@ -17,6 +17,12 @@ nenhuma nova sondagem sem pré-condição observável. Windows físico/cache pen
 
 ## T19.38 — consumidor S10 em revisão, 2026-10-21
 
+CI39548192469/ce09fe6 recusado: fixtures antigas de contagem e caso de re-simulação
+sem especificação/contexto de Move Guard. Correção tipa a fixture, mantém lista
+explícita do catálogo e recusa projeção silenciosa dessa gestão no re-simulador;
+58 focados Tk/Xvfb e14 re-sim aprovados. Novo CI final/revisão exigidos antes de
+integrar/instalar. Backtester, MQL/pin e protocolos nativos não mudaram.
+
 S10 Python/Move Guard compartilhado composto por Git a partir de d4b084de, com perfil
 nativo fechado1.30/fp26545f544c784c39 e Default/Manual/editor/exportação. H#30 e H#45
 integradas; S09/Pullback/pins anteriores preservados. [Contrato e limites](sdk/stoch_ema9_nativo.md).
