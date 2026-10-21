@@ -48,3 +48,8 @@ concluiu a operação e a auditoria. As cópias e os diagnósticos foram preserv
 Windows físico, unidades de rede, filesystem bloqueado e escalabilidade geral
 de todas as consultas conservam validação própria. Não há novo aceite de MT5,
 operação, estratégia ou desempenho financeiro.
+
+Composição posterior do ensaio de alcance1b0ba510: três casos de interação UI
+passaram42,93s. Os três runtimes de Recursos permanecem byte-idênticos a8aef19c;
+a prova SQLite privada foi reaproveitada por esses hashes, sem repetir restauração.
+A evidência original conserva seus hashes do snapshot8aef19c, por ancestralidade.

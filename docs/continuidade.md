@@ -19,7 +19,7 @@ verificação. Banco original aberto só para leitura, configuração/preferênc
 Não qualifica restauração no banco do proprietário, PG, Windows físico ou operação.
 
 Fonte candidata ainda sem integração/instalação: Appac7af2c/Hec550/Safety1.8.0
-permanece ativo. PR172/layout66571c4 tem cinco checks aprovados e aguarda Windows;
+permanece ativo. PR172/layout1b0ba510 segue em novo CI após a falha Windows de66571c4;
 este corretivo conserva a ordem serial e exige seus próprios seis checks finais.
 O prazo é cooperativo entre chamadas de filesystem, sem teto absoluto para I/O,
 SQL ou backup/restauração. [Contrato e evidência](sdk/recursos_leitura_parcial.md).
