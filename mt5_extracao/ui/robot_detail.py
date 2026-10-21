@@ -462,6 +462,8 @@ class RobotDetail:
             m = run["metrics"]
             notes = [f"{run['symbol']} {run['timeframe']} · {fmt_int(run['bars'])} barras · "
                      f"{run['data_start'][:10]} a {run['data_end'][:10]} · rodado em {run['created_at'][:16]}"]
+            from mt5_extracao.composition.presentation import recorded_summary
+            notes.extend(recorded_summary(run))
             if m.get("skipped_min_lot"):
                 notes.append(f"{m['skipped_min_lot']} sinal(is) ignorado(s): lote para o risco abaixo do mínimo.")
             if not m.get("spec_known", True):
