@@ -25,6 +25,12 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+**Repasse de 2026-10-21:** instalação consolidada até AppPR171/ac7af2c3,
+Hec550d77/Safety1.8.0; fila172–177 ainda não integrada/instalada. Registro de
+entregas, limites, evidências e limpeza segura no [repasse](repasse/INTEGRACAO_20261021.md).
+A publicação documental não conclui T19.34, T20.12 completa, aceites nativos ou
+outros itens do plano. O WIP e os dados/backups do proprietário foram preservados.
+
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
 | B-11 | Política de versões SDK/sidecars e migração | — | ✅ política integrada M132/7e2178a e H14/d018f6c; SDK1 preservado; [política](sdk/versionamento-contratos.md); sem mudança de runtime |

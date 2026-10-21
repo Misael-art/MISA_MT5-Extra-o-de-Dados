@@ -1,3 +1,24 @@
+## Repasse do integrador e limpeza segura — 2026-10-21
+
+O [repasse consolidado](repasse/INTEGRACAO_20261021.md) registra entregas, versões,
+evidências, fila e próximos passos; o [índice da raiz](../RETOMADA_AGENTE_20261021.md)
+permite localizá-lo sem a conversa. O corte instalado é AppPR171/ac7af2c3,
+Hec550d77 e Safety3988df13/v1.8.0. PRs172–177 continuam publicadas, sem merge ou
+instalação; atualizar checks de cada ponta e integrar serialmente se o trabalho
+for retomado. Esta publicação documental não executa essa fila.
+
+Foram compactados/verificados10bancos privados, aposentadas19cópias nativas
+privadas com evidência retida e removidos76diretórios de cache gerado. O aumento
+observado de espaço disponível foi aproximadamente3,4GB; a soma lógica dos
+blocos retirados não equivale a bytes físicos recuperados em Btrfs. Dados,
+configurações, backups do proprietário, WIP, ambiente e worktrees foram
+preservados. [Escopo e medições](evidencias/REPASSE_LIMPEZA_20261021.json).
+
+As seções abaixo são registros históricos das respectivas pontas e podem dizer
+“em revisão” de entregas depois integradas. O repasse datado identifica o corte
+mais recente sem apagar as falhas anteriores. Sincronização privada/Tester,
+replay/aceites operacionais, Windows físico e demais gates continuam pendentes.
+
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
 Corretivo do SDK: CI39576824302 teve uma falha de assinatura pública (2.617 testes
