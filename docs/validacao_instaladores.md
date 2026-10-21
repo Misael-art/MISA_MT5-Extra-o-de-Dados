@@ -364,3 +364,8 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] T19.39/Madrid: validar em Windows físico editor Default/Manual com seis campos,
   fonte1.20/pin870c0f8db71c3d5a/13 inputs e Canvas padrão, exportação e recibo do Tester.
   Tk/Xvfb Linux e compilação6276Wine0/0 não substituem esse aceite; CI final separado.
+
+
+- [ ] T19.40/HA-HiLo: Windows físico com fonte1.20/pin5dad3bbabab0343f/10inputs,
+  Canvas padrão, Default/Manual3campos, exportação/recibo, semTP e SL obrigatório.
+  Wine/Tk simulado não prova reversão, histórico do servidor ou comportamento físico.

@@ -1,0 +1,166 @@
+{
+  "task": "T19.40",
+  "date": "2026-10-21",
+  "branch": "codex/t19-40-python",
+  "exact_parent": "43234c6a9786a089e767c27862dadbfe760849da",
+  "native_reference": {
+    "revision": "3c5fb55ec5b4a5ab06c69e2f37c64d564ff94a85",
+    "integrated": "c48ac239",
+    "original_spec_item": 11,
+    "wrapper_version": "1.10",
+    "identity": "Declared HA/HiLo, not the existing graphical indicator or qualified Profit parity",
+    "operational_acceptance": false
+  },
+  "scope": {
+    "runtime_files": [
+      "mt5_extracao/strategies/ha_hilo.py",
+      "mt5_extracao/strategies/__init__.py",
+      "mt5_extracao/composition/registry.py"
+    ],
+    "tests": [
+      "tests/test_ha_hilo.py",
+      "tests/test_ha_hilo_execution.py",
+      "tests/test_strategies.py",
+      "tests/test_robots_catalog.py"
+    ],
+    "untouched": [
+      "base.py/backtester.py/composition adapter/execution engine",
+      "six legacy strategies and S09/S10/VWAP/Madrid runtimes",
+      "native adapters/pins/UI/presets/Safety/MQL/executables",
+      "central PLANO/continuidade for serial integration",
+      "owner DB/config/WIP"
+    ],
+    "new_pr": false,
+    "master_merge": false,
+    "native_session_or_lease": false
+  },
+  "environment": {
+    "reuse": "Existing installed project venv, per integration instruction; no reinstall/full suite repeated",
+    "python": "3.11.15",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "platform": "Linux pure Python; GUI count checks in private Xvfb, no MT5"
+  },
+  "contract": {
+    "key": "ha_hilo",
+    "class": "HaHiLo",
+    "helper": "ha_hilo_context(df, hilo_period=10, hilo_offset=0): ha_open/ha_close/line/state",
+    "params": {
+      "hilo_period": {
+        "default": 10,
+        "type": "int",
+        "unit": "bar",
+        "minimum": 2,
+        "maximum": 500
+      },
+      "hilo_offset": {
+        "default": 0,
+        "type": "int",
+        "unit": "bar",
+        "minimum": 0,
+        "maximum": 0
+      },
+      "stop_buffer_points": {
+        "default": 0,
+        "type": "int",
+        "unit": "point",
+        "minimum": 0,
+        "maximum": 2147483647
+      }
+    },
+    "warmup_bars": 300,
+    "signal_columns_unchanged": true,
+    "new_exit_fields": [],
+    "exit_rules": {
+      "signal_stop_offset_points": "stop_buffer_points",
+      "move_guard_from_signal_stop": false,
+      "default_tp": null,
+      "trailing": null,
+      "partial": null,
+      "breakeven": false
+    },
+    "stops": "Raw active line only on raw signal; N>0 shared Backtester converts point and normalizes tick before lot. N=0 preserves existing raw level path.",
+    "entries_exits": "Level condition HAclose>line and HAclose>HAopen (buy/exit short), mirrored sell/exit long; neutral holds. Initial SL filtering preserves exit flags.",
+    "reversal": "Existing pending exit at next real open, then conditional opposite entry; refusal may leave flat, no atomic broker reversal.",
+    "invalid_prefix": "Invalid OHLC or unrepresentable HA/HiLo aggregate conservatively poisons joint context suffix without reseed; earlier prefix unchanged.",
+    "windows": "Fixed supplied Python prefix differs from sliding native1500; no global seed/initial-state guarantee.",
+    "overrides": "Existing explicit Python fixed_points/fixed_r profit and fixed_points protection retain priority and exits; fixed protection does not double initial offset; no native waiver."
+  },
+  "checks": [
+    {
+      "phase": "baseline_before_edits",
+      "command": "<venv>/bin/python -m pytest -q tests/test_strategies.py tests/test_composition.py tests/test_robots_catalog.py tests/test_trade_resim.py",
+      "passed": 141,
+      "failed": 0,
+      "seconds": 25.55
+    },
+    {
+      "phase": "decimal_math_and_contract",
+      "command": "<venv>/bin/python -m pytest -q tests/test_ha_hilo.py",
+      "passed": 54,
+      "failed": 0,
+      "seconds": 5.76
+    },
+    {
+      "phase": "initial_execution",
+      "command": "<venv>/bin/python -m pytest -q tests/test_ha_hilo_execution.py",
+      "passed": 24,
+      "failed": 0,
+      "seconds": 4.05,
+      "compatibility": "Two additional favorable-gap/invalid-normalized-SL cases included in final run, no later runtime changes."
+    },
+    {
+      "phase": "final_focused_and_relevant_regressions",
+      "command": "<venv>/bin/python -m pytest -q tests/test_ha_hilo.py tests/test_ha_hilo_execution.py tests/test_strategies.py tests/test_composition.py tests/test_robots_catalog.py tests/test_trade_resim.py tests/test_backtester.py tests/test_fixed_initial_stop.py tests/test_fixed_profit_exit.py tests/test_stoch_move_guard.py tests/test_madrid_execution.py tests/test_vwap_execution.py tests/test_cli_agent.py --tb=short",
+      "passed": 432,
+      "failed": 0,
+      "seconds": 96.09,
+      "ha_hilo_own_cases": 80
+    },
+    {
+      "phase": "affected_gui_catalog_counts",
+      "command": "xvfb-run -a <venv>/bin/python -m pytest -q tests/test_ui_main_window.py -k \"robots_tab_shows_cards_and_detail or robots_tab_survives_theme_toggle or backtest_button_follows_the_checked_rows\" --tb=short",
+      "passed": 3,
+      "failed": 0,
+      "deselected": 61,
+      "seconds": 19.07
+    },
+    {
+      "phase": "doctor_no_probe",
+      "command": "<venv>/bin/python -m mt5_extracao.bootstrap --root <existing-app-root> doctor --no-probe",
+      "ok": 20,
+      "warnings": 1,
+      "failed": 0,
+      "warning": "Optional pandas-ta absent",
+      "access": "Existing environment/config/files/stat only; no owner database opened and no native/bridge probe"
+    },
+    {
+      "phase": "diff_check",
+      "command": "git diff --check",
+      "failed": 0
+    }
+  ],
+  "resimulation": {
+    "engine_or_existing_test_modified": false,
+    "qualified_in_this_scope": "Static ledger with recorded initial SL and keep_original_exits=true reproduces existing exits, including signal exits; default generic regression includes HA/HiLo.",
+    "limitation": "Does not recompute signal/HiLo state or create alternative reverse entries; changing the ledger protection is not a full strategy decision replay."
+  },
+  "cache": "Generic identity gate unchanged; may emit eligible with complete verifiable code/data/rules/spec/runtime identity, without qualifying operational reuse or native evidence.",
+  "pending": [
+    "integration owner review and Git composition",
+    "native consumer/Tester/replay acceptance",
+    "broker fills/stops/freeze/asynchronous execution/restart/concurrent instances",
+    "physical Windows validation",
+    "operational/live qualification"
+  ],
+  "sha256": {
+    "mt5_extracao/strategies/ha_hilo.py": "db939dec9ebda150998a9b7d61d2cf33da776a98c5ba6bf2e7fcbb653cbd1fd2",
+    "mt5_extracao/strategies/__init__.py": "7fd8eddcbc34df07f2e1cf601765d3e5082f8346127d86921a7b373bf1b05335",
+    "mt5_extracao/composition/registry.py": "c58ee9fc0088d3e0214f2d729b090d85761fc44616e0e3f48d6530a99b2e9ce5",
+    "tests/test_ha_hilo.py": "a7986b1d98a0df186eb03c757cd277be40b900579e5ca57335e32aa8fd977e1d",
+    "tests/test_ha_hilo_execution.py": "6a30ea6b4b4df5fdb4c04e2a496fc775ed8793637daf5b51ff4468958b478f44",
+    "tests/test_strategies.py": "ebf3033b3c0a15d1e29457169659b3e2c73c4c023b7534a081d2df2a302201c3",
+    "tests/test_robots_catalog.py": "2bfd27fc732419ff306fc241dacf9c635399d34d3505c8083c85b98c6a6b6de9",
+    "docs/sdk/ha_hilo.md": "794154e9305f4010246d4a2c1e1b503237ea129be8dcbbeaf2d5d6847efb99af"
+  }
+}

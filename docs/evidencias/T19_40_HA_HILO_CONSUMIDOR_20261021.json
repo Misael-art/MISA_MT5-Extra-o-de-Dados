@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "task": "T19.40",
+  "date": "2026-10-21",
+  "scope": "Closed HA/HiLo profile, presets and observed-window proposals; no native reversal acceptance",
+  "base": "43234c6a9786a089e767c27862dadbfe760849da",
+  "python_core": "515a3b9052c613eefe722d4d1b1ae6a28934d285",
+  "hadouken": {
+    "head": "6b4f9ec8800afcd50158e5991dfde89a14b28264",
+    "merge": "ec550d77caae74e9f5f4ffe30cea5ccd29621624",
+    "version": "1.20",
+    "fingerprint": "5dad3bbabab0343f",
+    "inputs": 10
+  },
+  "validation": {
+    "integration_xvfb": 220,
+    "reused_core": {
+      "own": 80,
+      "final_selection": 432,
+      "gui": 3,
+      "overlap": true
+    },
+    "doctor": {
+      "ok": 20,
+      "warning": 1,
+      "failure": 0,
+      "scope": "consumer code, existing owner configuration --no-probe"
+    },
+    "compile": {
+      "build": 6276,
+      "errors": 0,
+      "warnings": 0,
+      "wrapper_binary_sha256": "b5cf425dd80774e87499918d9cc1953b81547ad8702e5fe3673dec7e7bc495cb",
+      "remaining": [],
+      "context_released": true,
+      "principal_unchanged": true
+    },
+    "real_package": "Default preserved/Manual rev2/10 inputs exported and read back in isolated DB; no loaded receipt",
+    "history": {
+      "run_id": "06e79e19f0ba460d8c9e4ad25205103a",
+      "bars": 528,
+      "trades": 24,
+      "net_profit": -382.2229999995461,
+      "risk_fraction": 0.0025,
+      "spec_historical_known": false,
+      "reopened": true,
+      "ledger_reconciled": true,
+      "data_manifest": "7522bbb71090309a73960807fa78e3d1e1fcb4e7042bfebebb8886fe67849c68",
+      "execution_identity": {
+        "version": 1,
+        "cache_eligible": true,
+        "status": "frozen_reference",
+        "data_manifest_id": "7522bbb71090309a73960807fa78e3d1e1fcb4e7042bfebebb8886fe67849c68",
+        "code_sha256": "9db28e75f09c4064ebb5a43233c39bcc8a08c14ef86f218062e87ef045cca33f",
+        "digest": "87f372bb4d090b61c3f4b0bad5ef1fa4b177c119b58a38122dd7be09ce851fac"
+      }
+    },
+    "ci": "pending final published head",
+    "maintenance_review": "pending frozen consumer head"
+  },
+  "corrected_development_checks": [
+    "consumer raw-callback setup initially omitted unused ATR channel; now explicitly unavailable, core unchanged",
+    "Decimal/brute-level roundoff at large buffer compared within trace tolerance and four double ULP; no threshold/financial rules relaxed"
+  ],
+  "boundaries": {
+    "reversal_execution_qualified": false,
+    "execution_levels_qualified": false,
+    "external_parity": false,
+    "source_qualified": false,
+    "operational_acceptance": false,
+    "live": false
+  },
+  "limits": [
+    "Trace before management lacks exitflags/request/retcode/close; reconstructed intent not proof of reversal",
+    "Final OpenObserved response not all retries; latch per instance only",
+    "No sequence/hash completeness proof; lost entire pairs can escape constant windows",
+    "No async/restart/concurrency/netting/hedging/server/stops-freeze/Windows physical acceptance",
+    "Generic Python identity gate unchanged; eligible identity is not new operational/native/live cache qualification",
+    "Only HA/HiLo permits TP absence unconditionally; S10 off remains explicit; other profiles require TP",
+    "T16.6 static resim uses recorded stops/exits, does not reconstruct HiLo/alternative reverse entries"
+  ],
+  "sha256": {
+    "mt5_extracao/composition/ha_hilo_native.py": "6f7acdfed4a9bda937100326ae458ba777b3343fb3d05229a750ecd3528a9d5e",
+    "mt5_extracao/composition/native.py": "2bc5aae9fab7f9ae54a9524f5d06f6a558f7e1e8e778d446665c0885b1443853",
+    "mt5_extracao/presets/ha_hilo_events.py": "99b545ff2f84cceda3dc2bd843d8e7b90508ecca8324c7bc5d9713156c505f60",
+    "mt5_extracao/presets/execution.py": "ab1818ca2b03ed00539531a6359ab011a6f29bb6f24ac9c0fdd7c1eb1e4b1e17",
+    "mt5_extracao/ui/preset_workflow.py": "1fdd93dda48ca776fda8c4d2483b170e4cfa4ad0d60557937bd74cda41435b28",
+    "mt5_extracao/ui/robot_controls.py": "1784a9caa7806ea13bd8dad94244674ae9ad578a730f294b6f0cca08f454af0e",
+    "tests/test_ha_hilo_native_profile.py": "d145b3b7e95426caaf7dcac4d632ac80d59a26c904847bdec2af046d335fef4e",
+    "tests/test_ha_hilo_preset_execution.py": "f0a9d9e91238979a4066130803994dfe902b8827bddf739c268c71ecdbd44c37",
+    "tests/test_ha_hilo_events.py": "528da78255b5e4f42ca485a047c421abba70bd1bdaf71e9ce688b0053cbd6feb",
+    "docs/sdk/ha_hilo_nativo.md": "195622c06142b8271f184f60f84ad2c3a7b1f6e33ad306c11841cb8d68a518ea",
+    "docs/PLANO_DE_TRABALHO.md": "336e40ae25bc6a3b0cc764eb612c4a50ae05ba2dc160a22425bc7c6ce216d6e6",
+    "docs/continuidade.md": "6ca6523b83f82ae9489b87812564ceaaedcd119f8ee02e6596eba6642cf0436c",
+    "docs/validacao_instaladores.md": "f50807674504841b727d6fb0a6957f75dd62a6b66f1f27ad680c9f2586b3a04c"
+  }
+}
