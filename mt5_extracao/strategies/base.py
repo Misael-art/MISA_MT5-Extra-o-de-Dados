@@ -48,6 +48,11 @@ class ExitRules:
     stop_points: Optional[float] = None    # proteção inicial calculada no fill, antes do lote (T19.19)
 
     temporal: Optional[TemporalPolicy] = None
+    # T19.38: níveis do sinal continuam em preço; o motor converte pontos com o SymbolSpec.
+    signal_stop_offset_points: float = 0.0
+    move_guard_from_signal_stop: bool = False
+    # Alvo padrão da estratégia no fechamento do sinal. Alvos explícitos points/R têm prioridade.
+    signal_target_points: Optional[float] = None
 
     def __post_init__(self):
         if self.temporal is not None and not isinstance(self.temporal,TemporalPolicy):
@@ -58,6 +63,16 @@ class ExitRules:
                 raise ValueError(f"{label} fixo requer pontos positivos e finitos; confira a política de saída.")
         if self.target_points is not None and self.target_r is not None:
             raise ValueError("Escolha alvo em pontos ou em R; não declare duas fontes concorrentes.")
+        if type(self.move_guard_from_signal_stop) is not bool:
+            raise ValueError("Move Guard requer opção booleana explícita.")
+        offset = self.signal_stop_offset_points
+        if (isinstance(offset, bool) or not isinstance(offset, Real)
+                or not math.isfinite(offset) or offset < 0):
+            raise ValueError("Offset do stop do sinal requer pontos não negativos e finitos.")
+        target = self.signal_target_points
+        if target is not None and (isinstance(target, bool) or not isinstance(target, Real)
+                                  or not math.isfinite(target) or target <= 0):
+            raise ValueError("Alvo do sinal requer pontos positivos e finitos; use None para desligar.")
 
 
 
