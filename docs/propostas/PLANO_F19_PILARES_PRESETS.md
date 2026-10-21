@@ -440,6 +440,11 @@ CI e revisão final concluídos; Windows físico delimitado. [Contrato e evidên
 
 ### T19.33 — Timeframe coerente em Robôs, Play, Replay e Backtest
 
+**Adendo do proprietário (2026-10-21):** ordenar TFs por duração crescente e
+oferecer Todos para expandir o backtest em jobs elegíveis. PLAY/REPLAY continuam
+individuais. [Escopo, exclusões e aceites](BACKTEST_MULTITF_COMPARACAO.md);
+seleção múltipla/orçamento T20.24/25 e comparação T20.22/23 têm entregas próprias.
+
 - **Repo/prioridade:** M; P1. **Depende de:** T17.28 existente; T19.25 para presets novos.
 - **Arquivos:** `ui/robot_controls.py`, `robot_detail.py`, `robots/controls.py`/sessions.
 - **Passos:** testar seletor atual “Ativo / TF” → conferir contexto em cada ação/detalhe/relatório →
