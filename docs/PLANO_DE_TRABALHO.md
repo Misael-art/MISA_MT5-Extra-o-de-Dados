@@ -41,6 +41,9 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| T19.33 — adendo TFs | Ordem crescente e Todos no backtest do card | Seletor T17.28, presets/capacidades e fila existentes | Planejado em 2026-10-21; [escopo e aceites](propostas/BACKTEST_MULTITF_COMPARACAO.md); PLAY/REPLAY individuais |
+| T20.24/25 — adendo ativos | Seleção múltipla, orçamento e retenção | BatchRunner/ResourceGovernor/Budget/contexto existentes | Planejado; avaliar 3/6 ativos por medição, MQL5 serial preservado; sem scheduler novo |
+| T20.22/23 — adendo comparação | Gráficos da estratégia com mesma revisão de preset em todos os TFs | Histórico/consulta por preset e escopo T19.33 | Planejado; matriz/curvas limpas, cobertura/estados explícitos; sem misturar presets nem recalcular ao abrir |
 | Continuidade 2026-10-21 | Validar host, clones e restauração preservada | Repasse App179 e SD | Validada no host encontrado: três clones/fsck, 43 tabelas e histórico reabertos em leitura; 56 testes, doctor20/1/0. [Registro](repasse/RETOMADA_VALIDADA_20261021.md); novo SO não comprovado |
 | B-11 | Política de versões SDK/sidecars e migração | — | ✅ política integrada M132/7e2178a e H14/d018f6c; SDK1 preservado; [política](sdk/versionamento-contratos.md); sem mudança de runtime |
 | T19.3 (conexão) | Inspeção e leitura de geração na transação recebida | T19.3 | ✅ concluída, [PR130](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/130); seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis; [causa e evidência](analytics/T19.3_CONEXAO_SNAPSHOT.md); Windows físico pendente |
