@@ -1,0 +1,69 @@
+{
+  "task": "T19.34 page height corrective",
+  "base": "1b0ba5100c63ccf42233b3f4b20970155bba17d7",
+  "sha256": {
+    "mt5_extracao/ui/robots.py": "5c506defcf04246a7c1dc6453d3a34b86c9666e3b1b83415e0977e4fd43052ed",
+    "tests/test_ui_robot_context.py": "da52279d249acc170dabe859546614e8fc9c99bd6dbb5fb0b6fd28eaaee919f6",
+    "tests/test_ui_robot_viewport.py": "caac4f8d55bc809932f637b0ce78e399568f9f5c32c6e28228342a82f104195c",
+    ".github/workflows/ci.yml": "615e60688cb8dc68493b769bf3907e70d0a466f9c90dafa827083503ca8ef076",
+    "docs/sdk/robot_context_layout.md": "8f64947778e2659712355f8bceb7da7edc7a39cf7a6509500578bf99620bfe7d",
+    "docs/PLANO_DE_TRABALHO.md": "cc3b6432eba93ed1ce3cbc53a3ac0369122e0a28b514dd5bb557dfbb61d371cd",
+    "docs/continuidade.md": "9d40bb0b05936c1e808450e44d1f5c24d1e1b604d247c3dd253f97d99fa96d07",
+    "docs/validacao_instaladores.md": "4ce6e9b78475547a8dd3da9a5fb1c3e0d9ae6d900b69d8ccbe602813a7232815"
+  },
+  "prior_failures": [
+    "172 CI39600576958 Windows119223740254",
+    "173 CI39601150443 Windows119225678929"
+  ],
+  "baseline_reproduced": {
+    "host": "Linux/Xvfb",
+    "case": "supported reading scale1.5 +144DPI +900x620",
+    "failed": 1,
+    "seconds": 9.08,
+    "body_canvas_mapped": false
+  },
+  "validation": {
+    "context_and_page": {
+      "passed": 3,
+      "seconds": 44.7
+    },
+    "adjacent_cards_theme_resize": {
+      "passed": 4,
+      "seconds": 28.36
+    },
+    "counts_overlap_with_older_evidence": true
+  },
+  "runtime": "RobotsPanel contains header controls and body inside existing ScrollableContent; RobotDetail wrapping unchanged",
+  "ci": "Windows directed3testprocess before original complete coverage60% suite; sixrequiredjobs retained, no manualworkflow or skip or timeout increase",
+  "historical_readback": {
+    "private_database_only": true,
+    "run_id": "48fede65272345e3a30d5d1b513dc7ab",
+    "trades": 3,
+    "net_profit": 111.08749999999556,
+    "bounds": 24,
+    "regular_dpi": 96,
+    "additional_dpi": 144,
+    "max_reading_scale": 1.5,
+    "two_themes": true,
+    "sizes": [
+      "1920x1000",
+      "1280x800",
+      "900x620",
+      "820x800"
+    ],
+    "images_inspected": [
+      "900light",
+      "maxscaleDark"
+    ],
+    "calculation_repeated": false,
+    "run_unchanged": true
+  },
+  "qualified": {
+    "installed": false,
+    "new_windows_ci": false,
+    "physical_windows": false,
+    "whole_T19_34": false,
+    "financial_native_or_live": false
+  },
+  "remaining": "navigation names/summary/globalstatus clipped at extremefonts; three nestedscrollareas retained, no broadaccessibility claim; exactWindowsfailedcase confirmation awaitsCI"
+}

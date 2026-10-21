@@ -53,3 +53,11 @@ Composição posterior do ensaio de alcance1b0ba510: três casos de interação 
 passaram42,93s. Os três runtimes de Recursos permanecem byte-idênticos a8aef19c;
 a prova SQLite privada foi reaproveitada por esses hashes, sem repetir restauração.
 A evidência original conserva seus hashes do snapshot8aef19c, por ancestralidade.
+
+
+Composição da correção de altura172/bfc422 por Git:4testes de interação passaram
+em51,11s (Recursos +contexto +escala1,5). Os três runtimes de Recursos permanecem
+byte-idênticos ao snapshot8aef e à prova privada completa. Não se repetiu backup/
+restore de455,6MiB por mudança da página de Robôs. CI anterior e070 falhou no mesmo
+mapeamento144DPI de172 e está preservado; novaCI da composição ainda necessária.
+O processo visual Windows isolado de172/bfc passou, sem substituir sua suíte completa.
