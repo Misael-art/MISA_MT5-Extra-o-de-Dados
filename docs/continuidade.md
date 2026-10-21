@@ -1,3 +1,31 @@
+## T20.12 — Registro de uma avaliação explícita, em elaboração (2026-10-21)
+
+O próximo recorte usa um único registro de protocolo, alternativa, pedido deliberado,
+execução técnica e acesso aos dados. Delega uma avaliação Python BASE ao `run_python`
+e ao `Budget` existentes, com snapshots imutáveis escolhidos no protocolo. Aceita
+somente `compound=True`; filtros e modos sem mapeamento fiel são recusados e registrados.
+O orçamento tem escopo explícito `evaluation_request`, incluindo retentativas daquele
+pedido; não constitui teto agregado de campanha nem busca automática.
+
+Run, vínculo ao manifesto e journal compartilham a transação existente. O estado
+`run_recorded` não afirma conciliação do livro, cuja importação ocorre depois. Cache
+e retomada não transformam a mesma execução em amostras independentes; um novo pedido
+deliberado continua auditado. Consulta à reserva deve ser durável antes de calcular,
+reutilizar ou revelar resultado, sem apagar exposição ao mudar protocolo. Dados já
+explorados ou de exposição desconhecida não recebem status de reserva intocada;
+`qualified_final_holdout=False` permanece explícito neste inicial.
+
+T20.12 completa ainda depende dos demais consumidores; T20.13, T19.27/28 e seleção de
+Defensivo/Fator de Lucro/Ultra permanecem pendentes. Não há novo scheduler, cache,
+motor financeiro, UI ou caminho nativo neste recorte.
+
+Estado instalado: App168 `c5ba334` com H `87469b3`, Safety1.8.0 preservada. Madrid
+Default/Manual/exportação13inputs e histórico528barras/10operações/105,10 foram
+reabertos na aplicação instalada; configuração, atalho, ponte e principal preservados.
+HA/HiLo App169 ainda aguarda checks finais. Sincronização privada/Tester/replay/painel,
+Windows físico e aceite ao vivo continuam pendentes; nenhum Expert novo foi carregado
+por consequência da instalação.
+
 ## T19.40 — HA/HiLo Python e consumidor em revisão, 2026-10-21
 
 Núcleo515a3b9 composto por Git; HA/HiLo1.20/fp5dad3bbabab0343f/H6b4f integrado no
