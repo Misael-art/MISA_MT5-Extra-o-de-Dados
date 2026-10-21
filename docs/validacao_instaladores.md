@@ -385,3 +385,8 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] T19.40/HA-HiLo: Windows físico com fonte1.20/pin5dad3bbabab0343f/10inputs,
   Canvas padrão, Default/Manual3campos, exportação/recibo, semTP e SL obrigatório.
   Wine/Tk simulado não prova reversão, histórico do servidor ou comportamento físico.
+
+- [ ] F2/T2.5 sessão existente: executar no Windows físico reuso local por diretório/EXE,
+  correspondência de conta/servidor/data_path, fechamento local sem SDKshutdown e
+  recusa após identidade alterada. Linux/Wine real e caminhos local/Windows simulados
+  estão no recorte de2026-10-21; isso não conclui paridade física T2.6 nem concorrência.

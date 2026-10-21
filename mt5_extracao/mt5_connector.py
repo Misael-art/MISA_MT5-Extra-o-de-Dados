@@ -70,6 +70,8 @@ class MT5Connector:
             mt5 = get_mt5(config_path)
         self.mt5_path = None
         self.is_initialized = False
+        self._connection_owned = False
+        self._borrowed_session = None
         self.connection_mode = "Análise local (offline)" if self.offline else "Desconectado"
         if not self.offline:
             self._load_config()
@@ -208,12 +210,6 @@ class MT5Connector:
             log.error("Módulo MetaTrader5 não está disponível ou não foi importado corretamente")
             return False
 
-        if self.prepare_terminal is not None and recursion_count == 0:
-            try:
-                self.prepare_terminal()
-            except Exception as e:      # preparar o terminal é um conforto: nunca impede a conexão
-                log.warning(f"Não foi possível preparar o terminal antes de conectar ({e}). Seguindo com a conexão.")
-
         # Verifica o caminho do MT5
         if not mt5_path:
             mt5_path = self.mt5_path
@@ -229,6 +225,41 @@ class MT5Connector:
         remote = isinstance(mt5, RemoteMT5)
         init_path = (self.mt5_windows_path or mt5_path) if remote else mt5_path
         path_mod = ntpath if remote else os.path
+
+        # Só leituras no percurso de reuso. A posse existente também impede
+        # anexar a aplicação durante um contexto privado do Tester.
+        from mt5_extracao.robots.mt5_tools import tester_lease
+        try:
+            with tester_lease():
+                if not force_restart:
+                    session = self._connected_session(init_path, path_mod, auto_login)
+                    if session is not None:
+                        if self._borrowed_session is not None and session != self._borrowed_session:
+                            self.is_initialized = False
+                            self.connection_mode = "Sessão existente alterada"
+                            return False
+                        if not self._connection_owned:
+                            self._borrowed_session = session
+                        self.is_initialized = True
+                        self.connection_mode = "Conectado (sessão existente)"
+                        return True
+                    if self._borrowed_session is not None:
+                        self.is_initialized = False
+                        self.connection_mode = "Sessão existente indisponível ou alterada"
+                        return False
+        except (RuntimeError, OSError) as error:
+            self.is_initialized = False
+            self.connection_mode = "Conexão indisponível durante contexto nativo"
+            log.warning("Não foi possível verificar a sessão existente: %s", error)
+            return False
+        if force_restart:
+            self._borrowed_session = None
+
+        if self.prepare_terminal is not None and recursion_count == 0:
+            try:
+                self.prepare_terminal()
+            except Exception as e:      # preparar o terminal é um conforto: nunca impede a conexão
+                log.warning(f"Não foi possível preparar o terminal antes de conectar ({e}). Seguindo com a conexão.")
 
         if remote:
             is_running = True
@@ -286,6 +317,7 @@ class MT5Connector:
                     result = mt5.initialize(**strategy["params"])
                     
                     if result:
+                        self._connection_owned = True
                         # Testa a conexão tentando acessar alguma funcionalidade básica
                         try:
                             account_info = mt5.account_info()
@@ -324,6 +356,7 @@ class MT5Connector:
                             # Tenta corrigir o erro IPC
                             if self._fix_ipc_error():
                                 log.info("Erro IPC corrigido com sucesso!")
+                                self._connection_owned = True
                                 self.is_initialized = True
                                 self.connection_mode = "Conectado (Após correção IPC)"
                                 return True
@@ -344,14 +377,8 @@ class MT5Connector:
         self.connection_mode = "Erro de Conexão"
         return False
 
-    def _login_from_env(self):
-        """
-        Entra na conta definida em MT5_LOGIN/MT5_PASSWORD/MT5_SERVER (.env), se houver.
-
-        Sem credenciais, usa a conta em que o terminal já está (ex.: a de demonstração).
-        Retorna False só quando há credenciais e o login falha: seguir na conta errada
-        gravaria dados de outro servidor.
-        """
+    @staticmethod
+    def _env_credentials():
         try:
             from dotenv import load_dotenv
             from mt5_extracao.bootstrap import paths
@@ -361,6 +388,50 @@ class MT5Connector:
         login = (os.getenv("MT5_LOGIN") or "").strip()
         password = os.getenv("MT5_PASSWORD") or ""
         server = (os.getenv("MT5_SERVER") or "").strip()
+        return login, password, server
+
+    @staticmethod
+    def _terminal_directory(value, path_mod):
+        value = str(value or "").strip()
+        if not value:
+            return ""
+        value = path_mod.normpath(value)
+        if path_mod.basename(value).lower() == bootstrap_paths.MT5_TERMINAL_EXE.lower():
+            value = path_mod.dirname(value)
+        return path_mod.normcase(path_mod.abspath(value))
+
+    def _connected_session(self, init_path, path_mod, auto_login):
+        """Identidade suficiente para reutilizar a ligação, sem iniciar/login."""
+        try:
+            terminal, account = mt5.terminal_info(), mt5.account_info()
+            if terminal is None or account is None or not getattr(terminal, "connected", False):
+                return None
+            directory = self._terminal_directory(getattr(terminal, "path", ""), path_mod)
+            data_path = self._terminal_directory(getattr(terminal, "data_path", ""), path_mod)
+            login, server = getattr(account, "login", None), getattr(account, "server", "")
+            trade_mode = getattr(account, "trade_mode", None)
+            if (not directory or directory != self._terminal_directory(init_path, path_mod)
+                    or not data_path or not login or not server or trade_mode is None):
+                return None
+            if auto_login:
+                configured_login, password, configured_server = self._env_credentials()
+                if configured_login and password and (str(login) != configured_login
+                        or (configured_server and server != configured_server)):
+                    return None
+            return directory, data_path, login, server, trade_mode
+        except Exception as error:
+            log.debug("Sessão existente não pôde ser conferida: %s", type(error).__name__)
+            return None
+
+    def _login_from_env(self):
+        """
+        Entra na conta definida em MT5_LOGIN/MT5_PASSWORD/MT5_SERVER (.env), se houver.
+
+        Sem credenciais, usa a conta em que o terminal já está (ex.: a de demonstração).
+        Retorna False só quando há credenciais e o login falha: seguir na conta errada
+        gravaria dados de outro servidor.
+        """
+        login, password, server = self._env_credentials()
         if not login or not password:
             return True
         try:
@@ -773,13 +844,17 @@ class MT5Connector:
         return [(tf.label, tf.value) for tf in timeframes.MAIN]
 
     def shutdown(self):
-        """Encerra a conexão com o MetaTrader 5."""
+        """Libera o consumidor; só encerra a API quando esta instância a iniciou."""
         if getattr(self, "offline", False):
             return
         if self.is_initialized and mt5:
             try:
-                mt5.shutdown()
-                log.info("Conexão MT5 encerrada.")
+                if self._connection_owned:
+                    mt5.shutdown()
+                    self._connection_owned = False
+                    log.info("Conexão MT5 encerrada.")
+                else:
+                    log.info("Consumidor desconectado; sessão MT5 existente preservada.")
                 self.is_initialized = False
                 self.connection_mode = "Desconectado"
             except Exception as e:
@@ -1668,6 +1743,8 @@ class MT5Connector:
         Returns:
             int: Número de símbolos disponíveis ou 0 se houver falha.
         """
+        if self._borrowed_session is not None and not self.initialize(auto_login=False):
+            return 0
         foi_inicializado_agora = False
         
         try:
@@ -1720,6 +1797,9 @@ class MT5Connector:
             log.error("Limite de recursão atingido em force_connection_check. Abortando.")
             return False
             
+        if self._borrowed_session is not None:
+            return self.initialize(auto_login=False, recursion_count=recursion_count)
+
         log.info(f"Iniciando verificação agressiva de conexão com MT5... (tentativa {recursion_count + 1}/3)")
         
         # Verifica se o processo do MT5 está em execução
@@ -1766,6 +1846,7 @@ class MT5Connector:
             try:
                 result = mt5.initialize(**strategy["params"])
                 if result:
+                    self._connection_owned = True
                     # Verificar acesso a funcionalidades básicas
                     try:
                         symbols = mt5.symbols_get()

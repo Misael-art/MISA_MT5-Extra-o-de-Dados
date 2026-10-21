@@ -2536,3 +2536,23 @@ cache inelegível, REAL proibida, Windows físico/carteira/gradientes próprios.
 Contrato docs/sdk/demo_operacional.md; recibo T8_7_DEMO_PARCIAL_20261020.json.
 
 Integração anterior conferida: H35/e5f4842 → M162/a0cd3c4, seis checks no runtime4517299, árvore final revisada idêntica. Este complemento T8.7 altera apenas documentação e não promove execução/aceite ao vivo.
+
+
+### Corretivo F2/T2.5 — sessão correspondente reutilizada (2026-10-21)
+
+Em revisão sobre Recursos/layout compostos e070897. O conector confere terminal,
+caminhos e conta antes de inicializar; sessão correspondente é emprestada e sua
+liberação local preserva a API. Perda/alteração posterior recusa também no preflight
+da coleta, sem reconectar silenciosamente essa sessão. Conexão nova/login explícito
+mantêm o caminho anterior. Sem novo gerenciador/lock/limite; usa tester_lease existente.
+T17.15 tratava só espera de teste e não é o escopo deste runtime.
+
+Prova real candidata: DEMO6276, primário e ponte preservados, zero posições/ordens;
+initialize/login/shutdown bloqueados no helper. Extração EURUSD/H1 fechada25barras,
+atualização49, reabertura/cópia/restauração auditada/cópia anterior e CSV todas as
+colunas iguais em banco privado pequeno. UI online abriu as49 e liberou consumidor
+sem desligar a API. Não abriu/restaurou o banco do proprietário. None/NaN nas colunas
+opcionais do CSV mantêm semântica de ausência, sem cálculo sintético/substituição.
+SDK documenta limites e evidência própria registra testes. CI final e instalação
+continuam pendentes; sincronização privada/Tester/aceite financeiro e Windows físico
+não qualificados, sem repetir sondagem nativa.
