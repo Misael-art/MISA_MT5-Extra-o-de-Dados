@@ -10,12 +10,18 @@ de execução. Contrato e limites em [VWAP nativo](sdk/vwap_bands_nativo.md).
 
 App165 integrado328cae e instalado com H741058/Safety1.8.0; dois Manuals reais S09/PB
 reabertos/exportados, principal/ponte preservados, sem novo binário carregado. App166
-S10ce09fe6 permanece sob CI final; não confundir fonte preparada com release ativa.
+S10b4bdf24 (correção após CIce09fe6 recusado) permanece sob novo CI final; não confundir fonte preparada com release ativa.
 VWAP também aguarda revisão/CI e instalação do conjunto. Tester/replay real, painel
 visual e live DEMO seguem dependentes da sincronização privada não estabelecida;
 nenhuma nova sondagem sem pré-condição observável. Windows físico/cache pendentes.
 
 ## T19.38 — consumidor S10 em revisão, 2026-10-21
+
+CI39548192469/ce09fe6 recusado: fixtures antigas de contagem e caso de re-simulação
+sem especificação/contexto de Move Guard. Correção tipa a fixture, mantém lista
+explícita do catálogo e recusa projeção silenciosa dessa gestão no re-simulador;
+58 focados Tk/Xvfb e14 re-sim aprovados. Novo CI final/revisão exigidos antes de
+integrar/instalar. Backtester, MQL/pin e protocolos nativos não mudaram.
 
 S10 Python/Move Guard compartilhado composto por Git a partir de d4b084de, com perfil
 nativo fechado1.30/fp26545f544c784c39 e Default/Manual/editor/exportação. H#30 e H#45

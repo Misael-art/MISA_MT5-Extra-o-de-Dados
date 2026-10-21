@@ -4051,6 +4051,12 @@ instalação e aceite nativo/replay/visual seguem pendentes. Cache/live/Windows 
 qualificados; T19.38 completa permanece aberta.
 
 
+Correção T19.38 do CI39548192469/ce09fe6: contagens de catálogo atualizadas por lista
+explícita, fixture exige especificação tipada nos novos níveis; projeção T16.6 recusa
+Move Guard sem série/contexto, preservando paridade legada e sem gestor paralelo.
+58 focados Tk/Xvfb e14 re-simulação passaram. Fonte/pin MQL e backtester intactos;
+CI final, revisão do corretivo e instalação continuam pendentes.
+
 ### T19.36 — VWAP percentual, consumidor em revisão (2026-10-21)
 
 Fundação Python48feaf8 composta por Git e perfil nativo VWAP1.20/fp7139d746ab6b2c1d

@@ -81,3 +81,15 @@ SIGNAL/CONTEXT/BAR deve ser interpretada; linha truncada ou conteúdo extra repr
 sessão, preservando prefixos normais do diário MT5. Isso não certifica completude quando
 pares inteiros CONTEXT+BAR se perdem: não há contador/hash de sequência do produtor.
 Os flags de fonte/guard/cache não são promovidos por essa conferência.
+
+O CI39548192469 da ponta ce09fe6 foi recusado (contagens antigas do catálogo e
+fixture de re-simulação com especificação desconhecida). A correção conserva uma
+lista explícita dos oito robôs Python nas fixtures e testa o catálogo inteiro.
+O re-simulador T16.6 não recebe as séries de níveis EMA: `ExitPolicy.from_rules`
+agora recusa Move Guard dependente do sinal, em vez de perder essa gestão ao
+projetar regras. Isso não desliga o Move Guard no backtester nem altera o replay
+nativo; qualificação da re-simulação com essa série permanece pendente. Os casos
+legados mantêm comparação de saídas/PnL, e o caso novo exige a recusa explícita,
+sem pular teste. Correção validada em58 testes focados com Tk/Xvfb e14 de
+re-simulação após a seleção tipada da especificação. Novo CI final continua
+obrigatório; falhas anteriores e Windows físico não são declarados aprovados.

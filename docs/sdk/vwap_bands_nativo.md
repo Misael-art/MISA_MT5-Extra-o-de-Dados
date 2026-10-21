@@ -84,3 +84,10 @@ somente quando os dados requeridos forem elegíveis.
 Tester/replay real deste consumidor, painel, Windows físico e live DEMO permanecem
 pendentes. Instalação do proprietário recebe apenas o conjunto revisado com CI final
 verde; exportação ou compilação não recarregam um Expert.
+
+Correção de integração: o corretivo S10b4bdf24 foi composto por Git, preservando o
+histórico. A fixture explícita do catálogo inclui os nove Python;59 focados adicionais
+de CLI/catálogo/UI/re-simulação passaram. VWAP sem Move Guard conserva comparação
+do re-simulador base com o backtester, inclusive saídas e PnL; gestão por séries de
+sinal, como S10/Madrid, permanece recusada nesse re-simulador sem contexto próprio.
+Novo CI sobre esta ponta é obrigatório; a falha anterior do S10 não foi contornada.
