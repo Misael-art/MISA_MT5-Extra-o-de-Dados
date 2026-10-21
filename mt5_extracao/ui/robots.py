@@ -93,8 +93,9 @@ class RobotsPanel:
         self._filterbar_stacked = None
         bar.bind("<Configure>", self._responsive_filterbar, add="+")
 
-        self.summary = ttk.Label(page, text="Lendo o catálogo...", style="Page.Muted.TLabel")
-        self.summary.pack(anchor="w", pady=(8, 6))
+        self.summary = ttk.Label(page, text="Lendo o catálogo...", style="Page.Muted.TLabel", justify=tk.LEFT)
+        self.summary.pack(fill=tk.X, anchor="w", pady=(8, 6))
+        self.summary.bind("<Configure>", self._wrap_summary, add="+")
 
         body_view = ttk.Frame(page)
         body_view.pack(fill=tk.BOTH, expand=True)
@@ -132,6 +133,12 @@ class RobotsPanel:
         self._body_stacked = None
         body.bind("<Configure>", self._responsive_body, add="+")
         self.theme.on_change(self._theme_changed)
+
+    def _wrap_summary(self, event):
+        if event.width > 1:
+            width = max(1, event.width - 4)
+            if int(float(self.summary.cget("wraplength") or 0)) != width:
+                self.summary.configure(wraplength=width)
 
     def _sync_body_viewport(self, _event=None):
         canvas_width = self.body_canvas.winfo_width()
