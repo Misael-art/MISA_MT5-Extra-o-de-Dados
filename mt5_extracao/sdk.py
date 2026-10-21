@@ -14,7 +14,9 @@ interno e pode mudar sem aviso. Referência: docs/sdk/api.md.
 
 Este módulo não importa `tkinter` nem `MetaTrader5`. Nada aqui envia ordens.
 """
-from mt5_extracao.robots.backtest import run_mql5, run_python
+from typing import Optional
+
+from mt5_extracao.robots.backtest import run_mql5, run_python as _run_python
 from mt5_extracao.robots.battery import Item as BatteryItem
 from mt5_extracao.robots.battery import Report as BatteryReport
 from mt5_extracao.robots.battery import run_battery
@@ -34,6 +36,18 @@ from mt5_extracao.strategies import Strategy, StrategyInfo, get_strategy
 from mt5_extracao.strategies.backtester import BacktestConfig, run_backtest as _run_backtest
 from mt5_extracao.strategies.declared import DeclaredStrategy, SignalSpec
 from mt5_extracao.strategies.validation import validate as validate_strategy
+
+
+def run_python(db, config, robot, symbol: str, timeframe: str, start=None, end=None,
+               params: Optional[dict] = None, strategy=None, source: str = "backtest", trade_from=None,
+               real_spread: bool = True, cashflows=None, data_manifest_id=None, control=None) -> dict:
+    """Delega ao produtor existente com a assinatura publicada do SDK 1.
+
+    Composições explícitas pertencem ao serviço/CLI interno, sem ampliar o SDK.
+    """
+    return _run_python(db, config, robot, symbol, timeframe, start, end, params, strategy,
+                       source, trade_from, real_spread, cashflows, data_manifest_id, control)
+
 
 def run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=None,
                  cashflows=None, check=None, observation_timeframe=None):

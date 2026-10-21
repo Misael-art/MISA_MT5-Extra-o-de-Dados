@@ -1,0 +1,41 @@
+{
+  "task": "T19.24 SDK1 surface correction",
+  "date": "2026-10-21",
+  "base": "da05937c1cb28a4a89e3e535cd52e163e1db0abf",
+  "finding": {
+    "ci": 39576824302,
+    "job": 119144286393,
+    "failed": 1,
+    "passed": 2617,
+    "skipped": 218,
+    "seconds": 1414.39,
+    "case": "test_sdk_api::test_signatures_did_not_change",
+    "cause": "SDK reexport directly referenced extended internal run_python and unintentionally exposed optional composition argument.",
+    "local_reproduction": {
+      "failed": 1,
+      "passed": 8,
+      "seconds": 1.71
+    }
+  },
+  "fix": "Explicit SDK1 wrapper around existing internal producer, analogous to SDKrun_backtest. Keeps all15names/order/defaults/annotations and API_VERSION/SURFACE/__all__ unchanged. Composition remains internal service/CLI optin. No new engine or finance logic.",
+  "validation": {
+    "selection": "tests/test_sdk_api.py tests/test_composed_backtest.py",
+    "passed": 24,
+    "seconds": 27.84,
+    "assertions": "Original surface test preserved; added exact15positional arguments and olddefaultforwarding test. Full composition behavior14cases passes with unchanged internal producer.",
+    "compatible_prior": "125 financial/adapter regressions,25combined source interaction,CLI/Tk historicalproofs remain scoped to unchanged relevant runtime; counts overlap. Existing code identity invalidates after source change, no waiver."
+  },
+  "review": "Integration owner same implementation/review front, no independent authorship claim. No blocking defect identified in wrapper/code flow; unchanged SURFACE and no financial guard edits verified.",
+  "pending": [
+    "Six mandatory checks on corrected head before merge/install",
+    "Physical Windows/native/financial/source/statistical/ledger acceptance unchanged",
+    "172depends on this correction; compose byGit preserving UI source"
+  ],
+  "sha256": {
+    "mt5_extracao/sdk.py": "64f67113ce57a2dc4937482ae177e2cf464a83f81428f2aae9cf1239abd4dd7c",
+    "tests/test_sdk_api.py": "8dd254c86fcd9e6b5786e9a6c19211200e09ffcaac0a3823fba247a6e0077d4c",
+    "docs/sdk/api.md": "0368f080085de0f4bcd4840e019a68dc80be8dcabfd72a86d69137e57682e949",
+    "docs/sdk/composed_backtest.md": "21819e03d42f3f7d8f5c078578831c8ca85cc5e829c9190e4365781fba426dbe",
+    "docs/continuidade.md": "2d09fdf73c19072ed8aaf27a547350869dccc3fde34af0b1e4cf663e7e450a8d"
+  }
+}
