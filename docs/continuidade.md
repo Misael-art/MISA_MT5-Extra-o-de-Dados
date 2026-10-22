@@ -1,3 +1,12 @@
+## Prévia disponível pelo atalho habitual — 2026-10-21
+
+Solicitação do proprietário: todo avanço testável acessível para teste.
+Composição local172→177 + correção visual182 + documentação178→181 em branch
+própria, com histórico preservado. Os dois atalhos passam a usar `app-development`;
+`app-current` aceito e dados/WIP preservados. [Escopo e atualização](TESTAR_DESENVOLVIMENTO.md).
+Operação manual do replay e falha Windows177 mantêm seus estados; prévia não é
+aprovação das PRs ou implementação das funcionalidades apenas planejadas.
+
 ## Nova conferência do host — 2026-10-21
 
 [Continuidade validada](repasse/RETOMADA_VALIDADA_20261021.md): clones independentes,

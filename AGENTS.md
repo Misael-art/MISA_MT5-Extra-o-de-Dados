@@ -50,6 +50,18 @@ retomar: [docs/continuidade.md](docs/continuidade.md) (harmonização de 2026-10
 `config/config.ini`, `.env`, `*.db`, `logs/`, `exports/`, `.venv/`, credenciais e caminhos pessoais
 (o `.gitignore` já cobre, então não force com `git add -f`).
 
+## Prévia de desenvolvimento do proprietário
+
+Por solicitação explícita de 2026-10-21, cada avanço testável deve ficar disponível
+no atalho habitual da área de trabalho e no menu. Manter ambos apontando para
+`mt5x/app-development/run.sh` na pasta de dados do usuário, com uma composição
+coerente e identificada por commit, conforme [a prévia](docs/TESTAR_DESENVOLVIMENTO.md).
+Publicar o fonte no GitHub e atualizar essa prévia após a verificação pertinente;
+não deixar o atalho em checkout antigo enquanto o desenvolvimento está em outro.
+Isso autoriza disponibilizar a prévia para teste; não transforma rascunhos ou
+falhas conhecidas em entregas aprovadas nem altera a referência aceita.
+Reutilizar ambiente/dados, conservar retorno e remover somente temporários próprios.
+
 ## Comandos úteis
 
 | Objetivo | Comando |

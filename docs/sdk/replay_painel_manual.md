@@ -3,6 +3,11 @@
 Correção T17.28 solicitada em 21/10/2026. **Exibição corrigida no ensaio Linux;
 operação manual completa ainda não aprovada. PR em draft, sem instalação.**
 
+Atualização do proprietário: o código está incluído na
+[prévia de desenvolvimento para teste](../TESTAR_DESENVOLVIMENTO.md), disponibilizada
+pelo atalho habitual. A referência aceita permanece preservada e o aceite da
+interação manual continua pendente.
+
 ## Correção de exibição
 
 A sessão anterior compilava no Xvfb e abria o replay no desktop, podendo ainda
