@@ -42,6 +42,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
 | G19.7 | Indicadores múltiplos e agrupamento | G19.6/catálogo | Implementado;40 testes dirigidos, doctor16/2/0; suíte completa/nativo/instalação em validação. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md) |
+| G19.8 | Composição e distribuição para teste pelo atalho | G19.1–7 | Em validação final; manifesto/ativos Safety, fingerprint manual e instalação imutável. [Procedimento](propostas/G19_8_DISTRIBUICAO.md) |
 | G19.1 | PLAY do painel manual sem backtest | Painel manual revisado e controles existentes | Validado:2901 testes/52 pulados,65 dirigidos; doctor16/2/0 em perfil isolado. Sem run fictício e sem dispensar conta/stop/limites/kill. [Registro](propostas/G19_ESTUDO_NO_GRAFICO.md); instalação pendente, Windows físico pendente |
 | G19.5 | Notas com fotografia imutável no gráfico | Contrato MT5/Common e registry existentes | Em validação:2911 testes/52 pulados,27 dirigidos, doctor16/2/0, nativo216/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_5_NOTAS_E_FOTOGRAFIA.md); instalação pendente |
 | G19.6 | Lápis e coloração pelo catálogo | G19.5 | Validado:2930 testes/52 pulados/3 avisos,98 dirigidos, doctor16/2/0, nativo302/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_6_LAPIS_COLORACAO.md) |
