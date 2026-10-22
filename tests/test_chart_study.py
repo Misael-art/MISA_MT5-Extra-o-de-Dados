@@ -44,6 +44,8 @@ def test_snapshot_uses_only_frozen_prefix_and_keeps_availability(capture):
     assert any(v["state"] == "AVAILABLE" for v in result["extractor"])
     assert result["captured_at_utc"].startswith("2026-10-22")
     assert result["computed_at_utc"]
+    assert result["bar_time_utc"] is None
+    assert result["bar_time_native"] == snapshot.native_clock(capture["bar_epoch"])
     assert all(v["value"] is None for v in result["extractor"] if v["state"] != "AVAILABLE")
     bad = copy.deepcopy(capture)
     bad["rates"].append({**bad["rates"][-1], "time": bad["bar_epoch"]+60})
@@ -171,3 +173,14 @@ def test_common_postbox_discovery_in_wine_and_simulated_windows(db, tmp_path, ca
     atomic(root / "captures/note_1.json", snapshot.json_text(capture))
     atomic(root / "requests/req_1.request.json", snapshot.json_text(request()))
     assert StudyService(db, config).poll()[0]["state"] == "SAVED"
+
+
+def test_legacy_capture_can_be_saved_without_rewriting_its_snapshot(db, capture):
+    legacy = snapshot.build(capture, datetime.now(timezone.utc))
+    legacy.pop("bar_time_native")
+    legacy["bar_time_utc"] = "2023-11-15T01:53:00+00:00"
+    original = store.freeze(db, "note_1", capture, datetime.now(timezone.utc), build_snapshot=lambda *args: legacy)
+    store.apply(db, request(), capture, datetime.now(timezone.utc))
+    note = store.get(db, "note_1")
+    assert note["snapshot"] == original
+    assert note["bar_time_native"] == snapshot.native_clock(capture["bar_epoch"])

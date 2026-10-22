@@ -30,6 +30,10 @@ def utc(value):
     return stamp.tz_convert("UTC").isoformat()
 
 
+def native_clock(epoch):
+    return pd.Timestamp(epoch, unit="s").isoformat()
+
+
 def _number(value):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
         raise ValueError("Valor numérico inválido na captura.")
@@ -95,6 +99,10 @@ def build(capture, captured_at):
     validate_capture(capture)
     definitions = indicator_registry.definitions()
     rates = pd.DataFrame(capture.get("rates", []))
+    if not rates.empty:
+        # MQL datetime codifica o relógio do servidor. Não inventar UTC: VWAP
+        # diário exige exatamente esse calendário naive, explicitamente decodificado.
+        rates["time"] = pd.to_datetime(rates["time"], unit="s")
     latest = {}
     if not rates.empty:
         last = rates.index[-1]
@@ -113,13 +121,14 @@ def build(capture, captured_at):
                        "computed_at_utc": computed_at,
                        "details": {k: v for k, v in row.items() if k not in ("bar_index", "value", "state", "reason")}})
     result = {"contract": 1, "symbol": capture["symbol"], "timeframe": capture["timeframe"],
-              "bar_time_utc": pd.Timestamp(capture["bar_epoch"], unit="s", tz="UTC").isoformat(),
+              "bar_time_native": native_clock(capture["bar_epoch"]),
+              "bar_time_utc": None,
               "native_time_basis": capture.get("native_time_basis", "mt5_datetime_epoch"),
               "captured_at_utc": utc(captured_at), "computed_at_utc": computed_at,
               "native": capture.get("native", []), "extractor": values,
               "source_sha256": hashlib.sha256(json_text(capture).encode()).hexdigest(),
               "rates_sha256": hashlib.sha256(json_text(capture.get("rates", [])).encode()).hexdigest(),
               "frozen_bar_count": len(rates),
-              "basis": "MT5 buffers observed at capture; extractor formulas use only the frozen prefix; not historical signal availability"}
+              "basis": "MT5 buffers observed at capture; MQL candle clock is server calendar with unknown UTC offset; extractor formulas use only the frozen prefix; not historical signal availability"}
     json_text(result)
     return result

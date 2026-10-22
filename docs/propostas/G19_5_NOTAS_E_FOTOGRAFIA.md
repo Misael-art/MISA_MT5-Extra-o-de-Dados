@@ -59,3 +59,7 @@ aprovados/zero falhas em96 DPI, com Unicode, múltiplas linhas, prévia antes
 de salvar, duas revisões e reabertura pelo banco. Dados sintéticos, sem conta
 ou ordens. Refinamento visual:216 controles aprovados/zero falhas em96 DPI, incluindo orientação vertical e etiquetas fora do cartão. Mesmos216 controles aprovados em144 DPI. Suíte completa da App:2908 aprovados/52 pulados/3 avisos existentes de layout (44min47s); os2 testes adicionais de caminhos passaram separadamente.
 Windows físico permanece pendência, não comprovado neste host Linux/Wine.
+
+## Calendário nativo
+
+MQL datetime é decodificado explicitamente como relógio naive do servidor nas fórmulas. bar_time_native guarda esse horário; bar_time_utc fica ausente quando o offset não é conhecido. Coluna nova aditiva, sem reescrever fotografias antigas nem seu SHA256. Captura/cálculo reais continuam em UTC. Revalidação completa da App em execução após esse ajuste;19 testes de núcleo aprovados, incluindo captura legada.

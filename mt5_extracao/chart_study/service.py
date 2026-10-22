@@ -42,7 +42,7 @@ def view(note):
     """Projeção de apresentação; a fotografia JSON do banco é a fonte autoritativa."""
     frozen = note["snapshot"]
     rows = [["NOTE", note["note_id"], note["revision"], note["note_text"], note["symbol"],
-             note["timeframe"], note["bar_time_utc"], note["anchor_price"], note["snapshot_sha256"]],
+             note["timeframe"], note.get("bar_time_native") or frozen.get("bar_time_native") or note["bar_time_utc"], note["anchor_price"], note["snapshot_sha256"]],
             ["CAPTURE", frozen["captured_at_utc"], frozen["computed_at_utc"]]]
     for origin in ("extractor", "native"):
         for item in frozen[origin]:
@@ -67,7 +67,8 @@ class StudyService:
         for note in rows:
             complete = {**note, "snapshot": json.loads(note["snapshot_json"])}
             atomic(root / "notes" / (note["note_id"] + ".tsv"), view(complete))
-            epoch = int(pd.Timestamp(note["bar_time_utc"]).timestamp())
+            native = note.get("bar_time_native") or complete["snapshot"].get("bar_time_native") or note["bar_time_utc"]
+            epoch = int(pd.Timestamp(native).timestamp())
             lines.append("\t".join(map(escaped, [note["note_id"], epoch, note["anchor_price"], note["revision"], note["note_text"]])))
         atomic(root / "workspaces" / (request["note_id"] + ".tsv"), "\n".join(lines) + ("\n" if lines else ""))
         return {"contract": 1, "request_id": request["request_id"], "note_id": request["note_id"], "state": "LISTED", "count": len(rows)}
@@ -107,7 +108,8 @@ class StudyService:
                         if request.get("kind") == "capture_preview":
                             frozen = store.freeze(self.db, request["note_id"], capture, captured_at)
                             note = dict(note_id=request["note_id"], revision=0, note_text="", snapshot=frozen,
-                                        symbol=frozen["symbol"], timeframe=frozen["timeframe"], bar_time_utc=frozen["bar_time_utc"],
+                                        symbol=frozen["symbol"], timeframe=frozen["timeframe"], bar_time_utc=frozen.get("bar_time_utc") or "",
+                                        bar_time_native=frozen.get("bar_time_native") or snapshot.native_clock(capture["bar_epoch"]),
                                         anchor_price=capture["anchor_price"], snapshot_sha256=hashlib.sha256(snapshot.json_text(frozen).encode()).hexdigest())
                             atomic(root / "captures" / (note["note_id"] + ".tsv"), view(note))
                             response = dict(contract=1, request_id=request_id, note_id=note["note_id"], revision=0, state="CAPTURED")

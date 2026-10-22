@@ -4,7 +4,7 @@ import json
 import re
 from datetime import datetime, timezone
 
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 
 from . import snapshot
 
@@ -18,11 +18,13 @@ def ensure_schema(db):
     with db.engine.begin() as conn:
         conn.execute(text(f"""CREATE TABLE IF NOT EXISTS {NOTES} (
             note_id TEXT PRIMARY KEY, note_text TEXT NOT NULL, symbol TEXT NOT NULL,
-            timeframe TEXT NOT NULL, bar_time_utc TEXT NOT NULL, anchor_price DOUBLE PRECISION NOT NULL,
+            timeframe TEXT NOT NULL, bar_time_utc TEXT NOT NULL, bar_time_native TEXT, anchor_price DOUBLE PRECISION NOT NULL,
             captured_at_utc TEXT NOT NULL, snapshot_json TEXT NOT NULL, snapshot_sha256 TEXT NOT NULL,
             capture_sha256 TEXT NOT NULL, created_at_utc TEXT NOT NULL, updated_at_utc TEXT NOT NULL,
             revision INTEGER NOT NULL, magic TEXT NOT NULL, chart_id TEXT NOT NULL
         )"""))
+        if "bar_time_native" not in {column["name"] for column in inspect(conn).get_columns(NOTES)}:
+            conn.execute(text(f"ALTER TABLE {NOTES} ADD COLUMN bar_time_native TEXT"))
         conn.execute(text(f"""CREATE TABLE IF NOT EXISTS {REQUESTS} (
             request_id TEXT PRIMARY KEY, payload_sha256 TEXT NOT NULL, note_id TEXT NOT NULL,
             response_json TEXT NOT NULL, completed_at_utc TEXT NOT NULL
@@ -116,7 +118,7 @@ def apply(db, request, capture=None, captured_at=None, *, build_snapshot=snapsho
                 raise ValueError("A nota já existe; use a edição para conservar a captura original.")
             body = snapshot.json_text(frozen)
             row = {"note_id": note_id, "note_text": content, "symbol": capture["symbol"], "timeframe": capture["timeframe"],
-                   "bar_time_utc": frozen["bar_time_utc"], "anchor_price": capture["anchor_price"],
+                   "bar_time_utc": frozen.get("bar_time_utc") or "", "bar_time_native": frozen.get("bar_time_native") or snapshot.native_clock(capture["bar_epoch"]), "anchor_price": capture["anchor_price"],
                    "captured_at_utc": frozen["captured_at_utc"], "snapshot_json": body,
                    "snapshot_sha256": hashlib.sha256(body.encode()).hexdigest(), "capture_sha256": frozen["source_sha256"],
                    "created_at_utc": now, "updated_at_utc": now, "revision": 1,
