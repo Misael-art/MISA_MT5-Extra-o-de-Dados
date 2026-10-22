@@ -62,4 +62,4 @@ Windows físico permanece pendência, não comprovado neste host Linux/Wine.
 
 ## Calendário nativo
 
-MQL datetime é decodificado explicitamente como relógio naive do servidor nas fórmulas. bar_time_native guarda esse horário; bar_time_utc fica ausente quando o offset não é conhecido. Coluna nova aditiva, sem reescrever fotografias antigas nem seu SHA256. Captura/cálculo reais continuam em UTC. Revalidação completa da App em execução após esse ajuste;19 testes de núcleo aprovados, incluindo captura legada.
+MQL datetime é decodificado explicitamente como relógio naive do servidor nas fórmulas. bar_time_native guarda esse horário; bar_time_utc fica ausente quando o offset não é conhecido. Coluna nova aditiva, sem reescrever fotografias antigas nem seu SHA256. Captura/cálculo reais continuam em UTC. Revalidação completa após o ajuste:2911 testes aprovados/52 pulados/3 avisos existentes (48min36s);19 testes de núcleo e8 de UI, incluindo captura legada. Ensaio nativo96 refeito com o calendário final:216 controles aprovados/zero falhas.
