@@ -449,3 +449,10 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [x] Biblioteca G19.6 continua exigindo somente candles.
 - [ ] Composição final: adaptador SDK com ambos os ativos no Linux/Wine.
 - [ ] Windows físico: compilação, +, Agrupar, janela e remoção.
+
+## G19.8 — composição/ativos Safety (2026-10-22)
+
+- [x] Ativos opcionais: hashes, caminhos contidos, validação antes de copiar, idempotência e ordem de compilação.
+- [x] Fingerprint real do painel com ambos os ativos; alteração de Series retira a exceção manual.
+- [ ] Instalação/compilação da composição exata no Linux/Wine e atalho existente.
+- [ ] Windows físico: instalação, compilação e estudo/agrupamento.

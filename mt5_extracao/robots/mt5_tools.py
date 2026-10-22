@@ -362,7 +362,9 @@ def install_robot(config, robot: Robot, mt5=None, overwrite_presets: bool = Fals
     data = data_dir(config, mt5)
     if robot.kind == MQL5:
         safety_lib.ensure(config, robot, data, upgrade_safety)
-    return install(robot, data, overwrite_presets)
+    items = install(robot, data, overwrite_presets)
+    items.extend(safety_indicator_items(config, robot, data))
+    return items
 
 
 def compile_robot(config, robot: Robot, mt5=None, run: Optional[Callable] = None,
@@ -377,6 +379,17 @@ def compile_robot(config, robot: Robot, mt5=None, run: Optional[Callable] = None
     if failed is not None:
         return items, failed
     return items, compile_source(items[0].target, editor, prefix, run)
+
+
+def safety_indicator_items(config, robot, data):
+    """Ativos da versão Safety declarada, já instalada no perfil de destino."""
+    if not safety_lib.required_version(robot):
+        return []
+    folder = safety_lib.lib_dir(config)
+    if folder is None:
+        return []  # ensure informa a configuração ausente antes da preparação
+    return [InstallItem(source, Path(data) / "MQL5" / relative)
+            for source, relative, _ in safety_lib.indicator_assets(folder)]
 
 
 def indicator_dependencies(items):

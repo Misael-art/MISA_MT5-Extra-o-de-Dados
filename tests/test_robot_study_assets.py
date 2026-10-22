@@ -79,3 +79,19 @@ def test_legacy_color_library_does_not_require_new_graph_asset(tmp_path):
     robot = catalog.robot_from_file(expert)
     assert [item.target.name for item in mt5_tools.indicator_dependencies(
         mt5_tools.install_plan(robot, tmp_path / "profile"))] == [candles.name]
+
+
+def test_safety_distribution_uses_its_own_indicator_namespace(tmp_path):
+    root = tmp_path / "safety"
+    expert = root / "Experts/MT5X/Smoke.mq5"
+    header = root / "Include/MT5X/Safety/HDK_StudyGraphs.mqh"
+    series = root / "Indicators/MT5X/Study/HDK_StudySeries.mq5"
+    for item in (expert, header, series):
+        item.parent.mkdir(parents=True, exist_ok=True)
+    expert.write_text('#include <MT5X/Safety/HDK_StudyGraphs.mqh>\nint OnInit(){return 0;}\nvoid OnTick(){}\n')
+    header.write_text('// camada gráfica\n')
+    series.write_text('#property indicator_separate_window\n')
+    robot = catalog.robot_from_file(expert)
+    assert str(series) in robot.files
+    assert mt5_tools.indicator_dependencies(mt5_tools.install_plan(robot, tmp_path / "profile"))[0].target == (
+        tmp_path / "profile/MQL5/Indicators/MT5X/Study/HDK_StudySeries.mq5")

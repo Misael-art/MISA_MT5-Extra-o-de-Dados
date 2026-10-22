@@ -329,3 +329,5 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 **G19.6 — Lápis/coloração:** catálogo prioritário do extrator, séries reais e dependência MQL5 instalada/compilada pelo SDK. [Contrato e evidências](propostas/G19_6_LAPIS_COLORACAO.md). Indicadores múltiplos/agrupamento permanecem G19.7.
 
 **G19.7 — Indicadores múltiplos:** dependência de séries revisada e compilada junto ao Expert, conservando bibliotecas anteriores. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md); composição e validação nativa em andamento.
+
+**G19.8 — Distribuição:** composição identificada para o atalho habitual, com ativos gráficos, fingerprint manual e preservação do canal aceito/dados. [Procedimento e evidências](propostas/G19_8_DISTRIBUICAO.md). Validação final em andamento.

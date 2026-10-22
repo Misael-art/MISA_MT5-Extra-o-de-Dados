@@ -567,6 +567,7 @@ class Session:
         dependency_run = (self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
                           lambda command, cwd, prefix, timeout: self._run_command(command, cwd, prefix, timeout, compiling=True))
         dependency_plan = mt5_tools.install_plan(self.robot, self.directory)
+        dependency_plan.extend(mt5_tools.safety_indicator_items(self.child_config, self.robot, self.directory))
         failed = None
         if mt5_tools.indicator_dependencies(dependency_plan):
             failed = mt5_tools.compile_indicator_dependencies(dependency_plan, mt5_tools.find_metaeditor(self.child_config),
