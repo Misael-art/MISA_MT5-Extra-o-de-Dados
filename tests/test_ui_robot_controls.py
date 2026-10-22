@@ -8,6 +8,20 @@ import pytest
 from tests.test_ui_main_window import ui, _labels
 from mt5_extracao.robots import catalog, controls
 from mt5_extracao.ui import robot_controls
+from tests.test_manual_panel_play import manual
+
+
+def test_manual_panel_play_is_available_without_backtest_and_respects_offline_mode(ui, manual):
+    panel = ui.robots_panel
+    panel.robots.insert(0, manual)
+    panel.render()
+    widgets = panel.controls.widgets[manual.key]
+    assert not widgets["buttons"]["play"].instate(["disabled"])
+    assert "sem backtest" in widgets["hint"].cget("text")
+    assert manual.runs == []
+    ui.app.offline = True
+    panel.render()
+    assert panel.controls.widgets[manual.key]["buttons"]["play"].instate(["disabled"])
 
 
 def _tested(ui):

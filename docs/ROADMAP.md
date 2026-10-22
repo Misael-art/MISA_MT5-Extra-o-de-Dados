@@ -21,6 +21,8 @@ As regras para agentes estão em [../AGENTS.md](../AGENTS.md).
 suíte; depois EXTR-01, ciclo de extração/atualização/persistência/consulta/exportação
 e recuperação. [Diretriz e limites](propostas/PROMPT_RETOMADA_EXTRATOR.md).
 
+**Pedido G-19 (2026-10-22):** Play do painel manual independente de backtest, etiquetas compactas com fonte ajustável, proveniência A/B, sinais ignorados amarelos e ferramentas de Estudo (notas/fotografia, lápis, coloração e indicadores agrupáveis). [Tarefas e aceites](propostas/G19_ESTUDO_NO_GRAFICO.md). G19.1 validado no Linux/Wine; demais tarefas com entregas próprias.
+
 ## Fases
 
 **Pedido do proprietário — 2026-10-21:** planejar TFs em ordem crescente nos
