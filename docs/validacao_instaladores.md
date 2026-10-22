@@ -431,6 +431,6 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 
 - [x] Linux/Wine: caminho Common/Files e percurso MT5→banco→reabertura, Unicode/múltiplas linhas e fotografia imutável.
 - [x] Descoberta do Common via APPDATA com paths.is_windows simulado, além de prefixo Wine.
-- [x] Suíte completa App2908/52/3,26 dirigidos e doctor16/2/0 no perfil isolado.
+- [x] Suíte completa App2911/52/3,27 dirigidos e doctor16/2/0 no perfil isolado.
 - [ ] Windows físico: cursor de pena, foco/edição/atalhos, DPI e rename atômico entre MT5 e serviço.
 - [ ] Distribuição final App/HADOUKEN/Safety e instalação na prévia do proprietário.
