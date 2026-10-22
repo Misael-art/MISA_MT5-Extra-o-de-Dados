@@ -57,5 +57,5 @@ reaplicado no worktree com atalhos operacionais restaurados; doctor16/2/0
 Ensaio nativo inicial com a App consumindo pedidos reais:212 controles
 aprovados/zero falhas em96 DPI, com Unicode, múltiplas linhas, prévia antes
 de salvar, duas revisões e reabertura pelo banco. Dados sintéticos, sem conta
-ou ordens. Refinamento visual:216 controles aprovados/zero falhas em96 DPI, incluindo orientação vertical e etiquetas fora do cartão. Escala144 em execução. Suíte completa da App:2908 aprovados/52 pulados/3 avisos existentes de layout (44min47s); os2 testes adicionais de caminhos passaram separadamente.
+ou ordens. Refinamento visual:216 controles aprovados/zero falhas em96 DPI, incluindo orientação vertical e etiquetas fora do cartão. Mesmos216 controles aprovados em144 DPI. Suíte completa da App:2908 aprovados/52 pulados/3 avisos existentes de layout (44min47s); os2 testes adicionais de caminhos passaram separadamente.
 Windows físico permanece pendência, não comprovado neste host Linux/Wine.
