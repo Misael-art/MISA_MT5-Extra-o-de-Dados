@@ -247,10 +247,13 @@ def robot_from_file(path) -> Robot:
         raise ValueError(f"{path.name} não é um robô (Expert Advisor): parece ser um indicador ou script.")
     includes, missing = mql.resolve_includes(path, root / "Include" if root else None)
     assets = []
-    if root and any(item.name == "HDK_StudyLayers.mqh" for item in includes):
+    asset_headers = {"HDK_StudyLayers.mqh": "HDK_StudyCandles.mq5",
+                     "HDK_StudyGraphs.mqh": "HDK_StudySeries.mq5"}
+    required_assets = sorted({asset_headers[item.name] for item in includes if item.name in asset_headers})
+    if root and required_assets:
         # Fazem parte da fonte avaliada/fingerprint, inclusive quando compilados
         # separadamente. Não copiar indicadores pessoais encontrados por varredura.
-        for name in ("HDK_StudyCandles.mq5",):
+        for name in required_assets:
             asset = root / "Indicators" / "HADOUKEN" / "Study" / name
             if not asset.is_file() or not asset.resolve().is_relative_to(root.resolve()):
                 raise ValueError(f"Indicador de estudo ausente: {name}. Atualize a biblioteca HADOUKEN completa.")

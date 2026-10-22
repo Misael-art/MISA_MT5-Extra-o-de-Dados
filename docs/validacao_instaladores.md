@@ -442,3 +442,10 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [x] Adaptador manual e ativo compilados no perfil Linux/Wine isolado.
 - [x] Ensaio nativo96/144 DPI com App consumindo séries reais.
 - [ ] Windows físico: instalação, MetaEditor, coloração, DPI e lápis.
+
+## G19.7 — séries gráficas (2026-10-22)
+
+- [x] Dois ativos no fingerprint/plano; ausência rejeitada antes de instalar.
+- [x] Biblioteca G19.6 continua exigindo somente candles.
+- [ ] Composição final: adaptador SDK com ambos os ativos no Linux/Wine.
+- [ ] Windows físico: compilação, +, Agrupar, janela e remoção.
