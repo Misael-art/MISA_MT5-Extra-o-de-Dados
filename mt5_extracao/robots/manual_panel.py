@@ -5,7 +5,7 @@ from . import catalog, mql
 
 ROBOT_KEY = "mql5:hdk_hadouken_painel"
 # Árvores revisadas do painel manual: G18, G19.2 e composição G19 com os dois ativos. Não conceder a exceção só pelo nome.
-APPROVED_SOURCE_FINGERPRINTS = frozenset({"0958d874e9f55cb4", "20e8d6b940a652a4", "37afd2370d701dab"})
+APPROVED_SOURCE_FINGERPRINTS = frozenset({"0958d874e9f55cb4", "20e8d6b940a652a4", "dae16ad20a169fb1"})
 PROFILE_LIMITS = {
     "HDK_PROFILE_CONSERVATIVE": (0.5, 2.0, 10.0),
     "HDK_PROFILE_MODERATE": (1.0, 3.0, 15.0),
