@@ -27,8 +27,8 @@ Nenhuma dessas ferramentas utiliza executor ou altera limites de gestão.
 98 testes dirigidos aprovados (catálogo/geradores, causalidade, ausência,
 calendário, corrida entre revisões, descoberta/fingerprint, instalação e falha
 da dependência, caminhos simulados Wine/Windows). Doctor16 OK/2 avisos/0 falhas
-no perfil isolado. Suíte completa em execução sobre a base G19.5 já validada
-com2911 testes/52 pulados. Instalador aplicado com os atalhos operacionais
+no perfil isolado. Suíte completa final:2930 aprovados/52 pulados/3 avisos existentes de layout
+em48min37s, sobre a base G19.5 validada com2911 testes/52 pulados. Instalador aplicado com os atalhos operacionais
 restaurados. Nenhum script shell alterado.
 
 Adaptador manual real do SDK e ativo indicador compilados, fonte do painel
