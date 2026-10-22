@@ -62,8 +62,19 @@
    "owner": "BD03",
    "case": "Duas bases mesmo símbolo",
    "criterion": "Valores, cache, contexto e notas não cruzam identidades",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "pendente (branch codex/bd03-identidade-bases)",
+     "test": "tests/test_bd03_base_identity.py",
+     "reference": "contrato T20.4 (_dataset_origin/manifesto)",
+     "input_hash": "trend(120)/sine(120) de tests/market_data.py",
+     "parameters": "EURUSD H1 em dois bancos SQLite",
+     "result": "4 passed",
+     "limitations": "namespace não chega ao envelope do store/DTO/notas; cópia herda namespace; duas bases no mesmo banco não suportadas; PostgreSQL não exercitado",
+     "resource_measurements": "5,4 s; bancos temporários em tmp_path"
+    }
+   ]
   },
   {
    "id": "E04",
