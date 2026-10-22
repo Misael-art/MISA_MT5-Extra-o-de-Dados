@@ -41,6 +41,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| G19.5 | Notas com fotografia imutável no gráfico | Contrato MT5/Common e registry existentes | Em validação:24 testes dirigidos, doctor16/2/0, ensaio nativo inicial212/0 em96 DPI; suíte completa e refinamento144 em execução. [Contrato](propostas/G19_5_NOTAS_E_FOTOGRAFIA.md); instalação pendente |
 | T20.30 — prévia do proprietário | Disponibilizar desenvolvimento pelo atalho habitual | Composição local172–177 +182 e continuidade178–181 | Preparação de prévia autorizada para teste; ambiente/dados compartilhados, dois atalhos coerentes e retorno preservado. [Procedimento](TESTAR_DESENVOLVIMENTO.md); não concede aceite manual/nativo |
 | T19.33 — adendo TFs | Ordem crescente e Todos no backtest do card | Seletor T17.28, presets/capacidades e fila existentes | Planejado em 2026-10-21; [escopo e aceites](propostas/BACKTEST_MULTITF_COMPARACAO.md); PLAY/REPLAY individuais |
 | T20.24/25 — adendo ativos | Seleção múltipla, orçamento e retenção | BatchRunner/ResourceGovernor/Budget/contexto existentes | Planejado; avaliar 3/6 ativos por medição, MQL5 serial preservado; sem scheduler novo |

@@ -18,6 +18,7 @@ class CardControls:
         self.preset_windows = {}
         self._pulse = None
         self._bright = False
+        self._study_busy, self._study_last, self._study_service = False, 0, None
         panel.frame.bind("<Destroy>", self._destroyed, add="+")
         self.ui.root.protocol("WM_DELETE_WINDOW", self._request_close)
 
@@ -229,6 +230,7 @@ class CardControls:
 
     def _tick(self):
         self._pulse = None
+        self._study_tick()
         self._bright = not self._bright
         colors = self.theme.colors
         for key, session in self.sessions.items():
@@ -257,6 +259,25 @@ class CardControls:
                                            bordercolor=color if self._bright else colors["border"])
                 frame.configure(style=name)
         self._schedule()
+
+    def _study_tick(self):
+        """Sincroniza notas em segundo plano sem prender o ciclo visual dos cards."""
+        if self._study_busy or time.monotonic() - self._study_last < 2:
+            return
+        app = self.ui.app
+        db, config = getattr(app, "db_manager", None), getattr(app, "config", None)
+        if db is None or config is None:
+            return
+        if self._study_service is None:
+            from mt5_extracao.chart_study.service import StudyService
+            self._study_service = StudyService(db, config)
+        self._study_busy = True
+        self._study_last = time.monotonic()
+
+        def done(result, error):
+            self._study_busy = False
+
+        self.ui.run_bg(self._study_service.poll, done)
 
     def _destroyed(self, event):
         if event.widget is self.panel.frame and self._pulse is not None:
