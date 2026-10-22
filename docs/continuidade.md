@@ -1,3 +1,69 @@
+## Prévia disponível pelo atalho habitual — 2026-10-21
+
+Solicitação do proprietário: todo avanço testável acessível para teste.
+Composição local172→177 + correção visual182 + documentação178→181 em branch
+própria, com histórico preservado. Os dois atalhos passam a usar `app-development`;
+`app-current` aceito e dados/WIP preservados. [Escopo e atualização](TESTAR_DESENVOLVIMENTO.md).
+Operação manual do replay e falha Windows177 mantêm seus estados; prévia não é
+aprovação das PRs ou implementação das funcionalidades apenas planejadas.
+
+## Nova conferência do host — 2026-10-21
+
+[Continuidade validada](repasse/RETOMADA_VALIDADA_20261021.md): clones independentes,
+SD e restauração em leitura conferidos; ambiente preservado funcional, 56 testes
+e doctor20/1/0. Novo SO não comprovado. Próximo recorte autorizado: exibição do
+painel no REPLAY; melhorias de seleção/lotes e comparação entram no roadmap.
+
+## Recuperação após reinstalação — corte de 2026-10-21
+
+O [roteiro independente do host](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
+registra clones novos, pins, dependências, WIP e dados privados. Três clones de
+rede passaram fsck; commits/HEADs locais estavam alcançáveis no GitHub; cinco
+árvores WIP reais foram reconstruídas por bundle/patch/arquivos com hashes iguais.
+A restauração privada SQLite preservou43 tabelas e o histórico foi reaberto pelo
+store importado do clone novo, sem nova execução. Isso foi no Linux atual, não
+no novo SO. Após confirmação do proprietário, o complemento privado de142 MB foi
+copiado ao SD preservado: hashes relidos,43 tabelas restauradas e histórico/journal
+reabertos sem execução. `ready_to_format=true` no [estado](repasse/RECUPERACAO_ESTADO_20261021.json)
+vale para desenvolvimento no corte declarado; novo SO/aceite operacional pendentes.
+Wine, ambientes e caches são recriados; o pacote amplo16,5 GB não foi migrado.
+
+A fila HADOUKEN49–60 também foi localizada e conferida no GitHub:12PRs abertas,
+dois checks aprovados cada no snapshot, sem integração/replay/consumidor Python
+ou revisão desta frente. App172–176 tem seis checks;177 e178 têm falha Windows
+analítica preservada. O mapa de retomada distingue essas filas e a instalação171.
+O verificador `scripts/verify_recovery.py` usa só stdlib, confere o pacote privado
+sem extrair/executar e não anuncia por si só mídia externa/restore/aceite operacional.
+
+## Repasse do integrador e limpeza segura — 2026-10-21
+
+O [repasse consolidado](repasse/INTEGRACAO_20261021.md) registra entregas, versões,
+evidências, fila e próximos passos; o [índice da raiz](../RETOMADA_AGENTE_20261021.md)
+permite localizá-lo sem a conversa. O corte instalado é AppPR171/ac7af2c3,
+Hec550d77 e Safety3988df13/v1.8.0. PRs172–177 continuam publicadas, sem merge ou
+instalação; atualizar checks de cada ponta e integrar serialmente se o trabalho
+for retomado. Esta publicação documental não executa essa fila.
+
+Foram compactados/verificados10bancos privados, aposentadas19cópias nativas
+privadas com evidência retida e removidos76diretórios de cache gerado. O aumento
+observado de espaço disponível foi aproximadamente3,4GB; a soma lógica dos
+blocos retirados não equivale a bytes físicos recuperados em Btrfs. Dados,
+configurações, backups do proprietário, WIP, ambiente e worktrees foram
+preservados. [Escopo e medições](evidencias/REPASSE_LIMPEZA_20261021.json).
+
+As seções abaixo são registros históricos das respectivas pontas e podem dizer
+“em revisão” de entregas depois integradas. O repasse datado identifica o corte
+mais recente sem apagar as falhas anteriores. Sincronização privada/Tester,
+replay/aceites operacionais, Windows físico e demais gates continuam pendentes.
+
+## Painel manual no REPLAY — correção em validação (2026-10-21)
+
+Compilação e replay usam o mesmo DISPLAY no Linux/Wine; painel visível.
+Código final com 84 testes e doctor20/1/0. Abas manuais não passaram no ensaio:
+polling de botões e ocultação do fundo não resolveram; experiências retiradas
+do runtime final. PR draft, sem instalação até o aceite manual. [Contrato](sdk/replay_painel_manual.md).
+Base do proprietário, risco/executor e Windows físico mantêm seus limites.
+
 ## T19.34 — Resumo e erro do catálogo legíveis, em revisão (2026-10-21)
 
 Complemento sobre176/e7656da, somente o rótulo do resumo/erro:1178px requisitados

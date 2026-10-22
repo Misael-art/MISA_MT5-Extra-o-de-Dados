@@ -21,6 +21,11 @@ ponte com o MT5 real). Roteiro em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md), 
 
 ## T0.3 — Instaladores
 
+Pendência específica Windows — correção REPLAY de 21/10/2026: abrir o painel
+HADOUKEN pelo card, operar abas/pausa, encerrar só a própria sessão e conferir
+backtest minimizado. Caminhos/visibilidade foram simulados em testes Linux;
+isso não comprova execução em Windows físico. [Contrato](sdk/replay_painel_manual.md).
+
 | Ambiente | Data | Comando | Resultado |
 |---|---|---|---|
 | BigLinux/Manjaro (família Arch), KDE Wayland, Wine 11.17, máquina de uso (não é VM limpa) | 2026-10-12 | `./install.sh --yes` | ✅ com as correções abaixo. `doctor`: 20 OK, 1 aviso (`pandas-ta` opcional), 0 falhas; ponte ATIVA; MetaTrader5 5.0.6231, terminal build 6257 |
