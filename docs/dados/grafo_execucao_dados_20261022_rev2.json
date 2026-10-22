@@ -1,0 +1,294 @@
+{
+  "revision": 2,
+  "kind": "capability_dependencies_not_agent_delegation",
+  "logical_cards": 22,
+  "execution_nodes": [
+    {
+      "id": "BD01",
+      "depends_on": [],
+      "title": "Inventário e donos",
+      "state": "planejado"
+    },
+    {
+      "id": "BD02",
+      "depends_on": [
+        "BD01"
+      ],
+      "title": "Bancada compacta",
+      "state": "planejado"
+    },
+    {
+      "id": "BD03",
+      "depends_on": [
+        "BD01",
+        "BD02"
+      ],
+      "title": "Identidades e capacidades",
+      "state": "planejado"
+    },
+    {
+      "id": "BD04",
+      "depends_on": [
+        "BD03"
+      ],
+      "title": "Ingestão e qualidade",
+      "state": "planejado"
+    },
+    {
+      "id": "BD05",
+      "depends_on": [
+        "BD03",
+        "BD04"
+      ],
+      "title": "Tempo/sessões/timeframes",
+      "state": "planejado"
+    },
+    {
+      "id": "BD06",
+      "depends_on": [
+        "BD01",
+        "BD03",
+        "BD05"
+      ],
+      "title": "Contrato catálogo",
+      "state": "planejado"
+    },
+    {
+      "id": "BD07",
+      "depends_on": [
+        "BD06"
+      ],
+      "title": "Reconciliação calculadores",
+      "state": "planejado"
+    },
+    {
+      "id": "BD08a",
+      "depends_on": [
+        "BD06",
+        "BD07"
+      ],
+      "title": "Primeira família referencial",
+      "state": "planejado"
+    },
+    {
+      "id": "BD08b",
+      "depends_on": [
+        "BD08a"
+      ],
+      "title": "Demais famílias existentes",
+      "state": "planejado"
+    },
+    {
+      "id": "BD09",
+      "depends_on": [
+        "BD06",
+        "BD07",
+        "BD08a"
+      ],
+      "title": "Famílias faltantes",
+      "state": "planejado"
+    },
+    {
+      "id": "BD10",
+      "depends_on": [
+        "BD03",
+        "BD04",
+        "BD06"
+      ],
+      "title": "Fluxo/book por capacidade",
+      "state": "planejado"
+    },
+    {
+      "id": "BD11",
+      "depends_on": [
+        "BD06",
+        "BD07"
+      ],
+      "title": "Nativos e variantes",
+      "state": "planejado"
+    },
+    {
+      "id": "BD12",
+      "depends_on": [
+        "BD05",
+        "BD06",
+        "BD08a"
+      ],
+      "title": "Compostos por dependência",
+      "state": "planejado"
+    },
+    {
+      "id": "BD13",
+      "depends_on": [
+        "BD12"
+      ],
+      "title": "Versões/cache/invalidação",
+      "state": "planejado"
+    },
+    {
+      "id": "BD14",
+      "depends_on": [
+        "BD04",
+        "BD12",
+        "BD13"
+      ],
+      "title": "Materialização resiliente",
+      "state": "planejado"
+    },
+    {
+      "id": "BD15a",
+      "depends_on": [
+        "BD08a",
+        "BD12"
+      ],
+      "title": "Relações referenciais",
+      "state": "planejado"
+    },
+    {
+      "id": "BD15b",
+      "depends_on": [
+        "BD14",
+        "BD15a"
+      ],
+      "title": "Serviço de relações persistido",
+      "state": "planejado"
+    },
+    {
+      "id": "BD16",
+      "depends_on": [
+        "BD03",
+        "BD05",
+        "BD13",
+        "BD15b"
+      ],
+      "title": "Cruzamentos e expansão",
+      "state": "planejado"
+    },
+    {
+      "id": "BD17",
+      "depends_on": [
+        "BD05",
+        "BD14",
+        "BD15b"
+      ],
+      "title": "Contexto operações",
+      "state": "planejado"
+    },
+    {
+      "id": "BD18a",
+      "depends_on": [
+        "BD06",
+        "BD08a"
+      ],
+      "title": "Consulta inicial executável",
+      "state": "planejado"
+    },
+    {
+      "id": "BD18b",
+      "depends_on": [
+        "BD14",
+        "BD15b",
+        "BD16",
+        "BD18a"
+      ],
+      "title": "Consulta integral",
+      "state": "planejado"
+    },
+    {
+      "id": "BD19c1",
+      "depends_on": [
+        "BD18a"
+      ],
+      "title": "Primeiro consumidor CLI",
+      "state": "planejado"
+    },
+    {
+      "id": "BD19a",
+      "depends_on": [
+        "BD17",
+        "BD18b"
+      ],
+      "title": "Laboratório/análises",
+      "state": "planejado"
+    },
+    {
+      "id": "BD19b",
+      "depends_on": [
+        "BD15b",
+        "BD18b"
+      ],
+      "title": "UI Relações",
+      "state": "planejado"
+    },
+    {
+      "id": "BD19c2",
+      "depends_on": [
+        "BD18b",
+        "BD19c1"
+      ],
+      "title": "CLI/export integral",
+      "state": "planejado"
+    },
+    {
+      "id": "BD19d",
+      "depends_on": [
+        "BD11",
+        "BD18b"
+      ],
+      "title": "Estudo/notas/gráficos",
+      "state": "planejado"
+    },
+    {
+      "id": "BD20",
+      "depends_on": [
+        "BD08b",
+        "BD09",
+        "BD10",
+        "BD11",
+        "BD16",
+        "BD17",
+        "BD18b",
+        "BD19a",
+        "BD19b",
+        "BD19c2",
+        "BD19d"
+      ],
+      "title": "Prova integral de expansão",
+      "state": "planejado"
+    },
+    {
+      "id": "BD21",
+      "depends_on": [
+        "BD20"
+      ],
+      "title": "Composição/instalação",
+      "state": "planejado"
+    },
+    {
+      "id": "BD22",
+      "depends_on": [
+        "BD21"
+      ],
+      "title": "Fotografia final",
+      "state": "planejado"
+    }
+  ],
+  "first_slice": [
+    "BD01",
+    "BD02",
+    "BD03",
+    "BD04",
+    "BD05",
+    "BD06",
+    "BD07",
+    "BD08a",
+    "BD18a",
+    "BD19c1"
+  ],
+  "rules": [
+    "Vincular dono canônico antes do código",
+    "Dividir famílias e repositórios em PRs próprios",
+    "Compatibilidade necessária ao consumidor pode ser antecipada",
+    "Não substituir testes por metas de lucro"
+  ]
+}

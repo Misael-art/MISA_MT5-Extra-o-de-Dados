@@ -1,0 +1,2287 @@
+{
+ "schema_version": 1,
+ "card": "BD01",
+ "sources": {
+  "app_commit": "321272f0b24d682a58aad0767dbbee713403c1f9",
+  "hadouken_commit": "6fb02374cd652a5fa0bfd314ace9d47ed8bc1283",
+  "hadouken_study_catalog": "Include/Framework/HADOUKEN/Safety/HDK_StudyCatalog.mqh",
+  "hadouken_study_catalog_sha256": "d551ba6d28fc80faa65afb67a249a0d6ba2bdcadf40ef78dbc857a4e947d9183"
+ },
+ "classes": {
+  "A": "regra definida e entrada disponível",
+  "B": "regra definida, feed real indisponível na DEMO",
+  "C": "regra indefinida: decisão do proprietário/fonte primária pendente"
+ },
+ "items": [
+  {
+   "id": "REG-RSI",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08a",
+   "owner_task": "T19.3/T6.1",
+   "variant": "Wilder",
+   "feature_ids": [
+    "momentum.rsi_14",
+    "momentum.rsi_14_slope_3"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-ATR",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3/T6.1",
+   "variant": "Wilder RMA",
+   "feature_ids": [
+    "volatility.atr_14",
+    "volatility.atr_pct_14"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-BB",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3/T6.1",
+   "variant": "ddof=0",
+   "feature_ids": [
+    "volatility.bb_20_width",
+    "volatility.bb_20_position"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-KC",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3/T6.1",
+   "variant": "EMA20 + 1.5 ATR20",
+   "feature_ids": [
+    "volatility.kc_20_width",
+    "volatility.kc_20_position"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-MACD",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3",
+   "variant": "EMA adjust=false, sem pandas-ta",
+   "feature_ids": [
+    "momentum.macd_line_12_26_9",
+    "momentum.macd_signal_12_26_9",
+    "momentum.macd_histogram_12_26_9",
+    "momentum.macd_histogram_atr_14"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-RET",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3",
+   "variant": "close/close[t-n]-1",
+   "feature_ids": [
+    "price.return_1",
+    "price.return_5",
+    "price.return_20"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-EMADIST",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3",
+   "variant": "ATR-normalizado",
+   "feature_ids": [
+    "trend.ema20_distance_atr14"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-ER",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3/T19.16",
+   "variant": "flat=0",
+   "feature_ids": [
+    "trend.efficiency_ratio_20"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-VOL",
+   "kind": "registry_group",
+   "class": "B",
+   "bd": "BD10",
+   "owner_task": "T19.3/T20.6",
+   "variant": "real e ticks separados",
+   "feature_ids": [
+    "volume.real",
+    "volume.ticks"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d); volume real ausente em FX DEMO",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-ALLIGATOR",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.4",
+   "variant": "SMMA semente SMA; valor não deslocado",
+   "feature_ids": [
+    "trend.alligator_jaw_13",
+    "trend.alligator_teeth_8",
+    "trend.alligator_lips_5",
+    "trend.alligator_alignment",
+    "trend.alligator_separation"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-AOAC",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.5",
+   "variant": "SMA janela finita",
+   "feature_ids": [
+    "momentum.ao_5_34",
+    "momentum.ao_5_34_slope_1",
+    "momentum.ao_5_34_acceleration_1",
+    "momentum.ao_5_34_zero_cross",
+    "momentum.ao_5_34_color"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-AC",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.5",
+   "variant": "AO-SMA(AO,5)",
+   "feature_ids": [
+    "momentum.ac_5_34_5",
+    "momentum.ac_5_34_5_slope_1",
+    "momentum.ac_5_34_5_color"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-FRACTALS",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.6",
+   "variant": "estrito, confirmação 2ª barra",
+   "feature_ids": [
+    "structure.fractals_5_strict_top",
+    "structure.fractals_5_strict_bottom",
+    "structure.fractals_5_strict_provisional"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-ZIGZAG",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.6",
+   "variant": "causal percentual v1 (não MT5)",
+   "feature_ids": [
+    "structure.zigzag_causal_d12_pct1_b3_top",
+    "structure.zigzag_causal_d12_pct1_b3_bottom",
+    "structure.zigzag_causal_d12_pct1_b3_provisional"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "REG-DONCHIAN",
+   "kind": "registry_group",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.7",
+   "variant": "N=20 atual/anterior",
+   "feature_ids": [
+    "channel.donchian_20_current_upper",
+    "channel.donchian_20_current_lower",
+    "channel.donchian_20_current_mid",
+    "channel.donchian_20_current_width",
+    "channel.donchian_20_current_position",
+    "channel.donchian_20_current_distance_upper",
+    "channel.donchian_20_current_distance_lower",
+    "channel.donchian_20_previous_upper",
+    "channel.donchian_20_previous_lower",
+    "channel.donchian_20_previous_mid",
+    "channel.donchian_20_previous_width",
+    "channel.donchian_20_previous_position",
+    "channel.donchian_20_previous_distance_upper",
+    "channel.donchian_20_previous_distance_lower"
+   ],
+   "stage": {
+    "contract": "parcial: registry T18.1 (sem buffers/plot/consumidores/referência)",
+    "implementation": "analytics/indicator_registry.py",
+    "persistence": "feature_store via indicator_materializer (T19.3); chave sem base/fonte",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "chart_study (recalcula via iter_core, não lê o store)",
+     "trade_analytics.indicator_context",
+     "ui.laboratory (indicator_context.for_trades)",
+     "data_exporter (indicator_context.projection)",
+     "cli features/indicators"
+    ]
+   },
+   "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+  },
+  {
+   "id": "PROD-VOLUME",
+   "kind": "producer_family",
+   "class": "A",
+   "bd": "BD10",
+   "owner_task": "T13.3",
+   "variant": "{\"min_sessions\": 5, \"percentile_window\": 60, \"slope_window\": 15, \"windows\": [5, 10, 20, 60]}",
+   "feature_ids": [
+    "volume.session_mean_10.real",
+    "volume.session_mean_10.tick",
+    "volume.session_mean_20.real",
+    "volume.session_mean_20.tick",
+    "volume.session_mean_5.real",
+    "volume.session_mean_5.tick",
+    "volume.session_mean_60.real",
+    "volume.session_mean_60.tick",
+    "volume.session_median_10.real",
+    "volume.session_median_10.tick",
+    "volume.session_median_20.real",
+    "volume.session_median_20.tick",
+    "volume.session_median_5.real",
+    "volume.session_median_5.tick",
+    "volume.session_median_60.real",
+    "volume.session_median_60.tick",
+    "volume.session_per_minute.real",
+    "volume.session_per_minute.tick",
+    "volume.session_percentile_60.real",
+    "volume.session_percentile_60.tick",
+    "volume.session_ratio_median_10.real",
+    "volume.session_ratio_median_10.tick",
+    "volume.session_ratio_median_20.real",
+    "volume.session_ratio_median_20.tick",
+    "volume.session_ratio_median_5.real",
+    "volume.session_ratio_median_5.tick",
+    "volume.session_ratio_median_60.real",
+    "volume.session_ratio_median_60.tick",
+    "volume.session_slope_15.real",
+    "volume.session_slope_15.tick"
+   ],
+   "stage": {
+    "contract": "parcial: features.register por família (T13.2/T13.3)",
+    "implementation": "analytics/producers.py + módulos da família",
+    "persistence": "feature_store (T13.2/T13.3b)",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "cli analytics",
+     "nenhum consumidor de UI comprovado"
+    ]
+   },
+   "gap": "contrato sem unidades/buffers por saída no registry; consumidores de UI ausentes; ATR/ADX/BB recalculados em paralelo ao registry (BD07)",
+   "test_needed": "reconciliar com registry quando mesma fórmula (E09); as-of (E19)"
+  },
+  {
+   "id": "PROD-RVOL",
+   "kind": "producer_family",
+   "class": "A",
+   "bd": "BD10",
+   "owner_task": "T13.3",
+   "variant": "{\"lookback\": 20, \"min_sessions\": 5, \"same_weekday\": false}",
+   "feature_ids": [
+    "rvol.real",
+    "rvol.reference_sessions",
+    "rvol.tick"
+   ],
+   "stage": {
+    "contract": "parcial: features.register por família (T13.2/T13.3)",
+    "implementation": "analytics/producers.py + módulos da família",
+    "persistence": "feature_store (T13.2/T13.3b)",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "cli analytics",
+     "nenhum consumidor de UI comprovado"
+    ]
+   },
+   "gap": "contrato sem unidades/buffers por saída no registry; consumidores de UI ausentes; ATR/ADX/BB recalculados em paralelo ao registry (BD07)",
+   "test_needed": "reconciliar com registry quando mesma fórmula (E09); as-of (E19)"
+  },
+  {
+   "id": "PROD-VOLATILITY",
+   "kind": "producer_family",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T13.3",
+   "variant": "{\"atr_n\": 14, \"bb_n\": 20, \"compression_pct\": 20.0, \"expansion_pct\": 80.0, \"percentile_window\": 100, \"rv_n\": 20}",
+   "feature_ids": [
+    "volatility.atr",
+    "volatility.atr_pct",
+    "volatility.atr_pct_percentile",
+    "volatility.bb_width",
+    "volatility.bb_width_percentile",
+    "volatility.range_pct",
+    "volatility.range_percentile",
+    "volatility.realized_vol",
+    "volatility.volatility_state"
+   ],
+   "stage": {
+    "contract": "parcial: features.register por família (T13.2/T13.3)",
+    "implementation": "analytics/producers.py + módulos da família",
+    "persistence": "feature_store (T13.2/T13.3b)",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "cli analytics",
+     "nenhum consumidor de UI comprovado"
+    ]
+   },
+   "gap": "contrato sem unidades/buffers por saída no registry; consumidores de UI ausentes; ATR/ADX/BB recalculados em paralelo ao registry (BD07)",
+   "test_needed": "reconciliar com registry quando mesma fórmula (E09); as-of (E19)"
+  },
+  {
+   "id": "PROD-REGIME",
+   "kind": "producer_family",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T13.3",
+   "variant": "{\"adx_n\": 14, \"er_cut\": 0.3, \"er_n\": 20, \"min_duration\": 3, \"r2_cut\": 0.5, \"r2_n\": 50, \"range_adx\": 20.0, \"trend_adx\": 25.0}",
+   "feature_ids": [
+    "regime.adx",
+    "regime.confidence",
+    "regime.duration",
+    "regime.efficiency",
+    "regime.r2",
+    "regime.raw",
+    "regime.state"
+   ],
+   "stage": {
+    "contract": "parcial: features.register por família (T13.2/T13.3)",
+    "implementation": "analytics/producers.py + módulos da família",
+    "persistence": "feature_store (T13.2/T13.3b)",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "cli analytics",
+     "nenhum consumidor de UI comprovado"
+    ]
+   },
+   "gap": "contrato sem unidades/buffers por saída no registry; consumidores de UI ausentes; ATR/ADX/BB recalculados em paralelo ao registry (BD07)",
+   "test_needed": "reconciliar com registry quando mesma fórmula (E09); as-of (E19)"
+  },
+  {
+   "id": "PROD-STRUCTURE",
+   "kind": "producer_family",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T13.3",
+   "variant": "{\"atr_n\": 14, \"opening_minutes\": 30}",
+   "feature_ids": [
+    "level.dist_prev_high_atr",
+    "level.dist_prev_low_atr",
+    "opening_range.breakout_30",
+    "opening_range.high_30",
+    "opening_range.low_30",
+    "session.gap",
+    "session.return"
+   ],
+   "stage": {
+    "contract": "parcial: features.register por família (T13.2/T13.3)",
+    "implementation": "analytics/producers.py + módulos da família",
+    "persistence": "feature_store (T13.2/T13.3b)",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "cli analytics",
+     "nenhum consumidor de UI comprovado"
+    ]
+   },
+   "gap": "contrato sem unidades/buffers por saída no registry; consumidores de UI ausentes; ATR/ADX/BB recalculados em paralelo ao registry (BD07)",
+   "test_needed": "reconciliar com registry quando mesma fórmula (E09); as-of (E19)"
+  },
+  {
+   "id": "PROD-CALENDAR",
+   "kind": "producer_family",
+   "class": "A",
+   "bd": "BD05",
+   "owner_task": "T13.1/T13.3",
+   "variant": "{}",
+   "feature_ids": [
+    "calendar.hour_utc",
+    "calendar.minute_of_session",
+    "calendar.week_of_month_utc",
+    "calendar.weekday_utc"
+   ],
+   "stage": {
+    "contract": "parcial: features.register por família (T13.2/T13.3)",
+    "implementation": "analytics/producers.py + módulos da família",
+    "persistence": "feature_store (T13.2/T13.3b)",
+    "query": "feature_store.query_as_of (CLI); sem serviço",
+    "consumers": [
+     "cli analytics",
+     "nenhum consumidor de UI comprovado"
+    ]
+   },
+   "gap": "contrato sem unidades/buffers por saída no registry; consumidores de UI ausentes; ATR/ADX/BB recalculados em paralelo ao registry (BD07)",
+   "test_needed": "reconciliar com registry quando mesma fórmula (E09); as-of (E19)"
+  },
+  {
+   "id": "I01",
+   "kind": "catalog_indicator",
+   "name": "Saldo de Agressão",
+   "class": "B",
+   "bd": "BD10",
+   "owner_task": "T19.11",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado; DEMO sem lado agressor qualificado",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I02",
+   "kind": "catalog_indicator",
+   "name": "CVD",
+   "class": "B",
+   "bd": "BD10",
+   "owner_task": "T19.11",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado; depende de I01",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I03",
+   "kind": "catalog_indicator",
+   "name": "Imbalance (footprint e book: duas definições)",
+   "class": "C",
+   "bd": "BD10",
+   "owner_task": "T19.12",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "razão mínima/comparação horizontal×diagonal não fixadas no estudo; book não substitui agressão",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I04",
+   "kind": "catalog_indicator",
+   "name": "Speed of Tape",
+   "class": "B",
+   "bd": "BD10",
+   "owner_task": "T19.13",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado; requer timestamps de negócios",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I05",
+   "kind": "catalog_indicator",
+   "name": "Large Trades",
+   "class": "C",
+   "bd": "BD10",
+   "owner_task": "T19.13",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "limiar absoluto×quantil não fixado; implementável após decisão",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I06",
+   "kind": "catalog_indicator",
+   "name": "Alligator",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.4",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "implementado (REG-ALLIGATOR); paridade MT5 pendente",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I07",
+   "kind": "catalog_indicator",
+   "name": "AO",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.5",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "implementado (REG-AOAC)",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I08",
+   "kind": "catalog_indicator",
+   "name": "Fractals",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.6",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "implementado (REG-FRACTALS)",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I09",
+   "kind": "catalog_indicator",
+   "name": "AC",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.5",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "implementado (REG-AC)",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I10",
+   "kind": "catalog_indicator",
+   "name": "Donchian",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.7",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "implementado (REG-DONCHIAN)",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I11",
+   "kind": "catalog_indicator",
+   "name": "Envelopes",
+   "class": "A",
+   "bd": "BD09",
+   "owner_task": "T19.7",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado no registry; nativo N16 existe",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I12",
+   "kind": "catalog_indicator",
+   "name": "Canais de Regressão Linear",
+   "class": "A",
+   "bd": "BD09",
+   "owner_task": "T19.7",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "só slope/R² em strategies.indicators; canal/bandas ausentes; definição do desvio a fixar na ficha",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I13",
+   "kind": "catalog_indicator",
+   "name": "McGinley Dynamic",
+   "class": "A",
+   "bd": "BD09",
+   "owner_task": "T19.8",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado; variante proposta no catálogo",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I14",
+   "kind": "catalog_indicator",
+   "name": "ZigZag",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.6",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "implementado variante causal (REG-ZIGZAG); retrospectivo MT5 separado",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I15",
+   "kind": "catalog_indicator",
+   "name": "Ultimate Oscillator",
+   "class": "A",
+   "bd": "BD09",
+   "owner_task": "T19.9",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado; 7/14/28 e 4/2/1 a confirmar",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I16",
+   "kind": "catalog_indicator",
+   "name": "TRIX",
+   "class": "A",
+   "bd": "BD09",
+   "owner_task": "T19.10",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado no registry; nativo N34 existe",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I17",
+   "kind": "catalog_indicator",
+   "name": "KST",
+   "class": "C",
+   "bd": "BD09",
+   "owner_task": "T19.10",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "quatro ROCs/suavizações/pesos não fixados no estudo",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "I18",
+   "kind": "catalog_indicator",
+   "name": "Efficiency Ratio",
+   "class": "A",
+   "bd": "BD08b",
+   "owner_task": "T19.3/T19.16",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "implementado (REG-ER)",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX01",
+   "kind": "catalog_indicator",
+   "name": "VWAP diária/sessão e bandas",
+   "class": "B",
+   "bd": "BD07",
+   "owner_task": "T19.3/T19.36",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "cálculo privado vwap_bands.daily_vwap fora do registry; volume real ausente na DEMO FX",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX02",
+   "kind": "catalog_indicator",
+   "name": "Leque Madrid",
+   "class": "C",
+   "bd": "BD07",
+   "owner_task": "T19.39",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "madrid_averages privado; períodos das dez EMAs ausentes no estudo",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX03",
+   "kind": "catalog_indicator",
+   "name": "2MV",
+   "class": "C",
+   "bd": "BD09",
+   "owner_task": "T19.42",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "método/período não definidos",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX04",
+   "kind": "catalog_indicator",
+   "name": "Estocástico lento + EMA9",
+   "class": "A",
+   "bd": "BD07",
+   "owner_task": "T19.38",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "slow_stochastic privado em stoch_ema9; fora do registry",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX05",
+   "kind": "catalog_indicator",
+   "name": "Heiken-Ashi + HiLo Activator",
+   "class": "A",
+   "bd": "BD07",
+   "owner_task": "T19.40",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "ha_hilo_context privado; fora do registry",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX06",
+   "kind": "catalog_composite",
+   "name": "Fibonacci alvo/entrada",
+   "class": "A",
+   "bd": "BD12",
+   "owner_task": "T19.18/T19.17",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "composto sobre pivôs confirmados; não no registry",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX07",
+   "kind": "catalog_indicator",
+   "name": "Renko e gerador",
+   "class": "A",
+   "bd": "BD09",
+   "owner_task": "T19.41",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "não",
+    "query": "não",
+    "consumers": []
+   },
+   "gap": "não implementado",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX08",
+   "kind": "catalog_indicator",
+   "name": "Suporte/resistência e polaridade",
+   "class": "C",
+   "bd": "BD09",
+   "owner_task": "T19.43",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "versão objetiva não definida; advanced_indicators.support_resistance é legado sem contrato",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "FRP",
+   "kind": "catalog_indicator",
+   "name": "Fluxo Relativo do Preço",
+   "class": "C",
+   "bd": "BD12",
+   "owner_task": "FRP-00..04",
+   "stage": {
+    "contract": "ficha do catálogo F19",
+    "implementation": "ver lacuna",
+    "persistence": "conforme grupo REG",
+    "query": "conforme grupo REG",
+    "consumers": []
+   },
+   "gap": "estudo futuro sem fórmula aprovada",
+   "test_needed": "ficha por família com referência independente (E13)"
+  },
+  {
+   "id": "AX09",
+   "kind": "tool",
+   "name": "OCO, cópia, painéis e travas",
+   "class": "A",
+   "bd": "fora (ferramenta)",
+   "owner_task": "T19.44/T19.47/T19.48",
+   "stage": {
+    "contract": "n/a",
+    "implementation": "n/a",
+    "persistence": "n/a",
+    "query": "n/a",
+    "consumers": []
+   },
+   "gap": "ferramenta operacional, não indicador; fora do denominador de cálculo",
+   "test_needed": "dono próprio"
+  },
+  {
+   "id": "TM01",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "TM02",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "TM03",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "TM04",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "TM05",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "TM06",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "TM07",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "TM08",
+   "kind": "trade_metric",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.14–T19.16",
+   "stage": {
+    "contract": "catálogo §3",
+    "implementation": "trade_analytics (T19.14 integrada; parcial)",
+    "persistence": "ledger/trajectories",
+    "query": "não via serviço",
+    "consumers": [
+     "laboratório"
+    ]
+   },
+   "gap": "vínculo a versões de dados/cálculos (BD17)",
+   "test_needed": "E27"
+  },
+  {
+   "id": "LEG-IC",
+   "kind": "legacy_calculator",
+   "name": "IndicatorCalculator (rsi, atr, ma_20, macd_*, bollinger_*, true_range, var_pct_*)",
+   "class": "A",
+   "bd": "BD07",
+   "owner_task": "T6.1/T4.5/T19.3",
+   "stage": {
+    "contract": "não",
+    "implementation": "indicator_calculator.py",
+    "persistence": "colunas legadas OHLCV",
+    "query": "tabelas legadas",
+    "consumers": [
+     "extração",
+     "coleta tempo real",
+     "exports"
+    ]
+   },
+   "gap": "pandas-ta opcional; fallback cobre só parte; colunas legadas vazias na base",
+   "test_needed": "com/sem pandas-ta sem sucesso falso (E10)"
+  },
+  {
+   "id": "LEG-ADV",
+   "kind": "legacy_calculator",
+   "name": "AdvancedIndicators (stochastic, adx, cci, fibonacci, statistics, volume, candles, S/R, trend, context)",
+   "class": "A",
+   "bd": "BD07",
+   "owner_task": "T6.1/T4.5/T19.3",
+   "stage": {
+    "contract": "não",
+    "implementation": "advanced_indicators.py",
+    "persistence": "colunas legadas OHLCV",
+    "query": "tabelas legadas",
+    "consumers": [
+     "extração",
+     "coleta tempo real",
+     "exports"
+    ]
+   },
+   "gap": "usado pela coleta em tempo real; sem contrato/versão/disponibilidade",
+   "test_needed": "com/sem pandas-ta sem sucesso falso (E10)"
+  },
+  {
+   "id": "PRIV-SMA-EMA-ADX",
+   "kind": "pure_function",
+   "name": "sma/ema/adx/linreg/percentile/swing em strategies.indicators",
+   "class": "A",
+   "bd": "BD07",
+   "owner_task": "T6.1/T19.3",
+   "stage": {
+    "contract": "não",
+    "implementation": "strategies/indicators.py",
+    "persistence": "não",
+    "query": "não",
+    "consumers": [
+     "estratégias",
+     "produtores"
+    ]
+   },
+   "gap": "funções puras usadas por estratégias e produtores sem ID no registry",
+   "test_needed": "E09"
+  },
+  {
+   "id": "SETUP-bb_rsi",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/bb_rsi.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-donchian",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/donchian.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-ema_atr",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/ema_atr.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-ha_hilo",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/ha_hilo.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-madrid",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/madrid.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-orb",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/orb.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-pullback",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/pullback.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-s09",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/s09.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-squeeze",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/squeeze.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-stoch_ema9",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/stoch_ema9.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "SETUP-vwap_bands",
+   "kind": "setup",
+   "class": "A",
+   "bd": "BD17",
+   "owner_task": "T19.36–T19.47",
+   "stage": {
+    "contract": "strategies/vwap_bands.py",
+    "implementation": "Python + Expert H",
+    "persistence": "runs/ledger",
+    "query": "histórico",
+    "consumers": [
+     "robôs",
+     "laboratório"
+    ]
+   },
+   "gap": "setup, não indicador: consome cálculos; fidelidade nativa por perfil (BD21)",
+   "test_needed": "dependências declaradas no registry quando consumidas (BD07)"
+  },
+  {
+   "id": "N00",
+   "kind": "native_mt5",
+   "name": "iAC",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N01",
+   "kind": "native_mt5",
+   "name": "iAD",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "VOLUME_TICK",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N02",
+   "kind": "native_mt5",
+   "name": "iADX",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N03",
+   "kind": "native_mt5",
+   "name": "iADXWilder",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N04",
+   "kind": "native_mt5",
+   "name": "iAlligator",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "13,8,8,5,5,3,MODE_SMMA,PRICE_MEDIAN",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N05",
+   "kind": "native_mt5",
+   "name": "iAMA",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "9,2,30,0,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N06",
+   "kind": "native_mt5",
+   "name": "iAO",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N07",
+   "kind": "native_mt5",
+   "name": "iATR",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N08",
+   "kind": "native_mt5",
+   "name": "iBands",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "20,0,2,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N09",
+   "kind": "native_mt5",
+   "name": "iBearsPower",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "13",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N10",
+   "kind": "native_mt5",
+   "name": "iBullsPower",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "13",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N11",
+   "kind": "native_mt5",
+   "name": "iBWMFI",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "VOLUME_TICK",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N12",
+   "kind": "native_mt5",
+   "name": "iCCI",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,PRICE_TYPICAL",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N13",
+   "kind": "native_mt5",
+   "name": "iChaikin",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "3,10,MODE_EMA,VOLUME_TICK",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N14",
+   "kind": "native_mt5",
+   "name": "iDEMA",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,0,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N15",
+   "kind": "native_mt5",
+   "name": "iDeMarker",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N16",
+   "kind": "native_mt5",
+   "name": "iEnvelopes",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,0,MODE_SMA,PRICE_CLOSE,0.1",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N17",
+   "kind": "native_mt5",
+   "name": "iForce",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "13,MODE_SMA,VOLUME_TICK",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N18",
+   "kind": "native_mt5",
+   "name": "iFractals",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N19",
+   "kind": "native_mt5",
+   "name": "iFrAMA",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,0,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N20",
+   "kind": "native_mt5",
+   "name": "iGator",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "13,8,8,5,5,3,MODE_SMMA,PRICE_MEDIAN",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N21",
+   "kind": "native_mt5",
+   "name": "iIchimoku",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "9,26,52",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N22",
+   "kind": "native_mt5",
+   "name": "iMA",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "20,0,MODE_EMA,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N23",
+   "kind": "native_mt5",
+   "name": "iMACD",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "12,26,9,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N24",
+   "kind": "native_mt5",
+   "name": "iMFI",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,VOLUME_TICK",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N25",
+   "kind": "native_mt5",
+   "name": "iMomentum",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N26",
+   "kind": "native_mt5",
+   "name": "iOBV",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "VOLUME_TICK",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N27",
+   "kind": "native_mt5",
+   "name": "iOsMA",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "12,26,9,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N28",
+   "kind": "native_mt5",
+   "name": "iRSI",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N29",
+   "kind": "native_mt5",
+   "name": "iRVI",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "10",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N30",
+   "kind": "native_mt5",
+   "name": "iSAR",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "0.02,0.2",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N31",
+   "kind": "native_mt5",
+   "name": "iStdDev",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "20,0,MODE_SMA,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N32",
+   "kind": "native_mt5",
+   "name": "iStochastic",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "5,3,3,MODE_SMA,STO_LOWHIGH",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N33",
+   "kind": "native_mt5",
+   "name": "iTEMA",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,0,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N34",
+   "kind": "native_mt5",
+   "name": "iTriX",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N35",
+   "kind": "native_mt5",
+   "name": "iVIDyA",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "9,12,0,PRICE_CLOSE",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N36",
+   "kind": "native_mt5",
+   "name": "iVolumes",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "VOLUME_TICK",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  },
+  {
+   "id": "N37",
+   "kind": "native_mt5",
+   "name": "iWPR",
+   "class": "A",
+   "bd": "BD11",
+   "owner_task": "T19.3/G19.5–7",
+   "variant": "14",
+   "stage": {
+    "contract": "HDK_StudyCatalog (parâmetros fixos)",
+    "implementation": "terminal MT5",
+    "persistence": "não (sem captura persistida)",
+    "query": "não",
+    "consumers": [
+     "Estudo no gráfico (nativo)"
+    ]
+   },
+   "gap": "sem contrato de buffers/unidades no app; sem captura offline; equivalência Python não afirmada",
+   "test_needed": "captura pequena identificada ou indisponibilidade explicada (E15)"
+  }
+ ]
+}
