@@ -304,8 +304,29 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
   return stamp>0 && age>=-2 && age<=15;
 }}
 '''
+    chart_buttons = ""
+    if any(name == "OnChartEvent" for name, _, _ in events):
+        # O Tester visual não entrega cliques nativos ao OnChartEvent. Reusar
+        # o handler original apenas para botões do painel deste magic/gráfico.
+        chart_buttons = f'''ulong MT5X_LastButtonPoll=0;
+void MT5X_PollChartButtons() {{
+  if(!MQLInfoInteger(MQL_TESTER) || !MQLInfoInteger(MQL_VISUAL_MODE) || MQLInfoInteger(MQL_OPTIMIZATION)) return;
+  ulong now=GetTickCount64(); if(now-MT5X_LastButtonPoll<50) return; MT5X_LastButtonPoll=now;
+  string prefix="HDK7_"+IntegerToString({magic_expr})+"_";
+  for(int i=ObjectsTotal(0,-1,OBJ_BUTTON)-1;i>=0;i--) {{
+    string name=ObjectName(0,i,-1,OBJ_BUTTON);
+    if(StringFind(name,prefix)!=0 || !ObjectGetInteger(0,name,OBJPROP_STATE)) continue;
+    ObjectSetInteger(0,name,OBJPROP_STATE,false);
+    long x=ObjectGetInteger(0,name,OBJPROP_XDISTANCE);
+    double y=(double)ObjectGetInteger(0,name,OBJPROP_YDISTANCE);
+    MT5X_OnChartEvent(CHARTEVENT_OBJECT_CLICK,x,y,name);
+    return;
+  }}
+}}
+'''
     wrappers = "\n".join(f"void {name}({args}) {{ if(!({guard})) {{ ExpertRemove(); return; }} "
-                           f"MT5X_{name}({call}); MT5X_Publish(); }}" for name, args, call in events)
+                           + ("MT5X_PollChartButtons(); " if chart_buttons and name in ("OnTick", "OnTimer") else "")
+                           + f"MT5X_{name}({call}); MT5X_Publish(); }}" for name, args, call in events)
     receipt_source = ""
     if input_receipt is not None:
         from . import native_inputs
@@ -335,6 +356,7 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
 {undefs}
 {observer}
 {lease_code}
+{chart_buttons}
 ulong MT5X_Last=0;
 void MT5X_Chart() {{
   if(MQLInfoInteger(MQL_TESTER) && !MQLInfoInteger(MQL_VISUAL_MODE)) return;
@@ -468,9 +490,14 @@ class Session:
         env = dict(os.environ)
         if prefix:
             env.update(WINEPREFIX=str(prefix), WINEDEBUG="-all")
-        hidden = compiling or self.mode == "backtest"
-        if hidden and not paths.is_windows():
-            env = display.child_env(self.child_config, {**env, display.ENV_SWITCH: "1"})
+        hidden = self.mode == "backtest" or (compiling and paths.is_windows())
+        if not paths.is_windows():
+            # Compilação e sessão interativa usam o mesmo DISPLAY/driver Wine.
+            # Alternar Xvfb e desktop durante o replay pode deixar o visualizador
+            # sem janela utilizável. O backtest continua na tela virtual.
+            env.pop("WAYLAND_DISPLAY", None)
+            env[display.ENV_SWITCH] = "1" if hidden else "0"
+            env = display.child_env(self.child_config, env)
         # REPLAY e PLAY sempre seguem a tela do usuário, mesmo com hidden no INI.
         if paths.is_windows():
             args = command

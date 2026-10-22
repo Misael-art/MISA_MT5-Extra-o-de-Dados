@@ -122,6 +122,7 @@ def test_telemetry_wraps_existing_events_without_changing_timer_or_orders(robot)
     assert "INIT_FAILED" in source and "ExpertRemove()" in source
     assert "EventSetTimer(1)" in source and "order_send" not in source and "OrderSend" not in source
     assert "POSITION_SYMBOL)==_Symbol" in source
+    assert "MT5X_PollChartButtons" not in source
 
 
 def test_observer_never_replaces_strategy_timer_cadence(robot):
@@ -130,6 +131,22 @@ def test_observer_never_replaces_strategy_timer_cadence(robot):
     source = sessions.telemetry_source(robot, "test.txt")
     assert "#define OnTimer MT5X_OnTimer" in source
     assert "EventSetTimer(1)" not in source and "EventKillTimer" not in source
+
+
+def test_visual_tester_forwards_only_own_pressed_panel_buttons_to_existing_handler(robot):
+    with open(robot.path, "a") as handle:
+        handle.write("\ninput long InpMagicNumber=123;\nvoid OnTimer(){}\n"
+                     "void OnChartEvent(const int id,const long &l,const double &d,const string &s){}")
+    robot.inputs.append(mql.MqlInput("InpMagicNumber", "long", "123"))
+    source = sessions.telemetry_source(robot, "test.txt")
+    assert 'string prefix="HDK7_"+IntegerToString(InpMagicNumber)+"_";' in source
+    assert "!MQLInfoInteger(MQL_TESTER) || !MQLInfoInteger(MQL_VISUAL_MODE)" in source
+    assert 'StringFind(name,prefix)!=0 || !ObjectGetInteger(0,name,OBJPROP_STATE)' in source
+    assert source.index('ObjectSetInteger(0,name,OBJPROP_STATE,false)') < source.index(
+        'MT5X_OnChartEvent(CHARTEVENT_OBJECT_CLICK,x,y,name)')
+    assert "MT5X_PollChartButtons(); MT5X_OnTick();" in source
+    assert "MT5X_PollChartButtons(); MT5X_OnTimer();" in source
+    assert "EventSetTimer(1)" not in source
 
 
 def test_cancel_before_preparation_never_copies_credentials_or_starts_terminal(robot, tmp_path):
@@ -144,6 +161,55 @@ def test_play_without_account_reader_never_prepares_native_terminal(robot, tmp_p
     assert session.run().state == "failed"
     assert "revalidação" in session.error
     assert not session.directory.exists()
+
+
+@pytest.mark.parametrize("mode", ["replay", "play", "backtest"])
+@pytest.mark.parametrize("compiling", [False, True])
+def test_linux_session_uses_x11_and_keeps_interactive_replay_on_user_display(
+        robot, tmp_path, monkeypatch, mode, compiling):
+    config = configparser.ConfigParser()
+    config.read_dict({"MT5": {"hidden": "true", "hidden_display": ":77"}})
+    session = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode,
+                               root=tmp_path / "wine" / "drive_c" / "sessions")
+    session.directory.mkdir(parents=True)
+    session.child_config = config
+    monkeypatch.setattr(sessions.paths, "is_windows", lambda: False)
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    monkeypatch.setenv(sessions.display.ENV_SWITCH, "1")
+    monkeypatch.setattr(sessions.display, "ensure", lambda name: name)
+    monkeypatch.setattr(session, "_write_lease", lambda: None)
+    seen = []
+    monkeypatch.setattr(sessions.subprocess, "Popen", lambda *a, **kw: seen.append(kw) or
+                        SimpleNamespace(poll=lambda: 0, returncode=0))
+
+    assert session._run_command('"C:\\terminal64.exe"', session.directory, tmp_path / "wine", 1,
+                                compiling=compiling) == 0
+    env = seen[0]["env"]
+    assert "WAYLAND_DISPLAY" not in env  # visualizador Wine usa o mesmo driver X11 do compilador
+    hidden = mode == "backtest"
+    assert env["DISPLAY"] == (":77" if hidden else ":0")
+    assert env[sessions.display.ENV_SWITCH] == ("1" if hidden else "0")
+    assert sessions.os.environ["WAYLAND_DISPLAY"] == "wayland-0"
+
+
+@pytest.mark.parametrize("mode,hidden", [("replay", False), ("play", False), ("backtest", True)])
+def test_windows_session_visibility_keeps_native_desktop_environment(
+        robot, tmp_path, monkeypatch, mode, hidden):
+    config = configparser.ConfigParser()
+    session = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode, root=tmp_path)
+    session.directory.mkdir()
+    monkeypatch.setattr(sessions.paths, "is_windows", lambda: True)
+    monkeypatch.setenv("WAYLAND_DISPLAY", "preserved")
+    monkeypatch.setattr(session, "_write_lease", lambda: None)
+    visibility = []
+    monkeypatch.setattr(sessions.display, "windows_startup", lambda value: visibility.append(value))
+    seen = []
+    monkeypatch.setattr(sessions.subprocess, "Popen", lambda *a, **kw: seen.append(kw) or
+                        SimpleNamespace(poll=lambda: 0, returncode=0))
+    assert session._run_command('"C:\\terminal64.exe"', session.directory, None, 1) == 0
+    assert visibility == [hidden]
+    assert seen[0]["env"]["WAYLAND_DISPLAY"] == "preserved"
 
 
 @pytest.mark.parametrize("windows", [False, True])

@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-21",
+  "task": "T17.28 replay manual panel",
+  "base_app": "ac7af2c392611bb1bd262c7806810eb4289559b3",
+  "hadouken": "ec550d77caae74e9f5f4ffe30cea5ccd29621624",
+  "safety": "3988df13c467bd22941183f5546caad0500f9138",
+  "host": {
+    "os": "BigLinux/Manjaro KDE Wayland",
+    "kernel": "6.18.49-1-MANJARO",
+    "python": "3.11.15",
+    "wine": "11.17",
+    "mt5_build": 6276
+  },
+  "tests": {
+    "baseline": 56,
+    "final_targeted": 85,
+    "doctor_ok": 20,
+    "doctor_optional_warnings": 1,
+    "doctor_failures": 0,
+    "mql_compile_errors": 0,
+    "mql_compile_warnings": 0
+  },
+  "native": {
+    "expert": "HDK_HADOUKEN_Painel",
+    "symbol": "EURUSD",
+    "timeframe": "H1",
+    "from": "2026-10-14",
+    "to": "2026-10-15",
+    "same_display_panel_visible": true,
+    "completed_visual_replay": true,
+    "simulated_trades": 0,
+    "manual_interaction_verification": "pending",
+    "completed_receipt_sha256": "23c00cef4d2c90e743293220e77859c0ee7f258dc6ced9be59e7fc8135666966",
+    "resources_released": true,
+    "earlier_failed_attempts_retained": true,
+    "reuse_attempt_invalidated_by_private_liveupdate_to_build_6281": true
+  },
+  "limits": [
+    "Windows physical pending",
+    "No financial manual execution acceptance",
+    "No live or REAL orders",
+    "No universal Wine root cause claim"
+  ],
+  "cleanup": "Own disposable profiles and restoration copy to be removed after verified receipt retention; owner data/WIP preserved"
+}

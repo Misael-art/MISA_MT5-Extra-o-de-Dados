@@ -1,3 +1,11 @@
+## Painel manual no REPLAY — correção em validação (2026-10-21)
+
+Compilação e replay usam o mesmo DISPLAY no Linux/Wine. Observador encaminha
+botões do próprio painel no Tester ao handler original; 85 testes e doctor20/1/0.
+Replay visual HADOUKEN/EURUSD/H1 concluído com zero trades em banco de QA;
+interação manual tem conferência própria. [Contrato](sdk/replay_painel_manual.md).
+Base do proprietário, risco/executor e Windows físico mantêm seus limites.
+
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
 Corretivo do SDK: CI39576824302 teve uma falha de assinatura pública (2.617 testes
