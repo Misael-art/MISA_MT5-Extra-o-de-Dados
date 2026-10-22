@@ -72,3 +72,5 @@ G19.2: [PR63](https://github.com/Misael-art/projeto-indicadores-mt5/pull/63),83 
 G19.3: [PR64](https://github.com/Misael-art/projeto-indicadores-mt5/pull/64),83 testes/2 subtestes, quatro consumidores recompilados com headers finais por hash,195 controles nativos por96/144 DPI.
 App PLAY:65 testes dirigidos aprovados; suíte completa final2901 aprovados,52 pulados,3 avisos. Doctor16 OK/2 avisos/0 falhas no perfil isolado.
 Notas:15 testes dirigidos aprovados (banco/fotografia/transporte/UI). Integração nativa e instalação ainda pendentes.
+
+O adaptador real de sessão da App compilou o painel manual com fontes G18 instaladas: EX5 gerado, header do painel idêntico à fonte, contexto liberado e zero processos próprios restantes. Ensaio apenas de compilação, sem abrir terminal/conta ou enviar ordens. A composição G19 final precisará repetir a conferência de fonte e Safety.
