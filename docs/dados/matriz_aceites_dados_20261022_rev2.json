@@ -43,8 +43,19 @@
    "owner": "BD02",
    "case": "Referências e tamanho",
    "criterion": "Valores independentes e fixtures/temporários dentro do orçamento medido",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "pendente (branch codex/bd02-bancada)",
+     "test": "tests/test_bd02_bench.py",
+     "reference": "tests/bench_reference.py (Python puro)",
+     "input_hash": "SHA-256 por cenário em docs/dados/BD02_BANCADA.md",
+     "parameters": "19 cenários; RSI/ATR 14, ER/BB/Donchian 20",
+     "result": "12 passed",
+     "limitations": "8 saídas do registry com referência; demais famílias nas suas fichas",
+     "resource_measurements": "persistente 30111 B; temporário 559009 B em memória; <1 s"
+    }
+   ]
   },
   {
    "id": "E03",
