@@ -5,7 +5,7 @@ versão aceita e os dados/configuração do proprietário. Nenhum arquivo WIP da
 raiz é levado para a distribuição. Arquivos vêm de árvores Git identificadas,
 com hashes, cópias de retorno dos atalhos e symlinks de desenvolvimento.
 
-O painel manual tem fingerprint aprovado da composição final9ba47ff34acc7e61,
+O painel manual tem fingerprint aprovado da composição final37afd2370d701dab,
 incluindo os dois ativos gráficos. Verificação sobre a biblioteca real:
 PLAY disponível sem run; uma alteração no ativo Series invalida a exceção.
 Conta, stop, limites, emergência e proteção REAL permanecem exigidos.
@@ -20,8 +20,11 @@ seu namespace com HADOUKEN/Study. Templates antigos/sem ativos mantêm o fluxo.
 
 Composição App: testes dirigidos30 +41 +31 aprovados nos recortes aplicáveis,
 com repetição parcial após a última alteração de namespace. Doctor16/2/0 em
-perfil isolado. Suíte completa final em execução; bibliotecas e compilação
-final também em execução. Nenhum script shell alterado. Windows físico não
+perfil isolado. Suíte completa:2949 aprovados/52 pulados/3 avisos existentes em54min11s.
+Após o guard do editor nativo, atualizado o fingerprint aprovado e repetidos
+os8 testes de PLAY. Leitura UTF-8 do teste de nota também aprovada com locale
+ASCII explícito; geração/consumo do protocolo já usavam UTF-8. Compilação e
+ensaio nativos finais em andamento. Nenhum script shell alterado. Windows físico não
 comprovado. O ensaio nativo usa dados sintéticos e não envia ordens.
 
 Uma compilação ampliada encontrou1 erro/50 avisos em HDK_BaseTks.mq5;
