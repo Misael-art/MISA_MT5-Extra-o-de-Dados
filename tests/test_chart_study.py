@@ -92,7 +92,7 @@ def test_postbox_idle_atomic_reply_recovery_and_invalid_capture(db, tmp_path, ca
     # .tmp não é consumido durante a escrita nativa.
     atomic(root / "requests/incompleto.tmp", "{")
     assert service.poll()[0]["state"] == "SAVED"
-    assert "Observação com ação" in (root / "notes/note_1.tsv").read_text()
+    assert "Observação com ação" in (root / "notes/note_1.tsv").read_text(encoding="utf-8")
     assert (root / "processed/req_1.request.json").exists()
     assert service.poll() == []
     # Queda depois do commit: recuperar a mesma resposta, sem nova nota.
@@ -109,7 +109,7 @@ def test_postbox_idle_atomic_reply_recovery_and_invalid_capture(db, tmp_path, ca
     atomic(root / "requests/list_1.request.json", snapshot.json_text(listing))
     assert service.poll()[0]["count"] == 1
     assert (root / "notes/note_1.tsv").exists()
-    assert "note_1" in (root / "workspaces/workspace_1.tsv").read_text()
+    assert "note_1" in (root / "workspaces/workspace_1.tsv").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("change", [lambda c: c.update(anchor_price=float("nan")),
@@ -129,10 +129,10 @@ def test_preview_then_save_uses_identical_snapshot_and_text_is_not_invented(db, 
     atomic(root / "requests/preview_1.request.json", snapshot.json_text(preview))
     assert service.poll()[0]["state"] == "CAPTURED"
     assert store.get(db, "note_1") is None
-    original = (root / "captures/note_1.tsv").read_text()
+    original = (root / "captures/note_1.tsv").read_text(encoding="utf-8")
     atomic(root / "requests/req_1.request.json", snapshot.json_text(request()))
     assert service.poll()[0]["state"] == "SAVED"
-    saved = (root / "notes/note_1.tsv").read_text()
+    saved = (root / "notes/note_1.tsv").read_text(encoding="utf-8")
     assert original.splitlines()[1:] == saved.splitlines()[1:]
     assert original.splitlines()[0].split("\t")[-1] == saved.splitlines()[0].split("\t")[-1]
 
