@@ -434,3 +434,11 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [x] Suíte completa App2911/52/3,27 dirigidos e doctor16/2/0 no perfil isolado.
 - [ ] Windows físico: cursor de pena, foco/edição/atalhos, DPI e rename atômico entre MT5 e serviço.
 - [ ] Distribuição final App/HADOUKEN/Safety e instalação na prévia do proprietário.
+
+## G19.6 — ativo de coloração (2026-10-22)
+
+- [x] Descoberta/fingerprint e caminho MQL5/Indicators nos testes sem terminal.
+- [x] Falha do indicador impede compilação do Expert; pacote legado preservado.
+- [x] Adaptador manual e ativo compilados no perfil Linux/Wine isolado.
+- [x] Ensaio nativo96/144 DPI com App consumindo séries reais.
+- [ ] Windows físico: instalação, MetaEditor, coloração, DPI e lápis.

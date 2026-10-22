@@ -324,3 +324,5 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 - Envio automático ao MQL5 Market e licenciamento: a T10.11 confere e empacota; o envio é feito pela pessoa, na
   área do vendedor do MQL5.com.
 - Bases em nuvem gerenciadas (AWS RDS etc.): basta apontar T5.2 para o host.
+
+**G19.6 — Lápis/coloração:** catálogo prioritário do extrator, séries reais e dependência MQL5 instalada/compilada pelo SDK. [Contrato e evidências](propostas/G19_6_LAPIS_COLORACAO.md). Indicadores múltiplos/agrupamento permanecem G19.7.

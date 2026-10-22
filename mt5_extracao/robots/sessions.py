@@ -564,6 +564,15 @@ class Session:
                                     _child=self.child_config)
         self.child_config._mt5x_session = self
         self._check_cancel()
+        dependency_run = (self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
+                          lambda command, cwd, prefix, timeout: self._run_command(command, cwd, prefix, timeout, compiling=True))
+        dependency_plan = mt5_tools.install_plan(self.robot, self.directory)
+        failed = None
+        if mt5_tools.indicator_dependencies(dependency_plan):
+            failed = mt5_tools.compile_indicator_dependencies(dependency_plan, mt5_tools.find_metaeditor(self.child_config),
+                                                              mt5_tools.wine_prefix(self.child_config), dependency_run)
+        if failed is not None:
+            raise RuntimeError(failed.summary)
         if self.input_fields is not None and (not self.robot.has_source or compiled_override is not None):
             raise ValueError("Conferência dos inputs exige fonte instrumentável; remova o binário externo ou forneça a fonte revisada.")
         if not self.robot.has_source or compiled_override is not None:
