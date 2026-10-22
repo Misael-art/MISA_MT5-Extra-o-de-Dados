@@ -28,7 +28,7 @@ símbolo/TF/candle/preço, magic, revisão e `snapshot_json`/SHA256. A tabela
 tabelas antigas. Cache TSV pode ser reconstruído a partir do banco.
 
 A captura nativa copia até2000 barras terminando no candle escolhido e os
-buffers dos38 indicadores nativos com seus parâmetros efetivos. Ausência,+aquecimento ou EMPTY_VALUE ficam explícitos; não usar zero como substituto.
+buffers dos38 indicadores nativos com seus parâmetros efetivos. Ausência, aquecimento ou EMPTY_VALUE ficam explícitos; não usar zero como substituto.
 O extrator reutiliza `analytics.indicator_registry.iter_core` com exatamente
 esse prefixo congelado. Todos os seus indicadores incluem valor/estado,
 origem, fórmula, parâmetros e versão. Não há motor financeiro paralelo.
@@ -48,7 +48,7 @@ Edição exige a revisão atual, evitando sobrescrever outra janela. Texto até
 ## Validação
 
 Base exata7b2062d4 previamente validada:2892 testes/52 pulados/3 avisos.
-24 testes dirigidos aprovados: captura sem futuro, ausência de valores,
+24 testes dirigidos aprovados (mais2 de descoberta de Common no Wine/Windows simulado): captura sem futuro, ausência de valores,
 bases antigas preservadas, prévia/salvamento idênticos, edição imutável,
 conflitos, repetição, recuperação de cache, falha transitória e UI. Ambiente
 reaplicado no worktree com atalhos operacionais restaurados; doctor16/2/0
@@ -57,5 +57,5 @@ reaplicado no worktree com atalhos operacionais restaurados; doctor16/2/0
 Ensaio nativo inicial com a App consumindo pedidos reais:212 controles
 aprovados/zero falhas em96 DPI, com Unicode, múltiplas linhas, prévia antes
 de salvar, duas revisões e reabertura pelo banco. Dados sintéticos, sem conta
-ou ordens. Refinamento visual, escala144 e suíte completa da App em execução.
+ou ordens. Refinamento visual:216 controles aprovados/zero falhas em96 DPI, incluindo orientação vertical e etiquetas fora do cartão. Escala144 em execução. Suíte completa da App:2908 aprovados/52 pulados/3 avisos existentes de layout (44min47s); os2 testes adicionais de caminhos passaram separadamente.
 Windows físico permanece pendência, não comprovado neste host Linux/Wine.

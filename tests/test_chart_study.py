@@ -155,3 +155,19 @@ def test_transient_database_error_keeps_request_and_retry_saves_once(db, tmp_pat
     monkeypatch.setattr(store, "apply", apply)
     assert service.poll()[0]["state"] == "SAVED"
     assert len(store.list_notes(db)) == 1
+
+
+@pytest.mark.parametrize("windows", [False, True])
+def test_common_postbox_discovery_in_wine_and_simulated_windows(db, tmp_path, capture, monkeypatch, windows):
+    import configparser
+    from mt5_extracao.robots import mt5_tools
+    config = configparser.ConfigParser()
+    config["MT5"] = {"wine_prefix": str(tmp_path / "wine")}
+    roaming = tmp_path / "roaming" if windows else tmp_path / "wine/drive_c/users/test/AppData/Roaming"
+    monkeypatch.setattr(mt5_tools.paths, "is_windows", lambda: windows)
+    monkeypatch.setenv("APPDATA", str(roaming))
+    common = roaming / "MetaQuotes/Terminal/Common/Files"
+    root = common / "HDK_Study"
+    atomic(root / "captures/note_1.json", snapshot.json_text(capture))
+    atomic(root / "requests/req_1.request.json", snapshot.json_text(request()))
+    assert StudyService(db, config).poll()[0]["state"] == "SAVED"

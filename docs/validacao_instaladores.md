@@ -426,3 +426,11 @@ Não altera instaladores nem qualifica acessibilidade completa, cálculos ou ope
 
 Doctor20/1opcional/0 reaproveitado da mesma base/ambiente com bootstrap idêntico.
 Sem alteração de instalador ou qualificação financeira/nativa/operacional.
+
+## G19.5 — notas/fotografia no gráfico (2026-10-22)
+
+- [x] Linux/Wine: caminho Common/Files e percurso MT5→banco→reabertura, Unicode/múltiplas linhas e fotografia imutável.
+- [x] Descoberta do Common via APPDATA com paths.is_windows simulado, além de prefixo Wine.
+- [x] Suíte completa App2908/52/3,26 dirigidos e doctor16/2/0 no perfil isolado.
+- [ ] Windows físico: cursor de pena, foco/edição/atalhos, DPI e rename atômico entre MT5 e serviço.
+- [ ] Distribuição final App/HADOUKEN/Safety e instalação na prévia do proprietário.
