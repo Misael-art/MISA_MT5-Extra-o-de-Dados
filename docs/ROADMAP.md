@@ -23,6 +23,16 @@ e recuperação. [Diretriz e limites](propostas/PROMPT_RETOMADA_EXTRATOR.md).
 
 ## Fases
 
+**Pedido do proprietário — 2026-10-21:** planejar TFs em ordem crescente nos
+cards, opção **Todos** para backtest do ativo, seleção de vários ativos e uma
+visão gráfica limpa da estratégia com a mesma revisão de preset em todos os TFs.
+[Escopo e aceites](propostas/BACKTEST_MULTITF_COMPARACAO.md): T19.33 (seleção),
+T20.24/25 (fila, orçamento e isolamento) e T20.22/23 (comparação). Reutilizar os
+serviços existentes. Três ou seis ativos são tamanhos de seleção; simultaneidade
+depende de medição no host e MQL5 continua serial até qualificação específica.
+Recursos planejados, sem implementação neste registro; correção do painel no
+REPLAY tem prioridade imediata e entrega própria.
+
 ```
 F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação ──► F5 Escala e novos dados
     │                                             ▲

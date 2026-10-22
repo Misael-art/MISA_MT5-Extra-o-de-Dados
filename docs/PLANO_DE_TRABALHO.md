@@ -25,8 +25,27 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+**Continuidade pré-formatação (2026-10-21):** clones GitHub/pins/WIP e ensaio
+SQLite conferidos no host atual; [roteiro](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
+e verificador somente leitura conferidos. Complemento privado de142 MB salvo no SD
+que o proprietário manterá fora da formatação: hashes,43 tabelas e leitura do histórico
+verificados a partir da mídia. Preservação de desenvolvimento concluída; ambientes/caches
+são recriados. Validação no novo SO e aceites operacionais permanecem pendentes.
+A frente HADOUKEN49–60 está no mapa de pendências, sem integração automática.
+
+**Repasse de 2026-10-21:** instalação consolidada até AppPR171/ac7af2c3,
+Hec550d77/Safety1.8.0; fila172–177 ainda não integrada/instalada. Registro de
+entregas, limites, evidências e limpeza segura no [repasse](repasse/INTEGRACAO_20261021.md).
+A publicação documental não conclui T19.34, T20.12 completa, aceites nativos ou
+outros itens do plano. O WIP e os dados/backups do proprietário foram preservados.
+
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| T19.33 — adendo TFs | Ordem crescente e Todos no backtest do card | Seletor T17.28, presets/capacidades e fila existentes | Planejado em 2026-10-21; [escopo e aceites](propostas/BACKTEST_MULTITF_COMPARACAO.md); PLAY/REPLAY individuais |
+| T20.24/25 — adendo ativos | Seleção múltipla, orçamento e retenção | BatchRunner/ResourceGovernor/Budget/contexto existentes | Planejado; avaliar 3/6 ativos por medição, MQL5 serial preservado; sem scheduler novo |
+| T20.22/23 — adendo comparação | Gráficos da estratégia com mesma revisão de preset em todos os TFs | Histórico/consulta por preset e escopo T19.33 | Planejado; matriz/curvas limpas, cobertura/estados explícitos; sem misturar presets nem recalcular ao abrir |
+| Continuidade 2026-10-21 | Validar host, clones e restauração preservada | Repasse App179 e SD | Validada no host encontrado: três clones/fsck, 43 tabelas e histórico reabertos em leitura; 56 testes, doctor20/1/0. [Registro](repasse/RETOMADA_VALIDADA_20261021.md); novo SO não comprovado |
+
 | T17.28 — correção REPLAY | Exibir e operar botões do painel de gestão no Tester | Sessão própria e observador existentes | Parcial Linux/Wine: painel visível com mesmo DISPLAY na compilação/replay; 84 testes e doctor20/1/0. Cliques manuais não aprovados; adaptação experimental retirada, PR draft sem instalação. [Escopo e evidência](sdk/replay_painel_manual.md); Windows físico pendente |
 | B-11 | Política de versões SDK/sidecars e migração | — | ✅ política integrada M132/7e2178a e H14/d018f6c; SDK1 preservado; [política](sdk/versionamento-contratos.md); sem mudança de runtime |
 | T19.3 (conexão) | Inspeção e leitura de geração na transação recebida | T19.3 | ✅ concluída, [PR130](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/130); seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis; [causa e evidência](analytics/T19.3_CONEXAO_SNAPSHOT.md); Windows físico pendente |
