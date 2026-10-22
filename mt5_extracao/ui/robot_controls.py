@@ -95,7 +95,7 @@ class CardControls:
         row.bind("<Configure>", fit_actions, add="+")
         context = self.context(robot)
         offline = bool(getattr(self.ui.app, "offline", False))
-        if not context["run"] or busy or offline or self._has_native_presets(robot):
+        if not context.get("play_available", bool(context["run"])) or busy or offline or self._has_native_presets(robot):
             buttons["play"].state(["disabled"])
             buttons["play"].configure(image=self._icon("play", disabled=True))
         for mode in ("replay", "backtest"):
@@ -105,7 +105,8 @@ class CardControls:
         reason = ("Sessão em andamento · seleção bloqueada até encerrar." if busy else
                   "Análise local: reabra sem --offline para usar o MT5." if offline else "Default/Manual · backtest e replay no Tester DEMO; ao vivo indisponível."
                   if self._has_native_presets(robot) else context["reason"])
-        hint = ttk.Label(box, text=reason or "PLAY disponível para revisão · duas confirmações", style="Muted.TLabel",
+        hint = ttk.Label(box, text=reason or ("Painel manual · PLAY disponível sem backtest; revisão e proteções mantidas."
+                         if context.get("manual_panel") else "PLAY disponível para revisão · duas confirmações"), style="Muted.TLabel",
                          wraplength=260, justify=tk.LEFT)
         hint.pack(anchor="w", fill=tk.X, pady=(4, 0))
         hint.bind("<Configure>", lambda e: hint.configure(wraplength=max(40, e.width)))

@@ -117,7 +117,9 @@ def matching_runs(robot, symbol, timeframe, preset=None):
 
 
 def selection(robot, symbol, timeframe, preset=None):
+    from . import manual_panel
     runs = matching_runs(robot, symbol, timeframe, preset)
+    manual = manual_panel.recognized(robot)
     headline = None
     if runs:
         run, metrics = runs[0], runs[0]["metrics"]
@@ -126,8 +128,9 @@ def selection(robot, symbol, timeframe, preset=None):
                     "max_drawdown": metrics.get("max_drawdown_pct"), "extra": metrics.get("win_rate"),
                     "extra_label": "acerto", "approved": None, "count": len(runs)}
     rating = robot.preset_risks.get(preset, robot.risk)
-    return {"run": runs[0] if runs else None, "headline": headline,
-            "risk": rating, "reason": "" if runs else "PLAY indisponível: faça backtest deste ativo, timeframe e preset no código atual."}
+    return {"run": runs[0] if runs else None, "headline": headline, "manual_panel": manual,
+            "play_available": bool(runs) or manual,
+            "risk": rating, "reason": "" if runs or manual else "PLAY indisponível: faça backtest deste ativo, timeframe e preset no código atual."}
 
 
 def loss_scenario(run):
@@ -149,8 +152,10 @@ def loss_scenario(run):
 
 
 def risk_budget(robot, preset=None, account=None):
+    from . import manual_panel
     rating = robot.preset_risks.get(preset, robot.risk)
     facts = dict(rating.facts, **contract.facts(robot, effective_values(robot, preset)))
+    facts.update(manual_panel.facts(robot, effective_values(robot, preset)))
     balance = (account or {}).get("balance")
     currency = str((account or {}).get("currency") or "")
     amounts = {}
@@ -204,7 +209,7 @@ def play_issues(config, robot, symbol, timeframe, preset, account, db=None):
     if not account or not account.get("login") or type(account.get("demo")) is not bool:
         issues.append("Conecte e identifique a conta no MT5 antes de operar.")
     values = effective_values(robot, preset)
-    facts = dict(context["risk"].facts, **contract.facts(robot, values))
+    facts = risk_budget(robot, preset, account)["facts"]
     run_metrics = (context["run"] or {}).get("metrics", {})
     if (facts.get("mandatory_stop") is None and run_metrics.get("entries", 0) > 0
             and run_metrics.get("entries_without_stop") == 0):
@@ -218,7 +223,10 @@ def play_issues(config, robot, symbol, timeframe, preset, account, db=None):
     checks = [c for c in robot.checks if c.get("fingerprint") == catalog.fingerprint(robot)
               and (c.get("preset") or "") == (preset or "")]
     static = battery.static_items(robot, config, catalog.load_catalog(config), preset)
-    failures = [item for item in static if item.status in (battery.FAIL, battery.NA)]
+    # A sessão própria compila a fonte antes de abrir o gráfico. O painel manual
+    # reconhecido não precisa de uma compilação/backtest anterior no terminal do dono.
+    failures = [item for item in static if item.status in (battery.FAIL, battery.NA)
+                and not (context["manual_panel"] and item.id == "compile")]
     if failures:
         issues += [f"Segurança: {item.name} · {item.detail}" for item in failures]
     if live.stop_active(config):
