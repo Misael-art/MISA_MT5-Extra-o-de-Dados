@@ -2462,3 +2462,60 @@ cache inelegível, REAL proibida, Windows físico/carteira/gradientes próprios.
 Contrato docs/sdk/demo_operacional.md; recibo T8_7_DEMO_PARCIAL_20261020.json.
 
 Integração anterior conferida: H35/e5f4842 → M162/a0cd3c4, seis checks no runtime4517299, árvore final revisada idêntica. Este complemento T8.7 altera apenas documentação e não promove execução/aceite ao vivo.
+
+
+## G-18 — pedido e entrega inicial de 2026-10-21
+
+Quatro pontos registrados e implementados no HADOUKENPR62: orientação
+vertical/horizontal, direção/quantidade das posições, camadas e etiquetas
+sem corte. Safety1.9.0 candidata no PR8, com os mesmos fontes/hashes.
+81 testes/2 subtestes,16 compilações sem erros/avisos,159 verificações
+nativas em cada execução96/144 DPI,2 testes Safety e14 SDK aprovados.
+Doctor16/2/0. Capturas sintéticas, sem conta/ordens; não foi replay operacional.
+
+Árvores próprias e commits preservam o WIP da raiz. Não houve instalação
+sobre a versão aceita, merge da fila App172–177, nova paridade nem aceite
+Windows físico. Próximo recorte: revisão/checks, paridade da distribuição e
+Tester operacional, depois instalação identificada. Detalhes e checklist em
+[plano G-18](propostas/G18_PAINEL_VERTICAL_LEGIBILIDADE.md).
+
+
+## Baseline da App no checkout principal
+
+Antes de alterar os documentos da App: instalador --yes --no-mt5 e
+requirements-dev concluídos; suíte1437 aprovados,16 pulos,4 avisos e1 falha
+em1702,03s. Falha: test_analysis_keeps_native_text_and_chart_size_through_resize
+[1.3333333333333333], tests/test_ui_main_window.py:1177: PageDown não mudou
+a posição vertical do viewport (0,0→0,0); stderr também registrou callbacks
+Tk destruídos. Causa não demonstrada; não classificar como flake nem
+atribuir às alterações MQL5. O checkout principal contém WIP anterior e
+não representa o runtime App171 da árvore documental. Nenhum fonte Tk foi
+modificado ou teste desativado para ocultar essa falha. O resultado não
+valida como verde a suíte geral da App.
+
+Reprodução isolada única no Xvfb1600×1100: o mesmo teste passou em10,45s.
+O resultado inicial permanece preservado; não demonstra a causa nem torna
+a suíte geral aprovada. Após os documentos,14 testes SDK passaram em3,07s
+e doctor repetiu16 OK/2 avisos/0 falhas. Nenhum teste foi pulado/removido.
+
+
+## G-18 — prévia pelo atalho habitual (2026-10-22)
+
+Prévia instalada, sem promover referências aceitas: App7b2062d4ef32 preservada;
+HADOUKENc9561f5e/Safetyacc23c4 em releases com hashes. Desktop e menu usam
+app-development/run.sh; bibliotecas de desenvolvimento e ponte habilitada.
+Quatorze binários em Experts/MT5X_Desenvolvimento_G18; originais do terminal
+preservados. Reabrir a App e iniciar novo replay para carregar a candidata.
+
+Final83 testes/2 subtestes;16 fontes e SafetySmoke sem erros/avisos; QA173/0
+por escala96/144 DPI, inclusive rolagem/rodapé/eixo temporal; Safety2 e SDK24
+aprovados. Adaptador real da prévia BbRsi compila com header exato; GUI offline
+da release abre com catálogo correto e configuração/preferências preservadas.
+Doctor20/1/0; aviso opcional pandas-ta. Recibos privados, backup e guia local
+acompanham a ativação. Falha inicial do eixo169/4 e baseline Tk anterior
+continuam registrados; não são convertidos em aprovação geral da App.
+
+Revisão/checks remotos finais, paridade dos seis, Tester conectado e Windows
+físico têm aceite separado. SDK estava sem terminal/conta inicializados;
+autenticação DEMO solicitada diretamente no MT5, sem senha no chat.
+Detalhes em propostas/G18_PAINEL_VERTICAL_LEGIBILIDADE.md.

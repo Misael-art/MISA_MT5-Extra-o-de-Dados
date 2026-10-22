@@ -21,6 +21,24 @@ As regras para agentes estão em [../AGENTS.md](../AGENTS.md).
 suíte; depois EXTR-01, ciclo de extração/atualização/persistência/consulta/exportação
 e recuperação. [Diretriz e limites](propostas/PROMPT_RETOMADA_EXTRATOR.md).
 
+## G-18 — painel vertical e legibilidade (2026-10-21)
+
+Pedido do proprietário a partir de três capturas do Tester: oferecer painel
+vertical mais estreito com Operar/Risco/Cestas/Análise/Visual à esquerda e
+alternância em Visual e por ícone no cabeçalho; informar COMPRA/VENDA e
+quantidade/volume das posições; manter o painel acima das marcações;
+corrigir resultados verdes/vermelhos cortados.
+
+Implementação no [HADOUKEN PR62](https://github.com/Misael-art/projeto-indicadores-mt5/pull/62),
+distribuição candidata [Safety1.9.0/PR8](https://github.com/Misael-art/mt5x-safety/pull/8).
+Código e QA de apresentação entregues; revisão, paridade exigida pela Safety,
+Tester operacional e instalação aceita pendentes. A prévia G18 está disponível
+pelo atalho habitual, com bibliotecas próprias, backup e referências aceitas
+preservadas. Reabrir a App e iniciar novo replay para carregar a candidata.
+Windows físico é pendência,
+não bloqueio do desenvolvimento Linux. [Recorte e aceite](propostas/G18_PAINEL_VERTICAL_LEGIBILIDADE.md).
+A fila funcional App172–177 permanece separada; este registro não declara seu merge.
+
 ## Fases
 
 ```
