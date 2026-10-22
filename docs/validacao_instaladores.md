@@ -369,3 +369,14 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] T19.40/HA-HiLo: Windows físico com fonte1.20/pin5dad3bbabab0343f/10inputs,
   Canvas padrão, Default/Manual3campos, exportação/recibo, semTP e SL obrigatório.
   Wine/Tk simulado não prova reversão, histórico do servidor ou comportamento físico.
+
+
+## G-18 — pendência de Windows físico (2026-10-21)
+
+- [ ] Conferir no Windows real horizontal/vertical, ícone/Visual e persistência.
+- [ ] Conferir COMPRA/VENDA/contagem/lotes em vazio, netting e hedging misto.
+- [ ] Conferir painel acima de linhas/setas e etiquetas completas em ganho/perda,
+      resize, bordas, arrasto, minimizar/restaurar e DPI125/150%.
+
+QA Wine96/144 DPI e compilações sem erros/avisos estão no HADOUKENPR62;
+não equivalem a esta validação física. Nenhum instalador foi alterado.
