@@ -1,3 +1,11 @@
+## Painel manual no REPLAY — correção em validação (2026-10-21)
+
+Compilação e replay usam o mesmo DISPLAY no Linux/Wine; painel visível.
+Código final com 84 testes e doctor20/1/0. Abas manuais não passaram no ensaio:
+polling de botões e ocultação do fundo não resolveram; experiências retiradas
+do runtime final. PR draft, sem instalação até o aceite manual. [Contrato](sdk/replay_painel_manual.md).
+Base do proprietário, risco/executor e Windows físico mantêm seus limites.
+
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
 Corretivo do SDK: CI39576824302 teve uma falha de assinatura pública (2.617 testes
