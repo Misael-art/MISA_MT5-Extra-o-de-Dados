@@ -13,7 +13,7 @@
   },
   "tests": {
     "baseline": 56,
-    "final_targeted": 85,
+    "final_targeted": 84,
     "doctor_ok": 20,
     "doctor_optional_warnings": 1,
     "doctor_failures": 0,
@@ -29,11 +29,14 @@
     "same_display_panel_visible": true,
     "completed_visual_replay": true,
     "simulated_trades": 0,
-    "manual_interaction_verification": "pending",
+    "manual_interaction_verification": "not_accepted: Risco tab unchanged after physical click",
     "completed_receipt_sha256": "23c00cef4d2c90e743293220e77859c0ee7f258dc6ced9be59e7fc8135666966",
     "resources_released": true,
     "earlier_failed_attempts_retained": true,
-    "reuse_attempt_invalidated_by_private_liveupdate_to_build_6281": true
+    "reuse_attempt_invalidated_by_private_liveupdate_to_build_6281": true,
+    "button_state_polling": "experimental; removed from final code",
+    "background_hit_test": "QA-only hide changed hit target but did not resolve tab click; not adopted",
+    "completed_visual_replay_observer": "experimental polling variant, not final production observer"
   },
   "limits": [
     "Windows physical pending",
@@ -41,5 +44,16 @@
     "No live or REAL orders",
     "No universal Wine root cause claim"
   ],
-  "cleanup": "Own disposable profiles and restoration copy to be removed after verified receipt retention; owner data/WIP preserved"
+  "cleanup": {
+    "completed": true,
+    "own_profiles_archived": 6,
+    "own_restore_copy_removed": true,
+    "own_disposable_wine_prefix_removed": true,
+    "diagnostic_archives_sha256_verified": true,
+    "late_private_updater_children_stopped": true,
+    "owner_sources_database_config_and_backup_preserved": true,
+    "free_space_delta_not_exclusively_attributed": true
+  },
+  "installed": false,
+  "ready_for_manual_use": false
 }

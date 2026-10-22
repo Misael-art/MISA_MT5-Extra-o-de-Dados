@@ -1,9 +1,9 @@
-# Painel de gestão acessível no REPLAY
+# Exibição do painel no REPLAY — operação manual ainda pendente
 
-Correção T17.28 solicitada em 21/10/2026. O painel HADOUKEN precisa aparecer e
-receber comandos manuais no Strategy Tester visual.
+Correção T17.28 solicitada em 21/10/2026. **Exibição corrigida no ensaio Linux;
+operação manual completa ainda não aprovada. PR em draft, sem instalação.**
 
-## Exibição no Linux/Wine
+## Correção de exibição
 
 A sessão anterior compilava no Xvfb e abria o replay no desktop, podendo ainda
 trocar de driver X11 para Wayland. No host Plasma/Wayland, Wine11.17/MT56276,
@@ -17,38 +17,46 @@ O backtest continua no Xvfb; no Windows a compilação/backtest continuam
 minimizados, e PLAY/REPLAY mantêm o comportamento nativo de janela visível.
 O ambiente global do usuário não é alterado.
 
-Com essa correção, o replay real do `HDK_HADOUKEN_Painel` em EURUSD/H1,
-14→15/10/2026, exibiu o painel e terminou com relatório importado, zero trades
-e saldo simulado preservado. Isso demonstra o percurso observado, sem atribuir
-uma causa interna universal ao Wine ou qualificar todas as combinações de host.
+O replay do `HDK_HADOUKEN_Painel` em EURUSD/H1,14→15/10/2026, exibiu o painel
+com essa mudança, inclusive antes da experiência de adaptação dos cliques.
+Uma execução posterior com essa mesma configuração de display e observador
+experimental terminou com relatório importado, zero trades e saldo simulado
+preservado. Não é qualificação financeira ou aprovação do observador experimental,
+nem prova de causa interna universal no Wine.
 
-## Botões no Tester
+## Lacuna manual comprovada e preservada
 
 O [livro oficial MQL5](https://www.mql5.com/en/book/applications/events/events_onchartevent)
 registra a ausência de eventos interativos `OnChartEvent` no Tester visual.
-O observador da sessão consulta o estado dos botões e encaminha o clique ao
-handler original do Expert, antes de OnTick/OnTimer. Preserva o timer existente.
+Foi ensaiada uma consulta ao estado dos botões `HDK7_<magic>_` para encaminhar
+cliques ao handler original. Compilou0/0, mas a aba Risco não mudou no ensaio
+físico; portanto a adaptação **foi retirada do código final**. O commit anterior
+`ba59485` conserva a proposta, sem promovê-la a capacidade aprovada.
 
-- Só no Tester visual, fora de otimização; não executa esse encaminhamento na conta.
-- Só objetos `OBJ_BUTTON` do gráfico atual com prefixo `HDK7_<magic>_` do próprio Expert.
-- Libera o estado do botão antes do encaminhamento e processa um clique por consulta.
-- A consulta tem intervalo mínimo de 50ms de parede; não altera o relógio histórico.
-- Risco, ordens, proteções e confirmação continuam no mesmo handler/host/executor.
-  Não cria um segundo gestor nem implementa compra/venda no Python.
+A captura inicialmente indicava o objeto de fundo `HDKV_<magic>_BG` sob o cursor.
+Uma experiência privada ocultou só essa camada: o cursor passou a identificar o
+botão correto, mas a aba ainda não mudou. Ocultar o fundo também não entrou no
+runtime final. Não atribuir a falha somente a essa camada ou afirmar que polling
+resolve a interação. Um ensaio de reuso foi invalidado por LiveUpdate do perfil
+privado para6281; a tentativa posterior usou novamente a origem6276.
 
-Não promete eventos de arraste, teclado ou edição de objetos no Tester; este
-recorte cobre botões do painel. Pausar a simulação no visualizador também suspende
-os eventos da estratégia; retomar o tempo permite processar seus comandos.
+**Próximo recorte necessário:** instrumentar em QA o estado real do botão e o
+recebimento no handler, confrontando o clique nativo com a visualização do Tester;
+resolver a entrega de ações pela integração existente e repetir apenas esse aceite.
+Preservar o mesmo RiskGuard/executor, os pins Safety e a base do proprietário.
+Validar abas, pausa/retomada e só depois ações financeiras simuladas conciliadas.
+Arraste/teclado e Windows físico têm verificações próprias. Até passar, o painel
+não está qualificado para o uso manual essencial solicitado pelo proprietário.
 
-## Evidência e limites
+## Validação e preservação
 
-Baseline: 56 testes aprovados antes da alteração. Regressões de ambiente
-reproduzem a diferença na implementação antiga, incluindo compilação e sessão
-interativa. Seleção final de controles/modo oculto/UI/presets/encerramento:
-85 testes aprovados. Doctor `--no-probe`:20OK/1pandas-ta opcional/0falhas.
-Wrapper com adaptação dos botões compilado no MT5:0erros/0avisos.
+Baseline56 testes aprovados. Código final:84 testes pertinentes de controles,
+modo oculto, UI, presets e encerramento; doctor20OK/1pandas-ta opcional/0falhas.
+O wrapper original compilou0/0 no ensaio de exibição. Regressões exercitam Linux
+e Windows simulados, incluindo compilação e backtest oculto; Windows físico pendente.
 
-Os ensaios usam banco privado de QA e perfil próprio. A base e a configuração do
-proprietário permanecem preservadas. Capturas, logs e recibos privados ficam fora
-do Git. Windows físico, drag/teclado, execução financeira manual e operação DEMO
-ao vivo mantêm aceites próprios. Não há promoção de risco, preset ou autorização REAL.
+Ensaios em bancos privados de QA e perfis próprios; dados/configuração/WIP do
+proprietário preservados. Falhas, capturas e recibos privados permanecem fora do
+Git. Limpar só cópias próprias após arquivar e conferir ausência de processos,
+incluindo filhos tardios do atualizador no perfil privado. Não houve ordens ao vivo,
+alteração de risco/executor ou autorização REAL. A instalação aceita continua intacta.

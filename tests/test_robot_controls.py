@@ -122,7 +122,6 @@ def test_telemetry_wraps_existing_events_without_changing_timer_or_orders(robot)
     assert "INIT_FAILED" in source and "ExpertRemove()" in source
     assert "EventSetTimer(1)" in source and "order_send" not in source and "OrderSend" not in source
     assert "POSITION_SYMBOL)==_Symbol" in source
-    assert "MT5X_PollChartButtons" not in source
 
 
 def test_observer_never_replaces_strategy_timer_cadence(robot):
@@ -131,22 +130,6 @@ def test_observer_never_replaces_strategy_timer_cadence(robot):
     source = sessions.telemetry_source(robot, "test.txt")
     assert "#define OnTimer MT5X_OnTimer" in source
     assert "EventSetTimer(1)" not in source and "EventKillTimer" not in source
-
-
-def test_visual_tester_forwards_only_own_pressed_panel_buttons_to_existing_handler(robot):
-    with open(robot.path, "a") as handle:
-        handle.write("\ninput long InpMagicNumber=123;\nvoid OnTimer(){}\n"
-                     "void OnChartEvent(const int id,const long &l,const double &d,const string &s){}")
-    robot.inputs.append(mql.MqlInput("InpMagicNumber", "long", "123"))
-    source = sessions.telemetry_source(robot, "test.txt")
-    assert 'string prefix="HDK7_"+IntegerToString(InpMagicNumber)+"_";' in source
-    assert "!MQLInfoInteger(MQL_TESTER) || !MQLInfoInteger(MQL_VISUAL_MODE)" in source
-    assert 'StringFind(name,prefix)!=0 || !ObjectGetInteger(0,name,OBJPROP_STATE)' in source
-    assert source.index('ObjectSetInteger(0,name,OBJPROP_STATE,false)') < source.index(
-        'MT5X_OnChartEvent(CHARTEVENT_OBJECT_CLICK,x,y,name)')
-    assert "MT5X_PollChartButtons(); MT5X_OnTick();" in source
-    assert "MT5X_PollChartButtons(); MT5X_OnTimer();" in source
-    assert "EventSetTimer(1)" not in source
 
 
 def test_cancel_before_preparation_never_copies_credentials_or_starts_terminal(robot, tmp_path):
