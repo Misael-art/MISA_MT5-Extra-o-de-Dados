@@ -2497,3 +2497,25 @@ Reprodução isolada única no Xvfb1600×1100: o mesmo teste passou em10,45s.
 O resultado inicial permanece preservado; não demonstra a causa nem torna
 a suíte geral aprovada. Após os documentos,14 testes SDK passaram em3,07s
 e doctor repetiu16 OK/2 avisos/0 falhas. Nenhum teste foi pulado/removido.
+
+
+## G-18 — prévia pelo atalho habitual (2026-10-22)
+
+Prévia instalada, sem promover referências aceitas: App7b2062d4ef32 preservada;
+HADOUKENc9561f5e/Safetyacc23c4 em releases com hashes. Desktop e menu usam
+app-development/run.sh; bibliotecas de desenvolvimento e ponte habilitada.
+Quatorze binários em Experts/MT5X_Desenvolvimento_G18; originais do terminal
+preservados. Reabrir a App e iniciar novo replay para carregar a candidata.
+
+Final83 testes/2 subtestes;16 fontes e SafetySmoke sem erros/avisos; QA173/0
+por escala96/144 DPI, inclusive rolagem/rodapé/eixo temporal; Safety2 e SDK24
+aprovados. Adaptador real da prévia BbRsi compila com header exato; GUI offline
+da release abre com catálogo correto e configuração/preferências preservadas.
+Doctor20/1/0; aviso opcional pandas-ta. Recibos privados, backup e guia local
+acompanham a ativação. Falha inicial do eixo169/4 e baseline Tk anterior
+continuam registrados; não são convertidos em aprovação geral da App.
+
+Revisão/checks remotos finais, paridade dos seis, Tester conectado e Windows
+físico têm aceite separado. SDK estava sem terminal/conta inicializados;
+autenticação DEMO solicitada diretamente no MT5, sem senha no chat.
+Detalhes em propostas/G18_PAINEL_VERTICAL_LEGIBILIDADE.md.

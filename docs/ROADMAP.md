@@ -32,7 +32,10 @@ corrigir resultados verdes/vermelhos cortados.
 Implementação no [HADOUKEN PR62](https://github.com/Misael-art/projeto-indicadores-mt5/pull/62),
 distribuição candidata [Safety1.9.0/PR8](https://github.com/Misael-art/mt5x-safety/pull/8).
 Código e QA de apresentação entregues; revisão, paridade exigida pela Safety,
-Tester operacional e instalação aceita pendentes. Windows físico é pendência,
+Tester operacional e instalação aceita pendentes. A prévia G18 está disponível
+pelo atalho habitual, com bibliotecas próprias, backup e referências aceitas
+preservadas. Reabrir a App e iniciar novo replay para carregar a candidata.
+Windows físico é pendência,
 não bloqueio do desenvolvimento Linux. [Recorte e aceite](propostas/G18_PAINEL_VERTICAL_LEGIBILIDADE.md).
 A fila funcional App172–177 permanece separada; este registro não declara seu merge.
 
