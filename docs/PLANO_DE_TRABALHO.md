@@ -41,6 +41,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| G19.7 | Indicadores múltiplos e agrupamento | G19.6/catálogo | Validado:2932 testes/52 pulados/3 avisos,40 dirigidos, doctor16/2/0; nativo/instalação da composição em validação. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md) |
 | G19.6 | Lápis e coloração pelo catálogo | G19.5 | Validado:2930 testes/52 pulados/3 avisos,98 dirigidos, doctor16/2/0, nativo302/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_6_LAPIS_COLORACAO.md) |
 | G19.5 | Notas com fotografia imutável no gráfico | Contrato MT5/Common e registry existentes | Em validação:2911 testes/52 pulados,27 dirigidos, doctor16/2/0, nativo216/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_5_NOTAS_E_FOTOGRAFIA.md); instalação pendente |
 | T20.30 — prévia do proprietário | Disponibilizar desenvolvimento pelo atalho habitual | Composição local172–177 +182 e continuidade178–181 | Preparação de prévia autorizada para teste; ambiente/dados compartilhados, dois atalhos coerentes e retorno preservado. [Procedimento](TESTAR_DESENVOLVIMENTO.md); não concede aceite manual/nativo |

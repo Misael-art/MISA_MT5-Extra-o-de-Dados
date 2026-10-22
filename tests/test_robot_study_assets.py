@@ -51,3 +51,31 @@ def test_dependencies_compile_before_main_and_failure_is_returned(tmp_path, monk
     calls.clear()
     assert mt5_tools.compile_indicator_dependencies(items[:1], None) is None
     assert calls == []
+
+
+def test_multiple_graphs_add_series_asset_to_review_and_compile_plan(tmp_path):
+    root, expert, candles = project(tmp_path)
+    graphs = root / "Include/Framework/HADOUKEN/Safety/HDK_StudyGraphs.mqh"
+    graphs.write_text('#include "HDK_StudyLayers.mqh"\n')
+    expert.write_text(expert.read_text().replace("HDK_StudyLayers", "HDK_StudyGraphs"))
+    series = candles.with_name("HDK_StudySeries.mq5")
+    with pytest.raises(ValueError, match="HDK_StudySeries"):
+        catalog.robot_from_file(expert)
+    series.write_text('#property indicator_separate_window\n')
+    robot = catalog.robot_from_file(expert)
+    old = catalog.fingerprint(robot)
+    series.write_text(series.read_text()+"// nova fórmula revisada\n")
+    assert catalog.fingerprint(robot) != old
+    items = mt5_tools.install_plan(robot, tmp_path / "profile")
+    assert {item.target.name for item in mt5_tools.indicator_dependencies(items)} == {
+        "HDK_StudyCandles.mq5", "HDK_StudySeries.mq5"}
+    assert {str(candles), str(series)} <= set(robot.files)
+
+
+def test_legacy_color_library_does_not_require_new_graph_asset(tmp_path):
+    root, expert, candles = project(tmp_path)
+    # A atualização da App continua aceitando a biblioteca G19.6, que só colore.
+    assert not candles.with_name("HDK_StudySeries.mq5").exists()
+    robot = catalog.robot_from_file(expert)
+    assert [item.target.name for item in mt5_tools.indicator_dependencies(
+        mt5_tools.install_plan(robot, tmp_path / "profile"))] == [candles.name]

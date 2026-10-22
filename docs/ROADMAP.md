@@ -326,3 +326,5 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 - Bases em nuvem gerenciadas (AWS RDS etc.): basta apontar T5.2 para o host.
 
 **G19.6 — Lápis/coloração:** catálogo prioritário do extrator, séries reais e dependência MQL5 instalada/compilada pelo SDK. [Contrato e evidências](propostas/G19_6_LAPIS_COLORACAO.md). Indicadores múltiplos/agrupamento permanecem G19.7.
+
+**G19.7 — Indicadores múltiplos:** dependência de séries revisada e compilada junto ao Expert, conservando bibliotecas anteriores. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md); composição e validação nativa em andamento.
