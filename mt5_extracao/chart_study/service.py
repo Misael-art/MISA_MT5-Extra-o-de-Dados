@@ -73,6 +73,35 @@ class StudyService:
         atomic(root / "workspaces" / (request["note_id"] + ".tsv"), "\n".join(lines) + ("\n" if lines else ""))
         return {"contract": 1, "request_id": request["request_id"], "note_id": request["note_id"], "state": "LISTED", "count": len(rows)}
 
+    def _catalog(self, root, request):
+        from . import catalog
+        rows = [[item["id"], item["name"], item["origin"], item["scale"], item["rule"], item["legend"],
+                 snapshot.json_text(item["parameters"])] for item in catalog.entries()]
+        atomic(root / "catalog.tsv", "\n".join("\t".join(map(escaped, row)) for row in rows) + "\n")
+        return dict(contract=1, request_id=request["request_id"], note_id=request["note_id"], state="CATALOG", count=len(rows))
+
+    def _series(self, root, request):
+        from . import series
+        revision = request.get("revision")
+        layer = request["note_id"]
+        if not layer.startswith("s_") or request["request_id"] != layer or isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+            raise ValueError("Identidade/revisão da série de estudo inválida.")
+        directory = root / "series_sources"
+        if directory.is_symlink():
+            raise ValueError("Pasta de séries inválida.")
+        capture = _read(directory / (layer + ".json"))
+        if capture.get("revision") != revision:
+            raise ValueError("A fonte da série mudou antes da leitura; solicite a revisão atual.")
+        projection = series.build(capture, request.get("feature_id"))
+        rows = [["META", revision, projection["feature"]["id"], projection["source_sha256"], projection["symbol"],
+                 projection["timeframe"], projection["feature"]["scale"], projection["feature"]["legend"]]]
+        rows += [["BAR", item["time"], "" if item["value"] is None else item["value"],
+                  "" if item["direction"] is None else item["direction"], item["state"], item["reason"]] for item in projection["rows"]]
+        atomic(root / "series" / (layer + ".tsv"), "\n".join("\t".join(map(escaped, row)) for row in rows) + "\n")
+        return dict(contract=1, request_id=layer, note_id=layer, revision=revision, state="SERIES",
+                    source_sha256=projection["source_sha256"], count=len(projection["rows"]),
+                    message=f"Série atualizada · {sum(row['direction'] is not None for row in projection['rows'])}/{len(projection['rows'])} barras disponíveis")
+
     def poll(self, limit=8):
         """Sem tráfego, não abre o banco nem cria diretórios. Nunca roda ordens."""
         if not self._lock.acquire(blocking=False):
@@ -91,10 +120,24 @@ class StudyService:
                     continue
                 response = {"contract": 1, "request_id": request_id, "state": "ERROR"}
                 try:
+                    before = path.lstat()
+                except FileNotFoundError:
+                    continue
+                try:
                     request = _read(path)
+                    if not isinstance(request, dict):
+                        raise ValueError("O pedido de estudo precisa ser um objeto JSON.")
+                    if isinstance(request, dict) and isinstance(request.get("revision"), int) and not isinstance(request.get("revision"), bool):
+                        response["revision"] = request["revision"]
                     if request.get("request_id") != request_id or not store.IDENTIFIER.fullmatch(str(request.get("note_id", ""))):
                         raise ValueError("O nome do pedido não corresponde ao conteúdo.")
-                    if request.get("kind") == "note_list":
+                    if request.get("contract") != 1:
+                        raise ValueError("Contrato de estudo inválido.")
+                    if request.get("kind") == "study_catalog":
+                        response = self._catalog(root, request)
+                    elif request.get("kind") == "study_series":
+                        response = self._series(root, request)
+                    elif request.get("kind") == "note_list":
                         response = self._list(root, request)
                     else:
                         capture, captured_at = None, None
@@ -127,9 +170,16 @@ class StudyService:
                 atomic(root / "replies" / (request_id + ".tsv"), "\t".join(map(escaped, [response["state"],
                        request_id, response.get("note_id", ""), response.get("revision", 0),
                        response.get("message", "Anotação salva no banco.")])) + "\n")
-                destination = root / ("processed" if response["state"] in ("SAVED", "LISTED", "CAPTURED") else "rejected")
+                destination = root / ("processed" if response["state"] in ("SAVED", "LISTED", "CAPTURED", "CATALOG", "SERIES") else "rejected")
                 destination.mkdir(parents=True, exist_ok=True)
-                path.replace(destination / path.name)
+                # Uma troca de indicador pode substituir o slot enquanto a
+                # versão anterior é calculada. Não arquivar o pedido mais novo.
+                try:
+                    current = path.lstat()
+                    if (current.st_ino, current.st_size, current.st_mtime_ns) == (before.st_ino, before.st_size, before.st_mtime_ns):
+                        path.replace(destination / path.name)
+                except FileNotFoundError:
+                    pass
                 results.append(response)
             return results
         finally:

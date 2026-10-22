@@ -177,6 +177,7 @@ def install_plan(robot: Robot, data: Path) -> List[InstallItem]:
     main = Path(robot.path)
     experts = _experts_dir(main)
     include = experts.parent / "Include" if experts is not None else None
+    indicators = experts.parent / "Indicators" if experts is not None else None
     mql5 = Path(data) / "MQL5"
     main_target = mql5 / "Experts" / (_inside(main, experts) or Path(main.name))
     plan = [InstallItem(main, main_target)]
@@ -188,6 +189,7 @@ def install_plan(robot: Robot, data: Path) -> List[InstallItem]:
             plan.append(InstallItem(file, mql5 / "Presets" / file.name))
             continue
         for folder, base in ((include, mql5 / "Include"), (experts, mql5 / "Experts"),
+                             (indicators, mql5 / "Indicators"),
                              (main.parent, main_target.parent)):
             relative = _inside(file, folder)
             if relative is not None:
@@ -370,7 +372,25 @@ def compile_robot(config, robot: Robot, mt5=None, run: Optional[Callable] = None
     if robot.kind == MQL5 and not robot.has_source:
         raise ValueError(f"{robot.name} não tem código-fonte (.mq5): não há o que compilar.")
     items = install_robot(config, robot, mt5, overwrite_presets, upgrade_safety)
-    return items, compile_source(items[0].target, find_metaeditor(config), wine_prefix(config), run)
+    editor, prefix = find_metaeditor(config), wine_prefix(config)
+    failed = compile_indicator_dependencies(items, editor, prefix, run)
+    if failed is not None:
+        return items, failed
+    return items, compile_source(items[0].target, editor, prefix, run)
+
+
+def indicator_dependencies(items):
+    return [item for item in items if item.source.suffix.lower() == ".mq5" and
+            any(parent.name.lower() == "indicators" and parent.parent.name.lower() == "mql5" for parent in item.target.parents)]
+
+
+def compile_indicator_dependencies(items, metaeditor, prefix=None, run=None):
+    """Dependências gráficas do plano revisado, antes de liberar o Expert."""
+    for item in indicator_dependencies(items):
+        result = compile_source(item.target, metaeditor, prefix, run)
+        if not result.ok:
+            return result
+    return None
 
 
 # --- Strategy Tester ------------------------------------------------------------------
