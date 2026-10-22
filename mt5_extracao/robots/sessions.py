@@ -468,9 +468,14 @@ class Session:
         env = dict(os.environ)
         if prefix:
             env.update(WINEPREFIX=str(prefix), WINEDEBUG="-all")
-        hidden = compiling or self.mode == "backtest"
-        if hidden and not paths.is_windows():
-            env = display.child_env(self.child_config, {**env, display.ENV_SWITCH: "1"})
+        hidden = self.mode == "backtest" or (compiling and paths.is_windows())
+        if not paths.is_windows():
+            # Compilação e sessão interativa usam o mesmo DISPLAY/driver Wine.
+            # Alternar Xvfb e desktop durante o replay pode deixar o visualizador
+            # sem janela utilizável. O backtest continua na tela virtual.
+            env.pop("WAYLAND_DISPLAY", None)
+            env[display.ENV_SWITCH] = "1" if hidden else "0"
+            env = display.child_env(self.child_config, env)
         # REPLAY e PLAY sempre seguem a tela do usuário, mesmo com hidden no INI.
         if paths.is_windows():
             args = command

@@ -146,6 +146,55 @@ def test_play_without_account_reader_never_prepares_native_terminal(robot, tmp_p
     assert not session.directory.exists()
 
 
+@pytest.mark.parametrize("mode", ["replay", "play", "backtest"])
+@pytest.mark.parametrize("compiling", [False, True])
+def test_linux_session_uses_x11_and_keeps_interactive_replay_on_user_display(
+        robot, tmp_path, monkeypatch, mode, compiling):
+    config = configparser.ConfigParser()
+    config.read_dict({"MT5": {"hidden": "true", "hidden_display": ":77"}})
+    session = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode,
+                               root=tmp_path / "wine" / "drive_c" / "sessions")
+    session.directory.mkdir(parents=True)
+    session.child_config = config
+    monkeypatch.setattr(sessions.paths, "is_windows", lambda: False)
+    monkeypatch.setenv("DISPLAY", ":0")
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    monkeypatch.setenv(sessions.display.ENV_SWITCH, "1")
+    monkeypatch.setattr(sessions.display, "ensure", lambda name: name)
+    monkeypatch.setattr(session, "_write_lease", lambda: None)
+    seen = []
+    monkeypatch.setattr(sessions.subprocess, "Popen", lambda *a, **kw: seen.append(kw) or
+                        SimpleNamespace(poll=lambda: 0, returncode=0))
+
+    assert session._run_command('"C:\\terminal64.exe"', session.directory, tmp_path / "wine", 1,
+                                compiling=compiling) == 0
+    env = seen[0]["env"]
+    assert "WAYLAND_DISPLAY" not in env  # visualizador Wine usa o mesmo driver X11 do compilador
+    hidden = mode == "backtest"
+    assert env["DISPLAY"] == (":77" if hidden else ":0")
+    assert env[sessions.display.ENV_SWITCH] == ("1" if hidden else "0")
+    assert sessions.os.environ["WAYLAND_DISPLAY"] == "wayland-0"
+
+
+@pytest.mark.parametrize("mode,hidden", [("replay", False), ("play", False), ("backtest", True)])
+def test_windows_session_visibility_keeps_native_desktop_environment(
+        robot, tmp_path, monkeypatch, mode, hidden):
+    config = configparser.ConfigParser()
+    session = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode, root=tmp_path)
+    session.directory.mkdir()
+    monkeypatch.setattr(sessions.paths, "is_windows", lambda: True)
+    monkeypatch.setenv("WAYLAND_DISPLAY", "preserved")
+    monkeypatch.setattr(session, "_write_lease", lambda: None)
+    visibility = []
+    monkeypatch.setattr(sessions.display, "windows_startup", lambda value: visibility.append(value))
+    seen = []
+    monkeypatch.setattr(sessions.subprocess, "Popen", lambda *a, **kw: seen.append(kw) or
+                        SimpleNamespace(poll=lambda: 0, returncode=0))
+    assert session._run_command('"C:\\terminal64.exe"', session.directory, None, 1) == 0
+    assert visibility == [hidden]
+    assert seen[0]["env"]["WAYLAND_DISPLAY"] == "preserved"
+
+
 @pytest.mark.parametrize("windows", [False, True])
 def test_owned_processes_requires_executable_and_prefix_and_stop_never_touches_main(robot, tmp_path, monkeypatch, windows):
     prefix = tmp_path / "wine"
