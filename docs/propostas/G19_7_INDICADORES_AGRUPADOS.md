@@ -22,5 +22,6 @@ Base imediata G19.6:38 testes de estudo/ativos aprovados antes da mudança;
 40 depois (incluindo falta do ativo, fingerprint de ambos, plano completo e
 compatibilidade G19.6). Doctor16 OK/2 avisos/0 falhas no perfil isolado.
 Instalador e dependências aplicados; atalhos operacionais restaurados.
-Suíte completa e ensaios nativos de agrupamento em execução. Windows físico
+Suíte completa final:2932 aprovados/52 pulados/3 avisos existentes de layout
+em56min08s. Ensaios nativos da composição em validação. Windows físico
 permanece pendência; distribuição final terá validação da composição exata.
