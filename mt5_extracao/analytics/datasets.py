@@ -393,6 +393,8 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
     _source(source, "validation")  # Rejeitar configuração pessoal antes de qualquer escrita.
     if isinstance(families, str) or set(families) - {"ticks", "book"}:
         raise ValueError("Famílias adicionais aceitas: ticks e book; informe uma lista explícita.")
+    if hasattr(db, "require_fixed_offset"):
+        db.require_fixed_offset("A captura de snapshot (datasets.capture)")
     origin = _schema(db)
     source = _bound_source(db, source)
     from mt5_extracao.trade_analytics import calendar
@@ -434,7 +436,8 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
                 "timeframe": tf.name, "selection": {"start": selection_time(start), "end": selection_time(end)},
                 "period": {"first": str(bars.time.iloc[0]), "last": str(bars.time.iloc[-1]), "rows": len(bars)},
                 "time": {"storage_basis": db.time_basis, "consumer_basis": "broker",
-                         "broker_utc_offset_hours": db.broker_utc_offset},
+                         "broker_utc_offset_hours": db.broker_utc_offset,
+                         "offset_state": db.time_context()["offset_state"] if hasattr(db, "time_context") else "declared"},
                 "specification": {key: _value(value) for key, value in spec.items()} if spec else None,
                 "derivation": {"ohlcv_reader": 1, "economic_calendar_merge": 1,
                                "session_free_metadata": "omitted_input_hash_retained",

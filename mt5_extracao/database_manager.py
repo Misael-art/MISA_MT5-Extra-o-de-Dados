@@ -26,8 +26,12 @@ class DatabaseManager:
     """
     TIME_BASES = ("broker", "utc")
 
+    # Valor numérico usado pelo código legado quando o offset não foi declarado; NÃO é informação
+    # conhecida: time_context() o expõe como ``offset_state='unknown'`` e leituras causais recusam.
+    _PRESUMED_OFFSET = -3.0
+
     def __init__(self, db_type='sqlite', db_path='database/mt5_data.db', time_basis='broker',
-                 broker_utc_offset=-3.0):
+                 broker_utc_offset=None, broker_timezone=None):
         """
         Inicializa o gerenciador do banco de dados.
 
@@ -37,14 +41,30 @@ class DatabaseManager:
                            (ex.: postgresql+psycopg://usuario:senha@host:5432/banco).
             time_basis (str): 'broker' grava o horário do servidor da corretora como o MT5 devolve
                               (padrão, comportamento histórico); 'utc' converte para UTC ao gravar.
-            broker_utc_offset (float): fuso da corretora em horas (B3: -3). Usado só com 'utc'.
+            broker_utc_offset (float | None): fuso fixo da corretora em horas. ``None`` = desconhecido
+                (o legado ainda calcula com -3, mas o estado fica explícito como desconhecido).
+            broker_timezone (str | None): zona IANA da corretora (ex.: Europe/Athens). Exige
+                time_basis='utc': converte o relógio local para UTC com horário de verão; a hora
+                repetida é inferida pela ordem e a inexistente é recusada.
         """
         if time_basis not in self.TIME_BASES:
             raise ValueError(f"time_basis inválido: {time_basis!r} (use 'broker' ou 'utc')")
         self.db_type = db_type
         self.db_path = db_path
         self.time_basis = time_basis
-        self.broker_utc_offset = float(broker_utc_offset)
+        self.offset_declared = broker_utc_offset is not None and str(broker_utc_offset).strip() != ""
+        self.broker_utc_offset = float(broker_utc_offset) if self.offset_declared else self._PRESUMED_OFFSET
+        self.broker_timezone = (broker_timezone or "").strip() or None
+        if self.broker_timezone:
+            import pytz  # base de fusos própria: funciona no Windows sem o pacote tzdata
+            try:
+                pytz.timezone(self.broker_timezone)
+            except pytz.UnknownTimeZoneError as exc:
+                raise ValueError(f"broker_timezone inválido: {self.broker_timezone!r}; use um nome IANA "
+                                 "como Europe/Athens.") from exc
+            if time_basis != "utc":
+                raise ValueError("broker_timezone exige time_basis = utc (o horário local repete no fim do "
+                                 "horário de verão e não pode ser chave).")
         self._time_basis_checked = False
         self.engine = None
         self._table_lock = threading.Lock()
@@ -512,6 +532,9 @@ class DatabaseManager:
         if mode not in ("causal", "inspect"):
             raise ValueError("mode deve ser 'causal' ou 'inspect'.")
         cutoff = self._utc_text(as_of, "corte (as_of)")
+        if self.time_context()["offset_state"] == "unknown":
+            raise ValueError("Leitura causal exige o fuso do corretor declarado (broker_utc_offset ou "
+                             "broker_timezone); com fuso desconhecido não se sabe quando a barra fechou em UTC.")
         from mt5_extracao import timeframes
         tf = timeframes.parse(timeframe_name)
         if tf is None:
@@ -534,7 +557,10 @@ class DatabaseManager:
             return bars.assign(**{name: None for name in extra})
         starts = pd.to_datetime(bars["time"])
         step = pd.DateOffset(months=1) if tf.name == "MN1" else pd.Timedelta(minutes=tf.minutes)
-        ends_utc = (starts + step - pd.Timedelta(hours=float(self.broker_utc_offset))).dt.tz_localize("UTC")
+        if self.time_basis == "utc" or self.broker_timezone:
+            ends_utc = (pd.to_datetime(self._to_storage(starts)) + step).dt.tz_localize("UTC")
+        else:
+            ends_utc = (starts + step - pd.Timedelta(hours=float(self.broker_utc_offset))).dt.tz_localize("UTC")
         frame = bars.assign(_stamp=self._to_storage(starts).dt.strftime(self._TIME_FMT),
                             _closed=ends_utc.dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ") <= cutoff)
         known = history[(history.received_at_utc != self._UNKNOWN_RECEIPT) & (history.received_at_utc <= cutoff)]
@@ -572,14 +598,39 @@ class DatabaseManager:
     # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
     _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
 
+    def time_context(self):
+        """Contexto temporal da base: base de gravação, zona ou offset, e se o offset é conhecido."""
+        state = "zone" if self.broker_timezone else "declared" if self.offset_declared else "unknown"
+        return {"time_basis": self.time_basis, "broker_timezone": self.broker_timezone,
+                "broker_utc_offset": self.broker_utc_offset if state == "declared" else None, "offset_state": state}
+
+    def require_fixed_offset(self, consumer):
+        """Consumidores que ainda convertem com offset fixo recusam base com zona, sem resultado errado."""
+        if self.broker_timezone:
+            raise ValueError(f"{consumer} ainda usa offset fixo e não suporta base com zona "
+                             f"({self.broker_timezone}); use uma base sem broker_timezone para esse consumo.")
+
     def _to_storage(self, times):
         """Horário da corretora (como o MT5 devolve) -> horário gravado no banco."""
+        if self.broker_timezone:
+            local = pd.DatetimeIndex(pd.to_datetime(times))
+            try:
+                aware = local.tz_localize(self.broker_timezone, ambiguous="infer", nonexistent="raise")
+            except Exception as exc:
+                raise ValueError(f"Horário local incompatível com {self.broker_timezone}: hora inexistente ou "
+                                 f"repetida sem ordem que a desambigue ({exc}).") from exc
+            result = aware.tz_convert("UTC").tz_localize(None)
+            return pd.Series(result, index=getattr(times, "index", None)) if isinstance(times, pd.Series) else result
         if self.time_basis == "utc":
             return times - pd.Timedelta(hours=self.broker_utc_offset)
         return times
 
     def _from_storage(self, times):
         """Horário gravado no banco -> horário da corretora."""
+        if self.broker_timezone:
+            utc = pd.DatetimeIndex(pd.to_datetime(times)).tz_localize("UTC").tz_convert(self.broker_timezone)
+            result = utc.tz_localize(None)
+            return pd.Series(result, index=getattr(times, "index", None)) if isinstance(times, pd.Series) else result
         if self.time_basis == "utc":
             return times + pd.Timedelta(hours=self.broker_utc_offset)
         return times
@@ -601,7 +652,15 @@ class DatabaseManager:
             if row is None:
                 conn.execute(text("INSERT INTO _metadata (key, value) VALUES ('time_basis', :v)"),
                              {"v": self.time_basis})
-            elif row[0] != self.time_basis:
+            zone = conn.execute(text("SELECT value FROM _metadata WHERE key = 'broker_timezone'")).fetchone()
+            if zone is None and row is None and self.broker_timezone:
+                conn.execute(text("INSERT INTO _metadata (key, value) VALUES ('broker_timezone', :v)"),
+                             {"v": self.broker_timezone})
+            elif (zone[0] if zone else None) != self.broker_timezone and row is not None:
+                log.error(f"Este banco foi gravado com zona {zone[0] if zone else 'nenhuma'!s}, mas a configuração pede "
+                          f"{self.broker_timezone or 'nenhuma'}. Nada foi gravado: não se reinterpreta uma base existente.")
+                return False
+            if row is not None and row[0] != self.time_basis:
                 log.error(f"Este banco grava horários na base '{row[0]}', mas o config.ini pede '{self.time_basis}'. "
                           f"Nada foi gravado. Ajuste [APP] time_basis = {row[0]} ou use outro arquivo de banco.")
                 return False

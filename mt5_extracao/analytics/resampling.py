@@ -11,6 +11,7 @@ import pandas as pd
 from sqlalchemy import inspect, text
 
 from mt5_extracao.analytics import calendar
+from mt5_extracao import timeframes
 from mt5_extracao.timeframes import Timeframe
 
 log = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ def parse_target(value):
     elif minute_match:
         minutes = int(minute_match.group(1))
     else:
-        parsed = Timeframe.parse(raw)
+        parsed = timeframes.parse(raw)
         if parsed is Timeframe.D1:
             return TargetTimeframe("1D", None, "session")
         if parsed is None or parsed in {Timeframe.W1, Timeframe.MN1}:
@@ -451,6 +452,8 @@ def resample_symbol(db, symbol, targets, symbol_info=None, session_gap_minutes=c
         raise ValueError("Informe ao menos um timeframe para derivar.")
     if partial_last_bar not in {"include", "drop"}:
         raise ValueError("partial_last_bar deve ser 'include' ou 'drop'.")
+    if hasattr(db, "require_fixed_offset"):
+        db.require_fixed_offset("A derivação por sessão (resampling)")
     source = db.load_ohlcv(symbol, Timeframe.M1.label)
     if source.empty:
         raise ValueError(f"Não há barras M1 de {symbol} na base. Extraia antes: "
