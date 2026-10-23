@@ -253,3 +253,11 @@ def test_v3_05_repeated_features_are_normalized_and_pages_concatenate(tmp_path):
             break
     keys = [(r["feature_id"], r["observation_time"], r["algorithm_version"]) for r in pages]
     assert len(keys) == len(set(keys)) and pages == single["values"]
+
+
+def test_v3_03_read_only_pg_url_keeps_existing_options():
+    url = "postgresql+psycopg://u:p@h:5432/db?options=-csearch_path%3Dmt5x_test_x"
+    options = DatabaseManager.read_only_pg_url(url).split("options=", 1)[1]
+    assert "search_path" in options and "default_transaction_read_only" in options
+    plain = DatabaseManager.read_only_pg_url("postgresql+psycopg://u:p@h:5432/db")
+    assert "default_transaction_read_only" in plain

@@ -100,8 +100,8 @@ class DatabaseManager:
                     log.info(f"Conexão com banco de dados SQLite estabelecida: {self.db_path}")
                 self._ensure_control_tables()
             elif self.db_type == 'postgresql':
-                options = {"connect_args": {"options": "-c default_transaction_read_only=on"}} if self.read_only else {}
-                self.engine = create_engine(self.db_path, pool_pre_ping=True, **options)
+                url = self.read_only_pg_url(self.db_path) if self.read_only else self.db_path
+                self.engine = create_engine(url, pool_pre_ping=True)
                 with self.engine.connect() as connection:
                     self._timescale = bool(connection.execute(text(
                         "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar())
@@ -610,6 +610,15 @@ class DatabaseManager:
 
     # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
     _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
+
+    @staticmethod
+    def read_only_pg_url(url):
+        """URL PostgreSQL somente leitura: ACRESCENTA às options existentes (ex.: search_path do schema)."""
+        parsed = make_url(url)
+        current = parsed.query.get("options", "")
+        current = " ".join(current) if isinstance(current, tuple) else current
+        merged = " ".join(part for part in (current, "-c default_transaction_read_only=on") if part)
+        return parsed.update_query_dict({"options": merged}).render_as_string(hide_password=False)
 
     def time_context(self):
         """Contexto temporal da base: base de gravação, zona ou offset, e se o offset é conhecido."""

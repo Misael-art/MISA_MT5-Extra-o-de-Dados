@@ -33,6 +33,7 @@ def test_read_only_query_contract_in_postgresql():
         kinds = []
         event.listen(reader.engine, "before_cursor_execute", lambda c, cu, s, *a: kinds.append(s.split()[0].upper()))
         env = query_service.series(reader, **SELECT)
+        assert env["base"]["state"] == "identified" and env["values"]  # leu o schema certo (search_path preservado)
         assert env["status"] == "ok" and set(kinds) <= {"SELECT", "WITH", "SHOW", "BEGIN", "COMMIT", "ROLLBACK"}  # sem DDL/DML
         assert env["definitions"]["price.return_1"]["versions"]["old-percent-v0"]["unit"] == "percent"
         knowledge = query_service.series(reader, **{**SELECT, "as_of": "2026-09-15T00:00Z", "basis": "knowledge"})
