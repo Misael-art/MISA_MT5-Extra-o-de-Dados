@@ -11,6 +11,7 @@ import pandas as pd
 from sqlalchemy import inspect, text
 
 from mt5_extracao.analytics import calendar
+from mt5_extracao import timeframes
 from mt5_extracao.timeframes import Timeframe
 
 log = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ def parse_target(value):
     elif minute_match:
         minutes = int(minute_match.group(1))
     else:
-        parsed = Timeframe.parse(raw)
+        parsed = timeframes.parse(raw)
         if parsed is Timeframe.D1:
             return TargetTimeframe("1D", None, "session")
         if parsed is None or parsed in {Timeframe.W1, Timeframe.MN1}:
