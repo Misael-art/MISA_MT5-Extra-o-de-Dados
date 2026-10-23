@@ -149,7 +149,7 @@ def declare_source(db, source):
     """Vincula a base a uma fonte; fonte incompatível é recusada, nunca misturada.
 
     A primeira declaração fixa ``provider``/``server``; repeti-la é idempotente. Outra fonte exige
-    outra base (ou ``fork`` de uma cópia), porque as chaves por símbolo não distinguem feeds.
+    uma base nova, porque as chaves por símbolo não distinguem feeds; ``fork`` conserva a fonte.
     """
     wanted = _source(source, "validation")
     _schema(db)
@@ -162,7 +162,8 @@ def declare_source(db, source):
             current = slots.get(slot)
             if current is not None and current != value:
                 raise ValueError(f"Base vinculada a {slot}={current!r}; recusada a gravação de {value!r}. "
-                                 "Use outra base para essa fonte ou derive uma cópia com fork().")
+                                 "Grave essa fonte numa base nova (outro banco ou schema); fork() deriva a mesma "
+                                 "fonte e conserva a origem dos fatos herdados.")
             if current is None:
                 conn.execute(text("INSERT INTO _dataset_origin (slot,origin_id) VALUES (:slot,:value)"),
                              {"slot": slot, "value": value})

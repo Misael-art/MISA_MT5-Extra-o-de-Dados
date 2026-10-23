@@ -168,3 +168,13 @@ def test_relation_dto_requires_base_identity_outside_fixtures():
     real["provenance"] = {**real["provenance"], "base_namespace": "abc"}
     assert relation_dto.build_relation_dto(**real, generated_at_utc=fixture["generated_at_utc"])["provenance"][
         "base_namespace"] == "abc"
+
+
+def test_fork_keeps_source_and_message_points_to_a_new_base(tmp_path):
+    a, _ = _bases(tmp_path)
+    datasets.declare_source(a, {"provider": "feed-a"})
+    child = datasets.fork(a)
+    assert child["provider"] == "feed-a"  # fatos herdados continuam atribuídos à fonte original
+    with pytest.raises(ValueError) as refused:
+        datasets.declare_source(a, {"provider": "feed-b"})
+    assert "derive uma cópia com fork" not in str(refused.value) and "base nova" in str(refused.value)
