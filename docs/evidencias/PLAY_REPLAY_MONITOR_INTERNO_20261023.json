@@ -41,6 +41,21 @@
     "mt5_extracao/robots/session_wine.py": "47c6e7cd65e66e372032b22ed4d65b91f10af6ae8895502b0a3663d4024b6c4e",
     "mt5_extracao/robots/sessions.py": "a144d1c0bca4a4aa38328deb335dc155d719975e4a1df2d5f7cef37afe8546f5",
     "tests/test_session_wine.py": "55216359ec4e510439fc6a0d3eb271422b2e0682d2761cd19265f83fd58df674",
-    "docs/sdk/play_replay_monitores.md": "6fe03c0bf42691021b9423332a9a80f12d0dce702d332d70a8a3ae52e03504b4"
-  }
+    "docs/sdk/play_replay_monitores.md": "6fe2932fc8a1ac5c80131c050098468cd08d374219ee9042625818a1fb3005ec",
+    "mt5_extracao/robots/session_window.py": "aea9f627780ab3552df005b39db967a28ba6753af9ddecd1e71fc49564a4e9bf",
+    "tests/test_session_window.py": "947bd7c406dd742c65c34145f5d37e18ae4bdb0ff1a975665728b2913dd80af5"
+  },
+  "x11_window_race": {
+    "before": {
+      "exit": 1,
+      "out": "",
+      "err": "X Error of failed request:  BadWindow (invalid Window parameter)\n  Major opcode of failed request:  20 (X_GetProperty)\n  Resource id in failed request:  0x1400001\n  Serial number of failed request:  11\n  Current serial number in output stream:  11\n"
+    },
+    "after": {
+      "exit": 0,
+      "out": "destroyed own X11 window safely ignored\n",
+      "err": ""
+    }
+  },
+  "interrupted_normal_launch": "App exited on Xlib BadWindow while polling vanished Wine desktop; native visual not accepted"
 }

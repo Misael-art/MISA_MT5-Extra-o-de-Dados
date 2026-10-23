@@ -112,3 +112,13 @@ produção foi executado em prefixo isolado: GetSystemMetrics e área virtual
 passaram de1280×800 para3456×1458; servidor/cópias próprios removidos ao terminar.
 Lançamentos normais PLAY/REPLAY e inspeção do gráfico correspondente em curso.
 [Evidência complementar](../evidencias/PLAY_REPLAY_MONITOR_INTERNO_20261023.json).
+
+A primeira abertura com o modo interno corrigido expôs uma segunda falha:
+BadWindow ao consultar uma janela já retirada da lista X11 encerrava o processo
+App inteiro pelo handler padrão da Xlib. A leitura de propriedades agora trata
+somente BadWindow da sua conexão, sincroniza e restaura o handler anterior;
+erros de outras conexões (incluindo Tk) são repassados. Prova real em subprocesso,
+criando/destruindo somente uma janela própria: base sai1, correção sai0. O teste
+automatizado cobre encaminhamento/restauração inclusive quando a leitura falha.
+O primeiro ensaio interrompido permanece como falha, sem ser marcado visualmente
+aprovado; nova instalação/abertura correspondente é necessária.
