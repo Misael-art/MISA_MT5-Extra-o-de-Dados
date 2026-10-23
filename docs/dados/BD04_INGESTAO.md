@@ -14,15 +14,54 @@ bruto → derivado → snapshot com os mecanismos existentes.
 | Falha não anuncia sucesso | `save_ohlcv_data` devolve `False` sem coluna `time` | nada gravado |
 | Incompleto não vira zero | volume real ausente persiste `NULL`; zero conhecido persiste 0 | [0, NULL, 7] |
 
+## Contraexemplos da revisão independente (V02) e correção de produção
+
+O primeiro recorte (só testes) provava que derivado e snapshot **já capturados** sobrevivem.
+A revisão mostrou que (a) corrigir 102→250 antes de qualquer captura perdia o 102 e (b) reaplicar
+o payload antigo fazia o bruto voltar a 102. Correção aditiva no dono do upsert (T1.1),
+`database_manager._upsert_dataframe`, na mesma transação da gravação:
+
+- **`_ohlcv_revisions`** (tabela nova, aditiva): só barras cujo OHLCV/volumes/spread mudam
+  ganham linhas; a versão vigente é arquivada antes de ser sobrescrita. Barra legada nunca
+  corrigida não tem histórico e sua chegada fica desconhecida (`known_since_utc` NULL), sem
+  história fictícia.
+- **Precedência:** `save_ohlcv_data(..., received_at=)` informa quando ESTE sistema recebeu o
+  payload (padrão: agora). Versão recebida depois prevalece; recebida antes do vigente vira
+  `stale` (registrada, não aplicada); mesmo payload + mesmo recebimento é repetição sem efeito.
+  O provedor não informa revisão/vintage: não inventamos. Um retry sem `received_at` é tratado
+  como novo — por isso retries devem repassar o instante original.
+- **`load_ohlcv_as_of(symbol, tf, as_of)`**: barras como eram conhecidas no instante, com
+  `revision` e `known_since_utc`. `load_ohlcv` continua sendo a leitura vigente (latest ≠ as-of).
+
+## Provas adicionais ([tests/test_bd04_ingestion.py](../../tests/test_bd04_ingestion.py), 9 casos)
+
+| Caso | Resultado |
+|---|---|
+| Duas correções sem captura prévia (101→250→300) | as-of devolve 101/250/300 conforme o instante; 1ª versão com chegada desconhecida |
+| Payload antigo após o novo (retry com recebimento original) | bruto continua 250; versão `stale` registrada e nunca escolhida no as-of |
+| Evento repetido | sem nova revisão |
+| Retry sem `received_at` | política explícita: vira a versão mais nova; o as-of anterior continua consultável |
+| Falha injetada no 2º bloco | `False`; 1º bloco e histórico desfeitos; retry íntegro |
+| Volume real ausente → disponível → ausente (E06) | `ohlcv` elegível nos três; `real_volume` elegível só no meio; snapshot do meio conserva 5,0 |
+| Fonte indisponível no meio do lote e retomada | coberto pelo teste existente `test_extraction_resume.py::test_failed_block_does_not_block_others_and_resume_fetches_only_missing` (não repetido) |
+
+`tests/test_bd04_ingestion_pg.py` repete revisão/stale/as-of em PostgreSQL — **executado só na CI**.
+
+## Recursos medidos (SQLite local, 10 000 barras M1)
+
+1ª gravação 10,66 s; regravação idêntica 11,19 s; 10 000 correções 14,7 s (arquivo 7,3 MiB).
+O custo dominante é o upsert preexistente; correções em massa fazem uma consulta de histórico
+por barra alterada.
+
 ## Limite importante
 
-A tabela bruta por símbolo/TF guarda só o valor mais recente. O histórico de revisão existe nas
-barras derivadas e nos snapshots, não no bruto. Uma consulta as-of anterior à correção precisa
-partir de snapshot ou de `_bars_derived` (revisão por `computed_at_utc`), nunca da tabela bruta.
-
+O bruto continua guardando só o valor vigente; o histórico de mudanças fica em
+`_ohlcv_revisions`. Ticks e book não ganharam histórico neste recorte. Quem precisa do passado
+usa `load_ohlcv_as_of`, snapshot ou `_bars_derived`. Extratores ainda não repassam
+`received_at` de retries (passo seguinte no dono da extração).
 ## Pendente em BD04
 
-- Propagação de mudança de capacidade da fonte (ex.: volume real passa a existir) até o
-  consumidor, via `data_eligibility`/qualidade T20.6 — recorte seguinte.
+- Capacidade: comprovada no nível de `data_eligibility` (E06); consumidores de UI ainda não leem
+  esse estado diretamente (BD19).
 - Captura por blocos interrompida e retomada já tem aceite EXTR-01/T1.2; não repetido aqui.
 - PostgreSQL não exercitado neste recorte.

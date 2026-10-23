@@ -8,7 +8,7 @@ import threading
 import traceback
 from datetime import datetime
 from contextlib import contextmanager
-from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
+from sqlalchemy import bindparam, create_engine, text, inspect, MetaData, Table # Adicionado inspect
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import make_url
@@ -251,7 +251,7 @@ class DatabaseManager:
             log.debug(traceback.format_exc())
             return False
 
-    def save_ohlcv_data(self, symbol, timeframe_name, df):
+    def save_ohlcv_data(self, symbol, timeframe_name, df, *, received_at=None):
         """
         Salva ou atualiza dados OHLCV no banco de dados.
         Garante que a tabela exista com o schema completo antes de salvar.
@@ -260,6 +260,9 @@ class DatabaseManager:
             symbol (str): Nome do símbolo (ex: 'WIN$N').
             timeframe_name (str): Nome legível do timeframe (ex: '1 minuto').
             df (pd.DataFrame): DataFrame contendo os dados OHLCV com coluna 'time'.
+            received_at: instante UTC em que ESTE sistema recebeu o payload (padrão: agora).
+                Um retry deve repassar o instante original; payload mais antigo que o vigente
+                não sobrescreve e fica registrado como ``stale`` em ``_ohlcv_revisions``.
         """
         if not self.is_connected():
             log.error("Não é possível salvar dados: Banco de dados não conectado.")
@@ -324,7 +327,7 @@ class DatabaseManager:
             # Usar 'append'. A chave primária 'time' deve lidar com duplicatas se o SQLite estiver configurado corretamente
             # ou se a lógica de 'overwrite' for usada antes desta chamada.
             # Deixar pandas/SQLAlchemy lidar com a citação do nome da tabela
-            self._upsert_dataframe(table_name, df_to_save)
+            self._upsert_dataframe(table_name, df_to_save, received_at=received_at)
 
             log.info(f"Dados para {symbol} ({timeframe_name}) salvos com sucesso em '{table_name}'.")
             return True
@@ -344,8 +347,91 @@ class DatabaseManager:
     # a tabela OHLCV tem ~70 colunas -> 200 linhas = ~14 mil parâmetros.
     _UPSERT_CHUNK_ROWS = 200
 
-    def _upsert_dataframe(self, table_name, df):
-        """Insere ou atualiza linhas pela chave primária 'time'. df indexado por 'time'."""
+    # Histórico aditivo das barras brutas que mudaram (T1.1/BD04). Só versões que divergem são
+    # gravadas: a barra nunca corrigida não tem linha aqui e seu instante de chegada é desconhecido.
+    REVISIONS_TABLE = "_ohlcv_revisions"
+    _REVISION_FIELDS = ("open", "high", "low", "close", "tick_volume", "spread", "real_volume")
+
+    def _ensure_revisions(self, conn):
+        conn.execute(text(
+            f"CREATE TABLE IF NOT EXISTS {self.REVISIONS_TABLE} (table_name TEXT NOT NULL, time TEXT NOT NULL, "
+            "revision INTEGER NOT NULL, payload_json TEXT NOT NULL, received_at_utc TEXT, "
+            "recorded_at_utc TEXT NOT NULL, status TEXT NOT NULL, PRIMARY KEY (table_name, time, revision))"))
+
+    @staticmethod
+    def _utc_text(value):
+        stamp = pd.Timestamp(value)
+        stamp = stamp.tz_localize("UTC") if stamp.tzinfo is None else stamp.tz_convert("UTC")
+        return stamp.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    def _market_payload(self, row):
+        payload = {}
+        for name in self._REVISION_FIELDS:
+            value = row.get(name)
+            payload[name] = None if value is None or (isinstance(value, float) and np.isnan(value)) else float(value)
+        return json.dumps(payload, sort_keys=True)
+
+    def _revise(self, conn, table_name, records, received_at):
+        """Preserva a versão vigente antes de sobrescrever e aplica a política de precedência.
+
+        Política: a versão recebida depois (``received_at``) prevalece; payload recebido antes do
+        vigente é ``stale`` (não sobrescreve, fica registrado); payload igual é repetição sem efeito.
+        A primeira versão de uma barra legada é arquivada com ``received_at_utc`` NULL (desconhecido).
+        Devolve somente os registros a aplicar no bruto.
+        """
+        if not records:
+            return records
+        self._ensure_revisions(conn)
+        incoming = self._utc_text(received_at if received_at is not None else pd.Timestamp.now(tz="UTC"))
+        recorded = self._utc_text(pd.Timestamp.now(tz="UTC"))
+        key = lambda value: pd.Timestamp(value).strftime(self._TIME_FMT)
+        times = [key(r["time"]) if self.dialect == "sqlite" else r["time"] for r in records]
+        columns = ", ".join(["time", *self._REVISION_FIELDS])
+        current = {}
+        for begin in range(0, len(times), 500):
+            rows = conn.execute(text(f'SELECT {columns} FROM "{table_name}" WHERE time IN :times').bindparams(
+                bindparam("times", expanding=True)), {"times": times[begin:begin + 500]}).mappings()
+            current.update({key(row["time"]): dict(row) for row in rows})
+        apply = []
+        for record in records:
+            stamp = key(record["time"])
+            existing = current.get(stamp)
+            payload = self._market_payload(record)
+            if existing is None or self._market_payload(existing) == payload:
+                apply.append(record)
+                continue
+            history = conn.execute(text(
+                f"SELECT revision, received_at_utc, status, payload_json FROM {self.REVISIONS_TABLE} "
+                "WHERE table_name=:t AND time=:time ORDER BY revision"), {"t": table_name, "time": stamp}).mappings().all()
+            accepted = [row for row in history if row["status"] in ("accepted", "superseded")]
+            vigente = accepted[-1] if accepted else None
+            if any(row["payload_json"] == payload and row["received_at_utc"] == incoming for row in history):
+                continue  # mesmo evento reenviado: idempotente
+            revision = (history[-1]["revision"] if history else 0) + 1
+            if vigente is None:
+                conn.execute(text(f"INSERT INTO {self.REVISIONS_TABLE} VALUES (:t,:time,1,:payload,NULL,:rec,'superseded')"),
+                             {"t": table_name, "time": stamp, "payload": self._market_payload(existing), "rec": recorded})
+                revision = 2
+            elif vigente["received_at_utc"] is not None and incoming < vigente["received_at_utc"]:
+                conn.execute(text(f"INSERT INTO {self.REVISIONS_TABLE} VALUES (:t,:time,:rev,:payload,:rcv,:rec,'stale')"),
+                             {"t": table_name, "time": stamp, "rev": revision, "payload": payload, "rcv": incoming,
+                              "rec": recorded})
+                log.warning("Payload recebido em %s é anterior à versão vigente de %s %s; mantido como stale.",
+                            incoming, table_name, stamp)
+                continue
+            conn.execute(text(f"UPDATE {self.REVISIONS_TABLE} SET status='superseded' "
+                              "WHERE table_name=:t AND time=:time AND status='accepted'"), {"t": table_name, "time": stamp})
+            conn.execute(text(f"INSERT INTO {self.REVISIONS_TABLE} VALUES (:t,:time,:rev,:payload,:rcv,:rec,'accepted')"),
+                         {"t": table_name, "time": stamp, "rev": revision, "payload": payload, "rcv": incoming,
+                          "rec": recorded})
+            apply.append(record)
+        return apply
+
+    def _upsert_dataframe(self, table_name, df, *, received_at=None):
+        """Insere ou atualiza linhas pela chave primária 'time'. df indexado por 'time'.
+
+        Tudo numa transação: falha em qualquer bloco desfaz os anteriores e o histórico.
+        """
         table = Table(table_name, MetaData(), autoload_with=self.engine)
         table_cols = [c.name for c in table.columns]
         data = df.reset_index() if 'time' not in df.columns else df
@@ -357,12 +443,49 @@ class DatabaseManager:
             if isinstance(r['time'], pd.Timestamp):
                 r['time'] = r['time'].to_pydatetime()
         with self.engine.begin() as conn:
+            records = self._revise(conn, table_name, records, received_at)
             for i in range(0, len(records), self._UPSERT_CHUNK_ROWS):
                 insert = postgresql_insert if self.dialect == 'postgresql' else sqlite_insert
                 stmt = insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
                 update_cols = {c: stmt.excluded[c] for c in data.columns if c != 'time'}
                 conn.execute(stmt.on_conflict_do_update(index_elements=['time'], set_=update_cols))
         return len(records)
+
+    def load_ohlcv_as_of(self, symbol, timeframe_name, as_of):
+        """Barras como eram conhecidas em ``as_of`` (UTC), com ``known_since_utc`` e ``revision``.
+
+        Diferente de ``load_ohlcv`` (vigente). Para barra sem histórico, o valor vigente é devolvido
+        com ``known_since_utc`` NULL: não se sabe quando chegou. Barra corrigida depois de ``as_of``
+        volta à versão anterior; versão ``stale`` nunca é escolhida.
+        """
+        bars = self.load_ohlcv(symbol, timeframe_name)
+        if bars.empty:
+            return bars
+        bars = bars.copy()
+        bars["revision"], bars["known_since_utc"] = None, None
+        table_name = self.get_table_name_for_symbol(symbol, timeframe_name)
+        cutoff = self._utc_text(as_of)
+        with self.engine.connect() as conn:
+            if not inspect(conn).has_table(self.REVISIONS_TABLE):
+                return bars
+            history = pd.read_sql(text(
+                f"SELECT time, revision, payload_json, received_at_utc FROM {self.REVISIONS_TABLE} "
+                "WHERE table_name=:t AND status IN ('accepted','superseded') "
+                "AND (received_at_utc IS NULL OR received_at_utc <= :cutoff) ORDER BY time, revision"),
+                conn, params={"t": table_name, "cutoff": cutoff})
+        if history.empty:
+            return bars
+        latest = history.groupby("time").tail(1).set_index("time")
+        stored = self._to_storage(pd.to_datetime(bars["time"]))
+        for index, stamp in zip(bars.index, stored.dt.strftime(self._TIME_FMT)):
+            if stamp in latest.index:
+                version = latest.loc[stamp]
+                for name, value in json.loads(version["payload_json"]).items():
+                    if name in bars.columns:
+                        bars.at[index, name] = value
+                bars.at[index, "revision"] = int(version["revision"])
+                bars.at[index, "known_since_utc"] = version["received_at_utc"]
+        return bars
 
     def _has_time_primary_key(self, table_name):
         """True se a tabela existe e sua chave primária é exatamente a coluna 'time'."""

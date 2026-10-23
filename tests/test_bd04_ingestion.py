@@ -82,3 +82,103 @@ def test_out_of_order_ingestion_equals_ordered(tmp_path):
     for db in (ordered, shuffled):
         resampling.resample_symbol(db, SYMBOL, ["M3"], symbol_info=INFO)
     pd.testing.assert_frame_equal(_derived(ordered), _derived(shuffled))
+
+
+# --- V02/V07: revisões do bruto sem captura prévia, precedência, falha transacional e capacidade ---
+
+T1, T2, T3 = (pd.Timestamp(v, tz="UTC") for v in ("2026-09-14 13:00", "2026-09-15 13:00", "2026-09-16 13:00"))
+
+
+def _bar(db, close, received_at):
+    bars = m1_bars(pd.date_range("2026-09-14 09:00", periods=3, freq="min"))
+    bars.loc[1, ["close", "high"]] = [close, max(close, bars.loc[1, "high"])]
+    assert db.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=received_at)
+
+
+def _close_at(db, as_of):
+    return db.load_ohlcv_as_of(SYMBOL, "1 minuto", as_of)["close"].iloc[1]
+
+
+def _revisions(db):
+    with db.engine.connect() as conn:
+        return pd.read_sql(text("SELECT revision, status, received_at_utc FROM _ohlcv_revisions ORDER BY revision"), conn)
+
+
+def test_two_corrections_without_prior_capture_are_all_preserved_as_of(tmp_path):
+    db = _db(tmp_path)
+    _bar(db, 101.0, T1)
+    _bar(db, 250.0, T2)
+    _bar(db, 300.0, T3)
+    assert db.load_ohlcv(SYMBOL, "1 minuto")["close"].iloc[1] == 300.0          # vigente (latest)
+    assert _close_at(db, T2 - pd.Timedelta(hours=1)) == 101.0                    # antes da 1ª correção
+    assert _close_at(db, T2) == 250.0 and _close_at(db, T3) == 300.0
+    early = db.load_ohlcv_as_of(SYMBOL, "1 minuto", T2 - pd.Timedelta(hours=1))
+    assert early["known_since_utc"].iloc[1] is None  # 1ª versão: chegada não registrada, não inventada
+    assert _revisions(db)["status"].tolist() == ["superseded", "superseded", "accepted"]
+
+
+def test_stale_payload_after_newer_one_does_not_overwrite(tmp_path):
+    db = _db(tmp_path)
+    _bar(db, 101.0, T1)
+    _bar(db, 250.0, T2)
+    _bar(db, 101.0, T1)  # retry tardio do payload antigo, com seu instante original de recebimento
+    assert db.load_ohlcv(SYMBOL, "1 minuto")["close"].iloc[1] == 250.0
+    assert _revisions(db)["status"].tolist() == ["superseded", "accepted", "stale"]
+    assert _close_at(db, T3) == 250.0  # stale nunca vira a versão conhecida
+
+
+def test_repeated_event_is_idempotent_and_unlabelled_retry_follows_explicit_policy(tmp_path):
+    db = _db(tmp_path)
+    _bar(db, 101.0, T1)
+    _bar(db, 250.0, T2)
+    _bar(db, 250.0, T2)
+    assert len(_revisions(db)) == 2
+    # Política explícita: sem received_at, o instante de gravação vale; o retry passa a ser a versão mais nova.
+    _bar(db, 101.0, None)
+    assert db.load_ohlcv(SYMBOL, "1 minuto")["close"].iloc[1] == 101.0
+    assert _close_at(db, T3) == 250.0  # o que se sabia em T3 continua consultável
+
+
+def test_failure_in_second_chunk_rolls_back_everything_and_retry_is_clean(tmp_path, monkeypatch):
+    from sqlalchemy import event
+    db = _db(tmp_path)
+    _bar(db, 101.0, T1)
+    monkeypatch.setattr(DatabaseManager, "_UPSERT_CHUNK_ROWS", 2)
+    calls = {"n": 0}
+
+    def fail_second_insert(conn, cursor, statement, *args):
+        if statement.lstrip().upper().startswith("INSERT INTO") and "_ohlcv_revisions" not in statement:
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise RuntimeError("falha injetada no segundo bloco")
+
+    event.listen(db.engine, "before_cursor_execute", fail_second_insert)
+    bars = m1_bars(pd.date_range("2026-09-14 09:00", periods=6, freq="min"))
+    bars["close"] += 1000
+    assert db.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=T2) is False
+    event.remove(db.engine, "before_cursor_execute", fail_second_insert)
+    stored = db.load_ohlcv(SYMBOL, "1 minuto")
+    assert len(stored) == 3 and stored["close"].max() < 1000      # 1º bloco desfeito, nada parcial
+    assert _revisions(db).empty                                    # histórico também desfeito
+    assert db.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=T2)  # retry íntegro
+    assert len(db.load_ohlcv(SYMBOL, "1 minuto")) == 6 and len(_revisions(db)) == 6
+
+
+def test_real_volume_capability_changes_only_dependent_consumers_and_snapshot_stays(tmp_path):
+    """E06: ausente → disponível → ausente. Preço segue elegível; volume real muda; snapshot congela."""
+    from mt5_extracao.analytics import data_eligibility
+    db = _db(tmp_path)
+    times = pd.date_range("2026-09-14 09:00", periods=30, freq="min")
+    states = []
+    for real in (None, 5.0, None):
+        bars = m1_bars(times, real_volume=[real] * len(times))
+        db.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=pd.Timestamp.now(tz="UTC"))
+        report = data_eligibility.assess(db.load_ohlcv(SYMBOL, "1 minuto"))
+        states.append((data_eligibility.evaluate(report, ["ohlcv"])["eligible"],
+                       data_eligibility.evaluate(report, ["real_volume"])["eligible"]))
+        if real is not None:
+            frozen = datasets.capture(db, SYMBOL, "M1")
+    assert states == [(True, False), (True, True), (True, False)]
+    assert (datasets.load(db, frozen.manifest_id).bars["real_volume"] == 5.0).all()
+    assert db.load_ohlcv(SYMBOL, "1 minuto")["real_volume"].isna().all()
+    assert set(data_eligibility.FAMILIES) >= {"tick_volume", "real_volume", "aggressor", "book_snapshots"}
