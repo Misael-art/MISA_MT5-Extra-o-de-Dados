@@ -1,4 +1,42 @@
-# BD04 — Ingestão idempotente, revisão e qualidade (primeiro recorte)
+# BD04 — Ingestão idempotente, revisão e qualidade
+
+## Estado atual (23/10/2026, 3º recorte) — PARCIAL
+
+Contrato de recebimento do bruto OHLCV, no dono do upsert (T1.1), em duas tabelas aditivas:
+`_ohlcv_versions` (cada conteúdo distinto de uma barra, por SHA-256 do OHLCV/volumes/spread) e
+`_ohlcv_receipts` (cada evento: conteúdo + instante em que ESTE sistema o recebeu + origem
+`write`/`legacy`). Substitui `_ohlcv_revisions` do 2º recorte, que nunca foi integrado nem
+instalado.
+
+| Regra | Comportamento |
+|---|---|
+| Precedência | prevalece o conteúdo do **último recebimento**, inclusive na 1ª gravação (R01) |
+| Confirmação igual | nova observação com conteúdo igual registra novo recebimento e atualiza a precedência (R03), sem duplicar o payload |
+| Mesmo evento | mesmo conteúdo + mesmo instante = idempotente |
+| Empate | instantes iguais com conteúdos distintos: prevalece o menor hash (independe da ordem) e a leitura marca `conflict=True` |
+| `received_at` | explícito ou, se omitido, o relógio deste sistema (conhecido); sem fuso é **recusado** |
+| Legado | bruto gravado antes do contrato ganha recebimento com instante desconhecido (`""`), nunca inventado |
+| `load_ohlcv_as_of(..., mode="causal")` | só barras já fechadas **e** já recebidas no corte, com o conteúdo do último recebimento até lá; legado fica de fora |
+| `mode="inspect"` | inclui legado com `arrival_state="unknown"`, para leitura humana, não para backtest |
+
+Provas: `tests/test_bd04_ingestion.py` (13 casos, SQLite) e `tests/test_bd04_ingestion_pg.py`
+(R01–R03 em PostgreSQL, executados pela CI). Os contraexemplos da 2ª revisão falhavam antes da
+correção (log `r01_r03_antes_adbe614.txt` na fotografia: 101≠250, 300≠250, as-of devolvendo
+barra não recebida e anterior à observação).
+
+Custo medido (SQLite, 10 000 barras M1): 1ª gravação 14,6 s (antes do contrato 10,7 s); nova
+observação igual 13,2 s; retry do mesmo evento 16,0 s; 10 000 correções 15,4 s; as-of 2,3 s
+(vetorizado; leitura limitada ao intervalo pedido). Arquivo 19 MiB (antes 7,3 MiB): um
+recebimento por barra por observação.
+
+Limites: escrita concorrente usa a transação do upsert e a leitura usa `consistent_read`, sem
+teste de estresse; ticks/book sem contrato de recebimento; integração do extrator no recorte R04.
+
+---
+
+## Histórico dos recortes
+
+### 1º recorte (22/10/2026)
 
 Recorte de 2026-10-22, vinculado a F1/F4 (T1.1/T1.2), T13.1 e T20.6. Depende de
 [BD03](BD03_IDENTIDADE.md). Sem código de produção novo: consolida o aceite da cadeia
@@ -14,7 +52,7 @@ bruto → derivado → snapshot com os mecanismos existentes.
 | Falha não anuncia sucesso | `save_ohlcv_data` devolve `False` sem coluna `time` | nada gravado |
 | Incompleto não vira zero | volume real ausente persiste `NULL`; zero conhecido persiste 0 | [0, NULL, 7] |
 
-## Contraexemplos da revisão independente (V02) e correção de produção
+### 2º recorte (23/10/2026, substituído pelo 3º)
 
 O primeiro recorte (só testes) provava que derivado e snapshot **já capturados** sobrevivem.
 A revisão mostrou que (a) corrigir 102→250 antes de qualquer captura perdia o 102 e (b) reaplicar

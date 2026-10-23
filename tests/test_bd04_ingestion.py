@@ -2,6 +2,7 @@
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 from sqlalchemy import text
 
 from mt5_extracao.analytics import datasets, resampling
@@ -84,9 +85,12 @@ def test_out_of_order_ingestion_equals_ordered(tmp_path):
     pd.testing.assert_frame_equal(_derived(ordered), _derived(shuffled))
 
 
-# --- V02/V07: revisões do bruto sem captura prévia, precedência, falha transacional e capacidade ---
+# --- Contrato de recebimento (V02/V07 + R01–R03 da 2ª revisão) ---
+# Cada gravação é um RECEBIMENTO (instante em que este sistema recebeu o payload). Prevalece o conteúdo
+# do último recebimento; legado sem metadado tem chegada desconhecida e não é elegível no modo causal.
 
-T1, T2, T3 = (pd.Timestamp(v, tz="UTC") for v in ("2026-09-14 13:00", "2026-09-15 13:00", "2026-09-16 13:00"))
+T1, T2, T3, T4 = (pd.Timestamp(v, tz="UTC") for v in
+                  ("2026-09-14 13:00", "2026-09-15 13:00", "2026-09-16 13:00", "2026-09-17 13:00"))
 
 
 def _bar(db, close, received_at):
@@ -95,48 +99,111 @@ def _bar(db, close, received_at):
     assert db.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=received_at)
 
 
+def _current(db):
+    return db.load_ohlcv(SYMBOL, "1 minuto")["close"].iloc[1]
+
+
+def _as_of(db, as_of, mode="causal"):
+    return db.load_ohlcv_as_of(SYMBOL, "1 minuto", as_of, mode=mode)
+
+
 def _close_at(db, as_of):
-    return db.load_ohlcv_as_of(SYMBOL, "1 minuto", as_of)["close"].iloc[1]
+    frame = _as_of(db, as_of)
+    row = frame[frame["time"] == pd.Timestamp("2026-09-14 09:01")]
+    return row["close"].iloc[0] if len(row) else None
 
 
-def _revisions(db):
-    with db.engine.connect() as conn:
-        return pd.read_sql(text("SELECT revision, status, received_at_utc FROM _ohlcv_revisions ORDER BY revision"), conn)
-
-
-def test_two_corrections_without_prior_capture_are_all_preserved_as_of(tmp_path):
+def test_r01_first_write_keeps_its_receipt_and_precedence(tmp_path):
     db = _db(tmp_path)
+    _bar(db, 250.0, T2)
+    _bar(db, 101.0, T1)  # chegou depois, mas foi recebido antes: não prevalece
+    assert _current(db) == 250.0
+    assert _as_of(db, T3)["known_since_utc"].iloc[1] == T2
+
+
+def test_r01_explicit_and_default_receipts_are_known_legacy_stays_unknown(tmp_path):
+    db = _db(tmp_path)
+    _bar(db, 101.0, T1)
+    _bar(db, 250.0, T2)
+    assert _as_of(db, T2 - pd.Timedelta(hours=1))["known_since_utc"].iloc[1] == T1
+    default = _db(tmp_path / "default")
+    before = pd.Timestamp.now(tz="UTC")
+    _bar(default, 101.0, None)
+    assert _as_of(default, pd.Timestamp.now(tz="UTC"))["known_since_utc"].iloc[1] >= before
+    legacy = _db(tmp_path / "legacy")
+    _bar(legacy, 101.0, None)
+    with legacy.engine.begin() as conn:  # banco gravado antes do contrato: bruto sem recebimentos
+        conn.execute(text("DELETE FROM _ohlcv_receipts"))
+        conn.execute(text("DELETE FROM _ohlcv_versions"))
+    assert _close_at(legacy, T4) is None  # chegada desconhecida: não elegível no modo causal
+    inspect = _as_of(legacy, T4, mode="inspect")
+    assert inspect["arrival_state"].iloc[1] == "unknown" and inspect["known_since_utc"].iloc[1] is None
+    _bar(legacy, 250.0, T2)  # correção posterior arquiva o legado sem inventar sua chegada
+    assert _close_at(legacy, T2) == 250.0 and _close_at(legacy, T2 - pd.Timedelta(hours=1)) is None
+
+
+def test_r02_cuts_before_observation_close_receipt_and_each_revision(tmp_path):
+    db = _db(tmp_path)  # offset -3: barra 09:01 local = 12:01 UTC, fecha 12:02 UTC
     _bar(db, 101.0, T1)
     _bar(db, 250.0, T2)
     _bar(db, 300.0, T3)
-    assert db.load_ohlcv(SYMBOL, "1 minuto")["close"].iloc[1] == 300.0          # vigente (latest)
-    assert _close_at(db, T2 - pd.Timedelta(hours=1)) == 101.0                    # antes da 1ª correção
+    assert _close_at(db, pd.Timestamp("2026-09-14 11:00", tz="UTC")) is None   # antes da observação
+    assert _close_at(db, pd.Timestamp("2026-09-14 12:01:30", tz="UTC")) is None  # antes do fechamento
+    assert _close_at(db, pd.Timestamp("2026-09-14 12:30", tz="UTC")) is None   # fechada, não recebida
+    assert _close_at(db, T1) == 101.0
+    assert _close_at(db, T2 - pd.Timedelta(seconds=1)) == 101.0
     assert _close_at(db, T2) == 250.0 and _close_at(db, T3) == 300.0
-    early = db.load_ohlcv_as_of(SYMBOL, "1 minuto", T2 - pd.Timedelta(hours=1))
-    assert early["known_since_utc"].iloc[1] is None  # 1ª versão: chegada não registrada, não inventada
-    assert _revisions(db)["status"].tolist() == ["superseded", "superseded", "accepted"]
+    assert _current(db) == 300.0  # latest é outra consulta
 
 
-def test_stale_payload_after_newer_one_does_not_overwrite(tmp_path):
+def test_r02_naive_timestamps_are_refused(tmp_path):
+    db = _db(tmp_path)
+    with pytest.raises(ValueError, match="fuso"):
+        _bar(db, 101.0, pd.Timestamp("2026-09-14 13:00"))
+    _bar(db, 101.0, T1)
+    with pytest.raises(ValueError, match="fuso"):
+        _as_of(db, pd.Timestamp("2026-09-15 00:00"))
+
+
+def test_r03_equal_content_reconfirmed_later_keeps_precedence(tmp_path):
     db = _db(tmp_path)
     _bar(db, 101.0, T1)
     _bar(db, 250.0, T2)
-    _bar(db, 101.0, T1)  # retry tardio do payload antigo, com seu instante original de recebimento
-    assert db.load_ohlcv(SYMBOL, "1 minuto")["close"].iloc[1] == 250.0
-    assert _revisions(db)["status"].tolist() == ["superseded", "accepted", "stale"]
-    assert _close_at(db, T3) == 250.0  # stale nunca vira a versão conhecida
+    _bar(db, 250.0, T4)  # nova observação com conteúdo igual: atualiza o recebimento usado na precedência
+    _bar(db, 300.0, T3)
+    assert _current(db) == 250.0
+    assert _close_at(db, T3) == 300.0 and _close_at(db, T4) == 250.0
 
 
-def test_repeated_event_is_idempotent_and_unlabelled_retry_follows_explicit_policy(tmp_path):
+def test_r03_same_event_retry_is_idempotent_and_ties_are_order_independent(tmp_path):
     db = _db(tmp_path)
     _bar(db, 101.0, T1)
-    _bar(db, 250.0, T2)
-    _bar(db, 250.0, T2)
-    assert len(_revisions(db)) == 2
-    # Política explícita: sem received_at, o instante de gravação vale; o retry passa a ser a versão mais nova.
-    _bar(db, 101.0, None)
-    assert db.load_ohlcv(SYMBOL, "1 minuto")["close"].iloc[1] == 101.0
-    assert _close_at(db, T3) == 250.0  # o que se sabia em T3 continua consultável
+    assert _receipts(db) == 3  # três barras, um recebimento cada
+    _bar(db, 101.0, T1)       # retry do MESMO evento
+    assert _receipts(db) == 3
+    one, two = _db(tmp_path / "one"), _db(tmp_path / "two")
+    for db_, order in ((one, (250.0, 300.0)), (two, (300.0, 250.0))):
+        for close in order:
+            _bar(db_, close, T2)  # empate: mesmo recebimento, conteúdos divergentes
+    assert _current(one) == _current(two)
+    assert _as_of(one, T3)["conflict"].iloc[1] and _as_of(two, T3)["conflict"].iloc[1]
+
+
+def test_batch_with_duplicate_times_is_order_independent(tmp_path):
+    one, two = _db(tmp_path / "one"), _db(tmp_path / "two")
+    bars = m1_bars(pd.date_range("2026-09-14 09:00", periods=2, freq="min"))
+    newer = bars.copy()
+    newer["close"] += 5
+    assert one.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=T1)
+    assert two.save_ohlcv_data(SYMBOL, "1 minuto", newer, received_at=T2)
+    assert two.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=T1)
+    assert one.save_ohlcv_data(SYMBOL, "1 minuto", newer, received_at=T2)
+    pd.testing.assert_frame_equal(one.load_ohlcv(SYMBOL, "1 minuto"), two.load_ohlcv(SYMBOL, "1 minuto"))
+
+
+def _receipts(db):
+    with db.engine.connect() as conn:
+        return conn.execute(text("SELECT COUNT(*) FROM _ohlcv_receipts")).scalar_one()
 
 
 def test_failure_in_second_chunk_rolls_back_everything_and_retry_is_clean(tmp_path, monkeypatch):
@@ -159,9 +226,9 @@ def test_failure_in_second_chunk_rolls_back_everything_and_retry_is_clean(tmp_pa
     event.remove(db.engine, "before_cursor_execute", fail_second_insert)
     stored = db.load_ohlcv(SYMBOL, "1 minuto")
     assert len(stored) == 3 and stored["close"].max() < 1000      # 1º bloco desfeito, nada parcial
-    assert _revisions(db).empty                                    # histórico também desfeito
+    assert _receipts(db) == 3                                       # só os recebimentos da 1ª gravação
     assert db.save_ohlcv_data(SYMBOL, "1 minuto", bars, received_at=T2)  # retry íntegro
-    assert len(db.load_ohlcv(SYMBOL, "1 minuto")) == 6 and len(_revisions(db)) == 6
+    assert len(db.load_ohlcv(SYMBOL, "1 minuto")) == 6 and _receipts(db) == 9
 
 
 def test_real_volume_capability_changes_only_dependent_consumers_and_snapshot_stays(tmp_path):
