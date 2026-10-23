@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from pathlib import Path
 import logging
 import pandas as pd
@@ -12,7 +13,7 @@ from contextlib import contextmanager
 from sqlalchemy import bindparam, create_engine, text, inspect, MetaData, Table # Adicionado inspect
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
@@ -84,15 +85,19 @@ class DatabaseManager:
                 if self.read_only:
                     if not os.path.isfile(self.db_path):
                         raise SQLAlchemyError(f"Banco inexistente para leitura: {self._safe_location()}")
-                    self.engine = create_engine(f"sqlite:///file:{Path(self.db_path).resolve().as_posix()}?mode=ro&uri=true",
-                                                connect_args={'timeout': 30})
+                    # URI de arquivo codificada (espaço, #, %, ?, acentos; letra de unidade no Windows) aberta
+                    # direto pelo sqlite3: a análise de URL do SQLAlchemy não reinterpreta o caminho.
+                    uri = self.read_only_sqlite_uri(self.db_path)
+                    self.engine = create_engine("sqlite://",
+                                                creator=lambda: sqlite3.connect(uri, uri=True, timeout=30))
                     with self.engine.connect():
                         log.info("Conexão SQLite somente leitura estabelecida.")
                     return
                 if db_dir and not os.path.exists(db_dir):
                     os.makedirs(db_dir)
                     log.info(f"Diretório do banco de dados criado: {db_dir}")
-                connection_string = f'sqlite:///{self.db_path}'
+                # URL.create não reinterpreta '?', '#' ou '%' do nome do arquivo como partes da URL.
+                connection_string = URL.create("sqlite", database=self.db_path)
                 # timeout: extrações em paralelo gravam no mesmo arquivo (SQLite serializa escritas)
                 self.engine = create_engine(connection_string, connect_args={'timeout': 30})
                 # Testa a conexão inicial
@@ -610,6 +615,11 @@ class DatabaseManager:
 
     # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
     _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
+
+    @staticmethod
+    def read_only_sqlite_uri(path):
+        """URI SQLite somente leitura do arquivo exato (``mode=ro``; nunca cria arquivo)."""
+        return Path(path).resolve().as_uri() + "?mode=ro"
 
     @staticmethod
     def read_only_pg_url(url):

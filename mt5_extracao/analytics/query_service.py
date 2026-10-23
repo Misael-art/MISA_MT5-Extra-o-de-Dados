@@ -11,8 +11,10 @@ Contrato ``query_schema_version=2`` (correções V3-01..05 da 3ª revisão):
 - Cada fato aponta para a definição imutável ``feature_id + algorithm_version`` gravada no store;
   o contrato atual vem separado em ``current_contract``. Definição ausente é condição explícita.
 - Leitura pura: não migra, não cria identidade, não grava (``datasets.read_identity``).
-- Cursor ligado à base (namespace), ao ``basis``, à seleção normalizada e a uma fotografia
-  ``recorded_through``: revisões gravadas depois da 1ª página não entram nas seguintes.
+- Cursor ligado à base (namespace), ao ``basis``, à seleção normalizada e à fotografia
+  transacional da 1ª página (``feature_store.store_snapshot``: geração confirmada + instante):
+  revisões confirmadas depois — inclusive transações já em voo — não entram nas páginas seguintes,
+  e ``knowledge`` usa o mesmo instante para todas as páginas e características (V4-02).
 - Entradas validadas com códigos estáveis; falhas internas não são mascaradas como erro do usuário.
 """
 import base64
@@ -75,8 +77,9 @@ def _digest(payload):
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:16]
 
 
-def _encode_cursor(binding, key, recorded_through):
-    raw = json.dumps({"s": binding, "k": list(key), "r": recorded_through}, separators=(",", ":"))
+def _encode_cursor(binding, key, snapshot):
+    raw = json.dumps({"s": binding, "k": list(key), "g": snapshot["generation"], "t": snapshot["taken_at"]},
+                     separators=(",", ":"))
     return base64.urlsafe_b64encode(raw.encode()).decode()
 
 
@@ -87,15 +90,17 @@ def _decode_cursor(cursor, binding):
         payload = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
     except (ValueError, TypeError, binascii.Error, UnicodeDecodeError) as exc:
         raise QueryError("BAD_CURSOR", "Cursor inválido; recomece a paginação sem cursor.") from exc
-    if (not isinstance(payload, dict) or set(payload) != {"s", "k", "r"} or not isinstance(payload["s"], str)
+    if (not isinstance(payload, dict) or set(payload) != {"s", "k", "g", "t"} or not isinstance(payload["s"], str)
             or not isinstance(payload["k"], list) or len(payload["k"]) != 3
-            or not all(isinstance(part, str) for part in payload["k"]) or not isinstance(payload["r"], str)):
+            or not all(isinstance(part, str) for part in payload["k"])
+            or isinstance(payload["g"], bool) or not isinstance(payload["g"], int) or payload["g"] < 0
+            or not isinstance(payload["t"], str)):
         raise QueryError("BAD_CURSOR", "Cursor com estrutura inválida; recomece a paginação sem cursor.")
     if payload["s"] != binding:
         raise QueryError("CURSOR_MISMATCH", "O cursor pertence a outra base, modo temporal ou seleção; "
                                             "recomece sem cursor.")
-    _utc(payload["r"], "fotografia do cursor")
-    return tuple(payload["k"]), payload["r"]
+    _utc(payload["t"], "fotografia do cursor")
+    return tuple(payload["k"]), {"generation": payload["g"], "taken_at": payload["t"]}
 
 
 def catalog():
@@ -145,10 +150,12 @@ def _validate_selection(symbol, timeframe, feature_ids, basis, page_size):
     return sorted(set(feature_ids))  # repetidas são normalizadas: uma chave por característica
 
 
-def _knowledge_state(recorded, cut):
-    if recorded is None:
-        return "recording_unknown"
-    return "known_at_cut" if recorded <= cut else "reconstructed_after_cut"
+def _knowledge_state(generation, known_at, cut):
+    if generation is None:
+        return "recording_unknown"          # legado: sem geração, visibilidade desconhecida
+    if known_at is None:
+        return "confirmation_unstamped"     # confirmado, carimbo de conhecimento ainda ausente
+    return "known_at_cut" if known_at <= cut else "reconstructed_after_cut"
 
 
 def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, algorithm_version=None,
@@ -169,18 +176,19 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
         base = datasets.read_identity(db)
         context = db.time_context() if hasattr(db, "time_context") else {"offset_state": "unknown"}
         binding = _digest({"namespace": base["namespace"], "selection": selection})
-        after, recorded_through = (_decode_cursor(cursor, binding) if cursor else (None, None))
-        recorded_through = recorded_through or _iso(datetime.now(timezone.utc))
+        after, snapshot = (_decode_cursor(cursor, binding) if cursor else (None, None))
+        snapshot = snapshot or feature_store.store_snapshot(db)
         frames = [feature_store.query_as_of(db, cut, symbol=symbol, timeframe=timeframe, feature_id=ident,
                                             algorithm_version=algorithm_version, start=first, end=last,
-                                            basis=basis, recorded_through=recorded_through, with_recorded=True)
+                                            basis=basis, generation_through=snapshot["generation"],
+                                            knowledge_through=snapshot["taken_at"], with_recorded=True)
                   for ident in features]
         frames = [f for f in frames if not f.empty]
         frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
         if len(frame) > MAX_SELECTION_ROWS:  # limite de resposta, verificado após a leitura (BD18b: na origem)
             raise QueryError("SELECTION_TOO_LARGE", f"A seleção tem {len(frame)} fatos; limite "
                              f"{MAX_SELECTION_ROWS}. Reduza o intervalo com start/end.")
-        rows, counts = [], {"reconstructed_after_cut": 0, "recording_unknown": 0}
+        rows, counts = [], {"reconstructed_after_cut": 0, "recording_unknown": 0, "confirmation_unstamped": 0}
         if not frame.empty:
             frame = frame.assign(_obs=frame["observation_time"].map(_iso)).sort_values(
                 ["feature_id", "_obs", "algorithm_version"], kind="stable")
@@ -189,11 +197,16 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
                 if after is not None and key <= after:
                     continue
                 recorded = _iso(item.get("recorded_at_utc"))
-                state = _knowledge_state(recorded, _iso(cut))
+                known_at = _iso(item.get("known_at_utc"))
+                generation = item.get("generation")
+                generation = None if generation is None or (isinstance(generation, float) and math.isnan(generation)) \
+                    else int(generation)
+                state = _knowledge_state(generation, known_at, _iso(cut))
                 metadata = json.loads(item["metadata_json"]) if item.get("metadata_json") else {}
                 rows.append({"feature_id": item["feature_id"], "algorithm_version": item["algorithm_version"],
                              "observation_time": item["_obs"], "available_at": _iso(item["available_at_utc"]),
-                             "recorded_at": recorded, "knowledge_state": state,
+                             "recorded_at": recorded, "known_at": known_at, "generation": generation,
+                             "knowledge_state": state,
                              "reconstructed": bool(metadata.get("reconstructed", False)),
                              "value": _number(item.get("numeric_value")),
                              "category": item.get("categorical_value") or None, "quality": item["quality"],
@@ -228,6 +241,9 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
         if basis == "research" and counts["reconstructed_after_cut"]:
             reasons.append(f"{counts['reconstructed_after_cut']} fato(s) foram calculados depois do corte: "
                            "reconstrução de pesquisa, não conhecimento do sistema naquele instante.")
+        if counts["confirmation_unstamped"]:
+            reasons.append(f"{counts['confirmation_unstamped']} fato(s) confirmados sem carimbo de conhecimento "
+                           "(interrupção após o commit): o próximo escritor carimba, nunca com data anterior.")
         if basis == "research" and counts["recording_unknown"]:
             reasons.append(f"{counts['recording_unknown']} fato(s) sem instante de gravação (anteriores ao "
                            "contrato): não se sabe quando o sistema os conheceu.")
@@ -238,13 +254,13 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
             reasons.append("Nenhum fato no corte para a seleção e o modo temporal (não calculado, fora do "
                            "intervalo, ainda não disponível ou ainda não conhecido pelo sistema).")
         next_cursor = (_encode_cursor(binding, (rows[-1]["feature_id"], rows[-1]["observation_time"],
-                                                rows[-1]["algorithm_version"]), recorded_through) if more else None)
+                                                rows[-1]["algorithm_version"]), snapshot) if more else None)
         envelope = {
             "query_schema_version": QUERY_SCHEMA_VERSION, "status": "ok",
             "base": {key: base[key] for key in ("state", "namespace", "parent_namespace", "lineage", "provider",
                                                  "server", "backend")},
             "time_context": context, "temporal_basis": basis, "selection": selection, "definitions": definitions,
-            "values": rows, "snapshot": {"recorded_through": recorded_through},
+            "values": rows, "snapshot": dict(snapshot),
             "page": {"size": page_size, "returned": len(rows), "next_cursor": next_cursor},
             "freshness": {"latest_available_at": max((r["available_at"] for r in rows), default=None),
                           "latest_recorded_at": max((r["recorded_at"] for r in rows if r["recorded_at"]),

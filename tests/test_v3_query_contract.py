@@ -83,7 +83,7 @@ def test_v3_01_correction_is_known_only_after_it_is_recorded(tmp_path):
 def test_v3_01_legacy_facts_are_not_knowledge(tmp_path):
     db = _prepared(tmp_path / "legacy.sqlite")
     with db.engine.begin() as conn:
-        conn.execute(text("UPDATE _feature_values SET recorded_at_utc = NULL"))
+        conn.execute(text("UPDATE _feature_values SET recorded_at_utc = NULL, generation = NULL"))
     research = _series(db)
     assert {r["knowledge_state"] for r in research["values"]} == {"recording_unknown"}
     assert any("sem instante de gravação" in reason for reason in research["reasons"])
@@ -226,7 +226,8 @@ def test_v3_05_invalid_inputs_have_stable_codes(tmp_path, capsys):
         "BAD_PAGE_SIZE": dict(page_size=True),
         "BAD_CURSOR": dict(cursor=_cursor([])),
     }
-    cases_cursor = {"missing_key": {"s": good["s"], "r": good["r"]}, "wrong_types": {**good, "k": [1, 2, 3]},
+    cases_cursor = {"missing_key": {"s": good["s"], "t": good["t"], "g": good["g"]},
+                    "wrong_types": {**good, "k": [1, 2, 3]}, "bad_generation": {**good, "g": "1"},
                     "huge": "x" * 5000}
     for code, override in cases.items():
         assert _series(db, **override)["errors"][0]["code"] == code, code
