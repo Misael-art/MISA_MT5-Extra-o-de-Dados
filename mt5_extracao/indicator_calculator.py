@@ -81,11 +81,22 @@ class IndicatorCalculator:
     """
     def __init__(self):
         self.use_pandas_ta = ta is not None
+        self._unavailable_warned = False
         if not self.use_pandas_ta:
             log.warning("Usando implementações básicas de indicadores (pandas_ta indisponível).")
             self.basic_indicators = BasicIndicators()
         else:
             self.basic_indicators = None # Não necessário se pandas_ta estiver disponível
+
+    UNAVAILABLE_WITHOUT_PANDAS_TA = ("macd_line", "macd_signal", "macd_histogram", "bollinger_upper",
+                                     "bollinger_lower")
+
+    @property
+    def unavailable_outputs(self):
+        """Colunas que este calculador não produz no ambiente atual, com o motivo."""
+        if self.use_pandas_ta:
+            return {}
+        return {column: "pandas-ta ausente" for column in self.UNAVAILABLE_WITHOUT_PANDAS_TA}
 
     def calculate_technical_indicators(self, df):
         """
@@ -134,12 +145,17 @@ class IndicatorCalculator:
                 df['ma_20'] = self.basic_indicators.sma(df['close'], length=20)
                 df['true_range'] = self.basic_indicators.true_range(df['high'], df['low'], df['close'])
                 df['atr'] = self.basic_indicators.atr(df['high'], df['low'], df['close'], length=14)
-                # MACD e Bollinger não implementados no fallback básico por enquanto
-                df['macd_line'] = np.nan
-                df['macd_signal'] = np.nan
-                df['macd_histogram'] = np.nan
-                df['bollinger_upper'] = np.nan
-                df['bollinger_lower'] = np.nan
+                # MACD e Bollinger não implementados no fallback básico: colunas ausentes (NaN) com motivo
+                # declarado, nunca um sucesso silencioso.
+                for column in self.UNAVAILABLE_WITHOUT_PANDAS_TA:
+                    df[column] = np.nan
+                df.attrs["unavailable_outputs"] = {column: "pandas-ta ausente" for column in
+                                                   self.UNAVAILABLE_WITHOUT_PANDAS_TA}
+                if not self._unavailable_warned:
+                    log.warning("pandas-ta ausente: %s ficam indisponíveis (NaN) nas colunas legadas; instale "
+                                "requirements-optional.txt ou use o registry analítico.",
+                                ", ".join(self.UNAVAILABLE_WITHOUT_PANDAS_TA))
+                    self._unavailable_warned = True
 
             log.debug("Cálculo de indicadores concluído.")
             return df
