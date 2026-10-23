@@ -20,7 +20,7 @@ seguealpha2/(N+1). Lado inicial explícito, alta por padrão. O candle corrente
 é provisório e recalculado a partir da barra anterior, sem acumular várias
 catracas no mesmo candle. HLC inválido/overflow torna o sufixo indisponível.
 
-[Contrato matemático e notas teóricas](https://github.com/Misael-art/projeto-indicadores-mt5/blob/e01540f3a8dc2ad40b555adf91278eaa34af261d/Documentation/HADOUKEN_2/propostas/G19_9_SUPER_ATR.md).
+[Contrato matemático e notas teóricas](https://github.com/Misael-art/projeto-indicadores-mt5/blob/3a3137ca/Documentation/HADOUKEN_2/propostas/G19_9_SUPER_ATR.md).
 Guarda: oATR altera a distância da BASE, mas a catraca pode impedir recuo da
 linha já retida. Estado de alta/baixa é discreto; linha/ATR também guardam
 memória numérica. Desvios distintos podem virar em barras diferentes e as
@@ -38,10 +38,22 @@ atualiza a distribuiçãoSafety nem o canal aceitoapp-current.
 Validação local:126 testesApp;88HADOUKEN e checker161; compilação6281/Wine
 0erros/0avisos nos três ativos e adaptador do painel. Identidade real conferida
 com mutação recusada. Doctor20OK/1opcionalpandas-ta/0falhas, no perfil instalado
-reutilizado (bootstrap/configuração não alterados). A versão1.00 foi inspecionada no gráfico. Inspeção e instalação da1.01,
-com ligação diagonal solicitada pelo proprietário, em curso. [Evidência](../evidencias/G19_9_SUPER_ATR_20261023.json).
+reutilizado (bootstrap/configuração não alterados). Versão1.01 compilada e inspecionada:EURUSD/M5, três curvas pontilhadas,
+patamares e diagonais nos dois sentidos, fundoMinimalB&W/clean, sem marca
+d’água/relógio, painel pausado e nenhuma exposição observada. A prova foi feita
+na composição App0b2fda3 +He01540f3, que inclui a correção adicional de monitor
+[PR204](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/204).
+Esta correção é necessária para preencher também a área interna Wine no monitor
+maior; os runtimes de catálogo/pin destePR são idênticos nessa composição.
+A prévia do atalho usa essa composição; canal aceito preservado. [Evidência](../evidencias/G19_9_SUPER_ATR_20261023.json).
 
 Windows físico, referência numérica externaProfit,50curvas e aceites financeiros/
 operacionais não são qualificados por este estudo. Alteração externa dos
 parâmetros conserva a políticaG19 de preservar identidades modificadas:
 controle/remoção pelo diálogoMT5 quando o controlador não reconhece a cópia.
+
+![Três curvas pontilhadas e diagonais no EURUSD M5](../img/super_atr/eurusd-m5-three-curves.png)
+
+Captura da área de gráfico3456×1363, monitor3456×1458 informado pelo sistema;
+contagens dos pixelsRGB2940/2586/2493. Conexão diagonal é apresentação entre
+amostras, sem mudar a catraca ou afirmar um caminho de preço intrabar.

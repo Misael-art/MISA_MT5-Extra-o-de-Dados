@@ -4151,5 +4151,6 @@ mantém sua fila App168; não foi promovido por este registro.
 Três curvas20/SMA/1×–3× pontilhadas no preço, RGB, catraca e virada estrita
 implementados noH316cb6ba. App fecha ativo/matemática e pinmanual revisado,
 sem ampliar automáticos/risco/executor.126App/88H/checker161/compilação0/0;
-inspeção visual e ativação em curso. [Contrato e pendências](sdk/super_atr.md).
+versão1.01 com diagonais inspecionadaEURUSD/M5 e instalada na prévia,
+composta com correção de monitorPR204. [Contrato e pendências](sdk/super_atr.md).
 50curvas/adaptação/Profit/Windowsfísico são próprios.
