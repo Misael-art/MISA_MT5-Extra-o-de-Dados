@@ -1,6 +1,24 @@
 # BD18a — Consulta inicial executável — PARCIAL
 
-## Estado atual (23/10/2026, 4ª revisão — V4-01..03)
+## Estado atual (23/10/2026, 5ª revisão — V5-01..02)
+
+- **V5-01:** o carimbo de conhecimento era calculado antes do UPDATE/commit da sua própria
+  transação; uma nova consulta no mesmo corte mudava quando ele confirmava. Agora o carimbo é
+  transação serializada pelo contador do store, com horário tomado sob o bloqueio e sempre
+  posterior à fronteira confirmada (`knowledge_frontier`), que avança na mesma transação. A
+  fotografia e o cursor fixam geração **e** fronteira; `knowledge` usa
+  `known_at <= min(corte, fronteira)`; corte além da fronteira é limitado e declarado
+  (`knowledge_horizon`). Ordem lógica = geração/fronteira; horário físico = `known_at`, que é sempre
+  posterior ao commit dos dados (conservador). Legado: sem geração, nunca conhecido.
+- **V5-02:** `save_value` escolhia a revisão antes do bloqueio; dois escritores colidiam com
+  `IntegrityError`. Agora a exclusão (SQLite `BEGIN IMMEDIATE`; PG `FOR UPDATE` no contador) vem antes
+  de ler a revisão vigente, em `save_value` e `save_values`: escritores entram em fila, retries iguais
+  não duplicam, conteúdos distintos geram revisões na ordem confirmada.
+- Provas: `tests/test_v5_store_contract.py` (barreiras dentro do carimbo e antes do contador; falham
+  no código anterior), `tests/test_v5_query_contract.py` (páginas, mesmo corte, duas
+  características, SDK, CLI, leitor sem escrita) e `_pg.py` (CI).
+
+## 4ª revisão (23/10/2026, V4-01..03)
 
 - **V4-01:** `save_value` gravava sem horário (NULL igual a legado); agora `save_value` e
   `save_values` usam o mesmo caminho de escrita (#201).

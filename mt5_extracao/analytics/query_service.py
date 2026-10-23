@@ -14,7 +14,9 @@ Contrato ``query_schema_version=2`` (correções V3-01..05 da 3ª revisão):
 - Cursor ligado à base (namespace), ao ``basis``, à seleção normalizada e à fotografia
   transacional da 1ª página (``feature_store.store_snapshot``: geração confirmada + instante):
   revisões confirmadas depois — inclusive transações já em voo — não entram nas páginas seguintes,
-  e ``knowledge`` usa o mesmo instante para todas as páginas e características (V4-02).
+  e ``knowledge`` usa o mesmo instante e a mesma fronteira de conhecimento confirmada para todas as
+  páginas e características (V4-02/V5-01). Corte além da fronteira é limitado a ela e declarado em
+  ``knowledge_horizon``/``reasons``.
 - Entradas validadas com códigos estáveis; falhas internas não são mascaradas como erro do usuário.
 """
 import base64
@@ -78,8 +80,8 @@ def _digest(payload):
 
 
 def _encode_cursor(binding, key, snapshot):
-    raw = json.dumps({"s": binding, "k": list(key), "g": snapshot["generation"], "t": snapshot["taken_at"]},
-                     separators=(",", ":"))
+    raw = json.dumps({"s": binding, "k": list(key), "g": snapshot["generation"], "t": snapshot["taken_at"],
+                      "f": snapshot.get("knowledge_frontier")}, separators=(",", ":"))
     return base64.urlsafe_b64encode(raw.encode()).decode()
 
 
@@ -90,17 +92,20 @@ def _decode_cursor(cursor, binding):
         payload = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
     except (ValueError, TypeError, binascii.Error, UnicodeDecodeError) as exc:
         raise QueryError("BAD_CURSOR", "Cursor inválido; recomece a paginação sem cursor.") from exc
-    if (not isinstance(payload, dict) or set(payload) != {"s", "k", "g", "t"} or not isinstance(payload["s"], str)
+    if (not isinstance(payload, dict) or set(payload) != {"s", "k", "g", "t", "f"} or not isinstance(payload["s"], str)
             or not isinstance(payload["k"], list) or len(payload["k"]) != 3
             or not all(isinstance(part, str) for part in payload["k"])
             or isinstance(payload["g"], bool) or not isinstance(payload["g"], int) or payload["g"] < 0
-            or not isinstance(payload["t"], str)):
+            or not isinstance(payload["t"], str) or not (payload["f"] is None or isinstance(payload["f"], str))):
         raise QueryError("BAD_CURSOR", "Cursor com estrutura inválida; recomece a paginação sem cursor.")
     if payload["s"] != binding:
         raise QueryError("CURSOR_MISMATCH", "O cursor pertence a outra base, modo temporal ou seleção; "
                                             "recomece sem cursor.")
     _utc(payload["t"], "fotografia do cursor")
-    return tuple(payload["k"]), {"generation": payload["g"], "taken_at": payload["t"]}
+    if payload["f"] is not None:
+        _utc(payload["f"], "fronteira de conhecimento do cursor")
+    return tuple(payload["k"]), {"generation": payload["g"], "taken_at": payload["t"],
+                                 "knowledge_frontier": payload["f"]}
 
 
 def catalog():
@@ -181,7 +186,9 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
         frames = [feature_store.query_as_of(db, cut, symbol=symbol, timeframe=timeframe, feature_id=ident,
                                             algorithm_version=algorithm_version, start=first, end=last,
                                             basis=basis, generation_through=snapshot["generation"],
-                                            knowledge_through=snapshot["taken_at"], with_recorded=True)
+                                            knowledge_through=snapshot["taken_at"],
+                                            knowledge_frontier=snapshot["knowledge_frontier"] or "1970-01-01T00:00:00Z",
+                                            with_recorded=True)
                   for ident in features]
         frames = [f for f in frames if not f.empty]
         frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
@@ -241,6 +248,11 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
         if basis == "research" and counts["reconstructed_after_cut"]:
             reasons.append(f"{counts['reconstructed_after_cut']} fato(s) foram calculados depois do corte: "
                            "reconstrução de pesquisa, não conhecimento do sistema naquele instante.")
+        horizon = snapshot.get("knowledge_frontier")
+        if basis == "knowledge" and (horizon is None or _iso(horizon) < _iso(cut)):
+            reasons.append("Conhecimento confirmado só até " + (_iso(horizon) or "nenhuma confirmação") +
+                           ": o corte foi limitado a essa fronteira (confirmações posteriores podem estar "
+                           "pendentes); cortes até ela não mudam.")
         if counts["confirmation_unstamped"]:
             reasons.append(f"{counts['confirmation_unstamped']} fato(s) confirmados sem carimbo de conhecimento "
                            "(interrupção após o commit): o próximo escritor carimba, nunca com data anterior.")
@@ -259,7 +271,9 @@ def series(db, *, symbol, timeframe, feature_ids, as_of, start=None, end=None, a
             "query_schema_version": QUERY_SCHEMA_VERSION, "status": "ok",
             "base": {key: base[key] for key in ("state", "namespace", "parent_namespace", "lineage", "provider",
                                                  "server", "backend")},
-            "time_context": context, "temporal_basis": basis, "selection": selection, "definitions": definitions,
+            "time_context": context, "temporal_basis": basis,
+            "knowledge_horizon": _iso(snapshot.get("knowledge_frontier")) if basis == "knowledge" else None,
+            "selection": selection, "definitions": definitions,
             "values": rows, "snapshot": dict(snapshot),
             "page": {"size": page_size, "returned": len(rows), "next_cursor": next_cursor},
             "freshness": {"latest_available_at": max((r["available_at"] for r in rows), default=None),

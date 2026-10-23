@@ -41,8 +41,11 @@ PostgreSQL com transação somente leitura), como faz a CLI.
   - `basis`/`temporal_basis`: `research` reconstrói o passado pela disponibilidade declarada do
     produtor (pesquisa/backtest, não prova de conhecimento); `knowledge` só devolve revisões que o
     sistema já tinha gravado no corte.
-  - `values[]`: `available_at`, `recorded_at` (relógio do escritor), `known_at` (confirmação
-    carimbada após o commit), `generation`, `knowledge_state` (`known_at_cut`,
+  - `knowledge_horizon` (modo knowledge): maior carimbo de conhecimento já confirmado na
+    fotografia; cortes até ele não mudam; corte além dele é limitado a ele e explicado em `reasons`.
+  - `values[]`: `available_at`, `recorded_at` (relógio do escritor), `known_at` (carimbo de
+    conhecimento, tomado sob a exclusão do store DEPOIS do commit dos dados — nunca antecipa a
+    visibilidade; legado sem geração não tem `known_at`), `generation`, `knowledge_state` (`known_at_cut`,
     `reconstructed_after_cut`, `confirmation_unstamped`, `recording_unknown`), `reconstructed`,
     valor/categoria, qualidade, revisão, versão.
   - `definitions[feature].versions[algorithm_version]`: definição gravada daquela versão (ou
