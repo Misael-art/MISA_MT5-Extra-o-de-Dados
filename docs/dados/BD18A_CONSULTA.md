@@ -1,4 +1,26 @@
-# BD18a — Consulta inicial executável (23/10/2026) — PARCIAL
+# BD18a — Consulta inicial executável — PARCIAL
+
+## Estado atual (23/10/2026, contrato v2 após a 3ª revisão)
+
+A 3ª revisão reproduziu cinco defeitos na v1 (log `v3_contraprovas_antes_fe92ed1.txt` na
+fotografia): reconstrução sem distinção de conhecimento real (18 fatos, 17 VALID, onde o bruto
+causal tinha 0), unidade atual aplicada a versão antiga, DDL/INSERT numa consulta (falha com
+`query_only`), cursor de outra base aceito, exceções cruas e filtros duplicados.
+
+Correções (sonda `v3_contraprovas_depois_*.txt`): `basis` research/knowledge com
+`recorded_at`/`knowledge_state`/`reconstructed` e motivo (store: coluna aditiva `recorded_at_utc`,
+PR próprio T13.2); definição por versão gravada separada do contrato vigente; leitura pura
+(`datasets.read_identity`, `DatabaseManager(read_only=True)`, CLI somente leitura); cursor ligado à
+base/basis/seleção com fotografia `recorded_through`; validação com códigos estáveis. Provas:
+`tests/test_v3_query_contract.py` (11) e `_pg.py` (CI).
+
+Limites mantidos: a seleção ainda é carregada inteira antes de paginar (teto de resposta
+200 000, não garantia de memória — BD18b); `knowledge` usa a gravação do fato derivado como limite
+superior das dependências (gravado depois dos recebimentos), não a cadeia detalhada de cada
+fonte; fatos anteriores a `recorded_at_utc` são `recording_unknown`.
+
+## Recorte inicial (23/10/2026, v1, preservado)
+
 
 Vinculação T18.6 (consulta local/DTO) e SDK T10.7. Depende de BD06/BD08a.
 

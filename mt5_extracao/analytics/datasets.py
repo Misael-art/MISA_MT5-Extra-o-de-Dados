@@ -131,6 +131,23 @@ def identity(db):
             "backend": db.engine.dialect.name}
 
 
+def read_identity(db):
+    """Identidade da base SEM migrar nem gravar (consultas, bancos somente leitura).
+
+    Base sem ``_dataset_origin`` devolve ``state='unidentified'`` e namespace ``None``: nenhuma
+    identidade é inventada numa leitura; ``identity()`` (escrita) é quem inicializa.
+    """
+    with db.engine.connect() as conn:
+        if not inspect(conn).has_table("_dataset_origin"):
+            slots = {}
+        else:
+            slots = _slots(conn)
+    namespace = slots.get("default")
+    return {"state": "identified" if namespace else "unidentified", "namespace": namespace,
+            "parent_namespace": slots.get("parent"), "lineage": "fork" if slots.get("parent") else "original",
+            "provider": slots.get("provider"), "server": slots.get("server"), "backend": db.engine.dialect.name}
+
+
 def fork(db):
     """Declara esta cópia como base derivada independente: novo namespace, origem registrada.
 

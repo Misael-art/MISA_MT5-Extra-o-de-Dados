@@ -592,7 +592,7 @@
    "owner": "BD19b",
    "case": "Relações efetivas",
    "criterion": "Tela usa serviço real; fixtures só em demonstração/testes identificados",
-   "state": "em_execucao",
+   "state": "planejado",
    "evidence": [
     {
      "commit": "94bba93b1db24ce9c63dec0af9581144273b9218",
@@ -614,6 +614,10 @@
       "wall_seconds": 7.15
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    },
+    {
+     "retification": "23/10/2026 (3ª revisão): a evidência anterior (tests/test_bd19c1_cli.py) prova a CLI, não a tela de Relações; não conta para E31. Recibo preservado; prova reatribuída a E32.1.",
+     "commit": null
     }
    ]
   },
@@ -623,7 +627,22 @@
    "case": "CLI/export",
    "criterion": "Mesma seleção e valores do serviço, ordem e limites verificáveis",
    "state": "planejado",
-   "evidence": []
+   "evidence": [],
+   "subcriteria": [
+    {
+     "id": "E32.1",
+     "owner": "BD19c1",
+     "scope": "primeiro consumo pela CLI (sem exportação)",
+     "criterion": "CLI devolve a mesma seleção, valores, base e erros do serviço/SDK",
+     "state": "em_execucao",
+     "evidence": [
+      {
+       "source": "recibo E31 de 23/10 (docs/dados/recibos/recibos_20261023b.json), reatribuído",
+       "test": "tests/test_bd19c1_cli.py"
+      }
+     ]
+    }
+   ]
   },
   {
    "id": "E33",

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import logging
 import pandas as pd
 import numpy as np # <--- ADICIONADO IMPORT
@@ -31,7 +32,7 @@ class DatabaseManager:
     _PRESUMED_OFFSET = -3.0
 
     def __init__(self, db_type='sqlite', db_path='database/mt5_data.db', time_basis='broker',
-                 broker_utc_offset=None, broker_timezone=None):
+                 broker_utc_offset=None, broker_timezone=None, read_only=False):
         """
         Inicializa o gerenciador do banco de dados.
 
@@ -66,6 +67,8 @@ class DatabaseManager:
                 raise ValueError("broker_timezone exige time_basis = utc (o horário local repete no fim do "
                                  "horário de verão e não pode ser chave).")
         self._time_basis_checked = False
+        # Somente leitura: não cria pasta, arquivo nem tabelas de controle; o próprio banco recusa escrita.
+        self.read_only = bool(read_only)
         self.engine = None
         self._table_lock = threading.Lock()
         self._table_cache = {}
@@ -78,6 +81,14 @@ class DatabaseManager:
             if self.db_type == 'sqlite':
                 # Garante que o diretório do banco existe
                 db_dir = os.path.dirname(self.db_path)
+                if self.read_only:
+                    if not os.path.isfile(self.db_path):
+                        raise SQLAlchemyError(f"Banco inexistente para leitura: {self._safe_location()}")
+                    self.engine = create_engine(f"sqlite:///file:{Path(self.db_path).resolve().as_posix()}?mode=ro&uri=true",
+                                                connect_args={'timeout': 30})
+                    with self.engine.connect():
+                        log.info("Conexão SQLite somente leitura estabelecida.")
+                    return
                 if db_dir and not os.path.exists(db_dir):
                     os.makedirs(db_dir)
                     log.info(f"Diretório do banco de dados criado: {db_dir}")
@@ -89,13 +100,15 @@ class DatabaseManager:
                     log.info(f"Conexão com banco de dados SQLite estabelecida: {self.db_path}")
                 self._ensure_control_tables()
             elif self.db_type == 'postgresql':
-                self.engine = create_engine(self.db_path, pool_pre_ping=True)
+                options = {"connect_args": {"options": "-c default_transaction_read_only=on"}} if self.read_only else {}
+                self.engine = create_engine(self.db_path, pool_pre_ping=True, **options)
                 with self.engine.connect() as connection:
                     self._timescale = bool(connection.execute(text(
                         "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar())
                 log.info(f"Conexão com PostgreSQL estabelecida: {self._safe_location()}"
                          + (" (TimescaleDB disponível)" if self._timescale else ""))
-                self._ensure_control_tables()
+                if not self.read_only:
+                    self._ensure_control_tables()
             else:
                 log.error(f"Tipo de banco de dados não suportado: {self.db_type}")
                 self.engine = None

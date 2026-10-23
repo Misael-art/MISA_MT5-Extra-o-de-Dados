@@ -29,18 +29,30 @@ Nada aqui envia ordens. O backtest de robô MQL5 usa o Strategy Tester do MetaTr
 **Política de mudança:** uma função ou parâmetro só é removido ou muda de significado em versão **maior** do pacote,
 depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novos entram no fim, com valor padrão.
 
-## Consulta de dados analíticos (BD18a)
+## Consulta de dados analíticos (BD18a, contrato v2)
 
-Leitura sem UI e sem MT5 dos fatos já materializados no store; nunca calcula nem grava.
+Leitura sem UI e sem MT5 dos fatos já materializados; nunca calcula, migra nem grava. Para garantir
+isso no próprio banco, abra-o com `DatabaseManager(..., read_only=True)` (SQLite `mode=ro`,
+PostgreSQL com transação somente leitura), como faz a CLI.
 
 - `sdk.query_series(db, symbol=..., timeframe=..., feature_ids=[...], as_of=..., start=None, end=None,
-  algorithm_version=None, page_size=500, cursor=None)` → envelope `query_schema_version=1` com `base`
-  (namespace, linhagem, fonte), `time_context` (estado do fuso), `definitions` (contrato BD06),
-  `values` (valor/categoria, qualidade, revisão, `available_at`, versão), `page.next_cursor` (ordem
-  estável feature/observação/versão), `freshness`, `reasons` e `errors` estruturados
-  (`NAIVE_TIME`, `UNKNOWN_FEATURE`, `BAD_PAGE_SIZE`, `BAD_CURSOR`, `CURSOR_MISMATCH`,
-  `SELECTION_TOO_LARGE`, `MISSING_SELECTION`). JSON sem NaN/infinito.
-- `sdk.query_catalog()` → contratos BD06 de todas as definições consultáveis.
+  algorithm_version=None, basis="research", page_size=500, cursor=None)` → envelope
+  `query_schema_version=2`:
+  - `basis`/`temporal_basis`: `research` reconstrói o passado pela disponibilidade declarada do
+    produtor (pesquisa/backtest, não prova de conhecimento); `knowledge` só devolve revisões que o
+    sistema já tinha gravado no corte.
+  - `values[]`: `available_at`, `recorded_at`, `knowledge_state` (`known_at_cut`,
+    `reconstructed_after_cut`, `recording_unknown`), `reconstructed`, valor/categoria, qualidade,
+    revisão, versão.
+  - `definitions[feature].versions[algorithm_version]`: definição gravada daquela versão (ou
+    `state="missing"`); `current_contract`: catálogo vigente, separado.
+  - `base` (com `state` identified/unidentified), `time_context`, `snapshot.recorded_through`,
+    `page.next_cursor` (ligado à base, ao basis e à seleção normalizada; páginas mantêm a
+    fotografia da primeira), `counts`, `reasons`, `errors`.
+  - Códigos: `BAD_TIME`, `NAIVE_TIME`, `BAD_RANGE`, `BAD_BASIS`, `MISSING_SELECTION`, `BAD_SELECTION`,
+    `UNKNOWN_FEATURE`, `BAD_PAGE_SIZE`, `BAD_CURSOR`, `CURSOR_MISMATCH`, `SELECTION_TOO_LARGE`,
+    `PAGINATION_REQUIRES_IDENTITY`. Características repetidas são normalizadas.
+- `sdk.query_catalog()` → contratos BD06 vigentes.
 
 Não há servidor HTTP: a futura API publicará este mesmo serviço.
 

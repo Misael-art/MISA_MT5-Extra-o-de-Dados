@@ -23,7 +23,9 @@ def test_envelope_carries_base_time_definitions_and_store_facts(connector, fake_
     assert env["status"] == "ok" and env["errors"] == []
     assert env["base"]["provider"] == "mt5" and env["base"]["server"] == "Fake-Demo"
     assert env["time_context"]["offset_state"] == "declared"
-    assert env["definitions"]["price.return_5"]["unit"] == "fraction"
+    assert env["definitions"]["price.return_5"]["current_contract"]["unit"] == "fraction"
+    versions = env["definitions"]["price.return_5"]["versions"]
+    assert versions and all(v["state"] == "stored" and v["unit"] == "fraction" for v in versions.values())
     store = feature_store.query_as_of(db, NOW, symbol=SYMBOL, timeframe="M5", feature_id="price.return_5")
     assert len(env["values"]) == len(store)
     by_time = {row["observation_time"]: row["value"] for row in env["values"]}
@@ -74,5 +76,7 @@ def test_structured_errors_and_no_writes(connector, fake_mt5, tmp_path):
 def test_sdk_returns_the_same_facts(connector, fake_mt5, tmp_path):
     db = _db(connector, tmp_path)
     selection = dict(symbol=SYMBOL, timeframe="M5", feature_ids=["price.return_20"], as_of=NOW)
-    assert sdk.query_series(db, **selection) == query_service.series(db, **selection)
+    via_sdk, direct = sdk.query_series(db, **selection), query_service.series(db, **selection)
+    via_sdk.pop("snapshot"), direct.pop("snapshot")  # carimbo da fotografia é por chamada
+    assert via_sdk == direct
     assert "price.return_20" in {d["feature_id"] for d in sdk.query_catalog()["definitions"]}

@@ -2706,3 +2706,14 @@ recibos `docs/dados/recibos/recibos_20261023b.json` com E06 pela entrada efetiva
 Primeira cadeia funcional: provedor falso → extrator → M1 → M5 → store → `sdk.query_series` →
 `mt5x analytics features series`. Pilha: #190…#194 e novos PRs BD06, BD07, BD08a, BD18a, BD19c1.
 Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
+
+### Retificação de 23/10/2026 (3ª revisão) — M2 e E31, sem apagar o registro anterior
+
+- **M2** é BD03–07 + BD08a + BD18a + BD19c1 (fonte → valor → consulta/CLI). Laboratório, Relações,
+  export e Estudo pertencem a marcos posteriores e não são pré-requisito de M2. Estado correto:
+  primeiro percurso de M2 demonstrado; M2 parcial pelos aceites próprios ainda incompletos e pelos
+  defeitos V3-01..05 (corrigidos em PRs próprios, em revisão).
+- **E31** (tela de Relações, BD19b) tinha recebido evidência de CLI; retificado para `planejado`.
+  A prova da CLI passa ao subcritério **E32.1** (BD19c1, sem exportação).
+- Consulta pública em contrato v2 (research × knowledge; definição por versão; leitura pura;
+  cursor ligado à base; erros estáveis). Store grava `recorded_at_utc`.
