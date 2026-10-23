@@ -4159,5 +4159,6 @@ composta com correção de monitorPR204. [Contrato e pendências](sdk/super_atr.
 
 Correção do retorno do dock: preparar modos internos na cópia Wine ANTES do
 primeiro processo, além da janela externa. Baseline85/final126 testes,
-doctor20/1/0; prova isolada3456×1458. Lançamentos normais/visual em curso;
+doctor20/1/0; prova isolada3456×1458; PLAY normal3456×1458 e REPLAY
+normal1280×800 concluídos,128 testes finais e correção de corridaBadWindow;
 Windows físico pendente. [Contrato e continuidade](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).

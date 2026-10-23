@@ -110,7 +110,12 @@ registro da ponte, DPI, cálculos, negociação ou Windows nativo.
 Baseline85 testes;126 finais selecionados, doctor20/1opcional/0. O método de
 produção foi executado em prefixo isolado: GetSystemMetrics e área virtual
 passaram de1280×800 para3456×1458; servidor/cópias próprios removidos ao terminar.
-Lançamentos normais PLAY/REPLAY e inspeção do gráfico correspondente em curso.
+Lançamentos normais validados na composição App0b2fda3/He01540f3:
+PLAYEURUSD/M5 em3456×1458, com gráfico preenchido e SuperATR1.01;
+REPLAYEURUSD/M5 em1280×800 no handheld, candles/indicadores/avanço e
+conclusão normal do roteiro20–21/10. Sem ordens observadas. O replay não
+qualifica SuperATR, apenas a exibição e o progresso do ambiente.
+[Captura do replay](../img/replay_display/handheld-monitor-fit-1280x800.png).
 [Evidência complementar](../evidencias/PLAY_REPLAY_MONITOR_INTERNO_20261023.json).
 
 A primeira abertura com o modo interno corrigido expôs uma segunda falha:
@@ -121,4 +126,9 @@ erros de outras conexões (incluindo Tk) são repassados. Prova real em subproce
 criando/destruindo somente uma janela própria: base sai1, correção sai0. O teste
 automatizado cobre encaminhamento/restauração inclusive quando a leitura falha.
 O primeiro ensaio interrompido permanece como falha, sem ser marcado visualmente
-aprovado; nova instalação/abertura correspondente é necessária.
+aprovado; nova instalação/abertura correspondente passou: a UI permaneceu viva durante
+a transição compilação→PLAY e até o STOP deliberado; carteira antes/depois igual.
+
+A composição final também inclui o pedido subsequente SuperATR1.02/dez curvas
+e cinza claro; seu fonte/pin/compilação e inspeção têm evidênciaG19.9 própria.
+A correção de monitor continua separada deste indicador e não modifica a matemática.
