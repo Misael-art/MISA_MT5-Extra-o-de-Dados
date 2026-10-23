@@ -24,12 +24,13 @@ oculta. Trocar apenas DISPLAY ou maximizar a janela externa não alterou a área
 Win32 de desenho: o teste podia avançar enquanto a visualização ficava preta ou
 recortada. Um desktop nomeado no mesmo servidor também não bastou.
 
-Sessões visíveis usam um prefixo temporário próprio dentro do perfil UUID:
+Sessões visíveis e todo PLAY Linux (inclusive oculto) usam um prefixo temporário próprio dentro do perfil UUID:
 registro e arquivos Windows copiados, C: restrito ao perfil e desktop Wine iniciado
 na resolução do monitor escolhido. Explorer precisa ser o primeiro processo de
 cada inicialização; compilação e gráfico usam esse ambiente privado. O servidor
 privado é encerrado entre compilação e execução, que consulta novamente as telas,
-e ao finalizar. O servidor da ponte e os outros terminais continuam independentes.
+e ao finalizar. O servidor da ponte e os outros terminais continuam independentes. O PLAY oculto
+assim também fica independente de um terminal principal já aberto na tela real.
 
 Um `run` externo injetado conserva a posse do seu processo/ambiente; o runtime
 visual próprio é preparado somente pelo lançador da sessão. A regressão existente
@@ -41,12 +42,14 @@ consome temporariamente espaço (cerca de 400 MB no host observado), sob as mesm
 verificações de orçamento/cancelamento usadas na preparação. Após confirmar o
 encerramento de seu servidor e liberar o contexto nativo, remove suas cópias e
 links; conserva logs, relatório e artefatos da sessão. Falha de encerramento mantém
-os arquivos protegidos. Não há exclusão global de prefixos ou caches.
+os arquivos protegidos. A espera comprova encerramento mesmo se nenhum servidor
+chegou a iniciar; um prefixo que a preparação não criou nunca recebe sinal.
+Não há exclusão global de prefixos ou caches.
 
 ## Evidência e limites
 
 [Registro verificável](../evidencias/PLAY_REPLAY_MONITORES_20261023.json):
-158 testes dirigidos aprovados/1 exclusão prévia de plataforma e12 de interface; monitor retirado,
+160 testes dirigidos aprovados/1 exclusão prévia de plataforma e12 de interface; monitor retirado,
 coordenadas negativas, tamanhos diferentes, Linux/Windows simulado, posse por
 prefixo+UUID, orçamento/cancelamento e preservação em falha de encerramento.
 A interface tem três novas verificações de escolha/padrão e passagem do monitor,

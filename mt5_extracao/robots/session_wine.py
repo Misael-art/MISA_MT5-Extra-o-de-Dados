@@ -38,8 +38,13 @@ class Runtime:
 
     def stop(self):
         """Somente o servidor deste prefixo UUID, incluindo serviços sem janela."""
+        if self.prefix not in self.created:
+            return  # preparação não adquiriu este caminho; não sinalizar terceiros
         env = dict(os.environ, WINEPREFIX=str(self.prefix), WINEDEBUG="-all")
-        subprocess.run(["wineserver", "-k"], env=env, check=True, timeout=15,
+        # -k retorna1 quando nenhum servidor chegou a iniciar ou já terminou.
+        # A prova de encerramento é -w bem-sucedido, seguida da conferência
+        # dos processos próprios pela Session; timeout/erro preserva as cópias.
+        subprocess.run(["wineserver", "-k"], env=env, check=False, timeout=15,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(["wineserver", "-w"], env=env, check=True, timeout=15,
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

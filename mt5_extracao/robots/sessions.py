@@ -634,7 +634,7 @@ class Session:
         # Um runner injetado já é dono do processo/ambiente e não passa pelo
         # launcher visual abaixo. Preservar esse contrato (inclusive sem Wine real).
         own_launcher = self.native_options is None or self.native_options.get("run") is None
-        if self.visible and not paths.is_windows() and own_launcher:
+        if (self.visible or self.mode == "play") and not paths.is_windows() and own_launcher:
             from functools import partial
             from .session_wine import Runtime
             self.visual_runtime = Runtime(mt5_tools.wine_prefix(self.config), self.directory)

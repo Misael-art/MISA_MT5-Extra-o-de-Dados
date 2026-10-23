@@ -69,12 +69,14 @@ def test_existing_directory_is_never_claimed_or_removed(runtime):
 
 
 def test_server_shutdown_is_scoped_to_own_uuid_prefix_and_waited(runtime, monkeypatch):
+    runtime.prepare(sessions._copy_file)
     called = []
     monkeypatch.setenv("WINEPREFIX", str(runtime.source))
     monkeypatch.setattr(session_wine.subprocess, "run", lambda args, **kw: called.append((args, kw)))
     runtime.stop()
     assert [args for args, _ in called] == [["wineserver", "-k"], ["wineserver", "-w"]]
-    assert all(kw["env"]["WINEPREFIX"] == str(runtime.prefix) and kw["check"] for _, kw in called)
+    assert all(kw["env"]["WINEPREFIX"] == str(runtime.prefix) for _, kw in called)
+    assert called[-1][1]["check"] is True
     assert session_wine.os.environ["WINEPREFIX"] == str(runtime.source)
 
 
@@ -111,7 +113,7 @@ def test_removed_dock_selects_remaining_handheld():
     assert session_window.select_monitor([handheld], (2500, 500)) == handheld
 
 
-@pytest.mark.parametrize("stop_fails", [False, True])
+@pytest.mark.parametrize("stop_fails", [False, True, "not_started"])
 def test_failed_session_preserves_runtime_until_its_server_is_confirmed_stopped(runtime, robot, monkeypatch, stop_fails):
     import contextlib
     import json
@@ -130,7 +132,17 @@ def test_failed_session_preserves_runtime_until_its_server_is_confirmed_stopped(
     def stop():
         if stop_fails:
             raise subprocess.TimeoutExpired("own-server-wait", 15)
-    monkeypatch.setattr(runtime, "stop", stop)
+    if stop_fails == "not_started":
+        # Cancelamento/preparação falha antes de Popen: -k1 não é servidor vivo.
+        def no_server(args, **kwargs):
+            code = 1 if args[-1] == "-k" else 0
+            if kwargs.get("check") and code:
+                raise subprocess.CalledProcessError(code, args)
+            return subprocess.CompletedProcess(args, code)
+        monkeypatch.setattr(session_wine.subprocess, "run", no_server)
+        stop_fails = False
+    else:
+        monkeypatch.setattr(runtime, "stop", stop)
     def fail(**kwargs):
         raise RuntimeError("preparation failed")
     monkeypatch.setattr(job, "_prepare_expert", fail)
@@ -162,3 +174,16 @@ def test_launcher_ownership_requires_both_uuid_and_exact_prefix(runtime, monkeyp
     monkeypatch.setattr(psutil, "process_iter", lambda: [own, wrong_uuid, wrong_prefix])
     assert sessions.owned_processes(config, launchers=True) == [own]
     runtime.cleanup()
+
+
+def test_unclaimed_existing_prefix_never_receives_a_server_signal(runtime, monkeypatch):
+    runtime.prefix.mkdir()
+    marker = runtime.prefix / "foreign.reg"
+    marker.write_bytes(b"foreign")
+    with pytest.raises(FileExistsError):
+        runtime.prepare(sessions._copy_file)
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Unclaimed prefix must not receive a signal")
+    monkeypatch.setattr(session_wine.subprocess, "run", forbidden)
+    runtime.stop(); runtime.cleanup()
+    assert marker.read_bytes() == b"foreign"
