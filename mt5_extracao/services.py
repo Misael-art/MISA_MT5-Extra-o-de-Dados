@@ -110,7 +110,7 @@ def database_url(config: configparser.ConfigParser) -> str:
     return url.render_as_string(hide_password=False)
 
 
-def create_db_manager(config: configparser.ConfigParser, db_path: Optional[str] = None):
+def create_db_manager(config: configparser.ConfigParser, db_path: Optional[str] = None, read_only: bool = False):
     from mt5_extracao.database_manager import DatabaseManager
     db_type = config.get("DATABASE", "type", fallback="sqlite").strip().lower()
     if db_type == "postgresql":
@@ -120,7 +120,8 @@ def create_db_manager(config: configparser.ConfigParser, db_path: Optional[str] 
     return DatabaseManager(db_type=db_type, db_path=path,
                            time_basis=config.get("APP", "time_basis", fallback="broker").strip().lower(),
                            broker_utc_offset=(config.get("APP", "broker_utc_offset", fallback="").strip() or None),
-                           broker_timezone=config.get("APP", "broker_timezone", fallback="").strip() or None)
+                           broker_timezone=config.get("APP", "broker_timezone", fallback="").strip() or None,
+                           read_only=read_only)
 
 
 def create_external_source(config: configparser.ConfigParser):

@@ -1,4 +1,6 @@
 import os
+import sqlite3
+from pathlib import Path
 import logging
 import pandas as pd
 import numpy as np # <--- ADICIONADO IMPORT
@@ -11,7 +13,7 @@ from contextlib import contextmanager
 from sqlalchemy import bindparam, create_engine, text, inspect, MetaData, Table # Adicionado inspect
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.engine import make_url
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.error_handler import with_error_handling, DatabaseError, DataTypeError
@@ -31,7 +33,7 @@ class DatabaseManager:
     _PRESUMED_OFFSET = -3.0
 
     def __init__(self, db_type='sqlite', db_path='database/mt5_data.db', time_basis='broker',
-                 broker_utc_offset=None, broker_timezone=None):
+                 broker_utc_offset=None, broker_timezone=None, read_only=False):
         """
         Inicializa o gerenciador do banco de dados.
 
@@ -66,6 +68,8 @@ class DatabaseManager:
                 raise ValueError("broker_timezone exige time_basis = utc (o horário local repete no fim do "
                                  "horário de verão e não pode ser chave).")
         self._time_basis_checked = False
+        # Somente leitura: não cria pasta, arquivo nem tabelas de controle; o próprio banco recusa escrita.
+        self.read_only = bool(read_only)
         self.engine = None
         self._table_lock = threading.Lock()
         self._table_cache = {}
@@ -78,10 +82,22 @@ class DatabaseManager:
             if self.db_type == 'sqlite':
                 # Garante que o diretório do banco existe
                 db_dir = os.path.dirname(self.db_path)
+                if self.read_only:
+                    if not os.path.isfile(self.db_path):
+                        raise SQLAlchemyError(f"Banco inexistente para leitura: {self._safe_location()}")
+                    # URI de arquivo codificada (espaço, #, %, ?, acentos; letra de unidade no Windows) aberta
+                    # direto pelo sqlite3: a análise de URL do SQLAlchemy não reinterpreta o caminho.
+                    uri = self.read_only_sqlite_uri(self.db_path)
+                    self.engine = create_engine("sqlite://",
+                                                creator=lambda: sqlite3.connect(uri, uri=True, timeout=30))
+                    with self.engine.connect():
+                        log.info("Conexão SQLite somente leitura estabelecida.")
+                    return
                 if db_dir and not os.path.exists(db_dir):
                     os.makedirs(db_dir)
                     log.info(f"Diretório do banco de dados criado: {db_dir}")
-                connection_string = f'sqlite:///{self.db_path}'
+                # URL.create não reinterpreta '?', '#' ou '%' do nome do arquivo como partes da URL.
+                connection_string = URL.create("sqlite", database=self.db_path)
                 # timeout: extrações em paralelo gravam no mesmo arquivo (SQLite serializa escritas)
                 self.engine = create_engine(connection_string, connect_args={'timeout': 30})
                 # Testa a conexão inicial
@@ -89,13 +105,15 @@ class DatabaseManager:
                     log.info(f"Conexão com banco de dados SQLite estabelecida: {self.db_path}")
                 self._ensure_control_tables()
             elif self.db_type == 'postgresql':
-                self.engine = create_engine(self.db_path, pool_pre_ping=True)
+                url = self.read_only_pg_url(self.db_path) if self.read_only else self.db_path
+                self.engine = create_engine(url, pool_pre_ping=True)
                 with self.engine.connect() as connection:
                     self._timescale = bool(connection.execute(text(
                         "SELECT 1 FROM pg_extension WHERE extname = 'timescaledb'")).scalar())
                 log.info(f"Conexão com PostgreSQL estabelecida: {self._safe_location()}"
                          + (" (TimescaleDB disponível)" if self._timescale else ""))
-                self._ensure_control_tables()
+                if not self.read_only:
+                    self._ensure_control_tables()
             else:
                 log.error(f"Tipo de banco de dados não suportado: {self.db_type}")
                 self.engine = None
@@ -597,6 +615,20 @@ class DatabaseManager:
 
     # Formato de data usado nas tabelas de controle (texto ordenável, com microssegundos)
     _TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
+
+    @staticmethod
+    def read_only_sqlite_uri(path):
+        """URI SQLite somente leitura do arquivo exato (``mode=ro``; nunca cria arquivo)."""
+        return Path(path).resolve().as_uri() + "?mode=ro"
+
+    @staticmethod
+    def read_only_pg_url(url):
+        """URL PostgreSQL somente leitura: ACRESCENTA às options existentes (ex.: search_path do schema)."""
+        parsed = make_url(url)
+        current = parsed.query.get("options", "")
+        current = " ".join(current) if isinstance(current, tuple) else current
+        merged = " ".join(part for part in (current, "-c default_transaction_read_only=on") if part)
+        return parsed.update_query_dict({"options": merged}).render_as_string(hide_password=False)
 
     def time_context(self):
         """Contexto temporal da base: base de gravação, zona ou offset, e se o offset é conhecido."""
