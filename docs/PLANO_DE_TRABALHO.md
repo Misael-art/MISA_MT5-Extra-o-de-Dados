@@ -4144,3 +4144,12 @@ Dependências já instaladas: App166d6bb557/H9334 (S10) e App1679579a62/H11bb (V
 checks finais verdes, mesma configuração/atalho/ponte/principal e exposição0. S10Manual
 rev2/export15inputs e backtest negativo reabertos na UI do proprietário. Madrid
 mantém sua fila App168; não foi promovido por este registro.
+
+
+### G19.9 — Super ATR, estudo visual (2026-10-23)
+
+Três curvas20/SMA/1×–3× pontilhadas no preço, RGB, catraca e virada estrita
+implementados noH316cb6ba. App fecha ativo/matemática e pinmanual revisado,
+sem ampliar automáticos/risco/executor.126App/88H/checker161/compilação0/0;
+inspeção visual e ativação em curso. [Contrato e pendências](sdk/super_atr.md).
+50curvas/adaptação/Profit/Windowsfísico são próprios.

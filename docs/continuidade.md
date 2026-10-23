@@ -1,3 +1,15 @@
+## Super ATR — G19.9, 2026-10-23
+
+Regras do proprietário registradas:20/SMA0, multiplicadores1/2/3, pontilhado
+azul graduado, catraca e virada por cruzamento estrito da linha anterior.
+FonteH316cb6ba/fp44b1a783eae8435b, Appcodex/super-atr sobrede8830e5.
+126 testesApp/88H/checker161 e compilação6281/Wine0/0; inspeção visual e ativação
+candidata em curso. [Teoria, uso e continuidade](sdk/super_atr.md). Nenhum
+executor/risco/Expert, pilar de dados, Safety ou canal aceito alterado. Pin manual
+novo exige closurecompleta; antigos preservados.50curvas/adaptação/Profit/Windows
+físico/aceite financeiro próprios. A correção anteriorPR195 tem seis checks finais
+verdes e continua separada deste incremento.
+
 ## Correção de monitor PLAY/REPLAY — 2026-10-23
 
 Branch `codex/play-replay-display` sobre G19/321272f0b24d. Detecta o monitor da

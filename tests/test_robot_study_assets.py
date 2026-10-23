@@ -95,3 +95,24 @@ def test_safety_distribution_uses_its_own_indicator_namespace(tmp_path):
     assert str(series) in robot.files
     assert mt5_tools.indicator_dependencies(mt5_tools.install_plan(robot, tmp_path / "profile"))[0].target == (
         tmp_path / "profile/MQL5/Indicators/MT5X/Study/HDK_StudySeries.mq5")
+
+
+def test_super_atr_asset_and_math_are_required_reviewed_and_compiled(tmp_path):
+    root, expert, _ = project(tmp_path)
+    marker = root / "Include/Framework/HADOUKEN/Safety/HDK_StudySuperATR.mqh"
+    marker.write_text('// dependência Super ATR\n')
+    expert.write_text(expert.read_text() + '#include <Framework/HADOUKEN/Safety/HDK_StudySuperATR.mqh>\n')
+    with pytest.raises(ValueError, match="HDK_SuperATR"):
+        catalog.robot_from_file(expert)
+    asset = root / "Indicators/HADOUKEN/Study/HDK_SuperATR.mq5"
+    math = root / "Include/Framework/HADOUKEN/Indicators/HDK_SuperATR.mqh"
+    math.parent.mkdir(parents=True)
+    math.write_text('// cálculo reutilizável\n')
+    asset.write_text('#property indicator_chart_window\n#include <Framework/HADOUKEN/Indicators/HDK_SuperATR.mqh>\n')
+    robot = catalog.robot_from_file(expert)
+    assert {str(asset), str(math)} <= set(robot.files)
+    old = catalog.fingerprint(robot)
+    math.write_text(math.read_text() + '// alteração da fórmula\n')
+    assert catalog.fingerprint(robot) != old
+    assert {item.target.name for item in mt5_tools.indicator_dependencies(
+        mt5_tools.install_plan(robot, tmp_path / 'profile'))} == {'HDK_StudyCandles.mq5', 'HDK_SuperATR.mq5'}
