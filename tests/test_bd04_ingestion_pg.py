@@ -18,7 +18,7 @@ T1, T2, T3, T4 = (pd.Timestamp(v, tz="UTC") for v in
 @pytest.fixture
 def pg():
     pytest.importorskip("psycopg")
-    with isolated_postgresql_database(PG_URL) as db:
+    with isolated_postgresql_database(PG_URL, broker_utc_offset=-3) as db:
         yield db
 
 

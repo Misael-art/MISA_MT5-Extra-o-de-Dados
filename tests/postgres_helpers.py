@@ -19,7 +19,7 @@ def _schema_scoped_url(pg_url: str, schema: str) -> str:
 
 
 @contextmanager
-def isolated_postgresql_database(pg_url: str):
+def isolated_postgresql_database(pg_url: str, **manager_options):
     # Use a UUID-named schema and drop only that schema after the test.
     schema = f"mt5x_test_{uuid4().hex}"
     admin_engine = create_engine(pg_url, pool_pre_ping=True)
@@ -27,7 +27,7 @@ def isolated_postgresql_database(pg_url: str):
     try:
         with admin_engine.begin() as conn:
             conn.execute(text(f'CREATE SCHEMA "{schema}"'))
-        db = DatabaseManager(db_type="postgresql", db_path=_schema_scoped_url(pg_url, schema))
+        db = DatabaseManager(db_type="postgresql", db_path=_schema_scoped_url(pg_url, schema), **manager_options)
         if not db.is_connected():
             raise RuntimeError("Não foi possível conectar ao schema PostgreSQL isolado para testes.")
         yield db
