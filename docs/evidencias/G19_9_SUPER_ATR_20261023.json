@@ -1,0 +1,310 @@
+{
+  "contract": 1,
+  "task": "G19.9 Super ATR panel consumer",
+  "date": "2026-10-23",
+  "base": "de8830e5d32dcffec825f89555258ada85260a12",
+  "hadouken": "3b979cf11ae3bf84621a9dc7ac6d8b9176604fa6",
+  "fingerprint": "d377c812aafd0c5e",
+  "tests": {
+    "app": {
+      "passed": 126,
+      "seconds": 15.53
+    },
+    "hadouken": {
+      "passed": 89,
+      "seconds": 46.666
+    },
+    "checker": 161,
+    "native_compile": {
+      "build": 6281,
+      "errors": 0,
+      "warnings": 0,
+      "targets": 4
+    },
+    "doctor": {
+      "ok": 20,
+      "warnings": 1,
+      "failures": 0,
+      "profile": "installed reusable profile; no bootstrap/config changes"
+    }
+  },
+  "identity": {
+    "actual_closure_checked": true,
+    "mathematics_mutation_rejected": true
+  },
+  "safety_changed": false,
+  "data_pillar_changed": false,
+  "profit_parity": false,
+  "operational_acceptance": false,
+  "future": [
+    "50 plots",
+    "adaptive parameters",
+    "Profit reference comparison",
+    "physical Windows"
+  ],
+  "sha256": {
+    "mt5_extracao/robots/catalog.py": "1ff89e2ef626fd8afe0b460b71f8dceba34d82d10cf507474029035461478133",
+    "mt5_extracao/robots/manual_panel.py": "d1748b7044bf2acc405a8850f58d94616bd11dab78ee6dc8eab645e6ec4fd4b3",
+    "tests/test_robot_study_assets.py": "63c635b7e47b809f3b79542e53df425f5e1ee7935435f5938e413df50d95b385",
+    "docs/sdk/super_atr.md": "1567ea56d283f0916724640b385a20a3168225a69847649d7168d668a6ef26ed",
+    "docs/img/super_atr/eurusd-m5-three-curves.png": "2e92a9edc1c1bcb6b6baed06be263901640e09acb4e4dd7cc1dead898c856b53",
+    "docs/img/super_atr/eurusd-m5-ten-curves-gray.png": "6874e5a38799ca3874456a3b800284cee109dcafe1388333ba7cf48fe1f14c6d"
+  },
+  "indicator_version": "1.02",
+  "reversal_rendering": "continuous dotted diagonal, same buffer; mathematics unchanged",
+  "composed_visual_dependency": "App PR204/0b2fda3 fixes internal Wine monitor; catalogue/pin runtime identical to this branch",
+  "development_preview_installed": true,
+  "native_visual_1_01": {
+    "status": "passed",
+    "symbol": "EURUSD",
+    "timeframe": "M5",
+    "native_build": 6281,
+    "wine": "11.17",
+    "mode": "play",
+    "app_source": "0b2fda3bf9b38f68bfbdce38dc6b7005dc96d7c9",
+    "hadouken_source": "e01540f3a8dc2ad40b555adf91278eaa34af261d",
+    "source_fingerprint": "9530c8099090658f",
+    "indicator_version": "1.01",
+    "desktop": [
+      3456,
+      1458
+    ],
+    "chart_capture": [
+      3456,
+      1363
+    ],
+    "native_windows": [
+      {
+        "kind": "terminal",
+        "rect": [
+          0,
+          0,
+          3466,
+          1468
+        ]
+      },
+      {
+        "kind": "chart",
+        "rect": [
+          5,
+          95,
+          3461,
+          1458
+        ]
+      }
+    ],
+    "catalogue_selection": "Análise > Estudo > + Indicador > HADOUKEN Super ATR",
+    "curves": 3,
+    "periods": [
+      20,
+      20,
+      20
+    ],
+    "mean_types": [
+      0,
+      0,
+      0
+    ],
+    "deviations": [
+      1,
+      2,
+      3
+    ],
+    "rgb_pixel_counts": {
+      "191,231,255": 2940,
+      "112,164,240": 2586,
+      "32,96,224": 2493
+    },
+    "dotted_native_style": true,
+    "diagonal_reversals_visually_inspected": true,
+    "panel_paused": true,
+    "positions_observed": 0,
+    "orders_observed": 0,
+    "screenshot_sha256": "2e92a9edc1c1bcb6b6baed06be263901640e09acb4e4dd7cc1dead898c856b53",
+    "tester_lease_held": false,
+    "session_intentionally_open": false
+  },
+  "native_visual": {
+    "status": "passed",
+    "indicator_version": "1.02",
+    "symbol": "EURUSD",
+    "timeframe": "M5",
+    "curves": 10,
+    "deviations": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "periods": [
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "mean_types": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "dotted_native_style": true,
+    "diagonal_reversals_visually_inspected": true,
+    "rgb_pixel_counts": [
+      {
+        "deviation": 1,
+        "rgb": [
+          191,
+          231,
+          255
+        ],
+        "pixels": 3493
+      },
+      {
+        "deviation": 2,
+        "rgb": [
+          173,
+          216,
+          252
+        ],
+        "pixels": 3080
+      },
+      {
+        "deviation": 3,
+        "rgb": [
+          156,
+          201,
+          248
+        ],
+        "pixels": 2912
+      },
+      {
+        "deviation": 4,
+        "rgb": [
+          138,
+          186,
+          245
+        ],
+        "pixels": 2717
+      },
+      {
+        "deviation": 5,
+        "rgb": [
+          120,
+          171,
+          241
+        ],
+        "pixels": 2328
+      },
+      {
+        "deviation": 6,
+        "rgb": [
+          103,
+          156,
+          238
+        ],
+        "pixels": 1856
+      },
+      {
+        "deviation": 7,
+        "rgb": [
+          85,
+          141,
+          234
+        ],
+        "pixels": 2073
+      },
+      {
+        "deviation": 8,
+        "rgb": [
+          67,
+          126,
+          231
+        ],
+        "pixels": 1870
+      },
+      {
+        "deviation": 9,
+        "rgb": [
+          50,
+          111,
+          227
+        ],
+        "pixels": 1429
+      },
+      {
+        "deviation": 10,
+        "rgb": [
+          32,
+          96,
+          224
+        ],
+        "pixels": 1395
+      }
+    ],
+    "background_theme": "Cinza Claro",
+    "gradient_samples": [
+      [
+        240,
+        240,
+        240
+      ],
+      [
+        225,
+        225,
+        225
+      ],
+      [
+        212,
+        212,
+        212
+      ]
+    ],
+    "watermark": false,
+    "candle_time": false,
+    "native_build": 6281,
+    "wine": "11.17",
+    "monitor": {
+      "x": 1281,
+      "y": 0,
+      "width": 3456,
+      "height": 1458
+    },
+    "internal_screen": [
+      3456,
+      1458
+    ],
+    "chart_capture": [
+      3456,
+      1363
+    ],
+    "app_source": "f7c337168c328f597f79c3c64ae5d763c6980ced",
+    "hadouken_source": "3b979cf11ae3bf84621a9dc7ac6d8b9176604fa6",
+    "source_fingerprint": "d377c812aafd0c5e",
+    "panel_paused": true,
+    "no_order_actions_sent": true,
+    "positions_observed": 0,
+    "orders_observed": 0,
+    "screenshot_sha256": "6874e5a38799ca3874456a3b800284cee109dcafe1388333ba7cf48fe1f14c6d",
+    "session_intentionally_open": true,
+    "tester_lease_held": false
+  }
+}

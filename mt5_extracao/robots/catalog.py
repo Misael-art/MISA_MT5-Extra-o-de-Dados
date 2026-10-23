@@ -248,7 +248,8 @@ def robot_from_file(path) -> Robot:
     includes, missing = mql.resolve_includes(path, root / "Include" if root else None)
     assets = []
     asset_headers = {"HDK_StudyLayers.mqh": "HDK_StudyCandles.mq5",
-                     "HDK_StudyGraphs.mqh": "HDK_StudySeries.mq5"}
+                     "HDK_StudyGraphs.mqh": "HDK_StudySeries.mq5",
+                     "HDK_StudySuperATR.mqh": "HDK_SuperATR.mq5"}
     required_assets = sorted({("MT5X" if root and item.resolve().is_relative_to((root / "Include/MT5X/Safety").resolve()) else "HADOUKEN",
                                asset_headers[item.name]) for item in includes if item.name in asset_headers})
     if root and required_assets:
