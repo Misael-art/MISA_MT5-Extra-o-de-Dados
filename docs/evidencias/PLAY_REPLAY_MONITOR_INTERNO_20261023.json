@@ -1,0 +1,159 @@
+{
+  "contract": 1,
+  "task": "G19.10 monitor interno Wine",
+  "base": "2ca41017a8376c2ccdc91e46337f2ff4937d7c0d",
+  "date": "2026-10-23",
+  "cause": "external Wine desktop resized, virtual display mode list still capped by primary monitor",
+  "fix": "prepare Desktops/Default in owned copied registry before first Wine process",
+  "baseline": {
+    "passed": 85,
+    "seconds": 6.56
+  },
+  "tests": {
+    "passed": 128,
+    "seconds": 10.76
+  },
+  "doctor": {
+    "ok": 20,
+    "warnings": 1,
+    "failures": 0
+  },
+  "isolated_native_production_method": {
+    "metrics": [
+      3456,
+      1458
+    ],
+    "desktop": "MT5X_e89ede425c51411dbe59be68b77e6201",
+    "virtual_metrics": [
+      0,
+      0,
+      3456,
+      1458
+    ],
+    "dpi": 192
+  },
+  "normal_launch_visual": {
+    "play": {
+      "status": "passed",
+      "symbol": "EURUSD",
+      "timeframe": "M5",
+      "native_build": 6281,
+      "wine": "11.17",
+      "mode": "play",
+      "app_source": "0b2fda3bf9b38f68bfbdce38dc6b7005dc96d7c9",
+      "hadouken_source": "e01540f3a8dc2ad40b555adf91278eaa34af261d",
+      "source_fingerprint": "9530c8099090658f",
+      "indicator_version": "1.01",
+      "desktop": [
+        3456,
+        1458
+      ],
+      "chart_capture": [
+        3456,
+        1363
+      ],
+      "native_windows": [
+        {
+          "kind": "terminal",
+          "rect": [
+            0,
+            0,
+            3466,
+            1468
+          ]
+        },
+        {
+          "kind": "chart",
+          "rect": [
+            5,
+            95,
+            3461,
+            1458
+          ]
+        }
+      ],
+      "catalogue_selection": "Análise > Estudo > + Indicador > HADOUKEN Super ATR",
+      "curves": 3,
+      "periods": [
+        20,
+        20,
+        20
+      ],
+      "mean_types": [
+        0,
+        0,
+        0
+      ],
+      "deviations": [
+        1,
+        2,
+        3
+      ],
+      "rgb_pixel_counts": {
+        "191,231,255": 2940,
+        "112,164,240": 2586,
+        "32,96,224": 2493
+      },
+      "dotted_native_style": true,
+      "diagonal_reversals_visually_inspected": true,
+      "panel_paused": true,
+      "positions_observed": 0,
+      "orders_observed": 0,
+      "screenshot_sha256": "2e92a9edc1c1bcb6b6baed06be263901640e09acb4e4dd7cc1dead898c856b53",
+      "tester_lease_held": false,
+      "session_intentionally_open": false
+    },
+    "replay": {
+      "status": "passed",
+      "mode": "replay",
+      "symbol": "EURUSD",
+      "timeframe": "M5",
+      "from": "2026-10-20",
+      "to": "2026-10-21",
+      "monitor": {
+        "x": 0,
+        "y": 0,
+        "width": 1280,
+        "height": 800
+      },
+      "native_build": 6281,
+      "wine": "11.17",
+      "app": "0b2fda3bf9b38f68bfbdce38dc6b7005dc96d7c9",
+      "hadouken": "e01540f3a8dc2ad40b555adf91278eaa34af261d",
+      "super_atr_plotted_in_this_replay": false,
+      "candles_and_existing_indicators_rendered": true,
+      "visual_last_bar_captured": "20Oct12:40",
+      "run_completed": true,
+      "resources_released": true,
+      "screenshot_sha256": "696a79a6ffe1adb3f44bd152a8dac26c20b1d14c38ebc9e9a259412fc9e5623c",
+      "evidence_boundary": "monitor/rendering/progress only; no trading or Super ATR replay acceptance"
+    }
+  },
+  "original_registry_changed": false,
+  "global_resolution_changed": false,
+  "data_pillar_changed": false,
+  "native_windows": "pending",
+  "sha256": {
+    "mt5_extracao/robots/session_wine.py": "47c6e7cd65e66e372032b22ed4d65b91f10af6ae8895502b0a3663d4024b6c4e",
+    "mt5_extracao/robots/sessions.py": "a144d1c0bca4a4aa38328deb335dc155d719975e4a1df2d5f7cef37afe8546f5",
+    "tests/test_session_wine.py": "55216359ec4e510439fc6a0d3eb271422b2e0682d2761cd19265f83fd58df674",
+    "docs/sdk/play_replay_monitores.md": "3469ec61d90fd3e5c998aa2ec0e08f03c511858bf92e5458a78d990dc119cca2",
+    "mt5_extracao/robots/session_window.py": "aea9f627780ab3552df005b39db967a28ba6753af9ddecd1e71fc49564a4e9bf",
+    "tests/test_session_window.py": "947bd7c406dd742c65c34145f5d37e18ae4bdb0ff1a975665728b2913dd80af5",
+    "docs/img/replay_display/handheld-monitor-fit-1280x800.png": "696a79a6ffe1adb3f44bd152a8dac26c20b1d14c38ebc9e9a259412fc9e5623c"
+  },
+  "x11_window_race": {
+    "before": {
+      "exit": 1,
+      "out": "",
+      "err": "X Error of failed request:  BadWindow (invalid Window parameter)\n  Major opcode of failed request:  20 (X_GetProperty)\n  Resource id in failed request:  0x1400001\n  Serial number of failed request:  11\n  Current serial number in output stream:  11\n"
+    },
+    "after": {
+      "exit": 0,
+      "out": "destroyed own X11 window safely ignored\n",
+      "err": ""
+    }
+  },
+  "interrupted_normal_launch": "App exited on Xlib BadWindow while polling vanished Wine desktop; native visual not accepted",
+  "normal_ui_survived_compiler_shutdown": true
+}

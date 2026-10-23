@@ -8,10 +8,12 @@ import ctypes as C
 from ctypes.util import find_library
 from dataclasses import dataclass
 import logging
+import threading
 
 from mt5_extracao.bootstrap import paths
 
 log = logging.getLogger(__name__)
+_X_ERROR_LOCK = threading.RLock()
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,15 @@ class _Event(C.Union):
     _fields_ = [("message", _Message), ("padding", C.c_long * 24)]
 
 
+class _XError(C.Structure):
+    _fields_ = [("type", C.c_int), ("display", C.c_void_p), ("resource", C.c_ulong),
+                ("serial", C.c_ulong), ("code", C.c_ubyte), ("request", C.c_ubyte),
+                ("minor", C.c_ubyte)]
+
+
+_X_ERROR_HANDLER = C.CFUNCTYPE(C.c_int, C.c_void_p, C.POINTER(_XError))
+
+
 class _X11:
     def __init__(self):
         self.x = C.CDLL(find_library("X11") or "libX11.so.6")
@@ -79,11 +90,37 @@ class _X11:
         self.x.XSendEvent.argtypes = [C.c_void_p, C.c_ulong, C.c_int, C.c_long, C.POINTER(_Event)]
         self.x.XFlush.argtypes = [C.c_void_p]
         self.x.XCloseDisplay.argtypes = [C.c_void_p]
+        self.x.XSync.argtypes = [C.c_void_p, C.c_int]
+        self.x.XSetErrorHandler.argtypes = [C.c_void_p]
+        self.x.XSetErrorHandler.restype = C.c_void_p
 
     def atom(self, name):
         return self.x.XInternAtom(self.d, name.encode("ascii"), 0)
 
     def values(self, window, name):
+        # XGetWindowProperty pode emitir BadWindow entre a listagem e a leitura.
+        # O handler padrão Xlib termina o processo inteiro, incluindo a App/Tk.
+        # Limitar a exceção a esta conexão, drenar os erros e restaurar o handler
+        # anterior; nunca substituir permanentemente o tratamento do Tk.
+        with _X_ERROR_LOCK:
+            previous = None
+
+            @_X_ERROR_HANDLER
+            def handle(display, error):
+                if display == self.d and error.contents.code == 3:  # BadWindow
+                    return 0
+                return _X_ERROR_HANDLER(previous)(display, error) if previous else 0
+
+            previous = self.x.XSetErrorHandler(C.cast(handle, C.c_void_p))
+            try:
+                return self._values(window, name)
+            finally:
+                try:
+                    self.x.XSync(self.d, 0)
+                finally:
+                    self.x.XSetErrorHandler(previous)
+
+    def _values(self, window, name):
         kind, fmt, count, rest = C.c_ulong(), C.c_int(), C.c_ulong(), C.c_ulong()
         data = C.POINTER(C.c_ubyte)()
         status = self.x.XGetWindowProperty(self.d, window, self.atom(name), 0, 4096, 0, 0,

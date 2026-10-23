@@ -1,3 +1,13 @@
+## G19.10 — resolução interna Wine, 2026-10-23
+
+Branchcodex/play-replay-monitor-fit, baseApp2ca4101/SuperATR1.01. Retorno do
+dock reproduziu contêiner3456×1458 com terminal1280×800; corrigido modo interno
+na cópia privada antes do primeiro Wine. Baseline85/final126, doctor20/1/0 e
+prova do método de produção3456×1458. PLAY3456×1458 e REPLAY1280×800
+concluídos;128 testes finais, corridaBadWindow corrigida com prova real.
+App/Hnovos de10curvas/cinzaclarea incorporados porGit, sem alterar esse recorte.
+[Contrato/limites](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).
+
 ## Super ATR — G19.9, 2026-10-23
 
 Regras do proprietário registradas:20/SMA0, inicialmente1/2/3 e agora DEZ

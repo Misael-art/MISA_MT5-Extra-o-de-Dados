@@ -80,24 +80,68 @@ def test_server_shutdown_is_scoped_to_own_uuid_prefix_and_waited(runtime, monkey
     assert session_wine.os.environ["WINEPREFIX"] == str(runtime.source)
 
 
-def test_desktop_is_first_wine_command_and_uses_fresh_monitor(runtime, robot, monkeypatch):
+@pytest.mark.parametrize("mode", ["play", "replay"])
+def test_desktop_is_first_wine_command_and_uses_fresh_monitor(runtime, robot, monkeypatch, mode):
     runtime.prepare(sessions._copy_file)
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"wine_prefix": str(runtime.prefix)}})
-    job = sessions.Session(None, config, robot, "EURUSD", "H1", mode="replay", root=runtime.directory.parent)
+    job = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode,
+                           visible=True, root=runtime.directory.parent)
     job.directory = runtime.directory; job.child_config = config; job.visual_runtime = runtime
     seen, closed = [], []
     monkeypatch.setattr(session_window, "Placement", lambda *a: type("Placement", (), {
         "monitor": session_window.Monitor(1280, -50, 2560, 1440), "close": lambda _: closed.append(True)})())
-    monkeypatch.setattr(sessions.subprocess, "Popen", lambda args, **kw: seen.append((args, kw)) or
-                        type("Finished", (), {"poll": lambda _: 0, "returncode": 0})())
+    def launch(args, **kwargs):
+        # O modo interno já deve existir quando o PRIMEIRO Wine nasce,
+        # inclusive no compilador; acertar só a janela externa é insuficiente.
+        registry = (runtime.prefix / "user.reg").read_text()
+        assert r"[Software\\Wine\\Explorer\\Desktops]" in registry
+        assert '"Default"="2560x1440"' in registry
+        seen.append((args, kwargs))
+        return type("Finished", (), {"poll": lambda _: 0, "returncode": 0})()
+    monkeypatch.setattr(sessions.subprocess, "Popen", launch)
+    monkeypatch.setattr(job, "_write_lease", lambda: None)
     monkeypatch.setattr(sessions.display, "child_env", lambda c, e: e)
     command = r'"C:\terminal64.exe" /portable /config:"C:\test.ini"'
+    job._run_command(command, job.directory, runtime.prefix, 1, compiling=True)
+    original = (runtime.prefix / "user.reg").read_bytes()
     job._run_command(command, job.directory, runtime.prefix, 1)
+    assert (runtime.prefix / "user.reg").read_bytes() == original
     assert seen[0][0] == ["wine", "explorer", f"/desktop=MT5X_{job.id},2560x1440", "cmd", "/c", r"C:\launch.bat"]
     assert command in (job.directory / "launch.bat").read_text(encoding="cp1252")
-    assert closed == [True]
+    assert closed == [True, True]
     runtime.cleanup()
+
+
+@pytest.mark.parametrize("size", [(1280, 800), (3456, 1458), (800, 1280)])
+def test_private_desktop_modes_replace_only_default_preserving_owner_and_other_keys(runtime, size):
+    source = (runtime.source / "user.reg")
+    section = r"[Software\\Wine\\Explorer\\Desktops]"
+    text = ('WINE REGISTRY Version 2\n\n' + section + ' 1792771000\n'
+            '"Default"="640x480"\n"Other"="1920x1080"\n\n'
+            '[Unrelated]\n"Default"="preserve"\n')
+    source.write_text(text)
+    runtime.prepare(sessions._copy_file)
+    runtime.configure_desktop(*size)
+    result = (runtime.prefix / "user.reg").read_text()
+    assert result.count(section) == 1
+    assert f'"Default"="{size[0]}x{size[1]}"' in result
+    assert '"Default"="640x480"' not in result
+    assert '"Other"="1920x1080"' in result and '[Unrelated]\n"Default"="preserve"' in result
+    assert source.read_text() == text
+    # Falha se dock/resolução mudar enquanto o servidor privado está vivo.
+    with pytest.raises(RuntimeError, match="tamanho do monitor mudou"):
+        runtime.configure_desktop(size[0] + 1, size[1])
+    assert (runtime.prefix / "user.reg").read_text() == result
+    runtime.cleanup()
+
+
+def test_desktop_mode_refuses_unclaimed_runtime_and_invalid_dimensions(runtime):
+    with pytest.raises(RuntimeError, match="privada preparada"):
+        runtime.configure_desktop(1280, 800)
+    for size in [(True, 800), (1280, 0), (-1, 800), (1280., 800), (1280, "800")]:
+        with pytest.raises(ValueError):
+            runtime.configure_desktop(*size)
 
 
 def test_placement_closes_connection_when_monitor_was_disconnected():

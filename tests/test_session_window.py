@@ -2,12 +2,55 @@
 from types import SimpleNamespace
 import configparser
 from pathlib import Path
+import ctypes as C
 
 import pytest
 
 from mt5_extracao.robots import session_window as window, sessions
 from tests.test_robot_controls import robot
 from tests.test_manual_panel_play import manual
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_x11_closed_window_is_local_nonfatal_and_other_errors_keep_previous_handler(fail):
+    backend = object.__new__(window._X11)
+    backend.d = 123
+    forwarded, synchronized = [], []
+
+    @window._X_ERROR_HANDLER
+    def original(display, error):
+        forwarded.append((display, error.contents.code))
+        return 7
+
+    original_address = C.cast(original, C.c_void_p).value
+    installed = [original_address]
+    def set_handler(value):
+        old = installed[0]
+        installed[0] = value.value if isinstance(value, C.c_void_p) else value
+        return old
+    backend.x = SimpleNamespace(XSetErrorHandler=set_handler,
+                                XSync=lambda *args: synchronized.append(args))
+
+    def read(*args):
+        callback = window._X_ERROR_HANDLER(installed[0])
+        destroyed = window._XError(code=3)
+        assert callback(123, C.byref(destroyed)) == 0
+        # Outra conexão (Tk) ou outro erro conserva o handler anterior.
+        assert callback(456, C.byref(destroyed)) == 7
+        other = window._XError(code=2)
+        assert callback(123, C.byref(other)) == 7
+        if fail:
+            raise OSError("read failed")
+        return []
+    backend._values = read
+    if fail:
+        with pytest.raises(OSError):
+            backend.values(42, "_NET_WM_PID")
+    else:
+        assert backend.values(42, "_NET_WM_PID") == []
+    assert installed == [original_address]
+    assert forwarded == [(456, 3), (123, 2)]
+    assert synchronized == [(123, 0)]
 
 
 @pytest.mark.parametrize("point,expected", [

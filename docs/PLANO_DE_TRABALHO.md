@@ -4155,6 +4155,14 @@ versão1.01 com diagonais inspecionadaEURUSD/M5 e instalada na prévia,
 composta com correção de monitorPR204. [Contrato e pendências](sdk/super_atr.md).
 50curvas/adaptação/Profit/Windowsfísico são próprios.
 
+### G19.10 — monitor e área interna Wine (2026-10-23)
+
+Correção do retorno do dock: preparar modos internos na cópia Wine ANTES do
+primeiro processo, além da janela externa. Baseline85/final126 testes,
+doctor20/1/0; prova isolada3456×1458; PLAY normal3456×1458 e REPLAY
+normal1280×800 concluídos,128 testes finais e correção de corridaBadWindow;
+Windows físico pendente. [Contrato e continuidade](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).
+
 AtualizaçãoG19.9 pelo proprietário:1.02/dez curvas20/SMA/desvios1 a10 e tema
 Cinza Claro instalados/inspecionados em3456×1458,89H/126App/checker161/0-0.
 Mantidas diagonais, pontilhado e futuro50/adaptação pendentes.

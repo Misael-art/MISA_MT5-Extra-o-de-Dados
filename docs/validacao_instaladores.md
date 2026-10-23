@@ -471,3 +471,16 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
   o fluxo normal de conexão permitiu o QA. Não qualifica gestão/negociação.
 
 [Contrato e limites](sdk/play_replay_monitores.md).
+
+## G19.10 — retorno do dock/área Wine (2026-10-23)
+
+- [x] Duas telas físicas conectadas: eDP-1 1280×800 e DP-1 3456×1458 (áreas
+  informadas pelo sistema). PLAY no monitor maior preenche terminal/gráfico;
+  REPLAY no handheld desenha/avança e conclui o período. ComposiçãoApp0b2fda3.
+- [x] Modos internos preparados no registro privado; original/ponte/host preservados.
+- [x] CorridaBadWindow: subprocesso real antes sai1/depois sai0; handler anterior
+  preservado para Tk/outras conexões. UI normal sobrevive à retirada do compilador.
+- [ ] Windows físico e troca de DPI entre monitores continuam pendentes.
+- [ ] Migração automática de uma sessão já aberta por hotplug não é entregue.
+
+Evidência finalSuperATR1.02/dezcurvas/cinzaclaro tem recorte próprioG19.9.
