@@ -127,6 +127,10 @@ def ensure_schema(db):
             if name not in columns:
                 conn.execute(text(f"ALTER TABLE {DEFINITIONS_TABLE} ADD COLUMN {name} {sql_type}"))
         conn.execute(text(_CREATE_VALUES))
+        if "recorded_at_utc" not in {column["name"] for column in inspect(conn).get_columns(VALUES_TABLE)}:
+            # Instante em que ESTE sistema gravou a revisão (conhecimento efetivo); NULL = fato anterior
+            # ao contrato, gravação desconhecida.
+            conn.execute(text(f"ALTER TABLE {VALUES_TABLE} ADD COLUMN recorded_at_utc TEXT"))
         conn.execute(text(_CREATE_ASOF_INDEX))
         conn.execute(text(_CREATE_KEY_INDEX))
         conn.execute(text(_CREATE_SOURCE_INDEX))
@@ -300,9 +304,18 @@ def _empty_values():
     return pd.DataFrame(columns=VALUE_COLUMNS)
 
 
+BASES = ("research", "knowledge")
+
+
 def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None,
-                start=None, end=None):
+                start=None, end=None, basis="research", recorded_through=None, with_recorded=False):
     """Consulta a última revisão disponível em ``as_of`` para cada instante observado.
+
+    ``basis='research'`` (padrão, comportamento histórico) usa a disponibilidade declarada pelo
+    produtor: uma reconstrução retrospectiva aparece como disponível no fechamento da barra.
+    ``basis='knowledge'`` exige também que o sistema já tivesse gravado a revisão
+    (``recorded_at_utc <= as_of``); revisões de gravação desconhecida (legado) ficam de fora.
+    ``recorded_through`` fixa uma fotografia: ignora revisões gravadas depois (paginação estável).
 
     ``start`` é inclusivo e ``end`` exclusivo; ambos filtram ``observation_time``.
     Sem ``algorithm_version``, versões de algoritmo distintas são devolvidas em
@@ -312,8 +325,18 @@ def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algo
     as_of_utc = _utc_text(as_of, "as_of")
     if not inspect(db.engine).has_table(VALUES_TABLE):
         return _empty_values()
+    if basis not in BASES:
+        raise ValueError("basis deve ser 'research' ou 'knowledge'.")
     where = ["available_at_utc <= :as_of"]
     params = {"as_of": as_of_utc}
+    has_recorded = "recorded_at_utc" in {c["name"] for c in inspect(db.engine).get_columns(VALUES_TABLE)}
+    if basis == "knowledge":
+        if not has_recorded:
+            return _empty_values()
+        where.append("recorded_at_utc IS NOT NULL AND recorded_at_utc <= :as_of")
+    if recorded_through is not None and has_recorded:
+        where.append("(recorded_at_utc IS NULL OR recorded_at_utc <= :recorded_through)")
+        params["recorded_through"] = _utc_text(recorded_through, "recorded_through")
     if symbol is not None:
         where.append("symbol = :symbol")
         params["symbol"] = str(symbol)
@@ -332,9 +355,10 @@ def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algo
     if end is not None:
         where.append("observation_time < :end")
         params["end"] = _utc_text(end, "end")
+    selected = list(VALUE_COLUMNS) + (["recorded_at_utc"] if with_recorded and has_recorded else [])
     sql = f"""
         WITH eligible AS (
-            SELECT {', '.join(VALUE_COLUMNS)},
+            SELECT {', '.join(selected)},
                    ROW_NUMBER() OVER (
                        PARTITION BY symbol, tf, observation_time, feature_id, algorithm_version
                        ORDER BY available_at_utc DESC, observed_at_utc DESC, revision DESC
@@ -342,7 +366,7 @@ def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algo
             FROM {VALUES_TABLE}
             WHERE {' AND '.join(where)}
         )
-        SELECT {', '.join(VALUE_COLUMNS)} FROM eligible
+        SELECT {', '.join(selected)} FROM eligible
         WHERE point_rank = 1 AND (valid_until_utc IS NULL OR valid_until_utc > :as_of)
         ORDER BY symbol, tf, feature_id, algorithm_version, observation_time
     """
@@ -571,13 +595,17 @@ def save_values(db, records, *, transaction_hook=None):
             current[key] = row
             inserts.append(row)
         if inserts:
+            recorded = _utc_text(datetime.now(timezone.utc), "recorded_at")
+            for row in inserts:
+                row["recorded_at_utc"] = recorded
             conn.execute(text(
                 f"INSERT INTO {VALUES_TABLE} "
                 "(symbol, tf, observation_time, available_at_utc, observed_at_utc, valid_until_utc, feature_id, "
                 "algorithm_version, numeric_value, categorical_value, quality, source_revision, revision, value_hash, "
-                "metadata_json) VALUES (:symbol, :tf, :observation_time, :available_at_utc, :observed_at_utc, "
-                ":valid_until_utc, :feature_id, :algorithm_version, :numeric_value, :categorical_value, :quality, "
-                ":source_revision, :revision, :value_hash, :metadata_json)"), inserts)
+                "metadata_json, recorded_at_utc) VALUES (:symbol, :tf, :observation_time, :available_at_utc, "
+                ":observed_at_utc, :valid_until_utc, :feature_id, :algorithm_version, :numeric_value, "
+                ":categorical_value, :quality, :source_revision, :revision, :value_hash, :metadata_json, "
+                ":recorded_at_utc)"), inserts)
         if transaction_hook is not None:
             transaction_hook(conn, counts)
     return counts
