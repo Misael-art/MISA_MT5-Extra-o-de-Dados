@@ -303,6 +303,27 @@
       "wall_seconds": 9.18
      },
      "receipt": "docs/dados/recibos/recibos_20261023d.json"
+    },
+    {
+     "commit": "46e6864e05781d564ed987112ecdbffbcdb17450",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v5_store_contract.py tests/test_v4_store_contract.py",
+     "reference": "contraprovas V5-01/V5-02 da 5ª revisão",
+     "input_hash": {
+      "parameters": "barreira dentro do carimbo e antes do contador; conexões independentes",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "barreira dentro do carimbo e antes do contador; conexões independentes",
+     "result": "13 passed in 17.96s",
+     "limitations": "cortes além da fronteira confirmada são limitados e declarados; PG só na CI",
+     "resource_measurements": {
+      "wall_seconds": 18.83
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023e.json"
     }
    ]
   },
@@ -652,6 +673,27 @@
       "wall_seconds": 29.81
      },
      "receipt": "docs/dados/recibos/recibos_20261023d.json"
+    },
+    {
+     "commit": "9a51836a364b5a39e209b57c567e2ee50d6113c8",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v5_query_contract.py tests/test_v4_query_contract.py tests/test_v3_query_contract.py",
+     "reference": "store fato a fato; sondas V5",
+     "input_hash": {
+      "parameters": "duas características; páginas de 1; mesmo corte antes/depois",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "duas características; páginas de 1; mesmo corte antes/depois",
+     "result": "15 passed in 15.18s",
+     "limitations": "seleção carregada antes de paginar (BD18b); Windows físico não exercitado",
+     "resource_measurements": {
+      "wall_seconds": 16.03
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023e.json"
     }
    ]
   },
@@ -765,6 +807,27 @@
         "wall_seconds": 15.23
        },
        "receipt": "docs/dados/recibos/recibos_20261023d.json"
+      },
+      {
+       "commit": "9a51836a364b5a39e209b57c567e2ee50d6113c8",
+       "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v5_query_contract.py tests/test_bd19c1_cli.py",
+       "reference": "sdk.query_series",
+       "input_hash": {
+        "parameters": "CLI knowledge na fronteira declarada",
+        "generator_files_sha256": {
+         "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+         "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+         "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+         "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+        }
+       },
+       "parameters": "CLI knowledge na fronteira declarada",
+       "result": "3 passed in 9.67s",
+       "limitations": "sem exportação",
+       "resource_measurements": {
+        "wall_seconds": 10.67
+       },
+       "receipt": "docs/dados/recibos/recibos_20261023e.json"
       }
      ]
     }

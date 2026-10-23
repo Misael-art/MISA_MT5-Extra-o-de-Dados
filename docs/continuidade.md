@@ -2727,3 +2727,12 @@ o modo somente leitura SQLite abre exatamente o arquivo pedido (URI codificada).
 mantêm o aceite no recorte. M2 continua primeiro percurso demonstrado e parcial; E31 planejado;
 E32.1 = CLI sem exportação. Limites: escritores do store serializados; seleção carregada antes de
 paginar (BD18b); `resources/actions.py` ainda monta URL SQLite por texto (dono T15.x).
+
+### Atualização de 23/10/2026 (5ª revisão, V5-01..02)
+
+Store (#201): carimbo de conhecimento em transação serializada com fronteira confirmada
+(`knowledge_frontier`); exclusão do store antes de escolher a revisão (escritores em fila).
+Consulta (#202): cursor fixa geração e fronteira; `knowledge_horizon` declara o limite quando o
+corte vai além da fronteira. Garantia: cortes até a fronteira declarada e páginas de um cursor não
+mudam; corte além dela é respondido até a fronteira, com motivo. M2 primeiro percurso demonstrado
+e parcial; E31 planejado; E32.1 CLI sem exportação. Limites: escritores serializados; BD18b.
