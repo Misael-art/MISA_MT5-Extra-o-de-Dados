@@ -4,6 +4,7 @@ Sem envio de ordens Python ou encerramento global. O EA MQL5 continua responsáv
 ordens e Safety; a instrumentação só publica posições do próprio magic/símbolo.
 """
 import configparser
+from contextlib import ExitStack
 import json
 import logging
 import os
@@ -23,6 +24,18 @@ log = logging.getLogger(__name__)
 
 class Cancelled(RuntimeError):
     pass
+
+
+def chart_visible(robot, mode, requested=None):
+    """Replay sempre visual; PLAY automático discreto e painel manual visível."""
+    if requested is not None and type(requested) is not bool:
+        raise ValueError("A opção de exibir o gráfico deve ser booleana.")
+    if mode != "play":
+        return mode == "replay"
+    if requested is not None:
+        return requested
+    from . import manual_panel
+    return manual_panel.recognized(robot)
 
 
 def native_interrupted(directory):
@@ -55,8 +68,9 @@ def owned_processes(config, names=(paths.MT5_TERMINAL_EXE,), *, strict=False, la
     import psutil
     expected_names = {name.lower() for name in names}
     launch_path = mt5_tools._windows_path(mt5_tools.install_dir(config) / "launch.bat", prefix).replace("\\", "/").lower()
+    desktop_arg = "/desktop=mt5x_" + mt5_tools.install_dir(config).name.lower() + ","
     if launchers:
-        expected_names.update(("cmd.exe", "wine", "wine64"))
+        expected_names.update(("cmd.exe", "wine", "wine64", "explorer.exe", "explorer"))
     for process in psutil.process_iter():
         candidate = False
         try:
@@ -76,6 +90,9 @@ def owned_processes(config, names=(paths.MT5_TERMINAL_EXE,), *, strict=False, la
             if not candidate and launchers:
                 candidate = any(str(arg).strip('"').replace("\\", "/").lower() == launch_path
                                 for arg in (process.cmdline() if arguments is None else arguments))
+                if not candidate and not paths.is_windows():
+                    candidate = any(str(arg).strip('"').lower().startswith(desktop_arg)
+                                    for arg in arguments)
             if not candidate:
                 continue
             if not paths.is_windows():
@@ -371,7 +388,7 @@ class Session:
     """Uma execução, controlada fora da thread Tk; STOP nunca alcança outros terminais."""
     def __init__(self, db, config, robot, symbol, timeframe, preset=None, mode="backtest", start=None, end=None,
                  account=None, consent=None, root=None, native_options=None,
-                 input_receipt_fields=None, expected_native_inputs=None):
+                 input_receipt_fields=None, expected_native_inputs=None, *, visible=None, window_anchor=None):
         if mode not in ("play", "replay", "backtest"):
             raise ValueError("Modo de execução inválido.")
         self.db, self.config, self.robot = db, config, robot
@@ -390,6 +407,10 @@ class Session:
         self.native_options, self.exception = native_options, None
         self.instrumented = False
         self.symbol, self.timeframe, self.preset, self.mode = symbol, timeframe, preset, mode
+        self.visible = chart_visible(robot, mode, visible)
+        self.window_anchor = window_anchor
+        self.window_monitor = None
+        self.visual_runtime = None
         self.start, self.end, self.account, self.consent = start, end, account, consent
         self.id = uuid.uuid4().hex
         self.directory = Path(root or session_root(config)) / self.id
@@ -464,11 +485,27 @@ class Session:
         os.replace(temp, path)
 
     def _run_command(self, command, cwd, prefix, timeout, compiling=False):
+        with ExitStack() as cleanup:
+            return self._launch_command(command, cwd, prefix, timeout, compiling, cleanup)
+
+    def _launch_command(self, command, cwd, prefix, timeout, compiling, cleanup):
         self._check_cancel()
+        placement = None
+        if self.visible:
+            from .session_window import Placement
+            try:
+                placement = Placement(self.window_anchor)
+                cleanup.callback(placement.close)
+                self.window_monitor = placement.monitor
+                if not paths.is_windows():
+                    m = placement.monitor
+                    self._window_ini(m.width, m.height)
+            except (OSError, AttributeError) as error:
+                raise RuntimeError("Não foi possível detectar um monitor para a sessão. Confira as telas conectadas e tente novamente.") from error
         env = dict(os.environ)
         if prefix:
             env.update(WINEPREFIX=str(prefix), WINEDEBUG="-all")
-        hidden = self.mode == "backtest" or (compiling and paths.is_windows())
+        hidden = not self.visible or (compiling and paths.is_windows())
         if not paths.is_windows():
             # Compilação e sessão interativa usam o mesmo DISPLAY/driver Wine.
             # Alternar Xvfb e desktop durante o replay pode deixar o visualizador
@@ -476,7 +513,7 @@ class Session:
             env.pop("WAYLAND_DISPLAY", None)
             env[display.ENV_SWITCH] = "1" if hidden else "0"
             env = display.child_env(self.child_config, env)
-        # REPLAY e PLAY sempre seguem a tela do usuário, mesmo com hidden no INI.
+        # Replay é sempre visual. PLAY respeita a escolha deste lançamento.
         if paths.is_windows():
             args = command
             startup = display.windows_startup(hidden)
@@ -484,6 +521,12 @@ class Session:
             bat = self.directory / "launch.bat"
             bat.write_bytes(("@echo off\r\n" + command.replace("%", "%%") + "\r\n").encode("cp1252"))
             args = ["wine", "cmd", "/c", paths.linux_to_wine_path(bat, prefix)]
+            if placement is not None and self.visual_runtime is not None:
+                m = placement.monitor
+                # Explorer deve ser o primeiro processo Wine: um cmd anterior
+                # criaria o desktop com o tamanho global/virtual errado.
+                args = ["wine", "explorer", f"/desktop=MT5X_{self.id},{m.width}x{m.height}",
+                        "cmd", "/c", paths.linux_to_wine_path(bat, prefix)]
             startup = None
         with (self.directory / ("compile-process.log" if compiling else "process.log")).open("wb") as output:
             if self.mode == "play" and not compiling:
@@ -494,6 +537,7 @@ class Session:
             deadline = time.monotonic() + timeout if bounded and timeout is not None else None
             observed_at = time.monotonic()
             parent_seen, last_process_check = False, 0.0
+            last_window_check = 0.0
             self.state = "preparing" if compiling else "running"
             while self.process.poll() is None:
                 self._check_cancel()
@@ -506,6 +550,13 @@ class Session:
                     self.process.wait(timeout=15)
                     raise RuntimeError("A sessão excedeu o tempo previsto; o terminal desta sessão foi encerrado.")
                 now = time.monotonic()
+                if placement is not None and now - last_window_check >= 1:
+                    last_window_check = now
+                    try:
+                        placement.poll(p.pid for p in owned_processes(self.child_config,
+                                       ("terminal64.exe", "metatester64.exe"), launchers=True))
+                    except (OSError, AttributeError) as error:
+                        log.warning("Não foi possível ajustar a janela própria da sessão: %s", error)
                 if self.mode == "replay" and not compiling and now - last_process_check >= 1:
                     last_process_check = now
                     if native_interrupted(self.directory):
@@ -533,6 +584,24 @@ class Session:
             if not compiling and self.mode != "play" and native_interrupted(self.directory):
                 raise Cancelled("O teste ou download de ticks foi interrompido no MT5. Não há resultado final aprovado.")
             return self.process.returncode
+
+    def _window_ini(self, width, height):
+        """Apenas os dois INIs da cópia privada fechada, nunca os do terminal original."""
+        for target in (self.directory / "Config" / "terminal.ini",
+                       self.directory / "Tester" / "config" / "metatester.ini"):
+            ini = configparser.ConfigParser(interpolation=None, strict=False)
+            if target.exists():
+                ini.read_string(mql.read_text(target))
+            if not ini.has_section("Window"):
+                ini.add_section("Window")
+            for key, value in {"Type": 3, "Fullscreen": 0, "Left": 0, "Top": 0,
+                               "Right": width, "Bottom": height}.items():
+                ini.set("Window", key, str(value))
+            import io
+            content = io.StringIO()
+            ini.write(content)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content.getvalue().encode("utf-16"))
 
     def telemetry(self):
         common = mt5_tools.common_files_dir(self.config)
@@ -562,6 +631,14 @@ class Session:
         self.child_config = prepare(self.config, self.robot, self.directory, self.symbol,
                                     require_source=not allow_binary, check=self._check_cancel,
                                     _child=self.child_config)
+        if self.visible and not paths.is_windows():
+            from functools import partial
+            from .session_wine import Runtime
+            self.visual_runtime = Runtime(mt5_tools.wine_prefix(self.config), self.directory)
+            self.visual_runtime.prepare(partial(_copy_file, check=self._check_cancel))
+            self.child_config["MT5"]["wine_prefix"] = str(self.visual_runtime.prefix)
+            if self.mode != "play":
+                mt5_tools.register_native_context(self)
         self.child_config._mt5x_session = self
         self._check_cancel()
         dependency_run = (self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
@@ -649,6 +726,10 @@ class Session:
                 self.account = current
             wrapper = self._prepare_expert(allow_binary=self.native_options is not None,
                                            compiled_override=self.native_options.get("compiled_override") if self.native_options else None)
+            if self.visual_runtime is not None:
+                # Compilador encerrado. O lançamento consulta novamente os monitores
+                # e inicializa seu desktop sem herdar uma tela retirada nesse intervalo.
+                self.visual_runtime.stop()
             # Usar o nome próprio: a recompilação automática do MT5 pode regenerar
             # o binário original, sem os observadores, ao abrir uma instalação nova.
             self._check_cancel()
@@ -730,6 +811,8 @@ class Session:
             self.finished = time.time()
             resources_released, resource_error = False, ""
             try:
+                if self.visual_runtime is not None:
+                    self.visual_runtime.stop()
                 if self.child_config is not None:
                     if native_lease is not None:
                         resources_released = mt5_tools.release_native_context(self)
@@ -742,12 +825,22 @@ class Session:
             finally:
                 if native_lease is not None:
                     native_lease.__exit__(None, None, None)
+            if resources_released and self.visual_runtime is not None:
+                try:
+                    self.visual_runtime.cleanup()
+                    self.child_config["MT5"]["wine_prefix"] = str(mt5_tools.wine_prefix(self.config))
+                except OSError as error:
+                    resource_error = str(error)
+                    resources_released = False
+                    log.exception("Cópias temporárias da sessão foram preservadas para conferência.")
             if self.directory.exists():
                 payload = {"artifact_owner": "mt5x-session", "artifact_version": 1,
                            "owner_store": self.owner_store,
                            "resources_released": resources_released, "resource_error": resource_error,
-                           "wine_prefix": str(mt5_tools.wine_prefix(self.config) or ""),
-                           "session": self.id, "mode": self.mode, "state": self.state, "error": self.error,
+                           "wine_prefix": str(mt5_tools.wine_prefix(self.child_config or self.config) or ""),
+                           "monitor": vars(self.window_monitor) if self.window_monitor is not None else None,
+                           "session": self.id, "mode": self.mode, "visible": self.visible,
+                           "state": self.state, "error": self.error,
                            "robot": self.robot.key, "symbol": self.symbol, "timeframe": self.timeframe,
                            "preset": self.preset or "", "parameters": controls.effective_values(self.robot, self.preset),
                            "account": self.account if self.mode == "play" else None,

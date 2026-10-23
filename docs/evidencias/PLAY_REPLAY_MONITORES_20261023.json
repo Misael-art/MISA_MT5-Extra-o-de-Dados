@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-23",
+  "scope": "T17.28: monitor e desenho de PLAY/REPLAY sobre G19",
+  "base_app": "321272f0b24d682a58aad0767dbbee713403c1f9",
+  "branch": "codex/play-replay-display",
+  "dependencies_unchanged": {
+    "hadouken": "6fb02374cd652a5fa0bfd314ace9d47ed8bc1283",
+    "safety": "c5a3e2162cace117820eab863e0cb590d66189c2"
+  },
+  "behavior": {
+    "replay_visible": true,
+    "automatic_play_visible_default": false,
+    "recognized_manual_play_visible_default": true,
+    "play_choice_per_launch": true,
+    "monitor": "connected monitor containing launch window center; nearest remaining if removed",
+    "wine_visible": "own temporary prefix and named desktop, no shared server restart",
+    "hidden": "Linux Xvfb; Windows minimized"
+  },
+  "validation": {
+    "focused": {
+      "passed": 145,
+      "skipped_existing_platform_case": 1,
+      "log_sha256": "0944b6c0e5dc54c384cfa6b00216bd2f78275be2f72a5a70a85be2d417935fb8"
+    },
+    "ui": {
+      "passed": 12,
+      "log_sha256": "200bffc20588d39c46fa09905753bc1f7027da31e689c1d96b74241cd1d9490a"
+    },
+    "doctor_no_probe": {
+      "ok": 20,
+      "warnings": 1,
+      "failures": 0
+    },
+    "baseline_full_shared_host_display": {
+      "passed": 2947,
+      "skipped": 52,
+      "failed": 2,
+      "failure_ids": [
+        "test_ui_main_window.py::test_analysis_keeps_native_text_and_chart_size_through_resize[1.3333333333333333]",
+        "test_ui_relations.py::test_scope_is_not_a_fake_filter_and_detail_stacks_on_narrow_windows"
+      ]
+    },
+    "same_two_baseline_cases_isolated_xvfb": {
+      "passed": 2,
+      "failed": 0
+    },
+    "full_final": "See PR checks/final verification; not claimed here"
+  },
+  "native_replay": [
+    {
+      "session": "99b1e65bd30e42198e442d720739389c",
+      "resolution": [
+        1280,
+        800
+      ],
+      "display": "handheld KDE Wayland/XWayland",
+      "symbol": "EURUSD",
+      "timeframe": "H1",
+      "start": "2026-10-20",
+      "end": "2026-10-21",
+      "build": 6281,
+      "observed": [
+        "candles",
+        "panel",
+        "indicators",
+        "progress"
+      ],
+      "state": "cancelled",
+      "remaining_own_processes": [],
+      "temporary_wine_cleaned": true,
+      "compile_errors": 0,
+      "compile_warnings": 0
+    },
+    {
+      "session": "290122d3bfe04d40aa956c08cd5be63e",
+      "resolution": [
+        1920,
+        1080
+      ],
+      "display": "isolated Xvfb",
+      "symbol": "EURUSD",
+      "timeframe": "H1",
+      "start": "2026-10-20",
+      "end": "2026-10-21",
+      "build": 6281,
+      "observed": [
+        "candles",
+        "panel",
+        "indicators",
+        "progress"
+      ],
+      "state": "cancelled",
+      "remaining_own_processes": [],
+      "temporary_wine_cleaned": true,
+      "compile_errors": 0,
+      "compile_warnings": 0
+    }
+  ],
+  "play_native": [
+    {
+      "session": "bc20218484004b69b9047b43d403db51",
+      "visible": true,
+      "telemetry": [
+        [
+          "waiting",
+          "Ativo · sem posição"
+        ],
+        0,
+        0.0
+      ],
+      "own_window_visible": true,
+      "state": "cancelled",
+      "remaining_own_processes": [],
+      "portfolio_unchanged": true,
+      "demo": true,
+      "no_order_button_events": true
+    },
+    {
+      "session": "0f5215268bc1496bbfcb77f8e3982c5a",
+      "visible": false,
+      "telemetry": [
+        [
+          "waiting",
+          "Ativo · sem posição"
+        ],
+        0,
+        0.0
+      ],
+      "own_window_visible": false,
+      "state": "cancelled",
+      "remaining_own_processes": [],
+      "portfolio_unchanged": true,
+      "demo": true,
+      "no_order_button_events": true
+    }
+  ],
+  "limits": [
+    "Visual QA intentionally cancelled, not complete backtest/replay acceptance.",
+    "No order button events or live/REAL trades.",
+    "Monitor disconnect selection simulated; dock reconnection/mixed DPI physical confirmation pending.",
+    "Windows physical pending.",
+    "No automatic migration of an already open session.",
+    "Financial guards, presets, source MQL, risk/executor and data work unchanged."
+  ],
+  "sha256": {
+    "mt5_extracao/bootstrap/paths.py": "2b5a5d935a805a380719fb0df9cdbeb71ed3075d92113bdebe3244d696aa0ee0",
+    "mt5_extracao/robots/sessions.py": "2d6ebb03bfb61ce1a90369794f8b59af8cf23a7d1cd6a9ab6d14878b1c5c5650",
+    "mt5_extracao/robots/session_window.py": "031fffd1240b600c00cd1e7973b4adbf67f32c463dc07851bee13f09388c0e77",
+    "mt5_extracao/robots/session_wine.py": "c6e403da5b3545997ca65475acbbbd004550320b38d0c76fe667aa18c1e0a53b",
+    "mt5_extracao/ui/robot_controls.py": "231ea4101e907d92c0f536d3a0bf223c86bcbb4ac9a05e4cb4a4d239d0311925",
+    "tests/test_robot_controls.py": "e7f9515b3d5abf5eb033e0de8a1e52b958d590b3df9f04fc571164b456f0695c",
+    "tests/test_ui_robot_controls.py": "01c648865735882f70e97bee57d33e6a129e37cc97750f98aab480348a540009",
+    "tests/test_session_window.py": "494338dad614d1144b6fb1ef1ec67ed2f9b317c0f92161e7756837bf75b56e37",
+    "tests/test_session_wine.py": "5b4de792a4821396fa92cd799e5a0b2782dd23d2825c712a5c84d291229a3350",
+    "docs/sdk/play_replay_monitores.md": "270dea01fabc9ec7da56eec992d5b72ca248343a9882b4f8421f6a86fbbe1543",
+    "docs/img/replay_display/handheld-1280x800.png": "fc2fb7f39ea1303bd7c828218fd8546f2df3be614a13a6cf3f0f0de2c9021cbe",
+    "docs/img/replay_display/virtual-1920x1080.png": "f46e793d7d99cf9ceed23b00d6b34262b82cf13f3a2cb1e9fa99fa04b02574ca"
+  },
+  "initial_play_probe": "API not initialized: refused before Session. Normal connector.initialize(auto_login=False, force_restart=False) allowed subsequent DEMO QA."
+}

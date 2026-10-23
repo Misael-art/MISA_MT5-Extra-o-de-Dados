@@ -456,3 +456,18 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [x] Fingerprint real do painel com ambos os ativos; alteração de Series retira a exceção manual.
 - [ ] Instalação/compilação da composição exata no Linux/Wine e atalho existente.
 - [ ] Windows físico: instalação, compilação e estudo/agrupamento.
+
+## Monitor PLAY/REPLAY — 2026-10-23
+
+- [x] Linux/Wine6281: replay do painel em1280×800 real e1920×1080 virtual,
+  candles/indicadores/avanço; cancelamento e limpeza do runtime próprios.
+- [x] Escolha/padrão PLAY, REPLAY obrigatório e monitor retirado em testes;
+  caminhos Linux e Windows simulados, sem alterar confirmações financeiras.
+- [ ] Windows físico: dois monitores com DPI diferente, monitor negativo, escolha
+  do lançamento, maximização e PLAY minimizado/exibido, STOP próprio.
+- [ ] Retorno físico do dock após desconexão e escalas distintas em Linux.
+- [x] PLAY manual DEMO visível e oculto, telemetria, STOP próprio e carteira
+  inalterada sem ordens. Primeira leitura sem API conectada recusou corretamente;
+  o fluxo normal de conexão permitiu o QA. Não qualifica gestão/negociação.
+
+[Contrato e limites](sdk/play_replay_monitores.md).

@@ -39,6 +39,39 @@ def _tested(ui):
     return panel, robot, preset
 
 
+@pytest.mark.parametrize("manual_panel", [False, True])
+def test_play_offers_chart_choice_with_family_default_without_changing_risk(ui, manual, monkeypatch, manual_panel):
+    panel, automatic, preset = _tested(ui)
+    robot = manual if manual_panel else automatic
+    if manual_panel:
+        panel.controls.chosen[robot.key] = "EURUSD", "H1", None
+    monkeypatch.setattr(controls, "play_issues", lambda *a: [])
+    account = {"login": 123, "server": "FakeDemo", "demo": True}
+    snapshot = {"currency": "USD", "positions": [], "totals": {"positions": 0, "orders": 0,
+                "balance": 10000, "equity": 10000, "risk_pct": 0, "without_stop": 0,
+                "margin_free": 10000, "risk_complete": True}}
+    dialog = robot_controls.ExecutionDialog(panel.controls, robot, "play", account, snapshot)
+    assert dialog.visible.get() is manual_panel
+    original = controls.effective_values(robot, None if manual_panel else preset)
+    dialog.visible.set(not manual_panel)
+    assert controls.effective_values(robot, None if manual_panel else preset) == original
+    assert not dialog.consent.confirmed and dialog.stage == 1
+    dialog.window.destroy()
+
+
+def test_replay_confirmation_passes_visible_and_launch_window_anchor(ui, monkeypatch):
+    panel, robot, preset = _tested(ui)
+    calls = []
+    monkeypatch.setattr(panel.controls, "start", lambda *a, **kw: calls.append((a, kw)))
+    dialog = robot_controls.ExecutionDialog(panel.controls, robot, "replay")
+    assert dialog.visible.get()
+    dialog.dates[0].set("2026-01-01"); dialog.dates[1].set("2026-01-02")
+    anchor = (ui.root.winfo_rootx() + ui.root.winfo_width() // 2,
+              ui.root.winfo_rooty() + ui.root.winfo_height() // 2)
+    dialog.confirm()
+    assert len(calls) == 1 and calls[0][1] == {"visible": True, "window_anchor": anchor}
+
+
 def test_cards_have_drawn_actions_and_selected_preset_governs_stats_play_and_detail(ui):
     panel, robot, preset = _tested(ui)
     widget = panel.controls.widgets[robot.key]
@@ -107,7 +140,7 @@ def test_play_dialog_requires_typed_account_double_step_and_separate_negative_co
     panel, robot, preset = _tested(ui)
     monkeypatch.setattr(controls, "play_issues", lambda *a: [])
     calls, prompts = [], []
-    monkeypatch.setattr(panel.controls, "start", lambda *a: calls.append(a))
+    monkeypatch.setattr(panel.controls, "start", lambda *a, **kw: calls.append(a))
     monkeypatch.setattr(robot_controls.messagebox, "showerror", lambda *a, **k: prompts.append(a))
     decision = [False]
     monkeypatch.setattr(robot_controls.messagebox, "askyesno", lambda *a, **k: decision[0])
@@ -141,7 +174,7 @@ def test_real_dialog_red_band_and_explicit_opt_in_never_auto_authorize(ui, monke
     monkeypatch.setattr(robot_controls.messagebox, "showerror", lambda *a, **k: None)
     monkeypatch.setattr(robot_controls.messagebox, "askyesno", lambda *a, **k: True)
     calls = []
-    monkeypatch.setattr(panel.controls, "start", lambda *a: calls.append(a))
+    monkeypatch.setattr(panel.controls, "start", lambda *a, **kw: calls.append(a))
     account = {"login": 999, "server": "FakeReal", "demo": False}
     snapshot = {"currency": "USD", "positions": [], "totals": {"positions": 0, "orders": 0,
                 "balance": 10000, "equity": 10000, "risk_pct": 0, "without_stop": 0,
@@ -161,7 +194,7 @@ def test_real_dialog_red_band_and_explicit_opt_in_never_auto_authorize(ui, monke
 def test_replay_has_one_start_action_and_checks_date_order_without_account_consent(ui, monkeypatch):
     panel, robot, preset = _tested(ui)
     calls, errors = [], []
-    monkeypatch.setattr(panel.controls, "start", lambda *a: calls.append(a))
+    monkeypatch.setattr(panel.controls, "start", lambda *a, **kw: calls.append(a))
     monkeypatch.setattr(robot_controls.messagebox, "showerror", lambda *a, **k: errors.append(a))
     dialog = robot_controls.ExecutionDialog(panel.controls, robot, "replay")
     dialog.dates[0].set("invalid")

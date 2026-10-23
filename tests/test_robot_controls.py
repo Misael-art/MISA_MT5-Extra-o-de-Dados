@@ -153,7 +153,7 @@ def test_linux_session_uses_x11_and_keeps_interactive_replay_on_user_display(
     config = configparser.ConfigParser()
     config.read_dict({"MT5": {"hidden": "true", "hidden_display": ":77"}})
     session = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode,
-                               root=tmp_path / "wine" / "drive_c" / "sessions")
+                               root=tmp_path / "wine" / "drive_c" / "sessions", visible=True)
     session.directory.mkdir(parents=True)
     session.child_config = config
     monkeypatch.setattr(sessions.paths, "is_windows", lambda: False)
@@ -162,6 +162,9 @@ def test_linux_session_uses_x11_and_keeps_interactive_replay_on_user_display(
     monkeypatch.setenv(sessions.display.ENV_SWITCH, "1")
     monkeypatch.setattr(sessions.display, "ensure", lambda name: name)
     monkeypatch.setattr(session, "_write_lease", lambda: None)
+    from mt5_extracao.robots import session_window
+    monkeypatch.setattr(session_window, "Placement", lambda *a: SimpleNamespace(
+        monitor=SimpleNamespace(width=1920, height=1080), close=lambda: None))
     seen = []
     monkeypatch.setattr(sessions.subprocess, "Popen", lambda *a, **kw: seen.append(kw) or
                         SimpleNamespace(poll=lambda: 0, returncode=0))
@@ -180,9 +183,12 @@ def test_linux_session_uses_x11_and_keeps_interactive_replay_on_user_display(
 def test_windows_session_visibility_keeps_native_desktop_environment(
         robot, tmp_path, monkeypatch, mode, hidden):
     config = configparser.ConfigParser()
-    session = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode, root=tmp_path)
+    session = sessions.Session(None, config, robot, "EURUSD", "H1", mode=mode, root=tmp_path, visible=True)
     session.directory.mkdir()
     monkeypatch.setattr(sessions.paths, "is_windows", lambda: True)
+    from mt5_extracao.robots import session_window
+    monkeypatch.setattr(session_window, "Placement", lambda *a: SimpleNamespace(
+        monitor=SimpleNamespace(width=1920, height=1080), close=lambda: None))
     monkeypatch.setenv("WAYLAND_DISPLAY", "preserved")
     monkeypatch.setattr(session, "_write_lease", lambda: None)
     visibility = []
