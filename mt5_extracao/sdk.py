@@ -61,8 +61,22 @@ def run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=No
 
 API_VERSION = 1
 
+def query_series(db, **selection):
+    """Consulta pública de fatos do store (BD18a); ver ``analytics.query_service.series``."""
+    from mt5_extracao.analytics import query_service
+    return query_service.series(db, **selection)
+
+
+def query_catalog():
+    """Contratos das características consultáveis (BD06/BD18a)."""
+    from mt5_extracao.analytics import query_service
+    return query_service.catalog()
+
+
 __all__ = [
     "API_VERSION", "CONTRACT_VERSION",
+    # consulta de dados analíticos (futura API, sem servidor)
+    "query_series", "query_catalog",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida

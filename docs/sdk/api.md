@@ -29,6 +29,21 @@ Nada aqui envia ordens. O backtest de robô MQL5 usa o Strategy Tester do MetaTr
 **Política de mudança:** uma função ou parâmetro só é removido ou muda de significado em versão **maior** do pacote,
 depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novos entram no fim, com valor padrão.
 
+## Consulta de dados analíticos (BD18a)
+
+Leitura sem UI e sem MT5 dos fatos já materializados no store; nunca calcula nem grava.
+
+- `sdk.query_series(db, symbol=..., timeframe=..., feature_ids=[...], as_of=..., start=None, end=None,
+  algorithm_version=None, page_size=500, cursor=None)` → envelope `query_schema_version=1` com `base`
+  (namespace, linhagem, fonte), `time_context` (estado do fuso), `definitions` (contrato BD06),
+  `values` (valor/categoria, qualidade, revisão, `available_at`, versão), `page.next_cursor` (ordem
+  estável feature/observação/versão), `freshness`, `reasons` e `errors` estruturados
+  (`NAIVE_TIME`, `UNKNOWN_FEATURE`, `BAD_PAGE_SIZE`, `BAD_CURSOR`, `CURSOR_MISMATCH`,
+  `SELECTION_TOO_LARGE`, `MISSING_SELECTION`). JSON sem NaN/infinito.
+- `sdk.query_catalog()` → contratos BD06 de todas as definições consultáveis.
+
+Não há servidor HTTP: a futura API publicará este mesmo serviço.
+
 ## Catálogo
 
 | Nome | O que faz |

@@ -13,6 +13,8 @@ SURFACE = {
     "Robot": None, "Problem": None, "CompileResult": None, "BatteryItem": None, "BatteryReport": None,
     "CheckResult": None, "ParityReport": None, "SignalSpec": None, "DeclaredStrategy": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,
     "load_catalog": ["config", "db"],
+    "query_series": ["db", "selection"],
+    "query_catalog": [],
     "get_robot": ["robots", "key"],
     "robot_from_file": ["path"],
     "import_library": ["db", "folder"],
