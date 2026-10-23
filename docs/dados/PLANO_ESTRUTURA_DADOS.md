@@ -423,6 +423,11 @@ lógicas e29 nós de execução, pois BD08/15/18/19 têm recortes explícitos. F
 e repositórios poderão exigir PRs adicionais, sempre com dono e escopo delimitado.
 BD21 não impede antecipar uma correção de compatibilidade necessária ao piloto.
 
+**Adendo de execução (23/10/2026, R05):** o piloto BD06→BD07→BD08a→BD18a→BD19c1 roda com a
+assinatura global vigente como limitação temporária explícita; o grafo não muda e BD13 continua
+após BD12. Metadados de contrato (BD06) ficam fora do hash de implementação. Ver
+[BD06](BD06_CONTRATO.md).
+
 Quando uma fonte real não existir na DEMO, comprovar o algoritmo com referência
 apropriada e manter a prova externa pendente. Quando faltar a própria regra,
 registrar impedimento de especificação e continuar capacidades independentes.
