@@ -1,0 +1,46 @@
+{
+  "contract": 1,
+  "task": "G19.10 monitor interno Wine",
+  "base": "2ca41017a8376c2ccdc91e46337f2ff4937d7c0d",
+  "date": "2026-10-23",
+  "cause": "external Wine desktop resized, virtual display mode list still capped by primary monitor",
+  "fix": "prepare Desktops/Default in owned copied registry before first Wine process",
+  "baseline": {
+    "passed": 85,
+    "seconds": 6.56
+  },
+  "tests": {
+    "passed": 126,
+    "seconds": 11.87
+  },
+  "doctor": {
+    "ok": 20,
+    "warnings": 1,
+    "failures": 0
+  },
+  "isolated_native_production_method": {
+    "metrics": [
+      3456,
+      1458
+    ],
+    "desktop": "MT5X_e89ede425c51411dbe59be68b77e6201",
+    "virtual_metrics": [
+      0,
+      0,
+      3456,
+      1458
+    ],
+    "dpi": 192
+  },
+  "normal_launch_visual": "pending",
+  "original_registry_changed": false,
+  "global_resolution_changed": false,
+  "data_pillar_changed": false,
+  "native_windows": "pending",
+  "sha256": {
+    "mt5_extracao/robots/session_wine.py": "47c6e7cd65e66e372032b22ed4d65b91f10af6ae8895502b0a3663d4024b6c4e",
+    "mt5_extracao/robots/sessions.py": "a144d1c0bca4a4aa38328deb335dc155d719975e4a1df2d5f7cef37afe8546f5",
+    "tests/test_session_wine.py": "55216359ec4e510439fc6a0d3eb271422b2e0682d2761cd19265f83fd58df674",
+    "docs/sdk/play_replay_monitores.md": "6fe03c0bf42691021b9423332a9a80f12d0dce702d332d70a8a3ae52e03504b4"
+  }
+}

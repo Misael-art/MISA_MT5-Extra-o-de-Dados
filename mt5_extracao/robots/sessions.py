@@ -499,6 +499,8 @@ class Session:
                 self.window_monitor = placement.monitor
                 if not paths.is_windows():
                     m = placement.monitor
+                    if self.visual_runtime is not None:
+                        self.visual_runtime.configure_desktop(m.width, m.height)
                     self._window_ini(m.width, m.height)
             except (OSError, AttributeError) as error:
                 raise RuntimeError("Não foi possível detectar um monitor para a sessão. Confira as telas conectadas e tente novamente.") from error

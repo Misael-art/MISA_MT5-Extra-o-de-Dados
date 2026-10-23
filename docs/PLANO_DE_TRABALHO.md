@@ -4153,3 +4153,10 @@ implementados noH316cb6ba. App fecha ativo/matemática e pinmanual revisado,
 sem ampliar automáticos/risco/executor.126App/88H/checker161/compilação0/0;
 inspeção visual e ativação em curso. [Contrato e pendências](sdk/super_atr.md).
 50curvas/adaptação/Profit/Windowsfísico são próprios.
+
+### G19.10 — monitor e área interna Wine (2026-10-23)
+
+Correção do retorno do dock: preparar modos internos na cópia Wine ANTES do
+primeiro processo, além da janela externa. Baseline85/final126 testes,
+doctor20/1/0; prova isolada3456×1458. Lançamentos normais/visual em curso;
+Windows físico pendente. [Contrato e continuidade](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).
