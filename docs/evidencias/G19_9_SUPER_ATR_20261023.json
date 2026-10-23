@@ -3,16 +3,16 @@
   "task": "G19.9 Super ATR panel consumer",
   "date": "2026-10-23",
   "base": "de8830e5d32dcffec825f89555258ada85260a12",
-  "hadouken": "316cb6ba1395198d30dd5068877df25f69e24e0c",
-  "fingerprint": "44b1a783eae8435b",
+  "hadouken": "e01540f3a8dc2ad40b555adf91278eaa34af261d",
+  "fingerprint": "9530c8099090658f",
   "tests": {
     "app": {
       "passed": 126,
-      "seconds": 19.51
+      "seconds": 15.48
     },
     "hadouken": {
       "passed": 88,
-      "seconds": 67.478
+      "seconds": 56.772
     },
     "checker": 161,
     "native_compile": {
@@ -49,8 +49,10 @@
   ],
   "sha256": {
     "mt5_extracao/robots/catalog.py": "1ff89e2ef626fd8afe0b460b71f8dceba34d82d10cf507474029035461478133",
-    "mt5_extracao/robots/manual_panel.py": "f589b7a5889b70bd96ea1f85bbb89d393cd0ea5a3f7e038ac5bef81774791630",
+    "mt5_extracao/robots/manual_panel.py": "a78da4139fd1dc1286f5480153772173db0e150ebf92b5438c4f7a72c1f6285b",
     "tests/test_robot_study_assets.py": "63c635b7e47b809f3b79542e53df425f5e1ee7935435f5938e413df50d95b385",
-    "docs/sdk/super_atr.md": "561b0480e6d37157af9b39b042dff51e1c70a716b64dd6cda35b485089836b10"
-  }
+    "docs/sdk/super_atr.md": "13aef76086635dc4e6d2910065f5afa02d961973d14ae8c5a519ceb337c42d09"
+  },
+  "indicator_version": "1.01",
+  "reversal_rendering": "continuous dotted diagonal, same buffer; mathematics unchanged"
 }

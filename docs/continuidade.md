@@ -2,7 +2,8 @@
 
 Regras do proprietário registradas:20/SMA0, multiplicadores1/2/3, pontilhado
 azul graduado, catraca e virada por cruzamento estrito da linha anterior.
-FonteH316cb6ba/fp44b1a783eae8435b, Appcodex/super-atr sobrede8830e5.
+Versão1.01 conecta a virada em diagonal pontilhada, no mesmo buffer da curva.
+FonteHe01540f3/fp9530c8099090658f, Appcodex/super-atr sobrede8830e5.
 126 testesApp/88H/checker161 e compilação6281/Wine0/0; inspeção visual e ativação
 candidata em curso. [Teoria, uso e continuidade](sdk/super_atr.md). Nenhum
 executor/risco/Expert, pilar de dados, Safety ou canal aceito alterado. Pin manual
