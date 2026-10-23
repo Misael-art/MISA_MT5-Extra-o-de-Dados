@@ -31,6 +31,11 @@ cada inicialização; compilação e gráfico usam esse ambiente privado. O serv
 privado é encerrado entre compilação e execução, que consulta novamente as telas,
 e ao finalizar. O servidor da ponte e os outros terminais continuam independentes.
 
+Um `run` externo injetado conserva a posse do seu processo/ambiente; o runtime
+visual próprio é preparado somente pelo lançador da sessão. A regressão existente
+de exportação visual/CSV compartilhado cobre essa fronteira, sem exigir Wine
+real para runners simulados.
+
 Somente Common/Files compartilha os canais UUID existentes. A cópia do sistema
 consome temporariamente espaço (cerca de 400 MB no host observado), sob as mesmas
 verificações de orçamento/cancelamento usadas na preparação. Após confirmar o
@@ -41,7 +46,7 @@ os arquivos protegidos. Não há exclusão global de prefixos ou caches.
 ## Evidência e limites
 
 [Registro verificável](../evidencias/PLAY_REPLAY_MONITORES_20261023.json):
-145 testes dirigidos aprovados/1 exclusão prévia de plataforma e12 de interface; monitor retirado,
+158 testes dirigidos aprovados/1 exclusão prévia de plataforma e12 de interface; monitor retirado,
 coordenadas negativas, tamanhos diferentes, Linux/Windows simulado, posse por
 prefixo+UUID, orçamento/cancelamento e preservação em falha de encerramento.
 A interface tem três novas verificações de escolha/padrão e passagem do monitor,

@@ -4,7 +4,7 @@ Branch `codex/play-replay-display` sobre G19/321272f0b24d. Detecta o monitor da
 janela lançadora, com fallback se o dock foi retirado. REPLAY visível; PLAY optativo,
 automáticos ocultos por padrão e painel manual reconhecido visível. Wine visual
 isolado da ponte, com cópias temporárias removidas após encerramento confirmado.
-Replay desenhado/avançando em1280×800 real e1920×1080 virtual;145 testes dirigidos,
+Replay desenhado/avançando em1280×800 real e1920×1080 virtual;158 testes dirigidos,
 doctor20/1/0. PLAY manual DEMO visível e oculto com telemetria/carteira inalterada,
 sem clicar ordens; primeira leitura sem API conectada foi recusada antes da execução.
 [Contrato/evidência/retomada](sdk/play_replay_monitores.md). WIP, frente de dados,

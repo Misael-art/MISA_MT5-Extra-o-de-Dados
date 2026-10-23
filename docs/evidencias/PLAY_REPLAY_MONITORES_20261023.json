@@ -19,9 +19,9 @@
   },
   "validation": {
     "focused": {
-      "passed": 145,
+      "passed": 158,
       "skipped_existing_platform_case": 1,
-      "log_sha256": "0944b6c0e5dc54c384cfa6b00216bd2f78275be2f72a5a70a85be2d417935fb8"
+      "log_sha256": "0d691a21406ce660f33e217806e1997d9b184e360897d7f427b41f41dac3c616"
     },
     "ui": {
       "passed": 12,
@@ -45,7 +45,8 @@
       "passed": 2,
       "failed": 0
     },
-    "full_final": "See PR checks/final verification; not claimed here"
+    "full_final": "See PR checks/final verification; not claimed here",
+    "launcher_regression": "Expanded suite detected injected runner incorrectly receiving own Wine. Fixed by preserving caller-owned run/environment; existing visual export/shared CSV test unchanged and passed in final 158 selection."
   },
   "native_replay": [
     {
@@ -145,7 +146,7 @@
   ],
   "sha256": {
     "mt5_extracao/bootstrap/paths.py": "2b5a5d935a805a380719fb0df9cdbeb71ed3075d92113bdebe3244d696aa0ee0",
-    "mt5_extracao/robots/sessions.py": "2d6ebb03bfb61ce1a90369794f8b59af8cf23a7d1cd6a9ab6d14878b1c5c5650",
+    "mt5_extracao/robots/sessions.py": "197a5ba6ce38aef1859340a895f362001f75299295de4e895d83d31a1fb8be8f",
     "mt5_extracao/robots/session_window.py": "031fffd1240b600c00cd1e7973b4adbf67f32c463dc07851bee13f09388c0e77",
     "mt5_extracao/robots/session_wine.py": "c6e403da5b3545997ca65475acbbbd004550320b38d0c76fe667aa18c1e0a53b",
     "mt5_extracao/ui/robot_controls.py": "231ea4101e907d92c0f536d3a0bf223c86bcbb4ac9a05e4cb4a4d239d0311925",
@@ -153,9 +154,10 @@
     "tests/test_ui_robot_controls.py": "01c648865735882f70e97bee57d33e6a129e37cc97750f98aab480348a540009",
     "tests/test_session_window.py": "494338dad614d1144b6fb1ef1ec67ed2f9b317c0f92161e7756837bf75b56e37",
     "tests/test_session_wine.py": "5b4de792a4821396fa92cd799e5a0b2782dd23d2825c712a5c84d291229a3350",
-    "docs/sdk/play_replay_monitores.md": "270dea01fabc9ec7da56eec992d5b72ca248343a9882b4f8421f6a86fbbe1543",
+    "docs/sdk/play_replay_monitores.md": "000d3cb717a7e48731b10ff2a647ad916ad4f4149e86c33ce646e4e0a94d0379",
     "docs/img/replay_display/handheld-1280x800.png": "fc2fb7f39ea1303bd7c828218fd8546f2df3be614a13a6cf3f0f0de2c9021cbe",
     "docs/img/replay_display/virtual-1920x1080.png": "f46e793d7d99cf9ceed23b00d6b34262b82cf13f3a2cb1e9fa99fa04b02574ca"
   },
-  "initial_play_probe": "API not initialized: refused before Session. Normal connector.initialize(auto_login=False, force_restart=False) allowed subsequent DEMO QA."
+  "initial_play_probe": "API not initialized: refused before Session. Normal connector.initialize(auto_login=False, force_restart=False) allowed subsequent DEMO QA.",
+  "native_evidence_reuse": "Final delta only excludes injected external launchers from Wine preparation. Native proofs use built-in launcher (native_options=None); their behavior, MQL/dependencies/configuration unchanged."
 }
