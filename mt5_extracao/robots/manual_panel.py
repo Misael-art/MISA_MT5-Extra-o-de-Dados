@@ -4,9 +4,9 @@ import math
 from . import catalog, mql
 
 ROBOT_KEY = "mql5:hdk_hadouken_painel"
-# Árvores revisadas G18/G19 e G19.9 Super ATR (três ativos e matemática na closure).
+# Árvores revisadas G18/G19, Super ATR e alvo probabilístico opt-in/DEMO.
 # Não conceder a exceção só pelo nome: qualquer mudança dos fontes invalida o pin.
-APPROVED_SOURCE_FINGERPRINTS = frozenset({"0958d874e9f55cb4", "20e8d6b940a652a4", "dae16ad20a169fb1", "44b1a783eae8435b", "9530c8099090658f", "d377c812aafd0c5e"})
+APPROVED_SOURCE_FINGERPRINTS = frozenset({"0958d874e9f55cb4", "20e8d6b940a652a4", "dae16ad20a169fb1", "44b1a783eae8435b", "9530c8099090658f", "d377c812aafd0c5e", "352de5268dcd32ae"})
 PROFILE_LIMITS = {
     "HDK_PROFILE_CONSERVATIVE": (0.5, 2.0, 10.0),
     "HDK_PROFILE_MODERATE": (1.0, 3.0, 15.0),

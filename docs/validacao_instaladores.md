@@ -484,3 +484,17 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [ ] Migração automática de uma sessão já aberta por hotplug não é entregue.
 
 Evidência finalSuperATR1.02/dezcurvas/cinzaclaro tem recorte próprioG19.9.
+
+## G19.16 — alvo probabilístico (2026-10-23)
+
+- [x] Linux/Wine6281: painel7.10 e script sintético compilados0/0; mostrador,
+  cores/neutralidade, timer independente e recriação:28 verificações nativas.
+  Monitor atual1280×800, gráfico1181×666; sem mudar resolução global ou enviar ordens.
+- [x] Corpos reais do modelo/feed/política e geometria executados com plataforma
+  simulada; fechamento observado não é inferido do bool do executor.
+- [ ] Windows físico: MetaEditor, monitor/DPI, Canvas, timer e leitura inline.
+- [ ] Tester/servidor DEMO: recibo de parciais/final, netting/hedging, restart e
+  concorrência. Gestão padrão desligada; nenhuma qualificação REAL/financeira.
+
+[Contrato](sdk/alvo_probabilistico.md). Não modifica o instalador nem distribui
+novo payload Safety; a closure integral precisa acompanhar o Expert.

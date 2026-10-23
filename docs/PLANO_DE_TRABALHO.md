@@ -4166,3 +4166,14 @@ Windows físico pendente. [Contrato e continuidade](sdk/play_replay_monitores.md
 AtualizaçãoG19.9 pelo proprietário:1.02/dez curvas20/SMA/desvios1 a10 e tema
 Cinza Claro instalados/inspecionados em3456×1458,89H/126App/checker161/0-0.
 Mantidas diagonais, pontilhado e futuro50/adaptação pendentes.
+
+### G19.16 — alvo probabilístico e mostrador (2026-10-23)
+
+Implementado no HADOUKEN7.10; App acrescenta pin exato352de5268dcd32ae mantendo
+revisões antigas. Conjunto10/20/30, primeira passagem ao TP/SL existente, amostra
+madura/quatro categorias e pressão separada de probabilidade. Gestão opt-in/DEMO,
+padrão desligado, parcial80/final90, mesmo executor. Mostrador independente do
+timer com seta neutra/verde/vermelha e fallback inline em espaço restrito.
+[Uso, matemática e pendências](sdk/alvo_probabilistico.md). Calibração/resultado
+financeiro, fills/Tester, concorrência/restart amplo e Windows físico pendentes.
+Sem alteração no pilar de dados, banco owner, launcher/monitores ou Safety publicada.
