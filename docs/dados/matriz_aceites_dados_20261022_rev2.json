@@ -276,10 +276,10 @@
       }
      },
      "parameters": "90 M1 de 14/09/2026 recebidas 23/10 12hZ; corte 15/09",
-     "result": "4 passed in 3.59s",
+     "result": "4 passed in 5.13s",
      "limitations": "dependências limitadas pela gravação do fato derivado",
      "resource_measurements": {
-      "wall_seconds": 4.46
+      "wall_seconds": 6.03
      },
      "receipt": "docs/dados/recibos/recibos_20261023c.json"
     }
@@ -591,7 +591,7 @@
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     },
     {
-     "commit": "5f17fc091a8ae0a8f8928a6e2c4d0216248feb7c",
+     "commit": "bf89bd798bd3857374b7676eb16d9d0b63c96d3e",
      "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v3_query_contract.py tests/test_bd18a_query.py",
      "reference": "feature_store (fato a fato) e contraprovas V3-01..05",
      "input_hash": {
@@ -604,10 +604,10 @@
       }
      },
      "parameters": "massa da revisão; page_size 4/5/7/5000",
-     "result": "16 passed in 30.80s",
+     "result": "17 passed in 41.20s",
      "limitations": "seleção carregada antes de paginar (BD18b); PG só na CI",
      "resource_measurements": {
-      "wall_seconds": 31.88
+      "wall_seconds": 42.19
      },
      "receipt": "docs/dados/recibos/recibos_20261023c.json"
     }
@@ -683,7 +683,7 @@
        "test": "tests/test_bd19c1_cli.py"
       },
       {
-       "commit": "5f17fc091a8ae0a8f8928a6e2c4d0216248feb7c",
+       "commit": "bf89bd798bd3857374b7676eb16d9d0b63c96d3e",
        "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd19c1_cli.py tests/test_v3_query_contract.py::test_v3_03_read_only_connection_works_and_unidentified_base_is_not_initialized",
        "reference": "sdk.query_series",
        "input_hash": {
@@ -696,10 +696,10 @@
         }
        },
        "parameters": "CLI --json e arquivo 0444",
-       "result": "3 passed in 9.66s",
+       "result": "3 passed in 13.72s",
        "limitations": "sem exportação (E32 integral é BD19c2)",
        "resource_measurements": {
-        "wall_seconds": 10.61
+        "wall_seconds": 14.79
        },
        "receipt": "docs/dados/recibos/recibos_20261023c.json"
       }

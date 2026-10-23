@@ -1,5 +1,5 @@
 {
- "generated_at_utc": "2026-10-23T14:01:19Z",
+ "generated_at_utc": "2026-10-23T15:45:08Z",
  "receipts": [
   {
    "case": "E05",
@@ -19,10 +19,10 @@
    },
    "reference": "contraprova V3-01 da 3ª revisão (mesma massa)",
    "parameters": "90 M1 de 14/09/2026 recebidas 23/10 12hZ; corte 15/09",
-   "result": "4 passed in 3.59s",
+   "result": "4 passed in 5.13s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 4.46
+    "wall_seconds": 6.03
    },
    "limitations": "dependências limitadas pela gravação do fato derivado",
    "inputs": {
@@ -37,8 +37,8 @@
   },
   {
    "case": "E28",
-   "code_commit": "5f17fc091a8ae0a8f8928a6e2c4d0216248feb7c",
-   "test_file_last_commit": "5f17fc091a8ae0a8f8928a6e2c4d0216248feb7c",
+   "code_commit": "bf89bd798bd3857374b7676eb16d9d0b63c96d3e",
+   "test_file_last_commit": "bf89bd798bd3857374b7676eb16d9d0b63c96d3e",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v3_query_contract.py tests/test_bd18a_query.py",
    "environment": {
     "python": [
@@ -53,10 +53,10 @@
    },
    "reference": "feature_store (fato a fato) e contraprovas V3-01..05",
    "parameters": "massa da revisão; page_size 4/5/7/5000",
-   "result": "16 passed in 30.80s",
+   "result": "17 passed in 41.20s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 31.88
+    "wall_seconds": 42.19
    },
    "limitations": "seleção carregada antes de paginar (BD18b); PG só na CI",
    "inputs": {
@@ -71,7 +71,7 @@
   },
   {
    "case": "E32.1",
-   "code_commit": "5f17fc091a8ae0a8f8928a6e2c4d0216248feb7c",
+   "code_commit": "bf89bd798bd3857374b7676eb16d9d0b63c96d3e",
    "test_file_last_commit": "683a447e219d118a6d8685bf7d7f2ad03883da38",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd19c1_cli.py tests/test_v3_query_contract.py::test_v3_03_read_only_connection_works_and_unidentified_base_is_not_initialized",
    "environment": {
@@ -87,10 +87,10 @@
    },
    "reference": "sdk.query_series",
    "parameters": "CLI --json e arquivo 0444",
-   "result": "3 passed in 9.66s",
+   "result": "3 passed in 13.72s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 10.61
+    "wall_seconds": 14.79
    },
    "limitations": "sem exportação (E32 integral é BD19c2)",
    "inputs": {
