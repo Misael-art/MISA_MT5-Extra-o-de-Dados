@@ -2678,3 +2678,19 @@ completa/60%inalterada, sem waiver/dispatch. Nova captura histórica privada48fe
 3trades/111,0875,24bounds/2temas+escala1,5, sem cálculo; contexto acessível, navegação
 /globalstatus ainda têm cortes com fonte extrema. T19.34 ampla/Windows físico pendentes.
 Compor por Git em173/174/175 antes de promover qualquer ponta; nova CI/instalação próprias.
+
+## Frente de dados BD (plano rev. 2) — retomada de 23/10/2026
+
+PRs empilhados sobre `codex/g19-distribuicao`: #190 BD01 → #191 BD02 → #192 BD03 → #193 BD04.
+Todos **parciais**; nenhum instalado no canal de desenvolvimento. Documentos em `docs/dados/`;
+matriz `docs/dados/matriz_aceites_dados_20261022_rev2.json` (E01–E06 em execução, demais
+planejados); recibos com SHAs completos em `docs/dados/recibos/recibos_20261023.json`.
+
+Mudanças de produção até aqui: identidade lógica da base (`datasets.identity/fork/declare_source`,
+`feature_store.with_base_identity`, base congelada em notas novas, `base_namespace` no DTO) e
+histórico do bruto OHLCV (`_ohlcv_revisions`, `received_at`, `load_ohlcv_as_of`).
+
+Retomada: suítes com `xvfb-run -a .venv/bin/python -m pytest -q` (sem janelas no display do
+proprietário; 3 testes de geometria falham no display real e passam sob Xvfb — pendência visual
+no dono da UI). Doctor: `--root` da worktree BD01, que tem `config/config.ini` próprio
+(`--no-mt5`, ponte desativada). Próximo: BD05 (tempo/sessões/W1/MN1).

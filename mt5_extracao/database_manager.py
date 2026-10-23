@@ -8,7 +8,7 @@ import threading
 import traceback
 from datetime import datetime
 from contextlib import contextmanager
-from sqlalchemy import create_engine, text, inspect, MetaData, Table # Adicionado inspect
+from sqlalchemy import bindparam, create_engine, text, inspect, MetaData, Table # Adicionado inspect
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import make_url
@@ -251,7 +251,7 @@ class DatabaseManager:
             log.debug(traceback.format_exc())
             return False
 
-    def save_ohlcv_data(self, symbol, timeframe_name, df):
+    def save_ohlcv_data(self, symbol, timeframe_name, df, *, received_at=None, source=None):
         """
         Salva ou atualiza dados OHLCV no banco de dados.
         Garante que a tabela exista com o schema completo antes de salvar.
@@ -260,7 +260,30 @@ class DatabaseManager:
             symbol (str): Nome do símbolo (ex: 'WIN$N').
             timeframe_name (str): Nome legível do timeframe (ex: '1 minuto').
             df (pd.DataFrame): DataFrame contendo os dados OHLCV com coluna 'time'.
+            received_at: instante UTC em que ESTE sistema recebeu o payload (padrão: agora).
+                Um retry deve repassar o instante original; payload mais antigo que o vigente
+                não prevalece (contrato de recebimento em ``_ohlcv_receipts``).
+            source: fonte do payload ({provider, server[, derivation]}). Fonte primária passa por
+                ``datasets.declare_source``: incompatível com a base é recusada sem gravar. Com
+                ``derivation='fallback_m1'`` (fallback configurado) a base não muda de fonte e cada
+                recebimento registra a origem real.
         """
+        if received_at is not None:
+            self._utc_text(received_at, "recebimento (received_at)")  # erro de chamada: não vira False
+        origin = "write:unknown"
+        if source:
+            from mt5_extracao.analytics import datasets
+            provider = source.get("provider") or "unknown"
+            if source.get("derivation") == "fallback_m1":
+                datasets._source(source, "validation")
+                origin = f"fallback:{provider}"
+            else:
+                try:
+                    declared = datasets.declare_source(self, source)
+                except ValueError as exc:
+                    log.error(f"Gravação recusada para {symbol} {timeframe_name}: {exc}")
+                    return False
+                origin = f"write:{declared['provider']}@{declared['server'] or 'servidor-desconhecido'}"
         if not self.is_connected():
             log.error("Não é possível salvar dados: Banco de dados não conectado.")
             return False
@@ -324,7 +347,7 @@ class DatabaseManager:
             # Usar 'append'. A chave primária 'time' deve lidar com duplicatas se o SQLite estiver configurado corretamente
             # ou se a lógica de 'overwrite' for usada antes desta chamada.
             # Deixar pandas/SQLAlchemy lidar com a citação do nome da tabela
-            self._upsert_dataframe(table_name, df_to_save)
+            self._upsert_dataframe(table_name, df_to_save, received_at=received_at, origin=origin)
 
             log.info(f"Dados para {symbol} ({timeframe_name}) salvos com sucesso em '{table_name}'.")
             return True
@@ -344,8 +367,121 @@ class DatabaseManager:
     # a tabela OHLCV tem ~70 colunas -> 200 linhas = ~14 mil parâmetros.
     _UPSERT_CHUNK_ROWS = 200
 
-    def _upsert_dataframe(self, table_name, df):
-        """Insere ou atualiza linhas pela chave primária 'time'. df indexado por 'time'."""
+    # Contrato de recebimento do bruto OHLCV (T1.1/BD04), aditivo:
+    #   _ohlcv_versions: cada CONTEÚDO distinto de uma barra (hash do OHLCV/volumes/spread);
+    #   _ohlcv_receipts: cada EVENTO de recebimento (conteúdo + instante em que ESTE sistema o recebeu).
+    # Prevalece o conteúdo do recebimento mais recente; empate com conteúdos distintos é conflito,
+    # resolvido pelo menor hash (independe da ordem de chegada) e sinalizado. Legado gravado antes do
+    # contrato recebe um recebimento com instante NULL (desconhecido), nunca um horário inventado.
+    VERSIONS_TABLE = "_ohlcv_versions"
+    RECEIPTS_TABLE = "_ohlcv_receipts"
+    _REVISION_FIELDS = ("open", "high", "low", "close", "tick_volume", "spread", "real_volume")
+
+    def _ensure_receipts(self, conn):
+        conn.execute(text(
+            f"CREATE TABLE IF NOT EXISTS {self.VERSIONS_TABLE} (table_name TEXT NOT NULL, time TEXT NOT NULL, "
+            "content_sha256 TEXT NOT NULL, payload_json TEXT NOT NULL, "
+            "PRIMARY KEY (table_name, time, content_sha256))"))
+        conn.execute(text(
+            f"CREATE TABLE IF NOT EXISTS {self.RECEIPTS_TABLE} (table_name TEXT NOT NULL, time TEXT NOT NULL, "
+            "content_sha256 TEXT NOT NULL, received_at_utc TEXT NOT NULL, recorded_at_utc TEXT NOT NULL, "
+            "origin TEXT NOT NULL, PRIMARY KEY (table_name, time, content_sha256, received_at_utc))"))
+
+    _UNKNOWN_RECEIPT = ""  # legado: chegada desconhecida (texto vazio ordena antes de qualquer instante)
+
+    @staticmethod
+    def _utc_text(value, label="instante"):
+        """UTC canônico; horário sem fuso é recusado em vez de presumido (como no feature store)."""
+        stamp = pd.Timestamp(value)
+        if pd.isna(stamp) or stamp.tzinfo is None:
+            raise ValueError(f"O {label} precisa declarar fuso horário; horário sem fuso não é presumido UTC.")
+        return stamp.tz_convert("UTC").strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    def _market_payload(self, row):
+        payload = {}
+        for name in self._REVISION_FIELDS:
+            value = row.get(name)
+            payload[name] = None if value is None or (isinstance(value, float) and np.isnan(value)) else float(value)
+        text_payload = json.dumps(payload, sort_keys=True)
+        return text_payload, hashlib.sha256(text_payload.encode()).hexdigest()
+
+    @staticmethod
+    def _winner(receipts):
+        """(hash vencedor, recebimento, conflito) entre recebimentos (hash, instante)."""
+        latest = max(received for _, received in receipts)
+        tied = sorted({digest for digest, received in receipts if received == latest})
+        return tied[0], latest, len(tied) > 1
+
+    def _receive(self, conn, table_name, records, received_at, origin="write:unknown"):
+        """Registra os recebimentos e devolve só os registros cujo conteúdo prevalece.
+
+        Barras cujo vencedor não é o conteúdo recebido agora têm o bruto reconciliado com o vencedor.
+        """
+        if not records:
+            return records
+        self._ensure_receipts(conn)
+        incoming = self._utc_text(received_at if received_at is not None else pd.Timestamp.now(tz="UTC"),
+                                  "recebimento (received_at)")
+        recorded = self._utc_text(pd.Timestamp.now(tz="UTC"))
+        key = lambda value: pd.Timestamp(value).strftime(self._TIME_FMT)
+        stamps = sorted({key(r["time"]) for r in records})
+        bind = stamps if self.dialect == "sqlite" else [pd.Timestamp(v).to_pydatetime() for v in stamps]
+        columns = ", ".join(["time", *self._REVISION_FIELDS])
+        current, receipts = {}, {}
+        for begin in range(0, len(stamps), 500):
+            rows = conn.execute(text(f'SELECT {columns} FROM "{table_name}" WHERE time IN :times').bindparams(
+                bindparam("times", expanding=True)), {"times": bind[begin:begin + 500]}).mappings()
+            current.update({key(row["time"]): dict(row) for row in rows})
+            for row in conn.execute(text(
+                    f"SELECT time, content_sha256, received_at_utc FROM {self.RECEIPTS_TABLE} "
+                    "WHERE table_name=:t AND time IN :times").bindparams(bindparam("times", expanding=True)),
+                    {"t": table_name, "times": stamps[begin:begin + 500]}):
+                receipts.setdefault(row[0], []).append((row[1], row[2]))
+        add_version = text(f"INSERT INTO {self.VERSIONS_TABLE} VALUES (:t,:time,:h,:payload) "
+                           "ON CONFLICT (table_name, time, content_sha256) DO NOTHING")
+        add_receipt = text(f"INSERT INTO {self.RECEIPTS_TABLE} VALUES (:t,:time,:h,:rcv,:rec,:origin) "
+                           "ON CONFLICT (table_name, time, content_sha256, received_at_utc) DO NOTHING")
+        by_stamp = {}
+        for record in records:
+            stamp = key(record["time"])
+            payload, digest = self._market_payload(record)
+            by_stamp.setdefault(stamp, {})[digest] = record
+            if stamp not in receipts and stamp in current:  # bruto anterior ao contrato
+                legacy_payload, legacy_digest = self._market_payload(current[stamp])
+                conn.execute(add_version, {"t": table_name, "time": stamp, "h": legacy_digest, "payload": legacy_payload})
+                conn.execute(add_receipt, {"t": table_name, "time": stamp, "h": legacy_digest,
+                                           "rcv": self._UNKNOWN_RECEIPT, "rec": recorded, "origin": "legacy"})
+                receipts[stamp] = [(legacy_digest, self._UNKNOWN_RECEIPT)]
+            conn.execute(add_version, {"t": table_name, "time": stamp, "h": digest, "payload": payload})
+            conn.execute(add_receipt, {"t": table_name, "time": stamp, "h": digest, "rcv": incoming,
+                                       "rec": recorded, "origin": origin})
+            receipts.setdefault(stamp, [])
+            if (digest, incoming) not in receipts[stamp]:
+                receipts[stamp].append((digest, incoming))
+        apply = []
+        for stamp, candidates in by_stamp.items():
+            digest, _, conflict = self._winner(receipts[stamp])
+            if conflict:
+                log.warning("Recebimentos empatados com conteúdos distintos em %s %s; prevalece o menor hash.",
+                            table_name, stamp)
+            if digest in candidates:
+                apply.append(candidates[digest])
+                continue
+            if stamp in current and self._market_payload(current[stamp])[1] == digest:
+                continue
+            winner = json.loads(conn.execute(text(
+                f"SELECT payload_json FROM {self.VERSIONS_TABLE} WHERE table_name=:t AND time=:time "
+                "AND content_sha256=:h"), {"t": table_name, "time": stamp, "h": digest}).scalar_one())
+            log.warning("Recebimento anterior ao vigente em %s %s não sobrescreve o bruto.", table_name, stamp)
+            if stamp not in current:
+                apply.append({**next(iter(candidates.values())), **winner})
+        return apply
+
+    def _upsert_dataframe(self, table_name, df, *, received_at=None, origin="write:unknown"):
+        """Insere ou atualiza linhas pela chave primária 'time'. df indexado por 'time'.
+
+        Tudo numa transação: falha em qualquer bloco desfaz os anteriores e os recebimentos.
+        """
         table = Table(table_name, MetaData(), autoload_with=self.engine)
         table_cols = [c.name for c in table.columns]
         data = df.reset_index() if 'time' not in df.columns else df
@@ -357,12 +493,74 @@ class DatabaseManager:
             if isinstance(r['time'], pd.Timestamp):
                 r['time'] = r['time'].to_pydatetime()
         with self.engine.begin() as conn:
+            records = self._receive(conn, table_name, records, received_at, origin)
             for i in range(0, len(records), self._UPSERT_CHUNK_ROWS):
                 insert = postgresql_insert if self.dialect == 'postgresql' else sqlite_insert
                 stmt = insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
                 update_cols = {c: stmt.excluded[c] for c in data.columns if c != 'time'}
                 conn.execute(stmt.on_conflict_do_update(index_elements=['time'], set_=update_cols))
         return len(records)
+
+    def load_ohlcv_as_of(self, symbol, timeframe_name, as_of, *, mode="causal", start=None, end=None):
+        """Barras como eram conhecidas em ``as_of`` (com fuso), sem recorrer ao vigente.
+
+        ``causal``: só barras já FECHADAS e já RECEBIDAS no corte, com o conteúdo do último recebimento
+        até lá; barras de chegada desconhecida (legado) ficam de fora. ``inspect``: inclui o legado com
+        ``arrival_state='unknown'`` para leitura humana — não é elegível para backtest/decisão.
+        Colunas extras: ``known_since_utc``, ``arrival_state``, ``conflict``, ``content_sha256``.
+        """
+        if mode not in ("causal", "inspect"):
+            raise ValueError("mode deve ser 'causal' ou 'inspect'.")
+        cutoff = self._utc_text(as_of, "corte (as_of)")
+        from mt5_extracao import timeframes
+        tf = timeframes.parse(timeframe_name)
+        if tf is None:
+            raise ValueError(f"Timeframe desconhecido: {timeframe_name}")
+        table_name = self.get_table_name_for_symbol(symbol, timeframe_name)
+        with self.consistent_read() as conn:
+            bars = self.load_ohlcv(symbol, timeframe_name, start, end, connection=conn)
+            history = pd.DataFrame(columns=["time", "content_sha256", "received_at_utc", "payload_json"])
+            if not bars.empty and inspect(conn).has_table(self.RECEIPTS_TABLE):
+                history = pd.read_sql(text(
+                    f"SELECT r.time, r.content_sha256, r.received_at_utc, v.payload_json "
+                    f"FROM {self.RECEIPTS_TABLE} r JOIN {self.VERSIONS_TABLE} v ON v.table_name=r.table_name "
+                    "AND v.time=r.time AND v.content_sha256=r.content_sha256 WHERE r.table_name=:t "
+                    "AND r.time >= :first AND r.time <= :last"), conn, params={
+                        "t": table_name,
+                        "first": self._to_storage(pd.Series([pd.Timestamp(bars.time.min())])).dt.strftime(self._TIME_FMT)[0],
+                        "last": self._to_storage(pd.Series([pd.Timestamp(bars.time.max())])).dt.strftime(self._TIME_FMT)[0]})
+        extra = ["known_since_utc", "arrival_state", "conflict", "content_sha256"]
+        if bars.empty:
+            return bars.assign(**{name: None for name in extra})
+        starts = pd.to_datetime(bars["time"])
+        step = pd.DateOffset(months=1) if tf.name == "MN1" else pd.Timedelta(minutes=tf.minutes)
+        ends_utc = (starts + step - pd.Timedelta(hours=float(self.broker_utc_offset))).dt.tz_localize("UTC")
+        frame = bars.assign(_stamp=self._to_storage(starts).dt.strftime(self._TIME_FMT),
+                            _closed=ends_utc.dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ") <= cutoff)
+        known = history[(history.received_at_utc != self._UNKNOWN_RECEIPT) & (history.received_at_utc <= cutoff)]
+        known = known.sort_values(["time", "received_at_utc", "content_sha256"], ascending=[True, False, True])
+        top = known.groupby("time").head(1).set_index("time")
+        ties = known.merge(top[["received_at_utc"]].reset_index(), on=["time", "received_at_utc"])
+        conflicts = set(ties.groupby("time")["content_sha256"].nunique().loc[lambda n: n > 1].index)
+        legacy_only = history.groupby("time")["received_at_utc"].agg(lambda r: (r == self._UNKNOWN_RECEIPT).all())
+        legacy = history[history.received_at_utc == self._UNKNOWN_RECEIPT].drop_duplicates("time").set_index("time")
+        rows = []
+        for row in frame.to_dict(orient="records"):
+            stamp, closed = row.pop("_stamp"), row.pop("_closed")
+            if closed and stamp in top.index:
+                version = top.loc[stamp]
+                row.update(json.loads(version.payload_json))
+                row.update(known_since_utc=pd.Timestamp(version.received_at_utc), arrival_state="received",
+                           conflict=stamp in conflicts, content_sha256=version.content_sha256)
+                rows.append(row)
+            elif mode == "inspect" and (stamp not in legacy_only.index or legacy_only[stamp]):
+                if stamp in legacy.index:
+                    row.update(json.loads(legacy.loc[stamp].payload_json))
+                row.update(known_since_utc=None, arrival_state="unknown", conflict=False,
+                           content_sha256=legacy.loc[stamp].content_sha256 if stamp in legacy.index else None)
+                rows.append(row)
+        result = pd.DataFrame(rows, columns=[*bars.columns, *extra])
+        return result.reset_index(drop=True)
 
     def _has_time_primary_key(self, table_name):
         """True se a tabela existe e sua chave primária é exatamente a coluna 'time'."""
