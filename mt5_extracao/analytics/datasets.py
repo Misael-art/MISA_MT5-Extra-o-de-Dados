@@ -109,6 +109,78 @@ def _source(source, origin):
             "server_status": "declared" if source.get("server") else "unknown"}
 
 
+_SOURCE_SLOTS = ("provider", "server")
+
+
+def _slots(conn):
+    return {row.slot: row.origin_id for row in conn.execute(text("SELECT slot, origin_id FROM _dataset_origin"))}
+
+
+def identity(db):
+    """Identidade lógica da base: vive no conteúdo do banco/schema, nunca no nome do arquivo.
+
+    Backup/restauração e movimentação conservam o namespace; derivação independente usa ``fork``.
+    ``provider``/``server`` são a fonte declarada da base (``None`` = não declarada, sem feed inventado).
+    """
+    namespace = _schema(db)
+    with db.engine.connect() as conn:
+        slots = _slots(conn)
+    return {"namespace": namespace, "parent_namespace": slots.get("parent"),
+            "lineage": "fork" if slots.get("parent") else "original",
+            "provider": slots.get("provider"), "server": slots.get("server"),
+            "backend": db.engine.dialect.name}
+
+
+def fork(db):
+    """Declara esta cópia como base derivada independente: novo namespace, origem registrada.
+
+    Uma cópia que vai divergir precisa passar por aqui; sem isso, cópia = backup da mesma base.
+    """
+    parent = _schema(db)
+    child = uuid.uuid4().hex
+    with _LOCK, db.engine.begin() as conn:
+        conn.execute(text("UPDATE _dataset_origin SET origin_id=:child WHERE slot='default'"), {"child": child})
+        conn.execute(text("INSERT INTO _dataset_origin (slot,origin_id) VALUES ('parent',:parent) "
+                          "ON CONFLICT(slot) DO UPDATE SET origin_id=excluded.origin_id"), {"parent": parent})
+    return identity(db)
+
+
+def declare_source(db, source):
+    """Vincula a base a uma fonte; fonte incompatível é recusada, nunca misturada.
+
+    A primeira declaração fixa ``provider``/``server``; repeti-la é idempotente. Outra fonte exige
+    uma base nova, porque as chaves por símbolo não distinguem feeds; ``fork`` conserva a fonte.
+    """
+    wanted = _source(source, "validation")
+    _schema(db)
+    with _LOCK, db.engine.begin() as conn:
+        slots = _slots(conn)
+        for slot in _SOURCE_SLOTS:
+            value = wanted[slot] if slot == "server" else (source or {}).get("provider")
+            if value is None:
+                continue
+            current = slots.get(slot)
+            if current is not None and current != value:
+                raise ValueError(f"Base vinculada a {slot}={current!r}; recusada a gravação de {value!r}. "
+                                 "Grave essa fonte numa base nova (outro banco ou schema); fork() deriva a mesma "
+                                 "fonte e conserva a origem dos fatos herdados.")
+            if current is None:
+                conn.execute(text("INSERT INTO _dataset_origin (slot,origin_id) VALUES (:slot,:value)"),
+                             {"slot": slot, "value": value})
+    current = identity(db)
+    return {key: current[key] for key in _SOURCE_SLOTS}
+
+
+def _bound_source(db, source):
+    """Fonte efetiva da captura: a declarada na base, validada contra a informada."""
+    declared = declare_source(db, source) if source else identity(db)
+    merged = dict(source or {})
+    for slot in _SOURCE_SLOTS:
+        if declared.get(slot) is not None:
+            merged[slot] = declared[slot]
+    return merged or None
+
+
 def _blocks(frame, time_column, blocks):
     # Agrupar por dia evita deslocar todo o histórico se uma barra antiga chegar tarde.
     groups = [frame] if frame.empty else [group for _, group in frame.groupby(
@@ -322,6 +394,7 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
     if isinstance(families, str) or set(families) - {"ticks", "book"}:
         raise ValueError("Famílias adicionais aceitas: ticks e book; informe uma lista explícita.")
     origin = _schema(db)
+    source = _bound_source(db, source)
     from mt5_extracao.trade_analytics import calendar
     from mt5_extracao.analytics import instruments
     from mt5_extracao.analytics import data_eligibility
