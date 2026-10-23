@@ -53,10 +53,10 @@
       "hadouken_commit": "6fb02374cd652a5fa0bfd314ace9d47ed8bc1283"
      },
      "parameters": "bars_frame(sessions=30, bars_per_session=12); pin H obrigatório (gate de composição)",
-     "result": "8 passed in 9.99s",
+     "result": "8 passed in 8.62s",
      "limitations": "confere IDs emitidos, não maturidade numérica; cálculos fora dos pontos enumeráveis não detectados",
      "resource_measurements": {
-      "wall_seconds": 10.97
+      "wall_seconds": 9.51
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -128,10 +128,10 @@
       "base_b": "1a0ca6b78877a5614065e54d702e26aa93f45cac0ea123c1c5eace00bbb24efd"
      },
      "parameters": "19 cenários; tolerância relativa 1e-9 (somas), 1e-12 (máximos)",
-     "result": "15 passed in 4.34s",
+     "result": "15 passed in 3.57s",
      "limitations": "8 saídas com oráculo; métricas de memória não equivalem a RSS de job",
      "resource_measurements": {
-      "wall_seconds": 4.94
+      "wall_seconds": 4.24
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -169,10 +169,10 @@
       "market_data.sine120_h": "aebfea76e0fd3ae991b3be1f3bb220f7adb321fff549b52856926fd12d95db50"
      },
      "parameters": "EURUSD H1 em bancos SQLite temporários",
-     "result": "12 passed in 13.79s",
+     "result": "12 passed in 11.76s",
      "limitations": "consumidores além do serviço/CLI ainda sem identidade; PG só na CI",
      "resource_measurements": {
-      "wall_seconds": 14.57
+      "wall_seconds": 12.41
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -215,10 +215,10 @@
       }
      },
      "parameters": "WIN$N M1 02–05/01/2024 do FakeMT5",
-     "result": "6 passed in 11.98s",
+     "result": "6 passed in 10.83s",
      "limitations": "terceira fonte é simulação por rótulo, não importador real validado",
      "resource_measurements": {
-      "wall_seconds": 12.72
+      "wall_seconds": 11.49
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -255,10 +255,10 @@
       "generator": "tests/test_analytics_calendar.py::m1_bars@d0735c4c02502e5c1768d986b592ec98d49cbda4"
      },
      "parameters": "received_at T1..T4 explícitos; R01–R03",
-     "result": "13 passed in 7.81s",
+     "result": "13 passed in 6.61s",
      "limitations": "ticks/book sem contrato de recebimento; PG só na CI",
      "resource_measurements": {
-      "wall_seconds": 8.46
+      "wall_seconds": 7.25
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -298,10 +298,10 @@
       "stage_absent_again_sha256": "c6fcbbacd4c6312fc429b5563b04a2774c856fbb405bbc98e942033196fdf16b"
      },
      "parameters": "30 barras M1 09:00–09:29 de 14/09/2026; real_volume None→5→None",
-     "result": "1 passed in 1.76s",
+     "result": "1 passed in 1.39s",
      "limitations": "elegibilidade comprovada no serviço; UI não lê o estado diretamente",
      "resource_measurements": {
-      "wall_seconds": 2.48
+      "wall_seconds": 2.03
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -328,10 +328,10 @@
       }
      },
      "parameters": "H1/M1 sintéticos; âncora 17:00; fev/2024",
-     "result": "7 passed in 3.53s",
+     "result": "7 passed in 2.46s",
      "limitations": "1º recorte: limite 95/96 corrigido só com zona (E08)",
      "resource_measurements": {
-      "wall_seconds": 4.33
+      "wall_seconds": 3.12
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -358,10 +358,10 @@
       }
      },
      "parameters": "dst_transition 96 H1; primavera 29/03/2026",
-     "result": "7 passed in 3.09s",
+     "result": "7 passed in 2.35s",
      "limitations": "derivação/snapshot com zona recusados; fold na fronteira de blocos recusado",
      "resource_measurements": {
-      "wall_seconds": 3.84
+      "wall_seconds": 2.97
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -391,7 +391,7 @@
    "state": "em_execucao",
    "evidence": [
     {
-     "commit": "b78802eceb0c3391828d033f8a00d50f4f425ca7",
+     "commit": "779aaa39924bfa3c0759de5fc99d099b03197598",
      "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd08a_returns.py",
      "reference": "tests/bench_reference.py::returns sobre closes M5 derivados",
      "input_hash": {
@@ -404,10 +404,10 @@
       }
      },
      "parameters": "WIN$N M1 do FakeMT5 → M5, offset 0",
-     "result": "5 passed in 28.35s",
+     "result": "5 passed in 14.71s",
      "limitations": "só família de retorno",
      "resource_measurements": {
-      "wall_seconds": 29.12
+      "wall_seconds": 15.35
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -549,7 +549,7 @@
    "state": "em_execucao",
    "evidence": [
     {
-     "commit": "61844e399b0f3f62c8f776ca8305a50d488a43e7",
+     "commit": "7e44d1be35120ad12e78b98f3853ef4b897a174e",
      "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd18a_query.py",
      "reference": "feature_store.query_as_of (fato a fato)",
      "input_hash": {
@@ -562,10 +562,10 @@
       }
      },
      "parameters": "cadeia do piloto; page_size 97/5000",
-     "result": "5 passed in 24.98s",
+     "result": "5 passed in 15.19s",
      "limitations": "seleção carregada antes de paginar (teto 200 000)",
      "resource_measurements": {
-      "wall_seconds": 25.83
+      "wall_seconds": 16.06
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
@@ -595,7 +595,7 @@
    "state": "em_execucao",
    "evidence": [
     {
-     "commit": "d79c3cb14059c29f3ebb1e7bbb5af35f9dd796f8",
+     "commit": "94bba93b1db24ce9c63dec0af9581144273b9218",
      "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd19c1_cli.py",
      "reference": "sdk.query_series",
      "input_hash": {
@@ -608,10 +608,10 @@
       }
      },
      "parameters": "CLI --json sobre a cadeia do piloto",
-     "result": "2 passed in 10.75s",
+     "result": "2 passed in 6.46s",
      "limitations": "Laboratório/Relações/export/Estudo pendentes",
      "resource_measurements": {
-      "wall_seconds": 11.59
+      "wall_seconds": 7.15
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
