@@ -8,7 +8,7 @@ from sqlalchemy import text
 from mt5_extracao.analytics import feature_store
 from mt5_extracao.database_manager import DatabaseManager
 
-SYMBOL, TF, FID, VER = "EURUSD", "M5", "probe.v4", "1"
+SYMBOL, TF, FID, VER = "EURUSD", "M5", "price.return_1", "v4-probe"
 T0 = pd.Timestamp("2026-09-14T09:00Z")
 FAR = pd.Timestamp("2100-01-01", tz="UTC")
 
