@@ -15,6 +15,11 @@ from sqlalchemy import bindparam, inspect, text
 
 DEFINITIONS_TABLE = "_feature_definitions"
 VALUES_TABLE = "_feature_values"
+# Fronteira transacional (V4-02): um contador de linha única serializa as transações de escrita do store;
+# a geração reservada dentro da transação só fica visível no commit, então "geração <= G confirmada"
+# é exatamente o conjunto de revisões já confirmadas quando o leitor leu G.
+CLOCK_TABLE = "_feature_store_clock"
+GENERATIONS_TABLE = "_feature_store_generations"
 
 _CREATE_DEFINITIONS = f"""
 CREATE TABLE IF NOT EXISTS {DEFINITIONS_TABLE} (
@@ -127,10 +132,17 @@ def ensure_schema(db):
             if name not in columns:
                 conn.execute(text(f"ALTER TABLE {DEFINITIONS_TABLE} ADD COLUMN {name} {sql_type}"))
         conn.execute(text(_CREATE_VALUES))
-        if "recorded_at_utc" not in {column["name"] for column in inspect(conn).get_columns(VALUES_TABLE)}:
-            # Instante em que ESTE sistema gravou a revisão (conhecimento efetivo); NULL = fato anterior
-            # ao contrato, gravação desconhecida.
+        value_columns = {column["name"] for column in inspect(conn).get_columns(VALUES_TABLE)}
+        if "recorded_at_utc" not in value_columns:
+            # Relógio do escritor ao gravar a revisão (informativo); NULL = fato anterior ao contrato.
             conn.execute(text(f"ALTER TABLE {VALUES_TABLE} ADD COLUMN recorded_at_utc TEXT"))
+        if "generation" not in value_columns:
+            # Geração da transação que gravou a revisão; NULL = legado, visibilidade desconhecida.
+            conn.execute(text(f"ALTER TABLE {VALUES_TABLE} ADD COLUMN generation BIGINT"))
+        conn.execute(text(f"CREATE TABLE IF NOT EXISTS {CLOCK_TABLE} (id INTEGER PRIMARY KEY, generation BIGINT NOT NULL)"))
+        conn.execute(text(f"INSERT INTO {CLOCK_TABLE} (id, generation) VALUES (1, 0) ON CONFLICT (id) DO NOTHING"))
+        conn.execute(text(f"CREATE TABLE IF NOT EXISTS {GENERATIONS_TABLE} (generation BIGINT PRIMARY KEY, "
+                          "started_at_utc TEXT NOT NULL, committed_at_utc TEXT)"))
         conn.execute(text(_CREATE_ASOF_INDEX))
         conn.execute(text(_CREATE_KEY_INDEX))
         conn.execute(text(_CREATE_SOURCE_INDEX))
@@ -255,6 +267,52 @@ def _validate_declared_value_type(value, value_type, *, quality="VALID"):
         raise ValueError(f"O valor informado não corresponde ao value_type {value_type} da definição.")
 
 
+_INSERT_VALUES = (f"INSERT INTO {VALUES_TABLE} "
+                  "(symbol, tf, observation_time, available_at_utc, observed_at_utc, valid_until_utc, feature_id, "
+                  "algorithm_version, numeric_value, categorical_value, quality, source_revision, revision, value_hash, "
+                  "metadata_json, recorded_at_utc, generation) VALUES (:symbol, :tf, :observation_time, "
+                  ":available_at_utc, :observed_at_utc, :valid_until_utc, :feature_id, :algorithm_version, "
+                  ":numeric_value, :categorical_value, :quality, :source_revision, :revision, :value_hash, "
+                  ":metadata_json, :recorded_at_utc, :generation)")
+
+
+def _insert_revisions(conn, rows):
+    """Único caminho de gravação de revisões (save_value e save_values): reserva a geração da transação
+    (bloqueando outros escritores até o commit) e grava relógio e geração em todas as linhas."""
+    if not rows:
+        return None
+    conn.execute(text(f"UPDATE {CLOCK_TABLE} SET generation = generation + 1 WHERE id = 1"))
+    generation = int(conn.execute(text(f"SELECT generation FROM {CLOCK_TABLE} WHERE id = 1")).scalar_one())
+    recorded = _utc_text(datetime.now(timezone.utc), "recorded_at")
+    conn.execute(text(f"INSERT INTO {GENERATIONS_TABLE} (generation, started_at_utc) VALUES (:g, :t)"),
+                 {"g": generation, "t": recorded})
+    for row in rows:
+        row["recorded_at_utc"], row["generation"] = recorded, generation
+    conn.execute(text(_INSERT_VALUES), rows)
+    return generation
+
+
+def _stamp_committed(db, generation):
+    """Depois do commit: carimba quando a geração passou a ser conhecida. Também carimba, de forma
+    conservadora (agora, nunca antes), gerações confirmadas cujo carimbo se perdeu (ex.: processo
+    interrompido entre o commit e este passo). Leitores nunca carimbam."""
+    if generation is None:
+        return
+    with db.engine.begin() as conn:
+        conn.execute(text(f"UPDATE {GENERATIONS_TABLE} SET committed_at_utc = :t "
+                          "WHERE committed_at_utc IS NULL AND generation <= :g"),
+                     {"t": _utc_text(datetime.now(timezone.utc), "committed_at"), "g": generation})
+
+
+def store_snapshot(db):
+    """Fotografia de leitura: última geração confirmada e o instante da leitura (sem escrever)."""
+    _require_db(db)
+    with db.engine.connect() as conn:
+        generation = (conn.execute(text(f"SELECT generation FROM {CLOCK_TABLE} WHERE id = 1")).scalar()
+                      if inspect(conn).has_table(CLOCK_TABLE) else None)
+    return {"generation": int(generation or 0), "taken_at": _utc_text(datetime.now(timezone.utc), "snapshot")}
+
+
 def save_value(db, symbol, timeframe, feature_id, algorithm_version, observation_time, value, *,
                available_at=None, observed_at=None, valid_until=None, source_revision="0", quality="VALID",
                metadata=None):
@@ -289,14 +347,8 @@ def save_value(db, symbol, timeframe, feature_id, algorithm_version, observation
         if current and available < current["available_at_utc"]:
             raise ValueError("available_at não pode retroceder em uma revisão da mesma característica.")
         revision = int(current["revision"]) + 1 if current else 1
-        params = dict(row, revision=revision)
-        conn.execute(text(
-            f"INSERT INTO {VALUES_TABLE} "
-            "(symbol, tf, observation_time, available_at_utc, observed_at_utc, valid_until_utc, feature_id, "
-            "algorithm_version, numeric_value, categorical_value, quality, source_revision, revision, value_hash, "
-            "metadata_json) VALUES (:symbol, :tf, :observation_time, :available_at_utc, :observed_at_utc, "
-            ":valid_until_utc, :feature_id, :algorithm_version, :numeric_value, :categorical_value, :quality, "
-            ":source_revision, :revision, :value_hash, :metadata_json)"), params)
+        generation = _insert_revisions(conn, [dict(row, revision=revision)])
+    _stamp_committed(db, generation)
     return revision
 
 
@@ -308,65 +360,65 @@ BASES = ("research", "knowledge")
 
 
 def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None,
-                start=None, end=None, basis="research", recorded_through=None, with_recorded=False):
+                start=None, end=None, basis="research", generation_through=None, knowledge_through=None,
+                with_recorded=False):
     """Consulta a última revisão disponível em ``as_of`` para cada instante observado.
 
     ``basis='research'`` (padrão, comportamento histórico) usa a disponibilidade declarada pelo
     produtor: uma reconstrução retrospectiva aparece como disponível no fechamento da barra.
-    ``basis='knowledge'`` exige também que o sistema já tivesse gravado a revisão
-    (``recorded_at_utc <= as_of``); revisões de gravação desconhecida (legado) ficam de fora.
-    ``recorded_through`` fixa uma fotografia: ignora revisões gravadas depois (paginação estável).
-
+    ``basis='knowledge'`` exige também que a revisão já estivesse CONFIRMADA (commit carimbado) no
+    corte ``min(as_of, knowledge_through)``; legado sem geração fica de fora.
+    ``generation_through`` fixa uma fotografia transacional (``store_snapshot``): revisões de
+    gerações posteriores — confirmadas depois da 1ª página — não entram.
     ``start`` é inclusivo e ``end`` exclusivo; ambos filtram ``observation_time``.
-    Sem ``algorithm_version``, versões de algoritmo distintas são devolvidas em
-    linhas separadas para que uma comparação histórica não descarte proveniência.
     """
     _require_db(db)
     as_of_utc = _utc_text(as_of, "as_of")
-    if not inspect(db.engine).has_table(VALUES_TABLE):
-        return _empty_values()
     if basis not in BASES:
         raise ValueError("basis deve ser 'research' ou 'knowledge'.")
-    where = ["available_at_utc <= :as_of"]
+    if not inspect(db.engine).has_table(VALUES_TABLE):
+        return _empty_values()
+    columns = {c["name"] for c in inspect(db.engine).get_columns(VALUES_TABLE)}
+    contract = "generation" in columns and inspect(db.engine).has_table(GENERATIONS_TABLE)
+    where = ["v.available_at_utc <= :as_of"]
     params = {"as_of": as_of_utc}
-    has_recorded = "recorded_at_utc" in {c["name"] for c in inspect(db.engine).get_columns(VALUES_TABLE)}
-    if basis == "knowledge":
-        if not has_recorded:
-            return _empty_values()
-        where.append("recorded_at_utc IS NOT NULL AND recorded_at_utc <= :as_of")
-    if recorded_through is not None and has_recorded:
-        where.append("(recorded_at_utc IS NULL OR recorded_at_utc <= :recorded_through)")
-        params["recorded_through"] = _utc_text(recorded_through, "recorded_through")
-    if symbol is not None:
-        where.append("symbol = :symbol")
-        params["symbol"] = str(symbol)
-    if timeframe is not None:
-        where.append("tf = :tf")
-        params["tf"] = str(timeframe)
-    if feature_id is not None:
-        where.append("feature_id = :feature_id")
-        params["feature_id"] = str(feature_id)
-    if algorithm_version is not None:
-        where.append("algorithm_version = :algorithm_version")
-        params["algorithm_version"] = str(algorithm_version)
+    for name, column in (("symbol", "symbol"), ("timeframe", "tf"), ("feature_id", "feature_id"),
+                         ("algorithm_version", "algorithm_version")):
+        value = locals()[name]
+        if value is not None:
+            where.append(f"v.{column} = :{name}")
+            params[name] = str(value)
     if start is not None:
-        where.append("observation_time >= :start")
+        where.append("v.observation_time >= :start")
         params["start"] = _utc_text(start, "start")
     if end is not None:
-        where.append("observation_time < :end")
+        where.append("v.observation_time < :end")
         params["end"] = _utc_text(end, "end")
-    selected = list(VALUE_COLUMNS) + (["recorded_at_utc"] if with_recorded and has_recorded else [])
+    if generation_through is not None and contract:
+        where.append("(v.generation IS NULL OR v.generation <= :generation_through)")
+        params["generation_through"] = int(generation_through)
+    if basis == "knowledge":
+        if not contract:
+            return _empty_values()
+        cut = as_of_utc if knowledge_through is None else min(as_of_utc, _utc_text(knowledge_through, "knowledge_through"))
+        where.append("v.generation IS NOT NULL AND g.committed_at_utc IS NOT NULL AND g.committed_at_utc <= :known_cut")
+        params["known_cut"] = cut
+    join = f"LEFT JOIN {GENERATIONS_TABLE} g ON g.generation = v.generation" if contract else ""
+    extra = (["v.recorded_at_utc", "v.generation", "g.committed_at_utc AS known_at_utc"]
+             if with_recorded and contract else [])
+    selected = [f"v.{name}" for name in VALUE_COLUMNS] + extra
+    names = list(VALUE_COLUMNS) + (["recorded_at_utc", "generation", "known_at_utc"] if extra else [])
     sql = f"""
         WITH eligible AS (
             SELECT {', '.join(selected)},
                    ROW_NUMBER() OVER (
-                       PARTITION BY symbol, tf, observation_time, feature_id, algorithm_version
-                       ORDER BY available_at_utc DESC, observed_at_utc DESC, revision DESC
+                       PARTITION BY v.symbol, v.tf, v.observation_time, v.feature_id, v.algorithm_version
+                       ORDER BY v.available_at_utc DESC, v.observed_at_utc DESC, v.revision DESC
                    ) AS point_rank
-            FROM {VALUES_TABLE}
+            FROM {VALUES_TABLE} v {join}
             WHERE {' AND '.join(where)}
         )
-        SELECT {', '.join(selected)} FROM eligible
+        SELECT {', '.join(names)} FROM eligible
         WHERE point_rank = 1 AND (valid_until_utc IS NULL OR valid_until_utc > :as_of)
         ORDER BY symbol, tf, feature_id, algorithm_version, observation_time
     """
@@ -544,6 +596,7 @@ def save_values(db, records, *, transaction_hook=None):
     if not rows and transaction_hook is None:
         return counts
     ensure_schema(db)
+    generation = None
     with db.engine.begin() as conn:
         # Seleção da revisão e inserção pertencem à mesma exclusão de escrita.
         if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
@@ -595,19 +648,10 @@ def save_values(db, records, *, transaction_hook=None):
             current[key] = row
             inserts.append(row)
         if inserts:
-            recorded = _utc_text(datetime.now(timezone.utc), "recorded_at")
-            for row in inserts:
-                row["recorded_at_utc"] = recorded
-            conn.execute(text(
-                f"INSERT INTO {VALUES_TABLE} "
-                "(symbol, tf, observation_time, available_at_utc, observed_at_utc, valid_until_utc, feature_id, "
-                "algorithm_version, numeric_value, categorical_value, quality, source_revision, revision, value_hash, "
-                "metadata_json, recorded_at_utc) VALUES (:symbol, :tf, :observation_time, :available_at_utc, "
-                ":observed_at_utc, :valid_until_utc, :feature_id, :algorithm_version, :numeric_value, "
-                ":categorical_value, :quality, :source_revision, :revision, :value_hash, :metadata_json, "
-                ":recorded_at_utc)"), inserts)
+            generation = _insert_revisions(conn, inserts)
         if transaction_hook is not None:
             transaction_hook(conn, counts)
+    _stamp_committed(db, generation)
     return counts
 
 

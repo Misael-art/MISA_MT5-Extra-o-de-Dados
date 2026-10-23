@@ -41,15 +41,15 @@ def test_research_reconstructs_but_knowledge_waits_for_the_system(tmp_path):
 def test_legacy_facts_without_recording_time_are_not_knowledge(tmp_path):
     db = _late_chain(tmp_path / "legacy.sqlite")
     with db.engine.begin() as conn:
-        conn.execute(text("UPDATE _feature_values SET recorded_at_utc = NULL"))
+        conn.execute(text("UPDATE _feature_values SET recorded_at_utc = NULL, generation = NULL"))
     now = pd.Timestamp.now(tz="UTC")
     assert len(_query(db, now, "research")) == 18
     assert _query(db, now, "knowledge").empty
 
 
-def test_recorded_through_freezes_a_snapshot(tmp_path):
+def test_generation_snapshot_freezes_the_pages(tmp_path):
     db = _late_chain(tmp_path / "snap.sqlite")
-    frozen = pd.Timestamp.now(tz="UTC")
+    frozen = feature_store.store_snapshot(db)
     target = db.load_ohlcv(SYMBOL, "1 minuto").iloc[[14]].copy()  # 09:14: última M1 da barra M5 09:10
     target["close"] = target["close"] * 2
     target["high"] = target[["high", "close"]].max(axis=1)
@@ -57,10 +57,12 @@ def test_recorded_through_freezes_a_snapshot(tmp_path):
     resampling.resample_symbol(db, SYMBOL, ["M5"], symbol_info=SimpleNamespace(name=SYMBOL))
     indicator_materializer.materialize(db, SYMBOL, "M5", feature_ids=["price.return_1"])
     later = pd.Timestamp.now(tz="UTC")
-    before = _query(db, later, "research", recorded_through=frozen).set_index("observation_time")["numeric_value"]
+    before = _query(db, later, "research", generation_through=frozen["generation"]).set_index(
+        "observation_time")["numeric_value"]
     after = _query(db, later, "research").set_index("observation_time")["numeric_value"]
     assert not before.equals(after)
-    assert _query(db, frozen, "research").set_index("observation_time")["numeric_value"].equals(before)
+    assert _query(db, pd.Timestamp(frozen["taken_at"]), "research").set_index(
+        "observation_time")["numeric_value"].equals(before)
 
 
 def test_invalid_basis_is_refused(tmp_path):
