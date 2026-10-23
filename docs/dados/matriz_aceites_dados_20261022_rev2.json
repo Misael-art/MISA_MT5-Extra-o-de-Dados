@@ -261,6 +261,27 @@
       "wall_seconds": 7.25
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    },
+    {
+     "commit": "37cd75e92d83f94ad61fe8d057768d7a7b1ffd05",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v3_knowledge_store.py",
+     "reference": "contraprova V3-01 da 3ª revisão (mesma massa)",
+     "input_hash": {
+      "parameters": "90 M1 de 14/09/2026 recebidas 23/10 12hZ; corte 15/09",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "90 M1 de 14/09/2026 recebidas 23/10 12hZ; corte 15/09",
+     "result": "4 passed in 3.59s",
+     "limitations": "dependências limitadas pela gravação do fato derivado",
+     "resource_measurements": {
+      "wall_seconds": 4.46
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023c.json"
     }
    ]
   },
@@ -568,6 +589,27 @@
       "wall_seconds": 16.06
      },
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    },
+    {
+     "commit": "5f17fc091a8ae0a8f8928a6e2c4d0216248feb7c",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v3_query_contract.py tests/test_bd18a_query.py",
+     "reference": "feature_store (fato a fato) e contraprovas V3-01..05",
+     "input_hash": {
+      "parameters": "massa da revisão; page_size 4/5/7/5000",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "massa da revisão; page_size 4/5/7/5000",
+     "result": "16 passed in 30.80s",
+     "limitations": "seleção carregada antes de paginar (BD18b); PG só na CI",
+     "resource_measurements": {
+      "wall_seconds": 31.88
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023c.json"
     }
    ]
   },
@@ -639,6 +681,27 @@
       {
        "source": "recibo E31 de 23/10 (docs/dados/recibos/recibos_20261023b.json), reatribuído",
        "test": "tests/test_bd19c1_cli.py"
+      },
+      {
+       "commit": "5f17fc091a8ae0a8f8928a6e2c4d0216248feb7c",
+       "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd19c1_cli.py tests/test_v3_query_contract.py::test_v3_03_read_only_connection_works_and_unidentified_base_is_not_initialized",
+       "reference": "sdk.query_series",
+       "input_hash": {
+        "parameters": "CLI --json e arquivo 0444",
+        "generator_files_sha256": {
+         "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+         "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+         "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+         "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+        }
+       },
+       "parameters": "CLI --json e arquivo 0444",
+       "result": "3 passed in 9.66s",
+       "limitations": "sem exportação (E32 integral é BD19c2)",
+       "resource_measurements": {
+        "wall_seconds": 10.61
+       },
+       "receipt": "docs/dados/recibos/recibos_20261023c.json"
       }
      ]
     }
