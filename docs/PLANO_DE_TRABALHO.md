@@ -4154,3 +4154,7 @@ sem ampliar automáticos/risco/executor.126App/88H/checker161/compilação0/0;
 versão1.01 com diagonais inspecionadaEURUSD/M5 e instalada na prévia,
 composta com correção de monitorPR204. [Contrato e pendências](sdk/super_atr.md).
 50curvas/adaptação/Profit/Windowsfísico são próprios.
+
+AtualizaçãoG19.9 pelo proprietário:1.02/dez curvas20/SMA/desvios1 a10 e tema
+Cinza Claro instalados/inspecionados em3456×1458,89H/126App/checker161/0-0.
+Mantidas diagonais, pontilhado e futuro50/adaptação pendentes.

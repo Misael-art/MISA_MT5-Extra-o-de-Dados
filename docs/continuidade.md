@@ -4,7 +4,8 @@ Regras do proprietário registradas:20/SMA0, inicialmente1/2/3 e agora DEZ
 curvas com multiplicadores1 a10, pontilhado
 azul graduado, catraca e virada por cruzamento estrito da linha anterior.
 Versão1.02 mantém diagonais, amplia para10 curvas e acrescenta o temaCinza Claro;
-89H/checker161/compilação0/0, instalação/visual próprios em curso.
+89H/checker161/compilação0/0, instalação/visual próprios concluídos em
+Appf7c3371/H3b979cf1:10 tonsRGB/diagonais/cinza neutro, painel pausado.
 FonteH3b979cf1/fpd377c812aafd0c5e, Appcodex/super-atr sobrede8830e5.
 126 testesApp/88H/checker161 e compilação6281/Wine0/0; versão1.01 inspecionada
 com diagonais e instalada na prévia. Prova visual composta com App0b2fda3/PR204
