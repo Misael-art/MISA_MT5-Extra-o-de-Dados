@@ -32,8 +32,8 @@
      "reference": "registry/produtores enumerados em execução; HDK_StudyCatalog.mqh por SHA-256 em inventario_bd01.json",
      "input_hash": "ver sources em inventario_bd01.json",
      "parameters": "bars_frame(sessions=30, bars_per_session=12), volume real e ticks",
-     "result": "5 passed",
-     "limitations": "saídas de produtores que exigem >30 sessões são cobertas pelo inventário gerado com 130 sessões, não pelo guarda",
+     "result": "5 passed (3a34bf9); 8 passed com pin H após correção V05",
+     "limitations": "guarda confere IDs emitidos, não maturidade numérica (30 e 130 sessões emitem os mesmos 60 IDs de produtores); comparação com o pin H só com MT5X_HADOUKEN_ROOT; cálculos fora dos pontos enumeráveis não são detectados",
      "resource_measurements": "6 s de teste; JSON 70 KiB"
     }
    ]

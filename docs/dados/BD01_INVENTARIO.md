@@ -14,28 +14,55 @@ constar aqui.
 | HADOUKEN (H) | `6fb02374cd652a5fa0bfd314ace9d47ed8bc1283` | catálogo nativo `Include/Framework/HADOUKEN/Safety/HDK_StudyCatalog.mqh` |
 | Safety (S) | `c5a3e2162cace117820eab863e0cb590d66189c2` | não atingido por BD01 |
 
-Inventário máquina-legível: [inventario_bd01.json](inventario_bd01.json) (109 itens,
-112 IDs de feature individuais). O teste [test_bd01_inventory.py](../../tests/test_bd01_inventory.py)
-falha se uma definição do registry ou saída de produtor surgir sem item, se um item perder
-dono/estado/lacuna, se os 38 nativos ou os itens de regra indefinida saírem do denominador.
+Inventário máquina-legível: [inventario_bd01.json](inventario_bd01.json) (164 itens,
+112 IDs de feature individuais). Versão inicial (3a34bf9) tinha 109 itens; a correção V05/V09
+de 23/10/2026 acrescentou fontes primárias, filhos do legado e das funções puras, e separou
+pendências por natureza. Nenhum item foi removido.
+
+**Alcance do guarda** [test_bd01_inventory.py](../../tests/test_bd01_inventory.py): falha quando
+surge sem item (a) definição do registry, (b) ID emitido por produtor, (c) coluna do
+`IndicatorCalculator`, (d) método público de `AdvancedIndicators`, (e) função pública de
+`strategies.indicators`, ou (f) com `MT5X_HADOUKEN_ROOT` apontando para a fonte H, quando o
+catálogo nativo extraído (índice, função, parâmetros e SHA-256) difere do pin registrado.
+Sem a variável, (f) é pulado com motivo: a CI não compara o pin. O guarda **não** protege
+cálculos escritos fora desses pontos (privados de estratégias são listados como AX), e o teste
+de produtores confere IDs emitidos, não a maturidade numérica de cada saída (30 e 130 sessões
+emitem os mesmos 60 IDs).
 
 ## 2. Contagem por tipo e classe
 
 Classes: **A** regra definida e entrada disponível; **B** regra definida, feed real
-indisponível na DEMO; **C** regra indefinida (decisão pendente, não é exclusão).
+indisponível na DEMO; **C** fórmula inexistente.
 
 | Tipo | Itens | A | B | C | Observação |
 |---|---:|---:|---:|---:|---|
 | Grupos do registry T18.1 | 15 (52 IDs) | 14 | 1 | 0 | volume real é B em FX DEMO |
-| Famílias de produtores T13.3 | 6 (60 IDs real/tick) | 6 | 0 | 0 | volume/rvol/volatility/regime/structure/calendar |
-| Indicadores do catálogo I01–I18, AX01–08, FRP | 27 | 16 | 4 | 7 | ver §4 |
-| Nativos MT5 (HDK_StudyCatalog) | 38 | 38 | 0 | 0 | sem captura offline no app |
-| Métricas temporais TM01–TM08 | 8 | 8 | 0 | 0 | consumidor de ledger (BD17) |
-| Calculadores legados e funções puras | 3 | 3 | 0 | 0 | caminhos paralelos (BD07) |
-| Setups Python (consomem cálculos) | 11 | 11 | 0 | 0 | não são indicadores |
+| Famílias de produtores T13.3 | 6 (60 IDs real/tick) | 6 | 0 | 0 | |
+| Catálogo I01–I18 (I03 em duas famílias), AX01–08, FRP | 28 | 18 | 7 | 3 | ver §4 |
+| Nativos MT5 (HDK_StudyCatalog) | 38 | 38 | 0 | 0 | parâmetros extraídos do pin |
+| Fontes primárias | 9 | 8 | 1 | 0 | §2.1 |
+| Colunas do calculador legado | 15 | 15 | 0 | 0 | 5 vazias sem pandas-ta |
+| Métodos de AdvancedIndicators | 10 | 10 | 0 | 0 | coleta em tempo real |
+| Funções públicas de strategies.indicators | 23 | 23 | 0 | 0 | `rma` semeia na 1ª observação |
+| Métricas temporais TM01–TM08 | 8 | 8 | 0 | 0 | |
+| Setups Python | 11 | 11 | 0 | 0 | consomem cálculos |
 | Ferramentas (AX09) | 1 | — | — | — | fora do denominador de cálculo |
 
-As contagens 52/38/11 não são teto: novos itens entram pelo teste-guarda.
+### 2.1 Fontes primárias
+
+| ID | Origem | Campos e unidades | Persistência | Ausência/capacidade |
+|---|---|---|---|---|
+| SRC-OHLCV | `copy_rates` (historical_extractor) | time; OHLC em preço; tick_volume = contagem de ticks; spread em pontos; real_volume | `<símbolo>_<tf>`, upsert por time (só o valor mais recente) | real_volume NULL = desconhecido, 0 = zero conhecido |
+| SRC-DERIVED | analytics.resampling sobre M1 | OHLCV + sessão, revision, computed_at_utc, source_seq | `_bars_derived`, revisões preservadas | qualidade por barra, parcial marcada |
+| SRC-TICKS | `copy_ticks` (tick_extractor, blocos/retomada) | time_msc (ms), seq, bid, ask, last, volume, volume_real, flags | `<símbolo>_ticks` (PK time_msc,seq) | ticks/observed_ticks/complete_real_ticks; FX DEMO sem last/volume real |
+| SRC-TRADES | não capturado | — | — | `aggressor` indisponível; flags de tick não provam agressor |
+| SRC-BOOK | market_book (book_collector) | time_utc (relógio local), type 1 venda/2 compra, price, volume | `<símbolo>_book` | book_snapshots; `queue` indisponível |
+| SRC-SPEC | symbol_info | point, digits, tick_size/value, volume min/step/max, contract_size, moeda, swaps | `_symbol_specs`, `_instrument_facts` (vigência, T20.5) | padrão com motivo |
+| SRC-CAL | inferido do M1 (analytics.calendar) | sessão, abertura/fechamento UTC e corretor, revisão | `_market_calendar` | offset fixo; sem calendário oficial/DST histórico |
+| SRC-QUALITY | data_quality + data_eligibility | capabilities{state, reason, origin} | sob demanda; manifesto quando capturado | available/missing/unknown com motivo |
+| SRC-REV | resampling, feature_store, datasets | revision, source_revision, computed_at_utc, manifest_id, namespace | `_bars_derived`, `_feature_values`, `_dataset_manifests` | bruto sem histórico; legado sem fotografia não tem passado |
+
+As contagens não são teto: novos itens nos pontos (a)–(f) entram pelo guarda.
 
 ## 3. Mapa BD → dono canônico
 
@@ -64,19 +91,25 @@ As contagens 52/38/11 não são teto: novos itens entram pelo teste-guarda.
 | BD21 | T19.23/29, T20.29 | parcial |
 | BD22 | continuidade/status | — |
 
-## 4. Itens de regra indefinida (classe C) — decisões pendentes do proprietário
+## 4. Pendências separadas por natureza (correção V09)
 
-Nenhuma fórmula será escolhida por adivinhação. Cada item fica no denominador.
+A primeira versão marcava sete itens como “regra indefinida”. Só três têm fórmula inexistente;
+os demais têm algoritmo definido e precisam de variante, parâmetro ou fonte.
 
-| ID | Decisão faltante | Evidência | Impacto |
-|---|---|---|---|
-| I03 | Razão mínima (300% ≠ 3:1), comparação horizontal × diagonal, profundidade do book | catálogo F19 §I03 | impede imbalance; book e footprint ficam IDs separados |
-| I05 | Limiar absoluto × quantil e janela de calibração | catálogo §I05 | impede grandes negócios |
-| I17 | Quatro ROCs, quatro suavizações, pesos e sinal | catálogo §I17 | impede KST |
-| AX02 | Períodos das dez EMAs do leque Madrid | catálogo §4 | `madrid_averages` existe com períodos próprios; equivalência ao estudo não afirmada |
-| AX03 | Método e período do 2MV | catálogo §4 | impede 2MV |
-| AX08 | Regra objetiva de S/R, falha e polaridade | catálogo §4 | legado `support_resistance` sem contrato não fecha o item |
-| FRP | Fórmula, grupos e método estatístico | `docs/pesquisa/FRP_FLUXO_RELATIVO_PRECO.md` | estudo futuro P3 |
+| ID | Natureza | Tratamento técnico |
+|---|---|---|
+| I03-BOOK | limitação de feed | (Σvol_bid − Σvol_ask)/(Σvol_bid + Σvol_ask) até profundidade k; denominador 0 → ausente; k e limiar são parâmetros/regra de estratégia; book FX DEMO não qualificado |
+| I03-FOOTPRINT | limitação de feed | variantes horizontal/diagonal, razão mínima como parâmetro tipado (“300% de” = 3:1; “300% a mais” = 4:1); sem agressor na DEMO |
+| I05 | limitação de feed | duas variantes explícitas: limiar absoluto em lotes; quantil causal da janela anterior; nenhum default vencedor |
+| I17 KST | parametrização do estudo não escolhida | proposta referenciada (Pring): ROC 10/15/20/30, SMA 10/10/10/15, pesos 1/2/3/4, sinal SMA 9, todos configuráveis; implementação em BD09 |
+| AX02 Madrid | parametrização do estudo não escolhida | publicar a variante existente `madrid_averages(first_period, period_step)` sem alegar equivalência ao estudo |
+| AX03 2MV | **fórmula inexistente** | método da média e regra de cor ausentes no estudo; pendente |
+| AX08 S/R | **fórmula inexistente** | versão objetiva de falha/polaridade ausente; `LEG-ADV.support_resistance` é outro algoritmo |
+| FRP | **fórmula inexistente** | hipótese futura P3 (`docs/pesquisa/FRP_FLUXO_RELATIVO_PRECO.md`); não bloqueia BD05 nem o primeiro consumo |
+
+Limiares de confirmação (razão mínima, quantil, profundidade) pertencem à estratégia e
+ficam fora da fórmula. O catálogo original não é declarado integral enquanto AX03/AX08/FRP
+não tiverem regra.
 
 ## 5. Divergências e lacunas encontradas no código
 
@@ -93,8 +126,9 @@ Nenhuma fórmula será escolhida por adivinhação. Cada item fica no denominado
 4. **Cálculos privados fora do registry (BD07).** `vwap_bands.daily_vwap`, `stoch_ema9.slow_stochastic`,
    `ha_hilo.ha_hilo_context`, `madrid.madrid_averages`; funções `sma/ema/adx/linreg/percentile/swing`
    sem ID. Produtores T13.3 recalculam ATR/ADX/BB em paralelo ao registry.
-5. **Legado com dependência opcional (BD07).** `IndicatorCalculator` muda cobertura conforme
-   `pandas-ta` (ausente no host; doctor avisa). `AdvancedIndicators` alimenta a coleta em tempo real
+5. **Legado com dependência opcional (BD07).** Sem `pandas-ta` (ausente no host; doctor avisa),
+   `IndicatorCalculator` grava `macd_line/signal/histogram` e `bollinger_upper/lower` como colunas
+   inteiras NaN, sem estado próprio de indisponibilidade (medido em 300 barras M1). `AdvancedIndicators` alimenta a coleta em tempo real
    sem contrato/versão.
 6. **Relações sem serviço (BD15).** Associações T18.2 existem só em branch (`analytics/validation.py`
    e `tests/test_analytics_associations.py`), não ancestrais da base. A UI Relações usa fixture
