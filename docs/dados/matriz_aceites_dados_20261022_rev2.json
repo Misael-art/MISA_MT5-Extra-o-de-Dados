@@ -28,7 +28,7 @@
    "evidence": [
     {
      "commit": "c5a63269dc445ef9f21f6e677022bab32dbeadda",
-     "test": "MT5X_HADOUKEN_ROOT=<pin H> rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd01_inventory.py",
+     "test": "MT5X_HADOUKEN_ROOT=<pin H> MT5X_REQUIRE_HADOUKEN_PIN=1 rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd01_inventory.py",
      "reference": "registry/produtores enumerados em execução; catálogo nativo extraído do pin H",
      "input_hash": {
       "inventario_bd01.json": "7ac64c3d4f5cb6828121a15b9cab2e3e3544cdf9508885cd20bd994c36db211e",
@@ -42,6 +42,23 @@
       "wall_seconds": 14.12
      },
      "receipt": "docs/dados/recibos/recibos_20261023.json"
+    },
+    {
+     "commit": "385f5db7955eeb14c144467f85011d36d530c56a",
+     "test": "MT5X_HADOUKEN_ROOT=<pin H> MT5X_REQUIRE_HADOUKEN_PIN=1 rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd01_inventory.py",
+     "reference": "registry/produtores/legado enumerados em execução; catálogo nativo extraído do pin H",
+     "input_hash": {
+      "inventario_bd01.json": "7ac64c3d4f5cb6828121a15b9cab2e3e3544cdf9508885cd20bd994c36db211e",
+      "HDK_StudyCatalog.mqh": "d551ba6d28fc80faa65afb67a249a0d6ba2bdcadf40ef78dbc857a4e947d9183",
+      "hadouken_commit": "6fb02374cd652a5fa0bfd314ace9d47ed8bc1283"
+     },
+     "parameters": "bars_frame(sessions=30, bars_per_session=12); pin H obrigatório (gate de composição)",
+     "result": "8 passed in 8.62s",
+     "limitations": "confere IDs emitidos, não maturidade numérica; cálculos fora dos pontos enumeráveis não detectados",
+     "resource_measurements": {
+      "wall_seconds": 9.51
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
    ]
   },
@@ -84,6 +101,39 @@
       "wall_seconds": 5.59
      },
      "receipt": "docs/dados/recibos/recibos_20261023.json"
+    },
+    {
+     "commit": "9806b8beb857b27598aa9c8d1d13cc3a4fb78d94",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd02_bench.py",
+     "reference": "tests/bench_reference.py (Python puro)",
+     "input_hash": {
+      "trend": "2e3f34ecfb5cad681dbe94992755e6b1a0a8d9ca328a63dc26861a4fb49a6a5a",
+      "lateral": "007425e1351f232c59489c3a69f83abaf1eb657709c769ca53311b11dcd73e89",
+      "flat": "6e6f56f096ad50386e914695f97886ca3cdca1b443b098bdaf7574b8a2570030",
+      "random_walk": "a88366b71ff523e21f3abef11b491496c4cd14be467d45d42209f7bdba7728fe",
+      "gap": "acdc8b1606e9789000c2a288067c2751c8e3e154b97ad9706e271a527d7ef676",
+      "duplicate": "393ba2bcc4091d454ca3407c47b4f7c552e4dcdec9556c69c0da33e62c0882c0",
+      "out_of_order": "8521fa8e754a5f127bdcfe4b5f7fda1189df8ff5a6834744e366c6e06991aca0",
+      "revision": "f4bc91b9517a246cce0ff3d7282c5a60368bb6982e4cedabf1f95db58dc5dd2a",
+      "missing_close": "022d3afd124a311f1075f0c874ae53cf795784f5b3088b5f155f04ff06effa10",
+      "overnight": "df7b06a91738b883f1b1c0ddf2917f2ca52835718b8939a8e165010599b4c9d5",
+      "dst": "c29f5cca042c48ec5af3c7a192a5c19f00f79c5280bdf144f8ba9e42d44a7711",
+      "volume_zero_known": "e0d1c1015dc99f25354a93caf8a7335d38249e8f90bc12af3ea3bfafc453e221",
+      "volume_absent": "12d1bf93d14730f8bac989594d05b14ef3ab82f949c1476e42a5ddffd7910bc2",
+      "volume_partial_unknown": "96b2d694fd1c8e55a304f296cea42f733eca673a52d0c0a00a212a5e9d54c65d",
+      "scale_0.0001": "55e9867e4ddd5de8d4d1ad3b9feafe759bddeaf788e75891893e6eaba48dfedb",
+      "scale_1": "1b099cda9297b009628180128453644a92000ab88ff9322c24eb2f09c81c74d1",
+      "scale_100000": "379eada601fbbb3efc73740aa06a45cf0ed09dd37a0df99f87284e40448e1175",
+      "base_a": "30e6e06bc02722fb8ad49ebfb5a2dab3216a722823dd41efef73392f8a3f6c1b",
+      "base_b": "1a0ca6b78877a5614065e54d702e26aa93f45cac0ea123c1c5eace00bbb24efd"
+     },
+     "parameters": "19 cenários; tolerância relativa 1e-9 (somas), 1e-12 (máximos)",
+     "result": "15 passed in 3.57s",
+     "limitations": "8 saídas com oráculo; métricas de memória não equivalem a RSS de job",
+     "resource_measurements": {
+      "wall_seconds": 4.24
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
    ]
   },
@@ -109,6 +159,22 @@
       "wall_seconds": 15.98
      },
      "receipt": "docs/dados/recibos/recibos_20261023.json"
+    },
+    {
+     "commit": "aaff1da96de227d25bf04ed389a7c2fe9a6c92bc",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd03_base_identity.py",
+     "reference": "contrato T20.4 estendido",
+     "input_hash": {
+      "market_data.trend120_h": "9927d229a5fe38b7dec199fb7fcb517bdcfc4456b917fd9eee38f5c77b44cf26",
+      "market_data.sine120_h": "aebfea76e0fd3ae991b3be1f3bb220f7adb321fff549b52856926fd12d95db50"
+     },
+     "parameters": "EURUSD H1 em bancos SQLite temporários",
+     "result": "12 passed in 11.76s",
+     "limitations": "consumidores além do serviço/CLI ainda sem identidade; PG só na CI",
+     "resource_measurements": {
+      "wall_seconds": 12.41
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
    ]
   },
@@ -134,6 +200,27 @@
       "wall_seconds": 2.43
      },
      "receipt": "docs/dados/recibos/recibos_20261023.json"
+    },
+    {
+     "commit": "98db0e3100a49dd878f8378c69a6b1a6accc82a1",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_extraction_contract.py tests/test_bd03_base_identity.py::test_third_adapter_uses_the_same_contract_without_consumer_changes",
+     "reference": "extrator real com provedor falso; terceira fonte por rótulo",
+     "input_hash": {
+      "parameters": "WIN$N M1 02–05/01/2024 do FakeMT5",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "WIN$N M1 02–05/01/2024 do FakeMT5",
+     "result": "6 passed in 10.83s",
+     "limitations": "terceira fonte é simulação por rótulo, não importador real validado",
+     "resource_measurements": {
+      "wall_seconds": 11.49
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
    ]
   },
@@ -158,6 +245,22 @@
       "wall_seconds": 6.04
      },
      "receipt": "docs/dados/recibos/recibos_20261023.json"
+    },
+    {
+     "commit": "98db0e3100a49dd878f8378c69a6b1a6accc82a1",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_ingestion.py",
+     "reference": "versões conferidas à mão (close=100+i)",
+     "input_hash": {
+      "m1_bars6.csv": "8387109558226b494f29484c20d683bf72d72cb6244feb0bc28d6fd89424c8cc",
+      "generator": "tests/test_analytics_calendar.py::m1_bars@d0735c4c02502e5c1768d986b592ec98d49cbda4"
+     },
+     "parameters": "received_at T1..T4 explícitos; R01–R03",
+     "result": "13 passed in 6.61s",
+     "limitations": "ticks/book sem contrato de recebimento; PG só na CI",
+     "resource_measurements": {
+      "wall_seconds": 7.25
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
    ]
   },
@@ -182,6 +285,25 @@
       "wall_seconds": 2.69
      },
      "receipt": "docs/dados/recibos/recibos_20261023.json"
+    },
+    {
+     "commit": "98db0e3100a49dd878f8378c69a6b1a6accc82a1",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_ingestion.py::test_real_volume_capability_changes_only_dependent_consumers_and_snapshot_stays",
+     "reference": "data_eligibility.assess/evaluate",
+     "input_hash": {
+      "generator": "tests/test_analytics_calendar.py::m1_bars@d0735c4c02502e5c1768d986b592ec98d49cbda4",
+      "serialization": "DataFrame.to_csv(index=False, lineterminator='\\n', float_format='%.17g')",
+      "stage_absent_sha256": "c6fcbbacd4c6312fc429b5563b04a2774c856fbb405bbc98e942033196fdf16b",
+      "stage_available_sha256": "aac0be30533cfa556c21ef89a9dfc68bb2897f1e4b67303764a920f5b8521dbe",
+      "stage_absent_again_sha256": "c6fcbbacd4c6312fc429b5563b04a2774c856fbb405bbc98e942033196fdf16b"
+     },
+     "parameters": "30 barras M1 09:00–09:29 de 14/09/2026; real_volume None→5→None",
+     "result": "1 passed in 1.39s",
+     "limitations": "elegibilidade comprovada no serviço; UI não lê o estado diretamente",
+     "resource_measurements": {
+      "wall_seconds": 2.03
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
     }
    ]
   },
@@ -190,16 +312,60 @@
    "owner": "BD05",
    "case": "Disponibilidade entre TFs",
    "criterion": "M5 não consome H1 aberto nem correção ainda desconhecida",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "4d464e2599166a4ba396769cb3e718bd5413650b",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd05_time.py",
+     "reference": "data_eligibility.as_of, calendar, resampling, clocks",
+     "input_hash": {
+      "parameters": "H1/M1 sintéticos; âncora 17:00; fev/2024",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "H1/M1 sintéticos; âncora 17:00; fev/2024",
+     "result": "7 passed in 2.46s",
+     "limitations": "1º recorte: limite 95/96 corrigido só com zona (E08)",
+     "resource_measurements": {
+      "wall_seconds": 3.12
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    }
+   ]
   },
   {
    "id": "E08",
    "owner": "BD05",
    "case": "Calendário/fuso",
    "criterion": "Sessões noturnas, gaps, offset desconhecido e regras W1/MN1 explícitas",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "4d464e2599166a4ba396769cb3e718bd5413650b",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd05_zone.py",
+     "reference": "pytz Europe/Athens; fold/gap reais",
+     "input_hash": {
+      "parameters": "dst_transition 96 H1; primavera 29/03/2026",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "dst_transition 96 H1; primavera 29/03/2026",
+     "result": "7 passed in 2.35s",
+     "limitations": "derivação/snapshot com zona recusados; fold na fronteira de blocos recusado",
+     "resource_measurements": {
+      "wall_seconds": 2.97
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    }
+   ]
   },
   {
    "id": "E09",
@@ -222,8 +388,30 @@
    "owner": "BD08a",
    "case": "Referência numérica",
    "criterion": "Oráculo independente e tolerância justificada antes do aceite",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "779aaa39924bfa3c0759de5fc99d099b03197598",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd08a_returns.py",
+     "reference": "tests/bench_reference.py::returns sobre closes M5 derivados",
+     "input_hash": {
+      "parameters": "WIN$N M1 do FakeMT5 → M5, offset 0",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "WIN$N M1 do FakeMT5 → M5, offset 0",
+     "result": "5 passed in 14.71s",
+     "limitations": "só família de retorno",
+     "resource_measurements": {
+      "wall_seconds": 15.35
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    }
+   ]
   },
   {
    "id": "E12",
@@ -358,8 +546,30 @@
    "owner": "BD18a",
    "case": "Consulta executável",
    "criterion": "Catálogo/series consultáveis sem UI; erro e paginação previsíveis",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "7e44d1be35120ad12e78b98f3853ef4b897a174e",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd18a_query.py",
+     "reference": "feature_store.query_as_of (fato a fato)",
+     "input_hash": {
+      "parameters": "cadeia do piloto; page_size 97/5000",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "cadeia do piloto; page_size 97/5000",
+     "result": "5 passed in 15.19s",
+     "limitations": "seleção carregada antes de paginar (teto 200 000)",
+     "resource_measurements": {
+      "wall_seconds": 16.06
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    }
+   ]
   },
   {
    "id": "E29",
@@ -382,8 +592,30 @@
    "owner": "BD19b",
    "case": "Relações efetivas",
    "criterion": "Tela usa serviço real; fixtures só em demonstração/testes identificados",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "94bba93b1db24ce9c63dec0af9581144273b9218",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd19c1_cli.py",
+     "reference": "sdk.query_series",
+     "input_hash": {
+      "parameters": "CLI --json sobre a cadeia do piloto",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "CLI --json sobre a cadeia do piloto",
+     "result": "2 passed in 6.46s",
+     "limitations": "Laboratório/Relações/export/Estudo pendentes",
+     "resource_measurements": {
+      "wall_seconds": 7.15
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023b.json"
+    }
+   ]
   },
   {
    "id": "E32",
