@@ -100,6 +100,8 @@ def test_native_catalog_matches_pinned_source(inventory):
     assert [item["native_index"] for item in natives] == list(range(len(natives)))
     root = os.environ.get("MT5X_HADOUKEN_ROOT")
     if not root:
+        if os.environ.get("MT5X_REQUIRE_HADOUKEN_PIN") == "1":
+            pytest.fail("Gate de composição exige o pin HADOUKEN: informe MT5X_HADOUKEN_ROOT com a fonte exata.")
         pytest.skip("Fonte HADOUKEN não informada (MT5X_HADOUKEN_ROOT); comparação com o pin não executada.")
     source = Path(root) / inventory["sources"]["hadouken_study_catalog"]
     extracted = [(int(i), fn, params.strip()) for i, fn, params in NATIVE_CATALOG.findall(source.read_text())]

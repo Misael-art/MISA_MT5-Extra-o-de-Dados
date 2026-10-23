@@ -24,7 +24,7 @@ surge sem item (a) definição do registry, (b) ID emitido por produtor, (c) col
 `IndicatorCalculator`, (d) método público de `AdvancedIndicators`, (e) função pública de
 `strategies.indicators`, ou (f) com `MT5X_HADOUKEN_ROOT` apontando para a fonte H, quando o
 catálogo nativo extraído (índice, função, parâmetros e SHA-256) difere do pin registrado.
-Sem a variável, (f) é pulado com motivo: a CI não compara o pin. O guarda **não** protege
+Sem a variável, (f) é pulado com motivo na suíte básica (a CI não compara o pin); no gate de composição (BD21/G19.8) roda-se com `MT5X_REQUIRE_HADOUKEN_PIN=1`, que transforma a ausência do pin em falha. O guarda **não** protege
 cálculos escritos fora desses pontos (privados de estratégias são listados como AX), e o teste
 de produtores confere IDs emitidos, não a maturidade numérica de cada saída (30 e 130 sessões
 emitem os mesmos 60 IDs).
