@@ -141,6 +141,9 @@ def ensure_schema(db):
             conn.execute(text(f"ALTER TABLE {VALUES_TABLE} ADD COLUMN generation BIGINT"))
         conn.execute(text(f"CREATE TABLE IF NOT EXISTS {CLOCK_TABLE} (id INTEGER PRIMARY KEY, generation BIGINT NOT NULL)"))
         conn.execute(text(f"INSERT INTO {CLOCK_TABLE} (id, generation) VALUES (1, 0) ON CONFLICT (id) DO NOTHING"))
+        if "knowledge_frontier_utc" not in {c["name"] for c in inspect(conn).get_columns(CLOCK_TABLE)}:
+            # Maior known_at já CONFIRMADO; carimbos pendentes terão horário maior (V5-01).
+            conn.execute(text(f"ALTER TABLE {CLOCK_TABLE} ADD COLUMN knowledge_frontier_utc TEXT"))
         conn.execute(text(f"CREATE TABLE IF NOT EXISTS {GENERATIONS_TABLE} (generation BIGINT PRIMARY KEY, "
                           "started_at_utc TEXT NOT NULL, committed_at_utc TEXT)"))
         conn.execute(text(_CREATE_ASOF_INDEX))
@@ -292,25 +295,52 @@ def _insert_revisions(conn, rows):
     return generation
 
 
+def _lock_store(conn):
+    """Exclusão de escrita do store, ANTES de ler revisões vigentes (V5-02). SQLite: BEGIN IMMEDIATE;
+    PostgreSQL: trava a linha do contador até o commit. Leitores não são bloqueados."""
+    if conn.dialect.name == "sqlite":
+        if not conn.connection.driver_connection.in_transaction:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+    else:
+        conn.execute(text(f"SELECT generation FROM {CLOCK_TABLE} WHERE id = 1 FOR UPDATE"))
+
+
 def _stamp_committed(db, generation):
-    """Depois do commit: carimba quando a geração passou a ser conhecida. Também carimba, de forma
-    conservadora (agora, nunca antes), gerações confirmadas cujo carimbo se perdeu (ex.: processo
-    interrompido entre o commit e este passo). Leitores nunca carimbam."""
+    """Depois do commit dos dados: carimba quando a geração passou a ser CONHECIDA.
+
+    O carimbo é outra transação sob a mesma exclusão do contador: o horário é calculado já com o
+    bloqueio, é sempre posterior à fronteira confirmada anterior, e a fronteira avança na mesma
+    transação. Assim, enquanto este carimbo não confirma, todo leitor vê a fronteira antiga e o
+    carimbo pendente fica acima dela; depois de confirmado, nenhum corte <= fronteira antiga muda.
+    Também carimba (agora, nunca antes) gerações confirmadas cujo carimbo se perdeu. Leitores
+    nunca carimbam.
+    """
     if generation is None:
         return
     with db.engine.begin() as conn:
+        _lock_store(conn)
+        frontier = conn.execute(text(f"SELECT knowledge_frontier_utc FROM {CLOCK_TABLE} WHERE id = 1")).scalar()
+        now = datetime.now(timezone.utc)
+        if frontier is not None:
+            now = max(now, pd.Timestamp(frontier).to_pydatetime() + pd.Timedelta(microseconds=1))
+        stamp = _utc_text(now, "committed_at")
         conn.execute(text(f"UPDATE {GENERATIONS_TABLE} SET committed_at_utc = :t "
-                          "WHERE committed_at_utc IS NULL AND generation <= :g"),
-                     {"t": _utc_text(datetime.now(timezone.utc), "committed_at"), "g": generation})
+                          "WHERE committed_at_utc IS NULL AND generation <= :g"), {"t": stamp, "g": generation})
+        conn.execute(text(f"UPDATE {CLOCK_TABLE} SET knowledge_frontier_utc = :t WHERE id = 1"), {"t": stamp})
 
 
 def store_snapshot(db):
     """Fotografia de leitura: última geração confirmada e o instante da leitura (sem escrever)."""
     _require_db(db)
     with db.engine.connect() as conn:
-        generation = (conn.execute(text(f"SELECT generation FROM {CLOCK_TABLE} WHERE id = 1")).scalar()
-                      if inspect(conn).has_table(CLOCK_TABLE) else None)
-    return {"generation": int(generation or 0), "taken_at": _utc_text(datetime.now(timezone.utc), "snapshot")}
+        row = None
+        if inspect(conn).has_table(CLOCK_TABLE):
+            columns = {c["name"] for c in inspect(conn).get_columns(CLOCK_TABLE)}
+            frontier = "knowledge_frontier_utc" if "knowledge_frontier_utc" in columns else "NULL"
+            row = conn.execute(text(f"SELECT generation, {frontier} FROM {CLOCK_TABLE} WHERE id = 1")).first()
+    generation, frontier = (row[0], row[1]) if row else (0, None)
+    return {"generation": int(generation or 0), "taken_at": _utc_text(datetime.now(timezone.utc), "snapshot"),
+            "knowledge_frontier": frontier}
 
 
 def save_value(db, symbol, timeframe, feature_id, algorithm_version, observation_time, value, *,
@@ -332,6 +362,7 @@ def save_value(db, symbol, timeframe, feature_id, algorithm_version, observation
     ensure_schema(db)
     key = {name: row[name] for name in ("symbol", "tf", "observation_time", "feature_id", "algorithm_version")}
     with db.engine.begin() as conn:
+        _lock_store(conn)  # revisão vigente, idempotência, número e INSERT sob a mesma exclusão
         definition = conn.execute(text(
             f"SELECT value_type FROM {DEFINITIONS_TABLE} WHERE feature_id = :feature_id AND algorithm_version = :version"),
             {"feature_id": feature_id, "version": algorithm_version}).first()
@@ -361,13 +392,16 @@ BASES = ("research", "knowledge")
 
 def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None,
                 start=None, end=None, basis="research", generation_through=None, knowledge_through=None,
-                with_recorded=False):
+                knowledge_frontier=None, with_recorded=False):
     """Consulta a última revisão disponível em ``as_of`` para cada instante observado.
 
     ``basis='research'`` (padrão, comportamento histórico) usa a disponibilidade declarada pelo
     produtor: uma reconstrução retrospectiva aparece como disponível no fechamento da barra.
-    ``basis='knowledge'`` exige também que a revisão já estivesse CONFIRMADA (commit carimbado) no
-    corte ``min(as_of, knowledge_through)``; legado sem geração fica de fora.
+    ``basis='knowledge'`` exige que a revisão tenha carimbo de conhecimento confirmado com
+    ``known_at <= min(as_of, knowledge_through, knowledge_frontier)``. ``known_at`` é o horário do
+    carimbo, tomado sob a exclusão do contador DEPOIS do commit dos dados (nunca antecipa a
+    visibilidade); a fronteira é o maior carimbo já confirmado, de modo que um carimbo pendente
+    nunca altera um corte já respondido. Legado sem geração fica de fora.
     ``generation_through`` fixa uma fotografia transacional (``store_snapshot``): revisões de
     gerações posteriores — confirmadas depois da 1ª página — não entram.
     ``start`` é inclusivo e ``end`` exclusivo; ambos filtram ``observation_time``.
@@ -400,7 +434,15 @@ def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algo
     if basis == "knowledge":
         if not contract:
             return _empty_values()
-        cut = as_of_utc if knowledge_through is None else min(as_of_utc, _utc_text(knowledge_through, "knowledge_through"))
+        bounds = [as_of_utc]
+        if knowledge_through is not None:
+            bounds.append(_utc_text(knowledge_through, "knowledge_through"))
+        # Sem fronteira explícita, usa a confirmada agora: carimbos pendentes ficam acima dela (V5-01).
+        frontier = knowledge_frontier if knowledge_frontier is not None else store_snapshot(db)["knowledge_frontier"]
+        if frontier is None:
+            return _empty_values()
+        bounds.append(_utc_text(frontier, "knowledge_frontier"))
+        cut = min(bounds)
         where.append("v.generation IS NOT NULL AND g.committed_at_utc IS NOT NULL AND g.committed_at_utc <= :known_cut")
         params["known_cut"] = cut
     join = f"LEFT JOIN {GENERATIONS_TABLE} g ON g.generation = v.generation" if contract else ""
@@ -599,8 +641,7 @@ def save_values(db, records, *, transaction_hook=None):
     generation = None
     with db.engine.begin() as conn:
         # Seleção da revisão e inserção pertencem à mesma exclusão de escrita.
-        if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
-            conn.exec_driver_sql("BEGIN IMMEDIATE")
+        _lock_store(conn)
         pairs = {(row["feature_id"], row["algorithm_version"]) for row in rows}
         definitions = {}
         for feature_id, version in sorted(pairs):
