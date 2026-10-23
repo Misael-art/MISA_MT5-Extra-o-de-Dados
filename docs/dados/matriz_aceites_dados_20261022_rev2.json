@@ -282,6 +282,27 @@
       "wall_seconds": 6.03
      },
      "receipt": "docs/dados/recibos/recibos_20261023c.json"
+    },
+    {
+     "commit": "d8f2db53770539856631d070dea86ac39daf53dc",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v4_store_contract.py tests/test_v3_knowledge_store.py",
+     "reference": "contraprovas V4-01/V4-02 da 4ª revisão",
+     "input_hash": {
+      "parameters": "3 fatos em lote + escrita individual; transação parada antes do commit",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "3 fatos em lote + escrita individual; transação parada antes do commit",
+     "result": "10 passed in 8.16s",
+     "limitations": "escritores serializados até o commit; PG só na CI",
+     "resource_measurements": {
+      "wall_seconds": 9.18
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023d.json"
     }
    ]
   },
@@ -610,6 +631,27 @@
       "wall_seconds": 42.19
      },
      "receipt": "docs/dados/recibos/recibos_20261023c.json"
+    },
+    {
+     "commit": "be8da58cf3baa3bbd450d6796caafe28834f78b1",
+     "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v4_query_contract.py tests/test_v3_query_contract.py tests/test_v4_read_only_paths.py",
+     "reference": "sondas V4 e store fato a fato",
+     "input_hash": {
+      "parameters": "páginas de 1; nomes com espaço/acentos/#/%/&/;/=/? (POSIX)",
+      "generator_files_sha256": {
+       "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+       "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+       "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+       "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+      }
+     },
+     "parameters": "páginas de 1; nomes com espaço/acentos/#/%/&/;/=/? (POSIX)",
+     "result": "22 passed in 28.73s",
+     "limitations": "seleção ainda carregada antes de paginar (BD18b); Windows físico não exercitado",
+     "resource_measurements": {
+      "wall_seconds": 29.81
+     },
+     "receipt": "docs/dados/recibos/recibos_20261023d.json"
     }
    ]
   },
@@ -702,6 +744,27 @@
         "wall_seconds": 14.79
        },
        "receipt": "docs/dados/recibos/recibos_20261023c.json"
+      },
+      {
+       "commit": "be8da58cf3baa3bbd450d6796caafe28834f78b1",
+       "test": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_v4_read_only_paths.py::test_v4_03_cli_reads_the_requested_file tests/test_bd19c1_cli.py",
+       "reference": "sdk.query_series",
+       "input_hash": {
+        "parameters": "CLI --json em arquivo 'cli #3.sqlite' 0444",
+        "generator_files_sha256": {
+         "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+         "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+         "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+         "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+        }
+       },
+       "parameters": "CLI --json em arquivo 'cli #3.sqlite' 0444",
+       "result": "3 passed in 14.22s",
+       "limitations": "sem exportação",
+       "resource_measurements": {
+        "wall_seconds": 15.23
+       },
+       "receipt": "docs/dados/recibos/recibos_20261023d.json"
       }
      ]
     }

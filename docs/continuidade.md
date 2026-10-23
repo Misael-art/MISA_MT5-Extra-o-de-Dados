@@ -2717,3 +2717,13 @@ Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
   A prova da CLI passa ao subcritério **E32.1** (BD19c1, sem exportação).
 - Consulta pública em contrato v2 (research × knowledge; definição por versão; leitura pura;
   cursor ligado à base; erros estáveis). Store grava `recorded_at_utc`.
+
+### Atualização de 23/10/2026 (4ª revisão, V4-01..03)
+
+Corrigidos no store (#201) e na consulta (#202): `save_value` e `save_values` passam a ter o mesmo
+contrato temporal; a fronteira de leitura é transacional (geração por transação de escrita,
+serializada até o commit; fotografia = última geração confirmada; conhecimento = commit carimbado);
+o modo somente leitura SQLite abre exatamente o arquivo pedido (URI codificada). V3-02 e V3-05
+mantêm o aceite no recorte. M2 continua primeiro percurso demonstrado e parcial; E31 planejado;
+E32.1 = CLI sem exportação. Limites: escritores do store serializados; seleção carregada antes de
+paginar (BD18b); `resources/actions.py` ainda monta URL SQLite por texto (dono T15.x).
