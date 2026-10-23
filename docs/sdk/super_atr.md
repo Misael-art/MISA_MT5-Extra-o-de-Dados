@@ -1,14 +1,14 @@
 # Super ATR no gráfico do painel — G19.9
 
-O estudoEURUSD/M5 usa três curvas de período20, média aritmética0, com desvios
-1/2/3. Todas pontilhadas em azul, do claro ao escuro conforme o multiplicador.
+O estudoEURUSD/M5 usa DEZ curvas de período20, média aritmética0, com desvios
+1 a10, conforme a ampliação solicitada pelo proprietário. Todas pontilhadas em azul, do claro ao escuro conforme o multiplicador.
 Na virada, os pontos da mesma curva se ligam em diagonal pontilhada; não há
 vazio por troca de estado. Essa ligação visual não muda o cálculo da catraca.
 Cada curva pode mudar período, multiplicador e média0/1 (aritmética/exponencial)
 nas Propriedades do indicadorMT5/Ctrl+I. Não são ordens ou stops aplicados.
 
 Abrir PLAY do painel manual → Análise → Estudo → + Indicador →
-“HADOUKEN · Super ATR · três curvas”. Precisa da biblioteca candidata completa;
+“HADOUKEN · Super ATR · dez curvas”. Precisa da biblioteca candidata completa;
 a App instala/compila o indicador antes do adaptador. Aparece na janela principal,
 sem requerer uma subjanela. A biblioteca anterior, sem o marcador novo, continua
 aceita pela App. Não usar o template anteriorEstudo_ATR_1_3 como especificação.
@@ -28,8 +28,8 @@ curvas não precisam permanecer aninhadas. Otimização por volatilidade/volume/
 tendência/ativo e50 curvas são pesquisa futura, sem adaptação implementada.
 
 Catálogo da App acrescenta somente o marcadorHDK_StudySuperATR.mqh → ativo
-HDK_SuperATR.mq5 e fecha seus includes. Pin manual9530c8099090658f foi conferido
-na biblioteca reale01540f3, três ativos e matemática; alterar a fórmula invalida
+HDK_SuperATR.mq5 e fecha seus includes. Pin manuald377c812aafd0c5e foi conferido
+na biblioteca real3b979cf1, três ativos e matemática; alterar a fórmula invalida
 a identificação. Mantém pins antigos, conta, consentimentos, stop, limites e
 exceção manual exclusiva. Nenhuma capacidade automática é ampliada; novos
 fingerprints de outros consumidores precisam dos próprios aceites. Não
@@ -57,3 +57,13 @@ controle/remoção pelo diálogoMT5 quando o controlador não reconhece a cópia
 Captura da área de gráfico3456×1363, monitor3456×1458 informado pelo sistema;
 contagens dos pixelsRGB2940/2586/2493. Conexão diagonal é apresentação entre
 amostras, sem mudar a catraca ou afirmar um caminho de preço intrabar.
+
+### Versão1.02 — dez curvas e cinza claro
+
+A versão1.02 amplia os inputs independentes para dez curvas. Preserva as
+regras da catraca/diagonais. O tema **Cinza Claro** fica na última página de
+Visual → Gráfico e temas; com Identidade do gráfico → Degradê ligado, o fundo
+vai deRGB242 a210, neutro nos três canais. Marca d’água e Candle Time podem
+ser desligados nos controles existentes. Índices dos15 temas anteriores
+preservados. Instalação/inspeção dessa ampliação em curso; a captura acima é
+histórica1.01 de três curvas, não prova de dez.

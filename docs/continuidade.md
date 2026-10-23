@@ -1,9 +1,11 @@
 ## Super ATR — G19.9, 2026-10-23
 
-Regras do proprietário registradas:20/SMA0, multiplicadores1/2/3, pontilhado
+Regras do proprietário registradas:20/SMA0, inicialmente1/2/3 e agora DEZ
+curvas com multiplicadores1 a10, pontilhado
 azul graduado, catraca e virada por cruzamento estrito da linha anterior.
-Versão1.01 conecta a virada em diagonal pontilhada, no mesmo buffer da curva.
-FonteHe01540f3/fp9530c8099090658f, Appcodex/super-atr sobrede8830e5.
+Versão1.02 mantém diagonais, amplia para10 curvas e acrescenta o temaCinza Claro;
+89H/checker161/compilação0/0, instalação/visual próprios em curso.
+FonteH3b979cf1/fpd377c812aafd0c5e, Appcodex/super-atr sobrede8830e5.
 126 testesApp/88H/checker161 e compilação6281/Wine0/0; versão1.01 inspecionada
 com diagonais e instalada na prévia. Prova visual composta com App0b2fda3/PR204
 (monitor interno Wine), sem mudança nos runtimes de catálogo/pin destePR. [Teoria, uso e continuidade](sdk/super_atr.md). Nenhum

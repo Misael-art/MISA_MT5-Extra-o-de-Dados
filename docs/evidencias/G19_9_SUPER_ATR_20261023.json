@@ -3,16 +3,16 @@
   "task": "G19.9 Super ATR panel consumer",
   "date": "2026-10-23",
   "base": "de8830e5d32dcffec825f89555258ada85260a12",
-  "hadouken": "e01540f3a8dc2ad40b555adf91278eaa34af261d",
-  "fingerprint": "9530c8099090658f",
+  "hadouken": "3b979cf1",
+  "fingerprint": "d377c812aafd0c5e",
   "tests": {
     "app": {
       "passed": 126,
       "seconds": 15.48
     },
     "hadouken": {
-      "passed": 88,
-      "seconds": 56.772
+      "passed": 89,
+      "seconds": 46.666
     },
     "checker": 161,
     "native_compile": {
@@ -32,7 +32,28 @@
     "actual_closure_checked": true,
     "mathematics_mutation_rejected": true
   },
-  "native_visual": {
+  "safety_changed": false,
+  "data_pillar_changed": false,
+  "profit_parity": false,
+  "operational_acceptance": false,
+  "future": [
+    "50 plots",
+    "adaptive parameters",
+    "Profit reference comparison",
+    "physical Windows"
+  ],
+  "sha256": {
+    "mt5_extracao/robots/catalog.py": "1ff89e2ef626fd8afe0b460b71f8dceba34d82d10cf507474029035461478133",
+    "mt5_extracao/robots/manual_panel.py": "d1748b7044bf2acc405a8850f58d94616bd11dab78ee6dc8eab645e6ec4fd4b3",
+    "tests/test_robot_study_assets.py": "63c635b7e47b809f3b79542e53df425f5e1ee7935435f5938e413df50d95b385",
+    "docs/sdk/super_atr.md": "c95e32fe9b96f8ccb32852ca8c5003aeb6723624a463d5268928129e08848716",
+    "docs/img/super_atr/eurusd-m5-three-curves.png": "2e92a9edc1c1bcb6b6baed06be263901640e09acb4e4dd7cc1dead898c856b53"
+  },
+  "indicator_version": "1.02",
+  "reversal_rendering": "continuous dotted diagonal, same buffer; mathematics unchanged",
+  "composed_visual_dependency": "App PR204/0b2fda3 fixes internal Wine monitor; catalogue/pin runtime identical to this branch",
+  "development_preview_installed": true,
+  "native_visual_1_01": {
     "status": "passed",
     "symbol": "EURUSD",
     "timeframe": "M5",
@@ -102,25 +123,21 @@
     "tester_lease_held": false,
     "session_intentionally_open": false
   },
-  "safety_changed": false,
-  "data_pillar_changed": false,
-  "profit_parity": false,
-  "operational_acceptance": false,
-  "future": [
-    "50 plots",
-    "adaptive parameters",
-    "Profit reference comparison",
-    "physical Windows"
-  ],
-  "sha256": {
-    "mt5_extracao/robots/catalog.py": "1ff89e2ef626fd8afe0b460b71f8dceba34d82d10cf507474029035461478133",
-    "mt5_extracao/robots/manual_panel.py": "a78da4139fd1dc1286f5480153772173db0e150ebf92b5438c4f7a72c1f6285b",
-    "tests/test_robot_study_assets.py": "63c635b7e47b809f3b79542e53df425f5e1ee7935435f5938e413df50d95b385",
-    "docs/sdk/super_atr.md": "0bec9bd2e6cc372022962916527df8a932fed12813e964e7e4735741795d28c8",
-    "docs/img/super_atr/eurusd-m5-three-curves.png": "2e92a9edc1c1bcb6b6baed06be263901640e09acb4e4dd7cc1dead898c856b53"
-  },
-  "indicator_version": "1.01",
-  "reversal_rendering": "continuous dotted diagonal, same buffer; mathematics unchanged",
-  "composed_visual_dependency": "App PR204/0b2fda3 fixes internal Wine monitor; catalogue/pin runtime identical to this branch",
-  "development_preview_installed": true
+  "native_visual": {
+    "status": "pending1.02",
+    "curves": 10,
+    "deviations": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "background": "Cinza Claro"
+  }
 }
