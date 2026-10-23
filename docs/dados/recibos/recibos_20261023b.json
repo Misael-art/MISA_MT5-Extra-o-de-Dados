@@ -1,0 +1,375 @@
+{
+ "generated_at_utc": "2026-10-23T09:11:45Z",
+ "receipts": [
+  {
+   "case": "E01",
+   "code_commit": "385f5db7955eeb14c144467f85011d36d530c56a",
+   "test_file_last_commit": "385f5db7955eeb14c144467f85011d36d530c56a",
+   "command": "MT5X_HADOUKEN_ROOT=<pin H> MT5X_REQUIRE_HADOUKEN_PIN=1 rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd01_inventory.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "registry/produtores/legado enumerados em execução; catálogo nativo extraído do pin H",
+   "parameters": "bars_frame(sessions=30, bars_per_session=12); pin H obrigatório (gate de composição)",
+   "result": "8 passed in 9.77s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 10.69
+   },
+   "limitations": "confere IDs emitidos, não maturidade numérica; cálculos fora dos pontos enumeráveis não detectados",
+   "inputs": {
+    "inventario_bd01.json": "7ac64c3d4f5cb6828121a15b9cab2e3e3544cdf9508885cd20bd994c36db211e",
+    "HDK_StudyCatalog.mqh": "d551ba6d28fc80faa65afb67a249a0d6ba2bdcadf40ef78dbc857a4e947d9183",
+    "hadouken_commit": "6fb02374cd652a5fa0bfd314ace9d47ed8bc1283"
+   }
+  },
+  {
+   "case": "E02",
+   "code_commit": "9806b8beb857b27598aa9c8d1d13cc3a4fb78d94",
+   "test_file_last_commit": "4ba2853a3af52988199a3b3eae1016a70b2a0a09",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd02_bench.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "tests/bench_reference.py (Python puro)",
+   "parameters": "19 cenários; tolerância relativa 1e-9 (somas), 1e-12 (máximos)",
+   "result": "15 passed in 5.09s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 5.76
+   },
+   "limitations": "8 saídas com oráculo; métricas de memória não equivalem a RSS de job",
+   "inputs": {
+    "trend": "2e3f34ecfb5cad681dbe94992755e6b1a0a8d9ca328a63dc26861a4fb49a6a5a",
+    "lateral": "007425e1351f232c59489c3a69f83abaf1eb657709c769ca53311b11dcd73e89",
+    "flat": "6e6f56f096ad50386e914695f97886ca3cdca1b443b098bdaf7574b8a2570030",
+    "random_walk": "a88366b71ff523e21f3abef11b491496c4cd14be467d45d42209f7bdba7728fe",
+    "gap": "acdc8b1606e9789000c2a288067c2751c8e3e154b97ad9706e271a527d7ef676",
+    "duplicate": "393ba2bcc4091d454ca3407c47b4f7c552e4dcdec9556c69c0da33e62c0882c0",
+    "out_of_order": "8521fa8e754a5f127bdcfe4b5f7fda1189df8ff5a6834744e366c6e06991aca0",
+    "revision": "f4bc91b9517a246cce0ff3d7282c5a60368bb6982e4cedabf1f95db58dc5dd2a",
+    "missing_close": "022d3afd124a311f1075f0c874ae53cf795784f5b3088b5f155f04ff06effa10",
+    "overnight": "df7b06a91738b883f1b1c0ddf2917f2ca52835718b8939a8e165010599b4c9d5",
+    "dst": "c29f5cca042c48ec5af3c7a192a5c19f00f79c5280bdf144f8ba9e42d44a7711",
+    "volume_zero_known": "e0d1c1015dc99f25354a93caf8a7335d38249e8f90bc12af3ea3bfafc453e221",
+    "volume_absent": "12d1bf93d14730f8bac989594d05b14ef3ab82f949c1476e42a5ddffd7910bc2",
+    "volume_partial_unknown": "96b2d694fd1c8e55a304f296cea42f733eca673a52d0c0a00a212a5e9d54c65d",
+    "scale_0.0001": "55e9867e4ddd5de8d4d1ad3b9feafe759bddeaf788e75891893e6eaba48dfedb",
+    "scale_1": "1b099cda9297b009628180128453644a92000ab88ff9322c24eb2f09c81c74d1",
+    "scale_100000": "379eada601fbbb3efc73740aa06a45cf0ed09dd37a0df99f87284e40448e1175",
+    "base_a": "30e6e06bc02722fb8ad49ebfb5a2dab3216a722823dd41efef73392f8a3f6c1b",
+    "base_b": "1a0ca6b78877a5614065e54d702e26aa93f45cac0ea123c1c5eace00bbb24efd"
+   }
+  },
+  {
+   "case": "E03",
+   "code_commit": "aaff1da96de227d25bf04ed389a7c2fe9a6c92bc",
+   "test_file_last_commit": "aaff1da96de227d25bf04ed389a7c2fe9a6c92bc",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd03_base_identity.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "contrato T20.4 estendido",
+   "parameters": "EURUSD H1 em bancos SQLite temporários",
+   "result": "12 passed in 14.15s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 14.97
+   },
+   "limitations": "consumidores além do serviço/CLI ainda sem identidade; PG só na CI",
+   "inputs": {
+    "market_data.trend120_h": "9927d229a5fe38b7dec199fb7fcb517bdcfc4456b917fd9eee38f5c77b44cf26",
+    "market_data.sine120_h": "aebfea76e0fd3ae991b3be1f3bb220f7adb321fff549b52856926fd12d95db50"
+   }
+  },
+  {
+   "case": "E04",
+   "code_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
+   "test_file_last_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_extraction_contract.py tests/test_bd03_base_identity.py::test_third_adapter_uses_the_same_contract_without_consumer_changes",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "extrator real com provedor falso; terceira fonte por rótulo",
+   "parameters": "WIN$N M1 02–05/01/2024 do FakeMT5",
+   "result": "6 passed in 14.01s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 14.79
+   },
+   "limitations": "terceira fonte é simulação por rótulo, não importador real validado",
+   "inputs": {
+    "parameters": "WIN$N M1 02–05/01/2024 do FakeMT5",
+    "generator_files_sha256": {
+     "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+     "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+     "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+     "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+    }
+   }
+  },
+  {
+   "case": "E05",
+   "code_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
+   "test_file_last_commit": "d0735c4c02502e5c1768d986b592ec98d49cbda4",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_ingestion.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "versões conferidas à mão (close=100+i)",
+   "parameters": "received_at T1..T4 explícitos; R01–R03",
+   "result": "13 passed in 7.37s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 8.16
+   },
+   "limitations": "ticks/book sem contrato de recebimento; PG só na CI",
+   "inputs": {
+    "m1_bars6.csv": "8387109558226b494f29484c20d683bf72d72cb6244feb0bc28d6fd89424c8cc",
+    "generator": "tests/test_analytics_calendar.py::m1_bars@d0735c4c02502e5c1768d986b592ec98d49cbda4"
+   }
+  },
+  {
+   "case": "E06",
+   "code_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
+   "test_file_last_commit": "d0735c4c02502e5c1768d986b592ec98d49cbda4",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_ingestion.py::test_real_volume_capability_changes_only_dependent_consumers_and_snapshot_stays",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "data_eligibility.assess/evaluate",
+   "parameters": "30 barras M1 09:00–09:29 de 14/09/2026; real_volume None→5→None",
+   "result": "1 passed in 1.93s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 2.7
+   },
+   "limitations": "elegibilidade comprovada no serviço; UI não lê o estado diretamente",
+   "inputs": {
+    "generator": "tests/test_analytics_calendar.py::m1_bars@d0735c4c02502e5c1768d986b592ec98d49cbda4",
+    "serialization": "DataFrame.to_csv(index=False, lineterminator='\\n', float_format='%.17g')",
+    "stage_absent_sha256": "c6fcbbacd4c6312fc429b5563b04a2774c856fbb405bbc98e942033196fdf16b",
+    "stage_available_sha256": "aac0be30533cfa556c21ef89a9dfc68bb2897f1e4b67303764a920f5b8521dbe",
+    "stage_absent_again_sha256": "c6fcbbacd4c6312fc429b5563b04a2774c856fbb405bbc98e942033196fdf16b"
+   }
+  },
+  {
+   "case": "E07",
+   "code_commit": "6703bf602fb555be5e2508eefd25c0f67b8a5152",
+   "test_file_last_commit": "7d059a83c8c4279c09e8c5388899349fb5ab1508",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd05_time.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "data_eligibility.as_of, calendar, resampling, clocks",
+   "parameters": "H1/M1 sintéticos; âncora 17:00; fev/2024",
+   "result": "7 passed in 3.34s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 4.07
+   },
+   "limitations": "1º recorte: limite 95/96 corrigido só com zona (E08)",
+   "inputs": {
+    "parameters": "H1/M1 sintéticos; âncora 17:00; fev/2024",
+    "generator_files_sha256": {
+     "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+     "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+     "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+     "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+    }
+   }
+  },
+  {
+   "case": "E08",
+   "code_commit": "6703bf602fb555be5e2508eefd25c0f67b8a5152",
+   "test_file_last_commit": "6703bf602fb555be5e2508eefd25c0f67b8a5152",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd05_zone.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "pytz Europe/Athens; fold/gap reais",
+   "parameters": "dst_transition 96 H1; primavera 29/03/2026",
+   "result": "7 passed in 3.17s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 4.22
+   },
+   "limitations": "derivação/snapshot com zona recusados; fold na fronteira de blocos recusado",
+   "inputs": {
+    "parameters": "dst_transition 96 H1; primavera 29/03/2026",
+    "generator_files_sha256": {
+     "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+     "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+     "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+     "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+    }
+   }
+  },
+  {
+   "case": "E11",
+   "code_commit": "59be49a9ab5bd9c92e41a43ee215f62dd7e04ae8",
+   "test_file_last_commit": "59be49a9ab5bd9c92e41a43ee215f62dd7e04ae8",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd08a_returns.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "tests/bench_reference.py::returns sobre closes M5 derivados",
+   "parameters": "WIN$N M1 do FakeMT5 → M5, offset 0",
+   "result": "5 passed in 35.19s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 36.21
+   },
+   "limitations": "só família de retorno",
+   "inputs": {
+    "parameters": "WIN$N M1 do FakeMT5 → M5, offset 0",
+    "generator_files_sha256": {
+     "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+     "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+     "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+     "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+    }
+   }
+  },
+  {
+   "case": "E28",
+   "code_commit": "0a8d71d704b4899240fe7df4146b32810effa3c6",
+   "test_file_last_commit": "0a8d71d704b4899240fe7df4146b32810effa3c6",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd18a_query.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "feature_store.query_as_of (fato a fato)",
+   "parameters": "cadeia do piloto; page_size 97/5000",
+   "result": "5 passed in 29.82s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 30.71
+   },
+   "limitations": "seleção carregada antes de paginar (teto 200 000)",
+   "inputs": {
+    "parameters": "cadeia do piloto; page_size 97/5000",
+    "generator_files_sha256": {
+     "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+     "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+     "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+     "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+    }
+   }
+  },
+  {
+   "case": "E31",
+   "code_commit": "08d8924a1703134edee6532a87febc26e8c19486",
+   "test_file_last_commit": "08d8924a1703134edee6532a87febc26e8c19486",
+   "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd19c1_cli.py",
+   "environment": {
+    "python": [
+     "3.11.15",
+     "2.3.3",
+     "2.4.6",
+     "2.0.55"
+    ],
+    "platform": "Linux-6.18.49-1-MANJARO-x86_64-with-glibc2.44",
+    "display": "nenhum (testes sem GUI)",
+    "database": "SQLite temporário (tmp_path)"
+   },
+   "reference": "sdk.query_series",
+   "parameters": "CLI --json sobre a cadeia do piloto",
+   "result": "2 passed in 11.83s",
+   "exit_code": 0,
+   "resource_measurements": {
+    "wall_seconds": 12.66
+   },
+   "limitations": "Laboratório/Relações/export/Estudo pendentes",
+   "inputs": {
+    "parameters": "CLI --json sobre a cadeia do piloto",
+    "generator_files_sha256": {
+     "tests/fakes.py": "0b15557f2fa1f2bdff9a2e015e7ba21f208edf997db597746f66ee2874962927",
+     "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+     "tests/test_analytics_calendar.py": "45fecb254f284795c4a9d6a97b44ccd671cb9b13fb7ee0f6cc3a705851832a95",
+     "tests/market_data.py": "e6ef11e1c91eafd15d4c83475730210a0f33e4aa5ef829b077a310d7a37344e2"
+    }
+   }
+  }
+ ]
+}

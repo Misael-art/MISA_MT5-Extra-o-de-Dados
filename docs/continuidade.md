@@ -2694,3 +2694,15 @@ Retomada: suítes com `xvfb-run -a .venv/bin/python -m pytest -q` (sem janelas n
 proprietário; 3 testes de geometria falham no display real e passam sob Xvfb — pendência visual
 no dono da UI). Doctor: `--root` da worktree BD01, que tem `config/config.ini` próprio
 (`--no-mt5`, ponte desativada). Próximo: BD05 (tempo/sessões/W1/MN1).
+
+### Atualização de 23/10/2026 (2ª revisão independente, R01–R07)
+
+Contraexemplos reproduzidos antes da correção (log `r01_r03_antes_adbe614.txt` na fotografia):
+R01 (101 em vez de 250), R03 (300 em vez de 250), R02 (as-of devolvendo barra não recebida e
+anterior à observação). Correções: contrato de recebimento `_ohlcv_versions`/`_ohlcv_receipts`,
+as-of causal/inspect, extrator com fonte e recebimento (R04), mensagem do fork, zona do corretor
+e offset desconhecido (R06), assinatura global como limitação temporária sem mudar o grafo (R05),
+recibos `docs/dados/recibos/recibos_20261023b.json` com E06 pela entrada efetiva (R07).
+Primeira cadeia funcional: provedor falso → extrator → M1 → M5 → store → `sdk.query_series` →
+`mt5x analytics features series`. Pilha: #190…#194 e novos PRs BD06, BD07, BD08a, BD18a, BD19c1.
+Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
