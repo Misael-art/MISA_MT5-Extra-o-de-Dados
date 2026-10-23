@@ -89,8 +89,19 @@
    "owner": "BD04",
    "case": "Repetição e desordem",
    "criterion": "Idempotência e revisão de entrada fora de ordem",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "pendente (branch codex/bd04-ingestao)",
+     "test": "tests/test_bd04_ingestion.py",
+     "reference": "valores M1 conhecidos (close=100+i); M3 esperado calculado à mão",
+     "input_hash": "m1_bars de tests/test_analytics_calendar.py, 6 barras",
+     "parameters": "EURUSD M1→M3, offset -3",
+     "result": "4 passed",
+     "limitations": "tabela bruta sobrescreve (histórico só em derivados/snapshots); PostgreSQL não exercitado; propagação de capacidade (E06) pendente",
+     "resource_measurements": "2 s; bancos em tmp_path"
+    }
+   ]
   },
   {
    "id": "E06",
