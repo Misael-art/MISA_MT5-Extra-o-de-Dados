@@ -46,10 +46,44 @@ alterar chaves. Este recorte mapeia, prova o que já é garantido e delimita o q
 3. **Duas bases no mesmo banco não são suportadas.** Mesmo símbolo de dois feeds no mesmo arquivo
    colide nas chaves acima. Atender exigiria acrescentar a identidade às chaves de ~10 tabelas.
 
-## Decisão de arquitetura pendente
+## Decisão de arquitetura (engenharia, 23/10/2026)
 
-Manter **uma base por banco** (contrato T20.4 atual, sem migração de chaves; cruzamento por
-snapshot importado e envelope com namespace) ou **várias bases por banco** (migração aditiva de
-chaves). Recomendação deste recorte: manter uma base por banco e propagar o namespace aos
-envelopes de consulta/DTO, porque não exige reescrever chaves nem arrisca o banco principal.
-Até a decisão, BD04/BD05 seguem sobre o contrato atual, que não muda com nenhuma das opções.
+**Uma base lógica por banco SQLite ou por schema/banco PostgreSQL**, identificada pelo
+conteúdo (`_dataset_origin`), nunca pelo nome do arquivo. Fundamento: o resultado pedido é que
+bases não se confundam em valores, cache, DTO e notas; as chaves por símbolo já são isoladas
+pelo banco/schema, e migrar ~10 tabelas não traria garantia adicional. A identidade passa a ser
+explícita nas bordas. Compatibilidade futura: se várias bases num mesmo banco forem pedidas, o
+namespace já está nos envelopes e pode virar coluna de chave por migração aditiva.
+
+## Segundo recorte — mudanças de produção (correção V01)
+
+| Mecanismo | Arquivo | Comportamento |
+|---|---|---|
+| `datasets.identity(db)` | `analytics/datasets.py` | namespace, linhagem (`original`/`fork`, `parent_namespace`), fonte declarada e backend; reabrir/mover/copiar como backup não gera UUID |
+| `datasets.fork(db)` | idem | cópia que vai divergir ganha namespace novo e registra a origem (slot `parent`, sem tabela nova) |
+| `datasets.declare_source(db, source)` e `capture` | idem | 1ª declaração fixa provider/server da base; fonte diferente é **recusada** antes de gravar; captura sem rótulo herda a fonte declarada |
+| `feature_store.with_base_identity(db, frame)` | `analytics/feature_store.py` | carimba `base_namespace/lineage/provider/server` em fatos lidos antes de juntar bancos |
+| notas do Estudo | `chart_study/store.py` | nota nova congela `base` na fotografia; nota já salva mantém seus bytes |
+| `relation_dto` | `analytics/relation_dto.py` | `provenance.base_namespace` obrigatório fora de fixture sintética (fixture declara `None`) |
+
+Schema: nenhuma tabela/coluna nova; só novas linhas (slots) em `_dataset_origin`.
+Cópia sem fork que diverge mantém o namespace, mas o `manifest_id` (que inclui namespace e
+conteúdo) muda: cache e contexto por manifesto não colidem.
+
+## Provas do segundo recorte (11 casos SQLite + 2 PostgreSQL)
+
+Mesmo símbolo com dados diferentes **e iguais** consultados juntos (namespaces, versões e chaves
+de cache distintos); mover/backup/reabrir conservam a identidade; fork deriva e registra origem;
+cópia divergente distinguida por fork ou por revisão de conteúdo; feed/servidor incompatível
+recusado sem gravar manifesto; terceira fonte (`csv-import`) pelo mesmo contrato chega carimbada
+(E04); notas congelam a base; DTO exige base. `tests/test_bd03_base_identity_pg.py` repete
+isolamento por schema, reabertura, recusa e fork em PostgreSQL — **executado só na CI** (sem
+PostgreSQL local).
+
+## Ainda pendente (BD03 continua parcial)
+
+- Escritores brutos (`save_ohlcv_data`, extratores) não consultam a fonte declarada: a recusa
+  acontece na captura/manifesto, não na gravação bruta. Ligar o servidor da conta ao
+  `declare_source` no extrator pertence ao dono da extração (T1.x/EXTR) e é o próximo passo.
+- Consumidores (CLI, Laboratório, export) ainda não chamam `with_base_identity`: BD18/BD19.
+- Ledger referencia a base só via manifesto do run.

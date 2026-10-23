@@ -356,6 +356,22 @@ def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algo
     return frame
 
 
+def with_base_identity(db, frame):
+    """Carimba a identidade lógica da base (T20.4) em fatos lidos deste banco.
+
+    Os fatos do store não guardam a base nas chaves: o banco/schema é a base. Antes de juntar
+    resultados de bancos diferentes, cada leitura precisa deste carimbo para não confundir origens.
+    """
+    from mt5_extracao.analytics import datasets
+
+    base = datasets.identity(db)
+    stamped = frame.copy()
+    for column, key in (("base_namespace", "namespace"), ("base_lineage", "lineage"),
+                        ("base_provider", "provider"), ("base_server", "server")):
+        stamped[column] = base[key]
+    return stamped
+
+
 def query_history(db, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None, start=None, end=None):
     """Consulta todas as revisões, inclusive fatos vencidos ou corrigidos depois.
 

@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy import text, inspect
 
+from mt5_extracao.analytics import datasets
+
 from . import snapshot
 
 NOTES = "_chart_study_notes"
@@ -47,6 +49,8 @@ def freeze(db, note_id, capture, captured_at, *, build_snapshot=snapshot.build):
             raise ValueError("A captura original foi alterada; crie outra anotação.")
         return json.loads(row["snapshot_json"])
     frozen = build_snapshot(capture, captured_at)
+    # Notas novas congelam a base de origem; as já salvas mantêm seus bytes (sem recálculo).
+    frozen.setdefault("base", {key: value for key, value in datasets.identity(db).items() if key != "backend"})
     body = snapshot.json_text(frozen)
     with db.engine.begin() as conn:
         conn.execute(text(f"INSERT INTO {CAPTURES} (note_id,source_sha256,snapshot_json) VALUES (:id,:hash,:body) "
