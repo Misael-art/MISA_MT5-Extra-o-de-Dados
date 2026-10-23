@@ -29,6 +29,16 @@ observação igual 13,2 s; retry do mesmo evento 16,0 s; 10 000 correções 15,4
 (vetorizado; leitura limitada ao intervalo pedido). Arquivo 19 MiB (antes 7,3 MiB): um
 recebimento por barra por observação.
 
+**Escritor real (R04).** `HistoricalExtractor` registra o instante em que obteve cada bloco e o
+repassa com a fonte do conector (`MT5Connector.data_source()`: provedor `mt5` + servidor da conta,
+sem login nem senha). `save_ohlcv_data(source=)` chama `datasets.declare_source` antes de gravar:
+fonte incompatível com a base devolve `False` sem tocar o bruto nem os recebimentos (o bloco fica
+`failed` no `_extraction_log`). O fallback M1 configurado (CSV) é mecanismo explícito: entra com
+`derivation="fallback_m1"`, não troca a fonte da base e grava `origin=fallback:<fonte>` em cada
+recebimento. Retomada não regrava blocos concluídos, então não cria nova antiguidade. Rótulo
+declarado depois de gravar não requalifica recebimentos anteriores (`write:unknown`).
+Provas: `tests/test_bd04_extraction_contract.py` (5 casos, provedor falso).
+
 Limites: escrita concorrente usa a transação do upsert e a leitura usa `consistent_read`, sem
 teste de estresse; ticks/book sem contrato de recebimento; integração do extrator no recorte R04.
 

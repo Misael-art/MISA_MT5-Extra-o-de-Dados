@@ -835,6 +835,15 @@ class MT5Connector:
         info = self.get_symbol_info(symbol)
         return "observed" if info is not None and getattr(info, "custom", None) is False else "unknown"
 
+    def data_source(self):
+        """Fonte declarável da base: provedor MT5 e servidor da conta logada (sem login nem senha)."""
+        try:
+            server = getattr(mt5.account_info(), "server", None) if mt5 else None
+        except Exception:
+            server = None
+        server = str(server).strip() if server else None
+        return {"provider": "mt5", "server": server or None}
+
     def get_available_timeframes(self):
         """Retorna a lista de timeframes disponíveis como tuplas (nome_legivel, valor_mt5).
 

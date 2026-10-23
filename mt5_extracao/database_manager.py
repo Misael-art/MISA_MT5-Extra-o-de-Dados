@@ -251,7 +251,7 @@ class DatabaseManager:
             log.debug(traceback.format_exc())
             return False
 
-    def save_ohlcv_data(self, symbol, timeframe_name, df, *, received_at=None):
+    def save_ohlcv_data(self, symbol, timeframe_name, df, *, received_at=None, source=None):
         """
         Salva ou atualiza dados OHLCV no banco de dados.
         Garante que a tabela exista com o schema completo antes de salvar.
@@ -262,10 +262,28 @@ class DatabaseManager:
             df (pd.DataFrame): DataFrame contendo os dados OHLCV com coluna 'time'.
             received_at: instante UTC em que ESTE sistema recebeu o payload (padrão: agora).
                 Um retry deve repassar o instante original; payload mais antigo que o vigente
-                não sobrescreve e fica registrado como ``stale`` em ``_ohlcv_revisions``.
+                não prevalece (contrato de recebimento em ``_ohlcv_receipts``).
+            source: fonte do payload ({provider, server[, derivation]}). Fonte primária passa por
+                ``datasets.declare_source``: incompatível com a base é recusada sem gravar. Com
+                ``derivation='fallback_m1'`` (fallback configurado) a base não muda de fonte e cada
+                recebimento registra a origem real.
         """
         if received_at is not None:
             self._utc_text(received_at, "recebimento (received_at)")  # erro de chamada: não vira False
+        origin = "write:unknown"
+        if source:
+            from mt5_extracao.analytics import datasets
+            provider = source.get("provider") or "unknown"
+            if source.get("derivation") == "fallback_m1":
+                datasets._source(source, "validation")
+                origin = f"fallback:{provider}"
+            else:
+                try:
+                    declared = datasets.declare_source(self, source)
+                except ValueError as exc:
+                    log.error(f"Gravação recusada para {symbol} {timeframe_name}: {exc}")
+                    return False
+                origin = f"write:{declared['provider']}@{declared['server'] or 'servidor-desconhecido'}"
         if not self.is_connected():
             log.error("Não é possível salvar dados: Banco de dados não conectado.")
             return False
@@ -329,7 +347,7 @@ class DatabaseManager:
             # Usar 'append'. A chave primária 'time' deve lidar com duplicatas se o SQLite estiver configurado corretamente
             # ou se a lógica de 'overwrite' for usada antes desta chamada.
             # Deixar pandas/SQLAlchemy lidar com a citação do nome da tabela
-            self._upsert_dataframe(table_name, df_to_save, received_at=received_at)
+            self._upsert_dataframe(table_name, df_to_save, received_at=received_at, origin=origin)
 
             log.info(f"Dados para {symbol} ({timeframe_name}) salvos com sucesso em '{table_name}'.")
             return True
@@ -394,7 +412,7 @@ class DatabaseManager:
         tied = sorted({digest for digest, received in receipts if received == latest})
         return tied[0], latest, len(tied) > 1
 
-    def _receive(self, conn, table_name, records, received_at):
+    def _receive(self, conn, table_name, records, received_at, origin="write:unknown"):
         """Registra os recebimentos e devolve só os registros cujo conteúdo prevalece.
 
         Barras cujo vencedor não é o conteúdo recebido agora têm o bruto reconciliado com o vencedor.
@@ -436,7 +454,7 @@ class DatabaseManager:
                 receipts[stamp] = [(legacy_digest, self._UNKNOWN_RECEIPT)]
             conn.execute(add_version, {"t": table_name, "time": stamp, "h": digest, "payload": payload})
             conn.execute(add_receipt, {"t": table_name, "time": stamp, "h": digest, "rcv": incoming,
-                                       "rec": recorded, "origin": "write"})
+                                       "rec": recorded, "origin": origin})
             receipts.setdefault(stamp, [])
             if (digest, incoming) not in receipts[stamp]:
                 receipts[stamp].append((digest, incoming))
@@ -459,7 +477,7 @@ class DatabaseManager:
                 apply.append({**next(iter(candidates.values())), **winner})
         return apply
 
-    def _upsert_dataframe(self, table_name, df, *, received_at=None):
+    def _upsert_dataframe(self, table_name, df, *, received_at=None, origin="write:unknown"):
         """Insere ou atualiza linhas pela chave primária 'time'. df indexado por 'time'.
 
         Tudo numa transação: falha em qualquer bloco desfaz os anteriores e os recebimentos.
@@ -475,7 +493,7 @@ class DatabaseManager:
             if isinstance(r['time'], pd.Timestamp):
                 r['time'] = r['time'].to_pydatetime()
         with self.engine.begin() as conn:
-            records = self._receive(conn, table_name, records, received_at)
+            records = self._receive(conn, table_name, records, received_at, origin)
             for i in range(0, len(records), self._UPSERT_CHUNK_ROWS):
                 insert = postgresql_insert if self.dialect == 'postgresql' else sqlite_insert
                 stmt = insert(table).values(records[i:i + self._UPSERT_CHUNK_ROWS])
