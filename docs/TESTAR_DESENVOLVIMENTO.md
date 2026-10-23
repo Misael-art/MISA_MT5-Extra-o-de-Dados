@@ -1,5 +1,15 @@
 # Testar o desenvolvimento pelo atalho habitual
 
+## Correção de monitor PLAY/REPLAY — 23/10/2026
+
+A branch `codex/play-replay-display` acrescenta a correção sobre App G19
+`321272f0b24d`, com HADOUKEN `6fb02374cd65` e Safety `c5a3e2162cac` preservados.
+Ao publicar a release de desenvolvimento, conferir o commit no manifesto e os
+atalhos/menu no mesmo `app-development`. A referência aceita continua separada.
+REPLAY sempre visual; PLAY automático oculto por padrão e painel manual visível,
+com escolha por lançamento. [Comportamento, provas e pendências](sdk/play_replay_monitores.md).
+A composição descrita abaixo registra a prévia anterior e seu procedimento de retorno.
+
 O proprietário determinou em21/10/2026 que os avanços fiquem disponíveis para
 teste. O atalho da área de trabalho apontava para um checkout antigo com WIP,
 enquanto o menu abria a release aceita App171. Agora ambos devem abrir a mesma
