@@ -1,0 +1,322 @@
+{
+ "revision": 2,
+ "states": [
+  "planejado",
+  "em_execucao",
+  "passou",
+  "falhou",
+  "bloqueado_especificacao",
+  "prova_externa_pendente"
+ ],
+ "required_evidence_fields": [
+  "commit",
+  "test",
+  "reference",
+  "input_hash",
+  "parameters",
+  "result",
+  "limitations",
+  "resource_measurements"
+ ],
+ "cases": [
+  {
+   "id": "E01",
+   "owner": "BD01",
+   "case": "Inventário integral",
+   "criterion": "Todos os itens e consumidores possuem contrato/dono/estado, inclusive lacunas",
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "commit": "pendente (branch codex/bd01-inventario-dados)",
+     "test": "tests/test_bd01_inventory.py",
+     "reference": "registry/produtores enumerados em execução; HDK_StudyCatalog.mqh por SHA-256 em inventario_bd01.json",
+     "input_hash": "ver sources em inventario_bd01.json",
+     "parameters": "bars_frame(sessions=30, bars_per_session=12), volume real e ticks",
+     "result": "5 passed (3a34bf9); 8 passed com pin H após correção V05",
+     "limitations": "guarda confere IDs emitidos, não maturidade numérica (30 e 130 sessões emitem os mesmos 60 IDs de produtores); comparação com o pin H só com MT5X_HADOUKEN_ROOT; cálculos fora dos pontos enumeráveis não são detectados",
+     "resource_measurements": "6 s de teste; JSON 70 KiB"
+    }
+   ]
+  },
+  {
+   "id": "E02",
+   "owner": "BD02",
+   "case": "Referências e tamanho",
+   "criterion": "Valores independentes e fixtures/temporários dentro do orçamento medido",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E03",
+   "owner": "BD03",
+   "case": "Duas bases mesmo símbolo",
+   "criterion": "Valores, cache, contexto e notas não cruzam identidades",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E04",
+   "owner": "BD03",
+   "case": "Nova fonte",
+   "criterion": "Adaptador atende contrato sem mudança nos consumidores existentes",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E05",
+   "owner": "BD04",
+   "case": "Repetição e desordem",
+   "criterion": "Idempotência e revisão de entrada fora de ordem",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E06",
+   "owner": "BD04",
+   "case": "Capacidade ausente",
+   "criterion": "Zero/ausência/volume real/ticks/agressor mantêm significados separados",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E07",
+   "owner": "BD05",
+   "case": "Disponibilidade entre TFs",
+   "criterion": "M5 não consome H1 aberto nem correção ainda desconhecida",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E08",
+   "owner": "BD05",
+   "case": "Calendário/fuso",
+   "criterion": "Sessões noturnas, gaps, offset desconhecido e regras W1/MN1 explícitas",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E09",
+   "owner": "BD06",
+   "case": "Contrato de definição",
+   "criterion": "Parâmetros/tipos/unidades/aquecimento/motivo versionados e validados",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E10",
+   "owner": "BD07",
+   "case": "Variantes e dependência opcional",
+   "criterion": "Cobertura não muda silenciosamente com pandas-ta ou backend",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E11",
+   "owner": "BD08a",
+   "case": "Referência numérica",
+   "criterion": "Oráculo independente e tolerância justificada antes do aceite",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E12",
+   "owner": "BD08b",
+   "case": "Prefixo e recursão",
+   "criterion": "Futuro não altera passado indevido; semente e chunking são coerentes",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E13",
+   "owner": "BD09",
+   "case": "Famílias faltantes",
+   "criterion": "Algoritmos definidos fecham cálculo/store/consulta; indefinição não é escondida",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E14",
+   "owner": "BD10",
+   "case": "Fluxo/book",
+   "criterion": "Fixtures válidas reproduzem cálculo; feed sem capacidade não é inventado",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E15",
+   "owner": "BD11",
+   "case": "Nativo/offline",
+   "criterion": "Captura tem buffers/versão; leitura offline funciona ou explica indisponibilidade",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E16",
+   "owner": "BD12",
+   "case": "Composto de dois níveis",
+   "criterion": "Ordem, tipos, unidades e propagação da ausência corretas",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E17",
+   "owner": "BD12",
+   "case": "Ciclo/dependência inválida",
+   "criterion": "Erro explícito, localizado e sem gravação enganosa",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E18",
+   "owner": "BD13",
+   "case": "Revisão seletiva",
+   "criterion": "Pais/descendentes atualizados sem invalidar ramos independentes",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E19",
+   "owner": "BD13",
+   "case": "Histórico as-of",
+   "criterion": "Revisões antigas continuam disponíveis sem antecipar correção",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E20",
+   "owner": "BD14",
+   "case": "Interrupção/retomada",
+   "criterion": "Resultado conciliado à referência completa e sem duplicação",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E21",
+   "owner": "BD14",
+   "case": "Concorrência/fonte alterada",
+   "criterion": "Fonte muda durante lote sem publicar COMPLETE antigo",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E22",
+   "owner": "BD14",
+   "case": "Recursos",
+   "criterion": "Disco/memória/timeout limitam job com falha legível e retomável",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E23",
+   "owner": "BD15a",
+   "case": "Relações matemáticas",
+   "criterion": "Associação positiva/negativa/independência/constância/ausência testadas",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E24",
+   "owner": "BD15b",
+   "case": "Persistência de relações",
+   "criterion": "Método/população/defasagem/versão/revisão reconciliados",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E25",
+   "owner": "BD16",
+   "case": "Expansão de pares",
+   "criterion": "Novo indicador gera somente relações elegíveis dentro do orçamento",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E26",
+   "owner": "BD16",
+   "case": "Cruzamento entre bases",
+   "criterion": "Junção explícita e causal; sem unir por símbolo textual",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E27",
+   "owner": "BD17",
+   "case": "Contexto/ledger",
+   "criterion": "Lados/ciclos/parciais/labels maduros sem duplicação nem vazamento",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E28",
+   "owner": "BD18a",
+   "case": "Consulta executável",
+   "criterion": "Catálogo/series consultáveis sem UI; erro e paginação previsíveis",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E29",
+   "owner": "BD18b",
+   "case": "Contrato integral",
+   "criterion": "Serialização finita e versões/proveniência/frescor consistentes",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E30",
+   "owner": "BD19a",
+   "case": "Laboratório",
+   "criterion": "Resultados e universo conciliados com o serviço",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E31",
+   "owner": "BD19b",
+   "case": "Relações efetivas",
+   "criterion": "Tela usa serviço real; fixtures só em demonstração/testes identificados",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E32",
+   "owner": "BD19c2",
+   "case": "CLI/export",
+   "criterion": "Mesma seleção e valores do serviço, ordem e limites verificáveis",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E33",
+   "owner": "BD19d",
+   "case": "Estudo/notas",
+   "criterion": "Expansão visível conforme capacidade; notas antigas conservam fotografia",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E34",
+   "owner": "BD20",
+   "case": "Expansão completa",
+   "criterion": "Novo simples/composto/base/capacidade passa por toda a cadeia, preservando acervo",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E35",
+   "owner": "BD21",
+   "case": "Migração/instalação/rollback",
+   "criterion": "Banco legado, migração repetida/interrompida e versão no atalho verificadas",
+   "state": "planejado",
+   "evidence": []
+  },
+  {
+   "id": "E36",
+   "owner": "BD22",
+   "case": "Encerramento honesto",
+   "criterion": "Catálogo/consumidores/recursos/provas externas e pendências integralmente declarados",
+   "state": "planejado",
+   "evidence": []
+  }
+ ]
+}
