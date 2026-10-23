@@ -1,6 +1,7 @@
 """BD02: bancada compacta, referências independentes e orçamento de artefatos."""
 import math
 import time
+import tracemalloc
 from pathlib import Path
 
 import pytest
@@ -92,11 +93,41 @@ def test_wilder_seed_divergence_is_measured_not_hidden():
     assert registry[-1] == pytest.approx(sma[-1], rel=1e-6)  # converge após ~200 barras
 
 
+def test_every_valid_scenario_is_computed_after_its_bar_closes():
+    for name, frame in bench.scenarios().items():
+        assert bench.temporal_violations(frame) == [], name
+
+
+def test_impossible_mass_is_separate_and_detected():
+    invalid = bench.invalid_computed_before_close()
+    assert invalid.attrs["valid"] is False
+    assert len(bench.temporal_violations(invalid)) == len(invalid)
+    assert all(frame.attrs.get("valid", True) for frame in bench.scenarios().values())
+
+
+def test_dst_transition_has_real_offset_change_and_fold():
+    frame = bench.dst_transition()
+    assert frame["bar_start_utc"].is_monotonic_increasing and frame["bar_start_utc"].is_unique
+    assert frame["utc_offset_hours"].iloc[0] == 3.0 and frame["utc_offset_hours"].iloc[-1] == 2.0
+    folded = frame[frame["bar_start_local"].duplicated(keep=False)]
+    # 03:00 local de 25/10/2026 ocorre duas vezes (00:00 e 01:00 UTC), com offsets diferentes
+    assert folded["bar_start_local"].astype(str).unique().tolist() == ["2026-10-25 03:00:00"]
+    assert sorted(folded["utc_offset_hours"]) == [2.0, 3.0]
+
+
 def test_artifact_budget():
+    """Métricas com escopos distintos; nenhuma equivale ao pico RSS de um job completo."""
     persistent = sum(path.stat().st_size for path in FIXTURES.rglob("*") if path.is_file())
+    tracemalloc.start()
     started = time.perf_counter()
-    temporary = sum(bench.fingerprint(frame)[1] for frame in bench.scenarios().values())
+    frames = bench.scenarios()
     elapsed = time.perf_counter() - started
-    assert persistent <= PERSISTENT_BUDGET
-    assert temporary <= TEMPORARY_BUDGET
+    _, generation_peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    canonical_csv_bytes = sum(bench.fingerprint(frame)[1] for frame in frames.values())
+    dataframe_bytes = sum(int(frame.memory_usage(deep=True).sum()) for frame in frames.values())
+    assert persistent <= PERSISTENT_BUDGET          # disco versionado em tests/fixtures
+    assert canonical_csv_bytes <= TEMPORARY_BUDGET  # tamanho serializado, nunca gravado em disco
+    assert dataframe_bytes <= TEMPORARY_BUDGET      # objetos em memória (pandas deep)
+    assert generation_peak <= TEMPORARY_BUDGET      # pico de alocações Python da geração
     assert elapsed < 30

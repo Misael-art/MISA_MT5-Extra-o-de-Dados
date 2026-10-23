@@ -10,7 +10,7 @@ Depende de [BD01](BD01_INVENTARIO.md). Não altera runtime, schema nem dados do 
 `synthetic=True`; nada é gravado em disco. Cenários: tendência, lateralidade, preço constante
 (empates e denominador zero), passeio aleatório, lacuna, duplicidade, fora de ordem, revisão
 tardia (revisão 2 com instante de recebimento), close ausente, sessões que cruzam a meia-noite
-UTC, semana com mudança de horário europeia, volume real zero × ausente × parcialmente
+UTC, transição real de fim de horário de verão em fuso local (Europe/Athens, 25/10/2026: offset +3→+2 e hora local 03:00 repetida), volume real zero × ausente × parcialmente
 desconhecido, três escalas de preço (1e-4, 1, 1e5) e **duas bases com o mesmo símbolo**
 (`EURUSD`) e dados/identidades distintos (`base_id`, `provider`).
 
@@ -21,7 +21,7 @@ range, suavização de Wilder (duas sementes), RSI, ER de Kaufman, largura de Bo
 
 ## O que foi verificado
 
-[tests/test_bd02_bench.py](../../tests/test_bd02_bench.py), 12 casos:
+[tests/test_bd02_bench.py](../../tests/test_bd02_bench.py), 15 casos:
 
 - determinismo por SHA-256 do CSV canônico; rótulo sintético em todos os cenários; cada cenário
   de preço tem pelo menos duas vezes o maior aquecimento do registry (39 barras);
@@ -45,40 +45,56 @@ a semente “first”, difere da semente SMA na barra 14 e converge após ~200 b
 e `trend.ema20_distance_atr14`. Não foi corrigido aqui: a decisão (renomear a variante no
 contrato ou criar versão com semente SMA, preservando a anterior) pertence a BD08a.
 
-## Orçamento
+## Correções após revisão independente (V03/V04, 23/10/2026)
 
-| Item | Teto | Medido |
-|---|---:|---:|
-| Fixtures persistentes (`tests/fixtures/`) | 100 MiB | 30 111 B (nada acrescentado) |
-| Temporários da bancada (CSV canônico de todos os cenários) | 250 MiB | 559 009 B, em memória |
-| Geração + impressão digital | 30 s | < 1 s |
+A primeira versão (8f63786) tinha dois defeitos, preservados aqui como histórico:
 
-Os tetos não incluem a instalação Python/MT5/Wine nem artefatos nativos, que têm orçamentos
-próprios. Nenhum download é necessário. Limpeza: a bancada não cria arquivos.
+- **V03:** `computed_at_utc` era fixo em 22/10/2026 e o cenário “dst” ia até 31/10 em UTC puro:
+  216/240 barras tinham computação anterior ao fechamento, e não havia transição de offset local.
+  Agora `computed_at_utc = bar_end_utc + 2 s` em toda massa válida, testado em todos os cenários
+  (`test_every_valid_scenario_is_computed_after_its_bar_closes`); o cenário `dst` usa fuso real
+  com fold verificado. Massa impossível existe só em `invalid_computed_before_close()`, fora de
+  `scenarios()`, marcada `valid=False`; quem a consumir deve rejeitá-la (resposta do sistema: BD05).
+- **V04:** 559 009 B era o tamanho somado do CSV canônico, não memória. As métricas agora são
+  separadas e nomeadas pelo escopo.
 
-## Impressões digitais (SHA-256 do CSV canônico, 16 primeiros dígitos)
+## Orçamento (medição de 23/10/2026, Python do venv, Linux)
 
-| Cenário | Barras | Bytes | SHA-256 |
+| Métrica | Escopo | Teto | Medido |
+|---|---|---:|---:|
+| Fixtures persistentes | arquivos em `tests/fixtures/` | 100 MiB | 30 111 B (nada acrescentado) |
+| CSV canônico | soma dos CSV serializados, **nunca gravados** | 250 MiB | 536 402 B |
+| DataFrames | `memory_usage(deep=True)` somado | 250 MiB | 1 010 300 B |
+| Pico de alocação da geração | `tracemalloc` durante `scenarios()` | 250 MiB | 1 130 821 B |
+| Duração da geração | `perf_counter` | 30 s | 0,26 s |
+
+Nenhuma dessas métricas é o pico RSS de um job de materialização; essa medição pertence a BD14.
+A bancada não grava temporários em disco. Instalação Python/MT5/Wine e artefatos nativos têm
+orçamentos próprios. Nenhum download é necessário.
+
+## Impressões digitais (SHA-256 completo do CSV canônico)
+
+| Cenário | Barras | Bytes CSV | SHA-256 |
 |---|---:|---:|---|
-| trend | 240 | 32211 | `9dbfed6cfb29047a` |
-| lateral | 240 | 33692 | `adb78d34ec21d8c3` |
-| flat | 240 | 27974 | `5a78526899964a90` |
-| random_walk | 240 | 37521 | `143f88d0a0e19637` |
-| gap | 235 | 31548 | `efb93920f1a8e6d1` |
-| duplicate | 241 | 32344 | `1a1acecc9d6ebef5` |
-| out_of_order | 240 | 32211 | `f38930d96a0d87c3` |
-| revision | 240 | 32206 | `6c898d393f42e7ee` |
-| missing_close | 240 | 32208 | `42c68f16b4b6070d` |
-| overnight | 144 | 22485 | `2d5f1597952b0001` |
-| dst | 240 | 37656 | `6be06c45b18721d3` |
-| volume_zero_known | 48 | 7589 | `ebb5c254d8267bec` |
-| volume_absent | 48 | 7445 | `a1c3c91cbe9772b3` |
-| volume_partial_unknown | 48 | 7539 | `670b4b9d90bdafc3` |
-| scale_0.0001 | 240 | 41737 | `96cd9c06c3fb7568` |
-| scale_1 | 240 | 38351 | `297533fe925c2043` |
-| scale_100000 | 240 | 37909 | `ae442662b18c71f4` |
-| base_a | 240 | 32451 | `8017bf07e142380f` |
-| base_b | 240 | 33932 | `2d9a7d8f9e36dfaf` |
+| trend | 240 | 32211 | `2e3f34ecfb5cad681dbe94992755e6b1a0a8d9ca328a63dc26861a4fb49a6a5a` |
+| lateral | 240 | 33692 | `007425e1351f232c59489c3a69f83abaf1eb657709c769ca53311b11dcd73e89` |
+| flat | 240 | 27974 | `6e6f56f096ad50386e914695f97886ca3cdca1b443b098bdaf7574b8a2570030` |
+| random_walk | 240 | 37521 | `a88366b71ff523e21f3abef11b491496c4cd14be467d45d42209f7bdba7728fe` |
+| gap | 235 | 31548 | `acdc8b1606e9789000c2a288067c2751c8e3e154b97ad9706e271a527d7ef676` |
+| duplicate | 241 | 32344 | `393ba2bcc4091d454ca3407c47b4f7c552e4dcdec9556c69c0da33e62c0882c0` |
+| out_of_order | 240 | 32211 | `8521fa8e754a5f127bdcfe4b5f7fda1189df8ff5a6834744e366c6e06991aca0` |
+| revision | 240 | 32206 | `f4bc91b9517a246cce0ff3d7282c5a60368bb6982e4cedabf1f95db58dc5dd2a` |
+| missing_close | 240 | 32208 | `022d3afd124a311f1075f0c874ae53cf795784f5b3088b5f155f04ff06effa10` |
+| overnight | 144 | 22485 | `df7b06a91738b883f1b1c0ddf2917f2ca52835718b8939a8e165010599b4c9d5` |
+| dst | 96 | 15049 | `c29f5cca042c48ec5af3c7a192a5c19f00f79c5280bdf144f8ba9e42d44a7711` |
+| volume_zero_known | 48 | 7589 | `e0d1c1015dc99f25354a93caf8a7335d38249e8f90bc12af3ea3bfafc453e221` |
+| volume_absent | 48 | 7445 | `12d1bf93d14730f8bac989594d05b14ef3ab82f949c1476e42a5ddffd7910bc2` |
+| volume_partial_unknown | 48 | 7539 | `96b2d694fd1c8e55a304f296cea42f733eca673a52d0c0a00a212a5e9d54c65d` |
+| scale_0.0001 | 240 | 41737 | `55e9867e4ddd5de8d4d1ad3b9feafe759bddeaf788e75891893e6eaba48dfedb` |
+| scale_1 | 240 | 38351 | `1b099cda9297b009628180128453644a92000ab88ff9322c24eb2f09c81c74d1` |
+| scale_100000 | 240 | 37909 | `379eada601fbbb3efc73740aa06a45cf0ed09dd37a0df99f87284e40448e1175` |
+| base_a | 240 | 32451 | `30e6e06bc02722fb8ad49ebfb5a2dab3216a722823dd41efef73392f8a3f6c1b` |
+| base_b | 240 | 33932 | `1a0ca6b78877a5614065e54d702e26aa93f45cac0ea123c1c5eace00bbb24efd` |
 
 ## Limites
 

@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 ORIGIN = "synthetic:bd02"
-COMPUTED_AT = pd.Timestamp("2026-10-22", tz="UTC")
+RECEIPT_DELAY = pd.Timedelta(seconds=2)  # recebimento/computação sempre após o fechamento
 COLUMNS = ("symbol", "tf", "session_id", "bar_start_utc", "bar_end_utc", "open", "high", "low", "close",
            "tick_volume", "real_volume", "real_volume_known", "revision", "computed_at_utc")
 
@@ -35,7 +35,8 @@ def _frame(close, *, symbol="BENCH", minutes=5, bars_per_session=24, start="2026
         "bar_start_utc": starts, "bar_end_utc": [value + step for value in starts],
         "open": open_, "high": high, "low": low, "close": close, "tick_volume": ticks,
         "real_volume": real if real_known else None, "real_volume_known": int(real_known),
-        "revision": 1, "computed_at_utc": COMPUTED_AT})
+        "revision": 1})
+    frame["computed_at_utc"] = frame["bar_end_utc"] + RECEIPT_DELAY
     frame.attrs.update(origin=ORIGIN, synthetic=True)
     return frame
 
@@ -124,9 +125,35 @@ def overnight_sessions(n=144):
     return _frame(np.linspace(100, 102, n), bars_per_session=72, start="2026-09-01 22:00")
 
 
-def dst_week(n=10 * 24):
-    """Sessões horárias em semana com mudança de horário de verão europeia (25/10/2026)."""
-    return _frame(np.linspace(1.10, 1.12, n), minutes=60, bars_per_session=24, start="2026-10-21 00:00")
+def dst_transition(zone="Europe/Athens", start_utc="2026-10-23 00:00", hours=96):
+    """Barras H1 em fuso local real atravessando o fim do horário de verão (25/10/2026 04:00 → 03:00).
+
+    O offset muda de +3 h para +2 h e a hora local 03:00–04:00 se repete (fold): duas barras UTC
+    distintas têm o mesmo relógio local. ``bar_start_utc`` segue contínuo; ``utc_offset_hours``
+    e ``bar_start_local`` carregam a resposta esperada para o teste de calendário (BD05).
+    """
+    frame = _frame(np.linspace(1.10, 1.12, hours), minutes=60, bars_per_session=hours, start=start_utc)
+    local = frame["bar_start_utc"].dt.tz_convert(zone)
+    frame["bar_start_local"] = local.dt.tz_localize(None)
+    frame["utc_offset_hours"] = [value.utcoffset().total_seconds() / 3600 for value in local]
+    frame.attrs.update(local_zone=zone)
+    return frame
+
+
+def invalid_computed_before_close(n=24):
+    """Massa deliberadamente IMPOSSÍVEL: cálculo registrado antes do fechamento da barra.
+
+    Fica fora de ``scenarios()``; serve só para exigir rejeição/qualidade de quem a receber.
+    """
+    frame = trend(n)
+    frame["computed_at_utc"] = frame["bar_start_utc"]
+    frame.attrs.update(valid=False, defect="computed_before_close")
+    return frame
+
+
+def temporal_violations(frame):
+    """Índices em que o fato foi computado/recebido antes de existir (fechamento da barra)."""
+    return frame.index[frame["computed_at_utc"] < frame["bar_end_utc"]].tolist()
 
 
 def scenarios():
@@ -134,7 +161,7 @@ def scenarios():
     out = {"trend": trend(), "lateral": lateral(), "flat": flat(), "random_walk": random_walk(),
            "gap": with_gap(gap_base, 100, 5), "duplicate": with_duplicate(gap_base, 50),
            "out_of_order": out_of_order(gap_base, 60, 61), "revision": with_revision(gap_base, 120, 200.0),
-           "missing_close": with_missing(gap_base, 80), "overnight": overnight_sessions(), "dst": dst_week()}
+           "missing_close": with_missing(gap_base, 80), "overnight": overnight_sessions(), "dst": dst_transition()}
     out.update({f"volume_{key}": value for key, value in volume_states().items()})
     out.update({f"scale_{key:g}": value for key, value in price_scales().items()})
     a, b = two_bases_same_symbol()
