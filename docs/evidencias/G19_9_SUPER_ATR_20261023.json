@@ -3,12 +3,12 @@
   "task": "G19.9 Super ATR panel consumer",
   "date": "2026-10-23",
   "base": "de8830e5d32dcffec825f89555258ada85260a12",
-  "hadouken": "3b979cf1",
+  "hadouken": "3b979cf11ae3bf84621a9dc7ac6d8b9176604fa6",
   "fingerprint": "d377c812aafd0c5e",
   "tests": {
     "app": {
       "passed": 126,
-      "seconds": 15.48
+      "seconds": 15.53
     },
     "hadouken": {
       "passed": 89,
@@ -46,8 +46,9 @@
     "mt5_extracao/robots/catalog.py": "1ff89e2ef626fd8afe0b460b71f8dceba34d82d10cf507474029035461478133",
     "mt5_extracao/robots/manual_panel.py": "d1748b7044bf2acc405a8850f58d94616bd11dab78ee6dc8eab645e6ec4fd4b3",
     "tests/test_robot_study_assets.py": "63c635b7e47b809f3b79542e53df425f5e1ee7935435f5938e413df50d95b385",
-    "docs/sdk/super_atr.md": "c95e32fe9b96f8ccb32852ca8c5003aeb6723624a463d5268928129e08848716",
-    "docs/img/super_atr/eurusd-m5-three-curves.png": "2e92a9edc1c1bcb6b6baed06be263901640e09acb4e4dd7cc1dead898c856b53"
+    "docs/sdk/super_atr.md": "1567ea56d283f0916724640b385a20a3168225a69847649d7168d668a6ef26ed",
+    "docs/img/super_atr/eurusd-m5-three-curves.png": "2e92a9edc1c1bcb6b6baed06be263901640e09acb4e4dd7cc1dead898c856b53",
+    "docs/img/super_atr/eurusd-m5-ten-curves-gray.png": "6874e5a38799ca3874456a3b800284cee109dcafe1388333ba7cf48fe1f14c6d"
   },
   "indicator_version": "1.02",
   "reversal_rendering": "continuous dotted diagonal, same buffer; mathematics unchanged",
@@ -124,7 +125,10 @@
     "session_intentionally_open": false
   },
   "native_visual": {
-    "status": "pending1.02",
+    "status": "passed",
+    "indicator_version": "1.02",
+    "symbol": "EURUSD",
+    "timeframe": "M5",
     "curves": 10,
     "deviations": [
       1,
@@ -138,6 +142,169 @@
       9,
       10
     ],
-    "background": "Cinza Claro"
+    "periods": [
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20,
+      20
+    ],
+    "mean_types": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "dotted_native_style": true,
+    "diagonal_reversals_visually_inspected": true,
+    "rgb_pixel_counts": [
+      {
+        "deviation": 1,
+        "rgb": [
+          191,
+          231,
+          255
+        ],
+        "pixels": 3493
+      },
+      {
+        "deviation": 2,
+        "rgb": [
+          173,
+          216,
+          252
+        ],
+        "pixels": 3080
+      },
+      {
+        "deviation": 3,
+        "rgb": [
+          156,
+          201,
+          248
+        ],
+        "pixels": 2912
+      },
+      {
+        "deviation": 4,
+        "rgb": [
+          138,
+          186,
+          245
+        ],
+        "pixels": 2717
+      },
+      {
+        "deviation": 5,
+        "rgb": [
+          120,
+          171,
+          241
+        ],
+        "pixels": 2328
+      },
+      {
+        "deviation": 6,
+        "rgb": [
+          103,
+          156,
+          238
+        ],
+        "pixels": 1856
+      },
+      {
+        "deviation": 7,
+        "rgb": [
+          85,
+          141,
+          234
+        ],
+        "pixels": 2073
+      },
+      {
+        "deviation": 8,
+        "rgb": [
+          67,
+          126,
+          231
+        ],
+        "pixels": 1870
+      },
+      {
+        "deviation": 9,
+        "rgb": [
+          50,
+          111,
+          227
+        ],
+        "pixels": 1429
+      },
+      {
+        "deviation": 10,
+        "rgb": [
+          32,
+          96,
+          224
+        ],
+        "pixels": 1395
+      }
+    ],
+    "background_theme": "Cinza Claro",
+    "gradient_samples": [
+      [
+        240,
+        240,
+        240
+      ],
+      [
+        225,
+        225,
+        225
+      ],
+      [
+        212,
+        212,
+        212
+      ]
+    ],
+    "watermark": false,
+    "candle_time": false,
+    "native_build": 6281,
+    "wine": "11.17",
+    "monitor": {
+      "x": 1281,
+      "y": 0,
+      "width": 3456,
+      "height": 1458
+    },
+    "internal_screen": [
+      3456,
+      1458
+    ],
+    "chart_capture": [
+      3456,
+      1363
+    ],
+    "app_source": "f7c337168c328f597f79c3c64ae5d763c6980ced",
+    "hadouken_source": "3b979cf11ae3bf84621a9dc7ac6d8b9176604fa6",
+    "source_fingerprint": "d377c812aafd0c5e",
+    "panel_paused": true,
+    "no_order_actions_sent": true,
+    "positions_observed": 0,
+    "orders_observed": 0,
+    "screenshot_sha256": "6874e5a38799ca3874456a3b800284cee109dcafe1388333ba7cf48fe1f14c6d",
+    "session_intentionally_open": true,
+    "tester_lease_held": false
   }
 }

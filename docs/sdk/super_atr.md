@@ -65,5 +65,15 @@ regras da catraca/diagonais. O tema **Cinza Claro** fica na última página de
 Visual → Gráfico e temas; com Identidade do gráfico → Degradê ligado, o fundo
 vai deRGB242 a210, neutro nos três canais. Marca d’água e Candle Time podem
 ser desligados nos controles existentes. Índices dos15 temas anteriores
-preservados. Instalação/inspeção dessa ampliação em curso; a captura acima é
+preservados. Versão1.02 instalada e inspecionada no atalho habitual, composta com
+Appf7c3371/H3b979cf1:3456×1458,10 tonsRGB presentes, diagonais, fundo neutro
+com amostras240/225/212, painel pausado e nenhuma ação de ordem enviada; a captura acima é
 histórica1.01 de três curvas, não prova de dez.
+
+![Dez curvas Super ATR sobre degradê cinza claro](../img/super_atr/eurusd-m5-ten-curves-gray.png)
+
+Validação1.02:89Tools/checker161/compilação6281Wine0/0,126App; composição
+monitor128 testes +58 dirigidos pósmerge (sobrepostos). PréviaAppf7c3371 e
+H3b979cf1 têm runtime final; commits documentais posteriores não mudam fontes.
+PLAY no dock3456×1458 e REPLAY no handheld1280×800 verificados separadamente;
+replay foi de1.01 com indicadores anteriores, não prova das10 curvas.
