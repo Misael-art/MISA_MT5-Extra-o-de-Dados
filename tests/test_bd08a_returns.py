@@ -1,5 +1,6 @@
 """BD08a: família de retorno qualificada pela cadeia real (provedor falso → extrator → derivado → store)."""
 import datetime as dt
+import shutil
 from types import SimpleNamespace
 
 import pandas as pd
@@ -16,7 +17,7 @@ SYMBOL = "WIN$N"
 RETURNS = ["price.return_1", "price.return_5", "price.return_20"]
 
 
-def _chain(connector, path, end=dt.datetime(2024, 1, 5)):
+def _chain(connector, path, end=dt.datetime(2024, 1, 4)):
     db = DatabaseManager(db_path=str(path), broker_utc_offset=0)
     ext = HistoricalExtractor(connector, db, IndicatorCalculator(), chunk_config={"m1": 1, "m5_m15": 1, "default": 1})
     assert ext._process_symbol(SYMBOL, 1, "1 minuto", dt.datetime(2024, 1, 2), end, include_indicators=False,
@@ -55,10 +56,10 @@ def test_chain_values_match_independent_reference(connector, fake_mt5, tmp_path)
 
 
 def test_appending_future_keeps_known_prefix(connector, fake_mt5, tmp_path):
-    db = _chain(connector, tmp_path / "prefix.sqlite", end=dt.datetime(2024, 1, 4))
+    db = _chain(connector, tmp_path / "prefix.sqlite", end=dt.datetime(2024, 1, 3))
     _materialize(db)
     before = _latest(db, "price.return_5")
-    _chain(connector, tmp_path / "prefix.sqlite", end=dt.datetime(2024, 1, 5))
+    _chain(connector, tmp_path / "prefix.sqlite", end=dt.datetime(2024, 1, 4))
     _materialize(db)
     after = _latest(db, "price.return_5")
     pd.testing.assert_series_equal(after.loc[before.index], before)
@@ -66,7 +67,10 @@ def test_appending_future_keeps_known_prefix(connector, fake_mt5, tmp_path):
 
 
 def test_batch_size_does_not_change_values(connector, fake_mt5, tmp_path):
-    small, large = _chain(connector, tmp_path / "s.sqlite"), _chain(connector, tmp_path / "l.sqlite")
+    small = _chain(connector, tmp_path / "s.sqlite")
+    small.engine.dispose()
+    shutil.copy(small.db_path, tmp_path / "l.sqlite")  # mesma fonte, sem extrair de novo
+    large = DatabaseManager(db_path=str(tmp_path / "l.sqlite"), broker_utc_offset=0)
     _materialize(small, batch_size=7)
     _materialize(large, batch_size=5000)
     for feature_id in RETURNS:
