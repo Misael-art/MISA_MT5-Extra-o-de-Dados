@@ -1,5 +1,5 @@
 {
- "generated_at_utc": "2026-10-23T09:11:45Z",
+ "generated_at_utc": "2026-10-23T10:00:46Z",
  "receipts": [
   {
    "case": "E01",
@@ -19,10 +19,10 @@
    },
    "reference": "registry/produtores/legado enumerados em execução; catálogo nativo extraído do pin H",
    "parameters": "bars_frame(sessions=30, bars_per_session=12); pin H obrigatório (gate de composição)",
-   "result": "8 passed in 9.77s",
+   "result": "8 passed in 9.99s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 10.69
+    "wall_seconds": 10.97
    },
    "limitations": "confere IDs emitidos, não maturidade numérica; cálculos fora dos pontos enumeráveis não detectados",
    "inputs": {
@@ -49,10 +49,10 @@
    },
    "reference": "tests/bench_reference.py (Python puro)",
    "parameters": "19 cenários; tolerância relativa 1e-9 (somas), 1e-12 (máximos)",
-   "result": "15 passed in 5.09s",
+   "result": "15 passed in 4.34s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 5.76
+    "wall_seconds": 4.94
    },
    "limitations": "8 saídas com oráculo; métricas de memória não equivalem a RSS de job",
    "inputs": {
@@ -95,10 +95,10 @@
    },
    "reference": "contrato T20.4 estendido",
    "parameters": "EURUSD H1 em bancos SQLite temporários",
-   "result": "12 passed in 14.15s",
+   "result": "12 passed in 13.79s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 14.97
+    "wall_seconds": 14.57
    },
    "limitations": "consumidores além do serviço/CLI ainda sem identidade; PG só na CI",
    "inputs": {
@@ -108,7 +108,7 @@
   },
   {
    "case": "E04",
-   "code_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
+   "code_commit": "98db0e3100a49dd878f8378c69a6b1a6accc82a1",
    "test_file_last_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_extraction_contract.py tests/test_bd03_base_identity.py::test_third_adapter_uses_the_same_contract_without_consumer_changes",
    "environment": {
@@ -124,10 +124,10 @@
    },
    "reference": "extrator real com provedor falso; terceira fonte por rótulo",
    "parameters": "WIN$N M1 02–05/01/2024 do FakeMT5",
-   "result": "6 passed in 14.01s",
+   "result": "6 passed in 11.98s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 14.79
+    "wall_seconds": 12.72
    },
    "limitations": "terceira fonte é simulação por rótulo, não importador real validado",
    "inputs": {
@@ -142,7 +142,7 @@
   },
   {
    "case": "E05",
-   "code_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
+   "code_commit": "98db0e3100a49dd878f8378c69a6b1a6accc82a1",
    "test_file_last_commit": "d0735c4c02502e5c1768d986b592ec98d49cbda4",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_ingestion.py",
    "environment": {
@@ -158,10 +158,10 @@
    },
    "reference": "versões conferidas à mão (close=100+i)",
    "parameters": "received_at T1..T4 explícitos; R01–R03",
-   "result": "13 passed in 7.37s",
+   "result": "13 passed in 7.81s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 8.16
+    "wall_seconds": 8.46
    },
    "limitations": "ticks/book sem contrato de recebimento; PG só na CI",
    "inputs": {
@@ -171,7 +171,7 @@
   },
   {
    "case": "E06",
-   "code_commit": "6d00118b7db19a9ae7502250b607308d42ec20f0",
+   "code_commit": "98db0e3100a49dd878f8378c69a6b1a6accc82a1",
    "test_file_last_commit": "d0735c4c02502e5c1768d986b592ec98d49cbda4",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd04_ingestion.py::test_real_volume_capability_changes_only_dependent_consumers_and_snapshot_stays",
    "environment": {
@@ -187,10 +187,10 @@
    },
    "reference": "data_eligibility.assess/evaluate",
    "parameters": "30 barras M1 09:00–09:29 de 14/09/2026; real_volume None→5→None",
-   "result": "1 passed in 1.93s",
+   "result": "1 passed in 1.76s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 2.7
+    "wall_seconds": 2.48
    },
    "limitations": "elegibilidade comprovada no serviço; UI não lê o estado diretamente",
    "inputs": {
@@ -203,8 +203,8 @@
   },
   {
    "case": "E07",
-   "code_commit": "6703bf602fb555be5e2508eefd25c0f67b8a5152",
-   "test_file_last_commit": "7d059a83c8c4279c09e8c5388899349fb5ab1508",
+   "code_commit": "4d464e2599166a4ba396769cb3e718bd5413650b",
+   "test_file_last_commit": "e5e9e348b2b06a6ccf342dd6b25396681a092199",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd05_time.py",
    "environment": {
     "python": [
@@ -219,10 +219,10 @@
    },
    "reference": "data_eligibility.as_of, calendar, resampling, clocks",
    "parameters": "H1/M1 sintéticos; âncora 17:00; fev/2024",
-   "result": "7 passed in 3.34s",
+   "result": "7 passed in 3.53s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 4.07
+    "wall_seconds": 4.33
    },
    "limitations": "1º recorte: limite 95/96 corrigido só com zona (E08)",
    "inputs": {
@@ -237,8 +237,8 @@
   },
   {
    "case": "E08",
-   "code_commit": "6703bf602fb555be5e2508eefd25c0f67b8a5152",
-   "test_file_last_commit": "6703bf602fb555be5e2508eefd25c0f67b8a5152",
+   "code_commit": "4d464e2599166a4ba396769cb3e718bd5413650b",
+   "test_file_last_commit": "4d464e2599166a4ba396769cb3e718bd5413650b",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd05_zone.py",
    "environment": {
     "python": [
@@ -253,10 +253,10 @@
    },
    "reference": "pytz Europe/Athens; fold/gap reais",
    "parameters": "dst_transition 96 H1; primavera 29/03/2026",
-   "result": "7 passed in 3.17s",
+   "result": "7 passed in 3.09s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 4.22
+    "wall_seconds": 3.84
    },
    "limitations": "derivação/snapshot com zona recusados; fold na fronteira de blocos recusado",
    "inputs": {
@@ -271,8 +271,8 @@
   },
   {
    "case": "E11",
-   "code_commit": "59be49a9ab5bd9c92e41a43ee215f62dd7e04ae8",
-   "test_file_last_commit": "59be49a9ab5bd9c92e41a43ee215f62dd7e04ae8",
+   "code_commit": "b78802eceb0c3391828d033f8a00d50f4f425ca7",
+   "test_file_last_commit": "b78802eceb0c3391828d033f8a00d50f4f425ca7",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd08a_returns.py",
    "environment": {
     "python": [
@@ -287,10 +287,10 @@
    },
    "reference": "tests/bench_reference.py::returns sobre closes M5 derivados",
    "parameters": "WIN$N M1 do FakeMT5 → M5, offset 0",
-   "result": "5 passed in 35.19s",
+   "result": "5 passed in 28.35s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 36.21
+    "wall_seconds": 29.12
    },
    "limitations": "só família de retorno",
    "inputs": {
@@ -305,8 +305,8 @@
   },
   {
    "case": "E28",
-   "code_commit": "0a8d71d704b4899240fe7df4146b32810effa3c6",
-   "test_file_last_commit": "0a8d71d704b4899240fe7df4146b32810effa3c6",
+   "code_commit": "61844e399b0f3f62c8f776ca8305a50d488a43e7",
+   "test_file_last_commit": "61844e399b0f3f62c8f776ca8305a50d488a43e7",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd18a_query.py",
    "environment": {
     "python": [
@@ -321,10 +321,10 @@
    },
    "reference": "feature_store.query_as_of (fato a fato)",
    "parameters": "cadeia do piloto; page_size 97/5000",
-   "result": "5 passed in 29.82s",
+   "result": "5 passed in 24.98s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 30.71
+    "wall_seconds": 25.83
    },
    "limitations": "seleção carregada antes de paginar (teto 200 000)",
    "inputs": {
@@ -339,8 +339,8 @@
   },
   {
    "case": "E31",
-   "code_commit": "08d8924a1703134edee6532a87febc26e8c19486",
-   "test_file_last_commit": "08d8924a1703134edee6532a87febc26e8c19486",
+   "code_commit": "d79c3cb14059c29f3ebb1e7bbb5af35f9dd796f8",
+   "test_file_last_commit": "71a1707bf5d5baa27e5dfdf7b9e7a018b9f06c41",
    "command": "rtk proxy .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_bd19c1_cli.py",
    "environment": {
     "python": [
@@ -355,10 +355,10 @@
    },
    "reference": "sdk.query_series",
    "parameters": "CLI --json sobre a cadeia do piloto",
-   "result": "2 passed in 11.83s",
+   "result": "2 passed in 10.75s",
    "exit_code": 0,
    "resource_measurements": {
-    "wall_seconds": 12.66
+    "wall_seconds": 11.59
    },
    "limitations": "Laboratório/Relações/export/Estudo pendentes",
    "inputs": {
