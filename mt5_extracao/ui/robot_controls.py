@@ -205,11 +205,12 @@ class CardControls:
         else:
             ExecutionDialog(self, robot, mode)
 
-    def start(self, robot, mode, symbol, timeframe, preset, start=None, end=None, account=None, consent=None):
+    def start(self, robot, mode, symbol, timeframe, preset, start=None, end=None, account=None, consent=None,
+              *, visible=None, window_anchor=None):
         if self.sessions.get(robot.key) and self.sessions[robot.key].active:
             return
         session = sessions.Session(self.ui.app.db_manager, self.ui.app.config, robot, symbol, timeframe, preset,
-                                   mode, start, end, account, consent)
+                                   mode, start, end, account, consent, visible=visible, window_anchor=window_anchor)
         self.sessions[robot.key] = session
         session.state = "preparing"  # feedback antes de a thread começar
         self.panel.render()
@@ -413,7 +414,12 @@ class ExecutionDialog:
         self.labels = []
         self._label(f"{mode.upper()} · {robot.name}", "Title.TLabel")
         self._label(f"{self.symbol} · {self.timeframe} · {self.preset or controls.DEFAULT_PRESET}", "Heading.TLabel")
+        self.visible = tk.BooleanVar(value=sessions.chart_visible(robot, mode))
         if mode == "play":
+            ttk.Checkbutton(self.content, text="Exibir gráfico durante o PLAY", variable=self.visible).pack(
+                anchor="w", pady=(0, 9))
+            self._label("Desmarcado: o robô continua com gráfico interno, fora da vista no Linux e "
+                        "minimizado no Windows. STOP e as proteções continuam ativos.", "Muted.TLabel")
             real = account.get("demo") is False
             self._label("CONTA REAL · DINHEIRO REAL EM RISCO" if real else "CONTA DEMO · operação na conta de demonstração",
                         "Bad.TLabel" if real else "Info.TLabel")
@@ -546,9 +552,13 @@ class ExecutionDialog:
             except ValueError:
                 messagebox.showerror("Período", "Informe datas AAAA-MM-DD, com início anterior ao fim.", parent=self.window)
                 return
+        root = self.ui.root
+        anchor = (root.winfo_rootx() + root.winfo_width() // 2,
+                  root.winfo_rooty() + root.winfo_height() // 2)
+        visible = self.visible.get()
         self.window.destroy()
         self.controller.start(self.robot, self.mode, self.symbol, self.timeframe, self.preset, start, end,
-                              self.account, self.consent)
+                              self.account, self.consent, visible=visible, window_anchor=anchor)
 
 
 class ReportDialog:

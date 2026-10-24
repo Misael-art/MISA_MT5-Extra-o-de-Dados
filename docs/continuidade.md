@@ -1,3 +1,43 @@
+## G19.10 — resolução interna Wine, 2026-10-23
+
+Branchcodex/play-replay-monitor-fit, baseApp2ca4101/SuperATR1.01. Retorno do
+dock reproduziu contêiner3456×1458 com terminal1280×800; corrigido modo interno
+na cópia privada antes do primeiro Wine. Baseline85/final126, doctor20/1/0 e
+prova do método de produção3456×1458. PLAY3456×1458 e REPLAY1280×800
+concluídos;128 testes finais, corridaBadWindow corrigida com prova real.
+App/Hnovos de10curvas/cinzaclarea incorporados porGit, sem alterar esse recorte.
+[Contrato/limites](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).
+
+## Super ATR — G19.9, 2026-10-23
+
+Regras do proprietário registradas:20/SMA0, inicialmente1/2/3 e agora DEZ
+curvas com multiplicadores1 a10, pontilhado
+azul graduado, catraca e virada por cruzamento estrito da linha anterior.
+Versão1.02 mantém diagonais, amplia para10 curvas e acrescenta o temaCinza Claro;
+89H/checker161/compilação0/0, instalação/visual próprios concluídos em
+Appf7c3371/H3b979cf1:10 tonsRGB/diagonais/cinza neutro, painel pausado.
+FonteH3b979cf1/fpd377c812aafd0c5e, Appcodex/super-atr sobrede8830e5.
+126 testesApp/88H/checker161 e compilação6281/Wine0/0; versão1.01 inspecionada
+com diagonais e instalada na prévia. Prova visual composta com App0b2fda3/PR204
+(monitor interno Wine), sem mudança nos runtimes de catálogo/pin destePR. [Teoria, uso e continuidade](sdk/super_atr.md). Nenhum
+executor/risco/Expert, pilar de dados, Safety ou canal aceito alterado. Pin manual
+novo exige closurecompleta; antigos preservados.50curvas/adaptação/Profit/Windows
+físico/aceite financeiro próprios. A correção anteriorPR195 tem seis checks finais
+verdes e continua separada deste incremento.
+
+## Correção de monitor PLAY/REPLAY — 2026-10-23
+
+Branch `codex/play-replay-display` sobre G19/321272f0b24d. Detecta o monitor da
+janela lançadora, com fallback se o dock foi retirado. REPLAY visível; PLAY optativo,
+automáticos ocultos por padrão e painel manual reconhecido visível. Wine visual
+isolado da ponte, com cópias temporárias removidas após encerramento confirmado.
+Replay desenhado/avançando em1280×800 real e1920×1080 virtual;160 testes dirigidos,
+doctor20/1/0. PLAY manual DEMO visível e oculto com telemetria/carteira inalterada,
+sem clicar ordens; primeira leitura sem API conectada foi recusada antes da execução.
+[Contrato/evidência/retomada](sdk/play_replay_monitores.md). WIP, frente de dados,
+HADOUKEN/Safety e referência aceita preservados. CI, Windows físico e retorno do
+dock têm conferências próprias; não é aceite financeiro ou operacional amplo.
+
 ## Prévia disponível pelo atalho habitual — 2026-10-21
 
 Solicitação do proprietário: todo avanço testável acessível para teste.

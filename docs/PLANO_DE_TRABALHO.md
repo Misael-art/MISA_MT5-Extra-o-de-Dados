@@ -53,6 +53,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | Continuidade 2026-10-21 | Validar host, clones e restauração preservada | Repasse App179 e SD | Validada no host encontrado: três clones/fsck, 43 tabelas e histórico reabertos em leitura; 56 testes, doctor20/1/0. [Registro](repasse/RETOMADA_VALIDADA_20261021.md); novo SO não comprovado |
 
 | T17.28 — correção REPLAY | Exibir e operar botões do painel de gestão no Tester | Sessão própria e observador existentes | Parcial Linux/Wine: painel visível com mesmo DISPLAY na compilação/replay; 84 testes e doctor20/1/0. Cliques manuais não aprovados; adaptação experimental retirada, PR draft sem instalação. [Escopo e evidência](sdk/replay_painel_manual.md); Windows físico pendente |
+| T17.28 — monitor PLAY/REPLAY | Monitor de lançamento, gráfico funcional e escolha de visibilidade | Composição G19 e sessões próprias | Correção Linux/Wine em revisão: prefixo temporário por sessão visível; replay desenhado e avançando em1280×800/1920×1080,160 dirigidos/1 exclusão prévia, doctor20/1/0. PLAY manual DEMO visível/oculto com telemetria, carteira inalterada e sem ordens. CI/Windows físico/retorno do dock próprios. [Contrato](sdk/play_replay_monitores.md) |
 | B-11 | Política de versões SDK/sidecars e migração | — | ✅ política integrada M132/7e2178a e H14/d018f6c; SDK1 preservado; [política](sdk/versionamento-contratos.md); sem mudança de runtime |
 | T19.3 (conexão) | Inspeção e leitura de geração na transação recebida | T19.3 | ✅ concluída, [PR130](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/130); seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis; [causa e evidência](analytics/T19.3_CONEXAO_SNAPSHOT.md); Windows físico pendente |
 | T19.6 | Pivôs causais Fractals/ZigZag | T19.3 | ✅ concluída, [PR131](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/131); #130 integrada antes; seis checks6a9d580:1467Ubuntu/48PG/1569WindowsCI;117 locais compatíveis/61 caminhos finais, doctor21/1/0;720 fatos atuais+720 anteriores preservados; [contrato e rematerialização](analytics/T19.6_PIVOS_CAUSAIS.md); Windows físico pendente |
@@ -4153,3 +4154,36 @@ Dependências já instaladas: App166d6bb557/H9334 (S10) e App1679579a62/H11bb (V
 checks finais verdes, mesma configuração/atalho/ponte/principal e exposição0. S10Manual
 rev2/export15inputs e backtest negativo reabertos na UI do proprietário. Madrid
 mantém sua fila App168; não foi promovido por este registro.
+
+
+### G19.9 — Super ATR, estudo visual (2026-10-23)
+
+Três curvas20/SMA/1×–3× pontilhadas no preço, RGB, catraca e virada estrita
+implementados noH316cb6ba. App fecha ativo/matemática e pinmanual revisado,
+sem ampliar automáticos/risco/executor.126App/88H/checker161/compilação0/0;
+versão1.01 com diagonais inspecionadaEURUSD/M5 e instalada na prévia,
+composta com correção de monitorPR204. [Contrato e pendências](sdk/super_atr.md).
+50curvas/adaptação/Profit/Windowsfísico são próprios.
+
+### G19.10 — monitor e área interna Wine (2026-10-23)
+
+Correção do retorno do dock: preparar modos internos na cópia Wine ANTES do
+primeiro processo, além da janela externa. Baseline85/final126 testes,
+doctor20/1/0; prova isolada3456×1458; PLAY normal3456×1458 e REPLAY
+normal1280×800 concluídos,128 testes finais e correção de corridaBadWindow;
+Windows físico pendente. [Contrato e continuidade](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).
+
+AtualizaçãoG19.9 pelo proprietário:1.02/dez curvas20/SMA/desvios1 a10 e tema
+Cinza Claro instalados/inspecionados em3456×1458,89H/126App/checker161/0-0.
+Mantidas diagonais, pontilhado e futuro50/adaptação pendentes.
+
+### G19.16 — alvo probabilístico e mostrador (2026-10-23)
+
+Implementado no HADOUKEN7.10; App acrescenta pin exato352de5268dcd32ae mantendo
+revisões antigas. Conjunto10/20/30, primeira passagem ao TP/SL existente, amostra
+madura/quatro categorias e pressão separada de probabilidade. Gestão opt-in/DEMO,
+padrão desligado, parcial80/final90, mesmo executor. Mostrador independente do
+timer com seta neutra/verde/vermelha e fallback inline em espaço restrito.
+[Uso, matemática e pendências](sdk/alvo_probabilistico.md). Calibração/resultado
+financeiro, fills/Tester, concorrência/restart amplo e Windows físico pendentes.
+Sem alteração no pilar de dados, banco owner, launcher/monitores ou Safety publicada.
