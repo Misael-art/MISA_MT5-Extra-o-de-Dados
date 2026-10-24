@@ -498,3 +498,18 @@ Evidência finalSuperATR1.02/dezcurvas/cinzaclaro tem recorte próprioG19.9.
 
 [Contrato](sdk/alvo_probabilistico.md). Não modifica o instalador nem distribui
 novo payload Safety; a closure integral precisa acompanhar o Expert.
+
+## AIA-01 — workflows de agentes (2026-10-23)
+
+- [ ] Windows físico: abrir JSONL pelo Python instalado sem Tk; consultar catálogo
+  completo, Default/Manual/exportar/reabrir e pacote nativo preservando recibos.
+- [ ] Windows físico: PLAY/REPLAY visível em monitores distintos por anchor, aguardar
+  callback ready, adicionar/remover somente indicadores próprios, capturar PNG,
+  encerrar sessão sem tocar processo externo ou confundir STOP com zeragem.
+- [ ] Windows físico: testar EOF/Ctrl-C/retorno após falha e paths com espaços.
+- [ ] Tester pausado: controle gráfico pode aguardar callbacks; play/pause do próprio
+  Tester ainda não é API disponível. Não automatizar mouse como substituto.
+
+Linux usa os mesmos Session/Consent e paths existentes; simulações de paths Windows
+não constituem os aceites físicos acima. Sem alteração de instaladores neste recorte.
+[Contrato SDK/CLI](agente.md).

@@ -229,7 +229,7 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
 
 
 def telemetry_source(robot, filename, account=None, trades_filename=None, lease_filename=None, common_namespace=None,
-                     input_receipt=None):
+                     input_receipt=None, chart_control=None):
     """Preserva timers da estratégia; em conta, cria heartbeat próprio quando ela não usa timer."""
     import re
     source_graph = "\n".join(mql.read_text(Path(p)) for p in dict.fromkeys([robot.path] + robot.files)
@@ -255,7 +255,7 @@ def telemetry_source(robot, filename, account=None, trades_filename=None, lease_
     undefs = "#undef OnInit\n" + "\n".join(f"#undef {name}" for name, _, _ in events)
     tester = bool(re.search(r"\bdouble\s+OnTester\s*\(", source_graph))
     deinit = bool(re.search(r"\bvoid\s+OnDeinit\s*\(", source_graph))
-    own_timer = bool(account) and not re.search(r"\bEventSet(?:Millisecond)?Timer\s*\(", source_graph) and not any(name == "OnTimer" for name, _, _ in events)
+    own_timer = (bool(account) or chart_control is not None) and not re.search(r"\bEventSet(?:Millisecond)?Timer\s*\(", source_graph) and not any(name == "OnTimer" for name, _, _ in events)
     if deinit:
         definitions += "\n#define OnDeinit MT5X_OnDeinit"
         undefs += "\n#undef OnDeinit"
@@ -346,7 +346,7 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
         wrappers += f'\ndouble OnTester() {{ double result={"MT5X_OnTester()" if tester else "0"}; MT5X_Export("{trades_filename}",{magic_expr}); return result; }}'
     lease_code += receipt_source
     # Atualização de estado limitada a ~4Hz de parede, sem importar o relógio histórico.
-    return f'''{common_code}
+    source = f'''{common_code}
 {definitions}
 #include "{Path(robot.path).name}"
 {undefs}
@@ -376,6 +376,14 @@ void MT5X_Publish() {{
 }}
 {wrappers}
 '''
+    if chart_control is not None:
+        from ..automation.charts import source as chart_source
+        supported = any(Path(p).name == "HDK_SuperATR.mq5" for p in robot.files)
+        # Depois do include do Expert: a API visual dele é opt-in por macro.
+        native = chart_source(chart_control, super_atr=supported)
+        source = source.replace("ulong MT5X_Last=0;", native + "\nulong MT5X_Last=0;")
+        source = source.replace("MT5X_Last=now;", "MT5X_Last=now; MT5X_AgentPoll();")
+    return source
 
 
 def session_root(config):
@@ -388,10 +396,13 @@ class Session:
     """Uma execução, controlada fora da thread Tk; STOP nunca alcança outros terminais."""
     def __init__(self, db, config, robot, symbol, timeframe, preset=None, mode="backtest", start=None, end=None,
                  account=None, consent=None, root=None, native_options=None,
-                 input_receipt_fields=None, expected_native_inputs=None, *, visible=None, window_anchor=None):
+                 input_receipt_fields=None, expected_native_inputs=None, *, visible=None, window_anchor=None, chart_control=False):
         if mode not in ("play", "replay", "backtest"):
             raise ValueError("Modo de execução inválido.")
         self.db, self.config, self.robot = db, config, robot
+        if type(chart_control) is not bool:
+            raise ValueError("chart_control exige booleano explícito.")
+        self.chart_control = chart_control
         from mt5_extracao.resources.files import session_owner_key
         self.owner_store = session_owner_key(db)
         from . import native_inputs
@@ -675,7 +686,8 @@ class Session:
                                           self.lease_file if self.mode == "play" else None,
                                           "mt5x_sessions\\" + self.id + "\\" if self.mode != "play" else None,
                                           input_receipt=({"filename": self.input_receipt_file, "session_id": self.id,
-                                                          "fields": self.input_fields} if self.input_fields is not None else None)), encoding="utf-8")
+                                                          "fields": self.input_fields} if self.input_fields is not None else None),
+                                          chart_control=self.id if self.chart_control else None), encoding="utf-8")
         result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
                                           mt5_tools.wine_prefix(self.child_config),
                                           run=(self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else

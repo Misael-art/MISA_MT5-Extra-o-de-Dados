@@ -1063,19 +1063,14 @@ def cmd_audit(args, ctx):
 
 def cmd_commands(args, ctx):
     """Catálogo dos comandos e argumentos, lido do próprio analisador (não fica desatualizado)."""
-    parser = build_parser()
-    sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
-    helps = {a.dest: a.help for a in sub._choices_actions}
-    catalog = []
-    for name, p in sub.choices.items():
-        arguments = [{"flags": a.option_strings or [a.dest], "required": bool(a.required) if a.option_strings
-                      else a.nargs not in ("?", "*"), "default": None if a.default is argparse.SUPPRESS else a.default,
-                      "choices": list(a.choices) if a.choices else None, "help": a.help or ""}
-                     for a in p._actions if a.dest != "help"]
-        catalog.append({"command": name, "help": helps.get(name, ""), "arguments": arguments})
-        _print(f"{name:<11} {helps.get(name, '')}")
+    from .automation.catalog import command_tree
+    tree = command_tree()
+    catalog = tree["subcommands"]
+    for item in catalog:
+        _print(f"{item['command']:<11} {item['help']}")
     _data(commands=catalog, exit_codes={"0": "sucesso", "1": "falha", "2": "uso incorreto"},
-          global_flags=["--config", "--db", "--json", "-v"])
+          global_flags=["--config", "--db", "--json", "-v"], schema_version=1,
+          global_arguments=tree["arguments"])
     return EXIT_OK
 
 
@@ -1706,6 +1701,8 @@ def build_parser():
     parser.add_argument("--json", dest="json_output", action="store_true",
                         help="saída em um único objeto JSON (para agentes e scripts); use antes do comando")
     sub = parser.add_subparsers(dest="command", required=True)
+    from .automation.commands import add_parser as workflow_parser
+    workflow_parser(sub)
 
     p = sub.add_parser("doctor", help="diagnóstico do ambiente")
     p.add_argument("--json", action="store_true")

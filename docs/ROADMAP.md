@@ -24,6 +24,15 @@ e recuperação. [Diretriz e limites](propostas/PROMPT_RETOMADA_EXTRATOR.md).
 **G19.5 — Estudo:** notas no gráfico com texto em coluna própria e fotografia imutável de buffers nativos/cálculos do extrator. [Contrato e validação](propostas/G19_5_NOTAS_E_FOTOGRAFIA.md). Implementação em validação; lápis, coloração e indicadores múltiplos permanecem G19.6/7, com entregas próprias.
 **Pedido G-19 (2026-10-22):** Play do painel manual independente de backtest, etiquetas compactas com fonte ajustável, proveniência A/B, sinais ignorados amarelos e ferramentas de Estudo (notas/fotografia, lápis, coloração e indicadores agrupáveis). [Tarefas e aceites](propostas/G19_ESTUDO_NO_GRAFICO.md). G19.1 validado no Linux/Wine; demais tarefas com entregas próprias.
 
+## Prioridade SDK para agentes — 2026-10-23
+
+AIA-01 fecha o percurso por CLI/SDK para descoberta, sessões, gráficos/indicadores,
+presets e os serviços existentes de dados/laboratório/backtest/implantação local.
+[Contrato, matriz de capacidades e pendências](agente.md). UI é cliente dos mesmos
+serviços; um workflow não cria scheduler, executor, cache ou journal financeiro.
+Indicador estratégico/armazenamento, OMNI e estratégia ficam em frentes próprias,
+sem antecipar sua implementação nesta tarefa.
+
 ## Fases
 
 **Pedido do proprietário — 2026-10-21:** planejar TFs em ordem crescente nos
