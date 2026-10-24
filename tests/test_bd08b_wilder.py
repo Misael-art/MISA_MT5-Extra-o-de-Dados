@@ -299,6 +299,45 @@ def test_cancelled_batches_resume_without_reseeding_or_duplicate_revisions(tmp_p
         db.close()
 
 
+def exercise_version_migration(db):
+    """A API direta register_core também precisa distinguir o contrato anterior."""
+    old_parameters = {IDS[0]: {"period": 14, "method": "Wilder", "source": "close"},
+                      IDS[1]: {"period": 14, "slope_bars": 3},
+                      IDS[2]: {"period": 14, "method": "Wilder"}, IDS[3]: {"period": 14}}
+    for ident in IDS:
+        feature_store.register_definition(db, ident, "Legacy first seed", "1.0", old_parameters[ident], [],
+                                          unit="legacy-unit", value_type="NUMBER")
+        feature_store.save_value(db, "TEST", "M5", ident, "1.0", "2026-09-01T09:00Z", 50.0,
+                                  available_at="2026-09-01T09:05Z", observed_at="2026-09-01T09:05Z")
+    previous = feature_store.query_history(db, symbol="TEST")
+    indicator_registry.register_core(db, "M5")
+    indicator_registry.register_core(db, "M5")  # idempotente sobre legado
+    definitions = {(r["feature_id"], r["algorithm_version"]): r for r in feature_store.list_definitions(db)}
+    for ident in IDS:
+        assert indicator_registry.get_definition(ident)["algorithm_version"] == "1.1"
+        assert definitions[ident, "1.0"]["parameters"] == old_parameters[ident]
+        assert definitions[ident, "1.1"]["parameters"]["seed"] == "first_observation"
+    assert indicator_registry.get_definition("price.return_1")["algorithm_version"] == "1.0"
+    pd.testing.assert_frame_equal(previous, feature_store.query_history(db, symbol="TEST"))
+    seed(db, source(n=45))
+    _materialize(db)
+    for ident in IDS:
+        assert indicator_materializer.algorithm_version(ident).startswith("1.1+")
+    old = query_service.series(db, symbol="TEST", timeframe="M5", feature_ids=list(IDS), as_of=NOW,
+                               basis="knowledge", algorithm_version="1.0")
+    assert old["status"] == "ok" and len(old["values"]) == len(IDS)
+    assert all(row["value"] == 50.0 and row["revision"] == 1 for row in old["values"])
+    assert all(d["versions"]["1.0"]["unit"] == "legacy-unit" for d in old["definitions"].values())
+
+
+def test_direct_registry_migrates_without_replacing_legacy_definitions_or_values(tmp_path):
+    db = DatabaseManager(db_path=str(tmp_path / "legacy.sqlite"), broker_utc_offset=0)
+    try:
+        exercise_version_migration(db)
+    finally:
+        db.close()
+
+
 def test_sdk_and_cli_use_the_same_horizon_and_definitions(tmp_path, capsys):
     path = tmp_path / "wilder #1.sqlite"
     db = DatabaseManager(db_path=str(path), broker_utc_offset=0)

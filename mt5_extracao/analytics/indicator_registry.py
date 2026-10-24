@@ -23,12 +23,12 @@ _WILDER_PARAMETERS = {"period": 14, "method": "RMA_alpha_1_over_period", "seed":
 
 
 def _definition(feature_id, name, family, formula, parameters, unit, warmup_count, source_id, required_columns,
-                *, denominator=None):
+                *, denominator=None, algorithm_version=ALGORITHM_VERSION):
     return {
         "feature_id": feature_id,
         "name": name,
         "family": family,
-        "algorithm_version": ALGORITHM_VERSION,
+        "algorithm_version": algorithm_version,
         "formula": formula,
         "parameters": parameters,
         "unit": unit,
@@ -140,15 +140,15 @@ def _donchian_definitions():
 _DEFINITIONS = (
     _definition("momentum.rsi_14", "RSI (14, first seed)", "momentum", "RSI(14) of close; first-delta RMA seed; reset on missing",
                 {**_WILDER_PARAMETERS, "source": "close", "flat_value": 50, "no_loss_value": 100}, "points_0_100", 15, "bars.close",
-                ("close",)),
+                ("close",), algorithm_version="1.1"),
     _definition("momentum.rsi_14_slope_3", "RSI slope (3)", "momentum", "RSI(14)[t] - RSI(14)[t-3]",
-                {**_WILDER_PARAMETERS, "slope_bars": 3}, "points_per_3_bars", 18, "bars.close", ("close",)),
+                {**_WILDER_PARAMETERS, "slope_bars": 3}, "points_per_3_bars", 18, "bars.close", ("close",), algorithm_version="1.1"),
     _definition("volatility.atr_14", "ATR (14, first seed)", "volatility", "RMA(14) of true range; first-TR seed; reset on missing",
                 {**_WILDER_PARAMETERS, "first_true_range": "high-low", "source_rule": "finite_low_le_close_le_high"}, "price_units", 14, "bars.high_low_close",
-                ("high", "low", "close")),
+                ("high", "low", "close"), algorithm_version="1.1"),
     _definition("volatility.atr_pct_14", "ATR / close (14)", "volatility", "ATR(14) / close",
                 {**_WILDER_PARAMETERS, "first_true_range": "high-low", "source_rule": "finite_low_le_close_le_high"}, "fraction", 14, "bars.high_low_close", ("high", "low", "close"),
-                denominator="close"),
+                denominator="close", algorithm_version="1.1"),
     _definition("volatility.bb_20_width", "Bollinger width (20, 2)", "volatility",
                 "(upper - lower) / mid; population standard deviation",
                 {"period": 20, "deviations": 2.0, "std_ddof": 0}, "fraction", 20, "bars.close", ("close",),

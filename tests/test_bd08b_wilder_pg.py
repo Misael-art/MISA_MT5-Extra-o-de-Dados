@@ -20,3 +20,9 @@ def test_wilder_ineligible_source_in_postgresql(monkeypatch):
     pytest.importorskip("psycopg")
     with isolated_postgresql_database(PG_URL, broker_utc_offset=0) as db:
         cases.exercise_ineligible_source(db, monkeypatch)
+
+
+def test_wilder_direct_registry_migration_in_postgresql():
+    pytest.importorskip("psycopg")
+    with isolated_postgresql_database(PG_URL, broker_utc_offset=0) as db:
+        cases.exercise_version_migration(db)
