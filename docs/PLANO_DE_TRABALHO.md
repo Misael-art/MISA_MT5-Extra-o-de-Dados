@@ -25,6 +25,14 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+**Reteste pelo atalho — 2026-10-24:** o proprietário encontrou falhas em Séries e
+confluências, catálogo restrito, desalinhamento de Horários e visões ausentes.
+O Laboratório está **incompleto, com aceite funcional reaberto**. [Backlog com
+todos os pontos, donos e aceites](propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md).
+Prompts independentes: [Laboratório](repasse/PROMPT_LABORATORIO_GRAFICOS_20261024.md)
+e [Expert Super ATR](repasse/PROMPT_EXPERT_SUPER_ATR_MTF_20261024.md).
+Cálculo/persistência Super ATR são dependência da frente de dados já existente.
+
 **Continuidade pré-formatação (2026-10-21):** clones GitHub/pins/WIP e ensaio
 SQLite conferidos no host atual; [roteiro](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
 e verificador somente leitura conferidos. Complemento privado de142 MB salvo no SD
@@ -44,7 +52,13 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). 100 dirigidos finais e2952/251 ampla (cortes descritos na evidência); prévia instalada. CI do último HEAD, causa dos timeouts herdados e Windows físico têm gates próprios; sem aceite financeiro |
 | AIA-02a | Catálogo nativo de Estudo pelo SDK/CLI, mesma fábrica/ownership e espera do layout inicial | AIA-01 + HPR75 | Implementado;2994/251 suíte ampla,108 dirigidos/176 regressão (sobrepostos),38 nativos via102 pedidos CLI reais,0/0 e doctor20/1/0. [Contrato](sdk/study_cli.md), [evidência](evidencias/AIA_02A_ESTUDO_CLI_20261023.json). CI da ponta/Windows físico próprios; dados/fontes H preservados |
 | AIA-02 | Extensões tipadas de Estudo/indicadores e controle da reprodução | AIA-01 + contratos específicos | Parcial: catálogo nativo entregue em AIA-02a; demais contratos pendentes, sem automação de mouse como substituto |
-| T20.22-LAB1 | Laboratório de séries/confluências, comparação entre TFs, ampliação e ponte para presets | AIA-02a + snapshots/registry/estratégias/Default-Manual existentes | Implementado em revisão [PR210](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/210);52 definições/11 estratégias,5 visões e CLI/SDK,16Tk finais. Ampla imprimiu3014/259; processo terminou143 após resumo, sem causa estabelecida; nova seleção20/15 terminou0/atexit normal. CI própria pendente. Prévia7c66fed no atalho; seis perfis operacionais atuais seguem bloqueados por snapshot/pin. [Repasse](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md). Dados/H/WIP preservados; inspetor completo, derivados/customTF, paridade e gerador automático mantêm recortes próprios |
+| T20.22-LAB1 | Laboratório de séries/confluências, comparação entre TFs, ampliação e ponte para presets | AIA-02a + snapshots/registry/estratégias/Default-Manual existentes | **Incompleto; aceite funcional reaberto após reteste do proprietário pelo atalho.** PR210 contém implementação inicial52/11/5visões, não conclusão. LAB-01…10 registram falhas/ausências e aceites. Evidência histórica preservada:16Tk; ampla3014/259 com retorno143 após resumo; seleção20/15 saída0. Prévia7c66fed; seis perfis bloqueados por pin/closure. CI/Windows/operacional próprios. [Repasse atualizado](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md) |
+| LAB-SA-00 | Registrar reteste, backlog, fronteiras e prompts independentes | Retorno do proprietário de24/10/2026 | Registro documental concluído nesta branch; não corrige runtime nem concede aceite. [Mapa](propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md) e prompts vinculados acima |
+| LAB-01…04 | Catálogo real, Séries/confluências, cabeçalho Horários e modernização gráfica | T18.6/8 + T20.22-LAB1 + leitura canônica de Dados | **Pendente**: reprodução e correção no atalho; catálogo sem lista fixa, erros/indisponibilidade úteis, geometria sincronizada, gradientes/valores horizontais/amostra em detalhe |
+| LAB-05…08 | Estratégias/robôs no mesmo ativo; preset idêntico entre ativos; estratégia entre TFs/predição; bancada do ativo com indicadores/anotações | T19.33 + T20.22/23 + serviços de dados/runs e protocolo estatístico | **Pendente**: quatro percursos distintos, identidades e cobertura explícitas; correlação descritiva não qualifica previsão; ferramentas reutilizáveis e SDK/CLI |
+| LAB-09/10 | Presets/closure e integração CLI/SDK/atalho com monitores | F19 + AIA-02 + T20.30 | **Pendente**: qualificar perfis sem waiver de pins, publicar composição e testar pelo atalho central/menu, handheld/dock/DPI/temas/ampliar-restaurar; uma tarefa por PR |
+| SA-01 | Expert Super ATR com confirmação entre tempos gráficos | G19.9/13/15 + contrato de estratégia + risco/executor/host existentes | **Pendente**: variante operacional versionada, confirmação por barras realmente fechadas, testes causais, pacote/preset; primeiro Tester+DEMO. [Prompt](repasse/PROMPT_EXPERT_SUPER_ATR_MTF_20261024.md) |
+| SA-02 | Cálculo/persistência e coluna/projeção consultável Super ATR | EST-IND + BD06/07/18/19 + fórmula/janela/seed acordadas | **Pendente, dono: agente do pilar de dados já existente.** Identidade de parâmetros/linha/versão, disponibilidade/revisão/qualidade, migração aditiva e consulta; sem store paralelo nos consumidores |
 | EST-IND | Indicador estratégico + série em banco | Contrato matemático/dados próprio | Pendente, fora do foco atual |
 | OMNI-M | Amadurecimento OMNI | Definição/contrato a consolidar | Pendente, fora do foco atual |
 | EST-OP | Estratégia operacional | Indicador/dados/qualificação estatística/operacional | Pendente; disponibilidade CLI não concede aceite financeiro |

@@ -1,4 +1,26 @@
-## Laboratório de séries — T20.22-LAB1, 2026-10-24
+## Reteste do proprietário — Laboratório incompleto, 2026-10-24
+
+O teste real pelo atalho reportou catálogo restrito em Indicador × indicador/alvo,
+falha de Séries/confluências, cabeçalho de Horários desalinhado e visuais antigos.
+Também faltam comparações entre robôs/estratégias no mesmo ativo, preset idêntico
+entre ativos, estratégia entre TFs com metodologia preditiva e bancada do ativo
+com todos os indicadores qualificados e ferramentas de marcação.
+
+[Mapa completo LAB-01…10/SA-01/02](propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md).
+O status anterior passa a **implementação inicial incompleta, aceite reaberto**;
+testes/capturas QA abaixo permanecem históricos, sem substituir o percurso do usuário.
+Prompts independentes: [Laboratório](repasse/PROMPT_LABORATORIO_GRAFICOS_20261024.md)
+e [Expert Super ATR multi-TF](repasse/PROMPT_EXPERT_SUPER_ATR_MTF_20261024.md).
+O agente de Dados já existente mantém cálculo/persistência/coluna Super ATR.
+
+Esta atualização é documental na branch `codex/lab-superatr-frentes`, sobre
+Appaf717fa; não altera o runtime7c66fed instalado, dados, .env/config, venv,
+ponte, fontes H, Safety, canal aceito ou WIP alheio. Cada agente usa worktree
+própria e publica commit/PR/push; a composição da prévia/arquivos centrais é serial.
+Próximo passo da frente Laboratório: reproduzir LAB-02/03 e consumir o catálogo
+real em LAB-01. Expert começa pelo contrato SA-01 e testes causais, sem tomar SA-02.
+
+## Laboratório de séries — histórico inicial T20.22-LAB1, 2026-10-24
 
 [Repasse](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md),
 [contrato](sdk/laboratorio_series.md) e
