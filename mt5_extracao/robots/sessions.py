@@ -379,8 +379,13 @@ void MT5X_Publish() {{
     if chart_control is not None:
         from ..automation.charts import source as chart_source
         supported = any(Path(p).name == "HDK_SuperATR.mq5" for p in robot.files)
+        study_headers = {Path(p).resolve() for p in robot.files if Path(p).name == "HDK_StudyCatalog.mqh"}
+        study_hash = None
+        if len(study_headers) == 1:
+            import hashlib
+            study_hash = hashlib.sha256(next(iter(study_headers)).read_bytes()).hexdigest()
         # Depois do include do Expert: a API visual dele é opt-in por macro.
-        native = chart_source(chart_control, super_atr=supported)
+        native = chart_source(chart_control, super_atr=supported, study_catalog_sha256=study_hash)
         source = source.replace("ulong MT5X_Last=0;", native + "\nulong MT5X_Last=0;")
         source = source.replace("MT5X_Last=now;", "MT5X_Last=now; MT5X_AgentPoll();")
     return source

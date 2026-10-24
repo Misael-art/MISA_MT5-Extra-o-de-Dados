@@ -42,6 +42,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
 | AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). 100 dirigidos finais e2952/251 ampla (cortes descritos na evidência); prévia instalada. CI do último HEAD, causa dos timeouts herdados e Windows físico têm gates próprios; sem aceite financeiro |
+| AIA-02a | Catálogo nativo de Estudo pelo SDK/CLI, mesma fábrica/ownership e espera do layout inicial | AIA-01 + HPR75 | Implementado;108 dirigidos/176 regressão,38 nativos via102 pedidos CLI reais,0/0 e doctor20/1/0. [Contrato](sdk/study_cli.md), [evidência](evidencias/AIA_02A_ESTUDO_CLI_20261023.json). CI da ponta/Windows físico próprios; dados/fontes H preservados |
 | AIA-02 | Extensões tipadas de Estudo/indicadores e controle da reprodução | AIA-01 + contratos específicos | Pendente; sem automação de mouse como substituto |
 | EST-IND | Indicador estratégico + série em banco | Contrato matemático/dados próprio | Pendente, fora do foco atual |
 | OMNI-M | Amadurecimento OMNI | Definição/contrato a consolidar | Pendente, fora do foco atual |
