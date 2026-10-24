@@ -61,6 +61,12 @@ def run_backtest(df, strategy, spec=None, config=None, start_index=0, signals=No
 
 API_VERSION = 1
 
+
+def open_workflow(db, config, *, read_account=None, config_path=None, db_override=None):
+    """Controlador local de sessões/presets/gráficos; fechar o contexto encerra só suas sessões."""
+    from .automation import open_workflow as create
+    return create(db, config, read_account=read_account, config_path=config_path, db_override=db_override)
+
 def query_series(db, **selection):
     """Consulta pública de fatos do store (BD18a); ver ``analytics.query_service.series``."""
     from mt5_extracao.analytics import query_service
@@ -75,6 +81,7 @@ def query_catalog():
 
 __all__ = [
     "API_VERSION", "CONTRACT_VERSION",
+    "open_workflow",
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog",
     # catálogo

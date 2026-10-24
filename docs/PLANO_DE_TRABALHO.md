@@ -41,6 +41,11 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Em validação Linux/Wine; [contrato](agente.md). Sem nova matemática/store/executor; Windows físico pendente |
+| AIA-02 | Extensões tipadas de Estudo/indicadores e controle da reprodução | AIA-01 + contratos específicos | Pendente; sem automação de mouse como substituto |
+| EST-IND | Indicador estratégico + série em banco | Contrato matemático/dados próprio | Pendente, fora do foco atual |
+| OMNI-M | Amadurecimento OMNI | Definição/contrato a consolidar | Pendente, fora do foco atual |
+| EST-OP | Estratégia operacional | Indicador/dados/qualificação estatística/operacional | Pendente; disponibilidade CLI não concede aceite financeiro |
 | G19.1 | PLAY do painel manual sem backtest | Painel manual revisado e controles existentes | Validado:2901 testes/52 pulados,65 dirigidos; doctor16/2/0 em perfil isolado. Sem run fictício e sem dispensar conta/stop/limites/kill. [Registro](propostas/G19_ESTUDO_NO_GRAFICO.md); instalação pendente, Windows físico pendente |
 | G19.5 | Notas com fotografia imutável no gráfico | Contrato MT5/Common e registry existentes | Em validação:2911 testes/52 pulados,27 dirigidos, doctor16/2/0, nativo216/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_5_NOTAS_E_FOTOGRAFIA.md); instalação pendente |
 | G19.6 | Lápis e coloração pelo catálogo | G19.5 | Validado:2930 testes/52 pulados/3 avisos,98 dirigidos, doctor16/2/0, nativo302/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_6_LAPIS_COLORACAO.md) |

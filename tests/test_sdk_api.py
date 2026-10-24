@@ -9,6 +9,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 # nome -> parâmetros, na ordem (classes e constantes: None)
 SURFACE = {
+    "open_workflow": ["db", "config", "read_account", "config_path", "db_override"],
     "API_VERSION": None, "CONTRACT_VERSION": None,
     "Robot": None, "Problem": None, "CompileResult": None, "BatteryItem": None, "BatteryReport": None,
     "CheckResult": None, "ParityReport": None, "SignalSpec": None, "DeclaredStrategy": None, "Strategy": None, "StrategyInfo": None, "BacktestConfig": None,

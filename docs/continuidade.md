@@ -1,3 +1,33 @@
+## AIA-01 — SDK/workflow para agentes, 2026-10-23
+
+Frente própria `codex/ai-workflows`, sem editar WIP da raiz/pilar de dados.
+Base composta por Git: Appfe92ed13a731a39dc03a69ba31f7047b3f6f8c6f (BD19c1)
++60e8870a91bace69c712e00213aaa46522ba2ced (PR205), merge
+1d5ce2296dfb48e884c0175dcca05aa7d4801885. Revisão do delta próprio contra essa base;
+histórias preservadas e dependências separadas. Companion Hb730ed4a8df74f5f20eb6e289798d0232c370994,
+[PR75](https://github.com/Misael-art/projeto-indicadores-mt5/pull/75), sobre HPR74/e29a2c6.
+
+[Entrada para o próximo agente](agente.md): `commands` recursivo, `workflow methods`,
+JSONL local `workflow serve`, manifestos `workflow run`, `sdk.open_workflow`.
+Sessões e presets delegam a Session/Consent/PresetExecution/compiler/store existentes;
+apresentação opt-in por protocolo próprio com IDs, ACK/timeout incerto, ownership,
+PNG nativo e espera de callback `until=ready`. Sem novo executor/scheduler/cache/journal.
+O painel7.11 só amplia API de apresentação; pin manual45e31481977d09f1 é aditivo.
+Não reaproveitar pins dos perfis automáticos para a closure compartilhada alterada;
+conservar seus snapshots de fonte/compilação já qualificados. Safety publicado intacto.
+
+A primeira tentativa nativa foi recusada com ponte parada; o script existente foi
+iniciado em X11 removendo WAYLAND_DISPLAY apenas do processo lançador. Sem alteração
+de fontes/token/credenciais da ponte. Outra tentativa registrou processo running
+sem Expert pronto: agora o ACK de prontidão distingue as fases. Uma preparação
+mudou de monitor e foi recusada pelo Runtime existente; a QA usa anchor explícito.
+Não converter esses casos em sucesso nem repetir efeitos sem recibo.
+
+Foco atual é SDK/CLI. Indicador estratégico, sua série/rotina de armazenamento,
+amadurecimento OMNI e estratégia operacional são próximos contratos separados,
+ainda pendentes. Também pendentes: demais ferramentas de Estudo/terceiros e controle
+do play/pause do Tester, qualificações Windows físico/financeiras/operacionais.
+
 ## G19.10 — resolução interna Wine, 2026-10-23
 
 Branchcodex/play-replay-monitor-fit, baseApp2ca4101/SuperATR1.01. Retorno do
