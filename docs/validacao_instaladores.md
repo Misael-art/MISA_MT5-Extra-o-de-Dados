@@ -456,3 +456,11 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [x] Fingerprint real do painel com ambos os ativos; alteração de Series retira a exceção manual.
 - [ ] Instalação/compilação da composição exata no Linux/Wine e atalho existente.
 - [ ] Windows físico: instalação, compilação e estudo/agrupamento.
+# Pendência específica BD08b — RSI/ATR (23/10/2026)
+
+- [ ] Executar o percurso RSI/ATR canônico no Windows físico: fonte sintética,
+  materialização, revisão/ausência, leitura SDK e CLI com caminho contendo espaço
+  e `#`. Testes permanentes independem do MT5; paridade numérica MT5 não é afirmada.
+- CI Windows de #201/#202 aprovado no SHA documentado em
+  [BD18a](dados/BD18A_CONSULTA.md) cobre a base desta entrega, não substitui a
+  validação da nova ponta BD08b nem o Windows físico.

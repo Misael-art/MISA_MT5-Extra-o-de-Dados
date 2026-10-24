@@ -1,5 +1,33 @@
 # BD18a — Consulta inicial executável — PARCIAL
 
+## Aceite delimitado da 6ª revisão (23/10/2026)
+
+V5-01 e V5-02 aceitos nos cenários verificados em #202
+`d1218ec8bb9f85e1aaf8a4c75ad26446bbd1f934`, código de consulta `9a51836`,
+sobre #201 `46e6864e05781d564ed987112ecdbffbcdb17450`. Revisão independente:
+174 testes aprovados e sondas de duas características, ausência da primeira
+confirmação e quatro combinações de escritores; PostgreSQL comprovado pela CI
+daquela revisão, sem execução PG local pelo revisor. A suíte integral fornecida
+3076/64/2 foi lida por ele, não reexecutada.
+
+Consulta dos checks em 24/10 UTC (23/10 no host) confirmou seis checks técnicos
+aprovados nos dois SHAs, incluindo Windows CI; Sourcery pulado. PRs abertos e sem
+merge. [Recibo por SHA](recibos/ci_revisao6_20261023.json). Não é Windows físico,
+integração nem instalação. M2 continua primeiro percurso demonstrado/parcial;
+E31 planejado e E32.1 primeiro consumo CLI sem exportação.
+
+Garantia: o mesmo cursor conserva geração e fronteira. Corte até o
+`knowledge_horizon` declarado está coberto; corte acima dele recebe resultado
+limitado e motivo, podendo avançar em consulta nova após novas confirmações.
+Sem primeira confirmação: vazio, horizonte ausente e motivo explícito.
+`known_at` é marca da confirmação na ordem lógica, tomada após commit dos dados;
+não mede o instante físico exato em que o commit do próprio carimbo ficou visível.
+Essa precisão complementa a descrição histórica abaixo de “horário físico”.
+Preservar a distinção em estudos, relações, comparações e demais consumidores.
+
+BD18b continua responsável pela leitura limitada na origem: o teto de 200 mil
+fatos é verificado após carregar a seleção e não protege a memória.
+
 ## Estado atual (23/10/2026, 5ª revisão — V5-01..02)
 
 - **V5-01:** o carimbo de conhecimento era calculado antes do UPDATE/commit da sua própria

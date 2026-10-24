@@ -4,7 +4,8 @@ e pela triagem de ativos. Sem MT5, sem banco, sem estado.
 
 Convenções:
 - Entradas: Series de preço ou DataFrame com colunas open/high/low/close.
-- Médias de Wilder (ATR, RSI, ADX) usam ewm(alpha=1/n, adjust=False), como o MT5/TradingView.
+- RMA/ATR/RSI/ADX legados usam ewm(alpha=1/n, adjust=False), com semente na
+  primeira observação. Isso não comprova equivalência com sementes SMA/nativas.
 - O valor na barra i usa somente dados até a barra i (sem olhar o futuro).
 """
 import math

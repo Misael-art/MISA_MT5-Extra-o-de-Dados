@@ -15,6 +15,11 @@ from mt5_extracao.strategies import indicators as technical
 
 ALGORITHM_VERSION = "1.0"
 _BAR_AVAILABLE = "closed_bar_received; late revisions become available when received"
+WILDER_IDS = frozenset(("momentum.rsi_14", "momentum.rsi_14_slope_3",
+                        "volatility.atr_14", "volatility.atr_pct_14"))
+_WILDER_PARAMETERS = {"period": 14, "method": "RMA_alpha_1_over_period", "seed": "first_observation",
+                      "adjust": False, "missing_policy": "reset_and_reseed",
+                      "value_basis": "closed_calculation_bar; consecutive_eligible_source_bars"}
 
 
 def _definition(feature_id, name, family, formula, parameters, unit, warmup_count, source_id, required_columns,
@@ -133,16 +138,16 @@ def _donchian_definitions():
 
 
 _DEFINITIONS = (
-    _definition("momentum.rsi_14", "RSI (14)", "momentum", "Wilder RSI(14) applied to close",
-                {"period": 14, "method": "Wilder", "source": "close"}, "points_0_100", 15, "bars.close",
+    _definition("momentum.rsi_14", "RSI (14, first seed)", "momentum", "RSI(14) of close; first-delta RMA seed; reset on missing",
+                {**_WILDER_PARAMETERS, "source": "close", "flat_value": 50, "no_loss_value": 100}, "points_0_100", 15, "bars.close",
                 ("close",)),
     _definition("momentum.rsi_14_slope_3", "RSI slope (3)", "momentum", "RSI(14)[t] - RSI(14)[t-3]",
-                {"period": 14, "slope_bars": 3}, "points_per_3_bars", 18, "bars.close", ("close",)),
-    _definition("volatility.atr_14", "ATR (14)", "volatility", "Wilder RMA(14) of true range",
-                {"period": 14, "method": "Wilder"}, "price_units", 14, "bars.high_low_close",
+                {**_WILDER_PARAMETERS, "slope_bars": 3}, "points_per_3_bars", 18, "bars.close", ("close",)),
+    _definition("volatility.atr_14", "ATR (14, first seed)", "volatility", "RMA(14) of true range; first-TR seed; reset on missing",
+                {**_WILDER_PARAMETERS, "first_true_range": "high-low", "source_rule": "finite_low_le_close_le_high"}, "price_units", 14, "bars.high_low_close",
                 ("high", "low", "close")),
     _definition("volatility.atr_pct_14", "ATR / close (14)", "volatility", "ATR(14) / close",
-                {"period": 14}, "fraction", 14, "bars.high_low_close", ("high", "low", "close"),
+                {**_WILDER_PARAMETERS, "first_true_range": "high-low", "source_rule": "finite_low_le_close_le_high"}, "fraction", 14, "bars.high_low_close", ("high", "low", "close"),
                 denominator="close"),
     _definition("volatility.bb_20_width", "Bollinger width (20, 2)", "volatility",
                 "(upper - lower) / mid; population standard deviation",
@@ -324,6 +329,71 @@ def _bad_denominator(feature_id, position, bars, close, atr14, bb, kc):
 
 
 
+def _iter_wilder(bars, selected):
+    """Qualifica RSI/ATR reutilizando os calculadores legados em segmentos finitos.
+
+    Preserva sua semente na primeira observação; não presume equivalência MT5/SMA.
+    Uma ausência conhecida exige novo aquecimento, inclusive quando o materializador
+    excluiu uma barra inelegível. Lacuna de calendário sem barra não sintetiza dados.
+    """
+    if not selected:
+        return
+    close = _column(bars, "close")
+    high, low = _column(bars, "high"), _column(bars, "low")
+    reset = bars.get("_wilder_reset_before", pd.Series(False, index=bars.index)).fillna(True).astype(bool)
+    for is_rsi in (True, False):
+        ids = [ident for ident in selected if ident.startswith("momentum.rsi_") == is_rsi]
+        if not ids:
+            continue
+        required = ("close",) if is_rsi else ("high", "low", "close")
+        missing = [name for name in required if name not in bars]
+        valid = pd.Series(False, index=bars.index)
+        if not missing:
+            valid = np.isfinite(close)
+            if not is_rsi:
+                valid = valid & np.isfinite(high) & np.isfinite(low) & low.le(close) & close.le(high)
+        values = pd.Series(np.nan, index=bars.index, dtype=float)
+        counts = np.zeros(len(bars), dtype=int)
+        # fatias posicionais conservam o índice público, inclusive não sequencial.
+        start = None
+        for end in range(len(bars) + 1):
+            good = end < len(bars) and bool(valid.iloc[end])
+            if start is not None and (not good or bool(reset.iloc[end])):
+                segment = bars.iloc[start:end]
+                calculated = (technical.rsi(close.iloc[start:end], 14) if is_rsi else
+                              technical.atr(pd.DataFrame({"high": high.iloc[start:end], "low": low.iloc[start:end],
+                                                           "close": close.iloc[start:end]}), 14))
+                values.iloc[start:end] = calculated.to_numpy()
+                counts[start:end] = np.arange(1, len(segment) + 1)
+                start = None
+            if good and start is None:
+                start = end
+        outputs = ({"momentum.rsi_14": values, "momentum.rsi_14_slope_3": values - values.shift(3)} if is_rsi else
+                   {"volatility.atr_14": values, "volatility.atr_pct_14": values / close.where(close > 0)
+                    if close is not None else values})
+        for ident in ids:
+            spec = _BY_ID[ident]
+            for position, bar_index in enumerate(bars.index):
+                value, reason, state = None, None, "AVAILABLE"
+                raw = outputs[ident].iloc[position]
+                if missing:
+                    state, reason = "SOURCE_UNAVAILABLE", "MISSING_COLUMNS:" + ",".join(missing)
+                elif not valid.iloc[position]:
+                    state, reason = "SOURCE_VALUE_MISSING", "FINITE_CLOSE_REQUIRED" if is_rsi else "FINITE_LOW_LE_CLOSE_LE_HIGH_REQUIRED"
+                elif counts[position] < spec["warmup_count"]:
+                    state, reason = "WARMUP", "REQUIRES_" + str(spec["warmup_count"]) + "_CONSECUTIVE_BARS"
+                elif ident == "volatility.atr_pct_14" and close.iloc[position] <= 0:
+                    state, reason = "INVALID_DENOMINATOR", "DENOMINATOR_MUST_BE_POSITIVE"
+                elif not np.isfinite(raw):
+                    state, reason = "INVALID_RESULT", "FORMULA_RETURNED_NON_FINITE_VALUE"
+                else:
+                    value = float(raw)
+                yield dict(bar_index=bar_index, feature_id=ident, algorithm_version=spec["algorithm_version"],
+                           value=value, state=state, reason=reason,
+                           window_metadata={"source_scope": "causal_prefix_including_known_ineligible_bars",
+                                            "wilder_seed": "first_observation", "missing_policy": "reset_and_reseed"})
+
+
 def _iter_pivots(bars, selected):
     groups = (("structure.fractals_5_strict_", technical.causal_fractals),
               ("structure.zigzag_causal_d12_pct1_b3_", technical.causal_zigzag))
@@ -409,6 +479,9 @@ def iter_core(bars, *, feature_ids=None):
     unknown = sorted(set(selected) - set(_BY_ID))
     if unknown:
         raise ValueError("Indicadores nativos desconhecidos: " + ", ".join(unknown))
+    wilder_ids = [ident for ident in selected if ident in WILDER_IDS]
+    yield from _iter_wilder(bars, wilder_ids)
+    selected = [ident for ident in selected if ident not in WILDER_IDS]
     channel_ids = [ident for ident in selected if ident.startswith("channel.donchian_")]
     yield from _iter_donchian(bars, channel_ids)
     selected = [ident for ident in selected if ident not in channel_ids]
