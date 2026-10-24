@@ -54,6 +54,11 @@ interrupção usando a posição da barra no histórico bruto, como já faz para
 Donchian/pivôs. O hash causal inclui barras inelegíveis; sua revisão limita a
 disponibilidade da cauda. A consulta continua exclusivamente leitura.
 
+As quatro definições passam a `algorithm_version=1.1`, inclusive na API direta
+`register_core`; as demais conservam sua versão declarada. O teste de migração
+abre definições/fatos 1.0, registra 1.1 duas vezes e consulta os valores antigos
+sem substituir sua unidade nem seus parâmetros.
+
 Parâmetros gravados declaram `seed=first_observation`, `adjust=false` e
 `missing_policy=reset_and_reseed`. A assinatura global vigente muda ao editar
 registry/materializador/indicadores: a nova versão exige materialização explícita;
@@ -66,8 +71,10 @@ EMA/ATR) não recebem esta qualificação e conservam o caminho anterior.
 
 `tests/test_bd08b_wilder.py` usa recorrência escalar independente, sem EWM nem
 funções do produto no oráculo. Exercita tendências, lateralidade, constância,
-escalas, NaN/infinito, OHLC inconsistente, ausência de coluna, prefixo futuro,+lotes, cancelamento/retomada, revisão tardia, barra inelegível e consulta pública.
-A tolerância `1e-11` cobre a ordem diferente das operações em float64; estados,
+escalas, NaN/infinito, OHLC inconsistente, ausência de coluna, prefixo futuro,
+lotes, cancelamento/retomada, revisão tardia, barra inelegível e consulta pública.
+A comparação permanente usa `rel=1e-11, abs=1e-11`; o piso absoluto não
+comprova precisão relativa de `1e-11` em valores pequenos. Estados,
 revisões e prefixos preservados exigem igualdade exata. Não aproxima hashes.
 
 São 450 M1 sintéticas por percurso principal, sem download nem histórico DEMO.
@@ -77,5 +84,57 @@ nova consulta acima da fronteira permanece limitada e pode avançar depois.
 
 `tests/test_bd08b_wilder_pg.py` repete a cadeia e a invalidação em schema isolado.
 Windows físico e comparação MT5 não foram exercitados. Banco principal não é
-entrada dos testes; composição/instalação têm seu dono BD21. Resultado final das
-suítes e recursos será registrado na continuidade e no recibo deste recorte.
+entrada dos testes; composição/instalação têm seu dono BD21. A ponta `f6d8a81`
+passou 23 testes da família, 134 dirigidos e 70 PostgreSQL na CI. Os seis checks
+técnicos da CI passaram, incluindo Ubuntu e Windows. Isso não converte a
+execução geral local em aprovação: ela terminou143 em99%, sem resumo e com
+três falhas (dois timeouts de backtest/snapshot e um teste de desempenho).
+Os seis casos restantes passaram em processo novo; o teste de desempenho
+também passou isoladamente, preservando a falha original. Causa comum não foi
+demonstrada. A PR permanece em rascunho. [Recibo final](recibos/recibo_bd08b_wilder_20261023.json)
+conserva hashes, tentativas e limites; recursos de família medem o processo
+inteiro de teste e bytes temporários ao final, sem prometer custo de um job isolado.
+
+## Erro observado por unidade (Linux, fonte f6d8a81)
+
+Uma medição adicional conserva a mesma referência escalar e informa o erro
+relativo sobre **todo valor esperado diferente de zero**, sem corte de magnitude.
+As seis massas têm 240 barras cada; ausência deve coincidir exatamente. São
+observações destas fixtures, não um limite universal de erro nem paridade MT5.
+[Resultados por massa e hashes](recibos/precisao_bd08b_wilder_f6d8a81.json).
+
+| Saída | Máximo erro absoluto observado | Máximo erro relativo, esperado não zero |
+|---|---:|---:|
+| RSI14 | 4,26e-14 pontos | 2,98e-15 |
+| RSI slope3 | 2,84e-14 pontos/3 barras | 4,68e-12 |
+| ATR14 | 8,53e-14 em preço | 1,37e-15 |
+| ATR14/close | 1,08e-18 em fração | 1,29e-15 |
+
+Reprodução a partir da raiz e ambiente instalados:
+
+```bash
+rtk proxy .venv/bin/python - <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path("tests").resolve()))
+import bench
+from tests.test_bd08b_wilder import IDS, _expected
+from mt5_extracao.analytics import indicator_registry
+names = ["trend", "lateral", "flat", "random_walk", "scale_0.0001", "scale_100000"]
+for name in names:
+    frame = bench.scenarios()[name]
+    expected = _expected(frame)
+    rows = list(indicator_registry.iter_core(frame, feature_ids=IDS))
+    for ident in IDS:
+        errors = []
+        for row in rows:
+            if row["feature_id"] != ident:
+                continue
+            want, got = expected[ident][row["bar_index"]], row["value"]
+            assert (want is None) == (got is None)
+            if want is not None:
+                errors.append((abs(got-want), abs((got-want)/want) if want else None))
+        print(name, ident, max(e[0] for e in errors),
+              max((e[1] for e in errors if e[1] is not None), default=0))
+PY
+```

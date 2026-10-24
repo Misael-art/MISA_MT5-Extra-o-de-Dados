@@ -461,6 +461,7 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [ ] Executar o percurso RSI/ATR canônico no Windows físico: fonte sintética,
   materialização, revisão/ausência, leitura SDK e CLI com caminho contendo espaço
   e `#`. Testes permanentes independem do MT5; paridade numérica MT5 não é afirmada.
-- CI Windows de #201/#202 aprovado no SHA documentado em
-  [BD18a](dados/BD18A_CONSULTA.md) cobre a base desta entrega, não substitui a
-  validação da nova ponta BD08b nem o Windows físico.
+- CI Windows da ponta BD08b `f6d8a81` aprovada no workflow40045614591:
+  3064 aprovados/101 pulados/5 avisos, além da etapa de contexto2/1.
+  Instalador Windows também aprovado nesse SHA. [Recibo](dados/recibos/recibo_bd08b_wilder_20261023.json).
+  A CI não substitui o percurso no Windows físico acima, que permanece pendente.

@@ -1,0 +1,201 @@
+{
+ "code_commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+ "implementation_signature": "fd47c55a739db146bf50a9542d3592476584a9e6aaadfc36ee07315c943943be",
+ "reference": "tests/test_bd08b_wilder.py::_expected",
+ "reference_sha256": "799873f1cada0970431edc3f75ecd5d344b3d0713e60675ca37152b0c5493294",
+ "relative_error_definition": "abs(actual-expected)/abs(expected), only expected != 0; no value threshold",
+ "records": [
+  {
+   "scenario": "trend",
+   "feature_id": "momentum.rsi_14",
+   "valid_count": 226,
+   "max_absolute_error": 0.0,
+   "max_relative_error_nonzero_expected": 0.0,
+   "input_csv_sha256": "2e3f34ecfb5cad681dbe94992755e6b1a0a8d9ca328a63dc26861a4fb49a6a5a"
+  },
+  {
+   "scenario": "trend",
+   "feature_id": "momentum.rsi_14_slope_3",
+   "valid_count": 223,
+   "max_absolute_error": 0.0,
+   "max_relative_error_nonzero_expected": 0,
+   "input_csv_sha256": "2e3f34ecfb5cad681dbe94992755e6b1a0a8d9ca328a63dc26861a4fb49a6a5a"
+  },
+  {
+   "scenario": "trend",
+   "feature_id": "volatility.atr_14",
+   "valid_count": 227,
+   "max_absolute_error": 9.71445146547012e-17,
+   "max_relative_error_nonzero_expected": 1.3678321403382194e-15,
+   "input_csv_sha256": "2e3f34ecfb5cad681dbe94992755e6b1a0a8d9ca328a63dc26861a4fb49a6a5a"
+  },
+  {
+   "scenario": "trend",
+   "feature_id": "volatility.atr_pct_14",
+   "valid_count": 227,
+   "max_absolute_error": 8.673617379884035e-19,
+   "max_relative_error_nonzero_expected": 1.2925295304963708e-15,
+   "input_csv_sha256": "2e3f34ecfb5cad681dbe94992755e6b1a0a8d9ca328a63dc26861a4fb49a6a5a"
+  },
+  {
+   "scenario": "lateral",
+   "feature_id": "momentum.rsi_14",
+   "valid_count": 226,
+   "max_absolute_error": 2.842170943040401e-14,
+   "max_relative_error_nonzero_expected": 7.275784178263826e-16,
+   "input_csv_sha256": "007425e1351f232c59489c3a69f83abaf1eb657709c769ca53311b11dcd73e89"
+  },
+  {
+   "scenario": "lateral",
+   "feature_id": "momentum.rsi_14_slope_3",
+   "valid_count": 223,
+   "max_absolute_error": 2.1316282072803006e-14,
+   "max_relative_error_nonzero_expected": 7.111569196837219e-15,
+   "input_csv_sha256": "007425e1351f232c59489c3a69f83abaf1eb657709c769ca53311b11dcd73e89"
+  },
+  {
+   "scenario": "lateral",
+   "feature_id": "volatility.atr_14",
+   "valid_count": 227,
+   "max_absolute_error": 8.326672684688674e-17,
+   "max_relative_error_nonzero_expected": 5.028035826571572e-16,
+   "input_csv_sha256": "007425e1351f232c59489c3a69f83abaf1eb657709c769ca53311b11dcd73e89"
+  },
+  {
+   "scenario": "lateral",
+   "feature_id": "volatility.atr_pct_14",
+   "valid_count": 227,
+   "max_absolute_error": 8.673617379884035e-19,
+   "max_relative_error_nonzero_expected": 5.214858117486277e-16,
+   "input_csv_sha256": "007425e1351f232c59489c3a69f83abaf1eb657709c769ca53311b11dcd73e89"
+  },
+  {
+   "scenario": "flat",
+   "feature_id": "momentum.rsi_14",
+   "valid_count": 226,
+   "max_absolute_error": 0.0,
+   "max_relative_error_nonzero_expected": 0.0,
+   "input_csv_sha256": "6e6f56f096ad50386e914695f97886ca3cdca1b443b098bdaf7574b8a2570030"
+  },
+  {
+   "scenario": "flat",
+   "feature_id": "momentum.rsi_14_slope_3",
+   "valid_count": 223,
+   "max_absolute_error": 0.0,
+   "max_relative_error_nonzero_expected": 0,
+   "input_csv_sha256": "6e6f56f096ad50386e914695f97886ca3cdca1b443b098bdaf7574b8a2570030"
+  },
+  {
+   "scenario": "flat",
+   "feature_id": "volatility.atr_14",
+   "valid_count": 227,
+   "max_absolute_error": 0.0,
+   "max_relative_error_nonzero_expected": 0,
+   "input_csv_sha256": "6e6f56f096ad50386e914695f97886ca3cdca1b443b098bdaf7574b8a2570030"
+  },
+  {
+   "scenario": "flat",
+   "feature_id": "volatility.atr_pct_14",
+   "valid_count": 227,
+   "max_absolute_error": 0.0,
+   "max_relative_error_nonzero_expected": 0,
+   "input_csv_sha256": "6e6f56f096ad50386e914695f97886ca3cdca1b443b098bdaf7574b8a2570030"
+  },
+  {
+   "scenario": "random_walk",
+   "feature_id": "momentum.rsi_14",
+   "valid_count": 226,
+   "max_absolute_error": 2.842170943040401e-14,
+   "max_relative_error_nonzero_expected": 9.702326307362712e-16,
+   "input_csv_sha256": "a88366b71ff523e21f3abef11b491496c4cd14be467d45d42209f7bdba7728fe"
+  },
+  {
+   "scenario": "random_walk",
+   "feature_id": "momentum.rsi_14_slope_3",
+   "valid_count": 223,
+   "max_absolute_error": 2.842170943040401e-14,
+   "max_relative_error_nonzero_expected": 4.681509201379923e-12,
+   "input_csv_sha256": "a88366b71ff523e21f3abef11b491496c4cd14be467d45d42209f7bdba7728fe"
+  },
+  {
+   "scenario": "random_walk",
+   "feature_id": "volatility.atr_14",
+   "valid_count": 227,
+   "max_absolute_error": 8.326672684688674e-17,
+   "max_relative_error_nonzero_expected": 9.673016395558779e-16,
+   "input_csv_sha256": "a88366b71ff523e21f3abef11b491496c4cd14be467d45d42209f7bdba7728fe"
+  },
+  {
+   "scenario": "random_walk",
+   "feature_id": "volatility.atr_pct_14",
+   "valid_count": 227,
+   "max_absolute_error": 8.673617379884035e-19,
+   "max_relative_error_nonzero_expected": 9.755167743179975e-16,
+   "input_csv_sha256": "a88366b71ff523e21f3abef11b491496c4cd14be467d45d42209f7bdba7728fe"
+  },
+  {
+   "scenario": "scale_0.0001",
+   "feature_id": "momentum.rsi_14",
+   "valid_count": 226,
+   "max_absolute_error": 4.263256414560601e-14,
+   "max_relative_error_nonzero_expected": 2.976393730405106e-15,
+   "input_csv_sha256": "55e9867e4ddd5de8d4d1ad3b9feafe759bddeaf788e75891893e6eaba48dfedb"
+  },
+  {
+   "scenario": "scale_0.0001",
+   "feature_id": "momentum.rsi_14_slope_3",
+   "valid_count": 223,
+   "max_absolute_error": 2.842170943040401e-14,
+   "max_relative_error_nonzero_expected": 1.0512135073842782e-12,
+   "input_csv_sha256": "55e9867e4ddd5de8d4d1ad3b9feafe759bddeaf788e75891893e6eaba48dfedb"
+  },
+  {
+   "scenario": "scale_0.0001",
+   "feature_id": "volatility.atr_14",
+   "valid_count": 227,
+   "max_absolute_error": 1.0587911840678754e-22,
+   "max_relative_error_nonzero_expected": 1.093981375054306e-15,
+   "input_csv_sha256": "55e9867e4ddd5de8d4d1ad3b9feafe759bddeaf788e75891893e6eaba48dfedb"
+  },
+  {
+   "scenario": "scale_0.0001",
+   "feature_id": "volatility.atr_pct_14",
+   "valid_count": 227,
+   "max_absolute_error": 1.0842021724855044e-18,
+   "max_relative_error_nonzero_expected": 1.1637627905580653e-15,
+   "input_csv_sha256": "55e9867e4ddd5de8d4d1ad3b9feafe759bddeaf788e75891893e6eaba48dfedb"
+  },
+  {
+   "scenario": "scale_100000",
+   "feature_id": "momentum.rsi_14",
+   "valid_count": 226,
+   "max_absolute_error": 2.842170943040401e-14,
+   "max_relative_error_nonzero_expected": 2.5955420144711646e-15,
+   "input_csv_sha256": "379eada601fbbb3efc73740aa06a45cf0ed09dd37a0df99f87284e40448e1175"
+  },
+  {
+   "scenario": "scale_100000",
+   "feature_id": "momentum.rsi_14_slope_3",
+   "valid_count": 223,
+   "max_absolute_error": 2.842170943040401e-14,
+   "max_relative_error_nonzero_expected": 2.6557244340950562e-14,
+   "input_csv_sha256": "379eada601fbbb3efc73740aa06a45cf0ed09dd37a0df99f87284e40448e1175"
+  },
+  {
+   "scenario": "scale_100000",
+   "feature_id": "volatility.atr_14",
+   "valid_count": 227,
+   "max_absolute_error": 8.526512829121202e-14,
+   "max_relative_error_nonzero_expected": 9.058807048796732e-16,
+   "input_csv_sha256": "379eada601fbbb3efc73740aa06a45cf0ed09dd37a0df99f87284e40448e1175"
+  },
+  {
+   "scenario": "scale_100000",
+   "feature_id": "volatility.atr_pct_14",
+   "valid_count": 227,
+   "max_absolute_error": 8.673617379884035e-19,
+   "max_relative_error_nonzero_expected": 9.581336271449554e-16,
+   "input_csv_sha256": "379eada601fbbb3efc73740aa06a45cf0ed09dd37a0df99f87284e40448e1175"
+  }
+ ]
+}

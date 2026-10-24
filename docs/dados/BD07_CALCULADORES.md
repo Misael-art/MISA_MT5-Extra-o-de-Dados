@@ -23,3 +23,8 @@ pandas-ta (stub) nada é declarado faltante; contrato do retorno do piloto.
 ## Pendente
 `AdvancedIndicators` (coleta em tempo real) e cálculos privados de estratégias (VWAP, estocástico
 lento, Heiken-Ashi, Madrid) continuam fora do registry; semente de Wilder (BD08a/BD08b).
+
+
+A semente das quatro saídas RSI/ATR do registry foi explicitada no
+[recorte BD08b](BD08B_WILDER.md), sem alterar as funções legadas de estratégia.
+Essa qualificação não cobre os calculadores privados nem as outras famílias.

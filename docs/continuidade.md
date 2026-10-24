@@ -2736,3 +2736,65 @@ Consulta (#202): cursor fixa geração e fronteira; `knowledge_horizon` declara 
 corte vai além da fronteira. Garantia: cortes até a fronteira declarada e páginas de um cursor não
 mudam; corte além dela é respondido até a fronteira, com motivo. M2 primeiro percurso demonstrado
 e parcial; E31 planejado; E32.1 CLI sem exportação. Limites: escritores serializados; BD18b.
+
+
+## BD08b — RSI/ATR e aceite delimitado V5 (23/10/2026)
+
+[PR206 em rascunho](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/206),
+fonte `f6d8a81c04b807b92c786628f0f227d6b4be8967`, sobre #202/d1218ec.
+O [aceite da sexta revisão](dados/BD18A_CONSULTA.md) foi registrado com seis
+checks técnicos aprovados nos SHAs de #201/#202, incluindo Windows CI;
+ambas abertas e sem merge no corte consultado. Garantia limitada à geração,
+fronteira declarada e mesmo cursor. `known_at` é marca lógica pós-commit dos
+dados, sem pretensão de medir a visibilidade física do commit do carimbo.
+
+BD08b/T19.3 avança somente nas quatro saídas RSI14/slope3/ATR14/ATR14-close.
+Semente na primeira observação explicitada; ausência/entrada inválida e barra
+conhecida inelegível interrompem a sequência e exigem novo aquecimento. ATR
+com OHLC inconsistente deixa de ser anunciado como disponível. Calculadores
+legados reusados por segmento, funções de estratégia preservadas. As quatro
+definições passam a 1.1, inclusive em `register_core`; materialização usa
+1.1+hash. A prova de migração preserva definições, unidades, parâmetros e fatos
+1.0. Assinatura global e seu custo de invalidação continuam limite até BD13.
+[Contrato, oráculo, precisão medida e limites](dados/BD08B_WILDER.md).
+
+Validação final, com 476 fontes/testes Python congelados por hash:
+
+- 23 testes da família em 52,45 s e 134 dirigidos em 367,40 s, aprovados.
+- CI no próprio `f6d8a81`: seis checks técnicos aprovados. PostgreSQL:70 em64,61 s;
+  Ubuntu:2910 aprovados/256 pulados em1618,41 s; Windows:3064 aprovados/101 pulados/
+  5 avisos em2996,71 s, além da etapa de contexto2/1 em34,96 s. Lint e ambos os
+  instaladores aprovados. Windows físico permanece pendente.
+- Geral local final: encerramento143 em99%, sem resumo; marcadores3090 aprovados,
+  67 pulados,3 falhas. Dois timeouts60 s de backtest/snapshot; um marcador de
+  falha no teste de desempenho trade_cache, sem diagnóstico final. Os seis
+  casos restantes e uma repetição desse teste passaram em processo novo
+  (7 em15,30 s). Uma repetição isolada do primeiro backtest voltou a falhar por
+  timeout. Não se declara suíte geral local aprovada nem causa comum comprovada.
+- Baseline d1218ec: execução inicial interrompida143,2087 aprovados/57 pulados/
+  1 timeout. Retomada dos995 casos restantes mais o caso do timeout:989 aprovados/
+  7 pulados/3 avisos em3327,64 s. Não é uma aprovação em execução única.
+- Doctor final:16 OK/2 avisos/0 falhas (pandas-ta opcional; ponte desligada no
+  perfil próprio). Sem alteração de scripts, shellcheck local não se aplica.
+
+Medição dos testes de família:164056 KiB de pico RSS do processo,4227283 bytes
+em temporários ao final,54,93 s de parede. Não mede um job isolado nem pico de
+disco. A carga alta do host foi observada, sem provar causa para todas as falhas.
+Tentativas iniciais, fontes intermediárias e falhas de instrumentação estão
+preservadas no [recibo final](dados/recibos/recibo_bd08b_wilder_20261023.json) e
+no [recibo intermediário](dados/recibos/recibo_bd08b_wilder_35c5848.json).
+Nenhum limite de tempo/precisão foi afrouxado e nenhum teste foi removido.
+
+Instaladores executados em worktrees próprias recriaram os atalhos do host.
+Esse efeito foi corrigido para o endereço estável app-development/run.sh, sem
+trocar os canais de releases. Bytes anteriores não foram fotografados antes do
+preparo: não se alega preservação byte a byte. A composição concorrente vigente
+foi mantida, sem restaurar releases históricos. Banco principal observado só por
+stat:481120256 bytes,mtime_ns1792797912518858963. Raiz/WIP preservada; nenhum
+fonte desta PR foi ativado, nem houve merge, acionamento de ponte ou ordem.
+
+M2 permanece primeiro percurso demonstrado/parcial; E31 planejado e E32.1 CLI
+sem exportação. BD08b ainda não fecha as demais famílias/produtores; BD12 e
+BD13/14 seguem suas dependências. Leitura limitada na origem permanece BD18b;
+200 mil fatos pós-leitura não é proteção de memória. Paridade nativa e demais
+consumidores mantêm aceites separados. Pilar de dados continua parcial.

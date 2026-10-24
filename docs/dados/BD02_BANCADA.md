@@ -100,3 +100,12 @@ orçamentos próprios. Nenhum download é necessário.
 
 Referências cobrem oito saídas do registry; as demais famílias recebem referência em suas
 fichas (BD08b/BD09). A bancada não prova fonte real, calendário de corretora ou PostgreSQL.
+
+
+## Resolução parcial do achado em BD08b (23/10/2026)
+
+O [recorte RSI/ATR](BD08B_WILDER.md) preserva e explicita a semente na primeira
+observação para as quatro saídas RSI14/slope3/ATR14/ATR14-close; acrescenta
+reinício e aquecimento após ausência. O teste de divergência SMA permanece.
+Os normalizadores de MACD/EMA e Keltner mantêm qualificação própria pendente.
+A descrição acima conserva a fotografia em que o achado foi levantado.
