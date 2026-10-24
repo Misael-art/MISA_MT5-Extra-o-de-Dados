@@ -138,3 +138,20 @@ for name in names:
               max((e[1] for e in errors if e[1] is not None), default=0))
 PY
 ```
+
+
+## Aceite delimitado da sétima revisão (24/10/2026)
+
+As quatro saídas foram aceitas nos cenários verificados, em `6e7b30e`
+(código `f6d8a81`). O revisor aprovou 140 testes dirigidos, incluindo os23 da
+família, e reexecutou os três casos gerais:3 aprovados em96,85s, sem alterar
+limites. Total143 testes próprios. A sonda decimal60 acrescentou32 comparações
+cenário×saída, contadas separadamente dos testes. Não reexecutou a suíte integral.
+[Recibo da revisão](recibos/revisao7_bd08b_wilder_20261024.json).
+
+O aceite não apaga a tentativa local interrompida nem comprova causa comum
+para as três falhas. Diagnóstico continua com snapshots/recursos T20.4/BD14 e
+agregação/cache conforme plano: mesmo SHA/base, limites originais, carga,
+duração por etapa e dimensão do snapshot. Não exige reiniciar a qualificação
+desta família nem paralisar a seguinte. BD08b/E12/M4 continuam parciais;
+PR206 permanece rascunho, distinta de revisão, integração e instalação.

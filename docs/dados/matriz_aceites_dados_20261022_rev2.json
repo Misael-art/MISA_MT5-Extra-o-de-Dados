@@ -520,6 +520,249 @@
      },
      "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
      "receipt": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json"
+    },
+    {
+     "commit": "6e7b30e40984f9eaf8a4055f9da792cb34db8e00",
+     "test": "revisão própria:140 dirigidos +3 casos gerais com limites originais",
+     "reference": "docs/dados/recibos/revisao7_bd08b_wilder_20261024.json; sonda decimal60 separada dos testes",
+     "input_hash": {
+      "tests/test_bd08b_wilder.py": "799873f1cada0970431edc3f75ecd5d344b3d0713e60675ca37152b0c5493294"
+     },
+     "parameters": {
+      "outputs": "RSI14/slope3/ATR14/ATR14-close",
+      "seed": "first_observation",
+      "missing_policy": "reset_and_reseed"
+     },
+     "result": {
+      "passed": 143,
+      "skipped": 0,
+      "failed": 0,
+      "warnings": 0,
+      "probe_comparisons_separately": 32
+     },
+     "limitations": "aceite somente das quatro saídas; suíte integral não reexecutada; tentativa original interrompida preservada; E12 integral/BD08b/M4 parciais",
+     "resource_measurements": {
+      "scope": "reexecução do revisor; não é custo de materializador isolado",
+      "directed_seconds": 170.89,
+      "three_cases_seconds": 96.85
+     },
+     "receipt": "docs/dados/recibos/revisao7_bd08b_wilder_20261024.json"
+    },
+    {
+     "commit": "b1f0328b41e692bea1cca0ee45981463ba255079",
+     "test": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "-q",
+      "tests/test_bd08b_macd.py"
+     ],
+     "reference": "tests/test_bd08b_macd.py::_expected; Decimal60, sem EWM/produtor",
+     "input_hash": {
+      "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+      "tests/test_bd08b_macd.py": "5bb7ba0bef2d11d28190de0c66585a335dfa539da9bfb0e99d5ab7f340122632",
+      "tests/test_bd08b_macd_pg.py": "1814f88dc17eb895da3ce3d773d7143a6a9c6ea6d7ba519df0f079d3cc63b7b9",
+      "tests/test_bd08b_wilder.py": "799873f1cada0970431edc3f75ecd5d344b3d0713e60675ca37152b0c5493294",
+      "tests/test_indicator_materialization.py": "7a5297a303190d183bfe96a195acf76cd1dfc138d3a2a2ba6cb69b12a41ee06c",
+      "tests/postgres_helpers.py": "e871073d36cf06830747f4b941fa8fee3051f91f2379d7bfaf6a596e2435d96a"
+     },
+     "parameters": {
+      "fast": 12,
+      "slow": 26,
+      "signal": 9,
+      "atr_period": 14,
+      "ema_seed": "first_observation",
+      "signal_seed": "first_visible_macd_line",
+      "signal_method": "EMA",
+      "missing_policy": "reset_and_reseed_per_dependency",
+      "batches": [
+       7,
+       11,
+       5000
+      ],
+      "main_store_flow_m1_rows": 450,
+      "resume_and_public_cli_m1_rows": 225,
+      "ineligible_flow_m1_rows": 350,
+      "numerical_scenarios_bars": 240
+     },
+     "result": {
+      "family": {
+       "passed": 27,
+       "skipped": 0,
+       "failed": 0,
+       "warnings": 0,
+       "seconds": 22.46,
+       "exit_code": 0,
+       "log_sha256": "07fc8ab9de9753be897185e9ca94a4dd5bbcddcf92b4d16f90fbc75e0ff5e601"
+      },
+      "directed": {
+       "passed": 167,
+       "skipped": 0,
+       "failed": 0,
+       "warnings": 0,
+       "seconds": 224.45,
+       "exit_code": 0,
+       "log_sha256": "a5ec84672dcedfd0d5b84269ccd7b972bc9e629f4ad22a17512656deb33075ba",
+       "scope": "MACD, RSI/ATR, bancada, contratos, calculadores, retornos, materialização, relações, V3/V4/V5, SDK/CLI e caminhos somente leitura"
+      },
+      "postgresql_ci": {
+       "passed": 73,
+       "skipped": 0,
+       "failed": 0,
+       "warnings": 0,
+       "seconds": 108.06,
+       "code_commit": "b1f0328b41e692bea1cca0ee45981463ba255079",
+       "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40057605188/job/120763934045",
+       "log_sha256": "d6a38dc2793db43645a4b5c99c23db931fa2b52ac0be80dec4e0a510b4de63c6"
+      },
+      "ubuntu_ci": {
+       "passed": 2937,
+       "skipped": 259,
+       "failed": 0,
+       "warnings": 0,
+       "seconds": 1603.93,
+       "code_commit": "b1f0328b41e692bea1cca0ee45981463ba255079",
+       "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40057605188/job/120763934116",
+       "log_sha256": "18f10206bde8a0defa5102e07cbd895c184b5b0c3e51bcd99318986d8a8bac50"
+      },
+      "windows_ci": {
+       "code_commit": "b1f0328b41e692bea1cca0ee45981463ba255079",
+       "context_stage": {
+        "passed": 3,
+        "skipped": 0,
+        "failed": 0,
+        "warnings": 0,
+        "seconds": 43.97
+       },
+       "main_stage": {
+        "passed": 3091,
+        "skipped": 104,
+        "failed": 0,
+        "warnings": 5,
+        "seconds": 3403.74
+       },
+       "physical_windows": false,
+       "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40057605188/job/120763934051",
+       "log_sha256": "f359c4b21b2958a9b1f8bf0ae8ad3c0e02e87f77c0651f93884c8ef877199756",
+       "hash_scope": "bytes preservados da resposta Composio, incluindo CRLF"
+      },
+      "technical_checks_passed": 6,
+      "baseline_general": {
+       "code_commit": "6e7b30e40984f9eaf8a4055f9da792cb34db8e00",
+       "command": [
+        "xvfb-run",
+        "-a",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+       ],
+       "passed": 3100,
+       "skipped": 66,
+       "failed": 0,
+       "warnings": 2,
+       "seconds": 4340.17,
+       "exit_code": 0,
+       "single_uninterrupted_run": true,
+       "frozen_python_files": 476,
+       "log_sha256": "c8ee7be9d382f2d7be27dd550d47462657ced4ae519f9ca9deea56a19434e0c5",
+       "execution": {
+        "commit": "6e7b30e40984f9eaf8a4055f9da792cb34db8e00",
+        "started_at": "2026-10-24T02:59:51.232010+00:00",
+        "finished_at": "2026-10-24T04:12:37.827060+00:00",
+        "exit_code": 0
+       },
+       "test_context": {
+        "MT5X_REQUIRE_HADOUKEN_PIN": "1",
+        "MT5X_HADOUKEN_ROOT": "worktree H g19-integracao"
+       },
+       "warnings_scope": "dois avisos de tight_layout em UI Relações",
+       "does_not_reclassify_previous_failed_attempt": true,
+       "previous_failures_in_this_new_run": [
+        {
+         "test": "tests/test_robots_backtest.py::test_newest_run_first_and_period_start",
+         "outcome": "passed",
+         "collection_index_zero_based": 1876
+        },
+        {
+         "test": "tests/test_robots_runner.py::test_real_python_backtests_are_recorded",
+         "outcome": "passed",
+         "collection_index_zero_based": 2069
+        },
+        {
+         "test": "tests/test_trade_cache.py::test_aggregation_speed_on_50k_cached_trades",
+         "outcome": "passed",
+         "collection_index_zero_based": 2578
+        }
+       ]
+      },
+      "final_general": {
+       "code_commit": "b1f0328b41e692bea1cca0ee45981463ba255079",
+       "status": "interrompida, sem resumo final; não é aprovação integral local",
+       "command": [
+        "xvfb-run",
+        "-a",
+        ".venv/bin/python",
+        "-m",
+        "pytest",
+        "-q"
+       ],
+       "collected": 3196,
+       "observed_progress_markers": 3104,
+       "passed_markers": 3035,
+       "skipped_markers": 69,
+       "failed_markers": 0,
+       "exit_code": 143,
+       "summary_present": false,
+       "cause_established": false,
+       "remaining_count": 92,
+       "original_limits_preserved": true,
+       "timeout_seconds": 60,
+       "log_sha256": "2b9dc1e8d67cc2dc9622c80914c89aa11c5329d4f1254240f533d5d0b90bc3e3",
+       "completion_run": {
+        "passed": 92,
+        "skipped": 0,
+        "failed": 0,
+        "warnings": 0,
+        "seconds": 31.0,
+        "exit_code": 0,
+        "selected_cases": 92,
+        "selection": "somente os casos ainda não observados na tentativa interrompida",
+        "nodeids_sha256": "2f764f765749f7363856cea6f22e632aa521f61421e76799e3c49fb605e8204f",
+        "log_sha256": "32fda57ad4b6cb9d126e6b64f4e3463bf2d4b0ca938dddf7f17a917ddaa43796",
+        "execution": {
+         "exit_code": 0,
+         "started_at": "2026-10-24T04:23:23.233154+00:00",
+         "finished_at": "2026-10-24T04:23:59.532383+00:00",
+         "selected": 92
+        }
+       },
+       "not_a_single_uninterrupted_green_suite": true,
+       "warnings": null,
+       "warning_count_available": false,
+       "exit_code_scope": "encerramento da sessão/launcher; sem resumo final do processo pytest",
+       "cause": "não estabelecida; processo pytest não estava vivo na inspeção posterior",
+       "coverage": "todos os3196 casos tiveram execução observada entre os processos; somar processos não produz uma suíte geral local aprovada",
+       "original_failed_attempts_preserved": true
+      }
+     },
+     "limitations": [
+      "BD08b/E12/M4 parciais",
+      "assinatura global; invalidação seletiva em BD13",
+      "grafo composto BD12 não implementado neste recorte",
+      "leitura limitada na origem em BD18b; teto200mil pós-leitura não protege memória",
+      "Windows físico e paridade nativa não exercitados",
+      "funções privadas/legadas e outras famílias não qualificadas automaticamente",
+      "sem merge nem ativação desta fonte"
+     ],
+     "resource_measurements": {
+      "scope": "processo inteiro dos testes da família, não job isolado; temporários ao final, não pico de disco",
+      "exit_code": 0,
+      "wall_seconds": 23.56592512700081,
+      "peak_child_rss_kib": 164064,
+      "temporary_bytes_end": 4513990
+     },
+     "receipt": "docs/dados/recibos/recibo_bd08b_macd_20261024.json"
     }
    ]
   },

@@ -28,3 +28,8 @@ lento, Heiken-Ashi, Madrid) continuam fora do registry; semente de Wilder (BD08a
 A semente das quatro saídas RSI/ATR do registry foi explicitada no
 [recorte BD08b](BD08B_WILDER.md), sem alterar as funções legadas de estratégia.
 Essa qualificação não cobre os calculadores privados nem as outras famílias.
+
+
+O [recorte MACD canônico](BD08B_MACD.md) explicita semente de primeira observação,
+sinal EMA e reinício por dependência. Não substitui o MACD de pandas-ta, as
+colunas legadas ou calculadores privados por equivalência presumida.
