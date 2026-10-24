@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao.ui import charts
-from mt5_extracao.ui.components import (ChartPanel, ContentPanel, DetailsPanel, FilterBar, MatrixTable, MetricCard, Notice,
+from mt5_extracao.ui.components import (AreaNavigation, ChartPanel, ContentPanel, DetailsPanel, FilterBar, MatrixTable, MetricCard, Notice,
                                        PageHeader, ScrollableContent, TablePanel)
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
 from mt5_extracao.ui.visual_tokens import SPACING, result_attention_colors
@@ -29,8 +29,9 @@ log = logging.getLogger(__name__)
 LENS_ROBOT, LENS_ASSET = "robot", "asset"
 PERIODS = (("Tudo", None), ("Último ano", 365), ("Últimos 6 meses", 182), ("Últimos 3 meses", 91))
 RELATIONS_TAB = "Relações e aderência"
+SERIES_TAB = "Séries e confluências"
 TABS = ("Visão geral", "Tempo e calendário", "Microestrutura", "Comparativo", "Execução", "Insights",
-        RELATIONS_TAB)
+        RELATIONS_TAB, SERIES_TAB)
 DISABLED_TABS: dict = {}
 WEEKDAYS = {0: "Seg", 1: "Ter", 2: "Qua", 3: "Qui", 4: "Sex", 5: "Sáb", 6: "Dom"}
 IMPACTS = {0: "Sem evento", 1: "Baixo", 2: "Médio", 3: "Alto"}
@@ -70,6 +71,7 @@ class LaboratoryPanel:
         self._analysis_views = {}
         self._drawn = set()        # guias já desenhadas com o recorte atual
         self.relations_panel = None  # F18 é apresentada por componente separado e sem acesso ao ledger F16.
+        self.series_panel = None
 
         head = PageHeader(self.frame, "Laboratório",
                           "operações dos robôs: onde ganham, onde perdem e como executar melhor")
@@ -130,6 +132,7 @@ class LaboratoryPanel:
             if name in DISABLED_TABS:
                 ttk.Label(tab, text=DISABLED_TABS[name], style="Muted.TLabel").pack(pady=20)
         self.tabs.bind("<<NotebookTabChanged>>", lambda e: self.render_visible(), add="+")
+        self.area_navigation = AreaNavigation(self.results_body, self.tabs, self.theme)
         self.mode_results = {}     # modo -> DataFrame (run_id, seq, pnl, ...) do run comparado
         self.mode_metrics = {}
         self.found = []            # insights da última procura
@@ -170,7 +173,7 @@ class LaboratoryPanel:
         self.notice.badge.set_status(NOTE_LABEL[kind], kind=kind)
         self.note.configure(text=text, style=f"{style}.Notice.TLabel")
         self._note_kind = kind
-        if self._current_tab_name() == RELATIONS_TAB:
+        if self._current_tab_name() in (RELATIONS_TAB, SERIES_TAB):
             self.notice.pack_forget()
         else:
             self.notice.pack(fill=tk.X, pady=(0, SPACING["sm"]),
@@ -292,7 +295,7 @@ class LaboratoryPanel:
     # --- leitura -----------------------------------------------------------------------
 
     def export_indicator_context(self):
-        if self.view is None or self.view.empty or self.tabs.tab(self.tabs.select(), "text") == RELATIONS_TAB:
+        if self.view is None or self.view.empty or self.tabs.tab(self.tabs.select(), "text") in (RELATIONS_TAB, SERIES_TAB):
             return
         path = filedialog.asksaveasfilename(title="Exportar contexto dos indicadores", defaultextension=".csv",
                                           filetypes=[("CSV", "*.csv")], initialfile="contexto_indicadores.csv")
@@ -469,6 +472,14 @@ class LaboratoryPanel:
     def render_visible(self):
         name = self.tabs.tab(self.tabs.select(), "text")
         self._sync_tab_context(name)
+        if name == SERIES_TAB:
+            if self.series_panel is None:
+                from mt5_extracao.ui.laboratory_series import SeriesLaboratoryPanel
+                self.series_panel = SeriesLaboratoryPanel(self.tab_frames[SERIES_TAB], self.ui)
+                self.series_panel.frame.pack(fill=tk.BOTH, expand=True)
+            self.series_panel.on_show()
+            self.series_panel.redraw()
+            return
         if name == RELATIONS_TAB:
             if self.relations_panel is None:
                 from mt5_extracao.ui.relations import RelationsPanel
@@ -506,7 +517,7 @@ class LaboratoryPanel:
 
     def _sync_tab_context(self, name):
         """Não exibe filtros/KPIs de operações como se filtrassem as relações de indicadores."""
-        if name == RELATIONS_TAB:
+        if name in (RELATIONS_TAB, SERIES_TAB):
             self.indicators_button.state(["disabled"])
             self.filter_bar.pack_forget()
             self.kpi_row.pack_forget()

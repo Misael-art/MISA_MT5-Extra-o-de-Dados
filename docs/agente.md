@@ -1,5 +1,11 @@
 # SDK para agentes e engenheiros — AIA-01
 
+O [Laboratório de séries](sdk/laboratorio_series.md) oferece
+`laboratory catalog|sources|freeze|analyze`, descobertos por `commands` e
+utilizáveis por `cli.run`. O mesmo diagnóstico v1 é consumido pelo Tk e pelo SDK,
+com snapshots/qualidade/corte explícitos; não precisa abrir a tela para calcular
+cruzamentos. Presets continuam nos métodos Default/Manual descritos abaixo.
+
 O CLI é a entrada operacional sem Tk, cliques ou automação de teclado. Descoberta e
 recibos são JSON; a interface gráfica continua consumindo os mesmos serviços.
 Esta entrega compõe BD19c1 e a prévia gráfica/probabilística sem alterar seus cálculos,

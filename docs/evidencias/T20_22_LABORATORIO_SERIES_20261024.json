@@ -1,0 +1,1707 @@
+{
+  "task": "T20.22-LAB1",
+  "date": "2026-10-24",
+  "base": "d1c1097067129919b734e67203c363f0662639e2",
+  "status": "runtime_verified_full_suite_in_progress",
+  "artifacts_sha256": {
+    "mt5_extracao/cli.py": "bd4293346ab9cfe5a6fa46363c96024eedba4d762f8479573b1935bee27dc484",
+    "mt5_extracao/ui/laboratory.py": "721fd9ae3d5d183217e0c2d758f0a15dc8461eed7dcbc65f8fb2d464f93faa74",
+    "mt5_extracao/ui/laboratory_series.py": "6d10851d54a54d8e599317c82fba57763a85afb181cc88527236781112ad11e6",
+    "mt5_extracao/laboratory/__init__.py": "b8790578646cbf3c23c43ab0bf4c0021207deca278d22ae831a6dc922ca59834",
+    "mt5_extracao/laboratory/service.py": "eda9573c5761c8d568722e4d9612ae5d9d6b250a7a7ffbd281249b059c6712dc",
+    "mt5_extracao/laboratory/commands.py": "269fc14b0427572ae8357e590a916fcf5462ebec01907ca3c622d1924b115fe5",
+    "tests/test_laboratory_series.py": "0a1603fbeb6956f47f07d4c55ce23ce75b347b9129699e0b9978164a1be3a258",
+    "tests/test_ui_laboratory_series.py": "57c05119609b016a1f9d5b010c36c798472140049eb8e1dcdc31eccbc4f17890",
+    "docs/sdk/laboratorio_series.md": "7ecdbb1609e5167573a892b0052d0d87c50a0147f75469e6792af183810bb4c7",
+    "docs/img/laboratorio_series/handheld.png": "2aa82f6496083b2990fe2cc1cd20810f198c91285dbaab5430b7b44147f68a73",
+    "docs/img/laboratorio_series/price-expanded.png": "3e3bbecc6a053928b553396385d382999cf586ed62ee468febcecbaabb331a6a",
+    "docs/img/laboratorio_series/wide-dark.png": "5bd9306ed61db16beaf54efb1c4fc74c7f0e855c1866192ad64a1c6c8771abff",
+    "docs/img/laboratorio_series/wide-light.png": "f489aa28ea66e92694b63558bac3e80bfd105e0a36209072424d4e8e37aea6a6"
+  },
+  "baseline": {
+    "focused_passed": 92,
+    "seconds": 112.9
+  },
+  "directed": {
+    "frozen_selection_passed": 28,
+    "seconds": 126.0,
+    "final_ui_passed": 12,
+    "final_ui_seconds": 67.08,
+    "overlap": true
+  },
+  "regression": {
+    "passed": 79,
+    "seconds": 233.99,
+    "scope": "before final UI render refinements; overlaps directed"
+  },
+  "full_suite": {
+    "status": "in_progress",
+    "display": "headless; headed UI verified separately"
+  },
+  "doctor": {
+    "shared_environment_ok": 20,
+    "optional_warning": 1,
+    "failures": 0,
+    "isolated_worktree_missing_config": "15 OK/1 optional/1 missing config; no owner config overwritten"
+  },
+  "investigation": {
+    "symbol": "EURUSD",
+    "start_broker": "2026-07-01",
+    "end_broker": "2026-09-30",
+    "timeframes": [
+      "M15",
+      "H1",
+      "H4"
+    ],
+    "grid_rows": 6336,
+    "channels": 18,
+    "indicator_definitions": 52,
+    "strategy_definitions": 11,
+    "strategy_timeframe_cases": 33,
+    "original_database_read_only": true,
+    "owner_database_written": false,
+    "native_sessions_started": 0,
+    "orders_sent": 0,
+    "indicators": [
+      {
+        "feature": "momentum.rsi_14",
+        "available": 6322,
+        "total": 6336,
+        "coverage": 0.9977904040404041,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.rsi_14_slope_3",
+        "available": 6319,
+        "total": 6336,
+        "coverage": 0.9973169191919192,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "volatility.atr_14",
+        "available": 6323,
+        "total": 6336,
+        "coverage": 0.9979482323232324,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "volatility.atr_pct_14",
+        "available": 6323,
+        "total": 6336,
+        "coverage": 0.9979482323232324,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "volatility.bb_20_width",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "volatility.bb_20_position",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "volatility.kc_20_width",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "volatility.kc_20_position",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.macd_line_12_26_9",
+        "available": 6311,
+        "total": 6336,
+        "coverage": 0.9960542929292929,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.macd_signal_12_26_9",
+        "available": 6303,
+        "total": 6336,
+        "coverage": 0.9947916666666666,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.macd_histogram_12_26_9",
+        "available": 6303,
+        "total": 6336,
+        "coverage": 0.9947916666666666,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.macd_histogram_atr_14",
+        "available": 6303,
+        "total": 6336,
+        "coverage": 0.9947916666666666,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "price.return_1",
+        "available": 6335,
+        "total": 6336,
+        "coverage": 0.9998421717171717,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "price.return_5",
+        "available": 6331,
+        "total": 6336,
+        "coverage": 0.9992108585858586,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "price.return_20",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "trend.ema20_distance_atr14",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "trend.efficiency_ratio_20",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "price_close"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "price_close: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "volume.real",
+        "available": 0,
+        "total": 6336,
+        "coverage": 0.0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "real_volume"
+          ],
+          "eligible": false,
+          "status": "blocked",
+          "reasons": [
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui.",
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui."
+          ],
+          "limitations": []
+        }
+      },
+      {
+        "feature": "volume.ticks",
+        "available": 6336,
+        "total": 6336,
+        "coverage": 1.0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "tick_volume"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "tick_volume: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "trend.alligator_jaw_13",
+        "available": 6324,
+        "total": 6336,
+        "coverage": 0.9981060606060606,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "trend.alligator_teeth_8",
+        "available": 6329,
+        "total": 6336,
+        "coverage": 0.998895202020202,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "trend.alligator_lips_5",
+        "available": 6332,
+        "total": 6336,
+        "coverage": 0.9993686868686869,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "trend.alligator_alignment",
+        "available": 6324,
+        "total": 6336,
+        "coverage": 0.9981060606060606,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "trend.alligator_separation",
+        "available": 6324,
+        "total": 6336,
+        "coverage": 0.9981060606060606,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ao_5_34",
+        "available": 6303,
+        "total": 6336,
+        "coverage": 0.9947916666666666,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ao_5_34_slope_1",
+        "available": 6302,
+        "total": 6336,
+        "coverage": 0.9946338383838383,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ao_5_34_acceleration_1",
+        "available": 6301,
+        "total": 6336,
+        "coverage": 0.99447601010101,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ao_5_34_zero_cross",
+        "available": 6302,
+        "total": 6336,
+        "coverage": 0.9946338383838383,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ao_5_34_color",
+        "available": 6302,
+        "total": 6336,
+        "coverage": 0.9946338383838383,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ac_5_34_5",
+        "available": 6299,
+        "total": 6336,
+        "coverage": 0.9941603535353535,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ac_5_34_5_slope_1",
+        "available": 6298,
+        "total": 6336,
+        "coverage": 0.9940025252525253,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "momentum.ac_5_34_5_color",
+        "available": 6298,
+        "total": 6336,
+        "coverage": 0.9940025252525253,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "structure.fractals_5_strict_top",
+        "available": 6330,
+        "total": 6336,
+        "coverage": 0.9990530303030303,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "structure.fractals_5_strict_bottom",
+        "available": 6318,
+        "total": 6336,
+        "coverage": 0.9971590909090909,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "structure.fractals_5_strict_provisional",
+        "available": 0,
+        "total": 6336,
+        "coverage": 0.0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "structure.zigzag_causal_d12_pct1_b3_top",
+        "available": 4732,
+        "total": 6336,
+        "coverage": 0.7468434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "structure.zigzag_causal_d12_pct1_b3_bottom",
+        "available": 5292,
+        "total": 6336,
+        "coverage": 0.8352272727272727,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "structure.zigzag_causal_d12_pct1_b3_provisional",
+        "available": 0,
+        "total": 6336,
+        "coverage": 0.0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_current_upper",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_current_lower",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_current_mid",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_current_width",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_current_position",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_current_distance_upper",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_current_distance_lower",
+        "available": 6317,
+        "total": 6336,
+        "coverage": 0.9970012626262627,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_previous_upper",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_previous_lower",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_previous_mid",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_previous_width",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hl"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hl: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_previous_position",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_previous_distance_upper",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "feature": "channel.donchian_20_previous_distance_lower",
+        "available": 6316,
+        "total": 6336,
+        "coverage": 0.9968434343434344,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "hlc"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "hlc: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      }
+    ],
+    "strategies": [
+      {
+        "strategy": "ema_atr",
+        "timeframe": "M15",
+        "available": 6087,
+        "total": 6336,
+        "long": 31,
+        "short": 42,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "ema_atr",
+        "timeframe": "H1",
+        "available": 5304,
+        "total": 6336,
+        "long": 5,
+        "short": 4,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "ema_atr",
+        "timeframe": "H4",
+        "available": 2262,
+        "total": 6336,
+        "long": 1,
+        "short": 0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "donchian",
+        "timeframe": "M15",
+        "available": 6087,
+        "total": 6336,
+        "long": 253,
+        "short": 276,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "donchian",
+        "timeframe": "H1",
+        "available": 5304,
+        "total": 6336,
+        "long": 41,
+        "short": 57,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "donchian",
+        "timeframe": "H4",
+        "available": 2262,
+        "total": 6336,
+        "long": 2,
+        "short": 17,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "bb_rsi",
+        "timeframe": "M15",
+        "available": 6087,
+        "total": 6336,
+        "long": 146,
+        "short": 134,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "bb_rsi",
+        "timeframe": "H1",
+        "available": 5304,
+        "total": 6336,
+        "long": 40,
+        "short": 19,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "bb_rsi",
+        "timeframe": "H4",
+        "available": 2262,
+        "total": 6336,
+        "long": 1,
+        "short": 1,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "orb",
+        "timeframe": "M15",
+        "available": 6237,
+        "total": 6336,
+        "long": 40,
+        "short": 25,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "orb",
+        "timeframe": "H1",
+        "available": 5901,
+        "total": 6336,
+        "long": 38,
+        "short": 24,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "orb",
+        "timeframe": "H4",
+        "available": 4587,
+        "total": 6336,
+        "long": 19,
+        "short": 29,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "pullback",
+        "timeframe": "M15",
+        "available": 6087,
+        "total": 6336,
+        "long": 40,
+        "short": 38,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "pullback",
+        "timeframe": "H1",
+        "available": 5304,
+        "total": 6336,
+        "long": 20,
+        "short": 13,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "pullback",
+        "timeframe": "H4",
+        "available": 2262,
+        "total": 6336,
+        "long": 4,
+        "short": 0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "squeeze",
+        "timeframe": "M15",
+        "available": 6087,
+        "total": 6336,
+        "long": 207,
+        "short": 197,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "squeeze",
+        "timeframe": "H1",
+        "available": 5304,
+        "total": 6336,
+        "long": 45,
+        "short": 54,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "squeeze",
+        "timeframe": "H4",
+        "available": 2262,
+        "total": 6336,
+        "long": 1,
+        "short": 14,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "s09_reference",
+        "timeframe": "M15",
+        "available": 6087,
+        "total": 6336,
+        "long": 59,
+        "short": 60,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "s09_reference",
+        "timeframe": "H1",
+        "available": 5304,
+        "total": 6336,
+        "long": 8,
+        "short": 9,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "s09_reference",
+        "timeframe": "H4",
+        "available": 2262,
+        "total": 6336,
+        "long": 1,
+        "short": 2,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "stoch_ema9",
+        "timeframe": "M15",
+        "available": 6037,
+        "total": 6336,
+        "long": 107,
+        "short": 157,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "stoch_ema9",
+        "timeframe": "H1",
+        "available": 5104,
+        "total": 6336,
+        "long": 19,
+        "short": 29,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "stoch_ema9",
+        "timeframe": "H4",
+        "available": 1492,
+        "total": 6336,
+        "long": 0,
+        "short": 8,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "vwap_bands",
+        "timeframe": "M15",
+        "available": 0,
+        "total": 6336,
+        "long": 0,
+        "short": 0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv",
+            "real_volume",
+            "tick_volume"
+          ],
+          "eligible": false,
+          "status": "blocked",
+          "reasons": [
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui.",
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui."
+          ],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte.",
+            "tick_volume: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "vwap_bands",
+        "timeframe": "H1",
+        "available": 0,
+        "total": 6336,
+        "long": 0,
+        "short": 0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv",
+            "real_volume",
+            "tick_volume"
+          ],
+          "eligible": false,
+          "status": "blocked",
+          "reasons": [
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui.",
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui."
+          ],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte.",
+            "tick_volume: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "vwap_bands",
+        "timeframe": "H4",
+        "available": 0,
+        "total": 6336,
+        "long": 0,
+        "short": 0,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv",
+            "real_volume",
+            "tick_volume"
+          ],
+          "eligible": false,
+          "status": "blocked",
+          "reasons": [
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui.",
+            "Volume real só com zeros não comprova que a fonte o informa; tick volume não o substitui."
+          ],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte.",
+            "tick_volume: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "madrid",
+        "timeframe": "M15",
+        "available": 6037,
+        "total": 6336,
+        "long": 174,
+        "short": 207,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "madrid",
+        "timeframe": "H1",
+        "available": 5104,
+        "total": 6336,
+        "long": 25,
+        "short": 53,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "madrid",
+        "timeframe": "H4",
+        "available": 1492,
+        "total": 6336,
+        "long": 1,
+        "short": 10,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "ha_hilo",
+        "timeframe": "M15",
+        "available": 6037,
+        "total": 6336,
+        "long": 2112,
+        "short": 2295,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "ha_hilo",
+        "timeframe": "H1",
+        "available": 5104,
+        "total": 6336,
+        "long": 419,
+        "short": 488,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      },
+      {
+        "strategy": "ha_hilo",
+        "timeframe": "H4",
+        "available": 1492,
+        "total": 6336,
+        "long": 15,
+        "short": 60,
+        "eligibility": {
+          "version": 1,
+          "required": [
+            "ohlcv"
+          ],
+          "eligible": true,
+          "status": "limited",
+          "reasons": [],
+          "limitations": [
+            "ohlcv: origem unknown; resultado de estudo sem certificação da fonte."
+          ]
+        }
+      }
+    ]
+  },
+  "visual": {
+    "sizes": [
+      "1280x800",
+      "3456x1458"
+    ],
+    "environment": "Tk/Matplotlib, own Xvfb; not physical dock or Windows qualification",
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "expand_restore": true,
+    "render_scenario_seconds": 30.397,
+    "performance_scope": "cumulative QA: create 5 panels, resize, theme, 5 captures, detail; no FPS or comparative benchmark claim"
+  },
+  "boundaries": [
+    "No source/schema/producer changes in data pillar",
+    "No H/Safety/native risk/executor changes",
+    "No financial backtest/ranking/automatic preset promotion",
+    "Nominal closing reconstruction, historical availability unproven",
+    "Native 38 catalogue distinct from 52 Analytics definitions",
+    "Windows physical and complete linked inspector pending"
+  ]
+}
