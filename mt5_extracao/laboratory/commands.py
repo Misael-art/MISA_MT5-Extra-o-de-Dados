@@ -10,7 +10,7 @@ def add_parser(sub):
     parser = sub.add_parser("laboratory", help="séries, confluências e comparação exploratória entre timeframes")
     actions = parser.add_subparsers(dest="laboratory_action", required=True)
     actions.add_parser("catalog", help="todos os indicadores e estratégias canônicos, sem abrir a base").set_defaults(func=run)
-    actions.add_parser("sources", help="inventário da base; somente leitura").set_defaults(func=run)
+    actions.add_parser("sources", help="tabelas OHLCV em TFs nativos; somente leitura").set_defaults(func=run)
     freeze = actions.add_parser("freeze", help="congela seleção explícita no store de snapshots existente")
     freeze.add_argument("--symbol", required=True)
     freeze.add_argument("--tf", action="append", required=True, help="TF da base; repita para comparar")
@@ -34,7 +34,8 @@ def run(args, ctx):
     if args.laboratory_action == "catalog":
         result = service.catalog()
     elif args.laboratory_action == "sources":
-        result = dict(sources=service.sources(ctx.db))
+        result = dict(sources=service.sources(ctx.db),
+            source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")
     elif args.laboratory_action == "freeze":
         snapshots = service.capture_selection(ctx.db, symbol=args.symbol, timeframes_selected=args.tf,
                                               start=args.start, end=args.end)

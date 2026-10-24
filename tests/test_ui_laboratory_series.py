@@ -19,7 +19,7 @@ def open_series(panel):
 
 def test_real_series_area_is_separate_from_demo_and_ledger_filters(panel):
     series = open_series(panel)
-    panel.pump(lambda: "Base sem séries" in series.status.cget("text"))
+    panel.pump(lambda: "Base sem séries compatíveis" in series.status.cget("text"))
     assert series.report is None
     assert not panel.filter_bar.winfo_manager()
     assert not panel.kpi_row.winfo_manager()
@@ -144,6 +144,58 @@ def test_large_monitor_does_not_force_wide_layout_into_compact_window(panel, mon
     series._display_initialized = False
     series.on_show()
     assert series.extended.get() is expected
+
+
+def test_typed_parameters_accept_decimal_comma_and_reject_invalid_before_capture(panel, monkeypatch):
+    import json
+    series = open_series(panel)
+    series.parameter_values["fast"].set("21")
+    series.parameter_values["stop_atr"].set("1,25")
+    assert json.loads(series.params.get())["fast"] == 21
+    assert json.loads(series.params.get())["stop_atr"] == 1.25
+    series.parameter_values["fast"].set("21.5")
+    monkeypatch.setattr(panel.ui, "run_bg", lambda *args: pytest.fail("não capturar parâmetros inválidos"))
+    series.analyze()
+    assert "Média curta" in series.status.cget("text")
+    assert "JSON" not in series.status.cget("text")
+
+
+def test_strategy_changes_rebuild_typed_parameter_fields_from_registry(panel):
+    from mt5_extracao.composition.registry import STRATEGY_PARAMETERS
+    series = open_series(panel)
+    series.strategy.set("stoch_ema9")
+    series._strategy_changed()
+    assert set(series.parameter_values) == set(STRATEGY_PARAMETERS["stoch_ema9"])
+    series.parameter_values["k_period"].set("1")
+    assert series._params_error
+    series.strategy.set("Sem estratégia")
+    series._strategy_changed()
+    assert series.parameter_values == {} and series._params_error is None
+
+
+def test_invalid_strategy_parameter_relationship_refuses_before_snapshot(panel, monkeypatch):
+    series = open_series(panel)
+    series._inventory = [dict(symbol="X", timeframe="M5")]
+    series.symbol.set("X")
+    series._symbol_changed()
+    series.strategy.set("stoch_ema9")
+    series._strategy_changed()
+    series.parameter_values["lower_level"].set("80")
+    assert series._params_error is None  # campos isoladamente válidos; relação é do contrato real.
+    monkeypatch.setattr(panel.ui, "run_bg", lambda *args: pytest.fail("não capturar estratégia inválida"))
+    series.analyze()
+    assert not series.pending
+
+
+def test_expanded_chart_uses_absolute_negative_monitor_coordinates(panel, monkeypatch):
+    from mt5_extracao.ui import laboratory_series
+    series = open_series(panel)
+    monkeypatch.setattr(laboratory_series, "monitor_geometry", lambda _: (-1024, -50, 1024, 850))
+    chart = series.panels["price"]
+    chart.expand()
+    panel.ui.root.update()
+    assert (chart.popup.winfo_x(), chart.popup.winfo_y()) == (-1024, -50)
+    chart.restore()
 
 
 @pytest.mark.parametrize("windows", [False, True])

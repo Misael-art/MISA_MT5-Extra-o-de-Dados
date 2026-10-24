@@ -6,17 +6,18 @@
   "artifacts_sha256": {
     "mt5_extracao/cli.py": "bd4293346ab9cfe5a6fa46363c96024eedba4d762f8479573b1935bee27dc484",
     "mt5_extracao/ui/laboratory.py": "721fd9ae3d5d183217e0c2d758f0a15dc8461eed7dcbc65f8fb2d464f93faa74",
-    "mt5_extracao/ui/laboratory_series.py": "6d10851d54a54d8e599317c82fba57763a85afb181cc88527236781112ad11e6",
+    "mt5_extracao/ui/laboratory_series.py": "1ce8c83a82593f591e343f588a6b13de40fbec8af49d37def5cf58466e7ff4eb",
     "mt5_extracao/laboratory/__init__.py": "b8790578646cbf3c23c43ab0bf4c0021207deca278d22ae831a6dc922ca59834",
     "mt5_extracao/laboratory/service.py": "eda9573c5761c8d568722e4d9612ae5d9d6b250a7a7ffbd281249b059c6712dc",
-    "mt5_extracao/laboratory/commands.py": "269fc14b0427572ae8357e590a916fcf5462ebec01907ca3c622d1924b115fe5",
+    "mt5_extracao/laboratory/commands.py": "1477436190ba0b6d52546f09a5f5b1b605c484ebb4e573de652b8e0b82119cd4",
     "tests/test_laboratory_series.py": "0a1603fbeb6956f47f07d4c55ce23ce75b347b9129699e0b9978164a1be3a258",
-    "tests/test_ui_laboratory_series.py": "57c05119609b016a1f9d5b010c36c798472140049eb8e1dcdc31eccbc4f17890",
-    "docs/sdk/laboratorio_series.md": "7ecdbb1609e5167573a892b0052d0d87c50a0147f75469e6792af183810bb4c7",
+    "tests/test_ui_laboratory_series.py": "f40b125553c7682f9e5d900369d2f9d7019d5493462c70c315613f17069c0d28",
+    "docs/sdk/laboratorio_series.md": "fc6352ed363cfe895b1d997fa3a6b469dc54e89f9efcf686a96c254ce2cfbde3",
     "docs/img/laboratorio_series/handheld.png": "2aa82f6496083b2990fe2cc1cd20810f198c91285dbaab5430b7b44147f68a73",
     "docs/img/laboratorio_series/price-expanded.png": "3e3bbecc6a053928b553396385d382999cf586ed62ee468febcecbaabb331a6a",
     "docs/img/laboratorio_series/wide-dark.png": "5bd9306ed61db16beaf54efb1c4fc74c7f0e855c1866192ad64a1c6c8771abff",
-    "docs/img/laboratorio_series/wide-light.png": "f489aa28ea66e92694b63558bac3e80bfd105e0a36209072424d4e8e37aea6a6"
+    "docs/img/laboratorio_series/wide-light.png": "f489aa28ea66e92694b63558bac3e80bfd105e0a36209072424d4e8e37aea6a6",
+    "docs/img/laboratorio_series/handheld-parameters.png": "8d79c89189682d201e82b2339781681b6e036037926f3ba8bb3fd2802d454c27"
   },
   "baseline": {
     "focused_passed": 92,
@@ -25,9 +26,10 @@
   "directed": {
     "frozen_selection_passed": 28,
     "seconds": 126.0,
-    "final_ui_passed": 12,
-    "final_ui_seconds": 67.08,
-    "overlap": true
+    "final_ui_passed": 16,
+    "final_ui_seconds": 57.37,
+    "overlap": true,
+    "typed_followup": "14/74.94 before final scope/help and negative-coordinate checks; 3/11.66 relationship checks; overlapped selections"
   },
   "regression": {
     "passed": 79,
@@ -36,7 +38,8 @@
   },
   "full_suite": {
     "status": "in_progress",
-    "display": "headless; headed UI verified separately"
+    "display": "headless; headed UI verified separately",
+    "scope": "core unchanged during run; later UI tests covered in final headed selection; final-head CI has own state"
   },
   "doctor": {
     "shared_environment_ok": 20,
@@ -1694,7 +1697,9 @@
     ],
     "expand_restore": true,
     "render_scenario_seconds": 30.397,
-    "performance_scope": "cumulative QA: create 5 panels, resize, theme, 5 captures, detail; no FPS or comparative benchmark claim"
+    "performance_scope": "cumulative QA: create 5 panels, resize, theme, 5 captures, detail; no FPS or comparative benchmark claim",
+    "parameters": "numeric fields from registry, decimal comma, contract validation before capture; light/dark listboxes",
+    "negative_coordinates": "actual Tk syntax check and final popup test; not physical multi-monitor qualification"
   },
   "boundaries": [
     "No source/schema/producer changes in data pillar",

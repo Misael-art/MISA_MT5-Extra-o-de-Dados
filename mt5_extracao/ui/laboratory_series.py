@@ -10,6 +10,27 @@ from mt5_extracao import timeframes
 from mt5_extracao.laboratory import service
 from . import charts
 from .components import DetailsPanel, Notice
+from .theme import Tooltip
+
+PARAMETER_LABELS = {
+    "fast": "Média curta", "slow": "Média longa", "trend": "Média de tendência",
+    "stop_atr": "Stop (ATR)", "trail_atr": "Trailing (ATR)", "entry_period": "Canal de entrada",
+    "exit_period": "Canal de saída", "adx_min": "ADX mínimo", "adx_max": "ADX máximo",
+    "atr_avg": "Média ATR", "bb_period": "Período Bollinger", "bb_k": "Desvio Bollinger",
+    "rsi_period": "Período RSI", "rsi_low": "RSI inferior", "max_bars": "Prazo (barras)",
+    "range_minutes": "Janela (minutos)", "target_mult": "Alvo (multiplicador)",
+    "min_range_atr": "Amplitude mínima (ATR)", "rsi_pullback": "RSI de recuo", "swing_bars": "Swing (barras)",
+    "target_r": "Alvo (R)", "period": "Período", "kc_mult": "Desvio Keltner", "lookback": "Retrospecto",
+    "warmup_bars": "Aquecimento (barras)", "stop_points": "SL (pontos)", "target_points": "TP (pontos; 0 desliga)",
+    "k_period": "Período K", "slowing": "Desaceleração K", "d_period": "Período D", "ema_period": "Período EMA",
+    "upper_level": "Nível superior", "lower_level": "Nível inferior", "stop_offset_points": "Offset SL (pontos)",
+    "entry_band_pct": "Banda entrada (%)", "target_band_pct": "Banda alvo (%; 0 central)",
+    "volume_source": "Volume (0 auto / 1 ticks / 2 real)", "first_period": "Primeira média (barras)",
+    "period_step": "Passo entre médias", "distance_atr": "Afastamento (ATR)",
+    "distance_points": "Afastamento (pontos; 0 ATR)", "trail_line": "Média de gestão (1–10)",
+    "offset_atr": "Offset SL (ATR)", "hilo_period": "Período HiLo", "hilo_offset": "Deslocamento HiLo (0)",
+    "stop_buffer_points": "Folga SL (pontos)",
+}
 
 
 def timeline_bins(channels, max_columns):
@@ -95,7 +116,9 @@ class AnalysisChart:
         popup.title(self.title + " · Laboratório")
         popup.transient(self.frame.winfo_toplevel())
         x, y, width, height = monitor_geometry(self.frame.winfo_toplevel())
-        popup.geometry(f"{width}x{max(300, height - 50)}{x:+d}{y:+d}")
+        # Tk distingue "-300" (distância da borda direita) de "+-300"
+        # (coordenada absoluta negativa num monitor à esquerda/acima).
+        popup.geometry(f"{width}x{max(300, height - 50)}+{x}+{y}")
         popup.protocol("WM_DELETE_WINDOW", self.restore)
         popup.bind("<Escape>", lambda _: self.restore())
         ttk.Button(popup, text="↙ Restaurar região", command=self.restore).pack(anchor="e", padx=8, pady=4)
@@ -198,7 +221,11 @@ class SeriesLaboratoryPanel:
         self.strategy_box.pack(fill=tk.X)
         self.strategy_box.bind("<<ComboboxSelected>>", self._strategy_changed)
         self.params = tk.StringVar(value=json.dumps(service.get_strategy("ema_atr").params))
-        ttk.Entry(strategy, textvariable=self.params, width=35).pack(fill=tk.X, pady=4)
+        self.parameters_frame = ttk.Frame(strategy)
+        self.parameters_frame.pack(fill=tk.X, pady=4)
+        self.parameter_values = {}
+        self._params_error = None
+        self._build_parameters()
         dates = ttk.Frame(strategy)
         dates.pack(fill=tk.X)
         self.start, self.end = tk.StringVar(), tk.StringVar()
@@ -260,7 +287,50 @@ class SeriesLaboratoryPanel:
     def _strategy_changed(self, *_):
         self.params.set("{}" if self.strategy.get() == "Sem estratégia" else
                         json.dumps(service.get_strategy(self.strategy.get()).params))
+        self._build_parameters()
         self._changed()
+
+    def _build_parameters(self):
+        for widget in self.parameters_frame.winfo_children():
+            widget.destroy()
+        self.parameter_values = {}
+        self._params_error = None
+        if self.strategy.get() == "Sem estratégia":
+            return
+        strategy = service.get_strategy(self.strategy.get())
+        specs = service.STRATEGY_PARAMETERS[strategy.key]
+        for index, (key, value) in enumerate(strategy.params.items()):
+            cell = ttk.Frame(self.parameters_frame)
+            cell.grid(row=index // 2, column=index % 2, sticky="ew", padx=(0, 5), pady=2)
+            self.parameters_frame.columnconfigure(index % 2, weight=1)
+            ttk.Label(cell, text=PARAMETER_LABELS.get(key, key), style="Muted.TLabel", wraplength=170).pack(anchor="w")
+            variable = tk.StringVar(value=str(value))
+            self.parameter_values[key] = variable
+            entry = ttk.Entry(cell, textvariable=variable, width=13)
+            entry.pack(fill=tk.X)
+            spec = specs[key]
+            Tooltip(entry, f"Unidade: {spec.unit}. Mínimo {'>' if spec.exclusive_minimum else '≥'}{spec.minimum}; "
+                    f"máximo {spec.maximum if spec.maximum is not None else 'conforme estratégia'}.", self.theme)
+            variable.trace_add("write", self._parameters_edited)
+
+    def _parameters_edited(self, *_):
+        specs = service.STRATEGY_PARAMETERS[self.strategy.get()]
+        values = {}
+        self._params_error = None
+        for key, variable in self.parameter_values.items():
+            try:
+                text = variable.get().strip().replace(",", ".")
+                value = int(text) if specs[key].kind == "int" else float(text)
+                if not specs[key].accepts(value):
+                    raise ValueError
+                values[key] = value
+            except (ValueError, OverflowError):
+                self._params_error = f"Revise {PARAMETER_LABELS.get(key, key)}: valor fora do tipo ou intervalo permitido."
+                break
+        if self._params_error is None:
+            self.params.set(json.dumps(values))
+        else:
+            self._changed()
 
     def reload(self):
         def done(items, error):
@@ -276,7 +346,8 @@ class SeriesLaboratoryPanel:
                 self.symbol.set(symbols[0] if symbols else "")
             self._symbol_changed()
             if not symbols:
-                self.status.configure(text="Base sem séries de barras. Extraia dados pela área de dados antes de analisar.")
+                self.status.configure(text="Base sem séries compatíveis com esta captura OHLCV. "
+                    "Confira inventário/Analytics antes de extrair mais dados.")
         self.ui.run_bg(lambda: service.sources(self.ui.app.db_manager), done)
 
     def _symbol_changed(self, *_):
@@ -293,6 +364,8 @@ class SeriesLaboratoryPanel:
     def analyze(self):
         from mt5_extracao.automation.protocol import loads
         try:
+            if self._params_error:
+                raise ValueError(self._params_error)
             params = loads(self.params.get())
             if not isinstance(params, dict):
                 raise ValueError("Parâmetros exigem objeto JSON.")
@@ -302,6 +375,10 @@ class SeriesLaboratoryPanel:
             strategy = None if self.strategy.get() == "Sem estratégia" else self.strategy.get()
             if not symbol or not tfs:
                 raise ValueError("Escolha ativo e pelo menos um timeframe da base.")
+            if not feature_ids and strategy is None:
+                raise ValueError("Escolha indicadores ou uma estratégia para analisar.")
+            if strategy is not None:
+                service.base_composition(strategy, symbol=symbol, timeframe=tfs[0], params=params)
             if (len(feature_ids) + bool(strategy)) * len(tfs) > service.MAX_CHANNELS:
                 raise ValueError("Máximo de 32 canais; reduza indicadores ou TFs para este recorte.")
         except (ValueError, AttributeError) as error:
@@ -389,6 +466,13 @@ class SeriesLaboratoryPanel:
     def redraw(self):
         if not self.frame.winfo_exists():
             return
+        colors = self.theme.colors
+        self.canvas.configure(background=colors["page"])
+        for widget in (self.tf_list, self.feature_list):
+            widget.configure(background=colors["field"], foreground=colors["ink"],
+                selectbackground=colors["select"], selectforeground=colors["ink"],
+                highlightbackground=colors["border"], highlightthickness=1, borderwidth=0,
+                font=self.theme.font, activestyle="none")
         for panel in self.panels.values():
             panel.redraw()
 

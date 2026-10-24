@@ -8,6 +8,8 @@ explicitamente demonstrativa, e das análises do livro de operações.
 ## Visões e percurso
 
 1. Atualizar fontes; escolher ativo, TFs, janela, estratégia/parâmetros e indicadores.
+   Parâmetros têm campos numéricos rotulados, limites do registry e aceitam vírgula
+   decimal; o contrato da estratégia é validado antes da captura.
    Os TFs seguem duração crescente. Ausência de M5, por exemplo, não cria M5 a
    partir de M1 silenciosamente. A frente de dados mantém a derivação/coleta.
 2. **Congelar e analisar** cria revisões pelo store de snapshots existente e
@@ -64,6 +66,14 @@ Os IDs vêm da resposta de `freeze`. `catalog` não abre banco, Tk ou MT5.
 paralela. `analyze` reabre os manifests e não altera fontes. `--strategy-only`
 dispensa indicadores; sem `--feature`, usa cinco definições padrão do catálogo.
 `--out` e a exportação da UI recusam sobrescrever arquivos existentes.
+
+O escopo de fontes desta visão é `DatabaseManager.data_inventory` com TFs nativos
+do enum, consumidos por `datasets.capture`. Barras derivadas de intervalos
+arbitrários (por exemplo M7/M9), sessões e fatos materializados com disponibilidade
+real continuam no Analytics/BD18a; não são convertidos em tabela legada nem
+misturados a esta reconstrução nominal. A ligação gráfica desses leitores é
+um próximo contrato com a frente de dados. “Sem série compatível” nesta visão
+não significa que a base inteira esteja vazia.
 
 ```python
 from mt5_extracao.laboratory import analyze, capture_selection, catalog
