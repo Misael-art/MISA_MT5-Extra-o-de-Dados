@@ -105,7 +105,7 @@ confira barras em chart.list e o PNG. Com a sessão visível pronta, envie `sess
 | `chart.select` | `chart` | Traz o gráfico próprio para frente |
 | `chart.close` | `chart` | Fecha somente auxiliar próprio; principal usa session.stop |
 | `chart.style` | `style=light|dark|light_gray`, `chart?` | Estilo nomeado; principal requer API de apresentação do Expert |
-| `chart.snapshot` | `chart?`, `width?`, `height?` | PNG no sandbox próprio, ACK após observar o arquivo |
+| `chart.snapshot` | `chart?`, `width?`, `height?` | PNG no sandbox próprio → canal comum UUID → captures da sessão, com ACK |
 | `indicator.add` | `kind`, `period?`, `mean?`, `deviation?`, `chart?` | Adiciona, aguarda cálculo/nome final e devolve ID próprio para remoção |
 | `indicator.remove` | `indicator`, `chart?` | Remove somente indicador criado pelo controller, com identidade inequívoca |
 | `panel.set` | `field`, `value` | Atribui preferência visual idempotente pelo renderizador existente |
@@ -125,6 +125,17 @@ conserva esses recursos até encerrar a instância privada. O limite inclui recu
 do MT5 e impede retenção ilimitada; retomar libera recursos pelo Session existente.
 SMA/EMA ficam sobre os candles; ATR/RSI/ADX nativos usam subjanela. SuperATR exige
 asset presente na closure revisada; não se procura binário arbitrário por nome.
+O recibo inclui `parameters` lidos por IndicatorParameters no terminal, `inputs_verified`
+e `parameters_status`. No PLAY, SuperATR exige que os31 valores matemáticos lidos
+coincidam com os solicitados. No Tester ensaiado, IndicatorParameters retornou
+indisponível: permite somente a apresentação, com `inputs_verified=false` e
+`parameters_status=unavailable_in_tester`, sem afirmar leitura nativa desses inputs.
+Isso não altera o recibo carregado obrigatório do **robô** em PresetExecution,
+nem qualifica resultados financeiros ou calibração pelo simples gráfico. A chamada
+parametrizada de SuperATR inclui os slots das onze declarações input group do
+asset1.02, além dos31 valores; isto não altera o contrato/serialização de inputs de EAs.
+A ordem foi investigada a partir de [reprodução no fórum MQL5](https://www.mql5.com/en/forum/461183)
+e deve ser conferida no readback nativo, sem inferir que compilar prova binding.
 Indicadores de terceiros e outros indicadores do catálogo de Estudo ainda não estão
 expostos neste protocolo; são extensão posterior, não fallback por mouse.
 
@@ -142,6 +153,15 @@ financeiros. Sem API explícita do Expert, o SDK recusa mudar o principal.
 
 O canal opcional é incluído somente com `chart_control=True` (SDK de workflows o
 solicita). Sessões legadas permanecem sem esse canal. Não há `OrderSend` nele.
+PLAY usa captura nativa do chart, copiada ao canal comum UUID e preservada em
+captures da sessão. Em REPLAY o backend padrão é `owned_window`: captura pela API
+do SO somente a janela de metatester comprovada por PID/prefixo da sessão, incluindo
+controles nativos, sem cliques/teclas. Retorna resolução REAL; omita width/height e
+chart (ou use0). `backend=native` no Tester é recusado: no build ensaiado o MT5
+aceitou ChartScreenShot sem produzir PNG. O recibo identifica explicitamente o
+backend; não se chama captura de janela de captura só do chart. X11 usa ImageMagick
+(import), já usado pelo diagnóstico; Windows usa PrintWindow e tem aceite físico
+pendente. Janela ambígua/alterada ou ferramenta ausente recusam com erro estruturado.
 Pedidos são TSV atômicos e respostas JSON em `Common/Files`, separados por UUID da
 sessão. Há um pedido pendente por sessão. Timeout não significa recusa: bloqueia
 novo comando até ACK tardio conciliado por `chart.receipt` ou recuperação explícita.
@@ -224,3 +244,21 @@ expansão tipada dos demais estudos/indicadores e controle de reprodução do Te
 O algoritmo/aceite financeiro desses trabalhos não é inferido pela disponibilidade
 CLI. Windows físico, concorrência entre instâncias, lifecycle completo de todos os
 Experts e regressão gráfica com vários monitores reais permanecem qualificações próprias.
+
+## Verificações e pendência herdada
+
+AIA-01 foi exercitado pelo CLI real no Linux/Wine: PLAY DEMO (40 pedidos,
+incluindo recusas esperadas) e REPLAY (15), PNG1280×800, sem ordens. SuperATR
+20/SMA/1..10 e14/EMA/.5..5 tiveram31 valores matemáticos conferidos no readback43
+no PLAY; o Tester declarou sua indisponibilidade de introspecção. Testes99
+(dirigidos finais) e237 (regressão, sobrepostos); framework136/checker166,
+MetaEditor0 erros/0 avisos, doctor20/1opcional/0. [Evidência por hash](evidencias/AIA_01_SDK_AGENTES_20261023.json).
+
+A execução ampla inicial teve2893pass/251skip/3timeouts60s. Na rechecagem,
+parity passou; persistiram `tests/test_robots_backtest.py::test_newest_run_first_and_period_start`
+e `tests/test_robots_runner.py::test_real_python_backtests_are_recorded`.
+O primeiro timeout foi reproduzido no Git congelado da base1d5ce229, anterior ao
+AIA-01. Stacks passam por snapshot/decodificação Pandas e pelo runner/monitor;
+a causa de desempenho não foi fechada. Não afrouxar testes nem promover isso a
+suíte global aprovada. Nova suíte/CI da ponta e correção de desempenho permanecem
+verificações próprias; o delta SDK não altera esses produtores.

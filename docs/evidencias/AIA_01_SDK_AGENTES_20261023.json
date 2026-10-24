@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "task": "AIA-01",
+  "date": "2026-10-23",
+  "base": "1d5ce2296dfb48e884c0175dcca05aa7d4801885",
+  "base_parents": [
+    "fe92ed13a731a39dc03a69ba31f7047b3f6f8c6f",
+    "60e8870a91bace69c712e00213aaa46522ba2ced"
+  ],
+  "initial_implementation": "48722c3f399d614dae5108de575e4306f07b0912",
+  "companion": {
+    "repository": "Misael-art/projeto-indicadores-mt5",
+    "commit": "b730ed4a8df74f5f20eb6e289798d0232c370994",
+    "pr": 75,
+    "manual_version": "7.11",
+    "manual_fingerprint": "45e31481977d09f1"
+  },
+  "app_pr": 207,
+  "hashes": {
+    "mt5_extracao/cli.py": "e8080d29a5d0763cb2a5097537d5ff1325df2f311066a15828cd09854c8c7805",
+    "mt5_extracao/sdk.py": "6e98232d0a84aa95b8506a6da61ceacc59ec441830a06941fc5dfe75fad8aac3",
+    "mt5_extracao/robots/sessions.py": "f25db1cad0e789a34297fe026b9c3afce676580e5d46ff09e1a0b949f04ae3e5",
+    "mt5_extracao/robots/manual_panel.py": "a520cdc176791fe7ff4ed4dd4bb6db5e4395344ff965997190f2816a88579370",
+    "mt5_extracao/presets/__init__.py": "261ba5909a9b472976e4b3d470059553db66eb6caa4924d182d7f78e2de9d216",
+    "mt5_extracao/ui/robot_controls.py": "cdd867fb340705305b6224ae72e6404dcf205c38a31c007fb62dbe2f19d19447",
+    "pyproject.toml": "4c38924c803b1dc7ed149380538c2f100f254a490dd3616b762c2156d4719854",
+    "mt5_extracao/automation/__init__.py": "8c8020be7fadb4ac8d7b7c5488700971529424b3b29bfce70cf4b1e40cde4a32",
+    "mt5_extracao/automation/catalog.py": "c165efc35f3d9e4241122fbb3ddc840973cd11e285584dd06b30c983b8942b8e",
+    "mt5_extracao/automation/charts.py": "a56213f2bf872f93c81cd9650345c8ea80584cc3500eb6f507de6c1594cf3eb8",
+    "mt5_extracao/automation/commands.py": "c8abcc23131ee06f8ea9b96eb297af91cc4c26ea83df4256d1c2d377605eee97",
+    "mt5_extracao/automation/native_charts.mqh": "ce4d030bb6fa527bcb2741f72876406ff1c6fe550a5b4dea3b092f548d9bcfc7",
+    "mt5_extracao/automation/protocol.py": "6e910acf350a5da75d04a41304bfe022f1eb1a11a3e9dd6c435720552f4abb92",
+    "mt5_extracao/automation/service.py": "1530dfb210100cd4871261950925a9313d2c8e9f2a53ec45038e48430265fc71",
+    "mt5_extracao/automation/sessions.py": "756ddc8a8d196182d6f5ca65f713315162c72d444c61d0d1bfbcc39f21aa44b2",
+    "mt5_extracao/automation/snapshots.py": "552b72d084c0151825e37ad8292832bc6e3901e6173d352f8f1ac1f32f82d08b",
+    "tests/test_automation.py": "a60677aac841ca0e9c5c584d84a5445f74d9afde7f38df7ab19d5551acf6c51c",
+    "tests/test_automation_charts.py": "51a1540e9e0380ac88cb5b4f64b00fca4b0939afe4a20c1676118a2c1626d9f9",
+    "tests/test_automation_presets.py": "317b1a965c1cca532a481d340b5413c88f584e8e925eb35aed8bf88b6055531a",
+    "tests/test_automation_sessions.py": "250dccb2e002a67ba48ad57fb551a1ac90aaf92e46a9e9bb4711167446ee6e13",
+    "tests/test_automation_snapshots.py": "1d37dc084a1aba2933ac14f2727845be7ef74f23f92edb815bb5d71b0b4b218b",
+    "tests/test_sdk_api.py": "9bd6d3437335642886b94ce594d06cd5a6adc93e24af04c22c64dd66a2117bcc"
+  },
+  "validation": {
+    "baseline_focused_passed": 92,
+    "regression_passed": 237,
+    "latest_directed_passed": 99,
+    "selections_overlap": true,
+    "framework_baseline_passed": 134,
+    "framework_final_passed": 136,
+    "checker_files": 166,
+    "compilation": "0 errors, 0 warnings; MetaEditor/Wine, private sessions",
+    "doctor": {
+      "ok": 20,
+      "optional_warning": 1,
+      "failed": 0
+    },
+    "wheel": {
+      "native_resource_included": true,
+      "installed_import_tested": true,
+      "environment_not_installed": true
+    },
+    "broad_diagnostic": {
+      "passed": 2893,
+      "skipped": 251,
+      "failed": 3,
+      "failures": "timeouts60s; initial run started before edits and continued during work, not frozen head"
+    },
+    "focused_timeout_recheck": {
+      "passed": 1,
+      "failed": 2
+    },
+    "frozen_base_reproduction": {
+      "commit": "1d5ce2296dfb48e884c0175dcca05aa7d4801885",
+      "test": "tests/test_robots_backtest.py::test_newest_run_first_and_period_start",
+      "result": "same timeout60s before AIA-01"
+    },
+    "global_exact_head_ci": "pending final push"
+  },
+  "native": {
+    "play": {
+      "transport": "actual CLI JSONL",
+      "passed": true,
+      "requests": 40,
+      "account_demo": true,
+      "portfolio_unchanged": true,
+      "orders_sent": false,
+      "monitor": {
+        "width": 1280,
+        "height": 800
+      },
+      "samples": [
+        {
+          "kind": "super_atr_10",
+          "period": 20,
+          "mean": 0,
+          "deviation": 1,
+          "calculated": 3994,
+          "value_available": true,
+          "readback_parameters": 43
+        },
+        {
+          "kind": "super_atr_10",
+          "period": 14,
+          "mean": 1,
+          "deviation": 0.5,
+          "calculated": 3994,
+          "value_available": true,
+          "readback_parameters": 43
+        },
+        {
+          "kind": "super_atr_10",
+          "period": 14,
+          "mean": 1,
+          "deviation": 0.5,
+          "calculated": 100781,
+          "value_available": true,
+          "readback_parameters": 43
+        },
+        {
+          "kind": "ema",
+          "period": 20,
+          "mean": null,
+          "deviation": null,
+          "calculated": 100781,
+          "value_available": true,
+          "readback_parameters": 4
+        },
+        {
+          "kind": "atr",
+          "period": 14,
+          "mean": null,
+          "deviation": null,
+          "calculated": 100781,
+          "value_available": true,
+          "readback_parameters": 1
+        }
+      ],
+      "foreign_chart_refused": true,
+      "primary_close_refused": true,
+      "trading_field_refused": true,
+      "shutdown": "own session stopped, controller exit0"
+    },
+    "replay": {
+      "transport": "actual CLI JSONL",
+      "passed": true,
+      "requests": 15,
+      "symbol": "EURUSD",
+      "timeframe": "M5",
+      "start": "2026-10-20",
+      "end": "2026-10-21",
+      "capture_backend": "owned_window",
+      "width": 1280,
+      "height": 800,
+      "indicator_values_available": true,
+      "indicator_input_readback": "unavailable_in_tester; inputs_verified=false; display only",
+      "orders_sent": false,
+      "shutdown": "own session stopped, controller exit0"
+    }
+  },
+  "limits": [
+    "No new strategy, indicator mathematics, scheduler, financial executor/cache/journal or data-schema changes in own delta.",
+    "Graphical calls never route manual trading actions. STOP does not liquidate positions.",
+    "Indicator handles retained until private process closes, max64 creation attempts.",
+    "Native ChartScreenShot accepted without PNG in Tester; explicit OS owned-window capture used, no clicks/keys.",
+    "Indicator input groups require slots in native call; actual31 mathematical inputs verified in PLAY; Tester readback unavailable.",
+    "Windows physical, cross-controller ownership/lifecycle/portfolio concurrency, all existing study tools, Tester pause/resume and financial/operational qualification remain separate.",
+    "Global broad performance timeouts reproduced on base remain pending; no tests skipped/disabled to pass."
+  ],
+  "cleanup_initial": {
+    "profiles_removed": 7,
+    "logical_bytes": 6385833490,
+    "evidence_preserved": true,
+    "foreign_processes_signaled": 0
+  }
+}

@@ -27,6 +27,11 @@ def run_cli(arguments, *, config_path, db_override=None):
     except (ValueError, TypeError):
         return dict(ok=False, command=arguments[0], exit_code=result.returncode or 1,
                     data={}, messages=[], errors=[result.stderr.strip() or "CLI não devolveu envelope JSON."])
+    # O doctor preserva seu contrato de bootstrap: lista de checks, sem envelope.
+    if arguments[0] == "doctor" and isinstance(payload, list):
+        return dict(ok=result.returncode == 0, command="doctor", exit_code=result.returncode,
+                    data=dict(checks=payload, source_format="bootstrap.checks"), messages=[],
+                    errors=[] if result.returncode == 0 else ["Doctor encontrou falhas; consulte data.checks."])
     if not isinstance(payload, dict) or payload.get("exit_code") != result.returncode:
         raise RuntimeError("Saída do CLI diverge do código de saída; preserve o recibo.")
     return payload
@@ -72,7 +77,7 @@ class Workflow:
                 dict(method="chart.select", required=["session", "chart"]),
                 dict(method="chart.receipt", required=["session"], description="recibo tardio sem repetir efeito"),
                 dict(method="chart.style", required=["session", "style"], optional=["chart"], styles=["light", "dark", "light_gray"]),
-                dict(method="chart.snapshot", required=["session"], optional=["chart", "width", "height"], description="PNG observado no sandbox, não clique/captura do desktop"),
+                dict(method="chart.snapshot", required=["session"], optional=["chart", "width", "height", "backend"], backends=["native", "owned_window"], description="PLAY: native; REPLAY: janela própria pela API do SO, com resolução real"),
                 dict(method="indicator.add", required=["session", "kind"], optional=["chart", "period", "mean", "deviation"], kinds=["sma", "ema", "atr", "rsi", "adx", "super_atr_10"]),
                 dict(method="indicator.remove", required=["session", "indicator"], optional=["chart"]),
                 dict(method="panel.set", required=["session", "field", "value"], fields=["theme", "timer", "probability", "gradient", "watermark", "clean", "bars"]),
@@ -141,7 +146,14 @@ class Workflow:
             job = self.controller.job(session)
             if not job.visible or job.mode == "backtest":
                 raise ValueError("Sessão não visual: reabra com visible=true; REPLAY sempre exibe.")
-            timeout = params.pop("timeout", 15)
+            timeout = protocol.number(params.pop("timeout", 15), "timeout", .1, 120)
+            if method == "chart.snapshot":
+                backend = params.pop("backend", "owned_window" if job.mode == "replay" else "native")
+                if backend == "owned_window":
+                    from .snapshots import capture
+                    return capture(job, params, timeout=timeout)
+                if backend != "native" or job.mode == "replay":
+                    raise ValueError("Backend de captura indisponível; REPLAY usa owned_window, sem width/height.")
             return self.controller.channels[session].request(method, params, timeout)
         if method.startswith("presets."):
             return self._preset(method[8:], params)

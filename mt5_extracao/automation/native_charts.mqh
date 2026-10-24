@@ -3,7 +3,8 @@
 // MT5 pode devolver aliases de handles do próprio EA. Não invalidar esses IDs
 // com IndicatorRelease: até64 criações, liberadas ao encerrar a instância privada.
 long MT5X_AgentCharts[];
-int MT5X_AgentHandles[],MT5X_AgentWindows[],MT5X_AgentBuffers[];
+int MT5X_AgentHandles[],MT5X_AgentWindows[],MT5X_AgentBuffers[],MT5X_AgentPeriods[],MT5X_AgentMeans[];
+double MT5X_AgentDeviations[];
 long MT5X_AgentIndicatorCharts[];
 string MT5X_AgentNames[];
 string MT5X_AgentLast="",MT5X_AgentReply="",MT5X_AgentPending="",MT5X_AgentImage="";
@@ -39,6 +40,43 @@ void MT5X_AgentRespond(const string id,const bool ok,const string data,const str
    if(!FileMove(base+".response.tmp",FILE_COMMON,base+".response.json",FILE_COMMON|FILE_REWRITE))return;
    MT5X_AgentLast=id;MT5X_AgentReply=body;
    if(!preserve)FileDelete(base+"."+id+".working",FILE_COMMON);
+}
+string MT5X_AgentParameters(const int handle)
+{
+   ENUM_INDICATOR type;MqlParam params[];int count=IndicatorParameters(handle,type,params);
+   if(count<0)return "null";
+   string data="[";
+   for(int i=0;i<count;i++)
+   {
+      if(i>0)data+=",";
+      if(params[i].type==TYPE_STRING)data+="{\"type\":\"string\",\"value\":"+MT5X_AgentQuote(params[i].string_value)+"}";
+      else if(params[i].type==TYPE_DOUBLE || params[i].type==TYPE_FLOAT)
+         data+="{\"type\":\"number\",\"value\":"+(MathIsValidNumber(params[i].double_value)?DoubleToString(params[i].double_value,16):"null")+"}";
+      else data+="{\"type\":\"integer\",\"value\":"+IntegerToString(params[i].integer_value)+"}";
+   }
+   return data+"]";
+}
+int MT5X_AgentSuperInputs(const int at)
+{
+   ENUM_INDICATOR type;MqlParam params[];int count=IndicatorParameters(MT5X_AgentHandles[at],type,params);
+   if(count<0)return -1;
+   int numbers=0,integers=0;
+   for(int i=0;i<count;i++)
+   {
+      if(params[i].type==TYPE_STRING)continue; // nome do asset e headings, não são parâmetros matemáticos
+      if(params[i].type==TYPE_DOUBLE || params[i].type==TYPE_FLOAT)
+      {
+         if(numbers>=10 || params[i].double_value!=(numbers+1)*MT5X_AgentDeviations[at])return false;
+         numbers++;
+      }
+      else
+      {
+         long expected=integers==20?1:(integers%2==0?MT5X_AgentPeriods[at]:MT5X_AgentMeans[at]);
+         if(integers>20 || params[i].integer_value!=expected)return false;
+         integers++;
+      }
+   }
+   return numbers==10 && integers==21;
 }
 void MT5X_AgentProgress(const string id,const string data)
 {
@@ -101,12 +139,15 @@ void MT5X_AgentPoll()
       if(MT5X_AgentPendingIndicator>=0)
       {
          int at=MT5X_AgentPendingIndicator,handle=MT5X_AgentHandles[at];double trigger[1];
-         // A leitura inicia também a preparação assíncrona da série/cálculo preguiçoso.
+         long chart=MT5X_AgentIndicatorCharts[at];ENUM_TIMEFRAMES tf=ChartPeriod(chart);MqlRates history[];
+         // ChartOpen não comprova histórico pronto. Solicitar a série real sem fabricar candles.
+         int history_count=CopyRates(ChartSymbol(chart),tf,0,512,history);
          int copied=CopyBuffer(handle,0,1,1,trigger),calculated=BarsCalculated(handle);
          MT5X_AgentProgress(MT5X_AgentPending,"{\"stage\":\"indicator_calculation\",\"calculated\":"+IntegerToString(calculated)+
-            ",\"copied\":"+IntegerToString(copied)+"}");
+            ",\"copied\":"+IntegerToString(copied)+",\"history\":"+IntegerToString(history_count)+
+            ",\"synchronized\":"+(SeriesInfoInteger(ChartSymbol(chart),tf,SERIES_SYNCHRONIZED)?"true":"false")+"}");
          if(calculated<=0)return;
-         long chart=MT5X_AgentIndicatorCharts[at];int window=MT5X_AgentWindows[at],matches=0;string actual="";
+         int window=MT5X_AgentWindows[at],matches=0;string actual="";
          for(int i=0;i<ChartIndicatorsTotal(chart,window);i++)
          {
             string name=ChartIndicatorName(chart,window,i);int other=ChartIndicatorGet(chart,window,name);
@@ -115,17 +156,25 @@ void MT5X_AgentPoll()
          MT5X_AgentProgress(MT5X_AgentPending,"{\"stage\":\"indicator_identity\",\"calculated\":"+IntegerToString(calculated)+
             ",\"matches\":"+IntegerToString(matches)+",\"name\":"+MT5X_AgentQuote(actual)+"}");
          if(matches!=1)return;
+         int binding=MT5X_AgentBuffers[at]==10?MT5X_AgentSuperInputs(at):-1;
+         if(MT5X_AgentBuffers[at]==10 && (binding==0 || (binding<0 && !MQLInfoInteger(MQL_TESTER))))
+         {
+            MT5X_AgentRespond(MT5X_AgentPending,false,"{\"parameters\":"+MT5X_AgentParameters(handle)+"}","inputs efetivos do SuperATR divergem; apresentação não qualificada");
+            MT5X_AgentPending="";MT5X_AgentPendingIndicator=-1;return;
+         }
          MT5X_AgentNames[at]=actual;bool available=true;double value[1];
          for(int buffer=0;buffer<MT5X_AgentBuffers[at];buffer++)
             if(CopyBuffer(handle,buffer,1,1,value)!=1 || !MathIsValidNumber(value[0]) || value[0]==EMPTY_VALUE)available=false;
          ChartRedraw(chart);
          MT5X_AgentRespond(MT5X_AgentPending,true,"{\"indicator\":"+MT5X_AgentQuote(IntegerToString(at+1))+
-            ",\"name\":"+MT5X_AgentQuote(actual)+",\"window\":"+IntegerToString(window)+",\"calculated\":"+IntegerToString(calculated)+",\"value_available\":"+(available?"true":"false")+"}");
+            ",\"name\":"+MT5X_AgentQuote(actual)+",\"window\":"+IntegerToString(window)+",\"calculated\":"+IntegerToString(calculated)+",\"value_available\":"+(available?"true":"false")+",\"inputs_verified\":"+(binding==1?"true":"false")+",\"parameters_status\":"+MT5X_AgentQuote(binding==1?"verified":MQLInfoInteger(MQL_TESTER)?"unavailable_in_tester":"not_checked_for_builtin")+",\"parameters\":"+MT5X_AgentParameters(handle)+"}");
          MT5X_AgentPending="";MT5X_AgentPendingIndicator=-1;return;
       }
       if(FileIsExist(MT5X_AgentImage))
       {
-         MT5X_AgentRespond(MT5X_AgentPending,true,"{\"file\":"+MT5X_AgentQuote(MT5X_AgentImage)+"}");
+         string folder="mt5x_control_@SESSION@";FolderCreate(folder,FILE_COMMON);
+         bool copied=FileCopy(MT5X_AgentImage,0,folder+"\\"+MT5X_AgentImage,FILE_COMMON|FILE_REWRITE);
+         MT5X_AgentRespond(MT5X_AgentPending,copied,"{\"file\":"+MT5X_AgentQuote(MT5X_AgentImage)+"}",copied?"":"cópia da captura ao canal comum recusada");
          MT5X_AgentPending="";MT5X_AgentImage="";
       }
       return;
@@ -229,15 +278,18 @@ void MT5X_AgentPoll()
             handle=iCustom(symbol,tf,"HADOUKEN\\Study\\HDK_SuperATR"); // mesmo percurso do catálogo de Estudo
          else
          {
-            MqlParam inputs[32];inputs[0].type=TYPE_STRING;inputs[0].string_value="HADOUKEN\\Study\\HDK_SuperATR";
+            // Em indicadores, input group também ocupa slot na chamada do MT5.
+            MqlParam inputs[43]={};inputs[0].type=TYPE_STRING;inputs[0].string_value="HADOUKEN\\Study\\HDK_SuperATR";
             for(int i=0;i<10;i++)
             {
-               int p=1+3*i;inputs[p].type=TYPE_DOUBLE;inputs[p].double_value=(i+1)*deviation;
-               inputs[p+1].type=TYPE_INT;inputs[p+1].integer_value=period;
-               inputs[p+2].type=TYPE_INT;inputs[p+2].integer_value=mean;
+               int p=1+4*i;inputs[p].type=TYPE_STRING;inputs[p].string_value="Super ATR "+IntegerToString(i+1);
+               inputs[p+1].type=TYPE_DOUBLE;inputs[p+1].double_value=(i+1)*deviation;
+               inputs[p+2].type=TYPE_INT;inputs[p+2].integer_value=period;
+               inputs[p+3].type=TYPE_INT;inputs[p+3].integer_value=mean;
             }
-            inputs[31].type=TYPE_INT;inputs[31].integer_value=1;
-            handle=IndicatorCreate(symbol,tf,IND_CUSTOM,32,inputs);
+            inputs[41].type=TYPE_STRING;inputs[41].string_value="Inicialização da janela";
+            inputs[42].type=TYPE_INT;inputs[42].integer_value=1;
+            handle=IndicatorCreate(symbol,tf,IND_CUSTOM,43,inputs);
          }
       }
 #endif
@@ -246,7 +298,9 @@ void MT5X_AgentPoll()
       {MT5X_AgentRespond(id,false,"{}","indicador/ativo ausente ou ChartIndicatorAdd recusado");return;}
       // IDs não são reutilizados: referência antiga nunca remove indicador posterior.
       int at=ArraySize(MT5X_AgentHandles);ArrayResize(MT5X_AgentHandles,at+1);ArrayResize(MT5X_AgentWindows,at+1);ArrayResize(MT5X_AgentBuffers,at+1);
+      ArrayResize(MT5X_AgentPeriods,at+1);ArrayResize(MT5X_AgentMeans,at+1);ArrayResize(MT5X_AgentDeviations,at+1);
       ArrayResize(MT5X_AgentIndicatorCharts,at+1);ArrayResize(MT5X_AgentNames,at+1);
+      MT5X_AgentPeriods[at]=period;MT5X_AgentMeans[at]=mean;MT5X_AgentDeviations[at]=deviation;
       MT5X_AgentBuffers[at]=v[3]=="super_atr_10"?10:1;
       MT5X_AgentHandles[at]=handle;MT5X_AgentWindows[at]=window;MT5X_AgentIndicatorCharts[at]=chart;
       MT5X_AgentNames[at]="";MT5X_AgentPending=id;MT5X_AgentPendingIndicator=at;ChartRedraw(chart);return;

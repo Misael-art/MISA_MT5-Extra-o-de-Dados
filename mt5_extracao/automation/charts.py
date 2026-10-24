@@ -1,7 +1,7 @@
 """Canal de apresentação da sessão própria; nenhuma operação de negociação."""
-import json
 from pathlib import Path
 import threading
+import shutil
 import time
 import uuid
 
@@ -107,12 +107,23 @@ class Channel:
             expected = "mt5xa_" + self.last_id + ".png"
             if name != expected:
                 raise RuntimeError("Nome da captura diverge do pedido próprio.")
-            path = Path(self.session.directory) / "MQL5/Files" / name
-            if not path.resolve().is_relative_to(Path(self.session.directory).resolve()) or not path.is_file():
+            from ..robots import mt5_tools
+            common = mt5_tools.common_files_dir(self.session.config)
+            if common is None:
+                raise RuntimeError("Pasta comum indisponível para a captura.")
+            folder = common / ("mt5x_control_" + self.session.id)
+            source = folder / name
+            if not folder.resolve().is_relative_to(common.resolve()) or not source.resolve().is_relative_to(folder.resolve()) or not source.is_file():
                 raise RuntimeError("Captura confirmada sem arquivo próprio; preserve os artefatos.")
-            with path.open("rb") as handle:
+            with source.open("rb") as handle:
                 if handle.read(8) != b"\x89PNG\r\n\x1a\n":
                     raise RuntimeError("Captura confirmada não contém PNG válido.")
+            directory = Path(self.session.directory) / "captures"
+            if not directory.resolve().is_relative_to(Path(self.session.directory).resolve()):
+                raise RuntimeError("Pasta de captura fora da sessão.")
+            directory.mkdir(exist_ok=True)
+            path = directory / name
+            shutil.copyfile(source, path)
             data["path"] = str(path)
         return data
 

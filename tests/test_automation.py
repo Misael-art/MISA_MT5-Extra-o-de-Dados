@@ -147,3 +147,11 @@ def test_wait_failure_stops_manifest_without_running_next_effect(monkeypatch,dat
     monkeypatch.setattr(w.controller,"wait",lambda p:data)
     result=w.run(dict(version=1,steps=[dict(id="a",method="session.wait",params=dict(session="abc")),dict(id="b",method="unknown")]))
     assert not result["ok"] and result["stopped_at"]=="a" and result["steps"][0]["data"]==data
+
+
+@pytest.mark.parametrize("code",[0,1])
+def test_cli_doctor_preserves_bootstrap_check_list_in_normalized_receipt(monkeypatch,code):
+    checks=[dict(name="probe",status="OK" if code==0 else "FAIL")]
+    monkeypatch.setattr(subprocess,"run",lambda *a,**k:SimpleNamespace(returncode=code,stdout=json.dumps(checks),stderr=""))
+    result=run_cli(["doctor"],config_path="cfg")
+    assert result["ok"]==(code==0) and result["exit_code"]==code and result["data"]["checks"]==checks

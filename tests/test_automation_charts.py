@@ -55,7 +55,7 @@ def test_success_exact_tsv_and_snapshot_ack(channel):
     ch,root=channel
     def snapshot(cells):
         assert cells[1:5]==["chart.snapshot","0","1280","800"]
-        p=ch.session.directory/"MQL5/Files"/("mt5xa_"+cells[0]+".png");p.parent.mkdir(parents=True)
+        p=root/("mt5x_control_"+ch.session.id)/("mt5xa_"+cells[0]+".png");p.parent.mkdir(parents=True)
         p.write_bytes(b"\x89PNG\r\n\x1a\nrest")
         return dict(data=dict(file=p.name))
     thread=threading.Thread(target=respond,args=(ch,root,snapshot));thread.start()

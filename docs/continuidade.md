@@ -23,6 +23,16 @@ sem Expert pronto: agora o ACK de prontidão distingue as fases. Uma preparaçã
 mudou de monitor e foi recusada pelo Runtime existente; a QA usa anchor explícito.
 Não converter esses casos em sucesso nem repetir efeitos sem recibo.
 
+[PR207](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/207), base de revisão
+`codex/ai-workflows-base` publicada. [Evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json):
+CLI real PLAY e REPLAY DEMO sem ordens; dez curvas/43 parâmetros lidos no PLAY,
+configuração14/EMA/.5 também em M5/M15, EMA/ATR, capturas e recusas de escopo.
+REPLAY usa captura declarada da janela própria pelo SO (1280×800), sem cliques;
+IndicatorParameters indisponível nesse Tester é reportado sem qualificar inputs.
+As três falhas globais iniciais foram timeouts; um foi reproduzido no Git da base
+anterior à implementação. Não apagar/afrouxar testes nem alterar o pilar financeiro
+para ocultar esses resultados. CI/performance global continuam gates próprios.
+
 Foco atual é SDK/CLI. Indicador estratégico, sua série/rotina de armazenamento,
 amadurecimento OMNI e estratégia operacional são próximos contratos separados,
 ainda pendentes. Também pendentes: demais ferramentas de Estudo/terceiros e controle
