@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import threading
 
 from . import PROTOCOL_VERSION
 from . import charts, protocol
@@ -52,6 +53,7 @@ class Workflow:
         self.config_path, self.db_override = config_path, db_override
         self.controller = SessionController(db, config, read_account or _reader)
         self.receipts = {}
+        self._lock = threading.RLock()
 
     def __enter__(self):
         return self
@@ -97,6 +99,11 @@ class Workflow:
                         "Método gráfico incompatível é recusado; não é substituído por automação de mouse."])
 
     def call(self, request):
+        # Mesmo contrato serial do transporte JSONL, inclusive no SDK com chamadores concorrentes.
+        with self._lock:
+            return self._call(request)
+
+    def _call(self, request):
         protocol.fields(request, ("id", "method"), ("params",))
         key = protocol.text(request["id"], "id", 80)
         method = protocol.text(request["method"], "method", 80)
@@ -240,4 +247,5 @@ class Workflow:
         return dict(ok=True, steps=receipts)
 
     def close(self):
-        return self.controller.close()
+        with self._lock:
+            return self.controller.close()

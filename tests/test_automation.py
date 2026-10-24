@@ -155,3 +155,20 @@ def test_cli_doctor_preserves_bootstrap_check_list_in_normalized_receipt(monkeyp
     monkeypatch.setattr(subprocess,"run",lambda *a,**k:SimpleNamespace(returncode=code,stdout=json.dumps(checks),stderr=""))
     result=run_cli(["doctor"],config_path="cfg")
     assert result["ok"]==(code==0) and result["exit_code"]==code and result["data"]["checks"]==checks
+
+
+def test_concurrent_sdk_duplicate_id_dispatches_effect_only_once(monkeypatch):
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    w=open_workflow(None,{})
+    seen=[];barrier=threading.Barrier(2)
+    def dispatch(method,params):
+        seen.append(method);time.sleep(.02);return {"session":"one"}
+    monkeypatch.setattr(w,"_dispatch",dispatch)
+    request=dict(id="same",method="open")
+    def caller():barrier.wait();return w.call(request)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first=pool.submit(caller);second=pool.submit(caller)
+        assert first.result()==second.result()
+    assert seen==["open"]

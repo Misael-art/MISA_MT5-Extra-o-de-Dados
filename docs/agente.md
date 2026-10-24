@@ -37,7 +37,8 @@ display; consulta, pesquisa e backtest Python não precisam de desktop.
 Recibo: `{id,ok,data,errors,error_code?}`. Um ID repetido com conteúdo igual na mesma
 instância devolve o recibo; para uma nova leitura/poll use ID novo; conteúdo diferente com o mesmo ID é recusado. IDs não
 substituem os registros duráveis de experimentos/execução. Não há deduplicação geral
-após reinício do controller. Nova tentativa deliberada usa ID novo e, quando aplicável,
+após reinício do controller. Chamadas de uma mesma instância Python são
+serializadas, como JSONL; use sessions/consulta de status para operações em segundo plano. Nova tentativa deliberada usa ID novo e, quando aplicável,
 o journal de experimentos existente.
 
 ## PLAY, REPLAY e vários robôs
@@ -250,7 +251,7 @@ Experts e regressão gráfica com vários monitores reais permanecem qualificaç
 AIA-01 foi exercitado pelo CLI real no Linux/Wine: PLAY DEMO (40 pedidos,
 incluindo recusas esperadas) e REPLAY (15), PNG1280×800, sem ordens. SuperATR
 20/SMA/1..10 e14/EMA/.5..5 tiveram31 valores matemáticos conferidos no readback43
-no PLAY; o Tester declarou sua indisponibilidade de introspecção. Testes99
+no PLAY; o Tester declarou sua indisponibilidade de introspecção. Testes100
 (dirigidos finais) e237 (regressão, sobrepostos); framework136/checker166,
 MetaEditor0 erros/0 avisos, doctor20/1opcional/0. [Evidência por hash](evidencias/AIA_01_SDK_AGENTES_20261023.json).
 

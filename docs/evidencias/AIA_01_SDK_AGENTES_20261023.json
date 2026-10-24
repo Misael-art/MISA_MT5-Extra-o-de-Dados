@@ -30,10 +30,10 @@
     "mt5_extracao/automation/commands.py": "c8abcc23131ee06f8ea9b96eb297af91cc4c26ea83df4256d1c2d377605eee97",
     "mt5_extracao/automation/native_charts.mqh": "ce4d030bb6fa527bcb2741f72876406ff1c6fe550a5b4dea3b092f548d9bcfc7",
     "mt5_extracao/automation/protocol.py": "6e910acf350a5da75d04a41304bfe022f1eb1a11a3e9dd6c435720552f4abb92",
-    "mt5_extracao/automation/service.py": "1530dfb210100cd4871261950925a9313d2c8e9f2a53ec45038e48430265fc71",
+    "mt5_extracao/automation/service.py": "0839ff422bc59ecd77fff6257493d2a85a1252c4511169bb0eeb9855088e879b",
     "mt5_extracao/automation/sessions.py": "756ddc8a8d196182d6f5ca65f713315162c72d444c61d0d1bfbcc39f21aa44b2",
     "mt5_extracao/automation/snapshots.py": "552b72d084c0151825e37ad8292832bc6e3901e6173d352f8f1ac1f32f82d08b",
-    "tests/test_automation.py": "a60677aac841ca0e9c5c584d84a5445f74d9afde7f38df7ab19d5551acf6c51c",
+    "tests/test_automation.py": "e7788ce2a17a975c652d7c8faa88b430d039636a55c7458cf9e9d5fccfa5300d",
     "tests/test_automation_charts.py": "51a1540e9e0380ac88cb5b4f64b00fca4b0939afe4a20c1676118a2c1626d9f9",
     "tests/test_automation_presets.py": "317b1a965c1cca532a481d340b5413c88f584e8e925eb35aed8bf88b6055531a",
     "tests/test_automation_sessions.py": "250dccb2e002a67ba48ad57fb551a1ac90aaf92e46a9e9bb4711167446ee6e13",
@@ -43,7 +43,7 @@
   "validation": {
     "baseline_focused_passed": 92,
     "regression_passed": 237,
-    "latest_directed_passed": 99,
+    "latest_directed_passed": 100,
     "selections_overlap": true,
     "framework_baseline_passed": 134,
     "framework_final_passed": 136,
@@ -74,7 +74,8 @@
       "test": "tests/test_robots_backtest.py::test_newest_run_first_and_period_start",
       "result": "same timeout60s before AIA-01"
     },
-    "global_exact_head_ci": "pending final push"
+    "global_exact_head_ci": "pending final push",
+    "concurrent_duplicate_request": "two Python callers, one effect; same serialized contract as JSONL"
   },
   "native": {
     "play": {
