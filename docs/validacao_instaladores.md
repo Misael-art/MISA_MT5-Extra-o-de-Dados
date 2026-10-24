@@ -476,3 +476,14 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
   XDG_DATA_HOME. Bytes reais capturados antes e conferidos após o preparo;
   canais concorrentes do host conservados. A ocorrência anterior RSI/ATR,
   sem captura dos bytes pré-preparo, permanece histórica no recibo daquela PR.
+
+- CI da ponta MACD b1f0328 aprovada: seis checks técnicos, incluindo os dois
+  instaladores e Windows (3091 aprovados,104 pulados,0 falhas,5 avisos; contexto
+  separado3 aprovados,0 pulados,0 falhas,0 avisos). [Recibo MACD](dados/recibos/recibo_bd08b_macd_20261024.json).
+  Não equivale ao percurso físico acima nem a paridade nativa MT5.
+
+- Fotografia final deste turno: Appfd6062885e30/T20.22-LAB1, H b730ed4a8df7,
+  Safetyc5a3e2162cac; atalhos SHA59801385… mantêm o endereço estável. App/atalhos
+  avançaram durante o turno; preservação de bytes vale para cada preparo
+  isolado, não para todo o intervalo. Nenhum canal histórico foi restaurado;
+  nenhuma ativação desta frente. Raiz/WIP e stat do banco principal iguais.

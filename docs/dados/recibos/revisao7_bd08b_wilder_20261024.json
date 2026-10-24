@@ -46,7 +46,7 @@
   "original_attempt_reclassified_as_passed": false,
   "remaining_diagnostic": {
     "snapshots": "T20.4/BD14",
-    "aggregation_cache": "T20.4/F15 conforme plano",
+    "aggregation_cache": "T16.4/T16.5 (agregações e cache F16), qualificação de recursos/cache T20.24/25 e F15 conforme plano",
     "requirements": [
       "mesmo SHA e base",
       "limites originais",

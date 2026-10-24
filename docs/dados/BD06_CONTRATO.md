@@ -33,3 +33,9 @@ derivadas do Donchian — BD08b); família desconhecida falha.
 ## Pendente
 Produtores T13.3 (60 IDs) ainda sem esse contrato; consumidores (Estudo, Laboratório) ainda leem
 `indicator_registry.definitions()` em vez do contrato completo (BD19).
+
+
+Atualização parcial de24/10/2026: as quatro saídas MACD passam a apontar para
+[referência decimal própria](BD08B_MACD.md). A lista de23 acima é a fotografia
+original; a família MACD deixa de constar como referência pendente. Isso não
+qualifica automaticamente os demais IDs nem conclui BD06/BD08b.

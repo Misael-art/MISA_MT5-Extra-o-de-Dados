@@ -202,7 +202,19 @@
     ]
    },
    "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
-   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)",
+   "qualification_updates": [
+    {
+     "commit": "b1f0328b41e692bea1cca0ee45981463ba255079",
+     "bd": "BD08b",
+     "algorithm_version": "1.1",
+     "variant": "EMA first_observation; signal EMA seeded at first visible line; ATR1.1 with independent warmup",
+     "contract": "docs/dados/BD08B_MACD.md",
+     "state": "fixture e migração verificadas; PR209 rascunho, não integrado/ativado; demais consumidores e provas externos pendentes",
+     "evidence": "docs/dados/recibos/recibo_bd08b_macd_20261024.json",
+     "note": "campos originais conservam fotografia inicial BD01"
+    }
+   ]
   },
   {
    "id": "REG-RET",
