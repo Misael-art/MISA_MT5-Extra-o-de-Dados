@@ -1,3 +1,23 @@
+## Novo host sem o disco antigo ou SD — 2026-10-24
+
+O proprietário confirmou que **não levará o SDCard**. A retomada atual é pela
+internet: [CONTINUAR_AQUI](../CONTINUAR_AQUI.md), [roteiro](repasse/NOVO_HOST_20261024.md)
+e [prompt do novo agente](repasse/PROMPT_NOVO_HOST_20261024.md). O roteiro de21/10
+é histórico; não usar sua conclusão dependente do SD como prova desta migração.
+
+T20.30-HOST1 prepara um workspace, um ambiente e três clones identificados,
+delegando aos instaladores existentes. Helpers só stdlib validam fontes e
+recompõem o pacote privado sem sobrescrever dados. Banco atual consistente com48
+tabelas, contexto e documentos posteriores têm preservação na página pessoal
+ChatGPT **MT5X Continuidade e recuperação em novo host 24 outubro 2026**;
+confirmar manifesto e recibos completos antes de declarar recuperação remota.
+Não migrar venv/Wine/caches/locks/PIDs/OAuth; reautenticar no destino.
+
+Os testes do host antigo não validam o novo SO. O próximo agente verifica
+bootstrap/restore e só depois retoma LAB-01…10, SA-01 e a coordenação SA-02 com
+Dados. Todos os diagnósticos do reteste e os gates/pins continuam pendentes
+conforme a seção abaixo; esta tarefa não corrige os bugs do Laboratório.
+
 ## Reteste do proprietário — Laboratório incompleto, 2026-10-24
 
 O teste real pelo atalho reportou catálogo restrito em Indicador × indicador/alvo,
