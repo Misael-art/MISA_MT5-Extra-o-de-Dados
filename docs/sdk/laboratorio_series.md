@@ -136,6 +136,16 @@ Para IA, os métodos `presets.default/save/revise/export/import/select` do workf
 já oferecem esse mesmo gerador sem janela. Não foi criado um segundo schema de
 preset. Gerar/exportar não inicia robô nem aprova estatística ou execução.
 
+**Conferência da biblioteca instalada em24/10:** os seis perfis encontrados
+(S09, Pullback, S10, VWAP, Madrid e HA/HiLo) foram recusados pelo contrato de
+fonte/versão/fingerprint/inputs. A closure H de desenvolvimento avançou e não é
+uma das snapshots aprovadas desses perfis. A ponte visual/CLI está disponível;
+geração operacional sobre essa closure permanece bloqueada. Nenhum pin ou risco
+foi relaxado nesta entrega. O próximo recorte operacional deve qualificar um
+pacote completo por perfil/revisão (começar por S09), preservar versões anteriores,
+compilar/conferir inputs/recibo e registrar seus próprios aceites. Não substituir
+a biblioteca atual inteira por headers antigos para contornar esse bloqueio.
+
 ## Inventário, investigações e próximos recortes
 
 Nesta ponta,52 definições Analytics e11 estratégias foram descobertas do código.

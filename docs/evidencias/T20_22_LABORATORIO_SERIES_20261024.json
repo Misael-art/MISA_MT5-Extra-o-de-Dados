@@ -2,7 +2,7 @@
   "task": "T20.22-LAB1",
   "date": "2026-10-24",
   "base": "d1c1097067129919b734e67203c363f0662639e2",
-  "status": "runtime_verified_full_suite_in_progress",
+  "status": "implemented_in_review; broader shutdown and CI pending; operational preset profiles blocked",
   "artifacts_sha256": {
     "mt5_extracao/cli.py": "bd4293346ab9cfe5a6fa46363c96024eedba4d762f8479573b1935bee27dc484",
     "mt5_extracao/ui/laboratory.py": "721fd9ae3d5d183217e0c2d758f0a15dc8461eed7dcbc65f8fb2d464f93faa74",
@@ -12,12 +12,13 @@
     "mt5_extracao/laboratory/commands.py": "1477436190ba0b6d52546f09a5f5b1b605c484ebb4e573de652b8e0b82119cd4",
     "tests/test_laboratory_series.py": "0a1603fbeb6956f47f07d4c55ce23ce75b347b9129699e0b9978164a1be3a258",
     "tests/test_ui_laboratory_series.py": "f40b125553c7682f9e5d900369d2f9d7019d5493462c70c315613f17069c0d28",
-    "docs/sdk/laboratorio_series.md": "fc6352ed363cfe895b1d997fa3a6b469dc54e89f9efcf686a96c254ce2cfbde3",
+    "docs/sdk/laboratorio_series.md": "d95795aef409ff37a68711ae01f6746f42044ef912a4ba3225a5c77b94fe5bc2",
     "docs/img/laboratorio_series/handheld.png": "2aa82f6496083b2990fe2cc1cd20810f198c91285dbaab5430b7b44147f68a73",
     "docs/img/laboratorio_series/price-expanded.png": "3e3bbecc6a053928b553396385d382999cf586ed62ee468febcecbaabb331a6a",
     "docs/img/laboratorio_series/wide-dark.png": "5bd9306ed61db16beaf54efb1c4fc74c7f0e855c1866192ad64a1c6c8771abff",
     "docs/img/laboratorio_series/wide-light.png": "f489aa28ea66e92694b63558bac3e80bfd105e0a36209072424d4e8e37aea6a6",
-    "docs/img/laboratorio_series/handheld-parameters.png": "8d79c89189682d201e82b2339781681b6e036037926f3ba8bb3fd2802d454c27"
+    "docs/img/laboratorio_series/handheld-parameters.png": "8d79c89189682d201e82b2339781681b6e036037926f3ba8bb3fd2802d454c27",
+    "docs/repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md": "259933cac791d14230216cc7d6c5c95f2678fb554c3f5ea267c5ace00991e263"
   },
   "baseline": {
     "focused_passed": 92,
@@ -37,9 +38,14 @@
     "scope": "before final UI render refinements; overlaps directed"
   },
   "full_suite": {
-    "status": "in_progress",
-    "display": "headless; headed UI verified separately",
-    "scope": "core unchanged during run; later UI tests covered in final headed selection; final-head CI has own state"
+    "summary_passed": 3014,
+    "summary_skipped": 259,
+    "seconds": 2246.91,
+    "process_returncode": 143,
+    "normal_shutdown_qualified": false,
+    "cause": "not established; received after success summary",
+    "scope": "core unchanged since run start; seven later GUI cases covered in final headed selection; final collection3280",
+    "display": "headless; headed UI separate"
   },
   "doctor": {
     "shared_environment_ok": 20,
@@ -1708,5 +1714,123 @@
     "Nominal closing reconstruction, historical availability unproven",
     "Native 38 catalogue distinct from 52 Analytics definitions",
     "Windows physical and complete linked inspector pending"
-  ]
+  ],
+  "runtime": "7c66feda06eb065b5cd591fd22ba5b602cffa624",
+  "pr": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/210",
+  "direct_exit_check": {
+    "passed": 20,
+    "skipped": 15,
+    "seconds": 32.88,
+    "pytest_returncode": 0,
+    "process_returncode": 0,
+    "normal_atexit": true,
+    "remaining_threads": [
+      "MainThread"
+    ],
+    "overlaps": true
+  },
+  "installed_preview": {
+    "runtime": "7c66feda06eb065b5cd591fd22ba5b602cffa624",
+    "shortcut_and_menu_validated": true,
+    "full_application_offline_private_db": true,
+    "installed_cli_catalog": true,
+    "bridge_identity_reused": true,
+    "accepted_h_safety_config_env_data_venv_preserved": true
+  },
+  "packaging": {
+    "filename": "mt5_extracao-0.3.0-py3-none-any.whl",
+    "sha256": "ffcbac139eea70526498ae64ccc8f5f6958cd0ac8d6d98ed46068a78d95de973",
+    "runtime": "7c66feda06eb065b5cd591fd22ba5b602cffa624",
+    "modules_byte_equal": [
+      "mt5_extracao/laboratory/service.py",
+      "mt5_extracao/laboratory/commands.py",
+      "mt5_extracao/ui/laboratory_series.py"
+    ]
+  },
+  "protected_runtime_areas_diff_empty": [
+    "mt5_extracao/analytics",
+    "mt5_extracao/presets",
+    "mt5_extracao/robots",
+    "mt5_extracao/strategies",
+    "config",
+    "scripts",
+    "install.sh",
+    "install.bat"
+  ],
+  "installed_native_profiles": [
+    {
+      "robot": "mql5:hdk_hahilo",
+      "version": "1.20",
+      "status": "blocked",
+      "reason": "HA/HiLo exige fonte/versão/fingerprint aprovados e os 10 inputs conhecidos; atualize a biblioteca completa pela revisão indicada."
+    },
+    {
+      "robot": "mql5:hdk_madrid",
+      "version": "1.20",
+      "status": "blocked",
+      "reason": "Madrid exige fonte/versão/fingerprint aprovados e os 13 inputs conhecidos; atualize a biblioteca completa pela revisão indicada."
+    },
+    {
+      "robot": "mql5:hdk_pullback_nativo",
+      "version": "1.10",
+      "status": "blocked",
+      "reason": "Pullback bloqueado: exige fonte, includes, versão e inputs do perfil nativo aprovado; legado não é promovido."
+    },
+    {
+      "robot": "mql5:hdk_s09_referencia",
+      "version": "1.90",
+      "status": "blocked",
+      "reason": "Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário."
+    },
+    {
+      "robot": "mql5:hdk_stochema9",
+      "version": "1.30",
+      "status": "blocked",
+      "reason": "S10 exige fonte/versão/fingerprint aprovados e os 15 inputs conhecidos; atualize a biblioteca completa pela revisão indicada."
+    },
+    {
+      "robot": "mql5:hdk_vwapbands",
+      "version": "1.20",
+      "status": "blocked",
+      "reason": "VWAP exige fonte/versão/fingerprint aprovados e os 11 inputs conhecidos; atualize a biblioteca completa pela revisão indicada."
+    }
+  ],
+  "operational_preset_generation_ready": false,
+  "cleanup": {
+    "logical_bytes": 1485367403,
+    "own_roots_processed": 41,
+    "foreign_processes_signaled": 0,
+    "protected_metadata_directories": 3,
+    "residual_metadata_bytes": 99920,
+    "unknown_baseline_tree": "preserved",
+    "owner_data_and_worktrees_preserved": true
+  },
+  "sd": {
+    "folder": "Backups/MT5X/2026-10-24-laboratorio-series",
+    "initial_bytes": 14773019,
+    "qa_database_counts": {
+      "eurusd_15_minutos": 6336,
+      "eurusd_1_hora": 1584,
+      "eurusd_4_horas": 396
+    },
+    "sqlite_integrity": "ok",
+    "credentials_venv_wine": false,
+    "canonical_owner_database_copied": false
+  },
+  "ci": {
+    "runtime": "7c66feda06eb065b5cd591fd22ba5b602cffa624",
+    "run": 40062924688,
+    "status": "in_progress_at_last_snapshot",
+    "completed_success": [
+      "Linux installer",
+      "Windows installer",
+      "PostgreSQL",
+      "installer lint"
+    ],
+    "pending": [
+      "Ubuntu tests",
+      "Windows tests"
+    ],
+    "physical_windows_qualified": false
+  }
 }
