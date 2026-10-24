@@ -456,3 +456,12 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
 - [x] Fingerprint real do painel com ambos os ativos; alteração de Series retira a exceção manual.
 - [ ] Instalação/compilação da composição exata no Linux/Wine e atalho existente.
 - [ ] Windows físico: instalação, compilação e estudo/agrupamento.
+# Pendência específica BD08b — RSI/ATR (23/10/2026)
+
+- [ ] Executar o percurso RSI/ATR canônico no Windows físico: fonte sintética,
+  materialização, revisão/ausência, leitura SDK e CLI com caminho contendo espaço
+  e `#`. Testes permanentes independem do MT5; paridade numérica MT5 não é afirmada.
+- CI Windows da ponta BD08b `f6d8a81` aprovada no workflow40045614591:
+  3064 aprovados/101 pulados/5 avisos, além da etapa de contexto2/1.
+  Instalador Windows também aprovado nesse SHA. [Recibo](dados/recibos/recibo_bd08b_wilder_20261023.json).
+  A CI não substitui o percurso no Windows físico acima, que permanece pendente.

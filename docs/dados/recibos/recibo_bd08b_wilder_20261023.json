@@ -1,0 +1,233 @@
+{
+  "code_commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+  "base": "d1218ec8bb9f85e1aaf8a4c75ad26446bbd1f934",
+  "card": "BD08b/T19.3 — quatro saídas RSI/ATR",
+  "test": ".venv/bin/python -m pytest -q tests/test_bd08b_wilder.py",
+  "reference": "tests/test_bd08b_wilder.py::_expected; recorrência escalar sem EWM nem código do produtor",
+  "input_hash": {
+    "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+    "tests/bench_reference.py": "bcb48d272f3e0d7f91c21303664b799e67e5d53ef360f64bef82d14afe118651",
+    "tests/test_bd08b_wilder.py": "799873f1cada0970431edc3f75ecd5d344b3d0713e60675ca37152b0c5493294"
+  },
+  "parameters": "450 M1 sintéticas; seed=first_observation; reset_and_reseed; 4 IDs; lotes 7/11/5000",
+  "result": "23 passed in 52.45s",
+  "limitations": "famílias restantes pendentes; assinatura global; sem instalação/MT5/Windows físico; leitura limitada na origem em BD18b",
+  "resource_measurements": {
+    "wall_seconds": 54.93419730200003,
+    "peak_child_rss_kib": 164056,
+    "temporary_bytes_end": 4227283
+  },
+  "initial_attempts": [
+    {
+      "result": "7 contraprovas de contrato/ausência falharam no código anterior; 1 falha de instrumentação por identidade ausente",
+      "preserved": true
+    },
+    {
+      "result": "131 passed, 1 failed in 279.80s; comentário do arquivo hasheado mudou durante a execução; repetição com fonte congelada: 1 passed in 11.50s",
+      "preserved": true
+    },
+    {
+      "result": "register_core com definições 1.0: ValueError reproduzido antes de versionar as quatro definições; nova prova migra e preserva definições/fatos antigos",
+      "preserved": true
+    }
+  ],
+  "full_suites": "CI integral Linux/Windows aprovada em f6d8a81; execução geral local interrompida com três falhas; conclusão dos seis casos restantes em processo novo, sem converter a tentativa inicial em aprovação.",
+  "postgresql_ci": {
+    "code_commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+    "job": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523408",
+    "result": "70 passed in 64.61s",
+    "log_sha256": "466b1071fa498154fae9e3e013b0c47556f01fc9752395b192f58fa71cdf419c"
+  },
+  "previous_code_commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+  "algorithm_versions": {
+    "RSI14/slope3/ATR14/ATR14-close": "1.1 (definição), 1.1+hash (materializado)",
+    "others": "versão declarada anterior; assinatura global ainda vigente"
+  },
+  "interrupted_suites": [
+    {
+      "code_commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+      "result": "execução local interrompida aos 11% para acrescentar a prova de migração; sinais próprios geraram marcador F durante a interrupção; saída 143, sem conclusão de suíte",
+      "reason": "fonte final passou a f6d8a81; log preservado"
+    }
+  ],
+  "previous_receipt": "docs/dados/recibos/recibo_bd08b_wilder_35c5848.json",
+  "targeted_regressions": {
+    "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+    "result": "134 passed in 367.40s",
+    "scope": "Wilder, bancada, contratos, calculadores, retornos, materialização, relações, Donchian, V3/V4/V5 e CLI"
+  },
+  "ubuntu_ci": {
+    "code_commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+    "job": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523436",
+    "result": "2910 passed, 256 skipped in 1618.41s",
+    "log_sha256": "8c4c6b5d89ff7c6939cd5d5afa86744f17b25cf6acb2c0558c149e3509d88620"
+  },
+  "baseline_initial": {
+    "completed": 2145,
+    "passed": 2087,
+    "skipped": 57,
+    "failed": [
+      "tests/test_robots_runner.py::test_real_python_backtests_are_recorded"
+    ],
+    "exit_code": 143,
+    "remaining_count": 995,
+    "timeout_seconds": 60,
+    "code_commit": "d1218ec8bb9f85e1aaf8a4c75ad26446bbd1f934",
+    "status": "interrompida; não é aprovação integral",
+    "log_sha256": "b76f9c2b6521943bb774cf7de3d2291c8b428614feb650ff5f5b55aaac6cf1c6"
+  },
+  "obsolete_ci": {
+    "code_commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+    "run": 40044600038,
+    "status": "cancelled; execução própria substituída pela CI integral f6d8a81",
+    "completed_results_preserved": true
+  },
+  "local_general_failure": {
+    "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+    "test": "tests/test_robots_backtest.py::test_newest_run_first_and_period_start",
+    "isolated_result": "1 failed in 63.57s: Timeout (>60.0s), datasets._decode_frame",
+    "timeout_changed": false,
+    "source_files_equal_to_base": [
+      "robots/backtest.py",
+      "robots/runner.py",
+      "robots/store.py",
+      "analytics/datasets.py",
+      "trade_analytics/importers.py",
+      "tests/test_robots_backtest.py",
+      "tests/test_robots_runner.py"
+    ],
+    "owner": "T20.4/BD14 (snapshots, recuperação e recursos)",
+    "log_sha256": "c8349e0eedd9709b37570ff628ecc2f24b72e054930602faaa1cb772163f590b",
+    "resource_observation": "99.6% CPU, load average ~22 on 8 logical CPUs, 81% RAM, ~5.8 GB swap in use; observation only, causal link not established"
+  },
+  "precision_probe": "docs/dados/recibos/precisao_bd08b_wilder_f6d8a81.json",
+  "doctor": {
+    "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+    "command": ".venv/bin/python -m mt5_extracao.bootstrap doctor --json",
+    "result": "16 OK, 2 avisos, 0 falhas; pandas-ta opcional ausente; ponte desligada somente no perfil próprio"
+  },
+  "windows_ci": {
+    "code_commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+    "job": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523463",
+    "context_stage": "2 passed, 1 skipped in 34.96s",
+    "full_stage": "3064 passed, 101 skipped, 5 warnings in 2996.71s",
+    "physical_windows": false,
+    "log_sha256": "41b91b8e7c4ea2dc25ccda8f88d02f68d044a60186703599b77e3bcaf7307681",
+    "log_sha256_lf_normalized": "e856503634a1fee9b01017aa7f9df4ed7b92950c1189ff33d8d1a6558b6344ca",
+    "hash_note": "log_sha256 usa bytes preservados da resposta Composio (CRLF); campo lf_normalized conserva o hash anterior calculado após normalização de fim de linha"
+  },
+  "technical_ci": [
+    {
+      "name": "Lint dos instaladores",
+      "sha": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+      "conclusion": "success",
+      "completed_at": "2026-10-24T00:34:19Z",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523485"
+    },
+    {
+      "name": "Testes (windows-latest)",
+      "sha": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+      "conclusion": "success",
+      "completed_at": "2026-10-24T01:25:47Z",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523463"
+    },
+    {
+      "name": "Testes (ubuntu-latest)",
+      "sha": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+      "conclusion": "success",
+      "completed_at": "2026-10-24T01:01:39Z",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523436"
+    },
+    {
+      "name": "Instalador Linux (sem MT5)",
+      "sha": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+      "conclusion": "success",
+      "completed_at": "2026-10-24T00:35:23Z",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523431"
+    },
+    {
+      "name": "Testes PostgreSQL",
+      "sha": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+      "conclusion": "success",
+      "completed_at": "2026-10-24T00:36:00Z",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523408"
+    },
+    {
+      "name": "Instalador Windows (sem MT5)",
+      "sha": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+      "conclusion": "success",
+      "completed_at": "2026-10-24T00:35:05Z",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40045614591/job/120726523228"
+    }
+  ],
+  "baseline_recovery": {
+    "code_commit": "d1218ec8bb9f85e1aaf8a4c75ad26446bbd1f934",
+    "result": "989 passed, 7 skipped, 3 warnings in 3327.64s",
+    "selected_cases": 996,
+    "selection": "995 casos ainda não executados + uma repetição do caso do timeout, em processo novo",
+    "timeout_seconds": 60,
+    "exit_code": 0,
+    "initial_failure_preserved": true,
+    "not_a_single_uninterrupted_green_suite": true,
+    "log_sha256": "4952fdd02c93350729213da5156b0db40ced8987d19baaa1ee3986dce850bdb2"
+  },
+  "implementation_signature": "fd47c55a739db146bf50a9542d3592476584a9e6aaadfc36ee07315c943943be",
+  "frozen_python_files": 476,
+  "resource_measurement_scope": "processo inteiro dos testes da família; temporários medidos ao final, não pico em disco nem materializador isolado",
+  "local_general": {
+    "code_commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+    "command": "xvfb-run -a -s \"-screen 0 1600x1100x24\" .venv/bin/python -m pytest -q",
+    "collected": 3166,
+    "observed_progress_markers": 3160,
+    "passed_markers": 3090,
+    "skipped_markers": 67,
+    "failed_markers": 3,
+    "exit_code": 143,
+    "summary_present": false,
+    "status": "interrompida em 99%; motivo do encerramento não estabelecido",
+    "timeout_seconds": 60,
+    "timeout_or_performance_limits_changed": false,
+    "log": "logs/bd08b-wilder/final-v2-pytest.log",
+    "log_sha256": "53a72b415aa41c7b56743e0d51033ada18acf3cdf78b614f3eaf3c07332cf69e",
+    "failures": [
+      {
+        "test": "tests/test_robots_backtest.py::test_newest_run_first_and_period_start",
+        "diagnosis": "timeout 60s; repetição isolada também falhou em datasets._decode_frame (63.57s)"
+      },
+      {
+        "test": "tests/test_robots_runner.py::test_real_python_backtests_are_recorded",
+        "diagnosis": "timeout 60s durante carregamento de snapshot; caso também falhou na tentativa inicial da base e passou na retomada em processo novo"
+      },
+      {
+        "test": "tests/test_trade_cache.py::test_aggregation_speed_on_50k_cached_trades",
+        "diagnosis": "marcador F no teste de orçamento de tempo; sem traceback final na execução interrompida. Causa não estabelecida; repetição isolada aprovada não apaga a falha"
+      }
+    ],
+    "remaining_cases": [
+      "tests/test_vwap_preset_execution.py::test_vwap_service_keeps_incomplete_or_divergent_evidence_unaccepted[uncertain]",
+      "tests/test_vwap_preset_execution.py::test_vwap_service_keeps_incomplete_or_divergent_evidence_unaccepted[missing_tp]",
+      "tests/test_vwap_preset_execution.py::test_vwap_service_keeps_incomplete_or_divergent_evidence_unaccepted[truncated_state3]",
+      "tests/test_vwap_preset_execution.py::test_vwap_service_keeps_incomplete_or_divergent_evidence_unaccepted[truncated_state5]",
+      "tests/test_vwap_preset_execution.py::test_vwap_service_keeps_incomplete_or_divergent_evidence_unaccepted[truncated_state6]",
+      "tests/test_vwap_preset_execution.py::test_replay_detects_changed_native_context_even_if_ledger_and_signals_match"
+    ],
+    "completion_run": {
+      "selected": "seis casos ainda não executados + uma repetição isolada do teste trade_cache",
+      "result": "7 passed in 15.30s",
+      "exit_code": 0,
+      "log": "logs/bd08b-wilder/remaining-f6.log",
+      "log_sha256": "62f4f3f05deeee5600b82e86e7a2b91544f1744af38c1948b5e3c4449b9be07a"
+    },
+    "coverage": "todos os 3166 casos tiveram execução observada entre os processos; não é suíte integral local aprovada",
+    "causality": "carga alta do host observada; não foi demonstrada causa para todas as falhas; nenhuma correção fora do recorte nem afrouxamento de teste nesta PR"
+  },
+  "host_preservation": {
+    "root_wip": "checkout original preservado; trabalho em worktrees próprias",
+    "main_database": "somente stat, sem abertura: 481120256 bytes; mtime_ns 1792797912518858963 no corte observado",
+    "installers_side_effect": "preparo obrigatório recriou atalhos; corrigidos para o endereço estável app-development/run.sh. Bytes anteriores não foram capturados; não há afirmação de preservação byte a byte.",
+    "concurrent_channels": "canais correntes observados e preservados; fotografia antiga não restaurada",
+    "release_activation": false,
+    "merge": false,
+    "bridge_or_orders": false
+  }
+}

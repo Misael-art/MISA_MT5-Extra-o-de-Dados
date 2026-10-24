@@ -20,9 +20,9 @@ _PENDING = "pendente: referência independente própria ainda não escrita (BD08
 # (prefixo, pergunta, referência, painel, traço)
 _FAMILIES = (
     ("momentum.rsi_", "Qual a força relativa recente de altas e baixas do fechamento?",
-     "tests/bench_reference.py::rsi (semente 'first')", "oscillator", "line"),
+     "tests/test_bd08b_wilder.py::_expected (semente first; reinício após ausência)", "oscillator", "line"),
     ("volatility.atr", "Qual a amplitude típica recente das barras, incluindo gaps?",
-     "tests/bench_reference.py::wilder(true_range) (semente 'first')", "oscillator", "line"),
+     "tests/test_bd08b_wilder.py::_expected (semente first; reinício após ausência)", "oscillator", "line"),
     ("volatility.bb_", "Quão largas estão as bandas de Bollinger e onde está o fechamento nelas?",
      "tests/bench_reference.py::bollinger_width (largura); posição: " + _PENDING, "oscillator", "line"),
     ("volatility.kc_", "Quão largo está o canal de Keltner e onde está o fechamento nele?", _PENDING,

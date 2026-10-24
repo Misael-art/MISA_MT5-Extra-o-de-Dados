@@ -38,7 +38,27 @@
     ]
    },
    "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
-   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)",
+   "qualification_updates": [
+    {
+     "commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+     "bd": "BD08b",
+     "variant": "RMA alpha=1/14; first_observation; reset_and_reseed",
+     "contract": "docs/dados/BD08B_WILDER.md",
+     "state": "verificado em fixture; demais consumidores e provas externos pendentes",
+     "evidence": "docs/dados/recibos/recibo_bd08b_wilder_35c5848.json",
+     "note": "campos originais conservam a fotografia inicial da BD01"
+    },
+    {
+     "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+     "bd": "BD08b",
+     "algorithm_version": "1.1",
+     "variant": "RMA alpha=1/14; first_observation; reset_and_reseed",
+     "contract": "docs/dados/BD08B_WILDER.md",
+     "state": "fixture e migração do registro direto verificadas; demais consumidores e prova externa pendentes",
+     "evidence": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json"
+    }
+   ]
   },
   {
    "id": "REG-ATR",
@@ -65,7 +85,27 @@
     ]
    },
    "gap": "assinatura global de implementação (BD13); chave sem base/fonte (BD03); Estudo recalcula fora do store (BD19d)",
-   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)"
+   "test_needed": "referência independente por saída, prefixo, warmup, NaN (E11/E12)",
+   "qualification_updates": [
+    {
+     "commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+     "bd": "BD08b",
+     "variant": "RMA alpha=1/14; first_observation; reset_and_reseed",
+     "contract": "docs/dados/BD08B_WILDER.md",
+     "state": "verificado em fixture; demais consumidores e provas externos pendentes",
+     "evidence": "docs/dados/recibos/recibo_bd08b_wilder_35c5848.json",
+     "note": "campos originais conservam a fotografia inicial da BD01"
+    },
+    {
+     "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+     "bd": "BD08b",
+     "algorithm_version": "1.1",
+     "variant": "RMA alpha=1/14; first_observation; reset_and_reseed",
+     "contract": "docs/dados/BD08B_WILDER.md",
+     "state": "fixture e migração do registro direto verificadas; demais consumidores e prova externa pendentes",
+     "evidence": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json"
+    }
+   ]
   },
   {
    "id": "REG-BB",

@@ -481,8 +481,47 @@
    "owner": "BD08b",
    "case": "Prefixo e recursão",
    "criterion": "Futuro não altera passado indevido; semente e chunking são coerentes",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    {
+     "test": ".venv/bin/python -m pytest -q tests/test_bd08b_wilder.py",
+     "reference": "tests/test_bd08b_wilder.py::_expected; recorrência escalar sem EWM nem código do produtor",
+     "input_hash": {
+      "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+      "tests/bench_reference.py": "bcb48d272f3e0d7f91c21303664b799e67e5d53ef360f64bef82d14afe118651",
+      "tests/test_bd08b_wilder.py": "9469d20cae0a59b2b29373e966fc4309c08903f59b1633f8c6f4568353c8fdff"
+     },
+     "parameters": "450 M1 sintéticas; seed=first_observation; reset_and_reseed; 4 IDs; lotes 7/11/5000",
+     "result": "22 passed in 26.65s",
+     "limitations": "famílias restantes pendentes; assinatura global; sem instalação/MT5/Windows físico; leitura limitada na origem em BD18b",
+     "resource_measurements": {
+      "wall_seconds": 29.40024121500005,
+      "peak_child_rss_kib": 164412,
+      "temporary_bytes_end": 3580106
+     },
+     "commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+     "receipt": "docs/dados/recibos/recibo_bd08b_wilder_35c5848.json"
+    },
+    {
+     "test": ".venv/bin/python -m pytest -q tests/test_bd08b_wilder.py",
+     "reference": "tests/test_bd08b_wilder.py::_expected; recorrência escalar sem EWM nem código do produtor",
+     "input_hash": {
+      "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+      "tests/bench_reference.py": "bcb48d272f3e0d7f91c21303664b799e67e5d53ef360f64bef82d14afe118651",
+      "tests/test_bd08b_wilder.py": "799873f1cada0970431edc3f75ecd5d344b3d0713e60675ca37152b0c5493294"
+     },
+     "parameters": "450 M1 sintéticas; seed=first_observation; reset_and_reseed; 4 IDs; lotes 7/11/5000",
+     "result": "23 passed in 52.45s",
+     "limitations": "famílias restantes pendentes; assinatura global; sem instalação/MT5/Windows físico; leitura limitada na origem em BD18b",
+     "resource_measurements": {
+      "wall_seconds": 54.93419730200003,
+      "peak_child_rss_kib": 164056,
+      "temporary_bytes_end": 4227283
+     },
+     "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+     "receipt": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json"
+    }
+   ]
   },
   {
    "id": "E13",

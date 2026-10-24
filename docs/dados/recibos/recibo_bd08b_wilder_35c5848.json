@@ -1,0 +1,37 @@
+{
+ "code_commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+ "base": "d1218ec8bb9f85e1aaf8a4c75ad26446bbd1f934",
+ "card": "BD08b/T19.3 — quatro saídas RSI/ATR",
+ "test": ".venv/bin/python -m pytest -q tests/test_bd08b_wilder.py",
+ "reference": "tests/test_bd08b_wilder.py::_expected; recorrência escalar sem EWM nem código do produtor",
+ "input_hash": {
+  "tests/bench.py": "2b1a6cdfee314f1b29d24001321d0cc82805ab85ddaea23b56b64a1d64d834f9",
+  "tests/bench_reference.py": "bcb48d272f3e0d7f91c21303664b799e67e5d53ef360f64bef82d14afe118651",
+  "tests/test_bd08b_wilder.py": "9469d20cae0a59b2b29373e966fc4309c08903f59b1633f8c6f4568353c8fdff"
+ },
+ "parameters": "450 M1 sintéticas; seed=first_observation; reset_and_reseed; 4 IDs; lotes 7/11/5000",
+ "result": "22 passed in 26.65s",
+ "limitations": "famílias restantes pendentes; assinatura global; sem instalação/MT5/Windows físico; leitura limitada na origem em BD18b",
+ "resource_measurements": {
+  "wall_seconds": 29.40024121500005,
+  "peak_child_rss_kib": 164412,
+  "temporary_bytes_end": 3580106
+ },
+ "initial_attempts": [
+  {
+   "result": "7 contraprovas de contrato/ausência falharam no código anterior; 1 falha de instrumentação por identidade ausente",
+   "preserved": true
+  },
+  {
+   "result": "131 passed, 1 failed in 279.80s; comentário do arquivo hasheado mudou durante a execução; repetição com fonte congelada: 1 passed in 11.50s",
+   "preserved": true
+  }
+ ],
+ "full_suites": "em execução; resultados serão acrescentados sem substituir tentativas",
+ "postgresql_ci": {
+  "code_commit": "35c584850c997a3c3714d728ce6130ea811e3039",
+  "job": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/40044600038/job/120723302406",
+  "result": "69 passed in 91.74s",
+  "log_sha256": "9554a7fa6539b381014f9b4cc1251fdc77cba65edd7c590d60641c0a471f33a2"
+ }
+}
