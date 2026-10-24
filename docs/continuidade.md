@@ -1,5 +1,8 @@
 ## AIA-02a — catálogo de Estudo via SDK, 2026-10-23
 
+[Repasse fechado em2026-10-24](repasse/AIA_02A_CONTINUIDADE_20261024.md): código/PR208,
+instalação, testes, preservação das outras frentes e fila para o próximo agente.
+
 Frente própria `codex/ai-study-catalog`, base Appf4ca177 (AIA-01), sem alterar
 raiz/WIP, dados/schema/produtores ou fontes H da frente do painel. [Contrato](sdk/study_cli.md).
 Reutiliza o catálogo/fábrica da closure HPR75/b730 e os gates/ownership da sessão.
@@ -9,8 +12,9 @@ Reutiliza o catálogo/fábrica da closure HPR75/b730 e os gates/ownership da ses
 inspecionado; carteira inalterada/sem ordens, MetaEditor0/0, doctor20/1opcional/0.
 Corrida do auxiliar M5 na limpeza inicial observada e resolvida aguardando o
 marcador do host; nenhuma fonte H editada. Dois perfis próprios removidos após
-reconciliação, evidências preservadas. Baseline amplo congelado e CI da ponta
-são evidências separadas, ainda em curso neste registro.
+reconciliação, evidências preservadas. Baseline amplo congelado:2966/251; após a mudança:2994/251;
+0falhas, cortes separados na evidência. CI da implementação/documentação tem
+estado próprio, sem inferência de Windows físico.
 
 CI da AIA-01/f4ca177: Linux, PostgreSQL, instaladores e lint aprovados; Windows
 abortou por timeout60s em `test_bd18a_query::test_pagination_is_stable_and_cursor_is_bound_to_selection`

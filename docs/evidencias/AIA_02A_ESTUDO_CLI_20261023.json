@@ -18,7 +18,8 @@
     "mt5_extracao/automation/service.py": "3a65b0a2f3ee766c54bb169af7893290cc5ff8eb877f759b82570eee35487b11",
     "mt5_extracao/robots/sessions.py": "e4821a9931433414b311bddf8f68b9550f048339ad808de2c208653521c747bd",
     "tests/test_automation_study.py": "efaec9ebd203ed8c57f1b975456c4261d63cf8f9cf9795d4a637d7fc1965e8c1",
-    "docs/sdk/study_cli.md": "52da983a679aa2df23d31b35e503c074bcb059d4d567977d5802b3e4307baaab"
+    "docs/sdk/study_cli.md": "52da983a679aa2df23d31b35e503c074bcb059d4d567977d5802b3e4307baaab",
+    "docs/repasse/AIA_02A_CONTINUIDADE_20261024.md": "952f2587dd4f267316d2fee27fdadabb586aa8d0a40469ec066a6562a320eb0a"
   },
   "protected_runtime_unchanged": [
     "mt5_extracao/database_manager.py",
@@ -44,7 +45,13 @@
       "seconds": 26.52
     },
     "selections_overlap": true,
-    "frozen_baseline_full": "Running on unchanged f4ca177 worktree; private baseline-full.log. Not claimed complete in this snapshot.",
+    "frozen_baseline_full": {
+      "commit": "f4ca1776a4fe3414c6d057c2b6a5f302e73ebf22",
+      "passed": 2966,
+      "skipped": 251,
+      "failed": 0,
+      "seconds": 2121.08
+    },
     "postchange_full_ci": "PR checks have their own exact-head result, not inferred from directed/native QA.",
     "doctor": {
       "ok": 20,
@@ -63,7 +70,52 @@
       "invalid_id_cases": 10,
       "layout_cases": 5
     },
-    "compile": "MetaEditor/Wine0 errors0 warnings for three unchanged assets and wrapper; terminal build6283 observed."
+    "compile": "MetaEditor/Wine0 errors0 warnings for three unchanged assets and wrapper; terminal build6283 observed.",
+    "postchange_full": {
+      "commit": "49c6629101305d1c0a53e9da55005da8ef40049d",
+      "environment": "DISPLAY/WAYLAND_DISPLAY unset; OMP/OPENBLAS/MKL_NUM_THREADS=1",
+      "passed": 2994,
+      "skipped": 251,
+      "failed": 0,
+      "seconds": 2206.57
+    },
+    "ci_implementation_snapshot": {
+      "run": 40055978592,
+      "commit": "49c6629101305d1c0a53e9da55005da8ef40049d",
+      "jobs": [
+        {
+          "name": "Testes (windows-latest)",
+          "status": "in_progress",
+          "conclusion": null
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ],
+      "scope": "CI tests/installers are not physical Windows/MQL qualification. Documentation-only followups have their own HEAD checks."
+    }
   },
   "native": {
     "transport": "actual CLI workflow serve JSONL",
@@ -1726,18 +1778,32 @@
     "run": 40052714594,
     "job": 120748686535,
     "linux_pg_installers_lint": "success",
-    "windows": "timeout60s in test_bd18a_query::test_pagination_is_stable_and_cursor_is_bound_to_selection fixture, database SQLite commit; data-owner runtime unchanged here."
+    "windows": "timeout60s in test_bd18a_query::test_pagination_is_stable_and_cursor_is_bound_to_selection fixture, database SQLite commit; data-owner runtime unchanged here.",
+    "automation_tests_passed_before_data_fixture_timeout": 70
   },
   "cleanup": {
     "profiles": 2,
     "logical_bytes": 1821811172,
     "evidence_retained": true,
-    "foreign_processes_signaled": 0
+    "foreign_processes_signaled": 0,
+    "post_test_tree_removed": true,
+    "post_test_tree_logical_bytes": 1235160835,
+    "common_uuid_residues_archived_removed": 0
   },
   "limits": [
     "Same defaults and factory of native Study catalogue; no arbitrary indicator inputs/paths or new mathematical formulas.",
     "No data schema/ingestion/indicator producers/storage/financial executor changed; owner data-agent WIP preserved.",
     "Native buffer observation is not causal historical availability, no-repaint proof, external parity or financial/operational acceptance.",
     "Physical Windows, third-party indicators, Python study projections/notes/pencil, Tester pause/resume and OMNI/strategic indicator/strategy contracts remain separate."
-  ]
+  ],
+  "closed_date": "2026-10-24",
+  "implementation_commit": "49c6629101305d1c0a53e9da55005da8ef40049d",
+  "app_pr": 208,
+  "development_preview": {
+    "app_implementation": "49c6629101305d1c0a53e9da55005da8ef40049d",
+    "hadouken": "b730ed4a8df74f5f20eb6e289798d0232c370994",
+    "installed_cli_methods_checked": true,
+    "owner_configuration_data_bridge_and_accepted_channels_preserved": true,
+    "h_source_or_development_link_modified": false
+  }
 }
