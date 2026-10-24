@@ -520,6 +520,33 @@
      },
      "commit": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
      "receipt": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json"
+    },
+    {
+     "commit": "6e7b30e40984f9eaf8a4055f9da792cb34db8e00",
+     "test": "revisão própria:140 dirigidos +3 casos gerais com limites originais",
+     "reference": "docs/dados/recibos/revisao7_bd08b_wilder_20261024.json; sonda decimal60 separada dos testes",
+     "input_hash": {
+      "tests/test_bd08b_wilder.py": "799873f1cada0970431edc3f75ecd5d344b3d0713e60675ca37152b0c5493294"
+     },
+     "parameters": {
+      "outputs": "RSI14/slope3/ATR14/ATR14-close",
+      "seed": "first_observation",
+      "missing_policy": "reset_and_reseed"
+     },
+     "result": {
+      "passed": 143,
+      "skipped": 0,
+      "failed": 0,
+      "warnings": 0,
+      "probe_comparisons_separately": 32
+     },
+     "limitations": "aceite somente das quatro saídas; suíte integral não reexecutada; tentativa original interrompida preservada; E12 integral/BD08b/M4 parciais",
+     "resource_measurements": {
+      "scope": "reexecução do revisor; não é custo de materializador isolado",
+      "directed_seconds": 170.89,
+      "three_cases_seconds": 96.85
+     },
+     "receipt": "docs/dados/recibos/revisao7_bd08b_wilder_20261024.json"
     }
    ]
   },

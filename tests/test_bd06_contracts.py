@@ -30,7 +30,10 @@ def test_contract_metadata_is_outside_the_implementation_signature():
 
 def test_pending_references_are_listed_not_hidden():
     pending = indicator_contracts.pending_references()
-    assert "momentum.macd_line_12_26_9" in pending and "price.return_1" not in pending
+    assert "volatility.kc_20_width" in pending and "price.return_1" not in pending
+    assert not set(pending) & indicator_registry.MACD_IDS
+    assert all("test_bd08b_macd.py" in indicator_contracts.contract(i)["reference"]
+               for i in indicator_registry.MACD_IDS)
 
 
 def test_unknown_family_fails_loudly(monkeypatch):

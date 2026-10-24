@@ -57,6 +57,13 @@
      "contract": "docs/dados/BD08B_WILDER.md",
      "state": "fixture e migração do registro direto verificadas; demais consumidores e prova externa pendentes",
      "evidence": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json"
+    },
+    {
+     "reviewed_head": "6e7b30e40984f9eaf8a4055f9da792cb34db8e00",
+     "tested_code": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+     "bd": "BD08b",
+     "state": "aceito na sétima revisão somente no recorte verificado; não integrado/ativado",
+     "evidence": "docs/dados/recibos/revisao7_bd08b_wilder_20261024.json"
     }
    ]
   },
@@ -104,6 +111,13 @@
      "contract": "docs/dados/BD08B_WILDER.md",
      "state": "fixture e migração do registro direto verificadas; demais consumidores e prova externa pendentes",
      "evidence": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json"
+    },
+    {
+     "reviewed_head": "6e7b30e40984f9eaf8a4055f9da792cb34db8e00",
+     "tested_code": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+     "bd": "BD08b",
+     "state": "aceito na sétima revisão somente no recorte verificado; não integrado/ativado",
+     "evidence": "docs/dados/recibos/revisao7_bd08b_wilder_20261024.json"
     }
    ]
   },

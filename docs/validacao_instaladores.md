@@ -465,3 +465,14 @@ Sem alteração de instalador ou qualificação financeira/nativa/operacional.
   3064 aprovados/101 pulados/5 avisos, além da etapa de contexto2/1.
   Instalador Windows também aprovado nesse SHA. [Recibo](dados/recibos/recibo_bd08b_wilder_20261023.json).
   A CI não substitui o percurso no Windows físico acima, que permanece pendente.
+
+
+## BD08b — MACD (24/10/2026)
+
+- [ ] Windows físico: materialização/revisão/ausência das quatro saídas MACD,
+  registro idempotente sobre1.0, leitura SDK/CLI com caminho com espaço e#,
+  preservando identidade, versão e knowledge_horizon. Sem equivalência MT5.
+- Preparo Linux direcionou atalhos a pastas temporárias por XDG_CONFIG_HOME e
+  XDG_DATA_HOME. Bytes reais capturados antes e conferidos após o preparo;
+  canais concorrentes do host conservados. A ocorrência anterior RSI/ATR,
+  sem captura dos bytes pré-preparo, permanece histórica no recibo daquela PR.

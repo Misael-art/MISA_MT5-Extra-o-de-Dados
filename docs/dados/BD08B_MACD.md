@@ -1,0 +1,94 @@
+# BD08b — MACD canônico (T19.3), parcial
+
+Base: PR206/`6e7b30e`, código anterior `f6d8a81`. Continuação após o
+[aceite delimitado RSI/ATR](BD08B_WILDER.md). Uma tarefa canônica: quatro
+saídas existentes `momentum.macd_line_12_26_9`, `momentum.macd_signal_12_26_9`,
+`momentum.macd_histogram_12_26_9` e `momentum.macd_histogram_atr_14`.
+Não acrescenta indicadores nem conclui BD08b, E12, M4 ou o pilar.
+
+## Contrato e problema reproduzido
+
+Na base, ausência de fechamento permitia anunciar MACD disponível na barra
+seguinte ainda com o estado anterior. OHLC inconsistente também podia produzir
+histograma/ATR disponível. A remoção de barra conhecida inelegível no
+materializador comprimira a sequência. Contraprovas em fixture foram guardadas
+antes da alteração:10 falhas no recorte de ausência, reinício e metadados.
+
+| Saída | Variante e entrada | Primeiro valor por sequência | Unidade |
+|---|---|---|---|
+| Linha | EMA12(close) − EMA26(close) | 26ª barra de fechamento finito | preço |
+| Sinal | EMA9 da linha visível, semente na primeira linha (26ª barra) | 34ª barra | preço |
+| Histograma | linha − sinal | 34ª barra | preço |
+| Histograma/ATR14 | histograma / ATR14 estritamente positivo, mesma barra | 34ª barra e dependências maduras | unidades de ATR |
+
+EMAs usam alpha=2/(n+1), adjust=false, semente na primeira observação; o sinal
+é **EMA**, não SMA. A semente SMA e o sinal SMA têm contraprovas separadas.
+Recorrência de EMA: s←s+alpha×(x−s). A operação vetorizada preserva o kernel
+existente, cuja definição está na [documentação pandas](https://pandas.pydata.org/docs/reference/api/pandas.Series.ewm.html).
+Não afirma equivalência MT5, pandas-ta, calculadores privados ou legado.
+
+Ausência/não finito de fechamento interrompe as EMAs; a próxima sequência
+válida reinicia o aquecimento26/34. O normalizador reusa ATR1.1 qualificado:
+primeira TR=high−low, RMA alpha1/14, semente na primeira TR,14 barras; OHLC deve
+ser finito e low≤close≤high. Suas sequências são independentes: OHLC inválido
+com fechamento válido reinicia ATR, mas mantém MACD de fechamento; a razão
+aguarda os14 novos OHLC válidos e a maturidade do histograma. Fechamento
+inválido e barra conhecida inelegível reiniciam ambas as dependências.
+Lacuna de calendário sem observação não cria barra nem reinício.
+
+Falta de coluna é SOURCE_UNAVAILABLE; entrada inválida é SOURCE_VALUE_MISSING;
+aquecimento incompleto é WARMUP. ATR zero/não positivo não vira divisão válida:
+INVALID_DENOMINATOR. MACD zero é valor válido, inclusive com fechamento zero ou
+negativo. Resultado aritmético não finito é INVALID_RESULT. Deslocamento de
+desenho não entra no valor; disponibilidade segue a barra de cálculo fechada
+e revisões recebidas, nunca o instante de uma barra futura.
+
+## Implementação e versões
+
+O registry usa o kernel `macd` já existente em segmentos finitos. A razão usa
+a mesma avaliação ATR1.1 de RSI/ATR. Não altera o kernel legado, a dependência
+opcional pandas-ta nem as regras de Keltner/distância EMA/ATR. O materializador
+propaga a interrupção de barras inelegíveis e seus hashes/instantes causais;
+consulta continua somente leitura, sem cálculo ou migração implícitos.
+
+As quatro definições MACD passam de1.0 para1.1; materialização usa1.1+hash.
+O registro direto idempotente conserva definições, parâmetros, unidades e fatos
+1.0. Dados anteriores não são substituídos. O hash global ainda versiona todos
+os IDs materializados quando muda módulo compartilhado: invalidação seletiva
+permanece BD13. Reuso local de dependências não implementa o grafo BD12.
+
+## Provas e precisão
+
+`tests/test_bd08b_macd.py::_expected` usa recorrência decimal de60 dígitos a
+partir da representação float exata das entradas; não chama EWM nem produtor.
+Compara seis massas240 barras (tendência, lateralidade, constante, passeio e
+escalas), ausências, OHLC inválido, colunas faltantes, reinícios, índice temporal,
+prefixo sem futuro, sementes alternativas e zero/denominador inválido.
+
+Antes da comparação foi definido orçamento absoluto64×epsilon_float64×máximo
+|close| da fixture; para a razão, esse orçamento é dividido pelo ATR esperado.
+Tolerância relativa adicional1e-12. O orçamento considera arredondamento e
+cancelamento das EMAs, sem prometer precisão relativa uniforme quando o
+histograma tende a zero. Estados, ausências, revisões, hashes e prefixos
+preservados são comparados exatamente; tolerância numérica não aproxima hashes.
+
+SQLite e PostgreSQL exercitam append, revisão tardia, lotes, invalidação de
+barra inelegível e migração. Cancelamento/retomada conserva lotes e revisões.
+Serviço/SDK/CLI são conciliados com identidade, versão, fotografia e horizonte:
+mesmo cursor e corte coberto estáveis; novo pedido acima da fronteira pode
+avançar, sempre com aviso. `known_at` continua marca lógica pós-commit dos dados,
+sem medição exata da visibilidade física do commit do carimbo.
+
+Recursos medem o processo de testes e os temporários ao final; não são pico de
+disco ou custo isolado do materializador. Massas compactas, sem download DEMO,
+MT5 ou banco principal. Windows físico e paridade nativa pendentes. Suíte geral,
+CI, medidas e tentativas serão vinculadas ao SHA do código no recibo final.
+
+## Continuidade
+
+M2 permanece primeiro percurso demonstrado/parcial, E31 planejado e E32.1 CLI
+sem exportação. As três falhas gerais da entrega anterior mantêm diagnóstico
+próprio, sem correção alheia nesta família. Demais famílias/produtores BD08b
+continuam pendentes. BD12→BD13/14 segue o grafo; BD18b ainda precisa limitar a
+leitura na origem:200 mil fatos pós-leitura não garantem memória. Composição e
+ativação são BD21; este recorte não altera canais do host nem integra a pilha.
