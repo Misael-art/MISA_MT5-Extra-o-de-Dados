@@ -1,3 +1,33 @@
+## Laboratório de séries — T20.22-LAB1, 2026-10-24
+
+[Repasse](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md),
+[contrato](sdk/laboratorio_series.md) e
+[evidência](evidencias/T20_22_LABORATORIO_SERIES_20261024.json).
+Frente própria `codex/lab-multiframe`, PR210 sobre AppPR208/d1c1097.
+Runtime7c66feda06eb publicado e instalado em `app-development`; atalho/menu
+apontam para ele, com ambiente/configuração/dados/ponte/H/Safety preservados.
+Novo serviço CLI/SDK/Tk e cinco visões, sem cálculo de backtest ao abrir gráficos.
+52 definições e11 estratégias investigadas sobre cópia QA EURUSD M15/H1/H4.
+Gerador Default/Manual conectado, mas os seis perfis encontrados na biblioteca
+atual não correspondem às snapshots/pins aprovados: qualificar o pacote por
+perfil (primeiro S09) é a próxima frente operacional, sem waiver financeiro.
+
+Baseline92; seleção28; Tk final16 (sobreposição). Ampla imprimiu3014 aprovados/
+259 pulados em2246,91s; o processo devolveu143 após o resumo, sem causa estabelecida.
+Não é declarado encerramento amplo verde. Verificação separada dos caminhos novos
+devolveu0 com20 aprovados/15 pulados, somente MainThread e atexit normal. CI da
+ponta segue própria; Windows físico e demais aceites operacionais continuam pendentes.
+Doctor com ambiente compartilhado20/1opcional/0. Aplicação instalada aberta offline
+com DB privado; nenhuma sessão/ordem real MT5 por esta tarefa.
+
+Limpeza própria liberou1.485.367.403 bytes lógicos; três diretórios pequenos de
+metadados ainda abertos pelo `gvfsd-metadata` foram preservados, sem sinalizar o
+serviço. Baseline padrão sem identificação conclusiva não foi apagada.
+No SD, adicional organizado `Backups/MT5X/2026-10-24-laboratorio-series`: base QA
+pequena e reutilizável,3snapshots, integridade/hashes conferidos e contexto; sem
+credenciais/venv/Wine nem cópia da base oficial. Recolher WIPs das outras frentes
+antes de formatar. Não houve merge em master por esta frente.
+
 ## AIA-02a — catálogo de Estudo via SDK, 2026-10-23
 
 [Repasse fechado em2026-10-24](repasse/AIA_02A_CONTINUIDADE_20261024.md): código/PR208,

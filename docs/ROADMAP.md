@@ -340,3 +340,13 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 **G19.7 — Indicadores múltiplos:** dependência de séries revisada e compilada junto ao Expert, conservando bibliotecas anteriores. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md); composição e validação nativa em andamento.
 
 **G19.8 — Distribuição:** composição identificada para o atalho habitual, com ativos gráficos, fingerprint manual e preservação do canal aceito/dados. [Procedimento e evidências](propostas/G19_8_DISTRIBUICAO.md). Validação final em andamento.
+# Laboratório — extensão solicitada em24/10/2026
+
+T20.22-LAB1 acrescenta a exploração de séries reais no Laboratório existente:
+mesma estratégia entre TFs, preço/indicador, matriz direcional, defasagens e
+cobertura, com CLI/SDK e ampliação por monitor. Acesso ao gerador Default/Manual
+reutiliza os contratos operacionais; correlações não aplicam regras automaticamente.
+[Contrato, inventário e próximas frentes](sdk/laboratorio_series.md).
+Comparação financeira da mesma revisão de preset, inspetor temporal vinculado,
+convergência dos catálogos nativo/histórico e gerador automático mantêm seus donos,
+dependências e aceites próprios. O pilar de dados não é reimplementado nesta frente.
