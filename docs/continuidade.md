@@ -1,3 +1,11 @@
+## Repasse final AIA-01
+
+[Continuidade autônoma do SDK](repasse/AIA_01_CONTINUIDADE_20261023.md): código,
+PRs, comandos, provas, preview/limpeza e pendências para outro host/agente.
+Implementação instalada App56226ce/Hb730; documentos posteriores podem avançar a
+ponta sem mudar o código instalado.100 dirigidos/2952 amplos, seleções e limites
+separados no repasse; CI remoto tem conferência por HEAD.
+
 ## AIA-01 — SDK/workflow para agentes, 2026-10-23
 
 Frente própria `codex/ai-workflows`, sem editar WIP da raiz/pilar de dados.

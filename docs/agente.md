@@ -261,5 +261,10 @@ e `tests/test_robots_runner.py::test_real_python_backtests_are_recorded`.
 O primeiro timeout foi reproduzido no Git congelado da base1d5ce229, anterior ao
 AIA-01. Stacks passam por snapshot/decodificação Pandas e pelo runner/monitor;
 a causa de desempenho não foi fechada. Não afrouxar testes nem promover isso a
-suíte global aprovada. Nova suíte/CI da ponta e correção de desempenho permanecem
-verificações próprias; o delta SDK não altera esses produtores.
+falha atribuída ao SDK. Nova execução ampla passou2952/251skip em2971.93s,
+sem DISPLAY e com BLAS/OMP=1; começou antes dos últimos refinamentos, cobertos
+pelos100 dirigidos finais. Isso não fecha a causa dos timeouts nem substitui CI
+do último HEAD. O delta SDK não altera esses produtores.
+
+[Repasse para outro host/agente](repasse/AIA_01_CONTINUIDADE_20261023.md):
+fontes/PRs, instalação, limpeza própria e limites de continuidade.

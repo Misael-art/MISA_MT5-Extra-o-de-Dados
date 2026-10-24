@@ -41,7 +41,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
-| AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). CI global/timeouts herdados e Windows físico pendentes; sem aceite financeiro |
+| AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). 100 dirigidos finais e2952/251 ampla (cortes descritos na evidência); prévia instalada. CI do último HEAD, causa dos timeouts herdados e Windows físico têm gates próprios; sem aceite financeiro |
 | AIA-02 | Extensões tipadas de Estudo/indicadores e controle da reprodução | AIA-01 + contratos específicos | Pendente; sem automação de mouse como substituto |
 | EST-IND | Indicador estratégico + série em banco | Contrato matemático/dados próprio | Pendente, fora do foco atual |
 | OMNI-M | Amadurecimento OMNI | Definição/contrato a consolidar | Pendente, fora do foco atual |

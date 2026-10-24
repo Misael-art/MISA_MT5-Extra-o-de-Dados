@@ -74,8 +74,16 @@
       "test": "tests/test_robots_backtest.py::test_newest_run_first_and_period_start",
       "result": "same timeout60s before AIA-01"
     },
-    "global_exact_head_ci": "pending final push",
-    "concurrent_duplicate_request": "two Python callers, one effect; same serialized contract as JSONL"
+    "global_exact_head_ci": "Consult GitHub PR207 checks at the final documentation HEAD; local broad run is not claimed as frozen-head evidence.",
+    "concurrent_duplicate_request": "two Python callers, one effect; same serialized contract as JSONL",
+    "broad_followup": {
+      "passed": 2952,
+      "skipped": 251,
+      "failed": 0,
+      "duration_seconds": 2971.93,
+      "environment": "DISPLAY/WAYLAND_DISPLAY unset; OMP/OPENBLAS/MKL_NUM_THREADS=1",
+      "scope": "Run began before final refinements; final100 directed cover later changes; selections overlap. Exact-head CI checked separately."
+    }
   },
   "native": {
     "play": {
@@ -172,5 +180,25 @@
     "logical_bytes": 6385833490,
     "evidence_preserved": true,
     "foreign_processes_signaled": 0
+  },
+  "implementation_commit": "56226ce92148c84fe5875f2fd5e54645a35cee04",
+  "cleanup_final": {
+    "profiles_removed": 13,
+    "logical_bytes": 11151593590,
+    "common_files_archived_removed": 23,
+    "temporary_frozen_base_removed": true,
+    "evidence_preserved": true,
+    "foreign_processes_signaled": 0,
+    "owner_data_wip_preserved": true
+  },
+  "development_preview": {
+    "app_implementation": "56226ce92148c84fe5875f2fd5e54645a35cee04",
+    "hadouken": "b730ed4a8df74f5f20eb6e289798d0232c370994",
+    "shortcut_launched": true,
+    "installed_cli_checked": true,
+    "configuration_credentials_data_preserved": true,
+    "existing_bridge_restarted": false,
+    "accepted_channels_preserved": true,
+    "scope": "Experimental development preview; later documentation-only commits do not change installed code."
   }
 }
