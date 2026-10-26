@@ -8,12 +8,10 @@ retomar: [docs/continuidade.md](docs/continuidade.md) (harmonização de 2026-10
 ## Fluxo obrigatório
 
 1. **Uma tarefa do plano por PR** (ex.: T1.1). Não misture tarefas nem faça "melhorias" extras.
-2. Antes de começar, instale o ambiente: `./install.sh --yes --no-mt5` (Linux) ou
-   `install.bat -Yes -NoMT5` (Windows). Depois: `pip install -r requirements-dev.txt` no `.venv`.
-3. Rode os testes **antes** de mudar qualquer coisa, para conhecer o estado inicial:
-   `.venv/bin/python -m pytest -q`.
+2. Reutilize o ambiente preparado pelo wrapper de `CONTINUAR_AQUI.md`; diagnostique antes de instalar novamente. Se estiver ausente, use o instalador oficial e `requirements-dev.txt` no único `.venv`, respeitando os limites de download e privilégio.
+3. Conheça o baseline dos checks afetados antes de mudar código. Execute a suíte pertinente e os gates obrigatórios ao fechar o lote; documentação isolada exige revisão de diff/referências, sem repetir uma suíte pesada sem necessidade.
 4. Siga os passos da tarefa na ordem. Se um passo não bater com o código (ex.: a linha citada
-   não existe mais), **pare e registre no PR** o que encontrou. Não invente outra solução.
+   não existe mais), investigue a divergência no código atual e registre no PR. Preserve o contrato; prossiga no escopo comprovado e nas partes independentes, solicitando decisão somente quando indispensável.
 5. Rode de novo: `pytest`, `shellcheck` (se mexeu em `.sh`) e o `doctor`.
 6. Atualize o painel de status em `docs/PLANO_DE_TRABALHO.md`.
 
@@ -74,9 +72,14 @@ Reutilizar ambiente/dados, conservar retorno e remover somente temporários pró
 
 ## Coleção Projects: continuidade e organização
 
-- Este projeto tem um único checkout ativo por componente, sob a raiz de projetos escolhida pelo proprietário. Neste host, use somente `/home/misael/Projects/MT5X`. Resgates antigos são arquivos de consulta, não outros ambientes de desenvolvimento.
-- Leia também as instruções do diretório pai e o registro central `.workspace/projects.json`, quando presentes. A instrução atual de raiz única prevalece sobre sugestões históricas de criar clones ou worktrees por agente/tarefa. Não crie worktrees nem variantes paralelas sem pedido explícito do usuário.
-- Preserve alterações locais. Faça mudanças pequenas no checkout existente, valide, revise arquivos/segredos/tamanho, faça commit e push do lote autorizado e confira o SHA remoto antes de declarar sincronização. Não faça stage global de material resgatado, push forçado ou merge automático de pesquisas.
-- Mantenha código, documentos e receitas no Git. SDKs, caches, dependências, builds, ROMs, bancos, pacotes de migração, sessões e dados privados usam os destinos próprios, com manifestos e recuperação verificável; `.gitignore` não é backup. Novo arquivo acima de 10 MiB exige revisão e armazenamento apropriado.
-- Continue autonomamente até a entrega verificável. Evite confirmações rotineiras e relatos de pequenos avanços. Interrompa apenas o que depender de informação, acesso ou autorização indispensável; registre causa e próxima ação, mantendo as partes independentes em andamento.
-- Resgate e testes históricos não aprovam funcionamento neste host. Preserve critérios e evidências de cada produto. A autorização de continuidade não permite publicar conteúdo privado em repositório público nem fazer merge/release/deploy do produto.
+- Política comum: [../../../AGENTS.md](../../../AGENTS.md), especialmente autonomia, testes, GitHub e recursos (§§5–10); raiz/branch em [registro central](../../../.workspace/projects.json). A orientação atual de raiz única substitui recomendações históricas de criar worktrees/clones por tarefa; os contratos técnicos e gates deste projeto permanecem obrigatórios. Em outro host, preserve este mesmo método em um único checkout registrado, sem recriar caminhos antigos.
+- Antes de implementar, leia `CONTINUAR_AQUI.md`, `docs/continuidade.md`, `docs/ROADMAP.md` e `docs/PLANO_DE_TRABALHO.md`, identifique causa, owner, dependências e aceite. Procure a solução oficial existente e integre nela; não introduza soluções concorrentes, aliases ambíguos ou refatorações fora do pedido. Neste host, a única raiz é `/home/misael/Projects/MT5X`.
+- Execute o lote até implementar, testar, revisar e preservar a continuidade. Resolva decisões reversíveis pelo contexto; não pare em planos nem peça confirmação para editar/testar o que já está autorizado. Comunique descobertas, bloqueios e entrega, sem narrar cada comando ou pequeno avanço.
+- Antes de operações pesadas, confira espaço do destino, RAM e carga; estime saídas e retenção. Reutilize ferramentas/ambientes compatíveis, limite jobs e encerre somente processos temporários próprios. Não mate trabalhos alheios, limpe caches compartilhados ou apague evidência para obter um gate verde.
+- A raiz da composição é `MT5X/`: App somente em `repos/app`, HADOUKEN em `repos/hadouken`, Safety em `repos/safety`; um ambiente App em `repos/app/.venv`, insumos/recibos nos destinos do wrapper. Respeite os commits fixados; não altere pins nem crie outro motor de dados, cache, scheduler ou executor para contornar integração.
+- Faça os checks pertinentes a toda alteração; para documentos, revise diff, referências e coerência. Para código, cubra comportamento/regressão e execute os gates aplicáveis, sem desativá-los. Use o launcher/atalho central para validar GUI e CLI no host atual, preservando os dados. O doctor offline é `doctor --development --no-probe`; não qualifica MT5/Wine/Windows nem contas. Integração nativa exige ambiente permitido, ownership/lease e evidência real; nunca usar negociação REAL como teste.
+- Reutilize a autenticação válida e os helpers existentes. Nunca peça senha/token no chat, copie sessões ou grave credenciais em código/log. Se faltar acesso indispensável, solicite uma única ação pelo fluxo oficial, preserve o estado e avance no trabalho independente; não repita permissões já concedidas.
+- Confira remoto, PRs e checks do SHA antes do lote e ao publicar; reutilize o PR da mesma branch/objetivo. Revise arquivos explícitos, segredos e tamanho, faça commit/push do incremento autorizado e confirme o SHA remoto. Sem stage global de resgates, push forçado, merge de pesquisas ou publicação de dados privados. Não faça polling contínuo de CI.
+- PR cabe ao incremento revisável; release somente a marco elegível com versão/artefatos/notas e gates completos, dentro da autorização de publicação vigente. Não gerar release por manutenção destas regras. Preserve limites de merge/deploy e falhas preexistentes; acesso autenticado não amplia autorização.
+- Fontes e receitas ficam no Git; bancos, ROMs, assets privados, SDKs, builds, caches e pacotes de resgate seguem owner/destino próprios e recuperação verificável. `.gitignore` não é backup. Novo arquivo acima de 10 MiB exige revisão; downloads acima de 70 MB são manuais, inclusive o pacote dividido, com origem/tamanho/hash/destino preparados.
+- Ao fechar, mantenha apenas os gerados necessários e atualize o handoff existente com SHA, testes no host, limites de validação, bloqueio e próximo passo. Não declare produto pronto quando faltar evidência do alvo real, nem deixe um único exemplar de trabalho útil sem proteção identificada.
