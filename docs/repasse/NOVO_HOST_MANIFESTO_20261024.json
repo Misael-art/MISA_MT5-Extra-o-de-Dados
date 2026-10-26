@@ -28,6 +28,6 @@
     "safety": "3988df13c467bd22941183f5546caad0500f9138"
   },
   "private_backup": "Página privada de recuperação; nunca baixar pelo repositório público.",
-  "development_layout": ["repos/app", "repos/hadouken", "repos/safety", "worktrees", "studies", "downloads", "state"],
+  "development_layout": ["repos/app", "repos/hadouken", "repos/safety", "studies", "downloads", "state"],
   "operational_acceptance": false
 }

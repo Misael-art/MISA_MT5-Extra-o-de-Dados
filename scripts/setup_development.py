@@ -104,7 +104,7 @@ def verify_readiness(app, python, state, run=command):
     if not shutil.which('g++'):
         raise SetupError('g++ ausente: use bootstrap-dev do seu SO para instalar a toolchain.')
     run([python, '-m', 'mt5_extracao.bootstrap', '--root', app,
-         'doctor', '--no-probe', '--json'], app, state / 'doctor.json')
+         'doctor', '--development', '--no-probe', '--json'], app, state / 'doctor.json')
 
 
 def prepare(workspace, plan=False, checks=True, run=command):
@@ -149,7 +149,7 @@ def prepare(workspace, plan=False, checks=True, run=command):
                 workspace / 'repos' / 'hadouken', state / 'super-atr-tests.log')
         # O mesmo criador de atalhos usado pelo instalador: desktop e menu coerentes.
         run([python, '-m', 'mt5_extracao.bootstrap', '--root', app, 'shortcuts'], app, state / 'shortcuts.log')
-        for folder in ('worktrees', 'studies', 'downloads'):
+        for folder in ('studies', 'downloads'):
             (workspace / folder).mkdir(exist_ok=True)
         receipt['status'] = 'development_ready' if checks else 'environment_only_checks_pending'
     except Exception as error:

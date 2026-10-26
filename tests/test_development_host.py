@@ -158,3 +158,6 @@ def test_real_checkout_orchestration_preserves_data_and_records_failure(reposito
     assert data.read_bytes() == b'nao substituir a base'
     assert any('shortcuts' in c for c in calls) is not fail_install
     assert git(app, 'rev-parse', 'HEAD') == sha
+    if not fail_install:
+        assert any('doctor' in c and '--development' in c for c in calls)
+        assert not (workspace / 'worktrees').exists()

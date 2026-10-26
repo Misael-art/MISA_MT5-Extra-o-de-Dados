@@ -4214,3 +4214,19 @@ timer com seta neutra/verde/vermelha e fallback inline em espaço restrito.
 [Uso, matemática e pendências](sdk/alvo_probabilistico.md). Calibração/resultado
 financeiro, fills/Tester, concorrência/restart amplo e Windows físico pendentes.
 Sem alteração no pilar de dados, banco owner, launcher/monitores ou Safety publicada.
+## Recuperação de continuidade — 2026-10-26
+
+Correção do bootstrap T20.30-HOST1: a preparação sem MT5 agora usa o diagnóstico
+explícito `doctor --development`. Mantém falhas de configuração, dependências,
+diretório do banco e terminal configurado inválido; ausência de terminal é aviso
+somente nesse perfil. Não consulta ponte ou contas e não qualifica operação
+nativa. O doctor normal conserva o contrato anterior.
+
+Checkout único por componente em `MT5X/repos/`; o bootstrap deixa de criar uma
+pasta de worktrees. Bancos privados de pesquisa/QA e WIPs resgatados continuam
+separados da base ativa e não são promovidos pelo bootstrap.
+
+Verificação neste host: baseline focado 26/26; recorte após correção 58/58
+(`test_development_host`, `test_bootstrap_doctor`, `test_recovery_verification`,
+`test_packaging`). A suíte ampla inicial foi interrompida após 185 pass/31 skip
+em 218 s; não constitui aprovação integral. Windows e MT5 real não exercitados.
