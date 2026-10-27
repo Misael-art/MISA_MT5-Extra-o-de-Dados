@@ -299,3 +299,22 @@ def test_predictor_must_beat_target_persistence():
     split = service._temporal_split(noisy, target, lagged)
     assert split["verdict"] == "NO_GAIN_OVER_PERSISTENCE"
     assert abs(split["naive_holdout_correlation"]) >= abs(split["holdout_correlation"])
+
+
+def test_block_ci_is_deterministic_contains_estimate_and_widens_with_persistence():
+    import numpy as np
+    import pandas as pd
+    rng = np.random.default_rng(3)
+    x = pd.Series(rng.normal(size=600))
+    y = x * .5 + pd.Series(rng.normal(size=600))
+    low, high = service._block_ci(x, y)
+    assert low < x.corr(y) < high and service._block_ci(x, y) == [low, high]
+    persistent = [pd.Series(np.repeat(rng.normal(size=20), 30)) for _ in range(2)]
+    p_low, p_high = service._block_ci(*persistent)
+    assert p_high - p_low > high - low
+    assert service._block_ci(x[:8], y[:8]) is None
+
+
+def test_predictive_lags_include_longer_fixed_horizon(snapshots):
+    lags = {pair["lag_bars"] for pair in analysis(snapshots)["pairs"]}
+    assert lags == {0, *service.PREDICTIVE_LAGS} and 6 in lags

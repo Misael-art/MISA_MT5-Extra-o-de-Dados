@@ -226,6 +226,8 @@ def diagnose(channel, *, source_rows, source_available, available):
 
 # LAB-07: corte cronológico fixo (não otimizado) para separar descrição de previsão.
 FIT_FRACTION = 0.7
+PREDICTIVE_LAGS = (1, 3, 6)   # barras da grade; horizonte fixo, nunca escolhido pelo melhor efeito
+BOOTSTRAP_RESAMPLES = 200
 MIN_HOLDOUT_PAIRS = 30
 MIN_HOLDOUT_EFFECT = 0.1
 
@@ -250,6 +252,27 @@ def _null_band(x, y, min_shift):
     cross = np.fft.irfft(np.conj(np.fft.rfft(a)) * np.fft.rfft(b), n) / n
     shifts = cross[min_shift:n - min_shift]
     return float(np.quantile(np.abs(shifts), 0.95))
+
+
+def _block_ci(x, y):
+    """IC 95% de r por bootstrap de blocos móveis: blocos preservam a dependência serial."""
+    a, b = np.asarray(x, float), np.asarray(y, float)
+    n = len(a)
+    block = max(5, n // 20)
+    if n < 2 * block:
+        return None
+    rng = np.random.default_rng(0)  # semente fixa: mesmo relatório para a mesma seleção
+    starts = rng.integers(0, n - block + 1, size=(BOOTSTRAP_RESAMPLES, -(-n // block)))
+    index = (starts[:, :, None] + np.arange(block)).reshape(BOOTSTRAP_RESAMPLES, -1)[:, :n]
+    sa, sb = a[index], b[index]
+    sa, sb = sa - sa.mean(1, keepdims=True), sb - sb.mean(1, keepdims=True)
+    denominator = np.sqrt((sa ** 2).sum(1) * (sb ** 2).sum(1))
+    valid = denominator > 0
+    if valid.sum() < BOOTSTRAP_RESAMPLES * .9:
+        return None
+    r = (sa * sb).sum(1)[valid] / denominator[valid]
+    low, high = np.quantile(r, [.025, .975])
+    return [float(low), float(high)]
 
 
 def _temporal_split(x, y, naive=None):
@@ -278,8 +301,13 @@ def _temporal_split(x, y, naive=None):
         verdict = "NO_GAIN_OVER_PERSISTENCE"
     else:
         verdict = "HOLDOUT_CONSISTENT"
+    # IC só onde ainda decide algo: amostra curta ou ajuste fraco não chegam à confirmação.
+    interval = None if verdict in ("HOLDOUT_INSUFFICIENT", "FIT_WEAK") else _block_ci(x.iloc[cut:], y.iloc[cut:])
+    if verdict == "HOLDOUT_CONSISTENT" and (interval is None or interval[0] <= 0 <= interval[1]):
+        verdict = "CI_INCLUDES_ZERO"
     return dict(fit_fraction=FIT_FRACTION, fit_pairs=cut, fit_correlation=fit,
                 holdout_pairs=n_holdout, holdout_correlation=holdout, null_band_95=band, naive_holdout_correlation=naive_holdout,
+                holdout_ci_95=interval,
                 control="circular_shift_of_predictor_in_holdout", verdict=verdict)
 
 
@@ -342,7 +370,7 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
     aligned = [_align(channel, grid) for channel in channels]
     pairs = [dict(left=left["id"], right=right["id"], **_pair(aligned[i], aligned[j], lag))
              for i, left in enumerate(channels) for j, right in enumerate(channels)
-             for lag in ((0,) if i == j else (0, 1, 3) if j > i else (1, 3))]
+             for lag in ((0,) if i == j else (0, *PREDICTIVE_LAGS) if j > i else PREDICTIVE_LAGS)]
     prices = [[float(value) if pd.notna(value) else None for value in row]
               for row in populations[0]["prices"].itertuples(index=False, name=None)]
     for population in populations:

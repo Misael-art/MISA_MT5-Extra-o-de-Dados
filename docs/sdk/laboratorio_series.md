@@ -99,7 +99,9 @@ otimizado), correlação e n de ajuste e fora da amostra e `verdict`
 pares). Dois controles no trecho fora da amostra: `null_band_95` (quantil 95% de
 |r| sob deslocamentos circulares do preditor, que preservam autocorrelação e
 retenção) e `naive_holdout_correlation` (o próprio alvo com a mesma defasagem).
-Só é consistente o que supera ambos. Campos aditivos: o `analysis_id`
+Só é consistente o que supera ambos e cujo `holdout_ci_95` (bootstrap de
+blocos móveis, 200 reamostras, semente fixa) exclui zero; senão `CI_INCLUDES_ZERO`.
+Defasagens preditivas fixas: 1, 3 e 6 barras da grade (`PREDICTIVE_LAGS`). Campos aditivos: o `analysis_id`
 de seleções existentes não muda. Consistente fora da amostra não é previsão
 calibrada, lucro nem validação de estratégia.
 
