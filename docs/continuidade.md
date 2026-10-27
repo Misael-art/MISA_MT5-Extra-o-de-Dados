@@ -2976,5 +2976,11 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   (preserva autocorrelação/retenção; FFT) e base ingênua = próprio alvo defasado. Vereditos novos
   `WITHIN_NULL` e `NO_GAIN_OVER_PERSISTENCE`. Dados reais (mesma janela, 4 indicadores + ema_atr, 540 pares,
   ~12 s): 191 pares antes "consistentes" não superam a persistência do alvo; nenhum par preditivo restante.
-- Pendente LAB-07: intervalo de confiança por bloco, horizonte além de 3 barras, eventos não confirmados e
-  M7/M9 pelo contrato de barras derivadas da frente de Dados.
+- IC e horizonte (4ef1953): IC 95% fora da amostra por bootstrap de blocos móveis (200, semente fixa),
+  calculado só para pares que chegam à confirmação; consistente exige IC sem zero (`CI_INCLUDES_ZERO`).
+  Defasagens fixas 1/3/6. Dados reais (750 pares): custo ~12 s → ~29 s (fundo, sem travar a UI); único par
+  consistente: M15 RSI → M15 alligator em 6 barras, r fora 0,668 [0,631; 0,709] contra 0,634 do alvo defasado
+  (ganho pequeno sobre persistência; mesma origem de preço, não é sinal operacional).
+- QA: visão de defasagens renderizada em Tk real (Xvfb próprio :137; :98 pertence a outro processo, preservado).
+- Pendente LAB-07: eventos não confirmados e M7/M9 pelo contrato de barras derivadas da frente de Dados;
+  aceite do proprietário.
