@@ -2960,3 +2960,17 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   Não exercitado: mouse físico, DPI/monitor físico, handheld.
 - Bordas da região: arrastar a borda redimensiona só aquele lado (`Study.edge/resize`), com desfazer.
 - Pendente LAB-08: aceite do proprietário; anotações só no painel de preço (mover entre painéis não existe).
+
+## LAB-07 (parcial) · 2026-10-27 (branch de continuidade, PR 212, commit 4e42058)
+
+- Serviço: pares ganham `relation` (DESCRIPTIVE na defasagem 0, PREDICTIVE_CANDIDATE em 1/3) e
+  `out_of_sample` com corte cronológico fixo 70/30 e veredito (consistente, inverte, fraca fora, fraca no
+  ajuste, amostra curta). Aditivo; `analysis_id` inalterado. Nova limitação declarada no relatório.
+- UI: Defasagens mostra quadrado descritivo, linha cheia (ajuste) e tracejada (fora) com veredito e hover.
+- Dados reais (cópia descartável da base recuperada, config de QA offset -3): EURUSD M15/H1/H4 abr–set/2026,
+  12 564 fechamentos M15: nenhuma relação entre TFs da ema_atr sobrevive (fraca no ajuste/fraca fora).
+  Achado que motivou `FIT_WEAK`: ajuste ≈0 era rotulado "inverte fora".
+- Testes: 43 em Séries/UI; preexistentes: `negative_monitor` e `test_ui_relations::scope_is_not_a_fake_filter`
+  (falha também sem esta mudança).
+- Pendente LAB-07: controles (embaralhamento/base ingênua), incerteza (IC), horizonte além de 3 barras,
+  eventos não confirmados e M7/M9 pelo contrato de barras derivadas da frente de Dados.
