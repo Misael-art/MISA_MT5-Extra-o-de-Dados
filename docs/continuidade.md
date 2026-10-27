@@ -2928,3 +2928,13 @@ Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
   valores sempre horizontais e só quando cabem; `n=` saiu das barras para a legenda (n total, escala ±,
   pouca amostra, zero, sem dados) e o hover. Temas claro/escuro conferidos por renderização.
 - Pendente do LAB-04: revisar heatmaps/demais visões com o mesmo critério e aceite visual do proprietário.
+
+## LAB-08 (parcial) · 2026-10-26
+
+- Gráfico do ativo em Séries: candles + todas as séries selecionadas; unidade de preço sobreposta, demais
+  unidades em até 3 subjanelas com eixo de tempo compartilhado (zoom/cursor vinculados no Ampliar);
+  várias instâncias parametrizadas; clique na legenda oculta/mostra.
+- `laboratory/annotations.py`: linha horizontal/vertical, região, nota; editar texto, excluir, desfazer;
+  exportar/reabrir JSON amarrado ao `analysis_id` (recusa estudo de outra análise).
+- Pendente: arrastar/editar geometria pelo mouse, remover série sem recongelar, mais de 3 unidades
+  simultâneas (hoje avisa e pede ocultar), integração com o Estudo MT5 (`chart_study`) e aceite do proprietário.

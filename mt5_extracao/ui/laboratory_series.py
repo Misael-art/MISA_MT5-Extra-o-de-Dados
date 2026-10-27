@@ -47,6 +47,29 @@ def timeline_bins(channels, max_columns):
     return np.array(data), boundaries
 
 
+TOOLS = ("Navegar", "Linha horizontal", "Linha vertical", "Região", "Nota")
+MAX_PANES = 3
+UNIT_LABELS = {"points_0_100": "Oscilador 0–100", "fraction": "Fração do preço", "channel_fraction": "Posição no canal (0–1)",
+               "price_units": "Unidades de preço", "ratio": "Razão", "candidate_-1_0_1": "Intenção −1/0/+1"}
+
+
+def chart_groups(channels, hidden, selected_id):
+    """Unidade de preço sobrepõe candles; demais unidades em subjanelas; ocultas ficam fora."""
+    overlay, panes, hidden_rows = [], {}, []
+    for channel in channels:
+        if channel["rule"] == "candidate":
+            continue
+        if channel["id"] in hidden:
+            hidden_rows.append(channel)
+        elif channel["rule"] == "price":
+            overlay.append(channel)
+        else:
+            panes.setdefault(channel["unit"], []).append(channel)
+    ordered = sorted(panes.items(), key=lambda item: not any(row["id"] == selected_id for row in item[1]))
+    return dict(overlay=overlay, panes=ordered[:MAX_PANES], hidden=hidden_rows,
+                omitted=[unit for unit, _ in ordered[MAX_PANES:]])
+
+
 def empty_channels(report):
     return [row for row in report["channels"] if row.get("diagnosis")]
 
@@ -274,6 +297,20 @@ class SeriesLaboratoryPanel:
         self.channel_box = ttk.Combobox(detail, textvariable=self.detail_channel, state="readonly", width=52)
         self.channel_box.pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
         self.channel_box.bind("<<ComboboxSelected>>", self._channel_changed)
+        tools = ttk.Frame(self.frame)
+        tools.pack(fill=tk.X, pady=2)
+        ttk.Label(tools, text="Ferramenta:").pack(side=tk.LEFT)
+        self.tool = tk.StringVar(value=TOOLS[0])
+        ttk.Combobox(tools, textvariable=self.tool, state="readonly", width=16, values=TOOLS).pack(side=tk.LEFT, padx=4)
+        ttk.Label(tools, text="Texto:").pack(side=tk.LEFT)
+        self.note_text = tk.StringVar()
+        ttk.Entry(tools, textvariable=self.note_text, width=24).pack(side=tk.LEFT, padx=4)
+        for text, command in (("Aplicar texto à última", self.edit_last_annotation), ("Excluir última", self.remove_last_annotation),
+                              ("Desfazer", self.undo_annotation), ("Exportar estudo", self.export_study),
+                              ("Abrir estudo", self.open_study)):
+            ttk.Button(tools, text=text, command=command).pack(side=tk.LEFT, padx=2)
+        self.study = None
+        self._region_start = None
         self.channel_details = ttk.Label(self.frame, text="", style="Muted.TLabel", wraplength=1000)
         self.channel_details.pack(fill=tk.X, pady=4)
         self.frame.bind("<Configure>", self._wrap_details, add="+")
@@ -450,6 +487,9 @@ class SeriesLaboratoryPanel:
         self.ui.run_bg(work, done)
 
     def set_report(self, report):
+        from mt5_extracao.laboratory.annotations import Study
+        if self.study is None or self.study.analysis_id != report["analysis_id"]:
+            self.study = Study(report["analysis_id"])  # anotações nunca migram para outra análise
         self.report = report
         ids = [channel["id"] for channel in report["channels"]]
         self.channel_box.configure(values=ids)
@@ -494,6 +534,9 @@ class SeriesLaboratoryPanel:
             height = 460 if extended else 340
             if key == "coverage" and self.report:
                 height = max(height, len(self.report["channels"]) * 17 + 80)
+            if key == "price" and self.report:
+                panes = chart_groups(self.report["channels"], self.study.hidden if self.study else set(), "")["panes"]
+                height += 110 * len(panes)
             panel.chart.widget.configure(height=height)
         self.canvas.configure(height=1600 if extended else 2000)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -576,45 +619,187 @@ class SeriesLaboratoryPanel:
         from matplotlib.collections import LineCollection
         from matplotlib.dates import AutoDateLocator, ConciseDateFormatter, date2num
         report = self.report
-        channel = next((item for item in report["channels"] if item["id"] == self.detail_channel.get()), report["channels"][0])
+        selected = next((item for item in report["channels"] if item["id"] == self.detail_channel.get()),
+                        report["channels"][0])
         times = pd.to_datetime(report["times"], utc=True)
         x = date2num(times.to_pydatetime())
-        price = np.array([[np.nan if v is None else v for v in row] for row in report["prices"]])
-        ax, feature = chart.figure.subplots(2, 1, sharex=True, gridspec_kw=dict(height_ratios=[2, 1]))
+        price = np.array([[np.nan if v is None else v for v in row] for row in report["prices"]], dtype=float)
+        groups = chart_groups(report["channels"], self.study.hidden if self.study else set(), selected["id"])
+        ratios = [3] + [1] * len(groups["panes"])
+        axes = np.atleast_1d(chart.figure.subplots(len(ratios), 1, sharex=True, gridspec_kw=dict(height_ratios=ratios)))
+        ax = axes[0]
         colors = [self.theme.colors["good"] if close >= op else self.theme.colors["bad"] for op, _, _, close in price]
         ax.add_collection(LineCollection([[(at, low), (at, high)] for at, (_, high, low, _) in zip(x, price)],
                                          colors=colors, linewidths=.7))
         ax.add_collection(LineCollection([[(at, op), (at, close)] for at, (op, _, _, close) in zip(x, price)],
                                          colors=colors, linewidths=2.2))
         ax.autoscale_view()
-        values = np.array([np.nan if v is None else v for v in channel["values"]], dtype=float)
-        if channel.get("diagnosis"):
-            feature.text(.5, .5, f"{channel['diagnosis']['message']}\n{channel['diagnosis']['action']}",
-                         transform=feature.transAxes, ha="center", va="center", wrap=True, fontsize=8,
-                         color=self.theme.colors["ink2"])
         grid_tf = timeframes.parse(report["grid_timeframe"])
         expected = times[:-1] + (pd.offsets.MonthBegin(1) if grid_tf.name == "MN1" else pd.Timedelta(minutes=grid_tf.minutes))
         splits = np.flatnonzero(times[1:] != expected) + 1
-        for positions in np.split(np.arange(len(times)), splits):
-            # Segmento de uma barra não forma linha; o marcador evita sumir com o valor.
-            marker = "o" if np.isfinite(values[positions]).sum() == 1 else None
-            feature.plot(times[positions], values[positions], color=self.theme.colors["accent"], linewidth=1.1,
-                         marker=marker, markersize=3)
-            if channel["rule"] == "price":
-                ax.plot(times[positions], values[positions], color=self.theme.colors["accent"], linewidth=1.2,
-                        marker=marker, markersize=3)
-        if channel["rule"] == "candidate":
-            first_source = ~pd.Series(channel["source_ends"]).duplicated().to_numpy()
+        palette = [self.theme.colors["accent"], *self.theme.colors["series"], self.theme.colors["warn"], self.theme.colors["ink2"]]
+        chart._legend_lines = {}
+
+        def plot(target, channel, color):
+            values = np.array([np.nan if v is None else v for v in channel["values"]], dtype=float)
+            first = None
+            for positions in np.split(np.arange(len(times)), splits):
+                # Segmento de uma barra não forma linha; o marcador evita sumir com o valor.
+                marker = "o" if np.isfinite(values[positions]).sum() == 1 else None
+                line, = target.plot(times[positions], values[positions], color=color, linewidth=1.1,
+                                    marker=marker, markersize=3, label=None if first else f"{channel['timeframe']} · {channel['name']}")
+                first = first or line
+            return first, values
+        for index, channel in enumerate(groups["overlay"]):
+            line, _ = plot(ax, channel, palette[index % len(palette)])
+            chart._legend_lines[line.get_label()] = channel["id"]
+        for pane, (unit, channels) in zip(axes[1:], groups["panes"]):
+            for index, channel in enumerate(channels):
+                line, values = plot(pane, channel, palette[(index + 1) % len(palette)])
+                chart._legend_lines[line.get_label()] = channel["id"]
+                if channel.get("diagnosis") and not np.isfinite(values).any():
+                    pane.text(.5, .5, f"{channel['diagnosis']['message']}\n{channel['diagnosis']['action']}",
+                              transform=pane.transAxes, ha="center", va="center", wrap=True, fontsize=8,
+                              color=self.theme.colors["ink2"])
+            charts.style_axis(pane, self.theme, UNIT_LABELS.get(unit, unit))
+        if selected["rule"] == "candidate":
+            values = np.array([np.nan if v is None else v for v in selected["values"]], dtype=float)
+            first_source = ~pd.Series(selected["source_ends"]).duplicated().to_numpy()
             for side, marker in ((1, "^"), (-1, "v")):
-                selected = (values == side) & first_source
-                ax.scatter(x[selected], price[selected, 3], marker=marker,
+                chosen = (values == side) & first_source
+                ax.scatter(x[chosen], price[chosen, 3], marker=marker,
                            color=self.theme.colors["good" if side == 1 else "bad"], s=18)
+        for target in axes:
+            handles, labels = target.get_legend_handles_labels()
+            if handles:
+                legend = target.legend(fontsize=7, loc="upper left", labelcolor=self.theme.colors["ink2"],
+                    facecolor=self.theme.colors["surface"], edgecolor=self.theme.colors["border"])
+                for handle in legend.get_lines():
+                    handle.set_picker(6)
+        if groups["omitted"]:
+            ax.text(0, 1.01, "Mais unidades selecionadas: " + ", ".join(groups["omitted"]) + " · oculte séries para vê-las",
+                    transform=ax.transAxes, ha="left", va="bottom", fontsize=7, color=self.theme.colors["muted"])
+        if groups["hidden"]:
+            ax.text(1, 1.01, f"{len(groups['hidden'])} série(s) oculta(s) · clique na legenda alterna",
+                    transform=ax.transAxes, ha="right", va="bottom", fontsize=7, color=self.theme.colors["muted"])
+        self._draw_annotations(ax)
         locator = AutoDateLocator(minticks=3, maxticks=6)
-        feature.xaxis.set_major_locator(locator)
-        feature.xaxis.set_major_formatter(ConciseDateFormatter(locator))
+        axes[-1].xaxis.set_major_locator(locator)
+        axes[-1].xaxis.set_major_formatter(ConciseDateFormatter(locator))
         charts.style_axis(ax, self.theme, f"{report['symbol']} {report['grid_timeframe']} · candles da base")
-        charts.style_axis(feature, self.theme, f"{channel['name']} {channel['timeframe']} · {channel['unit']}")
+        if not getattr(chart, "_study_events", False):
+            chart._study_events = True
+            chart.canvas.mpl_connect("pick_event", lambda event, c=chart: self._legend_picked(c, event))
+            chart.canvas.mpl_connect("button_press_event", lambda event, c=chart: self._chart_clicked(c, event))
+        chart._price_axis = ax
         chart.draw()
+
+    def _draw_annotations(self, ax):
+        color = self.theme.colors["warn"]
+        for item in self.study.items if self.study else ():
+            if item["kind"] == "hline":
+                ax.axhline(item["y"], color=color, linewidth=1, linestyle="--")
+            elif item["kind"] == "vline":
+                ax.axvline(item["x"], color=color, linewidth=1, linestyle="--")
+            elif item["kind"] == "region":
+                ax.axvspan(item["x0"], item["x1"], color=color, alpha=.12, linewidth=0)
+            else:
+                ax.annotate(item["text"], (item["x"], item["y"]), xytext=(6, 6), textcoords="offset points",
+                            fontsize=8, color=self.theme.colors["ink"],
+                            bbox=dict(boxstyle="round,pad=.2", fc=self.theme.colors["surface"], ec=color))
+            if item["text"] and item["kind"] != "note":
+                position = (item.get("x", item.get("x0")), item.get("y")) if item["kind"] != "hline" else None
+                if item["kind"] == "hline":
+                    ax.annotate(item["text"], (0, item["y"]), xycoords=("axes fraction", "data"), fontsize=7,
+                                color=color, va="bottom")
+                else:
+                    ax.annotate(item["text"], (position[0], 1), xycoords=("data", "axes fraction"), fontsize=7,
+                                color=color, va="top", rotation=90)
+
+    def _legend_picked(self, chart, event):
+        ident = getattr(chart, "_legend_lines", {}).get(event.artist.get_label())
+        if ident is None or self.study is None:
+            return
+        self.study.hidden ^= {ident}
+        self.panels["price"].redraw()
+
+    def _chart_clicked(self, chart, event):
+        tool = self.tool.get()
+        if self.study is None or tool == TOOLS[0] or event.inaxes is not getattr(chart, "_price_axis", None) \
+                or event.xdata is None or event.ydata is None:
+            return
+        try:
+            if tool == "Linha horizontal":
+                self.study.add("hline", y=event.ydata, text=self.note_text.get())
+            elif tool == "Linha vertical":
+                self.study.add("vline", x=event.xdata, text=self.note_text.get())
+            elif tool == "Nota":
+                self.study.add("note", x=event.xdata, y=event.ydata, text=self.note_text.get())
+            elif self._region_start is None:
+                self._region_start = event.xdata
+                self.status.configure(text="Região: clique no fim do intervalo.")
+                return
+            else:
+                start, self._region_start = self._region_start, None
+                self.study.add("region", x0=start, x1=event.xdata, text=self.note_text.get())
+        except ValueError as error:
+            self.status.configure(text=f"Anotação recusada: {error}")
+            return
+        self.panels["price"].redraw()
+
+    def _study_changed(self, action):
+        if self.study is None:
+            self.status.configure(text="Congele uma análise antes de anotar.")
+            return
+        try:
+            action()
+        except ValueError as error:
+            self.status.configure(text=str(error))
+            return
+        self.panels["price"].redraw()
+
+    def edit_last_annotation(self):
+        self._study_changed(lambda: self.study.edit(self.study.items[-1]["id"], text=self.note_text.get())
+                            if self.study.items else (_ for _ in ()).throw(ValueError("Nenhuma anotação.")))
+
+    def remove_last_annotation(self):
+        self._study_changed(lambda: self.study.remove(self.study.items[-1]["id"])
+                            if self.study.items else (_ for _ in ()).throw(ValueError("Nenhuma anotação.")))
+
+    def undo_annotation(self):
+        self._study_changed(lambda: self.study.undo() or (_ for _ in ()).throw(ValueError("Nada a desfazer.")))
+
+    def export_study(self, path=None):
+        if self.study is None:
+            self.status.configure(text="Congele uma análise antes de exportar o estudo.")
+            return
+        path = path or filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("Estudo", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(self.study.to_json())
+        except OSError as error:
+            self.status.configure(text=f"Estudo não exportado: {error}")
+            return
+        self.status.configure(text=f"Estudo {self.study.analysis_id[:12]} exportado: {path}")
+
+    def open_study(self, path=None):
+        from mt5_extracao.laboratory.annotations import Study
+        if self.report is None:
+            self.status.configure(text="Congele a mesma análise antes de reabrir o estudo.")
+            return
+        path = path or filedialog.askopenfilename(filetypes=[("Estudo", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, encoding="utf-8") as handle:
+                self.study = Study.from_json(handle.read(), self.report["analysis_id"])
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            self.status.configure(text=f"Estudo não reaberto: {error}")
+            return
+        self.status.configure(text=f"Estudo reaberto com {len(self.study.items)} anotações.")
+        self.panels["price"].redraw()
 
     def _relations(self, chart):
         if not self._ready(chart):

@@ -262,3 +262,44 @@ def test_feature_search_filters_inventory_and_keeps_selection(panel):
     series.feature_query.set("")
     assert series._chosen_features == before
     assert len(series._visible_features) == len(series.catalog["indicators"])
+
+
+def test_asset_chart_groups_units_toggles_legend_and_annotates(panel, snapshots, tmp_path):
+    from types import SimpleNamespace
+    series = open_series(panel)
+    report = analysis(snapshots)
+    channel = copy.deepcopy(report["channels"][0])
+    channel.update(id="M5:trend.fake_line", rule="price", unit="price_units", name="Linha de preço")
+    report["channels"].append(channel)
+    series.set_report(report)
+    chart = series.panels["price"].chart
+    axes = chart.figure.axes
+    assert len(axes) == 1 + len({row["unit"] for row in report["channels"] if row["rule"] != "price"})
+    assert any(line.get_label().endswith("Linha de preço") for line in axes[0].lines)
+    # Legenda alterna visibilidade sem perder o canal.
+    label = next(line.get_label() for line in axes[0].lines if line.get_label().endswith("Linha de preço"))
+    series._legend_picked(chart, SimpleNamespace(artist=SimpleNamespace(get_label=lambda: label)))
+    assert series.study.hidden == {"M5:trend.fake_line"}
+    assert not any(line.get_label() == label for line in chart.figure.axes[0].lines)
+    ax = chart._price_axis
+    x0, x1 = ax.get_xlim()
+    y = sum(ax.get_ylim()) / 2
+    series.tool.set("Linha horizontal")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=ax, xdata=x0 + 1e-3, ydata=y))
+    series.tool.set("Região")
+    for x in (x0 + (x1 - x0) * .2, x0 + (x1 - x0) * .4):
+        series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x, ydata=y))
+    series.tool.set("Nota")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0, ydata=y))
+    assert "Anotação recusada" in series.status.cget("text")  # nota sem texto
+    series.note_text.set("teste")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0, ydata=y))
+    assert [item["kind"] for item in series.study.items] == ["hline", "region", "note"]
+    series.remove_last_annotation()
+    series.undo_annotation()
+    path = tmp_path / "estudo.json"
+    series.export_study(str(path))
+    series.study.remove(series.study.items[0]["id"])
+    series.open_study(str(path))
+    assert [item["kind"] for item in series.study.items] == ["hline", "region", "note"]
+    assert series.study.hidden == {"M5:trend.fake_line"}
