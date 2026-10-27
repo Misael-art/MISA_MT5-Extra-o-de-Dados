@@ -295,7 +295,7 @@ def test_asset_chart_groups_units_toggles_legend_and_annotates(panel, snapshots,
     series.note_text.set("teste")
     series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0, ydata=y))
     assert [item["kind"] for item in series.study.items] == ["hline", "region", "note"]
-    series.remove_last_annotation()
+    series.remove_selected_annotation()
     series.undo_annotation()
     path = tmp_path / "estudo.json"
     series.export_study(str(path))
@@ -303,3 +303,67 @@ def test_asset_chart_groups_units_toggles_legend_and_annotates(panel, snapshots,
     series.open_study(str(path))
     assert [item["kind"] for item in series.study.items] == ["hline", "region", "note"]
     assert series.study.hidden == {"M5:trend.fake_line"}
+
+
+def test_asset_bench_moves_geometry_removes_series_scrolls_units_and_keeps_view(panel, snapshots, tmp_path):
+    from types import SimpleNamespace
+    series = open_series(panel)
+    report = analysis(snapshots)
+    base = report["channels"][0]
+    for index in range(5):  # 6 unidades além do preço: acima do antigo teto de 3
+        channel = copy.deepcopy(base)
+        channel.update(id=f"M5:fake.unit_{index}", unit=f"unit_{index}", name=f"Unidade {index}")
+        report["channels"].append(channel)
+    series.set_report(report)
+    chart = series.panels["price"].chart
+    non_price = {row["unit"] for row in report["channels"] if row["rule"] not in ("price", "candidate")}
+    assert len(chart.figure.axes) == 1 + len(non_price) and len(non_price) > 3
+    frozen, analysis_id = series.report, series.study.analysis_id
+    # Remover série da vista: sem recongelar, e desfazer devolve.
+    series.detail_channel.set("M5:fake.unit_0")
+    series.remove_detail_series()
+    assert series.report is frozen and series.study.analysis_id == analysis_id
+    assert len(chart.figure.axes) == len(non_price)
+    series.undo_annotation()
+    assert len(chart.figure.axes) == 1 + len(non_price)
+    # Criar, selecionar e arrastar uma linha horizontal.
+    ax = chart._price_axis
+    (x0, x1), (y0, y1) = ax.get_xlim(), ax.get_ylim()
+    middle = (y0 + y1) / 2
+    series.tool.set("Linha horizontal")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=ax, xdata=x0, ydata=middle))
+    series.tool.set("Selecionar/mover")
+    ax = chart._price_axis
+    series._chart_clicked(chart, SimpleNamespace(inaxes=ax, xdata=(x0 + x1) / 2, ydata=middle))
+    assert series.study.selected == series.study.items[0]["id"]
+    delta = (y1 - y0) * .1
+    series._chart_released(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=(x0 + x1) / 2, ydata=middle + delta))
+    assert series.study.items[0]["y"] == pytest.approx(middle + delta)
+    series.undo_annotation()
+    assert series.study.items[0]["y"] == pytest.approx(middle)
+    # Zoom e cursor sobrevivem a ampliar/restaurar e a redesenhos.
+    zoom = (x0 + (x1 - x0) * .25, x0 + (x1 - x0) * .5)
+    chart._price_axis.set_xlim(*zoom)
+    series._cursor_moved(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=zoom[0], ydata=middle))
+    series.panels["price"].expand()
+    detail = series.panels["price"].detail
+    assert detail._price_axis.get_xlim() == pytest.approx(zoom)
+    assert detail._cursors[0].get_visible() and detail._cursors[0].get_xdata()[0] == pytest.approx(zoom[0])
+    assert all(axis.get_xlim() == pytest.approx(zoom) for axis in detail.figure.axes)
+    series.panels["price"].restore()
+    series.panels["price"].redraw()
+    assert chart._price_axis.get_xlim() == pytest.approx(zoom) and series.study.selected is not None
+    # Exportar/reabrir preserva vista, identidade e séries; estudo incompatível é recusado.
+    series.study.remove_series("M5:fake.unit_1")
+    path = tmp_path / "bancada.json"
+    series.export_study(str(path))
+    series.study = None
+    series.set_report(report)
+    series.open_study(str(path))
+    assert series.study.removed == {"M5:fake.unit_1"} and series.study.view["xlim"] == pytest.approx(list(zoom))
+    assert series.study.identity["series"][0]["parameters"] == base["parameters"]
+    other = copy.deepcopy(report)
+    other["channels"] = [row for row in other["channels"] if row["id"] != "M5:fake.unit_1"]
+    series.set_report(other)
+    series.open_study(str(path))
+    assert "séries ausentes" in series.status.cget("text")

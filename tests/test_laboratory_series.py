@@ -171,6 +171,20 @@ def test_cli_and_sdk_produce_same_frozen_diagnostic(snapshots, source_db, tmp_pa
     assert cli.main(argv + ["--out", str(path)]) == 2
     assert json.loads(capsys.readouterr().out)["ok"] is False
     assert json.loads(path.read_text(encoding="utf-8")) == payload["data"]
+    # O estudo da UI é validado pela mesma análise exportada, sem desktop.
+    from mt5_extracao.laboratory.annotations import Study
+    study = Study.for_report(payload["data"])
+    study.add("hline", y=1.0, text="nível")
+    study.remove_series(payload["data"]["channels"][0]["id"])
+    study_path = tmp_path / "estudo.json"
+    study_path.write_text(study.to_json(), encoding="utf-8")
+    assert cli.main(["--json", "laboratory", "study", "--analysis", str(path), "--study", str(study_path)]) == 0
+    summary = json.loads(capsys.readouterr().out)["data"]
+    assert summary["removed_series"] == [payload["data"]["channels"][0]["id"]]
+    assert summary["items"][0]["text"] == "nível" and summary["analysis_id"] == payload["data"]["analysis_id"]
+    study_path.write_text(study.to_json().replace(payload["data"]["analysis_id"], "f" * 64), encoding="utf-8")
+    assert cli.main(["--json", "laboratory", "study", "--analysis", str(path), "--study", str(study_path)]) == 2
+    assert "outra análise" in capsys.readouterr().out
 
 
 def test_cli_freeze_and_strategy_only_share_canonical_snapshots(source_db, monkeypatch, capsys):

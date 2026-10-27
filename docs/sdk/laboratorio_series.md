@@ -88,6 +88,26 @@ diagnostic = analyze(snapshots, strategy_key="ema_atr",
                      feature_ids=["momentum.rsi_14"], as_of="2026-10-01T03:00:00Z")
 ```
 
+### Estudo do gráfico (LAB-08)
+
+A bancada gráfica grava um estudo JSON v2 (`laboratory/annotations.py`):
+`analysis_id`, identidade (ativo, TF da grade, seleção, e por série id/nome/TF/
+unidade/parâmetros/versão/fonte), anotações (`hline`, `vline`, `region`, `note`),
+séries ocultas e removidas da vista e a vista (zoom `xlim` e cursor). Ocultar ou
+remover uma série altera só o estudo, nunca o relatório congelado. Reabrir recusa
+estudo de outra análise ou que cite série ausente; o v1 da prévia anterior ainda
+é lido até a v2 ser aceita.
+
+```sh
+python -m mt5_extracao.cli --json laboratory study \
+  --analysis diagnostico-novo.json --study estudo.json
+```
+
+O comando valida e resume (anotações, séries visíveis/ocultas/removidas, vista)
+sem Tk. O Estudo MT5 (`chart_study`) segue com outra responsabilidade: captura
+e notas sobre o gráfico do terminal; o estudo do Laboratório não o substitui nem
+abre uma janela MT5.
+
 O workflow AIA-01 descobre esses comandos no argparse real e os executa por
 `cli.run`, com os mesmos envelopes/erros, sem shell ou mouse. Não há outro
 scheduler, cache, feature store, journal ou servidor.

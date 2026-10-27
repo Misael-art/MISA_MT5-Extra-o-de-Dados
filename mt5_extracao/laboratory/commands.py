@@ -36,6 +36,10 @@ def add_parser(sub):
     analyze.add_argument("--as-of", required=True, help="corte ISO com fuso explícito")
     analyze.add_argument("--out", help="novo arquivo JSON; recusa sobrescrever")
     analyze.set_defaults(func=run)
+    study = actions.add_parser("study", help="valida e resume um estudo do gráfico contra a análise exportada")
+    study.add_argument("--analysis", required=True, help="JSON gerado por analyze --out")
+    study.add_argument("--study", required=True, help="estudo exportado pela UI")
+    study.set_defaults(func=run)
 
 
 def run(args, ctx):
@@ -46,6 +50,15 @@ def run(args, ctx):
         from . import inventory
         result = inventory.search(ctx.db, query=args.query, family=args.family, state=args.state,
             symbol=args.symbol, timeframe=args.timeframe, page_size=args.page_size, cursor=args.cursor)
+    elif args.laboratory_action == "study":
+        from .annotations import Study
+        report = json.loads(Path(args.analysis).expanduser().read_text(encoding="utf-8"))
+        loaded = Study.from_json(Path(args.study).expanduser().read_text(encoding="utf-8"), report["analysis_id"],
+                                 [channel["id"] for channel in report["channels"]])
+        result = dict(analysis_id=loaded.analysis_id, symbol=report["symbol"], grid_timeframe=report["grid_timeframe"],
+                      items=loaded.items, hidden_series=sorted(loaded.hidden), removed_series=sorted(loaded.removed),
+                      visible_series=[c["id"] for c in report["channels"] if c["id"] not in loaded.hidden | loaded.removed],
+                      view=loaded.view)
     elif args.laboratory_action == "sources":
         result = dict(sources=service.sources(ctx.db),
             source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")

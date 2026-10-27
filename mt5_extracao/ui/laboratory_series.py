@@ -47,17 +47,20 @@ def timeline_bins(channels, max_columns):
     return np.array(data), boundaries
 
 
-TOOLS = ("Navegar", "Linha horizontal", "Linha vertical", "Região", "Nota")
-MAX_PANES = 3
+TOOLS = ("Navegar", "Selecionar/mover", "Linha horizontal", "Linha vertical", "Região", "Nota")
+# Orçamento explícito de renderização: até 8 subjanelas (110 px cada) rolam na página;
+# acima disso a figura fica ilegível e lenta no handheld, então o excedente é listado.
+MAX_PANES = 8
+PANE_HEIGHT = 110
 UNIT_LABELS = {"points_0_100": "Oscilador 0–100", "fraction": "Fração do preço", "channel_fraction": "Posição no canal (0–1)",
                "price_units": "Unidades de preço", "ratio": "Razão", "candidate_-1_0_1": "Intenção −1/0/+1"}
 
 
-def chart_groups(channels, hidden, selected_id):
-    """Unidade de preço sobrepõe candles; demais unidades em subjanelas; ocultas ficam fora."""
+def chart_groups(channels, hidden, selected_id, removed=()):
+    """Unidade de preço sobrepõe candles; demais unidades em subjanelas; ocultas/removidas ficam fora."""
     overlay, panes, hidden_rows = [], {}, []
     for channel in channels:
-        if channel["rule"] == "candidate":
+        if channel["rule"] == "candidate" or channel["id"] in removed:
             continue
         if channel["id"] in hidden:
             hidden_rows.append(channel)
@@ -299,18 +302,33 @@ class SeriesLaboratoryPanel:
         self.channel_box.bind("<<ComboboxSelected>>", self._channel_changed)
         tools = ttk.Frame(self.frame)
         tools.pack(fill=tk.X, pady=2)
-        ttk.Label(tools, text="Ferramenta:").pack(side=tk.LEFT)
+        inputs = ttk.Frame(tools)
+        inputs.pack(fill=tk.X)
+        ttk.Label(inputs, text="Ferramenta:").pack(side=tk.LEFT)
         self.tool = tk.StringVar(value=TOOLS[0])
-        ttk.Combobox(tools, textvariable=self.tool, state="readonly", width=16, values=TOOLS).pack(side=tk.LEFT, padx=4)
-        ttk.Label(tools, text="Texto:").pack(side=tk.LEFT)
+        ttk.Combobox(inputs, textvariable=self.tool, state="readonly", width=16, values=TOOLS).pack(side=tk.LEFT, padx=4)
+        ttk.Label(inputs, text="Texto:").pack(side=tk.LEFT)
         self.note_text = tk.StringVar()
-        ttk.Entry(tools, textvariable=self.note_text, width=24).pack(side=tk.LEFT, padx=4)
-        for text, command in (("Aplicar texto à última", self.edit_last_annotation), ("Excluir última", self.remove_last_annotation),
-                              ("Desfazer", self.undo_annotation), ("Exportar estudo", self.export_study),
+        ttk.Entry(inputs, textvariable=self.note_text, width=24).pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
+        buttons = ttk.Frame(tools)
+        buttons.pack(fill=tk.X)
+        self.study_buttons = []
+        for text, command in (("Aplicar texto", self.edit_selected_annotation),
+                              ("Excluir anotação", self.remove_selected_annotation),
+                              ("Desfazer", self.undo_annotation), ("Remover série", self.remove_detail_series),
+                              ("Restaurar séries", self.restore_series), ("Exportar estudo", self.export_study),
                               ("Abrir estudo", self.open_study)):
-            ttk.Button(tools, text=text, command=command).pack(side=tk.LEFT, padx=2)
+            self.study_buttons.append(ttk.Button(buttons, text=text, command=command))
+
+        def layout_study_buttons(event):
+            # Refluxo: em tela estreita nenhum comando do estudo fica fora da área visível.
+            columns = max(1, min(len(self.study_buttons), event.width // 150))
+            for index, widget in enumerate(self.study_buttons):
+                widget.grid(row=index // columns, column=index % columns, sticky="ew", padx=2, pady=1)
+        buttons.bind("<Configure>", layout_study_buttons)
         self.study = None
         self._region_start = None
+        self._drag = None
         self.channel_details = ttk.Label(self.frame, text="", style="Muted.TLabel", wraplength=1000)
         self.channel_details.pack(fill=tk.X, pady=4)
         self.frame.bind("<Configure>", self._wrap_details, add="+")
@@ -489,7 +507,7 @@ class SeriesLaboratoryPanel:
     def set_report(self, report):
         from mt5_extracao.laboratory.annotations import Study
         if self.study is None or self.study.analysis_id != report["analysis_id"]:
-            self.study = Study(report["analysis_id"])  # anotações nunca migram para outra análise
+            self.study = Study.for_report(report)  # anotações nunca migram para outra análise
         self.report = report
         ids = [channel["id"] for channel in report["channels"]]
         self.channel_box.configure(values=ids)
@@ -535,8 +553,8 @@ class SeriesLaboratoryPanel:
             if key == "coverage" and self.report:
                 height = max(height, len(self.report["channels"]) * 17 + 80)
             if key == "price" and self.report:
-                panes = chart_groups(self.report["channels"], self.study.hidden if self.study else set(), "")["panes"]
-                height += 110 * len(panes)
+                panes = chart_groups(self.report["channels"], self.study.hidden, "", self.study.removed)["panes"]
+                height += PANE_HEIGHT * len(panes)
             panel.chart.widget.configure(height=height)
         self.canvas.configure(height=1600 if extended else 2000)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -624,7 +642,7 @@ class SeriesLaboratoryPanel:
         times = pd.to_datetime(report["times"], utc=True)
         x = date2num(times.to_pydatetime())
         price = np.array([[np.nan if v is None else v for v in row] for row in report["prices"]], dtype=float)
-        groups = chart_groups(report["channels"], self.study.hidden if self.study else set(), selected["id"])
+        groups = chart_groups(report["channels"], self.study.hidden, selected["id"], self.study.removed)
         ratios = [3] + [1] * len(groups["panes"])
         axes = np.atleast_1d(chart.figure.subplots(len(ratios), 1, sharex=True, gridspec_kw=dict(height_ratios=ratios)))
         ax = axes[0]
@@ -677,10 +695,10 @@ class SeriesLaboratoryPanel:
                 for handle in legend.get_lines():
                     handle.set_picker(6)
         if groups["omitted"]:
-            ax.text(0, 1.01, "Mais unidades selecionadas: " + ", ".join(groups["omitted"]) + " · oculte séries para vê-las",
+            ax.text(0, 1.01, f"Acima de {MAX_PANES} subjanelas: " + ", ".join(groups["omitted"]) + " · oculte ou remova séries",
                     transform=ax.transAxes, ha="left", va="bottom", fontsize=7, color=self.theme.colors["muted"])
-        if groups["hidden"]:
-            ax.text(1, 1.01, f"{len(groups['hidden'])} série(s) oculta(s) · clique na legenda alterna",
+        if groups["hidden"] or self.study.removed:
+            ax.text(1, 1.01, f"{len(groups['hidden'])} oculta(s) · {len(self.study.removed)} removida(s) · clique na legenda alterna",
                     transform=ax.transAxes, ha="right", va="bottom", fontsize=7, color=self.theme.colors["muted"])
         self._draw_annotations(ax)
         locator = AutoDateLocator(minticks=3, maxticks=6)
@@ -691,12 +709,20 @@ class SeriesLaboratoryPanel:
             chart._study_events = True
             chart.canvas.mpl_connect("pick_event", lambda event, c=chart: self._legend_picked(c, event))
             chart.canvas.mpl_connect("button_press_event", lambda event, c=chart: self._chart_clicked(c, event))
+            chart.canvas.mpl_connect("button_release_event", lambda event, c=chart: self._chart_released(c, event))
+            chart.canvas.mpl_connect("motion_notify_event", lambda event, c=chart: self._cursor_moved(c, event))
         chart._price_axis = ax
+        view = self.study.view
+        if "xlim" in view:
+            ax.set_xlim(*view["xlim"])  # eixo compartilhado: subjanelas seguem o mesmo zoom
+        chart._cursors = [target.axvline(view.get("cursor", x[0]), color=self.theme.colors["muted"], linewidth=.7,
+                                         visible="cursor" in view) for target in axes]
         chart.draw()
+        ax.callbacks.connect("xlim_changed", self._zoom_changed)
 
     def _draw_annotations(self, ax):
-        color = self.theme.colors["warn"]
         for item in self.study.items if self.study else ():
+            color = self.theme.colors["accent" if item["id"] == self.study.selected else "warn"]
             if item["kind"] == "hline":
                 ax.axhline(item["y"], color=color, linewidth=1, linestyle="--")
             elif item["kind"] == "vline":
@@ -720,13 +746,45 @@ class SeriesLaboratoryPanel:
         ident = getattr(chart, "_legend_lines", {}).get(event.artist.get_label())
         if ident is None or self.study is None:
             return
-        self.study.hidden ^= {ident}
+        self.study.toggle_series(ident)
         self.panels["price"].redraw()
+
+    def _zoom_changed(self, ax):
+        if self.study is not None:
+            self.study.view["xlim"] = [float(value) for value in ax.get_xlim()]
+            if self.panels["price"].popup is not None:
+                # Ampliado e original mostram a mesma janela temporal.
+                for chart in (self.panels["price"].chart, self.panels["price"].detail):
+                    target = getattr(chart, "_price_axis", None)
+                    if target is not None and target is not ax and tuple(target.get_xlim()) != tuple(ax.get_xlim()):
+                        target.set_xlim(*ax.get_xlim())
+                        chart.canvas.draw_idle()
+
+    def _cursor_moved(self, chart, event):
+        if self.study is None or event.inaxes is None or event.xdata is None or event.inaxes not in chart.figure.axes:
+            return
+        if self._drag is not None and self._drag[0] is chart:
+            return
+        self.study.view["cursor"] = float(event.xdata)
+        for line in getattr(chart, "_cursors", ()):
+            line.set_xdata([event.xdata, event.xdata])
+            line.set_visible(True)
+        chart.canvas.draw_idle()
 
     def _chart_clicked(self, chart, event):
         tool = self.tool.get()
         if self.study is None or tool == TOOLS[0] or event.inaxes is not getattr(chart, "_price_axis", None) \
                 or event.xdata is None or event.ydata is None:
+            return
+        if tool == "Selecionar/mover":
+            (x0, x1), (y0, y1) = event.inaxes.get_xlim(), event.inaxes.get_ylim()
+            # Tolerância de ~1,5% da vista: independe do zoom e da unidade do eixo.
+            ident = self.study.hit(event.xdata, event.ydata, abs(x1 - x0) * .015, abs(y1 - y0) * .03)
+            self.study.select(ident)
+            self._drag = (chart, ident, event.xdata, event.ydata) if ident is not None else None
+            self.status.configure(text="Arraste para mover; Aplicar texto/Excluir agem na selecionada."
+                                  if ident is not None else "Nenhuma anotação neste ponto.")
+            self.panels["price"].redraw()
             return
         try:
             if tool == "Linha horizontal":
@@ -747,6 +805,21 @@ class SeriesLaboratoryPanel:
             return
         self.panels["price"].redraw()
 
+    def _chart_released(self, chart, event):
+        drag, self._drag = self._drag, None
+        if drag is None or drag[0] is not chart or event.xdata is None or event.ydata is None \
+                or event.inaxes is not getattr(chart, "_price_axis", None):
+            return
+        _, ident, x, y = drag
+        if (event.xdata, event.ydata) == (x, y):
+            return
+        self._study_changed(lambda: self.study.move(ident, event.xdata - x, event.ydata - y))
+
+    def _target_annotation(self):
+        if not self.study.items:
+            raise ValueError("Nenhuma anotação.")
+        return self.study.selected if self.study.selected is not None else self.study.items[-1]["id"]
+
     def _study_changed(self, action):
         if self.study is None:
             self.status.configure(text="Congele uma análise antes de anotar.")
@@ -756,15 +829,21 @@ class SeriesLaboratoryPanel:
         except ValueError as error:
             self.status.configure(text=str(error))
             return
+        self._layout()  # remover/restaurar série muda o número de subjanelas
         self.panels["price"].redraw()
 
-    def edit_last_annotation(self):
-        self._study_changed(lambda: self.study.edit(self.study.items[-1]["id"], text=self.note_text.get())
-                            if self.study.items else (_ for _ in ()).throw(ValueError("Nenhuma anotação.")))
+    def edit_selected_annotation(self):
+        self._study_changed(lambda: self.study.edit(self._target_annotation(), text=self.note_text.get()))
 
-    def remove_last_annotation(self):
-        self._study_changed(lambda: self.study.remove(self.study.items[-1]["id"])
-                            if self.study.items else (_ for _ in ()).throw(ValueError("Nenhuma anotação.")))
+    def remove_selected_annotation(self):
+        self._study_changed(lambda: self.study.remove(self._target_annotation()))
+
+    def remove_detail_series(self):
+        """Tira a série da vista sem recongelar: o relatório e o analysis_id ficam intactos."""
+        self._study_changed(lambda: self.study.remove_series(self.detail_channel.get()))
+
+    def restore_series(self):
+        self._study_changed(self.study.restore_series)
 
     def undo_annotation(self):
         self._study_changed(lambda: self.study.undo() or (_ for _ in ()).throw(ValueError("Nada a desfazer.")))
@@ -794,7 +873,8 @@ class SeriesLaboratoryPanel:
             return
         try:
             with open(path, encoding="utf-8") as handle:
-                self.study = Study.from_json(handle.read(), self.report["analysis_id"])
+                self.study = Study.from_json(handle.read(), self.report["analysis_id"],
+                                             [channel["id"] for channel in self.report["channels"]])
         except (OSError, ValueError, KeyError, TypeError) as error:
             self.status.configure(text=f"Estudo não reaberto: {error}")
             return

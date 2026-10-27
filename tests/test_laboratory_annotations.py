@@ -33,3 +33,43 @@ def test_rejects_other_analysis_invalid_coordinates_and_empty_note():
             study.add(kind, **values)
     assert not study.items and not study.undo()
     json.loads(study.to_json())
+
+
+def test_move_select_series_visibility_view_and_identity_roundtrip():
+    report = dict(analysis_id="a" * 64, symbol="EURUSD", grid_timeframe="M5", laboratory_version=1,
+                  selection=dict(feature_ids=["momentum.rsi_14"]),
+                  channels=[dict(id="M5:momentum.rsi_14", name="RSI", timeframe="M5", unit="points_0_100",
+                                 parameters=dict(period=14), algorithm_version="1", source=dict(provider="x"))])
+    study = Study.for_report(report)
+    region = study.add("region", x0=10.0, x1=12.0)
+    note = study.add("note", x=11.0, y=100.0, text="n")
+    assert study.hit(11.0, 100.0, .2, 1.0) == note["id"]  # nota vence o interior da região
+    assert study.hit(10.05, 50.0, .2, 1.0) == region["id"]
+    assert study.hit(30.0, 0.0, .2, 1.0) is None
+    study.move(region["id"], dx=1.5, dy=99)
+    assert (study.items[0]["x0"], study.items[0]["x1"]) == (11.5, 13.5)
+    study.move(note["id"], dx=-1, dy=2)
+    assert (study.items[1]["x"], study.items[1]["y"]) == (10.0, 102.0)
+    study.remove_series("M5:momentum.rsi_14")
+    study.view = dict(xlim=[10.0, 20.0], cursor=12.0)
+    again = Study.from_json(study.to_json(), "a" * 64, ["M5:momentum.rsi_14"])
+    assert again.removed == {"M5:momentum.rsi_14"} and again.view == study.view
+    assert again.identity["series"][0]["parameters"] == {"period": 14}
+    assert again.identity["series"][0]["unit"] == "points_0_100"
+    with pytest.raises(ValueError, match="séries ausentes"):
+        Study.from_json(study.to_json(), "a" * 64, ["M5:outra"])
+    with pytest.raises(ValueError, match="EURUSD M5"):
+        Study.from_json(study.to_json(), "b" * 64)
+    with pytest.raises(ValueError, match="não é um estudo"):
+        Study.from_json("{", "a" * 64)
+    # Desfazer restaura série removida e a geometria antes do arrasto, sem tocar a vista.
+    assert study.undo() and not study.removed
+    assert study.undo() and study.items[1]["x"] == 11.0
+    assert study.view["cursor"] == 12.0
+
+
+def test_version_one_study_still_reopens():
+    legacy = json.dumps(dict(study_version=1, analysis_id="a" * 64, hidden_series=["s"],
+                             items=[dict(id=3, kind="hline", y=1.0, text="")]))
+    study = Study.from_json(legacy, "a" * 64, ["s"])
+    assert study.hidden == {"s"} and study.items[0]["id"] == 3 and study.identity is None
