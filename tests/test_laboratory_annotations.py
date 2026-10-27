@@ -73,3 +73,14 @@ def test_version_one_study_still_reopens():
                              items=[dict(id=3, kind="hline", y=1.0, text="")]))
     study = Study.from_json(legacy, "a" * 64, ["s"])
     assert study.hidden == {"s"} and study.items[0]["id"] == 3 and study.identity is None
+
+
+def test_region_edge_resizes_only_that_side_and_undo_restores():
+    study = Study("a" * 64)
+    region = study.add("region", x0=10.0, x1=20.0)
+    assert study.edge(region["id"], 10.1, .5) == "x0" and study.edge(region["id"], 15.0, .5) is None
+    study.resize(region["id"], "x1", 25.0)
+    assert (study.items[0]["x0"], study.items[0]["x1"]) == (10.0, 25.0)
+    with pytest.raises(ValueError, match="diferentes"):
+        study.resize(region["id"], "x0", 25.0)
+    assert study.undo() and study.items[0]["x1"] == 20.0

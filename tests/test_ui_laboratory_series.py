@@ -341,6 +341,20 @@ def test_asset_bench_moves_geometry_removes_series_scrolls_units_and_keeps_view(
     assert series.study.items[0]["y"] == pytest.approx(middle + delta)
     series.undo_annotation()
     assert series.study.items[0]["y"] == pytest.approx(middle)
+    # Borda da região redimensiona só aquele lado.
+    series.tool.set("Região")
+    for frac in (.6, .8):
+        series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0 + (x1 - x0) * frac, ydata=middle))
+    region = series.study.items[-1]
+    series.tool.set("Selecionar/mover")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=region["x1"], ydata=y0 + (y1 - y0) * .9))
+    series._chart_released(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0 + (x1 - x0) * .9, ydata=middle))
+    assert series.study.items[-1]["x0"] == region["x0"]
+    assert series.study.items[-1]["x1"] == pytest.approx(x0 + (x1 - x0) * .9)
+    series.undo_annotation()
+    series.undo_annotation()
+    assert series.study.selected is None and len(series.study.items) == 1
+    series.study.select(series.study.items[0]["id"])
     # Zoom e cursor sobrevivem a ampliar/restaurar e a redesenhos.
     zoom = (x0 + (x1 - x0) * .25, x0 + (x1 - x0) * .5)
     chart._price_axis.set_xlim(*zoom)

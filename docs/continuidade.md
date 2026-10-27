@@ -2958,4 +2958,5 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   Exercitado: cliques/arraste por eventos Tk (xdotool não move o ponteiro neste Xvfb), remover/desfazer,
   zoom/cursor, ampliar/restaurar, exportar/reabrir/recusar, tema claro/escuro, 1280×2500 e 900×700.
   Não exercitado: mouse físico, DPI/monitor físico, handheld.
-- Pendente LAB-08: aceite do proprietário; arrastar alças individuais (bordas da região) e mover entre painéis.
+- Bordas da região: arrastar a borda redimensiona só aquele lado (`Study.edge/resize`), com desfazer.
+- Pendente LAB-08: aceite do proprietário; anotações só no painel de preço (mover entre painéis não existe).

@@ -781,7 +781,8 @@ class SeriesLaboratoryPanel:
             # Tolerância de ~1,5% da vista: independe do zoom e da unidade do eixo.
             ident = self.study.hit(event.xdata, event.ydata, abs(x1 - x0) * .015, abs(y1 - y0) * .03)
             self.study.select(ident)
-            self._drag = (chart, ident, event.xdata, event.ydata) if ident is not None else None
+            edge = ident is not None and self.study.edge(ident, event.xdata, abs(x1 - x0) * .015)
+            self._drag = (chart, ident, event.xdata, event.ydata, edge or None) if ident is not None else None
             self.status.configure(text="Arraste para mover; Aplicar texto/Excluir agem na selecionada."
                                   if ident is not None else "Nenhuma anotação neste ponto.")
             self.panels["price"].redraw()
@@ -810,10 +811,13 @@ class SeriesLaboratoryPanel:
         if drag is None or drag[0] is not chart or event.xdata is None or event.ydata is None \
                 or event.inaxes is not getattr(chart, "_price_axis", None):
             return
-        _, ident, x, y = drag
+        _, ident, x, y, edge = drag
         if (event.xdata, event.ydata) == (x, y):
             return
-        self._study_changed(lambda: self.study.move(ident, event.xdata - x, event.ydata - y))
+        if edge:  # borda da região: redimensiona; o interior move a região inteira
+            self._study_changed(lambda: self.study.resize(ident, edge, event.xdata))
+        else:
+            self._study_changed(lambda: self.study.move(ident, event.xdata - x, event.ydata - y))
 
     def _target_annotation(self):
         if not self.study.items:

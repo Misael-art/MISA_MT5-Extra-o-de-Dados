@@ -133,6 +133,19 @@ class Study:
                 best = (distance, item["id"])
         return best and best[1]
 
+    def edge(self, ident, x, tolerance_x):
+        """Borda da região sob o ponto ("x0"/"x1"), para redimensionar em vez de mover."""
+        item = self.items[self._index(ident)]
+        if item["kind"] != "region":
+            return None
+        near = min(("x0", "x1"), key=lambda key: abs(item[key] - x))
+        return near if abs(item[near] - x) <= tolerance_x else None
+
+    def resize(self, ident, edge, x):
+        if edge not in ("x0", "x1"):
+            raise ValueError("Borda inválida; use x0 ou x1.")
+        return self.edit(ident, **{edge: x})
+
     def select(self, ident):
         if ident is not None:
             self._index(ident)
