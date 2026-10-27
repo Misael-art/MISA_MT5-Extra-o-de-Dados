@@ -37,7 +37,8 @@ configuração e diagnóstico; conta e conexão permanecem etapas explícitas.
 
 O Laboratório está **incompleto, com aceite funcional reaberto** após o teste
 real do proprietário. [LAB-01…10 e SA-01/02](docs/propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md)
-registram todas as falhas e visões faltantes. Prompts independentes:
+registram todas as falhas e visões faltantes. Estado mais recente por item:
+final de [continuidade](docs/continuidade.md) (LAB-08 bancada em 27/10). Prompts independentes:
 [Laboratório](docs/repasse/PROMPT_LABORATORIO_GRAFICOS_20261024.md) e
 [Expert Super ATR multi-TF](docs/repasse/PROMPT_EXPERT_SUPER_ATR_MTF_20261024.md).
 O agente de Dados existente mantém cálculo/persistência/coluna Super ATR.

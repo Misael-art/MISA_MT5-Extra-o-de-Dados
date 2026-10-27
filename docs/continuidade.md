@@ -2938,3 +2938,24 @@ Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
   exportar/reabrir JSON amarrado ao `analysis_id` (recusa estudo de outra análise).
 - Pendente: arrastar/editar geometria pelo mouse, remover série sem recongelar, mais de 3 unidades
   simultâneas (hoje avisa e pede ocultar), integração com o Estudo MT5 (`chart_study`) e aceite do proprietário.
+
+## LAB-08 (bancada gráfica) · 2026-10-27 (branch de continuidade, PR 212, commit 3a2efb6)
+
+Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo" do registro LAB-08 de 26/10.
+- Estudo v2 (`laboratory/annotations.py`): identidade da análise (ativo, grade, seleção e por série
+  unidade/parâmetros/versão/fonte), séries ocultas e **removidas da vista** (sem recongelar; desfazer devolve),
+  vista (zoom/cursor), selecionar/mover com desfazer; recusa outra análise (cita ativo/TF) e série ausente.
+  v1 continua legível até aceite da v2.
+- Gráfico: até 8 subjanelas por unidade (110 px cada, rolagem da página); acima disso lista as unidades
+  excedentes. Cursor vinculado em todos os painéis; zoom preservado em redesenho, ampliar/restaurar e reabrir.
+  Ferramenta Selecionar/mover; botões do estudo refluem em largura estreita (antes Exportar/Abrir saíam da tela em 1280 px).
+- CLI: `mt5x laboratory study --analysis A.json --study S.json` (sem Tk).
+- `chart_study` (Estudo MT5) não foi fundido: responsabilidade distinta (captura/notas do terminal).
+- Testes: 45 nas suítes de Laboratório/anotações/séries; falha preexistente `negative_monitor` (WM) mantida.
+- QA no host: Tk real em Xvfb privado com análise **real** (EURUSD H1+H4, 1029 fechamentos, 18 séries/9 unidades)
+  de uma cópia descartável da base recuperada; `broker_utc_offset = -3` vindo do config do host anterior, só na
+  config de QA (a config ativa segue sem fuso e a análise real é recusada nela — decisão do proprietário).
+  Exercitado: cliques/arraste por eventos Tk (xdotool não move o ponteiro neste Xvfb), remover/desfazer,
+  zoom/cursor, ampliar/restaurar, exportar/reabrir/recusar, tema claro/escuro, 1280×2500 e 900×700.
+  Não exercitado: mouse físico, DPI/monitor físico, handheld.
+- Pendente LAB-08: aceite do proprietário; arrastar alças individuais (bordas da região) e mover entre painéis.
