@@ -2892,7 +2892,7 @@ Primeira cadeia funcional: provedor falso → extrator → M1 → M5 → store �
 `mt5x analytics features series`. Pilha: #190…#194 e novos PRs BD06, BD07, BD08a, BD18a, BD19c1.
 Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
 
-## LAB-02/03 · 2026-10-26 (branch codex/lab-02-03-series-horarios, sobre PR 212)
+## LAB-02/03 · 2026-10-26 (branch de continuidade codex/novo-host-20261024, PR 212)
 
 - LAB-02: `laboratory.service` passa a emitir `diagnosis` (código/mensagem/ação) por canal vazio
   (`WARMUP_EXCEEDS_WINDOW`, `INELIGIBLE_DATA`, `NO_VALUES`, `NO_OVERLAP`); janela acima de 20 000 barras
