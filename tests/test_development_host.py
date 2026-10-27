@@ -9,7 +9,8 @@ import subprocess
 import pytest
 
 
-@pytest.mark.skipif(shutil.which('bash') is None, reason='instalador Linux exige Bash')
+@pytest.mark.skipif(os.name == 'nt' or shutil.which('bash') is None,
+                    reason='harness do instalador Linux exige host POSIX e Bash')
 @pytest.mark.parametrize('skip_account', [False, True])
 def test_linux_installer_can_prepare_native_runtime_without_opening_account(tmp_path, skip_account):
     """Executa o instalador inteiro com executáveis controlados, sem Wine/rede/contas."""
