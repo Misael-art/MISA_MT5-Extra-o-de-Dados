@@ -318,3 +318,22 @@ def test_block_ci_is_deterministic_contains_estimate_and_widens_with_persistence
 def test_predictive_lags_include_longer_fixed_horizon(snapshots):
     lags = {pair["lag_bars"] for pair in analysis(snapshots)["pairs"]}
     assert lags == {0, *service.PREDICTIVE_LAGS} and 6 in lags
+
+
+def test_pivot_events_enter_only_when_confirmed_and_provisional_is_refused(snapshots):
+    ids = ["structure.fractals_5_strict_top", "structure.fractals_5_strict_provisional", "momentum.rsi_14"]
+    result = service.analyze(snapshots, feature_ids=ids, as_of="2025-02-01T00:00:00Z")
+    channels = {row["id"]: row for row in result["channels"]}
+    top, provisional = channels["M5:" + ids[0]], channels["M5:" + ids[1]]
+    assert top["events"]["basis"] == "confirmation_bar_close" and top["events"]["confirmations"] > 0
+    # Fractal estrito de largura 2 só é conhecido no fechamento da segunda barra à direita.
+    assert top["events"]["delay_bars"] == dict(min=2, median=2.0, max=2)
+    rows = list(indicator_registry.iter_core(snapshots[0].bars, feature_ids=[ids[0]]))
+    first = next(i for i, row in enumerate(rows) if row["state"] == "AVAILABLE")
+    origin = rows[first]["pivot_metadata"]["pivot_origin_position"]
+    assert top["values"][origin] is None and top["values"][first] is not None
+    assert provisional["events"]["usable"] is False and provisional["diagnosis"]["code"] == "UNCONFIRMED_EVENT"
+    touched = [p for p in result["pairs"] if provisional["id"] in (p["left"], p["right"])]
+    assert touched and all(p["reason"] == "UNCONFIRMED_EVENT" and p["correlation"] is None for p in touched)
+    assert channels["M5:momentum.rsi_14"]["events"] is None
+    json.dumps(result, allow_nan=False)

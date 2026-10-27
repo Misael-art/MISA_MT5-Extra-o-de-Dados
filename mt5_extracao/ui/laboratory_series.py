@@ -104,6 +104,15 @@ def monitor_geometry(widget):
             placement.close()
 
 
+
+def _events_text(events):
+    if not events or not events["usable"]:
+        return ""
+    delay = events["delay_bars"]
+    return (f"{events['confirmations']} pivôs confirmados, valor só na confirmação"
+            + (f" (atraso {delay['min']}–{delay['max']} barras após a origem)" if delay else "")
+            + (f", último há {events['bars_since_last_confirmation']} barras" if delay else "") + " · ")
+
 class AnalysisChart:
     """O detalhe amplia o mesmo DTO; fechar restaura a região e a seleção originais."""
     def __init__(self, parent, theme, title, renderer):
@@ -535,6 +544,7 @@ class SeriesLaboratoryPanel:
         self.channel_details.configure(text=f"{row['id']} · {row['unit']} · aquecimento {row['warmup']} barras · "
             f"cobertura {row['available']}/{row['total']} · {check['status']} · "
             + (f"{row['diagnosis']['message']} {row['diagnosis']['action']} · " if row.get("diagnosis") else "")
+            + _events_text(row.get("events"))
             + ("; ".join(check["reasons"] + check["limitations"]) or "Dados compatíveis com este cálculo exploratório."))
         if redraw and hasattr(self, "panels"):
             for key in ("price", "lags"):

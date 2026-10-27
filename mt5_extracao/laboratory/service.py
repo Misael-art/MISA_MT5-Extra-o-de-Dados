@@ -33,6 +33,8 @@ LIMITATIONS = (
     "Pares com valores retidos e autocorrelação não são observações independentes; sem p-valor ou ranking automático.",
     "Defasagem 0 é descritiva; defasagem > 0 só é candidata preditiva com corte temporal 70/30 fixo, consistente "
     "fora da amostra, acima da faixa nula por deslocamento circular e da persistência do próprio alvo, ainda sem calibração, custos ou validação de estratégia.",
+    "Pivôs (fractais/ZigZag) entram só na barra de confirmação, nunca na origem; a saída provisória é desenho, "
+    "fica fora das relações e o atraso origem→confirmação fica registrado por canal.",
     "Intenções da estratégia não são fills, reversões confirmadas nem aceite operacional do robô.",
 )
 
@@ -127,6 +129,19 @@ def _direction(values, close, rule):
     return np.sign(difference).where(np.isfinite(difference))
 
 
+def _events(rows, definition):
+    """Eventos de pivô: valor só existe a partir da confirmação; provisório nunca vira relação."""
+    if definition["parameters"]["output"] == "provisional":
+        return dict(basis="provisional_drawing", usable=False, confirmations=0, delay_bars=None,
+                    bars_since_last_confirmation=None)
+    confirmed = [(position, meta) for position, meta in enumerate(rows.pivot_metadata)
+                 if isinstance(meta, dict) and meta.get("new_confirmation")]
+    delays = [meta["pivot_confirmation_position"] - meta["pivot_origin_position"] for _, meta in confirmed]
+    return dict(basis="confirmation_bar_close", usable=True, confirmations=len(confirmed),
+        delay_bars=dict(min=min(delays), median=float(np.median(delays)), max=max(delays)) if delays else None,
+        bars_since_last_confirmation=len(rows) - 1 - confirmed[-1][0] if confirmed else None)
+
+
 def _channels(snapshot, feature_ids, strategy, cutoff):
     manifest = snapshot.manifest
     tf = timeframes.parse(manifest["timeframe"])
@@ -162,12 +177,13 @@ def _channels(snapshot, feature_ids, strategy, cutoff):
         if not check["eligible"]:
             values[:] = np.nan
         rule, legend = study_catalog.rule(definition)
+        events = _events(rows, definition) if ident.startswith("structure.") else None
         direction = _direction(values, pd.to_numeric(bars.close, errors="coerce"), rule)
         result.append(dict(id=f"{tf.name}:{ident}", feature=ident, name=definition["name"], timeframe=tf.name,
             parameters=definition["parameters"], unit=definition["unit"], rule=rule, legend=legend,
             algorithm_version=definition["algorithm_version"], values=values, direction=direction,
             source_end=ends, source_start=starts, eligibility=check,
-            states=dict(Counter(rows.state)), warmup=definition["warmup_count"]))
+            states=dict(Counter(rows.state)), warmup=definition["warmup_count"], events=events))
     if strategy is not None:
         check = eligibility_for(dict(required_columns=strategy.required_columns, source_id="bars"))
         values = pd.Series(np.nan, index=bars.index, dtype=float)
@@ -181,7 +197,7 @@ def _channels(snapshot, feature_ids, strategy, cutoff):
             algorithm_version="current_source", rule="candidate", legend="Compra / neutro / venda; não são trades",
             values=values, direction=values, source_end=ends, source_start=starts, eligibility=check,
             states=dict(AVAILABLE=int(values.notna().sum()), UNAVAILABLE=int(values.isna().sum())),
-            warmup=strategy.min_bars))
+            warmup=strategy.min_bars, events=None))
     return result, dict(manifest_id=snapshot.manifest_id, symbol=manifest["symbol"], timeframe=tf.name,
         source=manifest["source"], clock=manifest["time"], quality=eligibility,
         selected_rows=len(snapshot.bars), closed_rows=len(bars),
@@ -207,6 +223,9 @@ def diagnose(channel, *, source_rows, source_available, available):
     """Motivo e ação para canal vazio/escasso; nunca deixar só área cinza."""
     check, warmup = channel["eligibility"], int(channel["warmup"] or 0)
     tf = channel["timeframe"]
+    if channel.get("events") and not channel["events"]["usable"]:
+        return dict(code="UNCONFIRMED_EVENT", message=f"{tf}: saída provisória de pivô é só desenho; "
+                    "não confirmada, não entra em relações.", action="Use a saída top/bottom confirmada deste pivô.")
     if not check["eligible"]:
         return dict(code="INELIGIBLE_DATA", message=f"{tf}: dados não atendem ao cálculo: "
                     + ("; ".join(check["reasons"]) or check["status"]),
@@ -311,13 +330,14 @@ def _temporal_split(x, y, naive=None):
                 control="circular_shift_of_predictor_in_holdout", verdict=verdict)
 
 
-def _pair(left, right, lag):
+def _pair(left, right, lag, unconfirmed=False):
     a, b = left.direction.shift(lag), right.direction
     valid = a.notna() & b.notna()
     x, y = a[valid].astype(float), b[valid].astype(float)
     n = len(x)
     unique = len(pd.DataFrame(dict(a=left.source_end.shift(lag)[valid], b=right.source_end[valid])).drop_duplicates())
-    reason = "INSUFFICIENT_PAIRS" if n < 3 else "CONSTANT_SERIES" if x.nunique() < 2 or y.nunique() < 2 else None
+    reason = ("UNCONFIRMED_EVENT" if unconfirmed else "INSUFFICIENT_PAIRS" if n < 3
+              else "CONSTANT_SERIES" if x.nunique() < 2 or y.nunique() < 2 else None)
     effect = None if reason else float(np.clip(x.corr(y), -1, 1))
     active = (x != 0) & (y != 0)
     return dict(lag_bars=lag, n_pairs=n, unique_source_pairs=unique, correlation=effect,
@@ -368,7 +388,9 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         populations.append(population)
     grid = populations[0]["nominal_closes"]
     aligned = [_align(channel, grid) for channel in channels]
-    pairs = [dict(left=left["id"], right=right["id"], **_pair(aligned[i], aligned[j], lag))
+    unconfirmed = [bool(channel["events"] and not channel["events"]["usable"]) for channel in channels]
+    pairs = [dict(left=left["id"], right=right["id"],
+                  **_pair(aligned[i], aligned[j], lag, unconfirmed[i] or unconfirmed[j]))
              for i, left in enumerate(channels) for j, right in enumerate(channels)
              for lag in ((0,) if i == j else (0, *PREDICTIVE_LAGS) if j > i else PREDICTIVE_LAGS)]
     prices = [[float(value) if pd.notna(value) else None for value in row]

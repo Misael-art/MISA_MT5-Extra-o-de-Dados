@@ -91,7 +91,7 @@ diagnostic = analyze(snapshots, strategy_key="ema_atr",
 ### Descritiva × preditiva (LAB-07)
 
 Cada par traz `relation`: `DESCRIPTIVE` na defasagem 0 (co-movimento) e
-`PREDICTIVE_CANDIDATE` com defasagem 1/3 (o preditor antecede o alvo na grade).
+`PREDICTIVE_CANDIDATE` com defasagem 1/3/6 (o preditor antecede o alvo na grade).
 Os preditivos trazem `out_of_sample`: corte cronológico fixo 70/30 (não
 otimizado), correlação e n de ajuste e fora da amostra e `verdict`
 (`HOLDOUT_CONSISTENT`, `HOLDOUT_SIGN_FLIP`, `HOLDOUT_WEAK`, `FIT_WEAK`,
@@ -104,6 +104,15 @@ blocos móveis, 200 reamostras, semente fixa) exclui zero; senão `CI_INCLUDES_Z
 Defasagens preditivas fixas: 1, 3 e 6 barras da grade (`PREDICTIVE_LAGS`). Campos aditivos: o `analysis_id`
 de seleções existentes não muda. Consistente fora da amostra não é previsão
 calibrada, lucro nem validação de estratégia.
+
+Eventos não confirmados: canais de pivô (`structure.*`, fractais e ZigZag causal)
+trazem `events`. Em top/bottom, `basis=confirmation_bar_close`: o valor só existe
+a partir do fechamento da barra de confirmação, nunca na origem; `confirmations`,
+`delay_bars` (mín/mediana/máx origem→confirmação) e
+`bars_since_last_confirmation` expõem atraso e envelhecimento do último pivô
+retido. A saída `provisional` é desenho (`usable=false`): diagnóstico
+`UNCONFIRMED_EVENT` e todos os seus pares saem com `reason=UNCONFIRMED_EVENT`,
+sem correlação. Demais canais têm `events=null`.
 
 ### Estudo do gráfico (LAB-08)
 

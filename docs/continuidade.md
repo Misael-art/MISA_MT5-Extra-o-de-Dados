@@ -2982,5 +2982,10 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   consistente: M15 RSI → M15 alligator em 6 barras, r fora 0,668 [0,631; 0,709] contra 0,634 do alvo defasado
   (ganho pequeno sobre persistência; mesma origem de preço, não é sinal operacional).
 - QA: visão de defasagens renderizada em Tk real (Xvfb próprio :137; :98 pertence a outro processo, preservado).
-- Pendente LAB-07: eventos não confirmados e M7/M9 pelo contrato de barras derivadas da frente de Dados;
-  aceite do proprietário.
+- Eventos não confirmados: canais de pivô trazem `events` (base = fechamento da confirmação, contagem,
+  atraso origem→confirmação, idade do último pivô); saída provisória recebe diagnóstico/par
+  `UNCONFIRMED_EVENT` e nunca correlação. UI mostra o resumo nos detalhes do canal. Dados reais (mesma janela,
+  fractais top/provisório, ZigZag bottom, RSI; 474 pares, ~12 s): fractais atrasam exatamente 2 barras; 213
+  pares provisórios recusados; ZigZag 1% confirmou só 5 fundos por TF, atraso até 574 barras M15 e último
+  pivô retido há 4308 barras M15 — valor retido envelhecido, agora explícito.
+- Pendente LAB-07: M7/M9 pelo contrato de barras derivadas da frente de Dados; aceite do proprietário.
