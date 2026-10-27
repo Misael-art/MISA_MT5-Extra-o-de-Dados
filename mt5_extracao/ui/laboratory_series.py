@@ -247,7 +247,14 @@ class SeriesLaboratoryPanel:
             ttk.Entry(cell, textvariable=variable, width=14).pack(fill=tk.X)
         ttk.Label(strategy, text="Janela vazia = toda a série (máx. 20 mil barras/TF).",
                   style="Muted.TLabel", wraplength=330).pack(anchor="w")
-        ttk.Label(features, text=f"Indicadores canônicos ({len(self.catalog['indicators'])}) · seleção múltipla").pack(anchor="w")
+        ttk.Label(features, text=f"Indicadores do inventário ({len(self.catalog['indicators'])} calculáveis) · "
+                  "seleção múltipla").pack(anchor="w")
+        self.feature_query = tk.StringVar()
+        search = ttk.Entry(features, textvariable=self.feature_query)
+        search.pack(fill=tk.X, pady=(2, 2))
+        Tooltip(search, "Buscar por nome, id, família, unidade ou parâmetro; a seleção é mantida ao filtrar.")
+        self.feature_hint = ttk.Label(features, text="", style="Muted.TLabel", wraplength=330)
+        self.feature_hint.pack(anchor="w")
         feature_frame = ttk.Frame(features)
         feature_frame.pack(fill=tk.BOTH, expand=True)
         self.feature_list = tk.Listbox(feature_frame, selectmode=tk.MULTIPLE, exportselection=False, height=7)
@@ -255,11 +262,11 @@ class SeriesLaboratoryPanel:
         scrollbar = ttk.Scrollbar(feature_frame, command=self.feature_list.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.feature_list.configure(yscrollcommand=scrollbar.set)
-        for index, item in enumerate(self.catalog["indicators"]):
-            self.feature_list.insert(tk.END, item["name"])
-            if item["feature_id"] in service.DEFAULT_FEATURES:
-                self.feature_list.selection_set(index)
-        self.feature_list.bind("<<ListboxSelect>>", self._changed)
+        self._chosen_features = {item["feature_id"] for item in self.catalog["indicators"]
+                                 if item["feature_id"] in service.DEFAULT_FEATURES}
+        self._filter_features()
+        self.feature_query.trace_add("write", self._filter_features)
+        self.feature_list.bind("<<ListboxSelect>>", self._features_selected)
         detail = ttk.Frame(self.frame)
         detail.pack(fill=tk.X, pady=4)
         ttk.Label(detail, text="Detalhar no gráfico:").pack(side=tk.LEFT)
@@ -273,6 +280,28 @@ class SeriesLaboratoryPanel:
         for variable in (self.params, self.start, self.end):
             variable.trace_add("write", self._changed)
         self.controls.bind("<Configure>", self._layout_controls)
+
+    def _filter_features(self, *_):
+        from mt5_extracao.laboratory import inventory
+        found = inventory.search(query=self.feature_query.get(), page_size=inventory.MAX_PAGE_SIZE)
+        calculable = {item["feature_id"] for item in self.catalog["indicators"]}
+        self._visible_features = [row["feature_id"] for row in found["items"] if row["feature_id"] in calculable]
+        names = {row["feature_id"]: row for row in found["items"]}
+        self.feature_list.delete(0, tk.END)
+        for index, ident in enumerate(self._visible_features):
+            row = names[ident]
+            self.feature_list.insert(tk.END, f"{row['name']} · {row['family']}")
+            if ident in self._chosen_features:
+                self.feature_list.selection_set(index)
+        self.feature_hint.configure(text=found["reason"] or
+            f"{len(self._visible_features)} de {len(calculable)} · {len(self._chosen_features)} selecionados")
+
+    def _features_selected(self, *_):
+        selected = {self._visible_features[i] for i in self.feature_list.curselection()}
+        self._chosen_features = (self._chosen_features - set(self._visible_features)) | selected
+        self.feature_hint.configure(text=f"{len(self._visible_features)} de {len(self.catalog['indicators'])} · "
+                                         f"{len(self._chosen_features)} selecionados")
+        self._changed()
 
     def _wrap_details(self, event):
         if event.widget is not self.frame:
@@ -382,7 +411,8 @@ class SeriesLaboratoryPanel:
                 raise ValueError("Parâmetros exigem objeto JSON.")
             symbol = self.symbol.get()
             tfs = [self._tfs[i] for i in self.tf_list.curselection()]
-            feature_ids = [self.catalog["indicators"][i]["feature_id"] for i in self.feature_list.curselection()]
+            feature_ids = [item["feature_id"] for item in self.catalog["indicators"]
+                           if item["feature_id"] in self._chosen_features]
             strategy = None if self.strategy.get() == "Sem estratégia" else self.strategy.get()
             if not symbol or not tfs:
                 raise ValueError("Escolha ativo e pelo menos um timeframe da base.")

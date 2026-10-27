@@ -10,6 +10,15 @@ def add_parser(sub):
     parser = sub.add_parser("laboratory", help="séries, confluências e comparação exploratória entre timeframes")
     actions = parser.add_subparsers(dest="laboratory_action", required=True)
     actions.add_parser("catalog", help="todos os indicadores e estratégias canônicos, sem abrir a base").set_defaults(func=run)
+    inventory = actions.add_parser("inventory", help="inventário real: registry, definições de Dados e fatos")
+    inventory.add_argument("--query", default="", help="busca por id, nome, família, unidade ou parâmetro")
+    inventory.add_argument("--family")
+    inventory.add_argument("--state", choices=["STORED", "COMPUTABLE", "STORED_ONLY", "UNAVAILABLE"])
+    inventory.add_argument("--symbol")
+    inventory.add_argument("--tf", dest="timeframe")
+    inventory.add_argument("--page-size", type=int, default=50)
+    inventory.add_argument("--cursor")
+    inventory.set_defaults(func=run)
     actions.add_parser("sources", help="tabelas OHLCV em TFs nativos; somente leitura").set_defaults(func=run)
     freeze = actions.add_parser("freeze", help="congela seleção explícita no store de snapshots existente")
     freeze.add_argument("--symbol", required=True)
@@ -33,6 +42,10 @@ def run(args, ctx):
     from mt5_extracao import cli
     if args.laboratory_action == "catalog":
         result = service.catalog()
+    elif args.laboratory_action == "inventory":
+        from . import inventory
+        result = inventory.search(ctx.db, query=args.query, family=args.family, state=args.state,
+            symbol=args.symbol, timeframe=args.timeframe, page_size=args.page_size, cursor=args.cursor)
     elif args.laboratory_action == "sources":
         result = dict(sources=service.sources(ctx.db),
             source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")

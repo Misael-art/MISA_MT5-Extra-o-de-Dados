@@ -31,7 +31,7 @@ def relations_panel():
 def test_relation_views_keep_fixture_scope_explicit(relations_panel):
     panel, _root = relations_panel
     assert [panel.notebook.tab(index, "text") for index in range(panel.notebook.index("end"))] == [
-        "Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos"
+        "Inventário", "Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos"
     ]
     assert "DADOS SINTÉTICOS" in panel.synthetic_notice.message.cget("text")
     assert "não são resultados analíticos reais" in panel.synthetic_notice.message.cget("text")
@@ -282,7 +282,7 @@ def test_detail_spacing_is_owned_by_split_container(relations_panel):
 
 def test_secondary_information_starts_closed_without_hiding_primary_warnings(relations_panel):
     panel, root = relations_panel
-    assert len(panel._detail_panels) == 6
+    assert len(panel._detail_panels) == 7
     for detail in [*panel._detail_panels.values(), panel.state_legend, panel.timeline_explanation]:
         assert not detail.expanded
         assert detail.body.winfo_manager() == ""
@@ -337,3 +337,42 @@ def test_closed_selection_details_update_and_release_space_without_changing_plot
             assert root.focus_get() is detail.toggle_button
             assert text.get("1.0", "end-1c") == selected_text
         panel.theme.toggle()
+
+
+def test_inventory_view_lists_whole_registry_with_pages_search_and_reason(relations_panel):
+    from mt5_extracao.analytics import indicator_registry
+    panel, root = relations_panel
+    seen = set()
+    while True:
+        tree = panel.inventory_table.tree
+        seen |= {tree.item(iid, "values")[0] for iid in tree.get_children()}
+        if not panel._inventory_next_cursor:
+            break
+        panel._inventory_page(1)
+    assert seen == {row["feature_id"] for row in indicator_registry.definitions()}
+    assert "sem base conectada" in panel.inventory_status.cget("text")
+    panel.inventory_query.set("inexistente-xyz")
+    panel.load_inventory()
+    assert "limpe a busca" in panel.inventory_status.cget("text")
+    assert not panel.inventory_table.tree.get_children()
+
+
+def test_inventory_drops_stale_response_and_reports_error(relations_panel):
+    panel, _root = relations_panel
+    pending = []
+    panel._run_bg = lambda work, done: pending.append((work, done))
+    panel.inventory_query.set("rsi")
+    panel.load_inventory()
+    panel.inventory_query.set("atr")
+    panel.load_inventory()
+    old, new = pending
+    new[1](*panel._call(new[0]))
+    shown = {panel.inventory_table.tree.item(iid, "values")[0] for iid in panel.inventory_table.tree.get_children()}
+    old[1](*panel._call(old[0]))
+    assert shown == {panel.inventory_table.tree.item(iid, "values")[0]
+                     for iid in panel.inventory_table.tree.get_children()}
+    from mt5_extracao.laboratory import inventory
+    assert shown and shown == {row["feature_id"] for row in inventory.search(query="atr")["items"]}
+    panel.load_inventory()
+    pending[-1][1](None, RuntimeError("base bloqueada"))
+    assert "Inventário indisponível: base bloqueada" in panel.inventory_status.cget("text")

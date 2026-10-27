@@ -247,3 +247,13 @@ def test_single_bar_segment_stays_visible(panel, snapshots):
     series.set_report(report)
     feature = series.panels["price"].chart.figure.axes[1]
     assert any(line.get_marker() == "o" for line in feature.lines)
+
+
+def test_feature_search_filters_inventory_and_keeps_selection(panel):
+    series = open_series(panel)
+    before = set(series._chosen_features)
+    series.feature_query.set("efficiency")
+    assert all("efficiency" in ident for ident in series._visible_features)
+    series.feature_query.set("")
+    assert series._chosen_features == before
+    assert len(series._visible_features) == len(series.catalog["indicators"])

@@ -2905,3 +2905,18 @@ Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
 - Limitação: base local vazia; reprodução com dados SINTÉTICOS controlados (sessões com lacunas, M5/H1/D1).
   Falta confirmar pelo atalho com a base real do proprietário; DPI/monitor físico não qualificados.
 - Próximo: `rtk proxy .venv/bin/python -m pytest -q tests/test_laboratory_series.py tests/test_ui_components.py`; depois LAB-01.
+
+## LAB-01 · 2026-10-26 (branch de continuidade, PR 212)
+
+- `laboratory/inventory.py` (somente leitura): une registry BD06, definições/versões do pilar de Dados
+  (`feature_store.list_definitions`) e fatos agregados por ativo/TF; estados `STORED`, `COMPUTABLE`,
+  `STORED_ONLY`, `UNAVAILABLE`, cada um com motivo e ação; busca, filtros (família/estado/ativo/TF) e
+  cursor amarrado aos filtros. CLI: `mt5x laboratory inventory [--query --state --symbol --tf --page-size --cursor]`.
+- Relações ganhou a visão **Inventário** (dados reais, paginação, resposta obsoleta descartada, erro de fundo
+  com motivo); as demais visões continuam identificadas como fixture sintética até o DTO T18.1/serviço T18.6.
+- Séries: seletor de indicadores busca no inventário e preserva a seleção ao filtrar; nova definição do
+  registry aparece sem editar o seletor (teste).
+- Pendente do LAB-01: matrizes Indicador × indicador/alvo ainda são fixture — exigem produtor de relações
+  (T18.6) do pilar de Dados; não foi criado cálculo paralelo.
+- Testes: 112 passaram; falhas intermitentes de geometria/WM: `large_monitor`, `negative_monitor` (preexistente),
+  `closed_selection_details` (passa isolado).

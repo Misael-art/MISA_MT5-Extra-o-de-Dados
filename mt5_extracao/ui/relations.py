@@ -19,7 +19,7 @@ from mt5_extracao.ui.components import ContentPanel, DetailsPanel, FilterBar, No
 from mt5_extracao.ui.visual_tokens import SPACING, TYPOGRAPHY
 
 
-VIEW_NAMES = ("Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos")
+VIEW_NAMES = ("Inventário", "Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos")
 _STATE_TEXT = {
     "FAVORABLE": "Favorável OOS",
     "DETERIORATING": "Deterioração",
@@ -367,8 +367,12 @@ class _MatrixGrid:
 class RelationsPanel:
     """Subvisões visuais de F18 com fixture privada e estados explicitamente provisórios."""
 
-    def __init__(self, parent, theme):
-        self.theme = theme
+    def __init__(self, parent, theme, db=None, run_bg=None):
+        self.theme, self.db = theme, db
+        # Sem run_bg (testes/SDK), a leitura somente agregada roda na própria thread.
+        self._run_bg = run_bg or (lambda work, done: done(*self._call(work)))
+        self._inventory_request = 0
+        self._inventory_cursors = [None]
         self.frame = ttk.Frame(parent, style="Surface.TFrame")
         self._details: dict[str, tk.Text] = {}
         self._detail_panels: dict[str, ContentPanel] = {}
@@ -385,8 +389,8 @@ class RelationsPanel:
         head.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         self.synthetic_notice = Notice(
             self.frame,
-            "DADOS SINTÉTICOS · Fixture local sem vínculo à base do usuário. DTO T18.1 e serviço T18.6 pendentes; "
-            "valores e estados não são resultados analíticos reais.",
+            "Inventário: dados reais do registry e da base. Demais visões: DADOS SINTÉTICOS · fixture local sem "
+            "vínculo à base do usuário; DTO T18.1 e serviço T18.6 pendentes; valores e estados não são resultados analíticos reais.",
             kind="warning", theme=self.theme,
         )
         _fit_label_to_parent(self.synthetic_notice.message, self.synthetic_notice, reserve=128)
@@ -399,6 +403,7 @@ class RelationsPanel:
         self.pages: dict[str, ttk.Frame] = {}
         self._page_scrolls: dict[str, _ScrollablePage] = {}
         builders = {
+            "Inventário": self._build_inventory,
             "Matriz": self._build_matrix,
             "Linha do tempo": self._build_timeline,
             "Ganhos e perdas": self._build_distribution,
@@ -1045,6 +1050,116 @@ class RelationsPanel:
             "segment": pair["comparison"],
             "cost_status": "custos não incluídos; resultado bruto, sem expectativa líquida",
         })
+
+    @staticmethod
+    def _call(work):
+        try:
+            return work(), None
+        except Exception as error:  # mesmo contrato de run_bg: erro chega ao callback
+            return None, error
+
+    def _build_inventory(self, parent):
+        from mt5_extracao.laboratory import inventory
+        controls = ttk.Frame(parent, style="Surface.TFrame")
+        controls.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+        ttk.Label(controls, text="Buscar:").pack(side=tk.LEFT)
+        self.inventory_query = tk.StringVar()
+        entry = ttk.Entry(controls, textvariable=self.inventory_query, width=28)
+        entry.pack(side=tk.LEFT, padx=SPACING["xs"])
+        entry.bind("<Return>", lambda _e: self.load_inventory())
+        ttk.Label(controls, text="Estado:").pack(side=tk.LEFT)
+        self.inventory_state = tk.StringVar(value="Todos")
+        state_box = ttk.Combobox(controls, textvariable=self.inventory_state, state="readonly", width=13,
+                                 values=("Todos", *inventory.STATES))
+        state_box.pack(side=tk.LEFT, padx=SPACING["xs"])
+        state_box.bind("<<ComboboxSelected>>", lambda _e: self.load_inventory())
+        ttk.Button(controls, text="Filtrar", command=self.load_inventory).pack(side=tk.LEFT)
+        self.inventory_prev = ttk.Button(controls, text="◀", width=3, command=lambda: self._inventory_page(-1))
+        self.inventory_prev.pack(side=tk.RIGHT)
+        self.inventory_next = ttk.Button(controls, text="▶", width=3, command=lambda: self._inventory_page(1))
+        self.inventory_next.pack(side=tk.RIGHT)
+        self.inventory_status = ttk.Label(parent, text="Carregando inventário…", style="Muted.TLabel")
+        self.inventory_status.pack(fill=tk.X)
+        _fit_label_to_parent(self.inventory_status, parent)
+        self.inventory_table = TablePanel(parent, "Indicadores, variantes e saídas · somente leitura",
+            columns=("feature", "name", "version", "family", "outputs", "params", "state", "series"),
+            widths=(210, 170, 70, 100, 120, 240, 110, 200),
+            anchors=("w", "w", "center", "w", "w", "w", "center", "w"), height=12, xscroll=True,
+            padding=SPACING["xs"])
+        self.inventory_table.pack(fill=tk.BOTH, expand=True)
+        self._set_headings(self.inventory_table, {"feature": "ID", "name": "Nome", "version": "Versão",
+            "family": "Família", "outputs": "Saídas", "params": "Parâmetros", "state": "Estado",
+            "series": "Fatos na base"})
+        self.inventory_table.tree.bind("<<TreeviewSelect>>", self._inventory_selected, add="+")
+        self.inventory_detail = self._page_detail(parent, "inventory", visible_lines=5)
+        self.inventory_detail.pack(fill=tk.X, pady=(SPACING["xs"], 0))
+        self._inventory_rows = {}
+        self.load_inventory()
+
+    def load_inventory(self, cursor=None, *, reset=True):
+        from mt5_extracao.laboratory import inventory
+        if reset:
+            self._inventory_cursors = [None]
+        self._inventory_request += 1
+        request, db = self._inventory_request, self.db
+        query, state = self.inventory_query.get(), self.inventory_state.get()
+        def work():
+            return inventory.search(db, query=query, state=None if state == "Todos" else state,
+                                    page_size=50, cursor=cursor)
+        def done(result, error):
+            if request != self._inventory_request or not self.inventory_table.tree.winfo_exists():
+                return  # resposta obsoleta: outra busca já foi pedida
+            tree = self.inventory_table.tree
+            tree.delete(*tree.get_children())
+            self._inventory_rows = {}
+            if error:
+                self.inventory_status.configure(text=f"Inventário indisponível: {error}. Recomece a busca.")
+                return
+            for index, row in enumerate(result["items"]):
+                iid = f"inventory-{index}"
+                self._inventory_rows[iid] = row
+                series = ", ".join(f"{item['symbol']} {item['timeframe']} ({item['facts']})"
+                                   for item in row["series"][:3]) or "—"
+                tree.insert("", tk.END, iid=iid, values=(row["feature_id"], row["name"], row["algorithm_version"],
+                    row["family"], ", ".join(item["name"].rsplit(".", 1)[-1] for item in row["outputs"]) or "—",
+                    ", ".join(f"{k}={v}" for k, v in row["parameters"].items()), row["state"], series))
+            self._inventory_next_cursor = result["next_cursor"]
+            self.inventory_next.state(["!disabled"] if result["next_cursor"] else ["disabled"])
+            self.inventory_prev.state(["!disabled"] if len(self._inventory_cursors) > 1 else ["disabled"])
+            counts = " · ".join(f"{name} {count}" for name, count in result["counts"].items())
+            page = len(self._inventory_cursors)
+            self.inventory_status.configure(text=result["reason"] or
+                f"{result['matched']} de {result['total']} definições · página {page} · {counts}"
+                + ("" if db is not None else " · sem base conectada: fatos não consultados"))
+            if result["items"]:
+                tree.selection_set("inventory-0")
+        self._run_bg(work, done)
+
+    def _inventory_page(self, step):
+        if step > 0 and getattr(self, "_inventory_next_cursor", None):
+            self._inventory_cursors.append(self._inventory_next_cursor)
+        elif step < 0 and len(self._inventory_cursors) > 1:
+            self._inventory_cursors.pop()
+        else:
+            return
+        self.load_inventory(self._inventory_cursors[-1], reset=False)
+
+    def _inventory_selected(self, _event):
+        selection = self.inventory_table.tree.selection()
+        row = self._inventory_rows.get(selection[0]) if selection else None
+        if row is None:
+            return
+        text = self._details["inventory"]
+        text.configure(state=tk.NORMAL)
+        text.delete("1.0", tk.END)
+        lines = [f"{row['name']} · {row['feature_id']} v{row['algorithm_version']} · origem {row['origin']}",
+                 f"Estado {row['state']}: {row['reason']}" + (f" Ação: {row['action']}" if row["action"] else ""),
+                 f"Unidade {row['unit']} · aquecimento {row['warmup']} · saídas "
+                 + ", ".join(f"{o['name']} ({o.get('kind')})" for o in row["outputs"])]
+        lines += [f"{s['symbol']} {s['timeframe']}: {s['facts']} fatos de {s['first']} a {s['last']} · "
+                  f"último disponível {s['last_available_at']}" for s in row["series"]]
+        text.insert("1.0", "\n".join(lines))
+        text.configure(state=tk.DISABLED)
 
     def _build_candidates(self, parent):
         notice = Notice(parent,

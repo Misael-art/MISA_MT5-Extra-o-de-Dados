@@ -483,7 +483,8 @@ class LaboratoryPanel:
         if name == RELATIONS_TAB:
             if self.relations_panel is None:
                 from mt5_extracao.ui.relations import RelationsPanel
-                self.relations_panel = RelationsPanel(self.tab_frames[RELATIONS_TAB], self.theme)
+                self.relations_panel = RelationsPanel(self.tab_frames[RELATIONS_TAB], self.theme,
+                    db=getattr(self.ui.app, "db_manager", None), run_bg=self.ui.run_bg)
                 self.relations_panel.frame.pack(fill=tk.BOTH, expand=True)
             if name not in self._drawn:
                 self.relations_panel.render()
