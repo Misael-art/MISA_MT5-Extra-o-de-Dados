@@ -95,7 +95,11 @@ Cada par traz `relation`: `DESCRIPTIVE` na defasagem 0 (co-movimento) e
 Os preditivos trazem `out_of_sample`: corte cronológico fixo 70/30 (não
 otimizado), correlação e n de ajuste e fora da amostra e `verdict`
 (`HOLDOUT_CONSISTENT`, `HOLDOUT_SIGN_FLIP`, `HOLDOUT_WEAK`, `FIT_WEAK`,
-`HOLDOUT_INSUFFICIENT` com menos de 30 pares). Campos aditivos: o `analysis_id`
+`WITHIN_NULL`, `NO_GAIN_OVER_PERSISTENCE`, `HOLDOUT_INSUFFICIENT` com menos de 30
+pares). Dois controles no trecho fora da amostra: `null_band_95` (quantil 95% de
+|r| sob deslocamentos circulares do preditor, que preservam autocorrelação e
+retenção) e `naive_holdout_correlation` (o próprio alvo com a mesma defasagem).
+Só é consistente o que supera ambos. Campos aditivos: o `analysis_id`
 de seleções existentes não muda. Consistente fora da amostra não é previsão
 calibrada, lucro nem validação de estratégia.
 

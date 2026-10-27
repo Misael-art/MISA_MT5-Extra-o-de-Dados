@@ -31,8 +31,8 @@ LIMITATIONS = (
     "Fechamento nominal não comprova recebimento histórico nem ausência de revisão/repaint.",
     "Janelas, sementes, parâmetros e origem estão congelados nos manifests; sem reamostragem implícita.",
     "Pares com valores retidos e autocorrelação não são observações independentes; sem p-valor ou ranking automático.",
-    "Defasagem 0 é descritiva; defasagem > 0 só é candidata preditiva com corte temporal 70/30 fixo e consistente "
-    "fora da amostra, ainda sem calibração, custos ou validação de estratégia.",
+    "Defasagem 0 é descritiva; defasagem > 0 só é candidata preditiva com corte temporal 70/30 fixo, consistente "
+    "fora da amostra, acima da faixa nula por deslocamento circular e da persistência do próprio alvo, ainda sem calibração, custos ou validação de estratégia.",
     "Intenções da estratégia não são fills, reversões confirmadas nem aceite operacional do robô.",
 )
 
@@ -236,11 +236,34 @@ def _correlation(x, y):
     return float(np.clip(x.corr(y), -1, 1))
 
 
-def _temporal_split(x, y):
-    """Correlação no trecho inicial (ajuste) e no final (fora da amostra), na ordem do tempo."""
+def _null_band(x, y, min_shift):
+    """Controle: |r| que deslocamentos circulares do preditor produzem por acaso (quantil 95%).
+
+    O deslocamento preserva autocorrelação e retenção de cada série, ao contrário de
+    embaralhar barras; todas as defasagens saem de uma correlação cruzada por FFT.
+    """
+    a, b = np.asarray(x, float), np.asarray(y, float)
+    n = len(a)
+    if n < 2 * min_shift + 10 or a.std() == 0 or b.std() == 0:
+        return None
+    a, b = (a - a.mean()) / a.std(), (b - b.mean()) / b.std()
+    cross = np.fft.irfft(np.conj(np.fft.rfft(a)) * np.fft.rfft(b), n) / n
+    shifts = cross[min_shift:n - min_shift]
+    return float(np.quantile(np.abs(shifts), 0.95))
+
+
+def _temporal_split(x, y, naive=None):
+    """Correlação no trecho inicial (ajuste) e no final (fora da amostra), na ordem do tempo.
+
+    `naive` é o próprio alvo com a mesma defasagem: o preditor só acrescenta algo se
+    superar o que a persistência do alvo já antecipa.
+    """
     cut = int(len(x) * FIT_FRACTION)
     fit, holdout = _correlation(x.iloc[:cut], y.iloc[:cut]), _correlation(x.iloc[cut:], y.iloc[cut:])
     n_holdout = len(x) - cut
+    naive_holdout = None if naive is None else _correlation(naive.iloc[cut:].astype(float), y.iloc[cut:])
+    # Deslocamento mínimo de 10% da amostra afasta a defasagem real e vizinhas retidas.
+    band = _null_band(x.iloc[cut:], y.iloc[cut:], max(5, n_holdout // 10)) if n_holdout >= MIN_HOLDOUT_PAIRS else None
     if n_holdout < MIN_HOLDOUT_PAIRS or fit is None or holdout is None:
         verdict = "HOLDOUT_INSUFFICIENT"
     elif abs(fit) < MIN_HOLDOUT_EFFECT:
@@ -249,10 +272,15 @@ def _temporal_split(x, y):
         verdict = "HOLDOUT_SIGN_FLIP"
     elif abs(holdout) < MIN_HOLDOUT_EFFECT:
         verdict = "HOLDOUT_WEAK"
+    elif band is None or abs(holdout) <= band:
+        verdict = "WITHIN_NULL"  # efeito do tamanho do acaso sob a mesma autocorrelação
+    elif naive_holdout is not None and abs(holdout) <= abs(naive_holdout):
+        verdict = "NO_GAIN_OVER_PERSISTENCE"
     else:
         verdict = "HOLDOUT_CONSISTENT"
     return dict(fit_fraction=FIT_FRACTION, fit_pairs=cut, fit_correlation=fit,
-                holdout_pairs=n_holdout, holdout_correlation=holdout, verdict=verdict)
+                holdout_pairs=n_holdout, holdout_correlation=holdout, null_band_95=band, naive_holdout_correlation=naive_holdout,
+                control="circular_shift_of_predictor_in_holdout", verdict=verdict)
 
 
 def _pair(left, right, lag):
@@ -273,7 +301,7 @@ def _pair(left, right, lag):
         # Defasagem 0 só descreve co-movimento; com defasagem o preditor antecede o alvo e
         # exige o corte temporal. Consistência fora da amostra não é previsão calibrada.
         relation="DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE",
-        out_of_sample=None if lag == 0 or reason else _temporal_split(x, y))
+        out_of_sample=None if lag == 0 or reason else _temporal_split(x, y, right.direction.shift(lag)[valid]))
 
 
 def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strategy_params=None, as_of):

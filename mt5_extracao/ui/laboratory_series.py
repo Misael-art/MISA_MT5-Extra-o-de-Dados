@@ -48,7 +48,7 @@ def timeline_bins(channels, max_columns):
 
 
 VERDICTS = {"HOLDOUT_CONSISTENT": "consistente fora", "HOLDOUT_SIGN_FLIP": "inverte fora",
-            "HOLDOUT_WEAK": "fraca fora", "HOLDOUT_INSUFFICIENT": "amostra curta", "FIT_WEAK": "fraca no ajuste",
+            "HOLDOUT_WEAK": "fraca fora", "WITHIN_NULL": "dentro do acaso", "NO_GAIN_OVER_PERSISTENCE": "não supera persistência", "HOLDOUT_INSUFFICIENT": "amostra curta", "FIT_WEAK": "fraca no ajuste",
             "INSUFFICIENT_PAIRS": "sem pares", "CONSTANT_SERIES": "série constante", "UNAVAILABLE": "indisponível"}
 TOOLS = ("Navegar", "Selecionar/mover", "Linha horizontal", "Linha vertical", "Região", "Nota")
 # Orçamento explícito de renderização: até 8 subjanelas (110 px cada) rolam na página;
@@ -986,7 +986,9 @@ class SeriesLaboratoryPanel:
                 def r(value):
                     return "—" if value is None else f"{value:+.3f}"
                 detail = (f"ajuste r={r(split['fit_correlation'])} n={split['fit_pairs']} · fora r="
-                          f"{r(split['holdout_correlation'])} n={split['holdout_pairs']} · {VERDICTS[split['verdict']]}"
+                          f"{r(split['holdout_correlation'])} n={split['holdout_pairs']} · acaso ±"
+                          f"{'—' if split.get('null_band_95') is None else format(split['null_band_95'], '.3f')} · "
+                          f"alvo defasado r={r(split.get('naive_holdout_correlation'))} · {VERDICTS[split['verdict']]}"
                           if split else f"r={r(row['correlation'])} n={row['n_pairs']} · descritiva")
                 lines.append(f"{row['left']} → {row['right']}: {detail}")
             return "\n".join(lines[:6]) or None

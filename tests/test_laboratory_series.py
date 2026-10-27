@@ -271,3 +271,31 @@ def test_temporal_split_flags_relation_that_does_not_survive_holdout(tail, verdi
     assert service._temporal_split(x[:40], y[:40])["verdict"] == "HOLDOUT_INSUFFICIENT"
     unrelated = pd.Series(rng.choice([-1.0, 1.0], 200))
     assert service._temporal_split(x, unrelated)["verdict"] == "FIT_WEAK"
+
+
+def test_null_band_tracks_autocorrelation_and_gates_consistent_verdict(monkeypatch):
+    import numpy as np
+    import pandas as pd
+    rng = np.random.default_rng(11)
+    iid = pd.Series(rng.choice([-1.0, 1.0], 600)), pd.Series(rng.choice([-1.0, 1.0], 600))
+    # Sinais retidos em blocos de 40 barras (como intenção de TF maior): acaso produz |r| maior.
+    blocks = [pd.Series(np.repeat(rng.choice([-1.0, 1.0], 15), 40)) for _ in range(2)]
+    assert service._null_band(*blocks, 60) > 2 * service._null_band(*iid, 60)
+    x = pd.Series(rng.choice([-1.0, 1.0], 200))
+    assert service._temporal_split(x, x.copy())["verdict"] == "HOLDOUT_CONSISTENT"
+    monkeypatch.setattr(service, "_null_band", lambda *a: 0.99)
+    split = service._temporal_split(x, x * np.where(rng.random(200) < .2, -1, 1))
+    assert split["verdict"] == "WITHIN_NULL" and split["null_band_95"] == 0.99
+    assert split["control"] == "circular_shift_of_predictor_in_holdout"
+
+
+def test_predictor_must_beat_target_persistence():
+    import numpy as np
+    import pandas as pd
+    rng = np.random.default_rng(5)
+    target = pd.Series(np.repeat(rng.choice([-1.0, 1.0], 40), 10))   # alvo muito persistente
+    lagged = target.shift(1).bfill()
+    noisy = lagged * np.where(rng.random(400) < .15, -1, 1)           # preditor = alvo passado + ruído
+    split = service._temporal_split(noisy, target, lagged)
+    assert split["verdict"] == "NO_GAIN_OVER_PERSISTENCE"
+    assert abs(split["naive_holdout_correlation"]) >= abs(split["holdout_correlation"])
