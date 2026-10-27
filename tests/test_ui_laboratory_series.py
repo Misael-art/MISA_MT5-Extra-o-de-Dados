@@ -56,6 +56,8 @@ def test_chart_maximize_restore_uses_same_report_and_current_monitor(panel, snap
     series = open_series(panel)
     series.set_report(analysis(snapshots))
     identity = series.report["analysis_id"]
+    if panel.ui.root.winfo_screenwidth() < 1280 or panel.ui.root.winfo_screenheight() < 800:
+        pytest.skip("Tela física menor que o monitor simulado; o WM limita a janela (runner Windows).")
     monkeypatch.setattr(laboratory_series, "monitor_geometry", lambda _: (0, 0, 1280, 800))
     chart = series.panels["price"]
     chart.expand()
@@ -141,6 +143,9 @@ def test_large_monitor_does_not_force_wide_layout_into_compact_window(panel, mon
     monkeypatch.setattr(laboratory_series, "monitor_geometry", lambda _: (0, 0, 2200, 1400))
     panel.ui.root.geometry(geometry)
     panel.ui.root.update()
+    width, height = (int(part) for part in geometry.split("x"))
+    if (panel.ui.root.winfo_width(), panel.ui.root.winfo_height()) != (width, height):
+        pytest.skip("O gerenciador de janelas não aplicou a geometria pedida (tela física menor/ocupada).")
     series._display_initialized = False
     series.on_show()
     assert series.extended.get() is expected

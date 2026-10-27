@@ -167,7 +167,7 @@ def test_cli_and_sdk_produce_same_frozen_diagnostic(snapshots, source_db, tmp_pa
     path = tmp_path / "diagnostic.json"
     assert cli.main(argv + ["--out", str(path)]) == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["data"] == analysis(snapshots) == json.loads(path.read_text())
+    assert payload["data"] == analysis(snapshots) == json.loads(path.read_text(encoding="utf-8"))
     assert cli.main(argv + ["--out", str(path)]) == 2
     assert json.loads(capsys.readouterr().out)["ok"] is False
     assert json.loads(path.read_text()) == payload["data"]
