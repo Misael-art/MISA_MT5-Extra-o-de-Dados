@@ -170,7 +170,7 @@ def test_cli_and_sdk_produce_same_frozen_diagnostic(snapshots, source_db, tmp_pa
     assert payload["data"] == analysis(snapshots) == json.loads(path.read_text(encoding="utf-8"))
     assert cli.main(argv + ["--out", str(path)]) == 2
     assert json.loads(capsys.readouterr().out)["ok"] is False
-    assert json.loads(path.read_text()) == payload["data"]
+    assert json.loads(path.read_text(encoding="utf-8")) == payload["data"]
 
 
 def test_cli_freeze_and_strategy_only_share_canonical_snapshots(source_db, monkeypatch, capsys):
