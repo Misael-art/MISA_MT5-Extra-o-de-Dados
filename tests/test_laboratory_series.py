@@ -337,3 +337,79 @@ def test_pivot_events_enter_only_when_confirmed_and_provisional_is_refused(snaps
     assert touched and all(p["reason"] == "UNCONFIRMED_EVENT" and p["correlation"] is None for p in touched)
     assert channels["M5:momentum.rsi_14"]["events"] is None
     json.dumps(result, allow_nan=False)
+
+
+def test_unknown_broker_clock_is_refused_before_freezing(tmp_path, monkeypatch):
+    db = DatabaseManager(db_path=str(tmp_path / "noclock.sqlite"))
+    try:
+        monkeypatch.setattr(service.datasets, "capture", lambda *a, **k: pytest.fail("não deve congelar"))
+        with pytest.raises(ValueError, match="Fuso do servidor não declarado.*seleção foi mantida"):
+            service.capture_selection(db, symbol="X", timeframes_selected=["M5"])
+    finally:
+        db.close()
+
+
+def test_future_bars_never_anticipate_earlier_confirmations(source_db):
+    ids = ["structure.fractals_5_strict_top", "momentum.rsi_14"]
+    short = service.capture_selection(source_db, symbol="X", timeframes_selected=["M5"], end="2025-01-07")
+    long = service.capture_selection(source_db, symbol="X", timeframes_selected=["M5"])
+    a = service.analyze(short, feature_ids=ids, as_of="2025-02-01T00:00:00Z")["channels"][0]
+    b = service.analyze(long, feature_ids=ids, as_of="2025-02-01T00:00:00Z")["channels"][0]
+    n = len(a["values"])
+    assert n < len(b["values"]) and a["values"] == b["values"][:n]
+    # Eventos são confirmações, não barras que retêm o último valor.
+    assert a["events"]["confirmations"] < a["available"]
+
+
+def test_relation_matrix_separates_reasons_and_matches_cli(snapshots, tmp_path, capsys, monkeypatch, source_db):
+    ids = ["momentum.rsi_14", "structure.fractals_5_strict_provisional"]
+    report = service.analyze(snapshots, feature_ids=ids, as_of="2025-02-01T00:00:00Z")
+    matrix = service.relation_matrix(report)
+    index = {c["id"]: i for i, c in enumerate(matrix["channels"])}
+    rsi5, rsi15 = index["M5:momentum.rsi_14"], index["M15:momentum.rsi_14"]
+    prov = index["M5:structure.fractals_5_strict_provisional"]
+    assert matrix["cells"][rsi5][rsi5]["effect"] == pytest.approx(1.0)
+    assert matrix["cells"][rsi5][rsi15]["effect"] == matrix["cells"][rsi15][rsi5]["effect"]
+    assert matrix["cells"][rsi5][prov]["reason"] == "UNCONFIRMED_EVENT"
+    assert matrix["cells"][rsi5][prov]["effect"] is None and matrix["cells"][rsi5][prov]["direction_correlation"] is None
+    lagged = service.relation_matrix(report, lag=3)
+    assert lagged["cells"][rsi5][rsi5]["reason"] == "SAME_SERIES"
+    cell = lagged["cells"][rsi5][rsi15]
+    pair = next(p for p in report["pairs"] if (p["left"], p["right"], p["lag_bars"]) == (
+        "M5:momentum.rsi_14", "M15:momentum.rsi_14", 3))
+    assert cell["verdict"] == pair["out_of_sample"]["verdict"] and cell["relation"] == "PREDICTIVE_CANDIDATE"
+    with pytest.raises(ValueError, match="Defasagem 2"):
+        service.relation_matrix(report, lag=2)
+    path = tmp_path / "analysis.json"
+    path.write_text(json.dumps(report), encoding="utf-8")
+    from mt5_extracao import cli
+    monkeypatch.setattr(cli.Context, "db", property(lambda _: source_db))
+    assert cli.main(["--json", "laboratory", "matrix", "--analysis", str(path), "--lag", "3"]) == 0
+    assert json.loads(capsys.readouterr().out)["data"] == json.loads(json.dumps(lagged))
+
+
+def test_relation_matrix_keeps_zero_valid_and_inherits_empty_channel_diagnosis(snapshots):
+    report = service.analyze(snapshots, feature_ids=["momentum.rsi_14"], as_of="2025-02-01T00:00:00Z")
+    report = copy.deepcopy(report)
+    left, right = report["channels"][0], report["channels"][1]
+    left["values"] = [0.0 if v is not None else None for v in left["values"]]
+    assert service.relation_matrix(report)["cells"][0][1]["reason"] == "CONSTANT_SERIES"
+    right["values"] = [None] * len(right["values"])
+    right["diagnosis"] = dict(code="WARMUP_EXCEEDS_WINDOW", message="M15: aquecimento", action="amplie")
+    cell = service.relation_matrix(report)["cells"][0][1]
+    assert cell["reason"] == "WARMUP_EXCEEDS_WINDOW" and cell["reason_text"] == "M15: aquecimento"
+    right["diagnosis"] = None
+    assert service.relation_matrix(report)["cells"][0][1]["reason"] == "NO_OVERLAP"
+
+
+def test_exported_analysis_reopens_with_identity_and_tampering_is_refused(snapshots):
+    report = json.loads(json.dumps(analysis(snapshots)))
+    assert service.load_report(json.dumps(report)) == report
+    tampered = copy.deepcopy(report)
+    tampered["selection"]["as_of"] = "2030-01-01T00:00:00+00:00"
+    with pytest.raises(ValueError, match="arquivo alterado"):
+        service.load_report(json.dumps(tampered))
+    with pytest.raises(ValueError, match="incompatível"):
+        service.load_report(json.dumps(dict(report, laboratory_version=99)))
+    with pytest.raises(ValueError, match="não é uma análise"):
+        service.load_report("{")

@@ -7,8 +7,11 @@ comprovam funcionamento em todas as seleções reais do atalho central.
 
 Entrega inicial solicitada em24/10/2026, sobre AIA-02a. A aba **Laboratório →
 Séries e confluências** usa séries reais da base, congeladas por `datasets`.
-Permanece separada de **Relações e aderência**, cuja fixture F18 continua
-explicitamente demonstrativa, e das análises do livro de operações.
+Em **Relações e aderência**, Inventário e a matriz **Indicador × indicador** são
+reais: a matriz é `service.relation_matrix` sobre a análise congelada em Séries
+(a mesma do CLI `laboratory matrix`). Indicador × alvo, linha do tempo, ganhos e
+perdas, convergências e candidatos continuam fixture F18 demonstrativa, pois o
+alvo T18.6 ainda não tem produtor. Análises do livro de operações são separadas.
 
 ## Visões e percurso
 
@@ -65,6 +68,24 @@ python -m mt5_extracao.cli --json laboratory analyze \
   --feature momentum.rsi_14 --feature volatility.bb_20_position \
   --as-of 2026-10-01T03:00:00Z --out diagnostico-novo.json
 ```
+
+```sh
+python -m mt5_extracao.cli --json laboratory matrix --analysis diagnostico-novo.json --lag 3
+```
+
+`matrix` lê só o JSON exportado (sem base): Spearman dos valores alinhados na
+grade nominal, preditor deslocado `--lag` barras (0, 1, 3 ou 6), com correlação de
+direção, veredito fora da amostra e IC copiados do par do relatório. Célula sem
+efeito traz `reason` distinto: `UNCONFIRMED_EVENT` (pivô provisório),
+`SAME_SERIES` (diagonal com defasagem), `NO_OVERLAP`, `INSUFFICIENT_PAIRS`,
+`CONSTANT_SERIES` (zero válido constante não é ausência) ou o diagnóstico do canal
+vazio (`WARMUP_EXCEEDS_WINDOW`, `INELIGIBLE_DATA`, `NO_VALUES`).
+
+Relógio: `freeze` recusa antes de congelar quando o fuso do servidor não está
+declarado e explica a ação. Um `broker_utc_offset` fixo só é correto se o
+servidor não muda de horário dentro da janela; servidor com horário de verão
+exige `broker_timezone` com `time_basis = utc`, que `datasets.capture` ainda não
+aceita (contrato pendente na frente de Dados).
 
 Os IDs vêm da resposta de `freeze`. `catalog` não abre banco, Tk ou MT5.
 `sources` é leitura; `freeze` é escrita explícita no store canônico, sem tabela

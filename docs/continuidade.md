@@ -2989,3 +2989,38 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   pares provisórios recusados; ZigZag 1% confirmou só 5 fundos por TF, atraso até 574 barras M15 e último
   pivô retido há 4308 barras M15 — valor retido envelhecido, agora explícito.
 - Pendente LAB-07: M7/M9 pelo contrato de barras derivadas da frente de Dados; aceite do proprietário.
+
+## Laboratório: percurso real, relógio do servidor e matriz real · 2026-10-27 (PR 212)
+
+- Relógio (evidência da base recuperada, só leitura): o M1 EURUSD em formação, rotulado 10:32 no horário
+  do servidor, chegou às 07:32 UTC (`_extraction_log.received_at`) → UTC+3 em out/2026. O fechamento de
+  sexta no H1 cai às 22:00 do servidor só nas semanas em que os EUA já trocaram de horário e a Europa
+  ainda não (1º/11/2024; 14–28/03/2025) e às 23:00 nas demais → servidor EET/EEST com horário de verão
+  europeu (+2 no inverno, +3 no verão). O −3 do host antigo/instalador é o fuso do computador, não do
+  servidor; os QAs anteriores com −3 deslocavam o corte UTC em 6 h (alinhamento relativo entre TFs inalterado).
+- Não preenchido em `config.ini`: a base grava no horário do servidor (`_metadata.time_basis = broker`).
+  Um offset fixo erra metade do ano, e `broker_timezone` exige `time_basis = utc`, que
+  `datasets.capture`/resampling recusam (`require_fixed_offset`). **Contrato pendente na frente de Dados:**
+  captura de snapshots e leitura causal com zona IANA (ou base em UTC). Até lá, um offset fixo só vale
+  para janelas dentro de um único regime (ex.: abr–set/2026 = +3).
+- A base ativa do atalho (`database/mt5_data.db`) está vazia; a recuperada continua em ensaio e não foi
+  copiada para ela.
+- `capture_selection` recusa antes de congelar quando o relógio é desconhecido, com a ação corretiva; a UI
+  mantém a seleção. Nova "Abrir análise…" reabre o JSON exportado com o mesmo `analysis_id` (`load_report`
+  recusa versão incompatível e arquivo adulterado). O CLI `study`/`matrix` usam a mesma validação.
+- Relações → Matriz → Indicador × indicador agora é real: `service.relation_matrix` sobre a análise
+  congelada em Séries (CLI `laboratory matrix --analysis A.json --lag N`). Spearman dos valores
+  alinhados; defasagens fixas 0/1/3/6; correlação de direção, veredito e IC do par; motivos distintos
+  (`UNCONFIRMED_EVENT`, `SAME_SERIES`, `NO_OVERLAP`, `INSUFFICIENT_PAIRS`, `CONSTANT_SERIES`, diagnóstico do
+  canal). Pedido obsoleto é descartado; cálculo em fundo. Fixture sintética removida só dessa matriz;
+  Indicador × alvo, linha do tempo, ganhos/perdas, convergências e candidatos seguem demonstrativos (sem
+  produtor T18.6 de alvo).
+- QA privado (Tk real em Xvfb próprio :137; cópia descartável da base, apagada; +3 só no QA,
+  abr–set/2026): 10/10 — recusa de relógio com seleção mantida; análise EURUSD M15/H1/H4 com 15 canais e
+  12 576 fechamentos em ~21 s; 1628 fractais confirmados visíveis; 276 pares provisórios recusados; matriz
+  15×15 com defasagem 6; exportar → fechar → "Abrir análise" com mesmo `analysis_id` → estudo reaberto.
+- Testes: lab/UI/CLI dirigidos verdes, incluindo `negative_monitor` no Xvfb próprio (a falha anterior
+  depende da geometria do display). Doctor de desenvolvimento: 16 OK, 2 avisos (pandas-ta opcional,
+  integração nativa não sondada).
+- Corrigido no lote: o rótulo de status ao lado do seletor de defasagem criava um laço de redimensionamento
+  e travava `test_ui_laboratory`.

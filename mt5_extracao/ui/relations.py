@@ -1,7 +1,8 @@
 """Apresentação provisória das relações F18 dentro do Laboratório.
 
-O contrato T18.1/T18.6 ainda não existe nesta base. Esta tela recebe somente a fixture
-local abaixo; não consulta banco, não calcula estatísticas e não produz decisões para Experts.
+Inventário e matriz indicador × indicador são reais (registry/base e relatório congelado do
+Laboratório via service.relation_matrix). O alvo T18.6 ainda não tem produtor; as demais visões
+recebem somente a fixture local abaixo; não consulta banco, não calcula estatísticas e não produz decisões para Experts.
 Quando o DTO for entregue, o adaptador deverá alimentar os mesmos componentes sem mover
 regras analíticas para os widgets.
 """
@@ -13,6 +14,7 @@ from tkinter import ttk
 
 import numpy as np
 
+from mt5_extracao.laboratory.service import PREDICTIVE_LAGS
 from mt5_extracao.ui import charts
 from mt5_extracao.ui.components import ScrollableContent as _ScrollablePage
 from mt5_extracao.ui.components import ContentPanel, DetailsPanel, FilterBar, Notice, PageHeader, TablePanel
@@ -53,32 +55,6 @@ _SYNTHETIC_FIXTURE = {
         "step": "20 sessões",
     },
     "indicator_names": ("RSI(14)", "MACD(12,26,9)", "ATR(14)", "ADX(14)"),
-    "indicator_matrix": (
-        (
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-            {"label": "+0,74", "strength": "positive_strong", "method": "Spearman", "n": "n=408", "effect_ci": "IC 95%: +0,61 a +0,82", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Associação direta no exemplo; sinal de correlação não informa lucro ou aprovação."},
-            {"label": "−0,08", "strength": "negative_weak", "method": "Spearman", "n": "n=396", "effect_ci": "IC 95%: −0,18 a +0,03", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Efeito próximo de zero; a associação linear baixa não prova ausência de relação não linear."},
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=0", "effect_ci": "indefinido", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "UNAVAILABLE", "presence_state": "UNKNOWN", "support_state": "sem observações maduras", "reason": "Sem pares maduros nesta célula. Ausência de dado não é correlação zero nem efeito adverso."},
-        ),
-        (
-            {"label": "+0,74", "strength": "positive_strong", "method": "Spearman", "n": "n=408", "effect_ci": "IC 95%: +0,61 a +0,82", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Matriz simétrica de exemplo; a direção do relacionamento e a escala aparecem na legenda."},
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-            {"label": "−0,68", "strength": "negative_strong", "method": "Spearman", "n": "n=402", "effect_ci": "IC 95%: −0,76 a −0,55", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Associação inversa. O sinal não informa utilidade, aderência nem resultado financeiro."},
-            {"label": "+0,04", "strength": "neutral", "method": "Spearman", "n": "n=391", "effect_ci": "IC 95%: −0,06 a +0,14", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Correlação linear quase zero no exemplo; isso não exclui padrão não linear."},
-        ),
-        (
-            {"label": "−0,08", "strength": "negative_weak", "method": "Spearman", "n": "n=396", "effect_ci": "IC 95%: −0,18 a +0,03", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "O intervalo inclui zero; estado inconclusivo fornecido pela fixture."},
-            {"label": "−0,68", "strength": "negative_strong", "method": "Spearman", "n": "n=402", "effect_ci": "IC 95%: −0,76 a −0,55", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Associação inversa; não deve ser colorida como perda ou incompatibilidade."},
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=420", "effect_ci": "não definido (variável constante)", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "variável constante", "reason": "Série constante: coeficiente indefinido é mostrado como indisponível, nunca como zero."},
-        ),
-        (
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=0", "effect_ci": "indefinido", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "UNAVAILABLE", "presence_state": "UNKNOWN", "support_state": "sem observações maduras", "reason": "Sem pares maduros nesta célula. Nenhuma relação foi inferida."},
-            {"label": "+0,04", "strength": "neutral", "method": "Spearman", "n": "n=391", "effect_ci": "IC 95%: −0,07 a +0,15", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Valor ilustrativo quase neutro, separado dos estados de utilidade."},
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=420", "effect_ci": "não definido (variável constante)", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "variável constante", "reason": "Variável constante; coeficiente indisponível, sem substituir ausência por zero."},
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-        ),
-    ),
     "target_names": ("Retorno +3 barras", "MFE +10 barras", "Retorno +20 barras"),
     "target_matrix": (
         (
@@ -249,6 +225,62 @@ def _detail_text(row: dict, scope: dict | None = None) -> str:
     ))
 
 
+_LAB_EMPTY = {
+    "label": "—", "strength": "missing", "n": "sem análise", "freshness_state": "UNAVAILABLE",
+    "reason": "Congele uma análise em Séries e confluências; a matriz indicador × indicador usa o mesmo relatório.",
+    "lab_scope": {"feed": "nenhuma análise congelada", "asset": "—", "expert": "sem Expert", "timeframe": "—",
+              "direction": "não se aplica", "method": "Spearman dos valores", "period": "—"},
+    "population": "nenhuma", "cost_status": "não se aplica", "adjustment": "sem ajustes",
+}
+_REASON_LABELS = {"UNCONFIRMED_EVENT": "provisório", "SAME_SERIES": "mesma série", "NO_OVERLAP": "sem sobreposição",
+                  "INSUFFICIENT_PAIRS": "pares < 3", "CONSTANT_SERIES": "constante",
+                  "WARMUP_EXCEEDS_WINDOW": "warmup", "INELIGIBLE_DATA": "inelegível", "NO_VALUES": "sem valores"}
+_VERDICT_TEXT = {"HOLDOUT_CONSISTENT": "consistente fora da amostra", "CI_INCLUDES_ZERO": "IC inclui zero",
+                 "HOLDOUT_SIGN_FLIP": "inverte fora", "HOLDOUT_WEAK": "fraca fora", "FIT_WEAK": "fraca no ajuste",
+                 "WITHIN_NULL": "dentro do acaso", "NO_GAIN_OVER_PERSISTENCE": "não supera persistência",
+                 "HOLDOUT_INSUFFICIENT": "amostra fora curta"}
+
+
+def _channel_label(channel):
+    return f"{channel['timeframe']} · {channel['name']}"
+
+
+def _lab_cell(cell, matrix):
+    """Formata a célula do serviço; estados e motivos vêm prontos, a UI só escolhe tom pelo efeito."""
+    effect = cell["effect"]
+    if effect is None:
+        label, strength = _REASON_LABELS.get(cell["reason"], cell["reason"]), "missing"
+    else:
+        size = abs(effect)
+        tone = "neutral" if size < .1 else "weak" if size < .4 else "strong"
+        label = f"{effect:+.2f}".replace("-", "−").replace(".", ",")
+        strength = tone if tone == "neutral" else ("positive_" if effect > 0 else "negative_") + tone
+    verdict = _VERDICT_TEXT.get(cell["verdict"], "sem corte temporal (descritiva)" if cell["lag_bars"] == 0 else "—")
+    ci = cell["holdout_ci_95"]
+    direction = cell["direction_correlation"]
+    return {
+        "label": label, "strength": strength, "n": f"n={cell['n_pairs']}",
+        "subtitle": f"n={cell['n_pairs']}",
+        "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "utility_state": "INCONCLUSIVE",
+        "evidence_state": "EXPLORATORY" if effect is not None else "INSUFFICIENT",
+        "method": "Spearman dos valores alinhados", "scale": "−1…+1; sinal é associação, não lucro",
+        "effect_ci": (f"IC 95% fora da amostra (direção): {ci[0]:+.2f} a {ci[1]:+.2f}" if ci else "IC não calculado"),
+        "support_state": (f"{cell['unique_source_pairs']} pares de origem distintos" if cell["unique_source_pairs"]
+                          is not None else "pares de origem não informados"),
+        "segment": "descritiva" if cell["lag_bars"] == 0 else f"candidata preditiva +{cell['lag_bars']} · {verdict}",
+        "period": f"{matrix['source'][0]['first_open_utc']} a {matrix['source'][0]['last_close_utc']}",
+        "available_at": f"corte {matrix['as_of']} · fechamento nominal, recebimento histórico não comprovado",
+        "label_maturity": "não se aplica",
+        "population": f"fechamentos {matrix['grid_timeframe']} com valor nos dois canais",
+        "cost_status": "não se aplica (relação entre indicadores)", "adjustment": "sem otimização; defasagens fixas",
+        "reason": cell["reason_text"] or (f"Correlação de direção {direction:+.2f}." if direction is not None else
+                                          "Efeito exploratório; não é rentabilidade nem preset aprovado."),
+        "lab_scope": {"feed": ", ".join(f"{s['timeframe']} {s['manifest_id'][:10]}" for s in matrix["source"]),
+                  "asset": matrix["symbol"], "expert": "sem Expert", "timeframe": matrix["grid_timeframe"],
+                  "direction": "não se aplica", "method": "Spearman", "period": matrix["as_of"]},
+    }
+
+
 class _MatrixGrid:
     """Matriz rolável com botões navegáveis e detalhe persistente por célula."""
 
@@ -279,6 +311,13 @@ class _MatrixGrid:
         self.canvas.bind("<Button-1>", self._click)
         self.canvas.bind("<Key>", self._key)
         self.canvas.bind("<Configure>", lambda _event: self.redraw())
+        self.redraw()
+
+    def set_data(self, rows, columns, cells):
+        self.rows, self.columns, self.cells = tuple(rows), tuple(columns), cells
+        self.header_height = 60 if any(len(label) > 20 for label in self.columns) else 32
+        self.row_index = min(self.row_index, len(self.rows) - 1)
+        self.column_index = min(self.column_index, len(self.columns) - 1)
         self.redraw()
 
     def redraw(self):
@@ -334,7 +373,8 @@ class _MatrixGrid:
                 presence = {"PRESENT": "sim", "ABSENT": "não", "UNKNOWN": "?"}.get(
                     cell.get("presence_state", "UNKNOWN"), "?")
                 self.canvas.create_text((x0 + x1) / 2, y + 39,
-                                        text=f"{cell.get('n', 'n não informado')} · {freshness} · setup {presence}",
+                                        text=cell.get("subtitle") or
+                                        f"{cell.get('n', 'n não informado')} · {freshness} · setup {presence}",
                                         width=self.column_width - 8, justify=tk.CENTER,
                                         fill=c["ink2"], font=self.theme.font_small, tags=(f"cell:{row}:{col}",))
         self._announce()
@@ -389,7 +429,8 @@ class RelationsPanel:
         head.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         self.synthetic_notice = Notice(
             self.frame,
-            "Inventário: dados reais do registry e da base. Demais visões: DADOS SINTÉTICOS · fixture local sem "
+            "Inventário e Matriz indicador × indicador: dados reais (registry/base e análise congelada em Séries). "
+            "Demais visões: DADOS SINTÉTICOS · fixture local sem "
             "vínculo à base do usuário; DTO T18.1 e serviço T18.6 pendentes; valores e estados não são resultados analíticos reais.",
             kind="warning", theme=self.theme,
         )
@@ -603,7 +644,7 @@ class RelationsPanel:
         self._detail_panels[key].title_label.configure(text=f"Detalhe da seleção · {title}")
         label.configure(state=tk.NORMAL)
         label.delete("1.0", tk.END)
-        label.insert("1.0", _detail_text(row))
+        label.insert("1.0", _detail_text(row, row.get("lab_scope")))
         label.configure(state=tk.DISABLED)
 
     @staticmethod
@@ -657,8 +698,22 @@ class RelationsPanel:
         self.indicator_detail = self._page_detail(indicator_details, "matrix-indicators", visible_lines=15)
         self.target_detail = self._page_detail(target_details, "matrix-targets", visible_lines=15)
         self.matrix_details = {"indicators": self.indicator_detail, "targets": self.target_detail}
-        self.indicator_grid = _MatrixGrid(indicator_primary, self.theme, names, names,
-                                          _SYNTHETIC_FIXTURE["indicator_matrix"],
+        controls = ttk.Frame(indicator_primary, style="Surface.TFrame")
+        controls.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+        ttk.Label(controls, text="Defasagem do preditor (barras):", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.lab_lag = tk.StringVar(value="0")
+        self.lab_lag_box = ttk.Combobox(controls, textvariable=self.lab_lag, width=4, state="readonly",
+                                        values=[str(lag) for lag in (0, *PREDICTIVE_LAGS)])
+        self.lab_lag_box.pack(side=tk.LEFT, padx=SPACING["xs"])
+        self.lab_lag_box.bind("<<ComboboxSelected>>", lambda _event: self._refresh_lab_matrix())
+        # Linha própria: quebrar o texto ao lado do combobox realimenta a largura do contêiner.
+        self.lab_matrix_status = ttk.Label(indicator_primary, text=_LAB_EMPTY["reason"], style="Muted.TLabel",
+                                           justify=tk.LEFT)
+        self.lab_matrix_status.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+        _fit_label_to_parent(self.lab_matrix_status, indicator_primary)
+        self.lab_report = self.lab_matrix = None
+        self._lab_request = 0
+        self.indicator_grid = _MatrixGrid(indicator_primary, self.theme, ("Sem análise",), ("—",), [[_LAB_EMPTY]],
                                           lambda title, row: self._set_detail("matrix-indicators", title, row),
                                           "indicator-matrix")
         self.indicator_grid.frame.pack(fill=tk.BOTH, expand=True)
@@ -670,8 +725,42 @@ class RelationsPanel:
         self.target_grid.frame.pack(fill=tk.BOTH, expand=True)
         self.target_detail.pack(fill=tk.BOTH, expand=True, padx=(SPACING["xs"], 0))
         self._matrices.extend((self.indicator_grid, self.target_grid))
-        self._set_detail("matrix-indicators", "RSI(14) × RSI(14)", _SYNTHETIC_FIXTURE["indicator_matrix"][0][0])
+        self._set_detail("matrix-indicators", "Sem análise", _LAB_EMPTY)
         self._set_detail("matrix-targets", "RSI(14) × Retorno +3 barras", _SYNTHETIC_FIXTURE["target_matrix"][0][0])
+
+    def set_lab_report(self, report):
+        """Recebe o relatório congelado de Séries; a matriz sai de service.relation_matrix (mesma do CLI)."""
+        if report is None or (self.lab_report or {}).get("analysis_id") == report["analysis_id"]:
+            return
+        self.lab_report = report
+        self._refresh_lab_matrix()
+
+    def _refresh_lab_matrix(self):
+        if self.lab_report is None:
+            return
+        from mt5_extracao.laboratory import service
+        report, lag = self.lab_report, int(self.lab_lag.get())
+        self._lab_request += 1
+        request = self._lab_request
+        self.lab_matrix_status.configure(text=f"Calculando matriz da análise {report['analysis_id'][:12]}…")
+
+        def done(matrix, error):
+            if request != self._lab_request:
+                return  # resposta obsoleta: outra análise/defasagem foi pedida depois
+            if error is not None:
+                self.lab_matrix_status.configure(text=f"Matriz indisponível (erro de execução): {error}")
+                return
+            self.lab_matrix = matrix
+            names = [_channel_label(c) for c in matrix["channels"]]
+            cells = [[_lab_cell(cell, matrix) for cell in row] for row in matrix["cells"]]
+            self.indicator_grid.set_data(names, names, cells)
+            self.lab_matrix_status.configure(text=(
+                "Recorte acima (Expert/preset) é demonstrativo e não filtra esta matriz. "
+                f"Dados reais · análise {matrix['analysis_id'][:12]} · {matrix['symbol']} · grade "
+                f"{matrix['grid_timeframe']} · corte {matrix['as_of']} · defasagem {matrix['lag_bars']} · "
+                "Spearman dos valores no fechamento nominal (disponibilidade histórica não comprovada)."))
+
+        self._run_bg(lambda: service.relation_matrix(report, lag=lag), done)
 
     def _draw_correlation_legend(self):
         c = self.theme.colors

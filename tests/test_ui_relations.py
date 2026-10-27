@@ -34,27 +34,59 @@ def test_relation_views_keep_fixture_scope_explicit(relations_panel):
         "Inventário", "Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos"
     ]
     assert "DADOS SINTÉTICOS" in panel.synthetic_notice.message.cget("text")
+    assert "Matriz indicador × indicador: dados reais" in panel.synthetic_notice.message.cget("text")
     assert "não são resultados analíticos reais" in panel.synthetic_notice.message.cget("text")
     assert panel.advanced.expanded is False
     from mt5_extracao.ui.relations import _SYNTHETIC_FIXTURE
     assert "ranking congelado" in _SYNTHETIC_FIXTURE["timeline"]["reference"].casefold()
 
 
-def test_signed_matrix_is_distinct_from_utility_and_keyboard_selects_detail(relations_panel):
+@pytest.fixture(scope="module")
+def lab_report(tmp_path_factory):
+    import pandas as pd
+    from mt5_extracao import timeframes
+    from mt5_extracao.database_manager import DatabaseManager
+    from mt5_extracao.laboratory import service
+
+    db = DatabaseManager(db_path=str(tmp_path_factory.mktemp("lab") / "lab.sqlite"), broker_utc_offset=0)
+    for tf, freq, count in (("M5", "5min", 960), ("M15", "15min", 320)):
+        t = np.arange(count)
+        close = 100 + np.sin(t / 5) * 3 + t / 300
+        db.save_ohlcv_data("X", timeframes.parse(tf).label, pd.DataFrame(dict(
+            time=pd.date_range("2025-01-06", periods=count, freq=freq), open=close - .1, high=close + .5,
+            low=close - .5, close=close, tick_volume=10 + t % 7, real_volume=0, spread=1)))
+    snapshots = service.capture_selection(db, symbol="X", timeframes_selected=["M15", "M5"])
+    report = service.analyze(snapshots, feature_ids=["momentum.rsi_14", "structure.fractals_5_strict_provisional"],
+                             as_of="2025-02-01T00:00:00Z")
+    db.close()
+    return report
+
+
+def test_indicator_matrix_is_real_lab_report_with_reasons_and_lag(relations_panel, lab_report):
+    from mt5_extracao.laboratory import service
     panel, root = relations_panel
     grid = panel.indicator_grid
-    positive = grid.cells[0][1]
-    inverse = grid.cells[1][2]
-    assert positive["label"].startswith("+") and positive["utility_state"] == "INCONCLUSIVE"
-    assert inverse["label"].startswith("−") and inverse["utility_state"] == "INCONCLUSIVE"
+    assert grid.cells[0][0]["strength"] == "missing" and "Congele uma análise" in grid.cells[0][0]["reason"]
+    panel.set_lab_report(lab_report)
+    matrix = service.relation_matrix(lab_report)
+    assert len(grid.rows) == len(matrix["channels"]) == 4
+    for row, cells in zip(grid.cells, matrix["cells"]):
+        for shown, cell in zip(row, cells):
+            assert (shown["label"] in ("provisório", "mesma série")) == (cell["effect"] is None)
+            assert shown["n"] == f"n={cell['n_pairs']}" and shown["utility_state"] == "INCONCLUSIVE"
+    assert "Dados reais" in panel.lab_matrix_status.cget("text")
     grid._key(type("Event", (), {"keysym": "Right"})())
     root.update_idletasks()
     detail = panel._details["matrix-indicators"].get("1.0", "end-1c")
-    assert "RSI(14) × MACD(12,26,9)" in panel.matrix_details["indicators"].title_label.cget("text")
-    assert "Associação direta" in detail
-    assert "utilidade INCONCLUSIVE" in detail
-    assert panel.indicator_grid.cells[2][3]["label"] == "—"
-    assert "variável constante" in panel.indicator_grid.cells[2][3]["effect_ci"]
+    assert "Saída provisória" in detail and "fixture" not in detail.casefold()
+    panel.lab_lag.set("3")
+    panel._refresh_lab_matrix()
+    assert grid.cells[0][0]["label"] == "mesma série"
+    assert "candidata preditiva +3" in panel.indicator_grid.cells[0][2]["segment"]
+    # Mesma análise de novo não recalcula; resposta antiga é descartada.
+    request = panel._lab_request
+    panel.set_lab_report(lab_report)
+    assert panel._lab_request == request
 
 
 def test_timeline_preserves_gaps_and_exposes_chronological_windows(relations_panel):
@@ -134,15 +166,16 @@ def _contrast(first, second):
     return (lighter + 0.05) / (darker + 0.05)
 
 
-def test_theme_refresh_keeps_matrix_text_contrast_and_plot(relations_panel):
+def test_theme_refresh_keeps_matrix_text_contrast_and_plot(relations_panel, lab_report):
     panel, _root = relations_panel
+    panel.set_lab_report(lab_report)
     theme = panel.theme
     fills = []
     for _ in range(2):
         theme.toggle()
         panel.render()
         c = theme.colors
-        for row, col in ((0, 1), (1, 2), (2, 3), (3, 0)):
+        for row, col in ((0, 0), (0, 1), (0, 2), (2, 0)):
             rectangle = next(item for item in panel.indicator_grid.canvas.find_withtag(f"cell:{row}:{col}")
                              if panel.indicator_grid.canvas.type(item) == "rectangle")
             fill = panel.indicator_grid.canvas.itemcget(rectangle, "fill")
@@ -290,6 +323,7 @@ def test_secondary_information_starts_closed_without_hiding_primary_warnings(rel
         assert detail.information_icon.width() >= 14
     assert panel.synthetic_notice.winfo_ismapped()
     assert "DADOS SINTÉTICOS" in panel.synthetic_notice.message.cget("text")
+    assert "Matriz indicador × indicador: dados reais" in panel.synthetic_notice.message.cget("text")
     assert panel.distribution_notice.winfo_manager()
     assert "expectativa líquida" in panel.distribution_notice.message.cget("text")
     assert "evidência ≠ autorização" in panel.state_legend.title_label.cget("text")

@@ -489,6 +489,8 @@ class LaboratoryPanel:
             if name not in self._drawn:
                 self.relations_panel.render()
                 self._drawn.add(name)
+            # A matriz indicador × indicador segue a análise congelada em Séries, sem recalcular a seleção.
+            self.relations_panel.set_lab_report(getattr(self.series_panel, "report", None))
             return
         if self.view is None or self.view.empty:
             return

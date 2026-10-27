@@ -239,6 +239,7 @@ class SeriesLaboratoryPanel:
         ttk.Checkbutton(actions, text="Visão ampliada", variable=self.extended,
                         command=self._layout).pack(side=tk.LEFT, padx=4)
         ttk.Button(actions, text="Exportar JSON", command=self.export).pack(side=tk.RIGHT)
+        ttk.Button(actions, text="Abrir análise…", command=self.open_analysis).pack(side=tk.RIGHT, padx=4)
         ttk.Button(actions, text="Gerar preset…", command=self.open_presets).pack(side=tk.RIGHT, padx=4)
         action_widgets = list(actions.winfo_children())
         for widget in action_widgets:
@@ -1042,6 +1043,25 @@ class SeriesLaboratoryPanel:
                     json.dump(self.report, handle, ensure_ascii=False, allow_nan=False)
             except (OSError, ValueError) as error:
                 self.status.configure(text=f"Exportação recusada; escolha um arquivo novo: {error}")
+
+    def open_analysis(self, path=None):
+        """Reabre a análise exportada como foi congelada (mesmo analysis_id); não recongela nem recalcula."""
+        path = path or filedialog.askopenfilename(parent=self.frame, filetypes=[("Análise JSON", "*.json")])
+        if not path:
+            return
+        try:
+            with open(path, encoding="utf-8") as handle:
+                report = service.load_report(handle.read())
+        except (OSError, ValueError) as error:
+            self.status.configure(text=f"Análise não reaberta: {error}")
+            return
+        self._request += 1  # descarta cálculo em andamento: a análise aberta passa a ser a atual
+        self.pending = False
+        self.analyze_button.state(["!disabled"])
+        self.set_report(report)
+        if report["formula_source_sha256"] != service.formula_source_hash():
+            self.status.configure(text=self.status.cget("text") + " · fórmulas mudaram desde o congelamento; "
+                                  "valores exibidos são os congelados.")
 
     def open_presets(self):
         """Conecta ao gerador Default/Manual existente; nenhuma inferência financeira na UI."""

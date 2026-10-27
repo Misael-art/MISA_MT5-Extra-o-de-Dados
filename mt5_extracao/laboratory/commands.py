@@ -40,6 +40,10 @@ def add_parser(sub):
     study.add_argument("--analysis", required=True, help="JSON gerado por analyze --out")
     study.add_argument("--study", required=True, help="estudo exportado pela UI")
     study.set_defaults(func=run)
+    matrix = actions.add_parser("matrix", help="matriz indicador × indicador da análise exportada")
+    matrix.add_argument("--analysis", required=True, help="JSON gerado por analyze --out")
+    matrix.add_argument("--lag", type=int, default=0, help="defasagem fixa do relatório: 0, 1, 3 ou 6")
+    matrix.set_defaults(func=run)
 
 
 def run(args, ctx):
@@ -52,13 +56,16 @@ def run(args, ctx):
             symbol=args.symbol, timeframe=args.timeframe, page_size=args.page_size, cursor=args.cursor)
     elif args.laboratory_action == "study":
         from .annotations import Study
-        report = json.loads(Path(args.analysis).expanduser().read_text(encoding="utf-8"))
+        report = service.load_report(Path(args.analysis).expanduser().read_text(encoding="utf-8"))
         loaded = Study.from_json(Path(args.study).expanduser().read_text(encoding="utf-8"), report["analysis_id"],
                                  [channel["id"] for channel in report["channels"]])
         result = dict(analysis_id=loaded.analysis_id, symbol=report["symbol"], grid_timeframe=report["grid_timeframe"],
                       items=loaded.items, hidden_series=sorted(loaded.hidden), removed_series=sorted(loaded.removed),
                       visible_series=[c["id"] for c in report["channels"] if c["id"] not in loaded.hidden | loaded.removed],
                       view=loaded.view)
+    elif args.laboratory_action == "matrix":
+        report = service.load_report(Path(args.analysis).expanduser().read_text(encoding="utf-8"))
+        result = service.relation_matrix(report, lag=args.lag)
     elif args.laboratory_action == "sources":
         result = dict(sources=service.sources(ctx.db),
             source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")

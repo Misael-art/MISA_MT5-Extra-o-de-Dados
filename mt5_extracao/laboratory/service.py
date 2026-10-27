@@ -79,11 +79,22 @@ def sources(db):
     return sorted(result, key=lambda row: (row["symbol"], timeframes.parse(row["timeframe"]).minutes))
 
 
+CLOCK_UNKNOWN = (
+    "Fuso do servidor não declarado na configuração ([APP] broker_utc_offset/broker_timezone vazios); sem ele "
+    "não se sabe quando cada barra fechou em UTC. Ação: declare broker_utc_offset somente se o servidor não "
+    "muda de horário dentro da janela analisada; servidor com horário de verão exige broker_timezone com "
+    "time_basis = utc, que a captura de snapshots ainda não aceita. Sua seleção foi mantida.")
+
+
 def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None):
     """Congela somente uma seleção explícita pela API datasets existente."""
     tfs = [timeframes.parse(tf) for tf in timeframes_selected]
     if not tfs or len(tfs) > MAX_TIMEFRAMES or None in tfs or len(set(tfs)) != len(tfs):
         raise ValueError("Escolha de 1 a 8 timeframes distintos do inventário.")
+    clock = db.time_context() if hasattr(db, "time_context") else {"offset_state": "declared"}
+    if clock["offset_state"] == "unknown":
+        # Recusa antes de congelar: sem relógio do servidor não há fechamento UTC nem corte as-of.
+        raise ValueError(CLOCK_UNKNOWN)
     # Recusa antes de persistir um snapshot desnecessariamente grande. A captura
     # continua dona da leitura consistente; a análise reconfere o limite depois.
     for tf in tfs:
@@ -428,3 +439,86 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         qualification=dict(exploratory=True, historical_availability_proven=False,
                            independent_observations=False, operational_acceptance=False),
         limitations=list(LIMITATIONS))
+
+
+_REPORT_KEYS = ("analysis_id", "selection", "symbol", "grid_timeframe", "times", "channels", "pairs", "populations",
+                "formula_source_sha256", "qualification")
+
+
+def load_report(text):
+    """Reabre uma análise exportada sem recalcular: identidade e valores são os congelados."""
+    try:
+        report = json.loads(text)
+    except ValueError as error:
+        raise ValueError(f"Arquivo não é uma análise JSON do Laboratório: {error}") from error
+    if not isinstance(report, dict) or report.get("laboratory_version") != VERSION:
+        raise ValueError(f"Análise incompatível: exige laboratory_version {VERSION}.")
+    missing = [key for key in _REPORT_KEYS if key not in report]
+    if missing:
+        raise ValueError("Análise incompleta; faltam: " + ", ".join(missing))
+    expected = _hash(dict(version=VERSION, source_hash=report["formula_source_sha256"], **report["selection"]))
+    if expected != report["analysis_id"]:
+        raise ValueError("analysis_id não corresponde à seleção e às fórmulas declaradas; arquivo alterado.")
+    return report
+
+
+MATRIX_REASONS = {
+    "UNCONFIRMED_EVENT": "Saída provisória de pivô: desenho não confirmado, fora das relações.",
+    "SAME_SERIES": "Mesma série com defasagem: é persistência do próprio canal, não relação entre indicadores.",
+    "NO_OVERLAP": "Sem fechamentos comuns com valor nos dois canais (warmup, lacuna ou TF sem sobreposição).",
+    "INSUFFICIENT_PAIRS": "Menos de 3 pares alinhados; nenhum efeito é estimado.",
+    "CONSTANT_SERIES": "Um dos lados não varia nos pares alinhados; correlação indefinida (não é zero).",
+}
+
+
+def relation_matrix(report, *, lag=0):
+    """Matriz indicador × indicador derivada do relatório congelado (mesma função para SDK/CLI/UI).
+
+    Efeito = Spearman dos valores alinhados na grade (preditor deslocado ``lag`` barras); a correlação
+    de direção, o par e o veredito fora da amostra vêm do próprio relatório. Nada é recalculado na UI.
+    """
+    if lag not in (0, *PREDICTIVE_LAGS):
+        raise ValueError(f"Defasagem {lag} fora das fixas do relatório: {(0, *PREDICTIVE_LAGS)}.")
+    channels = report["channels"]
+    pairs = {(p["left"], p["right"], p["lag_bars"]): p for p in report["pairs"]}
+    values = {c["id"]: pd.Series([np.nan if v is None else v for v in c["values"]], dtype=float) for c in channels}
+    blocked = {c["id"]: ("UNCONFIRMED_EVENT" if (c.get("events") or {}).get("usable") is False
+                         else (c.get("diagnosis") or {}).get("code")) for c in channels}
+    cells = []
+    for left in channels:
+        row = []
+        for right in channels:
+            a, b = left["id"], right["id"]
+            pair = pairs.get((a, b, lag)) or (pairs.get((b, a, 0)) if lag == 0 else None)
+            x, y = values[a].shift(lag), values[b]
+            valid = x.notna() & y.notna()
+            reason = ("UNCONFIRMED_EVENT" if "UNCONFIRMED_EVENT" in (blocked[a], blocked[b])
+                      else "SAME_SERIES" if a == b and lag else None)
+            if reason is None:
+                # Canal vazio herda o diagnóstico (warmup, inelegível…), distinto de falta de sobreposição.
+                reason = (blocked[a] or blocked[b] or "NO_OVERLAP" if not valid.any()
+                          else "INSUFFICIENT_PAIRS" if valid.sum() < 3
+                          else "CONSTANT_SERIES" if x[valid].nunique() < 2 or y[valid].nunique() < 2 else None)
+            effect = None if reason else float(np.clip(x[valid].corr(y[valid], method="spearman"), -1, 1))
+            oos = (pair or {}).get("out_of_sample") or {}
+            row.append(dict(left=a, right=b, lag_bars=lag, effect=effect, n_pairs=int(valid.sum()),
+                unique_source_pairs=(pair or {}).get("unique_source_pairs"),
+                direction_correlation=None if reason else (pair or {}).get("correlation"),
+                relation="DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE",
+                verdict=oos.get("verdict"), holdout_ci_95=oos.get("holdout_ci_95"),
+                state="UNAVAILABLE" if reason else "EXPLORATORY", reason=reason,
+                reason_text=MATRIX_REASONS.get(reason) or next((c["diagnosis"]["message"] for c in (left, right)
+                                                                if c.get("diagnosis")), None)))
+        cells.append(row)
+    return dict(analysis_id=report["analysis_id"], symbol=report["symbol"], grid_timeframe=report["grid_timeframe"],
+        as_of=report["selection"]["as_of"], lag_bars=lag, method="spearman_values_on_nominal_grid",
+        source=[dict(manifest_id=p["manifest_id"], timeframe=p["timeframe"], source=p["source"],
+                     first_open_utc=p["first_open_utc"], last_close_utc=p["last_close_utc"]) for p in report["populations"]],
+        formula_source_sha256=report["formula_source_sha256"],
+        channels=[dict(id=c["id"], name=c["name"], timeframe=c["timeframe"], unit=c["unit"],
+                       parameters=c["parameters"], algorithm_version=c["algorithm_version"],
+                       coverage=c["coverage"], available=c["available"], total=c["total"],
+                       blocked=blocked[c["id"]], events=c.get("events")) for c in channels],
+        cells=cells, qualification=report["qualification"],
+        limitations=["Correlação de valores no fechamento nominal; não comprova disponibilidade histórica nem lucro.",
+                     "Indicador × alvo exige alvo e produtor com contrato explícito (T18.6); não incluído aqui."])
