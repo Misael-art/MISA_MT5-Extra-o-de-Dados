@@ -2972,5 +2972,9 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   Achado que motivou `FIT_WEAK`: ajuste ≈0 era rotulado "inverte fora".
 - Testes: 43 em Séries/UI; preexistentes: `negative_monitor` e `test_ui_relations::scope_is_not_a_fake_filter`
   (falha também sem esta mudança).
-- Pendente LAB-07: controles (embaralhamento/base ingênua), incerteza (IC), horizonte além de 3 barras,
-  eventos não confirmados e M7/M9 pelo contrato de barras derivadas da frente de Dados.
+- Controles (88e1721): faixa nula 95% por deslocamento circular do preditor no trecho fora da amostra
+  (preserva autocorrelação/retenção; FFT) e base ingênua = próprio alvo defasado. Vereditos novos
+  `WITHIN_NULL` e `NO_GAIN_OVER_PERSISTENCE`. Dados reais (mesma janela, 4 indicadores + ema_atr, 540 pares,
+  ~12 s): 191 pares antes "consistentes" não superam a persistência do alvo; nenhum par preditivo restante.
+- Pendente LAB-07: intervalo de confiança por bloco, horizonte além de 3 barras, eventos não confirmados e
+  M7/M9 pelo contrato de barras derivadas da frente de Dados.
