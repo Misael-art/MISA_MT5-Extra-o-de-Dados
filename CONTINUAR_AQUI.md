@@ -28,6 +28,10 @@ da repetição; o script informa essa ação, sem esconder a dependência.
 O modo inicial prepara desenvolvimento e UI offline. Para instalar também MT5/
 Wine pelo fluxo oficial, acrescente `--with-mt5` no Linux ou `-WithMT5` no Windows.
 Essa etapa não concede aceite de perfil, conta, Tester, estratégia ou negociação.
+Para preparar a integração Linux sem solicitar abertura de conta demo, use o
+instalador oficial com `bash install.sh --yes --skip-system-packages --no-demo-account`
+quando os pacotes nativos já estiverem preparados. A opção preserva instalação,
+configuração e diagnóstico; conta e conexão permanecem etapas explícitas.
 
 ## O que continua pendente
 

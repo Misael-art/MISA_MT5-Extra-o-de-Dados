@@ -1,10 +1,64 @@
 """Retomada recusa WIP/identidades erradas e não cria ambientes no modo plano."""
 import importlib.util
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 
 import pytest
+
+
+@pytest.mark.skipif(shutil.which('bash') is None, reason='instalador Linux exige Bash')
+@pytest.mark.parametrize('skip_account', [False, True])
+def test_linux_installer_can_prepare_native_runtime_without_opening_account(tmp_path, skip_account):
+    """Executa o instalador inteiro com executáveis controlados, sem Wine/rede/contas."""
+    app = tmp_path / 'app'
+    installer = app / 'scripts/install/linux.sh'
+    installer.parent.mkdir(parents=True)
+    shutil.copyfile(SOURCE.parent / 'install/linux.sh', installer)
+    calls = tmp_path / 'python-calls.jsonl'
+    python = app / '.venv/bin/python'
+    python.parent.mkdir(parents=True)
+    python.write_text(
+        '#!/usr/bin/env python3\n'
+        'import json, os, sys\n'
+        'with open(os.environ["INSTALLER_CALLS"], "a") as output:\n'
+        '    output.write(json.dumps(sys.argv[1:]) + "\\n")\n'
+    )
+    python.chmod(0o700)
+    (app / 'requirements.txt').write_text('')
+    (app / 'requirements-optional.txt').write_text('')
+    prefix = tmp_path / 'wine'
+    prefix.mkdir()
+    (prefix / 'system.reg').write_text('fixture')
+    wine_python = prefix / 'drive_c/Python311/python.exe'
+    wine_python.parent.mkdir(parents=True)
+    wine_python.write_bytes(b'fixture, never executed')
+    tools = tmp_path / 'tools'
+    tools.mkdir()
+    for name, body in {'wine': 'echo wine-11.0', 'wineserver': 'exit 0',
+                       'winepath': 'echo C:/fixture/mt5_bridge_server.py'}.items():
+        tool = tools / name
+        tool.write_text('#!/bin/sh\n' + body + '\n')
+        tool.chmod(0o700)
+    command = ['bash', str(installer), '--yes', '--skip-system-packages',
+               '--wine-prefix', str(prefix), '--python', str(python)]
+    if skip_account:
+        command.append('--no-demo-account')
+    env = os.environ | {'PATH': str(tools) + os.pathsep + os.environ['PATH'],
+                        'XDG_CACHE_HOME': str(tmp_path / 'cache'),
+                        'DISPLAY': ':controlled-fixture', 'INSTALLER_CALLS': str(calls)}
+    result = subprocess.run(command, env=env, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stdout + result.stderr
+    invocations = [json.loads(line) for line in calls.read_text().splitlines()]
+    assert any('configure' in args for args in invocations)
+    assert any('doctor' in args for args in invocations)
+    accounts = [args for args in invocations if 'demo-account' in args]
+    if skip_account:
+        assert accounts == []
+    else:
+        assert len(accounts) == 1 and '--yes' in accounts[0]
 
 
 SOURCE = Path(__file__).resolve().parents[1] / 'scripts' / 'setup_development.py'

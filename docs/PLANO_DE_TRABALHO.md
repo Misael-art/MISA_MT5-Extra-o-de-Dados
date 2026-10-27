@@ -355,6 +355,16 @@ Valores que precisam ficar **iguais** em mais de um arquivo (se mudar um, mude t
 | Porta da ponte (`18812`) | `paths.py` (`DEFAULT_BRIDGE_PORT`), `scripts/mt5_bridge_server.py`, `bootstrap/bridge.py` e `mt5_backend.py` (fallbacks) |
 | Faixa de Python aceita (3.9–3.13) | `doctor.py` (`MIN_PYTHON`, `MAX_TESTED_PYTHON`), `linux.sh` (`MIN_PY_MINOR`), `windows.ps1` (`$PythonMinor`, `$PythonMaxMinor`) |
 
+Validação no host Linux em 27/10/2026: o instalador aceita
+`--no-demo-account` para preparar o terminal, o Python do Windows e a ponte
+sem solicitar abertura de conta. O comportamento padrão permanece preservado.
+Os dois caminhos têm regressão controlada; 51 testes de bootstrap/conta/atalhos e
+ShellCheck passaram. A instalação nativa no prefixo próprio do usuário terminou
+com 20 verificações OK, duas advertências e nenhuma falha: a ponte RPyC foi
+exercitada, sem login nem negociação. `pandas-ta` permanece opcional e
+indisponível para o Python 3.11 fixado; ausência de conta não qualifica Tester,
+robôs ou operação financeira. O recibo local fica em `MT5X/state/native-installation.json`.
+
 ### T0.2 — CI ✅
 
 `.github/workflows/ci.yml`: shellcheck, parse do PowerShell, pytest (Ubuntu e Windows),
