@@ -389,7 +389,8 @@ def test_hourly_curve_preserves_real_spacing_and_gaps_in_both_themes(panel):
         np.testing.assert_equal(line.get_ydata(), expected)
         codes = [code for _vertices, code in line.get_path().iter_segments()]
         assert codes.count(Path.MOVETO) == 3
-        assert len(chart.figure.axes[0].texts) == 4
+        assert not chart.figure.axes[0].texts  # LAB-04: amostra na legenda/hover, não repetida nas barras
+        assert chart.figure.axes[0].get_legend().get_title().get_text().startswith("n total=")
         assert len(chart.figure.axes[0].get_xticks()) <= 12
         assert "30 min" in chart.figure.axes[0].get_xlabel()
         notice = panel._chart_panels["t_hours"].notice.message.cget("text")

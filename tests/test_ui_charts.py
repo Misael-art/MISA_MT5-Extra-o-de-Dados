@@ -41,8 +41,12 @@ def test_bars_show_value_and_count_and_explain_small_sample_on_hover():
                 small=(True, False, False), title="Expectativa")
 
     annotations = [text.get_text() for text in ax.texts]
-    assert annotations == ["-1,25\nn=4", "0,50\nn=8", "0,20\nn=20"]
+    assert annotations == ["-1,25", "0,50", "0,20"]
+    assert all(text.get_rotation() == 0 for text in ax.texts)
     assert ax.patches[0].get_hatch() == "///"
+    legend = ax.get_legend()
+    assert legend.get_title().get_text().startswith("n total=32")
+    assert "pouca amostra" in [text.get_text() for text in legend.get_texts()]
     assert ax.get_ylabel() == "Expectativa (moeda da conta)"
     event = SimpleNamespace(inaxes=ax, xdata=0)
     assert "n=4" in chart.hover[0](event)
@@ -63,7 +67,7 @@ def test_correlation_heatmap_has_fixed_scale_and_no_fake_counts():
     assert chart.figure.axes[1].get_ylabel() == "Correlação"
 
 
-def test_crowded_bars_keep_compact_sample_labels_and_tooltip_values():
+def test_crowded_bars_move_samples_to_legend_and_tooltip():
     chart = _chart()
     ax = chart.figure.add_subplot(111)
     values = np.linspace(-1, 1, 15)
@@ -71,9 +75,8 @@ def test_crowded_bars_keep_compact_sample_labels_and_tooltip_values():
     charts.bars(chart, ax, tuple(str(i) for i in range(15)), values, n=counts,
                 small=np.zeros(15, dtype=bool), title="Dia do mês")
 
-    annotations = [text.get_text() for text in ax.texts]
-    assert annotations[0] == "n=1" and annotations[-1] == "n=15"
-    assert all(text.get_rotation() == 90 for text in ax.texts)
+    assert not ax.texts  # sem n=… repetido nem valores verticais
+    assert ax.get_legend().get_title().get_text().startswith("n total=120")
     event = SimpleNamespace(inaxes=ax, xdata=14)
     assert "14" in chart.hover[0](event)
     assert "n=15" in chart.hover[0](event)
@@ -104,7 +107,9 @@ def test_bars_keep_missing_measurements_distinct_from_observed_zero():
                 small=[True, True, True, False, False])
     assert all(np.isnan(rect.get_height()) for rect in ax.patches[:3])
     assert ax.patches[3].get_height() == 0.0
-    assert [text.get_text() for text in ax.texts] == ["0,00\nn=3", "-1,00\nn=4"]
+    assert [text.get_text() for text in ax.texts] == ["0,00", "-1,00"]
+    assert len(ax.collections[0].get_offsets()) == 3 and len(ax.collections[1].get_offsets()) == 1
+    assert "sem dados" in [text.get_text() for text in ax.get_legend().get_texts()]
     missing = chart.hover[0](SimpleNamespace(inaxes=ax, xdata=0))
     assert "—" in missing and "n=0" in missing and "amostra pequena" not in missing
     assert "0,00" in chart.hover[0](SimpleNamespace(inaxes=ax, xdata=3))
@@ -172,3 +177,16 @@ def test_native_dpi_mapping_and_resize_keep_complete_legend(dpi, width, height, 
         root.destroy()
         import gc
         gc.collect()
+
+
+def test_bar_colors_follow_magnitude_with_neutral_zero():
+    from matplotlib.colors import to_rgba
+    chart = _chart()
+    ax = chart.figure.add_subplot(111)
+    charts.bars(chart, ax, list("abcde"), [4.0, 0.4, 0.0, -0.4, -4.0])
+    strong, weak, zero, weak_loss, strong_loss = (patch.get_facecolor() for patch in ax.patches)
+    surface = np.array(to_rgba(LIGHT["surface"]))
+    distance = lambda rgba: np.abs(np.array(rgba) - surface).sum()
+    assert distance(strong) > distance(weak) > 0 and distance(strong_loss) > distance(weak_loss) > 0
+    assert zero == to_rgba(LIGHT["muted"])
+    assert strong != strong_loss

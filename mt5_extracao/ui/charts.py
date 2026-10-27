@@ -172,41 +172,72 @@ def heatmap(chart: Chart, ax, value: pd.DataFrame, n: pd.DataFrame, small: pd.Da
 
 
 def bars(chart: Chart, ax, labels, values, n=None, small=None, title="", fmt=money, signed=True):
-    """Barras azul (≥ 0) e laranja (< 0); amostra identificada, valor e n no hover."""
+    """Escala divergente por magnitude; zero neutro, ausente distinto e amostra na legenda/hover."""
+    from matplotlib.lines import Line2D
+    from matplotlib.patches import Patch
     theme = chart.theme
     c = theme.colors
     style_axis(ax, theme, title)
     values = [float(v) if v is not None else np.nan for v in values]
     values = [v if np.isfinite(v) else np.nan for v in values]
-    colors = [c["border"] if not np.isfinite(v) else c["series"][0] if (v >= 0 or not signed)
-              else c["series"][1] for v in values]
-    drawn = ax.bar(range(len(values)), values, color=colors, width=0.65, linewidth=0)
+    finite = [abs(v) for v in values if np.isfinite(v)]
+    scale = max(finite) if finite and max(finite) > 0 else 1.0
+    cmap = diverging_cmap(theme)
+
+    def color(v):
+        if not np.isfinite(v):
+            return c["border"]
+        if v == 0:
+            return c["muted"]
+        # Piso de 0,18 mantém magnitude fraca visível sem confundir com o neutro.
+        strength = 0.18 + 0.82 * min(1.0, abs(v) / scale)
+        return cmap(0.5 + 0.5 * strength) if (v > 0 or not signed) else cmap(0.5 - 0.5 * strength)
+    drawn = ax.bar(range(len(values)), values, color=[color(v) for v in values], width=0.65, linewidth=0)
+    crowded = len(values) > 14
+    missing_x = []
     for k, rect in enumerate(drawn):
         if not np.isfinite(values[k]):
+            missing_x.append(k)
             continue
         if small is not None and small[k]:
             rect.set_hatch("///")
-            rect.set_alpha(0.45)
-        if n is not None:
-            count = int(n[k])
-            crowded = len(values) > 14
-            label = f"n={count}"
-            if not crowded:
-                label = f"{fmt(values[k])}\n{label}"
-            end = rect.get_y() + rect.get_height()
+            rect.set_edgecolor(c["ink2"])  # o hachurado usa a cor da borda
+            rect.set_alpha(0.55)
+        if not crowded:
             positive = values[k] >= 0
-            ax.annotate(label, xy=(rect.get_x() + rect.get_width() / 2, end), xytext=(0, 4 if positive else -4),
-                        textcoords="offset points", ha="center", va="bottom" if positive else "top",
-                        rotation=90 if crowded else 0, fontsize=_TICK, color=c["ink2"] if small is not None and small[k]
-                        else c["ink"], clip_on=False)
+            ax.annotate(fmt(values[k]), xy=(rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height()),
+                        xytext=(0, 4 if positive else -4), textcoords="offset points", ha="center",
+                        va="bottom" if positive else "top", rotation=0, fontsize=_TICK,
+                        color=c["ink2"] if small is not None and small[k] else c["ink"], clip_on=False)
+    if missing_x:
+        ax.scatter(missing_x, [0] * len(missing_x), marker="x", s=10 if crowded else 22, color=c["muted"],
+                   alpha=0.6 if crowded else 1, zorder=3)
+    zero_x = [k for k, v in enumerate(values) if v == 0]
+    if zero_x:
+        # Zero observado: traço neutro na linha de base, distinto do ausente.
+        ax.scatter(zero_x, [0] * len(zero_x), marker="_", s=120, linewidths=2.5, color=c["muted"], zorder=3)
     if signed:
         ax.axhline(0, color=c["axis"], linewidth=0.8)
     ax.set_ylabel("Expectativa (moeda da conta)", color=c["muted"], fontsize=_LABEL)
     ax.margins(y=0.22)
     ax.set_xticks(range(len(labels)))
-    crowded = len(labels) > 12
-    ax.set_xticklabels([plain(k) for k in labels], fontsize=_TICK, rotation=45 if crowded else 0,
-                       ha="right" if crowded else "center")
+    rotate = len(labels) > 12 and max((len(plain(k)) for k in labels), default=0) > 3
+    ax.set_xticklabels([plain(k) for k in labels], fontsize=_TICK, rotation=45 if rotate else 0,
+                       ha="right" if rotate else "center")
+    handles = [Patch(color=cmap(1.0), label=f"ganho forte (+{fmt(scale)})"), Patch(color=cmap(0.6), label="ganho fraco")]
+    if signed:
+        handles += [Patch(color=cmap(0.4), label="perda fraca"), Patch(color=cmap(0.0), label=f"perda forte (−{fmt(scale)})")]
+    if small is not None and any(bool(small[k]) and np.isfinite(values[k]) for k in range(len(values))):
+        handles.append(Patch(facecolor=c["surface"], edgecolor=c["ink2"], hatch="///", label="pouca amostra"))
+    if zero_x:
+        handles.append(Line2D([], [], marker="_", markersize=10, markeredgewidth=2.5, linestyle="",
+                              color=c["muted"], label="zero"))
+    if missing_x:
+        handles.append(Line2D([], [], marker="x", linestyle="", color=c["muted"], label="sem dados"))
+    total = f"n total={int(np.nansum([float(x) for x in n]))} · n por barra no detalhe" if n is not None else None
+    legend = ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1), fontsize=_TICK,
+                       title=total, title_fontsize=_TICK, frameon=False, labelcolor=c["ink2"])
+    legend.get_title().set_color(c["muted"])
 
     def hover(event):
         if event.inaxes is not ax or event.xdata is None:

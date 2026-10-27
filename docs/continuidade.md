@@ -2920,3 +2920,11 @@ Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
   (T18.6) do pilar de Dados; não foi criado cálculo paralelo.
 - Testes: 112 passaram; falhas intermitentes de geometria/WM: `large_monitor`, `negative_monitor` (preexistente),
   `closed_selection_details` (passa isolado).
+
+## LAB-04 (parcial) · 2026-10-26
+
+- `charts.bars` (Dia do mês, Dia da semana, Faixa horária, Notícias): escala divergente simétrica por
+  magnitude (forte = intenso, fraco = claro com piso visível), zero com traço neutro, ausente com ×,
+  valores sempre horizontais e só quando cabem; `n=` saiu das barras para a legenda (n total, escala ±,
+  pouca amostra, zero, sem dados) e o hover. Temas claro/escuro conferidos por renderização.
+- Pendente do LAB-04: revisar heatmaps/demais visões com o mesmo critério e aceite visual do proprietário.

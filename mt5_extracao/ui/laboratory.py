@@ -696,6 +696,8 @@ class LaboratoryPanel:
             twin.tick_params(colors=self.theme.colors["muted"], labelsize=TYPOGRAPHY["chart_tick"], length=0)
             for side in ("top", "right", "left", "bottom"):
                 twin.spines[side].set_visible(False)
+            # Legenda de escala/amostra além do eixo de acerto à direita.
+            ax.get_legend().set_bbox_to_anchor((1.09, 1))
             chart.figure.tight_layout()
             chart.draw()
         else:
