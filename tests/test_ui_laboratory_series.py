@@ -218,3 +218,32 @@ def test_monitor_discovery_uses_window_anchor_and_releases_backend(panel, monkey
     assert monitor_geometry(root) == (-2048, 0, 2048, 1200)
     assert seen == [(root.winfo_rootx() + root.winfo_width() // 2,
                      root.winfo_rooty() + root.winfo_height() // 2), "closed"]
+
+
+def test_empty_channels_show_reason_instead_of_gray_area(panel, snapshots):
+    # SINTÉTICO: força canais sem valores; a UI deve exibir motivo/ação, não só área cinza.
+    series = open_series(panel)
+    report = analysis(snapshots)
+    for channel in report["channels"]:
+        channel["values"] = [None] * len(report["times"])
+        channel["directions"] = [None] * len(report["times"])
+        channel["diagnosis"] = dict(code="WARMUP_EXCEEDS_WINDOW", message="M15: 3 barras.", action="Antecipe o início.")
+    for pair in report["pairs"]:
+        pair["correlation"] = None
+    series.set_report(report)
+    assert "Antecipe o início" in series.status.cget("text")
+    texts = [text.get_text() for key in ("relations", "timeline") for ax in
+             series.panels[key].chart.figure.axes for text in ax.texts]
+    texts += [text.get_text() for key in ("relations", "timeline") for text in series.panels[key].chart.figure.texts]
+    assert sum("Antecipe o início" in text for text in texts) == 2
+
+
+def test_single_bar_segment_stays_visible(panel, snapshots):
+    series = open_series(panel)
+    report = analysis(snapshots)
+    channel = report["channels"][0]
+    channel["values"] = [None] * len(report["times"])
+    channel["values"][5] = 42.0
+    series.set_report(report)
+    feature = series.panels["price"].chart.figure.axes[1]
+    assert any(line.get_marker() == "o" for line in feature.lines)

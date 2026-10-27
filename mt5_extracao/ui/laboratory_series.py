@@ -47,6 +47,17 @@ def timeline_bins(channels, max_columns):
     return np.array(data), boundaries
 
 
+def empty_channels(report):
+    return [row for row in report["channels"] if row.get("diagnosis")]
+
+
+def empty_summary(report, fallback):
+    rows = empty_channels(report)
+    if not rows:
+        return fallback
+    return "\n".join(f"{row['id']}: {row['diagnosis']['message']}" for row in rows[:4]) + "\n" + rows[0]["diagnosis"]["action"]
+
+
 def monitor_geometry(widget):
     """Consulta o monitor DA janela, incluindo coordenadas negativas e dock removido."""
     from mt5_extracao.robots.session_window import Placement
@@ -416,7 +427,11 @@ class SeriesLaboratoryPanel:
             self.detail_channel.set(ids[0])
         self.status.configure(text=f"{report['symbol']} · {len(report['populations'])} TFs · "
             f"{len(report['channels'])} canais · {len(report['times'])} fechamentos {report['grid_timeframe']} · "
-            f"estudo {report['analysis_id'][:12]} · corte {report['selection']['as_of']}")
+            f"estudo {report['analysis_id'][:12]} · corte {report['selection']['as_of']}"
+            + "".join(f"\n{row['id']}: {row['diagnosis']['message']} {row['diagnosis']['action']}"
+                      for row in empty_channels(report)[:3])
+            + (f"\n… e mais {len(empty_channels(report)) - 3} canais sem dados (ver Cobertura)."
+               if len(empty_channels(report)) > 3 else ""))
         self._channel_changed(redraw=False)
         self._layout()
         self.redraw()
@@ -428,6 +443,7 @@ class SeriesLaboratoryPanel:
         check = row["eligibility"]
         self.channel_details.configure(text=f"{row['id']} · {row['unit']} · aquecimento {row['warmup']} barras · "
             f"cobertura {row['available']}/{row['total']} · {check['status']} · "
+            + (f"{row['diagnosis']['message']} {row['diagnosis']['action']} · " if row.get("diagnosis") else "")
             + ("; ".join(check["reasons"] + check["limitations"]) or "Dados compatíveis com este cálculo exploratório."))
         if redraw and hasattr(self, "panels"):
             for key in ("price", "lags"):
@@ -489,6 +505,10 @@ class SeriesLaboratoryPanel:
         report = self.report
         times = pd.to_datetime(report["times"], utc=True)
         channels = [row for row in report["channels"] if row["rule"] == "candidate"] or report["channels"][:8]
+        if all(row.get("diagnosis") for row in channels):
+            chart.message("Nenhuma intenção/direção disponível nos canais desta visão.\n"
+                          + empty_summary(report, ""))
+            return
         ax = chart.figure.add_subplot(111)
         from matplotlib.colors import ListedColormap, BoundaryNorm
         from matplotlib.patches import Patch
@@ -537,14 +557,22 @@ class SeriesLaboratoryPanel:
         ax.add_collection(LineCollection([[(at, op), (at, close)] for at, (op, _, _, close) in zip(x, price)],
                                          colors=colors, linewidths=2.2))
         ax.autoscale_view()
-        values = np.array([np.nan if v is None else v for v in channel["values"]])
+        values = np.array([np.nan if v is None else v for v in channel["values"]], dtype=float)
+        if channel.get("diagnosis"):
+            feature.text(.5, .5, f"{channel['diagnosis']['message']}\n{channel['diagnosis']['action']}",
+                         transform=feature.transAxes, ha="center", va="center", wrap=True, fontsize=8,
+                         color=self.theme.colors["ink2"])
         grid_tf = timeframes.parse(report["grid_timeframe"])
         expected = times[:-1] + (pd.offsets.MonthBegin(1) if grid_tf.name == "MN1" else pd.Timedelta(minutes=grid_tf.minutes))
         splits = np.flatnonzero(times[1:] != expected) + 1
         for positions in np.split(np.arange(len(times)), splits):
-            feature.plot(times[positions], values[positions], color=self.theme.colors["accent"], linewidth=1.1)
+            # Segmento de uma barra não forma linha; o marcador evita sumir com o valor.
+            marker = "o" if np.isfinite(values[positions]).sum() == 1 else None
+            feature.plot(times[positions], values[positions], color=self.theme.colors["accent"], linewidth=1.1,
+                         marker=marker, markersize=3)
             if channel["rule"] == "price":
-                ax.plot(times[positions], values[positions], color=self.theme.colors["accent"], linewidth=1.2)
+                ax.plot(times[positions], values[positions], color=self.theme.colors["accent"], linewidth=1.2,
+                        marker=marker, markersize=3)
         if channel["rule"] == "candidate":
             first_source = ~pd.Series(channel["source_ends"]).duplicated().to_numpy()
             for side, marker in ((1, "^"), (-1, "v")):
@@ -571,6 +599,10 @@ class SeriesLaboratoryPanel:
                 i, j = indices[pair["left"]], indices[pair["right"]]
                 values[i, j] = values[j, i] = pair["correlation"] if pair["correlation"] is not None else np.nan
                 pair_lookup[i, j] = pair_lookup[j, i] = pair
+        if np.isnan(values).all():
+            chart.message("Nenhum par com correlação calculável nesta seleção.\n"
+                          + empty_summary(self.report, "Amplie a janela, reduza TFs altos ou escolha canais com valores."))
+            return
         ax = chart.figure.add_subplot(111)
         cmap = charts.diverging_cmap(self.theme).with_extremes(bad=self.theme.colors["grid"])
         im = ax.imshow(np.ma.masked_invalid(values), vmin=-1, vmax=1, cmap=cmap, interpolation="nearest")
@@ -628,6 +660,10 @@ class SeriesLaboratoryPanel:
         labels = [f"{i+1} · {row['timeframe']} · {row['name']}" for i, row in enumerate(channels)]
         ax.barh(range(len(channels)), [row["coverage"] * 100 for row in channels], color=self.theme.colors["accent"])
         ax.set_yticks(range(len(channels)), labels, fontsize=8)
+        for i, row in enumerate(channels):
+            if row.get("diagnosis"):
+                ax.text(1, i, row["diagnosis"]["code"] + " · " + row["diagnosis"]["action"], va="center",
+                        fontsize=7, color=self.theme.colors["ink2"])
         ax.invert_yaxis()
         ax.set_xlim(0, 100)
         ax.set_xlabel("Barras da grade com valor disponível (%)")

@@ -84,8 +84,12 @@ def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None):
     # continua dona da leitura consistente; a análise reconfere o limite depois.
     for tf in tfs:
         frame = db.load_ohlcv(symbol, tf.label, start, end)
-        if frame.empty or len(frame) > MAX_BARS:
-            raise ValueError(f"{tf.name}: escolha uma janela com 1 a {MAX_BARS} barras antes de congelar.")
+        if frame.empty:
+            raise ValueError(f"{tf.name}: nenhuma barra de {symbol} na janela escolhida; amplie início/fim ou extraia este TF.")
+        if len(frame) > MAX_BARS:
+            suggested = pd.Timestamp(frame.time.iloc[-MAX_BARS]).isoformat()
+            raise ValueError(f"{tf.name}: {len(frame)} barras na janela; o limite é {MAX_BARS}. "
+                             f"Informe início a partir de {suggested} (últimas {MAX_BARS} barras) ou um fim anterior.")
     return [datasets.capture(db, symbol, tf.name, start, end) for tf in sorted(tfs, key=lambda tf: tf.minutes)]
 
 
@@ -197,6 +201,27 @@ def _align(channel, grid):
     return joined
 
 
+def diagnose(channel, *, source_rows, source_available, available):
+    """Motivo e ação para canal vazio/escasso; nunca deixar só área cinza."""
+    check, warmup = channel["eligibility"], int(channel["warmup"] or 0)
+    tf = channel["timeframe"]
+    if not check["eligible"]:
+        return dict(code="INELIGIBLE_DATA", message=f"{tf}: dados não atendem ao cálculo: "
+                    + ("; ".join(check["reasons"]) or check["status"]),
+                    action="Revise qualidade/colunas desta série no inventário ou escolha outro TF.")
+    if source_available == 0 and source_rows < warmup:
+        return dict(code="WARMUP_EXCEEDS_WINDOW", message=f"{tf}: {source_rows} barras fechadas; o cálculo exige "
+                    f"aquecimento de {warmup}.", action=f"Antecipe o início para incluir ao menos {warmup} barras {tf} "
+                    "ou remova este TF.")
+    if source_available == 0:
+        return dict(code="NO_VALUES", message=f"{tf}: o cálculo não produziu valores nas {source_rows} barras.",
+                    action="Confira os detalhes/estados do canal; amplie a janela ou troque parâmetros.")
+    if available == 0:
+        return dict(code="NO_OVERLAP", message=f"{tf}: valores não coincidem com fechamentos da grade.",
+                    action="Escolha TFs com sobreposição temporal ou outra janela.")
+    return None
+
+
 def _pair(left, right, lag):
     a, b = left.direction.shift(lag), right.direction
     valid = a.notna() & b.notna()
@@ -270,6 +295,8 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
             values=[float(value) if pd.notna(value) and np.isfinite(value) else None for value in frame.value],
             directions=[int(value) if pd.notna(value) else None for value in frame.direction],
             source_ends=[value.isoformat() if pd.notna(value) else None for value in frame.source_end])
+        summary["diagnosis"] = diagnose(channel, source_rows=summary["source_rows"],
+            source_available=summary["source_available"], available=summary["available"])
         output_channels.append(summary)
     selection = dict(manifests=[item.manifest_id for item in snapshots], feature_ids=selected,
         strategy=dict(key=strategy.key, params=strategy.params) if strategy else None, as_of=cutoff.isoformat())

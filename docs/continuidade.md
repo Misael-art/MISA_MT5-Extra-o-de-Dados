@@ -2891,3 +2891,17 @@ recibos `docs/dados/recibos/recibos_20261023b.json` com E06 pela entrada efetiva
 Primeira cadeia funcional: provedor falso → extrator → M1 → M5 → store → `sdk.query_series` →
 `mt5x analytics features series`. Pilha: #190…#194 e novos PRs BD06, BD07, BD08a, BD18a, BD19c1.
 Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
+
+## LAB-02/03 · 2026-10-26 (branch codex/lab-02-03-series-horarios, sobre PR 212)
+
+- LAB-02: `laboratory.service` passa a emitir `diagnosis` (código/mensagem/ação) por canal vazio
+  (`WARMUP_EXCEEDS_WINDOW`, `INELIGIBLE_DATA`, `NO_VALUES`, `NO_OVERLAP`); janela acima de 20 000 barras
+  sugere início concreto; janela vazia explica. A UI mostra o motivo no status, detalhes, Cobertura,
+  Relações e Linha do tempo em vez de área cinza; segmentos de uma barra ganham marcador.
+- LAB-03: `MatrixTable` calcula a mesma largura por coluna para cabeçalho e corpo (inclui texto maior
+  que o nominal) com scrollregions idênticas; teste por coluna após rolagem V/H, resize e texto largo.
+- Testes: 131 passaram nas suítes de Laboratório/componentes; `test_expanded_chart_uses_absolute_negative_monitor_coordinates`
+  já falhava antes da mudança neste host (gerenciador de janelas); `test_large_monitor...` é intermitente sob carga.
+- Limitação: base local vazia; reprodução com dados SINTÉTICOS controlados (sessões com lacunas, M5/H1/D1).
+  Falta confirmar pelo atalho com a base real do proprietário; DPI/monitor físico não qualificados.
+- Próximo: `rtk proxy .venv/bin/python -m pytest -q tests/test_laboratory_series.py tests/test_ui_components.py`; depois LAB-01.

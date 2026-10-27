@@ -258,7 +258,8 @@ class MatrixTable(ttk.Frame):
     def _build_header(self):
         colors = self.theme.colors
         for column, (text, width) in enumerate(zip(self.columns, self.widths)):
-            self.content.grid_columnconfigure(column, minsize=width, weight=1 if column else 0)
+            # Sem peso: as larguras de corpo e cabeçalho são definidas juntas em _sync_geometry.
+            self.content.grid_columnconfigure(column, minsize=width, weight=0)
             header = tk.Label(self.header_frame, text=text, background=colors["surface"], foreground=colors["ink2"],
                               font=self.theme.font_bold, anchor="center", padx=6, pady=5,
                               highlightthickness=1, highlightbackground=colors["border"], takefocus=False)
@@ -329,29 +330,42 @@ class MatrixTable(ttk.Frame):
         self.after_idle(self._sync_geometry)
 
     def _content_configured(self, _event=None):
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self._sync_header()
+        self._sync_geometry()
 
-    def _canvas_configured(self, event):
-        width = max(self.content.winfo_reqwidth(), event.width)
-        self.canvas.itemconfigure(self.window, width=width)
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+    def _canvas_configured(self, _event=None):
+        self._sync_geometry()
+
+    def column_widths(self, available=None):
+        """Mesma largura por coluna no cabeçalho e no corpo; sobra vai às colunas de valores."""
+        natural = []
+        for column, minimum in enumerate(self.widths):
+            widgets = [self.headers[column]] + ([row[column - 1] for row in self.cells] if column
+                                                else list(self.row_headers))
+            natural.append(max([minimum] + [widget.winfo_reqwidth() for widget in widgets]))
+        available = self.canvas.winfo_width() if available is None else available
+        extra = max(0, available - sum(natural))
+        if extra and len(natural) > 1:
+            share, rest = divmod(extra, len(natural) - 1)
+            natural = [natural[0]] + [width + share + (i < rest) for i, width in enumerate(natural[1:])]
+        return natural
 
     def _sync_geometry(self):
-        width = max(self.content.winfo_reqwidth(), self.canvas.winfo_width())
-        self.canvas.itemconfigure(self.window, width=width)
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        self._sync_header()
-
-    def _sync_header(self):
-        width = max(self.content.winfo_reqwidth(), self.canvas.winfo_width())
-        for column in range(len(self.columns)):
-            bounds = self.content.grid_bbox(column, 0, column, max(0, len(self.cells) - 1))
-            self.header_frame.grid_columnconfigure(column, minsize=max(self.widths[column], bounds[2]))
+        widths = self.column_widths()
+        if getattr(self, "_applied_widths", None) != widths:
+            self._applied_widths = widths
+            for column, width in enumerate(widths):
+                self.content.grid_columnconfigure(column, minsize=width, weight=0)
+                self.header_frame.grid_columnconfigure(column, minsize=width, weight=0)
+        total = sum(widths)
+        body_height = max(1, self.content.winfo_reqheight())
         height = max(self.row_height, *(header.winfo_reqheight() for header in self.headers))
-        self.header_canvas.configure(height=height, scrollregion=(0, 0, width, height))
-        self.header_canvas.itemconfigure(self.header_window, width=width)
+        self.canvas.itemconfigure(self.window, width=total)
+        self.header_canvas.itemconfigure(self.header_window, width=total)
+        # Regiões explícitas e idênticas: a mesma fração de xview vale para cabeçalho e corpo.
+        self.canvas.configure(scrollregion=(0, 0, total, body_height))
+        self.header_canvas.configure(height=height, scrollregion=(0, 0, total, height))
         self.header_canvas.xview_moveto(self.canvas.xview()[0])
+
 
     def _set_xview(self, first, last):
         self.horizontal.set(first, last)

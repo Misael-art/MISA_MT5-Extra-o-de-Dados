@@ -200,3 +200,27 @@ def test_large_selection_refuses_before_capture_or_formula(source_db, snapshots,
         service.capture_selection(source_db, symbol="X", timeframes_selected=["M5"])
     with pytest.raises(ValueError, match="janela menor"):
         analysis(snapshots)
+
+
+def test_empty_channel_reports_warmup_reason_and_action(source_db):
+    # SINTÉTICO: ~80 barras M15 não aquecem uma estratégia com aquecimento maior que a janela.
+    strategy = "ema_atr"
+    snapshots = service.capture_selection(source_db, symbol="X", timeframes_selected=["M15", "M5"],
+                                          start="2025-01-08T12:00:00")
+    assert get_strategy(strategy).min_bars > len(snapshots[1].bars)
+    result = analysis(snapshots, strategy_key=strategy)
+    by_id = {row["id"]: row for row in result["channels"]}
+    empty = by_id[f"M15:strategy:{strategy}"]
+    assert empty["source_available"] == 0
+    assert empty["diagnosis"]["code"] == "WARMUP_EXCEEDS_WINDOW"
+    assert "Antecipe o início" in empty["diagnosis"]["action"]
+    assert by_id["M5:momentum.rsi_14"]["diagnosis"] is None
+    json.dumps(result, allow_nan=False)
+
+
+def test_oversized_or_empty_window_suggests_concrete_action(source_db, monkeypatch):
+    monkeypatch.setattr(service, "MAX_BARS", 100)
+    with pytest.raises(ValueError, match="Informe início a partir de 2025-01-08T23:40:00"):
+        service.capture_selection(source_db, symbol="X", timeframes_selected=["M5"])
+    with pytest.raises(ValueError, match="nenhuma barra de X"):
+        service.capture_selection(source_db, symbol="X", timeframes_selected=["M5"], start="2030-01-01")
