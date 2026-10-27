@@ -47,6 +47,9 @@ def timeline_bins(channels, max_columns):
     return np.array(data), boundaries
 
 
+VERDICTS = {"HOLDOUT_CONSISTENT": "consistente fora", "HOLDOUT_SIGN_FLIP": "inverte fora",
+            "HOLDOUT_WEAK": "fraca fora", "HOLDOUT_INSUFFICIENT": "amostra curta", "FIT_WEAK": "fraca no ajuste",
+            "INSUFFICIENT_PAIRS": "sem pares", "CONSTANT_SERIES": "série constante", "UNAVAILABLE": "indisponível"}
 TOOLS = ("Navegar", "Selecionar/mover", "Linha horizontal", "Linha vertical", "Região", "Nota")
 # Orçamento explícito de renderização: até 8 subjanelas (110 px cada) rolam na página;
 # acima disso a figura fica ilegível e lenta no handheld, então o excedente é listado.
@@ -931,24 +934,64 @@ class SeriesLaboratoryPanel:
         selected = self.detail_channel.get()
         pairs = [pair for pair in self.report["pairs"] if pair["lag_bars"] == 1 and
                  pair["left"] == selected and pair["left"] != pair["right"]][:5]
+        palette = [*self.theme.colors["series"], self.theme.colors["ink2"], self.theme.colors["warn"]]
+        shown = []
         for i, pair in enumerate(pairs):
             rows = [row for row in self.report["pairs"] if (row["left"], row["right"]) == (pair["left"], pair["right"])]
             zero = next((row for row in self.report["pairs"] if row["lag_bars"] == 0 and
                          {row["left"], row["right"]} == {pair["left"], pair["right"]}), None)
             if zero is not None and not any(row["lag_bars"] == 0 for row in rows):
                 rows = [zero, *rows]
-            ax.plot([row["lag_bars"] for row in rows],
-                    [np.nan if row["correlation"] is None else row["correlation"] for row in rows],
-                    marker="o", linewidth=1.4, label=f"{pair['left']} → {pair['right']}")
+            color = palette[i % len(palette)]
+            descriptive = [row for row in rows if row["lag_bars"] == 0]
+            predictive = [row for row in rows if row["lag_bars"] > 0]
+            # Descritiva (defasagem 0) como quadrado isolado; preditiva só pelo corte temporal.
+            ax.scatter([0] * len(descriptive), [np.nan if row["correlation"] is None else row["correlation"]
+                       for row in descriptive], marker="s", color=color, s=22)
+            ax.plot([row["lag_bars"] for row in predictive],
+                    [np.nan if (row.get("out_of_sample") or {}).get("fit_correlation") is None
+                     else row["out_of_sample"]["fit_correlation"] for row in predictive],
+                    marker="o", linewidth=1.4, color=color, label=f"{pair['left']} → {pair['right']}")
+            ax.plot([row["lag_bars"] for row in predictive],
+                    [np.nan if (row.get("out_of_sample") or {}).get("holdout_correlation") is None
+                     else row["out_of_sample"]["holdout_correlation"] for row in predictive],
+                    marker="o", markerfacecolor="none", linestyle="--", linewidth=1, color=color)
+            for row in predictive:
+                verdict = (row.get("out_of_sample") or {}).get("verdict") or row.get("reason") or "UNAVAILABLE"
+                ax.annotate(VERDICTS.get(verdict, verdict), (row["lag_bars"], -1.0), fontsize=6,
+                            color=color, ha="center", va="bottom", xytext=(0, 8 * i), textcoords="offset points")
+            shown.extend(rows)
         ax.axhline(0, color=self.theme.colors["muted"], linewidth=.7)
+        ax.axvline(.5, color=self.theme.colors["border"], linewidth=.7)
         ax.set_ylim(-1.05, 1.05)
-        ax.set_xticks([0, 1, 3])
-        ax.set_xlabel("Defasagem do preditor (barras da grade)")
+        ax.set_xticks([0, 1, 3], ["0\ndescritiva", "1\npreditiva", "3\npreditiva"])
+        ax.set_xlabel("Defasagem do preditor (barras da grade) · ● ajuste 70% · ○ fora da amostra 30%")
         ax.xaxis.label.set_color(self.theme.colors["ink2"])
         if pairs:
-            ax.legend(fontsize=7, loc="best", labelcolor=self.theme.colors["ink2"],
+            ax.legend(fontsize=7, loc="upper right", labelcolor=self.theme.colors["ink2"],
                       facecolor=self.theme.colors["surface"], edgecolor=self.theme.colors["border"])
-        charts.style_axis(ax, self.theme, "Preditor selecionado → primeiros 5 canais · sem ranking")
+        else:
+            ax.text(.5, .5, "Sem pares para o canal selecionado; escolha outro em Detalhar no gráfico.",
+                    transform=ax.transAxes, ha="center", va="center", fontsize=8, color=self.theme.colors["ink2"])
+
+        def hover(event):
+            if event.inaxes is not ax or event.xdata is None:
+                return None
+            lag = min((0, 1, 3), key=lambda value: abs(value - event.xdata))
+            lines = []
+            for row in shown:
+                if row["lag_bars"] != lag:
+                    continue
+                split = row.get("out_of_sample")
+                def r(value):
+                    return "—" if value is None else f"{value:+.3f}"
+                detail = (f"ajuste r={r(split['fit_correlation'])} n={split['fit_pairs']} · fora r="
+                          f"{r(split['holdout_correlation'])} n={split['holdout_pairs']} · {VERDICTS[split['verdict']]}"
+                          if split else f"r={r(row['correlation'])} n={row['n_pairs']} · descritiva")
+                lines.append(f"{row['left']} → {row['right']}: {detail}")
+            return "\n".join(lines[:6]) or None
+        chart.hover.append(hover)
+        charts.style_axis(ax, self.theme, "Preditor selecionado → primeiros 5 canais · descritiva × preditiva · sem ranking")
         chart.draw()
 
     def _coverage(self, chart):

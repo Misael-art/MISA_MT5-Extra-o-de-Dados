@@ -238,3 +238,36 @@ def test_oversized_or_empty_window_suggests_concrete_action(source_db, monkeypat
         service.capture_selection(source_db, symbol="X", timeframes_selected=["M5"])
     with pytest.raises(ValueError, match="nenhuma barra de X"):
         service.capture_selection(source_db, symbol="X", timeframes_selected=["M5"], start="2030-01-01")
+
+
+def test_lag_zero_is_descriptive_and_lagged_pairs_carry_fixed_temporal_split(snapshots):
+    result = analysis(snapshots)
+    for pair in result["pairs"]:
+        if pair["lag_bars"] == 0:
+            assert pair["relation"] == "DESCRIPTIVE" and pair["out_of_sample"] is None
+        else:
+            assert pair["relation"] == "PREDICTIVE_CANDIDATE"
+            split = pair["out_of_sample"]
+            if pair["reason"] is None:
+                assert split["fit_pairs"] + split["holdout_pairs"] == pair["n_pairs"]
+                assert split["fit_fraction"] == service.FIT_FRACTION
+    assert any("fora da amostra" in text for text in result["limitations"])
+    json.dumps(result, allow_nan=False)
+
+
+@pytest.mark.parametrize("tail,verdict", [(1, "HOLDOUT_CONSISTENT"), (-1, "HOLDOUT_SIGN_FLIP")])
+def test_temporal_split_flags_relation_that_does_not_survive_holdout(tail, verdict):
+    import numpy as np
+    import pandas as pd
+    rng = np.random.default_rng(7)
+    x = pd.Series(rng.choice([-1.0, 1.0], 200))
+    y = x.copy()
+    y.iloc[140:] *= tail                     # ajuste: relação positiva; fora: mantém ou inverte
+    noise = rng.random(200) < .1
+    y[noise] *= -1
+    split = service._temporal_split(x, y)
+    assert split["fit_pairs"] == 140 and split["holdout_pairs"] == 60
+    assert split["fit_correlation"] > .5 and split["verdict"] == verdict
+    assert service._temporal_split(x[:40], y[:40])["verdict"] == "HOLDOUT_INSUFFICIENT"
+    unrelated = pd.Series(rng.choice([-1.0, 1.0], 200))
+    assert service._temporal_split(x, unrelated)["verdict"] == "FIT_WEAK"

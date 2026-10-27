@@ -31,6 +31,8 @@ LIMITATIONS = (
     "Fechamento nominal não comprova recebimento histórico nem ausência de revisão/repaint.",
     "Janelas, sementes, parâmetros e origem estão congelados nos manifests; sem reamostragem implícita.",
     "Pares com valores retidos e autocorrelação não são observações independentes; sem p-valor ou ranking automático.",
+    "Defasagem 0 é descritiva; defasagem > 0 só é candidata preditiva com corte temporal 70/30 fixo e consistente "
+    "fora da amostra, ainda sem calibração, custos ou validação de estratégia.",
     "Intenções da estratégia não são fills, reversões confirmadas nem aceite operacional do robô.",
 )
 
@@ -222,6 +224,37 @@ def diagnose(channel, *, source_rows, source_available, available):
     return None
 
 
+# LAB-07: corte cronológico fixo (não otimizado) para separar descrição de previsão.
+FIT_FRACTION = 0.7
+MIN_HOLDOUT_PAIRS = 30
+MIN_HOLDOUT_EFFECT = 0.1
+
+
+def _correlation(x, y):
+    if len(x) < 3 or x.nunique() < 2 or y.nunique() < 2:
+        return None
+    return float(np.clip(x.corr(y), -1, 1))
+
+
+def _temporal_split(x, y):
+    """Correlação no trecho inicial (ajuste) e no final (fora da amostra), na ordem do tempo."""
+    cut = int(len(x) * FIT_FRACTION)
+    fit, holdout = _correlation(x.iloc[:cut], y.iloc[:cut]), _correlation(x.iloc[cut:], y.iloc[cut:])
+    n_holdout = len(x) - cut
+    if n_holdout < MIN_HOLDOUT_PAIRS or fit is None or holdout is None:
+        verdict = "HOLDOUT_INSUFFICIENT"
+    elif abs(fit) < MIN_HOLDOUT_EFFECT:
+        verdict = "FIT_WEAK"  # sem relação no ajuste, não há o que confirmar fora
+    elif np.sign(fit) != np.sign(holdout):
+        verdict = "HOLDOUT_SIGN_FLIP"
+    elif abs(holdout) < MIN_HOLDOUT_EFFECT:
+        verdict = "HOLDOUT_WEAK"
+    else:
+        verdict = "HOLDOUT_CONSISTENT"
+    return dict(fit_fraction=FIT_FRACTION, fit_pairs=cut, fit_correlation=fit,
+                holdout_pairs=n_holdout, holdout_correlation=holdout, verdict=verdict)
+
+
 def _pair(left, right, lag):
     a, b = left.direction.shift(lag), right.direction
     valid = a.notna() & b.notna()
@@ -236,7 +269,11 @@ def _pair(left, right, lag):
         right_source_bars=int(right.source_end[valid].nunique()),
         agreement=float((x == y).mean()) if n else None, active_pairs=int(active.sum()),
         active_agreement=float((x[active] == y[active]).mean()) if active.any() else None,
-        state="UNAVAILABLE" if reason else "EXPLORATORY", reason=reason)
+        state="UNAVAILABLE" if reason else "EXPLORATORY", reason=reason,
+        # Defasagem 0 só descreve co-movimento; com defasagem o preditor antecede o alvo e
+        # exige o corte temporal. Consistência fora da amostra não é previsão calibrada.
+        relation="DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE",
+        out_of_sample=None if lag == 0 or reason else _temporal_split(x, y))
 
 
 def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strategy_params=None, as_of):

@@ -88,6 +88,17 @@ diagnostic = analyze(snapshots, strategy_key="ema_atr",
                      feature_ids=["momentum.rsi_14"], as_of="2026-10-01T03:00:00Z")
 ```
 
+### Descritiva × preditiva (LAB-07)
+
+Cada par traz `relation`: `DESCRIPTIVE` na defasagem 0 (co-movimento) e
+`PREDICTIVE_CANDIDATE` com defasagem 1/3 (o preditor antecede o alvo na grade).
+Os preditivos trazem `out_of_sample`: corte cronológico fixo 70/30 (não
+otimizado), correlação e n de ajuste e fora da amostra e `verdict`
+(`HOLDOUT_CONSISTENT`, `HOLDOUT_SIGN_FLIP`, `HOLDOUT_WEAK`, `FIT_WEAK`,
+`HOLDOUT_INSUFFICIENT` com menos de 30 pares). Campos aditivos: o `analysis_id`
+de seleções existentes não muda. Consistente fora da amostra não é previsão
+calibrada, lucro nem validação de estratégia.
+
 ### Estudo do gráfico (LAB-08)
 
 A bancada gráfica grava um estudo JSON v2 (`laboratory/annotations.py`):
