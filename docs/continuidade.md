@@ -3084,3 +3084,35 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
 - Testes: `test_analytics_calendar.py` e `test_bd05_time.py`, 27 passou em 9,04 s.
 - Super ATR, SA-01/02, LAB-07 (comparação sincronizada), LAB-09/10, relógio IANA, Tester, conta real
   e aceite visual continuam fora. O detalhe do Super ATR fica para conversa antes de qualquer código.
+
+## Base EURUSD composta pela extração oficial · 2026-10-28 (PR 212)
+
+- A frase da seção anterior continua válida para o lote de código `8176040`: aquele commit não extraiu M1.
+  Esta nota é a extração posterior, na mesma branch, sem mudança de código.
+- Conta conferida com `./run.sh --cli portfolio` (somente leitura): MetaQuotes-Demo, estado NORMAL,
+  hedging, USD, saldo 100000, zero posições e zero ordens. Não é conta real.
+- Extração oficial, um worker, sem `--overwrite` e sem indicadores:
+  `./run.sh --cli extract --symbols EURUSD --tf M1 --from 2026-04-01 --to 2026-10-24 --workers 1`.
+  Saiu 0. Sete blocos `ok`, zero falhas, zero cancelados. O aviso de pandas_ta é o indicador opcional
+  que não foi pedido. Dois blocos (início 2026-06-30 e 2026-08-29) registraram uma lacuna cada;
+  OHLC inválido, volume zero e duplicata continuaram em zero.
+- O servidor demo não tem M1 antes de 2026-07-22 21:18. A tabela `eurusd_1_minuto` tem 96629 barras,
+  até 2026-10-23 23:59 (sexta; 24/10 é sábado). Os três blocos de abril a junho gravaram 1 linha cada
+  no log e não permaneceram como histórico anterior a julho (96632 no log, 96629 na tabela).
+  Reextrair com `--overwrite` não cria abril.
+- Antes do resample, `config/config.ini` (ignorado pelo git) passou a declarar
+  `broker_utc_offset = 3`, com `broker_timezone` vazio e `time_basis = broker`.
+  Vale só esta janela em EEST, até 2026-10-24. A partir de 2026-10-25 o servidor fica em EET (UTC+2)
+  e este offset fixo deixa de valer. Conferido na barra gravada: 2026-07-22 21:21 no relógio da
+  corretora é 2026-07-22T18:21Z.
+- Resample legado, exit 0: M5 19329 (21:15–23:55), M15 6443 (21:15–23:45), M30 3222 (21:00–23:30),
+  H1 1611 (21:00–23:00), H4 403 (20:00–20:00), D1 68 (2026-07-22 00:00 a 2026-10-23 00:00).
+  A primeira M1 é 21:18, então a M5 das 21:15, a H4 das 20:00 e o D1 das 00:00 são parciais de piso
+  do relógio. É a regra de produção, não um candle inventado nem um erro de conta.
+- Resample por sessão, exit 0. M7: 13749 barras, todas `COMPLETE`, `bar_count` 7, nenhuma parcial,
+  77 janelas recusadas; primeira 21:21 (os minutos 21:18–21:20 não fecham um grupo de 7).
+  M9: 10730 barras, todas `COMPLETE`, `bar_count` 9, nenhuma parcial, 8 janelas recusadas;
+  primeira 21:18. O dia 2026-09-15 tem 1440 M1, 205 M7 e 160 M9.
+- Banco compartilhado com o atalho: 138 MB, só EURUSD. Séries lê o inventário nativo
+  (M1, M5, M15, M30, H1, H4, D1). Séries ainda não desenha `_bars_derived`.
+  Super ATR não começou. Este lote não rodou pytest e não republica o preview.
