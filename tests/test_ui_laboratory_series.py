@@ -482,3 +482,62 @@ def test_asset_bench_moves_geometry_removes_series_scrolls_units_and_keeps_view(
     series.set_report(other)
     series.open_study(str(path))
     assert "séries ausentes" in series.status.cget("text")
+
+
+def test_initial_selection_skips_series_over_the_bar_limit(panel):
+    series = open_series(panel)
+    series._inventory = [
+        dict(symbol="EURUSD", timeframe="M1", rows=30000, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M5", rows=100, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M15", rows=40, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M30", rows=20, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M7", rows=10, synthetic=True),
+    ]
+    series.symbol.set("EURUSD")
+    series._symbol_changed()
+    labels = [series.tf_list.get(i) for i in range(series.tf_list.size())]
+    selected = [labels[i] for i in series.tf_list.curselection()]
+    assert selected == ["M5", "M15", "M30"]
+    assert "M1 · 30000 barras" in labels
+    assert "M7 · sintético" in labels
+    assert "30000" in series.status.cget("text")
+    revision = series._selection_revision
+    series._symbol_changed()
+    assert series._selection_revision == revision
+    assert [labels[i] for i in series.tf_list.curselection()] == selected
+
+
+def test_oversized_selection_fills_the_start_without_loading_the_whole_series(panel, monkeypatch):
+    series = open_series(panel)
+    series._inventory = [
+        dict(symbol="EURUSD", timeframe="M1", rows=96629, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M5", rows=100, synthetic=False),
+    ]
+    series.symbol.set("EURUSD")
+    series._symbol_changed()
+    series.tf_list.selection_clear(0, "end")
+    series.tf_list.selection_set(0)
+    monkeypatch.setattr("mt5_extracao.laboratory.derived.earliest_of_last",
+                        lambda *args, **kwargs: "2026-10-06T02:33:00")
+    monkeypatch.setattr(panel.ui, "run_bg", lambda *args: pytest.fail("não carregar a série inteira"))
+    series.analyze()
+    assert series.start.get() == "2026-10-06T02:33:00"
+    assert "96629" in series.status.cget("text") and "Confira e congele de novo." in series.status.cget("text")
+    assert not series.pending
+
+
+def test_stale_source_reload_does_not_replace_the_inventory(panel, monkeypatch):
+    series = open_series(panel)
+    done = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, callback: done.append(callback))
+    series._inventory = []
+    series.reload()
+    series.on_show()
+    assert len(done) == 1
+    series.reload()
+    assert len(done) == 2
+    done[0]([dict(symbol="OLD", timeframe="M1", rows=1, synthetic=False)], None)
+    assert series._inventory == []
+    done[1]([dict(symbol="EURUSD", timeframe="M5", rows=4, synthetic=False)], None)
+    assert series.symbol.get() == "EURUSD"
+    assert [item["timeframe"] for item in series._inventory] == ["M5"]

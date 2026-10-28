@@ -68,6 +68,33 @@ def list_stored(db):
     return result
 
 
+def earliest_of_last(db, symbol, timeframe_name, limit=MAX_BARS):
+    """Início, no relógio da corretora, das últimas ``limit`` barras nativas.
+
+    None quando a série inteira cabe no limite ou o tempo não está na base.
+    Não lê OHLC: recusar a janela inteira não carrega a série que não cabe.
+    """
+    from sqlalchemy import text
+
+    tf = timeframes.parse(timeframe_name)
+    if db is None or getattr(db, "engine", None) is None or tf is None or limit < 1:
+        return None
+    table = db.find_table_for_symbol(symbol, tf.label)
+    if not table:
+        return None
+    quote = db.engine.dialect.identifier_preparer.quote
+    with db.engine.connect() as conn:
+        value = conn.execute(
+            text(f"SELECT time FROM {quote(table)} ORDER BY time DESC LIMIT 1 OFFSET :off"),
+            {"off": int(limit) - 1}).scalar()
+    if value is None:
+        return None
+    stamp = pd.Timestamp(db._from_storage(pd.Timestamp(value)))
+    if stamp.tzinfo is not None:
+        stamp = stamp.tz_localize(None)
+    return stamp.isoformat()
+
+
 def chart_sources(db):
     """Inventário nativo mais as séries de dia exato já gravadas. Não cria barras."""
     native = [{**item, "synthetic": False, "mt5_predefined": True, "kind": "native"} for item in sources(db)]

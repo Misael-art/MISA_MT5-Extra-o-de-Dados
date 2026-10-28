@@ -3133,3 +3133,32 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   e integração nativa não sondada.
 - Não fecha LAB-07, SA-01/02, Super ATR, relógio IANA, Tester, conta real nem aceite visual.
   O offset +3 continua local e só vale até 2026-10-24.
+
+## Séries não carrega a janela que passa de 20 mil barras · 2026-10-28 (PR 212)
+
+- A frase da seção anterior vale para o leitor `c1d06d4`. Este lote é o carregamento que o teste
+  profundo quebrou ao formar a visão e pedir os dados.
+- As visões do livro desenharam. Na cópia da base compartilhada, `_trade_ledger` tem 3130
+  operações EURUSD e 41 execuções com trades. Visão geral, Tempo e calendário, Microestrutura,
+  Comparativo, Execução e Insights saíram sem "Erro ao desenhar". "1 backtest importado,
+  0 operações" é o run H4 com trades vazios, não o livro. O cache recalculado entre 13:59 e
+  14:00 coincide com cliques sobrepostos; depois a mesma revisão veio do cache.
+- O defeito está em Séries. Abrir a guia disparava vários `chart_sources` ao mesmo tempo.
+  Cada conclusão chamava `_symbol_changed` e subia a revisão mesmo com a seleção igual.
+  O padrão marcava M1, M5 e M15. M1 tem 96629 barras. `capture_selection` recusava o limite
+  de 20000, mas o retorno via a revisão diferente primeiro e trocava o erro real por
+  "Seleção mudou durante o cálculo; resultado antigo não publicado."
+- A correção deixa um reload por vez. Recarregar a mesma seleção não invalida a análise em
+  curso. A seleção inicial marca só tempos nativos cuja série inteira cabe: nesta base,
+  M5, M15 e M30. M1 aparece como `M1 · 96629 barras`. Congelar esse tempo sem janela não chama
+  `capture_selection`. `earliest_of_last`, em `laboratory/derived.py`, lê só o carimbo da barra
+  que abre as últimas 20000 e preenche De com `2026-10-06T02:33:00`. O próximo congelamento
+  usa essa janela explícita. `service.py` não mudou, então o hash da fórmula nativa permanece.
+  M7 e M9 continuam leitura sozinha. Na cópia, M7 leu 13749 barras enquanto as fontes
+  recarregavam, sem a mensagem de seleção mudada.
+- Testes no Xvfb: `test_laboratory_derived.py`, `test_ui_laboratory_series.py` e
+  `test_earliest_of_last_is_the_first_bar_of_the_bounded_window`, 31 passou e 1 pulado pela
+  geometria do monitor, em 107 s. A cópia em `/tmp` foi só sonda e não volta para o banco do atalho.
+- Não fecha LAB-07. Não é Super ATR. As 133 falhas dos 175 backtests (robô HADOUKEN sem
+  compilação, especificação de ponto, volume real zerado, D1 com 68 barras) continuam falta
+  de insumo. O offset +3 continua local e só vale até 2026-10-24.

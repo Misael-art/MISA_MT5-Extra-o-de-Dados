@@ -37,6 +37,14 @@ def analysis(snapshots, **kwargs):
                            as_of="2025-02-01T00:00:00Z", **kwargs)
 
 
+def test_earliest_of_last_is_the_first_bar_of_the_bounded_window(source_db):
+    from mt5_extracao.laboratory import derived
+    frame = source_db.load_ohlcv("X", "5 minutos")
+    assert derived.earliest_of_last(source_db, "X", "M5", limit=10) == pd.Timestamp(frame.time.iloc[-10]).isoformat()
+    assert derived.earliest_of_last(source_db, "X", "M5", limit=len(frame) + 1) is None
+    assert derived.earliest_of_last(source_db, "X", "M7", limit=2) is None
+
+
 def test_catalog_discovers_every_formula_strategy_and_typed_defaults():
     catalog = service.catalog()
     assert {row["feature_id"] for row in catalog["indicators"]} == {

@@ -101,7 +101,11 @@ O rótulo é sintético, âncora 00:00 do calendário da corretora, não é temp
 MT5. A UI não agrega, não preenche buraco e não mistura esses tempos com a
 captura nativa. Vários tempos sintéticos aparecem em eixos independentes, sem
 comparação sincronizada. Indicadores, relações e estratégias ficam de fora
-desse recorte. CLI: `laboratory derived`. Sessões e fatos materializados com
+desse recorte. A seleção inicial marca só tempos nativos cuja série inteira
+cabe em 20 mil barras; um tempo maior aparece na lista com a contagem e, ao
+congelar sem janela, preenche De com o início das últimas 20 mil barras em
+vez de carregar a série toda. Recarregar as fontes não descarta uma análise
+que ainda está em curso se a seleção marcada não mudou. CLI: `laboratory derived`. Sessões e fatos materializados com
 disponibilidade real continuam no Analytics/BD18a. “Sem série compatível”
 nesta visão não significa que a base inteira esteja vazia.
 

@@ -353,7 +353,7 @@ class SeriesLaboratoryPanel:
             cell = ttk.Frame(dates)
             cell.pack(side=tk.LEFT, fill=tk.X, expand=True)
             ttk.Label(cell, text=label).pack(anchor="w")
-            ttk.Entry(cell, textvariable=variable, width=14).pack(fill=tk.X)
+            ttk.Entry(cell, textvariable=variable, width=22).pack(fill=tk.X)
         ttk.Label(strategy, text="Janela vazia = toda a série (máx. 20 mil barras/TF).",
                   style="Muted.TLabel", wraplength=330).pack(anchor="w")
         ttk.Label(features, text=f"Indicadores do inventário ({len(self.catalog['indicators'])} calculáveis) · "
@@ -511,9 +511,14 @@ class SeriesLaboratoryPanel:
             self._changed()
 
     def reload(self):
+        self._reload_request = getattr(self, "_reload_request", 0) + 1
+        request = self._reload_request
+        self._loading_sources = True
+
         def done(items, error):
-            if not self.frame.winfo_exists():
+            if request != self._reload_request or not self.frame.winfo_exists():
                 return
+            self._loading_sources = False
             if error:
                 self.status.configure(text=str(error))
                 return
@@ -528,19 +533,41 @@ class SeriesLaboratoryPanel:
                     "Confira inventário/Analytics antes de extrair mais dados.")
         self.ui.run_bg(lambda: derived.chart_sources(self.ui.app.db_manager), done)
 
+    def _fitting_timeframes(self):
+        """Seleção inicial: tempos nativos cuja série inteira cabe no congelamento."""
+        native = [item for item in self._tf_items if not item.get("synthetic")]
+        return [item["timeframe"] for item in native if int(item.get("rows") or 0) <= service.MAX_BARS][:3]
+
+    def _tf_label(self, item):
+        label = item["timeframe"] + (" · sintético" if item.get("synthetic") else "")
+        rows = int(item.get("rows") or 0)
+        if rows > service.MAX_BARS:
+            label += f" · {rows} barras"
+        return label
+
     def _symbol_changed(self, *_):
         previous = {self._tfs[i] for i in self.tf_list.curselection()} if hasattr(self, "_tfs") else set()
         self._tf_items = [item for item in self._inventory if item["symbol"] == self.symbol.get()]
         self._tfs = [item["timeframe"] for item in self._tf_items]
         self.tf_list.delete(0, tk.END)
-        native = [item["timeframe"] for item in self._tf_items if not item.get("synthetic")]
-        chosen = previous & set(self._tfs) or set((native or self._tfs)[:3])
+        chosen = previous & set(self._tfs) or set(self._fitting_timeframes())
         for index, item in enumerate(self._tf_items):
-            label = item["timeframe"] + (" · sintético" if item.get("synthetic") else "")
-            self.tf_list.insert(tk.END, label)
+            self.tf_list.insert(tk.END, self._tf_label(item))
             if item["timeframe"] in chosen:
                 self.tf_list.selection_set(index)
-        self._changed()
+        if chosen != previous:
+            self._changed()
+            skipped = [item for item in self._tf_items
+                       if not item.get("synthetic") and int(item.get("rows") or 0) > service.MAX_BARS
+                       and item["timeframe"] not in chosen]
+            if skipped and not self.report:
+                names = ", ".join(f"{item['timeframe']} ({item['rows']})" for item in skipped)
+                verb = "ficaram" if len(skipped) > 1 else "ficou"
+                self.status.configure(
+                    text=f"{names} {verb} de fora da seleção inicial: a série inteira passa de "
+                         f"{service.MAX_BARS} barras. Os tempos marcados cabem na janela. "
+                         "Para incluir o tempo longo, marque-o e congele: o início das últimas "
+                         f"{service.MAX_BARS} barras entra no campo De.")
 
     def analyze(self):
         from mt5_extracao.automation.protocol import loads
@@ -556,6 +583,18 @@ class SeriesLaboratoryPanel:
             if plan == "mixed":
                 raise ValueError(
                     "M7 e M9 não entram na captura nativa. Leia o sintético sozinho ou escolha só tempos do MT5.")
+            if plan == "native" and not (self.start.get().strip() or self.end.get().strip()):
+                oversized = [item for item in chosen if int(item.get("rows") or 0) > service.MAX_BARS]
+                if oversized:
+                    item = max(oversized, key=lambda row: int(row.get("rows") or 0))
+                    bound = derived.earliest_of_last(self.ui.app.db_manager, symbol, item["timeframe"])
+                    if bound:
+                        self.start.set(bound)
+                    raise ValueError(
+                        f"{item['timeframe']}: {int(item['rows'])} barras na janela; o limite é {service.MAX_BARS}. "
+                        + (f"O campo De foi preenchido com {bound} (últimas {service.MAX_BARS} barras). "
+                           "Confira e congele de novo." if bound else
+                           f"Informe um início mais recente ou retire {item['timeframe']} da seleção."))
             feature_ids, request_kwargs = [], {}
             if plan == "native":
                 params = loads(self.params.get())
@@ -711,7 +750,7 @@ class SeriesLaboratoryPanel:
             self.extended.set(width > 1920 and height > 1080 and
                               window.winfo_width() > 1920 and window.winfo_height() > 1080)
             self._layout()
-        if not self._inventory:
+        if not self._inventory and not getattr(self, "_loading_sources", False):
             self.reload()
 
     def redraw(self):
