@@ -153,6 +153,34 @@ def test_stored_m7_draws_as_synthetic_and_stays_out_of_native_capture(panel):
     assert "não se exporta como estudo" in series.status.cget("text")
 
 
+def test_two_synthetic_timeframes_share_the_shorter_close(panel):
+    from types import SimpleNamespace
+    import pandas as pd
+    from mt5_extracao.analytics import resampling
+    from tests.test_analytics_calendar import m1_bars
+
+    panel.db.save_ohlcv_data("EURUSD", "1 minuto", m1_bars(
+        pd.date_range("2026-09-14 00:00", periods=18, freq="min")))
+    resampling.resample_symbol(panel.db, "EURUSD", ["M7", "M9"], symbol_info=SimpleNamespace(name="EURUSD"))
+    series = open_series(panel)
+    panel.pump(lambda: series.tf_list.size() and "M9 · sintético" in [
+        series.tf_list.get(i) for i in range(series.tf_list.size())], 5)
+    labels = [series.tf_list.get(i) for i in range(series.tf_list.size())]
+    series.tf_list.selection_clear(0, "end")
+    series.tf_list.selection_set(labels.index("M7 · sintético"))
+    series.tf_list.selection_set(labels.index("M9 · sintético"))
+    series.analyze()
+    panel.pump(lambda: series.report is not None and not series.pending, 5)
+    assert series.report is not None, series.status.cget("text")
+    assert series.derived_read is None
+    assert series.report["grid_timeframe"] == "M7" and series.report["synthetic"] is True
+    assert "não é tempo do MT5" in series.panels["price"].chart.figure.axes[0].get_title(loc="left")
+    axes = series.panels["price"].chart.figure.axes
+    assert len(axes) > 1 and axes[0].get_shared_x_axes().joined(axes[0], axes[1])
+    series.open_presets()
+    assert "não vai ao gerador" in series.status.cget("text")
+
+
 def test_visual_reduction_preserves_rare_events_and_conflicts_not_as_neutral():
     from mt5_extracao.ui.laboratory_series import timeline_bins
     import numpy as np

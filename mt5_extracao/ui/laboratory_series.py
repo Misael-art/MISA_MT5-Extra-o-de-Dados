@@ -576,7 +576,8 @@ class SeriesLaboratoryPanel:
             chosen = [self._tf_items[i] for i in self.tf_list.curselection()] if hasattr(self, "_tf_items") else []
             plan = derived.selection_plan(chosen)
             tfs = [item["timeframe"] for item in chosen]
-            if plan != "derived" and self._params_error:
+            comparing = plan == "derived" and len(tfs) > 1
+            if self._params_error and (plan != "derived" or comparing):
                 raise ValueError(self._params_error)
             if not symbol or plan == "empty":
                 raise ValueError("Escolha ativo e pelo menos um timeframe da base.")
@@ -596,7 +597,7 @@ class SeriesLaboratoryPanel:
                            "Confira e congele de novo." if bound else
                            f"Informe um início mais recente ou retire {item['timeframe']} da seleção."))
             feature_ids, request_kwargs = [], {}
-            if plan == "native":
+            if plan == "native" or comparing:
                 params = loads(self.params.get())
                 if not isinstance(params, dict):
                     raise ValueError("Parâmetros exigem objeto JSON.")
@@ -609,11 +610,12 @@ class SeriesLaboratoryPanel:
                                 else bool(request_kwargs.get("strategy_key")))
                 if not feature_ids and not n_strategies:
                     raise ValueError("Escolha indicadores ou uma estratégia para analisar.")
+                gate = "M1" if comparing else tfs[0]
                 if strategy is not None:
-                    service.base_composition(strategy, symbol=symbol, timeframe=tfs[0], params=params)
+                    service.base_composition(strategy, symbol=symbol, timeframe=gate, params=params)
                 for key in request_kwargs.get("strategies", []):
                     if isinstance(key, str):
-                        service.base_composition(key, symbol=symbol, timeframe=tfs[0],
+                        service.base_composition(key, symbol=symbol, timeframe=gate,
                                                  params=service.get_strategy(key).params)
                 if (len(feature_ids) + n_strategies) * len(tfs) > service.MAX_CHANNELS:
                     raise ValueError("Máximo de 32 canais; reduza indicadores ou TFs para este recorte.")
@@ -625,13 +627,19 @@ class SeriesLaboratoryPanel:
         start, end = self.start.get() or None, self.end.get() or None
         self.pending = True
         self.analyze_button.state(["disabled"])
-        if plan == "derived":
+        if plan == "derived" and len(tfs) > 1:
+            self.status.configure(text="Comparando as barras já gravadas na grade do tempo mais curto. "
+                                  "Esta leitura não cria candles nem congela snapshot.")
+        elif plan == "derived":
             self.status.configure(text="Lendo as barras já gravadas. Esta leitura não agrega candles nem congela snapshot.")
         else:
             self.status.configure(text="Congelando a seleção pela API de snapshots e calculando os cruzamentos…")
         def work():
-            if plan == "derived":
+            if plan == "derived" and len(tfs) == 1:
                 return derived.read_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end)
+            if plan == "derived":
+                return derived.compare_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end,
+                    feature_ids=feature_ids, as_of=pd.Timestamp.now(tz="UTC").isoformat(), **request_kwargs)
             snapshots = service.capture_selection(self.ui.app.db_manager, symbol=symbol,
                 timeframes_selected=tfs, start=start, end=end)
             return service.analyze(snapshots, feature_ids=feature_ids,
@@ -654,7 +662,8 @@ class SeriesLaboratoryPanel:
     def set_report(self, report):
         from mt5_extracao.laboratory.annotations import Study
         self.derived_read = None
-        self.panels["price"].set_heading(self._price_heading)
+        self.panels["price"].set_heading(
+            "Comparação sintética · fechamento do tempo mais curto" if report.get("synthetic") else self._price_heading)
         if self.study is None or self.study.analysis_id != report["analysis_id"]:
             self.study = Study.for_report(report)  # anotações nunca migram para outra análise
         self.report = report
@@ -668,7 +677,11 @@ class SeriesLaboratoryPanel:
             names = ", ".join(row["key"] for row in report["selection"]["strategies"])
             compared = (f"\nIntenções comparadas ({names}) no {comparison['scope']}. "
                         f"{comparison['operation']}. {comparison['execution']}.")
-        self.notice.message.configure(text=NOTICE_TEXT + (
+        synthetic = ""
+        if report.get("synthetic"):
+            synthetic = (" " + report["note"] + " Comparação sincronizada no fechamento nominal do tempo "
+                         "mais curto. Um intervalo sem grupo completo não vira candle.")
+        self.notice.message.configure(text=NOTICE_TEXT + synthetic + (
             " Comparação de intenções no mesmo recorte; operação e execução não entram neste estudo."
             if comparison else ""))
         self.status.configure(text=f"{report['symbol']} · {len(report['populations'])} TFs · "
@@ -838,8 +851,13 @@ class SeriesLaboratoryPanel:
         axes = np.atleast_1d(chart.figure.subplots(len(ratios), 1, sharex=True, gridspec_kw=dict(height_ratios=ratios)))
         ax = axes[0]
         x, price = _draw_candles(ax, times, report["prices"], self.theme)
-        grid_tf = timeframes.parse(report["grid_timeframe"])
-        expected = times[:-1] + (pd.offsets.MonthBegin(1) if grid_tf.name == "MN1" else pd.Timedelta(minutes=grid_tf.minutes))
+        grid_tf = None if report.get("synthetic") else timeframes.parse(report["grid_timeframe"])
+        if grid_tf is not None and grid_tf.name == "MN1":
+            step = pd.offsets.MonthBegin(1)
+        else:
+            minutes = int(report["grid_minutes"]) if report.get("grid_minutes") else grid_tf.minutes
+            step = pd.Timedelta(minutes=minutes)
+        expected = times[:-1] + step
         splits = np.flatnonzero(times[1:] != expected) + 1
         palette = [self.theme.colors["accent"], *self.theme.colors["series"], self.theme.colors["warn"], self.theme.colors["ink2"]]
         chart._legend_lines = {}
@@ -905,7 +923,11 @@ class SeriesLaboratoryPanel:
         locator = AutoDateLocator(minticks=3, maxticks=6)
         axes[-1].xaxis.set_major_locator(locator)
         axes[-1].xaxis.set_major_formatter(ConciseDateFormatter(locator))
-        price_title = f"{report['symbol']} {report['grid_timeframe']} · candles da base"
+        if report.get("synthetic"):
+            price_title = (f"{report['symbol']} {report['grid_timeframe']} · sintético · âncora 00:00 · "
+                           "grade sincronizada · não é tempo do MT5")
+        else:
+            price_title = f"{report['symbol']} {report['grid_timeframe']} · candles da base"
         if intentions:
             price_title += " · marcas = intenção; operação e execução ausentes"
         charts.style_axis(ax, self.theme, price_title)
@@ -1274,8 +1296,8 @@ class SeriesLaboratoryPanel:
     def open_presets(self):
         """Conecta ao gerador Default/Manual existente; nenhuma inferência financeira na UI."""
         from mt5_extracao.presets import NATIVE_PRESET_KEYS
-        if self.report is None:
-            if self.derived_read is not None:
+        if self.report is None or self.report.get("synthetic"):
+            if self.derived_read is not None or (self.report or {}).get("synthetic"):
                 self.status.configure(text="A leitura sintética não vai ao gerador de presets. Congele uma análise nativa.")
             else:
                 self.status.configure(text="Congele uma análise para levar seu ativo/TF ao gerador de presets.")

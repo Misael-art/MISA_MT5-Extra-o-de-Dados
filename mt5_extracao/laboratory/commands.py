@@ -2,6 +2,8 @@
 from pathlib import Path
 import json
 
+import pandas as pd
+
 from mt5_extracao.analytics import datasets
 from . import service
 
@@ -27,6 +29,11 @@ def add_parser(sub):
     derived_read.add_argument("--start", help="início no relógio da corretora, sem fuso")
     derived_read.add_argument("--end", help="fim no relógio da corretora, sem fuso")
     derived_read.add_argument("--head", type=int, default=0, help="inclui as primeiras N barras; o restante fica só na contagem")
+    derived_read.add_argument("--relations", action="store_true",
+                              help="compara dois ou mais tempos na grade do mais curto; não grava snapshot")
+    derived_read.add_argument("--feature", action="append", help="feature_id; sem este argumento usa os cinco padrões")
+    derived_read.add_argument("--strategy", choices=list(service.REGISTRY))
+    derived_read.add_argument("--as-of", help="corte ISO com fuso; omissão usa o instante atual")
     derived_read.set_defaults(func=run)
     freeze = actions.add_parser("freeze", help="congela seleção explícita no store de snapshots existente")
     freeze.add_argument("--symbol", required=True)
@@ -94,7 +101,18 @@ def run(args, ctx):
             source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")
     elif args.laboratory_action == "derived":
         from . import derived
-        if args.tf:
+        if args.tf and args.relations:
+            if not args.symbol:
+                raise ValueError("Informe --symbol junto com --tf. Esta comparação não varre a conta.")
+            if len(args.tf) < 2:
+                raise ValueError("A comparação sincronizada pede ao menos dois tempos de dia exato.")
+            report = derived.compare_stored(
+                ctx.db, args.symbol, args.tf, start=args.start, end=args.end,
+                feature_ids=args.feature if args.feature is not None else service.DEFAULT_FEATURES,
+                strategy_key=args.strategy,
+                as_of=args.as_of or pd.Timestamp.now(tz="UTC").isoformat())
+            result = derived.public_comparison(report)
+        elif args.tf:
             if not args.symbol:
                 raise ValueError("Informe --symbol junto com --tf. Esta leitura não varre a conta.")
             result = derived.public_summary(derived.read_stored(
@@ -104,7 +122,11 @@ def run(args, ctx):
             if args.symbol:
                 listed = [item for item in listed if item["symbol"] == args.symbol]
             result = dict(series=listed, note=derived.NOTE, kind="stored_derived_index")
-        if result.get("kind") == "stored_derived":
+        if result.get("kind") == "stored_exact_day_comparison":
+            cli._print(f"{result['symbol']} · grade {result['grid_timeframe']} · {result['bars']} fechamentos · "
+                       f"{result['grid_gap_count']} intervalos sem grupo completo. {result['note']}")
+            cli._print("Comparação sincronizada no fechamento do tempo mais curto. Não cria candles nem congela snapshot.")
+        elif result.get("kind") == "stored_derived":
             cli._print(result["note"])
             for item in result["series"]:
                 cli._print(f"{result['symbol']} {item['timeframe']}: {item['rows']} barras completas, "

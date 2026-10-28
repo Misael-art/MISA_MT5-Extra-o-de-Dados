@@ -3162,3 +3162,24 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
 - Não fecha LAB-07. Não é Super ATR. As 133 falhas dos 175 backtests (robô HADOUKEN sem
   compilação, especificação de ponto, volume real zerado, D1 com 68 barras) continuam falta
   de insumo. O offset +3 continua local e só vale até 2026-10-24.
+
+## M7 e M9 na mesma grade de fechamento · 2026-10-28 (PR 212)
+
+- A frase da seção anterior vale para o carregamento. Este lote é a comparação que faltava
+  no LAB-07 para os tempos de dia exato já gravados.
+- Um tempo sintético sozinho continua só a leitura, sem indicador. Dois ou mais, como M7 e M9,
+  usam a grade do fechamento mais curto. O valor do tempo mais longo entra depois do fechamento
+  gravado e sai no fechamento seguinte dessa série. O primeiro fechamento M7, às 00:07, ainda
+  não vê o M9 que só fecha às 00:09. Um intervalo sem grupo completo não vira candle, linha nem par.
+- Não chama `datasets.capture` e não grava snapshot. M7 e M9 seguem fora do enum. Misturar com
+  tempo nativo continua recusado. O schema de preset só aceita tempo do MT5; a checagem de
+  parâmetros da intenção usa esse schema e descarta o retrato, e o relatório guarda o rótulo
+  M7/M9. A comparação não vai ao gerador de presets. `service.py` não mudou.
+- Defasagem 0 permanece descritiva. Defasagens 1, 3 e 6 permanecem candidatas, com o mesmo
+  corte 70/30. CLI: `laboratory derived --relations --symbol EURUSD --tf M7 --tf M9`.
+- Testes no Xvfb: `test_laboratory_derived.py` e os três percursos de Séries (leitura M7,
+  comparação M7/M9 e parâmetro inválido), 9 passou em 16 s. A suíte de Séries antes do ajuste
+  do erro de parâmetro: 27 passou e 1 pulado pela geometria, em 120 s. Doctor
+  `--development --no-probe`: 16 OK, avisos pandas-ta e integração nativa não sondada.
+- Não fecha o LAB-07 nativo que já estava parcial, nem o aceite do proprietário. Não é Super ATR.
+  O offset +3 continua local e só vale até 2026-10-24.

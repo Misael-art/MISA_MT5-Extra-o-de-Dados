@@ -99,13 +99,15 @@ enum. A leitura gráfica usa o que já está em `_bars_derived`: `laboratory.der
 chama `analytics.resampling.latest_bars` e desenha só a última revisão fechada.
 O rótulo é sintético, âncora 00:00 do calendário da corretora, não é tempo do
 MT5. A UI não agrega, não preenche buraco e não mistura esses tempos com a
-captura nativa. Vários tempos sintéticos aparecem em eixos independentes, sem
-comparação sincronizada. Indicadores, relações e estratégias ficam de fora
-desse recorte. A seleção inicial marca só tempos nativos cuja série inteira
+captura nativa. Um tempo sozinho é só a leitura, sem indicador. Dois ou mais
+tempos de dia exato comparam a mesma seleção na grade do fechamento mais curto:
+defasagem 0 descreve, defasagens 1/3/6 são candidatas preditivas, e um intervalo
+sem grupo completo não vira candle nem par. CLI: `laboratory derived --relations`.
+A seleção inicial marca só tempos nativos cuja série inteira
 cabe em 20 mil barras; um tempo maior aparece na lista com a contagem e, ao
 congelar sem janela, preenche De com o início das últimas 20 mil barras em
 vez de carregar a série toda. Recarregar as fontes não descarta uma análise
-que ainda está em curso se a seleção marcada não mudou. CLI: `laboratory derived`. Sessões e fatos materializados com
+que ainda está em curso se a seleção marcada não mudou. Sem `--relations`, `laboratory derived` só lê. Sessões e fatos materializados com
 disponibilidade real continuam no Analytics/BD18a. “Sem série compatível”
 nesta visão não significa que a base inteira esteja vazia.
 
