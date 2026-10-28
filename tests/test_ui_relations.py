@@ -28,15 +28,30 @@ def relations_panel():
     gc.collect()
 
 
+def _load_timeline_layout(panel, series=None):
+    """A fixture só entra no teste de layout. A tela padrão permanece sem números de exemplo."""
+    from copy import deepcopy
+    from mt5_extracao.ui.relations import _SYNTHETIC_FIXTURE
+    series = deepcopy(series or _SYNTHETIC_FIXTURE["timeline"]["series"][0])
+    panel._timelines = [series]
+    panel.timeline_select.configure(values=[series["label"]])
+    panel.timeline_var.set(series["label"])
+    panel._draw_timeline()
+    return series
+
+
 def test_relation_views_keep_fixture_scope_explicit(relations_panel):
     panel, _root = relations_panel
     assert [panel.notebook.tab(index, "text") for index in range(panel.notebook.index("end"))] == [
         "Inventário", "Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos"
     ]
-    assert "DADOS SINTÉTICOS" in panel.synthetic_notice.message.cget("text")
-    assert "Matriz indicador × indicador: dados reais" in panel.synthetic_notice.message.cget("text")
-    assert "não são resultados analíticos reais" in panel.synthetic_notice.message.cget("text")
+    notice = panel.synthetic_notice.message.cget("text")
+    assert "DADOS SINTÉTICOS" not in notice
+    assert "nenhum número de exemplo" in notice
+    assert "não é lucro" in notice
     assert panel.advanced.expanded is False
+    assert not panel.timeline_table.tree.get_children()
+    assert not panel.candidate_table.tree.get_children()
     from mt5_extracao.ui.relations import _SYNTHETIC_FIXTURE
     assert "ranking congelado" in _SYNTHETIC_FIXTURE["timeline"]["reference"].casefold()
 
@@ -83,6 +98,20 @@ def test_indicator_matrix_is_real_lab_report_with_reasons_and_lag(relations_pane
     panel._refresh_lab_matrix()
     assert grid.cells[0][0]["label"] == "mesma série"
     assert "candidata preditiva +3" in panel.indicator_grid.cells[0][2]["segment"]
+    target = service.target_matrix(lab_report, horizon=3)
+    assert panel.target_grid.columns == ("Retorno +3",)
+    for shown, cell in zip(panel.target_grid.cells, target["cells"][0]):
+        assert shown[0]["n"] == f"n={cell['n_pairs']}"
+        assert "fixture" not in shown[0]["reason"].casefold()
+    channel_id = next(c["id"] for c in lab_report["channels"] if c.get("directions"))
+    outcomes = service.direction_outcomes(lab_report, channel_id, horizon=3)
+    rows = [panel.distribution_table.tree.item(iid, "values")
+            for iid in panel.distribution_table.tree.get_children()]
+    buy = outcomes["directions"][0]
+    assert rows[0][1:4] == (str(buy["wins"]), str(buy["losses"]), str(buy["flats"]))
+    assert int(rows[0][1]) + int(rows[0][2]) + int(rows[0][3]) == int(rows[0][5]) == buy["n_total"]
+    assert "EXEMPLO" not in "".join(panel.candidate_table.tree.item(iid, "values")[0]
+                                    for iid in panel.candidate_table.tree.get_children())
     # Mesma análise de novo não recalcula; resposta antiga é descartada.
     request = panel._lab_request
     panel.set_lab_report(lab_report)
@@ -91,6 +120,9 @@ def test_indicator_matrix_is_real_lab_report_with_reasons_and_lag(relations_pane
 
 def test_timeline_preserves_gaps_and_exposes_chronological_windows(relations_panel):
     panel, _root = relations_panel
+    axis = panel.timeline_chart.figure.axes[0]
+    assert any("Congele uma análise" in text.get_text() for text in axis.texts)
+    _load_timeline_layout(panel)
     axis = panel.timeline_chart.figure.axes[0]
     from matplotlib.colors import to_rgba
     neutral = to_rgba(panel.theme.colors["axis"])
@@ -125,31 +157,51 @@ def test_short_window_scrolls_instead_of_compressing_chart_or_table(relations_pa
 
 def test_distribution_denominators_and_incomplete_costs_are_visible(relations_panel):
     panel, _root = relations_panel
+    assert not panel.distribution_table.tree.get_children()
+    assert "nenhuma análise congelada" in panel.distribution_population_label.cget("text")
+    notice = panel.distribution_notice.message.cget("text").casefold()
+    assert "expectativa líquida" in notice and "não é calculada" in notice
+    panel._apply_outcomes({
+        "population": "X M15 · retorno bruto em 1 barras",
+        "cost_status": "custos não aplicados",
+        "directions": [
+            {"label": "Intenção de compra", "wins": 2, "losses": 1, "flats": 0, "censored": 0,
+             "n_total": 3, "n_mature": 3, "presence_state": "UNKNOWN", "freshness_state": "CURRENT",
+             "evidence_state": "EXPLORATORY", "utility_state": "INCONCLUSIVE", "reason": "retorno bruto"},
+        ],
+    })
     rows = [panel.distribution_table.tree.item(iid, "values")
             for iid in panel.distribution_table.tree.get_children()]
-    assert rows == [("Compra", "38", "28", "4", "2", "72", "70", "UNKNOWN", "CURRENT"),
-                    ("Venda", "34", "31", "3", "4", "72", "68", "UNKNOWN", "CURRENT")]
-    assert "População:" in panel.distribution_population_label.cget("text")
-    assert "expectativa líquida não exibida" in panel.distribution_notice.message.cget("text").casefold()
+    assert rows == [("Intenção de compra", "2", "1", "0", "0", "3", "3", "UNKNOWN", "CURRENT")]
+    assert int(rows[0][1]) + int(rows[0][2]) + int(rows[0][3]) == int(rows[0][5])
 
 
 def test_convergence_and_candidates_are_read_only_examples(relations_panel):
     panel, _root = relations_panel
-    convergence_rows = [panel.convergence_table.tree.item(iid, "values")
-                        for iid in panel.convergence_table.tree.get_children()]
-    assert [row[0] for row in convergence_rows] == [
-        "Baseline Expert", "ADX(14) isolado", "ATR(14) isolado", "ADX(14) + ATR(14)"
-    ]
-    panel.convergence_var.set("RSI(14) + CCI(20)")
-    panel._draw_convergence()
-    assert panel.convergence_table.tree.item("convergence-3", "tags") == ("INCONCLUSIVE",)
-    assert "OOS" in panel.convergence_table.tree.item("convergence-0", "values")[2] or \
-        "IC 95%" in panel.convergence_table.tree.item("convergence-0", "values")[2]
-
+    assert not panel.convergence_table.tree.get_children()
+    assert not panel.candidate_table.tree.get_children()
+    panel._apply_holdout([{
+        "label": "M15:a → M15:b +1", "effect": 0.4, "effect_text": "+0,40",
+        "ci": "IC 95%: +0,10 a +0,60", "n": "n=40", "delta": 0.3, "delta_text": "+0,30",
+        "verdict": "HOLDOUT_CONSISTENT", "utility_state": "INCONCLUSIVE",
+        "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN",
+        "support_state": "corte 70/30 do serviço",
+        "reason": "Diferença de ρ contra a persistência do alvo. Não é R por operação.",
+    }])
+    row = panel.convergence_table.tree.item("convergence-0", "values")
+    assert row[0] == "M15:a → M15:b +1" and row[4] == "+0,30"
+    assert "R/op" not in " ".join(row)
+    assert panel.convergence_table.tree.item("convergence-0", "tags") == ("INCONCLUSIVE",)
+    panel._apply_candidates([{
+        "id": "M15:a→M15:b", "proposal": "a antecede b", "scope": "X · grade M15",
+        "window": "ajuste 70% · fora 30%", "evidence_state": "EXPLORATORY",
+        "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "utility_state": "INCONCLUSIVE",
+        "validity": "pesquisa; sem ação de aplicar preset ou Expert", "reason": "consistência exploratória",
+    }])
     candidates = [panel.candidate_table.tree.item(iid, "values")
                   for iid in panel.candidate_table.tree.get_children()]
-    assert len(candidates) == 2
-    assert all("EXEMPLO" in row[0] for row in candidates)
+    assert len(candidates) == 1 and candidates[0][0] == "M15:a→M15:b"
+    assert "EXEMPLO" not in candidates[0][0]
     assert "não há ação de aplicar" in panel.candidate_notice.message.cget("text").casefold()
     assert not hasattr(panel, "apply_candidate")
 
@@ -276,6 +328,7 @@ def test_timeline_keeps_exact_points_and_internal_gap_in_both_themes(relations_p
 
 def test_split_views_keep_readable_details_through_resize_and_themes(relations_panel):
     panel, root = relations_panel
+    _load_timeline_layout(panel)
     panel.timeline_detail.set_expanded(True)
     for _ in range(2):
         for width in (1920, 1280, 820, 1920):
@@ -322,8 +375,8 @@ def test_secondary_information_starts_closed_without_hiding_primary_warnings(rel
         assert str(detail.information_icon) in detail.toggle_button.cget("image")
         assert detail.information_icon.width() >= 14
     assert panel.synthetic_notice.winfo_ismapped()
-    assert "DADOS SINTÉTICOS" in panel.synthetic_notice.message.cget("text")
-    assert "Matriz indicador × indicador: dados reais" in panel.synthetic_notice.message.cget("text")
+    assert "nenhum número de exemplo" in panel.synthetic_notice.message.cget("text")
+    assert "DADOS SINTÉTICOS" not in panel.synthetic_notice.message.cget("text")
     assert panel.distribution_notice.winfo_manager()
     assert "expectativa líquida" in panel.distribution_notice.message.cget("text")
     assert "evidência ≠ autorização" in panel.state_legend.title_label.cget("text")
@@ -336,6 +389,7 @@ def test_secondary_information_starts_closed_without_hiding_primary_warnings(rel
 
 def test_closed_selection_details_update_and_release_space_without_changing_plot(relations_panel):
     panel, root = relations_panel
+    _load_timeline_layout(panel)
     panel.notebook.select(panel.pages["Linha do tempo"])
     for _ in range(2):
         for width in (1920, 1280, 820):

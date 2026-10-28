@@ -3,6 +3,7 @@ import configparser
 import queue
 import threading
 import time
+import types
 
 import numpy as np
 import pandas as pd
@@ -140,7 +141,10 @@ def test_lenses_filters_and_tabs(panel):
         "Ativos e timeframes", "Correlação"]
     assert [panel._analysis_notebooks["Tempo e calendário"].tab(i, "text") for i in range(4)] == [
         "Dia da semana", "Dia do mês", "Expectativa e acerto", "Ganhos, perdas e zeradas"]
-    assert all(text.get_rotation() == 90 for text in panel._charts["t_winloss"].figure.axes[0].texts)
+    winloss = panel._charts["t_winloss"]
+    assert not any(text.get_rotation() == 90 for text in winloss.figure.axes[0].texts)
+    tip = winloss.hover[0](types.SimpleNamespace(inaxes=winloss.figure.axes[0], xdata=0))
+    assert tip and "n=" in tip and "ganhos" in tip
     assert [panel._analysis_notebooks["Microestrutura"].tab(i, "text") for i in range(4)] == [
         "Volatilidade × resultado", "Faixa de volatilidade", "Volume na entrada", "Volatilidade × horário"]
     assert len(panel.compare_tree.get_children()) == 2                  # o robô em dois ativos

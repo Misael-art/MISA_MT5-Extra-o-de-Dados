@@ -3024,3 +3024,24 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   integração nativa não sondada).
 - Corrigido no lote: o rótulo de status ao lado do seletor de defasagem criava um laço de redimensionamento
   e travava `test_ui_laboratory`.
+
+## Laboratório: cruzamentos do preço e prévia no atalho · 2026-10-28 (PR 212)
+
+- Conta demo: o instalador Linux já abre a conta (`OPEN_DEMO_ACCOUNT=1`; `--no-demo-account` pula).
+  Neste host o comando oficial `python -m mt5_extracao.bootstrap demo-account --yes` concluiu com
+  `has_account` verdadeiro no prefixo Wine existente. Não é conta real e não qualifica Tester nem PnL.
+- Sem análise congelada, Relações não mostra número de exemplo. Matriz indicador × indicador,
+  indicador × retorno do preço (`laboratory target`), linha do tempo, contagem por intenção,
+  ρ fora da amostra e candidatos saem de `laboratory.service` — a UI não recalcula.
+- O alvo é o retorno bruto do fechamento `horizon` barras à frente (1, 3 ou 6). A última barra fica
+  ausente, não zero. Spearman; série constante não vira correlação 0. Não é trade, R nem o produtor T18.6.
+- Blocos da linha do tempo são quartis cronológicos iguais; lacuna permanece ausente. O instante do bloco
+  guarda hora, para barras do mesmo dia não se empilharem. Contagens de ganho, perda e empate fecham o
+  denominador. Candidatos só com veredito `HOLDOUT_CONSISTENT`, sem ação de aplicar.
+- Gráficos: valor da célula no heatmap (o n fica no detalhe), ganhos/perdas em azul/laranja, eixo vazio
+  sem data de 1970, n da faixa horária no hover em vez de rótulo vertical.
+- Testes no Xvfb: `test_laboratory_crossings`, `test_ui_charts`, `test_ui_relations`, `test_ui_laboratory`
+  — 56 passou. Doctor `--development --no-probe`: 16 OK, avisos pandas-ta e integração nativa não sondada.
+- Continua fora deste lote: LAB-05/06 (estratégias diferentes no mesmo ativo; o mesmo preset em ativos
+  diferentes), LAB-09 (closure de preset), LAB-10 (aceite de DPI/monitor), SA-01/02, M7/M9, base ativa
+  do atalho ainda vazia, relógio IANA e aceite visual do proprietário.

@@ -725,10 +725,6 @@ class LaboratoryPanel:
                        edgecolor=c["muted"], hatch=hatch)
             bottom = bottom + counts[key].to_numpy()
         totals = counts["n"]
-        for index, total in enumerate(totals):
-            crowded = len(counts) > 14
-            ax.text(index, total, f"n={int(total)}", ha="center", va="bottom", rotation=90 if crowded else 0,
-                    fontsize=TYPOGRAPHY["chart_tick"], color=c["ink"])
         ax.set_ylabel("Operações por faixa horária", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
         ax.margins(y=0.2)
         ax.set_xticks(x)
@@ -737,9 +733,27 @@ class LaboratoryPanel:
                            fontsize=TYPOGRAPHY["chart_tick"], rotation=45 if crowded else 0,
                            ha="right" if crowded else "center")
         legend = ax.legend(fontsize=TYPOGRAPHY["chart_tick"], frameon=False, loc="upper left",
-                           bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
+                           bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
+                           title=f"n total={int(totals.sum())} · n por faixa no detalhe",
+                           title_fontsize=TYPOGRAPHY["chart_tick"])
         for text in legend.get_texts():
             text.set_color(c["ink2"])
+        if legend.get_title() is not None:
+            legend.get_title().set_color(c["ink2"])
+
+        def hover(event):
+            if event.inaxes is not ax or event.xdata is None:
+                return None
+            index = int(round(event.xdata))
+            if not 0 <= index < len(counts):
+                return None
+            row = counts.iloc[index]
+            bucket = row["time_bucket"]
+            name = "Faixa indisponível" if pd.isna(bucket) else str(bucket)
+            return (f"{name}: ganhos {int(row['wins'])} · perdas {int(row['losses'])} · "
+                    f"zeradas {int(row['flat'])} · n={int(row['n'])}")
+
+        chart.hover.append(hover)
         chart.figure.tight_layout()
         chart.draw()
         self._sample_notice(chart, None)

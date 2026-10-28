@@ -146,8 +146,13 @@ def heatmap(chart: Chart, ax, value: pd.DataFrame, n: pd.DataFrame, small: pd.Da
             ax.add_patch(Rectangle((j - 0.5, i - 0.5), 1, 1, facecolor="none", edgecolor=c["muted"], hatch="///",
                                    linewidth=0, alpha=0.35))
         if show_counts:
-            text = f"—\nn={count}" if not np.isfinite(v) else f"n={count}"
-            ax.text(j, i, text, ha="center", va="center", fontsize=_TICK,
+            if not np.isfinite(v):
+                text = "—"
+            elif metric_name == "Correlação":
+                text = f"{v:.2f}".replace(".", ",")
+            else:
+                text = money(v)
+            ax.text(j, i, text, ha="center", va="center", fontsize=_TICK, rotation=0,
                     fontweight="bold", color=c["ink2"] if is_small else c["ink"])
     rows = [row_labels.get(r, r) if row_labels else r for r in value.index]
     cols = [col_labels.get(k, k) if col_labels else k for k in value.columns]

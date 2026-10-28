@@ -521,4 +521,198 @@ def relation_matrix(report, *, lag=0):
                        blocked=blocked[c["id"]], events=c.get("events")) for c in channels],
         cells=cells, qualification=report["qualification"],
         limitations=["Correlação de valores no fechamento nominal; não comprova disponibilidade histórica nem lucro.",
-                     "Indicador × alvo exige alvo e produtor com contrato explícito (T18.6); não incluído aqui."])
+                     "O alvo de retorno do preço é target_matrix, horizonte fixo, sobre estes mesmos preços; não é PnL nem o produtor T18.6."])
+
+
+def _numeric(values):
+    return pd.Series([np.nan if value is None else value for value in values], dtype=float)
+
+
+def _closes(report):
+    prices = report.get("prices")
+    if not prices:
+        raise ValueError("Análise sem preços congelados; não há retorno para cruzar.")
+    closes = []
+    for row in prices:
+        if not row or len(row) < 4 or row[3] is None:
+            closes.append(np.nan)
+        else:
+            closes.append(float(row[3]))
+    series = pd.Series(closes, dtype=float)
+    if len(series) != len(report["times"]):
+        raise ValueError("Preços e grade temporal com tamanhos diferentes.")
+    return series
+
+
+def forward_close_return(closes, horizon):
+    """Retorno bruto do fechamento `horizon` barras à frente. A barra sem futuro fica ausente, nunca zero."""
+    if horizon not in PREDICTIVE_LAGS:
+        raise ValueError(f"Horizonte {horizon} fora dos fixos {PREDICTIVE_LAGS}.")
+    future = closes.shift(-horizon)
+    base = closes.where(closes > 0)
+    out = future / base - 1.0
+    return out.where(np.isfinite(out))
+
+
+def _rank_effect(x, y):
+    """Spearman só onde os dois lados existem. Constante não vira correlação zero."""
+    valid = x.notna() & y.notna() & np.isfinite(x) & np.isfinite(y)
+    n = int(valid.sum())
+    left, right = x[valid], y[valid]
+    if n < 3:
+        return n, None, "INSUFFICIENT_PAIRS", left, right
+    if left.nunique() < 2 or right.nunique() < 2:
+        return n, None, "CONSTANT_SERIES", left, right
+    effect = float(left.corr(right, method="spearman"))
+    if not np.isfinite(effect):
+        return n, None, "CONSTANT_SERIES", left, right
+    return n, float(np.clip(effect, -1, 1)), None, left, right
+
+
+def _channel_block(channel):
+    events = channel.get("events") or {}
+    if events.get("usable") is False:
+        return "UNCONFIRMED_EVENT"
+    return (channel.get("diagnosis") or {}).get("code")
+
+
+def target_matrix(report, *, horizon=1):
+    """Indicador × retorno bruto do preço no horizonte fixo. Não é trade, R nem produtor T18.6."""
+    closes = _closes(report)
+    target = forward_close_return(closes, horizon)
+    target_id = f"price.forward_return:{horizon}"
+    cells = []
+    for channel in report["channels"]:
+        blocked = _channel_block(channel)
+        n, effect, reason, xs, ys = _rank_effect(_numeric(channel["values"]), target)
+        if blocked:
+            reason, effect = blocked, None
+        oos = None if reason else _temporal_split(xs.reset_index(drop=True), ys.reset_index(drop=True))
+        cells.append(dict(left=channel["id"], right=target_id, lag_bars=horizon, effect=effect, n_pairs=n,
+            unique_source_pairs=n, direction_correlation=None,
+            relation="PREDICTIVE_CANDIDATE", verdict=(oos or {}).get("verdict"),
+            holdout_ci_95=(oos or {}).get("holdout_ci_95"),
+            state="UNAVAILABLE" if reason else "EXPLORATORY", reason=reason,
+            reason_text=MATRIX_REASONS.get(reason) or (
+                f"Spearman do valor contra o retorno do fechamento {horizon} barras à frente. "
+                "Não é resultado de operação.")))
+    return dict(analysis_id=report["analysis_id"], symbol=report["symbol"],
+        grid_timeframe=report["grid_timeframe"], as_of=report["selection"]["as_of"], lag_bars=horizon,
+        method="spearman_value_vs_forward_close_return", target=target_id,
+        formula_source_sha256=report["formula_source_sha256"],
+        channels=[dict(id=c["id"], name=c["name"], timeframe=c["timeframe"]) for c in report["channels"]],
+        source=[dict(first_open_utc=report["times"][0], last_close_utc=report["times"][-1])],
+        cells=[cells], qualification=report.get("qualification"),
+        limitations=["Retorno bruto do preço; sem custo, slippage ou fill.",
+                     "A última barra do horizonte não tem alvo e fica de fora, não entra como zero.",
+                     "Consistência fora da amostra não é previsão calibrada nem preset."])
+
+
+def stability_windows(report, left_id, right_id, *, lag=0, blocks=4):
+    """Quatro blocos cronológicos iguais. Bloco sem pares fica ausente; não é interpolado nem zerado."""
+    if blocks < 2:
+        raise ValueError("A linha do tempo precisa de ao menos dois blocos.")
+    channels = {c["id"]: c for c in report["channels"]}
+    if left_id not in channels or right_id not in channels:
+        raise ValueError("Canal ausente na análise congelada.")
+    times = pd.to_datetime(report["times"])
+    x = _numeric(channels[left_id]["values"]).shift(lag)
+    y = _numeric(channels[right_id]["values"])
+    if len(x) != len(times) or len(y) != len(times):
+        raise ValueError("Canal e grade temporal com tamanhos diferentes.")
+    edges = np.linspace(0, len(times), blocks + 1).astype(int)
+    cut = int(len(times) * FIT_FRACTION)
+    windows = []
+    for start, end in zip(edges[:-1], edges[1:]):
+        n, effect, reason, _xs, _ys = _rank_effect(x.iloc[start:end], y.iloc[start:end])
+        opening, closing = times[start], times[max(start, end - 1)]
+        stamp = "%Y-%m-%d %H:%M"
+        windows.append(dict(
+            start=opening.strftime(stamp), end=closing.strftime(stamp),
+            center=times[(start + max(start, end - 1)) // 2].strftime(stamp),
+            segment="Ajuste" if end <= cut else "Fora da amostra",
+            value=effect, value_text="—" if effect is None else f"{effect:+.2f}".replace(".", ","),
+            ci="IC da janela não é recalculado; o corte 70/30 do par está no relatório.",
+            n=f"n={n}", n_pairs=n, reason=reason,
+            utility_state="INCONCLUSIVE",
+            evidence_state="EXPLORATORY" if effect is not None else "INSUFFICIENT",
+            freshness_state="CURRENT", presence_state="UNKNOWN",
+            support_state="bloco cronológico fixo",
+            reason_text=MATRIX_REASONS.get(reason, "Spearman no bloco; ausência não é correlação zero.")))
+    return dict(left=left_id, right=right_id, lag_bars=lag, blocks=blocks, windows=windows,
+                method="spearman_equal_chronological_blocks")
+
+
+def direction_outcomes(report, channel_id, *, horizon=1):
+    """Conta o sinal do retorno futuro quando a intenção do canal é compra ou venda.
+
+    As três faixas somam o denominador. Não há trade, R nem custo.
+    """
+    channel = next((c for c in report["channels"] if c["id"] == channel_id), None)
+    if channel is None:
+        raise ValueError("Canal ausente na análise congelada.")
+    directions = _numeric(channel["directions"])
+    returns = forward_close_return(_closes(report), horizon)
+    if len(directions) != len(returns):
+        raise ValueError("Intenções e preços com tamanhos diferentes.")
+    rows = []
+    for sign, label in ((1.0, "Intenção de compra"), (-1.0, "Intenção de venda")):
+        chosen = returns[directions.eq(sign) & returns.notna()]
+        gains, losses = int((chosen > 0).sum()), int((chosen < 0).sum())
+        flats = int((chosen == 0).sum())
+        total = int(len(chosen))
+        if gains + losses + flats != total:
+            raise RuntimeError("As faixas de retorno não fecham com o denominador.")
+        rows.append(dict(label=label, sign=int(sign), wins=gains, losses=losses, flats=flats,
+            censored=0, n_total=total, n_mature=total, presence_state="UNKNOWN", freshness_state="CURRENT",
+            utility_state="INCONCLUSIVE", evidence_state="EXPLORATORY" if total else "INSUFFICIENT",
+            reason="Retorno bruto do fechamento futuro condicionado à intenção. Não é operação."))
+    return dict(channel_id=channel_id, horizon_bars=horizon, directions=rows,
+        population=f"{report['symbol']} {report['grid_timeframe']} · retorno bruto em {horizon} barras",
+        cost_status="custos não aplicados; expectativa líquida de trades não é calculada",
+        unit="contagem de fechamentos; ganho = retorno > 0, perda = retorno < 0, empate = retorno 0")
+
+
+def holdout_comparison(report):
+    """ρ fora da amostra já gravado no par, menos a persistência do alvo. A UI não recalcula."""
+    rows = []
+    for pair in report.get("pairs") or []:
+        oos = pair.get("out_of_sample") or {}
+        if pair.get("relation") != "PREDICTIVE_CANDIDATE" or not oos:
+            continue
+        effect, naive = oos.get("holdout_correlation"), oos.get("naive_holdout_correlation")
+        delta = None if effect is None or naive is None else float(effect) - float(naive)
+        ci = oos.get("holdout_ci_95")
+        rows.append(dict(
+            label=f"{pair['left']} → {pair['right']} +{pair['lag_bars']}",
+            effect=None if effect is None else float(effect),
+            effect_text="—" if effect is None else f"{effect:+.2f}".replace(".", ","),
+            ci=("IC não calculado" if not ci else f"IC 95%: {ci[0]:+.2f} a {ci[1]:+.2f}".replace(".", ",")),
+            n=f"n={oos.get('holdout_pairs')}", delta=delta,
+            delta_text="—" if delta is None else f"{delta:+.2f}".replace(".", ","),
+            verdict=oos.get("verdict") or "—",
+            utility_state="INCONCLUSIVE", evidence_state="EXPLORATORY", freshness_state="CURRENT",
+            presence_state="UNKNOWN", support_state="corte 70/30 do serviço",
+            reason="Diferença de ρ contra a persistência do alvo. Não é R por operação."))
+    return rows
+
+
+def research_candidates(report):
+    """Pares que o próprio relatório marcou consistentes fora da amostra. A tela não os reclassifica."""
+    rows = []
+    for pair in report.get("pairs") or []:
+        verdict = (pair.get("out_of_sample") or {}).get("verdict")
+        if verdict != "HOLDOUT_CONSISTENT":
+            continue
+        holdout = pair["out_of_sample"].get("holdout_correlation")
+        rows.append(dict(
+            id=pair["left"] + "→" + pair["right"],
+            proposal=f"{pair['left']} antecede {pair['right']} em {pair['lag_bars']} barras",
+            scope=f"{report['symbol']} · grade {report['grid_timeframe']}",
+            window=f"ajuste {int(FIT_FRACTION * 100)}% · fora {100 - int(FIT_FRACTION * 100)}%",
+            evidence_state="EXPLORATORY", freshness_state="CURRENT", presence_state="UNKNOWN",
+            utility_state="INCONCLUSIVE", support_state="corte temporal do serviço",
+            validity="pesquisa; sem ação de aplicar preset ou Expert",
+            reason=(f"ρ fora da amostra {holdout:+.3f}. Consistência exploratória não autoriza operação."
+                    if holdout is not None else "Consistente fora da amostra, sem efeito numérico.")))
+    return rows

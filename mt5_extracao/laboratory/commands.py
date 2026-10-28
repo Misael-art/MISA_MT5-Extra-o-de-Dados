@@ -44,6 +44,10 @@ def add_parser(sub):
     matrix.add_argument("--analysis", required=True, help="JSON gerado por analyze --out")
     matrix.add_argument("--lag", type=int, default=0, help="defasagem fixa do relatório: 0, 1, 3 ou 6")
     matrix.set_defaults(func=run)
+    target = actions.add_parser("target", help="indicador × retorno bruto do preço, horizonte fixo")
+    target.add_argument("--analysis", required=True)
+    target.add_argument("--horizon", type=int, default=1, help="1, 3 ou 6 barras da grade")
+    target.set_defaults(func=run)
 
 
 def run(args, ctx):
@@ -66,6 +70,9 @@ def run(args, ctx):
     elif args.laboratory_action == "matrix":
         report = service.load_report(Path(args.analysis).expanduser().read_text(encoding="utf-8"))
         result = service.relation_matrix(report, lag=args.lag)
+    elif args.laboratory_action == "target":
+        report = service.load_report(Path(args.analysis).expanduser().read_text(encoding="utf-8"))
+        result = service.target_matrix(report, horizon=args.horizon)
     elif args.laboratory_action == "sources":
         result = dict(sources=service.sources(ctx.db),
             source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")

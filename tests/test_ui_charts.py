@@ -23,7 +23,8 @@ def test_heatmap_keeps_explicit_sample_counts_hatching_and_readable_ticks():
 
     charts.heatmap(chart, ax, value, count, small, "Expectativa", metric_name="Expectativa")
 
-    assert [text.get_text() for text in ax.texts] == ["n=12", "—\nn=0", "n=44", "n=5"]
+    assert [text.get_text() for text in ax.texts] == ["1,20", "—", "-0,40", "0,00"]
+    assert all(text.get_rotation() == 0 for text in ax.texts)
     assert len(ax.patches) == 3
     assert all(text.get_fontsize() >= TYPOGRAPHY["chart_tick"] for text in ax.texts)
     assert all(label.get_fontsize() >= TYPOGRAPHY["chart_tick"] for label in ax.get_xticklabels())
