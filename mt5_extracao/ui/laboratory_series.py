@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from mt5_extracao import timeframes
-from mt5_extracao.laboratory import service
+from mt5_extracao.laboratory import derived, service
 from . import charts
 from .components import DetailsPanel, Notice
 from .theme import Tooltip
@@ -31,6 +31,27 @@ PARAMETER_LABELS = {
     "offset_atr": "Offset SL (ATR)", "hilo_period": "Período HiLo", "hilo_offset": "Deslocamento HiLo (0)",
     "stop_buffer_points": "Folga SL (pontos)",
 }
+
+
+def _draw_candles(ax, times, price, theme):
+    """Cada candle é um segmento próprio. Um buraco de tempo não vira linha entre barras."""
+    from matplotlib.collections import LineCollection
+    from matplotlib.dates import date2num
+    stamps = pd.to_datetime(times)
+    x = date2num(stamps.to_pydatetime())
+    ohlc = np.array([[np.nan if value is None else value for value in row] for row in price], dtype=float)
+    colors = [theme.colors["good"] if close >= op else theme.colors["bad"] for op, _, _, close in ohlc]
+    ax.add_collection(LineCollection([[(at, low), (at, high)] for at, (_, high, low, _) in zip(x, ohlc)],
+                                     colors=colors, linewidths=.7))
+    ax.add_collection(LineCollection([[(at, op), (at, close)] for at, (op, _, _, close) in zip(x, ohlc)],
+                                     colors=colors, linewidths=2.2))
+    span = (x[-1] - x[0]) if len(x) > 1 else 1 / 1440
+    pad_x = max(span * 0.02, 1 / 1440)
+    ax.set_xlim(x[0] - pad_x, x[-1] + pad_x)
+    low, high = np.nanmin(ohlc[:, 2]), np.nanmax(ohlc[:, 1])
+    pad = (high - low) * 0.05 or 1e-5
+    ax.set_ylim(low - pad, high + pad)
+    return x, ohlc
 
 
 def timeline_bins(channels, max_columns):
@@ -153,7 +174,8 @@ class AnalysisChart:
         self.frame = ttk.Frame(parent, style="Surface.TFrame", padding=8)
         header = ttk.Frame(self.frame, style="Surface.TFrame")
         header.pack(fill=tk.X)
-        ttk.Label(header, text=title, style="Heading.TLabel").pack(side=tk.LEFT)
+        self.heading = ttk.Label(header, text=title, style="Heading.TLabel")
+        self.heading.pack(side=tk.LEFT)
         self.expand_button = ttk.Button(header, text="Ampliar ↗", command=self.expand)
         self.expand_button.pack(side=tk.RIGHT)
         self.chart = charts.Chart(self.frame, theme, height=3.2)
@@ -163,6 +185,10 @@ class AnalysisChart:
         self._resize_jobs = {}
         self.chart.canvas.mpl_connect("resize_event", lambda _: self._resized(self.chart))
         self.frame.bind("<Destroy>", self._destroyed, add="+")
+
+    def set_heading(self, text):
+        self.heading.configure(text=text)
+        self.title = text
 
     def _resized(self, chart):
         # Matplotlib já redimensiona os demais gráficos. Só o mapa temporal
@@ -227,6 +253,8 @@ class SeriesLaboratoryPanel:
         self.ui, self.theme = ui, ui.theme
         self.frame = ttk.Frame(parent, padding=4)
         self.report = None
+        self.derived_read = None
+        self._price_heading = "Preço e indicador no mesmo relógio"
         self._request = 0
         self._selection_revision = 0
         self._columns = None
@@ -249,7 +277,7 @@ class SeriesLaboratoryPanel:
         self.body = ttk.Frame(self.canvas)
         self._body_id = self.canvas.create_window(0, 0, anchor="nw", window=self.body)
         self.panels = {}
-        for key, title, render in (("price", "Preço e indicador no mesmo relógio", self._price),
+        for key, title, render in (("price", self._price_heading, self._price),
                 ("timeline", "Estratégia entre tempos gráficos", self._timeline),
                 ("relations", "Indicadores × estratégia × TF", self._relations),
                 ("lags", "Defasagens e confluências", self._lags),
@@ -498,48 +526,58 @@ class SeriesLaboratoryPanel:
             if not symbols:
                 self.status.configure(text="Base sem séries compatíveis com esta captura OHLCV. "
                     "Confira inventário/Analytics antes de extrair mais dados.")
-        self.ui.run_bg(lambda: service.sources(self.ui.app.db_manager), done)
+        self.ui.run_bg(lambda: derived.chart_sources(self.ui.app.db_manager), done)
 
     def _symbol_changed(self, *_):
         previous = {self._tfs[i] for i in self.tf_list.curselection()} if hasattr(self, "_tfs") else set()
-        self._tfs = [item["timeframe"] for item in self._inventory if item["symbol"] == self.symbol.get()]
+        self._tf_items = [item for item in self._inventory if item["symbol"] == self.symbol.get()]
+        self._tfs = [item["timeframe"] for item in self._tf_items]
         self.tf_list.delete(0, tk.END)
-        chosen = previous & set(self._tfs) or set(self._tfs[:3])
-        for index, tf in enumerate(self._tfs):
-            self.tf_list.insert(tk.END, tf)
-            if tf in chosen:
+        native = [item["timeframe"] for item in self._tf_items if not item.get("synthetic")]
+        chosen = previous & set(self._tfs) or set((native or self._tfs)[:3])
+        for index, item in enumerate(self._tf_items):
+            label = item["timeframe"] + (" · sintético" if item.get("synthetic") else "")
+            self.tf_list.insert(tk.END, label)
+            if item["timeframe"] in chosen:
                 self.tf_list.selection_set(index)
         self._changed()
 
     def analyze(self):
         from mt5_extracao.automation.protocol import loads
         try:
-            if self._params_error:
-                raise ValueError(self._params_error)
-            params = loads(self.params.get())
-            if not isinstance(params, dict):
-                raise ValueError("Parâmetros exigem objeto JSON.")
             symbol = self.symbol.get()
-            tfs = [self._tfs[i] for i in self.tf_list.curselection()]
-            feature_ids = [item["feature_id"] for item in self.catalog["indicators"]
-                           if item["feature_id"] in self._chosen_features]
-            strategy = None if self.strategy.get() == "Sem estratégia" else self.strategy.get()
-            extras = [self._compare_keys[index] for index in self.compare_list.curselection()]
-            request_kwargs = comparison_arguments(strategy, params, extras)
-            n_strategies = (len(request_kwargs["strategies"]) if "strategies" in request_kwargs
-                            else bool(request_kwargs.get("strategy_key")))
-            if not symbol or not tfs:
+            chosen = [self._tf_items[i] for i in self.tf_list.curselection()] if hasattr(self, "_tf_items") else []
+            plan = derived.selection_plan(chosen)
+            tfs = [item["timeframe"] for item in chosen]
+            if plan != "derived" and self._params_error:
+                raise ValueError(self._params_error)
+            if not symbol or plan == "empty":
                 raise ValueError("Escolha ativo e pelo menos um timeframe da base.")
-            if not feature_ids and not n_strategies:
-                raise ValueError("Escolha indicadores ou uma estratégia para analisar.")
-            if strategy is not None:
-                service.base_composition(strategy, symbol=symbol, timeframe=tfs[0], params=params)
-            for key in request_kwargs.get("strategies", []):
-                if isinstance(key, str):
-                    service.base_composition(key, symbol=symbol, timeframe=tfs[0],
-                                             params=service.get_strategy(key).params)
-            if (len(feature_ids) + n_strategies) * len(tfs) > service.MAX_CHANNELS:
-                raise ValueError("Máximo de 32 canais; reduza indicadores ou TFs para este recorte.")
+            if plan == "mixed":
+                raise ValueError(
+                    "M7 e M9 não entram na captura nativa. Leia o sintético sozinho ou escolha só tempos do MT5.")
+            feature_ids, request_kwargs = [], {}
+            if plan == "native":
+                params = loads(self.params.get())
+                if not isinstance(params, dict):
+                    raise ValueError("Parâmetros exigem objeto JSON.")
+                feature_ids = [item["feature_id"] for item in self.catalog["indicators"]
+                               if item["feature_id"] in self._chosen_features]
+                strategy = None if self.strategy.get() == "Sem estratégia" else self.strategy.get()
+                extras = [self._compare_keys[index] for index in self.compare_list.curselection()]
+                request_kwargs = comparison_arguments(strategy, params, extras)
+                n_strategies = (len(request_kwargs["strategies"]) if "strategies" in request_kwargs
+                                else bool(request_kwargs.get("strategy_key")))
+                if not feature_ids and not n_strategies:
+                    raise ValueError("Escolha indicadores ou uma estratégia para analisar.")
+                if strategy is not None:
+                    service.base_composition(strategy, symbol=symbol, timeframe=tfs[0], params=params)
+                for key in request_kwargs.get("strategies", []):
+                    if isinstance(key, str):
+                        service.base_composition(key, symbol=symbol, timeframe=tfs[0],
+                                                 params=service.get_strategy(key).params)
+                if (len(feature_ids) + n_strategies) * len(tfs) > service.MAX_CHANNELS:
+                    raise ValueError("Máximo de 32 canais; reduza indicadores ou TFs para este recorte.")
         except (ValueError, AttributeError) as error:
             self.status.configure(text=str(error))
             return
@@ -548,8 +586,13 @@ class SeriesLaboratoryPanel:
         start, end = self.start.get() or None, self.end.get() or None
         self.pending = True
         self.analyze_button.state(["disabled"])
-        self.status.configure(text="Congelando a seleção pela API de snapshots e calculando os cruzamentos…")
+        if plan == "derived":
+            self.status.configure(text="Lendo as barras já gravadas. Esta leitura não agrega candles nem congela snapshot.")
+        else:
+            self.status.configure(text="Congelando a seleção pela API de snapshots e calculando os cruzamentos…")
         def work():
+            if plan == "derived":
+                return derived.read_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end)
             snapshots = service.capture_selection(self.ui.app.db_manager, symbol=symbol,
                 timeframes_selected=tfs, start=start, end=end)
             return service.analyze(snapshots, feature_ids=feature_ids,
@@ -563,12 +606,16 @@ class SeriesLaboratoryPanel:
                 self.status.configure(text="Seleção mudou durante o cálculo; resultado antigo não publicado. Analise a seleção atual.")
             elif error:
                 self.status.configure(text=f"Análise indisponível: {error}")
+            elif report.get("kind") == "stored_derived":
+                self.set_derived(report)
             else:
                 self.set_report(report)
         self.ui.run_bg(work, done)
 
     def set_report(self, report):
         from mt5_extracao.laboratory.annotations import Study
+        self.derived_read = None
+        self.panels["price"].set_heading(self._price_heading)
         if self.study is None or self.study.analysis_id != report["analysis_id"]:
             self.study = Study.for_report(report)  # anotações nunca migram para outra análise
         self.report = report
@@ -594,6 +641,25 @@ class SeriesLaboratoryPanel:
             + (f"\n… e mais {len(empty_channels(report)) - 3} canais sem dados (ver Cobertura)."
                if len(empty_channels(report)) > 3 else ""))
         self._channel_changed(redraw=False)
+        self._layout()
+        self.redraw()
+
+    def set_derived(self, read):
+        """Desenha barras já gravadas. Não é análise, não calcula indicador e não cria candle."""
+        self.report = None
+        self.study = None
+        self.derived_read = read
+        self.panels["price"].set_heading("Barras gravadas · sintético · não é tempo do MT5")
+        self.channel_box.configure(values=[])
+        self.detail_channel.set("")
+        names = ", ".join(f"{item['timeframe']} {item['rows']}" for item in read["series"])
+        gaps = sum(item["gaps"] for item in read["series"])
+        self.notice.message.configure(text=read["note"] +
+            ". Leitura das barras já gravadas. Sem indicador, sem relação e sem operação.")
+        self.status.configure(text=(
+            f"{read['symbol']} · {names} barras completas · {gaps} intervalos sem grupo completo · "
+            "leitura independente, sem comparação sincronizada · " + read["note"]))
+        self.channel_details.configure(text="")
         self._layout()
         self.redraw()
 
@@ -631,6 +697,8 @@ class SeriesLaboratoryPanel:
             if key == "price" and self.report:
                 panes = chart_groups(self.report["channels"], self.study.hidden, "", self.study.removed)["panes"]
                 height += PANE_HEIGHT * len(panes)
+            if key == "price" and self.derived_read:
+                height += PANE_HEIGHT * max(0, len(self.derived_read["series"]) - 1)
             panel.chart.widget.configure(height=height)
         self.canvas.configure(height=1600 if extended else 2000)
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -660,6 +728,11 @@ class SeriesLaboratoryPanel:
             panel.redraw()
 
     def _ready(self, chart):
+        if self.derived_read is not None and not self.report:
+            chart.message("Leitura das barras gravadas em _bars_derived.\n"
+                          "Sintético, âncora 00:00 da corretora, não é tempo do MT5.\n"
+                          "Indicadores, relações e estratégias não entram neste recorte.")
+            return False
         if not self.report:
             chart.message("Selecione séries reais e use Congelar e analisar.\nNenhum dado demonstrativo é apresentado nesta visão.")
             return False
@@ -711,26 +784,21 @@ class SeriesLaboratoryPanel:
         chart.draw()
 
     def _price(self, chart):
+        if self.derived_read is not None and not self.report:
+            self._price_derived(chart)
+            return
         if not self._ready(chart):
             return
-        from matplotlib.collections import LineCollection
-        from matplotlib.dates import AutoDateLocator, ConciseDateFormatter, date2num
+        from matplotlib.dates import AutoDateLocator, ConciseDateFormatter
         report = self.report
         selected = next((item for item in report["channels"] if item["id"] == self.detail_channel.get()),
                         report["channels"][0])
         times = pd.to_datetime(report["times"], utc=True)
-        x = date2num(times.to_pydatetime())
-        price = np.array([[np.nan if v is None else v for v in row] for row in report["prices"]], dtype=float)
         groups = chart_groups(report["channels"], self.study.hidden, selected["id"], self.study.removed)
         ratios = [3] + [1] * len(groups["panes"])
         axes = np.atleast_1d(chart.figure.subplots(len(ratios), 1, sharex=True, gridspec_kw=dict(height_ratios=ratios)))
         ax = axes[0]
-        colors = [self.theme.colors["good"] if close >= op else self.theme.colors["bad"] for op, _, _, close in price]
-        ax.add_collection(LineCollection([[(at, low), (at, high)] for at, (_, high, low, _) in zip(x, price)],
-                                         colors=colors, linewidths=.7))
-        ax.add_collection(LineCollection([[(at, op), (at, close)] for at, (op, _, _, close) in zip(x, price)],
-                                         colors=colors, linewidths=2.2))
-        ax.autoscale_view()
+        x, price = _draw_candles(ax, times, report["prices"], self.theme)
         grid_tf = timeframes.parse(report["grid_timeframe"])
         expected = times[:-1] + (pd.offsets.MonthBegin(1) if grid_tf.name == "MN1" else pd.Timedelta(minutes=grid_tf.minutes))
         splits = np.flatnonzero(times[1:] != expected) + 1
@@ -816,6 +884,21 @@ class SeriesLaboratoryPanel:
                                          visible="cursor" in view) for target in axes]
         chart.draw()
         ax.callbacks.connect("xlim_changed", self._zoom_changed)
+
+    def _price_derived(self, chart):
+        from matplotlib.dates import AutoDateLocator, ConciseDateFormatter
+        read = self.derived_read
+        chart.clear()
+        axes = np.atleast_1d(chart.figure.subplots(len(read["series"]), 1, sharex=False))
+        for ax, item in zip(axes, read["series"]):
+            _draw_candles(ax, item["times"], item["prices"], self.theme)
+            charts.style_axis(ax, self.theme,
+                f"{read['symbol']} {item['timeframe']} · {read['note']} · "
+                f"{item['rows']} barras · {item['gaps']} intervalos sem grupo · horário da corretora")
+            locator = AutoDateLocator(minticks=3, maxticks=6)
+            ax.xaxis.set_major_locator(locator)
+            ax.xaxis.set_major_formatter(ConciseDateFormatter(locator))
+        chart.draw()
 
     def _draw_annotations(self, ax):
         for item in self.study.items if self.study else ():
@@ -1116,7 +1199,10 @@ class SeriesLaboratoryPanel:
 
     def export(self):
         if self.report is None:
-            self.status.configure(text="Congele uma análise antes de exportar.")
+            if self.derived_read is not None:
+                self.status.configure(text="Esta leitura não é uma análise congelada e não se exporta como estudo.")
+            else:
+                self.status.configure(text="Congele uma análise antes de exportar.")
             return
         path = filedialog.asksaveasfilename(parent=self.frame, defaultextension=".json",
                                            initialfile="laboratorio-" + self.report["analysis_id"][:12] + ".json")
@@ -1150,7 +1236,10 @@ class SeriesLaboratoryPanel:
         """Conecta ao gerador Default/Manual existente; nenhuma inferência financeira na UI."""
         from mt5_extracao.presets import NATIVE_PRESET_KEYS
         if self.report is None:
-            self.status.configure(text="Congele uma análise para levar seu ativo/TF ao gerador de presets.")
+            if self.derived_read is not None:
+                self.status.configure(text="A leitura sintética não vai ao gerador de presets. Congele uma análise nativa.")
+            else:
+                self.status.configure(text="Congele uma análise para levar seu ativo/TF ao gerador de presets.")
             return
         robots_panel = getattr(self.ui, "robots_panel", None)
         robots = [robot for robot in getattr(robots_panel, "robots", []) if robot.key in NATIVE_PRESET_KEYS]

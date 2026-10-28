@@ -48,8 +48,9 @@ Todos permanecem **pendentes**, salvo o registro documental LAB-SA-00.
 | SA-02 · EST-IND, BD06/07/18/19 | P1 · **Agente do pilar de dados já existente** | Cálculo e persistência do Super ATR, com coluna/projeção consultável pelo usuário e série canônica identificada por parâmetros/versão/linha/seed/janela/fonte. Store aditivo, consulta e as-of/qualidade, repetição idempotente, revisão preservada e paridade declarada com MQL. Laboratório e Expert são consumidores, não donos de outro storage. |
 
 M7/M9, em 2026-10-28: o produtor de barras derivadas grava esses tempos em
-`_bars_derived` com âncora 00:00, grupos completos e rótulo `M7`/`M9`. Isso não
-fecha o LAB-07 nem o SA-01/SA-02. Séries ainda não desenha `_bars_derived`.
+`_bars_derived` com âncora 00:00, grupos completos e rótulo `M7`/`M9`. Séries
+desenha essa leitura, rotulada como sintética, sem agregar na UI. Isso não
+fecha o LAB-07 nem o SA-01/SA-02.
 
 As quatro comparações não são a mesma entrega: indicador entre TFs, estratégia
 entre TFs, estratégias diferentes no mesmo ativo e preset idêntico entre ativos.

@@ -3116,3 +3116,20 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
 - Banco compartilhado com o atalho: 138 MB, só EURUSD. Séries lê o inventário nativo
   (M1, M5, M15, M30, H1, H4, D1). Séries ainda não desenha `_bars_derived`.
   Super ATR não começou. Este lote não rodou pytest e não republica o preview.
+
+## Séries lê as barras M7 e M9 já gravadas · 2026-10-28 (PR 212)
+
+- A frase da seção anterior vale para a extração. Este lote é o leitor. `laboratory.derived`
+  chama `analytics.resampling.latest_bars` e não agrega, não extrai, não grava e não cria tabela.
+  M7 e M9 continuam fora do enum `Timeframe` e fora de `datasets.capture`.
+- A lista mostra `M7 · sintético`. A seleção inicial continua nos tempos nativos. Misturar sintético
+  e nativo é recusado. O gráfico desenha só a última revisão fechada, no horário da corretora,
+  com o rótulo de âncora 00:00. Um intervalo sem grupo completo não vira linha nem candle curto.
+  Vários tempos sintéticos ficam em eixos independentes, sem comparação sincronizada.
+  Indicadores, relações, estratégias, exportação e preset não entram nesse recorte.
+- CLI: `laboratory derived --symbol EURUSD --tf M7`. Sem `--tf`, só lista o que já está gravado.
+- Testes no Xvfb: `test_laboratory_derived.py` e `test_ui_laboratory_series.py`, 27 passou e 1 pulado
+  pela geometria do monitor, em 94 s. Doctor `--development --no-probe`: 16 OK, avisos pandas-ta
+  e integração nativa não sondada.
+- Não fecha LAB-07, SA-01/02, Super ATR, relógio IANA, Tester, conta real nem aceite visual.
+  O offset +3 continua local e só vale até 2026-10-24.

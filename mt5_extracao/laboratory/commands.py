@@ -20,6 +20,14 @@ def add_parser(sub):
     inventory.add_argument("--cursor")
     inventory.set_defaults(func=run)
     actions.add_parser("sources", help="tabelas OHLCV em TFs nativos; somente leitura").set_defaults(func=run)
+    derived_read = actions.add_parser(
+        "derived", help="lê barras de dia exato já gravadas em _bars_derived; não agrega nem extrai")
+    derived_read.add_argument("--symbol", help="se omitido, lista as séries gravadas")
+    derived_read.add_argument("--tf", action="append", help="tempo sintético já gravado, por exemplo M7; repita para vários")
+    derived_read.add_argument("--start", help="início no relógio da corretora, sem fuso")
+    derived_read.add_argument("--end", help="fim no relógio da corretora, sem fuso")
+    derived_read.add_argument("--head", type=int, default=0, help="inclui as primeiras N barras; o restante fica só na contagem")
+    derived_read.set_defaults(func=run)
     freeze = actions.add_parser("freeze", help="congela seleção explícita no store de snapshots existente")
     freeze.add_argument("--symbol", required=True)
     freeze.add_argument("--tf", action="append", required=True, help="TF da base; repita para comparar")
@@ -84,6 +92,31 @@ def run(args, ctx):
     elif args.laboratory_action == "sources":
         result = dict(sources=service.sources(ctx.db),
             source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")
+    elif args.laboratory_action == "derived":
+        from . import derived
+        if args.tf:
+            if not args.symbol:
+                raise ValueError("Informe --symbol junto com --tf. Esta leitura não varre a conta.")
+            result = derived.public_summary(derived.read_stored(
+                ctx.db, args.symbol, args.tf, start=args.start, end=args.end), head=args.head)
+        else:
+            listed = derived.list_stored(ctx.db)
+            if args.symbol:
+                listed = [item for item in listed if item["symbol"] == args.symbol]
+            result = dict(series=listed, note=derived.NOTE, kind="stored_derived_index")
+        if result.get("kind") == "stored_derived":
+            cli._print(result["note"])
+            for item in result["series"]:
+                cli._print(f"{result['symbol']} {item['timeframe']}: {item['rows']} barras completas, "
+                           f"{item['gaps']} intervalos sem grupo completo. {result['note']}")
+        else:
+            cli._print(result["note"])
+            if not result["series"]:
+                cli._print("Nenhuma barra de dia exato gravada. Gere com resample --session-aware. "
+                           "Esta leitura não cria candles.")
+            for item in result["series"]:
+                cli._print(f"{item['symbol']} {item['timeframe']}: {item['rows']} barras, "
+                           f"{item['start']} → {item['end']}. {item['note']}")
     elif args.laboratory_action == "freeze":
         snapshots = service.capture_selection(ctx.db, symbol=args.symbol, timeframes_selected=args.tf,
                                               start=args.start, end=args.end)

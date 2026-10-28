@@ -93,15 +93,17 @@ paralela. `analyze` reabre os manifests e não altera fontes. `--strategy-only`
 dispensa indicadores; sem `--feature`, usa cinco definições padrão do catálogo.
 `--out` e a exportação da UI recusam sobrescrever arquivos existentes.
 
-O escopo de fontes desta visão é `DatabaseManager.data_inventory` com TFs nativos
-do enum, consumidos por `datasets.capture`. M7 e M9 já têm produtor em
-`analytics/resampling.py` (`exact_day`: âncora 00:00, grupos completos, rótulo
-`M7`/`M9` em `_bars_derived`). Esta visão não os lê e não os agrega na UI.
-Sessões e fatos materializados com disponibilidade real continuam no
-Analytics/BD18a; não são convertidos em tabela legada nem misturados a esta
-reconstrução nominal. A ligação gráfica desses leitores continua sendo um
-próximo contrato com a frente de dados. “Sem série compatível” nesta visão
-não significa que a base inteira esteja vazia.
+O congelamento desta visão continua em `DatabaseManager.data_inventory` com TFs
+nativos do enum, consumidos por `datasets.capture`. M7 e M9 não entram nesse
+enum. A leitura gráfica usa o que já está em `_bars_derived`: `laboratory.derived`
+chama `analytics.resampling.latest_bars` e desenha só a última revisão fechada.
+O rótulo é sintético, âncora 00:00 do calendário da corretora, não é tempo do
+MT5. A UI não agrega, não preenche buraco e não mistura esses tempos com a
+captura nativa. Vários tempos sintéticos aparecem em eixos independentes, sem
+comparação sincronizada. Indicadores, relações e estratégias ficam de fora
+desse recorte. CLI: `laboratory derived`. Sessões e fatos materializados com
+disponibilidade real continuam no Analytics/BD18a. “Sem série compatível”
+nesta visão não significa que a base inteira esteja vazia.
 
 ```python
 from mt5_extracao.laboratory import analyze, capture_selection, catalog

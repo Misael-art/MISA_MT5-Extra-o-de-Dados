@@ -111,6 +111,48 @@ def test_no_profile_does_not_fabricate_an_exportable_preset(panel, snapshots):
     assert "Nenhum perfil nativo" in series.status.cget("text")
 
 
+def test_stored_m7_draws_as_synthetic_and_stays_out_of_native_capture(panel):
+    from types import SimpleNamespace
+    import pandas as pd
+    from mt5_extracao.analytics import resampling
+    from mt5_extracao.laboratory import service
+    from tests.test_analytics_calendar import m1_bars
+
+    panel.db.save_ohlcv_data("EURUSD", "1 minuto", m1_bars(pd.date_range("2026-09-14 00:00", periods=7, freq="min")))
+    resampling.resample_symbol(panel.db, "EURUSD", ["M7"], symbol_info=SimpleNamespace(name="EURUSD"))
+    series = open_series(panel)
+
+    def listed():
+        return series.tf_list.size() > 0 and any(
+            "sintético" in series.tf_list.get(i) for i in range(series.tf_list.size()))
+
+    panel.pump(listed, 5)
+    labels = [series.tf_list.get(i) for i in range(series.tf_list.size())]
+    assert "M7 · sintético" in labels
+    assert "M1" in labels
+    series.tf_list.selection_clear(0, "end")
+    synthetic = labels.index("M7 · sintético")
+    native = labels.index("M1")
+    series.tf_list.selection_set(native)
+    series.tf_list.selection_set(synthetic)
+    series.analyze()
+    assert "não entram na captura nativa" in series.status.cget("text")
+    series.tf_list.selection_clear(0, "end")
+    series.tf_list.selection_set(synthetic)
+    series.analyze()
+    panel.pump(lambda: series.derived_read is not None and not series.pending, 5)
+    assert series.report is None
+    title = series.panels["price"].chart.figure.axes[0].get_title(loc="left")
+    assert "sintético" in title and "não é tempo do MT5" in title
+    assert len(series.panels["price"].chart.figure.axes[0].collections) == 2
+    relations = series.panels["relations"].chart.figure.axes[0].texts[0].get_text()
+    assert "não entram neste recorte" in relations
+    with pytest.raises(ValueError, match="timeframes distintos"):
+        service.capture_selection(panel.db, symbol="EURUSD", timeframes_selected=["M7"])
+    series.export()
+    assert "não se exporta como estudo" in series.status.cget("text")
+
+
 def test_visual_reduction_preserves_rare_events_and_conflicts_not_as_neutral():
     from mt5_extracao.ui.laboratory_series import timeline_bins
     import numpy as np
