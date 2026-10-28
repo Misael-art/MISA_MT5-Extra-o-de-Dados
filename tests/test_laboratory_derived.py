@@ -103,7 +103,7 @@ def test_compare_stored_waits_for_the_slower_close_and_does_not_fill_gaps(db):
     resampling.resample_symbol(db, "EURUSD", ["M9"], symbol_info=SimpleNamespace(name="EURUSD"))
     before = rows()
     aligned = derived.compare_stored(
-        db, "EURUSD", ["M9", "M7"], feature_ids=["momentum.rsi_14"], strategy_key="ema_atr",
+        db, "EURUSD", ["M9", "M7"], feature_ids=["momentum.rsi_14", "structure.fractals_5_strict_top"], strategy_key="ema_atr",
         as_of="2026-10-01T00:00:00Z")
     m9 = next(row for row in aligned["channels"] if row["timeframe"] == "M9")
     stored_m9 = resampling.latest_bars(db, "EURUSD", "M9")
@@ -116,6 +116,9 @@ def test_compare_stored_waits_for_the_slower_close_and_does_not_fill_gaps(db):
     assert "PREDICTIVE_CANDIDATE" in {row["relation"] for row in aligned["pairs"] if row["lag_bars"] > 0}
     assert service.load_report(json.dumps(aligned))["analysis_id"] == aligned["analysis_id"]
     assert rows() == before
+    public = derived.public_comparison(aligned)
+    assert [row["events"] for row in public["channels"]] == [row.get("events") for row in aligned["channels"]]
+    assert [row["event_sample"] for row in public["pairs"]] == [row["event_sample"] for row in aligned["pairs"]]
 
     gapped = list(pd.date_range("2026-09-15 00:00", periods=18, freq="min")) + list(
         pd.date_range("2026-09-15 00:21", periods=18, freq="min"))

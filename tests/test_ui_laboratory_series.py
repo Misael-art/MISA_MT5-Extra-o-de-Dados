@@ -30,6 +30,21 @@ def test_real_series_area_is_separate_from_demo_and_ledger_filters(panel):
     assert panel.filter_bar.winfo_manager()
 
 
+def test_pivot_pair_tooltip_discloses_events_separately_from_bars(panel, snapshots):
+    from types import SimpleNamespace
+    from mt5_extracao.laboratory import service
+    series = open_series(panel)
+    result = service.analyze(snapshots, feature_ids=["structure.fractals_5_strict_top", "momentum.rsi_14"],
+                             as_of="2025-02-01T00:00:00Z")
+    series.set_report(result)
+    chart = series.panels["relations"].chart
+    text = chart.hover[0](SimpleNamespace(inaxes=chart.figure.axes[0], xdata=1, ydata=0))
+    assert "eventos distintos (confirmações representadas)" in text and "contagem de barras não mede eventos" in text
+    series.detail_channel.set(result["channels"][0]["id"])
+    series._channel_changed(redraw=False)
+    assert "disponível no fechamento nominal" in series.channel_details.cget("text")
+
+
 def test_all_views_render_frozen_report_and_small_screen_can_scroll_wide(panel, snapshots):
     series = open_series(panel)
     report = analysis(snapshots, strategy_key="ema_atr")

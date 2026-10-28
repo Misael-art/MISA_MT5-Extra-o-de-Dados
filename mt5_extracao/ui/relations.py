@@ -265,6 +265,7 @@ def _source_feed(matrix) -> str:
 
 def _lab_cell(cell, matrix):
     """Formata a célula do serviço; estados e motivos vêm prontos, a UI só escolhe tom pelo efeito."""
+    from mt5_extracao.ui.laboratory_series import event_sample_text
     effect = cell["effect"]
     if effect is None:
         label, strength = _REASON_LABELS.get(cell["reason"], cell["reason"]), "missing"
@@ -284,7 +285,7 @@ def _lab_cell(cell, matrix):
         "method": "Spearman dos valores alinhados", "scale": "−1…+1; sinal é associação, não lucro",
         "effect_ci": (f"IC 95% fora da amostra (direção): {ci[0]:+.2f} a {ci[1]:+.2f}" if ci else "IC não calculado"),
         "support_state": (f"{cell['unique_source_pairs']} pares de origem distintos" if cell["unique_source_pairs"]
-                          is not None else "pares de origem não informados"),
+                          is not None else "pares de origem não informados") + event_sample_text(cell.get("event_sample")),
         "segment": "descritiva" if cell["lag_bars"] == 0 else f"candidata preditiva +{cell['lag_bars']} · {verdict}",
         "period": f"{matrix['source'][0]['first_open_utc']} a {matrix['source'][0]['last_close_utc']}",
         "available_at": f"corte {matrix['as_of']} · fechamento nominal, recebimento histórico não comprovado",

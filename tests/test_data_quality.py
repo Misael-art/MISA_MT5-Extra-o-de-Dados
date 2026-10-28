@@ -1,6 +1,9 @@
 import datetime as dt
+from pathlib import Path
 
 import pandas as pd
+import numpy as np
+import pytest
 from sqlalchemy import text
 
 from mt5_extracao import data_quality
@@ -52,6 +55,54 @@ def test_empty():
     assert data_quality.check_quality(pd.DataFrame())["rows"] == 0
 
 
+@pytest.mark.parametrize("column", ["open", "high", "low", "close"])
+@pytest.mark.parametrize("bad", [None, np.nan, np.inf, -np.inf, "inválido"])
+def test_missing_or_nonfinite_price_never_passes_as_clean(column, bad):
+    frame = _bars(pd.date_range("2024-01-02 09:00", periods=3, freq="min"))
+    frame[column] = frame[column].astype(object)
+    frame.loc[1, column] = bad
+    before = frame.copy(deep=True)
+    report = data_quality.check_quality(frame)
+    assert report["nonfinite_ohlc"]["count"] == 1
+    assert data_quality.blocks_price_analysis(report) and data_quality.has_problems(report)
+    pd.testing.assert_frame_equal(frame, before)
+
+
+def test_invalid_times_and_original_order_are_diagnosed_without_discarding_rows():
+    frame = _bars(["2024-01-02 09:02", "2024-01-02 09:00", "2024-01-02 09:01"])
+    frame.time = frame.time.astype(object)
+    frame.loc[2, "time"] = "sem horário"
+    report = data_quality.check_quality(frame)
+    assert report["rows"] == 3
+    assert report["invalid_time"]["count"] == report["unordered_time"]["count"] == 1
+    assert data_quality.blocks_price_analysis(report)
+    frame.time = None
+    report = data_quality.check_quality(frame)
+    assert report["invalid_time"]["count"] == 3 and report["bars_per_day"]["days"] == 0
+
+
+def test_missing_price_column_is_not_a_clean_dataset():
+    report = data_quality.check_quality(_bars(["2024-01-02"]).drop(columns="high"))
+    assert report["nonfinite_ohlc"]["count"] == 1
+
+
+def test_nullable_prices_and_volumes_are_not_silently_skipped():
+    frame = _bars(pd.date_range("2024-01-02", periods=2, freq="min"))
+    frame["high"] = pd.Series([11, pd.NA], dtype="Float64")
+    frame["tick_volume"] = pd.Series([5, pd.NA], dtype="Int64")
+    report = data_quality.check_quality(frame)
+    assert report["nonfinite_ohlc"]["count"] == report["invalid_volume"]["count"] == 1
+
+
+def test_missing_negative_and_nonfinite_volume_are_distinct_from_zero():
+    frame = _bars(pd.date_range("2024-01-02", periods=4, freq="min"), tick_volume=[0, None, -1, np.inf])
+    report = data_quality.check_quality(frame)
+    assert report["zero_volume"]["count"] == 1
+    assert report["invalid_volume"]["count"] == 3
+    assert not data_quality.blocks_price_analysis(report)
+    assert data_quality.has_problems(report)
+
+
 def test_quality_json_column_added_to_old_databases(tmp_path):
     path = tmp_path / "old.db"
     db = DatabaseManager(db_path=str(path))
@@ -63,3 +114,20 @@ def test_quality_json_column_added_to_old_databases(tmp_path):
     db2 = DatabaseManager(db_path=str(path))
     db2.record_block("t", dt.datetime(2024, 1, 2), dt.datetime(2024, 1, 3), 1, "ok", "mt5", quality={"rows": 1})
     assert db2.quality_reports("t")[0][1] == {"rows": 1}
+
+
+def test_frozen_v3_quality_still_imports_and_exports_byte_for_byte(tmp_path):
+    from mt5_extracao.analytics import datasets
+    fixture = Path(__file__).parent / "fixtures/data_quality/dataset_v3_legacy_quality.json"
+    db = DatabaseManager(db_path=str(tmp_path / "receiver.sqlite"), broker_utc_offset=0)
+    try:
+        snapshot = datasets.import_snapshot(db, fixture)
+        restored = datasets.load(db, snapshot.manifest_id)
+        assert restored.quality["ohlcv_diagnostic"]["zero_volume"]["count"] == 2
+        exported = tmp_path / "snapshot.json"
+        datasets.export_snapshot(db, restored.manifest_id, exported)
+        assert exported.read_bytes() == fixture.read_bytes()
+        current = data_quality.check_quality(restored.bars)
+        assert current["invalid_volume"]["count"] == current["zero_volume"]["count"] == 1
+    finally:
+        db.close()

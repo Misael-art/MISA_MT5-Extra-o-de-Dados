@@ -12,6 +12,13 @@ e especificação atual; nenhuma conta, conexão, caminho ou credencial. O teste
 importa e exporta os mesmos bytes sem herdar ticks que existam na base receptora.
 O formato1 continua coberto pelo fixture real anterior em ../datasets/v1.json.
 
+`dataset_v3_legacy_quality.json` foi gerado com `data_quality.check_quality` e
+`data_eligibility.assess` de 5e8acf75b1bd838db13e97ee3894fedc1ab56c8f. Contém três
+barras H1 sintéticas QA/Fake-Demo, com um volume ausente e um zero. Exercita o
+round-trip byte a byte de snapshots v3 após a ampliação do diagnóstico da UI,
+incluindo a contagem histórica que agrupava volume ausente com zero. Não contém
+dados de mercado do proprietário, contas, credenciais ou caminhos pessoais.
+
 `native_quality_row.html` conserva somente a linha de qualidade do relatório
 real do ensaio MetaTester6272/Wine da T20.3 (EURUSD H1 MetaQuotes-Demo, 2025-01-06).
 A linha declara `100% real ticks`; não é uma declaração apenas do modelo4.
@@ -28,6 +35,7 @@ SHA-256 do texto decodificado:
 
 Hashes dos fixtures:
 
+- `dataset_v3_legacy_quality.json`: `e022f63abb558738e201a3d9f7543aa9c285015d5c3599b16810149f725fc400`
 - `dataset_v2.json`: `ca8adf794669dc28b55410ecdd4e5dac4e8052fa219cffb4f4611b4942d18e6c`
 - `native_quality_row.html`: `35b1285928a126442f54a6a921c6f57fed463221197173ae886d7302dc7b2904`
 - `registry_definitions.json`: `dd47686328a3d7cba810fdf1fbea474bbe8c2ec48a08e98b1bcddc4735706cdf`

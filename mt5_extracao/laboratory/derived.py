@@ -194,11 +194,15 @@ def _align_minutes(channel, grid, minutes):
     """Junta o valor no fechamento da grade e o retém só até o fechamento seguinte da origem."""
     source = pd.DataFrame(dict(at=channel["source_end"], source_end=channel["source_end"],
         value=channel["values"].to_numpy(), direction=channel["direction"].to_numpy()))
+    if "event_at" in channel:
+        source["event_at"] = channel["event_at"]
     joined = pd.merge_asof(pd.DataFrame(dict(at=grid)), source, on="at", direction="backward")
     expiry = joined.source_end + pd.Timedelta(minutes=int(minutes))
     valid = joined.source_end.notna() & (joined["at"] < expiry)
     joined.loc[~valid, ["value", "direction"]] = np.nan
     joined.loc[~valid, "source_end"] = pd.NaT
+    if "event_at" in joined:
+        joined.loc[~valid, "event_at"] = pd.NaT
     return joined
 
 
@@ -243,13 +247,15 @@ def _series_channels(frame, label, minutes, feature_ids, strategies, cutoff):
         if not check["eligible"]:
             values[:] = np.nan
         rule, legend = study_catalog.rule(definition)
-        events = service._events(rows, definition) if ident.startswith("structure.") else None
+        events = service._events(rows, definition, starts, ends) if ident.startswith("structure.") else None
         direction = service._direction(values, bars["close"], rule)
         result.append(dict(id=f"{label}:{ident}", feature=ident, name=definition["name"], timeframe=label,
             parameters=definition["parameters"], unit=definition["unit"], rule=rule, legend=legend,
             algorithm_version=definition["algorithm_version"], values=values, direction=direction,
             source_end=ends, source_start=starts, eligibility=check,
             states=dict(Counter(rows.state)), warmup=definition["warmup_count"], events=events))
+        if events is not None:
+            result[-1]["event_at"] = service._event_times(rows, ends)
     for strategy in strategies:
         check = eligibility_for(dict(required_columns=strategy.required_columns, source_id="bars"))
         values = pd.Series(np.nan, index=bars.index, dtype=float)
@@ -331,7 +337,7 @@ def compare_stored(db, symbol, timeframes_selected, *, start=None, end=None,
     output_channels = []
     for channel, frame in zip(channels, aligned):
         summary = {key: value for key, value in channel.items() if key not in
-                   {"values", "direction", "source_start", "source_end"}}
+                   {"values", "direction", "source_start", "source_end", "event_at"}}
         summary.update(available=int(frame.value.notna().sum()), total=len(frame),
             source_rows=len(channel["values"]), source_available=int(channel["values"].notna().sum()),
             candidate_counts=dict(long=int(channel["values"].eq(1).sum()), short=int(channel["values"].eq(-1).sum()))
@@ -340,6 +346,8 @@ def compare_stored(db, symbol, timeframes_selected, *, start=None, end=None,
             values=[float(value) if pd.notna(value) and np.isfinite(value) else None for value in frame.value],
             directions=[int(value) if pd.notna(value) else None for value in frame.direction],
             source_ends=[value.isoformat() if pd.notna(value) else None for value in frame.source_end])
+        if "event_at" in frame:
+            summary["event_confirmation_ends"] = [value.isoformat() if pd.notna(value) else None for value in frame.event_at]
         summary["diagnosis"] = service.diagnose(channel, source_rows=summary["source_rows"],
             source_available=summary["source_available"], available=summary["available"])
         output_channels.append(summary)
@@ -385,10 +393,12 @@ def public_comparison(report):
     """Resumo da comparação, sem a série de preços nem os valores de cada barra."""
     channels = [dict(id=row["id"], timeframe=row["timeframe"], name=row["name"],
                      available=row["available"], total=row["total"],
-                     diagnosis=row.get("diagnosis")) for row in report["channels"]]
+                     events=row.get("events"), diagnosis=row.get("diagnosis")) for row in report["channels"]]
     pairs = [dict(left=row["left"], right=row["right"], lag_bars=row["lag_bars"],
                   relation=row["relation"], correlation=row["correlation"], n_pairs=row["n_pairs"],
                   reason=row["reason"],
+                  event_sample=row.get("event_sample"),
+                  holdout_event_sample=(row.get("out_of_sample") or {}).get("event_sample"),
                   verdict=(row.get("out_of_sample") or {}).get("verdict"))
              for row in report["pairs"]]
     return dict(kind=report["kind"], symbol=report["symbol"], synthetic=True, note=report["note"],

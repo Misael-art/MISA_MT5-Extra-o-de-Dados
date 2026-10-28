@@ -163,9 +163,21 @@ def _events_text(events):
     if not events or not events["usable"]:
         return ""
     delay = events["delay_bars"]
+    latest = events.get("latest")
     return (f"{events['confirmations']} pivôs confirmados, valor só na confirmação"
             + (f" (atraso {delay['min']}–{delay['max']} barras após a origem)" if delay else "")
-            + (f", último há {events['bars_since_last_confirmation']} barras" if delay else "") + " · ")
+            + (f", último há {events['bars_since_last_confirmation']} barras" if delay else "")
+            + (f" · origem {latest['origin_bar_open_utc']}, confirmação {latest['confirmation_bar_open_utc']}, "
+               f"disponível no fechamento nominal {latest['available_at_nominal_utc']} (recebimento não comprovado)"
+               if latest else "") + " · ")
+
+
+def event_sample_text(sample):
+    if not sample:
+        return ""
+    counts = [f"{name}={sample[key]}" for name, key in (("esquerda", "left_events"), ("direita", "right_events"))
+              if sample.get(key) is not None]
+    return " · eventos distintos (confirmações representadas): " + ", ".join(counts) + " · contagem de barras não mede eventos independentes"
 
 class AnalysisChart:
     """O detalhe amplia o mesmo DTO; fechar restaura a região e a seleção originais."""
@@ -1159,7 +1171,8 @@ class SeriesLaboratoryPanel:
             pair = pair_lookup.get((int(round(event.ydata)), int(round(event.xdata))))
             if pair:
                 return f"{pair['left']} × {pair['right']}\nr={pair['correlation']} · n={pair['n_pairs']} · " \
-                       f"pares de origem={pair['unique_source_pairs']} · {pair['reason'] or 'exploratório'}"
+                       f"pares de origem={pair['unique_source_pairs']} · {pair['reason'] or 'exploratório'}" \
+                       + event_sample_text(pair.get("event_sample"))
             return None
         chart.hover.append(hover)
         chart.draw()
@@ -1233,7 +1246,10 @@ class SeriesLaboratoryPanel:
                           f"{'—' if split.get('null_band_95') is None else format(split['null_band_95'], '.3f')} · "
                           f"alvo defasado r={r(split.get('naive_holdout_correlation'))} · {VERDICTS[split['verdict']]}"
                           if split else f"r={r(row['correlation'])} n={row['n_pairs']} · descritiva")
-                lines.append(f"{row['left']} → {row['right']}: {detail}")
+                lines.append(f"{row['left']} → {row['right']}: {detail}"
+                             + event_sample_text(row.get("event_sample"))
+                             + ("\nFora da amostra" + event_sample_text(split.get("event_sample"))
+                                if split and split.get("event_sample") else ""))
             return "\n".join(lines[:6]) or None
         chart.hover.append(hover)
         charts.style_axis(ax, self.theme, "Preditor selecionado → primeiros 5 canais · descritiva × preditiva · sem ranking")

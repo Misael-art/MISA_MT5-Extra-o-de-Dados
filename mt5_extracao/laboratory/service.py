@@ -35,6 +35,8 @@ LIMITATIONS = (
     "fora da amostra, acima da faixa nula por deslocamento circular e da persistência do próprio alvo, ainda sem calibração, custos ou validação de estratégia.",
     "Pivôs (fractais/ZigZag) entram só na barra de confirmação, nunca na origem; a saída provisória é desenho, "
     "fica fora das relações e o atraso origem→confirmação fica registrado por canal.",
+    "Barras que retêm um pivô não são novos eventos. Contagens de eventos nos pares são distintas das barras; "
+    "o corte 70/30 e seus controles continuam por barras, sem validação estatística por eventos independentes.",
     "Intenções da estratégia não são fills, reversões confirmadas nem aceite operacional do robô.",
     "Estratégias comparadas no mesmo ativo são intenções do gerador no preço congelado; operação, execução, "
     "custos e PnL continuam ausentes. Ativo, origem ou relógio diferentes são recusados, não misturados.",
@@ -142,7 +144,7 @@ def _direction(values, close, rule):
     return np.sign(difference).where(np.isfinite(difference))
 
 
-def _events(rows, definition):
+def _events(rows, definition, starts=None, ends=None):
     """Eventos de pivô: valor só existe a partir da confirmação; provisório nunca vira relação."""
     if definition["parameters"]["output"] == "provisional":
         return dict(basis="provisional_drawing", usable=False, confirmations=0, delay_bars=None,
@@ -150,9 +152,23 @@ def _events(rows, definition):
     confirmed = [(position, meta) for position, meta in enumerate(rows.pivot_metadata)
                  if isinstance(meta, dict) and meta.get("new_confirmation")]
     delays = [meta["pivot_confirmation_position"] - meta["pivot_origin_position"] for _, meta in confirmed]
-    return dict(basis="confirmation_bar_close", usable=True, confirmations=len(confirmed),
+    latest = None
+    if confirmed and starts is not None and ends is not None:
+        _, meta = confirmed[-1]
+        origin, confirmation = int(meta["pivot_origin_position"]), int(meta["pivot_confirmation_position"])
+        latest = dict(origin_bar_open_utc=starts[origin].isoformat(),
+            confirmation_bar_open_utc=starts[confirmation].isoformat(),
+            available_at_nominal_utc=ends[confirmation].isoformat(), historical_receipt_proven=False)
+    return dict(basis="confirmation_bar_close", usable=True, confirmations=len(confirmed), latest=latest,
         delay_bars=dict(min=min(delays), median=float(np.median(delays)), max=max(delays)) if delays else None,
         bars_since_last_confirmation=len(rows) - 1 - confirmed[-1][0] if confirmed else None)
+
+
+def _event_times(rows, ends):
+    """Identidade do evento retido: fechamento nominal da confirmação, nunca barra corrente/origem."""
+    return pd.to_datetime([ends[int(meta["pivot_confirmation_position"])]
+        if isinstance(meta, dict) and meta.get("pivot_confirmation_position") is not None else pd.NaT
+        for meta in rows.pivot_metadata], utc=True)
 
 
 def _channels(snapshot, feature_ids, strategies, cutoff):
@@ -190,13 +206,15 @@ def _channels(snapshot, feature_ids, strategies, cutoff):
         if not check["eligible"]:
             values[:] = np.nan
         rule, legend = study_catalog.rule(definition)
-        events = _events(rows, definition) if ident.startswith("structure.") else None
+        events = _events(rows, definition, starts, ends) if ident.startswith("structure.") else None
         direction = _direction(values, pd.to_numeric(bars.close, errors="coerce"), rule)
         result.append(dict(id=f"{tf.name}:{ident}", feature=ident, name=definition["name"], timeframe=tf.name,
             parameters=definition["parameters"], unit=definition["unit"], rule=rule, legend=legend,
             algorithm_version=definition["algorithm_version"], values=values, direction=direction,
             source_end=ends, source_start=starts, eligibility=check,
             states=dict(Counter(rows.state)), warmup=definition["warmup_count"], events=events))
+        if events is not None:
+            result[-1]["event_at"] = _event_times(rows, ends)
     for strategy in strategies:
         check = eligibility_for(dict(required_columns=strategy.required_columns, source_id="bars"))
         values = pd.Series(np.nan, index=bars.index, dtype=float)
@@ -222,6 +240,8 @@ def _channels(snapshot, feature_ids, strategies, cutoff):
 def _align(channel, grid):
     source = pd.DataFrame(dict(at=channel["source_end"], source_end=channel["source_end"],
         value=channel["values"].to_numpy(), direction=channel["direction"].to_numpy()))
+    if "event_at" in channel:
+        source["event_at"] = channel["event_at"]
     joined = pd.merge_asof(pd.DataFrame(dict(at=grid)), source, on="at", direction="backward")
     tf = timeframes.parse(channel["timeframe"])
     expiry = joined.source_end + (pd.offsets.MonthBegin(1) if tf.name == "MN1" else pd.Timedelta(minutes=tf.minutes))
@@ -229,6 +249,8 @@ def _align(channel, grid):
     valid = joined.source_end.notna() & (joined["at"] < expiry)
     joined.loc[~valid, ["value", "direction"]] = np.nan
     joined.loc[~valid, "source_end"] = pd.NaT
+    if "event_at" in joined:
+        joined.loc[~valid, "event_at"] = pd.NaT
     return joined
 
 
@@ -353,7 +375,12 @@ def _pair(left, right, lag, unconfirmed=False):
               else "CONSTANT_SERIES" if x.nunique() < 2 or y.nunique() < 2 else None)
     effect = None if reason else float(np.clip(x.corr(y), -1, 1))
     active = (x != 0) & (y != 0)
+    event_sample = _event_sample(left, right, lag, valid)
+    split = None if lag == 0 or reason else _temporal_split(x, y, right.direction.shift(lag)[valid])
+    if split is not None and event_sample is not None:
+        split["event_sample"] = _event_sample(left, right, lag, valid, holdout=True)
     return dict(lag_bars=lag, n_pairs=n, unique_source_pairs=unique, correlation=effect,
+        event_sample=event_sample,
         left_source_bars=int(left.source_end.shift(lag)[valid].nunique()),
         right_source_bars=int(right.source_end[valid].nunique()),
         agreement=float((x == y).mean()) if n else None, active_pairs=int(active.sum()),
@@ -362,7 +389,28 @@ def _pair(left, right, lag, unconfirmed=False):
         # Defasagem 0 só descreve co-movimento; com defasagem o preditor antecede o alvo e
         # exige o corte temporal. Consistência fora da amostra não é previsão calibrada.
         relation="DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE",
-        out_of_sample=None if lag == 0 or reason else _temporal_split(x, y, right.direction.shift(lag)[valid]))
+        out_of_sample=split)
+
+
+def _event_sample(left, right, lag, valid, *, holdout=False):
+    """Conta apenas eventos representados nos pares válidos, inclusive depois do corte temporal."""
+    if "event_at" not in left and "event_at" not in right:
+        return None
+    events = {}
+    for side, frame, shift in (("left", left, lag), ("right", right, 0)):
+        if "event_at" in frame:
+            values = frame.event_at.shift(shift)[valid]
+            events[side] = values.iloc[int(len(values) * FIT_FRACTION):] if holdout else values
+    return dict(left_events=int(events["left"].nunique()) if "left" in events else None,
+        right_events=int(events["right"].nunique()) if "right" in events else None,
+        unique_event_pairs=int(pd.DataFrame(events).dropna().drop_duplicates().shape[0]) if len(events) == 2 else None,
+        basis="distinct_confirmation_closes_in_valid_pairs", independent_events_proven=False)
+
+
+def _report_events(channel, count):
+    values = channel.get("event_confirmation_ends")
+    return (pd.DataFrame(dict(event_at=pd.to_datetime(values, utc=True))) if values is not None
+            else pd.DataFrame(index=range(count)))
 
 
 def _resolve_strategies(strategy_key, strategy_params, strategies, symbol, timeframe):
@@ -445,7 +493,7 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
     output_channels = []
     for channel, frame in zip(channels, aligned):
         summary = {key: value for key, value in channel.items() if key not in
-                   {"values", "direction", "source_start", "source_end"}}
+                   {"values", "direction", "source_start", "source_end", "event_at"}}
         summary.update(available=int(frame.value.notna().sum()), total=len(frame),
             source_rows=len(channel["values"]), source_available=int(channel["values"].notna().sum()),
             candidate_counts=dict(long=int(channel["values"].eq(1).sum()), short=int(channel["values"].eq(-1).sum()))
@@ -454,6 +502,8 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
             values=[float(value) if pd.notna(value) and np.isfinite(value) else None for value in frame.value],
             directions=[int(value) if pd.notna(value) else None for value in frame.direction],
             source_ends=[value.isoformat() if pd.notna(value) else None for value in frame.source_end])
+        if "event_at" in frame:
+            summary["event_confirmation_ends"] = [value.isoformat() if pd.notna(value) else None for value in frame.event_at]
         summary["diagnosis"] = diagnose(channel, source_rows=summary["source_rows"],
             source_available=summary["source_available"], available=summary["available"])
         output_channels.append(summary)
@@ -524,6 +574,7 @@ def relation_matrix(report, *, lag=0):
     channels = report["channels"]
     pairs = {(p["left"], p["right"], p["lag_bars"]): p for p in report["pairs"]}
     values = {c["id"]: pd.Series([np.nan if v is None else v for v in c["values"]], dtype=float) for c in channels}
+    event_frames = {c["id"]: _report_events(c, len(values[c["id"]])) for c in channels}
     blocked = {c["id"]: ("UNCONFIRMED_EVENT" if (c.get("events") or {}).get("usable") is False
                          else (c.get("diagnosis") or {}).get("code")) for c in channels}
     cells = []
@@ -545,6 +596,7 @@ def relation_matrix(report, *, lag=0):
             oos = (pair or {}).get("out_of_sample") or {}
             row.append(dict(left=a, right=b, lag_bars=lag, effect=effect, n_pairs=int(valid.sum()),
                 unique_source_pairs=(pair or {}).get("unique_source_pairs"),
+                event_sample=_event_sample(event_frames[a], event_frames[b], lag, valid),
                 direction_correlation=None if reason else (pair or {}).get("correlation"),
                 relation="DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE",
                 verdict=oos.get("verdict"), holdout_ci_95=oos.get("holdout_ci_95"),
@@ -630,7 +682,10 @@ def target_matrix(report, *, horizon=1):
         if blocked:
             reason, effect = blocked, None
         oos = None if reason else _temporal_split(xs.reset_index(drop=True), ys.reset_index(drop=True))
+        valid = _numeric(channel["values"]).notna() & target.notna()
+        event_sample = _event_sample(_report_events(channel, len(target)), pd.DataFrame(index=target.index), 0, valid)
         cells.append(dict(left=channel["id"], right=target_id, lag_bars=horizon, effect=effect, n_pairs=n,
+            event_sample=event_sample,
             unique_source_pairs=n, direction_correlation=None,
             relation="PREDICTIVE_CANDIDATE", verdict=(oos or {}).get("verdict"),
             holdout_ci_95=(oos or {}).get("holdout_ci_95"),

@@ -258,9 +258,12 @@ class AnalysisPanel:
                 return None
             session = (config.get("APP", "session_start", fallback="09:00"),
                        config.get("APP", "session_end", fallback="18:30")) if config else ("09:00", "18:30")
+            quality = data_quality.check_quality(bars, minutes, *session)
+            if data_quality.blocks_price_analysis(quality):
+                return {"quality": quality, "session": session, "blocked": True}
             return {"bars": study.add_indicators(bars), "summary": study.summarize(bars),
                     "seasonality": study.seasonality(bars),
-                    "quality": data_quality.check_quality(bars, minutes, *session), "session": session}
+                    "quality": quality, "session": session}
 
         def done(result, error):
             if request != self._request:
@@ -268,6 +271,12 @@ class AnalysisPanel:
             if error or result is None:
                 self._empty(f"Não foi possível ler {symbol} ({label}): {error}" if error
                             else f"Sem barras de {symbol} ({label}) neste período.")
+                return
+            if result.get("blocked"):
+                self._empty(f"Análise indisponível para {symbol} ({label}): preços ou horários inválidos. "
+                            "Veja Qualidade dos dados e confira a fonte antes de analisar.")
+                self._show_quality(result["quality"], result["session"])
+                self.tabs.select(self.quality_tab)
                 return
             self.data = result["bars"]
             self.result = result
@@ -285,6 +294,11 @@ class AnalysisPanel:
 
     def _empty(self, message):
         self.data = self.candles = None
+        self.result = None
+        self.quality_text.configure(state=tk.NORMAL)
+        self.quality_text.delete("1.0", tk.END)
+        self.quality_text.insert(tk.END, message)
+        self.quality_text.configure(state=tk.DISABLED)
         for value in self.tile_values.values():
             value.config(text="—", style="Value.TLabel")
         self._return_value = None
@@ -325,23 +339,35 @@ class AnalysisPanel:
                  f"Dias com dados: {report['bars_per_day']['days']} "
                  f"(de {report['bars_per_day']['min']} a {report['bars_per_day']['max']} barras por dia, "
                  f"média {fmt_num(report['bars_per_day']['mean'], 1)})", ""]
-        checks = (("gaps", f"Lacunas dentro do pregão ({session[0]}–{session[1]})",
-                   "Faltam barras no meio do pregão. Extraia o período de novo (marque \"Sobrescrever Dados\")."),
+        checks = (("gaps", f"Intervalos sem barras na janela configurada ({session[0]}–{session[1]})",
+                   "Possíveis lacunas: confira sessões, feriados e blocos de extração. Esta verificação não distingue mercado fechado de falha de coleta."),
+                  ("invalid_time", "Horários inválidos ou ausentes", "Confira o contrato temporal e a fonte; nenhum horário foi preenchido."),
+                  ("unordered_time", "Horários fora de ordem na entrada", "Confira a ordenação na origem antes de calcular retornos."),
+                  ("nonfinite_ohlc", "Barras com preço ausente, não numérico ou não finito", "Métricas de preço indisponíveis; confira a fonte sem preencher valores."),
                   ("invalid_ohlc", "Barras com preços inconsistentes (ex.: máxima menor que a mínima)",
                    "Dado suspeito vindo da corretora. Confira estas barras antes de usá-las."),
-                  ("duplicate_time", "Horários repetidos", "Não deveriam existir: extraia o período de novo."),
+                  ("duplicate_time", "Horários repetidos", "Confira origem, revisões e contrato temporal antes de corrigir a base."),
+                  ("invalid_volume", "Barras com volume ausente, negativo ou não finito", "Volume ausente não é zero; confira a fonte antes de analisar volume."),
                   ("zero_volume", "Barras sem volume",
                    "Comum fora do horário de maior liquidez. Só preocupa se forem muitas."))
         for key, label, advice in checks:
-            count = report[key]["count"]
+            check = report.get(key, {"count": 0, "examples": []})
+            count = check["count"]
             lines.append(f"{'✓' if not count else '⚠'}  {label}: {fmt_int(count)}")
             if count:
                 lines.append(f"     {advice}")
-                lines.append("     Exemplos: " + "; ".join(str(x) for x in report[key]["examples"][:3]))
+                lines.append("     Exemplos: " + "; ".join(str(x) for x in check["examples"][:3]))
         if not data_quality.has_problems(report):
-            lines += ["", "Nenhum problema encontrado neste período: os dados estão prontos para estudo."]
+            lines += ["", "Nenhum problema detectado pelas verificações acima neste período."]
         lines += ["", "O horário do pregão usado na verificação vem de [APP] session_start / session_end "
-                      "no arquivo de configuração."]
+                      "no arquivo de configuração. Não é um calendário oficial por símbolo.",
+                  "Estas verificações não certificam cobertura completa, fuso histórico, origem nem fechamento das barras."]
+        db = getattr(self.ui.app, "db_manager", None)
+        if hasattr(db, "time_context"):
+            clock = db.time_context()
+            lines += [f"Relógio configurado: base={clock['time_basis']}; estado={clock['offset_state']}; "
+                      f"offset={clock['broker_utc_offset']}; zona={clock['broker_timezone'] or 'não declarada'}. "
+                      "Configuração declarada não comprova o fuso da fonte nem mudanças históricas de offset."]
         self.quality_text.configure(state=tk.NORMAL)
         self.quality_text.delete("1.0", tk.END)
         self.quality_text.insert(tk.END, "\n".join(lines))

@@ -266,3 +266,22 @@ Capturas de QA do componente real, em Xvfb próprio (sem conta/terminal):
 
 Detalhe ampliado e tema claro estão na mesma pasta. A validação e seus cortes
 estão na [evidência](../evidencias/T20_22_LABORATORIO_SERIES_20261024.json).
+
+### Contagem de eventos de pivô (28/10/2026)
+
+Canais de fractais/ZigZag acrescentam `event_confirmation_ends`: em cada barra da
+grade, o fechamento nominal da confirmação que sustenta o valor retido. Origem,
+barra de confirmação e disponibilidade nominal do último pivô ficam em
+`events.latest`. Recebimento histórico continua não comprovado.
+
+Cada par acrescenta `event_sample` com `left_events`, `right_events` e
+`unique_event_pairs`. As contagens usam só pares válidos, após lag e exclusões;
+um lado sem pivô tem `None`, não zero. O holdout tem sua própria contagem em
+`out_of_sample.event_sample`. Não são tamanho efetivo de amostra nem prova de
+independência; os controles 70/30 continuam por barras. O hover das relações e
+matrizes mostra essa diferença. Relatórios antigos não recebem contagens
+inferidas. Fórmulas, parâmetros e limiares continuam os mesmos.
+São eventos representados pelos valores dos pares; um evento anterior ao corte
+que continua retido no holdout conta como representado, sem se tornar uma nova
+confirmação. O resumo JSON de `laboratory derived --relations` preserva essas
+contagens e os metadados do canal, sem despejar preços por barra.

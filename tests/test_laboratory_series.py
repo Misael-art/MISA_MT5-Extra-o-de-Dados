@@ -344,7 +344,44 @@ def test_pivot_events_enter_only_when_confirmed_and_provisional_is_refused(snaps
     touched = [p for p in result["pairs"] if provisional["id"] in (p["left"], p["right"])]
     assert touched and all(p["reason"] == "UNCONFIRMED_EVENT" and p["correlation"] is None for p in touched)
     assert channels["M5:momentum.rsi_14"]["events"] is None
+    event = top["events"]["latest"]
+    assert event["origin_bar_open_utc"] < event["confirmation_bar_open_utc"] < event["available_at_nominal_utc"]
+    assert event["historical_receipt_proven"] is False
+    assert len(top["event_confirmation_ends"]) == len(result["times"])
+    sample = next(p["event_sample"] for p in result["pairs"]
+                  if p["left"] == top["id"] and p["right"].endswith("momentum.rsi_14") and p["lag_bars"] == 0)
+    assert 0 < sample["left_events"] < top["available"]
+    assert sample["right_events"] is None and sample["independent_events_proven"] is False
     json.dumps(result, allow_nan=False)
+
+
+def test_pair_counts_confirmation_events_after_lag_exclusions_and_holdout():
+    ends = pd.date_range("2025-01-06", periods=200, freq="min", tz="UTC")
+    left = pd.DataFrame(dict(direction=np.tile([1., -1.], 100), source_end=ends,
+                             event_at=[ends[0]] * 150 + [ends[150]] * 50))
+    right = pd.DataFrame(dict(direction=np.tile([-1., 1.], 100), source_end=ends,
+                              event_at=[ends[0]] * 200))
+    right.loc[:19, "direction"] = np.nan
+    result = service._pair(left, right, 1)
+    assert result["n_pairs"] == result["unique_source_pairs"] == 180
+    assert result["event_sample"]["left_events"] == 2
+    assert result["event_sample"]["right_events"] == 1
+    assert result["event_sample"]["unique_event_pairs"] == 2
+    assert result["out_of_sample"]["event_sample"]["left_events"] == 2
+    left.event_at = ends[0]
+    result = service._pair(left, right, 1)
+    assert result["out_of_sample"]["event_sample"]["left_events"] == 1
+    assert result["event_sample"]["unique_event_pairs"] == 1
+
+
+def test_event_identity_expires_with_source_bar_and_is_never_backfilled():
+    at = pd.to_datetime(["2025-01-06T00:05Z", "2025-01-06T01:00Z"])
+    channel = dict(timeframe="M5", source_end=at, values=pd.Series([10., 10.]),
+                   direction=pd.Series([1., -1.]), event_at=at)
+    grid = pd.to_datetime(["2025-01-06T00:04Z", "2025-01-06T00:05Z", "2025-01-06T00:10Z", "2025-01-06T01:00Z"])
+    aligned = service._align(channel, grid)
+    assert aligned.event_at.isna().tolist() == [True, False, True, False]
+    assert aligned.event_at.iloc[-1] == at[-1]
 
 
 def test_unknown_broker_clock_is_refused_before_freezing(tmp_path, monkeypatch):
