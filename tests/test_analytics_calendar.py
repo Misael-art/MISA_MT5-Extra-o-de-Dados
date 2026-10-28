@@ -8,7 +8,7 @@ from sqlalchemy import text
 
 from mt5_extracao.analytics import calendar, resampling
 from mt5_extracao.database_manager import DatabaseManager
-from mt5_extracao.timeframes import Timeframe
+from mt5_extracao.timeframes import Timeframe, parse as parse_timeframe
 from mt5_extracao import resample as legacy_resample
 
 
@@ -114,7 +114,13 @@ def test_daily_session_bars_do_not_create_rows_for_closed_days():
         "2026-09-11 00:00:00.000000", "2026-09-14 00:00:00.000000"]
     assert resampling.parse_target("1D").mode == "session"
     assert resampling.parse_target("1440min").mode == "fixed_24h"
-    assert resampling.parse_target("M7").minutes == 7
+    m7 = resampling.parse_target("M7")
+    assert (m7.minutes, m7.label, m7.mode) == (7, "M7", "exact_day")
+    assert resampling.parse_target("7min") == m7
+    assert resampling.parse_target("M9") == resampling.TargetTimeframe("M9", 9, "exact_day")
+    assert resampling.parse_target("M5").mode == "intraday"
+    assert resampling.parse_target("H13") == resampling.TargetTimeframe("780min", 780, "intraday")
+    assert parse_timeframe("M7") is None and parse_timeframe("M9") is None
 
 
 def test_late_m1_changes_only_its_derived_bar_and_adds_a_revision(db):
@@ -228,3 +234,162 @@ def test_cli_session_aware_requires_m1_and_records_mt5_symbol_info(tmp_path, mon
         row = conn.execute(text("SELECT source_metadata_json FROM _market_calendar WHERE symbol='EURUSD'"))\
             .scalar_one()
     assert json.loads(row)["symbol_info"]["name"] == "EURUSD"
+
+
+def _day(symbol="EURUSD", periods=1440, start="2026-09-14 00:00", anchor="00:00"):
+    data, sessions = calendar.sessionize_m1(
+        m1_bars(pd.date_range(start, periods=periods, freq="min")), symbol,
+        broker_utc_offset=0, session_anchor=anchor)
+    return data, sessions
+
+
+def test_m7_keeps_complete_groups_and_drops_the_last_five_minutes():
+    data, sessions = _day()
+    included = resampling.exact_day_report(data, sessions, "M7", broker_utc_offset=0, symbol="EURUSD")
+    dropped = resampling.exact_day_report(
+        data, sessions, "M7", broker_utc_offset=0, symbol="EURUSD", partial_last_bar="drop")
+    bars = included["bars"]
+    rejected = included["rejections"]
+
+    assert len(bars) == 205
+    assert [bar["bar_start_broker"] for bar in bars] == [
+        bar["bar_start_broker"] for bar in dropped["bars"]]
+    assert bars[0]["bar_start_broker"] == "2026-09-14 00:00:00.000000"
+    assert bars[-1]["bar_start_broker"] == "2026-09-14 23:48:00.000000"
+    assert all(bar["bar_count"] == 7 and bar["is_partial"] == 0 and bar["coverage_ratio"] == 1.0
+               and bar["quality_status"] == "COMPLETE" and bar["tf"] == "M7" for bar in bars)
+    assert (bars[0]["open"], bars[0]["high"], bars[0]["low"], bars[0]["close"]) == (99.5, 107.0, 99.0, 106.0)
+    assert bars[0]["tick_volume"] == 35 and bars[0]["spread_min"] == 3 and bars[0]["real_volume"] == 91
+    assert rejected["rejected_groups"] == 1 and rejected["excluded_source_rows"] == 5
+    assert rejected["rejected"][0]["start_broker"] == "2026-09-14 23:55:00.000000"
+    assert rejected["rejected"][0]["crosses_midnight"] is True
+    assert resampling.build_bars(data, sessions, "M7", broker_utc_offset=0, symbol="EURUSD") == bars
+
+
+def test_m9_fills_a_complete_broker_day_when_every_minute_exists():
+    data, sessions = _day()
+    report = resampling.exact_day_report(data, sessions, "M9", broker_utc_offset=0, symbol="EURUSD")
+
+    assert len(report["bars"]) == 160
+    assert report["rejections"]["rejected_groups"] == 0
+    assert report["bars"][-1]["bar_start_broker"] == "2026-09-14 23:51:00.000000"
+    assert report["bars"][-1]["bar_end_broker"] == "2026-09-15 00:00:00.000000"
+    assert all(bar["bar_count"] == 9 and bar["is_partial"] == 0 for bar in report["bars"])
+
+
+def test_native_m5_on_a_full_day_keeps_the_clock_floor_including_the_tail():
+    data, sessions = _day()
+    built = resampling.build_bars(data, sessions, "M5", broker_utc_offset=0, symbol="EURUSD")
+
+    assert len(built) == 288
+    assert built[0]["bar_start_broker"] == "2026-09-14 00:00:00.000000"
+    assert built[-1]["bar_start_broker"] == "2026-09-14 23:55:00.000000"
+    assert built[-1]["bar_count"] == 5
+
+
+def test_missing_m9_minute_rejects_only_that_group_and_does_not_fill():
+    times = [stamp for stamp in pd.date_range("2026-09-14 09:00", periods=18, freq="min")
+             if stamp != pd.Timestamp("2026-09-14 09:12")]
+    data, sessions = calendar.sessionize_m1(m1_bars(times), "EURUSD", broker_utc_offset=0)
+    report = resampling.exact_day_report(data, sessions, "M9", broker_utc_offset=0, symbol="EURUSD")
+
+    assert [bar["bar_start_broker"] for bar in report["bars"]] == ["2026-09-14 09:00:00.000000"]
+    assert report["bars"][0]["bar_count"] == 9
+    assert report["rejections"]["rejected_groups"] == 1
+    assert report["rejections"]["rejected"][0]["start_broker"] == "2026-09-14 09:09:00.000000"
+    assert report["rejections"]["rejected"][0]["reasons"] == ["incomplete_minutes"]
+    assert report["rejections"]["excluded_source_rows"] == 8
+
+
+def test_m7_does_not_emit_a_short_bar_across_midnight():
+    times = list(pd.date_range("2026-09-14 23:48", periods=7, freq="min"))
+    times += list(pd.date_range("2026-09-14 23:55", periods=5, freq="min"))
+    times += list(pd.date_range("2026-09-15 00:00", periods=7, freq="min"))
+    data, sessions = calendar.sessionize_m1(m1_bars(times), "EURUSD", broker_utc_offset=0)
+    report = resampling.exact_day_report(data, sessions, "M7", broker_utc_offset=0, symbol="EURUSD")
+
+    assert [bar["bar_start_broker"] for bar in report["bars"]] == [
+        "2026-09-14 23:48:00.000000", "2026-09-15 00:00:00.000000"]
+    assert all(bar["bar_count"] == 7 and bar["is_partial"] == 0 for bar in report["bars"])
+    assert len({bar["session_id"] for bar in report["bars"]}) == 2
+    leftover = report["rejections"]["rejected"]
+    assert len(leftover) == 1 and leftover[0]["rows"] == 5 and leftover[0]["crosses_midnight"] is True
+
+
+def test_mixed_sessions_inside_a_complete_m7_window_are_rejected():
+    data, sessions = _day(periods=7)
+    data = data.copy()
+    data.loc[data.index[-1], "session_id"] = "outra-sessao"
+    report = resampling.exact_day_report(data, sessions, "M7", broker_utc_offset=0, symbol="EURUSD")
+
+    assert report["bars"] == []
+    assert report["rejections"]["rejected"][0]["mixed_sessions"] is True
+    assert "mixed_sessions" in report["rejections"]["rejected"][0]["reasons"]
+
+
+def test_custom_session_anchor_is_not_stored_as_m7_but_m5_still_builds():
+    data, sessions = _day(periods=20, start="2026-09-14 17:00", anchor="17:00")
+
+    with pytest.raises(ValueError, match="00:00"):
+        resampling.build_bars(data, sessions, "M7", broker_utc_offset=0, symbol="EURUSD")
+    with pytest.raises(ValueError, match="dia exato"):
+        resampling.exact_day_report(data, sessions, "M5", broker_utc_offset=0, symbol="EURUSD")
+
+    built = resampling.build_bars(data, sessions, "M5", broker_utc_offset=0, symbol="EURUSD")
+    assert built and all(bar["tf"] == "M5" for bar in built)
+
+
+def test_m7_resample_is_idempotent_and_closed_read_drops_a_short_bar(db):
+    source = list(pd.date_range("2026-09-14 00:00", periods=12, freq="min"))
+    db.save_ohlcv_data("EURUSD", "1 minuto", m1_bars(source))
+    info = SimpleNamespace(name="EURUSD")
+
+    first = resampling.resample_symbol(db, "EURUSD", ["M7"], symbol_info=info)[0]
+    second = resampling.resample_symbol(db, "EURUSD", ["M7"], symbol_info=info)[0]
+
+    assert first["timeframe"] == "M7" and first["synthetic"] is True and first["mt5_predefined"] is False
+    assert first["day_origin"] == "broker_00:00"
+    assert (first["bars"], first["rejected_groups"], first["excluded_source_rows"]) == (1, 1, 5)
+    assert (first["inserted"], first["corrected"], first["unchanged"]) == (1, 0, 0)
+    assert (second["inserted"], second["corrected"], second["unchanged"]) == (0, 0, 1)
+    with db.engine.begin() as conn:
+        row = dict(conn.execute(text("SELECT * FROM _bars_derived WHERE tf='M7'")).mappings().one())
+        assert row["quality_status"] == "COMPLETE" and row["bar_count"] == 7 and row["is_partial"] == 0
+        row["bar_start_utc"] = "2026-09-14T03:07:00.000000+00:00"
+        row["bar_end_utc"] = "2026-09-14T03:09:00.000000+00:00"
+        row["bar_start_broker"] = "2026-09-14 00:07:00.000000"
+        row["bar_end_broker"] = "2026-09-14 00:09:00.000000"
+        row["input_hash"] = "short-not-from-builder"
+        row["bar_count"] = 2
+        names = list(row)
+        conn.execute(text(
+            f"INSERT INTO _bars_derived ({', '.join(names)}) VALUES ({', '.join(':' + name for name in names)})"),
+            row)
+    closed = resampling.latest_bars(db, "EURUSD", "M7", closed_only=True)
+    inspection = resampling.latest_bars(db, "EURUSD", "M7", closed_only=False)
+    assert list(closed["bar_count"]) == [7]
+    assert sorted(int(value) for value in inspection["bar_count"]) == [2, 7]
+
+
+def test_cli_session_aware_m7_says_it_is_synthetic(tmp_path, monkeypatch, capsys):
+    from mt5_extracao import cli
+
+    db_path = tmp_path / "cli-m7.sqlite"
+    DatabaseManager(db_path=str(db_path)).save_ohlcv_data(
+        "EURUSD", "1 minuto", m1_bars(pd.date_range("2026-09-14 00:00", periods=7, freq="min")))
+    config = tmp_path / "config.ini"
+    config.write_text(f"[DATABASE]\ntype = sqlite\npath = {db_path}\n[APP]\ntime_basis = broker\n",
+                      encoding="utf-8")
+    info = SimpleNamespace(name="EURUSD", path="Forex\\EURUSD", digits=5, currency_profit="USD")
+    monkeypatch.setattr(cli.Context, "connector", lambda self: SimpleNamespace(get_symbol_info=lambda symbol: info))
+
+    result = cli.main(["--config", str(config), "resample", "--symbols", "EURUSD", "--base", "M1",
+                       "--tf", "M7", "--session-aware"])
+
+    assert result == cli.EXIT_OK
+    output = capsys.readouterr().out
+    assert "EURUSD M7: 1 barras" in output
+    assert "não é tempo do MT5" in output
+    with DatabaseManager(db_path=str(db_path)).engine.connect() as conn:
+        stored = conn.execute(text("SELECT tf, bar_count, is_partial FROM _bars_derived")).one()
+    assert stored == ("M7", 7, 0)

@@ -3067,3 +3067,20 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
 - Continua fora: LAB-09 (closure de preset), LAB-10 (aceite de DPI/monitor), SA-01/02, M7/M9,
   base ativa do atalho ainda vazia, relógio IANA, qualificação de Tester/conta real e aceite visual
   do proprietário. Este lote não repete o QA EURUSD de 10/10.
+
+## Barras M7 e M9 no dia exato da corretora · 2026-10-28 (PR 212)
+
+- M7 e M9 não entram no enum `Timeframe` e não são tempos predefinidos do MT5. `parse("M7")` continua
+  ausente. O produtor é `analytics/resampling.py`, modo `exact_day`. `M7` e `7min` gravam o rótulo `M7`.
+- A origem é 00:00 do calendário da corretora já armazenado. O grupo só vira barra se cada minuto está
+  presente, na mesma sessão, e o fim não passa da meia-noite seguinte. Minuto ausente recusa o grupo,
+  sem preencher. Os últimos 5 minutos de um dia cheio de M7 não viram candle (205 barras, não 206).
+  M9 fecha o dia em 160 barras quando os 1440 minutos existem. `partial_last_bar=include` não abre
+  exceção. Âncora diferente de 00:00 é outro ensaio e não é gravada como M7/M9.
+- M2, M3, M5, M15, H1 e os demais tempos do enum seguem o piso do relógio. Num dia cheio, o M5 continua
+  com 288 barras, inclusive a das 23:55, e o teste de igualdade com o resample legado permanece.
+- A leitura fechada exige a duração inteira. Séries não lê `_bars_derived` e não agrega M7 na UI.
+  A base do atalho continua vazia; este lote não extraiu M1.
+- Testes: `test_analytics_calendar.py` e `test_bd05_time.py`, 27 passou em 9,04 s.
+- Super ATR, SA-01/02, LAB-07 (comparação sincronizada), LAB-09/10, relógio IANA, Tester, conta real
+  e aceite visual continuam fora. O detalhe do Super ATR fica para conversa antes de qualquer código.

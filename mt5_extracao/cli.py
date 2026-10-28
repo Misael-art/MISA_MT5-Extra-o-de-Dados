@@ -293,8 +293,13 @@ def cmd_resample(args, ctx):
                 continue
             done += rows
             for row in rows:
+                note = ""
+                if row.get("synthetic"):
+                    note = (f"; {row['rejected_groups']} janelas recusadas; sintético, âncora 00:00 do "
+                            "calendário da corretora, não é tempo do MT5")
                 _print(f"{symbol} {row['timeframe']}: {row['bars']} barras observadas de {row['source_bars']} M1; "
-                       f"{row['inserted']} novas, {row['corrected']} corrigidas, {row['unchanged']} inalteradas")
+                       f"{row['inserted']} novas, {row['corrected']} corrigidas, {row['unchanged']} inalteradas"
+                       f"{note}")
         _data(session_aware=True, resampled=done, failed=failed)
         _print(f"\nConcluído: {len(done)} série(s) por sessão, {len(failed)} ativo(s) com falha. "
                "O calendário é inferido das barras M1 observadas; nenhuma barra sem dados foi criada.")
@@ -1738,7 +1743,9 @@ def build_parser():
     p = sub.add_parser("resample", help="monta timeframes legados ou barras analíticas por sessão a partir de M1")
     p.add_argument("--symbols", required=True, help="símbolos separados por vírgula")
     p.add_argument("--base", required=True, help="timeframe já extraído, o menor (ex.: M1)")
-    p.add_argument("--tf", required=True, help="timeframes a montar, separados por vírgula (ex.: M5,M15,H1)")
+    p.add_argument("--tf", required=True,
+                   help="timeframes a montar, separados por vírgula (ex.: M5,M15,H1). "
+                        "No modo --session-aware, M7 e M9 são sintéticos de dia exato e não são tempos do MT5")
     p.add_argument("--from", dest="date_from", help="início AAAA-MM-DD (padrão: toda a base)")
     p.add_argument("--to", dest="date_to", help="fim AAAA-MM-DD")
     p.add_argument("--session-aware", action="store_true",
@@ -1746,9 +1753,11 @@ def build_parser():
     p.add_argument("--session-gap-minutes", type=int, default=60,
                    help="--session-aware: gap M1 maior que este valor abre outra sessão inferida (padrão: 60)")
     p.add_argument("--session-anchor", default="00:00",
-                   help="--session-aware: começo do dia de sessão em HH:MM do horário da corretora (padrão: 00:00)")
+                   help="--session-aware: começo do dia de sessão em HH:MM do horário da corretora (padrão: 00:00). "
+                        "M7/M9 recusam âncora diferente de 00:00: outra âncora é outro ensaio")
     p.add_argument("--partial-last-bar", choices=["include", "drop"], default="include",
-                   help="--session-aware: inclui (padrão) ou descarta o candle final parcial de cada sessão")
+                   help="--session-aware: inclui (padrão) ou descarta o candle final parcial de cada sessão. "
+                        "M7/M9 nunca gravam candle curto")
     p.set_defaults(func=cmd_resample)
 
     p = sub.add_parser("analytics", help="características analíticas versionadas e consultas point-in-time")

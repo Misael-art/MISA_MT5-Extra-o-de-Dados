@@ -94,11 +94,13 @@ dispensa indicadores; sem `--feature`, usa cinco definições padrão do catálo
 `--out` e a exportação da UI recusam sobrescrever arquivos existentes.
 
 O escopo de fontes desta visão é `DatabaseManager.data_inventory` com TFs nativos
-do enum, consumidos por `datasets.capture`. Barras derivadas de intervalos
-arbitrários (por exemplo M7/M9), sessões e fatos materializados com disponibilidade
-real continuam no Analytics/BD18a; não são convertidos em tabela legada nem
-misturados a esta reconstrução nominal. A ligação gráfica desses leitores é
-um próximo contrato com a frente de dados. “Sem série compatível” nesta visão
+do enum, consumidos por `datasets.capture`. M7 e M9 já têm produtor em
+`analytics/resampling.py` (`exact_day`: âncora 00:00, grupos completos, rótulo
+`M7`/`M9` em `_bars_derived`). Esta visão não os lê e não os agrega na UI.
+Sessões e fatos materializados com disponibilidade real continuam no
+Analytics/BD18a; não são convertidos em tabela legada nem misturados a esta
+reconstrução nominal. A ligação gráfica desses leitores continua sendo um
+próximo contrato com a frente de dados. “Sem série compatível” nesta visão
 não significa que a base inteira esteja vazia.
 
 ```python

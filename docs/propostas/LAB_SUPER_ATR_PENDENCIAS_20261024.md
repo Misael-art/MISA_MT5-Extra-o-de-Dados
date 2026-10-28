@@ -47,6 +47,10 @@ Todos permanecem **pendentes**, salvo o registro documental LAB-SA-00.
 | SA-01 · EST-OP, G19.9/13/15 | P1 · Expert Super ATR | Expert que consome a matemática existente e exige confirmação causal entre TFs. Congelar variante de entrada/saída/risco/linhas/TFs antes do código; usar somente barras fechadas disponíveis, recusando confirmação futura/ausente/vencida. Reutilizar risco/executor/host e testar pelos percursos de preset/CLI/atalho. Primeiro recorte Tester+DEMO; sem autorização REAL. |
 | SA-02 · EST-IND, BD06/07/18/19 | P1 · **Agente do pilar de dados já existente** | Cálculo e persistência do Super ATR, com coluna/projeção consultável pelo usuário e série canônica identificada por parâmetros/versão/linha/seed/janela/fonte. Store aditivo, consulta e as-of/qualidade, repetição idempotente, revisão preservada e paridade declarada com MQL. Laboratório e Expert são consumidores, não donos de outro storage. |
 
+M7/M9, em 2026-10-28: o produtor de barras derivadas grava esses tempos em
+`_bars_derived` com âncora 00:00, grupos completos e rótulo `M7`/`M9`. Isso não
+fecha o LAB-07 nem o SA-01/SA-02. Séries ainda não desenha `_bars_derived`.
+
 As quatro comparações não são a mesma entrega: indicador entre TFs, estratégia
 entre TFs, estratégias diferentes no mesmo ativo e preset idêntico entre ativos.
 O inspetor financeiro ainda depende de eventos de execução/exposição comprovados;
