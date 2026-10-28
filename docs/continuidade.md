@@ -3045,3 +3045,25 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
 - Continua fora deste lote: LAB-05/06 (estratégias diferentes no mesmo ativo; o mesmo preset em ativos
   diferentes), LAB-09 (closure de preset), LAB-10 (aceite de DPI/monitor), SA-01/02, M7/M9, base ativa
   do atalho ainda vazia, relógio IANA e aceite visual do proprietário.
+
+## Laboratório: intenções no mesmo ativo e revisão de preset entre ativos · 2026-10-28 (PR 212)
+
+- LAB-05. `analyze` com uma estratégia guarda o mesmo `selection` de antes. A lista `strategies`
+  compara intenções do gerador no mesmo ativo, origem, relógio e corte. Cada uma vira um canal
+  `candidate_-1_0_1`. Operação, execução, custos e PnL não entram. Ativo ou relógio diferentes
+  continuam recusados. Estratégia inelegível permanece no relatório, com o diagnóstico, em vez de
+  sumir. No preço, a marca de um fechamento de origem continua única; com mais de uma estratégia,
+  cada uma tem cor e a legenda "intenção". A lista "Comparar outras estratégias" usa o padrão
+  canônico; a combobox de cima usa os parâmetros editados. Vazia, a chamada é a de uma estratégia.
+  CLI: `--compare`, repetível.
+- LAB-06. `laboratory preset-assets` e a guia Comparativo → Mesma revisão leem `_robot_runs`.
+  Não gravam execução nem abrem backtest. A prova é a composição gravada, sem o ativo no hash.
+  O último run de cada ativo não junta revisões diferentes. Curvas saem como fração do capital
+  inicial; moedas diferentes não são convertidas. Custo ou especificação ausentes ficam ausentes,
+  não zero. Base sem runs diz que a tela não dispara backtest.
+- Testes no Xvfb: `test_laboratory_series`, `test_ui_laboratory_series` (57 passou, 1 pulado pela
+  geometria do gerenciador), `test_laboratory_preset_assets` (3) e o gráfico da Mesma revisão junto
+  com `test_lenses_filters_and_tabs`.
+- Continua fora: LAB-09 (closure de preset), LAB-10 (aceite de DPI/monitor), SA-01/02, M7/M9,
+  base ativa do atalho ainda vazia, relógio IANA, qualificação de Tester/conta real e aceite visual
+  do proprietário. Este lote não repete o QA EURUSD de 10/10.

@@ -36,6 +36,8 @@ LIMITATIONS = (
     "Pivôs (fractais/ZigZag) entram só na barra de confirmação, nunca na origem; a saída provisória é desenho, "
     "fica fora das relações e o atraso origem→confirmação fica registrado por canal.",
     "Intenções da estratégia não são fills, reversões confirmadas nem aceite operacional do robô.",
+    "Estratégias comparadas no mesmo ativo são intenções do gerador no preço congelado; operação, execução, "
+    "custos e PnL continuam ausentes. Ativo, origem ou relógio diferentes são recusados, não misturados.",
 )
 
 
@@ -153,7 +155,7 @@ def _events(rows, definition):
         bars_since_last_confirmation=len(rows) - 1 - confirmed[-1][0] if confirmed else None)
 
 
-def _channels(snapshot, feature_ids, strategy, cutoff):
+def _channels(snapshot, feature_ids, strategies, cutoff):
     manifest = snapshot.manifest
     tf = timeframes.parse(manifest["timeframe"])
     offset = manifest["time"].get("broker_utc_offset_hours")
@@ -195,7 +197,7 @@ def _channels(snapshot, feature_ids, strategy, cutoff):
             algorithm_version=definition["algorithm_version"], values=values, direction=direction,
             source_end=ends, source_start=starts, eligibility=check,
             states=dict(Counter(rows.state)), warmup=definition["warmup_count"], events=events))
-    if strategy is not None:
+    for strategy in strategies:
         check = eligibility_for(dict(required_columns=strategy.required_columns, source_id="bars"))
         values = pd.Series(np.nan, index=bars.index, dtype=float)
         if check["eligible"]:
@@ -363,7 +365,38 @@ def _pair(left, right, lag, unconfirmed=False):
         out_of_sample=None if lag == 0 or reason else _temporal_split(x, y, right.direction.shift(lag)[valid]))
 
 
-def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strategy_params=None, as_of):
+def _resolve_strategies(strategy_key, strategy_params, strategies, symbol, timeframe):
+    """Uma estratégia preserva o relatório antigo. A lista compara intenções, sem operação nem execução."""
+    if strategies is not None:
+        if strategy_key is not None or strategy_params:
+            raise ValueError("Informe uma estratégia com parâmetros ou a lista de comparação, não as duas.")
+        resolved, seen = [], []
+        for item in strategies:
+            if isinstance(item, str):
+                key, params = item, {}
+            elif isinstance(item, dict) and isinstance(item.get("key"), str) and (
+                    item.get("params") is None or isinstance(item.get("params"), dict)):
+                key, params = item["key"], item.get("params") or {}
+            else:
+                raise ValueError("Cada estratégia da comparação precisa de uma chave registrada.")
+            if key in seen:
+                raise ValueError(f"Estratégia repetida na comparação: {key}.")
+            seen.append(key)
+            strategy = get_strategy(key, **params)
+            base_composition(key, symbol=symbol, timeframe=timeframe, params=strategy.params)
+            resolved.append(strategy)
+        return resolved, True
+    if strategy_key is not None:
+        strategy = get_strategy(strategy_key, **(strategy_params or {}))
+        base_composition(strategy_key, symbol=symbol, timeframe=timeframe, params=strategy.params)
+        return [strategy], False
+    if strategy_params:
+        raise ValueError("Parâmetros exigem estratégia explícita.")
+    return [], False
+
+
+def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strategy_params=None,
+            strategies=None, as_of):
     """Mesmo relatório para SDK/CLI/Tk; não escreve base nem inicia backtests."""
     snapshots = list(snapshots)
     if not 1 <= len(snapshots) <= MAX_TIMEFRAMES:
@@ -373,9 +406,14 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         raise ValueError("Indicadores duplicados; selecione cada definição uma vez.")
     for ident in selected:
         indicator_registry.get_definition(ident)
-    if not selected and strategy_key is None:
+    if isinstance(strategies, (str, bytes)) or (strategies is not None and not isinstance(strategies, (list, tuple))):
+        raise ValueError("A comparação de estratégias exige uma lista de chaves distintas.")
+    if strategies is not None and len(strategies) == 0:
+        strategies = None
+    n_strategies = len(strategies) if strategies is not None else bool(strategy_key)
+    if not selected and not n_strategies:
         raise ValueError("Escolha indicadores ou uma estratégia.")
-    if (len(selected) + bool(strategy_key)) * len(snapshots) > MAX_CHANNELS:
+    if (len(selected) + n_strategies) * len(snapshots) > MAX_CHANNELS:
         raise ValueError(f"Seleção excede {MAX_CHANNELS} canais; separe o estudo em recortes explícitos.")
     manifests = [item.manifest for item in snapshots]
     scopes = {(m["symbol"], m["source"]["namespace"], m["source"]["provider"], m["source"]["server"],
@@ -384,17 +422,12 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         raise ValueError("Compare o mesmo ativo/origem/relógio e somente um snapshot por timeframe.")
     cutoff = _utc(as_of)
     snapshots.sort(key=lambda item: timeframes.parse(item.manifest["timeframe"]).minutes)
-    strategy = None
-    if strategy_key is not None:
-        # O schema existente valida limites/tipos e o construtor valida relações entre parâmetros.
-        strategy = get_strategy(strategy_key, **(strategy_params or {}))
-        base_composition(strategy_key, symbol=manifests[0]["symbol"], timeframe=manifests[0]["timeframe"],
-                         params=strategy.params)
-    elif strategy_params:
-        raise ValueError("Parâmetros exigem estratégia explícita.")
+    # O schema existente valida limites/tipos e o construtor valida relações entre parâmetros.
+    resolved, listed = _resolve_strategies(strategy_key, strategy_params, strategies,
+                                           manifests[0]["symbol"], manifests[0]["timeframe"])
     channels, populations = [], []
     for item in snapshots:
-        built, population = _channels(item, selected, strategy, cutoff)
+        built, population = _channels(item, selected, resolved, cutoff)
         channels.extend(built)
         populations.append(population)
     grid = populations[0]["nominal_closes"]
@@ -425,7 +458,16 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
             source_available=summary["source_available"], available=summary["available"])
         output_channels.append(summary)
     selection = dict(manifests=[item.manifest_id for item in snapshots], feature_ids=selected,
-        strategy=dict(key=strategy.key, params=strategy.params) if strategy else None, as_of=cutoff.isoformat())
+        strategy=dict(key=resolved[0].key, params=resolved[0].params) if resolved and not listed else None,
+        as_of=cutoff.isoformat())
+    if listed:
+        selection["strategies"] = [dict(key=item.key, params=item.params, role="intention") for item in resolved]
+        selection["comparison"] = dict(
+            scope="mesmo ativo, origem, relógio e corte",
+            intention="sinais do gerador; não são trades, fills nem R",
+            operation="operação ausente neste relatório",
+            execution="execução ausente neste relatório",
+            costs="custos não aplicados; a curva não é PnL")
     source_hash = formula_source_hash()
     grid_tf = timeframes.parse(populations[0]["timeframe"])
     expected = grid[:-1] + (pd.offsets.MonthBegin(1) if grid_tf.name == "MN1" else pd.Timedelta(minutes=grid_tf.minutes))

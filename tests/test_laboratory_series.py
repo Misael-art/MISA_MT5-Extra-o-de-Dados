@@ -402,6 +402,60 @@ def test_relation_matrix_keeps_zero_valid_and_inherits_empty_channel_diagnosis(s
     assert service.relation_matrix(report)["cells"][0][1]["reason"] == "NO_OVERLAP"
 
 
+def test_same_asset_strategies_stay_intentions_and_single_report_shape(snapshots):
+    single = analysis(snapshots, strategy_key="ema_atr")
+    assert set(single["selection"]) == {"manifests", "feature_ids", "strategy", "as_of"}
+    assert single["selection"]["strategy"]["key"] == "ema_atr"
+    assert analysis(snapshots, strategies=[]) == analysis(snapshots)
+    listed = analysis(snapshots, strategies=["ema_atr"])
+    assert listed["selection"]["strategy"] is None
+    assert listed["selection"]["strategies"] == [dict(
+        key="ema_atr", params=single["selection"]["strategy"]["params"], role="intention")]
+    assert listed["analysis_id"] != single["analysis_id"]
+    lone = next(row for row in listed["channels"] if row["id"] == "M5:strategy:ema_atr")
+    assert lone["values"] == next(row["values"] for row in single["channels"] if row["id"] == lone["id"])
+    compared = analysis(snapshots, strategies=["ema_atr", dict(key="donchian", params={})])
+    assert [row["id"] for row in compared["channels"] if row["rule"] == "candidate"] == [
+        "M5:strategy:ema_atr", "M5:strategy:donchian", "M15:strategy:ema_atr", "M15:strategy:donchian"]
+    assert [row["key"] for row in compared["selection"]["strategies"]] == ["ema_atr", "donchian"]
+    assert all(row["role"] == "intention" for row in compared["selection"]["strategies"])
+    comparison = compared["selection"]["comparison"]
+    assert comparison["scope"] == "mesmo ativo, origem, relógio e corte"
+    assert "ausente" in comparison["operation"] and "ausente" in comparison["execution"]
+    assert "PnL" in comparison["costs"]
+    assert "fills" in comparison["intention"]
+    assert all("pnl" not in row for row in compared["channels"])
+    assert compared["symbol"] == single["symbol"] == "X"
+    blocked = analysis(snapshots, strategies=["ema_atr", "vwap_bands"])
+    empty = [row for row in blocked["channels"] if row["id"].endswith("vwap_bands")]
+    assert len(empty) == 2 and all(row["available"] == 0 and row["diagnosis"] for row in empty)
+    assert any(row["id"].endswith("ema_atr") and row["source_available"] for row in blocked["channels"])
+    with pytest.raises(ValueError, match="repetida"):
+        analysis(snapshots, strategies=["ema_atr", "ema_atr"])
+    with pytest.raises(ValueError, match="não as duas"):
+        analysis(snapshots, strategy_key="ema_atr", strategies=["donchian"])
+    with pytest.raises(ValueError, match="lista"):
+        analysis(snapshots, strategies="ema_atr")
+
+
+def test_cli_compare_keeps_primary_params_and_default_of_the_other(snapshots, source_db, monkeypatch, capsys):
+    from mt5_extracao import cli
+    monkeypatch.setattr(cli.Context, "db", property(lambda _: source_db))
+    params = dict(get_strategy("ema_atr").params)
+    params["fast"] = 12
+    argv = ["--json", "laboratory", "analyze", "--as-of", "2025-02-01T00:00:00Z", "--strategy-only",
+            "--strategy", "ema_atr", "--params", json.dumps(params), "--compare", "donchian"]
+    for item in snapshots:
+        argv.extend(["--manifest", item.manifest_id])
+    assert cli.main(argv) == 0
+    data = json.loads(capsys.readouterr().out)["data"]
+    assert [row["key"] for row in data["selection"]["strategies"]] == ["ema_atr", "donchian"]
+    assert data["selection"]["strategies"][0]["params"]["fast"] == 12
+    assert data["selection"]["strategies"][1]["params"] == get_strategy("donchian").params
+    assert data["selection"]["strategy"] is None
+    assert all(row["rule"] == "candidate" for row in data["channels"])
+
+
 def test_exported_analysis_reopens_with_identity_and_tampering_is_refused(snapshots):
     report = json.loads(json.dumps(analysis(snapshots)))
     assert service.load_report(json.dumps(report)) == report

@@ -57,6 +57,39 @@ MAX_PANES = 8
 PANE_HEIGHT = 110
 UNIT_LABELS = {"points_0_100": "Oscilador 0–100", "fraction": "Fração do preço", "channel_fraction": "Posição no canal (0–1)",
                "price_units": "Unidades de preço", "ratio": "Razão", "candidate_-1_0_1": "Intenção −1/0/+1"}
+NOTICE_TEXT = ("Reconstrução exploratória por fechamento nominal · sem prova de "
+               "disponibilidade histórica · correlação não é acerto nem resultado de trades.")
+
+
+def comparison_arguments(strategy_key, params, extra_keys):
+    """Lista vazia preserva a chamada de uma estratégia. Extras usam o padrão canônico de cada uma."""
+    extras = []
+    for key in extra_keys:
+        if key == strategy_key or key in extras:
+            continue
+        extras.append(key)
+    if not extras:
+        return dict(strategy_key=strategy_key, strategy_params=params)
+    items = [dict(key=strategy_key, params=params or {})] if strategy_key is not None else []
+    items.extend(extras)
+    return dict(strategies=items)
+
+
+def intention_channels(report, selected_id, removed=(), hidden=()):
+    """Intenções da grade e a selecionada de outro TF. Uma por estratégia; sem operação nem execução."""
+    chosen, seen = [], set()
+    for channel in report["channels"]:
+        if channel.get("rule") != "candidate" or channel["id"] in removed:
+            continue
+        if channel["id"] in hidden and channel["id"] != selected_id:
+            continue
+        if channel["timeframe"] != report["grid_timeframe"] and channel["id"] != selected_id:
+            continue
+        if channel["id"] in seen:
+            continue
+        seen.add(channel["id"])
+        chosen.append(channel)
+    return chosen
 
 
 def chart_groups(channels, hidden, selected_id, removed=()):
@@ -205,8 +238,7 @@ class SeriesLaboratoryPanel:
         self.status = ttk.Label(self.frame, text="Escolha uma base, os TFs e os indicadores para congelar a análise.",
                                 style="Muted.TLabel", wraplength=1000)
         self.status.pack(fill=tk.X, pady=4)
-        self.notice = Notice(self.frame, "Reconstrução exploratória por fechamento nominal · sem prova de "
-            "disponibilidade histórica · correlação não é acerto nem resultado de trades.", theme=self.theme)
+        self.notice = Notice(self.frame, NOTICE_TEXT, theme=self.theme)
         self.notice.pack(fill=tk.X, pady=4)
         self.notice.message.configure(wraplength=1000)
         self.canvas = tk.Canvas(self.frame, highlightthickness=0, height=580)
@@ -270,6 +302,16 @@ class SeriesLaboratoryPanel:
                                        values=["Sem estratégia", *service.REGISTRY], width=26)
         self.strategy_box.pack(fill=tk.X)
         self.strategy_box.bind("<<ComboboxSelected>>", self._strategy_changed)
+        ttk.Label(strategy, text="Comparar outras estratégias no mesmo ativo", ).pack(anchor="w", pady=(6, 0))
+        ttk.Label(strategy, text="Cada marcada usa os parâmetros padrão. A de cima usa os campos editados. "
+                  "Vazio compara só a escolhida. As marcas são intenção, não operação nem execução.",
+                  style="Muted.TLabel", wraplength=330).pack(anchor="w")
+        self.compare_list = tk.Listbox(strategy, selectmode=tk.MULTIPLE, exportselection=False, height=4)
+        self._compare_keys = [row["key"] for row in self.catalog["strategies"]]
+        for row in self.catalog["strategies"]:
+            self.compare_list.insert(tk.END, f"{row['name']} · padrão")
+        self.compare_list.pack(fill=tk.X)
+        self.compare_list.bind("<<ListboxSelect>>", self._changed)
         self.params = tk.StringVar(value=json.dumps(service.get_strategy("ema_atr").params))
         self.parameters_frame = ttk.Frame(strategy)
         self.parameters_frame.pack(fill=tk.X, pady=4)
@@ -482,13 +524,21 @@ class SeriesLaboratoryPanel:
             feature_ids = [item["feature_id"] for item in self.catalog["indicators"]
                            if item["feature_id"] in self._chosen_features]
             strategy = None if self.strategy.get() == "Sem estratégia" else self.strategy.get()
+            extras = [self._compare_keys[index] for index in self.compare_list.curselection()]
+            request_kwargs = comparison_arguments(strategy, params, extras)
+            n_strategies = (len(request_kwargs["strategies"]) if "strategies" in request_kwargs
+                            else bool(request_kwargs.get("strategy_key")))
             if not symbol or not tfs:
                 raise ValueError("Escolha ativo e pelo menos um timeframe da base.")
-            if not feature_ids and strategy is None:
+            if not feature_ids and not n_strategies:
                 raise ValueError("Escolha indicadores ou uma estratégia para analisar.")
             if strategy is not None:
                 service.base_composition(strategy, symbol=symbol, timeframe=tfs[0], params=params)
-            if (len(feature_ids) + bool(strategy)) * len(tfs) > service.MAX_CHANNELS:
+            for key in request_kwargs.get("strategies", []):
+                if isinstance(key, str):
+                    service.base_composition(key, symbol=symbol, timeframe=tfs[0],
+                                             params=service.get_strategy(key).params)
+            if (len(feature_ids) + n_strategies) * len(tfs) > service.MAX_CHANNELS:
                 raise ValueError("Máximo de 32 canais; reduza indicadores ou TFs para este recorte.")
         except (ValueError, AttributeError) as error:
             self.status.configure(text=str(error))
@@ -502,8 +552,8 @@ class SeriesLaboratoryPanel:
         def work():
             snapshots = service.capture_selection(self.ui.app.db_manager, symbol=symbol,
                 timeframes_selected=tfs, start=start, end=end)
-            return service.analyze(snapshots, feature_ids=feature_ids, strategy_key=strategy,
-                strategy_params=params, as_of=pd.Timestamp.now(tz="UTC").isoformat())
+            return service.analyze(snapshots, feature_ids=feature_ids,
+                as_of=pd.Timestamp.now(tz="UTC").isoformat(), **request_kwargs)
         def done(report, error):
             if not self.frame.winfo_exists() or request != self._request:
                 return
@@ -526,9 +576,19 @@ class SeriesLaboratoryPanel:
         self.channel_box.configure(values=ids)
         if self.detail_channel.get() not in ids:
             self.detail_channel.set(ids[0])
+        comparison = report["selection"].get("comparison")
+        compared = ""
+        if comparison:
+            names = ", ".join(row["key"] for row in report["selection"]["strategies"])
+            compared = (f"\nIntenções comparadas ({names}) no {comparison['scope']}. "
+                        f"{comparison['operation']}. {comparison['execution']}.")
+        self.notice.message.configure(text=NOTICE_TEXT + (
+            " Comparação de intenções no mesmo recorte; operação e execução não entram neste estudo."
+            if comparison else ""))
         self.status.configure(text=f"{report['symbol']} · {len(report['populations'])} TFs · "
             f"{len(report['channels'])} canais · {len(report['times'])} fechamentos {report['grid_timeframe']} · "
             f"estudo {report['analysis_id'][:12]} · corte {report['selection']['as_of']}"
+            + compared
             + "".join(f"\n{row['id']}: {row['diagnosis']['message']} {row['diagnosis']['action']}"
                       for row in empty_channels(report)[:3])
             + (f"\n… e mais {len(empty_channels(report)) - 3} canais sem dados (ver Cobertura)."
@@ -542,7 +602,9 @@ class SeriesLaboratoryPanel:
             return
         row = next((row for row in self.report["channels"] if row["id"] == self.detail_channel.get()), self.report["channels"][0])
         check = row["eligibility"]
-        self.channel_details.configure(text=f"{row['id']} · {row['unit']} · aquecimento {row['warmup']} barras · "
+        role = ("intenção do gerador · operação ausente · execução ausente · "
+                if row["rule"] == "candidate" else "")
+        self.channel_details.configure(text=f"{row['id']} · {role}{row['unit']} · aquecimento {row['warmup']} barras · "
             f"cobertura {row['available']}/{row['total']} · {check['status']} · "
             + (f"{row['diagnosis']['message']} {row['diagnosis']['action']} · " if row.get("diagnosis") else "")
             + _events_text(row.get("events"))
@@ -589,7 +651,7 @@ class SeriesLaboratoryPanel:
             return
         colors = self.theme.colors
         self.canvas.configure(background=colors["page"])
-        for widget in (self.tf_list, self.feature_list):
+        for widget in (self.tf_list, self.feature_list, self.compare_list):
             widget.configure(background=colors["field"], foreground=colors["ink"],
                 selectbackground=colors["select"], selectforeground=colors["ink"],
                 highlightbackground=colors["border"], highlightthickness=1, borderwidth=0,
@@ -624,10 +686,13 @@ class SeriesLaboratoryPanel:
         # Grade por instante nominal; datas mantidas nas dicas e nos detalhes do relatório.
         ax.imshow(np.ma.masked_invalid(data), aspect="auto", interpolation="nearest", cmap=cmap,
                   norm=BoundaryNorm([-1.5, -.5, .5, 1.5, 2.5], 4))
-        ax.set_yticks(range(len(channels)), [row["timeframe"] + " · " + row["name"] for row in channels])
+        ax.set_yticks(range(len(channels)), [
+            row["timeframe"] + " · " + row["name"] + (" · intenção" if row["rule"] == "candidate" else "")
+            for row in channels])
         positions = np.unique(np.linspace(0, data.shape[1] - 1, min(5, data.shape[1])).astype(int))
         ax.set_xticks(positions, [times[boundaries[i]].strftime("%d/%m %H:%M") for i in positions])
-        charts.style_axis(ax, self.theme, "Intenções/direções por intervalo UTC · agregação somente visual", grid_axis=None)
+        charts.style_axis(ax, self.theme, "Intenções do gerador por intervalo UTC · não são operação nem execução · "
+                          "agregação somente visual", grid_axis=None)
         ax.legend(handles=[Patch(color=color, label=label) for color, label in
                   ((self.theme.colors["good"], "+1"), (self.theme.colors["bad"], "−1"),
                    ("#A274C4", "ambos no intervalo"), (self.theme.colors["grid"], "indisponível"))],
@@ -694,13 +759,28 @@ class SeriesLaboratoryPanel:
                               transform=pane.transAxes, ha="center", va="center", wrap=True, fontsize=8,
                               color=self.theme.colors["ink2"])
             charts.style_axis(pane, self.theme, UNIT_LABELS.get(unit, unit))
-        if selected["rule"] == "candidate":
-            values = np.array([np.nan if v is None else v for v in selected["values"]], dtype=float)
-            first_source = ~pd.Series(selected["source_ends"]).duplicated().to_numpy()
+        intentions = intention_channels(report, selected["id"], self.study.removed, self.study.hidden)
+        unmarked = []
+        for index, channel in enumerate(intentions):
+            values = np.array([np.nan if v is None else v for v in channel["values"]], dtype=float)
+            first_source = ~pd.Series(channel["source_ends"]).duplicated().to_numpy()
+            labeled = False
             for side, marker in ((1, "^"), (-1, "v")):
                 chosen = (values == side) & first_source
-                ax.scatter(x[chosen], price[chosen, 3], marker=marker,
-                           color=self.theme.colors["good" if side == 1 else "bad"], s=18)
+                if not chosen.any():
+                    continue
+                color = (palette[index % len(palette)] if len(intentions) > 1
+                         else self.theme.colors["good" if side == 1 else "bad"])
+                ax.scatter(x[chosen], price[chosen, 3], marker=marker, color=color, s=18, zorder=4,
+                           label=None if labeled else f"intenção · {channel['timeframe']} · {channel['name']}")
+                labeled = True
+            if not labeled and channel.get("diagnosis"):
+                unmarked.append(channel)
+        if unmarked:
+            ax.text(0, 1.02, "Sem intenção utilizável: " + " · ".join(
+                f"{channel['timeframe']} {channel['name']}: {channel['diagnosis']['message']}"
+                for channel in unmarked[:2]), transform=ax.transAxes, ha="left", va="bottom", fontsize=7,
+                color=self.theme.colors["warn"], clip_on=False)
         for target in axes:
             handles, labels = target.get_legend_handles_labels()
             if handles:
@@ -718,7 +798,10 @@ class SeriesLaboratoryPanel:
         locator = AutoDateLocator(minticks=3, maxticks=6)
         axes[-1].xaxis.set_major_locator(locator)
         axes[-1].xaxis.set_major_formatter(ConciseDateFormatter(locator))
-        charts.style_axis(ax, self.theme, f"{report['symbol']} {report['grid_timeframe']} · candles da base")
+        price_title = f"{report['symbol']} {report['grid_timeframe']} · candles da base"
+        if intentions:
+            price_title += " · marcas = intenção; operação e execução ausentes"
+        charts.style_axis(ax, self.theme, price_title)
         if not getattr(chart, "_study_events", False):
             chart._study_events = True
             chart.canvas.mpl_connect("pick_event", lambda event, c=chart: self._legend_picked(c, event))

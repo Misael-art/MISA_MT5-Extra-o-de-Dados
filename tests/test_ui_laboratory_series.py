@@ -254,6 +254,65 @@ def test_single_bar_segment_stays_visible(panel, snapshots):
     assert any(line.get_marker() == "o" for line in feature.lines)
 
 
+def test_compare_list_is_empty_until_the_user_adds_another_strategy(panel, monkeypatch):
+    import json
+    from mt5_extracao.strategies import get_strategy
+    from mt5_extracao.ui.laboratory_series import comparison_arguments
+    series = open_series(panel)
+    assert series.compare_list.curselection() == ()
+    assert comparison_arguments("ema_atr", {"fast": 12}, [])["strategy_key"] == "ema_atr"
+    series._inventory = [dict(symbol="X", timeframe="M5")]
+    series.symbol.set("X")
+    series._symbol_changed()
+    series.compare_list.selection_set(series._compare_keys.index("donchian"))
+    seen = {}
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: seen.setdefault("work", work))
+    monkeypatch.setattr("mt5_extracao.laboratory.service.capture_selection", lambda *args, **kwargs: [])
+    monkeypatch.setattr("mt5_extracao.laboratory.service.analyze",
+                        lambda snapshots, **kwargs: seen.update(kwargs) or {"analysis_id": "x", "channels": []})
+    series.analyze()
+    seen["work"]()
+    assert [item["key"] if isinstance(item, dict) else item for item in seen["strategies"]] == ["ema_atr", "donchian"]
+    assert seen["strategies"][0]["params"]["fast"] == json.loads(series.params.get())["fast"]
+    assert seen["strategies"][1] == "donchian"
+    series.strategy.set("Sem estratégia")
+    series._strategy_changed()
+    series.compare_list.selection_clear(0, "end")
+    series.compare_list.selection_set(series._compare_keys.index("donchian"))
+    assert comparison_arguments(None, {}, ["donchian"]) == dict(strategies=["donchian"])
+    assert get_strategy("donchian").params  # o serviço aplica o padrão canônico desta chave
+
+
+def test_two_strategies_share_the_price_clock_as_intentions(panel, snapshots):
+    from matplotlib.collections import PathCollection
+    from mt5_extracao.ui.laboratory_series import intention_channels
+    series = open_series(panel)
+    report = analysis(snapshots, strategies=["ema_atr", "donchian"])
+    series.set_report(report)
+    marks = intention_channels(report, series.detail_channel.get(), series.study.removed, series.study.hidden)
+    assert [row["id"] for row in marks] == ["M5:strategy:ema_atr", "M5:strategy:donchian"]
+    ax = series.panels["price"].chart.figure.axes[0]
+    title = ax.get_title(loc="left")
+    assert "intenção" in title and "execução" in title
+    expected = 0
+    for channel in marks:
+        seen = set()
+        for value, end in zip(channel["values"], channel["source_ends"]):
+            if value in (1, -1) and end not in seen:
+                expected += 1
+                seen.add(end)
+    got = sum(len(item.get_offsets()) for item in ax.collections if isinstance(item, PathCollection))
+    assert got == expected and expected > 0
+    legend = [text.get_text() for text in ax.get_legend().get_texts()]
+    assert sum(text.startswith("intenção ·") for text in legend) == 2
+    assert "operação ausente" in series.status.cget("text")
+    assert "execução" in series.notice.message.cget("text")
+    labels = [tick.get_text() for tick in series.panels["timeline"].chart.figure.axes[0].get_yticklabels()]
+    assert len(labels) == 4 and all(label.endswith("· intenção") for label in labels)
+    axes = series.panels["price"].chart.figure.axes
+    assert axes[0].get_xlim() == axes[-1].get_xlim()
+
+
 def test_feature_search_filters_inventory_and_keeps_selection(panel):
     series = open_series(panel)
     before = set(series._chosen_features)

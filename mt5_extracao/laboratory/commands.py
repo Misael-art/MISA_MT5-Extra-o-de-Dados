@@ -32,7 +32,9 @@ def add_parser(sub):
     selected.add_argument("--feature", action="append", help="feature_id do catálogo; repita para cada indicador")
     selected.add_argument("--strategy-only", action="store_true", help="compara apenas as intenções da estratégia")
     analyze.add_argument("--strategy", choices=list(service.REGISTRY))
-    analyze.add_argument("--params", default="{}", help="JSON dos parâmetros da estratégia")
+    analyze.add_argument("--params", default="{}", help="JSON dos parâmetros da estratégia principal")
+    analyze.add_argument("--compare", action="append", choices=list(service.REGISTRY),
+                         help="outra estratégia, com parâmetros padrão; repita para comparar intenções no mesmo ativo")
     analyze.add_argument("--as-of", required=True, help="corte ISO com fuso explícito")
     analyze.add_argument("--out", help="novo arquivo JSON; recusa sobrescrever")
     analyze.set_defaults(func=run)
@@ -48,6 +50,9 @@ def add_parser(sub):
     target.add_argument("--analysis", required=True)
     target.add_argument("--horizon", type=int, default=1, help="1, 3 ou 6 barras da grade")
     target.set_defaults(func=run)
+    preset_assets = actions.add_parser("preset-assets", help="mesma revisão de preset já gravada, em ativos diferentes")
+    preset_assets.add_argument("--robot", required=True, help="chave do robô; não executa backtest")
+    preset_assets.set_defaults(func=run)
 
 
 def run(args, ctx):
@@ -73,6 +78,9 @@ def run(args, ctx):
     elif args.laboratory_action == "target":
         report = service.load_report(Path(args.analysis).expanduser().read_text(encoding="utf-8"))
         result = service.target_matrix(report, horizon=args.horizon)
+    elif args.laboratory_action == "preset-assets":
+        from . import preset_assets
+        result = preset_assets.compare(ctx.db, args.robot)
     elif args.laboratory_action == "sources":
         result = dict(sources=service.sources(ctx.db),
             source_scope="OHLCV tables supported by datasets.capture and timeframes.Timeframe; derived facts use Analytics")
@@ -86,9 +94,19 @@ def run(args, ctx):
         params = loads(args.params)
         if not isinstance(params, dict):
             raise ValueError("--params exige objeto JSON de parâmetros.")
-        result = service.analyze([datasets.load(ctx.db, ident) for ident in args.manifest],
-            feature_ids=[] if args.strategy_only else args.feature if args.feature is not None else service.DEFAULT_FEATURES,
-            strategy_key=args.strategy, strategy_params=params, as_of=args.as_of)
+        feature_ids = [] if args.strategy_only else args.feature if args.feature is not None else service.DEFAULT_FEATURES
+        extras = [key for key in (args.compare or []) if key != args.strategy]
+        common = dict(feature_ids=feature_ids, as_of=args.as_of)
+        if extras:
+            if args.strategy is None and params:
+                raise ValueError("Parâmetros exigem estratégia explícita.")
+            items = [dict(key=args.strategy, params=params)] if args.strategy is not None else []
+            items.extend(extras)
+            result = service.analyze([datasets.load(ctx.db, ident) for ident in args.manifest],
+                strategies=items, **common)
+        else:
+            result = service.analyze([datasets.load(ctx.db, ident) for ident in args.manifest],
+                strategy_key=args.strategy, strategy_params=params, **common)
         if args.out:
             try:
                 with Path(args.out).expanduser().open("x", encoding="utf-8") as handle:

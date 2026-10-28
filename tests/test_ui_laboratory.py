@@ -165,6 +165,29 @@ def test_lenses_filters_and_tabs(panel):
     assert int(panel.kpi["n"][0].cget("text").replace(".", "")) < 240
 
 
+def test_same_preset_revision_chart_uses_stored_runs_only(panel):
+    from mt5_extracao.robots import store
+    from tests.test_laboratory_preset_assets import _run
+    ledger.save_trades(panel.db, "a", _trades(1), robot_key="python:a", symbol="WIN$N", timeframe="M5")
+    store.save_run(panel.db, _run("eur", "EURUSD", "2025-03-01 00:00:00"))
+    store.save_run(panel.db, _run("gbp", "GBPUSD", "2025-03-01 00:00:01", currency="GBP", initial=2000,
+                                 equity=[["2025-01-01", 2000], ["2025-02-01", 2200]]))
+    panel.on_show()
+    panel.pump(lambda: panel.view is not None)
+    panel.tabs.select(panel.tab_frames["Comparativo"])
+    panel.pump(lambda: "Comparativo" in panel._drawn, 10)
+    assert [panel._analysis_notebooks["Comparativo"].tab(i, "text") for i in range(3)] == [
+        "Ativos e timeframes", "Correlação", "Mesma revisão"]
+    assert "não dispara backtest" in panel._charts["c_preset"].figure.axes[0].texts[0].get_text()
+    panel.selected.set("python:qa")
+    panel._preset_revision_chart()
+    ax = panel._charts["c_preset"].figure.axes[0]
+    assert "Revisão" in ax.get_title(loc="left")
+    assert len(ax.lines) >= 2
+    notice = panel._chart_panels["c_preset"].notice.message.cget("text")
+    assert "não é a prova" in notice and "execução" in notice
+
+
 def test_import_button_brings_old_runs(panel):
     from mt5_extracao.robots import store
     store.save_run(panel.db, {"run_id": "old", "robot_key": "mql5:x", "source": "teste", "symbol": "EURUSD",

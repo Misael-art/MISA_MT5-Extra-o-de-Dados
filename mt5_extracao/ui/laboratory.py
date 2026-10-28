@@ -875,6 +875,7 @@ class LaboratoryPanel:
                         tags=("small",) if r["small"] else ())
         chart = self._chart(tab, "c_corr", 0, 0, height=4.0,
                             parent=self._analysis_view(tab, "correlation", "Correlação"))
+        self._preset_revision_chart()
         if self.lens.get() == LENS_ASSET:
             corr = aggregate.daily_correlation(view, "robot_key")
             if corr.shape[0] >= 2:
@@ -893,6 +894,34 @@ class LaboratoryPanel:
         else:
             chart.message("Na lente por robô, a tabela acima compara o robô em cada ativo e timeframe. A correlação "
                           "entre robôs aparece na lente por ativo.")
+
+    def _preset_revision_chart(self):
+        """Curvas já gravadas da mesma revisão. Não enfileira nem executa backtest."""
+        from mt5_extracao.laboratory import preset_assets
+        parent = self._analysis_view("Comparativo", "preset", "Mesma revisão")
+        chart = self._chart("Comparativo", "c_preset", 0, 0, height=3.6, parent=parent)
+        robot = self.selected.get() if self.lens.get() == LENS_ROBOT else ""
+        report = preset_assets.compare(self._db(), robot)
+        self._chart_panels["c_preset"].set_notice(report["notice"], kind="info" if report["curves"] else "empty",
+                                                  theme=self.theme)
+        if not report["curves"]:
+            chart.message(report["reason"] or report["notice"])
+            return
+        chart.clear()
+        ax = chart.figure.add_subplot(111)
+        palette = [*self.theme.colors["series"], self.theme.colors["accent"], self.theme.colors["warn"],
+                   self.theme.colors["ink2"]]
+        for index, curve in enumerate(report["curves"]):
+            stamp = pd.to_datetime(curve["times"], utc=True, errors="coerce")
+            ax.plot(stamp, curve["fraction"], color=palette[index % len(palette)], linewidth=1.4,
+                    label=f"{curve['symbol']} · {curve['timeframe']} · {(curve['composition_hash'] or 'sem hash')[:8]}")
+        ax.axhline(1, color=self.theme.colors["muted"], linewidth=.6)
+        charts.style_axis(ax, self.theme, report["title"])
+        handles, labels = ax.get_legend_handles_labels()
+        if handles:
+            ax.legend(handles, labels, fontsize=7, loc="upper left", labelcolor=self.theme.colors["ink2"],
+                      facecolor=self.theme.colors["surface"], edgecolor=self.theme.colors["border"])
+        chart.draw()
 
     # --- Execução (T16.6 a T16.8) --------------------------------------------------------
 
