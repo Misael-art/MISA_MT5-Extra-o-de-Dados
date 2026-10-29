@@ -6,6 +6,7 @@ já estava disponível no instante pedido.
 """
 import hashlib
 import json
+import logging
 import math
 import threading
 from datetime import datetime, timezone
@@ -15,6 +16,8 @@ from sqlalchemy import bindparam, inspect, text
 
 DEFINITIONS_TABLE = "_feature_definitions"
 VALUES_TABLE = "_feature_values"
+DEFINITION_SCHEMA_VERSION = 2
+log = logging.getLogger(__name__)
 
 _CREATE_DEFINITIONS = f"""
 CREATE TABLE IF NOT EXISTS {DEFINITIONS_TABLE} (
@@ -33,6 +36,7 @@ CREATE TABLE IF NOT EXISTS {DEFINITIONS_TABLE} (
     timeframe TEXT,
     availability_rule TEXT,
     value_type TEXT,
+    definition_schema_version INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (feature_id, algorithm_version)
 )
 """
@@ -126,10 +130,17 @@ def ensure_schema(db):
         for name, sql_type in _DEFINITION_METADATA_COLUMNS.items():
             if name not in columns:
                 conn.execute(text(f"ALTER TABLE {DEFINITIONS_TABLE} ADD COLUMN {name} {sql_type}"))
+        if "definition_schema_version" not in columns:
+            conn.execute(text(f"ALTER TABLE {DEFINITIONS_TABLE} ADD COLUMN "
+                              "definition_schema_version INTEGER NOT NULL DEFAULT 1"))
         conn.execute(text(_CREATE_VALUES))
         conn.execute(text(_CREATE_ASOF_INDEX))
         conn.execute(text(_CREATE_KEY_INDEX))
         conn.execute(text(_CREATE_SOURCE_INDEX))
+
+
+def _legacy_name(definition):
+    return definition["definition_schema_version"] == 1 and definition["name"] == "value_type"
 
 
 def register_definition(db, feature_id, name, algorithm_version, parameters, dependencies, *, family=None,
@@ -149,13 +160,13 @@ def register_definition(db, feature_id, name, algorithm_version, parameters, dep
     metadata = {"family": family, "formula": formula, "unit": unit, "warmup_count": warmup_count,
                 "warmup_unit": warmup_unit, "source_id": source_id, "timeframe": timeframe,
                 "availability_rule": availability_rule, "value_type": value_type}
-    for name in ("family", "formula", "unit", "warmup_unit", "source_id", "timeframe", "availability_rule",
-                 "value_type"):
-        value = metadata[name]
+    for field in ("family", "formula", "unit", "warmup_unit", "source_id", "timeframe", "availability_rule",
+                  "value_type"):
+        value = metadata[field]
         if value is not None:
             if not isinstance(value, str) or not value.strip():
-                raise ValueError(f"{name} precisa ser texto não vazio quando informado.")
-            metadata[name] = value.strip()
+                raise ValueError(f"{field} precisa ser texto não vazio quando informado.")
+            metadata[field] = value.strip()
     if warmup_count is not None:
         if isinstance(warmup_count, bool) or not isinstance(warmup_count, int) or warmup_count < 0:
             raise ValueError("warmup_count precisa ser um inteiro maior ou igual a zero.")
@@ -170,24 +181,32 @@ def register_definition(db, feature_id, name, algorithm_version, parameters, dep
     with db.engine.begin() as conn:
         existing = conn.execute(text(
             f"SELECT name, parameters_json, dependencies_json, family, formula, unit, warmup_count, warmup_unit, source_id, "
-            f"timeframe, availability_rule, value_type FROM {DEFINITIONS_TABLE} "
+            f"timeframe, availability_rule, value_type, definition_schema_version FROM {DEFINITIONS_TABLE} "
             "WHERE feature_id = :feature_id AND algorithm_version = :version"),
             {"feature_id": feature_id, "version": algorithm_version}).mappings().first()
         if existing:
             existing_metadata = {key: existing[key] for key in metadata}
-            if (existing["name"], existing["parameters_json"], existing["dependencies_json"], existing_metadata) == (
-                    name, parameters_json, dependencies_json, metadata):
-                return False
+            same = (existing["parameters_json"], existing["dependencies_json"], existing_metadata) == (
+                parameters_json, dependencies_json, metadata)
+            if same:
+                if existing["name"] == name:
+                    return False
+                if _legacy_name(existing):
+                    log.warning("Definição %s@%s mantém nome legado não verificável; repetição dos demais campos "
+                                "aceita sem renomear ou modificar valores.", feature_id, algorithm_version)
+                    return False
             raise ValueError("A definição já existe com este algoritmo; use uma nova versão do algoritmo.")
         conn.execute(text(
             f"INSERT INTO {DEFINITIONS_TABLE} "
             "(feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc, family, "
-            "formula, unit, warmup_count, warmup_unit, source_id, timeframe, availability_rule, value_type) "
+            "formula, unit, warmup_count, warmup_unit, source_id, timeframe, availability_rule, value_type, "
+            "definition_schema_version) "
             "VALUES (:feature_id, :version, :name, :parameters, :dependencies, :registered_at, :family, :formula, "
-            ":unit, :warmup_count, :warmup_unit, :source_id, :timeframe, :availability_rule, :value_type)"),
+            ":unit, :warmup_count, :warmup_unit, :source_id, :timeframe, :availability_rule, :value_type, "
+            ":definition_schema_version)"),
             {"feature_id": feature_id, "version": algorithm_version, "name": name,
              "parameters": parameters_json, "dependencies": dependencies_json, "registered_at": registered_at,
-             **metadata})
+             "definition_schema_version": DEFINITION_SCHEMA_VERSION, **metadata})
     return True
 
 
@@ -198,16 +217,19 @@ def list_definitions(db):
     columns = {column["name"] for column in inspect(db.engine).get_columns(DEFINITIONS_TABLE)}
     metadata_columns = ", ".join(name if name in columns else f"NULL AS {name}"
                                   for name in _DEFINITION_METADATA_COLUMNS)
+    schema_column = ("definition_schema_version" if "definition_schema_version" in columns else
+                     "1 AS definition_schema_version")
     with db.engine.connect() as conn:
         rows = conn.execute(text(
             f"SELECT feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc, "
-            f"{metadata_columns} "
+            f"{metadata_columns}, {schema_column} "
             f"FROM {DEFINITIONS_TABLE} ORDER BY registered_at_utc, feature_id, algorithm_version")).mappings()
         result = []
         for row in rows:
             item = dict(row)
             item["parameters"] = json.loads(item.pop("parameters_json"))
             item["dependencies"] = json.loads(item.pop("dependencies_json"))
+            item["name_status"] = "UNVERIFIED_LEGACY_NAME" if _legacy_name(item) else "DECLARED"
             result.append(item)
         return result
 

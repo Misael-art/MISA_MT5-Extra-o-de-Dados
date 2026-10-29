@@ -3225,3 +3225,16 @@ e doctor offline 16 OK/2 avisos/0 falhas. O CI de cada SHA tem estado próprio.
 Validação no [repasse](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md#legibilidade-da-matriz-e-espera-visível--28102026)
 e nos recibos locais `state/qa-tmp/laboratory-readability/`. Sem aceite nativo,
 financeiro ou de Windows físico; a animação não elimina desenhos síncronos lentos.
+
+## Continuidade do roadmap — BD06-NOMES
+
+Primeira dependência tratada após o pedido de seguir todas as frentes: o store
+substituía o nome declarado por `value_type` ao validar metadados, também deixando
+passar mudança de nome na mesma versão. O corretivo preserva nome/idempotência e
+acrescenta marcador de schema para reconhecer o legado sem inferir o nome perdido.
+Produtores podem repetir metadados antigos idênticos e continuar o append; nomes
+e fatos anteriores permanecem. CLI e inventário avisam quando o nome não é verificável.
+[Contrato, compatibilidade e regressões](dados/BD06_CONTRATO.md#bd06-nomes--nomes-imutáveis-e-compatibilidade-do-catálogo).
+Evidência local em `state/qa-tmp/catalog-store/`. Próximo percurso: catálogo e
+consulta canônica de todas as definições registradas, com identidade por versão,
+depois consumo pelo Laboratório; sem outro store nem fórmula no widget.
