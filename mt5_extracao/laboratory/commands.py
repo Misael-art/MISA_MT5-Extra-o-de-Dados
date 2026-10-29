@@ -40,6 +40,8 @@ def add_parser(sub):
     freeze.add_argument("--tf", action="append", required=True, help="TF da base; repita para comparar")
     freeze.add_argument("--start", help="início ISO no relógio broker; define a semente da janela")
     freeze.add_argument("--end", help="fim ISO no relógio broker")
+    freeze.add_argument("--stored-feature", action="append", nargs=2, metavar=("ID", "VERSAO"),
+                        help="congela fatos e contrato de uma versão persistida; repita para várias")
     freeze.set_defaults(func=run)
     analyze = actions.add_parser("analyze", help="diagnóstico de snapshots congelados; não executa operações")
     analyze.add_argument("--manifest", action="append", required=True, help="ID canônico; repita para cada TF")
@@ -141,9 +143,12 @@ def run(args, ctx):
                            f"{item['start']} → {item['end']}. {item['note']}")
     elif args.laboratory_action == "freeze":
         snapshots = service.capture_selection(ctx.db, symbol=args.symbol, timeframes_selected=args.tf,
-                                              start=args.start, end=args.end)
+                                              start=args.start, end=args.end, stored_features=args.stored_feature or ())
         result = dict(manifests=[dict(id=item.manifest_id, symbol=item.manifest["symbol"],
-                                     timeframe=item.manifest["timeframe"]) for item in snapshots])
+                                     timeframe=item.manifest["timeframe"],
+                                     **({"stored_features":item.manifest["selection"]["stored_features"]}
+                                        if item.manifest["schema_version"] == datasets.FEATURE_VERSION else {}))
+                                for item in snapshots])
     else:
         from mt5_extracao.automation.protocol import loads
         params = loads(args.params)
