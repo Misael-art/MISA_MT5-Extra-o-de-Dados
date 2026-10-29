@@ -3548,7 +3548,9 @@ fixture privada do proprietário ou aceite nativo/financeiro/Windows físico.
 
 ## Continuidade do roadmap — BD13-COMPOSITION, 29/10/2026
 
-Branch `codex/assinaturas-compostos`, sobre `7534976`/PR222. Reproduzido no
+Fonte `e7d23fcaa78d8a2cef0054710ae24e6acb927556` publicada no
+[PR223](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/223), branch
+`codex/assinaturas-compostos`, sobre `7534976`/PR222. Reproduzido no
 pacote sintético existente: acrescentar função alheia em features.py mudava a
 assinatura global embora o grafo/valor96 permanecessem iguais. O grafo agora
 identifica os componentes usados e cada nó liga contrato, operador e identidades
