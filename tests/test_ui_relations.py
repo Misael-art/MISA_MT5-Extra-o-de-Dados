@@ -368,7 +368,8 @@ def test_detail_spacing_is_owned_by_split_container(relations_panel):
 
 def test_secondary_information_starts_closed_without_hiding_primary_warnings(relations_panel):
     panel, root = relations_panel
-    assert len(panel._detail_panels) == 7
+    assert len(panel._detail_panels) == 8
+    assert "saved-relations" in panel._detail_panels
     for detail in [*panel._detail_panels.values(), panel.state_legend, panel.timeline_explanation]:
         assert not detail.expanded
         assert detail.body.winfo_manager() == ""

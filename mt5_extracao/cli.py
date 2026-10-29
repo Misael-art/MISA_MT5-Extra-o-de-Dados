@@ -1799,6 +1799,13 @@ def build_parser():
     q.add_argument("--max-memory-mb", type=float, default=2048)
     q.set_defaults(func=cmd_analytics)
 
+    q = features_sub.add_parser("relation-list", help="lista resultados persistidos com filtros e paginação")
+    q.add_argument("--symbol")
+    q.add_argument("--tf")
+    q.add_argument("--page-size", type=int, default=50)
+    q.add_argument("--cursor")
+    q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("relation-result", help="consulta o resultado persistido pelo identificador, sem recalcular")
     q.add_argument("--analysis-id", required=True)
     q.set_defaults(func=cmd_analytics)
@@ -2091,6 +2098,25 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action == "relation-list":
+        from mt5_extracao import sdk
+        result = sdk.query_saved_relations(ctx.db, symbol=args.symbol, timeframe=args.tf,
+                                          page_size=args.page_size, cursor=args.cursor)
+        _data(query=result)
+        if result["status"] != "ok":
+            for error in result["errors"]:
+                _print(error["message"])
+            return EXIT_FAIL
+        for row in result["items"]:
+            effect = row["relation"]["effect"]
+            text = "indisponível" if effect is None else format(effect, ".6g")
+            _print(f"{row['symbol']} {row['timeframe']}: {row['left']['name']} × {row['right']['name']}; "
+                   f"{row['relation']['method']}={text}; n={row['relation']['n_pairs']}; id={row['analysis_id']}")
+        for reason in result["reasons"]:
+            _print(reason)
+        _print(f"{result['matched']} relações salvas; {result['page']['returned']} nesta página.")
+        return EXIT_OK
 
     if args.features_action in ("relation", "relation-result"):
         from mt5_extracao import sdk
