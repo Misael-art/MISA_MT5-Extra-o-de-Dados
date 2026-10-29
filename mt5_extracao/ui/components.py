@@ -441,8 +441,10 @@ class TablePanel(ContentPanel):
 class BackgroundActivity(ttk.Frame):
     """Apresenta as tarefas do run_bg existente, sem estimar percentual ou executar trabalho."""
 
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent, fit_text=None, **kwargs):
         super().__init__(parent, **kwargs)
+        self.fit_text = fit_text
+        self.full_text = "Pronto para consultar e analisar."
         self.pending = {}
         self._tick_job = None
         self._closed = False
@@ -460,7 +462,18 @@ class BackgroundActivity(ttk.Frame):
         self.bind("<Destroy>", self._destroyed, add="+")
 
     def _layout(self, event):
-        self.message.configure(wraplength=max(140, event.width - 230))
+        if self.fit_text is None:
+            self.message.configure(wraplength=max(140, event.width - 230))
+        else:
+            self._show_message(self.full_text)
+
+    def _show_message(self, text, style="Page.Muted.TLabel"):
+        self.full_text = text
+        if self.fit_text is not None:
+            available = self.winfo_width() - self.elapsed.winfo_reqwidth() - self.progress.winfo_reqwidth() - 16
+            text = self.fit_text(text, max(1, available))
+            style = "Page.Muted.TLabel"
+        self.message.configure(text=text, style=style)
 
     def begin(self, token, label):
         if self._closed:
@@ -486,17 +499,17 @@ class BackgroundActivity(ttk.Frame):
         if self.pending:
             labels = ", ".join(dict.fromkeys(label for label, _start in self.pending.values()))
             count = f" · {len(self.pending)} tarefas" if len(self.pending) > 1 else ""
-            self.message.configure(text=f"Processando: {labels}{count} — aguarde.", style="Info.Status.TLabel")
             seconds = int(time.monotonic() - min(start for _label, start in self.pending.values()))
             self.elapsed.configure(text=f"{seconds // 60}:{seconds % 60:02d}")
+            self._show_message(f"Processando: {labels}{count} — aguarde.", style="Info.Status.TLabel")
             self._tick_job = self.after(250, self._refresh)
         else:
             self.progress.stop()
             self.progress.grid_remove()
             self.elapsed.configure(text="")
-            self.message.configure(
-                text=("Processamento terminou com erro. Consulte a mensagem da tela ou Atividade." if self._failed
-                      else "Processamento finalizado. Confira o resultado na tela."),
+            self._show_message(
+                ("Processamento terminou com erro. Consulte a mensagem da tela ou Atividade." if self._failed
+                 else "Processamento finalizado. Confira o resultado na tela."),
                 style="Error.Status.TLabel" if self._failed else "Page.Muted.TLabel")
 
     def _destroyed(self, event):

@@ -104,11 +104,30 @@ class UIManager:
         def begin():
             activity = getattr(self, "background_activity", None)
             if activity is not None:
+                status_bar = getattr(self, "status_bar", None)
+                if status_bar is not None and not activity.pending:
+                    self._background_status_before = status_bar.status_text
                 try:
                     label = self.notebook.tab(self.notebook.select(), "text")
                 except (AttributeError, tk.TclError):
                     label = "Solicitação"
                 activity.begin(token, label)
+                if status_bar is not None:
+                    activity.place(x=0, y=0, relwidth=1, relheight=1)
+                    activity.lift()
+
+        def finish(failed=False):
+            activity = getattr(self, "background_activity", None)
+            if activity is None:
+                return
+            activity.finish(token, failed=failed)
+            status_bar = getattr(self, "status_bar", None)
+            if status_bar is not None and not activity.pending and not activity._closed:
+                activity.place_forget()
+                generic = {"Status: Iniciando...", "Status: pronto", "Status: erro. Veja Atividade."}
+                if (status_bar.status_text == getattr(self, "_background_status_before", None)
+                        and status_bar.status_text in generic):
+                    status_bar.set_status("Status: erro. Veja Atividade." if activity._failed else "Status: pronto")
 
         def deliver(result, error):
             failed = error is not None
@@ -118,9 +137,7 @@ class UIManager:
                 failed = True
                 raise
             finally:
-                activity = getattr(self, "background_activity", None)
-                if activity is not None:
-                    activity.finish(token, failed=failed)
+                finish(failed)
 
         self.call_in_ui(begin)
 
@@ -134,8 +151,7 @@ class UIManager:
         try:
             threading.Thread(target=target, daemon=True).start()
         except Exception:
-            self.call_in_ui(lambda: getattr(self, "background_activity", None) and
-                            self.background_activity.finish(token, failed=True))
+            self.call_in_ui(lambda: finish(True))
             raise
 
     def open_results_panel(self, opener=None):
@@ -347,8 +363,8 @@ class UIManager:
         self.base_label = self.status_bar.base_label
         self.status_details_button = self.status_bar.details_button
 
-        self.background_activity = BackgroundActivity(outer)
-        self.background_activity.pack(fill=tk.X, pady=(0, 6))
+        # Sobrepõe a área de status existente enquanto trabalha, sem roubar altura das páginas.
+        self.background_activity = BackgroundActivity(self.status_bar, fit_text=self.status_bar._fit)
 
         self.notebook = ttk.Notebook(outer)
         self.notebook.pack(fill=tk.BOTH, expand=True)

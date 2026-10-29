@@ -278,7 +278,7 @@ por teclado preservam a leitura. Zero observado continua distinto de ausência;
 `*` identifica amostra abaixo do mínimo vigente. A cor indica sinal, sem atribuir
 confiança ao resultado. Filtros, população, exclusões e agregação são os mesmos.
 
-O `UIManager.run_bg` existente agora apresenta uma faixa global de atividade,
+O `UIManager.run_bg` existente agora apresenta atividade na área de status global,
 visível também ao mudar de guia. A barra é indeterminada: não inventa percentual
 ou prazo. Mostra contexto da solicitação, tempo decorrido e número de tarefas
 simultâneas, permanecendo ativa até o último callback concluir. Erros de worker,
@@ -293,7 +293,7 @@ Desenhos síncronos isolados podem continuar pausando a animação; este lote n�
 declara eliminado todo bloqueio da thread Tk.
 
 Baseline antes das mudanças: 40 regressões de Laboratório/componentes aprovadas.
-Estado final: 126 regressões únicas aprovadas em lotes completos (48 componentes,
+Incremento inicial: 126 regressões únicas aprovadas em lotes completos (48 componentes,
 Laboratório e espera; 70 janela principal; sete navegação e uma falha de início
 de worker). A rodada conjunta anterior terminou com retorno 143 antes do resumo;
 os lotes completos acima são o resultado definitivo, sem afrouxar timeouts.
@@ -307,3 +307,16 @@ Regressões finais e percurso pelo launcher são registrados no recibo local
 O doctor de desenvolvimento offline registrou 16 OK, dois avisos e zero falhas;
 não qualifica MT5, contas ou Windows físico. Os limites de LAB-AUD-01 e do pilar
 de Dados permanecem, inclusive a instabilidade registrada na suíte ampla anterior.
+
+**Ajuste de escala após o CI:** a faixa adicional de 4ac3a46 reduziu o espaço
+útil no teste Windows de Robôs a 900×620, DPI 144 e fonte máxima. Os dois testes
+de contexto passaram; o teste de viewport falhou. O mesmo lote visual havia
+passado no SHA anterior, 7446882. A indicação agora sobrepõe a área de status
+existente enquanto há trabalho, sem acrescentar altura ao layout. Ao terminar,
+revela o status original e preserva mensagens específicas; erro/retentativa usam
+o status genérico somente quando aplicável. Texto longo usa o mesmo ajuste de
+largura do rodapé. Uma regressão compara a altura antes/durante a espera em
+fonte máxima. A revisão final passou em 39 testes de atividade, componentes,
+navegação/escala, contexto/viewport dos robôs e valores da matriz. Esses testes
+se sobrepõem à rodada inicial; não somar as contagens como casos únicos.
+Não afirma CI Windows completo nem Windows físico aprovado; conferir o SHA final.
