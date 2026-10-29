@@ -3406,7 +3406,9 @@ alias de caminho; a prévia anterior foi restaurada durante a verificação.
 
 ## Continuidade do roadmap — BD18a-SQL, 29/10/2026
 
-Base `0b6ef4d`/PR218, branch `codex/consulta-paginada-sql`. Reproduzido o custo:
+Fonte `3332d51374ce4d326afe68f5b1dfecc725e1d9c7` publicada no
+[PR219](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/219), sobre
+`0b6ef4d`/PR218, branch `codex/consulta-paginada-sql`. Reproduzido o custo:
 página1 carregava5.000 fatos em DataFrame antes de aplicar o corte. A regra SQL
 as-of do store agora é compartilhada entre a leitura completa e a paginada;
 esta usa LIMIT/chave no banco e fingerprint da seleção em lotes256. Identidade,
