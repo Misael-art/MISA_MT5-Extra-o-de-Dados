@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from sqlalchemy import inspect, text
+from mt5_extracao import process_owner
 
 log = logging.getLogger(__name__)
 _SCHEMA_LOCK = threading.RLock()
@@ -68,7 +69,9 @@ CREATE TABLE IF NOT EXISTS _analytics_producer_runs (
     rows_revised BIGINT NOT NULL DEFAULT 0,
     rows_unchanged BIGINT NOT NULL DEFAULT 0,
     error TEXT,
-    configuration_json TEXT
+    configuration_json TEXT,
+    owner_json TEXT,
+    recovered_at_utc TEXT
 )
 """
 
@@ -79,9 +82,11 @@ def ensure_schema(db):
             conn.exec_driver_sql("BEGIN IMMEDIATE")
         conn.execute(text(_CREATE_CHECKPOINTS))
         conn.execute(text(_CREATE_RUNS))
-        if "configuration_json" not in {column["name"] for column in inspect(conn).get_columns("_analytics_producer_runs")}:
-            clause = "IF NOT EXISTS " if conn.dialect.name == "postgresql" else ""
-            conn.execute(text("ALTER TABLE _analytics_producer_runs ADD COLUMN " + clause + "configuration_json TEXT"))
+        columns = {column["name"] for column in inspect(conn).get_columns("_analytics_producer_runs")}
+        for name in ("configuration_json", "owner_json", "recovered_at_utc"):
+            if name not in columns:
+                clause = "IF NOT EXISTS " if conn.dialect.name == "postgresql" else ""
+                conn.execute(text("ALTER TABLE _analytics_producer_runs ADD COLUMN " + clause + name + " TEXT"))
 
 
 def _utc_now():
@@ -126,6 +131,46 @@ def get_checkpoint(db, symbol, timeframe, family):
     return result
 
 
+def reconcile_orphan_runs(db, *, symbol=None, timeframe=None, family=None):
+    """Marca INTERRUPTED somente com morte local comprovada; não modifica fatos/checkpoints."""
+    scope = {key: str(value) for key, value in
+             (("symbol", symbol), ("tf", timeframe), ("family", family)) if value is not None}
+    if any(not value.strip() for value in scope.values()):
+        raise ValueError("Filtros de recuperação não podem ser vazios.")
+    ensure_schema(db)
+    conditions = " AND ".join(["status='RUNNING'", "run_id > :cursor"] + [key + " = :" + key for key in scope])
+    recovered, inspected, cursor = [], 0, ""
+    recovered_at = _utc_now()
+    while True:
+        with db.engine.connect() as conn:
+            rows = conn.execute(text("SELECT run_id, owner_json FROM _analytics_producer_runs WHERE " +
+                conditions + " ORDER BY run_id LIMIT 500"), {**scope, "cursor": cursor}).mappings().all()
+        if not rows:
+            break
+        inspected += len(rows)
+        for row in rows:
+            try:
+                owner = json.loads(row["owner_json"]) if row["owner_json"] else None
+            except (ValueError, TypeError):
+                owner = None
+            # Não promover metadados antigos baseados apenas em hostname/PID a
+            # prova de propriedade local (nomes de host podem se repetir).
+            if not isinstance(owner, dict) or not owner.get("host_scope") or process_owner.is_alive(owner):
+                continue
+            with db.engine.begin() as conn:
+                changed = conn.execute(text("UPDATE _analytics_producer_runs SET status='INTERRUPTED', "
+                    "recovered_at_utc=:recovered, "
+                    "error=:error WHERE run_id=:run_id AND status='RUNNING' AND owner_json=:owner"),
+                    dict(run_id=row["run_id"], owner=row["owner_json"], recovered=recovered_at,
+                         error="Processo proprietário encerrado; execução interrompida. Retome pelos lotes confirmados; "
+                               "instante de término e métricas finais desconhecidos.")).rowcount
+            if changed:
+                recovered.append(row["run_id"])
+        cursor = rows[-1]["run_id"]
+    return dict(scope=scope, inspected=inspected, recovered=recovered,
+                preserved=inspected-len(recovered), recovered_at_utc=recovered_at)
+
+
 def start_run(db, symbol, timeframe, family, algorithm_version, config_hash, source_sequence, *, configuration=None):
     if configuration is not None and not isinstance(configuration, dict):
         raise ValueError("Configuração do job precisa ser um objeto JSON.")
@@ -134,7 +179,7 @@ def start_run(db, symbol, timeframe, family, algorithm_version, config_hash, sou
             configuration, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
     except (ValueError, TypeError) as exc:
         raise ValueError("Configuração do job precisa conter somente valores JSON válidos.") from exc
-    ensure_schema(db)
+    reconcile_orphan_runs(db, symbol=symbol, timeframe=timeframe, family=family)
     run_id = str(uuid.uuid4())
     started = _utc_now()
     db_before = _db_bytes(db)
@@ -142,11 +187,12 @@ def start_run(db, symbol, timeframe, family, algorithm_version, config_hash, sou
         conn.execute(text(
             "INSERT INTO _analytics_producer_runs "
             "(run_id, symbol, tf, family, algorithm_version, config_hash, source_sequence_start, status, "
-            "started_at_utc, database_bytes_before, configuration_json) VALUES "
-            "(:run_id, :symbol, :tf, :family, :version, :config_hash, :sequence, 'RUNNING', :started, :db_bytes, :configuration)"),
+            "started_at_utc, database_bytes_before, configuration_json, owner_json) VALUES "
+            "(:run_id, :symbol, :tf, :family, :version, :config_hash, :sequence, 'RUNNING', :started, :db_bytes, :configuration, :owner)"),
             {"run_id": run_id, "symbol": str(symbol), "tf": str(timeframe), "family": str(family),
              "version": str(algorithm_version), "config_hash": str(config_hash), "sequence": source_sequence,
-             "started": started, "db_bytes": db_before, "configuration": configuration_json})
+             "started": started, "db_bytes": db_before, "configuration": configuration_json,
+             "owner": json.dumps(process_owner.current(), sort_keys=True)})
     return {"run_id": run_id, "started_at_utc": started, "started_monotonic": time.monotonic(),
             "rss_sampler": _RSSSampler(), "database_bytes_before": db_before}
 
@@ -221,4 +267,14 @@ def latest_run(db, symbol, timeframe, family):
             "FROM _analytics_producer_runs WHERE symbol = :symbol AND tf = :tf AND family = :family "
             "ORDER BY started_at_utc DESC LIMIT 1"),
             {"symbol": str(symbol), "tf": str(timeframe), "family": str(family)}).mappings().first()
-    return dict(row) if row else None
+    if row is None:
+        return None
+    result = dict(row)
+    if result["status"] == "INTERRUPTED":
+        # As colunas legadas NOT NULL conservam seus placeholders. Sem finalização,
+        # não são contagens finais e a superfície de leitura não as apresenta como zero.
+        for name in ("duration_ms", "peak_rss_bytes", "database_bytes_after",
+                     "rows_inserted", "rows_revised", "rows_unchanged"):
+            result[name] = None
+        result["metrics_state"] = "UNAVAILABLE"
+    return result
