@@ -4278,3 +4278,28 @@ MEN-02 é a próxima tarefa: adaptadores/capacidades, recibos e fixture de
 publicações com deduplicação/populações verificadas. Captura real, classificação
 qualificada e jornada completa continuam MEN-03…08. Não declarar o mecanismo
 MEN completo pelo contrato ou pela existência das três definições.
+
+
+## MEN-02 — lote de publicações e publicação atômica, 29/10/2026
+
+O serviço `mention_ingestion` valida uma população fechada antes de gravar:
+deduplicação por publicação, exclusões/filtros por objeto, contagens inteiras e
+três valores/checkpoint numa transação. Texto não persiste. F01–F09 são
+capacidades documentadas; listar fontes não chama rede nem declara conector.
+[Contrato SDK/CLI](sdk/api.md#ingestão-limitada-de-menções-men-02).
+
+Fixture própria Q10/P3/N2 e avaliações opostas entre objetos, zero/ausência,
+revisões/deleções, total versus amostra e ambiguidades ouro/Vale/Ibovespa foram
+conferidos. Repetir com relógio/cursor novos preserva o primeiro recebimento.
+Fonte/base incompatível, quota e cancelamento recusam publicação parcial.
+O launcher oficial foi interrompido por SIGINT e SIGKILL após os INSERTs e o
+checkpoint, ainda dentro da transação:zero fatos daquela janela/nenhum cursor;
+retomada insere3, repetição conserva3, recibos antigos CANCELLED/INTERRUPTED.
+Prévia instalada e job PostgreSQL terão recibos por SHA da composição.
+
+Sonda pública pequena:Bluesky/searchPosts403, Hacker News/newstories200/JSON;
+sem corpo retido. O primeiro conector deve usar o acesso realmente disponível,
+com painel e cobertura explícitos. [API oficial Hacker News](https://github.com/HackerNews/API).
+MEN-03 captura real ainda pendente; MEN-04 classificação qualificada ainda
+pendente. Anotações `qa.` deste incremento são somente referência sintética,
+sem P/N real certificado. Seguem MEN-03…08, sem concluir o mecanismo pelo lote.

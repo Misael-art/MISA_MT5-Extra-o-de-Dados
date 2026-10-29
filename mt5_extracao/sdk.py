@@ -110,6 +110,20 @@ def describe_mention_series(db, *, symbol, timeframe, subject, source, query, cl
                              query=query, classifier=classifier, universe=universe)
 
 
+def mention_source_capabilities():
+    """Referências/acessos documentados; não sonda rede nem afirma integração."""
+    from mt5_extracao.analytics import mention_ingestion
+    return mention_ingestion.source_capabilities()
+
+
+def ingest_mention_batch(db, *, selection, batch, synthetic_fixture=False, write_guard=None, cancel_check=None,
+                        timeout_seconds=120, max_memory_mb=1024):
+    """Ingestão explícita de publicações/agregados; consulta posterior é passiva."""
+    from mt5_extracao.analytics import mention_ingestion
+    return mention_ingestion.ingest(db, selection=selection, batch=batch, synthetic_fixture=synthetic_fixture,
+        write_guard=write_guard, cancel_check=cancel_check, timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
+
+
 def query_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
                            minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
                            tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
@@ -199,7 +213,7 @@ __all__ = [
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot",
     "export_feature_relation", "import_feature_relation",
-    "query_feature_relation_windows", "describe_mention_series",
+    "query_feature_relation_windows", "describe_mention_series", "mention_source_capabilities", "ingest_mention_batch",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida
