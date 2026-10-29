@@ -841,3 +841,325 @@ testado, integrado e instalado, e as provas externas que permanecem pendentes.
 Não usar “robusto”, “resiliente”, “todos” ou “pronto para API” sem a matriz de
 evidências que os sustenta. A avaliação financeira de ativos futuros, política
 adaptativa de risco e operação produtiva permanecem em seus próprios pilares.
+
+## 18. Menções na internet — quantidade, positivo e negativo
+
+Registro: 29/10/2026. **Estado: plano solicitado pelo proprietário; implementação
+pendente.** Identificador da extensão: **MEN**. Vinculação: BD03/04/05/06/14/18/19,
+T13.2, T16.3, F18 e T20.4/6/12/22/23. Este capítulo estende o plano canônico;
+não institui outro roadmap, motor estatístico, catálogo ou armazenamento.
+Prompt de execução: [MEN — implementação integrada](../repasse/PROMPT_MENCOES_MERCADO_20261029.md).
+
+### 18.1. Decisão do proprietário e fronteira funcional
+
+Capturar a presença de ativos, empresas e temas na internet e disponibilizar
+**três medidas quantitativas: quantidade, positivo e negativo**. São entradas
+para os mecanismos existentes de indicadores, médias, relações e estratégias.
+Uma menção ou mudança de sentimento não valida estratégia nem autoriza operação.
+
+A média e o comportamento em torno dela serão calculados pelos indicadores
+existentes, com suas janelas, parâmetros e versões. Desvios, razões, percentuais,
+saldo de sentimento, normalizações, correlações e conclusões pertencem ao
+Laboratório/Analytics e à composição existente. Não impor mediana como referência,
+criar um índice proprietário de atenção ou acrescentar essas derivações como
+novas medidas obrigatórias da coleta. Média, relevância estatística e eventual
+utilidade financeira continuam conceitos distintos no resultado das análises.
+
+O proprietário chama o ambiente de cruzamentos de **Strator**. Neste plano esse
+nome identifica o fluxo de análise descrito por ele; localizar a superfície
+oficial correspondente antes de editar. Não criar um módulo/produto homônimo.
+
+Ficam fora deste incremento: descoberta automática de ativos a partir de temas,
+coluna de previsão de alta/baixa, recomendação de compra/venda, indicador de
+alcance, reputação de autor, score de estratégia, execução financeira e painel
+analítico paralelo. Os adaptadores podem preservar metadados necessários para
+qualificar a origem sem transformar todo atributo disponível em indicador.
+
+### 18.2. Contrato das três medidas
+
+As colunas de apresentação serão **Quantidade**, **Positivo**, **Negativo**.
+Aliases técnicos propostos: `mentions.quantity`, `mentions.positive`,
+`mentions.negative`, sujeitos à validação de colisões/convenções em MEN-01.
+Implementar como três características numéricas no catálogo/store existentes;
+uma projeção com três colunas não exige três novas colunas em tabelas OHLCV.
+Chaves, tempos, fonte, estados e proveniência acompanham o envelope existente.
+
+| Medida | Definição | Unidade |
+|---|---|---|
+| Quantidade (Q) | Número de publicações elegíveis distintas que mencionam o objeto na janela e no universo declarado | publicação por janela |
+| Positivo (P) | Número dessas publicações classificadas positivamente em relação ao objeto | publicação por janela |
+| Negativo (N) | Número dessas publicações classificadas negativamente em relação ao objeto | publicação por janela |
+
+Regras obrigatórias:
+
+1. Uma publicação com dez ocorrências do nome conta uma vez por objeto. Um
+   documento com dois objetos pode contar uma vez para cada um, com classificação
+   própria. Não somar ativos para inferir número de publicações únicas globais.
+2. No contrato inicial, P e N são mutuamente exclusivos. Neutro, misto e
+   indeterminado permanecem fora de ambos e dentro de Q se a menção for elegível.
+   Logo, `0 <= P`, `0 <= N`, `P + N <= Q`; não exigir `P + N = Q`. O restante não
+   pode ser chamado automaticamente de neutro. Esses rótulos e cobertura ficam
+   em metadados de classificação, sem quarta medida obrigatória.
+3. Contagens são inteiras, finitas e não negativas; o transporte numérico atual
+   pode exigir representação compatível. Validar limite de representação exata
+   antes de converter para float; rejeitar perda silenciosa de precisão.
+4. Positivo/negativo descrevem avaliação textual **do objeto**, não variação de
+   preço ou expectativa de lucro. Uma frase sobre crise não é automaticamente
+   negativa para todos os ativos citados. Não inferir uma recomendação financeira.
+5. Política inicial para conectores de documentos: contar publicações originais,
+   comentários e respostas como itens distintos; excluir repostagem simples e
+   duplicação de transporte. Publicação com comentário próprio/quote pode contar
+   como item distinto. Declarar tipos por fonte. Agregados com política diferente
+   conservam outro escopo/versão, sem serem normalizados por suposição.
+6. Q cobre o universo efetivamente recuperado ou explicitamente contado pela
+   fonte. Não é censo da internet. P e N têm que pertencer ao mesmo universo de Q.
+   Contagem total do provedor e sentimento de amostra não formam uma tripla
+   completa. Publicar Q total com P/N indisponíveis; se houver uma amostra útil,
+   publicar outra série, com Q/P/N dessa amostra e identidade inequívoca. Não
+   extrapolar proporções para criar contagens positivas/negativas aparentes.
+7. Zero exige coleta bem-sucedida e cobertura declarada da janela. Coleta ausente,
+   truncada, interrompida, não autorizada ou sem capacidade tem estado/motivo;
+   não preencher com zero, interpolar ou copiar a janela anterior. Q pode estar
+   disponível enquanto P/N aguardam classificação; isso não autoriza P=N=0.
+8. Q/P/N disponíveis como tripla devem compartilhar população e revisão de
+   entrada. Publicar lotes consistentes na transação existente; não expor P/N
+   novos contra Q de outra população. A disponibilidade de cada medida continua
+   explícita quando os estágios de captura e classificação terminam em instantes
+   diferentes.
+
+### 18.3. Identidade, universo e filtros
+
+A série precisa distinguir base/namespace, objeto, fonte/provedor e conjunto de
+fontes subjacentes, consulta e versão, idioma/região quando conhecidos, política
+de inclusão/deduplicação, resolução, janela e versão da classificação. Fixar
+representação desse escopo no contrato canônico antes de escrever valores.
+
+`symbol` igual não basta para juntar duas fontes. O store atual tem chave de
+valor por símbolo/TF/feature/versão/observação/revisão, sem coluna independente de
+fonte nessa chave: MEN-01 deve demonstrar como a identidade completa cabe no
+registry e na seleção, sem colisões. Preferir o mecanismo existente de definições
+e parâmetros; se houver lacuna, extensão aditiva central e teste de isolamento.
+Não trocar o provedor global da base OHLCV para representar a fonte de menções.
+
+Objetos recebem identidade explícita: instrumento, companhia/marca ou tema.
+Relacionar, por configuração versionada, aliases e termos de inclusão/exclusão
+ao instrumento da base. Exemplos: ouro metal versus medalha; Vale empresa versus
+verbo; Ibovespa versus ETF/contrato futuro. Não tratar instrumentos relacionados
+como idênticos. Temas como zumbis e K-pop podem ter séries sem vínculo financeiro;
+um vínculo futuro com empresa/setor exige definição própria, não inferência oculta.
+
+Filtros por autores públicos, canais ou comunidades são seleções opcionais
+quando a fonte os suporta, com identidade de consulta nova. Não supor que
+"utilizadores" autoriza coletar informações privadas: consumidores do App usam
+o controle de acesso já existente; seleção de autor público é outra dimensão.
+
+Mudança de aliases, fontes, acesso, paginação, idioma ou política de inclusão
+precisa de nova identidade/revisão rastreável. Não concatenar essas populações
+como se o aumento de cobertura fosse aumento de menções. Agregação multifonte
+fica em composição explícita: não somar API direta e fornecedor que já inclui
+os mesmos documentos. Se não houver IDs para deduplicação, manter séries separadas.
+
+### 18.4. Tempo, disponibilidade e intervalos
+
+Usar janelas `[início, fim)` em UTC com fuso explícito, preservando a regra de
+calendário/sessão usada para projeção no ativo. Guardar separadamente hora de
+publicação, primeira observação/captura, fechamento da janela, processamento e
+disponibilidade. Campo desconhecido permanece desconhecido.
+
+- A contagem da janela só fica final após fechamento e cobertura suficiente
+  declarada. Janela em andamento é parcial e não entra como contagem final.
+- `available_at` não antecede os dados necessários nem a produção/recebimento
+  real daquele resultado. P/N podem ficar disponíveis depois de Q. Revisão por
+  postagem atrasada, edição, exclusão ou reclassificação é anexada; snapshot
+  anterior mantém o resultado que conhecia, sujeito aos direitos de retenção.
+- Exemplo de teste: publicação às10h, recebimento às10h20; decisão às10h05 não
+  pode enxergá-la. Classificação pronta às10h22 não aparece às10h20.
+- Backfill recuperado hoje não recebe disponibilidade histórica presumida.
+  Histórico point-in-time certificado pelo fornecedor exige evidência e modo de
+  pesquisa explícitos; não equivale à latência real da instalação do usuário.
+- Modelo treinado/publicado depois do período estudado identifica análise
+  retrospectiva. Não certifica reprodução de um classificador disponível então.
+- A resolução é a comprovada pela origem. Janelas menores podem compor uma maior
+  por soma somente com cobertura, alinhamento e revisões consistentes. Não
+  dividir uma contagem diária em M1/H1, nem somar acumulados sobrepostos. Uma
+  projeção causal do último dado conhecido preserva resolução/idade e não cria
+  novas observações independentes ou amostras estatísticas.
+- Sazonalidade, médias e desvios continuam cálculos dos indicadores existentes;
+  persistir só quando solicitado pelo fluxo canônico de materialização.
+
+### 18.5. Fontes e ferramentas — referências para implementação
+
+Referências públicas consultadas em29/10/2026. **Consulta documental não prova
+acesso contratado, cobertura brasileira, precisão ou funcionamento no host.**
+Revalidar termos, quotas, endpoints, retenção e capacidades no início de cada
+adaptador. Não fixar preços ou SLAs não contratados. Nenhuma contratação, coleta
+ampla ou aquisição de modelo foi feita neste lote documental.
+
+| ID | Fonte / referência oficial | Capacidade a aproveitar | Condição para o contrato Q/P/N |
+|---|---|---|---|
+| F01 | [X — Post Counts](https://docs.x.com/x-api/posts/counts/introduction) e [documentação da API](https://docs.x.com/x-api) | Contagens recentes/históricas por consulta; documentação descreve minuto/hora/dia; textos por capacidade de busca/stream separada | Counts não retorna textos. Habilitar P/N somente com corpus correspondente ou agregado compatível; respeitar acesso efetivo e política de repostagens |
+| F02 | [Bluesky — Jetstream](https://github.com/bluesky-social/jetstream) e [referência HTTP](https://endpoints.bsky.app/) | Fluxo de registros públicos e capacidades de recuperação documentadas | Candidato inicial para coleta própria; filtrar coleções/objetos, guardar cursor, detectar lacunas/reconexão e não presumir histórico integral |
+| F03 | [YouTube — commentThreads.list](https://developers.google.com/youtube/data/reference/rest/v3/commentThreads/list) e [comments.list](https://developers.google.com/youtube/v3/docs/comments/list) | Comentários por vídeo/canal, paginação e respostas pelo recurso apropriado | Vídeos/canais selecionados são o painel observado. Conferir respostas completas, comentários desabilitados, quotas, edições e seleção; não chamar o painel de todo o YouTube |
+| F04 | [Reddit — Data API Terms](https://redditinc.com/policies/data-api-terms) e [acesso à API](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data) | Publicações e comentários de comunidades elegíveis | Uso comercial depende de acordo. Registrar acesso pendente sem improvisar scraping substituto; manter restante do trabalho independente |
+| F05 | Sites, blogs e fóruns — API/feed/documentação de cada publicador a cadastrar em MEN-02 | Publicações de um painel explícito; RSS/Atom podem ajudar a descoberta | Não há API universal nem lista de sites aprovada. Cadastrar URL, regras, IDs/URLs canônicas, conteúdo efetivamente acessível e paginação; snippets/truncamentos não equivalem a texto integral |
+| F06 | [Brandwatch — Data Retrieval](https://developers.brandwatch.com/docs/data-retrieval), [APIs](https://www.brandwatch.com/products/apis/) e [Consumer Research](https://www.brandwatch.com/products/consumer-research/features/) | Menções e agregados, incluindo volume e distribuição de sentimento | Candidato para ampliar fontes mediante contrato. Verificar consultas equivalentes, universo dos agregados, idioma, categorias, backfill e direitos de exportação; índice/sentimento médio não é contagem |
+| F07 | [LSEG MarketPsych — Analytics and Models](https://www.lseg.com/en/data-analytics/market-data/quantitative-economic-data-solutions/marketpsych-analytics-and-models) e [MarketPsych](https://www.marketpsych.com/home) | Feeds derivados de notícias, redes e documentos financeiros; entidades/tópicos/sentimento | Avaliar amostra/esquema e licença. Só integrar como Q/P/N se entregar contagens semanticamente equivalentes; scores proprietários ficam em família distinta, sem renomeá-los como contagens |
+| F08 | [Google Trends — definição dos dados](https://support.google.com/trends/answer/4365533?hl=pt-BR) | Interesse relativo de busca; complemento da pesquisa | Não preencher Q/P/N: busca não é publicação e escala0–100 não é número de menções. Eventual integração pertence a série externa distinta, sem bloquear MEN |
+| F09 | [GDELT — DOC2.0](https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/) | Repercussão jornalística, linhas de volume/tom e referências de artigos | Reusar a frente de notícias. Volume relativo/tom não são contagens P/N. Documentos elegíveis podem ser classificados sob contrato separado de notícias; não substituem cobertura social |
+| C01 | [FinBERT — pesquisa](https://arxiv.org/abs/1908.10063) e [implementação ProsusAI](https://github.com/ProsusAI/finBERT) | Referência de classificador financeiro para comparação | Não presumir português/gírias nem equivalência de variantes; fixar modelo/tokenizador/licença/versão e medir em amostra revisada. Modelo é ferramenta, não fonte de menções |
+
+Todas as fontes discutidas permanecem rastreadas, mas implementar conectores
+indiscriminadamente não é critério de conclusão. O núcleo deve funcionar com
+uma fonte elegível ponta a ponta e receber uma segunda sem alterar consumidores.
+F01–F07 são candidatas à ingestão de menções; F08/F09 são complementos de famílias
+distintas. Ausência de contrato de um fornecedor opcional não bloqueia o núcleo,
+nem permite declarar aquele fornecedor integrado.
+
+### 18.6. Captura, classificação e persistência
+
+**Captura.** Adaptador entrega documentos elegíveis ou contagens agregadas, com
+modo, escopo, janela, revisão, cobertura e cursor. Reusar clientes/credenciais
+válidos e a infraestrutura oficial de jobs, limites, cancelamento e checkpoints.
+Não prender conexão/transação SQL durante requisição remota. Tratar paginação,
+429/Retry-After, timeout e reconexão com orçamento finito, retomada e motivo
+explícito. Retry de leitura não pode duplicar fatos. Nenhuma consulta do
+Laboratório deve disparar rede ou classificador implicitamente.
+
+**Origem.** Manifesto de coleta referencia provedor, consulta saneada, objetos,
+período, tipos de publicação, resolução, contagem recebida, cobertura, amostra,
+licença/retenção, hashes e cursor saneado. Não expor credenciais ou consultas
+privadas em recibos públicos. IDs/hashes de documento e revisão sustentam
+idempotência e auditoria, sem criar um catálogo de usuários.
+
+**Classificação.** Separar elegibilidade/objeto de sentimento. Usar texto e
+contexto efetivamente disponíveis, com regras para negação, ironia, mistura,
+publicidade e múltiplos objetos. Não usar preço futuro para escolher rótulo.
+Salvar modelo/provedor, versão do prompt/regras, parâmetros e idioma suportado;
+resultado recebido fica imutável por revisão. Não depender de reexecutar um LLM
+mutável para reproduzir o resultado passado. Comparar classificador local e
+serviço acessível pelo custo/qualidade observados; não impor GPU ou LLM pago.
+
+**Qualificação.** Amostra manual de desenvolvimento separada da avaliação, com
+exemplos em português/inglês quando suportados, ambiguidades e casos fora do
+domínio. Relatar matriz de confusão, precisão/recall por classe e abstenções.
+Fixar critérios de promoção antes da avaliação; não inventar precisão nem usar
+lucro de backtest como rótulo correto. Classificador não qualificado pode servir
+à bancada sintética; não promover P/N real como capacidade validada.
+
+**Armazenamento.** Reusar `database_manager`, `analytics.datasets`,
+`feature_store`, `features`, `producers`, `producer_jobs`, consultas e snapshots.
+Uma tabela aditiva de entradas/recibos só cabe se inventário comprovar lacuna;
+ela não substitui o feature_store. Três séries canônicas saem do mesmo serviço.
+Inspecionar chaves de jobs/checkpoints: duas consultas/fontes do mesmo símbolo
+não podem compartilhar cursor por coincidência de família. Estender a chave
+canônica se necessário, sem segundo journal ou scheduler.
+
+**Retenção e recuperação.** Dados/textos seguem licença e destino próprio;
+persistir somente o permitido, com minimização e política de exclusão/edição
+compatível. Se a licença impedir replay de texto, declarar o limite e conservar
+agregados/recibos permitidos. Exportação de snapshot não inclui corpus bruto por
+conveniência. Manifesto e proteção independente de insumos ignorados seguem o
+fluxo existente; `.gitignore` não é backup. Fixtures são próprias/sintéticas ou
+amostras públicas com uso permitido; nunca dados privados do proprietário.
+
+### 18.7. Integração e posse
+
+| Responsabilidade | Dono / base canônica a estender |
+|---|---|
+| Fontes, objetos, escopo, entrada e revisões | Pilar de Dados; `analytics.datasets`, `instruments` no que seu contrato comportar, `database_manager` e ingestão existente |
+| Definições Q/P/N, agregação e disponibilidade | Pilar de Dados; `feature_store`, `features`, `producers`, `producer_jobs` e materializador existentes |
+| Consulta, snapshots e projeção | Pilar de Dados; `query_service`, `datasets`, `indicator_context`, SDK/CLI oficiais |
+| Médias, derivações e relações | Analytics/Strator/Laboratório existentes; `strategies.indicators`, `associations`, `relation_dto` e fluxos F18; não replicar fórmulas no coletor |
+| Seleção de séries, gráfico e cruzamentos | Laboratório, após contrato de Dados; `ui/laboratory_series.py`, `ui/relations.py` e componentes existentes |
+| Contexto de estratégias/usuários e operações | Contratos BD16/17, ledger/runs e acesso existentes; respeitar bases e revisões de presets |
+| Consumo futuro por Expert | Adaptador/contrato operacional próprio, somente após dados/consumidor; sem editar HADOUKEN/Safety nesta frente por conveniência |
+
+Esses módulos foram localizados no checkout de referência; presença não prova
+que todo cruzamento esteja implementado ou integrado. Uma análise entre bases,
+ativos, utilizadores, estratégias ou indicadores deve declarar as identidades,
+população, permissões, janela e corte usados. Dados não reimplementa capacidades
+ausentes dos consumidores para aparentar conclusão. Vincular cada lacuna ao
+dono BD/F18/LAB existente, com contrato e aceite próprios.
+
+### 18.8. Execução por incrementos
+
+Cada linha abaixo é um incremento revisável, uma tarefa por PR. Subtarefas MEN
+permanecem neste capítulo e no painel do plano; não criar backlog concorrente.
+
+| ID | Entrega e passos | Dependências | Aceite verificável |
+|---|---|---|---|
+| MEN-00 | Registrar decisão, fontes, plano e prompt nos documentos canônicos | Pedido29/10 | Revisão documental e links; não marca implementação concluída |
+| MEN-01 | Inventariar fonte/store/consumidores; fechar contrato Q/P/N, identidade de objeto/fonte/consulta e representação nas chaves existentes; desenhar migração somente se necessária | BD03/04/06 e contratos §§11–12 | Dois provedores e duas consultas para o mesmo símbolo não colidem; estados e unidades definidos; mapa de leitores/escritores e baseline de testes |
+| MEN-02 | Cadastrar capacidades e acessos de F01–F09; escolher fonte inicial por acesso real; contrato de adaptador de documentos/agregados, orçamento, cursor e manifestos; importar fixture pelo serviço oficial | MEN-01 | Fixture determinística percorre ingestão/consulta sem rede; total versus amostra e fonte ausente são explícitos; cadastro não é conector implementado |
+| MEN-03 | Implementar primeiro adaptador real com paginação/reconexão, limites e retomada; início candidato F02 se elegível, ou outro acesso já válido | MEN-02 + acesso real | Pequena captura pública no host, IDs/horários/escopo conferidos; repetição sem duplicação, falha parcial sem zero artificial e retomada pelo mesmo job |
+| MEN-04 | Implementar e qualificar classificação por objeto e contagem de P/N, incluindo abstenção e revisão | MEN-01/02; MEN-03 para aceite real | Oráculo sintético exato, avaliação manual separada, versão persistida, falhas não viram sentimento; nenhuma previsão de preço agregada |
+| MEN-05 | Materializar Q/P/N por janela e expor pelo catálogo/serviço/SDK/CLI/snapshot existentes; conferir exportação/importação | MEN-03/04 + BD14/18/19 utilizados | Igualdade consulta/SDK/CLI, chaves isoladas, revisão causal por decisão, publicação consistente e snapshot antigo preservado após atualização |
+| MEN-06 | Disponibilizar as três séries no Laboratório e exercitar indicadores/médias e relações existentes; documentar cada cruzamento suportado e pendente | MEN-05 + consumidor BD19/F18 correspondente | Seleção pela descoberta do catálogo, sem lista fixa/rede ao abrir; percurso real pelo launcher com série de menções e indicador/preço compatível, estados e população visíveis |
+| MEN-07 | Integrar segunda fonte independente pelo mesmo adaptador/contrato; fornecedores adicionais em subtarefas próprias com acesso e orçamento | MEN-05; MEN-06 para aceite visual | Consumidores intactos, fontes separadas e cobertura comprovada; nenhuma soma de corpus sobreposto nem população ampliada silenciosamente |
+| MEN-08 | Reconciliar composição, proteção dos insumos, instalação/prévia, regressão e handoff; registrar capacidades não acessíveis | MEN-06/07 e gates pertinentes | Commit/push/PR/SHAs e recibos; migração/retorno preservam dados; quadro do que funciona, do que não foi integrado e dos aceites externos pendentes |
+
+MEN-04 pode ser desenvolvido com fixture enquanto o acesso de MEN-03 está
+pendente. Essa independência não transforma teste offline em certificação da
+fonte. Em MEN-06, primeiro demonstrar uma relação descritiva já suportada; preço,
+indicador, estratégia, ativo, utilizador e TF são percursos distintos. Não
+prometer todos por demonstrar um único par. Se falta uma capacidade central,
+implementar na sua frente canônica ou registrar dependência concreta.
+
+### 18.9. Bateria de aceite obrigatória
+
+| Caso controlado | Resultado esperado |
+|---|---|
+| Dez publicações elegíveis:3 positivas,2 negativas,5 neutras/mistas/indeterminadas | Q=10,P=3,N=2; nenhum saldo/score/compra-venda criado pelo coletor |
+| Palavra repetida no mesmo item e dois objetos com avaliações opostas | Uma menção por objeto; P/N específicos do objeto; repetição de transporte não altera resultado |
+| Mesmo símbolo em duas fontes, consultas, bases ou perfis autorizados | Históricos, checkpoints e resultados isolados; nenhum cruzamento implícito |
+| Zero observado, fonte fora do ar, paginação truncada e classificador indisponível | Zero somente no caso comprovado; estados/motivos e P/N ausentes nos demais |
+| Counts total1000 e100 documentos amostrados com30 positivos/20 negativos | Q total1000 sem P/N total; amostra separada Q100/P30/N20, sem projeção para300/200 |
+| Score0,7 ou porcentagem de sentimento recebida de fornecedor | Recusa como contagem; nenhuma multiplicação implícita pela quantidade |
+| Janela fechada versus parcial e evento na fronteira final | `[início,fim)` respeitado; evento na borda entra na próxima; parcial não é final |
+| Publicação/captura/classificação em instantes diferentes | Cada decisão enxerga somente o que já estava disponível; fuso desconhecido recusado ou marcado |
+| Edição, exclusão permitida por contrato, chegada tardia e reclassificação | Revisões e política de retenção respeitadas; snapshot anterior não lê resultado atual ocultamente |
+| Backfill e modelo posterior ao período | Proveniência retrospectiva explícita, sem disponibilidade histórica fabricada |
+| Reagregação de duas janelas completas e uma ausente | Soma correta das completas; ausência preservada, sem inventar cobertura/zerar lacuna |
+| Rede429/timeout, cancelamento, quota e morte comprovada do processo | Backoff/limites, checkpoint e retomada consistentes; sem job eterno ou publicação parcial |
+| Base antiga e segunda aplicação da migração | Dados anteriores preservados, abertura/repetição corretas; SQLite e PG nos caminhos afetados |
+| Consulta e abertura de relatório/exportação | Nenhuma rede/classificação/escrita cara inesperada; versões e recibos equivalentes |
+| Série constante, pouca amostra e repetição de dado diário em M1 | Estados de relação existentes; repetições não contam como novos eventos independentes |
+| Correlação sintética forte e correlação nula | Ambos são resultados legítimos; nenhum limiar financeiro requerido para aceitar a coleta |
+
+Verificação documental: diff, links/âncoras, IDs, coerência dos três campos e
+matriz de fontes. Implementação: testes pertinentes a cada incremento, gates
+obrigatórios do repositório, doctor pelo wrapper e jornada oficial da superfície
+afetada com base de QA separada. Para integração externa, recibo de chamada real
+pequena sem segredos; mocks não a substituem. Para UI, inspecionar seleção,
+ausência/espera/erro/cancelamento e restauração do contexto no launcher oficial.
+Não usar negociação REAL, contas ou bancos privados como fixtures.
+
+### 18.10. Recursos, publicação e encerramento
+
+Manter raiz única `/home/misael/Projects/MT5X`, App em `repos/app`, um `.venv`,
+wrapper/caches oficiais, dados de pesquisa/QA separados e pins dos companions
+preservados. Não criar clone/worktree, ambiente, scheduler, executor ou lake
+paralelo em nome de big data. Antes de crescer, medir documentos/bytes por
+janela, custo de classificação, RAM/disco/latência e retenção. Escala é requisito
+de capacidade medido; não uma obrigação de instalar uma stack distribuída.
+
+Uma suíte/build pesada por vez; downloads/pacotes/modelos acima70MB são
+preparados para execução manual pelo usuário, sem fragmentar para contornar o
+limite. Credenciais somente no fluxo oficial existente; acesso faltante produz
+uma solicitação objetiva nesse fluxo enquanto a parte independente continua.
+Nova assinatura paga/coleta onerosa exige a autorização aplicável; este plano
+não é contratação. Não pedir segredos no chat nem instalar serviços recorrentes.
+
+Consultar branch/PRs/SHAs/checks antes do lote e publicação. Preservar WIP alheio,
+versionar somente arquivos revisados e confirmar SHA remoto; sem force push,
+merge automático ou release por documentação. Atualizar este capítulo, painel
+e `docs/continuidade.md` por incremento. Registro administrativo permanece em
+`Projects/.workspace`, sem listas concorrentes na raiz da composição.
+
+Concluir o mecanismo significa: primeira fonte real, classificação qualificada,
+Q/P/N persistidos/consultáveis/congeláveis, consumo por indicadores/relações
+existentes e segunda fonte integrada sem reescrever consumidores, com provas
+no host. Acessos opcionais e cruzamentos ainda ausentes ficam discriminados.
+Nenhum resultado de correlação, preço futuro ou estratégia vencedora é condição
+de sucesso da captura. Não certificar utilidade financeira ou operação de Expert
+a partir do aceite técnico deste mecanismo.
