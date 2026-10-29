@@ -120,12 +120,24 @@ UNAVAILABLE, com motivo. Zero conhecido continua zero. Disponibilidade do result
 declarado dos pais em cada decisão; uma revisão tardia de observação antiga não substitui a
 observação mais recente. Há proveniência por pai/versão/revisão/valor e avaliação de dois níveis.
 
-O envelope traz `composition_version`, `evaluation_id`, `implementation_sha256`, manifest, alvos,
-contratos, ordem `executed`, `context` e `qualification`. Cada canal tem valor/estado/motivo,
-unidade, parâmetros, observação e disponibilidade. A implementação identifica os módulos de
-grafo/contexto/store/snapshot e versões pandas/NumPy; `evaluation_id` também liga manifest,
-alvos e ordem das decisões. Essa assinatura ainda é por módulos; granularidade adicional pertence
-a BD13. Metadados de anotação das decisões não são parte da identidade matemática.
+O envelope atual tem `composition_version=2`, `signature_scheme=frozen_node_components_v1`,
+`evaluation_id`, `implementation_sha256`, manifest, alvos, contratos, ordem `executed`, `context`,
+`window_utc` e `qualification`. **Receitas continuam no schema1** e snapshots anteriores são lidos
+sem reescrever contratos/fatos. Reavaliar com este esquema gera identidades novas; não renomeia
+resultados exportados no esquema anterior.
+
+Cada receita calculada tem `computation_sha256` nas definições, canal e proveniência. A identidade
+liga contrato próprio, operador nomeado e contratos/identidades dos pais; a de uma folha representa
+somente seu contrato congelado, sem certificar o cálculo ou a aquisição na fonte. A proveniência
+e `source_revision` do nó incluem sua identidade, mesmo se uma implementação diferente coincidir
+no valor numérico. Alterar um operador muda seus descendentes; acrescentar ramo/operador não usado
+conserva a identidade dos nós originais. O hash global identifica a união do grafo selecionado.
+
+Componentes AST do grafo, contexto congelado, as-of, representação de Snapshot e regras de tempo
+usadas entram na identidade, com Python/pandas/NumPy. Comentários/finais de linha/caminhos e funções
+alheias ficam fora. Funções e representação compartilhadas permanecem conservadoras. Componentes
+ausentes falham explicitamente. `evaluation_id` também liga manifest, alvos, ordem das decisões,
+versão do envelope e janela UTC efetiva. Anotações das decisões não são identidade matemática.
 
 É **contexto exploratório calculado**, sem materialização ou comprovação de sinal recebido
 historicamente. `materialized=False` e `operational_acceptance=False`; qualidade desconhecida
