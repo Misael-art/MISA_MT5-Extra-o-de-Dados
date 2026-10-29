@@ -5,10 +5,12 @@ numérica reutiliza o prefixo exato do registry, inclusive suas sementes recursi
 """
 import ast
 import hashlib
+import inspect as source_inspect
 import json
 import logging
 from pathlib import Path
 import platform
+import textwrap
 
 import numpy as np
 import pandas as pd
@@ -34,6 +36,14 @@ def _source_components(filename, names):
         raise ValueError("Componentes de implementação ausentes: " + ", ".join(sorted(missing)))
     return {name: hashlib.sha256(ast.dump(functions[name], include_attributes=False).encode()).hexdigest()
             for name in names}
+
+
+def _object_source_component(obj):
+    """Mesmo formato AST para classes/propriedades de representação congelada."""
+    nodes = ast.parse(textwrap.dedent(source_inspect.getsource(obj))).body
+    if len(nodes) != 1 or not isinstance(nodes[0], (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        raise ValueError("Objeto de implementação precisa ter uma definição Python única.")
+    return hashlib.sha256(ast.dump(nodes[0], include_attributes=False).encode()).hexdigest()
 
 
 def implementation_scheme(feature_id):

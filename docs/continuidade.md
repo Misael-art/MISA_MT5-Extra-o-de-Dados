@@ -3545,3 +3545,42 @@ Próximo recorte: identidade dos operadores/receitas congeladas BD13 antes de
 materializar a primeira cadeia BD14. O contexto composto ainda usa módulos
 inteiros; demais famílias e execução seletiva permanecem abertas. Sem negociação,
 fixture privada do proprietário ou aceite nativo/financeiro/Windows físico.
+
+## Continuidade do roadmap — BD13-COMPOSITION, 29/10/2026
+
+Branch `codex/assinaturas-compostos`, sobre `7534976`/PR222. Reproduzido no
+pacote sintético existente: acrescentar função alheia em features.py mudava a
+assinatura global embora o grafo/valor96 permanecessem iguais. O grafo agora
+identifica os componentes usados e cada nó liga contrato, operador e identidades
+dos pais. `computation_sha256` entra no canal e na proveniência/source_revision;
+uma implementação diferente não conserva a mesma origem só porque coincidiu no
+valor. Alterar absolute conserva difference; alterar difference muda seu
+descendente. Operador/ramo não usado fica fora da identidade do nó original.
+
+Reutilizado o normalizador AST existente, com acesso a classes para Snapshot;
+sem novo engine/store/cache/executor. As-of, contexto congelado, representação
+Snapshot e regras de tempo usadas estão vinculados ao código; funções e
+representação compartilhadas continuam conservadoras. As três versões dos
+retornos qualificados permaneceram idênticas após a extensão. Envelope2 separa
+identidade de avaliação da matemática e preserva receita1 sem reescrever o
+catálogo; janela UTC efetiva entra na avaliação. [API/migração](sdk/api.md#composições-congeladas-bd12-snapshot).
+
+Baseline195 reaproveitado, rodada inicial54, regressões novas15 e final210
+distintos aprovados (sobreposição, não somar). Inclui mudança em operador/as-of,
+descendência/ramo independente, código alheio/live selector, origem mesmo com
+valor igual, arquivo de componente ausente, normalização/alias, janela efetiva,
+legado, famílias e SDK anteriores. Doctor offline16OK/2avisos/0falhas. Launcher
+oficial confirma re-registro idêntico de receita1, valores2/96/96/1/2/2, CLI=SDK
+e pacote importado em outra base/fuso com contexto original. Dez fatos pais
+preservados e zero fatos filhos; resultado continua exploratório.
+
+Bancada com o mesmo snapshot carregado, dois níveis/500 decisões, três chamadas:
+mediana328→407ms, pico Python4,73→4,91MB medido separadamente. Valores/estados
+idênticos (digest conferido); custo adicional explícito de identidade/proveniência,
+sem promessa de aceleração. Recibos `state/qa-tmp/composition-signatures/`.
+Próxima frente BD14: contrato de materialização por observação/revisão e retomada
+no mecanismo existente. Não transformar repetições de uma grade de decisões em
+eventos independentes nem perder correções tardias de observações antigas;
+estender o contexto canônico antes de persistir se esse percurso exigir.
+Demais famílias e BD14 completo permanecem abertos; sem dados privados como
+fixture, negociação ou aceite nativo/financeiro/Windows físico.

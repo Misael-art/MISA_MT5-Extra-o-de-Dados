@@ -175,11 +175,22 @@ def recalculate_affected(db, changed_dependencies, recalculators, *, definition_
 
 
 # Operações fechadas e tipadas, despachadas pelo grafo existente; nenhuma expressão é executada.
-COMPOSITION_VERSION = 1
+COMPOSITION_VERSION = 2
+RECIPE_VERSION = 1
 MAX_COMPOSITION_NODES = 32
+
+
+def _difference(values):
+    return values[0] - values[1]
+
+
+def _absolute(values):
+    return abs(values[0])
+
+
 _COMPOSITE_OPERATORS = {
-    "difference":dict(arity=2, formula="left - right", evaluate=lambda values: values[0] - values[1]),
-    "absolute":dict(arity=1, formula="abs(input)", evaluate=lambda values: abs(values[0])),
+    "difference":dict(arity=2, formula="left - right", evaluate=_difference),
+    "absolute":dict(arity=1, formula="abs(input)", evaluate=_absolute),
 }
 _COMPOSITE_UNITS = frozenset({"fraction", "price_units"})
 _COMPOSITE_AVAILABILITY = "max_declared_parent_availability_at_same_observation"
@@ -234,7 +245,7 @@ def register_composite(db, feature_id, name, algorithm_version, *, operation, in
     for pair in pairs:
         _frozen_recipe(known[pair])
     unit = _composite_unit([known[pair] for pair in pairs])
-    recipe = dict(schema_version=COMPOSITION_VERSION, operation=operation, operator_version=1,
+    recipe = dict(schema_version=RECIPE_VERSION, operation=operation, operator_version=1,
                   inputs=[dict(feature_id=ident, algorithm_version=version) for ident, version in pairs])
     return register(db, feature_id, name, algorithm_version, parameters=dict(composition=recipe),
         dependencies=["feature:" + ident for ident, _version in pairs], family="composite",
@@ -255,7 +266,7 @@ def _frozen_recipe(spec):
         raise ValueError("Metadados divergem do contrato composto congelado.")
     recipe = parameters["composition"]
     if (not isinstance(recipe, dict) or set(recipe) != {"schema_version", "operation", "operator_version", "inputs"}
-            or type(recipe["schema_version"]) is not int or recipe["schema_version"] != COMPOSITION_VERSION
+            or type(recipe["schema_version"]) is not int or recipe["schema_version"] != RECIPE_VERSION
             or type(recipe["operator_version"]) is not int or recipe["operator_version"] != 1):
         raise ValueError(f"Contrato composto não suportado: {spec['feature_id']}@{spec['algorithm_version']}.")
     raw = recipe["inputs"]
@@ -269,11 +280,54 @@ def _frozen_recipe(spec):
     return recipe["operation"], pairs
 
 
+def _composition_components(operations):
+    """Uma imagem dos componentes usados; operadores não selecionados ficam fora."""
+    import hashlib
+    import platform
+    import numpy as np
+    import pandas as pd
+    from mt5_extracao import timeframes
+    from mt5_extracao.analytics import datasets, indicator_context, indicator_materializer, instruments
+
+    functions = {}
+    for operation in operations:
+        name = getattr(_COMPOSITE_OPERATORS[operation]["evaluate"], "__name__", None)
+        if not isinstance(name, str) or not name.isidentifier():
+            raise ValueError("Operador exige função Python nomeada e componente de implementação verificável.")
+        functions[operation] = name
+    source_components = indicator_materializer._source_components
+    own = source_components(__file__, (
+        "_composition_components", "_composition_contract", "compose_snapshot", "_frozen_recipe", "_composite_unit",
+        "_composite_inputs", "affected_by", "recalculate_affected", "_latest_by_id", "_dependency_matches",
+        "_feature_dependency", *sorted(set(functions.values()))))
+    operator_hashes = {operation: own[name] for operation, name in functions.items()}
+    common = dict(scheme="frozen_node_components_v1", recipe_version=RECIPE_VERSION,
+        sources=dict(graph={name: digest for name, digest in own.items() if name not in functions.values()},
+            context=source_components(indicator_context.__file__, (
+                "from_snapshot", "_context_rows", "_ids", "_version", "_state", "_value", "records")),
+            store=source_components(feature_store.__file__, ("asof_join", "_utc_timestamp", "_canonical_json")),
+            snapshot=source_components(datasets.__file__, ("_feature_selection", "_window_utc")),
+            snapshot_access=indicator_materializer._object_source_component(datasets.Snapshot),
+            broker_time=source_components(instruments.__file__, ("broker_utc",)),
+            timeframe=source_components(timeframes.__file__, ("parse", "_norm")),
+            source_reader=source_components(indicator_materializer.__file__, (
+                "_source_components", "_object_source_component"))),
+        python=platform.python_version(), pandas=pd.__version__, numpy=np.__version__)
+    encoded = feature_store._canonical_json(common, "composition implementation")
+    return hashlib.sha256(encoded.encode()).hexdigest(), operator_hashes
+
+
+def _composition_contract(spec):
+    """Contrato matemático congelado; anotações e nome não versionam a aritmética."""
+    return {key: spec.get(key) for key in ("feature_id", "algorithm_version", "family", "formula", "parameters",
+        "dependencies", "unit", "value_type", "output_kind", "warmup_count", "warmup_unit", "source_id",
+        "timeframe", "availability_rule")}
+
+
 def compose_snapshot(snapshot, decisions, *, targets):
     """Avaliação exploratória de receitas congeladas, usando o mesmo executor de dependências."""
     import hashlib
     import json
-    from pathlib import Path
     import numpy as np
     import pandas as pd
     from mt5_extracao.analytics import datasets, indicator_context, query_service
@@ -325,6 +379,22 @@ def compose_snapshot(snapshot, decisions, *, targets):
         raise ValueError(f"Composição excede {query_service.MAX_SELECTION_ROWS} pares nó/decisão; reduza a seleção.")
     if any(any(str(col).startswith(ident + "::") for ident in versions) for col in decisions.columns):
         raise ValueError("Decisões já contêm colunas reservadas dos indicadores; remova-as antes de compor.")
+    common, operator_hashes = _composition_components({operation for operation, _parents in recipes.values()})
+    computation = {}
+    for pair, spec in chosen.items():
+        ident = pair[0]
+        contract = _composition_contract(spec)
+        if ident in recipes:
+            operation, parents = recipes[ident]
+            operator = _COMPOSITE_OPERATORS[operation]
+            payload = dict(scheme="frozen_node_components_v1", shared=common, contract=contract,
+                operator=dict(name=operation, arity=operator["arity"], formula=operator["formula"],
+                              implementation_sha256=operator_hashes[operation]),
+                parents=[dict(feature_id=parent[0], algorithm_version=parent[1],
+                              computation_sha256=computation[parent[0]]) for parent in parents])
+        else:
+            payload = dict(scheme="frozen_parent_contract_v1", contract=contract)
+        computation[ident] = hashlib.sha256(feature_store._canonical_json(payload, "computation").encode()).hexdigest()
     leaves = [pair for pair in chosen if pair[0] not in recipes]
     groups = {}
     for ident, version in leaves:
@@ -357,7 +427,7 @@ def compose_snapshot(snapshot, decisions, *, targets):
                 if not np.isfinite(value):
                     reason, value = "NON_FINITE_RESULT", None
             provenance = dict(basis="frozen_context_exploration_not_materialized", operation=operation, operator_version=1,
-                unit=spec["unit"],
+                unit=spec["unit"], signature_scheme="frozen_node_components_v1", computation_sha256=computation[ident],
                 parents=[dict(feature_id=p[0], algorithm_version=p[1], observation_time=row["observation_time"],
                               available_at_utc=row["available_at_utc"], revision=row["revision"],
                               source_revision=row["source_revision"], state=row["state"], value=row["value"], unit=row["unit"])
@@ -368,29 +438,32 @@ def compose_snapshot(snapshot, decisions, *, targets):
                 parameters=json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":")),
                 observation_time=inputs[0]["observation_time"] if reason is None else None,
                 available_at_utc=max(row["available_at_utc"] for row in inputs) if reason is None else None,
-                revision=None, source_revision="context:" + hashlib.sha256(encoded.encode()).hexdigest(), metadata_json=encoded))
+                revision=None, source_revision="context:" + hashlib.sha256(encoded.encode()).hexdigest(),
+                computation_sha256=computation[ident], metadata_json=encoded))
         cached[ident] = rows
         frame = pd.DataFrame(rows, columns=("value", "state", "reason", "algorithm_version", "unit", "parameters",
-            "observation_time", "available_at_utc", "revision", "source_revision", "metadata_json"))
+            "observation_time", "available_at_utc", "revision", "source_revision", "computation_sha256", "metadata_json"))
         columns.update({ident + "::" + key:frame[key] for key in frame})
         return dict(rows=len(rows), available=sum(row["state"] == "AVAILABLE" for row in rows))
 
     executed = recalculate_affected(None, ["feature:" + ident for ident, _version in leaves],
         {ident:handler for ident in recipes}, definitions=[s for s in chosen.values() if s["feature_id"] in recipes])
     frame = pd.concat([base.reset_index(drop=True), pd.DataFrame(columns, index=range(len(decisions)))], axis=1)
-    root = Path(__file__).resolve().parent
-    source_hashes = {name:hashlib.sha256((root / name).read_bytes()).hexdigest()
-                     for name in ("features.py", "indicator_context.py", "feature_store.py", "datasets.py")}
     implementation = hashlib.sha256(feature_store._canonical_json(
-        dict(sources=source_hashes, pandas=pd.__version__, numpy=np.__version__), "implementation").encode()).hexdigest()
+        dict(scheme="frozen_node_components_v1", nodes={ident: computation[ident] for ident in recipes}),
+        "implementation").encode()).hexdigest()
+    window_utc = [stamp.isoformat() for stamp in snapshot.feature_window_utc]
     evaluation = hashlib.sha256(feature_store._canonical_json(dict(manifest_id=snapshot.manifest_id,
         targets=pairs, decision_times=[row["decision_time"] for row in indicator_context.records(base)],
-        implementation=implementation), "evaluation").encode()).hexdigest()
+        implementation=implementation, composition_version=COMPOSITION_VERSION,
+        window_utc=window_utc), "evaluation").encode()).hexdigest()
     return dict(composition_version=COMPOSITION_VERSION, snapshot_manifest_id=snapshot.manifest_id,
-        implementation_sha256=implementation, evaluation_id=evaluation,
+        signature_scheme="frozen_node_components_v1", implementation_sha256=implementation, evaluation_id=evaluation,
+        window_utc=window_utc,
         targets=[list(pair) for pair in pairs], executed=executed, context=indicator_context.records(frame),
         definitions=[dict(feature_id=s["feature_id"], algorithm_version=s["algorithm_version"], unit=s["unit"],
-                          parameters=s["parameters"]) for s in chosen.values()],
+                          parameters=s["parameters"], computation_sha256=computation[s["feature_id"]])
+                     for s in chosen.values()],
         qualification=dict(exploratory=True, materialized=False, operational_acceptance=False,
                            historical_source_certification=False, availability_basis="declared_frozen_parent_facts"),
         limitations=["Cálculo em contexto congelado; não é fato materializado, sinal recebido ou ordem.",
