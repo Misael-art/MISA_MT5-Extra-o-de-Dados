@@ -106,28 +106,44 @@ def materialize_composite_snapshot(db, manifest_id, *, targets, as_of, batch_siz
 def query_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
                            minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
                            tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
-                           cancel_check=None):
+                           cancel_check=None, decision_start=None, decision_end=None):
     """Relação referencial de duas versões congeladas; sem persistência ou certificação financeira."""
     from mt5_extracao.analytics import associations
     return associations.query_frozen_pair(db, manifest_id, left=left, right=right, as_of=as_of,
         lag_bars=lag_bars, method=method, minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions,
         bootstrap_replicates=bootstrap_replicates, seed=seed, block_length_sessions=block_length_sessions,
         tests_counted=tests_counted, synthetic_fixture=synthetic_fixture, timeout_seconds=timeout_seconds,
-        max_memory_mb=max_memory_mb, cancel_check=cancel_check)
+        max_memory_mb=max_memory_mb, cancel_check=cancel_check, decision_start=decision_start, decision_end=decision_end)
 
 
 
 def persist_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
                              minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
                              tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
-                             cancel_check=None, write_guard=None):
+                             cancel_check=None, write_guard=None, decision_start=None, decision_end=None):
     """Publica relação congelada e suas referências como um artefato imutável."""
     from mt5_extracao.analytics import associations
     return associations.persist_frozen_pair(db, manifest_id, left=left, right=right, as_of=as_of,
         lag_bars=lag_bars, method=method, minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions,
         bootstrap_replicates=bootstrap_replicates, seed=seed, block_length_sessions=block_length_sessions,
         tests_counted=tests_counted, synthetic_fixture=synthetic_fixture, timeout_seconds=timeout_seconds,
-        max_memory_mb=max_memory_mb, cancel_check=cancel_check, write_guard=write_guard)
+        max_memory_mb=max_memory_mb, cancel_check=cancel_check, write_guard=write_guard,
+        decision_start=decision_start, decision_end=decision_end)
+
+
+def query_feature_relation_windows(db, manifest_id, *, left, right, as_of, window_bars=100, stride_bars=20,
+                                   max_windows=64, lag_bars=0, method="pearson", minimum_pairs=30,
+                                   minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
+                                   tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
+                                   cancel_check=None, decision_start=None, decision_end=None):
+    """Campanha somente leitura, com população/correção/orçamento explícitos por janela."""
+    from mt5_extracao.analytics import associations
+    return associations.query_frozen_pair_windows(db, manifest_id, left=left, right=right, as_of=as_of,
+        window_bars=window_bars,stride_bars=stride_bars,max_windows=max_windows,lag_bars=lag_bars,method=method,
+        minimum_pairs=minimum_pairs,minimum_sessions=minimum_sessions,bootstrap_replicates=bootstrap_replicates,seed=seed,
+        block_length_sessions=block_length_sessions,tests_counted=tests_counted,synthetic_fixture=synthetic_fixture,
+        timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb,cancel_check=cancel_check,
+        decision_start=decision_start,decision_end=decision_end)
 
 
 def query_saved_relations(db, *, symbol=None, timeframe=None, analysis_id=None, page_size=50, cursor=None):
@@ -176,6 +192,7 @@ __all__ = [
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot",
     "export_feature_relation", "import_feature_relation",
+    "query_feature_relation_windows",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida
