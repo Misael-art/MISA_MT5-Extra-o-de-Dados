@@ -431,6 +431,19 @@ sem materializar automaticamente todas as combinações possíveis.
 até cruzamento explícito; revisão invalida só relações alcançadas; paginação e
 orçamento evitam crescimento quadrático descontrolado.
 
+**Adendo BD16-WINDOWS (29/10/2026):** a consulta de janelas usa o serviço
+canônico, prepara a captura/dois canais uma vez e mantém a matemática existente.
+Janela/avanço contam fechamentos observados; defasagem continua nominal e ambos
+os fechamentos precisam estar dentro do recorte UTC. População, exclusões,
+aquecimento, cauda, sobreposição e família Bonferroni são explícitos. Não salva
+campanhas automaticamente; salvar a seleção publica um DTO3 pelo store e
+transação existentes. DTO1/2 continuam legíveis, leitor antigo recusa DTO3.
+[API, fluxo de tela e orçamento](../sdk/api.md#janelas-móveis-de-pares-congelados-bd16-windows).
+O corte é fixo e retrospectivo; elegibilidade da captura inteira permanece
+obrigatória. Recapturar muda as identidades: invalidação incremental por trecho,
+expansão de pares e cruzamento explícito de bases seguem pendentes. Este recorte
+não conclui os aceites completos de BD16 nem qualifica causalidade/utilidade.
+
 #### BD17 — ligar contexto de estratégias e operações
 
 **Vinculação:** T16.3/5/T19.14/T18.3/4. **Depende de:** BD05/14/BD15b e recorte do ledger; cruzamento entre bases só quando usado.

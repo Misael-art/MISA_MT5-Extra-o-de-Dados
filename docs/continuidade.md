@@ -4193,3 +4193,45 @@ completos permanecem nas próprias fichas. Próxima frente elegível: BD16,
 janelas móveis dos pares referenciais pelo serviço existente, com recorte,
 população, orçamento e fronteiras temporais explícitos; cruzamento de bases
 continua exigindo compatibilidade e seleção própria, sem junção pelo símbolo.
+
+
+## Continuidade do roadmap — BD16-WINDOWS, 29/10/2026
+
+O agregado de uma relação pode ocultar fases opostas. O novo percurso parte de
+**Laboratório → Relações e aderência → Matriz → Relações salvas → Janelas móveis**,
+preserva as duas versões/captura/corte do resultado e permite escolher janela,
+avanço, mínimos e orçamento. Consulta, gráfico, tabela e seleção usam o mesmo
+serviço SDK/CLI. Gráfico em UTC mostra lacunas para coeficientes indisponíveis;
+coeficiente, intervalo, pares/sessões/exclusões e inferência aparecem na seleção.
+Espera/cancelamento usam o run_bg existente. Alterar parâmetros invalida a tela;
+salvar publica somente a janela selecionada, com identidade reproduzível.
+
+Recortes têm DTO3; resultados integrais anteriores continuam em DTO2 e alvos
+anteriores em DTO1. O launcher anterior leu o agregado original e recusou DTO3,
+sem alterar os registros. Exportar/importar usa o pacote e as transações
+existentes. [Contrato, precisão temporal e limites](sdk/api.md#janelas-móveis-de-pares-congelados-bd16-windows).
+
+Bancada sintética: agregado0/160 pares; três janelas80 com avanço40 produzem
++1/0/−1, dez sessões por janela, família3 e sobreposição declarada. Oráculo
+aritmético independente e SDK/CLI/interface concordam. Consulta não grava;
+limite excedido, cancelamento e quota de escrita recusam a publicação. A seleção
+salva preserva os2.060 fatos e o recibo do agregado original. A prévia anterior
+não possui a ação de janelas; fonte atual acrescenta a jornada no painel existente.
+
+Medição local única, mesma entrada: campanha SDK2,16s e três consultas diretas
+2,14s; CLI com inicialização3,21s. A preparação compartilhada foi verificada,
+mas este ensaio pequeno não demonstra aceleração. Screenshots e recibos ficam
+no destino privado de QA; não são dados de usuário ou fixture nativa.
+
+183 casos pertinentes aprovados em rodadas sobrepostas; consulta, DTO,
+persistência, transferência, SDK e interface. Falhas de expectativa dos testes
+(código de recusa CLI e pontuação da apresentação) foram corrigidas e repetidas;
+logs iniciais preservados. Doctor16OK/2avisos/0falhas. O SHA publicado e o
+recibo de instalação/inspeção da prévia ficam no registro da composição.
+CI do novo HEAD deve ser consultado pelo PR; não inferir o aceite nativo.
+Não concluir BD16:
+atualização apenas dos trechos afetados e cruzamento explicitamente compatível
+de bases continuam pendentes. Recapturar muda as identidades; o corte fixo é
+retrospectivo, não walk-forward. Captura inteira precisa ser elegível. Nenhuma
+qualificação causal, financeira, MT5/Wine ou Windows físico é inferida.
+Documentação MEN em edição por outra tarefa permanece separada deste incremento.

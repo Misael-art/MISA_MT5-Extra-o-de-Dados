@@ -528,8 +528,10 @@
    "owner": "BD16",
    "case": "Expansão de pares",
    "criterion": "Novo indicador gera somente relações elegíveis dentro do orçamento",
-   "state": "planejado",
-   "evidence": []
+   "state": "em_execucao",
+   "evidence": [
+    "../sdk/api.md#janelas-móveis-de-pares-congelados-bd16-windows"
+   ]
   },
   {
    "id": "E26",
@@ -628,7 +630,8 @@
     "../sdk/api.md#transferência-de-relações-congeladas-bd19c2-relations",
     "../continuidade.md#continuidade-do-roadmap--bd19c2-relations-29102026",
     "../sdk/api.md#transferência-visual-no-laboratório-bd19b-transfer",
-    "../continuidade.md#continuidade-do-roadmap--bd19b-transfer-29102026"
+    "../continuidade.md#continuidade-do-roadmap--bd19b-transfer-29102026",
+    "../sdk/api.md#janelas-móveis-de-pares-congelados-bd16-windows"
    ]
   },
   {

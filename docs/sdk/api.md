@@ -814,3 +814,88 @@ anterior válido continua identificado como selecionado quando outra importaçã
 falha; os números não são atribuídos ao arquivo recusado. Não há cálculos,
 codificação de categorias, restauração de dados ativos ou promoção de evidência
 nos widgets. Importados sintéticos e insuficientes mantêm seus selos e motivos.
+
+
+### Janelas móveis de pares congelados (BD16-WINDOWS)
+
+`sdk.query_feature_relation_windows(db, manifest_id, *, left, right, as_of,
+window_bars=100, stride_bars=20, max_windows=64, lag_bars=0, method="pearson",
+minimum_pairs=30, minimum_sessions=10, bootstrap_replicates=999, seed=7,
+block_length_sessions=None, tests_counted=None, synthetic_fixture=False,
+timeout_seconds=120, max_memory_mb=2048, cancel_check=None, decision_start=None,
+decision_end=None)` usa a preparação e o cálculo canônicos da consulta BD15a.
+A captura e os dois canais são preparados uma vez; cada janela passa pela
+mesma análise, tipos, disponibilidade, calendário, amostra e ancestralidade.
+Não consulta valores ativos, salva a campanha ou gera combinações de pares.
+
+Janela/avanço contam **fechamentos observados**, com os intervalos UTC reais
+explícitos. A janela inclui ambos os seus limites e só admite pares cujo
+fechamento esquerdo de referência e fechamento direito estejam dentro dela.
+Defasagem continua nominal, sem comprimir lacunas nem atravessar sessões.
+Aquecimento, observações anteriores e valores retidos seguem o contrato do
+indicador; fontes distintas e exclusões continuam visíveis. Não se recalculam
+indicadores do zero a cada fronteira. O corte `as_of` é fixo para a comparação
+retrospectiva; não certifica walk-forward ou conhecimento no fim de cada janela.
+
+As consultas `query_feature_relation` e `persist_feature_relation` aceitam os
+novos argumentos opcionais `decision_start`/`decision_end` (ambos ou nenhum,
+com fuso e fim até `as_of`). Para janelas, limites e corte usam microssegundos;
+frações abaixo disso são recusadas, sem arredondamento implícito.
+Intervalo sem decisões produz inconclusão `NO_DECISIONS_IN_WINDOW`. Pares cuja
+referência cair antes do início recebem `REFERENCE_OUTSIDE_WINDOW`; os demais
+motivos originais permanecem. Sem janela, chamadas anteriores são preservadas.
+
+O relatório `rolling_schema_version=1`/`FEATURE_PAIR_WINDOWS` contém `selection`,
+`windows`, `population`, `correction`, `provenance`, `limits` e `qualification`.
+Cada item traz início/fim inclusivos, ID e DTO do resultado. A população declara
+fechamentos disponíveis, visitas aos pares, aquecimento, cauda/interiores não
+cobertos e sobreposição. Janelas incompletas não são inventadas; sem uma janela
+completa, retorna `status=insufficient`, motivos e lista vazia. Ausência ou
+constância nunca vira coeficiente zero. Mínimos não são reduzidos para liberar
+um resultado. A captura inteira precisa continuar elegível.
+
+Bonferroni conta todas as janelas solicitadas, inclusive insuficientes, quando
+`tests_counted` não é informado. Uma família maior pode ser declarada; menor
+que a seleção é erro. `correction` expõe a resolução e informa que tentativas
+externas não foram contabilizadas. Sobreposição/autocorrelação não são novas
+observações independentes nem evidência causal/financeira certificada.
+
+Limites:64 janelas, orçamento conjunto de100.000 visitas a pares (o limite
+canônico de200.000 indicador/decisão dividido pelos dois canais) e16MiB por
+relatório. Timeout/memória/cancelamento são compartilhados desde a preparação
+até o fim da campanha. Excesso é erro sem truncamento ou relatório parcial;
+use avanço maior ou recorte menor. Orçamentos de execução não alteram a
+identidade estatística de uma campanha concluída. Identidades incluem recorte,
+parâmetros, amostra/implementação e origens; recapturar o snapshot muda os IDs.
+Invalidação incremental por trecho e cruzamento entre bases ficam em BD16
+próprio, com compatibilidade explícita; não se juntam feeds pelo símbolo.
+
+Recortes usam **DTO3**/`FEATURE_PAIR_WINDOW_RELATION`, com `scope.decision_window`
+e parâmetros UTC canônicos. Isso impede leitores antigos de apresentá-los
+como pares integrais. A versão atual lê DTO1/DTO2 anteriores; uma prévia antiga
+deve recusar DTO3 e requer atualização, sem converter os bytes para DTO2.
+`Salvar selecionada` recalcula pelo mesmo serviço e publica só essa janela no
+`feature_store` existente, com o mesmo ID calculado na campanha. Preserva o
+orçamento do resultado escolhido e obtém a política de escrita por operação.
+O pacote de transferência existente transporta DTO3 e origens sem formato ou
+armazenamento paralelo. Novas consultas recebem a assinatura atualizada;
+artefatos e versões dos produtores brutos anteriores não são reescritos.
+
+CLI oficial (`--json` expõe `data.windows`):
+
+```text
+analytics features relation-windows --manifest ID --left feature.x V --right feature.y V --as-of CORTE_UTC --window-bars 80 --stride-bars 40
+analytics features relation --persist --manifest ID --left feature.x V --right feature.y V --as-of CORTE_UTC --decision-start INICIO_UTC --decision-end FIM_UTC --tests-counted 3
+```
+
+No Laboratório → Relações salvas, selecione um resultado conferido e abra
+**Janelas móveis**. O relatório preserva versões/unidades/corte e o recorte
+do resultado selecionado, quando houver. Configure janela/avanço e, em
+**Amostra e orçamento**, os parâmetros explícitos. `Calcular janelas` usa
+`run_bg`/espera/cancelamento existentes. Gráfico em UTC, com coeficiente de−1
+a+1 e lacunas nos resultados indisponíveis; tabela e seleção por ponto mostram
+amostra, exclusões, intervalos e motivos do mesmo DTO. Parâmetro alterado limpa
+o resultado anterior e exige novo cálculo. `Salvar selecionada` foca o ID no
+painel existente, onde o intervalo aparece e a exportação segue o fluxo comum.
+Fechar enquanto processa solicita cancelamento; um commit confirmado é
+preservado. Mudança de base/contexto não aplica a janela salva na seleção nova.
