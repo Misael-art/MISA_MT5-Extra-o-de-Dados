@@ -513,3 +513,24 @@ novo payload Safety; a closure integral precisa acompanhar o Expert.
 Linux usa os mesmos Session/Consent e paths existentes; simulações de paths Windows
 não constituem os aceites físicos acima. Sem alteração de instaladores neste recorte.
 [Contrato SDK/CLI](agente.md).
+
+## T20.30-HOST1 — retomada sem disco antigo ou SD (2026-10-24)
+
+[Roteiro e fontes](repasse/NOVO_HOST_20261024.md). Bash e PowerShell em modo plano,
+helpers stdlib, clones Git temporários, paths Linux/Windows, recusa de WIP e
+restore do snapshot real foram exercitados no Linux existente. Isto não equivale
+a reinstalar o SO nem a rodar o instalador num Windows físico.
+
+- [ ] Linux limpo: baixar launcher sem Git/Python, instalar com o gerenciador real,
+  conferir `.venv`, toolchain, três fontes/pins, logs e `state/setup.json`.
+- [ ] Windows físico: Git/winget, Python oficial, WinLibs/g++, UTF-8 e paths com
+  espaços/acentos; repetir preservando configuração e dados existentes.
+- [ ] Destino novo: recuperar partes pela conta ChatGPT sem SSD/SD, conferir SHA,
+  extrair em pasta nova, comparar48 tabelas/contagens e abrir os históricos.
+- [ ] Atalho central e menu no mesmo runtime; UI offline e, após instalar a plataforma,
+  nova conexão DEMO/PLAY/REPLAY com monitor/DPI e gates próprios.
+- [ ] Falha/interrupção: preservar recibo e WIP, não deixar `development_ready`
+  após falha, não restaurar tokens/PIDs/locks e não apagar recursos alheios.
+
+Compilação, pacotes instalados ou clone restaurado não qualificam perfis bloqueados,
+operação REAL, fonte histórica ou as pendências funcionais do Laboratório.

@@ -28,6 +28,40 @@ def test_summarize_period_numbers():
     assert study.summarize(pd.DataFrame()) == {}
 
 
+def test_zero_denominator_is_unavailable_not_zero_or_infinity():
+    import json
+    frame = bars([0, 1, 2, 4])
+    before = frame.copy(deep=True)
+    result = study.summarize(frame)
+    assert result["return_pct"] is result["volatility_pct"] is result["mean_range_pct"] is result["max_drawdown_pct"] is None
+    assert result["return_pairs_total"] == 3 and result["return_pairs_used"] == 2 and result["return_pairs_excluded"] == 1
+    values = study.bar_returns(frame.close)
+    assert values.isna().tolist() == [True, True, False, False]
+    assert values.dropna().tolist() == [1., 1.]
+    json.dumps(result, allow_nan=False, default=str)
+    pd.testing.assert_frame_equal(frame, before)
+    zero = study.summarize(bars([10, 10, 10]))
+    assert zero["return_pct"] == zero["volatility_pct"] == 0
+    assert study.summarize(bars([10]))["volatility_pct"] is None
+
+
+def test_seasonality_counts_defined_ratios_without_inventing_zero():
+    result = study.seasonality(bars([0, 1, 2, 4]))
+    day = result["weekday"].iloc[0]
+    assert day["bars"] == 4 and day["return_samples"] == 2 and day["range_samples"] == 3
+    assert day["return_pct"] == pytest.approx(100)
+    absent = study.seasonality(bars([0, 0, 0]))["weekday"].iloc[0]
+    assert pd.isna(absent["return_pct"]) and pd.isna(absent["range_pct"])
+    assert absent["return_samples"] == absent["range_samples"] == 0
+
+
+def test_intraday_window_within_one_hour_is_not_mistaken_for_daily_bars():
+    frame = bars([100, 101, 102], freq="5min")
+    assert list(study.seasonality(frame, bar_minutes=5)["hour"].index) == [9]
+    assert list(study.seasonality(frame)["hour"].index) == [9]
+    assert study.seasonality(bars([100, 101, 102], freq="D"), bar_minutes=1440)["hour"].empty
+
+
 def test_seasonality_by_hour_and_weekday():
     season = study.seasonality(bars([100, 101, 102, 103, 104, 105], start="2024-01-01 10:00"))  # segunda-feira
     assert list(season["hour"].index) == [10, 11, 12, 13, 14, 15]

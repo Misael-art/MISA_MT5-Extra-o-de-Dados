@@ -25,6 +25,11 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+**Atualização de migração — 2026-10-24:** não haverá acesso ao host antigo **nem
+ao SD**. Usar o [bootstrap e recuperação pela internet](../CONTINUAR_AQUI.md);
+as verificações do pacote SD do dia21 são históricas. Código/diagnóstico no
+GitHub; banco e contexto privado na página pessoal ChatGPT com manifesto próprio.
+
 **Reteste pelo atalho — 2026-10-24:** o proprietário encontrou falhas em Séries e
 confluências, catálogo restrito, desalinhamento de Horários e visões ausentes.
 O Laboratório está **incompleto, com aceite funcional reaberto**. [Backlog com
@@ -49,12 +54,15 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| T20.30-HOST1 | Bootstrap de desenvolvimento em host limpo e recuperação remota sem SD | Fonte publicada + instaladores/verificador existentes + pacote privado conferido | Implementação e validação do wrapper/restore no host Linux atual; [roteiro e limites](repasse/NOVO_HOST_20261024.md). Git/ambiente/companions/checks/atalhos coesos; fontes fixadas e parte privada separada. Novo SO, Windows físico e aceites financeiros próprios. Não conclui LAB-01…10/SA-01/02 |
 | AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). 100 dirigidos finais e2952/251 ampla (cortes descritos na evidência); prévia instalada. CI do último HEAD, causa dos timeouts herdados e Windows físico têm gates próprios; sem aceite financeiro |
 | AIA-02a | Catálogo nativo de Estudo pelo SDK/CLI, mesma fábrica/ownership e espera do layout inicial | AIA-01 + HPR75 | Implementado;2994/251 suíte ampla,108 dirigidos/176 regressão (sobrepostos),38 nativos via102 pedidos CLI reais,0/0 e doctor20/1/0. [Contrato](sdk/study_cli.md), [evidência](evidencias/AIA_02A_ESTUDO_CLI_20261023.json). CI da ponta/Windows físico próprios; dados/fontes H preservados |
 | AIA-02 | Extensões tipadas de Estudo/indicadores e controle da reprodução | AIA-01 + contratos específicos | Parcial: catálogo nativo entregue em AIA-02a; demais contratos pendentes, sem automação de mouse como substituto |
 | T20.22-LAB1 | Laboratório de séries/confluências, comparação entre TFs, ampliação e ponte para presets | AIA-02a + snapshots/registry/estratégias/Default-Manual existentes | **Incompleto; aceite funcional reaberto após reteste do proprietário pelo atalho.** PR210 contém implementação inicial52/11/5visões, não conclusão. LAB-01…10 registram falhas/ausências e aceites. Evidência histórica preservada:16Tk; ampla3014/259 com retorno143 após resumo; seleção20/15 saída0. Prévia7c66fed; seis perfis bloqueados por pin/closure. CI/Windows/operacional próprios. [Repasse atualizado](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md) |
 | LAB-SA-00 | Registrar reteste, backlog, fronteiras e prompts independentes | Retorno do proprietário de24/10/2026 | Registro documental concluído nesta branch; não corrige runtime nem concede aceite. [Mapa](propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md) e prompts vinculados acima |
-| LAB-01…04 | Catálogo real, Séries/confluências, cabeçalho Horários e modernização gráfica | T18.6/8 + T20.22-LAB1 + leitura canônica de Dados | **Pendente**: reprodução e correção no atalho; catálogo sem lista fixa, erros/indisponibilidade úteis, geometria sincronizada, gradientes/valores horizontais/amostra em detalhe |
+| LAB-AUD-01 | Auditoria executada de qualidade, compatibilidade e eventos retidos | T1.8 + BD06/snapshots v3 + LAB-07 | Checker ampliado; GUI/CLI recusam preços/cronologia inválidos, distinguem métricas indefinidas de zero e mostram amostra/exclusões. Snapshots v3 preservados, eventos distintos nos pares/holdout, recarga de fontes sem cliques duplicados. Regressões finais 124+12 aprovadas; ampla 3362/59, duas falhas delimitadas, cobertura 81,34%. Relógio/cobertura e nativo/Windows seguem sem aceite. [Diagnóstico e aceite](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md#auditoria-executada-e-correções-de-qualidadeeventos--28102026) |
+| LAB-UX-01 | Legibilidade de Volatilidade × horário e espera visível nas consultas/cálculos | Retorno do proprietário + componentes/fila existentes | Horários nas linhas e três faixas nas colunas, valores completos e n visíveis. Espera animada na área de status existente, sem reduzir a altura das páginas; contexto, tempo e concorrência. 126 regressões iniciais e 39 após o ajuste final de escala, todas aprovadas; oito estados GUI com QA sintética. Doctor offline 16/2/0; CI de cada SHA tem estado próprio. [Percurso e limites](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md#legibilidade-da-matriz-e-espera-visível--28102026) |
+| LAB-01…04 | Catálogo real, Séries/confluências, cabeçalho Horários e modernização gráfica | T18.6/8 + T20.22-LAB1 + leitura canônica de Dados | **Parcial (27/10)**: inventário e matriz indicador × indicador reais via `relation_matrix`; indicador × alvo aguarda produtor T18.6; percurso real bloqueado pelo contrato de relógio com horário de verão (Dados) e base ativa vazia. **Pendente**: reprodução e correção no atalho; catálogo sem lista fixa, erros/indisponibilidade úteis, geometria sincronizada, gradientes/valores horizontais/amostra em detalhe |
 | LAB-05…08 | Estratégias/robôs no mesmo ativo; preset idêntico entre ativos; estratégia entre TFs/predição; bancada do ativo com indicadores/anotações | T19.33 + T20.22/23 + serviços de dados/runs e protocolo estatístico | **Pendente**: quatro percursos distintos, identidades e cobertura explícitas; correlação descritiva não qualifica previsão; ferramentas reutilizáveis e SDK/CLI |
 | LAB-09/10 | Presets/closure e integração CLI/SDK/atalho com monitores | F19 + AIA-02 + T20.30 | **Pendente**: qualificar perfis sem waiver de pins, publicar composição e testar pelo atalho central/menu, handheld/dock/DPI/temas/ampliar-restaurar; uma tarefa por PR |
 | SA-01 | Expert Super ATR com confirmação entre tempos gráficos | G19.9/13/15 + contrato de estratégia + risco/executor/host existentes | **Pendente**: variante operacional versionada, confirmação por barras realmente fechadas, testes causais, pacote/preset; primeiro Tester+DEMO. [Prompt](repasse/PROMPT_EXPERT_SUPER_ATR_MTF_20261024.md) |
@@ -348,6 +356,16 @@ Valores que precisam ficar **iguais** em mais de um arquivo (se mudar um, mude t
 | Pasta do Python no Wine (`C:\Python311`) | `mt5_extracao/bootstrap/paths.py` (`WINE_PYTHON_WINDOWS_DIR`), `scripts/install/linux.sh` (`WIN_PYTHON_DIR_WIN`, `WIN_PYTHON_DIR_UNIX_REL`) |
 | Porta da ponte (`18812`) | `paths.py` (`DEFAULT_BRIDGE_PORT`), `scripts/mt5_bridge_server.py`, `bootstrap/bridge.py` e `mt5_backend.py` (fallbacks) |
 | Faixa de Python aceita (3.9–3.13) | `doctor.py` (`MIN_PYTHON`, `MAX_TESTED_PYTHON`), `linux.sh` (`MIN_PY_MINOR`), `windows.ps1` (`$PythonMinor`, `$PythonMaxMinor`) |
+
+Validação no host Linux em 27/10/2026: o instalador aceita
+`--no-demo-account` para preparar o terminal, o Python do Windows e a ponte
+sem solicitar abertura de conta. O comportamento padrão permanece preservado.
+Os dois caminhos têm regressão controlada; 51 testes de bootstrap/conta/atalhos e
+ShellCheck passaram. A instalação nativa no prefixo próprio do usuário terminou
+com 20 verificações OK, duas advertências e nenhuma falha: a ponte RPyC foi
+exercitada, sem login nem negociação. `pandas-ta` permanece opcional e
+indisponível para o Python 3.11 fixado; ausência de conta não qualifica Tester,
+robôs ou operação financeira. O recibo local fica em `MT5X/state/native-installation.json`.
 
 ### T0.2 — CI ✅
 
@@ -4208,3 +4226,19 @@ timer com seta neutra/verde/vermelha e fallback inline em espaço restrito.
 [Uso, matemática e pendências](sdk/alvo_probabilistico.md). Calibração/resultado
 financeiro, fills/Tester, concorrência/restart amplo e Windows físico pendentes.
 Sem alteração no pilar de dados, banco owner, launcher/monitores ou Safety publicada.
+## Recuperação de continuidade — 2026-10-26
+
+Correção do bootstrap T20.30-HOST1: a preparação sem MT5 agora usa o diagnóstico
+explícito `doctor --development`. Mantém falhas de configuração, dependências,
+diretório do banco e terminal configurado inválido; ausência de terminal é aviso
+somente nesse perfil. Não consulta ponte ou contas e não qualifica operação
+nativa. O doctor normal conserva o contrato anterior.
+
+Checkout único por componente em `MT5X/repos/`; o bootstrap deixa de criar uma
+pasta de worktrees. Bancos privados de pesquisa/QA e WIPs resgatados continuam
+separados da base ativa e não são promovidos pelo bootstrap.
+
+Verificação neste host: baseline focado 26/26; recorte após correção 58/58
+(`test_development_host`, `test_bootstrap_doctor`, `test_recovery_verification`,
+`test_packaging`). A suíte ampla inicial foi interrompida após 185 pass/31 skip
+em 218 s; não constitui aprovação integral. Windows e MT5 real não exercitados.

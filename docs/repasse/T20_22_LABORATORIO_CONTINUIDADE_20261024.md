@@ -116,3 +116,207 @@ bateria nova foi identificada pelo log e removida. Logs/recibos/fontes de QA e
 capturas relevantes foram mantidos. Arquivos existentes de dados/configuração e
 worktrees de terceiros não foram removidos. Build/wheel próprios verificados e
 retirados; o wheel final continha os três módulos novos byte a byte.
+
+## Auditoria executada e correções de qualidade/eventos — 28/10/2026
+
+Escopo desta rodada: interface Tk pelo launcher oficial, consulta das bases em
+transação somente leitura, oráculos de agregação M1 e regressões sintéticas.
+Não houve negociação, ativação de Expert, mudança de pin, conversão de histórico
+ou alteração de offset. A base ativa e a recuperada continuam separadas.
+Os recibos e capturas atuais ficam na composição em
+`state/qa-tmp/product-audit-20261028/`, fora do Git público. Nenhuma operação do
+livro, conta, credencial ou conteúdo privado acompanha esta publicação.
+
+### Percursos e estado observado
+
+| Etapa | Entrada → processamento → resultado | Aceite e limite |
+|---|---|---|
+| Ativos / conexão | Configuração local → catálogo e inventário → seleção e conexão desativada | GUI local exercitada; conexão/extração nativa não qualificada nesta rodada |
+| Minha base | Tabelas oficiais → inventário → sete séries EURUSD | Exibição e seleção exercitadas; data recente não é certificação de integridade |
+| Análise | Série/período → indicadores, retornos e diagnóstico → cartões/gráfico/qualidade | Série válida desenhada; fonte sintética inválida agora bloqueia cartões e abre Qualidade |
+| Laboratório / livro | Runs persistidos → cache e agregação → KPIs/mapas | Carregamento real conferido; agregação descritiva sem qualificar custos, carteira ou estratégia |
+| Séries / preparação | Inventário → TFs e parâmetros → snapshot canônico | Seleções e tela pequena conferidas; relógio histórico continua pendente |
+| Séries / relações | Snapshots QA → fórmulas/fechamentos/pares → cinco visões existentes | Fractais, ZigZag e provisórios exercitados; eventos contados nos pares válidos e no holdout |
+| Reprodução | Fixture v3 antiga → importação/validação/exportação | Bytes preservados, inclusive a semântica histórica de volume ausente; regressão própria |
+| Recursos | Base → medição existente em segundo plano → tabelas/estado | Tela carregada; nenhuma limpeza ou otimização foi executada |
+| Falhas e respostas antigas | Entrada inválida/seleção trocada → diagnóstico/descarte → contexto preservado | Regressões Tk e serviços; não equivale a interrupção real do terminal |
+
+### Mapa compacto de problemas
+
+| Impacto | Evidência e causa | Correção / aceite |
+|---|---|---|
+| Alto: preço inválido aparentava estar pronto | `high=NaN` em três barras retornava `has_problems=False`; comparações com NaN não acusavam incoerência | Checker mede não finitos, ausências, ordem, horários e volumes. Análise recusa preços/cronologia inválidos antes de calcular e limpa resultado anterior. Regressões e GUI QA |
+| Alto: qualidade induzia sobrescrita sem diagnóstico de sessão | Texto mandava reextrair com sobrescrita para qualquer intervalo sem barra | Explica candidatos a lacuna e pede conferência de sessões/feriados/blocos; sem preenchimento, exclusão ou correção automática |
+| Alto: mudança do diagnóstico poderia invalidar snapshots v3 | Validação real do livro detectou igualdade estrita da qualidade congelada | DTO histórico de `data_eligibility.assess` preservado; checker atual é usado na consulta. Fixture sintética gerada com código 5e8acf7 importa/exporta byte a byte; validação estrita de snapshots mantida |
+| Alto: barras retidas pareciam muitas observações de pivô | `unique_source_pairs` contava fechamentos de barras, inclusive sem nova confirmação | Identidade por fechamento da confirmação; contagem distinta em pares válidos e holdout, com lag e exclusões. UI mostra separadamente barras/eventos. Último evento distingue origem, barra de confirmação e disponibilidade nominal |
+| Alto: fuso histórico não comprovado | Configuração ativa declara offset fixo, sem zona; documentação oficial do SDK descreve timestamps UTC, enquanto conector e base usam convenção broker | Pendente de reconciliação no pilar de Dados, sem migração presumida. A UI agora expõe a configuração e seu limite; nenhuma análise real recebe aceite temporal por esta auditoria |
+| Médio: cobertura não equivale a arquivo restaurado íntegro | Quatro `quick_check=ok`; catálogo recuperado contém referência AACT sem tabela e séries esparsas | Inventário verificável local, sem reconstrução fictícia. Distinguir ausência de origem, falha de coleta e mercado fechado depende do contrato/fonte |
+| Médio: UI ainda apresenta pausas | Heartbeat da rodada completa teve atraso máximo de cerca de 2 s; livro ~9,9 s, fontes ~2 s no host sob carga | Medição registrada, sem alegar ganho de desempenho. Próximo recorte: desenho incremental pelas estruturas existentes, preservando seleção/resize/tema |
+
+### Dados e análises
+
+A consulta atual encontrou 127.705 barras nativas na base ativa, em sete TFs,
+e 24.479 barras M7/M9. A reagregação independente do M1, ancorada em meia-noite,
+coincidiu em todas as 13.749 M7 e 10.730 M9: OHLC, volumes, número de grupos,
+sem janela completa ausente ou barra armazenada sem suporte na origem.
+Isso prova a agregação nessa convenção de relógio; não prova UTC, recebimento,
+calendário oficial ou cobertura integral do provedor.
+
+A base recuperada passou novamente em `quick_check` e manteve o hash durante
+a leitura: 194.855 barras em quinze tabelas existentes e 3.605.060 ticks;
+uma décima sexta referência do catálogo não tem tabela. O inventário privado
+registra fonte, intervalo, atualização, nulos, não finitos, duplicações,
+incoerências e intervalos maiores que o TF. Os bancos de pesquisa e QA também
+foram lidos separadamente; tabelas sem mapeamento não são tratadas como vazias.
+Não se publica o inventário privado como fixture.
+
+Os pivôs continuam causais: os oráculos independentes por janelas/racionais e
+as extensões de prefixo conferem confirmação tardia e ausência de repaint
+retrospectivo. Provisórios continuam `UNCONFIRMED_EVENT`. A nova contagem não
+altera parâmetros, limiares, correlações ou o corte 70/30: os testes de holdout
+continuam por barras, explicitamente sem prova de independência dos eventos.
+O valor retido não vira nova confirmação quando o fechamento da origem muda.
+Relatórios antigos continuam abrindo sem inventar contagens ausentes.
+
+O contrato temporal exige trabalho próprio: comparar epoch bruto do SDK,
+representação no terminal e convenção gravada, em sessão própria com ownership;
+qualificar mudanças históricas de offset antes de reinterpretar UTC. A referência
+[oficial de barras](https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesrange_py)
+e a [de ticks](https://www.mql5.com/en/docs/python_metatrader5/mt5copyticksrange_py)
+foram consultadas nesta rodada e não confirmam, sozinhas, o significado do
+histórico já existente. Não assumir uma zona IANA nem trocar +3 por zero para
+liberar uma análise.
+
+### Medição e fechamento
+
+Checker, três repetições na mesma massa sintética: mediana em 20 mil barras
+44,02 → 47,19 ms; em 96.629 barras 167,86 → 162,06 ms. Variação sob carga,
+sem alegação de aceleração. A consulta continua em segundo plano. Na GUI:
+leitura da análise ~0,24 s, diagnóstico inválido ~0,22 s e cálculo QA com oito
+canais/960 fechamentos ~2,79 s (inclui publicação; poll de 100 ms).
+
+Critério de encerramento deste incremento: regressões de qualidade, compatibilidade
+v3, contagem de eventos, gates oficiais e repetição pelo launcher sem erro;
+fonte publicada e prévia atualizada com SHA remoto. O encerramento **do produto**
+continua condicionado a relógio/proveniência reconciliados, classificação das
+lacunas, qualificação de barras parciais legadas, jornada de extração/retomada
+nativa própria e Windows físico. LAB-07 completo, SA-01/02 e aceite financeiro
+não são concedidos por este recorte.
+
+Oráculo numérico adicional nesta rodada: 1.611 barras H1 da base ativa foram
+recalculadas por recorrência escalar, sem chamar `ewm` de produção. RSI e ATR
+coincidiram com a variante legada (erros absolutos máximos 2,85e-14 e 1,74e-18,
+mesma máscara de aquecimento). Oráculos independentes por janelas/racionais
+reconciliaram 421 eventos de fractais e cinco de ZigZag nessa massa. Não é prova
+de UTC nem de equivalência da semente inicial à dos indicadores nativos: RMA
+legada usa semente EWM, distinção já reconhecida em `test_indicators.py`.
+
+**Recarga de fontes:** três cliques consecutivos em Atualizar fontes disparavam
+três consultas simultâneas, reproduzido no componente Tk com worker controlado.
+O botão agora indica Lendo fontes e fica desabilitado até a conclusão da consulta
+mais recente; sucesso ou erro libera a retentativa. Três cliques passam a uma
+consulta. O controle de revisões de respostas programáticas obsoletas permanece,
+sem outro executor/cache. A regressão exercita cliques, falha e retentativa.
+
+**Denominadores e amostra na Análise:** a massa sintética `[0, 1, 2, 4]`
+produzia retorno de período `0%`, volatilidade NaN e amplitude infinita. Agora
+retorno com base zero e métricas que exigem todas as razões do período ficam
+indisponíveis, sem inventar zero ou retirar barras da origem. `bar_returns`
+centraliza as razões finitas usadas no gráfico e no resumo. A distribuição
+expõe pares válidos/excluídos; sazonalidade distingue barras totais de razões
+definidas, e o histograma declara o agrupamento visual dos extremos nos quantis
+0,5%–99,5%. Estatísticas textuais continuam nos valores originais, sem esse
+agrupamento. Série plana positiva conserva retorno/volatilidade zero; uma barra
+não vira estimativa de volatilidade zero. Regressões puras e Tk incluem série
+só de zeros e não substituem o preço bruto nem o registry de indicadores.
+A CLI `analyze` usa o mesmo checker e recusa preços/cronologia inválidos antes
+de calcular, com erro e qualidade estruturados no JSON. Fonte válida com preço
+zero continua consultável: métricas indefinidas são `null`, com motivos e
+contagens, em vez de falha genérica ou resultado zero. `quality --details`
+passa a mostrar exemplos das verificações adicionais sem perder relatórios antigos.
+
+**Fechamento da verificação desta rodada.** Baseline dirigida: 91 aprovados.
+Estado final: 124 regressões de qualidade, compatibilidade, cálculos, CLI e
+Séries aprovadas; mais 12 da janela principal, incluindo vazio, denominador
+zero, tema e redimensionamento, aprovadas. A execução ampla registrou
+3.362 aprovados, 59 pulados, 2 falhas e cobertura 81,34% (gate mínimo 60%).
+Não é uma suíte integral verde. Uma falha era a expectativa de legenda
+carregada antes da atualização durante a execução longa; o arquivo atual foi
+recoletado e passou na rodada de 124, sem remover sua asserção de eventos.
+
+A outra foi `test_real_python_backtests_are_recorded`, timeout original de
+60 s na bateria. O isolamento do código atual, com a mesma instrumentação de
+cobertura e as quatro execuções, passou em 44,91 s. Repondo **em memória** os
+caminhos anteriores de checker/`assess` de 5e8acf7, o mesmo caso também atingiu
+o timeout (60,98 s). Runner, backtest, datasets e store não têm diff contra
+essa base. Nenhum timeout, job ou asserção foi afrouxado. Essa comparação não
+prova ganho de desempenho; preserva a instabilidade existente no gate amplo.
+
+Doctor nativo pelo launcher oficial: 21 OK, um aviso opcional, zero falhas;
+handshake RPyC `mt5x-bridge/2` somente leitura, módulo MT5 5.0.6231. Leitura de
+versão/configuração não é teste de extração, login, Tester ou estratégia.
+Ponte/terminal preexistentes foram preservados. A CLI oficial em base QA
+isolada confirmou retorno `null`/2 de 3 pares válidos e, em outra entrada,
+falha com qualidade estruturada e sem publicar resumo para preço ausente.
+
+A reauditoria final manteve os hashes das quatro bases antes/depois da leitura,
+e o banco recuperado coincide com o manifesto original do backup. Pesquisa:
+106.981 barras em tabela sem mapeamento explícito; QA recuperado: 8.316 barras
+em três TFs. Nos 3.605.060 ticks recuperados não foram encontradas datas
+inválidas, cotações invertidas, bid/ask inválidos ou divergência entre `time`
+e `time_msc` acima de 1 ms. Identidade de fonte/recebimento continua desconhecida
+onde não foi declarada; ausência de journal não é contagem de conflitos zero.
+Todos os insumos/detalhes e as capturas ficam no recibo local indicado acima.
+
+## Legibilidade da matriz e espera visível — 28/10/2026
+
+Retorno do proprietário: valores de Volatilidade × horário sobrepostos e pouca
+orientação durante cálculos demorados. O heatmap comprimido foi substituído pela
+`MatrixTable` existente: horários nas linhas, três faixas de volatilidade nas
+colunas, valor completo em moeda da conta e `n` em outra linha. Rolagem e navegação
+por teclado preservam a leitura. Zero observado continua distinto de ausência;
+`*` identifica amostra abaixo do mínimo vigente. A cor indica sinal, sem atribuir
+confiança ao resultado. Filtros, população, exclusões e agregação são os mesmos.
+
+O `UIManager.run_bg` existente agora apresenta atividade na área de status global,
+visível também ao mudar de guia. A barra é indeterminada: não inventa percentual
+ou prazo. Mostra contexto da solicitação, tempo decorrido e número de tarefas
+simultâneas, permanecendo ativa até o último callback concluir. Erros de worker,
+apresentação ou início da thread liberam a espera; uma resposta obsoleta não
+encerra outra tarefa. O encerramento da janela cancela o temporizador visual.
+Não há outro executor, fila de cálculo ou botão de cancelamento sem contrato.
+
+A indicação cobre as consultas, cálculos, exportações e medições encaminhadas a
+`run_bg` por Análise, Laboratório/Séries/Relações, Recursos, Robôs e Configurações.
+Extração/coleta e backtests que têm progresso próprio conservam esse mecanismo.
+Desenhos síncronos isolados podem continuar pausando a animação; este lote não
+declara eliminado todo bloqueio da thread Tk.
+
+Baseline antes das mudanças: 40 regressões de Laboratório/componentes aprovadas.
+Incremento inicial: 126 regressões únicas aprovadas em lotes completos (48 componentes,
+Laboratório e espera; 70 janela principal; sete navegação e uma falha de início
+de worker). A rodada conjunta anterior terminou com retorno 143 antes do resumo;
+os lotes completos acima são o resultado definitivo, sem afrouxar timeouts.
+O launcher oficial offline percorreu oito estados com QA sintética isolada:
+matriz, janela pequena, tema escuro, espera, navegação durante processamento,
+término, erro controlado e retentativa; zero exceções da GUI e zero tarefas
+pendentes ao terminar. A animação foi também verificada durante tarefas
+concorrentes, callbacks encadeados/obsoletos e fechamento da janela nos testes Tk.
+Regressões finais e percurso pelo launcher são registrados no recibo local
+`state/qa-tmp/laboratory-readability/`; somente dados sintéticos em banco próprio.
+O doctor de desenvolvimento offline registrou 16 OK, dois avisos e zero falhas;
+não qualifica MT5, contas ou Windows físico. Os limites de LAB-AUD-01 e do pilar
+de Dados permanecem, inclusive a instabilidade registrada na suíte ampla anterior.
+
+**Ajuste de escala após o CI:** a faixa adicional de 4ac3a46 reduziu o espaço
+útil no teste Windows de Robôs a 900×620, DPI 144 e fonte máxima. Os dois testes
+de contexto passaram; o teste de viewport falhou. O mesmo lote visual havia
+passado no SHA anterior, 7446882. A indicação agora sobrepõe a área de status
+existente enquanto há trabalho, sem acrescentar altura ao layout. Ao terminar,
+revela o status original e preserva mensagens específicas; erro/retentativa usam
+o status genérico somente quando aplicável. Texto longo usa o mesmo ajuste de
+largura do rodapé. Uma regressão compara a altura antes/durante a espera em
+fonte máxima. A revisão final passou em 39 testes de atividade, componentes,
+navegação/escala, contexto/viewport dos robôs e valores da matriz. Esses testes
+se sobrepõem à rodada inicial; não somar as contagens como casos únicos.
+Não afirma CI Windows completo nem Windows físico aprovado; conferir o SHA final.

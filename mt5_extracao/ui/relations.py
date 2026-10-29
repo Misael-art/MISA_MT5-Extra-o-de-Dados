@@ -1,9 +1,9 @@
-"""Apresentação provisória das relações F18 dentro do Laboratório.
+"""Relações do Laboratório.
 
-O contrato T18.1/T18.6 ainda não existe nesta base. Esta tela recebe somente a fixture
-local abaixo; não consulta banco, não calcula estatísticas e não produz decisões para Experts.
-Quando o DTO for entregue, o adaptador deverá alimentar os mesmos componentes sem mover
-regras analíticas para os widgets.
+Inventário lê o registry e a base. Matriz, alvo, linha do tempo, retorno por intenção,
+convergência e candidatos leem o relatório congelado em Séries pelo mesmo serviço do CLI.
+Sem análise, a tela fica vazia: a fixture abaixo só exercita layout e cores nos testes.
+A UI não recalcula efeito, não estima PnL e não autoriza Expert.
 """
 from __future__ import annotations
 
@@ -13,13 +13,14 @@ from tkinter import ttk
 
 import numpy as np
 
+from mt5_extracao.laboratory.service import PREDICTIVE_LAGS
 from mt5_extracao.ui import charts
 from mt5_extracao.ui.components import ScrollableContent as _ScrollablePage
 from mt5_extracao.ui.components import ContentPanel, DetailsPanel, FilterBar, Notice, PageHeader, TablePanel
 from mt5_extracao.ui.visual_tokens import SPACING, TYPOGRAPHY
 
 
-VIEW_NAMES = ("Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos")
+VIEW_NAMES = ("Inventário", "Matriz", "Linha do tempo", "Ganhos e perdas", "Convergências", "Candidatos")
 _STATE_TEXT = {
     "FAVORABLE": "Favorável OOS",
     "DETERIORATING": "Deterioração",
@@ -53,32 +54,6 @@ _SYNTHETIC_FIXTURE = {
         "step": "20 sessões",
     },
     "indicator_names": ("RSI(14)", "MACD(12,26,9)", "ATR(14)", "ADX(14)"),
-    "indicator_matrix": (
-        (
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-            {"label": "+0,74", "strength": "positive_strong", "method": "Spearman", "n": "n=408", "effect_ci": "IC 95%: +0,61 a +0,82", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Associação direta no exemplo; sinal de correlação não informa lucro ou aprovação."},
-            {"label": "−0,08", "strength": "negative_weak", "method": "Spearman", "n": "n=396", "effect_ci": "IC 95%: −0,18 a +0,03", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Efeito próximo de zero; a associação linear baixa não prova ausência de relação não linear."},
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=0", "effect_ci": "indefinido", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "UNAVAILABLE", "presence_state": "UNKNOWN", "support_state": "sem observações maduras", "reason": "Sem pares maduros nesta célula. Ausência de dado não é correlação zero nem efeito adverso."},
-        ),
-        (
-            {"label": "+0,74", "strength": "positive_strong", "method": "Spearman", "n": "n=408", "effect_ci": "IC 95%: +0,61 a +0,82", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Matriz simétrica de exemplo; a direção do relacionamento e a escala aparecem na legenda."},
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-            {"label": "−0,68", "strength": "negative_strong", "method": "Spearman", "n": "n=402", "effect_ci": "IC 95%: −0,76 a −0,55", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Associação inversa. O sinal não informa utilidade, aderência nem resultado financeiro."},
-            {"label": "+0,04", "strength": "neutral", "method": "Spearman", "n": "n=391", "effect_ci": "IC 95%: −0,06 a +0,14", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Correlação linear quase zero no exemplo; isso não exclui padrão não linear."},
-        ),
-        (
-            {"label": "−0,08", "strength": "negative_weak", "method": "Spearman", "n": "n=396", "effect_ci": "IC 95%: −0,18 a +0,03", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "O intervalo inclui zero; estado inconclusivo fornecido pela fixture."},
-            {"label": "−0,68", "strength": "negative_strong", "method": "Spearman", "n": "n=402", "effect_ci": "IC 95%: −0,76 a −0,55", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Associação inversa; não deve ser colorida como perda ou incompatibilidade."},
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=420", "effect_ci": "não definido (variável constante)", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "variável constante", "reason": "Série constante: coeficiente indefinido é mostrado como indisponível, nunca como zero."},
-        ),
-        (
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=0", "effect_ci": "indefinido", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "UNAVAILABLE", "presence_state": "UNKNOWN", "support_state": "sem observações maduras", "reason": "Sem pares maduros nesta célula. Nenhuma relação foi inferida."},
-            {"label": "+0,04", "strength": "neutral", "method": "Spearman", "n": "n=391", "effect_ci": "IC 95%: −0,07 a +0,15", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "amostra sintética", "reason": "Valor ilustrativo quase neutro, separado dos estados de utilidade."},
-            {"label": "—", "strength": "missing", "method": "Spearman", "n": "n=420", "effect_ci": "não definido (variável constante)", "utility_state": "INCONCLUSIVE", "evidence_state": "INSUFFICIENT", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "variável constante", "reason": "Variável constante; coeficiente indisponível, sem substituir ausência por zero."},
-            {"label": "1,00", "strength": "strong", "method": "Spearman", "n": "n=420", "effect_ci": "identidade", "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "support_state": "fixture sintética", "reason": "Diagonal de referência: o indicador é comparado consigo mesmo."},
-        ),
-    ),
     "target_names": ("Retorno +3 barras", "MFE +10 barras", "Retorno +20 barras"),
     "target_matrix": (
         (
@@ -183,7 +158,11 @@ def _mix(background: str, foreground: str, amount: float) -> str:
 
 
 def _date(value: str) -> dt.datetime:
-    return dt.datetime.strptime(value, "%Y-%m-%d")
+    """Aceita dia ou instante. Blocos no mesmo dia civil precisam da hora para não se empilhar."""
+    text = str(value).strip().replace("T", " ")
+    if len(text) >= 16 and text[10] == " ":
+        return dt.datetime.strptime(text[:16], "%Y-%m-%d %H:%M")
+    return dt.datetime.strptime(text[:10], "%Y-%m-%d")
 
 
 def _fit_label_to_parent(label, parent, *, reserve=24, minimum=220):
@@ -223,17 +202,21 @@ def _display_state(row: dict) -> str:
     return f"{label} · {evidence}"
 
 
+_EMPTY_SCOPE = {"feed": "análise congelada", "asset": "—", "expert": "sem Expert", "timeframe": "—",
+                "direction": "não se aplica", "method": "Spearman", "period": "—"}
+
+
 def _detail_text(row: dict, scope: dict | None = None) -> str:
     """Formata proveniência/estado fornecidos, sem deduzir campos a partir do efeito."""
-    scope = scope or _SYNTHETIC_FIXTURE["scope"]
+    scope = scope or _EMPTY_SCOPE
     period = row.get("period") or row.get("window") or scope["period"]
     segment = row.get("segment", row.get("baseline", "segmento não informado"))
     effect = row.get("effect_text", row.get("label", row.get("effect", "—")))
     interval = row.get("effect_ci", row.get("ci", "IC não fornecido"))
     return "\n".join((
         f"Período/janela: {period} · segmento {segment} · rótulo {row.get('label_maturity', 'maturidade não informada')} · "
-        f"disponibilidade {row.get('available_at', row.get('as_of', 'não informada pela fixture'))}",
-        f"População: {row.get('population', 'não informada pela fixture')}",
+        f"disponibilidade {row.get('available_at', row.get('as_of', 'não informada'))}",
+        f"População: {row.get('population', 'não informada')}",
         f"Escopo: {scope.get('feed', 'fonte não informada')} · {scope['asset']} · {scope['expert']} · "
         f"{scope['timeframe']} · {scope['direction']}",
         f"Método/escala: {row.get('method', scope['method'])} · {row.get('scale', 'valor informado pelo produtor')}",
@@ -243,10 +226,78 @@ def _detail_text(row: dict, scope: dict | None = None) -> str:
         f"evidência {row.get('evidence_state', 'INSUFFICIENT')} · frescor {row.get('freshness_state', 'UNAVAILABLE')}",
         f"Cor semântica: {_STATE_TEXT.get(_visual_state(row), 'Inconclusivo')} · estados coloridos só passam com evidência, "
         "suporte e frescor exigidos; os estados informados não são reavaliados pela UI.",
-        f"Custos/ajustes: {row.get('cost_status', _SYNTHETIC_FIXTURE['distribution']['cost_status'])} · "
-        f"{row.get('adjustment', 'ajustes/tentativas não informados pela fixture')}",
-        f"Motivo: {row.get('reason', 'Não informado pela fixture.')}",
+        f"Custos/ajustes: {row.get('cost_status', 'custos não aplicados')} · "
+        f"{row.get('adjustment', 'sem ajuste otimizado')}",
+        f"Motivo: {row.get('reason', row.get('reason_text', 'Não informado.'))}",
     ))
+
+
+_LAB_EMPTY = {
+    "label": "—", "strength": "missing", "n": "sem análise", "freshness_state": "UNAVAILABLE",
+    "reason": "Congele uma análise em Séries e confluências; a matriz indicador × indicador usa o mesmo relatório.",
+    "lab_scope": {"feed": "nenhuma análise congelada", "asset": "—", "expert": "sem Expert", "timeframe": "—",
+              "direction": "não se aplica", "method": "Spearman dos valores", "period": "—"},
+    "population": "nenhuma", "cost_status": "não se aplica", "adjustment": "sem ajustes",
+}
+_REASON_LABELS = {"UNCONFIRMED_EVENT": "provisório", "SAME_SERIES": "mesma série", "NO_OVERLAP": "sem sobreposição",
+                  "INSUFFICIENT_PAIRS": "pares < 3", "CONSTANT_SERIES": "constante",
+                  "WARMUP_EXCEEDS_WINDOW": "warmup", "INELIGIBLE_DATA": "inelegível", "NO_VALUES": "sem valores"}
+_VERDICT_TEXT = {"HOLDOUT_CONSISTENT": "consistente fora da amostra", "CI_INCLUDES_ZERO": "IC inclui zero",
+                 "HOLDOUT_SIGN_FLIP": "inverte fora", "HOLDOUT_WEAK": "fraca fora", "FIT_WEAK": "fraca no ajuste",
+                 "WITHIN_NULL": "dentro do acaso", "NO_GAIN_OVER_PERSISTENCE": "não supera persistência",
+                 "HOLDOUT_INSUFFICIENT": "amostra fora curta"}
+
+
+def _channel_label(channel):
+    return f"{channel['timeframe']} · {channel['name']}"
+
+
+def _source_feed(matrix) -> str:
+    """Proveniência da célula. O alvo de preço não tem manifesto; o indicador × indicador tem."""
+    parts = []
+    for item in matrix.get("source") or []:
+        if item.get("manifest_id") and item.get("timeframe"):
+            parts.append(f"{item['timeframe']} {item['manifest_id'][:10]}")
+        elif item.get("first_open_utc"):
+            parts.append(f"{item['first_open_utc']} … {item.get('last_close_utc', '—')}")
+    return ", ".join(parts) or "análise congelada"
+
+
+def _lab_cell(cell, matrix):
+    """Formata a célula do serviço; estados e motivos vêm prontos, a UI só escolhe tom pelo efeito."""
+    from mt5_extracao.ui.laboratory_series import event_sample_text
+    effect = cell["effect"]
+    if effect is None:
+        label, strength = _REASON_LABELS.get(cell["reason"], cell["reason"]), "missing"
+    else:
+        size = abs(effect)
+        tone = "neutral" if size < .1 else "weak" if size < .4 else "strong"
+        label = f"{effect:+.2f}".replace("-", "−").replace(".", ",")
+        strength = tone if tone == "neutral" else ("positive_" if effect > 0 else "negative_") + tone
+    verdict = _VERDICT_TEXT.get(cell["verdict"], "sem corte temporal (descritiva)" if cell["lag_bars"] == 0 else "—")
+    ci = cell["holdout_ci_95"]
+    direction = cell["direction_correlation"]
+    return {
+        "label": label, "strength": strength, "n": f"n={cell['n_pairs']}",
+        "subtitle": f"n={cell['n_pairs']}",
+        "freshness_state": "CURRENT", "presence_state": "UNKNOWN", "utility_state": "INCONCLUSIVE",
+        "evidence_state": "EXPLORATORY" if effect is not None else "INSUFFICIENT",
+        "method": "Spearman dos valores alinhados", "scale": "−1…+1; sinal é associação, não lucro",
+        "effect_ci": (f"IC 95% fora da amostra (direção): {ci[0]:+.2f} a {ci[1]:+.2f}" if ci else "IC não calculado"),
+        "support_state": (f"{cell['unique_source_pairs']} pares de origem distintos" if cell["unique_source_pairs"]
+                          is not None else "pares de origem não informados") + event_sample_text(cell.get("event_sample")),
+        "segment": "descritiva" if cell["lag_bars"] == 0 else f"candidata preditiva +{cell['lag_bars']} · {verdict}",
+        "period": f"{matrix['source'][0]['first_open_utc']} a {matrix['source'][0]['last_close_utc']}",
+        "available_at": f"corte {matrix['as_of']} · fechamento nominal, recebimento histórico não comprovado",
+        "label_maturity": "não se aplica",
+        "population": f"fechamentos {matrix['grid_timeframe']} com valor nos dois canais",
+        "cost_status": "não se aplica (relação entre indicadores)", "adjustment": "sem otimização; defasagens fixas",
+        "reason": cell["reason_text"] or (f"Correlação de direção {direction:+.2f}." if direction is not None else
+                                          "Efeito exploratório; não é rentabilidade nem preset aprovado."),
+        "lab_scope": {"feed": _source_feed(matrix),
+                  "asset": matrix["symbol"], "expert": "sem Expert", "timeframe": matrix["grid_timeframe"],
+                  "direction": "não se aplica", "method": "Spearman", "period": matrix["as_of"]},
+    }
 
 
 class _MatrixGrid:
@@ -279,6 +330,13 @@ class _MatrixGrid:
         self.canvas.bind("<Button-1>", self._click)
         self.canvas.bind("<Key>", self._key)
         self.canvas.bind("<Configure>", lambda _event: self.redraw())
+        self.redraw()
+
+    def set_data(self, rows, columns, cells):
+        self.rows, self.columns, self.cells = tuple(rows), tuple(columns), cells
+        self.header_height = 60 if any(len(label) > 20 for label in self.columns) else 32
+        self.row_index = min(self.row_index, len(self.rows) - 1)
+        self.column_index = min(self.column_index, len(self.columns) - 1)
         self.redraw()
 
     def redraw(self):
@@ -334,7 +392,8 @@ class _MatrixGrid:
                 presence = {"PRESENT": "sim", "ABSENT": "não", "UNKNOWN": "?"}.get(
                     cell.get("presence_state", "UNKNOWN"), "?")
                 self.canvas.create_text((x0 + x1) / 2, y + 39,
-                                        text=f"{cell.get('n', 'n não informado')} · {freshness} · setup {presence}",
+                                        text=cell.get("subtitle") or
+                                        f"{cell.get('n', 'n não informado')} · {freshness} · setup {presence}",
                                         width=self.column_width - 8, justify=tk.CENTER,
                                         fill=c["ink2"], font=self.theme.font_small, tags=(f"cell:{row}:{col}",))
         self._announce()
@@ -365,10 +424,14 @@ class _MatrixGrid:
 
 
 class RelationsPanel:
-    """Subvisões visuais de F18 com fixture privada e estados explicitamente provisórios."""
+    """Subvisões de relações. Números só aparecem depois de uma análise congelada."""
 
-    def __init__(self, parent, theme):
-        self.theme = theme
+    def __init__(self, parent, theme, db=None, run_bg=None):
+        self.theme, self.db = theme, db
+        # Sem run_bg (testes/SDK), a leitura somente agregada roda na própria thread.
+        self._run_bg = run_bg or (lambda work, done: done(*self._call(work)))
+        self._inventory_request = 0
+        self._inventory_cursors = [None]
         self.frame = ttk.Frame(parent, style="Surface.TFrame")
         self._details: dict[str, tk.Text] = {}
         self._detail_panels: dict[str, ContentPanel] = {}
@@ -385,8 +448,9 @@ class RelationsPanel:
         head.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         self.synthetic_notice = Notice(
             self.frame,
-            "DADOS SINTÉTICOS · Fixture local sem vínculo à base do usuário. DTO T18.1 e serviço T18.6 pendentes; "
-            "valores e estados não são resultados analíticos reais.",
+            "Inventário: registry e base. Matriz, alvo, linha do tempo, retornos e candidatos saem da análise "
+            "congelada em Séries, pelo mesmo serviço do CLI. Sem análise, nenhum número de exemplo é exibido. "
+            "Retorno do preço não é lucro, trade nem autorização.",
             kind="warning", theme=self.theme,
         )
         _fit_label_to_parent(self.synthetic_notice.message, self.synthetic_notice, reserve=128)
@@ -399,6 +463,7 @@ class RelationsPanel:
         self.pages: dict[str, ttk.Frame] = {}
         self._page_scrolls: dict[str, _ScrollablePage] = {}
         builders = {
+            "Inventário": self._build_inventory,
             "Matriz": self._build_matrix,
             "Linha do tempo": self._build_timeline,
             "Ganhos e perdas": self._build_distribution,
@@ -465,12 +530,14 @@ class RelationsPanel:
         bar.pack(fill=tk.X)
         self.scope_filter_bar = bar
         self.scope_blocks = []
+        self.scope_labels = {}
         for column, (key, label) in enumerate((("asset", "Feed/ativo/contrato"), ("expert", "Expert/versão/preset"),
                                                ("timeframe", "Timeframe"), ("direction", "Direção"))):
             block = ttk.Frame(bar, style="Surface.TFrame")
             block.grid(row=0, column=column, sticky="ew", padx=SPACING["xs"])
-            scope_label = ttk.Label(block, text=f"{label}: {_SYNTHETIC_FIXTURE['scope'][key]}",
+            scope_label = ttk.Label(block, text=f"{label}: —",
                                     style="Surface.TLabel", justify=tk.LEFT)
+            self.scope_labels[key] = scope_label
             _fit_label_to_parent(scope_label, block, reserve=16, minimum=180)
             scope_label.pack(anchor="w", fill=tk.X)
             self.scope_blocks.append(block)
@@ -479,14 +546,15 @@ class RelationsPanel:
                                      theme=self.theme, padding=SPACING["xs"])
         self.advanced.grid(row=1, column=0, columnspan=4, sticky="ew", padx=SPACING["xs"],
                            pady=(SPACING["xs"], 0))
-        details = _SYNTHETIC_FIXTURE["scope"]
         self.advanced_blocks = []
+        self.advanced_labels = {}
         for column, (key, label) in enumerate((("target", "Alvo"), ("horizon", "Horizonte"), ("method", "Método/escala"),
                                                ("period", "Período"), ("window", "Janela"), ("step", "Passo"))):
             block = ttk.Frame(self.advanced.body, style="Surface.TFrame")
             block.grid(row=column // 3, column=column % 3, sticky="ew", padx=SPACING["xs"], pady=SPACING["2xs"])
             ttk.Label(block, text=label, style="Muted.TLabel").pack(anchor="w")
-            detail_value = ttk.Label(block, text=details[key], style="Surface.TLabel")
+            detail_value = ttk.Label(block, text="—", style="Surface.TLabel")
+            self.advanced_labels[key] = detail_value
             _fit_label_to_parent(detail_value, block, reserve=16, minimum=180)
             detail_value.pack(anchor="w", fill=tk.X)
             self.advanced_blocks.append(block)
@@ -495,7 +563,7 @@ class RelationsPanel:
         self.advanced.body.columnconfigure(1, weight=1)
         self.advanced.body.columnconfigure(2, weight=1)
         scope_note = ttk.Label(self.frame,
-                               text="Campos demonstrativos; filtros reais serão ligados ao contrato versionado T18.1/T18.6.",
+                               text="O recorte mostra a análise congelada. Estes campos não filtram nem recalculam.",
                                style="Relations.Fixture.TLabel")
         _fit_label_to_parent(scope_note, self.frame)
         scope_note.pack(anchor="w", fill=tk.X, pady=(SPACING["2xs"], 0))
@@ -598,7 +666,7 @@ class RelationsPanel:
         self._detail_panels[key].title_label.configure(text=f"Detalhe da seleção · {title}")
         label.configure(state=tk.NORMAL)
         label.delete("1.0", tk.END)
-        label.insert("1.0", _detail_text(row))
+        label.insert("1.0", _detail_text(row, row.get("lab_scope")))
         label.configure(state=tk.DISABLED)
 
     @staticmethod
@@ -629,7 +697,7 @@ class RelationsPanel:
         self.correlation_legend.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         self.correlation_swatches = []
         legend_items = (("negative_strong", "Inversa forte"), ("negative_weak", "Inversa fraca"),
-                        ("neutral", "≈ 0 · sem associação linear"), ("positive_weak", "Direta fraca"),
+                        ("neutral", "≈ 0 · associação fraca"), ("positive_weak", "Direta fraca"),
                         ("positive_strong", "Direta forte"))
         for column, (tone, label) in enumerate(legend_items):
             swatch = self.theme.classic(tk.Canvas(self.correlation_legend, width=28, height=16,
@@ -642,7 +710,6 @@ class RelationsPanel:
         inner = ttk.Notebook(parent, style="Compact.TNotebook")
         inner.pack(fill=tk.BOTH, expand=True)
         self.matrix_notebook = inner
-        names = _SYNTHETIC_FIXTURE["indicator_names"]
         indicator_frame = ttk.Frame(inner, padding=SPACING["xs"], style="Surface.TFrame")
         target_frame = ttk.Frame(inner, padding=SPACING["xs"], style="Surface.TFrame")
         inner.add(indicator_frame, text="Indicador × indicador")
@@ -652,21 +719,100 @@ class RelationsPanel:
         self.indicator_detail = self._page_detail(indicator_details, "matrix-indicators", visible_lines=15)
         self.target_detail = self._page_detail(target_details, "matrix-targets", visible_lines=15)
         self.matrix_details = {"indicators": self.indicator_detail, "targets": self.target_detail}
-        self.indicator_grid = _MatrixGrid(indicator_primary, self.theme, names, names,
-                                          _SYNTHETIC_FIXTURE["indicator_matrix"],
+        controls = ttk.Frame(indicator_primary, style="Surface.TFrame")
+        controls.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+        ttk.Label(controls, text="Defasagem do preditor (barras):", style="Muted.TLabel").pack(side=tk.LEFT)
+        self.lab_lag = tk.StringVar(value="0")
+        self.lab_lag_box = ttk.Combobox(controls, textvariable=self.lab_lag, width=4, state="readonly",
+                                        values=[str(lag) for lag in (0, *PREDICTIVE_LAGS)])
+        self.lab_lag_box.pack(side=tk.LEFT, padx=SPACING["xs"])
+        self.lab_lag_box.bind("<<ComboboxSelected>>", lambda _event: self._refresh_lab_matrix())
+        # Linha própria: quebrar o texto ao lado do combobox realimenta a largura do contêiner.
+        self.lab_matrix_status = ttk.Label(indicator_primary, text=_LAB_EMPTY["reason"], style="Muted.TLabel",
+                                           justify=tk.LEFT)
+        self.lab_matrix_status.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+        _fit_label_to_parent(self.lab_matrix_status, indicator_primary)
+        self.lab_report = self.lab_matrix = None
+        self._lab_request = 0
+        self.indicator_grid = _MatrixGrid(indicator_primary, self.theme, ("Sem análise",), ("—",), [[_LAB_EMPTY]],
                                           lambda title, row: self._set_detail("matrix-indicators", title, row),
                                           "indicator-matrix")
         self.indicator_grid.frame.pack(fill=tk.BOTH, expand=True)
         self.indicator_detail.pack(fill=tk.BOTH, expand=True, padx=(SPACING["xs"], 0))
-        self.target_grid = _MatrixGrid(target_primary, self.theme, names, _SYNTHETIC_FIXTURE["target_names"],
-                                       _SYNTHETIC_FIXTURE["target_matrix"],
+        self.target_grid = _MatrixGrid(target_primary, self.theme, ("Sem análise",), ("Retorno do preço",),
+                                       [[_LAB_EMPTY]],
                                        lambda title, row: self._set_detail("matrix-targets", title, row),
                                        "target-matrix")
         self.target_grid.frame.pack(fill=tk.BOTH, expand=True)
         self.target_detail.pack(fill=tk.BOTH, expand=True, padx=(SPACING["xs"], 0))
         self._matrices.extend((self.indicator_grid, self.target_grid))
-        self._set_detail("matrix-indicators", "RSI(14) × RSI(14)", _SYNTHETIC_FIXTURE["indicator_matrix"][0][0])
-        self._set_detail("matrix-targets", "RSI(14) × Retorno +3 barras", _SYNTHETIC_FIXTURE["target_matrix"][0][0])
+        self._set_detail("matrix-indicators", "Sem análise", _LAB_EMPTY)
+        self._set_detail("matrix-targets", "Sem análise", _LAB_EMPTY)
+
+    def set_lab_report(self, report):
+        """Recebe o relatório congelado de Séries; matrizes e cruzamentos saem do mesmo serviço do CLI."""
+        if report is None or (self.lab_report or {}).get("analysis_id") == report["analysis_id"]:
+            return
+        self.lab_report = report
+        self._refresh_lab_matrix()
+
+    def _refresh_lab_matrix(self):
+        if self.lab_report is None:
+            return
+        from mt5_extracao.laboratory import service
+        report, lag = self.lab_report, int(self.lab_lag.get())
+        horizon = lag if lag in service.PREDICTIVE_LAGS else 1
+        self._lab_request += 1
+        request = self._lab_request
+        self.lab_matrix_status.configure(text=f"Calculando cruzamentos da análise {report['analysis_id'][:12]}…")
+
+        def work():
+            matrix = service.relation_matrix(report, lag=lag)
+            target = service.target_matrix(report, horizon=horizon)
+            pairs = [pair for pair in report["pairs"] if pair["lag_bars"] == lag and pair["left"] != pair["right"]][:8]
+            timelines = [service.stability_windows(report, pair["left"], pair["right"], lag=lag) for pair in pairs]
+            channel_id = next((c["id"] for c in report["channels"] if c.get("directions")), report["channels"][0]["id"])
+            outcomes = service.direction_outcomes(report, channel_id, horizon=horizon)
+            return (matrix, target, timelines, outcomes, service.research_candidates(report),
+                    service.holdout_comparison(report))
+
+        def done(bundle, error):
+            if request != self._lab_request:
+                return
+            if error is not None:
+                self.lab_matrix_status.configure(text=f"Cruzamento indisponível (erro de execução): {error}")
+                return
+            matrix, target, timelines, outcomes, candidates, holdout = bundle
+            self.lab_matrix = matrix
+            names = [_channel_label(c) for c in matrix["channels"]]
+            cells = [[_lab_cell(cell, matrix) for cell in row] for row in matrix["cells"]]
+            self.indicator_grid.set_data(names, names, cells)
+            target_names = [_channel_label(c) for c in target["channels"]]
+            target_cells = [[_lab_cell(cell, target)] for cell in target["cells"][0]]
+            self.target_grid.set_data(target_names, (f"Retorno +{target['lag_bars']}",), target_cells)
+            self._apply_scope(report, horizon)
+            self._apply_timelines(timelines)
+            self._apply_outcomes(outcomes)
+            self._apply_candidates(candidates)
+            self._apply_holdout(holdout)
+            self.lab_matrix_status.configure(text=(
+                f"Dados reais · análise {matrix['analysis_id'][:12]} · {matrix['symbol']} · grade {matrix['grid_timeframe']} · "
+                f"corte {matrix['as_of']} · defasagem {matrix['lag_bars']} · Spearman no fechamento nominal. "
+                f"Alvo: retorno bruto do preço em {horizon} barras. Não é lucro nem autorização."))
+
+        self._run_bg(work, done)
+
+    def _apply_scope(self, report, horizon):
+        timeframes = ", ".join(dict.fromkeys(c["timeframe"] for c in report["channels"]))
+        labels = {"asset": report["symbol"], "expert": "sem Expert nesta análise",
+                  "timeframe": timeframes or report["grid_timeframe"], "direction": "intenção do canal, não ordem"}
+        for key, value in labels.items():
+            self.scope_labels[key].configure(text=f"{self.scope_labels[key].cget('text').split(':')[0]}: {value}")
+        advanced = {"target": f"retorno do fechamento +{horizon}", "horizon": f"{horizon} barras da grade",
+                    "method": "Spearman; blocos cronológicos iguais", "period": report["selection"]["as_of"],
+                    "window": "corte fixo 70/30 no par", "step": "defasagens 0, 1, 3 e 6"}
+        for key, value in advanced.items():
+            self.advanced_labels[key].configure(text=value)
 
     def _draw_correlation_legend(self):
         c = self.theme.colors
@@ -687,13 +833,13 @@ class RelationsPanel:
         controls.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         series_label = ttk.Label(controls, text="Série:", style="Surface.TLabel")
         series_label.grid(row=0, column=0, sticky="w", padx=(0, SPACING["xs"]))
-        self.timeline_var = tk.StringVar(value=_SYNTHETIC_FIXTURE["timeline"]["series"][0]["label"])
-        timeline_choices = [series["label"] for series in _SYNTHETIC_FIXTURE["timeline"]["series"]]
+        self._timelines = []
+        self.timeline_var = tk.StringVar(value="Sem análise")
         self.timeline_select = ttk.Combobox(controls, textvariable=self.timeline_var, state="readonly", width=28,
-                                            values=timeline_choices)
+                                            values=["Sem análise"])
         self.timeline_select.grid(row=0, column=1, sticky="w")
         self.timeline_select.bind("<<ComboboxSelected>>", lambda _event: self._draw_timeline())
-        ranking_note = ttk.Label(controls, text=_SYNTHETIC_FIXTURE["timeline"]["reference"],
+        ranking_note = ttk.Label(controls, text="Blocos cronológicos iguais; lacuna não é zero nem é ligada.",
                                  style="Relations.Fixture.TLabel", justify=tk.RIGHT)
         self.timeline_ranking_note = ranking_note
         ranking_note.grid(row=0, column=2, sticky="e", padx=(SPACING["sm"], 0))
@@ -719,7 +865,7 @@ class RelationsPanel:
         panel.grid(row=0, column=0, sticky="nsew")
         toolbar_row = ttk.Frame(panel.body, style="Surface.TFrame")
         toolbar_row.pack(fill=tk.X)
-        self.timeline_chart = charts.Chart(panel.body, self.theme, height=2.3)
+        self.timeline_chart = charts.Chart(panel.body, self.theme, height=3.0)
         self._charts["timeline"] = self.timeline_chart
         try:
             from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
@@ -733,9 +879,9 @@ class RelationsPanel:
                                                  information=True, theme=self.theme, padding=SPACING["2xs"])
         self.timeline_explanation.pack(fill=tk.X, pady=(0, SPACING["2xs"]))
         timeline_note = ttk.Label(self.timeline_explanation.body,
-                                  text="Faixas temporais neutras: aquecimento, treino, validação e OOS; cores de estado aparecem "
-                                       "apenas nos marcadores. Segmentos retos ligam os valores recebidos, sem suavização. "
-                                       "Lacunas não são conectadas.",
+                                  text="Faixas temporais neutras: ajuste e fora da amostra, ou aquecimento, treino, validação e OOS "
+                                       "quando o relatório os nomeia. Cores de estado aparecem apenas nos marcadores. "
+                                       "Segmentos retos ligam os valores recebidos, sem suavização. Lacunas não são conectadas.",
                                   style="Muted.TLabel")
         self.timeline_method_note = timeline_note
         _fit_label_to_parent(timeline_note, self.timeline_explanation.body)
@@ -754,8 +900,19 @@ class RelationsPanel:
         self._draw_timeline()
 
     def _current_timeline_series(self):
-        series = _SYNTHETIC_FIXTURE["timeline"]["series"]
-        return next((item for item in series if item["label"] == self.timeline_var.get()), series[0])
+        if not self._timelines:
+            return {"label": "Sem análise", "windows": []}
+        return next((item for item in self._timelines if item["label"] == self.timeline_var.get()), self._timelines[0])
+
+    def _apply_timelines(self, timelines):
+        labeled = []
+        for item in timelines:
+            labeled.append({**item, "label": f"{item['left']} → {item['right']} +{item['lag_bars']}"})
+        self._timelines = labeled
+        labels = [item["label"] for item in labeled] or ["Sem pares"]
+        self.timeline_select.configure(values=labels)
+        self.timeline_var.set(labels[0])
+        self._draw_timeline()
 
     def _draw_timeline(self):
         series = self._current_timeline_series()
@@ -766,20 +923,19 @@ class RelationsPanel:
         charts.style_axis(ax, self.theme, "Spearman ρ · janelas na ordem cronológica", grid_axis="both")
         # Faixas temporais usam apenas tons neutros. Cores semânticas são reservadas
         # aos marcadores de estado para não sugerir evidência favorável no OOS.
-        segments = (
-            ("Aquecimento", c["axis"], 0.035),
-            ("Treino", c["axis"], 0.065),
-            ("Validação", c["axis"], 0.095),
-            ("OOS", c["axis"], 0.125),
-        )
+        segments = {
+            "Aquecimento": 0.035, "Treino": 0.065, "Validação": 0.095, "OOS": 0.125,
+            "Ajuste": 0.06, "Fora da amostra": 0.12,
+        }
         for window in series["windows"]:
-            _, color, alpha = next(item for item in segments if item[0] == window["segment"])
-            ax.axvspan(_date(window["start"]), _date(window["end"]), color=color, alpha=alpha, linewidth=0)
+            ax.axvspan(_date(window["start"]), _date(window["end"]), color=c["axis"],
+                       alpha=segments.get(window["segment"], 0.05), linewidth=0)
         centers = [_date(window["center"]) for window in series["windows"]]
         values = [np.nan if window["value"] is None else window["value"] for window in series["windows"]]
         import matplotlib.dates as mdates
-        ax.plot(mdates.date2num(centers), values, color=c["ink2"], linewidth=1.8,
-                solid_capstyle="round", solid_joinstyle="round", zorder=2)
+        if centers:
+            ax.plot(mdates.date2num(centers), values, color=c["ink2"], linewidth=1.8,
+                    solid_capstyle="round", solid_joinstyle="round", zorder=2)
         for center, window in zip(centers, series["windows"]):
             if window["value"] is None:
                 continue
@@ -794,11 +950,19 @@ class RelationsPanel:
         ax.set_ylim(-1, 1)
         ax.set_yticks((-1, -0.5, 0, 0.5, 1))
         ax.set_ylabel("Spearman ρ", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
-        ax.set_xlabel("Início → fim da base", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
-        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b/%y"))
-        ax.set_xlim(_date("2025-01-01"), _date("2025-12-31"))
-        chart.figure.autofmt_xdate(rotation=0)
+        if centers:
+            ax.set_xlabel("Início → fim da base", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
+            locator = mdates.AutoDateLocator()
+            ax.xaxis.set_major_locator(locator)
+            ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+            ax.set_xlim(min(centers), max(centers))
+        else:
+            from matplotlib.ticker import NullLocator
+            ax.xaxis.set_major_locator(NullLocator())
+            ax.set_xlim(0, 1)
+            ax.set_xlabel("")
+            ax.text(0.5, 0.5, "Congele uma análise em Séries", transform=ax.transAxes,
+                    ha="center", va="center", color=c["muted"])
         chart.draw()
 
         tree = self.timeline_table.tree
@@ -837,14 +1001,16 @@ class RelationsPanel:
         if not selection:
             return
         index = int(selection[0].rsplit("-", 1)[1])
-        window = self._current_timeline_series()["windows"][index]
+        windows = self._current_timeline_series()["windows"]
+        if index >= len(windows):
+            return
+        window = windows[index]
         self._set_detail("timeline", f"{window['segment']} · {window['start']} a {window['end']}", window)
 
     def _build_distribution(self, parent):
-        distribution = _SYNTHETIC_FIXTURE["distribution"]
         note = Notice(parent,
-                      "CUSTOS INCOMPLETOS · distribuição bruta em R fornecida pela fixture; expectativa líquida não exibida. "
-                      "Rótulos censurados permanecem no denominador informado.",
+                      "Retorno bruto do preço depois da intenção do canal. Custos não aplicados; expectativa líquida "
+                      "de trades não é calculada. Ganho, perda e empate somam o denominador.",
                       kind="warning", theme=self.theme)
         _fit_label_to_parent(note.message, note, reserve=128)
         self.distribution_notice = note
@@ -853,14 +1019,14 @@ class RelationsPanel:
         primary.columnconfigure(0, weight=1)
         primary.rowconfigure(0, weight=1)
         primary.rowconfigure(1, weight=0)
-        panel = ContentPanel(primary, title="Distribuição por direção e contexto",
-                             subtitle=distribution["unit"], padding=SPACING["xs"])
+        panel = ContentPanel(primary, title="Retorno do preço por intenção",
+                             subtitle="ganho, empate e perda somam o mesmo denominador", padding=SPACING["xs"])
         panel.grid(row=0, column=0, sticky="nsew")
         self.distribution_population_label = ttk.Label(
-            panel.body, text=f"População: {distribution['population']}", style="Muted.TLabel")
+            panel.body, text="População: nenhuma análise congelada", style="Muted.TLabel")
         _fit_label_to_parent(self.distribution_population_label, panel.body)
         self.distribution_population_label.pack(anchor="w", pady=(0, SPACING["2xs"]))
-        distribution_legend = ttk.Label(panel.body, text="Faixas: perdas (vermelho) · empates (cinza) · ganhos (verde). "
+        distribution_legend = ttk.Label(panel.body, text="Faixas: perdas (laranja) · empates (cinza) · ganhos (azul). "
                                         "As duas direções usam a mesma escala e unidade.", style="Muted.TLabel")
         _fit_label_to_parent(distribution_legend, panel.body)
         distribution_legend.pack(anchor="w", fill=tk.X)
@@ -878,32 +1044,47 @@ class RelationsPanel:
         self.distribution_table.tree.bind("<<TreeviewSelect>>", self._distribution_selected, add="+")
         self.distribution_detail = self._page_detail(detail, "distribution", visible_lines=15)
         self.distribution_detail.pack(fill=tk.BOTH, expand=True)
+        self._outcomes = None
+        self._draw_distribution()
+
+    def _apply_outcomes(self, outcomes):
+        self._outcomes = outcomes
+        self.distribution_population_label.configure(text=f"População: {outcomes['population']}")
         self._draw_distribution()
 
     def _draw_distribution(self):
-        data = _SYNTHETIC_FIXTURE["distribution"]
+        data = self._outcomes or {"directions": [], "bins": (), "unit": "sem análise congelada"}
         chart = self.distribution_chart
         chart.clear()
-        axes = chart.figure.subplots(1, 2, sharey=True)
         c = self.theme.colors
-        bins = data["bins"]
-        categories = (("Perdas", c["bad"]), ("Empates", c["muted"]), ("Ganhos", c["good"]))
-        for axis, direction in zip(axes, data["directions"]):
-            charts.style_axis(axis, self.theme, f"{direction['label']} · n={direction['n_total']} total, "
-                              f"{direction['n_mature']} maturadas", grid_axis="y")
-            for index, (bin_label, bin_category) in enumerate(bins):
-                count = direction["counts"][index]
-                category = {"LOSS": "Perdas", "FLAT": "Empates", "WIN": "Ganhos"}[bin_category]
-                color = next(color for name, color in categories if name == category)
-                axis.bar(index, count, color=color, width=0.68, edgecolor=c["surface"], linewidth=0.8)
-                axis.text(index, count + 0.5, str(count), ha="center", va="bottom", fontsize=TYPOGRAPHY["chart_tick"],
-                          color=c["ink2"])
-            axis.set_xticks(range(len(bins)))
-            axis.set_xticklabels([label for label, _category in bins], rotation=18, ha="right",
-                                 fontsize=TYPOGRAPHY["chart_tick"])
-            axis.set_ylim(0, 32)
-            axis.set_xlabel("Resultado por trade · R", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
-        axes[0].set_ylabel("Operações em cada faixa", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
+        directions = list(data["directions"])
+        categories = (("Perdas", "losses", c["series"][1]), ("Empates", "flats", c["muted"]),
+                      ("Ganhos", "wins", c["series"][0]))
+        if not directions:
+            ax = chart.figure.add_subplot(111)
+            charts.style_axis(ax, self.theme, "Sem análise congelada", grid_axis="y")
+            ax.text(0.5, 0.5, "Congele uma análise em Séries", transform=ax.transAxes,
+                    ha="center", va="center", color=c["muted"])
+            ax.set_xticks([])
+            ax.set_yticks([])
+        else:
+            axes = chart.figure.subplots(1, len(directions), sharey=True)
+            axes = np.atleast_1d(axes)
+            peak = 1
+            for axis, direction in zip(axes, directions):
+                charts.style_axis(axis, self.theme, direction.get("label") or "Intenção", grid_axis="y")
+                counts = [int(direction.get(key, 0)) for _name, key, _color in categories]
+                peak = max(peak, max(counts) if counts else 1)
+                for index, (_name, _key, color) in enumerate(categories):
+                    axis.bar(index, counts[index], color=color, width=0.68, edgecolor=c["surface"], linewidth=0.8)
+                    axis.text(index, counts[index], str(counts[index]), ha="center", va="bottom",
+                              fontsize=TYPOGRAPHY["chart_tick"], color=c["ink"], rotation=0)
+                axis.set_xticks(range(3))
+                axis.set_xticklabels([name for name, _key, _color in categories], fontsize=TYPOGRAPHY["chart_tick"])
+                axis.set_xlabel("Sinal do retorno do preço", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
+            for axis in axes:
+                axis.set_ylim(0, peak * 1.25)
+            axes[0].set_ylabel("Fechamentos em cada faixa", color=c["muted"], fontsize=TYPOGRAPHY["chart_label"])
         chart.draw()
         tree = self.distribution_table.tree
         tree.delete(*tree.get_children())
@@ -921,28 +1102,31 @@ class RelationsPanel:
         if not selection:
             return
         index = int(selection[0].rsplit("-", 1)[1])
-        row = _SYNTHETIC_FIXTURE["distribution"]["directions"][index]
+        rows = (self._outcomes or {}).get("directions") or []
+        if index >= len(rows):
+            return
+        row = rows[index]
         self._set_detail("distribution", row["label"], {
-            "period": _SYNTHETIC_FIXTURE["scope"]["period"],
-            "method": "bins de resultado em R · valores fornecidos, sem recálculo",
+            "method": "sinal do retorno bruto do fechamento futuro",
             "effect_text": f"ganhos {row['wins']} · perdas {row['losses']} · empates {row['flats']}",
-            "n": f"n total={row['n_total']} · n maduro={row['n_mature']} · censurados={row['censored']}",
-            "population": _SYNTHETIC_FIXTURE["distribution"]["population"],
-            "support_state": "mesma população, direção e unidade da fixture",
-            "utility_state": "INCONCLUSIVE", "evidence_state": "EXPLORATORY", "freshness_state": "CURRENT",
-            "presence_state": row["presence_state"], "cost_status": _SYNTHETIC_FIXTURE["distribution"]["cost_status"],
+            "n": f"n={row['n_total']}",
+            "population": (self._outcomes or {}).get("population", "sem análise"),
+            "support_state": "mesma população e horizonte",
+            "utility_state": "INCONCLUSIVE", "evidence_state": row["evidence_state"],
+            "freshness_state": "CURRENT", "presence_state": row["presence_state"],
+            "cost_status": (self._outcomes or {}).get("cost_status", "custos não aplicados"),
             "reason": row["reason"],
         })
 
     def _build_convergence(self, parent):
         controls = FilterBar(parent, padding=SPACING["xs"])
         controls.pack(fill=tk.X, pady=(0, SPACING["xs"]))
-        pair_label = ttk.Label(controls, text="Par de exemplo:", style="Surface.TLabel")
+        pair_label = ttk.Label(controls, text="Comparação:", style="Surface.TLabel")
         pair_label.grid(row=0, column=0, sticky="w", padx=(0, SPACING["xs"]))
-        pairs = _SYNTHETIC_FIXTURE["convergence"]["pairs"]
-        self.convergence_var = tk.StringVar(value=pairs[0]["label"])
-        self.convergence_select = ttk.Combobox(controls, textvariable=self.convergence_var, state="readonly", width=20,
-                                               values=[pair["label"] for pair in pairs])
+        self._holdout = []
+        self.convergence_var = tk.StringVar(value="Fora da amostra")
+        self.convergence_select = ttk.Combobox(controls, textvariable=self.convergence_var, state="readonly", width=28,
+                                               values=["Fora da amostra"])
         self.convergence_select.grid(row=0, column=1, sticky="w")
         self.convergence_select.bind("<<ComboboxSelected>>", lambda _event: self._draw_convergence())
         comparison_note = ttk.Label(controls, text="valores OOS recebidos · comparação pareada · sem ranking",
@@ -961,7 +1145,7 @@ class RelationsPanel:
                 comparison_note.configure(wraplength=max(220, event.width - 310), justify=tk.RIGHT)
 
         controls.bind("<Configure>", resize_convergence_controls, add="+")
-        note = Notice(parent, "BASE BRUTA · custos não incluídos nos exemplos; valores OOS em R/op bruto, sem expectativa líquida.",
+        note = Notice(parent, "ρ fora da amostra menos a persistência do alvo. Não é R/op. Custos não entram; expectativa líquida de trades não é calculada.",
                       kind="warning", theme=self.theme)
         _fit_label_to_parent(note.message, note, reserve=128)
         self.convergence_notice = note
@@ -970,13 +1154,13 @@ class RelationsPanel:
         primary.columnconfigure(0, weight=1)
         primary.rowconfigure(0, weight=1)
         primary.rowconfigure(1, weight=0)
-        panel = ContentPanel(primary, title="Baseline, fatores isolados e dupla",
-                             subtitle="OOS · mesma população e janelas declaradas", padding=SPACING["xs"])
+        panel = ContentPanel(primary, title="ρ fora da amostra",
+                             subtitle="cada par menos a persistência do próprio alvo", padding=SPACING["xs"])
         panel.grid(row=0, column=0, sticky="nsew")
         self.convergence_chart = charts.Chart(panel.body, self.theme, height=2.2)
         self._charts["convergence"] = self.convergence_chart
         self.convergence_chart.widget.pack(fill=tk.BOTH, expand=True)
-        self.convergence_table = TablePanel(primary, "Comparação fornecida pelo produtor",
+        self.convergence_table = TablePanel(primary, "Pares do relatório congelado",
                                             columns=("scenario", "effect", "ci", "n", "delta", "utility", "evidence", "freshness", "presence"),
                                             widths=(140, 100, 165, 55, 110, 145, 100, 82, 90),
                                             anchors=("w", "center", "w", "center", "w", "w", "center", "center", "center"),
@@ -992,8 +1176,13 @@ class RelationsPanel:
         self._draw_convergence()
 
     def _current_pair(self):
-        pairs = _SYNTHETIC_FIXTURE["convergence"]["pairs"]
-        return next((item for item in pairs if item["label"] == self.convergence_var.get()), pairs[0])
+        return {"label": self.convergence_var.get() or "Fora da amostra", "rows": self._holdout,
+                "comparison": "ρ fora da amostra contra a persistência do alvo"}
+
+    def _apply_holdout(self, rows):
+        self._holdout = rows
+        self.convergence_var.set("Fora da amostra")
+        self._draw_convergence()
 
     def _draw_convergence(self):
         pair = self._current_pair()
@@ -1001,28 +1190,37 @@ class RelationsPanel:
         chart.clear()
         ax = chart.figure.add_subplot(111)
         c = self.theme.colors
-        charts.style_axis(ax, self.theme, f"{pair['label']} · efeito OOS bruto informado", grid_axis="y")
+        charts.style_axis(ax, self.theme, "ρ fora da amostra · não é resultado em R", grid_axis="y")
         rows = pair["rows"]
         positions = range(len(rows))
-        heights = pair["plot_values"]
-        colors = [c[_STATE_COLORS.get(_visual_state(row), "muted")] for row in rows]
+        heights = [0 if row["effect"] is None else float(row["effect"]) for row in rows]
+        colors = [c["muted"] if row["effect"] is None else (c["series"][2] if row["effect"] >= 0 else c["series"][1])
+                  for row in rows]
         bars = ax.bar(positions, heights, color=colors, width=0.62, edgecolor=c["surface"], linewidth=0.8)
         for rect, row, height in zip(bars, rows, heights):
-            ax.text(rect.get_x() + rect.get_width() / 2, height, row["effect"],
-                    ha="center", va="bottom" if height >= 0 else "top",
+            if row["effect"] is None:
+                rect.set_alpha(0)
+            y = 0.08 if row["effect"] is None else height
+            ax.text(rect.get_x() + rect.get_width() / 2, y, row["effect_text"],
+                    ha="center", va="bottom" if y >= 0 else "top", rotation=0,
                     fontsize=TYPOGRAPHY["chart_tick"], color=c["ink"])
         ax.axhline(0, color=c["axis"], linewidth=0.9)
         ax.set_xticks(list(positions))
-        ax.set_xticklabels([row["label"] for row in rows], rotation=10, ha="right",
+        labels = [row["label"] if len(row["label"]) <= 32 else row["label"][:31] + "…" for row in rows]
+        ax.set_xticklabels(labels, rotation=0 if len(rows) <= 3 else 24, ha="center" if len(rows) <= 3 else "right",
                            fontsize=TYPOGRAPHY["chart_tick"])
-        ax.set_ylabel("OOS bruto · R/op", color=c["muted"],
+        ax.set_ylim(-1, 1)
+        ax.set_ylabel("ρ fora da amostra", color=c["muted"],
                       fontsize=TYPOGRAPHY["chart_label"])
+        if not rows:
+            ax.text(0.5, 0.5, "Nenhum par preditivo nesta análise", transform=ax.transAxes,
+                    ha="center", va="center", color=c["muted"])
         chart.draw()
         tree = self.convergence_table.tree
         tree.delete(*tree.get_children())
         for index, row in enumerate(rows):
             tree.insert("", tk.END, iid=f"convergence-{index}",
-                        values=(row["label"], row["effect"], row["ci"], row["n"], row["delta"],
+                        values=(row["label"], row["effect_text"], row["ci"], row["n"], row["delta_text"],
                                 _display_state(row), row["evidence_state"], row["freshness_state"], row["presence_state"]),
                                 tags=(_visual_state(row),))
         if tree.get_children():
@@ -1035,21 +1233,132 @@ class RelationsPanel:
             return
         index = int(selection[0].rsplit("-", 1)[1])
         pair = self._current_pair()
+        if index >= len(pair["rows"]):
+            return
         row = pair["rows"][index]
         self._set_detail("convergence", row["label"], {
             **row,
-            "period": _SYNTHETIC_FIXTURE["scope"]["period"],
-            "method": "efeito bruto informado pelo produtor · OOS · comparação pareada",
-            "effect_text": f"{row['effect']} · delta {row['delta']}",
-            "scale": "R por operação bruto · custos não incluídos",
+            "method": "ρ fora da amostra menos a persistência do alvo",
+            "effect_text": f"{row['effect_text']} · Δρ {row['delta_text']}",
+            "scale": "correlação −1…+1 · não é R por operação",
             "segment": pair["comparison"],
-            "cost_status": "custos não incluídos; resultado bruto, sem expectativa líquida",
+            "cost_status": "custos não incluídos; expectativa líquida de trades não é calculada",
         })
+
+    @staticmethod
+    def _call(work):
+        try:
+            return work(), None
+        except Exception as error:  # mesmo contrato de run_bg: erro chega ao callback
+            return None, error
+
+    def _build_inventory(self, parent):
+        from mt5_extracao.laboratory import inventory
+        controls = ttk.Frame(parent, style="Surface.TFrame")
+        controls.pack(fill=tk.X, pady=(0, SPACING["xs"]))
+        ttk.Label(controls, text="Buscar:").pack(side=tk.LEFT)
+        self.inventory_query = tk.StringVar()
+        entry = ttk.Entry(controls, textvariable=self.inventory_query, width=28)
+        entry.pack(side=tk.LEFT, padx=SPACING["xs"])
+        entry.bind("<Return>", lambda _e: self.load_inventory())
+        ttk.Label(controls, text="Estado:").pack(side=tk.LEFT)
+        self.inventory_state = tk.StringVar(value="Todos")
+        state_box = ttk.Combobox(controls, textvariable=self.inventory_state, state="readonly", width=13,
+                                 values=("Todos", *inventory.STATES))
+        state_box.pack(side=tk.LEFT, padx=SPACING["xs"])
+        state_box.bind("<<ComboboxSelected>>", lambda _e: self.load_inventory())
+        ttk.Button(controls, text="Filtrar", command=self.load_inventory).pack(side=tk.LEFT)
+        self.inventory_prev = ttk.Button(controls, text="◀", width=3, command=lambda: self._inventory_page(-1))
+        self.inventory_prev.pack(side=tk.RIGHT)
+        self.inventory_next = ttk.Button(controls, text="▶", width=3, command=lambda: self._inventory_page(1))
+        self.inventory_next.pack(side=tk.RIGHT)
+        self.inventory_status = ttk.Label(parent, text="Carregando inventário…", style="Muted.TLabel")
+        self.inventory_status.pack(fill=tk.X)
+        _fit_label_to_parent(self.inventory_status, parent)
+        self.inventory_table = TablePanel(parent, "Indicadores, variantes e saídas · somente leitura",
+            columns=("feature", "name", "version", "family", "outputs", "params", "state", "series"),
+            widths=(210, 170, 70, 100, 120, 240, 110, 200),
+            anchors=("w", "w", "center", "w", "w", "w", "center", "w"), height=12, xscroll=True,
+            padding=SPACING["xs"])
+        self.inventory_table.pack(fill=tk.BOTH, expand=True)
+        self._set_headings(self.inventory_table, {"feature": "ID", "name": "Nome", "version": "Versão",
+            "family": "Família", "outputs": "Saídas", "params": "Parâmetros", "state": "Estado",
+            "series": "Fatos na base"})
+        self.inventory_table.tree.bind("<<TreeviewSelect>>", self._inventory_selected, add="+")
+        self.inventory_detail = self._page_detail(parent, "inventory", visible_lines=5)
+        self.inventory_detail.pack(fill=tk.X, pady=(SPACING["xs"], 0))
+        self._inventory_rows = {}
+        self.load_inventory()
+
+    def load_inventory(self, cursor=None, *, reset=True):
+        from mt5_extracao.laboratory import inventory
+        if reset:
+            self._inventory_cursors = [None]
+        self._inventory_request += 1
+        request, db = self._inventory_request, self.db
+        query, state = self.inventory_query.get(), self.inventory_state.get()
+        def work():
+            return inventory.search(db, query=query, state=None if state == "Todos" else state,
+                                    page_size=50, cursor=cursor)
+        def done(result, error):
+            if request != self._inventory_request or not self.inventory_table.tree.winfo_exists():
+                return  # resposta obsoleta: outra busca já foi pedida
+            tree = self.inventory_table.tree
+            tree.delete(*tree.get_children())
+            self._inventory_rows = {}
+            if error:
+                self.inventory_status.configure(text=f"Inventário indisponível: {error}. Recomece a busca.")
+                return
+            for index, row in enumerate(result["items"]):
+                iid = f"inventory-{index}"
+                self._inventory_rows[iid] = row
+                series = ", ".join(f"{item['symbol']} {item['timeframe']} ({item['facts']})"
+                                   for item in row["series"][:3]) or "—"
+                tree.insert("", tk.END, iid=iid, values=(row["feature_id"], row["name"], row["algorithm_version"],
+                    row["family"], ", ".join(item["name"].rsplit(".", 1)[-1] for item in row["outputs"]) or "—",
+                    ", ".join(f"{k}={v}" for k, v in row["parameters"].items()), row["state"], series))
+            self._inventory_next_cursor = result["next_cursor"]
+            self.inventory_next.state(["!disabled"] if result["next_cursor"] else ["disabled"])
+            self.inventory_prev.state(["!disabled"] if len(self._inventory_cursors) > 1 else ["disabled"])
+            counts = " · ".join(f"{name} {count}" for name, count in result["counts"].items())
+            page = len(self._inventory_cursors)
+            self.inventory_status.configure(text=result["reason"] or
+                f"{result['matched']} de {result['total']} definições · página {page} · {counts}"
+                + ("" if db is not None else " · sem base conectada: fatos não consultados"))
+            if result["items"]:
+                tree.selection_set("inventory-0")
+        self._run_bg(work, done)
+
+    def _inventory_page(self, step):
+        if step > 0 and getattr(self, "_inventory_next_cursor", None):
+            self._inventory_cursors.append(self._inventory_next_cursor)
+        elif step < 0 and len(self._inventory_cursors) > 1:
+            self._inventory_cursors.pop()
+        else:
+            return
+        self.load_inventory(self._inventory_cursors[-1], reset=False)
+
+    def _inventory_selected(self, _event):
+        selection = self.inventory_table.tree.selection()
+        row = self._inventory_rows.get(selection[0]) if selection else None
+        if row is None:
+            return
+        text = self._details["inventory"]
+        text.configure(state=tk.NORMAL)
+        text.delete("1.0", tk.END)
+        lines = [f"{row['name']} · {row['feature_id']} v{row['algorithm_version']} · origem {row['origin']}",
+                 f"Estado {row['state']}: {row['reason']}" + (f" Ação: {row['action']}" if row["action"] else ""),
+                 f"Unidade {row['unit']} · aquecimento {row['warmup']} · saídas "
+                 + ", ".join(f"{o['name']} ({o.get('kind')})" for o in row["outputs"])]
+        lines += [f"{s['symbol']} {s['timeframe']}: {s['facts']} fatos de {s['first']} a {s['last']} · "
+                  f"último disponível {s['last_available_at']}" for s in row["series"]]
+        text.insert("1.0", "\n".join(lines))
+        text.configure(state=tk.DISABLED)
 
     def _build_candidates(self, parent):
         notice = Notice(parent,
-                        "T18.7 ainda não fornece candidatos. As linhas abaixo são exemplos sintéticos de apresentação; "
-                        "não há ação de aplicar, exportar preset ou alterar Expert.",
+                        "Só entram pares que o serviço marcou consistentes fora da amostra. "
+                        "Não há ação de aplicar, exportar preset ou alterar Expert.",
                         kind="info", theme=self.theme)
         _fit_label_to_parent(notice.message, notice, reserve=128)
         self.candidate_notice = notice
@@ -1067,31 +1376,40 @@ class RelationsPanel:
         self.candidate_table.tree.bind("<<TreeviewSelect>>", self._candidate_selected, add="+")
         self.candidate_detail = self._page_detail(parent, "candidates", visible_lines=6)
         self.candidate_detail.pack(fill=tk.X, pady=(SPACING["xs"], 0))
-        for index, row in enumerate(_SYNTHETIC_FIXTURE["candidates"]):
-            self.candidate_table.tree.insert("", tk.END, iid=f"candidate-{index}",
-                                             values=(row["id"], row["proposal"], row["scope"], row["window"],
-                                                     row["evidence_state"], row["freshness_state"], row["presence_state"], row["validity"]),
-                                             tags=(_visual_state(row),))
-        self.candidate_table.tree.selection_set("candidate-0")
-        self._candidate_selected(None)
+        self._candidate_rows = []
+
+    def _apply_candidates(self, rows):
+        self._candidate_rows = rows
+        tree = self.candidate_table.tree
+        tree.delete(*tree.get_children())
+        for index, row in enumerate(rows):
+            tree.insert("", tk.END, iid=f"candidate-{index}",
+                        values=(row["id"], row["proposal"], row["scope"], row["window"],
+                                row["evidence_state"], row["freshness_state"], row["presence_state"], row["validity"]),
+                        tags=(_visual_state(row),))
+        if rows:
+            tree.selection_set("candidate-0")
+            self._candidate_selected(None)
 
     def _candidate_selected(self, _event):
         selection = self.candidate_table.tree.selection()
         if not selection:
             return
         index = int(selection[0].rsplit("-", 1)[1])
-        row = _SYNTHETIC_FIXTURE["candidates"][index]
+        if index >= len(self._candidate_rows):
+            return
+        row = self._candidate_rows[index]
         self._set_detail("candidates", row["proposal"], {
             **row,
-            "period": _SYNTHETIC_FIXTURE["scope"]["period"],
-            "method": "proposta de pesquisa sintética · sem métrica calculada pela tela",
-            "effect_text": row["validity"], "effect_ci": "não fornecido",
-            "n": "não fornecido pela fixture", "segment": row["window"],
+            "period": row["window"],
+            "method": "veredito HOLDOUT_CONSISTENT do serviço; a tela não recalcula",
+            "effect_text": row["validity"], "effect_ci": "ver o par no relatório",
+            "n": "pares do relatório", "segment": row["window"],
             "cost_status": "não comprovado; nenhuma aplicação operacional",
         })
 
     def render(self):
-        """Atualiza paleta e gráficos quando a aplicação troca o tema; preserva a fixture passiva."""
+        """Atualiza paleta e gráficos quando a aplicação troca o tema."""
         self._configure_styles()
         self._draw_correlation_legend()
         for label, state, _text in self._legend_labels:

@@ -1,5 +1,10 @@
 # MT5 Extração de Dados
 
+**Retomar em um host limpo, sem o disco antigo ou SD:**
+[comece por aqui](CONTINUAR_AQUI.md). Wrappers Linux/Windows, fontes fixadas,
+recuperação privada pela conta ChatGPT e prompts de continuidade. O Laboratório
+permanece incompleto; os próximos recortes estão registrados no roadmap.
+
 Construtor de bases de dados do MetaTrader 5 para **Windows e Linux**: instala sozinho, extrai e
 mantém atualizado o histórico OHLCV (com indicadores) em SQLite, pela interface gráfica ou pela
 linha de comando, e ajuda a pesquisar estratégias sobre a base construída.

@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "task": "T20.30-HOST1",
+  "date": "2026-10-24",
+  "branch": "codex/novo-host-20261024",
+  "base": "65e621a9183e5231fe6bd42b1cc32f178ef2ef64",
+  "purpose": "Bootstrap de desenvolvimento e recuperação remota, sem disco/SD antigo. Não corrige Laboratório nem qualifica operação.",
+  "validation": {
+    "baseline": {
+      "passed": 27,
+      "seconds": 0.66,
+      "exit_code": 0,
+      "selection": "test_recovery_verification + test_packaging"
+    },
+    "final": {
+      "passed": 103,
+      "skipped": 1,
+      "seconds": 7.55,
+      "exit_code": 0,
+      "selection": "development_host + cloud_recovery + recovery_verification + packaging + bootstrap_paths_locator/config/doctor",
+      "skip": "caso legado somente Windows em test_bootstrap_paths_locator; não removido/desativado"
+    },
+    "bash_plan": "exit0; destino não criado inclusive --plan --yes",
+    "powershell_plan": "pwsh no Linux, exit0, destino não criado; não é Windows físico",
+    "shellcheck": "bootstrap-dev.sh install.sh run.sh scripts/*.sh scripts/install/*.sh: exit0",
+    "doctor": {
+      "ok": 20,
+      "optional_warning": 1,
+      "failures": 0,
+      "exit_code": 0,
+      "probe": false
+    },
+    "links": {
+      "relative_links_checked": 294,
+      "broken": [],
+      "files": 16
+    },
+    "new_operating_system_tested": false,
+    "windows_physical": "pending",
+    "broad_suite_repeated": false,
+    "native_session_started": false
+  },
+  "private_recovery": {
+    "destination": "página pessoal ChatGPT do proprietário; referências apenas no manifesto privado",
+    "source_database_opened_read_only": true,
+    "snapshot_bytes": 482754560,
+    "tables": 48,
+    "archive_bytes": 109140638,
+    "parts": 158,
+    "all_parts_uploaded_and_read_back": true,
+    "all_table_counts_identical_after_restore": true,
+    "database_hash_identical_after_restore": true,
+    "local_filename_unavailable_remote_read_passed": true,
+    "extra_files": "2 fontes originais HADOUKEN + 3 PNGs privados",
+    "credentials_or_database_published_to_github": false,
+    "sdcard_required": false,
+    "private_page_render_preview": "conteúdo será relido; não constitui teste visual de navegador",
+    "remote_independence_probe": "Parte relida após renomear o arquivo original local; SHA/tamanho preservados."
+  },
+  "preservation": {
+    "owner_root_wip_files_identical_to_existing_remote_snapshot": 137,
+    "later_owner_documents_preserved_privately": 8,
+    "owner_runtime_and_active_preview_changed": false,
+    "environment_reinstalled_on_current_host": false
+  },
+  "artifacts_sha256": {
+    "CONTINUAR_AQUI.md": "73d0e369cf4da2ec3a45edef4f82c01856f61e4cf97467f31fc30fc48586a5d2",
+    "README.md": "3e9965a27dc8c4ddfa8fba706da24050c20acdedef5f11c5fa18ae673f6fa217",
+    "bootstrap-dev.ps1": "306528eea3841d09ba0d6663e5bcfb0135725fe8ee84ef02bc67386f3423cdff",
+    "bootstrap-dev.sh": "fad9d601dd875405df4c3542380a3157fe676c5843b6578372aada4c60f4c0d4",
+    "docs/PLANO_DE_TRABALHO.md": "28e13abcbc63310e5a33fa5bb16d3bb47b1dd8eab88fa5da737917454d9de8a9",
+    "docs/ROADMAP.md": "b11c32a930415f78a1251cf1441a539154924d8f6d1297f13ca96780699582c5",
+    "docs/continuidade.md": "e7fc6786dc424aeda0c5888ddad0091074190a1791da3d4aa8ba2f167cefd6b4",
+    "docs/repasse/NOVO_HOST_20261024.md": "7fd0f177435192926a53c9cd5d939fc84e7791da02e387145b9386f52763f3a9",
+    "docs/repasse/NOVO_HOST_MANIFESTO_20261024.json": "c62923fa8844b655e3162363a5363ab1c90e84a4499eb4f2bc31e7aa7e98eda2",
+    "docs/repasse/PROMPT_NOVO_HOST_20261024.md": "ade0d1fe0bac7acd8a1266f43141632c3b5ce4d75f2f904361dd832a10a915f5",
+    "docs/repasse/RECUPERACAO_POS_FORMATACAO_20261021.md": "381ed601f51212fe8d7d48bb4481b8b51b61d148ce9da86761ff129280e9502d",
+    "docs/validacao_instaladores.md": "195853e81031f1371acd0ce31ae2fbfcfd6d7a5da8e8b711f3f4121685358f4a",
+    "scripts/recover_cloud_backup.py": "04c5328bfe1fbcacf0b5d53877ba8ff96dad7bc0765e86aaf8ccf70ee514367b",
+    "scripts/setup_development.py": "215e7dc2c0d6fcb91d479c09617c22e7c8a1d05acf3a63bcad006bf25fa0828e",
+    "tests/test_cloud_recovery.py": "5a4247a7bc19960c079eb1dd5dab1c78d0a2a6cb1c7fc3011f5e1532cb9bcc02",
+    "tests/test_development_host.py": "8d5630431739d87b7f00b4a04c5e34172fe0674a03eb1da8ee3184c8d25cc964"
+  },
+  "hash_scope": "bytes das fontes na worktree Linux; checkout .ps1/.bat respeita .gitattributes"
+}

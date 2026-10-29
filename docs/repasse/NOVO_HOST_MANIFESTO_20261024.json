@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "repositories": {
+    "app": {
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados.git",
+      "commit": "65e621a9183e5231fe6bd42b1cc32f178ef2ef64",
+      "bootstrap_branch": "codex/novo-host-20261024"
+    },
+    "hadouken": {
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5.git",
+      "commit": "b730ed4a8df74f5f20eb6e289798d0232c370994"
+    },
+    "safety": {
+      "url": "https://github.com/Misael-art/mt5x-safety.git",
+      "commit": "3988df13c467bd22941183f5546caad0500f9138"
+    }
+  },
+  "purpose": "Desenvolvimento a partir da prévia; não declara aceitação das PRs ou dos perfis nativos.",
+  "ownership": {
+    "laboratory": "frente LAB-01 a LAB-10",
+    "expert_super_atr": "frente SA-01",
+    "calculation_and_storage": "agente de Dados existente, SA-02",
+    "shared_files": "integrador, composição serial"
+  },
+  "accepted_references": {
+    "app": "ac7af2c392611bb1bd262c7806810eb4289559b3",
+    "hadouken": "ec550d77caae74e9f5f4ffe30cea5ccd29621624",
+    "safety": "3988df13c467bd22941183f5546caad0500f9138"
+  },
+  "private_backup": "Página privada de recuperação; nunca baixar pelo repositório público.",
+  "development_layout": ["repos/app", "repos/hadouken", "repos/safety", "studies", "downloads", "state"],
+  "operational_acceptance": false
+}
