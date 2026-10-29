@@ -66,7 +66,7 @@ def for_trades(db, trades, *, feature_ids=None, clocks=None):
     for ident in ids:
         spec = indicator_registry.get_definition(ident)
         for field in ("value", "state", "reason", "algorithm_version", "unit", "parameters", "observation_time",
-                      "available_at_utc", "source_revision", "metadata_json"):
+                      "available_at_utc", "valid_until_utc", "source_revision", "metadata_json"):
             name = ident + "::" + field
             columns[name] = pd.Series([None] * len(frame), dtype="object")
         columns[ident + "::state"] = "UNAVAILABLE"

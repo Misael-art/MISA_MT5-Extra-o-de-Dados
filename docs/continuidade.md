@@ -3586,3 +3586,44 @@ eventos independentes nem perder correções tardias de observações antigas;
 estender o contexto canônico antes de persistir se esse percurso exigir.
 Demais famílias e BD14 completo permanecem abertos; sem dados privados como
 fixture, negociação ou aceite nativo/financeiro/Windows físico.
+
+## Continuidade do roadmap — BD14-OBSERVATION, 29/10/2026
+
+Frente `codex/contexto-observacao`, sobre `5c113fe`/PR223. O contexto padrão
+acompanha a observação mais recente e não serve para reconstruir correções
+tardias de uma observação anterior. `observation_time` explícito no contexto
+congelado e no SDK/CLI de composição seleciona o histórico daquela observação.
+Reutiliza o mesmo grafo/as-of, sem consulta à base atual ou criação de fatos.
+Receitas1 permanecem legíveis. [Contrato](sdk/api.md#revisões-de-uma-observação-congelada-bd14-observation).
+
+A janela desse modo cobre barras originais, recibos tardios e vencimentos
+vigentes declarados, sem ampliar cobertura de mercado. Vencimento substituído
+não prolonga a janela; o teste correspondente reproduziu e corrigiu esse erro
+antes da publicação. `valid_until_utc` chega aos pais, aos dois níveis e à
+proveniência; vencimento é exclusivo. Escopo entra na identidade de avaliação,
+enquanto a identidade matemática não depende da observação/decisões escolhidas.
+Observações ausentes, sem fuso ou fora da seleção são recusadas explicitamente.
+
+Baseline210 reutilizado. Novos testes/SDK28 aprovados; rodada ampliada274
+aprovados e dois timeouts60s nos casos de materialização completa das52
+definições. Os dois passaram na repetição isolada, sem alterar código/testes ou
+limite, com uma thread numérica por processo. Pressão de CPU do host próxima
+de80%, com mais de50 tarefas na fila, observada durante a rodada; não se atribui
+causa exclusiva nem se declara a rodada ampla verde. Contagens sobrepostas,
+não somar. Logs preservados em `state/qa-tmp/observation-context/`.
+Doctor de desenvolvimento offline16OK/2avisos/0falhas.
+
+Launcher oficial/CLI=SDK=importação em outra base/fuso: valores2/ausente/
+ausente/6/3 para observação fixa, enquanto a consulta padrão mantém26 na mesma
+decisão; seis fatos pais e zero filhos. Versões qualificadas dos três retornos
+permanecem iguais às da base. Bancada padrão com mesmo snapshot carregado,
+dois níveis/500 decisões e três chamadas: medianas1414→471ms e pico de alocação
+Python4,87→4,99MB. Valores/estados têm digest igual; dispersão918–3456ms na base
+e460–797ms atual sob contenção impede atribuir aceleração a esta mudança.
+
+Próxima entrega BD14: gravação por observação/revisão nos mecanismos existentes,
+com deduplicação histórica, monotonicidade de recebimento, retomada e gates de
+fonte/concorrência/interrupção. Valores mantidos numa grade não são novos eventos.
+Este recorte é de leitura; não encerra materialização, demais famílias ou aceite
+nativo/financeiro/Windows físico. CI da base5c113fe: Linux, Windows, PostgreSQL,
+lint e ambos instaladores aprovados; o novo HEAD tem CI próprio.

@@ -1848,6 +1848,7 @@ def build_parser():
 
     q = features_sub.add_parser("compose", help="avalia receitas no contexto congelado; não grava valores")
     q.add_argument("--manifest", required=True)
+    q.add_argument("--observation", help="observação UTC fixa; lê suas revisões, incluindo recibos posteriores às barras")
     q.add_argument("--target", action="append", nargs=2, metavar=("ID", "VERSAO"), required=True)
     q.add_argument("--as-of", action="append", required=True, help="decisão UTC; repita para vários instantes")
     q.set_defaults(func=cmd_analytics)
@@ -1864,6 +1865,7 @@ def build_parser():
                        + ("; no snapshot, obrigatória se ambígua" if action == "context" else ""))
         if action == "context":
             q.add_argument("--manifest", help="usa somente fatos e contratos deste snapshot congelado")
+            q.add_argument("--observation", help="exige --manifest; seleciona esta observação UTC e seus recibos congelados")
         if action == "export":
             q.add_argument("--out", required=True, help="destino CSV")
             q.add_argument("--from", dest="date_from")
@@ -2064,9 +2066,11 @@ def cmd_analytics(args, ctx):
         import pandas as pd
         from mt5_extracao.analytics import datasets
         result = features.compose_snapshot(datasets.load(ctx.db, args.manifest),
-            pd.DataFrame(dict(decision_time=args.as_of)), targets=args.target)
+            pd.DataFrame(dict(decision_time=args.as_of)), targets=args.target, observation_time=args.observation)
         _data(composition=result)
         if not args.json_output and result["context"]:
+            if result["context_scope"]["observation_time"] is not None:
+                _print("Observação congelada: " + result["context_scope"]["observation_time"])
             columns = ["decision_time"] + [ident + "::" + field for ident, _version in result["targets"]
                                            for field in ("value", "unit", "state")]
             _print(pd.DataFrame(result["context"])[columns].head(20).to_string(index=False, na_rep="—"))
@@ -2089,6 +2093,8 @@ def cmd_analytics(args, ctx):
             _data(materialization=result)
         elif args.features_action == "context":
             decisions = pd.DataFrame({"decision_time": [args.as_of]})
+            if args.observation and not args.manifest:
+                raise ValueError("--observation exige --manifest; a consulta usa somente revisões congeladas.")
             if args.manifest:
                 from mt5_extracao.analytics import datasets
                 from mt5_extracao import timeframes
@@ -2097,12 +2103,15 @@ def cmd_analytics(args, ctx):
                 if snapshot.manifest["symbol"] != args.symbol or tf is None or snapshot.manifest["timeframe"] != tf.name:
                     raise ValueError("Ativo/timeframe divergem do snapshot; confira o manifest escolhido.")
                 frame = indicator_context.from_snapshot(snapshot, decisions, feature_ids=ids,
-                                                         algorithm_version=args.algorithm_version)
+                                                         algorithm_version=args.algorithm_version,
+                                                         observation_time=args.observation)
             else:
                 frame = indicator_context.context(ctx.db, decisions, symbol=args.symbol, timeframe=args.tf,
                                                   feature_ids=ids, algorithm_version=args.algorithm_version)
             _print(frame.to_string(index=False))
-            _data(schema_version=1, context=indicator_context.records(frame))
+            scope = frame.attrs.get("snapshot_context_scope")
+            _data(schema_version=1, context=indicator_context.records(frame),
+                  **({"snapshot_context_scope": scope} if scope is not None else {}))
         else:
             from mt5_extracao.data_exporter import DataExporter
             path = DataExporter(ctx.db).export_indicator_values(
