@@ -3632,7 +3632,9 @@ lint e ambos instaladores aprovados; o novo HEAD tem CI próprio.
 
 ## Continuidade do roadmap — BD14-INTERRUPTION, 29/10/2026
 
-Frente `codex/interrupcao-produtores`, sobre `c1afbeb`/PR224. Reproduzido nos
+Fonte `7cbca1d996c1c375bbe9eee43939f9f393a995c5` publicada no
+[PR225](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/225), branch
+`codex/interrupcao-produtores`, sobre `c1afbeb`/PR224. Reproduzido nos
 produtores de registry e famílias: `KeyboardInterrupt` escapava de `except
 Exception`, deixando medidor RSS ativo e recibo `RUNNING`. Dois testes falharam
 na base e o launcher anterior confirmou os dois casos com SIGINT real em
