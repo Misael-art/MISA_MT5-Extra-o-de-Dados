@@ -119,15 +119,18 @@ def test_corrupt_existing_hash_is_not_silently_repaired_or_accepted(source, froz
     assert output_facts(source) == corrupted
 
 
-def test_cli_sdk_delegate_to_same_writer_and_explicit_stored_version(source, frozen, monkeypatch, capsys):
+def test_cli_sdk_delegate_to_same_writer_and_explicit_stored_version(source, frozen, monkeypatch, capsys, tmp_path):
+    config = tmp_path / "qa.ini"
+    config.write_text("[APP]\nbroker_utc_offset=0\n[DATABASE]\ntype=sqlite\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(cli.Context, "db", property(lambda _: source))
-    assert cli.main(["--json", "analytics", "features", "materialize-composite", "--manifest", frozen.manifest_id,
+    assert cli.main(["--config", str(config), "--json", "analytics", "features", "materialize-composite", "--manifest", frozen.manifest_id,
                      "--target", *ABS, "--batch-size", "2", "--as-of", "2026-01-01T00:00Z"]) == 0
     result = json.loads(capsys.readouterr().out)["data"]["materialization"]
     repeated = sdk.materialize_composite_snapshot(source, frozen.manifest_id, targets=[ABS], as_of="2026-01-01T00:00Z")
     assert repeated["outputs"] == result["outputs"] and repeated["job"]["status"] == "SKIPPED"
     version = next(d["algorithm_version"] for d in result["outputs"] if d["feature_id"] == ABS[0])
-    assert cli.main(["--json", "analytics", "features", "context", "--symbol", "QA", "--tf", "M1",
+    assert cli.main(["--config", str(config), "--json", "analytics", "features", "context", "--symbol", "QA", "--tf", "M1",
                     "--features", ABS[0], "--algorithm-version", version, "--as-of", "2025-01-02T00:00Z"]) == 0
     assert json.loads(capsys.readouterr().out)["data"]["context"][0][ABS[0] + "::value"] == 26.
 
