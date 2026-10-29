@@ -262,6 +262,17 @@ de expressões; qualquer extensão de expressividade terá contrato e testes.
 estado coerente nos descendentes; adicionar um ramo não altera outro; nenhum
 resultado usa dado disponível somente no futuro.
 
+**Adendo BD12-SNAPSHOT (29/10/2026):** `difference` e `absolute` usam o grafo e
+executor existentes sobre contratos/pais de um snapshot4, sem completar entradas
+com dados atuais. Dois níveis conferidos por aritmética independente, revisões
+tardias, expiração, ausência e ramo independente; versões explícitas, unidades
+fraction/price_units e mesma observação. A CLI/SDK preserva o contexto após
+exportação/importação; não grava valores filhos nem infere direção operacional.
+107 testes dirigidos e launcher oficial com fixture própria; [contrato e
+limites](../sdk/api.md#composições-congeladas-bd12-snapshot). O aceite deste recorte
+não encerra outras operações/tipos, granularidade BD13, materialização BD14 ou
+consumidores completos BD19. A assinatura ainda cobre módulos inteiros.
+
 #### BD13 — revisão, cache e invalidação por dependência
 
 **Vinculação:** T20.17/25, T13.2/3b. **Depende de:** BD12.

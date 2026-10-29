@@ -1836,6 +1836,22 @@ def build_parser():
     q.add_argument("--batch-size", type=int, default=5000)
     q.set_defaults(func=cmd_analytics)
 
+    from mt5_extracao.analytics import features as analytical_features
+    q = features_sub.add_parser("define-composite", help="registra receita tipada; não materializa fatos")
+    q.add_argument("--id", required=True, dest="feature_id")
+    q.add_argument("--name", required=True)
+    q.add_argument("--algorithm-version", required=True)
+    q.add_argument("--operation", choices=analytical_features.composition_operations(), required=True)
+    q.add_argument("--input", action="append", nargs=2, metavar=("ID", "VERSAO"), required=True,
+                   help="entrada ID/versão; repita em ordem para difference")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("compose", help="avalia receitas no contexto congelado; não grava valores")
+    q.add_argument("--manifest", required=True)
+    q.add_argument("--target", action="append", nargs=2, metavar=("ID", "VERSAO"), required=True)
+    q.add_argument("--as-of", action="append", required=True, help="decisão UTC; repita para vários instantes")
+    q.set_defaults(func=cmd_analytics)
+
     for action in ("context", "export"):
         q = features_sub.add_parser(action, help="consulta por decisão UTC" if action == "context" else
                                    "exporta colunas versionadas do store, com estados e proveniência")
@@ -2037,6 +2053,27 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action == "define-composite":
+        created = features.register_composite(ctx.db, args.feature_id, args.name, args.algorithm_version,
+                                             operation=args.operation, inputs=args.input)
+        _data(created=created, definition=features.get_feature(ctx.db, args.feature_id, args.algorithm_version))
+        _print("Receita registrada; congele também as versões das entradas antes de avaliar.")
+        return EXIT_OK
+    if args.features_action == "compose":
+        import pandas as pd
+        from mt5_extracao.analytics import datasets
+        result = features.compose_snapshot(datasets.load(ctx.db, args.manifest),
+            pd.DataFrame(dict(decision_time=args.as_of)), targets=args.target)
+        _data(composition=result)
+        if not args.json_output and result["context"]:
+            columns = ["decision_time"] + [ident + "::" + field for ident, _version in result["targets"]
+                                           for field in ("value", "unit", "state")]
+            _print(pd.DataFrame(result["context"])[columns].head(20).to_string(index=False, na_rep="—"))
+            if len(result["context"]) > 20:
+                _print("Mostrando as primeiras 20 decisões; use --json para o contexto completo.")
+        _print(f"{len(result['executed'])} composições avaliadas no snapshot; contexto exploratório, sem materialização.")
+        return EXIT_OK
 
     if args.features_action in {"materialize", "context", "export"}:
         import pandas as pd

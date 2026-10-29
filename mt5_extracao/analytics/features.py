@@ -111,7 +111,7 @@ def get_feature(db, feature_id, algorithm_version=None):
     return matches[0]
 
 
-def affected_by(db, changed_dependencies, *, definition_filter=None):
+def affected_by(db, changed_dependencies, *, definition_filter=None, definitions=None):
     """Retorna as definições atuais que precisam ser recalculadas após uma mudança.
 
     Os itens de ``changed_dependencies`` podem ser fontes como ``bars:M1`` ou
@@ -125,7 +125,7 @@ def affected_by(db, changed_dependencies, *, definition_filter=None):
     changed = {str(item).strip() for item in changed_dependencies or () if str(item).strip()}
     if not changed:
         return []
-    definitions = feature_store.list_definitions(db)
+    definitions = feature_store.list_definitions(db) if definitions is None else list(definitions)
     if definition_filter is not None:
         definitions = [item for item in definitions if definition_filter(item)]
     latest = _latest_by_id(definitions)
@@ -156,14 +156,14 @@ def affected_by(db, changed_dependencies, *, definition_filter=None):
     return ordered
 
 
-def recalculate_affected(db, changed_dependencies, recalculators, *, definition_filter=None):
+def recalculate_affected(db, changed_dependencies, recalculators, *, definition_filter=None, definitions=None):
     """Executa somente os recálculos afetados, em ordem de dependência.
 
     ``recalculators`` mapeia ``feature_id`` para uma função ``(db, definition)``.
     A lista completa é validada antes da primeira chamada, para evitar um recálculo
     parcial causado por um handler ausente.
     """
-    affected = affected_by(db, changed_dependencies, definition_filter=definition_filter)
+    affected = affected_by(db, changed_dependencies, definition_filter=definition_filter, definitions=definitions)
     missing = [item["feature_id"] for item in affected if item["feature_id"] not in recalculators]
     if missing:
         raise ValueError("Faltam recálculos registrados para: " + ", ".join(missing))
@@ -172,3 +172,226 @@ def recalculate_affected(db, changed_dependencies, recalculators, *, definition_
          "result": recalculators[item["feature_id"]](db, item)}
         for item in affected
     ]
+
+
+# Operações fechadas e tipadas, despachadas pelo grafo existente; nenhuma expressão é executada.
+COMPOSITION_VERSION = 1
+MAX_COMPOSITION_NODES = 32
+_COMPOSITE_OPERATORS = {
+    "difference":dict(arity=2, formula="left - right", evaluate=lambda values: values[0] - values[1]),
+    "absolute":dict(arity=1, formula="abs(input)", evaluate=lambda values: abs(values[0])),
+}
+_COMPOSITE_UNITS = frozenset({"fraction", "price_units"})
+_COMPOSITE_AVAILABILITY = "max_declared_parent_availability_at_same_observation"
+
+
+def composition_operations():
+    """Descoberta dos operadores fixos, também usada pelas escolhas da CLI."""
+    return tuple(_COMPOSITE_OPERATORS)
+
+
+def _composite_inputs(inputs, operation):
+    if not isinstance(operation, str) or operation not in _COMPOSITE_OPERATORS:
+        raise ValueError("Operação composta desconhecida; use difference ou absolute.")
+    arity = _COMPOSITE_OPERATORS[operation]["arity"]
+    if not isinstance(inputs, (list, tuple)) or len(inputs) != arity:
+        raise ValueError(f"{operation} exige {arity} entradas ID/versão em ordem explícita.")
+    result = []
+    for pair in inputs:
+        if (not isinstance(pair, (list, tuple)) or len(pair) != 2 or
+                not all(isinstance(value, str) and value.strip() for value in pair)):
+            raise ValueError("Cada entrada exige ID/versão explícitos (feature_id e algorithm_version).")
+        result.append(tuple(value.strip() for value in pair))
+    return result
+
+
+def _composite_unit(specs):
+    if any(spec.get("output_kind") != "number" for spec in specs):
+        raise ValueError("Compostos aritméticos exigem entradas numéricas; categorias/booleanos não são números.")
+    if any(spec.get("family") == "structure" or spec["feature_id"].startswith("structure.") for spec in specs):
+        raise ValueError("Pivôs armazenados exigem qualificação de identidade/confirmação de eventos antes de compor.")
+    raw_units = [spec.get("unit") for spec in specs]
+    if any(not isinstance(unit, str) or not unit for unit in raw_units):
+        raise ValueError("Unidade ausente; a aritmética exige fraction ou price_units declarados.")
+    units = set(raw_units)
+    if len(units) != 1:
+        raise ValueError("Unidades incompatíveis; não há conversão implícita entre entradas.")
+    unit = next(iter(units))
+    if unit not in _COMPOSITE_UNITS:
+        raise ValueError("A aritmética inicial aceita somente fraction ou price_units declarados; unidade ausente "
+                         "ou escala restrita exige outro contrato, sem inferir domínio.")
+    return unit
+
+
+def register_composite(db, feature_id, name, algorithm_version, *, operation, inputs):
+    """Registra uma receita imutável sobre versões armazenadas, sem calcular/materializar valores."""
+    from mt5_extracao.analytics import query_service
+
+    pairs = _composite_inputs(inputs, operation)
+    known = {(s["feature_id"], s["algorithm_version"]):s for s in query_service.definition_catalog(db)}
+    if any(pair not in known or known[pair]["registered_definition"] is None for pair in pairs):
+        raise ValueError("Pai/versão não registrado na base; registre/materialize essa versão antes de compor.")
+    for pair in pairs:
+        _frozen_recipe(known[pair])
+    unit = _composite_unit([known[pair] for pair in pairs])
+    recipe = dict(schema_version=COMPOSITION_VERSION, operation=operation, operator_version=1,
+                  inputs=[dict(feature_id=ident, algorithm_version=version) for ident, version in pairs])
+    return register(db, feature_id, name, algorithm_version, parameters=dict(composition=recipe),
+        dependencies=["feature:" + ident for ident, _version in pairs], family="composite",
+        formula=_COMPOSITE_OPERATORS[operation]["formula"], unit=unit, value_type="NUMBER", warmup_count=0,
+        warmup_unit="bars", source_id="frozen_feature_context",
+        availability_rule=_COMPOSITE_AVAILABILITY)
+
+
+def _frozen_recipe(spec):
+    if spec.get("family") != "composite":
+        return None
+    parameters = spec.get("parameters")
+    if (not isinstance(parameters, dict) or set(parameters) != {"composition"}
+            or spec.get("availability_rule") != _COMPOSITE_AVAILABILITY
+            or spec.get("source_id") != "frozen_feature_context" or type(spec.get("warmup_count")) is not int
+            or spec.get("warmup_count") != 0
+            or spec.get("warmup_unit") != "bars"):
+        raise ValueError("Metadados divergem do contrato composto congelado.")
+    recipe = parameters["composition"]
+    if (not isinstance(recipe, dict) or set(recipe) != {"schema_version", "operation", "operator_version", "inputs"}
+            or type(recipe["schema_version"]) is not int or recipe["schema_version"] != COMPOSITION_VERSION
+            or type(recipe["operator_version"]) is not int or recipe["operator_version"] != 1):
+        raise ValueError(f"Contrato composto não suportado: {spec['feature_id']}@{spec['algorithm_version']}.")
+    raw = recipe["inputs"]
+    if (not isinstance(raw, list) or not all(isinstance(item, dict) and
+            set(item) == {"feature_id", "algorithm_version"} for item in raw)):
+        raise ValueError("Entradas compostas exigem IDs e versões explícitos.")
+    pairs = _composite_inputs([(item["feature_id"], item["algorithm_version"]) for item in raw], recipe["operation"])
+    if (spec["output_kind"] != "number" or spec["formula"] != _COMPOSITE_OPERATORS[recipe["operation"]]["formula"]
+            or set(spec["dependencies"]) != {"feature:" + ident for ident, _version in pairs}):
+        raise ValueError("Receita, tipo ou dependências divergem do contrato composto congelado.")
+    return recipe["operation"], pairs
+
+
+def compose_snapshot(snapshot, decisions, *, targets):
+    """Avaliação exploratória de receitas congeladas, usando o mesmo executor de dependências."""
+    import hashlib
+    import json
+    from pathlib import Path
+    import numpy as np
+    import pandas as pd
+    from mt5_extracao.analytics import datasets, indicator_context, query_service
+
+    if not isinstance(snapshot, datasets.Snapshot):
+        raise ValueError("Informe um snapshot canônico carregado ou capturado.")
+    pairs = datasets._feature_selection(targets)
+    if not pairs:
+        raise ValueError("Escolha ao menos uma composição ID/versão congelada.")
+    if (not isinstance(decisions, pd.DataFrame) or not decisions.columns.is_unique
+            or not all(isinstance(col, str) for col in decisions.columns)):
+        raise ValueError("Informe decisões tabulares com colunas textuais únicas e decision_time com fuso.")
+    known = {(s["feature_id"], s["algorithm_version"]):s for s in snapshot.feature_definitions}
+    chosen, visiting, versions, recipes = {}, set(), {}, {}
+
+    def collect(pair):
+        if pair in visiting:
+            raise ValueError("Dependências de características não podem formar ciclos.")
+        if pair in chosen:
+            return
+        if len(chosen) + len(visiting) >= MAX_COMPOSITION_NODES:
+            raise ValueError(f"Composição excede {MAX_COMPOSITION_NODES} nós; separe o estudo.")
+        if pair not in known:
+            raise ValueError(f"Pai/versão não congelado: {pair[0]}@{pair[1]}. Capture todas as entradas.")
+        ident, version = pair
+        if ident in versions and versions[ident] != version:
+            raise ValueError("Duas versões do mesmo ID no grafo; separe as avaliações para não misturar contextos.")
+        versions[ident] = version
+        visiting.add(pair)
+        spec = known[pair]
+        recipe = _frozen_recipe(spec)
+        if recipe:
+            operation, parents = recipe
+            for parent in parents:
+                collect(parent)
+            if spec["unit"] != _composite_unit([known[parent] for parent in parents]):
+                raise ValueError("Unidade da composição diverge das entradas congeladas.")
+            recipes[ident] = (operation, parents)
+        else:
+            _composite_unit([spec])
+        visiting.remove(pair)
+        chosen[pair] = spec
+
+    for pair in pairs:
+        collect(pair)
+        if pair[0] not in recipes:
+            raise ValueError("O alvo precisa ser uma receita composta congelada; use context para fatos armazenados.")
+    if len(decisions) * len(chosen) > query_service.MAX_SELECTION_ROWS:
+        raise ValueError(f"Composição excede {query_service.MAX_SELECTION_ROWS} pares nó/decisão; reduza a seleção.")
+    if any(any(str(col).startswith(ident + "::") for ident in versions) for col in decisions.columns):
+        raise ValueError("Decisões já contêm colunas reservadas dos indicadores; remova-as antes de compor.")
+    leaves = [pair for pair in chosen if pair[0] not in recipes]
+    groups = {}
+    for ident, version in leaves:
+        groups.setdefault(version, []).append(ident)
+    base, columns, cached = None, {}, {}
+    for version, ids in groups.items():
+        frame = indicator_context.from_snapshot(snapshot, decisions, feature_ids=ids, algorithm_version=version)
+        if base is None:
+            base = frame[[col for col in frame.columns if not any(col.startswith(ident + "::") for ident in ids)]]
+        for ident in ids:
+            prefix = ident + "::"
+            data = {col[len(prefix):]:frame[col] for col in frame if col.startswith(prefix)}
+            cached[ident] = indicator_context.records(pd.DataFrame(data))
+            columns.update({prefix + key:value for key, value in data.items()})
+
+    def handler(_db, spec):
+        ident = spec["feature_id"]
+        operation, parents = recipes[ident]
+        rows = []
+        for position in range(len(decisions)):
+            inputs = [cached[parent[0]][position] for parent in parents]
+            valid = all(row["state"] == "AVAILABLE" for row in inputs)
+            same_observation = len({row["observation_time"] for row in inputs}) == 1
+            reason = ("PARENT_UNAVAILABLE: " + ", ".join(f"{p[0]}@{p[1]}={row['state']}" for p, row in zip(parents, inputs))
+                      if not valid else "PARENT_OBSERVATIONS_DIFFER" if not same_observation else None)
+            value = None
+            if reason is None:
+                numbers = [float(row["value"]) for row in inputs]
+                value = _COMPOSITE_OPERATORS[operation]["evaluate"](numbers)
+                if not np.isfinite(value):
+                    reason, value = "NON_FINITE_RESULT", None
+            provenance = dict(basis="frozen_context_exploration_not_materialized", operation=operation, operator_version=1,
+                unit=spec["unit"],
+                parents=[dict(feature_id=p[0], algorithm_version=p[1], observation_time=row["observation_time"],
+                              available_at_utc=row["available_at_utc"], revision=row["revision"],
+                              source_revision=row["source_revision"], state=row["state"], value=row["value"], unit=row["unit"])
+                         for p, row in zip(parents, inputs)])
+            encoded = json.dumps(provenance, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            rows.append(dict(value=value, state="AVAILABLE" if reason is None else "UNAVAILABLE", reason=reason,
+                algorithm_version=spec["algorithm_version"], unit=spec["unit"],
+                parameters=json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":")),
+                observation_time=inputs[0]["observation_time"] if reason is None else None,
+                available_at_utc=max(row["available_at_utc"] for row in inputs) if reason is None else None,
+                revision=None, source_revision="context:" + hashlib.sha256(encoded.encode()).hexdigest(), metadata_json=encoded))
+        cached[ident] = rows
+        frame = pd.DataFrame(rows, columns=("value", "state", "reason", "algorithm_version", "unit", "parameters",
+            "observation_time", "available_at_utc", "revision", "source_revision", "metadata_json"))
+        columns.update({ident + "::" + key:frame[key] for key in frame})
+        return dict(rows=len(rows), available=sum(row["state"] == "AVAILABLE" for row in rows))
+
+    executed = recalculate_affected(None, ["feature:" + ident for ident, _version in leaves],
+        {ident:handler for ident in recipes}, definitions=[s for s in chosen.values() if s["feature_id"] in recipes])
+    frame = pd.concat([base.reset_index(drop=True), pd.DataFrame(columns, index=range(len(decisions)))], axis=1)
+    root = Path(__file__).resolve().parent
+    source_hashes = {name:hashlib.sha256((root / name).read_bytes()).hexdigest()
+                     for name in ("features.py", "indicator_context.py", "feature_store.py", "datasets.py")}
+    implementation = hashlib.sha256(feature_store._canonical_json(
+        dict(sources=source_hashes, pandas=pd.__version__, numpy=np.__version__), "implementation").encode()).hexdigest()
+    evaluation = hashlib.sha256(feature_store._canonical_json(dict(manifest_id=snapshot.manifest_id,
+        targets=pairs, decision_times=[row["decision_time"] for row in indicator_context.records(base)],
+        implementation=implementation), "evaluation").encode()).hexdigest()
+    return dict(composition_version=COMPOSITION_VERSION, snapshot_manifest_id=snapshot.manifest_id,
+        implementation_sha256=implementation, evaluation_id=evaluation,
+        targets=[list(pair) for pair in pairs], executed=executed, context=indicator_context.records(frame),
+        definitions=[dict(feature_id=s["feature_id"], algorithm_version=s["algorithm_version"], unit=s["unit"],
+                          parameters=s["parameters"]) for s in chosen.values()],
+        qualification=dict(exploratory=True, materialized=False, operational_acceptance=False,
+                           historical_source_certification=False, availability_basis="declared_frozen_parent_facts"),
+        limitations=["Cálculo em contexto congelado; não é fato materializado, sinal recebido ou ordem.",
+                     "Entradas precisam ter a mesma observação e unidade declarada; ausências não viram zero."])
