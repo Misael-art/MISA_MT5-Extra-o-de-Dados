@@ -190,6 +190,78 @@ restabelecer o valor. Ainda não grava fatos filhos: esta leitura prepara a
 materialização por observação/revisão, evitando usar uma grade de decisões como
 se cada valor mantido fosse um evento novo.
 
+### Materialização da cadeia congelada (BD14-MATERIALIZE)
+
+`sdk.materialize_composite_snapshot(db, manifest_id, *, targets, as_of,
+batch_size=5000, write_guard=None, cancel_check=None, timeout_seconds=600,
+max_memory_mb=2048)` grava os alvos e seus ancestrais compostos no store existente.
+`targets` contém pares ID/versão de receitas presentes no snapshot4 junto com
+todas as entradas. A CLI delega ao mesmo produtor:
+
+```bash
+./run.sh --cli analytics features materialize-composite \
+  --manifest MANIFEST_ID --target example.absolute v1 \
+  --as-of 2026-01-01T00:00:00Z --batch-size 100
+```
+
+`as_of` exige fuso e um instante já ocorrido. O job enumera recebimentos/revisões
+e vencimentos vigentes conhecidos até esse corte, por observação. Não usa uma
+grade de decisões nem troca uma observação antiga pela mais recente. Prazos
+posteriores continuam em `valid_until_utc`, sem gravar antecipadamente uma
+expiração que um recibo futuro ainda pode substituir. Entradas totalmente
+ausentes não inventam observações. O armazenamento exige precisão exata em
+microssegundos; o produtor recusa horários que seriam arredondados.
+
+Receita1 permanece imutável. Cada saída ganha outra versão, com sufixo
+`+mat.<hash>`, família `materialized_composite`, identidade completa de cálculo/
+projeção e pais com versões explícitas. A versão depende do código/contratos,
+sem incorporar manifesto ou corte. Uma saída armazenada pode ser congelada e
+consumida como entrada tipada de outra receita. Mantêm-se NUMBER,
+fraction/price_units, alinhamento por observação e ausência sem conversão em zero;
+nenhuma direção operacional é inferida.
+O contexto conserva as versões das receitas avaliadas; os metadados de
+materialização também listam as versões de saída dos ancestrais. Eles são
+avaliados no mesmo grafo congelado, sem completar entradas com fatos atuais.
+
+O grafo é preparado uma vez por job; execução e as-of são os mesmos da consulta.
+Contextos usam a imagem congelada e eventos são avaliados em blocos256. Um
+primeiro percurso verifica o histórico e prepara hashes; o segundo confere o
+mesmo resultado antes da gravação em lotes. Permanecem os limites32 nós,
+200.000 pares nó/evento e200.000 revisões armazenadas na janela; timeout/memória
+e `write_guard`/cancelamento usam os mecanismos existentes. O custo de dois
+percursos é explícito, sem promessa de aceleração ou escala ilimitada.
+
+Repetir ou retomar reconhece as revisões antigas, preserva seus hashes e seu
+manifesto original. Uma captura posterior pode acrescentar correções tardias
+sem regravar o prefixo. Antes de acrescentar fatos, o produtor verifica que a
+entrada ainda contém os fatos pais já usados pelas origens anteriores. Uma
+captura antiga não publica vencimentos sobre uma entrada mais recente; um novo
+evento que retroceda o recebimento exige reconciliação explícita. Hashes,
+proveniência, revisões duplicadas ou lacunas divergentes não são reparados
+silenciosamente. Disponibilidade empatada usa recebimento e depois revisão,
+como a consulta SQL canônica.
+
+Fatos/checkpoint são confirmados na mesma transação, com conferência da
+identidade da base e da geração de saídas antes e depois dos valores, sob a
+exclusão de escrita do store. Esse protocolo presume gravações
+append-only pelo store; alterações SQL externas não são um protocolo de edição.
+Um escritor concorrente provoca conflito e nova tentativa, sem duplicatas.
+Cancelamento/interrupção mantém somente os lotes confirmados; a retomada compara
+os fatos, sem confiar apenas num cursor. Importação em outra base continua
+legível, mas a escrita exige o namespace original. Nunca há fallback para a
+base atual na avaliação congelada.
+
+O run referencia seu manifesto pelo vínculo existente de datasets. Corte,
+alvos, versões e limites ficam em `configuration_json`, coluna opcional aditiva
+no journal existente; recibos antigos permanecem sem configuração conhecida.
+O checkpoint guarda o mesmo manifesto/corte. `source_sequence=0` não declara
+uma geração live. O resultado explicita `input_basis='frozen_snapshot'`,
+`as_of`, `limits` e `qualification.latest_live_source_certified=False`:
+COMPLETE refere-se à entrada congelada e ao corte escolhidos. Não certifica
+fonte live, disponibilidade histórica nativa, estratégia ou operação financeira.
+Morte abrupta/SIGKILL, reconciliação automática de runs órfãos, outros operadores/
+famílias e qualificação física continuam nas respectivas frentes do roadmap.
+
 ## Workflows de agentes (AIA-01)
 
 `open_workflow(db, config, *, read_account=None, config_path=None, db_override=None)`

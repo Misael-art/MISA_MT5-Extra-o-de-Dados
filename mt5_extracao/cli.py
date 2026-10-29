@@ -1846,6 +1846,13 @@ def build_parser():
                    help="entrada ID/versão; repita em ordem para difference")
     q.set_defaults(func=cmd_analytics)
 
+    q = features_sub.add_parser("materialize-composite", help="grava eventos da cadeia congelada; não usa fonte live")
+    q.add_argument("--manifest", required=True)
+    q.add_argument("--as-of", required=True, help="corte UTC já ocorrido; não antecipa eventos futuros")
+    q.add_argument("--target", action="append", nargs=2, metavar=("ID", "VERSAO"), required=True)
+    q.add_argument("--batch-size", type=int, default=5000)
+    q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("compose", help="avalia receitas no contexto congelado; não grava valores")
     q.add_argument("--manifest", required=True)
     q.add_argument("--observation", help="observação UTC fixa; lê suas revisões, incluindo recibos posteriores às barras")
@@ -2062,6 +2069,14 @@ def cmd_analytics(args, ctx):
         _data(created=created, definition=features.get_feature(ctx.db, args.feature_id, args.algorithm_version))
         _print("Receita registrada; congele também as versões das entradas antes de avaliar.")
         return EXIT_OK
+    if args.features_action == "materialize-composite":
+        from mt5_extracao.resources import guard
+        result = features.materialize_snapshot(ctx.db, args.manifest, targets=args.target, as_of=args.as_of, batch_size=args.batch_size,
+                                               write_guard=guard.make(ctx.db, ctx.config))
+        _data(materialization=result)
+        _print(f"Snapshot congelado: {result['inserted']} novos, {result['revised']} revisados; {result['job']['status']}.")
+        return EXIT_OK
+
     if args.features_action == "compose":
         import pandas as pd
         from mt5_extracao.analytics import datasets
