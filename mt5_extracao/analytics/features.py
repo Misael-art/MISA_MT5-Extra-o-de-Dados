@@ -304,7 +304,7 @@ def _composition_components(operations):
     common = dict(scheme="frozen_node_components_v1", recipe_version=RECIPE_VERSION,
         sources=dict(graph={name: digest for name, digest in own.items() if name not in functions.values()},
             context=source_components(indicator_context.__file__, (
-                "from_snapshot", "_context_rows", "_ids", "_version", "_state", "_value", "records")),
+                "from_snapshot", "_snapshot_scope", "_context_rows", "_ids", "_version", "_state", "_value", "records")),
             store=source_components(feature_store.__file__, ("asof_join", "_utc_timestamp", "_canonical_json")),
             snapshot=source_components(datasets.__file__, ("_feature_selection", "_window_utc")),
             snapshot_access=indicator_materializer._object_source_component(datasets.Snapshot),
@@ -324,7 +324,7 @@ def _composition_contract(spec):
         "timeframe", "availability_rule")}
 
 
-def compose_snapshot(snapshot, decisions, *, targets):
+def compose_snapshot(snapshot, decisions, *, targets, observation_time=None):
     """Avaliação exploratória de receitas congeladas, usando o mesmo executor de dependências."""
     import hashlib
     import json
@@ -399,11 +399,13 @@ def compose_snapshot(snapshot, decisions, *, targets):
     groups = {}
     for ident, version in leaves:
         groups.setdefault(version, []).append(ident)
-    base, columns, cached = None, {}, {}
+    base, columns, cached, scope = None, {}, {}, None
     for version, ids in groups.items():
-        frame = indicator_context.from_snapshot(snapshot, decisions, feature_ids=ids, algorithm_version=version)
+        frame = indicator_context.from_snapshot(snapshot, decisions, feature_ids=ids, algorithm_version=version,
+                                                observation_time=observation_time)
         if base is None:
             base = frame[[col for col in frame.columns if not any(col.startswith(ident + "::") for ident in ids)]]
+            scope = frame.attrs["snapshot_context_scope"]
         for ident in ids:
             prefix = ident + "::"
             data = {col[len(prefix):]:frame[col] for col in frame if col.startswith(prefix)}
@@ -429,20 +431,23 @@ def compose_snapshot(snapshot, decisions, *, targets):
             provenance = dict(basis="frozen_context_exploration_not_materialized", operation=operation, operator_version=1,
                 unit=spec["unit"], signature_scheme="frozen_node_components_v1", computation_sha256=computation[ident],
                 parents=[dict(feature_id=p[0], algorithm_version=p[1], observation_time=row["observation_time"],
-                              available_at_utc=row["available_at_utc"], revision=row["revision"],
+                              available_at_utc=row["available_at_utc"], valid_until_utc=row.get("valid_until_utc"),
+                              revision=row["revision"],
                               source_revision=row["source_revision"], state=row["state"], value=row["value"], unit=row["unit"])
                          for p, row in zip(parents, inputs)])
             encoded = json.dumps(provenance, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            deadlines = [row["valid_until_utc"] for row in inputs if row.get("valid_until_utc") is not None]
             rows.append(dict(value=value, state="AVAILABLE" if reason is None else "UNAVAILABLE", reason=reason,
                 algorithm_version=spec["algorithm_version"], unit=spec["unit"],
                 parameters=json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":")),
                 observation_time=inputs[0]["observation_time"] if reason is None else None,
-                available_at_utc=max(row["available_at_utc"] for row in inputs) if reason is None else None,
+                available_at_utc=max((row["available_at_utc"] for row in inputs), key=pd.Timestamp) if reason is None else None,
+                valid_until_utc=min(deadlines, key=pd.Timestamp) if reason is None and deadlines else None,
                 revision=None, source_revision="context:" + hashlib.sha256(encoded.encode()).hexdigest(),
                 computation_sha256=computation[ident], metadata_json=encoded))
         cached[ident] = rows
         frame = pd.DataFrame(rows, columns=("value", "state", "reason", "algorithm_version", "unit", "parameters",
-            "observation_time", "available_at_utc", "revision", "source_revision", "computation_sha256", "metadata_json"))
+            "observation_time", "available_at_utc", "valid_until_utc", "revision", "source_revision", "computation_sha256", "metadata_json"))
         columns.update({ident + "::" + key:frame[key] for key in frame})
         return dict(rows=len(rows), available=sum(row["state"] == "AVAILABLE" for row in rows))
 
@@ -452,14 +457,14 @@ def compose_snapshot(snapshot, decisions, *, targets):
     implementation = hashlib.sha256(feature_store._canonical_json(
         dict(scheme="frozen_node_components_v1", nodes={ident: computation[ident] for ident in recipes}),
         "implementation").encode()).hexdigest()
-    window_utc = [stamp.isoformat() for stamp in snapshot.feature_window_utc]
+    window_utc = scope["window_utc"]
     evaluation = hashlib.sha256(feature_store._canonical_json(dict(manifest_id=snapshot.manifest_id,
         targets=pairs, decision_times=[row["decision_time"] for row in indicator_context.records(base)],
         implementation=implementation, composition_version=COMPOSITION_VERSION,
-        window_utc=window_utc), "evaluation").encode()).hexdigest()
+        window_utc=window_utc, context_scope=scope), "evaluation").encode()).hexdigest()
     return dict(composition_version=COMPOSITION_VERSION, snapshot_manifest_id=snapshot.manifest_id,
         signature_scheme="frozen_node_components_v1", implementation_sha256=implementation, evaluation_id=evaluation,
-        window_utc=window_utc,
+        window_utc=window_utc, context_scope=scope,
         targets=[list(pair) for pair in pairs], executed=executed, context=indicator_context.records(frame),
         definitions=[dict(feature_id=s["feature_id"], algorithm_version=s["algorithm_version"], unit=s["unit"],
                           parameters=s["parameters"], computation_sha256=computation[s["feature_id"]])

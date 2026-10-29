@@ -95,7 +95,7 @@ Adições compatíveis ao SDK1, independentes das políticas de composição de 
   registra uma receita imutável no catálogo existente. `inputs` é uma lista **ordenada** de pares
   `(feature_id, algorithm_version)` já registrados. Retorna `True` se criou e `False` para repetição
   idêntica; alterar receita/nome/unidade na mesma versão é recusado. Não grava valores calculados.
-- `sdk.query_composite_context(db, manifest_id, decision_times, *, targets)` carrega o snapshot
+- `sdk.query_composite_context(db, manifest_id, decision_times, *, targets, observation_time=None)` carrega o snapshot
   existente e avalia os alvos, lista de pares ID/versão, nos instantes UTC explícitos de
   `decision_times` (lista/tupla). Nenhum fato ou definição da base atual completa o snapshot.
   CLI e SDK delegam ao mesmo `features.compose_snapshot`, que usa o executor de dependências
@@ -158,6 +158,37 @@ nas fichas BD19 correspondentes; os fatos originais e formatos de snapshot perma
 ```
 
 As entradas do exemplo precisam já existir, tipadas e com fatos; os comandos não inventam dados.
+
+### Revisões de uma observação congelada (BD14-OBSERVATION)
+
+O padrão acompanha a observação mais recente disponível em cada decisão. Para
+reconstruir as revisões de uma observação antiga, informe `observation_time` com
+fuso; a CLI oferece `features compose --observation UTC` e
+`features context --manifest ID --observation UTC`. A consulta permanece somente
+nos fatos congelados. A observação precisa existir nesse histórico e estar na
+janela original de barras. Não há fallback para outra observação ou para a base atual.
+
+Esse modo fixa a observação e permite decisões até o fim da janela de barras,
+último recibo congelado dessa observação ou vencimento vigente declarado, o que
+for posterior. Um vencimento substituído por revisão posterior não estende esse
+limite. A janela cobre o histórico conhecido dessa observação, **sem ampliar
+cobertura de mercado**. O padrão continua recusando decisões fora das barras.
+Recebimento tardio de observação antiga pode mudar seu cálculo sem substituir a
+observação mais recente na consulta padrão.
+
+O resultado expõe `context_scope` com modo, observação e janela efetiva. O
+DataFrame de `indicator_context.from_snapshot(..., observation_time=...)` guarda
+o mesmo escopo em `attrs['snapshot_context_scope']`; o contexto CLI também o
+retorna no JSON. `selected_observation_time` distingue a consulta explícita do
+valor ausente. Escopo/decisões entram na avaliação; a identidade matemática do
+grafo não depende da observação ou do instante escolhidos.
+
+`valid_until_utc` acompanha os pais e os dois níveis de composição; o filho
+herda o menor vencimento conhecido. No limite exclusivo de validade o resultado
+fica indisponível, sem converter ausência em zero. Um recibo posterior pode
+restabelecer o valor. Ainda não grava fatos filhos: esta leitura prepara a
+materialização por observação/revisão, evitando usar uma grade de decisões como
+se cada valor mantido fosse um evento novo.
 
 ## Workflows de agentes (AIA-01)
 

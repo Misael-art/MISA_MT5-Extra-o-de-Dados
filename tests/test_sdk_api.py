@@ -17,7 +17,7 @@ SURFACE = {
     "query_series": ["db", "selection"],
     "query_catalog": ["db"],
     "define_feature_composite": ["db", "feature_id", "name", "algorithm_version", "operation", "inputs"],
-    "query_composite_context": ["db", "manifest_id", "decision_times", "targets"],
+    "query_composite_context": ["db", "manifest_id", "decision_times", "targets", "observation_time"],
     "get_robot": ["robots", "key"],
     "robot_from_file": ["path"],
     "import_library": ["db", "folder"],
