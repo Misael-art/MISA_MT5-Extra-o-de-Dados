@@ -439,6 +439,9 @@ class LaboratoryPanel:
         for key, chart in self._charts.items():
             chart.message(text)
             self._chart_panels[key].set_notice(None, theme=self.theme)
+        if hasattr(self, "micro_heat_matrix"):
+            self.micro_heat_matrix.set_rows([], [])
+            self._chart_panels["m_heat"].set_notice(text, theme=self.theme)
 
     def _show_kpis(self):
         from mt5_extracao import profit_factor
@@ -546,11 +549,6 @@ class LaboratoryPanel:
             order = [r for r in row_order if r in table["value"].index]
             table = {k: v.reindex(order) for k, v in table.items()}
         return table
-
-    def _heat(self, chart, ax, view, row, col, title, col_labels=None, row_labels=None, row_order=None):
-        table = self._crosstab(view, row, col, row_order)
-        charts.heatmap(chart, ax, table["value"], table["n"], table["small"], title, row_labels, col_labels)
-        self._sample_notice(chart, table["small"])
 
     def _sample_notice(self, chart, flags):
         """Explica a hachura sem recalcular o limite de amostra definido pelo motor analítico."""
@@ -842,10 +840,51 @@ class LaboratoryPanel:
              "faixa de volatilidade e resultado disponíveis", volatility)
         plot("m_volume", "volume", "Volume na entrada", rank.between(0, 1) & valid_pnl,
              "volume relativo e resultado disponíveis", volume)
-        plot("m_heat", "heat", "Volatilidade × horário", bands & complete["time_bucket"].notna() & valid_pnl,
-             "volatilidade, horário e resultado disponíveis",
-             lambda chart, ax, data: self._heat(chart, ax, data, "volatility_bucket", "time_bucket",
-                                                "Volatilidade × faixa horária", row_order=("baixa", "média", "alta")))
+        self._micro_matrix(complete.loc[bands & complete["time_bucket"].notna() & valid_pnl],
+                           len(view), len(view) - len(complete))
+
+    def _micro_matrix(self, data, total, missing_entry):
+        """Horários nas linhas: valores integrais e amostras cabem sem encolher a fonte."""
+        parent = self._analysis_view("Microestrutura", "heat", "Volatilidade × horário")
+        if not hasattr(self, "micro_heat_matrix"):
+            panel = ChartPanel(parent, title="Expectativa por horário × volatilidade",
+                               subtitle="Moeda da conta", padding=SPACING["xs"])
+            panel.grid(row=0, column=0, sticky="nsew")
+            self._chart_panels["m_heat"] = panel
+            self.micro_heat_matrix = MatrixTable(
+                panel.chart_area, ("Horário", "Baixa", "Média", "Alta"), (100, 200, 200, 200),
+                theme=self.theme, height=7, row_height=max(56, self.theme.font.metrics("linespace") * 2 + 16))
+            self.micro_heat_matrix.pack(fill=tk.BOTH, expand=True)
+            parent.rowconfigure(0, weight=1)
+            parent.columnconfigure(0, weight=1)
+        table = self._crosstab(data, "time_bucket", "volatility_bucket")
+        values = table["value"].reindex(columns=("baixa", "média", "alta"))
+        counts = table["n"].reindex(index=values.index, columns=values.columns).fillna(0)
+        small = table["small"].reindex(index=values.index, columns=values.columns).fillna(True)
+        rows = []
+        for hour in values.index:
+            cells = []
+            for band in values.columns:
+                value, count = values.loc[hour, band], int(counts.loc[hour, band])
+                marker = "*" if count and small.loc[hour, band] else ""
+                amount = ("+" if pd.notna(value) and value > 0 else "") + charts.money(value)
+                text = f"{amount}\nn={count}{marker}" if count else "—\nn=0"
+                background, foreground = result_attention_colors(value if count else None, self.theme.colors)
+                cells.append((text, background, foreground))
+            rows.append(cells)
+        self.micro_heat_matrix.set_rows(values.index, rows)
+        action = ("Refaça o backtest com exportação completa; o histórico antigo só permite análise pela saída."
+                  if not len(data) and missing_entry == total else
+                  "Extraia o ativo no timeframe do backtest e atualize; são necessárias barras anteriores à entrada."
+                  if not len(data) else "Contexto usa apenas barras anteriores à entrada.")
+        self._chart_panels["m_heat"].set_notice(
+            f"{len(data)} de {total} operações com volatilidade, horário e resultado disponíveis; "
+            f"{missing_entry} sem horário de entrada. {action} "
+            "n = operações; * = amostra abaixo do mínimo, não conclua a partir dela; — = sem operações. "
+            "Cor indica sinal, não validação. Role para ver os horários; Tab e setas percorrem os valores.",
+            kind="info" if len(data) else "warning", theme=self.theme)
+        message = self._chart_panels["m_heat"].notice.message
+        message.bind("<Configure>", lambda event: message.configure(wraplength=max(180, event.width)))
 
     def _compare(self):
         from mt5_extracao.trade_analytics import aggregate

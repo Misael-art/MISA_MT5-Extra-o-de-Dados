@@ -543,6 +543,48 @@ def test_microstructure_reports_population_and_handles_each_missing_feature(pane
     assert "0 de 1 operações" in panel._chart_panels["m_heat"].notice.message.cget("text")
 
 
+@pytest.mark.parametrize("dark", [False, True])
+def test_volatility_hour_matrix_keeps_full_values_counts_and_keyboard_at_small_width(panel, dark):
+    hours = [f"{i // 2:02d}:{(i % 2) * 30:02d}" for i in range(48)]
+    data = pd.DataFrame([{"time_bucket": hour, "volatility_bucket": band, "pnl": amount}
+                         for hour in hours for band, amount in (("baixa", -1234567.89), ("média", 0.), ("alta", 98765.43))
+                         for _ in range(2) if (hour, band) != ("00:00", "alta")])
+    before = data.copy(deep=True)
+    if panel.theme.dark != dark:
+        panel.theme.toggle()
+    panel._micro_matrix(data, len(data) + 1, 1)
+    panel.tabs.select(panel.tab_frames["Microestrutura"])
+    panel._analysis_notebooks["Microestrutura"].select(panel._analysis_views["Microestrutura"]["heat"])
+    matrix = panel.micro_heat_matrix
+    for geometry in ("1280x800", "900x620"):
+        panel.ui.root.geometry(geometry)
+        panel.frame.master.pack_configure(fill=tk.BOTH, expand=True)
+        panel.pump(lambda: matrix.winfo_viewable(), 2)
+        panel.ui.root.update()
+        assert len(matrix.cells) == 48 and matrix.columns == ("Horário", "Baixa", "Média", "Alta")
+        assert matrix.cells[0][0].cget("text") == "-1.234.567,89\nn=2*"
+        assert matrix.cells[0][1].cget("text") == "0,00\nn=2*"
+        assert matrix.cells[0][2].cget("text") == "—\nn=0"
+        assert matrix.cells[-1][2].cget("text") == "+98.765,43\nn=2*"
+        for cell in matrix.cells[0]:
+            assert cell.winfo_reqwidth() <= cell.winfo_width()
+            assert cell.winfo_reqheight() <= cell.winfo_height()
+        matrix.cells[0][0].focus_force()
+        matrix.cells[0][0].event_generate("<Down>")
+        panel.ui.root.update()
+        assert panel.ui.root.focus_get() is matrix.cells[1][0]
+        matrix._move_focus(47, 2)
+        panel.ui.root.update()
+        assert matrix.canvas.yview()[1] >= .99
+    message = panel._chart_panels["m_heat"].notice.message.cget("text")
+    assert f"{len(data)} de {len(data) + 1}" in message and "1 sem horário de entrada" in message
+    assert "* = amostra" in message and "Cor indica sinal" in message
+    pd.testing.assert_frame_equal(data, before)
+    panel._micro_matrix(data.iloc[:0], len(data), 0)
+    assert not matrix.cells
+    assert "Extraia o ativo" in panel._chart_panels["m_heat"].notice.message.cget("text")
+
+
 def test_empty_lens_cannot_be_repopulated_by_context_already_loading(panel, monkeypatch):
     ledger.save_trades(panel.db, "r", _trades(1, 3), robot_key="python:r", symbol="X", timeframe="M5")
     panel.on_show()

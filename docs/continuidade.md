@@ -3208,3 +3208,17 @@ preservados. Continuidade privada e recibos na composição, em
 `state/qa-tmp/product-audit-20261028/`; sem publicar bancos, livro ou capturas
 privadas. O canal de desenvolvimento segue o procedimento de
 [prévia e retorno](TESTAR_DESENVOLVIMENTO.md), com SHA no recibo local.
+
+## Legibilidade e espera nas telas · 28/10/2026 (PR 212)
+
+LAB-UX-01 atende ao retorno do proprietário sobre Volatilidade × horário e
+processamentos sem orientação visual. A matriz usa horários nas linhas, três
+faixas nas colunas, valores completos e amostras explícitas, com o componente
+rolável existente. A fila `run_bg` apresenta barra animada global, contexto,
+tempo decorrido, concorrência e término/erro, inclusive após navegar de guia.
+Cálculos, limiares, fontes e pins permanecem os mesmos. Baseline: 40 aprovados;
+estado final: 126 regressões únicas aprovadas em lotes completos, oito estados
+GUI com QA sintética sem exceções e doctor offline 16 OK/2 avisos/0 falhas.
+Validação no [repasse](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md#legibilidade-da-matriz-e-espera-visível--28102026)
+e nos recibos locais `state/qa-tmp/laboratory-readability/`. Sem aceite nativo,
+financeiro ou de Windows físico; a animação não elimina desenhos síncronos lentos.

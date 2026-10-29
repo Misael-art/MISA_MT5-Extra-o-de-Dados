@@ -16,7 +16,7 @@ import json
 from mt5_extracao import asset_table, study, timeframes
 from mt5_extracao.data_exporter import DataExporter
 from mt5_extracao.error_handler import with_error_handling, ExportError
-from mt5_extracao.ui.components import ContentPanel, FilterBar, PageHeader
+from mt5_extracao.ui.components import BackgroundActivity, ContentPanel, FilterBar, PageHeader
 from mt5_extracao.ui.analysis import AnalysisPanel
 from mt5_extracao.ui.inventory import InventoryPanel
 from mt5_extracao.ui.laboratory import LaboratoryPanel
@@ -98,15 +98,45 @@ class UIManager:
             self._ui_queue.put((fn, args))
 
     def run_bg(self, work, done):
-        """Roda work() fora da thread da interface e entrega done(resultado, erro) de volta nela."""
+        """Mesmo worker/fila da UI, com espera visível até o callback concluir (inclusive erros/obsoletos)."""
+        token = object()
+
+        def begin():
+            activity = getattr(self, "background_activity", None)
+            if activity is not None:
+                try:
+                    label = self.notebook.tab(self.notebook.select(), "text")
+                except (AttributeError, tk.TclError):
+                    label = "Solicitação"
+                activity.begin(token, label)
+
+        def deliver(result, error):
+            failed = error is not None
+            try:
+                done(result, error)
+            except Exception:
+                failed = True
+                raise
+            finally:
+                activity = getattr(self, "background_activity", None)
+                if activity is not None:
+                    activity.finish(token, failed=failed)
+
+        self.call_in_ui(begin)
+
         def target():
             try:
                 result, error = work(), None
             except Exception as e:
                 log.error(f"Erro em tarefa de segundo plano: {traceback.format_exc()}")
                 result, error = None, e
-            self._ui_queue.put((done, (result, error)))
-        threading.Thread(target=target, daemon=True).start()
+            self._ui_queue.put((deliver, (result, error)))
+        try:
+            threading.Thread(target=target, daemon=True).start()
+        except Exception:
+            self.call_in_ui(lambda: getattr(self, "background_activity", None) and
+                            self.background_activity.finish(token, failed=True))
+            raise
 
     def open_results_panel(self, opener=None):
         """
@@ -316,6 +346,9 @@ class UIManager:
         self.status_label = self.status_bar.status_label
         self.base_label = self.status_bar.base_label
         self.status_details_button = self.status_bar.details_button
+
+        self.background_activity = BackgroundActivity(outer)
+        self.background_activity.pack(fill=tk.X, pady=(0, 6))
 
         self.notebook = ttk.Notebook(outer)
         self.notebook.pack(fill=tk.BOTH, expand=True)

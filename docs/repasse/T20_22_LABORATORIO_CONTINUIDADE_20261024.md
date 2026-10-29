@@ -267,3 +267,43 @@ inválidas, cotações invertidas, bid/ask inválidos ou divergência entre `tim
 e `time_msc` acima de 1 ms. Identidade de fonte/recebimento continua desconhecida
 onde não foi declarada; ausência de journal não é contagem de conflitos zero.
 Todos os insumos/detalhes e as capturas ficam no recibo local indicado acima.
+
+## Legibilidade da matriz e espera visível — 28/10/2026
+
+Retorno do proprietário: valores de Volatilidade × horário sobrepostos e pouca
+orientação durante cálculos demorados. O heatmap comprimido foi substituído pela
+`MatrixTable` existente: horários nas linhas, três faixas de volatilidade nas
+colunas, valor completo em moeda da conta e `n` em outra linha. Rolagem e navegação
+por teclado preservam a leitura. Zero observado continua distinto de ausência;
+`*` identifica amostra abaixo do mínimo vigente. A cor indica sinal, sem atribuir
+confiança ao resultado. Filtros, população, exclusões e agregação são os mesmos.
+
+O `UIManager.run_bg` existente agora apresenta uma faixa global de atividade,
+visível também ao mudar de guia. A barra é indeterminada: não inventa percentual
+ou prazo. Mostra contexto da solicitação, tempo decorrido e número de tarefas
+simultâneas, permanecendo ativa até o último callback concluir. Erros de worker,
+apresentação ou início da thread liberam a espera; uma resposta obsoleta não
+encerra outra tarefa. O encerramento da janela cancela o temporizador visual.
+Não há outro executor, fila de cálculo ou botão de cancelamento sem contrato.
+
+A indicação cobre as consultas, cálculos, exportações e medições encaminhadas a
+`run_bg` por Análise, Laboratório/Séries/Relações, Recursos, Robôs e Configurações.
+Extração/coleta e backtests que têm progresso próprio conservam esse mecanismo.
+Desenhos síncronos isolados podem continuar pausando a animação; este lote não
+declara eliminado todo bloqueio da thread Tk.
+
+Baseline antes das mudanças: 40 regressões de Laboratório/componentes aprovadas.
+Estado final: 126 regressões únicas aprovadas em lotes completos (48 componentes,
+Laboratório e espera; 70 janela principal; sete navegação e uma falha de início
+de worker). A rodada conjunta anterior terminou com retorno 143 antes do resumo;
+os lotes completos acima são o resultado definitivo, sem afrouxar timeouts.
+O launcher oficial offline percorreu oito estados com QA sintética isolada:
+matriz, janela pequena, tema escuro, espera, navegação durante processamento,
+término, erro controlado e retentativa; zero exceções da GUI e zero tarefas
+pendentes ao terminar. A animação foi também verificada durante tarefas
+concorrentes, callbacks encadeados/obsoletos e fechamento da janela nos testes Tk.
+Regressões finais e percurso pelo launcher são registrados no recibo local
+`state/qa-tmp/laboratory-readability/`; somente dados sintéticos em banco próprio.
+O doctor de desenvolvimento offline registrou 16 OK, dois avisos e zero falhas;
+não qualifica MT5, contas ou Windows físico. Os limites de LAB-AUD-01 e do pilar
+de Dados permanecem, inclusive a instabilidade registrada na suíte ampla anterior.

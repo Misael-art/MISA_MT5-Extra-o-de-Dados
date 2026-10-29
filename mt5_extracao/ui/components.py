@@ -4,6 +4,7 @@ Os contêineres expõem seus widgets internos para que as telas possam conservar
 callbacks e cálculos próprios sem duplicar o padrão visual.
 """
 import tkinter as tk
+import time
 from tkinter import ttk, font as tkfont
 
 from mt5_extracao.ui.visual_tokens import SPACING, result_attention_colors
@@ -435,6 +436,76 @@ class TablePanel(ContentPanel):
         self.table_frame, self.tree = scrolled_tree(self.body, columns, widths, anchors=anchors,
                                                     height=height, selectmode=selectmode, xscroll=xscroll)
         self.table_frame.pack(fill=tk.BOTH, expand=True)
+
+
+class BackgroundActivity(ttk.Frame):
+    """Apresenta as tarefas do run_bg existente, sem estimar percentual ou executar trabalho."""
+
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.pending = {}
+        self._tick_job = None
+        self._closed = False
+        self._failed = False
+        self.message = ttk.Label(self, text="Pronto para consultar e analisar.", style="Page.Muted.TLabel",
+                                 justify=tk.LEFT)
+        self.message.grid(row=0, column=0, sticky="ew", padx=(0, SPACING["sm"]))
+        self.elapsed = ttk.Label(self, text="", style="Page.Muted.TLabel")
+        self.elapsed.grid(row=0, column=1, padx=(0, SPACING["sm"]))
+        self.progress = ttk.Progressbar(self, mode="indeterminate", length=140)
+        self.progress.grid(row=0, column=2, sticky="e")
+        self.progress.grid_remove()
+        self.columnconfigure(0, weight=1)
+        self.bind("<Configure>", self._layout, add="+")
+        self.bind("<Destroy>", self._destroyed, add="+")
+
+    def _layout(self, event):
+        self.message.configure(wraplength=max(140, event.width - 230))
+
+    def begin(self, token, label):
+        if self._closed:
+            return
+        if not self.pending:
+            self._failed = False
+            self.progress.grid()
+            self.progress.start(40)
+        self.pending[token] = (str(label), time.monotonic())
+        self._refresh()
+
+    def finish(self, token, failed=False):
+        if self._closed or token not in self.pending:
+            return
+        self.pending.pop(token)
+        self._failed |= bool(failed)
+        self._refresh()
+
+    def _refresh(self):
+        if self._tick_job is not None:
+            self.after_cancel(self._tick_job)
+            self._tick_job = None
+        if self.pending:
+            labels = ", ".join(dict.fromkeys(label for label, _start in self.pending.values()))
+            count = f" · {len(self.pending)} tarefas" if len(self.pending) > 1 else ""
+            self.message.configure(text=f"Processando: {labels}{count} — aguarde.", style="Info.Status.TLabel")
+            seconds = int(time.monotonic() - min(start for _label, start in self.pending.values()))
+            self.elapsed.configure(text=f"{seconds // 60}:{seconds % 60:02d}")
+            self._tick_job = self.after(250, self._refresh)
+        else:
+            self.progress.stop()
+            self.progress.grid_remove()
+            self.elapsed.configure(text="")
+            self.message.configure(
+                text=("Processamento terminou com erro. Consulte a mensagem da tela ou Atividade." if self._failed
+                      else "Processamento finalizado. Confira o resultado na tela."),
+                style="Error.Status.TLabel" if self._failed else "Page.Muted.TLabel")
+
+    def _destroyed(self, event):
+        if event.widget is self:
+            self._closed = True
+            self.pending.clear()
+            if self._tick_job is not None:
+                self.after_cancel(self._tick_job)
+                self._tick_job = None
 
 
 class ProgressPanel(ContentPanel):
