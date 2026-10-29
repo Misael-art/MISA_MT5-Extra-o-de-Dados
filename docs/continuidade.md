@@ -3798,3 +3798,63 @@ congelada, preservando observação, causalidade, versões/origens e retomada.
 Propriedade não verificável (inclusive outro boot/namespace Linux), demais
 operadores/famílias e qualificações nativas/financeiras/Windows físico continuam
 pendentes; esta entrega não encerra BD14 nem todo o roadmap.
+
+
+## Continuidade do roadmap — BD14-BATCH, 29/10/2026
+
+Branch `codex/eventos-congelados-em-lote`, sobre `e940fc537f26077f44f3ac4dcfe4decb7add42d6`/
+[PR227](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/227).
+Baseline243 testes/68 PostgreSQL reaproveitados; launcher oficial mediu500
+observações/1.000 pais/1.000 saídas:67,88s de parede,66,49s do job,
+RSS148.348.928B e crescimento SQLite2.506.752B. Perfil de51 observações mostrou
+102 chamadas do grafo em duas passagens e o custo concentrado no contexto/as-of.
+
+Agora blocos256 atravessam observações pelo mesmo contexto e executor. Cada
+linha mantém sua observação e janela de recibos/validade; ausência não desloca
+linhas, recibo tardio de outra barra não amplia cobertura e estado mantido não
+é reiniciado na fronteira. O as-of canônico vetoriza séries com identidade
+completa/tipos compatíveis; expansão parcial/heterogênea mantém o contrato
+anterior. Revisões inteiras não viram float em linhas ausentes, inclusive acima
+de2^53. Lote SQL, duas passagens, limites e mecanismos de recursos permanecem.
+Nenhum cache retido, motor, armazenamento, fila ou executor novo.
+
+Primeira integração100 aprovados/1 regressão: pré-calcular o bloco mascarava
+uma troca do operador depois do commit. O guarda confere a função e seu código
+antes da gravação/conclusão, inclusive após o último lote de dados; não publica
+COMPLETE sobre uma implementação trocada. Rodadas focadas56/78/10 aprovadas,
+com sobreposição; ampliada final345 aprovados/7 PostgreSQL pendentes no host.
+Timeout60s original, uma thread numérica e uma suíte pesada por vez. A rodada
+interrompida com143, sem resumo, está preservada e não conta como aprovada.
+Dois casos novos de lotes/fronteira seguem na CI PostgreSQL existente.
+
+Comparação com API escalar, oráculo temporal independente e aritmética: tipos,
+versões, repetição/ordem das observações, ausências, desempate, expiração e
+fronteiras conferidos. Mesma entrada500 observações/1.000 saídas:16,64s de parede,
+7,76s do job, RSS150.843.392B e crescimento2.498.560B. Digest semântico completo
+igual (coordenadas, valor/qualidade, estado/motivo, validade e proveniência
+semântica dos pais); identidades de código avançam explicitamente. Bancada
+integrada repetiu9,39s/8,01s, RSS151.040.000B. Medidas individuais sob cargas
+variáveis, sem promessa de fator fixo ou escala ilimitada.
+
+Launcher fonte/CLI=SDK: correção tardia, repetição, SIGINT antes/depois do
+commit, dois escritores reais (um confirma/um conflito), captura antiga e
+namespace estrangeiro recusados. Dois SIGKILL reais da composição retomaram
+exatamente a referência. Em cópia da base anterior,1.000 pais e1.000 compostos
+antigos conservaram valores/hashes/metadados; a versão nova acrescentou1.000.
+Consulta explícita antiga/nova retornou501 em ambas; repetição nova SKIPPED.
+Receita1 e as três assinaturas qualificadas dos retornos permaneceram iguais.
+Doctor offline16OK/2avisos/0falhas. Recibos em
+`state/qa-tmp/frozen-event-batching/`; fonte/PR e aceite da prévia no registro
+central. Sem banco privado como fixture, negociação, pins alterados, merge/release.
+
+A CI completa da base terminou Ubuntu com1 falha/3.420 aprovados/312 pulados:
+o teste de CLI lia `config/config.ini` do host. Agora usa configuração explícita
+de QA em diretório sem configuração global; a validação do produto permanece.
+Windows completo ainda estava em execução na última consulta. CI, mock e
+launcher offline não qualificam MT5, conta, Windows físico ou resultado financeiro.
+
+Próxima frente: BD15a, inspecionar e integrar o serviço de relações/relation_dto
+existente com dados referenciais, unidades, versões, defasagens e amostra
+explícitas. O plano permite esse mecanismo antes de campanha financeira OOS;
+nenhum coeficiente vira ganho/sinal operacional. Demais famílias/operadores,
+propriedade não verificável e gates nativos/financeiros continuam abertos.
