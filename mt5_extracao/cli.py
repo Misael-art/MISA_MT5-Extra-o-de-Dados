@@ -1811,6 +1811,17 @@ def build_parser():
     q.add_argument("--analysis-id", required=True)
     q.set_defaults(func=cmd_analytics)
 
+    for action in ("relation-export", "relation-import"):
+        q = features_sub.add_parser(action, help="transfere recibo original e snapshots congelados, sem recalcular")
+        if action == "relation-export":
+            q.add_argument("--analysis-id", required=True)
+            q.add_argument("--out", required=True, help="arquivo novo; destino existente diferente é preservado")
+        else:
+            q.add_argument("--source", required=True, help="pacote de relação com todas as origens")
+        q.add_argument("--timeout-seconds", type=float, default=120)
+        q.add_argument("--max-memory-mb", type=float, default=2048)
+        q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("recover-jobs", help="reconcilia jobs de processos locais encerrados; preserva ativos e desconhecidos")
     q.add_argument("--symbol", help="restringe ao ativo informado")
     q.add_argument("--tf", help="restringe ao timeframe informado")
@@ -2117,6 +2128,21 @@ def cmd_analytics(args, ctx):
         for reason in result["reasons"]:
             _print(reason)
         _print(f"{result['matched']} relações salvas; {result['page']['returned']} nesta página.")
+        return EXIT_OK
+
+    if args.features_action in ("relation-export", "relation-import"):
+        from mt5_extracao import sdk
+        options = dict(timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb)
+        if args.features_action == "relation-export":
+            result = sdk.export_feature_relation(ctx.db, args.analysis_id, args.out, **options)
+            _data(transfer=result)
+            _print(f"Relação exportada com {result['snapshots']} snapshot(s): {result['path']}.")
+        else:
+            from mt5_extracao.resources import guard
+            result = sdk.import_feature_relation(ctx.db, args.source, write_guard=guard.make(ctx.db, ctx.config), **options)
+            _data(relation=result["relation"], persistence={k:v for k,v in result.items() if k != "relation"})
+            _print(f"Relação {result['analysis_id']}: {result['status']}; recibo e origens preservados.")
+        _print("Transferir o resultado referencial não certifica causalidade, ganho ou operação financeira.")
         return EXIT_OK
 
     if args.features_action in ("relation", "relation-result"):

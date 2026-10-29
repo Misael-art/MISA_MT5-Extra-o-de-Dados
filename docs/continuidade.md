@@ -4072,3 +4072,63 @@ alterados, merge/release. Outros tipos/alvos, exportação integral e aceites
 causais/financeiros/nativos/Windows físico permanecem abertos. Próxima frente:
 exportar/importar relações com seus contratos e origens pelo mesmo serviço,
 preservando qualificação e recuperação verificável.
+
+## Continuidade do roadmap — BD19c2-RELATIONS, 29/10/2026
+
+Branch `codex/exportar-relacoes-congeladas`, base PR232/`009cb0b` aceita no
+host e na prévia (276 arquivos). Baseline novo confirmou: exportar/importar
+somente o snapshot não recuperava o resultado persistido. Agora SDK/CLI
+exportam recibo original/DTO2 e exatamente todos os snapshots declarados,
+incluindo ancestrais de materializações. Formato de transporte versionado,
+hashes e contratos conferidos antes de qualquer publicação; definições do par
+precisam coincidir com a captura. Limites/cancelamento reutilizam Analytics,
+política de escrita reutiliza Recursos. [Contrato](sdk/api.md#transferência-de-relações-congeladas-bd19c2-relations).
+
+O corpo transacional existente de datasets e do publicador de relações foi
+extraído em helpers privados para um único commit de blocos/manifests/artefato/
+referências. Sem segundo store, engine, executor, catálogo ou schema de
+importações. Repetição preserva o primeiro recibo do destino; conflitos são
+recusados. O namespace e os fatos ativos do destino não são alterados.
+Exportação reutiliza o publicador atômico do pacote Manual; arquivo final só
+aparece completo, sem overwrite. A mudança no arquivo datasets altera a
+assinatura de novas consultas; os artefatos antigos conservam ID/recibo/bytes.
+As versões/fórmulas dos produtores brutos permanecem preservadas.
+Revisão final tornou explícito UTF-8 na leitura/mutação dos pacotes e configs
+dos testes, evitando depender do locale Windows;21 casos de transferência
+reaprovados em103,93s, sobrepostos às rodadas abaixo. O runtime já usava bytes UTF-8.
+
+Rodadas dirigidas:36 aprovados/1 PostgreSQL pendente;7 finais de repetição/
+política/desacoplamento (sobrepostos);34 snapshots aprovados;29 store/consultas
+aprovados/4 PostgreSQL pendentes. Dois novos casos PG seguem no job existente:
+recibo/rollback da ancestralidade e concorrência. Primeira rodada longa foi
+encerrada com SIGTERM sem resumo final e não certifica suíte; uma referência a
+helper inexistente no teste foi corrigida para `datasets.identity`, sem alterar
+o contrato. Regressão final de consumidores/GUI44 aprovados; doctor offline16OK/2avisos/0falhas. Contagens de rodadas se sobrepõem, sem soma como suíte única; timeout60s original e uma thread numérica preservados.
+
+Launcher/CLI fonte transferiu três artefatos antigos (par positivo, composto
+materializado, indisponível) entre bases sintéticas. Pacotes414.382–986.335B;
+exportação1,75–2,39s, importação1,54–1,73s nesta medição individual, sem promessa
+de desempenho. Recibos originais e reexportações idênticos;1.900 fatos da origem,
+namespace/fonte e valor sentinela73 do destino preservados. Verificador inicial
+exigiu igualdade de tabelas destinadas ao append de snapshots; corrigido para
+preservação dos registros anteriores, mantendo igualdade dos fatos/contratos.
+O ensaio anterior foi retido; a rodada corrigida repetiu os comandos oficiais.
+
+Processos reais: SIGINT/SIGKILL antes do commit deixam zero blocos/manifests/
+referências/relações, com replay INSERTED; SIGKILL após commit conserva86 blocos,
+2 manifests/referências e1 artefato, com replay UNCHANGED. SIGKILL entre fsync e
+hardlink não publica arquivo final parcial; reexportação recupera os mesmos
+bytes. O temporário privado desse ensaio é evidência, não arquivo do usuário.
+GUI fonte abre os três resultados importados sem barras/fatos live da origem:
++1/160 pares, versão materializada e indisponível/0; espera e layout1280×920/
+880×760 inspecionados, sem exceções. O destino contém somente sua barra e seu
+fato sentinela ativos; a população da relação continua sendo a captura original.
+
+Recibos de fonte/pacote/CLI/sinais/GUI/CI em `state/qa-tmp/relation-bundles/`;
+SHA remoto, PR e aceite final no registro central. Prévia requer277 arquivos
+conferidos e repetição da jornada. Sem bancos privados como fixtures, contas,
+negociação, alteração de pins, merge/release ou aceite financeiro/nativo/
+Windows físico. Demais famílias/alvos e BD18b/BD19 completos permanecem abertos.
+Próxima frente: ações visuais de exportação/importação no Laboratório existente,
+usando este SDK, seleção explícita de arquivo, `run_bg`, cancelamento e foco
+no ID confirmado, sem cálculo ou outro fluxo de armazenamento nos widgets.

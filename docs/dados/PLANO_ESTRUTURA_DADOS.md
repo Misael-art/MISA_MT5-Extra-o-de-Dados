@@ -497,6 +497,21 @@ ativa Expert ou concede evidência financeira. Outras famílias/alvos e contrato
 completo continuam nas fichas próprias.
 [Contrato](../sdk/api.md#seleção-congelada-para-criar-pares-bd19b-create).
 
+**Adendo BD19c2-RELATIONS (29/10/2026):** SDK/CLI transferem o recibo original
+e todos os snapshots declarados da relação referencial, pelos stores existentes.
+O destino valida hashes, contratos, contexto e conjunto de origens antes de
+publicar snapshots/artefato/referências numa transação. Não recalcula, promove
+qualificação, completa com fatos live, altera a fonte ativa do destino ou
+sobrescreve conflitos. Repetição preserva o primeiro recibo local e reexportação
+desse recibo conserva os bytes. Resultados materializados e indisponíveis
+mantêm ancestralidade e motivos. Publicação de arquivo reutiliza o mecanismo
+atômico do pacote Manual. Pacote limitado a64MiB/32 snapshots; timeout, memória,
+cancelamento e política de escrita reutilizam Analytics/Recursos.
+O Laboratório lê os resultados importados mesmo sem barras/fatos live da
+origem. Outras famílias/alvos, janelas móveis e cruzamento explícito de fontes
+continuam nas suas fichas; a transferência não encerra BD18b/BD19 completos.
+[Contrato](../sdk/api.md#transferência-de-relações-congeladas-bd19c2-relations).
+
 ### Fase G — demonstrar expansão e fechar a composição
 
 #### BD20 — provas de expansão

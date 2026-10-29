@@ -732,3 +732,55 @@ primeira página do acervo. **Consultar** retira esse foco e volta ao recorte
 completo. Repetição conserva o recibo original; não gera duplicatas.
 O sinalizador de referência sintética é explícito e conservado no artefato.
 Nada ativa Expert, ordens, utilidade financeira ou qualificação da fonte.
+
+
+### Transferência de relações congeladas (BD19c2-RELATIONS)
+
+`sdk.export_feature_relation(db, analysis_id, destination, *, cancel_check=None,
+timeout_seconds=120, max_memory_mb=2048)` exporta um arquivo JSON canônico
+`mt5x.feature-relation.v1`: recibo original (ID, hash do DTO e data de publicação),
+DTO2 integral e todos os snapshots da linhagem declarada, incluindo ancestrais
+de compostos materializados. Os blocos e manifests continuam nos formatos do
+serviço `datasets`; não há outro armazenamento, catálogo ou cálculo.
+
+`sdk.import_feature_relation(db, source, *, cancel_check=None, write_guard=None,
+timeout_seconds=120, max_memory_mb=2048)` valida o pacote completo antes de gravar.
+Confere hash do pacote, contrato/identidade/hash do recibo, data UTC, conjunto
+exato de origens, hashes e contratos dos snapshots e igualdade das definições
+do par com a captura. Os hashes provam consistência, não autenticidade ou
+correção estatística de um arquivo produzido por terceiros. Não recalcula nem
+concede evidência causal, financeira ou operacional. Qualificação, selo
+sintético, amostra, motivos de indisponibilidade e parâmetros são preservados.
+
+Publica snapshots, resultado e referências numa única transação dos stores
+existentes. Interrupção, conflito ou recusa tardia de recursos desfaz os dados
+da transação; tabelas vazias de schema podem permanecer. Nunca importa os fatos
+como dados ativos, altera o namespace/fonte de uma base existente ou substitui
+blocos/artefatos conflitantes. A primeira importação devolve `INSERTED` com o
+recibo original; repetições semânticas devolvem `UNCHANGED` com o primeiro recibo
+do destino, inclusive seu horário e orçamento. Faltas de origem são erro,
+sem completar com a base ou registry atuais.
+
+A exportação reutiliza o publicador atômico sem overwrite do pacote Manual:
+arquivo temporário no mesmo diretório, `fsync` e publicação por hardlink. Arquivo
+final só aparece completo; destino diferente ou link simbólico é recusado.
+Reexportar o mesmo recibo produz os mesmos bytes. Limites explícitos:64MiB por
+arquivo,16MiB por DTO,32 snapshots; timeout/memória/cancelamento reutilizam os
+limites Analytics. O arquivo é lido com tamanho máximo antes do parse; chaves
+JSON duplicadas são recusadas. Uma seleção maior exige uma relação de janela
+menor, sem truncamento silencioso.
+
+CLI oficial, com a configuração/base selecionada e guarda de escrita existente:
+
+```text
+analytics features relation-export --analysis-id ID --out par.json
+analytics features relation-import --source par.json
+analytics features relation-result --analysis-id ID
+```
+
+`--json` expõe `data.transfer` na exportação e `data.relation`/`data.persistence`
+na importação. Ambas aceitam `--timeout-seconds`/`--max-memory-mb`. O resultado
+importado aparece na consulta existente e em Relações salvas, onde seleção
+verifica suas origens. A extração do helper de escrita transacional em datasets
+altera o hash da implementação de novas consultas de pares; artefatos anteriores
+permanecem legíveis e transferíveis com suas identidades originais.
