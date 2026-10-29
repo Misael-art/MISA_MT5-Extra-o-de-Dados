@@ -324,20 +324,11 @@ def _empty_values():
     return pd.DataFrame(columns=VALUE_COLUMNS)
 
 
-def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None,
-                start=None, end=None):
-    """Consulta a última revisão disponível em ``as_of`` para cada instante observado.
-
-    ``start`` é inclusivo e ``end`` exclusivo; ambos filtram ``observation_time``.
-    Sem ``algorithm_version``, versões de algoritmo distintas são devolvidas em
-    linhas separadas para que uma comparação histórica não descarte proveniência.
-    """
-    _require_db(db)
-    as_of_utc = _utc_text(as_of, "as_of")
-    if not inspect(db.engine).has_table(VALUES_TABLE):
-        return _empty_values()
+def _asof_statement(as_of, *, symbol=None, timeframe=None, feature_id=None, feature_ids=None,
+                    algorithm_version=None, start=None, end=None, ordered_for=None, after=None, limit=None):
+    """Uma regra de revisão/validade para a leitura completa e a consulta paginada."""
     where = ["available_at_utc <= :as_of"]
-    params = {"as_of": as_of_utc}
+    params = {"as_of": _utc_text(as_of, "as_of")}
     if symbol is not None:
         where.append("symbol = :symbol")
         params["symbol"] = str(symbol)
@@ -347,6 +338,9 @@ def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algo
     if feature_id is not None:
         where.append("feature_id = :feature_id")
         params["feature_id"] = str(feature_id)
+    if feature_ids is not None:
+        where.append("feature_id IN :feature_ids")
+        params["feature_ids"] = list(feature_ids)
     if algorithm_version is not None:
         where.append("algorithm_version = :algorithm_version")
         params["algorithm_version"] = str(algorithm_version)
@@ -368,10 +362,41 @@ def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algo
         )
         SELECT {', '.join(VALUE_COLUMNS)} FROM eligible
         WHERE point_rank = 1 AND (valid_until_utc IS NULL OR valid_until_utc > :as_of)
-        ORDER BY symbol, tf, feature_id, algorithm_version, observation_time
     """
+    if ordered_for is not None:
+        # A ordem do contrato é a lexical Python, não a locale do servidor PostgreSQL.
+        collation = {"sqlite":"BINARY", "postgresql":'"C"'}[ordered_for]
+        ident, version = f"feature_id COLLATE {collation}", f"algorithm_version COLLATE {collation}"
+        if after is not None:
+            sql += f" AND ({ident} > :after_feature OR ({ident} = :after_feature AND " \
+                   f"(observation_time > :after_time OR (observation_time = :after_time AND {version} > :after_version))))"
+            params.update(after_feature=after[0], after_time=_utc_text(after[1], "cursor"), after_version=after[2])
+        sql += f" ORDER BY {ident}, observation_time, {version}"
+    else:
+        sql += " ORDER BY symbol, tf, feature_id, algorithm_version, observation_time"
+    if limit is not None:
+        sql += " LIMIT :page_limit"
+        params["page_limit"] = limit
+    statement = text(sql)
+    if feature_ids is not None:
+        statement = statement.bindparams(bindparam("feature_ids", expanding=True))
+    return statement, params
+
+
+def query_as_of(db, as_of, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None,
+                start=None, end=None):
+    """Última revisão disponível; start inclusivo/end exclusivo filtram observation_time.
+
+    Versões distintas continuam em linhas separadas. A regra SQL é compartilhada
+    com o leitor paginado; esta API conserva o DataFrame completo solicitado.
+    """
+    _require_db(db)
+    statement, params = _asof_statement(as_of, symbol=symbol, timeframe=timeframe, feature_id=feature_id,
+                                      algorithm_version=algorithm_version, start=start, end=end)
+    if not inspect(db.engine).has_table(VALUES_TABLE):
+        return _empty_values()
     with db.engine.connect() as conn:
-        frame = pd.read_sql(text(sql), conn, params=params)
+        frame = pd.read_sql(statement, conn, params=params)
     if frame.empty:
         return _empty_values()
     for name in ("observation_time", "available_at_utc", "observed_at_utc", "valid_until_utc"):

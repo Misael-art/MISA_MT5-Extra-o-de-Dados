@@ -3403,3 +3403,34 @@ O aceite dos arquivos instalados encontrou uma falha na assinatura ao importar
 o serviço pelo link do atalho: o diretório já estava resolvido, mas o caminho do
 próprio módulo não. A correção canonicaliza ambos, com regressão portável para
 alias de caminho; a prévia anterior foi restaurada durante a verificação.
+
+## Continuidade do roadmap — BD18a-SQL, 29/10/2026
+
+Fonte `3332d51374ce4d326afe68f5b1dfecc725e1d9c7` publicada no
+[PR219](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/219), sobre
+`0b6ef4d`/PR218, branch `codex/consulta-paginada-sql`. Reproduzido o custo:
+página1 carregava5.000 fatos em DataFrame antes de aplicar o corte. A regra SQL
+as-of do store agora é compartilhada entre a leitura completa e a paginada;
+esta usa LIMIT/chave no banco e fingerprint da seleção em lotes256. Identidade,
+contratos, geração e página compartilham `DatabaseManager.consistent_read`;
+`datasets.identity(connection=...)` apenas lê essa imagem já inicializada.
+Ordem BINARY/C conserva a ordem lexical do contrato entre backends. Cursor3
+exige reinício dos formatos anteriores e continua rejeitando revisões ou
+metadados alterados no corte, inclusive fora da página retornada.
+
+Baseline53, rodada integrada150 aprovados/1 skip PostgreSQL (sem servidor de
+teste dedicado no host); caso novo no job PG, sem afirmar aceite por compilação.
+São cobertos janela/validade/nulos, microssegundos, versões/unidades/metadados,
+ausência de DataFrame completo, orçamento sem resposta parcial, corrupção
+fora da página e escrita concorrente WAL sem mistura de revisões. Doctor
+offline16/2avisos/0. CLI oficial sobre fixture própria: páginas1/2 devolvem
+0,0/0,0001/0,0002, primeiro envelope igual ao SDK. Nenhuma negociação ou base
+do proprietário foi fixture. [Contrato e limites](dados/BD18A_CONSULTA.md#paginação-sql-por-chave-bd18a-sql-29102026).
+
+Bancada reutilizada5.000 fatos/página1: mediana3 chamadas178→110ms, alocações
+Python9,6→0,44MB (tracemalloc separado), envelope idêntico salvo cursor. O banco
+continua verificando o conteúdo selecionado, com teto200.000; não é custo
+constante nem promessa de aceleração universal. Recibos locais
+`state/qa-tmp/query-pagination/`. Compostos/relações BD18b e demais capacidades
+do plano continuam abertos; pins e fontes privadas preservados. Sem servidor
+HTTP, novo store/scheduler ou aceite nativo/financeiro/Windows físico.

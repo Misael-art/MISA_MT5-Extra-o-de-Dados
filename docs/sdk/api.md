@@ -54,9 +54,12 @@ definições. A identidade pública pode inicializar o namespace da base (`datas
 
 O cursor é opaco e temporário: vincula seleção, base, contexto, metadados e conteúdo dos fatos
 no corte as-of. Ao receber `STALE_CURSOR`, descarte as páginas anteriores e recomece sem cursor.
-Cursores anteriores à geração v2 também exigem reinício. Alterações futuras ao corte histórico
-não invalidam a paginação desse corte. O limite de seleção continua em 200 000 fatos carregados;
-paginação no banco, compostos e relações permanecem em BD18b.
+Alterações futuras ao corte histórico
+não invalidam a paginação desse corte. Cursores v3 substituem v1/v2 (reinicie sem cursor após
+atualizar). A página usa limite e chave no SQL; a geração percorre a seleção em lotes e preserva
+o teto de200.000 fatos, sem carregá-los todos em um DataFrame. Metadados/fingerprint/página
+compartilham uma imagem de leitura. [Contrato e limites](../dados/BD18A_CONSULTA.md#paginação-sql-por-chave-bd18a-sql-29102026).
+Compostos e relações permanecem em BD18b.
 
 Não há servidor HTTP: a futura API publicará este mesmo serviço.
 

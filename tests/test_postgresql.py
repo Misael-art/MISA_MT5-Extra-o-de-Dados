@@ -33,6 +33,11 @@ def pg():
         yield db
 
 
+def test_feature_query_sql_pages_match_python_lexical_order(pg):
+    from tests.test_query_sql_pagination import check_lexical_pages
+    check_lexical_pages(pg)
+
+
 @pytest.fixture(autouse=True)
 def no_sleep(monkeypatch):
     monkeypatch.setattr(he_module.time, "sleep", lambda s: None)
