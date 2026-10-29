@@ -1842,8 +1842,12 @@ def build_parser():
         q.add_argument("--symbol", required=True)
         q.add_argument("--tf", required=True)
         q.add_argument("--as-of", required=True, help="instante com fuso, por exemplo 2026-10-14T17:25:00Z")
-        q.add_argument("--features", help="IDs do catálogo separados por vírgula; padrão: registry local")
-        q.add_argument("--algorithm-version", help="versão registrada explícita; obrigatória sem fórmula local")
+        q.add_argument("--features", help="IDs do catálogo separados por vírgula; padrão: registry local"
+                       + (" ou IDs congelados com --manifest" if action == "context" else ""))
+        q.add_argument("--algorithm-version", help="versão registrada explícita; obrigatória sem fórmula local"
+                       + ("; no snapshot, obrigatória se ambígua" if action == "context" else ""))
+        if action == "context":
+            q.add_argument("--manifest", help="usa somente fatos e contratos deste snapshot congelado")
         if action == "export":
             q.add_argument("--out", required=True, help="destino CSV")
             q.add_argument("--from", dest="date_from")
@@ -2047,9 +2051,19 @@ def cmd_analytics(args, ctx):
             _print(f"Registry: {result['inserted']} novos, {result['revised']} revisados; {result['job']['status']}.")
             _data(materialization=result)
         elif args.features_action == "context":
-            frame = indicator_context.context(ctx.db, pd.DataFrame({"decision_time": [args.as_of]}),
-                                              symbol=args.symbol, timeframe=args.tf, feature_ids=ids,
-                                              algorithm_version=args.algorithm_version)
+            decisions = pd.DataFrame({"decision_time": [args.as_of]})
+            if args.manifest:
+                from mt5_extracao.analytics import datasets
+                from mt5_extracao import timeframes
+                snapshot = datasets.load(ctx.db, args.manifest)
+                tf = timeframes.parse(args.tf)
+                if snapshot.manifest["symbol"] != args.symbol or tf is None or snapshot.manifest["timeframe"] != tf.name:
+                    raise ValueError("Ativo/timeframe divergem do snapshot; confira o manifest escolhido.")
+                frame = indicator_context.from_snapshot(snapshot, decisions, feature_ids=ids,
+                                                         algorithm_version=args.algorithm_version)
+            else:
+                frame = indicator_context.context(ctx.db, decisions, symbol=args.symbol, timeframe=args.tf,
+                                                  feature_ids=ids, algorithm_version=args.algorithm_version)
             _print(frame.to_string(index=False))
             _data(schema_version=1, context=indicator_context.records(frame))
         else:

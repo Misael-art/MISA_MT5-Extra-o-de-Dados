@@ -159,6 +159,40 @@ medianas de3 capturas aquecidas: formato3 padrão269ms/80.529bytes; opcional4 co
 552.682bytes. É custo adicional medido, sem promessa de aceleração. Recibos locais
 `state/qa-tmp/catalog-store/snapshot-*`; sem aceite de conta/MT5/Windows físico ou financeiro.
 
+### Contexto por decisão no snapshot (BD19a-CONTEXT)
+
+```sh
+./run.sh --cli --json analytics features context --symbol QA --tf M5 \
+  --manifest MANIFEST --as-of 2025-01-01T00:05:00Z
+```
+
+Com `--manifest`, o contexto usa os fatos e contratos congelados no formato4. Os argumentos
+de ativo/TF precisam concordar com o snapshot. `--features` restringe os IDs capturados; sem
+esse argumento, seleciona os IDs congelados. Se um ID tiver várias versões, exige
+`--algorithm-version`; não escolhe a mais recente. Versão ausente ou snapshot antigo exige
+nova captura explícita, sem completar a consulta com o catálogo ou os fatos da base atual.
+
+O adaptador interno `indicator_context.from_snapshot` compartilha o mesmo `asof_join` e a
+construção de valores/estados do contexto existente. Preserva unidades, parâmetros, categorias,
+zero, validade e a ordem das decisões. Acrescenta `snapshot_manifest_id`, `base_namespace`,
+`base_provider` e `base_server` da origem capturada, inclusive após importar em outro banco.
+Decisões com identidade conflitante são recusadas. Sem `--manifest`, o modo atual permanece.
+
+As decisões precisam declarar fuso e ficar entre a primeira abertura e o último fechamento
+nominal congelado, inclusive; fora dessa janela a consulta é recusada. A disponibilidade e a
+expiração são aplicadas em cada decisão, sem extrapolar a cobertura ou inventar uma validade
+para fatos sem `valid_until`. O limite por consulta é200.000 pares indicador/decisão. Isso não
+certifica a atualidade/completude do feed nem a disponibilidade histórica dos preços.
+
+Baseline65, final153 testes distintos: consulta sem acesso ao banco/registry atuais, importação
+com outro namespace/offset, versão ambígua/ausente, tipos, expiração, escopo, limites e fronteiras
+UTC de M1/W1/MN1. Launcher/CLI sintético: manifest antigo12, base atual99; ambas as consultas
+conservam seus resultados. Bancada2.000revisões/500decisões,3 chamadas aquecidas: contexto atual
+101ms e congelado68ms, frames numéricos/metadados iguais; carregar o snapshot custou327ms
+separadamente. Amostras se sobrepõem, sem promessa de aceleração universal. Recibos locais
+`state/qa-tmp/catalog-store/frozen-context-*`; doctor offline e prévia têm recibos próprios.
+Seleção/relatório na UI e regras analíticas por tipo continuam na próxima frente.
+
 ### Descritiva × preditiva (LAB-07)
 
 Cada par traz `relation`: `DESCRIPTIVE` na defasagem 0 (co-movimento) e
