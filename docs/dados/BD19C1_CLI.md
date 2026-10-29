@@ -52,3 +52,14 @@ numéricos idênticos: contexto187→148ms e projeção195→167ms (medianas nes
 se sobrepõem e variam com a carga do host; não constituem promessa de aceleração. Valores são
 lidos diretamente das colunas, sem converter cada linha em outro dicionário. Recibos locais
 `state/qa-tmp/catalog-store/context-*`; sem aceite MT5/Wine/Windows físico ou financeiro.
+
+## BD19a-CONTEXT — leitura causal do snapshot pela CLI
+
+`features context --manifest ID` carrega apenas os contratos/fatos daquele snapshot4 e devolve
+o mesmo `data.context` do adaptador congelado. Ativo/TF são conferidos; versões ambíguas,
+ausentes, decisões fora da janela e origem conflitante geram erro de uso. O modo sem manifest
+conserva a consulta atual. A tabela inclui manifest e namespace/fonte originais; importar em
+outro banco não muda essa identificação. [Contrato, limites e prova](../sdk/laboratorio_series.md#contexto-por-decisão-no-snapshot-bd19a-context).
+
+Não calcula indicadores nem atribui direção a valores numéricos/categorias. Não encerra a
+integração dos seletores/relatórios do Laboratório nem o BD19c2 completo.
