@@ -762,3 +762,141 @@ def asof_join(decisions, values, *, by=None):
         return frame.drop(columns="_order")
     result = pd.concat(parts, ignore_index=True).sort_values(["_order"] + by).drop(columns="_order")
     return result.reset_index(drop=True)
+
+
+
+RELATIONS_TABLE = "_feature_relations"
+
+
+def _relation_payload(dto):
+    """Valida o contrato e a identidade antes de aceitar bytes persistidos."""
+    import re
+    from mt5_extracao.analytics import relation_dto
+    keys = ("left", "right", "relation", "scope", "population", "provenance", "generated_at_utc", "synthetic_fixture")
+    try:
+        checked = relation_dto.build_pair_relation_dto(**{key: dto[key] for key in keys})
+        provenance = checked["provenance"]
+        ident = provenance["analysis_id"]
+        lineage = provenance["lineage_manifests"]
+        if (checked != dto or not re.fullmatch(r"[a-f0-9]{64}", ident) or not isinstance(lineage, list)
+                or not 1 <= len(lineage) <= 32 or len(set(lineage)) != len(lineage)
+                or provenance["snapshot_manifest_id"] not in lineage
+                or any(not isinstance(item, str) or not re.fullmatch(r"[a-f0-9]{64}", item) for item in lineage)):
+            raise ValueError("Envelope/linhagem inválidos.")
+        actual = relation_dto.pair_analysis_id(provenance["snapshot_manifest_id"], checked["scope"]["settings"],
+            provenance["sample_hash"], provenance["implementation_sha256"], lineage)
+        if actual != ident:
+            raise ValueError("Identidade não reconcilia com população/implementação/seleção.")
+        raw = relation_dto.dumps(checked)
+        if len(raw.encode()) > 16 * 1024 * 1024:
+            raise ValueError("Artefato excede16MiB; reduza a seleção.")
+        semantic = json.loads(raw)
+        semantic.pop("generated_at_utc")
+        semantic["provenance"].pop("limits", None)
+        semantic_hash = hashlib.sha256(_canonical_json(semantic, "relation semantics").encode()).hexdigest()
+        return checked, raw, hashlib.sha256(raw.encode()).hexdigest(), semantic_hash
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise ValueError("Artefato de relação incompleto; recalcule pela consulta congelada.") from exc
+
+
+def _relation_schema(db):
+    _require_db(db)
+    with _SCHEMA_LOCK, db.engine.begin() as conn:
+        if conn.dialect.name == "postgresql":
+            conn.execute(text("SELECT pg_advisory_xact_lock(181502)"))
+        elif not conn.connection.driver_connection.in_transaction:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+        conn.execute(text(f"CREATE TABLE IF NOT EXISTS {RELATIONS_TABLE} ("
+            "analysis_id TEXT PRIMARY KEY, base_namespace TEXT NOT NULL, manifest_id TEXT NOT NULL, "
+            "symbol TEXT NOT NULL, tf TEXT NOT NULL, as_of_utc TEXT NOT NULL, "
+            "payload_json TEXT NOT NULL, payload_sha256 TEXT NOT NULL, semantic_sha256 TEXT NOT NULL, "
+            "created_at_utc TEXT NOT NULL, "
+            "FOREIGN KEY(manifest_id) REFERENCES _dataset_manifests(manifest_id))"))
+
+
+def _relation_row(row):
+    dto, raw, digest, semantic = _relation_payload(json.loads(row["payload_json"]))
+    provenance, scope = dto["provenance"], dto["scope"]
+    if (raw != row["payload_json"] or digest != row["payload_sha256"] or semantic != row["semantic_sha256"]
+            or any(row[key] != value for key, value in dict(analysis_id=provenance["analysis_id"],
+                base_namespace=provenance["base_namespace"], manifest_id=provenance["snapshot_manifest_id"],
+                symbol=scope["symbol"], tf=scope["timeframe"], as_of_utc=provenance["as_of_utc"]).items())):
+        raise ValueError("Relação persistida sem integridade; restaure o artefato original.")
+    return dto
+
+
+def _relation_sources(db, dto):
+    from mt5_extracao.analytics import datasets
+    provenance = dto["provenance"]
+    root = datasets.load(db, provenance["snapshot_manifest_id"])
+    if (root.manifest["source"]["namespace"] != provenance["base_namespace"]
+            or any(root.manifest[key] != dto["scope"][key] for key in ("symbol", "timeframe"))):
+        raise ValueError("Relação e snapshot pertencem a contextos diferentes.")
+    for ident in provenance["lineage_manifests"]:
+        if ident == root.manifest_id:
+            continue
+        origin = datasets.load(db, ident)
+        if any(origin.manifest[key] != root.manifest[key] for key in ("source", "symbol", "timeframe", "time")):
+            raise ValueError("Origem da relação pertence a outro contexto.")
+
+
+def save_pair_relation(db, dto, *, transaction_guard=None, transaction_hook=None):
+    """Publica resultado e referências juntos; repetição devolve o primeiro recibo."""
+    from mt5_extracao.analytics import datasets
+    _require_db(db)
+    dto, raw, digest, semantic = _relation_payload(dto)
+    if transaction_guard is not None:
+        transaction_guard(None)
+    _relation_sources(db, dto)
+    _relation_schema(db)
+    provenance, scope = dto["provenance"], dto["scope"]
+    ident = provenance["analysis_id"]
+    with db.engine.begin() as conn:
+        if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
+        if transaction_guard is not None:
+            transaction_guard(conn)
+        inserted = conn.execute(text(f"INSERT INTO {RELATIONS_TABLE} "
+            "(analysis_id,base_namespace,manifest_id,symbol,tf,as_of_utc,payload_json,payload_sha256,semantic_sha256,created_at_utc) "
+            "VALUES (:id,:base,:manifest,:symbol,:tf,:asof,:payload,:digest,:semantic,:created) "
+            "ON CONFLICT(analysis_id) DO NOTHING"), dict(id=ident,base=provenance["base_namespace"],
+                manifest=provenance["snapshot_manifest_id"],symbol=scope["symbol"],tf=scope["timeframe"],
+                asof=provenance["as_of_utc"],payload=raw,digest=digest,semantic=semantic,
+                created=datetime.now(timezone.utc).isoformat())).rowcount
+        stored = conn.execute(text(f"SELECT * FROM {RELATIONS_TABLE} WHERE analysis_id=:id"), {"id":ident}).mappings().one()
+        original = _relation_row(stored)
+        if stored["semantic_sha256"] != semantic:
+            raise ValueError("Identidade de relação já contém outro resultado; preserve o original e revise a implementação.")
+        for manifest_id in provenance["lineage_manifests"]:
+            datasets.bind(db, "relation:"+ident+":"+manifest_id, manifest_id, connection=conn)
+        if transaction_hook is not None:
+            transaction_hook(conn)
+        if transaction_guard is not None:
+            transaction_guard(conn)
+        result = dict(status="INSERTED" if inserted else "UNCHANGED", analysis_id=ident,
+            payload_sha256=stored["payload_sha256"], created_at_utc=stored["created_at_utc"], relation=original)
+    return result
+
+
+def load_pair_relation(db, analysis_id):
+    """Consulta pelo ID sem recalcular, criar schema ou completar com dados ativos."""
+    import re
+    _require_db(db)
+    if not isinstance(analysis_id, str) or not re.fullmatch(r"[a-f0-9]{64}", analysis_id):
+        raise ValueError("analysis_id precisa ser o identificador hexadecimal de64 caracteres.")
+    if not inspect(db.engine).has_table(RELATIONS_TABLE):
+        raise ValueError("Relação não persistida nesta base; execute relation com --persist.")
+    with db.consistent_read() as conn:
+        row = conn.execute(text(f"SELECT * FROM {RELATIONS_TABLE} WHERE analysis_id=:id"), {"id":analysis_id}).mappings().first()
+        if row is None:
+            raise ValueError("Relação não persistida nesta base; confira o identificador e a base.")
+        dto = _relation_row(row)
+        if not inspect(conn).has_table("_dataset_references"):
+            raise ValueError("Referências de origem ausentes; recupere os registros originais.")
+        for ident in dto["provenance"]["lineage_manifests"]:
+            reference = conn.execute(text("SELECT manifest_id FROM _dataset_references WHERE run_id=:id"),
+                {"id":"relation:"+analysis_id+":"+ident}).scalar()
+            if reference != ident:
+                raise ValueError("Referência de origem da relação sem integridade; recupere o registro original.")
+    _relation_sources(db, dto)
+    return dto
