@@ -784,3 +784,33 @@ importado aparece na consulta existente e em Relações salvas, onde seleção
 verifica suas origens. A extração do helper de escrita transacional em datasets
 altera o hash da implementação de novas consultas de pares; artefatos anteriores
 permanecem legíveis e transferíveis com suas identidades originais.
+
+
+### Transferência visual no Laboratório (BD19b-TRANSFER)
+
+Em **Relações e aderência → Matriz → Relações salvas**, as ações ficam abaixo
+do resultado selecionado, em uma linha própria. **Importar par** escolhe um
+pacote JSON completo, inclusive quando a consulta está vazia. **Exportar
+selecionado** só fica disponível após conferir o resultado e suas origens;
+o seletor pede um arquivo novo. Cancelar o seletor não inicia processamento.
+
+As duas ações usam o mesmo SDK de transferência, `run_bg` e indicador global
+de espera. Durante a operação, filtros, seleção, criação, consulta e novas
+transferências ficam suspensos; **Cancelar transferência** solicita interrupção
+cooperativa e aguarda a confirmação. Fechar/destruir o painel sinaliza o mesmo
+cancelamento; respostas posteriores não acessam widgets destruídos. Um commit
+já confirmado é conservado e exibido, mesmo quando o cancelamento chegou depois.
+
+A política de escrita é obtida para cada importação, vinculada à base escolhida
+antes de enviar o trabalho ao executor existente. Capturar a política não mede
+disco nem consulta SQL na thread da UI; as verificações ocorrem no worker.
+Se filtro/base mudar enquanto o trabalho termina, o resultado não substitui
+o contexto novo. Importação confirmada sem troca de contexto seleciona o ID
+exato, mesmo fora da primeira página; repetição informa que o recibo já existia.
+
+Falha de formato, origem ausente, quota ou conflito de arquivo aparece no estado
+da operação e permite retentativa. O arquivo existente é preservado. Um resultado
+anterior válido continua identificado como selecionado quando outra importação
+falha; os números não são atribuídos ao arquivo recusado. Não há cálculos,
+codificação de categorias, restauração de dados ativos ou promoção de evidência
+nos widgets. Importados sintéticos e insuficientes mantêm seus selos e motivos.

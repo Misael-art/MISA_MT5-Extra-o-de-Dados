@@ -4132,3 +4132,64 @@ Windows físico. Demais famílias/alvos e BD18b/BD19 completos permanecem aberto
 Próxima frente: ações visuais de exportação/importação no Laboratório existente,
 usando este SDK, seleção explícita de arquivo, `run_bg`, cancelamento e foco
 no ID confirmado, sem cálculo ou outro fluxo de armazenamento nos widgets.
+
+## Continuidade do roadmap — BD19b-TRANSFER, 29/10/2026
+
+Branch `codex/transferir-relacoes-no-laboratorio`, base PR233/`016ae61` aceita
+no host/prévia (277 arquivos,77 casos PostgreSQL CI). O baseline pelo launcher
+instalado confirmou a ausência das ações visuais. **Importar par**, **Exportar
+selecionado** e **Cancelar transferência** agora ficam em linha própria após
+o resultado, sem ampliar a barra de filtros. O mesmo SDK/serviço BD19c2 faz
+todo o transporte e validação; sem novo store, cálculo ou executor.
+[Contrato](sdk/api.md#transferência-visual-no-laboratório-bd19b-transfer).
+
+Exportação exige seleção conferida; cancelamento do seletor não despacha nada.
+Arquivo diferente é preservado, sem diálogo oferecendo sobrescrita que o
+serviço recusaria. Trabalho usa run_bg/barra existentes; ações concorrentes,
+filtros e seleção ficam suspensos até a confirmação. Resultado importado tem
+foco pelo ID exato; repetição informa recibo já existente. Troca de contexto
+não aplica uma resposta antiga, e destruição do painel solicita cancelamento.
+Um commit confirmado continua válido mesmo se o cancelamento chegou depois.
+
+A revisão encontrou a possibilidade de uma factory diferida vincular o guarda
+à base nova após uma troca de DB. A política agora é capturada por operação na
+thread de UI, antes do dispatch, associada ao destino escolhido; make() só lê
+configuração, sem SQL/medição de disco. Verificações continuam no worker. Dois
+casos adicionais cobrem o destino do guarda e erro da factory, sem afrouxar
+limites. A criação de pares anterior não foi modificada.
+
+13 testes novos iniciais;15 finais aprovados (sobrepostos), incluindo cancelamento
+antes/durante a transação e após commit, contexto/filtro/base trocados, resposta
+após destruição, guarda por operação, recibo exato/repetição e proteção do
+arquivo. Regressão de telas existentes40 aprovados/2 avisos tight_layout em
+gráficos antigos. São55 casos distintos finais, sem somar a rodada inicial.
+Timeout60s original, uma thread numérica e uma suíte pesada por vez. Doctor
+offline16OK/2avisos/0falhas; PG segue no job existente, sem servidor local novo.
+
+Launcher fonte em Xvfb privado, base/preferências sintéticas: começa sem
+relações e com um único fato/barra sentinela de outro ativo. Retornos dos
+seletores de arquivo são entradas controladas; botões, callbacks, SDK e
+transações são reais. Formato inválido, quota alterada após abrir a tela e
+cancelamento recusam publicação. Importa par positivo, composto materializado
+e indisponível; seleciona ID/versões/amostra corretos e preserva selo sintético.
+Reexportação tem bytes idênticos ao pacote; conflito conserva arquivo e valor
+selecionado, repetição conserva o primeiro recibo. Pacote sem ancestral é
+recusado mesmo quando o destino já possui o snapshot, sem fallback live.
+Nenhum fato ativo é importado, e todos os registros anteriores ficam iguais.
+
+Capturas1280×920/880×760 inspecionadas: coeficiente, amostra e três botões
+visíveis; limites calculados contra todos os ancestrais roláveis, não só a
+janela. Indicador global visível durante importar/exportar/cancelar, zero
+exceções/pendências. Atraso controlado3s só para observar espera; tempos do SDK
+sem esse atraso: importações bem-sucedidas0,34–0,77s, exportação0,79s nesta
+medição individual, sem promessa de aceleração. Recibos/PNG/inputs com hashes
+em `state/qa-tmp/laboratory-transfer-relations/`; SHA remoto, PR, checks e
+aceite da prévia no registro central. Prévia requer os mesmos277 arquivos
+conferidos e repetição integral da jornada.
+
+Sem negociação, base privada como fixture, mudança de pins, merge/release ou
+aceite causal/financeiro/nativo/Windows físico. Demais tipos/alvos e BD18b/BD19
+completos permanecem nas próprias fichas. Próxima frente elegível: BD16,
+janelas móveis dos pares referenciais pelo serviço existente, com recorte,
+população, orçamento e fronteiras temporais explícitos; cruzamento de bases
+continua exigindo compatibilidade e seleção própria, sem junção pelo símbolo.
