@@ -3434,3 +3434,35 @@ constante nem promessa de aceleração universal. Recibos locais
 `state/qa-tmp/query-pagination/`. Compostos/relações BD18b e demais capacidades
 do plano continuam abertos; pins e fontes privadas preservados. Sem servidor
 HTTP, novo store/scheduler ou aceite nativo/financeiro/Windows físico.
+
+## Continuidade do roadmap — BD12-SNAPSHOT, 29/10/2026
+
+Branch `codex/compostos-congelados`, sobre `18fc08d`/PR219. O grafo existente
+validava dependências, mas não oferecia uma composição tipada de dois níveis
+para fatos congelados. `define-composite` registra receitas imutáveis;
+`compose`/`sdk.query_composite_context` avaliam difference→absolute usando o
+mesmo executor, com definições e pais do snapshot4. ID/versão, ordem das entradas,
+tipos e unidades são explícitos. Apenas fraction/price_units, mesma observação,
+32 nós e200.000 pares nó/decisão; nenhuma expressão arbitrária ou direção inferida.
+Ausência/expiração/desalinhamento/overflow têm estados e motivos; zero permanece
+válido. Proveniência contém valores, disponibilidade e revisões dos pais.
+
+Baseline60 e rodada integrada107 distintos aprovados (não somar as rodadas);
+reteste da apresentação CLI aprovado após representar ausência com travessão.
+Oráculos aritméticos cobrem revisões tardias e alinhamento sem informação futura;
+grafo congelado sem banco/registry atual, ciclos, importação, tipos/categorias,
+imutabilidade, ramo independente, limites e API pública. Doctor offline16OK/
+2avisos/0falhas. Launcher oficial com base sintética: CLI=SDK, valores2/96/96/1/2/2;
+em01:50 o snapshot mantém96 enquanto a correção na base atual produziria197.
+Exportação/importação em base com outro offset conserva o contexto de origem.
+
+Bancada: snapshot carregado, dois pais/dois compostos,500 decisões,3 chamadas;
+mediana325ms (276–428ms), pico Python4.725.384bytes medido separadamente.
+Medição de custo neste host, sem comparação de aceleração. Recibos privados
+`state/qa-tmp/feature-compositions/`; bancos e capturas não entram no Git.
+[API/CLI](sdk/api.md#composições-congeladas-bd12-snapshot). Materialized=False:
+não há fatos filhos persistidos nem sinal/ordem. O hash ainda cobre módulos
+inteiros e versões pandas/NumPy; próxima frente BD13 deve granularizar identidade
+por algoritmo/dependência antes da materialização BD14 e consumidores BD19.
+Sem novo motor/store/scheduler; pins e dados do proprietário preservados.
+Aceites nativo, financeiro e Windows físico permanecem separados.

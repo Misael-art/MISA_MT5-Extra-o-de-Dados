@@ -79,11 +79,27 @@ def query_catalog(db=None):
     return query_service.catalog(db)
 
 
+def define_feature_composite(db, feature_id, name, algorithm_version, *, operation, inputs):
+    """Registra receita aritmética tipada e imutável; não grava valores calculados."""
+    from mt5_extracao.analytics import features
+    return features.register_composite(db, feature_id, name, algorithm_version, operation=operation, inputs=inputs)
+
+
+def query_composite_context(db, manifest_id, decision_times, *, targets):
+    """Avalia o grafo congelado pelo executor existente; contexto exploratório, sem materialização."""
+    import pandas as pd
+    from mt5_extracao.analytics import datasets, features
+    if not isinstance(decision_times, (list, tuple)):
+        raise ValueError("Informe decision_times como uma lista de instantes com fuso.")
+    return features.compose_snapshot(datasets.load(db, manifest_id), pd.DataFrame(dict(decision_time=decision_times)),
+                                     targets=targets)
+
+
 __all__ = [
     "API_VERSION", "CONTRACT_VERSION",
     "open_workflow",
     # consulta de dados analíticos (futura API, sem servidor)
-    "query_series", "query_catalog",
+    "query_series", "query_catalog", "define_feature_composite", "query_composite_context",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida
