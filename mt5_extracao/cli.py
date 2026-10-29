@@ -2064,7 +2064,9 @@ def cmd_analytics(args, ctx):
             _print("Nenhuma característica registrada.")
         else:
             for item in items:
-                _print(f"{item['feature_id']}@{item['algorithm_version']}\t{item['name']}\t"
+                name_note = (" [nome legado não verificável]" if
+                             item.get("name_status") == "UNVERIFIED_LEGACY_NAME" else "")
+                _print(f"{item['feature_id']}@{item['algorithm_version']}\t{item['name']}{name_note}\t"
                        f"dependências: {', '.join(item['dependencies']) or 'nenhuma'}")
         _print(f"\n{len(items)} definição(ões).")
         _data(features=items)

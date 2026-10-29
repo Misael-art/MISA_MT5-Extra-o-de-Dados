@@ -56,6 +56,81 @@ def test_definitions_are_versioned_immutable_and_validate_dependencies(db):
         features.register(db, "close_m1", "M1 close", "3.0", dependencies=["feature:return_m1"])
 
 
+def test_definition_name_survives_metadata_validation_and_is_immutable(db):
+    definition = dict(feature_id="qa.named", name="  Nome da série QA  ", algorithm_version="1",
+                      parameters={"period": 7}, dependencies=["bars:M5"], family=" qa ",
+                      unit=" points ", value_type=" NUMBER ")
+    assert feature_store.register_definition(db, **definition)
+    stored = feature_store.list_definitions(db)[0]
+    assert (stored["name"], stored["family"], stored["unit"], stored["value_type"]) == (
+        "Nome da série QA", "qa", "points", "NUMBER")
+    registered_at = stored["registered_at_utc"]
+    assert not feature_store.register_definition(db, **definition)
+    with pytest.raises(ValueError, match="nova versão"):
+        feature_store.register_definition(db, **{**definition, "name": "Outro nome"})
+    assert feature_store.list_definitions(db)[0]["registered_at_utc"] == registered_at
+    assert feature_store.list_definitions(db)[0]["name"] == "Nome da série QA"
+    assert feature_store.register_definition(db, **{**definition, "algorithm_version": "2", "name": "Outro nome"})
+    assert [(d["algorithm_version"], d["name"]) for d in feature_store.list_definitions(db)] == [
+        ("1", "Nome da série QA"), ("2", "Outro nome")]
+
+
+def test_named_definition_reaches_cli_and_inventory_without_changing_values(db, tmp_path, capsys):
+    from mt5_extracao.laboratory import inventory
+    features.register(db, "qa.named", "Série QA legível", "1", dependencies=["bars:M1"], value_type="NUMBER")
+    feature_store.save_value(db, "QA", "M1", "qa.named", "1", "2025-01-01T00:00Z", 12.,
+                             available_at="2025-01-01T00:01Z", observed_at="2025-01-01T00:01Z")
+    before = feature_store.query_history(db, feature_id="qa.named")
+    config = tmp_path / "qa.ini"
+    config.write_text(f"[DATABASE]\ntype=sqlite\npath={db.db_path}\n", encoding="utf-8")
+    assert cli.main(["--config", str(config), "--json", "analytics", "features", "list"]) == 0
+    result = json.loads(capsys.readouterr().out)["data"]["features"]
+    assert result[0]["name"] == "Série QA legível"
+    assert inventory.search(db, query="qa.named")["items"][0]["name"] == "Série QA legível"
+    pd.testing.assert_frame_equal(before, feature_store.query_history(db, feature_id="qa.named"))
+
+
+def test_legacy_definition_name_is_not_silently_rewritten_or_breaks_repeated_producer(db, caplog):
+    feature_store.register_definition(db, "qa.legacy", "Nome original", "1", {}, [])
+    # Reprodução explícita de metadado escrito pela implementação anterior; nunca usa banco pessoal.
+    with db.engine.begin() as conn:
+        conn.execute(text("UPDATE _feature_definitions SET name='value_type', definition_schema_version=1 "
+                          "WHERE feature_id='qa.legacy'"))
+    assert not feature_store.register_definition(db, "qa.legacy", "Nome original", "1", {}, [])
+    row = feature_store.list_definitions(db)[0]
+    assert (row["name"], row["definition_schema_version"], row["name_status"]) == (
+        "value_type", 1, "UNVERIFIED_LEGACY_NAME")
+    assert "nome legado não verificável" in caplog.text
+    with pytest.raises(ValueError, match="nova versão"):
+        feature_store.register_definition(db, "qa.legacy", "Nome original", "1", {"period": 9}, [])
+    from mt5_extracao.laboratory import inventory
+    assert "Nome legado não verificável" in inventory.search(db, query="qa.legacy")["items"][0]["reason"]
+
+
+def test_new_explicit_value_type_name_cannot_be_treated_as_a_legacy_placeholder(db):
+    assert feature_store.register_definition(db, "qa.valid", "value_type", "1", {}, [])
+    row = feature_store.list_definitions(db)[0]
+    assert row["definition_schema_version"] == 2 and row["name_status"] == "DECLARED"
+    with pytest.raises(ValueError, match="nova versão"):
+        feature_store.register_definition(db, "qa.valid", "Outro nome", "1", {}, [])
+
+
+def test_old_definition_schema_gets_additive_marker_without_rewriting_rows(db):
+    with db.engine.begin() as conn:
+        conn.execute(text("CREATE TABLE _feature_definitions (feature_id TEXT, algorithm_version TEXT, "
+                          "name TEXT, parameters_json TEXT, dependencies_json TEXT, registered_at_utc TEXT, "
+                          "PRIMARY KEY (feature_id, algorithm_version))"))
+        conn.execute(text("INSERT INTO _feature_definitions VALUES ('qa.old','1','value_type','{}','[]','2025-01-01')"))
+    # A leitura reconhece o legado sem migrar nem criar tabelas.
+    assert feature_store.list_definitions(db)[0]["name_status"] == "UNVERIFIED_LEGACY_NAME"
+    assert "definition_schema_version" not in {c["name"] for c in inspect(db.engine).get_columns("_feature_definitions")}
+    feature_store.ensure_schema(db)
+    row = feature_store.list_definitions(db)[0]
+    assert row["name"] == "value_type" and row["registered_at_utc"] == "2025-01-01"
+    assert row["definition_schema_version"] == 1
+    assert not feature_store.register_definition(db, "qa.old", "Nome do produtor", "1", {}, [])
+
+
 def test_late_correction_adds_revision_and_as_of_keeps_old_knowledge(db):
     register_close(db)
     assert save(db, 1.1) == 1

@@ -33,3 +33,35 @@ derivadas do Donchian — BD08b); família desconhecida falha.
 ## Pendente
 Produtores T13.3 (60 IDs) ainda sem esse contrato; consumidores (Estudo, Laboratório) ainda leem
 `indicator_registry.definitions()` em vez do contrato completo (BD19).
+
+## BD06-NOMES — nomes imutáveis e compatibilidade do catálogo
+
+Uma variável do loop de validação de metadados sobrescrevia o argumento `name`:
+novas definições eram gravadas com o nome `value_type`, e repetir a mesma versão
+com outro nome não era rejeitado. O registro agora preserva o nome recebido e
+recusa sua alteração na mesma versão, mantendo a idempotência da repetição exata.
+
+`_feature_definitions.definition_schema_version` é aditivo: registros novos usam 2,
+enquanto registros anteriores recebem 1, sem reescrever nomes, datas ou fatos.
+A leitura de um schema anterior reconhece o legado sem migrar tabelas. Nomes
+`value_type` no schema 1 ficam `UNVERIFIED_LEGACY_NAME`; um nome intencionalmente
+igual no schema 2 é `DECLARED` e continua imutável. O marcador não muda a versão
+matemática nem a identidade do indicador.
+
+Para não quebrar produtores existentes, o registro legado com nome não verificável
+aceita uma repetição somente se parâmetros, dependências e todos os demais
+metadados forem idênticos. Retorna sem escrever, emite aviso e conserva o rótulo
+antigo como não verificável. Alterar qualquer outro metadado continua exigindo
+nova versão. Não inferir nem corrigir nomes históricos silenciosamente.
+A CLI de definições e o detalhe do inventário exibem essa limitação.
+
+Regressões em `tests/test_analytics_features.py` cobrem nome, imutabilidade,
+schema antigo, migração aditiva e consumo CLI/inventário. O caso de append em
+`tests/test_indicator_materialization.py` simula o legado, acrescenta 20 barras
+M5 nos 52 indicadores e confere preservação de todos os fatos/hashes anteriores,
+sem revisões numéricas. Validação dirigida: 111 testes do núcleo/consulta/CLI e
+produtores, um append legado e três testes Tk do inventário aprovados (115 casos
+distintos). A reprodução anterior gravava `value_type` para `Nome correto` e
+aceitava outro nome na mesma versão; o comportamento corrigido foi exercitado
+também pelo launcher oficial, em banco sintético próprio. Isso não encerra BD06 completo nem a consulta de todas
+as definições armazenadas: esse consumo continua na sequência BD18/BD19.
