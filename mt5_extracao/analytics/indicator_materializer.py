@@ -86,6 +86,43 @@ def _guard(run, write_guard, cancel_check, timeout_seconds, max_memory_mb):
         producers._check_limits(run, timeout_seconds, max_memory_mb)
 
 
+def _return_inputs(raw, bars, ids, tokens):
+    """Dependências dos retornos do registry; elegibilidade vem do leitor canônico.
+
+    O valor usa os dois extremos, não todo o prefixo. A disponibilidade também
+    considera correções no intervalo: remover/restaurar uma barra intermediária
+    pode mudar a contagem ordinal mesmo sem corrigir os novos extremos.
+    """
+    horizons = {ident: indicator_registry.get_definition(ident)["parameters"]["horizon_bars"]
+                for ident in ids if ident.startswith("price.return_")}
+    if not horizons or bars.empty:
+        return {}
+    eligible = set(bars.bar_start_utc)
+    receipts, latest = [], None
+    for row in raw.itertuples():
+        if row.revision > 1:
+            latest = max(latest, row.computed_at_utc) if latest is not None else row.computed_at_utc
+        if row.bar_start_utc in eligible:
+            receipts.append(latest)
+            latest = None
+    # Agrupa recibos das barras inelegíveis com a próxima elegível. O max móvel
+    # já existente conserva esses recibos enquanto podem afetar a janela ordinal.
+    projected = bars[["revision", "computed_at_utc"]].copy()
+    projected["revision"] = [2 if stamp is not None else 1 for stamp in receipts]
+    projected["computed_at_utc"] = pd.to_datetime(receipts, utc=True)
+    result = {}
+    starts = bars.bar_start_utc.tolist()
+    for ident, horizon in horizons.items():
+        corrections = producers._correction_times(projected, window=horizon + 1).tolist()
+        dependencies = [([position - horizon, position] if position >= horizon else list(range(position + 1)))
+                        for position in range(len(bars))]
+        result[ident] = dict(revisions=[producers._source_revision(tokens, indices) for indices in dependencies],
+            corrections=corrections,
+            observations=[[starts[index].isoformat() for index in indices] for indices in dependencies],
+            horizon=horizon)
+    return result
+
+
 def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, write_guard=None, cancel_check=None,
                 timeout_seconds=600, max_memory_mb=2048):
     """Materializa somente barras fechadas; não modifica barras, legado ou alvos futuros.
@@ -137,7 +174,9 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         if any(not set(frame.observation_time).issubset(raw_starts) for frame in previous.values()):
             raise ValueError("O histórico derivado perdeu observações já materializadas. Restaure ou reconcilie "
                              "a revisão da fonte antes de retomar; valores anteriores foram preservados.")
-        value_chains = producers._prefix_source_revisions(producers._source_tokens(bars)) if not bars.empty else []
+        value_tokens = producers._source_tokens(bars) if not bars.empty else []
+        value_chains = producers._prefix_source_revisions(value_tokens)
+        return_inputs = _return_inputs(raw, bars, ids, value_tokens)
         chains, pivot_bars = value_chains, bars
         has_pivots = any(ident.startswith("structure.") for ident in ids)
         has_channels = any(ident.startswith("channel.donchian_") for ident in ids)
@@ -195,6 +234,12 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                     is_window = "window_metadata" in item
                     receipts = pivot_correction_by_start if is_pivot or is_window else correction_by_start
                     available = max(bar.bar_end_utc, receipts.get(bar.bar_start_utc) or bar.bar_end_utc)
+                    return_input = return_inputs.get(item["feature_id"])
+                    source_revision = chains[position] if is_pivot or is_window else value_chains[position]
+                    if return_input is not None:
+                        correction = return_input["corrections"][position]
+                        available = max(bar.bar_end_utc, correction) if pd.notna(correction) else bar.bar_end_utc
+                        source_revision = return_input["revisions"][position]
                     # real_volume_known prevalece sobre zero/valor preenchido pela fonte.
                     if item["feature_id"] == "volume.real" and (pd.isna(bar.get("real_volume_known")) or
                                                                  bar.get("real_volume_known") != 1):
@@ -203,6 +248,11 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                                 "registry_version": item["algorithm_version"],
                                 "implementation_sha256": implementation,
                                 "bar_end_utc": bar.bar_end_utc.isoformat(), "source_scope": "causal_prefix"}
+                    if return_input is not None:
+                        metadata.update(source_scope="return_endpoints_with_eligible_bar_order",
+                            dependency_bar_starts_utc=return_input["observations"][position],
+                            horizon_bars=return_input["horizon"],
+                            availability_basis="corrections_in_ordinal_window_including_ineligible_receipts")
                     if "window_metadata" in item:
                         metadata.update(item["window_metadata"])
                     if "display_offset_bars" in item:
@@ -234,7 +284,7 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                     yield dict(symbol=symbol, timeframe=label, feature_id=item["feature_id"],
                                algorithm_version=algorithm_version(item["feature_id"], implementation),
                                observation_time=bar.bar_start_utc, value=item["value"], available_at=available,
-                               observed_at=available, source_revision=chains[position] if is_pivot or is_window else value_chains[position],
+                               observed_at=available, source_revision=source_revision,
                                quality="VALID" if item["state"] == "AVAILABLE" else "UNAVAILABLE",
                                metadata=metadata)
             current = set(bars.bar_start_utc) if not bars.empty else set()

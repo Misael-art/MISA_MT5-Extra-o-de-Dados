@@ -3468,3 +3468,34 @@ inteiros e versões pandas/NumPy; próxima frente BD13 deve granularizar identid
 por algoritmo/dependência antes da materialização BD14 e consumidores BD19.
 Sem novo motor/store/scheduler; pins e dados do proprietário preservados.
 Aceites nativo, financeiro e Windows físico permanecem separados.
+
+## Continuidade do roadmap — BD13-RETURNS, 29/10/2026
+
+Branch `codex/revisoes-retornos`, sobre `d7ac9ff`/PR220. Reproduzido pelo launcher
+oficial em fixture própria: corrigir uma barra em80 M5/três retornos escrevia150
+revisões. O materializador agora usa tokens dos extremos, prefixo conhecido no
+aquecimento e recibos da janela ordinal, incluindo barras inelegíveis removidas/
+restauradas. Usa `_correction_times` e store/checkpoints existentes; fórmulas e
+calendário não foram reimplementados. A proveniência declara horizonte e
+observações dos pais; tokens ainda capturam a barra completa, conservadoramente.
+
+Baseline35, regressões novas7 e rodada final115 distintos aprovados (sobreposição,
+não somar). Casos: extremos/meio/fim, oráculo aritmético, as-of preservado,
+correção posterior fora da janela não atrasa a relevante, remoção/restauração
+intermediária não antecipa contagem, ramo independente e perda de recibo após
+commit com retomada sem revisão duplicada. Inclui famílias Alligator/AO/AC/
+Donchian, contexto persistido e concorrência do guard existente. Doctor offline
+16OK/2avisos/0falhas.
+
+CLI oficial confirma6 revisões/234 inalterados, valores iguais ao oráculo e
+repetição SKIPPED, contra150/90 no baseline;80 barras e240 fatos iniciais em ambos.
+Tempo do job316→459ms nesta chamada isolada; o ganho demonstrado é reduzir
+escritas, sem claim de aceleração. Continua carregando e avaliando o histórico.
+Recibos privados `state/qa-tmp/return-revisions/`; [contrato e limites](dados/BD08A_RETORNO.md#bd13-returns--revisões-por-dependência-29102026).
+
+Assinatura global ainda versiona todos os IDs quando o materializador muda;
+versões antigas não são reescritas e exigem seleção explícita para leitura.
+Próximo recorte BD13: assinatura por algoritmo/contrato/dependências, antes
+de BD14. Outras famílias conservam prefixos; sem motor/cache/store novo,
+negociação ou uso da base do proprietário como fixture. Aceites nativo/financeiro
+e Windows físico não são inferidos pelo launcher offline ou pela CI.
