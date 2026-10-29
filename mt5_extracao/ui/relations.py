@@ -433,8 +433,11 @@ class _MatrixGrid:
 class RelationsPanel:
     """Subvisões de relações. Números só aparecem depois de uma análise congelada."""
 
-    def __init__(self, parent, theme, db=None, run_bg=None):
+    def __init__(self, parent, theme, db=None, run_bg=None, write_guard=None, write_guard_factory=None, open_series=None):
         self.theme, self.db = theme, db
+        self.write_guard, self.open_series = write_guard, open_series
+        self.write_guard_factory = write_guard_factory
+        self._creator = None
         # Sem run_bg (testes/SDK), a leitura somente agregada roda na própria thread.
         self._run_bg = run_bg or (lambda work, done: done(*self._call(work)))
         self._inventory_request = 0
@@ -811,8 +814,10 @@ class RelationsPanel:
             variable.trace_add("write", self._saved_filters_changed)
         self.saved_refresh = ttk.Button(controls, text="Consultar", command=self.load_saved_relations)
         self.saved_refresh.pack(side=tk.LEFT)
-        self.saved_previous = ttk.Button(controls, text="◀", width=3, command=lambda: self._saved_page(-1))
-        self.saved_next = ttk.Button(controls, text="▶", width=3, command=lambda: self._saved_page(1))
+        self.saved_new = ttk.Button(controls, text="Criar par…", command=self.open_relation_creator)
+        self.saved_new.pack(side=tk.LEFT, padx=SPACING["xs"])
+        self.saved_previous = ttk.Button(controls, text="Anterior", width=8, command=lambda: self._saved_page(-1))
+        self.saved_next = ttk.Button(controls, text="Próxima", width=8, command=lambda: self._saved_page(1))
         self.saved_next.pack(side=tk.RIGHT);self.saved_previous.pack(side=tk.RIGHT)
         self.saved_status = ttk.Label(parent, text="Consulte os resultados salvos; filtros vazios mostram todos os recortes.",
                                       style="Muted.TLabel")
@@ -845,6 +850,7 @@ class RelationsPanel:
     def _clear_saved_relation(self, message):
         self._saved_selection_request += 1
         self._saved_selected_key = None
+        self._saved_dto = None
         self.saved_effect.configure(text="Selecione uma relação")
         self.saved_scope.configure(text=message);self.saved_sample.configure(text="")
         self.saved_qualification.configure(text="Exploratório: sem causalidade ou utilidade financeira comprovadas.")
@@ -864,7 +870,7 @@ class RelationsPanel:
         self.saved_status.configure(text="Filtros alterados. Clique Consultar para carregar o novo recorte.")
         self._clear_saved_relation("Nenhuma relação selecionada no novo recorte.")
 
-    def load_saved_relations(self, cursor=None, *, reset=True):
+    def load_saved_relations(self, cursor=None, *, reset=True, analysis_id=None):
         from mt5_extracao import sdk
         self._saved_request += 1
         request, db = self._saved_request, self.db
@@ -878,7 +884,7 @@ class RelationsPanel:
         self.saved_status.configure(text="Carregando relações salvas — aguarde…")
         self._clear_saved_relation("Aguarde a consulta do recorte selecionado.")
         def work():
-            return sdk.query_saved_relations(db, symbol=symbol, timeframe=timeframe, page_size=25, cursor=cursor)
+            return sdk.query_saved_relations(db, symbol=symbol, timeframe=timeframe, analysis_id=analysis_id, page_size=25, cursor=cursor)
         def done(result, error):
             if request != self._saved_request or not self.saved_table.tree.winfo_exists():return
             self._saved_loaded = True
@@ -900,6 +906,7 @@ class RelationsPanel:
             self.saved_next.state(["!disabled"] if self._saved_next_cursor else ["disabled"])
             self.saved_previous.state(["!disabled"] if len(self._saved_cursors)>1 else ["disabled"])
             self.saved_status.configure(text="; ".join(result["reasons"]) if not result["items"] else
+                "Resultado recém salvo selecionado. Consulte novamente para ver os demais pares." if analysis_id else
                 f"{result['matched']} relações salvas · página {len(self._saved_cursors)} · selecione uma linha para conferir as origens.")
             if result["items"]:
                 self.saved_table.tree.selection_set("saved-0");self._saved_selected(None)
@@ -930,29 +937,68 @@ class RelationsPanel:
                 self._saved_selected_key = None
                 self.saved_effect.configure(text="Indisponível");self.saved_scope.configure(text=str(error))
                 self._write_saved_detail("Resultado não exibido: "+str(error));return
-            relation, population, scope, provenance = (dto[key] for key in ("relation","population","scope","provenance"))
-            self.saved_effect.configure(text=self._saved_number(relation["effect"])+" · "+relation["method"].title())
-            def label(side):
-                item=dto[side]
-                return f"{item['definition'].get('name') or item['feature_id']} · versão {item['algorithm_version']} [{item['unit'] or 'unidade não declarada'}]"
-            self.saved_scope.configure(text=f"{scope['symbol']} / {scope['timeframe']} · {label('left')} × {label('right')}\n"
-                f"Corte UTC {provenance['as_of_utc']} · esquerda antecede a direita em {scope['lag_bars']} períodos nominais.")
-            self.saved_sample.configure(text=f"Pares: {relation['n_pairs']} · fontes distintas: {population['n_distinct_source_pairs']} · "
-                f"sessões: {relation['n_sessions']} · excluídos: {sum(population['exclusions'].values())} de {population['n_total']}.")
-            self.saved_qualification.configure(text=("Referência sintética · " if dto['synthetic_fixture'] else "")+
-                "Exploratório; sem causalidade ou utilidade financeira comprovadas."+
-                (" Resultado insuficiente: consulte o motivo nos detalhes." if relation['effect'] is None else ""))
-            def number(value):return "não estimado" if value is None else format(value, ".6g").replace(".", ",")
-            lines=[f"ID: {ident}",f"Snapshot: {provenance['snapshot_manifest_id']}",f"Esquerda: {dto['left']['feature_id']}",
-                f"Direita: {dto['right']['feature_id']}",f"Motivo: {relation['reason'] or 'amostra numérica disponível'}",
-                "Exclusões: "+json.dumps(population['exclusions'],ensure_ascii=False),
-                f"Intervalo do efeito: {number(relation['effect_ci_low'])} a {number(relation['effect_ci_high'])}",
-                f"p bruto: {number(relation['p_raw'])}; p ajustado: {number(relation['p_adjusted'])}",
-                "Origens conferidas: "+", ".join(provenance['lineage_manifests']),
-                "Gerado em UTC: "+dto['generated_at_utc'],
-                "Contagem de fontes não é amostra independente certificada; resultado original, sem recalcular."]
-            self._write_saved_detail("\n".join(lines))
+            self._show_saved_relation(dto)
         self._run_bg(work, done)
+
+    def _show_saved_relation(self, dto):
+        self._saved_dto = dto
+        ident = dto["provenance"]["analysis_id"]
+        relation, population, scope, provenance = (dto[key] for key in ("relation","population","scope","provenance"))
+        self.saved_effect.configure(text=self._saved_number(relation["effect"])+" · "+relation["method"].title())
+        def label(side):
+            item=dto[side]
+            return f"{item['definition'].get('name') or item['feature_id']} · versão {item['algorithm_version']} [{item['unit'] or 'unidade não declarada'}]"
+        self.saved_scope.configure(text=f"{scope['symbol']} / {scope['timeframe']} · {label('left')} × {label('right')}\n"
+            f"Corte UTC {provenance['as_of_utc']} · esquerda antecede a direita em {scope['lag_bars']} períodos nominais.")
+        self.saved_sample.configure(text=f"Pares: {relation['n_pairs']} · fontes distintas: {population['n_distinct_source_pairs']} · "
+            f"sessões: {relation['n_sessions']} · excluídos: {sum(population['exclusions'].values())} de {population['n_total']}.")
+        self.saved_qualification.configure(text=("Referência sintética · " if dto['synthetic_fixture'] else "")+
+            "Exploratório; sem causalidade ou utilidade financeira comprovadas."+
+            (" Resultado insuficiente: consulte o motivo nos detalhes." if relation['effect'] is None else ""))
+        def number(value):return "não estimado" if value is None else format(value, ".6g").replace(".", ",")
+        lines=[f"ID: {ident}",f"Snapshot: {provenance['snapshot_manifest_id']}",f"Esquerda: {dto['left']['feature_id']}",
+            f"Direita: {dto['right']['feature_id']}",f"Motivo: {relation['reason'] or 'amostra numérica disponível'}",
+            "Exclusões: "+json.dumps(population['exclusions'],ensure_ascii=False),
+            f"Intervalo do efeito: {number(relation['effect_ci_low'])} a {number(relation['effect_ci_high'])}",
+            f"p bruto: {number(relation['p_raw'])}; p ajustado: {number(relation['p_adjusted'])}",
+            "Origens conferidas: "+", ".join(provenance['lineage_manifests']),
+            "Gerado em UTC: "+dto['generated_at_utc'],
+            "Contagem de fontes não é amostra independente certificada; resultado original, sem recalcular."]
+        self._write_saved_detail("\n".join(lines))
+
+    def open_relation_creator(self):
+        from mt5_extracao.ui.relation_creator import RelationCreator
+        if self._creator is not None and self._creator.alive():
+            self._creator.window.lift()
+            return
+        chosen = getattr(self, "_saved_dto", None)
+        report = self.lab_report or {}
+        populations = {item["manifest_id"]:item for item in report.get("populations", [])}
+        captures = {ident:dict(manifest_id=ident, symbol=populations.get(ident,{}).get("symbol",report.get("symbol")),
+            timeframe=populations.get(ident,{}).get("timeframe",report.get("grid_timeframe")))
+            for ident in report.get("selection",{}).get("manifests",[])}
+        settings = {}
+        as_of = report.get("selection",{}).get("as_of")
+        synthetic = False
+        if chosen is not None:
+            ident=chosen["provenance"]["snapshot_manifest_id"]
+            captures={ident:dict(manifest_id=ident,symbol=chosen["scope"]["symbol"],timeframe=chosen["scope"]["timeframe"]),**captures}
+            settings=dict(chosen["scope"].get("settings",{}))
+            as_of=chosen["provenance"]["as_of_utc"]
+            synthetic=chosen["synthetic_fixture"]
+        else:
+            pairs=report.get("selection",{}).get("stored_features",[])
+            if pairs:settings["left"]=pairs[0]
+            if len(pairs)>1:settings["right"]=pairs[1]
+        self._creator=RelationCreator(self.frame,self.theme,db=self.db,run_bg=self._run_bg,captures=list(captures.values()),
+            as_of=as_of,settings=settings,synthetic_fixture=synthetic,write_guard=self.write_guard,
+            write_guard_factory=self.write_guard_factory,
+            on_saved=self._relation_created,open_series=self.open_series)
+
+    def _relation_created(self, receipt):
+        scope=receipt["relation"]["scope"]
+        self.saved_symbol.set(scope["symbol"]);self.saved_timeframe.set(scope["timeframe"])
+        self.load_saved_relations(analysis_id=receipt["analysis_id"])
 
     def set_lab_report(self, report):
         """Recebe o relatório congelado de Séries; matrizes e cruzamentos saem do mesmo serviço do CLI."""

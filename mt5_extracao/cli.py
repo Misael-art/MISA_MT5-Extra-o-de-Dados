@@ -1800,6 +1800,7 @@ def build_parser():
     q.set_defaults(func=cmd_analytics)
 
     q = features_sub.add_parser("relation-list", help="lista resultados persistidos com filtros e paginação")
+    q.add_argument("--analysis-id")
     q.add_argument("--symbol")
     q.add_argument("--tf")
     q.add_argument("--page-size", type=int, default=50)
@@ -2101,7 +2102,7 @@ def cmd_analytics(args, ctx):
 
     if args.features_action == "relation-list":
         from mt5_extracao import sdk
-        result = sdk.query_saved_relations(ctx.db, symbol=args.symbol, timeframe=args.tf,
+        result = sdk.query_saved_relations(ctx.db, symbol=args.symbol, timeframe=args.tf, analysis_id=args.analysis_id,
                                           page_size=args.page_size, cursor=args.cursor)
         _data(query=result)
         if result["status"] != "ok":
@@ -2125,11 +2126,15 @@ def cmd_analytics(args, ctx):
             result = sdk.load_feature_relation(ctx.db, args.analysis_id)
         else:
             calculate = sdk.persist_feature_relation if args.persist else sdk.query_feature_relation
+            options = {}
+            if args.persist:
+                from mt5_extracao.resources import guard
+                options["write_guard"] = guard.make(ctx.db, ctx.config)
             answer = calculate(ctx.db, args.manifest, left=args.left, right=args.right, as_of=args.as_of,
                 lag_bars=args.lag_bars, method=args.method, minimum_pairs=args.minimum_pairs,
                 minimum_sessions=args.minimum_sessions, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed,
                 block_length_sessions=args.block_length_sessions, tests_counted=args.tests_counted,
-                synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb)
+                synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb, **options)
             result = answer["relation"] if args.persist else answer
             if args.persist:
                 persistence = {key: value for key, value in answer.items() if key != "relation"}

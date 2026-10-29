@@ -484,6 +484,19 @@ contexto específico de Séries enquanto o par salvo tem seu próprio recorte.
 Não encerra BD18b, criação visual de pares, outros tipos/alvos ou exportação.
 [Contrato](../sdk/api.md#consulta-de-relações-salvas-no-laboratório-bd19b).
 
+**Adendo BD19b-CREATE (29/10/2026):** Criar par usa as capturas do relatório
+congelado em Séries ou do resultado selecionado. O SDK expõe somente os contratos
+dessa captura, sem completar com versões atuais. Formulário numérico com corte,
+amostra e recursos explícitos; `run_bg`, cancelamento e política de escrita
+obtida no início da operação reutilizam o mecanismo existente. O ID confirmado
+é selecionado diretamente, mesmo fora da primeira página. Troca/erro de captura
+limpa contexto e opções; callbacks antigos são descartados. Códigos categóricos
+congelados não viram medida contínua por terem declaração legada NUMBER; cálculo
+e DTO usam a mesma regra. Não reescreve artefatos, reduz mínimos automaticamente,
+ativa Expert ou concede evidência financeira. Outras famílias/alvos e contrato
+completo continuam nas fichas próprias.
+[Contrato](../sdk/api.md#seleção-congelada-para-criar-pares-bd19b-create).
+
 ### Fase G — demonstrar expansão e fechar a composição
 
 #### BD20 — provas de expansão
