@@ -3506,7 +3506,9 @@ e Windows físico não são inferidos pelo launcher offline ou pela CI.
 
 ## Continuidade do roadmap — BD13-SIGNATURES, 29/10/2026
 
-Branch `codex/assinaturas-retornos`, sobre `780da63`/PR221. A substituição somente
+Fonte `79aba69a6b422bcd057b730e68bcbcd85c05e1c8` publicada no
+[PR222](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/222), branch
+`codex/assinaturas-retornos`, sobre `780da63`/PR221. A substituição somente
 do leitor de fonte, acrescentando um calculador alheio, reproduzia três versões
 novas dos retornos. A família qualificada agora identifica o próprio contrato e
 componentes AST de fórmula, estados, orquestração e revisões. Código compartilhado
