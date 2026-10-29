@@ -3715,6 +3715,11 @@ a rodada final do código refinado terminou349 aprovados/3 PostgreSQL pendentes.
 Timeout60s mantido, uma thread numérica e uma suíte pesada por vez.
 Os três casos PostgreSQL têm schema próprio e entram na CI existente; não se
 declara esse backend qualificado pelo host. Doctor offline16OK/2avisos/0falhas.
+Na primeira CI, os três pararam no setup: a fixture compartilhada mudava o
+offset numérico sem declará-lo, e a captura recusou corretamente o fuso
+desconhecido. A fixture desta frente agora passa UTC0 no construtor e declara
+a fonte sintética, como a bancada SQLite. Nenhuma guarda temporal foi relaxada;
+o aceite PostgreSQL depende da nova execução dos três cenários.
 
 Launcher oficial com base sintética:10 fatos em dois níveis, correção tardia
 acrescenta2 sem modificar o prefixo; SDK=CLI. SIGINT dentro da transação desfaz

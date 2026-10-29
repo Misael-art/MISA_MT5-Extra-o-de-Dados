@@ -1,12 +1,23 @@
 """Mesmo produtor congelado em schema PostgreSQL próprio; sem servidor, aceite pendente."""
 import pytest
 
-from tests.test_analytics_profiles_pg import PG_URL, pg
+from mt5_extracao.analytics import datasets
+from tests.postgres_helpers import isolated_postgresql_database
+from tests.test_analytics_profiles_pg import PG_URL
 from tests.test_feature_compositions import A, freeze, put, source
 from tests.test_frozen_observation_context import frozen
 from tests.test_composite_materialization import materialize, output_facts, simultaneous_writers
 
 pytestmark = pytest.mark.skipif(not PG_URL, reason="defina MT5X_TEST_PG_URL para testar com PostgreSQL")
+
+
+@pytest.fixture
+def pg():
+    pytest.importorskip("psycopg")
+    with isolated_postgresql_database(PG_URL, broker_utc_offset=0) as manager:
+        datasets.declare_source(manager, {"provider": "qa", "server": "Synthetic"})
+        assert manager.time_context()["offset_state"] == "declared"
+        yield manager
 
 
 @pytest.fixture
