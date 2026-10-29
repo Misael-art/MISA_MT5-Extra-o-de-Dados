@@ -3437,7 +3437,9 @@ HTTP, novo store/scheduler ou aceite nativo/financeiro/Windows físico.
 
 ## Continuidade do roadmap — BD12-SNAPSHOT, 29/10/2026
 
-Branch `codex/compostos-congelados`, sobre `18fc08d`/PR219. O grafo existente
+Fonte `a9535f163266d62b40f55283b0a887a6d9115859` publicada no
+[PR220](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/220), branch
+`codex/compostos-congelados`, sobre `18fc08d`/PR219. O grafo existente
 validava dependências, mas não oferecia uma composição tipada de dois níveis
 para fatos congelados. `define-composite` registra receitas imutáveis;
 `compose`/`sdk.query_composite_context` avaliam difference→absolute usando o
