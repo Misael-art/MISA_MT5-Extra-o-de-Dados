@@ -4093,6 +4093,9 @@ Exportação reutiliza o publicador atômico do pacote Manual; arquivo final só
 aparece completo, sem overwrite. A mudança no arquivo datasets altera a
 assinatura de novas consultas; os artefatos antigos conservam ID/recibo/bytes.
 As versões/fórmulas dos produtores brutos permanecem preservadas.
+Revisão final tornou explícito UTF-8 na leitura/mutação dos pacotes e configs
+dos testes, evitando depender do locale Windows;21 casos de transferência
+reaprovados em103,93s, sobrepostos às rodadas abaixo. O runtime já usava bytes UTF-8.
 
 Rodadas dirigidas:36 aprovados/1 PostgreSQL pendente;7 finais de repetição/
 política/desacoplamento (sobrepostos);34 snapshots aprovados;29 store/consultas

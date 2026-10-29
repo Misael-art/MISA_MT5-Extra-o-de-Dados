@@ -36,9 +36,9 @@ def counts(db):
 
 
 def rewrite(path, change):
-    payload = json.loads(path.read_text());change(payload)
+    payload = json.loads(path.read_text(encoding='utf-8'));change(payload)
     payload['package_sha256'] = datasets._hash(datasets._json(relation_transfer._content(payload)))
-    path.write_text(datasets._json(payload))
+    path.write_text(datasets._json(payload),encoding='utf-8')
 
 
 def test_exact_receipt_and_scope_survive_roundtrip_without_live_data(reference, destination, tmp_path, monkeypatch):
@@ -105,7 +105,7 @@ def test_invalid_package_is_refused_before_any_rows_or_schema(reference, destina
         elif mutation == 'extra':p['snapshots']['a'*64]=deepcopy(next(iter(p['snapshots'].values())))
     rewrite(path, change)
     if mutation == 'digest':
-        p=json.loads(path.read_text());p['package_sha256']='0'*64;path.write_text(json.dumps(p))
+        p=json.loads(path.read_text(encoding='utf-8'));p['package_sha256']='0'*64;path.write_text(json.dumps(p),encoding='utf-8')
     before=counts(destination);tables=inspect(destination.engine).get_table_names()
     with pytest.raises(ValueError):sdk.import_feature_relation(destination, path)
     assert counts(destination)==before and inspect(destination.engine).get_table_names()==tables
@@ -172,7 +172,7 @@ def test_semantic_repeat_preserves_first_destination_timestamp_and_budget(refere
 
 
 def test_existing_corrupt_block_is_not_overwritten(reference, destination, tmp_path):
-    _,path,_=package(reference,tmp_path);p=json.loads(path.read_text())
+    _,path,_=package(reference,tmp_path);p=json.loads(path.read_text(encoding='utf-8'))
     digest=next(iter(next(iter(p['snapshots'].values()))['blocks']))
     with destination.engine.begin() as c:c.execute(text('INSERT INTO _dataset_blocks VALUES (:id,:value)'),dict(id=digest,value='corrupt'))
     before=counts(destination)
@@ -211,7 +211,7 @@ def test_bounded_reader_and_duplicate_json_keys(reference,destination,tmp_path,m
     monkeypatch.setattr(relation_transfer,'MAX_PACKAGE_BYTES',10)
     with pytest.raises(ValueError,match='excede'):sdk.import_feature_relation(destination,path)
     monkeypatch.undo()
-    path.write_text('{"format":"a","format":"b"}')
+    path.write_text('{"format":"a","format":"b"}',encoding='utf-8')
     with pytest.raises(ValueError,match='duplicada'):sdk.import_feature_relation(destination,path)
     assert not any(counts(destination).values())
 
@@ -220,7 +220,7 @@ def test_cli_export_import_lookup_share_sdk_contract_and_write_policy(reference,
     from mt5_extracao import cli
     receipt=publish(reference);path=tmp_path/'cli.json'
     def config(db,name,quota=0):
-        f=tmp_path/name;f.write_text(f'[DATABASE]\ntype=sqlite\npath={db.db_path}\n[APP]\nbroker_utc_offset=0\n[RESOURCES]\nblock_db_gb={quota}\n');return str(f)
+        f=tmp_path/name;f.write_text(f'[DATABASE]\ntype=sqlite\npath={db.db_path}\n[APP]\nbroker_utc_offset=0\n[RESOURCES]\nblock_db_gb={quota}\n',encoding='utf-8');return str(f)
     source_config=config(reference[0],'source.ini');dest=config(destination,'destination.ini',.000000001)
     monkeypatch.chdir(tmp_path)
     def run(cfg,args):
