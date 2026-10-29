@@ -3503,3 +3503,43 @@ Próximo recorte BD13: assinatura por algoritmo/contrato/dependências, antes
 de BD14. Outras famílias conservam prefixos; sem motor/cache/store novo,
 negociação ou uso da base do proprietário como fixture. Aceites nativo/financeiro
 e Windows físico não são inferidos pelo launcher offline ou pela CI.
+
+## Continuidade do roadmap — BD13-SIGNATURES, 29/10/2026
+
+Branch `codex/assinaturas-retornos`, sobre `780da63`/PR221. A substituição somente
+do leitor de fonte, acrescentando um calculador alheio, reproduzia três versões
+novas dos retornos. A família qualificada agora identifica o próprio contrato e
+componentes AST de fórmula, estados, orquestração e revisões. Código compartilhado
+assinado permanece conservador; Python/pandas/NumPy entram no hash. Comentários,
+finais de linha e caminhos não entram. Nome/apresentação continuam fora da
+assinatura matemática, sem relaxar a imutabilidade das definições. Componente
+ausente falha explicitamente. Outras49 definições mantêm módulos completos.
+
+Retorno usa uma única fórmula no registry, isolada do calculador agregado; fórmula
+e denominador leem o mesmo horizonte declarado. Materializador/checkpoint guardam
+hashes por ID e digest da seleção. Contexto padrão e rótulos de trades escolhem
+versões por ID; versão nova ausente não é preenchida com legado. CLI/SDK continuam
+lendo as versões antigas explicitamente. Não há store, executor ou cache novo.
+Os componentes são lidos uma vez por seleção, sem reter cache entre chamadas.
+
+Baseline115 reutilizado do HEAD anterior, rodada inicial29 e novas regressões12;
+rodadas intermediárias sobrepostas e final195 distintos aprovados, sem somar.
+Cobertura: mudança de contrato A cria somente A, B conserva todos os fatos e
+hashes, legado continua legível, calculador alheio mantém checkpoint SKIPPED sem
+reler barras, mudança na fórmula compartilhada/recibos versiona os descendentes,
+componentes ausentes, normalização e alias de caminho. Famílias e snapshots/
+compostos/SDK anteriores incluídos. Doctor offline16OK/2avisos/0falhas.
+
+Launcher oficial reutiliza a bancada própria existente:630 fatos legados
+preservados,240 fatos nas três versões novas, valores iguais aos anteriores,
+SDK por versão igual à CLI e repetição SKIPPED. Não migra a base do proprietário.
+Bancada de identidade, cinco chamadas aquecidas para três IDs: global anterior
+0,67ms, componentes atuais em seleção48ms (47–128ms); custo adicional explícito
+para a identidade seletiva, sem promessa de aceleração do cálculo. O protótipo
+que repetia leitura por ID custava226ms e foi corrigido antes da publicação.
+Recibos privados `state/qa-tmp/return-signatures/`; [API e migração](sdk/api.md#assinaturas-por-indicador-bd13-signatures).
+
+Próximo recorte: identidade dos operadores/receitas congeladas BD13 antes de
+materializar a primeira cadeia BD14. O contexto composto ainda usa módulos
+inteiros; demais famílias e execução seletiva permanecem abertas. Sem negociação,
+fixture privada do proprietário ou aceite nativo/financeiro/Windows físico.

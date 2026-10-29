@@ -291,6 +291,13 @@ existente: retornos usam fingerprints dos extremos, com recibos da janela ordina
 para não antecipar remoção/restauração de barras. [Contrato, baseline e limites](BD08A_RETORNO.md#bd13-returns--revisões-por-dependência-29102026).
 Não encerra a assinatura global, a execução seletiva nem as demais famílias.
 
+**Adendo BD13-SIGNATURES (29/10/2026):** os três retornos qualificados usam
+contrato por ID e componentes AST de fórmula/revisão/orquestração, com identidades
+próprias por horizonte. Contexto padrão escolhe a versão por ID; fatos antigos
+continuam legíveis explicitamente, sem fallback. [Contrato e limites](BD06_CONTRATO.md#ordem-das-assinaturas-resposta-ao-r05).
+Outras49 definições e funções compartilhadas conservam granularidade mais ampla;
+não há novo motor/store/cache ou conclusão de BD13 integral.
+
 #### BD14 — materialização e recuperação
 
 **Vinculação:** T19.3/T13.3b/T20.24/25. **Depende de:** BD04/12/13.

@@ -262,9 +262,6 @@ def _legacy_calculated_series(bars):
         "momentum.macd_signal_12_26_9": macd_frame["signal"],
         "momentum.macd_histogram_12_26_9": macd_hist,
         "momentum.macd_histogram_atr_14": macd_hist / atr14.where(atr14 > 0),
-        "price.return_1": close / close.shift(1).where(close.shift(1) > 0) - 1.0,
-        "price.return_5": close / close.shift(5).where(close.shift(5) > 0) - 1.0,
-        "price.return_20": close / close.shift(20).where(close.shift(20) > 0) - 1.0,
         "trend.ema20_distance_atr14": (close - technical.ema(close, 20)) / atr14.where(atr14 > 0),
         "trend.efficiency_ratio_20": technical.efficiency_ratio(close, 20),
         "volume.real": _column(bars, "real_volume"),
@@ -276,11 +273,24 @@ def _legacy_calculated_series(bars):
     }
 
 
+def _return_series(close, horizon):
+    """Mesmo retorno do registry, isolado para identificar suas dependências reais."""
+    denominator = close.shift(horizon)
+    return close / denominator.where(denominator > 0) - 1.0
+
+
 def _calculated_series(bars, feature_ids=None):
     selected = set(_BY_ID if feature_ids is None else feature_ids)
     oscillator_ids = {ident for ident in _BY_ID if ident.startswith(("momentum.ao_", "momentum.ac_"))}
     pivot_ids = {ident for ident in _BY_ID if ident.startswith("structure.")}
-    values = _legacy_calculated_series(bars) if selected - oscillator_ids - pivot_ids else {}
+    return_ids = {ident for ident in selected if ident.startswith("price.return_")}
+    values = _legacy_calculated_series(bars) if selected - oscillator_ids - pivot_ids - return_ids else {}
+    if return_ids:
+        close = _column(bars, "close")
+        if close is None:
+            close = pd.Series(np.nan, index=bars.index, dtype=float)
+        values.update({ident: _return_series(close, _BY_ID[ident]["parameters"]["horizon_bars"])
+                       for ident in return_ids})
     if selected & oscillator_ids:
         inputs = {}
         for name in ("high", "low"):
@@ -302,7 +312,7 @@ def _bad_denominator(feature_id, position, bars, close, atr14, bb, kc):
     if feature_id in {"volatility.atr_pct_14", "price.return_1", "price.return_5", "price.return_20"}:
         denominator = close.iloc[position] if feature_id == "volatility.atr_pct_14" else None
         if feature_id.startswith("price.return_"):
-            horizon = int(feature_id.rsplit("_", 1)[1])
+            horizon = _BY_ID[feature_id]["parameters"]["horizon_bars"]
             denominator = close.iloc[position - horizon] if position >= horizon else None
         return denominator is not None and (not np.isfinite(denominator) or denominator <= 0)
     if feature_id in {"momentum.macd_histogram_atr_14", "trend.ema20_distance_atr14"}:

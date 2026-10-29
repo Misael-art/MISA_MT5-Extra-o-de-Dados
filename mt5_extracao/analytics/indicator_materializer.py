@@ -3,10 +3,12 @@
 Sem fonte nova ou fórmula paralela. Retomadas confirmam apenas o delta; a avaliação
 numérica reutiliza o prefixo exato do registry, inclusive suas sementes recursivas.
 """
+import ast
 import hashlib
 import json
 import logging
 from pathlib import Path
+import platform
 
 import numpy as np
 import pandas as pd
@@ -23,16 +25,74 @@ def _json(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
-def implementation_signature():
+def _source_components(filename, names):
+    """AST das funções selecionadas, sem comentários, finais de linha ou caminho local."""
+    tree = ast.parse(Path(filename).read_text(encoding="utf-8"))
+    functions = {node.name: node for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
+    missing = set(names) - functions.keys()
+    if missing:
+        raise ValueError("Componentes de implementação ausentes: " + ", ".join(sorted(missing)))
+    return {name: hashlib.sha256(ast.dump(functions[name], include_attributes=False).encode()).hexdigest()
+            for name in names}
+
+
+def implementation_scheme(feature_id):
+    return "return_components_v1" if feature_id.startswith("price.return_") else "legacy_modules_v1"
+
+
+def _return_components():
+    # Lista de componentes pertence ao produtor desta família, nunca aos consumidores.
+    # Mudanças na orquestração/validação compartilhada permanecem conservadoras.
+    return {
+        "registry": _source_components(indicator_registry.__file__, (
+            "_return_series", "_calculated_series", "_column", "_bad_denominator", "iter_core", "get_definition")),
+        "materializer": _source_components(__file__, (
+            "_source_components", "_return_components", "_return_signature", "_implementation_signatures",
+            "implementation_scheme", "algorithm_version", "_return_inputs",
+            "materialize", "selected_features", "_register", "_guard", "_confirm_source")),
+        "source_revisions": _source_components(producers.__file__, (
+            "_source_tokens", "_source_revision", "_json_safe", "_correction_times",
+            "_prefix_source_revisions", "_extend_source_chain")),
+    }
+
+
+def _return_signature(spec, components=None):
+    return hashlib.sha256(_json(dict(scheme=implementation_scheme(spec["feature_id"]),
+        components=_return_components() if components is None else components,
+        contract={key: value for key, value in spec.items() if key != "name"}, family=FAMILY,
+        python=platform.python_version(), pandas=pd.__version__, numpy=np.__version__)).encode()).hexdigest()
+
+
+def implementation_signature(feature_id=None, *, components=None):
     """Normaliza finais de linha; caminhos locais não entram no identificador."""
+    if feature_id is not None:
+        spec = indicator_registry.get_definition(feature_id)
+        if implementation_scheme(feature_id) == "return_components_v1":
+            return _return_signature(spec, components)
     sources = [hashlib.sha256(Path(module).read_text(encoding="utf-8").encode()).hexdigest()
                for module in (__file__, indicator_registry.__file__, indicators.__file__)]
     return hashlib.sha256(_json({"sources": sources, "pandas": pd.__version__, "numpy": np.__version__}).encode()).hexdigest()
 
 
+def _implementation_signatures(feature_ids):
+    """Uma leitura dos componentes por seleção; nada persiste entre chamadas."""
+    signatures, components, legacy = {}, None, None
+    for ident in feature_ids:
+        indicator_registry.get_definition(ident)
+        if implementation_scheme(ident) == "return_components_v1":
+            if components is None:
+                components = _return_components()
+            signatures[ident] = implementation_signature(ident, components=components)
+        else:
+            if legacy is None:
+                legacy = implementation_signature(ident)
+            signatures[ident] = legacy
+    return signatures
+
+
 def algorithm_version(feature_id, implementation=None):
     spec = indicator_registry.get_definition(feature_id)
-    return spec["algorithm_version"] + "+" + (implementation or implementation_signature())[:12]
+    return spec["algorithm_version"] + "+" + (implementation or implementation_signature(feature_id))[:12]
 
 
 def selected_features(feature_ids=None):
@@ -48,10 +108,13 @@ def selected_features(feature_ids=None):
 def _register(db, ids, implementation):
     for ident in ids:
         spec = indicator_registry.get_definition(ident)
+        signature = implementation[ident] if isinstance(implementation, dict) else implementation
+        scheme = implementation_scheme(ident) if isinstance(implementation, dict) else "legacy_modules_v1"
         contract = {name: spec[name] for name in ("family", "formula", "unit", "warmup_count", "warmup_unit",
                                                  "availability_rule", "value_type")}
-        features.register(db, ident, spec["name"], algorithm_version(ident, implementation),
-                          parameters={**spec["parameters"], "implementation_sha256": implementation},
+        features.register(db, ident, spec["name"], algorithm_version(ident, signature),
+                          parameters={**spec["parameters"], "implementation_sha256": signature,
+                                      "implementation_scheme": scheme},
                           dependencies=["bars_derived:{timeframe}"], timeframe="same_as_source",
                           source_id="bars_derived:{timeframe}:" + spec["source_id"].split(".", 1)[1], **contract)
 
@@ -140,9 +203,10 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         raise ValueError("Informe o símbolo da série derivada.")
     label = resampling.parse_target(timeframe).label
     ids = selected_features(feature_ids)
-    implementation = implementation_signature()
+    implementations = _implementation_signatures(ids)
+    implementation = hashlib.sha256(_json(implementations).encode()).hexdigest()
     config_hash = hashlib.sha256(_json({"features": ids, "implementation": implementation}).encode()).hexdigest()
-    version = algorithm_version(ids[0], implementation)
+    version = algorithm_version(ids[0], implementations[ids[0]])
     _guard(None, write_guard, cancel_check, timeout_seconds, max_memory_mb)
     prior = producer_jobs.get_checkpoint(db, symbol, label, FAMILY)
     sequence = resampling.latest_source_sequence(db, symbol, label) or 0
@@ -166,9 +230,9 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         if raw.empty:
             raise ValueError("Nenhuma barra derivada disponível. Gere a série com resample --session-aware; "
                              "valores anteriores foram preservados.")
-        _register(db, ids, implementation)
+        _register(db, ids, implementations)
         previous = {ident: feature_store.latest_values(db, symbol=symbol, timeframe=label, feature_ids=[ident],
-                                                       algorithm_version=algorithm_version(ident, implementation))
+                                                       algorithm_version=algorithm_version(ident, implementations[ident]))
                     for ident in ids}
         raw_starts = set(raw.bar_start_utc)
         if any(not set(frame.observation_time).issubset(raw_starts) for frame in previous.values()):
@@ -246,7 +310,8 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                         item = dict(item, value=None, state="SOURCE_VALUE_MISSING", reason="REAL_VOLUME_NOT_OBSERVED")
                     metadata = {"state": item["state"], "reason": item["reason"], "reconstructed": True,
                                 "registry_version": item["algorithm_version"],
-                                "implementation_sha256": implementation,
+                                "implementation_sha256": implementations[item["feature_id"]],
+                                "implementation_scheme": implementation_scheme(item["feature_id"]),
                                 "bar_end_utc": bar.bar_end_utc.isoformat(), "source_scope": "causal_prefix"}
                     if return_input is not None:
                         metadata.update(source_scope="return_endpoints_with_eligible_bar_order",
@@ -282,7 +347,7 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                                  "confirmation_time_utc": None, "known_at_utc": None}
                                 for candidate in pivot["pivot_candidates"]]
                     yield dict(symbol=symbol, timeframe=label, feature_id=item["feature_id"],
-                               algorithm_version=algorithm_version(item["feature_id"], implementation),
+                               algorithm_version=algorithm_version(item["feature_id"], implementations[item["feature_id"]]),
                                observation_time=bar.bar_start_utc, value=item["value"], available_at=available,
                                observed_at=available, source_revision=source_revision,
                                quality="VALID" if item["state"] == "AVAILABLE" else "UNAVAILABLE",
@@ -300,13 +365,14 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                                available_at=available, observed_at=available,
                                source_revision="invalidated:" + hashlib.sha256(token).hexdigest(),
                                metadata={"state": "INVALIDATED", "reason": "SOURCE_BAR_NOT_CLOSED_OR_COMPLETE",
-                                         "reconstructed": True, "implementation_sha256": implementation})
+                                         "reconstructed": True, "implementation_sha256": implementations[ident],
+                                         "implementation_scheme": implementation_scheme(ident)})
 
         def save(batch, next_record, status="RUNNING"):
             _guard(run, write_guard, cancel_check, timeout_seconds, max_memory_mb)
             state = dict(input_digest=digest, next_record=next_record, write_from=write_from,
                          bar_count=len(bars), prefix_chain=chains[-1] if chains else None,
-                         implementation_sha256=implementation)
+                         implementation_sha256=implementation, implementations=implementations)
             def hook(conn, _counts):
                 _confirm_source(conn, db, symbol, label, sequence)
                 producer_jobs.advance_checkpoint(conn, symbol=symbol, timeframe=label, family=FAMILY,
