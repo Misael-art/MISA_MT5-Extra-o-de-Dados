@@ -622,7 +622,9 @@
      "receipt": "docs/dados/recibos/recibos_20261023b.json"
     },
     "../sdk/api.md#consulta-de-relações-salvas-no-laboratório-bd19b",
-    "../continuidade.md#continuidade-do-roadmap--bd19b-relations-29102026"
+    "../continuidade.md#continuidade-do-roadmap--bd19b-relations-29102026",
+    "../sdk/api.md#seleção-congelada-para-criar-pares-bd19b-create",
+    "../continuidade.md#continuidade-do-roadmap--bd19b-create-29102026"
    ]
   },
   {

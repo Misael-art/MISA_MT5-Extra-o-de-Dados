@@ -473,7 +473,7 @@ def _pair_signature():
             "_snapshot_observations", "_context_rows", "_state", "_value", "_ids", "_version", "records")),
         store=source(feature_store.__file__, ("asof_join", "_utc_timestamp", "_canonical_json")),
         dto=source(relation_dto.__file__, ("build_pair_relation_dto", "_validate_relation", "_required_text",
-            "_finite_optional_number", "_utc_timestamp", "_json_ready", "pair_analysis_id")),
+            "_finite_optional_number", "_utc_timestamp", "_json_ready", "pair_analysis_id", "pair_contract_reason")),
         snapshot=indicator_materializer._object_source_component(datasets.Snapshot),
         snapshot_reader=hashlib.sha256(Path(datasets.__file__).read_bytes()).hexdigest(),
         eligibility=hashlib.sha256(Path(data_eligibility.__file__).read_bytes()).hexdigest(),
@@ -693,8 +693,7 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
     prefix_quality = data_eligibility.evaluate(data_eligibility.assess(bars, bar_minutes=timeframes.parse(manifest["timeframe"]).minutes or 1440), ("ohlcv",))
     blocked = None
     if not check["eligible"] or not prefix_quality["eligible"]:blocked = "INELIGIBLE_DATA"
-    elif any(side["value_type"] != "NUMBER" for side in descriptors):blocked = "UNSUPPORTED_VALUE_TYPE"
-    elif any(not side["unit"] for side in descriptors):blocked = "UNDECLARED_UNIT"
+    elif (contract_reason := relation_dto.pair_contract_reason(descriptors)) is not None:blocked = contract_reason
     elif pairs[0] == pairs[1] and lag_bars == 0:blocked = "SAME_SERIES"
     lineage = {snapshot.manifest_id}
     lineage_images = {snapshot.manifest_id: snapshot}

@@ -130,10 +130,16 @@ def persist_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0,
         max_memory_mb=max_memory_mb, cancel_check=cancel_check, write_guard=write_guard)
 
 
-def query_saved_relations(db, *, symbol=None, timeframe=None, page_size=50, cursor=None):
+def query_saved_relations(db, *, symbol=None, timeframe=None, analysis_id=None, page_size=50, cursor=None):
     """Índice paginado dos resultados persistidos, sem recalcular."""
     from mt5_extracao.analytics import query_service
-    return query_service.relations(db, symbol=symbol, timeframe=timeframe, page_size=page_size, cursor=cursor)
+    return query_service.relations(db, symbol=symbol, timeframe=timeframe, analysis_id=analysis_id, page_size=page_size, cursor=cursor)
+
+
+def inspect_feature_snapshot(db, manifest_id):
+    """Lista os contratos congelados e sua compatibilidade numérica, sem cálculos ou escrita."""
+    from mt5_extracao.analytics import query_service
+    return query_service.feature_snapshot(db, manifest_id)
 
 
 def load_feature_relation(db, analysis_id):
@@ -154,7 +160,7 @@ __all__ = [
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
     "recover_producer_jobs",
-    "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations",
+    "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida

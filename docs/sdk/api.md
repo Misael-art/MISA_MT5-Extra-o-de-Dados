@@ -660,7 +660,7 @@ registro de tentativas, aceitação OOS/financeira, novos jobs ou adaptação da
 
 ### Consulta de relações salvas no Laboratório (BD19b)
 
-`sdk.query_saved_relations(db, *, symbol=None, timeframe=None, page_size=50,
+`sdk.query_saved_relations(db, *, symbol=None, timeframe=None, analysis_id=None, page_size=50,
 cursor=None)` consulta o índice de DTO2 persistidos pelo serviço BD15b. Retorna
 envelope `status`, `items`, `matched`, `selection`, `base`, `page` e `errors`.
 CLI: `analytics features relation-list --symbol QA --tf M1 --page-size 25`;
@@ -684,3 +684,51 @@ somente leitura de resultados persistidos, conserva o selo sintético e não
 recalcula nem promove evidência, lucro, causalidade ou autorização operacional.
 Criação visual de novos pares, demais alvos e exportação completa permanecem
 nas frentes próprias.
+
+
+### Seleção congelada para criar pares (BD19b-CREATE)
+
+`sdk.inspect_feature_snapshot(db, manifest_id)` retorna os contratos exatos da
+captura, seu recorte e compatibilidade numérica declarada. Não busca definições
+ou versões atuais e não calcula indicadores. Falta de captura/integridade é
+erro explícito; captura sem versões armazenadas orienta nova seleção em Séries.
+Compatibilidade do contrato não certifica disponibilidade, ancestralidade,
+calendário ou amostra; essas verificações continuam no cálculo BD15a.
+
+Códigos categóricos não entram como medida contínua mesmo quando um contrato
+legado informa `value_type=NUMBER`: o tipo de saída congelado também é conferido.
+O cálculo e o DTO compartilham a regra. A mudança altera a assinatura dos pares;
+artefatos numéricos válidos anteriores continuam legíveis, sem reescrita. Se um
+artefato antigo contradizer o próprio tipo categórico congelado, sua apresentação
+como coeficiente é recusada e os bytes são preservados para diagnóstico.
+
+`query_saved_relations(..., analysis_id=ID)` e `relation-list --analysis-id ID`
+localizam exatamente um resultado sem exigir percorrer todas as páginas. O
+identificador integra o recorte do cursor; cursores da versão anterior precisam
+ser reiniciados. `relation --persist` passa o guarda de escrita da configuração
+selecionada, como os outros produtores. Nenhum limite é alterado para liberar
+uma gravação.
+
+
+No Laboratório → Relações e aderência → Matriz → Relações salvas, **Criar par**
+abre o formulário. Capturas vêm da análise em Séries e confluências ou do
+resultado salvo selecionado. Sem captura, **Selecionar em Séries** leva à
+seleção existente: escolha versões armazenadas e congele a análise.
+O formulário mostra o período/relógio da origem e os contratos de cada entrada;
+método, defasagem e corte com fuso são explícitos. **Amostra e recursos** contém
+mínimos de pares/sessões, réplicas, semente, bloco, família de testes e orçamento.
+Códigos categóricos/booleanos e unidades ausentes não habilitam o cálculo
+contínuo. A seleção e os metadados de uma captura anterior são limpos ao trocar,
+e respostas atrasadas não restauram o contexto antigo.
+
+**Calcular e salvar** usa `persist_feature_relation` em `run_bg`, com a política
+de escrita obtida no início da operação e sinal de cancelamento. As entradas
+ficam desabilitadas durante o trabalho, a barra compartilhada indica espera e
+**Cancelar cálculo** solicita interrupção. Fechar/Escape durante o trabalho
+solicita cancelamento e espera a confirmação. Se a transação já confirmou,
+o resultado salvo é preservado e exibido; cancelamento não desfaz commits.
+Sucesso seleciona exatamente o ID retornado, mesmo quando ele ficaria fora da
+primeira página do acervo. **Consultar** retira esse foco e volta ao recorte
+completo. Repetição conserva o recibo original; não gera duplicatas.
+O sinalizador de referência sintética é explícito e conservado no artefato.
+Nada ativa Expert, ordens, utilidade financeira ou qualificação da fonte.
