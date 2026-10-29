@@ -242,7 +242,9 @@ _LAB_EMPTY = {
 }
 _REASON_LABELS = {"UNCONFIRMED_EVENT": "provisório", "SAME_SERIES": "mesma série", "NO_OVERLAP": "sem sobreposição",
                   "INSUFFICIENT_PAIRS": "pares < 3", "CONSTANT_SERIES": "constante",
-                  "WARMUP_EXCEEDS_WINDOW": "warmup", "INELIGIBLE_DATA": "inelegível", "NO_VALUES": "sem valores"}
+                  "WARMUP_EXCEEDS_WINDOW": "warmup", "INELIGIBLE_DATA": "inelegível", "NO_VALUES": "sem valores",
+                  "NON_NUMERIC_STORED_FEATURE": "tipo não numérico", "UNVERIFIED_STORED_EVENT": "evento não qualificado",
+                  "NO_FROZEN_VALUES": "sem fatos disponíveis", "NO_DIRECTION_RULE": "sem regra direcional"}
 _VERDICT_TEXT = {"HOLDOUT_CONSISTENT": "consistente fora da amostra", "CI_INCLUDES_ZERO": "IC inclui zero",
                  "HOLDOUT_SIGN_FLIP": "inverte fora", "HOLDOUT_WEAK": "fraca fora", "FIT_WEAK": "fraca no ajuste",
                  "WITHIN_NULL": "dentro do acaso", "NO_GAIN_OVER_PERSISTENCE": "não supera persistência",
@@ -278,6 +280,7 @@ def _lab_cell(cell, matrix):
     verdict = _VERDICT_TEXT.get(cell["verdict"], "sem corte temporal (descritiva)" if cell["lag_bars"] == 0 else "—")
     ci = cell["holdout_ci_95"]
     direction = cell["direction_correlation"]
+    stored = matrix.get("alignment") == "nominal_grid_with_frozen_declared_fact_availability"
     return {
         "label": label, "strength": strength, "n": f"n={cell['n_pairs']}",
         "subtitle": f"n={cell['n_pairs']}",
@@ -289,12 +292,15 @@ def _lab_cell(cell, matrix):
                           is not None else "pares de origem não informados") + event_sample_text(cell.get("event_sample")),
         "segment": "descritiva" if cell["lag_bars"] == 0 else f"candidata preditiva +{cell['lag_bars']} · {verdict}",
         "period": f"{matrix['source'][0]['first_open_utc']} a {matrix['source'][0]['last_close_utc']}",
-        "available_at": f"corte {matrix['as_of']} · fechamento nominal, recebimento histórico não comprovado",
+        "available_at": f"corte {matrix['as_of']} · " + (
+            "grade nominal; fatos congelados usam disponibilidade declarada em cada decisão; preços/fórmulas locais descritivos"
+            if stored else "fechamento nominal, recebimento histórico não comprovado"),
         "label_maturity": "não se aplica",
         "population": f"fechamentos {matrix['grid_timeframe']} com valor nos dois canais",
         "cost_status": "não se aplica (relação entre indicadores)", "adjustment": "sem otimização; defasagens fixas",
         "reason": cell["reason_text"] or (f"Correlação de direção {direction:+.2f}." if direction is not None else
-                                          "Efeito exploratório; não é rentabilidade nem preset aprovado."),
+            "Regra de direção não declarada; nenhuma intenção inferida." if cell.get("direction_reason") == "NO_DIRECTION_RULE"
+            else "Efeito exploratório; não é rentabilidade nem preset aprovado."),
         "lab_scope": {"feed": _source_feed(matrix),
                   "asset": matrix["symbol"], "expert": "sem Expert", "timeframe": matrix["grid_timeframe"],
                   "direction": "não se aplica", "method": "Spearman", "period": matrix["as_of"]},
@@ -1050,6 +1056,9 @@ class RelationsPanel:
 
     def _apply_outcomes(self, outcomes):
         self._outcomes = outcomes
+        self.distribution_notice.message.configure(text=outcomes.get("direction_diagnosis") or
+            "Retorno bruto do preço depois da intenção do canal. Custos não aplicados; expectativa líquida "
+            "de trades não é calculada. Ganho, perda e empate somam o denominador.")
         self.distribution_population_label.configure(text=f"População: {outcomes['population']}")
         self._draw_distribution()
 

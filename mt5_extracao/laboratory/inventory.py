@@ -88,7 +88,7 @@ def entries(db=None):
 
 def _matches(row, query):
     haystack = " ".join(str(part) for part in (row["feature_id"], row["name"], row["family"], row["unit"],
-                        json.dumps(row["parameters"], ensure_ascii=False, sort_keys=True))).casefold()
+                        row["algorithm_version"], json.dumps(row["parameters"], ensure_ascii=False, sort_keys=True))).casefold()
     return all(term in haystack for term in query.casefold().split())
 
 

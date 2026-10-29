@@ -60,7 +60,7 @@ def test_source_refresh_button_prevents_duplicate_jobs_and_recovers_after_error(
     assert "temporariamente indisponível" in series.status.cget("text")
     series.reload_button.invoke()
     assert len(jobs) == 2
-    jobs[1][1]([], None)
+    jobs[1][1](dict(sources=[], catalog=series.catalog), None)
     assert not series._loading_sources and series.reload_button.instate(["!disabled"])
     assert "Base sem séries" in series.status.cget("text")
 
@@ -601,6 +601,6 @@ def test_stale_source_reload_does_not_replace_the_inventory(panel, monkeypatch):
     assert len(done) == 2
     done[0]([dict(symbol="OLD", timeframe="M1", rows=1, synthetic=False)], None)
     assert series._inventory == []
-    done[1]([dict(symbol="EURUSD", timeframe="M5", rows=4, synthetic=False)], None)
+    done[1](dict(sources=[dict(symbol="EURUSD", timeframe="M5", rows=4, synthetic=False)], catalog=series.catalog), None)
     assert series.symbol.get() == "EURUSD"
     assert [item["timeframe"] for item in series._inventory] == ["M5"]

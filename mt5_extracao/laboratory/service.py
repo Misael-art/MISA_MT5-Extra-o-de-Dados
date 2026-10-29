@@ -9,12 +9,13 @@ from dataclasses import asdict
 import hashlib
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 import numpy as np
 import pandas as pd
 
 from mt5_extracao import timeframes
-from mt5_extracao.analytics import data_eligibility, datasets, indicator_registry
+from mt5_extracao.analytics import data_eligibility, datasets, indicator_context, indicator_registry, query_service
 from mt5_extracao.chart_study import catalog as study_catalog
 from mt5_extracao.composition import base_composition
 from mt5_extracao.composition.registry import STRATEGY_PARAMETERS
@@ -52,12 +53,14 @@ def formula_source_hash():
     # Identifica o código de cálculo desta exploração, sem criar uma identidade de execução/cache.
     root = Path(__file__).resolve().parents[1]
     paths = [*sorted((root / "strategies").glob("*.py")),
-             root / "analytics" / "indicator_registry.py", root / "chart_study" / "catalog.py", Path(__file__)]
+             *(root / "analytics" / name for name in ("indicator_registry.py", "indicator_context.py",
+                                                     "feature_store.py", "datasets.py")),
+             root / "chart_study" / "catalog.py", Path(__file__)]
     return _hash({path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})
 
 
-def catalog():
-    """Descobre todas as fórmulas/estratégias realmente registradas, sem banco/Tk/MT5."""
+def catalog(db=None):
+    """Descobre fórmulas/estratégias e, com base explícita, versões persistidas; sem Tk/MT5."""
     features = indicator_registry.definitions()
     strategies = []
     for key, cls in REGISTRY.items():
@@ -66,7 +69,9 @@ def catalog():
             parameters={name: asdict(spec) for name, spec in STRATEGY_PARAMETERS[key].items()},
             warmup=instance.min_bars, required_columns=list(instance.required_columns),
             basis="candidate_signals_not_trades"))
-    return dict(laboratory_version=VERSION, indicators=features, strategies=strategies,
+    stored = [entry for entry in query_service.definition_catalog(db) if entry["registered_definition"] is not None] \
+        if db is not None else []
+    return dict(laboratory_version=VERSION, indicators=features, stored_indicators=stored, strategies=strategies,
                 limits=dict(channels=MAX_CHANNELS, bars_per_timeframe=MAX_BARS, timeframes=MAX_TIMEFRAMES),
                 views=["timeframes", "indicator_relations", "timeline", "lags", "coverage", "price_indicator"],
                 limitations=list(LIMITATIONS))
@@ -253,6 +258,89 @@ def _align(channel, grid):
     if "event_at" in joined:
         joined.loc[~valid, "event_at"] = pd.NaT
     return joined
+
+
+def _stored_channels(snapshot, pairs, grid, cutoff):
+    """Usa disponibilidade/validade em cada decisão da grade, somente nos frames congelados."""
+    manifest = snapshot.manifest
+    definitions = {(entry["feature_id"], entry["algorithm_version"]):entry
+                   for entry in snapshot.feature_definitions}
+    missing = [f"{ident}@{version}" for ident, version in pairs if (ident, version) not in definitions]
+    if missing:
+        raise ValueError(f"{manifest['timeframe']}: versões não congeladas: {', '.join(missing)}. Capture a seleção.")
+    history = snapshot.feature_history
+    first, last = snapshot.feature_window_utc
+    positions = np.flatnonzero((grid >= first) & (grid <= last))
+    decisions = pd.DataFrame(dict(decision_time=grid[positions]))
+    check = data_eligibility.evaluate(snapshot.quality, ("ohlcv",))
+    tf = timeframes.parse(manifest["timeframe"])
+    bars = snapshot.bars
+    _, ends = _bounds(bars, tf, manifest["time"]["broker_utc_offset_hours"])
+    prefix = data_eligibility.evaluate(data_eligibility.assess(bars.loc[ends <= cutoff], bar_minutes=tf.minutes), ("ohlcv",))
+    if not prefix["eligible"]:
+        check = dict(prefix, reasons=check["reasons"] + prefix["reasons"])
+    groups = {}
+    for ident, version in pairs:
+        groups.setdefault(version, []).append(ident)
+    built = []
+    batch = max(1, query_service.MAX_SELECTION_ROWS // max(1, len(decisions)))
+    for version, ids in groups.items():
+        for start in range(0, len(ids), batch):
+            chosen = ids[start:start + batch]
+            context = indicator_context.from_snapshot(snapshot, decisions, feature_ids=chosen, algorithm_version=version)
+            for ident in chosen:
+                spec = definitions[ident, version]
+                prefix = ident + "::"
+                frame = pd.DataFrame(dict(at=grid, value=np.nan, direction=np.nan,
+                    source_end=pd.Series(pd.NaT, index=range(len(grid)), dtype="datetime64[ns, UTC]")))
+                observed = pd.Series(pd.NaT, index=frame.index, dtype="datetime64[ns, UTC]")
+                raw = [None] * len(grid)
+                states = ["OUTSIDE_SNAPSHOT_WINDOW"] * len(grid)
+                numeric = spec["output_kind"] == "number"
+                if len(context):
+                    values = pd.to_numeric(context[prefix + "value"], errors="coerce")
+                    if numeric and check["eligible"]:
+                        frame.loc[positions, "value"] = values.to_numpy()
+                    frame.loc[positions, "source_end"] = pd.to_datetime(context[prefix + "available_at_utc"], utc=True).array
+                    observed.loc[positions] = pd.to_datetime(context[prefix + "observation_time"], utc=True).array
+                    for at, value, state in zip(positions, context[prefix + "value"].tolist(), context[prefix + "state"]):
+                        raw[at], states[at] = value if state == "AVAILABLE" else None, state
+                source = history.loc[(history.feature_id == ident) & (history.algorithm_version == version)]
+                used = context.loc[context[prefix + "state"] == "AVAILABLE", prefix + "observation_time"]
+                diagnosis = None
+                if not check["eligible"]:
+                    diagnosis = dict(code="INELIGIBLE_DATA", message="A grade de preços não atende à qualidade exigida: "
+                        + "; ".join(check["reasons"]), action="Revise a qualidade das barras desta seleção.")
+                elif not numeric:
+                    diagnosis = dict(code="NON_NUMERIC_STORED_FEATURE", message="Saída categórica/booleana ou tipo não declarado; "
+                        "não usada como número em correlações.", action="Consulte os valores no contexto do snapshot; não converta categorias em sinais por inferência.")
+                elif spec.get("family") == "structure" or ident.startswith("structure."):
+                    diagnosis = dict(code="UNVERIFIED_STORED_EVENT", message="Identidade e confirmação dos eventos do pivô "
+                        "não foram qualificadas neste adaptador.", action="Use a saída local confirmada ou qualifique os metadados de eventos; estes valores ficam fora das relações.")
+                elif not frame.value.notna().any():
+                    diagnosis = dict(code="NO_FROZEN_VALUES", message="Nenhum valor numérico congelado disponível nas decisões "
+                        "deste recorte.", action="Confira presença, validade e disponibilidade no inventário; materialize ou capture outra janela.")
+                limits = list(check["limitations"]) + ["Fatos/contratos congelados; disponibilidade declarada pelo produtor.",
+                    "Regra de direção não declarada: concordância, intenções e candidatos não são inferidos."]
+                if spec["unit"] is None:
+                    limits.append("Unidade não declarada pelo produtor.")
+                name = "Nome não verificável" if spec["name_status"] == "UNVERIFIED_LEGACY_NAME" else spec["name"]
+                channel = dict(id=f"{manifest['timeframe']}:stored:{quote(ident, safe='')}@{quote(version, safe='')}",
+                    feature=ident, name=f"{name} · versão {version} · armazenado", timeframe=manifest["timeframe"],
+                    parameters=spec["parameters"], unit=spec["unit"], rule="stored", legend="Valor congelado na versão "
+                    + version + "; disponibilidade aplicada em cada decisão; sem regra de compra/venda.",
+                    algorithm_version=version, values=frame.value, direction=frame.direction, source_end=frame.source_end,
+                    source_start=observed, eligibility=dict(check, limitations=limits), states=dict(Counter(states)),
+                    warmup=spec["warmup_count"], events=None, diagnosis=diagnosis, source_kind="stored",
+                    temporal_basis="frozen_declared_available_at", direction_rule=None,
+                    direction_diagnosis="Regra de direção não declarada nesta versão; nenhuma intenção foi inferida.",
+                    source_rows=int(source.observation_time.nunique()), source_available=int(used.nunique()),
+                    frozen_revision_count=len(source), stored_available=int(sum(state == "AVAILABLE" for state in states)),
+                    raw_values=raw, observation_times=[value.isoformat() if pd.notna(value) else None for value in observed],
+                    snapshot_manifest_id=snapshot.manifest_id, output_kind=spec["output_kind"],
+                    stored_definition=spec)
+                built.append((channel, frame))
+    return built
 
 
 def diagnose(channel, *, source_rows, source_available, available):
@@ -445,12 +533,13 @@ def _resolve_strategies(strategy_key, strategy_params, strategies, symbol, timef
 
 
 def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strategy_params=None,
-            strategies=None, as_of):
+            strategies=None, as_of, stored_features=()):
     """Mesmo relatório para SDK/CLI/Tk; não escreve base nem inicia backtests."""
     snapshots = list(snapshots)
     if not 1 <= len(snapshots) <= MAX_TIMEFRAMES:
         raise ValueError("Informe de 1 a 8 snapshots canônicos.")
     selected = list(feature_ids)
+    stored = datasets._feature_selection(stored_features)
     if len(set(selected)) != len(selected):
         raise ValueError("Indicadores duplicados; selecione cada definição uma vez.")
     for ident in selected:
@@ -460,9 +549,9 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
     if strategies is not None and len(strategies) == 0:
         strategies = None
     n_strategies = len(strategies) if strategies is not None else bool(strategy_key)
-    if not selected and not n_strategies:
+    if not selected and not stored and not n_strategies:
         raise ValueError("Escolha indicadores ou uma estratégia.")
-    if (len(selected) + n_strategies) * len(snapshots) > MAX_CHANNELS:
+    if (len(selected) + len(stored) + n_strategies) * len(snapshots) > MAX_CHANNELS:
         raise ValueError(f"Seleção excede {MAX_CHANNELS} canais; separe o estudo em recortes explícitos.")
     manifests = [item.manifest for item in snapshots]
     scopes = {(m["symbol"], m["source"]["namespace"], m["source"]["provider"], m["source"]["server"],
@@ -481,11 +570,20 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         populations.append(population)
     grid = populations[0]["nominal_closes"]
     aligned = [_align(channel, grid) for channel in channels]
+    if stored:
+        for snapshot in snapshots:
+            for channel, frame in _stored_channels(snapshot, stored, grid, cutoff):
+                channels.append(channel)
+                aligned.append(frame)
     unconfirmed = [bool(channel["events"] and not channel["events"]["usable"]) for channel in channels]
     pairs = [dict(left=left["id"], right=right["id"],
                   **_pair(aligned[i], aligned[j], lag, unconfirmed[i] or unconfirmed[j]))
              for i, left in enumerate(channels) for j, right in enumerate(channels)
              for lag in ((0,) if i == j else (0, *PREDICTIVE_LAGS) if j > i else PREDICTIVE_LAGS)]
+    without_rule = {channel["id"] for channel in channels if channel.get("source_kind") == "stored"}
+    for pair in pairs:
+        if pair["left"] in without_rule or pair["right"] in without_rule:
+            pair.update(reason="NO_DIRECTION_RULE", state="UNAVAILABLE")
     prices = [[float(value) if pd.notna(value) else None for value in row]
               for row in populations[0]["prices"].itertuples(index=False, name=None)]
     for population in populations:
@@ -496,7 +594,8 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         summary = {key: value for key, value in channel.items() if key not in
                    {"values", "direction", "source_start", "source_end", "event_at"}}
         summary.update(available=int(frame.value.notna().sum()), total=len(frame),
-            source_rows=len(channel["values"]), source_available=int(channel["values"].notna().sum()),
+            source_rows=channel.get("source_rows", len(channel["values"])),
+            source_available=channel.get("source_available", int(channel["values"].notna().sum())),
             candidate_counts=dict(long=int(channel["values"].eq(1).sum()), short=int(channel["values"].eq(-1).sum()))
                 if channel["rule"] == "candidate" else None,
             coverage=float(frame.value.notna().mean()),
@@ -505,12 +604,14 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
             source_ends=[value.isoformat() if pd.notna(value) else None for value in frame.source_end])
         if "event_at" in frame:
             summary["event_confirmation_ends"] = [value.isoformat() if pd.notna(value) else None for value in frame.event_at]
-        summary["diagnosis"] = diagnose(channel, source_rows=summary["source_rows"],
+        summary["diagnosis"] = channel.get("diagnosis") or diagnose(channel, source_rows=summary["source_rows"],
             source_available=summary["source_available"], available=summary["available"])
         output_channels.append(summary)
     selection = dict(manifests=[item.manifest_id for item in snapshots], feature_ids=selected,
         strategy=dict(key=resolved[0].key, params=resolved[0].params) if resolved and not listed else None,
         as_of=cutoff.isoformat())
+    if stored:
+        selection["stored_features"] = [list(pair) for pair in stored]
     if listed:
         selection["strategies"] = [dict(key=item.key, params=item.params, role="intention") for item in resolved]
         selection["comparison"] = dict(
@@ -528,10 +629,12 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         formula_source_sha256=source_hash, price_columns=["open", "high", "low", "close"], prices=prices,
         selection=selection, symbol=manifests[0]["symbol"], grid_timeframe=populations[0]["timeframe"],
         times=[stamp.isoformat() for stamp in grid], channels=output_channels, pairs=pairs,
-        populations=populations, alignment="nominal_closed_bar_backward_join_expiry_one_source_period",
+        populations=populations, alignment=("nominal_grid_with_frozen_declared_fact_availability" if stored else
+                                            "nominal_closed_bar_backward_join_expiry_one_source_period"),
         qualification=dict(exploratory=True, historical_availability_proven=False,
                            independent_observations=False, operational_acceptance=False),
-        limitations=list(LIMITATIONS))
+        limitations=list(LIMITATIONS) + (["Canais persistidos usam fatos/contratos congelados e disponibilidade declarada "
+            "em cada decisão. Fórmulas locais e preços continuam descritivos; nenhuma direção é inferida dos fatos."] if stored else []))
 
 
 _REPORT_KEYS = ("analysis_id", "selection", "symbol", "grid_timeframe", "times", "channels", "pairs", "populations",
@@ -561,6 +664,10 @@ MATRIX_REASONS = {
     "NO_OVERLAP": "Sem fechamentos comuns com valor nos dois canais (warmup, lacuna ou TF sem sobreposição).",
     "INSUFFICIENT_PAIRS": "Menos de 3 pares alinhados; nenhum efeito é estimado.",
     "CONSTANT_SERIES": "Um dos lados não varia nos pares alinhados; correlação indefinida (não é zero).",
+    "NON_NUMERIC_STORED_FEATURE": "Saída categórica/booleana ou tipo não declarado; não convertida em número.",
+    "UNVERIFIED_STORED_EVENT": "Identidade/confirmação dos eventos congelados ainda não qualificada; fora das relações.",
+    "NO_FROZEN_VALUES": "Nenhum fato numérico congelado disponível nas decisões deste recorte.",
+    "NO_DIRECTION_RULE": "Regra de direção não declarada; não há intenção ou concordância inferida.",
 }
 
 
@@ -576,8 +683,7 @@ def relation_matrix(report, *, lag=0):
     pairs = {(p["left"], p["right"], p["lag_bars"]): p for p in report["pairs"]}
     values = {c["id"]: pd.Series([np.nan if v is None else v for v in c["values"]], dtype=float) for c in channels}
     event_frames = {c["id"]: _report_events(c, len(values[c["id"]])) for c in channels}
-    blocked = {c["id"]: ("UNCONFIRMED_EVENT" if (c.get("events") or {}).get("usable") is False
-                         else (c.get("diagnosis") or {}).get("code")) for c in channels}
+    blocked = {c["id"]: _channel_block(c) for c in channels}
     cells = []
     for left in channels:
         row = []
@@ -587,7 +693,7 @@ def relation_matrix(report, *, lag=0):
             x, y = values[a].shift(lag), values[b]
             valid = x.notna() & y.notna()
             reason = ("UNCONFIRMED_EVENT" if "UNCONFIRMED_EVENT" in (blocked[a], blocked[b])
-                      else "SAME_SERIES" if a == b and lag else None)
+                      else "SAME_SERIES" if a == b and lag else blocked[a] or blocked[b])
             if reason is None:
                 # Canal vazio herda o diagnóstico (warmup, inelegível…), distinto de falta de sobreposição.
                 reason = (blocked[a] or blocked[b] or "NO_OVERLAP" if not valid.any()
@@ -595,10 +701,13 @@ def relation_matrix(report, *, lag=0):
                           else "CONSTANT_SERIES" if x[valid].nunique() < 2 or y[valid].nunique() < 2 else None)
             effect = None if reason else float(np.clip(x[valid].corr(y[valid], method="spearman"), -1, 1))
             oos = (pair or {}).get("out_of_sample") or {}
+            source_pairs = pd.DataFrame(dict(left=pd.Series(left["source_ends"]).shift(lag)[valid],
+                                             right=pd.Series(right["source_ends"])[valid]))
             row.append(dict(left=a, right=b, lag_bars=lag, effect=effect, n_pairs=int(valid.sum()),
-                unique_source_pairs=(pair or {}).get("unique_source_pairs"),
+                unique_source_pairs=int(source_pairs.drop_duplicates().shape[0]),
                 event_sample=_event_sample(event_frames[a], event_frames[b], lag, valid),
                 direction_correlation=None if reason else (pair or {}).get("correlation"),
+                direction_reason=(pair or {}).get("reason"),
                 relation="DESCRIPTIVE" if lag == 0 else "PREDICTIVE_CANDIDATE",
                 verdict=oos.get("verdict"), holdout_ci_95=oos.get("holdout_ci_95"),
                 state="UNAVAILABLE" if reason else "EXPLORATORY", reason=reason,
@@ -607,6 +716,7 @@ def relation_matrix(report, *, lag=0):
         cells.append(row)
     return dict(analysis_id=report["analysis_id"], symbol=report["symbol"], grid_timeframe=report["grid_timeframe"],
         as_of=report["selection"]["as_of"], lag_bars=lag, method="spearman_values_on_nominal_grid",
+        alignment=report.get("alignment"),
         source=[dict(manifest_id=p["manifest_id"], timeframe=p["timeframe"], source=p["source"],
                      first_open_utc=p["first_open_utc"], last_close_utc=p["last_close_utc"]) for p in report["populations"]],
         formula_source_sha256=report["formula_source_sha256"],
@@ -615,7 +725,8 @@ def relation_matrix(report, *, lag=0):
                        coverage=c["coverage"], available=c["available"], total=c["total"],
                        blocked=blocked[c["id"]], events=c.get("events")) for c in channels],
         cells=cells, qualification=report["qualification"],
-        limitations=["Correlação de valores no fechamento nominal; não comprova disponibilidade histórica nem lucro.",
+        limitations=["Correlação de valores na grade nominal; fatos armazenados respeitam disponibilidade declarada "
+                     "por decisão. Não certifica disponibilidade histórica de preços/fórmulas locais nem lucro.",
                      "O alvo de retorno do preço é target_matrix, horizonte fixo, sobre estes mesmos preços; não é PnL nem o produtor T18.6."])
 
 
@@ -697,6 +808,7 @@ def target_matrix(report, *, horizon=1):
     return dict(analysis_id=report["analysis_id"], symbol=report["symbol"],
         grid_timeframe=report["grid_timeframe"], as_of=report["selection"]["as_of"], lag_bars=horizon,
         method="spearman_value_vs_forward_close_return", target=target_id,
+        alignment=report.get("alignment"),
         formula_source_sha256=report["formula_source_sha256"],
         channels=[dict(id=c["id"], name=c["name"], timeframe=c["timeframe"]) for c in report["channels"]],
         source=[dict(first_open_utc=report["times"][0], last_close_utc=report["times"][-1])],
@@ -768,7 +880,8 @@ def direction_outcomes(report, channel_id, *, horizon=1):
     return dict(channel_id=channel_id, horizon_bars=horizon, directions=rows,
         population=f"{report['symbol']} {report['grid_timeframe']} · retorno bruto em {horizon} barras",
         cost_status="custos não aplicados; expectativa líquida de trades não é calculada",
-        unit="contagem de fechamentos; ganho = retorno > 0, perda = retorno < 0, empate = retorno 0")
+        unit="contagem de fechamentos; ganho = retorno > 0, perda = retorno < 0, empate = retorno 0",
+        direction_diagnosis=channel.get("direction_diagnosis"))
 
 
 def holdout_comparison(report):
