@@ -3672,3 +3672,76 @@ concorrência nos mecanismos existentes. Interrupção abrupta/SIGKILL e reconci
 automática de runs órfãos permanecem pendentes. Este recorte não encerra BD14,
 demais famílias nem Windows físico/MT5/financeiro; somente SIGINT em QA Linux
 e exceções controladas foram exercitados.
+
+## Continuidade do roadmap — BD14-MATERIALIZE, 29/10/2026
+
+Fonte `db994203e414c8f41fc877f56f8229425c3c8037` na branch
+[`codex/materializacao-compostos`](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/tree/codex/materializacao-compostos),
+sobre `8da3ed0`/PR225. A base não tinha
+produtor/CLI para persistir receitas congeladas; o launcher rejeitou o comando
+com saída2. A cadeia difference→absolute agora usa o mesmo grafo, contexto,
+store e journal, com corte UTC explícito. Gera somente eventos conhecidos por
+observação; não transforma pontos de uma grade em revisões, não antecipa
+vencimentos futuros e não completa entradas com a base live. [API e limites](sdk/api.md#materialização-da-cadeia-congelada-bd14-materialize).
+
+Receita1 permanece imutável. Saídas têm família `materialized_composite`, versões
+com hashes de cálculo/projeção e proveniência. Podem ser congeladas como folhas
+tipadas de outra receita. Repetição/retomada reconhecem o histórico sem voltar
+ao primeiro recebimento; preservam hashes e manifesto do prefixo. Antes de
+acrescentar fatos, a entrada precisa conter os pais já usados pelas origens
+anteriores. Namespace estrangeiro, retrocesso, corrupção ou captura antiga
+tentando publicar sobre uma entrada mais recente geram erro explícito.
+
+Identidade/geração são conferidas sob exclusão de escrita antes dos valores e
+novamente antes de confirmar checkpoint. A primeira rodada concorrente mostrou
+que conferir apenas depois chegava tarde: o store recusava o replay antigo
+antes de identificar a geração stale. O guarda anterior corrige o diagnóstico
+e mantém um vencedor/um conflito, sem duplicatas. Configuração por run é
+aditiva no journal (`configuration_json`); recibos antigos continuam sem
+configuração conhecida. Não há novo executor, armazenamento ou scheduler.
+
+Também reproduzida divergência anterior no desempate: no mesmo instante de
+disponibilidade, contexto escolhia9 e SQL canônico1. As-of, janela e eventos
+agora usam recebimento e depois revisão; vencimento de revisão substituída não
+vira evento efetivo. A identidade do cálculo reflete essa mudança. Fatos pais
+e versões dos três retornos qualificados não são migrados por esta frente.
+
+Baseline230 reutilizado; refatoração83, causalidade55 e integração158 aprovados
+(rodadas sobrepostas). Ampliada inicial343 aprovados/2 pulados/1 falha concorrente;
+após o guarda,349 aprovados/2 PostgreSQL pendentes por falta de servidor
+dedicado. A revisão PostgreSQL acrescentou proteção da identidade até o commit,
+um terceiro caso de troca concorrente de namespace e67 testes focados aprovados;
+a rodada final do código refinado terminou349 aprovados/3 PostgreSQL pendentes.
+Timeout60s mantido, uma thread numérica e uma suíte pesada por vez.
+Os três casos PostgreSQL têm schema próprio e entram na CI existente; não se
+declara esse backend qualificado pelo host. Doctor offline16OK/2avisos/0falhas.
+Na primeira CI, os três pararam no setup: a fixture compartilhada mudava o
+offset numérico sem declará-lo, e a captura recusou corretamente o fuso
+desconhecido. A fixture desta frente agora passa UTC0 no construtor e declara
+a fonte sintética, como a bancada SQLite. Nenhuma guarda temporal foi relaxada;
+o aceite PostgreSQL depende da nova execução dos três cenários.
+
+Launcher oficial com base sintética:10 fatos em dois níveis, correção tardia
+acrescenta2 sem modificar o prefixo; SDK=CLI. SIGINT dentro da transação desfaz
+valores/checkpoint; após commit preserva um fato e retoma até a referência
+completa. Dois processos CLI reais partindo da mesma geração: um confirma e
+outro recebe conflito, sem duplicatas/medidores residuais. Captura antiga e
+namespace estrangeiro foram recusados. Laboratório selecionou a versão
+materializada e mostrou0,13/0,37/0,87/1,37, sem antecipar a revisão500,13;
+unidade fraction, cinco revisões congeladas, nenhuma direção inferida. Barra
+de espera inspecionada, zero erros/tarefas pendentes em QA própria/Xvfb.
+
+Bancada500 observações,1.000 pais/1.000 saídas:75,11s de parede,73,75s do job,
+pico RSS147.935.232B e crescimento SQLite2.506.752B, dentro de600s/2048MB.
+As duas passagens têm custo explícito; otimização de eventos em lote continua
+necessária para escala, sem alegação de aceleração. Consulta já existente com
+500 decisões manteve o digest de valores/estados e pico Python≈4,97MB;
+medianas449→295ms sob cargas diferentes não certificam ganho de desempenho.
+Recibos próprios em `state/qa-tmp/composite-materialization/`.
+
+Próxima entrega: recuperação de morte abrupta/runs órfãos no journal existente,
+sem declarar um processo ativo como morto. Avaliação em lote, demais operadores/
+famílias e os gates nativos/financeiros/Windows físico continuam abertos.
+CI da base8da3ed0 concluiu Linux, Windows, PostgreSQL, lint e instaladores;
+a ponta nova tem seus próprios checks. Sem dados privados como fixtures,
+negociação, alteração nos pins, merge ou release.

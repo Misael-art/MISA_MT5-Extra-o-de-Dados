@@ -135,9 +135,9 @@ def _context_rows(decisions, symbol, timeframe, selected, read_history, *, windo
     return pd.concat([frame.drop(columns="_context_order"), pd.DataFrame(columns, index=frame.index)], axis=1)
 
 
-def _snapshot_scope(snapshot, history, observation_time):
+def _snapshot_scope(window, history, observation_time):
     """Janela de mercado no padrão; em observação fixa, apenas seus recibos congelados."""
-    first, last = snapshot.feature_window_utc
+    first, last = window
     if observation_time is None:
         return history, (first, last), None
     observation = feature_store._utc_timestamp(observation_time, "observation_time")
@@ -148,7 +148,7 @@ def _snapshot_scope(snapshot, history, observation_time):
         raise ValueError("Observação não consta nos fatos congelados; não é possível inventar uma revisão.")
     # A extensão cobre recibos/vencimentos declarados, não novas barras ou mercado.
     ends = [last, history.available_at_utc.max()]
-    latest = history.sort_values(["available_at_utc", "revision"]).drop_duplicates(
+    latest = history.sort_values(["available_at_utc", "observed_at_utc", "revision"]).drop_duplicates(
         ["feature_id", "algorithm_version"], keep="last")
     expiry = latest.valid_until_utc.max()
     if pd.notna(expiry):
@@ -162,7 +162,14 @@ def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=No
 
     if not isinstance(snapshot, Snapshot):
         raise ValueError("Informe um snapshot canônico carregado ou capturado.")
-    definitions = snapshot.feature_definitions
+    return _snapshot_context(decisions, manifest_id=snapshot.manifest_id, manifest=snapshot.manifest,
+        definitions=snapshot.feature_definitions, history=snapshot.feature_history, window=snapshot.feature_window_utc,
+        feature_ids=feature_ids, algorithm_version=algorithm_version, observation_time=observation_time)
+
+
+def _snapshot_context(decisions, *, manifest_id, manifest, definitions, history, window,
+                      feature_ids=None, algorithm_version=None, observation_time=None):
+    """Mesmo contexto canônico; permite reutilizar uma imagem congelada durante o job."""
     ids = _ids(feature_ids, {entry["feature_id"] for entry in definitions})
     explicit = _version(algorithm_version)
     selected = []
@@ -176,11 +183,10 @@ def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=No
             raise ValueError(f"Mais de uma versão congelada de {ident}; informe algorithm_version explicitamente.")
         entry = matches[0]
         selected.append((ident, entry["algorithm_version"], entry, True))
-    manifest = snapshot.manifest
-    identity = dict(symbol=manifest["symbol"], tf=manifest["timeframe"], snapshot_manifest_id=snapshot.manifest_id,
+    identity = dict(symbol=manifest["symbol"], tf=manifest["timeframe"], snapshot_manifest_id=manifest_id,
         base_namespace=manifest["source"]["namespace"], base_provider=manifest["source"]["provider"],
         base_server=manifest["source"]["server"])
-    history, window, observation = _snapshot_scope(snapshot, snapshot.feature_history, observation_time)
+    history, window, observation = _snapshot_scope(window, history, observation_time)
     if observation is not None:
         identity["selected_observation_time"] = observation
     if isinstance(decisions, pd.DataFrame):

@@ -340,6 +340,20 @@ Lotes já confirmados são a referência para retomada. Morte abrupta do process
 e reconciliação automática de runs órfãos, materialização de compostos e os
 demais gates BD14 continuam pendentes.
 
+**Adendo BD14-MATERIALIZE (29/10/2026):** primeira cadeia congelada persistida
+pelo store/journal/grafo existentes, com eventos por observação e corte UTC
+explícito. As receitas permanecem imutáveis; saídas ganham versões próprias,
+proveniência e validade. Duas passagens verificam o histórico/resultado antes
+de confirmar lotes e checkpoint. A repetição preserva revisões e manifesto do
+prefixo; novas entradas precisam conter os pais já usados pelas origens
+anteriores. Namespace, geração concorrente, monotonicidade, corrupção e
+interrupção não são convertidos em sucesso parcial. Configuração por run é
+aditiva no journal; não há nova fila, armazenamento ou executor.
+[API, orçamento e limites](../sdk/api.md#materialização-da-cadeia-congelada-bd14-materialize).
+O aceite é de snapshot/corte declarados, sem certificação da fonte live ou
+qualificação nativa/financeira. SIGKILL/runs órfãos e o restante de BD14
+permanecem abertos.
+
 ### Fase E — relacionamentos efetivos e contexto
 
 #### BD15 — serviço real de relações entre indicadores

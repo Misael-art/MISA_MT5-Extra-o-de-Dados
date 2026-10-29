@@ -95,11 +95,19 @@ def query_composite_context(db, manifest_id, decision_times, *, targets, observa
                                      targets=targets, observation_time=observation_time)
 
 
+def materialize_composite_snapshot(db, manifest_id, *, targets, as_of, batch_size=5000, write_guard=None, cancel_check=None,
+                                   timeout_seconds=600, max_memory_mb=2048):
+    """Grava revisões da cadeia congelada pelo store/journal existentes; não certifica fonte live."""
+    from mt5_extracao.analytics import features
+    return features.materialize_snapshot(db, manifest_id, targets=targets, as_of=as_of, batch_size=batch_size,
+        write_guard=write_guard, cancel_check=cancel_check, timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
+
+
 __all__ = [
     "API_VERSION", "CONTRACT_VERSION",
     "open_workflow",
     # consulta de dados analíticos (futura API, sem servidor)
-    "query_series", "query_catalog", "define_feature_composite", "query_composite_context",
+    "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida
