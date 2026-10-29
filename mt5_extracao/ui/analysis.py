@@ -262,7 +262,7 @@ class AnalysisPanel:
             if data_quality.blocks_price_analysis(quality):
                 return {"quality": quality, "session": session, "blocked": True}
             return {"bars": study.add_indicators(bars), "summary": study.summarize(bars),
-                    "seasonality": study.seasonality(bars),
+                    "seasonality": study.seasonality(bars, bar_minutes=minutes),
                     "quality": quality, "session": session}
 
         def done(result, error):
@@ -288,7 +288,11 @@ class AnalysisPanel:
             s = result["summary"]
             self.status.config(text=f"{symbol} · {label} · {fmt_int(s['bars'])} barras de "
                                     f"{s['start']:%d/%m/%Y} a {s['end']:%d/%m/%Y}.{note} "
-                                    "Passe o mouse sobre os números e sobre o gráfico para ver detalhes.")
+                                    f"Retornos: {s['return_pairs_used']}/{s['return_pairs_total']} pares válidos; "
+                                    f"{s['return_pairs_excluded']} excluídos (divisão indefinida). "
+                                    + ("Métricas indisponíveis: " + "; ".join(f"{name}: {reason}" for name, reason in
+                                        s["unavailable_reasons"].items()) + ". " if s["unavailable_reasons"] else "")
+                                    + "Passe o mouse sobre os números e sobre o gráfico para ver detalhes.")
 
         self.ui.run_bg(work, done)
 
@@ -532,8 +536,9 @@ class AnalysisPanel:
         self._style_axis(hour_ax, "Amplitude média por hora do dia (%): quando o ativo mais oscila")
         self._style_axis(day_ax, "Retorno médio por barra em cada dia da semana (%)")
         hours = season["hour"]
-        if hours.empty:
-            hour_ax.text(0.5, 0.5, "Barras diárias ou maiores não têm hora do dia.\nEscolha um timeframe intradiário.",
+        if hours.empty or not hours["range_pct"].notna().any():
+            hour_ax.text(0.5, 0.5, "Sem amostra por hora nesta seleção.\nBarras diárias ou maiores não têm visão horária." if hours.empty
+                         else "Amplitude indisponível: denominadores inválidos.",
                          ha="center", va="center", transform=hour_ax.transAxes, color=c["ink2"], fontsize=9)
             hour_ax.set_xticks([])
             hour_ax.set_yticks([])
@@ -544,7 +549,7 @@ class AnalysisPanel:
         for ax in (hour_ax, day_ax):
             ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: fmt_num(v, 3, "%")))
         days = season["weekday"]
-        if not days.empty:
+        if not days.empty and days["return_pct"].notna().any():
             day_ax.bar(range(len(days)), days["return_pct"], width=0.6, linewidth=0,
                        color=[c["up"] if v >= 0 else c["down"] for v in days["return_pct"]])
             day_ax.axhline(0, color=c["axis"], linewidth=0.9)
@@ -555,6 +560,13 @@ class AnalysisPanel:
                 day_ax.annotate(fmt_num(value, 4, "%"), (i, value), ha="center", color=c["ink2"], fontsize=8,
                                 xytext=(0, 4 if value >= 0 else -11), textcoords="offset points")
             day_ax.set_ylim(-span * 1.35, span * 1.35)
+        else:
+            day_ax.text(.5, .5, "Retorno indisponível: denominadores inválidos.", transform=day_ax.transAxes,
+                        ha="center", color=c["ink2"])
+        for ax, data, column in ((hour_ax, hours, "range_samples"), (day_ax, days, "return_samples")):
+            if not data.empty:
+                ax.set_xlabel(f"Amostra: {int(data[column].sum())}/{int(data.bars.sum())} barras com razão definida",
+                              color=c["ink2"], fontsize=8)
         canvas.draw_idle()
 
     def draw_returns(self):
@@ -563,7 +575,8 @@ class AnalysisPanel:
         fig, canvas = self._figure("returns", self.returns_tab)
         ax = fig.add_subplot(111)
         fig.subplots_adjust(left=0.06, right=0.98, top=0.88, bottom=0.14)
-        returns = (self.data["close"].pct_change().dropna() * 100)
+        returns = study.bar_returns(self.data["close"]).dropna() * 100
+        total = max(0, len(self.data) - 1)
         self._style_axis(ax, "Distribuição dos retornos por barra (%): com que frequência cada variação acontece")
         if len(returns) > 1:
             low, high = returns.quantile(0.005), returns.quantile(0.995)
@@ -572,9 +585,15 @@ class AnalysisPanel:
             q5, q95 = returns.quantile(0.05), returns.quantile(0.95)
             note = (f"Média {fmt_num(returns.mean(), 4, '%')}   ·   Mediana {fmt_num(returns.median(), 4, '%')}\n"
                     f"90% das barras variam entre {fmt_num(q5, 3, '%')} e {fmt_num(q95, 3, '%')}\n"
-                    f"Maior alta {fmt_num(returns.max(), 2, '%')}   ·   Maior queda {fmt_num(returns.min(), 2, '%')}")
+                    f"Máximo {fmt_num(returns.max(), 2, '%')}   ·   Mínimo {fmt_num(returns.min(), 2, '%')}\n"
+                    f"n={len(returns)}/{total} pares; excluídos {total-len(returns)} indefinidos\n"
+                    "Histograma: extremos agrupados nos quantis 0,5%–99,5%; métricas usam valores originais.")
             ax.text(0.985, 0.95, note, transform=ax.transAxes, ha="right", va="top", color=c["ink2"], fontsize=9,
                     linespacing=1.6)
             ax.set_ylabel("Barras", color=c["muted"], fontsize=8)
             ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _pos: fmt_num(v, 2, "%")))
+        else:
+            ax.text(.5, .5, f"Amostra insuficiente: {len(returns)}/{total} pares válidos; "
+                    f"{total-len(returns)} excluídos por divisão indefinida.", transform=ax.transAxes,
+                    ha="center", color=c["ink2"])
         canvas.draw_idle()

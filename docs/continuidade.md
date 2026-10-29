@@ -3183,3 +3183,28 @@ Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo"
   `--development --no-probe`: 16 OK, avisos pandas-ta e integração nativa não sondada.
 - Não fecha o LAB-07 nativo que já estava parcial, nem o aceite do proprietário. Não é Super ATR.
   O offset +3 continua local e só vale até 2026-10-24.
+
+## Auditoria do produto, qualidade e eventos · 28/10/2026 (PR 212)
+
+O [repasse do Laboratório](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md#auditoria-executada-e-correções-de-qualidadeeventos--28102026)
+concentra o diagnóstico, percursos, mapa de problemas e medições. O incremento
+f6f1850 corrige diagnóstico limpo com NaN, mantém snapshots v3 compatíveis e
+expõe eventos de pivô distintos de barras retidas. O complemento desta seção
+corrige denominadores zero/amostras insuficientes, qualidade na CLI, contagens
+de exclusões/sazonalidade e recargas repetidas pelo botão de fontes.
+
+Regressões finais: 124 + 12 aprovadas. Suíte ampla: 3362/59, duas falhas e
+81,34% de cobertura; a asserção de legenda passou após recoleta no estado
+final. Timeout da bateria também reproduzido com os caminhos anteriores de
+qualidade, sem alterar 60 s; código atual isolado passou em 44,91 s. Não
+anunciar CI/suíte integral verde. Doctor normal: 21 OK/1 aviso/0 falhas,
+handshake real só de leitura; não qualifica operação nem extração nativa.
+
+As quatro bases foram inspecionadas em modo somente leitura, com hashes
+preservados; M7/M9 reconciliados integralmente com oráculo M1. Fuso UTC/broker,
+calendário, barras parciais legadas e cobertura de mercado continuam pendentes
+de qualificação no pilar de Dados. Configuração/offset e pins HADOUKEN/Safety
+preservados. Continuidade privada e recibos na composição, em
+`state/qa-tmp/product-audit-20261028/`; sem publicar bancos, livro ou capturas
+privadas. O canal de desenvolvimento segue o procedimento de
+[prévia e retorno](TESTAR_DESENVOLVIMENTO.md), com SHA no recibo local.

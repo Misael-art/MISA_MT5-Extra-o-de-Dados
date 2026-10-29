@@ -306,7 +306,8 @@ class SeriesLaboratoryPanel:
         actions.pack(fill=tk.X)
         self.analyze_button = ttk.Button(actions, text="Congelar e analisar", command=self.analyze, style="Accent.TButton")
         self.analyze_button.pack(side=tk.LEFT)
-        ttk.Button(actions, text="Atualizar fontes", command=self.reload).pack(side=tk.LEFT, padx=4)
+        self.reload_button = ttk.Button(actions, text="Atualizar fontes", command=self.reload)
+        self.reload_button.pack(side=tk.LEFT, padx=4)
         self.extended = tk.BooleanVar(value=False)
         ttk.Checkbutton(actions, text="Visão ampliada", variable=self.extended,
                         command=self._layout).pack(side=tk.LEFT, padx=4)
@@ -526,11 +527,15 @@ class SeriesLaboratoryPanel:
         self._reload_request = getattr(self, "_reload_request", 0) + 1
         request = self._reload_request
         self._loading_sources = True
+        self.reload_button.configure(text="Lendo fontes…")
+        self.reload_button.state(["disabled"])
 
         def done(items, error):
             if request != self._reload_request or not self.frame.winfo_exists():
                 return
             self._loading_sources = False
+            self.reload_button.configure(text="Atualizar fontes")
+            self.reload_button.state(["!disabled"])
             if error:
                 self.status.configure(text=str(error))
                 return

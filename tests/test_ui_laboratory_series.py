@@ -45,6 +45,26 @@ def test_pivot_pair_tooltip_discloses_events_separately_from_bars(panel, snapsho
     assert "disponível no fechamento nominal" in series.channel_details.cget("text")
 
 
+def test_source_refresh_button_prevents_duplicate_jobs_and_recovers_after_error(panel, monkeypatch):
+    series = open_series(panel)
+    panel.pump(lambda: not getattr(series, "_loading_sources", True))
+    jobs = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: jobs.append((work, done)))
+    for _ in range(3):
+        series.reload_button.invoke()
+    assert len(jobs) == 1
+    assert series.reload_button.instate(["disabled"])
+    assert series.reload_button.cget("text") == "Lendo fontes…"
+    jobs[0][1](None, RuntimeError("fonte temporariamente indisponível"))
+    assert series.reload_button.instate(["!disabled"])
+    assert "temporariamente indisponível" in series.status.cget("text")
+    series.reload_button.invoke()
+    assert len(jobs) == 2
+    jobs[1][1]([], None)
+    assert not series._loading_sources and series.reload_button.instate(["!disabled"])
+    assert "Base sem séries" in series.status.cget("text")
+
+
 def test_all_views_render_frozen_report_and_small_screen_can_scroll_wide(panel, snapshots):
     series = open_series(panel)
     report = analysis(snapshots, strategy_key="ema_atr")

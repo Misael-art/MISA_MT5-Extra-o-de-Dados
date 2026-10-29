@@ -151,6 +151,25 @@ def test_empty_selection_does_not_keep_quality_from_previous_series(ui, monkeypa
     assert panel.data is None and panel.result is None
 
 
+@pytest.mark.parametrize("closes", [[0, 1, 2, 4], [0, 0, 0]])
+def test_analysis_zero_denominator_renders_unavailable_and_sample_counts(ui, monkeypatch, closes):
+    from tests.test_study import bars
+    frame = bars(closes, freq="min")
+    monkeypatch.setattr(ui.app.db_manager, "load_ohlcv", lambda *a, **k: frame)
+    ui.open_analysis("WIN$N", "1 minuto")
+    panel = ui.analysis_panel
+    end = time.monotonic() + 5
+    while (panel.data is None or len(panel.data) != len(frame)) and time.monotonic() < end:
+        ui.pump(.05)
+    assert panel.result is not None and panel.result["summary"]["return_pct"] is None
+    assert panel.tile_values["return_pct"].cget("text") == "—"
+    assert "primeiro fechamento zero" in panel.status.cget("text")
+    assert "pares válidos" in panel.status.cget("text")
+    assert set(panel._canvases) == {"chart", "season", "returns"}
+    texts = " ".join(text.get_text() for text in panel._canvases["returns"].figure.axes[0].texts)
+    assert "excluídos" in texts
+
+
 def test_offline_mode_keeps_terminal_actions_disabled_and_blocks_direct_calls(ui, monkeypatch):
     from tkinter import ttk
     from mt5_extracao import ui_manager

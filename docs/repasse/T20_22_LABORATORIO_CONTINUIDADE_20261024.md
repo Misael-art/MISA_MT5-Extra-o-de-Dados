@@ -210,3 +210,60 @@ mesma máscara de aquecimento). Oráculos independentes por janelas/racionais
 reconciliaram 421 eventos de fractais e cinco de ZigZag nessa massa. Não é prova
 de UTC nem de equivalência da semente inicial à dos indicadores nativos: RMA
 legada usa semente EWM, distinção já reconhecida em `test_indicators.py`.
+
+**Recarga de fontes:** três cliques consecutivos em Atualizar fontes disparavam
+três consultas simultâneas, reproduzido no componente Tk com worker controlado.
+O botão agora indica Lendo fontes e fica desabilitado até a conclusão da consulta
+mais recente; sucesso ou erro libera a retentativa. Três cliques passam a uma
+consulta. O controle de revisões de respostas programáticas obsoletas permanece,
+sem outro executor/cache. A regressão exercita cliques, falha e retentativa.
+
+**Denominadores e amostra na Análise:** a massa sintética `[0, 1, 2, 4]`
+produzia retorno de período `0%`, volatilidade NaN e amplitude infinita. Agora
+retorno com base zero e métricas que exigem todas as razões do período ficam
+indisponíveis, sem inventar zero ou retirar barras da origem. `bar_returns`
+centraliza as razões finitas usadas no gráfico e no resumo. A distribuição
+expõe pares válidos/excluídos; sazonalidade distingue barras totais de razões
+definidas, e o histograma declara o agrupamento visual dos extremos nos quantis
+0,5%–99,5%. Estatísticas textuais continuam nos valores originais, sem esse
+agrupamento. Série plana positiva conserva retorno/volatilidade zero; uma barra
+não vira estimativa de volatilidade zero. Regressões puras e Tk incluem série
+só de zeros e não substituem o preço bruto nem o registry de indicadores.
+A CLI `analyze` usa o mesmo checker e recusa preços/cronologia inválidos antes
+de calcular, com erro e qualidade estruturados no JSON. Fonte válida com preço
+zero continua consultável: métricas indefinidas são `null`, com motivos e
+contagens, em vez de falha genérica ou resultado zero. `quality --details`
+passa a mostrar exemplos das verificações adicionais sem perder relatórios antigos.
+
+**Fechamento da verificação desta rodada.** Baseline dirigida: 91 aprovados.
+Estado final: 124 regressões de qualidade, compatibilidade, cálculos, CLI e
+Séries aprovadas; mais 12 da janela principal, incluindo vazio, denominador
+zero, tema e redimensionamento, aprovadas. A execução ampla registrou
+3.362 aprovados, 59 pulados, 2 falhas e cobertura 81,34% (gate mínimo 60%).
+Não é uma suíte integral verde. Uma falha era a expectativa de legenda
+carregada antes da atualização durante a execução longa; o arquivo atual foi
+recoletado e passou na rodada de 124, sem remover sua asserção de eventos.
+
+A outra foi `test_real_python_backtests_are_recorded`, timeout original de
+60 s na bateria. O isolamento do código atual, com a mesma instrumentação de
+cobertura e as quatro execuções, passou em 44,91 s. Repondo **em memória** os
+caminhos anteriores de checker/`assess` de 5e8acf7, o mesmo caso também atingiu
+o timeout (60,98 s). Runner, backtest, datasets e store não têm diff contra
+essa base. Nenhum timeout, job ou asserção foi afrouxado. Essa comparação não
+prova ganho de desempenho; preserva a instabilidade existente no gate amplo.
+
+Doctor nativo pelo launcher oficial: 21 OK, um aviso opcional, zero falhas;
+handshake RPyC `mt5x-bridge/2` somente leitura, módulo MT5 5.0.6231. Leitura de
+versão/configuração não é teste de extração, login, Tester ou estratégia.
+Ponte/terminal preexistentes foram preservados. A CLI oficial em base QA
+isolada confirmou retorno `null`/2 de 3 pares válidos e, em outra entrada,
+falha com qualidade estruturada e sem publicar resumo para preço ausente.
+
+A reauditoria final manteve os hashes das quatro bases antes/depois da leitura,
+e o banco recuperado coincide com o manifesto original do backup. Pesquisa:
+106.981 barras em tabela sem mapeamento explícito; QA recuperado: 8.316 barras
+em três TFs. Nos 3.605.060 ticks recuperados não foram encontradas datas
+inválidas, cotações invertidas, bid/ask inválidos ou divergência entre `time`
+e `time_msc` acima de 1 ms. Identidade de fonte/recebimento continua desconhecida
+onde não foi declarada; ausência de journal não é contagem de conflitos zero.
+Todos os insumos/detalhes e as capturas ficam no recibo local indicado acima.
