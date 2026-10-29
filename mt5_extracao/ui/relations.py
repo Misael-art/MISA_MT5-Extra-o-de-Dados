@@ -456,7 +456,8 @@ class RelationsPanel:
         self.synthetic_notice = Notice(
             self.frame,
             "Inventário: registry e base. Matriz, alvo, linha do tempo, retornos e candidatos saem da análise "
-            "congelada em Séries, pelo mesmo serviço do CLI. Sem análise, nenhum número de exemplo é exibido. "
+            "congelada em Séries, pelo mesmo serviço do CLI. Relações salvas recupera resultados persistidos da base. "
+            "Sem análise, nenhum número de exemplo é exibido. "
             "Retorno do preço não é lucro, trade nem autorização.",
             kind="warning", theme=self.theme,
         )
@@ -484,6 +485,12 @@ class RelationsPanel:
             self._page_scrolls[name] = page
             builders[name](page.content)
         self._style_timeline_toolbar()
+        self._saved_context_packs = [(widget, widget.pack_info(), anchor) for widget, anchor in (
+            (self.state_legend, self.notebook), (self.scope_filter_bar, self.notebook),
+            (self.scope_note, self.notebook), (self.matrix_intro, self.matrix_notebook),
+            (self.correlation_legend, self.matrix_notebook))]
+        self._analysis_notice = self.synthetic_notice.message.cget("text")
+        self.notebook.bind("<<NotebookTabChanged>>", self._sync_saved_context, add="+")
 
     def _configure_styles(self):
         c = self.theme.colors
@@ -570,8 +577,9 @@ class RelationsPanel:
         self.advanced.body.columnconfigure(1, weight=1)
         self.advanced.body.columnconfigure(2, weight=1)
         scope_note = ttk.Label(self.frame,
-                               text="O recorte mostra a análise congelada. Estes campos não filtram nem recalculam.",
+                               text="Recorte da análise em Séries; estes campos não filtram nem recalculam. Relações salvas exibe seu próprio recorte.",
                                style="Relations.Fixture.TLabel")
+        self.scope_note = scope_note
         _fit_label_to_parent(scope_note, self.frame)
         scope_note.pack(anchor="w", fill=tk.X, pady=(SPACING["2xs"], 0))
 
@@ -696,8 +704,9 @@ class RelationsPanel:
 
     def _build_matrix(self, parent):
         intro = ttk.Label(parent,
-                          text="Correlação Spearman: escala divergente fixa −1…+1, zero no centro. Cor e sinal mostram associação; não mostram lucro, utilidade ou aprovação.",
+                          text="Coeficientes de −1 a +1, zero no centro. As matrizes da análise usam Spearman; relações salvas informam o método original. Associação não mostra lucro, utilidade ou aprovação.",
                           style="Muted.TLabel", justify=tk.LEFT)
+        self.matrix_intro = intro
         _fit_label_to_parent(intro, parent)
         intro.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         self.correlation_legend = ttk.Frame(parent, style="Surface.TFrame")
@@ -755,6 +764,195 @@ class RelationsPanel:
         self._matrices.extend((self.indicator_grid, self.target_grid))
         self._set_detail("matrix-indicators", "Sem análise", _LAB_EMPTY)
         self._set_detail("matrix-targets", "Sem análise", _LAB_EMPTY)
+        self.saved_frame = ttk.Frame(inner, padding=SPACING["xs"], style="Surface.TFrame")
+        inner.add(self.saved_frame, text="Relações salvas")
+        self._build_saved_relations(self.saved_frame)
+        def saved_tab_changed(_event):
+            self._sync_saved_context()
+            if inner.select() == str(self.saved_frame) and not self._saved_loaded and not self._saved_loading:
+                self.load_saved_relations()
+        inner.bind("<<NotebookTabChanged>>", saved_tab_changed, add="+")
+
+    def _sync_saved_context(self, _event=None):
+        if not hasattr(self, "_saved_context_packs"):
+            return
+        active = (self.notebook.select() == str(self.pages["Matriz"])
+                  and self.matrix_notebook.select() == str(self.saved_frame))
+        if active == getattr(self, "_saved_scope_active", None):
+            return
+        self._saved_scope_active = active
+        for widget, options, anchor in self._saved_context_packs:
+            if active:
+                widget.pack_forget()
+            elif not widget.winfo_manager():
+                widget.pack(before=anchor, **{k:v for k,v in options.items() if k not in ("in", "before", "after")})
+        self.synthetic_notice.message.configure(text=(
+            "Resultados exploratórios salvos na base. Selecione um par para conferir amostra e procedência; "
+            "associação não comprova ganho." if active else self._analysis_notice))
+
+
+    @staticmethod
+    def _saved_number(value):
+        return "Indisponível" if value is None else format(value, "+.4f").replace(".", ",")
+
+    def _build_saved_relations(self, parent):
+        self._saved_request = self._saved_selection_request = 0
+        self._saved_loaded = self._saved_loading = False
+        self._saved_cursors, self._saved_rows = [None], {}
+        self._saved_next_cursor = None
+        controls = ttk.Frame(parent, style="Surface.TFrame")
+        controls.pack(fill=tk.X)
+        self.saved_symbol, self.saved_timeframe = tk.StringVar(), tk.StringVar()
+        for title, variable, width in (("Ativo:", self.saved_symbol, 12), ("Timeframe:", self.saved_timeframe, 6)):
+            ttk.Label(controls, text=title).pack(side=tk.LEFT)
+            entry = ttk.Entry(controls, textvariable=variable, width=width)
+            entry.pack(side=tk.LEFT, padx=SPACING["xs"])
+            entry.bind("<Return>", lambda _event: self.load_saved_relations())
+            variable.trace_add("write", self._saved_filters_changed)
+        self.saved_refresh = ttk.Button(controls, text="Consultar", command=self.load_saved_relations)
+        self.saved_refresh.pack(side=tk.LEFT)
+        self.saved_previous = ttk.Button(controls, text="◀", width=3, command=lambda: self._saved_page(-1))
+        self.saved_next = ttk.Button(controls, text="▶", width=3, command=lambda: self._saved_page(1))
+        self.saved_next.pack(side=tk.RIGHT);self.saved_previous.pack(side=tk.RIGHT)
+        self.saved_status = ttk.Label(parent, text="Consulte os resultados salvos; filtros vazios mostram todos os recortes.",
+                                      style="Muted.TLabel")
+        self.saved_status.pack(fill=tk.X, pady=SPACING["xs"])
+        _fit_label_to_parent(self.saved_status, parent)
+        summary = ContentPanel(parent, title="Resultado selecionado", padding=SPACING["xs"])
+        summary.pack(fill=tk.X)
+        self.saved_effect = ttk.Label(summary.body, text="Selecione uma relação", font=self.theme.font_value, style="Surface.TLabel")
+        self.saved_effect.pack(anchor="w")
+        self.saved_scope = ttk.Label(summary.body, text="Resultado original; sem recalcular.", style="Muted.TLabel", justify=tk.LEFT)
+        self.saved_scope.pack(fill=tk.X);_fit_label_to_parent(self.saved_scope, summary.body)
+        self.saved_sample = ttk.Label(summary.body, text="", style="Surface.TLabel", justify=tk.LEFT)
+        self.saved_sample.pack(fill=tk.X);_fit_label_to_parent(self.saved_sample, summary.body)
+        self.saved_qualification = ttk.Label(summary.body, text="Exploratório: sem causalidade ou utilidade financeira comprovadas.",
+                                              style="Muted.TLabel", justify=tk.LEFT)
+        self.saved_qualification.pack(fill=tk.X);_fit_label_to_parent(self.saved_qualification, summary.body)
+        self.saved_table = TablePanel(parent, "Resultados armazenados · origem conferida ao selecionar",
+            columns=("scope", "left", "right", "method", "lag", "effect", "pairs"),
+            widths=(100, 210, 210, 85, 65, 115, 65), anchors=("w","w","w","center","center","center","center"),
+            height=5, xscroll=True, padding=SPACING["xs"])
+        self.saved_table.pack(fill=tk.BOTH, expand=True, pady=SPACING["xs"])
+        self._set_headings(self.saved_table, dict(scope="Ativo / TF", left="Série esquerda · versão",
+            right="Série direita · versão", method="Método", lag="Defasagem", effect="Coeficiente", pairs="Pares"))
+        self.saved_table.tree.bind("<<TreeviewSelect>>", self._saved_selected, add="+")
+        detail = self._page_detail(parent, "saved-relations", visible_lines=9)
+        detail.pack(fill=tk.X)
+        self._clear_saved_relation("Selecione um resultado para conferir suas origens e detalhes.")
+        self.saved_previous.state(["disabled"]);self.saved_next.state(["disabled"])
+
+    def _clear_saved_relation(self, message):
+        self._saved_selection_request += 1
+        self._saved_selected_key = None
+        self.saved_effect.configure(text="Selecione uma relação")
+        self.saved_scope.configure(text=message);self.saved_sample.configure(text="")
+        self.saved_qualification.configure(text="Exploratório: sem causalidade ou utilidade financeira comprovadas.")
+        self._write_saved_detail(message)
+
+    def _write_saved_detail(self, message):
+        text = self._details["saved-relations"]
+        text.configure(state=tk.NORMAL);text.delete("1.0", tk.END);text.insert("1.0", message);text.configure(state=tk.DISABLED)
+
+    def _saved_filters_changed(self, *_args):
+        self._saved_request += 1
+        self._saved_rows, self._saved_cursors, self._saved_next_cursor = {}, [None], None
+        self.saved_table.tree.delete(*self.saved_table.tree.get_children())
+        self.saved_previous.state(["disabled"]);self.saved_next.state(["disabled"])
+        self._saved_loading = False
+        self.saved_refresh.state(["!disabled"])
+        self.saved_status.configure(text="Filtros alterados. Clique Consultar para carregar o novo recorte.")
+        self._clear_saved_relation("Nenhuma relação selecionada no novo recorte.")
+
+    def load_saved_relations(self, cursor=None, *, reset=True):
+        from mt5_extracao import sdk
+        self._saved_request += 1
+        request, db = self._saved_request, self.db
+        self._saved_loading = True
+        self.saved_refresh.state(["disabled"])
+        symbol, timeframe = self.saved_symbol.get().strip() or None, self.saved_timeframe.get().strip() or None
+        if reset:self._saved_cursors = [None]
+        self._saved_rows = {};self._saved_next_cursor = None
+        self.saved_table.tree.delete(*self.saved_table.tree.get_children())
+        self.saved_previous.state(["disabled"]);self.saved_next.state(["disabled"])
+        self.saved_status.configure(text="Carregando relações salvas — aguarde…")
+        self._clear_saved_relation("Aguarde a consulta do recorte selecionado.")
+        def work():
+            return sdk.query_saved_relations(db, symbol=symbol, timeframe=timeframe, page_size=25, cursor=cursor)
+        def done(result, error):
+            if request != self._saved_request or not self.saved_table.tree.winfo_exists():return
+            self._saved_loaded = True
+            self._saved_loading = False
+            self.saved_refresh.state(["!disabled"])
+            if error or result["status"] != "ok":
+                message = str(error) if error else "; ".join(item["message"] for item in result["errors"])
+                self.saved_status.configure(text="Consulta indisponível: "+message)
+                self._clear_saved_relation("Consulte novamente após corrigir a causa. "+message)
+                self._saved_cursors = [None]
+                return
+            for index, row in enumerate(result["items"]):
+                key = "saved-"+str(index);self._saved_rows[key] = row
+                self.saved_table.tree.insert("", tk.END, iid=key, values=(row["symbol"]+" / "+row["timeframe"],
+                    row["left"]["name"]+" · "+row["left"]["algorithm_version"],
+                    row["right"]["name"]+" · "+row["right"]["algorithm_version"],row["relation"]["method"],
+                    row["lag_bars"],self._saved_number(row["relation"]["effect"]),row["relation"]["n_pairs"]))
+            self._saved_next_cursor = result["page"]["next_cursor"]
+            self.saved_next.state(["!disabled"] if self._saved_next_cursor else ["disabled"])
+            self.saved_previous.state(["!disabled"] if len(self._saved_cursors)>1 else ["disabled"])
+            self.saved_status.configure(text="; ".join(result["reasons"]) if not result["items"] else
+                f"{result['matched']} relações salvas · página {len(self._saved_cursors)} · selecione uma linha para conferir as origens.")
+            if result["items"]:
+                self.saved_table.tree.selection_set("saved-0");self._saved_selected(None)
+            else:self._clear_saved_relation("Nenhuma relação corresponde ao recorte atual.")
+        self._run_bg(work, done)
+
+    def _saved_page(self, step):
+        if step > 0 and self._saved_next_cursor:self._saved_cursors.append(self._saved_next_cursor)
+        elif step < 0 and len(self._saved_cursors)>1:self._saved_cursors.pop()
+        else:return
+        self.load_saved_relations(self._saved_cursors[-1], reset=False)
+
+    def _saved_selected(self, _event):
+        from mt5_extracao import sdk
+        selection = self.saved_table.tree.selection()
+        row = self._saved_rows.get(selection[0]) if selection else None
+        if row is None:return
+        selected_key = self._saved_request, row["analysis_id"]
+        if getattr(self, "_saved_selected_key", None) == selected_key:return
+        self._clear_saved_relation("Conferindo resultado e origens — aguarde…")
+        self._saved_selected_key = selected_key
+        token, request, ident = self._saved_selection_request, self._saved_request, row["analysis_id"]
+        self.saved_effect.configure(text="Aguarde…")
+        def work():return sdk.load_feature_relation(self.db, ident)
+        def done(dto, error):
+            if token != self._saved_selection_request or request != self._saved_request or not self.saved_table.tree.winfo_exists():return
+            if error:
+                self._saved_selected_key = None
+                self.saved_effect.configure(text="Indisponível");self.saved_scope.configure(text=str(error))
+                self._write_saved_detail("Resultado não exibido: "+str(error));return
+            relation, population, scope, provenance = (dto[key] for key in ("relation","population","scope","provenance"))
+            self.saved_effect.configure(text=self._saved_number(relation["effect"])+" · "+relation["method"].title())
+            def label(side):
+                item=dto[side]
+                return f"{item['definition'].get('name') or item['feature_id']} · versão {item['algorithm_version']} [{item['unit'] or 'unidade não declarada'}]"
+            self.saved_scope.configure(text=f"{scope['symbol']} / {scope['timeframe']} · {label('left')} × {label('right')}\n"
+                f"Corte UTC {provenance['as_of_utc']} · esquerda antecede a direita em {scope['lag_bars']} períodos nominais.")
+            self.saved_sample.configure(text=f"Pares: {relation['n_pairs']} · fontes distintas: {population['n_distinct_source_pairs']} · "
+                f"sessões: {relation['n_sessions']} · excluídos: {sum(population['exclusions'].values())} de {population['n_total']}.")
+            self.saved_qualification.configure(text=("Referência sintética · " if dto['synthetic_fixture'] else "")+
+                "Exploratório; sem causalidade ou utilidade financeira comprovadas."+
+                (" Resultado insuficiente: consulte o motivo nos detalhes." if relation['effect'] is None else ""))
+            def number(value):return "não estimado" if value is None else format(value, ".6g").replace(".", ",")
+            lines=[f"ID: {ident}",f"Snapshot: {provenance['snapshot_manifest_id']}",f"Esquerda: {dto['left']['feature_id']}",
+                f"Direita: {dto['right']['feature_id']}",f"Motivo: {relation['reason'] or 'amostra numérica disponível'}",
+                "Exclusões: "+json.dumps(population['exclusions'],ensure_ascii=False),
+                f"Intervalo do efeito: {number(relation['effect_ci_low'])} a {number(relation['effect_ci_high'])}",
+                f"p bruto: {number(relation['p_raw'])}; p ajustado: {number(relation['p_adjusted'])}",
+                "Origens conferidas: "+", ".join(provenance['lineage_manifests']),
+                "Gerado em UTC: "+dto['generated_at_utc'],
+                "Contagem de fontes não é amostra independente certificada; resultado original, sem recalcular."]
+            self._write_saved_detail("\n".join(lines))
+        self._run_bg(work, done)
 
     def set_lab_report(self, report):
         """Recebe o relatório congelado de Séries; matrizes e cruzamentos saem do mesmo serviço do CLI."""

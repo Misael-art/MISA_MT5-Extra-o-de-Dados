@@ -473,6 +473,17 @@ design atual. Estados sintéticos continuam apenas no modo de demonstração/tes
 não; consultas/export/gráfico reconciliam valores, unidades e versões; cálculo
 fica fora dos widgets. Nenhuma lista fixa exige alteração por consumidor.
 
+**Adendo BD19b-RELATIONS (29/10/2026):** primeiro consumidor de DTO2 persistidos
+no Laboratório atual, em Matriz → Relações salvas. O índice paginado reutiliza
+`query_service`, SDK/CLI e cursores; payloads são lidos somente para a página,
+um por vez. Seleção confere as origens por `load_feature_relation`, sem calcular
+nos widgets. Coeficiente, versões/unidades, amostra/exclusões e selo sintético
+ficam visíveis; detalhes guardam identificadores e inferência. Respostas antigas
+não substituem filtro/seleção atuais. Usa `run_bg`/barra existentes e recolhe o
+contexto específico de Séries enquanto o par salvo tem seu próprio recorte.
+Não encerra BD18b, criação visual de pares, outros tipos/alvos ou exportação.
+[Contrato](../sdk/api.md#consulta-de-relações-salvas-no-laboratório-bd19b).
+
 ### Fase G — demonstrar expansão e fechar a composição
 
 #### BD20 — provas de expansão
