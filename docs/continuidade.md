@@ -3359,7 +3359,9 @@ físico continuam separados.
 
 ## Continuidade do roadmap — BD19a-LAB, 29/10/2026
 
-Base `fe47e5a`/PR217, branch `codex/lab-indicadores-persistidos`. Reproduzido no
+Fonte `1ef090d206d51642254ebdbff6fa1447d2585988` publicado no
+[PR218](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/218), sobre
+`fe47e5a`/PR217, branch `codex/lab-indicadores-persistidos`. Reproduzido no
 launcher: `qa.metric` registrado na base não aparecia na busca de Séries porque
 o seletor restringia o catálogo às52 fórmulas locais. A atualização de fontes
 agora também carrega versões persistidas pelo leitor canônico; busca/origem,
@@ -3394,3 +3396,6 @@ entram no Git. Próximas capacidades: completar contratos/cálculos/compostos e
 consulta BD18b antes dos consumidores completos, preservando as lacunas de
 tempo/fonte/qualidade. BD19a integral, aceite nativo/financeiro e Windows físico
 continuam abertos; pins HADOUKEN/Safety e dados do proprietário preservados.
+A prévia usa o HEAD publicado desta branch, com hashes de runtime e aceite do
+launcher registrados no recibo local de desenvolvimento; configuração, dados,
+preferências e referência aceita continuam nos destinos existentes.
