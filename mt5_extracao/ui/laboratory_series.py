@@ -70,7 +70,8 @@ def timeline_bins(channels, max_columns):
 
 VERDICTS = {"HOLDOUT_CONSISTENT": "consistente fora", "HOLDOUT_SIGN_FLIP": "inverte fora",
             "HOLDOUT_WEAK": "fraca fora", "WITHIN_NULL": "dentro do acaso", "CI_INCLUDES_ZERO": "IC inclui zero", "NO_GAIN_OVER_PERSISTENCE": "não supera persistência", "HOLDOUT_INSUFFICIENT": "amostra curta", "FIT_WEAK": "fraca no ajuste",
-            "INSUFFICIENT_PAIRS": "sem pares", "CONSTANT_SERIES": "série constante", "UNAVAILABLE": "indisponível"}
+            "INSUFFICIENT_PAIRS": "sem pares", "CONSTANT_SERIES": "série constante", "UNAVAILABLE": "indisponível",
+            "NO_DIRECTION_RULE": "sem regra de direção"}
 TOOLS = ("Navegar", "Selecionar/mover", "Linha horizontal", "Linha vertical", "Região", "Nota")
 # Orçamento explícito de renderização: até 8 subjanelas (110 px cada) rolam na página;
 # acima disso a figura fica ilegível e lenta no handheld, então o excedente é listado.
@@ -80,6 +81,13 @@ UNIT_LABELS = {"points_0_100": "Oscilador 0–100", "fraction": "Fração do pre
                "price_units": "Unidades de preço", "ratio": "Razão", "candidate_-1_0_1": "Intenção −1/0/+1"}
 NOTICE_TEXT = ("Reconstrução exploratória por fechamento nominal · sem prova de "
                "disponibilidade histórica · correlação não é acerto nem resultado de trades.")
+STORED_NOTICE_TEXT = ("Exploração na grade de fechamentos · canais armazenados usam fatos/versões congelados "
+    "e disponibilidade declarada em cada decisão. Preços e fórmulas locais continuam descritivos. "
+    "Correlação não é acerto, lucro nem regra de compra/venda.")
+
+
+def stored_choice_key(ident, version):
+    return "stored:" + json.dumps([ident, version], ensure_ascii=False, separators=(",", ":"))
 
 
 def comparison_arguments(strategy_key, params, extra_keys):
@@ -369,21 +377,33 @@ class SeriesLaboratoryPanel:
             ttk.Entry(cell, textvariable=variable, width=22).pack(fill=tk.X)
         ttk.Label(strategy, text="Janela vazia = toda a série (máx. 20 mil barras/TF).",
                   style="Muted.TLabel", wraplength=330).pack(anchor="w")
-        ttk.Label(features, text=f"Indicadores do inventário ({len(self.catalog['indicators'])} calculáveis) · "
-                  "seleção múltipla").pack(anchor="w")
+        ttk.Label(features, text="Indicadores do inventário · seleção múltipla").pack(anchor="w")
         self.feature_query = tk.StringVar()
         search = ttk.Entry(features, textvariable=self.feature_query)
         search.pack(fill=tk.X, pady=(2, 2))
         Tooltip(search, "Buscar por nome, id, família, unidade ou parâmetro; a seleção é mantida ao filtrar.")
+        origin = ttk.Frame(features)
+        origin.pack(fill=tk.X)
+        self.feature_origin = tk.StringVar(value="Todas as origens")
+        origin_box = ttk.Combobox(origin, textvariable=self.feature_origin, state="readonly", width=22,
+            values=("Todas as origens", "Cálculo local", "Armazenados"))
+        origin_box.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        origin_box.bind("<<ComboboxSelected>>", self._filter_features)
+        self.clear_features_button = ttk.Button(origin, text="Limpar seleção", command=self._clear_features)
+        self.clear_features_button.pack(side=tk.RIGHT)
         self.feature_hint = ttk.Label(features, text="", style="Muted.TLabel", wraplength=330)
         self.feature_hint.pack(anchor="w")
         feature_frame = ttk.Frame(features)
         feature_frame.pack(fill=tk.BOTH, expand=True)
         self.feature_list = tk.Listbox(feature_frame, selectmode=tk.MULTIPLE, exportselection=False, height=7)
-        self.feature_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.feature_list.grid(row=0, column=0, sticky="nsew")
         scrollbar = ttk.Scrollbar(feature_frame, command=self.feature_list.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.feature_list.configure(yscrollcommand=scrollbar.set)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        horizontal = ttk.Scrollbar(feature_frame, orient=tk.HORIZONTAL, command=self.feature_list.xview)
+        horizontal.grid(row=1, column=0, sticky="ew")
+        feature_frame.columnconfigure(0, weight=1)
+        feature_frame.rowconfigure(0, weight=1)
+        self.feature_list.configure(yscrollcommand=scrollbar.set, xscrollcommand=horizontal.set)
         self._chosen_features = {item["feature_id"] for item in self.catalog["indicators"]
                                  if item["feature_id"] in service.DEFAULT_FEATURES}
         self._filter_features()
@@ -434,23 +454,34 @@ class SeriesLaboratoryPanel:
 
     def _filter_features(self, *_):
         from mt5_extracao.laboratory import inventory
-        found = inventory.search(query=self.feature_query.get(), page_size=inventory.MAX_PAGE_SIZE)
-        calculable = {item["feature_id"] for item in self.catalog["indicators"]}
-        self._visible_features = [row["feature_id"] for row in found["items"] if row["feature_id"] in calculable]
-        names = {row["feature_id"]: row for row in found["items"]}
+        choices = [(row["feature_id"], row, False) for row in self.catalog["indicators"]]
+        choices += [(stored_choice_key(row["feature_id"], row["algorithm_version"]), row, True)
+                    for row in self.catalog.get("stored_indicators", [])]
+        self._stored_choices = {key:(row["feature_id"], row["algorithm_version"]) for key, row, stored in choices if stored}
+        origin = self.feature_origin.get()
+        found = [(key, row, stored) for key, row, stored in choices if inventory._matches(row, self.feature_query.get())
+                 and (origin == "Todas as origens" or stored == (origin == "Armazenados"))]
+        self._visible_features = [key for key, row, stored in found]
         self.feature_list.delete(0, tk.END)
-        for index, ident in enumerate(self._visible_features):
-            row = names[ident]
-            self.feature_list.insert(tk.END, f"{row['name']} · {row['family']}")
-            if ident in self._chosen_features:
+        for index, (key, row, stored) in enumerate(found):
+            name = "Nome não verificável" if stored and row.get("name_status") == "UNVERIFIED_LEGACY_NAME" else row["name"]
+            label = (f"{name} · {row['feature_id']} · versão {row['algorithm_version']} · {row['unit'] or 'unidade não declarada'} · armazenado"
+                     if stored else f"{name} · {row['family']} · cálculo local")
+            self.feature_list.insert(tk.END, label)
+            if key in self._chosen_features:
                 self.feature_list.selection_set(index)
-        self.feature_hint.configure(text=found["reason"] or
-            f"{len(self._visible_features)} de {len(calculable)} · {len(self._chosen_features)} selecionados")
+        self.feature_hint.configure(text=("Nenhum indicador corresponde à busca/origem. " if not found else "") +
+            f"{len(found)} de {len(choices)} opções · {len(self._chosen_features)} selecionados")
+
+    def _clear_features(self):
+        self._chosen_features.clear()
+        self._filter_features()
+        self._changed()
 
     def _features_selected(self, *_):
         selected = {self._visible_features[i] for i in self.feature_list.curselection()}
         self._chosen_features = (self._chosen_features - set(self._visible_features)) | selected
-        self.feature_hint.configure(text=f"{len(self._visible_features)} de {len(self.catalog['indicators'])} · "
+        self.feature_hint.configure(text=f"{len(self._visible_features)} opções visíveis · "
                                          f"{len(self._chosen_features)} selecionados")
         self._changed()
 
@@ -530,7 +561,10 @@ class SeriesLaboratoryPanel:
         self.reload_button.configure(text="Lendo fontes…")
         self.reload_button.state(["disabled"])
 
-        def done(items, error):
+        def work():
+            db = self.ui.app.db_manager
+            return dict(sources=derived.chart_sources(db), catalog=service.catalog(db))
+        def done(result, error):
             if request != self._reload_request or not self.frame.winfo_exists():
                 return
             self._loading_sources = False
@@ -539,6 +573,9 @@ class SeriesLaboratoryPanel:
             if error:
                 self.status.configure(text=str(error))
                 return
+            self.catalog = result["catalog"]
+            self._filter_features()
+            items = result["sources"]
             self._inventory = items
             symbols = sorted({item["symbol"] for item in items})
             self.symbol_box.configure(values=symbols)
@@ -548,7 +585,7 @@ class SeriesLaboratoryPanel:
             if not symbols:
                 self.status.configure(text="Base sem séries compatíveis com esta captura OHLCV. "
                     "Confira inventário/Analytics antes de extrair mais dados.")
-        self.ui.run_bg(lambda: derived.chart_sources(self.ui.app.db_manager), done)
+        self.ui.run_bg(work, done)
 
     def _fitting_timeframes(self):
         """Seleção inicial: tempos nativos cuja série inteira cabe no congelamento."""
@@ -601,6 +638,10 @@ class SeriesLaboratoryPanel:
             if plan == "mixed":
                 raise ValueError(
                     "M7 e M9 não entram na captura nativa. Leia o sintético sozinho ou escolha só tempos do MT5.")
+            stored_features = [pair for key, pair in self._stored_choices.items() if key in self._chosen_features]
+            if stored_features and plan != "native":
+                raise ValueError("Indicadores armazenados usam snapshots nativos nesta etapa; escolha TFs nativos "
+                                 "ou consulte o contexto/Analytics do tempo sintético.")
             if plan == "native" and not (self.start.get().strip() or self.end.get().strip()):
                 oversized = [item for item in chosen if int(item.get("rows") or 0) > service.MAX_BARS]
                 if oversized:
@@ -625,7 +666,7 @@ class SeriesLaboratoryPanel:
                 request_kwargs = comparison_arguments(strategy, params, extras)
                 n_strategies = (len(request_kwargs["strategies"]) if "strategies" in request_kwargs
                                 else bool(request_kwargs.get("strategy_key")))
-                if not feature_ids and not n_strategies:
+                if not feature_ids and not stored_features and not n_strategies:
                     raise ValueError("Escolha indicadores ou uma estratégia para analisar.")
                 gate = "M1" if comparing else tfs[0]
                 if strategy is not None:
@@ -634,7 +675,7 @@ class SeriesLaboratoryPanel:
                     if isinstance(key, str):
                         service.base_composition(key, symbol=symbol, timeframe=gate,
                                                  params=service.get_strategy(key).params)
-                if (len(feature_ids) + n_strategies) * len(tfs) > service.MAX_CHANNELS:
+                if (len(feature_ids) + len(stored_features) + n_strategies) * len(tfs) > service.MAX_CHANNELS:
                     raise ValueError("Máximo de 32 canais; reduza indicadores ou TFs para este recorte.")
         except (ValueError, AttributeError) as error:
             self.status.configure(text=str(error))
@@ -658,9 +699,9 @@ class SeriesLaboratoryPanel:
                 return derived.compare_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end,
                     feature_ids=feature_ids, as_of=pd.Timestamp.now(tz="UTC").isoformat(), **request_kwargs)
             snapshots = service.capture_selection(self.ui.app.db_manager, symbol=symbol,
-                timeframes_selected=tfs, start=start, end=end)
+                timeframes_selected=tfs, start=start, end=end, stored_features=stored_features)
             return service.analyze(snapshots, feature_ids=feature_ids,
-                as_of=pd.Timestamp.now(tz="UTC").isoformat(), **request_kwargs)
+                as_of=pd.Timestamp.now(tz="UTC").isoformat(), stored_features=stored_features, **request_kwargs)
         def done(report, error):
             if not self.frame.winfo_exists() or request != self._request:
                 return
@@ -698,7 +739,7 @@ class SeriesLaboratoryPanel:
         if report.get("synthetic"):
             synthetic = (" " + report["note"] + " Comparação sincronizada no fechamento nominal do tempo "
                          "mais curto. Um intervalo sem grupo completo não vira candle.")
-        self.notice.message.configure(text=NOTICE_TEXT + synthetic + (
+        self.notice.message.configure(text=(STORED_NOTICE_TEXT if report["selection"].get("stored_features") else NOTICE_TEXT) + synthetic + (
             " Comparação de intenções no mesmo recorte; operação e execução não entram neste estudo."
             if comparison else ""))
         self.status.configure(text=f"{report['symbol']} · {len(report['populations'])} TFs · "
@@ -739,8 +780,14 @@ class SeriesLaboratoryPanel:
         check = row["eligibility"]
         role = ("intenção do gerador · operação ausente · execução ausente · "
                 if row["rule"] == "candidate" else "")
-        self.channel_details.configure(text=f"{row['id']} · {role}{row['unit']} · aquecimento {row['warmup']} barras · "
-            f"cobertura {row['available']}/{row['total']} · {check['status']} · "
+        role += ("fatos congelados · disponibilidade declarada em cada decisão · "
+                 if row.get("source_kind") == "stored" else "")
+        presence = (f"fatos disponíveis {row['stored_available']}/{row['total']} decisões · "
+                    f"{row['source_available']} observações usadas · {row['frozen_revision_count']} revisões congeladas · "
+                    if row.get("source_kind") == "stored" else "")
+        self.channel_details.configure(text=f"{row['id']} · {role}{row['unit'] or 'unidade não declarada'} · aquecimento "
+            f"{row['warmup'] if row['warmup'] is not None else 'não declarado'} · "
+            + presence + f"cobertura numérica {row['available']}/{row['total']} · {check['status']} · "
             + (f"{row['diagnosis']['message']} {row['diagnosis']['action']} · " if row.get("diagnosis") else "")
             + _events_text(row.get("events"))
             + ("; ".join(check["reasons"] + check["limitations"]) or "Dados compatíveis com este cálculo exploratório."))
@@ -814,6 +861,10 @@ class SeriesLaboratoryPanel:
         report = self.report
         times = pd.to_datetime(report["times"], utc=True)
         channels = [row for row in report["channels"] if row["rule"] == "candidate"] or report["channels"][:8]
+        if all(row.get("source_kind") == "stored" for row in channels):
+            chart.message("Canais armazenados não declaram regra de direção.\n"
+                          "Nenhuma intenção de compra/venda foi inferida.\nVeja os valores em Preço e indicador.")
+            return
         if all(row.get("diagnosis") for row in channels):
             chart.message("Nenhuma intenção/direção disponível nos canais desta visão.\n"
                           + empty_summary(report, ""))
@@ -900,7 +951,9 @@ class SeriesLaboratoryPanel:
                     pane.text(.5, .5, f"{channel['diagnosis']['message']}\n{channel['diagnosis']['action']}",
                               transform=pane.transAxes, ha="center", va="center", wrap=True, fontsize=8,
                               color=self.theme.colors["ink2"])
-            charts.style_axis(pane, self.theme, UNIT_LABELS.get(unit, unit))
+            title = (unit or "Unidade não declarada") if any(c.get("source_kind") == "stored" for c in channels) \
+                else UNIT_LABELS.get(unit, unit or "Unidade não declarada")
+            charts.style_axis(pane, self.theme, title)
         intentions = intention_channels(report, selected["id"], self.study.removed, self.study.hidden)
         unmarked = []
         for index, channel in enumerate(intentions):
@@ -1157,6 +1210,10 @@ class SeriesLaboratoryPanel:
                 values[i, j] = values[j, i] = pair["correlation"] if pair["correlation"] is not None else np.nan
                 pair_lookup[i, j] = pair_lookup[j, i] = pair
         if np.isnan(values).all():
+            if any(row.get("source_kind") == "stored" for row in report["channels"]):
+                chart.message("Sem correlação direcional nesta seleção.\nCanais armazenados não declaram regra de compra/venda.\n"
+                              "Veja valores e unidades no gráfico; Spearman dos valores em Relações e aderência.")
+                return
             chart.message("Nenhum par com correlação calculável nesta seleção.\n"
                           + empty_summary(self.report, "Amplie a janela, reduza TFs altos ou escolha canais com valores."))
             return
@@ -1185,9 +1242,13 @@ class SeriesLaboratoryPanel:
     def _lags(self, chart):
         if not self._ready(chart):
             return
+        selected = self.detail_channel.get()
+        if any(row["id"] == selected and row.get("source_kind") == "stored" for row in self.report["channels"]):
+            chart.message("Sem regra de direção para o canal armazenado selecionado.\n"
+                          "Defasagens direcionais não são inferidas;\nconsulte Spearman dos valores em Relações e aderência.")
+            return
         ax = chart.figure.add_subplot(111)
         # Não ordenar pelo melhor efeito: ordem do catálogo/TF, seleção descritiva explícita.
-        selected = self.detail_channel.get()
         pairs = [pair for pair in self.report["pairs"] if pair["lag_bars"] == 1 and
                  pair["left"] == selected and pair["left"] != pair["right"]][:5]
         palette = [*self.theme.colors["series"], self.theme.colors["ink2"], self.theme.colors["warn"]]

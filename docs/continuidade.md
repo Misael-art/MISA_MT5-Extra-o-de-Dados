@@ -3356,3 +3356,50 @@ valores numéricos/categorias novos em compra/venda por inferência. Manter sem�
 unidades, estados e metodologia explícitos,
 sem dados da base atual sob análise congelada. Aceites nativo/financeiro/Windows
 físico continuam separados.
+
+## Continuidade do roadmap — BD19a-LAB, 29/10/2026
+
+Fonte `1ef090d206d51642254ebdbff6fa1447d2585988` publicado no
+[PR218](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/218), sobre
+`fe47e5a`/PR217, branch `codex/lab-indicadores-persistidos`. Reproduzido no
+launcher: `qa.metric` registrado na base não aparecia na busca de Séries porque
+o seletor restringia o catálogo às52 fórmulas locais. A atualização de fontes
+agora também carrega versões persistidas pelo leitor canônico; busca/origem,
+ID/versão/unidade e limpeza de seleções ocultas usam o seletor existente.
+
+Captura4 e `service.analyze(...stored_features=...)` integram o contexto congelado
+por decisão da grade mais curta. Nenhum acesso ao store atual no relatório;
+unidades/parâmetros de cada versão preservados. Spearman continua nos valores
+originais, sem transformar categorias ou números em compra/venda. Canais sem
+regra direcional mostram motivo nas visões; fatos presentes/cobertura numérica,
+observações distintas/revisões e disponibilidade declarada têm detalhes próprios.
+Categorias/booleanos/tipo desconhecido não entram como números. Pivôs armazenados
+ficam fora das relações até qualificar identidade/confirmação de eventos; pivôs
+locais mantêm contrato. Sintéticos M7/M9 recusam a seleção antes do trabalho,
+sem ignorá-la. [Contrato e CLI](sdk/laboratorio_series.md#canais-armazenados-no-laboratório-bd19a-lab).
+
+Baseline86 aprovados/1 skip de geometria no display inicial. Validação final:
+110 de núcleo e54 Tk distintos aprovados (rodadas sobrepostas discriminadas
+nos logs locais);18 avisos Matplotlib de layout já presentes no baseline,
+sem claim de suíte completa verde. Doctor offline16/2avisos/0. Launcher oficial
+em Xvfb próprio e banco/preferências sintéticos: seleção da versão2 percent,
+valores12/13/14/15, revisão tardia999 não antecipada, matriz diagonal1 com n=4,
+nenhuma direção inferida, zero exceções/tarefas ao encerrar. CLI oficial também
+analisa o manifest anterior e conserva12. Botão bloqueado e barra global reais
+conferidos com duração controlada de QA; não se inventa percentual.
+
+Bancada reutilizada1.000 barras/2.000 revisões,3 chamadas com snapshot carregado:
+fórmula local125ms, fatos203ms; carregar o snapshot239ms separado. As saídas são
+diferentes: medição de custo, não comparação de correção ou promessa de aceleração.
+Recibos `state/qa-tmp/catalog-store/stored-lab-*`; imagens e bases próprias não
+entram no Git. Próximas capacidades: completar contratos/cálculos/compostos e
+consulta BD18b antes dos consumidores completos, preservando as lacunas de
+tempo/fonte/qualidade. BD19a integral, aceite nativo/financeiro e Windows físico
+continuam abertos; pins HADOUKEN/Safety e dados do proprietário preservados.
+A prévia usa o HEAD publicado desta branch, com hashes de runtime e aceite do
+launcher registrados no recibo local de desenvolvimento; configuração, dados,
+preferências e referência aceita continuam nos destinos existentes.
+O aceite dos arquivos instalados encontrou uma falha na assinatura ao importar
+o serviço pelo link do atalho: o diretório já estava resolvido, mas o caminho do
+próprio módulo não. A correção canonicaliza ambos, com regressão portável para
+alias de caminho; a prévia anterior foi restaurada durante a verificação.

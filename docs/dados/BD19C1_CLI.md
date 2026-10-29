@@ -61,5 +61,6 @@ ausentes, decisões fora da janela e origem conflitante geram erro de uso. O mod
 conserva a consulta atual. A tabela inclui manifest e namespace/fonte originais; importar em
 outro banco não muda essa identificação. [Contrato, limites e prova](../sdk/laboratorio_series.md#contexto-por-decisão-no-snapshot-bd19a-context).
 
-Não calcula indicadores nem atribui direção a valores numéricos/categorias. Não encerra a
-integração dos seletores/relatórios do Laboratório nem o BD19c2 completo.
+Não calcula indicadores nem atribui direção a valores numéricos/categorias. O consumo posterior
+por seletores/relatórios é descrito em [BD19a-LAB](../sdk/laboratorio_series.md#canais-armazenados-no-laboratório-bd19a-lab);
+o BD19c2 completo continua dependente das capacidades de compostos/relações/BD18b.
