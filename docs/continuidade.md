@@ -3901,3 +3901,50 @@ merge/release. Próxima frente BD15b: persistência imutável de identidades e
 resultados no armazenamento existente, seguida do consumo completo. Demais
 tipos, alvos futuros, tentativas/OOS e integração completa da UI continuam
 nas suas frentes; T18.2/F18 e o roadmap inteiro permanecem parciais.
+
+
+## Continuidade do roadmap — BD15b, 29/10/2026
+
+Branch `codex/relacoes-persistidas`, sobre `9598c252eb9050c8786e1c039b75249096f04fbc`/
+[PR229](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/229).
+Baseline27 aprovados do store/snapshots, mais o aceite referencial anterior.
+Nova publicação/leitura no `analytics.feature_store` e serviço de associações,
+sem outro banco/store/executor/job. Tabela aditiva `_feature_relations`, DTO2,
+identidade centralizada, hash completo e hash semântico. Relógio e orçamento
+ficam no primeiro recibo, fora da identidade; repetir sob outro orçamento retorna
+esse recibo original. Conteúdo semântico conflitante nunca sobrescreve o antigo.
+A extração do helper altera explicitamente a assinatura dos pares; não reescreve
+artefatos anteriores nem altera fórmulas/versões dos produtores.
+
+`relation --persist`/`sdk.persist_feature_relation` calculam pelo serviço BD15a.
+Resultado e referências de todos os manifests são confirmados atomicamente;
+`relation-result`/`sdk.load_feature_relation` verificam hashes, contrato, índices
+e origens sem recalcular ou completar com fatos ativos. Consulta sem persistência
+permanece somente leitura. Limites de cálculo, cancelamento e guarda de escrita
+continuam; artefato até16MiB/32 manifests. [Contrato](sdk/api.md#persistência-de-relações-referenciais-bd15b).
+
+Primeira rodada63 aprovados/1 PostgreSQL pendente; após ampliar os cenários,
+regressão final137 aprovados/2 PostgreSQL pendentes no host. Contagens se
+sobrepõem. Timeout60s original, uma thread numérica e uma suíte pesada por vez.
+Inclui repetição, conflito, corrupção, ausência de referência, rollback por
+exceção/KeyboardInterrupt, recusa tardia de recursos, dois escritores,
+revisão congelada nova com leitura antiga, SDK/CLI e compatibilidade dos pares.
+Dois casos seguem na CI PostgreSQL existente; nenhum servidor foi inferido.
+
+Launcher fonte em QA sintética: três artefatos/quatro referências, leitura e
+repetição idênticas ao primeiro resultado, CLI=SDK e1.900 fatos preservados.
+Dois processos reais produziram INSERTED/UNCHANGED. SIGINT e SIGKILL reais dentro
+da transação deixaram zero artefatos/referências; retomada inseriu exatamente um.
+SIGKILL após commit preservou resultado/referência e repetição UNCHANGED com
+DTO original. Cada cálculo/publicação medido levou3,03–3,23s com29 réplicas numa
+entrada pequena; não é promessa de escala/latência para999 réplicas.
+
+Recibos de fonte, pacote instalado, doctor, GUI e CI em
+`state/qa-tmp/persisted-relations/`; SHA remoto, PR e aceite da prévia no registro
+central. O aceite instalado exige igualdade com o fonte e inspeção do indicador
+de processamento/consumidor atual. Sem negociação, base privada como fixture,
+pins alterados, merge/release. Persistência mantém o resultado exploratório,
+incluindo inconclusões; não é registro de tentativas nem qualificação causal,
+financeira, MT5/contas ou Windows físico. Próxima frente BD18b/BD19b: consulta e
+consumo das relações persistidas no Laboratório existente. Catálogo/paginação,
+demais tipos/alvos e UI completa continuam nas suas fichas.

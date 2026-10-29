@@ -517,8 +517,11 @@
    "owner": "BD15b",
    "case": "Persistência de relações",
    "criterion": "Método/população/defasagem/versão/revisão reconciliados",
-   "state": "planejado",
-   "evidence": []
+   "state": "implementado_validado_host",
+   "evidence": [
+    "../sdk/api.md#persistência-de-relações-referenciais-bd15b",
+    "../continuidade.md#continuidade-do-roadmap--bd15b-29102026"
+   ]
   },
   {
    "id": "E25",
