@@ -354,6 +354,17 @@ O aceite é de snapshot/corte declarados, sem certificação da fonte live ou
 qualificação nativa/financeira. SIGKILL/runs órfãos e o restante de BD14
 permanecem abertos.
 
+**Adendo BD14-ORPHAN (29/10/2026):** a recuperação do journal passa a distinguir
+proprietário local encerrado de processo ativo ou não verificável. A identidade
+é aditiva, compartilhando o helper de propriedade já usado pelo orçamento de
+Robôs; não há novo executor. Reconciliação condicional marca `INTERRUPTED` sem
+alterar fatos/checkpoints nem inventar métricas finais. Início de novo run usa
+o mesmo mecanismo no escopo ativo/timeframe/família; CLI/SDK permitem inspeção
+e reconciliação explícita. Legados, outra máquina/boot/namespace ou acesso
+negado são preservados. [Contrato e limites](../sdk/api.md#recuperação-de-jobs-órfãos-bd14-orphan).
+Esse recorte não encerra avaliação em lote eficiente, demais famílias ou gates
+nativos/financeiros/Windows físico.
+
 ### Fase E — relacionamentos efetivos e contexto
 
 #### BD15 — serviço real de relações entre indicadores

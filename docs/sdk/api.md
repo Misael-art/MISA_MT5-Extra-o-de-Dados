@@ -373,6 +373,37 @@ ou significado. Fonte, parâmetros e binário devem corresponder ao mesmo Expert
 | `CheckResult` | `steps`, `ok`, `report` (a bateria), `to_dict()` |
 | `write_junit(result, path)` | Grava o `CheckResult` em JUnit XML |
 
+## Recuperação de jobs órfãos (BD14-ORPHAN)
+
+`sdk.recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None)`
+reconcilia o journal existente. CLI equivalente:
+`analytics features recover-jobs [--symbol QA] [--tf M1] [--family família]`.
+O SDK recebe o timeframe canônico do journal (por exemplo `M1`); o CLI normaliza
+os nomes aceitos. Sem filtros, examina todas as famílias da base escolhida.
+Retorna escopo, quantidade examinada, IDs recuperados, quantidade preservada e
+instante da reconciliação. Não executa cálculos nem modifica fatos/checkpoints.
+
+Novos runs guardam identidade local: hostname, escopo da máquina e geração do
+PID. O escopo é um hash, sem identificadores brutos: Linux inclui máquina,
+boot e namespace de PID; Windows usa MachineGuid e a geração do PID. Outra
+máquina/escopo, acesso negado, informação inválida ou ausente preservam o run.
+Registros legados sem escopo verificável também permanecem intocados. O tempo
+decorrido não é prova de morte. Mudança de boot/namespace Linux mantém o aceite
+de recuperação pendente; não há roubo de uma execução remota por timeout.
+
+Somente `RUNNING` com proprietário local comprovadamente encerrado vira
+`INTERRUPTED`, por atualização condicional que preserva término concorrente.
+`recovered_at_utc` informa a descoberta; `finished_at_utc` e duração não são
+inventados. Contadores SQL legados `NOT NULL` são preservados como placeholders;
+`producer_jobs.latest_run` apresenta suas métricas finais como `None` e
+`metrics_state=UNAVAILABLE`. A recuperação não certifica quantos fatos o job
+gravou: os lotes/checkpoints confirmados continuam sendo a referência.
+
+Ao iniciar outro run, o mecanismo reconcilia automaticamente apenas seu
+ativo/timeframe/família. A retomada continua no produtor original, com suas
+guardas de origem, geração e deduplicação. Não existe nova fila, scheduler,
+executor, takeover de processo ativo ou encerramento de terminal.
+
 ## Paridade Python × MQL5
 
 | Nome | O que faz |

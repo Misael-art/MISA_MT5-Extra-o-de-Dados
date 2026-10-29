@@ -3745,3 +3745,56 @@ famílias e os gates nativos/financeiros/Windows físico continuam abertos.
 CI da base8da3ed0 concluiu Linux, Windows, PostgreSQL, lint e instaladores;
 a ponta nova tem seus próprios checks. Sem dados privados como fixtures,
 negociação, alteração nos pins, merge ou release.
+
+
+## Continuidade do roadmap — BD14-ORPHAN, 29/10/2026
+
+Branch `codex/recuperacao-runs-orfaos`, sobre `0e11092262b3150fdfebfa202a0d846ced894c4d`/
+[PR226](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/226).
+A frente anterior passou66 testes PostgreSQL, incluindo os três cenários de
+materialização; as suítes completas Linux/Windows ainda estavam em execução
+na última consulta. A referência de fonte/runtime e o aceite da prévia estão
+no registro central, com273 hashes e GUI/CLI próprios conferidos.
+
+Baseline desta frente:43 testes aprovados. SIGKILL real depois do primeiro
+commit da composição deixou um fato confirmado; a retomada completou dez fatos
+iguais à referência e a repetição não duplicou dados, mas o run morto permaneceu
+`RUNNING`. Agora o journal recebe identidade e instante de reconciliação em
+colunas opcionais aditivas; nenhuma tabela/coluna antiga foi removida.
+
+O helper de propriedade do orçamento de Robôs foi extraído e compartilhado.
+Novos runs incluem escopo da máquina e geração do PID. Analytics só reconcilia
+morte local comprovada; ativos, legados sem escopo, outra máquina/boot/namespace
+Linux, acesso negado e identidade inválida são preservados. Não se presume
+morte por idade, nem se encerra processo/terminal. A atualização condicional
+protege finalização concorrente e confirmação duplicada por reconciliadores.
+
+Estado recuperado é `INTERRUPTED`; `recovered_at_utc` marca a descoberta, sem
+inventar término/duração. Contadores legados NOT NULL são preservados como
+placeholders; `latest_run` apresenta métricas finais indisponíveis. Fatos,
+checkpoint e referência de origem não são alterados. Novo run reconcilia seu
+ativo/timeframe/família; CLI `analytics features recover-jobs` e
+`sdk.recover_producer_jobs` permitem reconciliação explícita da base selecionada.
+[Contrato e limites](sdk/api.md#recuperação-de-jobs-órfãos-bd14-orphan).
+
+Rodada focada66 aprovados/2 PostgreSQL pendentes; ampliada final243 aprovados/
+5 PostgreSQL pendentes no host, com timeout60s original, uma thread numérica e
+uma suíte pesada por vez. Contagens se sobrepõem. Inclui identidade Windows
+simulada, PID reutilizado, acesso negado, legado, paginação, término durante a
+inspeção, reconciliadores simultâneos, orçamento de Robôs e produtores afetados.
+Dois novos cenários entram na CI PostgreSQL existente; host não tem servidor
+próprio para qualificar esse backend por inferência.
+
+Launcher oficial em QA sintética:seis SIGKILL reais, antes/depois do commit de
+registry/calendário/compostos. Dentro da transação não sobra lote; depois dela,
+o prefixo é preservado. Recuperação automática ou CLI explícito marca o recibo
+antigo e a retomada iguala o processamento completo; repetição não duplica
+fatos. O digest da composição ficou idêntico ao baseline. Sem negociação,
+base privada como fixture, alteração dos pins, merge ou release. Recibos em
+`state/qa-tmp/orphan-recovery/`; fonte/PR e prévia ficam no registro central.
+
+Próxima frente: reduzir o custo da avaliação de eventos em lote na materialização
+congelada, preservando observação, causalidade, versões/origens e retomada.
+Propriedade não verificável (inclusive outro boot/namespace Linux), demais
+operadores/famílias e qualificações nativas/financeiras/Windows físico continuam
+pendentes; esta entrega não encerra BD14 nem todo o roadmap.

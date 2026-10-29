@@ -103,11 +103,18 @@ def materialize_composite_snapshot(db, manifest_id, *, targets, as_of, batch_siz
         write_guard=write_guard, cancel_check=cancel_check, timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
 
 
+def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
+    """Reconcilia apenas runs de proprietários locais encerrados; fatos e checkpoint são preservados."""
+    from mt5_extracao.analytics import producer_jobs
+    return producer_jobs.reconcile_orphan_runs(db, symbol=symbol, timeframe=timeframe, family=family)
+
+
 __all__ = [
     "API_VERSION", "CONTRACT_VERSION",
     "open_workflow",
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
+    "recover_producer_jobs",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida
