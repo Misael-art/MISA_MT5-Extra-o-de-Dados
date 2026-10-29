@@ -1163,3 +1163,43 @@ no host. Acessos opcionais e cruzamentos ainda ausentes ficam discriminados.
 Nenhum resultado de correlação, preço futuro ou estratégia vencedora é condição
 de sucesso da captura. Não certificar utilidade financeira ou operação de Expert
 a partir do aceite técnico deste mecanismo.
+
+
+### 18.11. Inventário e contrato executável MEN-01
+
+Inventário do App após PR235/42c044c e plano MEN-00:
+
+| Papel | Implementação localizada / decisão |
+|---|---|
+| Entrada/namespace/base | `database_manager`, `analytics.datasets.identity/declare_source/fork`; manter provedor de preços, não trocar pela rede social |
+| Objetos financeiros | `analytics.instruments` aceita fatos de especificação/série/ajuste, não é cadastro de documentos ou temas; não inventar instrumentos para K-pop/zumbis |
+| Definições/valores | `features.register`, `feature_store.register_definition/save_values/query_history/query_as_of`; chaves já isolam versões, parâmetros já são imutáveis |
+| Jobs/checkpoints | `producer_jobs`: chave `(symbol,tf,family)`; `mentions:<hash completo do escopo>` já oferece isolamento, sem migração/segundo journal |
+| Consulta/captura/transporte | `query_service`, `datasets`, `indicator_context`, SDK/CLI existentes; catálogo distingue todas as versões |
+| Consumo visual/associação | `ui/laboratory_series.py`, `ui/relations.py`, `analytics.associations/relation_dto`; são superfícies existentes para a função descrita como Strator, sem módulo homônimo localizado |
+| Adaptador externo existente | `external_data_source.ExternalDataSource.get_historical_m1_data` tem contrato OHLCV/M1; não recebe documentos ou agregados MEN. Reusar seu papel de fallback de preços, sem deformá-lo como coletor de menções |
+| Notícias/sentimento encontrados | Calendário econômico em `trade_analytics.enrich` qualifica operações; `app.py.simulate_trader_sentiment` declara simulação por preço/volume, sem chamador localizado. Nenhum é um corpus de menções ou classificador de texto |
+| GDELT | Busca no código atual não localizou cliente/ingestor GDELT; F09 é referência documental, não integração comprovada. Não atribuir existência de coletor ao rótulo notícias |
+| Entradas/classificações/recibos de documentos | Não há esquema/caminho canônico para esses registros; eventual tabela aditiva só após contrato de adaptador MEN-02. MEN-01 não cria nenhuma |
+
+Contrato1 implementado em `analytics.mentions`: três IDs estáveis, tipoNUMBER e
+unidadepublication/window. A versão inclui hash integral de namespace, objeto,
+vínculo, fonte/corpus/acesso, consulta/filtros/idioma, resolução, política,
+universo e classificador. Duas fontes e duas consultas do mesmo símbolo recebem
+quatro versões/famílias de checkpoint distintas. Fonte da base não muda.
+Definições guardam fingerprints e identidade, sem expressão/autores/aliases
+privados; textos não integram valores/snapshots por esse caminho.
+
+Estados: zero exige cobertura completa; cobertura parcial/ausente tem três
+valoresUNAVAILABLE e motivo. Classificação pendente não vira P=N=0. Q e P/N têm
+relógios próprios: completar P/N não reescreve a metadata histórica de Q. Limite
+inteiro seguro2^53−1; float/score/porcentagem não são contagens. Janelas UTC
+fechadas `[início,fim)`, resolução fixa atéD1 e precisão de microssegundos.
+[Assinatura e contrato detalhado](../sdk/api.md#identidade-e-valores-de-menções-men-01).
+
+Baseline antes do código:34 testes de features/BD03/BD06 aprovados no host.
+A prova usa registros determinísticos próprios no store/journal existentes;
+fonte real e classificador qualificado continuam MEN-03/04, não certificados
+por fixtures. Não há migração necessária das chaves; versões/colunas anteriores
+permanecem. MEN-02 deve provar elegibilidade/deduplicação/corpus/manifestos e
+qualificar a lacuna de recibos antes de publicar capturas de documentos.

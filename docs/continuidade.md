@@ -4253,3 +4253,28 @@ de bases continuam pendentes. Recapturar muda as identidades; o corte fixo é
 retrospectivo, não walk-forward. Captura inteira precisa ser elegível. Nenhuma
 qualificação causal, financeira, MT5/Wine ou Windows físico é inferida.
 Documentação MEN em edição por outra tarefa permanece separada deste incremento.
+
+
+## MEN-01 — contrato Q/P/N e isolamento de escopos, 29/10/2026
+
+Contrato1 em `analytics.mentions`, exposto por `sdk.describe_mention_series`.
+Reusa definições/valores/consultas/namespace e journal, sem migração ou nova
+família de armazenamento. Hash integral de objeto/fonte/consulta/idioma/resolução/
+universo/classificador separa versões e famílias de checkpoint do mesmo símbolo.
+Parâmetros exportáveis conservam fingerprints, não expressão/autores/aliases.
+[Inventário e posse](dados/PLANO_ESTRUTURA_DADOS.md#1811-inventário-e-contrato-executável-men-01).
+
+Oráculo Q10/P3/N2, zero versus ausência, limite inteiro seguro, fuso/bordas e
+revisão tardia conferidos. Q não recebe metadata de classificação futura.
+Duas fontes×duas consultas no launcher oficial:12 fatos vigentes/20 revisões,
+quatro cursores, cortes10h21/10h23 e CLI=SDK, sem trocar o provedor de preços.
+73 testes pertinentes passaram em rodadas sobrepostas; baseline34; um PostgreSQL
+pendente no host e coberto no job CI. Falhas iniciais de fixture (campo de
+identidade) e referência SDK ainda não documentada foram corrigidas e repetidas;
+logs retidos. Doctor16OK/2avisos/0falhas. Código de interface não mudou.
+
+MEN-00 foi preservado em PR236 sobre PR235; não significa merge em master.
+MEN-02 é a próxima tarefa: adaptadores/capacidades, recibos e fixture de
+publicações com deduplicação/populações verificadas. Captura real, classificação
+qualificada e jornada completa continuam MEN-03…08. Não declarar o mecanismo
+MEN completo pelo contrato ou pela existência das três definições.
