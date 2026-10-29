@@ -3675,7 +3675,9 @@ e exceções controladas foram exercitados.
 
 ## Continuidade do roadmap — BD14-MATERIALIZE, 29/10/2026
 
-Frente `codex/materializacao-compostos`, sobre `8da3ed0`/PR225. A base não tinha
+Fonte `db994203e414c8f41fc877f56f8229425c3c8037` na branch
+[`codex/materializacao-compostos`](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/tree/codex/materializacao-compostos),
+sobre `8da3ed0`/PR225. A base não tinha
 produtor/CLI para persistir receitas congeladas; o launcher rejeitou o comando
 com saída2. A cadeia difference→absolute agora usa o mesmo grafo, contexto,
 store e journal, com corte UTC explícito. Gera somente eventos conhecidos por
@@ -3724,12 +3726,12 @@ materializada e mostrou0,13/0,37/0,87/1,37, sem antecipar a revisão500,13;
 unidade fraction, cinco revisões congeladas, nenhuma direção inferida. Barra
 de espera inspecionada, zero erros/tarefas pendentes em QA própria/Xvfb.
 
-Bancada500 observações,1.000 pais/1.000 saídas:71,24s de parede,69,80s do job,
-pico RSS148.344.832B e crescimento SQLite2.498.560B, dentro de600s/2048MB.
+Bancada500 observações,1.000 pais/1.000 saídas:75,11s de parede,73,75s do job,
+pico RSS147.935.232B e crescimento SQLite2.506.752B, dentro de600s/2048MB.
 As duas passagens têm custo explícito; otimização de eventos em lote continua
 necessária para escala, sem alegação de aceleração. Consulta já existente com
 500 decisões manteve o digest de valores/estados e pico Python≈4,97MB;
-medianas449→277ms sob cargas diferentes não certificam ganho de desempenho.
+medianas449→295ms sob cargas diferentes não certificam ganho de desempenho.
 Recibos próprios em `state/qa-tmp/composite-materialization/`.
 
 Próxima entrega: recuperação de morte abrupta/runs órfãos no journal existente,
