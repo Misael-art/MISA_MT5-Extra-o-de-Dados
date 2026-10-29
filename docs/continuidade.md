@@ -3260,11 +3260,14 @@ e estado vazio inspecionados; CLI real = SDK nas duas superfícies. Medição de
 fatos:166→180ms, custo da verificação explícito, sem promessa de aceleração.
 
 Evidência local `state/qa-tmp/catalog-store/query-*`; nenhuma base principal ou
-pesquisa alterada, pins H/S preservados. Prévia deve ser instalada do SHA publicado
-e conferida novamente pelo launcher. Não há aceite nativo, financeiro ou Windows
+pesquisa alterada, pins H/S preservados. Fonte `03d5e6a` publicado no [PR214](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/214),
+273 arquivos da prévia conferidos por hash e launcher oficial executado novamente.
+Tabela, vazio e detalhes das duas versões inspecionados, sem exceções/tarefas pendentes.
+Não há aceite nativo, financeiro ou Windows
 físico. A paginação ainda carrega a seleção limitada; SQL/compostos/relações seguem
 BD18b. Próxima dependência: consumir fatos no Laboratório com junção causal por
 instante de decisão, sem usar uma revisão conhecida só no corte final como se
-fosse conhecida em todas as barras anteriores. Percorrer também a expansão dos
-detalhes do inventário em janela pequena: a captura do catálogo está visível,
-mas as capturas inferiores não comprovaram o corpo expandido.
+fosse conhecida em todas as barras anteriores. O corpo dos detalhes do inventário
+foi conferido em1280×850 completando a rolagem após a expansão. Capturas anteriores
+foram antecipadas durante a atualização geométrica e não provavam esse corpo;
+o percurso completo está nos recibos locais, sem inferir um defeito a partir delas.

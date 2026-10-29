@@ -45,6 +45,8 @@ Rodada final:64 testes de consulta/contrato/CLI/SDK/inventário e25 Tk; doctor o
 Launcher oficial offline com banco/preferências sintéticos: catálogo e busca vazia inspecionados,
 sem exceções e sem tarefas pendentes; CLI real = SDK para catálogo e versão2 com valores12/13/14/15
 em percent, enquanto a versão1 conserva fraction e parâmetros diferentes.
+Prévia publicada `03d5e6a`/PR214:273 arquivos por hash, launcher repetido e detalhes das duas
+versões conferidos em1280×850 após completar a rolagem da área expandida.
 
 Bancada local de5.000 fatos, página500, três chamadas aquecidas: medianas166ms na consulta
 publicada anterior e180ms na atual; valores iguais. Catálogo8ms/inventário13ms. A verificação
