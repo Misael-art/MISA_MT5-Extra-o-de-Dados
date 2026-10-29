@@ -3347,9 +3347,12 @@ e99 da base atual no mesmo instante. Bancada2.000revisões/500decisões,3 chamad
 101ms atual/68ms congelado; carga do snapshot327ms separada, sem ganho universal
 declarado. Recibos `state/qa-tmp/catalog-store/frozen-context-*`.
 
-Publicar o incremento, confirmar SHA e conferir a prévia pelo launcher habitual.
-Próxima frente: seletores e relatórios reais no Laboratório. As relações atuais
-comparam regras de direção; não usar automaticamente valores numéricos/categorias
-novos como compra/venda. Manter semântica, unidades, estados e metodologia explícitos,
+Fonte `597de9e` publicado no [PR217](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/217),
+273 arquivos da prévia conferidos e launcher repetido: snapshot12 versus base999
+em M1, origem/versão preservadas e nenhuma exceção ou tarefa pendente no encerramento.
+Próxima frente: seletores e relatórios reais no Laboratório. A matriz de valores já
+calcula Spearman; concordância e candidatos usam regras de direção. Não transformar
+valores numéricos/categorias novos em compra/venda por inferência. Manter semântica,
+unidades, estados e metodologia explícitos,
 sem dados da base atual sob análise congelada. Aceites nativo/financeiro/Windows
 físico continuam separados.
