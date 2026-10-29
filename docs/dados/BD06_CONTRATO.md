@@ -23,6 +23,30 @@ editar `indicator_registry.py`, `strategies/indicators.py` ou o materializador v
 (as versões antigas continuam legíveis no store). Para não agravar isso, os metadados deste módulo
 ficam fora do hash. Invalidação seletiva **não** é declarada pronta; continua em BD13.
 
+**Adendo BD13-SIGNATURES (29/10/2026):** a limitação acima descreve o piloto
+original. O caminho atual de `price.return_1/5/20` identifica o contrato
+matemático de cada ID e as funções de fórmula, validação, orquestração e revisão
+que o atendem. A AST remove comentários/finais de linha/caminhos; Python,
+pandas e NumPy entram na identidade. Nome de apresentação e anotações BD06
+permanecem fora da assinatura matemática; renomear uma definição imutável ainda
+exige uma versão explícita, sem reescrever o registro anterior.
+
+O cálculo de retorno foi isolado dentro do registry existente, removido do
+calculador agregado antigo. Não há segunda fórmula, executor ou cache. Alterar
+um calculador alheio ou acrescentar função fora dos componentes assinados não
+versiona esses retornos. Alterar o contrato de A cria apenas A; mudar fórmula
+compartilhada/validação/orquestração conservadoramente versiona seus descendentes.
+Cada horizonte tem identidade própria. Componente ausente gera erro, sem
+fallback silencioso para a assinatura global. [Consumo e migração](../sdk/api.md#assinaturas-por-indicador-bd13-signatures).
+
+As outras49 definições continuam usando módulos completos. A chamada interna
+sem ID de `implementation_signature()` mantém esse formato para compatibilidade;
+não representa uma assinatura comum de todos os indicadores atuais. O checkpoint
+guarda o digest da seleção e o mapa por ID; cada fato/definição guarda o seu hash
+e `implementation_scheme`. Reavaliar uma seleção não revisa B se seu contrato,
+hash e fonte não mudaram. As versões antigas permanecem legíveis explicitamente.
+Granularidade das demais famílias, execução seletiva e BD14 continuam abertos.
+
 ## Provas
 
 `tests/test_bd06_contracts.py` (6 casos): contrato completo para todo o registry e serializável

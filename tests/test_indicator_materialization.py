@@ -159,10 +159,10 @@ def test_late_revision_never_changes_previous_asof(db):
 
 def test_implementation_change_creates_version_without_overwriting_legacy(db, monkeypatch):
     seed(db, source(25))
-    monkeypatch.setattr(materializer, "implementation_signature", lambda: "1" * 64)
+    monkeypatch.setattr(materializer, "implementation_signature", lambda feature_id=None, **kwargs: "1" * 64)
     materializer.materialize(db, "TEST", "M5", feature_ids=["price.return_1"])
     old = facts(db)
-    monkeypatch.setattr(materializer, "implementation_signature", lambda: "2" * 64)
+    monkeypatch.setattr(materializer, "implementation_signature", lambda feature_id=None, **kwargs: "2" * 64)
     result = materializer.materialize(db, "TEST", "M5", feature_ids=["price.return_1"])
     assert result["inserted"] == 25 and result["revised"] == 0
     assert all(row in facts(db) for row in old)

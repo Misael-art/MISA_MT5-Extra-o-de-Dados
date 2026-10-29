@@ -63,6 +63,30 @@ Compostos e relações permanecem em BD18b.
 
 Não há servidor HTTP: a futura API publicará este mesmo serviço.
 
+## Assinaturas por indicador (BD13-SIGNATURES)
+
+O materializador existente passa a identificar separadamente os três retornos
+qualificados `price.return_1/5/20`. Cada versão depende do contrato matemático
+do próprio ID, componentes de cálculo/revisão e versões Python/pandas/NumPy;
+um calculador alheio não muda essas identidades. Código compartilhado assinado
+permanece conservador. Outras famílias ainda usam a assinatura por módulos;
+isso não declara todo o catálogo granularizado. [Contrato e limites](../dados/BD06_CONTRATO.md#ordem-das-assinaturas-resposta-ao-r05).
+
+`analytics features context` sem `--algorithm-version` e o contexto de trades
+selecionam a versão atual **por ID**. Não se deve aplicar o hash de um retorno
+a todos os demais. Se a versão nova ainda não foi materializada, o contexto
+declara ausência; não preenche com uma versão antiga. A opção explícita continua
+lendo as versões anteriores. Dados, definições, fatos e snapshots antigos não
+são renomeados nem sobrescritos.
+
+`sdk.query_catalog(db)` continua descobrindo as versões persistidas. Para
+`sdk.query_series`, informe o ID e a versão desejada na seleção; horizontes podem
+exigir chamadas com versões diferentes. Sem filtro de versão, o contrato existente
+continua retornando todas as versões selecionadas, sem inferir uma versão atual
+universal. Capturas usam os pares ID/versão explícitos já disponíveis. Não há
+migração automática dos consumidores para fatos recém-calculados nem promoção
+de qualidade histórica ou aceite operacional.
+
 ## Composições congeladas (BD12-SNAPSHOT)
 
 Adições compatíveis ao SDK1, independentes das políticas de composição de estratégias/trades:
