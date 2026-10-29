@@ -3471,7 +3471,9 @@ Aceites nativo, financeiro e Windows físico permanecem separados.
 
 ## Continuidade do roadmap — BD13-RETURNS, 29/10/2026
 
-Branch `codex/revisoes-retornos`, sobre `d7ac9ff`/PR220. Reproduzido pelo launcher
+Fonte `d3ebb2df31d25b91c317c94b0a1138a03d5cae08` publicada no
+[PR221](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/221), branch
+`codex/revisoes-retornos`, sobre `d7ac9ff`/PR220. Reproduzido pelo launcher
 oficial em fixture própria: corrigir uma barra em80 M5/três retornos escrevia150
 revisões. O materializador agora usa tokens dos extremos, prefixo conhecido no
 aquecimento e recibos da janela ordinal, incluindo barras inelegíveis removidas/
@@ -3495,6 +3497,8 @@ Recibos privados `state/qa-tmp/return-revisions/`; [contrato e limites](dados/BD
 
 Assinatura global ainda versiona todos os IDs quando o materializador muda;
 versões antigas não são reescritas e exigem seleção explícita para leitura.
+Na fixture do launcher anterior,390 fatos antigos permaneceram idênticos e
+240 fatos foram gravados na versão nova, sem revisar a versão anterior.
 Próximo recorte BD13: assinatura por algoritmo/contrato/dependências, antes
 de BD14. Outras famílias conservam prefixos; sem motor/cache/store novo,
 negociação ou uso da base do proprietário como fixture. Aceites nativo/financeiro
