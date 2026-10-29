@@ -6,6 +6,7 @@ já estava disponível no instante pedido.
 """
 import hashlib
 import json
+from contextlib import nullcontext
 import logging
 import math
 import threading
@@ -210,16 +211,17 @@ def register_definition(db, feature_id, name, algorithm_version, parameters, dep
     return True
 
 
-def list_definitions(db):
+def list_definitions(db, *, connection=None):
     """Devolve todas as versões registradas, com JSON já decodificado."""
-    if not _usable(db) or not inspect(db.engine).has_table(DEFINITIONS_TABLE):
+    reader = connection if connection is not None else getattr(db, "engine", None)
+    if not _usable(db) or not inspect(reader).has_table(DEFINITIONS_TABLE):
         return []
-    columns = {column["name"] for column in inspect(db.engine).get_columns(DEFINITIONS_TABLE)}
+    columns = {column["name"] for column in inspect(reader).get_columns(DEFINITIONS_TABLE)}
     metadata_columns = ", ".join(name if name in columns else f"NULL AS {name}"
                                   for name in _DEFINITION_METADATA_COLUMNS)
     schema_column = ("definition_schema_version" if "definition_schema_version" in columns else
                      "1 AS definition_schema_version")
-    with db.engine.connect() as conn:
+    with (nullcontext(connection) if connection is not None else db.engine.connect()) as conn:
         rows = conn.execute(text(
             f"SELECT feature_id, algorithm_version, name, parameters_json, dependencies_json, registered_at_utc, "
             f"{metadata_columns}, {schema_column} "
@@ -394,7 +396,8 @@ def with_base_identity(db, frame):
     return stamped
 
 
-def query_history(db, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None, start=None, end=None):
+def query_history(db, *, symbol=None, timeframe=None, feature_id=None, algorithm_version=None, start=None, end=None,
+                  connection=None, max_rows=None):
     """Consulta todas as revisões, inclusive fatos vencidos ou corrigidos depois.
 
     Use esta saída com ``asof_join`` para reconstruir o que uma decisão histórica
@@ -402,7 +405,9 @@ def query_history(db, *, symbol=None, timeframe=None, feature_id=None, algorithm
     revisões que ainda não estavam disponíveis naquele instante.
     """
     _require_db(db)
-    if not inspect(db.engine).has_table(VALUES_TABLE):
+    if max_rows is not None and (isinstance(max_rows, bool) or not isinstance(max_rows, int) or max_rows < 0):
+        raise ValueError("max_rows precisa ser um inteiro não negativo.")
+    if not inspect(connection if connection is not None else db.engine).has_table(VALUES_TABLE):
         return _empty_values()
     where, params = [], {}
     for column, value, parameter in (
@@ -422,8 +427,13 @@ def query_history(db, *, symbol=None, timeframe=None, feature_id=None, algorithm
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY symbol, tf, feature_id, algorithm_version, observation_time, available_at_utc, revision"
-    with db.engine.connect() as conn:
+    if max_rows is not None:
+        sql += " LIMIT :row_limit"
+        params["row_limit"] = max_rows + 1
+    with (nullcontext(connection) if connection is not None else db.engine.connect()) as conn:
         frame = pd.read_sql(text(sql), conn, params=params)
+    if max_rows is not None and len(frame) > max_rows:
+        raise ValueError(f"Histórico excede {max_rows} fatos; reduza a janela ou a seleção de indicadores.")
     if frame.empty:
         return _empty_values()
     for name in ("observation_time", "available_at_utc", "observed_at_utc", "valid_until_utc"):

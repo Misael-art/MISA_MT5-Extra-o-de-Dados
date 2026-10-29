@@ -17,6 +17,8 @@ from sqlalchemy import inspect, text
 from mt5_extracao import timeframes
 
 VERSION = 3
+FEATURE_VERSION = 4  # opt-in; capturas sem fatos de indicadores conservam o formato anterior
+FEATURE_HISTORY_BASIS = "all_revisions_for_observations_in_selected_bar_window"
 BLOCK_ROWS = 512
 _LOCK = threading.RLock()
 _TABLES = ("_dataset_origin", "_dataset_blocks", "_dataset_manifests", "_dataset_references")
@@ -77,7 +79,13 @@ def _decode_frame(payload):
         if not re.fullmatch(r"(?:object|string|bool|boolean|[uU]?[iI]nt(?:8|16|32|64)|[fF]loat(?:32|64)|datetime64\[[^\]]+\])", dtype):
             raise ValueError("Snapshot sem integridade: tipo de coluna não suportado.")
         if dtype.startswith("datetime64"):
-            frame[column] = pd.to_datetime(frame[column]).astype(dtype)
+            converted = pd.to_datetime(frame[column])
+            # Uma coluna só com NaT perde o fuso na inferência, embora o dtype gravado o declare.
+            # Não localizar timestamps presentes: um horário ingênuo continua sendo inválido.
+            if (isinstance(pd.api.types.pandas_dtype(dtype), pd.DatetimeTZDtype) and
+                    converted.isna().all() and converted.dt.tz is None):
+                converted = converted.dt.tz_localize("UTC")
+            frame[column] = converted.astype(dtype)
         else:
             frame[column] = frame[column].astype(dtype)
     return frame
@@ -221,6 +229,18 @@ class Snapshot:
     def instrument_history(self):
         frame = self._frames.get("instrument_history")
         return frame.copy(deep=True) if frame is not None else None
+
+    @property
+    def feature_history(self):
+        if "feature_history" not in self._frames:
+            raise ValueError("Snapshot sem fatos de indicadores congelados; capture as versões explicitamente.")
+        return self._frames["feature_history"].copy(deep=True)
+
+    @property
+    def feature_definitions(self):
+        if "feature_definitions" not in self._frames:
+            raise ValueError("Snapshot sem contratos de indicadores congelados; capture as versões explicitamente.")
+        return [json.loads(value) for value in self._frames["feature_definitions"].definition_json]
 
     @property
     def quality(self):
@@ -383,18 +403,56 @@ def _acquisition_evidence(db, symbol, families, conn, first_utc, end_utc, bars):
     return frame
 
 
-def capture(db, symbol, timeframe, start=None, end=None, *, source=None, families=()):
+def _feature_selection(stored_features):
+    if not isinstance(stored_features, (list, tuple)):
+        raise ValueError("stored_features exige pares explícitos (feature_id, algorithm_version).")
+    pairs = []
+    for pair in stored_features:
+        if (not isinstance(pair, (list, tuple)) or len(pair) != 2 or
+                not all(isinstance(value, str) and value.strip() for value in pair)):
+            raise ValueError("stored_features exige pares explícitos (feature_id, algorithm_version).")
+        pairs.append(tuple(value.strip() for value in pair))
+    return sorted(set(pairs))
+
+
+def _capture_features(db, connection, pairs, symbol, timeframe, start, end):
+    from mt5_extracao.analytics import feature_store, query_service
+
+    contracts = {(item["feature_id"], item["algorithm_version"]):item
+                 for item in query_service.definition_catalog(db, connection=connection)}
+    definitions, frames, count = [], [], 0
+    for ident, version in pairs:
+        entry = contracts.get((ident, version))
+        if entry is None or entry["registered_definition"] is None:
+            raise ValueError(f"Definição não registrada: {ident}@{version}. Confira features catalog.")
+        definitions.append(dict(feature_id=ident, algorithm_version=version,
+            registered_at_utc=entry["registered_at_utc"], definition_json=_json(entry)))
+        history = feature_store.query_history(db, symbol=symbol, timeframe=timeframe, feature_id=ident,
+            algorithm_version=version, start=start, end=end, connection=connection,
+            max_rows=query_service.MAX_SELECTION_ROWS - count)
+        count += len(history)
+        if not history.empty:
+            history["numeric_value"] = pd.to_numeric(history.numeric_value, errors="raise").astype(float)
+            frames.append(history)
+    history = pd.concat(frames, ignore_index=True) if frames else feature_store._empty_values()
+    return pd.DataFrame(definitions), history
+
+
+def capture(db, symbol, timeframe, start=None, end=None, *, source=None, families=(), stored_features=()):
     """Captura dados consistentes e grava blocos deduplicados após encerrar a leitura."""
     tf = timeframes.parse(timeframe)
     if tf is None:
         raise ValueError(f"Timeframe inválido: {timeframe}")
     if db is None or getattr(db, "engine", None) is None:
         raise ValueError("Banco indisponível; confira a conexão antes de capturar os dados.")
+    feature_selection = _feature_selection(stored_features)
     _source(source, "validation")  # Rejeitar configuração pessoal antes de qualquer escrita.
     if isinstance(families, str) or set(families) - {"ticks", "book"}:
         raise ValueError("Famílias adicionais aceitas: ticks e book; informe uma lista explícita.")
     if hasattr(db, "require_fixed_offset"):
         db.require_fixed_offset("A captura de snapshot (datasets.capture)")
+    if feature_selection and (not hasattr(db, "time_context") or db.time_context()["offset_state"] != "declared"):
+        raise ValueError("Congelar indicadores exige fuso do corretor declarado; não use um offset presumido.")
     origin = _schema(db)
     source = _bound_source(db, source)
     from mt5_extracao.trade_analytics import calendar
@@ -427,12 +485,15 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
             sessions = pd.read_sql(text("SELECT " + ",".join(_SESSION_COLUMNS) +
                                         " FROM _market_calendar WHERE symbol=:symbol "
                                         "ORDER BY open_utc,session_id,revision"), conn, params={"symbol": symbol})
+        if feature_selection:
+            definitions, history = _capture_features(db, conn, feature_selection, symbol, tf.name, first_utc, end_utc)
     blocks = {}
     instrument_context = instruments.context(instrument_history, bars, db.broker_utc_offset)
     if instrument_context["specification_status"] == "known":
         fact = instruments.specification(instrument_history, instruments.broker_utc(bars.time.iloc[0], db.broker_utc_offset))
         spec = dict(fact["payload"], symbol=symbol)
-    manifest = {"schema_version": VERSION, "source": _source(source, origin), "symbol": symbol,
+    version = FEATURE_VERSION if feature_selection else VERSION
+    manifest = {"schema_version": version, "source": _source(source, origin), "symbol": symbol,
                 "timeframe": tf.name, "selection": {"start": selection_time(start), "end": selection_time(end)},
                 "period": {"first": str(bars.time.iloc[0]), "last": str(bars.time.iloc[-1]), "rows": len(bars)},
                 "time": {"storage_basis": db.time_basis, "consumer_basis": "broker",
@@ -452,10 +513,98 @@ def capture(db, symbol, timeframe, start=None, end=None, *, source=None, familie
                            "acquisition_evidence": _blocks(acquisition_evidence, "block_start", blocks),
                            "derived_bars": _blocks(derived, "bar_start_utc", blocks),
                            **{family: _blocks(frame, "event_time_utc", blocks) for family, frame in market.items()}}}
+    if feature_selection:
+        manifest["selection"]["stored_features"] = [list(pair) for pair in feature_selection]
+        manifest["derivation"]["feature_history_basis"] = FEATURE_HISTORY_BASIS
+        manifest["frames"].update(feature_definitions=_blocks(definitions, "registered_at_utc", blocks),
+                                   feature_history=_blocks(history, "observation_time", blocks))
     payload = _json(manifest)
-    bundle = {"format": f"mt5x.dataset.v{VERSION}", "manifest_id": _hash(payload), "manifest": manifest, "blocks": blocks}
+    bundle = {"format": f"mt5x.dataset.v{version}", "manifest_id": _hash(payload), "manifest": manifest, "blocks": blocks}
     _persist(db, bundle)
     return load(db, bundle["manifest_id"])
+
+
+def _validate_features(manifest, frames):
+    from mt5_extracao.analytics import feature_store, instruments, query_service
+
+    offset = manifest["time"]["broker_utc_offset_hours"]
+    if (manifest["time"]["offset_state"] != "declared" or type(offset) not in (int, float) or
+            not math.isfinite(offset)):
+        raise ValueError("relógio dos indicadores não declarado")
+    pairs = _feature_selection(manifest["selection"]["stored_features"])
+    if not pairs or manifest["selection"]["stored_features"] != [list(pair) for pair in pairs]:
+        raise ValueError("seleção de indicadores divergente")
+    if manifest["derivation"].get("feature_history_basis") != FEATURE_HISTORY_BASIS:
+        raise ValueError("recorte de indicadores desconhecido")
+    definitions, history = frames["feature_definitions"], frames["feature_history"]
+    if list(definitions.columns) != ["feature_id", "algorithm_version", "registered_at_utc", "definition_json"]:
+        raise ValueError("colunas de contratos desconhecidas")
+    if definitions.duplicated(["feature_id", "algorithm_version"]).any():
+        raise ValueError("contrato duplicado")
+    registered = {}
+    for row in definitions.itertuples(index=False):
+        entry = json.loads(row.definition_json)
+        key = row.feature_id, row.algorithm_version
+        if (not isinstance(entry, dict) or _json(entry) != row.definition_json or
+                (entry.get("feature_id"), entry.get("algorithm_version")) != key or
+                entry.get("registered_at_utc") != row.registered_at_utc):
+            raise ValueError("identidade do contrato divergente")
+        stored = entry.get("registered_definition")
+        if not isinstance(stored, dict) or (stored.get("feature_id"), stored.get("algorithm_version")) != key:
+            raise ValueError("contrato sem registro de origem")
+        for name, value in stored.items():
+            if entry.get(name) != value:
+                raise ValueError("contrato divergente dos metadados registrados")
+        registered[key] = stored
+    if set(registered) != set(pairs):
+        raise ValueError("contratos divergentes da seleção")
+    if list(history.columns) != list(feature_store.VALUE_COLUMNS) or len(history) > query_service.MAX_SELECTION_ROWS:
+        raise ValueError("histórico de indicadores sem limites ou colunas conhecidas")
+    if history.empty:
+        return
+    if history.duplicated(["symbol", "tf", "observation_time", "feature_id", "algorithm_version", "revision"]).any():
+        raise ValueError("revisão de indicador duplicada")
+    for name in ("observation_time", "available_at_utc", "observed_at_utc", "valid_until_utc"):
+        if not isinstance(history[name].dtype, pd.DatetimeTZDtype) or str(history[name].dt.tz) != "UTC":
+            raise ValueError("relógio dos indicadores sem UTC explícito")
+        if name != "valid_until_utc" and history[name].isna().any():
+            raise ValueError("horário obrigatório ausente")
+    if ((history.available_at_utc < history.observed_at_utc).any() or
+            (history.valid_until_utc.notna() & (history.valid_until_utc <= history.available_at_utc)).any()):
+        raise ValueError("disponibilidade de indicador inválida")
+    tf = timeframes.parse(manifest["timeframe"])
+    bars, offset = frames["bars"], manifest["time"]["broker_utc_offset_hours"]
+    start = instruments.broker_utc(bars.time.iloc[0], offset)
+    last = pd.Timestamp(bars.time.iloc[-1])
+    end = instruments.broker_utc(last + (pd.offsets.MonthBegin(1) if tf.name == "MN1" else
+                                       pd.Timedelta(minutes=tf.minutes or 1440)), offset)
+    if ((history.observation_time < start) | (history.observation_time >= end)).any():
+        raise ValueError("observação fora da janela congelada")
+    for row in history.itertuples(index=False):
+        key = row.feature_id, row.algorithm_version
+        if key not in registered or row.symbol != manifest["symbol"] or row.tf != tf.name:
+            raise ValueError("fato pertence a outro contrato, ativo ou timeframe")
+        if (isinstance(row.revision, (bool, np.bool_)) or pd.isna(row.revision) or row.revision < 1 or
+                int(row.revision) != row.revision):
+            raise ValueError("número de revisão inválido")
+        if not isinstance(row.quality, str) or not row.quality:
+            raise ValueError("qualidade ausente")
+        numeric, category = pd.notna(row.numeric_value), pd.notna(row.categorical_value)
+        if numeric and category:
+            raise ValueError("valor numérico e categoria simultâneos")
+        value = row.numeric_value if numeric else row.categorical_value if category else None
+        if value is not None:
+            feature_store._normalize_value(value)
+        elif row.quality not in {"INVALIDATED", "UNAVAILABLE"}:
+            raise ValueError("valor ausente sem estado explícito")
+        kind = registered[key].get("value_type")
+        if kind == "BOOLEAN" and category:
+            if value not in {"true", "false"}:
+                raise ValueError("booleano armazenado inválido")
+            value = value == "true"
+        feature_store._validate_declared_value_type(value, kind, quality=row.quality)
+        if not isinstance(json.loads(row.metadata_json), dict):
+            raise ValueError("metadados do fato precisam ser objeto")
 
 
 def _validated(bundle):
@@ -464,7 +613,7 @@ def _validated(bundle):
             raise ValueError("envelope desconhecido")
         manifest = bundle["manifest"]
         version = manifest["schema_version"]
-        if version not in (1, 2, 3) or bundle["format"] != f"mt5x.dataset.v{version}":
+        if version not in (1, 2, 3, FEATURE_VERSION) or bundle["format"] != f"mt5x.dataset.v{version}":
             raise ValueError("versão desconhecida")
         if _hash(_json(manifest)) != bundle["manifest_id"]:
             raise ValueError("hash do manifesto divergente")
@@ -479,11 +628,13 @@ def _validated(bundle):
         frames = {}
         referenced = set()
         roles = {"bars", "events", "market_calendar"} | ({"instrument_history"} if version >= 2 else set())
-        if version == 3:
+        if version >= 3:
             families = manifest["derivation"]["market_families"]
             if not isinstance(families, list) or families != sorted(set(families)) or set(families) - {"ticks", "book"}:
                 raise ValueError("famílias de mercado inválidas")
             roles |= {"acquisition_evidence", "derived_bars", *families}
+        if version == FEATURE_VERSION:
+            roles |= {"feature_definitions", "feature_history"}
         for role, ids in manifest["frames"].items():
             if role not in roles or not ids:
                 raise ValueError("coleção desconhecida")
@@ -518,7 +669,7 @@ def _validated(bundle):
                 expected = {k: _value(v) for k, v in dict(fact["payload"], symbol=manifest["symbol"]).items()}
                 if manifest["specification"] != expected:
                     raise ValueError("propriedades divergentes da vigência declarada")
-        if version == 3:
+        if version >= 3:
             from mt5_extracao.analytics import data_eligibility
             if list(frames["acquisition_evidence"].columns) != _EVIDENCE_COLUMNS:
                 raise ValueError("colunas de evidência desconhecidas")
@@ -532,6 +683,8 @@ def _validated(bundle):
                          book=frames.get("book"), evidence=_evidence_items(frames["acquisition_evidence"]), derived=frames["derived_bars"], symbol=manifest["symbol"], timeframe=tf.name)
             if quality != manifest["derivation"].get("data_quality"):
                 raise ValueError("qualidade divergente dos dados capturados")
+        if version == FEATURE_VERSION:
+            _validate_features(manifest, frames)
         return Snapshot(bundle["manifest_id"], copy.deepcopy(manifest), frames)
     except (KeyError, TypeError, ValueError, AttributeError, IndexError, OverflowError) as error:
         raise ValueError("Snapshot sem integridade; reimporte uma cópia íntegra ou recapture a origem.") from error
