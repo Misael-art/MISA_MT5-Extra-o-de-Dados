@@ -9,6 +9,8 @@ REPO = Path(__file__).resolve().parents[1]
 
 # nome -> parâmetros, na ordem (classes e constantes: None)
 SURFACE = {
+    "export_feature_relation": ["db", "analysis_id", "destination", "cancel_check", "timeout_seconds", "max_memory_mb"],
+    "import_feature_relation": ["db", "source", "cancel_check", "write_guard", "timeout_seconds", "max_memory_mb"],
     "query_feature_relation": ["db", "manifest_id", "left", "right", "as_of", "lag_bars", "method", "minimum_pairs",
         "minimum_sessions", "bootstrap_replicates", "seed", "block_length_sessions", "tests_counted", "synthetic_fixture",
         "timeout_seconds", "max_memory_mb", "cancel_check"],
