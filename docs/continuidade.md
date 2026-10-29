@@ -3589,7 +3589,9 @@ fixture, negociação ou aceite nativo/financeiro/Windows físico.
 
 ## Continuidade do roadmap — BD14-OBSERVATION, 29/10/2026
 
-Frente `codex/contexto-observacao`, sobre `5c113fe`/PR223. O contexto padrão
+Fonte `84dce7f431b792e32df0a5b297e266414541d6b9` publicada no
+[PR224](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/224), branch
+`codex/contexto-observacao`, sobre `5c113fe`/PR223. O contexto padrão
 acompanha a observação mais recente e não serve para reconstruir correções
 tardias de uma observação anterior. `observation_time` explícito no contexto
 congelado e no SDK/CLI de composição seleciona o histórico daquela observação.
