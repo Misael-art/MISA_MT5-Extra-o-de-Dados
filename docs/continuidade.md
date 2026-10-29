@@ -3629,3 +3629,44 @@ fonte/concorrência/interrupção. Valores mantidos numa grade não são novos e
 Este recorte é de leitura; não encerra materialização, demais famílias ou aceite
 nativo/financeiro/Windows físico. CI da base5c113fe: Linux, Windows, PostgreSQL,
 lint e ambos instaladores aprovados; o novo HEAD tem CI próprio.
+
+## Continuidade do roadmap — BD14-INTERRUPTION, 29/10/2026
+
+Frente `codex/interrupcao-produtores`, sobre `c1afbeb`/PR224. Reproduzido nos
+produtores de registry e famílias: `KeyboardInterrupt` escapava de `except
+Exception`, deixando medidor RSS ativo e recibo `RUNNING`. Dois testes falharam
+na base e o launcher anterior confirmou os dois casos com SIGINT real em
+processos QA próprios. Outros dois testes reproduziram vazamento no fechamento
+normal quando a medição de disco falhava antes de parar o medidor.
+
+Os dois produtores usam o fechamento de aborto no journal existente, relançam a
+interrupção e param recursos mesmo se o recibo falhar. Cancelamento registra
+`CANCELLED`; outras falhas, `FAILED`. O fechamento normal para o medidor antes
+das métricas/escrita. Falha secundária não substitui o erro original; diagnóstico
+identifica o run que pode continuar `RUNNING` porque não houve persistência.
+Checkpoint e fatos continuam na mesma transação. Nenhum novo store/executor,
+schema, fórmula ou mudança de pins. [Contrato e limites](dados/PLANO_ESTRUTURA_DADOS.md#bd14--materialização-e-recuperação).
+
+Rodada inicial16 aprovados; final230 distintos aprovados, com18 novos casos
+incluindo interrupção antes/depois do commit, SystemExit/BaseException, falha
+secundária, recursos, retomada, hashes e regressões de famílias/retornos/
+composições/contexto/SDK (sobreposição, não somar). Timeout60s preservado e uma
+thread numérica por processo, sem suíte pesada concorrente. Doctor offline
+16OK/2avisos/0falhas. Recibos `state/qa-tmp/job-interruption/`.
+
+Launcher oficial com SIGINT real: quatro cenários, dois produtores × transação/
+após commit. Todos cancelaram sem medidor residual; rollback conservou zero
+fatos, interrupção após commit preservou um fato do registry ou16 de calendário.
+Retomadas geraram4/16 fatos iguais à referência completa, incluindo hashes e
+metadados; repetição não duplicou revisões. Alteração da orquestração compartilhada
+avança a assinatura conservadora do materializador: QA preservou quatro fatos
+`price.return_1@1.0+4e43bf688a54` e acrescentou quatro na versão
+`1.0+182228da598a`, sem revisá-los e com valores/qualidade iguais. Não há migração
+automática da base do proprietário.
+
+Próxima entrega é materializar a cadeia congelada por eventos reais de
+observação/revisão, com deduplicação, origem, monotonicidade e proteção de
+concorrência nos mecanismos existentes. Interrupção abrupta/SIGKILL e reconciliação
+automática de runs órfãos permanecem pendentes. Este recorte não encerra BD14,
+demais famílias nem Windows físico/MT5/financeiro; somente SIGINT em QA Linux
+e exceções controladas foram exercitados.

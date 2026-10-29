@@ -1303,9 +1303,8 @@ def compute(db, symbol, timeframe, *, families=None, volume_source="auto", overr
             summary.append(item)
             log.info("%s %s %s: %s valores (%s novos, %s revisados, %s inalterados)", symbol, label, family,
                      len(records), total["inserted"], total["revised"], total["unchanged"])
-        except Exception as exc:
-            producer_jobs.finish_run(db, run, source_sequence=source_sequence, status="FAILED", counts=total,
-                                     error=exc)
+        except BaseException as exc:
+            producer_jobs.abort_run(db, run, source_sequence=source_sequence, counts=total, error=exc)
             raise
     by_family = {item["family"]: item for item in summary}
     by_family.update(skipped)

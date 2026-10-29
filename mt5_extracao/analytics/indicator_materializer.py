@@ -408,7 +408,7 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         job = producer_jobs.finish_run(db, run, source_sequence=sequence, status="COMPLETE", counts=counts)
         return dict(symbol=symbol, timeframe=label, features=len(ids), skipped=False, bars=len(bars),
                     write_from=write_from, evaluation="exact_prefix", **counts, job=job)
-    except Exception as exc:
-        producer_jobs.finish_run(db, run, source_sequence=sequence,
-                                 status="CANCELLED" if isinstance(exc, Cancelled) else "FAILED", counts=counts, error=exc)
+    except BaseException as exc:
+        producer_jobs.abort_run(db, run, source_sequence=sequence, counts=counts, error=exc,
+                                cancelled=isinstance(exc, Cancelled))
         raise
