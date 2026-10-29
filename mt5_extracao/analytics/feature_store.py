@@ -583,6 +583,8 @@ def save_values(db, records, *, transaction_guard=None, transaction_hook=None):
         # Seleção da revisão e inserção pertencem à mesma exclusão de escrita.
         if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
             conn.exec_driver_sql("BEGIN IMMEDIATE")
+        if transaction_guard is not None:
+            transaction_guard(conn)
         pairs = {(row["feature_id"], row["algorithm_version"]) for row in rows}
         definitions = {}
         for feature_id, version in sorted(pairs):
@@ -596,8 +598,6 @@ def save_values(db, records, *, transaction_guard=None, transaction_hook=None):
             definitions[(feature_id, version)] = definition[0]
         for (feature_id, version, value), row in zip(typed_values, rows):
             _validate_declared_value_type(value, definitions[(feature_id, version)], quality=row["quality"])
-        if transaction_guard is not None:
-            transaction_guard(conn)
         current = {}
         requested_times = {}
         for row in rows:

@@ -723,6 +723,9 @@ def _materialization_guard(conn, db, scope, identity, expected):
     from sqlalchemy import text
     from mt5_extracao.analytics import datasets, indicator_materializer
     if conn.dialect.name == "postgresql":
+        # Inclui inserção/alteração dos slots de identidade até o commit;
+        # escritores de valores podem compartilhar esta trava de leitura.
+        conn.execute(text("LOCK TABLE _dataset_origin IN SHARE MODE"))
         conn.execute(text("SELECT feature_id FROM " + feature_store.DEFINITIONS_TABLE + " WHERE " + scope["pairs"] +
                           " ORDER BY feature_id,algorithm_version FOR UPDATE"), scope["params"]).all()
     if datasets.identity(db, connection=conn) != identity:

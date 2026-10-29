@@ -28,3 +28,55 @@ def test_frozen_chain_replay_and_late_old_observation_revision_are_exact(pg, sou
 
 def test_postgresql_writers_serialize_and_reject_stale_generation(pg, source, frozen, monkeypatch):
     simultaneous_writers(source, frozen, monkeypatch)
+
+
+def test_namespace_write_waits_for_value_commit_then_prevents_false_complete(pg, source, frozen, monkeypatch):
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from sqlalchemy import text
+    from mt5_extracao.analytics import datasets, feature_store, indicator_materializer
+    from mt5_extracao.database_manager import DatabaseManager
+    ready, inside, attempting, changed = (Event() for _ in range(4))
+    pids = []
+    original_namespace = datasets.identity(source)["namespace"]
+    def fork():
+        other = DatabaseManager(db_type="postgresql", db_path=pg.db_path, broker_utc_offset=0)
+        try:
+            with other.engine.connect() as conn:
+                pids.append(conn.execute(text("SELECT pg_backend_pid()")).scalar_one())
+            ready.set()
+            assert inside.wait(10)
+            attempting.set()
+            datasets.fork(other)
+            changed.set()
+        finally:
+            other.close()
+    save = feature_store.save_values
+    def guarded_commit(db_, records, **kwargs):
+        if records:
+            prior = kwargs.pop("transaction_hook")
+            def hook(conn, counts):
+                prior(conn, counts)
+                inside.set()
+                assert attempting.wait(10)
+                deadline = time.monotonic() + 5
+                while not conn.execute(text("SELECT EXISTS (SELECT 1 FROM pg_locks WHERE pid=:pid "
+                    "AND relation=to_regclass('_dataset_origin') AND NOT granted)"), dict(pid=pids[0])).scalar_one():
+                    assert not changed.is_set(), "namespace mudou antes do commit de valores"
+                    assert time.monotonic() < deadline, "não observou a trava de identidade"
+                    time.sleep(.02)
+                assert datasets.identity(db_, connection=conn)["namespace"] == original_namespace
+            result = save(db_, records, transaction_hook=hook, **kwargs)
+            assert changed.wait(10)
+            return result
+        return save(db_, records, **kwargs)
+    monkeypatch.setattr(feature_store, "save_values", guarded_commit)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        worker = pool.submit(fork)
+        assert ready.wait(10)
+        with pytest.raises(indicator_materializer.SourceChanged, match="Identidade da base mudou"):
+            materialize(source, frozen)
+        worker.result(timeout=10)
+    assert len(output_facts(source)) == 10
+    assert datasets.identity(source)["namespace"] != original_namespace

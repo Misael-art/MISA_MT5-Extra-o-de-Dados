@@ -245,6 +245,8 @@ Fatos/checkpoint são confirmados na mesma transação, com conferência da
 identidade da base e da geração de saídas antes e depois dos valores, sob a
 exclusão de escrita do store. Esse protocolo presume gravações
 append-only pelo store; alterações SQL externas não são um protocolo de edição.
+No PostgreSQL, a identidade permanece protegida até o commit, inclusive contra
+uma troca de namespace iniciada depois da conferência.
 Um escritor concorrente provoca conflito e nova tentativa, sem duplicatas.
 Cancelamento/interrupção mantém somente os lotes confirmados; a retomada compara
 os fatos, sem confiar apenas num cursor. Importação em outra base continua

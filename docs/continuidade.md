@@ -3706,9 +3706,12 @@ e versões dos três retornos qualificados não são migrados por esta frente.
 
 Baseline230 reutilizado; refatoração83, causalidade55 e integração158 aprovados
 (rodadas sobrepostas). Ampliada inicial343 aprovados/2 pulados/1 falha concorrente;
-após o guarda, final349 aprovados/2 PostgreSQL pendentes por falta de servidor
-dedicado. Timeout60s mantido, uma thread numérica e uma suíte pesada por vez.
-Os dois casos PostgreSQL têm schema próprio e entram na CI existente; não se
+após o guarda,349 aprovados/2 PostgreSQL pendentes por falta de servidor
+dedicado. A revisão PostgreSQL acrescentou proteção da identidade até o commit,
+um terceiro caso de troca concorrente de namespace e67 testes focados aprovados;
+a rodada final do código refinado terminou349 aprovados/3 PostgreSQL pendentes.
+Timeout60s mantido, uma thread numérica e uma suíte pesada por vez.
+Os três casos PostgreSQL têm schema próprio e entram na CI existente; não se
 declara esse backend qualificado pelo host. Doctor offline16OK/2avisos/0falhas.
 
 Launcher oficial com base sintética:10 fatos em dois níveis, correção tardia
