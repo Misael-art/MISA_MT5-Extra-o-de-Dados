@@ -455,3 +455,303 @@ def adjust_bonferroni(results, *, tests_counted):
         result["multiple_testing"] = {"method": "Bonferroni family-wise", "tests_counted": tests_counted}
         adjusted.append(result)
     return adjusted
+
+
+def _pair_signature():
+    import platform
+    import scipy
+    from pathlib import Path
+    from mt5_extracao import timeframes
+    from mt5_extracao.analytics import data_eligibility, datasets, feature_store, indicator_context, indicator_materializer, instruments, relation_dto
+    source = indicator_materializer._source_components
+    components = dict(scheme="frozen_pair_v1", relation_schema=relation_dto.PAIR_RELATION_SCHEMA_VERSION,
+        engine=source(__file__, ("_pair_signature", "_pair_grid", "_pair_sessions", "_pair_context", "_pair_lineage",
+            "_pair_sample_hash", "query_frozen_pair", "analyze_association", "_result_base", "_numeric_column",
+            "_ranked_standardized", "_moving_block_indices", "_correlation", "_positive_int", "_scope",
+            "_utc_timestamp", "_utc_series", "adjust_bonferroni")),
+        context=source(indicator_context.__file__, ("from_snapshot", "_snapshot_context", "_snapshot_scope",
+            "_snapshot_observations", "_context_rows", "_state", "_value", "_ids", "_version", "records")),
+        store=source(feature_store.__file__, ("asof_join", "_utc_timestamp", "_canonical_json")),
+        dto=source(relation_dto.__file__, ("build_pair_relation_dto", "_validate_relation", "_required_text",
+            "_finite_optional_number", "_utc_timestamp", "_json_ready")),
+        snapshot=indicator_materializer._object_source_component(datasets.Snapshot),
+        snapshot_reader=hashlib.sha256(Path(datasets.__file__).read_bytes()).hexdigest(),
+        eligibility=hashlib.sha256(Path(data_eligibility.__file__).read_bytes()).hexdigest(),
+        broker_time=source(instruments.__file__, ("broker_utc",)), timeframe=source(timeframes.__file__, ("parse", "_norm")),
+        python=platform.python_version(), numpy=np.__version__, pandas=pd.__version__, scipy=scipy.__version__)
+    return hashlib.sha256(feature_store._canonical_json(components, "pair implementation").encode()).hexdigest()
+
+
+def _pair_grid(snapshot, cutoff):
+    from mt5_extracao import timeframes
+    from mt5_extracao.analytics import instruments
+    manifest = snapshot.manifest
+    tf = timeframes.parse(manifest["timeframe"])
+    bars = snapshot.bars
+    starts = pd.Series([instruments.broker_utc(stamp, manifest["time"]["broker_utc_offset_hours"])
+                        for stamp in bars.time], dtype="datetime64[ns, UTC]")
+    step = pd.offsets.MonthBegin(1) if tf.name == "MN1" else pd.Timedelta(minutes=tf.minutes)
+    ends = starts + step
+    if starts.duplicated().any() or not starts.is_monotonic_increasing:
+        raise ValueError("Grade congelada duplicada ou fora de ordem; revise a captura antes de relacionar.")
+    positions = np.flatnonzero((ends <= cutoff).to_numpy())
+    return pd.DataFrame(dict(start=starts.iloc[positions].array, at=ends.iloc[positions].array)), step, bars.iloc[positions]
+
+
+def _pair_sessions(snapshot, times, starts, cutoff, guard):
+    """Somente segmentos do calendário congelado cuja revisão era conhecida no corte."""
+    calendar = snapshot.market_calendar
+    output = pd.Series([None] * len(times), dtype=object)
+    if calendar.empty or not len(times):
+        return output, []
+    calendar = calendar.copy()
+    calendar["known"] = _utc_series(calendar.observed_at_utc, "calendar.observed_at_utc")
+    calendar = calendar.loc[calendar.known <= cutoff].sort_values(["known", "revision"]).drop_duplicates("session_id", keep="last")
+    intervals, labels, receipts = [], [], []
+    for row in calendar.itertuples(index=False):
+        guard()
+        segments = json.loads(row.segments_json)
+        used = False
+        for segment in segments:
+            first, last = (_utc_timestamp(segment[key], "calendar." + key) for key in ("open_utc", "close_utc"))
+            if first >= last:
+                raise ValueError("Segmento de sessão congelada sem intervalo válido.")
+            if last < times.min() or first >= times.max():
+                continue
+            if float(row.timezone_offset_hours) != float(snapshot.manifest["time"]["broker_utc_offset_hours"]):
+                raise ValueError("Calendário congelado usa outro contexto de fuso; reconcilie a origem.")
+            used = True
+            intervals.append(pd.Interval(first, last, closed="right"));labels.append(row.session_id)
+        if used:
+            receipts.append(dict(session_id=row.session_id, revision=int(row.revision), input_hash=row.input_hash,
+                                 known_at_utc=row.known.isoformat(), source=row.source))
+    if intervals:
+        index = pd.IntervalIndex(intervals)
+        if index.is_overlapping:
+            raise ValueError("Segmentos de sessões sobrepostos; a população seria ambígua.")
+        for position, match in enumerate(index.get_indexer(times)):
+            if match >= 0 and pd.notna(starts.iloc[position]) and starts.iloc[position] >= index[match].left:
+                output.iloc[position] = labels[match]
+    return output, receipts
+
+
+def _pair_context(snapshot, pair, times, present, guard):
+    from mt5_extracao.analytics import indicator_context
+    columns = ("value", "state", "reason", "observation_time", "available_at_utc", "valid_until_utc",
+               "revision", "source_revision", "metadata_json")
+    result = pd.DataFrame({key: pd.Series([None] * len(times), dtype=object) for key in columns})
+    result["state"], result["reason"] = "UNAVAILABLE", "NO_REFERENCE_BAR"
+    positions = np.flatnonzero(present.to_numpy())
+    if len(positions):
+        guard()
+        context = indicator_context.from_snapshot(snapshot, pd.DataFrame(dict(decision_time=times.iloc[positions].array)),
+            feature_ids=[pair[0]], algorithm_version=pair[1])
+        for key in columns:
+            result.loc[positions, key] = context[pair[0] + "::" + key].astype(object).to_numpy()
+    guard()
+    return result
+
+
+def _pair_lineage(db, snapshot, pair, metadata, cutoff, guard, images=None):
+    """Lê origens imutáveis da materialização; nunca completa com contratos/fatos live."""
+    from mt5_extracao.analytics import datasets
+    images = {snapshot.manifest_id: snapshot} if images is None else images
+    visited, visiting = set(), set()
+    identity = snapshot.manifest
+    def image(ident):
+        if ident not in images:
+            if len(images) >= 32:
+                raise ValueError("Mais de32 snapshots de origem; reduza a janela da relação.")
+            guard();images[ident] = datasets.load(db, ident);guard()
+        other = images[ident].manifest
+        if any(other[key] != identity[key] for key in ("symbol", "timeframe", "source", "time")):
+            raise ValueError("Origem materializada pertence a outro contexto/base.")
+        return images[ident]
+    def visit(current, chosen, selected_metadata=None):
+        key = current.manifest_id, tuple(chosen)
+        if key in visiting:
+            raise ValueError("Ciclo na proveniência congelada.")
+        if key in visited:
+            return
+        visiting.add(key);guard()
+        definitions = {(item["feature_id"], item["algorithm_version"]): item for item in current.feature_definitions}
+        spec = definitions.get(tuple(chosen))
+        if spec is None:
+            raise ValueError("Contrato ancestral não foi congelado.")
+        if spec.get("family") == "structure" or chosen[0].startswith("structure."):
+            raise ValueError("UNVERIFIED_STORED_EVENT: confirmação/identidade do pivô não qualificada.")
+        parameters = spec.get("parameters") or {}
+        if spec.get("family") == "frozen_composite":
+            for parent in parameters["composition"]["inputs"]:
+                visit(current, (parent["feature_id"], parent["algorithm_version"]))
+        elif spec.get("family") == "materialized_composite":
+            contract = parameters["materialization"]
+            if selected_metadata is None:
+                history = current.feature_history
+                selected_metadata = history.loc[(history.feature_id == chosen[0]) &
+                    (history.algorithm_version == chosen[1]) & (history.available_at_utc <= cutoff), "metadata_json"]
+            if selected_metadata.isna().any():
+                raise ValueError("Proveniência materializada ausente.")
+            for raw in set(selected_metadata.dropna()):
+                record = json.loads(raw)
+                if record.get("basis") != "materialized_frozen_context":
+                    raise ValueError("Proveniência materializada ausente.")
+                origin = image(record["materialization"]["source_manifest_id"])
+                target = chosen[0], contract["recipe_version"]
+                original = next((item for item in origin.feature_definitions if
+                    (item["feature_id"], item["algorithm_version"]) == target), None)
+                if original is None or original["parameters"].get("composition") != contract["recipe"]:
+                    raise ValueError("Receita ancestral diverge da versão materializada.")
+                visit(origin, target)
+        visiting.remove(key);visited.add(key)
+    visit(snapshot, pair, metadata)
+    return sorted(images)
+
+
+def _pair_sample_hash(frame, guard):
+    from mt5_extracao.analytics import feature_store, indicator_context
+    digest = hashlib.sha256()
+    for start in range(0, len(frame), 256):
+        guard()
+        for row in indicator_context.records(frame.iloc[start:start+256]):
+            digest.update(feature_store._canonical_json(row, "pair sample").encode());digest.update(b"\n")
+    guard()
+    return digest.hexdigest()
+
+
+def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
+                      minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
+                      tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
+                      cancel_check=None):
+    """Associação referencial entre duas versões congeladas, sem persistência ou ordem."""
+    import time
+    from datetime import datetime, timezone
+    from mt5_extracao import timeframes
+    from mt5_extracao.analytics import data_eligibility, datasets, feature_store, indicator_materializer, producers, query_service, relation_dto
+    pairs = [datasets._feature_selection([pair])[0] for pair in (left, right)]
+    cutoff = _utc_timestamp(as_of, "as_of")
+    if cutoff > pd.Timestamp.now(tz="UTC"):
+        raise ValueError("Corte futuro não certifica recebimentos; escolha as_of já ocorrido.")
+    if (isinstance(lag_bars, bool) or not isinstance(lag_bars, int) or not 0 <= lag_bars <= 10000
+            or not isinstance(synthetic_fixture, bool)):
+        raise ValueError("Confira lag_bars (0 a10000) e synthetic_fixture.")
+    for value, label in ((minimum_pairs, "minimum_pairs"), (minimum_sessions, "minimum_sessions"),
+                         (bootstrap_replicates, "bootstrap_replicates")):
+        _positive_int(value, label)
+    if minimum_pairs < 3:
+        raise ValueError("minimum_pairs precisa ser pelo menos3 na consulta referencial.")
+    if bootstrap_replicates > 5000 or not isinstance(seed, int) or isinstance(seed, bool):
+        raise ValueError("Use até5000 réplicas e seed inteiro.")
+    if block_length_sessions is not None:_positive_int(block_length_sessions, "block_length_sessions")
+    if tests_counted is not None:_positive_int(tests_counted, "tests_counted")
+    if (isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float)) or
+            not 0 < timeout_seconds <= producers.MAX_JOB_TIMEOUT_SECONDS or isinstance(max_memory_mb, bool) or
+            not isinstance(max_memory_mb, (int, float)) or not 0 < max_memory_mb <= producers.MAX_JOB_MEMORY_MB):
+        raise ValueError("Timeout/memória fora dos limites existentes dos jobs Analytics.")
+    method = str(method).lower()
+    if method not in ("pearson", "spearman"):
+        raise ValueError("Use pearson ou spearman para pares numéricos.")
+    run = dict(started_monotonic=time.monotonic())
+    def guard():
+        if cancel_check is not None and cancel_check():
+            raise indicator_materializer.Cancelled("Consulta de relações cancelada; nenhum resultado parcial publicado.")
+        producers._check_limits(run, timeout_seconds, max_memory_mb)
+    guard();snapshot = datasets.load(db, manifest_id);guard()
+    manifest = snapshot.manifest
+    definitions = {(item["feature_id"], item["algorithm_version"]): item for item in snapshot.feature_definitions}
+    if any(pair not in definitions for pair in pairs):
+        raise ValueError("Versão não congelada; capture os dois contratos antes de relacionar.")
+    descriptors = [dict(feature_id=pair[0], algorithm_version=pair[1], unit=definitions[pair].get("unit"),
+        value_type=definitions[pair].get("value_type"), transform="identity", definition=definitions[pair]) for pair in pairs]
+    grid, step, bars = _pair_grid(snapshot, cutoff)
+    if len(grid)*2 > query_service.MAX_SELECTION_ROWS:
+        raise ValueError("Par excede o limite de indicador/decisão; reduza a janela congelada.")
+    times = grid["at"]
+    reference = times.copy() if lag_bars == 0 else times - (pd.offsets.MonthBegin(lag_bars)
+        if timeframes.parse(manifest["timeframe"]).name == "MN1" else step*lag_bars)
+    present = reference.isin(times)
+    x = _pair_context(snapshot, pairs[0], reference, present, guard)
+    y = _pair_context(snapshot, pairs[1], times, pd.Series(True, index=grid.index), guard)
+    sessions, calendar_proof = _pair_sessions(snapshot, times, grid.start, cutoff, guard)
+    starts_by_end = dict(zip(times, grid.start))
+    reference_starts = reference.map(starts_by_end)
+    previous_sessions, _ = _pair_sessions(snapshot, reference, reference_starts, cutoff, guard)
+    sample = pd.DataFrame(dict(symbol=manifest["symbol"], timeframe=manifest["timeframe"],
+        decision_time=times, reference_time=reference, session_id=sessions, x_value=x.value, y_value=y.value,
+        x_available_at_utc=x.available_at_utc, y_available_at_utc=y.available_at_utc))
+    for prefix, context in (("x", x), ("y", y)):
+        for field in ("observation_time", "revision", "source_revision", "state", "reason"):
+            sample[prefix+"_"+field] = context[field]
+    eligible = pd.Series(True, index=sample.index)
+    exclusions = {}
+    sample["exclusion"] = None
+    def reject(code, mask):
+        take = eligible & mask
+        if take.any():
+            exclusions[code] = int(take.sum());sample.loc[take,"exclusion"] = code;eligible.loc[take] = False
+    check = data_eligibility.evaluate(snapshot.quality, ("ohlcv",))
+    prefix_quality = data_eligibility.evaluate(data_eligibility.assess(bars, bar_minutes=timeframes.parse(manifest["timeframe"]).minutes or 1440), ("ohlcv",))
+    blocked = None
+    if not check["eligible"] or not prefix_quality["eligible"]:blocked = "INELIGIBLE_DATA"
+    elif any(side["value_type"] != "NUMBER" for side in descriptors):blocked = "UNSUPPORTED_VALUE_TYPE"
+    elif any(not side["unit"] for side in descriptors):blocked = "UNDECLARED_UNIT"
+    elif pairs[0] == pairs[1] and lag_bars == 0:blocked = "SAME_SERIES"
+    lineage = {snapshot.manifest_id}
+    lineage_images = {snapshot.manifest_id: snapshot}
+    lineage_diagnostics = []
+    if blocked is None:
+        for pair, context in zip(pairs, (x,y)):
+            try:
+                lineage.update(_pair_lineage(db, snapshot, pair, context.loc[context.state == "AVAILABLE","metadata_json"], cutoff, guard, lineage_images))
+            except (KeyError, TypeError, ValueError) as exc:
+                blocked = "UNVERIFIED_STORED_EVENT" if "UNVERIFIED_STORED_EVENT" in str(exc) else "UNVERIFIED_MATERIALIZED_LINEAGE"
+                lineage_diagnostics.append(dict(feature_id=pair[0], algorithm_version=pair[1], reason=str(exc)))
+                break
+    if blocked is not None:reject(blocked, pd.Series(True,index=sample.index))
+    reject("NO_REFERENCE_BAR", ~present)
+    reject("SESSION_UNAVAILABLE_AS_OF", sessions.isna() | previous_sessions.isna())
+    reject("CROSS_SESSION_LAG", sessions.ne(previous_sessions))
+    reject("LEFT_UNAVAILABLE", x.state.ne("AVAILABLE") | x.value.isna())
+    reject("RIGHT_UNAVAILABLE", y.state.ne("AVAILABLE") | y.value.isna())
+    reject("FUTURE_OBSERVATION", (pd.to_datetime(x.observation_time,utc=True) > reference) |
+                                   (pd.to_datetime(y.observation_time,utc=True) > times))
+    unique_fields = [prefix+"_"+field for prefix in ("x","y") for field in ("observation_time","revision","source_revision")]
+    distinct = int(sample.loc[eligible,unique_fields].drop_duplicates().shape[0])
+    result = analyze_association(sample.loc[eligible], method=method, as_of=cutoff, minimum_pairs=minimum_pairs,
+        minimum_sessions=minimum_sessions, bootstrap_replicates=bootstrap_replicates, seed=seed,
+        block_length_sessions=block_length_sessions, guard=guard) if distinct >= minimum_pairs else _result_base(FEATURE_PAIR, method, cutoff, dict(symbol=manifest["symbol"],timeframe=manifest["timeframe"]))
+    if distinct < minimum_pairs:
+        result.update(n_total=int(eligible.sum()), n_pairs=int(eligible.sum()), n_sessions=int(sessions.loc[eligible].nunique()),
+            reason_codes=[blocked] if blocked else list(exclusions) if not eligible.any() and exclusions else
+                         ["MINIMUM_DISTINCT_SOURCE_PAIRS_NOT_MET"])
+    if tests_counted is not None:result = adjust_bonferroni([result],tests_counted=tests_counted)[0]
+    sample_hash = _pair_sample_hash(sample, guard)
+    implementation = _pair_signature();guard()
+    settings = dict(left=list(pairs[0]), right=list(pairs[1]), as_of=cutoff.isoformat(), lag_bars=lag_bars, method=method,
+        minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions, bootstrap_replicates=bootstrap_replicates,
+        seed=seed, block_length_sessions=block_length_sessions, tests_counted=tests_counted, synthetic_fixture=synthetic_fixture)
+    analysis_id = hashlib.sha256(feature_store._canonical_json(dict(manifest_id=manifest_id,settings=settings,
+        sample_hash=sample_hash,implementation=implementation,lineage=sorted(lineage)),"pair identity").encode()).hexdigest()
+    population = dict(n_total=len(sample), n_eligible=int(eligible.sum()), n_distinct_source_pairs=distinct, exclusions=exclusions,
+        n_left_sources=int(sample.loc[eligible,["x_"+f for f in ("observation_time","revision","source_revision")]].drop_duplicates().shape[0]),
+        n_right_sources=int(sample.loc[eligible,["y_"+f for f in ("observation_time","revision","source_revision")]].drop_duplicates().shape[0]),
+        quality=dict(frozen=check,prefix=prefix_quality), statistics=result)
+    relation = dict(method=method,effect=result["effect"],effect_ci_low=result["ci_low"],effect_ci_high=result["ci_high"],
+        p_raw=result["p_raw"],p_adjusted=result["p_adjusted"],n_pairs=result["n_pairs"],n_sessions=result["n_sessions"],
+        evidence_state="EXPLORATORY" if result["status"]=="OK" else "INSUFFICIENT", utility_state="INCONCLUSIVE",
+        freshness_state="FROZEN_AS_OF",state=result["status"],reason="; ".join(result["reason_codes"]) or None)
+    return relation_dto.build_pair_relation_dto(left=descriptors[0],right=descriptors[1],relation=relation,
+        scope=dict(symbol=manifest["symbol"],timeframe=manifest["timeframe"],lag_bars=lag_bars,
+            lag_rule="left at right_close minus nominal lag; missing reference bars and cross-session pairs excluded",
+            settings=settings),population=population,
+        provenance=dict(base_namespace=manifest["source"]["namespace"],source=manifest["source"],snapshot_manifest_id=manifest_id,
+            lineage_manifests=sorted(lineage),lineage_diagnostics=lineage_diagnostics,
+            calendar=calendar_proof,as_of_utc=cutoff.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            analysis_id=analysis_id,sample_hash=sample_hash,implementation_sha256=implementation,
+            input_basis="frozen_snapshot",limits=dict(timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb,
+                max_pairs=query_service.MAX_SELECTION_ROWS//2,max_lineage_snapshots=32),
+            limitations=["Associação descritiva, sem causalidade, ganho ou sinal operacional.",
+                "Fontes retidas e autocorrelação não são observações independentes; contagem distinta não é n efetivo certificado.",
+                "Inferência por blocos depende de hipóteses temporais; seleção de testes e utilidade financeira não qualificadas.",
+                "Nenhuma direção, normalização adicional ou calendário é inferido; versões/recebimentos são os declarados no snapshot."]),
+        generated_at_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),synthetic_fixture=synthetic_fixture)

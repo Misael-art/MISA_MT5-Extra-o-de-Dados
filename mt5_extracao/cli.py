@@ -1780,6 +1780,24 @@ def build_parser():
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
+    q = features_sub.add_parser("relation", help="associação descritiva entre duas versões de um snapshot")
+    q.add_argument("--manifest", required=True)
+    q.add_argument("--left", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
+    q.add_argument("--right", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
+    q.add_argument("--as-of", required=True, help="corte já ocorrido com fuso explícito")
+    q.add_argument("--lag-bars", type=int, default=0, help="esquerda antecede a direita em N períodos nominais; sem comprimir lacunas")
+    q.add_argument("--method", choices=("pearson", "spearman"), default="pearson")
+    q.add_argument("--minimum-pairs", type=int, default=30)
+    q.add_argument("--minimum-sessions", type=int, default=10)
+    q.add_argument("--bootstrap-replicates", type=int, default=999)
+    q.add_argument("--seed", type=int, default=7)
+    q.add_argument("--block-length-sessions", type=int)
+    q.add_argument("--tests-counted", type=int, help="tamanho declarado da família para Bonferroni; sem registro de busca implícito")
+    q.add_argument("--synthetic-fixture", action="store_true", help="identifica dados referenciais sintéticos")
+    q.add_argument("--timeout-seconds", type=float, default=120)
+    q.add_argument("--max-memory-mb", type=float, default=2048)
+    q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("recover-jobs", help="reconcilia jobs de processos locais encerrados; preserva ativos e desconhecidos")
     q.add_argument("--symbol", help="restringe ao ativo informado")
     q.add_argument("--tf", help="restringe ao timeframe informado")
@@ -2068,6 +2086,44 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action == "relation":
+        from mt5_extracao import sdk
+        result = sdk.query_feature_relation(ctx.db, args.manifest, left=args.left, right=args.right, as_of=args.as_of,
+            lag_bars=args.lag_bars, method=args.method, minimum_pairs=args.minimum_pairs,
+            minimum_sessions=args.minimum_sessions, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed,
+            block_length_sessions=args.block_length_sessions, tests_counted=args.tests_counted,
+            synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb)
+        _data(relation=result)
+        row = result["relation"]
+        value = "indisponível" if row["effect"] is None else format(row["effect"], ".6g")
+        _print(" × ".join(f"{result[side]['feature_id']}@{result[side]['algorithm_version']} [{result[side]['unit'] or 'unidade não declarada'}]"
+                          for side in ("left", "right")) + f"; defasagem nominal={result['scope']['lag_bars']}.")
+        _print(f"{row['method']}: {value}; pares={row['n_pairs']}; sessões={row['n_sessions']}; estado={row['state']}.")
+        population = result["population"]
+        _print(f"População={population['n_total']}; excluídos={sum(population['exclusions'].values())}; fontes distintas={population['n_distinct_source_pairs']}.")
+        if result["synthetic_fixture"]:
+            _print("Dados de referência sintéticos.")
+        if row["reason"]:
+            _print("Motivo: " + row["reason"])
+            messages = {
+                "MINIMUM_DISTINCT_SOURCE_PAIRS_NOT_MET": "Poucas fontes distintas; repetir valores retidos não amplia a amostra informativa.",
+                "MINIMUM_PAIRS_NOT_MET": "Poucos pares completos; amplie a janela com dados qualificados.",
+                "MINIMUM_SESSIONS_NOT_MET": "Poucas sessões conhecidas no corte para a inferência solicitada.",
+                "SESSION_UNAVAILABLE_AS_OF": "O calendário congelado não comprova as sessões no corte escolhido.",
+                "LEFT_UNAVAILABLE": "A série esquerda não tem valores disponíveis nas decisões selecionadas.",
+                "RIGHT_UNAVAILABLE": "A série direita não tem valores disponíveis nas decisões selecionadas.",
+                "UNSUPPORTED_VALUE_TYPE": "Tipos categóricos, booleanos ou não declarados não são convertidos em números.",
+                "UNVERIFIED_MATERIALIZED_LINEAGE": "Faltam origens imutáveis verificáveis do composto; importe os manifests de origem.",
+                "UNVERIFIED_STORED_EVENT": "Identidade e confirmação do pivô armazenado ainda não foram qualificadas.",
+                "X_CONSTANT_OR_NEAR_CONSTANT": "A série esquerda é constante ou numericamente quase constante.",
+                "Y_CONSTANT_OR_NEAR_CONSTANT": "A série direita é constante ou numericamente quase constante.",
+            }
+            for reason in row["reason"].split("; "):
+                if reason in messages:
+                    _print(messages[reason])
+        _print("Associação descritiva; não certifica causalidade, ganho ou operação financeira.")
+        return EXIT_OK
 
     if args.features_action == "recover-jobs":
         from mt5_extracao import sdk, timeframes
