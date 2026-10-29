@@ -31,7 +31,8 @@ depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novo
 
 ## Consulta de dados analíticos (BD18a)
 
-Leitura sem UI e sem MT5 dos fatos já materializados no store; nunca calcula nem grava.
+Leitura sem UI e sem MT5 dos fatos já materializados no store; não calcula nem altera fatos ou
+definições. A identidade pública pode inicializar o namespace da base (`datasets.identity`, R04).
 
 - `sdk.query_series(db, symbol=..., timeframe=..., feature_ids=[...], as_of=..., start=None, end=None,
   algorithm_version=None, page_size=500, cursor=None)` → envelope `query_schema_version=1` com `base`
@@ -39,8 +40,23 @@ Leitura sem UI e sem MT5 dos fatos já materializados no store; nunca calcula ne
   `values` (valor/categoria, qualidade, revisão, `available_at`, versão), `page.next_cursor` (ordem
   estável feature/observação/versão), `freshness`, `reasons` e `errors` estruturados
   (`NAIVE_TIME`, `UNKNOWN_FEATURE`, `BAD_PAGE_SIZE`, `BAD_CURSOR`, `CURSOR_MISMATCH`,
-  `SELECTION_TOO_LARGE`, `MISSING_SELECTION`). JSON sem NaN/infinito.
-- `sdk.query_catalog()` → contratos BD06 de todas as definições consultáveis.
+  `SELECTION_TOO_LARGE`, `MISSING_SELECTION`, `BAD_FEATURES`, `BAD_TIME`, `BAD_RANGE`,
+  `BAD_VERSION`, `BASE_UNAVAILABLE`, `INVALID_DEFINITION`, `MISSING_DEFINITION`, `STALE_CURSOR`).
+  JSON sem NaN/infinito. Cada definição inclui `variants`, por versão, com os metadados registrados;
+  campos de resumo só são preenchidos quando comuns às versões selecionadas. Não há conversão
+  implícita de unidades nem escolha automática da versão mais recente. Tipos não numéricos
+  permanecem em `category`, sem codificação numérica inventada.
+- `sdk.query_catalog(db=None)` → contratos BD06 do registry; com banco inclui todas as definições
+  e versões persistidas, além da identidade e contexto temporal. A chamada antiga sem argumentos
+  permanece válida. `origin`, `computable`, `metadata_state`, `metadata_conflicts` e `name_status`
+  distinguem fórmula local, metadados incompletos, divergência e nomes legados não verificáveis.
+  Metadados ausentes do produtor permanecem ausentes; o contrato local é exposto separadamente.
+
+O cursor é opaco e temporário: vincula seleção, base, contexto, metadados e conteúdo dos fatos
+no corte as-of. Ao receber `STALE_CURSOR`, descarte as páginas anteriores e recomece sem cursor.
+Cursores anteriores à geração v2 também exigem reinício. Alterações futuras ao corte histórico
+não invalidam a paginação desse corte. O limite de seleção continua em 200 000 fatos carregados;
+paginação no banco, compostos e relações permanecem em BD18b.
 
 Não há servidor HTTP: a futura API publicará este mesmo serviço.
 
