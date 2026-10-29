@@ -3379,7 +3379,7 @@ locais mantêm contrato. Sintéticos M7/M9 recusam a seleção antes do trabalho
 sem ignorá-la. [Contrato e CLI](sdk/laboratorio_series.md#canais-armazenados-no-laboratório-bd19a-lab).
 
 Baseline86 aprovados/1 skip de geometria no display inicial. Validação final:
-109 de núcleo e54 Tk distintos aprovados (rodadas sobrepostas discriminadas
+110 de núcleo e54 Tk distintos aprovados (rodadas sobrepostas discriminadas
 nos logs locais);18 avisos Matplotlib de layout já presentes no baseline,
 sem claim de suíte completa verde. Doctor offline16/2avisos/0. Launcher oficial
 em Xvfb próprio e banco/preferências sintéticos: seleção da versão2 percent,
@@ -3399,3 +3399,7 @@ continuam abertos; pins HADOUKEN/Safety e dados do proprietário preservados.
 A prévia usa o HEAD publicado desta branch, com hashes de runtime e aceite do
 launcher registrados no recibo local de desenvolvimento; configuração, dados,
 preferências e referência aceita continuam nos destinos existentes.
+O aceite dos arquivos instalados encontrou uma falha na assinatura ao importar
+o serviço pelo link do atalho: o diretório já estava resolvido, mas o caminho do
+próprio módulo não. A correção canonicaliza ambos, com regressão portável para
+alias de caminho; a prévia anterior foi restaurada durante a verificação.

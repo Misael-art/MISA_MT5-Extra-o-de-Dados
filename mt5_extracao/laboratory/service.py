@@ -55,7 +55,7 @@ def formula_source_hash():
     paths = [*sorted((root / "strategies").glob("*.py")),
              *(root / "analytics" / name for name in ("indicator_registry.py", "indicator_context.py",
                                                      "feature_store.py", "datasets.py")),
-             root / "chart_study" / "catalog.py", Path(__file__)]
+             root / "chart_study" / "catalog.py", Path(__file__).resolve()]
     return _hash({path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})
 
 

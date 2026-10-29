@@ -1,5 +1,6 @@
 """Valores por versão no Laboratório: mesma junção causal, sem regra de direção inventada."""
 import json
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -12,6 +13,13 @@ from tests.test_feature_snapshots import db, save
 
 CUT = "2025-01-01T00:30Z"
 PAIR = ("qa.metric", "v1")
+
+
+def test_source_signature_is_independent_of_import_path_alias(monkeypatch):
+    module = Path(service.__file__).resolve()
+    expected = service.formula_source_hash()
+    monkeypatch.setattr(service, "__file__", str(module.parent / ".." / "laboratory" / module.name))
+    assert service.formula_source_hash() == expected
 
 
 def register(db, ident="qa.other", version="v1", kind="NUMBER", unit="ratio", family="qa"):
