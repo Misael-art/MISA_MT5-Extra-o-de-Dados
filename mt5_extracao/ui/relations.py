@@ -8,6 +8,7 @@ A UI não recalcula efeito, não estima PnL e não autoriza Expert.
 from __future__ import annotations
 
 import datetime as dt
+import json
 import tkinter as tk
 from tkinter import ttk
 
@@ -1297,6 +1298,12 @@ class RelationsPanel:
         self._inventory_request += 1
         request, db = self._inventory_request, self.db
         query, state = self.inventory_query.get(), self.inventory_state.get()
+        self.inventory_status.configure(text="Carregando inventário…")
+        self.inventory_next.state(["disabled"])
+        self.inventory_prev.state(["disabled"])
+        self._inventory_rows = {}
+        self.inventory_table.tree.delete(*self.inventory_table.tree.get_children())
+        self._clear_inventory_detail("Aguarde a consulta ou selecione uma definição do resultado atual.")
         def work():
             return inventory.search(db, query=query, state=None if state == "Todos" else state,
                                     page_size=50, cursor=cursor)
@@ -1308,6 +1315,9 @@ class RelationsPanel:
             self._inventory_rows = {}
             if error:
                 self.inventory_status.configure(text=f"Inventário indisponível: {error}. Recomece a busca.")
+                self._clear_inventory_detail("Consulta indisponível. Recomece a busca; nenhum resultado anterior está selecionado.")
+                self._inventory_next_cursor = None
+                self._inventory_cursors = [None]
                 return
             for index, row in enumerate(result["items"]):
                 iid = f"inventory-{index}"
@@ -1316,9 +1326,11 @@ class RelationsPanel:
                         row.get("stored_name_status") == "UNVERIFIED_LEGACY_NAME" else row["name"])
                 series = ", ".join(f"{item['symbol']} {item['timeframe']} ({item['facts']})"
                                    for item in row["series"][:3]) or "—"
+                params = (", ".join(f"{k}={v}" for k, v in row["parameters"].items())
+                          if isinstance(row["parameters"], dict) else json.dumps(row["parameters"], ensure_ascii=False))
                 tree.insert("", tk.END, iid=iid, values=(row["feature_id"], name, row["algorithm_version"],
                     row["family"], ", ".join(item["name"].rsplit(".", 1)[-1] for item in row["outputs"]) or "—",
-                    ", ".join(f"{k}={v}" for k, v in row["parameters"].items()), row["state"], series))
+                    params, row["state"], series))
             self._inventory_next_cursor = result["next_cursor"]
             self.inventory_next.state(["!disabled"] if result["next_cursor"] else ["disabled"])
             self.inventory_prev.state(["!disabled"] if len(self._inventory_cursors) > 1 else ["disabled"])
@@ -1329,7 +1341,17 @@ class RelationsPanel:
                 + ("" if db is not None else " · sem base conectada: fatos não consultados"))
             if result["items"]:
                 tree.selection_set("inventory-0")
+                self._inventory_selected(None)
+            else:
+                self._clear_inventory_detail("Nenhuma definição corresponde à seleção atual.")
         self._run_bg(work, done)
+
+    def _clear_inventory_detail(self, message):
+        detail = self._details["inventory"]
+        detail.configure(state=tk.NORMAL)
+        detail.delete("1.0", tk.END)
+        detail.insert(tk.END, message)
+        detail.configure(state=tk.DISABLED)
 
     def _inventory_page(self, step):
         if step > 0 and getattr(self, "_inventory_next_cursor", None):
@@ -1350,7 +1372,8 @@ class RelationsPanel:
         text.delete("1.0", tk.END)
         lines = [f"{row['name']} · {row['feature_id']} v{row['algorithm_version']} · origem {row['origin']}",
                  f"Estado {row['state']}: {row['reason']}" + (f" Ação: {row['action']}" if row["action"] else ""),
-                 f"Unidade {row['unit']} · aquecimento {row['warmup']} · saídas "
+                 f"Unidade {row['unit'] or 'não declarada'} · aquecimento "
+                 f"{row['warmup'] if row['warmup'] is not None else 'não declarado'} · saídas "
                  + ", ".join(f"{o['name']} ({o.get('kind')})" for o in row["outputs"])]
         lines += [f"{s['symbol']} {s['timeframe']}: {s['facts']} fatos de {s['first']} a {s['last']} · "
                   f"último disponível {s['last_available_at']}" for s in row["series"]]

@@ -3238,3 +3238,33 @@ e fatos anteriores permanecem. CLI e inventário avisam quando o nome não é ve
 Evidência local em `state/qa-tmp/catalog-store/`. Próximo percurso: catálogo e
 consulta canônica de todas as definições registradas, com identidade por versão,
 depois consumo pelo Laboratório; sem outro store nem fórmula no widget.
+
+## Continuidade do roadmap — BD18a-CATALOG
+
+Na branch própria `codex/bd18-catalogo-persistido`, base publicada `eb6c9fa` da
+frente BD06-NOMES, o leitor canônico agora inclui todas as definições/versões
+persistidas no SDK, CLI e inventário. `sdk.query_catalog(db=None)` preserva a
+chamada offline antiga; a CLI acrescenta `features catalog` e seleção explícita
+de versão em `features series`. Metadados pertencem à versão consultada, campos
+ausentes permanecem ausentes, divergências com o registry são visíveis e fatos
+sem contrato não são promovidos para análise. Categorias e códigos de direção
+preservam a semântica declarada, mesmo quando o store usa NUMBER.
+
+O cursor recusa troca de base/revisão/contexto durante a paginação; alterações
+posteriores ao corte não mudam a consulta histórica. Inventário usa o mesmo
+leitor, exige ativo/TF na mesma série, limpa seleção antiga durante carregamento,
+vazio ou erro e descarta respostas obsoletas. [Contrato e limites](dados/BD18A_CONSULTA.md).
+64 testes de núcleo/contrato/CLI/SDK e25 Tk aprovados; doctor offline16/2/0.
+Launcher oficial exercitado com banco/preferências sintéticos próprios, catálogo
+e estado vazio inspecionados; CLI real = SDK nas duas superfícies. Medição de5.000
+fatos:166→180ms, custo da verificação explícito, sem promessa de aceleração.
+
+Evidência local `state/qa-tmp/catalog-store/query-*`; nenhuma base principal ou
+pesquisa alterada, pins H/S preservados. Prévia deve ser instalada do SHA publicado
+e conferida novamente pelo launcher. Não há aceite nativo, financeiro ou Windows
+físico. A paginação ainda carrega a seleção limitada; SQL/compostos/relações seguem
+BD18b. Próxima dependência: consumir fatos no Laboratório com junção causal por
+instante de decisão, sem usar uma revisão conhecida só no corte final como se
+fosse conhecida em todas as barras anteriores. Percorrer também a expansão dos
+detalhes do inventário em janela pequena: a captura do catálogo está visível,
+mas as capturas inferiores não comprovaram o corpo expandido.

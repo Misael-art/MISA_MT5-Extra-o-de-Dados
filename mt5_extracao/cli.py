@@ -1784,6 +1784,9 @@ def build_parser():
     q.add_argument("--all-versions", action="store_true", help="mostra também versões antigas do algoritmo")
     q.set_defaults(func=cmd_analytics)
 
+    q = features_sub.add_parser("catalog", help="catálogo canônico: fórmulas e todas as versões registradas na base")
+    q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("show", help="mostra a definição e as dependências de uma característica")
     q.add_argument("feature_id")
     q.add_argument("--algorithm-version", help="versão do algoritmo (padrão: a definição mais recente)")
@@ -1805,6 +1808,7 @@ def build_parser():
     q.add_argument("--feature", dest="feature_ids", action="append", required=True,
                    help="característica do catálogo; repita para várias")
     q.add_argument("--as-of", required=True, help="instante de decisão com fuso, por exemplo 2026-10-14T17:25:00Z")
+    q.add_argument("--algorithm-version", help="consulta somente esta versão, sem escolher implicitamente a mais recente")
     q.add_argument("--from", dest="date_from", help="início inclusivo de observation_time, com fuso")
     q.add_argument("--to", dest="date_to", help="fim exclusivo de observation_time, com fuso")
     q.add_argument("--page-size", type=int, default=500)
@@ -2058,6 +2062,22 @@ def cmd_analytics(args, ctx):
             _data(path=path)
         return EXIT_OK
 
+    if args.features_action == "catalog":
+        from mt5_extracao.analytics import query_service
+        envelope = query_service.catalog(ctx.db)
+        if envelope["status"] != "ok":
+            for error in envelope["errors"]:
+                _print(f"[{error['code']}] {error['message']}")
+            _data(envelope=envelope)
+            return EXIT_USAGE
+        for item in envelope["definitions"]:
+            _print(f"{item['feature_id']}@{item['algorithm_version']}\t{item['name']}\t"
+                   f"{item['origin']}\t{item['metadata_state']}\t{item['name_status']}")
+        for reason in envelope["reasons"]:
+            _print(reason)
+        _data(envelope=envelope)
+        return EXIT_OK
+
     if args.features_action == "list":
         items = features.list_features(ctx.db, include_versions=args.all_versions)
         if not items:
@@ -2095,6 +2115,7 @@ def cmd_analytics(args, ctx):
 
         envelope = query_service.series(ctx.db, symbol=args.symbol, timeframe=args.tf, feature_ids=args.feature_ids,
                                         as_of=args.as_of, start=args.date_from, end=args.date_to,
+                                        algorithm_version=args.algorithm_version,
                                         page_size=args.page_size, cursor=args.cursor)
         if envelope["status"] != "ok":
             for error in envelope["errors"]:
