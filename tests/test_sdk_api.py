@@ -9,6 +9,9 @@ REPO = Path(__file__).resolve().parents[1]
 
 # nome -> parâmetros, na ordem (classes e constantes: None)
 SURFACE = {
+    "query_feature_relation": ["db", "manifest_id", "left", "right", "as_of", "lag_bars", "method", "minimum_pairs",
+        "minimum_sessions", "bootstrap_replicates", "seed", "block_length_sessions", "tests_counted", "synthetic_fixture",
+        "timeout_seconds", "max_memory_mb", "cancel_check"],
     "recover_producer_jobs": ["db", "symbol", "timeframe", "family"],
     "open_workflow": ["db", "config", "read_account", "config_path", "db_override"],
     "API_VERSION": None, "CONTRACT_VERSION": None,

@@ -506,8 +506,11 @@
    "owner": "BD15a",
    "case": "Relações matemáticas",
    "criterion": "Associação positiva/negativa/independência/constância/ausência testadas",
-   "state": "planejado",
-   "evidence": []
+   "state": "implementado_validado_host",
+   "evidence": [
+    "../sdk/api.md#relações-referenciais-congeladas-bd15a",
+    "../continuidade.md#continuidade-do-roadmap--bd15a-29102026"
+   ]
   },
   {
    "id": "E24",

@@ -7,6 +7,7 @@ from mt5_extracao.analytics.indicator_registry import ALGORITHM_VERSION
 
 
 RELATION_SCHEMA_VERSION = 1
+PAIR_RELATION_SCHEMA_VERSION = 2
 _INDICATOR_FIELDS = (
     "feature_id", "algorithm_version", "formula", "parameters", "unit", "warmup_count", "warmup_unit",
     "source_id", "timeframe", "availability_rule", "value_type", "value", "state", "reason",
@@ -75,6 +76,29 @@ def _json_ready(value):
     raise ValueError(f"Tipo não serializável no DTO: {type(value).__name__}.")
 
 
+def _validate_relation(relation):
+    missing = [field for field in _RELATION_FIELDS if field not in relation]
+    if missing:
+        raise ValueError("relation sem campos obrigatórios: " + ", ".join(missing))
+    _required_text(relation, _RELATION_TEXT_FIELDS, "relation")
+    for field in ("effect", "effect_ci_low", "effect_ci_high", "p_raw", "p_adjusted"):
+        _finite_optional_number(relation, field)
+    for field in ("p_raw", "p_adjusted"):
+        if relation[field] is not None and not 0 <= float(relation[field]) <= 1:
+            raise ValueError(f"relation.{field} precisa estar entre zero e um.")
+    if (relation["effect_ci_low"] is not None and relation["effect_ci_high"] is not None
+            and relation["effect_ci_low"] > relation["effect_ci_high"]):
+        raise ValueError("relation.effect_ci_low não pode exceder effect_ci_high.")
+    for field in ("n_pairs", "n_sessions"):
+        count = relation[field]
+        if count is not None and (isinstance(count, bool) or not isinstance(count, int) or count < 0):
+            raise ValueError(f"relation.{field} precisa ser inteiro não negativo ou null.")
+    if relation["effect"] is None and not relation["reason"]:
+        raise ValueError("Relação sem efeito precisa de reason explícito.")
+    if relation["reason"] is not None and not isinstance(relation["reason"], str):
+        raise ValueError("relation.reason precisa ser texto ou null.")
+
+
 def build_relation_dto(*, indicator, target, relation, scope, provenance, generated_at_utc,
                        synthetic_fixture=False):
     """Valida e devolve envelope relation_schema_version=1 sem mudar o schema T13.6."""
@@ -129,22 +153,7 @@ def build_relation_dto(*, indicator, target, relation, scope, provenance, genera
         raise ValueError("target.target_kind inválido.")
     if indicator["timeframe"] != target["timeframe"]:
         raise ValueError("indicator e target precisam usar o mesmo timeframe nesta versão do contrato.")
-    for field in ("effect", "effect_ci_low", "effect_ci_high", "p_raw", "p_adjusted"):
-        _finite_optional_number(relation, field)
-    for field in ("p_raw", "p_adjusted"):
-        if relation[field] is not None and not 0 <= float(relation[field]) <= 1:
-            raise ValueError(f"relation.{field} precisa estar entre zero e um.")
-    if (relation["effect_ci_low"] is not None and relation["effect_ci_high"] is not None
-            and relation["effect_ci_low"] > relation["effect_ci_high"]):
-        raise ValueError("relation.effect_ci_low não pode exceder effect_ci_high.")
-    for field in ("n_pairs", "n_sessions"):
-        count = relation[field]
-        if count is not None and (isinstance(count, bool) or not isinstance(count, int) or count < 0):
-            raise ValueError(f"relation.{field} precisa ser inteiro não negativo ou null.")
-    if relation["effect"] is None and not relation["reason"]:
-        raise ValueError("Relação sem efeito precisa de reason explícito.")
-    if relation["reason"] is not None and not isinstance(relation["reason"], str):
-        raise ValueError("relation.reason precisa ser texto ou null.")
+    _validate_relation(relation)
     generated_at_utc = _utc_timestamp(generated_at_utc, "generated_at_utc")
     dto = {
         "relation_schema_version": RELATION_SCHEMA_VERSION,
@@ -164,9 +173,68 @@ def build_relation_dto(*, indicator, target, relation, scope, provenance, genera
 
 def dumps(dto):
     """Serializa o DTO rejeitando NaN/Infinity em vez de emitir JSON não padrão."""
-    if not isinstance(dto, dict) or dto.get("relation_schema_version") != RELATION_SCHEMA_VERSION:
+    if not isinstance(dto, dict) or dto.get("relation_schema_version") not in (RELATION_SCHEMA_VERSION, PAIR_RELATION_SCHEMA_VERSION):
         raise ValueError("relation_schema_version não suportado.")
     return json.dumps(_json_ready(dto), ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def build_pair_relation_dto(*, left, right, relation, scope, population, provenance, generated_at_utc,
+                            synthetic_fixture=False):
+    """DTO2 de séries pareadas; DTO1 de indicador/alvo futuro permanece inalterado."""
+    if not all(isinstance(item, dict) for item in (left, right, relation, scope, population, provenance)):
+        raise ValueError("Descritores, relação, escopo, população e proveniência precisam ser objetos.")
+    if not isinstance(synthetic_fixture, bool):
+        raise ValueError("synthetic_fixture precisa ser booleano.")
+    for label, descriptor in (("left", left), ("right", right)):
+        _required_text(descriptor, ("feature_id", "algorithm_version", "transform"), label)
+        if descriptor.get("value_type") not in (None, "NUMBER", "CATEGORY", "BOOLEAN"):
+            raise ValueError(f"{label}.value_type inválido.")
+        if descriptor.get("unit") is not None and (not isinstance(descriptor["unit"], str) or not descriptor["unit"].strip()):
+            raise ValueError(f"{label}.unit precisa ser texto não vazio ou null.")
+        definition = descriptor.get("definition")
+        if not isinstance(definition, dict) or any(definition.get(key) != descriptor.get(key)
+                for key in ("feature_id", "algorithm_version", "unit", "value_type")):
+            raise ValueError(f"{label} diverge do contrato selecionado.")
+    _validate_relation(relation)
+    for field in ("effect", "effect_ci_low", "effect_ci_high"):
+        if relation[field] is not None and not -1 <= float(relation[field]) <= 1:
+            raise ValueError(f"relation.{field} precisa estar entre -1 e 1.")
+    if relation["effect"] is not None and any(side.get("value_type") != "NUMBER" for side in (left, right)):
+        raise ValueError("Coeficiente contínuo exige dois contratos NUMBER explícitos.")
+    _required_text(scope, ("symbol", "timeframe", "lag_rule"), "scope")
+    lag = scope.get("lag_bars")
+    if isinstance(lag, bool) or not isinstance(lag, int) or lag < 0:
+        raise ValueError("scope.lag_bars precisa ser inteiro não negativo.")
+    for key in ("n_total", "n_eligible", "n_distinct_source_pairs"):
+        value = population.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(f"population.{key} precisa ser inteiro não negativo.")
+    exclusions = population.get("exclusions")
+    if not isinstance(exclusions, dict) or any(not isinstance(k, str) or isinstance(v, bool)
+            or not isinstance(v, int) or v < 0 for k, v in exclusions.items()):
+        raise ValueError("population.exclusions precisa conter contagens não negativas por motivo.")
+    if (population["n_eligible"] + sum(exclusions.values()) != population["n_total"]
+            or population["n_distinct_source_pairs"] > population["n_eligible"]
+            or relation["n_pairs"] is None or relation["n_pairs"] > population["n_eligible"]
+            or relation["n_sessions"] is None or relation["n_sessions"] > relation["n_pairs"]):
+        raise ValueError("População, exclusões e pares da relação não reconciliam.")
+    if relation["effect"] is not None and (relation["n_pairs"] < 3 or population["n_distinct_source_pairs"] < 3):
+        raise ValueError("Coeficiente referencial exige pelo menos3 pares distintos.")
+    if relation["effect"] is None and any(relation[key] is not None
+            for key in ("effect_ci_low", "effect_ci_high", "p_raw", "p_adjusted")):
+        raise ValueError("Relação sem efeito não pode apresentar inferência numérica.")
+    if relation["utility_state"] != "INCONCLUSIVE" or relation["evidence_state"] not in ("EXPLORATORY", "INSUFFICIENT"):
+        raise ValueError("DTO2 referencial não certifica evidência confirmatória nem utilidade financeira.")
+    _required_text(provenance, ("base_namespace", "snapshot_manifest_id", "as_of_utc", "analysis_id",
+                                "sample_hash", "implementation_sha256"), "provenance")
+    _utc_timestamp(provenance["as_of_utc"], "provenance.as_of_utc")
+    safe = _json_ready(dict(relation_schema_version=PAIR_RELATION_SCHEMA_VERSION, kind="FEATURE_PAIR_RELATION",
+        generated_at_utc=_utc_timestamp(generated_at_utc, "generated_at_utc"), synthetic_fixture=synthetic_fixture,
+        left=left, right=right, relation=relation, scope=scope, population=population, provenance=provenance,
+        qualification=dict(descriptive=True, causal_evidence=False, operational_acceptance=False,
+                           historical_source_certification=False, financial_utility_certified=False)))
+    json.dumps(safe, ensure_ascii=False, allow_nan=False)
+    return safe
 
 
 def synthetic_fixture():
