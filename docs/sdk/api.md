@@ -899,3 +899,65 @@ o resultado anterior e exige novo cálculo. `Salvar selecionada` foca o ID no
 painel existente, onde o intervalo aparece e a exportação segue o fluxo comum.
 Fechar enquanto processa solicita cancelamento; um commit confirmado é
 preservado. Mudança de base/contexto não aplica a janela salva na seleção nova.
+
+
+### Identidade e valores de menções (MEN-01)
+
+`sdk.describe_mention_series(db, *, symbol, timeframe, subject, source, query,
+classifier=None, universe="documents")` resolve o contrato1 das três séries
+`mentions.quantity`, `mentions.positive`, `mentions.negative`. Não captura,
+classifica ou registra séries/valores. A primeira identidade da base segue o
+mecanismo BD03 existente. Retorna `scope`, `scope_hash`, `algorithm_version`,
+`job_family` e três definições compatíveis com `features.register`.
+
+- `subject`: `id`, `kind` (`instrument`, `company`, `topic`), `label`, `aliases`,
+  `mapping_version`; opcionais `include_terms`/`exclude_terms`. O vínculo ao
+  `symbol` é explícito e versionado; nome igual não equipara objetos.
+- `source`: `provider`, `corpus`, `access_profile`, `terms_version`, `mode`
+  (`documents`/`aggregate`), `retention`; `publication_types` opcional contém
+  originais, comentários, respostas e quotes com comentário. Repostagem simples
+  é recusada neste contrato.
+- `query`: `id`, `version`, `expression`; opcionais `languages`, `region`,
+  `authors`, `channels`, `communities`. São seleções de conteúdo público; não
+  constituem cadastro de consumidores do App nem prova de acesso à fonte.
+- `classifier`: `id`, `version`, `languages`, ou ausência explícita. Escolher a
+  configuração não a qualifica e não habilita P/N sem resultado recebido.
+- `universe`: `documents`, `sample`, `provider_total`; este último exige modo
+  agregado. Universo/amostra diferentes têm identidades diferentes.
+
+SHA256 completo inclui namespace, símbolo, objeto/vínculo/aliases/filtros,
+fonte/acesso/corpus/retenção, consulta, resolução, universo e classificador.
+Versão `1.0+men1.<sha256>` evita colisão nas chaves existentes. Família do journal
+`mentions:<sha256>` isola checkpoints/runs sem novo journal. Listas de filtros
+são conjuntos ordenados; texto da expressão não sofre reescrita semântica.
+Definições exportáveis conservam identidades e fingerprints; expressão,
+autores e aliases privados não são copiados para seus parâmetros. Nenhum texto
+bruto integra os valores preparados. `scope` completo é configuração privada do
+chamador, não um recibo para publicação. Consultar catálogo com todas as versões
+ou selecionar versão exata; o atalho legado de última versão por ID não escolhe
+uma consulta MEN pelo usuário.
+
+O helper do dono de Dados `analytics.mentions.value_records(contract, *, start,
+end, captured_at, processed_at, population_revision, quantity=None, positive=None,
+negative=None, coverage="complete", classification="pending", classified_at=None,
+reason=None)` prepara três registros para **uma** chamada `feature_store.save_values`.
+Não grava implicitamente. Contagens são inteiros Python de0 a2^53−1 (limite de
+representação exata no transporte numérico), sem bool/float/score/percentual.
+P/N completos compartilham população/revisão e obedecem P+N<=Q. Restante não é
+classificado automaticamente como neutro. Tipos numéricos/unidade:
+`NUMBER`/`publication/window`; nenhuma coluna OHLCV ou fonte global é alterada.
+
+Janelas `[início,fim)` com âncora UTC, resolução fixa atéD1; semanas/meses exigem
+contrato de calendário próprio. Fuso ausente e submicrossegundos são recusados.
+Cobertura completa exige fechamento já capturado; parcial/indisponível publica
+três ausências e motivo, sem zeros fabricados. Q pode estar disponível enquanto
+P/N aguardam classificação. Exemplo: Q recebido/processado10h20 e classificação
+10h22 conserva Q/revisão/metadata de10h20; P/N ficam ausentes no corte10h21 e
+aparecem no corte10h22. Repetir esses mesmos registros não cria revisões.
+Preparação descritiva carimba proveniência retrospectiva, sem certificar latência
+histórica. O fato conserva janela/origem; projeção as-of não cria outra observação.
+
+MEN-01 fecha identidade/validação e prova isolamento no catálogo/store/journal.
+Ingestão de documentos, adaptadores reais, qualificação do classificador,
+publicação de capturas e integração de tela são MEN-02…08; não estão implícitos
+na existência deste contrato. [Plano e inventário](../dados/PLANO_ESTRUTURA_DADOS.md#1811-inventário-e-contrato-executável-men-01).
