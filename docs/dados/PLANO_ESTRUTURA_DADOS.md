@@ -512,6 +512,16 @@ origem. Outras famílias/alvos, janelas móveis e cruzamento explícito de fonte
 continuam nas suas fichas; a transferência não encerra BD18b/BD19 completos.
 [Contrato](../sdk/api.md#transferência-de-relações-congeladas-bd19c2-relations).
 
+**Adendo BD19b-TRANSFER (29/10/2026):** o Laboratório passa a escolher arquivos
+para o mesmo SDK de transferência. Ações em linha própria, exportação somente
+da seleção conferida, importação sem exigir dados ativos da origem e foco no
+ID confirmado. Filtros/seleção/novas ações ficam suspensos durante o trabalho;
+`run_bg`, espera e cancelamento existentes são reutilizados. Mudança de contexto
+não aplica uma resposta antiga; a política de escrita fica vinculada ao destino
+escolhido antes do dispatch. O fechamento sinaliza cancelamento sem desfazer um
+commit confirmado. Erros e repetição mantêm recibos, arquivos e qualificação.
+[Contrato](../sdk/api.md#transferência-visual-no-laboratório-bd19b-transfer).
+
 ### Fase G — demonstrar expansão e fechar a composição
 
 #### BD20 — provas de expansão
