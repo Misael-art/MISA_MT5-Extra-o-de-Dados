@@ -1780,6 +1780,18 @@ def build_parser():
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
+    q = features_sub.add_parser("mention-sources", help="capacidades/acessos documentados; sem sonda de rede")
+    q.set_defaults(func=cmd_analytics)
+    for action in ("mentions-describe", "mentions-ingest"):
+        q = features_sub.add_parser(action, help="contrato ou ingestão explícita de lote de menções")
+        q.add_argument("--selection", required=True, help="JSON do objeto/fonte/consulta/resolução/classificador")
+        if action == "mentions-ingest":
+            q.add_argument("--batch", required=True, help="JSON limitado de documentos/agregado e manifesto")
+            q.add_argument("--synthetic-fixture", action="store_true", help="somente fonte qa.; não certifica captura/classificador real")
+            q.add_argument("--timeout-seconds", type=float, default=120)
+            q.add_argument("--max-memory-mb", type=float, default=1024)
+        q.set_defaults(func=cmd_analytics)
+
     for action in ("relation", "relation-windows"):
         q = features_sub.add_parser(action, help="associa versões congeladas; opcionalmente por janelas móveis")
         q.add_argument("--manifest", required=True)
@@ -2118,6 +2130,36 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action in ("mention-sources", "mentions-describe", "mentions-ingest"):
+        from pathlib import Path
+        from mt5_extracao import sdk
+        from mt5_extracao.analytics import mention_ingestion
+        def read_input(path):
+            with Path(path).open("rb") as handle:
+                raw = handle.read(mention_ingestion.MAX_INPUT_BYTES+1)
+            if len(raw)>mention_ingestion.MAX_INPUT_BYTES:
+                raise ValueError("Arquivo MEN excede4MiB; divida pelo produtor, sem truncamento.")
+            value=json.loads(raw.decode("utf-8-sig"))
+            if not isinstance(value,dict):raise ValueError("Entrada MEN precisa ser objeto JSON.")
+            return value
+        if args.features_action == "mention-sources":
+            items=sdk.mention_source_capabilities();_data(sources=items)
+            for item in items:_print(f"{item['id']} · {item['name']}: {item['access']} · {item['qualification']}.")
+        elif args.features_action == "mentions-describe":
+            result=sdk.describe_mention_series(ctx.db,**read_input(args.selection));_data(contract=result)
+            _print("Escopo MEN: "+result['scope_hash']+"; três definições, sem captura/publicação implícita.")
+        else:
+            from mt5_extracao.resources import guard
+            result=sdk.ingest_mention_batch(ctx.db,selection=read_input(args.selection),batch=read_input(args.batch),
+                synthetic_fixture=args.synthetic_fixture,write_guard=guard.make(ctx.db,ctx.config),
+                timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb)
+            _data(capture=result)
+            _print(f"Lote {result['receipt']['capture_id']}: {result['job']['status']}; "
+                   f"Q={result['receipt']['quantity']}; {result['receipt']['unique_documents']} publicações distintas.")
+            _print("Importação explícita não certifica acesso à fonte ou qualidade do classificador.")
+            if result['job']['status']!='COMPLETE':return EXIT_FAIL
+        return EXIT_OK
 
     if args.features_action == "relation-list":
         from mt5_extracao import sdk
