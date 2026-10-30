@@ -4295,3 +4295,12 @@ lacunas, espera/cancelamento e abertura/transporte de snapshot. Relações segue
 o formulário/motor existentes; referência sintética forte+1/nula0, sem selo
 financeiro ou cruzamento fora dos donos vigentes. [Contrato](dados/PLANO_ESTRUTURA_DADOS.md#1816-consumo-men-06-no-laboratório-existente).
 Próximos:MEN-07 segunda fonte pelo mesmo contrato; MEN-08 proteção/regressão final.
+
+
+MEN-07: segundo publicador independente pelo mesmo contrato/consumidores,
+Stack Overflow via API pública Stack Exchange. Painel explícito, licença
+observada/inferida por política distinguidas, quota/backoff persistidos, retomada
+e cancelamento. Fonte real16 itens/Q1/P0/N0/1 abstenção preserva HN e preços no
+mesmo símbolo. [Contrato](dados/PLANO_ESTRUTURA_DADOS.md#1817-men-07--segunda-fonte-stack-overflow-via-stack-exchange-api).
+MEN-08: fechamento/regressão/proteção independente e handoff, sem certificar
+cruzamentos ausentes, precisão geral de fonte, conta/nativo ou Expert.

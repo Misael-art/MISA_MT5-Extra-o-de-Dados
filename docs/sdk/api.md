@@ -1197,3 +1197,45 @@ versão e disponibilidade ficam no detalhe, com espera indeterminada e
 cancelamento. Criar relação abre o formulário canônico; dados sem grade de
 mercado não ganham relação operacional por inferência. Relações com indicadores
 em grade suportada continuam no motor existente e mantêm seus limites.
+
+
+### Segundo publicador independente (MEN-07)
+
+`collect_mentions`/`mentions-collect` também aceitam `source.provider=stackexchange`
+e corpus `stackexchange.stackoverflow.questions.panel.v1`, `documents/sample`,
+com `source.parameters.panel_size` entre1 e64. Site fixo Stack Overflow; primeiro
+painel de N perguntas criadas na janela UTC, em ordem decrescente. É amostra,
+não censo; respostas/comentários não são buscados. Título e corpo local completos,
+HTML normalizado; IDs congelados antes da busca por lotes de até8. A falta de ID,
+texto completo ou prova de licença encerra sem publicar uma população menor.
+Não usa votos/reputação como sentimento ou contagem. Autores, quando filtrados,
+usam ID público numérico como string; idioma/região/canal/comunidade não são
+certificados e filtros desconhecidos são recusados, inclusive no HN.
+
+Mesmos contrato Q/P/N, store, jobs, checkpoints, SDK/CLI/snapshots e Laboratório,
+sem alterar provedor de preços ou consumidores. Fonte e consulta do mesmo
+símbolo recebem versões/checkpoints distintos. Modelo continua declarado antes
+da captura, execução opcional explícita `--classify` e domínio inglês restrito.
+Qualidade geral Stack Overflow/português não certificada por este adaptador.
+
+Acesso público sem chave/assinatura neste incremento. Quota restante, backoff e
+Retry-After persistem no journal atual; mesma URL espera≥60s, método respeita
+backoff, quota zero espera a próxima virada UTC. Guarda serializada SQLite/PG;
+nenhuma espera/rede mantém transação SQL. Essas guardas valem por base canônica;
+quota da API é compartilhada por IP com outros clientes. Não coordenam aplicativos
+externos. Alterar consulta ou `--fresh-panel` não apaga restrições de acesso.
+Uma espera maior que o orçamento é recusada com ação de aguardar/retomar.
+
+Licença: campo `content_license` é solicitado por filtro público pré-calculado
+(`filters/create`, base withbody + question.content_license), sem criação em cada
+captura. O identificador de filtro **não é chave de acesso**. Algumas perguntas
+recentes ainda omitem o campo. Quando a criação é posterior a02/05/2018, aplica
+inferência pela [política oficial](https://stackoverflow.com/help/licensing) de
+CC BY-SA4.0, identificada separadamente em `acquisition.licensing` com quantidade,
+referência, data e versão; não a chama de observação do campo da API. Campo
+conflitante e pergunta antiga sem licença são recusados; revisões antigas exigem
+prova própria. Texto/nomes de autores não são retidos nem distribuídos; IDs para
+retomada ficam no manifesto privado do run, com fingerprints no store/snapshot.
+[API perguntas](https://api.stackexchange.com/docs/questions),
+[lotes por IDs](https://api.stackexchange.com/docs/questions-by-ids),
+[limites](https://api.stackexchange.com/docs/throttle).

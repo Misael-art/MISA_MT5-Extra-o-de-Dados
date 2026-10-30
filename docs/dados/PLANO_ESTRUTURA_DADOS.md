@@ -1385,3 +1385,42 @@ sintético, mostrou1.000.001/250.000/50.000, média, lacunas, ampliação, tela 
 espera, cancelamento/erro e recuperação. Os2.540 fatos de entrada e namespace
 foram preservados; somente snapshots/artefato de relação foram acrescentados.
 MEN-07/08 mantêm aceite de segunda fonte, regressão, proteção e reconciliação.
+
+
+### 18.17 MEN-07 — segunda fonte, Stack Overflow via Stack Exchange API
+
+F05 tem dois publicadores independentes: HN e perguntas públicas do Stack
+Overflow (`stackexchange.stackoverflow.questions.panel.v1`). Não são o mesmo
+corpus revendendo contagens. O mesmo coletor/journal/store/SDK/CLI recebe painel
+explícito de1…64 perguntas criadas na janela; primeiroN em criação descendente,
+corpo/título locais completos, lotes de até8 IDs. Sem respostas/comentários,
+sem censo e sem converter votos/score em P/N. Retomada usa IDs congelados;
+ID omitido/texto incompleto licencia insuficiente falha sem contagem menor/zero.
+Filtro regional sem prova era ignorado no preparador; agora é recusado, assim
+como idiomas/canais/comunidades não certificados nos dois adaptadores.
+
+Quota/backoff/Retry-After e cooldown da mesma URL≥60s ficam em checkpoints do
+journal atual, separados da família dos fatos, com serialização SQLite/PG.
+Espera fora de SQL, orçamento/cancelamento existentes; quota zero bloqueia até
+próxima virada UTC e erro HTTP também conserva recibos de quota. Sem cache de
+respostas, novo scheduler/store/executor ou assinatura. Controle por base;
+quota real continua compartilhada pelo IP, sem governar outros aplicativos.
+
+Licença observada pela API e inferida pela política pública são distinguídas.
+Filtro pré-calculado pede `content_license` e corpo. Se o campo falta e a criação
+é≥02/05/2018, a política oficial autoriza atribuir CC BY-SA4.0 a essa contribuição;
+recibo registra inferência, quantidade, referência/data/versão. Não presume
+licença de revisões antigas nem substitui campo conflitante. Sem texto bruto
+ou nomes de autores em store/snapshots/Git; IDs públicos só no journal privado
+para retomada. Fonte/consulta/aliases/licença/versões permanecem explícitos.
+
+No host, pequena captura real de16 perguntas após SIGKILL do roster foi retomada
+pelos mesmos IDs; Q1 para o filtro AI, P0/N0 e uma abstenção. Oráculo independente
+confirmou Q; os5 fatos/revisões HN anteriores, namespace e provedor de preços
+foram preservados no mesmo símbolo. Repetição cumpriu intervalo real da API e
+preservou corte anterior. SIGINT durante cooldown confirmado preservou10 fatos
+confirmados e marcou CANCELLED. Catálogo/snapshot e leitor do Laboratório
+aceitaram a segunda fonte sem mudança de consumidor. Qualificador ainda é
+somente benchmark inglês controlado, não precisão geral da conversa na fonte.
+[SDK e fontes primárias](../sdk/api.md#segundo-publicador-independente-men-07).
+MEN-08 prossegue com proteção/regressão/reconciliação final.
