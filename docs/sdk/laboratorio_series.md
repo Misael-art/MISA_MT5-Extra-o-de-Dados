@@ -516,3 +516,40 @@ Acesso externo anterior permanece desconhecido, reserva inédita/predição/lucr
 não recebem qualificação automática. Correção cobre a família, sem controlar
 por inferência toda a busca entre novas revisões. Cancelamento/falha conserva
 acessos no ledger; retomar tentativa admitida sem resultado exige nova chave.
+
+### Comparação financeira de execuções gravadas
+
+Laboratório → Comparativo → Execuções gravadas → “Comparar execuções gravadas…”.
+Escolha2 a8 runs, adicione-os à seleção e declare “Estratégias/presets no mesmo
+ativo” ou “Mesmo preset entre ativos”. Abertura lê somente uma página de50
+metadados. Comparar consulta os runs escolhidos, sem executar estratégias;
+espera/cancelamento usam a fila da UI. Mudança de seleção/modo invalida a vista.
+
+São exibidos operações, lucro líquido, saldo final, patrimônio final, drawdown
+de encerradas e drawdown a mercado por fechamento. Métricas do motor são
+preservadas; o pior drawdown não é recalculado de uma curva reduzida. HTML local
+permite alternar saldo, encerradas, patrimônio e cotas em fração do capital
+inicial, com os custos/configurações, revisões, fontes e períodos inspecionáveis.
+Curvas usam a redução gráfica existente até240 pontos; não representam ticks.
+
+Compatibilidade exige composição/hash válidos, recibo completo do motor,
+configuração de capital/risco/custos, origem, relógio, período, moeda e qualidade
+congelada compatíveis. Mesmo ativo exige snapshot idêntico; entre ativos exige
+o mesmo corpo de preset removendo somente o símbolo. Especificações distintas
+entre ativos permanecem declaradas, sem supor preço/tick iguais. Fluxos externos
+não são qualificados nesta versão. Moeda ausente, custos/contexto incompletos,
+revisão incompatível ou diferença de janela deixam os resultados separados.
+Não há conversão cambial, soma entre moedas ou ranking automático.
+
+Novos runs Python gravam `comparison_context` nas métricas existentes. Para
+registrar a moeda da conta, declare `[STRATEGY] account_currency = USD` (exemplo;
+use a moeda real da conta). Vazio conserva desconhecida, sem inferi-la de
+currency_profit. Esta é uma declaração do usuário; não prova conta/FX histórica.
+Runs antigos continuam legíveis e não são regravados para simular um recibo.
+Compatibilidade técnica não concede aprovação financeira ou preditiva.
+
+SDK: `compare_laboratory_runs(db, run_ids, mode="same_asset"|"same_preset")` e
+`export_laboratory_runs(comparison, "novo.html")`. CLI: `laboratory runs --limit
+50 --offset 0`, depois `laboratory compare-runs --run ID1 --run ID2 --mode
+same_preset --out novo.json --html novo.html`. Saídas novas e integridade do
+recibo verificadas; exportação não consulta preços atuais nem refaz o motor.

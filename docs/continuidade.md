@@ -4579,3 +4579,25 @@ espera visível e HTML/recibo; dados de preço próprios sintéticos. Relatório
 já exposto, passado externo desconhecido, reserva inédita/predição/financeiro
 continuam sem qualificação. Versões price.return_1/5/20 preservadas.
 Continuar comparações financeiras compatíveis e inspetor/Super ATR.
+
+### Comparações financeiras de runs —30/10/2026
+
+`codex/comparacoes-financeiras`, sobre protocolo/PR249. [Contrato e uso](sdk/laboratorio_series.md#comparação-financeira-de-execuções-gravadas).
+Seleção explícita de2…8 execuções, índice paginado, comparação de recibos e
+exportação local com integridade. Capital/risco/custos/relógio/origem/período/
+revisão/moeda são preservados; moeda da conta é declaração explícita opcional
+para novos runs, nunca inferida de moeda de lucro do símbolo. Encerradas/saldo/
+patrimônio/cotas e DD completo separados. Legado permanece legível sem regravação.
+24 testes iniciais aprovados,45 regressões aprovadas e3 finais UI após preservar
+ordem das subguias (sobreposição),1 PG; doctor16/2/0. Launcher com três runs
+próprios, sem execução na consulta nem alteração dos fatos. DD encerradas0 e
+DD patrimônio12,75 no cenário controlado; isso é QA, não resultado de estratégia.
+HTML820×680 sem overflow da página, tabela com scroll e troca de curvas.
+Continuar inspetor/cursor/eventos e Super ATR. CI Windows da PR245 encerrou
+3975 aprovados/154 skips com uma falha residual de geometria em Relações;
+demais gates Linux/PG/instaladores aprovados. Não declarar Windows completo.
+Fechamento financeiro:4 casos financeiros finais e12 testes de superfície SDK
+aprovados. CI Linux de MEN-PT revelou três pendências de registro da API
+(nomes/assinatura opcional/referência); contrato/teste/documentação reconciliados
+neste incremento, preservando chamadas sem argumento e API_VERSION1. Sem
+declarar o CI da nova ponta aprovado por antecipação.
