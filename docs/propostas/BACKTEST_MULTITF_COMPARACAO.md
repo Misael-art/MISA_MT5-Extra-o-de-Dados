@@ -1,10 +1,20 @@
 # Backtest em todos os TFs e comparação por preset
 
-Pedido do proprietário de 21/10/2026. Registro de requisitos, ainda não implementados.
+Pedido do proprietário de 21/10/2026. Requisitos e entrega incremental.
 Complementa T19.33, T20.22/23/24/25 e os componentes F17/T11 existentes. A correção
 da exibição do painel manual no REPLAY é prioritária e tem PR próprio.
 
 ## Seleção no card — T19.33
+
+**T19.33a (30/10):** ordenação por duração e deduplicação por TF canônico nos
+seletores do card MQL5 e do backtest Python. O rótulo da tabela local permanece
+intacto; seleção disponível e contexto/preset são preservados após atualização
+e mudança de tema. Valores desconhecidos continuam visíveis no fim, sem serem
+convertidos em TF válido. O diálogo só captura entrada depois de ser mapeado
+pelo gerenciador de janelas, evitando `grab failed: window not viewable`.
+**T19.33b permanece pendente:** Todos, plano revisável, filtro de elegibilidade,
+identidade congelada e expansão no executor existente. Nenhum lote é disparado
+pela simples seleção ou atualização dos TFs.
 
 1. Ordenar TFs por duração crescente usando `timeframes.Timeframe`/parser atuais,
    preservando os nomes legíveis da base. Exemplo: M1, M5, M15, M30, H1, H4, D1,

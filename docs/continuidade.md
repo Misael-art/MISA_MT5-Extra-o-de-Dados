@@ -4720,3 +4720,27 @@ esse timeout permanece separado, sem aumento de prazo ou retirada da verificaç�
 O CI remoto da nova ponta e Windows físico continuam gates próprios. Como só
 testes/documentação mudam, conferir identidade dos bytes runtime com a prévia
 da conexão2f46afb, mantendo a ponte já disponível ao proprietário.
+
+### Seletores de tempos gráficos —30/10/2026 (T19.33a)
+
+`codex/backtest-ordem-tempos`, sobre portabilidade/PR255. Card MQL5 e backtest
+Python usam ordenação por duração do parser canônico, sem duplicatas por alias.
+Rótulos de tabelas não são renomeados; a seleção atual tem prioridade entre
+aliases presentes e é preservada no refresh/tema. Alias equivalente disponível
+substitui o rótulo removido; inventário vazio limpa a seleção. Valores desconhecidos
+ficam no fim e não ganham significado de TF válido.
+
+O baseline no desktop apresentou7 falhas/35 aprovados: os diálogos de seleção
+e execução capturavam entrada antes de estar visíveis. O grab local agora é
+feito no primeiro Map da própria janela, sem espera bloqueante.46 testes
+dirigidos aprovados;51 regressões de contexto, consentimento e backtest Python
+aprovadas. Launcher oficial offline com catálogo/inventário próprios confirmou
+ordem, diálogo modal, seleção/preset e tema, sem execução nativa. Screenshots
+e recibos próprios ficam fora do Git; disponibilização/restore e SHA/PR atuais
+são registrados no inventário central.
+
+O escopo Todos não é um timeframe válido nem foi liberado por esta entrega.
+T19.33b exige plano revisável, preset congelado, motivos de exclusão e expansão
+nos mecanismos existentes; seleção múltipla de ativos e comparação filtrada
+continuam frentes próprias. CI da ponta, Windows físico, timeout assíncrono
+Windows herdado e qualificação nativa/financeira permanecem delimitados.
