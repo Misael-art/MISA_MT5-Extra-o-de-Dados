@@ -4674,3 +4674,32 @@ estatístico não cria reserva externa intocada nem aprovação preditiva. FRED 
 capturado, BCB teve timeout preservado. CI/Windows físico são gates delimitados.
 Backup privado dos novos ensaios é complemento à página de recuperação existente;
 recibo/manifesto/restore e prévia atuais ficam no registro central, sem dados no Git.
+
+
+### Inicialização MT5 e aviso prematuro —30/10/2026 (CONN-STARTUP)
+
+`codex/conexao-mt5-inicializacao`, sobre SA-01/PR253. O teste do proprietário
+mostrou “MT5 não abriu” e o terminal abriu depois. Log local confirmou ponte
+indisponível na construção do conector, seguida de solicitação assíncrona da
+visão: initialize mantinha backend None e o aviso tratava indisponibilidade de
+canal como falha de abertura.
+
+O conector volta a resolver SDK/ponte ausente, sem inicializar ou fazer login
+nessa sondagem. A UI aguarda processo e canal com prazo de prontidão60s, sem
+relançar o terminal no gancho da mesma tentativa. Header/progresso continuam
+pendentes/neutros; os dois botões de abertura/verificação ficam indisponíveis
+até terminar. Fechar a janela cancela a espera. Falha de canal/erro imprevisto
+não afirma que o terminal não abriu nem oferece contaDEMO sem evidência.
+A confirmação de abertura por prazo informa que ele pode continuar iniciando.
+
+71 testes núcleo/backend/offline aprovados; recorte72 UI/conexão e6 cenários
+novos de atraso (sobreposição; um setup de fixture corrigido e reexecutado).
+Launcher oficial em QA própria: processo em1s e backend em3s, uma abertura,
+sem popup/initialize/shutdown/login no backend controlado e header conectado
+quando pronto. Doctor16/2/0. Isso valida o fluxo da UI com plataforma controlada,
+não cold start nativo/conta/Windows físico. Nenhum pin alterado.
+
+CI do pai6f553a8 falhou antes deste incremento:2 testesCLI dependiam de config.ini
+local ignorado; Windows também teve diferença no recibo do protocolo. Resumo
+saneado no recibo privado parent-ci.json; não declarar o CI herdado aprovado.
+A prévia e SHA/PR/recuperação atuais são reconciliados no registro central.

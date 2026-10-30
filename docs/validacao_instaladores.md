@@ -618,3 +618,13 @@ Windows físico, Tester, conta/execução DEMO, duas instâncias ou restart oper
 Na próxima sessão própria: confirmar semente broker/TF, disponibilidade, risco/
 pausa/magic+símbolo, stop aceito, fills e reconciliação; conservar entradas
 inicialmente desligadas e não usar conta REAL. Não relaxar lease/ownership.
+
+
+### Abertura lenta do terminal —30 outubro2026
+
+CONN-STARTUP foi exercitado pelo launcher Linux com processo/backend controlados
+que aparecem em instantes diferentes. Espera e retomada não mostram falha antes
+do prazo e distinguem transporte da conta. Reuso/posse e modo offline foram
+regredidos, sem reset/novo login na sondagem. Cold start real Wine, conta e
+Windows físico permanecem verificação própria; não encerrar o terminal do usuário
+para produzir o ensaio. Mensagem final de prazo não afirma abertura impossível.

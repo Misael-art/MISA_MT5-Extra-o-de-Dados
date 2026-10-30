@@ -76,6 +76,13 @@ class MT5Connector:
         if not self.offline:
             self._load_config()
 
+    def backend_ready(self):
+        """Resolve novamente SDK/ponte inicialmente ausente; não inicia terminal nem autentica."""
+        global mt5
+        if getattr(self,"offline",False):return False
+        if mt5 is None:mt5=get_mt5(self.config_path)
+        return mt5 is not None
+
     def last_error(self):
         """Último erro do MT5 (código, descrição) ou None se o MT5 estiver indisponível."""
         if getattr(self, "offline", False):
@@ -206,7 +213,8 @@ class MT5Connector:
             return False
             
         # Verifica se o módulo MT5 está disponível
-        if not mt5:
+        if not self.backend_ready():
+            self.connection_mode = "Canal de comunicação indisponível"
             log.error("Módulo MetaTrader5 não está disponível ou não foi importado corretamente")
             return False
 
