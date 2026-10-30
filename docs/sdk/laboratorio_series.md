@@ -553,3 +553,32 @@ SDK: `compare_laboratory_runs(db, run_ids, mode="same_asset"|"same_preset")` e
 50 --offset 0`, depois `laboratory compare-runs --run ID1 --run ID2 --mode
 same_preset --out novo.json --html novo.html`. Saídas novas e integridade do
 recibo verificadas; exportação não consulta preços atuais nem refaz o motor.
+
+### Inspetor temporal e execução vinculada
+
+Preço/indicadores, linha do tempo e suas vistas ampliadas compartilham cursor
+e zoom no eixo UTC. Matriz, cobertura e gráfico de defasagens conservam seus
+eixos próprios. A linha do tempo usa datas reais e blocos separados nas lacunas;
+a redução gráfica não pinta continuidade entre sessões ausentes. Selecionar
+um recibo no inspetor move o cursor para o candle representado; evento fora do
+recorte fica indicado sem ser deslocado para outra barra. O HTML oferece a
+mesma navegação da cronologia por clique ou Enter/Espaço.
+
+“Candle e cronologia” separa resumo OHLC, tabela de valores/unidades/clocks,
+observações de execução e cronologia de fontes. JSON completo fica recolhido.
+“Listar execuções” lê até50 metadados recentes; escolher e vincular exige mesmo
+ativo, grade principal e snapshot. Trajetórias conciliadas pelo serviço existente
+trazem fills, volume, sequência, PnL/capital e níveis iniciais do ledger. Sem
+trajetória íntegra não se estimam fills a partir de intenções ou preços.
+
+Fonte e base da sequência são visíveis: observações do backtester permanecem
+modelo, com disponibilidade do próprio produtor e sem recibo histórico de
+negociação real. SL/TP iniciais gravados não comprovam modificações aceitas no
+broker. Saldo/patrimônio/cotas são valores registrados, sem novo cálculo de
+valorização no inspetor. Não há negociação ou aceite operacional nessa consulta.
+
+CLI: `laboratory execution-link --analysis analysis.json --run ID --out
+execution.json`; depois `laboratory candle --analysis analysis.json --index
+300 --execution execution.json` ou `laboratory report --analysis analysis.json
+--execution execution.json --out report.html`. Recibo de outra análise ou
+conteúdo alterado é recusado. Exportar/reabrir usa as observações congeladas.

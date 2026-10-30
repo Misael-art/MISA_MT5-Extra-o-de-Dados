@@ -168,12 +168,17 @@ def _date(value: str) -> dt.datetime:
     return dt.datetime.strptime(text[:10], "%Y-%m-%d")
 
 
-def _fit_label_to_parent(label, parent, *, reserve=24, minimum=220):
+def _fit_label_to_parent(label, parent, *, reserve=24, minimum=220, viewport=None):
     """Mantém o texto legível ao redimensionar o contêiner."""
-    def resize(event):
-        label.configure(wraplength=max(minimum, event.width - reserve))
+    def resize(event=None):
+        width=parent.winfo_width()
+        if viewport is not None:width=min(width,viewport.winfo_width())
+        label.configure(wraplength=max(minimum, width - reserve))
 
     parent.bind("<Configure>", resize, add="+")
+    if viewport is not None:
+        viewport.bind('<Configure>',resize,add='+');label.bind('<Map>',resize,add='+')
+        parent.after_idle(resize)
     return label
 
 
@@ -1416,7 +1421,7 @@ class RelationsPanel:
                       "Retorno bruto do preço depois da intenção do canal. Custos não aplicados; expectativa líquida "
                       "de trades não é calculada. Ganho, perda e empate somam o denominador.",
                       kind="warning", theme=self.theme)
-        _fit_label_to_parent(note.message, note, reserve=128)
+        _fit_label_to_parent(note.message, note, reserve=128,viewport=self.notebook)
         self.distribution_notice = note
         note.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         self.distribution_split, primary, detail = self._split_view(parent)
@@ -1557,7 +1562,7 @@ class RelationsPanel:
         self.notebook.bind("<Configure>", resize_convergence_controls, add="+")
         note = Notice(parent, "ρ fora da amostra menos a persistência do alvo. Não é R/op. Custos não entram; expectativa líquida de trades não é calculada.",
                       kind="warning", theme=self.theme)
-        _fit_label_to_parent(note.message, note, reserve=128)
+        _fit_label_to_parent(note.message, note, reserve=128,viewport=self.notebook)
         self.convergence_notice = note
         note.pack(fill=tk.X, pady=(0, SPACING["xs"]))
         self.convergence_split, primary, detail = self._split_view(parent)

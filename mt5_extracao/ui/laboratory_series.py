@@ -55,10 +55,21 @@ def _draw_candles(ax, times, price, theme):
     return x, ohlc
 
 
-def timeline_bins(channels, max_columns):
+def _plot_periods(report,times):
+    """Vizinhos nominais no relógio congelado, inclusive mês broker deslocado."""
+    tf=timeframes.parse(report['grid_timeframe'])
+    if tf is not None and tf.name=='MN1':
+        offset=pd.Timedelta(hours=(report['populations'][0].get('clock') or {}).get('broker_utc_offset_hours') or 0)
+        calendar=times+offset
+        return calendar-pd.offsets.MonthBegin(1)-offset,calendar+pd.offsets.MonthBegin(1)-offset
+    step=pd.Timedelta(minutes=report.get('grid_minutes') or tf.minutes)
+    return times-step,times+step
+
+
+def timeline_bins(channels, max_columns, breaks=()):
     """Redução apenas gráfica: conserva eventos raros e distingue conflito de neutro."""
     count = len(channels[0]["directions"])
-    boundaries = np.unique(np.linspace(0, count, min(count, max_columns) + 1).astype(int))
+    boundaries = np.unique(np.r_[np.linspace(0, count, min(count, max_columns) + 1).astype(int),breaks]).astype(int)
     data = []
     for channel in channels:
         row = []
@@ -901,18 +912,24 @@ class SeriesLaboratoryPanel:
         ax = chart.figure.add_subplot(111)
         from matplotlib.colors import ListedColormap, BoundaryNorm
         from matplotlib.patches import Patch
+        from matplotlib.collections import PolyCollection
+        from matplotlib.dates import date2num,AutoDateLocator,ConciseDateFormatter
         columns = max(100, min(2000, int(chart.figure.bbox.width) - 220))
-        data, boundaries = timeline_bins(channels, columns)
+        previous,following=_plot_periods(report,times)
+        breaks=np.flatnonzero(times[1:]!=following[:-1])+1
+        data, boundaries = timeline_bins(channels, columns,breaks)
         cmap = ListedColormap([self.theme.colors["bad"], self.theme.colors["surface"],
                               self.theme.colors["good"], "#A274C4"]).with_extremes(bad=self.theme.colors["grid"])
-        # Grade por instante nominal; datas mantidas nas dicas e nos detalhes do relatório.
-        ax.imshow(np.ma.masked_invalid(data), aspect="auto", interpolation="nearest", cmap=cmap,
-                  norm=BoundaryNorm([-1.5, -.5, .5, 1.5, 2.5], 4))
+        x=date2num(times.to_pydatetime())
+        spans=[(x[a]-(times[a]-previous[a]).total_seconds()/86400*.45,
+                x[b-1]+(following[b-1]-times[b-1]).total_seconds()/86400*.45) for a,b in zip(boundaries[:-1],boundaries[1:])]
+        vertices=[[(a,i-.5),(b,i-.5),(b,i+.5),(a,i+.5)] for i in range(len(channels)) for a,b in spans]
+        ax.add_collection(PolyCollection(vertices,array=np.ma.masked_invalid(data.ravel()),cmap=cmap,norm=BoundaryNorm([-1.5,-.5,.5,1.5,2.5],4)))
+        ax.set_xlim(spans[0][0],spans[-1][1]);ax.set_ylim(len(channels)-.5,-.5)
         ax.set_yticks(range(len(channels)), [
             row["timeframe"] + " · " + row["name"] + (" · intenção" if row["rule"] == "candidate" else "")
             for row in channels])
-        positions = np.unique(np.linspace(0, data.shape[1] - 1, min(5, data.shape[1])).astype(int))
-        ax.set_xticks(positions, [times[boundaries[i]].strftime("%d/%m %H:%M") for i in positions])
+        locator=AutoDateLocator(minticks=3,maxticks=6);ax.xaxis.set_major_locator(locator);ax.xaxis.set_major_formatter(ConciseDateFormatter(locator))
         charts.style_axis(ax, self.theme, "Intenções do gerador por intervalo UTC · não são operação nem execução · "
                           "agregação somente visual", grid_axis=None)
         ax.legend(handles=[Patch(color=color, label=label) for color, label in
@@ -923,14 +940,20 @@ class SeriesLaboratoryPanel:
         def hover(event):
             if event.inaxes != ax or event.xdata is None or event.ydata is None:
                 return None
-            i, j = int(round(event.ydata)), int(round(event.xdata))
+            i=int(round(event.ydata));j=next((j for j,(a,b) in enumerate(spans) if a<=event.xdata<=b),-1)
             if 0 <= i < len(channels) and 0 <= j < data.shape[1]:
                 start, end = boundaries[j:j + 2]
                 return f"{times[start].isoformat()} a {times[end-1].isoformat()} · {channels[i]['id']}\n" \
                        f"{end-start} barras da grade · estado agregado={data[i,j]} · valores originais no JSON"
             return None
         chart.hover.append(hover)
+        if not getattr(chart,'_temporal_events',False):
+            chart._temporal_events=True
+            chart.canvas.mpl_connect('motion_notify_event',lambda event,c=chart:self._cursor_moved(c,event))
+            chart.canvas.mpl_connect('button_press_event',lambda event,c=chart:self._chart_clicked(c,event) if getattr(event,'dblclick',False) else None)
+        self._temporal_chart(chart,[ax],x)
         chart.draw()
+        ax.callbacks.connect('xlim_changed',self._zoom_changed)
 
     def _price(self, chart):
         if self.derived_read is not None and not self.report:
@@ -956,13 +979,8 @@ class SeriesLaboratoryPanel:
             label={"recession":"Recessão","expansion":"Expansão"}.get(period["value"],period["value"])
             ax.text(max(begin,times[0]),.96,label+(" · referência retrospectiva" if period["retrospective"] else " · conhecido no recebimento"),transform=ax.get_xaxis_transform(),
                     va="top",fontsize=8,color=self.theme.colors["ink2"],clip_on=True)
-        grid_tf = None if report.get("synthetic") else timeframes.parse(report["grid_timeframe"])
-        if grid_tf is not None and grid_tf.name == "MN1":
-            step = pd.offsets.MonthBegin(1)
-        else:
-            minutes = int(report["grid_minutes"]) if report.get("grid_minutes") else grid_tf.minutes
-            step = pd.Timedelta(minutes=minutes)
-        expected = times[:-1] + step
+        _previous,following=_plot_periods(report,times)
+        expected = following[:-1]
         splits = np.flatnonzero(times[1:] != expected) + 1
         palette = [self.theme.colors["accent"], *self.theme.colors["series"], self.theme.colors["warn"], self.theme.colors["ink2"]]
         chart._legend_lines = {}
@@ -1045,13 +1063,23 @@ class SeriesLaboratoryPanel:
             chart.canvas.mpl_connect("button_release_event", lambda event, c=chart: self._chart_released(c, event))
             chart.canvas.mpl_connect("motion_notify_event", lambda event, c=chart: self._cursor_moved(c, event))
         chart._price_axis = ax
-        view = self.study.view
-        if "xlim" in view:
-            ax.set_xlim(*view["xlim"])  # eixo compartilhado: subjanelas seguem o mesmo zoom
-        chart._cursors = [target.axvline(view.get("cursor", x[0]), color=self.theme.colors["muted"], linewidth=.7,
-                                         visible="cursor" in view) for target in axes]
+        self._temporal_chart(chart,axes,x)
         chart.draw()
         ax.callbacks.connect("xlim_changed", self._zoom_changed)
+
+    def _temporal_chart(self,chart,axes,x):
+        chart._time_axes=list(axes)
+        view = self.study.view
+        if "xlim" in view:
+            for target in axes:target.set_xlim(*view['xlim'],emit=False)
+        chart._cursors = [target.axvline(view.get("cursor", x[0]), color=self.theme.colors["muted"], linewidth=.7,
+                                         visible="cursor" in view) for target in axes]
+
+    def _temporal_charts(self):
+        for key in ('price','timeline'):
+            panel=self.panels[key]
+            for chart in (panel.chart,getattr(panel,'detail',None) if panel.popup is not None else None):
+                if chart is not None and any(a in chart.figure.axes for a in getattr(chart,'_time_axes',())):yield chart
 
     def _price_derived(self, chart):
         from matplotlib.dates import AutoDateLocator, ConciseDateFormatter
@@ -1100,13 +1128,10 @@ class SeriesLaboratoryPanel:
     def _zoom_changed(self, ax):
         if self.study is not None:
             self.study.view["xlim"] = [float(value) for value in ax.get_xlim()]
-            if self.panels["price"].popup is not None:
-                # Ampliado e original mostram a mesma janela temporal.
-                for chart in (self.panels["price"].chart, self.panels["price"].detail):
-                    target = getattr(chart, "_price_axis", None)
-                    if target is not None and target is not ax and tuple(target.get_xlim()) != tuple(ax.get_xlim()):
-                        target.set_xlim(*ax.get_xlim())
-                        chart.canvas.draw_idle()
+            for chart in self._temporal_charts():
+                for target in chart._time_axes:
+                    if target in chart.figure.axes and target is not ax:target.set_xlim(*ax.get_xlim(),emit=False)
+                chart.canvas.draw_idle()
 
     def _cursor_moved(self, chart, event):
         if self.study is None or event.inaxes is None or event.xdata is None or event.inaxes not in chart.figure.axes:
@@ -1114,10 +1139,22 @@ class SeriesLaboratoryPanel:
         if self._drag is not None and self._drag[0] is chart:
             return
         self.study.view["cursor"] = float(event.xdata)
-        for line in getattr(chart, "_cursors", ()):
-            line.set_xdata([event.xdata, event.xdata])
-            line.set_visible(True)
-        chart.canvas.draw_idle()
+        for target in self._temporal_charts():
+            for line in getattr(target,'_cursors',()):line.set_xdata([event.xdata,event.xdata]);line.set_visible(True)
+            target.canvas.draw_idle()
+
+    def select_candle(self,index):
+        if self.report is None or not 0<=index<len(self.report['times']):return
+        from matplotlib.dates import date2num
+        x=date2num(pd.Timestamp(self.report['times'][index]).to_pydatetime())
+        self.study.view['cursor']=float(x)
+        for chart in self._temporal_charts():
+            for line in getattr(chart,'_cursors',()):line.set_xdata([x,x]);line.set_visible(True)
+            chart.canvas.draw_idle()
+        charts=list(self._temporal_charts())
+        if charts:
+            ax=charts[0]._time_axes[0];a,b=ax.get_xlim()
+            if not min(a,b)<=x<=max(a,b):ax.set_xlim(x-abs(b-a)/2,x+abs(b-a)/2)
 
     def _chart_clicked(self, chart, event):
         if getattr(event,"dblclick",False) and event.xdata is not None and self.report is not None:

@@ -9,6 +9,7 @@ REPO = Path(__file__).resolve().parents[1]
 
 # nome -> parâmetros, na ordem (classes e constantes: None)
 SURFACE = {
+    "link_laboratory_execution": ["db","report","run_id","kwargs"],
     "describe_mention_series": ["db", "symbol", "timeframe", "subject", "source", "query", "classifier", "universe"],
     "mention_source_capabilities": [],
     "ingest_mention_batch": ["db", "selection", "batch", "synthetic_fixture", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
