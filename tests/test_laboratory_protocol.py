@@ -77,13 +77,16 @@ def test_protocol_immutable_cached_read_and_cancelled_exposure(research,monkeypa
     with pytest.raises(ValueError,match='admitida'):relations.evaluate(db,r,pid,key='cancelled')
 
 
-def test_cli_register_evaluate_and_export_same_receipt(research,tmp_path,capsys):
+def test_cli_register_evaluate_and_export_same_receipt(research,tmp_path,capsys,monkeypatch):
     db,r,spec=research
-    cfg=tmp_path/'qa.ini';cfg.write_text(f'[DATABASE]\ntype=sqlite\npath={db.db_path}\n[APP]\nbroker_utc_offset=0\n')
-    source=tmp_path/'analysis.json';source.write_text(json.dumps(r));definition_path=tmp_path/'definition.json';definition_path.write_text(json.dumps(spec))
+    monkeypatch.chdir(tmp_path)
+    cfg=tmp_path/'qa.ini';cfg.write_text(f'[DATABASE]\ntype=sqlite\npath={db.db_path}\n[APP]\nbroker_utc_offset=0\n',encoding='utf-8')
+    source=tmp_path/'analysis.json';source.write_text(json.dumps(r),encoding='utf-8');definition_path=tmp_path/'definition.json';definition_path.write_text(json.dumps(spec),encoding='utf-8')
     prefix=['--config',str(cfg),'--json','laboratory']
     assert cli.main(prefix+['protocol-register','--analysis',str(source),'--definition',str(definition_path)])==0
     p=json.loads(capsys.readouterr().out)['data'];out=tmp_path/'result.json'
     assert cli.main(prefix+['protocol-evaluate','--analysis',str(source),'--protocol',p['protocol_id'],'--key','cli','--out',str(out)])==0
-    capsys.readouterr();result=json.loads(out.read_text());assert result==relations.receipt(db,p['protocol_id'],'cli')
+    capsys.readouterr();result=json.loads(out.read_text(encoding='utf-8'));assert result==relations.receipt(db,p['protocol_id'],'cli')
+    assert any('Família' in limitation for limitation in result['limitations'])
+    assert relations.validate_receipt(r,result)==result
     assert cli.main(prefix+['report','--analysis',str(source),'--out',str(tmp_path/'report.html'),'--evaluation',str(out)])==0
