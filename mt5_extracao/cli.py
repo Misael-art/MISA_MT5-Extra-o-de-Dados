@@ -1782,7 +1782,13 @@ def build_parser():
 
     for action in ("mention-sources", "mention-classifiers"):
         q = features_sub.add_parser(action, help="capacidades locais/documentadas; sem sonda de rede")
+        if action=="mention-classifiers":q.add_argument("--classifier",default="object-vader-en",choices=["object-vader-en","object-evaluation-pt"])
         q.set_defaults(func=cmd_analytics)
+    q=features_sub.add_parser("mention-evaluate",help="avalia casos anotados sem armazenar texto ou certificar independência humana")
+    q.add_argument("--input",required=True,help="JSON cases/protocol até4MiB; avaliação separada de development_ids")
+    q.add_argument("--classifier",required=True,choices=["object-vader-en","object-evaluation-pt"])
+    q.add_argument("--out",required=True,help="novo JSON de métricas, sem texto dos casos")
+    q.set_defaults(func=cmd_analytics)
     for action in ("mentions-describe", "mentions-ingest", "mentions-collect", "mentions-classify"):
         q = features_sub.add_parser(action, help="contrato ou ingestão explícita de lote de menções")
         q.add_argument("--selection", required=True, help="JSON do objeto/fonte/consulta/resolução/classificador")
@@ -1794,7 +1800,7 @@ def build_parser():
                 q.add_argument("--start", required=True, help="início da janela UTC alinhada e já fechada")
                 q.add_argument("--end", required=True, help="fim exclusivo da janela UTC")
                 q.add_argument("--fresh-panel", action="store_true", help="seleciona painel novo explicitamente, preservando recibos anteriores")
-                q.add_argument("--classify", action="store_true", help="após receber Q, classifica explicitamente o mesmo lote no domínio inglês qualificado")
+                q.add_argument("--classify", action="store_true", help="após receber Q, classifica explicitamente o mesmo lote com a versão escolhida e seu domínio controlado")
             q.add_argument("--timeout-seconds", type=float, default=120)
             q.add_argument("--max-memory-mb", type=float, default=1024)
         q.set_defaults(func=cmd_analytics)
@@ -2166,7 +2172,7 @@ def cmd_analytics(args, ctx):
     import json
     from mt5_extracao.analytics import feature_store, features
 
-    if args.features_action in ("mention-sources", "mention-classifiers", "mentions-describe", "mentions-ingest", "mentions-collect", "mentions-classify"):
+    if args.features_action in ("mention-sources", "mention-classifiers", "mentions-describe", "mentions-ingest", "mentions-collect", "mentions-classify", "mention-evaluate"):
         from pathlib import Path
         from mt5_extracao import sdk
         from mt5_extracao.analytics import mention_ingestion
@@ -2179,11 +2185,19 @@ def cmd_analytics(args, ctx):
             if not isinstance(value,dict):raise ValueError("Entrada MEN precisa ser objeto JSON.")
             return value
         if args.features_action == "mention-classifiers":
-            result=sdk.mention_classifier_capabilities();_data(classifier=result)
+            result=sdk.mention_classifier_capabilities(args.classifier);_data(classifier=result)
             _print("Classificador local: "+str(result))
         elif args.features_action == "mention-sources":
             items=sdk.mention_source_capabilities();_data(sources=items)
             for item in items:_print(f"{item['id']} · {item['name']}: {item['access']} · {item['qualification']}.")
+        elif args.features_action == "mention-evaluate":
+            source=read_input(args.input)
+            if set(source)!={"cases","protocol"}:raise ValueError("Avaliação exige somente cases/protocol.")
+            result=sdk.evaluate_mention_classifier(source["cases"],classifier_id=args.classifier,protocol=source["protocol"])
+            try:
+                with Path(args.out).expanduser().open("x",encoding="utf-8") as handle:json.dump(result,handle,ensure_ascii=False,allow_nan=False)
+            except FileExistsError:raise ValueError("Escolha um arquivo novo; o recibo anterior foi preservado.") from None
+            _data(evaluation=result);_print("Avaliação concluída; origem humana/representatividade não certificadas, texto não exportado.")
         elif args.features_action == "mentions-describe":
             result=sdk.describe_mention_series(ctx.db,**read_input(args.selection));_data(contract=result)
             _print("Escopo MEN: "+result['scope_hash']+"; três definições, sem captura/publicação implícita.")
@@ -2204,7 +2218,7 @@ def cmd_analytics(args, ctx):
             classified=result.get('classification',result if args.features_action=='mentions-classify' else None)
             if classified is not None:
                 _print("Classificação: "+classified['receipt']['classification']+"; rótulos: "+str(classified['receipt']['label_counts'])+
-                       ". Qualificação restrita ao benchmark inglês; consulte mention-classifiers para limites.")
+                       ". Qualificação restrita ao benchmark do classificador escolhido; consulte mention-classifiers para limites.")
             if result['job']['status']!='COMPLETE' or result.get('classification',{}).get('job',{}).get('status','COMPLETE')!='COMPLETE':return EXIT_FAIL
         return EXIT_OK
 

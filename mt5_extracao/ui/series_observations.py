@@ -184,7 +184,8 @@ class SeriesObservations:
                 if key!='quantity' and 'label_counts' in meta:
                     detail+='\n'+value_text(meta['label_counts'].get('abstained',0))+' abstenções fora de P/N'
                 if meta.get('synthetic_fixture'):detail+=' · referência sintética'
-                elif meta.get('qualification')=='CONTROLLED_ENGLISH_BENCHMARK_ONLY':detail+=' · inglês restrito'
+                if meta.get('qualification')=='CONTROLLED_ENGLISH_BENCHMARK_ONLY':detail+=' · inglês restrito'
+                elif meta.get('qualification')=='CONTROLLED_PORTUGUESE_BENCHMARK_ONLY':detail+=' · português restrito'
             card.set_value(value_text(matches[0]['values'][-1]) if usable else '—',detail)
         self.status.configure(text=f"{r['symbol']} {r['timeframe']} · {len(r['times'])} janelas · corte {r['as_of']} · "
             f"snapshot {r['manifest_id'][:12]}. Abstenção não é neutralidade; confira os motivos abaixo.")
