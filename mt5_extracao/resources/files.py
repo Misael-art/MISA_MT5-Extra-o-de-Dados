@@ -21,7 +21,7 @@ from mt5_extracao.resources import policy as policy_mod
 log = logging.getLogger(__name__)
 
 BACKUP_SUFFIX = ".db"
-ACTIVE_LOGS = {"mt5_extracao.log"}
+ACTIVE_LOGS = {"mt5_extracao.log", "mt5_bridge.log", "mt5_bridge.pid", "mt5_bridge_process.json", "mt5_bridge.lock"}
 
 
 def backup_dir(db, policy) -> Path:
@@ -119,7 +119,7 @@ def _folders(db, policy) -> dict:
     return out
 
 
-def _protected_artifacts(db, config):
+def _protected_artifacts(db, config, *, check=lambda: None):
     """Referências dos donos existentes; não carrega curvas/trades nem cria catálogo."""
     from sqlalchemy import inspect, text
     files, directories = set(), set()
@@ -130,6 +130,8 @@ def _protected_artifacts(db, config):
             raise ValueError("Referência de artefato inválida; confira os registros antes de limpar arquivos.")
         path = Path(value).expanduser().resolve()
         (directories if directory else files).add(path)
+    for path in actions.control_lock_paths(policy_mod.archive_dir(db, policy_mod.load(config))):
+        add(str(path))
     if config is not None:
         if config.get("MT5", "path", fallback="").strip():
             from mt5_extracao.robots import mt5_tools
@@ -144,6 +146,7 @@ def _protected_artifacts(db, config):
             columns = {row["name"] for row in inspect(conn).get_columns("_robot_runs")}
             if "metrics_json" in columns:
                 for (raw,) in conn.execute(text("SELECT metrics_json FROM _robot_runs")):
+                    check()
                     try:
                         metrics = json.loads(raw or "{}")
                     except (TypeError, ValueError):
@@ -165,6 +168,12 @@ def _protected_artifacts(db, config):
                     if value:
                         path = Path(value).expanduser()
                         add(str(path), directory=path.is_dir())
+    from mt5_extracao.robots import budget
+    for reference in budget.retained_artifacts(db, check=check):
+        for path in reference["files"]:
+            add(path)
+        for path in reference["directories"]:
+            add(path, directory=True)
     # Sessões antigas já têm relatorio.json na pasta privada, mesmo sem campo novo.
     for path in tuple(files):
         parent = path.parent
@@ -192,7 +201,7 @@ def old_files(db, config, now: Optional[datetime] = None, *, check=None) -> List
     found = []
     if check is not None:
         check()
-    protected_files, protected_dirs = _protected_artifacts(db, config)
+    protected_files, protected_dirs = _protected_artifacts(db, config, check=check or (lambda: None))
     for label, (folder, days) in _folders(db, policy).items():
         if check is not None:
             check()
@@ -355,9 +364,9 @@ def _session_manifest(directory):
     return payload
 
 
-def _session_referenced(db, config, directory):
+def _session_referenced(db, config, directory, protected=None):
     from sqlalchemy import inspect, text
-    files, directories = _protected_artifacts(db, config)
+    files, directories = protected if protected is not None else _protected_artifacts(db, config)
     resolved = directory.resolve()
     if any(path == resolved or resolved in path.parents for path in files):
         return True
@@ -383,6 +392,7 @@ def list_sessions(db, config):
     from mt5_extracao.robots.sessions import session_root
     root = session_root(config)
     result = []
+    protected = None
     for quarantined, folder in ((False, root), (True, root / ".quarantine")):
         if not folder.is_dir() or folder.is_symlink():
             continue
@@ -398,8 +408,10 @@ def list_sessions(db, config):
                 owner = session_owner_key(db)
                 if owner is None or payload.get("owner_store") != owner:
                     raise ValueError("Perfil de outro banco ou sem vínculo verificável; arquivos preservados.")
-                if not quarantined and _session_referenced(db, config, directory):
-                    item["reason"] = "Artefatos referenciados por execução ou catálogo."
+                if not quarantined and protected is None:
+                    protected = _protected_artifacts(db, config)
+                if not quarantined and _session_referenced(db, config, directory, protected):
+                    item["reason"] = "Artefatos referenciados por execução, catálogo ou lote."
                 else:
                     item["eligible"] = True
             except ValueError as error:
