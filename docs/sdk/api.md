@@ -1114,3 +1114,51 @@ SELECAO.json --batch LOTE.json [--synthetic-fixture]`. `mentions-collect
 classifica explicitamente o mesmo lote em memória, dentro do orçamento restante;
 uma falha posterior mantém Q e P/N pendentes. Sem `--classify`, captura continua
 sem inferência. Consultas, catálogo e exportações permanecem passivos.
+
+
+### Snapshots de séries, inclusive temas sem preço (MEN-05)
+
+`capture_feature_snapshot` congela definições e todas as revisões recebidas das
+observações selecionadas no mesmo store de snapshots. Não captura/classifica
+menções, não consulta provedor e não registra fatos atuais ao importar.
+
+```python
+capture_feature_snapshot(db, *, symbol, timeframe, start, end, stored_features,
+                         feature_only=True, write_guard=None, cancel_check=None,
+                         timeout_seconds=120, max_memory_mb=1024)
+```
+
+`stored_features` contém pares `(feature_id, algorithm_version)` explícitos.
+No padrão somente séries, `start/end` declaram `[início,fim)` UTC já ocorrido,
+com fuso explícito e microssegundos. Não há dependência de fuso do corretor,
+preço, calendário econômico ou especificação de instrumento. Formato opt-in
+`mt5x.dataset.v5`, apenas blocos `feature_definitions/feature_history`, mesmas
+tabelas, integridade, deduplicação e transporte dos snapshots existentes.
+A origem da base é preservada; a fonte de menções continua em cada definição/
+recibo. Dados ausentes permanecem ausentes; zero não preenche lacunas.
+
+Com `feature_only=False`, usa o formato legado com OHLCV existente e recorte
+em horário do corretor, cujo fim é inclusivo na leitura de barras. Capturas
+anteriores v1…4 continuam válidas. Não se criam preços para temas. `snapshot.bars`
+é vazio em v5; o leitor OHLCV rejeita uso em estratégia/mercado sem barras.
+Relações que precisam de grade/calendário de mercado requerem snapshot com
+esse contexto real, não certificação de grade artificial de um tema.
+
+`export_feature_snapshot(db, manifest_id, destination)` exporta bytes imutáveis;
+`import_feature_snapshot(db, source)` importa esses mesmos blocos, preservando
+namespace da origem dentro do snapshot e a identidade da base receptora. Não
+há texto bruto de menções, consulta privada, senha nem nome de autor nesses
+blocos. `inspect_feature_snapshot` lê os contratos congelados. SDK retorna
+`manifest_id/manifest` na captura/importação e caminho na exportação.
+
+CLI: `analytics features snapshot-capture --symbol OBJETO --tf M1 --start UTC
+--end UTC --stored-feature mentions.quantity VERSAO` (repetir a opção para P/N).
+`--with-market-bars` inclui OHLCV existente. `snapshot-export --manifest ID
+--out ARQUIVO` e `snapshot-import --source ARQUIVO` usam transporte canônico.
+
+Corte histórico continua aplicado pelo contexto existente. Para examinar uma
+observação antiga recebida/classificada depois, informe `observation_time`
+explícito ao contexto do snapshot e um `decision_time` até seu último recibo
+congelado. Um snapshot capturado antes de P/N conserva somente Q/pendências,
+mesmo após novas classificações/revisões na base atual. Não existe fallback
+para fato/modelo/rede atual ao reabrir ou transportar.

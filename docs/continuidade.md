@@ -4352,3 +4352,27 @@ SIGINT durante avaliação real, retomada, consulta SDK=CLI e corte antigo intac
 As anotações de teste são autorais, não corpus de terceiros publicado no Git.
 MEN-05…08 continuam: snapshots, Laboratório, segunda fonte e proteção independente.
 Windows físico/MT5/Wine/contas não certificados por esta validação.
+
+
+### MEN-05 — séries sem preço no snapshot canônico, 29/10/2026
+
+Sobre MEN-04/PR240 (`11ea3ca611632da407913ec16d2be53d23f97593`), branch
+`codex/mencoes-snapshots`. Catálogo/store/consulta existentes recebem Q/P/N sem
+nova coluna em OHLCV. A lacuna real era a captura exigir barras até para temas;
+`datasets.capture(feature_only=True)` adiciona formato5 opt-in com somente
+contratos/histórico, intervalo UTC `[início,fim)` explícito já ocorrido e sem
+supor fuso/calendário/preço. Formatos1…4 e padrão com mercado preservados.
+Reutiliza transação/blocos/hash/transporte existentes. Snapshot pré-P/N continua
+pendente após classificação/revisão; importação preserva origem do snapshot,
+namespace do receptor e não publica fatos atuais. Contexto tardio usa observação
+fixa e corte até o último recibo congelado, sem fallback atual.
+
+SDK/CLI captura/exportação/importação e inspeção/contexto passivos. Fonte no
+host pelo launcher oficial: cópia própria dos agregados públicos HN Q8/P0/N0,
+oito abstenções, cinco fatos/revisões; snapshot, repetição idêntica, quota1MiB
+recusada, exportação/importação2×, contexto antes/depois de P/N e preço intacto.
+Erro de quota inicialmente mostrou traceback na CLI; handler de memória/tempo
+agora entrega JSON e orientação de correção. Não se mudou a classificação nem
+se atribuiu precisão geral à fonte. Próximos:MEN-06 UI/indicadores/relações,
+MEN-07 segunda fonte, MEN-08 regressão/proteção independente. Sem aceite nativo,
+Windows físico, conta, negociação ou Expert por estes testes.
