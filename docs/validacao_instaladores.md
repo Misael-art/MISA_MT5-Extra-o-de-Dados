@@ -567,3 +567,13 @@ permanecem nos incrementos MEN-03/04.
 
 Os testes multiplataforma do CI e o launcher Linux não substituem esse aceite.
 Nenhuma alteração de instalador ou dependência neste incremento.
+
+
+## MEN-03 — API pública limitada (2026-10-29)
+
+- [ ] Windows físico: captura pelo launcher/CLI, TLS/proxy público configurado,
+  timeout/retentativa/429 e Ctrl-C; conferir retomada do mesmo roster e cursor.
+- [ ] Windows físico: encerramento abrupto de processo próprio, prova de morte
+  e reconciliação sem assumir morte por idade ou tocar processo externo.
+
+Transporte injetado no CI não certifica rede pública nesse host físico.

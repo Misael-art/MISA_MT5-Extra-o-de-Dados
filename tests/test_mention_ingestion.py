@@ -186,7 +186,9 @@ def test_source_capabilities_are_passive_documentation_not_fake_connectors(monke
     monkeypatch.setattr(requests,'get',lambda *a,**k:pytest.fail('network on capability read'))
     items=sdk.mention_source_capabilities()
     assert [i['id'] for i in items]==['F01','F02','F03','F04','F05','F06','F07','F08','F09']
-    assert all(not i['connector_implemented'] and i['qualification']=='DOCUMENTED_ONLY' for i in items)
+    assert all(not i['connector_implemented'] and i['qualification']=='DOCUMENTED_ONLY' for i in items if i['id']!='F05')
+    publisher=next(i for i in items if i['id']=='F05')
+    assert [c['provider'] for c in publisher['connectors']]==['hackernews']
 
 
 @pytest.mark.parametrize('kind,ident,aliases,expression,inclusions,texts',[
