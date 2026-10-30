@@ -4784,3 +4784,44 @@ por timeout em recálculo de indicadores (test_analytics_profiles), antes do
 seletor; logs públicos saneados preservados. CI da nova ponta tem estado próprio.
 T20.24/25 (vários ativos/capacidade/retenção) e T20.22/23 (comparação por revisão
 entre TFs) continuam frentes próprias; não há aceite financeiro/preditivo.
+
+### Backtest com vários ativos —30/10/2026 (T20.24b)
+
+`codex/backtest-varios-ativos`, sobre Todos/PR257. O mesmo plano aceita ativo,
+lista explícita ou todos os ativos com barras locais. UI tem seleção Ctrl/Shift
+e todos da base; SDK/CLI usam `symbols`/`all_symbols` e `--symbols`/`--all-symbols`.
+Produto ativo × TF é revisado antes de executar. Cada célula, checkpoint e run
+identifica ativo/TF/revisão, mantendo parâmetros, janela, preset e dados congelados.
+Nome alternativo que resolve a mesma tabela gera exclusão para rever identidade;
+Default/Manual presos a outro ativo/TF também são excluídos, sem retarget.
+
+BatchRunner/Budget/ResourceGovernor e sessões privadas continuam únicos.
+Automático neste novo escopo tem teto de dois workers Python; configuração
+explícita é respeitada e MQL5 segue serial. Limites de recursos no preparo ficam
+visíveis no plano; orçamento pode ser ajustado ao retomar. Estado/medições da
+CLI após execução agora são relidos do checkpoint. Nenhuma mudança de schema,
+pin ou operação ao vivo. [API e limites](sdk/api.md#plano-revisável-de-backtest-entre-tempos-gráficos).
+
+Baseline56 aprovados; suíte pertinente171 aprovados, incluindo21 novos casos;
+mais2 CLI após corrigir a resposta final (sobreposição). Guardas controladas de
+CPU/RAM/disco e cancelamento preservaram o primeiro resultado e retomaram os
+demais; fronteira Session controlada mostrou seis jobs nativos sem concorrência.
+Doctor offline16/2/0. Pelo launcher CLI real,1/3/6 ativos produziram2/6/12 jobs,
+dois workers efetivamente executando, com2,40/3,61/6,01s na chamada de execução
+incluindo startup. RSS de pico amostrado138/141/143MiB; CPU/RAM/I/O e espaço
+retido nos recibos próprios, escopo processo/host e não custo por job. Novos
+processos CLI retomaram os três planos completos sem executar outro job.
+Isso é medição desta bancada de350 barras/série, sem promessa de escala linear.
+
+Launcher GUI offline em base própria revisou18 jobs/108 exclusões, interrompeu
+após3, retomou os18 sem duplicação e conservou rodapé/rolagem em600×500/980×680,
+temas e escalas existentes. O primeiro script de QA expirou na coleta final;
+source-profile é o recibo final do fonte. Medição de callbacks encontrou pausa
+de até2,28s durante redesenho de tema/layout (AnalysisPanel/Matplotlib), portanto
+não há aceite de fluidez irrestrita; essa otimização permanece delimitada.
+SHA/PR/prévia e proteção independente dos novos recibos ficam no registro central.
+
+T20.25b (artefatos referenciados/retenção), comparação da mesma revisão entre TFs
+T20.22/23, Windows físico e aceite real de Tester/conta/financeiro permanecem
+frentes próprias. CI da PR257 ainda tinha Linux/Windows em andamento e quatro
+checks de produto aprovados na consulta anterior a este incremento.

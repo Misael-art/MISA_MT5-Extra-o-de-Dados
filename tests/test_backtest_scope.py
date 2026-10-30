@@ -195,6 +195,9 @@ def test_cli_review_signature_and_actual_execution_share_sdk_plan(source,tmp_pat
     assert cli.main(args+['backtest-plan-run',robot.key,'--batch-id',plan['batch_id'],'--confirm-plan',plan['signature']])==0
     result=json.loads(capsys.readouterr().out)['data']
     assert len(result['results'])==2 and all(item['run_id'] for item in result['results'])
+    assert result['backtest_plan']['status']=='completed'
+    assert len(result['backtest_plan']['executions'])==2
+    assert result['backtest_plan']['measurements']['sampled_rss_peak']>0
 
 
 @pytest.mark.parametrize('category',['Default','Manual'])
