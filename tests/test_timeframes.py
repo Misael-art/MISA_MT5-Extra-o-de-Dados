@@ -42,3 +42,16 @@ def test_connector_convert(connector):
     assert connector._convert_timeframe_to_mt5("1 hora") == 16385
     assert connector._convert_timeframe_to_mt5(240) == 16388
     assert connector._convert_timeframe_to_mt5("??") == 1
+
+
+def test_ordering_uses_duration_and_preserves_labels_without_duplicate_aliases():
+    values = ["H4", "1 hora", "M5", "H1", "1 minuto", "M1", "D1", "M15", "MN1", "W1", "M30"]
+    before = values[:]
+    assert timeframes.ordered_unique(iter(values)) == [
+        "1 minuto", "M5", "M15", "M30", "1 hora", "H4", "D1", "W1", "MN1"]
+    assert values == before
+
+
+def test_ordering_keeps_unknowns_visible_without_reinterpreting_them():
+    assert timeframes.ordered_unique(["M7", "D1", "custom", "M7", "H1"]) == ["H1", "D1", "M7", "custom"]
+    assert timeframes.ordered_unique([]) == []
