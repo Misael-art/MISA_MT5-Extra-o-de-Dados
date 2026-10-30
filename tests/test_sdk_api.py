@@ -9,6 +9,9 @@ REPO = Path(__file__).resolve().parents[1]
 
 # nome -> parâmetros, na ordem (classes e constantes: None)
 SURFACE = {
+    "preview_backtest_scope": ["db", "config", "robot", "symbol", "kwargs"],
+    "inspect_backtest_scope": ["db", "batch_id"],
+    "create_backtest_scope_runner": ["db", "config", "robot", "batch_id", "kwargs"],
     "create_super_atr_research_robot": ["name","folder","framework_root","seed_start","kwargs"],
     "super_atr_capabilities": ["framework_root","manifest_path"],
     "materialize_super_atr_snapshot": ["db","manifest_id","framework_root","kwargs"],

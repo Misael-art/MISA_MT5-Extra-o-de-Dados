@@ -89,11 +89,41 @@ class ResourceGovernor:
 
 
 def run_job(db, config, job: Job, *, control=None, entry=None) -> dict:
+    execution = (entry or {}).get("execution") or {}
+    if execution.get("mode") == "preset_package":
+        from ..presets.execution import PresetExecution
+        native = PresetExecution(db, config, job.robot, execution["manifest_path"], control=control)
+        if native.package.package_hash != execution["package_hash"]:
+            raise ValueError("Pacote mudou desde a revisão; execução recusada.")
+        native.run()
+        if native.evidence is None or native.status == "native_divergence":
+            raise ValueError(native.error or "Preset nativo sem conferência válida; preserve a sessão e reconcilie antes de retomar.")
+        return native.session.record
+    if execution.get("mode") == "native_private":
+        from datetime import datetime
+        from . import sessions, mt5_tools
+        options = dict(db=db, robot=job.robot, symbol=job.symbol, preset=execution.get("preset"),
+                       params=execution["params"], model=execution["model"], control=control)
+        native = sessions.Session(db, config, job.robot, job.symbol, job.timeframe,
+                                  preset=execution.get("preset"),
+                                  start=datetime.fromisoformat(entry["start"]), end=datetime.fromisoformat(entry["end"]),
+                                  native_options=options)
+        common = mt5_tools.common_files_dir(config)
+        if common is None:
+            raise ValueError("Pasta comum indisponível; confira o ambiente antes do backtest isolado.")
+        options["trades_csv_override"] = common / native.trades_file
+        native.run()
+        if native.exception is not None:
+            raise native.exception
+        if native.state != "completed" or native.record is None:
+            raise ValueError(native.error or "Sessão nativa não concluída; preserve o relatório.")
+        return native.record
     if job.robot.kind == catalog.MQL5:
         from datetime import datetime
         dates = {key: datetime.fromisoformat(entry[key]) for key in ("start", "end")} if entry else {}
         return backtest.run_mql5(db, config, job.robot, job.symbol, job.timeframe, control=control, **dates)
     return backtest.run_python(db, config, job.robot, job.symbol, job.timeframe, control=control,
+                               **({"params": execution["params"]} if "params" in execution else {}),
                                data_manifest_id=entry.get("data_manifest_id") if entry else None)
 
 
@@ -109,7 +139,8 @@ class BatchRunner:
 
     def __init__(self, db, config, jobs: List[Job], on_event: Optional[Callable] = None,
                  governor: Optional[ResourceGovernor] = None, run: Optional[Callable] = None,
-                 mql5_setup: Optional[Callable] = None, budget=None, batch_id=None):
+                 mql5_setup: Optional[Callable] = None, budget=None, batch_id=None,
+                 prepare_options=None, validate_recovered=None, validate_job=None):
         self.db, self.config, self.jobs = db, config, list(jobs)
         self.on_event = on_event or (lambda event: None)
         self.governor = governor or ResourceGovernor(**limits_from_config(config))
@@ -118,6 +149,8 @@ class BatchRunner:
         self.batch_id = self.budget.batch_id
         self._entries = {}
         self.error = ""
+        self._prepare_options = dict(prepare_options or {})
+        self._validate_recovered, self._validate_job = validate_recovered, validate_job
         self._mql5_setup = mql5_setup
         self._cancel = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -156,6 +189,8 @@ class BatchRunner:
             entry = self._entries[id(job)]
             if entry.get("preparation_error"):
                 raise ValueError(entry["preparation_error"])
+            if self._validate_job is not None:
+                self._validate_job(job, entry)
             record = self._run(self.db, self.config, job) if self._run is not None else run_job(
                 self.db, self.config, job, control=control, entry=entry)
             return {"job": job, "run": record, "error": ""}
@@ -180,12 +215,14 @@ class BatchRunner:
         cleanup = None
         governor = self.governor
         try:
-            plan = self.budget.prepare([(job.robot, job.symbol, job.timeframe) for job in self.jobs])
+            plan = self.budget.prepare([(job.robot, job.symbol, job.timeframe) for job in self.jobs], **self._prepare_options)
             self._entries = {id(job): entry for job, entry in zip(self.jobs, plan)}
             recovered = []
             for job in pending:
                 record = self.budget.recovered(self._entries[id(job)]["key"])
                 if record is not None:
+                    if self._validate_recovered is not None:
+                        self._validate_recovered(record, self._entries[id(job)])
                     result = dict(job=job, run=record, error="")
                     self.results.append(result)
                     recovered.append(job)

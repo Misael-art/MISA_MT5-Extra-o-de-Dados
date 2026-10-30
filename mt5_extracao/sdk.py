@@ -358,7 +358,25 @@ def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
     return producer_jobs.reconcile_orphan_runs(db, symbol=symbol, timeframe=timeframe, family=family)
 
 
+def preview_backtest_scope(db, config, robot, symbol, **kwargs):
+    """Prepara TFs/exclusões e congela contexto no journal existente, sem executar."""
+    from mt5_extracao.robots.backtest_scope import preview
+    return preview(db, config, robot, symbol, **kwargs)
+
+
+def inspect_backtest_scope(db, batch_id):
+    from mt5_extracao.robots.backtest_scope import inspect_plan
+    return inspect_plan(db, batch_id)
+
+
+def create_backtest_scope_runner(db, config, robot, batch_id, **kwargs):
+    """Confere o plano e devolve BatchRunner; start/cancel/join mantêm o contrato atual."""
+    from mt5_extracao.robots.backtest_scope import create_runner
+    return create_runner(db, config, robot, batch_id, **kwargs)
+
+
 __all__ = [
+    "preview_backtest_scope", "inspect_backtest_scope", "create_backtest_scope_runner",
     "create_super_atr_research_robot",
     "super_atr_capabilities", "materialize_super_atr_snapshot",
     "link_laboratory_execution",
