@@ -4543,3 +4543,14 @@ solicitados, sem segredos no chat ou scraping substituto. Próxima integração
 real depende dessas autorizações, enquanto português, macroeconomia, protocolo
 preditivo, comparações financeiras e inspetor seguem o escopo autorizado.
 Não confundir conector implementado com fonte/classificador qualificados.
+
+
+### Classificação portuguesa e avaliação —30/10/2026
+
+Branch `codex/classificacao-portugues` sobre MEN-SOCIAL/PR246. Modelo PT
+separado preserva inglês; avaliador CLI/SDK guarda métricas/hashes, não corpus.
+[Contrato, resultados e limites](dados/PLANO_ESTRUTURA_DADOS.md#1821-português-e-avaliação-reproduzível--men-pt).
+28 casos de regressão e1 PG aprovados; CLI oficial Q10/P3/N2 próprios e
+avaliação com2 erros conservados. Humano independente/fontes reais aguardam
+seus insumos/acessos. Seguem macroeconomia, protocolo preditivo, comparações
+financeiras, inspetor e Super ATR no escopo autorizado, sem alterar os pins.

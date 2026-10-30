@@ -12,13 +12,19 @@ from sqlalchemy import text
 from mt5_extracao.analytics import datasets, feature_store, indicator_materializer, mention_classifier, mention_ingestion, mention_qualification, mentions, producer_jobs
 
 
-def capabilities():
-    """Inspeção local do artefato, sem classificar ou consultar a internet."""
-    report=deepcopy(mention_qualification.REPORT)
-    try:descriptor=mention_classifier.descriptor()
+def capabilities(classifier_id=None):
+    """Inspeção do artefato escolhido; não classifica texto nem consulta rede."""
+    from . import mention_classifier_pt,mention_qualification_pt
+    chosen=classifier_id or mention_classifier.CLASSIFIER_ID
+    models={mention_classifier.CLASSIFIER_ID:(mention_classifier,mention_qualification.REPORT),
+            mention_classifier_pt.CLASSIFIER_ID:(mention_classifier_pt,mention_qualification_pt.REPORT)}
+    if chosen not in models:raise ValueError('Classificador não qualificado neste artefato; consulte mention-classifiers.')
+    model,frozen=models[chosen];report=deepcopy(frozen)
+    try:descriptor=model.descriptor()
     except RuntimeError as exc:return dict(available=False,reason=str(exc),qualification=report)
     return dict(available=True,classifier=descriptor,qualification=report,
-                benchmark_matches=descriptor==report['classifier'] and report['criteria_met'])
+                benchmark_matches=descriptor==report['classifier'] and report['criteria_met'],
+                models=[dict(id=key,languages=value[1]['classifier']['languages'],qualification=value[1]['qualification']) for key,value in models.items()])
 
 
 def current(db, contract, start, *, connection=None):
@@ -44,7 +50,7 @@ def classify(db, *, selection, batch, synthetic_fixture=False, write_guard=None,
     started=dict(started_monotonic=time.monotonic())
     def guard():indicator_materializer._guard(started,write_guard,cancel_check,timeout_seconds,max_memory_mb)
     guard();contract=mentions.describe(db,**selection);scope=contract['scope'];identity=datasets.identity(db)
-    capability=capabilities()
+    capability=capabilities(scope['classifier']['id'])
     if not capability.get('benchmark_matches') or scope['classifier']!=capability.get('classifier'):
         raise ValueError('Classificador ausente, não qualificado neste artefato ou versão/idioma divergente; consulte mention-classifiers e recapture com o contrato explícito.')
     if scope['source']['mode']!='documents' or batch.get('annotations') is not None:
@@ -61,9 +67,12 @@ def classify(db, *, selection, batch, synthetic_fixture=False, write_guard=None,
     try:
         eligible,_,_,_=mention_ingestion._documents(contract,batch['documents'],mentions._utc(batch['start'],'start'),
             mentions._utc(batch['end'],'end'),guard)
+        from . import mention_classifier_pt
+        model=mention_classifier_pt if scope['classifier']['id']==mention_classifier_pt.CLASSIFIER_ID else mention_classifier
+        qualification=capability['qualification']['qualification']
         outputs=[]
         for doc in eligible:
-            guard();label=mention_classifier.classify_document(doc['text'],scope['subject']['aliases'],language=doc['language'])
+            guard();label=model.classify_document(doc['text'],scope['subject']['aliases'],language=doc['language'])
             outputs.append(dict(id_sha256=mentions._hash(doc['id']),revision_sha256=mentions._hash(doc),subject_id=scope['subject']['id'],**label))
         guard();labels=dict(Counter(o['label'] for o in outputs));classified=datetime.now(timezone.utc).isoformat()
         unsupported=bool(outputs) and all(o['reason'] in ('UNSUPPORTED_LANGUAGE','LANGUAGE_UNKNOWN','LANGUAGE_NOT_CONFIRMED') for o in outputs)
@@ -73,7 +82,7 @@ def classify(db, *, selection, batch, synthetic_fixture=False, write_guard=None,
             measure=feature.split('.')[1]
             record.update(value=None if unsupported else labels.get(measure,0),quality='UNAVAILABLE' if unsupported else 'VALID',
                 available_at=classified,observed_at=classified,metadata=dict(q_metadata,classification='unavailable' if unsupported else 'complete',
-                    classifier=scope['classifier'],classification_qualified=True,qualification='CONTROLLED_ENGLISH_BENCHMARK_ONLY',
+                    classifier=scope['classifier'],classification_qualified=True,qualification=qualification,
                     classification_outputs=outputs,label_counts=labels,reason='NO_SUPPORTED_LANGUAGE' if unsupported else None))
             records.append(record)
         def lock(conn):
@@ -93,7 +102,7 @@ def classify(db, *, selection, batch, synthetic_fixture=False, write_guard=None,
         job=producer_jobs.finish_run(db,run,source_sequence=sequence+int(bool(counts['inserted'] or counts['revised'])),
             status='INCOMPLETE' if unsupported else 'COMPLETE',counts=counts)
         return dict(receipt=dict(q_metadata['capture'],classification='unavailable' if unsupported else 'complete',label_counts=labels,
-            classifier=scope['classifier'],qualification='CONTROLLED_ENGLISH_BENCHMARK_ONLY'),counts=counts,job=job,
+            classifier=scope['classifier'],qualification=qualification),counts=counts,job=job,
             algorithm_version=contract['algorithm_version'],job_family=family)
     except BaseException as exc:
         producer_jobs.abort_run(db,run,source_sequence=sequence,error=exc,counts=counts,cancelled=isinstance(exc,indicator_materializer.Cancelled));raise
