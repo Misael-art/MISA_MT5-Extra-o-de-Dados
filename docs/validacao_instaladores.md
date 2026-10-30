@@ -607,3 +607,14 @@ com o mesmo modelo/objeto antes de Q, licença API/política distinguida, quota,
 retomada após interrupção e cancelamento no cooldown. Conferir fontes/consultas
 isoladas e preços preservados, consulta/snapshot/Lab sem rede/modelo implícitos.
 A evidência Linux usa QA separada e não certifica contas/ponte/MT5/Wine.
+
+
+### SA-01/02 —30 outubro2026
+
+App produtor/UI/SDK e pacote Expert exercitados no launcher Linux com bases
+próprias. MetaEditor no Wine compilou Expert e3 indicadores0/0, sem terminal/
+ordem. C++ executou header/corpo MQL com plataforma controlada. Isso não certifica
+Windows físico, Tester, conta/execução DEMO, duas instâncias ou restart operacional.
+Na próxima sessão própria: confirmar semente broker/TF, disponibilidade, risco/
+pausa/magic+símbolo, stop aceito, fills e reconciliação; conservar entradas
+inicialmente desligadas e não usar conta REAL. Não relaxar lease/ownership.

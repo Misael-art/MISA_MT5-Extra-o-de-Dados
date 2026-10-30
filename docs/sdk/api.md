@@ -21,6 +21,12 @@ As funções de análise não enviam ordens. `open_workflow` pode iniciar Expert
 
 ## Versões
 
+SA-01: `sdk.create_super_atr_research_robot(name, folder, *, framework_root,
+seed_start, **kwargs)` gera um pacote local pelo scaffold existente. Opções:
+`base_timeframe='M5'`, `confirm_timeframe='M15'`, `second_timeframe=None`,
+`robots=()`, `config=None`, `magic=None`, `cancel_check=None`. Retorna caminhos dos fontes, contrato,
+preset e closure. Não compila/inicia MT5. [Contrato e gates](super_atr.md#expert-de-pesquisa-sa-01).
+
 | Nome | Significado |
 |---|---|
 | `API_VERSION` | Versão desta API. Sobe quando algo muda de forma incompatível |

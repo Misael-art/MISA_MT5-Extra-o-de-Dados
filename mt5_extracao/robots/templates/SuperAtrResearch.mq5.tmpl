@@ -1,0 +1,156 @@
+#property version "1.00"
+#property description "Super ATR multi-TF: candidato de pesquisa, somente Tester+DEMO."
+#property description "Entradas desligadas por padrão; sem qualificação operacional."
+
+input group "1. Pesquisa e identificação"
+input long InpMagicNumber = {{MAGIC}};
+input bool InpResearchOrders = false;
+input datetime InpSeedStart = D'{{SEED}}'; // Horário broker, barra real comum aos TFs
+input ENUM_TIMEFRAMES InpBaseTF = PERIOD_{{BASE}};
+input ENUM_TIMEFRAMES InpConfirmTF = PERIOD_{{CONFIRM}};
+input bool InpSecondConfirm = {{SECOND_ENABLED}};
+input ENUM_TIMEFRAMES InpSecondTF = PERIOD_{{SECOND}};
+
+input group "2. Super ATR independente por TF"
+input int InpBasePeriod = 20;
+input int InpBaseMean = 0;
+input double InpBaseDeviation = 1.0;
+input int InpConfirmPeriod = 20;
+input int InpConfirmMean = 0;
+input double InpConfirmDeviation = 1.0;
+input int InpSecondPeriod = 20;
+input int InpSecondMean = 0;
+input double InpSecondDeviation = 1.0;
+input bool InpMoveGuard = false;
+
+input group "3. Risco e execução pelo host HADOUKEN"
+input double InpRiskPct = 0.5;
+input double InpDailyLossPct = 2.0;
+input double InpWeeklyLossPct = 4.0;
+input double InpMaxDrawdownPct = 10.0;
+input int InpDeviationPoints = 20;
+input bool InpExportTrades = false;
+
+#define HDK_STRATEGY_OBSERVE_ENTRIES
+#include <Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh>
+#include <Framework/HADOUKEN/Indicators/HDK_SuperATR.mqh>
+
+// Prefixo observado imutável nesta instância; nenhuma tolerância de preço.
+class MT5XObservedPrefix
+{
+private:
+   datetime m_time[];
+   double m_high[],m_low[],m_close[];
+public:
+   bool Accept(const MqlRates &rates[],const int n)
+   {
+      int previous=ArraySize(m_time);
+      if(n<previous) return false;
+      for(int i=0;i<previous;i++)
+         if(rates[i].time!=m_time[i] || rates[i].high!=m_high[i] ||
+            rates[i].low!=m_low[i] || rates[i].close!=m_close[i]) return false;
+      ArrayResize(m_time,n);ArrayResize(m_high,n);ArrayResize(m_low,n);ArrayResize(m_close,n);
+      for(int i=previous;i<n;i++)
+      {m_time[i]=rates[i].time;m_high[i]=rates[i].high;m_low[i]=rates[i].low;m_close[i]=rates[i].close;}
+      return true;
+   }
+};
+
+MT5XObservedPrefix g_base_prefix,g_confirm_prefix,g_second_prefix;
+datetime g_processed_decision=0;
+bool g_revision_block=false;
+
+bool MT5XResearchEnvironment()
+{
+   return MQLInfoInteger(MQL_TESTER)!=0 || AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO;
+}
+
+bool MT5XNativeTF(const ENUM_TIMEFRAMES tf)
+{
+   // Apenas TFs nativos intradiários; D/W/M precisam de contrato de calendário próprio.
+   return tf==PERIOD_M1 || tf==PERIOD_M2 || tf==PERIOD_M3 || tf==PERIOD_M4 ||
+      tf==PERIOD_M5 || tf==PERIOD_M6 || tf==PERIOD_M10 || tf==PERIOD_M12 ||
+      tf==PERIOD_M15 || tf==PERIOD_M20 || tf==PERIOD_M30 || tf==PERIOD_H1 ||
+      tf==PERIOD_H2 || tf==PERIOD_H3 || tf==PERIOD_H4 || tf==PERIOD_H6 ||
+      tf==PERIOD_H8 || tf==PERIOD_H12;
+}
+
+bool MT5XReadCurve(const ENUM_TIMEFRAMES tf,const int period,const int mean,const double deviation,
+                 const datetime cut,MT5XObservedPrefix &prefix,int &side,int &previous_side,double &level)
+{
+   side=0;previous_side=0;level=0;
+   if(!MT5XNativeTF(tf) || cut<=InpSeedStart || !SeriesInfoInteger(_Symbol,tf,SERIES_SYNCHRONIZED)) return false;
+   int seconds=PeriodSeconds(tf);
+   int requested=Bars(_Symbol,tf,InpSeedStart,cut-1);
+   if(requested<period+1 || requested>20000) return false;
+   MqlRates rates[];ArraySetAsSeries(rates,false);
+   int copied=CopyRates(_Symbol,tf,InpSeedStart,cut-1,rates);
+   if(copied!=requested || copied<period+1 || rates[0].time!=InpSeedStart) return false;
+   int n=copied;
+   while(n>0 && rates[n-1].time+seconds>cut) n--;
+   if(n<period+1 || cut-(rates[n-1].time+seconds)>=seconds) return false;
+   if(!prefix.Accept(rates,n)) {g_revision_block=true;return false;}
+   double high[],low[],close[];ArrayResize(high,n);ArrayResize(low,n);ArrayResize(close,n);
+   for(int i=0;i<n;i++)
+   {
+      if(i>0 && (rates[i].time<=rates[i-1].time || rates[i].time<rates[i-1].time+seconds)) return false;
+      if(!HDKSuperATRNumber(rates[i].high) || !HDKSuperATRNumber(rates[i].low) ||
+         !HDKSuperATRNumber(rates[i].close) || rates[i].low<=0 || rates[i].high<rates[i].low ||
+         rates[i].close<rates[i].low || rates[i].close>rates[i].high) return false;
+      high[i]=rates[i].high;low[i]=rates[i].low;close[i]=rates[i].close;
+   }
+   CHDKSuperATRCurve curve;
+   if(!curve.Init(period,mean,deviation,1) || curve.Calculate(n,0,high,low,close)<0) return false;
+   level=curve.Value(n-1);side=curve.Side(n-1);previous_side=curve.Side(n-2);
+   return HDKSuperATRNumber(level) && level>0 && (side==1 || side==-1) &&
+      (previous_side==1 || previous_side==-1);
+}
+
+void StrategyRules(HDKExitRules &rules) { ZeroMemory(rules); }
+
+void StrategySignal(const HDKBars &bars,HDKSignal &signal)
+{
+   datetime cut=iTime(_Symbol,InpBaseTF,0);
+   if(!MT5XResearchEnvironment() || cut<=g_processed_decision || TimeCurrent()<cut ||
+      TimeCurrent()-cut>=PeriodSeconds(InpBaseTF)) return;
+   // Consome a decisão uma vez; ausência/recusa não gera retentativa tardia nesta barra.
+   g_processed_decision=cut;
+   int side,previous,confirm,confirm_previous;double level,confirm_level;
+   if(g_revision_block || !MT5XReadCurve(InpBaseTF,InpBasePeriod,InpBaseMean,InpBaseDeviation,
+      cut,g_base_prefix,side,previous,level)) return;
+   bool flipped=side!=previous;
+   signal.exit_long=flipped && side<0;signal.exit_short=flipped && side>0;
+   if(InpMoveGuard) {if(side>0) g_guard_long=level;else g_guard_short=level;}
+   if(!InpResearchOrders || !flipped) return;
+   if(!MT5XReadCurve(InpConfirmTF,InpConfirmPeriod,InpConfirmMean,InpConfirmDeviation,
+      cut,g_confirm_prefix,confirm,confirm_previous,confirm_level) || confirm!=side) return;
+   if(InpSecondConfirm)
+   {
+      int second,second_previous;double second_level;
+      if(!MT5XReadCurve(InpSecondTF,InpSecondPeriod,InpSecondMean,InpSecondDeviation,
+         cut,g_second_prefix,second,second_previous,second_level) || second!=side) return;
+   }
+   if(g_revision_block) return;
+   signal.entry_long=side>0;signal.entry_short=side<0;
+   signal.stop_long=side>0?level:0;signal.stop_short=side<0?level:0;
+   // Sem TP: saída pela virada oposta. Executor valida stop/tick/volume/limites.
+}
+
+int OnInit()
+{
+   // Gate anterior a qualquer inicialização de risco/executor/painel.
+   if(!MT5XResearchEnvironment()) {Print("Super ATR de pesquisa: somente Tester+DEMO.");return INIT_FAILED;}
+   if(InpSeedStart<=0 || InpSeedStart>=TimeCurrent() || _Period!=InpBaseTF ||
+      !MT5XNativeTF(InpBaseTF) || !MT5XNativeTF(InpConfirmTF) ||
+      PeriodSeconds(InpConfirmTF)<=PeriodSeconds(InpBaseTF) ||
+      (InpSecondConfirm && (!MT5XNativeTF(InpSecondTF) || PeriodSeconds(InpSecondTF)<=PeriodSeconds(InpConfirmTF))) ||
+      !HDKSuperATRParameters(InpBasePeriod,InpBaseMean,InpBaseDeviation) ||
+      !HDKSuperATRParameters(InpConfirmPeriod,InpConfirmMean,InpConfirmDeviation) ||
+      (InpSecondConfirm && !HDKSuperATRParameters(InpSecondPeriod,InpSecondMean,InpSecondDeviation))) return INIT_PARAMETERS_INCORRECT;
+   int result=StrategyInit("{{NAME}}");
+   if(result==INIT_SUCCEEDED) {g_last_bar=iTime(_Symbol,InpBaseTF,0);g_processed_decision=g_last_bar;}
+   return result;
+}
+
+void OnTick() { if(MT5XResearchEnvironment()) StrategyTick(); }
+double OnTester() { return StrategyTester(); }

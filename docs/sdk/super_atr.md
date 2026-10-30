@@ -1,5 +1,67 @@
 # Super ATR no gráfico do painel — G19.9
 
+## Expert de pesquisa SA-01
+
+Robôs → Importar robô → **Gerar Super ATR de pesquisa…** cria um consumidor
+pelo scaffold e host HADOUKEN atuais. Escolha pasta de artefatos, raiz HADOUKEN
+fixada e primeira barra real em horário broker, `YYYY-MM-DDTHH:MM`. O início
+precisa existir/alinha-se em todos os TFs: baseM5/confirmadorM15 por padrão;
+segundo confirmador opcional, mais longo. Apenas TFs nativos intradiários;
+M7/M9/D/W/M são recusados. Nenhum pin ou perfil aceito é alterado.
+
+Contrato `super_atr_closed_confirmation/0.1-research`, identificado no
+`<Nome>.research.json` com hashes do consumidor, header e closure completa.
+`robot.json` permanece no contrato1 existente, inputs tipados, preset explícito
+com **entradas desligadas**, sem outra fórmula/OrderSend/gestor. Cópias de headers
+no pacote são artefatos fechados de build, não outro checkout de desenvolvimento.
+Também inclui os três ativos gráficos pela mesma resolução do catálogo.
+
+- Curvas independentes por TF:20/SMA/desvio1/lado inicialup; hipótese congelada,
+  sem selecionar melhor resultado retrospectivo. Alterações de parâmetros mudam
+  fonte/preset/identidade e exigem novos testes.
+- Nova virada do TF base entra apenas se cada última barra confirmadora fechada
+  tem o mesmo lado. Fim da barra≤decisão e idade<um período nativo; simultâneos
+  entram somente depois do fechamento. Sem interpolação/agregação escondida.
+- Janela fixa desde a semente, até20.000 barras. Prefixo HLC/horários já observado
+  é comparado exatamente; revisão incompatível trava novas entradas nesta instância.
+  Dado inválido, não sincronizado, semente ausente e confirmação vencida recusam.
+- Decisão na nova abertura base, consumida uma vez mesmo sem dados/ordem recusada.
+  Restart pula a decisão corrente. Não certifica exclusividade entre instâncias,
+  reinícios ou disponibilidade histórica das barras recebidas.
+- SL inicial=linha base atual, sem TP. Saída na virada oposta independe da
+  confirmação. Move Guard opcional/desligado usa o aperto existente; proteção,
+  pausa, magic+símbolo, lotes/stops/tick/freeze e limites permanecem no host.
+  Risco0,5%/trade, perdas2%diária/4%semanal/DD10%, no máximo1 posição.
+- Gate Tester ou contaDEMO precede `StrategyInit` e é repetido em cada tick.
+  Observação de execução do host está ligada; aceita/parcial/incerta trava nova
+  entrada até reconciliação existente. Proposta de SL não é recibo de aceitação.
+
+CLI pelo launcher: `--cli robots new MeuSuperATR --template super-atr-research
+--dir PASTA --framework RAIZ --seed-start 2025-01-01T00:00 --tf M5
+--confirm-tf M15` (`--second-confirm-tf H1` opcional). UI e
+`sdk.create_super_atr_research_robot` usam o mesmo gerador. Nenhuma das três
+entradas inicia MT5, compila ou arma ordens. Compile/check/Session oficiais
+continuam necessários; PLAY continua indisponível sem run correspondente.
+O preset conservador desligado não se torna autorização para armar entradas.
+
+Validação no host:75 regressões App aprovadas e31 finais dirigidas (sobreposição);
+7 contratos nativos herdados de pausa/proteção/observação aprovados. Probe explícito
+`PYTHONPATH=. .venv/bin/python tests/super_atr_research_probe.py --framework RAIZ`
+executa corpo MQL real+header em C++ com plataforma controlada: futuro alterado,
+confirmação incompleta/vencida/ausente, revisão, sincronismo e deduplicação; não
+simula fills. MetaEditor/Wine compilou consumidor e três indicadores com0erros/
+0avisos, include tree própria e6 headers padrão verificados. Launcher gerou43
+arquivos/23 inputs e exibiu candidato com entradas/PLAY desligados. Windows físico,
+Tester DEMO, sessão/lease próprios, reconciliação de execução e qualificação
+estatística/financeira permanecem pendentes. G19.15 não aprovou candidato sob os
+custos assumidos; concordância não é probabilidade de ganho.
+
+API de barras segue [CopyRates](https://www.mql5.com/en/docs/series/copyrates),
+[PeriodSeconds](https://www.mql5.com/en/docs/common/periodseconds) e o gate usa os
+[tipos de conta oficiais](https://www.mql5.com/en/docs/constants/environment_state/accountinformation).
+A compilação isolada usa o compilador existente e `/include` conforme
+[MetaEditor](https://www.metatrader5.com/en/metaeditor/help/beginning/integration_ide).
+
 ## Persistência SA-02
 
 No Laboratório → Séries e confluências → Fontes vinculadas, selecione um ativo
