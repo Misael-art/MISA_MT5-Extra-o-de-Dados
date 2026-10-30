@@ -4703,3 +4703,20 @@ CI do pai6f553a8 falhou antes deste incremento:2 testesCLI dependiam de config.i
 local ignorado; Windows também teve diferença no recibo do protocolo. Resumo
 saneado no recibo privado parent-ci.json; não declarar o CI herdado aprovado.
 A prévia e SHA/PR/recuperação atuais são reconciliados no registro central.
+
+### Portabilidade dos ensaios CLI —30/10/2026 (CI-PORTABILITY)
+
+`codex/qa-cli-portabilidade`, sobre conexão/PR254. O CI41092309686 identificou
+dois testes Super ATR dependentes de config/config.ini ignorado e, no Windows,
+leitura do JSON UTF-8 do protocolo pelo encoding padrão do sistema. As fixtures
+agora passam --config próprio, trabalham fora do checkout e especificam UTF-8.
+Igualdade integral com o recibo persistido, acentos e integridade são conferidos.
+28 testes aprovados no Linux; doctor offline16/2/0. Nenhum código de produto,
+fórmula, pin ou configuração do proprietário foi alterado.
+
+No mesmo CI, a primeira execução de test_async_recovery_and_control_keep_ui_thread_available
+excedeu join(15) no Windows. Não há traceback da thread que estabeleça a causa;
+esse timeout permanece separado, sem aumento de prazo ou retirada da verificação.
+O CI remoto da nova ponta e Windows físico continuam gates próprios. Como só
+testes/documentação mudam, conferir identidade dos bytes runtime com a prévia
+da conexão2f46afb, mantendo a ponte já disponível ao proprietário.

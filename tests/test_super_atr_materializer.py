@@ -86,7 +86,9 @@ def test_checkpoint_failure_rolls_back_values_and_source_binding(db,adapter,monk
 
 def test_cli_and_sdk_share_materialization_contract_and_seed_version(db,adapter,tmp_path,capsys,monkeypatch):
     snapshot=prices(db);monkeypatch.setattr(cli.Context,'db',property(lambda _:db))
-    args=['--json','analytics','features','super-atr-materialize','--manifest',snapshot.manifest_id,'--framework','CONTROLLED_TEST_SOURCE','--period','3']
+    monkeypatch.chdir(tmp_path)
+    cfg=tmp_path/'qa.ini';cfg.write_text(f'[DATABASE]\ntype=sqlite\npath={db.db_path}\n[APP]\nbroker_utc_offset=0\n',encoding='utf-8')
+    args=['--config',str(cfg),'--json','analytics','features','super-atr-materialize','--manifest',snapshot.manifest_id,'--framework','CONTROLLED_TEST_SOURCE','--period','3']
     assert cli.main(args)==0;r=json.loads(capsys.readouterr().out)['data']['materialization']
     shifted=datasets.capture(db,'QA','M1',start='2025-01-01T00:01:00')
     assert materialize(db,shifted)['algorithm_version']!=r['algorithm_version']
