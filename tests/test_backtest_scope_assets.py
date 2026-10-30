@@ -6,7 +6,7 @@ import pytest
 from mt5_extracao import cli, sdk
 from mt5_extracao.robots import backtest_scope as scope, budget, store
 from tests.market_data import trend
-from tests.test_backtest_scope import source, native_robot
+from tests.test_backtest_scope import source, empty_source, native_robot
 from tests.test_batch_budget import sample
 
 
@@ -15,7 +15,8 @@ def add_assets(source, count):
     symbols = [f'QA{i}' for i in range(count)]
     for symbol in symbols:
         for tf, freq in [('5 minutos', '5min'), ('1 hora', 'h')]:
-            db.save_ohlcv_data(symbol, tf, trend(350, freq=freq))
+            # Uma barra além do warmup250; manter todas as combinações reais.
+            db.save_ohlcv_data(symbol, tf, trend(251, freq=freq))
     return symbols
 
 
@@ -25,10 +26,10 @@ def preview(source, **kwargs):
 
 
 @pytest.mark.parametrize('count', [1, 3, 6])
-def test_product_real_engine_and_exact_job_context_resume_without_duplicates(source, count):
-    db, robot, config = source
-    symbols = add_assets(source, count)
-    plan = preview(source, symbols=symbols + symbols[:1])
+def test_product_real_engine_and_exact_job_context_resume_without_duplicates(empty_source, count):
+    db, robot, config = empty_source
+    symbols = add_assets(empty_source, count)
+    plan = preview(empty_source, symbols=symbols + symbols[:1])
     assert plan['symbols'] == symbols and plan['eligible'] == count * 2
     assert len(plan['rows']) == count * 21 and not store.load_runs(db)
     assert plan['symbol'] == (symbols[0] if count == 1 else None)

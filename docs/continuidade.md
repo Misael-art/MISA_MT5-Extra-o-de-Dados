@@ -4825,3 +4825,14 @@ T20.25b (artefatos referenciados/retenção), comparação da mesma revisão e
 T20.22/23, Windows físico e aceite real de Tester/conta/financeiro permanecem
 frentes próprias. CI da PR257 ainda tinha Linux/Windows em andamento e quatro
 checks de produto aprovados na consulta anterior a este incremento.
+
+CI Windows da PR258/fonte06e9dc0 (run41130405434/job124319524849) atingiu
+o timeout global60s no caso novo de6 ativos, com a thread no commit final do
+checkpoint durante a retomada, sem falha de asserção funcional. O ensaio agora
+semeia só as séries selecionadas, com251 barras (warmup250+1); mantém12 runs,
+todos os126 itens da revisão, correção da base e retomada completa com os mesmos
+IDs. Nenhum timeout, assert, guarda ou durabilidade SQLite foi relaxado.
+35 testes núcleo/ativos aprovados após compactar a fixture; caso6 levou15,57s
+no host Linux. Novo CI Windows continua necessário. Só testes e este registro
+mudaram; a equivalência dos306 arquivos runtime preserva a prévia e a ponte
+já conferidas, sem reiniciar serviço por uma mudança de fixture.
