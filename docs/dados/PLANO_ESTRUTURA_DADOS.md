@@ -1315,3 +1315,34 @@ de captura. Falha/cancelamento preserva Q e os rótulos anteriores confirmados.
 [SDK/CLI e limites](../sdk/api.md#classificação-explícita-de-menções-por-objeto-men-04).
 Acesso/conversa geral/idiomas adicionais exigem nova avaliação; MEN-05…08 mantêm
 aceites próprios de catálogo/snapshot, Laboratório, segunda fonte e proteção.
+
+
+### 18.15 Catálogo/consulta e snapshot MEN-05
+
+As três medidas são definições NUMBER com unidade `publication/window`, fonte,
+consulta/versionamento e população próprios no catálogo/store canônicos. Leitura
+com corte e contexto não coleta/classifica, e valores ausentes não viram zero.
+Captura/reclassificação seguem MEN-02…04, não uma materialização por preço.
+
+A lacuna comprovada foi `datasets.capture` exigir OHLCV mesmo para temas. O
+mesmo serviço/store ganha modo opt-in `feature_only=True`, formato5: somente
+contratos/histórico de características, janela `[início,fim)` UTC explícita e
+fechada, sem OHLCV, calendário ou especificação inventados. Não depende do fuso
+do corretor. Formatos1…4 e padrão com barras preservados. Mesmos blocos,
+hashes, transação, deduplicação, limites de seleção, guardas e transporte;
+nenhuma tabela/store/serializador paralelo. Cancelamento antes do commit
+reverte blocos/manifesto, importação não publica fatos nem muda namespace do
+receptor. O snapshot mantém origem histórica própria, inclusive fontes de
+menções por definição/recibo, sem trocar provedor global de preços.
+
+SDK `capture_feature_snapshot`, `export_feature_snapshot`,
+`import_feature_snapshot` e inspeção/contexto existentes; CLI
+`snapshot-capture/export/import`. Sem barras, consumo que exige mercado é
+recusado ou fica sem grade; não se simula cruzamento de um tema com preço.
+Para explorar recibo tardio, contexto com observação fixa e corte até o último
+recibo congelado; snapshot anterior não completa P/N com a base/modelo atual.
+Lotes/snapshots de QA demonstram10/3/2 e alterações posteriores; transporte
+real de agregados públicos conserva Q8/P0/N0/8 abstenções e cinco revisões
+(Q e pendências + classificação posterior), sem texto bruto. Erros de orçamento
+na CLI agora retornam JSON/ação de correção, sem traceback. Persistem os limites
+de qualificação de MEN-04 e cruzamentos BD16/17/F18/LAB; MEN-06…08 prosseguem.
