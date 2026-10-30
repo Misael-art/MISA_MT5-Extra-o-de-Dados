@@ -4601,3 +4601,31 @@ aprovados. CI Linux de MEN-PT revelou três pendências de registro da API
 (nomes/assinatura opcional/referência); contrato/teste/documentação reconciliados
 neste incremento, preservando chamadas sem argumento e API_VERSION1. Sem
 declarar o CI da nova ponta aprovado por antecipação.
+
+### Inspetor temporal e execução vinculada —30/10/2026
+
+`codex/inspetor-candle`, sobre comparação financeira/PR250. [Contrato e uso](sdk/laboratorio_series.md#inspetor-temporal-e-execução-vinculada).
+Preço/indicadores e timeline compartilham datas/cursor/zoom entre vista normal e
+ampliada; lacunas permanecem separadas. Mês usa o calendário broker congelado,
+inclusive offset/leap day. Tabela de valores, cronologia selecionável e recibo
+recolhido substituem o despejo principal de JSON. HTML permite ir a um índice
+direto e selecionar o candle pela cronologia, com teclado/clique.
+
+Vínculo de execução exige snapshot/ativo/grade principal idênticos e trajetória
+conciliada com o ledger; observa fills, volume, capital e SL/TP iniciais gravados,
+sem inferir execução de intenção. Fonte/sequência do modelo e falta de recibo
+histórico real/aceite operacional explícitos. Exportação leva recibo independente
+com integridade; mudar análise retira o vínculo anterior da apresentação.
+
+37 regressões UI aprovadas/1 skip,16 novos aprovados e3 UI finais (sobreposição),
+1 PG real; doctor16/2/0. Launcher confirmou normal/ampliado, tabela→candle,
+duas observações no candle de entrada e22 no recibo completo, sem backtest ou
+alteração dos runs. CLI=SDK. Navegador confirmou candle320/fill103/volume2,5/
+SL inicial90/PnL7, capital10007 e cronologia macro→candle30;820×680 sem overflow.
+Avisos gráficos de tight_layout/AutoDateLocator conservados nos logs, sem erro
+de callback. Valores são QA própria, não desempenho ou negociação real.
+
+O aviso de convergência passa a limitar texto pelo notebook visível no resize/map,
+cobrindo a falha residual Windows3975/154 da PR245. Teste do percurso passou no
+Linux; novo CI e Windows físico não são presumidos. Continuar SA-02 persistência
+Super ATR e SA-01 consumidor de pesquisa/Expert, preservando os pins.

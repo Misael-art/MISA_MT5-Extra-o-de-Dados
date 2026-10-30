@@ -63,10 +63,12 @@ def add_parser(sub):
     report.add_argument("--analysis", required=True)
     report.add_argument("--out", required=True, help="arquivo HTML novo")
     report.add_argument("--evaluation",help="recibo estatístico congelado opcional desta análise")
+    report.add_argument('--execution',help='recibo observacional de execução na mesma revisão')
     report.set_defaults(func=run)
     candle = actions.add_parser("candle", help="preço, séries e recibos de um candle do relatório congelado")
     candle.add_argument("--analysis", required=True)
     candle.add_argument("--index", required=True, type=int)
+    candle.add_argument('--execution',help='recibo observacional congelado opcional')
     candle.set_defaults(func=run)
     crossings = actions.add_parser("crossings", help="todos os pares selecionados e horizontes do preço")
     crossings.add_argument("--analysis", required=True)
@@ -91,6 +93,8 @@ def add_parser(sub):
     comparison=actions.add_parser('compare-runs',help='mesmo ativo ou preset entre ativos; somente recibos gravados')
     comparison.add_argument('--run',action='append',required=True);comparison.add_argument('--mode',choices=['same_asset','same_preset'],required=True)
     comparison.add_argument('--out');comparison.add_argument('--html');comparison.set_defaults(func=run)
+    linked_execution=actions.add_parser('execution-link',help='concilia observações do run com o snapshot da grade principal')
+    linked_execution.add_argument('--analysis',required=True);linked_execution.add_argument('--run',required=True);linked_execution.add_argument('--out',required=True);linked_execution.set_defaults(func=run)
     for action in ('protocol-register','protocol-evaluate'):
         q=actions.add_parser(action,help='protocolo estatístico explícito; usa ledger/inferência existentes')
         q.add_argument('--analysis',required=True)
@@ -104,7 +108,13 @@ def add_parser(sub):
 
 def run(args, ctx):
     from mt5_extracao import cli
-    if args.laboratory_action=='runs':
+    if args.laboratory_action=='execution-link':
+        from mt5_extracao import sdk
+        path=Path(args.analysis).expanduser();out=Path(args.out).expanduser()
+        if path.stat().st_size>16*1024*1024 or out.exists():raise ValueError('Análise exige até16MiB e saída nova.')
+        frozen=service.load_report(path.read_text(encoding='utf-8'));result=sdk.link_laboratory_execution(ctx.db,frozen,args.run)
+        with out.open('x',encoding='utf-8') as handle:json.dump(result,handle,ensure_ascii=False,allow_nan=False)
+    elif args.laboratory_action=='runs':
         from mt5_extracao.robots import store
         result=dict(runs=store.run_index(ctx.db,limit=args.limit,offset=args.offset),opened_backtest=False)
     elif args.laboratory_action=='compare-runs':
@@ -138,8 +148,13 @@ def run(args, ctx):
             receipt_path=Path(args.evaluation).expanduser()
             if receipt_path.stat().st_size>16*1024*1024:raise ValueError('Recibo excede16MiB.')
             evaluation=json.loads(receipt_path.read_text(encoding='utf-8'))
-        result = (sdk.export_laboratory_report(frozen, args.out, evaluation=evaluation) if args.laboratory_action == "report" else
-                  sdk.laboratory_candle(frozen, args.index) if args.laboratory_action == "candle" else
+        execution=None
+        if getattr(args,'execution',None):
+            receipt_path=Path(args.execution).expanduser()
+            if receipt_path.stat().st_size>16*1024*1024:raise ValueError('Recibo excede16MiB.')
+            execution=json.loads(receipt_path.read_text(encoding='utf-8'))
+        result = (sdk.export_laboratory_report(frozen, args.out, evaluation=evaluation,execution=execution) if args.laboratory_action == "report" else
+                  sdk.laboratory_candle(frozen, args.index,execution=execution) if args.laboratory_action == "candle" else
                   sdk.laboratory_crossings(frozen))
     elif args.laboratory_action == "catalog":
         result = service.catalog()

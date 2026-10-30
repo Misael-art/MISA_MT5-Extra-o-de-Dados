@@ -236,9 +236,18 @@ def laboratory_crossings(report, **kwargs):
     return service.crossings(report, **kwargs)
 
 
-def laboratory_candle(report, index):
+def laboratory_candle(report, index, *, execution=None):
     from mt5_extracao.laboratory import service
-    return service.candle_context(report, index)
+    context=service.candle_context(report, index)
+    if execution is not None:
+        from mt5_extracao.laboratory.execution import candle
+        context['execution']=candle(report,execution,index)
+    return context
+
+
+def link_laboratory_execution(db, report, run_id, **kwargs):
+    from .laboratory import execution
+    return execution.link(db,report,run_id,**kwargs)
 
 
 def register_laboratory_protocol(db, report, definition):
@@ -335,6 +344,7 @@ def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
 
 
 __all__ = [
+    "link_laboratory_execution",
     "compare_laboratory_runs", "export_laboratory_runs",
     "register_laboratory_protocol", "evaluate_laboratory_protocol",
     "API_VERSION", "CONTRACT_VERSION",
