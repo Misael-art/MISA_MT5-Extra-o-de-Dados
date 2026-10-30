@@ -416,8 +416,11 @@ class JobBudget:
         context = plan.get("context", {}).get("provenance") if plan else None
         if context is None:
             return None
+        entry = next(item for item in plan["jobs"] if item["key"] == self.key)
         return dict(json.loads(_json(context)), batch_id=self.parent.batch_id,
-                    plan_signature=plan["signature"], job_key=self.key)
+                    plan_signature=plan["signature"], job_key=self.key,
+                    symbol=entry["symbol"], timeframe=entry["timeframe"],
+                    data_manifest_id=entry.get("data_manifest_id"))
 
     def validate_run(self, run):
         if self.parent._validate_run is not None:

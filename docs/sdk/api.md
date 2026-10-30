@@ -1321,3 +1321,25 @@ reexecuta resultados publicados; prova nativa ausente/divergente exige concilia�
 `inspect_backtest_scope` inclui `executions` (estado, ID e histórico de cada job)
 e `reason`, projetados do mesmo checkpoint. Capital/custos Python e custos
 observados no relatório nativo têm bases explícitas e distintas em `cost_basis`.
+
+T20.24b amplia a mesma função: omita `symbol` e use `symbols=["QA1", "QA2"]`
+ou `all_symbols=True` (exclusivos entre si). Todos considera ativos com barras
+no inventário local; elegibilidade de cada combinação continua explícita no
+plano. CLI usa `--symbols QA1,QA2` ou `--all-symbols` no `backtest-plan`.
+Selecionar ou consultar não inicia execução nem consulta a conta.
+O diálogo aberto por Todos permite Ctrl/Shift e “Selecionar todos da base”.
+Janela, parâmetros e revisões são os mesmos em todo o produto ativo × TF;
+pacote preso a outro ativo/TF gera exclusão, sem retarget automático.
+
+`symbols` identifica a seleção congelada; `rows` e `executions` incluem `symbol`.
+Em vários ativos o campo legado `symbol` do plano é nulo; cada run conserva
+`metrics.backtest_scope.symbol/timeframe/data_manifest_id` específicos, além
+da seleção completa e assinatura. `measurements` projeta tempo, I/O, CPU/RAM e
+RSS de pico amostrado do Budget; o escopo é processo/host, não custo por job.
+`resource_limits_at_review` informa limites no preparo. O orçamento pode ser
+ajustado explicitamente na retomada; dados/preset continuam congelados.
+No novo escopo, `batch_max_workers=0` ou ausente começa com teto de dois
+workers Python; um valor explícito usa o limite existente. O governor regula
+admissão por CPU/RAM e Budget interrompe por limites duros, tempo ou disco.
+MQL5 continua serial. Quantidade de ativos não promete igual concorrência.
+Retenção/limpeza dos artefatos referenciados é frente própria T20.25b.
