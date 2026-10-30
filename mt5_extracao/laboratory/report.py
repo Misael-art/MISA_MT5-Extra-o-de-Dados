@@ -8,11 +8,14 @@ from . import service
 MAX_BYTES = 16*1024*1024
 
 
-def render(report, *, cancel_check=None, timeout_seconds=120, max_memory_mb=1024):
+def render(report, *, cancel_check=None, timeout_seconds=120, max_memory_mb=1024, evaluation=None):
     validated = service.load_report(json.dumps(report, allow_nan=False))
+    if evaluation is not None:
+        from mt5_extracao.experiments.relations import validate_receipt
+        evaluation=validate_receipt(validated,evaluation)
     comparisons = service.crossings(validated, cancel_check=cancel_check,
         timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
-    payload = json.dumps(dict(analysis=validated, crossings=comparisons), ensure_ascii=False, allow_nan=False,
+    payload = json.dumps(dict(analysis=validated, crossings=comparisons,evaluation=evaluation), ensure_ascii=False, allow_nan=False,
                          separators=(",", ":")).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     if len(payload.encode()) > MAX_BYTES:
         raise ValueError("Relatório excede16MiB; reduza canais/recorte antes de compartilhar.")
@@ -81,12 +84,14 @@ details{margin:12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:
 <section><h2>Indicadores e fontes × movimento posterior do preço</h2><p class="muted">Retorno bruto futuro em horizonte fixo, somente quando o fechamento existe no corte. Pesquisa retrospectiva, sem custos/fills ou regra de negociação.</p><div class="scroll"><table id="targets"></table></div></section>
 <section><h2>Cronologia dos recibos vinculados</h2><p class="muted">Inclui revisões e observações que não cabem em um candle. Nenhuma soma ou extrapolação foi aplicada.</p><div class="controls"><label>Filtrar recibos<input id="eventquery" type="search" placeholder="fonte, data, estado"></label><button id="eventprev">Anterior</button><span id="eventpage"></span><button id="eventnext">Próxima</button></div><div class="scroll"><table id="events"></table></div></section>
 <section><h2>Fonte, vínculos e limites</h2><div id="limits"></div><div id="citations"></div><details><summary>Identidade e proveniência congeladas</summary><pre id="provenance"></pre></details></section>
+<section id="evaluation" hidden><h2>Avaliação do protocolo registrado</h2><p class="muted">Família inteira com ajuste Bonferroni; janelas cronológicas e alvos expurgados nas fronteiras. O relatório de origem já foi exposto: estes resultados não certificam reserva inédita, previsão ou lucro.</p><p id="evaluation-scope" class="muted"></p><div class="scroll"><table id="evaluation-results"></table></div></section>
 </main><script type="application/json" id="data">__PAYLOAD__</script><script>
 'use strict';
 const D=JSON.parse(document.getElementById('data').textContent),R=D.analysis,X=D.crossings;
 const $=id=>document.getElementById(id),fmt=v=>v===null||v===undefined?'—':typeof v==='number'?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:6}).format(v):String(v);
 const text=(id,v)=>$(id).textContent=v,cell=(parent,tag,value,cls)=>{const e=document.createElement(tag);e.textContent=value;if(cls)e.className=cls;parent.append(e);return e};
 function table(id,heads,rows){const t=$(id);t.replaceChildren();const h=document.createElement('tr');heads.forEach(v=>cell(h,'th',v));t.append(h);for(const values of rows){const row=document.createElement('tr');values.forEach(v=>cell(row,'td',fmt(v)));t.append(row)}}
+if(D.evaluation){const e=D.evaluation;$('evaluation').hidden=false;text('evaluation-scope',e.protocol_id+' · '+e.tests_counted+' testes · '+e.session_basis);table('evaluation-results',['Canal','Horizonte','Janela','Efeito','IC95% mínimo','IC95% máximo','p ajustado','Pares','Sessões','Expurgados','Estado'],e.results.map(r=>[r.channel_id,r.horizon,r.role,r.effect,r.ci_low,r.ci_high,r.p_adjusted,r.n_pairs,r.n_sessions,r.purged_boundary,r.status]));}
 text('scope',R.symbol+' · grade '+R.grid_timeframe+' · corte '+R.selection.as_of+' · '+R.analysis_id);
 text('perspective',R.selection.timeline_basis==='publication'?'Publicação retrospectiva no corte':R.selection.timeline_basis==='received'?'Recebimento · primeiro fechamento que conhece o fato':'Fechamentos nominais · recibo histórico não certificado');
 text('qual','Correlação descritiva. Preços e fórmulas locais não comprovam recebimento histórico. Classificação de menções mantém a versão e o domínio controlado declarados pelo produtor; estes artefatos não certificam precisão representativa nas fontes.');

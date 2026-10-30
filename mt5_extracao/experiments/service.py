@@ -67,6 +67,8 @@ def request(db, protocol_id, key, composition, *, role="train", origin="manual",
             use_cache=True, discard_reason="", config=None, executor="base_v1"):
     token(key, "Chave do pedido")
     p = store.protocol(db, protocol_id)
+    if p['definition'].get('type')=='laboratory_associations_v1':
+        raise ValueError('Este protocolo avalia associações; use laboratory protocol-evaluate, sem executor de estratégias.')
     if executor not in ("base_v1", "composition_v1"):
         raise ValueError("Executor desconhecido; use base_v1 ou composition_v1 explicitamente.")
     if role not in p["definition"]["roles"] or origin not in ("manual", "automatic") or purpose not in ("evaluation", "tuning") or type(use_cache) is not bool:
