@@ -70,6 +70,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("notifications", "true"),   # pop-up do sistema ao fim de cada ação (extração, teste, bateria, robô)
     ])),
     ("STRATEGY", OrderedDict([       # backtest e validação (mt5x backtest/validate/report)
+        ("account_currency", ""),      # moeda da conta declarada para novos recibos; vazio = desconhecida
         ("initial_equity", "100000"),
         ("risk_per_trade", "0.01"),      # 1% do capital por operação
         ("commission_per_lot", "0"),     # por lote e por lado, na moeda da conta

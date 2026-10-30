@@ -96,6 +96,8 @@ data_dir =
 notifications = true
 
 [STRATEGY]
+; Moeda da conta explicitamente declarada para novos runs; vazio = desconhecida.
+account_currency =
 # Backtest e validação (mt5x backtest / validate / report)
 initial_equity = 100000
 risk_per_trade = 0.01

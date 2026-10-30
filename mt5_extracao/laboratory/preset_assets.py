@@ -6,6 +6,8 @@ run de cada ativo como prova de que o preset é o mesmo.
 import hashlib
 import json
 import math
+import time
+import pandas as pd
 
 from mt5_extracao.robots import store
 
@@ -25,9 +27,9 @@ def _body(run):
         return None, "composição sem ativo e timeframe; revisão não identificada"
     if context["symbol"] != run.get("symbol") or context["timeframe"] != run.get("timeframe"):
         return None, "ativo ou timeframe do run difere da composição gravada"
-    body = json.loads(_canonical(composition))
-    body["context"].pop("symbol")
     try:
+        body = json.loads(_canonical(composition))
+        body["context"].pop("symbol")
         digest = hashlib.sha256(_canonical(body).encode("utf-8")).hexdigest()
     except (TypeError, ValueError):
         return None, "composição com valor não finito; revisão não identificada"
@@ -178,3 +180,92 @@ def compare(db, robot_key):
                 match="composition_without_symbol", status="ready" if chosen else "unproven",
                 latest_runs_share_body=share, reason=reason, notice=notice, title=title,
                 groups=groups, unproven=unproven, curves=curves[:8])
+
+
+def _financial_row(run):
+    from mt5_extracao.robots.backtest import downsample
+    metrics=run.get('metrics') or {};body,reason=_body(run)
+    curves={};issues=[]
+    for key in ('equity','account_balance','floating_equity','performance_equity'):
+        raw=run.get(key) or []
+        if len(raw)>200000:raise ValueError('Curva excede200 mil pontos; selecione uma execução menor explicitamente.')
+        try:
+            times=pd.to_datetime([p[0] for p in raw]);values=[_number(p[1]) for p in raw]
+            if any(v is None for v in values) or times.hasnans or not times.is_monotonic_increasing:raise ValueError()
+            curves[key]=downsample([[str(p[0]),v] for p,v in zip(raw,values)])
+        except (ValueError,TypeError,IndexError):curves[key]=[];issues.append(key+': curva inválida')
+    def last(key):return curves[key][-1][1] if curves[key] else None
+    summary={key:_number(metrics.get(key)) for key in ('trades','net_profit','initial_equity','return_pct','max_drawdown_pct',
+        'max_floating_drawdown_pct','max_floating_drawdown_money','time_weighted_return_pct')}
+    summary.update(final_balance=last('account_balance'),final_equity=last('floating_equity'))
+    return dict(run_id=run['run_id'],robot_key=run['robot_key'],symbol=run['symbol'],timeframe=run['timeframe'],source=run['source'],
+        interval=dict(start=run['data_start'],end=run['data_end'],bars=run['bars']),body_hash=body,revision_reason=reason,
+        composition_hash=metrics.get('composition_hash'),composition=metrics.get('composition'),data_manifest_id=run.get('data_manifest_id'),
+        context=metrics.get('comparison_context'),summary=summary,curves=curves,curve_issues=issues,
+        currency=metrics.get('currency'),costs=_costs(metrics),valuation=run.get('valuation'),
+        data_quality=metrics.get('data_quality'),instrument_context=_spec(metrics))
+
+
+def compare_runs(db,run_ids,*,mode,guard=None):
+    """Seleção explícita de runs; compara recibos, não gera uma execução nova."""
+    if mode not in ('same_asset','same_preset'):raise ValueError('Modo exige same_asset ou same_preset.')
+    if not isinstance(run_ids,(list,tuple)) or not 2<=len(run_ids)<=8 or any(not isinstance(i,str) or not i.strip() for i in run_ids) or len(set(run_ids))!=len(run_ids):raise ValueError('Selecione2 a8 run_ids distintos.')
+    if guard is None:
+        from mt5_extracao.analytics import indicator_materializer
+        started=dict(started_monotonic=time.monotonic())
+        guard=lambda:indicator_materializer._guard(started,None,None,120,1024)
+    from mt5_extracao.analytics import datasets
+    from mt5_extracao.composition import Composition
+    from dataclasses import asdict
+    from mt5_extracao.strategies.backtester import BacktestConfig
+    rows=[];problems=[];snapshots={}
+    for ident in run_ids:
+        guard();found=store.load_runs(db,run_id=ident)
+        if len(found)!=1:raise ValueError('Execução não encontrada: '+ident)
+        run=found[0];row=_financial_row(run);rows.append(row);ctx=row['context']
+        try:
+            comp=Composition(row['composition'])
+            if comp.config_hash!=row['composition_hash']:raise ValueError('hash da composição diverge')
+            if comp.to_dict()['context']!=dict(symbol=row['symbol'],timeframe=row['timeframe']):raise ValueError('contexto da composição diverge')
+        except (ValueError,TypeError):problems.append(ident+': revisão de composição não comprovada')
+        if not isinstance(ctx,dict) or ctx.get('schema_version')!=1 or not ctx.get('code_sha256'):
+            problems.append(ident+': recibo de motor/configuração completo ausente');continue
+        required={'engine','settings','trade_from','source','clock','instrument_spec','currency','currency_source','external_cashflows'}
+        settings=ctx.get('settings')
+        if (not required<=set(ctx) or ctx.get('engine')!='python_ohlcv_stop_first' or not isinstance(settings,dict) or set(settings)!=set(asdict(BacktestConfig()))):
+            problems.append(ident+': configuração de execução incompleta/incompatível')
+        if not isinstance(ctx.get('instrument_spec'),dict) or ctx['instrument_spec'].get('known') is not True:problems.append(ident+': especificação do instrumento desconhecida')
+        if ctx.get('external_cashflows') is not False:problems.append(ident+': fluxos externos presentes/desconhecidos; comparação desta versão exige ausência explícita')
+        if not ctx.get('currency') or ctx.get('currency')!=row['currency']:problems.append(ident+': moeda da conta desconhecida/inconsistente')
+        if row['curve_issues']:problems.append(ident+': curva inválida')
+        if any(row['summary'][k] is None for k in ('trades','net_profit','initial_equity','max_drawdown_pct','final_balance','final_equity','max_floating_drawdown_pct')):problems.append(ident+': métricas/patrimônio completo ausentes')
+        if not (row['summary']['initial_equity'] or 0)>0:problems.append(ident+': capital inicial inválido')
+        try:
+            snapshot=datasets.load(db,row['data_manifest_id']);manifest=snapshot.manifest;snapshots[ident]=manifest
+            if (manifest['symbol'],manifest['timeframe'])!=(row['symbol'],row['timeframe']) or manifest['source']!=ctx['source'] or manifest['time']!=ctx['clock']:raise ValueError()
+            if not (row['data_quality'] or {}).get('eligibility',{}).get('eligible'):raise ValueError()
+        except (ValueError,TypeError,KeyError):problems.append(ident+': referência congelada/qualidade não comprovada')
+    first=rows[0]
+    for row in rows[1:]:
+        if row['timeframe']!=first['timeframe'] or row['interval']!=first['interval']:problems.append('Períodos, quantidade de barras ou timeframes diferentes')
+        if mode=='same_asset' and (row['symbol']!=first['symbol'] or row['data_manifest_id']!=first['data_manifest_id']):problems.append('Mesmo ativo exige o mesmo snapshot de dados')
+        if mode=='same_preset' and (row['body_hash'] is None or row['body_hash']!=first['body_hash']):problems.append('Presets diferem além do ativo')
+        a,b=first['context'] or {},row['context'] or {}
+        for key,label in [('engine','Motor'),('code_sha256','Código do motor'),('settings','Configuração de capital/risco/custos'),('trade_from','Início efetivo'),('source','Origem'),('clock','Relógio'),('currency','Moeda da conta')]:
+            if a.get(key)!=b.get(key):problems.append(label+' diferente')
+        if mode=='same_asset' and a.get('instrument_spec')!=b.get('instrument_spec'):problems.append('Especificação do instrumento diferente')
+    if mode=='same_preset' and len({r['symbol'] for r in rows})<2:problems.append('Mesmo preset entre ativos exige ao menos dois ativos')
+    guard();result=dict(schema_version=1,mode=mode,run_ids=list(run_ids),rows=rows,compatible=not problems,reasons=list(dict.fromkeys(problems)),
+        opened_backtest=False,financial_qualification=False,ranked=False,
+        limitations=['Resultados já gravados; nenhuma ordem, backtest ou conversão cambial nesta consulta.',
+            'Composição, motor, custos, período, origem, relógio e moeda são comparados; recibo ausente não presume equivalência.',
+            'Métricas vêm do motor canônico sobre a série completa. Curvas exibidas usam redução gráfica existente até240 pontos.',
+            'Saldo de encerradas e patrimônio a mercado são separados; marcação por fechamento não mede drawdown intrabar.',
+            'Compatibilidade de recibos não aprova estratégia, qualidade financeira ou desempenho futuro.'])
+    result['comparison_sha256']=hashlib.sha256(_canonical(result).encode()).hexdigest()
+    return result
+
+
+def validate_comparison(result):
+    if not isinstance(result,dict) or result.get('comparison_sha256')!=hashlib.sha256(_canonical({k:v for k,v in result.items() if k!='comparison_sha256'}).encode()).hexdigest():raise ValueError('Comparação alterada ou sem recibo de integridade.')
+    return json.loads(_canonical(result))

@@ -1239,3 +1239,38 @@ retomada ficam no manifesto privado do run, com fingerprints no store/snapshot.
 [API perguntas](https://api.stackexchange.com/docs/questions),
 [lotes por IDs](https://api.stackexchange.com/docs/questions-by-ids),
 [limites](https://api.stackexchange.com/docs/throttle).
+
+### Extensões de fontes, avaliação e comparação —30/10/2026
+
+Mudanças aditivas, `API_VERSION=1`. `mention_classifier_capabilities(classifier_id=None)`
+preserva a chamada sem argumentos e o modelo inglês; `object-evaluation-pt` é
+opt-in e tem domínio controlado próprio. `sdk.evaluate_mention_classifier(cases,
+*, classifier_id, protocol)` devolve métricas/hashes/erros sem texto dos casos;
+declaração de revisão humana não a transforma em revisão verificada. [Uso e
+limites PT](../dados/PLANO_ESTRUTURA_DADOS.md#1821-português-e-avaliação-reproduzível--men-pt).
+
+`sdk.macro_source_capabilities()` é passivo. `sdk.collect_macro_observations(db,
+*, source_id, start, end, **kwargs)` coleta explicitamente BCB SGS11 ou FRED
+USREC. kwargs aceitos pelo produtor: write_guard, cancel_check, timeout_seconds
+e max_memory_mb. Disponibilidade local, datas de referência e revisão ficam
+separadas; categoria USREC não é número para correlação. [Contrato macro](../dados/PLANO_ESTRUTURA_DADOS.md#1822-fontes-econômicas-e-períodos-no-candle--bd06-macro).
+
+`sdk.register_laboratory_protocol(db, report, definition)` registra família e
+janelas no ledger existente. `sdk.evaluate_laboratory_protocol(db, report,
+protocol_id, **kwargs)` exige key; aceita cancel_check, timeout_seconds e
+max_memory_mb. Usa alvos/inferência canônicos, expurgo de fronteiras e Bonferroni
+com a família inteira. Relatório já exposto, reserva inédita e desempenho futuro
+continuam sem qualificação. [Contrato estatístico](laboratorio_series.md#avaliação-estatística-registrada).
+
+`sdk.compare_laboratory_runs(db, run_ids, *, mode, **kwargs)` consulta2…8 runs
+existentes; mode é same_asset ou same_preset. kwargs aceita guard cooperativo;
+sem guard, usa120s/1024MiB. Retorna métricas/capital/curvas gravados e motivos de
+incompatibilidade; não executa estratégia. `sdk.export_laboratory_runs(comparison,
+destination)` verifica integridade e grava HTML local em arquivo novo, sem
+reconsultar preços. [Contrato financeiro](laboratorio_series.md#comparação-financeira-de-execuções-gravadas).
+
+Novos runs Python acrescentam comparison_context às métricas, com configuração,
+motor, fonte, relógio e especificação. `[STRATEGY] account_currency` é declaração
+explícita opcional, sem inferência a partir da moeda de lucro do símbolo.
+Ausência em runs antigos não é preenchida retroativamente. Nenhuma destas APIs
+envia ordens, aprova modelo financeiro, reserva final, humano ou conta/MT5.
