@@ -948,6 +948,14 @@ class SeriesLaboratoryPanel:
         axes = np.atleast_1d(chart.figure.subplots(len(ratios), 1, sharex=True, gridspec_kw=dict(height_ratios=ratios)))
         ax = axes[0]
         x, price = _draw_candles(ax, times, report["prices"], self.theme)
+        for period in service.source_periods(report,selected["id"]):
+            begin,finish=pd.Timestamp(period["start"]),pd.Timestamp(period["end"])
+            if finish<times[0] or begin>times[-1]:continue
+            ax.axvspan(max(begin,times[0]),min(finish,times[-1]),color=self.theme.colors["accent"],alpha=.12,
+                       hatch="////" if period["value"]=="recession" else None,zorder=.2)
+            label={"recession":"Recessão","expansion":"Expansão"}.get(period["value"],period["value"])
+            ax.text(max(begin,times[0]),.96,label+(" · referência retrospectiva" if period["retrospective"] else " · conhecido no recebimento"),transform=ax.get_xaxis_transform(),
+                    va="top",fontsize=8,color=self.theme.colors["ink2"],clip_on=True)
         grid_tf = None if report.get("synthetic") else timeframes.parse(report["grid_timeframe"])
         if grid_tf is not None and grid_tf.name == "MN1":
             step = pd.offsets.MonthBegin(1)

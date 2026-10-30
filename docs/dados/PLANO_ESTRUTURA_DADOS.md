@@ -1663,3 +1663,38 @@ Regressão28 casos aprovados no host e1 PG isolado; launcher oficial confirmou
 Q10/P3/N2 em documentos próprios, classificação tardia e os2 erros da avaliação.
 Doctor offline16 OK/2 avisos/0 falhas. English object-vader-en e versões dos
 retornos permanecem preservados. Nenhuma qualificação de captura/conta/Expert.
+
+### 18.22 Fontes econômicas e períodos no candle — BD06-MACRO
+
+Coleta explícita SDK/CLI/UI no feature_store e producer_jobs existentes:
+`bcb.sgs.11` (Selic diária, percent/day, ODbL) e `fred.usrec` (fase mensal
+expansion/recession, convenção retrospectiva FRED/NBER com citação). Não há
+OHLCV artificial da fonte, calendário estimado do preço ou codificação numérica
+das categorias. D1 é somente coordenada de armazenamento UTC; frequência e
+convenção permanecem na definição. Datas são rótulos de referência, sem hora
+histórica de publicação comprovada. available_at/observed_at registram a captura
+local, preservando revisões e consultas em cortes antigos.
+
+`analytics features macro-sources` é passivo; `macro-collect --source fred.usrec
+--start 2020-01-01 --end 2021-01-01` consulta janela [início,fim), já encerrada.
+SDK: `macro_source_capabilities` e `collect_macro_observations`. Máximo366 dias
+SGS/3660 USREC,4000 observações,512KiB, sem retry automático. Erros de rede,
+ausência e acesso recusado não viram zero. A GUI em Fontes vinculadas →
+“Coletar fonte econômica…” mostra espera/cancelamento e congela o resultado;
+associação fonte→ativo continua explícita. Reabrir não coleta.
+
+Na perspectiva publicação, fases categóricas aparecem como faixas datadas,
+com citação e disponibilidade local no candle/HTML. Em recebimento, um fato
+capturado depois do período não retroage para esse período. Revisão ausente ou
+indisponível não sustenta faixa. Categorias ficam fora das correlações contínuas.
+O HTML usa os períodos congelados e mantém citações legíveis, sem rede.
+
+Validação no host:23 regressões núcleo/vínculos,6 UI,10 produtor (sobreposição),
+3 PostgreSQL reais isolados; doctor16/2/0. Launcher oficial coletou12 meses
+USREC de2020, congelou fonte e mostrou espera/faixas categóricas com preços
+próprios sintéticos. Relatório no navegador em820×680 sem overflow da página.
+BCB respondeu à sondagem pública inicial, mas duas coletas pelo launcher deram
+timeout, sem fatos publicados; acesso contínuo BCB não está certificado.
+Nenhum ensaio com preço sintético qualifica correlação financeira ou previsão.
+Referências: [BCB SGS11](https://dadosabertos.bcb.gov.br/dataset/11-taxa-de-juros---selic)
+e [FRED USREC/convenção](https://fred.stlouisfed.org/series/USREC).

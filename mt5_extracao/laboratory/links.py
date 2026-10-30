@@ -92,7 +92,7 @@ def channels(sources, grid, cutoff, perspective, guard, *, first_open):
                 mapped = axis >= first_open and at < len(grid) and (perspective == "received" or grid[at] == axis) and grid[at] <= cutoff
                 state, reason = indicator_context._state(row._asdict())
                 event = dict(observation_time=_iso(row.observation_time), window_end=_iso(end),
-                    captured_at=(meta["capture"].get("captured_at") if isinstance(meta.get("capture"), dict) else meta.get("captured_at")),
+                    captured_at=(meta["capture"].get("captured_at") if isinstance(meta.get("capture"), dict) else meta.get("captured_at")) or (_iso(row.observed_at_utc) if meta.get("capture_clock")=="stored_observed_at" else None),
                     available_at=_iso(row.available_at_utc), revision=int(row.revision),
                     quality=row.quality, state=state, reason=reason,
                     value=indicator_context._value(row.numeric_value, row.categorical_value, state),
@@ -101,7 +101,7 @@ def channels(sources, grid, cutoff, perspective, guard, *, first_open):
                     plotted_at=_iso(grid[at]) if mapped else None,
                     alignment_delay_seconds=float((grid[at]-axis).total_seconds()) if mapped else None,
                     metadata={k:meta[k] for k in ("synthetic_fixture", "classification", "classifier", "coverage",
-                                                  "universe", "retrospective", "scope_hash", "reason") if k in meta})
+                                                  "universe", "retrospective", "scope_hash", "reason", "macro", "reference", "attribution", "period_convention", "source_period_start") if k in meta})
                 receipt_at = int(grid.searchsorted(row.available_at_utc))
                 publication_at = int(grid.searchsorted(end))
                 event["receipt_bar_index"] = (receipt_at if first_open <= row.available_at_utc <= cutoff
@@ -153,5 +153,5 @@ def channels(sources, grid, cutoff, perspective, guard, *, first_open):
                 events=None, receipt_events=events, diagnosis=diagnosis, rule="stored", warmup=spec.get("warmup_count", 0),
                 direction_rule=None, direction_diagnosis="Nenhuma direção de negociação inferida da fonte vinculada.",
                 temporal_basis=perspective, legend="Pulso por observação; ausência entre recibos não é zero.",
-                eligibility=dict(eligible=True, limitations=["Associação explícita; não prova causa do preço."])))
+                eligibility=dict(eligible=True, status="ELIGIBLE", reasons=[], limitations=["Associação explícita; não prova causa do preço."])))
     return built

@@ -83,8 +83,18 @@ class LaboratoryLinks:
             for i in range(3):row.columnconfigure(i,weight=1 if i<cols else 0)
             for i,button in enumerate(buttons):button.grid(row=i//cols,column=i%cols,sticky='ew',padx=2,pady=2)
         row.bind('<Configure>',layout)
+        ttk.Button(frame,text="Coletar fonte econômica…",command=self.open_macro).pack(anchor="w",pady=6)
         self.linked=self._table(frame,[("target","Ativo",100),("source","Objeto / snapshot",230),("tf","TF",75),("count","Séries",80),("why","Associação explícita",340)],height=3)
         self.show_links()
+
+    def open_macro(self):
+        if self.pending:return
+        if getattr(self,"macro_capture",None) is not None and self.macro_capture.alive():
+            self.macro_capture.window.lift();return
+        from .macro_capture import MacroCapture
+        def saved(result):
+            self.last_macro_receipt=result;self.query.set(result['symbol']);self.load_inventory()
+        self.macro_capture=MacroCapture(self.ui,self.window,db=self.db,on_busy=self._busy,on_saved=saved,cancel_event=self.cancel_event)
 
     def set_basis(self,*_):
         self.panel.timeline_basis=BASIS[self.basis.get()];self.panel._changed()
@@ -273,6 +283,8 @@ class LaboratoryLinks:
             for c in context['channels']:
                 lines.extend([f"{c['name']} · {c['timeframe']}: {value_text(c['raw_value'])} {c['unit'] or ''}",
                               f"Observação {c['observation_time'] or '—'} · disponibilidade/fechamento {c['source_end'] or '—'} · {c['state'] or 'nominal'}"])
+            lines.append('\nPeríodos econômicos de referência (não são causa do preço):')
+            lines.extend(json.dumps(p,ensure_ascii=False,indent=2) for p in context.get('source_periods',[]))
             lines.append('\nRecebimentos neste candle:')
             lines.extend(json.dumps(e,ensure_ascii=False,indent=2) for e in context['received_events'])
             lines.append('\nJanelas de publicação encerradas neste candle:')

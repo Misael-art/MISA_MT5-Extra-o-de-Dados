@@ -49,3 +49,12 @@ def test_cancellation_preserves_previous_crossing_result_and_mapped_target(panel
     dialog.inventory.selection_set('0');dialog.add()
     assert 'outro ativo' in dialog.status.cget('text')
     dialog.close()
+
+
+def test_selected_linked_channel_exposes_complete_eligibility_details(panel,linked):
+    panel.ui.app.db_manager=linked[0];series=open_series(panel)
+    panel.pump(lambda:not getattr(series,'_loading_sources',True))
+    report=analyze(linked);series.set_report(report)
+    channel=next(c for c in report['channels'] if c.get('linked_source'))
+    series.detail_channel.set(channel['id']);series._channel_changed(redraw=False)
+    assert 'ELIGIBLE' in series.channel_details.cget('text')

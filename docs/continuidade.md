@@ -4554,3 +4554,13 @@ separado preserva inglês; avaliador CLI/SDK guarda métricas/hashes, não corpu
 avaliação com2 erros conservados. Humano independente/fontes reais aguardam
 seus insumos/acessos. Seguem macroeconomia, protocolo preditivo, comparações
 financeiras, inspetor e Super ATR no escopo autorizado, sem alterar os pins.
+
+### Fontes econômicas datadas —30/10/2026
+
+`codex/fontes-macroeconomicas`, sobre MEN-PT/PR247. [BD06-MACRO](dados/PLANO_ESTRUTURA_DADOS.md#1822-fontes-econômicas-e-períodos-no-candle--bd06-macro)
+integra coleta explícita/fonte congelada, revisão e categorias retrospectivas
+no candle/HTML. FRED real12 meses e GUI pelo launcher; BCB timeout preservado,
+sem fatos presumidos.23 testes núcleo,6 UI,10 produtor (sobreposição),3 PG;
+doctor16/2/0. Recibos/prévia/SHA no registro central. Continuar protocolo
+estatístico, comparações financeiras e inspetor/Super ATR. Autorizações sociais,
+revisão humana independente e gates MT5 mantêm pendências próprias.
