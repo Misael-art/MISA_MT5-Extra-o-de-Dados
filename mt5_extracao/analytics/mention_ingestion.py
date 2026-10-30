@@ -39,7 +39,9 @@ def source_capabilities():
     publisher=next(item for item in items if item['id']=='F05')
     publisher.update(connector_implemented=True,qualification='IMPLEMENTED_REQUIRES_CAPTURE_RECEIPT',
         connectors=[dict(provider='hackernews',corpus='hackernews.newstories.panel.v1',mode='documents',
-                         universe='sample',access='public_api',coverage='explicit_item_panel_only')])
+                         universe='sample',access='public_api',coverage='explicit_item_panel_only'),
+                    dict(provider='stackexchange',corpus='stackexchange.stackoverflow.questions.panel.v1',mode='documents',
+                         universe='sample',access='public_api',coverage='explicit_Stack_Overflow_question_panel_only')])
     return items
 
 
@@ -55,6 +57,7 @@ def _documents(contract, documents, start, end, guard):
     if not isinstance(documents, list) or len(documents) > MAX_DOCUMENTS:
         raise ValueError(f"Lote exige lista de até{MAX_DOCUMENTS} publicações, sem truncamento.")
     scope = contract['scope'];subject, query = scope['subject'], scope['query']
+    if query['region'] is not None:raise ValueError('Lote sem prova de região; filtro regional não pode ser certificado nem ignorado silenciosamente.')
     found, excluded, eligible, duplicates = {}, Counter(), [], 0
     for raw in documents:
         guard()

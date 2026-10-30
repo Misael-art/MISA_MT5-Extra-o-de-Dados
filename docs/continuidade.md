@@ -4403,3 +4403,32 @@ motor atual, sem qualquer condição de lucro.2.540 fatos e namespace preservado
 Snapshots sem mercado são apresentados como fatos/revisões, não barras.
 Próximos:segunda fonte MEN-07 e fechamento/proteção MEN-08; não é conclusão de
 cruzamentos BD16/17/F18/LAB, Expert, conta, MT5/Wine ou Windows físico.
+
+
+### MEN-07 — segundo publicador independente, 29/10/2026
+
+Sobre MEN-06/PR242 (`e50567c8eab0f690c078b5dcc7bad6a96002b012`), branch
+`codex/mencoes-stackexchange`. API pública Stack Exchange2.3, corpus limitado
+às perguntas Stack Overflow, painel1…64 criado na janela UTC, lotes até8,
+mesma captura/contrato QPN/store/journal/SDK/CLI/consumidores. Votos não são
+sentimento; ausência/erro não viram zero. Quota/método/URLcooldown≥60s ficam no
+checkpoint canônico, com SQLite/PG serializados, espera fora de SQL e respeito
+ao orçamento/cancelamento. A guarda é por base; IP/quota podem ser compartilhados
+por clientes externos. Não há assinatura/chave nova/cache de respostas.
+
+Captura real16 itens:SIGKILL após persistir roster, retomada dos mesmos IDs,
+Q1/P0/N0 e1 abstenção; contador independente, repetição respeitando tempo real,
+corte anterior e5 fatos HN preservados no mesmo símbolo/namespace/provedor de
+preços. SIGINT durante cooldown real preservou10 fatos confirmados. Sem texto
+bruto retido. O filtro inicial sem licença bloqueou sem publicar; filtro público
+explícito foi obtido pela API. Alguns posts recentes ainda omitem a licença:
+usa-se inferência CC BY-SA4.0 apenas após02/05/2018 pela política oficial,
+separada de licença observada em `acquisition.licensing`. Conflito/antigo sem
+prova continua falhando. Sem classificação geral da fonte/português; benchmark
+inglês restrito permanece o único qualificado. Região sem prova, antes ignorada,
+agora é recusada em documentos e nos dois coletores.
+
+MEN-08 ainda fecha proteção independente, regressão e reconciliação. Fontes
+opcionais sem acesso e cruzamentos BD16/17/F18/LAB continuam com seus donos;
+nenhum resultado aqui qualifica estratégia, conta, MT5/Wine, Windows físico ou
+utilidade financeira.
