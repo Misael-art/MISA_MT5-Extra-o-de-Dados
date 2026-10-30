@@ -64,10 +64,10 @@ details{margin:12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:
 <p id="ohlc" class="muted"></p><svg id="price" viewBox="0 0 1000 300" role="img" aria-label="Candles do recorte congelado, seleção por clique"></svg>
 <div class="controls"><label>Série vinculada ou indicador<select id="series"></select></label><span id="seriesvalue"></span></div>
 <svg id="seriesplot" viewBox="0 0 1000 180" role="img" aria-label="Valores originais por candle; lacunas preservadas"></svg>
-<div class="scroll"><table id="candle"></table></div>
+<div class="scroll"><table id="candle"></table></div><div class="scroll"><table id="periods"></table></div>
 <h3>Recebimentos neste candle</h3><div class="scroll"><table id="receipts"></table></div>
 <h3>Janelas de publicação encerradas neste candle</h3><div class="scroll"><table id="publications"></table></div>
-<p class="muted">Datas de publicação, captura e disponibilidade são distintas. O co-movimento não identifica o motivo do preço.</p></section>
+<p class="muted">Datas de publicação, captura e disponibilidade são distintas. Nas fontes macro, início/fim são referências do período e não certificam hora de publicação. O co-movimento não identifica o motivo do preço.</p></section>
 <section><h2>Todos os cruzamentos da seleção</h2>
 <div class="controls"><label>Defasagem nominal<select id="lag"></select></label>
 <label>Timeframe<select id="tf"><option value="">Todos os TFs</option></select></label><label>Buscar série<input id="query" type="search" placeholder="nome, objeto ou fonte"></label></div>
@@ -80,7 +80,7 @@ details{margin:12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:
 <div class="scroll"><table id="windows"></table></div></section>
 <section><h2>Indicadores e fontes × movimento posterior do preço</h2><p class="muted">Retorno bruto futuro em horizonte fixo, somente quando o fechamento existe no corte. Pesquisa retrospectiva, sem custos/fills ou regra de negociação.</p><div class="scroll"><table id="targets"></table></div></section>
 <section><h2>Cronologia dos recibos vinculados</h2><p class="muted">Inclui revisões e observações que não cabem em um candle. Nenhuma soma ou extrapolação foi aplicada.</p><div class="controls"><label>Filtrar recibos<input id="eventquery" type="search" placeholder="fonte, data, estado"></label><button id="eventprev">Anterior</button><span id="eventpage"></span><button id="eventnext">Próxima</button></div><div class="scroll"><table id="events"></table></div></section>
-<section><h2>Fonte, vínculos e limites</h2><div id="limits"></div><details><summary>Identidade e proveniência congeladas</summary><pre id="provenance"></pre></details></section>
+<section><h2>Fonte, vínculos e limites</h2><div id="limits"></div><div id="citations"></div><details><summary>Identidade e proveniência congeladas</summary><pre id="provenance"></pre></details></section>
 </main><script type="application/json" id="data">__PAYLOAD__</script><script>
 'use strict';
 const D=JSON.parse(document.getElementById('data').textContent),R=D.analysis,X=D.crossings;
@@ -93,7 +93,7 @@ text('qual','Correlação descritiva. Preços e fórmulas locais não comprovam 
 const EV=R.channels.flatMap(c=>(c.receipt_events||[]).map(e=>({...e,channel:c.name,channel_id:c.id}))).sort((a,b)=>a.available_at.localeCompare(b.available_at));
 $('synthetic').hidden=!EV.some(e=>e.metadata&&e.metadata.synthetic_fixture);
 for(const [label,value] of [['Candles',R.times.length],['Canais',R.channels.length],['Vínculos',(R.selection.linked_sources||[]).length],['Recibos',EV.length]]){const c=document.createElement('div');c.className='card';cell(c,'span',label);cell(c,'b',fmt(value));$('cards').append(c)}
-R.limitations.forEach(v=>cell($('limits'),'p',v));text('provenance',JSON.stringify({selection:R.selection,populations:R.populations,qualification:R.qualification,integrity_sha256:R.integrity_sha256},null,2));
+R.limitations.forEach(v=>cell($('limits'),'p',v));const cited=new Set();for(const c of R.channels){const p=(c.stored_definition||{}).parameters||{};if(!p.attribution||cited.has(p.attribution))continue;cited.add(p.attribution);const box=cell($('citations'),'p',p.attribution);if(p.reference&&/^https:\/\//.test(p.reference)){const link=document.createElement('a');link.href=p.reference;link.textContent=' Fonte e convenção';link.rel='noreferrer';box.append(link)}}text('provenance',JSON.stringify({selection:R.selection,populations:R.populations,qualification:R.qualification,integrity_sha256:R.integrity_sha256},null,2));
 R.channels.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c.name+' · '+c.timeframe;$('series').append(o)});
 for(const id of ['left','right'])R.channels.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name+' · '+c.timeframe;$(id).append(o)});
 if(R.channels.length>1)$('right').selectedIndex=1;
@@ -103,6 +103,8 @@ $('cursor').max=R.times.length-1;let index=0,first=0,last=0,eventPage=0;
 function node(parent,tag,attrs){const n=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));parent.append(n);return n}
 function chart(){const svg=$('price');svg.replaceChildren();first=Math.max(0,index-40);last=Math.min(R.times.length,first+80);first=Math.max(0,last-80);const prices=R.prices.slice(first,last),ys=prices.flatMap(p=>[p[1],p[2]]).filter(v=>v!==null),lo=Math.min(...ys),hi=Math.max(...ys),span=hi-lo||1;
  const px=i=>55+(i-first+.5)*900/Math.max(1,last-first),py=v=>260-(v-lo)*220/span;
+ const chosen=R.channels[Number($('series').value||0)];const pxTime=stamp=>{const value=Date.parse(stamp);let a=first,b=last;while(a<b){const m=Math.floor((a+b)/2);if(Date.parse(R.times[m])<value)a=m+1;else b=m}return 55+(a-first)*900/Math.max(1,last-first)};
+ for(const period of (R.source_periods||{})[chosen.id]||[]){const a=Math.max(55,pxTime(period.start)),b=Math.min(955,pxTime(period.end));if(b<=a)continue;node(svg,'rect',{x:a,y:25,width:b-a,height:240,fill:period.value==='recession'?'#e6d2b0':'#d2e4f5',opacity:.6});const text=node(svg,'text',{x:a+4,y:40,fill:'#42556e','font-size':12});text.textContent=(period.value==='recession'?'Recessão':period.value==='expansion'?'Expansão':period.value)+(period.retrospective?' · retrospectiva':' · recebida')}
  for(let k=0;k<=4;k++){let v=lo+k*span/4;node(svg,'line',{x1:55,x2:960,y1:py(v),y2:py(v),stroke:'#dce5ef'});const t=node(svg,'text',{x:3,y:py(v)+4,fill:'#53667e','font-size':11});t.textContent=fmt(v)}
  prices.forEach((p,j)=>{if(p.some(v=>v===null))return;const x=px(first+j),color=p[3]>=p[0]?'#087f70':'#bf3c38';node(svg,'line',{x1:x,x2:x,y1:py(p[2]),y2:py(p[1]),stroke:color,'stroke-width':1});node(svg,'line',{x1:x,x2:x,y1:py(p[0]),y2:py(p[3]),stroke:color,'stroke-width':Math.max(2,500/(last-first))})});
  node(svg,'line',{x1:px(index),x2:px(index),y1:25,y2:270,stroke:'#225dba','stroke-width':2});
@@ -114,7 +116,7 @@ function chart(){const svg=$('price');svg.replaceChildren();first=Math.max(0,ind
 }
 const eventHeads=['Série','Janela início','Janela fim','Captura','Disponibilidade','Revisão','Valor','Abstenções','Estado'];
 const eventRows=events=>events.map(e=>[e.channel,e.observation_time,e.window_end,e.captured_at,e.available_at,e.revision,e.value,e.label_counts?e.label_counts.abstained:null,e.state]);
-function candle(){index=Math.max(0,Math.min(R.times.length-1,index));$('cursor').value=index;text('stamp',R.times[index]);text('ohlc',['Abertura','Máxima','Mínima','Fechamento'].map((s,k)=>s+': '+fmt(R.prices[index][k])).join(' · ')+' · sessão: '+((R.session_ids||[])[index]||'sem calendário congelado'));
+function candle(){index=Math.max(0,Math.min(R.times.length-1,index));const stamp=Date.parse(R.times[index]);const periodRows=R.channels.flatMap(c=>((R.source_periods||{})[c.id]||[]).filter(p=>Date.parse(p.start)<=stamp&&stamp<Date.parse(p.end)).map(p=>[c.name,({recession:'Recessão',expansion:'Expansão'})[p.value]||p.value,p.start,p.end,p.available_at,p.retrospective?'Referência retrospectiva':'Conhecida no recebimento']));$('periods').hidden=!periodRows.length;table('periods',['Série','Categoria da fonte','Início do período','Fim exclusivo','Disponibilidade local','Perspectiva'],periodRows);$('cursor').value=index;text('stamp',R.times[index]);text('ohlc',['Abertura','Máxima','Mínima','Fechamento'].map((s,k)=>s+': '+fmt(R.prices[index][k])).join(' · ')+' · sessão: '+((R.session_ids||[])[index]||'sem calendário congelado'));
  table('candle',['Série / TF','Valor','Unidade','Observação','Disponibilidade / fechamento nominal','Estado'],R.channels.map(c=>[c.name+' · '+c.timeframe,c.raw_values?c.raw_values[index]:c.values[index],c.unit,(c.observation_times||[])[index],(c.source_ends||[])[index],c.per_bar_states?c.per_bar_states[index]:(c.diagnosis||{}).message]));
  table('receipts',eventHeads,eventRows(EV.filter(e=>e.receipt_bar_index===index)));table('publications',eventHeads,eventRows(EV.filter(e=>e.publication_bar_index===index)));chart();}
 $('previous').onclick=()=>{index--;candle()};$('next').onclick=()=>{index++;candle()};$('cursor').oninput=()=>{index=Number($('cursor').value);candle()};$('series').onchange=chart;

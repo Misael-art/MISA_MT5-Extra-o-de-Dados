@@ -785,6 +785,7 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
             "Publicação: somente revisão conhecida no corte, sobre a janela descrita; perspectiva retrospectiva.",
             "Vários objetos/janelas no mesmo candle não são somados: consulte os recibos, reduza o TF ou use publicação.",
             "Ciclos macroeconômicos exigem fonte vinculada; não são inferidos de preço/volume."])
+        report["source_periods"] = {c["id"]: source_periods(report,c["id"]) for c in report["channels"] if c.get("linked_source")}
         report["crossing_result"] = crossings(report, cancel_check=cancel_check,
             timeout_seconds=max(.001, timeout_seconds-(time.monotonic()-started["started_monotonic"])),
             max_memory_mb=max_memory_mb)
@@ -856,6 +857,32 @@ def capture_linked_sources(db, *, target_symbol, selections, cancel_check=None,
     return links.normalize(result, target_symbol)
 
 
+def source_periods(report, channel_id):
+    """Intervalos categóricos declarados pela fonte, nunca inferidos do preço."""
+    if "source_periods" in report:return report["source_periods"].get(channel_id, [])
+    channel=next((c for c in report["channels"] if c["id"]==channel_id),None)
+    if not channel or channel.get("stored_definition",{}).get("value_type")!="CATEGORY":return []
+    latest={}
+    for event in channel.get("receipt_events",[]):
+        if not event.get("metadata",{}).get("macro"):continue
+        previous=latest.get(event["observation_time"])
+        if previous is None or (event["available_at"],event["revision"])>(previous["available_at"],previous["revision"]):latest[event["observation_time"]]=event
+    result=[];basis=report["selection"].get("timeline_basis","received")
+    for event in sorted(latest.values(),key=lambda e:e["observation_time"]):
+        if event["state"]!="AVAILABLE" or not isinstance(event["value"],str):continue
+        start,end=pd.Timestamp(event["observation_time"]),pd.Timestamp(event["window_end"])
+        if basis!="publication":start=max(start,pd.Timestamp(event["available_at"]))
+        if start>=end:continue
+        meta=event["metadata"]
+        row=dict(start=start.isoformat(),end=end.isoformat(),value=event["value"],available_at=event["available_at"],
+                 source_id=event["source_id"],reference=meta.get("reference"),attribution=meta.get("attribution"),
+                 retrospective=basis=="publication",period_count=1)
+        if result and result[-1]["end"]==row["start"] and result[-1]["value"]==row["value"]:
+            result[-1].update(end=row["end"],available_at=max(result[-1]["available_at"],row["available_at"]),period_count=result[-1]["period_count"]+1)
+        else:result.append(row)
+    return result
+
+
 def candle_context(report, index):
     """Mesmo recorte para cursor, relatório e CLI: recebimento e publicação separados."""
     if type(index) is not int or not 0 <= index < len(report["times"]):
@@ -880,6 +907,8 @@ def candle_context(report, index):
     return dict(analysis_id=report["analysis_id"], symbol=report["symbol"],
         timeframe=report["grid_timeframe"], index=index, close_utc=report["times"][index],
         price=dict(zip(report["price_columns"], report["prices"][index])), channels=channels,
+        source_periods=[dict(channel_id=c["id"],**period) for c in report["channels"] for period in source_periods(report,c["id"])
+                        if pd.Timestamp(period["start"])<=pd.Timestamp(report["times"][index])<pd.Timestamp(period["end"])],
         market_session=(report.get("session_ids") or [None]*len(report["times"]))[index],
         calendar_basis=report.get("calendar_basis", "NO_FROZEN_CALENDAR"),
         received_events=received, publication_windows=published,
