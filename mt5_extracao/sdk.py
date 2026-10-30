@@ -120,6 +120,11 @@ def super_atr_capabilities(framework_root, manifest_path=None):
     return super_atr.capabilities(framework_root,manifest_path)
 
 
+def create_super_atr_research_robot(name, folder, *, framework_root, seed_start, **kwargs):
+    from .robots import super_atr_research
+    return super_atr_research.create(name,folder,framework_root=framework_root,seed_start=seed_start,**kwargs)
+
+
 def materialize_super_atr_snapshot(db, manifest_id, *, framework_root, **kwargs):
     from .analytics import super_atr
     return super_atr.materialize(db,manifest_id,framework_root=framework_root,**kwargs)
@@ -354,6 +359,7 @@ def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
 
 
 __all__ = [
+    "create_super_atr_research_robot",
     "super_atr_capabilities", "materialize_super_atr_snapshot",
     "link_laboratory_execution",
     "compare_laboratory_runs", "export_laboratory_runs",

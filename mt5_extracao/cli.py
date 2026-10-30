@@ -1486,7 +1486,12 @@ def cmd_robots(args, ctx):
         if not args.path or not args.dir:
             raise ValueError("uso: mt5x robots new <Nome> --dir <pasta de robôs> (ex.: --dir ~/robos)")
         try:
-            created = scaffold.create(args.path, args.dir, items, ctx.config)
+            if args.template=='super-atr-research':
+                from mt5_extracao import sdk
+                if not args.framework or not args.seed_start:raise ValueError('Super ATR exige --framework e --seed-start YYYY-MM-DDTHH:MM (horário broker).')
+                created=sdk.create_super_atr_research_robot(args.path,args.dir,framework_root=args.framework,seed_start=args.seed_start,
+                    base_timeframe=args.tf or 'M5',confirm_timeframe=args.confirm_tf,second_timeframe=args.second_confirm_tf,robots=items,config=ctx.config)
+            else:created = scaffold.create(args.path, args.dir, items, ctx.config)
         except (OSError, RuntimeError) as e:
             raise RuntimeError(str(e)) from e
         robot = robots.robot_from_file(created[0])
@@ -1501,8 +1506,9 @@ def cmd_robots(args, ctx):
         if root not in known:
             robots.import_library(ctx.db, root)
             _print(f"A pasta {root} foi adicionada ao catálogo.")
-        _print(f"Agora escreva o sinal em {created[0].name} (veja o README ao lado) e rode: "
-               f"mt5x robots compile {robot.key.split(':', 1)[1]}")
+        if args.template=='super-atr-research':_print('Candidato de pesquisa criado; entradas desligadas. Compile/check/Session oficiais mantêm seus gates; somente Tester+DEMO, sem qualificação operacional.')
+        else:_print(f"Agora escreva o sinal em {created[0].name} (veja o README ao lado) e rode: "
+                    f"mt5x robots compile {robot.key.split(':', 1)[1]}")
         return EXIT_OK
     if args.action == "generate":
         from mt5_extracao.robots import generate
@@ -2095,6 +2101,11 @@ def build_parser():
     p.add_argument("--report", help="check: grava um relatório JUnit XML neste arquivo (para CI)")
     p.add_argument("--name", help="generate: nome do robô a criar")
     p.add_argument("--dir", help="new/generate: pasta de robôs onde criar (layout Experts/ Presets/)")
+    p.add_argument('--template',choices=['skeleton','super-atr-research'],default='skeleton',help='new: modelo padrão ou candidato Super ATR Tester+DEMO')
+    p.add_argument('--framework',help='new Super ATR: raiz HADOUKEN canônica, no pin atual')
+    p.add_argument('--seed-start',help='new Super ATR: primeira barra real comum, YYYY-MM-DDTHH:MM em horário broker')
+    p.add_argument('--confirm-tf',default='M15',help='new Super ATR: primeiro TF confirmador nativo')
+    p.add_argument('--second-confirm-tf',help='new Super ATR: segundo confirmador, opcional e mais longo')
     p.add_argument("--upgrade-safety", action="store_true",
                    help="install/compile: troca a biblioteca de segurança instalada no MT5 pela versão do clone")
     p.add_argument("--preset", help="backtest de robô MQL5 e battery: nome do preset (.set) a usar")

@@ -4647,3 +4647,30 @@ no vínculo retrospectivo, sem callback errors. Versões de price.return1/5/20
 preservadas. Doctor offline e prévia identificada constam no recibo/registro
 central. Segue SA-01 consumidor de pesquisa, com gate Tester+DEMO e sem promoção
 operacional; acesso social/revisão humana/Windows físico continuam delimitados.
+
+
+### Consumidor Super ATR multi-TF —30/10/2026 (SA-01)
+
+`codex/super-atr-expert-pesquisa`, sobre SA-02/PR252. Novo template de pesquisa
+no scaffold App, consumindo header/StrategyRobot do H fixado; sem editar ou
+repinar companions. Contrato0.1 com seed fixa, confirmação fechada, limite de
+idade, revisão exata do prefixo, decisão única, gate anterior ao host Tester+DEMO
++por tick e entradas desligadas por padrão. Stop na linha/saída oposta e Move
+Guard opcional pelo executor atual. Observação aceita/parcial/incerta do host
+ligada. [Uso, contrato e limites](sdk/super_atr.md#expert-de-pesquisa-sa-01).
+
+75 regressões App aprovadas/31 finais dirigidas (sobreposição),7 contratos H;
+probe de corpo MQL real+header controlou futuro/fechamento/gaps/ausência/revisão/
+sincronismo/deduplicação. MetaEditor/Wine0/0 no consumidor e3 indicadores;6 headers
+padrão verificados e sem terminal/ordem iniciados. Versão MQL1.00 corrige aviso
+inicial de formatação; contrato de pesquisa permanece0.1. CLI/launcher geram43
+arquivos/23 inputs; catálogo mostra entradas/PLAY desligados e exige backtest.
+Artefatos são QA própria, preservados separadamente da base principal.
+
+Sem aceite Tester/DEMO ou exclusividade entre instâncias/restart; sessão própria,
+conta DEMO e reconciliação real continuam necessárias. Capturas sociais aguardam
+OAuth oficial; português aguarda revisão humana/amostra representativa; protocolo
+estatístico não cria reserva externa intocada nem aprovação preditiva. FRED foi
+capturado, BCB teve timeout preservado. CI/Windows físico são gates delimitados.
+Backup privado dos novos ensaios é complemento à página de recuperação existente;
+recibo/manifesto/restore e prévia atuais ficam no registro central, sem dados no Git.
