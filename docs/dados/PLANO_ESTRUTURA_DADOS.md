@@ -1346,3 +1346,42 @@ real de agregados públicos conserva Q8/P0/N0/8 abstenções e cinco revisões
 (Q e pendências + classificação posterior), sem texto bruto. Erros de orçamento
 na CLI agora retornam JSON/ação de correção, sem traceback. Persistem os limites
 de qualificação de MEN-04 e cruzamentos BD16/17/F18/LAB; MEN-06…08 prosseguem.
+
+
+### 18.16 Consumo MEN-06 no Laboratório existente
+
+Laboratório → Séries e confluências → **Séries por janela…** é o consumidor de
+snapshots/fatos por observação, inclusive temas sem OHLCV. Não existe novo
+produto Strator. A tela usa `stored_series_sources/query_stored_observations`
+do SDK; disponibilidade e revisão vêm do `feature_store.asof_join` por janela
+exata e a média vem de `strategies.indicators.sma`, com período/hash/proveniência.
+Não se criou fórmula no Tk, indicador primário de atenção, store ou executor.
+Sem reamostragem, zero inventado ou retenção entre janelas; lacuna interrompe
+média. O eixo de publicação é retrospectivo no corte, não conhecimento histórico
+ou sinal operacional. Valores primários, unidade, fonte, consulta/versão,
+estado, população e disponibilidade são inspecionáveis. Q/P/N de populações
+diferentes não são reunidos nos cartões; tabela/gráfico preservam cada variante.
+
+Números com separadores e cartões grandes; abstenções e domínio inglês restrito
+aparecem junto a P/N. Ausência permanece travessão. Espera tem barra indeterminada
+local e usa `run_bg` atual; leitura/cálculo canceláveis e erro preservam resultado
+anterior. Exportação/importação aguardam conclusão atômica sem promessa falsa
+de cancelamento. Abrir snapshot não publica fatos no receptor. Interface limita
+seis séries por gráfico para leitura; fonte grande começa nas últimas20mil
+janelas nominais explicitamente, com intervalo ajustável. Detalhe técnico é
+expansível, gráfico usa a ampliação/navegação existentes.
+
+Criar relação abre o formulário canônico `RelationCreator`, sem segundo motor.
+Sem grade de mercado, formato5 não recebe barras fictícias; o resultado pode
+ser insuficiente. Snapshot com mercado e contratos numéricos usa os mesmos
+cálculos já suportados. QA de contagens sintéticas demonstrou relação+1 e nula0
+com indicador armazenado:160 pares/20 sessões em testes; no launcher, relação+1
+salva com88 pares/11 sessões na janela escolhida. Não qualifica conta, fonte
+nativa, utilidade financeira nem cruzamentos além de BD16/17/F18/LAB atuais.
+
+No host, fonte pública congelada Q8/P0/N0 com8 abstenções foi reaberta no
+Laboratório sem nenhuma chamada de rede/modelo. Outro recorte QA, claramente
+sintético, mostrou1.000.001/250.000/50.000, média, lacunas, ampliação, tela menor,
+espera, cancelamento/erro e recuperação. Os2.540 fatos de entrada e namespace
+foram preservados; somente snapshots/artefato de relação foram acrescentados.
+MEN-07/08 mantêm aceite de segunda fonte, regressão, proteção e reconciliação.

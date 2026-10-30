@@ -4287,3 +4287,11 @@ transporte íntegro; nenhum preço/calendário fictício. Formatos anteriores
 preservados. SDK/CLI de captura/exportação/importação; receptor não ganha fatos
 atuais. [Contrato](dados/PLANO_ESTRUTURA_DADOS.md#1815-catálogo-consulta-e-snapshot-men-05).
 Próximos:MEN-06 Laboratório, MEN-07 segunda fonte, MEN-08 reconciliação/proteção.
+
+
+MEN-06: consumo no Laboratório existente por janela, incluindo temas sem preço,
+Q/P/N legíveis com fonte/versão/estado e abstenções, SMA canônica sem preencher
+lacunas, espera/cancelamento e abertura/transporte de snapshot. Relações seguem
+o formulário/motor existentes; referência sintética forte+1/nula0, sem selo
+financeiro ou cruzamento fora dos donos vigentes. [Contrato](dados/PLANO_ESTRUTURA_DADOS.md#1816-consumo-men-06-no-laboratório-existente).
+Próximos:MEN-07 segunda fonte pelo mesmo contrato; MEN-08 proteção/regressão final.

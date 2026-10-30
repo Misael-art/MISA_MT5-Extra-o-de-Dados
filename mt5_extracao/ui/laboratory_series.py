@@ -316,6 +316,8 @@ class SeriesLaboratoryPanel:
         self.analyze_button.pack(side=tk.LEFT)
         self.reload_button = ttk.Button(actions, text="Atualizar fontes", command=self.reload)
         self.reload_button.pack(side=tk.LEFT, padx=4)
+        self.observations_button=ttk.Button(actions,text='Séries por janela…',command=self.open_observations)
+        self.observations_button.pack(side=tk.LEFT,padx=4)
         self.extended = tk.BooleanVar(value=False)
         ttk.Checkbutton(actions, text="Visão ampliada", variable=self.extended,
                         command=self._layout).pack(side=tk.LEFT, padx=4)
@@ -451,6 +453,12 @@ class SeriesLaboratoryPanel:
         for variable in (self.params, self.start, self.end):
             variable.trace_add("write", self._changed)
         self.controls.bind("<Configure>", self._layout_controls)
+
+    def open_observations(self):
+        existing=getattr(self,'observations',None)
+        if existing is not None and existing.alive():existing.window.lift();return
+        from mt5_extracao.ui.series_observations import SeriesObservations
+        self.observations=SeriesObservations(self.frame,self.ui)
 
     def _filter_features(self, *_):
         from mt5_extracao.laboratory import inventory

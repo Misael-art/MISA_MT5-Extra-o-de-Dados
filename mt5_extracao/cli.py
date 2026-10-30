@@ -1799,6 +1799,16 @@ def build_parser():
             q.add_argument("--max-memory-mb", type=float, default=1024)
         q.set_defaults(func=cmd_analytics)
 
+    q=features_sub.add_parser("stored-sources",help="símbolos/TFs com fatos, inclusive temas sem preço")
+    q.set_defaults(func=cmd_analytics)
+    q=features_sub.add_parser("stored-observations",help="janelas congeladas vistas no corte, com SMA canônica")
+    q.add_argument("--manifest",required=True)
+    q.add_argument("--as-of",required=True)
+    q.add_argument("--mean-period",type=int,default=3)
+    q.add_argument("--timeout-seconds",type=float,default=120)
+    q.add_argument("--max-memory-mb",type=float,default=1024)
+    q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("snapshot-capture", help="congela versões explícitas, inclusive temas sem barras de preço")
     q.add_argument("--symbol", required=True)
     q.add_argument("--tf", required=True)
@@ -2196,6 +2206,19 @@ def cmd_analytics(args, ctx):
                 _print("Classificação: "+classified['receipt']['classification']+"; rótulos: "+str(classified['receipt']['label_counts'])+
                        ". Qualificação restrita ao benchmark inglês; consulte mention-classifiers para limites.")
             if result['job']['status']!='COMPLETE' or result.get('classification',{}).get('job',{}).get('status','COMPLETE')!='COMPLETE':return EXIT_FAIL
+        return EXIT_OK
+
+    if args.features_action in ("stored-sources","stored-observations"):
+        from mt5_extracao import sdk
+        if args.features_action=="stored-sources":
+            result=sdk.stored_series_sources(ctx.db)
+            _data(sources=result)
+            for item in result:_print(f"{item['symbol']} {item['timeframe']}: {item['rows']} janelas; {item['start']} a {item['end']}")
+        else:
+            result=sdk.query_stored_observations(ctx.db,args.manifest,as_of=args.as_of,mean_period=args.mean_period,
+                timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb)
+            _data(observations=result)
+            _print(f"{len(result['channels'])} séries; {len(result['times'])} janelas vistas no corte {result['as_of']}; sem conhecimento histórico presumido.")
         return EXIT_OK
 
     if args.features_action in ("snapshot-capture","snapshot-export","snapshot-import"):
