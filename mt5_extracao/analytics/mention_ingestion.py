@@ -42,6 +42,12 @@ def source_capabilities():
                          universe='sample',access='public_api',coverage='explicit_item_panel_only'),
                     dict(provider='stackexchange',corpus='stackexchange.stackoverflow.questions.panel.v1',mode='documents',
                          universe='sample',access='public_api',coverage='explicit_Stack_Overflow_question_panel_only')])
+    from .mention_social import CORPORA
+    for ident,provider in [('F01','twitter'),('F03','youtube'),('F04','reddit')]:
+        item=next(row for row in items if row['id']==ident)
+        item.update(connector_implemented=True,qualification='IMPLEMENTED_ACCESS_REQUIRED_NOT_LIVE_QUALIFIED',
+            connectors=[dict(provider=provider,corpus=CORPORA[provider],mode='documents',universe='sample',
+                transport='Composio CLI authorized read-only account',coverage='explicit_item_panel_only')])
     return items
 
 

@@ -1581,3 +1581,45 @@ M7/M9 sintéticos não entram neste vínculo. Captura cancelada preserva os
 snapshots já confirmados. Categorias permanecem fora de matrizes numéricas.
 A cadeia segue emPRs abertas; não representa merge, release ou aceite dos
 demais itens BD16/17/18/LAB/Expert.
+
+
+### 18.20 Painéis sociais explícitos — MEN-SOCIAL
+
+Reddit (originais de uma comunidade), X (busca recente, sem repostagens simples)
+e YouTube (comentários de primeiro nível de um vídeo) usam o mesmo coletor,
+store e journal MEN. Transporte: Composio CLI local com conta autorizada,
+somente GET em endpoints fixos; não se armazena token nem resposta bruta.
+Cada painel congela IDs antes de hidratar. Retomada consulta os mesmos IDs;
+ID ausente/erro de autenticação/JSON parcial não publica Q0. Corpo/notas longas
+X são consumidos quando presentes, sem confundir snippets/vídeos/likes com Q.
+Respostas YouTube e comentários Reddit continuam outro painel, não presumidos.
+
+Contrato: provider `reddit`/`twitter`/`youtube`; corpora respectivamente
+`reddit.community.originals.panel.v1`, `x.recent-search.posts.panel.v1`,
+`youtube.video.top-level-comments.panel.v1`; documents/sample e perfil
+`composio-read-approved`. `panel_size`1…64 e `account` opcional são parâmetros
+públicos; YouTube exige `video_id` de11 caracteres, Reddit exatamente uma
+`query.communities`. Região/idioma/canal sem prova são recusados. O filtro
+literal do objeto permanece no ingest canônico. Busca recente X recusa janela
+fora de7 dias; Reddit/YouTube observam painel atual, não histórico/censo.
+
+Checkpoint HTTP compartilhado e separado por provedor conserva prazo de acesso;
+ausência de headers/quota na CLI continua desconhecida, sem inventar Retry-After.
+Erro não é repetido automaticamente; atraso mínimo registrado para retomada.
+Isso não certifica quotas/continuidade de cada plano contratado. Reddit requer
+aprovação para o uso permitido, X depende do acesso efetivo e YouTube da conta
+e quota; a descoberta local não sonda nem afirma acesso. Nenhuma compra/coleta
+onerosa ou aprovação comercial foi feita.
+
+Validação:77 testes de regressão no host,4 PostgreSQL isolados. Cobrem captura
+com transporte próprio declarado, perda de documento, roster retomado, origem
+de preço preservada, ausência de texto nos fatos, separação de cooldowns,
+cancelamento e encerramento do subprocesso próprio. As três conexões reais
+estavam ausentes e foram solicitadas no fluxo oficial; validação de captura
+real permanece pendente de autorização/acesso. Não apresentar os testes como
+precisão do classificador ou certificação das fontes.
+
+Referências conferidas30/10/2026: [Reddit API](https://www.reddit.com/dev/api/)
+e [acesso/termos](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data);
+[X recent search](https://docs.x.com/x-api/posts/search-recent-posts);
+[YouTube commentThreads](https://developers.google.com/youtube/data/reference/rest/v3/commentThreads/list).
