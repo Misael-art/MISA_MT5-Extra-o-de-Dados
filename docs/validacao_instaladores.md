@@ -577,3 +577,11 @@ Nenhuma alteração de instalador ou dependência neste incremento.
   e reconciliação sem assumir morte por idade ou tocar processo externo.
 
 Transporte injetado no CI não certifica rede pública nesse host físico.
+
+
+MEN-04 — pendência Windows físico: instalar VADER/langdetect pelo instalador
+oficial, conferir identidade local/recibo (diferença de bytes exige nova
+qualificação), capturar Q com modelo declarado, classificar lote explícito,
+conferir P/N tardios, abstenções e leitura sem inferência. Linux foi exercitado
+pelo launcher com QA10/3/2, SIGINT, retomada e fonte pública; não qualifica MT5,
+Wine, hardware Windows nem precisão geral do corpus/idioma português.
