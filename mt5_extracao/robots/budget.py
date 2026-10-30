@@ -109,6 +109,64 @@ def checkpoint(db, batch_id):
     return data
 
 
+@contextmanager
+def artifact_guard(db, config):
+    """Usa o mesmo lease de Recursos que protege a limpeza de arquivos."""
+    from mt5_extracao.resources import actions, policy
+    with actions.exclusive(policy.archive_dir(db, policy.load(config)), "vínculos de artefatos do lote"):
+        yield
+
+
+def _artifact_paths(values):
+    if not isinstance(values, (list, tuple)) or any(
+            not isinstance(value, str) or not value or "\0" in value or not Path(value).is_absolute() for value in values):
+        raise ValueError("Referência de lote inválida ou relativa; confira/restaure o contexto antes de limpar arquivos.")
+    return sorted(set(values))
+
+
+def retained_artifacts(db, batch_id=None, *, check=lambda: None):
+    """Projeção do journal atual; sem catálogo novo, curvas, migração ou exclusão."""
+    schema = inspect(db.engine)
+    present = [schema.has_table(name) for name in ("_robot_batch_queue", "_robot_batch_jobs")]
+    if not any(present):
+        return []
+    if not all(present):
+        raise ValueError("Journal de lotes incompleto; confira a base antes de limpar arquivos.")
+    refs = []
+    where, params = (" WHERE batch_id=:b", {"b": batch_id}) if batch_id is not None else ("", {})
+    try:
+        with db.engine.connect() as conn:
+            for row in conn.execute(text("SELECT batch_id,plan_json,status FROM _robot_batch_queue" + where), params).mappings():
+                check()
+                plan = json.loads(row["plan_json"])
+                if not isinstance(plan, dict) or plan.get("version") != 1 or not isinstance(plan.get("jobs"), list):
+                    raise ValueError()
+                review = plan.get("context", {}).get("review", {})
+                packages = [review["manifest_path"]] if review.get("manifest_path") else []
+                for entry in plan["jobs"]:
+                    execution = entry.get("execution") or {}
+                    if execution.get("mode") == "preset_package":
+                        packages.append(execution["manifest_path"])
+                for path in _artifact_paths(packages):
+                    refs.append(dict(batch_id=row["batch_id"], job_key=None, run_id=None, status=row["status"],
+                                     basis="frozen_package", files=[path], directories=[str(Path(path).parent)]))
+            for row in conn.execute(text("SELECT batch_id,job_key,run_id,status,history_json FROM _robot_batch_jobs" + where), params).mappings():
+                check()
+                history = json.loads(row["history_json"])
+                if not isinstance(history, list):
+                    raise ValueError()
+                for index, event in enumerate(history):
+                    artifacts = event.get("artifacts")
+                    if artifacts is not None:
+                        files, directories = _artifact_paths(artifacts["files"]), _artifact_paths(artifacts["directories"])
+                        refs.append(dict(batch_id=row["batch_id"], job_key=row["job_key"], run_id=row["run_id"],
+                                         status=row["status"], history_index=index, basis="native_session",
+                                         files=files, directories=directories))
+    except (ValueError, TypeError, KeyError, AttributeError) as error:
+        raise ValueError("Referências de lotes ilegíveis ou sem caminho absoluto; preserve os arquivos e confira o journal.") from error
+    return refs
+
+
 class Budget:
     def __init__(self, db=None, config=None, *, limits=None, sample=None, clock=time.monotonic, batch_id=None,
                  validate_run=None):
@@ -409,6 +467,31 @@ class JobBudget:
         if self.parent.db is not None:
             with self.parent._lock:
                 self.parent._record(self.key, self.run_id, state, reason, conn)
+
+    def retain_artifacts(self, *, files=(), directories=()):
+        """Vincula antes de criar arquivos; a tentativa e suas falhas permanecem no journal."""
+        files, directories = _artifact_paths(files), _artifact_paths(directories)
+        parent = self.parent
+        if parent.db is None or not parent._claimed:
+            raise ValueError("Artefatos exigem um job admitido no journal com posse válida.")
+        with artifact_guard(parent.db, parent.config), parent._lock:
+            parent.check()
+            with parent.db.engine.begin() as conn:
+                owner = conn.execute(text("SELECT owner_json FROM _robot_batch_queue WHERE batch_id=:b"),
+                                     {"b": parent.batch_id}).scalar_one()
+                row = conn.execute(text("SELECT run_id,status,history_json FROM _robot_batch_jobs WHERE batch_id=:b AND job_key=:k"),
+                                   {"b": parent.batch_id, "k": self.key}).mappings().one()
+                if owner != parent._owner_json or row["run_id"] != self.run_id or row["status"] != "running":
+                    raise ValueError("O vínculo exige o proprietário e a tentativa em andamento; referências preservadas.")
+                history = json.loads(row["history_json"])
+                previous = history[-1].get("artifacts", dict(files=[], directories=[]))
+                history[-1]["artifacts"] = dict(files=_artifact_paths(previous["files"] + files),
+                                                directories=_artifact_paths(previous["directories"] + directories))
+                payload = _json(history)
+                parent.check(reserve_bytes=len(payload.encode("utf-8")))
+                conn.execute(text("UPDATE _robot_batch_jobs SET history_json=:h WHERE batch_id=:b AND job_key=:k"),
+                             {"h": payload, "b": parent.batch_id, "k": self.key})
+            parent._jobs[self.key]["history_json"] = payload
 
     def provenance(self):
         """Contexto revisado do consumidor, ligado ao mesmo journal e publicação."""

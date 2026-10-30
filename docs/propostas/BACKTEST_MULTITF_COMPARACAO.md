@@ -56,6 +56,15 @@ escopo limita Python a dois workers, respeitando configuração explícita e
 governor; MQL5 permanece serial. A extensão de retenção/limpeza referenciada
 fica na T20.25b; essa entrega não concede aceite nativo/financeiro.
 
+**T20.25b (30/10):** referências dos pacotes e das sessões controladas passam
+pelo journal e pela proteção de arquivos existentes. O plano reconfere o pacote
+sob o lease local de Recursos; a sessão registra diretório/canais UUID antes de
+copiar. Falhas permanecem vinculadas ao lote. Limpeza e vínculos são serializados
+mesmo com pastas de arquivo distintas; idade não toma um consumidor vivo.
+Perfis próprios sem referências continuam usando quarentena/restauração
+reversíveis. Não há novo expurgo de snapshots, resultados ou perfis nativos,
+nem outro cache/executor. [Contrato](../sdk/api.md#cache-e-perfis-privados-t2025).
+
 **Viabilidade inicial: sim, para selecionar vários ativos e enfileirar os testes.**
 `robots/runner.py` já tem `BatchRunner`, `ResourceGovernor`, limites de CPU/RAM e
 workers. `robots/budget.py` mantém orçamento/checkpoint; recursos e retenção já

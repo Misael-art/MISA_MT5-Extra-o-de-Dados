@@ -443,6 +443,13 @@ class Session:
         self.report = self.directory / "relatorio.json"
         self.observed_seconds = 0.0
         self.currency = str((account or {}).get("currency") or "")
+        control = (self.native_options or {}).get("control")
+        retain = getattr(control, "retain_artifacts", None)
+        if retain is not None:
+            common = mt5_tools.common_files_dir(config)
+            files = [str((common / name).absolute()) for name in
+                     (self.telemetry_file, self.trades_file, self.input_receipt_file, self.lease_file)] if common is not None else []
+            retain(files=files, directories=[str(self.directory.absolute())])
 
     @property
     def active(self):
