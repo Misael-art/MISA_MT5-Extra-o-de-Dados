@@ -17,6 +17,8 @@ SURFACE = {
     "capture_feature_snapshot": ["db", "symbol", "timeframe", "start", "end", "stored_features", "feature_only", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "export_feature_snapshot": ["db", "manifest_id", "destination"],
     "import_feature_snapshot": ["db", "source"],
+    "stored_series_sources": ["db"],
+    "query_stored_observations": ["db", "manifest_id", "as_of", "mean_period", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "classify_mention_batch": ["db", "selection", "batch", "synthetic_fixture", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "export_feature_relation": ["db", "analysis_id", "destination", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "import_feature_relation": ["db", "source", "cancel_check", "write_guard", "timeout_seconds", "max_memory_mb"],

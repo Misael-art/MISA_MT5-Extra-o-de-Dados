@@ -254,7 +254,8 @@ def feature_snapshot(db, manifest_id):
             reason = relation_dto.pair_contract_reason([descriptor])
             features.append(dict(**descriptor, numeric_contract_compatible=reason is None, reason=reason))
         result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="ok", manifest_id=snapshot.manifest_id,
-            scope={key:manifest[key] for key in ("symbol","timeframe","source","time","period")},
+            scope=dict({key:manifest[key] for key in ("symbol","timeframe","source","time","period")},
+                       snapshot_schema_version=manifest['schema_version']),
             features=features, errors=[], reasons=[] if features else
                 ["A captura não contém versões armazenadas. Selecione as entradas em Séries e confluências e congele novamente."])
     except (ValueError, KeyError, TypeError, SQLAlchemyError):
