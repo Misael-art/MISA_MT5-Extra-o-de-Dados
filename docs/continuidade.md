@@ -4629,3 +4629,21 @@ O aviso de convergência passa a limitar texto pelo notebook visível no resize/
 cobrindo a falha residual Windows3975/154 da PR245. Teste do percurso passou no
 Linux; novo CI e Windows físico não são presumidos. Continuar SA-02 persistência
 Super ATR e SA-01 consumidor de pesquisa/Expert, preservando os pins.
+
+
+### Super ATR persistido —30/10/2026 (SA-02)
+
+`codex/super-atr-persistencia`, sobre inspetor/PR251. Header e adaptador originais
+HADOUKEN no pin existente alimentam quatro séries no feature_store/journal.
+Não duplica fórmula nem modifica companions. Fonte congelada no inventário,
+CLI/SDK e formulário com espera/cancelamento; parâmetros, seed, versão, clocks,
+proveniência e revisões preservados. Disponibilidade local, nunca retroativa.
+[Contrato](sdk/super_atr.md#persistência-sa-02).
+
+26 testes dirigidos/2 PostgreSQL isolados; SMA/EMA240 barras conferidas com
+referência Decimal50 (erro máximo1,43e-14), ATRzero/igualdade/duas viradas,
+idempotência e CLI=SDK. Launcher próprio confirmou960 fatos e221 barras válidas
+no vínculo retrospectivo, sem callback errors. Versões de price.return1/5/20
+preservadas. Doctor offline e prévia identificada constam no recibo/registro
+central. Segue SA-01 consumidor de pesquisa, com gate Tester+DEMO e sem promoção
+operacional; acesso social/revisão humana/Windows físico continuam delimitados.

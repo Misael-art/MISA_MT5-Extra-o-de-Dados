@@ -115,6 +115,16 @@ def collect_macro_observations(db, *, source_id, start, end, **kwargs):
     return macro_sources.collect(db,source_id=source_id,start=start,end=end,**kwargs)
 
 
+def super_atr_capabilities(framework_root, manifest_path=None):
+    from .analytics import super_atr
+    return super_atr.capabilities(framework_root,manifest_path)
+
+
+def materialize_super_atr_snapshot(db, manifest_id, *, framework_root, **kwargs):
+    from .analytics import super_atr
+    return super_atr.materialize(db,manifest_id,framework_root=framework_root,**kwargs)
+
+
 def describe_mention_series(db, *, symbol, timeframe, subject, source, query, classifier=None, universe="documents"):
     """Contrato Q/P/N e identidade de coleta; não busca, classifica nem registra valores."""
     from mt5_extracao.analytics import mentions
@@ -344,6 +354,7 @@ def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
 
 
 __all__ = [
+    "super_atr_capabilities", "materialize_super_atr_snapshot",
     "link_laboratory_execution",
     "compare_laboratory_runs", "export_laboratory_runs",
     "register_laboratory_protocol", "evaluate_laboratory_protocol",
