@@ -137,20 +137,21 @@ def collect(db, *, selection, start, end, resume=True, classify=False, write_gua
     started=dict(started_monotonic=time.monotonic())
     def guard():indicator_materializer._guard(started,write_guard,cancel_check,timeout_seconds,max_memory_mb)
     guard();contract=mentions.describe(db,**selection);scope=contract['scope'];source=scope['source'];identity=datasets.identity(db)
-    from mt5_extracao.analytics import mention_stackexchange
+    from mt5_extracao.analytics import mention_stackexchange, mention_social
     provider=source['provider']
-    corpus={'hackernews':HN_CORPUS,'stackexchange':mention_stackexchange.CORPUS}.get(provider)
+    social=provider in mention_social.CORPORA
+    corpus={'hackernews':HN_CORPUS,'stackexchange':mention_stackexchange.CORPUS,**mention_social.CORPORA}.get(provider)
     if corpus is None or source['corpus']!=corpus or source['mode']!='documents' or scope['universe']!='sample':
-        raise ValueError('Conector exige hackernews/newstories ou stackexchange/questions, corpus versionado, documents/sample.')
+        raise ValueError('Conector exige provedor/corpus implementado, documents e sample; consulte mention-sources.')
     parameters=source.get('parameters',{})
-    if set(parameters)-{'panel_size'}:raise ValueError('Parâmetros da fonte desconhecidos; endpoint/credenciais não são argumentos deste conector.')
-    count=parameters.get('panel_size',24)
+    if not social and set(parameters)-{'panel_size'}:raise ValueError('Parâmetros da fonte desconhecidos; endpoint/credenciais não são argumentos deste conector.')
+    count=mention_social.validate(scope) if social else parameters.get('panel_size',24)
     if type(count) is not int or not 1<=count<=64:raise ValueError('panel_size precisa ser inteiro entre1 e64, explicitamente parte da população.')
-    if any(scope['query'][k] for k in ('languages','channels','communities')) or scope['query']['region'] is not None:
+    if not social and (any(scope['query'][k] for k in ('languages','channels','communities')) or scope['query']['region'] is not None):
         raise ValueError('Este painel não certifica idioma/região/canal/comunidade; remova filtros não suportados. Autores públicos podem ser selecionados.')
     start,end=mentions._utc(start,'start'),mentions._utc(end,'end');now=datetime.now(timezone.utc)
     mentions.value_records(contract,start=start,end=end,captured_at=now,processed_at=now,population_revision='preflight',quantity=0)
-    adapter='hackernews-v1' if provider=='hackernews' else 'stackexchange-questions-v1'
+    adapter=provider+'-composio-panel-v1' if social else 'hackernews-v1' if provider=='hackernews' else 'stackexchange-questions-v1'
     request=dict(scope_hash=contract['scope_hash'],start=start.isoformat(),end=end.isoformat(),panel_size=count,adapter=adapter)
     for definition in contract['definitions']:guard();features.register(db,**definition)
     previous=producer_jobs.get_checkpoint(db,scope['symbol'],scope['timeframe'],contract['job_family'])
@@ -162,17 +163,18 @@ def collect(db, *, selection, start, end, resume=True, classify=False, write_gua
         with requests.Session() as session:
             session.headers.update({'User-Agent':'MT5X-MEN/1 bounded-public-api-research'})
             if ids is None:
-                roster=(_get(session,HN_API+'/newstories.json',guard,run,timeout_seconds,metrics) if provider=='hackernews' else
+                roster=(mention_social.roster(db,scope,count,start,end,guard,run,timeout_seconds,metrics) if social else _get(session,HN_API+'/newstories.json',guard,run,timeout_seconds,metrics) if provider=='hackernews' else
                     mention_stackexchange.roster(db,session,count,start,end,guard,run,timeout_seconds,metrics))
-                if not isinstance(roster,list) or any(type(i) is not int or i<=0 for i in roster):
+                if not isinstance(roster,list) or any((not isinstance(i,str) or not i) if social else (type(i) is not int or i<=0) for i in roster):
                     raise ValueError('Roster da API inválido; nenhum painel foi contado.')
-                ids=list(dict.fromkeys(roster))[:count]
+                ids=roster if social else list(dict.fromkeys(roster))[:count]
                 _pending(db,contract,identity,run,request,guard,resume=True,ids=ids)
-            if (not isinstance(ids,list) or len(ids)>count or any(type(i) is not int or i<=0 for i in ids) or len(set(ids))!=len(ids)):
+            if (not isinstance(ids,list) or len(ids)>count or any((not isinstance(i,str) or not i) if social else (type(i) is not int or i<=0) for i in ids) or len(set(ids))!=len(ids)):
                 raise ValueError('Roster pendente inválido; não será reinterpretado como outra seleção.')
             producer_jobs.attach_run_inputs(db,run,dict(request=request,ids=ids,roster_sha256=mentions._hash(ids)))
             if provider=='hackernews':
                 documents=[_document(_get(session,HN_API+f'/item/{ident}.json',guard,run,timeout_seconds,metrics),ident) for ident in ids];licenses=[]
+            elif social:documents=mention_social.documents(db,scope,ids,guard,run,timeout_seconds,metrics);licenses=[]
             else:documents,licenses=mention_stackexchange.documents(db,session,ids,guard,run,timeout_seconds,metrics)
         captured=datetime.now(timezone.utc).isoformat();guard()
         if datasets.identity(db)!=identity:
@@ -190,6 +192,15 @@ def collect(db, *, selection, start, end, resume=True, classify=False, write_gua
                 license_basis='API field where present; missing only after2018-05-02 uses explicit publisher-policy inference; no raw redistribution',
                 selection='first N questions created in the UTC window; sort creation descending; not census',
                 quota_and_backoff='canonical journal checkpoints; identical URL at least60s; API method backoff; remaining quota explicit')
+        if social:
+            acquisition.update(adapter=adapter,provider=provider,api=mention_social.ROOTS[provider],
+                text_scope='Explicit source panel: local post body or first-level video comments only',
+                selection='first N current/recent API IDs, pinned for resume; observations outside window excluded; not census',
+                excluded_source_states=['missing_id_fails_capture','reposts_excluded'],
+                transport='Composio CLI; existing authorized account; GET only; no token in store',
+                access_profile=source['access_profile'],terms_declared=source['terms_version'],
+                qualification='CAPTURE_RECEIPT_ONLY_NOT_SOURCE_ACCURACY',
+                quota_and_backoff='canonical checkpoint; no automatic retry; unavailable headers/quota remain unknown')
         result=mention_ingestion.ingest(db,selection=selection,batch=batch,write_guard=write_guard,cancel_check=cancel_check,
             timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb,_run=run,_acquisition=acquisition)
         result['acquisition']=dict(metrics,resumed_panel=resumed)

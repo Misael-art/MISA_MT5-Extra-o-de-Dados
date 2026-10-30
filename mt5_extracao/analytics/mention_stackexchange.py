@@ -20,8 +20,10 @@ LICENSE_POLICY_START=int(datetime(2018,5,2,tzinfo=timezone.utc).timestamp())
 SYMBOL='@mentions.http';FAMILY='mentions:http:stackexchange:'
 
 
-def _budget(db,guard,*,method,url=None,claim=False,delay=0,quota=None):
+def _budget(db,guard,*,method,url=None,claim=False,delay=0,quota=None,provider="stackexchange"):
     """Recibo de acesso no checkpoint canônico; nenhuma espera/rede dentro de SQL."""
+    if provider not in {"stackexchange","reddit","twitter","youtube"}:raise ValueError("Provedor HTTP desconhecido.")
+    family=FAMILY if provider=="stackexchange" else "mentions:http:"+provider+":"
     waiting={}
     keys=['global','method:'+method]+(['url:'+mentions._hash(url)] if url else [])
     def update(conn,_counts):
@@ -31,7 +33,7 @@ def _budget(db,guard,*,method,url=None,claim=False,delay=0,quota=None):
         previous={}
         for key in keys:
             row=conn.execute(text('SELECT source_sequence,state_json FROM _analytics_producer_checkpoints '
-                'WHERE symbol=:symbol AND tf=:tf AND family=:family'),dict(symbol=SYMBOL,tf='M1',family=FAMILY+key)).first()
+                'WHERE symbol=:symbol AND tf=:tf AND family=:family'),dict(symbol=SYMBOL,tf='M1',family=family+key)).first()
             previous[key]=(int(row[0]),json.loads(row[1])) if row else (0,{})
         if claim:
             wait=max([0.]+[(datetime.fromisoformat(state['not_before'])-now).total_seconds()
@@ -45,7 +47,7 @@ def _budget(db,guard,*,method,url=None,claim=False,delay=0,quota=None):
             if state.get('not_before'):until=max(until,datetime.fromisoformat(state['not_before']))
             state=dict(state,not_before=until.isoformat())
             if quota is not None and key=='global':state['quota_remaining']=quota
-            producer_jobs.advance_checkpoint(conn,symbol=SYMBOL,timeframe='M1',family=FAMILY+key,algorithm_version='1',
+            producer_jobs.advance_checkpoint(conn,symbol=SYMBOL,timeframe='M1',family=family+key,algorithm_version='1',
                 config_hash=mentions._hash(key),source_sequence=sequence+int(claim),last_bar_start=None,status='COMPLETE',state=state)
         guard()
     feature_store.save_values(db,[],transaction_hook=update)

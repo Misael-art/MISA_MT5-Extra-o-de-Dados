@@ -4531,3 +4531,15 @@ ao resize do notebook, inclusive quando o texto mantém largura requerida alta.
 56 testes pertinentes aprovados em411,59s no Linux/Xvfb. O novo CI Windows e
 o Windows físico conservam seus aceites próprios; não declarar toda a suíte
 ou plataforma aprovada antes do resultado correspondente.
+
+
+### Ampliação social —30/10/2026
+
+Branch `codex/fontes-sociais` sobre o corretivo Windows da PR245. Adaptadores
+Reddit/X/YouTube integrados ao coletor/journal atual, sem novo motor/store.
+[Contrato, dependências e cobertura](dados/PLANO_ESTRUTURA_DADOS.md#1820-painéis-sociais-explícitos--men-social).
+77 casos pertinentes e4 PG aprovados. Contas não conectadas: fluxos oficiais
+solicitados, sem segredos no chat ou scraping substituto. Próxima integração
+real depende dessas autorizações, enquanto português, macroeconomia, protocolo
+preditivo, comparações financeiras e inspetor seguem o escopo autorizado.
+Não confundir conector implementado com fonte/classificador qualificados.
