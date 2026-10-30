@@ -37,3 +37,22 @@ def test_each_explanation_says_what_happened_and_what_to_do():
     assert "não entrou na conta" in ch.explain(ch.NOT_LOGGED) and "Arquivo > Login" in ch.explain(ch.NOT_LOGGED)
     assert "mt5-bridge.sh start" in ch.explain(ch.NOT_OPEN) and "mt5-bridge" not in ch.explain(ch.NOT_OPEN, windows=True)
     assert "Diagnóstico do ambiente" in ch.explain(ch.NOT_OPEN, windows=True)
+
+
+def test_readiness_wait_has_deadline_and_cooperative_cancellation():
+    now=[0.];checks=[]
+    def sleep(seconds):now[0]+=seconds
+    def ready():checks.append(now[0]);return now[0]>=.5
+    assert ch.wait_ready(ready,1,clock=lambda:now[0],sleep=sleep)
+    assert now[0]==.5 and len(checks)==3
+    assert not ch.wait_ready(lambda:False,.5,clock=lambda:now[0],sleep=sleep)
+    assert now[0]==1
+    assert not ch.wait_ready(lambda:True,1,cancelled=lambda:True,clock=lambda:now[0],sleep=sleep)
+
+
+def test_backend_failure_and_uncertain_opening_do_not_claim_terminal_did_not_open():
+    assert ch.diagnose(True,True,backend_available=False)==ch.BACKEND_UNAVAILABLE
+    assert ch.diagnose(False,False,backend_available=False)==ch.NO_INTERNET
+    for reason in (ch.NOT_OPEN,ch.BACKEND_UNAVAILABLE,ch.CONNECTION_ERROR):
+        assert 'O MetaTrader 5 não abriu.' not in ch.explain(reason)
+    assert 'ponte' in ch.explain(ch.BACKEND_UNAVAILABLE) and 'ponte' not in ch.explain(ch.BACKEND_UNAVAILABLE,windows=True)
