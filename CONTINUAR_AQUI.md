@@ -8,9 +8,18 @@ locais, anexos não enviados ou do histórico de uma sessão aberta no computado
 Leia o [roteiro completo](docs/repasse/NOVO_HOST_20261024.md) e entregue ao agente
 o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
-## Ponta de continuidade de menções em29/10/2026
+## Ponta de continuidade em30/10/2026
 
-Retome a branch `codex/mencoes-aceite`, que contém MEN-00…08 sobre a cadeia
+Retome `codex/cruzamentos-mencoes`, sobre MEN-08/PR244. A extensão
+BD16-LAB-LINKS integra fontes explícitas, atividade/indicadores/TFs ao candle
+e relatório HTML local. [Uso](docs/sdk/laboratorio_series.md#fontes-vinculadas-candle-e-relatório-portátil)
+e [evidência/limites](docs/dados/PLANO_ESTRUTURA_DADOS.md#1819-cruzamentos-no-candle-e-relatório--bd16-lab-links).
+SHA/PR/recibos/prévia atuais ficam no registro central Projects/.workspace.
+Não deduzir ciclos macro, causa do preço ou aceite financeiro das correlações.
+
+## Referência de menções em29/10/2026
+
+A branch de referência `codex/mencoes-aceite` contém MEN-00…08 sobre a cadeia
 anterior do Laboratório/Dados. A ponta de código MEN-07 é
 `72850fb7a5810932c89e87bbb691e3f2ff6dcb40` ([PR243](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/243));
 o fechamento MEN-08 reconcilia aceite, proteção e documentação. A cadeia permanece

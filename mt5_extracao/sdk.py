@@ -201,6 +201,33 @@ def inspect_feature_snapshot(db, manifest_id):
     return query_service.feature_snapshot(db, manifest_id)
 
 
+def analyze_laboratory(db, *, manifest_ids, linked_selections=(), timeline_basis="received", **kwargs):
+    """Mesmo relatório/canais/candles do Laboratório, com fontes explicitamente vinculadas."""
+    from mt5_extracao.analytics import datasets
+    from mt5_extracao.laboratory import service
+    snapshots = [datasets.load(db, ident) for ident in manifest_ids]
+    if not snapshots:
+        raise ValueError("Escolha ao menos um snapshot de mercado.")
+    linked = service.capture_linked_sources(db, target_symbol=snapshots[0].manifest["symbol"], selections=linked_selections, frozen_only=True,
+        **{k:v for k,v in kwargs.items() if k in ("cancel_check", "timeout_seconds", "max_memory_mb")})
+    return service.analyze(snapshots, linked_sources=linked, timeline_basis=timeline_basis, **kwargs)
+
+
+def laboratory_crossings(report, **kwargs):
+    from mt5_extracao.laboratory import service
+    return service.crossings(report, **kwargs)
+
+
+def laboratory_candle(report, index):
+    from mt5_extracao.laboratory import service
+    return service.candle_context(report, index)
+
+
+def export_laboratory_report(report, destination, **kwargs):
+    from mt5_extracao.laboratory import report as renderer
+    return renderer.export(report, destination, **kwargs)
+
+
 def capture_feature_snapshot(db, *, symbol, timeframe, start, end, stored_features, feature_only=True,
                              write_guard=None,cancel_check=None,timeout_seconds=120,max_memory_mb=1024):
     """Congela versões explícitas; temas podem usar janela UTC sem barras de preço."""
