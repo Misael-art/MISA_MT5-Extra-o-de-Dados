@@ -1,5 +1,37 @@
 # Super ATR no gráfico do painel — G19.9
 
+## Persistência SA-02
+
+No Laboratório → Séries e confluências → Fontes vinculadas, selecione um ativo
+com candles nativos e use **Materializar Super ATR…**. Informe a raiz canônica
+HADOUKEN existente, janela em horário broker, período, média0=SMA/1=EMA e desvio.
+A barra inicial fixa a semente; alongar a janela pelo fim preserva o prefixo.
+O formulário mostra atividade e permite solicitar cancelamento; a etapa do
+compilador termina antes de responder ao cancelamento. Não instala ferramentas.
+
+O produtor usa o header e o adaptador C++ originais do HADOUKEN no commit do
+manifesto oficial, sem outra fórmula Python. Grava `trend.super_atr.level`,
+`trend.super_atr.atr` (números), `trend.super_atr.side` e
+`trend.super_atr.turn` (categorias up/down/none). Lado inicial=up; primeiro valor
+válido tem virada=none. ATRzero é válido. Warmup e sufixo inválido ficam
+UNAVAILABLE, com motivo, sem preencher lacunas com zero. Fórmula, parâmetros,
+seed, compilador, hashes do header/adaptador, versão, fonte, manifesto, abertura/
+fim UTC, revisão e clocks acompanham os fatos no store/journal existentes.
+
+`available_at` e `observed_at` são o recebimento local da materialização; o
+fechamento nominal **não** prova recebimento histórico. Para estudar a curva
+histórica, vincule a fonte congelada com **Publicação retrospectiva**, explicitando
+esse limite. Consulta no corte anterior à materialização não retorna fatos.
+Reexecução idêntica é idempotente; correção conserva o histórico as-of e revisa
+o sufixo dependente. Fonte congelada/exportação reutilizam BD18/SDK existente.
+
+CLI: `analytics features super-atr-capabilities --framework RAIZ` e
+`analytics features super-atr-materialize --framework RAIZ --manifest ID
+--period 20 --mean 0 --deviation 1`. Não altera pins, base principal, conta ou
+ordens. Execução do header em C++ não certifica MetaTrader, Expert, Profit ou
+desempenho financeiro. As evidências históricas de G19.9 abaixo são de escopo
+distinto da materialização SA-02.
+
 O estudoEURUSD/M5 usa DEZ curvas de período20, média aritmética0, com desvios
 1 a10, conforme a ampliação solicitada pelo proprietário. Todas pontilhadas em azul, do claro ao escuro conforme o multiplicador.
 Na virada, os pontos da mesma curva se ligam em diagonal pontilhada; não há

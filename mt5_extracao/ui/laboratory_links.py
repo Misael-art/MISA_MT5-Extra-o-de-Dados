@@ -84,8 +84,15 @@ class LaboratoryLinks:
             for i,button in enumerate(buttons):button.grid(row=i//cols,column=i%cols,sticky='ew',padx=2,pady=2)
         row.bind('<Configure>',layout)
         ttk.Button(frame,text="Coletar fonte econômica…",command=self.open_macro).pack(anchor="w",pady=6)
+        ttk.Button(frame,text='Materializar Super ATR…',command=self.open_super_atr).pack(anchor='w',pady=6)
         self.linked=self._table(frame,[("target","Ativo",100),("source","Objeto / snapshot",230),("tf","TF",75),("count","Séries",80),("why","Associação explícita",340)],height=3)
         self.show_links()
+
+    def open_super_atr(self):
+        if self.pending:return
+        if getattr(self,'super_atr_capture',None) is not None and self.super_atr_capture.alive():self.super_atr_capture.window.lift();return
+        from .super_atr_capture import SuperAtrCapture
+        self.super_atr_capture=SuperAtrCapture(self)
 
     def open_macro(self):
         if self.pending:return

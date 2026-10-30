@@ -1698,3 +1698,30 @@ timeout, sem fatos publicados; acesso contínuo BCB não está certificado.
 Nenhum ensaio com preço sintético qualifica correlação financeira ou previsão.
 Referências: [BCB SGS11](https://dadosabertos.bcb.gov.br/dataset/11-taxa-de-juros---selic)
 e [FRED USREC/convenção](https://fred.stlouisfed.org/series/USREC).
+
+
+### 18.23 Super ATR no store canônico — SA-02
+
+Contrato executável em `analytics.super_atr`: snapshot OHLCV congelado e fuso
+broker declarado; TR/SMA/EMA/catraca pelo header e adaptador C++ originais da
+composição HADOUKEN fixada, sem nova fórmula, store ou scheduler. Quatro fatos:
+linha/ATR numéricos e lado/virada categóricos. Primeira barra fixa a semente;
+versão inclui parâmetros, seed, implementação, header, adaptador e compilador.
+Cada observação guarda abertura/fim UTC, origem, snapshot, revisão prefixada,
+qualidade/warmup e clocks. Repetir mantém fatos/proveniência; apêndice preserva
+prefixo; correção revisa sufixo sem alterar corte antigo. Referência do job ao
+snapshot e checkpoint confirmam junto dos valores no journal existente.
+
+Disponibilidade/observação são o recebimento local. Reconstrução histórica não
+comprova recebimento histórico. A UI prepara fonte congelada consultável/exportável,
+com espera/cancelamento; vínculo retrospectivo é escolha explícita. Limite20.000
+barras, orçamento120s/1024MiB padrão e toolchain existente. Nenhum pin alterado,
+conta consultada ou ordem enviada. Compilação C++ não certifica MQL/MT5/Profit.
+
+Validação:26 testes dirigidos de núcleo/UI/API,2 PostgreSQL reais isolados;
+launcher oficial960 fatos,221 barras válidas no gráfico vinculado; CLI=SDK.
+SMA/EMA em240 barras próprias comparadas à referência Decimal50 original,
+erro máximo1,43e-14 (tolerância absoluta1e-10/relativa1e-12); zeroATR, igualdade,
+ambas viradas e idempotência conferidos. Formulário visível mostrou espera;
+cancelamento e correção/rollback/as-of testados. Dados próprios sintéticos,
+sem inferência de desempenho. [Uso](../sdk/super_atr.md#persistência-sa-02).
