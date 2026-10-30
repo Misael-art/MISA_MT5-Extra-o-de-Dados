@@ -62,7 +62,8 @@ INPUT_LABELS.update({"InpMagicNumber":"Magic", "InpDailyLossPct":"Perda máxima 
 class NameDialog:
     def __init__(self,parent,robot,current,callback,*,rename=False):
         self.window=tk.Toplevel(parent);self.window.title("Renomear Manual" if rename else "Salvar como Manual")
-        self.window.transient(parent);self.window.grab_set();self.window.geometry("650x240")
+        from .robot_controls import _modal_when_mapped
+        self.window.transient(parent);_modal_when_mapped(self.window);self.window.geometry("650x240")
         self.robot,self.current,self.callback=robot,current,callback
         body=ttk.Frame(self.window,padding=16);body.pack(fill=tk.BOTH,expand=True)
         ttk.Label(body,text="Nome do preset",style="Heading.TLabel").pack(anchor="w")
@@ -402,8 +403,10 @@ class PresetWorkflow:
         self.rename.state(["!disabled" if is_manual and not self.dirty and not busy else "disabled"])
         if not self.source_compatible:
             for button in (self.clone,self.export,self.save):button.state(["disabled"])
-        disabled=busy or not loaded or self.dirty or not self.source_compatible or self.preview_error or bool(getattr(self.ui.app,"offline",False))
-        for button in (self.backtest,self.replay):button.state(["disabled" if disabled else "!disabled"])
+        disabled=busy or not loaded or self.dirty or not self.source_compatible or self.preview_error
+        offline=bool(getattr(self.ui.app,"offline",False));all_tfs=self.robot.key in getattr(self.controller,"all_timeframes",set())
+        self.backtest.state(["disabled" if disabled or (offline and not all_tfs) else "!disabled"])
+        self.replay.state(["disabled" if disabled or offline or all_tfs else "!disabled"])
         self.stop.state(["!disabled" if active else "disabled"])
         self.files.state(["!disabled" if self.artifacts.get("artifact_directory") else "disabled"])
         self.csv.state(["!disabled" if self.artifacts.get("trades_csv") else "disabled"])
@@ -637,15 +640,25 @@ class PresetWorkflow:
         self.work(action,self.loaded)
     def start_native(self,mode):
         if self.pending:return
+        all_tfs = self.robot.key in getattr(self.controller, "all_timeframes", set())
+        if all_tfs and mode == "replay":
+            self.status.set("Escolha um TF individual no card para REPLAY.");return
         if not self.source_compatible or self.preview_error:
             self.status.set("Confira a fonte e a prévia de lotes antes de iniciar o Tester.");return
-        if getattr(self.ui.app,"offline",False):self.status.set("Reabra sem --offline para executar o MT5; edição/exportação continuam locais.");return
+        if getattr(self.ui.app,"offline",False) and not all_tfs:self.status.set("Reabra sem --offline para executar o MT5; edição/exportação continuam locais.");return
         if self.controller.chosen[self.robot.key][:2]!=(self.symbol,self.timeframe):self.status.set("Ativo/TF mudou no card; reabra o percurso no contexto selecionado.");return
         existing=self.controller.sessions.get(self.robot.key)
         if existing and existing.active:self.status.set("Já existe sessão própria em andamento; aguarde ou cancele-a.");return
         try:context=self.context();action=self.export_action(context)
         except ValueError as error:self.status.set(str(error));return
         def prepared(value):
+            if all_tfs:
+                current = self.current
+                self.controller.open_scope(self.robot, symbol=self.symbol, start=context.start, end=context.end,
+                    manifest_path=value["manifest_path"], is_current=lambda: not self.dirty and self.current == current
+                    and self.controller.chosen[self.robot.key][:2] == (self.symbol, self.timeframe)
+                    and self.robot.key in self.controller.all_timeframes)
+                return
             try:job=execution.PresetExecution(self.db,self.config,self.robot,value["manifest_path"],mode=mode)
             except ValueError as error:self.status.set(str(error));return
             self.execution=job;self.controller.sessions[self.robot.key]=job.session
