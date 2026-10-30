@@ -1780,19 +1780,21 @@ def build_parser():
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
-    q = features_sub.add_parser("mention-sources", help="capacidades/acessos documentados; sem sonda de rede")
-    q.set_defaults(func=cmd_analytics)
-    for action in ("mentions-describe", "mentions-ingest", "mentions-collect"):
+    for action in ("mention-sources", "mention-classifiers"):
+        q = features_sub.add_parser(action, help="capacidades locais/documentadas; sem sonda de rede")
+        q.set_defaults(func=cmd_analytics)
+    for action in ("mentions-describe", "mentions-ingest", "mentions-collect", "mentions-classify"):
         q = features_sub.add_parser(action, help="contrato ou ingestão explícita de lote de menções")
         q.add_argument("--selection", required=True, help="JSON do objeto/fonte/consulta/resolução/classificador")
         if action != "mentions-describe":
-            if action == "mentions-ingest":
+            if action in ("mentions-ingest", "mentions-classify"):
                 q.add_argument("--batch", required=True, help="JSON limitado de documentos/agregado e manifesto")
                 q.add_argument("--synthetic-fixture", action="store_true", help="somente fonte qa.; não certifica captura/classificador real")
             else:
                 q.add_argument("--start", required=True, help="início da janela UTC alinhada e já fechada")
                 q.add_argument("--end", required=True, help="fim exclusivo da janela UTC")
                 q.add_argument("--fresh-panel", action="store_true", help="seleciona painel novo explicitamente, preservando recibos anteriores")
+                q.add_argument("--classify", action="store_true", help="após receber Q, classifica explicitamente o mesmo lote no domínio inglês qualificado")
             q.add_argument("--timeout-seconds", type=float, default=120)
             q.add_argument("--max-memory-mb", type=float, default=1024)
         q.set_defaults(func=cmd_analytics)
@@ -2136,7 +2138,7 @@ def cmd_analytics(args, ctx):
     import json
     from mt5_extracao.analytics import feature_store, features
 
-    if args.features_action in ("mention-sources", "mentions-describe", "mentions-ingest", "mentions-collect"):
+    if args.features_action in ("mention-sources", "mention-classifiers", "mentions-describe", "mentions-ingest", "mentions-collect", "mentions-classify"):
         from pathlib import Path
         from mt5_extracao import sdk
         from mt5_extracao.analytics import mention_ingestion
@@ -2148,7 +2150,10 @@ def cmd_analytics(args, ctx):
             value=json.loads(raw.decode("utf-8-sig"))
             if not isinstance(value,dict):raise ValueError("Entrada MEN precisa ser objeto JSON.")
             return value
-        if args.features_action == "mention-sources":
+        if args.features_action == "mention-classifiers":
+            result=sdk.mention_classifier_capabilities();_data(classifier=result)
+            _print("Classificador local: "+str(result))
+        elif args.features_action == "mention-sources":
             items=sdk.mention_source_capabilities();_data(sources=items)
             for item in items:_print(f"{item['id']} · {item['name']}: {item['access']} · {item['qualification']}.")
         elif args.features_action == "mentions-describe":
@@ -2159,15 +2164,20 @@ def cmd_analytics(args, ctx):
             options=dict(selection=read_input(args.selection),write_guard=guard.make(ctx.db,ctx.config),
                 timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb)
             if args.features_action=='mentions-collect':
-                result=sdk.collect_mentions(ctx.db,**options,start=args.start,end=args.end,resume=not args.fresh_panel)
+                result=sdk.collect_mentions(ctx.db,**options,start=args.start,end=args.end,resume=not args.fresh_panel,classify=args.classify)
             else:
-                result=sdk.ingest_mention_batch(ctx.db,**options,batch=read_input(args.batch),synthetic_fixture=args.synthetic_fixture)
+                service=sdk.classify_mention_batch if args.features_action=='mentions-classify' else sdk.ingest_mention_batch
+                result=service(ctx.db,**options,batch=read_input(args.batch),synthetic_fixture=args.synthetic_fixture)
             _data(capture=result)
             _print(f"Lote {result['receipt']['capture_id']}: {result['job']['status']}; "
                    f"Q={result['receipt']['quantity']}; {result['receipt']['unique_documents']} publicações distintas.")
             _print("Painel e cobertura: "+result['receipt']['source_mode']+" / "+result['receipt']['universe']+
                    "; fonte conferida: "+str(result['receipt']['source_verified'])+". Qualificação do classificador é independente.")
-            if result['job']['status']!='COMPLETE':return EXIT_FAIL
+            classified=result.get('classification',result if args.features_action=='mentions-classify' else None)
+            if classified is not None:
+                _print("Classificação: "+classified['receipt']['classification']+"; rótulos: "+str(classified['receipt']['label_counts'])+
+                       ". Qualificação restrita ao benchmark inglês; consulte mention-classifiers para limites.")
+            if result['job']['status']!='COMPLETE' or result.get('classification',{}).get('job',{}).get('status','COMPLETE')!='COMPLETE':return EXIT_FAIL
         return EXIT_OK
 
     if args.features_action == "relation-list":

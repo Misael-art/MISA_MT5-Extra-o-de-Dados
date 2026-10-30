@@ -1017,7 +1017,7 @@ consumo completo permanecem nos incrementos MEN-03…08.
 
 ### Captura pública limitada de menções (MEN-03)
 
-`sdk.collect_mentions(db, *, selection, start, end, resume=True, write_guard=None,
+`sdk.collect_mentions(db, *, selection, start, end, resume=True, classify=False, write_guard=None,
 cancel_check=None, timeout_seconds=120, max_memory_mb=1024)` captura uma janela
 UTC fechada pelo adaptador implementado. A ação é explícita; consulta e listagem
 continuam sem rede/classificação. CLI:
@@ -1064,3 +1064,53 @@ com relógio de disponibilidade deste sistema. Texto e autores não são copiado
 para o corpus persistido/snapshot; ficam hashes e contagens. Isso não qualifica
 classificador: P/N permanecemUNAVAILABLE enquanto a classificação não ocorrer.
 Fonte real/corpus observado e mock/fixture são níveis de prova separados.
+
+
+### Classificação explícita de menções por objeto (MEN-04)
+
+`mention_classifier_capabilities()` inspeciona o artefato local e o recibo de
+avaliação. Não abre rede nem classifica documentos. `available` e
+`benchmark_matches` precisam estar verdadeiros para executar o classificador.
+O campo `classifier` é a identidade que deve constar na seleção **antes** da
+captura de Q. Mudar o modelo/idioma cria outra versão de série.
+
+```python
+classify_mention_batch(db, *, selection, batch, synthetic_fixture=False,
+                      write_guard=None, cancel_check=None,
+                      timeout_seconds=120, max_memory_mb=1024)
+```
+
+`classify_mention_batch` exige Q completo da mesma população/revisão já recebido; o lote precisa conter
+os documentos originais e não pode fornecer anotações/scores. Classifica por
+objeto, grava somente P/N e mantém Q e seus metadados no recebimento original.
+P/N recebem disponibilidade atual; repetir a captura idêntica conserva a
+classificação e seus primeiros relógios. Nova população invalida P/N; mudança
+de geração durante CPU impede publicação de rótulos antigos na população nova.
+O journal, guardas, orçamento e checkpoint são os existentes, com família de
+classificação distinta da captura para não perder o painel de rede retomável.
+
+VADER3.3.2 (MIT) e langdetect1.0.9 (Apache-2.0) são pequenos artefatos locais;
+código, léxicos, perfis de idioma e regras participam da identidade. Domínio:
+avaliação explícita em inglês com objeto sujeito, ou destinatário de avaliação
+em primeira pessoa. Perguntas, publicidade, direção de preço, comparações,
+atribuição indireta, marcadores de ironia e sintaxe não resolvida abstêm.
+Múltiplos objetos recebem saídas próprias; neutro/misto/abstenção ficam nos
+metadados e não são uma quarta medida. Corpus inteiramente fora do idioma deixa
+P/N indisponíveis. As saídas por publicação conservam hashes, rótulo, motivo,
+idioma e objeto, sem texto ou nome de autor; replay de leitura não carrega modelo.
+
+O recibo qualifica **somente o benchmark controlado em inglês**:44 exemplos
+separados do desenvolvimento, precisão P90,9%/N100%, recall P100%/N90%,12/44
+abstenções; misto precisão/recall75%. Dois erros preservados. Anotação semântica
+por Codex, sem revisão humana independente ou amostragem representativa do
+Hacker News; português, conversa geral e utilidade financeira não qualificados.
+Critérios fixados antes da avaliação: precisão P/N≥90%, recall≥70%,≥8 exemplos
+por polaridade,≥40 casos, zero P/N nos casos de abstenção esperada. Nenhum ajuste
+usou retorno/preço/lucro nem corrigiu o conjunto de teste depois da avaliação.
+
+CLI: `analytics features mention-classifiers`, `mentions-classify --selection
+SELECAO.json --batch LOTE.json [--synthetic-fixture]`. `mentions-collect
+--selection SELECAO.json --start UTC --end UTC --classify` recebe Q primeiro e
+classifica explicitamente o mesmo lote em memória, dentro do orçamento restante;
+uma falha posterior mantém Q e P/N pendentes. Sem `--classify`, captura continua
+sem inferência. Consultas, catálogo e exportações permanecem passivos.

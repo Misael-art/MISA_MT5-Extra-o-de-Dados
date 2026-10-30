@@ -27,6 +27,8 @@ dependencies = [
     "pytz>=2024.1",
     "tzlocal>=5.0",
     "requests>=2.31",
+    "vaderSentiment==3.3.2",
+    "langdetect==1.0.9",
 ]
 
 [project.optional-dependencies]

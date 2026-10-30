@@ -4270,3 +4270,12 @@ Verificação neste host: baseline focado 26/26; recorte após correção 58/58
 (`test_development_host`, `test_bootstrap_doctor`, `test_recovery_verification`,
 `test_packaging`). A suíte ampla inicial foi interrompida após 185 pass/31 skip
 em 218 s; não constitui aprovação integral. Windows e MT5 real não exercitados.
+
+
+MEN-04: classificador local por objeto disponível, qualificado apenas no benchmark
+controlado inglês (44 casos, precisão P90,9%/N100%; recall P100%/N90%; dois erros
+preservados). Sem avaliação humana independente ou precisão geral HN.
+Captura pública64itens/Q8:8 abstenções, P=N=0 com motivos; corte de Q preservado.
+SDK/CLI explícitos, cancelamento real e retry sem apagar P/N. Próxima frente:
+MEN-05 catálogo/store/snapshot; MEN-06 Laboratório; MEN-07 segunda fonte; MEN-08
+reconciliação/proteção. [Contrato e limites](dados/PLANO_ESTRUTURA_DADOS.md#1814-classificação-men-04--domínio-controlado-em-inglês).
