@@ -58,7 +58,7 @@ def describe(db, *, symbol, timeframe, subject, source, query, classifier=None, 
     if not subject["aliases"]:
         raise ValueError("Informe aliases explícitos; não há descoberta automática de objetos.")
     source = _object(source, {"provider", "corpus", "access_profile", "terms_version", "mode", "retention"},
-                     {"publication_types"}, "source")
+                     {"publication_types", "parameters"}, "source")
     for key in ("provider", "corpus", "access_profile", "terms_version", "retention"):
         source[key] = _text(source[key], "source."+key)
     if not isinstance(source["mode"], str) or source["mode"] not in {"documents", "aggregate"}:
@@ -66,6 +66,10 @@ def describe(db, *, symbol, timeframe, subject, source, query, classifier=None, 
     source["publication_types"] = _labels(source.get("publication_types", sorted(PUBLICATION_TYPES)), "publication_types")
     if not source["publication_types"] or set(source["publication_types"]) - PUBLICATION_TYPES:
         raise ValueError("Tipos de publicação incompatíveis com a política MEN; repostagem simples não conta.")
+    if "parameters" in source:
+        if not isinstance(source['parameters'],dict):raise ValueError('source.parameters precisa ser objeto JSON público.')
+        raw=feature_store._canonical_json(source['parameters'],'source.parameters')
+        if len(raw.encode())>4096:raise ValueError('source.parameters excede4KiB; não use credenciais ou corpus.')
     query = _object(query, {"id", "version", "expression"}, {"languages", "region", "authors", "channels", "communities"}, "query")
     for key in ("id", "version", "expression"):
         query[key] = _text(query[key], "query."+key, limit=4096 if key == "expression" else 256)

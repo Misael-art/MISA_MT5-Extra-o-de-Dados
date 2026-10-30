@@ -1782,12 +1782,17 @@ def build_parser():
 
     q = features_sub.add_parser("mention-sources", help="capacidades/acessos documentados; sem sonda de rede")
     q.set_defaults(func=cmd_analytics)
-    for action in ("mentions-describe", "mentions-ingest"):
+    for action in ("mentions-describe", "mentions-ingest", "mentions-collect"):
         q = features_sub.add_parser(action, help="contrato ou ingestão explícita de lote de menções")
         q.add_argument("--selection", required=True, help="JSON do objeto/fonte/consulta/resolução/classificador")
-        if action == "mentions-ingest":
-            q.add_argument("--batch", required=True, help="JSON limitado de documentos/agregado e manifesto")
-            q.add_argument("--synthetic-fixture", action="store_true", help="somente fonte qa.; não certifica captura/classificador real")
+        if action != "mentions-describe":
+            if action == "mentions-ingest":
+                q.add_argument("--batch", required=True, help="JSON limitado de documentos/agregado e manifesto")
+                q.add_argument("--synthetic-fixture", action="store_true", help="somente fonte qa.; não certifica captura/classificador real")
+            else:
+                q.add_argument("--start", required=True, help="início da janela UTC alinhada e já fechada")
+                q.add_argument("--end", required=True, help="fim exclusivo da janela UTC")
+                q.add_argument("--fresh-panel", action="store_true", help="seleciona painel novo explicitamente, preservando recibos anteriores")
             q.add_argument("--timeout-seconds", type=float, default=120)
             q.add_argument("--max-memory-mb", type=float, default=1024)
         q.set_defaults(func=cmd_analytics)
@@ -2131,7 +2136,7 @@ def cmd_analytics(args, ctx):
     import json
     from mt5_extracao.analytics import feature_store, features
 
-    if args.features_action in ("mention-sources", "mentions-describe", "mentions-ingest"):
+    if args.features_action in ("mention-sources", "mentions-describe", "mentions-ingest", "mentions-collect"):
         from pathlib import Path
         from mt5_extracao import sdk
         from mt5_extracao.analytics import mention_ingestion
@@ -2151,13 +2156,17 @@ def cmd_analytics(args, ctx):
             _print("Escopo MEN: "+result['scope_hash']+"; três definições, sem captura/publicação implícita.")
         else:
             from mt5_extracao.resources import guard
-            result=sdk.ingest_mention_batch(ctx.db,selection=read_input(args.selection),batch=read_input(args.batch),
-                synthetic_fixture=args.synthetic_fixture,write_guard=guard.make(ctx.db,ctx.config),
+            options=dict(selection=read_input(args.selection),write_guard=guard.make(ctx.db,ctx.config),
                 timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb)
+            if args.features_action=='mentions-collect':
+                result=sdk.collect_mentions(ctx.db,**options,start=args.start,end=args.end,resume=not args.fresh_panel)
+            else:
+                result=sdk.ingest_mention_batch(ctx.db,**options,batch=read_input(args.batch),synthetic_fixture=args.synthetic_fixture)
             _data(capture=result)
             _print(f"Lote {result['receipt']['capture_id']}: {result['job']['status']}; "
                    f"Q={result['receipt']['quantity']}; {result['receipt']['unique_documents']} publicações distintas.")
-            _print("Importação explícita não certifica acesso à fonte ou qualidade do classificador.")
+            _print("Painel e cobertura: "+result['receipt']['source_mode']+" / "+result['receipt']['universe']+
+                   "; fonte conferida: "+str(result['receipt']['source_verified'])+". Qualificação do classificador é independente.")
             if result['job']['status']!='COMPLETE':return EXIT_FAIL
         return EXIT_OK
 
