@@ -8,6 +8,29 @@ locais, anexos não enviados ou do histórico de uma sessão aberta no computado
 Leia o [roteiro completo](docs/repasse/NOVO_HOST_20261024.md) e entregue ao agente
 o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
+## Ponta de continuidade de menções em29/10/2026
+
+Retome a branch `codex/mencoes-aceite`, que contém MEN-00…08 sobre a cadeia
+anterior do Laboratório/Dados. A ponta de código MEN-07 é
+`72850fb7a5810932c89e87bbb691e3f2ff6dcb40` ([PR243](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/243));
+o fechamento MEN-08 reconcilia aceite, proteção e documentação. A cadeia permanece
+aberta, sem merge em master. [Estado técnico, uso e limites](docs/dados/PLANO_ESTRUTURA_DADOS.md#1818-aceite-integrado-proteção-e-continuidade-men-08).
+
+Na página privada existente, a seção **Menções na internet e recuperação dos
+ensaios de29 outubro2026** contém manifesto e9 partes do complemento MEN,
+independente do pacote principal antigo. Restore conferiu160 arquivos por hash
+e30 bases próprias de QA. Reutilize `scripts/recover_cloud_backup.py`, extraindo
+em pasta nova de QA; nunca restaure os ensaios sobre a base principal. Não há
+texto bruto de terceiros, credenciais ou base de negociação nesse complemento.
+O manifesto/referências ficam privados, fora do Git público.
+
+A raiz única é `MT5X`, App em `repos/app` e companions nos pins detached do
+manifesto; orientações antigas de clones/worktrees são históricas. A prévia
+habitual continua pelo launcher oficial `mt5x/app-development/run.sh`, com
+runtime identificado e retorno preservado. Classificação tem domínio inglês
+controlado; idiomas/fontes amplos, Expert, MT5/conta e aceite financeiro seguem
+com gates próprios.
+
 ## Instalação inicial
 
 No navegador, baixe o launcher desta branch `codex/novo-host-20261024`:

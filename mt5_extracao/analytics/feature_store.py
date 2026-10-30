@@ -180,6 +180,12 @@ def register_definition(db, feature_id, name, algorithm_version, parameters, dep
     registered_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f+00:00")
     ensure_schema(db)
     with db.engine.begin() as conn:
+        if conn.dialect.name == "postgresql":
+            # Uma chave ausente ainda não pode receber FOR UPDATE. Serializa
+            # cadastro/leitura da mesma definição até o commit do primeiro autor.
+            identity = json.dumps(["feature_definition", feature_id, algorithm_version], ensure_ascii=False)
+            lock_key = int.from_bytes(hashlib.sha256(identity.encode()).digest()[:8], "big", signed=True)
+            conn.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
         existing = conn.execute(text(
             f"SELECT name, parameters_json, dependencies_json, family, formula, unit, warmup_count, warmup_unit, source_id, "
             f"timeframe, availability_rule, value_type, definition_schema_version FROM {DEFINITIONS_TABLE} "

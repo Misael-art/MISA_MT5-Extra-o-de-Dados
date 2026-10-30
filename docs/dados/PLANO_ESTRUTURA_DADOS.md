@@ -1402,7 +1402,8 @@ como idiomas/canais/comunidades não certificados nos dois adaptadores.
 Quota/backoff/Retry-After e cooldown da mesma URL≥60s ficam em checkpoints do
 journal atual, separados da família dos fatos, com serialização SQLite/PG.
 Espera fora de SQL, orçamento/cancelamento existentes; quota zero bloqueia até
-próxima virada UTC e erro HTTP também conserva recibos de quota. Sem cache de
+próxima virada UTC por política local conservadora, sem prometer reset da quota
+do servidor nesse horário; erro HTTP também conserva recibos de quota. Sem cache de
 respostas, novo scheduler/store/executor ou assinatura. Controle por base;
 quota real continua compartilhada pelo IP, sem governar outros aplicativos.
 
@@ -1424,3 +1425,97 @@ aceitaram a segunda fonte sem mudança de consumidor. Qualificador ainda é
 somente benchmark inglês controlado, não precisão geral da conversa na fonte.
 [SDK e fontes primárias](../sdk/api.md#segundo-publicador-independente-men-07).
 MEN-08 prossegue com proteção/regressão/reconciliação final.
+
+
+### 18.18 Aceite integrado, proteção e continuidade MEN-08
+
+MEN-00…07 estão preservados em PRs236…243, cada frente com contrato, testes e
+recibo próprio. MEN-08 fecha proteção, regressão e continuidade na branch
+`codex/mencoes-aceite`. São incrementos em cadeia aberta, sem merge em master.
+Código MEN-07: `72850fb7a5810932c89e87bbb691e3f2ff6dcb40`,286 arquivos de runtime
+verificados; HADOUKEN/Safety permanecem detached nos pins do manifesto.
+
+| Capacidade | Aceite observado e limite |
+|---|---|
+| Q/P/N e identidade | Três NUMBER inteiros por publicação distinta/objeto/fonte/consulta/janela; zero, ausência, total/amostra e versões separados; sem índice obrigatório/direção de preço |
+| Captura | HN painel24/64 e Stack Overflow painel16 por APIs oficiais, oráculo independente de Q, SIGKILL/roster retomado e SIGINT/rollback. Painéis limitados, sem censo |
+| Classificação | Local, versão/hash/idioma fixados; disponibilidade posterior a Q, histórico preservado.44 casos próprios separados do desenvolvimento; P precisão90,9%/recall100%, N100%/90%;2 erros e12 abstenções. Qualificação **somente inglês controlado**; sem amostra humana independente ou representativa das fontes |
+| Fonte real e sentimento | HN Q8/P0/N0/8 abstenções; SO Q1/P0/N0/1 abstenção. São saídas reais persistidas; nenhum suporte real P/N nessas amostras para estimar precisão por fonte |
+| Store e snapshots | Store/journal canônicos, SQLite e PG, namespace/provedor de preço intactos; formato5 sem preço opt-in, histórico e transporte idempotentes; antigos1–4 preservados |
+| Laboratório | Séries e confluências → Séries por janela…: seleção por catálogo, valores/gráfico/tabela, ausências/abstenções, SMA existente, leitura offline e espera/cancelamento/erro. Relação forte+1 e nula0 com indicador por engine atual; prova visual de relação+1 com88 pares/11 sessões sintéticas |
+| Produtos/consumidores | Mesmos SDK/CLI/Analytics/Laboratório; segunda fonte não exigiu reescrever consumidor nem criar módulo Strator. Coleta é ação explícita; ler/importar/exportar não chama rede/modelo |
+| Proteção | Complemento privado MEN na página de recuperação existente:9 partes, ZIP3.621.472bytes, SHA-256 `232ff78e9c97cebdfb82d5ba9bb6261c16576d42c6d3f8b5bda91e2013a5ba20`. Relido pela internet e restaurado:160 arquivos/30 bases QA com quick_check; sem texto bruto, credenciais ou base do proprietário |
+
+O manifesto privado registra origem, tamanhos/hashes de cada parte, inventário
+interno, nomes de download/referências e retenção. Usa o mesmo
+`scripts/recover_cloud_backup.py`: conferir todas as partes antes de recompor,
+extrair somente em pasta nova e conferir os hashes internos. Preservar enquanto
+os recibos forem referência, até haver sucessor independente conferido. Bases
+sintéticas e capturas públicas agregadas permanecem em QA; não sobrescrever base
+principal nem copiar configuração/autenticação/locks. `.gitignore` não é backup.
+O pacote principal de recuperação do proprietário não foi alterado.
+
+Uso pelo SDK/CLI: declarar seleção explícita, `mentions-describe`,
+`mentions-collect --classify` (ação com rede), `series`, `snapshot-capture`,
+`snapshot-export`/`snapshot-import`, `stored-sources`/`stored-observations`.
+[Contrato e exemplos](../sdk/api.md#segundo-publicador-independente-men-07).
+`mention-classifiers` expõe o escopo restrito; leitura congelada é passiva.
+Painel/filtros/alias/objeto e janela UTC são decisões explícitas do usuário.
+
+Pendências discriminadas, sem bloquear o núcleo delimitado:
+
+- **F01 X, F03 YouTube, F04 Reddit, F06 Brandwatch e F07 MarketPsych:** sem
+  credencial/contrato/corpus/licença/quotas demonstrados neste incremento;
+  não integrados. Nenhuma assinatura/coleta onerosa autorizada.
+- **F02 Bluesky:** pesquisa HTTP pública recusou acesso403 neste host; Jetstream
+  exige adaptação/qualificação própria do protocolo e continuidade. Não integrado,
+  sem contornar a recusa por scraping ou presumir histórico integral.
+- **F05:** somente HN e perguntas SO certificados nos painéis descritos; demais
+  sites/feeds, respostas/comentários SO e censo/histórico amplo não integrados.
+- **F08 Trends:** buscas relativas0–100 não são Q/P/N. **F09 GDELT/notícias:**
+  frente existente, sem mapear tom/volume relativo para essas contagens nem
+  duplicar corpus. Não certificados como novos adaptadores MEN.
+- **Classificador:** português/gírias, avaliação humana independente, amostra
+  representativa com P/N e qualificação geral de cada fonte continuam pendentes.
+  Não apresentar o benchmark controlado como validação geral de mercado.
+- **BD16/17/F18/LAB:** cruzamentos genéricos com preço sem contexto compatível,
+  múltiplos ativos/TFs, operações/utilizadores e demais relatórios conservam
+  contratos/gates dos donos; a janela de fatos sem OHLCV não inventa mercado.
+  **Expert/SA:** consumo operacional/estratégia/risco e Tester/DEMO próprios.
+- **Nativo/financeiro:** host Linux com launcher oficial e bases de QA; doctor
+  offline não certifica MT5/Wine, Windows físico, conta, latência operacional,
+  estratégia ou utilidade financeira. Sem negociação REAL.
+
+
+Regressão integrada no host: **221 aprovados/18 casos PostgreSQL não executados**,
+347,57s, cobrindo contrato/lotes/fontes/classificação/snapshots/Laboratório,
+formatos antigos, janelas de referência e relações persistidas. São testes
+pertinentes, sem alegação de suíte completa. PG do código MEN-07: **96 aprovados**,
+110,85s, incluindo segunda fonte/retomada e rollback de quota; job123843555241.
+Doctor offline **16 OK/2 avisos/0 falhas**. Recibos próprios, comparações da
+prévia e restore ficam no destino de QA existente e no registro administrativo
+central; artefatos privados/referências de acesso não entram no Git público.
+
+
+O gate PG da primeira ponta documental MEN-08 expôs uma corrida preexistente no
+cadastro comum de definições (95 aprovados/1 falha em materialização composta):
+duas chamadas liam chave ausente antes de INSERT. MEN-08 inclui correção no
+`feature_store.register_definition`: advisory lock transacional PostgreSQL por
+ID/versão antes da leitura; repetir definição idêntica conserva o primeiro
+registro, e metadados divergentes continuam recusados sem sobrescrever. Não muda
+schema, valores, modelo nem versões de preço. Dois casos concorrentes reproduziram
+UniqueViolation antes da correção; ambos e os3 casos de materialização PG passaram
+após a correção. Os recibos finais discriminam a regressão anterior e os gates
+executados depois deste ajuste; não apresentar o95/1 como aceite aprovado.
+
+
+Após a correção de cadastro, a bateria completa PostgreSQL do workflow também
+foi executada no host, em contêiner próprio com PostgreSQL16.15 já disponível:
+**98 aprovados em359,48s**, incluindo os dois novos casos e todos os caminhos MEN.
+Sem download de imagem, negociação ou acesso a banco do proprietário. O servidor
+de QA é temporário; schemas próprios são removidos pelo helper de testes.
+
+Regressão após a correção: **196 aprovados/18 PG não executados no comando
+SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
+foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
+como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.
