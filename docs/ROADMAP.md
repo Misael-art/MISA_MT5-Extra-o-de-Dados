@@ -5,6 +5,11 @@ concluída no Linux/Wine com DEMO CLI/UI, recuperação e Cancelar conferidos em
 master. [Evidência e limites](extrator/EXTR-01_VALIDACAO_NATIVA.md). Persistência
 da ponte em segundo plano e Windows físico continuam pendências delimitadas.
 
+**BD16-LAB-LINKS (30/10/2026):** fontes explícitas, menções/atividade/indicadores/TFs
+na visão do candle e relatório local implementados sobre MEN-08, com relógios
+e indisponibilidade preservados. [Contrato e aceite do recorte](dados/PLANO_ESTRUTURA_DADOS.md#1819-cruzamentos-no-candle-e-relatório--bd16-lab-links).
+Demais aceites LAB/Dados/Expert permanecem separados.
+
 Visão: com um duplo clique (Windows) ou `./install.sh` (Linux), o usuário instala
 tudo e constrói e mantém bases históricas confiáveis (OHLCV, indicadores, ticks)
 do MetaTrader 5, pela interface gráfica ou por linha de comando agendada.

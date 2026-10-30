@@ -4494,3 +4494,40 @@ Regressão após a correção: **196 aprovados/18 PG não executados no comando
 SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
 foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
 como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.
+
+
+## Cruzamentos de fontes no candle e relatório —30/10/2026
+
+Retomar `codex/cruzamentos-mencoes`, sobre MEN-08 `be984a3da261`/PR244.
+BD16-LAB-LINKS integra fontes explicitamente associadas ao ativo, preço,
+atividade, indicadores/TFs, recebimento/publicação, candle, quatro blocos de
+estabilidade e HTML local compartilhável. [Contrato, testes e limites](dados/PLANO_ESTRUTURA_DADOS.md#1819-cruzamentos-no-candle-e-relatório--bd16-lab-links);
+[uso SDK/CLI/UI](sdk/laboratorio_series.md#fontes-vinculadas-candle-e-relatório-portátil).
+Composição preservada, sem repin ou novo store/motor. Continuidade administrativa
+com SHA/PR/prévia/recibos em Projects/.workspace; não reconstruir listas paralelas.
+Ensaios próprios em `state/qa-tmp/laboratory-linked-crossings`, separados de
+base principal/pesquisa. Fases macro só entram como fonte datada; categorias
+não recebem correlação numérica e correlação não fornece causa do preço.
+Próximos aceites permanecem os do plano, especialmente dados/indicadores ainda
+não materializados, qualificação de fontes/idiomas e os gates nativos/Expert.
+
+
+### Correções do gate Windows —30/10/2026
+
+A execução40998206071 terminou com Linux/PostgreSQL/instaladores aprovados;
+Windows:3969 aprovados/154 skips,4 falhas/2 erros. UTF-8 implícito no teste
+do HTML e teto RSS novo em relatórios v1 foram introduzidos em BD16-LAB-LINKS.
+O teste agora lê UTF-8 e o teto do contrato vinculado fica restrito ao v2;
+cancelamento/tempo continuam nos dois. Teste com RSS simulado de2GiB confirma
+v1 preservado e v2 recusado no teto1024MiB, sem alterar o produtor ou retornos.
+
+Três falhas já constavam na execução40991270523/MEN-08: Escape sintético sem
+foco no Windows, teste de encaminhamento de orçamento condicionado ao RSS
+acumulado da suíte e cabeçalho com largura requerida maior que a área visível.
+O teste de teclado passa por filho focado; o de encaminhamento isola somente
+o medidor RSS, preservando os valores transmitidos e o teste real de recusa.
+Timeline/convergência agora calculam geometria pela área visível e respondem
+ao resize do notebook, inclusive quando o texto mantém largura requerida alta.
+56 testes pertinentes aprovados em411,59s no Linux/Xvfb. O novo CI Windows e
+o Windows físico conservam seus aceites próprios; não declarar toda a suíte
+ou plataforma aprovada antes do resultado correspondente.

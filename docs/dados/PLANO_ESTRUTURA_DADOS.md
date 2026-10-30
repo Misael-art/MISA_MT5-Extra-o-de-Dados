@@ -1519,3 +1519,65 @@ Regressão após a correção: **196 aprovados/18 PG não executados no comando
 SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
 foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
 como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.
+
+
+### 18.19 Cruzamentos no candle e relatório — BD16-LAB-LINKS
+
+Pedido posterior ao MEN-08: integrar menções, nível de atividade, indicadores,
+preço histórico, TFs, cronologia e compartilhamento no Laboratório existente.
+Vínculo explícito aponta snapshot/objeto/TF/versões para o ativo estudado e registra
+uma descrição da associação; o nome textual não prova equivalência econômica.
+Sem duplicar store, motor de correlação ou executor, nem consultar rede ao ler.
+
+Duas perspectivas distintas: **recebimento** coloca cada mudança disponível no
+primeiro fechamento observado que a conhece, sem repetir contagem nos candles
+seguintes; **publicação retrospectiva** usa o fim da janela descrita e somente
+revisões conhecidas no corte, mostrando o recibo posterior. A segunda não é input
+historicamente disponível nem evidência preditiva. Nenhuma divide D1 em M1 ou
+preenche lacuna com zero. Colisões de recibos e revisões ficam no detalhe; não
+somar observações de populações distintas para caber no desenho.
+
+Todos os pares da seleção elegível, inclusive TFs diferentes, usam as matrizes
+numéricas e controles existentes, com limites de canais/células, ausência,
+constância e correlação nula explícitas. Volume real/ticks e Q/P/N mantêm suas
+unidades. Defasagens/horizontes não saltam buracos da grade nominal. Relatório,
+UI/SDK/CLI e exportação compartilham os mesmos dados congelados; o candle expõe
+janela, captura, disponibilidade, revisão, fonte e limitações.
+
+Sessões de negociação só usam calendário congelado disponível; fases de ciclo
+macroeconômico exigem fonte/observações explícitas, sem inferir recessão/expansão
+por preço ou volume. Categorias ficam como informação temporal, sem converter
+rótulos em correlações numéricas. Correlação não determina motivo do preço.
+Aceite inclui dados fortes/nulos, chegada/classificação tardias, multiobjeto/TF,
+semântica de zero/lacuna, revisão/corte/export/reabertura, cancelamento/limites e
+percurso pelo launcher oficial em QA separado. A etapa não qualifica Expert,
+negociação, causalidade, precisão do classificador ou mercado nativo.
+
+Implementação validada em30/10/2026 na branch `codex/cruzamentos-mencoes`,
+sobre MEN-08/PR244. UI: **Séries e confluências → Fontes, candle e relatório…**;
+fontes escolhidas são congeladas pela ação explícita **Congelar e analisar**.
+SDK/CLI de análise exige `manifest_id` existente, sem captura implícita.
+[Uso e contratos](../sdk/laboratorio_series.md#fontes-vinculadas-candle-e-relatório-portátil).
+
+Regressão pertinente:102 aprovados/1 não executado por condição de ambiente;
+após o ajuste de leitura,2 testes direcionados aprovados; após a rolagem da
+matriz,2 percursos Tk aprovados. Rodadas se sobrepõem. PostgreSQL16.15
+isolado:3 novos casos aprovados; baseline MEN-08 tem98 casos no host eCI
+próprios. Doctor de desenvolvimento offline:16 OK/2 avisos/0 falhas.
+Launcher oficial com base/preferências próprias:78 candles,11 canais M1/M3,
+24 janelas, correlação forte+1 e nula0, categoria datada, recibos Q/P/N
+distintos, espera/cancelamento preservando resultado, vínculo de outro ativo
+recusado e HTML local; fatos/namespace preservados, zero chamadas de rede/modelo.
+CLI oficial confirmou candle/cruzamentos/exportação e hash da base intacto.
+HTML percorrido no navegador em820×680, sem overflow da página, com candle,
+lag0/1/3/6 e estabilidade de quatro blocos. Ensaios são sintéticos declarados;
+não há qualificação financeira, Windows físico ou disponibilidade nativa.
+
+Versão2 congela matrizes, alvos brutos e estabilidade no momento da análise;
+reabrir/ler/exportar verifica integridade e lê o resultado, sem recalcular
+estatísticas/fórmulas. Versão1 permanece compatível. Limites32 canais/8 TFs,
+20 mil barras/200 mil células e revisões,120s/1024MiB; fontes W1/MN1 e
+M7/M9 sintéticos não entram neste vínculo. Captura cancelada preserva os
+snapshots já confirmados. Categorias permanecem fora de matrizes numéricas.
+A cadeia segue emPRs abertas; não representa merge, release ou aceite dos
+demais itens BD16/17/18/LAB/Expert.

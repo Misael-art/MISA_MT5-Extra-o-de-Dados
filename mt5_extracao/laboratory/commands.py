@@ -55,8 +55,21 @@ def add_parser(sub):
     analyze.add_argument("--compare", action="append", choices=list(service.REGISTRY),
                          help="outra estratégia, com parâmetros padrão; repita para comparar intenções no mesmo ativo")
     analyze.add_argument("--as-of", required=True, help="corte ISO com fuso explícito")
+    analyze.add_argument("--links", help="JSON de vínculos explícitos: manifest_id/features/relationship, sem rede")
+    analyze.add_argument("--timeline-basis", choices=["received", "publication"], default="received")
     analyze.add_argument("--out", help="novo arquivo JSON; recusa sobrescrever")
     analyze.set_defaults(func=run)
+    report = actions.add_parser("report", help="relatório portátil de análise congelada; sem rede/recalcular fórmulas")
+    report.add_argument("--analysis", required=True)
+    report.add_argument("--out", required=True, help="arquivo HTML novo")
+    report.set_defaults(func=run)
+    candle = actions.add_parser("candle", help="preço, séries e recibos de um candle do relatório congelado")
+    candle.add_argument("--analysis", required=True)
+    candle.add_argument("--index", required=True, type=int)
+    candle.set_defaults(func=run)
+    crossings = actions.add_parser("crossings", help="todos os pares selecionados e horizontes do preço")
+    crossings.add_argument("--analysis", required=True)
+    crossings.set_defaults(func=run)
     study = actions.add_parser("study", help="valida e resume um estudo do gráfico contra a análise exportada")
     study.add_argument("--analysis", required=True, help="JSON gerado por analyze --out")
     study.add_argument("--study", required=True, help="estudo exportado pela UI")
@@ -76,7 +89,16 @@ def add_parser(sub):
 
 def run(args, ctx):
     from mt5_extracao import cli
-    if args.laboratory_action == "catalog":
+    if args.laboratory_action in ("report", "candle", "crossings"):
+        from mt5_extracao import sdk
+        path = Path(args.analysis).expanduser()
+        if path.stat().st_size > 16*1024*1024:
+            raise ValueError("Análise excede16MiB; reduza o recorte antes de exportar.")
+        frozen = service.load_report(path.read_text(encoding="utf-8"))
+        result = (sdk.export_laboratory_report(frozen, args.out) if args.laboratory_action == "report" else
+                  sdk.laboratory_candle(frozen, args.index) if args.laboratory_action == "candle" else
+                  sdk.laboratory_crossings(frozen))
+    elif args.laboratory_action == "catalog":
         result = service.catalog()
     elif args.laboratory_action == "inventory":
         from . import inventory
@@ -162,6 +184,17 @@ def run(args, ctx):
         feature_ids = [] if args.strategy_only else args.feature if args.feature is not None else [] if stored else service.DEFAULT_FEATURES
         extras = [key for key in (args.compare or []) if key != args.strategy]
         common = dict(feature_ids=feature_ids, as_of=args.as_of, stored_features=stored)
+        if args.links:
+            from mt5_extracao.automation.protocol import loads
+            path = Path(args.links).expanduser()
+            if path.stat().st_size > 64*1024:
+                raise ValueError("Seleção de vínculos excede64KiB.")
+            selected_links = loads(path.read_text(encoding="utf-8"))
+            snapshots = [datasets.load(ctx.db, ident) for ident in args.manifest]
+            if not snapshots:
+                raise ValueError("Informe o snapshot do ativo de mercado.")
+            common.update(linked_sources=service.capture_linked_sources(ctx.db,
+                target_symbol=snapshots[0].manifest["symbol"], selections=selected_links, frozen_only=True), timeline_basis=args.timeline_basis)
         if extras:
             if args.strategy is None and params:
                 raise ValueError("Parâmetros exigem estratégia explícita.")
