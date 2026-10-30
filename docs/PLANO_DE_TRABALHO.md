@@ -62,7 +62,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | MEN-05 | Catálogo e snapshots sem preço | MEN-04 | Implementado: snapshot canônico v5 opt-in, mesmas definições/histórico/transporte, importação idempotente e cortes antigos preservados; sem OHLCV fictício. PR241 |
 | MEN-06 | Laboratório por janela | MEN-05 | Implementado: Séries e confluências → Séries por janela, Q/P/N legíveis, abstenções, SMA canônica, espera/cancelamento/erro; relação descritiva forte e nula pelos motores existentes. PR242;99 testes no host e93 PG no CI |
 | MEN-07 | Segunda fonte independente | MEN-06 | Implementado: Stack Overflow via API Stack Exchange,16 perguntas reais retomadas, Q1/P0/N0/1 abstenção, quota/cooldown persistidos, HN e preços preservados; fonte/prévia oficiais. PR243;125 testes no host e96 PG no CI |
-| MEN-08 | Proteção, regressão e handoff | MEN-06/07 | Fechamento na branch codex/mencoes-aceite. Pacote privado160 arquivos/30 bases de QA restaurado por hash, sem corpus bruto/base do proprietário. [Quadro de aceite e limites](dados/PLANO_ESTRUTURA_DADOS.md#1818-aceite-integrado-proteção-e-continuidade-men-08) |
+| MEN-08 | Proteção, regressão e handoff | MEN-06/07 | Fechamento na branch codex/mencoes-aceite; corrida PG no cadastro comum corrigida, preservando imutabilidade/idempotência. Pacote privado160 arquivos/30 bases de QA restaurado por hash, sem corpus bruto/base do proprietário. [Quadro de aceite e limites](dados/PLANO_ESTRUTURA_DADOS.md#1818-aceite-integrado-proteção-e-continuidade-men-08) |
 | T20.30-HOST1 | Bootstrap de desenvolvimento em host limpo e recuperação remota sem SD | Fonte publicada + instaladores/verificador existentes + pacote privado conferido | Implementação e validação do wrapper/restore no host Linux atual; [roteiro e limites](repasse/NOVO_HOST_20261024.md). Git/ambiente/companions/checks/atalhos coesos; fontes fixadas e parte privada separada. Novo SO, Windows físico e aceites financeiros próprios. Não conclui LAB-01…10/SA-01/02 |
 | AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). 100 dirigidos finais e2952/251 ampla (cortes descritos na evidência); prévia instalada. CI do último HEAD, causa dos timeouts herdados e Windows físico têm gates próprios; sem aceite financeiro |
 | AIA-02a | Catálogo nativo de Estudo pelo SDK/CLI, mesma fábrica/ownership e espera do layout inicial | AIA-01 + HPR75 | Implementado;2994/251 suíte ampla,108 dirigidos/176 regressão (sobrepostos),38 nativos via102 pedidos CLI reais,0/0 e doctor20/1/0. [Contrato](sdk/study_cli.md), [evidência](evidencias/AIA_02A_ESTUDO_CLI_20261023.json). CI da ponta/Windows físico próprios; dados/fontes H preservados |
@@ -4316,3 +4316,12 @@ MEN-07 pelo CI. Doctor offline16 OK/2 avisos/0 falhas. Proteção privada e rest
 160 arquivos/30 bases QA conferidos, sem base do proprietário/corpus bruto.
 Cadeia de PRs aberta, sem merge/release. Fontes adicionais/precisão representativa
 PT/EN e cruzamentos nativos/financeiros continuam nos gates discriminados no§18.18.
+
+Após a correção da corrida PG:98 testes do gate PostgreSQL aprovados no host
+(359,48s), com dois novos casos concorrentes que falhavam antes. Os96 anteriores
+são baseline do código MEN-07, sem somar as rodadas como testes distintos.
+
+Regressão após a correção: **196 aprovados/18 PG não executados no comando
+SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
+foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
+como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.

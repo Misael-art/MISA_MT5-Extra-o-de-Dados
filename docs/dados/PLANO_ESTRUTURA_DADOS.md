@@ -1495,3 +1495,27 @@ pertinentes, sem alegação de suíte completa. PG do código MEN-07: **96 aprov
 Doctor offline **16 OK/2 avisos/0 falhas**. Recibos próprios, comparações da
 prévia e restore ficam no destino de QA existente e no registro administrativo
 central; artefatos privados/referências de acesso não entram no Git público.
+
+
+O gate PG da primeira ponta documental MEN-08 expôs uma corrida preexistente no
+cadastro comum de definições (95 aprovados/1 falha em materialização composta):
+duas chamadas liam chave ausente antes de INSERT. MEN-08 inclui correção no
+`feature_store.register_definition`: advisory lock transacional PostgreSQL por
+ID/versão antes da leitura; repetir definição idêntica conserva o primeiro
+registro, e metadados divergentes continuam recusados sem sobrescrever. Não muda
+schema, valores, modelo nem versões de preço. Dois casos concorrentes reproduziram
+UniqueViolation antes da correção; ambos e os3 casos de materialização PG passaram
+após a correção. Os recibos finais discriminam a regressão anterior e os gates
+executados depois deste ajuste; não apresentar o95/1 como aceite aprovado.
+
+
+Após a correção de cadastro, a bateria completa PostgreSQL do workflow também
+foi executada no host, em contêiner próprio com PostgreSQL16.15 já disponível:
+**98 aprovados em359,48s**, incluindo os dois novos casos e todos os caminhos MEN.
+Sem download de imagem, negociação ou acesso a banco do proprietário. O servidor
+de QA é temporário; schemas próprios são removidos pelo helper de testes.
+
+Regressão após a correção: **196 aprovados/18 PG não executados no comando
+SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
+foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
+como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.

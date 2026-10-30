@@ -4472,3 +4472,25 @@ representativa/idiomas, fonte opcional com acesso próprio, BD16/17/F18/LAB ou
 Expert). Não reabrir MEN como proposta nem conceder selo financeiro pelos testes.
 A composição e os recibos atualizados ficam somente em Projects/.workspace;
 prévia habitual e retorno anterior permanecem identificados pelo mecanismo existente.
+
+
+No fechamento, o CI documental1112a17 encontrou corrida no cadastro canônico
+PG de definições:95 aprovados/1 falha no teste existente de escritores da
+materialização composta. MEN-08 corrige a causa com trava transacional por
+ID/versão antes da leitura, preservando definição original/imutabilidade.
+Dois testes PG com disputa efetiva e metadados iguais/diferentes reproduziram
+UniqueViolation antes e passaram depois;5 testes desse caminho aprovados.
+Recibos finais e PR discriminam esse ajuste e a regressão posterior. Nenhuma
+alteração de companions, fórmula/modelo, schema ou versão de retorno.
+
+
+Após a correção de cadastro, a bateria completa PostgreSQL do workflow também
+foi executada no host, em contêiner próprio com PostgreSQL16.15 já disponível:
+**98 aprovados em359,48s**, incluindo os dois novos casos e todos os caminhos MEN.
+Sem download de imagem, negociação ou acesso a banco do proprietário. O servidor
+de QA é temporário; schemas próprios são removidos pelo helper de testes.
+
+Regressão após a correção: **196 aprovados/18 PG não executados no comando
+SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
+foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
+como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.
