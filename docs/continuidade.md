@@ -4510,3 +4510,24 @@ base principal/pesquisa. Fases macro só entram como fonte datada; categorias
 não recebem correlação numérica e correlação não fornece causa do preço.
 Próximos aceites permanecem os do plano, especialmente dados/indicadores ainda
 não materializados, qualificação de fontes/idiomas e os gates nativos/Expert.
+
+
+### Correções do gate Windows —30/10/2026
+
+A execução40998206071 terminou com Linux/PostgreSQL/instaladores aprovados;
+Windows:3969 aprovados/154 skips,4 falhas/2 erros. UTF-8 implícito no teste
+do HTML e teto RSS novo em relatórios v1 foram introduzidos em BD16-LAB-LINKS.
+O teste agora lê UTF-8 e o teto do contrato vinculado fica restrito ao v2;
+cancelamento/tempo continuam nos dois. Teste com RSS simulado de2GiB confirma
+v1 preservado e v2 recusado no teto1024MiB, sem alterar o produtor ou retornos.
+
+Três falhas já constavam na execução40991270523/MEN-08: Escape sintético sem
+foco no Windows, teste de encaminhamento de orçamento condicionado ao RSS
+acumulado da suíte e cabeçalho com largura requerida maior que a área visível.
+O teste de teclado passa por filho focado; o de encaminhamento isola somente
+o medidor RSS, preservando os valores transmitidos e o teste real de recusa.
+Timeline/convergência agora calculam geometria pela área visível e respondem
+ao resize do notebook, inclusive quando o texto mantém largura requerida alta.
+56 testes pertinentes aprovados em411,59s no Linux/Xvfb. O novo CI Windows e
+o Windows físico conservam seus aceites próprios; não declarar toda a suíte
+ou plataforma aprovada antes do resultado correspondente.

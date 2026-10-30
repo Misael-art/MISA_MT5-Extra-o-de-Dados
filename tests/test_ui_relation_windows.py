@@ -141,6 +141,9 @@ def test_invalid_field_does_not_dispatch_and_child_windows_do_not_overlap(relati
 
 def test_saving_preserves_the_execution_budget_used_to_calculate_the_window(relations_panel,phase,monkeypatch):
     panel,root=relations_panel;viewer,_=prepare(panel,root,phase)
+    # Este caso verifica o encaminhamento do orçamento, independente do RSS herdado da suíte.
+    from mt5_extracao.analytics import producer_jobs
+    monkeypatch.setattr(producer_jobs,'current_rss_bytes',lambda:128*1024**2)
     viewer.options['timeout_seconds'].set('25');viewer.options['max_memory_mb'].set('1024');viewer.calculate()
     original=sdk.persist_feature_relation;seen=[]
     def publish(*args,**kwargs):seen.append(kwargs);return original(*args,**kwargs)

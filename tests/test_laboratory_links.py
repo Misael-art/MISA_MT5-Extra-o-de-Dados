@@ -120,7 +120,7 @@ def test_portable_report_and_candle_read_are_passive_and_escape_source_text(link
     monkeypatch.setattr(requests.sessions.Session,'request',refused)
     monkeypatch.setattr(mention_classifier,'classify_document',refused)
     out=tmp_path/'portable.html';receipt=sdk.export_laboratory_report(report,out)
-    html=out.read_text();assert '</script><script>throw Error("injected")' not in html
+    html=out.read_text(encoding="utf-8");assert '</script><script>throw Error("injected")' not in html
     assert '\\u003c/script\\u003e' in html and 'Content-Security-Policy' in html
     assert receipt['network_required'] is False
     with pytest.raises(ValueError,match='novo'):sdk.export_laboratory_report(report,out)
@@ -184,3 +184,13 @@ def test_analysis_refuses_implicit_source_capture(linked,monkeypatch):
     for choices in ([raw],None,[None]):
         with pytest.raises(ValueError):
             sdk.analyze_laboratory(db,manifest_ids=[s.manifest_id for s in market],linked_selections=choices)
+
+
+def test_linked_memory_budget_does_not_change_legacy_analysis_contract(linked,monkeypatch):
+    from mt5_extracao.analytics import producer_jobs
+    db,market,source,contract=linked
+    monkeypatch.setattr(producer_jobs,'current_rss_bytes',lambda:2*1024**3)
+    legacy=service.analyze(market,feature_ids=['volume.ticks'],as_of='2025-01-01T10:18Z')
+    assert legacy['laboratory_version']==1
+    with pytest.raises(MemoryError,match='1024'):
+        analyze(linked)

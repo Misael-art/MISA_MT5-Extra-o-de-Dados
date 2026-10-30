@@ -647,7 +647,9 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= maximum:
             raise ValueError(f"{name} precisa ser positivo e até{maximum}.")
     def guard():
-        indicator_materializer._guard(started, None, cancel_check, timeout_seconds, max_memory_mb)
+        # O teto RSS pertence ao novo contrato vinculado; relatórios v1 mantêm o contrato anterior.
+        indicator_materializer._guard(started, None, cancel_check, timeout_seconds,
+                                      max_memory_mb if linked_sources else None)
     guard()
     snapshots = list(snapshots)
     if not 1 <= len(snapshots) <= MAX_TIMEFRAMES:
