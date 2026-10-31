@@ -32,7 +32,9 @@ def save(db, feature, value, observation, *, version="v1", until=None):
 
 
 def cut_and_hours():
-    cut = pd.Timestamp.now(tz="UTC").floor("h") + pd.Timedelta(minutes=30)
+    # O contrato é registrado agora. O corte nunca pode cair antes do registro
+    # quando a suíte roda na segunda metade da hora.
+    cut = pd.Timestamp.now(tz="UTC").ceil("h") + pd.Timedelta(minutes=30)
     return cut, cut.floor("h"), cut.floor("h") - pd.Timedelta(hours=1)
 
 
