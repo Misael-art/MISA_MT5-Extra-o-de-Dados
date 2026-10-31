@@ -16,6 +16,7 @@ def add_parser(sub):
     parser.add_argument("--version", nargs=2, action="append", metavar=("ID", "VERSAO"),
                         help="resolve versão explícita de um indicador; repetível")
     parser.add_argument("--fixture-label", help="identifica explicitamente uma fotografia de QA sintética")
+    parser.add_argument("--html", help="arquiva o mesmo documento autossuficiente; destino novo em exports/")
     parser.set_defaults(func=run)
 
 
@@ -39,6 +40,13 @@ def run(args, ctx):
                             start=args.date_from, end=args.date_to, versions=dict(pairs), fixture_label=args.fixture_label)
         for error in snapshot["errors"]:
             cli._print(error["message"])
+    if args.html:
+        if snapshot is None:
+            raise ValueError("Para arquivar informe --symbol, --tf e --as-of.")
+        from .document import export
+        receipt = export(snapshot, args.html)
+        cli._print("Fotografia arquivada: " + receipt["path"])
+        cli._data(archive=receipt)
     with DashboardServer(ctx.config, port=args.port, snapshot=snapshot) as server:
         if not args.no_browser:
             result = open_dashboard(server, ctx.config)

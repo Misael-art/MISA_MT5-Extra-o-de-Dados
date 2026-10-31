@@ -5049,3 +5049,18 @@ Bancada própria28dias/2.688 fatos;20 gerações, máximo382ms, só geração.
 Browser pelo launcher mostrou corte/fixture e indisponibilidade, com detalhe
 de proveniência na página. Sem claim AC-01 ou Windows físico. Próxima DASH-03:
 renderer/HTML offline; faixas e Robô seguem pendentes, sem motor paralelo.
+
+### Arquivo e renderer do Dashboard —31/10/2026 (DASH-03)
+
+Sobre DASH-02/PR264. HTML HTTP e arquivo usam o mesmo compilador, com recursos
+ECharts6/licença/templates embutidos e conferidos por hash. O leitor JS confere
+o payload canônico antes da narrativa; o download JSON preserva grafia numérica
+e digest. Exportação reutiliza a publicação atômica do App sem sobrescrever.
+
+88 dirigidos iniciais;27 finais sobrepostos incluem2 de transporte JS real,
+JSON hostil, tamper/schema, mistura de recursos, limites, destino e igualdade
+HTTP/arquivo. Doctor16/2/0, shellcheck e sintaxe JS passaram. Browser HTTP
+conferiu dados/detalhe por clique e teclado. file:// foi recusado pela política
+de URL; sem contorno. Aceite offline visual/AC-06 e desenho da surpresa no
+browser seguem pendentes; fixture não é integração real de produtor ausente.
+Próximas faixas independentes: regime e volume, sem novo cálculo/cache.
