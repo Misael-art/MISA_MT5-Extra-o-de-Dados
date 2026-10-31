@@ -1785,6 +1785,8 @@ def build_parser():
     sub = parser.add_subparsers(dest="command", required=True)
     from .automation.commands import add_parser as workflow_parser
     workflow_parser(sub)
+    from .dashboard.commands import add_parser as dashboard_parser
+    dashboard_parser(sub)
 
     p = sub.add_parser("doctor", help="diagnóstico do ambiente")
     p.add_argument("--json", action="store_true")
