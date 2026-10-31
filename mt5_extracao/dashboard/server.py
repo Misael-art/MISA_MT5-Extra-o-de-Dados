@@ -31,7 +31,7 @@ def configured_port(config):
     return port
 
 
-def create_app(key, port):
+def create_app(key, port, snapshot=None):
     app = Flask(__name__)
     app.config.update(MAX_CONTENT_LENGTH=1024, TRUSTED_HOSTS=[HOST, "localhost"])
 
@@ -59,7 +59,8 @@ def create_app(key, port):
 
     @app.route("/")
     def index():
-        return render_template("index.html", css_url=url_for("static", filename="css/dashboard.css", k=key))
+        return render_template("index.html", css_url=url_for("static", filename="css/dashboard.css", k=key),
+                               snapshot=snapshot)
 
     @app.route("/health")
     def health():
@@ -71,7 +72,7 @@ def create_app(key, port):
 class DashboardServer:
     """Uma instância pertencente ao chamador; start/stop idempotentes e serializados."""
 
-    def __init__(self, config=None, *, port=None):
+    def __init__(self, config=None, *, port=None, snapshot=None):
         if port is None:
             port = configured_port(config) if config is not None else DEFAULT_PORT
         if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= 65535:
@@ -81,7 +82,11 @@ class DashboardServer:
         self._key = secrets.token_urlsafe(32)
         self._lock = threading.RLock()
         self._httpd = self._thread = None
-        self.app = create_app(self._key, lambda: self.port)
+        if snapshot is not None:
+            from .generator import validate, _json
+            import json
+            snapshot = json.loads(_json(validate(snapshot)))
+        self.app = create_app(self._key, lambda: self.port, snapshot)
 
     @property
     def port(self):
