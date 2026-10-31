@@ -543,3 +543,20 @@ Teste de recursos/CSP e simulação JS não substituem esse percurso real.
 
 As próximas faixas consomem o envelope pronto, sem repetir leitura/materialização:
 DASH-04 (regime) e DASH-05 (volume), conservando as ausências explicitadas.
+
+### DASH-04 — faixa de regime
+
+`sections.regime` adapta `regime.state` e `regime.confidence` já persistidos pelo
+produtor canônico; não calcula indicador, média ou frequência. Cada célula
+dia × hora UTC mostra o último registro do recorte; a confiança só entra quando
+tem a mesma versão/observação e método declarado no contrato
+(`parameters.confidence`), com `confidence_is_probability=false`. Último estado
+vencido/invalidado oculta a faixa (`NO_DATA`) sem recorrer a registro anterior;
+ausência nunca vira zero. `charts/regime.js` desenha o heatmap (célula do corte
+com contorno/brilho, janela de 6 h em telas estreitas, teclado e leitura textual).
+
+Testes: `tests/test_dashboard_sections.py` (corte, método ausente, versão
+divergente, vencido, ausência, recursos embutidos). Browser HTTP com base QA
+sintética: heatmap e célula do corte renderizados, sem erros de console.
+Pendências: rótulos das células em 24 colunas ficam pequenos no desktop
+(revisar em DASH-12); aceite offline/AC-06 continua pendente. Próxima: DASH-05 (volume).
