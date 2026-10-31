@@ -94,14 +94,17 @@ def test_old_config_and_explicit_port():
     assert module.DashboardServer(cfg, port=5058).port == 5058
 
 
-def test_cli_reads_without_database_or_terminal(monkeypatch):
+def test_cli_reads_without_database_or_terminal(monkeypatch, tmp_path):
     from mt5_extracao import cli
+    cfg = tmp_path / "config.ini"                       # checkout limpo: config explícito, nunca o do host
+    cfg.write_text("[DASHBOARD]\n", encoding="utf-8")
     monkeypatch.setattr(cli.services, "create_db_manager", lambda *a: pytest.fail("não abrir base"))
     monkeypatch.setattr(cli.Context, "connector", lambda *a: pytest.fail("não conectar MT5"))
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
-    assert cli.main(["dashboard", "--port", str(port), "--no-browser", "--seconds", "0.01"]) == 0
+    assert cli.main(["--config", str(cfg), "dashboard", "--port", str(port),
+                     "--no-browser", "--seconds", "0.01"]) == 0
     with socket.socket() as probe:
         assert probe.connect_ex(("127.0.0.1", port)) != 0
 
