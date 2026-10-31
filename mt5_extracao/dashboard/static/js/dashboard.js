@@ -51,15 +51,16 @@
       metric.type = "button";
       metric.setAttribute("aria-label", "Aprofundar " + section.title);
       metric.append(text("span", ({UP: "↑", DOWN: "↓", FLAT: "→"})[section.visual.direction] || "", "direction"),
-        text("strong", number(section.visual.value)), text("span", section.unit || "", "unit"));
+        text("strong", typeof section.visual.value === "number" ? number(section.visual.value) : section.visual.value),
+        text("span", section.unit || "", "unit"));
       body.append(metric);
       if (section.visual.baseline !== null && section.visual.baseline !== undefined)
         body.append(text("p", "Referência " + number(section.visual.baseline) + " " + (section.unit || ""), "reference"));
       const detail = details(section);
       metric.addEventListener("click", () => { detail.open = !detail.open; });
       body.append(detail);
-      if ((section.visual.series || []).length) {
-        const figure = text("div", "", "chart");
+      if ((section.visual.series || []).length || (section.visual.cells || []).length) {
+        const figure = text("div", "", "chart chart--" + section.kind);
         figure.tabIndex = 0;
         figure.setAttribute("role", "img");
         figure.setAttribute("aria-label", section.title + ". Série conhecida no corte; valores em Ver evidência.");

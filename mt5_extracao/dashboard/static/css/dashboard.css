@@ -16,4 +16,7 @@ pre { font-size:.75rem; white-space:pre-wrap; overflow-wrap:anywhere; line-heigh
 button { font:inherit; color:var(--ink); border:1px solid var(--line); border-radius:5px; background:var(--surface); padding:.5rem .8rem; cursor:pointer; }
 .licenses { max-width:1200px; margin:0 auto; padding:1rem 6vw; color:var(--muted); font-size:.75rem; }
 #render-status { font-size:.75rem; color:var(--muted); }
+.chart--regime { height:440px; }.regime-context p { color:var(--muted); font-size:.75rem; margin:.6rem 0; }
+.regime-hours { display:flex; align-items:center; gap:1rem; }.regime-hours[hidden] { display:none; }.regime-intensity { font-weight:650; }.cell-readout { min-height:3rem; }
+.metric strong { overflow-wrap:anywhere; }.metric { flex-wrap:wrap; }
 @media(max-width:650px) { .story-section { grid-template-columns:1fr; gap:1rem; }dl { grid-template-columns:1fr; } }

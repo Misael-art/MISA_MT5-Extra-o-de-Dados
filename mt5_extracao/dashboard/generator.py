@@ -144,6 +144,10 @@ def _read(db, selection, cut):
     contracts = [{k: d.get(k) for k in ("feature_id", "algorithm_version", "name", "family", "formula", "unit",
                  "timeframe", "availability_rule", "value_type", "output_kind", "metadata_state", "name_status")}
                  for d in definitions]
+    for contract, definition in zip(contracts, definitions):
+        contract["parameters"] = {k: definition.get("parameters", {}).get(k) for k in
+                                   ("confidence", "volume_source", "same_weekday", "lookback", "min_sessions")
+                                   if k in definition.get("parameters", {})}
     facts = []
     for row in history.to_dict("records"):
         number = row["numeric_value"]
@@ -196,6 +200,12 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["subject"]["base_namespace"] = base["namespace"]
         data["provenance"].update(base=base, time_context=context)
         data.update(contracts=contracts, facts=facts)
+        from .sections import regime
+        context_section = regime(data)
+        data["sections"].append(context_section)
+        data["capabilities"]["regime"].update(state="AVAILABLE" if context_section["default_visible"] else "NO_DATA",
+            reason_code=None if context_section["default_visible"] else "NO_DATA",
+            reason="Estado persistido; células são últimos registros por dia/hora UTC, sem agregação estatística.")
         data["data_cutoff_utc"] = max((r["observation_time"] for r in facts), default=None)
         data["capabilities"]["identity"].update(state="AVAILABLE", reason_code=None, reason="Identidade lógica preservada.")
         data["capabilities"]["quality"].update(state="AVAILABLE" if facts else "NO_DATA", reason_code=None,
