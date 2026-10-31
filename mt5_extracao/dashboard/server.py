@@ -2,17 +2,28 @@
 import hmac
 import logging
 import secrets
+import socket
 import threading
 import time
 import urllib.error
 import urllib.request
 
 from flask import Flask, abort, render_template, request, url_for
-from werkzeug.serving import WSGIRequestHandler, make_server
+from werkzeug.serving import ThreadedWSGIServer, WSGIRequestHandler
 
 log = logging.getLogger(__name__)
 HOST = "127.0.0.1"
 DEFAULT_PORT = 5055
+
+
+class _ExclusiveServer(ThreadedWSGIServer):
+    """Porta exclusiva: no Windows, SO_REUSEADDR permite um segundo bind na porta já em uso."""
+    allow_reuse_address = not hasattr(socket, "SO_EXCLUSIVEADDRUSE")
+
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class _QuietHandler(WSGIRequestHandler):
@@ -109,8 +120,8 @@ class DashboardServer:
             if self._thread is not None and self._thread.is_alive():
                 return self
             try:
-                self._httpd = make_server(HOST, self._requested_port, self.app, threaded=True,
-                                          request_handler=_QuietHandler)
+                self._httpd = _ExclusiveServer(HOST, self._requested_port, self.app,
+                                               handler=_QuietHandler)
             except (SystemExit, OSError) as exc:
                 raise RuntimeError(f"Não foi possível abrir a porta {self._requested_port} do Dashboard. "
                                    "Confira o processo que a utiliza ou configure [DASHBOARD] port.") from exc
