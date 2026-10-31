@@ -5033,3 +5033,19 @@ simulação de opener, sem aceite físico. CI remoto próprio permanece separado
 da falha Windows já presente no pai. Próxima etapa DASH-02: schema, identidade,
 corte, inventário e primeira faixa real ou indisponibilidade fundamentada.
 As faixas/AC finais continuam pendentes; casca não equivale ao produto completo.
+
+### Fotografia do Dashboard —31/10/2026 (DASH-02)
+
+Sobre DASH-01/PR263, branch codex/dashboard-fotografia. Contrato/schema1,
+identidade lógica e leitura consistente de catálogo/histórico pelo store atual,
+sem DDL ou produtor. Disponibilidade/recebimento/corte, versões explícitas,
+validade e revisão preservados; limites recusam em vez de truncar.
+Surpresa comparável não encontrada: infraestrutura validada, integração dessa
+faixa pendente. Necessidade concreta de Dados e inventário estão no plano
+canônico, sem criar outro indicador.
+
+18 testes novos e52 com regressões de store/query (sobreposição), doctor16/2/0.
+Bancada própria28dias/2.688 fatos;20 gerações, máximo382ms, só geração.
+Browser pelo launcher mostrou corte/fixture e indisponibilidade, com detalhe
+de proveniência na página. Sem claim AC-01 ou Windows físico. Próxima DASH-03:
+renderer/HTML offline; faixas e Robô seguem pendentes, sem motor paralelo.

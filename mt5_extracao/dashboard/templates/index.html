@@ -10,8 +10,17 @@
   <a class="skip" href="#narrativa">Ir para a narrativa</a>
   <header class="masthead"><a class="brand" href="#narrativa" aria-label="mt5x, início">mt5<span>x</span></a><span class="eyebrow">INTELIGÊNCIA DE ATIVOS E ROBÔS</span><span class="local">Pesquisa local</span></header>
   <main id="narrativa">
+    {% if snapshot %}
+    {% if snapshot.provenance.fixture_label %}<p class="fixture">FIXTURE · {{ snapshot.provenance.fixture_label }}</p>{% endif %}
+    <div class="intro"><p class="eyebrow">FOTOGRAFIA DE PESQUISA · {{ snapshot.subject.timeframe }}</p><h1>{{ snapshot.subject.symbol }}</h1><p class="lead">Conhecimento no corte {{ snapshot.as_of_utc }}</p><p>Janela {{ snapshot.selection.start_utc }} → {{ snapshot.selection.end_utc }} · UTC</p></div>
+    {% for error in snapshot.errors %}<section class="empty"><span class="index">LEITURA INDISPONÍVEL</span><p>{{ error.message }}</p></section>{% endfor %}
+    <section class="empty" aria-labelledby="surprise-title"><span class="index">01 / SURPRESA</span><div><h2 id="surprise-title">Surpresa indisponível</h2><p>{{ snapshot.sections[0].details.reason }}</p></div><span class="empty-mark" aria-hidden="true">—</span></section>
+    <details><summary>Fotografia e proveniência</summary><p>{{ snapshot.facts | length }} fatos consultáveis · reconstrução conhecida no corte, sem afirmar disponibilidade histórica original.</p><p>Fotografia {{ snapshot.snapshot_id }}</p><p>Gerada em {{ snapshot.generated_at_utc }} · dados até {{ snapshot.data_cutoff_utc or 'não informado' }}</p></details>
+    <script id="dashboard-data" type="application/json">{{ snapshot | tojson }}</script>
+    {% else %}
     <div class="intro"><p class="eyebrow">DASHBOARD CONTÍNUO</p><h1>Uma história.<br>Suas evidências.</h1><p class="lead">Ativos, contexto e resultados no mesmo lugar.</p></div>
     <section class="empty" aria-labelledby="empty-title"><span class="index">01 / CONTEXTO</span><div><h2 id="empty-title">Nenhuma fotografia selecionada</h2><p>A consulta de ativos e robôs será integrada nas próximas etapas. Esta página ainda não apresenta análises.</p></div><span class="empty-mark" aria-hidden="true">—</span></section>
+    {% endif %}
   </main>
   <footer><span>mt5x / Inteligência</span><span>Servidor local · apresentação em implantação</span></footer>
 </body>
