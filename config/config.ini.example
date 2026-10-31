@@ -63,6 +63,11 @@ host = 127.0.0.1
 port = 18812
 wine_python = 
 
+[DASHBOARD]
+port = 5055
+# Vazio: navegador padrão. Ou edge/chrome/chromium/firefox/caminho do executável.
+browser =
+
 [DATABASE]
 # sqlite (padrão, um arquivo) ou postgresql (servidor; TimescaleDB é usado se a extensão existir)
 type = sqlite
