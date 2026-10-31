@@ -97,6 +97,16 @@ com DEFAULTS/example/fallback quando houver chave nova.
 
 ## Visão gráfica limpa — T20.22/23
 
+**T20.22/23a (30/10):** consulta da revisão escolhida pelo journal do lote,
+sem usar último/melhor run. UI/SDK/CLI expõem estados/motivos, retorno/DD/PF e
+operações, matriz ativo × TF, capital por TF e detalhe com tentativas/recibos.
+Parâmetros Python são provados pelo plano, sem fabricar uma composição. Valores
+de cada janela integral permanecem separados quando contexto/cobertura não
+comprovam compatibilidade; interseção é informativa, sem novo backtest.
+Nativo sem recibo suficiente mantém a limitação. [API](../sdk/api.md#comparação-do-lote-por-revisão-e-timeframe).
+Aceite concreto do host, prévia e gates de HTML/CI estão na continuidade e no
+registro central; esta extensão não conclui todo o backlog LAB-01…10.
+
 Reutilizar `robots/matrix.py`, store/histórico, gráficos Matplotlib e tokens F17.
 A matriz atual usa a execução mais recente por robô/ativo/TF; **essa chave sozinha
 não garante o mesmo preset**. A consulta deve filtrar identidade/revisão/hash do

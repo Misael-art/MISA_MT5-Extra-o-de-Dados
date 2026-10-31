@@ -4878,3 +4878,76 @@ compilação ou execução nativa; não qualifica o catálogo atual nem muda seu
 MT5/Wine/conta/Tester e Windows físico continuam sem novo aceite nesta frente.
 Comparação da mesma revisão entre TFs (T20.22/23) e pausa gráfica observada
 na frente anterior seguem pendentes, sem aceite financeiro/preditivo.
+
+### Comparação da revisão entre tempos —30/10/2026 (T20.22/23a)
+
+`codex/comparacao-preset-tempos`, sobre retenção/PR259. `matrix.compare_scope`
+consulta apenas as tentativas publicadas do plano escolhido, por ID e assinatura
+do journal Budget existente. Nenhum último/melhor run de outra revisão entra.
+`sdk.compare_backtest_scope` e `robots backtest-plan-compare --batch-id` devolvem
+o mesmo recibo; o exportador financeiro existente produz HTML local, sem rede.
+UI abre pelo plano Todos ou pelo detalhe de um run vinculado. Resultados,
+matriz ativo × TF, capital paginado por TF e detalhe conservam estados,
+parâmetros, curvas, operações, PF e motivo. Base1/capital/moeda são declarados;
+filtro por métrica, teclado, rolagem e zoom usam os componentes atuais.
+Hachura/n identificam amostra pequena; PF indefinido não vira zero ou ausência.
+
+Parâmetros Python são provados pelo plano, sem fabricar composição. Dados,
+parâmetros e proveniência divergentes, bindings rompidos e run ausente ficam
+explícitos; consulta não executa nem modifica o histórico. Configuração
+consistente e cobertura comum são verificações distintas. A cobertura usa o
+fim de barra do calendário canônico; janelas efetivas diferentes tornam
+`compatible=false`. Interseção é informativa e não recalcula métricas. O recorte
+efetivo pode ser menor que o solicitado, sinalizado por `covers_requested_window`.
+Na igualdade do contrato, só a contagem por barra `missing_specification_bars`
+é normalizada; valores e revisões da especificação continuam conferidos.
+
+Baseline15 aprovados; rodada ampla96 aprovados,35 finais após os ajustes de
+cobertura/contrato,22 UI/SDK aprovados com1 skip PostgreSQL sem servidor local,
+e4 UI após marcar amostra (rodadas sobrepostas). Há19 casos novos no host e
+1 caso novo PostgreSQL para o CI. Doctor offline16 OK/2 avisos/0 falhas.
+Pelo launcher CLI real,1/3/6 ativos ×21 TFs produziram21/63/126 execuções na
+mesma base própria, sem concorrência nativa ou dados privados. Consultar não
+alterou o journal; custos/revisão coincidiram e coberturas distintas ficaram
+separadas. Execução serial levou28,15/78,02/187,38s; consulta incluiu startup
+e levou9,93/19,04/72,80s. É medição desta bancada de251 barras/série sintética,
+não histórico de mercado ou promessa de escala linear.
+
+O monitor parcial das fases finais observou196,3MiB no processo executor e
+160,3MiB no consultor, com CPU/I/O nos recibos; terminou pelo seu limite antes
+do driver, que depois concluiu com saída0. Não é pico garantido nem custo por
+job. Perfil separado de63 resultados mediu49,78s sob instrumentação,32,35s em
+3786 chamadas ao decoder de blocos. Otimização pertence ao leitor canônico
+BD03/T20.4, preservando hashes, dtypes, vigência e qualidade; não criar outro
+cache/validador para esconder o custo. Fluidez irrestrita segue sem aceite.
+
+GUI pelo launcher em base própria mostrou estados pendentes, interrupção após3
+e retomada dos12 resultados entre dois TFs, com ganhos/perdas preservados.
+Tema/DPI de aba oculta expôs desenho antes do Map do TkAgg: redesenho agora é
+coalescido após o mapeamento; pixels/limites e percurso real confirmaram o tema
+e a largura correta. Capturas anteriores ao ajuste são diagnósticas. Ensaios
+finais de todos os TFs/prévia, SHA/PR e proteção privada ficam nos recibos e
+no registro central. Layout/tema da aplicação inteira ainda apresentou pausas
+de até3,16s nos ensaios de diagnóstico, portanto não há selo geral de fluidez.
+
+Aceite final do fonte pelo launcher:12 resultados retomados com IDs preservados,
+ganho/perda e detalhe vinculado, temas e janela estreita; pausa máxima1,51s.
+Consulta dos126 resultados reais da bancada mostrou espera visível,21 TFs,
+quatro páginas de capital e detalheMN1; zero erros de callback. Pausa gráfica
+máxima4,14s nessa consulta completa, distinta do tempo assíncrono do leitor.
+Revisão da captura estreita identificou sobreposição de n: contagens/rótulos
+agora mudam de orientação conforme a largura, com regressão de bounding boxes.
+O ensaio intermediário de redimensionamento mediu pausa9,34s; Configure agora
+refaz a matriz só quando a orientação muda, sem redesenhar outras abas ocultas.
+Essa medida permanece diagnóstica; a prévia tem seu próprio recibo de latência.
+CLI final1/3/6 ativos preservou journal e separou coberturas; consulta com
+launcher levou2,46/3,62/4,39s nos lotes menores de2/6/12 resultados.
+CONN-STARTUP já presente na prévia foi revalidado:11 testes aprovados, incluindo
+atrasos de processo/ponte, cancelamento e diagnóstico sem falso aviso de abertura.
+
+HTML teve conteúdo/recibo e sintaxe JavaScript conferidos. Inspeção visual no
+Browser ficou bloqueada pela política de URL local; nenhum contorno foi tentado.
+Aceite visual/interação do HTML continua pendente. PostgreSQL novo/CI da ponta,
+Windows físico, Tester/conta e financeiro têm gates próprios. S09 atual1.90
+continua com seu gate de fingerprint; pins HADOUKEN/Safety permanecem intactos.
+Esta extensão não conclui todo o backlog LAB/SA nem qualifica previsão.

@@ -89,11 +89,14 @@ class BacktestScopeDialog:
         bottom.columnconfigure(0, weight=1)
         self.status = ttk.Label(bottom, text="Aguardando plano", style="Muted.TLabel", wraplength=300, justify=tk.LEFT)
         self.status.grid(row=0, column=0, sticky="ew")
+        self.status.grid_configure(columnspan=3)
         self.status.bind("<Configure>", lambda e: self.status.configure(wraplength=max(80, e.width-4)))
         self.cancel_button = ttk.Button(bottom, text="Fechar", command=self.cancel_or_close)
-        self.cancel_button.grid(row=0, column=2, sticky="ne")
+        self.cancel_button.grid(row=1, column=2, sticky="ne")
         self.run_button = ttk.Button(bottom, text="Executar plano", style="Accent.TButton", command=self.execute)
-        self.run_button.grid(row=0, column=1, sticky="ne", padx=8); self.run_button.state(["disabled"])
+        self.run_button.grid(row=1, column=1, sticky="ne", padx=8); self.run_button.state(["disabled"])
+        self.compare_button = ttk.Button(bottom, text="Comparar resultados", command=self.compare)
+        self.compare_button.grid(row=1, column=0, sticky="w"); self.compare_button.state(["disabled"])
         self._poll_id = self.window.after(150, self.poll)
 
     @property
@@ -106,6 +109,7 @@ class BacktestScopeDialog:
     def invalidate(self):
         self.plan = None
         self.run_button.state(["disabled"])
+        self.compare_button.state(["disabled"])
         self.summary.configure(text="Seleção ou janela alterada; prepare outro plano antes de executar.")
 
     def select_all_assets(self):
@@ -130,6 +134,7 @@ class BacktestScopeDialog:
         self.stop.clear(); self.pending = True; self.plan = None
         self.events, self.records = Queue(), {}
         self.prepare_button.state(["disabled"]); self.run_button.state(["disabled"])
+        self.compare_button.state(["disabled"])
         self.cancel_button.configure(text="Cancelar"); self.status.configure(text="Preparando revisões e elegibilidade…")
         requested = (self.start.get(), self.end.get(), tuple(self.assets.selection()))
         self.all_assets_button.state(["disabled"])
@@ -149,6 +154,7 @@ class BacktestScopeDialog:
             if requested != (self.start.get(), self.end.get(), tuple(self.assets.selection())) or not self.is_current():
                 self.status.configure(text="Seleção mudou durante a preparação; prepare outro plano."); return
             self.plan = plan
+            self.compare_button.state(["!disabled"])
             self.tree.delete(*self.tree.get_children())
             for row in plan["rows"]:
                 self.tree.insert("", tk.END, iid=self._row_id(row), values=(f"{row['symbol']} · {row['timeframe']}", row["bars"],
@@ -199,6 +205,7 @@ class BacktestScopeDialog:
         plan = self.plan
         self.stop.clear(); self.pending = True
         self.prepare_button.state(["disabled"]); self.run_button.state(["disabled"])
+        self.compare_button.state(["disabled"])
         self.all_assets_button.state(["disabled"])
         for entry in self.entries:
             entry.state(["disabled"])
@@ -220,6 +227,7 @@ class BacktestScopeDialog:
             self.pending = False
             if not self.exists():
                 return
+            self.compare_button.state(["!disabled"])
             self.cancel_button.configure(text="Fechar")
             self.prepare_button.state(["!disabled"])
             self.all_assets_button.state(["!disabled"])
@@ -239,6 +247,14 @@ class BacktestScopeDialog:
             if self.closing:
                 self.window.destroy()
         self.ui.run_bg(work, done)
+
+    def compare(self):
+        if self.active or not self.plan:return
+        from .scope_comparison import ScopeComparisonDialog
+        previous=getattr(self,'comparison',None)
+        if previous and previous.alive():
+            previous.window.lift();return
+        self.comparison = ScopeComparisonDialog(self.ui, self.plan['batch_id'], parent=self.window)
 
     def poll(self):
         self._poll_id = None
