@@ -174,6 +174,7 @@ def _read(db, selection, cut):
 def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=None, fixture_label=None):
     """Gera um envelope estrito ou erro explícito; não retorna resultados parciais silenciosos."""
     selection, cut = _selection(symbol, timeframe, as_of, start, end, versions if versions is not None else {})
+    from .document import RENDERER_VERSION, resource_identity
     if fixture_label is not None and (not isinstance(fixture_label, str) or not fixture_label.strip()
                                       or len(fixture_label) > 128):
         raise ValueError("fixture_label precisa identificar a fixture em até128 caracteres.")
@@ -182,6 +183,8 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
             "data_cutoff_utc": None, "subject": {"mode": "asset", "symbol": selection["symbol"],
             "timeframe": timeframe}, "selection": selection,
             "provenance": {"generator_version": GENERATOR_VERSION, "history_semantics": "reconstructed_at_cut",
+                           "renderer_version": RENDERER_VERSION, "chart_library": "Apache ECharts 6.0.0",
+                           "resources": resource_identity(),
                            "fixture_label": fixture_label,
                            "data_cutoff_semantics": "latest_observation_time",
                            "read_consistency": "DatabaseManager.consistent_read",

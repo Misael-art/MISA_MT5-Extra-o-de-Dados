@@ -4,7 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Inteligência · mt5x</title>
-  <link rel="stylesheet" href="{{ css_url }}">
+  {% if css_embed %}
+  <meta http-equiv="Content-Security-Policy" content="{{ csp }}">
+  <style>{{ css_embed }}</style>
+  {% else %}<link rel="stylesheet" href="{{ css_url }}">{% endif %}
 </head>
 <body>
   <a class="skip" href="#narrativa">Ir para a narrativa</a>
@@ -14,14 +17,22 @@
     {% if snapshot.provenance.fixture_label %}<p class="fixture">FIXTURE · {{ snapshot.provenance.fixture_label }}</p>{% endif %}
     <div class="intro"><p class="eyebrow">FOTOGRAFIA DE PESQUISA · {{ snapshot.subject.timeframe }}</p><h1>{{ snapshot.subject.symbol }}</h1><p class="lead">Conhecimento no corte {{ snapshot.as_of_utc }}</p><p>Janela {{ snapshot.selection.start_utc }} → {{ snapshot.selection.end_utc }} · UTC</p></div>
     {% for error in snapshot.errors %}<section class="empty"><span class="index">LEITURA INDISPONÍVEL</span><p>{{ error.message }}</p></section>{% endfor %}
-    <section class="empty" aria-labelledby="surprise-title"><span class="index">01 / SURPRESA</span><div><h2 id="surprise-title">Surpresa indisponível</h2><p>{{ snapshot.sections[0].details.reason }}</p></div><span class="empty-mark" aria-hidden="true">—</span></section>
+    <div id="sections"><p class="absence">Conferindo a fotografia…</p></div>
+    <noscript><p>Ative JavaScript para conferir a fotografia e desenhar seus gráficos.</p><p>{{ snapshot.sections[0].details.reason }}</p></noscript>
     <details><summary>Fotografia e proveniência</summary><p>{{ snapshot.facts | length }} fatos consultáveis · reconstrução conhecida no corte, sem afirmar disponibilidade histórica original.</p><p>Fotografia {{ snapshot.snapshot_id }}</p><p>Gerada em {{ snapshot.generated_at_utc }} · dados até {{ snapshot.data_cutoff_utc or 'não informado' }}</p></details>
-    <script id="dashboard-data" type="application/json">{{ snapshot | tojson }}</script>
+    <details id="facts-audit"><summary>Fontes, contratos, fatos e capacidades</summary></details>
+    <p><button id="download-json" type="button">Salvar JSON da fotografia</button></p>
+    <p id="render-status" role="status">Conferindo integridade…</p>
+    {% include 'sections/surpresa.html' %}
+    <script id="dashboard-data" type="application/json">{{ encoded }}</script>
+    <script>{{ js_embed }}</script>
     {% else %}
     <div class="intro"><p class="eyebrow">DASHBOARD CONTÍNUO</p><h1>Uma história.<br>Suas evidências.</h1><p class="lead">Ativos, contexto e resultados no mesmo lugar.</p></div>
     <section class="empty" aria-labelledby="empty-title"><span class="index">01 / CONTEXTO</span><div><h2 id="empty-title">Nenhuma fotografia selecionada</h2><p>A consulta de ativos e robôs será integrada nas próximas etapas. Esta página ainda não apresenta análises.</p></div><span class="empty-mark" aria-hidden="true">—</span></section>
     {% endif %}
   </main>
-  <footer><span>mt5x / Inteligência</span><span>Servidor local · apresentação em implantação</span></footer>
+  <footer><span>mt5x / Inteligência</span><span>Fotografia de pesquisa · sem ação operacional</span></footer>
+  {% if license_text %}<details class="licenses"><summary>Apache ECharts 6.0.0 · licença e atribuições</summary><pre>{{ notice_text }}
+{{ license_text }}</pre></details>{% endif %}
 </body>
 </html>
