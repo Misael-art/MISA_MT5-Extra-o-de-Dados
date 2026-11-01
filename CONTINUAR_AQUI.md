@@ -12,7 +12,12 @@ o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
 [Proposta e encerramento por posse](docs/sdk/demo_operacional.md#sa-ref-01--proposta-operacional-para-2-novembro-2026-aguarda-autorização):
 02/11,10–12h America/Sao_Paulo, conta DEMO final9678, EURUSD M5/magic540121.
-Aguardar aprovação explícita deste roteiro; mercado aberto não autoriza PLAY.
+Autorização explícita recebida em01/11, limitada a02/11/2026,10–12h America/Sao_Paulo,
+entradas antes de11h45 e referência runtime33c2fa1. Revalidar tudo antes do PLAY;
+não pedir a mesma aprovação novamente. Mercado aberto não amplia essa autorização.
+Retomada única nesta tarefa agendada para09h50 pelo Codex; máquina e app precisam
+permanecer disponíveis. Autorização/recibos privados no estado da composição,
+referenciados pelo registro central; nenhuma negociação iniciada ao registrar.
 Auditor de sessão: `scripts/demo_session_audit.py`; `sa_ref_reconcile.py` mantém
 somente o contrato histórico de outubro. A deduplicação preserva repetições por
 origem. STOP não liquida: só encerrar supervisão após conferir pendências,

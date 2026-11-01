@@ -5498,3 +5498,26 @@ inalterado de gravação de23dias sintéticos (compilação INSERT SQLAlchemy);
 limitação registrada, sem afrouxar gate, alterar teste ou motor de dados. Não
 houve PLAY nem aceite de negócio. Recibo: `state/qa-tmp/super-atr-ref/operational-preparation.json`
 na raiz da composição (fora do Git); prévia/commit/PR/CI no registro central.
+
+
+### SA-REF-01: autorização delimitada recebida —01/11/2026
+
+O proprietário autorizou explicitamente `SAREF01-DEMO-20261102` na referência
+runtime33c2fa19a4c963e8aadd58c37c24aae811ce4920/PR269:02/11/2026,10–12h
+America/Sao_Paulo, entradas antes de11h45. A autorização inclui cancelar
+pendências e fechar integralmente só posições com origem comprovada nesta
+sessão, inclusive na interrupção antecipada. Posse ambígua impede fechamento;
+preservar toda exposição alheia. Revalidar antes do PLAY; nunca REAL,
+fechamento global, relaxar proteções ou estender automaticamente o horário.
+Casos não exercitados ficam registrados; entregar recibos de execução e
+encerramento. Exposição remanescente mantém supervisão e exige informar o dono.
+
+Nenhuma negociação iniciada ao registrar a autorização em01/11 (antes da janela).
+Retomada única desta tarefa pelo agendamento existente do Codex,02/11 às09h50
+America/Sao_Paulo, para revalidar sem iniciar cedo. Máquina/app precisam estar
+disponíveis. Não pedir novamente esta aprovação; se a retomada perder a janela,
+não compensar com sessão fora dela. O agendamento não é outro executor de ordens.
+Runtime de negociação permanece33c2fa1; este incremento é apenas documental.
+Autorização integral privada em `state/qa-tmp/super-atr-ref/demo-authorization.json`
+na raiz da composição. Identidade/ID do agendamento, recibos e estado corrente
+ficam no registro central Projects/.workspace, sem lista administrativa nova.

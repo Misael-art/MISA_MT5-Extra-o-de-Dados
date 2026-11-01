@@ -53,6 +53,18 @@ posições; esse limite precisa ser considerado antes de encerrar uma sessão co
 
 ## SA-REF-01 — proposta operacional para 2 novembro 2026 (aguarda autorização)
 
+**Autorização recebida em01/11/2026:** o proprietário aprovou este roteiro da
+PR269/runtime `33c2fa1`, somente em02/11,10–12h America/Sao_Paulo, entradas antes
+de11h45. Inclui cancelamento de pendências e fechamento integral apenas da
+exposição com origem nesta sessão comprovada, também na interrupção antecipada.
+Posse ambígua impede fechamento; exposição alheia deve ser preservada. Revalidar
+as pré-condições no início; sem REAL, fechamento global, relaxamento de proteção
+ou extensão automática. Casos não exercitados e recibos de execução/encerramento
+são obrigatórios. Se restar exposição, manter supervisão e informar o proprietário.
+A autorização recebida não é um recibo de execução. Retomada única da tarefa
+agendada para09h50; sem host/app disponível ou mecanismos de supervisão e
+encerramento, não lançar. Registro privado e estado corrente no registro central.
+
 Este roteiro substitui o roteiro preliminar de 01/11 na continuidade. Não inicia
 PLAY pelo horário ou abertura do mercado. A confirmação multi-TF SA-01 é a frente
 seguinte; diferenças de lote e as duas M1 ausentes continuam documentadas.
