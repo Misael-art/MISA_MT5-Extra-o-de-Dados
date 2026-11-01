@@ -5257,3 +5257,32 @@ ciclos, PF 0,90, −1.593,62 USD; 330 decisões, 18.717 M1, semente desde
 Expert listados no contrato (semente/20.000 barras, M5 nativo, BID/spread,
 custos). Próximo: variante nativa no template `SuperAtrResearch` e ensaio no
 Strategy Tester pelo fluxo oficial, com reconciliação decisão a decisão.
+
+### Super ATR SA-REF-01 no Strategy Tester e reconciliação —01/11/2026
+
+Variante `InpVariant=1` no template existente `SuperAtrResearch` (SA-01 segue
+padrão 0): sem confirmadores, stop = close M5 ∓ 2×ATR20 da mesma barra (ATR pela
+`CHDKSuperATRAverage` pública, header fixado intocado), alvo 2R e saída diária do
+host, sem saída por virada, ≥100 M5 consecutivos no dia, risco 0,25%, limites
+diários do host em 100% (declarado: o estudo não tem stop diário) e linha
+`SAREF_DECISION` por virada. Gerado pela CLI oficial (`robots new
+--template super-atr-reference`), compilado sem erros/avisos e testado pelo
+`robots backtest` (EURUSD M5, 2026-10-01→10-20, ticks reais, preset
+`SAREF01_G1915_SAREF01`, semente broker 2026-07-23 00:00), em sessão própria.
+
+Resultado nativo: 103 operações, PF 1,007, +105,77 USD (App/Dashboard mostram o
+mesmo do CSV). Reconciliação contra o gêmeo Python (custo zero):
+- decisões: 330/330 iguais em instante e lado; stop ≤0,5 ponto (arredondamento do
+  log); 3 elegíveis só no nativo, todas por lacunas de M1 na base (10-16 22:28 e
+  10-19 00:00 ausentes: o estudo descarta o M5 incompleto e reinicia a idade).
+- operações: 100 pareadas no minuto de entrada, mesma direção, SL ≤0,5 ponto,
+  motivos equivalentes (61 stop, 28 alvo, 11 fim do dia); 94 saem no mesmo
+  minuto, 6 diferem (5 ≤2 min; um alvo +8,5 min) por ticks reais/spread versus
+  OHLC M1 tratado como BID; 3 só nativo e 2 só Python decorrem da mesma lacuna.
+- defeitos encontrados: o log isolado do Tester colava UTF-16 cru em UTF-8
+  (corrigido em `mt5_tools`, com teste); o CSV de operações deixa
+  `exit_reason` vazio na saída de fim do dia (pendente, no HDK_TradeExport).
+Evidência local (não versionada): `state/qa-tmp/super-atr-ref/` (scripts,
+`decisoes.json`, `operacoes.json`, Dashboard). Isto é reprodução e
+reconciliação, não aprovação financeira: o candidato segue sem vantagem após
+custos (G19.15). Próximo: DEMO em sessão própria.

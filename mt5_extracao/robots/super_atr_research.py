@@ -41,13 +41,23 @@ def definition(seed_start,base_timeframe='M5',confirm_timeframe='M15',second_tim
         historical_availability_qualified=False,operational_qualified=False,predictive_qualified=False)
 
 
-def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_timeframe='M15',second_timeframe=None,robots=(),config=None,magic=None,cancel_check=None):
+def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_timeframe='M15',second_timeframe=None,robots=(),config=None,magic=None,cancel_check=None,reference=False):
     """Gera pacote local fechado; não compila/inicia MT5 nem altera o framework."""
     robots=list(robots)
     def guard():
         if cancel_check is not None and cancel_check():raise super_atr.indicator_materializer.Cancelled('Geração cancelada; arquivos próprios incompletos removidos.')
     guard()
     contract=definition(seed_start,base_timeframe,confirm_timeframe,second_timeframe)
+    if reference:
+        # SA-REF-01: mesmo pacote/host; InpVariant=1 desliga confirmadores e usa as regras G19.15 congeladas.
+        from .super_atr_reference import CONTRACT
+        if base_timeframe!='M5':raise ValueError('SA-REF-01 é congelado em M5.')
+        contract.update(strategy_id='super_atr_reference_g19_15',strategy_version='SA-REF-01/1',reference_contract=CONTRACT,
+            confirm_timeframes=[],entry='strict_flip_d1_closed_M5; next M1 open; >=100 consecutive same-day M5 closes',
+            initial_stop='close_signal_bar -/+ 2*ATR20_same_bar',take_profit='2R',exit='target_or_stop_or_end_of_day; no opposite flip exit',
+            risk_pct=.25,daily_loss_pct=100.,weekly_loss_pct=100.,max_drawdown_pct=100.,
+            host_limits_note='limites diários/semanais/DD do host desligados (100%) porque o estudo não tem stop diário; declarado, não omitido',
+            decision_log='SAREF_DECISION no log do Tester, uma linha por virada (inclusive inelegível)')
     artifact,_=super_atr.source(framework_root)
     guard()
     if not scaffold._NAME.fullmatch(name or ''):raise ValueError('Nome inválido; use3…40 letras/números/underscore, iniciando com letra.')
@@ -55,7 +65,7 @@ def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_t
     if root==framework or framework in root.parents:raise ValueError('Gere artefatos fora da dependência HADOUKEN fixada; preserve seu estado detached/limpo.')
     # Template e closure são revisados antes de criar qualquer arquivo permanente.
     values=dict(NAME=name,MAGIC=scaffold.new_magic(robots) if magic is None else magic,SEED=datetime.strptime(seed_start,'%Y-%m-%dT%H:%M').strftime('%Y.%m.%d %H:%M'),
-        BASE=contract['base_timeframe'],CONFIRM=contract['confirm_timeframes'][0],SECOND_ENABLED='true' if second_timeframe else 'false',
+        BASE=contract['base_timeframe'],CONFIRM=timeframes.parse(confirm_timeframe).name,SECOND_ENABLED='true' if second_timeframe else 'false',
         SECOND=contract['confirm_timeframes'][-1] if second_timeframe else 'H1')
     if type(values['MAGIC']) is not int or not 100000<=values['MAGIC']<=999999:raise ValueError('Magic de pesquisa exige inteiro exclusivo de seis dígitos.')
     if any(str(values['MAGIC'])==str(battery.magic_number(r)) for r in robots):raise ValueError('Magic já usado no catálogo; escolha identificador exclusivo.')
@@ -80,9 +90,19 @@ def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_t
     research=dict(research_contract=contract,research_contract_sha256=digest(contract),research_closure=closure)
     preset_text='; Candidato de pesquisa; entradas desligadas; nenhuma qualificação operacional\n'+''.join(f'{k}={v}\n' for k,v in dict(InpMagicNumber=values['MAGIC'],InpResearchOrders='false',InpSeedStart=values['SEED'],InpBaseTF=timeframes.parse(base_timeframe).value,InpConfirmTF=timeframes.parse(confirm_timeframe).value,InpSecondConfirm=values['SECOND_ENABLED'],InpSecondTF=timeframes.parse(second_timeframe or 'H1').value,InpRiskPct=.5,InpDailyLossPct=2.,InpWeeklyLossPct=4.,InpMaxDrawdownPct=10.,InpMoveGuard='false',InpExportTrades='false').items())
     preset_text+=''.join(f'Inp{role}{key}={value}\n' for role in ('Base','Confirm','Second') for key,value in [('Period',20),('Mean',0),('Deviation',1)])+'InpDeviationPoints=20\n'
+    if reference:
+        ref_text='; SA-REF-01 (G19.15 flip1/variable2atr/target2r) · somente Tester+DEMO pelo gate do código\n'+''.join(
+            f'{k}={v}\n' for k,v in dict(InpMagicNumber=values['MAGIC'],InpResearchOrders='true',InpSeedStart=values['SEED'],
+                InpBaseTF=timeframes.parse('M5').value,InpConfirmTF=timeframes.parse(confirm_timeframe).value,InpSecondConfirm='false',
+                InpSecondTF=timeframes.parse('H1').value,InpVariant=1,InpRefStopATR=2.0,InpRefTargetR=2.0,InpRefMinBars=100,
+                InpRiskPct=.25,InpDailyLossPct=100.,InpWeeklyLossPct=100.,InpMaxDrawdownPct=100.,InpMoveGuard='false',
+                InpExportTrades='true',InpBasePeriod=20,InpBaseMean=0,InpBaseDeviation=1,InpConfirmPeriod=20,InpConfirmMean=0,
+                InpConfirmDeviation=1,InpSecondPeriod=20,InpSecondMean=0,InpSecondDeviation=1,InpDeviationPoints=20).items())
+        payload[root/'Presets'/f'{name}_SAREF01.set']=ref_text.encode('utf-8')
     payload.update({target/f'{name}.mq5':source.encode('utf-8'),target/f'{name}.robot.json':(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n').encode('utf-8'),
         target/f'{name}.research.json':(json.dumps(research,ensure_ascii=False,indent=2)+'\n').encode('utf-8'),
         preset:preset_text.encode('utf-8'),target/'README.md':('Super ATR de pesquisa0.1\n\nContrato e hashes no research.json. Semente em horário broker precisa existir em todos os TFs. Entradas vêm desligadas. Somente Tester+DEMO, com risco/executor/painel HADOUKEN existentes. Use o compile/check/Session oficiais; este pacote não libera perfis automáticos nem qualifica operação. Padrões20/SMA/d1 são hipóteses, não seleção retrospectiva. G19.15 não aprovou candidato sob custos assumidos. Estado retido não é novo evento. Restart pula decisão corrente; não garante exclusividade entre instâncias. Prefixo revisado bloqueia novas entradas nesta instância; proteção existente permanece no host.\n').encode('utf-8')})
+    if reference and (root/'Presets'/f'{name}_SAREF01.set').exists():raise FileExistsError('Preset SA-REF-01 já existe; nenhum arquivo foi alterado.')
     if target.exists() or preset.exists():raise FileExistsError('Robô/preset já existe; nenhum arquivo foi alterado.')
     if any(r.key==f'mql5:{catalog._slug(name)}' for r in robots):raise ValueError('Nome já existe no catálogo.')
     for path,raw in payload.items():
@@ -98,4 +118,4 @@ def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_t
     except BaseException:
         for path in reversed(created):path.unlink()
         raise
-    return [target/f'{name}.mq5',target/f'{name}.robot.json',target/'README.md',preset,target/f'{name}.research.json']+[p for p in payload if p.is_relative_to(root/'Include') or p.is_relative_to(root/'Indicators')]
+    return [target/f'{name}.mq5',target/f'{name}.robot.json',target/'README.md',preset,target/f'{name}.research.json']+([root/'Presets'/f'{name}_SAREF01.set'] if reference else [])+[p for p in payload if p.is_relative_to(root/'Include') or p.is_relative_to(root/'Indicators')]

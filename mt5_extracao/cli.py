@@ -1540,11 +1540,12 @@ def cmd_robots(args, ctx):
         if not args.path or not args.dir:
             raise ValueError("uso: mt5x robots new <Nome> --dir <pasta de robôs> (ex.: --dir ~/robos)")
         try:
-            if args.template=='super-atr-research':
+            if args.template in ('super-atr-research','super-atr-reference'):
                 from mt5_extracao import sdk
                 if not args.framework or not args.seed_start:raise ValueError('Super ATR exige --framework e --seed-start YYYY-MM-DDTHH:MM (horário broker).')
                 created=sdk.create_super_atr_research_robot(args.path,args.dir,framework_root=args.framework,seed_start=args.seed_start,
-                    base_timeframe=args.tf or 'M5',confirm_timeframe=args.confirm_tf,second_timeframe=args.second_confirm_tf,robots=items,config=ctx.config)
+                    base_timeframe=args.tf or 'M5',confirm_timeframe=(args.confirm_tf or 'M15') if args.template=='super-atr-reference' else args.confirm_tf,second_timeframe=args.second_confirm_tf,robots=items,config=ctx.config,
+                    reference=args.template=='super-atr-reference')
             else:created = scaffold.create(args.path, args.dir, items, ctx.config)
         except (OSError, RuntimeError) as e:
             raise RuntimeError(str(e)) from e
@@ -2162,7 +2163,7 @@ def build_parser():
     p.add_argument("--report", help="check: relatório JUnit XML; backtest-plan-compare: novo HTML local")
     p.add_argument("--name", help="generate: nome do robô a criar")
     p.add_argument("--dir", help="new/generate: pasta de robôs onde criar (layout Experts/ Presets/)")
-    p.add_argument('--template',choices=['skeleton','super-atr-research'],default='skeleton',help='new: modelo padrão ou candidato Super ATR Tester+DEMO')
+    p.add_argument('--template',choices=['skeleton','super-atr-research','super-atr-reference'],default='skeleton',help='new: modelo padrão, candidato Super ATR Tester+DEMO ou referência SA-REF-01 (G19.15)')
     p.add_argument('--framework',help='new Super ATR: raiz HADOUKEN canônica, no pin atual')
     p.add_argument('--seed-start',help='new Super ATR: primeira barra real comum, YYYY-MM-DDTHH:MM em horário broker')
     p.add_argument('--confirm-tf',default='M15',help='new Super ATR: primeiro TF confirmador nativo')

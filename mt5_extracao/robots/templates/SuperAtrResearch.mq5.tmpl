@@ -10,6 +10,7 @@ input ENUM_TIMEFRAMES InpBaseTF = PERIOD_{{BASE}};
 input ENUM_TIMEFRAMES InpConfirmTF = PERIOD_{{CONFIRM}};
 input bool InpSecondConfirm = {{SECOND_ENABLED}};
 input ENUM_TIMEFRAMES InpSecondTF = PERIOD_{{SECOND}};
+input int InpVariant = 0; // 0=SA-01 confirmação entre TFs; 1=SA-REF-01 referência G19.15 (sem confirmadores)
 
 input group "2. Super ATR independente por TF"
 input int InpBasePeriod = 20;
@@ -30,6 +31,11 @@ input double InpWeeklyLossPct = 4.0;
 input double InpMaxDrawdownPct = 10.0;
 input int InpDeviationPoints = 20;
 input bool InpExportTrades = false;
+
+input group "4. SA-REF-01 (InpVariant=1): flip1 / variable2atr / target2r"
+input double InpRefStopATR = 2.0;   // stop = close M5 do sinal ∓ N×ATR da mesma barra
+input double InpRefTargetR = 2.0;   // alvo em múltiplos do risco inicial
+input int InpRefMinBars = 100;      // fechamentos M5 consecutivos no mesmo dia antes de entrar
 
 #define HDK_STRATEGY_OBSERVE_ENTRIES
 #include <Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh>
@@ -76,9 +82,10 @@ bool MT5XNativeTF(const ENUM_TIMEFRAMES tf)
 }
 
 bool MT5XReadCurve(const ENUM_TIMEFRAMES tf,const int period,const int mean,const double deviation,
-                 const datetime cut,MT5XObservedPrefix &prefix,int &side,int &previous_side,double &level)
+                 const datetime cut,MT5XObservedPrefix &prefix,int &side,int &previous_side,double &level,
+                 double &atr,double &close_last,int &run)
 {
-   side=0;previous_side=0;level=0;
+   side=0;previous_side=0;level=0;atr=0;close_last=0;run=0;
    if(!MT5XNativeTF(tf) || cut<=InpSeedStart || !SeriesInfoInteger(_Symbol,tf,SERIES_SYNCHRONIZED)) return false;
    int seconds=PeriodSeconds(tf);
    int requested=Bars(_Symbol,tf,InpSeedStart,cut-1);
@@ -102,11 +109,27 @@ bool MT5XReadCurve(const ENUM_TIMEFRAMES tf,const int period,const int mean,cons
    CHDKSuperATRCurve curve;
    if(!curve.Init(period,mean,deviation,1) || curve.Calculate(n,0,high,low,close)<0) return false;
    level=curve.Value(n-1);side=curve.Side(n-1);previous_side=curve.Side(n-2);
+   // ATR da mesma média do header (instância pública), sem tocar no header fixado.
+   CHDKSuperATRAverage average;
+   if(!average.Init(period,mean) || average.Calculate(n,0,high,low,close)<0) return false;
+   atr=average.Value(n-1);close_last=close[n-1];
+   // Barras consecutivas no mesmo dia terminando na última fechada (G19.15: idade>=99 => 100 fechamentos).
+   run=1;
+   for(int i=n-1;i>0;i--)
+   {
+      MqlDateTime a,b;TimeToStruct(rates[i].time,a);TimeToStruct(rates[i-1].time,b);
+      if(rates[i].time-rates[i-1].time!=seconds || a.day_of_year!=b.day_of_year || a.year!=b.year) break;
+      run++;
+   }
    return HDKSuperATRNumber(level) && level>0 && (side==1 || side==-1) &&
       (previous_side==1 || previous_side==-1);
 }
 
-void StrategyRules(HDKExitRules &rules) { ZeroMemory(rules); }
+void StrategyRules(HDKExitRules &rules)
+{
+   ZeroMemory(rules);
+   if(InpVariant==1) {rules.target_r=InpRefTargetR;rules.eod_exit=true;}   // SA-REF-01: TP 2R + saída diária
+}
 
 void StrategySignal(const HDKBars &bars,HDKSignal &signal)
 {
@@ -115,20 +138,34 @@ void StrategySignal(const HDKBars &bars,HDKSignal &signal)
       TimeCurrent()-cut>=PeriodSeconds(InpBaseTF)) return;
    // Consome a decisão uma vez; ausência/recusa não gera retentativa tardia nesta barra.
    g_processed_decision=cut;
-   int side,previous,confirm,confirm_previous;double level,confirm_level;
+   int side,previous,confirm,confirm_previous,run,unused_run;
+   double level,confirm_level,atr,close_last,unused_atr,unused_close;
    if(g_revision_block || !MT5XReadCurve(InpBaseTF,InpBasePeriod,InpBaseMean,InpBaseDeviation,
-      cut,g_base_prefix,side,previous,level)) return;
+      cut,g_base_prefix,side,previous,level,atr,close_last,run)) return;
    bool flipped=side!=previous;
+   if(InpVariant==1)
+   {
+      // SA-REF-01: sem saída por virada; virada estrita na barra fechada; stop pela mesma barra.
+      if(!flipped) return;
+      bool eligible=run>=InpRefMinBars && HDKSuperATRNumber(atr) && atr>=0;
+      double stop=side>0?close_last-InpRefStopATR*atr:close_last+InpRefStopATR*atr;
+      PrintFormat("SAREF_DECISION decision=%s side=%d close=%.5f atr=%.8f stop=%.5f run=%d eligible=%d orders=%d",
+                  TimeToString(cut,TIME_DATE|TIME_MINUTES),side,close_last,atr,stop,run,(int)eligible,(int)InpResearchOrders);
+      if(!InpResearchOrders || !eligible || g_revision_block) return;
+      signal.entry_long=side>0;signal.entry_short=side<0;
+      signal.stop_long=side>0?stop:0;signal.stop_short=side<0?stop:0;
+      return;
+   }
    signal.exit_long=flipped && side<0;signal.exit_short=flipped && side>0;
    if(InpMoveGuard) {if(side>0) g_guard_long=level;else g_guard_short=level;}
    if(!InpResearchOrders || !flipped) return;
    if(!MT5XReadCurve(InpConfirmTF,InpConfirmPeriod,InpConfirmMean,InpConfirmDeviation,
-      cut,g_confirm_prefix,confirm,confirm_previous,confirm_level) || confirm!=side) return;
+      cut,g_confirm_prefix,confirm,confirm_previous,confirm_level,unused_atr,unused_close,unused_run) || confirm!=side) return;
    if(InpSecondConfirm)
    {
       int second,second_previous;double second_level;
       if(!MT5XReadCurve(InpSecondTF,InpSecondPeriod,InpSecondMean,InpSecondDeviation,
-         cut,g_second_prefix,second,second_previous,second_level) || second!=side) return;
+         cut,g_second_prefix,second,second_previous,second_level,unused_atr,unused_close,unused_run) || second!=side) return;
    }
    if(g_revision_block) return;
    signal.entry_long=side>0;signal.entry_short=side<0;
@@ -140,6 +177,8 @@ int OnInit()
 {
    // Gate anterior a qualquer inicialização de risco/executor/painel.
    if(!MT5XResearchEnvironment()) {Print("Super ATR de pesquisa: somente Tester+DEMO.");return INIT_FAILED;}
+   if(InpVariant!=0 && InpVariant!=1) return INIT_PARAMETERS_INCORRECT;
+   if(InpVariant==1 && (InpRefStopATR<=0 || InpRefTargetR<=0 || InpRefMinBars<1)) return INIT_PARAMETERS_INCORRECT;
    if(InpSeedStart<=0 || InpSeedStart>=TimeCurrent() || _Period!=InpBaseTF ||
       !MT5XNativeTF(InpBaseTF) || !MT5XNativeTF(InpConfirmTF) ||
       PeriodSeconds(InpConfirmTF)<=PeriodSeconds(InpBaseTF) ||

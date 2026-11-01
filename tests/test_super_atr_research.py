@@ -102,3 +102,19 @@ def test_partial_write_failure_rolls_back_owned_files(tmp_path,framework,monkeyp
 @pytest.mark.parametrize('magic',[False,0,1.5])
 def test_invalid_magic_is_not_silently_replaced(tmp_path,framework,magic):
     with pytest.raises(ValueError,match='Magic'):sdk.create_super_atr_research_robot('SuperAtrQA',tmp_path/'package',framework_root=framework,seed_start='2025-01-01T00:00',magic=magic)
+
+
+def test_reference_variant_package_declares_sa_ref_01_and_keeps_default_sa01_off(tmp_path,framework):
+    files=generate(tmp_path,framework,reference=True)
+    robot=catalog.robot_from_file(files[0]);receipt=json.loads(files[4].read_text())
+    values={i.name:i.default for i in robot.inputs}
+    assert values['InpVariant']=='0' and values['InpResearchOrders']=='false'      # fonte: padrão SA-01, entradas desligadas
+    ref=mql.parse_set(files[5].read_text())
+    assert files[5].name=='SuperAtrQA_SAREF01.set'
+    assert ref['InpVariant']=='1' and ref['InpRefStopATR']=='2.0' and ref['InpRefTargetR']=='2.0' and ref['InpRefMinBars']=='100'
+    assert ref['InpRiskPct']=='0.25' and ref['InpResearchOrders']=='true' and ref['InpSecondConfirm']=='false'
+    contract_=receipt['research_contract']
+    assert contract_['strategy_version']=='SA-REF-01/1' and contract_['confirm_timeframes']==[]
+    assert contract_['reference_contract']['key']=='flip1/variable2atr/target2r' and 'host_limits_note' in contract_
+    source=files[0].read_text()
+    assert 'SAREF_DECISION' in source and 'MQL_TESTER' in source and 'ACCOUNT_TRADE_MODE_DEMO' in source
