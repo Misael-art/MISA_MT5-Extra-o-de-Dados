@@ -156,6 +156,96 @@ class UIManager:
             self.call_in_ui(lambda: finish(True))
             raise
 
+    def open_dashboard_for(self, subject, *, opener=None, on_done=None):
+        """Dashboard Contínuo (DASH-13) da seleção explícita, só leitura.
+
+        Gera a fotografia e sobe o servidor próprio fora da thread da UI (run_bg). Uma seleção mais nova
+        invalida as anteriores: resultados atrasados são descartados e nunca misturados. Nada é coletado,
+        calculado, executado ou publicado; o servidor anterior desta janela é encerrado antes do novo.
+        """
+        from datetime import datetime, timezone
+        from mt5_extracao.dashboard import generator
+        from mt5_extracao.dashboard.opener import open_dashboard
+        from mt5_extracao.dashboard.server import DashboardServer
+        db, config = self.app.db_manager, getattr(self.app, "config", None)
+        if not hasattr(self, "_dashboard_lock"):
+            self._dashboard_lock, self._dashboard_seq, self._dashboard_server = threading.Lock(), 0, None
+        self._dashboard_seq += 1
+        token = self._dashboard_seq
+        as_of = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+        def work():
+            started = time.perf_counter()
+            if subject["mode"] == "robot":
+                snapshot = generator.generate_robot(db, robot_key=subject["robot_key"], as_of=as_of)
+            else:
+                snapshot = generator.generate(db, symbol=subject["symbol"], timeframe=subject["timeframe"], as_of=as_of)
+            generated = time.perf_counter()
+            with self._dashboard_lock:
+                if token != self._dashboard_seq:
+                    return {"stale": True}
+                previous, self._dashboard_server = self._dashboard_server, None
+                if previous is not None:
+                    previous.stop()
+                server = DashboardServer(config, snapshot=snapshot)
+                if opener is None:
+                    result = open_dashboard(server, config)
+                else:
+                    server.start()
+                    result = opener(server)
+                self._dashboard_server = server
+            return {"stale": False, "result": result, "snapshot_id": snapshot["snapshot_id"],
+                    "errors": snapshot["errors"], "generation_ms": round((generated - started) * 1000),
+                    "until_open_ms": round((time.perf_counter() - started) * 1000)}
+
+        def done(outcome, error):
+            if error is not None:
+                self.log(f"Dashboard não aberto: {error}")
+                messagebox.showerror("Dashboard", f"Não foi possível abrir o Dashboard:\n{error}", parent=self.root)
+            elif outcome["stale"]:
+                self.log("Seleção do Dashboard substituída por outra mais recente; resultado anterior descartado.")
+            else:
+                result = outcome["result"]
+                label = subject.get("symbol") and f"{subject['symbol']} {subject['timeframe']}" or subject.get("robot_key")
+                self.log(f"Dashboard de {label}: {getattr(result, 'message', 'aberto')} {getattr(result, 'url', '')} "
+                         f"(geração {outcome['generation_ms']} ms; até abrir {outcome['until_open_ms']} ms)")
+                for item in outcome["errors"]:
+                    self.log(f"Dashboard: {item['message']}")
+            if on_done is not None:
+                on_done(outcome, error)
+
+        self.run_bg(work, done)
+        return token
+
+    def ask_dashboard_asset(self):
+        """Ativos → Dashboard: ativo em destaque/seleção e TF escolhido explicitamente."""
+        from mt5_extracao.timeframes import Timeframe
+        candidates = [getattr(self, "detail_symbol", None)] + list(getattr(self.app, "selected_symbols", []) or [])
+        symbol = next((s for s in candidates if s), None)
+        if not symbol:
+            messagebox.showinfo("Dashboard", "Escolha um ativo na lista (ou adicione à seleção) para abrir o Dashboard.",
+                                parent=self.root)
+            return
+        window = tk.Toplevel(self.root)
+        window.title("Dashboard do ativo")
+        window.transient(self.root)
+        frame = ttk.Frame(window, padding=12)
+        frame.pack(fill=tk.BOTH, expand=True)
+        ttk.Label(frame, text=f"{symbol} · fotografia de pesquisa no instante atual (UTC), só leitura").pack(anchor="w")
+        tf_var = tk.StringVar(value="M5")
+        row = ttk.Frame(frame)
+        row.pack(fill=tk.X, pady=(8, 0))
+        ttk.Label(row, text="Timeframe").pack(side=tk.LEFT)
+        ttk.Combobox(row, textvariable=tf_var, width=6, state="readonly",
+                     values=[tf.name for tf in Timeframe]).pack(side=tk.LEFT, padx=(8, 0))
+
+        def go():
+            window.destroy()
+            self.open_dashboard_for({"mode": "asset", "symbol": symbol, "timeframe": tf_var.get()})
+        ttk.Button(frame, text="Abrir Dashboard", style="Accent.TButton", command=go).pack(anchor="e", pady=(10, 0))
+        window.bind("<Return>", lambda _e: go())
+        window.bind("<Escape>", lambda _e: window.destroy())
+
     def open_results_panel(self, opener=None):
         """
         Abre o painel de resultados no navegador: a visão de conjunto ativos x timeframes x robôs. Sobe o painel
@@ -602,6 +692,10 @@ class UIManager:
         self.show_stats_button.pack(side=tk.LEFT, padx=(8, 0))
         Tooltip(self.show_stats_button, "Abre o gráfico de candles, os indicadores e os números de estudo do ativo "
                                         "(precisa ter dados na base).", self.theme)
+        self.dashboard_button = ttk.Button(row1, text="Dashboard", command=self.ask_dashboard_asset)
+        self.dashboard_button.pack(side=tk.LEFT, padx=(8, 0))
+        Tooltip(self.dashboard_button, "Abre no navegador a história do ativo: regime, volume, validações e "
+                                       "hipóteses já gravados. Só leitura: nada é coletado ou calculado.", self.theme)
         row2 = ttk.Frame(control, style="Surface.TFrame")
         row2.pack(fill=tk.X, pady=(8, 0))
         self.start_button = ttk.Button(row2, text="Iniciar coleta em tempo real", command=self.start_collection)

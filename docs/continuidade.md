@@ -5226,3 +5226,17 @@ pulado sem Chrome. Comprovado que falha com o laço reintroduzido. Browser
 interativo: composição QA (robô, hipótese, validação, regime) nos dois temas.
 Limites: `file://` comprovado só em headless Linux, não no navegador do usuário
 nem Windows; leitor de tela/zoom 200% seguem para o aceite DASH-14.
+
+### Dashboard nas abas Ativos e Robôs —01/11/2026 (DASH-13, integração Tk)
+
+Sobre DASH-12. `UIManager.open_dashboard_for` usa o `run_bg` existente: gera a
+fotografia e sobe o servidor próprio fora da thread da UI; seleção mais nova
+invalida as anteriores (resultado atrasado descartado, nunca misturado) e o
+servidor anterior desta janela é encerrado antes do novo. Ativos: botão
+"Dashboard" com TF explícito; Robôs: botão "Dashboard" ao lado do painel de
+resultados (cabeçalho mantém espaço da busca). Log registra geração e tempo até
+abrir o navegador — **não** mede gráficos utilizáveis (AC-01 segue pendente).
+
+Testes: 5 novos de UI + cabeçalho (10/10); `test_ui_main_window` + Dashboard
+196/197. A falha `test_dense_tabs_reflow_and_assets_remain_reachable_in_a_small_window`
+reproduz sem esta mudança no host (Linux CI do pai aprovado): ambiente local.
