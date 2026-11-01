@@ -52,7 +52,8 @@ com gates próprios.
 contínua de ativo ou robô, Flask local, evidências point-in-time e HTML offline
 autossuficiente. A CLI `dashboard` abre a fotografia sem iniciar ponte ou análise.
 Servidor, fotografia, arquivo, regime e volume estão implementados em seus
-recortes; próxima faixa é DASH-06. Surpresa real depende do produtor canônico.
+recortes; DASH-06…08 (hipótese, validação, vencido/invalidação) têm infraestrutura
+na PR268 com integrações reais pendentes; próxima faixa é DASH-09. Surpresa real depende do produtor canônico.
 As faixas restantes e os aceites integrais permanecem pendentes. Não criar motores de
 cálculo/catálogo/publicação paralelos nem presumir T13.4/T13.5/T13.8 concluídas.
 

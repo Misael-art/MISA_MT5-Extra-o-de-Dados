@@ -580,3 +580,15 @@ uma fórmula do Dashboard. Browser pelo launcher oficial: QA sintética 144 fato
 não comprova AC-01. Windows físico, offline visual/AC-06, produtor de surpresa
 e DASH-06…14 permanecem pendentes. A reconciliação dos agentes preservou os
 corretivos publicados de DASH-04, incluindo recursos vendor e bind Windows.
+
+### Estado de DASH-06…08 — 01/11/2026 (PR268)
+
+- DASH-06 `865c3c9`: hipótese com produtor T13.4 ausente → `T13_4_PENDING`;
+  adaptador e anéis validados só com fixture. Integração real pendente.
+- DASH-07 `4dd016f`: validação walk-forward dos recibos do Filtro C; treino e
+  custos não gravados pelo produtor ficam `NOT_RECORDED`. Sem recibos reais na
+  base compartilhada.
+- DASH-08 `d2f061d`: alertas de invalidação retroativa e regime vencido em âmbar.
+
+Commit publicado não conclui requisito: AC/aceites destas faixas são conferidos
+em DASH-14. Próxima: DASH-09 (ocultas).
