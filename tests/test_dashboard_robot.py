@@ -115,3 +115,16 @@ def test_python_strategy_without_registry_row_is_selectable(db):
     key = "python:" + next(iter(REGISTRY))
     snapshot = generator.generate_robot(db, robot_key=key, as_of=LATER.isoformat())
     assert snapshot["subject"]["robot_name"] and snapshot["subject"]["run_id"] is None
+
+
+def test_battery_projection_still_sees_cited_run_metrics(db):
+    # Detalhe só da execução escolhida; a bateria continua projetada com as métricas da execução citada.
+    bad = run("r-bad")
+    bad["metrics"]["profit_factor"] = None
+    store.save_run(db, bad)
+    store.save_run(db, run("r-new"))
+    store.save_check(db, {"check_id": "c1", "robot_key": "qa.robot", "preset": "p", "approved": True,
+                          "allows_real": True, "static_status": "ok", "statistical_status": "aprovada",
+                          "run_id": "r-bad", "items": [], "created_at": "2026-01-03 10:00:00"})
+    section = sections(generator.generate_robot(db, robot_key="qa.robot", as_of=LATER.isoformat()))["robot:battery"]
+    assert section["source_status"] == "BATTERY_REJECTED" and section["evidence"]["allows_real"] is False

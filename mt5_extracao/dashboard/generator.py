@@ -19,6 +19,7 @@ GENERATOR_VERSION = "DASH-02/1"
 MAX_FACTS = 20_000
 MAX_BYTES = 8 * 1024 * 1024
 MAX_DAYS = 31
+MAX_ROBOT_RUNS = 5_000
 
 # Mapa do inventário, não um catálogo paralelo de indicadores ou fórmulas.
 CAPABILITY_SOURCES = {
@@ -269,7 +270,16 @@ def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
     if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
         raise ValueError("run_id precisa ser texto explícito.")
     cut = _stamp(as_of, "as_of")
-    runs = store.load_runs(db, robot_key)
+    # Metadados de todas as execuções (sem curvas/ledger); detalhe completo só da escolhida (DASH-13: <3 s).
+    runs, offset = [], 0
+    while True:
+        page = store.run_index(db, limit=100, offset=offset, robot_key=robot_key)
+        runs.extend(page)
+        if len(page) < 100:
+            break
+        if len(runs) >= MAX_ROBOT_RUNS:
+            raise ValueError("ROBOT_RUNS_LIMIT: robô com mais de5.000 execuções gravadas; recuse em vez de truncar.")
+        offset += 100
     record = store.load_records(db).get(robot_key)
     if record is None:
         # Estratégias Python vêm do registro de código do catálogo (sem varrer pastas nem gravar nada).
@@ -291,6 +301,8 @@ def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
     else:
         chosen, rule = (known[0] if known else None), "latest_run_known_at_cut"
     others = [r for r in known if chosen is None or r["run_id"] != chosen["run_id"]]
+    if chosen is not None:
+        chosen = store.load_runs(db, robot_key, run_id=chosen["run_id"])[0]
     context = None
     if chosen is not None:
         try:
@@ -309,7 +321,11 @@ def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
     data.pop("integrity", None)
     if chosen is not None and context_error is not None:
         data["errors"] = [context_error]
-    checks = [c for c in store.load_checks(db, robot_key, runs=runs) if _within_cut(c.get("created_at"), cut)]
+    raw_checks = store.load_checks(db, robot_key, runs=[])
+    referenced = {c.get("run_id") for c in raw_checks if c.get("run_id")}
+    # Projeção de PF das baterias exige as métricas das execuções que elas citam; só essas são carregadas.
+    cited = [r for run in referenced for r in store.load_runs(db, robot_key, run_id=run)]
+    checks = [c for c in store.load_checks(db, robot_key, runs=cited) if _within_cut(c.get("created_at"), cut)]
     identity = {"mode": "robot", "robot_key": robot_key, "robot_name": record.get("name"), "kind": record.get("kind"),
                 "stage": record.get("stage"), "fingerprint": (checks[0].get("fingerprint") or None) if checks else None,
                 "run_id": chosen["run_id"] if chosen else None, "run_selection": rule if chosen else "no_run_at_cut",
