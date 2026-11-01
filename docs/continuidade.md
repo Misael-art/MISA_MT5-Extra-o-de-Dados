@@ -5361,3 +5361,17 @@ ZIP `4945ade5…` (28 MB, 63 partes base64); restauração pela ferramenta ofici
 em pasta nova: 31/31 idênticos (`prova-restauracao.json`).
 Pendente: cópia fora do host pela conta do proprietário (mesmo fluxo da página
 privada existente); conferência das M1 do Tester nas lacunas da base.
+
+### SA-REF-01: preset DEMO conferido no Tester —01/11/2026
+
+`demo_preset` gerou `SAREF01_G1915_SAREF01_DEMO.set` (QA, fora do Git): armado
+explicitamente, semente declarada 2026-09-01T00:00 (barra real; 11.232 M5 até
+10-23, abaixo do limite até meados de dezembro), risco 0,25%, limites do host
+2%/4%/10%. Instalado pelo compile oficial e testado no Tester na mesma janela
+(execução `a0e00b7a…`): 103 operações, +105,77 USD — igual à reprodução, logo a
+troca declarada de semente não altera decisões nesta janela; 0 `SAREF_BLOCKED`;
+limites não acionados (DD 3,5%). No log isolado (agora UTF-8) as linhas
+`SAREF_DECISION` aparecem duas vezes porque ele reúne log do agente e do Tester.
+DEMO ao vivo ainda não iniciada: falta sessão própria com mercado aberto
+(horário pela sessão do símbolo na corretora) para pausa, retomada, reinício,
+recusa, desconexão e não duplicação.
