@@ -5339,3 +5339,25 @@ SL em 8, minuto de saída em 6; motivo agora 100/100 coerente.
   também não tiver essas M1, seus ticks são ignorados (documentação MT5); ainda
   não foi conferido o histórico do Tester nesses minutos.
 Evidência local: `state/qa-tmp/super-atr-ref/reconciliacao_detalhada.json`.
+
+### SA-REF-01: reprodução protegida localmente —01/11/2026
+
+Item 3 da revisão. `scripts/sa_ref_reconcile.py` (versionado, sem caminhos
+pessoais: framework, log do agente, CSV e saída por argumento; base pela
+configuração oficial, só leitura) reproduz a reconciliação: 330/330 decisões,
+100 operações pareadas, 10 idênticas, 0 colisões.
+Pacote privado em `state/qa-tmp/super-atr-ref/protecao/` (fora do Git), no
+formato de `scripts/recover_cloud_backup.py`: 31 arquivos — fonte e EX5 do
+Expert, fonte/log/EX5 da sessão (`mt5x_session`, que inclui o fonte original e
+envolve os handlers), presets, `terminal.ini`/`metatester.ini`/sets do Tester
+(sem `common.ini`, que traz o login DEMO), histórico `2026.hcc` e ticks
+`202610.tkc` do Tester, logs (agente, Tester, isolado), relatório, CSV de
+operações, M1 da base até 10-20 (90.873 linhas), Dashboard e reconciliação.
+Proveniência: o fonte incluído pela sessão é idêntico ao da biblioteca e ao
+instalado (`53226c2f…`) e os 38 arquivos da closure HADOUKEN compilados pela
+sessão batem com `research.json`; o EX5 executado é o `mt5x_session.ex5`
+(`bc818064…`), não o `SAREF01_G1915.ex5` (`dab099ec…`).
+ZIP `4945ade5…` (28 MB, 63 partes base64); restauração pela ferramenta oficial
+em pasta nova: 31/31 idênticos (`prova-restauracao.json`).
+Pendente: cópia fora do host pela conta do proprietário (mesmo fluxo da página
+privada existente); conferência das M1 do Tester nas lacunas da base.
