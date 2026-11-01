@@ -5240,3 +5240,20 @@ abrir o navegador — **não** mede gráficos utilizáveis (AC-01 segue pendente
 Testes: 5 novos de UI + cabeçalho (10/10); `test_ui_main_window` + Dashboard
 196/197. A falha `test_dense_tabs_reflow_and_assets_remain_reachable_in_a_small_window`
 reproduz sem esta mudança no host (Linux CI do pai aprovado): ambiente local.
+
+### Super ATR SA-REF-01: candidato congelado e gêmeo Python —01/11/2026
+
+Decisão do proprietário: referência G19.15 `flip1/variable2atr/target2r`, EURUSD,
+janela `later` (2026-10-01→10-20 broker). Contrato em
+`mt5_extracao/robots/super_atr_reference.py` (`CONTRACT`), sem confirmação entre
+TFs (SA-01 multi-TF segue próxima etapa). O gêmeo não reimplementa a estratégia:
+importa o estudo G19.15 e o adaptador do header do HADOUKEN fixado `b730ed4a`,
+conferidos byte a byte, e roda só o livro congelado no backtester canônico.
+
+Evidência na base real (sem fixture privada no Git): reproduz exatamente o
+publicado — `later/zero` 102 ciclos, PF 1,03, +473,53 USD; `later/base` 98
+ciclos, PF 0,90, −1.593,62 USD; 330 decisões, 18.717 M1, semente desde
+2026-07-22 (estudo: 07-08) sem efeito no resultado. Riscos de paridade com o
+Expert listados no contrato (semente/20.000 barras, M5 nativo, BID/spread,
+custos). Próximo: variante nativa no template `SuperAtrResearch` e ensaio no
+Strategy Tester pelo fluxo oficial, com reconciliação decisão a decisão.
