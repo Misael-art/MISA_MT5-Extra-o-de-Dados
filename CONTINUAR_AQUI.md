@@ -98,6 +98,17 @@ de Codex/GitHub/corretora são refeitas na conta do proprietário.
 
 ## Prompt de continuidade para o agente sucessor — harmonização de01/11
 
+**Atribuição direta do proprietário:** o agente que recebe este prompt é o
+executor responsável **nesta própria sessão**. Não é um pedido para preparar
+outro repasse nem para escolher entre sessões. A frente de harmonização encerrou
+sua implementação; não haverá implementação paralela dela no Dashboard.
+Inicie a leitura e a execução agora, sem pedir confirmação para continuar.
+Esta atribuição inclui as decisões rotineiras de implementação, testes,
+integração, commits, publicação por PR e atualização da prévia já autorizadas.
+Só peça ao proprietário acesso ausente, uma decisão realmente indispensável ou
+uma ação fora da autorização vigente. A inspeção técnica de posse e recursos
+continua obrigatória; ela não exige uma nova confirmação genérica do usuário.
+
 Você é o único responsável por dar sequência ao desenvolvimento nesta composição.
 Use somente `/home/misael/Projects/MT5X`, App em `repos/app`, com seu único `.venv`.
 Leia as instruções AGENTS/RTK, este arquivo, os últimos registros de continuidade,
@@ -131,6 +142,17 @@ gates próprios; nenhuma fixture ou teste de sintaxe os conclui. Não contorne
 recusa de URL do Browser. CI Windows do pai d19cd8c tinha três falhas fora desta
 faixa: retenção de artefatos, leitura UTF-8 de comparação e layout estreito da
 comparação. Confira o SHA/check atual antes de atribuir ou corrigir uma falha.
+
+Execute DASH-06…14 até a entrega integrada e validada no escopo permitido.
+Não pare após planejamento, scaffolding, primeira faixa ou relatório de estado
+se existir trabalho seguro a executar. Uma dependência analítica ausente,
+check remoto em andamento ou falha comprovadamente anterior não bloqueia as
+partes independentes. Conserve essas pendências e avance inclusive no modo Robô,
+na integração Tk, no arquivo portátil e nos testes de desempenho. Não invente
+produtores, fórmulas ou aceites para fechar um item. Acompanhe a CI nos marcos
+de publicação, sem polling contínuo nem declarar concluído o que ainda não foi
+verificado. Ao atingir um bloqueio real, identifique o requisito e a evidência
+que faltam; continue todo o restante que não depende dele.
 
 Uma tarefa por PR, publicação serial pelo guard, SHA remoto confirmado; sem
 force push, merge automático ou release. Antes de branch/índice/commit/prévia
