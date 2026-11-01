@@ -41,6 +41,39 @@ def definition(seed_start,base_timeframe='M5',confirm_timeframe='M15',second_tim
         historical_availability_qualified=False,operational_qualified=False,predictive_qualified=False)
 
 
+REFERENCE_README=('SA-REF-01 · presets\n\n'
+    '- Conservador: desarmado (InpResearchOrders=false), variante SA-01.\n'
+    '- SAREF01: reprodução histórica no Strategy Tester; armado e limites do host em 100% (perda diária, semanal, drawdown). Não usar em DEMO.\n'
+    '- SAREF01_DEMO: qualificação DEMO, gerado à parte com semente própria declarada e limites do host 2%/4%/10%.\n'
+    'Variante e regras: research.json (reference_contract). Decisões: SAREF_DECISION/SAREF_BLOCKED no log.\n\n')
+
+
+def demo_preset(name,folder,*,seed_start,magic,risk_pct=.25,daily_loss_pct=2.,weekly_loss_pct=4.,max_drawdown_pct=10.):
+    """Preset de qualificação DEMO do SA-REF-01: armamento explícito, semente declarada e limites operacionais do host.
+
+    A semente integra a identidade do cálculo: é sempre informada, nunca trocada em silêncio. Não sobrescreve.
+    """
+    seed=datetime.strptime(seed_start,'%Y-%m-%dT%H:%M')
+    if seed.strftime('%Y-%m-%dT%H:%M')!=seed_start or seed.minute%5:raise ValueError('Semente broker YYYY-MM-DDTHH:MM alinhada a M5.')
+    if not (0<risk_pct<=.25 and 0<daily_loss_pct<=2. and 0<weekly_loss_pct<=4. and 0<max_drawdown_pct<=10.):
+        raise ValueError('Preset DEMO aceita risco ≤0,25% e limites do host ≤2%/4%/10%; não relaxa proteções.')
+    target=Path(folder).expanduser().resolve()/'Presets'/f'{name}_SAREF01_DEMO.set'
+    if target.exists():raise FileExistsError('Preset DEMO já existe; nenhum arquivo foi alterado.')
+    values=dict(InpMagicNumber=magic,InpResearchOrders='true',InpSeedStart=seed.strftime('%Y.%m.%d %H:%M'),
+        InpBaseTF=timeframes.parse('M5').value,InpConfirmTF=timeframes.parse('M15').value,InpSecondConfirm='false',
+        InpSecondTF=timeframes.parse('H1').value,InpVariant=1,InpRefStopATR=2.0,InpRefTargetR=2.0,InpRefMinBars=100,
+        InpRiskPct=risk_pct,InpDailyLossPct=daily_loss_pct,InpWeeklyLossPct=weekly_loss_pct,InpMaxDrawdownPct=max_drawdown_pct,
+        InpMoveGuard='false',InpExportTrades='true',InpBasePeriod=20,InpBaseMean=0,InpBaseDeviation=1,InpConfirmPeriod=20,
+        InpConfirmMean=0,InpConfirmDeviation=1,InpSecondPeriod=20,InpSecondMean=0,InpSecondDeviation=1,InpDeviationPoints=20)
+    text=('; SA-REF-01 QUALIFICAÇÃO DEMO · ARMADO explicitamente (InpResearchOrders=true) · gate do código: só Tester/DEMO.\n'
+          f'; Semente declarada {seed_start} (identidade diferente da reprodução histórica). Limites do host: '
+          f'perda diária {daily_loss_pct}%, semanal {weekly_loss_pct}%, drawdown {max_drawdown_pct}%, risco {risk_pct}%.\n')
+    text+=''.join(f'{k}={v}\n' for k,v in values.items())
+    target.parent.mkdir(parents=True,exist_ok=True)
+    with target.open('x',encoding='utf-8') as stream:stream.write(text)
+    return target
+
+
 def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_timeframe='M15',second_timeframe=None,robots=(),config=None,magic=None,cancel_check=None,reference=False):
     """Gera pacote local fechado; não compila/inicia MT5 nem altera o framework."""
     robots=list(robots)
@@ -82,7 +115,10 @@ def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_t
     contract.update(framework_commit=artifact['framework_commit'],header_sha256=artifact['header_sha256'],
         source_sha256=hashlib.sha256(source.encode('utf-8')).hexdigest(),closure_sha256=digest(closure),platform_standard_includes=missing)
     target=root/'Experts'/name;preset=root/'Presets'/f'{name}_Conservador.set'
-    manifest=dict(contract=1,name=name,description='Super ATR multi-TF · candidato de pesquisa Tester+DEMO; entradas desligadas',
+    description=('Super ATR · SA-REF-01 (G19.15) e SA-01 · fonte e preset Conservador desarmados; preset SAREF01 = reprodução '
+                 'histórica no Tester, armado e com limites do host em 100%; DEMO só pelo preset _SAREF01_DEMO' if reference else
+                 'Super ATR multi-TF · candidato de pesquisa Tester+DEMO; entradas desligadas')
+    manifest=dict(contract=1,name=name,description=description,
         timeframes=[contract['base_timeframe']],regime='pesquisa',markets='',
         risk=dict(mandatory_stop=True),
         inputs=dict(magic='InpMagicNumber',risk_pct='InpRiskPct',daily_loss_pct='InpDailyLossPct',max_drawdown_pct='InpMaxDrawdownPct',stop='InpBaseDeviation',export_trades='InpExportTrades'),
@@ -91,7 +127,9 @@ def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_t
     preset_text='; Candidato de pesquisa; entradas desligadas; nenhuma qualificação operacional\n'+''.join(f'{k}={v}\n' for k,v in dict(InpMagicNumber=values['MAGIC'],InpResearchOrders='false',InpSeedStart=values['SEED'],InpBaseTF=timeframes.parse(base_timeframe).value,InpConfirmTF=timeframes.parse(confirm_timeframe).value,InpSecondConfirm=values['SECOND_ENABLED'],InpSecondTF=timeframes.parse(second_timeframe or 'H1').value,InpRiskPct=.5,InpDailyLossPct=2.,InpWeeklyLossPct=4.,InpMaxDrawdownPct=10.,InpMoveGuard='false',InpExportTrades='false').items())
     preset_text+=''.join(f'Inp{role}{key}={value}\n' for role in ('Base','Confirm','Second') for key,value in [('Period',20),('Mean',0),('Deviation',1)])+'InpDeviationPoints=20\n'
     if reference:
-        ref_text='; SA-REF-01 (G19.15 flip1/variable2atr/target2r) · somente Tester+DEMO pelo gate do código\n'+''.join(
+        ref_text=('; SA-REF-01 REPRODUÇÃO HISTÓRICA no Strategy Tester (G19.15 flip1/variable2atr/target2r).\n'
+                  '; ARMADO (InpResearchOrders=true) e limites do host em 100% (perda diária, semanal e drawdown), porque o estudo\n'
+                  '; não tem stop diário. NÃO usar em DEMO: para qualificação use o preset _SAREF01_DEMO (demo_preset).\n')+''.join(
             f'{k}={v}\n' for k,v in dict(InpMagicNumber=values['MAGIC'],InpResearchOrders='true',InpSeedStart=values['SEED'],
                 InpBaseTF=timeframes.parse('M5').value,InpConfirmTF=timeframes.parse(confirm_timeframe).value,InpSecondConfirm='false',
                 InpSecondTF=timeframes.parse('H1').value,InpVariant=1,InpRefStopATR=2.0,InpRefTargetR=2.0,InpRefMinBars=100,
@@ -101,7 +139,7 @@ def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_t
         payload[root/'Presets'/f'{name}_SAREF01.set']=ref_text.encode('utf-8')
     payload.update({target/f'{name}.mq5':source.encode('utf-8'),target/f'{name}.robot.json':(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n').encode('utf-8'),
         target/f'{name}.research.json':(json.dumps(research,ensure_ascii=False,indent=2)+'\n').encode('utf-8'),
-        preset:preset_text.encode('utf-8'),target/'README.md':('Super ATR de pesquisa0.1\n\nContrato e hashes no research.json. Semente em horário broker precisa existir em todos os TFs. Entradas vêm desligadas. Somente Tester+DEMO, com risco/executor/painel HADOUKEN existentes. Use o compile/check/Session oficiais; este pacote não libera perfis automáticos nem qualifica operação. Padrões20/SMA/d1 são hipóteses, não seleção retrospectiva. G19.15 não aprovou candidato sob custos assumidos. Estado retido não é novo evento. Restart pula decisão corrente; não garante exclusividade entre instâncias. Prefixo revisado bloqueia novas entradas nesta instância; proteção existente permanece no host.\n').encode('utf-8')})
+        preset:preset_text.encode('utf-8'),target/'README.md':((REFERENCE_README if reference else '')+'Super ATR de pesquisa0.1\n\nContrato e hashes no research.json. Semente em horário broker precisa existir em todos os TFs. Entradas vêm desligadas. Somente Tester+DEMO, com risco/executor/painel HADOUKEN existentes. Use o compile/check/Session oficiais; este pacote não libera perfis automáticos nem qualifica operação. Padrões20/SMA/d1 são hipóteses, não seleção retrospectiva. G19.15 não aprovou candidato sob custos assumidos. Estado retido não é novo evento. Restart pula decisão corrente; não garante exclusividade entre instâncias. Prefixo revisado bloqueia novas entradas nesta instância; proteção existente permanece no host.\n').encode('utf-8')})
     if reference and (root/'Presets'/f'{name}_SAREF01.set').exists():raise FileExistsError('Preset SA-REF-01 já existe; nenhum arquivo foi alterado.')
     if target.exists() or preset.exists():raise FileExistsError('Robô/preset já existe; nenhum arquivo foi alterado.')
     if any(r.key==f'mql5:{catalog._slug(name)}' for r in robots):raise ValueError('Nome já existe no catálogo.')

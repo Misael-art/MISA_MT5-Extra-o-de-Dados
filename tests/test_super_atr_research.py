@@ -118,3 +118,28 @@ def test_reference_variant_package_declares_sa_ref_01_and_keeps_default_sa01_off
     assert contract_['reference_contract']['key']=='flip1/variable2atr/target2r' and 'host_limits_note' in contract_
     source=files[0].read_text()
     assert 'SAREF_DECISION' in source and 'MQL_TESTER' in source and 'ACCOUNT_TRADE_MODE_DEMO' in source
+
+
+def test_reference_presets_separate_historical_reproduction_from_demo_qualification(tmp_path,framework):
+    files=generate(tmp_path,framework,reference=True)
+    reproduction=files[5].read_text()
+    assert 'REPRODUÇÃO HISTÓRICA' in reproduction and 'NÃO usar em DEMO' in reproduction
+    assert all(f'{k}=100.0' in reproduction for k in ('InpDailyLossPct','InpWeeklyLossPct','InpMaxDrawdownPct'))
+    readme=(files[0].parent/'README.md').read_text()
+    assert 'SAREF01_DEMO' in readme and 'Não usar em DEMO' in readme
+    assert 'reprodução histórica' in json.loads((files[0].parent/'SuperAtrQA.robot.json').read_text())['description']
+    demo=super_atr_research.demo_preset('SuperAtrQA',tmp_path/'package',seed_start='2026-09-01T00:00',magic=654321)
+    values=mql.parse_set(demo.read_text())
+    assert demo.name=='SuperAtrQA_SAREF01_DEMO.set' and 'ARMADO explicitamente' in demo.read_text()
+    assert values['InpResearchOrders']=='true' and values['InpVariant']=='1' and values['InpSeedStart']=='2026.09.01 00:00'
+    assert (values['InpRiskPct'],values['InpDailyLossPct'],values['InpWeeklyLossPct'],values['InpMaxDrawdownPct'])==('0.25','2.0','4.0','10.0')
+    with pytest.raises(FileExistsError):
+        super_atr_research.demo_preset('SuperAtrQA',tmp_path/'package',seed_start='2026-09-01T00:00',magic=654321)
+
+
+@pytest.mark.parametrize('kwargs',[dict(seed_start='2026-09-01T00:03'),dict(seed_start='2026-09-01'),
+    dict(seed_start='2026-09-01T00:00',max_drawdown_pct=100.),dict(seed_start='2026-09-01T00:00',daily_loss_pct=5.),
+    dict(seed_start='2026-09-01T00:00',risk_pct=1.)])
+def test_demo_preset_refuses_misaligned_seed_or_relaxed_protection(tmp_path,kwargs):
+    with pytest.raises(ValueError):
+        super_atr_research.demo_preset('SuperAtrQA',tmp_path,magic=654321,**kwargs)

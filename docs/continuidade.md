@@ -5286,3 +5286,26 @@ Evidência local (não versionada): `state/qa-tmp/super-atr-ref/` (scripts,
 `decisoes.json`, `operacoes.json`, Dashboard). Isto é reprodução e
 reconciliação, não aprovação financeira: o candidato segue sem vantagem após
 custos (G19.15). Próximo: DEMO em sessão própria.
+
+### SA-REF-01: regressões restauradas e presets coerentes —01/11/2026
+
+Revisão do proprietário apontou que o marco anterior foi declarado cedo demais.
+Item 1 (regressões e presets):
+- A sonda C++ do corpo MQL real (`tests/super_atr_research_probe.py`) estava
+  quebrada pela nova assinatura de `MT5XReadCurve`. Restaurada e ampliada:
+  SA-01 (causalidade, revisão, deduplicação) e SA-REF-01 (regras 2R/fim do dia,
+  stop close∓2ATR, idade mínima, sem saída por virada, desarmado sem entradas,
+  gate REAL). Agora roda no pytest (`test_super_atr_native_probe.py`).
+- Recusas de leitura têm motivo explícito (`g_read_reason`) e a variante 1
+  imprime `SAREF_BLOCKED reason=…`; provado o caso `bars_since_seed_above_20000`
+  — risco real para DEMO com a semente 2026-07-23 (base já tem 19.296 M5 até
+  10-23).
+- Presets: `_SAREF01` segue como reprodução histórica, agora rotulado (armado,
+  perda diária/semanal **e drawdown** em 100%, "NÃO usar em DEMO"); novo
+  `demo_preset()` gera `_SAREF01_DEMO` armado explicitamente, com semente
+  declarada e limites do host ≤2%/4%/10%, sem sobrescrever. README/descrição
+  listam o papel de cada preset; a App já mostra os valores do preset escolhido.
+Pendentes da revisão: reconciliação um-a-um com colisões e vínculo
+decisão→ordem→posição, diferenças de capital (fixo × saldo) e de fim do dia
+(última barra × sessão), M1 ausente na base × no Tester, proteção/manifesto da
+reprodução, origem do `exit_reason` vazio, DEMO.

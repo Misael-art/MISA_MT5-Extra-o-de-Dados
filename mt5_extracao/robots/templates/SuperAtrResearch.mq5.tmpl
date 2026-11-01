@@ -65,6 +65,7 @@ public:
 MT5XObservedPrefix g_base_prefix,g_confirm_prefix,g_second_prefix;
 datetime g_processed_decision=0;
 bool g_revision_block=false;
+string g_read_reason="";   // motivo da última recusa de leitura, para diagnóstico (SAREF_BLOCKED)
 
 bool MT5XResearchEnvironment()
 {
@@ -85,18 +86,22 @@ bool MT5XReadCurve(const ENUM_TIMEFRAMES tf,const int period,const int mean,cons
                  const datetime cut,MT5XObservedPrefix &prefix,int &side,int &previous_side,double &level,
                  double &atr,double &close_last,int &run)
 {
-   side=0;previous_side=0;level=0;atr=0;close_last=0;run=0;
-   if(!MT5XNativeTF(tf) || cut<=InpSeedStart || !SeriesInfoInteger(_Symbol,tf,SERIES_SYNCHRONIZED)) return false;
+   side=0;previous_side=0;level=0;atr=0;close_last=0;run=0;g_read_reason="";
+   if(!MT5XNativeTF(tf)) {g_read_reason="tf_not_native";return false;}
+   if(cut<=InpSeedStart) {g_read_reason="cut_before_seed";return false;}
+   if(!SeriesInfoInteger(_Symbol,tf,SERIES_SYNCHRONIZED)) {g_read_reason="history_not_synchronized";return false;}
    int seconds=PeriodSeconds(tf);
    int requested=Bars(_Symbol,tf,InpSeedStart,cut-1);
-   if(requested<period+1 || requested>20000) return false;
+   if(requested<period+1) {g_read_reason="too_few_bars_since_seed";return false;}
+   if(requested>20000) {g_read_reason="bars_since_seed_above_20000";return false;}
    MqlRates rates[];ArraySetAsSeries(rates,false);
    int copied=CopyRates(_Symbol,tf,InpSeedStart,cut-1,rates);
-   if(copied!=requested || copied<period+1 || rates[0].time!=InpSeedStart) return false;
+   if(copied!=requested || copied<period+1) {g_read_reason="copy_incomplete";return false;}
+   if(rates[0].time!=InpSeedStart) {g_read_reason="seed_bar_missing";return false;}
    int n=copied;
    while(n>0 && rates[n-1].time+seconds>cut) n--;
-   if(n<period+1 || cut-(rates[n-1].time+seconds)>=seconds) return false;
-   if(!prefix.Accept(rates,n)) {g_revision_block=true;return false;}
+   if(n<period+1 || cut-(rates[n-1].time+seconds)>=seconds) {g_read_reason="last_closed_bar_stale";return false;}
+   if(!prefix.Accept(rates,n)) {g_revision_block=true;g_read_reason="history_revised";return false;}
    double high[],low[],close[];ArrayResize(high,n);ArrayResize(low,n);ArrayResize(close,n);
    for(int i=0;i<n;i++)
    {
@@ -141,7 +146,13 @@ void StrategySignal(const HDKBars &bars,HDKSignal &signal)
    int side,previous,confirm,confirm_previous,run,unused_run;
    double level,confirm_level,atr,close_last,unused_atr,unused_close;
    if(g_revision_block || !MT5XReadCurve(InpBaseTF,InpBasePeriod,InpBaseMean,InpBaseDeviation,
-      cut,g_base_prefix,side,previous,level,atr,close_last,run)) return;
+      cut,g_base_prefix,side,previous,level,atr,close_last,run))
+   {
+      if(InpVariant==1)
+         PrintFormat("SAREF_BLOCKED decision=%s reason=%s",TimeToString(cut,TIME_DATE|TIME_MINUTES),
+                     g_revision_block && g_read_reason=="" ? "revision_block" : g_read_reason);
+      return;
+   }
    bool flipped=side!=previous;
    if(InpVariant==1)
    {
