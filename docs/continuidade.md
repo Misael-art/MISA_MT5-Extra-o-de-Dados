@@ -5425,3 +5425,25 @@ build 6296. EX5 de cada sessão difere (id da sessão no wrapper); fonte incluí
 e closure idênticos. Complemento privado `complemento-01` (16 arquivos, ZIP
 `6e67372f…`, 4 partes) restaurado 16/16; pacote anterior preservado. Cópia
 fora do host pendente do proprietário. DEMO ao vivo não iniciada.
+
+#### Roteiro delimitado da sessão DEMO SA-REF-01 (aguarda autorização explícita)
+
+Pré-condições: conta DEMO própria (nunca REAL), terminal na sessão isolada da
+App, mercado EURUSD aberto pela sessão do símbolo na corretora, data ≤
+2026-11-18 (semente 2026-09-01), preset `SAREF01_G1915_SAREF01_DEMO` instalado
+pelo compile oficial, nenhum outro Expert com o mesmo magic no símbolo.
+1. Início: `mt5x robots start` pelo fluxo oficial com o preset DEMO, EURUSD M5.
+   Conferir no log a primeira `SAREF_DECISION`/`SAREF_BLOCKED`, o gate DEMO e o
+   painel do host; registrar SHA da App, EX5 da sessão e horário.
+2. Observação: decisões, ordens, posições e fechamentos ligados por
+   `position_id`; nenhuma ordem fora de virada elegível.
+3. Casos controlados, um por vez e registrados: pausa e retomada pelo controle
+   oficial; reinício do Expert (decisão corrente pulada, sem segunda entrada);
+   desconexão do terminal/rede com retorno (sem ordem duplicada); recusa por
+   limite com preset QA derivado (≤ limites DEMO), não pelo preset DEMO.
+4. Encerramento: `mt5x robots stop` (PARAR TUDO) ao fim do horário combinado,
+   posição aberta fechada pelo host ou manualmente conforme decisão; exportar
+   operações e logs; reconciliar com `scripts/sa_ref_reconcile.py`.
+5. Interrupção imediata: qualquer ordem sem decisão correspondente, duplicada,
+   em conta não-DEMO, perda diária acima de 2% ou erro de execução repetido.
+Evidência: "shim" (sonda C++), "Tester" e "DEMO observada" ficam separados.
