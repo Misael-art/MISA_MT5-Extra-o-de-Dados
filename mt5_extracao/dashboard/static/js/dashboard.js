@@ -17,6 +17,48 @@
       .map(name => [name, style.getPropertyValue("--" + name).trim()]));
   };
   const charts = new Map();
+  const rendered = new Map();
+  // Tema sem recarregar nem reconsultar: só tokens CSS e redesenho dos gráficos já montados.
+  const THEMES = ["auto", "light", "dark"], THEME_LABEL = {auto: "automático", light: "claro", dark: "escuro"};
+  function applyTheme(theme) {
+    if (theme === "auto") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+    const button = document.querySelector("#theme-toggle");
+    if (button) {
+      button.textContent = "Tema: " + THEME_LABEL[theme];
+      button.setAttribute("aria-label", "Tema atual " + THEME_LABEL[theme] + "; alternar tema");
+      button.dataset.theme = theme;
+    }
+    const palette = colors();
+    // Cópia: reinserir a mesma chave durante forEach de um Map a revisita sem fim.
+    [...charts].forEach(([id, chart]) => {
+      if (typeof chart.mt5xTheme === "function") { chart.mt5xTheme(palette); return; }
+      const entry = rendered.get(id);
+      chart.dispose();
+      charts.delete(id);
+      if (entry && entry.figure.isConnected) {
+        const again = entry.renderer(entry.figure, entry.section, palette);
+        if (again) charts.set(id, again);
+      }
+    });
+  }
+  function initTheme() {
+    let stored = "auto";
+    try { stored = localStorage.getItem("mt5x-dashboard-theme") || "auto"; } catch (error) { stored = "auto"; }
+    if (!THEMES.includes(stored)) stored = "auto";
+    const button = document.querySelector("#theme-toggle");
+    if (!button) return;
+    button.hidden = false;
+    applyTheme(stored);
+    button.addEventListener("click", () => {
+      const next = THEMES[(THEMES.indexOf(button.dataset.theme || "auto") + 1) % THEMES.length];
+      try { localStorage.setItem("mt5x-dashboard-theme", next); } catch (error) { /* só conveniência local */ }
+      applyTheme(next);
+    });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if ((button.dataset.theme || "auto") === "auto") applyTheme("auto");
+    });
+  }
   const HUMAN = new Intl.DateTimeFormat("pt-BR", {timeZone: "UTC", day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit"});
   const human = iso => iso ? HUMAN.format(new Date(iso)) + " UTC" : "não informado";
@@ -103,7 +145,10 @@
         body.insertBefore(figure, detail);
         requestAnimationFrame(() => {
           const renderer = window.MT5XCharts[section.kind];
-          if (renderer) { const chart = renderer(figure, section, colors()); if (chart) charts.set(section.id, chart); }
+          if (renderer) {
+            const chart = renderer(figure, section, colors());
+            if (chart) { charts.set(section.id, chart); rendered.set(section.id, {figure, section, renderer}); }
+          }
         });
       }
     } else {
@@ -122,6 +167,7 @@
   function release(id) {
     const chart = charts.get(id);
     if (chart) { chart.dispose(); charts.delete(id); }
+    rendered.delete(id);
   }
   const BALANCE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" '
     + 'stroke-width="1.6"><path d="M12 3v18M7 21h10M4 9l8-2 8 -3"/><path d="M1.5 14 4 9l2.5 5a2.5 2.5 0 0 1-5 0Z"/>'
@@ -196,6 +242,7 @@
       const decoded = await window.MT5XTransport.decode(encoded);
       const data = decoded.data, digest = data.snapshot_id;
       snapshotData = data;
+      initTheme();
       narrative();
       document.documentElement.dataset.snapshotId = digest;
       const facts = document.querySelector("#facts-audit");

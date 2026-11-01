@@ -11,7 +11,7 @@
 </head>
 <body>
   <a class="skip" href="#narrativa">Ir para a narrativa</a>
-  <header class="masthead"><a class="brand" href="#narrativa" aria-label="mt5x, início">mt5<span>x</span></a><span class="eyebrow">INTELIGÊNCIA DE ATIVOS E ROBÔS</span><span class="local">Pesquisa local</span></header>
+  <header class="masthead"><a class="brand" href="#narrativa" aria-label="mt5x, início">mt5<span>x</span></a><span class="eyebrow">INTELIGÊNCIA DE ATIVOS E ROBÔS</span><span class="local">Pesquisa local</span><button id="theme-toggle" class="theme-toggle" type="button" hidden>Tema: automático</button></header>
   <main id="narrativa">
     {% if snapshot %}
     {% if snapshot.provenance.fixture_label %}<p class="fixture">FIXTURE · {{ snapshot.provenance.fixture_label }}</p>{% endif %}

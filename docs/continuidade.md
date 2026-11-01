@@ -5209,3 +5209,20 @@ fixava a ordem de criação passou a conferir conteúdo.
 8 testes novos (119 do Dashboard). Browser com fixture: ordem e explicações
 corretas, sem erros. Pendência: novidade real exige baseline/fotografia anterior
 compatível (`baseline_snapshot_id` segue null).
+
+### Tema, legibilidade e navegador real no Dashboard —01/11/2026 (DASH-12)
+
+Sobre DASH-11. Botão "Tema: automático/claro/escuro" no cabeçalho (só com
+fotografia carregada), via `data-theme` + tokens CSS; escolha guardada em
+localStorage com try/catch (conveniência local). Troca sem recarga nem
+reconsulta: renderers com `mt5xTheme` recolorem mantendo estado; ECharts crus
+são recriados a partir da faixa. Defeito encontrado no Browser e corrigido:
+reinserir a chave durante `Map.forEach` causava laço infinito e congelava a aba.
+Eixo numérico em pt-BR (10.140, não 10,140); `prefers-reduced-motion` respeitado.
+
+Novo `tests/test_dashboard_browser.py`: Chrome headless real abre a página por
+`file://`, conclui a conferência (`data-ready`) e alterna o tema três vezes; é
+pulado sem Chrome. Comprovado que falha com o laço reintroduzido. Browser
+interativo: composição QA (robô, hipótese, validação, regime) nos dois temas.
+Limites: `file://` comprovado só em headless Linux, não no navegador do usuário
+nem Windows; leitor de tela/zoom 200% seguem para o aceite DASH-14.
