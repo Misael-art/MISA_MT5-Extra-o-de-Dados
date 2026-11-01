@@ -30,7 +30,17 @@ if [[ "${1:-}" == "--cli" ]]; then
 fi
 
 # No Linux o MT5 roda no Wine: garante que a ponte esteja ativa
-./scripts/mt5-bridge.sh start >/dev/null || echo "Aviso: ponte MT5 indisponível (veja logs/mt5_bridge.log)." >&2
+export MT5X_BRIDGE_START_ERROR=""
+if [[ "${1:-}" != "--offline" ]]; then
+    if bridge_output=$(./scripts/mt5-bridge.sh start 2>&1); then
+        :
+    else
+        export MT5X_BRIDGE_START_ERROR="$bridge_output"
+        mkdir -p logs
+        printf '%s\n' "$bridge_output" >>logs/mt5_bridge.log
+        printf 'Aviso: ponte MT5 indisponível: %s\n' "$bridge_output" >&2
+    fi
+fi
 
 # ./run.sh --cli <comando> ...  -> linha de comando (mt5x); sem --cli -> interface gráfica
 if [[ "${1:-}" == "--cli" ]]; then

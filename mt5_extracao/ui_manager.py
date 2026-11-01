@@ -2679,12 +2679,20 @@ class UIManager:
             app.mt5_initialized = False
             reason = reason or connection_help.CONNECTION_ERROR
             text = connection_help.explain(reason, windows=os.name == "nt")
+            bridge_error = os.environ.get("MT5X_BRIDGE_START_ERROR", "") if os.name != "nt" else ""
+            if bridge_error:
+                text += "\n\nA ponte não iniciou pelo atalho: " + bridge_error[:1000] + "\nVeja logs/mt5_bridge.log."
             self.log("Sem conexão com o MetaTrader 5: " + text.replace("\n\n", " ").replace("\n", " "))
             self.update_status("Status: sem conexão com o MetaTrader 5 (" + reason + ")")
-            if reason == connection_help.NOT_LOGGED and self._missing_account():
-                self._offer_demo_account()      # terminal sem conta nenhuma: oferece abrir a de demonstração
-            else:
-                messagebox.showwarning("MetaTrader 5 sem conexão", text, parent=self.root)
+            def notify():
+                if self._connection_cancel.is_set() or not self.root.winfo_exists():
+                    return
+                if reason == connection_help.NOT_LOGGED and self._missing_account():
+                    self._offer_demo_account()
+                else:
+                    messagebox.showwarning("MetaTrader 5 sem conexão", text, parent=self.root)
+            # Libera o callback/contador antes do diálogo modal iniciar seu loop.
+            self.root.after_idle(notify)
 
         self.run_bg(work, done)
 

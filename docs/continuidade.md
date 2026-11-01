@@ -5086,3 +5086,26 @@ com bancada própria ficaram em state/qa-tmp/dashboard/volume-acceptance.json.
 A correção independente da ponte será preservada em commit/PR próprio, sobre
 esta composição. Próxima funcionalidade do Dashboard: DASH-06; não declarar
 surpresa/hipóteses/Windows/offline aceitos sem seus produtores e evidências.
+
+### Ponte, abertura e repasse único —01/11/2026
+
+Harmonização autorizada pelo proprietário, com um sucessor definido. DASH-05
+foi preservado em aa969ea/PR267. A branch filha codex/ponte-previa-coesa mantém
+o corretivo de PID entre prévias separado da faixa: apenas ausência comprovada
+em /proc libera start, sem sinalizar PID alheio; erro de leitura/PID inválido ou
+porta sem posse bloqueiam. Testes de gerenciador:22 aprovados, incluindo PID
+de outra prévia, processo vivo, PID inválido e identidade sem permissão.
+
+O launcher não oculta mais a causa da falha de partida: logs/mt5_bridge.log e
+aviso da UI a conservam. --offline dispensa a ponte. O aviso modal de conexão
+é agendado depois do callback, permitindo ao contador liberar a tarefa antes
+de esperar OK, sem alterar o worker/queue/executor existentes. Regressões de
+conexão/launcher/atividade e diagnóstico executadas no host com QA própria.
+
+Prévia/menu/desktop e recuperação real da ponte seguem o procedimento oficial;
+SHA, hashes, handshake e evidência da janela de QA ficam no recibo existente
+state/development-preview.json e em state/qa-tmp/dashboard/harmonizacao.
+A janela anterior do proprietário é preservada e conserva seu código em memória.
+O prompt único para o próximo agente está em CONTINUAR_AQUI.md, sem outro plano.
+Sem merge/release, pins modificados, conta nova ou negociação. Aceites completos
+do Dashboard, plataformas e capacidades analíticas pendentes continuam separados.
