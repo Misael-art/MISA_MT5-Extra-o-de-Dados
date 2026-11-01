@@ -5309,3 +5309,33 @@ Pendentes da revisão: reconciliação um-a-um com colisões e vínculo
 decisão→ordem→posição, diferenças de capital (fixo × saldo) e de fim do dia
 (última barra × sessão), M1 ausente na base × no Tester, proteção/manifesto da
 reprodução, origem do `exit_reason` vazio, DEMO.
+
+### SA-REF-01: reconciliação um a um e motivo de saída rastreado —01/11/2026
+
+Item 2 da revisão. `robots/parity.py` (mesmo dono do `compare`) ganhou a
+reconciliação detalhada: CSV nativo completo (`read_trade_export`), decisões do
+log (`parse_decision_lines`), fechamentos do host (`parse_close_lines`) e
+`reconcile_trades` um a um por (minuto de entrada, direção), com colisões
+reportadas e nunca sobrescritas, vínculo decisão → `position_id` → saída e uma
+linha de divergência por operação (volume, entrada, saída, SL, TP, custos,
+resultado, motivo, minuto de saída). 5 testes sintéticos.
+
+Resultado real (pareadas 100 de 103/102, colisões 0, 100 posições ligadas à
+decisão): **idênticas 10**; volume difere em 89 (razão 0,95–1,01), TP em 35,
+SL em 8, minuto de saída em 6; motivo agora 100/100 coerente.
+- Motivo vazio: origem localizada. O CSV vem do exportador de sessão da App
+  (`session_export.mqh.tmpl`), que só reconhece `DEAL_REASON_SL/TP`; o
+  fechamento do host tem comentário genérico "HDK close". O host registra no
+  log `Posição #<id> fechada (fim do dia)`; as 11 vazias foram provadas por
+  `position_id` nesse log (fonte `log_host`), não pelo horário.
+- Volume/TP: o host calcula lote por `BaseCapital()` (saldo) × 0,25% /
+  `OrderCalcProfit` no preço da ordem, arredondado para baixo, e TP = 2× a
+  distância a partir da entrada real; o Python usa capital fixo 100k e o open M1.
+  Aproximação com saldo após cada saída reproduz 34/100 (capital fixo 18/100):
+  diferença de contrato confirmada, cálculo exato do saldo do host ainda não.
+- Fim do dia: Python = última barra presente do dia; host = troca de dia na
+  sessão. Os 11 fechamentos coincidem neste recorte; não generaliza.
+- Lacunas: a base da App não tem M1 10-16 22:28 e 10-19 00:00. Se o Tester
+  também não tiver essas M1, seus ticks são ignorados (documentação MT5); ainda
+  não foi conferido o histórico do Tester nesses minutos.
+Evidência local: `state/qa-tmp/super-atr-ref/reconciliacao_detalhada.json`.
