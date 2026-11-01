@@ -15,6 +15,8 @@ def add_parser(sub):
     parser.add_argument("--to", dest="date_to", help="fim exclusivo, até o corte")
     parser.add_argument("--version", nargs=2, action="append", metavar=("ID", "VERSAO"),
                         help="resolve versão explícita de um indicador; repetível")
+    parser.add_argument("--robot", help="modo Robô: chave do catálogo; exige --as-of; nada é executado")
+    parser.add_argument("--run", dest="run_id", help="execução gravada do robô; padrão: a mais recente no corte")
     parser.add_argument("--fixture-label", help="identifica explicitamente uma fotografia de QA sintética")
     parser.add_argument("--html", help="arquiva o mesmo documento autossuficiente; destino novo em exports/")
     parser.set_defaults(func=run)
@@ -29,7 +31,15 @@ def run(args, ctx):
     if args.port is not None and not 1 <= args.port <= 65535:
         raise ValueError("--port precisa estar entre 1 e 65535.")
     snapshot = None
-    if any((args.symbol, args.tf, args.as_of, args.date_from, args.date_to, args.version)):
+    if args.robot or args.run_id:
+        if not (args.robot and args.as_of) or any((args.symbol, args.tf, args.date_from, args.date_to, args.version)):
+            raise ValueError("Modo Robô: informe --robot e --as-of (e opcionalmente --run), sem --symbol/--tf.")
+        from .generator import generate_robot
+        snapshot = generate_robot(ctx.db, robot_key=args.robot, as_of=args.as_of, run_id=args.run_id,
+                                  fixture_label=args.fixture_label)
+        for error in snapshot["errors"]:
+            cli._print(error["message"])
+    elif any((args.symbol, args.tf, args.as_of, args.date_from, args.date_to, args.version)):
         if not all((args.symbol, args.tf, args.as_of)):
             raise ValueError("Informe --symbol, --tf e --as-of juntos.")
         from .generator import generate
@@ -42,7 +52,7 @@ def run(args, ctx):
             cli._print(error["message"])
     if args.html:
         if snapshot is None:
-            raise ValueError("Para arquivar informe --symbol, --tf e --as-of.")
+            raise ValueError("Para arquivar informe --symbol, --tf e --as-of, ou --robot e --as-of.")
         from .document import export
         receipt = export(snapshot, args.html)
         cli._print("Fotografia arquivada: " + receipt["path"])

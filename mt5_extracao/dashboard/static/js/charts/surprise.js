@@ -18,3 +18,7 @@
     return chart;
   };
 }());
+// Curva de capital do modo Robô: mesma linha temporal, sem preencher lacunas.
+window.MT5XCharts.robot = function (element, section, colors) {
+  return window.MT5XCharts.surprise(element, {...section, unit: "capital do backtest"}, colors);
+};

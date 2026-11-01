@@ -258,6 +258,80 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
     return seal(data)
 
 
+def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
+    """Modo Robô: execução persistida + contexto do ativo/TF dela. Nunca inicia backtest, bateria ou sessão."""
+    from mt5_extracao.robots import store
+    from .sections import (_within_cut, robot_battery_section, robot_no_result_section,
+                           robot_other_runs_section, robot_run_section)
+    if not isinstance(robot_key, str) or not robot_key.strip() or len(robot_key) > 256:
+        raise ValueError("Informe a chave do robô (até256 caracteres).")
+    if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
+        raise ValueError("run_id precisa ser texto explícito.")
+    cut = _stamp(as_of, "as_of")
+    runs = store.load_runs(db, robot_key)
+    record = store.load_records(db).get(robot_key)
+    if record is None:
+        # Estratégias Python vêm do registro de código do catálogo (sem varrer pastas nem gravar nada).
+        from mt5_extracao.robots.catalog import python_robots
+        robot = next((r for r in python_robots() if r.key == robot_key), None)
+        if robot is not None:
+            record = {"key": robot.key, "name": robot.name, "kind": robot.kind, "stage": None}
+        elif runs:
+            record = {"key": robot_key, "name": None, "kind": None, "stage": None}
+        else:
+            raise ValueError("ROBOT_NOT_FOUND: robô não encontrado no catálogo nem em execuções gravadas.")
+    known = [r for r in runs if _within_cut(r.get("created_at"), cut)]
+    late = len(runs) - len(known)
+    if run_id is not None:
+        chosen = next((r for r in known if r["run_id"] == run_id), None)
+        if chosen is None:
+            raise ValueError("RUN_NOT_AT_CUT: execução inexistente para o robô ou posterior ao corte.")
+        rule = "explicit_run_id"
+    else:
+        chosen, rule = (known[0] if known else None), "latest_run_known_at_cut"
+    others = [r for r in known if chosen is None or r["run_id"] != chosen["run_id"]]
+    context = None
+    if chosen is not None:
+        try:
+            context = generate(db, symbol=chosen["symbol"], timeframe=chosen["timeframe"], as_of=cut.isoformat(),
+                               fixture_label=fixture_label)
+        except ValueError as exc:
+            context_error = {"code": "ROBOT_CONTEXT_UNAVAILABLE",
+                             "message": "Contexto do ativo/TF da execução indisponível: " + str(exc)}
+        else:
+            context_error = None
+    if context is None:
+        context = generate(None, symbol="—", timeframe="M1", as_of=cut.isoformat(), fixture_label=fixture_label)
+        context["errors"] = []
+        context["sections"] = [s for s in context["sections"] if s["kind"] != "hypothesis"]
+    data = json.loads(_json(context))
+    data.pop("integrity", None)
+    if chosen is not None and context_error is not None:
+        data["errors"] = [context_error]
+    checks = [c for c in store.load_checks(db, robot_key, runs=runs) if _within_cut(c.get("created_at"), cut)]
+    identity = {"mode": "robot", "robot_key": robot_key, "robot_name": record.get("name"), "kind": record.get("kind"),
+                "stage": record.get("stage"), "fingerprint": (checks[0].get("fingerprint") or None) if checks else None,
+                "run_id": chosen["run_id"] if chosen else None, "run_selection": rule if chosen else "no_run_at_cut",
+                "symbol": chosen["symbol"] if chosen else None, "timeframe": chosen["timeframe"] if chosen else None,
+                "params": chosen.get("params") if chosen else None}
+    data["subject"] = identity
+    data["selection"] = {**{k: identity[k] for k in ("mode", "robot_key", "run_id", "run_selection", "symbol",
+                                                     "timeframe")},
+                         "start_utc": data["selection"]["start_utc"], "end_utc": data["selection"]["end_utc"],
+                         "as_of_utc": cut.isoformat(), "versions": data["selection"]["versions"]}
+    robot = [robot_run_section(data, record, chosen, others) if chosen else robot_no_result_section(data, record, late)]
+    if checks:
+        robot.append(robot_battery_section(data, checks[0]))
+    if others:
+        robot.append(robot_other_runs_section(data, others))
+    data["sections"] = robot + [s for s in data["sections"] if s["id"] != "surprise"]
+    data["capabilities"]["robots"].update(state="AVAILABLE" if chosen else "NO_DATA",
+        reason_code=None if chosen else "NO_RUN_AT_CUT",
+        reason="Execução persistida em robots.store; outras execuções não são agregadas; bateria não é hipótese.")
+    data["provenance"]["robot_late_runs"] = late
+    return seal(data)
+
+
 def seal(data):
     data = json.loads(_json(data))
     data.pop("integrity", None)
@@ -285,9 +359,11 @@ def validate(data):
         raise ValueError("IDs de faixa duplicados.")
     cut = _stamp(data["as_of_utc"], "as_of")
     selection = data["selection"]
-    if (data["subject"].get("mode") != "asset" or selection.get("mode") != "asset"
-            or selection.get("symbol") != data["subject"].get("symbol")
-            or selection.get("timeframe") != data["subject"].get("timeframe")
+    mode = data["subject"].get("mode")
+    same = ("symbol", "timeframe") + (("robot_key", "run_id") if mode == "robot" else ())
+    if (mode not in {"asset", "robot"} or selection.get("mode") != mode
+            or any(selection.get(k) != data["subject"].get(k) for k in same)
+            or (mode == "robot" and not selection.get("robot_key"))
             or _stamp(selection["as_of_utc"], "selection.as_of") != cut):
         raise ValueError("Identidade da seleção diverge da fotografia.")
     states = {"AVAILABLE", "INSUFFICIENT", "UNAVAILABLE", "STALE", "INVALIDATED", "NOT_APPLICABLE"}

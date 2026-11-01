@@ -337,3 +337,98 @@ def validation_sections(data, rows):
         note.update(hidden_reason_code="CLOCK_AFTER_CUT", n_observations=late, status_namespace="dashboard")
         result.append(note)
     return result
+
+
+# DASH-10 — modo Robô: resultados persistidos em robots.store, sem iniciar nada.
+def _within_cut(created, cut):
+    """created_at sem fuso (hora local): só conta se precede o corte em qualquer fuso civil."""
+    from datetime import timedelta
+    try:
+        stamp = _naive(created)
+    except (TypeError, ValueError):
+        return False
+    return stamp + timedelta(hours=NAIVE_CLOCK_MARGIN_HOURS) <= cut.replace(tzinfo=None)
+
+
+def _series(points):
+    out = []
+    for point in points or []:
+        if isinstance(point, (list, tuple)) and len(point) == 2 and isinstance(point[1], (int, float)) \
+                and not isinstance(point[1], bool) and math.isfinite(point[1]):
+            out.append({"time": str(point[0]), "value": float(point[1])})
+    return out
+
+
+def robot_run_section(data, record, run, others):
+    metrics = run.get("metrics") or {}
+    number = lambda key: metrics.get(key) if isinstance(metrics.get(key), (int, float)) \
+        and not isinstance(metrics.get(key), bool) and math.isfinite(metrics.get(key)) else None
+    net = number("net_profit")
+    section = empty(data, "robot:run", "robot", "Execução selecionada · " + (record.get("name") or record["key"]), "")
+    currency = metrics.get("currency")
+    section.update(
+        source_refs=[{"table": "_robot_runs", "run_id": run["run_id"], "robot_key": run["robot_key"]}],
+        status_namespace="robot", source_status="RUN_RECORDED", display_state="AVAILABLE", default_visible=True,
+        hidden_reason_code=None, hidden_reason_short=None, n_observations=number("trades"),
+        unit="resultado líquido" + (" · " + currency if currency else " · moeda não declarada"),
+        temporal={"created_at_local_naive": run.get("created_at"), "data_start": run.get("data_start"),
+                  "data_end": run.get("data_end"),
+                  "clock_rule": f"created_at sem fuso; incluído só se +{NAIVE_CLOCK_MARGIN_HOURS} h precede o corte"},
+        evidence={"profit_factor": number("profit_factor"), "profit_factor_status": metrics.get("profit_factor_status"),
+                  "max_drawdown_pct": number("max_drawdown_pct"), "win_rate": number("win_rate"),
+                  "return_pct": number("return_pct"), "trades": number("trades"),
+                  "params": run.get("params"), "source": run.get("source"), "bars": run.get("bars"),
+                  "data_provenance_status": run.get("data_provenance_status"),
+                  "data_manifest_id": run.get("data_manifest_id"),
+                  "execution_identity": metrics.get("execution_identity"),
+                  "currency_source": metrics.get("currency_source") or ("declared" if currency else "unknown"),
+                  "other_runs_aggregated": False, "is_realized_pnl": False},
+        visual={"value": net, "direction": None if net is None else ("UP" if net > 0 else "DOWN" if net < 0 else "FLAT"),
+                "baseline": None, "decimals": 2, "series": _series(run.get("equity")),
+                "series_label": "Curva de capital do backtest (pontos reduzidos gravados)"},
+        details={"reason": f"Backtest gravado {run['run_id']} de {run.get('symbol')} {run.get('timeframe')} "
+                           f"({run.get('data_start')} → {run.get('data_end')}). Resultado simulado, não PnL realizado. "
+                           + (f"{len(others)} outra(s) execução(ões) ficam listadas em separado, sem agregação."
+                              if others else "Única execução conhecida no corte."),
+                 "status_label": "Backtest gravado"})
+    if net is None:
+        section["details"]["reason"] += " Resultado líquido ausente no registro."
+    return section
+
+
+def robot_battery_section(data, check):
+    approved = bool(check.get("approved"))
+    section = empty(data, "robot:battery", "robot", "Bateria de segurança", "")
+    section.update(
+        source_refs=[{"table": "_robot_checks", "check_id": check.get("check_id"), "run_id": check.get("run_id")}],
+        status_namespace="robot", source_status="BATTERY_APPROVED" if approved else "BATTERY_REJECTED",
+        display_state="AVAILABLE", default_visible=True, hidden_reason_code=None, hidden_reason_short=None,
+        n_observations=None, unit=None,
+        temporal={"created_at_local_naive": check.get("created_at")},
+        evidence={"approved": approved, "allows_real": bool(check.get("allows_real")),
+                  "static_status": check.get("static_status"), "statistical_status": check.get("statistical_status"),
+                  "preset": check.get("preset"), "fingerprint": check.get("fingerprint"),
+                  "symbol": check.get("symbol"), "timeframe": check.get("timeframe"),
+                  "items": check.get("items"), "battery_is_hypothesis": False},
+        visual={"value": "Aprovada" if approved else "Reprovada", "direction": None, "series": []},
+        details={"reason": "Etapa de bateria do catálogo de robôs; não é hipótese estatística aprovada nem "
+                           "autorização de operação.", "status_label": "Bateria"})
+    return section
+
+
+def robot_other_runs_section(data, others):
+    section = empty(data, "robot:other-runs", "robot", "Outras execuções do robô",
+                    "Execuções diferentes da selecionada; não agregadas nem comparadas implicitamente.")
+    section.update(status_namespace="robot", hidden_reason_code="OTHER_RUNS", n_observations=len(others),
+                   evidence={"runs": [{k: r.get(k) for k in ("run_id", "symbol", "timeframe", "data_start", "data_end",
+                                                             "created_at", "source")} for r in others]})
+    return section
+
+
+def robot_no_result_section(data, record, late):
+    reason = "Sem resultado neste recorte. Nenhum backtest, compilação ou sessão é iniciado pela leitura."
+    if late:
+        reason += f" {late} execução(ões) com relógio possivelmente posterior ao corte foram omitidas."
+    section = empty(data, "robot:run", "robot", "Execução · " + (record.get("name") or record["key"]), reason)
+    section.update(status_namespace="robot", default_visible=True, hidden_reason_code=None, hidden_reason_short=None)
+    return section

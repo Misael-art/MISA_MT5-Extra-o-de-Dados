@@ -5172,3 +5172,22 @@ rotulada "Oculta · motivo" e sem promoção de estado. Cada faixa visível tem
 clique; não persiste entre leituras. Gráficos de faixas recolhidas são liberados.
 Browser HTTP com fixture (volume ausente, Filtro C reprovado, exploratórias,
 rascunho): expandir/recolher, ocultar/restaurar, sem erros. Somente JS/CSS.
+
+### Modo Robô do Dashboard —01/11/2026 (DASH-10)
+
+Sobre DASH-09. `generator.generate_robot` e CLI `dashboard --robot CHAVE --as-of
+… [--run ID]`, com o mesmo compilador/validador; fotografias de ativo seguem
+válidas. Identidade: registro `_robots` (MQL5), registro de código
+(`python_robots`, sem varrer pastas) ou execuções gravadas. Execução: `--run`
+explícito ou a mais recente conhecida no corte (`run_selection` declarado);
+`created_at` sem fuso segue a margem +14 h. Outras execuções ficam ocultas,
+listadas e nunca agregadas; bateria aparece como bateria (não hipótese, não
+autorização). Contexto de regime/volume/validação/hipótese vem do ativo/TF da
+execução; contexto ilegível vira erro explícito sem perder o resultado. Robô sem
+resultado continua selecionável. Nada é executado; a leitura não grava.
+
+11 testes novos (Dashboard+CLI verdes). Base real compartilhada, pela CLI:
+`python:ha_hilo` → execução `cee7068e` EURUSD H4, −906,87 (moeda não
+declarada), curva de capital desenhada, outra execução oculta, sem erros.
+Pendências: preset/fingerprint de MQL5 dependem de bateria gravada (base real
+sem `_robots`/baterias); seleção pela interface Tk em DASH-13.

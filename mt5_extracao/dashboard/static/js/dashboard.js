@@ -73,7 +73,10 @@
       metric.type = "button";
       metric.setAttribute("aria-label", "Aprofundar " + section.title);
       metric.append(text("span", ({UP: "↑", DOWN: "↓", FLAT: "→"})[section.visual.direction] || "", "direction"),
-        text("strong", typeof section.visual.value === "number" ? number(section.visual.value) : section.visual.value),
+        text("strong", typeof section.visual.value === "number" ? (Number.isInteger(section.visual.decimals)
+          ? new Intl.NumberFormat("pt-BR", {minimumFractionDigits: section.visual.decimals,
+            maximumFractionDigits: section.visual.decimals}).format(section.visual.value) : number(section.visual.value))
+          : section.visual.value),
         text("span", section.unit || "", "unit"));
       body.append(metric);
       if (section.visual.baseline !== null && section.visual.baseline !== undefined)
@@ -85,7 +88,8 @@
         const figure = text("div", "", "chart chart--" + section.kind);
         figure.tabIndex = 0;
         figure.setAttribute("role", "img");
-        figure.setAttribute("aria-label", section.title + ". Série conhecida no corte; valores em Ver evidência.");
+        figure.setAttribute("aria-label", section.title + ". " + (section.visual.series_label || "Série conhecida no corte")
+          + "; valores em Ver evidência.");
         figure.addEventListener("click", () => { detail.open = true; });
         figure.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) {event.preventDefault(); detail.open = !detail.open;} });
         body.insertBefore(figure, detail);
