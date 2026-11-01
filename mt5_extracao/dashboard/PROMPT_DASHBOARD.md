@@ -560,3 +560,23 @@ divergente, vencido, ausência, recursos embutidos). Browser HTTP com base QA
 sintética: heatmap e célula do corte renderizados, sem erros de console.
 Pendências: rótulos das células em 24 colunas ficam pequenos no desktop
 (revisar em DASH-12); aceite offline/AC-06 continua pendente. Próxima: DASH-05 (volume).
+
+### DASH-05 — volume e reconciliação de 01/11/2026
+
+`sections.volumes` consome RVOL persistido, sem recomputar volume/mediana.
+Ticks, volume real e comparação pelo mesmo dia da semana são faixas distintas.
+1× é a mediana normalizada da fórmula canônica; o realce acima de 1× é descritivo,
+sem aprovação estatística ou sinal operacional. Amostra significa sessões de
+referência do último ponto, vinculadas por versão, observação, minuto e origem.
+Ausência não vira zero; último valor vencido/invalidado não recupera o anterior.
+O eixo UTC e as quebras de sessão/lacunas preservam a escala temporal.
+
+O leitor aceita `same_as_source` do produtor canônico e continua filtrando os
+fatos pelo TF escolhido. HTML embute módulo/partial de volume; clique e setas
+permitem aprofundar na própria página. O teste usa saídas de `producers`, não
+uma fórmula do Dashboard. Browser pelo launcher oficial: QA sintética 144 fatos,
+3,1×, n7, detalhe/teclado e 390px sem overflow. Evidências locais em
+`state/qa-tmp/dashboard/volume-acceptance.json`; tempo de apresentação isolado
+não comprova AC-01. Windows físico, offline visual/AC-06, produtor de surpresa
+e DASH-06…14 permanecem pendentes. A reconciliação dos agentes preservou os
+corretivos publicados de DASH-04, incluindo recursos vendor e bind Windows.

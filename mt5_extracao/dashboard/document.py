@@ -13,9 +13,9 @@ ROOT = Path(__file__).parent
 RENDERER_VERSION = "DASH-03/1"
 RESOURCES = ("css/dashboard.css", "vendor/echarts-6.0.0.min.js", "vendor/LICENSE-echarts",
              "vendor/NOTICE-echarts", "vendor/manifest.json", "js/transport.js", "js/charts/surprise.js",
-             "js/charts/regime.js", "js/dashboard.js")
+             "js/charts/regime.js", "js/charts/volume.js", "js/dashboard.js")
 MAX_DOCUMENT_BYTES = 16 * 1024 * 1024
-TEMPLATES = ("index.html", "sections/surpresa.html", "sections/regime.html")
+TEMPLATES = ("index.html", "sections/surpresa.html", "sections/regime.html", "sections/volume.html")
 
 
 def _load_resources():

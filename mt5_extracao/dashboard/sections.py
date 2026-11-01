@@ -69,3 +69,79 @@ def regime(data):
                  "O estado dominante acima é o último registro disponível; o contorno marca a hora do corte.",
                  "current_cell": current, "latest_observation_time": last["observation_time"]})
     return section
+
+
+def volumes(data):
+    """RVOL canônico: 1× é a mediana por definição, não uma mediana calculada aqui.
+
+    Cada fonte/metodologia é uma faixa independente. Não juntar amostras entre
+    versões, fontes ou minutos distintos, nem ressuscitar o penúltimo valor.
+    """
+    from mt5_extracao.timeframes import Timeframe
+    step_seconds = Timeframe[data["subject"]["timeframe"]].minutes * 60
+    sections = []
+    for weekday in (False, True):
+        prefix = "rvol.same_weekday" if weekday else "rvol"
+        for source in ("tick", "real"):
+            ident = prefix + "." + source
+            history = sorted((f for f in data["facts"] if f["feature_id"] == ident),
+                             key=lambda f: f["observation_time"])
+            if not history:
+                continue
+            last = history[-1]
+            version = last["algorithm_version"]
+            title = "Volume relativo · " + ("ticks" if source == "tick" else "volume real")
+            if weekday:
+                title += " · mesmo dia da semana"
+            section = empty(data, ident, "volume", title, "Último RVOL sem validade ou contrato elegível.")
+            definition = next((d for d in data["contracts"] if d["feature_id"] == ident
+                               and d["algorithm_version"] == version), {})
+            params = definition.get("parameters", {})
+            if (params.get("volume_source") != source or params.get("same_weekday") is not weekday):
+                section["details"]["reason"] = "Fonte/metodologia de RVOL não declarada de forma compatível."
+                section["hidden_reason_short"] = section["details"]["reason"]
+                sections.append(section)
+                continue
+            counts = {f["observation_time"]: f for f in data["facts"]
+                      if f["feature_id"] == prefix + ".reference_sessions"
+                      and f["algorithm_version"] == version and f["display_state"] == "AVAILABLE"}
+            def point(fact):
+                valid = fact["display_state"] == "AVAILABLE" and fact["value"] is not None and fact["value"] >= 0
+                bound = counts.get(fact["observation_time"])
+                if bound and (bound.get("minute_of_session") != fact.get("minute_of_session")
+                              or bound["source_revision"] != fact["source_revision"]):
+                    bound = None
+                count = bound["value"] if bound else None
+                if count is not None and (count < 1 or not count.is_integer()):
+                    count = None
+                return {"time": fact["observation_time"], "value": fact["value"] if valid else None,
+                        "reference_sessions": count, "minute_of_session": fact.get("minute_of_session"),
+                        "temporal": _clock(fact), "reference_temporal": _clock(bound) if bound else None}
+            series = [point(f) for f in history if f["algorithm_version"] == version]
+            for index, item in enumerate(series):
+                prior = series[index - 1] if index else None
+                item["break_before"] = prior is not None and (
+                    (datetime.fromisoformat(item["time"]) - datetime.fromisoformat(prior["time"])).total_seconds() > step_seconds
+                    or (item["minute_of_session"] is not None and prior["minute_of_session"] is not None
+                        and item["minute_of_session"] <= prior["minute_of_session"]))
+            latest = series[-1]
+            section.update(source_refs=[{"feature_id": ident, "algorithm_version": version},
+                {"feature_id": prefix + ".reference_sessions", "algorithm_version": version}],
+                temporal=_clock(last), quality=last["quality"], unit="× mediana", details={
+                    "reason": "Acumulado dividido pela mediana do mesmo minuto das sessões anteriores. "
+                    "Referência tracejada 1×; realce acima de 1× significa acima da mediana, não sinal operacional. "
+                    "Linha sem suavização estatística; ausências explícitas interrompem a série. "
+                    "Reconstrução conhecida no corte; n conta sessões de referência do último ponto, não barras.",
+                    "volume_source": source, "same_weekday": weekday, "parameters": params,
+                    "latest_observation_time": last["observation_time"]})
+            if latest["value"] is not None:
+                section.update(display_state="AVAILABLE", default_visible=True, hidden_reason_code=None,
+                    hidden_reason_short=None, n_observations=latest["reference_sessions"],
+                    evidence={"sample_semantics": "sessões anteriores comparáveis no minuto do último ponto",
+                              "confidence_is_probability": False, "reference": "mediana do acumulado no mesmo minuto"},
+                    visual={"value": latest["value"], "series": series, "baseline": 1,
+                            "threshold": 1, "threshold_semantics": "acima da mediana; não é aprovação",
+                            "unit": "× mediana", "direction": None})
+            sections.append(section)
+    return sections or [empty(data, "volume", "volume", "Volume relativo",
+                             "Nenhum RVOL persistido no recorte; volume ausente não é zero.")]

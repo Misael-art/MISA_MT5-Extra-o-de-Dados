@@ -112,7 +112,9 @@ def _read(db, selection, cut):
                 raise ValueError("DEFINITION_SCHEMA_UNKNOWN: contrato de definição não suportado.")
             if _stamp(registered["registered_at_utc"], "registered_at") > cut:
                 continue  # Não antecipar um contrato registrado depois do corte.
-            if registered.get("timeframe") not in {None, selection["timeframe"]}:
+            # Produtores canônicos declaram same_as_source; o TF concreto é
+            # restringido pela consulta dos fatos abaixo, sem inferir outro TF.
+            if registered.get("timeframe") not in {None, "same_as_source", selection["timeframe"]}:
                 continue
             eligible.append(definition)
         present = {d["feature_id"]: set() for d in eligible}
@@ -200,9 +202,15 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["subject"]["base_namespace"] = base["namespace"]
         data["provenance"].update(base=base, time_context=context)
         data.update(contracts=contracts, facts=facts)
-        from .sections import regime
+        from .sections import regime, volumes
         context_section = regime(data)
         data["sections"].append(context_section)
+        volume_sections = volumes(data)
+        data["sections"].extend(volume_sections)
+        has_volume = any(s["default_visible"] for s in volume_sections)
+        data["capabilities"]["volume"].update(state="AVAILABLE" if has_volume else "NO_DATA",
+            reason_code=None if has_volume else "NO_DATA",
+            reason="RVOL persistido por fonte/metodologia; demais perfis permanecem auditáveis nos fatos.")
         data["capabilities"]["regime"].update(state="AVAILABLE" if context_section["default_visible"] else "NO_DATA",
             reason_code=None if context_section["default_visible"] else "NO_DATA",
             reason="Estado persistido; células são últimos registros por dia/hora UTC, sem agregação estatística.")
