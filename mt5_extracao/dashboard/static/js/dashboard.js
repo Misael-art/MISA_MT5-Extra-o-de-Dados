@@ -44,6 +44,8 @@
     node.querySelector(".section-state").textContent = ({AVAILABLE: "", UNAVAILABLE: "Indisponível",
       INSUFFICIENT: "Amostra insuficiente", STALE: "Validade encerrada", INVALIDATED: "Invalidada",
       NOT_APPLICABLE: "Não se aplica"})[section.display_state] ?? section.display_state;
+    if (section.display_state === "AVAILABLE" && section.details.status_label)
+      node.querySelector(".section-state").textContent = section.details.status_label;
     const body = node.querySelector(".section-body");
     body.append(text("p", section.n_observations === null ? "n não informado" : "n = " + section.n_observations, "sample"));
     if (section.visual.value !== null && section.visual.value !== undefined) {
@@ -59,7 +61,7 @@
       const detail = details(section);
       metric.addEventListener("click", () => { detail.open = !detail.open; });
       body.append(detail);
-      if ((section.visual.series || []).length || (section.visual.cells || []).length) {
+      if ((section.visual.series || []).length || (section.visual.cells || []).length || (section.visual.rings || []).length) {
         const figure = text("div", "", "chart chart--" + section.kind);
         figure.tabIndex = 0;
         figure.setAttribute("role", "img");

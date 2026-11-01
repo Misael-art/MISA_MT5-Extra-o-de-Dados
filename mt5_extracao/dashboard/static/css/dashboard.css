@@ -19,5 +19,5 @@ button { font:inherit; color:var(--ink); border:1px solid var(--line); border-ra
 .chart--regime { height:440px; }.regime-context p { color:var(--muted); font-size:.75rem; margin:.6rem 0; }
 .regime-hours { display:flex; align-items:center; gap:1rem; }.regime-hours[hidden] { display:none; }.regime-intensity { font-weight:650; }.cell-readout { min-height:3rem; }
 .metric strong { overflow-wrap:anywhere; }.metric { flex-wrap:wrap; }
-.chart--volume {height:280px}.volume-context p {font-size:.75rem;color:var(--muted);margin:.5rem 0}.volume-readout {min-height:3rem;font-variant-numeric:tabular-nums}
+.chart--volume {height:280px}.chart--hypothesis {height:220px}.volume-context p {font-size:.75rem;color:var(--muted);margin:.5rem 0}.volume-readout {min-height:3rem;font-variant-numeric:tabular-nums}
 @media(max-width:650px) { .story-section { grid-template-columns:1fr; gap:1rem; }dl { grid-template-columns:1fr; } }

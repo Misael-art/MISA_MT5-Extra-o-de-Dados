@@ -225,6 +225,8 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["errors"] = [{"code": code, "message": message}]
     data["capabilities"]["surprise"].update(state="DEPENDENCY_PENDING", reason_code="SURPRISE_PRODUCER_MISSING",
         reason=data["sections"][0]["details"]["reason"])
+    from .sections import hypothesis_pending
+    data["sections"].append(hypothesis_pending(data))
     data["capabilities"]["hypotheses"].update(state="DEPENDENCY_PENDING", reason_code="T13_4_PENDING",
         reason="Catálogo de hipóteses estatísticas ainda não implementado; bateria de robô não é aprovação estatística.")
     return seal(data)

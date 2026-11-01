@@ -1,4 +1,5 @@
 """Adaptação visual de fatos persistidos; não calcula indicadores nem estatística."""
+import math
 from datetime import datetime
 
 REGIME_NAMES = {"TREND": "Tendência", "RANGE": "Lateral", "TRANSITION": "Transição", "UNCERTAIN": "Incerto"}
@@ -145,3 +146,100 @@ def volumes(data):
             sections.append(section)
     return sections or [empty(data, "volume", "volume", "Volume relativo",
                              "Nenhum RVOL persistido no recorte; volume ausente não é zero.")]
+
+
+# DASH-06 — hipótese estatística (T13.4). O produtor ainda não existe: o gerador
+# só emite o estado pendente. hypothesis() adapta o DTO de pattern_evaluations
+# (docs/analytics/ESPECIFICACAO.md §7.2/§8) quando ele existir; não calcula
+# lift, IC, amostra mínima nem aprovação.
+HYPOTHESIS_STATES = ("DRAFT", "EXPLORATORY", "VALIDATING", "APPROVED", "MONITORING", "RETIRED")
+HYPOTHESIS_VISIBLE = {"APPROVED", "VALIDATING"}
+HYPOTHESIS_HIDDEN = {
+    "EXPLORATORY": "Exploratória: só por expansão manual; não é hipótese aprovada.",
+    "DRAFT": "Rascunho: só auditoria manual, sem aparência de conclusão.",
+    "MONITORING": "Em monitoramento: não herda aprovação; aguarda recibo de deriva.",
+    "RETIRED": "Retirada na origem; permanece auditável.",
+}
+HYPOTHESIS_PENDING = ("O catálogo de hipóteses estatísticas (T13.4) ainda não existe; nenhuma hipótese foi "
+                      "calculada ou inferida. Aprovação de bateria de robô não é hipótese aprovada.")
+
+
+def hypothesis_pending(data):
+    section = empty(data, "hypothesis", "hypothesis", "Hipóteses estatísticas", HYPOTHESIS_PENDING)
+    section.update(default_visible=True, hidden_reason_code=None, hidden_reason_short=None,
+                   evidence={"reason_code": "T13_4_PENDING"})
+    return section
+
+
+def _fraction(value, label):
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
+        raise ValueError(f"INVALID_SOURCE: {label} precisa ser fração 0…1.")
+    return float(value)
+
+
+def _confidence(raw):
+    """IC só com método, nível e limites coerentes; caso contrário, anel neutro "Não informada"."""
+    if not isinstance(raw, dict):
+        return None
+    method, level, low, high = (raw.get(k) for k in ("method", "level", "low", "high"))
+    numbers = (level, low, high)
+    if (not isinstance(method, str) or not method.strip()
+            or any(isinstance(v, bool) or not isinstance(v, (int, float)) for v in numbers)
+            or not 0 < level < 1 or low > high):
+        return None
+    return {"method": method.strip(), "level": float(level), "low": float(low), "high": float(high),
+            "is_probability_of_profit": False}
+
+
+def hypothesis(data, record):
+    """Adapta uma avaliação canônica ao cartão de anéis, recusando estados/namespaces alheios."""
+    if not isinstance(record, dict) or record.get("status_namespace") != "hypothesis":
+        raise ValueError("INVALID_SOURCE: só avaliações do catálogo de hipóteses; bateria de robô e relações "
+                         "têm namespace próprio.")
+    status = record.get("status")
+    if status not in HYPOTHESIS_STATES:
+        raise ValueError("INVALID_SOURCE: estado de hipótese desconhecido.")
+    ident, version = record.get("hypothesis_id"), record.get("version")
+    if not all(isinstance(v, str) and v.strip() for v in (ident, version)):
+        raise ValueError("INVALID_SOURCE: hipótese sem ID/versão.")
+    cut = datetime.fromisoformat(data["as_of_utc"])
+    available = datetime.fromisoformat(record["available_at_utc"])
+    if available > cut:
+        raise ValueError("FUTURE_EVIDENCE: avaliação disponível após o corte.")
+    n = record.get("n_events")
+    if isinstance(n, bool) or not isinstance(n, int) or n < 0:
+        raise ValueError("INVALID_SOURCE: n_events precisa ser inteiro não negativo.")
+    lift = record.get("lift")
+    if lift is not None and (isinstance(lift, bool) or not isinstance(lift, (int, float)) or lift < 0
+                             or not math.isfinite(lift)):
+        raise ValueError("INVALID_SOURCE: lift precisa ser razão finita não negativa.")
+    oos = record.get("oos") if isinstance(record.get("oos"), dict) else None
+    if status == "APPROVED" and not (oos and oos.get("test_from") and oos.get("test_to")):
+        raise ValueError("INVALID_SOURCE: APPROVED exige evidência fora da amostra declarada.")
+    p_condition, p_base = _fraction(record.get("p_condition"), "p_condition"), _fraction(record.get("p_base"), "p_base")
+    confidence = _confidence(record.get("confidence"))
+    hidden = HYPOTHESIS_HIDDEN.get(status)
+    title = record.get("title") if isinstance(record.get("title"), str) and record["title"].strip() else ident
+    section = empty(data, "hypothesis:" + ident, "hypothesis", title, hidden or "")
+    section.update(
+        source_refs=[{"hypothesis_id": ident, "version": version}], status_namespace="hypothesis",
+        source_status=status, display_state="AVAILABLE", default_visible=status in HYPOTHESIS_VISIBLE,
+        hidden_reason_code=None if hidden is None else "STATUS_" + status, hidden_reason_short=hidden,
+        n_observations=n, unit="lift (× taxa-base)", quality=None,
+        temporal={"available_at_utc": record["available_at_utc"], "validated_at_utc": record.get("validated_at_utc"),
+                  "train_from": record.get("train_from"), "train_to": record.get("train_to"),
+                  "test_from": oos.get("test_from") if oos else None, "test_to": oos.get("test_to") if oos else None},
+        evidence={"p_condition": p_condition, "p_base": p_base, "lift": lift, "confidence": confidence,
+                  "expectancy_net": record.get("expectancy_net"), "approved_is_recommendation": False,
+                  "lift_scale": "razão p_condicional/p_base; 1 = igual à taxa-base; sem limite superior"},
+        visual={"value": lift, "direction": None, "series": [],
+                "rings": [{"ring": "sample", "label": "n", "value": n},
+                          {"ring": "lift", "label": "lift", "value": lift, "reference": 1.0},
+                          {"ring": "confidence", "label": "IC" if confidence else "Não informada",
+                           "value": confidence}]},
+        details={"reason": "Avaliação persistida do catálogo; APPROVED indica evidência de utilidade no contexto "
+                           "definido, não recomendação de compra/venda.",
+                 "status_label": {"APPROVED": "Aprovada", "VALIDATING": "Em validação"}.get(status, status)})
+    return section
