@@ -1,4 +1,4 @@
-"""Recibo opt-in dos inputs públicos lidos pelo Expert no Tester DEMO.
+"""Recibo opt-in dos inputs públicos lidos pelo Expert no Tester ou sessão DEMO.
 
 A lista explícita pertence ao perfil revisado: não descobrir/gravar segredos de
 Experts arbitrários. Este recibo não certifica negócios nem aceite operacional.
@@ -12,8 +12,8 @@ import re
 from . import mql
 
 SCHEMA_VERSION = 1
-KINDS = {"int": {"int", "uint", "long", "ulong", "short", "ushort", "char", "uchar"},
-         "number": {"double", "float"}, "bool": {"bool"}, "token": {"string"}}
+KINDS = {"int": {"int", "uint", "long", "ulong", "short", "ushort", "char", "uchar", "ENUM_TIMEFRAMES"},
+         "number": {"double", "float"}, "bool": {"bool"}, "token": {"string"}, "datetime": {"datetime"}}
 
 
 def fields_for(robot, fields):
@@ -46,6 +46,16 @@ def scalar(value, kind):
         if text not in ("true", "false", "0", "1"):
             raise ValueError("Input booleano inválido.")
         return text in ("true", "1")
+    if kind == "datetime":
+        from datetime import datetime
+        text = str(value).strip().removeprefix("D'").removesuffix("'")
+        try:
+            parsed = datetime.strptime(text, "%Y.%m.%d %H:%M")
+        except ValueError:
+            raise ValueError("Semente exige data broker YYYY.MM.DD HH:MM.") from None
+        if parsed.strftime("%Y.%m.%d %H:%M") != text:
+            raise ValueError("Data broker não canônica.")
+        return text
     if kind == "token" and isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_.-]*", value):
         return value
     raise ValueError("Input textual exige identificador público portátil.")
@@ -59,7 +69,7 @@ def expected_values(expected, fields):
     return {name: scalar(expected[name].split("||", 1)[0] if isinstance(expected[name], str) else expected[name], kind) for name, kind in fields.items()}
 
 
-def source(robot, filename, session_id, fields):
+def source(robot, filename, session_id, fields, *, tester=True):
     fields = fields_for(robot, fields)
     if not re.fullmatch(r"[0-9a-f]{32}", session_id) or filename != f"mt5x_session_{session_id}_inputs.csv":
         raise ValueError("Nome do recibo deve pertencer à sessão atual.")
@@ -68,6 +78,8 @@ def source(robot, filename, session_id, fields):
         if kind == "number":
             lines.append(f"if(!MathIsValidNumber({name})) {{ FileClose(f); return false; }}")
             value = f"DoubleToString({name},16)"
+        elif kind == "datetime":
+            value = f"TimeToString({name},TIME_DATE|TIME_MINUTES)"
         elif kind == "token":
             lines.append(f"if(!MT5X_InputToken({name})) {{ FileClose(f); return false; }}")
             value = name
@@ -83,7 +95,7 @@ def source(robot, filename, session_id, fields):
   return true;
 }}
 bool MT5X_RecordInputs() {{
-  if(!MQLInfoInteger(MQL_TESTER) || AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO) return false;
+  if(MQLInfoInteger(MQL_TESTER)!={str(tester).lower()} || AccountInfoInteger(ACCOUNT_TRADE_MODE)!=ACCOUNT_TRADE_MODE_DEMO) return false;
   int f=FileOpen("{filename}",FILE_WRITE|FILE_CSV|FILE_UNICODE|FILE_COMMON,';');
   if(f==INVALID_HANDLE) return false;
   FileWrite(f,"mt5x-native-inputs","1","{session_id}",_Symbol,EnumToString(_Period),
@@ -99,13 +111,13 @@ bool MT5X_RecordInputs() {{
 '''
 
 
-def read(path, *, session_id, symbol, timeframe, fields, expected=None, complete=False):
+def read(path, *, session_id, symbol, timeframe, fields, expected=None, complete=False, tester=True):
     rows = list(csv.reader(io.StringIO(mql.read_text(path)), delimiter=";"))
     if len(rows) < 3 or len(rows[0]) != 9:
         raise ValueError("Recibo de inputs ausente/incompleto; confira OnInit e os logs desta sessão.")
     header = rows[0]
     if (header[:5] != ["mt5x-native-inputs", "1", session_id, symbol, "PERIOD_"+timeframe]
-            or header[5:7] != ["1", "0"]):
+            or header[5:7] != ["1" if tester else "0", "0"]):
         raise ValueError("Recibo incompatível: confira versão, sessão, ativo/TF e Tester DEMO.")
     try:
         if int(header[7]) <= 0 or int(header[8]) != len(fields):
@@ -124,7 +136,7 @@ def read(path, *, session_id, symbol, timeframe, fields, expected=None, complete
         names = ", ".join(name for name in fields if actual.get(name) != wanted[name])
         raise ValueError(f"Preset não corresponde aos inputs carregados: {names}. Confira o arquivo .set e o perfil.")
     return {"schema_version": SCHEMA_VERSION, "session": session_id, "symbol": symbol,
-            "timeframe": timeframe, "tester": True, "demo": True, "known_at": int(header[7]),
+            "timeframe": timeframe, "tester": tester, "demo": True, "known_at": int(header[7]),
             "values": actual, "complete": bool(complete), "compared": wanted is not None,
             "preset_verified": bool(complete and wanted is not None), "operational_acceptance": False,
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}

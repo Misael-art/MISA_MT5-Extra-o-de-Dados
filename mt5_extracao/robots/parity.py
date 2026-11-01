@@ -304,10 +304,18 @@ def _finite(value):
 
 
 def parse_strategy_events(text: str) -> dict:
-    """Decisões SAREF e sinais do host por origem do log agregado; cópias entre origens não viram colisões."""
+    """Decisões SAREF e sinais do host do log agregado, independente da ordem das origens.
+
+    Cada identidade de evento (tipo + campos) é contada por origem. Cópias da mesma linha em origens
+    distintas (log do agente e do Tester) colapsam; repetição dentro de uma origem é preservada: o número
+    final de ocorrências é o MÁXIMO entre origens, e as contagens por origem ficam em `_sources`.
+    Eventos com campos diferentes nunca se fundem, então conflitos continuam visíveis como ambiguidade.
+    """
     import re
-    source, events = "log", {"decision": [], "signal": []}
-    seen = {}
+    from collections import Counter
+    source = "log"
+    per_source = {}                     # identidade -> Counter(origem -> ocorrências)
+    first = {}
     for line in text.splitlines():
         header = re.match(r"===== (.+) =====", line.strip())
         if header:
@@ -315,20 +323,36 @@ def parse_strategy_events(text: str) -> dict:
             continue
         if "SAREF_DECISION " in line:
             body = line[line.index("SAREF_DECISION ") + 15:]
-            fields = dict(p.split("=", 1) for p in body.replace("decision=", "decision=", 1).split() if "=" in p)
+            fields = dict(p.split("=", 1) for p in body.split() if "=" in p)
             fields["decision"] = body.split(" side=")[0].split("decision=")[-1]
             kind = "decision"
+        elif "SAREF_BLOCKED " in line:
+            body = line[line.index("SAREF_BLOCKED ") + 14:]
+            fields = dict(p.split("=", 1) for p in body.split() if "=" in p)
+            fields["decision"] = body.split(" reason=")[0].split("decision=")[-1]
+            kind = "blocked"
         elif "HDK_STRATEGY_SIGNAL " in line:
             body = line[line.index("HDK_STRATEGY_SIGNAL ") + 20:]
             fields = dict(p.split("=", 1) for p in body.split() if "=" in p)
+            if " reason=" in body:
+                fields["reason"] = body.split(" reason=", 1)[1].strip()
             kind = "signal"
         else:
-            continue
+            refusal = re.search(r"HDK#(\d+)\s+\w+\s+(COMPRA|VENDA) recusada: (.+)$", line)
+            if not refusal:
+                continue
+            stamp = re.search(r"\d{4}\.\d\d\.\d\d \d\d:\d\d:\d\d", line)
+            fields = dict(decision=stamp[0][:16] if stamp else "", magic=refusal[1],
+                          side="1" if refusal[2] == "COMPRA" else "-1", reason=refusal[3].strip())
+            kind = "refusal"
         identity = (kind, tuple(sorted(fields.items())))
-        if identity in seen and seen[identity] != source:
-            continue                                     # mesma linha vista em outra origem: cópia
-        seen.setdefault(identity, source)
-        events[kind].append(dict(fields, _source=source))
+        per_source.setdefault(identity, Counter())[source] += 1
+        first.setdefault(identity, fields)
+    events = {"decision": [], "signal": [], "blocked": [], "refusal": []}
+    for identity in sorted(per_source, key=lambda i: (i[0], i[1])):
+        counts = per_source[identity]
+        for _ in range(max(counts.values())):
+            events[identity[0]].append(dict(first[identity], _sources=dict(sorted(counts.items()))))
     return events
 
 

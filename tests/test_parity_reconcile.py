@@ -119,3 +119,51 @@ def test_expert_close_reason_is_refined_only_by_host_log():
     assert row["native_reason"] == "fim do dia" and row["native_reason_source"] == "log_host"
     row = reconcile([py(exit_reason="fim do dia")], [nat(exit_reason="expert")])["rows"][0]
     assert row["native_reason"] == "expert" and "exit_reason:different" in row["flags"]     # sem prova, não vira fim do dia
+
+
+def _sources(*blocks):
+    return log(*[line for name, lines in blocks for line in (f"===== {name} =====", *lines)])
+
+
+@pytest.mark.parametrize("order", [("A", "B"), ("B", "A")])
+def test_dedup_is_independent_of_source_order(order):
+    blocks = {"A": ("A", (DECISION, SIGNAL)), "B": ("B", (DECISION, DECISION, SIGNAL))}
+    text = _sources(*(blocks[k] for k in order))
+    events = parity.parse_strategy_events(text)
+    assert len(events["decision"]) == 2                        # repetição dentro de B preservada
+    assert events["decision"][0]["_sources"] == {"A": 1, "B": 2}
+    assert reconcile([py()], [nat()], text=text)["rows"][0]["link"] == "ambiguous"
+
+
+@pytest.mark.parametrize("order", [("A", "B"), ("B", "A")])
+def test_pure_copies_across_sources_confirm_in_any_order(order):
+    blocks = {"A": ("A", (DECISION, SIGNAL)), "B": ("B", (DECISION, SIGNAL))}
+    text = _sources(*(blocks[k] for k in order))
+    assert reconcile([py()], [nat()], text=text)["rows"][0]["link"] == "confirmed"
+
+
+def test_conflicting_events_across_sources_stay_ambiguous():
+    other = DECISION.replace("stop=1.1", "stop=1.15")
+    text = _sources(("A", (DECISION, SIGNAL)), ("B", (other, SIGNAL)))
+    assert len(parity.parse_strategy_events(text)["decision"]) == 2
+    assert reconcile([py()], [nat()], text=text)["rows"][0]["link"] == "ambiguous"
+
+
+@pytest.mark.parametrize("counts", [(1,2,1),(2,3,2),(1,1,1)])
+def test_all_source_permutations_keep_exact_counts_and_signal_repetition(counts):
+    from itertools import permutations
+    blocks=[(name,(DECISION,)*n+(SIGNAL,)*n) for name,n in zip("ABC",counts)]
+    expected=None
+    for perm in permutations(blocks):
+        events=parity.parse_strategy_events(_sources(*perm))
+        assert len(events["decision"])==len(events["signal"])==max(counts)
+        assert events["signal"][0]["_sources"]==dict(zip("ABC",counts))
+        if expected is not None:assert events==expected
+        expected=events
+        assert reconcile([py()],[nat()],text=_sources(*perm))["rows"][0]["link"] == ("confirmed" if max(counts)==1 else "ambiguous")
+
+
+@pytest.mark.parametrize("order",[("A","B"),("B","A")])
+def test_conflicting_signal_sources_never_confirm(order):
+    blocks={"A":("A",(DECISION,SIGNAL)),"B":("B",(DECISION,SIGNAL+" conflict=1"))}
+    assert reconcile([py()],[nat()],text=_sources(*(blocks[k] for k in order)))["rows"][0]["link"]=="ambiguous"

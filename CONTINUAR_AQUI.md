@@ -8,6 +8,20 @@ locais, anexos não enviados ou do histórico de uma sessão aberta no computado
 Leia o [roteiro completo](docs/repasse/NOVO_HOST_20261024.md) e entregue ao agente
 o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
+## Preparação operacional DEMO em01/11/2026
+
+[Proposta e encerramento por posse](docs/sdk/demo_operacional.md#sa-ref-01--proposta-operacional-para-2-novembro-2026-aguarda-autorização):
+02/11,10–12h America/Sao_Paulo, conta DEMO final9678, EURUSD M5/magic540121.
+Aguardar aprovação explícita deste roteiro; mercado aberto não autoriza PLAY.
+Auditor de sessão: `scripts/demo_session_audit.py`; `sa_ref_reconcile.py` mantém
+somente o contrato histórico de outubro. A deduplicação preserva repetições por
+origem. STOP não liquida: só encerrar supervisão após conferir pendências,
+posições próprias e histórico, preservando terceiros. Pacote histórico e
+complemento já enviados e vinculados na página privada existente, sequência15;
+69 hashes/links conferidos,196 blocos anteriores preservados. Fonte/commit,
+recibos e prévia atuais no registro central. SA-01 multi-TF é a próxima frente;
+não retomar automaticamente o backlog Dashboard no prompt antigo abaixo.
+
 ## Ponta de continuidade em01/11/2026
 
 Retome `codex/ponte-previa-coesa` (harmonização da ponte/launcher), sobre

@@ -2,7 +2,7 @@
 // Não envia, altera ou fecha ordens. Uma linha por posição encerrada.
 struct MT5X_TradeRow
 {
-   long id, entry_order;
+   long id, entry_order, entry_deal, exit_deal;
    datetime opened, closed;
    double in_volume, out_volume, in_value, out_value, result, commission, swap, fee, sl, tp;
    int direction;
@@ -64,7 +64,7 @@ bool MT5X_Export(const string filename, const long magic)
          if(rows[at].in_volume>0 && (rows[at].entry_order!=order || rows[at].direction!=direction)) rows[at].ambiguous=true;
          if(rows[at].opened==0 || stamp<rows[at].opened)
          {
-            rows[at].opened=stamp; rows[at].entry_order=order; rows[at].direction=direction;
+            rows[at].opened=stamp; rows[at].entry_order=order; rows[at].entry_deal=(long)deal; rows[at].direction=direction;
             rows[at].sl=HistoryOrderGetDouble(order,ORDER_SL); rows[at].tp=HistoryOrderGetDouble(order,ORDER_TP);
          }
          rows[at].in_volume+=volume; rows[at].in_value+=volume*price;
@@ -74,7 +74,7 @@ bool MT5X_Export(const string filename, const long magic)
          rows[at].out_volume+=volume; rows[at].out_value+=volume*price;
          if(stamp>=rows[at].closed)
          {
-            rows[at].closed=stamp;
+            rows[at].closed=stamp; rows[at].exit_deal=(long)deal;
             long reason=HistoryDealGetInteger(deal,DEAL_REASON);
             // Só o que o deal prova: SL/TP/stop out/manual; fechamento pelo Expert vira "expert" (a regra
             // específica — fim do dia, sinal, tempo — fica no log do host e é ligada por position_id).
@@ -89,7 +89,8 @@ bool MT5X_Export(const string filename, const long magic)
    if(ArraySize(rows)>1) MT5X_SortRows(rows,0,ArraySize(rows)-1);
    int handle=FileOpen(filename,FILE_WRITE|FILE_CSV|FILE_ANSI|FILE_COMMON,';');
    if(handle==INVALID_HANDLE) return false;
-   FileWrite(handle,"time","symbol","type","volume","result","entry_time","entry_price","exit_price","sl","tp","direction","exit_reason","position_id","commission","swap","fee","currency");
+   FileWrite(handle,"time","symbol","type","volume","result","entry_time","entry_price","exit_price","sl","tp","direction","exit_reason","position_id","commission","swap","fee","currency",
+             "entry_order","entry_deal","exit_deal");
    for(int i=0;i<ArraySize(rows);i++)
    {
       MT5X_TradeRow r=rows[i];
@@ -100,7 +101,8 @@ bool MT5X_Export(const string filename, const long magic)
                 complete ? DoubleToString(r.in_value/r.in_volume,_Digits) : "",DoubleToString(r.out_value/r.out_volume,_Digits),
                 complete ? DoubleToString(r.sl,_Digits) : "",complete ? DoubleToString(r.tp,_Digits) : "",
                 complete ? (r.direction>0 ? "buy" : "sell") : "",r.reason,r.id,
-                DoubleToString(r.commission,8),DoubleToString(r.swap,8),DoubleToString(r.fee,8),AccountInfoString(ACCOUNT_CURRENCY));
+                DoubleToString(r.commission,8),DoubleToString(r.swap,8),DoubleToString(r.fee,8),AccountInfoString(ACCOUNT_CURRENCY),
+                complete ? IntegerToString(r.entry_order) : "",complete ? IntegerToString(r.entry_deal) : "",IntegerToString(r.exit_deal));
    }
    FileClose(handle); return true;
 }
