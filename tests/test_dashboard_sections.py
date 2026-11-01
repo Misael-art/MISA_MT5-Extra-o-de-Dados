@@ -190,7 +190,7 @@ def test_volume_keeps_real_ticks_and_weekday_separate(db):
                                 versions={"rvol.reference_sessions": "tick"})
     sections = volume_sections(result)
     assert len(sections) == 3
-    assert [s["visual"]["value"] for s in sections] == [0, 3, 1.2]
+    assert sorted(s["visual"]["value"] for s in sections) == [0, 1.2, 3]       # ordem é da política DASH-11
     assert all(s["n_observations"] is None for s in sections)
 
 

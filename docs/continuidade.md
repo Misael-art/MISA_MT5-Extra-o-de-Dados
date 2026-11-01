@@ -5191,3 +5191,21 @@ resultado continua selecionável. Nada é executado; a leitura não grava.
 declarada), curva de capital desenhada, outra execução oculta, sem erros.
 Pendências: preset/fingerprint de MQL5 dependem de bateria gravada (base real
 sem `_robots`/baterias); seleção pela interface Tk em DASH-13.
+
+### Priorização explicável do Dashboard —01/11/2026 (DASH-11)
+
+Sobre DASH-10. `dashboard/priority.py` (política `DASH-11/1`, gravada em
+`provenance.priority_policy`) ordena só as faixas visíveis: grupos obrigatórios
+surpresa → resultado do robô → APPROVED → VALIDATING → contexto (o alerta de
+invalidação já fica acima). Dentro do grupo, I×E×N normalizado: I = |ln(razão)|/
+(|ln|+ln 2) para lift, PF OOS e RVOL (sinal preservado); E por amostra
+(n/(n+100) ou n/(n+20)) com IC/OOS 1|0,5 em hipóteses; N basal 0,5 "Sem
+comparação anterior" (sem baseline/cache) ou 1,0 se vencido. Fator não apurado →
+`UNAVAILABLE` sem valor favorável; soma zero sem divisão; desempate impacto →
+evidência → ID. Ocultas `NOT_RANKED`, nunca promovidas; RETIRED só na auditoria.
+Cada faixa explica sua posição em "Ver evidência". O teste de volume que
+fixava a ordem de criação passou a conferir conteúdo.
+
+8 testes novos (119 do Dashboard). Browser com fixture: ordem e explicações
+corretas, sem erros. Pendência: novidade real exige baseline/fotografia anterior
+compatível (`baseline_snapshot_id` segue null).

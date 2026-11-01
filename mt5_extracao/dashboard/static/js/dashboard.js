@@ -44,6 +44,14 @@
       rows.append(text("dt", label), text("dd", value));
     }
     node.append(rows);
+    const p = section.priority || {};
+    if (p.position) {
+      const f = p.factors || {}, show = x => x && x.value !== null && x.value !== undefined ? number(x.value) : "não apurado";
+      node.append(text("p", "Por que nesta posição: " + p.position + "ª da narrativa · " + (p.group_label || p.group)
+        + (p.score_state === "AVAILABLE" ? " · peso " + number(p.score) + " no grupo (I " + show(f.I) + " × E "
+          + show(f.E) + " × N " + show(f.N) + (f.N && f.N.label ? ", " + f.N.label : "") + ")"
+          : " · " + (p.reason || "sem score")) + " · política " + p.policy + ". Ordem visual, não avaliação.", "priority-note"));
+    }
     const audit = document.createElement("details");
     audit.append(text("summary", "Contrato, fontes e dados desta faixa"), text("pre", JSON.stringify(section, null, 2)));
     node.append(audit);
@@ -157,7 +165,7 @@
   function hiddenPanel() {
     const panel = text("section", "", "hidden-panel");
     panel.setAttribute("aria-label", "Evidências ocultas");
-    const hidden = snapshotData.sections.filter(s => !s.default_visible);
+    const hidden = snapshotData.sections.filter(s => !s.default_visible && !s.details.audit_only);
     const own = snapshotData.sections.filter(s => s.default_visible && dismissed.has(s.id));
     const heading = text("h2", "");
     heading.innerHTML = BALANCE;

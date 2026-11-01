@@ -256,6 +256,9 @@ def hypothesis(data, record):
         details={"reason": "Avaliação persistida do catálogo; APPROVED indica evidência de utilidade no contexto "
                            "definido, não recomendação de compra/venda.",
                  "status_label": {"APPROVED": "Aprovada", "VALIDATING": "Em validação"}.get(status, status)})
+    if status == "RETIRED":
+        # §7.1.8: fora da narrativa e da lista comum de ocultas; só auditoria (exceção: alerta retroativo).
+        section["details"]["audit_only"] = True
     return section
 
 

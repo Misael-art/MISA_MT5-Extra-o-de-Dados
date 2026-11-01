@@ -255,7 +255,8 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
     data["sections"].append(hypothesis_pending(data))
     data["capabilities"]["hypotheses"].update(state="DEPENDENCY_PENDING", reason_code="T13_4_PENDING",
         reason="Catálogo de hipóteses estatísticas ainda não implementado; bateria de robô não é aprovação estatística.")
-    return seal(data)
+    from .priority import prioritize
+    return seal(prioritize(data))
 
 
 def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
@@ -329,7 +330,8 @@ def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
         reason_code=None if chosen else "NO_RUN_AT_CUT",
         reason="Execução persistida em robots.store; outras execuções não são agregadas; bateria não é hipótese.")
     data["provenance"]["robot_late_runs"] = late
-    return seal(data)
+    from .priority import prioritize
+    return seal(prioritize(data))
 
 
 def seal(data):
