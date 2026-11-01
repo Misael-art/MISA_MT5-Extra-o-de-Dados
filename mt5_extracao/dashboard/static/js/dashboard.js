@@ -61,7 +61,7 @@
       const detail = details(section);
       metric.addEventListener("click", () => { detail.open = !detail.open; });
       body.append(detail);
-      if ((section.visual.series || []).length || (section.visual.cells || []).length || (section.visual.rings || []).length) {
+      if ((section.visual.series || []).length || (section.visual.cells || []).length || (section.visual.rings || []).length || (section.visual.folds || []).length) {
         const figure = text("div", "", "chart chart--" + section.kind);
         figure.tabIndex = 0;
         figure.setAttribute("role", "img");

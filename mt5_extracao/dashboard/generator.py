@@ -214,6 +214,15 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["capabilities"]["regime"].update(state="AVAILABLE" if context_section["default_visible"] else "NO_DATA",
             reason_code=None if context_section["default_visible"] else "NO_DATA",
             reason="Estado persistido; células são últimos registros por dia/hora UTC, sem agregação estatística.")
+        from mt5_extracao.strategies.validation import load_validations
+        from .sections import validation_sections
+        rows = load_validations(db, [selection["symbol"]], selection["timeframe"], include_result=True)
+        validation = validation_sections(data, rows.to_dict("records"))
+        data["sections"].extend(validation)
+        shown = [s for s in validation if s["status_namespace"] == "validation"]
+        data["capabilities"]["validation"].update(state="AVAILABLE" if shown else "NO_DATA",
+            reason_code=None if shown else "NO_DATA",
+            reason="Vereditos do Filtro C gravados; datas de treino e custos não constam do recibo.")
         data["data_cutoff_utc"] = max((r["observation_time"] for r in facts), default=None)
         data["capabilities"]["identity"].update(state="AVAILABLE", reason_code=None, reason="Identidade lógica preservada.")
         data["capabilities"]["quality"].update(state="AVAILABLE" if facts else "NO_DATA", reason_code=None,

@@ -243,3 +243,83 @@ def hypothesis(data, record):
                            "definido, não recomendação de compra/venda.",
                  "status_label": {"APPROVED": "Aprovada", "VALIDATING": "Em validação"}.get(status, status)})
     return section
+
+
+# DASH-07 — validação temporal a partir de _strategy_validation (strategies.validation).
+# O recibo atual guarda as janelas OOS por fold, critérios e veredito do Filtro C;
+# não guarda datas de treino, custos (BacktestConfig) nem fuso de created_at.
+NAIVE_CLOCK_MARGIN_HOURS = 14  # maior adiantamento de fuso civil (UTC+14)
+
+
+def _naive(value):
+    stamp = datetime.fromisoformat(str(value).replace("T", " ").split("+")[0].strip())
+    return stamp.replace(tzinfo=None)
+
+
+def validation_sections(data, rows):
+    """Uma faixa por estratégia validada no ativo/TF; nada é recalculado."""
+    from datetime import timedelta
+    cut = datetime.fromisoformat(data["as_of_utc"])
+    cut_naive = cut.replace(tzinfo=None)  # as_of_utc já está em UTC
+    result, late = [], 0
+    for row in rows:
+        try:
+            created = _naive(row["created_at"])
+        except (TypeError, ValueError):
+            late += 1
+            continue
+        # created_at é hora local sem fuso: só entra se precede o corte em qualquer fuso civil.
+        if created + timedelta(hours=NAIVE_CLOCK_MARGIN_HOURS) > cut_naive:
+            late += 1
+            continue
+        verdict = row.get("result") if isinstance(row.get("result"), dict) else {}
+        windows = verdict.get("windows") if isinstance(verdict.get("windows"), list) else []
+        folds = []
+        for w in windows:
+            if not isinstance(w, dict):
+                continue
+            folds.append({k: w.get(k) for k in ("window", "oos_start", "oos_end", "oos_trades", "oos_profit_factor",
+                                                "oos_profit_factor_status", "oos_net_profit", "is_trades",
+                                                "is_profit_factor", "params")})
+        approved = bool(row["approved"])
+        strategy = str(row["strategy"])
+        pf = row.get("profit_factor_oos")
+        pf = float(pf) if isinstance(pf, (int, float)) and not isinstance(pf, bool) and math.isfinite(pf) else None
+        hidden = None if approved else "Reprovada no Filtro C; critérios e janelas permanecem auditáveis."
+        section = empty(data, "validation:" + strategy, "validation", "Validação walk-forward · " + strategy, hidden or "")
+        checks = [{k: c.get(k) for k in ("name", "text", "passed", "value", "threshold")}
+                  for c in verdict.get("checks", []) if isinstance(c, dict)]
+        section.update(
+            source_refs=[{"table": "_strategy_validation", "symbol": row["symbol"], "timeframe": row["timeframe"],
+                          "strategy": strategy}],
+            status_namespace="validation", source_status="FILTER_C_APPROVED" if approved else "FILTER_C_REJECTED",
+            display_state="AVAILABLE" if folds else "INSUFFICIENT", default_visible=approved,
+            hidden_reason_code=None if approved else "FILTER_C_REJECTED", hidden_reason_short=hidden,
+            n_observations=int(row["trades_oos"]) if row.get("trades_oos") is not None else None,
+            unit="profit factor fora da amostra",
+            temporal={"created_at_local_naive": str(row["created_at"]), "data_start": row.get("data_start"),
+                      "data_end": row.get("data_end"),
+                      "clock_rule": f"created_at sem fuso; incluído só se +{NAIVE_CLOCK_MARGIN_HOURS} h precede o corte"},
+            evidence={"checks": checks, "criteria": verdict.get("criteria"),
+                      "profit_factor_status": row.get("profit_factor_status"),
+                      "positive_windows": row.get("positive_windows"), "robust": row.get("robust"),
+                      "monte_carlo_dd": row.get("mc_dd"),
+                      "costs": {"state": "NOT_RECORDED",
+                                "reason": "O recibo não grava BacktestConfig; custos não são conferíveis aqui."},
+                      "train_dates": {"state": "NOT_RECORDED",
+                                      "reason": "O recibo grava só as janelas OOS; o treino antecede cada OOS."},
+                      "approved_is_hypothesis": False},
+            visual={"value": pf, "direction": None, "series": [], "folds": folds,
+                    "data_start": row.get("data_start"), "data_end": row.get("data_end")},
+            details={"reason": "Veredito do Filtro C gravado; aprovação é por critérios de robustez da estratégia, "
+                               "não hipótese estatística aprovada nem recomendação.",
+                     "status_label": "Filtro C aprovado" if approved else "Filtro C reprovado"})
+        if pf is None:
+            section["details"]["pf_reason"] = "PF fora da amostra não calculável: " + str(row.get("profit_factor_status"))
+        result.append(section)
+    if late:
+        note = empty(data, "validation:late", "validation", "Validações após o corte",
+                     f"{late} recibo(s) com relógio sem fuso possivelmente posterior ao corte; omitidos desta fotografia.")
+        note.update(hidden_reason_code="CLOCK_AFTER_CUT", n_observations=late, status_namespace="dashboard")
+        result.append(note)
+    return result

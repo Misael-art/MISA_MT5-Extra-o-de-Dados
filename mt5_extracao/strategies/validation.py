@@ -258,16 +258,24 @@ def save_validation(db, symbol: str, timeframe: str, verdict: dict) -> None:
              "c": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
 
 
-def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optional[str] = None) -> pd.DataFrame:
-    """Vereditos gravados (vazio se a tabela ainda não existir)."""
+def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optional[str] = None,
+                     include_result: bool = False) -> pd.DataFrame:
+    """Vereditos gravados (vazio se a tabela ainda não existir).
+
+    include_result=True acrescenta `result` (veredito gravado já decodificado, ou None se ilegível)
+    para leitores que precisam das janelas walk-forward sem reler a tabela.
+    """
     from sqlalchemy import inspect, text
     cols = ["symbol", "timeframe", "strategy", "approved", "status", "profit_factor_oos", "trades_oos",
             "positive_windows", "robust", "mc_dd", "params_json", "data_start", "data_end", "created_at"]
     if not inspect(db.engine).has_table("_strategy_validation"):
-        return pd.DataFrame(columns=cols)
+        return pd.DataFrame(columns=cols + (["result"] if include_result else []))
     with db.engine.connect() as conn:
         df = pd.read_sql(text(f"SELECT {', '.join(cols)}, result_json FROM _strategy_validation"), conn)
     df["profit_factor_oos"] = df["profit_factor_oos"].astype(object)
+    if include_result:
+        df["result"] = None
+        df["result"] = df["result"].astype(object)
     for index, row in df.iterrows():
         try:
             payload = json.loads(row["result_json"] or "{}")
@@ -275,7 +283,9 @@ def load_validations(db, symbols: Optional[List[str]] = None, timeframe: Optiona
             if not isinstance(saved, dict):
                 saved = {}
         except (TypeError, ValueError):
-            saved = {}
+            payload, saved = None, {}
+        if include_result:
+            df.at[index, "result"] = payload if isinstance(payload, dict) else None
         recorded = row["profit_factor_oos"]
         projected = profit_factor.read_fields({**saved, "profit_factor": recorded})
         df.at[index, "profit_factor_oos"] = projected["profit_factor"]

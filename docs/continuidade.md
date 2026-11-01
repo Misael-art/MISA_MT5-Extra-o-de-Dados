@@ -5126,3 +5126,21 @@ IC com método/nível ou anel tracejado "Não informada".
 cartão aprovado, em validação sem IC e exploratória oculta, sem erros de console.
 **Infraestrutura validada; integração real pendente do produtor T13.4.**
 Próxima: DASH-07 (validação temporal) a partir dos recibos existentes.
+
+### Faixa de validação do Dashboard —01/11/2026 (DASH-07)
+
+Sobre DASH-06, mesma branch de continuidade. Lê os vereditos canônicos de
+`_strategy_validation` por `load_validations(..., include_result=True)` (opção
+aditiva; projeção de PF preservada), sem recalcular. Uma faixa por estratégia do
+ativo/TF: linha do tempo com só as janelas OOS gravadas por fold; o treino não
+tem datas no recibo e os custos (BacktestConfig) não são gravados — ambos ficam
+`NOT_RECORDED`, nunca inferidos. Filtro C aprovado ≠ hipótese aprovada;
+reprovada fica oculta com motivo. `created_at` é hora local sem fuso: entra só
+se +14 h precede o corte; senão é omitido e contado (`CLOCK_AFTER_CUT`). O
+upsert do recibo não guarda histórico, então cortes antigos podem não ver
+veredito. Leitura não cria tabela.
+
+7 testes novos; Dashboard+validação+PF 142. Browser HTTP com recibos QA:
+5 folds, PF não calculável sem zero, fold além de data_end visível, sem erros.
+Pendências: datas de treino/custos dependem de o produtor gravá-los;
+DASH-08…14.
