@@ -60,12 +60,8 @@ def _pinned_study(framework_root, manifest_path=None):
     return operations, spec, source
 
 
-def m1_rows(db, symbol, end):
-    """Todas as M1 da base até o fim da janela: prefixo completo semeia o indicador, como no estudo."""
+def _rows_from_frame(frame):
     from research_super_atr.study import minute
-    frame = db.load_ohlcv(symbol, "1 minuto", None, end)
-    if frame is None or frame.empty:
-        raise ValueError(f"Sem M1 de {symbol} na base até {end}.")
     rows = []
     for row in frame.itertuples(index=False):
         stamp = str(row.time)[:19].replace(" ", "T")
@@ -74,7 +70,47 @@ def m1_rows(db, symbol, end):
     return rows
 
 
-def python_book(db, framework_root, *, cost="zero", manifest_path=None):
+def m1_rows(db, symbol, end):
+    """Todas as M1 da base até o fim da janela: prefixo completo semeia o indicador, como no estudo."""
+    frame = db.load_ohlcv(symbol, "1 minuto", None, end)
+    if frame is None or frame.empty:
+        raise ValueError(f"Sem M1 de {symbol} na base até {end}.")
+    return _rows_from_frame(frame)
+
+
+def m1_rows_readonly(sqlite_path, symbol, end):
+    """M1 de uma base SQLite aberta em modo somente leitura: não cria arquivo, tabela nem migração."""
+    import pandas as pd
+    from sqlalchemy import create_engine, text
+    from mt5_extracao.database_manager import DatabaseManager
+    path = Path(sqlite_path).expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Base inexistente: {path}; nada foi criado.")
+    engine = create_engine(f"sqlite:///file:{path}?mode=ro&uri=true")
+    try:
+        with engine.connect() as conn:
+            table = DatabaseManager.table_for_symbol(conn, symbol, "1 minuto")
+            if table is None:
+                raise ValueError(f"Sem tabela M1 de {symbol} nesta base.")
+            frame = pd.read_sql(text(f'SELECT time, open, high, low, close FROM "{table}" WHERE time < :end ORDER BY time'),
+                                conn, params={"end": str(end).replace("T", " ")})
+    finally:
+        engine.dispose()
+    if frame.empty:
+        raise ValueError(f"Sem M1 de {symbol} até {end}.")
+    return _rows_from_frame(frame)
+
+
+def m1_rows_frozen(csv_path):
+    """M1 congeladas do pacote de reprodução (CSV gz: time,open,high,low,close)."""
+    import pandas as pd
+    frame = pd.read_csv(csv_path, float_precision="round_trip")      # sem perda: igual à base exportada
+    if list(frame.columns[:5]) != ["time", "open", "high", "low", "close"] or frame.empty:
+        raise ValueError("CSV congelado fora do formato time,open,high,low,close.")
+    return _rows_from_frame(frame)
+
+
+def python_book(db, framework_root, *, cost="zero", manifest_path=None, rows=None):
     """Executa o livro congelado na janela do contrato e devolve decisões, trades e métricas."""
     operations, spec, source = _pinned_study(framework_root, manifest_path)
     from mt5_extracao.strategies.backtester import run_backtest
@@ -85,7 +121,8 @@ def python_book(db, framework_root, *, cost="zero", manifest_path=None):
     lo, hi = spec["periods"][CONTRACT["role"]]
     if [lo, hi] != CONTRACT["window_broker"]:
         raise ValueError("Janela do protocolo diverge do contrato SA-REF-01.")
-    rows = m1_rows(db, CONTRACT["symbol"], hi)
+    if rows is None:
+        rows = m1_rows(db, CONTRACT["symbol"], hi)
     with tempfile.TemporaryDirectory(prefix="sa-ref-") as private:
         study = operations.OperationalStudy(spec, rows, operations.RealModel(), lambda: None, private)
     lo_m, hi_m = minute(lo), minute(hi)

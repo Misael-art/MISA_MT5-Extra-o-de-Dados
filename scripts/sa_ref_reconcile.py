@@ -3,10 +3,12 @@
 
 Uso (na raiz do App, com o .venv do projeto):
   .venv/bin/python scripts/sa_ref_reconcile.py --framework ../hadouken \
-      --agent-log TESTER_AGENT.log --trades-csv SESSAO_trades.csv --out PASTA_NOVA [--config config/config.ini]
+      --agent-log TESTER_AGENT.log --trades-csv SESSAO_trades.csv --out PASTA_NOVA \
+      (--m1-csv M1_CONGELADO.csv.gz | --database BASE.sqlite)
 
-Lê a base pela configuração oficial (só leitura), roda o livro congelado e grava decisoes.json e
-reconciliacao.json em uma pasta nova. Não inicia MT5, não envia ordens e não altera a base.
+Entrada M1: CSV congelado do pacote de reprodução (preferido, não depende da base atual) ou base SQLite
+aberta em modo somente leitura (mode=ro: não cria arquivo, tabela nem migração). Roda o livro congelado e
+grava decisoes.json, reconciliacao.json e resumo.json em pasta nova. Não inicia MT5 nem envia ordens.
 """
 import argparse
 import json
@@ -49,24 +51,32 @@ def main(argv=None):
     parser.add_argument("--agent-log", required=True, type=Path)
     parser.add_argument("--trades-csv", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
-    parser.add_argument("--config", default="config/config.ini")
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--m1-csv", type=Path, help="M1 congeladas (time,open,high,low,close)")
+    source.add_argument("--database", type=Path, help="base SQLite existente, aberta só para leitura")
     parser.add_argument("--cost", default="zero", choices=("zero", "base", "stress"))
     args = parser.parse_args(argv)
     if args.out.exists():
         raise SystemExit("Pasta de saída já existe; escolha outra (nada é sobrescrito).")
-    from mt5_extracao import services
     from mt5_extracao.robots import parity, super_atr_reference as ref
-    db = services.create_db_manager(services.load_config(args.config))
-    book = ref.python_book(db, args.framework, cost=args.cost)
+    ref._pinned_study(args.framework)                      # estudo fixado antes de converter as M1
+    if args.m1_csv is not None:
+        rows, m1_source = ref.m1_rows_frozen(args.m1_csv), dict(kind="frozen_csv", name=args.m1_csv.name)
+    else:
+        rows = ref.m1_rows_readonly(args.database, ref.CONTRACT["symbol"], ref.CONTRACT["window_broker"][1])
+        m1_source = dict(kind="sqlite_read_only", name=args.database.name)
+    book = ref.python_book(None, args.framework, cost=args.cost, rows=rows)
     text = read_agent_log(args.agent_log)
-    lines = parity.parse_decision_lines(text)
-    decisions = reconcile_decisions(lines, book["decisions"])
-    trades = parity.reconcile_trades(book["trades"], parity.read_trade_export(args.trades_csv), lines,
-                                     host_closes=parity.parse_close_lines(text))
+    events = parity.parse_strategy_events(text)
+    decisions = reconcile_decisions(events["decision"], book["decisions"])
+    zero_costs = dict(commission=0.0, swap=0.0, fee=0.0) if args.cost == "zero" else None   # custo zero do protocolo
+    trades = parity.reconcile_trades(book["trades"], parity.read_trade_export(args.trades_csv),
+                                     host_closes=parity.parse_close_lines(text), events=events, python_costs=zero_costs)
     args.out.mkdir(parents=True)
     (args.out / "decisoes.json").write_text(json.dumps(decisions, indent=1, default=str), encoding="utf-8")
     (args.out / "reconciliacao.json").write_text(json.dumps(trades, indent=1, default=str), encoding="utf-8")
-    summary = dict(contract=book["contract"]["id"], cost=args.cost, framework=book["framework"],
+    summary = dict(contract=book["contract"]["id"], cost=args.cost, framework=book["framework"], m1_source=m1_source,
+                   m1_rows=len(rows),
                    python_metrics={k: book["metrics"].get(k) for k in ("trades", "profit_factor", "net_profit")},
                    decisions={k: v for k, v in decisions.items() if not k.startswith("only")},
                    trades=trades["summary"])

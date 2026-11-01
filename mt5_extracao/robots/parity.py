@@ -285,9 +285,88 @@ def _num(value):
         return None
 
 
+# Tolerâncias explícitas por unidade; nunca aumentadas para aprovar. Ausente/inválido/não finito ≠ igual.
+TOLERANCES = {"price": 5e-6, "volume": 1e-9, "money": 0.005}
+FIELD_GROUPS = {
+    "protection": (("sl", "price"), ("tp", "price")),
+    "execution": (("entry_price", "price"), ("exit_price", "price"), ("volume", "volume")),
+    "financial": (("result", "money"), ("commission", "money"), ("swap", "money"), ("fee", "money")),
+}
+
+
+def _finite(value):
+    import math
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def parse_strategy_events(text: str) -> dict:
+    """Decisões SAREF e sinais do host por origem do log agregado; cópias entre origens não viram colisões."""
+    import re
+    source, events = "log", {"decision": [], "signal": []}
+    seen = {}
+    for line in text.splitlines():
+        header = re.match(r"===== (.+) =====", line.strip())
+        if header:
+            source = header.group(1)
+            continue
+        if "SAREF_DECISION " in line:
+            body = line[line.index("SAREF_DECISION ") + 15:]
+            fields = dict(p.split("=", 1) for p in body.replace("decision=", "decision=", 1).split() if "=" in p)
+            fields["decision"] = body.split(" side=")[0].split("decision=")[-1]
+            kind = "decision"
+        elif "HDK_STRATEGY_SIGNAL " in line:
+            body = line[line.index("HDK_STRATEGY_SIGNAL ") + 20:]
+            fields = dict(p.split("=", 1) for p in body.split() if "=" in p)
+            kind = "signal"
+        else:
+            continue
+        identity = (kind, tuple(sorted(fields.items())))
+        if identity in seen and seen[identity] != source:
+            continue                                     # mesma linha vista em outra origem: cópia
+        seen.setdefault(identity, source)
+        events[kind].append(dict(fields, _source=source))
+    return events
+
+
+def _link(entry_minute, direction, position_id, events):
+    """Cadeia decisão → sinal do host (order) → posição. Tempo sozinho é só candidato."""
+    from datetime import timezone
+    decisions = [d for d in events.get("decision", []) if _minute(d["decision"]) == entry_minute]
+    compatible = [d for d in decisions if d.get("side") == str(direction) and d.get("eligible") == "1"]
+    if not decisions:
+        return "missing", None, "sem decisão no minuto de entrada"
+    if not compatible:
+        return "incompatible", decisions[0], "decisão do minuto é de outro lado ou inelegível"
+    if len(compatible) > 1:
+        return "ambiguous", None, "mais de uma decisão compatível no mesmo minuto e origem"
+    decision = compatible[0]
+    bar_start = int(entry_minute.replace(tzinfo=timezone.utc).timestamp()) - 300
+    signals = [s for s in events.get("signal", []) if s.get("event_at") == str(bar_start)
+               and s.get("direction") == str(direction) and s.get("opened") == "1"]
+    if len(signals) == 1 and position_id and signals[0].get("order") == str(position_id):
+        return "confirmed", decision, "decisão, sinal do host (order) e position_id coincidem"
+    if len(signals) > 1:
+        return "ambiguous", decision, "mais de um sinal aberto do host para a mesma barra"
+    return "candidate_temporal", decision, "só coincidência de minuto/lado; ordem/posição não provadas"
+
+
 def reconcile_trades(python_trades: List[dict], native_rows: List[dict], native_decisions: Optional[List[dict]] = None,
-                     *, price_tolerance: float = 5e-6, host_closes: Optional[dict] = None) -> dict:
-    """Um para um por (minuto de entrada, direção). Colisões são reportadas; nada é sobrescrito."""
+                     *, host_closes: Optional[dict] = None, events: Optional[dict] = None,
+                     python_costs: Optional[dict] = None, tolerances: Optional[dict] = None) -> dict:
+    """Um para um por (minuto de entrada, direção), sem sobrescrever colisões.
+
+    Compara sinal, proteção, execução e resultado financeiro em grupos separados, com unidade e tolerância
+    declaradas. `python_costs` só informa custos conhecidos do cenário (ex.: zero); sem ele, custos do Python
+    são ausentes e o grupo financeiro não fecha. `events` (parse_strategy_events) prova o vínculo causal.
+    """
+    tol = dict(TOLERANCES, **(tolerances or {}))
+    if events is None:
+        events = {"decision": list(native_decisions or []), "signal": []}
+
     def key_python(t):
         return _minute(str(t["entry_time"])), 1 if t["direction"] > 0 else -1
 
@@ -300,59 +379,65 @@ def reconcile_trades(python_trades: List[dict], native_rows: List[dict], native_
     for r in native_rows:
         groups_n.setdefault(key_native(r), []).append(r)
     collisions = sorted({str(k) for k, v in list(groups_p.items()) + list(groups_n.items()) if len(v) > 1})
-    decisions = {}
-    for d in native_decisions or []:
-        decisions.setdefault(_minute(d["decision"]), []).append(d)
     rows, only_python, only_native = [], [], []
     for key in sorted(set(groups_p) | set(groups_n)):
         left, right = groups_p.get(key, []), groups_n.get(key, [])
         for i in range(max(len(left), len(right))):
             p = left[i] if i < len(left) else None
             n = right[i] if i < len(right) else None
-            if p is None:
-                only_native.append(dict(entry=str(key[0]), direction=key[1], position_id=n.get("position_id"),
-                                        reason=n.get("exit_reason"), decision=decisions.get(key[0], [None])[0]))
+            if p is None or n is None:
+                side = only_native if p is None else only_python
+                link = _link(key[0], key[1], n.get("position_id"), events) if n is not None else None
+                side.append(dict(entry=str(key[0]), direction=key[1], reason=(n or p).get("exit_reason"),
+                                 position_id=(n or {}).get("position_id"), link=link[0] if link else None))
                 continue
-            if n is None:
-                only_python.append(dict(entry=str(key[0]), direction=key[1], reason=p["exit_reason"]))
-                continue
+            python_values = dict(sl=p.get("stop_price"), tp=p.get("target_price"), entry_price=p.get("entry_price"),
+                                 exit_price=p.get("exit_price"), volume=p.get("volume"), result=p.get("pnl"),
+                                 **{k: (python_costs or {}).get(k) for k in ("commission", "swap", "fee")})
+            comparisons, flags = {}, []
+            for group, fields in FIELD_GROUPS.items():
+                for field, unit in fields:
+                    a, b = _finite(n.get(field)), _finite(python_values.get(field))
+                    if a is None or b is None:
+                        state = "missing_native" if a is None else "missing_python"
+                    else:
+                        state = "equal" if abs(a - b) <= tol[unit] else "different"
+                    comparisons[field] = dict(group=group, unit=unit, tolerance=tol[unit], native=a, python=b,
+                                              diff=None if a is None or b is None else a - b, state=state)
+                    if state != "equal":
+                        flags.append(f"{field}:{state}")
             native_reason = NATIVE_REASONS.get(n.get("exit_reason", ""), n.get("exit_reason") or "(vazio)")
-            reason_source = "csv" if native_reason != "(vazio)" else None
+            reason_source = "csv" if native_reason not in ("(vazio)", "expert") else None
             logged = (host_closes or {}).get(str(n.get("position_id")), [])
-            if native_reason == "(vazio)" and len(logged) == 1 and logged[0] in HOST_REASONS:
-                # Motivo demonstrado pelo log do host para ESTA posição; nunca inferido pelo horário.
+            if native_reason in ("(vazio)", "expert") and len(logged) == 1 and logged[0] in HOST_REASONS:
                 native_reason, reason_source = HOST_REASONS[logged[0]], "log_host"
-            exit_delta = (_minute(n["time"]) - _minute(str(p["exit_time"]))).total_seconds() / 60
-            sl_diff = abs((_num(n.get("sl")) or 0) - p["stop_price"])
-            tp_diff = abs((_num(n.get("tp")) or 0) - (p.get("target_price") or 0))
-            volume_ratio = (_num(n.get("volume")) or 0) / p["volume"] if p["volume"] else None
-            flags = []
             if native_reason != p["exit_reason"]:
-                flags.append("reason")
+                flags.append("exit_reason:different")
+            exit_delta = (_minute(n["time"]) - _minute(str(p["exit_time"]))).total_seconds() / 60
             if exit_delta:
-                flags.append("exit_minute")
-            if sl_diff > price_tolerance:
-                flags.append("sl")
-            if tp_diff > price_tolerance:
-                flags.append("tp")
-            if volume_ratio is None or abs(volume_ratio - 1) > 1e-9:
-                flags.append("volume")
+                flags.append("exit_minute:different")
+            link, decision, link_note = _link(key[0], key[1], n.get("position_id"), events)
+            groups_state = {g: all(c["state"] == "equal" for c in comparisons.values() if c["group"] == g)
+                            for g in FIELD_GROUPS}
+            groups_state["execution"] = groups_state["execution"] and native_reason == p["exit_reason"] and not exit_delta
             rows.append(dict(entry=str(key[0]), direction=key[1], position_id=n.get("position_id"),
-                             decision=decisions.get(key[0], [None])[0], native_reason=native_reason,
-                             native_reason_source=reason_source,
+                             link=link, link_note=link_note, decision=decision,
+                             native_reason=native_reason, native_reason_source=reason_source,
                              python_reason=p["exit_reason"], exit_delta_min=exit_delta,
-                             native_volume=_num(n.get("volume")), python_volume=p["volume"], volume_ratio=volume_ratio,
-                             native_entry=_num(n.get("entry_price")), python_entry=p["entry_price"],
-                             native_exit=_num(n.get("exit_price")), python_exit=p["exit_price"],
-                             sl_diff=sl_diff, tp_diff=tp_diff, native_result=_num(n.get("result")), python_result=p["pnl"],
-                             commission=_num(n.get("commission")), swap=_num(n.get("swap")), fee=_num(n.get("fee")),
-                             flags=flags))
-    summary = dict(python=len(python_trades), native=len(native_rows), paired=len(rows), collisions=collisions,
-                   only_python=len(only_python), only_native=len(only_native),
-                   identical=sum(not r["flags"] for r in rows),
-                   flag_counts={f: sum(f in r["flags"] for r in rows)
-                                for f in ("reason", "exit_minute", "sl", "tp", "volume")},
-                   empty_native_reason=sum(r["native_reason"] == "(vazio)" for r in rows),
-                   reason_from_host_log=sum(r["native_reason_source"] == "log_host" for r in rows),
-                   native_positions_linked_to_decision=sum(r["decision"] is not None for r in rows))
+                             comparisons=comparisons, groups=groups_state, flags=flags,
+                             identical=not flags and link == "confirmed"))
+    summary = dict(
+        python=len(python_trades), native=len(native_rows), paired=len(rows), collisions=collisions,
+        only_python=len(only_python), only_native=len(only_native), tolerances=tol,
+        identical=sum(r["identical"] for r in rows),
+        groups_equal={g: sum(r["groups"][g] for r in rows) for g in ("protection", "execution", "financial")},
+        links={state: sum(r["link"] == state for r in rows)
+               for state in ("confirmed", "candidate_temporal", "ambiguous", "incompatible", "missing")},
+        field_states={f: {st: sum(r["comparisons"][f]["state"] == st for r in rows)
+                          for st in ("equal", "different", "missing_native", "missing_python")}
+                      for fields in FIELD_GROUPS.values() for f, _ in fields},
+        exit_reason_different=sum("exit_reason:different" in r["flags"] for r in rows),
+        exit_minute_different=sum("exit_minute:different" in r["flags"] for r in rows),
+        empty_native_reason=sum(r["native_reason"] == "(vazio)" for r in rows),
+        reason_from_host_log=sum(r["native_reason_source"] == "log_host" for r in rows))
     return dict(summary=summary, rows=rows, only_python=only_python, only_native=only_native)

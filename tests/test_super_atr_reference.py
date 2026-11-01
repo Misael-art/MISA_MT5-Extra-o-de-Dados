@@ -43,3 +43,43 @@ def test_book_runs_on_synthetic_m1_without_opposite_flip_exits(tmp_path):
     for decision in book["decisions"]:
         assert decision["side"] in ("long", "short") and math.isfinite(decision["stop"])
     db.close()
+
+
+def _fingerprint(path):
+    import hashlib, sqlite3
+    with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as conn:
+        schema = conn.execute("SELECT type, name, sql FROM sqlite_master ORDER BY name").fetchall()
+    return schema, hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def test_readonly_reader_does_not_change_schema_or_data_and_refuses_missing_base(tmp_path):
+    framework()
+    from mt5_extracao.database_manager import DatabaseManager
+    from tests.market_data import random_walk
+    path = tmp_path / "base.sqlite"
+    db = DatabaseManager(db_path=str(path))
+    assert db.save_ohlcv_data("EURUSD", "1 minuto", random_walk(3000, freq="min", start="2026-10-01 00:00"))
+    db.close()
+    before = _fingerprint(path)
+    ref._pinned_study(framework())
+    rows = ref.m1_rows_readonly(path, "EURUSD", "2026-10-20T00:00:00")
+    assert len(rows) == 3000 and _fingerprint(path) == before                # nada criado nem alterado
+    missing = tmp_path / "nao_existe.sqlite"
+    with pytest.raises(FileNotFoundError):
+        ref.m1_rows_readonly(missing, "EURUSD", "2026-10-20T00:00:00")
+    assert not missing.exists()
+
+
+def test_book_reproduces_from_frozen_csv_without_database(tmp_path):
+    framework()
+    import gzip
+    from tests.market_data import random_walk
+    bars = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00")
+    frozen = tmp_path / "m1.csv.gz"
+    with gzip.open(frozen, "wt", encoding="utf-8") as handle:
+        handle.write("time,open,high,low,close\n")
+        for row in bars.itertuples(index=False):
+            handle.write(f"{str(row.time)[:19]},{row.open!r},{row.high!r},{row.low!r},{row.close!r}\n")
+    ref._pinned_study(framework())
+    book = ref.python_book(None, framework(), cost="zero", rows=ref.m1_rows_frozen(frozen))
+    assert book["contract"]["id"] == "SA-REF-01" and book["m1_rows"] > 0

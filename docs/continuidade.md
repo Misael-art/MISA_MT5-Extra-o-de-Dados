@@ -5375,3 +5375,53 @@ limites não acionados (DD 3,5%). No log isolado (agora UTF-8) as linhas
 DEMO ao vivo ainda não iniciada: falta sessão própria com mercado aberto
 (horário pela sessão do símbolo na corretora) para pausa, retomada, reinício,
 recusa, desconexão e não duplicação.
+
+### SA-REF-01: garantias da reconciliação corrigidas e preparação DEMO —01/11/2026
+
+Três defeitos reproduzidos pela revisão, corrigidos:
+1. `identical` ignorava preços, resultado e custos. `parity.reconcile_trades`
+   agora compara em grupos (proteção: SL/TP; execução: entrada, saída, volume,
+   motivo, minuto; financeiro: resultado, comissão, swap, taxa) com unidade e
+   tolerância explícitas (`TOLERANCES`: preço 5e-6, volume 1e-9, dinheiro
+   0,005); ausente/inválido/não finito vira `missing_*`, nunca zero ou igual.
+   Custos do Python só contam como conhecidos quando o cenário declara
+   (`python_costs`, ex.: custo zero do protocolo). 22+ regressões por campo.
+2. Vínculo por minuto escolhia a primeira decisão. Agora `confirmed` exige
+   decisão do mesmo lado e elegível + `HDK_STRATEGY_SIGNAL` aberto do host para a
+   barra + `order` == `position_id`; senão `candidate_temporal`, `ambiguous`,
+   `incompatible` ou `missing`. Cópias da mesma linha em origens distintas do
+   log agregado são um evento; repetição na mesma origem é ambiguidade.
+3. `sa_ref_reconcile.py` abria a base com `create_db_manager` (cria tabelas).
+   Agora usa M1 congeladas do pacote (`--m1-csv`, leitura exata `round_trip`)
+   ou SQLite em `mode=ro` (`--database`), sem criar arquivo/tabela; resolução de
+   tabela extraída em `DatabaseManager.table_for_symbol` (mesma lógica de
+   `find_table_for_symbol`). Testes provam schema/dados intactos e recusa de
+   base inexistente.
+
+Reexecução só com insumos congelados (sem base principal): decisões 330/330
+(mesmo instante e lado); operações 100 pareadas, **vínculo confirmado 100/100**,
+**idênticas 1/100** (não 10). Grupos iguais: proteção 59, execução 4,
+financeiro 1. Campos: SL igual 92, TP 65, entrada 65, saída 57, volume 11,
+resultado 1, custos 100 (zero nos dois). Divergências de contrato seguem:
+lote pelo saldo/preço da ordem do host × capital fixo/open M1 do Python; TP
+ancorado na entrada real; fim do dia por sessão × última barra; ticks reais ×
+OHLC BID; duas M1 ausentes na base (efeito no Tester não conferido).
+Sementes julho × setembro (Tester, mesma janela): 512 decisões e 103 operações
+idênticas em todos os campos registrados (inclusive close, ATR, stop, idade,
+volume, preços, resultado). Alcance: só esta janela; `later` não é intocada.
+
+Exportador de sessão (`session_export.mqh.tmpl`): fechamento pelo Expert vira
+`expert` (stop out e manual também rotulados), sem vazio nem horário presumido;
+a regra específica vem do log do host por `position_id`. Ensaio QA
+`SAREF01_QA_LIMITE` (diário 0,3%, só Tester): CSV `sl` 28/`tp` 10/`expert` 1 e
+recusas do host "risco da ordem maior que o que resta hoje" — recusa por limite
+exercitada no Tester.
+
+Recibo DEMO: preset `SAREF01_DEMO` (semente 2026-09-01T00:00, risco 0,25%,
+2%/4%/10%, armado). Barras: 11.232 M5 reais até 10-23; com margem de 1.000 e
+cota superior de 288 M5 por dia corrido, seguro até 2026-11-18; depois o Expert
+recusa com `SAREF_BLOCKED bars_since_seed_above_20000`. Terminal e MetaTester
+build 6296. EX5 de cada sessão difere (id da sessão no wrapper); fonte incluído
+e closure idênticos. Complemento privado `complemento-01` (16 arquivos, ZIP
+`6e67372f…`, 4 partes) restaurado 16/16; pacote anterior preservado. Cópia
+fora do host pendente do proprietário. DEMO ao vivo não iniciada.
