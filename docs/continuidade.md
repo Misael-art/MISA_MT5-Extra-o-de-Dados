@@ -5112,7 +5112,7 @@ do Dashboard, plataformas e capacidades analíticas pendentes continuam separado
 
 ### Faixa de hipótese do Dashboard —01/11/2026 (DASH-06)
 
-Sobre a harmonização/PR268 (`7e15c01`), branch `codex/dashboard-hipotese`.
+Sobre a harmonização/PR268 (`7e15c01`), branch `codex/ponte-previa-coesa`.
 T13.4 continua ausente (`hypotheses.py` inexistente): o gerador emite a faixa
 `hypothesis` indisponível com `T13_4_PENDING`, sem hipótese calculada. O
 adaptador `sections.hypothesis` aceita só o namespace `hypothesis` do DTO de
