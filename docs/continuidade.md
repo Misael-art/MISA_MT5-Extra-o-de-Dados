@@ -5161,3 +5161,14 @@ sem valor. O teste DASH-04 que ocultava o vencido foi atualizado para essa regra
 fixture: alerta, borda âmbar e nota de validade, sem erros de console.
 Pendências: vencido/invalidação nas faixas de volume seguem a regra própria de
 DASH-05; DASH-09…14.
+
+### Ocultas do Dashboard —01/11/2026 (DASH-09)
+
+Sobre DASH-08. Painel "Evidências ocultas" (ícone de balança com nome acessível)
+ao fim da narrativa: uma linha por motivo (`hidden_reason_code`) com contagem e
+soma de `n`, ou "n não informado"; expandir/recolher em um clique, com a faixa
+rotulada "Oculta · motivo" e sem promoção de estado. Cada faixa visível tem
+"Ocultar faixa" (só apresentação, sem alterar origem) e "Restaurar" em um
+clique; não persiste entre leituras. Gráficos de faixas recolhidas são liberados.
+Browser HTTP com fixture (volume ausente, Filtro C reprovado, exploratórias,
+rascunho): expandir/recolher, ocultar/restaurar, sem erros. Somente JS/CSS.

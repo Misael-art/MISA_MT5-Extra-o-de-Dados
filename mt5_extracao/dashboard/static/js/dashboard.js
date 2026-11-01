@@ -97,15 +97,94 @@
     } else {
       body.append(text("p", section.details.reason || "Sem evidência disponível neste recorte.", "absence"), details(section));
     }
+    if (section.default_visible) {
+      // Descarte só de apresentação: não reprova, não retira nem altera a origem.
+      const dismiss = text("button", "Ocultar faixa", "dismiss");
+      dismiss.type = "button";
+      dismiss.setAttribute("aria-label", "Ocultar " + section.title + " desta leitura; pode ser restaurada abaixo");
+      dismiss.addEventListener("click", () => dismissSection(section, node));
+      node.querySelector(".section-heading").append(dismiss);
+    }
     return node;
   }
+  function release(id) {
+    const chart = charts.get(id);
+    if (chart) { chart.dispose(); charts.delete(id); }
+  }
+  const BALANCE = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6"><path d="M12 3v18M7 21h10M4 9l8-2 8 -3"/><path d="M1.5 14 4 9l2.5 5a2.5 2.5 0 0 1-5 0Z"/>'
+    + '<path d="M17.5 9 20 4l2.5 5a2.5 2.5 0 0 1-5 0Z"/></svg>';
+  const sampleText = list => list.some(s => s.n_observations === null || s.n_observations === undefined)
+    ? "n não informado" + (list.some(s => typeof s.n_observations === "number")
+      ? " em parte · n conhecido " + list.reduce((t, s) => t + (s.n_observations || 0), 0) : "")
+    : "n " + list.reduce((t, s) => t + s.n_observations, 0);
+  function hiddenGroup(label, list, removable) {
+    const row = text("div", "", "hidden-row");
+    const toggle = text("button", "", "hidden-toggle");
+    toggle.type = "button";
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.append(text("span", label, "hidden-reason"), text("span", list.length + (list.length === 1 ? " faixa" : " faixas")
+      + " · " + sampleText(list), "hidden-count"));
+    const holder = text("div", "", "hidden-sections");
+    holder.hidden = true;
+    toggle.addEventListener("click", () => {
+      const open = holder.hidden;
+      holder.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+      if (open) holder.replaceChildren(...list.map(section => {
+        const node = sectionNode({...section, default_visible: false});
+        node.classList.add("is-hidden-view");
+        node.querySelector(".section-state").textContent = "Oculta · " + (section.hidden_reason_short || label);
+        if (removable) {
+          const restore = text("button", "Restaurar na narrativa", "dismiss");
+          restore.type = "button";
+          restore.addEventListener("click", () => restoreSection(section));
+          node.querySelector(".section-heading").append(restore);
+        }
+        return node;
+      }));
+      else { list.forEach(section => release(section.id)); holder.replaceChildren(); }
+    });
+    row.append(toggle, holder);
+    return row;
+  }
+  let snapshotData = null;
+  const dismissed = new Set();
+  function hiddenPanel() {
+    const panel = text("section", "", "hidden-panel");
+    panel.setAttribute("aria-label", "Evidências ocultas");
+    const hidden = snapshotData.sections.filter(s => !s.default_visible);
+    const own = snapshotData.sections.filter(s => s.default_visible && dismissed.has(s.id));
+    const heading = text("h2", "");
+    heading.innerHTML = BALANCE;
+    heading.append(text("span", " Evidências ocultas · " + (hidden.length + own.length)));
+    panel.append(heading, text("p", "Não aparecem por padrão. Expandir mostra a evidência com seu estado e motivo, "
+      + "sem promovê-la; ocultar uma faixa não altera a origem.", "absence"));
+    const groups = new Map();
+    hidden.forEach(s => {
+      const key = s.hidden_reason_code || "SEM_MOTIVO";
+      if (!groups.has(key)) groups.set(key, {label: s.hidden_reason_short || s.details.reason || key, list: []});
+      groups.get(key).list.push(s);
+    });
+    groups.forEach(group => panel.append(hiddenGroup(group.label, group.list, false)));
+    if (own.length) panel.append(hiddenGroup("Ocultadas por você nesta leitura", own, true));
+    if (!hidden.length && !own.length) panel.append(text("p", "Nenhuma evidência oculta nesta fotografia.", "absence"));
+    return panel;
+  }
+  function narrative() {
+    snapshotData.sections.filter(s => s.default_visible).forEach(s => release(s.id));
+    root.replaceChildren(...snapshotData.alerts.filter(alert => alert.kind === "RETROACTIVE_INVALIDATION").map(alertNode),
+      ...snapshotData.sections.filter(s => s.default_visible && !dismissed.has(s.id)).map(sectionNode), hiddenPanel());
+  }
+  function dismissSection(section) { dismissed.add(section.id); release(section.id); narrative(); }
+  function restoreSection(section) { dismissed.delete(section.id); release(section.id); narrative(); }
   async function main() {
     try {
       const encoded = JSON.parse(document.querySelector("#dashboard-data").textContent);
       const decoded = await window.MT5XTransport.decode(encoded);
       const data = decoded.data, digest = data.snapshot_id;
-      root.replaceChildren(...data.alerts.filter(alert => alert.kind === "RETROACTIVE_INVALIDATION").map(alertNode),
-        ...data.sections.filter(section => section.default_visible).map(sectionNode));
+      snapshotData = data;
+      narrative();
       document.documentElement.dataset.snapshotId = digest;
       const facts = document.querySelector("#facts-audit");
       facts.append(text("pre", JSON.stringify({contracts: data.contracts, facts: data.facts,
