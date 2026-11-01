@@ -24,6 +24,38 @@ def test_contract_matches_frozen_protocol():
     rules = operations.management_rules("variable2atr", "target2r")
     assert rules.target_r == 2.0 and rules.eod_exit and not rules.trailing_atr and not rules.max_bars
     assert source["framework_commit"].startswith("b730ed4a")
+    assert source["framework_commit"] == ref.REFERENCE_FRAMEWORK_COMMIT
+    # O produtor valida a composição atual; a referência continua com sua origem.
+    from scripts.setup_development import load_manifest
+    assert source["composition_framework_commit"] == load_manifest()["repositories"]["hadouken"]["commit"]
+
+
+@pytest.mark.parametrize("relative", [ref.PROTOCOL, f"{ref.STUDY}/operations.py",
+                                     "Include/Framework/HADOUKEN/Indicators/HDK_SuperATR.mqh",
+                                     f"{ref.STUDY}/model.py"])
+def test_reference_rejects_changed_frozen_inputs_after_development_repin(tmp_path, monkeypatch, relative):
+    """Nem um produtor validado em outro pin autoriza mudar a origem da referência."""
+    from types import SimpleNamespace
+    from mt5_extracao.analytics import super_atr
+    original = framework()
+    frozen = {name: (original / name).read_bytes() for name in
+              dict.fromkeys((super_atr.HEADER, super_atr.ADAPTER, *ref.PINNED_FILES))}
+    for name, raw in frozen.items():
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(raw)
+    target = tmp_path / relative
+    target.write_bytes(target.read_bytes() + b"\nchanged reference input\n")
+    monkeypatch.setattr(super_atr, "source", lambda *a: ({"framework_commit": "a" * 40}, None))
+
+    def pinned_show(args, **kwargs):
+        revision, name = args[-1].split(":", 1)
+        assert revision == ref.REFERENCE_FRAMEWORK_COMMIT
+        return SimpleNamespace(stdout=frozen[name])
+
+    monkeypatch.setattr(ref.subprocess, "run", pinned_show)
+    with pytest.raises(ValueError, match="origem congelada SA-REF-01"):
+        ref._pinned_study(tmp_path)
 
 
 def test_book_runs_on_synthetic_m1_without_opposite_flip_exits(tmp_path):

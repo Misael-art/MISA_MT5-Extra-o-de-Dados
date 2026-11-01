@@ -351,3 +351,68 @@ Ambiente Linux preparado novamente; baseline de código da sessão anterior
 Nenhum runtime/teste/dependência mudou entre essa execução e esta tarefa.
 Suíte final e checagem documental registradas na continuidade ao concluir.
 Sem novo ensaio visual/nativo/DEMO/Windows físico: o recorte é documental.
+
+## 9. Pilar operacional — inspeção da composição em 01/11/2026
+
+Pedido de execução ponta a ponta recebido nesta data. Esta seção atualiza o
+inventário histórico acima; não promove os marcos F19/F20 a concluídos.
+Base inspecionada: App `d456d07c`, HADOUKEN `b730ed4a`, Safety `3988df13`.
+SA-REF-01 conserva fonte, closure e runtime `33c2fa1` da autorização de DEMO;
+o desenvolvimento seguinte usa novos hashes, sem herdar aquela autorização.
+Pins de desenvolvimento só mudam com a reconciliação H → S → App.
+
+Cada linha abaixo exige o percurso preset → inputs efetivos → decisão → pedido
+→ ordem/deal → posição → gestão → saída → reconciliação. Compilar um consumidor
+ou testar seu corpo MQL em C++ não comprova esse percurso no broker.
+
+| Capacidade | Implementação / consumidor e configuração | Restrição / evidência e aceite pendente |
+|---|---|---|
+| Margem individual e reserva percentual | H `Safety/HDK_SafeExecutor.mqh`, `Open` e `PlacePending`; `margin_buffer_pct` em percentual da margem livre, moeda da conta | Defeito confirmado: falha de `OrderCalcMargin` deixava seguir. T20.8 passa a negar cálculo ausente/negativo/não finito, margem livre inválida e reserva fora de `[0,100)`. Não é reserva agregada de planos |
+| Checagem do pedido | Mesmo executor, `OrderCheck` | Falha com retcode zero e bool verdadeiro com recusa deixavam passar. Exigir bool e código de aprovação; checagem não é fill |
+| Resultado e repetição | `HDK_ExecutionResult.mqh`, `OpenObserved`, adaptador B08 | Aceito/parcial/confirmado/recusado/incerto separados no observador. Remover repetição por `CONNECTION`; timeout não se repete. Intenção persistente/reconciliação de pendentes ainda não generalizadas |
+| Preço, SL e especificação | Executor existente; preço e distâncias em preço, volume em lotes | T20.8 rejeita NaN/infinito/EMPTY_VALUE, tick/ponto/passo/mín/máx inválidos, cotação cruzada, identidade básica ausente. Conta/servidor/magic não substituem posse por contribuição/sessão |
+| Risco por capital / lote fixo | `HDK_RiskGuard::CalcLot`; `composition/sizing.py`, `HDK_VolumePolicy.mqh`; S09 usa bindings tipados | Saldo/equity e fração Python versus percentual MQL explícitos. Auditar leituras inválidas do RiskGuard e a exposição desconhecida; aceites de margem conjunta e concorrência pendentes |
+| Orçamento da conta, robô, ativo e grupo | `HDK_PortfolioRegistry.mqh` observa conta; `HDK_RiskGuard.mqh` limita risco do magic | Não há reserva integrada do plano inteiro na composição fixada. Branches históricas1.4/1.5 não são runtime. F-04/05/10/11/12 devem tratar concorrência, abandono e múltiplos terminais antes de liberar multiordem |
+| Netting / hedging e posse | PortfolioRegistry distingue modalidade; executor e host legado usam magic | Magic não prova contribuição em posição netting nem distingue sessões que o reutilizam. Bloquear caminhos sem atribuição comprovada; não liquidar conta por inferência |
+| Entrada simples | SafeExecutor + host estratégico; S09/B08 e Expert Super ATR | Mercado suportado por consumidor; filtros/armamento/conta continuam próprios. Aceites de novas combinações separados |
+| Limite / stop / stop-limit | `PlacePending`, boleta manual | Tipos e validade declarados, SL obrigatório; H/S têm caminho nativo. Composição automática não herda a boleta. Cancelamento concorrente com fill e restart requerem ensaio próprio |
+| Orientação normal / invertida | Schema e adaptadores específicos | Normal base; inversão somente nos perfis que a implementam. Não assumir suporte no Super ATR de referência |
+| Gradiente linear contrário | Laboratório/re-simulação e `Tools/research_super_atr/operations.py` | Nativo não entregue. Exige política explícita CONTROLLED_GRADIENT, stop do ciclo, tetos e reserva de todos os níveis; `block_averaging=false` não é implementação |
+| Gradiente direcional | Simulação operacional G19.15 | Nativo pendente; definir níveis, volumes, exposição, validade, recuperação e encerramento antes de ativar |
+| Gradiente dinâmico | Estudo chama `grid_spacing_atr=.5` com ATR anterior à entrada | É espaçamento inicial por ATR. Não é âncora que acompanha mercado. Regra de reancoragem, cancelamento/fill e reserva adicional ainda não implementadas |
+| SL inicial fixo / ATR | Host e políticas iniciais; S09 fixo, estratégias e Super ATR ATR | `strategy_default` delega regras existentes; não é lista universal de modalidades configuráveis. Novos presets devem declarar fonte/barra/unidade |
+| TP pontos / R coexistindo com trailing | `HDK_PositionPolicy.mqh`, adaptador nativo e executor que preserva TP ao modificar SL | Combinações são por consumidor. Testar TP ainda presente após trailing e gatilhos simultâneos; não remover TP implicitamente |
+| Trailing fixo / indicador | S09/proteção nativa fixa e regras legadas por ATR/linha | Não compartilhados automaticamente com Super ATR. T20.8 torna `ModifySL` monotônico e recusa remoção/afrouxamento; falha preserva o pedido anterior |
+| Alvo móvel durante a posição | Indicadores e políticas específicas têm cálculos de referência | Cálculo do alvo no fill não comprova atualização contínua. Regras gerais, frequência e transição de preset ainda pendentes |
+| Breakeven por gatilho / após parcial | Executor e `HDK_NativePartialPolicy.mqh` | BE após confirmação é próprio da parcial modular; BE não pode afrouxar trailing melhor. Confirmação depende de saldo e histórico, não do bool de envio |
+| Parciais por lotes/fração, base inicial/saldo | `HDK_PartialPolicy.mqh`, `HDK_NativePartialPolicy.mqh`, `composition/partials.py`; S09 até duas etapas | Tester DEMO. Volumes inviáveis e estado incerto explícitos. Revalidar residual/mínimo/passo e execução parcial real; não transferir licença ao Super ATR |
+| R e volume iniciais persistentes | Parcial modular registra `.risk`, `.initial`, `.origin` antes da gestão | Host antigo `HDK_StrategyRobot::StrategyManageTick` ainda usa SL atual para R. Corrigir antes de combinar com trailing; nunca reconstruir R pelo stop já movido |
+| Saídas por sinal / tempo / sessão / risco | Host, controladores temporais, Super ATR e RiskGuard | Precedência por perfil; não universal. STOP da App bloqueia entradas/supervisão, não certifica liquidação; pausar mantém gestão da exposição |
+| Gestão probabilística | `HDK_TargetProbability.mqh`, Feed/Policy; painel manual G19.16 | Experimental. Evento alvo antes de stop, horizonte, amostra mínima, contexto e indisponibilidade próprios. Não confundir percentual de capital, stop sobre preço e probabilidade; automáticos ainda sem contrato/aceite estatístico/custos |
+| Preset / UI / API / compilador | `composition/registry.py`, schema/adaptadores, `presets`, catálogo/SDK e recibo nativo | Reusar essas fontes; rejeitar módulo/combinação não declarados. Revisão/hash/fonte/binário/sessão vinculados pelo pacote e auditor; UI não concede gestão financeira |
+| Alteração com posição aberta | Sessão e preset efetivo existentes | Sem transição auditada não aceitar troca de gestão na sessão. Salvar nova revisão não altera inputs já carregados; próxima sessão exige conferência própria |
+| Super ATR SA-01 | Gerador `robots/super_atr_research.py`, template e sonda C++ existentes | Multi-TF causal em variante de pesquisa, armamento explícito e gates nativos próprios. Não herda toda capacidade do framework nem comprova equivalência SA-REF-01 |
+
+### Ordem de execução e critério de fechamento
+
+1. T20.8 / garantias do executor: corrigir prechecks, perda de conexão e
+   preservação do SL; teste dos métodos reais em plataforma simulada,
+   compilação dos consumidores e distribuição Safety por hashes. Reserva
+   agregada continua F-04/05, sem afirmação de fechamento integral da T20.8.
+2. E-13/T19.57: âncoras iniciais e estado recuperável na gestão; parcial+BE,
+   trailing+TP, saídas simultâneas e falha após intenção antes de fill.
+3. SA-01/T19.23/25/29: variante própria do Super ATR usando as políticas
+   comuns, capacidades efetivas, presets e leitura de volta; referência congelada.
+4. F-04/05/10/11/12: orçamento/reserva concorrente e contribuição netting;
+   cenário de dois robôs e bloqueio explícito de múltiplos terminais não suportados.
+5. D-06…10: gradientes no executor existente, após reserva e política
+   CONTROLLED_GRADIENT; contrário permanece desativado até decisão pertinente.
+6. G19.16: contrato do produtor probabilístico e integração opt-in por
+   consumidor; insuficiência/calibração ausente não retiram SL nem inventam valor.
+7. T20.20/30: percurso integrado, replay, launcher e DEMO delimitada;
+   Windows físico, netting/hedging e casos sem oportunidade continuam visíveis.
+
+Cada recorte tem PR próprio nos repositórios afetados. Estado executável,
+testes/SHAs/PRs/pins e prévia ficam na continuidade/plano F19 e no registro
+central existente. Esta matriz não substitui o registry de capacidades nem
+cria autorização de conta. Stop não garante perda máxima exata em gap/slippage.

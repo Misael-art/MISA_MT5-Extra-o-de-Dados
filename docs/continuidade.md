@@ -5521,3 +5521,49 @@ Runtime de negociação permanece33c2fa1; este incremento é apenas documental.
 Autorização integral privada em `state/qa-tmp/super-atr-ref/demo-authorization.json`
 na raiz da composição. Identidade/ID do agendamento, recibos e estado corrente
 ficam no registro central Projects/.workspace, sem lista administrativa nova.
+
+### Pilar operacional: T20.8, garantias individuais do executor —01/11/2026
+
+Pedido de execução inclui os três componentes. Inspeção da composição, branches,
+PRs, recursos, contratos e posse de Dados registrada na seção9 do inventário
+F19, com matriz por capacidade e sequência dos sete marcos. Nenhum motor/store
+concorrente criado. A autorização SA-REF-01 permanece em runtime33c2fa1 e na
+closure congelada; nenhuma negociação iniciada ou autorização transferida.
+
+HADOUKEN `f7e4cffcbf0fd8a29f9653546146c2dc74ef63db`/PR76: Open e PlacePending
+recusam falha/dado inválido de margem, reserva, preço/especificação e OrderCheck
+(inclusive false/retcode0 e true/recusa). Margem revalidada após retentativa;
+CONNECTION não se repete automaticamente. ModifySL recusa remoção/afrouxamento,
+preserva TP e proteção anterior em falha. Métodos MQL efetivos executados em
+plataforma simulada:137 testes H passaram;14 consumidores compilaram no
+MetaEditor Linux/Wine com0erros/0avisos. Painel/guardião reconferidos após a
+última alteração do SL. Recibo público H: T20_8_EXECUTOR_20261101.json.
+
+Safety `833edc599ba2e241df358b4d19e3a0d423078d45`/PR10: candidata1.11 = base1.8
++ executor e VisualContext exatos de H. Origens por arquivo e hashes completos;
+não incorpora candidatas UI1.9/1.10. Dois testes da distribuição passaram,
+SafetySmoke compilou0/0; instalador oficial copiou16 arquivos no perfil QA e0
+na repetição. App reconcilia somente pins de desenvolvimento; referências
+aceitas preservadas e operational_acceptance=false. Fingerprints mudaram e
+provas anteriores não são promovidas. Perfil QA no destino canônico de sessões,
+sem copiar histórico do símbolo nem alterar perfil/conta principal.
+
+Doctor16OK/2avisos existentes/0falhas. Logs e recibos locais em
+state/qa-tmp/operational-pillar na raiz da composição; publicação, checks e
+prévia no registro central. Seis paridades nativas após o novo fingerprint,
+falhas/reconciliação no Tester, DEMO da nova fonte e Windows físico ainda
+pendentes. Reserva agregada, posse netting/sessão, recuperação geral e os demais
+marcos não foram entregues por este corretivo. Próximo: gestão inicial e R
+imutável do host legado, sem tocar a referência SA-REF-01.
+
+Ao repinar, uma regressão expôs a associação indevida da reprodução histórica
+ao pin de desenvolvimento. `super_atr_reference` agora confere estudo/header/
+adaptador contra a origem imutável b730ed4a e registra separadamente o pin atual.
+O gerador nativo também recusa closure alterada com identidade SA-REF-01 antes
+de escrever; artefatos existentes não mudam. Regressões cobrem repin e alteração
+de protocolo, estudo, header, adaptador e host, sem afrouxar a referência.
+
+Fechamento local do recorte App:72 testes dirigidos passaram (4avisos NumPy
+existentes nos dados sintéticos); doctor16/2/0. CI H f7e4cffc e S833edc5
+aprovadas nos checks próprios. A CI do pai App d456d07 ainda tinha Ubuntu/
+Windows em andamento na consulta deste marco; sem alegação de CI integral verde.

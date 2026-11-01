@@ -16,6 +16,10 @@ def framework(tmp_path,monkeypatch):
     for rel,source in [('Strategies/HDK_StrategyRobot.mqh','// Explicit fixture for packaging, not native host\n'),('Indicators/HDK_SuperATR.mqh','// Explicit fixture for packaging, not formula\n')]:
         p=root/'Include/Framework/HADOUKEN'/rel;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(source)
     monkeypatch.setattr(super_atr,'source',lambda *a,**k:(dict(framework_commit='1'*40,header_sha256='2'*64),None))
+    # Histórico Git simulado desta fixture explícita de empacotamento.
+    from mt5_extracao.robots import super_atr_reference
+    frozen={p.relative_to(root).as_posix():p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    monkeypatch.setattr(super_atr_reference,'_reference_bytes',lambda _,rel:frozen[rel])
     return root
 
 
@@ -118,6 +122,14 @@ def test_reference_variant_package_declares_sa_ref_01_and_keeps_default_sa01_off
     assert contract_['reference_contract']['key']=='flip1/variable2atr/target2r' and 'host_limits_note' in contract_
     source=files[0].read_text()
     assert 'SAREF_DECISION' in source and 'MQL_TESTER' in source and 'ACCOUNT_TRADE_MODE_DEMO' in source
+
+
+def test_reference_generation_refuses_changed_host_before_writing_package(tmp_path,framework):
+    host=framework/'Include/Framework/HADOUKEN/Strategies/HDK_StrategyRobot.mqh'
+    host.write_text('// New management requires its own profile, not SA-REF-01\n')
+    with pytest.raises(ValueError,match='origem congelada SA-REF-01'):
+        generate(tmp_path,framework,reference=True)
+    assert not (tmp_path/'package').exists()
 
 
 def test_reference_presets_separate_historical_reproduction_from_demo_qualification(tmp_path,framework):

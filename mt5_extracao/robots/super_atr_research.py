@@ -120,6 +120,10 @@ def create(name,folder,*,framework_root,seed_start,base_timeframe='M5',confirm_t
     missing += [p for p in absent if p not in missing]
     internal=[p for p in missing if p.startswith('Framework/') or p.startswith('HDK_')]
     if internal:raise ValueError('Closure HADOUKEN incompleta: '+', '.join(internal))
+    if reference:
+        from .super_atr_reference import verify_reference_files
+        # Uma evolução do executor/host não pode receber identidade SA-REF-01/1.
+        verify_reference_files(framework,[p.resolve().relative_to(framework).as_posix() for p in includes+assets])
     payload={root/p.resolve().relative_to(framework):p.read_bytes() for p in includes+assets}
     closure={p.relative_to(root).as_posix():hashlib.sha256(raw).hexdigest() for p,raw in payload.items()}
     contract.update(framework_commit=artifact['framework_commit'],header_sha256=artifact['header_sha256'],

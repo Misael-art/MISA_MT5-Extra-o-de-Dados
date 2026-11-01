@@ -8,11 +8,11 @@
     },
     "hadouken": {
       "url": "https://github.com/Misael-art/projeto-indicadores-mt5.git",
-      "commit": "b730ed4a8df74f5f20eb6e289798d0232c370994"
+      "commit": "f7e4cffcbf0fd8a29f9653546146c2dc74ef63db"
     },
     "safety": {
       "url": "https://github.com/Misael-art/mt5x-safety.git",
-      "commit": "3988df13c467bd22941183f5546caad0500f9138"
+      "commit": "833edc599ba2e241df358b4d19e3a0d423078d45"
     }
   },
   "purpose": "Desenvolvimento a partir da prévia; não declara aceitação das PRs ou dos perfis nativos.",
@@ -28,6 +28,17 @@
     "safety": "3988df13c467bd22941183f5546caad0500f9138"
   },
   "private_backup": "Página privada de recuperação; nunca baixar pelo repositório público.",
-  "development_layout": ["repos/app", "repos/hadouken", "repos/safety", "studies", "downloads", "state"],
-  "operational_acceptance": false
+  "development_layout": [
+    "repos/app",
+    "repos/hadouken",
+    "repos/safety",
+    "studies",
+    "downloads",
+    "state"
+  ],
+  "operational_acceptance": false,
+  "reference_pins_before_operational_pillar": {
+    "hadouken": "b730ed4a8df74f5f20eb6e289798d0232c370994",
+    "safety": "3988df13c467bd22941183f5546caad0500f9138"
+  }
 }

@@ -48,3 +48,34 @@ Revisão técnica local concluída; integrar H→S→este vínculo documental ap
 checks/revisões finais. Código Python idêntico a master528b211 e evidências
 aprovadas da PR133 reaproveitadas; não há nova suíte/workflow por estes Markdown.
 Não afirmar aceite operacional ou funcionalidade de UI a partir deste contrato.
+
+## T20.8 — prechecks do executor, evolução de01/11/2026
+
+O corretivo do SafeExecutor recusa margem não calculada ou inválida, margem
+livre indisponível e reserva inválida. `margin_buffer_pct=20` reserva20% da
+margem livre atual; a margem calculada deve caber nos80% restantes. Unidade:
+percentual no input e dinheiro na moeda da conta no cálculo. Não é um
+orçamento agregado nem reserva persistente de planos/pendentes. A documentação
+da [API nativa](https://www.mql5.com/en/docs/trading/ordercalcmargin) explicita
+que o cálculo não considera posições e pendências; a qualificação conjunta
+permanece F-04/05 e T20.8, sem extrapolar o corretivo individual.
+
+`OrderCheck=false` recusa mesmo com retcode zero; bool verdadeiro exige código
+de aprovação. Checagem e aceitação não comprovam fill. `CONNECTION` e timeout
+não são motivo para reenvio automático. O chamador precisa reconciliar antes
+de tentar outra intenção equivalente. `ModifySL` mantém TP, recusa remover ou
+afrouxar o SL e conserva o stop anterior quando o pedido é recusado.
+
+A distribuição candidata Safety1.11 contém a cópia exata do executor e sua
+dependência VisualContext, conservando os demais headers1.8 por revisão
+de origem no manifesto. Não incorpora as candidatas de UI1.9/1.10. Novos
+fingerprints invalidam evidência anterior: não atualizar listas de aprovação
+para contornar a conferência de fonte. Saída incerta, paridade dos seis
+Experts, recuperação/posse e operação DEMO têm gates próprios. A matriz
+completa está na [seção9 do inventário](../propostas/INVENTARIO_F19.md#9-pilar-operacional--inspeção-da-composição-em-01112026).
+
+A reprodução Python SA-REF-01 verifica os arquivos do estudo, header e adaptador
+contra sua origem imutável b730ed4a, distinguindo a composição de desenvolvimento.
+Gerar novamente um pacote nativo com identidade SA-REF-01 recusa closure de
+host/executor diferente da origem antes de gravar arquivos. Use a referência
+existente congelada para o ensaio autorizado; a evolução exige perfil próprio.
