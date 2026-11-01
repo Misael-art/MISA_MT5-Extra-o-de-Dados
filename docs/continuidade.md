@@ -5144,3 +5144,20 @@ veredito. Leitura não cria tabela.
 5 folds, PF não calculável sem zero, fold além de data_end visível, sem erros.
 Pendências: datas de treino/custos dependem de o produtor gravá-los;
 DASH-08…14.
+
+### Vencido e invalidação retroativa no Dashboard —01/11/2026 (DASH-08)
+
+Sobre DASH-07. O gerador detecta, no histórico já limitado ao corte, revisões
+INVALIDATED sobre revisão VALID anterior e as publica em `alerts`
+(`RETROACTIVE_INVALIDATION`: feature, versão, observação, revisões anterior/nova,
+instantes conhecidos e valor anterior). A página as mostra no topo, em vermelho,
+reservado a esse caso. Invalidação conhecida só após o corte não vaza.
+Regime cujo último estado venceu passa a aparecer como STALE (borda âmbar,
+validade, idade no corte, "não é o estado atual") em vez de ser ocultado; nunca
+recorre ao registro anterior. Último estado INVALIDATED aparece como invalidado,
+sem valor. O teste DASH-04 que ocultava o vencido foi atualizado para essa regra.
+
+3 testes novos/1 revisto (104 do Dashboard + feature store). Browser HTTP com
+fixture: alerta, borda âmbar e nota de validade, sem erros de console.
+Pendências: vencido/invalidação nas faixas de volume seguem a regra própria de
+DASH-05; DASH-09…14.

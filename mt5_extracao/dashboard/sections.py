@@ -27,11 +27,18 @@ def regime(data):
     if not history:
         return section
     last = history[-1]
-    if last["display_state"] != "AVAILABLE" or last["category"] not in REGIME_NAMES:
+    if last["display_state"] == "INVALIDATED":
+        # Vermelho é do alerta de invalidação retroativa; aqui só o estado, sem recorrer ao registro anterior.
+        section.update(display_state="INVALIDATED", default_visible=True, hidden_reason_code=None,
+                       hidden_reason_short=None, temporal=_clock(last), source_status="INVALIDATED")
+        section["details"]["reason"] = ("O último regime foi invalidado na origem; nenhum registro anterior o "
+                                        "substitui. Veja o alerta de invalidação no topo.")
+        return section
+    if last["display_state"] not in {"AVAILABLE", "STALE"} or last["category"] not in REGIME_NAMES:
         section["details"]["reason"] = "Último regime sem validade/contrato elegível; não substituído por um registro anterior."
         section["hidden_reason_short"] = section["details"]["reason"]
         return section
-    states = [r for r in history if r["display_state"] == "AVAILABLE" and r["category"] in REGIME_NAMES]
+    states = [r for r in history if r["display_state"] in {"AVAILABLE", "STALE"} and r["category"] in REGIME_NAMES]
     version = last["algorithm_version"]
     # Mesma versão e observação; não juntar confiança de outro algoritmo/recorte.
     confidence = {r["observation_time"]: r for r in data["facts"] if r["feature_id"] == "regime.confidence"
@@ -69,6 +76,13 @@ def regime(data):
                  "Concordância é a medida declarada pelo produtor, não probabilidade de lucro. "
                  "O estado dominante acima é o último registro disponível; o contorno marca a hora do corte.",
                  "current_cell": current, "latest_observation_time": last["observation_time"]})
+    if last["display_state"] == "STALE":
+        until = datetime.fromisoformat(last["valid_until_utc"])
+        section.update(display_state="STALE")
+        section["temporal"]["stale"] = {"valid_until_utc": last["valid_until_utc"],
+                                        "expired_minutes_before_cut": int((cut - until).total_seconds() // 60),
+                                        "observation_time": last["observation_time"]}
+        section["details"]["reason"] += " O último estado está com validade encerrada no corte; não é atual."
     return section
 
 

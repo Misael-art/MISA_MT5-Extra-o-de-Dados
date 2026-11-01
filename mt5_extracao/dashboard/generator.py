@@ -95,6 +95,7 @@ def _unavailable_surprise(cut):
 
 
 def _read(db, selection, cut):
+    invalidations = []
     if db is None or getattr(db, "engine", None) is None:
         raise ValueError("BASE_UNAVAILABLE: base indisponível.")
     # O contexto e todas as leituras pertencem à mesma transação/imagem.
@@ -141,7 +142,22 @@ def _read(db, selection, cut):
         history = history[history.apply(lambda r: chosen.get(r.feature_id) == r.algorithm_version, axis=1)]
         # Mesma precedência canônica de query_as_of, conservando vencidos para auditoria.
         history = history.sort_values(["available_at_utc", "observed_at_utc", "revision"])
-        history = history.drop_duplicates(["feature_id", "algorithm_version", "observation_time"], keep="last")
+        keys = ["feature_id", "algorithm_version", "observation_time"]
+        # Invalidação retroativa conhecida no corte: última revisão INVALIDATED sobre uma revisão VALID anterior.
+        for _, group in history.groupby(keys, sort=False):
+            last = group.iloc[-1]
+            earlier = group.iloc[:-1]
+            earlier = earlier[earlier["quality"] == "VALID"]
+            if last["quality"] == "INVALIDATED" and not earlier.empty:
+                prior = earlier.iloc[-1]
+                invalidations.append({"kind": "RETROACTIVE_INVALIDATION", "feature_id": last["feature_id"],
+                    "algorithm_version": last["algorithm_version"], "observation_time": _iso(last["observation_time"]),
+                    "previous_revision": int(prior["revision"]), "new_revision": int(last["revision"]),
+                    "previous_available_at_utc": _iso(prior["available_at_utc"]),
+                    "known_at_utc": _iso(last["available_at_utc"]), "source_revision": last["source_revision"],
+                    "previous_value": float(prior["numeric_value"]) if pd.notna(prior["numeric_value"])
+                                      else prior["categorical_value"]})
+        history = history.drop_duplicates(keys, keep="last")
         history = history.sort_values(["feature_id", "algorithm_version", "observation_time"])
     contracts = [{k: d.get(k) for k in ("feature_id", "algorithm_version", "name", "family", "formula", "unit",
                  "timeframe", "availability_rule", "value_type", "output_kind", "metadata_state", "name_status")}
@@ -174,7 +190,7 @@ def _read(db, selection, cut):
                       "reconstructed": metadata.get("reconstructed"),
                       "minute_of_session": metadata.get("minute_of_session"),
                       "source_window_bars": metadata.get("source_window_bars")})
-    return base, context, contracts, facts
+    return base, context, contracts, facts, invalidations
 
 
 def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=None, fixture_label=None):
@@ -198,7 +214,8 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
             "capabilities": _capabilities(), "sections": [_unavailable_surprise(cut.isoformat())],
             "alerts": [], "baseline_snapshot_id": None, "contracts": [], "facts": [], "errors": []}
     try:
-        base, context, contracts, facts = _read(db, selection, cut)
+        base, context, contracts, facts, invalidations = _read(db, selection, cut)
+        data["alerts"] = invalidations
         data["subject"]["base_namespace"] = base["namespace"]
         data["provenance"].update(base=base, time_context=context)
         data.update(contracts=contracts, facts=facts)
@@ -211,7 +228,7 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["capabilities"]["volume"].update(state="AVAILABLE" if has_volume else "NO_DATA",
             reason_code=None if has_volume else "NO_DATA",
             reason="RVOL persistido por fonte/metodologia; demais perfis permanecem auditáveis nos fatos.")
-        data["capabilities"]["regime"].update(state="AVAILABLE" if context_section["default_visible"] else "NO_DATA",
+        data["capabilities"]["regime"].update(state=context_section["display_state"] if context_section["default_visible"] else "NO_DATA",
             reason_code=None if context_section["default_visible"] else "NO_DATA",
             reason="Estado persistido; células são últimos registros por dia/hora UTC, sem agregação estatística.")
         from mt5_extracao.strategies.validation import load_validations

@@ -21,3 +21,5 @@ button { font:inherit; color:var(--ink); border:1px solid var(--line); border-ra
 .metric strong { overflow-wrap:anywhere; }.metric { flex-wrap:wrap; }
 .chart--volume {height:280px}.chart--hypothesis {height:220px}.chart--validation {min-height:180px}.validation-readout {min-height:2.6rem;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}.volume-context p {font-size:.75rem;color:var(--muted);margin:.5rem 0}.volume-readout {min-height:3rem;font-variant-numeric:tabular-nums}
 @media(max-width:650px) { .story-section { grid-template-columns:1fr; gap:1rem; }dl { grid-template-columns:1fr; } }
+.story-section[data-state=STALE] { border-left:3px solid var(--amber); padding-left:1.2rem; }.story-section[data-state=STALE] .section-state { color:var(--amber); }.stale-note { color:var(--amber); font-size:.85rem; margin:.2rem 0 .6rem; }
+.story-section[data-state=INVALIDATED] .section-state { color:var(--invalid); }.alert { border:2px solid var(--invalid); border-radius:6px; padding:1rem 1.2rem; margin:1.5rem 0; }.alert strong { color:var(--invalid); }.alert p { margin:.4rem 0 0; font-size:.9rem; }

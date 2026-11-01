@@ -17,6 +17,22 @@
       .map(name => [name, style.getPropertyValue("--" + name).trim()]));
   };
   const charts = new Map();
+  const HUMAN = new Intl.DateTimeFormat("pt-BR", {timeZone: "UTC", day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit"});
+  const human = iso => iso ? HUMAN.format(new Date(iso)) + " UTC" : "não informado";
+  const age = minutes => minutes < 60 ? minutes + " min" : minutes < 2880 ? Math.round(minutes / 60) + " h"
+    : Math.round(minutes / 1440) + " dias";
+  function alertNode(alert) {
+    // Vermelho reservado à invalidação retroativa conhecida no corte.
+    const node = text("div", "", "alert");
+    node.setAttribute("role", "alert");
+    node.append(text("strong", "Invalidação retroativa · " + alert.feature_id + " (" + alert.algorithm_version + ")"),
+      text("p", "Observação de " + human(alert.observation_time) + ": revisão " + alert.previous_revision
+        + " (valor " + (typeof alert.previous_value === "number" ? number(alert.previous_value) : alert.previous_value) + ", conhecida em " + human(alert.previous_available_at_utc)
+        + ") foi invalidada pela revisão " + alert.new_revision + ", conhecida em " + human(alert.known_at_utc)
+        + ". Evidências que dependiam dela não usam o valor anterior."));
+    return node;
+  }
   const details = section => {
     const node = document.createElement("details");
     node.append(text("summary", "Ver evidência · " + section.title));
@@ -47,6 +63,10 @@
     if (section.display_state === "AVAILABLE" && section.details.status_label)
       node.querySelector(".section-state").textContent = section.details.status_label;
     const body = node.querySelector(".section-body");
+    const stale = section.display_state === "STALE" && section.temporal && section.temporal.stale;
+    if (stale) body.append(text("p", "Validade encerrada em " + human(stale.valid_until_utc) + " · "
+      + age(stale.expired_minutes_before_cut) + " antes do corte · observado em " + human(stale.observation_time)
+      + ". Não é o estado atual.", "stale-note"));
     body.append(text("p", section.n_observations === null ? "n não informado" : "n = " + section.n_observations, "sample"));
     if (section.visual.value !== null && section.visual.value !== undefined) {
       const metric = text("button", "", "metric");
@@ -84,7 +104,8 @@
       const encoded = JSON.parse(document.querySelector("#dashboard-data").textContent);
       const decoded = await window.MT5XTransport.decode(encoded);
       const data = decoded.data, digest = data.snapshot_id;
-      root.replaceChildren(...data.sections.filter(section => section.default_visible).map(sectionNode));
+      root.replaceChildren(...data.alerts.filter(alert => alert.kind === "RETROACTIVE_INVALIDATION").map(alertNode),
+        ...data.sections.filter(section => section.default_visible).map(sectionNode));
       document.documentElement.dataset.snapshotId = digest;
       const facts = document.querySelector("#facts-audit");
       facts.append(text("pre", JSON.stringify({contracts: data.contracts, facts: data.facts,
