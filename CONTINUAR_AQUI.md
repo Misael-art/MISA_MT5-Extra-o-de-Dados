@@ -45,6 +45,14 @@ CLI;71casos pertinentes passaram, três CLI revalidados no código final.16OK/
 2avisos/0falhas no doctor offline. O CI integral do pai5e1fe1c falhou nesses dois
 testes desatualizados (4140passaram/459não executados); não inferir CI verde.
 
+F04.3: Hd8567f26/PR80 vincula pedido final à intenção/contexto por SHA256 e
+implementa conciliação da reserva por ordem/deals/posição/snapshot.151testes H,
+checker170; compilação0/0 e oito checks de I/O no Tester, incluindo inicialização
+durável da política. Fills/conciliação só em plataforma simulada; nenhuma ordem
+nessa QA. Safety27b8599 continua inalterada/detached e não distribui o protótipo.
+Próximo: conectar ao SafeExecutor e ao manifesto App, validar percurso nativo;
+depois limites por ativo/grupo/plano, reduções e demais capacidades obrigatórias.
+
 A tarefa DEMO já agendada abaixo continua com runtime33c2fa1 e sua biblioteca
 SA-REF-01 congelada, sem regeneração/repin para o corretivo. Nenhuma autorização
 de negociação é transferida para a nova composição.

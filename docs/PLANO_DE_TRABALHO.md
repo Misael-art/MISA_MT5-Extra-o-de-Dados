@@ -4391,3 +4391,9 @@ revalidados; whitelist exige somente os dois cálculos nativos de leitura entre
 order_*, preserva recusa de execução/check e não libera cálculo desconhecido.
 Doctor16OK/2avisos/0falhas. CI integral do pai tem duas falhas de testes obsoletos
 documentadas na continuidade; nova execução não é presumida verde.
+
+**F04.3:** Hd8567f26/PR80 vincula pedido/intenção/contexto e implementa conciliação
+da reserva por ordem/deals/posição/snapshot.151testes H/checker170, compilação0/0,
+oito checks de I/O no Tester sem ordens; fills/conciliação só simulados. Safety
+27b8599 não distribui o protótipo. Seguem abertos executor/manifesto App, limites
+de ativo/grupo/plano, journal de reduções e aceites operacionais.

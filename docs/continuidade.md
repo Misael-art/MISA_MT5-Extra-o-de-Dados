@@ -5726,3 +5726,30 @@ com provedor falso carregável. UTF-8 do subprocesso é definido no próprio tes
 71casos de backend/ponte/gerenciador/carteira passaram em16,17s; três CLI foram
 revalidados depois do ajuste de ambiente,1,19s (sobrepostos, não somar). Doctor
 offline16OK/2avisos/0falhas. Não é qualificação de cálculo ao vivo sem conta.
+
+## Pilar operacional F04.3 —02/11/2026
+
+Hd8567f26/PR80 vincula reserva ao pedido final e a conta/servidor, sessão,
+estratégia, ator, preset/revisão, fonte, binário e inputs por SHA256. Intenção
+repetida não reenvia; pedido/contexto modificados são recusados. Risco e margem
+são revalidados antes de SENDING; soma de margem preserva o maior buffer. Perda
+conjunta de journal/GVs com política existente não vira contador novo. Ordem
+anterior à intenção não é adotada pela recuperação.
+
+Conciliação hedging exige ordem exata ou tag única, deals da posição e snapshot
+fresco, com segunda leitura antes de consumir. Fill/saldo devem fechar o volume;
+outra contribuição de entrada, seleção ausente e dados mutáveis bloqueiam. Uma
+reserva antes consumida que deixa de ser comprovada volta à incerteza.151testes
+Tools em65,839s, checker170; consumidor0/0 e seis fontes conferidas. Tester
+Linux/Wine, fonte6e125987ad17692c: oito checks de I/O do pedido/IDs64bits/política,
+zero deals de negociação e caixa reconciliado. Modelo0 gerado deM1. Conciliação
+de fills/cancelamentos permanece prova de plataforma simulada, sem broker.
+
+Safety27b8599/1.12 continua detached e inalterada, fora desse protótipo. Manifesto
+de desenvolvimento reconcilia H, preservando referências aceitas/SA-REF-01 e
+runtime33c2fa1. Ainda faltam manifesto operacional App e ligação ao SafeExecutor,
+limites por ativo/grupo/plano, journal de reduções e aceites reais. Próximo recorte
+conecta o executor existente; não declarar o pilar completo nem habilitar perfis.
+Integração desse pin:55testes SDK/catálogo/Safety aprovados em5,03s; doctor offline
+16OK/2avisos existentes/0falhas. O corretivo dos testes da ponte é a PR274/pai,
+348837e; nenhuma função de negociação foi liberada pela RPC.
