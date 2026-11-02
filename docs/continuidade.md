@@ -5606,3 +5606,40 @@ integral verde deste recorte. Não aumentar timeout nem reduzir asserções para
 contornar o ambiente. Doctor de desenvolvimento16OK/2avisos existentes/0falhas.
 As verificações nativas finais e esse caso aguardam recursos; PR permanece
 rascunho. A composição H/S de desenvolvimento não recebe aceite de perfil.
+
+Fechamento da repetição nativa E-13 em01/11: executada pela prévia oficial
+App5ee3ea3, usando a instalação QA preservada, sem consumir WIP de F-04.
+Snapshot97e05a3ca28db03f contém os56 arquivos de projeto da fonte00ea674bc2250280
+conferidos novamente por SHA256 e6 arquivos padrão adicionais da plataforma.
+Tester Linux/Wine, modelo0 (ticks gerados deM1):13 entradas/13 posições encerradas,
+39deals,9 confirmações da primeira parcial e4 da segunda;44inputs efetivos e
+caixa reconciliados. O recibo atual substitui a pendência de RAM desse ensaio,
+sem atribuir sua prova ao WIP seguinte. Não exerce fill parcial real, desconexão,
+restart de processo, netting compartilhado, outro terminal ou Windows físico.
+
+Proteção independente do primeiro complemento: página privada existente,
+sequência19,13 anexos com SHA256 conferido e395 arquivos restaurados em pasta
+nova, seis bancos com quick_check/contagens idênticas.285 blocos anteriores
+preservados. Fonte de acesso e base principal excluídas. Manifesto/recibos no
+estado QA existente; complemento do último ensaio mantém vínculo próprio.
+
+O caso sintético que excedia60s estava escrevendo dezenas de colunas derivadas
+NULL sem relação com o teste do leitor. A fixture agora usa o schema, os
+recebimentos e o UPSERT canônicos com as mesmas33.120 barras OHLC. O limite60s
+permanece; nenhuma asserção foi removida. A verificação de oportunidade revelou
+que a escala100/volatilidade1 anterior não gerava negócios no contrato EURUSD.
+Os dois cenários usam agora preços1,1/volatilidade0,0001 e pavio0,00005, exigem
+negócios e decisões, stop positivo/protetor e round-trip CSV exato por candle.
+Passaram em17,77s; o round-trip fortalecido passou novamente em4,87s.
+Hdc90af73 atualiza somente a evidência final da PR77; fonte executável86228777
+permanece. A instalação tem53 fontes distintas/56 vínculos de catálogo; todos
+os bytes foram conferidos. Os checks completos deste fechamento ficam no
+recibo final da aplicação, sem reaproveitar uma aprovação de zero negócios.
+
+Fechamento App E-13: lote completo dirigido com107 aprovados/4avisos NumPy
+existentes,27,67s, saída0 e timeout original60s. Inclui as duas fixtures com
+negócios/decisões não vazios, stop protetor e CSV conferido candle a candle.
+JUnit no estado QA existente. Este resultado substitui a pendência do teste
+sintético acima; H142 simulados/12 compilações e Tester final mantêm escopos
+próprios. Prévia atualizada após preservar os SHAs remotos. Não é fechamento
+do pilar ou aprovação do novo fingerprint no compilador de presets.

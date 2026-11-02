@@ -1,5 +1,9 @@
 # T19.57 inicial — parciais e saldo
 
+Estado E-13 em01/11/2026: correção nativa qualificada em ensaio dirigido, com
+referência SA-REF-01 preservada. Os registros de20/10 abaixo conservam seus
+perfis/fontes; a nova fonte não recebe aprovação automática no compilador.
+
 Em preparação, dependente de T19.56/H24 e M149. S09 1.20 exclusivamente Tester DEMO,
 com perfis anteriores1.00/1.10 preservados. UI/Manual: agenda desabilitada, simples
 ou duas etapas; gatilhos em R inicial, uma unidade comum em lotes/fração por agenda,
@@ -122,3 +126,10 @@ saldo, BE após confirmação. Confere os44inputs efetivos e reconcilia eventos,
 deals e livro. Modelo0 gera ticks de M1; não são ticks reais. A execução não
 qualifica perfil aprovado, não habilita PLAY e não concede autorização DEMO.
 Fonte e limites ficam no recibo privado; resumo público no inventário/evidência.
+
+Prova E-13 final: fonte00ea674bc2250280, instalada para QA com53 fontes distintas e56 vínculos de
+catálogo idênticos por hash; catálogo da instalação97e05a3ca28db03f inclui6 arquivos
+padrão adicionais. Pela prévia App5ee3ea3 e pelo mesmo Session no Tester:
+13 posições encerradas,39deals,9 etapas1 e4 etapas2 confirmadas,44inputs e
+caixa reconciliados. É qualificação dirigida da correção; o compilador de
+perfis aprovados permanece estrito e não recebe novo fingerprint por este ensaio.
