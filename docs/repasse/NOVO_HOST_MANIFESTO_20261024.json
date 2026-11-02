@@ -8,11 +8,11 @@
     },
     "hadouken": {
       "url": "https://github.com/Misael-art/projeto-indicadores-mt5.git",
-      "commit": "dc90af7308271f6afa6d98427e6f339436458cb1"
+      "commit": "1f6dca03c9f774090102e1778ff97a5d0cf01bd5"
     },
     "safety": {
       "url": "https://github.com/Misael-art/mt5x-safety.git",
-      "commit": "833edc599ba2e241df358b4d19e3a0d423078d45"
+      "commit": "27b85992af4b10f4cd7687f370142ac88f515375"
     }
   },
   "purpose": "Desenvolvimento a partir da prévia; não declara aceitação das PRs ou dos perfis nativos.",

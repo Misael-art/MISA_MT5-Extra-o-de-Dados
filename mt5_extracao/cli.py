@@ -1015,10 +1015,12 @@ def cmd_portfolio(args, ctx):
         _data(portfolio=data, source="guardian")
         _print(f"Retrato do HDK_AccountGuardian, conta {data.get('login')}, gravado em {data.get('updated')} "
                f"(horário do servidor): estado {data.get('state')}" + (f" ({data.get('reason')})" if data.get("reason") else ""))
+        risk_total = (data.get("risk_open") + data.get("risk_pending")
+                      if all(portfolio._number(data.get(k)) is not None for k in ("risk_open", "risk_pending")) else None)
         _print(f"  Saldo {_fmt_num(data.get('balance', 0))}   Patrimônio {_fmt_num(data.get('equity', 0))}   Flutuante "
                f"{_fmt_num(data.get('floating', 0))}   Risco até o stop "
-               f"{_fmt_num(data.get('risk_open', 0) + data.get('risk_pending', 0))}"
-               + ("" if data.get("risk_complete") else " (incompleto: há posição ou ordem sem stop)"))
+               f"{_fmt_num(risk_total)}"
+               + ("" if data.get("risk_complete") else " (incompleto: exposição ou cálculo de risco indisponível)"))
         _print(f"  {len(data.get('positions', []))} posição(ões), {len(data.get('orders', []))} ordem(ns) pendente(s).")
         _print_portfolio_exposures(data)
         return EXIT_OK

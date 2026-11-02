@@ -35,6 +35,12 @@ class FakeMT5:
     def orders_get(self):
         return tuple(self.orders)
 
+    def order_calc_profit(self, kind, symbol, volume, price, stop):
+        info = self.symbol_info(symbol)
+        if info is None:
+            return None
+        return (stop-price) * (1 if kind == 0 else -1) / info.trade_tick_size * info.trade_tick_value * volume
+
     def order_send(self, *args, **kwargs):                       # se alguém chamar, o teste falha
         self.sent.append(args)
 
@@ -170,3 +176,101 @@ def test_cli_portfolio_reads_through_the_backend(home, monkeypatch, capsys):
     assert "DEMO, hedging" in out and "risco 100,00" in out and portfolio.MANUAL in out and "Somente leitura" in out
     assert "Exposição por ativo" in out and "Exposição por grupo" in out and "Grupo 1" in out
     assert fake.sent == []
+
+
+@pytest.mark.parametrize("invalid", [None, float("nan"), float("inf"), -float("inf")])
+def test_native_profit_failure_stays_unknown_instead_of_becoming_zero(invalid):
+    fake = FakeMT5(positions=[position(1, "EURUSD", 7, 0, 1, 1.1, 1.099)])
+    fake.order_calc_profit = lambda *args: invalid
+    data = portfolio.snapshot(fake)
+    assert data["positions"][0]["risk_money"] is None
+    assert data["state"] == portfolio.ALERT and not data["totals"]["risk_complete"]
+    assert fake.sent == []
+
+
+def test_stop_limit_uses_execution_limit_and_native_conversion_in_account_currency():
+    pending = order(4, "EURUSD", 7, 6, 1, 1.2, 1.099)
+    pending.price_stoplimit = 1.1
+    fake = FakeMT5(orders=[pending])
+    seen = []
+    def calculate(*args):
+        seen.append(args)
+        return -123.45
+    fake.order_calc_profit = calculate
+    data = portfolio.snapshot(fake)
+    assert seen == [(0, "EURUSD", 1, 1.1, 1.099)]
+    assert data["orders"][0]["price"] == 1.1
+    assert data["totals"]["risk_pending"] == 123.45
+    assert data["risk_source"] == "native_order_calc_profit"
+
+
+@pytest.mark.parametrize("which", ["positions_get", "orders_get"])
+def test_unavailable_exposure_is_not_an_empty_account(which):
+    fake = FakeMT5()
+    setattr(fake, which, lambda: None)
+    with pytest.raises(RuntimeError, match="não tratar como conta vazia"):
+        portfolio.snapshot(fake)
+
+
+@pytest.mark.parametrize("field,value", [("balance", float("nan")), ("equity", 0), ("margin_free", float("inf")),
+                                        ("server", ""), ("login", 0), ("currency", "")])
+def test_unavailable_account_is_not_reported_as_normal(field, value):
+    fake = FakeMT5()
+    setattr(fake.account, field, value)
+    with pytest.raises(RuntimeError):
+        portfolio.snapshot(fake)
+
+
+def test_same_count_replacement_or_volume_change_invalidates_the_snapshot():
+    for field, value in (("ticket", 2), ("volume", .5), ("sl", 1.098)):
+        fake = FakeMT5(positions=[position(1, "EURUSD", 7, 0, 1, 1.1, 1.099)])
+        def mutate(*args):
+            setattr(fake.positions[0], field, value)
+            return -100
+        fake.order_calc_profit = mutate
+        with pytest.raises(RuntimeError, match="mudou durante a leitura"):
+            portfolio.snapshot(fake)
+
+
+def test_cli_guardian_unknown_numbers_are_explicit_and_valid_json(home, capsys):
+    folder = (home.prefix / "drive_c/users/u/AppData/Roaming/MetaQuotes/Terminal/Common/Files")
+    folder.mkdir(parents=True)
+    (folder / "HDK_portfolio_42.json").write_text(json.dumps({
+        "schema": 2, "login": 42, "server": "Fake-Demo", "state": "ALERTA", "reason": "capital indisponível",
+        "balance": None, "equity": None, "floating": None, "risk_open": None, "risk_pending": 0,
+        "risk_complete": False, "positions": [], "orders": []}), encoding="utf-8")
+    assert cli.main(home.args + ["portfolio", "--guardian"]) == cli.EXIT_OK
+    assert "indefinido" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("field,bad", [("point", 0), ("trade_tick_size", float("nan"))])
+def test_unavailable_symbol_specification_never_claims_known_risk(field, bad):
+    fake = FakeMT5(positions=[position(1, "EURUSD", 7, 0, 1, 1.1, 1.099)])
+    spec = NS(**vars(EUR))
+    setattr(spec, field, bad)
+    fake.symbol_info = lambda symbol: spec
+    fake.order_calc_profit = lambda *args: -100
+    data = portfolio.snapshot(fake)
+    assert not data["totals"]["risk_complete"] and data["positions"][0]["risk_money"] is None
+
+
+def test_aggregate_overflow_is_not_exported_as_normal_or_valid_json_numbers():
+    fake = FakeMT5(positions=[position(1, "EURUSD", 7, 0, 1, 1.1, 1.099),
+                              position(2, "EURUSD", 8, 0, 1, 1.1, 1.099)])
+    fake.order_calc_profit = lambda *args: -1e308
+    with pytest.raises(RuntimeError, match="não finitos"):
+        portfolio.snapshot(fake)
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), -1, 101, True])
+def test_invalid_warning_limit_is_refused_without_inventing_a_default(bad):
+    with pytest.raises(ValueError, match="percentual finito"):
+        portfolio.snapshot(FakeMT5(), max_risk_pct=bad)
+
+
+@pytest.mark.parametrize("field,value", [("margin_mode", True), ("trade_mode", False), ("trade_mode", None)])
+def test_unknown_mode_is_not_inferred_as_demo(field, value):
+    fake = FakeMT5()
+    setattr(fake.account, field, value)
+    with pytest.raises(RuntimeError, match="Modalidade"):
+        portfolio.snapshot(fake)
