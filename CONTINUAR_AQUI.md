@@ -39,6 +39,12 @@ Safety27b8599 continua detached/candidata1.12: esse protótipo não é distribu�
 Ainda faltam vínculo por intenção/ator/sessão/preset, consumo/reconciliação e
 integração ao executor, antes de liberar orçamento agregado.
 
+Corretivo CI da ponte: whitelist permite apenas order_calc_profit/margin entre
+os nomes order_*. Testes recusam envio/check/cálculo desconhecido via RPC e pela
+CLI;71casos pertinentes passaram, três CLI revalidados no código final.16OK/
+2avisos/0falhas no doctor offline. O CI integral do pai5e1fe1c falhou nesses dois
+testes desatualizados (4140passaram/459não executados); não inferir CI verde.
+
 A tarefa DEMO já agendada abaixo continua com runtime33c2fa1 e sua biblioteca
 SA-REF-01 congelada, sem regeneração/repin para o corretivo. Nenhuma autorização
 de negociação é transferida para a nova composição.
