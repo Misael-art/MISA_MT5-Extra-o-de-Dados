@@ -5,6 +5,7 @@ ordens e Safety; a instrumentação só publica posições do próprio magic/sí
 """
 import configparser
 from contextlib import ExitStack
+import hashlib
 import json
 import logging
 import os
@@ -229,7 +230,7 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
 
 
 def telemetry_source(robot, filename, account=None, trades_filename=None, lease_filename=None, common_namespace=None,
-                     input_receipt=None, chart_control=None):
+                     input_receipt=None, chart_control=None, runtime_binding=None):
     """Preserva timers da estratégia; em conta, cria heartbeat próprio quando ela não usa timer."""
     import re
     source_graph = "\n".join(mql.read_text(Path(p)) for p in dict.fromkeys([robot.path] + robot.files)
@@ -330,6 +331,20 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
             raise ValueError("Conferência de inputs exige Tester DEMO ou conta DEMO.")
         receipt_source = native_inputs.source(robot, **input_receipt, tester=account is None)
         guard += " && AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO"
+    if runtime_binding is not None:
+        from . import native_inputs
+        if (account is not None or input_receipt is None or not isinstance(runtime_binding,dict)
+                or set(runtime_binding) != {"session_id", "source_hash"}
+                or runtime_binding["session_id"] != input_receipt["session_id"]
+                or not re.fullmatch(r"[0-9a-f]{32}", runtime_binding["session_id"])
+                or not re.fullmatch(r"[0-9a-f]{64}", runtime_binding["source_hash"])
+                or common_namespace != "mt5x_sessions\\" + runtime_binding["session_id"] + "\\"):
+            raise ValueError("Vínculo exige o wrapper/namespace da sessão Tester e recibo público completo.")
+        definitions += ('\n#define MT5X_RUNTIME_BINDING 1\n'
+                        f'#define MT5X_SESSION_ID "{runtime_binding["session_id"]}"\n'
+                        f'#define MT5X_SOURCE_CLOSURE_HASH "{runtime_binding["source_hash"]}"\n'
+                        'string MT5X_RuntimeInputs();')
+        receipt_source += native_inputs.binding_source(robot, input_receipt["fields"])
     timer_start = "EventSetTimer(1);" if own_timer else ""
     init_call = "int result=MT5X_OnInit();" if init.group(1) == "int" else "MT5X_OnInit(); int result=INIT_SUCCEEDED;"
     if input_receipt is not None:
@@ -401,7 +416,8 @@ class Session:
     """Uma execução, controlada fora da thread Tk; STOP nunca alcança outros terminais."""
     def __init__(self, db, config, robot, symbol, timeframe, preset=None, mode="backtest", start=None, end=None,
                  account=None, consent=None, root=None, native_options=None,
-                 input_receipt_fields=None, expected_native_inputs=None, *, visible=None, window_anchor=None, chart_control=False):
+                 input_receipt_fields=None, expected_native_inputs=None, *, visible=None, window_anchor=None, chart_control=False,
+                 runtime_binding=None):
         if mode not in ("play", "replay", "backtest"):
             raise ValueError("Modo de execução inválido.")
         self.db, self.config, self.robot = db, config, robot
@@ -420,6 +436,18 @@ class Session:
         self.expected_inputs = (native_inputs.expected_values(expected_native_inputs, self.input_fields)
                                 if self.input_fields is not None else None)
         self.native_input_receipt = None
+        self.runtime_binding_request = native_inputs.runtime_request(runtime_binding) if runtime_binding is not None else None
+        self.runtime_binding_manifest = self.runtime_binding_receipt = self.expert_wrapper = None
+        if self.runtime_binding_request is None:
+            from ..composition.native import runtime_binding_required
+            if runtime_binding_required(robot):
+                raise ValueError("Este perfil exige pacote de preset revisado; use a execução do preset no Tester.")
+        if self.runtime_binding_request is not None:
+            if mode == "play" or self.input_fields is None:
+                raise ValueError("Vínculo inicial exige Tester e inputs públicos completos; PLAY não habilitado.")
+            if (self.runtime_binding_request["symbol"]!=symbol or self.runtime_binding_request["timeframe"]!=timeframe):
+                raise ValueError("Ativo/timeframe do vínculo divergem da sessão solicitada.")
+            native_inputs.binding_payload(robot, self.expected_inputs, self.input_fields)
         self.native_options, self.exception = native_options, None
         self.instrumented = False
         self.symbol, self.timeframe, self.preset, self.mode = symbol, timeframe, preset, mode
@@ -508,6 +536,8 @@ class Session:
         os.replace(temp, path)
 
     def _run_command(self, command, cwd, prefix, timeout, compiling=False):
+        if not compiling and "/config:" in command.lower() and self.runtime_binding_request is not None:
+            self._verify_runtime_artifacts()
         with ExitStack() as cleanup:
             return self._launch_command(command, cwd, prefix, timeout, compiling, cleanup)
 
@@ -682,6 +712,8 @@ class Session:
         if self.input_fields is not None and (not self.robot.has_source or compiled_override is not None):
             raise ValueError("Conferência dos inputs exige fonte instrumentável; remova o binário externo ou forneça a fonte revisada.")
         if not self.robot.has_source or compiled_override is not None:
+            if self.runtime_binding_request is not None:
+                raise ValueError("Vínculo exige compilar as fontes atuais; binário externo não é permitido.")
             origin = Path(compiled_override) if compiled_override is not None else mt5_tools.install_plan(
                 self.robot, mt5_tools.data_dir(self.config))[0].target.with_suffix(".ex5")
             if not origin.is_file():
@@ -692,6 +724,14 @@ class Session:
             return target
         plan = mt5_tools.install_plan(self.robot, self.directory)
         wrapper = plan[0].target.with_name("mt5x_session.mq5")
+        runtime = None
+        if self.runtime_binding_request is not None:
+            sources = self._runtime_source_hashes()
+            from . import native_inputs
+            source_hash = native_inputs.project_sources_hash(sources)
+            if source_hash != self.runtime_binding_request["source_hash"]:
+                raise ValueError("Fontes diferem do pacote selecionado; abrir revisão nova antes de executar.")
+            runtime = dict(session_id=self.id, source_hash=source_hash)
         wrapper.write_text(telemetry_source(self.robot, self.telemetry_file,
                                           self.account if self.mode == "play" else None,
                                           self.trades_file if self.mode != "play" else None,
@@ -699,15 +739,65 @@ class Session:
                                           "mt5x_sessions\\" + self.id + "\\" if self.mode != "play" else None,
                                           input_receipt=({"filename": self.input_receipt_file, "session_id": self.id,
                                                           "fields": self.input_fields} if self.input_fields is not None else None),
-                                          chart_control=self.id if self.chart_control else None), encoding="utf-8")
+                                          chart_control=self.id if self.chart_control else None,
+                                          runtime_binding=runtime), encoding="utf-8")
         result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
                                           mt5_tools.wine_prefix(self.child_config),
                                           run=(self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
                                                lambda command, cwd, prefix, timeout: self._run_command(command, cwd, prefix, timeout, compiling=True)))
         if not result.ok:
             raise RuntimeError(result.summary)
+        self.expert_wrapper = wrapper
+        if runtime is not None:
+            if result.warnings:
+                raise RuntimeError("Vínculo exige compilação sem avisos; revise o log desta sessão.")
+            from . import native_inputs
+            common = mt5_tools.common_files_dir(self.config)
+            if common is None:
+                raise ValueError("Common/Files indisponível para conferir o vínculo da sessão.")
+            scoped = common / "mt5x_sessions" / self.id
+            scoped.mkdir(parents=True,exist_ok=True)
+            manifest, data = native_inputs.runtime_manifest(self.runtime_binding_request,session_id=self.id,
+                source_hash=runtime["source_hash"], binary_hash=hashlib.sha256(wrapper.with_suffix(".ex5").read_bytes()).hexdigest(),
+                wrapper_hash=hashlib.sha256(wrapper.read_bytes()).hexdigest(),
+                inputs_hash=hashlib.sha256(native_inputs.binding_payload(self.robot,self.expected_inputs,self.input_fields).encode("ascii")).hexdigest())
+            manifest["project_files"] = sources
+            with (scoped/"runtime_binding.txt").open("xb") as stream:
+                stream.write(data)
+            self.runtime_binding_manifest = manifest
+            (self.directory/"runtime_binding.json").write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+            control = (self.native_options or {}).get("control")
+            retain = getattr(control,"retain_artifacts",None)
+            if retain is not None:
+                retain(files=[str(scoped/"runtime_binding.txt"),str(scoped/"runtime_bound.txt")])
+            self._verify_runtime_artifacts()
         self.instrumented = True
         return wrapper
+
+    def _runtime_source_hashes(self):
+        sources = {}
+        for item in mt5_tools.install_plan(self.robot,self.directory):
+            if item.source.suffix.lower() not in (".mq5", ".mqh"):
+                continue
+            if not item.target.is_file() or item.source.read_bytes() != item.target.read_bytes():
+                raise ValueError("Fonte instalada diverge da seleção; preservar sessão e revisar o preset.")
+            sources[item.target.relative_to(self.directory/"MQL5").as_posix()] = hashlib.sha256(item.target.read_bytes()).hexdigest()
+        if not sources:
+            raise ValueError("Vínculo exige o grafo de fontes do Expert instalado.")
+        return sources
+
+    def _verify_runtime_artifacts(self):
+        manifest = self.runtime_binding_manifest
+        wrapper = self.expert_wrapper
+        common = mt5_tools.common_files_dir(self.config)
+        if manifest is None or wrapper is None or common is None:
+            raise ValueError("Artefatos do vínculo incompletos; nenhum lançamento autorizado.")
+        data = (common/"mt5x_sessions"/self.id/"runtime_binding.txt").read_bytes()
+        if (hashlib.sha256(data).hexdigest() != manifest["manifest_sha256"]
+                or hashlib.sha256(wrapper.read_bytes()).hexdigest() != manifest["wrapper_hash"]
+                or hashlib.sha256(wrapper.with_suffix(".ex5").read_bytes()).hexdigest() != manifest["binary_hash"]
+                or self._runtime_source_hashes() != manifest["project_files"]):
+            raise ValueError("Fonte/binário/wrapper/manifesto mudou; preservar sessão e abrir revisão nova.")
 
     def _verify_input_receipt(self, common):
         from . import native_inputs, store
@@ -720,6 +810,13 @@ class Session:
         receipt = native_inputs.read(target, session_id=self.id, symbol=self.symbol, timeframe=self.timeframe,
                                      fields=self.input_fields, expected=self.expected_inputs,
                                      complete=set(self.input_fields) == {item.name for item in self.robot.inputs})
+        if self.runtime_binding_request is not None:
+            self._verify_runtime_artifacts()
+            bound = common/"mt5x_sessions"/self.id/"runtime_bound.txt"
+            copy = self.directory/"native_runtime_binding.txt"
+            _copy_file(bound,copy,check=self._check_cancel)
+            self.runtime_binding_receipt = native_inputs.read_runtime_receipt(copy,self.runtime_binding_manifest)
+            receipt["runtime_binding"] = self.runtime_binding_receipt
         if self.record is None:
             raise ValueError("Execução nativa ausente; recibo não pode aprovar um resultado inexistente.")
         store.save_native_input_receipt(self.db, self.record["run_id"], receipt,

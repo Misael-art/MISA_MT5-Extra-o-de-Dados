@@ -4433,3 +4433,33 @@ Sem PLAY, restart real, netting ou Windows físico nesta frente.
 HADOUKEN 7291d680/PR82; 17 consumidores compilados sem erros ou avisos.
 App: 41 testes de paridade/reconciliação e 67 de SDK/API/docs/catálogo/Safety
 aprovados; doctor offline com 16 OK, 2 avisos e nenhuma falha.
+
+### F04.6 — pacote vinculado, S09 v2 e qualificação pendente
+
+HADOUKEN ad880c13/PR83 acrescenta vínculo ao mesmo guardião/adaptador e exige
+pacote no S09 v2.00. O App compara grafo de fontes, wrapper, binário e arquivo de
+vínculo antes do lançamento. O MQL confere pacote/revisão, ator/estratégia,
+sessão, ativo/timeframe e todos os 44 inputs públicos realmente lidos; o recibo
+com contexto é gravado e relido. O hash do binário não é input autorreferente.
+A serialização numérica preserva o double exato, sem depender de locale ou de
+arredondamento decimal. UI, API e Budget usam o mesmo pacote/compilador/Session,
+com atores declarados por fluxo, sem conceder mandato por nome.
+
+O wrapper com 44 inputs e 17 consumidores compilaram sem erros ou avisos no core 484b38e4/fonte
+45442cd0bcd0e67a.158 testes H e 128 casos App pertinentes passaram. O pacote Manual
+real exportado confirmou ack nativo, mas excedeu 180s sem run final; não aprovado.
+Recursos foram liberados; diário parcial/ack/fontes preservados. A manutenção
+repetida do journal foi corrigida e158 testes offline passaram em 77,446s; essa
+alteração ainda requer nova compilação/Tester. Nenhuma evidência anterior foi
+promovida para a fonte alterada. Perfil App fica bloqueado enquanto a revisão
+nativa não estiver qualificada. Reserva nativa da tarefa DEMO separada até 15hUTC;
+continuar o trabalho independente, sem tomar seu runtime 33c2fa1 ou autorização.
+
+Próximo: medir e qualificar o ciclo completo exportação→inputs→decisão→pedido→
+posição→parcial/BE→saída→reconciliação; depois políticas comuns/SA-01 e demais
+capacidades obrigatórias. O pilar continua em implementação. Safety 27b8599,
+referências aceitas e SA-REF-01 permanecem preservadas.
+
+Conferência isolada do material preservado: os44 inputs carregados e o ack do
+contexto correspondem ao pacote real. Isso não aprova o ciclo interrompido.
+App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.

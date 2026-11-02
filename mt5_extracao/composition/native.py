@@ -93,6 +93,12 @@ PANEL_HADOUKEN_REVISION="1024cee0ec49a29d16b48c1c46d80adaa3259013"
 PANEL_INPUT_TYPES=COOLDOWN_INPUT_TYPES
 PANEL_STANDARD_INCLUDES=frozenset({"Canvas/Canvas.mqh"})
 
+# Evolução própria: os fingerprints/revisões anteriores permanecem congelados.
+RUNTIME_ROBOT_VERSION="2.00"
+RUNTIME_APPROVED_FINGERPRINT="45442cd0bcd0e67a"
+RUNTIME_HADOUKEN_REVISION=None  # ciclo nativo e alteração de manutenção ainda em qualificação
+RUNTIME_INPUT_TYPES=PANEL_INPUT_TYPES
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
@@ -104,15 +110,26 @@ def _require_robot(robot):
                 ATR_TEMPORAL_ROBOT_VERSION:(ATR_TEMPORAL_APPROVED_FINGERPRINT,ATR_TEMPORAL_INPUT_TYPES,7,ATR_TEMPORAL_HADOUKEN_REVISION),
                 SESSION_ROBOT_VERSION:(SESSION_APPROVED_FINGERPRINT,SESSION_INPUT_TYPES,8,SESSION_HADOUKEN_REVISION),
                 COOLDOWN_ROBOT_VERSION:(COOLDOWN_APPROVED_FINGERPRINT,COOLDOWN_INPUT_TYPES,9,COOLDOWN_HADOUKEN_REVISION),
-                PANEL_ROBOT_VERSION:(PANEL_APPROVED_FINGERPRINT,PANEL_INPUT_TYPES,10,PANEL_HADOUKEN_REVISION)}
+                PANEL_ROBOT_VERSION:(PANEL_APPROVED_FINGERPRINT,PANEL_INPUT_TYPES,10,PANEL_HADOUKEN_REVISION),
+                RUNTIME_ROBOT_VERSION:(RUNTIME_APPROVED_FINGERPRINT,RUNTIME_INPUT_TYPES,11,RUNTIME_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
             or len(robot.inputs) != len(profile[1])
-            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version==PANEL_ROBOT_VERSION else set())):
+            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION) else set())):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
+    if profile[3] is None:
+        raise ValueError("Perfil S09 vinculado em validação; revisão HADOUKEN ainda não publicada.")
     return profile
+
+
+def runtime_binding_required(robot):
+    """A mesma autoridade do mapper recusa execução avulsa do perfil vinculado."""
+    if robot.key!=ROBOT_KEY or robot.version!=RUNTIME_ROBOT_VERSION:
+        return False
+    _require_robot(robot)
+    return True
 
 
 def default_composition(robot, *, symbol, timeframe):
@@ -257,8 +274,14 @@ class S09NativeAdapter:
             if cooldown is not None:
                 index=next(i for i,row in enumerate(data["filters"]) if row["mode"]=="cooldown_v1")
                 bindings[f"filters.{index}.params.seconds"]={"input":"InpCooldownSeconds","type":"int","unit":"second_after_confirmed_final_close"}
-        return _description(self.composition,self.robot,data,values,bindings,inactive,preset_id,
+        description=_description(self.composition,self.robot,data,values,bindings,inactive,preset_id,
                             fingerprint,input_types,profile_version,hadouken_revision,PROFILE_ID)
+        if profile_version>=11:
+            sources=native_inputs.project_sources(self.robot)
+            description.update(runtime_binding_required=True,project_source_files=sources,
+                               project_source_sha256=native_inputs.project_sources_hash(sources),
+                               configuration_transition="next_session_only")
+        return description
 
 
 def _sizing_parameters(data,profile_version,values,bindings,inactive):

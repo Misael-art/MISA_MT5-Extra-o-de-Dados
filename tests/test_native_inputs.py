@@ -2,9 +2,12 @@
 import configparser
 import copy
 import csv
+import hashlib
 import io
 import json
+import math
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -82,6 +85,108 @@ def test_expected_value_is_checked_against_actual_not_echoed_hash(tmp_path):
     assert native_inputs.expected_values(dict(EXPECTED,Period="21||21||1||30||N"),FIELDS)==EXPECTED
     with pytest.raises(ValueError,match="lista pública"):
         native_inputs.expected_values({"Period":21},FIELDS)
+
+
+def test_runtime_binding_has_independent_canonical_payload_and_requires_complete_inputs(robot):
+    expected = ("HDK_EFFECTIVE_INPUTS1|4|7:Enabled4:bool1:16:Period3:int2:21"
+                "8:PresetId5:token9:manual_014:Risk6:number20:4503599627370496p-54")
+    assert native_inputs.binding_payload(robot, EXPECTED, FIELDS) == expected
+    assert native_inputs.binding_payload(robot, dict(reversed(list(EXPECTED.items()))), dict(reversed(list(FIELDS.items())))) == expected
+    with pytest.raises(ValueError, match="todos os inputs"):
+        native_inputs.binding_payload(robot, {"Period":21}, {"Period":"int"})
+    with pytest.raises(ValueError, match="64 bits"):
+        native_inputs.binding_payload(robot, dict(EXPECTED, Period=2**63), FIELDS)
+    for value in (math.inf, math.nan, float.fromhex("0x1.fffffffffffffp+1023")):
+        with pytest.raises(ValueError):
+            native_inputs.binding_payload(robot, dict(EXPECTED, Risk=value), FIELDS)
+
+
+def test_actual_mql_binding_serialization_matches_binary64_on_simulated_platform(robot,tmp_path):
+    """Compila o MQL gerado como C++; não representa MT5 ou aceite de broker."""
+    source = native_inputs.binding_source(robot, FIELDS)
+    shim = r'''
+#include <cmath>
+#include <iostream>
+#include <limits>
+#include <string>
+using string=std::string;
+string IntegerToString(long value){return std::to_string(value);}
+long StringLen(const string &s){return s.size();}
+bool MathIsValidNumber(double value){return std::isfinite(value);}
+double MathAbs(double value){return std::fabs(value);}
+const double EMPTY_VALUE=std::numeric_limits<double>::max();
+bool MT5X_InputToken(string value){return value.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-")==string::npos;}
+int Period=21;double Risk=.25;bool Enabled=true;string PresetId="manual_01";
+'''
+    numbers = [0., -0., .1, .25, -3.75, math.nextafter(1.,0.), math.nextafter(1.,2.),
+               float.fromhex("0x0.0000000000001p-1022"), float.fromhex("0x1.0p-1022"), 1e-200, 1e200]
+    checks = []
+    for value in numbers:
+        expected = native_inputs.binding_payload(robot, dict(EXPECTED, Risk=value), FIELDS)
+        checks.append(f"Risk={value.hex()};if(MT5X_RuntimeInputs()!={json.dumps(expected)})return 1;")
+    checks.append('Risk=std::numeric_limits<double>::quiet_NaN();if(!MT5X_RuntimeInputs().empty())return 2;')
+    file, binary = tmp_path/"binding.cpp", tmp_path/"binding"
+    file.write_text(shim + source + "\nint main(){" + "\n".join(checks) + "}\n")
+    built = subprocess.run(["g++","-std=c++17",str(file),"-o",str(binary)],capture_output=True,text=True,timeout=30)
+    assert built.returncode == 0, built.stderr
+    result = subprocess.run([str(binary)],capture_output=True,text=True,timeout=10)
+    assert result.returncode == 0, result.stderr
+
+
+def test_runtime_manifest_ack_requires_exact_artifacts_session_and_checksum(tmp_path):
+    request = dict(preset_hash="b"*64,revision=4,strategy="s09_reference",actor="preset-app",source_hash="c"*64,symbol="EURUSD",timeframe="M5")
+    manifest, data = native_inputs.runtime_manifest(request,session_id=SID,source_hash="c"*64,
+        binary_hash="d"*64,wrapper_hash="e"*64,inputs_hash="f"*64)
+    assert manifest["manifest_sha256"] == hashlib.sha256(data).hexdigest()
+    lines = ["HDK_RUNTIME_BOUND_1",SID,manifest["manifest_sha256"],"1"*64,"f"*64,"c"*64,"d"*64,"b"*64,"4","e"*64,"EURUSD","5"]
+    path = tmp_path/"runtime_bound.txt"
+    path.write_bytes(native_inputs._runtime_document(lines))
+    receipt = native_inputs.read_runtime_receipt(path, manifest)
+    assert receipt["native_verified"] and not receipt["operational_acceptance"] and receipt["context_hash"] == "1"*64
+    for index in range(12):
+        changed = list(lines);changed[index] = "other"
+        path.write_bytes(native_inputs._runtime_document(changed))
+        with pytest.raises(ValueError):native_inputs.read_runtime_receipt(path,manifest)
+    path.write_bytes(native_inputs._runtime_document(lines)[:-1])
+    with pytest.raises(ValueError):native_inputs.read_runtime_receipt(path,manifest)
+    with pytest.raises(ValueError):native_inputs.runtime_request(dict(request,binary_hash="0"*64))
+
+
+def test_runtime_session_rejects_artifact_changes_and_persists_ack_with_input_receipt(robot,tmp_path,db,monkeypatch):
+    source_hash=native_inputs.project_sources_hash(native_inputs.project_sources(robot))
+    request=dict(preset_hash="b"*64,revision=1,strategy="s09_reference",actor="preset-app",
+                 source_hash=source_hash,symbol="EURUSD",timeframe="M1")
+    session=sessions.Session(db,configparser.ConfigParser(),robot,"EURUSD","M1",root=tmp_path/"sessions",
+        input_receipt_fields=FIELDS,expected_native_inputs=EXPECTED,runtime_binding=request)
+    session.directory.mkdir(parents=True)
+    sessions.mt5_tools.install(robot,session.directory)
+    wrapper=session.directory/"MQL5/Experts/mt5x_session.mq5"
+    wrapper.write_text("// simulated compiler fixture")
+    wrapper.with_suffix(".ex5").write_bytes(b"simulated binary; no native acceptance")
+    common=tmp_path/"common";scoped=common/"mt5x_sessions"/session.id;scoped.mkdir(parents=True)
+    monkeypatch.setattr(sessions.mt5_tools,"common_files_dir",lambda config:common)
+    manifest,data=native_inputs.runtime_manifest(request,session_id=session.id,source_hash=source_hash,
+        binary_hash=hashlib.sha256(wrapper.with_suffix(".ex5").read_bytes()).hexdigest(),
+        wrapper_hash=hashlib.sha256(wrapper.read_bytes()).hexdigest(),
+        inputs_hash=hashlib.sha256(native_inputs.binding_payload(robot,EXPECTED,FIELDS).encode()).hexdigest())
+    manifest["project_files"]=native_inputs.project_sources(robot)
+    bound=scoped/"runtime_binding.txt";bound.write_bytes(data)
+    session.expert_wrapper=wrapper;session.runtime_binding_manifest=manifest
+    session._verify_runtime_artifacts()
+    for path in (Path(robot.path),wrapper,wrapper.with_suffix(".ex5"),bound):
+        prior=path.read_bytes();path.write_bytes(prior+b"changed")
+        with pytest.raises(ValueError):session._verify_runtime_artifacts()
+        path.write_bytes(prior)
+    receipt_file(common/session.input_receipt_file,rows(session.id));save(db,session)
+    with pytest.raises(FileNotFoundError):session._verify_input_receipt(common)
+    ack=["HDK_RUNTIME_BOUND_1",session.id,manifest["manifest_sha256"],"1"*64,manifest["inputs_hash"],
+         source_hash,manifest["binary_hash"],request["preset_hash"],"1",manifest["wrapper_hash"],"EURUSD","1"]
+    (scoped/"runtime_bound.txt").write_bytes(native_inputs._runtime_document(ack))
+    session._verify_input_receipt(common)
+    stored,=store.load_runs(db)
+    assert stored["native_inputs"]["runtime_binding"]["native_verified"]
+    assert stored["native_inputs"]["runtime_binding"]["context_hash"]=="1"*64
+    assert not stored["native_inputs"]["operational_acceptance"]
 
 
 def test_opt_in_wrapper_reads_variables_after_original_init_before_any_tick(robot):

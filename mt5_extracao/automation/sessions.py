@@ -121,7 +121,7 @@ class SessionController:
                 if set(params) & {"symbol", "timeframe", "preset", "start", "end"}:
                     raise ValueError("Pacote nativo fixa seu contexto; não substituir campos.")
                 from ..presets.execution import PresetExecution
-                actor = PresetExecution(self.db, self.config, robot, text(params["manifest"], "manifest", 4096), mode=mode)
+                actor = PresetExecution(self.db, self.config, robot, text(params["manifest"], "manifest", 4096), mode=mode,actor="agent-api")
                 job = actor.session
                 job.chart_control = True
                 if visible is not None:

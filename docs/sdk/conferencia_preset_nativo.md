@@ -74,3 +74,33 @@ continuaram os mesmos, conectados em DEMO, sem initialize/shutdown/login.
 O consumidor UI é uma tarefa própria (T20.22 inicial); o resultado foi consultado
 nele a partir da base de teste. Ao vivo DEMO, Windows físico e promoção estatística
 continuam fora deste aceite histórico. Pullback permanece bloqueado.
+
+
+## Vínculo de execução S09 v2 — F04.6 em validação
+
+O novo perfil usa a mesma fonte de capacidades do mapper/compilador/UI/API.
+O pacote registra os SHA256 do grafo de fontes e todos os inputs públicos.
+Depois de compilar, Session gera o manifesto da execução com sessão UUID,
+pacote/revisão, ator do fluxo, ativo/TF, fonte, wrapper, binário e hash dos inputs.
+O Expert lê as variáveis input reais antes de admitir operações, valida o
+manifesto e grava/relê o ack do contexto. O App reabre esse ack junto do recibo
+existente e o anexa à mesma execução. Não é outro catálogo ou banco financeiro.
+
+A interface e a API conservam o fluxo Default → Manual/revisão → selecionar →
+exportar → executar pelo preset. Execução avulsa do S09v2 é recusada antes do
+lançamento; ao vivo continua indisponível. Salvar uma revisão não muda uma sessão
+aberta. Nova revisão/contexto exige nova sessão e conferência, sem edição manual
+dos hashes de execução. Atores `preset-ui`, `agent-api` e `budget-runner` são tags
+de proveniência do fluxo; não representam autenticação humana nem mandato.
+
+Estado atual: o ack nativo do Manual real foi observado, mas o ciclo completo
+atingiu o orçamento de 180s e não recebeu aceite. A alteração de manutenção após
+esse diagnóstico tem158 testes offline e aguarda MetaEditor/Tester; perfil fica
+bloqueado até qualificação. O código do wrapper compilar ou existir um ack não
+comprova negócio, gestão, encerramento nem reconciliação. Confirme sempre o
+status final e as evidências da sessão; nenhum desses resultados libera DEMO
+ou Windows físico. SA-REF-01 permanece com sua fonte/runtime congelados.
+
+Conferência isolada do material preservado: os44 inputs carregados e o ack do
+contexto correspondem ao pacote real. Isso não aprova o ciclo interrompido.
+App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
