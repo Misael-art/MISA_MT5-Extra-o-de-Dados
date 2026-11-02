@@ -98,6 +98,7 @@ def job(p,mode="backtest"):
 
 def test_exported_set_and_ini_are_exactly_loaded_then_native_contracts_reopen_without_financial_rewrite(prepared):
     p=prepared;run=job(p).run()
+    assert run.session.native_options["run_uses_session_launcher"] is True
     assert run.status=="reconciled_backtest",run.error
     proof=run.evidence
     assert proof["tester_capture"]["parameters_sha256"]==p.exported["package"].manifest["parameters_sha256"]

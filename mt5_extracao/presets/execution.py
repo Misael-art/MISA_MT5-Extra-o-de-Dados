@@ -223,7 +223,7 @@ class PresetExecution:
         values=mql.parse_set(self.package.set_bytes.decode("utf-16"))
         selected_robot=copy.copy(robot);selected_robot.presets={identity["id"]:dict(values)}
         options=dict(db=db,robot=selected_robot,symbol=scope["symbol"],preset=identity["id"],params=dict(values),
-                     model=context["model"],visual=mode=="replay",read_csv=True)
+                     model=context["model"],visual=mode=="replay",read_csv=True,run_uses_session_launcher=True)
         if control is not None:options["control"]=control
         binding_options={}
         if native.get("runtime_binding_required"):

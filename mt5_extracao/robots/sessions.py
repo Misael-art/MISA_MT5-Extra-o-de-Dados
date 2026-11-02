@@ -686,9 +686,10 @@ class Session:
         self.child_config = prepare(self.config, self.robot, self.directory, self.symbol,
                                     require_source=not allow_binary, check=self._check_cancel,
                                     _child=self.child_config)
-        # Um runner injetado já é dono do processo/ambiente e não passa pelo
-        # launcher visual abaixo. Preservar esse contrato (inclusive sem Wine real).
-        own_launcher = self.native_options is None or self.native_options.get("run") is None
+        # Runner externo possui seu ambiente. O interceptador de presets só
+        # confere INI/inputs e delega à Session, que continua dona do launcher.
+        own_launcher = (self.native_options is None or self.native_options.get("run") is None
+                        or self.native_options.get("run_uses_session_launcher") is True)
         if (self.visible or self.mode == "play") and not paths.is_windows() and own_launcher:
             from functools import partial
             from .session_wine import Runtime
@@ -912,6 +913,7 @@ class Session:
                                                     is_running=lambda: bool(owned_processes(self.child_config)))
                 else:
                     call = dict(options)
+                    call.pop("run_uses_session_launcher",None)  # controle da Session, não parâmetro do Tester
                     call.update(config=self.child_config, timeframe=self.timeframe, start=self.start, end=self.end,
                                 run=options.get("run") or self._run_command,
                                 export_trades=False,

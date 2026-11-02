@@ -443,71 +443,55 @@ ativo/grupo/plano/margem, identidade de intenção e integração ao executor.
 Esse teste e a compilação do header não autorizam operação com orçamento agregado.
 A sequência dos sete marcos permanece; o pilar continua incompleto.
 
-### E14 — gestão comum de uma posição, perfil novo em qualificação
+### E14 — proteção comum e auditoria nativa em qualificação
 
-S09 v2.10 usa o mesmo adaptador/executor/journal com59 inputs vinculados:
-SL pontos/ATR14 fechado, TP pontos/R planejado, trailing pontos/ATR por barra,
-BE por gatilho, alvo virtual ATR limitado por R real, saída por janela/sinal e
-orientação normal/invertida aplicada uma vez. Parciais/BE e tempo existentes
-continuam compostos; prioridade: risco → sessão → tempo → alvo virtual → sinal
-oposto → parcial/BE → trailing/BE. Alterar SL preserva TP. Cota de entradas não
-encerra exposição; saída por sinal não reverte na mesma barra. Campos inativos,
-unidades e prévias são explícitos na UI/API/compilador; salvar não altera sessão.
+S09v2.10/59inputs usa o adaptador, executor e diário existentes: SL pontos/ATR14
+fechado, TP pontos/R planejado, trailing pontos/ATR por barra, BE por gatilho,
+alvo virtual ATR limitado por R inicial real, saídas por sessão/sinal e orientação
+normal/invertida. Prioridade: risco → sessão → tempo → alvo virtual → sinal
+oposto → parcial/BE → trailing/BE. TP físico é preservado e mudanças de preset
+valem somente para a próxima sessão. Campos inativos/unidades/estimativas são
+explícitos na UI/API/compilador. ATR usa HDK_Atr/Wilder14 nas últimas250 barras
+fechadas; ausência obrigatória recusa entrada. TP `planned_r_v1` pré-fill é
+separado do `fixed_r` Python pós-fill, ainda pendente no nativo.
 
-R de gestão vem dos fills e do SL original. TP pré-fill usa `planned_r_v1`
-(unidade planned_R), sem reinterpretar o `fixed_r` Python pós-fill. Alvo virtual
-é atualizado por barra, pede close pelo executor e mantém SL/TP de contingência.
-ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas. Ausência obrigatória de
-ATR bloqueia entrada; perda posterior não retira proteção física.
+R de gestão usa a média ponderada inicial e o SL original. Mesmo um único fill
+pode produzir um ulp de diferença em preço×volume/volume: o leitor acompanha a
+âncora nativa, com regressão reproduzida e75 testes pertinentes em14,51s, sem
+ampliar tolerâncias. O final do Tester reconcilia o diário e emite hash/contexto;
+o App confere pedidos imutáveis, IDs, decisões, SL/TP e fills, retém o snapshot
+e compara gestão entre backtest/replay. Ações sem decisão/efeito e intenções
+pendentes impedem aprovação. Trace científico17 mantém binary64; a interface
+mostra pedido/efeito e oportunidade/aceite por modalidade.
 
-Candidato de auditoria fingerprint dfed81430e3f2595, grafo56 fontes/SHA256
+HADOUKEN08875019, fingerprintdfed81430e3f2595,56 fontes/SHA256
 0a01cb9f42a119d866c9c2f3fa4983cfbf72ed626470fb94b6f8cbc925160ddb.
-Perfil permanece bloqueado enquanto a revisão nativa não estiver qualificada.
-A fonte anterior H000b5349/53dbc265 foi compilada:17 consumidores e wrapper
-vinculado de59 inputs,0erros/0avisos. O preset real falhou pela guardaRAM85%
-aos81,422s, após76,097s de preparo, com recursos próprios liberados. A fonte de
-auditoria atual requer nova compilação/Tester/replay/launcher. A janela da tarefa
-DEMO separada encerrou sem execução (preflight bloqueado/zero ordens); processos
-alheios permanecem preservados.
-Não transfere autorização, não altera SA-REF-01/runtime33c2fa1, Safety27b8599 ou
-referências aceitas. Não conclui o pilar, E-13, carteira/gradientes/probabilístico,
-netting ou Windows físico. Regras de configuração nos guias de proteção e ganho.
+164 testes H em133,984s/checker171;184 fontes iguais antes/depois. App435 testes
+amplos antes do ajuste numérico,126 afetados após e75 na âncora ponderada:
+seleções sobrepostas, nunca somar. Doctor offline16OK/2avisos/0falhas sem probe.
 
-HADOUKEN29040013:163 testes Tools aprovados em171,386s/checker171.
-App:417 testes pertinentes aprovados em113,01s; doctor offline16OK/2avisos/0falhas.
-Essas provas são de plataforma simulada/contratos/UI local, sem qualificação nativa.
+Host Linux/Wine/MetaTester6296:17 consumidores e wrapper vinculado59 compilados
+0erros/0avisos. Backtest OHLC1min pelo preset real: sessão9bfd8a53, runf64aa6b6,
+2posições/6deals/2reduções confirmadas, caixa−1,84USD, diário2entradas/3ações
+conciliado, recursos liberados em101,529s. Vincula pacote/input/fonte/binário/
+sessão, sem exercitar gestão avançada, broker parcial ou cada tick.
 
-Atualização E14/H000b5349: sem trailing/BE ativo, mil ticks simulados não leem
-histórico nem enviam gestão.163 testes finais em156,933s, fontes inalteradas.
-App:37 casos do perfil revalidados em5,16s após fingerprint/pin; seleção ampla
-de417 permanece registrada no corecfcd25ce, sem somar casos sobrepostos.
-Ativação e qualificação da fonte de auditoria atual continuam pendentes.
+Replay do mesmo pacote ficou antes de OnInit e atingiu180s; recursos próprios
+liberados e comparação sem aceite. O verificador de INI delegava à Session,
+mas era classificado como runner externo e pulava seu Wine visual isolado.
+Correção mantém a Session dona do launcher e preserva runners externos;
+sinal interno não é parâmetro do Tester.159 testes passaram antes do ajuste de
+despacho e100 afetados passaram após, sobrepostos. Revalidação nativa do replay
+corrigido, modalidades avançadas, cada tick e jornada pelo launcher pendentes.
 
-Auditoria E14: OnTester reconcilia o diário canônico e publica nome/hash/contexto,
-sem envio financeiro. O App retém uma cópia, confere os payloads imutáveis,
-IDs inteiros por palavras, contexto, estados, SL/TP/R original, decisões e fills.
-Toda ação financeira precisa de decisão correspondente; pendência/incerteza
-impede aprovação. Gestão entra no comparador backtest/replay e em aba própria,
-com oportunidade/aceite por modalidade. O leitor foi conferido contra um diário
-nativo anterior (sete entradas/nove ações), sem transferir seu aceite à fonte
-nova. Ordenação alfabética/case-sensitive do MQL é distinta da ordem ASCII.
-O CI Linux anterior H000/App7e55 falhou por fixture que não aceitava o ator
-budget-runner; corrigida para exigir o ator, sem retirar a proveniência em produção.
-A cópia privada E14 nativa está na página canônica, sequência31:144 arquivos e
-um banco restaurados da nuvem, todos os hashes/quick_check/contagens conferidos.
+Perfil permanece bloqueado (revisão qualificadaNone). Safety27b8599 detached,
+referências aceitas e SA-REF-01/runtime33c2fa1 preservados; protótipo não distribuído.
+A tarefa DEMO separada encerrou sem execução por preflight, zero ordens; sua
+autorização não se transfere. Nenhum PLAY nesta frente. A falha anterior53dbc265
+na guardaRAM85% e seu resgate foram preservados, sem transferir aceite.
 
-Auditoria final dfed81430e3f2595:164 testes H em133,984s (134,347s de processo),
-184 fontes inalteradas/pico filho393.208KiB; checker171. Trace científico com
-17 dígitos mantém binary64. App435 casos em344,45s antes do ajuste numérico,
-mais126 casos afetados revalidados em20,01s no fonte final (sobrepostos, não somar).
-Doctor16OK/2avisos/0falhas sem probe. Fonte atual sem compilação/ciclo aprovados;
-proteção/saídas por modalidade e diário ligados ao recibo, ativação ainda bloqueada.
-
-Pin de desenvolvimento reconciliado para HADOUKEN08875019 (auditoria E14).
-Revisão qualificada do perfil permaneceNone; Safety27b8599 e referências aceitas
-inalteradas. PR84 empilha sobre83; AppPR279 empilha sobre278.
-
-Auditoria da âncora: a média preço×volume/volume pode diferir um ulp do preço
-bruto mesmo com um único fill. O App passou a conferir R/alvo pela mesma média
-ponderada inicial do nativo. Caso1,4×0,05 reproduziu a recusa anterior;75 testes
-pertinentes passaram em14,51s após correção, sem ampliar tolerâncias.
+Evidências por fonte/ambiente em E14_COMMON_POSITION_20261102.json. Página privada
+canônica seq32 tem os deltas restaurados e conferidos; novos artefatos nativos
+seguem no fluxo de proteção do marco. Pilar incompleto: TP por R real dos fills,
+recuperação/capacidade/pendentes, SA-01, orçamento ativo/grupo/plano, gradientes,
+probabilístico, DEMO autorizada, netting e Windows físico continuam em execução.

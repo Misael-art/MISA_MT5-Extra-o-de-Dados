@@ -113,13 +113,58 @@
       "lossless_scientific17_trace_checked": true,
       "disabled_management_history_reads_in_1000_ticks": 0
     },
-    "native_compilation": "pending for current audit source; prior17/59 compile evidence retained separately",
-    "tester_replay": "blocked pending host RAM headroom and current-source compilation",
+    "native_compilation": {
+      "consumers": 17,
+      "bound_inputs": 59,
+      "errors": 0,
+      "warnings": 0,
+      "source_fingerprint": "dfed81430e3f2595",
+      "bound_compile_session": "5cf0afde21464af7ba34b1c1967529bb",
+      "scope": "compile only; no operational acceptance"
+    },
+    "tester_replay": {
+      "status": "failed_before_expert_init",
+      "session": "a429bc28ffff4dc7910ce572a49b8709",
+      "seconds": 179.96288776397705,
+      "resources_released": true,
+      "reference_match": false,
+      "identified_routing_bug": "preset input verifier delegates to Session but was classified as external launcher",
+      "fix_native_validation": "pending"
+    },
     "official_launcher_journey": "pending",
     "live_demo": "not exercised; separate existing authorization not transferred",
     "physical_windows": "not exercised",
     "netting": "not supported; refused",
-    "operational_acceptance": false
+    "operational_acceptance": false,
+    "tester_backtest_model1": {
+      "state": "reconciled_backtest",
+      "session_id": "9bfd8a5389014a0a928b49a85242a8a0",
+      "run_id": "f64aa6b66e6348ab9ffc4c4474c5c14c",
+      "package_hash": "9f074caff09cbd79028ee07acf09ff01bafe966ba8548dbc1b362fefffbb6377",
+      "tester_model": "OHLC de 1 minuto",
+      "trades": 2,
+      "ledger": 2,
+      "deals": 6,
+      "partial_confirmations": 2,
+      "cash_reconciled": true,
+      "net_profit": -1.8399999999999999,
+      "input_count": 59,
+      "journal_entries": 2,
+      "journal_actions": 3,
+      "journal_all_settled": true,
+      "journal_final_reconciled": true,
+      "resources_released": true,
+      "elapsed_seconds": 101.52854657173157,
+      "live_broker_exercised": false,
+      "operational_acceptance": false,
+      "app_sha": "3945c9a13896473166e21b403c4b3e7a128e0fb1",
+      "hadouken_sha": "08875019b6e44a0efb16f325eb90cd085ebaf129",
+      "source_fingerprint": "dfed81430e3f2595",
+      "source_sha256": "0a01cb9f42a119d866c9c2f3fa4983cfbf72ed626470fb94b6f8cbc925160ddb",
+      "scope": "Tester model1 only; staged position reductions, not broker partial fill",
+      "broker_partial_fill_exercised": false,
+      "advanced_common_management_exercised": false
+    }
   },
   "remaining": [
     "native qualification of this exact new source and F04.6 journal maintenance",
@@ -227,6 +272,16 @@
       "before_reproduced": true,
       "scope": "single qualified entry fill: native weighted entry price*volume/volume; original SL; no tolerance widening",
       "native_acceptance": false
+    },
+    "replay_launcher_fix": {
+      "reproduced_before": true,
+      "scope": "preset INI verifier delegates to Session; visual runtime ownership retained; external runner contract unchanged; metadata not forwarded to Tester",
+      "first_regression_tests": 159,
+      "first_regression_seconds": 50.94,
+      "final_dispatch_subset_tests": 100,
+      "final_dispatch_subset_seconds": 11.02,
+      "overlapping_cases_not_added": true,
+      "native_retest": "pending"
     }
   }
 }

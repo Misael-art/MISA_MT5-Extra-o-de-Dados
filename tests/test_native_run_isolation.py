@@ -135,6 +135,57 @@ def test_binary_preparation_copies_private_profile_without_claiming_instrumentat
     assert credentials.read_bytes()==b"opaque-cache"
 
 
+@pytest.mark.parametrize("mode,managed,expected",[("replay",True,True),("replay",False,False),("backtest",True,False)])
+def test_preset_interception_keeps_session_in_charge_of_visual_wine(home,tmp_path,monkeypatch,mode,managed,expected):
+    """O callback que só confere INI delega o processo à Session; runner externo não."""
+    from mt5_extracao.robots import catalog,sessions,session_wine
+    original=tmp_path/"Opaque.ex5";original.write_bytes(b"installed-binary")
+    robot=catalog.robot_from_file(original);mt5_tools.install(robot,home.mt5)
+    calls=[]
+    class Runtime:
+        def __init__(self,source,directory):
+            self.prefix=directory/".wine";self.source=source
+        def prepare(self,copy):
+            calls.append(self.source);self.prefix.mkdir()
+            (self.prefix/"drive_c").symlink_to(self.prefix.parent,target_is_directory=True)
+    monkeypatch.setattr(session_wine,"Runtime",Runtime)
+    options=dict(run=lambda *args:None)
+    if managed:options["run_uses_session_launcher"]=True
+    job=sessions.Session(home.db,home.config,robot,"EURUSD","H1",mode=mode,
+                         root=home.prefix/"drive_c/private-runs",native_options=options)
+    with mt5_tools.tester_lease():
+        try:compiled=job._prepare_expert(allow_binary=True)
+        finally:mt5_tools.release_native_context(job)
+    assert compiled.read_bytes()==b"installed-binary"
+    assert bool(calls) is expected
+    if expected:
+        assert calls==[home.prefix]
+        assert mt5_tools.wine_prefix(job.child_config)==job.visual_runtime.prefix
+    else:assert job.visual_runtime is None
+
+
+def test_session_launcher_metadata_is_not_forwarded_as_a_tester_parameter(home,monkeypatch):
+    import inspect
+    from mt5_extracao.robots import sessions
+    signature=inspect.signature(backtest.run_mql5);seen=[]
+    job=sessions.Session(home.db,home.config,home.robot,"EURUSD","H1",root=home.prefix/"drive_c/private-runs",
+        native_options=dict(db=home.db,robot=home.robot,symbol="EURUSD",run=lambda *args:None,run_uses_session_launcher=True))
+    def prepare(**kwargs):
+        job.directory.mkdir(parents=True);job.child_config=sessions._private_config(home.config,job.directory)
+        wrapper=job.directory/"own.mq5";wrapper.write_text("// platform boundary fixture")
+        return wrapper
+    def run(**kwargs):
+        signature.bind(**kwargs)  # Mesma assinatura estrita do backend real.
+        seen.append(kwargs);return dict(run_id="qa",metrics={})
+    monkeypatch.setattr(job,"_prepare_expert",prepare)
+    monkeypatch.setattr(job,"_stop_owned",lambda:None)
+    monkeypatch.setattr(mt5_tools,"release_native_context",lambda _:True)
+    monkeypatch.setattr(backtest,"run_mql5",run)
+    job.run()
+    assert job.state=="completed",job.error
+    assert len(seen)==1 and "run_uses_session_launcher" not in seen[0]
+
+
 def test_legacy_binary_is_not_silently_used_for_source_only_controls(home,tmp_path):
     from mt5_extracao.robots import catalog,sessions
     original=tmp_path/"Opaque.ex5";original.write_bytes(b"binary")
