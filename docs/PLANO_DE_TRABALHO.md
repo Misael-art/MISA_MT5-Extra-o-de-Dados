@@ -4376,3 +4376,7 @@ não é aceite de broker, rede/processo, netting ou Windows físico. O protótip
 reserva não foi conectado ao envio nem distribuído. F04/05/10/11/12 continuam
 abertos para journal, consumo, ator/posse, planos e margem agregada. Matriz e
 sequência permanecem na seção9 do inventário; SA-REF-01/runtime33c2fa1 intactos.
+App7c51bc4/PR272:182testes dirigidos, doctor16OK/2avisos/0falhas; prévia338arquivos
+conferidos e CLI pelo launcher com indisponibilidade explícita. Ponte atualizada
+com posse; cálculo de conta não qualificado sem conta carregada. QA F04 privada
+restaurada:137arquivos/seis bancos, cinco anexos na página existente/seq21.

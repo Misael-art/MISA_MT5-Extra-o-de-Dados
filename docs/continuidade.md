@@ -5673,7 +5673,21 @@ real agora consumido pelo robô e pela Session. Diagnóstico mantido. S09:13posi
 39deals,9+4etapas,44inputs e53fontes físicas conferidos; caixa reconciliado.
 Modelo0 gerado deM1, sem broker/restart/desconexão/Windows físico qualificados.
 Fonte e evidência pública no H: F04_FOUNDATION_20261102.json. QA privada separada
-em state/qa-tmp/operational-pillar; proteção independente é registrada no marco.
+em state/qa-tmp/operational-pillar. App7c51bc4/PR272:182testes dirigidos/4avisos
+NumPy existentes, doctor16OK/2avisos/0falhas. Prévia oficial com338arquivos iguais
+por hash; CLI pelo launcher exibiu os valores desconhecidos como indefinido.
+Ponte de leitura atualizada com posse comprovada; OrderCalcProfit/Margin existem
+e OrderSend/Check continuam recusados pela RPC. Sem terminal/conta carregados,
+não foi qualificado cálculo nativo de conta. Nenhum login/PLAY foi iniciado.
+
+Proteção F04.1 na página privada existente, sequência21:137arquivos/seis bancos
+remontados e restaurados, hashes/quick_check/contagens idênticos. ZIP818.046bytes,
+SHA256d998c4d5015dd1d47309b16f0a3d68e0fc68e88e7ecf67a7c6a79a846216c2ca,
+duas partes e cinco anexos confirmados.304blocos anteriores preservados, quatro
+resumos do próprio pilar atualizados; compartilhamento permanece só proprietário.
+Recibo em protecao/f04/cloud-proof.json. Complementos históricos preservados.
+CI H verde em1f6dca03; App7c51bc4 tinha lint/PG/instaladores verdes e testes
+Linux/Windows ainda em execução na consulta de fechamento, sem aceite presumido.
 
 Próximo recorte: concluir o guardião existente com journal durável e identidade
 persistente de intenção/ator; conciliar ordem/deal/posição/histórico antes de
