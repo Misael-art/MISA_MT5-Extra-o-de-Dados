@@ -321,8 +321,8 @@ R de gestão vem dos fills e do SL original. TP pré-fill usa `planned_r_v1`
 ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas. Ausência obrigatória de
 ATR bloqueia entrada; perda posterior não retira proteção física.
 
-Candidato fingerprint e4557c168f9983e9, grafo56 fontes/SHA256
-620463890ac9ad2cebe1bfa8db8f64f2a0f3344de07136896c1e20795b4d31a0.
+Candidato fingerprint 53dbc2652f186ddf, grafo56 fontes/SHA256
+8aba09cf033262ac3533c856111919875ec9e2822ff92df7601b1ef83ec78f3f.
 Perfil permanece bloqueado enquanto a revisão nativa não estiver qualificada.
 Compilação/Tester/replay/launcher da nova fonte ainda pendentes. Recursos nativos
 preservados para a tarefa DEMO separada até15hUTC de02/11 e até sua liberação real.
@@ -333,3 +333,9 @@ netting ou Windows físico. Regras de configuração nos guias de proteção e g
 HADOUKEN29040013:163 testes Tools aprovados em171,386s/checker171.
 App:417 testes pertinentes aprovados em113,01s; doctor offline16OK/2avisos/0falhas.
 Essas provas são de plataforma simulada/contratos/UI local, sem qualificação nativa.
+
+Atualização E14/H000b5349: sem trailing/BE ativo, mil ticks simulados não leem
+histórico nem enviam gestão.163 testes finais em156,933s, fontes inalteradas.
+App:37 casos do perfil revalidados em5,16s após fingerprint/pin; seleção ampla
+de417 permanece registrada no corecfcd25ce, sem somar casos sobrepostos.
+Ativação, compilação e ciclo nativo continuam pendentes da fonte atual.

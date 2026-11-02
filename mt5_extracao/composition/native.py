@@ -100,7 +100,7 @@ RUNTIME_HADOUKEN_REVISION=None  # ciclo nativo e alteração de manutenção ain
 RUNTIME_INPUT_TYPES=PANEL_INPUT_TYPES
 
 PROTECTION_ROBOT_VERSION="2.10"
-PROTECTION_APPROVED_FINGERPRINT="e4557c168f9983e9"  # candidato; revisão None mantém ativação bloqueada
+PROTECTION_APPROVED_FINGERPRINT="53dbc2652f186ddf"  # candidato; revisão None mantém ativação bloqueada
 PROTECTION_HADOUKEN_REVISION=None
 PROTECTION_INPUTS={
     "stop_mode":("InpStopMode","int","initial_stop_0_points_1_ATR"),

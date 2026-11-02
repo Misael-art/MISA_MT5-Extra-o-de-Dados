@@ -3,8 +3,8 @@
   "milestone": "E14",
   "status": "implementation_simulated_validated_native_qualification_pending",
   "robot_version": "2.10",
-  "source_fingerprint": "e4557c168f9983e9",
-  "project_source_sha256": "620463890ac9ad2cebe1bfa8db8f64f2a0f3344de07136896c1e20795b4d31a0",
+  "source_fingerprint": "53dbc2652f186ddf",
+  "project_source_sha256": "8aba09cf033262ac3533c856111919875ec9e2822ff92df7601b1ef83ec78f3f",
   "public_inputs": 59,
   "project_files": {
     "Experts/HADOUKEN/Estrategias/HDK_S09_Referencia.mq5": "d93cfb985a430f0dab8c0f221839f78afec5cbc671404cabdb2af0df5ac7710f",
@@ -50,7 +50,7 @@
     "Include/Framework/HADOUKEN/Safety/HDK_VisualIgnored.mqh": "5a0f7b838a55f7d725012f0a521df510472f9237ad9a5d57cb111a88df552ae4",
     "Include/Framework/HADOUKEN/Safety/HDK_VisualTradeBook.mqh": "9ace14a246340203f51ab1a0f9d370ea1403647b61c86f4c36507b27d929a477",
     "Include/Framework/HADOUKEN/Strategies/HDK_NativeAtrTemporalPolicy.mqh": "d7c7be05361f6a16471af5066f481d3beb50fd193b2c37df3f41bee11d9fec06",
-    "Include/Framework/HADOUKEN/Strategies/HDK_NativeBaseAdapter.mqh": "fd7311ec0630af105f57f556c1f78f37ff6952869cbf5195006a26d5612a335e",
+    "Include/Framework/HADOUKEN/Strategies/HDK_NativeBaseAdapter.mqh": "281d3c25666e28a0726f6830bc89d92381038a167ea3458ba9d8562f3049fbc7",
     "Include/Framework/HADOUKEN/Strategies/HDK_NativeCooldownEntryPolicy.mqh": "d37de3c1c823f590a0b72303a50902097715f7e225c806899e660e10ace47e1b",
     "Include/Framework/HADOUKEN/Strategies/HDK_NativeDonchianTemporalPolicy.mqh": "5b6a79cb71acdd58a218ea2f2f5449184ae255db5237dba8ce1662c8795e3c0a",
     "Include/Framework/HADOUKEN/Strategies/HDK_NativeEfficiencyTemporalPolicy.mqh": "fd9bd6a81c06a2bd2d9d797c915975f2c24e04e10f05b0a08f0694c3136da665",
@@ -101,11 +101,12 @@
     "platform_simulated": {
       "tools_tests": 163,
       "full_suite_exit_code": 0,
-      "full_suite_seconds": 171.386,
+      "full_suite_seconds": 156.933,
       "all_sources_unchanged": true,
       "independent_rational_stop_cases": 656,
       "actual_MQL_methods": true,
-      "broker": false
+      "broker": false,
+      "disabled_management_history_reads_in_1000_ticks": 0
     },
     "native_compilation": "pending",
     "tester_replay": "pending",
@@ -124,10 +125,19 @@
     "gradient modes and CONTROLLED_GRADIENT policy",
     "automatic experimental probability contract and evidence"
   ],
-  "hadouken_revision": "290400139472920dbc18ba3d6e5d0c60da8f24da",
+  "preceding_code_checkpoint": {
+    "revision": "290400139472920dbc18ba3d6e5d0c60da8f24da",
+    "source_fingerprint": "e4557c168f9983e9",
+    "native_qualified": false
+  },
+  "hadouken_revision": "000b53498d0fef77d6aac8303a8fcbc1711e4c0a",
   "app_validation": {
+    "functional_core_revision": "cfcd25ce1e74aff8499bb0c31954ed5d7c2067f4",
     "targeted_tests": 417,
     "seconds": 113.01,
+    "current_profile_tests": 37,
+    "current_profile_seconds": 5.16,
+    "overlapping_cases_not_added": true,
     "doctor": {
       "ok": 16,
       "warnings": 2,
