@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "milestone": "E14",
-  "status": "lossless_history_six_model0_backtests_reconciled_replays_pending",
+  "status": "lossless_history_atr_pair_qualified_direct_budget_integrated_gui_native_pending",
   "robot_version": "2.11",
   "source_fingerprint": "2e0a4bf209628c86",
   "project_source_sha256": "b927af079a64ea02c7429e8a1f80489916e306ece02ff0628cf2d76506f8086a",
@@ -126,8 +126,8 @@
         "scope": "compile only; explicit fixture hash; no trading qualification"
       }
     },
-    "host_tester_replay": "Six current-source model0 backtests reconciled. ATR visual replay failed RAM85 and subsequent attempt budget180; neither approves comparison. Launcher preparation correction under validation.",
-    "official_launcher_journey": "prior2.10 real Tk configuration/export and exact-package SDK pair retained separately; no current-source GUI execution claim",
+    "host_tester_replay": "Six source2.11 model0 backtests reconciled. ATR visual replay matched exact prior package/database after Appf8cb06f preparation correction;3positions6deals7trailing2BE/153.275seconds. Other current-source mode replays pending; prior failures preserved.",
+    "official_launcher_journey": "Current source2.11: actual Default→Manualv2,59 exported inputs, inactive ATR controls disabled, reopen and owned screenshots via official f8cb06f launcher;6.494seconds. Native UI buttons pending real exercise after direct resource Budget integration; no financial GUI launch in configuration journey.",
     "live_demo": "not exercised; authorization not transferred",
     "physical_windows": "not exercised",
     "netting": "unsupported/refused",
@@ -553,7 +553,74 @@
       "real_tick_coverage": "not reported",
       "clock_discrepancy": "First failed replay wall elapsed9917.859s versus monotonic155.810s; cause not established; not a benchmark",
       "live_broker_exercised": false,
-      "operational_acceptance": false
+      "operational_acceptance": false,
+      "atr_replay_after_launcher_correction": {
+        "state": "reconciled_replay",
+        "session_id": "4d4804bae6ba416fae9fb53696a7400d",
+        "run_id": "88e24bd9094f47a582b951228396658e",
+        "app_sha": "f8cb06fc7ee55a879db1cc325b78f8df6d21ce3f",
+        "hadouken_sha": "adc5ecd360a41e575068fb443d2a531e7f82c87b",
+        "source_fingerprint": "2e0a4bf209628c86",
+        "package_hash": "6d40899b63edff08ad80555663776fbfcee524a6a8fa53618941e91e52e3f0bb",
+        "reference_run_id": "d5fa17f1829246c3b12ca4107301a734",
+        "reference_match": true,
+        "functional_cycle": true,
+        "tester_model": "cada tick",
+        "actual_mode": {
+          "demo": true,
+          "tester": true,
+          "visual": true
+        },
+        "trades": 3,
+        "deals": 6,
+        "partials": 0,
+        "protection_causes": {
+          "trailing": 7,
+          "breakeven": 2
+        },
+        "management_acceptance": {
+          "dynamic_target": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "session_exit": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "signal_exit": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "trailing": {
+            "configured": true,
+            "events": 7,
+            "exercised": true,
+            "replay_qualified": true
+          },
+          "trigger_breakeven": {
+            "configured": true,
+            "events": 2,
+            "exercised": true,
+            "replay_qualified": true
+          }
+        },
+        "protection_acceptance": true,
+        "cash_reconciled": true,
+        "net_profit": 1.08,
+        "journal_entries": 3,
+        "journal_actions": 9,
+        "journal_all_settled": true,
+        "resources_released": true,
+        "elapsed_seconds": 153.27460479736328,
+        "operational_acceptance": false,
+        "live_broker_exercised": false
+      }
     },
     "ci_observed": {
       "app_sha": "28d74a6ef23df2316ac6972401457b414bce3d75",
@@ -740,7 +807,28 @@
       "modules": 11,
       "overlapping_with_previous": true,
       "scope": "Compile own SDK profile before creating private visual Wine; strict compiler-exit proof before switching prefix; same Session/lease/input/binary binding; no shared wineserver restart",
-      "native_replay_retest": "pending",
+      "native_replay_retest": "ATR same package/database reference match;153.274604797s; SDK own resources released",
+      "doctor": {
+        "ok": 16,
+        "warnings": 2,
+        "failures": 0,
+        "native_probed": false
+      }
+    },
+    "direct_preset_resource_budget": {
+      "tests": 167,
+      "seconds": 145.31,
+      "modules": 14,
+      "overlapping_with_previous": true,
+      "before_regression_failures": 3,
+      "existing_budget_reused": true,
+      "configured_limits_checked_before_native": true,
+      "external_control_not_finalized_by_child": true,
+      "session_mode_preserved_on_runner": true,
+      "run_id_bound_to_admission": true,
+      "package_retained": true,
+      "native_audit_and_budget_result_failures_reported": true,
+      "native_ui_validation": "pending",
       "doctor": {
         "ok": 16,
         "warnings": 2,

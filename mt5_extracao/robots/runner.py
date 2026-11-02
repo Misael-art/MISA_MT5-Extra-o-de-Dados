@@ -92,7 +92,8 @@ def run_job(db, config, job: Job, *, control=None, entry=None) -> dict:
     execution = (entry or {}).get("execution") or {}
     if execution.get("mode") == "preset_package":
         from ..presets.execution import PresetExecution
-        native = PresetExecution(db, config, job.robot, execution["manifest_path"], control=control,actor="budget-runner")
+        native = PresetExecution(db, config, job.robot, execution["manifest_path"],
+                                 mode=execution.get("session_mode","backtest"),control=control,actor="budget-runner")
         if native.package.package_hash != execution["package_hash"]:
             raise ValueError("Pacote mudou desde a revisão; execução recusada.")
         native.run()

@@ -5871,11 +5871,20 @@ idênticas reaproveitadas e dois consumidores recompilados). Wrapper59 compilado
 Na fonte2.11, seis backtests cada tick conciliados: ATR com7trailing/2BE, alvo
 dinâmico com2closes, saída por sessão, saída por sinal, normal e invertido com
 2parciais cada. Todos com diário encerrado e recursos liberados; ticks reais
-não informados. Replay ATR falhou pela guarda85%RAM e, depois, pelo orçamento180s;
-nenhum deles aprova comparação. Launcher corrigido para compilar no perfil SDK
-próprio antes de inicializar o Wine visual, com prova de saída do compilador e
-sem reiniciar o prefixo compartilhado.216regressões/11módulos passaram em52,91s,
-mais doctor16OK/2avisos/0falhas sem probe. Aceite nativo da mudança pendente.
+não informados. Replay ATR após o corretivo Appf8cb06f coincidiu com o MESMO
+pacote/banco:3posições/6deals/7trailing/2BE, diário3entradas/9ações encerradas e
+recursos liberados,153,275s. As falhas anterioresRAM85%/180s foram preservadas.
+O launcher compila no perfil SDK próprio antes de inicializar o Wine visual,
+com prova de saída do compilador, sem reiniciar o prefixo compartilhado.
+216regressões/11módulos passaram em52,91s e doctor16OK/2avisos/0falhas sem probe.
+Atalho real2.11 também criou/exportou/reabriu Manualv2/59inputs em6,49s; imagens
+da própria janela conferidas. Chamada direta UI/API agora admite e finaliza
+seu job no mesmo Budget configurado; runner com controle existente o conserva.
+Pacote/artefatos e run_id ficam ligados à tentativa; retomada preserva backtest/
+replay, recusa de recursos antecede o MQL e falha no checkpoint é explícita.
+167testes/14módulos em145,31s, inclusive famílias anteriores e agentes; doctor
+16OK/2avisos/0falhas sem probe. Botões nativos ainda precisam do ensaio real
+nessa integração; não transferir o aceite de edição para execução GUI.
 CI App28d: Linux passou; Windows7falhas/4522passaram/193não executados. Shim MQL
 long do teste corrigido para int64 explícito;29testes/5,09s no Linux, Windows pendente.
 

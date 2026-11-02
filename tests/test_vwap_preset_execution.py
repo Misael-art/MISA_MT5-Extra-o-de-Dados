@@ -38,7 +38,7 @@ class VWAPSession(FakeSession):
         metrics=dict(trades=1,net_profit=-2.25,native_cash_result=-2.25,entries=1,entries_without_stop=0,cash_reconciled=True,
             source_fingerprint=catalog.fingerprint(self.robot),native_profile_isolated=True,native_detail_capture="observer",
             artifact_directory=str(self.directory),tester_model="cada tick",currency="USD",data_quality={})
-        self.record=dict(run_id=uuid.uuid4().hex,robot_key=self.robot.key,source="strategy tester",symbol=self.symbol,timeframe=self.timeframe,
+        self.record=dict(run_id=ctx["control"].run_id if ctx.get("control") is not None else uuid.uuid4().hex,robot_key=self.robot.key,source="strategy tester",symbol=self.symbol,timeframe=self.timeframe,
             data_start="2026-10-20",data_end="2026-10-22",bars=0,params=ctx["params"],metrics=metrics,equity=[],
             trades=[[stamp(epoch+300),-2.25,1.]],created_at="2026-10-22")
         store.save_run(self.db,self.record)

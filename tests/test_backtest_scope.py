@@ -235,8 +235,8 @@ def test_native_package_execution_and_lost_proof_never_duplicate_tester(source,n
     exported=manual.export_preset(db,native_robot,record.identity.id,tmp_path/'package',
         test_context=TestContext('2020-01-01','2020-02-01',deposit=100000,model='0'))
     class NativeBoundary:
-        def __init__(self,db,config,robot,path,*,control,actor):
-            assert actor == "budget-runner"
+        def __init__(self,db,config,robot,path,*,control,actor,mode="backtest"):
+            assert actor == "budget-runner" and mode == "backtest"
             self.package=read_package(path,robot);self.control=control;self.evidence=None;self.error='';self.status='created'
         def run(self):
             calls.append(self.package.package_hash)

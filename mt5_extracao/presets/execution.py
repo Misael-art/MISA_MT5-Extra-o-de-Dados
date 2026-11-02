@@ -17,7 +17,7 @@ import threading
 from sqlalchemy import inspect,text
 
 from ..composition.schema import canonical_json
-from ..robots import mql,sessions
+from ..robots import budget,mql,sessions
 from ..robots import store as robot_store
 from ..trade_analytics import ledger
 from .compiler import read_package
@@ -236,6 +236,36 @@ class PresetExecution:
         self.tester_capture=None
         self.session.native_options["run"]=self._run_command
         self.status="created";self.error="";self.evidence=None;self.started=False
+        self._owned_budget=None;self._owned_control=None
+
+    def _admit_budget(self):
+        # Runner já fornece seu job; UI/API diretas usam o MESMO Budget,
+        # criado na thread de execução e nunca durante a edição do preset.
+        if self.session.native_options.get("control") is not None:return
+        context=self.package.manifest["test_context"];scope=self.package.manifest["composition"]["context"]
+        self._owned_budget=budget.Budget(self.db,self.session.config)
+        jobs=self._owned_budget.prepare([(self.session.robot,scope["symbol"],scope["timeframe"])],
+            start=datetime.fromisoformat(context["start"]),end=datetime.fromisoformat(context["end"]),
+            preset=self.session.preset,execution=dict(mode="preset_package",session_mode=self.mode,
+                manifest_path=str(self.manifest_path.resolve()),package_hash=self.package.package_hash))
+        self._owned_control=self._owned_budget.admit(jobs[0]["key"])
+        self.session.native_options["control"]=self._owned_control
+        self._owned_control.retain_artifacts(files=[str(self.manifest_path.resolve()),
+            str(self.manifest_path.resolve().with_name(self.package.manifest["parameters_file"]))])
+
+    def _finish_budget(self):
+        if self._owned_budget is None:return
+        passed=self.status in ("reconciled_backtest","reconciled_replay","contract_only")
+        try:
+            try:
+                if self._owned_control is not None:
+                    state="completed" if passed else "interrupted" if self.status=="cancelled" or self._owned_budget.reason else "failed"
+                    self._owned_control.result(state,self.error or self._owned_budget.reason)
+            finally:
+                self._owned_budget.finish(failed=not passed)
+        except Exception as error:
+            self.status="verification_failed";self.evidence=None
+            self.error=(self.error+"; " if self.error else "")+"Orçamento não finalizado; preserve o checkpoint: "+(str(error) or type(error).__name__)
 
     def _run_command(self,command,cwd,prefix,timeout):
         if "/config:" in command.lower():
@@ -268,6 +298,7 @@ class PresetExecution:
 
     def cancel(self):
         self.session.cancel()
+        if self._owned_budget is not None:self._owned_budget.cancel("Execução de preset cancelada pelo usuário.")
 
     def run(self):
         if self.started:raise ValueError("Esta sessão já foi iniciada; reabra uma sessão própria para novo ensaio.")
@@ -275,16 +306,25 @@ class PresetExecution:
         try:
             if read_package(self.manifest_path,self.robot)!=self.package:
                 raise ValueError("Pacote mudou desde a seleção; reabra-o antes de iniciar a sessão.")
+            self.session._check_cancel()
+            self._admit_budget()
             called_session=True
             self.session.run()
             if self.session.state!="completed":
                 self.status=self.session.state;self.error=self.session.error;return self
             self.session._check_cancel()
+            control=self.session.native_options.get("control")
+            if isinstance(control,budget.JobBudget) and self.session.record.get("run_id")!=control.run_id:
+                raise ValueError("Run nativo difere da tentativa admitida no orçamento; preserve ambos sem aprovar o resultado.")
             proof=self._proof()
+            if isinstance(control,budget.JobBudget):
+                from dataclasses import asdict
+                proof["resource_budget"]=dict(batch_id=control.parent.batch_id,job_key=control.key,
+                    job_run_id=control.run_id,limits=asdict(control.parent.limits))
             _publish(self.session.directory/"preset_evidence.json",canonical_json(proof).encode("utf-8"))
             _save_evidence(self.db,proof)
             self.evidence=proof;self.status=proof["status"]
-        except sessions.Cancelled as error:
+        except (sessions.Cancelled,budget.Interrupted) as error:
             self.status="cancelled";self.error=str(error)
         except Exception as error:
             self.status="verification_failed";self.error=str(error) or type(error).__name__
@@ -292,6 +332,7 @@ class PresetExecution:
             if not called_session:
                 self.session.state="cancelled" if self.status=="cancelled" else "failed"
                 self.session.error=self.error
+            self._finish_budget()
         return self
 
     def _proof(self):

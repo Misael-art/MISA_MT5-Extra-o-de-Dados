@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from mt5_extracao.presets import defaults,manual,execution
 from mt5_extracao.presets.compiler import TestContext as NativeTestContext
-from mt5_extracao.robots import catalog,mt5_tools,store as robot_store
+from mt5_extracao.robots import budget,catalog,mt5_tools,store as robot_store
 from mt5_extracao.trade_analytics import ledger
 from tests.test_s09_native_profile import robot
 from tests.test_default_presets import db
@@ -59,7 +59,7 @@ class FakeSession:
              tester_model="cada tick",currency="USD",data_quality={"real_tick_coverage_status":"not_reported"})
         if self.fault=="cash":metrics["cash_reconciled"]=False
         if self.fault=="stop":metrics["entries_without_stop"]=1
-        self.record=dict(run_id=uuid.uuid4().hex,robot_key=self.robot.key,source="strategy tester",symbol=self.symbol,
+        self.record=dict(run_id=ctx["control"].run_id if ctx.get("control") is not None else uuid.uuid4().hex,robot_key=self.robot.key,source="strategy tester",symbol=self.symbol,
              timeframe=self.timeframe,data_start="2026-10-14 00:00:00",data_end="2026-10-15 00:00:00",bars=0,
              params=ctx["params"],metrics=metrics,equity=[],trades=[["2026-10-14 09:25:00",2.0,1.0]] if count else [],created_at="2026-10-14")
         if self.fault=="unclosed":metrics["entries"]=1
@@ -94,6 +94,83 @@ def prepared(robot,db,tmp_path,monkeypatch):
 
 def job(p,mode="backtest"):
     return execution.PresetExecution(p.db,p.config,p.robot,p.exported["manifest_path"],mode=mode,root=p.root)
+
+
+def test_direct_preset_uses_existing_budget_and_releases_its_own_claim(prepared):
+    p=prepared;run=job(p).run()
+    assert run.status=="reconciled_backtest",run.error
+    control=run.session.native_options.get("control")
+    assert isinstance(control,budget.JobBudget)
+    saved=budget.checkpoint(p.db,control.parent.batch_id)
+    assert saved["status"]=="completed" and saved["owner"]=={}
+    entry,=saved["plan"]["jobs"]
+    assert entry["execution"]["mode"]=="preset_package" and entry["execution"]["session_mode"]=="backtest"
+    assert entry["execution"]["package_hash"]==run.package.package_hash
+    assert saved["jobs"][0]["run_id"]==run.evidence["run_id"]==control.run_id
+    assert saved["jobs"][0]["status"]=="completed"
+    assert Path(entry["execution"]["manifest_path"])==p.exported["manifest_path"].resolve()
+
+
+def test_direct_preset_checks_resource_budget_before_any_native_launch(prepared,monkeypatch):
+    p=prepared;p.config["ROBOTS"]={"batch_hard_ram_pct":"85"}
+    monkeypatch.setattr(budget,"_sample",lambda *args,**kwargs:dict(cpu=0,ram=90,rss=1,free_bytes=10**10))
+    run=job(p).run()
+    assert run.status=="cancelled" and "RAM" in run.error
+    assert not run.session.ran and not run.session.directory.exists()
+
+
+def test_native_verification_failure_finishes_own_budget_without_approving_result(prepared,monkeypatch):
+    monkeypatch.setattr(FakeSession,"fault","cash")
+    run=job(prepared).run()
+    assert run.status=="verification_failed" and run.evidence is None
+    control=run.session.native_options.get("control")
+    assert isinstance(control,budget.JobBudget)
+    saved=budget.checkpoint(prepared.db,control.parent.batch_id)
+    assert saved["status"]=="failed" and saved["owner"]=={}
+    assert saved["jobs"][0]["status"]=="failed"
+
+
+def test_replay_runner_reuses_the_admitted_budget_and_preserves_session_mode(prepared,monkeypatch):
+    from mt5_extracao.robots import runner
+    p=prepared;parent=budget.Budget(p.db,p.config)
+    entry=dict(mode="preset_package",session_mode="replay",manifest_path=str(p.exported["manifest_path"]),
+               package_hash=p.exported["package"].package_hash)
+    jobs=parent.prepare([(p.robot,"EURUSD","M5")],start=datetime(2026,10,14),end=datetime(2026,10,15),execution=entry)
+    control=parent.admit(jobs[0]["key"]);created=[];factory=execution.PresetExecution
+    def native(*args,**kwargs):
+        assert kwargs["control"] is control and kwargs["mode"]=="replay"
+        value=factory(*args,root=p.root,**kwargs);created.append(value);return value
+    monkeypatch.setattr(execution,"PresetExecution",native)
+    try:
+        record=runner.run_job(p.db,p.config,SimpleNamespace(robot=p.robot),control=control,entry=dict(execution=entry))
+        assert len(created)==1 and created[0]._owned_budget is None
+        assert created[0].evidence["mode"]=="replay" and record["run_id"]==control.run_id
+        assert parent._claimed and budget.checkpoint(p.db,parent.batch_id)["jobs"][0]["status"]=="running"
+        control.result("completed")
+    finally:parent.finish()
+    assert budget.checkpoint(p.db,parent.batch_id)["owner"]=={}
+
+
+def test_native_run_id_must_match_the_budget_attempt(prepared,monkeypatch):
+    original=FakeSession.run
+    def wrong_run(self):
+        original(self);self.record["run_id"]="foreign-qa-run";return self
+    monkeypatch.setattr(FakeSession,"run",wrong_run)
+    run=job(prepared).run()
+    assert run.status=="verification_failed" and "tentativa admitida" in run.error and run.evidence is None
+    control=run.session.native_options["control"]
+    assert budget.checkpoint(prepared.db,control.parent.batch_id)["status"]=="failed"
+
+
+def test_budget_result_write_failure_is_reported_and_does_not_hide_native_artifacts(prepared,monkeypatch):
+    def failed(*args,**kwargs):raise OSError("synthetic checkpoint write failure")
+    monkeypatch.setattr(budget.JobBudget,"result",failed)
+    run=job(prepared).run()
+    assert run.status=="verification_failed" and run.evidence is None and "Orçamento não finalizado" in run.error
+    control=run.session.native_options["control"];saved=budget.checkpoint(prepared.db,control.parent.batch_id)
+    assert saved["status"]=="failed" and saved["owner"]=={}
+    assert (run.session.directory/"preset_evidence.json").is_file()
+    assert execution.load_evidence(prepared.db)[0]["run_id"]==control.run_id
 
 
 def test_exported_set_and_ini_are_exactly_loaded_then_native_contracts_reopen_without_financial_rewrite(prepared):
