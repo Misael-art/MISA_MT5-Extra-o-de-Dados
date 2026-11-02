@@ -31,6 +31,14 @@ atualizados. Manifesto/recibo em state/qa-tmp/operational-pillar/protecao/f04.
 O pilar permanece incompleto. Testes de plataforma simulada, compilação, Tester,
 DEMO e Windows físico mantêm evidências separadas.
 
+F04.2: H6c960fde/PR79 persiste reservas no módulo existente; journal Common é
+autoritativo, GVs são projeção recuperável. SENDING/incerteza e IDs64bits não
+somem por tempo/restart; truncamento/temporário interrompido bloqueiam envio.
+149testes H/checker170, compilação0/0 e sete checks de I/O no Tester sem ordens.
+Safety27b8599 continua detached/candidata1.12: esse protótipo não é distribuído.
+Ainda faltam vínculo por intenção/ator/sessão/preset, consumo/reconciliação e
+integração ao executor, antes de liberar orçamento agregado.
+
 A tarefa DEMO já agendada abaixo continua com runtime33c2fa1 e sua biblioteca
 SA-REF-01 congelada, sem regeneração/repin para o corretivo. Nenhuma autorização
 de negociação é transferida para a nova composição.
