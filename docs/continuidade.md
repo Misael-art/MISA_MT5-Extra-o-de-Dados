@@ -5836,3 +5836,33 @@ referências aceitas e SA-REF-01 permanecem preservadas.
 Conferência isolada do material preservado: os44 inputs carregados e o ack do
 contexto correspondem ao pacote real. Isso não aprova o ciclo interrompido.
 App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
+
+### E14 — gestão comum de uma posição, perfil novo em qualificação
+
+S09 v2.10 usa o mesmo adaptador/executor/journal com59 inputs vinculados:
+SL pontos/ATR14 fechado, TP pontos/R planejado, trailing pontos/ATR por barra,
+BE por gatilho, alvo virtual ATR limitado por R real, saída por janela/sinal e
+orientação normal/invertida aplicada uma vez. Parciais/BE e tempo existentes
+continuam compostos; prioridade: risco → sessão → tempo → alvo virtual → sinal
+oposto → parcial/BE → trailing/BE. Alterar SL preserva TP. Cota de entradas não
+encerra exposição; saída por sinal não reverte na mesma barra. Campos inativos,
+unidades e prévias são explícitos na UI/API/compilador; salvar não altera sessão.
+
+R de gestão vem dos fills e do SL original. TP pré-fill usa `planned_r_v1`
+(unidade planned_R), sem reinterpretar o `fixed_r` Python pós-fill. Alvo virtual
+é atualizado por barra, pede close pelo executor e mantém SL/TP de contingência.
+ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas. Ausência obrigatória de
+ATR bloqueia entrada; perda posterior não retira proteção física.
+
+Candidato fingerprint e4557c168f9983e9, grafo56 fontes/SHA256
+620463890ac9ad2cebe1bfa8db8f64f2a0f3344de07136896c1e20795b4d31a0.
+Perfil permanece bloqueado enquanto a revisão nativa não estiver qualificada.
+Compilação/Tester/replay/launcher da nova fonte ainda pendentes. Recursos nativos
+preservados para a tarefa DEMO separada até15hUTC de02/11 e até sua liberação real.
+Não transfere autorização, não altera SA-REF-01/runtime33c2fa1, Safety27b8599 ou
+referências aceitas. Não conclui o pilar, E-13, carteira/gradientes/probabilístico,
+netting ou Windows físico. Regras de configuração nos guias de proteção e ganho.
+
+HADOUKEN29040013:163 testes Tools aprovados em171,386s/checker171.
+App:417 testes pertinentes aprovados em113,01s; doctor offline16OK/2avisos/0falhas.
+Essas provas são de plataforma simulada/contratos/UI local, sem qualificação nativa.

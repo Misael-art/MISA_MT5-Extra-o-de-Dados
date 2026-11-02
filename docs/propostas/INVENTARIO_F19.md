@@ -376,20 +376,20 @@ ou testar seu corpo MQL em C++ não comprova esse percurso no broker.
 | Netting / hedging e posse | PortfolioRegistry distingue modalidade; executor e host legado usam magic | Magic não prova contribuição em posição netting nem distingue sessões que o reutilizam. F04.1 recusa netting/exchange nas entradas, fechamento de posição e alterações que dependem de magic. Cancelamento por ticket próprio continua disponível. Contribuição por ativo e ensaio de netting pendentes |
 | Entrada simples | SafeExecutor + host estratégico; S09/B08 e Expert Super ATR | Mercado suportado por consumidor; filtros/armamento/conta continuam próprios. Aceites de novas combinações separados |
 | Limite / stop / stop-limit | `PlacePending`, boleta manual | Tipos e validade declarados, SL obrigatório; H/S têm caminho nativo. Composição automática não herda a boleta. Cancelamento concorrente com fill e restart requerem ensaio próprio |
-| Orientação normal / invertida | Schema e adaptadores específicos | Normal base; inversão somente nos perfis que a implementam. Não assumir suporte no Super ATR de referência |
+| Orientação normal / invertida | Schema e adaptadores específicos | Normal base; inversão somente nos perfis que a implementam. Não assumir suporte no Super ATR de referência E14 implementa a inversão única do sinal fechado no S09v2.10/59inputs; qualificação nativa pendente, perfil bloqueado. |
 | Gradiente linear contrário | Laboratório/re-simulação e `Tools/research_super_atr/operations.py` | Nativo não entregue. Exige política explícita CONTROLLED_GRADIENT, stop do ciclo, tetos e reserva de todos os níveis; `block_averaging=false` não é implementação |
 | Gradiente direcional | Simulação operacional G19.15 | Nativo pendente; definir níveis, volumes, exposição, validade, recuperação e encerramento antes de ativar |
 | Gradiente dinâmico | Estudo chama `grid_spacing_atr=.5` com ATR anterior à entrada | É espaçamento inicial por ATR. Não é âncora que acompanha mercado. Regra de reancoragem, cancelamento/fill e reserva adicional ainda não implementadas |
-| SL inicial fixo / ATR | Host e políticas iniciais; S09 fixo, estratégias e Super ATR ATR | `strategy_default` delega regras existentes; não é lista universal de modalidades configuráveis. Novos presets devem declarar fonte/barra/unidade |
-| TP pontos / R coexistindo com trailing | `HDK_PositionPolicy.mqh`, adaptador nativo e executor que preserva TP ao modificar SL | Combinações são por consumidor. Testar TP ainda presente após trailing e gatilhos simultâneos; não remover TP implicitamente |
-| Trailing fixo / indicador | S09/proteção nativa fixa e regras legadas por ATR/linha | Não compartilhados automaticamente com Super ATR. T20.8 torna `ModifySL` monotônico e recusa remoção/afrouxamento; falha preserva o pedido anterior |
-| Alvo móvel durante a posição | Indicadores e políticas específicas têm cálculos de referência | Cálculo do alvo no fill não comprova atualização contínua. Regras gerais, frequência e transição de preset ainda pendentes |
-| Breakeven por gatilho / após parcial | Executor e `HDK_NativePartialPolicy.mqh` | BE após confirmação é próprio da parcial modular; BE não pode afrouxar trailing melhor. Confirmação depende de saldo e histórico, não do bool de envio |
+| SL inicial fixo / ATR | Host e políticas iniciais; S09 fixo, estratégias e Super ATR ATR | `strategy_default` delega regras existentes; não é lista universal de modalidades configuráveis. Novos presets devem declarar fonte/barra/unidade E14 compõe pontos/ATR14 fechado na política comum; distâncias para fora do tick antes do lote e ATR obrigatório ausente recusado. Novo perfil ainda em qualificação. |
+| TP pontos / R coexistindo com trailing | `HDK_PositionPolicy.mqh`, adaptador nativo e executor que preserva TP ao modificar SL | Combinações são por consumidor. Testar TP ainda presente após trailing e gatilhos simultâneos; não remover TP implicitamente E14 declara TP pontos/planned_r_v1 e trailing que conserva TP. R planejado pré-fill é distinto de fixed_r Python pós-fill; novo percurso nativo pendente. |
+| Trailing fixo / indicador | S09/proteção nativa fixa e regras legadas por ATR/linha | Não compartilhados automaticamente com Super ATR. T20.8 torna `ModifySL` monotônico e recusa remoção/afrouxamento; falha preserva o pedido anterior E14 implementa pontos/ATR14, amostrado uma vez por barra fechada, intenção estável e SL monotônico; testes MQL simulados, aceite nativo pendente. |
+| Alvo móvel durante a posição | Indicadores e políticas específicas têm cálculos de referência | Cálculo do alvo no fill não comprova atualização contínua. Regras gerais, frequência e transição de preset ainda pendentes E14 implementa alvo virtual ATR atualizado por barra, limitado por R real e close via executor; mantém SL/TP físicos de contingência. Perfil/ciclo nativo em qualificação. |
+| Breakeven por gatilho / após parcial | Executor e `HDK_NativePartialPolicy.mqh` | BE após confirmação é próprio da parcial modular; BE não pode afrouxar trailing melhor. Confirmação depende de saldo e histórico, não do bool de envio E14 acrescenta BE por gatilho em R real, arredondado para cobrir entrada sem custos e preservando trailing melhor; confirmação nativa da nova composição pendente. |
 | Parciais por lotes/fração, base inicial/saldo | `HDK_PartialPolicy.mqh`, `HDK_NativePartialPolicy.mqh`, `composition/partials.py`; S09 até duas etapas | Tester DEMO. Volumes inviáveis e estado incerto explícitos. Revalidar residual/mínimo/passo e execução parcial real; não transferir licença ao Super ATR |
 | R e volume iniciais persistentes | E-13: dois hosts usam fills e SL da ordem original, selecionada explicitamente no histórico; média ponderada/volume real e saldo reconciliados. Estado por conta/servidor/magic/ativo/política/ID estável | Simulado: restart/ticket, persistência, BE/trailing e configuração alterada. Tester final pela instalação QA imutável:13 posições/39deals/9+4 etapas,44inputs/caixa reconciliados;53 fontes distintas/56 vínculos de catálogo iguais à fonte final por hash. Perfil aprovado não é atualizado automaticamente. Rede real, netting compartilhado e restart do processo pendentes |
-| Saídas por sinal / tempo / sessão / risco | Host, controladores temporais, Super ATR e RiskGuard | Precedência por perfil; não universal. STOP da App bloqueia entradas/supervisão, não certifica liquidação; pausar mantém gestão da exposição |
+| Saídas por sinal / tempo / sessão / risco | Host, controladores temporais, Super ATR e RiskGuard | Precedência por perfil; não universal. STOP da App bloqueia entradas/supervisão, não certifica liquidação; pausar mantém gestão da exposição E14 define risco→sessão→tempo→alvo virtual→sinal oposto→parcial/BE→proteção. Quota não liquida, sinal não reverte na mesma barra e pausa mantém gestão; perfil novo pendente. |
 | Gestão probabilística | `HDK_TargetProbability.mqh`, Feed/Policy; painel manual G19.16 | Experimental. Evento alvo antes de stop, horizonte, amostra mínima, contexto e indisponibilidade próprios. Não confundir percentual de capital, stop sobre preço e probabilidade; automáticos ainda sem contrato/aceite estatístico/custos |
-| Preset / UI / API / compilador | `composition/registry.py`, schema/adaptadores, `presets`, catálogo/SDK e recibo nativo | Reusar essas fontes; rejeitar módulo/combinação não declarados. Revisão/hash/fonte/binário/sessão vinculados pelo pacote e auditor; UI não concede gestão financeira |
+| Preset / UI / API / compilador | `composition/registry.py`, schema/adaptadores, `presets`, catálogo/SDK e recibo nativo | Reusar essas fontes; rejeitar módulo/combinação não declarados. Revisão/hash/fonte/binário/sessão vinculados pelo pacote e auditor; UI não concede gestão financeira E14 usa os mesmos serviços para59 inputs/managed_v1/planned_r_v1/dynamic_atr_v1; campos inativos/unidades/estimativas explícitos, ativação bloqueada até prova nativa. |
 | Alteração com posição aberta | Sessão/preset efetivo; E-13 persiste gatilho/fração/BE no host legado e identidade integral no modular | Mudança incompatível é recusada sem reinterpretar a exposição. Salvar revisão não altera inputs carregados; nova sessão exige conferência. Transições gerais ainda não suportadas |
 | Super ATR SA-01 | Gerador `robots/super_atr_research.py`, template e sonda C++ existentes | Multi-TF causal em variante de pesquisa, armamento explícito e gates nativos próprios. Não herda toda capacidade do framework nem comprova equivalência SA-REF-01 |
 
@@ -442,3 +442,33 @@ trabalho em implementação: falta journal durável, conciliação para consumo,
 ativo/grupo/plano/margem, identidade de intenção e integração ao executor.
 Esse teste e a compilação do header não autorizam operação com orçamento agregado.
 A sequência dos sete marcos permanece; o pilar continua incompleto.
+
+### E14 — gestão comum de uma posição, perfil novo em qualificação
+
+S09 v2.10 usa o mesmo adaptador/executor/journal com59 inputs vinculados:
+SL pontos/ATR14 fechado, TP pontos/R planejado, trailing pontos/ATR por barra,
+BE por gatilho, alvo virtual ATR limitado por R real, saída por janela/sinal e
+orientação normal/invertida aplicada uma vez. Parciais/BE e tempo existentes
+continuam compostos; prioridade: risco → sessão → tempo → alvo virtual → sinal
+oposto → parcial/BE → trailing/BE. Alterar SL preserva TP. Cota de entradas não
+encerra exposição; saída por sinal não reverte na mesma barra. Campos inativos,
+unidades e prévias são explícitos na UI/API/compilador; salvar não altera sessão.
+
+R de gestão vem dos fills e do SL original. TP pré-fill usa `planned_r_v1`
+(unidade planned_R), sem reinterpretar o `fixed_r` Python pós-fill. Alvo virtual
+é atualizado por barra, pede close pelo executor e mantém SL/TP de contingência.
+ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas. Ausência obrigatória de
+ATR bloqueia entrada; perda posterior não retira proteção física.
+
+Candidato fingerprint e4557c168f9983e9, grafo56 fontes/SHA256
+620463890ac9ad2cebe1bfa8db8f64f2a0f3344de07136896c1e20795b4d31a0.
+Perfil permanece bloqueado enquanto a revisão nativa não estiver qualificada.
+Compilação/Tester/replay/launcher da nova fonte ainda pendentes. Recursos nativos
+preservados para a tarefa DEMO separada até15hUTC de02/11 e até sua liberação real.
+Não transfere autorização, não altera SA-REF-01/runtime33c2fa1, Safety27b8599 ou
+referências aceitas. Não conclui o pilar, E-13, carteira/gradientes/probabilístico,
+netting ou Windows físico. Regras de configuração nos guias de proteção e ganho.
+
+HADOUKEN29040013:163 testes Tools aprovados em171,386s/checker171.
+App:417 testes pertinentes aprovados em113,01s; doctor offline16OK/2avisos/0falhas.
+Essas provas são de plataforma simulada/contratos/UI local, sem qualificação nativa.

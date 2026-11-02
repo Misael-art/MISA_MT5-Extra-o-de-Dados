@@ -51,3 +51,37 @@ Windows físico permanece específico; nenhuma ordem foi enviada nesta tarefa.
 A assinatura pública `sdk.run_backtest` do SDK 1 permanece inalterada. O override
 opcional de regras pertence ao motor interno consumido pelo serviço de composição;
 o SDK encaminha os argumentos anteriores ao mesmo motor, sem duplicar cálculos.
+
+## E14 — TP planejado e alvo virtual do novo perfil nativo
+
+S09 v2.10, em qualificação e bloqueado para ativação, mantém TP físico em pontos
+e acrescenta dois modos explícitos. O `fixed_r` Python acima conserva seu
+contrato pós-fill; não recebe suporte nativo por equivalência de nome.
+
+`profit_exit.planned_r_v1` aceita `target_r` positivo, unidade **planned_R**.
+O TP físico é calculado com a distância do SL inicial planejado antes do
+envio. Slippage/gaps podem alterar o R realizado. Não é o R usado pelos
+gatilhos de parcial, trailing e BE: esses usam fills e SL original do broker.
+
+`profit_exit.dynamic_atr_v1` aceita `atr_multiplier` (ATR), `minimum_r` e
+`maximum_r` (R real inicial), todos positivos e mínimo≤máximo. Exemplo:
+
+```json
+{"mode":"dynamic_atr_v1","params":{"atr_multiplier":2,"minimum_r":2,"maximum_r":4}}
+```
+
+O alvo **virtual** é `entrada ± clamp(ATR fechado × multiplicador,
+mínimoR × R inicial, máximoR × R inicial)`. ATR14 segue a janela fechada descrita
+em [proteção comum](protecao_inicial.md#e14--proteção-comum-nativa-em-qualificação),
+recalculada por barra; não se apresenta um ATR congelado na entrada como alvo
+que acompanha novas barras. Cotação executável cruzando o nível solicita close
+por contribuição no executor/journal existentes. O preço de saída pode diferir.
+SL e TP físico de contingência permanecem no broker; esse TP usa o máximo em
+R **planejado** antes do fill. O broker pode encerrá-los antes da saída virtual.
+Falta de ATR preserva essas proteções, sem fabricar nível ou probabilidade.
+
+Parciais devem anteceder o menor alvo virtual em R. Risco/sessão/tempo têm
+prioridade sobre o alvo virtual; este precede sinal oposto, parcial e trailing.
+Modificar SL preserva TP. As59 entradas efetivas, fonte, binário, revisão e
+sessão são conferidos pelo vínculo F04.6. Testes simulados não qualificam o
+percurso nativo, a corretora, restart real ou Windows físico.

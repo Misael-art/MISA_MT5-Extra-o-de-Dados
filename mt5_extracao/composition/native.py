@@ -99,6 +99,24 @@ RUNTIME_APPROVED_FINGERPRINT="45442cd0bcd0e67a"
 RUNTIME_HADOUKEN_REVISION=None  # ciclo nativo e alteração de manutenção ainda em qualificação
 RUNTIME_INPUT_TYPES=PANEL_INPUT_TYPES
 
+PROTECTION_ROBOT_VERSION="2.10"
+PROTECTION_APPROVED_FINGERPRINT="e4557c168f9983e9"  # candidato; revisão None mantém ativação bloqueada
+PROTECTION_HADOUKEN_REVISION=None
+PROTECTION_INPUTS={
+    "stop_mode":("InpStopMode","int","initial_stop_0_points_1_ATR"),
+    "stop_atr":("InpStopATR","double","ATR"),
+    "trailing_mode":("InpTrailingMode","int","trailing_0_off_1_points_2_ATR"),
+    "trailing_points":("InpTrailingPoints","double","point"),
+    "trailing_atr":("InpTrailingATR","double","ATR"),
+    "trailing_trigger_r":("InpTrailingTriggerR","double","R"),
+    "breakeven_trigger_r":("InpBreakevenTriggerR","double","R"),
+    "exit_on_opposite":("InpExitOnOpposite","bool","boolean"),
+    "exit_on_session_end":("InpExitOnSessionEnd","bool","boolean")}
+PROTECTION_INPUT_TYPES={**RUNTIME_INPUT_TYPES,**{name:kind for name,kind,_ in PROTECTION_INPUTS.values()},
+                        "InpTargetMode":"int","InpTargetR":"double",
+                        "InpDynamicTargetATR":"double","InpDynamicTargetMinR":"double","InpDynamicTargetMaxR":"double",
+                        "InpOrientation":"int"}
+
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
     profiles = {ROBOT_VERSION: (APPROVED_FINGERPRINT, INPUT_TYPES, 1, HADOUKEN_REVISION),
@@ -111,12 +129,13 @@ def _require_robot(robot):
                 SESSION_ROBOT_VERSION:(SESSION_APPROVED_FINGERPRINT,SESSION_INPUT_TYPES,8,SESSION_HADOUKEN_REVISION),
                 COOLDOWN_ROBOT_VERSION:(COOLDOWN_APPROVED_FINGERPRINT,COOLDOWN_INPUT_TYPES,9,COOLDOWN_HADOUKEN_REVISION),
                 PANEL_ROBOT_VERSION:(PANEL_APPROVED_FINGERPRINT,PANEL_INPUT_TYPES,10,PANEL_HADOUKEN_REVISION),
-                RUNTIME_ROBOT_VERSION:(RUNTIME_APPROVED_FINGERPRINT,RUNTIME_INPUT_TYPES,11,RUNTIME_HADOUKEN_REVISION)}
+                RUNTIME_ROBOT_VERSION:(RUNTIME_APPROVED_FINGERPRINT,RUNTIME_INPUT_TYPES,11,RUNTIME_HADOUKEN_REVISION),
+                PROTECTION_ROBOT_VERSION:(PROTECTION_APPROVED_FINGERPRINT,PROTECTION_INPUT_TYPES,12,PROTECTION_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
             or len(robot.inputs) != len(profile[1])
-            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION) else set())):
+            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION) else set())):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
     if profile[3] is None:
@@ -126,7 +145,7 @@ def _require_robot(robot):
 
 def runtime_binding_required(robot):
     """A mesma autoridade do mapper recusa execução avulsa do perfil vinculado."""
-    if robot.key!=ROBOT_KEY or robot.version!=RUNTIME_ROBOT_VERSION:
+    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION):
         return False
     _require_robot(robot)
     return True
@@ -186,6 +205,10 @@ class S09NativeAdapter:
             if slot=="conditional_policy" and profile[2]>=7:allowed.add("temporal_atr_v1")
             if slot=="partial_exit_plan" and profile[2]>=3:
                 allowed.update(("fixed_r","staged_lots","staged_fraction"))
+            if profile[2]>=12:
+                if slot=="protection":allowed.add("managed_v1")
+                if slot=="profit_exit":allowed.update(("planned_r_v1","dynamic_atr_v1"))
+                if slot=="orientation":allowed.add("inverted")
             if data[slot]["mode"] not in allowed:
                 raise ValueError(f"{slot}: modo sem suporte no perfil S09 nativo; use {', '.join(sorted(allowed))}.")
         if (data["filters"] and profile[2]<8) or data["execution_order"] != list(EXECUTION_ORDER):
@@ -202,12 +225,16 @@ class S09NativeAdapter:
         if not sizing["compound"] or not 0 < sizing["risk_fraction"] <= .005:
             raise ValueError("S09 nativa usa risco por saldo, composto, até 0.5%; confira a fração (0.005 = 0.5%), sem elevar o limite.")
         for slot, name in [("profit_exit", "target_points"), ("protection", "stop_points")]:
+            if data[slot]["mode"] in ("managed_v1","planned_r_v1","dynamic_atr_v1"):continue
             value = data[slot]["params"][name] if data[slot]["mode"] == "fixed_points" else data["strategy"]["params"][name]
             _points(value, name)
         partials=stages(data["partial_exit_plan"])
-        stop=data["protection"]["params"]["stop_points"] if data["protection"]["mode"]=="fixed_points" else data["strategy"]["params"]["stop_points"]
+        protection=data["protection"]
+        stop=(protection["params"]["stop_points"] if protection["mode"] in ("fixed_points","managed_v1") else data["strategy"]["params"]["stop_points"])
         target=data["profit_exit"]["params"]["target_points"] if data["profit_exit"]["mode"]=="fixed_points" else data["strategy"]["params"]["target_points"]
-        if any(stage["trigger_r"]>=target/stop for stage in partials):
+        ratio=(data["profit_exit"]["params"]["target_r"] if data["profit_exit"]["mode"]=="planned_r_v1" else
+               data["profit_exit"]["params"]["minimum_r"] if data["profit_exit"]["mode"]=="dynamic_atr_v1" else target/stop if stop>0 else None)
+        if ratio is not None and any(stage["trigger_r"]>=ratio for stage in partials):
             raise ValueError("Parcial deve anteceder o alvo total, usando R do SL inicial.")
         return data
 
@@ -230,6 +257,9 @@ class S09NativeAdapter:
         inactive = []
         for slot, name, target in [("profit_exit", "target_points", "InpTargetPoints"),
                                     ("protection", "stop_points", "InpStopPoints")]:
+            if data[slot]["mode"] in ("managed_v1","planned_r_v1","dynamic_atr_v1"):
+                inactive.append("strategy.params."+name)
+                continue
             explicit = data[slot]["mode"] == "fixed_points"
             path = slot+".params."+name if explicit else "strategy.params."+name
             value = data[slot]["params"][name] if explicit else p[name]
@@ -238,6 +268,9 @@ class S09NativeAdapter:
             if explicit:
                 inactive.append("strategy.params."+name)
         _sizing_parameters(data, profile_version, values, bindings, inactive)
+        if profile_version>=12:
+            _protection_parameters(data,values,bindings,inactive)
+            values["InpOrientation"]="1" if data["orientation"]["mode"]=="inverted" else "0"
         if profile_version>=4:
             from ..strategies.temporal import TemporalPolicy
             from ..strategies.temporal_er import from_selection,EfficiencyTemporalPolicy
@@ -281,6 +314,17 @@ class S09NativeAdapter:
             description.update(runtime_binding_required=True,project_source_files=sources,
                                project_source_sha256=native_inputs.project_sources_hash(sources),
                                configuration_transition="next_session_only")
+        if profile_version>=12:
+            description["conversions"]["orientation"]="normal=0/inverted=1; flip closed signal once before shared planning and opposite-signal exit"
+            description["protection_rules"]={
+                "atr":"Wilder14, last250 closed bars; reseed oldest bar in each window; update on new closed bar",
+                "initial_distances":"round outward to tradable ticks before sizing; reject below broker minimum",
+                "target_r":"initial planned stop distance before fill; slippage can change realized R",
+                "management_r":"actual weighted entry fills and original entry SL; never current SL",
+                "trailing":"at most once per closed bar; stable position/bar intent; preserve TP and never loosen SL",
+                "breakeven":"per tick at trigger; weighted original entry price; costs are not covered",
+                "dynamic_target":"virtual exit threshold = entry +/- clamp(closed ATR * multiplier, minimum R, maximum R); actual initial R; update every closed bar; retain physical SL and maximum planned-R backup TP; request owned market close after crossing; execution price can differ",
+                "precedence":"account risk, session exit, temporal exit, dynamic virtual target, closed opposite signal, confirmed partial and partial-BE, common trailing/trigger-BE"}
         return description
 
 
@@ -313,6 +357,33 @@ def _sizing_parameters(data,profile_version,values,bindings,inactive):
                         else:inactive.append("partial_exit_plan.params."+key)
 
 
+def _protection_parameters(data,values,bindings,inactive):
+    managed=data["protection"]["mode"]=="managed_v1"
+    p=data["protection"]["params"] if managed else {}
+    for key,(name,kind,unit) in PROTECTION_INPUTS.items():
+        values[name]=("true" if p.get(key,False) else "false") if kind=="bool" else format(Decimal(str(p.get(key,0))),"f")
+        if managed:
+            bindings["protection.params."+key]={"input":name,"type":kind if kind in ("bool","int") else "number","unit":unit}
+    if managed:
+        values["InpStopPoints"]=_points(p["stop_points"],"stop_points") if p["stop_mode"]==0 else "0"
+        bindings["protection.params.stop_points"]={"input":"InpStopPoints","type":"number","unit":"point"}
+        for key in (("stop_atr",) if p["stop_mode"]==0 else ("stop_points",)):
+            inactive.append("protection.params."+key)
+        for key in ("trailing_points","trailing_atr","trailing_trigger_r"):
+            if p["trailing_mode"]==0 or key=="trailing_points" and p["trailing_mode"]==2 or key=="trailing_atr" and p["trailing_mode"]==1:
+                inactive.append("protection.params."+key)
+    fixed_r=data["profit_exit"]["mode"]=="planned_r_v1"
+    dynamic=data["profit_exit"]["mode"]=="dynamic_atr_v1"
+    values.update(InpTargetMode="2" if dynamic else "1" if fixed_r else "0",InpTargetR=format(Decimal(str(data["profit_exit"]["params"]["target_r"])),"f") if fixed_r else "0")
+    for key,name,unit in (("atr_multiplier","InpDynamicTargetATR","ATR"),("minimum_r","InpDynamicTargetMinR","R"),("maximum_r","InpDynamicTargetMaxR","R")):
+        values[name]=format(Decimal(str(data["profit_exit"]["params"][key])),"f") if dynamic else "0"
+        if dynamic:bindings["profit_exit.params."+key]={"input":name,"type":"number","unit":unit}
+    if dynamic:values["InpTargetPoints"]="0"
+    if fixed_r:
+        values["InpTargetPoints"]="0"
+        bindings["profit_exit.params.target_r"]={"input":"InpTargetR","type":"number","unit":"planned_R"}
+
+
 def _description(composition,robot,data,values,bindings,inactive,preset_id,fingerprint,input_types,profile_version,hadouken_revision,profile_id):
     modules = {slot: [base] for slot, base in BASE_MODES.items()}
     modules.update(profit_exit=["strategy_default", "fixed_points"], protection=["strategy_default", "fixed_points"], filters=[])
@@ -325,6 +396,9 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
     if profile_version>=7:modules["conditional_policy"].append("temporal_atr_v1")
     if profile_version>=8:modules["filters"]=["session_v1"]
     if profile_version>=9:modules["filters"].append("cooldown_v1")
+    if profile_id==PROFILE_ID and profile_version>=12:
+        modules["protection"].append("managed_v1");modules["profit_exit"].extend(("planned_r_v1","dynamic_atr_v1"))
+        modules["orientation"].append("inverted")
     capabilities = Capabilities({"capabilities_schema_version": 1,
         "robot": {"key": robot.key, "version": robot.version, "fingerprint": fingerprint},
         "backend": "mql5", "strategy_key": data["strategy"]["key"], "modules": modules, "bindings": bindings}, composition)
@@ -337,7 +411,7 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
             "inactive_paths": inactive, "conversions": {"sizing.params.risk_fraction": "fraction × 100 → InpRiskPct percent"},
             "fixed_constraints": {"compound": True, "positions": 1, "daily_loss_pct": 2, "weekly_loss_pct": 4,
                                   "max_dd_pct": 10, "max_open_risk_pct": .5, "margin_buffer_pct": 20,
-                                  "block_averaging": True, "partial": profile_version>=3, "breakeven": profile_version>=3, "trailing": False},
+                                  "block_averaging": True, "partial": profile_version>=3, "breakeven": profile_version>=3, "trailing": profile_id==PROFILE_ID and profile_version>=12},
             "modality": "native_tester_demo_only", "operational_acceptance": False}
 
 
