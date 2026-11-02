@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "milestone": "E14",
-  "status": "audit_integrated_simulated_validated_native_pending",
+  "status": "heartbeat_liveness_separated_financial_barriers_unchanged_native_qualification_pending",
   "robot_version": "2.10",
-  "source_fingerprint": "dfed81430e3f2595",
-  "project_source_sha256": "0a01cb9f42a119d866c9c2f3fa4983cfbf72ed626470fb94b6f8cbc925160ddb",
+  "source_fingerprint": "ecbff494a15d51b9",
+  "project_source_sha256": "ba1d675b6f8aa1557f90fafbceb56ba3a44d3b0d499297e9ec294970fa111cf8",
   "public_inputs": 59,
   "project_files": {
     "Experts/HADOUKEN/Estrategias/HDK_S09_Referencia.mq5": "4d2b4b3ab255a67f2593af963d9d720de6f05b644450cf3798f55c3fa40491e7",
@@ -31,7 +31,7 @@
     "Include/Framework/HADOUKEN/Safety/HDK_PanelUi.mqh": "b0e41d700680ae3f3e2f1652138de7299c59ea6ecfa988ee70c8269e29b556a7",
     "Include/Framework/HADOUKEN/Safety/HDK_PortfolioExposure.mqh": "eb15a80f1a09c9b1c7dfa80c43e762a6b0c62918e8d8e5181621d17f3f2c2eaf",
     "Include/Framework/HADOUKEN/Safety/HDK_PortfolioRegistry.mqh": "c19bce2d3a5387603f5915d54f19a786b219fb247b901feb4a5fce759881cdbb",
-    "Include/Framework/HADOUKEN/Safety/HDK_PortfolioRiskGuard.mqh": "1e5337b4989c4acbf68b9235f3ccd62b4aa643013a1ad7ce326bb4e7d826da43",
+    "Include/Framework/HADOUKEN/Safety/HDK_PortfolioRiskGuard.mqh": "29b20c5ed9b61b0d70c41abd0b58b37dc2fd0b852d868437db5bb0b66a41237d",
     "Include/Framework/HADOUKEN/Safety/HDK_RiskDecision.mqh": "ad26a96120daf9a4ad87405f7511c1353ea3b75626065cb9c00b7140c5477966",
     "Include/Framework/HADOUKEN/Safety/HDK_RiskGuard.mqh": "662b73282acf0a26973404fcc51f771bbc3aa18a2cfab6a27c61e696306e5a0f",
     "Include/Framework/HADOUKEN/Safety/HDK_SafeExecutor.mqh": "faa84025456e3fcadc8865c7105e7c91f154f2a8197fdee1e4b3d7849bc14a57",
@@ -100,71 +100,40 @@
   },
   "validation": {
     "platform_simulated": {
-      "tools_tests": 164,
+      "tools_tests": 165,
       "full_suite_exit_code": 0,
-      "full_suite_seconds": 133.984,
-      "process_seconds": 134.347,
+      "full_suite_seconds": 80.228,
+      "process_seconds": 80.499,
+      "source_files_checked": 109,
       "all_sources_unchanged": true,
-      "source_files_checked": 184,
-      "max_child_rss_kib": 393208,
-      "independent_rational_stop_cases": 656,
+      "max_child_rss_kib": 393532,
       "actual_MQL_methods": true,
       "broker": false,
-      "lossless_scientific17_trace_checked": true,
-      "disabled_management_history_reads_in_1000_ticks": 0
+      "heartbeat_reloads_in_10000_pulses": 0,
+      "financial_acquisition_always_reloads": true,
+      "invalid_journal_refused_even_after_fresh_pulse": true
     },
     "native_compilation": {
       "consumers": 17,
-      "bound_inputs": 59,
       "errors": 0,
       "warnings": 0,
-      "source_fingerprint": "dfed81430e3f2595",
-      "bound_compile_session": "5cf0afde21464af7ba34b1c1967529bb",
-      "scope": "compile only; no operational acceptance"
+      "source_fingerprint": "ecbff494a15d51b9",
+      "source_coherent": true,
+      "identical_unchanged_observations_reused": 1,
+      "bound_59_wrapper": {
+        "session_id": "4859a1be71af4781ab3bc3cd65c4e5cb",
+        "inputs": 59,
+        "errors": 0,
+        "warnings": 0,
+        "scope": "compile only; explicit fixture package hash, no operational acceptance"
+      }
     },
-    "tester_replay": {
-      "status": "failed_before_expert_init",
-      "session": "a429bc28ffff4dc7910ce572a49b8709",
-      "seconds": 179.96288776397705,
-      "resources_released": true,
-      "reference_match": false,
-      "identified_routing_bug": "preset input verifier delegates to Session but was classified as external launcher",
-      "fix_native_validation": "pending"
-    },
+    "tester_replay": "pending for new source; no transfer from previous fingerprint",
     "official_launcher_journey": "pending",
-    "live_demo": "not exercised; separate existing authorization not transferred",
+    "live_demo": "not exercised; separate authorization not transferred",
     "physical_windows": "not exercised",
     "netting": "not supported; refused",
-    "operational_acceptance": false,
-    "tester_backtest_model1": {
-      "state": "reconciled_backtest",
-      "session_id": "9bfd8a5389014a0a928b49a85242a8a0",
-      "run_id": "f64aa6b66e6348ab9ffc4c4474c5c14c",
-      "package_hash": "9f074caff09cbd79028ee07acf09ff01bafe966ba8548dbc1b362fefffbb6377",
-      "tester_model": "OHLC de 1 minuto",
-      "trades": 2,
-      "ledger": 2,
-      "deals": 6,
-      "partial_confirmations": 2,
-      "cash_reconciled": true,
-      "net_profit": -1.8399999999999999,
-      "input_count": 59,
-      "journal_entries": 2,
-      "journal_actions": 3,
-      "journal_all_settled": true,
-      "journal_final_reconciled": true,
-      "resources_released": true,
-      "elapsed_seconds": 101.52854657173157,
-      "live_broker_exercised": false,
-      "operational_acceptance": false,
-      "app_sha": "3945c9a13896473166e21b403c4b3e7a128e0fb1",
-      "hadouken_sha": "08875019b6e44a0efb16f325eb90cd085ebaf129",
-      "source_fingerprint": "dfed81430e3f2595",
-      "source_sha256": "0a01cb9f42a119d866c9c2f3fa4983cfbf72ed626470fb94b6f8cbc925160ddb",
-      "scope": "Tester model1 only; staged position reductions, not broker partial fill",
-      "broker_partial_fill_exercised": false,
-      "advanced_common_management_exercised": false
-    }
+    "operational_acceptance": false
   },
   "remaining": [
     "native qualification of this exact new source and F04.6 journal maintenance",
@@ -180,7 +149,6 @@
     "source_fingerprint": "e4557c168f9983e9",
     "native_qualified": false
   },
-  "hadouken_revision": "08875019b6e44a0efb16f325eb90cd085ebaf129",
   "previous_native_checkpoint": {
     "revision": "000b53498d0fef77d6aac8303a8fcbc1711e4c0a",
     "fingerprint": "53dbc2652f186ddf",
@@ -282,6 +250,251 @@
       "final_dispatch_subset_seconds": 11.02,
       "overlapping_cases_not_added": true,
       "native_retest": "pending"
+    },
+    "heartbeat_candidate_profile": {
+      "tests": 175,
+      "seconds": 18.6,
+      "overlapping_with_previous": true,
+      "doctor": {
+        "ok": 16,
+        "warnings": 2,
+        "failures": 0,
+        "native_probed": false
+      }
     }
-  }
+  },
+  "parent_hadouken_revision": "08875019b6e44a0efb16f325eb90cd085ebaf129",
+  "previous_audit_checkpoint": {
+    "source_fingerprint": "dfed81430e3f2595",
+    "project_source_sha256": "0a01cb9f42a119d866c9c2f3fa4983cfbf72ed626470fb94b6f8cbc925160ddb",
+    "hadouken_revision": "08875019b6e44a0efb16f325eb90cd085ebaf129",
+    "validation": {
+      "platform_simulated": {
+        "tools_tests": 164,
+        "full_suite_exit_code": 0,
+        "full_suite_seconds": 133.984,
+        "process_seconds": 134.347,
+        "all_sources_unchanged": true,
+        "source_files_checked": 184,
+        "max_child_rss_kib": 393208,
+        "independent_rational_stop_cases": 656,
+        "actual_MQL_methods": true,
+        "broker": false,
+        "lossless_scientific17_trace_checked": true,
+        "disabled_management_history_reads_in_1000_ticks": 0
+      },
+      "native_compilation": {
+        "consumers": 17,
+        "bound_inputs": 59,
+        "errors": 0,
+        "warnings": 0,
+        "source_fingerprint": "dfed81430e3f2595",
+        "bound_compile_session": "5cf0afde21464af7ba34b1c1967529bb",
+        "scope": "compile only; no operational acceptance"
+      },
+      "official_launcher_journey": "pending",
+      "live_demo": "not exercised; separate existing authorization not transferred",
+      "physical_windows": "not exercised",
+      "netting": "not supported; refused",
+      "operational_acceptance": false,
+      "tester_backtest_model1": {
+        "state": "reconciled_backtest",
+        "session_id": "9bfd8a5389014a0a928b49a85242a8a0",
+        "run_id": "f64aa6b66e6348ab9ffc4c4474c5c14c",
+        "package_hash": "9f074caff09cbd79028ee07acf09ff01bafe966ba8548dbc1b362fefffbb6377",
+        "tester_model": "OHLC de 1 minuto",
+        "trades": 2,
+        "ledger": 2,
+        "deals": 6,
+        "partial_confirmations": 2,
+        "cash_reconciled": true,
+        "net_profit": -1.8399999999999999,
+        "input_count": 59,
+        "journal_entries": 2,
+        "journal_actions": 3,
+        "journal_all_settled": true,
+        "journal_final_reconciled": true,
+        "resources_released": true,
+        "elapsed_seconds": 101.52854657173157,
+        "live_broker_exercised": false,
+        "operational_acceptance": false,
+        "app_sha": "3945c9a13896473166e21b403c4b3e7a128e0fb1",
+        "hadouken_sha": "08875019b6e44a0efb16f325eb90cd085ebaf129",
+        "source_fingerprint": "dfed81430e3f2595",
+        "source_sha256": "0a01cb9f42a119d866c9c2f3fa4983cfbf72ed626470fb94b6f8cbc925160ddb",
+        "scope": "Tester model1 only; staged position reductions, not broker partial fill",
+        "broker_partial_fill_exercised": false,
+        "advanced_common_management_exercised": false
+      },
+      "tester_replay_initial_failure": {
+        "status": "failed_before_expert_init",
+        "session": "a429bc28ffff4dc7910ce572a49b8709",
+        "seconds": 179.96288776397705,
+        "resources_released": true,
+        "reference_match": false,
+        "identified_routing_bug": "preset input verifier delegates to Session but was classified as external launcher",
+        "fix_native_validation": "pending"
+      },
+      "tester_replay_model1": {
+        "state": "reconciled_replay",
+        "session_id": "f0236e24da84482ab1302a327b5ae4cb",
+        "run_id": "f44874a5745b472e86405f21ed31acc4",
+        "reference_run_id": "f64aa6b66e6348ab9ffc4c4474c5c14c",
+        "reference_match": true,
+        "functional_cycle": true,
+        "model": "OHLC de 1 minuto",
+        "actual_mode": {
+          "demo": true,
+          "tester": true,
+          "visual": true
+        },
+        "trades": 2,
+        "deals": 6,
+        "partials": 2,
+        "cash_reconciled": true,
+        "net_profit": -1.8399999999999999,
+        "journal_entries": 2,
+        "journal_actions": 3,
+        "journal_all_settled": true,
+        "resources_released": true,
+        "elapsed_seconds": 119.30571961402893,
+        "operational_acceptance": false,
+        "live_broker_exercised": false
+      },
+      "managed_backtest_model1": {
+        "state": "reconciled_backtest",
+        "session_id": "20a3de1fd9c042558624eac2afbd048d",
+        "run_id": "b87b85bce7924d53a4dba8d87c26598f",
+        "app_sha": "14e833cbe2c198b22479562f08f9525f55f1c1aa",
+        "hadouken_sha": "08875019b6e44a0efb16f325eb90cd085ebaf129",
+        "source_fingerprint": "dfed81430e3f2595",
+        "package_hash": "16639ce84808bce75138c5a34d690e474fbb51d430844b55c49b0e2f486ae23e",
+        "reference_run_id": null,
+        "reference_match": null,
+        "functional_cycle": false,
+        "tester_model": "OHLC de 1 minuto",
+        "actual_mode": {
+          "demo": true,
+          "tester": true,
+          "visual": false
+        },
+        "trades": 3,
+        "deals": 7,
+        "partials": 1,
+        "protection_causes": {
+          "breakeven": 2,
+          "trailing": 5
+        },
+        "management_acceptance": {
+          "dynamic_target": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "session_exit": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "signal_exit": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "trailing": {
+            "configured": true,
+            "events": 5,
+            "exercised": true,
+            "replay_qualified": false
+          },
+          "trigger_breakeven": {
+            "configured": true,
+            "events": 2,
+            "exercised": true,
+            "replay_qualified": false
+          }
+        },
+        "protection_acceptance": false,
+        "cash_reconciled": true,
+        "net_profit": 1.6199999999999997,
+        "journal_entries": 3,
+        "journal_actions": 8,
+        "journal_all_settled": true,
+        "resources_released": true,
+        "elapsed_seconds": 162.2753460407257,
+        "operational_acceptance": false,
+        "live_broker_exercised": false
+      },
+      "managed_replay_attempt": {
+        "state": "failed",
+        "elapsed_seconds": 180.17277646064758,
+        "resources_released": true,
+        "native_markers": 15,
+        "comparison_qualified": false,
+        "reason": "batch180seconds; Expert initialized and exercised protection, no complete replay",
+        "operational_acceptance": false,
+        "live_broker_exercised": false
+      }
+    },
+    "app_validation": {
+      "broad_tests": 435,
+      "broad_seconds": 344.45,
+      "broad_scope": "before final numerical trace change; final affected subset separately validated",
+      "final_affected_tests": 126,
+      "final_affected_seconds": 20.01,
+      "overlapping_cases_not_added": true,
+      "doctor": {
+        "ok": 16,
+        "warnings": 2,
+        "failures": 0,
+        "native_probed": false
+      },
+      "profile_activation": "gated",
+      "official_launcher_journey": "pending",
+      "previous_native_journal_compatibility": {
+        "entries": 7,
+        "actions": 9,
+        "checksums_payloads_order_verified": true,
+        "not_current_source_acceptance": true
+      },
+      "weighted_anchor_correction": {
+        "tests": 75,
+        "seconds": 14.51,
+        "before_reproduced": true,
+        "scope": "single qualified entry fill: native weighted entry price*volume/volume; original SL; no tolerance widening",
+        "native_acceptance": false
+      },
+      "replay_launcher_fix": {
+        "reproduced_before": true,
+        "scope": "preset INI verifier delegates to Session; visual runtime ownership retained; external runner contract unchanged; metadata not forwarded to Tester",
+        "first_regression_tests": 159,
+        "first_regression_seconds": 50.94,
+        "final_dispatch_subset_tests": 100,
+        "final_dispatch_subset_seconds": 11.02,
+        "overlapping_cases_not_added": true,
+        "native_retest": "baseline same-package visual replay reconciled on App14e; managed replay reached180s, source performance separate"
+      }
+    }
+  },
+  "heartbeat_contract": {
+    "liveness": "same exclusive transaction file and account/server identity; same live leader; update only pulse/leader timestamps",
+    "financial_barrier": "AcquireLock always reloads and validates complete authoritative journal under transaction lock",
+    "publication": "heartbeat is availability only; does not attest journal validity or authorize financial activity",
+    "ttl_seconds": 10,
+    "cadence_broker_seconds": 5,
+    "guards_unchanged": true
+  },
+  "private_protection": {
+    "page_id": "page_cdfc20f0ca1481918aaa093a4f6a33ed",
+    "sequence": 33,
+    "files": 190,
+    "databases": 2,
+    "archive_sha256": "4f99b7eeb157e5ae2ef673752962c4c0d084d0f76084714ac6cf0af8aff6e3b4",
+    "all_hashes_and_all_sqlite_table_counts_restored_from_cloud": true,
+    "scope": "preceding H088 native artifacts; current heartbeat validation protection follows milestone"
+  },
+  "hadouken_revision": "989534c383a6504e791c2327eb97215dd7b05648"
 }

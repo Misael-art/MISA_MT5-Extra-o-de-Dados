@@ -445,53 +445,56 @@ A sequência dos sete marcos permanece; o pilar continua incompleto.
 
 ### E14 — proteção comum e auditoria nativa em qualificação
 
-S09v2.10/59inputs usa o adaptador, executor e diário existentes: SL pontos/ATR14
+S09v2.10 compõe59 inputs no mesmo adaptador/executor/journal: SL pontos/ATR14
 fechado, TP pontos/R planejado, trailing pontos/ATR por barra, BE por gatilho,
-alvo virtual ATR limitado por R inicial real, saídas por sessão/sinal e orientação
-normal/invertida. Prioridade: risco → sessão → tempo → alvo virtual → sinal
-oposto → parcial/BE → trailing/BE. TP físico é preservado e mudanças de preset
-valem somente para a próxima sessão. Campos inativos/unidades/estimativas são
-explícitos na UI/API/compilador. ATR usa HDK_Atr/Wilder14 nas últimas250 barras
-fechadas; ausência obrigatória recusa entrada. TP `planned_r_v1` pré-fill é
-separado do `fixed_r` Python pós-fill, ainda pendente no nativo.
+alvo virtual ATR limitado pelo R real, saídas por sessão/sinal e orientação.
+Prioridade: risco → sessão → tempo → alvo virtual → sinal oposto → parcial/BE →
+trailing/BE. TP e média ponderada/R/volume inicial são preservados. Campos
+inativos, unidades e estimativas são explícitos na UI/API/compilador; alterações
+valem na próxima sessão. ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas.
+`planned_r_v1` pré-fill permanece distinto do `fixed_r` Python pós-fill.
 
-R de gestão usa a média ponderada inicial e o SL original. Mesmo um único fill
-pode produzir um ulp de diferença em preço×volume/volume: o leitor acompanha a
-âncora nativa, com regressão reproduzida e75 testes pertinentes em14,51s, sem
-ampliar tolerâncias. O final do Tester reconcilia o diário e emite hash/contexto;
-o App confere pedidos imutáveis, IDs, decisões, SL/TP e fills, retém o snapshot
-e compara gestão entre backtest/replay. Ações sem decisão/efeito e intenções
-pendentes impedem aprovação. Trace científico17 mantém binary64; a interface
-mostra pedido/efeito e oportunidade/aceite por modalidade.
+A auditoria final reconcilia o diário e publica hash/contexto; o App confere
+pedidos imutáveis, IDs, decisões, SL/TP e fills, copia o snapshot e compara gestão
+no replay. Ações sem decisão/efeito ou intenções pendentes não aprovam resultado.
+Trace científico17 preserva binary64. Uma correção acompanha a média ponderada
+nativa mesmo no único fill (preço×volume/volume), sem ampliar tolerâncias.
 
-HADOUKEN08875019, fingerprintdfed81430e3f2595,56 fontes/SHA256
-0a01cb9f42a119d866c9c2f3fa4983cfbf72ed626470fb94b6f8cbc925160ddb.
-164 testes H em133,984s/checker171;184 fontes iguais antes/depois. App435 testes
-amplos antes do ajuste numérico,126 afetados após e75 na âncora ponderada:
-seleções sobrepostas, nunca somar. Doctor offline16OK/2avisos/0falhas sem probe.
+Na fonteH08875019/dfed81430e3f2595:17 consumidores e wrapper59 compilados0/0.
+Baseline pelo Manual real, OHLC1min:2posições/6deals/2reduções confirmadas,
+caixa−1,84USD, diário2entradas/3ações conciliado. Replay visual do MESMO pacote/
+banco coincidiu com backtest,101,529s/119,306s e recursos liberados. O App14e
+corrigiu a classificação do verificador de INI para conservar o launcher Wine
+visual isolado da Session; o sinal interno não é parâmetro do Tester. Falha
+anterior sem OnInit ficou preservada. Não certifica cada tick ou broker parcial.
 
-Host Linux/Wine/MetaTester6296:17 consumidores e wrapper vinculado59 compilados
-0erros/0avisos. Backtest OHLC1min pelo preset real: sessão9bfd8a53, runf64aa6b6,
-2posições/6deals/2reduções confirmadas, caixa−1,84USD, diário2entradas/3ações
-conciliado, recursos liberados em101,529s. Vincula pacote/input/fonte/binário/
-sessão, sem exercitar gestão avançada, broker parcial ou cada tick.
+O cenário managed confirmou BE2/trailing5/parcial1 com TP fixo preservado:
+3posições/7deals, caixa1,62USD, diário3entradas/8ações conciliado em162,275s.
+Replay managed exerceu proteção, atingiu180,173s e liberou recursos sem concluir
+comparação. Heartbeat relia/reprojetava o diário inteiro a cada5s do broker.
 
-Replay do mesmo pacote ficou antes de OnInit e atingiu180s; recursos próprios
-liberados e comparação sem aceite. O verificador de INI delegava à Session,
-mas era classificado como runner externo e pulava seu Wine visual isolado.
-Correção mantém a Session dona do launcher e preserva runners externos;
-sinal interno não é parâmetro do Tester.159 testes passaram antes do ajuste de
-despacho e100 afetados passaram após, sobrepostos. Revalidação nativa do replay
-corrigido, modalidades avançadas, cada tick e jornada pelo launcher pendentes.
+HADOUKEN989534c3 publicado/pin de desenvolvimento reconciliado: o heartbeat usa
+somente a exclusão por arquivo/identidade e o mesmo líder para atualizar dois
+instantes. A barreira financeira SEMPRE recarrega/valida o diário completo;
+pulso não comprova reservas válidas. TTL10/cadência5 e guardas de recursos
+preservados. Novo teste de corpo MQL confirma zero recargas em10mil pulsos,
+recusa financeira com diário inválido mesmo após pulso recente e exclusão.
+Fonte candidataecbff494a15d51b9,56 fontes/SHA256
+ba1d675b6f8aa1557f90fafbceb56ba3a44d3b0d499297e9ec294970fa111cf8.
+165 testes H completos em80,228s,109 fontes verificadas inalteradas/checker171;
+17 consumidores da nova fonte compilados0/0. App175 testes afetados em18,60s;
+doctor offline16OK/2avisos/0falhas. Wrapper59 compilado0/0; Tester/replay desta
+fonte ainda precisam de qualificação; o aceite anterior não se transfere.
 
-Perfil permanece bloqueado (revisão qualificadaNone). Safety27b8599 detached,
-referências aceitas e SA-REF-01/runtime33c2fa1 preservados; protótipo não distribuído.
-A tarefa DEMO separada encerrou sem execução por preflight, zero ordens; sua
-autorização não se transfere. Nenhum PLAY nesta frente. A falha anterior53dbc265
-na guardaRAM85% e seu resgate foram preservados, sem transferir aceite.
+O perfil permanece bloqueado (revisão qualificadaNone). Safety27b8599 detached,
+SA-REF-01/runtime33c2fa1 e referências aceitas preservados; protótipo não
+distribuído. Nenhum PLAY, nem transferência da autorização DEMO separada que
+encerrou sem execução/zero ordens. Windows físico e netting mantêm gates próprios.
 
-Evidências por fonte/ambiente em E14_COMMON_POSITION_20261102.json. Página privada
-canônica seq32 tem os deltas restaurados e conferidos; novos artefatos nativos
-seguem no fluxo de proteção do marco. Pilar incompleto: TP por R real dos fills,
-recuperação/capacidade/pendentes, SA-01, orçamento ativo/grupo/plano, gradientes,
-probabilístico, DEMO autorizada, netting e Windows físico continuam em execução.
+Página privada canônica seq33:190 arquivos/dois bancos de QA, seis sessões da
+fonte088,15 partes/17 anexos; todos os hashes e contagens de todas as14 tabelas
+por banco restaurados da nuvem. Credenciais, relatórios de conta/logs brutos/
+registros Wine excluídos. Novos artefatos seguem o mesmo fluxo de proteção.
+Fatos por fonte/ambiente em E14_COMMON_POSITION_20261102.json. Continua em
+execução: gestão integral/TP R pós-fill/recuperação/capacidade, SA-01, orçamento
+ativo/grupo/plano, gradientes e probabilístico, além dos aceites operacionais.
