@@ -1,5 +1,6 @@
 """Contratos E14 com diário/fills sintéticos, nunca aceite de broker."""
 from datetime import datetime, timezone
+import math
 
 import pytest
 
@@ -158,3 +159,49 @@ def test_original_r_uses_the_native_weighted_entry_even_for_one_fill(prepared):
     target=anchor+.2
     path.write_text(f"HDK_TARGET position={POSITION} at=1500 direction=1 initial_entry={anchor:.16e} initial_risk={risk:.16e} closed_atr=0.1 target={target:.16e} executable=1.6 acknowledged=1\n")
     assert proof(prepared)[0]["initial_risk"] == risk
+
+
+def normalized_initial_protection(case):
+    """Synthetic decimal quote: requested binary64 differs by one ulp."""
+    close_case(case)
+    _,path,inputs,journal,signals,deals,ledger=case
+    price,volume,stop,target=1.0004,.05,1.,1.002
+    anchor=price*volume/volume;risk=anchor-stop
+    requested_stop=math.nextafter(stop,0.)
+    assert risk != anchor-requested_stop
+    signals[0]["filled_volume"]=volume
+    deals[0].update(price=price,volume=volume,digits=5)
+    deals[1].update(price=1.001,volume=volume,digits=5)
+    ledger[0].update(entry_price=price,stop_price=stop,target_price=target)
+    journal["entries"][0].update(initial_stop=requested_stop,initial_target=math.nextafter(target,0.),requested_volume=volume)
+    journal["actions"][0].update(before=volume,requested=volume,confirmed=volume)
+    inputs.update(InpTargetMode=2,InpDynamicTargetMinR=1,InpDynamicTargetMaxR=4,InpDynamicTargetATR=2)
+    virtual_target=anchor+.0006
+    path.write_text(f"HDK_TARGET position={POSITION} at=1500 direction=1 initial_entry={anchor:.16e} initial_risk={risk:.16e} closed_atr=0.0003 target={virtual_target:.16e} executable=1.001 acknowledged=1\n")
+    return risk
+
+
+def test_original_r_uses_observed_initial_stop_after_decimal_normalization(prepared):
+    risk=normalized_initial_protection(prepared)
+    row=proof(prepared)[0]
+    assert row["initial_risk"] == risk
+    assert row["initial_risk"] != row["initial_entry"]-prepared[3]["entries"][0]["initial_stop"]
+
+
+@pytest.mark.parametrize("fault",["stop_point","target_point","many_ulps","unknown_digits","bool_digits"])
+def test_normalized_initial_protection_never_accepts_another_price_level(prepared,fault):
+    normalized_initial_protection(prepared)
+    entry=prepared[3]["entries"][0];opened=prepared[5][0]
+    if fault=="stop_point":entry["initial_stop"]=1.-.00001
+    elif fault=="target_point":entry["initial_target"]=1.002+.00001
+    elif fault=="many_ulps":entry["initial_stop"]=1.-32*math.ulp(1.)
+    elif fault=="unknown_digits":opened.pop("digits")
+    else:opened["digits"]=True
+    with pytest.raises(ValueError):proof(prepared)
+
+
+def test_trailing_keeps_the_observed_tp_when_request_had_one_ulp_rounding(prepared):
+    journal=prepared[3];prepared[5][0]["digits"]=2
+    journal["entries"][0].update(initial_stop=math.nextafter(90.,0.),initial_target=math.nextafter(140.,0.))
+    row=proof(prepared)[0]
+    assert row["initial_risk"] == 10 and row["tp"] == 140

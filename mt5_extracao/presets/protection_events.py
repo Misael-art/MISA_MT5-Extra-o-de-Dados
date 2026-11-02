@@ -45,6 +45,16 @@ def _same(left, right):
     return math.isfinite(left) and math.isfinite(right) and abs(left-right) <= 8*max(math.ulp(left),math.ulp(right))
 
 
+def _same_price(requested, observed, digits):
+    # O journal retém o pedido binary64; o histórico/CSV observa o preço
+    # decimal aceito. Só reconhecer a MESMA cotação, dentro do limite de ulps
+    # já usado pelo leitor e estritamente abaixo de meio ponto do símbolo.
+    if requested == observed:return True
+    return (type(digits) is int and 0 <= digits <= 8 and _same(requested,observed)
+            and abs(requested-observed) < 10.0**(-digits)/2
+            and round(requested,digits) == observed == round(observed,digits))
+
+
 def _reference_stop(row, inputs):
     """Conformidade binary64 do contrato, com trace17 dígitos e inputs efetivos.
 
@@ -92,15 +102,18 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
         _require(len(trades) == 1)
         fill=fills[0];trade=trades[0]
         _require(_same(entry["requested_volume"],fill["volume"]) and _same(signal["filled_volume"],fill["volume"]))
-        _require(entry["initial_stop"] == trade["stop_price"] and entry["initial_target"] == trade["target_price"] and entry["direction"] == trade["direction"] and abs(fill["price"]-entry["initial_stop"]) > 0)
+        _require(_same_price(entry["initial_stop"],trade["stop_price"],fill.get("digits")) and
+                 _same_price(entry["initial_target"],trade["target_price"],fill.get("digits")) and
+                 entry["direction"] == trade["direction"] and abs(fill["price"]-trade["stop_price"]) > 0,
+                 "SL/TP solicitados não correspondem à proteção inicial observada; preserve pedido e histórico.")
         # Mesmo com um único deal, preço*volume/volume pode diferir um ulp.
         # A gestão nativa ancora na média ponderada, não no preço cru do deal.
         anchor=fill["price"]*fill["volume"]/fill["volume"]
-        _require(math.isfinite(anchor) and anchor > 0 and (anchor-entry["initial_stop"])*trade["direction"] > 0)
-        by_position[position]=dict(entry=entry,fill=fill,trade=trade,anchor=anchor,risk=abs(anchor-entry["initial_stop"]))
+        _require(math.isfinite(anchor) and anchor > 0 and (anchor-trade["stop_price"])*trade["direction"] > 0)
+        by_position[position]=dict(entry=entry,fill=fill,trade=trade,anchor=anchor,risk=abs(anchor-trade["stop_price"]))
     _require(len(by_position) == len(ledger))
     _require(all(row["state"] == 5 or row["position"] in by_position for row in journal["entries"]))
-    actions={row["intent_hash"]:row for row in journal["actions"]};seen_deals=set();last_stop={pid:row["entry"]["initial_stop"] for pid,row in by_position.items()}
+    actions={row["intent_hash"]:row for row in journal["actions"]};seen_deals=set();last_stop={pid:row["trade"]["stop_price"] for pid,row in by_position.items()}
     for action in journal["actions"]:
         _require(action["kind"] in (1,2) and action["position"] in by_position)
         base=by_position[action["position"]]
@@ -114,7 +127,8 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
             _require(_same(action["before"]-action["confirmed"],action["remaining"]))
         if action["effect"] == 3:
             direction=base["trade"]["direction"]
-            _require((action["stop"]-last_stop[action["position"]])*direction >= 0 and action["tp"] == base["entry"]["initial_target"])
+            _require((action["stop"]-last_stop[action["position"]])*direction >= 0 and
+                     _same_price(action["tp"],base["trade"]["target_price"],base["fill"].get("digits")))
             last_stop[action["position"]]=action["stop"]
     text="\n".join(mql.read_text(path) for path in (Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     events=[];seen_intents=set();seen_actions=set()
@@ -139,7 +153,9 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
             _require(key == row["intent"])
             intent=_intent(context,key)
             _require(_same(row["initial_entry"],base["anchor"]) and _same(row["initial_risk"],base["risk"]) and _same(row["initial_volume"],base["fill"]["volume"]))
-            _require(row["tp"] == row["tp_before"] == base["entry"]["initial_target"] and raw["acknowledged"] == raw["observed"] == "1")
+            _require(row["tp"] == row["tp_before"] and
+                     _same_price(row["tp"],base["trade"]["target_price"],base["fill"].get("digits")) and
+                     raw["acknowledged"] == raw["observed"] == "1")
             expected,cause=_reference_stop(row,inputs)
             _require((row["requested"]-row["before"])*direction > 0 and _same(row["requested"],expected) and cause is not None)
             row["cause"]=cause

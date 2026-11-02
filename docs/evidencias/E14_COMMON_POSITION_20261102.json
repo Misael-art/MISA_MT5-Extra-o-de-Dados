@@ -128,12 +128,311 @@
         "scope": "compile only; explicit fixture package hash, no operational acceptance"
       }
     },
-    "tester_replay": "pending for new source; no transfer from previous fingerprint",
-    "official_launcher_journey": "pending",
+    "tester_replay": {
+      "scope": "current H989/ecbff source; per-mode operational scope only",
+      "managed_model1": {
+        "backtest": {
+          "state": "reconciled_backtest",
+          "session_id": "609f94798177470facc210f43c2352f6",
+          "run_id": "37c656e0f2ca45fb9d0eb85ffa45d9d0",
+          "app_sha": "8a3182737750414f53f334455bf304d3602ceeef",
+          "hadouken_sha": "989534c383a6504e791c2327eb97215dd7b05648",
+          "source_fingerprint": "ecbff494a15d51b9",
+          "package_hash": "3f688b5b7dec4c57e43118cddf200a672c95e631a421c342e032b565d0a4d333",
+          "reference_run_id": null,
+          "reference_match": null,
+          "functional_cycle": false,
+          "tester_model": "OHLC de 1 minuto",
+          "actual_mode": {
+            "demo": true,
+            "tester": true,
+            "visual": false
+          },
+          "trades": 3,
+          "deals": 7,
+          "partials": 1,
+          "protection_causes": {
+            "breakeven": 2,
+            "trailing": 5
+          },
+          "management_acceptance": {
+            "dynamic_target": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "session_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "signal_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "trailing": {
+              "configured": true,
+              "events": 5,
+              "exercised": true,
+              "replay_qualified": false
+            },
+            "trigger_breakeven": {
+              "configured": true,
+              "events": 2,
+              "exercised": true,
+              "replay_qualified": false
+            }
+          },
+          "protection_acceptance": false,
+          "cash_reconciled": true,
+          "net_profit": 1.6199999999999997,
+          "journal_entries": 3,
+          "journal_actions": 8,
+          "journal_all_settled": true,
+          "resources_released": true,
+          "elapsed_seconds": 53.41074585914612,
+          "operational_acceptance": false,
+          "live_broker_exercised": false
+        },
+        "replay": {
+          "state": "reconciled_replay",
+          "session_id": "c110e75409504361ae682654ee68f88e",
+          "run_id": "75a405bfce0140d8b54a23a501dd0f3b",
+          "app_sha": "8a3182737750414f53f334455bf304d3602ceeef",
+          "hadouken_sha": "989534c383a6504e791c2327eb97215dd7b05648",
+          "source_fingerprint": "ecbff494a15d51b9",
+          "package_hash": "3f688b5b7dec4c57e43118cddf200a672c95e631a421c342e032b565d0a4d333",
+          "reference_run_id": "37c656e0f2ca45fb9d0eb85ffa45d9d0",
+          "reference_match": true,
+          "functional_cycle": true,
+          "tester_model": "OHLC de 1 minuto",
+          "actual_mode": {
+            "demo": true,
+            "tester": true,
+            "visual": true
+          },
+          "trades": 3,
+          "deals": 7,
+          "partials": 1,
+          "protection_causes": {
+            "breakeven": 2,
+            "trailing": 5
+          },
+          "management_acceptance": {
+            "dynamic_target": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "session_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "signal_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "trailing": {
+              "configured": true,
+              "events": 5,
+              "exercised": true,
+              "replay_qualified": true
+            },
+            "trigger_breakeven": {
+              "configured": true,
+              "events": 2,
+              "exercised": true,
+              "replay_qualified": true
+            }
+          },
+          "protection_acceptance": true,
+          "cash_reconciled": true,
+          "net_profit": 1.6199999999999997,
+          "journal_entries": 3,
+          "journal_actions": 8,
+          "journal_all_settled": true,
+          "resources_released": true,
+          "elapsed_seconds": 89.34665036201477,
+          "operational_acceptance": false,
+          "live_broker_exercised": false
+        }
+      },
+      "gui_export_model0": {
+        "backtest": {
+          "state": "reconciled_backtest",
+          "session_id": "33a6fab7ded745379ef3530676461360",
+          "run_id": "2aadc352278d40e19f44badef5222341",
+          "app_sha": "8a3182737750414f53f334455bf304d3602ceeef",
+          "hadouken_sha": "989534c383a6504e791c2327eb97215dd7b05648",
+          "source_fingerprint": "ecbff494a15d51b9",
+          "package_hash": "1f9353449f83ed7f2df9229aa96256539e31ccc832347c8cccf0d475018dfc0c",
+          "reference_run_id": null,
+          "reference_match": null,
+          "functional_cycle": false,
+          "tester_model": "cada tick",
+          "actual_mode": {
+            "demo": true,
+            "tester": true,
+            "visual": false
+          },
+          "trades": 3,
+          "deals": 7,
+          "partials": 1,
+          "protection_causes": {
+            "breakeven": 2,
+            "trailing": 5
+          },
+          "management_acceptance": {
+            "dynamic_target": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "session_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "signal_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "trailing": {
+              "configured": true,
+              "events": 5,
+              "exercised": true,
+              "replay_qualified": false
+            },
+            "trigger_breakeven": {
+              "configured": true,
+              "events": 2,
+              "exercised": true,
+              "replay_qualified": false
+            }
+          },
+          "protection_acceptance": false,
+          "cash_reconciled": true,
+          "net_profit": 1.46,
+          "journal_entries": 3,
+          "journal_actions": 8,
+          "journal_all_settled": true,
+          "resources_released": true,
+          "elapsed_seconds": 68.091073513031,
+          "operational_acceptance": false,
+          "live_broker_exercised": false
+        },
+        "replay": {
+          "state": "reconciled_replay",
+          "session_id": "779b9dca7ac24a66a2adce7cfb35a4e2",
+          "run_id": "dc23214a182046e981684331a0e0b874",
+          "app_sha": "8a3182737750414f53f334455bf304d3602ceeef",
+          "hadouken_sha": "989534c383a6504e791c2327eb97215dd7b05648",
+          "source_fingerprint": "ecbff494a15d51b9",
+          "package_hash": "1f9353449f83ed7f2df9229aa96256539e31ccc832347c8cccf0d475018dfc0c",
+          "reference_run_id": "2aadc352278d40e19f44badef5222341",
+          "reference_match": true,
+          "functional_cycle": true,
+          "tester_model": "cada tick",
+          "actual_mode": {
+            "demo": true,
+            "tester": true,
+            "visual": true
+          },
+          "trades": 3,
+          "deals": 7,
+          "partials": 1,
+          "protection_causes": {
+            "breakeven": 2,
+            "trailing": 5
+          },
+          "management_acceptance": {
+            "dynamic_target": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "session_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "signal_exit": {
+              "configured": false,
+              "events": 0,
+              "exercised": false,
+              "replay_qualified": false
+            },
+            "trailing": {
+              "configured": true,
+              "events": 5,
+              "exercised": true,
+              "replay_qualified": true
+            },
+            "trigger_breakeven": {
+              "configured": true,
+              "events": 2,
+              "exercised": true,
+              "replay_qualified": true
+            }
+          },
+          "protection_acceptance": true,
+          "cash_reconciled": true,
+          "net_profit": 1.46,
+          "journal_entries": 3,
+          "journal_actions": 8,
+          "journal_all_settled": true,
+          "resources_released": true,
+          "elapsed_seconds": 170.45223474502563,
+          "operational_acceptance": false,
+          "live_broker_exercised": false
+        }
+      },
+      "remaining": "ATR/dynamic/session/signal/inversion and confirmed-partial BE current-source cases remain in qualification"
+    },
+    "official_launcher_journey": {
+      "runtime_sha": "8a3182737750414f53f334455bf304d3602ceeef",
+      "real_Tk": true,
+      "offline": true,
+      "product_gate_refusal_dialog_exercised": true,
+      "candidate_process_override": true,
+      "manual_created_revision": 2,
+      "selected_exported_and_reopened_after_process_restart": true,
+      "inputs": 59,
+      "exact_exported_package_consumed_by_SDK": true,
+      "native_UI_launch_buttons": "not exercised; offline UI; SDK execution separately observed",
+      "screenshots": "owned Tk windows only; inspected",
+      "financial_live_orders": false
+    },
     "live_demo": "not exercised; separate authorization not transferred",
     "physical_windows": "not exercised",
     "netting": "not supported; refused",
-    "operational_acceptance": false
+    "operational_acceptance": false,
+    "initial_price_normalization_attempt": {
+      "state": "verification_failed",
+      "native_session": "1a3c2fc5c86241288d01adb72db2c8a7",
+      "native_completed": true,
+      "cash_reconciled": true,
+      "seconds": 53.983633518218994,
+      "resources_released": true,
+      "reason": "requested binary64 SL differs one ulp from observed same decimal quote",
+      "post_correction_read_only_audit_events": 2,
+      "new_native_cycle": "pending"
+    }
   },
   "remaining": [
     "native qualification of this exact new source and F04.6 journal maintenance",
@@ -261,6 +560,14 @@
         "failures": 0,
         "native_probed": false
       }
+    },
+    "initial_price_normalization_correction": {
+      "before_regression_failures": 2,
+      "tests": 196,
+      "seconds": 21.28,
+      "price_comparison": "existing8ulp bound plus known native digits0..8, same decimal quote, strictly below half point; distinct levels refused",
+      "management_r": "weighted actual entry minus observed original historical SL",
+      "h_source_unchanged": true
     }
   },
   "parent_hadouken_revision": "08875019b6e44a0efb16f325eb90cd085ebaf129",

@@ -483,8 +483,22 @@ Fonte candidataecbff494a15d51b9,56 fontes/SHA256
 ba1d675b6f8aa1557f90fafbceb56ba3a44d3b0d499297e9ec294970fa111cf8.
 165 testes H completos em80,228s,109 fontes verificadas inalteradas/checker171;
 17 consumidores da nova fonte compilados0/0. App175 testes afetados em18,60s;
-doctor offline16OK/2avisos/0falhas. Wrapper59 compilado0/0; Tester/replay desta
-fonte ainda precisam de qualificação; o aceite anterior não se transfere.
+doctor offline16OK/2avisos/0falhas. Wrapper59 compilado0/0. Na fonte nova, managed OHLC1min e replay coincidiram
+(53,411s/89,347s). O pacote Manualv2 exportado pelo Tk do atalho oficial também
+passou em cada tick e replay:3posições/7deals/1parcial/BE2/trailing5, caixa1,46USD,
+68,091s/170,452s, diário3entradas/8ações conciliado e recursos liberados. Ticks
+reais continuam não comprovados. Capturas só da janela própria foram inspecionadas.
+A recusa visual do perfil bloqueado foi exercitada; edição/exportação usou override
+só no processo de QA. Botões de execução da UI ainda não foram exercitados; o SDK
+consumiu o pacote GUI exato no mesmo banco de QA.
+
+Primeiro alvo dinâmico terminou no MT5 com dois fechamentos, mas a auditoria
+recusou SL pedido versus SL histórico da mesma cotação decimal (um ulp). O leitor
+mantém o limite8ulp já existente e exige dígitos nativos, igualdade decimal e
+diferença menor que meio ponto; outro nível continua recusado. R usa o SL inicial
+observado, como o nativo.196 regressões passaram em21,28s após reproduzir duas
+falhas; reauditoria dos artefatos confere dois alvos, sem alterar o recibo falho.
+Novo ciclo dinâmico e demais modalidades permanecem em qualificação.
 
 O perfil permanece bloqueado (revisão qualificadaNone). Safety27b8599 detached,
 SA-REF-01/runtime33c2fa1 e referências aceitas preservados; protótipo não
