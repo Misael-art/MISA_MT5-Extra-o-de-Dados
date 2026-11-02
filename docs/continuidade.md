@@ -5867,8 +5867,17 @@ b927af079a64ea02c7429e8a1f80489916e306ece02ff0628cf2d76506f8086a.
 166 testes H completos em81,069s,171 fontes inalteradas/checker171. App585 testes
 em130,60s/28 módulos, incluindo consumidores de eventos anteriores; doctor offline
 16OK/2avisos/0falhas.17 consumidores com compilações válidas0/0 (15 observações
-idênticas reaproveitadas e dois consumidores recompilados). Wrapper59 compilado0/0;
-Tester/replay desta fonte pendentes. Versão anterior não promove a nova por inferência.
+idênticas reaproveitadas e dois consumidores recompilados). Wrapper59 compilado0/0.
+Na fonte2.11, seis backtests cada tick conciliados: ATR com7trailing/2BE, alvo
+dinâmico com2closes, saída por sessão, saída por sinal, normal e invertido com
+2parciais cada. Todos com diário encerrado e recursos liberados; ticks reais
+não informados. Replay ATR falhou pela guarda85%RAM e, depois, pelo orçamento180s;
+nenhum deles aprova comparação. Launcher corrigido para compilar no perfil SDK
+próprio antes de inicializar o Wine visual, com prova de saída do compilador e
+sem reiniciar o prefixo compartilhado.216regressões/11módulos passaram em52,91s,
+mais doctor16OK/2avisos/0falhas sem probe. Aceite nativo da mudança pendente.
+CI App28d: Linux passou; Windows7falhas/4522passaram/193não executados. Shim MQL
+long do teste corrigido para int64 explícito;29testes/5,09s no Linux, Windows pendente.
 
 Na fonteH989534c3/2.10/ecbff494a15d51b9: managed OHLC1min backtest/replay
 coincidiram em53,411s/89,347s. Manualv2 criado/exportado/reaberto no Tk do atalho
@@ -5887,10 +5896,10 @@ do dado histórico, com qualificação nativa própria ainda necessária.
 
 Perfil continua bloqueado (revisão qualificadaNone). Safety27b8599 detached,
 SA-REF-01/runtime33c2fa1 e referências preservados; protótipo não distribuído.
-Nenhum PLAY nem autorização DEMO transferida. Página privada canônica seq34:
-232 arquivos/cinco bancos e seis sessões concluídas restaurados da nuvem, todos
-os hashes/contagens de TODAS as tabelas conferidos; sequência então ativa excluída
-e no próximo delta. Credenciais/contas/configurações/logs brutos não integram o
+Nenhum PLAY nem autorização DEMO transferida. Página privada canônica seq35:
+último delta245arquivos/dois bancos/quatro sessões restaurados da nuvem, todos
+os hashes/contagens de TODAS as tabelas conferidos. Ensaios financeiros2.11
+posteriores à coleta estão no próximo delta. Credenciais/contas/configurações/logs brutos não integram o
 resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
 execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
 ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.

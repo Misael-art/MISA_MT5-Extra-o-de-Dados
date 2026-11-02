@@ -7,6 +7,7 @@ import io
 import json
 import math
 from pathlib import Path
+import re
 import subprocess
 from types import SimpleNamespace
 
@@ -103,15 +104,20 @@ def test_runtime_binding_has_independent_canonical_payload_and_requires_complete
 
 def test_actual_mql_binding_serialization_matches_binary64_on_simulated_platform(robot,tmp_path):
     """Compila o MQL gerado como C++; não representa MT5 ou aceite de broker."""
-    source = native_inputs.binding_source(robot, FIELDS)
+    # MQL long é int64 também no Windows; C++ long é int32 nesse host.
+    # Traduzir só o tipo da plataforma, conservando o corpo MQL efetivo.
+    source = re.sub(r"\blong\b", "mql_long", native_inputs.binding_source(robot, FIELDS))
     shim = r'''
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <limits>
 #include <string>
 using string=std::string;
-string IntegerToString(long value){return std::to_string(value);}
-long StringLen(const string &s){return s.size();}
+using mql_long=std::int64_t;
+static_assert(sizeof(mql_long)==8);
+string IntegerToString(mql_long value){return std::to_string(value);}
+int StringLen(const string &s){return s.size();}
 bool MathIsValidNumber(double value){return std::isfinite(value);}
 double MathAbs(double value){return std::fabs(value);}
 const double EMPTY_VALUE=std::numeric_limits<double>::max();
@@ -121,9 +127,10 @@ int Period=21;double Risk=.25;bool Enabled=true;string PresetId="manual_01";
     numbers = [0., -0., .1, .25, -3.75, math.nextafter(1.,0.), math.nextafter(1.,2.),
                float.fromhex("0x0.0000000000001p-1022"), float.fromhex("0x1.0p-1022"), 1e-200, 1e200]
     checks = []
-    for value in numbers:
+    for index, value in enumerate(numbers):
         expected = native_inputs.binding_payload(robot, dict(EXPECTED, Risk=value), FIELDS)
-        checks.append(f"Risk={value.hex()};if(MT5X_RuntimeInputs()!={json.dumps(expected)})return 1;")
+        checks.append(f"Risk={value.hex()};if(MT5X_RuntimeInputs()!={json.dumps(expected)})"
+                      f'{{std::cerr<<"binary64 case {index}: "<<MT5X_RuntimeInputs();return 1;}}')
     checks.append('Risk=std::numeric_limits<double>::quiet_NaN();if(!MT5X_RuntimeInputs().empty())return 2;')
     file, binary = tmp_path/"binding.cpp", tmp_path/"binding"
     file.write_text(shim + source + "\nint main(){" + "\n".join(checks) + "}\n")

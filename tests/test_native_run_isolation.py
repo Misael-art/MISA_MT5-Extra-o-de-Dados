@@ -186,6 +186,65 @@ def test_session_launcher_metadata_is_not_forwarded_as_a_tester_parameter(home,m
     assert len(seen)==1 and "run_uses_session_launcher" not in seen[0]
 
 
+def test_replay_compiles_before_starting_its_private_visual_runtime(home,monkeypatch):
+    """Compilação usa o perfil próprio; só o terminal precisa do Wine visual privado."""
+    from mt5_extracao.robots import sessions,session_wine
+    phases=[]
+    class Runtime:
+        def __init__(self,source,directory):
+            assert phases==["compiled"]
+            self.prefix=directory/".wine";self.source=source
+        def prepare(self,copy):
+            phases.append("visual_prepared");self.prefix.mkdir()
+            (self.prefix/"drive_c").symlink_to(self.prefix.parent,target_is_directory=True)
+    def compile_source(source,editor,prefix,**kwargs):
+        assert prefix==home.prefix and job.visual_runtime is None
+        assert source.is_relative_to(job.directory) and source.name=="mt5x_session.mq5"
+        source.with_suffix(".ex5").write_bytes(b"compiled from own wrapper")
+        phases.append("compiled")
+        return SimpleNamespace(ok=True,warnings=0)
+    monkeypatch.setattr(session_wine,"Runtime",Runtime)
+    monkeypatch.setattr(mt5_tools,"compile_source",compile_source)
+    job=sessions.Session(home.db,home.config,home.robot,"EURUSD","H1",mode="replay",
+                         root=home.prefix/"drive_c/private-runs",
+                         native_options=dict(run=lambda *args:None,run_uses_session_launcher=True))
+    with mt5_tools.tester_lease():
+        try:compiled=job._prepare_expert(allow_binary=True)
+        finally:mt5_tools.release_native_context(job)
+    assert phases==["compiled","visual_prepared"]
+    assert compiled.with_suffix(".ex5").read_bytes()==b"compiled from own wrapper"
+    assert mt5_tools.wine_prefix(job.child_config)==job.visual_runtime.prefix
+
+
+@pytest.mark.parametrize("unreadable",[False,True])
+def test_visual_prefix_transition_refuses_unfinished_or_unreadable_compiler(home,monkeypatch,unreadable):
+    from mt5_extracao.robots import sessions,session_wine
+    def compile_source(source,*args,**kwargs):
+        source.with_suffix(".ex5").write_bytes(b"own compiled wrapper")
+        return SimpleNamespace(ok=True,warnings=0)
+    def processes(config,names,*,strict,launchers):
+        assert strict and launchers and "MetaEditor64.exe" in names
+        assert mt5_tools.wine_prefix(config)==home.prefix
+        if unreadable:raise RuntimeError("processo próprio ilegível")
+        return [SimpleNamespace(pid=12345)]
+    def forbidden(*args,**kwargs):
+        pytest.fail("changed ownership prefix before proving compiler exit")
+    monkeypatch.setattr(mt5_tools,"compile_source",compile_source)
+    monkeypatch.setattr(session_wine,"Runtime",forbidden)
+    job=sessions.Session(home.db,home.config,home.robot,"EURUSD","H1",mode="replay",
+                         root=home.prefix/"drive_c/private-runs",
+                         native_options=dict(run=lambda *args:None,run_uses_session_launcher=True))
+    with mt5_tools.tester_lease():
+        try:
+            with monkeypatch.context() as ownership:
+                ownership.setattr(sessions,"owned_processes",processes)
+                with pytest.raises(RuntimeError,match="ilegível|compilador próprio"):
+                    job._prepare_expert(allow_binary=True)
+        finally:mt5_tools.release_native_context(job)
+    assert job.visual_runtime is None and mt5_tools.wine_prefix(job.child_config)==home.prefix
+    assert not (job.directory/".wine").exists()
+
+
 def test_legacy_binary_is_not_silently_used_for_source_only_controls(home,tmp_path):
     from mt5_extracao.robots import catalog,sessions
     original=tmp_path/"Opaque.ex5";original.write_bytes(b"binary")

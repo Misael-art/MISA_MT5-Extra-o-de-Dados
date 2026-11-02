@@ -673,6 +673,27 @@ class Session:
         except (OSError, ValueError, TypeError, AttributeError, IndexError):
             return controls.activity_state(self.active), None, None
 
+    def _prepare_visual_runtime(self):
+        # Runner externo possui seu ambiente. O interceptador de presets só
+        # confere INI/inputs e delega à Session, que continua dona do launcher.
+        own_launcher = (self.native_options is None or self.native_options.get("run") is None
+                        or self.native_options.get("run_uses_session_launcher") is True)
+        if (self.visible or self.mode == "play") and not paths.is_windows() and own_launcher:
+            # O compilador trabalha nos arquivos privados do SDK, pelo prefixo
+            # já disponível. Só o terminal interativo inicia o Wine visual.
+            # Não trocar de escopo enquanto restar processo próprio de compilação.
+            if owned_processes(self.child_config, ("terminal64.exe", "MetaEditor64.exe", "metatester64.exe"),
+                               strict=True, launchers=True):
+                raise RuntimeError("O compilador próprio ainda não encerrou; preserve a sessão antes de abrir o terminal visual.")
+            self._check_cancel()
+            from functools import partial
+            from .session_wine import Runtime
+            self.visual_runtime = Runtime(mt5_tools.wine_prefix(self.config), self.directory)
+            self.visual_runtime.prepare(partial(_copy_file, check=self._check_cancel))
+            self.child_config["MT5"]["wine_prefix"] = str(self.visual_runtime.prefix)
+            if self.mode != "play":
+                mt5_tools.register_native_context(self)
+
     def _prepare_expert(self, *, allow_binary=False, compiled_override=None):
         """Preparação única dos executores existentes; o binário legado não ganha observador fictício."""
         self._check_cancel()
@@ -686,18 +707,6 @@ class Session:
         self.child_config = prepare(self.config, self.robot, self.directory, self.symbol,
                                     require_source=not allow_binary, check=self._check_cancel,
                                     _child=self.child_config)
-        # Runner externo possui seu ambiente. O interceptador de presets só
-        # confere INI/inputs e delega à Session, que continua dona do launcher.
-        own_launcher = (self.native_options is None or self.native_options.get("run") is None
-                        or self.native_options.get("run_uses_session_launcher") is True)
-        if (self.visible or self.mode == "play") and not paths.is_windows() and own_launcher:
-            from functools import partial
-            from .session_wine import Runtime
-            self.visual_runtime = Runtime(mt5_tools.wine_prefix(self.config), self.directory)
-            self.visual_runtime.prepare(partial(_copy_file, check=self._check_cancel))
-            self.child_config["MT5"]["wine_prefix"] = str(self.visual_runtime.prefix)
-            if self.mode != "play":
-                mt5_tools.register_native_context(self)
         self.child_config._mt5x_session = self
         self._check_cancel()
         dependency_run = (self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
@@ -722,6 +731,7 @@ class Session:
             target = mt5_tools.install_plan(self.robot, self.directory)[0].target.with_suffix(".ex5")
             _copy_file(origin, target, check=self._check_cancel)
             self.instrumented = False
+            self._prepare_visual_runtime()
             return target
         plan = mt5_tools.install_plan(self.robot, self.directory)
         wrapper = plan[0].target.with_name("mt5x_session.mq5")
@@ -773,6 +783,7 @@ class Session:
                 retain(files=[str(scoped/"runtime_binding.txt"),str(scoped/"runtime_bound.txt")])
             self._verify_runtime_artifacts()
         self.instrumented = True
+        self._prepare_visual_runtime()
         return wrapper
 
     def _runtime_source_hashes(self):
@@ -857,10 +868,6 @@ class Session:
                 self.account = current
             wrapper = self._prepare_expert(allow_binary=self.native_options is not None,
                                            compiled_override=self.native_options.get("compiled_override") if self.native_options else None)
-            if self.visual_runtime is not None:
-                # Compilador encerrado. O lançamento consulta novamente os monitores
-                # e inicializa seu desktop sem herdar uma tela retirada nesse intervalo.
-                self.visual_runtime.stop()
             # Usar o nome próprio: a recompilação automática do MT5 pode regenerar
             # o binário original, sem os observadores, ao abrir uma instalação nova.
             self._check_cancel()
