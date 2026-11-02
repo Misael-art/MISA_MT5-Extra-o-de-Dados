@@ -33,6 +33,15 @@ SIGNAL = f"2026.10.01 08:30:00   HDK_STRATEGY_SIGNAL event_at={BAR} direction=1 
 ZERO = dict(commission=0.0, swap=0.0, fee=0.0)
 
 
+def test_close_logs_keep_legacy_and_confirmed_volume_without_claiming_flat():
+    text = log("Posição #2 fechada (fim do dia)",
+               "Redução #2 executado: 0.01000000 lote(s) (parcial confirmável); conferir saldo",
+               "Pedido de cancelamento #3 aceito; conciliar efeito: fim do dia",
+               "Fechamento não confirmado integralmente; conciliar sem repetição automática",
+               "Volume de fechamento #2 executado: 0.01000000 lote(s) (tempo máximo); conferir saldo")
+    assert parity.parse_close_lines(text) == {"2": ["fim do dia", "parcial confirmável", "tempo máximo"]}
+
+
 def reconcile(python, native, text=log(DECISION, SIGNAL), costs=ZERO, **kw):
     return parity.reconcile_trades(python, native, events=parity.parse_strategy_events(text), python_costs=costs, **kw)
 

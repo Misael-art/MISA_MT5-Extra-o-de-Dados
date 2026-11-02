@@ -262,11 +262,18 @@ def parse_decision_lines(text: str, prefix: str = "SAREF_DECISION") -> List[dict
 
 
 def parse_close_lines(text: str) -> dict:
-    """Fechamentos feitos pelo host ("Posição #<ticket> fechada (<motivo>)"), por ticket/posição."""
+    """Motivos de volume executado, por ticket; saldo final exige CSV/histórico.
+
+    Preserva o log legado das referências e lê a mensagem explícita do executor
+    atual. Aceitação, parcial do broker e recusa não são execução confirmada.
+    """
     import re
     closes = {}
-    for match in re.finditer(r"Posição #(\d+) fechada \(([^)]*)\)", text):
-        closes.setdefault(match.group(1), []).append(match.group(2))
+    pattern = (r"Posição #(\d+) fechada \(([^)]*)\)|"
+               r"(?:Redução|Volume de fechamento) #(\d+) executado: [0-9]+\.[0-9]{8} lote\(s\) \(([^)]*)\); conferir saldo")
+    for match in re.finditer(pattern, text):
+        ticket, reason = (match.group(1), match.group(2)) if match.group(1) else (match.group(3), match.group(4))
+        closes.setdefault(ticket, []).append(reason)
     return closes
 
 

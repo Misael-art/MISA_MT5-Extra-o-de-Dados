@@ -4413,3 +4413,23 @@ seis partes/oito anexos; todos os hashes/linhas SQLite conferidos e325blocos
 anteriores preservados. Inclui dois timeouts e três diagnósticos inválidos.
 Próximo: manifesto App e journal geral de gestão, depois ativo/grupo/plano,
 pendentes/consumidores e capacidades restantes. Sem aceite ao vivo/restart/Windows.
+
+**F04.5 — em revisão:** F04.5: o SafeExecutor persiste intenções de close/parcial, proteção monotônica e
+cancelamento no mesmo journal/contador/trava das entradas. Posse exige contexto e
+ordem/deals/identificador estável; magic isolado não concede gestão. SENDING vem
+antes do OrderSend existente, resposta bruta/request_id e efeito são distintos;
+incerteza e parcial de broker não se repetem automaticamente. Sem pulso bloqueia
+entrada e mantém redução comprovada. Envelope3 conserva entradas/tombstones.
+157 testes Tools, checker 171 e Tester na fonte e7f7e708e66cd228: uma entrada,
+parcial voluntária, avanço de SL preservando TP, fechamento do saldo e seis tipos
+de pendência colocados/cancelados. Journal com 1084 linhas: sete entradas e nove ações
+encerradas; R inicial de 10 USD/volume de 0,02 lote preservados e caixa −0,94 USD reconciliado.
+Não é BE por gatilho financeiro nem fill parcial real do broker. Vínculo ainda
+usa hashes de fixture; manifesto App e consumidores continuam em implementação.
+Safety 27b8599 permanece detached/candidata 1.12, sem distribuir o protótipo.
+O leitor App reconhece motivos dos logs novos sem equiparar volume executado a
+posição zerada. SA-REF-01/runtime 33c2fa1 e sua autorização separada preservados.
+Sem PLAY, restart real, netting ou Windows físico nesta frente.
+HADOUKEN 7291d680/PR82; 17 consumidores compilados sem erros ou avisos.
+App: 41 testes de paridade/reconciliação e 67 de SDK/API/docs/catálogo/Safety
+aprovados; doctor offline com 16 OK, 2 avisos e nenhuma falha.
