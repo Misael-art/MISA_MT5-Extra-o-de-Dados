@@ -364,7 +364,8 @@ class PresetExecution:
         protection=None
         if native["profile_id"]=="hadouken.s09_reference" and native["profile_version"]>=12:
             from .protection_events import read_events as read_protection_events
-            protection=read_protection_events(job.directory,native["expected_native_inputs"],receipt.get("portfolio_journal"),signals,deals,rows,partials or (),temporal or ())
+            protection=read_protection_events(job.directory,native["expected_native_inputs"],receipt.get("portfolio_journal"),signals,deals,rows,partials or (),temporal or (),
+                                              require_initial_protection=native["profile_version"]>=13)
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
             raise ValueError("Entradas e posições encerradas não conciliam; conferir última posição e respostas antes de aceitar.")

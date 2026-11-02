@@ -22,9 +22,9 @@ def prepared(tmp_path):
     return tmp_path,path,inputs,journal,signals,deals,ledger
 
 
-def proof(case):
+def proof(case,*,strict=False):
     root,_,inputs,journal,signals,deals,ledger=case
-    return events.read_events(root,inputs,journal,signals,deals,ledger)
+    return events.read_events(root,inputs,journal,signals,deals,ledger,require_initial_protection=strict)
 
 
 def test_preset_decision_request_and_effect_have_one_binding(prepared):
@@ -161,17 +161,20 @@ def test_original_r_uses_the_native_weighted_entry_even_for_one_fill(prepared):
     assert proof(prepared)[0]["initial_risk"] == risk
 
 
-def normalized_initial_protection(case):
+def normalized_initial_protection(case,*,broker_normalized=True):
     """Synthetic decimal quote: requested binary64 differs by one ulp."""
     close_case(case)
     _,path,inputs,journal,signals,deals,ledger=case
     price,volume,stop,target=1.0004,.05,1.,1.002
-    anchor=price*volume/volume;risk=anchor-stop
     requested_stop=math.nextafter(stop,0.)
-    assert risk != anchor-requested_stop
+    observed_stop=stop if broker_normalized else requested_stop
+    anchor=price*volume/volume;risk=anchor-observed_stop
+    assert anchor-stop != anchor-requested_stop
     signals[0]["filled_volume"]=volume
-    deals[0].update(price=price,volume=volume,digits=5)
-    deals[1].update(price=1.001,volume=volume,digits=5)
+    deals[0].update(price=price,volume=volume,digits=5,order=77,entry_sl=observed_stop,entry_tp=target,
+                    order_sl=observed_stop,order_tp=target,order_state=4,order_position=POSITION)
+    deals[1].update(price=1.001,volume=volume,digits=5,order=78,entry_sl=observed_stop,entry_tp=target,
+                    order_sl=observed_stop,order_tp=target,order_state=4,order_position=POSITION)
     ledger[0].update(entry_price=price,stop_price=stop,target_price=target)
     journal["entries"][0].update(initial_stop=requested_stop,initial_target=math.nextafter(target,0.),requested_volume=volume)
     journal["actions"][0].update(before=volume,requested=volume,confirmed=volume)
@@ -186,6 +189,38 @@ def test_original_r_uses_observed_initial_stop_after_decimal_normalization(prepa
     row=proof(prepared)[0]
     assert row["initial_risk"] == risk
     assert row["initial_risk"] != row["initial_entry"]-prepared[3]["entries"][0]["initial_stop"]
+
+
+def test_original_r_keeps_lossless_deal_sl_when_csv_has_the_same_rounded_price(prepared):
+    risk=normalized_initial_protection(prepared,broker_normalized=False)
+    row=proof(prepared,strict=True)[0]
+    assert row["initial_risk"] == risk
+    assert risk != row["initial_entry"]-prepared[6][0]["stop_price"]
+
+
+@pytest.mark.parametrize("field",["order","entry_sl","entry_tp","order_sl","order_tp","order_state","order_position"])
+def test_lossless_profile_requires_complete_historical_entry_proof(prepared,field):
+    normalized_initial_protection(prepared)
+    prepared[5][0].pop(field)
+    with pytest.raises(ValueError,match="SL/TP históricos"):proof(prepared,strict=True)
+
+
+def test_lossless_profile_requires_complete_exit_history_and_response_order(prepared):
+    normalized_initial_protection(prepared)
+    prepared[3]["actions"][0]["response_order"]=78
+    assert proof(prepared,strict=True)
+    prepared[5][1]["order"]=99
+    with pytest.raises(ValueError):proof(prepared,strict=True)
+    prepared[5][1]["order"]=78
+    prepared[5][1].pop("entry_tp")
+    with pytest.raises(ValueError,match="todos os fills"):proof(prepared,strict=True)
+
+
+@pytest.mark.parametrize("field,value",[("order",99),("order_position",99),("order_state",3),("entry_sl",.9),("entry_tp",1.003),("order_sl",.9),("order_tp",1.003)])
+def test_lossless_history_must_match_the_original_order_position_and_quotes(prepared,field,value):
+    normalized_initial_protection(prepared)
+    prepared[5][0][field]=value
+    with pytest.raises(ValueError):proof(prepared,strict=True)
 
 
 @pytest.mark.parametrize("fault",["stop_point","target_point","many_ulps","unknown_digits","bool_digits"])

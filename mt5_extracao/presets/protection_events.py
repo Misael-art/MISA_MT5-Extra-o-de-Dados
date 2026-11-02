@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 
 from ..robots import mql
+from .partial_events import _same_price, _same_quote
 
 
 def _require(condition, message="Proteção/saída não reconcilia com preset, diário e fills; preserve a sessão."):
@@ -45,16 +46,6 @@ def _same(left, right):
     return math.isfinite(left) and math.isfinite(right) and abs(left-right) <= 8*max(math.ulp(left),math.ulp(right))
 
 
-def _same_price(requested, observed, digits):
-    # O journal retém o pedido binary64; o histórico/CSV observa o preço
-    # decimal aceito. Só reconhecer a MESMA cotação, dentro do limite de ulps
-    # já usado pelo leitor e estritamente abaixo de meio ponto do símbolo.
-    if requested == observed:return True
-    return (type(digits) is int and 0 <= digits <= 8 and _same(requested,observed)
-            and abs(requested-observed) < 10.0**(-digits)/2
-            and round(requested,digits) == observed == round(observed,digits))
-
-
 def _reference_stop(row, inputs):
     """Conformidade binary64 do contrato, com trace17 dígitos e inputs efetivos.
 
@@ -86,9 +77,16 @@ def _reference_stop(row, inputs):
     return float(candidate),cause
 
 
-def read_events(directory, inputs, journal, signals, deals, ledger, partials=(), temporal=()):
+def read_events(directory, inputs, journal, signals, deals, ledger, partials=(), temporal=(), *, require_initial_protection=False):
     _require(journal and journal.get("all_settled") and journal.get("reconciled"),
              "Diário final ausente ou intenções/reservas pendentes; resultado não aprovado.")
+    history_fields={"order","entry_sl","entry_tp","order_sl","order_tp","order_state","order_position"}
+    _require(not require_initial_protection or all(history_fields.issubset(row) for row in deals),
+             "Perfil requer SL/TP históricos sem arredondamento em todos os fills; preserve a sessão.")
+    for deal in deals:
+        if history_fields.issubset(deal):
+            _require(deal["order"] > 0 and deal["order_position"] == deal["position"] and deal["order_state"] == 4,
+                     "Ordem histórica não finalizada ou divergente da posição do fill.")
     context=journal["context_hash"];by_position={};opened=[row for row in signals if row["opened"]]
     for signal in opened:
         entries=[row for row in journal["entries"] if row["deal"] == signal["deal_ticket"]]
@@ -98,22 +96,36 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
         fills=[row for row in deals if row["position"] == position and row["entry"] == 0]
         _require(len(fills) == 1 and position > 0 and position not in by_position)
         clock=datetime.fromtimestamp(fills[0]["at_msc"]/1000,timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-        trades=[row for row in ledger if row["direction"] == signal["direction"] and row["entry_price"] == fills[0]["price"] and row["entry_time"] == clock]
+        trades=[row for row in ledger if row["direction"] == signal["direction"] and _same_price(fills[0]["price"],row["entry_price"],fills[0].get("digits")) and row["entry_time"] == clock]
         _require(len(trades) == 1)
         fill=fills[0];trade=trades[0]
+        lossless=history_fields.issubset(fill)
+        _require(not require_initial_protection or lossless,
+                 "Perfil requer SL/TP históricos sem arredondamento; CSV/pedido não comprovam o R inicial real.")
+        original_stop=fill["entry_sl"] if lossless else trade["stop_price"]
+        original_target=fill["entry_tp"] if lossless else trade["target_price"]
+        if lossless:
+            _require(fill["order"] == signal["order_ticket"] and fill["order_position"] == position and fill["order_state"] == 4,
+                     "Ordem histórica de entrada não finalizada ou divergente da contribuição própria.")
+            _require(original_stop > 0 and original_target > 0 and
+                     _same_price(original_stop,trade["stop_price"],fill.get("digits")) and
+                     _same_price(original_target,trade["target_price"],fill.get("digits")) and
+                     _same_quote(original_stop,fill["order_sl"],fill.get("digits")) and
+                     _same_quote(original_target,fill["order_tp"],fill.get("digits")))
         _require(_same(entry["requested_volume"],fill["volume"]) and _same(signal["filled_volume"],fill["volume"]))
-        _require(_same_price(entry["initial_stop"],trade["stop_price"],fill.get("digits")) and
-                 _same_price(entry["initial_target"],trade["target_price"],fill.get("digits")) and
-                 entry["direction"] == trade["direction"] and abs(fill["price"]-trade["stop_price"]) > 0,
+        _require(_same_quote(entry["initial_stop"],original_stop,fill.get("digits")) and
+                 _same_quote(entry["initial_target"],original_target,fill.get("digits")) and
+                 entry["direction"] == trade["direction"] and abs(fill["price"]-original_stop) > 0,
                  "SL/TP solicitados não correspondem à proteção inicial observada; preserve pedido e histórico.")
         # Mesmo com um único deal, preço*volume/volume pode diferir um ulp.
         # A gestão nativa ancora na média ponderada, não no preço cru do deal.
         anchor=fill["price"]*fill["volume"]/fill["volume"]
-        _require(math.isfinite(anchor) and anchor > 0 and (anchor-trade["stop_price"])*trade["direction"] > 0)
-        by_position[position]=dict(entry=entry,fill=fill,trade=trade,anchor=anchor,risk=abs(anchor-trade["stop_price"]))
+        _require(math.isfinite(anchor) and anchor > 0 and (anchor-original_stop)*trade["direction"] > 0)
+        by_position[position]=dict(entry=entry,fill=fill,trade=trade,anchor=anchor,risk=abs(anchor-original_stop),
+                                   original_stop=original_stop,original_target=original_target)
     _require(len(by_position) == len(ledger))
     _require(all(row["state"] == 5 or row["position"] in by_position for row in journal["entries"]))
-    actions={row["intent_hash"]:row for row in journal["actions"]};seen_deals=set();last_stop={pid:row["trade"]["stop_price"] for pid,row in by_position.items()}
+    actions={row["intent_hash"]:row for row in journal["actions"]};seen_deals=set();last_stop={pid:row["original_stop"] for pid,row in by_position.items()}
     for action in journal["actions"]:
         _require(action["kind"] in (1,2) and action["position"] in by_position)
         base=by_position[action["position"]]
@@ -121,14 +133,15 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
         if action["effect"] in (1,2):
             candidates=[row for row in deals if row["entry"] == 1 and row["position"] == action["position"] and row["deal"] not in seen_deals
                         and row["at_msc"]//1000 >= action["at"] and _same(row["volume"],action["confirmed"])
-                        and (not action["response_deal"] or row["deal"] == action["response_deal"])]
+                        and (not action["response_deal"] or row["deal"] == action["response_deal"])
+                        and (not action["response_order"] or "order" not in row or row["order"] == action["response_order"])]
             _require(len(candidates) == 1,"Redução não corresponde a fill próprio inequívoco; efeito tardio/parcial continua pendente.")
             deal=candidates[0];seen_deals.add(deal["deal"])
             _require(_same(action["before"]-action["confirmed"],action["remaining"]))
         if action["effect"] == 3:
             direction=base["trade"]["direction"]
             _require((action["stop"]-last_stop[action["position"]])*direction >= 0 and
-                     _same_price(action["tp"],base["trade"]["target_price"],base["fill"].get("digits")))
+                     _same_quote(action["tp"],base["original_target"],base["fill"].get("digits")))
             last_stop[action["position"]]=action["stop"]
     text="\n".join(mql.read_text(path) for path in (Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     events=[];seen_intents=set();seen_actions=set()
@@ -154,7 +167,7 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
             intent=_intent(context,key)
             _require(_same(row["initial_entry"],base["anchor"]) and _same(row["initial_risk"],base["risk"]) and _same(row["initial_volume"],base["fill"]["volume"]))
             _require(row["tp"] == row["tp_before"] and
-                     _same_price(row["tp"],base["trade"]["target_price"],base["fill"].get("digits")) and
+                     _same_quote(row["tp"],base["original_target"],base["fill"].get("digits")) and
                      raw["acknowledged"] == raw["observed"] == "1")
             expected,cause=_reference_stop(row,inputs)
             _require((row["requested"]-row["before"])*direction > 0 and _same(row["requested"],expected) and cause is not None)

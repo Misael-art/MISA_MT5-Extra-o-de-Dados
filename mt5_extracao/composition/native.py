@@ -99,8 +99,8 @@ RUNTIME_APPROVED_FINGERPRINT="45442cd0bcd0e67a"
 RUNTIME_HADOUKEN_REVISION=None  # ciclo nativo e alteração de manutenção ainda em qualificação
 RUNTIME_INPUT_TYPES=PANEL_INPUT_TYPES
 
-PROTECTION_ROBOT_VERSION="2.10"
-PROTECTION_APPROVED_FINGERPRINT="ecbff494a15d51b9"  # candidato; revisão None mantém ativação bloqueada
+PROTECTION_ROBOT_VERSION="2.11"
+PROTECTION_APPROVED_FINGERPRINT="2e0a4bf209628c86"  # candidato; revisão None mantém ativação bloqueada
 PROTECTION_HADOUKEN_REVISION=None
 PROTECTION_INPUTS={
     "stop_mode":("InpStopMode","int","initial_stop_0_points_1_ATR"),
@@ -130,7 +130,7 @@ def _require_robot(robot):
                 COOLDOWN_ROBOT_VERSION:(COOLDOWN_APPROVED_FINGERPRINT,COOLDOWN_INPUT_TYPES,9,COOLDOWN_HADOUKEN_REVISION),
                 PANEL_ROBOT_VERSION:(PANEL_APPROVED_FINGERPRINT,PANEL_INPUT_TYPES,10,PANEL_HADOUKEN_REVISION),
                 RUNTIME_ROBOT_VERSION:(RUNTIME_APPROVED_FINGERPRINT,RUNTIME_INPUT_TYPES,11,RUNTIME_HADOUKEN_REVISION),
-                PROTECTION_ROBOT_VERSION:(PROTECTION_APPROVED_FINGERPRINT,PROTECTION_INPUT_TYPES,12,PROTECTION_HADOUKEN_REVISION)}
+                PROTECTION_ROBOT_VERSION:(PROTECTION_APPROVED_FINGERPRINT,PROTECTION_INPUT_TYPES,13,PROTECTION_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
@@ -404,7 +404,7 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
         "backend": "mql5", "strategy_key": data["strategy"]["key"], "modules": modules, "bindings": bindings}, composition)
     fields = {name: "int" if kind in ("int", "long") else "number" if kind == "double" else "bool" if kind == "bool" else "token"
               for name, kind in input_types.items()}
-    return {"native_profile_schema_version": 1, "profile_id": profile_id, "profile_version": profile_version,
+    description = {"native_profile_schema_version": 1, "profile_id": profile_id, "profile_version": profile_version,
             "hadouken_revision": hadouken_revision, "robot": capabilities.to_dict()["robot"],
             "capabilities": capabilities.to_dict(), "parameters": values, "receipt_fields": fields,
             "expected_native_inputs": native_inputs.expected_values(values, fields),
@@ -413,6 +413,13 @@ def _description(composition,robot,data,values,bindings,inactive,preset_id,finge
                                   "max_dd_pct": 10, "max_open_risk_pct": .5, "margin_buffer_pct": 20,
                                   "block_averaging": True, "partial": profile_version>=3, "breakeven": profile_version>=3, "trailing": profile_id==PROFILE_ID and profile_version>=12},
             "modality": "native_tester_demo_only", "operational_acceptance": False}
+    if profile_id==PROFILE_ID and profile_version>=13:
+        description["history_receipt"]={"schema_version":2,
+            "lossless_binary64":["volume","price","entry_sl","entry_tp","order_sl","order_tp"],
+            "initial_stop_source":"DEAL_SL of the original IN deal; never CSV rounding or moved position SL",
+            "required_order_fields":["order","order_state","order_position"],
+            "cash_decimals":8,"older_rounded_history_is_insufficient":True}
+    return description
 
 
 def native_adapter(composition,robot):

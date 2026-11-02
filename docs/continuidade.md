@@ -5839,70 +5839,58 @@ App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
 
 ### E14 — proteção comum e auditoria nativa em qualificação
 
-S09v2.10 compõe59 inputs no mesmo adaptador/executor/journal: SL pontos/ATR14
-fechado, TP pontos/R planejado, trailing pontos/ATR por barra, BE por gatilho,
-alvo virtual ATR limitado pelo R real, saídas por sessão/sinal e orientação.
+S09v2.11/perfil13 compõe59 inputs no mesmo adaptador/executor/journal: SL pontos/
+ATR14 fechado, TP pontos/R planejado, trailing pontos/ATR por barra, BE por gatilho,
+alvo virtual ATR limitado por R real, saídas por sessão/sinal e orientação.
 Prioridade: risco → sessão → tempo → alvo virtual → sinal oposto → parcial/BE →
-trailing/BE. TP e média ponderada/R/volume inicial são preservados. Campos
-inativos, unidades e estimativas são explícitos na UI/API/compilador; alterações
+trailing/BE. Preserva TP e média ponderada/R/volume iniciais; mudanças de preset
 valem na próxima sessão. ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas.
-`planned_r_v1` pré-fill permanece distinto do `fixed_r` Python pós-fill.
+`planned_r_v1` pré-fill é distinto do `fixed_r` Python pós-fill, ainda pendente.
 
-A auditoria final reconcilia o diário e publica hash/contexto; o App confere
-pedidos imutáveis, IDs, decisões, SL/TP e fills, copia o snapshot e compara gestão
-no replay. Ações sem decisão/efeito ou intenções pendentes não aprovam resultado.
-Trace científico17 preserva binary64. Uma correção acompanha a média ponderada
-nativa mesmo no único fill (preço×volume/volume), sem ampliar tolerâncias.
+O recibo histórico agora preserva preço/volume e SL/TP do deal e da ordem em
+17 dígitos científicos, vinculando tickets inteiros64, posição e estado final.
+R de gestão é média ponderada dos deals menos o DEAL_SL do IN original. O CSV
+arredondado e o SL pedido não substituem esse dado. Perfil13 exige histórico
+completo em todos os fills e recusa o formato anterior para esse aceite.
+Comparações de representação da mesma cotação mantêm o limite8ulp e menos de
+meio ponto; R é calculado com os bits do histórico, nunca com o stop movido.
+O teste cobre os dois casos que têm o MESMO CSV/pedido: SL normalizado pelo
+broker ou preservado sem arredondamento, produzindo R inicial diferente.
 
-Na fonteH08875019/dfed81430e3f2595:17 consumidores e wrapper59 compilados0/0.
-Baseline pelo Manual real, OHLC1min:2posições/6deals/2reduções confirmadas,
-caixa−1,84USD, diário2entradas/3ações conciliado. Replay visual do MESMO pacote/
-banco coincidiu com backtest,101,529s/119,306s e recursos liberados. O App14e
-corrigiu a classificação do verificador de INI para conservar o launcher Wine
-visual isolado da Session; o sinal interno não é parâmetro do Tester. Falha
-anterior sem OnInit ficou preservada. Não certifica cada tick ou broker parcial.
+Auditoria final reconcilia o diário, publica hash/contexto e cruza decisões,
+pedidos imutáveis, efeitos e fills. Ações sem decisão/efeito ou intenções pendentes
+não aprovam resultado. Heartbeat mantém exclusão/identidade/líder sem reprojetar
+reservas; toda barreira financeira continua lendo o journal completo.
 
-O cenário managed confirmou BE2/trailing5/parcial1 com TP fixo preservado:
-3posições/7deals, caixa1,62USD, diário3entradas/8ações conciliado em162,275s.
-Replay managed exerceu proteção, atingiu180,173s e liberou recursos sem concluir
-comparação. Heartbeat relia/reprojetava o diário inteiro a cada5s do broker.
+Candidato2.11 fingerprint2e0a4bf209628c86,56 fontes/SHA256
+b927af079a64ea02c7429e8a1f80489916e306ece02ff0628cf2d76506f8086a.
+166 testes H completos em81,069s,171 fontes inalteradas/checker171. App585 testes
+em130,60s/28 módulos, incluindo consumidores de eventos anteriores; doctor offline
+16OK/2avisos/0falhas.17 consumidores com compilações válidas0/0 (15 observações
+idênticas reaproveitadas e dois consumidores recompilados). Wrapper59 compilado0/0;
+Tester/replay desta fonte pendentes. Versão anterior não promove a nova por inferência.
 
-HADOUKEN989534c3 publicado/pin de desenvolvimento reconciliado: o heartbeat usa
-somente a exclusão por arquivo/identidade e o mesmo líder para atualizar dois
-instantes. A barreira financeira SEMPRE recarrega/valida o diário completo;
-pulso não comprova reservas válidas. TTL10/cadência5 e guardas de recursos
-preservados. Novo teste de corpo MQL confirma zero recargas em10mil pulsos,
-recusa financeira com diário inválido mesmo após pulso recente e exclusão.
-Fonte candidataecbff494a15d51b9,56 fontes/SHA256
-ba1d675b6f8aa1557f90fafbceb56ba3a44d3b0d499297e9ec294970fa111cf8.
-165 testes H completos em80,228s,109 fontes verificadas inalteradas/checker171;
-17 consumidores da nova fonte compilados0/0. App175 testes afetados em18,60s;
-doctor offline16OK/2avisos/0falhas. Wrapper59 compilado0/0. Na fonte nova, managed OHLC1min e replay coincidiram
-(53,411s/89,347s). O pacote Manualv2 exportado pelo Tk do atalho oficial também
-passou em cada tick e replay:3posições/7deals/1parcial/BE2/trailing5, caixa1,46USD,
-68,091s/170,452s, diário3entradas/8ações conciliado e recursos liberados. Ticks
-reais continuam não comprovados. Capturas só da janela própria foram inspecionadas.
-A recusa visual do perfil bloqueado foi exercitada; edição/exportação usou override
-só no processo de QA. Botões de execução da UI ainda não foram exercitados; o SDK
-consumiu o pacote GUI exato no mesmo banco de QA.
+Na fonteH989534c3/2.10/ecbff494a15d51b9: managed OHLC1min backtest/replay
+coincidiram em53,411s/89,347s. Manualv2 criado/exportado/reaberto no Tk do atalho
+foi consumido pelo SDK no MESMO banco/pacote: cada tick/replay coincidiram em
+68,091s/170,452s;3posições/7deals/1parcial/BE2/trailing5, caixa1,46USD,
+diário3entradas/8ações conciliado e recursos liberados. Ticks reais não informados.
+Botões de execução da UI ainda não exercitados; houve override só no processo de
+QA para editar/exportar, e recusa visual do perfil bloqueado observada.
 
-Primeiro alvo dinâmico terminou no MT5 com dois fechamentos, mas a auditoria
-recusou SL pedido versus SL histórico da mesma cotação decimal (um ulp). O leitor
-mantém o limite8ulp já existente e exige dígitos nativos, igualdade decimal e
-diferença menor que meio ponto; outro nível continua recusado. R usa o SL inicial
-observado, como o nativo.196 regressões passaram em21,28s após reproduzir duas
-falhas; reauditoria dos artefatos confere dois alvos, sem alterar o recibo falho.
-Novo ciclo dinâmico e demais modalidades permanecem em qualificação.
+Alvo dinâmico2.10 também confirmou dois fechamentos em cada tick e replay,
+caixa−0,96USD. O ensaio ATR terminou no MT5 em69,372s, mas o auditor recusou R
+calculado com SL do CSV: o SL histórico mantém bits que a formatação8 perde.
+A correção ce96 da comparação decimal isolada não bastava. Recibos originais,
+falhas e pares anteriores são preservados por fonte; source2.11 resolve a falta
+do dado histórico, com qualificação nativa própria ainda necessária.
 
-O perfil permanece bloqueado (revisão qualificadaNone). Safety27b8599 detached,
-SA-REF-01/runtime33c2fa1 e referências aceitas preservados; protótipo não
-distribuído. Nenhum PLAY, nem transferência da autorização DEMO separada que
-encerrou sem execução/zero ordens. Windows físico e netting mantêm gates próprios.
-
-Página privada canônica seq33:190 arquivos/dois bancos de QA, seis sessões da
-fonte088,15 partes/17 anexos; todos os hashes e contagens de todas as14 tabelas
-por banco restaurados da nuvem. Credenciais, relatórios de conta/logs brutos/
-registros Wine excluídos. Novos artefatos seguem o mesmo fluxo de proteção.
-Fatos por fonte/ambiente em E14_COMMON_POSITION_20261102.json. Continua em
-execução: gestão integral/TP R pós-fill/recuperação/capacidade, SA-01, orçamento
-ativo/grupo/plano, gradientes e probabilístico, além dos aceites operacionais.
+Perfil continua bloqueado (revisão qualificadaNone). Safety27b8599 detached,
+SA-REF-01/runtime33c2fa1 e referências preservados; protótipo não distribuído.
+Nenhum PLAY nem autorização DEMO transferida. Página privada canônica seq34:
+232 arquivos/cinco bancos e seis sessões concluídas restaurados da nuvem, todos
+os hashes/contagens de TODAS as tabelas conferidos; sequência então ativa excluída
+e no próximo delta. Credenciais/contas/configurações/logs brutos não integram o
+resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
+execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
+ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.

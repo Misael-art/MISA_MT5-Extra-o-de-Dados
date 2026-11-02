@@ -140,7 +140,10 @@ def managed_composition(**changes):
 def test_common_protection_maps_all_inputs_and_declares_units_cadence_and_inactive_paths(protection_robot):
     comp=Composition(managed_composition())
     out=native.S09NativeAdapter(comp,protection_robot).describe("managed")
-    assert out["profile_version"]==12 and out["runtime_binding_required"]
+    assert out["profile_version"]==13 and out["runtime_binding_required"]
+    assert out["history_receipt"]["schema_version"]==2
+    assert out["history_receipt"]["older_rounded_history_is_insufficient"]
+    assert {"price","volume","entry_sl","entry_tp","order_sl","order_tp"} == set(out["history_receipt"]["lossless_binary64"])
     assert set(out["parameters"])==set(native.PROTECTION_INPUT_TYPES)
     assert len(out["parameters"])==59
     assert out["parameters"]["InpStopMode"]=="1" and out["parameters"]["InpStopPoints"]=="0"
