@@ -93,7 +93,11 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
         fill=fills[0];trade=trades[0]
         _require(_same(entry["requested_volume"],fill["volume"]) and _same(signal["filled_volume"],fill["volume"]))
         _require(entry["initial_stop"] == trade["stop_price"] and entry["initial_target"] == trade["target_price"] and entry["direction"] == trade["direction"] and abs(fill["price"]-entry["initial_stop"]) > 0)
-        by_position[position]=dict(entry=entry,fill=fill,trade=trade,risk=abs(fill["price"]-entry["initial_stop"]))
+        # Mesmo com um único deal, preço*volume/volume pode diferir um ulp.
+        # A gestão nativa ancora na média ponderada, não no preço cru do deal.
+        anchor=fill["price"]*fill["volume"]/fill["volume"]
+        _require(math.isfinite(anchor) and anchor > 0 and (anchor-entry["initial_stop"])*trade["direction"] > 0)
+        by_position[position]=dict(entry=entry,fill=fill,trade=trade,anchor=anchor,risk=abs(anchor-entry["initial_stop"]))
     _require(len(by_position) == len(ledger))
     _require(all(row["state"] == 5 or row["position"] in by_position for row in journal["entries"]))
     actions={row["intent_hash"]:row for row in journal["actions"]};seen_deals=set();last_stop={pid:row["entry"]["initial_stop"] for pid,row in by_position.items()}
@@ -134,7 +138,7 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
             key=(f"trailing-{position}-{row['bar_at']}" if row["sampled"] and inputs["InpTrailingMode"] else f"breakeven-{position}")
             _require(key == row["intent"])
             intent=_intent(context,key)
-            _require(_same(row["initial_entry"],base["fill"]["price"]) and _same(row["initial_risk"],base["risk"]) and _same(row["initial_volume"],base["fill"]["volume"]))
+            _require(_same(row["initial_entry"],base["anchor"]) and _same(row["initial_risk"],base["risk"]) and _same(row["initial_volume"],base["fill"]["volume"]))
             _require(row["tp"] == row["tp_before"] == base["entry"]["initial_target"] and raw["acknowledged"] == raw["observed"] == "1")
             expected,cause=_reference_stop(row,inputs)
             _require((row["requested"]-row["before"])*direction > 0 and _same(row["requested"],expected) and cause is not None)
@@ -145,9 +149,9 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
             if kind == "TARGET":
                 _require(set(raw) == set("position at direction initial_entry initial_risk closed_atr target executable acknowledged".split()) and inputs["InpTargetMode"] == 2 and raw["direction"] == str(direction))
                 row.update({key:_number(raw[key]) for key in "initial_entry initial_risk closed_atr target executable".split()})
-                _require(row["closed_atr"] > 0 and _same(row["initial_entry"],base["fill"]["price"]) and _same(row["initial_risk"],base["risk"]))
+                _require(row["closed_atr"] > 0 and _same(row["initial_entry"],base["anchor"]) and _same(row["initial_risk"],base["risk"]))
                 distance=max(inputs["InpDynamicTargetMinR"]*base["risk"],min(inputs["InpDynamicTargetMaxR"]*base["risk"],inputs["InpDynamicTargetATR"]*row["closed_atr"]))
-                _require(_same(row["target"],base["fill"]["price"]+direction*distance) and (row["executable"]-row["target"])*direction >= 0)
+                _require(_same(row["target"],base["anchor"]+direction*distance) and (row["executable"]-row["target"])*direction >= 0)
             elif raw.get("kind") == "signal":
                 _require(set(raw) == set("kind position event_at at direction acknowledged".split()) and inputs["InpExitOnOpposite"] and raw["direction"] == str(-direction))
                 row.update(exit_kind="signal",event_at=_integer(raw["event_at"]),direction=int(raw["direction"]))

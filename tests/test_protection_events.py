@@ -143,3 +143,18 @@ def test_no_actions_and_no_opportunity_is_valid_but_unqualified(prepared):
     _,path,_,journal,_,_,_=prepared
     journal["actions"]=[];path.write_text("")
     assert proof(prepared) == []
+
+
+def test_original_r_uses_the_native_weighted_entry_even_for_one_fill(prepared):
+    close_case(prepared);_,path,inputs,journal,signals,deals,ledger=prepared
+    price=1.4;volume=.05;anchor=price*volume/volume;risk=anchor-1.3
+    assert anchor != price  # diferença real de binary64, não tolerância de preço arbitrária
+    signals[0]["filled_volume"]=volume
+    deals[0].update(price=price,volume=volume);deals[1].update(price=1.6,volume=volume)
+    ledger[0].update(entry_price=price,stop_price=1.3,target_price=1.8)
+    journal["entries"][0].update(initial_stop=1.3,initial_target=1.8,requested_volume=volume)
+    journal["actions"][0].update(before=volume,requested=volume,confirmed=volume)
+    inputs.update(InpTargetMode=2,InpDynamicTargetMinR=1,InpDynamicTargetMaxR=4,InpDynamicTargetATR=2)
+    target=anchor+.2
+    path.write_text(f"HDK_TARGET position={POSITION} at=1500 direction=1 initial_entry={anchor:.16e} initial_risk={risk:.16e} closed_atr=0.1 target={target:.16e} executable=1.6 acknowledged=1\n")
+    assert proof(prepared)[0]["initial_risk"] == risk

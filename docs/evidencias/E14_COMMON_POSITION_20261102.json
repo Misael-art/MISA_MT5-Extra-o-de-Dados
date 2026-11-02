@@ -220,6 +220,13 @@
       "actions": 9,
       "checksums_payloads_order_verified": true,
       "not_current_source_acceptance": true
+    },
+    "weighted_anchor_correction": {
+      "tests": 75,
+      "seconds": 14.51,
+      "before_reproduced": true,
+      "scope": "single qualified entry fill: native weighted entry price*volume/volume; original SL; no tolerance widening",
+      "native_acceptance": false
     }
   }
 }

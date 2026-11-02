@@ -506,3 +506,8 @@ proteção/saídas por modalidade e diário ligados ao recibo, ativação ainda 
 Pin de desenvolvimento reconciliado para HADOUKEN08875019 (auditoria E14).
 Revisão qualificada do perfil permaneceNone; Safety27b8599 e referências aceitas
 inalteradas. PR84 empilha sobre83; AppPR279 empilha sobre278.
+
+Auditoria da âncora: a média preço×volume/volume pode diferir um ulp do preço
+bruto mesmo com um único fill. O App passou a conferir R/alvo pela mesma média
+ponderada inicial do nativo. Caso1,4×0,05 reproduziu a recusa anterior;75 testes
+pertinentes passaram em14,51s após correção, sem ampliar tolerâncias.
