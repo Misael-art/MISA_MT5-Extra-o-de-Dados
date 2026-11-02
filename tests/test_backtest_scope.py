@@ -235,7 +235,8 @@ def test_native_package_execution_and_lost_proof_never_duplicate_tester(source,n
     exported=manual.export_preset(db,native_robot,record.identity.id,tmp_path/'package',
         test_context=TestContext('2020-01-01','2020-02-01',deposit=100000,model='0'))
     class NativeBoundary:
-        def __init__(self,db,config,robot,path,*,control):
+        def __init__(self,db,config,robot,path,*,control,actor):
+            assert actor == "budget-runner"
             self.package=read_package(path,robot);self.control=control;self.evidence=None;self.error='';self.status='created'
         def run(self):
             calls.append(self.package.package_hash)
@@ -250,7 +251,7 @@ def test_native_package_execution_and_lost_proof_never_duplicate_tester(source,n
     monkeypatch.setattr(execution,'PresetExecution',NativeBoundary)
     plan=scope.preview(db,config,native_robot,'QA',start='2020-01-01',end='2020-02-01',manifest_path=exported['manifest_path'])
     first=scope.create_runner(db,config,native_robot,plan['batch_id']).start()
-    assert first.join(30) and not first.error and first.results[0]['run']
+    assert first.join(30) and not first.error and first.results[0]['run'], first.results
     again=scope.create_runner(db,config,native_robot,plan['batch_id']).start()
     assert again.join(30) and not again.error and len(calls)==1
     with db.engine.begin() as conn:conn.execute(text('DELETE FROM _preset_native_runs'))

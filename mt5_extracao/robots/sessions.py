@@ -817,6 +817,10 @@ class Session:
             _copy_file(bound,copy,check=self._check_cancel)
             self.runtime_binding_receipt = native_inputs.read_runtime_receipt(copy,self.runtime_binding_manifest)
             receipt["runtime_binding"] = self.runtime_binding_receipt
+            from . import native_journal
+            journal = native_journal.capture(common,self.directory,self.runtime_binding_receipt,receipt["values"])
+            if journal is not None:
+                receipt["portfolio_journal"] = journal
         if self.record is None:
             raise ValueError("Execução nativa ausente; recibo não pode aprovar um resultado inexistente.")
         store.save_native_input_receipt(self.db, self.record["run_id"], receipt,

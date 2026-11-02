@@ -125,7 +125,7 @@ def _semantic_signals(signals):
     return [{key:value for key,value in row.items() if key not in ("order_ticket","deal_ticket")} for row in signals]
 
 
-def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None,temporal=None,channel=None,atr=None,session=None,cooldown=None):
+def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None,temporal=None,channel=None,atr=None,session=None,cooldown=None,protection=None):
     sections=[("ledger",reference["ledger"],rows),("signals",_semantic_signals(reference["signals"]),_semantic_signals(signals))]
     if sizing is not None:sections.append(("sizing",reference.get("sizing",[]),sizing))
     if partials is not None:sections.append(("partials",partial_events.semantic(reference.get("partials",[])),partial_events.semantic(partials)))
@@ -134,6 +134,9 @@ def first_difference(reference,rows,signals,sizing=None,partials=None,deals=None
     if atr is not None:sections.append(("atr_observations",partial_events.semantic(reference.get("atr_observations",[])),partial_events.semantic(atr)))
     if session is not None:sections.append(("session_events",reference.get("session_events",[]),session))
     if cooldown is not None:sections.append(("cooldown_events",reference.get("cooldown_events",[]),cooldown))
+    if protection is not None:
+        from .protection_events import semantic
+        sections.append(("protection_events",semantic(reference.get("protection_events",[])),semantic(protection)))
     if channel is not None:sections.append(("channel_observations",partial_events.semantic(reference.get("channel_observations",[])),partial_events.semantic(channel)))
     for section,expected,actual in sections:
         if len(expected)!=len(actual):
@@ -358,13 +361,17 @@ class PresetExecution:
         if native["profile_id"]=="hadouken.s09_reference" and native["profile_version"]>=8:
             from .session_events import read_events as read_session_events
             session=read_session_events(job.directory,package["composition"]["filters"],signals,deals,{r["event_at"] for r in (cooldown or []) if not r["allowed"]})
+        protection=None
+        if native["profile_id"]=="hadouken.s09_reference" and native["profile_version"]>=12:
+            from .protection_events import read_events as read_protection_events
+            protection=read_protection_events(job.directory,native["expected_native_inputs"],receipt.get("portfolio_journal"),signals,deals,rows,partials or (),temporal or ())
         trades=m.get("trades");active=type(trades) is int and trades>0 and len(rows)==trades
         if active and m.get("entries")!=trades:
             raise ValueError("Entradas e posições encerradas não conciliam; conferir última posição e respostas antes de aceitar.")
         status=("reconciled_"+self.mode) if active else "contract_only"
         prior=next((p for p in load_evidence(self.db,execution_hash=self.package.execution_hash)
                     if p["mode"]=="backtest" and p["status"]=="reconciled_backtest"),None) if self.mode=="replay" else None
-        difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel,atr,session,cooldown) if prior is not None else None
+        difference=first_difference(prior,rows,signals,sizing,partials,deals,temporal,channel,atr,session,cooldown,protection) if prior is not None else None
         if (stoch or vwap or madrid or ha_hilo) and prior is not None and difference is None and prior.get("strategy_reference")!=strategy_reference:
             difference=dict(section="strategy_reference",field="observed_context",expected=prior.get("strategy_reference"),observed=strategy_reference)
         match=None if prior is None else difference is None
@@ -384,6 +391,13 @@ class PresetExecution:
             allows_live=False,statistical_approval=False,cache_eligible=False,history_revision="unavailable",
             created_at=datetime.now(timezone.utc).isoformat())
         if sizing is not None:proof["sizing"]=sizing
+        if protection is not None:
+            from .protection_events import acceptance
+            kinds={row["kind"] for row in protection}
+            proof.update(protection_events=protection,portfolio_journal=receipt["portfolio_journal"],
+                         protection_activity="protection" in kinds,dynamic_target_activity="target" in kinds,
+                         policy_exit_activity="exit" in kinds,protection_acceptance=active and match is True and bool(protection),
+                         management_acceptance=acceptance(protection,native["expected_native_inputs"],active=active,replay_match=match))
         if session is not None:
             session_activity=any(not row["allowed"] for row in session if row["event"]=="check")
             proof.update(session_events=session,session_enabled=any(r["mode"]=="session_v1" for r in package["composition"]["filters"]),

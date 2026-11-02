@@ -1,0 +1,145 @@
+"""Contratos E14 com diário/fills sintéticos, nunca aceite de broker."""
+from datetime import datetime, timezone
+
+import pytest
+
+from mt5_extracao.presets import protection_events as events
+from mt5_extracao.presets.execution import first_difference
+from tests.test_native_journal import CONTEXT, POSITION, fixture, read
+
+
+@pytest.fixture
+def prepared(tmp_path):
+    journal=read(fixture());journal.update(reconciled=True,final_at=2000)
+    inputs=dict(InpTrailingMode=1,InpTrailingPoints=2,InpTrailingTriggerR=.25,InpBreakevenTriggerR=1)
+    signals=[dict(opened=True,deal_ticket=78,order_ticket=77,direction=1,filled_volume=2)]
+    deals=[dict(entry=0,position=POSITION,deal=78,at_msc=1000000,price=100,volume=2),
+           dict(entry=1,position=POSITION,deal=79,at_msc=1900000,price=140,volume=2)]
+    ledger=[dict(entry_time=datetime.fromtimestamp(1000,timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),direction=1,entry_price=100,stop_price=90,target_price=140)]
+    path=tmp_path/"Tester/Agent-QA/logs/test.log";path.parent.mkdir(parents=True)
+    path.write_text(f"HDK_PROTECTION position={POSITION} at=1200 intent=trailing-{POSITION}-1100 direction=1 bar_at=1100 sampled=1 executable=104 point=1 tick=0.25 minimum=0.5 atr=unavailable initial_entry=100 initial_risk=10 initial_volume=2 before=90 requested=102 acknowledged=1 observed=1 tp_before=140 tp=140\n")
+    return tmp_path,path,inputs,journal,signals,deals,ledger
+
+
+def proof(case):
+    root,_,inputs,journal,signals,deals,ledger=case
+    return events.read_events(root,inputs,journal,signals,deals,ledger)
+
+
+def test_preset_decision_request_and_effect_have_one_binding(prepared):
+    rows=proof(prepared)
+    assert len(rows) == 1 and rows[0]["requested"] == 102 and rows[0]["tp"] == 140
+    assert rows[0]["request_id"] == 55 and rows[0]["effect"] == 3
+    assert rows[0]["initial_risk"] == 10 and rows[0]["position"] > 2**53
+    semantic=events.semantic(rows)
+    assert "position" not in semantic[0] and "intent" not in semantic[0]
+    reference=dict(ledger=[],signals=[],protection_events=rows)
+    assert first_difference(reference,[],[],protection=rows) is None
+    changed=[dict(rows[0],requested=103)]
+    assert first_difference(reference,[],[],protection=changed)["section"] == "protection_events"
+
+
+@pytest.mark.parametrize("fault",["pending","unreconciled","different_position","initial_risk","loosen","tp","unobserved","unacknowledged","repeat","intent","time","unconfigured","changed_journal","unknown_field"])
+def test_logs_alone_cannot_approve_management(prepared,fault):
+    _,path,inputs,journal,_,_,_=prepared;text=path.read_text()
+    if fault=="pending":journal["all_settled"]=False
+    elif fault=="unreconciled":journal["reconciled"]=False
+    elif fault=="different_position":text=text.replace(f"position={POSITION}","position=99")
+    elif fault=="initial_risk":text=text.replace("initial_risk=10","initial_risk=2")
+    elif fault=="loosen":text=text.replace("requested=102","requested=89")
+    elif fault=="tp":text=text.replace("tp=140","tp=150")
+    elif fault=="unobserved":text=text.replace("observed=1","observed=0")
+    elif fault=="unacknowledged":text=text.replace("acknowledged=1","acknowledged=0")
+    elif fault=="repeat":text+=text
+    elif fault=="intent":text=text.replace("intent=trailing-","intent=other-")
+    elif fault=="time":text=text.replace("at=1200","at=1201")
+    elif fault=="unconfigured":inputs["InpTrailingMode"]=0
+    elif fault=="changed_journal":journal["actions"][0]["stop"]=103
+    elif fault=="unknown_field":text=text.rstrip()+" extra=1\n"
+    path.write_text(text)
+    with pytest.raises(ValueError):proof(prepared)
+
+
+def test_an_unobserved_journal_action_cannot_be_treated_as_no_opportunity(prepared):
+    prepared[1].write_text("")
+    with pytest.raises(ValueError,match="Ação financeira"):proof(prepared)
+
+
+def close_case(case):
+    _,_,_,journal,_,deals,_=case
+    journal["actions"]=[dict(journal["actions"][0],kind=1,effect=1,at=1500,response_at=1500,before=2,requested=2,
+                             stop=0,tp=0,confirmed=2,remaining=0,response_deal=79,
+                             intent_hash=events._close_intent(CONTEXT,POSITION))]
+    deals[1]["at_msc"]=1500000
+
+
+@pytest.mark.parametrize("kind",["target","signal","session"])
+def test_dynamic_signal_and_session_close_require_the_same_durable_action_and_fill(prepared,kind):
+    close_case(prepared);_,path,inputs,_,_,_,_=prepared
+    if kind=="target":
+        inputs.update(InpTargetMode=2,InpDynamicTargetMinR=2,InpDynamicTargetMaxR=4,InpDynamicTargetATR=3)
+        line=f"HDK_TARGET position={POSITION} at=1500 direction=1 initial_entry=100 initial_risk=10 closed_atr=8 target=124 executable=130 acknowledged=1"
+    elif kind=="signal":
+        inputs["InpExitOnOpposite"]=True
+        line=f"HDK_EXIT kind=signal position={POSITION} event_at=1400 at=1500 direction=-1 acknowledged=1"
+    else:
+        inputs.update(InpExitOnSessionEnd=True,InpSessionEnabled=True,InpSessionStartMinute=0,InpSessionEndMinute=1,
+                      InpSessionAnchorMinute=0,InpSessionWeekdays=127,InpSessionExcludeStartMinute=0,InpSessionExcludeEndMinute=0)
+        line=f"HDK_EXIT kind=session position={POSITION} at=1500 decision=outside_window acknowledged=1"
+    path.write_text(line+"\n");rows=proof(prepared)
+    assert rows[0]["confirmed"] == 2 and rows[0]["remaining"] == 0
+    assert rows[0]["kind"] == ("target" if kind=="target" else "exit")
+    path.write_text(line.replace("acknowledged=1","acknowledged=0")+"\n")
+    with pytest.raises(ValueError):proof(prepared)
+
+
+@pytest.mark.parametrize("fault",["wrong_target","not_crossed","no_atr","unconfigured","no_fill","wrong_fill","pending_effect","duplicate_exit"])
+def test_dynamic_target_is_never_a_fill_proof_by_itself(prepared,fault):
+    close_case(prepared);_,path,inputs,journal,_,deals,_=prepared
+    inputs.update(InpTargetMode=2,InpDynamicTargetMinR=2,InpDynamicTargetMaxR=4,InpDynamicTargetATR=3)
+    line=f"HDK_TARGET position={POSITION} at=1500 direction=1 initial_entry=100 initial_risk=10 closed_atr=8 target=124 executable=130 acknowledged=1"
+    if fault=="wrong_target":line=line.replace("target=124","target=123")
+    elif fault=="not_crossed":line=line.replace("executable=130","executable=123")
+    elif fault=="no_atr":line=line.replace("closed_atr=8","closed_atr=0")
+    elif fault=="unconfigured":inputs["InpTargetMode"]=0
+    elif fault=="no_fill":deals.pop()
+    elif fault=="wrong_fill":deals[1]["volume"]=1
+    elif fault=="pending_effect":journal["actions"][0]["effect"]=0
+    elif fault=="duplicate_exit":line+="\n"+line
+    path.write_text(line+"\n")
+    with pytest.raises(ValueError):proof(prepared)
+
+
+def test_no_opportunity_is_reported_per_mode_not_as_combination_acceptance():
+    inputs=dict(InpTrailingMode=2,InpBreakevenTriggerR=1,InpTargetMode=2,InpExitOnOpposite=True,InpExitOnSessionEnd=True)
+    result=events.acceptance([],inputs,active=True,replay_match=True)
+    assert all(row["configured"] and not row["exercised"] and not row["replay_qualified"] for row in result.values())
+
+
+def test_sell_trailing_uses_the_original_r_and_preserves_physical_target(prepared):
+    _,path,_,journal,signals,_,ledger=prepared
+    journal.clear();journal.update(read(fixture(-1)),reconciled=True,final_at=2000)
+    signals[0]["direction"]=-1;ledger[0].update(direction=-1,stop_price=110,target_price=60)
+    text=path.read_text().replace("direction=1","direction=-1").replace("executable=104","executable=96").replace("before=90","before=110").replace("requested=102","requested=98").replace("tp_before=140 tp=140","tp_before=60 tp=60")
+    path.write_text(text)
+    row=proof(prepared)[0]
+    assert row["cause"] == "trailing" and row["requested"] == 98 and row["initial_risk"] == 10
+
+
+def test_atr_trailing_and_trigger_breakeven_have_distinct_observed_causes(prepared):
+    _,path,inputs,journal,_,_,_=prepared
+    inputs.update(InpTrailingMode=2,InpTrailingATR=1)
+    path.write_text(path.read_text().replace("atr=unavailable","atr=2"))
+    assert proof(prepared)[0]["cause"] == "trailing"
+    key=f"breakeven-{POSITION}";journal.clear();journal.update(read(fixture(action_stop=100,intent=key)),reconciled=True,final_at=2000)
+    inputs.update(InpTrailingMode=0,InpBreakevenTriggerR=.4)
+    text=path.read_text().replace(f"intent=trailing-{POSITION}-1100",f"intent={key}").replace("requested=102","requested=100")
+    path.write_text(text)
+    row=proof(prepared)[0]
+    assert row["cause"] == "breakeven" and row["requested"] == 100 and row["initial_risk"] == 10
+
+
+def test_no_actions_and_no_opportunity_is_valid_but_unqualified(prepared):
+    _,path,_,journal,_,_,_=prepared
+    journal["actions"]=[];path.write_text("")
+    assert proof(prepared) == []

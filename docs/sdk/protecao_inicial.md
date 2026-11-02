@@ -46,6 +46,14 @@ são checados no executor nativo; o modelo Python não os certifica. Windows fí
 
 ## E14 — proteção comum nativa em qualificação
 
+O resultado do perfil2.10 exige a cópia do diário canônico identificado pelo hash
+final emitido pelo Expert, com contexto do pacote, pedidos imutáveis e ações
+conciliadas. O App confere SL/TP, R original, gatilhos, reduções e fills; ações
+sem decisão correspondente e intenções pendentes impedem aprovação. A aba
+“Proteção e saídas” mostra pedido e efeito confirmado. Backtest e replay comparam
+as decisões de gestão, preservando os vínculos reais antes de projetar tickets
+variáveis. Cada modalidade declara oportunidade e aceite separadamente.
+
 O novo S09 v2.10 acrescenta `protection.managed_v1`, separado dos perfis
 congelados. O perfil exige pacote/sessão vinculados e continua bloqueado até
 qualificação nativa. O adaptador Python genérico recusa esse modo; a declaração

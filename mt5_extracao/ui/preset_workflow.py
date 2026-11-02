@@ -291,6 +291,7 @@ class PresetWorkflow:
         self.atr_context=self.tree("ATR · horizonte conhecido",("instante conhecido","semente de origem","barra fechada","ATR base congelado","ATR atual","prazo (s)")) if self.atr_enabled else None
         self.session_events=self.tree("Sessão · entradas e cota",("origem","instante servidor","evento","dia de sessão","ciclos preenchidos","entrada permitida","motivo")) if self.session_available else None
         self.cooldown_events=self.tree("Espera · fechamento confirmado",("origem","instante conhecido","fechamento total","libera em","espera (s)","entrada permitida","motivo")) if self.cooldown_available else None
+        self.protection_events=self.tree("Proteção e saídas · confirmação",("instante servidor","ação","posição","SL anterior","SL confirmado","TP mantido","alvo virtual","reduzido","saldo","pedido","efeito")) if self.common_protection_available else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -701,6 +702,7 @@ class PresetWorkflow:
         if self.atr_context is not None:self.atr_context.delete(*self.atr_context.get_children())
         if self.session_events is not None:self.session_events.delete(*self.session_events.get_children())
         if self.cooldown_events is not None:self.cooldown_events.delete(*self.cooldown_events.get_children())
+        if self.protection_events is not None:self.protection_events.delete(*self.protection_events.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -821,6 +823,9 @@ class PresetWorkflow:
         if "partials" in proof:
             confirmed=sum(r["state"]=="confirmed" for r in proof["partials"])
             self.result.set(self.result.get()+f"\nParciais confirmadas: {confirmed}; saldo e custos por fill nas abas próprias." if confirmed else self.result.get()+"\nNenhuma parcial confirmada neste ensaio; sem aceite dessa capacidade.")
+        if "protection_events" in proof:
+            count=len(proof["protection_events"])
+            self.result.set(self.result.get()+f"\nProteção/saídas conferidas com os pedidos e fills: {count}. "+("Replay conciliado neste cenário." if proof.get("protection_acceptance") else "Aceite das modalidades ainda pendente."))
         if "temporal_events" in proof:
             count=sum(r["state"]=="confirmed" for r in proof["temporal_events"])
             self.result.set(self.result.get()+f"\nSaídas temporais confirmadas: {count}."+("" if count else " Sem aceite dessa capacidade neste ensaio."))
@@ -843,6 +848,12 @@ class PresetWorkflow:
         expected=self.current.manifest["native"]["expected_native_inputs"]
         for key,value in proof["inputs"]["values"].items():self.inputs.insert("","end",values=(("Offset além da banda (pontos)" if self.vwap and key=="InpStopPoints" else INPUT_LABELS.get(key,key)),expected.get(key,"—"),value))
         def clock(value):return datetime.fromtimestamp(value,timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        if self.protection_events is not None:
+            labels={"protection":"SL · trailing/BE","target":"Alvo virtual","exit":"Saída por política"}
+            for row in proof.get("protection_events",[]):
+                self.protection_events.insert("","end",values=(clock(row["at"]),labels[row["kind"]]+(" · "+row["exit_kind"] if row.get("exit_kind") else ""),
+                    str(row["position"]),row.get("before","—"),row.get("requested","—"),row.get("tp","—"),row.get("target","—"),
+                    row["confirmed"],row["remaining"],str(row["request_id"]),"SL observado" if row["effect"] == 3 else "Redução confirmada"))
         for row in proof["signals"]:self.signals.insert("","end",values=(clock(row["event_at"]),clock(row["confirmed_at"]),clock(row["available_at"]),"Compra" if row["direction"]>0 else "Venda","Sim" if row["opened"] else "Recusada",row["reason"]))
         if self.sizing is not None:
             for row in proof.get("sizing",[]):

@@ -93,3 +93,16 @@ def test_inversion_is_saved_without_implicitly_enabling_trailing_or_be(view):
     assert data["orientation"]["mode"]=="inverted"
     assert data["protection"]["mode"]=="strategy_default" and not view.common_on.get()
     view.reopen.invoke();assert view.signal_orientation.get()=="Invertida"
+
+
+def test_confirmed_management_is_displayed_with_request_and_effect_and_clears_on_context_change(view):
+    proof=dict(status="reconciled_backtest",trades=1,functional_cycle=False,mode="backtest",net_profit=0,
+               ledger=[],signals=[],inputs=dict(values={}),protection_acceptance=False,
+               protection_events=[dict(kind="protection",at=1200,position=9007199254740999,before=90,requested=102,tp=140,
+                                       confirmed=0,remaining=2,request_id=55,effect=3)])
+    view.show_evidence(proof)
+    rows=view.protection_events.get_children();assert len(rows) == 1
+    values=view.protection_events.item(rows[0],"values")
+    assert values[2] == "9007199254740999" and values[-2:] == ("55","SL observado")
+    assert "Aceite das modalidades ainda pendente" in view.result.get()
+    view.clear_result();assert not view.protection_events.get_children()

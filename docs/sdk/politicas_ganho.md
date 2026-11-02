@@ -54,6 +54,11 @@ o SDK encaminha os argumentos anteriores ao mesmo motor, sem duplicar cálculos.
 
 ## E14 — TP planejado e alvo virtual do novo perfil nativo
 
+O alvo virtual só conta como saída confirmada quando a decisão corresponde ao
+pedido durável e ao deal de redução integral. O bool de envio não prova esse
+efeito. O recibo por modalidade distingue configurada, exercitada e replay
+conciliado; ausência de cruzamento fica sem aceite dessa capacidade.
+
 S09 v2.10, em qualificação e bloqueado para ativação, mantém TP físico em pontos
 e acrescenta dois modos explícitos. O `fixed_r` Python acima conserva seu
 contrato pós-fill; não recebe suporte nativo por equivalência de nome.
