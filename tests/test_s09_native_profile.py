@@ -164,6 +164,18 @@ def test_postfill_r_has_distinct_source_profile_and_preserves_planned_mode(prote
         native.S09NativeAdapter(Composition(data),protection_robot)
 
 
+def test_postfill_audit_source_has_own_version_and_binding(protection_robot,monkeypatch):
+    data=managed_composition()
+    data["profit_exit"]={"mode":"postfill_r_v1","params":{"target_r":3}}
+    protection_robot.version=native.POSTFILL_AUDIT_ROBOT_VERSION
+    monkeypatch.setattr(native,"POSTFILL_AUDIT_APPROVED_FINGERPRINT",catalog.fingerprint(protection_robot))
+    out=native.S09NativeAdapter(Composition(data),protection_robot).describe("postfill-audit")
+    assert out["profile_version"]==15
+    assert out["hadouken_revision"]==native.POSTFILL_AUDIT_HADOUKEN_REVISION
+    assert out["parameters"]["InpTargetMode"]=="3"
+    assert out["runtime_binding_required"] and not out["operational_acceptance"]
+
+
 def test_common_protection_maps_all_inputs_and_declares_units_cadence_and_inactive_paths(protection_robot):
     comp=Composition(managed_composition())
     out=native.S09NativeAdapter(comp,protection_robot).describe("managed")

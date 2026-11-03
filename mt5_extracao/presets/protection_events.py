@@ -125,7 +125,11 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
                                    original_stop=original_stop,original_target=original_target)
     _require(len(by_position) == len(ledger))
     _require(all(row["state"] == 5 or row["position"] in by_position for row in journal["entries"]))
-    actions={row["intent_hash"]:row for row in journal["actions"]};seen_deals=set();last_stop={pid:row["original_stop"] for pid,row in by_position.items()}
+    actions={row["intent_hash"]:row for row in journal["actions"]}
+    _require(len(actions)==len(journal["actions"]))
+    seen_deals=set();last_stop={pid:row["original_stop"] for pid,row in by_position.items()}
+    last_tp={pid:row["original_target"] for pid,row in by_position.items()}
+    prior_state={};mutation={}
     for action in journal["actions"]:
         _require(action["kind"] in (1,2) and action["position"] in by_position)
         base=by_position[action["position"]]
@@ -140,13 +144,24 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
             _require(_same(action["before"]-action["confirmed"],action["remaining"]))
         if action["effect"] == 3:
             direction=base["trade"]["direction"]
-            _require((action["stop"]-last_stop[action["position"]])*direction >= 0 and
-                     _same_quote(action["tp"],base["original_target"],base["fill"].get("digits")))
-            last_stop[action["position"]]=action["stop"]
+            position=action["position"];before_stop=last_stop[position];before_tp=last_tp[position]
+            prior_state[action["id"]]=(before_stop,before_tp)
+            stop_changed=not _same_quote(action["stop"],before_stop,base["fill"].get("digits"))
+            tp_changed=not _same_quote(action["tp"],before_tp,base["fill"].get("digits"))
+            _require(stop_changed != tp_changed,"SL e TP não podem mudar juntos nem registrar mutação sem efeito.")
+            if stop_changed:
+                _require((action["stop"]-before_stop)*direction > 0 and
+                         _same_quote(action["tp"],before_tp,base["fill"].get("digits")))
+                mutation[action["id"]]="stop";last_stop[position]=action["stop"]
+            else:
+                _require(inputs.get("InpTargetMode")==3 and
+                         _same_quote(action["stop"],before_stop,base["fill"].get("digits")) and
+                         (action["tp"]-base["anchor"])*direction>0)
+                mutation[action["id"]]="tp";last_tp[position]=action["tp"]
     text="\n".join(mql.read_text(path) for path in (Path(directory)/"Tester").glob("Agent-*/logs/*.log"))
     events=[];seen_intents=set();seen_actions=set()
-    matches=list(re.finditer(r"HDK_(PROTECTION|TARGET|EXIT) ([^\r\n]*)",text))
-    _require(len(matches) == sum(text.count("HDK_"+name) for name in ("PROTECTION","TARGET","EXIT")))
+    matches=list(re.finditer(r"HDK_(PROTECTION|POSTFILL_TARGET|TARGET|EXIT) ([^\r\n]*)",text))
+    _require(len(matches) == sum(text.count("HDK_"+name) for name in ("PROTECTION","POSTFILL_TARGET","TARGET","EXIT")))
     for match in matches:
         kind,payload=match.groups();pairs=[part.split("=",1) for part in payload.split()]
         _require(all(len(pair) == 2 for pair in pairs))
@@ -166,12 +181,38 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
             _require(key == row["intent"])
             intent=_intent(context,key)
             _require(_same(row["initial_entry"],base["anchor"]) and _same(row["initial_risk"],base["risk"]) and _same(row["initial_volume"],base["fill"]["volume"]))
-            _require(row["tp"] == row["tp_before"] and
-                     _same_quote(row["tp"],base["original_target"],base["fill"].get("digits")) and
-                     raw["acknowledged"] == raw["observed"] == "1")
+            _require(row["tp"] == row["tp_before"] and raw["acknowledged"] == raw["observed"] == "1")
             expected,cause=_reference_stop(row,inputs)
             _require((row["requested"]-row["before"])*direction > 0 and _same(row["requested"],expected) and cause is not None)
             row["cause"]=cause
+        elif kind == "POSTFILL_TARGET":
+            _require(inputs.get("InpTargetMode")==3 and raw.get("action") in ("modify","close") and
+                     raw.get("final_effect")=="pending_journal" and raw.get("requested")=="1")
+            common=set("position action at initial_entry initial_risk initial_volume executable tick minimum requested final_effect".split())
+            fields=(common|set("planned_tp requested_tp observed".split()) if raw["action"]=="modify"
+                    else common|{"target"})
+            _require(set(raw)==fields)
+            row.update({key:_number(raw[key]) for key in ("initial_entry","initial_risk","initial_volume","executable","tick","minimum")})
+            _require(all(row[key]>0 for key in ("initial_entry","initial_risk","initial_volume","executable","tick","minimum")) and
+                     _same(row["initial_entry"],base["anchor"]) and _same(row["initial_risk"],base["risk"]) and
+                     _same(row["initial_volume"],base["fill"]["volume"]))
+            raw_target=base["anchor"]+direction*inputs["InpTargetR"]*base["risk"]
+            _require(math.isfinite(raw_target) and raw_target>0 and math.isfinite(raw_target/row["tick"]))
+            target=(math.ceil(raw_target/row["tick"]) if direction>0 else math.floor(raw_target/row["tick"]))*row["tick"]
+            _require(math.isfinite(target) and target>0 and (target-base["anchor"])*direction>0)
+            key=(("postfill-r-set-" if raw["action"]=="modify" else "postfill-r-close-")+str(position)+"-"+
+                 raw["initial_entry"]+"-"+raw["initial_risk"]+"-"+raw["initial_volume"])
+            intent=_intent(context,key)
+            row["action"]=raw["action"]
+            if row["action"]=="modify":
+                row.update(planned_tp=_number(raw["planned_tp"]),requested_tp=_number(raw["requested_tp"]))
+                _require(raw["observed"]=="1" and
+                         _same_quote(row["requested_tp"],target,base["fill"].get("digits")) and
+                         (row["requested_tp"]-row["executable"])*direction>=row["minimum"])
+            else:
+                row["target"]=_number(raw["target"])
+                _require(_same_quote(row["target"],target,base["fill"].get("digits")) and
+                         (row["executable"]-row["target"])*direction>=0)
         else:
             intent=_close_intent(context,position)
             _require(raw["acknowledged"] == "1")
@@ -197,7 +238,19 @@ def read_events(directory, inputs, journal, signals, deals, ledger, partials=(),
         _require(action is not None and intent not in seen_intents and action["position"] == position and action["at"] == at)
         seen_intents.add(intent)
         seen_actions.add(action["id"])
-        if kind == "PROTECTION":_require(action["kind"] == 2 and action["effect"] == 3 and action["stop"] == row["requested"] and action["tp"] == row["tp"])
+        if kind == "PROTECTION":
+            before=prior_state.get(action["id"])
+            _require(action["kind"] == 2 and action["effect"] == 3 and mutation.get(action["id"])=="stop" and
+                     before is not None and _same_quote(row["before"],before[0],base["fill"].get("digits")) and
+                     _same_quote(row["tp_before"],before[1],base["fill"].get("digits")) and
+                     _same_quote(action["stop"],row["requested"],base["fill"].get("digits")) and
+                     _same_quote(action["tp"],row["tp"],base["fill"].get("digits")))
+        elif kind == "POSTFILL_TARGET" and row["action"]=="modify":
+            before=prior_state.get(action["id"])
+            _require(action["kind"]==2 and action["effect"]==3 and mutation.get(action["id"])=="tp" and
+                     before is not None and _same_quote(row["planned_tp"],before[1],base["fill"].get("digits")) and
+                     _same_quote(action["stop"],before[0],base["fill"].get("digits")) and
+                     _same_quote(action["tp"],row["requested_tp"],base["fill"].get("digits")))
         else:_require(action["kind"] == 1 and action["effect"] == 1 and action["remaining"] == 0)
         row.update(action_id=action["id"],request_id=action["request_id"],effect=action["effect"],confirmed=action["confirmed"],remaining=action["remaining"])
         events.append(row)
@@ -232,5 +285,8 @@ def acceptance(rows, inputs, *, active, replay_match):
                 dynamic_target=sum(row["kind"] == "target" for row in rows),
                 signal_exit=sum(row.get("exit_kind") == "signal" for row in rows),
                 session_exit=sum(row.get("exit_kind") == "session" for row in rows))
+    if inputs["InpTargetMode"]==3:
+        modes["postfill_target"]=True
+        counts["postfill_target"]=sum(row["kind"]=="postfill_target" for row in rows)
     return {key:dict(configured=bool(enabled),events=counts[key],exercised=counts[key] > 0,
                      replay_qualified=bool(enabled and active and replay_match is True and counts[key] > 0)) for key,enabled in modes.items()}

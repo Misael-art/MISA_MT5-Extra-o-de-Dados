@@ -1,5 +1,31 @@
 # Retomar MT5X em um host limpo
 
+## E14 — auditoria pós-fill 2.13 e resgate privado — 03/11/2026
+
+App `codex/e14-protecao-comum`, base `codex/f04-vinculo-presets`, PR279
+draft; HADOUKEN `d4d389ee0800d209bdba48ab36e392e6907949a4`/PR84
+(fonte S09 2.13 `51358a16c1685cd79f4ffec0c8da464b72e10f5a`),
+Safety `27b8599` detached/PR11. O manifesto fixa estas dependências para
+desenvolvimento; a prévia instalada continua App `57d13ee`. O App concilia
+TP em R pós-fill com a intenção e o efeito do journal; o perfil 2.13/15 exige
+fingerprint e 59 inputs exatos. Os 109 testes dirigidos passaram. Compilação
+MetaEditor/Wine: 0 erros, 0 avisos, 59 arquivos iguais à fonte. Backtest e
+replay visual Tester do mesmo pacote sintético EURUSD/M5 14–16/10 terminaram
+conciliados: oito entradas, sete ações, quatro alterações de TP pós-fill;
+`reference_match=true` no replay. Prova pública em
+`docs/evidencias/E14_POSTFILL_213_TESTER_REPLAY_20261103.json`.
+
+O banco QA e os recibos privados estão na página pessoal de recuperação
+existente, complemento de 50 arquivos/seis partes, ZIP SHA256
+`2a8a6dff51b953a2bf8fe6f8c93904cad086d85ff0000163d004d61c96547080`.
+Os anexos foram relidos da Library por hash e o verificador oficial extraiu
+todos os arquivos; `qa.sqlite` passou `quick_check`. Não usar este ensaio para
+autorizar DEMO ao vivo, netting, Windows físico ou perfil operacional. Próximo:
+publicar App na PR279 e conferir SHA remoto/checks; depois continuar os gates
+E14 de recuperação/capacidade, pendentes, orçamento por ativo/grupo/plano,
+gradientes, probabilístico e SA-01. A cadeia documental/LAB/T13.4 segue local
+até a guarda central permitir a publicação da branch correspondente.
+
 ## E14 — integração de desenvolvimento do S09 2.12 — 03/11/2026
 
 App `codex/e14-protecao-comum`, base `codex/f04-vinculo-presets`, publicou

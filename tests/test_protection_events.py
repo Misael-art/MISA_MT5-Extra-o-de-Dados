@@ -240,3 +240,64 @@ def test_trailing_keeps_the_observed_tp_when_request_had_one_ulp_rounding(prepar
     journal["entries"][0].update(initial_stop=math.nextafter(90.,0.),initial_target=math.nextafter(140.,0.))
     row=proof(prepared)[0]
     assert row["initial_risk"] == 10 and row["tp"] == 140
+
+
+def postfill_case(case):
+    root,path,inputs,journal,_,_,_=case
+    inputs.update(InpTargetMode=3,InpTargetR=3,InpExitOnOpposite=False,InpExitOnSessionEnd=False)
+    key=f"postfill-r-set-{POSITION}-100-10-2"
+    action=journal["actions"][0]
+    action.update(intent_hash=events._intent(CONTEXT,key),stop=90,tp=130)
+    line=(f"HDK_POSTFILL_TARGET position={POSITION} action=modify at=1200 initial_entry=100 "
+          "initial_risk=10 initial_volume=2 executable=104 tick=1 minimum=0.5 "
+          "planned_tp=140 requested_tp=130 requested=1 observed=1 final_effect=pending_journal")
+    path.write_text(line+"\n")
+    return line
+
+
+def test_postfill_tp_mutation_and_later_trailing_keep_one_journal_identity(prepared):
+    line=postfill_case(prepared)
+    _,path,_,journal,_,_,_=prepared
+    trailing=dict(journal["actions"][0],id=3,intent_hash=events._intent(CONTEXT,f"trailing-{POSITION}-1250"),
+                  at=1300,stop=102,tp=130,request_id=56)
+    journal["actions"].append(trailing)
+    path.write_text(line+"\n"+f"HDK_PROTECTION position={POSITION} at=1300 intent=trailing-{POSITION}-1250 "
+                    "direction=1 bar_at=1250 sampled=1 executable=104 point=1 tick=0.25 minimum=0.5 "
+                    "atr=unavailable initial_entry=100 initial_risk=10 initial_volume=2 before=90 requested=102 "
+                    "acknowledged=1 observed=1 tp_before=130 tp=130\n")
+    rows=proof(prepared)
+    assert [row["kind"] for row in rows]==["postfill_target","protection"]
+    assert rows[0]["requested_tp"]==130 and rows[1]["tp"]==130
+    assert events.acceptance(rows,prepared[2],active=True,replay_match=True)["postfill_target"]["exercised"]
+
+
+@pytest.mark.parametrize("fault",["target","crossed","journal_tp","journal_stop","unobserved","source","unknown_field"])
+def test_postfill_event_cannot_approve_an_unproved_tp_mutation(prepared,fault):
+    line=postfill_case(prepared);_,path,inputs,journal,_,_,_=prepared
+    if fault=="target":line=line.replace("requested_tp=130","requested_tp=129")
+    elif fault=="crossed":line=line.replace("executable=104","executable=130")
+    elif fault=="journal_tp":journal["actions"][0]["tp"]=129
+    elif fault=="journal_stop":journal["actions"][0]["stop"]=91
+    elif fault=="unobserved":line=line.replace("observed=1","observed=0")
+    elif fault=="source":inputs["InpTargetMode"]=1
+    else:line+=" extra=1"
+    path.write_text(line+"\n")
+    with pytest.raises(ValueError):proof(prepared)
+
+
+def test_postfill_crossed_target_requires_own_close_effect_and_fill(prepared):
+    _,path,inputs,journal,_,deals,_=prepared
+    inputs.update(InpTargetMode=3,InpTargetR=3)
+    key=f"postfill-r-close-{POSITION}-100-10-2"
+    journal["actions"][0].update(kind=1,effect=1,at=1500,before=2,requested=2,
+                                 stop=0,tp=0,confirmed=2,remaining=0,response_deal=79,
+                                 intent_hash=events._intent(CONTEXT,key))
+    deals[1]["at_msc"]=1500000
+    line=(f"HDK_POSTFILL_TARGET position={POSITION} action=close at=1500 initial_entry=100 "
+          "initial_risk=10 initial_volume=2 target=130 executable=131 tick=1 minimum=0.5 "
+          "requested=1 final_effect=pending_journal")
+    path.write_text(line+"\n")
+    rows=proof(prepared)
+    assert len(rows)==1 and rows[0]["action"]=="close" and rows[0]["remaining"]==0
+    deals.pop()
+    with pytest.raises(ValueError):proof(prepared)

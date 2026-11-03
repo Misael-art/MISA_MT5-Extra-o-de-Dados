@@ -123,6 +123,12 @@ POSTFILL_ROBOT_VERSION="2.12"
 POSTFILL_APPROVED_FINGERPRINT="9dd6ce552d629fb5"
 POSTFILL_HADOUKEN_REVISION="f99ebde132c10bb078e78796e7ef048082ba07cc"
 POSTFILL_INPUT_TYPES=PROTECTION_INPUT_TYPES
+# 2.13 acrescenta somente os campos necessários para conciliar cada mutação
+# ou fechamento pós-fill com preço executável, tick e journal da fonte exata.
+POSTFILL_AUDIT_ROBOT_VERSION="2.13"
+POSTFILL_AUDIT_APPROVED_FINGERPRINT="134eb770360afaf6"
+POSTFILL_AUDIT_HADOUKEN_REVISION="51358a16c1685cd79f4ffec0c8da464b72e10f5a"
+POSTFILL_AUDIT_INPUT_TYPES=POSTFILL_INPUT_TYPES
 
 def _require_robot(robot):
     actual = {item.name: item.type for item in robot.inputs}
@@ -138,12 +144,13 @@ def _require_robot(robot):
                 PANEL_ROBOT_VERSION:(PANEL_APPROVED_FINGERPRINT,PANEL_INPUT_TYPES,10,PANEL_HADOUKEN_REVISION),
                 RUNTIME_ROBOT_VERSION:(RUNTIME_APPROVED_FINGERPRINT,RUNTIME_INPUT_TYPES,11,RUNTIME_HADOUKEN_REVISION),
                 PROTECTION_ROBOT_VERSION:(PROTECTION_APPROVED_FINGERPRINT,PROTECTION_INPUT_TYPES,13,PROTECTION_HADOUKEN_REVISION),
-                POSTFILL_ROBOT_VERSION:(POSTFILL_APPROVED_FINGERPRINT,POSTFILL_INPUT_TYPES,14,POSTFILL_HADOUKEN_REVISION)}
+                POSTFILL_ROBOT_VERSION:(POSTFILL_APPROVED_FINGERPRINT,POSTFILL_INPUT_TYPES,14,POSTFILL_HADOUKEN_REVISION),
+                POSTFILL_AUDIT_ROBOT_VERSION:(POSTFILL_AUDIT_APPROVED_FINGERPRINT,POSTFILL_AUDIT_INPUT_TYPES,15,POSTFILL_AUDIT_HADOUKEN_REVISION)}
     profile = profiles.get(robot.version)
     if (robot.kind != catalog.MQL5 or not robot.has_source or robot.key != ROBOT_KEY or profile is None
             or catalog.fingerprint(robot) != profile[0] or actual != profile[1]
             or len(robot.inputs) != len(profile[1])
-            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION) else set())):
+            or set(robot.missing_includes) - (PANEL_STANDARD_INCLUDES if robot.version in (PANEL_ROBOT_VERSION,RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION) else set())):
         raise ValueError("Perfil S09 exige fonte/versão/fingerprint HADOUKEN aprovados e todos os inputs conhecidos; "
                          "atualize a biblioteca pela revisão indicada, sem substituir arquivos do usuário.")
     if profile[3] is None:
@@ -153,7 +160,7 @@ def _require_robot(robot):
 
 def runtime_binding_required(robot):
     """A mesma autoridade do mapper recusa execução avulsa do perfil vinculado."""
-    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION):
+    if robot.key!=ROBOT_KEY or robot.version not in (RUNTIME_ROBOT_VERSION,PROTECTION_ROBOT_VERSION,POSTFILL_ROBOT_VERSION,POSTFILL_AUDIT_ROBOT_VERSION):
         return False
     _require_robot(robot)
     return True

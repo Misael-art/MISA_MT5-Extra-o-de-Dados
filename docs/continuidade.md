@@ -1,3 +1,34 @@
+## E14 — TP em R pós-fill, fonte S09 2.13 — 03/11/2026
+
+PR279 permanece draft, branch `codex/e14-protecao-comum` sobre
+`codex/f04-vinculo-presets`. A fonte HADOUKEN
+`51358a16c1685cd79f4ffec0c8da464b72e10f5a` e seu recibo de compilação
+`d4d389ee0800d209bdba48ab36e392e6907949a4` estão na PR84; o manifesto
+de desenvolvimento fixa o segundo SHA. Safety segue em `27b8599` detached.
+O App acrescenta o perfil S09 2.13/15 e concilia alteração de TP pós-fill
+com intenção, journal, preço executável, tick, risco inicial e fills; trailing
+posterior mantém o TP confirmado. O perfil 2.12/14 permanece identificado
+separadamente. A fonte 2.13 compilou no MetaEditor/Wine (59 arquivos iguais,
+0 erros, 0 avisos). No Tester Linux/Wine, pacote Manual sintético EURUSD/M5
+14–16/10/2026, modelo 0: backtest e replay visual terminaram com oito entradas,
+sete ações conciliadas e quatro alterações pós-fill; o replay confirmou
+`reference_match`, caixa e journal. Os 109 testes dirigidos de perfil, UI e
+auditoria passaram. Recibo público:
+`docs/evidencias/E14_POSTFILL_213_TESTER_REPLAY_20261103.json`.
+
+O banco e os artefatos privados da QA foram protegidos no mecanismo pessoal de
+recuperação já registrado: ZIP SHA256
+`2a8a6dff51b953a2bf8fe6f8c93904cad086d85ff0000163d004d61c96547080`,
+50 arquivos, seis partes; todos os sete anexos foram relidos remotamente por
+hash/tamanho, e o verificador oficial recompôs e extraiu os 50 arquivos.
+`qa.sqlite` passou `quick_check`. Configuração de conta, histórico e caches
+não integram o pacote. A prévia instalada segue `57d13ee`; ela não contém
+este perfil. Tester DEMO não é DEMO ao vivo: não houve aceite netting, Windows
+físico ou liberação operacional. CI App no novo SHA e demais gates E14 continuam
+independentes. Próximo: publicar a auditoria App na mesma PR279, conferir o
+SHA remoto e os checks, depois retomar recuperação/capacidade e pendentes.
+
+
 ## E14 — perfil S09 2.12 integrado para desenvolvimento — 03/11/2026
 
 PR279 draft, branch `codex/e14-protecao-comum` sobre
