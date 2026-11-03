@@ -36,6 +36,9 @@ launcher/GUI, Windows físico, MT5 e Tester não foram validados nesta fonte.
 O conjunto dirigido P01–P06/datasets/experimentos passou 89 testes no Linux;
 seis testes do fluxo foram repetidos depois da contagem de negativos.
 Um teste PostgreSQL P06 foi ignorado sem URL local e precisa passar na CI da PR.
+O serviço P06 também é acessível por SDK e pela CLI `experiments pattern-*`:
+criação de campanha, reserva de tentativa, avaliação de snapshot e consulta
+de status. `synthetic_utc_day` exige escolha explícita e só serve para QA.
 Artefatos privados seguem o manifesto existente, sem cópia. Próximo: P07,
 consumidores read-only da mesma avaliação, depois ensaio real elegível e gates
 externos separados.

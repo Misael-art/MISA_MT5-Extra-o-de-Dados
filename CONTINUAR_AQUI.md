@@ -37,7 +37,10 @@ O conjunto P01–P06/datasets/experimentos teve 89 testes aprovados no Linux;
 os seis testes diretos do fluxo foram repetidos após a contagem de negativos.
 O teste transacional PostgreSQL do fluxo foi ignorado sem URL local; a CI da PR
 deverá executá-lo. Nenhum dado real foi usado como fixture.
-P07 deve ligar CLI, SDK, Laboratório, GUI e Dashboard à avaliação persistida.
+SDK e CLI `experiments pattern-create`, `pattern-request`, `pattern-evaluate` e
+`pattern-status` expõem o fluxo no serviço existente, com modo sintético de
+sessão apenas quando escolhido explicitamente para QA. P07 deve ligar os
+consumidores de consulta à avaliação persistida.
 
 ## T13.4-P05 — adaptador econômico em revisão — 03/11/2026
 
