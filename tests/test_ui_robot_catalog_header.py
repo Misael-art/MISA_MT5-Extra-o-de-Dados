@@ -59,3 +59,17 @@ def test_search_keeps_room_for_typing_between_header_actions(ui, request):
         assert button.winfo_reqwidth() <= button.winfo_width()
         assert button.winfo_rootx() >= panel.page_viewport.canvas.winfo_rootx()
         assert button.winfo_rootx() + button.winfo_width() <= panel.page_viewport.canvas.winfo_rootx() + panel.page_viewport.canvas.winfo_width()
+
+
+def test_wide_platform_button_keeps_actions_and_search_reachable(ui, request):
+    enlarge(ui, request)
+    panel = ui.robots_panel
+    panel.panel_button.configure(width=17)  # simula a largura nativa maior do ttk no Windows
+    ui.pump(.2)
+    search = next(w for w in panel.filterbar_search.winfo_children() if w.winfo_class() == "TEntry")
+    assert panel.panel_button.winfo_reqwidth() > 294
+    assert search.winfo_width() >= ui.theme.font.measure("0" * 12)
+    right = panel.page_viewport.canvas.winfo_rootx() + panel.page_viewport.canvas.winfo_width()
+    for button in (panel.import_button, panel.dashboard_button, panel.panel_button):
+        assert button.winfo_reqwidth() <= button.winfo_width()
+        assert button.winfo_rootx() + button.winfo_width() <= right

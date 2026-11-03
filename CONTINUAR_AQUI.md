@@ -1,5 +1,24 @@
 # Retomar MT5X em um host limpo
 
+## E14 — segunda correção de layout Windows em revisão — 03/11/2026
+
+Na PR279, App `d68e125`, o rerun Windows 41668845297/attempt 2 concluiu com
+4552 testes aprovados, 193 ignorados e 2 falhas (cobertura 77,74%). Retenção
+do lease e os dois casos UTF-8 passaram; restaram busca/ações do catálogo e
+gráfico da comparação em janela estreita. O teste de catálogo observou botão
+pedido com 331 px, alocado em 294; a comparação observou canvas 672 px em
+viewport de 558. O primeiro attempt desse SHA parou antes, no limite de 60 s
+de um teste de lote com 6 ativos; não comprovou estas duas falhas.
+
+Este incremento deixa ações do catálogo em linhas de largura integral quando
+estreito e limita os canvases TkAgg à largura da página ao mudar DPI/tema.
+Uma regressão sintética reproduziu recorte de botão no Linux antes da correção;
+depois passaram 10 testes dirigidos de catálogo e comparação em Xvfb. O check
+Windows do SHA sucessor, o launcher da fonte nova e Windows físico ainda são
+gates próprios. HADOUKEN `2809938`, Safety `27b8599` e prévia instalada
+`57d13ee` não mudaram. Próximo: publicar na mesma PR279, confirmar SHA remoto,
+checks e rebater a cadeia local dependente sem perder os commits.
+
 ## E14 — saneamento do Windows CI em revisão — 03/11/2026
 
 PR279 segue aberta/draft na branch `codex/e14-protecao-comum`. No SHA

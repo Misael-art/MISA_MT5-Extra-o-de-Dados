@@ -1,3 +1,22 @@
+## E14 — rerun Windows e dois controles ainda estreitos — 03/11/2026
+
+PR279, branch `codex/e14-protecao-comum`, base
+`codex/f04-vinculo-presets`; App remoto `d68e125`, HADOUKEN `2809938`/PR84,
+Safety `27b8599` detached/PR11. O attempt 2 do run 41668845297 terminou com
+4552 aprovados, 193 ignorados, 2 falhas e cobertura 77,74%; os jobs Linux,
+PostgreSQL, instaladores e lint passaram. As três falhas originais de lease e
+UTF-8 não reapareceram. O catálogo ainda cortou o botão (331 px requeridos,
+294 alocados); TkAgg conservou 672 px num viewport de 558. O attempt 1 tinha
+parado no timeout de 60 s do lote de 6 ativos, sem qualificar o restante.
+
+O corretivo local aloca uma linha inteira por grupo de ações quando estreito
+e ajusta canvases da comparação à página em mudanças de DPI/tema. Regressão
+sintética de largura do botão falhou antes e passou depois; 10 testes dirigidos
+de catálogo e comparação passaram em Xvfb. Ainda faltam SHA remoto/checks do
+novo commit, QA pelo launcher da fonte publicada e Windows físico. Nenhum
+contrato financeiro, pin ou dado privado mudou. Próximo: push na PR279,
+conferência de CI e reconciliação das branches locais dependentes.
+
 ## E14 — cinco falhas Windows CI, corretivo em revisão — 03/11/2026
 
 Fonte: App `a74f539`/PR279, HADOUKEN `28099386`/PR84, Safety `27b85992`

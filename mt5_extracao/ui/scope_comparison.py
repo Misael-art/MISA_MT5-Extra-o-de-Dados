@@ -89,6 +89,8 @@ class ScopeComparisonDialog:
         self.tabs.bind('<<NotebookTabChanged>>', lambda e:self.schedule_draw())
         for chart in (self.summary_chart,self.matrix_chart,self.curves):
             chart.widget.bind('<Map>',lambda e:self.schedule_draw(),add='+')
+        for view,chart in zip(self.views[:3],(self.summary_chart,self.matrix_chart,self.curves)):
+            view.canvas.bind('<Configure>',lambda event,chart=chart:self._fit_chart_width(chart,event.width),add='+')
         self.matrix_chart.widget.bind('<Configure>',self.matrix_resized,add='+')
         self.load()
 
@@ -152,7 +154,18 @@ class ScopeComparisonDialog:
 
     def _mapped_draw(self):
         self._redraw_id=None
-        if self.alive():self.draw()
+        if self.alive():
+            for view,chart in zip(self.views[:3],(self.summary_chart,self.matrix_chart,self.curves)):
+                self._fit_chart_width(chart,view.canvas.winfo_width())
+            self.draw()
+
+    @staticmethod
+    def _fit_chart_width(chart,width):
+        # TkAgg pode recalcular a largura requisitada após mudança de DPI.
+        # A página rolável só rola verticalmente; o canvas do gráfico deve caber nela.
+        target=max(1,int(width)-2)
+        if int(chart.widget.cget('width'))!=target:
+            chart.widget.configure(width=target)
 
     def matrix_resized(self,event):
         if not self.result or self.tabs.index('current')!=1:return

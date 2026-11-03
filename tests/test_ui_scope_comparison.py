@@ -39,6 +39,8 @@ def test_themes_scales_metrics_and_narrow_window_keep_actions_reachable(ui,compl
     try:
         for scale in (96/72,144/72):
             ui.root.tk.call('tk','scaling',scale)
+            for chart in (view.summary_chart,view.matrix_chart,view.curves):
+                chart.widget.configure(width=700)  # TkAgg pode pedir a largura nativa após mudar DPI
             view.window.geometry('600x500');ui.toggle_theme();ui.pump(.2)
             left,top=view.window.winfo_rootx(),view.window.winfo_rooty();right,bottom=left+view.window.winfo_width(),top+view.window.winfo_height()
             assert view.refresh.winfo_viewable() and left<=view.refresh.winfo_rootx()<right
