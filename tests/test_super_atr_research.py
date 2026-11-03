@@ -134,15 +134,15 @@ def test_reference_generation_refuses_changed_host_before_writing_package(tmp_pa
 
 def test_reference_presets_separate_historical_reproduction_from_demo_qualification(tmp_path,framework):
     files=generate(tmp_path,framework,reference=True)
-    reproduction=files[5].read_text()
+    reproduction=files[5].read_text(encoding='utf-8')
     assert 'REPRODUÇÃO HISTÓRICA' in reproduction and 'NÃO usar em DEMO' in reproduction
     assert all(f'{k}=100.0' in reproduction for k in ('InpDailyLossPct','InpWeeklyLossPct','InpMaxDrawdownPct'))
-    readme=(files[0].parent/'README.md').read_text()
+    readme=(files[0].parent/'README.md').read_text(encoding='utf-8')
     assert 'SAREF01_DEMO' in readme and 'Não usar em DEMO' in readme
-    assert 'reprodução histórica' in json.loads((files[0].parent/'SuperAtrQA.robot.json').read_text())['description']
+    assert 'reprodução histórica' in json.loads((files[0].parent/'SuperAtrQA.robot.json').read_text(encoding='utf-8'))['description']
     demo=super_atr_research.demo_preset('SuperAtrQA',tmp_path/'package',seed_start='2026-09-01T00:00',magic=654321)
     values=mql.parse_set(demo.read_text())
-    assert demo.name=='SuperAtrQA_SAREF01_DEMO.set' and 'ARMADO explicitamente' in demo.read_text()
+    assert demo.name=='SuperAtrQA_SAREF01_DEMO.set' and 'ARMADO explicitamente' in demo.read_text(encoding='utf-8')
     assert values['InpResearchOrders']=='true' and values['InpVariant']=='1' and values['InpSeedStart']=='2026.09.01 00:00'
     assert (values['InpRiskPct'],values['InpDailyLossPct'],values['InpWeeklyLossPct'],values['InpMaxDrawdownPct'])==('0.25','2.0','4.0','10.0')
     with pytest.raises(FileExistsError):

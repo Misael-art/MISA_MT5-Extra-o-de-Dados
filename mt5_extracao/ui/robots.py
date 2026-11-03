@@ -176,6 +176,8 @@ class RobotsPanel:
         if stacked:
             for column in range(4):
                 self.filterbar.columnconfigure(column, weight=1)
+            self.import_button.grid_configure(column=0, columnspan=2)
+            self.dashboard_button.master.grid_configure(column=2, columnspan=2)
             self.filterbar_search.grid_configure(row=1, column=0, columnspan=4, padx=0, pady=(8, 0))
             for index, cell in enumerate(self.filter_cells):
                 cell.grid_configure(row=2 + index // 2, column=(index % 2) * 2, columnspan=2,
@@ -183,6 +185,8 @@ class RobotsPanel:
         else:
             for column, weight in enumerate((0, 1, 1, 0)):
                 self.filterbar.columnconfigure(column, weight=weight)
+            self.import_button.grid_configure(column=0, columnspan=1)
+            self.dashboard_button.master.grid_configure(column=3, columnspan=1)
             self.filterbar_search.grid_configure(row=0, column=1, columnspan=2, padx=12, pady=0)
             for index, cell in enumerate(self.filter_cells):
                 cell.grid_configure(row=1, column=index, columnspan=1,

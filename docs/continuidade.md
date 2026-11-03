@@ -1,3 +1,26 @@
+## E14 — cinco falhas Windows CI, corretivo em revisão — 03/11/2026
+
+Fonte: App `a74f539`/PR279, HADOUKEN `28099386`/PR84, Safety `27b85992`
+detached/PR11. O check Windows desse App terminou com 5 falhas, 4549 aprovados
+e 193 ignorados; os demais checks obrigatórios passaram. A leitura do `.lock`
+no teste falhava porque o kernel Windows veda ler seu byte travado, embora a
+exclusão e a recuperação após saída do processo funcionassem. Duas asserções
+decodificavam UTF-8 pela página de código local. No Tk, o botão Importar perdia
+4 px e os gráficos da comparação conservavam 870 px num viewport de 558 px.
+O corretivo mantém a prova de exclusão e estado final, fixa UTF-8 nos testes,
+distribui as ações em duas colunas estreitas e deixa os gráficos ocuparem a
+largura do viewport. No host Linux, 64 testes pertinentes passaram e o doctor
+offline informou 16 OK/2 avisos/0 falhas. A suíte integral terminou com sinal
+143 após 6%, sem causa provada; outras suítes de projetos distintos estavam
+em execução ao conferir os processos. O CI do novo SHA será registrado
+separadamente; não inferir Windows físico, MT5/Wine ou aceite financeiro.
+
+Prévia `57d13ee` é anterior à fonte E14; não a confundir com o checkout ou com
+uma mudança instalada. T13.4-P00 permanece em `codex/plano-descoberta-padroes`/
+`63fd9cf`, só documentação, e não integra esta PR. O guarda central de push
+exige continuidade registrada e hoje impede criar aquela branch remota;
+resolução explícita pendente. O preparo oficial aceita os pins da branch E14.
+
 ## Novo host sem o disco antigo ou SD — 2026-10-24
 
 O proprietário confirmou que **não levará o SDCard**. A retomada atual é pela

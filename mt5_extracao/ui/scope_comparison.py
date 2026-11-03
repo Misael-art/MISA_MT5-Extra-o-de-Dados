@@ -51,7 +51,7 @@ class ScopeComparisonDialog:
         for title in ('Resultados', 'Ativos × TF', 'Capital', 'Detalhe'):
             view = ScrollableContent(self.tabs, ui.theme); self.tabs.add(view, text=title); self.views.append(view)
         self.summary_chart = Chart(self.views[0].content, ui.theme, height=3.3)
-        self.summary_chart.widget.pack(fill=tk.X); self.summary_chart.widget.configure(height=300)
+        self.summary_chart.widget.configure(width=1, height=300); self.summary_chart.widget.pack(fill=tk.X)
         self.table = TablePanel(self.views[0].content, 'Células do lote · selecione para inspecionar',
             ('Ativo','TF','Estado','Operações','Retorno %','DD patrimônio %','PF','Run'), (130,65,145,90,110,140,130,280), xscroll=True, height=8)
         self.table.pack(fill=tk.BOTH, expand=True)
@@ -59,7 +59,7 @@ class ScopeComparisonDialog:
         self.table.tree.bind('<Return>', lambda e:self.inspect(reveal=True))
         self.table.tree.bind('<Double-1>', lambda e:self.inspect(reveal=True))
         self.matrix_chart = Chart(self.views[1].content, ui.theme, height=3.8)
-        self.matrix_chart.widget.pack(fill=tk.X); self.matrix_chart.widget.configure(height=360)
+        self.matrix_chart.widget.configure(width=1, height=360); self.matrix_chart.widget.pack(fill=tk.X)
         ttk.Label(self.views[1].content, text=f'—: métrica ausente. Hachura: menos de{matrix.MIN_TRADES} operações ou amostra desconhecida. Passe o cursor para valor, n e estado; selecione para o detalhe.', wraplength=500).pack(fill=tk.X)
         self.matrix_chart.canvas.mpl_connect('button_press_event', self.matrix_select)
         pages = ttk.Frame(self.views[2].content); pages.pack(fill=tk.X)
@@ -67,7 +67,7 @@ class ScopeComparisonDialog:
         ttk.Button(pages,text='TFs →',command=lambda:self.page(1)).pack(side=tk.LEFT)
         self.curve_caption = ttk.Label(pages,text=''); self.curve_caption.pack(side=tk.LEFT,padx=8)
         self.curves = Chart(self.views[2].content, ui.theme, height=5.3)
-        self.curves.widget.pack(fill=tk.X); self.curves.widget.configure(height=500)
+        self.curves.widget.configure(width=1, height=500); self.curves.widget.pack(fill=tk.X)
         from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
         self.toolbar = NavigationToolbar2Tk(self.curves.canvas, self.views[2].content, pack_toolbar=False)
         self.toolbar.pack(fill=tk.X)

@@ -1,5 +1,21 @@
 # Retomar MT5X em um host limpo
 
+## E14 — saneamento do Windows CI em revisão — 03/11/2026
+
+PR279 segue aberta/draft na branch `codex/e14-protecao-comum`. No SHA
+`a74f53977bd9e67250b072df43a17d0c3ee06a12`, Linux, PostgreSQL, instaladores
+e lint passaram; Windows terminou com 5 falhas, 4549 testes aprovados e 193
+ignorados. Este corretivo trata a leitura da trava pelo teste durante o lease
+Windows, duas leituras de UTF-8 sem codificação explícita e dois controles Tk
+mais largos que seus viewports. No host, 64 testes pertinentes passaram e o
+doctor offline teve 16 OK/2 avisos/0 falhas. A suíte integral foi interrompida
+com código 143 após 6%; não há aceite integral local. O CI do novo SHA tem
+recibo distinto; Windows físico, MT5 e negociação não são certificados pelo CI.
+Composição operacional: App na PR279, HADOUKEN `28099386`/PR84 e Safety
+`27b85992` detached/PR11. O manifesto desta branch fixa esses componentes.
+A prévia instalada ainda aponta para App `57d13ee`; atualizar somente após
+publicação e verificação pelo launcher, preservando as sessões abertas.
+
 ## Execução do pilar operacional —01/11/2026
 
 Pedido atual do proprietário inclui App, HADOUKEN e Safety, de ponta a ponta.

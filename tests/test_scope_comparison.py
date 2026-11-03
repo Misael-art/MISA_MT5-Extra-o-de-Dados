@@ -95,7 +95,7 @@ def test_negative_values_cost_mismatch_and_integrity_are_preserved(completed_sco
         value=sdk.compare_backtest_scope(db,plan['batch_id'])
         assert not value['compatible'] and 'Configuração de capital/risco/custos diferente' in value['reasons']
         assert next(r for r in value['rows'] if r['run_id']==ident)['summary']['net_profit']==-7
-        path=tmp_path/'scope.html';sdk.export_laboratory_runs(value,path);assert 'Matriz ativo × TF' in path.read_text()
+        path=tmp_path/'scope.html';sdk.export_laboratory_runs(value,path);assert 'Matriz ativo × TF' in path.read_text(encoding='utf-8')
         altered=deepcopy(value);altered['cells'][0]['state']='failed'
         with pytest.raises(ValueError,match='alterada'):report.render_runs(altered)
     monkeypatch.setattr(cli.Context,'db',property(lambda _:db))

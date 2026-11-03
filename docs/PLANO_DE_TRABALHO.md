@@ -4466,6 +4466,17 @@ App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
 
 ### E14 — proteção comum e auditoria nativa em qualificação
 
+Corretivo de portabilidade do CI no App, 03/11/2026: o SHA remoto `a74f539`
+teve 5 falhas Windows (lease de arquivo lido pelo teste enquanto travado,
+duas decodificações UTF-8 implícitas, menu de catálogo 4 px comprimido e
+gráfico de comparação 870 px em viewport 558 px). Ajustes de teste e layout
+estão em revisão na mesma PR279; checks do SHA sucessor ainda não são aceite.
+O teste focal local passou 5/5 antes e depois da mudança; 64/64 testes dos cinco
+módulos afetados passaram no host e doctor offline deu 16/2/0. A suíte integral
+foi interrompida com sinal 143 após 6%; não há alegação de gate amplo verde.
+Só o novo Windows CI verifica essas regressões específicas do runner. Windows físico,
+MT5/Wine e qualificação operacional permanecem separados.
+
 S09v2.11/perfil13 compõe59 inputs no mesmo adaptador/executor/journal: SL pontos/
 ATR14 fechado, TP pontos/R planejado, trailing pontos/ATR por barra, BE por gatilho,
 alvo virtual ATR limitado por R real, saídas por sessão/sinal e orientação.
