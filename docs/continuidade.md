@@ -1,7 +1,9 @@
 ## E14 — TP em R pós-fill, fonte S09 2.13 — 03/11/2026
 
 PR279 permanece draft, branch `codex/e14-protecao-comum` sobre
-`codex/f04-vinculo-presets`. A fonte HADOUKEN
+`codex/f04-vinculo-presets`; App
+`f36395334e431517752c5872c221aa6110228d49` confirmado no remoto.
+A fonte HADOUKEN
 `51358a16c1685cd79f4ffec0c8da464b72e10f5a` e seu recibo de compilação
 `d4d389ee0800d209bdba48ab36e392e6907949a4` estão na PR84; o manifesto
 de desenvolvimento fixa o segundo SHA. Safety segue em `27b8599` detached.
@@ -25,8 +27,8 @@ hash/tamanho, e o verificador oficial recompôs e extraiu os 50 arquivos.
 não integram o pacote. A prévia instalada segue `57d13ee`; ela não contém
 este perfil. Tester DEMO não é DEMO ao vivo: não houve aceite netting, Windows
 físico ou liberação operacional. CI App no novo SHA e demais gates E14 continuam
-independentes. Próximo: publicar a auditoria App na mesma PR279, conferir o
-SHA remoto e os checks, depois retomar recuperação/capacidade e pendentes.
+independentes. Próximo: conferir o CI da PR279 e retomar
+recuperação/capacidade e pendentes.
 
 
 ## E14 — perfil S09 2.12 integrado para desenvolvimento — 03/11/2026

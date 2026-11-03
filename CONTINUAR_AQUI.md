@@ -3,7 +3,8 @@
 ## E14 — auditoria pós-fill 2.13 e resgate privado — 03/11/2026
 
 App `codex/e14-protecao-comum`, base `codex/f04-vinculo-presets`, PR279
-draft; HADOUKEN `d4d389ee0800d209bdba48ab36e392e6907949a4`/PR84
+draft, código e recibo `f36395334e431517752c5872c221aa6110228d49`
+confirmados no remoto; HADOUKEN `d4d389ee0800d209bdba48ab36e392e6907949a4`/PR84
 (fonte S09 2.13 `51358a16c1685cd79f4ffec0c8da464b72e10f5a`),
 Safety `27b8599` detached/PR11. O manifesto fixa estas dependências para
 desenvolvimento; a prévia instalada continua App `57d13ee`. O App concilia
@@ -21,7 +22,7 @@ existente, complemento de 50 arquivos/seis partes, ZIP SHA256
 Os anexos foram relidos da Library por hash e o verificador oficial extraiu
 todos os arquivos; `qa.sqlite` passou `quick_check`. Não usar este ensaio para
 autorizar DEMO ao vivo, netting, Windows físico ou perfil operacional. Próximo:
-publicar App na PR279 e conferir SHA remoto/checks; depois continuar os gates
+conferir o CI do SHA publicado e continuar os gates
 E14 de recuperação/capacidade, pendentes, orçamento por ativo/grupo/plano,
 gradientes, probabilístico e SA-01. A cadeia documental/LAB/T13.4 segue local
 até a guarda central permitir a publicação da branch correspondente.
