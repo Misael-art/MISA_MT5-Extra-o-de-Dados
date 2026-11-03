@@ -14,6 +14,21 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P03 — campanha, tentativas e reserva em revisão — 03/11/2026
+
+Fonte local `codex/t134-p03-campanha-reserva`, baseada em P02 local, sem
+push/PR por causa do guarda central de publicação. O protocolo v2 congela roster
+de snapshots, cortes train/validation/holdout em UTC, grade, endpoints, semente,
+critérios e orçamento de campanha no store de experimentos atual. Tentativas
+idempotentes, limite agregado e exposição da reserva são transações sob o mesmo
+lock; recusas permanecem auditáveis. Dois bancos sintéticos com mesmo símbolo
+mantêm escopos distintos. A consulta de status preserva exposição externa como
+desconhecida e não certifica holdout final. Testes locais: 57 passaram, 1 de
+PostgreSQL ignorado por falta da URL de teste; CI, host Windows, launcher, dados
+reais e aceite operacional não foram executados. Artefatos privados seguem o
+manifesto existente e não foram copiados. Próximo: P04, validação temporal e
+purga sobre estes cortes, depois integração P05/P06 sem segundo store.
+
 ## T13.4-P02 — gramática e eventos causais em revisão — 03/11/2026
 
 Fonte local `codex/t134-p02-regras-eventos` sobre P01 local. Uma definição
