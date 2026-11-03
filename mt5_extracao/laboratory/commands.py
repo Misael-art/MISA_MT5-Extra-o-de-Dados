@@ -22,6 +22,17 @@ def add_parser(sub):
     inventory.add_argument("--cursor")
     inventory.set_defaults(func=run)
     actions.add_parser("sources", help="tabelas OHLCV em TFs nativos; somente leitura").set_defaults(func=run)
+    actions.add_parser("pattern-sources", help="fontes locais para T13.4 com namespace da base").set_defaults(func=run)
+    for action in ("pattern-qualify", "pattern-freeze"):
+        candidate = actions.add_parser(action, help="qualifica recorte T13.4" if action.endswith("qualify")
+                                       else "congela recorte elegível no store existente")
+        candidate.add_argument("--symbol", required=True)
+        candidate.add_argument("--tf", required=True)
+        candidate.add_argument("--family", required=True,
+                               choices=["reversal", "continuation_time", "gap", "breakout_failure"])
+        candidate.add_argument("--start", help="início no relógio da base")
+        candidate.add_argument("--end", help="fim no relógio da base")
+        candidate.set_defaults(func=run)
     derived_read = actions.add_parser(
         "derived", help="lê barras de dia exato já gravadas em _bars_derived; não agrega nem extrai")
     derived_read.add_argument("--symbol", help="se omitido, lista as séries gravadas")
@@ -108,7 +119,13 @@ def add_parser(sub):
 
 def run(args, ctx):
     from mt5_extracao import cli
-    if args.laboratory_action=='execution-link':
+    if args.laboratory_action in ("pattern-sources", "pattern-qualify", "pattern-freeze"):
+        from mt5_extracao import sdk
+        result = (sdk.pattern_sources(ctx.db) if args.laboratory_action == "pattern-sources" else
+                  (sdk.qualify_pattern_source if args.laboratory_action == "pattern-qualify"
+                   else sdk.freeze_pattern_source)(ctx.db, symbol=args.symbol, timeframe=args.tf,
+                                                   family=args.family, start=args.start, end=args.end))
+    elif args.laboratory_action=='execution-link':
         from mt5_extracao import sdk
         path=Path(args.analysis).expanduser();out=Path(args.out).expanduser()
         if path.stat().st_size>16*1024*1024 or out.exists():raise ValueError('Análise exige até16MiB e saída nova.')

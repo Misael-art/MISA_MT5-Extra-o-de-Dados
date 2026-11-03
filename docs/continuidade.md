@@ -14,6 +14,25 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P01 — inventário e elegibilidade em revisão — 03/11/2026
+
+Fonte local: `codex/t134-p01-catalogo-elegibilidade`, sobre o P00 reconciliado
+com E14; nenhuma PR/push desta branch até a decisão sobre o guarda central.
+O serviço `analytics.pattern_catalog` encontra séries em `data_inventory`,
+carimba o namespace de `datasets`, conta o recorte antes de carregá-lo e
+qualifica quatro famílias iniciais pelas capacidades já existentes. Evidências
+de coleta e barras derivadas seguem o mesmo caminho usado por `datasets.capture`;
+relógio ausente ou zona variável bloqueia a captura com motivo. `freeze` grava
+até 20.000 barras no store de snapshots atual, sem novo banco ou coletor.
+SDK e CLI consultam o mesmo relatório. Testes sintéticos verificaram duas
+bases de mesmo símbolo, ausência versus zero, cobertura de sessão, recorte
+grande e reabertura; 57 testes de Dados/qualificação e 17 de relógio/P01
+passaram no host Linux. A conversão escalar do banco com zona foi corrigida
+no dono `database_manager`; o snapshot variável continua bloqueado. Nenhum dado
+privado entrou nas fixtures. Não há aceite de fonte real, Windows físico,
+MT5/Wine, pesquisa financeira, cálculo P02 ou avaliação M1. Próxima tarefa:
+publicar P00/P01 quando o guarda permitir, depois P02 sobre P01 revisado.
+
 ## E14 — TP em R pós-fill, fonte S09 2.13 — 03/11/2026
 
 PR279 permanece draft, branch `codex/e14-protecao-comum` sobre

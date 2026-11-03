@@ -381,7 +381,28 @@ def create_backtest_scope_runner(db, config, robot, batch_id, **kwargs):
     return create_runner(db, config, robot, batch_id, **kwargs)
 
 
+def pattern_sources(db):
+    """Inventário de fontes locais com namespace da base, sem procurar no terminal."""
+    from mt5_extracao.analytics import pattern_catalog
+    return pattern_catalog.sources(db)
+
+
+def qualify_pattern_source(db, *, symbol, timeframe, family, start=None, end=None):
+    """Elegibilidade por recorte/família; consulta sem execução ou captura."""
+    from mt5_extracao.analytics import pattern_catalog
+    return pattern_catalog.qualify(db, symbol=symbol, timeframe=timeframe, family=family,
+                                   start=start, end=end)
+
+
+def freeze_pattern_source(db, *, symbol, timeframe, family, start=None, end=None):
+    """Conserva a seleção compacta no store de snapshots existente."""
+    from mt5_extracao.analytics import pattern_catalog
+    return pattern_catalog.freeze(db, symbol=symbol, timeframe=timeframe, family=family,
+                                  start=start, end=end)
+
+
 __all__ = [
+    "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "preview_backtest_scope", "inspect_backtest_scope", "create_backtest_scope_runner", "compare_backtest_scope",
     "create_super_atr_research_robot",
     "super_atr_capabilities", "materialize_super_atr_snapshot",
