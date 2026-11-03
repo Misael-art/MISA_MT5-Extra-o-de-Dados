@@ -14,6 +14,24 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P05 — simulação pelo motor existente em revisão — 03/11/2026
+
+Fonte local `codex/t134-p05-simulacao-economica`, baseada em P04 para revisão
+sequencial; P06 depende de ambos os contratos. Sem push/PR
+enquanto o guarda central compartilhado impedir branches de revisão. Eventos
+do P02 são vinculados ao hash, fonte, ativo, TF, revisão e disponibilidade da
+barra antes de virar sinais. `strategies.pattern_adapter` declara mercado na
+próxima abertura, uma posição, stop e alvo no `ExitRules`, prazo, capital e
+custos com fonte, vigência, moeda, spread, comissão, slippage e swap. O
+`run_backtest` existente produz fills, lote, PnL e curvas; o adaptador apenas
+relata eventos não executados e ambiguidade stop-first. Valores sintéticos
+verificaram long/short, tick diferente de point, comissão, spread, gap e
+revisão/hash adulterados. Política limitada e concorrência são recusadas. Sem
+dados privados, MT5, Windows físico, `.set` equivalente ou aprovação econômica.
+Trinta testes pertinentes passaram no Linux; CI desta branch está pendente.
+Artefatos privados permanecem protegidos pelo manifesto existente. Próximo:
+revisar regressão do backtester e integrar P04/P05 na ficha P06.
+
 ## T13.4-P04 — cortes e baseline temporal em revisão — 03/11/2026
 
 Fonte local `codex/t134-p04-validacao-temporal`, baseada em P03 local, sem
