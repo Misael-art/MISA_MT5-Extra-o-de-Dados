@@ -14,6 +14,20 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P02 — gramática e eventos causais em revisão — 03/11/2026
+
+Fonte local `codex/t134-p02-regras-eventos` sobre P01 local. Uma definição
+versionada contém os campos T13.4, hash canônico, unidades e AST JSON limitada;
+texto executável e percentuais implícitos são recusados. O avaliador incremental
+liga namespace/símbolo/TF, exige barra fechada e disponibilidade, separa sinal
+de desfecho, mantém revisões distintas e reproduz lote após serializar/reabrir
+o estado. Horizonte não recebido ou sem continuidade comprovada fica censurado.
+O adaptador `SignalSpec` restringe-se a comparações/cruzamentos de `close` com
+limiar, sem afirmar paridade com MQL5. Nove testes sintéticos passaram no Linux.
+Features e invalidações não implementadas são recusadas; P03 deve persistir
+campanha/tentativas/reserva no store existente, e P06 deve ligar snapshots,
+quatro famílias e avaliação. Sem CI/PR/Windows físico/MT5/aceite financeiro.
+
 ## T13.4-P01 — inventário e elegibilidade em revisão — 03/11/2026
 
 Fonte local: `codex/t134-p01-catalogo-elegibilidade`, sobre o P00 reconciliado

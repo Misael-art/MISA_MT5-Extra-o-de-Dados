@@ -18,6 +18,20 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## T13.4-P02 — regras e eventos em revisão — 03/11/2026
+
+Branch `codex/t134-p02-regras-eventos` sobre P01 local. `analytics.hypotheses`
+valida AST JSON, unidade, fração decimal, lado, horizonte e hash imutável;
+`analytics.pattern_engine` avalia barras fechadas por disponibilidade em lote
+e prefixo, com estado reiniciável e fonte/símbolo/TF vinculados. Revisões
+posteriores geram identidade própria sem reescrever eventos anteriores.
+Desfechos futuros ficam separados, censurados até a recepção e sem alegar
+lucro líquido; lacuna sem calendário comprovado também censura. O adaptador
+`SignalSpec` aceita apenas o subconjunto de limiar de `close`, sem equivalência
+MQL5/.set. Nove testes sintéticos passaram. Persistência, campanha, reserva,
+simulação econômica, consumidores e aceite real pertencem às próximas fichas.
+Branch local sem push/PR enquanto o guarda central impedir publicação separada.
+
 ## T13.4-P01 — catálogo e elegibilidade em revisão — 03/11/2026
 
 Branch `codex/t134-p01-catalogo-elegibilidade`, baseada no P00 reconciliado.
