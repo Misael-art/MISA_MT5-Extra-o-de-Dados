@@ -230,8 +230,12 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
 
 
 def telemetry_source(robot, filename, account=None, trades_filename=None, lease_filename=None, common_namespace=None,
-                     input_receipt=None, chart_control=None, runtime_binding=None):
-    """Preserva timers da estratégia; em conta, cria heartbeat próprio quando ela não usa timer."""
+                     input_receipt=None, chart_control=None, runtime_binding=None, session_control=None,
+                     control_queue_once=False):
+    """Preserva timers da estratégia; em conta, cria heartbeat próprio quando ela não usa timer.
+
+    `session_control` (id da sessão) acrescenta o canal de pausa/liquidação por arquivo de `session_control`.
+    """
     import re
     source_graph = "\n".join(mql.read_text(Path(p)) for p in dict.fromkeys([robot.path] + robot.files)
                              if Path(p).suffix.lower() in (".mq5", ".mqh"))
@@ -322,8 +326,16 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
   return stamp>0 && age>=-2 && age<=15;
 }}
 '''
+    poll = "MT5X_CtlPoll(); " if session_control else ""
     wrappers = "\n".join(f"void {name}({args}) {{ if(!({guard})) {{ ExpertRemove(); return; }} "
-                           f"MT5X_{name}({call}); MT5X_Publish(); }}" for name, args, call in events)
+                           f"{poll}MT5X_{name}({call}); MT5X_Publish(); }}" for name, args, call in events)
+    if session_control:
+        from . import session_control as control
+        common_code += control.prelude()
+        control_code = control.source(session_control, magic_expr, tester_queue=control_queue_once)
+        undefs += "\n#undef OrderSend\n#undef OrderSendAsync\n#undef OrderCheck"
+    else:
+        control_code = ""
     receipt_source = ""
     if input_receipt is not None:
         from . import native_inputs
@@ -350,16 +362,16 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
     if input_receipt is not None:
         init_call += " if(result==INIT_SUCCEEDED && !MT5X_RecordInputs()) return INIT_FAILED;"
     init_call += f" if(result==INIT_SUCCEEDED) {{ {timer_start} MT5X_Chart(); MT5X_Publish(); }} return result;"
-    wrappers += f"\nint OnInit() {{ if(!({guard})) return INIT_FAILED; {init_call} }}"
+    wrappers += f"\nint OnInit() {{ if(!({guard})) return INIT_FAILED; {'MT5X_CtlInit(); ' if session_control else ''}{init_call} }}"
     if own_timer:
-        wrappers += f"\nvoid OnTimer() {{ if(!({guard})) {{ ExpertRemove(); return; }} MT5X_Publish(); }}"
+        wrappers += f"\nvoid OnTimer() {{ if(!({guard})) {{ ExpertRemove(); return; }} {poll}MT5X_Publish(); }}"
     if deinit or own_timer:
         wrappers += f"\nvoid OnDeinit(const int reason) {{ " + ("EventKillTimer(); " if own_timer else "") + (f"if({guard}) MT5X_OnDeinit(reason); " if deinit else "") + "}"
     observer = ""
     if trades_filename:
         observer = (Path(__file__).parent / "templates" / "session_export.mqh.tmpl").read_text(encoding="utf-8")
         wrappers += f'\ndouble OnTester() {{ double result={"MT5X_OnTester()" if tester else "0"}; MT5X_Export("{trades_filename}",{magic_expr}); return result; }}'
-    lease_code += receipt_source
+    lease_code += receipt_source + control_code
     # Atualização de estado limitada a ~4Hz de parede, sem importar o relógio histórico.
     source = f'''{common_code}
 {definitions}
@@ -404,6 +416,9 @@ void MT5X_Publish() {{
         source = source.replace("ulong MT5X_Last=0;", native + "\nulong MT5X_Last=0;")
         source = source.replace("MT5X_Last=now;", "MT5X_Last=now; MT5X_AgentPoll();")
     return source
+
+
+COMPILE_CACHE = ".compile-cache"   # binários de indicadores por chave de fontes; regenerável, fora das sessões
 
 
 def session_root(config):
@@ -720,7 +735,8 @@ class Session:
         failed = None
         if mt5_tools.indicator_dependencies(dependency_plan):
             failed = mt5_tools.compile_indicator_dependencies(dependency_plan, mt5_tools.find_metaeditor(self.child_config),
-                                                              mt5_tools.wine_prefix(self.child_config), dependency_run)
+                                                              mt5_tools.wine_prefix(self.child_config), dependency_run,
+                                                              cache=Path(session_root(self.config)) / COMPILE_CACHE)
         if failed is not None:
             raise RuntimeError(failed.summary)
         if self.input_fields is not None and (not self.robot.has_source or compiled_override is not None):
@@ -755,7 +771,10 @@ class Session:
                                           input_receipt=({"filename": self.input_receipt_file, "session_id": self.id,
                                                           "fields": self.input_fields} if self.input_fields is not None else None),
                                           chart_control=self.id if self.chart_control else None,
-                                          runtime_binding=runtime), encoding="utf-8")
+                                          runtime_binding=runtime,
+                                          session_control=(self.id if self.mode == "play" or
+                                                           (self.native_options or {}).get("session_control") else None),
+                                          control_queue_once=self.mode != "play"), encoding="utf-8")
         result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
                                           mt5_tools.wine_prefix(self.child_config),
                                           run=(self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
@@ -925,6 +944,7 @@ class Session:
                 else:
                     call = dict(options)
                     call.pop("run_uses_session_launcher",None)  # controle da Session, não parâmetro do Tester
+                    call.pop("session_control", None)  # canal de encerramento: consumido pelo wrapper
                     call.update(config=self.child_config, timeframe=self.timeframe, start=self.start, end=self.end,
                                 run=options.get("run") or self._run_command,
                                 export_trades=False,

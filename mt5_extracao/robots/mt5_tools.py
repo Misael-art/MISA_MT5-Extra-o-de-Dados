@@ -397,12 +397,51 @@ def indicator_dependencies(items):
             any(parent.name.lower() == "indicators" and parent.parent.name.lower() == "mql5" for parent in item.target.parents)]
 
 
-def compile_indicator_dependencies(items, metaeditor, prefix=None, run=None):
-    """Dependências gráficas do plano revisado, antes de liberar o Expert."""
+def compile_cache_key(items, metaeditor, indicator):
+    """Chave do binário de um indicador: todas as fontes instaladas do plano, o MetaEditor e o caminho relativo.
+
+    Qualquer byte diferente em qualquer fonte do plano (não só nos includes do indicador) gera outra chave, então
+    o reaproveitamento nunca depende de adivinhar o fechamento de includes.
+    """
+    import hashlib
+    digest = hashlib.sha256(b"mt5x-indicator-cache-v1\0")
+    digest.update(hashlib.sha256(Path(metaeditor).read_bytes()).digest())
+    root = Path(indicator.target)
+    while root.name.lower() != "mql5" and root.parent != root:
+        root = root.parent
+    for target in sorted({Path(i.target) for i in items}, key=lambda p: str(p).lower()):
+        if target.suffix.lower() in (".mq5", ".mqh") and target.is_file():
+            digest.update(str(target.relative_to(root) if root in target.parents else target.name).lower().encode() + b"\0")
+            digest.update(hashlib.sha256(target.read_bytes()).digest())
+    digest.update(str(Path(indicator.target).relative_to(root)).lower().encode())
+    return digest.hexdigest()
+
+
+def compile_indicator_dependencies(items, metaeditor, prefix=None, run=None, cache=None):
+    """Dependências gráficas do plano revisado, antes de liberar o Expert.
+
+    Com `cache` (pasta), reaproveita o .ex5 de uma compilação anterior 0 erros/0 avisos com a mesma chave; o
+    log original vai junto, como evidência. O wrapper do Expert nunca passa por aqui (carrega o id da sessão).
+    """
+    import shutil
     for item in indicator_dependencies(items):
+        target = Path(item.target)
+        key = compile_cache_key(items, metaeditor, item) if cache is not None else None
+        hit = Path(cache) / f"{key}.ex5" if key else None
+        if hit is not None and hit.is_file() and hit.with_suffix(".log").is_file():
+            shutil.copy2(hit, target.with_suffix(".ex5"))
+            shutil.copy2(hit.with_suffix(".log"), target.with_suffix(".log"))
+            log.info(f"Indicador {target.name} reaproveitado do cache de compilação ({key[:12]}).")
+            continue
         result = compile_source(item.target, metaeditor, prefix, run)
         if not result.ok:
             return result
+        if hit is not None and result.warnings == 0 and target.with_suffix(".ex5").is_file():
+            hit.parent.mkdir(parents=True, exist_ok=True)
+            temp = hit.with_name(hit.name + ".tmp")
+            shutil.copy2(target.with_suffix(".log"), hit.with_suffix(".log"))
+            shutil.copy2(target.with_suffix(".ex5"), temp)
+            os.replace(temp, hit)                               # o .ex5 só aparece completo e depois do log
     return None
 
 

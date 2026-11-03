@@ -397,7 +397,7 @@ def list_sessions(db, config):
         if not folder.is_dir() or folder.is_symlink():
             continue
         for directory in sorted(folder.iterdir()):
-            if directory.name == ".quarantine":
+            if directory.name in (".quarantine", ".compile-cache"):
                 continue
             item = {"session": directory.name, "path": str(directory), "quarantined": quarantined,
                     "eligible": False, "reason": ""}

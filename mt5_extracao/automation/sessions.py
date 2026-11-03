@@ -33,7 +33,7 @@ def _date(value):
 class SessionController:
     def __init__(self, db, config, read_account):
         self.db, self.config, self.read_account = db, config, read_account
-        self.reviews, self.jobs, self.threads, self.channels = {}, {}, {}, {}
+        self.reviews, self.jobs, self.threads, self.channels, self.controls = {}, {}, {}, {}, {}
 
     def _robot(self, key):
         return catalog.get_robot(catalog.load_catalog(self.config, self.db), text(key, "robot"))
@@ -183,6 +183,45 @@ class SessionController:
         job = self.job(params["session"])
         job.cancel()
         return dict(**self.status(params), stop_semantics="encerra somente a sessão; não liquida posições")
+
+    def _channel(self, job):
+        from ..robots import mt5_tools, session_control
+        if job.mode != "play":
+            raise ValueError("Pausa e liquidação valem só para PLAY; o Tester usa fila própria.")
+        common = mt5_tools.common_files_dir(job.config)
+        if common is None:
+            raise ValueError("Pasta comum indisponível para o canal da sessão.")
+        if job.id not in self.controls:
+            self.controls[job.id] = session_control.Channel(common, job.id)
+        return self.controls[job.id]
+
+    def pause(self, params):
+        fields(params, ("session",), ("timeout",))
+        job, timeout = self.job(params["session"]), number(params.get("timeout", 15), "timeout", 1, 120)
+        channel = self._channel(job)
+        row = channel.wait(channel.send("PAUSE"), timeout)
+        return dict(**self.status({"session": job.id}), control=row, paused=bool(row and row["state"] == "paused"))
+
+    def resume(self, params):
+        fields(params, ("session",), ("timeout",))
+        job, timeout = self.job(params["session"]), number(params.get("timeout", 15), "timeout", 1, 120)
+        channel = self._channel(job)
+        row = channel.wait(channel.send("RESUME"), timeout)
+        return dict(**self.status({"session": job.id}), control=row, resumed=bool(row and row["state"] == "running"))
+
+    def close_out(self, params):
+        """Encerramento com exposição: pausa, liquida por ticket o que é da sessão e só então encerra o Expert.
+
+        Se restar exposição própria ou ambígua, ou o Expert não responder, a sessão continua no ar sob
+        supervisão (nenhum "tudo parado"); exposição alheia é só contada e preservada.
+        """
+        fields(params, ("session",), ("timeout",))
+        job, timeout = self.job(params["session"]), number(params.get("timeout", 60), "timeout", 5, 300)
+        verdict = self._channel(job).liquidate(timeout)
+        if verdict["closed"]:
+            job.cancel()
+        return dict(**self.status({"session": job.id}), closure=verdict, stopped=verdict["closed"],
+                    supervision="encerrada" if verdict["closed"] else "mantida: exposição não comprovadamente zerada")
 
     def wait(self, params):
         fields(params, ("session",), ("until", "timeout"))
