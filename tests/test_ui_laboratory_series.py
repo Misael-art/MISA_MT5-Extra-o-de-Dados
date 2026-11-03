@@ -297,15 +297,26 @@ def test_invalid_strategy_parameter_relationship_refuses_before_snapshot(panel, 
     assert not series.pending
 
 
-def test_expanded_chart_uses_absolute_negative_monitor_coordinates(panel, monkeypatch):
+def test_expanded_chart_requests_absolute_negative_monitor_geometry(panel, monkeypatch):
     from mt5_extracao.ui import laboratory_series
     series = open_series(panel)
     monkeypatch.setattr(laboratory_series, "monitor_geometry", lambda _: (-1024, -50, 1024, 850))
+    requested = []
+    original_geometry = laboratory_series.tk.Toplevel.geometry
+
+    def capture_geometry(window, specification=None):
+        if specification is not None:
+            requested.append(specification)
+        return original_geometry(window, specification)
+
+    monkeypatch.setattr(laboratory_series.tk.Toplevel, "geometry", capture_geometry)
     chart = series.panels["price"]
     chart.expand()
     panel.ui.root.update()
-    assert (chart.popup.winfo_x(), chart.popup.winfo_y()) == (-1024, -50)
+    assert requested == ["1024x800+-1024+-50"]
+    assert chart.popup is not None and chart.expand_button.cget("text") == "Restaurar ↙"
     chart.restore()
+    assert chart.popup is None and chart.expand_button.cget("text") == "Ampliar ↗"
 
 
 @pytest.mark.parametrize("windows", [False, True])

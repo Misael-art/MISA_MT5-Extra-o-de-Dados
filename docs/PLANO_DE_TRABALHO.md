@@ -4466,6 +4466,12 @@ App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
 
 ### E14 — proteção comum e auditoria nativa em qualificação
 
+LAB-10, corretivo isolado do teste Tk de monitor em 03/11/2026: o pedido de
+geometria negativa é conferido separadamente do posicionamento que o gerenciador
+real permite. Reproduziu 1 falha no host de um monitor; depois o módulo Séries
+passou 29 testes/1 ignorado. Runtime inalterado. Monitor físico à esquerda,
+atalho e demais LAB-01…10 não são aprovados por esta simulação.
+
 Corretivo separado de inicialização da GUI, 03/11/2026: o chamador de
 `verificar_dependencias_criticas` passa a consumir `(sucesso, faltantes)`,
 exibir dependências ausentes e apontar para o instalador oficial sem instalar

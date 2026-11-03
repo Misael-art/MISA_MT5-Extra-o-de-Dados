@@ -89,6 +89,18 @@ novo commit, QA pelo launcher da fonte publicada e Windows físico. Nenhum
 contrato financeiro, pin ou dado privado mudou. Próximo: push na PR279,
 conferência de CI e reconciliação das branches locais dependentes.
 
+## LAB-10 — teste da janela ampliada, corretivo local — 03/11/2026
+
+Em `codex/lab-series-monitor-geometry`, o teste de Séries reproduziu falha
+`(-1024, -50)` esperado versus `(256, 37)` observado ao simular monitor
+esquerdo no host XWayland com um monitor. A GUI já pedia a geometria absoluta
+negativa correta (`1024x800+-1024+-50`); o gerenciador não a aplicava porque
+esse monitor físico não existe. A asserção agora confere a solicitação e o
+ciclo ampliar/restaurar. 29 testes do módulo passaram, 1 foi ignorado e houve
+17 avisos de layout; não houve edição de produto. A posição física negativa,
+o percurso pelo atalho e os itens LAB-01…10 continuam com seus gates no roadmap.
+Base local é o corretivo da GUI, ainda sem PR remoto pela guarda central.
+
 ## Inicialização da GUI — corretivo local em revisão — 03/11/2026
 
 Branch `codex/gui-dependencias-inicializacao`, rebatida sobre App
