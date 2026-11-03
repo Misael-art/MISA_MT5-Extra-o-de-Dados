@@ -1,11 +1,39 @@
 # MT5 Extração de Dados
 
+## Estado de desenvolvimento neste host — 03/11/2026
+
+A raiz canônica é `/home/misael/Projects/MT5X`: este App fica em `repos/app`,
+HADOUKEN em `repos/hadouken` e Safety em `repos/safety`. O manifesto do App fixa
+HADOUKEN `d4d389e` (fonte S09 2.13 `51358a1`) e Safety `27b8599`. A fonte
+operacional E14 publicada é o App `0993ae7` na [PR279](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/279),
+com HADOUKEN na [PR84](https://github.com/Misael-art/projeto-indicadores-mt5/pull/84)
+e Safety na [PR11](https://github.com/Misael-art/mt5x-safety/pull/11). São
+revisões abertas; não equivalem a merge ou aceite operacional.
+
+O atalho de desenvolvimento instalado ainda executa a prévia `57d13ee`. No
+checkout, `./run.sh` abre a GUI e `./run.sh --cli` abre a CLI. A branch local
+separada de correção da GUI permite `./run.sh --offline --config <arquivo-de-QA>`
+para uma configuração/base isolada; ela ainda não está nesta fonte.
+O estudo documental T13.4-P00 e os incrementos P01–P07 estão em branches locais
+encadeadas, com implementação e ensaios sintéticos até os consumidores. A GUI
+da composição local de QA anterior exibiu um recibo sintético persistido em
+Padrões pelo launcher; essa composição não está instalada;
+nenhum candidato ou dado real foi aprovado por isso. A branch LAB-03 acrescenta
+regressão de alinhamento. Push/PR dessas branches aguardam ajuste do guarda
+central de publicação. No CI de `19627c3`, Linux e os demais jobs passaram;
+Windows falhou no gráfico estreito. O corretivo está na ponta `0993ae7`, com
+novo CI ainda sem resultado na última consulta. O S09 2.13
+compilou e conciliou backtest/replay no Tester Linux/Wine com pacote sintético;
+DEMO ao vivo, netting, Windows físico e dados reais elegíveis têm aceites separados.
+[Fontes, testes e próximos passos](CONTINUAR_AQUI.md) ·
+[roadmap](docs/ROADMAP.md) · [plano](docs/PLANO_DE_TRABALHO.md).
+
 **Retomar em um host limpo, sem o disco antigo ou SD:**
 [comece por aqui](CONTINUAR_AQUI.md). Wrappers Linux/Windows, fontes fixadas,
 recuperação privada pela conta ChatGPT e prompts de continuidade. O Laboratório
 permanece incompleto; os próximos recortes estão registrados no roadmap.
 
-Construtor de bases de dados do MetaTrader 5 para **Windows e Linux**: instala sozinho, extrai e
+Construtor de bases de dados do MetaTrader 5 para **Windows e Linux**: oferece instaladores, extrai e
 mantém atualizado o histórico OHLCV (com indicadores) em SQLite, pela interface gráfica ou pela
 linha de comando, e ajuda a pesquisar estratégias sobre a base construída.
 
@@ -27,7 +55,7 @@ linha de comando, e ajuda a pesquisar estratégias sobre a base construída.
 - **Exportação** para CSV, Excel, Parquet e DuckDB (interface ou `mt5x export`).
 - **Credenciais** só no arquivo `.env` (privado, fora do git).
 - **Linha de comando `mt5x`** para servidores e automação; códigos de saída padronizados.
-- **Estratégias e triagem de ativos**: seis estratégias clássicas, backtest com custos reais,
+- **Estratégias e triagem de ativos**: seis estratégias clássicas, backtest com custos configurados,
   validação (walk-forward, robustez, Monte Carlo) e triagem de ativos com relatório HTML.
   Veja [docs/estrategias.md](docs/estrategias.md). Não envia ordens.
 
@@ -51,7 +79,7 @@ Diagnóstico do ambiente:
 .venv\Scripts\python -m mt5_extracao.bootstrap doctor  # Windows
 ```
 
-> No Linux, o aplicativo acessa o MT5 do Wine pela ponte RPyC, iniciada automaticamente pelo `run.sh`.
+> No Linux, o aplicativo acessa o MT5 do Wine pela ponte RPyC, iniciada pelo `run.sh` fora do modo `--offline`.
 > A validação com o terminal real no Wine está pendente (tarefa T0.3/T2.6 do [plano](docs/PLANO_DE_TRABALHO.md)).
 
 ## Uso

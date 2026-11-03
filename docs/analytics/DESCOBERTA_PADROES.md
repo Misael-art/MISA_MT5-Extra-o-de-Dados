@@ -5,6 +5,11 @@ O proprietário pediu primeiro o estudo e o roadmap para execução por outro
 agente. Não há motor novo implementado, varredura financeira, padrão aprovado
 ou autorização de negociação nesta entrega.
 
+Atualização de 03/11/2026: P01–P07 foram implementados em branches locais
+encadeadas e ensaiados com bases sintéticas. Este texto preserva a fotografia
+de P00; [continuidade](../continuidade.md) distingue a fonte proposta, os
+testes e os gates de M1 ainda abertos. A prévia instalada não contém P01–P07.
+
 Este documento detalha T13.4, com integrações em T13.6/8, T18, T19 e T20;
 as tarefas e seus estados permanecem no [plano central](../PLANO_DE_TRABALHO.md).
 Complementa a [especificação F13](ESPECIFICACAO.md), a
