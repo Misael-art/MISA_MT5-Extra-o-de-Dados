@@ -1,3 +1,23 @@
+## E14 — perfil S09 2.12 integrado para desenvolvimento — 03/11/2026
+
+PR279 draft, branch `codex/e14-protecao-comum` sobre
+`codex/f04-vinculo-presets`, publicou App
+`1310be9b80fa67d7a42f6a24661c69d2ee76529e`, SHA local/remoto/PR
+conferidos. O manifesto fixa HADOUKEN
+`f99ebde132c10bb078e78796e7ef048082ba07cc`/PR84 e Safety `27b8599`/PR11
+para desenvolvimento. O perfil S09 2.11 conserva identidade própria; 2.12
+requer fingerprint, revisão e 59 inputs exatos. `postfill_r_v1` é distinto de
+R planejado e `fixed_r` Python, mapeia InpTargetMode=3 e segue restrito ao
+Strategy Tester DEMO com pacote vinculado. 44 testes de perfil/UI e 97 de
+composição/execução de preset passaram; o Manual de QA exportou/reabriu a
+escolha. A inspeção oficial aceitou App/HADOUKEN/Safety e `--plan` passou.
+A prévia instalada permanece App `57d13ee`. Duas checagens H 2.12 passaram;
+o recibo de compilação 0/0 anterior pertence à fonte 2.11, logo MetaEditor,
+Tester/replay 2.12, atalho, CI App novo, Windows físico, netting e DEMO seguem
+pendentes. Não houve novo dado privado retido nem liberação operacional.
+Próximo: gates nativos sob orçamento, Windows CI e cascata local LAB/T13.4;
+recibos antigos seguem no manifesto e no resgate independente.
+
 ## E14 — rerun Windows e dois controles ainda estreitos — 03/11/2026
 
 PR279, branch `codex/e14-protecao-comum`, base

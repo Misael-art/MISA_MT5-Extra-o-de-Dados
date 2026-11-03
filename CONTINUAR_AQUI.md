@@ -1,5 +1,27 @@
 # Retomar MT5X em um host limpo
 
+## E14 — integração de desenvolvimento do S09 2.12 — 03/11/2026
+
+App `codex/e14-protecao-comum`, base `codex/f04-vinculo-presets`, publicou
+`1310be9b80fa67d7a42f6a24661c69d2ee76529e` na PR279 draft; SHA local,
+remoto e da PR conferidos. O manifesto de desenvolvimento agora fixa HADOUKEN
+`f99ebde132c10bb078e78796e7ef048082ba07cc`/PR84, versão S09 2.12,
+e Safety `27b8599`/PR11. O perfil 2.11 anterior conserva fingerprint/revisão
+próprios. `postfill_r_v1` é modo tipado distinto de R planejado e `fixed_r`
+Python; gera InpTargetMode=3 e usa pacote vinculado somente no Tester DEMO.
+O preparador oficial inspecionou os três checkouts e aceitou os pins; o modo
+`--plan` passou, sem instalar nem alterar a prévia `57d13ee`. Na fonte App,
+44 testes de perfil/UI e 97 de composição/execução de preset passaram;
+o formulário Manual exportou/reabriu o modo com recibo sintético. HADOUKEN
+2.12 passou duas checagens de fonte; a compilação Wine 0/0 anterior foi da
+versão 2.11 e não qualifica 2.12. CI App da nova ponta iniciou. MetaEditor,
+Tester/replay por fonte 2.12, percurso real do atalho, Windows físico, netting
+e DEMO permanecem gates separados; nenhum perfil operacional foi liberado.
+Os recibos privados anteriores seguem no manifesto e resgate independente;
+nenhum novo recibo privado indispensável foi retido nesta etapa. Próximo:
+compilar e ensaiar 2.12 sob posse/limites do runtime, conferir Windows CI,
+reconciliar a cadeia LAB/T13.4 local e seguir os itens E14 ainda abertos.
+
 ## E14 — segunda correção de layout Windows em revisão — 03/11/2026
 
 Na PR279, App `d68e125`, o rerun Windows 41668845297/attempt 2 concluiu com
