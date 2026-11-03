@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "milestone": "E14",
-  "status": "lossless_history_atr_pair_qualified_direct_budget_integrated_gui_native_pending",
+  "status": "source2.11_atr_pair_and_gui_backtest_qualified_gui_replay_and_remaining_pillar_pending",
   "robot_version": "2.11",
   "source_fingerprint": "2e0a4bf209628c86",
   "project_source_sha256": "b927af079a64ea02c7429e8a1f80489916e306ece02ff0628cf2d76506f8086a",
@@ -127,7 +127,7 @@
       }
     },
     "host_tester_replay": "Six source2.11 model0 backtests reconciled. ATR visual replay matched exact prior package/database after Appf8cb06f preparation correction;3positions6deals7trailing2BE/153.275seconds. Other current-source mode replays pending; prior failures preserved.",
-    "official_launcher_journey": "Current source2.11: actual Default→Manualv2,59 exported inputs, inactive ATR controls disabled, reopen and owned screenshots via official f8cb06f launcher;6.494seconds. Native UI buttons pending real exercise after direct resource Budget integration; no financial GUI launch in configuration journey.",
+    "official_launcher_journey": "Source2.11: actual official launcher Default→Manualv2/59inputs/export/reopen; actual Backtest button matched original package/database and reconciled3positions7deals1partial/2BE5trailing/1.46USD/journal3entries8actions. Actual Replay button budget180 interrupted, resources released; no comparison approval. Initial reopened default Nov1→2/deposit100000 had no trades: contract_only, retained. Explicit QA context Oct12→13/deposit10000. Existing identical read-only bridge revalidated by its own owner helper and preserved; main DEMO read-only audit0positions0orders0recentdeals.",
     "live_demo": "not exercised; authorization not transferred",
     "physical_windows": "not exercised",
     "netting": "unsupported/refused",
@@ -620,6 +620,114 @@
         "elapsed_seconds": 153.27460479736328,
         "operational_acceptance": false,
         "live_broker_exercised": false
+      },
+      "gui_backtest_button": {
+        "state": "reconciled_backtest",
+        "session_id": "73268dc5a3d14e07a60f4e384c6672d7",
+        "run_id": "7b47e22c9b414ad3b29cf6779f9ca471",
+        "app_sha": "ef0f429d753e3425b48a6ef32b1b27b70538a17f",
+        "hadouken_sha": "adc5ecd360a41e575068fb443d2a531e7f82c87b",
+        "source_fingerprint": "2e0a4bf209628c86",
+        "package_hash": "416a5d26e5b299856f4367b736223c1dd64a2071136b54b13c8c5e4b1c4381a5",
+        "reference_run_id": null,
+        "reference_match": null,
+        "functional_cycle": false,
+        "tester_model": "cada tick",
+        "actual_mode": {
+          "demo": true,
+          "tester": true,
+          "visual": false
+        },
+        "trades": 3,
+        "deals": 7,
+        "partials": 1,
+        "protection_causes": {
+          "breakeven": 2,
+          "trailing": 5
+        },
+        "management_acceptance": {
+          "dynamic_target": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "session_exit": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "signal_exit": {
+            "configured": false,
+            "events": 0,
+            "exercised": false,
+            "replay_qualified": false
+          },
+          "trailing": {
+            "configured": true,
+            "events": 5,
+            "exercised": true,
+            "replay_qualified": false
+          },
+          "trigger_breakeven": {
+            "configured": true,
+            "events": 2,
+            "exercised": true,
+            "replay_qualified": false
+          }
+        },
+        "protection_acceptance": false,
+        "cash_reconciled": true,
+        "net_profit": 1.46,
+        "journal_entries": 3,
+        "journal_actions": 8,
+        "journal_all_settled": true,
+        "resources_released": true,
+        "elapsed_seconds": 175.74734210968018,
+        "operational_acceptance": false,
+        "live_broker_exercised": false
+      },
+      "gui_replay_button_timeout": {
+        "batch_id": "6192380cd78346f7a15e3f053789f000",
+        "budget_status": "interrupted",
+        "session_id": "ea615b8d0df14c13bb7363df6b619248",
+        "state": "failed",
+        "error": "Tempo máximo do lote atingido; aumente batch_max_seconds ou retome com outro orçamento.",
+        "resources_released": true,
+        "elapsed_seconds": 181.62764620780945,
+        "live_broker_exercised": false,
+        "operational_acceptance": false
+      },
+      "gui_default_period_no_opportunity": {
+        "scope": "first actual UI Backtest button; default period after process reopen, no opportunity, not a cycle qualification",
+        "state": "contract_only",
+        "session_id": "b3552fdf445f4c709c723b12fa18128a",
+        "run_id": "2c723ca80b634186a9e4de73596b3bbf",
+        "package_hash": "f60042fe41548be13ae1a719498714356b128961e513bb373618648778c5bb93",
+        "test_context": {
+          "deposit": 100000.0,
+          "end": "2026-11-02",
+          "model": "0",
+          "start": "2026-11-01"
+        },
+        "trades": 0,
+        "signals": 0,
+        "resource_budget": {
+          "batch_id": "4cb71c6403b24f14bcf0d529ba4249e0",
+          "job_key": "9465de028cb44856495dd51005e984a1a8e4c2509241ab5358e9041f17363819",
+          "job_run_id": "2c723ca80b634186a9e4de73596b3bbf",
+          "limits": {
+            "hard_cpu_pct": 0.0,
+            "hard_ram_pct": 85.0,
+            "max_jobs": 1,
+            "max_seconds": 180.0,
+            "min_free_mb": 1024.0
+          }
+        },
+        "resources_released": true,
+        "live_broker_exercised": false,
+        "operational_acceptance": false
       }
     },
     "ci_observed": {
@@ -636,7 +744,8 @@
     "asset/group/whole-plan risk budgets and reserves",
     "pending modification/partial broker lineage and process recovery",
     "gradient modes and CONTROLLED_GRADIENT policy",
-    "automatic experimental probability contract and evidence"
+    "automatic experimental probability contract and evidence",
+    "GUI visual replay within unchanged180seconds budget remains unqualified; investigate preparation/render workload before retest"
   ],
   "preceding_code_checkpoint": {
     "revision": "290400139472920dbc18ba3d6e5d0c60da8f24da",
@@ -835,6 +944,27 @@
         "failures": 0,
         "native_probed": false
       }
+    },
+    "late_budget_artifact_retention": {
+      "tests": 347,
+      "seconds": 212.93,
+      "modules": 22,
+      "overlapping_with_previous": true,
+      "scope": "same Session retainer before preparation;347 broad regressions before final failed-result presentation correction; final UI subset separately verified",
+      "native_source_unchanged": true,
+      "doctor": {
+        "ok": 16,
+        "warnings": 2,
+        "failures": 0,
+        "native_probed": false
+      }
+    },
+    "failed_ui_result": {
+      "before_regression_reproduced": true,
+      "tests": 6,
+      "seconds": 7.83,
+      "scope": "failed new attempt clears visible previous tables/files; saved proof remains queryable explicitly",
+      "native_replay_failure_not_approved": true
     }
   },
   "parent_hadouken_revision": "989534c383a6504e791c2327eb97215dd7b05648",

@@ -16,8 +16,11 @@ from mt5_extracao.trade_analytics import ledger
 from tests.test_s09_native_profile import robot
 from tests.test_default_presets import db
 
+NativeSession=execution.sessions.Session
+
 
 class FakeSession:
+    _retain_budget_artifacts=NativeSession._retain_budget_artifacts
     fault=""
     tickets=2
     def __init__(self,db,config,actor,symbol,timeframe,**kwargs):
@@ -27,6 +30,8 @@ class FakeSession:
         self.expected=kwargs["expected_native_inputs"];self.preset=kwargs["preset"]
         self.state="created";self.error="";self.record=None;self.native_input_receipt=None
         self.cancelled=False;self.ran=False;self.commands=[]
+        self.telemetry_file=f"mt5x_session_{self.id}.txt";self.trades_file=f"mt5x_session_{self.id}_trades.csv"
+        self.input_receipt_file=f"mt5x_session_{self.id}_inputs.csv";self.lease_file=f"mt5x_session_{self.id}_lease.txt"
     def _run_command(self,*args,**kwargs):self.commands.append((args,kwargs));return SimpleNamespace(returncode=0)
     def _check_cancel(self):
         if self.cancelled:raise execution.sessions.Cancelled("interrompido")
@@ -109,6 +114,8 @@ def test_direct_preset_uses_existing_budget_and_releases_its_own_claim(prepared)
     assert saved["jobs"][0]["run_id"]==run.evidence["run_id"]==control.run_id
     assert saved["jobs"][0]["status"]=="completed"
     assert Path(entry["execution"]["manifest_path"])==p.exported["manifest_path"].resolve()
+    retained=budget.retained_artifacts(p.db,control.parent.batch_id)
+    assert any(str(run.session.directory.resolve()) in row["directories"] for row in retained)
 
 
 def test_direct_preset_checks_resource_budget_before_any_native_launch(prepared,monkeypatch):
@@ -171,6 +178,26 @@ def test_budget_result_write_failure_is_reported_and_does_not_hide_native_artifa
     assert saved["status"]=="failed" and saved["owner"]=={}
     assert (run.session.directory/"preset_evidence.json").is_file()
     assert execution.load_evidence(prepared.db)[0]["run_id"]==control.run_id
+
+
+def test_late_admitted_budget_preserves_profile_when_preparation_fails_before_run_publication(prepared,monkeypatch):
+    import json
+    from mt5_extracao.resources import files
+    p=prepared
+    def failed(self):
+        self.ran=True;self.directory.mkdir(parents=True)
+        report=dict(artifact_owner="mt5x-session",artifact_version=1,owner_store=files.session_owner_key(self.db),
+                    session=self.id,state="failed",resources_released=True,finished_at="2026-10-15T00:00:00",wine_prefix="")
+        (self.directory/"relatorio.json").write_text(json.dumps(report),encoding="utf-8")
+        self.state="failed";self.error="synthetic preparation failure";return self
+    monkeypatch.setattr(FakeSession,"run",failed)
+    monkeypatch.setattr(execution.sessions,"session_root",lambda _:p.root)
+    run=job(p).run()
+    assert run.status=="failed" and run.evidence is None and not robot_store.load_runs(p.db)
+    control=run.session.native_options["control"]
+    assert budget.checkpoint(p.db,control.parent.batch_id)["owner"]=={}
+    assert not files.move_session(p.db,p.config,run.session.id)["ok"]
+    assert run.session.directory.is_dir()
 
 
 def test_exported_set_and_ini_are_exactly_loaded_then_native_contracts_reopen_without_financial_rewrite(prepared):

@@ -4509,9 +4509,18 @@ da própria janela conferidas. Chamada direta UI/API agora admite e finaliza
 seu job no mesmo Budget configurado; runner com controle existente o conserva.
 Pacote/artefatos e run_id ficam ligados à tentativa; retomada preserva backtest/
 replay, recusa de recursos antecede o MQL e falha no checkpoint é explícita.
-167testes/14módulos em145,31s, inclusive famílias anteriores e agentes; doctor
-16OK/2avisos/0falhas sem probe. Botões nativos ainda precisam do ensaio real
-nessa integração; não transferir o aceite de edição para execução GUI.
+167testes/14módulos em145,31s, inclusive famílias anteriores e agentes. A chamada
+real do botão Backtest no atalhoef0f429 confirmou pacote/banco originais,
+59inputs,3posições/7deals/1parcial/2BE/5trailing, diário3entradas/8ações encerradas,
+caixa1,46USD e recursos liberados,175,747s. Replay pelo botão atingiu180s e
+liberou recursos; comparação não aprovada. A primeira janela reaberta manteve
+o contexto padrão01→02nov/100000 e não teve operações: não exercitada; receita
+corrigida repôs12→13out/10000 pelos widgets, sem alterar o recibo anterior.
+Revisão posterior ligou o retentor já existente também à admissão tardia do
+Budget, protegendo perfil que falhe antes de publicar run:347regressões/22módulos
+em212,93s e doctor16OK/2avisos/0falhas sem probe. Evidência anterior na tela é
+limpa após falha nova; permanece consultável no banco. Regressão reproduzida e
+6casos Tk/7,83s passaram após o corretivo final de apresentação. Fonte MQL não mudou.
 CI App28d: Linux passou; Windows7falhas/4522passaram/193não executados. Shim MQL
 long do teste corrigido para int64 explícito;29testes/5,09s no Linux, Windows pendente.
 

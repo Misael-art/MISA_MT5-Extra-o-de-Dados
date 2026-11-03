@@ -777,7 +777,9 @@ class PresetWorkflow:
         self.work(action,prepared)
     def completed(self,job):
         if job.evidence:self.show_evidence(job.evidence,job.session.record["metrics"])
-        else:self.result.set("Conferência pendente: "+(job.error or job.status));self.status.set(job.error or job.status)
+        else:
+            self.clear_result()
+            self.result.set("Conferência pendente: "+(job.error or job.status));self.status.set(job.error or job.status)
         self.controller.panel.reload()
     def cancel(self):
         if self.execution:self.execution.cancel();self.status.set("Cancelando somente esta sessão…")

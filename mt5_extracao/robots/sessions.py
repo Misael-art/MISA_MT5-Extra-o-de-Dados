@@ -471,10 +471,14 @@ class Session:
         self.report = self.directory / "relatorio.json"
         self.observed_seconds = 0.0
         self.currency = str((account or {}).get("currency") or "")
+        self._retain_budget_artifacts()
+
+    def _retain_budget_artifacts(self):
+        """Mesmo vínculo na construção ou quando o Budget é admitido no worker."""
         control = (self.native_options or {}).get("control")
         retain = getattr(control, "retain_artifacts", None)
         if retain is not None:
-            common = mt5_tools.common_files_dir(config)
+            common = mt5_tools.common_files_dir(self.config)
             files = [str((common / name).absolute()) for name in
                      (self.telemetry_file, self.trades_file, self.input_receipt_file, self.lease_file)] if common is not None else []
             retain(files=files, directories=[str(self.directory.absolute())])

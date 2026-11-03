@@ -250,6 +250,7 @@ class PresetExecution:
                 manifest_path=str(self.manifest_path.resolve()),package_hash=self.package.package_hash))
         self._owned_control=self._owned_budget.admit(jobs[0]["key"])
         self.session.native_options["control"]=self._owned_control
+        self.session._retain_budget_artifacts()
         self._owned_control.retain_artifacts(files=[str(self.manifest_path.resolve()),
             str(self.manifest_path.resolve().with_name(self.package.manifest["parameters_file"]))])
 
