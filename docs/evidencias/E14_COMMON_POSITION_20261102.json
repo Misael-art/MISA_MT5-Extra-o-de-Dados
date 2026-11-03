@@ -738,14 +738,12 @@
     }
   },
   "remaining": [
-    "native qualification of this exact new source and F04.6 journal maintenance",
     "physical TP using actual-fill fixed_r requires separate supported contract; planned_R is explicit",
     "SA-01 integrated multi-TF consumer",
     "asset/group/whole-plan risk budgets and reserves",
     "pending modification/partial broker lineage and process recovery",
     "gradient modes and CONTROLLED_GRADIENT policy",
-    "automatic experimental probability contract and evidence",
-    "GUI visual replay within unchanged180seconds budget: 1 pass (179.3s) and 1 interruption (181.6s) after indicator cache; cost is HADOUKEN visual rendering (85-99s vs 22s non-visual) plus per-session wrapper compile 50-65s"
+    "automatic experimental probability contract and evidence"
   ],
   "preceding_code_checkpoint": {
     "revision": "290400139472920dbc18ba3d6e5d0c60da8f24da",
@@ -1778,6 +1776,45 @@
         "result": "one reconciled with reference_match, one interrupted"
       }
     ],
-    "qualified": false
+    "qualified": false,
+    "superseded_by": "panel_frame_qualification"
+  },
+  "panel_frame_qualification": {
+    "hadouken_revision": "28099386392a1e1bff6ec9810d81a0c6c8739c3d",
+    "previous_hadouken_revision": "adc5ecd360a41e575068fb443d2a531e7f82c87b",
+    "source_fingerprint": "527e696bdcc9f147",
+    "previous_source_fingerprint": "2e0a4bf209628c86",
+    "change": "native panel redraw from ticks and Tester clock limited to HDK_PANEL_FRAME_MS=250 wall ms; chart events and observed bar immediate; live 1 s timer unchanged",
+    "preview_app_revision": "57d13ee91620f48cecc8c4b7e67c58105a64278f",
+    "budget_seconds": 180,
+    "visual_test_seconds": 49.7,
+    "runs": [
+      {
+        "receipt": "session-control/gui4",
+        "backtest": 87.0,
+        "replay": 122.2
+      },
+      {
+        "receipt": "session-control/gui5",
+        "backtest": 73.7,
+        "replay": 123.6
+      },
+      {
+        "receipt": "session-control/gui6",
+        "backtest": 83.5,
+        "replay": 139.7
+      }
+    ],
+    "replay_checks": [
+      "reference_match",
+      "functional_cycle",
+      "59 inputs",
+      "journal",
+      "cash",
+      "resource budget"
+    ],
+    "qualified": true,
+    "demo_account_exercised": false,
+    "live_broker_exercised": false
   }
 }

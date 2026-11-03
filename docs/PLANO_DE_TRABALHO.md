@@ -4553,3 +4553,6 @@ Encerramento por sessão sem interface (`session.pause`/`resume`/`close_out`) e
 cache de indicadores/velocidade do visualizador em App57d13ee. Replay pela UI
 179,3 s aprovado e 181,6 s interrompido no mesmo orçamento180: não repetível,
 revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem interface".
+Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
+250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
+qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.

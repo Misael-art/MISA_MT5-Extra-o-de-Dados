@@ -139,6 +139,12 @@ exposição da sessão, sem UI; qualificado no Tester, DEMO não exercitada. Rep
 pela UI segue não repetível em180s (179,3 aprovado/181,6 interrompido); perfil
 S09 2.11 continua bloqueado. [Detalhes](docs/continuidade.md#encerramento-por-sessão-sem-interface-e-orçamento-do-replay-visual-02112026).
 
+**03/11/2026:** HADOUKEN `2809938` limita os quadros do painel nativo no replay
+visual (teste visual 85–99 s → 49,7 s). Jornada real dos botões 3/3 dentro de
+180 s (replay 122,2/123,6/139,7 s, referência e ciclo funcional; backtest
+87,0/73,7/83,5 s). Perfil S09 2.11 qualificado: fingerprint `527e696bdcc9f147`,
+revisão `2809938`. [Detalhes](docs/continuidade.md#painel-nativo-com-quadro-limitado-e-perfil-s09-211-qualificado-03112026).
+
 ## Preparação operacional DEMO em01/11/2026
 
 [Proposta e encerramento por posse](docs/sdk/demo_operacional.md#sa-ref-01--proposta-operacional-para-2-novembro-2026-aguarda-autorização):

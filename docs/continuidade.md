@@ -5959,3 +5959,23 @@ caixa conciliados) e 181,6 s interrompido. Não é repetível:
 Próximo: medir e reduzir o trabalho visual por tick do painel HADOUKEN em escopo
 próprio, ou decisão do proprietário sobre o orçamento do replay visual. Recibos
 `session-control/gui{,2,3}`. 606 testes App/22 módulos e regressões dirigidas passaram.
+
+### Painel nativo com quadro limitado e perfil S09 2.11 qualificado —03/11/2026
+
+HADOUKEN `2809938` (branch `codex/e14-protecao-comum`). O S09 recalculava
+(`Fill`/`Render`) e redesenhava o painel em cada tick e em cada segundo simulado
+do Tester visual; sem visualização o painel nem existe, por isso 22 s contra
+85–99 s. `CHDKNativeBaseAdapter.RenderPanelTick` e `PanelPeriodic` no Tester
+redesenham no máximo a cada `HDK_PANEL_FRAME_MS` (250 ms de relógio real);
+eventos do gráfico e a barra observada continuam imediatos e ao vivo o timer de
+1 s não muda. Decisão, gestão e ordens não dependem do painel. Contrato C++ com o
+método real (`test_native_panel`), check_repo e 166 testes HADOUKEN.
+
+Novo pacote exportado pela própria UI (59 inputs, fingerprint `527e696bdcc9f147`)
+e jornada real dos botões na prévia `57d13ee`, orçamento180 s inalterado:
+teste visual 49,7 s; replay 122,2/123,6/139,7 s, todos com `reference_match`,
+ciclo funcional, diário e caixa conciliados; backtest 87,0/73,7/83,5 s.
+Recibos `session-control/gui{4,5,6}`. `PROTECTION_APPROVED_FINGERPRINT` e
+`PROTECTION_HADOUKEN_REVISION` passam ao candidato medido; o fingerprint anterior
+`2e0a4bf209628c86` continua nas evidências. Manifesto do novo host aponta o
+HADOUKEN `2809938`. Pendentes: DEMO do `session.close_out`, netting e Windows físico.

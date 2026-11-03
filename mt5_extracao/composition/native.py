@@ -100,8 +100,8 @@ RUNTIME_HADOUKEN_REVISION=None  # ciclo nativo e alteração de manutenção ain
 RUNTIME_INPUT_TYPES=PANEL_INPUT_TYPES
 
 PROTECTION_ROBOT_VERSION="2.11"
-PROTECTION_APPROVED_FINGERPRINT="2e0a4bf209628c86"  # candidato; revisão None mantém ativação bloqueada
-PROTECTION_HADOUKEN_REVISION=None
+PROTECTION_APPROVED_FINGERPRINT="527e696bdcc9f147"  # painel com quadro limitado; candidato 2e0a4bf209628c86 permanece em evidência
+PROTECTION_HADOUKEN_REVISION="28099386392a1e1bff6ec9810d81a0c6c8739c3d"  # replay pela UI 3/3 no orçamento de 180 s
 PROTECTION_INPUTS={
     "stop_mode":("InpStopMode","int","initial_stop_0_points_1_ATR"),
     "stop_atr":("InpStopATR","double","ATR"),
