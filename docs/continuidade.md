@@ -14,6 +14,25 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P04 — cortes e baseline temporal em revisão — 03/11/2026
+
+Fonte local `codex/t134-p04-validacao-temporal`, baseada em P03 local, sem
+push/PR pelo guarda central compartilhado. `strategies.validation` planeja
+folds globais UTC e retorna índices de pontuação, purga, censura e embargo em
+segundos; rejeita disponibilidade de característica posterior à decisão.
+`analytics.associations` congela suporte por estrato só com metadados do treino,
+analisa diferença evento/controle da mesma fonte, sessão e estrato, calcula IC
+por blocos de sessões e p diagnóstico por permutação pareada; a hipótese nula
+de intercambialidade fica explícita e não prova causalidade. O serviço de
+experimentos deriva o número Bonferroni da grade congelada, endpoints e
+definições fora da grade inclusive descartadas, e não chama uma revisão exposta
+de reserva final. O método recusa resolução de p insuficiente. Ensaios
+sintéticos incluem efeito conhecido, nulo autocorrelacionado com 32 seeds fixas,
+vazamento futuro, falta de suporte e duas fontes. Não houve avaliação em base
+real, CI desta branch, Windows físico ou aceite econômico. Artefatos privados
+seguem o manifesto existente. P05 deve integrar custos no backtester canônico;
+P06 deve conectar este plano a eventos e avaliações persistidas.
+
 ## T13.4-P03 — mensagem do guard por protocolo — 03/11/2026
 
 O teste `test_protocol_immutable_cached_read_and_cancelled_exposure` falhou na

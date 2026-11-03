@@ -18,6 +18,20 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## T13.4-P04 — validação temporal em revisão — 03/11/2026
+
+Branch local `codex/t134-p04-validacao-temporal` sobre P03. O plano de folds
+aplica as mesmas janelas UTC a todas as fontes, recusa característica futura,
+purga desfechos que cruzam o corte e embarga em tempo real. O baseline congela
+estratos com metadados do treino; só compara pares de evento/controle da mesma
+fonte, sessão e estrato após o corte de ajuste. Bootstrap por blocos de sessões
+produz IC e uma permutação pareada explícita produz p diagnóstico sob hipótese
+de intercambialidade; não implica causalidade. O contexto da campanha conta a
+grade inteira, endpoints e definições extras, inclusive descartes, antes de
+aplicar Bonferroni. Resolução de p insuficiente impede o status OK. P06 ainda
+deve conectar snapshots, eventos e resultados persistidos. CI, dados reais,
+Windows físico e qualificação final da reserva pendentes.
+
 ## T13.4-P03 — despacho por tipo de protocolo — 03/11/2026
 
 Na branch local `codex/t134-p03-campanha-reserva`, a validação conjunta do
