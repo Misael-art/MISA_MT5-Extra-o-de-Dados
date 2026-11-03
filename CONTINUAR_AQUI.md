@@ -18,6 +18,27 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## T13.4-P06 — fluxo inicial de padrões em revisão — 03/11/2026
+
+Branch local `codex/t134-p06-fluxo-quatro-familias` sobre P05, que por sua vez
+se apoia em P04. `analytics.pattern_families` compila reversão, continuação por
+horário, gap e rompimento/falha na gramática tipada P02, com parâmetros
+explícitos. `analytics.pattern_flow` lê somente snapshots congelados, preserva
+namespace/relógio/sessão, registra acesso por papel antes de ler resultados,
+avalia eventos e desfechos, chama baseline P04 e simulação P05 quando os planos
+congelados permitem. Sinais e desfechos vão para definições distintas do
+`feature_store`; o recibo fica no ledger de experimentos na mesma transação.
+O preset em `presets.research` inclui fonte, definição, planos, resultado e
+hashes de implementação, sem equivalência `.set` nem ativação. Replay com
+fechamento presumido e sessão UTC sintética é marcado como tal, sem aceite
+prospectivo. Ensaios sintéticos cobrem quatro famílias, duas bases de mesmo
+símbolo, reinício, nenhum aprovado, veto a vazamento entre folds e rollback.
+O conjunto P01–P06/datasets/experimentos teve 89 testes aprovados no Linux;
+os seis testes diretos do fluxo foram repetidos após a contagem de negativos.
+O teste transacional PostgreSQL do fluxo foi ignorado sem URL local; a CI da PR
+deverá executá-lo. Nenhum dado real foi usado como fixture.
+P07 deve ligar CLI, SDK, Laboratório, GUI e Dashboard à avaliação persistida.
+
 ## T13.4-P05 — adaptador econômico em revisão — 03/11/2026
 
 Branch local `codex/t134-p05-simulacao-economica` sobre P04 para revisão

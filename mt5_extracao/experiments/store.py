@@ -196,6 +196,53 @@ def pattern_role_access(db, protocol_id, role, key, purpose):
     return dict(recorded=True, role=role, scopes=len(scopes), qualified_final_holdout=False)
 
 
+def persist_pattern_evaluation(db, protocol_id, request_id, receipt, records):
+    """Grava revisão de eventos no feature_store e recibo no ledger na mesma transação."""
+    from mt5_extracao.analytics import feature_store
+
+    if not isinstance(receipt, dict) or not isinstance(records, list):
+        raise ValueError("Avaliação e fatos precisam de objetos explícitos.")
+    if receipt.get("protocol_id") != protocol_id or receipt.get("request_id") != request_id:
+        raise ValueError("Recibo de avaliação diverge da tentativa registrada.")
+    suffix = digest([request_id, receipt["data_manifest_id"]])
+    signal_id, outcome_id = "pattern.signal." + suffix, "pattern.outcome." + suffix
+    version = "1"
+    for feature_id, kind in ((signal_id, "signal"), (outcome_id, "outcome")):
+        feature_store.register_definition(
+            db, feature_id, "Padrão de pesquisa: " + kind, version,
+            {"protocol_id": protocol_id, "request_id": request_id,
+             "data_manifest_id": receipt["data_manifest_id"], "source_namespace": receipt["source_namespace"],
+             "kind": kind},
+            [{"kind": "snapshot", "data_manifest_id": receipt["data_manifest_id"]}],
+            family="pattern_" + kind, source_id=receipt["data_manifest_id"],
+            timeframe=receipt["timeframe"], availability_rule="closed_bar_then_received_outcome",
+            value_type="CATEGORY")
+    prepared = []
+    for item in records:
+        if item.get("feature_id") not in {signal_id, outcome_id} or item.get("algorithm_version") != version:
+            raise ValueError("Fato de outra avaliação ou definição no lote.")
+        prepared.append(item)
+    ensure_schema(db)
+    event_id = "pattern_evaluation:" + digest([request_id, receipt["data_manifest_id"], receipt["role"]])
+
+    def finish(conn, _counts):
+        lock(conn)
+        attempt = request(db, request_id, conn)
+        if attempt["protocol_id"] != protocol_id or attempt["state"] != "requested":
+            raise ValueError("Só tentativa registrada e admitida pode receber avaliação.")
+        event(conn, event_id, protocol_id, request_id, "pattern_evaluated", receipt)
+
+    counts = feature_store.save_values(db, prepared, transaction_hook=finish)
+    return dict(signal_feature_id=signal_id, outcome_feature_id=outcome_id,
+                counts=counts, receipt=receipt)
+
+
+def pattern_evaluations(db, protocol_id):
+    """Consulta somente recibos persistidos; consumidores não recalculam pesquisa."""
+    return [row["payload"] for row in status(db, protocol_id)["events"]
+            if row["kind"] == "pattern_evaluated"]
+
+
 def start(conn, item, run_id, identity, execution_id):
     conn.execute(text("INSERT INTO _experiment_executions VALUES(:i,:r,:run,'running',:v,NULL,'',:t)"),
                  dict(i=execution_id, r=item["request_id"], run=run_id, v=encoded(identity), t=now()))
