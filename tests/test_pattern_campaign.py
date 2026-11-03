@@ -67,6 +67,14 @@ def test_campaign_freezes_roster_global_windows_and_reopens(source):
         reopened.close()
 
 
+def test_campaign_cannot_be_sent_to_base_strategy_executor(source):
+    db, _ = source
+    body, _, _ = campaign(db)
+    protocol = experiments.create_pattern_campaign(db, body)["protocol_id"]
+    with pytest.raises(ValueError, match="avalia padrões"):
+        experiments.request(db, protocol, "wrong-executor", {})
+
+
 def test_global_attempt_budget_counts_alternatives_and_preserves_rejections(source):
     db, _ = source
     body, long, short = campaign(db)

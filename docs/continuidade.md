@@ -14,6 +14,18 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P03 — mensagem do guard por protocolo — 03/11/2026
+
+O teste `test_protocol_immutable_cached_read_and_cancelled_exposure` falhou na
+composição local: o protocolo de associações era recusado, porém a mensagem
+genérica introduzida por P03 substituía a orientação específica. Na branch
+`codex/t134-p03-campanha-reserva`, o serviço conserva a recusa com o comando
+`laboratory protocol-evaluate` para associações e usa texto próprio para
+campanhas de padrões. Dois casos dirigidos e as 13 verificações de campanha e
+protocolo passaram em Linux; não houve execução financeira. O incremento segue
+local, dependente do guarda central de publicação; será incorporado à cadeia
+P04–P07 e às branches de Laboratório antes de alegar validação da composição.
+
 ## T13.4-P03 — campanha, tentativas e reserva em revisão — 03/11/2026
 
 Fonte local `codex/t134-p03-campanha-reserva`, baseada em P02 local, sem
