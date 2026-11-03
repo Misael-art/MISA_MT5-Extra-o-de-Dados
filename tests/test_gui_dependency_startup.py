@@ -46,7 +46,8 @@ def test_constructor_consumes_success_flag_and_lists_missing_dependencies(monkey
                            destroy=lambda: events.append("destroyed"))
     monkeypatch.setattr(app.MT5Extracao, "setup_root_window", lambda self: None)
     monkeypatch.setattr(app, "ErrorHandler", lambda: SimpleNamespace(install_global_handler=lambda: None))
-    monkeypatch.setattr(app, "verificar_dependencias_criticas", lambda offline: (False, ["pandas"]))
+    monkeypatch.setattr(app, "verificar_dependencias_criticas",
+                        lambda offline, config_path: (False, ["pandas"]))
     monkeypatch.setattr(app.messagebox, "showerror", lambda title, message: events.append((title, message)))
     instance = app.MT5Extracao(root, offline=True)
     assert instance.ui_manager is None and instance.db_manager is None
@@ -65,3 +66,31 @@ def test_dependency_check_returns_missing_module_without_installing(monkeypatch)
                         if module == "psutil" else original(module, package))
     success, missing = app.verificar_dependencias_criticas(offline=True)
     assert not success and missing == ["psutil"]
+
+
+def test_explicit_offline_config_opens_only_qa_database(tmp_path, monkeypatch):
+    import app
+
+    qa_path = tmp_path / "qa.sqlite"
+    qa_config = tmp_path / "qa.ini"
+    qa_config.write_text(f"[APP]\nbroker_utc_offset=0\n[DATABASE]\ntype=sqlite\npath={qa_path}\n",
+                         encoding="utf-8")
+    errors = []
+    monkeypatch.setattr(app.messagebox, "showerror", lambda *args: errors.append(args))
+    instance = object.__new__(app.MT5Extracao)
+    instance.config_path = str(qa_config)
+    assert instance.load_config_and_db()
+    try:
+        assert qa_path.exists() and not errors
+        assert instance.db_manager.db_path == str(qa_path)
+        assert instance.config_path == str(qa_config)
+    finally:
+        instance.db_manager.close()
+
+
+def test_alternate_config_requires_offline_before_creating_window(tmp_path):
+    import app
+    import pytest
+
+    with pytest.raises(SystemExit, match="2"):
+        app.main(["--config", str(tmp_path / "qa.ini")])

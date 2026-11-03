@@ -99,6 +99,9 @@ consome o primeiro campo, lista os ausentes e orienta executar o instalador
 oficial. Não faz instalação implícita. No host: 23 testes de entrada/offline/
 doctor passaram; `./run.sh --offline --help` passou pelo launcher oficial.
 Ausência foi simulada no teste de subprocesso, sem remover o ambiente único.
+`app.py --offline --config <arquivo>` seleciona configuração de QA explícita;
+o caminho alternativo é recusado fora de offline e o teste confirmou que só
+o banco temporário escolhido foi aberto.
 Percurso visual completo pelo atalho, Windows físico e CI de SHA publicado
 permanecem pendentes. Esta branch ainda não tem PR por causa da guarda central
 de criação de branches remotas; não a apresentar como instalada.

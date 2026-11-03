@@ -97,7 +97,9 @@ instalador oficial (`./install.sh` ou `install.bat`) e encerra a abertura.
 O pré-voo do script ocorre antes dos imports de runtime, com o catálogo de
 módulos do doctor; não instala pacotes automaticamente. 23 testes de entrada,
 offline e doctor passaram no host. `./run.sh --offline --help` terminou com 0;
-o percurso GUI real pelo atalho e Windows físico ainda exigem QA controlada.
+o parâmetro `--config` com `--offline` permite apontar uma sessão de QA para
+configuração/base explícitas sem tocar a base principal. Cinco testes diretos
+passaram; percurso GUI real pelo atalho e Windows físico ainda exigem QA controlada.
 Base privada, ponte, terminal, negociação e referências aceitas não foram usados
 como fixture. Publicação desta branch depende da guarda central de PRs separadas.
 

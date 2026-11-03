@@ -67,7 +67,7 @@ from mt5_extracao.logging_setup import setup_logging
 setup_logging()
 
 # Função para verificar dependências críticas antes de continuar
-def verificar_dependencias_criticas(offline=False):
+def verificar_dependencias_criticas(offline=False, config_path="config/config.ini"):
     """Verifica se as dependências críticas estão disponíveis"""
     dependencias_faltantes = [package for module, package in bootstrap_doctor.REQUIRED_MODULES
                              if bootstrap_doctor.check_module(module, package).status == bootstrap_doctor.FAIL]
@@ -75,7 +75,7 @@ def verificar_dependencias_criticas(offline=False):
     # MetaTrader5 é essencial: módulo local (Windows) ou ponte RPyC (Linux)
     if not offline:
         from mt5_extracao.mt5_backend import get_mt5
-        if get_mt5("config/config.ini") is None:
+        if get_mt5(config_path) is None:
             dependencias_faltantes.append("MetaTrader5 (Windows: pacote MetaTrader5; Linux: ./scripts/mt5-bridge.sh start)")
 
     if dependencias_faltantes:
@@ -157,8 +157,9 @@ except ImportError as e:
 
 # Função verificar_mt5_em_execucao() removida - Lógica movida para MT5Connector
 class MT5Extracao:
-    def __init__(self, root, offline=False):
+    def __init__(self, root, offline=False, config_path="config/config.ini"):
         self.offline = bool(offline)
+        self.config_path = os.fspath(config_path)
         """
         Inicializa a aplicação principal.
         
@@ -184,7 +185,8 @@ class MT5Extracao:
         
         try:
             # Verificar dependências críticas
-            sucesso, faltantes = verificar_dependencias_criticas(offline=self.offline)
+            sucesso, faltantes = verificar_dependencias_criticas(
+                offline=self.offline, config_path=self.config_path)
             if not sucesso:
                 instalador = "install.bat" if os.name == "nt" else "./install.sh"
                 messagebox.showerror("Erro de Dependências",
@@ -262,7 +264,7 @@ class MT5Extracao:
     def load_config_and_db(self):
         """Carrega configurações e inicializa o DatabaseManager."""
         self.config = configparser.ConfigParser()
-        config_path = "config/config.ini"
+        config_path = self.config_path
         self.config_path = config_path
 
         if not os.path.exists(config_path):
@@ -922,11 +924,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Analise sua base local ou conecte ao MetaTrader 5.")
     parser.add_argument("--offline", action="store_true",
                         help="Abre a base local com a conexão MT5 desativada nesta sessão.")
+    parser.add_argument("--config", default="config/config.ini",
+                        help="configuração explícita para sessão offline de QA")
     args = parser.parse_args(argv)
+    if args.config != "config/config.ini" and not args.offline:
+        parser.error("--config alternativo exige --offline.")
     app = None
     try:
         root = tk.Tk()
-        app = MT5Extracao(root, offline=args.offline)
+        app = MT5Extracao(root, offline=args.offline, config_path=args.config)
         root.mainloop()
         return 0
     finally:

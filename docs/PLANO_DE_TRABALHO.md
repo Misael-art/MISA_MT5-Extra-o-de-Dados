@@ -4470,7 +4470,9 @@ Corretivo separado de inicialização da GUI, 03/11/2026: o chamador de
 `verificar_dependencias_criticas` passa a consumir `(sucesso, faltantes)`,
 exibir dependências ausentes e apontar para o instalador oficial sem instalar
 ao abrir. Pré-voo do script antecede imports pesados; 23 testes de entrada,
-offline e doctor passaram, mais ajuda pelo launcher Linux. QA visual completa,
+offline e doctor passaram, mais ajuda pelo launcher Linux. Seleção explícita
+`--offline --config` abre apenas o banco de QA indicado (cinco testes diretos);
+QA visual completa,
 Windows físico, CI e publicação da branch própria ainda pendentes.
 
 Corretivo de portabilidade do CI no App, 03/11/2026: o SHA remoto `a74f539`
