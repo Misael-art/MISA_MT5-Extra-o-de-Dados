@@ -114,3 +114,25 @@ def test_indicator_cache_reuses_only_identical_sources_and_compiler(tmp_path):
     editor.write_bytes(b"v2")                                                                 # outro compilador também
     mt5_tools.compile_indicator_dependencies(items, editor, None, run, cache=cache)
     assert len(calls) == 3 and not list(cache.glob("*.tmp"))
+
+
+
+def _speed_config(value):
+    import configparser
+    config = configparser.ConfigParser(interpolation=None)
+    config.read_dict({"ROBOTS": {"replay_visual_speed": value}})
+    return config
+
+
+@pytest.mark.parametrize("value,expected", [("", None), ("100", "speed=100\r\n"), (" 7 ", "speed=7\r\n")])
+def test_visual_speed_is_optional_and_only_touches_the_visualizer(value, expected):
+    text = sessions.visual_tester_ini(_speed_config(value))
+    assert text.startswith("[Visualization]\r\nchartmode=1\r\n") and "[PaneState-Summary]" in text
+    assert (expected in text) if expected else "speed=" not in text
+    assert "speed=" not in sessions.visual_tester_ini({})
+
+
+@pytest.mark.parametrize("value", ["0", "101", "fast", "-5"])
+def test_visual_speed_out_of_range_is_refused(value):
+    with pytest.raises(ValueError, match="1 a 100"):
+        sessions.visual_tester_ini(_speed_config(value))

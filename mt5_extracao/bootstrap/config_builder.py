@@ -111,6 +111,7 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("batch_max_workers", "0"),      # máximo de backtests simultâneos (0 = núcleos do processador menos um)
         ("batch_max_jobs", "0"),  # tentativas admitidas no lote, inclusive falhas; 0 = sem teto (acumulado na retomada)
         ("batch_max_seconds", "0"),  # tempo cooperativo acumulado do lote em segundos; 0 = sem teto
+        ("replay_visual_speed", ""),  # velocidade do visualizador do Tester (1–100); vazio = padrão nativo
         ("batch_hard_cpu_pct", "0"),  # interrompe o lote no próximo ponto cooperativo; 0 = desligado
         ("batch_hard_ram_pct", "0"),  # RAM do host; 0 = desligado (batch_max_ram_pct continua regulando concorrência)
         ("batch_min_free_mb", "256"),  # reserva livre no disco da base e no diretório nativo de trabalho, em MiB

@@ -140,6 +140,17 @@ def _private_config(config, directory):
     return child
 
 
+def visual_tester_ini(config):
+    """metatester.ini do visualizador. `ROBOTS.replay_visual_speed` (1 lento … 100 sem espera) só muda a
+    reprodução na tela, nunca ticks, ordens ou resultado; vazio mantém o padrão nativo."""
+    speed = (config.get("ROBOTS", "replay_visual_speed", fallback="").strip()
+             if isinstance(config, configparser.ConfigParser) else "")
+    if speed and not (speed.isdigit() and 1 <= int(speed) <= 100):
+        raise ValueError("replay_visual_speed deve ser inteiro de 1 a 100 ou vazio.")
+    return ("[Visualization]\r\nchartmode=1\r\n" + (f"speed={int(speed)}\r\n" if speed else "") +
+            (Path(__file__).parent / "templates" / "visual_tester.ini.tmpl").read_text(encoding="utf-8"))
+
+
 def prepare(config, robot, directory, symbol, *, require_source=True, check=None, _child=None):
     """Cópias privadas, sem links graváveis, senhas em INI ou argumentos de login."""
     if require_source and not robot.has_source:
@@ -222,7 +233,7 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
     visual.parent.mkdir(parents=True, exist_ok=True)
     # IsVisible isolado é ignorado pelo build nativo: preservar também o
     # grafo de docking, sem preferências, identidades ou caminhos do host.
-    text = "[Visualization]\r\nchartmode=1\r\n" + (Path(__file__).parent / "templates" / "visual_tester.ini.tmpl").read_text(encoding="utf-8")
+    text = visual_tester_ini(config)
     if check is not None:
         check(path=visual, reserve_bytes=len(text.encode("utf-16")))
     visual.write_bytes(text.encode("utf-16"))
