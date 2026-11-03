@@ -14,6 +14,17 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## LAB-03 — alinhamento de Horários, regressão local — 03/11/2026
+
+Fonte local `codex/lab03-horarios-alinhamento` sobre P07. `MatrixTable` já
+sincronizava larguras e rolagem de cabeçalho/corpo na fonte atual, com correção
+histórica em `22c09f4` e refinamento em `4ac3a46`. O novo teste percorre as
+quatro colunas, rolagem horizontal e vertical e larguras 640/960/700; junto à
+regressão anterior, 3 casos Tk passaram em Xvfb. A imagem privada antiga não
+foi reproduzida nesta fonte. DPI/monitor físico, atalho com eventos elegíveis,
+Windows físico, CI e PR continuam gates distintos. Sem novo banco ou recibo
+privado; publicação da branch depende do guarda compartilhado.
+
 ## T13.4-P07 — leitura comum de avaliações em revisão — 03/11/2026
 
 Fonte local `codex/t134-p07-consumidores-m1`, base P06 `e538521`, ainda sem
