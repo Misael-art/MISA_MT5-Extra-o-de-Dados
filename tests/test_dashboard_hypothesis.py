@@ -1,4 +1,4 @@
-"""DASH-06: faixa de hipótese sem produtor T13.4; adaptador estrito para o DTO futuro."""
+"""DASH-06: faixa de hipótese sem resultado e adaptador estrito para DTO futuro."""
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -22,13 +22,13 @@ def record(**changes):
     return base
 
 
-def test_generator_declares_pending_producer_without_inventing_hypotheses():
+def test_generator_declares_no_persisted_evaluation_without_inventing_hypotheses():
     snapshot = generator.generate(None, symbol="QA", timeframe="M5", as_of=CUT.isoformat())
     section = next(s for s in snapshot["sections"] if s["kind"] == "hypothesis")
     assert section["display_state"] == "UNAVAILABLE" and section["default_visible"]
-    assert section["evidence"] == {"reason_code": "T13_4_PENDING"} and section["n_observations"] is None
+    assert section["evidence"] == {"reason_code": "NO_PATTERN_EVALUATION"} and section["n_observations"] is None
     assert "bateria de robô" in section["details"]["reason"]
-    assert snapshot["capabilities"]["hypotheses"]["state"] == "DEPENDENCY_PENDING"
+    assert snapshot["capabilities"]["hypotheses"]["state"] == "NO_DATA"
     generator.validate(snapshot)
 
 

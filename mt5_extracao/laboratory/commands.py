@@ -23,6 +23,21 @@ def add_parser(sub):
     inventory.set_defaults(func=run)
     actions.add_parser("sources", help="tabelas OHLCV em TFs nativos; somente leitura").set_defaults(func=run)
     actions.add_parser("pattern-sources", help="fontes locais para T13.4 com namespace da base").set_defaults(func=run)
+    evaluations = actions.add_parser("pattern-evaluations", help="avaliações T13.4 persistidas, sem executar pesquisa")
+    evaluations.add_argument("--protocol")
+    evaluations.add_argument("--symbol")
+    evaluations.add_argument("--tf")
+    evaluations.add_argument("--as-of", help="corte UTC com fuso explícito")
+    evaluations.add_argument("--html", help="novo relatório HTML de consulta")
+    evaluations.set_defaults(func=run)
+    evaluation = actions.add_parser("pattern-evaluation", help="inspeciona um recibo T13.4 persistido")
+    evaluation.add_argument("--protocol", required=True)
+    evaluation.add_argument("--request", required=True)
+    evaluation.add_argument("--manifest", required=True)
+    evaluation.add_argument("--as-of", help="corte UTC com fuso explícito")
+    evaluation.add_argument("--facts", action="store_true", help="inclui fatos gravados de sinal e desfecho")
+    evaluation.add_argument("--html", help="novo relatório HTML de consulta")
+    evaluation.set_defaults(func=run)
     for action in ("pattern-qualify", "pattern-freeze"):
         candidate = actions.add_parser(action, help="qualifica recorte T13.4" if action.endswith("qualify")
                                        else "congela recorte elegível no store existente")
@@ -119,7 +134,20 @@ def add_parser(sub):
 
 def run(args, ctx):
     from mt5_extracao import cli
-    if args.laboratory_action in ("pattern-sources", "pattern-qualify", "pattern-freeze"):
+    if args.laboratory_action in ("pattern-evaluations", "pattern-evaluation"):
+        from mt5_extracao import sdk
+        from .pattern_report import render
+        result = (sdk.pattern_evaluations(ctx.db, protocol_id=args.protocol, symbol=args.symbol,
+                                          timeframe=args.tf, as_of=args.as_of)
+                  if args.laboratory_action == "pattern-evaluations" else
+                  sdk.pattern_evaluation(ctx.db, args.protocol, args.request, args.manifest,
+                                         as_of=args.as_of, include_facts=args.facts))
+        if args.html:
+            with Path(args.html).expanduser().open("x", encoding="utf-8") as handle:
+                handle.write(render(result))
+        if isinstance(result, list):
+            result = {"evaluations": result}
+    elif args.laboratory_action in ("pattern-sources", "pattern-qualify", "pattern-freeze"):
         from mt5_extracao import sdk
         result = (sdk.pattern_sources(ctx.db) if args.laboratory_action == "pattern-sources" else
                   (sdk.qualify_pattern_source if args.laboratory_action == "pattern-qualify"

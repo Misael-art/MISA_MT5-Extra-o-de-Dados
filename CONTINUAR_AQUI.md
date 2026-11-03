@@ -18,6 +18,32 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## T13.4-P07 — consumidores de avaliações em revisão — 03/11/2026
+
+Branch local `codex/t134-p07-consumidores-m1` sobre P06 `e538521`.
+`analytics.pattern_queries` consulta os recibos P06 já gravados no ledger,
+com namespace da base e corte de disponibilidade, e expõe inspeção dos fatos
+de sinal/desfecho no `feature_store`. SDK, CLI `laboratory pattern-evaluations`
+e `pattern-evaluation`, relatório HTML, guia Padrões do registro de estudos no
+Laboratório e Dashboard usam a mesma leitura. O Dashboard apresenta os recibos
+como exploratórios, ocultos por padrão, sem inventar lift, confiança ou
+aprovação; ausência de resultado é explícita. A consulta não executa pesquisa
+nem ordens. Ensaios sintéticos incluem CLI=SDK, HTML, reinício, corte anterior
+ao registro e o mesmo símbolo em duas bases. Após integrar a entrada GUI
+offline e o teste de monitor à esquerda, 58 testes dirigidos passaram, um foi
+ignorado e o desenho emitiu 17 avisos de layout. `./run.sh --offline --config`
+abriu a GUI em Xvfb isolado com SQLite de QA, e o menu Exibir → Registro de
+estudos → Padrões mostrou o estado vazio sem fabricar avaliação. Com outro
+SQLite sintético, a mesma rota exibiu o recibo persistido `reversal` em
+`SYN / M1`, treino, zero eventos e estado exploratório, após reinício da base.
+Os arquivos temporários de QA foram removidos. Amostra real elegível, CI/PR,
+PostgreSQL e Windows físico permanecem separados.
+Publicação aguarda ajuste específico do guarda central compartilhado para
+branches de revisão; não contornar o hook. A prévia instalada segue em
+`57d13ee`, sem estas mudanças. Artefatos privados permanecem no manifesto
+existente, sem cópia. Próximo: completar gates de P07, revisar documentação
+central e retomar os gaps operacionais E14 da fonte reconciliada.
+
 ## T13.4-P06 — fluxo inicial de padrões em revisão — 03/11/2026
 
 Branch local `codex/t134-p06-fluxo-quatro-familias` sobre P05, que por sua vez
