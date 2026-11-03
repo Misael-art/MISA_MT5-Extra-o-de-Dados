@@ -745,7 +745,7 @@
     "pending modification/partial broker lineage and process recovery",
     "gradient modes and CONTROLLED_GRADIENT policy",
     "automatic experimental probability contract and evidence",
-    "GUI visual replay within unchanged180seconds budget remains unqualified; investigate preparation/render workload before retest"
+    "GUI visual replay within unchanged180seconds budget: 1 pass (179.3s) and 1 interruption (181.6s) after indicator cache; cost is HADOUKEN visual rendering (85-99s vs 22s non-visual) plus per-session wrapper compile 50-65s"
   ],
   "preceding_code_checkpoint": {
     "revision": "290400139472920dbc18ba3d6e5d0c60da8f24da",
@@ -1742,5 +1742,42 @@
     },
     "limitation": "CSV/old deal metadata round original SL; ATR audit refused. The ce96 display-price correction alone does not prove raw historical R."
   },
-  "hadouken_revision": "adc5ecd360a41e575068fb443d2a531e7f82c87b"
+  "hadouken_revision": "adc5ecd360a41e575068fb443d2a531e7f82c87b",
+  "session_close_out": {
+    "app_revision": "d26808d54a66e0a2314788b59b6957ccb7580d9e",
+    "module": "mt5_extracao/robots/session_control.py",
+    "services": [
+      "session.pause",
+      "session.resume",
+      "session.close_out"
+    ],
+    "tester_receipts": [
+      "ctl-native-own-v3",
+      "ctl-native-ambiguous-v3"
+    ],
+    "result": "PAUSE refused 5/5 openings at OrderCheck and OrderSend (10017); FLATTEN closed 5 and removed 1 own by ticket (10009); foreign 1+1 preserved; ambiguous left untouched with closed=false",
+    "demo_account_exercised": false
+  },
+  "gui_replay_budget_investigation": {
+    "app_revision": "57d13ee91620f48cecc8c4b7e67c58105a64278f",
+    "runs": [
+      {
+        "mode": "backtest",
+        "seconds": [
+          105.4,
+          92.5
+        ],
+        "result": "reconciled twice"
+      },
+      {
+        "mode": "replay",
+        "seconds": [
+          179.3,
+          181.6
+        ],
+        "result": "one reconciled with reference_match, one interrupted"
+      }
+    ],
+    "qualified": false
+  }
 }

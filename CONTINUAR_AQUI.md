@@ -132,6 +132,13 @@ locais, anexos não enviados ou do histórico de uma sessão aberta no computado
 Leia o [roteiro completo](docs/repasse/NOVO_HOST_20261024.md) e entregue ao agente
 o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
+## Encerramento por sessão e replay visual —02/11/2026
+
+App57d13ee (PR279): `session.pause`/`resume`/`close_out` liquidam por ticket só a
+exposição da sessão, sem UI; qualificado no Tester, DEMO não exercitada. Replay
+pela UI segue não repetível em180s (179,3 aprovado/181,6 interrompido); perfil
+S09 2.11 continua bloqueado. [Detalhes](docs/continuidade.md#encerramento-por-sessão-sem-interface-e-orçamento-do-replay-visual-02112026).
+
 ## Preparação operacional DEMO em01/11/2026
 
 [Proposta e encerramento por posse](docs/sdk/demo_operacional.md#sa-ref-01--proposta-operacional-para-2-novembro-2026-aguarda-autorização):

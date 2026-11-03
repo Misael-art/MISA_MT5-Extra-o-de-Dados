@@ -5921,3 +5921,41 @@ posteriores à coleta estão no próximo delta. Credenciais/contas/configuraçõ
 resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
 execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
 ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
+
+### Encerramento por sessão sem interface e orçamento do replay visual —02/11/2026
+
+App `d26808d`/`57d13ee` (PR279, branch de continuidade). HADOUKEN `adc5ecd` e
+Safety `27b8599` sem alteração; SA-REF-01 e referências preservados.
+
+**Encerramento programático.** `robots/session_control.py` entra no wrapper da
+Session: fila Common `mt5x_session_<uuid>_control.txt` → resposta do próprio
+Expert em `..._control_ack.txt`. PAUSE/RESUME recusam aberturas em `OrderCheck`
+(antes da reserva do executor) e `OrderSend` com 10017; gestão, SL/TP e
+fechamentos seguem. FLATTEN remove pendentes e fecha por ticket só a exposição
+com magic + símbolo + abertura desde o início da sessão (gravado em Common e
+relido em reinício). Mesmo magic anterior ao início é ambíguo: intocado e impede
+`closed`. Outro magic/símbolo só é contado. Serviço `session.pause`,
+`session.resume`, `session.close_out`; este só revoga o lease com zero exposição
+própria e ambígua comprovada pelo Expert, senão mantém supervisão. Tester nativo
+(Expert de QA, EURUSD M5 12/10, cada tick): após PAUSE 5/5 aberturas recusadas em
+`OrderCheck` e `OrderSend`; RESUME reabriu; FLATTEN 5 `close` + 1 `remove` (10009);
+1 posição + 1 pendente de outro magic preservadas; caso ambíguo `closed=false`
+sem tocar os tickets 2/4. Recibos `ctl-native-{own,ambiguous}-v3`. Conta DEMO
+não exercitada: precisa de nova autorização e janela. Roteiro em
+[demo_operacional](sdk/demo_operacional.md#encerramento-autorizado-pelo-roteiro).
+
+**Replay visual pela UI (180 s inalterados).** Decomposição medida: wrapper
+50–65 s (recompilado por sessão, pois carrega o UUID; mantido), indicadores de
+estudo ~19 s, terminal/autorização 18–38 s, teste visual S09 85–99 s contra 22 s
+sem visualização. Corretivos: cache de `.ex5` dos indicadores
+(`mt5x_sessions/.compile-cache`, chave = todas as fontes do plano + MetaEditor,
+só compilação 0/0) e `ROBOTS.replay_visual_speed` opcional (1–100; vazio =
+padrão nativo). A velocidade reduz o QA leve de 35 s para 1,3 s, mas não o S09:
+o custo é a renderização do próprio Expert no visualizador (HADOUKEN). Jornada
+real dos botões na prévia `57d13ee`: backtest 105,4/92,5 s aprovado duas vezes;
+replay 179,3 s aprovado (`reference_match`, ciclo funcional, 59 inputs, diário e
+caixa conciliados) e 181,6 s interrompido. Não é repetível:
+`PROTECTION_HADOUKEN_REVISION` continua None e o perfil segue bloqueado.
+Próximo: medir e reduzir o trabalho visual por tick do painel HADOUKEN em escopo
+próprio, ou decisão do proprietário sobre o orçamento do replay visual. Recibos
+`session-control/gui{,2,3}`. 606 testes App/22 módulos e regressões dirigidas passaram.

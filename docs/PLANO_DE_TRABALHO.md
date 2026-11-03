@@ -4548,3 +4548,8 @@ posteriores à coleta estão no próximo delta. Credenciais/contas/configuraçõ
 resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
 execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
 ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
+
+Encerramento por sessão sem interface (`session.pause`/`resume`/`close_out`) e
+cache de indicadores/velocidade do visualizador em App57d13ee. Replay pela UI
+179,3 s aprovado e 181,6 s interrompido no mesmo orçamento180: não repetível,
+revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem interface".

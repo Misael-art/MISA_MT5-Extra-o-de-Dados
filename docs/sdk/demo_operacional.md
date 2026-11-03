@@ -120,7 +120,7 @@ aborta o ensaio. Revalidar posições/pendências/magic após compilar e antes d
 | Reinício | Somente com carteira própria zerada, parar a Session e abrir uma sucessora própria revisada | Dois UUIDs/EX5 e continuidade separada, barra corrente pulada; nenhuma segunda entrada da mesma decisão |
 | Recusa | Observar recusa real sem relaxar limites; se não ocorrer, registrar não exercitado | Motivo completo `recusada`/`opened=0`, nenhum deal correspondente; recusa por limite QA já tem evidência Tester separada, sem induzir perda ao vivo |
 | Desconexão | Com carteira própria zerada e entradas pausadas, desconectar só o login do terminal portátil e reconectar pelo fluxo MT5 | Horários do diário, ausência de ordens durante a falha e nenhuma duplicação após retorno; não cortar rede do host nem reiniciar ponte/terminal principal |
-| Encerramento | Procedimento abaixo | Bloqueio de entradas, cada cancelamento/saída por ticket, duas fotografias frescas, histórico/deals e auditoria sem exposição própria pendente |
+| Encerramento | `session.pause` + `session.close_out` | Resposta PAUSE, cada `remove`/`close` por ticket com retcode, `closure.closed`, duas fotografias frescas, histórico/deals e auditoria sem exposição própria ou ambígua |
 
 Caso sem oportunidade em duas horas fica **não exercitado**, nunca aprovado por
 zero negócios. Não estender o horário nem criar outra estratégia/preset para
@@ -138,34 +138,47 @@ A aprovação deste roteiro inclui **cancelar pendências e fechar integralmente
 apenas posições comprovadamente originadas nesta sessão**, inclusive antes do
 horário final por critério de interrupção. Nenhum fechamento global é autorizado.
 
-1. Às 11:45 (ou interrupção), usar **PAUSAR no painel do host desta Session**,
-   conferir PAUSADO no painel/diário e ausência de novas entradas. `robots stop`
-   grava `HDK_KILL.txt` e bloqueia novas entradas em todos os consumidores desse
-   Common; não liquida e pode alcançar outras sessões. Não usá-lo como rotina
-   de encerramento isolado. Se o painel não responder, desanexar apenas o Expert
-   do gráfico próprio no MT5; manter o terminal e a supervisão abertos para liquidar.
-2. Levantar ordens pendentes e posições atuais pelo terminal/histórico e snapshot
-   somente leitura. Selecionar por conta + símbolo + magic + intervalo + ordens/deals
-   de entrada ligados ao UUID. Magic ou símbolo isolados não provam posse.
-   `POSITION_TICKET`, `POSITION_IDENTIFIER`, `DEAL_POSITION_ID` e ticket de ordem
-   são campos distintos. Posição líquida compartilhada/posse ambígua exige avaliação
-   do proprietário: manter supervisão e não agir sobre exposição possivelmente alheia.
-3. No **terminal MT5 desta sessão**, aba Negociação, cancelar **cada pendência
-   própria por ticket**, confirmar no histórico de ordens e reler a lista. Fechar
-   **cada posição própria por ticket** na mesma aba, confirmar o(s) deal(s) de saída
-   e volume restante zero. O host/SL/TP pode ter fechado antes: reler antes de agir
-   para não enviar fechamento redundante. Não usar FECHAR TUDO, fechamento por
-   símbolo, automação Python de envio de ordens nem kill de rede/processos globais.
-4. Recolher duas fotografias novas de ordens/posições, separadas por um ciclo do
-   terminal e consulta do histórico. Zero pendências próprias + zero posições
-   próprias + volumes de entrada/saída conciliados são necessários. Registrar
-   também o inventário alheio, preservado, sem publicar dados privados.
-5. Somente depois, `session.stop`/STOP da App encerra o processo/lease **próprio**.
-   Exportar diário, inputs e histórico; executar a auditoria abaixo e arquivar os
-   recibos. Não declarar “tudo parado” por telemetria antiga, CSV vazio, painel
-   fechado ou sucesso do STOP. Falha de liquidação/mercado fechado/desconexão:
-   registrar **exposição remanescente**, manter supervisão e informar ticket,
-   volume e causa ao proprietário; o fim da janela não autoriza abandono.
+**Mecanismo oficial (sem interface gráfica):** o wrapper da Session PLAY traz o
+canal `robots/session_control.py`. A App grava a fila
+`mt5x_session_<uuid>_control.txt` em Common e o próprio Expert responde em
+`..._control_ack.txt` (seq, estado, exposição própria/ambígua/alheia,
+tentativas e cada ação `remove|close:ticket:retcode`). Serviço/SDK:
+
+| Ação | Chamada | O que faz |
+|---|---|---|
+| Impedir novas entradas | `session.pause` | `OrderCheck`/`OrderSend` de abertura (mercado sem `position` e pendentes) recusam com `TRADE_RETCODE_TRADE_DISABLED` antes da reserva do executor; SL/TP, remoção e fechamentos seguem |
+| Retomar | `session.resume` | volta a aceitar aberturas |
+| Pendências e posições | `session.close_out` | PAUSE e FLATTEN: remove cada pendente própria e fecha **cada posição própria por ticket** (`TRADE_ACTION_DEAL` com `position=ticket`), até 5 tentativas |
+| Encerrar o Expert | dentro de `close_out` | só revoga o lease quando a resposta do Expert mostra zero exposição própria e zero ambígua |
+
+Posse: magic **e** símbolo da sessão **e** abertura (`POSITION_TIME`/
+`ORDER_TIME_SETUP`) no início da sessão ou depois. O início é gravado na
+primeira inicialização e relido em reinícios. Mesmo magic/símbolo anterior ao
+início é **ambíguo**: nunca é tocado e impede `closed`. Outro magic ou símbolo é
+**alheio**: só contado e preservado. Não há fechamento por símbolo nem "fechar
+tudo". `robots stop`/PARAR TUDO (arquivo HDK_KILL comum a todos os consumidores)
+não é o encerramento desta sessão.
+
+1. Às 11:45 (ou interrupção): `session.pause`. A resposta precisa ter `paused`.
+2. `session.close_out` (timeout até 300 s). Resultado `stopped=true` exige
+   `closure.closed`: FLATTEN com estado `flat`, zero próprias e zero ambíguas.
+3. Conferência independente: duas fotografias somente leitura de ordens/
+   posições/deals (`scripts/demo_session_audit.py snapshot`) separadas por um
+   ciclo, mais a auditoria por sessão abaixo. O inventário alheio deve bater
+   com `preserved_foreign`.
+4. `stopped=false` (exposição restante, posse ambígua, mercado fechado,
+   desconexão ou Expert sem resposta): a sessão **continua no ar sob
+   supervisão**; informar ticket, volume e causa ao proprietário. Nunca declarar
+   “tudo parado”; o fim da janela não autoriza abandono.
+
+Qualificação nativa no Tester (EURUSD M5, 12/10/2026, cada tick, Expert de QA):
+após PAUSE, 5/5 aberturas recusadas em `OrderCheck` e `OrderSend` (10017);
+RESUME reabriu; FLATTEN fechou 5 posições e removeu 1 pendente por ticket
+(10009) e preservou 1 posição e 1 pendente de outro magic. Com início da sessão
+deslocado, a posição e a pendente anteriores ficaram `ambiguous`, intocadas, e
+`closed=false`. Recibos em `state/qa-tmp/operational-pillar/ctl-native-*-v3`.
+O ensaio em conta DEMO **não foi feito**: exige nova autorização com janela
+própria.
 
 ### Auditoria por sessão (novembro e datas posteriores)
 
