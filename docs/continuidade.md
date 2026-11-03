@@ -89,6 +89,20 @@ novo commit, QA pelo launcher da fonte publicada e Windows físico. Nenhum
 contrato financeiro, pin ou dado privado mudou. Próximo: push na PR279,
 conferência de CI e reconciliação das branches locais dependentes.
 
+## Inicialização da GUI — corretivo local em revisão — 03/11/2026
+
+Branch `codex/gui-dependencias-inicializacao`, base App `d68e125`/PR279.
+`app.py` testava a tupla `(sucesso, faltantes)` como booleana e ainda tentava
+instalar `psutil` durante a abertura. O script agora confere os módulos
+obrigatórios pelo catálogo do doctor antes dos imports de runtime; o construtor
+consome o primeiro campo, lista os ausentes e orienta executar o instalador
+oficial. Não faz instalação implícita. No host: 23 testes de entrada/offline/
+doctor passaram; `./run.sh --offline --help` passou pelo launcher oficial.
+Ausência foi simulada no teste de subprocesso, sem remover o ambiente único.
+Percurso visual completo pelo atalho, Windows físico e CI de SHA publicado
+permanecem pendentes. Esta branch ainda não tem PR por causa da guarda central
+de criação de branches remotas; não a apresentar como instalada.
+
 ## E14 — cinco falhas Windows CI, corretivo em revisão — 03/11/2026
 
 Fonte: App `a74f539`/PR279, HADOUKEN `28099386`/PR84, Safety `27b85992`

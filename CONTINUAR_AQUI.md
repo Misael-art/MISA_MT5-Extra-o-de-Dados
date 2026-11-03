@@ -89,6 +89,18 @@ gates próprios. HADOUKEN `2809938`, Safety `27b8599` e prévia instalada
 `57d13ee` não mudaram. Próximo: publicar na mesma PR279, confirmar SHA remoto,
 checks e rebater a cadeia local dependente sem perder os commits.
 
+## Inicialização da GUI — corretivo local em revisão — 03/11/2026
+
+Branch `codex/gui-dependencias-inicializacao`, base App `d68e125`/PR279.
+O chamador agora consome `(sucesso, faltantes)`; ausência mostra os nomes e o
+instalador oficial (`./install.sh` ou `install.bat`) e encerra a abertura.
+O pré-voo do script ocorre antes dos imports de runtime, com o catálogo de
+módulos do doctor; não instala pacotes automaticamente. 23 testes de entrada,
+offline e doctor passaram no host. `./run.sh --offline --help` terminou com 0;
+o percurso GUI real pelo atalho e Windows físico ainda exigem QA controlada.
+Base privada, ponte, terminal, negociação e referências aceitas não foram usados
+como fixture. Publicação desta branch depende da guarda central de PRs separadas.
+
 ## E14 — saneamento do Windows CI em revisão — 03/11/2026
 
 PR279 segue aberta/draft na branch `codex/e14-protecao-comum`. No SHA

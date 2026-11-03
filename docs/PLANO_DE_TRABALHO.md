@@ -4466,6 +4466,13 @@ App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
 
 ### E14 — proteção comum e auditoria nativa em qualificação
 
+Corretivo separado de inicialização da GUI, 03/11/2026: o chamador de
+`verificar_dependencias_criticas` passa a consumir `(sucesso, faltantes)`,
+exibir dependências ausentes e apontar para o instalador oficial sem instalar
+ao abrir. Pré-voo do script antecede imports pesados; 23 testes de entrada,
+offline e doctor passaram, mais ajuda pelo launcher Linux. QA visual completa,
+Windows físico, CI e publicação da branch própria ainda pendentes.
+
 Corretivo de portabilidade do CI no App, 03/11/2026: o SHA remoto `a74f539`
 teve 5 falhas Windows (lease de arquivo lido pelo teste enquanto travado,
 duas decodificações UTF-8 implícitas, menu de catálogo 4 px comprimido e

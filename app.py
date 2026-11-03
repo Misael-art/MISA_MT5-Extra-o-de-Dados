@@ -6,12 +6,51 @@ import sqlite3
 import json
 import datetime
 import traceback
+import logging
+import time
+from mt5_extracao.bootstrap import doctor as bootstrap_doctor
+
+
+def _preflight_gui_dependencies():
+    """Mostra a correção oficial antes de importar módulos que podem faltar."""
+    if any(argument in ("-h", "--help") for argument in sys.argv[1:]):
+        return
+    missing = [package for module, package in bootstrap_doctor.REQUIRED_MODULES
+               if bootstrap_doctor.check_module(module, package).status == bootstrap_doctor.FAIL]
+    if bootstrap_doctor.check_tkinter().status == bootstrap_doctor.FAIL:
+        missing.append("tkinter")
+    if not missing:
+        return
+    installer = "install.bat" if os.name == "nt" else "./install.sh"
+    message = ("Dependências necessárias indisponíveis: " + ", ".join(missing) +
+               f". Execute {installer} e depois o diagnóstico pelo launcher oficial.")
+    print(message, file=sys.stderr)
+    if "tkinter" not in missing:
+        try:
+            import tkinter as preflight_tk
+            from tkinter import messagebox as preflight_messagebox
+        except ImportError:
+            pass
+        else:
+            try:
+                window = preflight_tk.Tk()
+                try:
+                    window.withdraw()
+                    preflight_messagebox.showerror("Dependências indisponíveis", message)
+                finally:
+                    window.destroy()
+            except preflight_tk.TclError:
+                pass
+    raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    _preflight_gui_dependencies()
+
 import tkinter as tk
 from tkinter import ttk, messagebox
-import logging
 import psutil
 import pandas as pd
-import time
 from mt5_extracao.mt5_connector import MT5Connector
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.indicator_calculator import IndicatorCalculator
@@ -30,42 +69,14 @@ setup_logging()
 # Função para verificar dependências críticas antes de continuar
 def verificar_dependencias_criticas(offline=False):
     """Verifica se as dependências críticas estão disponíveis"""
-    dependencias_faltantes = []
-
-    # Verificar psutil para detecção de processos
-    try:
-        import psutil
-    except ImportError:
-        try:
-            logging.info("Instalando psutil (necessário para verificar processos)...")
-            import subprocess
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "psutil"])
-            import psutil
-            logging.info("✓ psutil instalado com sucesso")
-        except Exception as e:
-            logging.error(f"Erro ao instalar psutil: {str(e)}")
+    dependencias_faltantes = [package for module, package in bootstrap_doctor.REQUIRED_MODULES
+                             if bootstrap_doctor.check_module(module, package).status == bootstrap_doctor.FAIL]
 
     # MetaTrader5 é essencial: módulo local (Windows) ou ponte RPyC (Linux)
     if not offline:
         from mt5_extracao.mt5_backend import get_mt5
         if get_mt5("config/config.ini") is None:
             dependencias_faltantes.append("MetaTrader5 (Windows: pacote MetaTrader5; Linux: ./scripts/mt5-bridge.sh start)")
-
-    # Outras dependências críticas
-    try:
-        import pandas as pd
-    except ImportError:
-        dependencias_faltantes.append("pandas")
-
-    try:
-        import numpy as np
-    except ImportError:
-        dependencias_faltantes.append("numpy")
-
-    try:
-        from sqlalchemy import create_engine
-    except ImportError:
-        dependencias_faltantes.append("sqlalchemy")
 
     if dependencias_faltantes:
         logging.error(f"Dependências críticas faltando: {', '.join(dependencias_faltantes)}")
@@ -173,10 +184,12 @@ class MT5Extracao:
         
         try:
             # Verificar dependências críticas
-            if not verificar_dependencias_criticas(offline=self.offline):
-                messagebox.showerror("Erro de Dependências", 
-                                   "Uma ou mais dependências críticas não estão instaladas.\n\n"
-                                   "Execute pip install -r requirements.txt e tente novamente.")
+            sucesso, faltantes = verificar_dependencias_criticas(offline=self.offline)
+            if not sucesso:
+                instalador = "install.bat" if os.name == "nt" else "./install.sh"
+                messagebox.showerror("Erro de Dependências",
+                                     "Dependências indisponíveis: " + ", ".join(faltantes) +
+                                     f"\n\nExecute {instalador} e rode o doctor pelo launcher oficial.")
                 root.after(100, root.destroy)
                 return
                 
