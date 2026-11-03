@@ -137,6 +137,33 @@ def managed_composition(**changes):
     return data
 
 
+def test_postfill_r_has_distinct_source_profile_and_preserves_planned_mode(protection_robot, monkeypatch):
+    data=managed_composition()
+    data["profit_exit"]={"mode":"postfill_r_v1","params":{"target_r":3}}
+    comp=Composition(data)
+    with pytest.raises(ValueError,match="sem suporte"):
+        native.S09NativeAdapter(comp,protection_robot)
+    protection_robot.version=native.POSTFILL_ROBOT_VERSION
+    monkeypatch.setattr(native,"POSTFILL_APPROVED_FINGERPRINT",catalog.fingerprint(protection_robot))
+    monkeypatch.setattr(native,"POSTFILL_HADOUKEN_REVISION","f"*40)
+    out=native.S09NativeAdapter(comp,protection_robot).describe("postfill")
+    assert out["profile_version"]==14 and out["hadouken_revision"]=="f"*40
+    assert out["parameters"]["InpTargetMode"]=="3"
+    assert out["parameters"]["InpTargetR"]=="3" and out["parameters"]["InpTargetPoints"]=="0"
+    assert out["capabilities"]["bindings"]["profit_exit.params.target_r"]["unit"]=="initial_actual_R"
+    assert "postfill_r_v1" in out["capabilities"]["modules"]["profit_exit"]
+    assert out["runtime_binding_required"] and not out["operational_acceptance"]
+    assert "planned-R broker TP" in out["protection_rules"]["postfill_target"]
+    assert "actual initial R" in out["protection_rules"]["target_r"]
+    data["profit_exit"]={"mode":"planned_r_v1","params":{"target_r":3}}
+    planned=native.S09NativeAdapter(Composition(data),protection_robot).describe("planned")
+    assert planned["parameters"]["InpTargetMode"]=="1"
+    data["profit_exit"]={"mode":"postfill_r_v1","params":{"target_r":3}}
+    data["partial_exit_plan"]={"mode":"fixed_r","params":dict(trigger_r=3,fraction=.5,breakeven_after_confirmation=True)}
+    with pytest.raises(ValueError,match="anteceder"):
+        native.S09NativeAdapter(Composition(data),protection_robot)
+
+
 def test_common_protection_maps_all_inputs_and_declares_units_cadence_and_inactive_paths(protection_robot):
     comp=Composition(managed_composition())
     out=native.S09NativeAdapter(comp,protection_robot).describe("managed")

@@ -59,7 +59,7 @@ INPUT_LABELS.update({"InpMagicNumber":"Magic", "InpDailyLossPct":"Perda máxima 
  "InpTrailLine":"Média do stop e guard (1 a 10)", "InpOffsetAtr":"Offset do stop (ATR14)",
  "InpExportTrades":"Exportação adicional do Expert"})
 INPUT_LABELS.update({"InpStopMode":"SL inicial (0 pontos / 1 ATR)","InpStopATR":"SL inicial (ATR14)",
- "InpTargetMode":"TP (0 pontos / 1 R planejado)","InpTargetR":"TP (R planejado)",
+ "InpTargetMode":"TP (0 pontos / 1 R planejado / 2 ATR virtual / 3 R pós-fill)","InpTargetR":"TP (R conforme modalidade)",
  "InpTrailingMode":"Trailing (0 desligado / 1 pontos / 2 ATR)","InpTrailingPoints":"Trailing (pontos)",
  "InpTrailingATR":"Trailing (ATR14)","InpTrailingTriggerR":"Gatilho trailing (R inicial real)",
  "InpBreakevenTriggerR":"Gatilho BE (R inicial real)","InpExitOnOpposite":"Sair no sinal oposto",
@@ -131,10 +131,11 @@ class PresetWorkflow:
         self.atr_enabled=not self.pullback and profile_level>=7
         self.session_available=not self.pullback and profile_level>=8
         self.cooldown_available=not self.pullback and profile_level>=9
-        self.common_protection_available=False
+        self.common_protection_available=False;self.postfill_available=False
         if robot.key==native.ROBOT_KEY:
             capabilities=native.native_adapter(native.default_composition(robot,symbol=self.symbol,timeframe=self.timeframe),robot).describe("ui-capabilities")["capabilities"]
             self.common_protection_available="managed_v1" in capabilities["modules"]["protection"]
+            self.postfill_available="postfill_r_v1" in capabilities["modules"]["profit_exit"]
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -325,11 +326,11 @@ class PresetWorkflow:
         self.orientation_combo.pack(anchor="w",pady=(0,6));self.signal_orientation.trace_add("write",lambda *_:self.mark_dirty())
         self.common_on=tk.BooleanVar(value=False)
         self.common_toggle=ttk.Checkbutton(box,text="Configurar SL, TP, trailing e BE neste preset",variable=self.common_on);self.common_toggle.pack(anchor="w")
-        ttk.Label(box,text="Ao ativar, os campos SL/TP da estratégia ficam inativos. ATR14 de Wilder usa as últimas250 barras fechadas. Trailing só aperta, uma vez por barra; BE usa preço médio inicial, sem cobrir custos. TP em R usa risco planejado antes do fill. Alvo ATR virtual é recalculado por barra entre mínimo/máximo em R real; pede saída a mercado e mantém SL/TP de contingência no broker. Gaps/slippage podem mudar o preço executado.",wraplength=850).pack(fill=tk.X,pady=4)
+        ttk.Label(box,text="Ao ativar, os campos SL/TP da estratégia ficam inativos. ATR14 de Wilder usa as últimas250 barras fechadas. Trailing só aperta, uma vez por barra; BE usa preço médio inicial, sem cobrir custos. R planejado usa o risco antes do fill; R pós-fill usa preço médio e SL originais dos fills, com TP planejado de contingência até a alteração confirmada. Alvo ATR virtual é recalculado por barra entre mínimo/máximo em R real. Gaps/slippage podem mudar o preço executado.",wraplength=850).pack(fill=tk.X,pady=4)
         form=ttk.Frame(box);form.pack(fill=tk.X);self.common_fields={};self.common_widgets={}
         definitions=(("stop_mode","SL inicial","Pontos",("Pontos","ATR14")),("stop_points","SL inicial (pontos)","100",()),
-          ("stop_atr","SL inicial (ATR)","2",()),("target_mode","Modalidade do alvo","Pontos",("Pontos","R planejado","ATR virtual")),
-          ("target_points","TP fixo (pontos)","200",()),("target_r","TP fixo (R planejado)","2",()),
+          ("stop_atr","SL inicial (ATR)","2",()),("target_mode","Modalidade do alvo","Pontos",("Pontos","R planejado","ATR virtual")+(("R pós-fill",) if self.postfill_available else ())),
+          ("target_points","TP fixo (pontos)","200",()),("target_r","TP (múltiplo de R)","2",()),
           ("target_atr","Alvo virtual (ATR)","2",()),("target_min_r","Mínimo virtual (R real)","2",()),
           ("target_max_r","Máximo / TP contingência (R)","4",()),
           ("trailing_mode","Trailing por barra","Desligado",("Desligado","Pontos","ATR14")),
@@ -367,9 +368,11 @@ class PresetWorkflow:
             "trailing_trigger_r":number("trailing_trigger_r") if trailing_mode else 0,
             "breakeven_trigger_r":number("breakeven_trigger_r"),
             **{key:var.get() for key,var in self.common_exits.items()}}}
-        fixed_r=f["target_mode"].get()=="R planejado";key="target_r" if fixed_r else "target_points"
+        fixed_r=f["target_mode"].get()=="R planejado"
+        postfill_r=f["target_mode"].get()=="R pós-fill"
+        key="target_r" if fixed_r or postfill_r else "target_points"
         data["profit_exit"]=({"mode":"dynamic_atr_v1","params":dict(atr_multiplier=number("target_atr"),minimum_r=number("target_min_r"),maximum_r=number("target_max_r"))}
-                             if f["target_mode"].get()=="ATR virtual" else {"mode":"planned_r_v1" if fixed_r else "fixed_points","params":{key:number(key)}})
+                             if f["target_mode"].get()=="ATR virtual" else {"mode":"postfill_r_v1" if postfill_r else "planned_r_v1" if fixed_r else "fixed_points","params":{key:number(key)}})
 
     def build_session_fields(self,body):
         box=ttk.LabelFrame(body,text="Entradas · horários, dias e ciclos por sessão",padding=12);box.pack(fill=tk.X,padx=12,pady=4)
@@ -443,7 +446,7 @@ class PresetWorkflow:
             self.orientation_combo.configure(state="readonly" if editable else "disabled")
             self.common_toggle.state(["!disabled" if editable else "disabled"])
             enabled=editable and self.common_on.get()
-            stop_atr=self.common_fields["stop_mode"].get()=="ATR14";target_r=self.common_fields["target_mode"].get()=="R planejado"
+            stop_atr=self.common_fields["stop_mode"].get()=="ATR14";target_r=self.common_fields["target_mode"].get() in ("R planejado","R pós-fill")
             target_dynamic=self.common_fields["target_mode"].get()=="ATR virtual"
             trailing=self.common_fields["trailing_mode"].get()
             inactive={"stop_points":stop_atr,"stop_atr":not stop_atr,"target_points":target_r or target_dynamic,"target_r":not target_r,
@@ -547,7 +550,7 @@ class PresetWorkflow:
             for key,var in self.common_fields.items():
                 value=defaults.get(key)
                 if key=="stop_mode":value=("Pontos","ATR14")[defaults[key]]
-                elif key=="target_mode":value="ATR virtual" if t["mode"]=="dynamic_atr_v1" else "R planejado" if t["mode"]=="planned_r_v1" else "Pontos"
+                elif key=="target_mode":value="ATR virtual" if t["mode"]=="dynamic_atr_v1" else "R pós-fill" if t["mode"]=="postfill_r_v1" else "R planejado" if t["mode"]=="planned_r_v1" else "Pontos"
                 elif key=="trailing_mode":value=("Desligado","Pontos","ATR14")[defaults[key]]
                 var.set(str(value))
         if self.lots_enabled:
@@ -600,7 +603,7 @@ class PresetWorkflow:
                                     f"Arquivo: {item.name.filename}\nConfiguração: {item.composition.config_hash}\n"
                                     f"Origem Default: {item.identity.default_origin or item.identity.id}"))
         if self.partials_enabled:self.protection.configure(text="Risco até 0,5% · uma posição · SL obrigatório · parcial só após redução/histórico confirmados; trailing indisponível."+(" Pullback: metade em 1R; BE somente após confirmação." if self.pullback else ""))
-        if self.common_protection_available:self.protection.configure(text="Uma posição · risco até0,5% do saldo · prioridade: risco → sessão → tempo → alvo virtual → sinal oposto → parcial/BE → trailing/BE por gatilho. SL obrigatório e TP preservado. Alterações valem na próxima sessão; stops não garantem perda exata em gaps.")
+        if self.common_protection_available:self.protection.configure(text="Uma posição · risco até0,5% do saldo · prioridade: risco → sessão → tempo → alvo R pós-fill quando disponível → alvo virtual → sinal oposto → parcial/BE → trailing/BE por gatilho. SL obrigatório e TP planejado de contingência até confirmação. Alterações valem na próxima sessão; stops não garantem perda exata em gaps.")
         if self.stoch:self.protection.configure(text="Uma posição · SL obrigatório na EMA com offset · Move Guard só aperta em barra fechada. Alvo opcional desde o fechamento do sinal; 0 desliga. Parciais/BE indisponíveis. Tester DEMO; aceite operacional pendente.")
         if self.ha_hilo:self.protection.configure(text="Uma posição · SL inicial na linha HiLo com folga · sem TP ou trailing. Sinal oposto tenta fechar; entrada inversa exige posição encerrada e proteções satisfeitas. Pode ficar sem posição. Tester DEMO; aceite pendente.")
         if self.madrid:self.protection.configure(text="Uma posição · SL na média com offset ATR · Move Guard só aperta em barra fechada. TP obrigatório fixado em M1 ± afastamento; pontos 0 usa ATR. Sem ciclo persistente, TP móvel ou parciais/BE. Tester DEMO; aceite pendente.")

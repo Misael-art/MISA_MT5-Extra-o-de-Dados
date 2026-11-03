@@ -23,6 +23,7 @@ def robot(tmp_path,monkeypatch):
 
 def test_default_has_no_financial_toggle_and_manual_export_binds_atr_trailing_be_and_target_r(view):
     assert view.common_protection_available and not view.common_on.get()
+    assert not view.postfill_available and "R pós-fill" not in view.common_widgets["target_mode"].cget("values")
     assert view.common_toggle.instate(["disabled"])
     assert all(widget.instate(["disabled"]) for widget in view.common_widgets.values())
     named(view)

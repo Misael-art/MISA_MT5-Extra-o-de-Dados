@@ -83,6 +83,7 @@ MODULE_PARAMETERS = {
               "stop": {"distance_points": Parameter("number", "point", exclusive_minimum=True)}},
     "profit_exit": {"strategy_default": {}, "fixed_r": {"target_r": Parameter("number", "R", exclusive_minimum=True)},
                     "planned_r_v1": {"target_r": Parameter("number", "planned_R", exclusive_minimum=True)},
+                    "postfill_r_v1": {"target_r": Parameter("number", "initial_actual_R", exclusive_minimum=True)},
                     "fixed_points": {"target_points": Parameter("number", "point", exclusive_minimum=True)},
                     "dynamic_atr_v1": {"atr_multiplier": Parameter("number", "ATR", exclusive_minimum=True),
                                        "minimum_r": Parameter("number", "R", exclusive_minimum=True),
