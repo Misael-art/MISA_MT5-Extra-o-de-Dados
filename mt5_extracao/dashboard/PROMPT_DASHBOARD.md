@@ -452,3 +452,57 @@ Encerrar com Ctrl+C; `--no-browser` permite copiar a URL. Para testes limitados,
 `--seconds 30` encerra o servidor próprio. Browser real no Linux abriu a página;
 evidência local em `state/qa-tmp/dashboard`. Próxima etapa: DASH-02.
 DASH-02…14 e AC-01…12 continuam pendentes; esta casca não é a narrativa entregue.
+
+### DASH-02 — fotografia e limites
+
+Infraestrutura implementada; **integração da surpresa real pendente**. A busca
+em Analytics/Laboratório não encontrou medida canônica comparável de surpresa.
+Não se transformou preço, RVOL ou percentil em outro escore. Necessidade para
+Dados: medida/ID e versão, unidade/domínio comparável, referência/baseline,
+amostra e série30dias com clocks/validade. Sem esse contrato, a primeira faixa
+explica `SURPRISE_PRODUCER_MISSING`; valor/seta/série continuam ausentes.
+
+`generator.generate` lê `query_service.definition_catalog` e
+`feature_store.query_history` dentro de `DatabaseManager.consistent_read`;
+`datasets.identity(connection=...)` não inicializa schema. Base sem identidade
+produz erro com ação, sem DDL. O histórico é explicitamente filtrado por
+observação, recebimento e disponibilidade até o corte; a precedência de revisão
+é a do store, conservando vencidos/invalidados para auditoria. A série é a
+**reconstrução conhecida no corte**, não o conhecimento em cada decisão antiga.
+Contratos registrados depois do corte ficam fora. Versões coexistentes exigem
+escolha explícita, sem comparar unidades diferentes. Fonte/namespace, contexto
+do relógio, revisão e metadados temporais permitidos ficam na fotografia.
+
+O schema1 reserva envelope, seções, fontes, inventário, ausências e prioridade
+indisponível. Identidade Robô, leitor de resultados e sua validação entram em
+DASH-10; não se apresenta Ativo como se fosse esse percurso. Hash SHA256 usa
+JSON canônico ordenado, sem `integrity`, com `snapshot_id=null`; comprova
+correspondência, sem assinatura de autenticidade. Servidor copia e valida o
+payload ao abrir, sem consultar base depois nem aceitar alteração do chamador.
+JSON embutido usa escape do Jinja; texto de origem não é HTML executável.
+
+Domínio inicial explícito: janela até31dias,20.000 revisões consultadas e8MiB
+de JSON. Excesso é recusado e pede recorte; sem cache/truncamento. Bancada
+Linux sintética reutilizável:28dias,4features,672 observações/feature,
+2.688fatos/1.209.172bytes.20 gerações: primeira256ms, máximo382ms;
+p95 das19 seguintes363ms. Esses tempos são só consulta/geração, **não AC-01**.
+A medição fim a fim com gráficos continua pendente em DASH-13/14.
+
+CLI: `dashboard --symbol QA --tf M5 --as-of DATA_COM_FUSO`; `--from`/`--to`
+recortam, `--version ID VERSAO` resolve ambiguidade. `--fixture-label` identifica
+QA explicitamente. Na UI, corte, janela, motivo e proveniência ficam visíveis
+ou expansíveis; nenhuma faixa inventa evidência para ocupar espaço.
+
+| Capacidade | Serviço/DTO consumido ou identificado | Evidência → faixa/detalhe → teste |
+|---|---|---|
+| Identidade/qualidade/cobertura | datasets.identity, feature_store | namespace/clocks/qualidade → contexto/auditoria → test_dashboard_generator |
+| Calendário/retornos/volatilidade/regime/volume | definition_catalog + query_history | fatos/versões capturados; faixas DASH-04/05 pendentes → mesmo teste temporal |
+| Séries/correlações/defasagens | query_service.relations, relation_dto, laboratory.service | leitor de apresentação pendente; exploração não promovida |
+| Estudos/notas/fontes/macro/menções | laboratory.service/links e snapshots | contrato identificado, integração contextual pendente |
+| Hipóteses/taxa-base/lift/IC | T13.4 | dependência ausente → indisponibilidade explícita → teste de ausência |
+| Backtest/custos/OOS/robôs/comparações | robots.catalog/store, strategies.validation, laboratory.financial | leitores DASH-07/10 pendentes; bateria não é aprovação estatística |
+| Validade/revisão/deriva/publicação | feature_store; governança T13.8/publicador T13.5 pendentes | clocks retidos → DASH-08; sem TTL inventado |
+
+Todos os itens de `CAPABILITY_SOURCES` ficam no JSON com estado/motivo; fonte
+identificada não é integração concluída. Próxima: DASH-03, renderer/arquivo
+autossuficiente; dependências ausentes não impedem as faixas independentes.
