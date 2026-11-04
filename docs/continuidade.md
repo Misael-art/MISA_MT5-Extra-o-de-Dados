@@ -5447,3 +5447,77 @@ pelo compile oficial, nenhum outro Expert com o mesmo magic no símbolo.
 5. Interrupção imediata: qualquer ordem sem decisão correspondente, duplicada,
    em conta não-DEMO, perda diária acima de 2% ou erro de execução repetido.
 Evidência: "shim" (sonda C++), "Tester" e "DEMO observada" ficam separados.
+
+
+### SA-REF-01: preparação operacional DEMO por identidade —01/11/2026
+
+Este lote preserva as 49 regressões, pacote histórico e complemento já conferidos.
+A deduplicação de `parity.parse_strategy_events` usa contagem por origem e máximo
+entre fontes, com saída determinística em qualquer permutação: cópia entre logs
+não soma, repetição dentro de um log não desaparece. Conflitos/repetições continuam
+ambíguos; bloqueios e recusas preservam motivo e contagens.
+
+`robots.session_audit`/`scripts/demo_session_audit.py` auditam arquivos efetivos da
+sessão, sem executar o gêmeo nem usar janela fixa: UUID, conta DEMO, símbolo/magic,
+inputs nativos completos × preset efetivo, fonte incluído/wrapper/EX5 por hash,
+intervalo observado. Histórico nativo liga `deal.ticket → order/position_id →`
+saídas parciais/manuais; não presume ordem==posição. Reversão/posse misturada,
+recusa, tentativa órfã e leitura ausente são explícitas. Recibo opt-in de inputs
+agora admite sessão DEMO, com modo distinto do Tester; REAL recusado. O exportador
+mantém o contrato anterior e acrescenta IDs de ordem/deals. Demonstração sintética
+de novembro separada do Tester/DEMO real; recibos no registro central.
+
+**O roteiro preliminar acima foi substituído** por [DEMO operacional](sdk/demo_operacional.md#sa-ref-01--proposta-operacional-para-2-novembro-2026-aguarda-autorização).
+`sa_ref_reconcile.py` segue somente reprodução fixa de outubro, não auditor novo.
+STOP/`robots stop` não liquida. Novo roteiro usa PLAY/PAUSAR da Session própria;
+pendências canceladas e posições fechadas individualmente no terminal, com posse
+comprovada e duas leituras finais + histórico. Sessão/posição alheia é preservada;
+exposição remanescente mantém supervisão e impede declarar tudo parado.
+
+Proposta: 02/11/2026 10:00–12:00 America/Sao_Paulo (13:00–15:00Z), entradas até
+11:45. MetaQuotes-Demo final9678 confirmada pelo fluxo oficial em01/11 22:40:56Z,
+0 posições/0 ordens; EURUSD M5, magic540121, preset DEMO com semente01/09,
+risco0,25%, limites2%/4%/10%. Leitura nativa12.659M5, folga7.341, reserva1.000
+(folga útil6.341); reconferir no início. Política autorizável inclui somente
+cancelar/fechar exposição comprovada desta sessão. Nenhuma negociação iniciada.
+SA-01 multi-TF permanece próxima frente, lote e duas M1 seguem diferenças abertas.
+
+Proteção fora do host: página privada existente atualizada em sequência15,
+69 arquivos enviados com SHA devolvido igual ao manifesto (64 principal/5
+complemento, incluindo manifestos), todos os links relidos e196 blocos anteriores
+preservados. ZIPs4945ade5… (31 arquivos) e6e67372f… (16) intactos; nenhum histórico
+privado publicado no Git. Autenticação disponível; sem ação pendente do proprietário
+para estes dois pacotes. Continuidade/ponta/preview/checks no registro central.
+
+Validação do lote:158 testes dirigidos;82 finais do componente alterado
+(sobrepostos), MetaEditor do wrapper/recibo DEMO e exportador0erros/0avisos,
+doctor de desenvolvimento16OK/2avisos/0falhas; snapshot pelo script oficial
+com backend real, somente leitura, e pré-checagem PLAY sem impedimentos no
+registro existente. Rodada ampliada122passaram/1timeout60s no teste histórico
+inalterado de gravação de23dias sintéticos (compilação INSERT SQLAlchemy);
+limitação registrada, sem afrouxar gate, alterar teste ou motor de dados. Não
+houve PLAY nem aceite de negócio. Recibo: `state/qa-tmp/super-atr-ref/operational-preparation.json`
+na raiz da composição (fora do Git); prévia/commit/PR/CI no registro central.
+
+
+### SA-REF-01: autorização delimitada recebida —01/11/2026
+
+O proprietário autorizou explicitamente `SAREF01-DEMO-20261102` na referência
+runtime33c2fa19a4c963e8aadd58c37c24aae811ce4920/PR269:02/11/2026,10–12h
+America/Sao_Paulo, entradas antes de11h45. A autorização inclui cancelar
+pendências e fechar integralmente só posições com origem comprovada nesta
+sessão, inclusive na interrupção antecipada. Posse ambígua impede fechamento;
+preservar toda exposição alheia. Revalidar antes do PLAY; nunca REAL,
+fechamento global, relaxar proteções ou estender automaticamente o horário.
+Casos não exercitados ficam registrados; entregar recibos de execução e
+encerramento. Exposição remanescente mantém supervisão e exige informar o dono.
+
+Nenhuma negociação iniciada ao registrar a autorização em01/11 (antes da janela).
+Retomada única desta tarefa pelo agendamento existente do Codex,02/11 às09h50
+America/Sao_Paulo, para revalidar sem iniciar cedo. Máquina/app precisam estar
+disponíveis. Não pedir novamente esta aprovação; se a retomada perder a janela,
+não compensar com sessão fora dela. O agendamento não é outro executor de ordens.
+Runtime de negociação permanece33c2fa1; este incremento é apenas documental.
+Autorização integral privada em `state/qa-tmp/super-atr-ref/demo-authorization.json`
+na raiz da composição. Identidade/ID do agendamento, recibos e estado corrente
+ficam no registro central Projects/.workspace, sem lista administrativa nova.

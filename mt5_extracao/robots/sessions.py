@@ -326,9 +326,9 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
     receipt_source = ""
     if input_receipt is not None:
         from . import native_inputs
-        if account is not None:
-            raise ValueError("Conferência de inputs disponível somente no Tester DEMO.")
-        receipt_source = native_inputs.source(robot, **input_receipt)
+        if account is not None and not account.get("demo"):
+            raise ValueError("Conferência de inputs exige Tester DEMO ou conta DEMO.")
+        receipt_source = native_inputs.source(robot, **input_receipt, tester=account is None)
         guard += " && AccountInfoInteger(ACCOUNT_TRADE_MODE)==ACCOUNT_TRADE_MODE_DEMO"
     timer_start = "EventSetTimer(1);" if own_timer else ""
     init_call = "int result=MT5X_OnInit();" if init.group(1) == "int" else "MT5X_OnInit(); int result=INIT_SUCCEEDED;"
@@ -411,8 +411,8 @@ class Session:
         from mt5_extracao.resources.files import session_owner_key
         self.owner_store = session_owner_key(db)
         from . import native_inputs
-        if (input_receipt_fields is not None or expected_native_inputs is not None) and mode == "play":
-            raise ValueError("Conferência de inputs disponível somente no Tester DEMO.")
+        if (input_receipt_fields is not None or expected_native_inputs is not None) and mode == "play" and not (account or {}).get("demo"):
+            raise ValueError("Conferência de inputs exige Tester DEMO ou conta DEMO.")
         if expected_native_inputs is not None and input_receipt_fields is None:
             raise ValueError("Informe os inputs públicos do perfil antes de conferir o preset.")
         self.input_fields = (native_inputs.fields_for(robot, input_receipt_fields)

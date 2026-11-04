@@ -97,7 +97,7 @@ def test_opt_in_wrapper_reads_variables_after_original_init_before_any_tick(robo
     assert init.index("MT5X_OnInit()") < init.index("MT5X_RecordInputs()") < init.index("MT5X_Chart()")
     assert "!MT5X_RecordInputs()) return INIT_FAILED" in init
     with pytest.raises(ValueError,match="Tester DEMO"):
-        sessions.telemetry_source(robot,"status.txt",account={"demo":True,"login":1,"server":"Demo"},
+        sessions.telemetry_source(robot,"status.txt",account={"demo":False,"login":1,"server":"Demo"},
                                   input_receipt=dict(filename="x",session_id=SID,fields=FIELDS))
 
 
@@ -157,3 +157,21 @@ def test_missing_or_mismatched_receipt_keeps_legacy_run_unapproved(robot,tmp_pat
     with pytest.raises(ValueError,match="Preset não corresponde"):session._verify_input_receipt(common)
     assert "native_inputs" not in store.load_runs(db)[0]
     assert session.native_input_receipt is None
+
+
+def test_opt_in_demo_receipt_is_distinct_from_tester_and_rejects_real(robot,tmp_path):
+    data=rows();data[0][5]="0"
+    path=receipt_file(tmp_path/"live.csv",data)
+    with pytest.raises(ValueError):read(path)
+    assert read(path,tester=False)["tester"] is False
+    data[0][6]="2";receipt_file(path,data)
+    with pytest.raises(ValueError):read(path,tester=False)
+    source=sessions.telemetry_source(robot,"status.txt",account={"demo":True,"login":1,"server":"Demo"},
+        input_receipt=dict(filename=f"mt5x_session_{SID}_inputs.csv",session_id=SID,fields=FIELDS))
+    assert "MQLInfoInteger(MQL_TESTER)!=false" in source
+    assert "ACCOUNT_LOGIN)==1" in source and "MT5X_RecordInputs" in source
+
+
+def test_datetime_is_broker_explicit_not_host_timezone():
+    assert native_inputs.scalar("D'2026.09.01 00:00'","datetime")=="2026.09.01 00:00"
+    with pytest.raises(ValueError):native_inputs.scalar("2026.09.01 00:00Z","datetime")

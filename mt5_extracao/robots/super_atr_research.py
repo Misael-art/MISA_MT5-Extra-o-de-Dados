@@ -12,6 +12,16 @@ from . import battery,catalog,mql,scaffold
 
 TEMPLATE='SuperAtrResearch.mq5.tmpl'
 
+# Lista pública revisada para recibo nativo opt-in da sessão DEMO; não descobre inputs de Experts arbitrários.
+AUDIT_INPUT_FIELDS = dict(
+    InpMagicNumber="int", InpResearchOrders="bool", InpSeedStart="datetime", InpBaseTF="int",
+    InpConfirmTF="int", InpSecondConfirm="bool", InpSecondTF="int", InpVariant="int",
+    InpBasePeriod="int", InpBaseMean="int", InpBaseDeviation="number", InpConfirmPeriod="int",
+    InpConfirmMean="int", InpConfirmDeviation="number", InpSecondPeriod="int", InpSecondMean="int",
+    InpSecondDeviation="number", InpMoveGuard="bool", InpRiskPct="number", InpDailyLossPct="number",
+    InpWeeklyLossPct="number", InpMaxDrawdownPct="number", InpDeviationPoints="int", InpExportTrades="bool",
+    InpRefStopATR="number", InpRefTargetR="number", InpRefMinBars="int")
+
 
 def definition(seed_start,base_timeframe='M5',confirm_timeframe='M15',second_timeframe=None):
     try:
