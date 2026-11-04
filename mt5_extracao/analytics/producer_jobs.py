@@ -156,10 +156,10 @@ def advance_checkpoint(conn, *, symbol, timeframe, family, algorithm_version, co
 
 
 def finish_run(db, run, *, source_sequence, status, counts=None, error=None):
+    peak = run["rss_sampler"].stop()
     counts = counts or {}
     finished = _utc_now()
     after = _db_bytes(db)
-    peak = run["rss_sampler"].stop()
     try:
         growth = max(0, after - run["database_bytes_before"]) if after is not None else None
     except TypeError:
@@ -181,6 +181,20 @@ def finish_run(db, run, *, source_sequence, status, counts=None, error=None):
     return {"run_id": run["run_id"], "status": status, "duration_ms": max(
         0, int((time.monotonic() - run["started_monotonic"]) * 1000)),
         "peak_rss_bytes": peak, "database_growth_bytes": growth}
+
+
+def abort_run(db, run, *, source_sequence, error, counts=None, cancelled=False):
+    """Encerra recursos ao abortar, preservando o erro original se o recibo falhar."""
+    status = "CANCELLED" if cancelled or isinstance(error, (KeyboardInterrupt, SystemExit)) else "FAILED"
+    try:
+        finish_run(db, run, source_sequence=source_sequence, status=status, counts=counts, error=error)
+    except BaseException as journal_error:
+        note = f"Estado {status} do job Analytics {run['run_id']} não foi persistido: {str(journal_error)[:2000]}"
+        log.error(note)
+        if hasattr(error, "add_note"):
+            error.add_note(note)
+    finally:
+        run["rss_sampler"].stop()
 
 
 def latest_run(db, symbol, timeframe, family):

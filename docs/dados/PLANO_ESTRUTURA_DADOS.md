@@ -328,6 +328,18 @@ uma grade em eventos novos; ainda não grava fatos filhos. A gravação precisa
 deduplicar revisões já existentes e respeitar a monotonicidade de recebimento
 do store, além dos gates de interrupção/concorrência acima.
 
+**Adendo BD14-INTERRUPTION (29/10/2026):** os dois produtores existentes agora
+encerram o medidor RSS também quando a execução sai por `KeyboardInterrupt`,
+`SystemExit` ou outra `BaseException`; a interrupção original é relançada.
+Cancelamento grava `CANCELLED`, outras falhas gravam `FAILED`, sem avançar
+checkpoint fora da transação de fatos. O fechamento normal interrompe o medidor
+antes de medir disco ou atualizar o recibo. Se o recibo não puder ser gravado,
+o erro original é preservado e o diagnóstico identifica o run cujo estado não
+foi persistido; esse registro pode continuar `RUNNING`, sem alegação de aceite.
+Lotes já confirmados são a referência para retomada. Morte abrupta do processo
+e reconciliação automática de runs órfãos, materialização de compostos e os
+demais gates BD14 continuam pendentes.
+
 ### Fase E — relacionamentos efetivos e contexto
 
 #### BD15 — serviço real de relações entre indicadores
