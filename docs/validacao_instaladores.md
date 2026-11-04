@@ -548,3 +548,13 @@ instaladores, pins ou dependências. [Contrato](sdk/api.md#janelas-móveis-de-pa
 
 CI Windows e simulações não substituem esse percurso no host físico; não há
 qualificação financeira ou integração MT5 implícita no teste da interface.
+
+
+## MEN-01 — identidade de séries de menções (2026-10-29)
+
+- [ ] Windows físico: conferir contrato/registro e consulta CLI das três versões
+  em base própria, com paths/labels Unicode; zero/ausência e revisões tardias
+  devem coincidir com o SDK. Sem mudança de instaladores/GUI neste incremento.
+
+CI Windows não equivale a esse percurso físico; fonte/classificador reais
+permanecem nos incrementos MEN-03/04.
