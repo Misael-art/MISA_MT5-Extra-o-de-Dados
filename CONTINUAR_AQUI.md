@@ -18,6 +18,20 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## T13.4-P05 — adaptador econômico em revisão — 03/11/2026
+
+Branch local `codex/t134-p05-simulacao-economica` sobre P04 para revisão
+sequencial. `strategies.pattern_adapter` transforma eventos P02 verificados por
+identidade/hash em sinais para `run_backtest`: entrada a mercado na próxima
+abertura após disponibilidade, stop/alvo/prazo tipados e uma posição por ativo.
+O modelo de custos exige origem, vigência, base bid, spread declarado, comissão
+por lado, slippage, moeda e swap explícitos. O motor atual calcula lote, fill,
+PnL, saldo e patrimônio; o adaptador relata evento sem execução e barra ambígua
+com stop-first. Ordens limitadas, concorrência e moeda sem vínculo são recusadas.
+O cenário dos testes é sintético/hipotético; nenhum resultado tem aprovação
+econômica ou equivalência `.set`. Passaram 30 testes de adaptador, backtester e
+eventos P02 no Linux. P06 deve persistir e consumir avaliações.
+
 ## T13.4-P04 — validação temporal em revisão — 03/11/2026
 
 Branch local `codex/t134-p04-validacao-temporal` sobre P03. O plano de folds
