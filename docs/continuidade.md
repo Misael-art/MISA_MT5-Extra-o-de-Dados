@@ -91,8 +91,10 @@ conferência de CI e reconciliação das branches locais dependentes.
 
 ## Inicialização da GUI — corretivo local em revisão — 03/11/2026
 
-Branch `codex/gui-dependencias-inicializacao`, base App `19627c3`/PR279;
-código local `baa24c4`.
+Branch `codex/gui-dependencias-inicializacao`, rebatida sobre App
+`0993ae7`/PR279; código local `bf38e4a`. O recibo do launcher pertence à
+fonte equivalente anterior `baa24c4`; após o rebase, cinco testes da GUI
+e um de monitor passaram na composição dependente.
 `app.py` testava a tupla `(sucesso, faltantes)` como booleana e ainda tentava
 instalar `psutil` durante a abertura. O script agora confere os módulos
 obrigatórios pelo catálogo do doctor antes dos imports de runtime; o construtor

@@ -91,8 +91,10 @@ checks e rebater a cadeia local dependente sem perder os commits.
 
 ## Inicialização da GUI — corretivo local em revisão — 03/11/2026
 
-Branch `codex/gui-dependencias-inicializacao`, base App `19627c3`/PR279;
-o código da GUI está em `baa24c4` local.
+Branch `codex/gui-dependencias-inicializacao`, rebatida sobre App
+`0993ae7`/PR279; código da GUI em `bf38e4a` local. O recibo do launcher foi
+obtido antes do rebase, na fonte equivalente `baa24c4`; depois dele,
+cinco testes da GUI e um de monitor passaram na composição dependente.
 O chamador agora consome `(sucesso, faltantes)`; ausência mostra os nomes e o
 instalador oficial (`./install.sh` ou `install.bat`) e encerra a abertura.
 O pré-voo do script ocorre antes dos imports de runtime, com o catálogo de
