@@ -40,13 +40,15 @@ def _wait(seconds,guard):
         guard();time.sleep(min(.1,max(0,until-time.monotonic())))
 
 
-def _get(session,url,guard,started,timeout_seconds,metrics):
+def _get(session,url,guard,started,timeout_seconds,metrics,*,request_gate=None,response_gate=None):
     for attempt in range(3):
+        if request_gate is not None:request_gate()
         guard();remaining=timeout_seconds-(time.monotonic()-started['started_monotonic'])
         if remaining<=0:raise TimeoutError('Tempo da captura esgotado; retome pelo mesmo journal.')
         metrics['requests']+=1
         try:
             with session.get(url,timeout=min(5.,remaining),stream=True) as response:
+                if response_gate is not None:response_gate(response)
                 if response.status_code in (429,500,502,503,504):
                     if attempt==2:raise RuntimeError(f'API pública retornou HTTP{response.status_code}; captura incompleta, retome depois.')
                     retry=response.headers.get('Retry-After')
@@ -135,17 +137,21 @@ def collect(db, *, selection, start, end, resume=True, classify=False, write_gua
     started=dict(started_monotonic=time.monotonic())
     def guard():indicator_materializer._guard(started,write_guard,cancel_check,timeout_seconds,max_memory_mb)
     guard();contract=mentions.describe(db,**selection);scope=contract['scope'];source=scope['source'];identity=datasets.identity(db)
-    if source['provider']!='hackernews' or source['corpus']!=HN_CORPUS or source['mode']!='documents' or scope['universe']!='sample':
-        raise ValueError('Conector atual exige hackernews / hackernews.newstories.panel.v1 / documents / sample.')
+    from mt5_extracao.analytics import mention_stackexchange
+    provider=source['provider']
+    corpus={'hackernews':HN_CORPUS,'stackexchange':mention_stackexchange.CORPUS}.get(provider)
+    if corpus is None or source['corpus']!=corpus or source['mode']!='documents' or scope['universe']!='sample':
+        raise ValueError('Conector exige hackernews/newstories ou stackexchange/questions, corpus versionado, documents/sample.')
     parameters=source.get('parameters',{})
     if set(parameters)-{'panel_size'}:raise ValueError('Parâmetros da fonte desconhecidos; endpoint/credenciais não são argumentos deste conector.')
     count=parameters.get('panel_size',24)
     if type(count) is not int or not 1<=count<=64:raise ValueError('panel_size precisa ser inteiro entre1 e64, explicitamente parte da população.')
-    if any(scope['query'][k] for k in ('languages','channels','communities')):
-        raise ValueError('Este painel HN não certifica idioma/canal/comunidade; remova filtros não suportados. Autores públicos podem ser selecionados.')
+    if any(scope['query'][k] for k in ('languages','channels','communities')) or scope['query']['region'] is not None:
+        raise ValueError('Este painel não certifica idioma/região/canal/comunidade; remova filtros não suportados. Autores públicos podem ser selecionados.')
     start,end=mentions._utc(start,'start'),mentions._utc(end,'end');now=datetime.now(timezone.utc)
     mentions.value_records(contract,start=start,end=end,captured_at=now,processed_at=now,population_revision='preflight',quantity=0)
-    request=dict(scope_hash=contract['scope_hash'],start=start.isoformat(),end=end.isoformat(),panel_size=count,adapter='hackernews-v1')
+    adapter='hackernews-v1' if provider=='hackernews' else 'stackexchange-questions-v1'
+    request=dict(scope_hash=contract['scope_hash'],start=start.isoformat(),end=end.isoformat(),panel_size=count,adapter=adapter)
     for definition in contract['definitions']:guard();features.register(db,**definition)
     previous=producer_jobs.get_checkpoint(db,scope['symbol'],scope['timeframe'],contract['job_family'])
     run=producer_jobs.start_run(db,scope['symbol'],scope['timeframe'],contract['job_family'],contract['algorithm_version'],
@@ -156,7 +162,8 @@ def collect(db, *, selection, start, end, resume=True, classify=False, write_gua
         with requests.Session() as session:
             session.headers.update({'User-Agent':'MT5X-MEN/1 bounded-public-api-research'})
             if ids is None:
-                roster=_get(session,HN_API+'/newstories.json',guard,run,timeout_seconds,metrics)
+                roster=(_get(session,HN_API+'/newstories.json',guard,run,timeout_seconds,metrics) if provider=='hackernews' else
+                    mention_stackexchange.roster(db,session,count,start,end,guard,run,timeout_seconds,metrics))
                 if not isinstance(roster,list) or any(type(i) is not int or i<=0 for i in roster):
                     raise ValueError('Roster da API inválido; nenhum painel foi contado.')
                 ids=list(dict.fromkeys(roster))[:count]
@@ -164,7 +171,9 @@ def collect(db, *, selection, start, end, resume=True, classify=False, write_gua
             if (not isinstance(ids,list) or len(ids)>count or any(type(i) is not int or i<=0 for i in ids) or len(set(ids))!=len(ids)):
                 raise ValueError('Roster pendente inválido; não será reinterpretado como outra seleção.')
             producer_jobs.attach_run_inputs(db,run,dict(request=request,ids=ids,roster_sha256=mentions._hash(ids)))
-            documents=[_document(_get(session,HN_API+f'/item/{ident}.json',guard,run,timeout_seconds,metrics),ident) for ident in ids]
+            if provider=='hackernews':
+                documents=[_document(_get(session,HN_API+f'/item/{ident}.json',guard,run,timeout_seconds,metrics),ident) for ident in ids];licenses=[]
+            else:documents,licenses=mention_stackexchange.documents(db,session,ids,guard,run,timeout_seconds,metrics)
         captured=datetime.now(timezone.utc).isoformat();guard()
         if datasets.identity(db)!=identity:
             raise indicator_materializer.SourceChanged('Base mudou durante a requisição; reabra a captura na origem correta.')
@@ -173,6 +182,14 @@ def collect(db, *, selection, start, end, resume=True, classify=False, write_gua
         acquisition=dict(adapter='hackernews-v1',provider='hackernews',api=HN_API,panel_size=count,selected_items=len(ids),
             roster_sha256=mentions._hash(ids),text_scope='HN title and local text; linked articles not fetched',
             excluded_source_states=['deleted','dead'],author_content_redistributed=False)
+        if provider=='stackexchange':
+            acquisition.update(adapter=adapter,provider=provider,api=mention_stackexchange.API,
+                text_scope='Stack Overflow question title and full local body; answers/comments not fetched',
+                excluded_source_states=['unavailable_id_fails_capture'],licenses_observed=licenses['api_observed'],
+                licensing=licenses,api_filter=mention_stackexchange.QUESTION_FILTER,
+                license_basis='API field where present; missing only after2018-05-02 uses explicit publisher-policy inference; no raw redistribution',
+                selection='first N questions created in the UTC window; sort creation descending; not census',
+                quota_and_backoff='canonical journal checkpoints; identical URL at least60s; API method backoff; remaining quota explicit')
         result=mention_ingestion.ingest(db,selection=selection,batch=batch,write_guard=write_guard,cancel_check=cancel_check,
             timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb,_run=run,_acquisition=acquisition)
         result['acquisition']=dict(metrics,resumed_panel=resumed)

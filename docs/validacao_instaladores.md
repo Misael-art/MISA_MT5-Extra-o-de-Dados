@@ -600,3 +600,10 @@ estado, fonte sem OHLCV, média com lacuna, espera/cancelamento/erro, ampliaçã
 janela menor; importar snapshot sem publicar fatos e usar formulário de relação
 com grade suportada. Linux foi validado com launcher oficial, entradas QA
 separadas e agregados públicos congelados; sem conexão nativa ou negociação.
+
+
+MEN-07 — Windows físico pendente: repetir captura pública limitada Stack Overflow
+com o mesmo modelo/objeto antes de Q, licença API/política distinguida, quota,
+retomada após interrupção e cancelamento no cooldown. Conferir fontes/consultas
+isoladas e preços preservados, consulta/snapshot/Lab sem rede/modelo implícitos.
+A evidência Linux usa QA separada e não certifica contas/ponte/MT5/Wine.
