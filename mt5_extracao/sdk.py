@@ -103,6 +103,18 @@ def materialize_composite_snapshot(db, manifest_id, *, targets, as_of, batch_siz
         write_guard=write_guard, cancel_check=cancel_check, timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
 
 
+def macro_source_capabilities():
+    """Fontes econômicas e convenções de período; descoberta sem rede."""
+    from mt5_extracao.analytics import macro_sources
+    return macro_sources.catalog()
+
+
+def collect_macro_observations(db, *, source_id, start, end, **kwargs):
+    """Coleta explícita de observações econômicas; não cria candles nem retrodata recebimento."""
+    from mt5_extracao.analytics import macro_sources
+    return macro_sources.collect(db,source_id=source_id,start=start,end=end,**kwargs)
+
+
 def describe_mention_series(db, *, symbol, timeframe, subject, source, query, classifier=None, universe="documents"):
     """Contrato Q/P/N e identidade de coleta; não busca, classifica nem registra valores."""
     from mt5_extracao.analytics import mentions
@@ -310,7 +322,7 @@ __all__ = [
     "recover_producer_jobs",
     "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot", "capture_feature_snapshot", "export_feature_snapshot", "import_feature_snapshot", "stored_series_sources", "query_stored_observations",
     "export_feature_relation", "import_feature_relation",
-    "query_feature_relation_windows", "describe_mention_series", "mention_source_capabilities", "ingest_mention_batch", "collect_mentions", "mention_classifier_capabilities", "evaluate_mention_classifier", "classify_mention_batch",
+    "query_feature_relation_windows", "describe_mention_series", "mention_source_capabilities", "macro_source_capabilities", "collect_macro_observations", "ingest_mention_batch", "collect_mentions", "mention_classifier_capabilities", "evaluate_mention_classifier", "classify_mention_batch",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida

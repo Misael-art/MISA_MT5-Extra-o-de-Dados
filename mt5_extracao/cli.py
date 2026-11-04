@@ -1780,6 +1780,15 @@ def build_parser():
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
+    q=features_sub.add_parser("macro-sources",help="fontes econômicas, atribuição e convenções; sem rede")
+    q.set_defaults(func=cmd_analytics)
+    q=features_sub.add_parser("macro-collect",help="coleta econômica explícita, disponibilidade no recebimento local")
+    q.add_argument("--source",required=True,help="id de macro-sources, por exemplo bcb.sgs.11 ou fred.usrec")
+    q.add_argument("--start",required=True,help="data YYYY-MM-DD inclusiva")
+    q.add_argument("--end",required=True,help="data YYYY-MM-DD exclusiva, já encerrada")
+    q.add_argument("--timeout-seconds",type=float,default=120)
+    q.add_argument("--max-memory-mb",type=float,default=1024)
+    q.set_defaults(func=cmd_analytics)
     for action in ("mention-sources", "mention-classifiers"):
         q = features_sub.add_parser(action, help="capacidades locais/documentadas; sem sonda de rede")
         if action=="mention-classifiers":q.add_argument("--classifier",default="object-vader-en",choices=["object-vader-en","object-evaluation-pt"])
@@ -2171,6 +2180,19 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action in ("macro-sources","macro-collect"):
+        from mt5_extracao import sdk
+        if args.features_action=="macro-sources":
+            result=sdk.macro_source_capabilities();_data(sources=result)
+            for item in result:_print(item['id']+" · "+item['name']+" · "+item['period_convention'])
+        else:
+            from mt5_extracao.resources import guard
+            result=sdk.collect_macro_observations(ctx.db,source_id=args.source,start=args.start,end=args.end,
+                timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb,write_guard=guard.make(ctx.db,ctx.config))
+            _data(capture=result);_print(f"{result['observations']} observações em {result['symbol']}; disponibilidade local {result['captured_at']}. Histórico retrospectivo, sem causa/previsão inferida.")
+            if result['job']['status']!='COMPLETE':return EXIT_FAIL
+        return 0
 
     if args.features_action in ("mention-sources", "mention-classifiers", "mentions-describe", "mentions-ingest", "mentions-collect", "mentions-classify", "mention-evaluate"):
         from pathlib import Path

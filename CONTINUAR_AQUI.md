@@ -10,8 +10,9 @@ o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
 ## Ponta de continuidade em30/10/2026
 
-Retome `codex/classificacao-portugues`, sobre MEN-SOCIAL/PR246 e o corretivo
-Windows da PR245. Fontes sociais aguardam autorização real; português tem
+Retome `codex/fontes-macroeconomicas`, sobre MEN-PT/PR247, MEN-SOCIAL/PR246 e o corretivo
+Windows da PR245. FRED/BCB seguem captura local e fases datadas retrospectivas.
+Fontes sociais aguardam autorização real; português tem
 versão própria e avaliação controlada, sem selo humano/representativo.
 [Contratos e uso](docs/dados/PLANO_ESTRUTURA_DADOS.md#1820-painéis-sociais-explícitos--men-social). A extensão
 BD16-LAB-LINKS integra fontes explícitas, atividade/indicadores/TFs ao candle
