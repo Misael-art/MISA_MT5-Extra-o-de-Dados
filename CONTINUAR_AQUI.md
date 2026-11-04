@@ -18,6 +18,35 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## T13.4-P03 — despacho por tipo de protocolo — 03/11/2026
+
+Na branch local `codex/t134-p03-campanha-reserva`, a validação conjunta do
+Laboratório encontrou uma regressão introduzida ao incluir campanhas de padrões
+no guard do executor BASE: a recusa correta de um protocolo de associações
+perdeu sua mensagem específica. O despacho agora conserva a orientação de
+`laboratory protocol-evaluate` para associações e explica separadamente o fluxo
+de campanha para padrões. Nenhum dos dois tipos chega ao executor de estratégia.
+O caso falho e o novo caso de campanha passaram isolados (2/2); as suítes de
+campanha e protocolo passaram juntas (13/13). Testes com fixtures sintéticas;
+sem CI/PR da branch enquanto o guarda central bloquear novas referências.
+Próximo: incorporar o corretivo nas branches P04–P07 e Laboratório, repetir a
+seleção que falhou e publicar cada incremento quando houver destino autorizado.
+
+## T13.4-P03 — campanha e reserva em revisão — 03/11/2026
+
+Branch local `codex/t134-p03-campanha-reserva` sobre P02 local. O registro de
+experimentos existente recebe protocolo versionado com roster de snapshots,
+cortes globais UTC, endpoints, grade, critérios, semente e orçamento. Tentativas
+idempotentes disputam o teto agregado sob o lock do store; recusas e descartes
+ficam registradas. Acesso por papel e fonte é gravado antes de entregar uma
+reserva; proposta automática posterior à exposição é recusada. Exposição
+externa permanece desconhecida e a reserva não é qualificada como final.
+Passaram 57 testes de campanha e regressão de experimentos no Linux; um teste
+PostgreSQL foi ignorado porque a URL de teste local não está configurada.
+P04 deve validar cortes e purga; P06 deve persistir avaliações/eventos. Sem
+CI, PR, launcher, MT5 ou aceite real desta branch enquanto o guarda central
+impedir publicação separada.
+
 ## T13.4-P02 — regras e eventos em revisão — 03/11/2026
 
 Branch `codex/t134-p02-regras-eventos` sobre P01 local. `analytics.hypotheses`

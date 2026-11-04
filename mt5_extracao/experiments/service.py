@@ -13,7 +13,7 @@ from ..composition import BaseAdapter, Composition, compatibility
 from ..composition.registry import BASE_MODES
 from ..robots import backtest, budget as budgets, catalog, store as runs
 from ..strategies import get_strategy, research
-from .schema import ProtocolRevision, ROLES, digest, token, encoded
+from .schema import PatternCampaignRevision, ProtocolRevision, ROLES, digest, token, encoded
 from . import store
 
 
@@ -67,8 +67,10 @@ def request(db, protocol_id, key, composition, *, role="train", origin="manual",
             use_cache=True, discard_reason="", config=None, executor="base_v1"):
     token(key, "Chave do pedido")
     p = store.protocol(db, protocol_id)
-    if p['definition'].get('type')=='laboratory_associations_v1':
+    if p['definition'].get('type') == 'laboratory_associations_v1':
         raise ValueError('Este protocolo avalia associações; use laboratory protocol-evaluate, sem executor de estratégias.')
+    if p['definition'].get('type') == 'pattern_campaign_v1':
+        raise ValueError('Este protocolo avalia padrões; use o fluxo de campanha, sem executor de estratégias.')
     if executor not in ("base_v1", "composition_v1"):
         raise ValueError("Executor desconhecido; use base_v1 ou composition_v1 explicitamente.")
     if role not in p["definition"]["roles"] or origin not in ("manual", "automatic") or purpose not in ("evaluation", "tuning") or type(use_cache) is not bool:
@@ -243,6 +245,9 @@ def _evaluate(db, request_id, *, config=None, budget=None):
 
 
 def evaluate(db, request_id, *, config=None, budget=None):
+    item = store.request(db, request_id)
+    if store.protocol(db, item["protocol_id"])["definition"].get("type") == "pattern_campaign_v1":
+        raise ValueError("Tentativa de padrão exige avaliação T13.4; executor de composição não pode consumi-la.")
     try:
         return _evaluate(db, request_id, config=config, budget=budget)
     except Exception as exc:
@@ -253,3 +258,78 @@ def evaluate(db, request_id, *, config=None, budget=None):
                 store.finish(conn, item, "failed", item["run_id"], error=str(exc))
         return dict(request=store.request(db, request_id), evaluation_error=str(exc), ledger_qualified=False,
                     statistical_approval=False, qualified_final_holdout=False)
+
+
+def create_pattern_campaign(db, definition):
+    """Congela roster, cortes e orçamento no protocolo existente; sem ler labels."""
+    revision = PatternCampaignRevision(definition)
+    body = revision.to_dict()
+    context = {"campaign_roles": {}, "coverage": {}, "prior_external_exposure": "unknown"}
+    snapshots = []
+    for source in body["roster"]:
+        snapshot = datasets.load(db, source["data_manifest_id"])
+        manifest = snapshot.manifest
+        actual = (manifest["source"]["namespace"], manifest["symbol"], manifest["timeframe"])
+        declared = (source["source_namespace"], source["symbol"], source["timeframe"])
+        if actual != declared:
+            raise ValueError("Roster diverge da identidade do snapshot; campanha recusada.")
+        if manifest["time"]["offset_state"] != "declared":
+            raise ValueError("Campanha exige relógio congelado com offset comprovado.")
+        bars = snapshot.bars
+        if bars.empty:
+            raise ValueError("Campanha exige barras congeladas, não snapshot vazio ou só de features.")
+        offset = manifest["time"]["broker_utc_offset_hours"]
+        times = pd.to_datetime(bars.time, format="ISO8601").dt.tz_localize("UTC") - pd.Timedelta(hours=offset)
+        snapshots.append((source, times))
+    for role, window in body["roles"].items():
+        scopes, coverage = [], []
+        first, last = pd.Timestamp(window["start_utc"]), pd.Timestamp(window["end_utc"])
+        for source, times in snapshots:
+            origin_key = digest({"symbol": source["symbol"], "timeframe": source["timeframe"],
+                                 "origin": source["source_namespace"]})
+            scopes.append(dict(origin_key=origin_key, first=first.isoformat(), last=last.isoformat()))
+            count = int(((times >= first) & (times < last)).sum())
+            coverage.append(dict(source_namespace=source["source_namespace"], symbol=source["symbol"],
+                                 timeframe=source["timeframe"], rows=count, available=count > 0))
+        context["campaign_roles"][role] = scopes
+        context["coverage"][role] = coverage
+    return store.put_protocol(db, revision, context)
+
+
+def register_pattern_attempt(db, protocol_id, key, definition, *, role="train", origin="manual",
+                             purpose="evaluation", discard_reason=""):
+    """Conta tentativas novas no orçamento global; idênticas preservam a identidade."""
+    from mt5_extracao.analytics.hypotheses import Definition
+
+    token(key, "Chave da tentativa")
+    if not isinstance(definition, Definition):
+        raise ValueError("Compile a definição tipada antes de registrar a tentativa.")
+    campaign = store.protocol(db, protocol_id)
+    body = campaign["definition"]
+    if body.get("type") != "pattern_campaign_v1" or role not in ROLES or origin not in ("manual", "automatic") or purpose not in ("evaluation", "tuning"):
+        raise ValueError("Campanha, papel, origem ou finalidade inválidos.")
+    if not isinstance(discard_reason, str):
+        raise ValueError("Motivo de descarte precisa ser texto explícito.")
+    roster = body["roster"]
+    rule = definition.body
+    if rule["timeframe"] not in {source["timeframe"] for source in roster} or not set(rule["universe_definition"]["symbols"]) <= {source["symbol"] for source in roster}:
+        raise ValueError("Definição fora do roster congelado da campanha.")
+    candidate_id = digest([definition.definition_hash, roster, protocol_id])
+    payload = dict(candidate_id=candidate_id, definition_hash=definition.definition_hash,
+                   definition=definition.export(), role=role, origin=origin, purpose=purpose,
+                   discard_reason=discard_reason)
+    return store.put_pattern_attempt(db, protocol_id, key, payload, discard_reason=discard_reason)
+
+
+def pattern_campaign_access(db, protocol_id, key, *, role="holdout", purpose="evaluation"):
+    token(key, "Chave de acesso")
+    if purpose not in ("evaluation", "tuning"):
+        raise ValueError("Finalidade de acesso inválida.")
+    return store.pattern_role_access(db, protocol_id, role, key, purpose)
+
+
+def pattern_campaign_status(db, protocol_id):
+    result = store.status(db, protocol_id)
+    if result["protocol"]["definition"].get("type") != "pattern_campaign_v1":
+        raise ValueError("Protocolo não é campanha de padrões.")
+    return result
