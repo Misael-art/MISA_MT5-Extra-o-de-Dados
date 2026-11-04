@@ -58,7 +58,11 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | MEN-01 | Contrato executável Q/P/N, identidade e chave de checkpoints | MEN-00 + BD03/04/06 | Implementado/validado no host:73 testes e CLI=SDK, quatro escopos/cursores isolados e classificação tardia preservada; versões por escopo completo, três definições NUMBER, contagens/ausências/tempo explícitos; sem novo store/journal. [Inventário/contrato](dados/PLANO_ESTRUTURA_DADOS.md#1811-inventário-e-contrato-executável-men-01). Captura/classificação/consumo final permanecem MEN-02…08 |
 | MEN-02 | Contrato de lote, capacidades documentadas e ingestão de fixture | MEN-01 | Implementado/validado no host: deduplicação/publicações, populações e ausências explícitas, Q/P/N+checkpoint atômicos e SDK/CLI.83 testes aprovados/3 PG pendentes no host. [Contrato](dados/PLANO_ESTRUTURA_DADOS.md#1812-adaptador-de-lote-e-ingestão-canônica-men-02). Acesso real/classificador qualificado seguem MEN-03/04 |
 | MEN-03 | Primeira fonte pública, painel e retomada | MEN-02 + API elegível | Implementado/validado no host:HN/F05,24 itens reais e Q1 por oráculo independente, source clock sem backdating, SIGKILL/roster retomado e SIGINT sem contagens.90 testes/3 PG pendentes no host; P/N aguardam MEN-04. [Contrato/provas](dados/PLANO_ESTRUTURA_DADOS.md#1813-primeira-captura-pública-men-03--painel-hacker-news) |
-| MEN-04…08 | Contrato/identidade, adaptadores, captura/classificação, store/SDK/CLI/snapshots, Laboratório e segunda fonte | Dependências por incremento no §18.8 do plano de Dados; acessos reais por fonte | **Planejado, não implementado.** Quantidade/Positivo/Negativo são contagens; médias e correlações usam mecanismos existentes. Cada incremento tem PR/aceite próprio; fornecedores opcionais e cruzamentos não disponíveis permanecem discriminados |
+| MEN-04 | Classificação tardia por objeto | MEN-03 | Implementada e qualificada somente em44 casos próprios de inglês controlado; precisão P90,9%/N100%, recall P100%/N90%,2 erros preservados. Sem validação humana independente/representativa nas fontes. [Escopo](dados/PLANO_ESTRUTURA_DADOS.md#1814-classificação-men-04--domínio-controlado-em-inglês) |
+| MEN-05 | Catálogo e snapshots sem preço | MEN-04 | Implementado: snapshot canônico v5 opt-in, mesmas definições/histórico/transporte, importação idempotente e cortes antigos preservados; sem OHLCV fictício. PR241 |
+| MEN-06 | Laboratório por janela | MEN-05 | Implementado: Séries e confluências → Séries por janela, Q/P/N legíveis, abstenções, SMA canônica, espera/cancelamento/erro; relação descritiva forte e nula pelos motores existentes. PR242;99 testes no host e93 PG no CI |
+| MEN-07 | Segunda fonte independente | MEN-06 | Implementado: Stack Overflow via API Stack Exchange,16 perguntas reais retomadas, Q1/P0/N0/1 abstenção, quota/cooldown persistidos, HN e preços preservados; fonte/prévia oficiais. PR243;125 testes no host e96 PG no CI |
+| MEN-08 | Proteção, regressão e handoff | MEN-06/07 | Fechamento na branch codex/mencoes-aceite; corrida PG no cadastro comum corrigida, preservando imutabilidade/idempotência. Pacote privado160 arquivos/30 bases de QA restaurado por hash, sem corpus bruto/base do proprietário. [Quadro de aceite e limites](dados/PLANO_ESTRUTURA_DADOS.md#1818-aceite-integrado-proteção-e-continuidade-men-08) |
 | T20.30-HOST1 | Bootstrap de desenvolvimento em host limpo e recuperação remota sem SD | Fonte publicada + instaladores/verificador existentes + pacote privado conferido | Implementação e validação do wrapper/restore no host Linux atual; [roteiro e limites](repasse/NOVO_HOST_20261024.md). Git/ambiente/companions/checks/atalhos coesos; fontes fixadas e parte privada separada. Novo SO, Windows físico e aceites financeiros próprios. Não conclui LAB-01…10/SA-01/02 |
 | AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). 100 dirigidos finais e2952/251 ampla (cortes descritos na evidência); prévia instalada. CI do último HEAD, causa dos timeouts herdados e Windows físico têm gates próprios; sem aceite financeiro |
 | AIA-02a | Catálogo nativo de Estudo pelo SDK/CLI, mesma fábrica/ownership e espera do layout inicial | AIA-01 + HPR75 | Implementado;2994/251 suíte ampla,108 dirigidos/176 regressão (sobrepostos),38 nativos via102 pedidos CLI reais,0/0 e doctor20/1/0. [Contrato](sdk/study_cli.md), [evidência](evidencias/AIA_02A_ESTUDO_CLI_20261023.json). CI da ponta/Windows físico próprios; dados/fontes H preservados |
@@ -4304,3 +4308,20 @@ e cancelamento. Fonte real16 itens/Q1/P0/N0/1 abstenção preserva HN e preços 
 mesmo símbolo. [Contrato](dados/PLANO_ESTRUTURA_DADOS.md#1817-men-07--segunda-fonte-stack-overflow-via-stack-exchange-api).
 MEN-08: fechamento/regressão/proteção independente e handoff, sem certificar
 cruzamentos ausentes, precisão geral de fonte, conta/nativo ou Expert.
+
+
+**MEN-08 — aceite integrado em29/10/2026:** regressão pertinente221 aprovados/
+18 casos PG não executados no host,347,57s; PG96 aprovados no SHA de código
+MEN-07 pelo CI. Doctor offline16 OK/2 avisos/0 falhas. Proteção privada e restore
+160 arquivos/30 bases QA conferidos, sem base do proprietário/corpus bruto.
+Cadeia de PRs aberta, sem merge/release. Fontes adicionais/precisão representativa
+PT/EN e cruzamentos nativos/financeiros continuam nos gates discriminados no§18.18.
+
+Após a correção da corrida PG:98 testes do gate PostgreSQL aprovados no host
+(359,48s), com dois novos casos concorrentes que falhavam antes. Os96 anteriores
+são baseline do código MEN-07, sem somar as rodadas como testes distintos.
+
+Regressão após a correção: **196 aprovados/18 PG não executados no comando
+SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
+foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
+como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.

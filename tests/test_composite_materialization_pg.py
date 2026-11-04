@@ -91,3 +91,64 @@ def test_namespace_write_waits_for_value_commit_then_prevents_false_complete(pg,
         worker.result(timeout=10)
     assert len(output_facts(source)) == 10
     assert datasets.identity(source)["namespace"] != original_namespace
+
+
+@pytest.mark.parametrize("conflict", [False, True])
+def test_postgresql_concurrent_definition_registration_preserves_original(pg, conflict):
+    """A segunda chamada disputa cadastro não confirmado, sem sobrescrever o vencedor."""
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+    from sqlalchemy import event, text
+    from mt5_extracao.analytics import feature_store
+    feature_store.ensure_schema(pg)
+    inserted, release = threading.Event(), threading.Event()
+    local = threading.local()
+    second_pid = []
+    def before(conn, cursor, statement, parameters, context, executemany):
+        if getattr(local, "second", False):
+            second_pid[:] = [conn.connection.driver_connection.info.backend_pid]
+    def after(conn, cursor, statement, parameters, context, executemany):
+        if statement.startswith("INSERT INTO _feature_definitions") and not inserted.is_set():
+            inserted.set()
+            assert release.wait(15)
+    event.listen(pg.engine, "before_cursor_execute", before)
+    event.listen(pg.engine, "after_cursor_execute", after)
+    def register(second=False):
+        local.second = second
+        return feature_store.register_definition(pg, "qa.registration_race", "Original", "1",
+            {"period": 2 if second and conflict else 1}, [], value_type="NUMBER")
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            first = pool.submit(register)
+            try:
+                assert inserted.wait(10)
+                second = pool.submit(register, True)
+                deadline = time.monotonic() + 10
+                with pg.engine.connect() as conn:
+                    while True:
+                        conn.execute(text("SELECT pg_stat_clear_snapshot()"))
+                        waiting = second_pid and conn.execute(text(
+                            "SELECT EXISTS (SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid "
+                            "WHERE l.pid=:pid AND NOT l.granted AND "
+                            "(a.query LIKE 'INSERT INTO _feature_definitions%' OR a.query LIKE '%pg_advisory_xact_lock%'))"),
+                            {"pid": second_pid[0]}).scalar_one()
+                        if waiting:
+                            break
+                        assert time.monotonic() < deadline, "segunda chamada não disputou registro pendente"
+                        time.sleep(.02)
+            finally:
+                release.set()
+            assert first.result(timeout=10) is True
+            original = feature_store.list_definitions(pg)
+            if conflict:
+                with pytest.raises(ValueError, match="nova versão"):
+                    second.result(timeout=10)
+            else:
+                assert second.result(timeout=10) is False
+            assert feature_store.list_definitions(pg) == original
+            assert original[0]["parameters"] == {"period": 1}
+    finally:
+        release.set()
+        event.remove(pg.engine, "before_cursor_execute", before)
+        event.remove(pg.engine, "after_cursor_execute", after)

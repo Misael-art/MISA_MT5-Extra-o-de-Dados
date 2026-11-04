@@ -4432,3 +4432,65 @@ MEN-08 ainda fecha proteção independente, regressão e reconciliação. Fontes
 opcionais sem acesso e cruzamentos BD16/17/F18/LAB continuam com seus donos;
 nenhum resultado aqui qualifica estratégia, conta, MT5/Wine, Windows físico ou
 utilidade financeira.
+
+
+### MEN-08 — reconciliação e proteção dos ensaios, 29/10/2026
+
+Branch `codex/mencoes-aceite` sobre MEN-07/PR243, código
+`72850fb7a5810932c89e87bbb691e3f2ff6dcb40`. MEN-00…07 permanecem em PRs236…243
+abertos em cadeia; sem merge em master. Planos/ROADMAP/CONTINUAR reconciliados:
+a linha antiga “MEN-04…08 não implementado” foi substituída pelos aceites por
+frente. [Capacidades, uso, fornecedores e cruzamentos pendentes](dados/PLANO_ESTRUTURA_DADOS.md#1818-aceite-integrado-proteção-e-continuidade-men-08).
+
+Duas fontes públicas reais, HN e Stack Overflow, seguem o mesmo contrato,
+store/journal/SDK/CLI e leitor do Laboratório. Fonte e prévia MEN-07 retomaram
+16 IDs reais após interrupção, Q1/P0/N0/1 abstenção, cooldown real/cancelamento,
+propriedade dos preços e5 revisões HN intactas. Snapshot/consulta não acionam
+rede/modelo. Modelo é **somente benchmark inglês controlado** com44 casos
+próprios,2 erros preservados; não há precisão humana independente/representativa
+nas fontes nem suporte P/N real nessas amostras. Não declarar português,
+utilidade financeira ou operação Expert qualificadas.
+
+Regressão integrada221 aprovados/18 casos PG não executados no host (347,57s),
+PG96 aprovados no SHA de código MEN-07 (110,85s); doctor offline16/2/0. A
+composição preserva companions detached/pins e um único ambiente. Código de
+preços e versões de retornos1/5/20 preservados; não se criou outro engine.
+
+Proteção independente na página privada de recuperação existente: complemento
+MEN de9 partes/ZIP3.621.472bytes, hash
+`232ff78e9c97cebdfb82d5ba9bb6261c16576d42c6d3f8b5bda91e2013a5ba20`.
+Partes e manifesto relidos pela conta autenticada, sem compartilhamentos;
+verificador existente recompôs/extraiu160 arquivos e quick_check aprovou30 bases
+próprias de QA. Inclui agregados públicos, fixtures/protocolo/anotações próprias,
+recibos e capturas; sem textos brutos, credenciais ou banco do proprietário.
+Restore em pasta nova, sem alterar configuração/estado ativo. Manifesto/referências
+continuam privados, pacote principal anterior preservado. Retenção até sucessor
+independente conferido; `.gitignore` não é backup.
+
+Para continuar: escolher uma pendência concreta do§18.18 e seu dono (qualificação
+representativa/idiomas, fonte opcional com acesso próprio, BD16/17/F18/LAB ou
+Expert). Não reabrir MEN como proposta nem conceder selo financeiro pelos testes.
+A composição e os recibos atualizados ficam somente em Projects/.workspace;
+prévia habitual e retorno anterior permanecem identificados pelo mecanismo existente.
+
+
+No fechamento, o CI documental1112a17 encontrou corrida no cadastro canônico
+PG de definições:95 aprovados/1 falha no teste existente de escritores da
+materialização composta. MEN-08 corrige a causa com trava transacional por
+ID/versão antes da leitura, preservando definição original/imutabilidade.
+Dois testes PG com disputa efetiva e metadados iguais/diferentes reproduziram
+UniqueViolation antes e passaram depois;5 testes desse caminho aprovados.
+Recibos finais e PR discriminam esse ajuste e a regressão posterior. Nenhuma
+alteração de companions, fórmula/modelo, schema ou versão de retorno.
+
+
+Após a correção de cadastro, a bateria completa PostgreSQL do workflow também
+foi executada no host, em contêiner próprio com PostgreSQL16.15 já disponível:
+**98 aprovados em359,48s**, incluindo os dois novos casos e todos os caminhos MEN.
+Sem download de imagem, negociação ou acesso a banco do proprietário. O servidor
+de QA é temporário; schemas próprios são removidos pelo helper de testes.
+
+Regressão após a correção: **196 aprovados/18 PG não executados no comando
+SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
+foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
+como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.
