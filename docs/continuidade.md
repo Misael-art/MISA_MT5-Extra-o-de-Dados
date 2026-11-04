@@ -1,3 +1,26 @@
+## Revalidação da composição e dos incrementos locais — 04/11/2026
+
+E14 App `0993ae7`/PR279 draft, HADOUKEN `d4d389e`/PR84 draft e Safety
+`27b8599` detached continuam nos SHAs/pins do registro central. O `--plan`
+oficial terminou; a inspeção anterior aceitou os pins. A prévia instalada
+segue App `57d13ee`.
+No run 41747563787, Ubuntu, PostgreSQL, os instaladores e lint passaram;
+Windows pytest ainda estava em execução em 04/11 01:40 UTC, sem aceite final.
+
+Na branch C `codex/gui-dependencias-inicializacao` `b0733d9`, o launcher
+`./run.sh --offline --config` foi repetido na fonte de código rebatida
+`13f6b97` em Linux/Xvfb com SQLite de QA: janela aberta, `quick_check` OK;
+ausência simulada de `pandas` exibiu a ação do instalador sem criar banco nem
+instalar. Cinco testes GUI passaram; doctor 16 OK/2 avisos/0 falhas. O recibo
+foi ampliado naquela branch e a QA temporária removida. Na branch D
+`codex/lab-series-monitor-geometry` `802e5de`, 29 testes de UI de Séries
+passaram na própria fonte, 1 foi ignorado e houve 16 avisos de layout em
+127,52 s. Monitor esquerdo físico, atalho e Windows físico seguem pendentes.
+As branches C/D não foram publicadas por causa da guarda compartilhada;
+continuar LAB/P01–P07 e E14 sem misturar os incrementos. Próximo: conferir
+Windows CI, publicar PRs distintos quando a guarda permitir e prosseguir
+nos gates independentes.
+
 ## E14 — largura tardia da comparação no Windows CI — 03/11/2026
 
 Na PR279, SHA App `19627c3`, o run `41731727371` aprovou Linux, PostgreSQL,

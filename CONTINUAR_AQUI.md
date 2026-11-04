@@ -1,5 +1,35 @@
 # Retomar MT5X em um host limpo
 
+## Revalidação de GUI, Séries e composição — 04/11/2026
+
+App E14 `0993ae7bdf2e3354afcccf45dd2a22069a8b460c` continua na PR279
+draft; HADOUKEN `d4d389ee0800d209bdba48ab36e392e6907949a4` na PR84
+draft e Safety `27b85992af4b10f4cd7687f370142ac88f515375` detached.
+O manifesto mantém estes pins e `setup_development.py --plan` terminou sem erro;
+o App declarado ali é o bootstrap `65e621a`, distinto do checkout E14 e da prévia.
+A prévia segue em `57d13ee`. No run 41747563787 da PR279, Ubuntu,
+PostgreSQL, instaladores Linux/Windows e lint passaram; Windows pytest ainda
+executava na consulta de 04/11 01:40 UTC. Não há aceite Windows CI final.
+
+GUI C: branch local `codex/gui-dependencias-inicializacao` em `b0733d9`,
+base E14 `0993ae7`; código `bf38e4a`. O launcher oficial foi repetido na
+fonte rebatida `13f6b97` em Linux/Xvfb com configuração e SQLite isolados:
+janela aberta e `quick_check` OK com dependências presentes; ausência simulada
+de `pandas` mostrou diálogo/instalador oficial sem criar banco ou instalar.
+Cinco testes focados passaram e doctor offline deu 16 OK/2 avisos/0 falhas.
+Recibo ampliado na própria branch C; arquivos temporários removidos.
+
+LAB-10 D: branch local `codex/lab-series-monitor-geometry` em `802e5de`,
+base de código C `13f6b97`. O módulo de UI de Séries passou nesta fonte em
+Linux/Xvfb: 29 aprovados, 1 ignorado, 16 avisos de layout, 127,52 s.
+A asserção confere a geometria negativa solicitada e ampliar/restaurar;
+posição física em monitor esquerdo e percurso pelo atalho seguem pendentes.
+C e D não têm branch remota/PR por causa da guarda central compartilhada;
+os SHAs locais estão no registro central. Não foi feito merge, atualização da
+prévia, ensaio DEMO ou Windows físico. Próximo: conferir o resultado Windows
+da PR279, resolver a guarda para publicar incrementos separados e continuar
+os gates funcionais LAB/P01–P07 e operacionais E14 por fonte exata.
+
 ## E14 — largura tardia da comparação no Windows CI — 03/11/2026
 
 Na PR279, App `19627c3c74dc2efafc60b2e417f49fa93d3d71f6`, run
