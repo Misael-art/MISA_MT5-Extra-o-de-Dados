@@ -12,6 +12,7 @@ SURFACE = {
     "describe_mention_series": ["db", "symbol", "timeframe", "subject", "source", "query", "classifier", "universe"],
     "mention_source_capabilities": [],
     "ingest_mention_batch": ["db", "selection", "batch", "synthetic_fixture", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
+    "collect_mentions": ["db", "selection", "start", "end", "resume", "write_guard", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "export_feature_relation": ["db", "analysis_id", "destination", "cancel_check", "timeout_seconds", "max_memory_mb"],
     "import_feature_relation": ["db", "source", "cancel_check", "write_guard", "timeout_seconds", "max_memory_mb"],
     "query_feature_relation": ["db", "manifest_id", "left", "right", "as_of", "lag_bars", "method", "minimum_pairs",

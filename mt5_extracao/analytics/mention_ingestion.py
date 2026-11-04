@@ -33,9 +33,14 @@ SOURCES = (
 
 def source_capabilities():
     """Catálogo documental; não sonda rede nem afirma integração de conectores."""
-    return [dict(id=ident, name=name, access=access, reference=url, connector_implemented=False,
+    items=[dict(id=ident, name=name, access=access, reference=url, connector_implemented=False,
                  qualification="DOCUMENTED_ONLY", requires_explicit_population=True)
             for ident, name, access, url in SOURCES]
+    publisher=next(item for item in items if item['id']=='F05')
+    publisher.update(connector_implemented=True,qualification='IMPLEMENTED_REQUIRES_CAPTURE_RECEIPT',
+        connectors=[dict(provider='hackernews',corpus='hackernews.newstories.panel.v1',mode='documents',
+                         universe='sample',access='public_api',coverage='explicit_item_panel_only')])
+    return items
 
 
 def _normalized(value):
@@ -58,9 +63,10 @@ def _documents(contract, documents, start, end, guard):
             doc[key]=mentions._text(doc[key], 'document.'+key)
         if not isinstance(doc['text'],str) or len(doc['text'].encode()) > 64*1024:
             raise ValueError('Texto precisa ser string de até64KiB; conteúdo maior não é truncado silenciosamente.')
-        doc['published_at']=mentions._utc(doc['published_at'],'published_at').isoformat()
         if not isinstance(doc['kind'],str):raise ValueError('Tipo de publicação inválido.')
         if type(doc.get('deleted',False)) is not bool:raise ValueError('deleted precisa ser booleano.')
+        if doc['published_at'] is not None or not doc.get('deleted'):
+            doc['published_at']=mentions._utc(doc['published_at'],'published_at').isoformat()
         for key in ('language','author','channel','community'):
             doc[key]=mentions._text(doc[key], 'document.'+key) if doc.get(key) is not None else None
         fingerprint=mentions._hash(doc)
@@ -70,7 +76,7 @@ def _documents(contract, documents, start, end, guard):
             duplicates+=1;continue
         found[doc['id']]=(fingerprint,doc)
     for fingerprint,doc in sorted(found.values(),key=lambda item:item[1]['id']):
-        guard();published=mentions._utc(doc['published_at'],'published_at');body=_normalized(doc['text'])
+        guard();published=mentions._utc(doc['published_at'],'published_at') if doc['published_at'] is not None else None;body=_normalized(doc['text'])
         reason=None
         if doc.get('deleted'):reason='DELETED'
         elif not start <= published < end:reason='OUTSIDE_WINDOW'
@@ -163,23 +169,27 @@ def prepare(contract, batch, *, synthetic_fixture=False, guard=lambda:None):
 
 
 def ingest(db, *, selection, batch, synthetic_fixture=False, write_guard=None, cancel_check=None,
-           timeout_seconds=120, max_memory_mb=1024):
+           timeout_seconds=120, max_memory_mb=1024, _run=None, _acquisition=None):
     """Publica Q/P/N + checkpoint juntos, com os recursos/cancelamento existentes."""
     if not isinstance(selection,dict):raise ValueError('selection precisa ser objeto JSON.')
     for value,name,limit in [(timeout_seconds,'timeout_seconds',3600),(max_memory_mb,'max_memory_mb',8192)]:
         if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<value<=limit:
             raise ValueError(f'{name} precisa ser positivo e até{limit}.')
-    started=dict(started_monotonic=time.monotonic())
+    started=_run if _run is not None else dict(started_monotonic=time.monotonic())
     def guard():indicator_materializer._guard(started,write_guard,cancel_check,timeout_seconds,max_memory_mb)
     guard();contract=mentions.describe(db,**selection);identity=datasets.identity(db)
     if identity['namespace']!=contract['scope']['base_namespace']:
         raise indicator_materializer.SourceChanged('Base alterada durante resolução do contrato MEN; reexecute.')
     prepared=prepare(contract,batch,synthetic_fixture=synthetic_fixture,guard=guard);guard()
     scope=contract['scope'];receipt=prepared['receipt']
+    if _acquisition is not None:
+        receipt.update(acquisition=_acquisition,source_verified=True)
+        for record in prepared['records']:
+            record['metadata']['capture']={k:v for k,v in receipt.items() if k!='cursor_sha256'}
     for definition in contract['definitions']:guard();features.register(db,**definition)
     previous=producer_jobs.get_checkpoint(db,scope['symbol'],scope['timeframe'],contract['job_family'])
     start_sequence=previous['source_sequence'] if previous else 0
-    run=producer_jobs.start_run(db,scope['symbol'],scope['timeframe'],contract['job_family'],
+    run=_run if _run is not None else producer_jobs.start_run(db,scope['symbol'],scope['timeframe'],contract['job_family'],
         contract['algorithm_version'],contract['scope_hash'],start_sequence,
         configuration=dict(capture_id=receipt['capture_id'],scope_hash=contract['scope_hash'],input_basis='bounded_mention_batch'))
     run['started_monotonic']=started['started_monotonic']
@@ -209,9 +219,11 @@ def ingest(db, *, selection, batch, synthetic_fixture=False, write_guard=None, c
         counts=feature_store.save_values(db,prepared['records'],transaction_guard=before,transaction_hook=checkpoint)
         status='COMPLETE' if receipt['coverage']=='complete' else 'INCOMPLETE'
         measurement=producer_jobs.finish_run(db,run,source_sequence=end_sequence,status=status,counts=counts)
+        run['_closed']=True
         return dict(receipt=receipt,counts=counts,duplicates=prepared['duplicates'],job=measurement,
                     algorithm_version=contract['algorithm_version'],job_family=contract['job_family'])
     except BaseException as exc:
         producer_jobs.abort_run(db,run,source_sequence=start_sequence,error=exc,counts=counts,
             cancelled=isinstance(exc,indicator_materializer.Cancelled))
+        run['_closed']=True
         raise

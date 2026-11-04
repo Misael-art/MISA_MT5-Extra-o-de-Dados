@@ -966,7 +966,8 @@ na existência deste contrato. [Plano e inventário](../dados/PLANO_ESTRUTURA_DA
 ### Ingestão limitada de menções (MEN-02)
 
 `sdk.mention_source_capabilities()` devolve F01…F09 e condições de acesso; é um
-cadastro documental passivo, sem sonda de rede ou conector declarado integrado.
+cadastro passivo, sem sonda de rede. Implementações são discriminadas por
+publicador; um conector presente não prova acesso/cobertura de uma captura.
 `sdk.ingest_mention_batch(db, *, selection, batch, synthetic_fixture=False,
 write_guard=None, cancel_check=None, timeout_seconds=120, max_memory_mb=1024)`
 publica explicitamente uma janela pelo feature_store/journal existentes.
@@ -1012,3 +1013,54 @@ analytics features mentions-ingest --selection selecao.json --batch lote.json --
 A ingestão informa COMPLETE/INCOMPLETE e contagens inseridas/revisadas/iguais;
 INCOMPLETE devolve código1. Acesso a fonte real, classificação qualificada e
 consumo completo permanecem nos incrementos MEN-03…08.
+
+
+### Captura pública limitada de menções (MEN-03)
+
+`sdk.collect_mentions(db, *, selection, start, end, resume=True, write_guard=None,
+cancel_check=None, timeout_seconds=120, max_memory_mb=1024)` captura uma janela
+UTC fechada pelo adaptador implementado. A ação é explícita; consulta e listagem
+continuam sem rede/classificação. CLI:
+
+```text
+analytics features mentions-collect --selection selecao.json --start INICIO_UTC --end FIM_UTC
+analytics features mentions-collect --selection selecao.json --start INICIO_UTC --end FIM_UTC --fresh-panel
+```
+
+Primeiro publicador F05: `source.provider="hackernews"`,
+`source.corpus="hackernews.newstories.panel.v1"`, `mode="documents"`,
+`universe="sample"`. `source.parameters.panel_size` (1…64, padrão24) participa
+do hash do escopo. Parâmetros opcionais ausentes conservam as versões MEN-01.
+Endpoint fixo oficial; não aceita URL ou credenciais na configuração de fonte.
+Idioma/canal/comunidade não são filtros certificados por esse painel; informe
+listas vazias. Autores públicos podem ser selecionados pelo `by` retornado.
+
+O universo é o painel dos primeirosN IDs únicos do roster `newstories` naquele
+recebimento, não todo HN nem toda a internet. Busca literal/objeto/janela filtram
+essas publicações. Só há cobertura completa **do painel** após ler todos os
+itens selecionados. Mudança de membros pode mudar contagens; não interpretar
+isso automaticamente como crescimento de menções na população global.
+Títulos e texto local do HN são lidos, com HTML convertido para texto; artigos
+externos apontados por links não são buscados. Publicações removidas/dead são
+excluídas; tombstone sem horário original conserva ausência desse horário,
+sem fabricar timestamp. Item null/desconhecido torna captura incompleta.
+[API oficial e esquema](https://github.com/HackerNews/API).
+
+O journal existente inicia um run, fixa roster/manifesto de entrada e proprietário
+nos checkpoints e mantém o último cursor completo. Não há SQL aberto durante
+HTTP. Falha antes da publicação não grava zero nem confirma a janela. Retomar
+recupera o mesmo roster pendente; `--fresh-panel` seleciona outro explicitamente,
+sem apagar o manifesto do run anterior. Segundo coletor do mesmo escopo não
+rouba run ativo. Namespace/recursos/cancelamento são conferidos antes do commit.
+
+Três tentativas por GET;429/erros transitórios têm Retry-After/backoff limitado
+por30s e pelo orçamento total. Timeout de cada chamada até5s;512KiB por resposta,
+sem truncamento. Cancelamento é conferido nas esperas/chunks/itens/transação.
+Manifesto só pode ser anexado uma vez ao run ainda ativo; não altera recibo
+finalizado. Recursos e reconciliação de morte são os mesmos producer_jobs.
+
+Captura conferida carimba `source_verified=true` e aquisição/painel nos registros,
+com relógio de disponibilidade deste sistema. Texto e autores não são copiados
+para o corpus persistido/snapshot; ficam hashes e contagens. Isso não qualifica
+classificador: P/N permanecemUNAVAILABLE enquanto a classificação não ocorrer.
+Fonte real/corpus observado e mock/fixture são níveis de prova separados.

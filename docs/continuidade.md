@@ -4303,3 +4303,27 @@ com painel e cobertura explícitos. [API oficial Hacker News](https://github.com
 MEN-03 captura real ainda pendente; MEN-04 classificação qualificada ainda
 pendente. Anotações `qa.` deste incremento são somente referência sintética,
 sem P/N real certificado. Seguem MEN-03…08, sem concluir o mecanismo pelo lote.
+
+
+## MEN-03 — captura pública limitada e retomada, 29/10/2026
+
+HN/F05 implementado por `mention_sources`, na mesma ingestão/journal. Painel
+explícito de até64 itens, padrão24, filtros literais e relógio de recebimento
+local. Artigos externos/usuários não são percorridos. Fonte real é transporte
+conferido; classificação é outro aceite e permanecePENDING/UNAVAILABLE.
+[Escopo e limitações](dados/PLANO_ESTRUTURA_DADOS.md#1813-primeira-captura-pública-men-03--painel-hacker-news).
+
+90 regressões pertinentes aprovadas/3 PostgreSQL pendentes no host. Captura
+real pelo launcher:SIGKILL após roster, retomada dos mesmos24 IDs, Q1 igual ao
+oráculo; fonte/root de preços preservados. Coleta seguinte alterou painel e
+registrou revisão sem mudar corte anterior. SIGINT após item real recebido
+cancelou sem fatos novos e manteve o roster pendente. Manifesto só é anexado
+uma vez ao run ativo; execução finalizada não admite reescrita de entrada.
+Falhas iniciais de verificação (comparação de NaN) e exceção de troca de namespace
+foram delimitadas/corrigidas, com logs preservados. Não houve dado privado do
+proprietário como fixture, coleta onerosa ou modelo baixado.
+
+Source/preview e CI do SHA publicado têm recibos na composição. Próxima frente:
+MEN-04, qualificar classificação por objeto e idiomas realmente suportados,
+com desenvolvimento/avaliação separados e critérios fixados antes da medição.
+P/N não são habilitados por simples declaração do nome do modelo.

@@ -197,6 +197,34 @@ def start_run(db, symbol, timeframe, family, algorithm_version, config_hash, sou
             "rss_sampler": _RSSSampler(), "database_bytes_before": db_before}
 
 
+def attach_run_inputs(db, run, inputs):
+    """Anexa uma única seleção de entrada ao run ativo; depois fica imutável.
+
+    Permite fixar IDs de um painel após descobrir seu roster, sem guardar texto
+    ou prender transação durante rede. Não altera cursor/fatos nem cria journal.
+    """
+    if not isinstance(inputs,dict):raise ValueError('Manifesto de entrada precisa ser objeto JSON.')
+    raw=json.dumps(inputs,ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False)
+    if len(raw.encode())>64*1024:raise ValueError('Manifesto de entrada excede64KiB; não guarde corpus no journal.')
+    with db.engine.begin() as conn:
+        lock=' FOR UPDATE' if conn.dialect.name=='postgresql' else ''
+        row=conn.execute(text('SELECT status,configuration_json FROM _analytics_producer_runs WHERE run_id=:id'+lock),
+                         {'id':run['run_id']}).first()
+        if row is None or row[0]!='RUNNING':raise ValueError('Somente run ativo pode receber seu manifesto de entrada.')
+        configuration=json.loads(row[1]) if row[1] is not None else {}
+        if 'input_manifest' in configuration:
+            if configuration['input_manifest']!=inputs:raise ValueError('Manifesto do run já foi fixado; não pode mudar de população.')
+            return False
+        configuration['input_manifest']=json.loads(raw)
+        updated=json.dumps(configuration,ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False)
+        prior_clause='configuration_json IS NULL' if row[1] is None else 'configuration_json=:old'
+        changed=conn.execute(text('UPDATE _analytics_producer_runs SET configuration_json=:new '
+            'WHERE run_id=:id AND status=\'RUNNING\' AND '+prior_clause),
+            dict(new=updated,id=run['run_id'],old=row[1]))
+        if changed.rowcount!=1:raise RuntimeError('Run mudou antes de fixar a entrada; reexecute sem sobrescrever o recibo.')
+    return True
+
+
 def advance_checkpoint(conn, *, symbol, timeframe, family, algorithm_version, config_hash, source_sequence,
                        last_bar_start, state=None, status="COMPLETE"):
     """Atualiza o checkpoint dentro da transação de valores correspondente."""

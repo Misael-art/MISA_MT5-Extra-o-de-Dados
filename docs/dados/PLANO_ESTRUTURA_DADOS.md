@@ -1239,3 +1239,40 @@ recebimento. As consultas e o catálogo não chamam rede nem classificador.
 Fonte real/reconexão/limites de rede/retomada são MEN-03; qualificação textual é
 MEN-04; snapshots/consumo visual completo e segunda fonte continuam MEN-05…08.
 Não concluir captura real pela ingestão determinística de documentos próprios.
+
+
+### 18.13. Primeira captura pública MEN-03 — painel Hacker News
+
+F05/Hacker News usa API oficial fixa, universo `sample` e painel deN IDs únicos
+(1…64, padrão24), discriminado no escopo/manifesto. Novos membros do painel
+podem mudar contagens: não é censo do HN/internet nem prova de crescimento de
+menções. Texto lido é título + conteúdo local, sem buscar artigo apontado por
+URL. Não há fonte universal de sites implementada.
+
+`mention_sources` reusa `producer_jobs`, guardas e ingestão MEN-02. Roster é
+fixado no run por `attach_run_inputs`, uma única vez enquanto ativo, e em
+checkpoint pendente com proprietário/hash; input finalizado não é reescrito.
+Rede fica fora de SQL. Requisições têm timeout/512KiB/três tentativas/backoff e
+Retry-After finitos; erro/item desconhecido não vira zero. Retomada conserva o
+roster pendente, e painel novo é ação explícita. Segundo coletor não rouba run
+ativo. Tombstone conserva horário desconhecido e exclusão, sem timestamp falso.
+[API, limites e CLI](../sdk/api.md#captura-pública-limitada-de-menções-men-03).
+
+Validação real do host:um run foi morto após fixar o roster público, antes de
+ler/contar itens; nenhuma contagem confirmada. Nova execução pelo launcher
+reconciliou INTERRUPTED e recuperou os mesmos24 IDs;24 GETs completos,
+Q=1 conferido por tokenizador Unicode independente. A janela da demonstração
+foi escolhida retrospectivamente após sonda de um tema fixo AI; não é estudo
+pré-registrado. Outra coleta refletiu mudança de membros do painel como revisão,
+com corte anterior preservado e disponibilidade neste sistema, sem backdating.
+SIGINT após item real recebido deixou zero fatos e o mesmo roster para retomar.
+Fonte de preços e base principal foram preservadas; somente QA própria foi usada.
+
+90 testes pertinentes aprovados/3 PG pendentes no host. Mocks exercitam falhas,
+cancelamento, concorrência de proprietário, namespace e contrato; fonte real é
+comprovada pelo recibo separado, não pela fixture de rede. Texto não persiste;
+manifestos/hashes/cursor ficam nas tabelas existentes, sem novo journal/store.
+P/N reais continuamUNAVAILABLE/PENDING:MEN-04 qualificará o classificador.
+Bluesky/searchPosts403 continua acesso pendente; fornecedores opcionais não são
+chamados de integrados. Consumidores/segunda fonte/instalação final seguem
+MEN-04…08. [API oficial HN](https://github.com/HackerNews/API).
