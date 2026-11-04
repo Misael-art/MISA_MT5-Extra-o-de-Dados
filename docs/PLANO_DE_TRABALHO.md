@@ -4472,8 +4472,15 @@ exibir dependências ausentes e apontar para o instalador oficial sem instalar
 ao abrir. Pré-voo do script antecede imports pesados; 23 testes de entrada,
 offline e doctor passaram, mais ajuda pelo launcher Linux. Seleção explícita
 `--offline --config` abre apenas o banco de QA indicado (cinco testes diretos);
-QA visual completa,
-Windows físico, CI e publicação da branch própria ainda pendentes.
+o launcher oficial em Xvfb próprio abriu a GUI com dependências presentes e
+criou somente o SQLite sintético, `quick_check` OK. Com `pandas` ausente por
+simulação no processo, o mesmo launcher mostrou o diálogo e `./install.sh`,
+sem abrir o banco nem iniciar instalador. Recibo público em
+`docs/evidencias/GUI_DEPENDENCY_STARTUP_20261103.json`. Percurso funcional
+completo da GUI, Windows físico, CI e publicação da branch própria seguem
+pendentes.
+Doctor offline de desenvolvimento: 16 OK, 2 avisos (pandas-ta opcional e
+integração nativa não sondada), 0 falhas.
 
 Corretivo de portabilidade do CI no App, 03/11/2026: o SHA remoto `a74f539`
 teve 5 falhas Windows (lease de arquivo lido pelo teste enquanto travado,

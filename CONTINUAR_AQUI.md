@@ -91,7 +91,8 @@ checks e rebater a cadeia local dependente sem perder os commits.
 
 ## Inicialização da GUI — corretivo local em revisão — 03/11/2026
 
-Branch `codex/gui-dependencias-inicializacao`, base App `d68e125`/PR279.
+Branch `codex/gui-dependencias-inicializacao`, base App `19627c3`/PR279;
+o código da GUI está em `baa24c4` local.
 O chamador agora consome `(sucesso, faltantes)`; ausência mostra os nomes e o
 instalador oficial (`./install.sh` ou `install.bat`) e encerra a abertura.
 O pré-voo do script ocorre antes dos imports de runtime, com o catálogo de
@@ -99,7 +100,14 @@ módulos do doctor; não instala pacotes automaticamente. 23 testes de entrada,
 offline e doctor passaram no host. `./run.sh --offline --help` terminou com 0;
 o parâmetro `--config` com `--offline` permite apontar uma sessão de QA para
 configuração/base explícitas sem tocar a base principal. Cinco testes diretos
-passaram; percurso GUI real pelo atalho e Windows físico ainda exigem QA controlada.
+passaram. Pelo launcher `./run.sh --offline --config` em Xvfb próprio, a
+dependência presente abriu a janela e criou apenas o SQLite de QA (`quick_check`
+OK). Com `pandas` ausente por simulação no processo, o mesmo launcher mostrou
+o diálogo e a ação `./install.sh`, sem criar banco ou iniciar instalação.
+[Recibo público](docs/evidencias/GUI_DEPENDENCY_STARTUP_20261103.json).
+Windows físico e CI de SHA publicado permanecem pendentes.
+Doctor offline de desenvolvimento: 16 OK, 2 avisos (pandas-ta opcional e integração
+nativa não sondada), 0 falhas.
 Base privada, ponte, terminal, negociação e referências aceitas não foram usados
 como fixture. Publicação desta branch depende da guarda central de PRs separadas.
 

@@ -91,7 +91,8 @@ conferência de CI e reconciliação das branches locais dependentes.
 
 ## Inicialização da GUI — corretivo local em revisão — 03/11/2026
 
-Branch `codex/gui-dependencias-inicializacao`, base App `d68e125`/PR279.
+Branch `codex/gui-dependencias-inicializacao`, base App `19627c3`/PR279;
+código local `baa24c4`.
 `app.py` testava a tupla `(sucesso, faltantes)` como booleana e ainda tentava
 instalar `psutil` durante a abertura. O script agora confere os módulos
 obrigatórios pelo catálogo do doctor antes dos imports de runtime; o construtor
@@ -102,9 +103,15 @@ Ausência foi simulada no teste de subprocesso, sem remover o ambiente único.
 `app.py --offline --config <arquivo>` seleciona configuração de QA explícita;
 o caminho alternativo é recusado fora de offline e o teste confirmou que só
 o banco temporário escolhido foi aberto.
-Percurso visual completo pelo atalho, Windows físico e CI de SHA publicado
+O launcher `./run.sh --offline --config` abriu a janela em Xvfb próprio e
+criou só o SQLite de QA (`quick_check` OK). Na simulação de `pandas` ausente,
+o mesmo launcher mostrou o diálogo com `./install.sh`, não criou banco e não
+instalou. Recibo em `docs/evidencias/GUI_DEPENDENCY_STARTUP_20261103.json`.
+Percurso funcional completo da GUI, Windows físico e CI de SHA publicado
 permanecem pendentes. Esta branch ainda não tem PR por causa da guarda central
 de criação de branches remotas; não a apresentar como instalada.
+Doctor offline de desenvolvimento: 16 OK, 2 avisos (pandas-ta opcional e
+integração nativa não sondada), 0 falhas.
 
 ## E14 — cinco falhas Windows CI, corretivo em revisão — 03/11/2026
 
