@@ -18,6 +18,7 @@ class CardControls:
         self.preset_windows = {}
         self._pulse = None
         self._bright = False
+        self._study_busy, self._study_last, self._study_service = False, 0, None
         panel.frame.bind("<Destroy>", self._destroyed, add="+")
         self.ui.root.protocol("WM_DELETE_WINDOW", self._request_close)
 
@@ -95,7 +96,7 @@ class CardControls:
         row.bind("<Configure>", fit_actions, add="+")
         context = self.context(robot)
         offline = bool(getattr(self.ui.app, "offline", False))
-        if not context["run"] or busy or offline or self._has_native_presets(robot):
+        if not context.get("play_available", bool(context["run"])) or busy or offline or self._has_native_presets(robot):
             buttons["play"].state(["disabled"])
             buttons["play"].configure(image=self._icon("play", disabled=True))
         for mode in ("replay", "backtest"):
@@ -105,7 +106,8 @@ class CardControls:
         reason = ("Sessão em andamento · seleção bloqueada até encerrar." if busy else
                   "Análise local: reabra sem --offline para usar o MT5." if offline else "Default/Manual · backtest e replay no Tester DEMO; ao vivo indisponível."
                   if self._has_native_presets(robot) else context["reason"])
-        hint = ttk.Label(box, text=reason or "PLAY disponível para revisão · duas confirmações", style="Muted.TLabel",
+        hint = ttk.Label(box, text=reason or ("Painel manual · PLAY disponível sem backtest; revisão e proteções mantidas."
+                         if context.get("manual_panel") else "PLAY disponível para revisão · duas confirmações"), style="Muted.TLabel",
                          wraplength=260, justify=tk.LEFT)
         hint.pack(anchor="w", fill=tk.X, pady=(4, 0))
         hint.bind("<Configure>", lambda e: hint.configure(wraplength=max(40, e.width)))
@@ -147,7 +149,8 @@ class CardControls:
 
     @staticmethod
     def _has_native_presets(robot):
-        return robot.key in ("mql5:hdk_s09_referencia","mql5:hdk_pullback_nativo","mql5:hdk_stochema9","mql5:hdk_vwapbands","mql5:hdk_madrid","mql5:hdk_hahilo")
+        from mt5_extracao.presets import NATIVE_PRESET_KEYS
+        return robot.key in NATIVE_PRESET_KEYS
 
     def open_presets(self, robot):
         from .preset_workflow import PresetWorkflow
@@ -203,11 +206,12 @@ class CardControls:
         else:
             ExecutionDialog(self, robot, mode)
 
-    def start(self, robot, mode, symbol, timeframe, preset, start=None, end=None, account=None, consent=None):
+    def start(self, robot, mode, symbol, timeframe, preset, start=None, end=None, account=None, consent=None,
+              *, visible=None, window_anchor=None):
         if self.sessions.get(robot.key) and self.sessions[robot.key].active:
             return
         session = sessions.Session(self.ui.app.db_manager, self.ui.app.config, robot, symbol, timeframe, preset,
-                                   mode, start, end, account, consent)
+                                   mode, start, end, account, consent, visible=visible, window_anchor=window_anchor)
         self.sessions[robot.key] = session
         session.state = "preparing"  # feedback antes de a thread começar
         self.panel.render()
@@ -229,6 +233,7 @@ class CardControls:
 
     def _tick(self):
         self._pulse = None
+        self._study_tick()
         self._bright = not self._bright
         colors = self.theme.colors
         for key, session in self.sessions.items():
@@ -257,6 +262,25 @@ class CardControls:
                                            bordercolor=color if self._bright else colors["border"])
                 frame.configure(style=name)
         self._schedule()
+
+    def _study_tick(self):
+        """Sincroniza notas em segundo plano sem prender o ciclo visual dos cards."""
+        if self._study_busy or time.monotonic() - self._study_last < 2:
+            return
+        app = self.ui.app
+        db, config = getattr(app, "db_manager", None), getattr(app, "config", None)
+        if db is None or config is None:
+            return
+        if self._study_service is None:
+            from mt5_extracao.chart_study.service import StudyService
+            self._study_service = StudyService(db, config)
+        self._study_busy = True
+        self._study_last = time.monotonic()
+
+        def done(result, error):
+            self._study_busy = False
+
+        self.ui.run_bg(self._study_service.poll, done)
 
     def _destroyed(self, event):
         if event.widget is self.panel.frame and self._pulse is not None:
@@ -391,7 +415,12 @@ class ExecutionDialog:
         self.labels = []
         self._label(f"{mode.upper()} · {robot.name}", "Title.TLabel")
         self._label(f"{self.symbol} · {self.timeframe} · {self.preset or controls.DEFAULT_PRESET}", "Heading.TLabel")
+        self.visible = tk.BooleanVar(value=sessions.chart_visible(robot, mode))
         if mode == "play":
+            ttk.Checkbutton(self.content, text="Exibir gráfico durante o PLAY", variable=self.visible).pack(
+                anchor="w", pady=(0, 9))
+            self._label("Desmarcado: o robô continua com gráfico interno, fora da vista no Linux e "
+                        "minimizado no Windows. STOP e as proteções continuam ativos.", "Muted.TLabel")
             real = account.get("demo") is False
             self._label("CONTA REAL · DINHEIRO REAL EM RISCO" if real else "CONTA DEMO · operação na conta de demonstração",
                         "Bad.TLabel" if real else "Info.TLabel")
@@ -524,9 +553,13 @@ class ExecutionDialog:
             except ValueError:
                 messagebox.showerror("Período", "Informe datas AAAA-MM-DD, com início anterior ao fim.", parent=self.window)
                 return
+        root = self.ui.root
+        anchor = (root.winfo_rootx() + root.winfo_width() // 2,
+                  root.winfo_rooty() + root.winfo_height() // 2)
+        visible = self.visible.get()
         self.window.destroy()
         self.controller.start(self.robot, self.mode, self.symbol, self.timeframe, self.preset, start, end,
-                              self.account, self.consent)
+                              self.account, self.consent, visible=visible, window_anchor=anchor)
 
 
 class ReportDialog:

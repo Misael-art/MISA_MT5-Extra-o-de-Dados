@@ -246,6 +246,25 @@ def robot_from_file(path) -> Robot:
     if not mql.is_expert(src, text):
         raise ValueError(f"{path.name} não é um robô (Expert Advisor): parece ser um indicador ou script.")
     includes, missing = mql.resolve_includes(path, root / "Include" if root else None)
+    assets = []
+    asset_headers = {"HDK_StudyLayers.mqh": "HDK_StudyCandles.mq5",
+                     "HDK_StudyGraphs.mqh": "HDK_StudySeries.mq5",
+                     "HDK_StudySuperATR.mqh": "HDK_SuperATR.mq5"}
+    required_assets = sorted({("MT5X" if root and item.resolve().is_relative_to((root / "Include/MT5X/Safety").resolve()) else "HADOUKEN",
+                               asset_headers[item.name]) for item in includes if item.name in asset_headers})
+    if root and required_assets:
+        # Fazem parte da fonte avaliada/fingerprint, inclusive quando compilados
+        # separadamente. Não copiar indicadores pessoais encontrados por varredura.
+        for namespace, name in required_assets:
+            asset = root / "Indicators" / namespace / "Study" / name
+            if not asset.is_file() or not asset.resolve().is_relative_to(root.resolve()):
+                raise ValueError(f"Indicador de estudo ausente: {name}. Atualize a biblioteca HADOUKEN completa.")
+            assets.append(asset)
+            dependencies, absent = mql.resolve_includes(asset, root / "Include")
+            for dependency in dependencies:
+                if dependency not in includes:
+                    includes.append(dependency)
+            missing += [item for item in absent if item not in missing]
     enums = dict(src.enums)
     for include in includes:
         enums.update(mql.parse_enums(mql.read_text(include)))
@@ -263,7 +282,7 @@ def robot_from_file(path) -> Robot:
         description=manifest.get("description", " ".join(src.descriptions)),
         regime=manifest.get("regime", ""), timeframes=tuple(manifest.get("timeframes", ())),
         markets=manifest.get("markets", ""), path=str(path),
-        files=[str(path)] + [str(p) for p in includes] + preset_files, missing_includes=missing,
+        files=[str(path)] + [str(p) for p in includes] + [str(p) for p in assets] + preset_files, missing_includes=missing,
         inputs=src.inputs, enums=enums, presets=presets,
         preset_risks={name: risk_mod.rate(src.inputs, values, enums, manifest=risk_manifest)
                       for name, values in presets.items()},

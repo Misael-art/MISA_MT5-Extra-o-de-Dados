@@ -28,7 +28,9 @@ def env(fake_mt5, tmp_path, monkeypatch):
     class FixedNow(dt.datetime):
         @classmethod
         def now(cls, tz=None):
-            return dt.datetime(2024, 1, 4, 12, 0)
+            # Como datetime.now: com tz devolve horário com fuso (recebimento do bloco, BD04/R04).
+            fixed = dt.datetime(2024, 1, 4, 12, 0)
+            return fixed.replace(tzinfo=dt.timezone.utc).astimezone(tz) if tz else fixed
     # "agora" fixo para a atualização incremental não buscar até a data real
     monkeypatch.setattr(he_module, "datetime", FixedNow)
     cfg = tmp_path / "config.ini"

@@ -79,7 +79,7 @@ def linux_to_wine_path(path: Path, prefix: Path) -> str:
     Ex.: ~/.wine/drive_c/Program Files/MetaTrader 5 -> C:\\Program Files\\MetaTrader 5
     Lança ValueError se o caminho não estiver dentro de drive_c.
     """
-    rel = Path(path).relative_to(Path(prefix) / "drive_c")
+    rel = Path(path).resolve().relative_to((Path(prefix) / "drive_c").resolve())
     parts = [p for p in rel.parts if p]
     return "C:\\" + "\\".join(parts)
 

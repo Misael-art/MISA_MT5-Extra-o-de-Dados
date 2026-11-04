@@ -164,3 +164,53 @@ def test_invalid_distribution_preserves_every_installed_file_and_marker(env, fai
         safety_lib.install(newer, env.mt5, upgrade=True)
     after = {str(path.relative_to(include)): path.read_bytes() for path in include.rglob("*") if path.is_file()}
     assert after == before
+
+
+def graphical_lib(env):
+    asset = env.lib / "Indicators/MT5X/Study/Series.mq5"
+    asset.parent.mkdir(parents=True)
+    asset.write_text("#property indicator_separate_window\n")
+    manifest = json.loads((env.lib / "safety.json").read_text())
+    manifest["indicators"] = [{"source": asset.relative_to(env.lib).as_posix(),
+                               "sha256": hashlib.sha256(asset.read_bytes()).hexdigest()}]
+    (env.lib / "safety.json").write_text(json.dumps(manifest))
+    return asset
+
+
+def test_graphical_assets_install_idempotently_and_compile_before_expert(env, monkeypatch):
+    from types import SimpleNamespace
+    asset = graphical_lib(env)
+    robot = env.robot()
+    calls = []
+    def compile_(source, *args):
+        calls.append(source)
+        return SimpleNamespace(ok=True)
+    monkeypatch.setattr(mt5_tools, "compile_source", compile_)
+    items, result = mt5_tools.compile_robot(env.config, robot)
+    target = env.mt5 / "MQL5/Indicators/MT5X/Study/Series.mq5"
+    assert result.ok and calls == [target, items[0].target]
+    assert target.read_bytes() == asset.read_bytes()
+    assert safety_lib.install(env.lib, env.mt5) == []
+    assert safety_lib.installed(env.mt5)["indicators"][0]["source"] == "Indicators/MT5X/Study/Series.mq5"
+
+
+def test_bad_graph_asset_cannot_partially_replace_installed_headers(env):
+    asset = graphical_lib(env)
+    safety_lib.install(env.lib, env.mt5)
+    header = env.mt5 / "MQL5/Include/MT5X/Safety/Guard.mqh"
+    before = header.read_bytes()
+    (env.lib / "Include/MT5X/Safety/Guard.mqh").write_text("// alteração\n")
+    asset.write_text("// conteúdo divergente\n")
+    with pytest.raises(safety_lib.SafetyLibError, match="diverge do hash"):
+        safety_lib.install(env.lib, env.mt5)
+    assert header.read_bytes() == before
+
+
+@pytest.mark.parametrize("source", ["../escape.mq5", "/tmp/escape.mq5", "Indicators/../escape.mq5",
+                                    "Indicators\\escape.mq5", "Experts/Wrong.mq5"])
+def test_graph_asset_paths_are_contained_in_library(env, source):
+    graphical_lib(env)
+    manifest = json.loads((env.lib / "safety.json").read_text())
+    manifest["indicators"][0]["source"] = source
+    with pytest.raises(safety_lib.SafetyLibError, match="Caminho de indicador"):
+        safety_lib.indicator_assets(env.lib, manifest)

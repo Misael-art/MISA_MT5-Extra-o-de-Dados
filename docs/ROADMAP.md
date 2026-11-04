@@ -21,7 +21,29 @@ As regras para agentes estão em [../AGENTS.md](../AGENTS.md).
 suíte; depois EXTR-01, ciclo de extração/atualização/persistência/consulta/exportação
 e recuperação. [Diretriz e limites](propostas/PROMPT_RETOMADA_EXTRATOR.md).
 
+**G19.5 — Estudo:** notas no gráfico com texto em coluna própria e fotografia imutável de buffers nativos/cálculos do extrator. [Contrato e validação](propostas/G19_5_NOTAS_E_FOTOGRAFIA.md). Implementação em validação; lápis, coloração e indicadores múltiplos permanecem G19.6/7, com entregas próprias.
+**Pedido G-19 (2026-10-22):** Play do painel manual independente de backtest, etiquetas compactas com fonte ajustável, proveniência A/B, sinais ignorados amarelos e ferramentas de Estudo (notas/fotografia, lápis, coloração e indicadores agrupáveis). [Tarefas e aceites](propostas/G19_ESTUDO_NO_GRAFICO.md). G19.1 validado no Linux/Wine; demais tarefas com entregas próprias.
+
+## Prioridade SDK para agentes — 2026-10-23
+
+AIA-01 fecha o percurso por CLI/SDK para descoberta, sessões, gráficos/indicadores,
+presets e os serviços existentes de dados/laboratório/backtest/implantação local.
+[Contrato, matriz de capacidades e pendências](agente.md). UI é cliente dos mesmos
+serviços; um workflow não cria scheduler, executor, cache ou journal financeiro.
+Indicador estratégico/armazenamento, OMNI e estratégia ficam em frentes próprias,
+sem antecipar sua implementação nesta tarefa.
+
 ## Fases
+
+**Pedido do proprietário — 2026-10-21:** planejar TFs em ordem crescente nos
+cards, opção **Todos** para backtest do ativo, seleção de vários ativos e uma
+visão gráfica limpa da estratégia com a mesma revisão de preset em todos os TFs.
+[Escopo e aceites](propostas/BACKTEST_MULTITF_COMPARACAO.md): T19.33 (seleção),
+T20.24/25 (fila, orçamento e isolamento) e T20.22/23 (comparação). Reutilizar os
+serviços existentes. Três ou seis ativos são tamanhos de seleção; simultaneidade
+depende de medição no host e MQL5 continua serial até qualificação específica.
+Recursos planejados, sem implementação neste registro; correção do painel no
+REPLAY tem prioridade imediata e entrega própria.
 
 ```
 F0 Fundação ──► F1 Integridade dos dados ──► F3 CLI/automação ──► F5 Escala e novos dados
@@ -312,3 +334,9 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 - Envio automático ao MQL5 Market e licenciamento: a T10.11 confere e empacota; o envio é feito pela pessoa, na
   área do vendedor do MQL5.com.
 - Bases em nuvem gerenciadas (AWS RDS etc.): basta apontar T5.2 para o host.
+
+**G19.6 — Lápis/coloração:** catálogo prioritário do extrator, séries reais e dependência MQL5 instalada/compilada pelo SDK. [Contrato e evidências](propostas/G19_6_LAPIS_COLORACAO.md). Indicadores múltiplos/agrupamento permanecem G19.7.
+
+**G19.7 — Indicadores múltiplos:** dependência de séries revisada e compilada junto ao Expert, conservando bibliotecas anteriores. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md); composição e validação nativa em andamento.
+
+**G19.8 — Distribuição:** composição identificada para o atalho habitual, com ativos gráficos, fingerprint manual e preservação do canal aceito/dados. [Procedimento e evidências](propostas/G19_8_DISTRIBUICAO.md). Validação final em andamento.

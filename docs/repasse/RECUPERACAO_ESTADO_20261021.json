@@ -1,0 +1,1039 @@
+{
+  "schema_version": 1,
+  "snapshot_at": "2026-10-21T18:45:31.142882+00:00",
+  "scope": "Recuperação do desenvolvimento mt5x/HADOUKEN/Safety após reinstalação",
+  "baseline": {
+    "app": {
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados.git",
+      "code_commit": "ac7af2c392611bb1bd262c7806810eb4289559b3",
+      "handoff_commit": "a6f5dc2d989fa8a83b22e7f1e0e089c58a5cc690"
+    },
+    "hadouken": {
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5.git",
+      "code_commit": "ec550d77caae74e9f5f4ffe30cea5ccd29621624"
+    },
+    "safety": {
+      "url": "https://github.com/Misael-art/mt5x-safety.git",
+      "code_commit": "3988df13c467bd22941183f5546caad0500f9138",
+      "version": "1.8.0",
+      "headers": 15
+    }
+  },
+  "github_recovery": {
+    "app": {
+      "local_refs": 222,
+      "unreachable_local_commits": 0,
+      "unreachable_worktree_heads": 0,
+      "fresh_clone_fsck": "passed"
+    },
+    "hadouken": {
+      "local_refs": 74,
+      "unreachable_local_commits": 0,
+      "unreachable_worktree_heads": 0,
+      "fresh_clone_fsck": "passed"
+    },
+    "safety": {
+      "local_refs": 13,
+      "unreachable_local_commits": 0,
+      "unreachable_worktree_heads": 0,
+      "fresh_clone_fsck": "passed"
+    }
+  },
+  "wip_preservation": {
+    "dirty_worktrees_including_regenerable_links": 19,
+    "real_source_worktrees_restored_into_empty_repositories": 5,
+    "all_regular_source_file_hashes_verified": true,
+    "snapshot_branches_are_unreviewed": true,
+    "known_remote_snapshots": [
+      {
+        "repo": "app",
+        "branch": "backup/formatacao-20261021/wip/tarefa/T19.1-inventario-contratos",
+        "commit": "7abd2a5b743a1f1ed5b395f218856fafa9ce7890"
+      },
+      {
+        "repo": "app",
+        "branch": "backup/formatacao-20261021/wip/tarefa/T17.6-laboratorio-legibilidade",
+        "commit": "ac97a3429e4007599a5d30ea5fb1d383bb9a5d3f"
+      },
+      {
+        "repo": "hadouken",
+        "branch": "backup/formatacao-20261021/wip/codex/t12-3-orcamento-global",
+        "commit": "9b360ce3464145e863bc40a164328a93ff615c47"
+      },
+      {
+        "repo": "hadouken",
+        "branch": "backup/formatacao-20261021/wip/codex/t22-continuidade-formatacao",
+        "commit": "2deeba201aeea3e2468483acc70f348be1afd263"
+      }
+    ],
+    "regenerable_venv_links_not_a_data_backup": true,
+    "captured_two_hadouken_handoff_documents_private_exact_copy_and_public_normalized_copy": true
+  },
+  "fresh_source_validation": {
+    "existing_linux_host": true,
+    "new_operating_system_tested": false,
+    "isolated_github_checkouts_used": true,
+    "six_native_profiles": {
+      "mql5:hdk_s09_referencia": {
+        "version": "1.90",
+        "fingerprint": "b069f6b52c76c77d",
+        "input_count": 44,
+        "description_validated": true
+      },
+      "mql5:hdk_pullback_nativo": {
+        "version": "1.10",
+        "fingerprint": "e1b14494047477b2",
+        "input_count": 23,
+        "description_validated": true
+      },
+      "mql5:hdk_stochema9": {
+        "version": "1.30",
+        "fingerprint": "26545f544c784c39",
+        "input_count": 15,
+        "description_validated": true
+      },
+      "mql5:hdk_vwapbands": {
+        "version": "1.20",
+        "fingerprint": "7139d746ab6b2c1d",
+        "input_count": 11,
+        "description_validated": true
+      },
+      "mql5:hdk_madrid": {
+        "version": "1.20",
+        "fingerprint": "870c0f8db71c3d5a",
+        "input_count": 13,
+        "description_validated": true
+      },
+      "mql5:hdk_hahilo": {
+        "version": "1.20",
+        "fingerprint": "5dad3bbabab0343f",
+        "input_count": 10,
+        "description_validated": true
+      }
+    },
+    "safety_manifest_hashes": "15/15 passed",
+    "native_connection_or_tester_started": false,
+    "safety_install_to_new_isolated_folder": {
+      "first_copies": 15,
+      "second_copies": 0,
+      "all_bytes_and_marker_verified": true,
+      "platform_canvas_not_supplied_by_safety_payload": true
+    }
+  },
+  "database_restore_test": {
+    "online_snapshot_source_read_only": true,
+    "snapshot_bytes": 477712384,
+    "quick_check": "ok",
+    "tables": 43,
+    "all_table_counts_equal": true,
+    "all_snapshot_bytes_sha256_equal": true,
+    "application_history_reopened_with_fresh_github_source": true,
+    "new_execution_or_data_access_journal_event": false,
+    "owner_database_overwritten": false,
+    "current_source_and_snapshot_all_table_content_digests_equal": true,
+    "final_cutoff_comparison_at": "2026-10-21T18:08:55.266699+00:00"
+  },
+  "external_private_backup": {
+    "status": "verified_on_owner_preserved_sd_for_source_development",
+    "preservation_profile": "source_development_v1",
+    "verified": true,
+    "ready_to_format": true,
+    "readiness_scope": "Only mt5x/HADOUKEN/Safety source development at the recorded cut; not an OS image or operational qualification",
+    "user_confirmed_sd_excluded_from_format": true,
+    "relative_directory": "Backups/MT5X/2026-10-21-desenvolvimento",
+    "payload_bytes": 141562607,
+    "payload_file_count": 12,
+    "source_and_destination_devices_differ": true,
+    "hashes_read_back_from_sd": true,
+    "restore_from_sd": {
+      "quick_check": "ok",
+      "tables": 43,
+      "all_table_counts_equal": true,
+      "fresh_github_application_history_reopened": true,
+      "trades_reopened": 3,
+      "journal_requests": 2,
+      "journal_events": 9,
+      "git_bundles_verified": 3,
+      "config_context_archives_tested": true,
+      "restored_database_unchanged": true
+    },
+    "contents": [
+      "Consistent development SQLite with prepared data/presets/history/journal",
+      "Private effective configuration",
+      "Three compact Git bundles and five real WIP snapshots",
+      "Essential handoffs, guarded helper sources, QA receipts and CI diagnostics"
+    ],
+    "deliberately_recreated": [
+      "OS dependencies and virtualenvs",
+      "Wine/MT5 installations and binaries",
+      "regenerable terminal/provider caches and exports",
+      "raw chat transcripts and extensive nested execution logs"
+    ],
+    "full_16_5GB_package_not_migrated": true,
+    "credentials_not_published": true,
+    "new_operating_system_tested": false,
+    "current_source_database_matches_archived_snapshot_at": "2026-10-21T18:40:42.182630+00:00",
+    "old_paths_to_omitted_artifacts_do_not_become_restored_files": true,
+    "operational_acceptance": false,
+    "superseded_preparation_removed_after_verified_copy": true,
+    "inventory_is_cutoff_snapshot": true,
+    "current_complete_inventory_is_sd_manifest": true
+  },
+  "after_os_installation": {
+    "pending": true,
+    "steps": [
+      "Clone pinned source and inspect recovery/backup branches",
+      "Rebuild dependencies; do not reuse old .venv or active process/lock state",
+      "Verify independent private backup archive hashes before extracting into staging",
+      "Reopen snapshot/check history before considering write actions",
+      "Configure paths and reauthenticate GitHub/DEMO manually",
+      "Run doctor/tests appropriate to new environment; qualify native/DPI/Windows independently"
+    ]
+  },
+  "open_app_queue": [
+    {
+      "number": 172,
+      "head": "bfc422a523386ecd6b9e8448b963e638151fb552",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/172",
+      "checks": [
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612225486/job/119287654737"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612225486/job/119287639701"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612225486/job/119287628943"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612225486/job/119287574219"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612225486/job/119287573864"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612225486/job/119287571631"
+        }
+      ]
+    },
+    {
+      "number": 173,
+      "head": "4d3f560660b7b5e8a5394145172942f1d0899cf5",
+      "base": "codex/t19-34-contexto-responsivo",
+      "state": "open",
+      "merged": false,
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/173",
+      "checks": [
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612793239/job/119265798452"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612793239/job/119265798189"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612793239/job/119265798166"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612793239/job/119265798147"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612793239/job/119265797919"
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39612793239/job/119265797405"
+        }
+      ]
+    },
+    {
+      "number": 174,
+      "head": "9e070335ef1d72e0e4681513972fe63092cceeae",
+      "base": "codex/t15-1-recursos-varredura",
+      "state": "open",
+      "merged": false,
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/174",
+      "checks": [
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613378749/job/119267853608"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613378749/job/119267853461"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613378749/job/119267853368"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613378749/job/119267853125"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613378749/job/119267853112"
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613378749/job/119267852911"
+        }
+      ]
+    },
+    {
+      "number": 175,
+      "head": "e174cc789b614f7403c82eb439b829ff008929a5",
+      "base": "codex/t2-5-conexao-preservada",
+      "state": "open",
+      "merged": false,
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/175",
+      "checks": [
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613966019/job/119269896993"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613966019/job/119269896963"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613966019/job/119269896761"
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613966019/job/119269896337"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613966019/job/119269896275"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39613966019/job/119269895969"
+        }
+      ]
+    },
+    {
+      "number": 176,
+      "head": "e7656daba8a3156b26b7cf8983484c20b9c9bcea",
+      "base": "codex/t20-12-consulta-ui",
+      "state": "open",
+      "merged": false,
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/176",
+      "checks": [
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39620811804/job/119307611445"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39620811804/job/119307598002"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39620811804/job/119307527429"
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39620811804/job/119307526739"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39620811804/job/119307526036"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39620811804/job/119307524563"
+        }
+      ]
+    },
+    {
+      "number": 177,
+      "head": "4ab87025e1e829021cbe4b6bb2e380ee7b67ee85",
+      "base": "codex/t19-34-navegacao-adaptavel",
+      "state": "open",
+      "merged": false,
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/177",
+      "checks": [
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39623750354/job/119303668856"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39623750354/job/119303668827"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39623750354/job/119303668811"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39623750354/job/119303668785"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39623750354/job/119303668705"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39623750354/job/119303668276"
+        }
+      ]
+    },
+    {
+      "number": 178,
+      "head": "a6f5dc2d989fa8a83b22e7f1e0e089c58a5cc690",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/178",
+      "checks": [
+        {
+          "name": "Sourcery review",
+          "status": "completed",
+          "conclusion": "skipped",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/runs/119334493883"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39631251910/job/119329707311"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39631251910/job/119329707167"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39631251910/job/119329706943"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39631251910/job/119329706902"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39631251910/job/119329706657"
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39631251910/job/119329706196"
+        }
+      ]
+    }
+  ],
+  "open_hadouken_next_front": [
+    {
+      "number": 49,
+      "title": "T20.1: HDK_Tsmom — momentum de série temporal",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/49",
+      "head": "3e9b7c0fb207a15050e0020c6f988d98b6da5629",
+      "branch": "codex/t20.1-tsmom",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39570601453/job/119123502670"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39570595505/job/119123482280"
+        }
+      ]
+    },
+    {
+      "number": 50,
+      "title": "T20.2: HDK_IntradayMomentum — momentum intradiário de sessão",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/50",
+      "head": "92b587cc53b56c133284d692d416b8b5f949e81a",
+      "branch": "codex/t20.2-momentum-intradiario",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39570977855/job/119124781096"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39570971536/job/119124758325"
+        }
+      ]
+    },
+    {
+      "number": 51,
+      "title": "T20.3: preset Donchian tendência H4 + registro das sugestões T20",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/51",
+      "head": "292a271a912c0a4ca8bb9bda079fe26cd104eca4",
+      "branch": "codex/t20.3-donchian-tendencia",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39571173387/job/119125438192"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39571168092/job/119125420454"
+        }
+      ]
+    },
+    {
+      "number": 52,
+      "title": "T21.1: HDK_TurtleSoup — falso rompimento",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/52",
+      "head": "3f16b72395153e39dd93d48910de14c708c64f60",
+      "branch": "codex/t21.1-turtle-soup",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39573307574/job/119132581121"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39573301672/job/119132560816"
+        }
+      ]
+    },
+    {
+      "number": 53,
+      "title": "T21.2: HDK_Rsi2Trend — RSI(2) a favor da tendência",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/53",
+      "head": "86c8159f18c3603c053e268f87aac316db6ef285",
+      "branch": "codex/t21.2-rsi2-tendencia",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39573716459/job/119133923609"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39573710316/job/119133902656"
+        }
+      ]
+    },
+    {
+      "number": 54,
+      "title": "T21.6: preset HDK_Orb — faixa da madrugada (Ásia)",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/54",
+      "head": "f5919b164c46817d9ba0c0dd766f16eefb3efe39",
+      "branch": "codex/t21.6-faixa-asia-orb",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39573887735/job/119134499576"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39573882934/job/119134482677"
+        }
+      ]
+    },
+    {
+      "number": 55,
+      "title": "T21.4: HDK_Nr7Breakout — NR7 de Crabel",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/55",
+      "head": "8dd038a65fc806b1651e585abbfdc36288a9e62f",
+      "branch": "codex/t21.4-nr7-rompimento",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39574239497/job/119135666231"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39574230350/job/119135637493"
+        }
+      ]
+    },
+    {
+      "number": 56,
+      "title": "T21.5: HDK_GapFade — gap de abertura",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/56",
+      "head": "4251fb961452634630a74e75e549b50e4cabaf0c",
+      "branch": "codex/t21.5-gap-abertura",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39574606969/job/119136891388"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39574601227/job/119136872763"
+        }
+      ]
+    },
+    {
+      "number": 57,
+      "title": "T21.3: HDK_ValueArea — área de valor e regra dos 80%",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/57",
+      "head": "d6ffbd8aea1a67ff6df5c24e0ec0d42d49a095e2",
+      "branch": "codex/t21.3-area-de-valor",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39575044856/job/119138367754"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39575037414/job/119138342384"
+        }
+      ]
+    },
+    {
+      "number": 58,
+      "title": "T21.9: HDK_OvernightDrift — deriva noturna",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/58",
+      "head": "af331593b39a33d52ae78a4cadc5fa292e67f525",
+      "branch": "codex/t21.9-overnight",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39575380322/job/119139489264"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39575373726/job/119139466627"
+        }
+      ]
+    },
+    {
+      "number": 59,
+      "title": "T21.11: classificador de regime (referência para o gestor)",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/59",
+      "head": "a32bba54af9f02d251cf0531d5ca87770bf63eee",
+      "branch": "codex/t21.11-classificador-regime",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39575746388/job/119140703174"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39575739578/job/119140681411"
+        }
+      ]
+    },
+    {
+      "number": 60,
+      "title": "T21.0: registro da frente Estratégia (cobertura, C-13 a C-24, passagem ao coordenador)",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/60",
+      "head": "4594d791300606ee6ba0c99ddde3d4211bcc4cba",
+      "branch": "codex/t21.0-registro-frente-estrategia",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39576125918/job/119141973425"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39576116822/job/119141946253"
+        }
+      ]
+    }
+  ],
+  "operational_acceptance": false,
+  "hadouken_notes_provenance": [
+    {
+      "source_file": "Documentation/HADOUKEN_2/CONTINUIDADE_FORMATACAO_20261021.md",
+      "sha256_original_private": "29932b22fd7c1bad0ed5389157c6aa586e6d705aa36bbed375a1ad5a66939a81",
+      "normalization": "Personal paths replaced by placeholders; unreviewed historical source retained as attributed notes."
+    },
+    {
+      "source_file": "Tools/agente/README.md",
+      "sha256_original_private": "34487fd2caab755607a0df18d9b582bb5d61352a4cbcc9195068fcbf97b8dbd9",
+      "normalization": "Personal paths replaced by placeholders; unreviewed historical source retained as attributed notes."
+    }
+  ],
+  "legacy_repository": {
+    "repository": "Misael-art/HADOUKEN-MQL5-Framework",
+    "current_runtime_dependency": false,
+    "local_root_has_only_git_metadata": true,
+    "local_and_remote_have_no_commits_or_refs": true,
+    "separate_fresh_clone_confirmed_empty": true
+  },
+  "verifier_local_validation": {
+    "baseline_sdk_docs": "3passed1.94s",
+    "final_recovery_and_sdk_tests": "23passed3.70s",
+    "cross_platform_drive_path_cases": true,
+    "external_folder_link_not_a_backup_copy": true,
+    "physical_windows_tested": false,
+    "doctor_no_probe": {
+      "ok": 20,
+      "optional_warning": 1,
+      "failed": 0
+    },
+    "changed_runtime_roots": []
+  },
+  "other_open_prs": [
+    {
+      "repo": "MISA_MT5-Extra-o-de-Dados",
+      "number": 79,
+      "title": "docs: ORG-02 — fontes canônicas, fila de integração e política Git",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/79",
+      "head": "c390b0451df418ae45eea4d098eface48d709cb4",
+      "branch": "docs/org-02-fontes-fila-politica",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38833747596/job/116758095999"
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38833747596/job/116758095985"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38833747596/job/116758095940"
+        },
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38833747596/job/116758095924"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38833747596/job/116758095861"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38833747596/job/116758095684"
+        }
+      ],
+      "head_is_ancestor_of_installed_baseline": false
+    },
+    {
+      "repo": "MISA_MT5-Extra-o-de-Dados",
+      "number": 80,
+      "title": "test(ORG-04): isola schemas PostgreSQL sem apagar public",
+      "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/80",
+      "head": "7e2d330f5d9724d1a111fcd483cdb78db74496b0",
+      "branch": "tarefa/ORG-04-isolamento-schemas-pg",
+      "base": "docs/org-02-fontes-fila-politica",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Lint dos instaladores",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38876867587/job/116893904297"
+        },
+        {
+          "name": "Testes (windows-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38876867587/job/116893904257"
+        },
+        {
+          "name": "Instalador Windows (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38876867587/job/116893904136"
+        },
+        {
+          "name": "Testes (ubuntu-latest)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38876867587/job/116893904123"
+        },
+        {
+          "name": "Instalador Linux (sem MT5)",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38876867587/job/116893904074"
+        },
+        {
+          "name": "Testes PostgreSQL",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/38876867587/job/116893903832"
+        }
+      ],
+      "head_is_ancestor_of_installed_baseline": false
+    },
+    {
+      "repo": "projeto-indicadores-mt5",
+      "number": 61,
+      "title": "T22: continuidade pós-formatação do host",
+      "url": "https://github.com/Misael-art/projeto-indicadores-mt5/pull/61",
+      "head": "a94f0156c3a84516d9731f6439b2ee10541446d3",
+      "branch": "codex/t22-continuidade-formatacao",
+      "base": "master",
+      "state": "open",
+      "merged": false,
+      "checks": [
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39644722808/job/119377143605"
+        },
+        {
+          "name": "Checagem estática MQL5 + ferramentas",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/Misael-art/projeto-indicadores-mt5/actions/runs/39644713523/job/119377110874"
+        }
+      ]
+    }
+  ],
+  "versioned_recovery_branch": "codex/recuperacao-pos-formatacao-20261021",
+  "snapshot_finalized_at": "2026-10-21T18:11:14.937933+00:00",
+  "recovery_verifier_validation": {
+    "baseline": "23 passed",
+    "final": "28 passed in 3.05s",
+    "legacy_full_profile_requirements_preserved": true,
+    "explicit_source_development_profile": true,
+    "unknown_profiles_rejected": true,
+    "windows_physical_pending": true,
+    "doctor_current_host_existing_config": "20 OK / 1 optional pandas-ta warning / 0 failures; --root original project --no-probe",
+    "doctor_isolated_checkout_without_private_config": "15 OK / 1 warning / 1 expected missing config; preserved, not a new OS test"
+  },
+  "recovery_publication_previous_head_checks": {
+    "at": "2026-10-21T18:42:48.613Z",
+    "pr": 179,
+    "head": "3debbae65b65bed6a68e56b0fe9e056b386fb30c",
+    "base": "codex/repasse-integracao-20261021",
+    "draft": true,
+    "state": "open",
+    "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/179",
+    "checks": [
+      {
+        "name": "Instalador Linux (sem MT5)",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881192"
+      },
+      {
+        "name": "Testes (ubuntu-latest)",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881120"
+      },
+      {
+        "name": "Testes (windows-latest)",
+        "status": "in_progress",
+        "conclusion": null,
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881102"
+      },
+      {
+        "name": "Testes PostgreSQL",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881037"
+      },
+      {
+        "name": "Lint dos instaladores",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397881011"
+      },
+      {
+        "name": "Instalador Windows (sem MT5)",
+        "status": "completed",
+        "conclusion": "success",
+        "url": "https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/actions/runs/39650682085/job/119397880698"
+      }
+    ]
+  },
+  "recovery_cleanup": {
+    "only_disposable_copies_created_by_this_task": true,
+    "logical_bytes_removed": 17579945676,
+    "observed_free_bytes_increase": 16622886912,
+    "original_user_sources_database_config_and_evidence_preserved": true,
+    "btrfs_not_logical_sum": true
+  }
+}

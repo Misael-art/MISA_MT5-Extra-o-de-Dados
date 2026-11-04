@@ -1,0 +1,24 @@
+{
+  "task": "F15 compose layout reach correction",
+  "date": "2026-10-21",
+  "source_snapshot": "8aef19c1e31985f3462620cc617c37c75c1ae1ea",
+  "dependency": "1b0ba5100c63ccf42233b3f4b20970155bba17d7",
+  "composition_merge": "9ed90b730903930bce8239123abf6e815429c1c6",
+  "method": "Gitmerge no conflicts;F15runtime3byteidentical8aef/ownprivateQA;original9hashesverifiedagainst8aefblobs,notrewritten",
+  "validation": {
+    "tests": "test_ui_resource_scan_limits.py test_ui_robot_context.py",
+    "passed": 3,
+    "seconds": 42.93,
+    "environment": "LinuxTk/Xvfb,96/144simulatedDPI andpartialfolderUI"
+  },
+  "reuse": "49Resources/24retention/5ownfinal andprivatebackup/safety/restoreaudit/export12405allcolumns/runbf4d unchanged remain scoped compatible; counts overlap. No new restore or MT5.",
+  "pending": "all6newhead checks;serial172then173;controlledinstall/readback;noWindowsphysical/nativequalification",
+  "sha256": {
+    "mt5_extracao/resources/storage.py": "a4d0c0c9cf89bb7bf631aec4cbc1cbfc0f2904e74389d4bda333c75506cad682",
+    "mt5_extracao/resources/files.py": "1ca631c6e770eb0ae86906efef57a748b0a3012aea41854e35c28d250ed63bb0",
+    "mt5_extracao/ui/resources.py": "9d11fdf81385b87a98fa413e3f596812a0c77e4a2c209118127c73172c8c758d",
+    "tests/test_ui_robot_context.py": "fa3460d0a99e9c112bb25f2236464ad14f47d5cac8b6d5712af8b108439eed42",
+    "docs/sdk/recursos_leitura_parcial.md": "de509c3637d45186522e53ae41ee26740af521b4cf4446db7bf800b95a9a503f",
+    "docs/continuidade.md": "d4dc0302ce43f0af15b708145fe7e2379586efee6a2a7a91835ebe905f623248"
+  }
+}

@@ -272,7 +272,9 @@ class RobotDetail:
                          self.tests_text, self.run_status, self.live_text,
                          self.result_context, self.execution_status)
         self.theme.on_change(self._theme_changed)
-        body.bind("<Configure>", self._rewrap)
+        for label in self._wrapped:
+            label.pack_configure(fill=tk.X)
+            label.bind("<Configure>", self._rewrap, add="+")
         for variable in (self.symbol_var, self.timeframe_var, self.period_var):
             variable.trace_add("write", lambda *_: self._update_result_context())
         self.show(None)
@@ -307,8 +309,11 @@ class RobotDetail:
         self.result_context.config(text=text)
 
     def _rewrap(self, event):
-        for label in self._wrapped:
-            label.configure(wraplength=max(220, event.width - 30))
+        # A aba/rolagem reduz a largura útil em relação ao cartão externo.
+        # Usa a alocação do próprio rótulo; altura nova não reinicia a geometria.
+        width = max(1, event.width - 4)
+        if int(float(event.widget.cget("wraplength"))) != width:
+            event.widget.configure(wraplength=width)
 
     def show(self, robot):
         previous_key = self.robot.key if self.robot else None

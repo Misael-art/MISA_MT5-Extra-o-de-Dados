@@ -9,6 +9,7 @@ retratos periódicos em `_resource_snapshots` e a projeção de crescimento. Só
 import logging
 import os
 import shutil
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -55,14 +56,31 @@ def _usable(db) -> bool:
     return db is not None and getattr(db, "engine", None) is not None
 
 
-def dir_bytes(path) -> int:
+def scan_deadline(seconds):
+    """Prazo cooperativo da leitura opcional; não interrompe uma chamada do filesystem."""
+    deadline = time.monotonic() + seconds
+
+    def check():
+        if time.monotonic() >= deadline:
+            raise TimeoutError("prazo da leitura de pastas esgotado")
+
+    return check
+
+
+def dir_bytes(path, *, check=None) -> int:
     """Soma dos arquivos da pasta (recursiva); 0 se não existir. Erros de permissão são ignorados."""
     total = 0
+    if check is not None:
+        check()
     path = Path(path)
     if not path.exists():
         return 0
     for root, _dirs, files in os.walk(path, onerror=lambda e: None):
+        if check is not None:
+            check()
         for name in files:
+            if check is not None:
+                check()
             try:
                 total += os.path.getsize(os.path.join(root, name))
             except OSError:
@@ -116,7 +134,8 @@ def _sqlite_sizes(conn) -> Dict[str, int]:
         return {}
 
 
-def measure(db, archive: Optional[Path] = None, with_dirs: bool = True, config=None) -> dict:
+def measure(db, archive: Optional[Path] = None, with_dirs: bool = True, config=None,
+            *, directory_check=None) -> dict:
     """
     Retrato do espaço. Nunca lança: o que não puder ser medido fica None e o motivo vai em "warnings".
     tables: [{table, kind, rows, bytes, estimated (bytes estimados pelas linhas), symbol, timeframe, start, end}]
@@ -175,9 +194,16 @@ def measure(db, archive: Optional[Path] = None, with_dirs: bool = True, config=N
         from mt5_extracao.resources import policy as policy_mod
         archive = archive or policy_mod.archive_dir(db)
         for label, locate in EXTRA_DIRS.items():
+            path = None
             try:
                 path = Path(locate(db, archive, config) if label == "Cópias" else locate(db, archive))
-                report["dirs"][label] = {"path": str(path), "bytes": dir_bytes(path)}
+                size = dir_bytes(path, check=directory_check) if directory_check is not None else dir_bytes(path)
+                report["dirs"][label] = {"path": str(path), "bytes": size}
+            except TimeoutError as e:
+                report["dirs"][label] = {"path": str(path) if path is not None else None, "bytes": None}
+                report["dirs_complete"] = False
+                report["warnings"].append(f"Medição de pastas incompleta: {e}; total indisponível.")
+                break
             except Exception as e:
                 report["warnings"].append(f"Pasta {label}: {e}")
     return report

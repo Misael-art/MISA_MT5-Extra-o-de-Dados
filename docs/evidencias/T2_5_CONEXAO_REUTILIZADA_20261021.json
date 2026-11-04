@@ -1,0 +1,88 @@
+{
+  "task": "F2/T2.5 corrective matching backend reuse",
+  "base": "e070897ca3e7c07956774b902b343863128ae0da",
+  "runtime_files": [
+    "mt5_extracao/mt5_connector.py"
+  ],
+  "scope": "read-only reuse preflight and borrowed identity/closing; legacy fresh and explicit force paths retained",
+  "source_sha256": {
+    "mt5_extracao/mt5_connector.py": "3304b5513594f5fe2437ca04bb56570b9e3d30c1448a254f70869531f04de9f4",
+    "tests/test_connection_reuse.py": "9d8caf699dd927eed6cada47c9b2c279950eaa50f9931b085d8aa475eb8c022a",
+    "docs/sdk/conexao_reutilizada.md": "d5ed09eebfe53421a156741365e300eab6ca43b5ebef9a5f635ffb35ba300914",
+    "docs/PLANO_DE_TRABALHO.md": "3760e4448f8643b6cacf5f66e6c1456e35ad65240e50f8262b3b8715d7732612",
+    "docs/continuidade.md": "2e8423dfcbb9a713ce8556cd43b8deae1770a89310f83f234eff88e76bcf4d27",
+    "docs/validacao_instaladores.md": "79a3d4fdcaca11f421215936bb16369bfdccc8e284fd9350a835320bd9bf1684"
+  },
+  "validation": {
+    "legacy_baseline": {
+      "passed": 33,
+      "seconds": 34.69
+    },
+    "new_regression_before_runtime": {
+      "failed": 22,
+      "passed": 2
+    },
+    "first_post_runtime": {
+      "passed": 57,
+      "seconds": 31.37
+    },
+    "historical_login_ui_interaction": {
+      "passed": 52,
+      "deselected": 76,
+      "seconds": 34.33
+    },
+    "incremental_bridge": {
+      "passed": 27,
+      "seconds": 40.29
+    },
+    "own_final": {
+      "passed": 46
+    },
+    "counts_overlap": true,
+    "doctor_existing_root": {
+      "ok": 20,
+      "optional_warning": 1,
+      "failure": 0
+    },
+    "doctor_without_root": "15/1/1; absent worktree configuration, retained as failed attempt; no reinstallation"
+  },
+  "real_candidate_host": {
+    "backend": "Wine/MetaTrader5 6276 DEMO",
+    "sdk_initialize_login_shutdown_forbidden": true,
+    "positions_orders_before_after": [
+      0,
+      0
+    ],
+    "primary_process_unchanged": true,
+    "owner_database_opened": false,
+    "owner_restore": false,
+    "private_data": {
+      "symbol": "EURUSD",
+      "timeframe": "H1",
+      "time_basis": "broker",
+      "start": "2026-10-12",
+      "end": "2026-10-14",
+      "first_rows": 25,
+      "updated_export_rows": 49,
+      "backup_restore_safety_copy_audit": true,
+      "marker_absent_direct_sqlite_master_check": true,
+      "all_columns_csv_readback_equal": true,
+      "csv_sha256": "d85c13f6bfeec128402cb020448e40bb4e6fc8ae411a43453756595f552922e4"
+    },
+    "real_online_candidate_ui": {
+      "rows_reopened": 49,
+      "symbols_loaded": 12270,
+      "screenshot_inspected": true,
+      "local_disconnect_preserved_backend": true
+    },
+    "proof_reuse": "final helper auto_login=False policy covered by pure tests; initialize/identity/shutdown unchanged; no duplicate provider extraction"
+  },
+  "qualified": {
+    "installed": false,
+    "physical_windows": false,
+    "multi_instance_or_async_ownership": false,
+    "provider_source_certified": false,
+    "private_tester_synchronization": false,
+    "operational_or_financial_acceptance": false
+  }
+}

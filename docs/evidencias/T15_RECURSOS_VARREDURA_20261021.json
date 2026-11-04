@@ -1,0 +1,73 @@
+{
+  "task": "T15.1/F15 corrective optional folder scans in Resources",
+  "date": "2026-10-21",
+  "base": "66571c4dc15eeea05b9cff6a33521af73513f7a0",
+  "actual_master_dependency": "ac7af2c392611bb1bd262c7806810eb4289559b3",
+  "composition": "Git fast-forward fromac7 to172head665, ownnonoverlapping3runtime/test edits preserved; beforecentraldocs",
+  "observation": "Installedac7 overprivate455.6MBclone: resourcefirstread exceeded45s then90s beforebackup, backgroundthread in os.walk. Noownerrestore/native. Exactfolderatstacknotcaptured; filesystemroot pointsactualinstallationwithsharedlogs.",
+  "runtime": "One shared1scooperativedeadline supplied byUI tooptional directorybytes andoldfilepreview; checkbetweenFSops. TimeoutmarksbytesNone/incompletewarning, discardslistprefix, keepsbackup/restoremodesavailable, rejectsUIcleanupincldirectcallback. Legacycallswithoutcheckretainfullscan; no scheduler/lock/cache/financialbudget/schema/configkey added.",
+  "validation": {
+    "baseline": "45passed42.99s;4newregressionsfailed12.12s beforechange",
+    "final": "49passed59.05s (new4+old45)",
+    "retention": "24passed12.65s artifact/sessionprotections",
+    "composed_ui": "3passed38.09s afterGitcompose665 (resource1+robotcontext96/144cases2)",
+    "own_final": "5passed11.81s afteradditionalpartial-prefixsizecase",
+    "overlap": "selections overlap; do not sum",
+    "environment": "existingLinuxvenv/TkXvfb, no reinstall/fullsuite/workflowdispatch; doctor20OK/1pandas-taoptional/0failures reused fromsameenv, bootstrapunchanged"
+  },
+  "private_ui": {
+    "candidate_not_installed": true,
+    "sqlite_mb": 455.6,
+    "steps": "realUI backup verified; safetycopy thenrestoreselectedbackup, auditconfirmed, export andreadbackallcolumns12405EURUSDH1;storedcompositionrununchanged;resourcesreopened3backups/cleanupdisabled/partialwarning",
+    "owner_db_restore": false,
+    "owner_opened_read_only": true,
+    "owner_data_version_unchanged": true,
+    "owner_configuration_and_preferences_unchanged": true,
+    "initial_incomplete": "90sQArestoredeadline interruptedaftercopybeforefinalaudit; notaccepted. DeadownprivateOEXCLlock removedafterPIDdeadcheck, copy/diagnosticspreserved. Resumeonlyrestorewith300scompleted. No other/native process orlock touched.",
+    "filesystem_boundary": "candidateworktreesource; QA paths.PROJECT_ROOT pointsactualinstalledApp toexerciseactualsharedlogs; CWD/config/database/backup/archive/exportprivate",
+    "stored_run": "bf4d0f79363b451c8f15f9e052981bf9",
+    "csv_sha256": "658f165e2ab8ad26a0644d1bb1b54a199793f4dc57478b354b7cd2fa0c86faa5",
+    "screenshots": "private-recovery-ui-export.png andprivate-recovery-resources-readback.png inspected, privateignoredartifacts only"
+  },
+  "protected_runtime_files_byte_identical": [
+    "mt5_extracao/robots/backtest.py",
+    "mt5_extracao/robots/budget.py",
+    "mt5_extracao/robots/store.py",
+    "mt5_extracao/strategies/base.py",
+    "mt5_extracao/strategies/backtester.py",
+    "mt5_extracao/composition/adapter.py",
+    "mt5_extracao/presets/execution.py",
+    "mt5_extracao/sdk.py",
+    "mt5_extracao/mt5_backend.py",
+    "mt5_extracao/bootstrap/config_builder.py",
+    "mt5_extracao/resources/actions.py",
+    "mt5_extracao/resources/policy.py",
+    "mt5_extracao/resources/guard.py",
+    "mt5_extracao/resources/automation.py"
+  ],
+  "file_functions_ast_identical": [
+    "backup",
+    "restore_backup",
+    "clean_files",
+    "_protected_artifacts",
+    "_artifact_protected"
+  ],
+  "pending": [
+    "six checks on publishedfinalhead",
+    "serial172 thenownmerge/controlledownerinstallation/readback",
+    "Windowsphysical/networkfilesystem",
+    "singleblockingFSoperation canoutlivethecooperativedeadline; no wholeUI/SQL/backupduration guarantee",
+    "nativeSync/Tester/replay/panel/DEMOacceptance unchanged andpending"
+  ],
+  "sha256": {
+    "mt5_extracao/resources/storage.py": "a4d0c0c9cf89bb7bf631aec4cbc1cbfc0f2904e74389d4bda333c75506cad682",
+    "mt5_extracao/resources/files.py": "1ca631c6e770eb0ae86906efef57a748b0a3012aea41854e35c28d250ed63bb0",
+    "mt5_extracao/ui/resources.py": "9d11fdf81385b87a98fa413e3f596812a0c77e4a2c209118127c73172c8c758d",
+    "tests/test_resource_scan_limits.py": "03cfc02ed43279d063362c963668f0951c3d958a21f4a87b2577d764326307d2",
+    "tests/test_ui_resource_scan_limits.py": "8778f097618b6b0d436a1deef8c5f3becfd3768692e40035669af371b1bab965",
+    "docs/sdk/recursos_leitura_parcial.md": "f8aa2f60c52deaae7ea6dd09d69dd42b2d47e08cd065a76a212a6075e02d11a8",
+    "docs/continuidade.md": "9ebe422d23cab82e76c02032e9d2f7923cff0885fab29b50d86a41f994721f9c",
+    "docs/PLANO_DE_TRABALHO.md": "e54497945ec95bf5904f1ae880ed37bc151480e6dd6e314d4656d6a4d20ec655",
+    "docs/validacao_instaladores.md": "38ed558652962238c1a43543816323556ed2da7bf4a08182452e633abfd72d8c"
+  }
+}

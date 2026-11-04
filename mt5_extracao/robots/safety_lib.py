@@ -62,6 +62,33 @@ def required_version(robot) -> str:
     return str((getattr(robot, "manifest", None) or {}).get("safety_lib", "") or "")
 
 
+def indicator_assets(folder, manifest=None):
+    """Ativos gráficos opcionais revisados; validar tudo antes de copiar headers."""
+    root = Path(folder).resolve()
+    manifest = read_manifest(root) if manifest is None else manifest
+    records = manifest.get("indicators", [])
+    if not isinstance(records, list):
+        raise SafetyLibError("Manifesto de indicadores inválido: restaure a biblioteca completa.")
+    assets, seen = [], set()
+    for record in records:
+        if not isinstance(record, dict) or not isinstance(record.get("source"), str):
+            raise SafetyLibError("Ativo gráfico inválido no manifesto da biblioteca.")
+        relative = Path(record["source"])
+        if (relative.is_absolute() or ".." in relative.parts or "\\" in record["source"] or
+                len(relative.parts) < 3 or relative.parts[0] != "Indicators" or relative.suffix.lower() != ".mq5" or
+                relative in seen):
+            raise SafetyLibError("Caminho de indicador inválido no manifesto da biblioteca.")
+        source = (root / relative).resolve()
+        if not source.is_relative_to(root) or not source.is_file():
+            raise SafetyLibError(f"Indicador da biblioteca ausente: {relative}. Restaure a distribuição completa.")
+        content = source.read_bytes()
+        if hashlib.sha256(content).hexdigest() != record.get("sha256"):
+            raise SafetyLibError(f"Indicador {relative} diverge do hash: restaure a distribuição completa.")
+        seen.add(relative)
+        assets.append((source, relative, content))
+    return assets
+
+
 def install(folder, data_dir, upgrade: bool = False) -> List[Path]:
     """
     Copia a biblioteca para MQL5/Include/<include_dir> e grava o marcador de versão. Rodar de novo não muda nada.
@@ -92,6 +119,7 @@ def install(folder, data_dir, upgrade: bool = False) -> List[Path]:
             raise SafetyLibError(f"O arquivo {source} diverge do hash do manifesto: restaure a distribuição "
                                  f"mt5x-safety {manifest['version']} antes de instalar.")
         sources.append((source, name, content))
+    assets = indicator_assets(folder, manifest)
     copied = []
     for source, name, content in sources:
         target = target_dir / name
@@ -100,8 +128,17 @@ def install(folder, data_dir, upgrade: bool = False) -> List[Path]:
             target.write_bytes(content)
             shutil.copystat(source, target)
             copied.append(target)
+    for source, relative, content in assets:
+        target = Path(data_dir) / "MQL5" / relative
+        if not target.is_file() or target.read_bytes() != content:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+            shutil.copystat(source, target)
+            copied.append(target)
     marker = {"name": manifest.get("name", "mt5x-safety"), "version": manifest["version"],
               "include_dir": manifest["include_dir"], "files": manifest["files"]}
+    if assets:
+        marker["indicators"] = manifest["indicators"]
     if hashes is not None:
         marker["sha256"] = hashes
     include.mkdir(parents=True, exist_ok=True)

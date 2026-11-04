@@ -1,0 +1,20 @@
+{
+  "task": "F2/T2.5 composition with corrected robot page",
+  "base": "c0e0f9ce73dc3d78d37c1ef1a5aacf16634797f1",
+  "dependency": "4d3f560660b7b5e8a5394145172942f1d0899cf5",
+  "merge": "1a5026dbbb07244ecb4d526347132ea3bbb49d4b",
+  "runtime_sha256": {
+    "mt5_extracao/mt5_connector.py": "3304b5513594f5fe2437ca04bb56570b9e3d30c1448a254f70869531f04de9f4"
+  },
+  "runtime_unchanged_from": "c0e0f9ce73dc3d78d37c1ef1a5aacf16634797f1",
+  "conflicts": "append-only docs/continuidade and installer checklist, both retained",
+  "tests": {
+    "passed": 48,
+    "deselected": 64,
+    "seconds": 31.7
+  },
+  "real_private_proof_reused": "matching DEMO backend;25→49/backup/safetyrestore/export/onlineUI no SDKmutators; sourceinitialize/identity/shutdown unchanged",
+  "new_ci_and_installation_qualified": false,
+  "cache_waiver": false,
+  "sdk_sha256": "4d22d3ec491faded5f40f61359859c507ca1b076e7e0cbff31c11c0366797363"
+}

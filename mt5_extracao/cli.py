@@ -1063,19 +1063,14 @@ def cmd_audit(args, ctx):
 
 def cmd_commands(args, ctx):
     """Catálogo dos comandos e argumentos, lido do próprio analisador (não fica desatualizado)."""
-    parser = build_parser()
-    sub = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
-    helps = {a.dest: a.help for a in sub._choices_actions}
-    catalog = []
-    for name, p in sub.choices.items():
-        arguments = [{"flags": a.option_strings or [a.dest], "required": bool(a.required) if a.option_strings
-                      else a.nargs not in ("?", "*"), "default": None if a.default is argparse.SUPPRESS else a.default,
-                      "choices": list(a.choices) if a.choices else None, "help": a.help or ""}
-                     for a in p._actions if a.dest != "help"]
-        catalog.append({"command": name, "help": helps.get(name, ""), "arguments": arguments})
-        _print(f"{name:<11} {helps.get(name, '')}")
+    from .automation.catalog import command_tree
+    tree = command_tree()
+    catalog = tree["subcommands"]
+    for item in catalog:
+        _print(f"{item['command']:<11} {item['help']}")
     _data(commands=catalog, exit_codes={"0": "sucesso", "1": "falha", "2": "uso incorreto"},
-          global_flags=["--config", "--db", "--json", "-v"])
+          global_flags=["--config", "--db", "--json", "-v"], schema_version=1,
+          global_arguments=tree["arguments"])
     return EXIT_OK
 
 
@@ -1706,6 +1701,8 @@ def build_parser():
     parser.add_argument("--json", dest="json_output", action="store_true",
                         help="saída em um único objeto JSON (para agentes e scripts); use antes do comando")
     sub = parser.add_subparsers(dest="command", required=True)
+    from .automation.commands import add_parser as workflow_parser
+    workflow_parser(sub)
 
     p = sub.add_parser("doctor", help="diagnóstico do ambiente")
     p.add_argument("--json", action="store_true")
@@ -1776,6 +1773,18 @@ def build_parser():
     q.add_argument("--algorithm-version", help="limita a uma versão do algoritmo")
     q.add_argument("--from", dest="date_from", help="início inclusivo de observation_time, com fuso")
     q.add_argument("--to", dest="date_to", help="fim exclusivo de observation_time, com fuso")
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("series", help="consulta pública (envelope com base, versões, qualidade e cursor)")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--tf", required=True)
+    q.add_argument("--feature", dest="feature_ids", action="append", required=True,
+                   help="característica do catálogo; repita para várias")
+    q.add_argument("--as-of", required=True, help="instante de decisão com fuso, por exemplo 2026-10-14T17:25:00Z")
+    q.add_argument("--from", dest="date_from", help="início inclusivo de observation_time, com fuso")
+    q.add_argument("--to", dest="date_to", help="fim exclusivo de observation_time, com fuso")
+    q.add_argument("--page-size", type=int, default=500)
+    q.add_argument("--cursor", help="cursor devolvido pela página anterior")
     q.set_defaults(func=cmd_analytics)
 
     q = features_sub.add_parser("compute", help="calcula volume, RVOL, volatilidade, regime e estrutura da sessão")
@@ -2051,6 +2060,30 @@ def cmd_analytics(args, ctx):
         else:
             _print(frame.to_string(index=False))
         _data(values=frame.to_dict("records"))
+        return EXIT_OK
+
+    if args.features_action == "series":
+        from mt5_extracao.analytics import query_service
+
+        envelope = query_service.series(ctx.db, symbol=args.symbol, timeframe=args.tf, feature_ids=args.feature_ids,
+                                        as_of=args.as_of, start=args.date_from, end=args.date_to,
+                                        page_size=args.page_size, cursor=args.cursor)
+        if envelope["status"] != "ok":
+            for error in envelope["errors"]:
+                _print(f"[{error['code']}] {error['message']}")
+            _data(envelope=envelope)
+            return EXIT_USAGE
+        base = envelope["base"]
+        _print(f"Base {base['namespace'][:8]} ({base['provider'] or 'fonte não declarada'}"
+               f"{'@' + base['server'] if base['server'] else ''}); fuso: {envelope['time_context']['offset_state']}")
+        for row in envelope["values"]:
+            _print(f"{row['feature_id']}\t{row['observation_time']}\t{row['value']}\t{row['quality']}\t"
+                   f"rev {row['revision']}\t{row['algorithm_version']}")
+        for reason in envelope["reasons"]:
+            _print(reason)
+        if envelope["page"]["next_cursor"]:
+            _print(f"Mais resultados: --cursor {envelope['page']['next_cursor']}")
+        _data(envelope=envelope)
         return EXIT_OK
 
     if args.features_action == "compute":

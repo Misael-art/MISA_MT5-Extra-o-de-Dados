@@ -1,0 +1,84 @@
+{
+  "task": "T19.34 initial robot context viewport wrapping",
+  "date": "2026-10-21",
+  "base": "da05937c1cb28a4a89e3e535cd52e163e1db0abf",
+  "runtime_commit": "024bb1a46d8d8cde3964ea2b9b7a9e376b9012d0",
+  "scope": "One UI file only: allocate wrapped labels across available width and bind wrapping to actual label Configure, guarded against reapplying same width. No math/metrics/trading/context selection behavior changes.",
+  "finding": {
+    "observed": "Stored context clipped horizontally in T19.24 screenshot; outer card width was used for nested notebook/scroll viewport",
+    "directed_before_fix": "Failed1 in11.82s: wrap688 > label594 pixels",
+    "fix": "Eight added/three removed runtime lines; own allocated width minus4, no220px minimum exceeding small viewport"
+  },
+  "checks": [
+    {
+      "phase": "baseline_before_edits",
+      "passed": 2,
+      "seconds": 38.07,
+      "selection": "existing backtest reflow + stored composition display"
+    },
+    {
+      "phase": "final after test fixture cleanup",
+      "passed": 5,
+      "seconds": 34.07,
+      "selection": "new2DPI cases plus existing3detail tests; Tk/Xvfb",
+      "matrix": {
+        "sizes": [
+          "1920x1000",
+          "1280x800",
+          "900x620",
+          "820x800"
+        ],
+        "dpi_simulated": [
+          96,
+          144
+        ],
+        "themes": 2,
+        "font": "enlarged at144 per existing helper",
+        "repeat_resize": true,
+        "keyboard": "Page Down reaches bottom",
+        "content": "Text/model/result/equity preserved; no recalculation"
+      },
+      "isolation": "Original Tk scaling restored in test finalizer to avoid affecting later tests"
+    }
+  ],
+  "test_count_note": "Previous selections overlap; intermediate fixture failures after the runtime fix were missing model run/metrics on theme redraw. Fixture now reflects stored model; no assertion/test was removed or production fallback introduced.",
+  "gui_proof": {
+    "kind": "Real Tk components reopening same private historical run; no ownerDB/MT5",
+    "run_id": "48fede65272345e3a30d5d1b513dc7ab",
+    "net_profit": 111.08749999999556,
+    "trades": 3,
+    "new_backtest_calculated": false,
+    "widget_bounds_checked": 24,
+    "sizes_measured": [
+      "1920x1000",
+      "1280x800",
+      "900x620",
+      "820x800"
+    ],
+    "themes": 2,
+    "dpi_simulated": 96,
+    "captures": {
+      "t19-34-context-1280-theme0.png": "d9f8ee934606f0949448f2b3a689b9973419784b9eba042a29961df5c410c8e2",
+      "t19-34-context-900-theme0.png": "cb6ee85e4f15f75cbd8cdbf11468913126629ea143cc8665366ec1a997acd2cf",
+      "t19-34-context-1280-theme1.png": "869db256b456f196e97c03a6a3ed124a0dd8d8f4a5ad63db078e0abbe7740205",
+      "t19-34-context-900-theme1.png": "412ee81e9378a24252382422cadded596da24f9a35cc6bcc16e90f8538d24835"
+    },
+    "captures_inspected": true,
+    "vertical_limitation": "Small-height viewport uses existing scroll; all content is reachable, not simultaneously visible"
+  },
+  "protected": "Diff empty in strategies/robots/experiments/composition/presets/shared ScrollableContent/RobotsPanel; no new price/lot/risk calculation",
+  "doctor": "Existing same configured environment20OK/1optional pandas-ta/0failures reused; no environment dependency change",
+  "pending": [
+    "Final technical review and6mandatoryCIchecks",
+    "Serial merge/controlled owner installation after170/171",
+    "Remaining T19.34 future editor/generator/chart/accessibility matrix",
+    "Physical Windows/DPI/native/broker/live acceptance"
+  ],
+  "sha256": {
+    "mt5_extracao/ui/robot_detail.py": "0cf7b759ca8a8e9af43d40c3aa4c1680faba442fe938af19ca3024385c6bf887",
+    "tests/test_ui_robot_context.py": "f4b401e7dc48c0da738f596e0be7d5fda25c596082a6263452fcbbac99db66e7",
+    "docs/sdk/robot_context_layout.md": "dde36dd6a4972b88c792a1eabb2133d01aa091c049c7749257b1bde3a8d5f0a8",
+    "docs/continuidade.md": "9ba62deeb47bc9fefb2d352744726a6d92e36657ef7eba804eca146801314d93",
+    "docs/PLANO_DE_TRABALHO.md": "10d4acbe02d72a46834cb3c4f96cadae5f381b2337a188b5b16082788a7a9a9c"
+  }
+}

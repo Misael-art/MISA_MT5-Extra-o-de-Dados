@@ -119,7 +119,8 @@ def create_db_manager(config: configparser.ConfigParser, db_path: Optional[str] 
         path = resolve_db_path(config, db_path)
     return DatabaseManager(db_type=db_type, db_path=path,
                            time_basis=config.get("APP", "time_basis", fallback="broker").strip().lower(),
-                           broker_utc_offset=config.getfloat("APP", "broker_utc_offset", fallback=-3.0))
+                           broker_utc_offset=(config.get("APP", "broker_utc_offset", fallback="").strip() or None),
+                           broker_timezone=config.get("APP", "broker_timezone", fallback="").strip() or None)
 
 
 def create_external_source(config: configparser.ConfigParser):

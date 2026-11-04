@@ -129,4 +129,5 @@ Para mais detalhes técnicos e planos, consulte a documentação em `docs/`:
 
 ## Licença
 
-Este projeto é licenciado sob os termos da licença MIT. 
+Este projeto é licenciado sob os termos da licença MIT.
+Agentes e engenheiros: [workflow completo por CLI/SDK, sem cliques](docs/agente.md).

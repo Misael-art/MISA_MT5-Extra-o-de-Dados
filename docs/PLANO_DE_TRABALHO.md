@@ -25,8 +25,40 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+**Continuidade pré-formatação (2026-10-21):** clones GitHub/pins/WIP e ensaio
+SQLite conferidos no host atual; [roteiro](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
+e verificador somente leitura conferidos. Complemento privado de142 MB salvo no SD
+que o proprietário manterá fora da formatação: hashes,43 tabelas e leitura do histórico
+verificados a partir da mídia. Preservação de desenvolvimento concluída; ambientes/caches
+são recriados. Validação no novo SO e aceites operacionais permanecem pendentes.
+A frente HADOUKEN49–60 está no mapa de pendências, sem integração automática.
+
+**Repasse de 2026-10-21:** instalação consolidada até AppPR171/ac7af2c3,
+Hec550d77/Safety1.8.0; fila172–177 ainda não integrada/instalada. Registro de
+entregas, limites, evidências e limpeza segura no [repasse](repasse/INTEGRACAO_20261021.md).
+A publicação documental não conclui T19.34, T20.12 completa, aceites nativos ou
+outros itens do plano. O WIP e os dados/backups do proprietário foram preservados.
+
 | ID | Tarefa | Depende de | Status |
 |---|---|---|---|
+| AIA-01 | Workflows SDK/CLI para agentes: discovery completo, sessões, gráficos/indicadores, presets e recibos | BD19c1 + Session/Consent/PresetExecution + G19 visual | Implementado; CLI PLAY/REPLAY e PNG próprios validados Linux/Wine. [Contrato](agente.md), [evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json). 100 dirigidos finais e2952/251 ampla (cortes descritos na evidência); prévia instalada. CI do último HEAD, causa dos timeouts herdados e Windows físico têm gates próprios; sem aceite financeiro |
+| AIA-02 | Extensões tipadas de Estudo/indicadores e controle da reprodução | AIA-01 + contratos específicos | Pendente; sem automação de mouse como substituto |
+| EST-IND | Indicador estratégico + série em banco | Contrato matemático/dados próprio | Pendente, fora do foco atual |
+| OMNI-M | Amadurecimento OMNI | Definição/contrato a consolidar | Pendente, fora do foco atual |
+| EST-OP | Estratégia operacional | Indicador/dados/qualificação estatística/operacional | Pendente; disponibilidade CLI não concede aceite financeiro |
+| G19.1 | PLAY do painel manual sem backtest | Painel manual revisado e controles existentes | Validado:2901 testes/52 pulados,65 dirigidos; doctor16/2/0 em perfil isolado. Sem run fictício e sem dispensar conta/stop/limites/kill. [Registro](propostas/G19_ESTUDO_NO_GRAFICO.md); instalação pendente, Windows físico pendente |
+| G19.5 | Notas com fotografia imutável no gráfico | Contrato MT5/Common e registry existentes | Em validação:2911 testes/52 pulados,27 dirigidos, doctor16/2/0, nativo216/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_5_NOTAS_E_FOTOGRAFIA.md); instalação pendente |
+| G19.6 | Lápis e coloração pelo catálogo | G19.5 | Validado:2930 testes/52 pulados/3 avisos,98 dirigidos, doctor16/2/0, nativo302/0 por96/144 DPI; instalação pendente. [Contrato](propostas/G19_6_LAPIS_COLORACAO.md) |
+| G19.7 | Indicadores múltiplos e agrupamento | G19.6/catálogo | Validado:2932 testes/52 pulados/3 avisos,40 dirigidos, doctor16/2/0; nativo/instalação da composição em validação. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md) |
+| G19.8 | Composição e distribuição para teste pelo atalho | G19.1–7 | Validado Linux/Wine: App2949/52, Framework87, Safety3; nativo342/0 por96/144 DPI e pixels completos; SDK/ativos por hash; canal de desenvolvimento com retorno, Windows físico pendente. [Procedimento](propostas/G19_8_DISTRIBUICAO.md) |
+| T20.30 — prévia do proprietário | Disponibilizar desenvolvimento pelo atalho habitual | Composição local172–177 +182 e continuidade178–181 | Preparação de prévia autorizada para teste; ambiente/dados compartilhados, dois atalhos coerentes e retorno preservado. [Procedimento](TESTAR_DESENVOLVIMENTO.md); não concede aceite manual/nativo |
+| T19.33 — adendo TFs | Ordem crescente e Todos no backtest do card | Seletor T17.28, presets/capacidades e fila existentes | Planejado em 2026-10-21; [escopo e aceites](propostas/BACKTEST_MULTITF_COMPARACAO.md); PLAY/REPLAY individuais |
+| T20.24/25 — adendo ativos | Seleção múltipla, orçamento e retenção | BatchRunner/ResourceGovernor/Budget/contexto existentes | Planejado; avaliar 3/6 ativos por medição, MQL5 serial preservado; sem scheduler novo |
+| T20.22/23 — adendo comparação | Gráficos da estratégia com mesma revisão de preset em todos os TFs | Histórico/consulta por preset e escopo T19.33 | Planejado; matriz/curvas limpas, cobertura/estados explícitos; sem misturar presets nem recalcular ao abrir |
+| Continuidade 2026-10-21 | Validar host, clones e restauração preservada | Repasse App179 e SD | Validada no host encontrado: três clones/fsck, 43 tabelas e histórico reabertos em leitura; 56 testes, doctor20/1/0. [Registro](repasse/RETOMADA_VALIDADA_20261021.md); novo SO não comprovado |
+
+| T17.28 — correção REPLAY | Exibir e operar botões do painel de gestão no Tester | Sessão própria e observador existentes | Parcial Linux/Wine: painel visível com mesmo DISPLAY na compilação/replay; 84 testes e doctor20/1/0. Cliques manuais não aprovados; adaptação experimental retirada, PR draft sem instalação. [Escopo e evidência](sdk/replay_painel_manual.md); Windows físico pendente |
+| T17.28 — monitor PLAY/REPLAY | Monitor de lançamento, gráfico funcional e escolha de visibilidade | Composição G19 e sessões próprias | Correção Linux/Wine em revisão: prefixo temporário por sessão visível; replay desenhado e avançando em1280×800/1920×1080,160 dirigidos/1 exclusão prévia, doctor20/1/0. PLAY manual DEMO visível/oculto com telemetria, carteira inalterada e sem ordens. CI/Windows físico/retorno do dock próprios. [Contrato](sdk/play_replay_monitores.md) |
 | B-11 | Política de versões SDK/sidecars e migração | — | ✅ política integrada M132/7e2178a e H14/d018f6c; SDK1 preservado; [política](sdk/versionamento-contratos.md); sem mudança de runtime |
 | T19.3 (conexão) | Inspeção e leitura de geração na transação recebida | T19.3 | ✅ concluída, [PR130](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/130); seis checks1092762,1439Ubuntu/44PG/1541WindowsCI,38 locais compatíveis; [causa e evidência](analytics/T19.3_CONEXAO_SNAPSHOT.md); Windows físico pendente |
 | T19.6 | Pivôs causais Fractals/ZigZag | T19.3 | ✅ concluída, [PR131](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/131); #130 integrada antes; seis checks6a9d580:1467Ubuntu/48PG/1569WindowsCI;117 locais compatíveis/61 caminhos finais, doctor21/1/0;720 fatos atuais+720 anteriores preservados; [contrato e rematerialização](analytics/T19.6_PIVOS_CAUSAIS.md); Windows físico pendente |
@@ -49,6 +81,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T2.3 | Tirar Tkinter do núcleo | — | ✅ concluída |
 | T2.4 | Gestão de processos multiplataforma | T2.2 | ✅ concluída |
 | T2.5 | `initialize()` com `windows_path` no Linux | T2.2 | ✅ concluída (validação com MT5 real: T0.3/T2.6) |
+| T2.5 (corretivo) | Reutilizar ligação MT5 correspondente e preservar sessão emprestada | T2.5 | ⏳ implementado/em revisão: [contrato e limites](sdk/conexao_reutilizada.md); provedor DEMO real25→49barras em base privada, reabertura/recuperação/exportação e UI online; CI e instalação pendentes; não conclui T2.6 |
 | T2.6 | Teste de paridade Windows × Linux | T2.5 | ⏳ parcial: `scripts/parity_check.py` criado e lado Linux extraído; falta o lado Windows |
 | T3.1 | CLI `mt5x` | T1.3, T2.2 | ✅ concluída |
 | T3.2 | Agendamento (cron/systemd/Agendador de Tarefas) | T3.1 | ✅ concluída (cron e schtasks; systemd não) |
@@ -142,7 +175,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T13.10 | Estudo PF19 limitado e retrospectivo, com custos modelados e inferência por blocos | T13.9, aceite UI | ✅ integrada no PR #100;963/9, CI Linux/Windows, CLI instalada e estudo8/8; zero candidatos; [relatório](pesquisa/PF19_RELATORIO_20261016.md) |
 | T14.0 | Backlog integrado HADOUKEN + mt5x registrado (10 épicos, 131 tarefas, em `docs/propostas/` e no HADOUKEN) | T12.0, T13.0 | ✅ concluída (só documentação) |
 | T15.0 | Plano da gestão de recursos (aba Recursos) registrado em `docs/propostas/GESTAO_RECURSOS.md` | — | ✅ concluída |
-| T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ concluída no Linux (aba vista em tela virtual, temas claro e escuro); Windows não visto |
+| T15.1–T15.6 | Gestão de recursos: medição, higienização, arquivo reversível, `mt5x resources`, automação opt-in e aba Recursos | T15.0 | ✅ entrega anterior no Linux; corretivo em revisão: leitura opcional de pastas limitada, backups acessíveis e limpeza parcial bloqueada. QA privado de recuperação/exportação concluído; CI/instalação próprios e Windows físico pendentes. [Contrato](sdk/recursos_leitura_parcial.md) |
 | T15.7 | Cópia de segurança da base e limpeza de logs e exportações antigos (gestão de recursos) | T15.6 | ✅ concluída no Linux; Windows não visto |
 | T15.8 | Gestão de recursos: arquivo em Parquet, aparar e retenção por idade, aviso por série e voltar a uma cópia pela interface | T15.7 | ✅ concluída no Linux; PostgreSQL real e Windows não vistos |
 | T15.9 | Gestão de recursos: limites que bloqueiam a gravação na extração, retenção por ativo e `drop_chunks` do TimescaleDB | T15.8 | ✅ concluída no Linux; TimescaleDB real e Windows não vistos |
@@ -189,9 +222,9 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.17–T19.23 | Entradas, ganho/Fibonacci, stops, filtros, frequência, gradientes e adaptador HADOUKEN | T19.2; contratos B/Safety e dados por capacidade | recortes iniciais T19.18/19 pontos/R/SL Python integrados #136/#137 e T19.23 recibo/perfil S09 #138/#140; demais políticas/filtros/adaptadores pendentes; grades com gates próprios |
 | T19.20 | Horários, dias e ciclos por sessão | T19.2, calendário observado T13.1, fills/identidade | ✅ recorte inicial na PR161: S09v1.70/43inputs, UI e replay1posição/2fills/10eventos conciliados,8recusas observadas; H34 integrada08cf58b, seis checks no runtime372b762 aprovados. Cotas3/7 e recuperação em testes do header real; cooldown/fechamento por horário, Pullback neste gate, live e Windows físico têm aceites próprios. [Contrato](sdk/sessao_entradas.md) |
 | T19.20/02 | Cooldown após encerramento total confirmado | T19.20 inicial, fills/saldo/identidade | ✅ aceite dirigido PR162: UI/44inputs, backtest e replay2posições/4fills/2recusas/18USD conciliados;27PIDs próprios ausentes/5perfis vazios. H35 integrada e5f4842; seis checks existentes aprovados no runtime4517299. Catálogo nativo preparado somente no perfil isolado, sem recuperação automática universal. Live DEMO/Windows físico têm aceites próprios. [Contrato](sdk/cooldown_entradas.md) |
-| T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | inicial em revisão: uma composição Python explícita percorre motor completo, persiste seleção/identidade e reabre no histórico; orçamento/cancelamento via journal existente. Lote/carteira e capacidades adicionais pendentes. [Contrato](sdk/composed_backtest.md) |
+| T19.24 | Backtest completo de composições e lote, distinto da re-simulação | T19.2/17 e políticas/filtros usados | inicial integrado/instalado pela PR171 (ac7af2c): uma composição Python explícita percorre motor completo, persiste seleção/identidade e reabre no histórico; seis checks finais aprovados e avaliação pela instalação conferida; orçamento/cancelamento via journal existente. Lote/carteira e capacidades adicionais pendentes. [Contrato](sdk/composed_backtest.md) |
 | T19.25–T19.29 | Preset manual, compilador, experimentos, objetivos defensivo/PF e reconciliação nativa | Composição/backtest/capacidades; plano F19 | recortes iniciais pacote S09 #141, Manual nomeado #144 e conferência nativa #145 integrados; experimentos/objetivos e manifesto ampliado pendentes |
-| T19.30–T19.35 | Editor operacional, gráficos temporais, gerador na UI, coerência de TF, responsividade e piloto | Serviços/DTOs reais e T17.28; plano F19 | editor inicial do percurso S09 integrado na #146/T20.22; demais modos/gráficos/geradores/piloto ampliado pendentes; T19.33 reaproveita seletor existente |
+| T19.30–T19.35 | Editor operacional, gráficos temporais, gerador na UI, coerência de TF, responsividade e piloto | Serviços/DTOs reais e T17.28; plano F19 | editor inicial S09 integrado #146/T20.22; T19.34 inicial em revisão corrige contexto cortado no detalhe; CI Windows detectou rótulo não mapeado em144DPI. Rodadas665/1b0 e composição173 mantiveram falha Windows de mapeamento. Corretivo atual acrescenta rolagem da página pelo componente existente após reproduzir corpo desmapeado na escala1,5;3dirigidos/4adjacentes e histórico privado sem recálculo passaram. CI dirigido Windows vem antes da suíte integral inalterada; novo CI/instalação pendentes. Demais modos/gráficos/geradores/piloto ampliado pendentes; T19.33 reaproveita seletor existente. [Recorte](sdk/robot_context_layout.md). Complemento em revisão: [navegação e status](sdk/navegacao_adaptavel.md), seletor com nomes completos e detalhe integral;10Tk finais aprovados, CI/instalação próprios pendentes. [Resumo/erro do catálogo](sdk/cabecalho_catalogo.md) em revisão: quebra pela largura real,11Tk finais aprovados; disposição da busca preservada. |
 | T19.36–T19.47 | Setups S01–S11, infraestrutura/ferramentas e lacunas 37/48 do estudo | Indicadores, execução e contratos por ficha | S09/T19.37 referência mínima integrada em HADOUKEN #23/Extrator #139; demais setups e fidelidade EMA/ATR original não concluídos; regras ausentes não inventadas |
 | T19.48 | Diagnóstico e plano de robustecimento posterior da gestão da conta | T12.2/T12.3 e épico F | planejada para segundo momento; travas de segurança não adiadas |
 | T19.49 | Aceite integrado e reconciliação da documentação por versão | T19.35 e recorte do catálogo entregue | planejada; restante pendente permanece explícito |
@@ -204,6 +237,16 @@ Comando de testes padrão (use o Python do `.venv`):
 | T19.56 | Gestão de lotes/exposição: quantidade fixa ou por risco e volume maior que um | T19.2/17, especificação do símbolo, adaptador H aplicável | recorte inicial integrado H#24/M#149 (a310a5a/08c1ad5): UI S09 1.10 fixo/risco, backtest/replay e consultas conciliados, seis checks M ec398eb aprovados; uma posição, sem grids/adições ou liberação ao vivo |
 | T20.0 | Incorporar as 16 sugestões aceitas, mapa Q01–Q16, fichas e prompt de robustez | Pedido de 2026-10-17 | ✅ documentação, prioridades UI e prompt único F19/F20/MT5; 30 fichas planejadas; sem implementação ou ensaio de conta |
 | T20.1 | Mapa único de cobertura, donos e evidência | T19.1, T20.0 | ✅ documentação integrada no PR121; Q01–Q16 no mapa único, sem runtime novo |
+| BD01 (T19.1/T20.1) | Inventário de dados, donos e lacunas da base estratégica | Diretriz 02 e [plano BD](dados/PLANO_ESTRUTURA_DADOS.md) | parcial: [inventário](dados/BD01_INVENTARIO.md) 164 itens/112 IDs, fontes primárias, legado detalhado, guarda com pin H opcional; 3 itens de fórmula inexistente; sem runtime novo |
+| BD02 (F15/T20.4/24/25) | Bancada compacta, referências independentes e orçamento | BD01 | parcial: [bancada](dados/BD02_BANCADA.md) 19 cenários sintéticos, 8 saídas conferidas com oráculo puro; temporalidade corrigida (V03), métricas por escopo (V04: CSV 536 402 B, DataFrames 1 010 300 B, pico de alocação 1 130 821 B); achado de semente Wilder para BD08a |
+| BD03 (T20.4/5/6) | Identidade de bases/fontes | BD01/02 | parcial: [identidade](dados/BD03_IDENTIDADE.md) identity/fork/declare_source, carimbo no store/notas/DTO; 11 casos SQLite + 2 PG (CI); escritores brutos e consumidores ainda sem a identidade |
+| BD04 (T1.1/T1.2/T13.1/T20.6) | Ingestão idempotente, revisão e ausência | BD03 | parcial: [ingestão](dados/BD04_INGESTAO.md) contrato de recebimento (`_ohlcv_versions`/`_ohlcv_receipts`), precedência pelo último recebimento, as-of causal/inspect; R01–R03 corrigidos; extrator (R04) e ticks/book pendentes |
+| BD05 (T13.1/T11.1/T1.6/T20.5/6) | Tempo, sessões e derivação entre TFs | BD03/04 | parcial: [tempo](dados/BD05_TEMPO.md) causalidade/sessões/W1-MN1 (7) + zona do corretor com fold 96/96, gap recusado, offset desconhecido explícito (7 + PG na CI); derivação/snapshot em base com zona recusados |
+| BD06 (T18.1/T19.3) | Contrato completo do catálogo | BD01/03/05 | parcial: [contrato](dados/BD06_CONTRATO.md) 52/52 definições com contrato, categorias explícitas, 23 referências pendentes listadas; piloto com assinatura global como limitação temporária (R05) |
+| BD07 (T19.3/T6.1/T4.5) | Reconciliar calculadores | BD06 | parcial: [calculadores](dados/BD07_CALCULADORES.md) legado declara saídas indisponíveis sem pandas-ta; variantes de retorno nomeadas; AdvancedIndicators/privados pendentes |
+| BD08a (T19.3) | Primeira família qualificada (retorno) | BD06/07 | parcial: [retorno](dados/BD08A_RETORNO.md) cadeia provedor falso→extrator→M5→store→consulta = oráculo; prefixo, lote, denominador, revisão; 1 correção → 852 revisões (BD13) |
+| BD18a (T18.6/T10.7) | Consulta inicial executável | BD06/08a | parcial: [consulta](dados/BD18A_CONSULTA.md) serviço + `sdk.query_series/query_catalog`, envelope com base/tempo/contrato/qualidade/revisão, cursor estável, erros estruturados; compostos/relações e paginação no banco em BD18b |
+| BD19c1 (T18.6) | Primeiro consumo pela CLI | BD18a | parcial: [CLI](dados/BD19C1_CLI.md) `analytics features series` = envelope do serviço/SDK sobre a cadeia do piloto; demais consumidores pendentes |
 | T20.2 | Referências independentes dos cálculos financeiros | T20.1 | ✅ integrada no [PR106](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/106), merge f477e43; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T20.3 | Patrimônio flutuante e drawdown identificado | T20.2 | ✅ integrada no [PR107](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/107), merge 9fbd5f5; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T20.4 | Manifestos imutáveis/snapshots consistentes de dados | T20.1 | ✅ integrada no [PR108](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/108), merge 2bd7a11; evidências compatíveis reaproveitadas; Windows físico pendente |
@@ -214,7 +257,7 @@ Comando de testes padrão (use o Python do `.venv`):
 | T20.9 | Custos e preenchimento em cenários adversos | T20.6/8 | planejada; Q05 |
 | T20.10 | Curvas de capacidade por volume | T20.9; liquidez qualificada se usada | planejada; Q05, cenários sem certificação indevida |
 | T20.11 | Paridade pela primeira divergência de evento | T20.2/7, exportação nativa integrada | planejada; Q06 |
-| T20.12 | Registro único de experimentos e consultas à reserva | T20.1/4 | recorte inicial em revisão: protocolo, pedido explícito Python BASE e auditoria; corretivo de assinatura entre processos após falha CI na retomada. PG da ponta anterior passou; CI final e demais consumidores pendentes. [Contrato](sdk/experiments.md) |
+| T20.12 | Registro único de experimentos e consultas à reserva | T20.1/4 | recorte inicial integrado/instalado pela PR170 (86ae848): protocolo, pedido explícito Python BASE e auditoria; corretivo de assinatura entre processos passou seis checks finais. Avaliação/reabertura/cache pela instalação conferidos; orçamento por pedido, reserva/livro/estatística não qualificados; demais consumidores pendentes. [Contrato](sdk/experiments.md) |
 | T20.13 | Qualificação matemática do protocolo estatístico | T20.2/12 | planejada; Q01/Q07, integra I-03/04/09/11/13 |
 | T20.14 | Compromissos entre presets elegíveis | T20.3/13, T19.28 | planejada; Q08, sem categoria ou objetivo PF paralelo |
 | T20.15 | Ablação e contribuição incremental | T20.12/13, T19.24 e módulos usados | planejada; Q09, FRP continua futuro |
@@ -260,6 +303,8 @@ Comando de testes padrão (use o Python do `.venv`):
 | T10.W | Validação no Windows de tudo o que foi feito só no Linux (checklist) | máquina Windows disponível | ⏳ pendência aberta; **não bloqueia as demais tarefas** |
 
 ---
+
+Consulta T20.12 em revisão: [Registro de estudos na UI](sdk/experiments_consulta_ui.md), com metadados do store canônico, sem nova avaliação. CI/instalação e demais consumidores/qualificação continuam pendentes.
 
 ## Fase 0 — Fundação
 
@@ -4114,3 +4159,36 @@ Dependências já instaladas: App166d6bb557/H9334 (S10) e App1679579a62/H11bb (V
 checks finais verdes, mesma configuração/atalho/ponte/principal e exposição0. S10Manual
 rev2/export15inputs e backtest negativo reabertos na UI do proprietário. Madrid
 mantém sua fila App168; não foi promovido por este registro.
+
+
+### G19.9 — Super ATR, estudo visual (2026-10-23)
+
+Três curvas20/SMA/1×–3× pontilhadas no preço, RGB, catraca e virada estrita
+implementados noH316cb6ba. App fecha ativo/matemática e pinmanual revisado,
+sem ampliar automáticos/risco/executor.126App/88H/checker161/compilação0/0;
+versão1.01 com diagonais inspecionadaEURUSD/M5 e instalada na prévia,
+composta com correção de monitorPR204. [Contrato e pendências](sdk/super_atr.md).
+50curvas/adaptação/Profit/Windowsfísico são próprios.
+
+### G19.10 — monitor e área interna Wine (2026-10-23)
+
+Correção do retorno do dock: preparar modos internos na cópia Wine ANTES do
+primeiro processo, além da janela externa. Baseline85/final126 testes,
+doctor20/1/0; prova isolada3456×1458; PLAY normal3456×1458 e REPLAY
+normal1280×800 concluídos,128 testes finais e correção de corridaBadWindow;
+Windows físico pendente. [Contrato e continuidade](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).
+
+AtualizaçãoG19.9 pelo proprietário:1.02/dez curvas20/SMA/desvios1 a10 e tema
+Cinza Claro instalados/inspecionados em3456×1458,89H/126App/checker161/0-0.
+Mantidas diagonais, pontilhado e futuro50/adaptação pendentes.
+
+### G19.16 — alvo probabilístico e mostrador (2026-10-23)
+
+Implementado no HADOUKEN7.10; App acrescenta pin exato352de5268dcd32ae mantendo
+revisões antigas. Conjunto10/20/30, primeira passagem ao TP/SL existente, amostra
+madura/quatro categorias e pressão separada de probabilidade. Gestão opt-in/DEMO,
+padrão desligado, parcial80/final90, mesmo executor. Mostrador independente do
+timer com seta neutra/verde/vermelha e fallback inline em espaço restrito.
+[Uso, matemática e pendências](sdk/alvo_probabilistico.md). Calibração/resultado
+financeiro, fills/Tester, concorrência/restart amplo e Windows físico pendentes.
+Sem alteração no pilar de dados, banco owner, launcher/monitores ou Safety publicada.

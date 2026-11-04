@@ -9,7 +9,8 @@
 # [EXTRACTION] tamanho dos blocos (dias) por timeframe
 # [FALLBACK]  fonte externa para lacunas M1: "Dummy" (teste) ou "Csv" (arquivos em csv_dir)
 # [APP]       horário do pregão (HH:MM) usado pelo relatório de qualidade (lacunas);
-#             time_basis: broker (horário da corretora, padrão) ou utc; broker_utc_offset: fuso (B3 = -3)
+#             time_basis: broker (horário da corretora, padrão) ou utc; broker_utc_offset: fuso fixo em horas
+#             (B3 = -3; vazio = desconhecido); broker_timezone: zona IANA com horário de verão (exige utc)
 # Credenciais NÃO ficam aqui: use o arquivo .env (veja .env.example).
 
 [MT5]
@@ -84,7 +85,8 @@ csv_dir =
 session_start = 09:00
 session_end = 18:30
 time_basis = broker
-broker_utc_offset = -3
+broker_utc_offset =
+broker_timezone =
 # Onde fica o banco quando [DATABASE] path é relativo: vazio = pasta do projeto (padrão);
 # auto = pasta de dados do usuário (%LOCALAPPDATA%\mt5-extracao, ~/.local/share/mt5-extracao); ou um caminho.
 # Um banco que já exista na pasta do projeto continua sendo usado.

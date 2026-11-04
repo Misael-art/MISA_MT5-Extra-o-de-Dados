@@ -354,6 +354,11 @@ Próximo recorte elegível: T20.2. Resultados na continuidade.
 
 ### T20.24 — Orçamento e cancelamento na fila de experimentos
 
+**Adendo do proprietário (2026-10-21):** seleção de vários ativos/TFs na fila
+existente, medição de 1/3/6 ativos e limite adaptado ao host, sem prometer essa
+concorrência. MQL5 serial até qualificação própria. Comparação da mesma revisão
+de preset pertence a T20.22/23. [Requisitos e aceites](BACKTEST_MULTITF_COMPARACAO.md).
+
 - **Repo/prioridade:** M; P1. **Depende de:** T20.1.
 - **Integra:** Q15, T11.5/6, F15 e T19.27, sem segundo agendador.
 - **Arquivos:** runner/fila/status/recursos existentes e integração de progresso.

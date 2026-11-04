@@ -1,0 +1,23 @@
+{
+  "task": "T19.34 compose preserved SDK1 surface",
+  "date": "2026-10-21",
+  "base": "729e27d95d99448756344ff98ddafb838ca73142",
+  "dependency": "d7020ace9622c5e0b95be08e673fb2768fbee5b9",
+  "composition_merge": "56b6fc7b4c75afb9a18483aa65d738577d2cf7bd",
+  "method": "Git merge preserving both ancestors, no conflicts; UIruntime/test byte-identical729, SDKruntime/test byte-identicald702.",
+  "validation": {
+    "selection": "test_sdk_api.py test_ui_robot_context.py and storedcompositiondisplaytest",
+    "passed": 13,
+    "seconds": 29.68,
+    "environment": "Tk/Xvfb,96/144 simulatedDPI,2themes and originalSDKcontract tests; no native or finance calculation",
+    "reuse": "Five final UI tests34.07s and4inspected captures/24bounds remain compatible; current docs added only."
+  },
+  "pending": "Six final CIchecks/serialretarget/merge/controlledinstallation; Windowsphysical/DPIhardware/native/futureUIqualification not granted",
+  "sha256": {
+    "mt5_extracao/ui/robot_detail.py": "0cf7b759ca8a8e9af43d40c3aa4c1680faba442fe938af19ca3024385c6bf887",
+    "tests/test_ui_robot_context.py": "f4b401e7dc48c0da738f596e0be7d5fda25c596082a6263452fcbbac99db66e7",
+    "mt5_extracao/sdk.py": "64f67113ce57a2dc4937482ae177e2cf464a83f81428f2aae9cf1239abd4dd7c",
+    "tests/test_sdk_api.py": "8dd254c86fcd9e6b5786e9a6c19211200e09ffcaac0a3823fba247a6e0077d4c",
+    "docs/continuidade.md": "f0ae6374d345ddbe19cdc06b04baf8c58f199e6eb319e230fec171d63e622e48"
+  }
+}

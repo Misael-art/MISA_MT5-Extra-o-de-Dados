@@ -17,7 +17,7 @@ result = sdk.check(db, config, robot, robots, "EURUSD", "H1")
 print(result.ok, [(s.name, s.status) for s in result.steps])
 ```
 
-Nada aqui envia ordens. O backtest de robô MQL5 usa o Strategy Tester do MetaTrader 5, que precisa estar fechado.
+As funções de análise não enviam ordens. `open_workflow` pode iniciar Experts via PLAY com os mesmos consentimentos/gates de Session; o Expert mantém seu executor. O backtest MQL5 usa o Strategy Tester e sua reserva exclusiva.
 
 ## Versões
 
@@ -28,6 +28,31 @@ Nada aqui envia ordens. O backtest de robô MQL5 usa o Strategy Tester do MetaTr
 
 **Política de mudança:** uma função ou parâmetro só é removido ou muda de significado em versão **maior** do pacote,
 depois de pelo menos uma versão emitindo `DeprecationWarning`. Parâmetros novos entram no fim, com valor padrão.
+
+## Consulta de dados analíticos (BD18a)
+
+Leitura sem UI e sem MT5 dos fatos já materializados no store; nunca calcula nem grava.
+
+- `sdk.query_series(db, symbol=..., timeframe=..., feature_ids=[...], as_of=..., start=None, end=None,
+  algorithm_version=None, page_size=500, cursor=None)` → envelope `query_schema_version=1` com `base`
+  (namespace, linhagem, fonte), `time_context` (estado do fuso), `definitions` (contrato BD06),
+  `values` (valor/categoria, qualidade, revisão, `available_at`, versão), `page.next_cursor` (ordem
+  estável feature/observação/versão), `freshness`, `reasons` e `errors` estruturados
+  (`NAIVE_TIME`, `UNKNOWN_FEATURE`, `BAD_PAGE_SIZE`, `BAD_CURSOR`, `CURSOR_MISMATCH`,
+  `SELECTION_TOO_LARGE`, `MISSING_SELECTION`). JSON sem NaN/infinito.
+- `sdk.query_catalog()` → contratos BD06 de todas as definições consultáveis.
+
+Não há servidor HTTP: a futura API publicará este mesmo serviço.
+
+## Workflows de agentes (AIA-01)
+
+`open_workflow(db, config, *, read_account=None, config_path=None, db_override=None)`
+é uma API aditiva (`API_VERSION=1`). Devolve context manager com `call`, `run`,
+`methods` e `close`: sessões, gráficos, indicadores, presets e adaptação do CLI
+existente por JSON. Não importa Tk nem MetaTrader5 ao importar o SDK.
+PLAY inicia o Expert existente somente após revisão e confirmação do contexto;
+encerrar a sessão não liquida posições. EOF/close encerra somente sessões próprias.
+[Guia completo, exemplos e limites](../agente.md).
 
 ## Catálogo
 

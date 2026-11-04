@@ -1,0 +1,42 @@
+{
+  "task": "G19.16",
+  "parent": "d7aa0718ee3716303e2e6ab7e3893816fbb6f346",
+  "hadouken_commit": "e29a2c609b949d5154bc895a17d65ada3acde883",
+  "manual_fingerprint": "352de5268dcd32ae",
+  "runtime_changes": [
+    "add exact manual source fingerprint; keep previous six"
+  ],
+  "validation": {
+    "focused_app_passed": 130,
+    "focused_app_seconds": 16.58,
+    "real_closure_inputs": 76,
+    "new_probability_inputs": 11,
+    "doctor_ok": 20,
+    "doctor_optional_warning": 1,
+    "doctor_failed": 0,
+    "hadouken_tools": 134,
+    "checker_mql": 166,
+    "native_visual_synthetic_pass": 28,
+    "panel_script_compiled_errors": 0,
+    "panel_script_compiled_warnings": 0,
+    "monitor": [
+      1280,
+      800
+    ],
+    "orders_sent": 0
+  },
+  "baseline_full": "Started before App edits; two pre-existing UI failures observed; full outcome recorded separately, not asserted green.",
+  "limitations": [
+    "native server partial/full not qualified",
+    "DEMO opt-in; management default false",
+    "calibration and financial edge pending",
+    "Windows physical pending; existing simulated path tests retained",
+    "no owner DB or data pillar changes",
+    "CI exact heads and preview installation recorded after publication"
+  ],
+  "sha256": {
+    "mt5_extracao/robots/manual_panel.py": "00effc2397b9e9e37ea071f1300c06ffd5175e562a25cb5e14862c8940050a13",
+    "tests/test_target_probability_panel.py": "be7a0504b0167ddde5b177ba0bf8ee4b6c83ed240a2119a64d4e6e0797fea09d",
+    "docs/sdk/alvo_probabilistico.md": "a24e0db43c28c6719b3866901a0dc143aacbf0beb8ebad2b9b5d5d8ab67abe95"
+  }
+}

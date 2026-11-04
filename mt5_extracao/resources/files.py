@@ -185,19 +185,27 @@ def _artifact_protected(path, files, directories):
     return False
 
 
-def old_files(db, config, now: Optional[datetime] = None) -> List[dict]:
+def old_files(db, config, now: Optional[datetime] = None, *, check=None) -> List[dict]:
     """Arquivos que a limpeza apagaria: [{path, folder, bytes, modified}]. O log em uso fica de fora."""
     policy = policy_mod.load(config)
     now = now or datetime.now()
     found = []
+    if check is not None:
+        check()
     protected_files, protected_dirs = _protected_artifacts(db, config)
     for label, (folder, days) in _folders(db, policy).items():
+        if check is not None:
+            check()
         folder = Path(folder)
         if not folder.is_dir():
             continue
         cutoff = now - timedelta(days=days)
         for root, _dirs, names in os.walk(folder):
+            if check is not None:
+                check()
             for name in names:
+                if check is not None:
+                    check()
                 if label == "Logs" and name in ACTIVE_LOGS:
                     continue
                 path = Path(root) / name

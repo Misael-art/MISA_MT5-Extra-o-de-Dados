@@ -1,9 +1,30 @@
 # Validação dos instaladores com o MT5 real (T0.3 e T2.6)
 
+Pendência Recursos (2026-10-21): conferir em Windows físico a leitura incompleta
+de pastas, com backups/restauração acessíveis e limpeza indisponível.49 regressões,
+24 testes de retenção, três de interação UI e cinco próprios finais passaram no
+Linux (seleções sobrepostas); recuperação/exportação foram QA em SQLite privado,
+com fonte candidata. Rede/I/O bloqueado e duração total de operações não recebem
+garantia pelo prazo cooperativo da leitura opcional. CI final próprio pendente.
+
+Pendência T19.34 (2026-10-21): conferir o contexto de Robôs em Windows físico,
+após concluir também o novo CI: rodada66571c4 falhou no alcance do viewport em
+900×620/144DPI; ensaio passou a usar posições internas antes do mapeamento.
+com96/144DPI, fontes ampliadas, dois temas e rolagem/teclado em900×620. O runner
+Windows da ponta8056fd6 teve uma falha de mapeamento no ensaio144DPI; o ensaio
+passou a percorrer ambas as rolagens e aguardar geometria por prazo limitado,
+preservando os limites e acrescentando visibilidade. Novo CI obrigatório ainda
+pendente; Tk/Xvfb local e CI não substituem este checklist físico.
+
 Registro das execuções manuais que o CI não cobre (download e instalação do MT5, Wine,
 ponte com o MT5 real). Roteiro em [PLANO_DE_TRABALHO.md](PLANO_DE_TRABALHO.md), seções T0.3 e T2.6.
 
 ## T0.3 — Instaladores
+
+Pendência específica Windows — correção REPLAY de 21/10/2026: abrir o painel
+HADOUKEN pelo card, operar abas/pausa, encerrar só a própria sessão e conferir
+backtest minimizado. Caminhos/visibilidade foram simulados em testes Linux;
+isso não comprova execução em Windows físico. [Contrato](sdk/replay_painel_manual.md).
 
 | Ambiente | Data | Comando | Resultado |
 |---|---|---|---|
@@ -369,3 +390,126 @@ Complemento T8.7/DEMO (20/10/2026): Windows físico deve conferir sincronizaçã
 - [ ] T19.40/HA-HiLo: Windows físico com fonte1.20/pin5dad3bbabab0343f/10inputs,
   Canvas padrão, Default/Manual3campos, exportação/recibo, semTP e SL obrigatório.
   Wine/Tk simulado não prova reversão, histórico do servidor ou comportamento físico.
+
+- [ ] F2/T2.5 sessão existente: executar no Windows físico reuso local por diretório/EXE,
+  correspondência de conta/servidor/data_path, fechamento local sem SDKshutdown e
+  recusa após identidade alterada. Linux/Wine real e caminhos local/Windows simulados
+  estão no recorte de2026-10-21; isso não conclui paridade física T2.6 nem concorrência.
+
+- [ ] T20.12 consulta UI: verificar no Windows físico menu Exibir → Registro de estudos,
+  temas/teclado/rolagem, callbacks após fechar e ausência de escrita por consulta.
+  Tk/Xvfb Linux e teste PostgreSQL do job têm escopos próprios, sem aceite físico.
+
+- [ ] T19.34 altura: conferir Windows físico com fontes ampliadas e página rolável;
+  corpo acessível via scroll externo, contexto por scroll do detalhe, filtros/seleção
+  preservados. Escala1,5 em900×620 ainda tem cortes na navegação/resumo/status global;
+  este recorte não os qualifica nem substitui o CI Windows final.
+
+## T19.34 — navegação e status (2026-10-21)
+
+- [x] Linux/Tk/Xvfb: nomes completos, foco/teclado, mensagens integrais, duas paletas,
+  quatro tamanhos,96/144DPI simulados e fonte1,0/1,5;10 finais aprovados131,60s.
+- [x] Histórico privado reaberto sem recálculo; banco owner/MT5 não utilizados;
+  fonte e scrollbar do detalhe corrigidas após inspeção de captura.
+- [ ] CI próprio da ponta e instalação serial depois das PRs172–175.
+- [ ] Windows físico: fonte/DPI/troca de área/Detalhes com teclado.
+
+Não altera instaladores nem qualifica acessibilidade completa, cálculos ou operação.
+
+## T19.34 — resumo/erro do catálogo (2026-10-21)
+
+- [x] Linux/Tk/Xvfb:11 testes finais, resumo/erro completos na largura real, seleção
+  preservada, temas/fonte/DPI simulados e quatro tamanhos; histórico privado sem
+  recálculo, capturas normais e mensagem de QA inspecionadas. Busca inalterada.
+- [ ] CI da ponta e instalação serial depois de176.
+- [ ] Windows físico: quebra do resumo/erro e alcance pela rolagem da página.
+
+Doctor20/1opcional/0 reaproveitado da mesma base/ambiente com bootstrap idêntico.
+Sem alteração de instalador ou qualificação financeira/nativa/operacional.
+
+## G19.5 — notas/fotografia no gráfico (2026-10-22)
+
+- [x] Linux/Wine: caminho Common/Files e percurso MT5→banco→reabertura, Unicode/múltiplas linhas e fotografia imutável.
+- [x] Descoberta do Common via APPDATA com paths.is_windows simulado, além de prefixo Wine.
+- [x] Suíte completa App2911/52/3,27 dirigidos e doctor16/2/0 no perfil isolado.
+- [ ] Windows físico: cursor de pena, foco/edição/atalhos, DPI e rename atômico entre MT5 e serviço.
+- [ ] Distribuição final App/HADOUKEN/Safety e instalação na prévia do proprietário.
+
+## G19.6 — ativo de coloração (2026-10-22)
+
+- [x] Descoberta/fingerprint e caminho MQL5/Indicators nos testes sem terminal.
+- [x] Falha do indicador impede compilação do Expert; pacote legado preservado.
+- [x] Adaptador manual e ativo compilados no perfil Linux/Wine isolado.
+- [x] Ensaio nativo96/144 DPI com App consumindo séries reais.
+- [ ] Windows físico: instalação, MetaEditor, coloração, DPI e lápis.
+
+## G19.7 — séries gráficas (2026-10-22)
+
+- [x] Dois ativos no fingerprint/plano; ausência rejeitada antes de instalar.
+- [x] Biblioteca G19.6 continua exigindo somente candles.
+- [ ] Composição final: adaptador SDK com ambos os ativos no Linux/Wine.
+- [ ] Windows físico: compilação, +, Agrupar, janela e remoção.
+
+## G19.8 — composição/ativos Safety (2026-10-22)
+
+- [x] Ativos opcionais: hashes, caminhos contidos, validação antes de copiar, idempotência e ordem de compilação.
+- [x] Fingerprint real do painel com ambos os ativos; alteração de Series retira a exceção manual.
+- [ ] Instalação/compilação da composição exata no Linux/Wine e atalho existente.
+- [ ] Windows físico: instalação, compilação e estudo/agrupamento.
+
+## Monitor PLAY/REPLAY — 2026-10-23
+
+- [x] Linux/Wine6281: replay do painel em1280×800 real e1920×1080 virtual,
+  candles/indicadores/avanço; cancelamento e limpeza do runtime próprios.
+- [x] Escolha/padrão PLAY, REPLAY obrigatório e monitor retirado em testes;
+  caminhos Linux e Windows simulados, sem alterar confirmações financeiras.
+- [ ] Windows físico: dois monitores com DPI diferente, monitor negativo, escolha
+  do lançamento, maximização e PLAY minimizado/exibido, STOP próprio.
+- [ ] Retorno físico do dock após desconexão e escalas distintas em Linux.
+- [x] PLAY manual DEMO visível e oculto, telemetria, STOP próprio e carteira
+  inalterada sem ordens. Primeira leitura sem API conectada recusou corretamente;
+  o fluxo normal de conexão permitiu o QA. Não qualifica gestão/negociação.
+
+[Contrato e limites](sdk/play_replay_monitores.md).
+
+## G19.10 — retorno do dock/área Wine (2026-10-23)
+
+- [x] Duas telas físicas conectadas: eDP-1 1280×800 e DP-1 3456×1458 (áreas
+  informadas pelo sistema). PLAY no monitor maior preenche terminal/gráfico;
+  REPLAY no handheld desenha/avança e conclui o período. ComposiçãoApp0b2fda3.
+- [x] Modos internos preparados no registro privado; original/ponte/host preservados.
+- [x] CorridaBadWindow: subprocesso real antes sai1/depois sai0; handler anterior
+  preservado para Tk/outras conexões. UI normal sobrevive à retirada do compilador.
+- [ ] Windows físico e troca de DPI entre monitores continuam pendentes.
+- [ ] Migração automática de uma sessão já aberta por hotplug não é entregue.
+
+Evidência finalSuperATR1.02/dezcurvas/cinzaclaro tem recorte próprioG19.9.
+
+## G19.16 — alvo probabilístico (2026-10-23)
+
+- [x] Linux/Wine6281: painel7.10 e script sintético compilados0/0; mostrador,
+  cores/neutralidade, timer independente e recriação:28 verificações nativas.
+  Monitor atual1280×800, gráfico1181×666; sem mudar resolução global ou enviar ordens.
+- [x] Corpos reais do modelo/feed/política e geometria executados com plataforma
+  simulada; fechamento observado não é inferido do bool do executor.
+- [ ] Windows físico: MetaEditor, monitor/DPI, Canvas, timer e leitura inline.
+- [ ] Tester/servidor DEMO: recibo de parciais/final, netting/hedging, restart e
+  concorrência. Gestão padrão desligada; nenhuma qualificação REAL/financeira.
+
+[Contrato](sdk/alvo_probabilistico.md). Não modifica o instalador nem distribui
+novo payload Safety; a closure integral precisa acompanhar o Expert.
+
+## AIA-01 — workflows de agentes (2026-10-23)
+
+- [ ] Windows físico: abrir JSONL pelo Python instalado sem Tk; consultar catálogo
+  completo, Default/Manual/exportar/reabrir e pacote nativo preservando recibos.
+- [ ] Windows físico: PLAY/REPLAY visível em monitores distintos por anchor, aguardar
+  callback ready, adicionar/remover somente indicadores próprios, capturar PNG,
+  encerrar sessão sem tocar processo externo ou confundir STOP com zeragem.
+- [ ] Windows físico: testar EOF/Ctrl-C/retorno após falha e paths com espaços.
+- [ ] Tester pausado: controle gráfico pode aguardar callbacks; play/pause do próprio
+  Tester ainda não é API disponível. Não automatizar mouse como substituto.
+
+Linux usa os mesmos Session/Consent e paths existentes; simulações de paths Windows
+não constituem os aceites físicos acima. Sem alteração de instaladores neste recorte.
+[Contrato SDK/CLI](agente.md).

@@ -89,6 +89,8 @@ def build_relation_dto(*, indicator, target, relation, scope, provenance, genera
     relation = dict(relation)
     scope = dict(scope)
     provenance = dict(provenance)
+    if not synthetic_fixture and not isinstance(provenance.get("base_namespace"), str):
+        raise ValueError("provenance.base_namespace é obrigatório: relações de bases diferentes não podem se confundir.")
     missing_indicator = [field for field in _INDICATOR_FIELDS if field not in indicator]
     missing_relation = [field for field in _RELATION_FIELDS if field not in relation]
     if missing_indicator:
@@ -195,7 +197,7 @@ def synthetic_fixture():
             "evidence_state": "INSUFFICIENT", "utility_state": "INCONCLUSIVE", "freshness_state": "UNAVAILABLE",
             "state": "NOT_COMPUTED", "reason": "T18.2 ainda não calculou relações; fixture contém somente o contrato.",
         },
-        provenance={"source_mode": "synthetic_contract_fixture", "dataset_hash": None,
+        provenance={"source_mode": "synthetic_contract_fixture", "dataset_hash": None, "base_namespace": None,
                     "source_revision": None, "as_of_utc": "2026-10-15T12:00:00Z"},
     )
 

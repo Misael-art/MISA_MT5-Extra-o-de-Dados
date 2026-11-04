@@ -369,11 +369,20 @@ class HistoricalExtractor:
                     continue
 
             # 4. Salva o bloco imediatamente (memória constante; uma falha não perde os blocos anteriores)
+            # O recebimento é o instante em que este processo obteve o bloco; retomadas não regravam
+            # blocos concluídos, então não criam nova antiguidade para eles.
+            received_at = datetime.now(timezone.utc)
             from mt5_extracao.analytics import data_eligibility
             provider = self.connector if source == 'mt5' else self.external_source
+            if source == 'mt5':
+                describe = getattr(self.connector, "data_source", None)
+                block_source = describe() if callable(describe) else None
+            else:
+                block_source = {"provider": source, "derivation": "fallback_m1"}
             saved_rows, quality = self._save_block(symbol, timeframe_name, table_name, block_df, current_start,
                                                    include_indicators, timeframe_val,
-                                                   origin=data_eligibility.provider_origin(provider, symbol))
+                                                   origin=data_eligibility.provider_origin(provider, symbol),
+                                                   received_at=received_at, source=block_source)
             if saved_rows is None:
                 self.db_manager.record_block(table_name, current_start, block_end, 0, 'failed', source)
                 failed_blocks += 1
@@ -395,7 +404,7 @@ class HistoricalExtractor:
         return True
 
     def _save_block(self, symbol, timeframe_name, table_name, block_df, block_start, include_indicators,
-                    timeframe_val=None, *, origin="unknown"):
+                    timeframe_val=None, *, origin="unknown", received_at=None, source=None):
         """
         Calcula indicadores (com aquecimento a partir das barras já salvas), verifica a qualidade e grava o bloco.
 
@@ -441,7 +450,7 @@ class HistoricalExtractor:
             self.cancel_requested = True
             return None, quality
         try:
-            if self.db_manager.save_ohlcv_data(symbol, timeframe_name, df):
+            if self.db_manager.save_ohlcv_data(symbol, timeframe_name, df, received_at=received_at, source=source):
                 return len(df), quality
             log.error(f"[{symbol}] Falha ao salvar bloco iniciado em {block_start} (save_ohlcv_data retornou False).")
         except Exception as db_err:

@@ -1,3 +1,261 @@
+## Repasse final AIA-01
+
+[Continuidade autônoma do SDK](repasse/AIA_01_CONTINUIDADE_20261023.md): código,
+PRs, comandos, provas, preview/limpeza e pendências para outro host/agente.
+Implementação instalada App56226ce/Hb730; documentos posteriores podem avançar a
+ponta sem mudar o código instalado.100 dirigidos/2952 amplos, seleções e limites
+separados no repasse; CI remoto tem conferência por HEAD.
+
+## AIA-01 — SDK/workflow para agentes, 2026-10-23
+
+Frente própria `codex/ai-workflows`, sem editar WIP da raiz/pilar de dados.
+Base composta por Git: Appfe92ed13a731a39dc03a69ba31f7047b3f6f8c6f (BD19c1)
++60e8870a91bace69c712e00213aaa46522ba2ced (PR205), merge
+1d5ce2296dfb48e884c0175dcca05aa7d4801885. Revisão do delta próprio contra essa base;
+histórias preservadas e dependências separadas. Companion Hb730ed4a8df74f5f20eb6e289798d0232c370994,
+[PR75](https://github.com/Misael-art/projeto-indicadores-mt5/pull/75), sobre HPR74/e29a2c6.
+
+[Entrada para o próximo agente](agente.md): `commands` recursivo, `workflow methods`,
+JSONL local `workflow serve`, manifestos `workflow run`, `sdk.open_workflow`.
+Sessões e presets delegam a Session/Consent/PresetExecution/compiler/store existentes;
+apresentação opt-in por protocolo próprio com IDs, ACK/timeout incerto, ownership,
+PNG nativo e espera de callback `until=ready`. Sem novo executor/scheduler/cache/journal.
+O painel7.11 só amplia API de apresentação; pin manual45e31481977d09f1 é aditivo.
+Não reaproveitar pins dos perfis automáticos para a closure compartilhada alterada;
+conservar seus snapshots de fonte/compilação já qualificados. Safety publicado intacto.
+
+A primeira tentativa nativa foi recusada com ponte parada; o script existente foi
+iniciado em X11 removendo WAYLAND_DISPLAY apenas do processo lançador. Sem alteração
+de fontes/token/credenciais da ponte. Outra tentativa registrou processo running
+sem Expert pronto: agora o ACK de prontidão distingue as fases. Uma preparação
+mudou de monitor e foi recusada pelo Runtime existente; a QA usa anchor explícito.
+Não converter esses casos em sucesso nem repetir efeitos sem recibo.
+
+[PR207](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/207), base de revisão
+`codex/ai-workflows-base` publicada. [Evidência](evidencias/AIA_01_SDK_AGENTES_20261023.json):
+CLI real PLAY e REPLAY DEMO sem ordens; dez curvas/43 parâmetros lidos no PLAY,
+configuração14/EMA/.5 também em M5/M15, EMA/ATR, capturas e recusas de escopo.
+REPLAY usa captura declarada da janela própria pelo SO (1280×800), sem cliques;
+IndicatorParameters indisponível nesse Tester é reportado sem qualificar inputs.
+As três falhas globais iniciais foram timeouts; um foi reproduzido no Git da base
+anterior à implementação. Não apagar/afrouxar testes nem alterar o pilar financeiro
+para ocultar esses resultados. CI/performance global continuam gates próprios.
+
+Foco atual é SDK/CLI. Indicador estratégico, sua série/rotina de armazenamento,
+amadurecimento OMNI e estratégia operacional são próximos contratos separados,
+ainda pendentes. Também pendentes: demais ferramentas de Estudo/terceiros e controle
+do play/pause do Tester, qualificações Windows físico/financeiras/operacionais.
+
+## G19.10 — resolução interna Wine, 2026-10-23
+
+Branchcodex/play-replay-monitor-fit, baseApp2ca4101/SuperATR1.01. Retorno do
+dock reproduziu contêiner3456×1458 com terminal1280×800; corrigido modo interno
+na cópia privada antes do primeiro Wine. Baseline85/final126, doctor20/1/0 e
+prova do método de produção3456×1458. PLAY3456×1458 e REPLAY1280×800
+concluídos;128 testes finais, corridaBadWindow corrigida com prova real.
+App/Hnovos de10curvas/cinzaclarea incorporados porGit, sem alterar esse recorte.
+[Contrato/limites](sdk/play_replay_monitores.md#g1910--área-interna-no-retorno-do-dock).
+
+## Super ATR — G19.9, 2026-10-23
+
+Regras do proprietário registradas:20/SMA0, inicialmente1/2/3 e agora DEZ
+curvas com multiplicadores1 a10, pontilhado
+azul graduado, catraca e virada por cruzamento estrito da linha anterior.
+Versão1.02 mantém diagonais, amplia para10 curvas e acrescenta o temaCinza Claro;
+89H/checker161/compilação0/0, instalação/visual próprios concluídos em
+Appf7c3371/H3b979cf1:10 tonsRGB/diagonais/cinza neutro, painel pausado.
+FonteH3b979cf1/fpd377c812aafd0c5e, Appcodex/super-atr sobrede8830e5.
+126 testesApp/88H/checker161 e compilação6281/Wine0/0; versão1.01 inspecionada
+com diagonais e instalada na prévia. Prova visual composta com App0b2fda3/PR204
+(monitor interno Wine), sem mudança nos runtimes de catálogo/pin destePR. [Teoria, uso e continuidade](sdk/super_atr.md). Nenhum
+executor/risco/Expert, pilar de dados, Safety ou canal aceito alterado. Pin manual
+novo exige closurecompleta; antigos preservados.50curvas/adaptação/Profit/Windows
+físico/aceite financeiro próprios. A correção anteriorPR195 tem seis checks finais
+verdes e continua separada deste incremento.
+
+## Correção de monitor PLAY/REPLAY — 2026-10-23
+
+Branch `codex/play-replay-display` sobre G19/321272f0b24d. Detecta o monitor da
+janela lançadora, com fallback se o dock foi retirado. REPLAY visível; PLAY optativo,
+automáticos ocultos por padrão e painel manual reconhecido visível. Wine visual
+isolado da ponte, com cópias temporárias removidas após encerramento confirmado.
+Replay desenhado/avançando em1280×800 real e1920×1080 virtual;160 testes dirigidos,
+doctor20/1/0. PLAY manual DEMO visível e oculto com telemetria/carteira inalterada,
+sem clicar ordens; primeira leitura sem API conectada foi recusada antes da execução.
+[Contrato/evidência/retomada](sdk/play_replay_monitores.md). WIP, frente de dados,
+HADOUKEN/Safety e referência aceita preservados. CI, Windows físico e retorno do
+dock têm conferências próprias; não é aceite financeiro ou operacional amplo.
+
+## Prévia disponível pelo atalho habitual — 2026-10-21
+
+Solicitação do proprietário: todo avanço testável acessível para teste.
+Composição local172→177 + correção visual182 + documentação178→181 em branch
+própria, com histórico preservado. Os dois atalhos passam a usar `app-development`;
+`app-current` aceito e dados/WIP preservados. [Escopo e atualização](TESTAR_DESENVOLVIMENTO.md).
+Operação manual do replay e falha Windows177 mantêm seus estados; prévia não é
+aprovação das PRs ou implementação das funcionalidades apenas planejadas.
+
+## Nova conferência do host — 2026-10-21
+
+[Continuidade validada](repasse/RETOMADA_VALIDADA_20261021.md): clones independentes,
+SD e restauração em leitura conferidos; ambiente preservado funcional, 56 testes
+e doctor20/1/0. Novo SO não comprovado. Próximo recorte autorizado: exibição do
+painel no REPLAY; melhorias de seleção/lotes e comparação entram no roadmap.
+
+## Recuperação após reinstalação — corte de 2026-10-21
+
+O [roteiro independente do host](repasse/RECUPERACAO_POS_FORMATACAO_20261021.md)
+registra clones novos, pins, dependências, WIP e dados privados. Três clones de
+rede passaram fsck; commits/HEADs locais estavam alcançáveis no GitHub; cinco
+árvores WIP reais foram reconstruídas por bundle/patch/arquivos com hashes iguais.
+A restauração privada SQLite preservou43 tabelas e o histórico foi reaberto pelo
+store importado do clone novo, sem nova execução. Isso foi no Linux atual, não
+no novo SO. Após confirmação do proprietário, o complemento privado de142 MB foi
+copiado ao SD preservado: hashes relidos,43 tabelas restauradas e histórico/journal
+reabertos sem execução. `ready_to_format=true` no [estado](repasse/RECUPERACAO_ESTADO_20261021.json)
+vale para desenvolvimento no corte declarado; novo SO/aceite operacional pendentes.
+Wine, ambientes e caches são recriados; o pacote amplo16,5 GB não foi migrado.
+
+A fila HADOUKEN49–60 também foi localizada e conferida no GitHub:12PRs abertas,
+dois checks aprovados cada no snapshot, sem integração/replay/consumidor Python
+ou revisão desta frente. App172–176 tem seis checks;177 e178 têm falha Windows
+analítica preservada. O mapa de retomada distingue essas filas e a instalação171.
+O verificador `scripts/verify_recovery.py` usa só stdlib, confere o pacote privado
+sem extrair/executar e não anuncia por si só mídia externa/restore/aceite operacional.
+
+## Repasse do integrador e limpeza segura — 2026-10-21
+
+O [repasse consolidado](repasse/INTEGRACAO_20261021.md) registra entregas, versões,
+evidências, fila e próximos passos; o [índice da raiz](../RETOMADA_AGENTE_20261021.md)
+permite localizá-lo sem a conversa. O corte instalado é AppPR171/ac7af2c3,
+Hec550d77 e Safety3988df13/v1.8.0. PRs172–177 continuam publicadas, sem merge ou
+instalação; atualizar checks de cada ponta e integrar serialmente se o trabalho
+for retomado. Esta publicação documental não executa essa fila.
+
+Foram compactados/verificados10bancos privados, aposentadas19cópias nativas
+privadas com evidência retida e removidos76diretórios de cache gerado. O aumento
+observado de espaço disponível foi aproximadamente3,4GB; a soma lógica dos
+blocos retirados não equivale a bytes físicos recuperados em Btrfs. Dados,
+configurações, backups do proprietário, WIP, ambiente e worktrees foram
+preservados. [Escopo e medições](evidencias/REPASSE_LIMPEZA_20261021.json).
+
+As seções abaixo são registros históricos das respectivas pontas e podem dizer
+“em revisão” de entregas depois integradas. O repasse datado identifica o corte
+mais recente sem apagar as falhas anteriores. Sincronização privada/Tester,
+replay/aceites operacionais, Windows físico e demais gates continuam pendentes.
+
+## Painel manual no REPLAY — correção em validação (2026-10-21)
+
+Compilação e replay usam o mesmo DISPLAY no Linux/Wine; painel visível.
+Código final com 84 testes e doctor20/1/0. Abas manuais não passaram no ensaio:
+polling de botões e ocultação do fundo não resolveram; experiências retiradas
+do runtime final. PR draft, sem instalação até o aceite manual. [Contrato](sdk/replay_painel_manual.md).
+Base do proprietário, risco/executor e Windows físico mantêm seus limites.
+
+## T19.34 — Resumo e erro do catálogo legíveis, em revisão (2026-10-21)
+
+Complemento sobre176/e7656da, somente o rótulo do resumo/erro:1178px requisitados
+em823px reproduziram o corte. Busca/botões passaram e permaneceram inalterados.
+O resumo acompanha a largura real, com quebra à esquerda; conteúdo, modelos,
+filtros e seleção preservados.11Tk finais aprovados159,10s; dois temas/quatro
+larguras/fontes e erros longos, mais interação com contexto/página/cards. Histórico
+privado reaberto sem cálculo; capturas inspecionadas, sem banco owner ou MT5.
+[Contrato](sdk/cabecalho_catalogo.md). App171/ac7af2c segue instalado neste snapshot;
+checks/integração/instalação serial172–176 e deste complemento continuam próprios.
+Nenhum aceite de T19.34 ampla/Windows físico/financeiro/nativo/live.
+
+## T19.34 — Navegação e mensagens com fonte ampliada, em revisão (2026-10-21)
+
+Nova candidata sobre175/e174cc7: seletor Área substitui nomes comprimidos e mantém
+as páginas/seleção existentes; status/base se reorganizam e Detalhes expõe texto
+integral selecionável, com fonte ampliada e rolagem. Sem cálculo financeiro ou
+alteração de dados/configuração/native.10Tk finais passaram131,60s;6 dirigidos do
+entorno passaram52,37s (sobreposição); doctor20/1opcional/0. Histórico privado
+reaberto, sem novo cálculo ou banco do proprietário; capturas inspecionadas.
+[Contrato e limites](sdk/navegacao_adaptavel.md).
+
+Permanece instalado171/ac7af2c.172bfc teve3 visuais Windows isolados aprovados45,06s,
+mas a suíte parou antes da UI por timeout num commit SQLite de materialização
+inalterada. Teste dirigido local passou16,84s; causa do runner não comprovada.
+Reexecução seletiva do job falho no mesmo commit foi solicitada, preservando os
+cinco checks aprovados. Nenhum172–175 foi integrado/instalado neste snapshot.
+A fila serial e os seis checks próprios continuam obrigatórios; Windows físico,
+T19.34 ampla e aceite nativo/financeiro/operacional não são conferidos.
+
+## Recursos — Cópias disponíveis com leitura de pastas incompleta, em revisão (2026-10-21)
+
+A prova de recuperação encontrou a aba ocupada na varredura de pastas, antes de
+listar cópias. O corretivo limita cooperativamente a leitura opcional de tamanhos
+e arquivos antigos. O relatório do banco e os backups permanecem disponíveis;
+tamanho desconhecido fica indisponível e lista parcial não libera limpeza.
+Não há novo scheduler, cache, lock, orçamento financeiro ou alteração de SQL/schema.
+
+Baseline45 casos passaram; quatro regressões novas falharam antes do ajuste.
+Seleção49 passou59,05s; mais24 proteções de retenção passaram12,65s. Após compor
+o layout66571c4, três casos de interação UI passaram38,09s; cinco próprios finais
+passaram11,81s, incluindo interrupção após um arquivo. Há sobreposição entre seleções.
+
+Na candidata, UI/SQLite privado criou backup verificado455,6MB, preservou a cópia
+anterior, restaurou e exportou12.405barras com todas as colunas conferidas. Mesmo
+run preservado, três cópias reabertas e limpeza parcial bloqueada. Um prazo inicial
+curto do ensaio foi registrado como incompleto; retomada concluiu auditoria e
+verificação. Banco original aberto só para leitura, configuração/preferências intactas.
+Não qualifica restauração no banco do proprietário, PG, Windows físico ou operação.
+
+Fonte candidata ainda sem integração/instalação: Appac7af2c/Hec550/Safety1.8.0
+permanece ativo. PR172/layout1b0ba510 segue em novo CI após a falha Windows de66571c4;
+este corretivo conserva a ordem serial e exige seus próprios seis checks finais.
+O prazo é cooperativo entre chamadas de filesystem, sem teto absoluto para I/O,
+SQL ou backup/restauração. [Contrato e evidência](sdk/recursos_leitura_parcial.md).
+
+## T19.34 — Contexto do robô sem corte horizontal, em revisão (2026-10-21)
+
+Nova evidência: CI39589919928/66571c4 também falhou no ensaio144DPI em900×620,
+com largura835/892válida, rótulo desmapeado e interseção563..293 (2.753passaram/
+85skips). O cálculo de alcance usava coordenadas globais do rótulo antes de ele
+ser mapeado. O ensaio agora revela o viewport por posições internas dos ancestrais
+e mede coordenadas globais após mapear; prazo/asserts/temas preservados.12Tk/SDK
+passaram32,04s; runtime inalterado, novo CI Windows obrigatório. Ambas as falhas
+permanecem preservadas; não há merge/instalação172. PR173 depende desta correção.
+
+PR172 permanece sem merge: CI39581746127 teve uma falha Windows no novo ensaio
+144DPI (`winfo_ismapped=0`), com2.753 aprovados/85skips. Linux passou2.619/220skips;
+PG55. O ensaio passou a percorrer as duas rolagens e aguardar o mapeamento e
+a geometria por prazo limitado, mantendo os asserts e acrescentando visibilidade
+real.12 testes Tk/SDK passaram localmente; runtime visual/financeiro inalterado.
+Novo CI da correção obrigatório; a causa exata do evento no runner continua
+indeterminada, sem alegação de aceite Windows físico.
+
+Recorte isolado sobre T19.24: rótulos do detalhe usam sua largura real, em vez do
+cartão externo. Regressão reproduziu688px de quebra em594px disponíveis; ajuste
+aprovado em dois temas/escalas96/144 simuladas e1920/1280/900/820, incluindo900×620,
+com texto longo/resize/teclado. Três testes anteriores reaproveitados no mesmo
+runtime, sem alteração de métricas, seleção ou conteúdo. Prova Tk/Xvfb reabre o
+mesmo histórico privado sem recalcular; capturas/medidas preservadas em evidência.
+Não conclui T19.34 nem qualifica gráficos/fluxos futuros/DPI ou Windows físicos.
+[Contrato](sdk/robot_context_layout.md).
+
+Corretivo SDK1 de T19.24d7020ac composto por Git sobre esta frente, sem conflitos
+ou alteração do layout já validado. Os quinze argumentos públicos permanecem;
+SDK+matriz visual+exibição da composição passaram13 testes em29,68s após compor.
+A nova ponta exige CI próprio; a execução anterior permanece como evidência do
+snapshot anterior, sem conceder aceite ao SDK que vazava o argumento interno.
+
+T20.12/PR170 foi integrado em86ae848 e T19.24/PR171 emac7af2c, com seis checks
+aprovados nas pontas833de99/d7020ac. T19.24: Linux2.619/218skips, Windows2.752/85skips,
+PG55. Appac7af2c/Hec550/Safety1.8.0 está instalado, com configurações/preferências,
+atalho, ponte e terminal preservados; exposição0/0 antes e depois. Avaliação
+registrada na instalação: Madrid408barras/3operações/111,0875, reabertura do mesmo
+run e nova consulta/cache auditadas, com livro numericamente conciliado; isso não
+qualifica livro transacional, fonte, reserva final ou estatística. Interface reabriu
+o resultado sem novo cálculo. T19.34 aguarda sua própria correção/CI antes da troca.
+Na instalação anterior,
+a UI local reabriu/exportou12.405 barras EURUSD/H1; CSV completo e backup existente
+conferidos, sem extrair/atualizar na corretora nem restaurar o banco do proprietário.
+
+As seções seguintes preservam os snapshots anteriores de revisão; o estado
+integrado/instalado acima prevalece sobre suas indicações históricas de pendência.
+
 ## T19.24 — Uma composição Python no backtest completo, em revisão (2026-10-21)
 
 Corretivo do SDK: CI39576824302 teve uma falha de assinatura pública (2.617 testes
@@ -2462,3 +2720,77 @@ cache inelegível, REAL proibida, Windows físico/carteira/gradientes próprios.
 Contrato docs/sdk/demo_operacional.md; recibo T8_7_DEMO_PARCIAL_20261020.json.
 
 Integração anterior conferida: H35/e5f4842 → M162/a0cd3c4, seis checks no runtime4517299, árvore final revisada idêntica. Este complemento T8.7 altera apenas documentação e não promove execução/aceite ao vivo.
+
+
+### Corretivo F2/T2.5 — sessão correspondente reutilizada (2026-10-21)
+
+Em revisão sobre Recursos/layout compostos e070897. O conector confere terminal,
+caminhos e conta antes de inicializar; sessão correspondente é emprestada e sua
+liberação local preserva a API. Perda/alteração posterior recusa também no preflight
+da coleta, sem reconectar silenciosamente essa sessão. Conexão nova/login explícito
+mantêm o caminho anterior. Sem novo gerenciador/lock/limite; usa tester_lease existente.
+T17.15 tratava só espera de teste e não é o escopo deste runtime.
+
+Prova real candidata: DEMO6276, primário e ponte preservados, zero posições/ordens;
+initialize/login/shutdown bloqueados no helper. Extração EURUSD/H1 fechada25barras,
+atualização49, reabertura/cópia/restauração auditada/cópia anterior e CSV todas as
+colunas iguais em banco privado pequeno. UI online abriu as49 e liberou consumidor
+sem desligar a API. Não abriu/restaurou o banco do proprietário. None/NaN nas colunas
+opcionais do CSV mantêm semântica de ausência, sem cálculo sintético/substituição.
+SDK documenta limites e evidência própria registra testes. CI final e instalação
+continuam pendentes; sincronização privada/Tester/aceite financeiro e Windows físico
+não qualificados, sem repetir sondagem nativa.
+
+
+### T20.12 — consulta do journal na UI (2026-10-21)
+
+Complemento em revisão sobre174/c0e0f9c: Exibir → Registro de estudos abre nomes,
+revisões, pedidos/recusas/descarte/reutilização, eventos e exposição compartilhada.
+Usa store.status existente e um índice SELECT sem criar schema em base antiga.
+Só metadados: não calcula, consulta resultado financeiro nem registra falso acesso
+à reserva. Critérios/orçamento/snapshots e limites de qualificação vêm do canônico.
+Sem novo cache/journal/motor. Serviço/economia/robots/SDK/estratégias preservados.
+6finais UI,30seleção/1PGlocalpendente (sobrepostos);2protocolos/4pedidos/17eventos
+reais em cópia só das cinco tabelas de metadados, menu real/capturas inspecionadas,
+mesmo bf4d/status inalterado. Não repetiu avaliação ou restore. CI, instalação,
+Windows físico e demais consumidores/estatísticaT20.13 permanecem pendentes.
+
+### T19.34 — corpo desmapeado por altura (2026-10-21)
+
+1b0 e e070 falharam Windows no mesmo900×620/144DPI, widthfits mas mapped0.
+Nenhum foi integrado/instalado. Novo recorte em172 usa ScrollableContent já existente
+em volta da página (filtros/resumo/corpo), mantendo as rolagens anteriores e modelos.
+Reprodução Linux escala suportada1,5 deixou o corpo semmapa antes;3dirigidos44,70 e
+4adjacentes28,36 passaram após. Primeiro Windows isolado3casos antecede a suíte CI
+completa/60%inalterada, sem waiver/dispatch. Nova captura histórica privada48fede,
+3trades/111,0875,24bounds/2temas+escala1,5, sem cálculo; contexto acessível, navegação
+/globalstatus ainda têm cortes com fonte extrema. T19.34 ampla/Windows físico pendentes.
+Compor por Git em173/174/175 antes de promover qualquer ponta; nova CI/instalação próprias.
+
+## Frente de dados BD (plano rev. 2) — retomada de 23/10/2026
+
+PRs empilhados sobre `codex/g19-distribuicao`: #190 BD01 → #191 BD02 → #192 BD03 → #193 BD04.
+Todos **parciais**; nenhum instalado no canal de desenvolvimento. Documentos em `docs/dados/`;
+matriz `docs/dados/matriz_aceites_dados_20261022_rev2.json` (E01–E06 em execução, demais
+planejados); recibos com SHAs completos em `docs/dados/recibos/recibos_20261023.json`.
+
+Mudanças de produção até aqui: identidade lógica da base (`datasets.identity/fork/declare_source`,
+`feature_store.with_base_identity`, base congelada em notas novas, `base_namespace` no DTO) e
+histórico do bruto OHLCV (`_ohlcv_revisions`, `received_at`, `load_ohlcv_as_of`).
+
+Retomada: suítes com `xvfb-run -a .venv/bin/python -m pytest -q` (sem janelas no display do
+proprietário; 3 testes de geometria falham no display real e passam sob Xvfb — pendência visual
+no dono da UI). Doctor: `--root` da worktree BD01, que tem `config/config.ini` próprio
+(`--no-mt5`, ponte desativada). Próximo: BD05 (tempo/sessões/W1/MN1).
+
+### Atualização de 23/10/2026 (2ª revisão independente, R01–R07)
+
+Contraexemplos reproduzidos antes da correção (log `r01_r03_antes_adbe614.txt` na fotografia):
+R01 (101 em vez de 250), R03 (300 em vez de 250), R02 (as-of devolvendo barra não recebida e
+anterior à observação). Correções: contrato de recebimento `_ohlcv_versions`/`_ohlcv_receipts`,
+as-of causal/inspect, extrator com fonte e recebimento (R04), mensagem do fork, zona do corretor
+e offset desconhecido (R06), assinatura global como limitação temporária sem mudar o grafo (R05),
+recibos `docs/dados/recibos/recibos_20261023b.json` com E06 pela entrada efetiva (R07).
+Primeira cadeia funcional: provedor falso → extrator → M1 → M5 → store → `sdk.query_series` →
+`mt5x analytics features series`. Pilha: #190…#194 e novos PRs BD06, BD07, BD08a, BD18a, BD19c1.
+Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).

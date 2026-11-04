@@ -1,0 +1,71 @@
+{
+  "task": "T20.12 canonical experiment metadata UI consumer",
+  "base": "c0e0f9ce73dc3d78d37c1ef1a5aacf16634797f1",
+  "source_sha256": {
+    "mt5_extracao/experiments/store.py": "3309adae0c768e77bb0113d4049f9fd53ed6c8a7c144f93e15edb41c2f26bc23",
+    "mt5_extracao/ui_manager.py": "2580f52c4a5b185b7cfeada2bc837101db2abdc796feb293c6870f25eaddf918",
+    "mt5_extracao/ui/experiments.py": "6210157463183df200bd16aa505d138924e2cd61d76b6ca357961f0544e40368",
+    "tests/test_experiment_registry_ui.py": "ac9af43bdac81d6d8b87d698913cd441c0628a1d47a79ec2d836e71ad4e75aba",
+    "tests/test_experiment_registry_pg.py": "d70f5aa89313d73e87e33cf635789bca8201a26ecd760d57aee93793c2380a06",
+    "docs/sdk/experiments_consulta_ui.md": "22532ea09d79155a52041789d52da19e184ad84bc52bd36b7f1021ae266c3e10",
+    "docs/PLANO_DE_TRABALHO.md": "f0631cb490362216175b5050a3b48b8289951185a88f748e34b7cc988deea077",
+    "docs/continuidade.md": "bb44e1e49cd7a8322d160e767e4c53df7dd31aaeb8ffbd6c0c5ace6b0844d3bf",
+    "docs/validacao_instaladores.md": "3f47fb86632679b1475a9c3adc37e6d2f67e3a037f8f7c821480da770688c201"
+  },
+  "runtime_scope": "additive read-only protocol index plus new Tk dialog and menu hook; old store prefix unchanged",
+  "protected_runtimes_unchanged": 11,
+  "validation": {
+    "baseline": {
+      "passed": 4,
+      "seconds": 16.9
+    },
+    "first_own": {
+      "passed": 5,
+      "seconds": 31.95
+    },
+    "selection": {
+      "passed": 30,
+      "pg_skipped_local_url_absent": 1,
+      "deselected": 64,
+      "seconds": 44.7
+    },
+    "own_final": {
+      "passed": 6,
+      "seconds": 21.31
+    },
+    "counts_overlap": true,
+    "doctor": {
+      "ok": 20,
+      "optional_warning": 1,
+      "failed": 0
+    }
+  },
+  "candidate_app_readback": {
+    "copied_journal_tables": 5,
+    "owner_source_mode": "ro",
+    "protocols": 2,
+    "requests": 4,
+    "executions": 2,
+    "events": 17,
+    "menu_invoked": true,
+    "same_run": "bf4d0f79363b451c8f15f9e052981bf9",
+    "journal_status_unchanged": true,
+    "configuration_and_prefs_unchanged": true,
+    "screenshots_inspected": true,
+    "evaluation_or_restore_repeated": false,
+    "initial_wrapper_cleanup_failure_retained": true,
+    "narrow_readback_existing_copy_exit": 0
+  },
+  "qualifications": {
+    "installed": false,
+    "physical_windows": false,
+    "financial_or_statistical_approval": false,
+    "qualified_final_holdout": false,
+    "native_started": false
+  },
+  "limits": [
+    "status only; financial result delivery still belongs to canonical evaluation service",
+    "last100 protocol events shown with explicit total; complete journal unchanged",
+    "other experiment consumers, T20.13/27/28 and source/operational acceptance remain pending"
+  ]
+}

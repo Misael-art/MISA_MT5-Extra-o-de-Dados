@@ -6,7 +6,7 @@ from tkinter import filedialog, messagebox, ttk
 from mt5_extracao import robots as robots_core
 from mt5_extracao.robots import catalog, risk
 from mt5_extracao.ui import icons
-from mt5_extracao.ui.components import FilterBar, DetailsPanel
+from mt5_extracao.ui.components import FilterBar, DetailsPanel, ScrollableContent
 from mt5_extracao.ui.robot_detail import RISK_STYLES, RobotDetail, draw_equity
 from mt5_extracao.ui.robot_controls import CardControls
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
@@ -38,9 +38,12 @@ class RobotsPanel:
         self._card_details = {}
         self._columns = 0
         self.frame = ttk.Frame(parent, padding=12)
+        self.page_viewport = ScrollableContent(self.frame, self.theme)
+        self.page_viewport.pack(fill=tk.BOTH, expand=True)
+        page = self.page_viewport.content
         self.controls = CardControls(self)
 
-        bar = FilterBar(self.frame, padding=10)
+        bar = FilterBar(page, padding=10)
         bar.pack(fill=tk.X)
         for column, weight in enumerate((0, 1, 1, 0)):
             bar.columnconfigure(column, weight=weight)
@@ -90,10 +93,11 @@ class RobotsPanel:
         self._filterbar_stacked = None
         bar.bind("<Configure>", self._responsive_filterbar, add="+")
 
-        self.summary = ttk.Label(self.frame, text="Lendo o catálogo...", style="Page.Muted.TLabel")
-        self.summary.pack(anchor="w", pady=(8, 6))
+        self.summary = ttk.Label(page, text="Lendo o catálogo...", style="Page.Muted.TLabel", justify=tk.LEFT)
+        self.summary.pack(fill=tk.X, anchor="w", pady=(8, 6))
+        self.summary.bind("<Configure>", self._wrap_summary, add="+")
 
-        body_view = ttk.Frame(self.frame)
+        body_view = ttk.Frame(page)
         body_view.pack(fill=tk.BOTH, expand=True)
         self.body_canvas = tk.Canvas(body_view, highlightthickness=0, borderwidth=0,
                                      background=self.theme.colors["page"])
@@ -129,6 +133,12 @@ class RobotsPanel:
         self._body_stacked = None
         body.bind("<Configure>", self._responsive_body, add="+")
         self.theme.on_change(self._theme_changed)
+
+    def _wrap_summary(self, event):
+        if event.width > 1:
+            width = max(1, event.width - 4)
+            if int(float(self.summary.cget("wraplength") or 0)) != width:
+                self.summary.configure(wraplength=width)
 
     def _sync_body_viewport(self, _event=None):
         canvas_width = self.body_canvas.winfo_width()

@@ -1,0 +1,94 @@
+{
+  "task": "T19.34 global navigation/status initial",
+  "base": "e174cc789b614f7403c82eb439b829ff008929a5",
+  "sha256": {
+    "mt5_extracao/ui/components.py": "f709c313ac53cc89df605674738d6dafffa1a52b5386a2a8c9eb2eebf95ee93e",
+    "mt5_extracao/ui_manager.py": "1554f03bd9d31a225dbaf23cc8867943b753939b467727ae287023acc7f186ac",
+    "tests/test_ui_main_navigation.py": "c66d00010793d7a6e6b9b8bb72d8a619a9371d6cc30fa490ecd9e21e59fccadf",
+    "docs/sdk/navegacao_adaptavel.md": "4edc76025f35feb4e4a3d7f0cc1758798e989ea6f2c88b6b73ff1491dac493bd",
+    "docs/PLANO_DE_TRABALHO.md": "2888db4cc508aa608115e7a57f5ae2ef69bf920b21ff72fee6337c6f10201a74",
+    "docs/continuidade.md": "0493cbec6a82bd072590681421ed9b8c543f117fbce6589a57552d0dcbbd0ff4",
+    "docs/validacao_instaladores.md": "6042e781fea7759327ec7e40ca4c5d8c942a9c853906c439e87113fcf60de816"
+  },
+  "protected_byte_identical": {
+    "mt5_extracao/strategies/base.py": "c6ca9c0bf12d1284cad6a91e3a988107a8f460e8c7bc47da79e5bc9190c822fe",
+    "mt5_extracao/strategies/backtester.py": "0b627a4162e0365010f1abab30c18a8e5a77dc8fdc56931ef3b6d749987fa13f",
+    "mt5_extracao/composition/adapter.py": "3a31319a020ebd965066d150b796bec6f2ce20246b53861c7b9eb568ab58b37a",
+    "mt5_extracao/composition/registry.py": "c58ee9fc0088d3e0214f2d729b090d85761fc44616e0e3f48d6530a99b2e9ce5",
+    "mt5_extracao/composition/schema.py": "bb9cc5beb06c0b5d113d8fc444754f76c283f16b95e590a444b0757126d26a42",
+    "mt5_extracao/robots/backtest.py": "5c3013ffd2d7c29fd94303f4e42076b0997a2751c6d9a46bb8b4f89e991e918f",
+    "mt5_extracao/robots/budget.py": "6f7b5f9ea7739c43c1a2caf860cd815fe37ad0a7265d0d3ee5ce7007e6abc859",
+    "mt5_extracao/robots/store.py": "dc6663b90d4d64d7df2b4a19b911a81f9c6d809cf7cea7bc0c2bf768d8b54153",
+    "mt5_extracao/experiments/schema.py": "0d9afff5cb2b0abffb4eac5e7828d48b1418fc57c4dd789b4876831d85e2a59c",
+    "mt5_extracao/experiments/service.py": "b02b85269aca3e9e5fecb4cf392011d8e9b7f9736bc7eaff42df382a89221a0b",
+    "mt5_extracao/experiments/store.py": "3309adae0c768e77bb0113d4049f9fd53ed6c8a7c144f93e15edb41c2f26bc23",
+    "mt5_extracao/strategies/stoch_ema9.py": "fc99567e5687425aefee3e822c59a73647f334e18e284f520df9c706adf2298c",
+    "mt5_extracao/strategies/vwap_bands.py": "777d5473f13d1ad69de2c3f04d9a63a571c91de14218ffb62d992b2185d8933b",
+    "mt5_extracao/strategies/madrid.py": "9322a83e02fc0c66b7232c04b4c03d06b7900492af8b897b07e2e507d77dd3d8",
+    "mt5_extracao/strategies/ha_hilo.py": "db939dec9ebda150998a9b7d61d2cf33da776a98c5ba6bf2e7fcbb653cbd1fd2",
+    "mt5_extracao/mt5_connector.py": "3304b5513594f5fe2437ca04bb56570b9e3d30c1448a254f70869531f04de9f4"
+  },
+  "existing_components_prefix_byte_identical": true,
+  "validation": {
+    "baseline_previous_passed": 3,
+    "baseline_seconds": 20.05,
+    "new_regressions_failed_before": 2,
+    "before_seconds": 19.7,
+    "final_passed": 10,
+    "final_seconds": 131.6,
+    "own_cases": 7,
+    "context_cases": 3,
+    "adjacent_passed": 6,
+    "adjacent_seconds": 52.37,
+    "counts_overlap": true,
+    "doctor": {
+      "ok": 20,
+      "optional_warning": 1,
+      "fail": 0
+    }
+  },
+  "historical_private_readback": {
+    "run_id": "48fede65272345e3a30d5d1b513dc7ab",
+    "trades": 3,
+    "net_profit": 111.08749999999556,
+    "calculation_repeated": false,
+    "owner_database_opened": false,
+    "native_started": false,
+    "bounds": 24,
+    "themes": 2,
+    "simulated_dpi": [
+      96,
+      144
+    ],
+    "reading_scale": [
+      1.0,
+      1.5
+    ],
+    "sizes": [
+      "1920x1000",
+      "1280x800",
+      "900x620",
+      "820x800"
+    ]
+  },
+  "local_artifact_sha256": {
+    "t19-34-navigation-context-ui-proof.json": "8139780adbd4e2591147583e2b057058a79c538ef79de2e59f2e3d272d81dc06",
+    "t19-34-navigation-status-readable-proof.json": "46f226a88c87e77e9d1755412b3ec2ddccd420c2163763d1aa6e314b7a24c87d",
+    "t19-34-navigation-context-900-theme0.png": "ef2021103ce00e89fdaee34ec07a67044c55d9b116401bc6022bf46f2b331e17",
+    "t19-34-navigation-context-maxscale.png": "d8a5f35c2298b61ccd52c2a0ccafb926aec9e25778cb99daa029a10ec7e30da6",
+    "t19-34-navigation-status-detail-readable.png": "1ad3d881a0b570fa83e9c5ce1c5c8aad56cd502d8e0365913e1b5830f7c68390"
+  },
+  "qualified": {
+    "installed": false,
+    "current_head_ci": false,
+    "physical_windows": false,
+    "whole_T19_34": false,
+    "financial_native_live": false
+  },
+  "limits": [
+    "Global navigation/status only; remaining cards/summary/charts not broadly qualified.",
+    "Three robot scroll areas retained.",
+    "Details is a snapshot of full messages at opening.",
+    "Candidate is separate from172bfc and does not waive its required checks."
+  ]
+}
