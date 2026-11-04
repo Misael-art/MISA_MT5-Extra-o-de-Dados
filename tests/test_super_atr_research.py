@@ -68,7 +68,9 @@ def test_no_overwrite_and_duplicate_magic_preflight(tmp_path,framework):
 
 def test_cli_reuses_generator_and_imports_only_owned_package(db,tmp_path,framework,monkeypatch,capsys):
     monkeypatch.setattr(cli.Context,'db',property(lambda _:db))
-    args=['--json','robots','new','SuperAtrCLI','--dir',str(tmp_path/'cli-package'),'--template','super-atr-research','--framework',str(framework),'--seed-start','2025-01-01T00:00','--second-confirm-tf','H1']
+    monkeypatch.chdir(tmp_path)
+    cfg=tmp_path/'qa.ini';cfg.write_text(f'[DATABASE]\ntype=sqlite\npath={db.db_path}\n',encoding='utf-8')
+    args=['--config',str(cfg),'--json','robots','new','SuperAtrCLI','--dir',str(tmp_path/'cli-package'),'--template','super-atr-research','--framework',str(framework),'--seed-start','2025-01-01T00:00','--second-confirm-tf','H1']
     assert cli.main(args)==0;result=json.loads(capsys.readouterr().out)['data']
     source=next(p for p in result['files'] if p.endswith('.mq5'));r=catalog.robot_from_file(source)
     assert 'InpSecondConfirm=true' in __import__('pathlib').Path(source).read_text().replace(' ','')
