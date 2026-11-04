@@ -286,6 +286,11 @@ fonte, parâmetros, calendário, contexto e alinhamento nas identidades aplicáv
 dependência; adicionar indicador não altera séries anteriores sem motivo;
 consulta histórica preserva o que era conhecido. Tolerâncias não aproximam hashes.
 
+**Adendo BD13-RETURNS (29/10/2026):** primeira redução de revisões no materializador
+existente: retornos usam fingerprints dos extremos, com recibos da janela ordinal
+para não antecipar remoção/restauração de barras. [Contrato, baseline e limites](BD08A_RETORNO.md#bd13-returns--revisões-por-dependência-29102026).
+Não encerra a assinatura global, a execução seletiva nem as demais famílias.
+
 #### BD14 — materialização e recuperação
 
 **Vinculação:** T19.3/T13.3b/T20.24/25. **Depende de:** BD04/12/13.
