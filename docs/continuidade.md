@@ -37,6 +37,8 @@ pelo guarda central; CI, base real elegível, PostgreSQL e M1 seguem pendentes.
 Depois de rebater P00–P07/LAB-03 sobre `0993ae7`, 51 testes focados de
 padrões/consumidor GUI passaram em Linux/Xvfb. A URL de teste PostgreSQL
 não está configurada no host; os dois casos próprios não foram executados.
+O inspetor oficial de checkouts aceitou App local `7544f6b` e pins HADOUKEN/Safety sem
+instalação; doctor offline de desenvolvimento 16 OK/2 avisos/0 falhas.
 SHAs locais por branch no registro central. Próximo: documentação final G e
 gates E14 de recuperação/capacidade, pendentes e riscos agregados.
 

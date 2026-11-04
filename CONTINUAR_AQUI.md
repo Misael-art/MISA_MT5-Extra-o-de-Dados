@@ -53,6 +53,8 @@ PostgreSQL da campanha, Windows físico e aprovação M1 seguem abertos.
 Na cadeia rebatida sobre `0993ae7`, 51 testes focados de P01–P07/GUI de
 padrões passaram em Linux/Xvfb. `MT5X_TEST_PG_URL` não está configurada neste
 host; os dois testes PostgreSQL próprios desta cadeia não foram executados.
+O inspetor oficial de checkouts confirmou, sem instalar ou atualizar a prévia,
+App local `7544f6b` e pins HADOUKEN/Safety; doctor offline 16 OK/2 avisos/0 falhas.
 O guarda central de push ainda impede publicar as branches de revisão;
 não o contornar. Próximo: concluir documentação desta composição, seguir
 recuperação/capacidade/pendentes E14 e aguardar a decisão específica do guarda
