@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "scope": "F04.6 actual preset binding; full native cycle not accepted",
+  "app_tests": {
+    "passed": 254,
+    "seconds": 29.72,
+    "platform": "offline and simulated platform; source and session contracts"
+  },
+  "native_binding": {
+    "source_commit": "484b38e4e53a3ef37af0640a8026ecee47baabf1",
+    "source_fingerprint": "45442cd0bcd0e67a",
+    "public_inputs": 44,
+    "actual_values_match_exported_package": true,
+    "typed_input_hash": "a7897a859ba762886ac1bcf220bdb1437def6066910369b8ad15e51dd4ffc9d1",
+    "source_hash": "8d0d80c94e573c360639598e2a5a2c944ecf415d32dfb0ca4fdd8794cf332b66",
+    "wrapper_hash": "b984e83fa3e282a19425e18df467615894576734789668e460f8b444aca85d8e",
+    "binary_hash": "dafd7b2022528fb65b3196c6461b4fcc293f761fd67dff757bf48dfb007ac406",
+    "manifest_hash": "0f66c91cef7cf21ea2cb9dbf9e6365cd15f6b3807ab2a9da7bd410fbcf2227ba",
+    "context_hash": "189f1d775493a25dcfb11cd044f2e54e93c2362976c69db7f7149653d2e66914",
+    "ack_verified": true,
+    "symbol": "EURUSD",
+    "timeframe": "M5",
+    "model": "0: generated ticks from M1"
+  },
+  "native_cycle": {
+    "accepted": false,
+    "reason": "180s lot budget exhausted; no final imported run",
+    "resources_released": true,
+    "events_not_available": true
+  },
+  "maintenance_fix": {
+    "source_commit": "ad880c13b0566e47be8129224cb6ff3ba5548a74",
+    "tools_tests": 158,
+    "seconds": 77.446,
+    "native_compilation_pending": true,
+    "native_replay_pending": true
+  },
+  "activation": "gated until native revision qualified",
+  "operational_acceptance": false,
+  "physical_windows_qualified": false,
+  "live_demo_qualified": false
+}

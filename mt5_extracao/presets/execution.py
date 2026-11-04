@@ -205,7 +205,7 @@ def _save_evidence(db,evidence):
 
 
 class PresetExecution:
-    def __init__(self,db,config,robot,manifest_path,*,mode="backtest",root=None,control=None):
+    def __init__(self,db,config,robot,manifest_path,*,mode="backtest",root=None,control=None,actor="preset-app"):
         if mode not in ("backtest","replay"):
             raise ValueError("Preset inicial permite somente backtest/replay no Tester DEMO; ao vivo indisponível.")
         self.db,self.robot,self.manifest_path,self.mode=db,robot,Path(manifest_path),mode
@@ -218,13 +218,18 @@ class PresetExecution:
         native=self.package.manifest["native"];identity=self.package.manifest["identity"];scope=self.package.manifest["composition"]["context"]
         # Preservar a ordem/bytes do .set exportado; não substituir o arquivo por parâmetros presumidos.
         values=mql.parse_set(self.package.set_bytes.decode("utf-16"))
-        actor=copy.copy(robot);actor.presets={identity["id"]:dict(values)}
-        options=dict(db=db,robot=actor,symbol=scope["symbol"],preset=identity["id"],params=dict(values),
+        selected_robot=copy.copy(robot);selected_robot.presets={identity["id"]:dict(values)}
+        options=dict(db=db,robot=selected_robot,symbol=scope["symbol"],preset=identity["id"],params=dict(values),
                      model=context["model"],visual=mode=="replay",read_csv=True)
         if control is not None:options["control"]=control
-        self.session=sessions.Session(db,child,actor,scope["symbol"],scope["timeframe"],preset=identity["id"],mode=mode,
+        binding_options={}
+        if native.get("runtime_binding_required"):
+            binding_options["runtime_binding"]=dict(preset_hash=self.package.package_hash,revision=identity["revision"],
+                strategy=self.package.manifest["composition"]["strategy"]["key"],actor=actor,
+                source_hash=native["project_source_sha256"],symbol=scope["symbol"],timeframe=scope["timeframe"])
+        self.session=sessions.Session(db,child,selected_robot,scope["symbol"],scope["timeframe"],preset=identity["id"],mode=mode,
              start=datetime.fromisoformat(context["start"]),end=datetime.fromisoformat(context["end"]),root=root,native_options=options,
-             input_receipt_fields=native["receipt_fields"],expected_native_inputs=native["expected_native_inputs"])
+             input_receipt_fields=native["receipt_fields"],expected_native_inputs=native["expected_native_inputs"],**binding_options)
         self.tester_capture=None
         self.session.native_options["run"]=self._run_command
         self.status="created";self.error="";self.evidence=None;self.started=False
@@ -240,6 +245,11 @@ class PresetExecution:
                 raise ValueError("INI não aponta arquivo .set próprio; não iniciar teste com inputs presumidos.")
             parameter_path=self.session.directory/"MQL5"/"Profiles"/"Tester"/filename
             context=self.package.manifest["test_context"];scope=self.package.manifest["composition"]["context"]
+            if self.package.manifest["native"].get("runtime_binding_required"):
+                wrapper=self.session.expert_wrapper
+                if wrapper is None or ini.get("Tester","Expert")!=sessions.mt5_tools.expert_name(wrapper,self.session.directory):
+                    raise ValueError("INI aponta outro Expert; vínculo exige o binário compilado desta sessão.")
+                self.session._verify_runtime_artifacts()
             if (parameter_path.read_bytes()!=self.package.set_bytes or ini.get("Tester","Model")!=context["model"]
                     or ini.get("Tester","Symbol")!=scope["symbol"] or ini.get("Tester","Period")!=scope["timeframe"]
                     or ini.getfloat("Tester","Deposit")!=context["deposit"]
@@ -294,6 +304,13 @@ class PresetExecution:
             raise ValueError("Conferência nativa incompleta: inputs/fonte/DEMO/CSV/SL/saldo não correspondem ao pacote; preserve a sessão.")
         if not self.tester_capture or not self.tester_capture["matches_exported_set"]:
             raise ValueError("Não há prova do .set/INI realmente carregado; confira o comando próprio do Tester.")
+        if native.get("runtime_binding_required"):
+            binding=receipt.get("runtime_binding")
+            if (not binding or binding!=job.runtime_binding_receipt or not binding.get("native_verified")
+                    or binding.get("session_id")!=job.id or binding.get("preset_hash")!=self.package.package_hash
+                    or binding.get("revision")!=package["identity"]["revision"]
+                    or binding.get("source_hash")!=native["project_source_sha256"]):
+                raise ValueError("Vínculo nativo do pacote/artefatos/sessão incompleto; preservar a divergência.")
         actual_mode=native_mode(job.directory,job.id)
         if actual_mode["visual"]!=(self.mode=="replay"):
             raise ValueError("Modo Visual nativo difere do solicitado; replay continua pendente.")

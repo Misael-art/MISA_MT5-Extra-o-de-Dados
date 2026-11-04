@@ -659,7 +659,7 @@ class PresetWorkflow:
                     and self.controller.chosen[self.robot.key][:2] == (self.symbol, self.timeframe)
                     and self.robot.key in self.controller.all_timeframes)
                 return
-            try:job=execution.PresetExecution(self.db,self.config,self.robot,value["manifest_path"],mode=mode)
+            try:job=execution.PresetExecution(self.db,self.config,self.robot,value["manifest_path"],mode=mode,actor="preset-ui")
             except ValueError as error:self.status.set(str(error));return
             self.execution=job;self.controller.sessions[self.robot.key]=job.session
             job.session.state="preparing";self.controller.panel.render();self.status.set("Preparando "+("replay Visual" if mode=="replay" else "backtest nativo")+" · sessão própria…")

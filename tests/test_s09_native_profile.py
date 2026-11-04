@@ -37,6 +37,24 @@ def test_defaults_map_every_input_and_percent_conversion_without_changing_compos
     assert Capabilities(out["capabilities"],comp).to_dict()==out["capabilities"]
 
 
+def test_runtime_profile_requires_published_revision_and_binds_complete_source_graph(robot,monkeypatch):
+    robot.version=native.RUNTIME_ROBOT_VERSION
+    robot.inputs=[mql.MqlInput(name,kind,"0") for name,kind in native.RUNTIME_INPUT_TYPES.items()]
+    monkeypatch.setattr(native,"RUNTIME_APPROVED_FINGERPRINT",catalog.fingerprint(robot))
+    monkeypatch.setattr(native,"RUNTIME_HADOUKEN_REVISION",None)
+    with pytest.raises(ValueError,match="não publicada"):
+        native.S09NativeAdapter(composition(),robot)
+    monkeypatch.setattr(native,"RUNTIME_HADOUKEN_REVISION","f"*40)
+    output=native.S09NativeAdapter(composition(),robot).describe("bound_preset")
+    assert output["profile_version"]==11 and output["runtime_binding_required"]
+    assert output["configuration_transition"]=="next_session_only"
+    assert set(output["expected_native_inputs"])==set(native.RUNTIME_INPUT_TYPES)
+    from mt5_extracao.robots import native_inputs
+    assert output["project_source_files"]==native_inputs.project_sources(robot)
+    assert output["project_source_sha256"]==native_inputs.project_sources_hash(output["project_source_files"])
+    assert not output["operational_acceptance"]
+
+
 def test_explicit_fixed_policy_precedence_is_visible_and_no_input_is_bound_twice(robot):
     value=composition().to_dict();value["profit_exit"]={"mode":"fixed_points","params":{"target_points":300.0}}
     value["protection"]={"mode":"fixed_points","params":{"stop_points":150}}

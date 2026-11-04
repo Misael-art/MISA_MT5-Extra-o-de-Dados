@@ -6,8 +6,10 @@ Experts arbitrários. Este recibo não certifica negócios nem aceite operaciona
 import csv
 import hashlib
 import io
+import json
 import math
 import re
+from pathlib import Path
 
 from . import mql
 
@@ -67,6 +69,153 @@ def expected_values(expected, fields):
     if not isinstance(expected, dict) or set(expected) != set(fields):
         raise ValueError("Os inputs esperados devem corresponder à lista pública completa do perfil.")
     return {name: scalar(expected[name].split("||", 1)[0] if isinstance(expected[name], str) else expected[name], kind) for name, kind in fields.items()}
+
+
+def _binding_number(value):
+    """Binary64 exato, sem depender de locale ou arredondamento decimal MQL."""
+    number = scalar(value, "number")
+    if abs(number) == float.fromhex("0x1.fffffffffffffp+1023"):
+        raise ValueError("EMPTY_VALUE não representa parâmetro efetivo conhecido.")
+    if number == 0:
+        return "0"
+    mantissa, exponent = math.frexp(abs(number))
+    return ("-" if number < 0 else "") + str(int(math.ldexp(mantissa, 53))) + "p" + str(exponent - 53)
+
+
+def binding_payload(robot, values, fields):
+    """Os inputs públicos completos do perfil, ordenados e tipados para o vínculo."""
+    fields = fields_for(robot, fields)
+    if set(fields) != {item.name for item in robot.inputs}:
+        raise ValueError("Vínculo exige todos os inputs públicos do perfil; não omitir parâmetros.")
+    typed = expected_values(values, fields)
+    if typed is None:
+        raise ValueError("Vínculo exige parâmetros efetivos explícitos.")
+    payload = f"HDK_EFFECTIVE_INPUTS1|{len(fields)}|"
+    for name, kind in sorted(fields.items()):
+        value = typed[name]
+        if kind == "number":
+            value = _binding_number(value)
+        elif kind == "bool":
+            value = "1" if value else "0"
+        elif kind == "int":
+            if not -(2**63) <= value < 2**63:
+                raise ValueError("Inteiro do vínculo fora do intervalo de 64 bits com sinal.")
+            value = str(value)
+        for part in (name, kind, value):
+            payload += str(len(part)) + ":" + part
+    return payload
+
+
+def binding_source(robot, fields):
+    """Lê variáveis input reais; inclui só o perfil público previamente revisado."""
+    fields = fields_for(robot, fields)
+    if set(fields) != {item.name for item in robot.inputs}:
+        raise ValueError("Vínculo nativo exige lista pública completa.")
+    lines = []
+    for name, kind in sorted(fields.items()):
+        if kind == "number":
+            lines.append(f'if(!MT5X_BindingNumber({name},value)) return "";')
+        elif kind == "int":
+            if next(item.type for item in robot.inputs if item.name == name) == "ulong":
+                lines.append(f'if({name}>9223372036854775807) return "";')
+            lines.append(f"value=IntegerToString((long){name});")
+        elif kind == "bool":
+            lines.append(f'value={name} ? "1" : "0";')
+        elif kind == "datetime":
+            lines.append(f'if((long){name}%60!=0) return "";')
+            lines.append(f"value=TimeToString({name},TIME_DATE|TIME_MINUTES);")
+        else:
+            lines.append(f'if(!MT5X_InputToken({name})) return "";value={name};')
+        lines.append(f'payload+=MT5X_BindingFrame("{name}")+MT5X_BindingFrame("{kind}")+MT5X_BindingFrame(value);')
+    body = "\n  ".join(lines)
+    return '''string MT5X_BindingFrame(const string value) {return IntegerToString(StringLen(value))+":"+value;}
+bool MT5X_BindingNumber(const double number,string &value) {
+  value="";if(!MathIsValidNumber(number) || number==EMPTY_VALUE || number==-EMPTY_VALUE) return false;
+  if(number==0) {value="0";return true;}
+  double normalized=MathAbs(number);int exponent=0;
+  while(normalized>=2) {normalized/=2;exponent++;}
+  while(normalized<1) {normalized*=2;exponent--;}
+  value=(number<0 ? "-" : "")+IntegerToString((long)(normalized*4503599627370496.0))+"p"+IntegerToString(exponent-52);
+  return true;
+}
+string MT5X_RuntimeInputs() {
+''' + f'  string payload="HDK_EFFECTIVE_INPUTS1|{len(fields)}|",value="";\n  {body}\n  return payload;\n}}\n'
+
+
+def runtime_request(request):
+    """Metadados públicos do pacote, sem aceitar hashes de execução presumidos."""
+    if not isinstance(request, dict) or set(request) != {"preset_hash", "revision", "strategy", "actor", "source_hash", "symbol", "timeframe"}:
+        raise ValueError("Vínculo exige preset/revisão/estratégia/ator explícitos do pacote.")
+    if (any(not isinstance(request[k], str) or not re.fullmatch(r"[0-9a-f]{64}", request[k]) for k in ("preset_hash", "source_hash"))
+            or type(request["revision"]) is not int or not 0 < request["revision"] < 2**63):
+        raise ValueError("Hash/revisão do pacote inválidos.")
+    for name, maximum in (("strategy", 128), ("actor", 64)):
+        value = request[name]
+        if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1," + str(maximum) + "}", value):
+            raise ValueError("Estratégia/ator do vínculo exigem identificadores públicos portáteis.")
+    from .. import timeframes
+    frame = timeframes.parse(request["timeframe"]) if isinstance(request["timeframe"],str) else None
+    if (not isinstance(request["symbol"],str) or not re.fullmatch(r"[!-~]{1,128}",request["symbol"])
+            or frame is None or frame.name!=request["timeframe"]):
+        raise ValueError("Vínculo inicial exige ativo ASCII e timeframe nativo canônico.")
+    return dict(request)
+
+
+def project_sources(robot):
+    """Grafo público no layout de instalação; bibliotecas padrão são do compilador."""
+    from . import mt5_tools
+    return {item.target.relative_to(Path("MQL5")).as_posix():hashlib.sha256(item.source.read_bytes()).hexdigest()
+            for item in mt5_tools.install_plan(robot,Path(".")) if item.source.suffix.lower() in (".mq5", ".mqh")}
+
+
+def project_sources_hash(sources):
+    return hashlib.sha256(json.dumps(sources,sort_keys=True,separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def _runtime_document(lines):
+    text = "\n".join(lines) + "\n"
+    return (text + "checksum=" + hashlib.sha256(text.encode("ascii")).hexdigest() + "\n").encode("ascii")
+
+
+def runtime_manifest(request, *, session_id, source_hash, binary_hash, wrapper_hash, inputs_hash):
+    request = runtime_request(request)
+    if source_hash != request["source_hash"]:
+        raise ValueError("Grafo de fontes mudou após compilar o pacote; abrir uma revisão nova.")
+    if not isinstance(session_id, str) or not re.fullmatch(r"[0-9a-f]{32}", session_id):
+        raise ValueError("Vínculo exige a identidade UUID da sessão atual.")
+    hashes = dict(source_hash=source_hash, binary_hash=binary_hash, wrapper_hash=wrapper_hash, inputs_hash=inputs_hash)
+    if any(not isinstance(v, str) or not re.fullmatch(r"[0-9a-f]{64}", v) for v in hashes.values()):
+        raise ValueError("Vínculo exige SHA256 completos dos artefatos efetivos.")
+    from .. import timeframes
+    lines = ["HDK_RUNTIME_BINDING_1", session_id, request["symbol"], str(timeframes.parse(request["timeframe"]).value),
+             request["strategy"], request["actor"], request["preset_hash"],
+             str(request["revision"]), source_hash, binary_hash, inputs_hash, wrapper_hash]
+    data = _runtime_document(lines)
+    manifest = dict(request, schema_version=1, session_id=session_id, **hashes,
+                    manifest_sha256=hashlib.sha256(data).hexdigest(), operational_acceptance=False)
+    return manifest, data
+
+
+def read_runtime_receipt(path, manifest):
+    """Confirma o ack nativo; não transforma vínculo em aceite de negociação."""
+    data = path.read_bytes()
+    if len(data) > 2048:
+        raise ValueError("Recibo de vínculo excede o contrato.")
+    try:
+        lines = data.decode("ascii").splitlines()
+    except UnicodeDecodeError:
+        raise ValueError("Recibo de vínculo não é ASCII canônico.") from None
+    if len(lines) != 13 or data != _runtime_document(lines[:12]) or lines[0] != "HDK_RUNTIME_BOUND_1":
+        raise ValueError("Recibo de vínculo truncado, corrompido ou de versão desconhecida.")
+    from .. import timeframes
+    expected = [manifest["session_id"], manifest["manifest_sha256"], None, manifest["inputs_hash"],
+                manifest["source_hash"], manifest["binary_hash"], manifest["preset_hash"],
+                str(manifest["revision"]), manifest["wrapper_hash"],manifest["symbol"],str(timeframes.parse(manifest["timeframe"]).value)]
+    if (not re.fullmatch(r"[0-9a-f]{64}", lines[3]) or
+            any(value is not None and value != lines[i+1] for i, value in enumerate(expected))):
+        raise ValueError("Vínculo lido pelo Expert diverge do pacote/artefatos/sessão; nenhum aceite concedido.")
+    return dict(manifest, context_hash=lines[3], native_verified=True,
+                receipt_sha256=hashlib.sha256(data).hexdigest(), operational_acceptance=False)
 
 
 def source(robot, filename, session_id, fields, *, tester=True):
