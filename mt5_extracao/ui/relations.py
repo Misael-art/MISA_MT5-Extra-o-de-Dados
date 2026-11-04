@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from pathlib import Path
+import threading
 import tkinter as tk
-from tkinter import ttk
+from tkinter import filedialog, ttk
 
 import numpy as np
 
@@ -801,6 +803,11 @@ class RelationsPanel:
     def _build_saved_relations(self, parent):
         self._saved_request = self._saved_selection_request = 0
         self._saved_loaded = self._saved_loading = False
+        self._saved_reading = self._transfer_pending = False
+        self._transfer_cancel = threading.Event()
+        self._saved_filter_entries = []
+        self._transfer_result = None
+        self.frame.bind("<Destroy>", self._transfer_destroyed, add="+")
         self._saved_cursors, self._saved_rows = [None], {}
         self._saved_next_cursor = None
         controls = ttk.Frame(parent, style="Surface.TFrame")
@@ -809,6 +816,7 @@ class RelationsPanel:
         for title, variable, width in (("Ativo:", self.saved_symbol, 12), ("Timeframe:", self.saved_timeframe, 6)):
             ttk.Label(controls, text=title).pack(side=tk.LEFT)
             entry = ttk.Entry(controls, textvariable=variable, width=width)
+            self._saved_filter_entries.append(entry)
             entry.pack(side=tk.LEFT, padx=SPACING["xs"])
             entry.bind("<Return>", lambda _event: self.load_saved_relations())
             variable.trace_add("write", self._saved_filters_changed)
@@ -834,6 +842,14 @@ class RelationsPanel:
         self.saved_qualification = ttk.Label(summary.body, text="Exploratório: sem causalidade ou utilidade financeira comprovadas.",
                                               style="Muted.TLabel", justify=tk.LEFT)
         self.saved_qualification.pack(fill=tk.X);_fit_label_to_parent(self.saved_qualification, summary.body)
+        transfers = ttk.Frame(parent, style="Surface.TFrame")
+        transfers.pack(fill=tk.X, pady=SPACING["xs"])
+        self.saved_import = ttk.Button(transfers, text="Importar par…", command=self.import_saved_relation)
+        self.saved_import.pack(side=tk.LEFT)
+        self.saved_export = ttk.Button(transfers, text="Exportar selecionado…", command=self.export_saved_relation)
+        self.saved_export.pack(side=tk.LEFT, padx=SPACING["xs"])
+        self.saved_cancel = ttk.Button(transfers, text="Cancelar transferência", command=self.cancel_saved_transfer)
+        self.saved_cancel.pack(side=tk.LEFT)
         self.saved_table = TablePanel(parent, "Resultados armazenados · origem conferida ao selecionar",
             columns=("scope", "left", "right", "method", "lag", "effect", "pairs"),
             widths=(100, 210, 210, 85, 65, 115, 65), anchors=("w","w","w","center","center","center","center"),
@@ -842,6 +858,7 @@ class RelationsPanel:
         self._set_headings(self.saved_table, dict(scope="Ativo / TF", left="Série esquerda · versão",
             right="Série direita · versão", method="Método", lag="Defasagem", effect="Coeficiente", pairs="Pares"))
         self.saved_table.tree.bind("<<TreeviewSelect>>", self._saved_selected, add="+")
+        self._saved_selectmode = str(self.saved_table.tree.cget("selectmode"))
         detail = self._page_detail(parent, "saved-relations", visible_lines=9)
         detail.pack(fill=tk.X)
         self._clear_saved_relation("Selecione um resultado para conferir suas origens e detalhes.")
@@ -851,16 +868,19 @@ class RelationsPanel:
         self._saved_selection_request += 1
         self._saved_selected_key = None
         self._saved_dto = None
+        self._saved_reading = False
         self.saved_effect.configure(text="Selecione uma relação")
         self.saved_scope.configure(text=message);self.saved_sample.configure(text="")
         self.saved_qualification.configure(text="Exploratório: sem causalidade ou utilidade financeira comprovadas.")
         self._write_saved_detail(message)
+        self._sync_transfer_controls()
 
     def _write_saved_detail(self, message):
         text = self._details["saved-relations"]
         text.configure(state=tk.NORMAL);text.delete("1.0", tk.END);text.insert("1.0", message);text.configure(state=tk.DISABLED)
 
     def _saved_filters_changed(self, *_args):
+        if self._transfer_pending:self.cancel_saved_transfer()
         self._saved_request += 1
         self._saved_rows, self._saved_cursors, self._saved_next_cursor = {}, [None], None
         self.saved_table.tree.delete(*self.saved_table.tree.get_children())
@@ -869,8 +889,10 @@ class RelationsPanel:
         self.saved_refresh.state(["!disabled"])
         self.saved_status.configure(text="Filtros alterados. Clique Consultar para carregar o novo recorte.")
         self._clear_saved_relation("Nenhuma relação selecionada no novo recorte.")
+        if self._transfer_pending:self.saved_status.configure(text="Filtros alterados; cancelando a transferência anterior — aguarde…")
 
-    def load_saved_relations(self, cursor=None, *, reset=True, analysis_id=None):
+    def load_saved_relations(self, cursor=None, *, reset=True, analysis_id=None, focused_message=None):
+        if self._transfer_pending:return
         from mt5_extracao import sdk
         self._saved_request += 1
         request, db = self._saved_request, self.db
@@ -890,6 +912,7 @@ class RelationsPanel:
             self._saved_loaded = True
             self._saved_loading = False
             self.saved_refresh.state(["!disabled"])
+            self._sync_transfer_controls()
             if error or result["status"] != "ok":
                 message = str(error) if error else "; ".join(item["message"] for item in result["errors"])
                 self.saved_status.configure(text="Consulta indisponível: "+message)
@@ -906,7 +929,7 @@ class RelationsPanel:
             self.saved_next.state(["!disabled"] if self._saved_next_cursor else ["disabled"])
             self.saved_previous.state(["!disabled"] if len(self._saved_cursors)>1 else ["disabled"])
             self.saved_status.configure(text="; ".join(result["reasons"]) if not result["items"] else
-                "Resultado recém salvo selecionado. Consulte novamente para ver os demais pares." if analysis_id else
+                (focused_message or "Resultado recém salvo selecionado. Consulte novamente para ver os demais pares.") if analysis_id else
                 f"{result['matched']} relações salvas · página {len(self._saved_cursors)} · selecione uma linha para conferir as origens.")
             if result["items"]:
                 self.saved_table.tree.selection_set("saved-0");self._saved_selected(None)
@@ -914,12 +937,14 @@ class RelationsPanel:
         self._run_bg(work, done)
 
     def _saved_page(self, step):
+        if self._transfer_pending:return
         if step > 0 and self._saved_next_cursor:self._saved_cursors.append(self._saved_next_cursor)
         elif step < 0 and len(self._saved_cursors)>1:self._saved_cursors.pop()
         else:return
         self.load_saved_relations(self._saved_cursors[-1], reset=False)
 
     def _saved_selected(self, _event):
+        if self._transfer_pending:return
         from mt5_extracao import sdk
         selection = self.saved_table.tree.selection()
         row = self._saved_rows.get(selection[0]) if selection else None
@@ -928,20 +953,24 @@ class RelationsPanel:
         if getattr(self, "_saved_selected_key", None) == selected_key:return
         self._clear_saved_relation("Conferindo resultado e origens — aguarde…")
         self._saved_selected_key = selected_key
+        self._saved_reading = True
+        self._sync_transfer_controls()
         token, request, ident = self._saved_selection_request, self._saved_request, row["analysis_id"]
         self.saved_effect.configure(text="Aguarde…")
         def work():return sdk.load_feature_relation(self.db, ident)
         def done(dto, error):
             if token != self._saved_selection_request or request != self._saved_request or not self.saved_table.tree.winfo_exists():return
+            self._saved_reading = False
             if error:
                 self._saved_selected_key = None
                 self.saved_effect.configure(text="Indisponível");self.saved_scope.configure(text=str(error))
-                self._write_saved_detail("Resultado não exibido: "+str(error));return
+                self._write_saved_detail("Resultado não exibido: "+str(error));self._sync_transfer_controls();return
             self._show_saved_relation(dto)
         self._run_bg(work, done)
 
     def _show_saved_relation(self, dto):
         self._saved_dto = dto
+        self._sync_transfer_controls()
         ident = dto["provenance"]["analysis_id"]
         relation, population, scope, provenance = (dto[key] for key in ("relation","population","scope","provenance"))
         self.saved_effect.configure(text=self._saved_number(relation["effect"])+" · "+relation["method"].title())
@@ -967,6 +996,7 @@ class RelationsPanel:
         self._write_saved_detail("\n".join(lines))
 
     def open_relation_creator(self):
+        if self._transfer_pending:return
         from mt5_extracao.ui.relation_creator import RelationCreator
         if self._creator is not None and self._creator.alive():
             self._creator.window.lift()
@@ -995,10 +1025,102 @@ class RelationsPanel:
             write_guard_factory=self.write_guard_factory,
             on_saved=self._relation_created,open_series=self.open_series)
 
-    def _relation_created(self, receipt):
+    def _relation_created(self, receipt, *, imported=False):
         scope=receipt["relation"]["scope"]
         self.saved_symbol.set(scope["symbol"]);self.saved_timeframe.set(scope["timeframe"])
-        self.load_saved_relations(analysis_id=receipt["analysis_id"])
+        message = None
+        if imported:
+            message = ("Relação importada selecionada." if receipt["status"]=="INSERTED" else
+                       "Relação já existente selecionada; recibo original preservado.")
+            message += " Consulte novamente para ver os demais pares."
+        self.load_saved_relations(analysis_id=receipt["analysis_id"], focused_message=message)
+
+    def _sync_transfer_controls(self):
+        if not hasattr(self, "saved_import"):return
+        pending = self._transfer_pending
+        unavailable = pending or self._saved_loading or self._saved_reading or self.db is None
+        self.saved_import.state(["disabled"] if unavailable else ["!disabled"])
+        self.saved_export.state(["disabled"] if unavailable or self._saved_dto is None else ["!disabled"])
+        self.saved_cancel.state(["!disabled"] if pending and not self._transfer_cancel.is_set() else ["disabled"])
+        self.saved_new.state(["disabled"] if pending else ["!disabled"])
+        self.saved_refresh.state(["disabled"] if pending or self._saved_loading else ["!disabled"])
+        for entry in self._saved_filter_entries:entry.state(["disabled"] if pending else ["!disabled"])
+        if hasattr(self, "_saved_selectmode"):
+            self.saved_table.tree.configure(selectmode="none" if pending else self._saved_selectmode)
+            self.saved_previous.state(["!disabled"] if not pending and not self._saved_loading and len(self._saved_cursors)>1 else ["disabled"])
+            self.saved_next.state(["!disabled"] if not pending and not self._saved_loading and self._saved_next_cursor else ["disabled"])
+
+    def _can_transfer(self):
+        if self._transfer_pending or self._saved_loading or self._saved_reading:return False
+        if self._creator is not None and self._creator.alive():
+            self._creator.window.lift()
+            return False
+        return self.db is not None
+
+    def import_saved_relation(self, path=None):
+        if not self._can_transfer():return
+        db = self.db
+        path = path or filedialog.askopenfilename(parent=self.frame, title="Importar relação e capturas congeladas",
+            filetypes=[("Pacote de relação JSON", "*.json")])
+        if path and self.db is db:self._start_saved_transfer("import", path)
+
+    def export_saved_relation(self, path=None):
+        if not self._can_transfer() or self._saved_dto is None:return
+        db, ident = self.db, self._saved_dto["provenance"]["analysis_id"]
+        path = path or filedialog.asksaveasfilename(parent=self.frame, title="Exportar relação — arquivo novo",
+            initialfile="relacao-"+ident[:12]+".json", defaultextension=".json", confirmoverwrite=False,
+            filetypes=[("Pacote de relação JSON", "*.json")])
+        if path and self.db is db and self._saved_dto is not None and self._saved_dto["provenance"]["analysis_id"]==ident:
+            self._start_saved_transfer("export", path, ident)
+
+    def _start_saved_transfer(self, action, path, ident=None):
+        from mt5_extracao import sdk
+        if not self._can_transfer():return
+        db, request = self.db, self._saved_request
+        try:
+            # make() só captura a política; medições/SQL ficam no worker. Obter
+            # aqui fixa o guarda na base escolhida antes de outro evento de UI.
+            guard = (self.write_guard_factory() if self.write_guard_factory is not None else self.write_guard) if action=="import" else None
+        except Exception as exc:
+            self.saved_status.configure(text="Importação: não foi possível obter a política de escrita. "+str(exc))
+            return
+        self._transfer_pending = True
+        self._transfer_cancel.clear()
+        self._transfer_result = None
+        self._sync_transfer_controls()
+        verb = "Importando" if action=="import" else "Exportando"
+        self.saved_status.configure(text=verb+" relação e capturas — aguarde…")
+        def work():
+            if action=="export":
+                return sdk.export_feature_relation(db, ident, path, cancel_check=self._transfer_cancel.is_set)
+            return sdk.import_feature_relation(db, path, write_guard=guard, cancel_check=self._transfer_cancel.is_set)
+        def done(result, error):
+            try:
+                if not self.frame.winfo_exists():return
+            except tk.TclError:return
+            self._transfer_pending = False
+            self._sync_transfer_controls()
+            unchanged = self.db is db and self._saved_request==request
+            if error:
+                context = " do contexto anterior" if not unchanged else ""
+                self.saved_status.configure(text=("Importação" if action=="import" else "Exportação")+context+": "+str(error))
+                return
+            self._transfer_result = dict(action=action, path=str(Path(path)), result=result)
+            if action=="import" and unchanged:
+                self._relation_created(result, imported=True)
+            else:
+                self.saved_status.configure(text=("Importação concluída na base original; consulte-a para selecionar o resultado." if action=="import" else
+                    f"Exportação concluída: recibo original e {result['snapshots']} captura(s) no arquivo escolhido."))
+        self._run_bg(work, done)
+
+    def cancel_saved_transfer(self):
+        if self._transfer_pending:
+            self._transfer_cancel.set()
+            self.saved_cancel.state(["disabled"])
+            self.saved_status.configure(text="Cancelando transferência — aguarde a confirmação.")
+
+    def _transfer_destroyed(self, event):
+        if event.widget is self.frame:self._transfer_cancel.set()
 
     def set_lab_report(self, report):
         """Recebe o relatório congelado de Séries; matrizes e cruzamentos saem do mesmo serviço do CLI."""
