@@ -85,14 +85,14 @@ def define_feature_composite(db, feature_id, name, algorithm_version, *, operati
     return features.register_composite(db, feature_id, name, algorithm_version, operation=operation, inputs=inputs)
 
 
-def query_composite_context(db, manifest_id, decision_times, *, targets):
+def query_composite_context(db, manifest_id, decision_times, *, targets, observation_time=None):
     """Avalia o grafo congelado pelo executor existente; contexto exploratório, sem materialização."""
     import pandas as pd
     from mt5_extracao.analytics import datasets, features
     if not isinstance(decision_times, (list, tuple)):
         raise ValueError("Informe decision_times como uma lista de instantes com fuso.")
     return features.compose_snapshot(datasets.load(db, manifest_id), pd.DataFrame(dict(decision_time=decision_times)),
-                                     targets=targets)
+                                     targets=targets, observation_time=observation_time)
 
 
 __all__ = [

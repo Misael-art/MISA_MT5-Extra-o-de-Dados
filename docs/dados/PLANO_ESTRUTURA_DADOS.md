@@ -318,6 +318,16 @@ Reusar orçamento, fila e write_guard existentes, com medições de recursos.
 publica COMPLETE sobre fonte antiga; falhas não duplicam fatos; memória e disco
 ficam dentro do orçamento declarado; nenhum consumidor recebe sucesso parcial.
 
+**Adendo BD14-OBSERVATION (29/10/2026):** o contexto congelado agora pode fixar
+uma observação e reconstruir suas revisões, preservando a leitura padrão da
+observação mais recente. Recibos tardios e vencimentos vigentes têm escopo
+explícito; não ampliam a cobertura de mercado. Validade dos pais é propagada
+pelos dois níveis. [API e limites](../sdk/api.md#revisões-de-uma-observação-congelada-bd14-observation).
+É uma preparação para materializar revisões reais, sem transformar pontos de
+uma grade em eventos novos; ainda não grava fatos filhos. A gravação precisa
+deduplicar revisões já existentes e respeitar a monotonicidade de recebimento
+do store, além dos gates de interrupção/concorrência acima.
+
 ### Fase E — relacionamentos efetivos e contexto
 
 #### BD15 — serviço real de relações entre indicadores

@@ -130,12 +130,33 @@ def _context_rows(decisions, symbol, timeframe, selected, read_history, *, windo
         columns[prefix + "algorithm_version"] = version
         columns[prefix + "unit"] = spec["unit"]
         columns[prefix + "parameters"] = json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":"))
-        for name in ("observation_time", "available_at_utc", "source_revision", "revision", "metadata_json"):
+        for name in ("observation_time", "available_at_utc", "valid_until_utc", "source_revision", "revision", "metadata_json"):
             columns[prefix + name] = list(joined[name]) if name in joined else None
     return pd.concat([frame.drop(columns="_context_order"), pd.DataFrame(columns, index=frame.index)], axis=1)
 
 
-def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=None):
+def _snapshot_scope(snapshot, history, observation_time):
+    """Janela de mercado no padrão; em observação fixa, apenas seus recibos congelados."""
+    first, last = snapshot.feature_window_utc
+    if observation_time is None:
+        return history, (first, last), None
+    observation = feature_store._utc_timestamp(observation_time, "observation_time")
+    if not first <= observation < last:
+        raise ValueError("Observação fora da janela congelada; capture esse período antes de consultar.")
+    history = history.loc[history.observation_time == observation]
+    if history.empty:
+        raise ValueError("Observação não consta nos fatos congelados; não é possível inventar uma revisão.")
+    # A extensão cobre recibos/vencimentos declarados, não novas barras ou mercado.
+    ends = [last, history.available_at_utc.max()]
+    latest = history.sort_values(["available_at_utc", "revision"]).drop_duplicates(
+        ["feature_id", "algorithm_version"], keep="last")
+    expiry = latest.valid_until_utc.max()
+    if pd.notna(expiry):
+        ends.append(expiry)
+    return history, (observation, max(ends)), observation
+
+
+def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=None, observation_time=None):
     """Contexto causal somente dos fatos/contratos congelados, sem banco atual ou registry local."""
     from mt5_extracao.analytics.datasets import Snapshot
 
@@ -159,16 +180,25 @@ def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=No
     identity = dict(symbol=manifest["symbol"], tf=manifest["timeframe"], snapshot_manifest_id=snapshot.manifest_id,
         base_namespace=manifest["source"]["namespace"], base_provider=manifest["source"]["provider"],
         base_server=manifest["source"]["server"])
+    history, window, observation = _snapshot_scope(snapshot, snapshot.feature_history, observation_time)
+    if observation is not None:
+        identity["selected_observation_time"] = observation
     if isinstance(decisions, pd.DataFrame):
         for name, expected in identity.items():
-            if name in decisions and any(value != expected for value in decisions[name].dropna()):
+            values = decisions[name].dropna() if name in decisions else ()
+            if name == "selected_observation_time":
+                values = [feature_store._utc_timestamp(value, name) for value in values]
+            if any(value != expected for value in values):
                 raise ValueError(f"Decisões de outra origem/seleção em {name}; use o contexto do snapshot escolhido.")
-    history = snapshot.feature_history
     frame = _context_rows(decisions, identity["symbol"], identity["tf"], selected,
         lambda ident, version: history.loc[(history.feature_id == ident) & (history.algorithm_version == version)],
-        window=snapshot.feature_window_utc, max_cells=query_service.MAX_SELECTION_ROWS)
+        window=window, max_cells=query_service.MAX_SELECTION_ROWS)
     for name, value in identity.items():
         frame[name] = value
+    frame.attrs["snapshot_context_scope"] = dict(
+        mode="fixed_observation" if observation is not None else "latest_observation",
+        observation_time=observation.isoformat() if observation is not None else None,
+        window_utc=[stamp.isoformat() for stamp in window])
     return frame
 
 
