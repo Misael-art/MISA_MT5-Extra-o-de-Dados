@@ -143,6 +143,12 @@ Próximo recorte elegível: T20.2. Resultados na continuidade.
 
 ### T20.8 — Margem e exposição conjunta no motor canônico
 
+**Recorte nativo em execução em01/11/2026:** corrigir prechecks fail-closed
+no SafeExecutor H, distribuir a cópia S e conferir consumo pelo App. Matriz
+atualizada na [seção9 do inventário](INVENTARIO_F19.md#9-pilar-operacional--inspeção-da-composição-em-01112026).
+Reserva agregada/concorrência/netting e modelo histórico seguem pendentes;
+este corretivo não conclui a ficha inteira. SA-REF-01 permanece congelada.
+
 - **Repo/prioridade:** M, H/S se o contrato de leitura exigir; P0.
   **Depende de:** T20.3, T20.7; interfaces de ordens/risco do módulo usado integradas.
 - **Integra:** Q05, I-07, T19.24/56 e F-04/F-05, sem substituir as guardas nativas.

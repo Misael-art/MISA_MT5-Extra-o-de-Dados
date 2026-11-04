@@ -1,5 +1,22 @@
 # Retomar MT5X em um host limpo
 
+## Execução do pilar operacional —01/11/2026
+
+Pedido atual do proprietário inclui App, HADOUKEN e Safety, de ponta a ponta.
+Matriz e sequência canônicas: [inventário, seção9](docs/propostas/INVENTARIO_F19.md#9-pilar-operacional--inspeção-da-composição-em-01112026).
+Recorte inicial T20.8 corrige prechecks do executor, conexão incerta e proteção
+monotônica. HADOUKEN f7e4cffc/PR76, Safety candidata1.11 833edc5/PR10; App
+reconcilia pins de desenvolvimento sem alterar referências aceitas. Não
+atualizar fingerprints aprovados por conveniência nem afirmar reserva agregada.
+Próximo recorte de gestão: R inicial do host legado pela origem persistente,
+parcial+BE e trailing+TP; seguir depois os marcos do pedido, sem retomar Dashboard.
+O pilar permanece incompleto. Testes de plataforma simulada, compilação, Tester,
+DEMO e Windows físico mantêm evidências separadas.
+
+A tarefa DEMO já agendada abaixo continua com runtime33c2fa1 e sua biblioteca
+SA-REF-01 congelada, sem regeneração/repin para o corretivo. Nenhuma autorização
+de negociação é transferida para a nova composição.
+
 O código e o diagnóstico estão no GitHub. A cópia privada fica na conta ChatGPT
 do proprietário, na página **MT5X Continuidade e recuperação em novo host 24 outubro 2026**.
 **O host antigo e o SDCard não estarão disponíveis.** Não depender de caminhos

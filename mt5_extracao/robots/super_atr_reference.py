@@ -1,8 +1,8 @@
 """SA-REF-01: candidato de referência G19.15 congelado (flip1 / variable2atr / target2r).
 
 Gêmeo Python para reconciliar com o Expert nativo. Não reimplementa a estratégia: importa o
-código do estudo G19.15 e o adaptador do header Super ATR do commit HADOUKEN fixado no manifesto,
-conferidos byte a byte contra o pin, e executa só o livro congelado no backtester canônico do App.
+código do estudo G19.15 e o adaptador do header Super ATR da origem histórica SA-REF-01,
+conferidos byte a byte contra essa origem, e executa só o livro congelado no backtester canônico do App.
 Nenhuma ordem, sessão MT5, otimização ou reescolha de parâmetros acontece aqui.
 """
 from dataclasses import asdict
@@ -16,6 +16,8 @@ STUDY = "Tools/research_super_atr"
 PROTOCOL = "Documentation/HADOUKEN_2/estudos/SUPER_ATR_GESTAO_20261023/protocolo.json"
 PINNED_FILES = (PROTOCOL, f"{STUDY}/__init__.py", f"{STUDY}/operations.py", f"{STUDY}/expanded.py",
                 f"{STUDY}/study.py", f"{STUDY}/model.py", f"{STUDY}/capture.py", f"{STUDY}/report.py")
+# Origem imutável do contrato1; repinar desenvolvimento não revisa a referência.
+REFERENCE_FRAMEWORK_COMMIT = "b730ed4a8df74f5f20eb6e289798d0232c370994"
 
 CONTRACT = {
     "id": "SA-REF-01", "version": 1,
@@ -40,18 +42,33 @@ CONTRACT = {
 }
 
 
+def _reference_bytes(root, relative):
+    try:
+        return subprocess.run(["git", "-C", str(root), "show", f"{REFERENCE_FRAMEWORK_COMMIT}:{relative}"],
+                              capture_output=True, timeout=10, check=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        raise ValueError(f"Não foi possível conferir {relative} na origem congelada SA-REF-01; preserve a referência e use perfil próprio.") from None
+
+
+def verify_reference_files(framework_root, relatives):
+    """Confere a closure solicitada contra a origem; não cria checkout ou fallback."""
+    from mt5_extracao.analytics.super_atr import _normalized
+    root = Path(framework_root).expanduser().resolve()
+    for relative in dict.fromkeys(relatives):
+        expected = _reference_bytes(root, relative)
+        if _normalized((root / relative).read_bytes()) != _normalized(expected):
+            raise ValueError(f"{relative} difere da origem congelada SA-REF-01; uma nova versão/perfil exige contrato próprio.")
+
+
 def _pinned_study(framework_root, manifest_path=None):
     """Confere header/adaptador (SA-02) e os fontes do estudo contra o commit fixado; importa do pin."""
     from mt5_extracao.analytics import super_atr
-    from mt5_extracao.analytics.super_atr import _normalized
     root = Path(framework_root).expanduser().resolve()
     source, _model = super_atr.source(root, manifest_path)
-    commit = source["framework_commit"]
-    for relative in PINNED_FILES:
-        expected = subprocess.run(["git", "-C", str(root), "show", f"{commit}:{relative}"],
-                                  capture_output=True, timeout=10, check=True).stdout
-        if _normalized((root / relative).read_bytes()) != _normalized(expected):
-            raise ValueError(f"{relative} difere do commit fixado; reconcilie a composição antes do ensaio.")
+    composition_commit = source["framework_commit"]
+    commit = REFERENCE_FRAMEWORK_COMMIT
+    verify_reference_files(root, (super_atr.HEADER, super_atr.ADAPTER, *PINNED_FILES))
+    source = dict(source, framework_commit=commit, composition_framework_commit=composition_commit)
     tools = str(root / "Tools")
     if tools not in sys.path:
         sys.path.insert(0, tools)
