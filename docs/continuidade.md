@@ -30,8 +30,9 @@ Windows físico e liberação operacional não foram feitos.
 
 P00–P07 e LAB-03 foram recompostos como incrementos locais separados sobre
 E14. O teste composto teve 79 aprovados/três ignorados e uma falha conhecida
-do monitor negativo na base E14; LAB-10 `f1a4bc0` corrigiu a asserção em branch
-própria sobre GUI C `4d61e8b` e passou 29 testes de Séries/1 ignorado. A publicação individual está bloqueada
+do monitor negativo na base E14; LAB-10 `8822d25` corrigiu a asserção em branch
+própria sobre GUI C `13f6b97`. A fonte anterior passou 29 testes de Séries/1
+ignorado; a fonte rebatida passou seis testes focados. A publicação individual está bloqueada
 pelo guarda central; CI, base real elegível, PostgreSQL e M1 seguem pendentes.
 Depois de rebater P00–P07/LAB-03 sobre `0993ae7`, 51 testes focados de
 padrões/consumidor GUI passaram em Linux/Xvfb. A URL de teste PostgreSQL

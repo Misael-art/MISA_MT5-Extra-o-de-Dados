@@ -45,8 +45,9 @@ P00–P07 foram recompostos em branches locais separadas sobre E14, com LAB-03
 local dependente de P07. Os testes de padrões/Séries na composição LAB-03
 terminaram com 79 aprovados, três ignorados e uma falha já reproduzida na
 asserção de monitor negativo herdada da base E14 neste host XWayland de um
-monitor. A branch isolada LAB-10 `f1a4bc0`, baseada em GUI C `4d61e8b`,
-corrige essa asserção e passou 29 testes de Séries/1 ignorado; falta integrar os aceites entre
+monitor. A branch isolada LAB-10 `8822d25`, baseada em GUI C `13f6b97`,
+corrige essa asserção; a fonte anterior passou 29 testes de Séries/1 ignorado,
+e a fonte rebatida passou seis testes focados; falta integrar os aceites entre
 PRs. O fluxo P01–P07 permanece exploratório: CI, fonte real elegível,
 PostgreSQL da campanha, Windows físico e aprovação M1 seguem abertos.
 Na cadeia rebatida sobre `0993ae7`, 51 testes focados de P01–P07/GUI de
