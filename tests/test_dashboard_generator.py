@@ -170,7 +170,10 @@ def test_hostile_json_is_text_and_snapshot_frozen_after_server_creation(db):
     body = response.get_data(as_text=True)
     assert response.status_code == 200
     assert hostile not in body and "&lt;/script&gt;" in body and "FIXTURE" in body
-    payload = json.loads(re.search(r'<script id="dashboard-data" type="application/json">(.*?)</script>', body).group(1))
+    import base64
+    encoded = json.loads(re.search(r'<script id="dashboard-data" type="application/json">(.*?)</script>', body).group(1))
+    payload = json.loads(base64.b64decode(encoded["content"]))
+    payload.update(snapshot_id=encoded["integrity"]["digest"], integrity=encoded["integrity"])
     assert payload["subject"]["symbol"] == hostile
     generator.validate(payload)
 

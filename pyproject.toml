@@ -45,4 +45,4 @@ mt5x = "mt5_extracao.cli:main"
 include = ["mt5_extracao*"]
 
 [tool.setuptools.package-data]
-mt5_extracao = ["assets/*", "robots/*.json", "robots/templates/*.tmpl", "trade_analytics/mql5/*.mq5", "automation/*.mqh", "dashboard/templates/*.html", "dashboard/static/css/*.css"]
+mt5_extracao = ["assets/*", "robots/*.json", "robots/templates/*.tmpl", "trade_analytics/mql5/*.mq5", "automation/*.mqh", "dashboard/templates/*.html", "dashboard/templates/sections/*.html", "dashboard/static/css/*.css", "dashboard/static/js/*.js", "dashboard/static/js/charts/*.js", "dashboard/static/vendor/*"]

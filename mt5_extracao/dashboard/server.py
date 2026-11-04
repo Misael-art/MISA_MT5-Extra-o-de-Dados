@@ -34,6 +34,10 @@ def configured_port(config):
 def create_app(key, port, snapshot=None):
     app = Flask(__name__)
     app.config.update(MAX_CONTENT_LENGTH=1024, TRUSTED_HOSTS=[HOST, "localhost"])
+    document = None
+    if snapshot is not None:
+        from .document import render
+        document = render(snapshot)
 
     @app.before_request
     def local_read():
@@ -52,13 +56,17 @@ def create_app(key, port, snapshot=None):
     @app.after_request
     def protect(response):
         response.headers.update({"Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
-                                 "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY",
-                                 "Content-Security-Policy": "default-src 'self'; object-src 'none'; "
-                                 "base-uri 'none'; frame-ancestors 'none'; form-action 'none'"})
+                                 "X-Content-Type-Options": "nosniff", "X-Frame-Options": "DENY"})
+        response.headers.setdefault("Content-Security-Policy", "default-src 'self'; object-src 'none'; "
+                                    "base-uri 'none'; frame-ancestors 'none'; form-action 'none'")
         return response
 
     @app.route("/")
     def index():
+        if document is not None:
+            from flask import Response
+            return Response(document[0], content_type="text/html; charset=utf-8",
+                            headers={"Content-Security-Policy": document[1] + "; frame-ancestors 'none'"})
         return render_template("index.html", css_url=url_for("static", filename="css/dashboard.css", k=key),
                                snapshot=snapshot)
 

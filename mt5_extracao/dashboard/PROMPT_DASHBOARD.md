@@ -506,3 +506,40 @@ ou expansíveis; nenhuma faixa inventa evidência para ocupar espaço.
 Todos os itens de `CAPABILITY_SOURCES` ficam no JSON com estado/motivo; fonte
 identificada não é integração concluída. Próxima: DASH-03, renderer/arquivo
 autossuficiente; dependências ausentes não impedem as faixas independentes.
+
+### DASH-03 — renderer e arquivo portátil
+
+`document.render` é a fonte única do HTML HTTP e arquivado. Dados, CSS, JS,
+Apache ECharts6.0.0, licença/NOTICE e partials ficam embutidos; nenhuma URL de
+recurso é necessária. Fonte da biblioteca: tag oficial6.0.0 do projeto Apache;
+manifesto local registra origem, bytes e SHA256. Recursos/templates são lidos
+uma vez na compilação e conferidos contra a identidade capturada; mudança de
+geração é recusada. O servidor conserva o documento compilado da sessão.
+
+Transporte interno: JSON canônico em Base64 UTF8, com digest separado. O leitor
+JS confere os bytes por SHA256 antes de montar faixas. Isso conserva0.0,−0.0 e
+expoentes do JSON Python; o download JSON reinsere identidade/integrity sem
+reformatar os fatos, e volta a passar pelo validador Python. Hash não é assinatura.
+Texto entra por textContent; tooltip usa richText, sem HTML de origem. CSP por
+hash de script, sem connect-src nem recursos externos. CSS pode desenhar SVG
+do ECharts. O arquivo não usa Flask, fetch, CDN ou relógio atual para validade.
+
+`--html exports/arquivo-novo.html` publica o mesmo documento por
+`presets.manual._publish`, com fsync/finalização atômica sem sobrescrever.
+Repetição idêntica é idempotente; arquivo diferente/link é preservado. O
+renderer de surpresa prevê número/seta, histórico com lacunas, unidade,
+baseline, amostra e detalhe/alternativa textual; o caminho real ainda mostra
+ausência do produtor. A fixture de surpresa negativa e amostra3 é rotulada
+como sintética; não é um fato de mercado nem conclui essa integração.
+
+Testes: HTML HTTP=arquivo byte a byte, decoder/JS real, JSON hostil,
+adulteração/schema desconhecido, relógio futuro simulado no transporte,
+versões de recursos divergentes, tamanho e preservação do destino. HTTP real
+no Browser: fotografia conferida, dados/proveniência e expansão por clique e
+teclado. Abertura `file://` foi recusada pela política de URL do Browser;
+nenhum outro caminho foi usado para contornar. **Aceite visual/interação do
+arquivo offline, surpresa desenhada no navegador e AC-06 permanecem pendentes.**
+Teste de recursos/CSP e simulação JS não substituem esse percurso real.
+
+As próximas faixas consomem o envelope pronto, sem repetir leitura/materialização:
+DASH-04 (regime) e DASH-05 (volume), conservando as ausências explicitadas.
