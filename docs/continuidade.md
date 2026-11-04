@@ -5008,3 +5008,28 @@ frente. A PR261 foi preservada com sua árvore documental exata: somente nosso
 incremento7b98398 foi revertido ali em50956f6. O incremento Dados foi reaplicado
 na branch filha, com fonte/testes idênticos por SHA256 aos238 testes aprovados.
 Sem reescrever histórico, fechar a PR alheia ou mover suas mudanças documentais.
+
+### Dashboard Contínuo —31/10/2026 (DASH-01)
+
+O proprietário informou que a frente anterior encerrou e autorizou integração,
+commit e PR. Sobre cf5db7b/PR262, a branch `codex/dashboard-servidor-local`
+preserva Dados e os pins detached H/S. DASH-00/PR261 conserva seu escopo.
+
+Servidor Flask em127.0.0.1, porta5055 configurável, casca responsiva sem métricas,
+opener do navegador do host e CLI `dashboard`. Start repetido/concorrrente é
+idempotente, prontidão precede abertura, erro de navegador conserva URL copiável,
+porta ocupada não é trocada e stop fecha somente o socket próprio. Capacidade
+efêmera/Host/Origin/métodos protegem as rotas de leitura; URL não vai ao access log.
+Flask entrou no único .venv e nas duas declarações de dependências; config antigo
+usa fallback. O launcher dispensa a ponte para este comando, inclusive com
+opções globais; demais comandos mantêm o fluxo anterior.
+
+Baseline21 testes;62 dirigidos finais e4 casos do launcher (não sobrepostos),
+shellcheck e doctor offline16/2/0, pip check sem conflito. HTTP real no host e
+Browser aberto pelo percurso CLI do launcher; capturas desktop/390px em
+`state/qa-tmp/dashboard`, sem overflow horizontal. A primeira tentativa de HTTP
+foi recusada pelo sandbox; a execução permitida no host passou. Windows é
+simulação de opener, sem aceite físico. CI remoto próprio permanece separado
+da falha Windows já presente no pai. Próxima etapa DASH-02: schema, identidade,
+corte, inventário e primeira faixa real ou indisponibilidade fundamentada.
+As faixas/AC finais continuam pendentes; casca não equivale ao produto completo.

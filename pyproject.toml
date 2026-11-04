@@ -27,6 +27,7 @@ dependencies = [
     "pytz>=2024.1",
     "tzlocal>=5.0",
     "requests>=2.31",
+    "Flask>=3.1,<4",
     "vaderSentiment==3.3.2",
     "langdetect==1.0.9",
 ]
@@ -44,4 +45,4 @@ mt5x = "mt5_extracao.cli:main"
 include = ["mt5_extracao*"]
 
 [tool.setuptools.package-data]
-mt5_extracao = ["assets/*", "robots/*.json", "robots/templates/*.tmpl", "trade_analytics/mql5/*.mq5", "automation/*.mqh"]
+mt5_extracao = ["assets/*", "robots/*.json", "robots/templates/*.tmpl", "trade_analytics/mql5/*.mq5", "automation/*.mqh", "dashboard/templates/*.html", "dashboard/static/css/*.css"]

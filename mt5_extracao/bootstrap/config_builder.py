@@ -45,6 +45,10 @@ DEFAULTS: "OrderedDict[str, OrderedDict[str, str]]" = OrderedDict([
         ("port", str(paths.DEFAULT_BRIDGE_PORT)),
         ("wine_python", ""),     # C:\Python311\python.exe dentro do prefixo
     ])),
+    ("DASHBOARD", OrderedDict([
+        ("port", "5055"),       # servidor local somente leitura
+        ("browser", ""),        # vazio = padrão do host; edge/chrome/chromium/firefox ou executável
+    ])),
     ("DATABASE", OrderedDict([
         ("type", "sqlite"),               # sqlite ou postgresql
         ("path", "database/mt5_data.db"),  # arquivo SQLite

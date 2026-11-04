@@ -432,3 +432,23 @@ Linux/Wine e Windows nativo são de primeira classe. Exercitar os ramos simulado
 **A implantação está concluída quando:** as etapas DASH-01…14 e AC-01…12 têm evidência correspondente; seleção de ativo e robô funciona no fluxo habitual; a narrativa é visual e contínua; ocultas e detalhes são auditáveis em um clique; prioridades e estados são explicáveis; HTML reabre offline com os mesmos fatos; e aceites não exercitados continuam declarados como pendências, sem selo de conclusão integral.
 
 **Próxima ação de implementação:** DASH-01 — página vazia servida localmente e aberta por `opener.py`, com configuração e lifecycle testados. Depois, DASH-02 usa uma faixa real de surpresa e fecha identidade, origem, schema, domínio de desempenho e corte temporal antes de adicionar as demais faixas.
+
+### Registro de implementação — 31/10/2026
+
+DASH-01: servidor Flask local e opener implementados; casca sem métricas,
+CLI `dashboard --no-browser --seconds N`, porta5055 configurável e recursos
+empacotados. Configurações antigas usam fallback; `[DASHBOARD] browser` vazio
+usa o navegador do host, ou escolha explícita/executável sem shell. Windows
+tem descoberta Edge/Chrome/Firefox testada por simulação; físico pendente.
+
+Servidor inicia/encerra recursos próprios, verifica prontidão e recusa porta
+ocupada sem escolher outra. Capacidade efêmera, Host/Origin e métodos limitam
+o acesso local. Não há rotas operacionais. O launcher identifica `dashboard`
+antes de iniciar a ponte, inclusive após opções globais; demais comandos
+conservam seu fluxo. Abrir a casca não constrói banco ou conector.
+
+Uso: `./run.sh --cli dashboard` (Windows: `run.bat --cli dashboard`).
+Encerrar com Ctrl+C; `--no-browser` permite copiar a URL. Para testes limitados,
+`--seconds 30` encerra o servidor próprio. Browser real no Linux abriu a página;
+evidência local em `state/qa-tmp/dashboard`. Próxima etapa: DASH-02.
+DASH-02…14 e AC-01…12 continuam pendentes; esta casca não é a narrativa entregue.

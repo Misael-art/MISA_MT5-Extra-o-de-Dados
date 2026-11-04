@@ -1,5 +1,12 @@
 # Validação dos instaladores com o MT5 real (T0.3 e T2.6)
 
+Pendência Dashboard DASH-01 (31/10/2026): conferir `run.bat --cli dashboard`,
+abertura pelo navegador padrão e Edge/Chrome/Firefox configurados, caminho com
+espaços/Unicode, porta ocupada e Ctrl+C no Windows físico. Servidor/opener têm
+testes HTTP reais Linux e ramos Windows simulados; Browser real Linux conferido.
+Isso não certifica Windows nativo nem MT5/contas. Faixas e integração Tk são
+etapas posteriores do plano canônico.
+
 Pendência Recursos (2026-10-21): conferir em Windows físico a leitura incompleta
 de pastas, com backups/restauração acessíveis e limpeza indisponível.49 regressões,
 24 testes de retenção, três de interação UI e cinco próprios finais passaram no

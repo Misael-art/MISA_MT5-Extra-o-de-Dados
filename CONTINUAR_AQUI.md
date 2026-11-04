@@ -10,7 +10,7 @@ o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
 ## Ponta de continuidade em30/10/2026
 
-Retome `codex/snapshots-leitura-em-blocos`, sobre planejamento DASH-00/PR261, comparação/PR260, retenção/PR259, vários ativos/PR258, Todos/PR257, ordenação/PR256, portabilidade/PR255, conexão/PR254, Expert/PR253 e persistência/PR252, inspetor/PR251, financeiro/PR250, protocolo/PR249, BD06-MACRO/PR248, MEN-PT/PR247, MEN-SOCIAL/PR246 e o corretivo
+Retome `codex/dashboard-servidor-local`, sobre snapshots/PR262, planejamento DASH-00/PR261, comparação/PR260, retenção/PR259, vários ativos/PR258, Todos/PR257, ordenação/PR256, portabilidade/PR255, conexão/PR254, Expert/PR253 e persistência/PR252, inspetor/PR251, financeiro/PR250, protocolo/PR249, BD06-MACRO/PR248, MEN-PT/PR247, MEN-SOCIAL/PR246 e o corretivo
 Windows da PR245. FRED/BCB seguem captura local e fases datadas retrospectivas.
 Fontes sociais aguardam autorização real; português tem
 versão própria e avaliação controlada, sem selo humano/representativo.
@@ -48,9 +48,9 @@ com gates próprios.
 
 [Plano canônico](mt5_extracao/dashboard/PROMPT_DASHBOARD.md): história visual
 contínua de ativo ou robô, Flask local, evidências point-in-time e HTML offline
-autossuficiente. DASH-00 registra somente a especificação; o próximo incremento
-é DASH-01 (`server.py` + `opener.py`, página vazia no navegador).
-As faixas seguintes e os aceites permanecem pendentes. Não criar motores de
+autossuficiente. DASH-01 entrega servidor/opener/casca e CLI `dashboard`, sem
+iniciar ponte, base ou análise. Próximo: DASH-02 (fotografia/primeira surpresa).
+As faixas e os aceites integrais permanecem pendentes. Não criar motores de
 cálculo/catálogo/publicação paralelos nem presumir T13.4/T13.5/T13.8 concluídas.
 
 ## Instalação inicial

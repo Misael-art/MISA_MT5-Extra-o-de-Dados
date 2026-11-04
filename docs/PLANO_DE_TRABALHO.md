@@ -213,6 +213,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | DASH-00 (T13.6/App) | Plano do Dashboard Contínuo de Ativos e Robôs | Pedido do proprietário de 30/10/2026 | ✅ registro documental: [contratos, etapas DASH-01…14 e critérios de aceite](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md); implementação pendente, dependências F13 e aceites MQL5 separados |
+| DASH-01 (T13.6/App) | Servidor local, opener e casca visual | DASH-00 | Implementado no Linux: Flask em loopback, porta/configuração, prontidão, abertura/erro de navegador e encerramento próprios; CLI/launcher sem ponte, base ou execução. Testes HTTP/contratos e Browser real; Windows físico pendente. Próxima: DASH-02, fotografia e surpresa canônicas; nenhum aceite integral do Dashboard |
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
 | T13.9 | PF definido, sem teto artificial e consumo coerente | T6.4, T8.3, T16.4 | ✅ integrada no PR #97; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
