@@ -305,7 +305,8 @@ def _composition_components(operations):
     common = dict(scheme="frozen_node_components_v1", recipe_version=RECIPE_VERSION,
         sources=dict(graph={name: digest for name, digest in own.items() if name not in functions.values()},
             context=source_components(indicator_context.__file__, (
-                "from_snapshot", "_snapshot_context", "_snapshot_scope", "_context_rows", "_ids", "_version", "_state", "_value", "records")),
+                "from_snapshot", "_snapshot_context", "_snapshot_scope", "_snapshot_observations", "_context_rows",
+                "_ids", "_version", "_state", "_value", "records")),
             store=source_components(feature_store.__file__, ("asof_join", "_utc_timestamp", "_canonical_json")),
             snapshot=source_components(datasets.__file__, ("_feature_selection", "_window_utc")),
             snapshot_access=indicator_materializer._object_source_component(datasets.Snapshot),
@@ -393,7 +394,10 @@ def _composition_plan(snapshot, targets):
         computation[ident] = hashlib.sha256(feature_store._canonical_json(payload, "computation").encode()).hexdigest()
     leaves = [pair for pair in chosen if pair[0] not in recipes]
     return dict(pairs=pairs, chosen=chosen, versions=versions, recipes=recipes, computation=computation,
-                leaves=leaves, definitions=[chosen[pair] for pair in leaves])
+                leaves=leaves, definitions=[chosen[pair] for pair in leaves],
+                operator_runtime={operation: (operator["evaluate"], operator["evaluate"].__code__)
+                    for operation, operator in _COMPOSITE_OPERATORS.items()
+                    if operation in {item[0] for item in recipes.values()}})
 
 
 def _compose_plan(snapshot, decisions, plan, *, observation_time=None, read_context=None):
@@ -499,7 +503,7 @@ def _materialization_signature():
     source = indicator_materializer._source_components
     components = dict(scheme="frozen_materialization_v1", writer=source(__file__, (
         "_materialization_signature", "_materialization_definitions", "_materialization_events",
-        "_materialization_records", "_materialization_state", "_materialization_record",
+        "_materialization_records", "_materialization_batches", "_materialization_state", "_materialization_record",
         "_materialization_scope", "_materialization_history", "_materialization_guard",
         "_materialization_inputs", "_materialization_verify_inputs", "materialize_snapshot")),
         store=source(feature_store.__file__, ("_value_record", "_normalize_value", "_canonical_json", "_utc_text",
@@ -579,39 +583,54 @@ def _materialization_record(snapshot_info, definition, observation, event, value
             materialization=dict(contract, source_manifest_id=snapshot_info["manifest_id"], state_sha256=state_hash)))
 
 
-def _materialization_records(snapshot, plan, outputs, history, as_of, guard):
-    import json
-    import pandas as pd
-    from mt5_extracao.analytics import indicator_context, query_service
-    manifest, window, cells = snapshot.manifest, snapshot.feature_window_utc, 0
-    snapshot_info = dict(manifest=manifest, manifest_id=snapshot.manifest_id)
-    leaves = set(plan["leaves"])
+def _materialization_batches(history, leaves, node_count, as_of, guard):
+    """Eventos em ordem observação/recebimento; o lote de cálculo não altera o lote SQL."""
+    from mt5_extracao.analytics import query_service
+    cells, observations, decisions = 0, [], []
     for observation, frame in history.groupby("observation_time", sort=True):
         guard()
         events = [event for event in _materialization_events(frame, leaves, observation) if event <= as_of]
-        cells += len(events) * len(plan["chosen"])
+        cells += len(events) * node_count
         if cells > query_service.MAX_SELECTION_ROWS:
             raise ValueError(f"Materialização excede {query_service.MAX_SELECTION_ROWS} pares nó/evento; reduza a janela.")
-        previous = {}
+        for event in events:
+            observations.append(observation)
+            decisions.append(event)
+            if len(decisions) == 256:
+                yield observations, decisions
+                observations, decisions = [], []
+    if decisions:
+        yield observations, decisions
+
+
+def _materialization_records(snapshot, plan, outputs, history, as_of, guard):
+    import json
+    import pandas as pd
+    from mt5_extracao.analytics import indicator_context
+    manifest, window = snapshot.manifest, snapshot.feature_window_utc
+    snapshot_info = dict(manifest=manifest, manifest_id=snapshot.manifest_id)
+    previous, current_observation = {}, None
+    for observations, decisions in _materialization_batches(history, set(plan["leaves"]), len(plan["chosen"]), as_of, guard):
+        guard()
+        frame = history.loc[history.observation_time.isin(observations)]
         def context(decisions, ids, version, selected_observation):
             return indicator_context._snapshot_context(decisions, manifest_id=snapshot.manifest_id, manifest=manifest,
                 definitions=plan["definitions"], history=frame, window=window, feature_ids=ids,
-                algorithm_version=version, observation_time=selected_observation)
-        for offset in range(0, len(events), 256):
-            guard()
-            result = _compose_plan(snapshot, pd.DataFrame(dict(decision_time=events[offset:offset + 256])), plan,
-                                   observation_time=observation, read_context=context)
-            guard()
-            for row in result["context"]:
-                for ident, definition in outputs.items():
-                    prefix = ident + "::"
-                    record = _materialization_record(snapshot_info, definition, observation, row["decision_time"],
-                        row[prefix + "value"], row[prefix + "state"], row[prefix + "reason"],
-                        row[prefix + "valid_until_utc"], json.loads(row[prefix + "metadata_json"]))
-                    state = record["metadata"]["materialization"]["state_sha256"]
-                    if previous.get(ident) != state:
-                        previous[ident] = state
-                        yield record
+                algorithm_version=version, observation_times=observations)
+        result = _compose_plan(snapshot, pd.DataFrame(dict(decision_time=decisions)), plan, read_context=context)
+        guard()
+        for observation, row in zip(observations, result["context"]):
+            if observation != current_observation:
+                previous, current_observation = {}, observation
+            for ident, definition in outputs.items():
+                prefix = ident + "::"
+                record = _materialization_record(snapshot_info, definition, observation, row["decision_time"],
+                    row[prefix + "value"], row[prefix + "state"], row[prefix + "reason"],
+                    row[prefix + "valid_until_utc"], json.loads(row[prefix + "metadata_json"]))
+                state = record["metadata"]["materialization"]["state_sha256"]
+                if previous.get(ident) != state:
+                    previous[ident] = state
+                    yield record
 
 
 def _materialization_scope(snapshot, outputs):
@@ -769,7 +788,12 @@ def materialize_snapshot(db, manifest_id, *, targets, as_of, batch_size=5000, wr
     run = producer_jobs.start_run(db, snapshot.manifest["symbol"], snapshot.manifest["timeframe"], family,
                                   "frozen-v1+" + projection[:16], config_hash, 0, configuration=configuration)
     counts = dict(inserted=0, revised=0, unchanged=0)
-    guard = lambda: indicator_materializer._guard(run, write_guard, cancel_check, timeout_seconds, max_memory_mb)
+    def guard():
+        indicator_materializer._guard(run, write_guard, cancel_check, timeout_seconds, max_memory_mb)
+        for operation, (function, code) in plan["operator_runtime"].items():
+            current = _COMPOSITE_OPERATORS.get(operation, {}).get("evaluate")
+            if current is not function or getattr(current, "__code__", None) is not code:
+                raise indicator_materializer.SourceChanged("O cálculo mudou durante a materialização; lotes confirmados preservados.")
     try:
         with db.engine.begin() as conn:
             datasets.bind(db, run["run_id"], manifest_id, connection=conn)

@@ -698,6 +698,29 @@ def asof_join(decisions, values, *, by=None):
     if history[["observation_time", "available_at_utc"]].isna().any().any():
         raise ValueError("values contém observation_time ou available_at_utc inválido.")
     keys = history[by].drop_duplicates().to_dict("records") if by else [{}]
+    if (by and all(name in frame and frame[name].dtype == history[name].dtype for name in by)
+            and not history[by].isna().any().any() and not frame[by].isna().any().any()):
+        # Identidade já completa: merge_asof pode processar todas as séries de
+        # uma vez. A expansão parcial/heterogênea mantém o contrato anterior.
+        left = frame.merge(history[by].drop_duplicates(), on=by, how="inner", sort=False)
+        if left.empty:
+            for name in ("observation_time", "available_at_utc", "numeric_value", "categorical_value", "quality", "revision"):
+                if name not in frame:
+                    frame[name] = None
+            return frame.drop(columns="_order")
+        group = history.sort_values(["available_at_utc", "observation_time"] +
+            (["observed_at_utc"] if "observed_at_utc" in history else []) +
+            (["revision"] if "revision" in history else []))
+        group = group.drop_duplicates(list(dict.fromkeys(by + ["available_at_utc", "observation_time"])), keep="last")
+        newest = group.groupby(list(dict.fromkeys(by + ["available_at_utc"])), sort=False)["observation_time"].transform("max")
+        group = group[group.observation_time == newest]
+        latest = group.groupby(by, sort=False)["observation_time"].cummax()
+        group = group[group.observation_time == latest]
+        merged = pd.merge_asof(left.sort_values("decision_time"), group.sort_values("available_at_utc"), by=by,
+            left_on="decision_time", right_on="available_at_utc", direction="backward", allow_exact_matches=True)
+        expired = merged.valid_until_utc.notna() & (merged.valid_until_utc <= merged.decision_time)
+        merged.loc[expired, [name for name in group if name not in by]] = None
+        return merged.sort_values(["_order"] + by).drop(columns="_order").reset_index(drop=True)
     parts = []
     for key in keys:
         mask = pd.Series(True, index=history.index)

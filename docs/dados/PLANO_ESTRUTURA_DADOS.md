@@ -365,6 +365,17 @@ negado são preservados. [Contrato e limites](../sdk/api.md#recuperação-de-job
 Esse recorte não encerra avaliação em lote eficiente, demais famílias ou gates
 nativos/financeiros/Windows físico.
 
+**Adendo BD14-BATCH (29/10/2026):** blocos de até256 eventos atravessam
+observações usando o mesmo contexto, executor e as-of canônicos. Escopo e
+ausências permanecem por observação; o estado mantido não é reiniciado na
+fronteira do bloco. Séries de identidade completa usam junção vetorizada;
+expansão parcial/heterogênea mantém o contrato existente. Guardas conferem
+também troca da função/código do operador antes da gravação/conclusão. Duas
+passagens, limites e lote SQL permanecem; não há novo motor ou cache retido.
+Identidades acompanham o código, preservando as versões/fatos anteriores.
+[Contrato](../sdk/api.md#avaliação-de-eventos-em-lote-bd14-batch).
+Outras famílias, relações completas e gates nativos/financeiros seguem abertos.
+
 ### Fase E — relacionamentos efetivos e contexto
 
 #### BD15 — serviço real de relações entre indicadores

@@ -98,7 +98,8 @@ def context(db, decisions, *, symbol, timeframe, feature_ids=None, algorithm_ver
                                                          feature_id=ident, algorithm_version=version))
 
 
-def _context_rows(decisions, symbol, timeframe, selected, read_history, *, window=None, max_cells=None):
+def _context_rows(decisions, symbol, timeframe, selected, read_history, *, window=None, max_cells=None,
+                  observation_times=None):
     if not isinstance(decisions, pd.DataFrame):
         raise ValueError("Informe uma tabela de decisões com decision_time e fuso explícito.")
     if max_cells is not None and len(decisions) * len(selected) > max_cells:
@@ -109,9 +110,12 @@ def _context_rows(decisions, symbol, timeframe, selected, read_history, *, windo
     frame["decision_time"] = [feature_store._utc_timestamp(value, "decision_time") for value in frame.decision_time]
     if window is not None:
         first, last = window
-        if any(stamp < first or stamp > last for stamp in frame.decision_time):
-            raise ValueError(f"Decisão fora da janela congelada ({first.isoformat()} a {last.isoformat()}); "
-                             "escolha um instante coberto ou capture outra janela.")
+        starts = first if isinstance(first, pd.Series) else [first] * len(frame)
+        ends = last if isinstance(last, pd.Series) else [last] * len(frame)
+        for stamp, lower, upper in zip(frame.decision_time, starts, ends):
+            if stamp < lower or stamp > upper:
+                raise ValueError(f"Decisão fora da janela congelada ({lower.isoformat()} a {upper.isoformat()}); "
+                                 "escolha um instante coberto ou capture outra janela.")
     frame["_context_order"] = range(len(frame))
     frame["symbol"], frame["tf"] = symbol, timeframe
     columns = {}
@@ -119,8 +123,23 @@ def _context_rows(decisions, symbol, timeframe, selected, read_history, *, windo
         history = read_history(ident, version)
         if not registered and not history.empty:
             raise ValueError(f"Fatos sem definição registrada: {ident}@{version}. Confira o produtor.")
-        joined = feature_store.asof_join(frame[["decision_time", "_context_order", "symbol", "tf"]], history)
-        joined = joined.sort_values("_context_order").reset_index(drop=True)
+        join_frame = frame[["decision_time", "_context_order", "symbol", "tf"]].copy()
+        join_frame["feature_id"], join_frame["algorithm_version"] = ident, version
+        history = history.copy()
+        if "revision" in history:
+            # A ausência de outra observação não pode converter identidade inteira
+            # em float (nem perder bits) na junção/na proveniência dos pais.
+            history["revision"] = pd.array(history.revision, dtype="Int64")
+        by = None
+        if observation_times is not None:
+            join_frame["_context_observation"] = list(observation_times)
+            history["_context_observation"] = history.observation_time
+            by = [name for name in ("symbol", "tf", "feature_id", "algorithm_version") if name in history]
+            by.append("_context_observation")
+        joined = feature_store.asof_join(join_frame, history, by=by)
+        # Uma folha pode não ter fatos para alguma observação do lote. Preserve
+        # essa decisão como ausência, sem deslocar nem preencher com outra barra.
+        joined = joined.set_index("_context_order").reindex(range(len(frame))).reset_index()
         prefix = ident + "::"
         states = [_state(row) for row in joined.to_dict("records")]
         columns[prefix + "value"] = [_value(numeric, category, state) for numeric, category, (state, _reason)
@@ -131,29 +150,36 @@ def _context_rows(decisions, symbol, timeframe, selected, read_history, *, windo
         columns[prefix + "unit"] = spec["unit"]
         columns[prefix + "parameters"] = json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":"))
         for name in ("observation_time", "available_at_utc", "valid_until_utc", "source_revision", "revision", "metadata_json"):
-            columns[prefix + name] = list(joined[name]) if name in joined else None
+            columns[prefix + name] = (pd.array(joined[name], dtype="Int64") if name == "revision" else
+                                     list(joined[name])) if name in joined else None
     return pd.concat([frame.drop(columns="_context_order"), pd.DataFrame(columns, index=frame.index)], axis=1)
+
+
+def _snapshot_observations(window, history, observation_times):
+    """Escopo de recibos/validade por observação; compartilhado pelos modos escalar e lote."""
+    first, last = window
+    observations = pd.Series([feature_store._utc_timestamp(value, "observation_time") for value in observation_times],
+                             dtype="datetime64[ns, UTC]")
+    if any(not first <= stamp < last for stamp in observations):
+        raise ValueError("Observação fora da janela congelada; capture esse período antes de consultar.")
+    history = history.loc[history.observation_time.isin(observations)]
+    if set(observations) - set(history.observation_time):
+        raise ValueError("Observação não consta nos fatos congelados; não é possível inventar uma revisão.")
+    latest = history.sort_values(["available_at_utc", "observed_at_utc", "revision"]).drop_duplicates(
+        ["observation_time", "feature_id", "algorithm_version"], keep="last")
+    receipts = history.groupby("observation_time").available_at_utc.max()
+    expiries = latest.groupby("observation_time").valid_until_utc.max()
+    ends = observations.map(lambda stamp: max(last, receipts[stamp],
+        expiries[stamp] if pd.notna(expiries[stamp]) else last))
+    return history, observations, ends
 
 
 def _snapshot_scope(window, history, observation_time):
     """Janela de mercado no padrão; em observação fixa, apenas seus recibos congelados."""
-    first, last = window
     if observation_time is None:
-        return history, (first, last), None
-    observation = feature_store._utc_timestamp(observation_time, "observation_time")
-    if not first <= observation < last:
-        raise ValueError("Observação fora da janela congelada; capture esse período antes de consultar.")
-    history = history.loc[history.observation_time == observation]
-    if history.empty:
-        raise ValueError("Observação não consta nos fatos congelados; não é possível inventar uma revisão.")
-    # A extensão cobre recibos/vencimentos declarados, não novas barras ou mercado.
-    ends = [last, history.available_at_utc.max()]
-    latest = history.sort_values(["available_at_utc", "observed_at_utc", "revision"]).drop_duplicates(
-        ["feature_id", "algorithm_version"], keep="last")
-    expiry = latest.valid_until_utc.max()
-    if pd.notna(expiry):
-        ends.append(expiry)
-    return history, (observation, max(ends)), observation
+        return history, window, None
+    history, observations, ends = _snapshot_observations(window, history, [observation_time])
+    return history, (observations.iloc[0], ends.iloc[0]), observations.iloc[0]
 
 
 def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=None, observation_time=None):
@@ -168,7 +194,7 @@ def from_snapshot(snapshot, decisions, *, feature_ids=None, algorithm_version=No
 
 
 def _snapshot_context(decisions, *, manifest_id, manifest, definitions, history, window,
-                      feature_ids=None, algorithm_version=None, observation_time=None):
+                      feature_ids=None, algorithm_version=None, observation_time=None, observation_times=None):
     """Mesmo contexto canônico; permite reutilizar uma imagem congelada durante o job."""
     ids = _ids(feature_ids, {entry["feature_id"] for entry in definitions})
     explicit = _version(algorithm_version)
@@ -186,11 +212,23 @@ def _snapshot_context(decisions, *, manifest_id, manifest, definitions, history,
     identity = dict(symbol=manifest["symbol"], tf=manifest["timeframe"], snapshot_manifest_id=manifest_id,
         base_namespace=manifest["source"]["namespace"], base_provider=manifest["source"]["provider"],
         base_server=manifest["source"]["server"])
-    history, window, observation = _snapshot_scope(window, history, observation_time)
+    if observation_times is not None:
+        if observation_time is not None or not isinstance(decisions, pd.DataFrame) or len(observation_times) != len(decisions):
+            raise ValueError("Informe uma observação por decisão; não misture os modos escalar e lote.")
+        history, observations, ends = _snapshot_observations(window, history, observation_times)
+        window, observation = (observations, ends), None
+        identity["selected_observation_time"] = observations
+    else:
+        history, window, observation = _snapshot_scope(window, history, observation_time)
     if observation is not None:
         identity["selected_observation_time"] = observation
     if isinstance(decisions, pd.DataFrame):
         for name, expected in identity.items():
+            if isinstance(expected, pd.Series):
+                if name in decisions and any(pd.notna(value) and feature_store._utc_timestamp(value, name) != expected.iloc[index]
+                                            for index, value in enumerate(decisions[name])):
+                    raise ValueError(f"Decisões de outra origem/seleção em {name}; use o contexto do snapshot escolhido.")
+                continue
             values = decisions[name].dropna() if name in decisions else ()
             if name == "selected_observation_time":
                 values = [feature_store._utc_timestamp(value, name) for value in values]
@@ -198,13 +236,15 @@ def _snapshot_context(decisions, *, manifest_id, manifest, definitions, history,
                 raise ValueError(f"Decisões de outra origem/seleção em {name}; use o contexto do snapshot escolhido.")
     frame = _context_rows(decisions, identity["symbol"], identity["tf"], selected,
         lambda ident, version: history.loc[(history.feature_id == ident) & (history.algorithm_version == version)],
-        window=window, max_cells=query_service.MAX_SELECTION_ROWS)
+        window=window, max_cells=query_service.MAX_SELECTION_ROWS,
+        observation_times=identity.get("selected_observation_time") if observation_times is not None else None)
     for name, value in identity.items():
         frame[name] = value
     frame.attrs["snapshot_context_scope"] = dict(
-        mode="fixed_observation" if observation is not None else "latest_observation",
+        mode="fixed_observations" if observation_times is not None else "fixed_observation" if observation is not None else "latest_observation",
         observation_time=observation.isoformat() if observation is not None else None,
-        window_utc=[stamp.isoformat() for stamp in window])
+        window_utc=[window[0].min().isoformat(), window[1].max().isoformat()] if observation_times is not None else
+                   [stamp.isoformat() for stamp in window])
     return frame
 
 

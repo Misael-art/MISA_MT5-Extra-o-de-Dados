@@ -261,8 +261,32 @@ uma geração live. O resultado explicita `input_basis='frozen_snapshot'`,
 `as_of`, `limits` e `qualification.latest_live_source_certified=False`:
 COMPLETE refere-se à entrada congelada e ao corte escolhidos. Não certifica
 fonte live, disponibilidade histórica nativa, estratégia ou operação financeira.
-Morte abrupta/SIGKILL, reconciliação automática de runs órfãos, outros operadores/
-famílias e qualificação física continuam nas respectivas frentes do roadmap.
+SIGKILL e reconciliação de runs órfãos têm o recorte BD14-ORPHAN abaixo;
+propriedade não verificável, outros operadores/famílias e qualificação física
+continuam nas respectivas frentes do roadmap.
+
+### Avaliação de eventos em lote (BD14-BATCH)
+
+O bloco de cálculo agora pode conter até256 eventos de observações diferentes,
+na ordem observação/recebimento. Cada decisão conserva a observação escolhida
+e sua própria janela de recibos/validade. Um recibo tardio de A não estende a
+janela de B; uma folha ausente não desloca linhas nem usa outra barra. O estado
+mantido entre eventos é preservado ao atravessar a fronteira do bloco.
+
+O mesmo contexto e `asof_join` canônicos processam séries já identificadas em
+uma junção vetorizada; a expansão parcial/heterogênea conserva o contrato
+anterior. Revisões permanecem inteiras, inclusive com linhas ausentes, sem
+arredondar identidades maiores que2^53. Grafo/executor/store são os existentes,
+sem cache retido, fila ou processo paralelo. `batch_size` continua sendo o
+lote de gravação SQL; não muda o bloco interno de cálculo nem os limites.
+
+As duas passagens e os guardas continuam obrigatórios. A implementação do
+operador é conferida antes de gravar e concluir; trocar sua função/código no
+meio do job aborta, mesmo quando os valores do bloco já foram calculados.
+Hashes acompanham o código selecionado: novas versões materializadas não
+reescrevem fatos/contratos das anteriores. A receita1 e as assinaturas dos três
+retornos qualificados são preservadas. A otimização não amplia a cobertura,
+o orçamento ou os aceites financeiros/nativos.
 
 ## Workflows de agentes (AIA-01)
 
