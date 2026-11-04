@@ -9,14 +9,13 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
-import os
 from pathlib import Path
-import socket
 import threading
 import time
 import uuid
 
 from sqlalchemy import inspect, text
+from mt5_extracao.process_owner import current as _owner, is_alive as _alive
 
 
 class Interrupted(RuntimeError):
@@ -68,23 +67,6 @@ def _sample(path, *, cpu_interval=None):
                 rss=proc.memory_info().rss, cpu_seconds=sum(proc.cpu_times()[:2]),
                 read_bytes=getattr(io, "read_bytes", None), write_bytes=getattr(io, "write_bytes", None),
                 free_bytes=shutil.disk_usage(path).free)
-
-
-def _owner():
-    import psutil
-    return dict(host=socket.gethostname(), pid=os.getpid(), started=psutil.Process().create_time())
-
-
-def _alive(owner):
-    import psutil
-    if owner.get("host") != socket.gethostname():
-        return True  # Não roubar execução de outro host por um timeout presumido.
-    try:
-        return psutil.Process(owner["pid"]).create_time() == owner["started"]
-    except psutil.NoSuchProcess:
-        return False
-    except (psutil.AccessDenied, KeyError):
-        return True
 
 
 _SCHEMA_LOCK = threading.RLock()

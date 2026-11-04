@@ -1780,6 +1780,12 @@ def build_parser():
     p_features = analytics_sub.add_parser("features", help="registro, dependências e valores disponíveis por data")
     features_sub = p_features.add_subparsers(dest="features_action", required=True)
 
+    q = features_sub.add_parser("recover-jobs", help="reconcilia jobs de processos locais encerrados; preserva ativos e desconhecidos")
+    q.add_argument("--symbol", help="restringe ao ativo informado")
+    q.add_argument("--tf", help="restringe ao timeframe informado")
+    q.add_argument("--family", help="restringe à família exata do journal")
+    q.set_defaults(func=cmd_analytics)
+
     q = features_sub.add_parser("list", help="lista as definições de características registradas")
     q.add_argument("--all-versions", action="store_true", help="mostra também versões antigas do algoritmo")
     q.set_defaults(func=cmd_analytics)
@@ -2062,6 +2068,19 @@ def cmd_analytics(args, ctx):
     """Inspeciona o registro de características e consulta valores point-in-time."""
     import json
     from mt5_extracao.analytics import feature_store, features
+
+    if args.features_action == "recover-jobs":
+        from mt5_extracao import sdk, timeframes
+        timeframe = None
+        if args.tf is not None:
+            parsed = timeframes.parse(args.tf)
+            if parsed is None:
+                raise ValueError("Timeframe inválido; confira --tf antes de recuperar jobs.")
+            timeframe = parsed.name
+        result = sdk.recover_producer_jobs(ctx.db, symbol=args.symbol, timeframe=timeframe, family=args.family)
+        _data(recovery=result)
+        _print(f"{len(result['recovered'])} jobs interrompidos identificados; {result['preserved']} registros preservados.")
+        return EXIT_OK
 
     if args.features_action == "define-composite":
         created = features.register_composite(ctx.db, args.feature_id, args.name, args.algorithm_version,
