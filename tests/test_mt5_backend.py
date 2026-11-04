@@ -121,7 +121,7 @@ def test_get_mt5_bridge_down_returns_none(tmp_path):
 
 def test_bridge_refuses_order_functions_and_unknown_names(bridge):
     m = mt5_backend.RemoteMT5("127.0.0.1", bridge)
-    for name in ("order_" + "send", "order_" + "check", "order_calc_margin", "eval", "__import__"):
+    for name in ("order_" + "send", "order_" + "check", "order_calc_unknown", "eval", "__import__"):
         if name.startswith("_"):
             with pytest.raises(AttributeError):
                 getattr(m, name)
@@ -155,18 +155,24 @@ def test_bridge_does_not_execute_code_or_expose_modules(bridge):
             legacy.close()
 
 
-def test_server_refuses_to_allow_order_functions():
-    code = subprocess.call([sys.executable, str(REPO / "scripts" / "mt5_bridge_server.py"), "--port", str(_free_port()),
-                            "--allow", "order_" + "send"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    assert code == 1
+@pytest.mark.parametrize("name", ("order_send", "order_check", "order_calc_unknown"))
+def test_server_refuses_to_allow_order_functions(tmp_path, name):
+    pytest.importorskip("rpyc")
+    (tmp_path / "MetaTrader5.py").write_text(FAKE_MT5_SOURCE, encoding="utf-8")
+    result = subprocess.run([sys.executable, str(REPO / "scripts" / "mt5_bridge_server.py"), "--port", str(_free_port()),
+                             "--allow", name], env=dict(os.environ, PYTHONPATH=str(tmp_path), PYTHONIOENCODING="utf-8"),
+                            capture_output=True, text=True, encoding="utf-8", timeout=10)
+    assert result.returncode == 1
+    assert "Funções de ordem não podem ser liberadas" in result.stderr
+    assert name in result.stderr
 
 
-def test_allow_list_has_no_order_functions():
+def test_allow_list_only_has_readonly_order_calculations():
     import importlib.util
     spec = importlib.util.spec_from_file_location("bridge_server", REPO / "scripts" / "mt5_bridge_server.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    assert not [name for name in module.ALLOWED if name.startswith("order_")]
+    assert {name for name in module.ALLOWED if name.startswith("order_")} == {"order_calc_profit", "order_calc_margin"}
     assert {"copy_rates_range", "symbol_info", "account_info", "positions_get"} <= module.ALLOWED
     assert module.PROTOCOL == mt5_backend.BRIDGE_PROTOCOL
 

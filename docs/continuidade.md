@@ -5714,3 +5714,15 @@ preservando referências aceitas e a DEMO runtime33c2fa1. Próximo: intenção e
 vinculada a sessão/ator/preset/fonte e consumo reconciliado no executor canônico.
 Integração do pin:55testes SDK/catálogo/Safety aprovados em4,99s; doctor offline
 16OK/2avisos existentes/0falhas. Nenhum arquivo distribuído Safety mudou.
+
+### Corretivo do contrato de testes da ponte —02/11/2026
+
+O CI Linux de5e1fe1c/PR273 encerrou com4140aprovados/459não executados e duas
+falhas: os testes antigos proibiam todo nome order_*, contradizendo os dois
+cálculos de leitura adicionados por F04.1. A whitelist do produto não mudou.
+Os testes agora exigem exatamente order_calc_profit/margin, recusam envio/check/
+cálculo desconhecido via RPC e verificam a mensagem explícita de recusa da CLI
+com provedor falso carregável. UTF-8 do subprocesso é definido no próprio teste.
+71casos de backend/ponte/gerenciador/carteira passaram em16,17s; três CLI foram
+revalidados depois do ajuste de ambiente,1,19s (sobrepostos, não somar). Doctor
+offline16OK/2avisos/0falhas. Não é qualificação de cálculo ao vivo sem conta.

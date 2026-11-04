@@ -4385,3 +4385,9 @@ restaurada:137arquivos/seis bancos, cinco anexos na página existente/seq21.
 GVs são projeção, recuperação ambígua bloqueia.149testes H/checker170, compilação
 0/0 e sete checks de I/O no Tester sem ordens. Safety27b8599 não distribui esse
 protótipo. Vínculo completo da intenção e consumo/reconciliação continuam abertos.
+
+Corretivo dos testes da ponte F04.1:71aprovados e três CLI sobrepostos
+revalidados; whitelist exige somente os dois cálculos nativos de leitura entre
+order_*, preserva recusa de execução/check e não libera cálculo desconhecido.
+Doctor16OK/2avisos/0falhas. CI integral do pai tem duas falhas de testes obsoletos
+documentadas na continuidade; nova execução não é presumida verde.
