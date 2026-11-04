@@ -859,9 +859,10 @@ def _robots_backtest_scope(args, ctx, items):
             raise ValueError("Informe a chave do robô do plano.")
         robot = catalog.get_robot(items, args.path)
         if args.action == "backtest-plan":
-            if not args.symbol or not args.date_from or not args.date_to:
-                raise ValueError("Informe --symbol, --from e --to antes de preparar o plano.")
+            if not args.date_from or not args.date_to:
+                raise ValueError("Informe os ativos, --from e --to antes de preparar o plano.")
             plan = sdk.preview_backtest_scope(ctx.db, ctx.config, robot, args.symbol,
+                symbols=args.symbols.split(",") if args.symbols is not None else None, all_symbols=args.all_symbols,
                 scope=args.tf or "Todos", start=args.date_from, end=args.date_to,
                 preset=args.preset, manifest_path=args.preset_package)
         else:
@@ -878,6 +879,7 @@ def _robots_backtest_scope(args, ctx, items):
                 batch.cancel()
                 while not batch.join(.25):
                     pass
+            plan = sdk.inspect_backtest_scope(ctx.db, args.batch_id)
             _data(backtest_plan=plan, batch_id=batch.batch_id, error=batch.error,
                   results=[dict(symbol=item["job"].symbol, timeframe=item["job"].timeframe,
                                 run_id=(item["run"] or {}).get("run_id"), error=item["error"]) for item in batch.results])
@@ -1506,6 +1508,8 @@ def _robots_market(args, ctx, items):
 def cmd_robots(args, ctx):
     from mt5_extracao import robots
     from mt5_extracao.robots import catalog
+    if args.all_symbols and args.action != "backtest-plan":
+        raise ValueError("--all-symbols exige backtest-plan e revisão antes da execução.")
     if args.action == "import":
         if not args.path:
             raise ValueError("informe o arquivo ou a pasta: mt5x robots import <arquivo.mq5, .ex5 ou pasta>")
@@ -2126,6 +2130,7 @@ def build_parser():
                    help="install/compile: troca presets que já existem no MT5 pelos da biblioteca")
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
+    p.add_argument("--all-symbols", action="store_true", help="backtest-plan: revisar todos os ativos com barras na base")
     p.add_argument("--batch-id", help="backtest em lote: retoma o checkpoint deste identificador, com os mesmos dados")
     p.add_argument("--preset-package", help="backtest-plan: pacote Default/Manual exportado no contexto original")
     p.add_argument("--confirm-plan", help="backtest-plan-run: assinatura exata do plano já revisado")

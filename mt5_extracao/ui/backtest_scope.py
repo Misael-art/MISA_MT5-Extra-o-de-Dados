@@ -5,7 +5,7 @@ import threading
 import tkinter as tk
 from tkinter import ttk
 
-from mt5_extracao.robots import backtest_scope, runner
+from mt5_extracao.robots import backtest_scope, budget, runner
 from .components import ScrollableContent
 from .theme import fmt_int, fmt_num
 
@@ -21,7 +21,7 @@ class BacktestScopeDialog:
         self.stop, self.events = threading.Event(), Queue()
         self.closing, self._poll_id = False, None
         self.window = tk.Toplevel(ui.root)
-        self.window.title(f"Todos os tempos · {robot.name}")
+        self.window.title(f"Ativos e tempos gráficos · {robot.name}")
         self.window.geometry("980x680"); self.window.minsize(600, 430)
         self.window.transient(ui.root); _modal_when_mapped(self.window)
         self.window.protocol("WM_DELETE_WINDOW", self.close)
@@ -30,10 +30,27 @@ class BacktestScopeDialog:
         self.viewport = ScrollableContent(shell, ui.theme)
         self.viewport.pack(fill=tk.BOTH, expand=True)
         outer = self.viewport.content
-        self.heading = ttk.Label(outer, text=f"{robot.name} · {symbol} · Todos os tempos gráficos",
+        self.heading = ttk.Label(outer, text=f"{robot.name} · Ativos × todos os tempos gráficos",
                                  style="Heading.TLabel", wraplength=850)
         self.heading.pack(fill=tk.X)
         self.heading.bind("<Configure>", lambda e: self.heading.configure(wraplength=max(80, e.width-4)))
+        assets = ttk.LabelFrame(outer, text="Ativos da base · Ctrl/Shift para selecionar vários", padding=6)
+        assets.pack(fill=tk.X, pady=(8, 0))
+        self.assets = ttk.Treeview(assets, columns=("symbol",), show="headings", selectmode="extended", height=4)
+        self.assets.heading("symbol", text="Ativo (elegibilidade verificada ao preparar)")
+        self.assets.column("symbol", width=240)
+        self.assets.grid(row=0, column=0, sticky="nsew")
+        assets.columnconfigure(0, weight=1)
+        scrollbar = ttk.Scrollbar(assets, command=self.assets.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns"); self.assets.configure(yscrollcommand=scrollbar.set)
+        for value in sorted(set(getattr(ui, "symbol_series", {})) | {symbol}):
+            self.assets.insert("", tk.END, iid=value, values=(value,))
+        self.assets.selection_set(symbol)
+        self.all_assets_button = ttk.Button(assets, text="Selecionar todos da base", command=self.select_all_assets)
+        self.all_assets_button.grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.assets.bind("<<TreeviewSelect>>", lambda e: self.invalidate() if not self.active else None)
+        for sequence in ("<Button-1>", "<KeyPress>"):
+            self.assets.bind(sequence, lambda e: "break" if self.active else None)
         fields = ttk.Frame(outer); fields.pack(fill=tk.X, pady=10)
         today = datetime.now()
         self.start = tk.StringVar(value=str(start or (today-timedelta(days=90)).date()))
@@ -55,7 +72,7 @@ class BacktestScopeDialog:
         self.summary.bind("<Configure>", lambda e: self.summary.configure(wraplength=max(80, e.width-4)))
         table = ttk.Frame(outer); table.pack(fill=tk.BOTH, expand=True)
         self.tree = ttk.Treeview(table, columns=("tf", "bars", "status", "reason"), show="headings", height=14)
-        for name, text, width in (("tf", "TF", 60), ("bars", "Barras locais", 100), ("status", "Estado", 110),
+        for name, text, width in (("tf", "Ativo · TF", 160), ("bars", "Barras locais", 100), ("status", "Estado", 110),
                                   ("reason", "Motivo ou ressalva", 580)):
             self.tree.heading(name, text=text); self.tree.column(name, width=width, stretch=name == "reason")
         vertical = ttk.Scrollbar(table, command=self.tree.yview)
@@ -89,7 +106,17 @@ class BacktestScopeDialog:
     def invalidate(self):
         self.plan = None
         self.run_button.state(["disabled"])
-        self.summary.configure(text="Janela alterada; prepare outro plano antes de executar.")
+        self.summary.configure(text="Seleção ou janela alterada; prepare outro plano antes de executar.")
+
+    def select_all_assets(self):
+        if not self.active:
+            local = set(getattr(self.ui, "symbol_series", {}))
+            self.assets.selection_set([value for value in self.assets.get_children() if value in local])
+            self.invalidate()
+
+    def _row_id(self, row):
+        return (row["timeframe"] if len(self.plan.get("symbols", [self.symbol])) == 1 else
+                budget.job_key(self.robot.key, row["symbol"], row["timeframe"]))
 
     def _guard(self):
         if self.stop.is_set():
@@ -104,7 +131,8 @@ class BacktestScopeDialog:
         self.events, self.records = Queue(), {}
         self.prepare_button.state(["disabled"]); self.run_button.state(["disabled"])
         self.cancel_button.configure(text="Cancelar"); self.status.configure(text="Preparando revisões e elegibilidade…")
-        requested = (self.start.get(), self.end.get())
+        requested = (self.start.get(), self.end.get(), tuple(self.assets.selection()))
+        self.all_assets_button.state(["disabled"])
 
         def done(plan, error):
             self.pending = False
@@ -112,32 +140,36 @@ class BacktestScopeDialog:
                 return
             if self.closing:
                 self.window.destroy(); return
-            self.prepare_button.state(["!disabled"]); self.cancel_button.configure(text="Fechar")
+            self.prepare_button.state(["!disabled"]); self.all_assets_button.state(["!disabled"])
+            self.cancel_button.configure(text="Fechar")
             if self.stop.is_set():
                 self.status.configure(text="Preparação cancelada."); return
             if error:
                 self.status.configure(text=str(error)); return
-            if requested != (self.start.get(), self.end.get()) or not self.is_current():
+            if requested != (self.start.get(), self.end.get(), tuple(self.assets.selection())) or not self.is_current():
                 self.status.configure(text="Seleção mudou durante a preparação; prepare outro plano."); return
             self.plan = plan
             self.tree.delete(*self.tree.get_children())
             for row in plan["rows"]:
-                self.tree.insert("", tk.END, iid=row["timeframe"], values=(row["timeframe"], row["bars"],
+                self.tree.insert("", tk.END, iid=self._row_id(row), values=(f"{row['symbol']} · {row['timeframe']}", row["bars"],
                     "Elegível" if row["eligible"] else "Excluído", row["reason"] or " · ".join(row["limitations"])))
             identity = plan["preset_identity"]
             from mt5_extracao.robots.mt5_tools import TESTER_MODELS
             model = "Barras da base local" if plan["model"] == "python_bar_backtest" else TESTER_MODELS[plan["model"]]
             self.summary.configure(text=f"{plan['eligible']} combinação(ões) elegível(is) · {plan['excluded']} excluída(s) · plano {plan['batch_id']}\n"
+                f"Ativos: {', '.join(plan['symbols'])}\n"
                 f"{plan['start']} a {plan['end']} · {identity.get('label') or identity['id']} · revisão {identity['revision'] or 'por conteúdo'}\n"
                 f"Hash {identity['content_hash']}\nCapital simulado {fmt_num(plan['settings']['initial_equity'])} · modelo {model}\n"
-                + (plan["native_download_notice"] or "Dados e parâmetros congelados neste plano; atualização da base exige outro plano."))
+                + (plan["native_download_notice"] or "Dados e parâmetros congelados neste plano; atualização da base exige outro plano.")
+                + f"\nAté {plan['resource_limits_at_review']['max_workers']} execução(ões) Python; MQL5 uma por vez. "
+                "Fila regulada por CPU/RAM e orçamento de tempo/disco.")
             self.status.configure(text="Plano pronto" if plan["eligible"] else "Nenhuma combinação elegível; confira as exclusões.")
             self.run_button.state(["!disabled"] if plan["eligible"] else ["disabled"])
             self.run_button.configure(text="Executar plano")
         def work():
             try:
                 return backtest_scope.preview(self.ui.app.db_manager, self.ui.app.config, self.robot,
-                    self.symbol, start=requested[0], end=requested[1], preset=self.preset,
+                    symbols=requested[2], start=requested[0], end=requested[1], preset=self.preset,
                     manifest_path=self.manifest_path, guard=self._guard)
             except ValueError:
                 if not self.stop.is_set():
@@ -147,7 +179,7 @@ class BacktestScopeDialog:
     def show_detail(self, event=None):
         selected = self.tree.selection()
         if selected and self.plan:
-            row = next(r for r in self.plan["rows"] if r["timeframe"] == selected[0])
+            row = next(r for r in self.plan["rows"] if self._row_id(r) == selected[0])
             self.detail.configure(text="\n".join([row["reason"]] + row["limitations"]).strip() or "Elegível no recorte informado.")
             record = self.records.get(selected[0])
             if record:
@@ -158,6 +190,8 @@ class BacktestScopeDialog:
     def execute(self):
         if self.active or not self.plan:
             return
+        if tuple(self.assets.selection()) != tuple(self.plan["symbols"]):
+            self.invalidate(); return
         if not self.is_current():
             self.status.configure(text="Seleção mudou; reabra o plano."); self.run_button.state(["disabled"]); return
         if self.robot.kind == "mql5" and getattr(self.ui.app, "offline", False):
@@ -165,6 +199,7 @@ class BacktestScopeDialog:
         plan = self.plan
         self.stop.clear(); self.pending = True
         self.prepare_button.state(["disabled"]); self.run_button.state(["disabled"])
+        self.all_assets_button.state(["disabled"])
         for entry in self.entries:
             entry.state(["disabled"])
         self.cancel_button.configure(text="Cancelar"); self.status.configure(text="Conferindo plano e iniciando fila…")
@@ -187,6 +222,7 @@ class BacktestScopeDialog:
                 return
             self.cancel_button.configure(text="Fechar")
             self.prepare_button.state(["!disabled"])
+            self.all_assets_button.state(["!disabled"])
             if not self.manifest_path:
                 for entry in self.entries:
                     entry.state(["!disabled"])
@@ -198,6 +234,8 @@ class BacktestScopeDialog:
                 self.completed(batch)
                 if ok < plan["eligible"]:
                     self.run_button.configure(text="Retomar plano"); self.run_button.state(["!disabled"])
+                else:
+                    self.run_button.configure(text="Concluído")
             if self.closing:
                 self.window.destroy()
         self.ui.run_bg(work, done)
@@ -208,14 +246,15 @@ class BacktestScopeDialog:
             while True:
                 event = self.events.get_nowait()
                 job = event.get("job")
-                if job and self.tree.exists(job.timeframe):
+                row_id = self._row_id(dict(symbol=job.symbol, timeframe=job.timeframe)) if job and self.plan else None
+                if row_id and self.tree.exists(row_id):
                     if event.get("run") is not None:
-                        self.records[job.timeframe] = event["run"]
-                    values = list(self.tree.item(job.timeframe, "values"))
+                        self.records[row_id] = event["run"]
+                    values = list(self.tree.item(row_id, "values"))
                     values[2] = "Executando" if event["kind"] == runner.STARTED else "Concluído" if event.get("run") is not None else "Interrompido" if event.get("interrupted") else "Falhou"
                     if event.get("error"):
                         values[3] = event["error"]
-                    self.tree.item(job.timeframe, values=values)
+                    self.tree.item(row_id, values=values)
                 if event["kind"] == runner.DONE:
                     self.status.configure(text=f"{event['completed']}/{event['total']} processado(s)")
         except Empty:

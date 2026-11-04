@@ -54,17 +54,42 @@ def _python_params(robot, preset):
     return get_strategy(strategy.key, **params)
 
 
-def preview(db, config, robot, symbol, *, scope=ALL, start, end, preset=None,
+def _symbols(db, symbol, symbols, all_symbols):
+    if type(all_symbols) is not bool or sum((symbol is not None, symbols is not None, all_symbols)) != 1:
+        raise ValueError("Escolha um ativo, uma lista de ativos ou todos os ativos da base.")
+    if all_symbols:
+        symbols = sorted({item["symbol"] for item in db.data_inventory() if item["rows"]})
+    elif symbol is not None:
+        symbols = [symbol]
+    if isinstance(symbols, (str, bytes)) or not isinstance(symbols, (list, tuple)):
+        raise ValueError("Informe uma lista explícita de ativos.")
+    if not symbols or any(not isinstance(value, str) or not value.strip() for value in symbols):
+        raise ValueError("Escolha ao menos um ativo antes de preparar o plano.")
+    return list(dict.fromkeys(value.strip() for value in symbols))
+
+
+def _worker_limits(config):
+    limits = runner.limits_from_config(config)
+    # Escopo novo começa com até dois workers; configuração explícita é respeitada.
+    if limits["max_workers"] is None:
+        limits["max_workers"] = 2
+    return limits
+
+
+def _governor(config):
+    return runner.ResourceGovernor(**_worker_limits(config))
+
+
+def preview(db, config, robot, symbol=None, *, symbols=None, all_symbols=False, scope=ALL, start, end, preset=None,
             manifest_path=None, guard=lambda: None):
     """Captura referências locais e grava um plano pendente, sem executar/admitir jobs.
 
     O histórico do Tester é distinto dos snapshots locais e não ganha revisão
     congelada por esta prévia. Seu modelo e eventual download ficam explícitos.
     """
-    if not isinstance(symbol, str) or not symbol.strip():
-        raise ValueError("Escolha um ativo antes de preparar o plano.")
     if db is None or getattr(db, "engine", None) is None:
         raise ValueError("Base indisponível; conecte a base antes de preparar o plano.")
+    selected = _symbols(db, symbol, symbols, all_symbols)
     try:
         begin, finish = datetime.fromisoformat(str(start)), datetime.fromisoformat(str(end))
         if begin >= finish or (begin.tzinfo is None) != (finish.tzinfo is None):
@@ -85,7 +110,7 @@ def preview(db, config, robot, symbol, *, scope=ALL, start, end, preset=None,
         test = package.manifest["test_context"]
         if test is None or any(datetime.fromisoformat(test[k]) != value for k, value in (("start", begin), ("end", finish))):
             raise ValueError("Janela difere do pacote; exporte a revisão no contexto escolhido.")
-        if package.manifest["composition"]["context"]["symbol"] != symbol:
+        if symbol is not None and package.manifest["composition"]["context"]["symbol"] != selected[0]:
             raise ValueError("Ativo difere do pacote; escolha o contexto original.")
         child = _config(config, test["deposit"])
         identity = dict(package.manifest["identity"], content_hash=package.package_hash,
@@ -115,64 +140,76 @@ def preview(db, config, robot, symbol, *, scope=ALL, start, end, preset=None,
         control.check()
     checked()
     descriptor_hash = _hash(_descriptor(robot, preset))
-    rows, jobs, snapshots = [], [], {}
+    rows, jobs, snapshots, series_owners = [], [], {}, {}
     supported = {timeframes.parse(value) for value in robot.timeframes}
-    for tf in _selection(scope):
-        checked()
-        row = dict(timeframe=tf.name, label=tf.label, eligible=False, bars=0, minimum_bars=minimum,
-                   data_manifest_id=None, reason="", limitations=[])
-        rows.append(row)
-        if package is not None and package.manifest["composition"]["context"]["timeframe"] != tf.name:
-            row["reason"] = "Preset congelado em outro TF; os parâmetros internos não foram alterados."
-            continue
-        if robot.kind == catalog.MQL5 and package is None and tf not in supported:
-            row["reason"] = "TF não declarado pelo perfil nativo."
-            continue
-        if robot.kind == catalog.MQL5 and not robot.has_source:
-            row["reason"] = "Fonte indisponível para conferir e observar a sessão privada."
-            continue
-        if not db.find_table_for_symbol(symbol, tf.label):
-            row["reason"] = "Sem série local; extraia o histórico antes de preparar outro plano."
-            continue
-        try:
-            snapshot = datasets.capture(db, symbol, tf.name, begin, finish, guard=checked)
-            row.update(bars=len(snapshot.bars), data_manifest_id=snapshot.manifest_id)
-            if row["bars"] < minimum:
-                row["reason"] = f"Amostra insuficiente: {row['bars']} barras; mínimo {minimum}."
+    for symbol in selected:
+        for tf in _selection(scope):
+            checked()
+            row = dict(symbol=symbol, timeframe=tf.name, label=tf.label, eligible=False, bars=0, minimum_bars=minimum,
+                       data_manifest_id=None, reason="", limitations=[])
+            rows.append(row)
+            if package is not None and package.manifest["composition"]["context"]["symbol"] != symbol:
+                row["reason"] = "Preset congelado em outro ativo; o contexto original não foi alterado."
                 continue
-            required = sorted(set(data_eligibility.requirements(dict(source_id="bars",
-                required_columns=strategy.required_columns if strategy else ("open", "high", "low", "close")))) | {"ohlcv"})
-            quality = data_eligibility.evaluate(snapshot.quality, required)
-            row["limitations"] = quality["limitations"]
-            if not quality["eligible"]:
-                row["reason"] = " ".join(quality["reasons"])
+            if package is not None and package.manifest["composition"]["context"]["timeframe"] != tf.name:
+                row["reason"] = "Preset congelado em outro TF; os parâmetros internos não foram alterados."
                 continue
-            if robot.kind == catalog.MQL5:
-                row["limitations"].append("Série local é referência; revisão/cobertura do histórico nativo e aquecimento dependem do perfil/Tester.")
-            row["eligible"] = True
-            jobs.append((robot, symbol, tf.name))
-            snapshots[tf.name] = snapshot.manifest_id
-        except (ValueError, OSError) as error:
-            row["reason"] = str(error)
+            if robot.kind == catalog.MQL5 and package is None and tf not in supported:
+                row["reason"] = "TF não declarado pelo perfil nativo."
+                continue
+            if robot.kind == catalog.MQL5 and not robot.has_source:
+                row["reason"] = "Fonte indisponível para conferir e observar a sessão privada."
+                continue
+            table = db.find_table_for_symbol(symbol, tf.label)
+            if not table:
+                row["reason"] = "Sem série local; extraia o histórico antes de preparar outro plano."
+                continue
+            if table in series_owners:
+                row["reason"] = f"Série local compartilhada com {series_owners[table]}; revise a identidade antes de executar outro nome."
+                continue
+            series_owners[table] = symbol
+            try:
+                snapshot = datasets.capture(db, symbol, tf.name, begin, finish, guard=checked)
+                row.update(bars=len(snapshot.bars), data_manifest_id=snapshot.manifest_id)
+                if row["bars"] < minimum:
+                    row["reason"] = f"Amostra insuficiente: {row['bars']} barras; mínimo {minimum}."
+                    continue
+                required = sorted(set(data_eligibility.requirements(dict(source_id="bars",
+                    required_columns=strategy.required_columns if strategy else ("open", "high", "low", "close")))) | {"ohlcv"})
+                quality = data_eligibility.evaluate(snapshot.quality, required)
+                row["limitations"] = quality["limitations"]
+                if not quality["eligible"]:
+                    row["reason"] = " ".join(quality["reasons"])
+                    continue
+                if robot.kind == catalog.MQL5:
+                    row["limitations"].append("Série local é referência; revisão/cobertura do histórico nativo e aquecimento dependem do perfil/Tester.")
+                row["eligible"] = True
+                jobs.append((robot, symbol, tf.name))
+                snapshots[budget.job_key(robot.key, symbol, tf)] = snapshot.manifest_id
+            except (ValueError, OSError) as error:
+                row["reason"] = str(error)
     checked()
     if _hash(_descriptor(robot, preset)) != descriptor_hash:
         raise ValueError("Código/preset mudou durante a prévia; prepare outro plano.")
     review = dict(version=VERSION, scope="all" if scope in (ALL, "all") else "single",
-                  symbol=symbol, robot=robot.key, robot_name=robot.name, kind=robot.kind,
+                  symbol=selected[0] if len(selected) == 1 else None, symbols=selected,
+                  asset_scope="all_local" if all_symbols else "selected",
+                  robot=robot.key, robot_name=robot.name, kind=robot.kind,
                   start=start, end=end, preset=preset, preset_identity=identity, model=model,
                   settings=asdict(research.backtest_config(child)), rows=rows,
                   eligible=sum(r["eligible"] for r in rows), excluded=sum(not r["eligible"] for r in rows),
                   descriptor_hash=descriptor_hash, manifest_path=str(manifest_path) if manifest_path is not None else None,
+                  resource_limits_at_review=dict(**_worker_limits(child), **asdict(control.limits), native_workers=1),
                   base_namespace=datasets.identity(db)["namespace"],
                   native_history_revision="unavailable" if robot.kind == catalog.MQL5 else None,
                   cost_basis="python_settings" if robot.kind == catalog.PYTHON else "native_report; custos efetivos não são certificados pelas configurações Python",
                   native_download_notice="O Tester pode baixar histórico da corretora; confirmar este plano autoriza esse preparo, sem negociação ao vivo."
                     if robot.kind == catalog.MQL5 else None)
-    provenance = {k: review[k] for k in ("version", "scope", "symbol", "robot", "start", "end", "preset_identity",
+    provenance = {k: review[k] for k in ("version", "scope", "symbol", "symbols", "asset_scope", "robot", "start", "end", "preset_identity",
                                         "model", "settings", "base_namespace", "native_history_revision", "cost_basis")}
     context = dict(review=review, provenance=provenance)
     # Reutilizar a chave de job da fila, sem outro catálogo de combinações.
-    manifest_ids = {budget.job_key(robot.key, symbol, tf): ident for tf, ident in snapshots.items()}
+    manifest_ids = snapshots
     options = dict(start=begin, end=finish, preset=preset, execution=execution, context=context,
                    manifest_ids=manifest_ids if robot.kind == catalog.PYTHON else None)
     control.prepare(jobs, claim=False, **options)
@@ -184,9 +221,10 @@ def inspect_plan(db, batch_id):
     if checkpoint is None or checkpoint["plan"].get("context", {}).get("review", {}).get("version") != VERSION:
         raise ValueError("Plano de TFs não encontrado ou de versão incompatível.")
     heads = {item["job_key"]: item for item in checkpoint["jobs"]}
-    executions = [dict(timeframe=entry["timeframe"], **heads[entry["key"]])
+    executions = [dict(symbol=entry["symbol"], timeframe=entry["timeframe"], **heads[entry["key"]])
                   for entry in checkpoint["plan"]["jobs"] if entry["key"] in heads]
     return dict(batch_id=batch_id, status=checkpoint["status"], reason=checkpoint["reason"], signature=checkpoint["plan"]["signature"], executions=executions,
+                measurements=checkpoint["measurements"],
                 **checkpoint["plan"]["context"]["review"])
 
 
@@ -227,7 +265,7 @@ def create_runner(db, config, robot, batch_id, *, on_event=None):
     def validate_run(key, record):
         entry = next(item for item in entries if item["key"] == key)
         validate_job(None, entry)
-        if (record["robot_key"] != robot.key or record["symbol"] != review["symbol"] or
+        if (record["robot_key"] != robot.key or record["symbol"] != entry["symbol"] or
                 record["timeframe"] != entry["timeframe"]):
             raise ValueError("Resultado não corresponde à combinação revisada.")
         if execution["mode"] == "python" and (record["params"] != execution["params"] or
@@ -251,4 +289,5 @@ def create_runner(db, config, robot, batch_id, *, on_event=None):
                    manifest_ids={entry["key"]: entry["data_manifest_id"] for entry in entries} if robot.kind == catalog.PYTHON else None)
     return runner.BatchRunner(db, child, [runner.Job(actor, entry["symbol"], entry["timeframe"]) for entry in entries],
                               budget=budget.Budget(db, child, batch_id=batch_id, validate_run=validate_run), on_event=on_event,
-                              prepare_options=options, validate_job=validate_job, validate_recovered=validate_recovered)
+                              governor=_governor(child), prepare_options=options,
+                              validate_job=validate_job, validate_recovered=validate_recovered)

@@ -358,7 +358,7 @@ def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
     return producer_jobs.reconcile_orphan_runs(db, symbol=symbol, timeframe=timeframe, family=family)
 
 
-def preview_backtest_scope(db, config, robot, symbol, **kwargs):
+def preview_backtest_scope(db, config, robot, symbol=None, **kwargs):
     """Prepara TFs/exclusões e congela contexto no journal existente, sem executar."""
     from mt5_extracao.robots.backtest_scope import preview
     return preview(db, config, robot, symbol, **kwargs)

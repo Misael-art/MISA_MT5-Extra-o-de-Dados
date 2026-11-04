@@ -48,6 +48,14 @@ incompatibilidades e lote vazio explicados; regressão da seleção individual.
 
 ## Vários ativos e capacidade do host — T20.24/25
 
+**T20.24b (30/10):** seleção múltipla e todos os ativos da base no mesmo plano
+UI/SDK/CLI. Cada célula e execução identifica ativo/TF/revisão; combinações
+incompatíveis com o pacote ficam excluídas. Mesmo Budget/checkpoint/runner e
+sessões nativas, com retomada sem duplicar runs. O modo automático deste novo
+escopo limita Python a dois workers, respeitando configuração explícita e
+governor; MQL5 permanece serial. A extensão de retenção/limpeza referenciada
+fica na T20.25b; essa entrega não concede aceite nativo/financeiro.
+
 **Viabilidade inicial: sim, para selecionar vários ativos e enfileirar os testes.**
 `robots/runner.py` já tem `BatchRunner`, `ResourceGovernor`, limites de CPU/RAM e
 workers. `robots/budget.py` mantém orçamento/checkpoint; recursos e retenção já
