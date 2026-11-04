@@ -132,3 +132,18 @@ def test_book_through_bridge(bridge_port, tmp_path, monkeypatch):
         connector.book_release("WIN$N")
     finally:
         mt5_backend.reset()
+
+
+def test_native_financial_estimates_cross_the_restricted_bridge(bridge_port):
+    remote = mt5_backend.RemoteMT5(port=bridge_port)
+    try:
+        assert remote.order_calc_profit(0, "WIN$N", 2, 100, 90) == -200
+        assert remote.order_calc_profit(1, "WIN$N", 2, 100, 90) == 200
+        assert remote.order_calc_profit(0, "UNKNOWN", 2, 100, 90) is None
+        assert remote.order_calc_margin(0, "WIN$N", 2, 100) == 2000
+        assert remote.calls_named("order_calc_profit")[0][1] == (0, "WIN$N", 2, 100, 90)
+        for name in ("order_send", "order_check"):
+            with pytest.raises(Exception, match="não permitida"):
+                getattr(remote, name)({})
+    finally:
+        remote._conn.close()

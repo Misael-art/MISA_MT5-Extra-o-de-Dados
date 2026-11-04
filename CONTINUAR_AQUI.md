@@ -15,6 +15,19 @@ imutável (53 fontes/56 vínculos do catálogo iguais por hash):13 posições/39
 44inputs e caixa reconciliados. Tick gerado deM1, sem aceite ao vivo/Windows.
 Safety833edc5 não muda neste recorte. Próximo: F-04/05/10/11/12 no guardião já
 existente no histórico, sem criar outro motor; seguir os demais marcos, sem Dashboard.
+F04.1: H1f6dca03/PR78 (núcleoffb84c66), Safety27b8599/PR11 candidata1.12.
+148testes H/checker170,16compilações0/0 e Smoke0/0. Estado individual completo/
+truncado validado no Tester; S09 repetiu13posições/39deals/9+4etapas e44inputs.
+App passa a tratar carteira desconhecida como indisponível e usa cálculo nativo
+em moeda da conta. Reserva segue protótipo sóTesterDEMO fora da distribuição,
+ainda sem journal/consumo/ligação ao executor; esse é o próximo trabalho.
+Código App7c51bc4/PR272:182testes dirigidos e doctor16OK/2avisos/0falhas.
+Prévia oficial com338arquivos conferidos; launcher mostra dados desconhecidos
+como indefinido. Ponte de leitura atualizada com posse comprovada, sem terminal/
+conta carregados; cálculo nativo de conta ainda não qualificado. QA F04 protegida
+na página privada existente, sequência21:137arquivos/seis bancos restaurados e
+conferidos, cinco anexos novos,304blocos anteriores preservados e quatro resumos
+atualizados. Manifesto/recibo em state/qa-tmp/operational-pillar/protecao/f04.
 O pilar permanece incompleto. Testes de plataforma simulada, compilação, Tester,
 DEMO e Windows físico mantêm evidências separadas.
 

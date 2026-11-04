@@ -1411,3 +1411,21 @@ retorno em uma janela comum; curvas usam capital inicial declarado (base1),
 sem conversão de moeda. Zero operações/PF indefinido não equivalem a ausência.
 Nativo sem recibo financeiro/cobertura suficiente continua incompatível, com
 seus números identificados; comparação não concede aceite financeiro/preditivo.
+
+
+## Carteira de leitura — F04.1
+
+`robots.portfolio.snapshot(mt5, robots=(), max_risk_pct=0, exposure_groups="")`
+é somente leitura. `risk_source="native_order_calc_profit"` identifica o cálculo
+em moeda da conta; risco zero é distinto de `None`. Dados da conta indisponíveis,
+`positions_get/orders_get=None` e alteração de tickets/volume/stop durante a
+leitura recusam o retrato com `RuntimeError`, sem apresentá-lo como conta vazia.
+Stop-limit usa `price_stoplimit`. A ponte precisa da versão que permite
+`order_calc_profit/order_calc_margin`; métodos de execução continuam recusados.
+
+`read_guardian` aceita a extensão de snapshot2 com servidor, completude e números
+`null`; a CLI mostra "indefinido". O horário continua explícito: arquivo guardado
+não comprova conexão/atualidade nem concede licença para enviar ordens. Labels
+por magic não são posse certificada; `ownership_basis` informa a limitação da
+posição observada. Percentuais de limite referem-se ao saldo; os valores de
+risco são estimativas até o stop e não garantem perda máxima em gaps/slippage.

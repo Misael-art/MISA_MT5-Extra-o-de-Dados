@@ -4363,3 +4363,20 @@ Regressão após a correção: **196 aprovados/18 PG não executados no comando
 SQLite**,213,95s, cobrindo MEN, definições e materialização composta; casos PG
 foram executados separadamente no gate98/0 acima. Rodadas sobrepostas, não somar
 como casos distintos. Doctor repetido após o ajuste:16 OK/2 avisos/0 falhas.
+
+
+### Pilar operacional — F04.1 em02/11/2026
+
+Fundação financeira/recuperação implementada em H1f6dca03/PR78 e Safety27b8599/
+PR11 candidata1.12; App reconcilia pins de desenvolvimento e leitura da carteira.
+148testes H, checker170,16consumidores0/0, Smoke0/0,17headers e instalação17→0.
+Tester DEMO: estado completo/truncado; B07 com entrada/saída e caixa; S09 com
+13posições/39deals/9+4etapas,44inputs e53fontes físicas. Fonte e binário vinculados;
+não é aceite de broker, rede/processo, netting ou Windows físico. O protótipo de
+reserva não foi conectado ao envio nem distribuído. F04/05/10/11/12 continuam
+abertos para journal, consumo, ator/posse, planos e margem agregada. Matriz e
+sequência permanecem na seção9 do inventário; SA-REF-01/runtime33c2fa1 intactos.
+App7c51bc4/PR272:182testes dirigidos, doctor16OK/2avisos/0falhas; prévia338arquivos
+conferidos e CLI pelo launcher com indisponibilidade explícita. Ponte atualizada
+com posse; cálculo de conta não qualificado sem conta carregada. QA F04 privada
+restaurada:137arquivos/seis bancos, cinco anexos na página existente/seq21.

@@ -369,11 +369,11 @@ ou testar seu corpo MQL em C++ não comprova esse percurso no broker.
 |---|---|---|
 | Margem individual e reserva percentual | H `Safety/HDK_SafeExecutor.mqh`, `Open` e `PlacePending`; `margin_buffer_pct` em percentual da margem livre, moeda da conta | Defeito confirmado: falha de `OrderCalcMargin` deixava seguir. T20.8 passa a negar cálculo ausente/negativo/não finito, margem livre inválida e reserva fora de `[0,100)`. Não é reserva agregada de planos |
 | Checagem do pedido | Mesmo executor, `OrderCheck` | Falha com retcode zero e bool verdadeiro com recusa deixavam passar. Exigir bool e código de aprovação; checagem não é fill |
-| Resultado e repetição | `HDK_ExecutionResult.mqh`, `OpenObserved`, adaptador B08 | Aceito/parcial/confirmado/recusado/incerto separados no observador. Remover repetição por `CONNECTION`; timeout não se repete. Intenção persistente/reconciliação de pendentes ainda não generalizadas |
+| Resultado e repetição | `HDK_ExecutionResult.mqh`, `OpenObserved`, adaptador B08 | Aceito/parcial/confirmado/recusado/incerto separados no observador. Remover repetição por `CONNECTION`; timeout não se repete. F04.1 fixa conta/servidor no Init do executor e mantém recusa/requote com IDs ou volume como incertos, inclusive nas retentativas. PLACED requer ordem sem fill. Intenção persistente/reconciliação de pendentes ainda não generalizadas |
 | Preço, SL e especificação | Executor existente; preço e distâncias em preço, volume em lotes | T20.8 rejeita NaN/infinito/EMPTY_VALUE, tick/ponto/passo/mín/máx inválidos, cotação cruzada, identidade básica ausente. Conta/servidor/magic não substituem posse por contribuição/sessão |
-| Risco por capital / lote fixo | `HDK_RiskGuard::CalcLot`; `composition/sizing.py`, `HDK_VolumePolicy.mqh`; S09 usa bindings tipados | Saldo/equity e fração Python versus percentual MQL explícitos. Auditar leituras inválidas do RiskGuard e a exposição desconhecida; aceites de margem conjunta e concorrência pendentes |
-| Orçamento da conta, robô, ativo e grupo | `HDK_PortfolioRegistry.mqh` observa conta; `HDK_RiskGuard.mqh` limita risco do magic | Não há reserva integrada do plano inteiro na composição fixada. Branches históricas1.4/1.5 não são runtime. F-04/05/10/11/12 devem tratar concorrência, abandono e múltiplos terminais antes de liberar multiordem |
-| Netting / hedging e posse | PortfolioRegistry distingue modalidade; executor e host legado usam magic | Magic não prova contribuição em posição netting nem distingue sessões que o reutilizam. Bloquear caminhos sem atribuição comprovada; não liquidar conta por inferência |
+| Risco por capital / lote fixo | `HDK_RiskGuard::CalcLot`; `composition/sizing.py`, `HDK_VolumePolicy.mqh`; S09 usa bindings tipados | Saldo/equity e fração Python versus percentual MQL explícitos. F04.1 valida números/configuração/conta e exposição fresca; lote de referência negociável e risco recalculado após arredondamento para baixo. Aceites de margem conjunta e concorrência operacional pendentes |
+| Orçamento da conta, robô, ativo e grupo | `HDK_PortfolioRegistry.mqh` observa conta; `HDK_RiskGuard.mqh` limita risco do magic | F04.1 restaura o guardião histórico para desenvolvimento e consolida leituras por ativo/grupo; a API de reserva ainda não está conectada ao executor nem distribuída. Não há reserva integrada do plano inteiro. Branches históricas1.4/1.5 não são runtime. F-04/05/10/11/12 devem tratar concorrência, abandono e múltiplos terminais antes de liberar multiordem |
+| Netting / hedging e posse | PortfolioRegistry distingue modalidade; executor e host legado usam magic | Magic não prova contribuição em posição netting nem distingue sessões que o reutilizam. F04.1 recusa netting/exchange nas entradas, fechamento de posição e alterações que dependem de magic. Cancelamento por ticket próprio continua disponível. Contribuição por ativo e ensaio de netting pendentes |
 | Entrada simples | SafeExecutor + host estratégico; S09/B08 e Expert Super ATR | Mercado suportado por consumidor; filtros/armamento/conta continuam próprios. Aceites de novas combinações separados |
 | Limite / stop / stop-limit | `PlacePending`, boleta manual | Tipos e validade declarados, SL obrigatório; H/S têm caminho nativo. Composição automática não herda a boleta. Cancelamento concorrente com fill e restart requerem ensaio próprio |
 | Orientação normal / invertida | Schema e adaptadores específicos | Normal base; inversão somente nos perfis que a implementam. Não assumir suporte no Super ATR de referência |
@@ -416,3 +416,29 @@ Cada recorte tem PR próprio nos repositórios afetados. Estado executável,
 testes/SHAs/PRs/pins e prévia ficam na continuidade/plano F19 e no registro
 central existente. Esta matriz não substitui o registry de capacidades nem
 cria autorização de conta. Stop não garante perda máxima exata em gap/slippage.
+
+
+### F04.1 — fundação em02/11/2026
+
+O estado individual do RiskGuard tem formato2, identidade conta/servidor/magic,
+checksum, campos completos e posse exclusiva do arquivo. Escrita/leitura,
+truncamento e bloqueios foram exercitados no Tester DEMO sem negociação; o
+depósito inicial é um deal de saldo e permanece separado dos deals BUY/SELL.
+Arquivos legados sem servidor são preservados e bloqueiam entradas até migração
+explícita. Não apagar estado para eliminar um bloqueio nem herdar aceite do
+runtime congelado. Falha de gravação impede novas entradas.
+
+A carteira de leitura do App usa `order_calc_profit` nativo em moeda da conta;
+falha ou leitura indisponível não é conta vazia ou risco zero. Stop-limit usa
+preço de execução, e retratos conferem identidade, tickets, volumes e stops.
+Rótulo de magic continua informativo, sem comprovar posse/contribuição em netting.
+A ponte permite apenas os cálculos de leitura; envio e checagem de ordem seguem
+recusados por ela. O guardião exporta números desconhecidos como `null`, com
+estado incompleto, em vez de JSON com NaN.
+
+A disputa sintética de reservas60+60 contra100 foi aprovada no corpo MQL em
+plataforma simulada, com IDs de64bits e retenção de envio incerto. O módulo é
+trabalho em implementação: falta journal durável, conciliação para consumo,
+ativo/grupo/plano/margem, identidade de intenção e integração ao executor.
+Esse teste e a compilação do header não autorizam operação com orçamento agregado.
+A sequência dos sete marcos permanece; o pilar continua incompleto.

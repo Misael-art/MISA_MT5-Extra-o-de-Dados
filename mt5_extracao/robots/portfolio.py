@@ -10,6 +10,7 @@ Common\\Files\\HDK_portfolio_<conta>.json; `read_guardian` lê esse arquivo quan
 """
 import json
 import logging
+import math
 from typing import Iterable, Optional
 
 from . import battery, catalog
@@ -67,16 +68,82 @@ def _exposure_groups(symbol: str, info, fixed_groups: str) -> list[str]:
     return groups or [f"Ativo {symbol}"]
 
 
-def _risk(info, buy: bool, volume: float, price: float, stop: float) -> Optional[float]:
-    """Perda de ir do preço ao stop, na moeda da conta. None = sem stop ou sem dados do ativo; 0 = stop no lucro."""
-    if not stop or info is None:
+def _number(value):
+    if isinstance(value, bool):
         return None
-    tick_size = float(getattr(info, "trade_tick_size", 0) or getattr(info, "point", 0) or 0)
-    tick_value = float(getattr(info, "trade_tick_value", 0) or 0)
-    if tick_size <= 0 or tick_value <= 0:
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
         return None
-    distance = (price - stop) if buy else (stop - price)
-    return max(0.0, distance / tick_size * tick_value * float(volume))
+    return number if math.isfinite(number) and abs(number) != float.fromhex("0x1.fffffffffffffp+1023") else None
+
+
+def _checked_snapshot(value):
+    """Nenhum total/campo exportado pode converter overflow em carteira normal."""
+    if isinstance(value, float) and _number(value) is None:
+        raise RuntimeError("Total ou exposição não finitos; carteira sem confirmação.")
+    if isinstance(value, dict):
+        for item in value.values():
+            _checked_snapshot(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _checked_snapshot(item)
+    return value
+
+
+def _risk(mt5, symbol: str, buy: bool, volume: float, price: float, stop: float, *, pending=False, specs=None) -> Optional[float]:
+    """Estimativa nativa em moeda da conta. Falha/ausência de dados permanece None."""
+    volume, price, stop = (_number(v) for v in (volume, price, stop))
+    if (not symbol or specs is None or any(v is None or v <= 0 for v in (volume, price, stop)) or
+            any(_number(getattr(specs, field, None)) is None or float(getattr(specs, field)) <= 0
+                for field in ("point", "trade_tick_size"))):
+        return None
+    if pending and (price - stop) * (1 if buy else -1) <= 0:
+        return None
+    try:
+        result = _number(mt5.order_calc_profit(0 if buy else 1, symbol, volume, price, stop))
+    except (AttributeError, RuntimeError, TypeError, ValueError, OSError):
+        return None
+    return max(0.0, -result) if result is not None else None
+
+
+def _account_identity(account):
+    if account is None:
+        raise RuntimeError("Conta indisponível durante leitura da carteira; reconecte e atualize o retrato.")
+    login = getattr(account, "login", None)
+    if not isinstance(login, int) or isinstance(login, bool):
+        raise RuntimeError("Identificador da conta indisponível; atualize a conexão.")
+    mode, trade_mode = getattr(account, "margin_mode", None), getattr(account, "trade_mode", None)
+    if isinstance(mode, bool) or isinstance(trade_mode, bool) or trade_mode not in (0, 1, 2):
+        raise RuntimeError("Modalidade da conta indisponível; não inferir DEMO ou posse.")
+    identity = (login, str(getattr(account, "server", "") or ""),
+                str(getattr(account, "currency", "") or ""), mode, trade_mode)
+    if identity[0] <= 0 or not identity[1] or not identity[2] or identity[3] not in (0, 1, HEDGING):
+        raise RuntimeError("Identidade/servidor/modalidade da carteira indisponível; atualize a conexão.")
+    for field in ("balance", "equity", "margin", "margin_free"):
+        number = _number(getattr(account, field, None))
+        if number is None or number < 0 or (field in ("balance", "equity") and number == 0):
+            raise RuntimeError("Capital ou margem da conta indisponível; carteira sem confirmação.")
+    return identity
+
+
+def _rows(mt5, method):
+    rows = getattr(mt5, method)()
+    if rows is None:
+        raise RuntimeError("Exposição indisponível durante leitura da carteira; não tratar como conta vazia.")
+    return tuple(rows)
+
+
+def _row_key(row, *, pending=False):
+    fields = ("ticket", "magic", "symbol", "type", "volume_current" if pending else "volume", "price_open", "sl")
+    if pending and getattr(row, "type", None) in (6, 7):
+        fields += ("price_stoplimit",)
+    values = tuple(getattr(row, name, None) for name in fields)
+    if (not isinstance(values[0], int) or values[0] <= 0 or not isinstance(values[1], int) or values[1] < 0 or
+            not values[2] or values[3] not in (range(8) if pending else (0, 1)) or
+            any(_number(v) is None for v in values[4:]) or values[4] <= 0 or values[5] <= 0 or values[6] < 0):
+        raise RuntimeError("Identidade, volume, preço ou stop inválidos no retrato; atualize a carteira.")
+    return values
 
 
 def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0, exposure_groups: str = "") -> dict:
@@ -84,9 +151,16 @@ def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0, exposure_gro
     Retrato da conta conectada. Levanta RuntimeError, com o que fazer, se não há conta.
     `max_risk_pct` (% do saldo) só muda o campo "state": nada é bloqueado aqui.
     """
+    max_risk_pct = _number(max_risk_pct)
+    if max_risk_pct is None or not 0 <= max_risk_pct <= 100:
+        raise ValueError("Limite da carteira deve ser percentual finito de 0 a 100% do saldo.")
     account = mt5.account_info()
     if account is None:
         raise RuntimeError("Nenhuma conta conectada no MetaTrader 5. Abra o MT5, entre na conta e rode: mt5x doctor")
+    identity = _account_identity(account)
+    native_positions, native_orders = _rows(mt5, "positions_get"), _rows(mt5, "orders_get")
+    position_keys = sorted(_row_key(p) for p in native_positions)
+    order_keys = sorted(_row_key(o, pending=True) for o in native_orders)
     names = owners(robots)
     infos = {}
 
@@ -96,30 +170,40 @@ def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0, exposure_gro
         return infos[symbol]
 
     positions = []
-    for p in mt5.positions_get() or ():
+    for p in native_positions:
         buy = int(p.type) == 0
         specs = info(p.symbol)
-        risk = _risk(specs, buy, p.volume, float(p.price_open), float(p.sl))
+        risk = _risk(mt5, p.symbol, buy, p.volume, float(p.price_open), float(p.sl), specs=specs)
         positions.append({
             "ticket": int(p.ticket), "symbol": p.symbol, "magic": int(p.magic), "owner": owner_name(p.magic, names),
+            "ownership_basis": "magic_label_only" if identity[3] == HEDGING else "netting_contribution_unresolved",
             "direction": 1 if buy else -1, "volume": float(p.volume), "price_open": float(p.price_open),
             "sl": float(p.sl), "tp": float(p.tp), "has_stop": bool(p.sl), "risk_money": risk,
             "base_currency": str(getattr(specs, "currency_base", "") or ""),
             "profit_currency": str(getattr(specs, "currency_profit", "") or ""),
             "profit": float(p.profit) + float(getattr(p, "swap", 0.0) or 0.0)})
     orders = []
-    for o in mt5.orders_get() or ():
+    for o in native_orders:
         buy = int(o.type) in BUY_ORDER_TYPES
         specs = info(o.symbol)
-        risk = _risk(specs, buy, o.volume_current, float(o.price_open), float(o.sl))
+        entry = float(o.price_stoplimit if int(o.type) in (6, 7) else o.price_open)
+        risk = _risk(mt5, o.symbol, buy, o.volume_current, entry, float(o.sl), pending=True, specs=specs)
         orders.append({
             "ticket": int(o.ticket), "symbol": o.symbol, "magic": int(o.magic), "owner": owner_name(o.magic, names),
             "type": int(o.type), "direction": 1 if buy else -1, "volume": float(o.volume_current),
-            "price": float(o.price_open), "sl": float(o.sl), "has_stop": bool(o.sl), "risk_money": risk,
+            "price": entry, "sl": float(o.sl), "has_stop": bool(o.sl), "risk_money": risk,
             "base_currency": str(getattr(specs, "currency_base", "") or ""),
             "profit_currency": str(getattr(specs, "currency_profit", "") or "")})
 
-    balance = float(getattr(account, "balance", 0.0) or 0.0)
+    if any(_number(p["profit"]) is None for p in positions):
+        raise RuntimeError("Resultado de posição não finito; carteira sem confirmação.")
+    refreshed = mt5.account_info()
+    if (_account_identity(refreshed) != identity or
+            float(refreshed.balance) != float(account.balance) or
+            sorted(_row_key(p) for p in _rows(mt5, "positions_get")) != position_keys or
+            sorted(_row_key(o, pending=True) for o in _rows(mt5, "orders_get")) != order_keys):
+        raise RuntimeError("Conta ou exposição mudou durante a leitura; atualize antes de usar o retrato.")
+    balance = float(account.balance)
     unknown = [i for i in positions + orders if i["risk_money"] is None]
     risk_open = sum(p["risk_money"] or 0.0 for p in positions)
     risk_pending = sum(o["risk_money"] or 0.0 for o in orders)
@@ -129,7 +213,7 @@ def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0, exposure_gro
         "margin_free": float(getattr(account, "margin_free", 0.0) or 0.0),
         "floating": sum(p["profit"] for p in positions), "risk_open": risk_open, "risk_pending": risk_pending,
         "risk_pct": (risk_open + risk_pending) / balance * 100.0 if balance > 0 else 0.0,
-        "risk_complete": not unknown, "positions": len(positions), "orders": len(orders),
+        "risk_complete": not unknown, "snapshot_complete": True, "capital_base": "balance", "positions": len(positions), "orders": len(orders),
         "without_stop": sum(1 for i in positions + orders if not i["has_stop"]),
         "manual": sum(1 for p in positions if not p["magic"])}
 
@@ -179,13 +263,13 @@ def snapshot(mt5, robots: Iterable = (), max_risk_pct: float = 0.0, exposure_gro
                   "ser avaliado por inteiro")
     elif max_risk_pct > 0 and totals["risk_pct"] > max_risk_pct:
         reason = f"risco até o stop de {totals['risk_pct']:.2f}% do saldo (limite {max_risk_pct:.2f}%)"
-    return {"login": int(getattr(account, "login", 0) or 0), "server": getattr(account, "server", "") or "",
-            "currency": account_currency, "demo": getattr(account, "trade_mode", None) == 0,
+    return _checked_snapshot({"login": int(getattr(account, "login", 0) or 0), "server": getattr(account, "server", "") or "",
+            "currency": account_currency, "risk_source": "native_order_calc_profit", "demo": getattr(account, "trade_mode", None) == 0,
             "hedging": hedging, "state": ALERT if reason else NORMAL, "reason": reason, "totals": totals,
             "positions": positions, "orders": orders,
             "by_owner": sorted(by_owner.values(), key=lambda g: -g["risk_money"]), "shared_symbols": shared,
             "exposures": [by_symbol[key] for key in sorted(by_symbol)],
-            "groups": [by_group[key] for key in sorted(by_group)]}
+            "groups": [by_group[key] for key in sorted(by_group)]})
 
 
 def read_guardian(config, login=None) -> Optional[dict]:

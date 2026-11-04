@@ -5643,3 +5643,54 @@ JUnit no estado QA existente. Este resultado substitui a pendência do teste
 sintético acima; H142 simulados/12 compilações e Tester final mantêm escopos
 próprios. Prévia atualizada após preservar os SHAs remotos. Não é fechamento
 do pilar ou aprovação do novo fingerprint no compilador de presets.
+
+
+## Pilar operacional F04.1 —02/11/2026
+
+Fundação H1f6dca03/PR78 (código financeiroffb84c66), Safety27b8599/PR11,
+candidata1.12. Manifesto de desenvolvimento reconciliado; referências aceitas,
+SA-REF-01 e runtime33c2fa1 da DEMO de02/11 permanecem congelados. Sem merge/release.
+RiskGuard nega configuração/capital/especificação/exposição desconhecidos e
+recalcula risco após quantizar o lote; risco adicional não soma swap duas vezes.
+Executor fixa conta/servidor no Init, recusa retentativa contraditória e bloqueia
+netting/exchange sem contribuição qualificada. SL existente permanece protegido.
+Estado individual formato2 tem checksum, campos completos, posse do arquivo e
+conferência de gravação; legado sem servidor não é apagado/adotado automaticamente.
+
+App usa OrderCalcProfit via ponte para risco em moeda da conta; indisponibilidade,
+volume/ticket/stop alterados e overflow não viram conta vazia ou risco zero.
+Snapshot2 exporta null para números desconhecidos; CLI mostra indefinido. Grupos
+continuam no catálogo/configuração existente. O orçamento agregado ainda não é
+ativo: módulo restaurado somente no H, restrito ao Tester DEMO, sem journal,
+consumo reconciliado ou ligação ao OrderSend; fora da Safety1.12.
+
+H148testes/checker170;16consumidores0/0 com vínculos de hash. Safety17headers
+por origem/hashes,2testes, instalação17depois0 e Smoke0/0. Tester de estado
+completo/truncado passou sem negociação. B07:6respostas sintéticas,1posição/2deals
+nativos, caixa reconciliado e perda-0,66USD preservada. A primeira tentativa foi
+recusada pelo gate de caixa porque o magic constante não era observado; input
+real agora consumido pelo robô e pela Session. Diagnóstico mantido. S09:13posições,
+39deals,9+4etapas,44inputs e53fontes físicas conferidos; caixa reconciliado.
+Modelo0 gerado deM1, sem broker/restart/desconexão/Windows físico qualificados.
+Fonte e evidência pública no H: F04_FOUNDATION_20261102.json. QA privada separada
+em state/qa-tmp/operational-pillar. App7c51bc4/PR272:182testes dirigidos/4avisos
+NumPy existentes, doctor16OK/2avisos/0falhas. Prévia oficial com338arquivos iguais
+por hash; CLI pelo launcher exibiu os valores desconhecidos como indefinido.
+Ponte de leitura atualizada com posse comprovada; OrderCalcProfit/Margin existem
+e OrderSend/Check continuam recusados pela RPC. Sem terminal/conta carregados,
+não foi qualificado cálculo nativo de conta. Nenhum login/PLAY foi iniciado.
+
+Proteção F04.1 na página privada existente, sequência21:137arquivos/seis bancos
+remontados e restaurados, hashes/quick_check/contagens idênticos. ZIP818.046bytes,
+SHA256d998c4d5015dd1d47309b16f0a3d68e0fc68e88e7ecf67a7c6a79a846216c2ca,
+duas partes e cinco anexos confirmados.304blocos anteriores preservados, quatro
+resumos do próprio pilar atualizados; compartilhamento permanece só proprietário.
+Recibo em protecao/f04/cloud-proof.json. Complementos históricos preservados.
+CI H verde em1f6dca03; App7c51bc4 tinha lint/PG/instaladores verdes e testes
+Linux/Windows ainda em execução na consulta de fechamento, sem aceite presumido.
+
+Próximo recorte: concluir o guardião existente com journal durável e identidade
+persistente de intenção/ator; conciliar ordem/deal/posição/histórico antes de
+consumir reserva; limites de ativo/grupo/plano/margem e integração ao executor.
+Depois seguir SuperATR próprio/presets, gradientes e probabilístico; pilar
+continua incompleto. Não retomar Dashboard nem transferir autorização de DEMO.

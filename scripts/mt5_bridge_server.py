@@ -25,6 +25,7 @@ ALLOWED = frozenset({
     "market_book_add", "market_book_get", "market_book_release",
     "copy_rates_from", "copy_rates_from_pos", "copy_rates_range", "copy_ticks_from", "copy_ticks_range",
     "positions_total", "positions_get", "orders_total", "orders_get",
+    "order_calc_profit", "order_calc_margin",  # estimativas nativas; não enviam/alteram ordens
     "history_orders_total", "history_orders_get", "history_deals_total", "history_deals_get",
 })
 
