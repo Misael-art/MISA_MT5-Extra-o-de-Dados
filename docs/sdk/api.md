@@ -1440,3 +1440,7 @@ nem aprova candidato. Plano: [DESCOBERTA_PADROES.md](../analytics/DESCOBERTA_PAD
 | `pattern_sources(db)` | Inventário de fontes locais com namespace da base, sem procurar no terminal. |
 | `qualify_pattern_source(db, symbol, timeframe, family, start, end)` | Elegibilidade por recorte/família; consulta sem execução ou captura. |
 | `freeze_pattern_source(db, symbol, timeframe, family, start, end)` | Conserva a seleção compacta no store de snapshots existente. |
+| `create_pattern_campaign(db, definition)` | Registra campanha T13.4 no ledger existente, com roster de snapshots. |
+| `register_pattern_attempt(db, protocol_id, key, definition, role, origin, purpose, discard_reason)` | Compila definição JSON tipada antes de reservar a tentativa na campanha. |
+| `evaluate_pattern_attempt(db, request_id, data_manifest_id, session_mode)` | Avalia tentativa já admitida contra snapshot congelado; sem ordem nativa. |
+| `pattern_campaign_status(db, protocol_id)` |  |
