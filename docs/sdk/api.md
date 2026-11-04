@@ -1444,3 +1444,5 @@ nem aprova candidato. Plano: [DESCOBERTA_PADROES.md](../analytics/DESCOBERTA_PAD
 | `register_pattern_attempt(db, protocol_id, key, definition, role, origin, purpose, discard_reason)` | Compila definição JSON tipada antes de reservar a tentativa na campanha. |
 | `evaluate_pattern_attempt(db, request_id, data_manifest_id, session_mode)` | Avalia tentativa já admitida contra snapshot congelado; sem ordem nativa. |
 | `pattern_campaign_status(db, protocol_id)` |  |
+| `pattern_evaluations(db, protocol_id, symbol, timeframe, as_of)` | Consulta avaliações T13.4 já persistidas; não abre produtor nem executor. |
+| `pattern_evaluation(db, protocol_id, request_id, data_manifest_id, as_of, include_facts)` | Inspeção de um recibo e, quando pedido, seus fatos causais persistidos. |

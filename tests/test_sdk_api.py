@@ -92,6 +92,8 @@ SURFACE = {
     "register_pattern_attempt": ['db', 'protocol_id', 'key', 'definition', 'role', 'origin', 'purpose', 'discard_reason'],
     "evaluate_pattern_attempt": ['db', 'request_id', 'data_manifest_id', 'session_mode'],
     "pattern_campaign_status": ['db', 'protocol_id'],
+    "pattern_evaluations": ['db', 'protocol_id', 'symbol', 'timeframe', 'as_of'],
+    "pattern_evaluation": ['db', 'protocol_id', 'request_id', 'data_manifest_id', 'as_of', 'include_facts'],
 }
 
 
