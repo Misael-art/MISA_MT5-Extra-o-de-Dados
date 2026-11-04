@@ -56,6 +56,17 @@ Frentes em paralelo usam branches/worktrees próprias; arquivos compartilhados e
 prévia são compostos serialmente. Cada correção/capacidade tem PR e aceite próprios.
 Super ATR indicador, estratégia e persistência mantêm contratos distintos.
 
+## Menções na internet — planejamento solicitado em29/10/2026
+
+Extensão MEN do pilar de dados: **Quantidade, Positivo e Negativo** por objeto,
+fonte e intervalo. Médias, derivações e correlações permanecem nos indicadores,
+Analytics/Strator e Laboratório existentes; menções não validam uma estratégia
+isoladamente. Fontes, contratos, donos, incrementos MEN-00…08 e aceites ficam no
+[capítulo18 do plano canônico de dados](dados/PLANO_ESTRUTURA_DADOS.md#18-menções-na-internet--quantidade-positivo-e-negativo).
+[Prompt de implementação](repasse/PROMPT_MENCOES_MERCADO_20261029.md).
+**Planejamento registrado; ingestão/classificação/consumo MEN ainda pendentes.**
+Não cria outro motor/store/scheduler nem altera as posses LAB/Expert/Dados.
+
 ## Retomada em host limpo sem SD — T20.30-HOST1
 
 Por instrução posterior de24/10/2026, o SD e o host antigo não estarão disponíveis.

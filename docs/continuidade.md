@@ -4194,6 +4194,24 @@ janelas móveis dos pares referenciais pelo serviço existente, com recorte,
 população, orçamento e fronteiras temporais explícitos; cruzamento de bases
 continua exigindo compatibilidade e seleção própria, sem junção pelo símbolo.
 
+## Planejamento de menções na internet — MEN-00, 29/10/2026
+
+O proprietário definiu três medidas primárias: **Quantidade, Positivo e Negativo**.
+Médias, desvios e correlações usam indicadores/Analytics/Laboratório (Strator)
+existentes; menção não é validador autônomo de estratégia. Plano detalhado,
+contratos, fontes oficiais F01–F09/C01, posse, incrementos MEN-00…08 e aceites no
+[capítulo18 do plano de Dados](dados/PLANO_ESTRUTURA_DADOS.md#18-menções-na-internet--quantidade-positivo-e-negativo).
+[Prompt pronto para implementação](repasse/PROMPT_MENCOES_MERCADO_20261029.md).
+
+Entrega documental; coleta/classificação/integração MEN continuam pendentes.
+Referência inspecionada: App9f9559287521e4f832d5b1e9249aa13aba5862ab/PR234,
+sem presumir integração em master. Havia WIP de janelas móveis na branch
+`codex/janelas-moveis-congeladas`; preservado e fora desta entrega. Nenhum dado
+privado, contratação, coleta ampla, dependência ou pin foi alterado. Validação
+deste lote é revisão documental/diff/links, não aceite de fonte externa/runtime.
+Próxima ação MEN: MEN-01, fechar identidade/contrato/chaves no mecanismo canônico;
+não antecipar código pela existência deste planejamento.
+
 
 ## Continuidade do roadmap — BD16-WINDOWS, 29/10/2026
 
