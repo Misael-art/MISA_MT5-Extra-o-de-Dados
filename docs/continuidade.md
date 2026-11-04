@@ -4836,3 +4836,45 @@ IDs. Nenhum timeout, assert, guarda ou durabilidade SQLite foi relaxado.
 no host Linux. Novo CI Windows continua necessário. Só testes e este registro
 mudaram; a equivalência dos306 arquivos runtime preserva a prévia e a ponte
 já conferidas, sem reiniciar serviço por uma mudança de fixture.
+
+### Artefatos vinculados ao lote —30/10/2026 (T20.25b)
+
+`codex/backtest-retencao-artefatos`, sobre vários ativos/PR258. Recursos consulta
+o journal Budget existente antes de limpar arquivos: o plano preserva o pacote
+congelado, e cada tentativa registra seu diretório/canais UUID antes de copiar
+qualquer arquivo nativo. Referências sobrevivem a falhas, interrupções e novas
+tentativas. SDK/CLI mostram os vínculos em `backtest-plan-show`, sem outro store,
+schema ou executor. Pacote é reconferido ao publicar o plano sob o mesmo lease
+da limpeza; caminho relativo vira absoluto após validação. Journal incompleto,
+ilegível ou referência relativa recusa a limpeza e conserva os arquivos.
+
+O lease de Recursos usa trava do kernel e identidade de processo no estado
+local comum ao usuário e na pasta de arquivo: configurações com pastas distintas
+não contornam a exclusão. Idade não toma um consumidor vivo; queda própria
+permite recuperação após prova de encerramento. Marcador persistente evita a
+corrida de unlink/inode. Trava legada sem prova de liberação fica preservada
+para diagnóstico. O contrato é local ao host/usuário; não certifica outro host.
+Quarentena/restauração de perfis próprios, fechados e sem referências reutiliza
+Recursos, ownership e lease do Tester. Mover não libera espaço nem autoriza
+expurgar snapshots, runs, perfis ou recibos de falha. Sem novas chaves ou pins.
+
+Baseline106 aprovados; recorte final195 aprovados, incluindo15 novos casos,
+com processo próprio concorrente/queda, idade, configuração alternativa,
+adaptador Windows, pacote alterado e falhas de journal. Doctor de desenvolvimento
+offline16 OK/2 avisos/0 falhas (pandas-ta ausente e integração não sondada).
+Launcher GUI offline em base própria revisou pacote, admitiu uma tentativa e
+interrompeu Session antes da primeira cópia do terminal. Botão real de limpeza
+visível mostrou espera animada, removeu só o órfão e preservou pacote/perfil;
+quarentena de outro perfil retornou com bytes iguais. Temas claro/escuro e
+CLI pelo launcher confirmaram assinatura/referências e perfil protegido.
+Recibo final do fonte: `source-controls`; ensaios anteriores com falha de
+preparo são diagnósticos, não aceites. SHA/PR/prévia e proteção independente
+dos recibos ficam no registro central, com aceite separado da prévia instalada.
+
+S09 da composição HADOUKEN fixada (1.90) permanece recusado pelo gate de
+fingerprint. A prova de retenção usou apenas fontes públicas históricas 1.00
+aprovadas pelo contrato, extraídas para entrada própria de QA, sem checkout,
+compilação ou execução nativa; não qualifica o catálogo atual nem muda seus pins.
+MT5/Wine/conta/Tester e Windows físico continuam sem novo aceite nesta frente.
+Comparação da mesma revisão entre TFs (T20.22/23) e pausa gráfica observada
+na frente anterior seguem pendentes, sem aceite financeiro/preditivo.

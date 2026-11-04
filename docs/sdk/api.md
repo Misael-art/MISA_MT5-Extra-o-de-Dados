@@ -612,6 +612,38 @@ O manifesto da sessão contém `owner_store`, vínculo sem URI/senha ao banco cr
 `list_sessions/move_session` preservam perfis de outro banco e perfis antigos sem
 vínculo verificável, mesmo quando dois bancos usam o mesmo prefixo Wine.
 
+T20.25b acrescenta as referências dos lotes ao mesmo journal e à proteção F15.
+`robots.budget.retained_artifacts(db, batch_id=None, check=...)` é projeção
+somente leitura: pacotes congelados e arquivos/diretórios das tentativas,
+com batch/job/run/status e índice do histórico. `sdk.inspect_backtest_scope`
+também retorna `retained_artifacts`; a CLI `robots backtest-plan-show` expõe o
+mesmo resultado. Não cria catálogo, schema ou cálculo paralelo.
+
+O pacote é normalizado para caminho absoluto e reconferido antes de publicar
+o plano. Manifesto e pasta do `.set` ficam protegidos mesmo sem run gravado.
+Uma `Session` controlada registra seu diretório e canais UUID antes de copiar
+arquivos. O vínculo fica no evento de admissão existente, sem contar outra
+tentativa; falhas/interrupções continuam referenciadas após a retomada.
+Metadados incompletos/ilegíveis ou caminhos relativos antigos recusam a limpeza,
+sem presumir que o artefato está livre. Snapshots e resultados SQL não são
+expurgados por esta entrega. Enquanto o journal os referenciar, seus artefatos
+continuam protegidos; não há liberação automática por idade.
+
+Preparo/vínculo e limpeza usam o lease de Recursos: um gate local por usuário,
+comum às cópias do App e às configurações de pasta, além do gate da própria
+pasta de arquivo. Arquivos de controle `.lock` permanecem no disco e usam
+`fcntl`/`msvcrt` conforme o kernel real. Encerramento do processo libera o lease;
+idade não autoriza tomar um proprietário vivo. Trava antiga/ilegível ou de
+proprietário não verificável é preservada para diagnóstico. Não remover uma
+trava manualmente enquanto um consumidor estiver ativo. Esse mecanismo é local,
+sem promessa de coordenação de arquivos entre hosts distintos.
+
+`resources files` e a interface reavaliam referências ao executar a limpeza;
+log/PID/manifesto/trava da ponte e marcadores de Recursos são preservados.
+`resources sessions --quarantine/--restore --yes` mantém a operação reversível
+anterior para perfis próprios encerrados e sem referências. Quarentena não
+libera espaço em disco e não é expurgo de ambientes nativos.
+
 ## T19.14 — Observações e consulta de trajetórias
 
 `run_backtest(..., observation_timeframe="M15")` e

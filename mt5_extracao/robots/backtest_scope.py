@@ -5,6 +5,7 @@ from dataclasses import asdict
 from datetime import datetime
 import hashlib
 import json
+from pathlib import Path
 
 from mt5_extracao import timeframes
 from mt5_extracao.analytics import datasets, data_eligibility
@@ -107,6 +108,7 @@ def preview(db, config, robot, symbol=None, *, symbols=None, all_symbols=False, 
             raise ValueError("Pacote nativo exige um robô MQL5.")
         from ..presets.compiler import read_package
         package = read_package(manifest_path, robot)
+        manifest_path = str(Path(manifest_path).absolute())
         test = package.manifest["test_context"]
         if test is None or any(datetime.fromisoformat(test[k]) != value for k, value in (("start", begin), ("end", finish))):
             raise ValueError("Janela difere do pacote; exporte a revisão no contexto escolhido.")
@@ -212,7 +214,12 @@ def preview(db, config, robot, symbol=None, *, symbols=None, all_symbols=False, 
     manifest_ids = snapshots
     options = dict(start=begin, end=finish, preset=preset, execution=execution, context=context,
                    manifest_ids=manifest_ids if robot.kind == catalog.PYTHON else None)
-    control.prepare(jobs, claim=False, **options)
+    with budget.artifact_guard(db, child):
+        if package is not None:
+            from ..presets.compiler import read_package
+            if read_package(manifest_path, robot).package_hash != package.package_hash:
+                raise ValueError("Pacote mudou durante o preparo; prepare outra revisão antes de executar.")
+        control.prepare(jobs, claim=False, **options)
     return inspect_plan(db, control.batch_id)
 
 
@@ -225,6 +232,7 @@ def inspect_plan(db, batch_id):
                   for entry in checkpoint["plan"]["jobs"] if entry["key"] in heads]
     return dict(batch_id=batch_id, status=checkpoint["status"], reason=checkpoint["reason"], signature=checkpoint["plan"]["signature"], executions=executions,
                 measurements=checkpoint["measurements"],
+                retained_artifacts=budget.retained_artifacts(db, batch_id),
                 **checkpoint["plan"]["context"]["review"])
 
 

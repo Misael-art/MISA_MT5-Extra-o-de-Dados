@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import sqlite3
-import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -28,7 +27,6 @@ log = logging.getLogger(__name__)
 
 ARCHIVE_SUFFIX = ".db"
 LOCK_NAME = ".lock"
-LOCK_STALE_SECONDS = 6 * 3600
 CHUNK_ROWS = 50_000
 
 _ACTIONS = """
@@ -51,38 +49,79 @@ class Busy(RuntimeError):
 
 # --- trava e auditoria -----------------------------------------------------------------
 
+def control_lock_paths(folder):
+    from mt5_extracao.bootstrap.paths import state_dir
+    return (state_dir() / "resources" / LOCK_NAME, Path(folder) / LOCK_NAME)
+
+
 @contextmanager
 def exclusive(folder: Path, owner: str = ""):
-    """Trava por arquivo criado com O_EXCL; uma trava de mais de 6 horas é considerada abandonada e removida."""
+    """Mesmo lease local entre configurações/cópias do App; mantém o gate da pasta."""
+    shared, local = control_lock_paths(folder)
+    with _exclusive_folder(shared.parent, owner):
+        if shared.resolve() == local.resolve():
+            yield
+        else:
+            with _exclusive_folder(local.parent, owner):
+                yield
+
+
+@contextmanager
+def _exclusive_folder(folder: Path, owner: str = ""):
+    """Lease do arquivo existente; idade nunca comprova que um consumidor saiu."""
+    from mt5_extracao.process_owner import current, is_alive
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     lock = folder / LOCK_NAME
-    if lock.exists():
-        try:
-            if time.time() - lock.stat().st_mtime > LOCK_STALE_SECONDS:
-                log.warning(f"Trava abandonada removida: {lock}")
-                lock.unlink()
-        except OSError:
-            pass
+    if lock.is_symlink():
+        raise Busy("A trava de Recursos contém link; confira o diagnóstico antes de alterar arquivos.")
+    handle = None
     try:
-        fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError:
-        holder = ""
+        descriptor = os.open(lock, os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        handle = os.fdopen(descriptor, "r+b")
         try:
-            holder = lock.read_text(encoding="utf-8").strip()
+            _lock_resource_file(handle)
         except OSError:
-            pass
-        raise Busy("Outra ação de gestão de recursos está em andamento" + (f" ({holder})" if holder else "") +
-                   ". Aguarde terminar; se nada estiver rodando, apague o arquivo " + str(lock) + ".")
-    try:
-        os.write(fd, f"{owner} pid={os.getpid()} {datetime.now():%Y-%m-%d %H:%M:%S}".encode("utf-8"))
-        os.close(fd)
-        yield
+            raise Busy("Outra ação de gestão de recursos está em andamento. Aguarde terminar.") from None
+        try:
+            handle.seek(0)
+            raw = handle.read()
+            if raw:
+                try:
+                    previous = json.loads(raw)
+                    if (not isinstance(previous, dict) or previous.get("resource_lock_version") != 2 or
+                            previous.get("state") not in ("active", "released")):
+                        raise ValueError
+                except (ValueError, TypeError):
+                    raise Busy("Trava antiga ou ilegível sem prova de liberação; confira o proprietário da ação antes de remover o arquivo .lock da pasta de arquivo.") from None
+                if previous["state"] == "active" and is_alive(previous.get("identity")):
+                    raise Busy("A trava de Recursos não comprovou encerramento do proprietário; os arquivos foram preservados.")
+            payload = dict(resource_lock_version=2, identity=current(), state="active", action=owner)
+            def write(state):
+                payload["state"] = state
+                handle.seek(0); handle.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+                handle.truncate(); handle.flush()
+            write("active")
+            try:
+                yield
+            finally:
+                write("released")
+        finally:
+            _lock_resource_file(handle, release=True)
     finally:
-        try:
-            lock.unlink()
-        except OSError:
-            pass
+        if handle is not None:
+            handle.close()
+
+
+def _lock_resource_file(handle, *, release=False):
+    # Mantém o inode: unlink permitiria dois consumidores com handles distintos.
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK if release else msvcrt.LK_NBLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN if release else fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 
 def audit(db, action: str, target: str, origin: str, ok: bool, before=None, after=None, detail=None) -> None:
