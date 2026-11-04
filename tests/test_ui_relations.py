@@ -464,3 +464,31 @@ def test_inventory_drops_stale_response_and_reports_error(relations_panel):
     panel.load_inventory()
     pending[-1][1](None, RuntimeError("base bloqueada"))
     assert "Inventário indisponível: base bloqueada" in panel.inventory_status.cget("text")
+
+
+def test_inventory_distinguishes_declared_name_from_legacy_placeholder(relations_panel, tmp_path):
+    from sqlalchemy import text
+    from mt5_extracao.analytics import feature_store
+    from mt5_extracao.database_manager import DatabaseManager
+    panel, root = relations_panel
+    db = DatabaseManager(db_path=str(tmp_path / "qa-names.sqlite"), broker_utc_offset=0)
+    try:
+        feature_store.register_definition(db, "qa.named", "Série QA legível", "1", {}, [], family="qa")
+        feature_store.register_definition(db, "qa.old", "Nome antigo", "1", {}, [], family="qa")
+        with db.engine.begin() as conn:
+            conn.execute(text("UPDATE _feature_definitions SET name='value_type', definition_schema_version=1 "
+                              "WHERE feature_id='qa.old'"))
+        panel.db = db
+        panel.inventory_query.set("qa.")
+        panel.load_inventory()
+        tree = panel.inventory_table.tree
+        labels = {row["feature_id"]:tree.set(iid, "name") for iid, row in panel._inventory_rows.items()}
+        assert labels == {"qa.named":"Série QA legível", "qa.old":"Nome não verificável"}
+        iid = next(k for k, row in panel._inventory_rows.items() if row["feature_id"] == "qa.old")
+        tree.selection_set(iid)
+        panel._inventory_selected(None)
+        assert "Nome legado não verificável" in panel._details["inventory"].get("1.0", "end-1c")
+        assert next(d for d in feature_store.list_definitions(db) if d["feature_id"] == "qa.old")["name"] == "value_type"
+    finally:
+        panel.db = None
+        db.close()

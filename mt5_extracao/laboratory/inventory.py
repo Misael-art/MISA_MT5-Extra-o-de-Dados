@@ -79,6 +79,9 @@ def entries(db=None):
         if state == "STORED" and not row["computable"]:
             state = "STORED_ONLY"
         row.update(state=state, reason=STATES[state], action=ACTIONS[state])
+        row["stored_name_status"] = stored.get(key, {}).get("name_status")
+        if row["stored_name_status"] == "UNVERIFIED_LEGACY_NAME":
+            row["reason"] += " Nome legado não verificável; identifique a série pelo ID e versão, sem inferir o nome."
         rows.append(row)
     return sorted(rows, key=lambda row: (row["family"], row["feature_id"], row["algorithm_version"]))
 

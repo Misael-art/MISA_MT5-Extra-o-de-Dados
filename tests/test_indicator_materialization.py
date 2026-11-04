@@ -99,6 +99,23 @@ def test_batch_and_append_preserve_exact_values_hashes_and_prefix(db, tmp_path):
         full.close()
 
 
+def test_append_after_legacy_definition_names_preserves_all_existing_facts(db):
+    frame = source(45)
+    seed(db, frame.iloc[:125])
+    materializer.materialize(db, "TEST", "M5")
+    prefix = facts(db)
+    with db.engine.begin() as conn:
+        conn.execute(text("UPDATE _feature_definitions SET name='value_type', definition_schema_version=1"))
+    seed(db, frame)
+    result = materializer.materialize(db, "TEST", "M5")
+    assert result["job"]["status"] == "COMPLETE" and result["write_from"] == 25
+    assert result["revised"] == 0 and result["inserted"] == 20 * len(indicator_registry.definitions())
+    assert all(row in facts(db) for row in prefix)
+    definitions = feature_store.list_definitions(db)
+    assert all(row["name"] == "value_type" and row["name_status"] == "UNVERIFIED_LEGACY_NAME"
+               for row in definitions)
+
+
 def test_failed_ack_resumes_only_confirmed_cursor(db, monkeypatch):
     seed(db, source(25))
     original = feature_store.save_values

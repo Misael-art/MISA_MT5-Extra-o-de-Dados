@@ -1312,9 +1312,11 @@ class RelationsPanel:
             for index, row in enumerate(result["items"]):
                 iid = f"inventory-{index}"
                 self._inventory_rows[iid] = row
+                name = ("Nome não verificável" if row["origin"] == "data_store" and
+                        row.get("stored_name_status") == "UNVERIFIED_LEGACY_NAME" else row["name"])
                 series = ", ".join(f"{item['symbol']} {item['timeframe']} ({item['facts']})"
                                    for item in row["series"][:3]) or "—"
-                tree.insert("", tk.END, iid=iid, values=(row["feature_id"], row["name"], row["algorithm_version"],
+                tree.insert("", tk.END, iid=iid, values=(row["feature_id"], name, row["algorithm_version"],
                     row["family"], ", ".join(item["name"].rsplit(".", 1)[-1] for item in row["outputs"]) or "—",
                     ", ".join(f"{k}={v}" for k, v in row["parameters"].items()), row["state"], series))
             self._inventory_next_cursor = result["next_cursor"]
