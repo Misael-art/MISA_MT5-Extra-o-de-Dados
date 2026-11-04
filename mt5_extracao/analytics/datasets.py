@@ -93,6 +93,70 @@ def _decode_frame(payload):
     return frame
 
 
+def _coalescible_frames(payloads):
+    """Somente escalares canônicos cujo dtype independe da divisão em blocos."""
+    first = payloads[0]
+    if not isinstance(first, dict):
+        return False
+    columns, dtypes = first.get("columns"), first.get("dtypes")
+    if (not isinstance(columns, list) or not columns or not all(isinstance(c, str) for c in columns)
+            or len(set(columns)) != len(columns) or not isinstance(dtypes, list) or len(dtypes) != len(columns)):
+        return False
+    specs = []
+    for dtype in dtypes:
+        if not isinstance(dtype, str):
+            return False
+        if re.fullmatch(r"u?int(?:8|16|32|64)", dtype):
+            limits = np.iinfo(dtype)
+            specs.append(("integer", int(limits.min), int(limits.max)))
+        elif dtype in ("float32", "float64", "bool"):
+            specs.append((dtype, None, None))
+        elif re.fullmatch(r"datetime64\[(?:s|ms|us|ns)\]", dtype):
+            specs.append(("datetime", None, None))
+        else:
+            # Object/nullable/fusos podem mudar a inferência ou concatenação.
+            return False
+    for payload in payloads:
+        if (not isinstance(payload, dict) or payload.get("columns") != columns or payload.get("dtypes") != dtypes
+                or not isinstance(payload.get("rows"), list)):
+            return False
+        for row in payload["rows"]:
+            if not isinstance(row, list) or len(row) != len(columns):
+                return False
+            for value, (kind, low, high) in zip(row, specs):
+                if kind == "integer":
+                    if type(value) is not int or not low <= value <= high:
+                        return False
+                elif kind == "bool":
+                    if type(value) is not bool:
+                        return False
+                elif kind in ("float32", "float64"):
+                    if not (type(value) is float or isinstance(value, dict) and len(value) == 1
+                            and value.get("number") in ("nan", "inf", "-inf")):
+                        return False
+                elif not (isinstance(value, dict) and (value == {"missing": "NaT"} or
+                        set(value) == {"timestamp"} and isinstance(value["timestamp"], str) and
+                        re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?", value["timestamp"]))):
+                    return False
+    return True
+
+
+def _decode_frames(payloads):
+    """Uma conversão por coleção homogênea; casos complexos conservam a leitura por bloco."""
+    iterator = iter(payloads)
+    first = next(iterator)
+    if _coalescible_frames([first]):
+        buffered = [first, *iterator]
+        if len(buffered) > 1 and _coalescible_frames(buffered):
+            return _decode_frame(dict(first, rows=[row for payload in buffered for row in payload["rows"]]))
+        chunks = [_decode_frame(payload) for payload in buffered]
+    else:
+        # Fusos/object/nullable continuam progressivos: não reter todos os payloads JSON.
+        chunks = [_decode_frame(first)]
+        chunks.extend(_decode_frame(payload) for payload in iterator)
+    return pd.concat(chunks, ignore_index=True) if len(chunks) > 1 else chunks[0]
+
+
 def _schema(db):
     with _LOCK, db.engine.begin() as conn:
         conn.execute(text("CREATE TABLE IF NOT EXISTS _dataset_origin (slot TEXT PRIMARY KEY, origin_id TEXT NOT NULL)"))
@@ -721,14 +785,14 @@ def _validated(bundle):
         for role, ids in manifest["frames"].items():
             if role not in roles or not ids:
                 raise ValueError("coleção desconhecida")
-            chunks = []
-            for digest in ids:
-                referenced.add(digest)
-                payload = bundle["blocks"][digest]
-                if _hash(payload) != digest:
-                    raise ValueError("hash do bloco divergente")
-                chunks.append(_decode_frame(json.loads(payload)))
-            frames[role] = pd.concat(chunks, ignore_index=True) if len(chunks) > 1 else chunks[0]
+            def payloads():
+                for digest in ids:
+                    referenced.add(digest)
+                    payload = bundle["blocks"][digest]
+                    if _hash(payload) != digest:
+                        raise ValueError("hash do bloco divergente")
+                    yield json.loads(payload)
+            frames[role] = _decode_frames(payloads())
         if set(frames) != roles:
             raise ValueError("coleção ausente")
         if set(bundle["blocks"]) != referenced:

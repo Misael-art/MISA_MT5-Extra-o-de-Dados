@@ -4951,3 +4951,60 @@ Aceite visual/interação do HTML continua pendente. PostgreSQL novo/CI da ponta
 Windows físico, Tester/conta e financeiro têm gates próprios. S09 atual1.90
 continua com seu gate de fingerprint; pins HADOUKEN/Safety permanecem intactos.
 Esta extensão não conclui todo o backlog LAB/SA nem qualifica previsão.
+
+### Reconstrução de blocos dos snapshots —30/10/2026 (T20.4-PERF)
+
+`codex/snapshots-leitura-em-blocos`, sobre DASH-00/PR261 e comparação/PR260. O perfil da
+consulta63 resultados apontou3786 DataFrames reconstruídos,32,35s no decoder
+sob instrumentação. Blocos diários de D1/W1/MN1 frequentemente contêm só uma
+barra. A mudança fica em `analytics.datasets`, dono canônico de Dados.
+
+Coleções equivalentes com escalares primitivos/datas ingênuas usam uma única
+conversão pelo decoder existente. Inteiros precisam estar nos limites do tipo
+para essa reunião. Object, string, nullable, fusos, esquemas divergentes e
+coerções conservam o caminho por bloco. Primeiro bloco complexo é decodificado
+antes de materializar o próximo JSON, evitando reter todos os payloads brutos
+desses tipos. Esta escolha de reconstrução não substitui a validação.
+
+Hashes de blocos/manifesto, coleções/referências, período, especificação/vigência,
+qualidade e contratos de features continuam conferidos. Formatos1–5, identidade
+e bytes exportados conservam o contrato. Sem schema, cache, executor ou API
+paralela. Nenhum pin HADOUKEN/Safety foi alterado.
+
+Baseline126 aprovados; rodada inicial191/5 PG pulados,46 de legado/vazios com2
+PG pulados e238 finais/1 PG pulado (seleções sobrepostas). Há42 casos novos no
+host e1 PG para CI. Cobrem limites int64/uint64, floats e zero negativo, NaT,
+nullable/object/string, DST, esquemas/vazios, leitura progressiva e oito recusas
+de integridade antes de publicar blocos na importação. Doctor offline16/2/0.
+
+Launcher oficial na mesma base sintética protegida:21/63/126 resultados iguais
+às referências, inclusive o DTO completo e SHA, com arquivo SQLite inalterado.
+Baseline17,56/48,52s para21/63;126 atingiu o guard120s, preservado sem repetição
+nem aumento do limite. Referência numérica126 é a saída bem-sucedida anterior
+da mesma entrada, já protegida. Versão final8,56/15,62/46,31s incluindo startup.
+Carga/cache variam; os tempos são observações do host, não promessa universal.
+Amostras do processo/CPU/I/O ficam nos recibos, sem alegar pico garantido.
+
+Conferência direta dos21 snapshots/126 DataFrames contra o leitor publicado54b6
+provou valores, dtypes e representação canônica iguais. Perfil final dos63
+resultados:378 conversões,30,71s sob instrumentação; qualidade/vigência continuam
+com63 avaliações cada e são custo remanescente. Não eliminar essas verificações
+para reduzir a latência. Pausas de layout/tema da UI têm frente própria.
+
+GUI do fonte pelo launcher confirmou espera visível,126 resultados/21 TFs,
+quatro páginas de capital, detalheMN1, contagens sem sobreposição e journal
+inalterado; zero erros de callback. Pausa máxima observada8,06s em layout/tema
+neste percurso: otimizar o decoder não concede aceite geral de fluidez.
+
+Percursos GUI/prévia, SHA/PR, CI e complemento privado ficam nos recibos e no
+registro central. A entrada e o harness são próprios, reutilizados do complemento
+da comparação/PR260, cuja restauração já conferiu326 arquivos/5 bases; não copiar
+a base principal por teste. HTML visual mantém o bloqueio de URL registrado,
+sem nova tentativa/contorno; Windows físico, nativo e financeiro mantêm gates.
+BD03 e o backlog LAB/SA/social continuam com seus aceites específicos.
+
+DASH-00/f72f9e4 foi registrado por outra tarefa na mesma branch durante esta
+frente. A PR261 foi preservada com sua árvore documental exata: somente nosso
+incremento7b98398 foi revertido ali em50956f6. O incremento Dados foi reaplicado
+na branch filha, com fonte/testes idênticos por SHA256 aos238 testes aprovados.
+Sem reescrever histórico, fechar a PR alheia ou mover suas mudanças documentais.
