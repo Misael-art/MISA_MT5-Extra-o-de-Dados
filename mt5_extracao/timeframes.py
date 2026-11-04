@@ -106,3 +106,18 @@ def parse(value) -> Optional[Timeframe]:
         if key.isdigit():
             return parse(int(key))
     return None
+
+
+def ordered_unique(values):
+    """TFs por duração, sem aliases repetidos e preservando o primeiro rótulo.
+
+    Valores desconhecidos ficam no fim, em ordem de entrada: o consumidor ainda
+    pode explicar a indisponibilidade, sem convertê-los em um TF válido.
+    """
+    choices = {}
+    for value in values:
+        tf = parse(value)
+        key = tf if tf is not None else ("unknown", str(value))
+        if key not in choices:
+            choices[key] = (tf.minutes if tf is not None else float("inf"), value)
+    return [value for _, value in sorted(choices.values(), key=lambda item: item[0])]

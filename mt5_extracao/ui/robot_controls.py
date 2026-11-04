@@ -4,10 +4,20 @@ import tkinter as tk
 from datetime import datetime, timedelta
 from tkinter import messagebox, ttk
 
+from mt5_extracao import timeframes
 from mt5_extracao.robots import catalog, controls, portfolio, sessions
 from mt5_extracao.ui import icons
 from mt5_extracao.ui.components import DetailsPanel, ScrollableContent
 from mt5_extracao.ui.theme import Tooltip, fmt_int, fmt_num
+
+
+def _modal_when_mapped(window):
+    """O gerenciador de janelas precisa mapear o diálogo antes do grab local."""
+    def mapped(event):
+        if event.widget == window:
+            window.grab_set()
+            window.unbind("<Map>", binding)
+    binding = window.bind("<Map>", mapped, add="+")
 
 
 class CardControls:
@@ -318,7 +328,7 @@ class SelectionDialog:
         self.window.geometry("640x540")
         self.window.minsize(420, 360)
         self.window.transient(controller.ui.root)
-        self.window.grab_set()
+        _modal_when_mapped(self.window)
         body = ttk.Frame(self.window, padding=16)
         body.pack(fill=tk.BOTH, expand=True)
         ttk.Label(body, text=robot.name, style="Heading.TLabel").pack(anchor="w")
@@ -333,8 +343,10 @@ class SelectionDialog:
         self.tf = tk.StringVar(value=self.timeframe)
         if kind == "asset":
             ttk.Label(footer, text="Timeframe", style="Muted.TLabel").pack(side=tk.LEFT)
-            ttk.Combobox(footer, textvariable=self.tf, state="readonly", width=6,
-                         values=tuple(dict.fromkeys(robot.timeframes + ("M1", "M5", "M15", "H1", "H4", "D1")))).pack(side=tk.LEFT, padx=6)
+            current = (self.timeframe,) if timeframes.parse(self.timeframe) is not None else ()
+            choices = timeframes.ordered_unique(current + robot.timeframes + ("M1", "M5", "M15", "H1", "H4", "D1"))
+            self.tf_combo = ttk.Combobox(footer, textvariable=self.tf, state="readonly", width=10, values=choices)
+            self.tf_combo.pack(side=tk.LEFT, padx=6)
         ttk.Button(footer, text="Aplicar", style="Accent.TButton", command=self.apply).pack(side=tk.RIGHT)
         table = ttk.Frame(body)
         table.pack(fill=tk.BOTH, expand=True)
@@ -397,7 +409,7 @@ class ExecutionDialog:
         self.window.geometry("760x680")
         self.window.minsize(480, 420)
         self.window.transient(self.ui.root)
-        self.window.grab_set()
+        _modal_when_mapped(self.window)
         self.stage = 1
         self.consent = None
         self.body = ttk.Frame(self.window, padding=16)

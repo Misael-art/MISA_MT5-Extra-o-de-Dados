@@ -416,14 +416,20 @@ class RobotDetail:
             self._show_tests()
 
     def _symbol_changed(self):
-        """Timeframes que o ativo escolhido tem na base (o indicado pela estratégia vem primeiro, se existir)."""
-        labels = [item["timeframe"] for item in self.ui.symbol_series.get(self.symbol_var.get(), [])]
+        """TFs locais crescentes; preserva a seleção, inclusive quando seu alias muda."""
+        available = [item["timeframe"] for item in self.ui.symbol_series.get(self.symbol_var.get(), [])]
+        current_label = self.timeframe_var.get()
+        if current_label in available:
+            available = [current_label] + available
+        labels = timeframes.ordered_unique(available)
         self.timeframe_combo.configure(values=labels)
         if self.timeframe_var.get() not in labels:
-            from mt5_extracao import timeframes
+            current = timeframes.parse(self.timeframe_var.get())
+            equivalent = next((label for label in labels if current is not None
+                               and timeframes.parse(label) == current), None)
             wanted = set(self.robot.timeframes) if self.robot else set()
             preferred = [label for label in labels if getattr(timeframes.parse(label), "name", "") in wanted]
-            self.timeframe_var.set((preferred or labels or [""])[-1])
+            self.timeframe_var.set(equivalent or (preferred or labels or [""])[-1])
 
     def run_backtest(self):
         robot, symbol, timeframe = self.robot, self.symbol_var.get(), self.timeframe_var.get()

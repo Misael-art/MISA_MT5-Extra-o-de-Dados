@@ -11,6 +11,42 @@ from mt5_extracao.ui import robot_controls
 from tests.test_manual_panel_play import manual
 
 
+def test_timeframe_selector_orders_duration_deduplicates_and_preserves_exact_context(ui):
+    panel, robot, preset = _tested(ui)
+    robot.timeframes = ("H4", "1 hora", "M15", "D1", "H1", "M1", "W1", "MN1", "M30")
+    dialog = robot_controls.SelectionDialog(panel.controls, robot, "asset")
+    assert tuple(dialog.tf_combo.cget("values")) == ("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1", "MN1")
+    assert dialog.tf.get() == "H1"
+    ui.pump(.1)
+    assert dialog.window.grab_current() == dialog.window
+    dialog.apply()
+    assert panel.controls.chosen[robot.key] == ("WIN$N", "H1", preset)
+    ui.toggle_theme()
+    again = robot_controls.SelectionDialog(panel.controls, robot, "asset")
+    assert again.tf.get() == "H1"
+    again.window.destroy()
+
+
+def test_python_timeframes_preserve_current_table_and_equivalent_label_after_refresh(ui):
+    panel = ui.robots_panel
+    panel.select("python:donchian")
+    detail = panel.detail
+    labels = ["H4", "1 hora", "M15", "M1", "D1", "M5", "H1", "1 minuto"]
+    ui.symbol_series["WIN$N"] = [dict(symbol="WIN$N", timeframe=value, rows=600) for value in labels]
+    detail.timeframe_var.set("H1")
+    detail._symbol_changed()
+    assert tuple(detail.timeframe_combo.cget("values")) == ("M1", "M5", "M15", "H1", "H4", "D1")
+    assert detail.timeframe_var.get() == "H1"
+    ui.symbol_series["WIN$N"] = [dict(symbol="WIN$N", timeframe=value, rows=600) for value in labels if value != "H1"]
+    detail._symbol_changed()
+    assert detail.timeframe_var.get() == "1 hora"
+    detail.inventory_changed()
+    assert detail.timeframe_var.get() == "1 hora"
+    ui.symbol_series["WIN$N"] = []
+    detail._symbol_changed()
+    assert detail.timeframe_var.get() == "" and not detail.timeframe_combo.cget("values")
+
+
 def test_manual_panel_play_is_available_without_backtest_and_respects_offline_mode(ui, manual):
     panel = ui.robots_panel
     panel.robots.insert(0, manual)
