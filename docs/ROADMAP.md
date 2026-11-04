@@ -56,6 +56,16 @@ Frentes em paralelo usam branches/worktrees próprias; arquivos compartilhados e
 prévia são compostos serialmente. Cada correção/capacidade tem PR e aceite próprios.
 Super ATR indicador, estratégia e persistência mantêm contratos distintos.
 
+## Retomada em host limpo sem SD — T20.30-HOST1
+
+Por instrução posterior de24/10/2026, o SD e o host antigo não estarão disponíveis.
+[Entrada única](../CONTINUAR_AQUI.md): wrappers de bootstrap Linux/Windows,
+manifesto de fontes, recuperação privada pela conta ChatGPT e prompt completo
+do novo agente. Reutiliza instaladores/shortcuts e `.venv` do projeto; não cria
+outro stack de instalação ou automação financeira. O novo host precisa validar
+seu ambiente e os dados restaurados antes da sequência LAB/Expert/Dados acima.
+Instalação/preparação não altera o aceite reaberto nem remove gates operacionais.
+
 ## Fases
 
 **Pedido do proprietário — 2026-10-21:** planejar TFs em ordem crescente nos

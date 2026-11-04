@@ -140,7 +140,8 @@ def cmd_configure(args) -> int:
 
 
 def cmd_doctor(args) -> int:
-    checks = doctor.run_checks(Path(args.root).resolve(), probe_bridge_conn=not args.no_probe)
+    checks = doctor.run_checks(Path(args.root).resolve(), probe_bridge_conn=not args.no_probe,
+                              development=args.development)
     if args.json:
         _print(json.dumps(doctor.checks_to_dicts(checks), ensure_ascii=False, indent=2))
     else:
@@ -222,6 +223,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("doctor", help="Verifica o ambiente e aponta correções")
     p.add_argument("--json", action="store_true")
     p.add_argument("--no-probe", action="store_true", help="Não tenta conectar na ponte MT5 (Linux)")
+    p.add_argument("--development", action="store_true",
+                   help="Verifica desenvolvimento offline; não qualifica terminal, ponte ou contas")
     p.set_defaults(func=cmd_doctor)
 
     p = sub.add_parser("locate-mt5", help="Lista instalações do MetaTrader 5 encontradas")

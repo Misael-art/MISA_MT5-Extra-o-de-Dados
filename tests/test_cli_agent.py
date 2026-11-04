@@ -57,6 +57,25 @@ def test_tables_and_analyze_give_structured_numbers(env, capsys):
     assert data["seasonality"]["weekday"] and data["freshness"]
 
 
+def test_analyze_distinguishes_zero_denominator_from_invalid_source(env, tmp_path, capsys):
+    from tests.test_study import bars
+    frame = bars([0, 1, 2, 4], freq="D")
+    db = DatabaseManager(db_path=str(tmp_path / "db.sqlite"))
+    assert db.save_ohlcv_data("ZERO", "1 dia", frame)
+    payload = run(capsys, env + ["analyze", "--symbol", "ZERO", "--tf", "D1", "--period", "Tudo"])
+    assert payload["ok"]
+    assert payload["data"]["summary"]["return_pct"] is None
+    assert payload["data"]["summary"]["return_pairs_excluded"] == 1
+    assert payload["data"]["time_context"]["offset_state"] == "unknown"
+    frame.loc[1, "high"] = float("nan")
+    assert db.save_ohlcv_data("ZERO", "1 dia", frame)
+    payload = run(capsys, env + ["analyze", "--symbol", "ZERO", "--tf", "D1", "--period", "Tudo"])
+    assert payload["exit_code"] == cli.EXIT_FAIL
+    assert payload["data"]["quality"]["nonfinite_ohlc"]["count"] == 1
+    assert "summary" not in payload["data"]
+    assert "preços ou horários inválidos" in payload["errors"][0]
+
+
 def test_robots_list_and_backtest_as_json(env, capsys):
     robots = {r["key"]: r for r in run(capsys, env + ["robots"])["data"]["robots"]}
     assert robots["mql5:demoguard"]["risk"]["level"] == "Moderado" and "inputs" not in robots["mql5:demoguard"]

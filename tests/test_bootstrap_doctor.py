@@ -49,6 +49,53 @@ def test_doctor_json_exit_code(tmp_path, capsys):
     assert '"status"' in out
 
 
+def test_development_does_not_require_native_terminal_but_normal_doctor_does(tmp_path):
+    cfg = config_builder.build_config(None, {"MT5": {"path": ""}})
+    config_builder.write_config(paths.config_path(tmp_path), cfg)
+    (tmp_path / "database").mkdir()
+    normal = {c.name: c for c in doctor.check_config(tmp_path)}
+    offline = {c.name: c for c in doctor.check_config(tmp_path, require_mt5=False)}
+    assert normal["Caminho do MT5"].status == doctor.FAIL
+    assert offline["Caminho do MT5"].status == doctor.WARN
+    assert offline["Pasta do banco de dados"].status == doctor.OK
+
+
+def test_development_preserves_failure_for_configured_but_missing_terminal(tmp_path):
+    cfg = config_builder.build_config(None, {"MT5": {"path": str(tmp_path / "missing")}})
+    config_builder.write_config(paths.config_path(tmp_path), cfg)
+    (tmp_path / "database").mkdir()
+    checks = {c.name: c for c in doctor.check_config(tmp_path, require_mt5=False)}
+    assert checks["Caminho do MT5"].status == doctor.FAIL
+
+
+def test_development_cli_still_fails_without_configuration(tmp_path, capsys):
+    assert main(["--root", str(tmp_path), "doctor", "--development", "--json"]) == 1
+    assert '"Integração nativa"' in capsys.readouterr().out
+
+
+def test_development_does_not_probe_bridge_or_accounts_even_when_enabled(tmp_path, monkeypatch):
+    cfg = config_builder.build_config(None, {"MT5": {"path": ""}, "BRIDGE": {"enabled": "true"}})
+    config_builder.write_config(paths.config_path(tmp_path), cfg)
+    (tmp_path / "database").mkdir()
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("diagnóstico offline tentou acessar integração nativa")
+
+    monkeypatch.setattr(doctor, 'check_linux_bridge', forbidden)
+    monkeypatch.setattr(doctor, 'check_mt5_account', forbidden)
+    monkeypatch.setattr(doctor, 'check_mt5_module_windows', forbidden)
+    checks = doctor.run_checks(tmp_path, development=True)
+    assert not any(c.status == doctor.FAIL for c in checks)
+    assert any(c.name == 'Integração nativa' and c.status == doctor.WARN for c in checks)
+
+
+def test_development_does_not_mask_missing_database_directory(tmp_path):
+    cfg = config_builder.build_config(None, {"MT5": {"path": ""}})
+    config_builder.write_config(paths.config_path(tmp_path), cfg)
+    checks = {c.name: c for c in doctor.check_config(tmp_path, require_mt5=False)}
+    assert checks['Pasta do banco de dados'].status == doctor.FAIL
+
+
 def _free_port():
     import socket
     with socket.socket() as s:

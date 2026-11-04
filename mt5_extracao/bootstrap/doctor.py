@@ -96,7 +96,7 @@ def _read_config(root: Path) -> Optional[configparser.ConfigParser]:
     return cfg
 
 
-def check_config(root: Path) -> List[Check]:
+def check_config(root: Path, require_mt5: bool = True) -> List[Check]:
     checks = []
     path = paths.config_path(root)
     cfg = _read_config(root)
@@ -107,8 +107,10 @@ def check_config(root: Path) -> List[Check]:
 
     mt5_path = cfg.get("MT5", "path", fallback="").strip()
     if not mt5_path:
-        checks.append(Check("Caminho do MT5", FAIL, "[MT5] path vazio",
-                            "Instale o MT5 pelo instalador ou informe --mt5-path ao configurar."))
+        checks.append(Check("Caminho do MT5", FAIL if require_mt5 else WARN,
+                            "[MT5] path vazio",
+                            "Instale o MT5 pelo instalador ou informe --mt5-path ao configurar."
+                            if require_mt5 else "Desenvolvimento offline; terminal e negociação não qualificados."))
     elif not has_terminal(Path(mt5_path)):
         checks.append(Check("Caminho do MT5", FAIL, f"terminal64.exe não encontrado em {mt5_path}",
                             "Reinstale o MT5 ou corrija [MT5] path em config/config.ini."))
@@ -238,13 +240,19 @@ def _bridge_enabled(root: Path) -> bool:
     return cfg.getboolean("BRIDGE", "enabled", fallback=True)
 
 
-def run_checks(root: Path = paths.PROJECT_ROOT, probe_bridge_conn: bool = True) -> List[Check]:
+def run_checks(root: Path = paths.PROJECT_ROOT, probe_bridge_conn: bool = True,
+               development: bool = False) -> List[Check]:
     root = Path(root)
     checks = [check_python(), check_venv()]
     checks += [check_module(m, p) for m, p in REQUIRED_MODULES]
     checks += [check_module(m, p, required=False) for m, p in OPTIONAL_MODULES]
     checks.append(check_tkinter())
-    checks += check_config(root)
+    checks += check_config(root, require_mt5=not development)
+    if development:
+        checks.append(Check("Integração nativa", WARN,
+                            "não verificada no diagnóstico de desenvolvimento offline",
+                            "Use o doctor normal antes de operar MT5, ponte ou contas."))
+        return checks
     if paths.is_windows():
         checks.append(check_mt5_module_windows())
     elif _bridge_enabled(root):

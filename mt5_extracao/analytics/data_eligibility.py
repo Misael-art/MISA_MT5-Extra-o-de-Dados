@@ -177,6 +177,15 @@ def assess(bars, *, bar_minutes=1, ticks=None, book=None, evidence=(), derived=N
     valid = bool(timed and _finite(bars, ("open", "high", "low", "close")))
     if valid:
         diagnostic = check_quality(bars, bar_minutes=bar_minutes)
+        # O diagnóstico faz parte do hash dos snapshots v3 já publicados. Mantém
+        # seu DTO e a semântica histórica (volume ausente contado junto ao zero).
+        # A consulta/UI usa o relatório atual completo, sem reinterpretar snapshots.
+        diagnostic = {key: diagnostic[key] for key in
+                      ("rows", "invalid_ohlc", "zero_volume", "duplicate_time", "gaps", "bars_per_day")}
+        if "tick_volume" in bars:
+            zero = bars.tick_volume.fillna(0).eq(0)
+            diagnostic["zero_volume"] = dict(count=int(zero.sum()),
+                examples=[str(value) for value in bars.loc[zero, "time"].sort_values().iloc[:20]])
         valid = not (diagnostic["invalid_ohlc"]["count"] or diagnostic["duplicate_time"]["count"])
     measured = bar_origin(bars, evidence, symbol, timeframe) if timed else {"origin": "unknown"}
     cap("ohlcv", "available" if valid else "invalid", "OHLCV finitos e horários únicos." if valid else "OHLCV ausentes, inválidos ou com horários duplicados.", **measured)

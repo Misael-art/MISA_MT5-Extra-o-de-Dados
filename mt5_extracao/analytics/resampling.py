@@ -66,11 +66,17 @@ CREATE TABLE IF NOT EXISTS _analytics_source_sequences (
 class TargetTimeframe:
     label: str
     minutes: Optional[int]
-    mode: str  # "intraday", "session" or "fixed_24h"
+    mode: str  # "intraday", "exact_day", "session" or "fixed_24h"
 
 
 def parse_target(value):
-    """Converte M5, H1, 1D, 1440min e múltiplos inteiros arbitrários em alvo canônico."""
+    """Converte M5, H1, 1D, 1440min, M7 e M9 em alvo canônico.
+
+    M5, M15, H1 e os demais membros de ``Timeframe`` permanecem intradiários, no
+    piso do relógio já validado. M7, M9 e qualquer minuto que não exista no MT5
+    viram ``exact_day``: rótulo ``M7``/``M9``, origem 00:00 do calendário da
+    corretora. ``7min`` e ``M7`` são o mesmo alvo. Não são tempos predefinidos.
+    """
     if isinstance(value, TargetTimeframe):
         return value
     if isinstance(value, Timeframe):
@@ -85,10 +91,13 @@ def parse_target(value):
 
     minute_match = re.fullmatch(r"(?:M)?(\d+)(?:MIN)?", normalized)
     hour_match = re.fullmatch(r"H(\d+)", normalized)
+    spec_kind = None
     if hour_match:
         minutes = int(hour_match.group(1)) * 60
+        spec_kind = "hour"
     elif minute_match:
         minutes = int(minute_match.group(1))
+        spec_kind = "minute"
     else:
         parsed = timeframes.parse(raw)
         if parsed is Timeframe.D1:
@@ -96,6 +105,7 @@ def parse_target(value):
         if parsed is None or parsed in {Timeframe.W1, Timeframe.MN1}:
             raise ValueError(f"Timeframe analítico inválido: {value!r}. Use M<n>, H<n>, 1D ou 1440min.")
         minutes = int(parsed.minutes)
+        spec_kind = "known"
 
     if minutes <= 1:
         raise ValueError("O timeframe derivado precisa ser maior que M1.")
@@ -103,8 +113,14 @@ def parse_target(value):
         return TargetTimeframe("1440min", minutes, "fixed_24h")
     known = next((tf for tf in Timeframe if tf.minutes == minutes and tf not in
                   {Timeframe.D1, Timeframe.W1, Timeframe.MN1}), None)
-    label = known.name if known else f"{minutes}min"
-    return TargetTimeframe(label, minutes, "intraday")
+    if known is not None:
+        return TargetTimeframe(known.name, minutes, "intraday")
+    if spec_kind == "minute":
+        if minutes >= 1440:
+            raise ValueError(
+                f"Tempo sintético de dia exato precisa caber num dia da corretora: {value!r}.")
+        return TargetTimeframe(f"M{minutes}", minutes, "exact_day")
+    return TargetTimeframe(f"{minutes}min", minutes, "intraday")
 
 
 def ensure_schema(db):
@@ -252,17 +268,118 @@ def _make_bar(symbol, target, session_id, group, start_broker, end_broker, expec
     }
 
 
+def _require_broker_midnight_anchor(sessions, target):
+    """M7/M9 só existem com a âncora 00:00. Outra âncora é outro ensaio."""
+    if not sessions:
+        raise ValueError(f"{target.label} exige sessões com âncora 00:00 do calendário da corretora.")
+    anchors = []
+    for session in sessions:
+        anchor = session.get("session_anchor_broker_time")
+        if not anchor:
+            raise ValueError(
+                f"{target.label} exige a âncora diária 00:00 gravada na sessão; "
+                "outra origem muda a identidade do ensaio.")
+        anchors.append(str(anchor))
+    unique = sorted(set(anchors))
+    if unique != ["00:00"]:
+        raise ValueError(
+            f"{target.label} usa a âncora 00:00 do calendário da corretora. "
+            f"A âncora {', '.join(unique)} é outro ensaio e não pode ser gravada como {target.label}.")
+
+
+def _empty_exact_rejections():
+    return {"complete_groups": 0, "rejected_groups": 0, "excluded_source_rows": 0, "rejected": []}
+
+
+def _exact_day_groups(work, minutes):
+    """Agrupa pelo dia da corretora e só devolve janelas com cada minuto presente.
+
+    A origem é 00:00 da data da barra. Uma janela que atravessa a meia-noite
+    seguinte, perde um minuto ou mistura duas sessões é recusada por inteiro.
+    Não há candle curto nem minuto preenchido.
+    """
+    origins = work["time"].dt.normalize()
+    minute_of_day = (work["time"] - origins) // pd.Timedelta(minutes=1)
+    starts = origins + pd.to_timedelta((minute_of_day // minutes) * minutes, unit="min")
+    frame = work.copy()
+    frame["_exact_start"] = starts
+    groups = []
+    rejected = []
+    excluded = 0
+    for start, group in frame.groupby("_exact_start", sort=True):
+        start = pd.Timestamp(start)
+        end = start + pd.Timedelta(minutes=minutes)
+        crosses = bool(end > start.normalize() + pd.Timedelta(days=1))
+        observed = pd.DatetimeIndex(group["time"]).sort_values()
+        expected = pd.date_range(start, periods=minutes, freq="min")
+        minutes_exact = bool(observed.equals(expected))
+        session_ids = group["session_id"].drop_duplicates()
+        mixed = bool(len(session_ids) != 1)
+        if crosses or not minutes_exact or mixed:
+            excluded += int(len(group))
+            reasons = []
+            if crosses:
+                reasons.append("crosses_midnight")
+            if not minutes_exact:
+                reasons.append("incomplete_minutes")
+            if mixed:
+                reasons.append("mixed_sessions")
+            rejected.append({
+                "start_broker": _broker_text(start),
+                "rows": int(len(group)),
+                "crosses_midnight": crosses,
+                "mixed_sessions": mixed,
+                "reasons": reasons,
+            })
+            continue
+        kept = group.drop(columns="_exact_start").sort_values("time")
+        groups.append((str(session_ids.iloc[0]), start, end, kept))
+    return groups, {
+        "complete_groups": len(groups),
+        "rejected_groups": len(rejected),
+        "excluded_source_rows": excluded,
+        "rejected": rejected,
+    }
+
+
 def build_bars(data, sessions, target, broker_utc_offset=-3.0, partial_last_bar="include", failed_ranges=None,
                start=None, end=None, symbol=""):
     """Monta barras de ``data`` sem criar linhas para janelas sem nenhuma barra M1."""
+    bars, _rejections = _assemble_bars(
+        data, sessions, target, broker_utc_offset=broker_utc_offset, partial_last_bar=partial_last_bar,
+        failed_ranges=failed_ranges, start=start, end=end, symbol=symbol)
+    return bars
+
+
+def exact_day_report(data, sessions, target, broker_utc_offset=-3.0, partial_last_bar="include",
+                     failed_ranges=None, start=None, end=None, symbol=""):
+    """Barras completas e janelas recusadas de um tempo sintético, como M7 ou M9.
+
+    ``partial_last_bar`` não cria candle curto nesse modo. O retorno de
+    ``build_bars`` continua sendo só a lista de barras completas.
+    """
+    parsed = parse_target(target)
+    if parsed.mode != "exact_day":
+        raise ValueError("O relatório de dia exato vale para tempos sintéticos fora do MT5, como M7 e M9.")
+    bars, rejections = _assemble_bars(
+        data, sessions, parsed, broker_utc_offset=broker_utc_offset, partial_last_bar=partial_last_bar,
+        failed_ranges=failed_ranges, start=start, end=end, symbol=symbol)
+    return {"bars": bars, "rejections": rejections}
+
+
+def _assemble_bars(data, sessions, target, broker_utc_offset=-3.0, partial_last_bar="include", failed_ranges=None,
+                   start=None, end=None, symbol=""):
+    """Monta as barras e, no modo ``exact_day``, a contagem do que foi recusado."""
     if partial_last_bar not in {"include", "drop"}:
         raise ValueError("partial_last_bar deve ser 'include' ou 'drop'.")
     target = parse_target(target)
     data = calendar.prepare_m1(data)
     if data.empty:
-        return []
+        return [], _empty_exact_rejections() if target.mode == "exact_day" else None
     if "session_id" not in data.columns:
         raise ValueError("A série precisa ter session_id; use calendar.sessionize_m1 primeiro.")
+    if target.mode == "exact_day":
+        _require_broker_midnight_anchor(sessions, target)
     offset = float(broker_utc_offset)
     failed_ranges = list(failed_ranges or [])
     session_by_id = {session["session_id"]: session for session in sessions}
@@ -271,6 +388,7 @@ def build_bars(data, sessions, target, broker_utc_offset=-3.0, partial_last_bar=
     end_bound = pd.Timestamp(end) if end is not None else None
     work = data.copy()
     built = []
+    rejections = None
 
     if target.mode == "session":
         groups = [(session["session_id"], session["daily_start_broker_time"], session["daily_end_broker_time"],
@@ -286,6 +404,8 @@ def build_bars(data, sessions, target, broker_utc_offset=-3.0, partial_last_bar=
             broker_start = utc_start + pd.Timedelta(hours=offset)
             broker_end = utc_end + pd.Timedelta(hours=offset)
             groups.append((session_id, broker_start, broker_end, group))
+    elif target.mode == "exact_day":
+        groups, rejections = _exact_day_groups(work, target.minutes)
     else:
         minutes = target.minutes
         work["_grid_start"] = work["time"].dt.floor(f"{minutes}min")
@@ -323,7 +443,7 @@ def build_bars(data, sessions, target, broker_utc_offset=-3.0, partial_last_bar=
                                start_broker=bucket_start, end_broker=bucket_end, expected=expected,
                                failed_extra=failed_extra, failed_missing=failed_missing > 0,
                                offset_hours=offset, is_partial=is_partial))
-    return built
+    return built, rejections
 
 
 def _save_bars(db, bars):
@@ -467,11 +587,28 @@ def resample_symbol(db, symbol, targets, symbol_info=None, session_gap_minutes=c
     failed_ranges = calendar.failed_extraction_ranges(db, symbol)
     summary = []
     for target in targets:
-        bars = build_bars(data, sessions, target, broker_utc_offset=offset, partial_last_bar=partial_last_bar,
-                          failed_ranges=failed_ranges, start=start, end=end, symbol=symbol)
+        if target.mode == "exact_day":
+            report = exact_day_report(
+                data, sessions, target, broker_utc_offset=offset, partial_last_bar=partial_last_bar,
+                failed_ranges=failed_ranges, start=start, end=end, symbol=symbol)
+            bars = report["bars"]
+            rejections = report["rejections"]
+        else:
+            bars = build_bars(data, sessions, target, broker_utc_offset=offset, partial_last_bar=partial_last_bar,
+                              failed_ranges=failed_ranges, start=start, end=end, symbol=symbol)
+            rejections = None
         counts = _save_bars(db, bars)
-        summary.append({"symbol": str(symbol), "timeframe": target.label, "bars": len(bars),
-                        "source_bars": int(len(data)), "calendar_revisions": calendar_changes, **counts})
+        item = {"symbol": str(symbol), "timeframe": target.label, "bars": len(bars),
+                "source_bars": int(len(data)), "calendar_revisions": calendar_changes, **counts}
+        if rejections is not None:
+            item.update({
+                "rejected_groups": rejections["rejected_groups"],
+                "excluded_source_rows": rejections["excluded_source_rows"],
+                "synthetic": True,
+                "mt5_predefined": False,
+                "day_origin": "broker_00:00",
+            })
+        summary.append(item)
         log.info("%s %s: %s barras derivadas de M1 (%s novas, %s corrigidas, %s inalteradas)",
                  symbol, target.label, len(bars), counts["inserted"], counts["corrected"], counts["unchanged"])
     return summary
@@ -548,7 +685,7 @@ def latest_bars(db, symbol, timeframe, *, closed_only=True, source_seq_after=Non
         acceptable = frame["quality_status"].isin(("COMPLETE", "NO_TRADES", "CORRECTED"))
         acceptable &= pd.to_numeric(frame["coverage_ratio"], errors="coerce").ge(1.0 - 1e-9)
         acceptable &= pd.to_numeric(frame["is_partial"], errors="coerce").fillna(1).eq(0)
-        if target.mode == "intraday":
+        if target.mode in {"intraday", "exact_day"}:
             duration = (frame["bar_end_utc"] - frame["bar_start_utc"]).dt.total_seconds() / 60.0
             acceptable &= duration.ge(float(target.minutes) - 1e-9)
         elif target.mode == "fixed_24h":

@@ -100,6 +100,76 @@ def test_inventory_and_analysis_tabs(ui):
     assert "Barras analisadas: 600" in panel.quality_text.get("1.0", "end")
 
 
+def test_analysis_invalid_prices_clear_old_metrics_and_show_quality(ui, monkeypatch):
+    from mt5_extracao import study
+    import pandas as pd
+    ui.open_analysis("WIN$N", "1 minuto")
+    ui.pump(1.5)
+    panel = ui.analysis_panel
+    assert panel.data is not None
+    invalid = panel.data.copy(deep=True)
+    invalid.loc[invalid.index[2], "high"] = float("nan")
+    before = invalid.copy(deep=True)
+    monkeypatch.setattr(ui.app.db_manager, "load_ohlcv", lambda *a, **k: invalid)
+    monkeypatch.setattr(study, "summarize", lambda *a: pytest.fail("métrica calculada com preço inválido"))
+    panel.load()
+    end = time.monotonic() + 5
+    while "Análise indisponível" not in panel.status.cget("text") and time.monotonic() < end:
+        ui.pump(.05)
+    assert "Análise indisponível" in panel.status.cget("text")
+    assert panel.data is None and panel.result is None and not panel._canvases
+    assert all(label.cget("text") == "—" for label in panel.tile_values.values())
+    assert panel.tabs.select() == str(panel.quality_tab)
+    quality = panel.quality_text.get("1.0", "end")
+    assert "Barras com preço ausente, não numérico ou não finito: 1" in quality
+    assert "prontos para estudo" not in quality and "Sobrescrever" not in quality
+    pd.testing.assert_frame_equal(invalid, before)
+
+
+def test_clean_quality_is_a_scoped_check_not_a_coverage_certificate(ui):
+    from mt5_extracao import data_quality
+    panel = ui.analysis_panel
+    panel._show_quality(data_quality.check_quality(random_walk(10)), ("09:00", "18:30"))
+    text = panel.quality_text.get("1.0", "end")
+    assert "não certificam cobertura completa" in text
+    assert "prontos para estudo" not in text
+
+
+def test_empty_selection_does_not_keep_quality_from_previous_series(ui, monkeypatch):
+    import pandas as pd
+    ui.open_analysis("WIN$N", "1 minuto")
+    ui.pump(1.5)
+    panel = ui.analysis_panel
+    assert "Barras analisadas: 600" in panel.quality_text.get("1.0", "end")
+    monkeypatch.setattr(ui.app.db_manager, "load_ohlcv", lambda *a, **k: pd.DataFrame())
+    panel.load()
+    end = time.monotonic() + 5
+    while "Sem barras" not in panel.status.cget("text") and time.monotonic() < end:
+        ui.pump(.05)
+    assert "Sem barras" in panel.quality_text.get("1.0", "end")
+    assert "Barras analisadas" not in panel.quality_text.get("1.0", "end")
+    assert panel.data is None and panel.result is None
+
+
+@pytest.mark.parametrize("closes", [[0, 1, 2, 4], [0, 0, 0]])
+def test_analysis_zero_denominator_renders_unavailable_and_sample_counts(ui, monkeypatch, closes):
+    from tests.test_study import bars
+    frame = bars(closes, freq="min")
+    monkeypatch.setattr(ui.app.db_manager, "load_ohlcv", lambda *a, **k: frame)
+    ui.open_analysis("WIN$N", "1 minuto")
+    panel = ui.analysis_panel
+    end = time.monotonic() + 5
+    while (panel.data is None or len(panel.data) != len(frame)) and time.monotonic() < end:
+        ui.pump(.05)
+    assert panel.result is not None and panel.result["summary"]["return_pct"] is None
+    assert panel.tile_values["return_pct"].cget("text") == "—"
+    assert "primeiro fechamento zero" in panel.status.cget("text")
+    assert "pares válidos" in panel.status.cget("text")
+    assert set(panel._canvases) == {"chart", "season", "returns"}
+    texts = " ".join(text.get_text() for text in panel._canvases["returns"].figure.axes[0].texts)
+    assert "excluídos" in texts
+
+
 def test_offline_mode_keeps_terminal_actions_disabled_and_blocks_direct_calls(ui, monkeypatch):
     from tkinter import ttk
     from mt5_extracao import ui_manager

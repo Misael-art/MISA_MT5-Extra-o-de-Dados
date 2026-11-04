@@ -1,4 +1,5 @@
 """Nomes das áreas e mensagens longas continuam acessíveis sem mudar modelos."""
+import time
 import pytest
 from tests.test_ui_main_window import ui, _set_ui_scaling
 
@@ -83,6 +84,33 @@ def test_navigation_handles_selection_before_first_idle_layout(ui):
     finally:
         ui.root.report_callback_exception = previous
         navigation.destroy();notebook.destroy()
+
+
+def test_background_wait_uses_existing_status_area_without_shrinking_page(ui, request):
+    import threading
+    enlarged(ui, request)
+    # Espera a leitura inicial antes de comparar a geometria ociosa.
+    end = time.time() + 10
+    while ui.background_activity.pending and time.time() < end:
+        ui.pump(.1)
+    assert not ui.background_activity.pending
+    before = (ui.notebook.winfo_height(), ui.status_bar.winfo_height())
+    release = threading.Event()
+    try:
+        ui.run_bg(lambda: release.wait(10), lambda *_: ui.update_status("Status: resultado específico da ação"))
+        ui.pump(.2)
+        assert ui.background_activity.winfo_viewable()
+        assert ui.background_activity.master is ui.status_bar
+        assert (ui.notebook.winfo_height(), ui.status_bar.winfo_height()) == before
+        release.set()
+        end = time.time() + 10
+        while ui.background_activity.pending and time.time() < end:
+            ui.pump(.1)
+        assert not ui.background_activity.pending
+        assert not ui.background_activity.winfo_viewable()
+        assert ui.status_bar.status_text == "Status: resultado específico da ação"
+    finally:
+        release.set()
 
 
 @pytest.mark.parametrize("dark", [False, True])

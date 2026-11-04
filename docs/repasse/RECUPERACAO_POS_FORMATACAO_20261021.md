@@ -1,5 +1,11 @@
 # Retomar o desenvolvimento depois da reinstalação
 
+**Atualização de24/10/2026:** o proprietário confirmou que não levará o SD e não
+terá acesso ao host antigo. Este roteiro e seu pacote são históricos. A entrada
+atual é [CONTINUAR_AQUI](../../CONTINUAR_AQUI.md), com bootstrap e recuperação
+privada remota. Não usar o `ready_to_format` deste corte antigo como prova da
+preservação atual; conferir o manifesto e os recibos da nova entrega.
+
 Este roteiro complementa o [repasse da integração](INTEGRACAO_20261021.md).
 O [estado verificável](RECUPERACAO_ESTADO_20261021.json) registra o corte, os
 [nomes das referências locais](REFS_PRE_FORMATACAO_20261021.json), a fila remota

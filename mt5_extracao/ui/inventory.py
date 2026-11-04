@@ -31,14 +31,15 @@ class InventoryPanel:
         self._inventory = []
         self.frame = ttk.Frame(parent, padding=12)
 
-        body = card(self.frame, "Minha base de dados", "tudo o que já foi extraído e está pronto para estudo")
+        body = card(self.frame, "Minha base de dados", "séries gravadas · confira qualidade e cobertura antes do estudo")
         body.master.pack(fill=tk.BOTH, expand=True)
         self.summary = ttk.Label(body, text="Lendo a base...", style="Muted.TLabel")
         self.summary.pack(anchor="w", pady=(0, 8))
         Tooltip(self.summary, "Volume: média diária dos últimos 30 dias de dados da base (volume real quando a "
                               "corretora informa, senão o de ticks). Robô Lucrativo: maior retorno entre os robôs "
                               "cujo backtest mais recente nesta série deu lucro; lucro em um teste não é aprovação. "
-                              "Status da Base: pela data da última barra gravada.", ui.theme)
+                              "Status da Base: pela data da última barra gravada; não certifica integridade ou cobertura. "
+                              "Selecione uma série e use Analisar > Qualidade dos dados.", ui.theme)
 
         quick = FilterBar(body, padding=6)
         quick.pack(fill=tk.X, pady=(0, 8))

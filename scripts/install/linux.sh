@@ -11,7 +11,7 @@
 #   6. Cria atalhos (área de trabalho e menu), inicia a ponte e roda o diagnóstico
 #
 # Uso:  ./install.sh [--yes] [--no-mt5] [--skip-system-packages]
-#                    [--wine-prefix DIR] [--python BIN]
+#                    [--wine-prefix DIR] [--python BIN] [--no-demo-account]
 # Log:  logs/install-linux.log
 # =============================================================================
 set -Eeuo pipefail
@@ -36,6 +36,7 @@ MIN_PY_MINOR=9                             # Python 3.9+
 # --- Opções -------------------------------------------------------------------
 ASSUME_YES=0
 INSTALL_MT5=1
+OPEN_DEMO_ACCOUNT=1
 SYSTEM_PACKAGES=1
 PYTHON_BIN=""
 DOCTOR_OK=0
@@ -49,6 +50,7 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         -y|--yes) ASSUME_YES=1 ;;
         --no-mt5) INSTALL_MT5=0 ;;
+        --no-demo-account) OPEN_DEMO_ACCOUNT=0 ;;
         --skip-system-packages) SYSTEM_PACKAGES=0 ;;
         --wine-prefix) WINEPREFIX="${2:?--wine-prefix requer um diretório}"; shift ;;
         --python) PYTHON_BIN="${2:?--python requer um executável}"; shift ;;
@@ -409,12 +411,14 @@ finish() {
     if [[ $INSTALL_MT5 -eq 1 ]] && [[ -x "$PROJECT_ROOT/scripts/mt5-bridge.sh" ]]; then
         "$PROJECT_ROOT/scripts/mt5-bridge.sh" start || warn "Não foi possível iniciar a ponte agora (veja logs/mt5_bridge.log)"
     fi
-    if [[ $INSTALL_MT5 -eq 1 ]]; then
+    if [[ $INSTALL_MT5 -eq 1 && $OPEN_DEMO_ACCOUNT -eq 1 ]]; then
         # Sem conta o MT5 não conecta: abre a conta de demonstração gratuita (pergunta antes, salvo --yes)
         local demo_args=(demo-account)
         if [[ $ASSUME_YES -eq 1 ]]; then demo_args+=(--yes); fi
         "$VENV_PY" -m mt5_extracao.bootstrap "${demo_args[@]}" \
             || warn "Conta de demonstração não aberta agora. Depois rode: $VENV_PY -m mt5_extracao.bootstrap demo-account"
+    elif [[ $INSTALL_MT5 -eq 1 ]]; then
+        info "Conta de demonstração não solicitada (--no-demo-account); instalação sem abertura de conta."
     fi
     echo
     if "$VENV_PY" -m mt5_extracao.bootstrap doctor; then DOCTOR_OK=1; else DOCTOR_OK=0; fi

@@ -1,3 +1,23 @@
+## Novo host sem o disco antigo ou SD — 2026-10-24
+
+O proprietário confirmou que **não levará o SDCard**. A retomada atual é pela
+internet: [CONTINUAR_AQUI](../CONTINUAR_AQUI.md), [roteiro](repasse/NOVO_HOST_20261024.md)
+e [prompt do novo agente](repasse/PROMPT_NOVO_HOST_20261024.md). O roteiro de21/10
+é histórico; não usar sua conclusão dependente do SD como prova desta migração.
+
+T20.30-HOST1 prepara um workspace, um ambiente e três clones identificados,
+delegando aos instaladores existentes. Helpers só stdlib validam fontes e
+recompõem o pacote privado sem sobrescrever dados. Banco atual consistente com48
+tabelas, contexto e documentos posteriores têm preservação na página pessoal
+ChatGPT **MT5X Continuidade e recuperação em novo host 24 outubro 2026**;
+confirmar manifesto e recibos completos antes de declarar recuperação remota.
+Não migrar venv/Wine/caches/locks/PIDs/OAuth; reautenticar no destino.
+
+Os testes do host antigo não validam o novo SO. O próximo agente verifica
+bootstrap/restore e só depois retoma LAB-01…10, SA-01 e a coordenação SA-02 com
+Dados. Todos os diagnósticos do reteste e os gates/pins continuam pendentes
+conforme a seção abaixo; esta tarefa não corrige os bugs do Laboratório.
+
 ## Reteste do proprietário — Laboratório incompleto, 2026-10-24
 
 O teste real pelo atalho reportou catálogo restrito em Indicador × indicador/alvo,
@@ -2871,3 +2891,337 @@ recibos `docs/dados/recibos/recibos_20261023b.json` com E06 pela entrada efetiva
 Primeira cadeia funcional: provedor falso → extrator → M1 → M5 → store → `sdk.query_series` →
 `mt5x analytics features series`. Pilha: #190…#194 e novos PRs BD06, BD07, BD08a, BD18a, BD19c1.
 Nada instalado; marco M2 parcial (consumidores além da CLI pendentes).
+
+## LAB-02/03 · 2026-10-26 (branch de continuidade codex/novo-host-20261024, PR 212)
+
+- LAB-02: `laboratory.service` passa a emitir `diagnosis` (código/mensagem/ação) por canal vazio
+  (`WARMUP_EXCEEDS_WINDOW`, `INELIGIBLE_DATA`, `NO_VALUES`, `NO_OVERLAP`); janela acima de 20 000 barras
+  sugere início concreto; janela vazia explica. A UI mostra o motivo no status, detalhes, Cobertura,
+  Relações e Linha do tempo em vez de área cinza; segmentos de uma barra ganham marcador.
+- LAB-03: `MatrixTable` calcula a mesma largura por coluna para cabeçalho e corpo (inclui texto maior
+  que o nominal) com scrollregions idênticas; teste por coluna após rolagem V/H, resize e texto largo.
+- Testes: 131 passaram nas suítes de Laboratório/componentes; `test_expanded_chart_uses_absolute_negative_monitor_coordinates`
+  já falhava antes da mudança neste host (gerenciador de janelas); `test_large_monitor...` é intermitente sob carga.
+- Limitação: base local vazia; reprodução com dados SINTÉTICOS controlados (sessões com lacunas, M5/H1/D1).
+  Falta confirmar pelo atalho com a base real do proprietário; DPI/monitor físico não qualificados.
+- Próximo: `rtk proxy .venv/bin/python -m pytest -q tests/test_laboratory_series.py tests/test_ui_components.py`; depois LAB-01.
+
+## LAB-01 · 2026-10-26 (branch de continuidade, PR 212)
+
+- `laboratory/inventory.py` (somente leitura): une registry BD06, definições/versões do pilar de Dados
+  (`feature_store.list_definitions`) e fatos agregados por ativo/TF; estados `STORED`, `COMPUTABLE`,
+  `STORED_ONLY`, `UNAVAILABLE`, cada um com motivo e ação; busca, filtros (família/estado/ativo/TF) e
+  cursor amarrado aos filtros. CLI: `mt5x laboratory inventory [--query --state --symbol --tf --page-size --cursor]`.
+- Relações ganhou a visão **Inventário** (dados reais, paginação, resposta obsoleta descartada, erro de fundo
+  com motivo); as demais visões continuam identificadas como fixture sintética até o DTO T18.1/serviço T18.6.
+- Séries: seletor de indicadores busca no inventário e preserva a seleção ao filtrar; nova definição do
+  registry aparece sem editar o seletor (teste).
+- Pendente do LAB-01: matrizes Indicador × indicador/alvo ainda são fixture — exigem produtor de relações
+  (T18.6) do pilar de Dados; não foi criado cálculo paralelo.
+- Testes: 112 passaram; falhas intermitentes de geometria/WM: `large_monitor`, `negative_monitor` (preexistente),
+  `closed_selection_details` (passa isolado).
+
+## LAB-04 (parcial) · 2026-10-26
+
+- `charts.bars` (Dia do mês, Dia da semana, Faixa horária, Notícias): escala divergente simétrica por
+  magnitude (forte = intenso, fraco = claro com piso visível), zero com traço neutro, ausente com ×,
+  valores sempre horizontais e só quando cabem; `n=` saiu das barras para a legenda (n total, escala ±,
+  pouca amostra, zero, sem dados) e o hover. Temas claro/escuro conferidos por renderização.
+- Pendente do LAB-04: revisar heatmaps/demais visões com o mesmo critério e aceite visual do proprietário.
+
+## LAB-08 (parcial) · 2026-10-26
+
+- Gráfico do ativo em Séries: candles + todas as séries selecionadas; unidade de preço sobreposta, demais
+  unidades em até 3 subjanelas com eixo de tempo compartilhado (zoom/cursor vinculados no Ampliar);
+  várias instâncias parametrizadas; clique na legenda oculta/mostra.
+- `laboratory/annotations.py`: linha horizontal/vertical, região, nota; editar texto, excluir, desfazer;
+  exportar/reabrir JSON amarrado ao `analysis_id` (recusa estudo de outra análise).
+- Pendente: arrastar/editar geometria pelo mouse, remover série sem recongelar, mais de 3 unidades
+  simultâneas (hoje avisa e pede ocultar), integração com o Estudo MT5 (`chart_study`) e aceite do proprietário.
+
+## LAB-08 (bancada gráfica) · 2026-10-27 (branch de continuidade, PR 212, commit 3a2efb6)
+
+Supera a pendência "arrastar geometria / remover série / >3 unidades / Estudo" do registro LAB-08 de 26/10.
+- Estudo v2 (`laboratory/annotations.py`): identidade da análise (ativo, grade, seleção e por série
+  unidade/parâmetros/versão/fonte), séries ocultas e **removidas da vista** (sem recongelar; desfazer devolve),
+  vista (zoom/cursor), selecionar/mover com desfazer; recusa outra análise (cita ativo/TF) e série ausente.
+  v1 continua legível até aceite da v2.
+- Gráfico: até 8 subjanelas por unidade (110 px cada, rolagem da página); acima disso lista as unidades
+  excedentes. Cursor vinculado em todos os painéis; zoom preservado em redesenho, ampliar/restaurar e reabrir.
+  Ferramenta Selecionar/mover; botões do estudo refluem em largura estreita (antes Exportar/Abrir saíam da tela em 1280 px).
+- CLI: `mt5x laboratory study --analysis A.json --study S.json` (sem Tk).
+- `chart_study` (Estudo MT5) não foi fundido: responsabilidade distinta (captura/notas do terminal).
+- Testes: 45 nas suítes de Laboratório/anotações/séries; falha preexistente `negative_monitor` (WM) mantida.
+- QA no host: Tk real em Xvfb privado com análise **real** (EURUSD H1+H4, 1029 fechamentos, 18 séries/9 unidades)
+  de uma cópia descartável da base recuperada; `broker_utc_offset = -3` vindo do config do host anterior, só na
+  config de QA (a config ativa segue sem fuso e a análise real é recusada nela — decisão do proprietário).
+  Exercitado: cliques/arraste por eventos Tk (xdotool não move o ponteiro neste Xvfb), remover/desfazer,
+  zoom/cursor, ampliar/restaurar, exportar/reabrir/recusar, tema claro/escuro, 1280×2500 e 900×700.
+  Não exercitado: mouse físico, DPI/monitor físico, handheld.
+- Bordas da região: arrastar a borda redimensiona só aquele lado (`Study.edge/resize`), com desfazer.
+- Pendente LAB-08: aceite do proprietário; anotações só no painel de preço (mover entre painéis não existe).
+
+## LAB-07 (parcial) · 2026-10-27 (branch de continuidade, PR 212, commit 4e42058)
+
+- Serviço: pares ganham `relation` (DESCRIPTIVE na defasagem 0, PREDICTIVE_CANDIDATE em 1/3) e
+  `out_of_sample` com corte cronológico fixo 70/30 e veredito (consistente, inverte, fraca fora, fraca no
+  ajuste, amostra curta). Aditivo; `analysis_id` inalterado. Nova limitação declarada no relatório.
+- UI: Defasagens mostra quadrado descritivo, linha cheia (ajuste) e tracejada (fora) com veredito e hover.
+- Dados reais (cópia descartável da base recuperada, config de QA offset -3): EURUSD M15/H1/H4 abr–set/2026,
+  12 564 fechamentos M15: nenhuma relação entre TFs da ema_atr sobrevive (fraca no ajuste/fraca fora).
+  Achado que motivou `FIT_WEAK`: ajuste ≈0 era rotulado "inverte fora".
+- Testes: 43 em Séries/UI; preexistentes: `negative_monitor` e `test_ui_relations::scope_is_not_a_fake_filter`
+  (falha também sem esta mudança).
+- Controles (88e1721): faixa nula 95% por deslocamento circular do preditor no trecho fora da amostra
+  (preserva autocorrelação/retenção; FFT) e base ingênua = próprio alvo defasado. Vereditos novos
+  `WITHIN_NULL` e `NO_GAIN_OVER_PERSISTENCE`. Dados reais (mesma janela, 4 indicadores + ema_atr, 540 pares,
+  ~12 s): 191 pares antes "consistentes" não superam a persistência do alvo; nenhum par preditivo restante.
+- IC e horizonte (4ef1953): IC 95% fora da amostra por bootstrap de blocos móveis (200, semente fixa),
+  calculado só para pares que chegam à confirmação; consistente exige IC sem zero (`CI_INCLUDES_ZERO`).
+  Defasagens fixas 1/3/6. Dados reais (750 pares): custo ~12 s → ~29 s (fundo, sem travar a UI); único par
+  consistente: M15 RSI → M15 alligator em 6 barras, r fora 0,668 [0,631; 0,709] contra 0,634 do alvo defasado
+  (ganho pequeno sobre persistência; mesma origem de preço, não é sinal operacional).
+- QA: visão de defasagens renderizada em Tk real (Xvfb próprio :137; :98 pertence a outro processo, preservado).
+- Eventos não confirmados: canais de pivô trazem `events` (base = fechamento da confirmação, contagem,
+  atraso origem→confirmação, idade do último pivô); saída provisória recebe diagnóstico/par
+  `UNCONFIRMED_EVENT` e nunca correlação. UI mostra o resumo nos detalhes do canal. Dados reais (mesma janela,
+  fractais top/provisório, ZigZag bottom, RSI; 474 pares, ~12 s): fractais atrasam exatamente 2 barras; 213
+  pares provisórios recusados; ZigZag 1% confirmou só 5 fundos por TF, atraso até 574 barras M15 e último
+  pivô retido há 4308 barras M15 — valor retido envelhecido, agora explícito.
+- Pendente LAB-07: M7/M9 pelo contrato de barras derivadas da frente de Dados; aceite do proprietário.
+
+## Laboratório: percurso real, relógio do servidor e matriz real · 2026-10-27 (PR 212)
+
+- Relógio (evidência da base recuperada, só leitura): o M1 EURUSD em formação, rotulado 10:32 no horário
+  do servidor, chegou às 07:32 UTC (`_extraction_log.received_at`) → UTC+3 em out/2026. O fechamento de
+  sexta no H1 cai às 22:00 do servidor só nas semanas em que os EUA já trocaram de horário e a Europa
+  ainda não (1º/11/2024; 14–28/03/2025) e às 23:00 nas demais → servidor EET/EEST com horário de verão
+  europeu (+2 no inverno, +3 no verão). O −3 do host antigo/instalador é o fuso do computador, não do
+  servidor; os QAs anteriores com −3 deslocavam o corte UTC em 6 h (alinhamento relativo entre TFs inalterado).
+- Não preenchido em `config.ini`: a base grava no horário do servidor (`_metadata.time_basis = broker`).
+  Um offset fixo erra metade do ano, e `broker_timezone` exige `time_basis = utc`, que
+  `datasets.capture`/resampling recusam (`require_fixed_offset`). **Contrato pendente na frente de Dados:**
+  captura de snapshots e leitura causal com zona IANA (ou base em UTC). Até lá, um offset fixo só vale
+  para janelas dentro de um único regime (ex.: abr–set/2026 = +3).
+- A base ativa do atalho (`database/mt5_data.db`) está vazia; a recuperada continua em ensaio e não foi
+  copiada para ela.
+- `capture_selection` recusa antes de congelar quando o relógio é desconhecido, com a ação corretiva; a UI
+  mantém a seleção. Nova "Abrir análise…" reabre o JSON exportado com o mesmo `analysis_id` (`load_report`
+  recusa versão incompatível e arquivo adulterado). O CLI `study`/`matrix` usam a mesma validação.
+- Relações → Matriz → Indicador × indicador agora é real: `service.relation_matrix` sobre a análise
+  congelada em Séries (CLI `laboratory matrix --analysis A.json --lag N`). Spearman dos valores
+  alinhados; defasagens fixas 0/1/3/6; correlação de direção, veredito e IC do par; motivos distintos
+  (`UNCONFIRMED_EVENT`, `SAME_SERIES`, `NO_OVERLAP`, `INSUFFICIENT_PAIRS`, `CONSTANT_SERIES`, diagnóstico do
+  canal). Pedido obsoleto é descartado; cálculo em fundo. Fixture sintética removida só dessa matriz;
+  Indicador × alvo, linha do tempo, ganhos/perdas, convergências e candidatos seguem demonstrativos (sem
+  produtor T18.6 de alvo).
+- QA privado (Tk real em Xvfb próprio :137; cópia descartável da base, apagada; +3 só no QA,
+  abr–set/2026): 10/10 — recusa de relógio com seleção mantida; análise EURUSD M15/H1/H4 com 15 canais e
+  12 576 fechamentos em ~21 s; 1628 fractais confirmados visíveis; 276 pares provisórios recusados; matriz
+  15×15 com defasagem 6; exportar → fechar → "Abrir análise" com mesmo `analysis_id` → estudo reaberto.
+- Testes: lab/UI/CLI dirigidos verdes, incluindo `negative_monitor` no Xvfb próprio (a falha anterior
+  depende da geometria do display). Doctor de desenvolvimento: 16 OK, 2 avisos (pandas-ta opcional,
+  integração nativa não sondada).
+- Corrigido no lote: o rótulo de status ao lado do seletor de defasagem criava um laço de redimensionamento
+  e travava `test_ui_laboratory`.
+
+## Laboratório: cruzamentos do preço e prévia no atalho · 2026-10-28 (PR 212)
+
+- Conta demo: o instalador Linux já abre a conta (`OPEN_DEMO_ACCOUNT=1`; `--no-demo-account` pula).
+  Neste host o comando oficial `python -m mt5_extracao.bootstrap demo-account --yes` concluiu com
+  `has_account` verdadeiro no prefixo Wine existente. Não é conta real e não qualifica Tester nem PnL.
+- Sem análise congelada, Relações não mostra número de exemplo. Matriz indicador × indicador,
+  indicador × retorno do preço (`laboratory target`), linha do tempo, contagem por intenção,
+  ρ fora da amostra e candidatos saem de `laboratory.service` — a UI não recalcula.
+- O alvo é o retorno bruto do fechamento `horizon` barras à frente (1, 3 ou 6). A última barra fica
+  ausente, não zero. Spearman; série constante não vira correlação 0. Não é trade, R nem o produtor T18.6.
+- Blocos da linha do tempo são quartis cronológicos iguais; lacuna permanece ausente. O instante do bloco
+  guarda hora, para barras do mesmo dia não se empilharem. Contagens de ganho, perda e empate fecham o
+  denominador. Candidatos só com veredito `HOLDOUT_CONSISTENT`, sem ação de aplicar.
+- Gráficos: valor da célula no heatmap (o n fica no detalhe), ganhos/perdas em azul/laranja, eixo vazio
+  sem data de 1970, n da faixa horária no hover em vez de rótulo vertical.
+- Testes no Xvfb: `test_laboratory_crossings`, `test_ui_charts`, `test_ui_relations`, `test_ui_laboratory`
+  — 56 passou. Doctor `--development --no-probe`: 16 OK, avisos pandas-ta e integração nativa não sondada.
+- Continua fora deste lote: LAB-05/06 (estratégias diferentes no mesmo ativo; o mesmo preset em ativos
+  diferentes), LAB-09 (closure de preset), LAB-10 (aceite de DPI/monitor), SA-01/02, M7/M9, base ativa
+  do atalho ainda vazia, relógio IANA e aceite visual do proprietário.
+
+## Laboratório: intenções no mesmo ativo e revisão de preset entre ativos · 2026-10-28 (PR 212)
+
+- LAB-05. `analyze` com uma estratégia guarda o mesmo `selection` de antes. A lista `strategies`
+  compara intenções do gerador no mesmo ativo, origem, relógio e corte. Cada uma vira um canal
+  `candidate_-1_0_1`. Operação, execução, custos e PnL não entram. Ativo ou relógio diferentes
+  continuam recusados. Estratégia inelegível permanece no relatório, com o diagnóstico, em vez de
+  sumir. No preço, a marca de um fechamento de origem continua única; com mais de uma estratégia,
+  cada uma tem cor e a legenda "intenção". A lista "Comparar outras estratégias" usa o padrão
+  canônico; a combobox de cima usa os parâmetros editados. Vazia, a chamada é a de uma estratégia.
+  CLI: `--compare`, repetível.
+- LAB-06. `laboratory preset-assets` e a guia Comparativo → Mesma revisão leem `_robot_runs`.
+  Não gravam execução nem abrem backtest. A prova é a composição gravada, sem o ativo no hash.
+  O último run de cada ativo não junta revisões diferentes. Curvas saem como fração do capital
+  inicial; moedas diferentes não são convertidas. Custo ou especificação ausentes ficam ausentes,
+  não zero. Base sem runs diz que a tela não dispara backtest.
+- Testes no Xvfb: `test_laboratory_series`, `test_ui_laboratory_series` (57 passou, 1 pulado pela
+  geometria do gerenciador), `test_laboratory_preset_assets` (3) e o gráfico da Mesma revisão junto
+  com `test_lenses_filters_and_tabs`.
+- Continua fora: LAB-09 (closure de preset), LAB-10 (aceite de DPI/monitor), SA-01/02, M7/M9,
+  base ativa do atalho ainda vazia, relógio IANA, qualificação de Tester/conta real e aceite visual
+  do proprietário. Este lote não repete o QA EURUSD de 10/10.
+
+## Barras M7 e M9 no dia exato da corretora · 2026-10-28 (PR 212)
+
+- M7 e M9 não entram no enum `Timeframe` e não são tempos predefinidos do MT5. `parse("M7")` continua
+  ausente. O produtor é `analytics/resampling.py`, modo `exact_day`. `M7` e `7min` gravam o rótulo `M7`.
+- A origem é 00:00 do calendário da corretora já armazenado. O grupo só vira barra se cada minuto está
+  presente, na mesma sessão, e o fim não passa da meia-noite seguinte. Minuto ausente recusa o grupo,
+  sem preencher. Os últimos 5 minutos de um dia cheio de M7 não viram candle (205 barras, não 206).
+  M9 fecha o dia em 160 barras quando os 1440 minutos existem. `partial_last_bar=include` não abre
+  exceção. Âncora diferente de 00:00 é outro ensaio e não é gravada como M7/M9.
+- M2, M3, M5, M15, H1 e os demais tempos do enum seguem o piso do relógio. Num dia cheio, o M5 continua
+  com 288 barras, inclusive a das 23:55, e o teste de igualdade com o resample legado permanece.
+- A leitura fechada exige a duração inteira. Séries não lê `_bars_derived` e não agrega M7 na UI.
+  A base do atalho continua vazia; este lote não extraiu M1.
+- Testes: `test_analytics_calendar.py` e `test_bd05_time.py`, 27 passou em 9,04 s.
+- Super ATR, SA-01/02, LAB-07 (comparação sincronizada), LAB-09/10, relógio IANA, Tester, conta real
+  e aceite visual continuam fora. O detalhe do Super ATR fica para conversa antes de qualquer código.
+
+## Base EURUSD composta pela extração oficial · 2026-10-28 (PR 212)
+
+- A frase da seção anterior continua válida para o lote de código `8176040`: aquele commit não extraiu M1.
+  Esta nota é a extração posterior, na mesma branch, sem mudança de código.
+- Conta conferida com `./run.sh --cli portfolio` (somente leitura): MetaQuotes-Demo, estado NORMAL,
+  hedging, USD, saldo 100000, zero posições e zero ordens. Não é conta real.
+- Extração oficial, um worker, sem `--overwrite` e sem indicadores:
+  `./run.sh --cli extract --symbols EURUSD --tf M1 --from 2026-04-01 --to 2026-10-24 --workers 1`.
+  Saiu 0. Sete blocos `ok`, zero falhas, zero cancelados. O aviso de pandas_ta é o indicador opcional
+  que não foi pedido. Dois blocos (início 2026-06-30 e 2026-08-29) registraram uma lacuna cada;
+  OHLC inválido, volume zero e duplicata continuaram em zero.
+- O servidor demo não tem M1 antes de 2026-07-22 21:18. A tabela `eurusd_1_minuto` tem 96629 barras,
+  até 2026-10-23 23:59 (sexta; 24/10 é sábado). Os três blocos de abril a junho gravaram 1 linha cada
+  no log e não permaneceram como histórico anterior a julho (96632 no log, 96629 na tabela).
+  Reextrair com `--overwrite` não cria abril.
+- Antes do resample, `config/config.ini` (ignorado pelo git) passou a declarar
+  `broker_utc_offset = 3`, com `broker_timezone` vazio e `time_basis = broker`.
+  Vale só esta janela em EEST, até 2026-10-24. A partir de 2026-10-25 o servidor fica em EET (UTC+2)
+  e este offset fixo deixa de valer. Conferido na barra gravada: 2026-07-22 21:21 no relógio da
+  corretora é 2026-07-22T18:21Z.
+- Resample legado, exit 0: M5 19329 (21:15–23:55), M15 6443 (21:15–23:45), M30 3222 (21:00–23:30),
+  H1 1611 (21:00–23:00), H4 403 (20:00–20:00), D1 68 (2026-07-22 00:00 a 2026-10-23 00:00).
+  A primeira M1 é 21:18, então a M5 das 21:15, a H4 das 20:00 e o D1 das 00:00 são parciais de piso
+  do relógio. É a regra de produção, não um candle inventado nem um erro de conta.
+- Resample por sessão, exit 0. M7: 13749 barras, todas `COMPLETE`, `bar_count` 7, nenhuma parcial,
+  77 janelas recusadas; primeira 21:21 (os minutos 21:18–21:20 não fecham um grupo de 7).
+  M9: 10730 barras, todas `COMPLETE`, `bar_count` 9, nenhuma parcial, 8 janelas recusadas;
+  primeira 21:18. O dia 2026-09-15 tem 1440 M1, 205 M7 e 160 M9.
+- Banco compartilhado com o atalho: 138 MB, só EURUSD. Séries lê o inventário nativo
+  (M1, M5, M15, M30, H1, H4, D1). Séries ainda não desenha `_bars_derived`.
+  Super ATR não começou. Este lote não rodou pytest e não republica o preview.
+
+## Séries lê as barras M7 e M9 já gravadas · 2026-10-28 (PR 212)
+
+- A frase da seção anterior vale para a extração. Este lote é o leitor. `laboratory.derived`
+  chama `analytics.resampling.latest_bars` e não agrega, não extrai, não grava e não cria tabela.
+  M7 e M9 continuam fora do enum `Timeframe` e fora de `datasets.capture`.
+- A lista mostra `M7 · sintético`. A seleção inicial continua nos tempos nativos. Misturar sintético
+  e nativo é recusado. O gráfico desenha só a última revisão fechada, no horário da corretora,
+  com o rótulo de âncora 00:00. Um intervalo sem grupo completo não vira linha nem candle curto.
+  Vários tempos sintéticos ficam em eixos independentes, sem comparação sincronizada.
+  Indicadores, relações, estratégias, exportação e preset não entram nesse recorte.
+- CLI: `laboratory derived --symbol EURUSD --tf M7`. Sem `--tf`, só lista o que já está gravado.
+- Testes no Xvfb: `test_laboratory_derived.py` e `test_ui_laboratory_series.py`, 27 passou e 1 pulado
+  pela geometria do monitor, em 94 s. Doctor `--development --no-probe`: 16 OK, avisos pandas-ta
+  e integração nativa não sondada.
+- Não fecha LAB-07, SA-01/02, Super ATR, relógio IANA, Tester, conta real nem aceite visual.
+  O offset +3 continua local e só vale até 2026-10-24.
+
+## Séries não carrega a janela que passa de 20 mil barras · 2026-10-28 (PR 212)
+
+- A frase da seção anterior vale para o leitor `c1d06d4`. Este lote é o carregamento que o teste
+  profundo quebrou ao formar a visão e pedir os dados.
+- As visões do livro desenharam. Na cópia da base compartilhada, `_trade_ledger` tem 3130
+  operações EURUSD e 41 execuções com trades. Visão geral, Tempo e calendário, Microestrutura,
+  Comparativo, Execução e Insights saíram sem "Erro ao desenhar". "1 backtest importado,
+  0 operações" é o run H4 com trades vazios, não o livro. O cache recalculado entre 13:59 e
+  14:00 coincide com cliques sobrepostos; depois a mesma revisão veio do cache.
+- O defeito está em Séries. Abrir a guia disparava vários `chart_sources` ao mesmo tempo.
+  Cada conclusão chamava `_symbol_changed` e subia a revisão mesmo com a seleção igual.
+  O padrão marcava M1, M5 e M15. M1 tem 96629 barras. `capture_selection` recusava o limite
+  de 20000, mas o retorno via a revisão diferente primeiro e trocava o erro real por
+  "Seleção mudou durante o cálculo; resultado antigo não publicado."
+- A correção deixa um reload por vez. Recarregar a mesma seleção não invalida a análise em
+  curso. A seleção inicial marca só tempos nativos cuja série inteira cabe: nesta base,
+  M5, M15 e M30. M1 aparece como `M1 · 96629 barras`. Congelar esse tempo sem janela não chama
+  `capture_selection`. `earliest_of_last`, em `laboratory/derived.py`, lê só o carimbo da barra
+  que abre as últimas 20000 e preenche De com `2026-10-06T02:33:00`. O próximo congelamento
+  usa essa janela explícita. `service.py` não mudou, então o hash da fórmula nativa permanece.
+  M7 e M9 continuam leitura sozinha. Na cópia, M7 leu 13749 barras enquanto as fontes
+  recarregavam, sem a mensagem de seleção mudada.
+- Testes no Xvfb: `test_laboratory_derived.py`, `test_ui_laboratory_series.py` e
+  `test_earliest_of_last_is_the_first_bar_of_the_bounded_window`, 31 passou e 1 pulado pela
+  geometria do monitor, em 107 s. A cópia em `/tmp` foi só sonda e não volta para o banco do atalho.
+- Não fecha LAB-07. Não é Super ATR. As 133 falhas dos 175 backtests (robô HADOUKEN sem
+  compilação, especificação de ponto, volume real zerado, D1 com 68 barras) continuam falta
+  de insumo. O offset +3 continua local e só vale até 2026-10-24.
+
+## M7 e M9 na mesma grade de fechamento · 2026-10-28 (PR 212)
+
+- A frase da seção anterior vale para o carregamento. Este lote é a comparação que faltava
+  no LAB-07 para os tempos de dia exato já gravados.
+- Um tempo sintético sozinho continua só a leitura, sem indicador. Dois ou mais, como M7 e M9,
+  usam a grade do fechamento mais curto. O valor do tempo mais longo entra depois do fechamento
+  gravado e sai no fechamento seguinte dessa série. O primeiro fechamento M7, às 00:07, ainda
+  não vê o M9 que só fecha às 00:09. Um intervalo sem grupo completo não vira candle, linha nem par.
+- Não chama `datasets.capture` e não grava snapshot. M7 e M9 seguem fora do enum. Misturar com
+  tempo nativo continua recusado. O schema de preset só aceita tempo do MT5; a checagem de
+  parâmetros da intenção usa esse schema e descarta o retrato, e o relatório guarda o rótulo
+  M7/M9. A comparação não vai ao gerador de presets. `service.py` não mudou.
+- Defasagem 0 permanece descritiva. Defasagens 1, 3 e 6 permanecem candidatas, com o mesmo
+  corte 70/30. CLI: `laboratory derived --relations --symbol EURUSD --tf M7 --tf M9`.
+- Testes no Xvfb: `test_laboratory_derived.py` e os três percursos de Séries (leitura M7,
+  comparação M7/M9 e parâmetro inválido), 9 passou em 16 s. A suíte de Séries antes do ajuste
+  do erro de parâmetro: 27 passou e 1 pulado pela geometria, em 120 s. Doctor
+  `--development --no-probe`: 16 OK, avisos pandas-ta e integração nativa não sondada.
+- Não fecha o LAB-07 nativo que já estava parcial, nem o aceite do proprietário. Não é Super ATR.
+  O offset +3 continua local e só vale até 2026-10-24.
+
+## Auditoria do produto, qualidade e eventos · 28/10/2026 (PR 212)
+
+O [repasse do Laboratório](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md#auditoria-executada-e-correções-de-qualidadeeventos--28102026)
+concentra o diagnóstico, percursos, mapa de problemas e medições. O incremento
+f6f1850 corrige diagnóstico limpo com NaN, mantém snapshots v3 compatíveis e
+expõe eventos de pivô distintos de barras retidas. O complemento desta seção
+corrige denominadores zero/amostras insuficientes, qualidade na CLI, contagens
+de exclusões/sazonalidade e recargas repetidas pelo botão de fontes.
+
+Regressões finais: 124 + 12 aprovadas. Suíte ampla: 3362/59, duas falhas e
+81,34% de cobertura; a asserção de legenda passou após recoleta no estado
+final. Timeout da bateria também reproduzido com os caminhos anteriores de
+qualidade, sem alterar 60 s; código atual isolado passou em 44,91 s. Não
+anunciar CI/suíte integral verde. Doctor normal: 21 OK/1 aviso/0 falhas,
+handshake real só de leitura; não qualifica operação nem extração nativa.
+
+As quatro bases foram inspecionadas em modo somente leitura, com hashes
+preservados; M7/M9 reconciliados integralmente com oráculo M1. Fuso UTC/broker,
+calendário, barras parciais legadas e cobertura de mercado continuam pendentes
+de qualificação no pilar de Dados. Configuração/offset e pins HADOUKEN/Safety
+preservados. Continuidade privada e recibos na composição, em
+`state/qa-tmp/product-audit-20261028/`; sem publicar bancos, livro ou capturas
+privadas. O canal de desenvolvimento segue o procedimento de
+[prévia e retorno](TESTAR_DESENVOLVIMENTO.md), com SHA no recibo local.
+
+## Legibilidade e espera nas telas · 28/10/2026 (PR 212)
+
+LAB-UX-01 atende ao retorno do proprietário sobre Volatilidade × horário e
+processamentos sem orientação visual. A matriz usa horários nas linhas, três
+faixas nas colunas, valores completos e amostras explícitas, com o componente
+rolável existente. A fila `run_bg` apresenta barra animada global, contexto,
+tempo decorrido, concorrência e término/erro, inclusive após navegar de guia.
+O indicador usa o rodapé existente: a faixa adicional inicial reduziu o viewport
+no CI Windows com fonte máxima e foi corrigida sem afrouxar o teste.
+Cálculos, limiares, fontes e pins permanecem os mesmos. Baseline: 40 aprovados;
+126 regressões iniciais aprovadas em lotes completos e 39 após o ajuste final
+de escala (contagens sobrepostas), oito estados GUI com QA sintética sem exceções
+e doctor offline 16 OK/2 avisos/0 falhas. O CI de cada SHA tem estado próprio.
+Validação no [repasse](repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md#legibilidade-da-matriz-e-espera-visível--28102026)
+e nos recibos locais `state/qa-tmp/laboratory-readability/`. Sem aceite nativo,
+financeiro ou de Windows físico; a animação não elimina desenhos síncronos lentos.

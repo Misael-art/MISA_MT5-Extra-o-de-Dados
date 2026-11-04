@@ -258,9 +258,12 @@ class AnalysisPanel:
                 return None
             session = (config.get("APP", "session_start", fallback="09:00"),
                        config.get("APP", "session_end", fallback="18:30")) if config else ("09:00", "18:30")
+            quality = data_quality.check_quality(bars, minutes, *session)
+            if data_quality.blocks_price_analysis(quality):
+                return {"quality": quality, "session": session, "blocked": True}
             return {"bars": study.add_indicators(bars), "summary": study.summarize(bars),
-                    "seasonality": study.seasonality(bars),
-                    "quality": data_quality.check_quality(bars, minutes, *session), "session": session}
+                    "seasonality": study.seasonality(bars, bar_minutes=minutes),
+                    "quality": quality, "session": session}
 
         def done(result, error):
             if request != self._request:
@@ -268,6 +271,12 @@ class AnalysisPanel:
             if error or result is None:
                 self._empty(f"Não foi possível ler {symbol} ({label}): {error}" if error
                             else f"Sem barras de {symbol} ({label}) neste período.")
+                return
+            if result.get("blocked"):
+                self._empty(f"Análise indisponível para {symbol} ({label}): preços ou horários inválidos. "
+                            "Veja Qualidade dos dados e confira a fonte antes de analisar.")
+                self._show_quality(result["quality"], result["session"])
+                self.tabs.select(self.quality_tab)
                 return
             self.data = result["bars"]
             self.result = result
@@ -279,12 +288,21 @@ class AnalysisPanel:
             s = result["summary"]
             self.status.config(text=f"{symbol} · {label} · {fmt_int(s['bars'])} barras de "
                                     f"{s['start']:%d/%m/%Y} a {s['end']:%d/%m/%Y}.{note} "
-                                    "Passe o mouse sobre os números e sobre o gráfico para ver detalhes.")
+                                    f"Retornos: {s['return_pairs_used']}/{s['return_pairs_total']} pares válidos; "
+                                    f"{s['return_pairs_excluded']} excluídos (divisão indefinida). "
+                                    + ("Métricas indisponíveis: " + "; ".join(f"{name}: {reason}" for name, reason in
+                                        s["unavailable_reasons"].items()) + ". " if s["unavailable_reasons"] else "")
+                                    + "Passe o mouse sobre os números e sobre o gráfico para ver detalhes.")
 
         self.ui.run_bg(work, done)
 
     def _empty(self, message):
         self.data = self.candles = None
+        self.result = None
+        self.quality_text.configure(state=tk.NORMAL)
+        self.quality_text.delete("1.0", tk.END)
+        self.quality_text.insert(tk.END, message)
+        self.quality_text.configure(state=tk.DISABLED)
         for value in self.tile_values.values():
             value.config(text="—", style="Value.TLabel")
         self._return_value = None
@@ -325,23 +343,35 @@ class AnalysisPanel:
                  f"Dias com dados: {report['bars_per_day']['days']} "
                  f"(de {report['bars_per_day']['min']} a {report['bars_per_day']['max']} barras por dia, "
                  f"média {fmt_num(report['bars_per_day']['mean'], 1)})", ""]
-        checks = (("gaps", f"Lacunas dentro do pregão ({session[0]}–{session[1]})",
-                   "Faltam barras no meio do pregão. Extraia o período de novo (marque \"Sobrescrever Dados\")."),
+        checks = (("gaps", f"Intervalos sem barras na janela configurada ({session[0]}–{session[1]})",
+                   "Possíveis lacunas: confira sessões, feriados e blocos de extração. Esta verificação não distingue mercado fechado de falha de coleta."),
+                  ("invalid_time", "Horários inválidos ou ausentes", "Confira o contrato temporal e a fonte; nenhum horário foi preenchido."),
+                  ("unordered_time", "Horários fora de ordem na entrada", "Confira a ordenação na origem antes de calcular retornos."),
+                  ("nonfinite_ohlc", "Barras com preço ausente, não numérico ou não finito", "Métricas de preço indisponíveis; confira a fonte sem preencher valores."),
                   ("invalid_ohlc", "Barras com preços inconsistentes (ex.: máxima menor que a mínima)",
                    "Dado suspeito vindo da corretora. Confira estas barras antes de usá-las."),
-                  ("duplicate_time", "Horários repetidos", "Não deveriam existir: extraia o período de novo."),
+                  ("duplicate_time", "Horários repetidos", "Confira origem, revisões e contrato temporal antes de corrigir a base."),
+                  ("invalid_volume", "Barras com volume ausente, negativo ou não finito", "Volume ausente não é zero; confira a fonte antes de analisar volume."),
                   ("zero_volume", "Barras sem volume",
                    "Comum fora do horário de maior liquidez. Só preocupa se forem muitas."))
         for key, label, advice in checks:
-            count = report[key]["count"]
+            check = report.get(key, {"count": 0, "examples": []})
+            count = check["count"]
             lines.append(f"{'✓' if not count else '⚠'}  {label}: {fmt_int(count)}")
             if count:
                 lines.append(f"     {advice}")
-                lines.append("     Exemplos: " + "; ".join(str(x) for x in report[key]["examples"][:3]))
+                lines.append("     Exemplos: " + "; ".join(str(x) for x in check["examples"][:3]))
         if not data_quality.has_problems(report):
-            lines += ["", "Nenhum problema encontrado neste período: os dados estão prontos para estudo."]
+            lines += ["", "Nenhum problema detectado pelas verificações acima neste período."]
         lines += ["", "O horário do pregão usado na verificação vem de [APP] session_start / session_end "
-                      "no arquivo de configuração."]
+                      "no arquivo de configuração. Não é um calendário oficial por símbolo.",
+                  "Estas verificações não certificam cobertura completa, fuso histórico, origem nem fechamento das barras."]
+        db = getattr(self.ui.app, "db_manager", None)
+        if hasattr(db, "time_context"):
+            clock = db.time_context()
+            lines += [f"Relógio configurado: base={clock['time_basis']}; estado={clock['offset_state']}; "
+                      f"offset={clock['broker_utc_offset']}; zona={clock['broker_timezone'] or 'não declarada'}. "
+                      "Configuração declarada não comprova o fuso da fonte nem mudanças históricas de offset."]
         self.quality_text.configure(state=tk.NORMAL)
         self.quality_text.delete("1.0", tk.END)
         self.quality_text.insert(tk.END, "\n".join(lines))
@@ -506,8 +536,9 @@ class AnalysisPanel:
         self._style_axis(hour_ax, "Amplitude média por hora do dia (%): quando o ativo mais oscila")
         self._style_axis(day_ax, "Retorno médio por barra em cada dia da semana (%)")
         hours = season["hour"]
-        if hours.empty:
-            hour_ax.text(0.5, 0.5, "Barras diárias ou maiores não têm hora do dia.\nEscolha um timeframe intradiário.",
+        if hours.empty or not hours["range_pct"].notna().any():
+            hour_ax.text(0.5, 0.5, "Sem amostra por hora nesta seleção.\nBarras diárias ou maiores não têm visão horária." if hours.empty
+                         else "Amplitude indisponível: denominadores inválidos.",
                          ha="center", va="center", transform=hour_ax.transAxes, color=c["ink2"], fontsize=9)
             hour_ax.set_xticks([])
             hour_ax.set_yticks([])
@@ -518,7 +549,7 @@ class AnalysisPanel:
         for ax in (hour_ax, day_ax):
             ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: fmt_num(v, 3, "%")))
         days = season["weekday"]
-        if not days.empty:
+        if not days.empty and days["return_pct"].notna().any():
             day_ax.bar(range(len(days)), days["return_pct"], width=0.6, linewidth=0,
                        color=[c["up"] if v >= 0 else c["down"] for v in days["return_pct"]])
             day_ax.axhline(0, color=c["axis"], linewidth=0.9)
@@ -529,6 +560,13 @@ class AnalysisPanel:
                 day_ax.annotate(fmt_num(value, 4, "%"), (i, value), ha="center", color=c["ink2"], fontsize=8,
                                 xytext=(0, 4 if value >= 0 else -11), textcoords="offset points")
             day_ax.set_ylim(-span * 1.35, span * 1.35)
+        else:
+            day_ax.text(.5, .5, "Retorno indisponível: denominadores inválidos.", transform=day_ax.transAxes,
+                        ha="center", color=c["ink2"])
+        for ax, data, column in ((hour_ax, hours, "range_samples"), (day_ax, days, "return_samples")):
+            if not data.empty:
+                ax.set_xlabel(f"Amostra: {int(data[column].sum())}/{int(data.bars.sum())} barras com razão definida",
+                              color=c["ink2"], fontsize=8)
         canvas.draw_idle()
 
     def draw_returns(self):
@@ -537,7 +575,8 @@ class AnalysisPanel:
         fig, canvas = self._figure("returns", self.returns_tab)
         ax = fig.add_subplot(111)
         fig.subplots_adjust(left=0.06, right=0.98, top=0.88, bottom=0.14)
-        returns = (self.data["close"].pct_change().dropna() * 100)
+        returns = study.bar_returns(self.data["close"]).dropna() * 100
+        total = max(0, len(self.data) - 1)
         self._style_axis(ax, "Distribuição dos retornos por barra (%): com que frequência cada variação acontece")
         if len(returns) > 1:
             low, high = returns.quantile(0.005), returns.quantile(0.995)
@@ -546,9 +585,15 @@ class AnalysisPanel:
             q5, q95 = returns.quantile(0.05), returns.quantile(0.95)
             note = (f"Média {fmt_num(returns.mean(), 4, '%')}   ·   Mediana {fmt_num(returns.median(), 4, '%')}\n"
                     f"90% das barras variam entre {fmt_num(q5, 3, '%')} e {fmt_num(q95, 3, '%')}\n"
-                    f"Maior alta {fmt_num(returns.max(), 2, '%')}   ·   Maior queda {fmt_num(returns.min(), 2, '%')}")
+                    f"Máximo {fmt_num(returns.max(), 2, '%')}   ·   Mínimo {fmt_num(returns.min(), 2, '%')}\n"
+                    f"n={len(returns)}/{total} pares; excluídos {total-len(returns)} indefinidos\n"
+                    "Histograma: extremos agrupados nos quantis 0,5%–99,5%; métricas usam valores originais.")
             ax.text(0.985, 0.95, note, transform=ax.transAxes, ha="right", va="top", color=c["ink2"], fontsize=9,
                     linespacing=1.6)
             ax.set_ylabel("Barras", color=c["muted"], fontsize=8)
             ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _pos: fmt_num(v, 2, "%")))
+        else:
+            ax.text(.5, .5, f"Amostra insuficiente: {len(returns)}/{total} pares válidos; "
+                    f"{total-len(returns)} excluídos por divisão indefinida.", transform=ax.transAxes,
+                    ha="center", color=c["ink2"])
         canvas.draw_idle()

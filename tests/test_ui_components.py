@@ -315,3 +315,34 @@ def test_scrollable_content_tracks_wrapped_height_after_width_changes(app):
     viewport.destroy()
     assert viewport._geometry_sync is None
     root.update()
+
+
+def test_matrix_header_and_every_column_stay_aligned_after_scroll_resize_and_scale(app):
+    from mt5_extracao.ui.components import MatrixTable
+    root, theme = app
+    matrix = MatrixTable(root, ("Faixa", "Seg", "Ter", "Qua", "Qui"), (80, 150, 150, 150, 150), theme, height=4)
+    matrix.pack(fill=tk.BOTH, expand=True)
+    rows = [[(f"+{i},00 · n={i}*", theme.colors["surface"], theme.colors["ink"])] * 4 for i in range(30)]
+    matrix.set_rows([f"{h:02d}:00–{h:02d}:30" for h in range(30)], rows)
+
+    def assert_aligned(label):
+        root.update()
+        for column, header in enumerate(matrix.headers):
+            body = matrix.row_headers[0] if column == 0 else matrix.cells[0][column - 1]
+            assert (header.winfo_rootx(), header.winfo_width()) == (body.winfo_rootx(), body.winfo_width()), \
+                (label, column)
+
+    for geometry in ("1100x400", "420x300", "1600x500", "640x360"):
+        root.geometry(geometry)
+        assert_aligned(geometry)
+        matrix.canvas.yview_moveto(.6)
+        assert_aligned(geometry + " vertical")
+        matrix.canvas.xview_moveto(.4)
+        assert_aligned(geometry + " horizontal")
+        matrix.canvas.xview_moveto(0)
+    # Texto maior que a largura nominal (escala/DPI/fonte) alarga cabeçalho e corpo juntos.
+    wide = [[("+12.345.678,90 · n=1234*", theme.colors["surface"], theme.colors["ink"])] * 4 for _ in range(30)]
+    matrix.set_rows([f"linha {i}" for i in range(30)], wide)
+    root.geometry("500x300")
+    matrix.canvas.xview_moveto(1)
+    assert_aligned("texto largo")

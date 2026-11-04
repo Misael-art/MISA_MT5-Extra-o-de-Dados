@@ -14,6 +14,7 @@ Verificações:
 from datetime import time as _time
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 
 MAX_EXAMPLES = 20
@@ -31,36 +32,52 @@ def _examples(times) -> list:
 def check_quality(df: pd.DataFrame, bar_minutes: int = 1, session_start: str = "09:00",
                   session_end: str = "18:30") -> dict:
     """Retorna um dicionário com contagens e até 20 exemplos de cada problema."""
-    report = {"rows": 0, "invalid_ohlc": {"count": 0, "examples": []},
-              "zero_volume": {"count": 0, "examples": []},
-              "duplicate_time": {"count": 0, "examples": []},
-              "gaps": {"count": 0, "examples": []},
-              "bars_per_day": {"days": 0, "min": 0, "max": 0, "mean": 0.0}}
+    report = {key: {"count": 0, "examples": []} for key in
+              ("invalid_ohlc", "nonfinite_ohlc", "invalid_time", "unordered_time", "invalid_volume",
+               "zero_volume", "duplicate_time", "gaps")}
+    report.update(rows=0, bars_per_day={"days": 0, "min": 0, "max": 0, "mean": 0.0})
     if df is None or df.empty:
         return report
 
     data = df.copy()
-    data["time"] = pd.to_datetime(data["time"])
-    data = data.sort_values("time").reset_index(drop=True)
+    # Mede a entrada antes de ordenar; não corrige nem remove observações da fonte.
+    data["time"] = pd.to_datetime(data.get("time", pd.Series(pd.NaT, index=data.index)),
+                                  errors="coerce", format="mixed")
+    if not isinstance(data.time.dtype, pd.DatetimeTZDtype) and not pd.api.types.is_datetime64_dtype(data.time.dtype):
+        # Misturar offsets ou horários com/sem fuso exige um contrato, nunca UTC presumido.
+        data["time"] = pd.NaT
     report["rows"] = int(len(data))
+    invalid_time = data.time.isna()
+    report["invalid_time"] = {"count": int(invalid_time.sum()),
+                              "examples": _examples(df.index[invalid_time])}
+    valid_times = data.loc[~invalid_time, "time"]
+    backwards = valid_times.diff() < pd.Timedelta(0)
+    report["unordered_time"] = {"count": int(backwards.sum()), "examples": _examples(valid_times[backwards])}
+    prices = data.reindex(columns=["open", "high", "low", "close"]).apply(pd.to_numeric, errors="coerce")
+    nonfinite = ~np.isfinite(prices).fillna(False).all(axis=1)
+    report["nonfinite_ohlc"] = {"count": int(nonfinite.sum()), "examples": _examples(data.loc[nonfinite, "time"])}
 
     # 1. OHLC inconsistente
-    bad = (data["high"] < data["low"]) \
-        | (data["open"] > data["high"]) | (data["open"] < data["low"]) \
-        | (data["close"] > data["high"]) | (data["close"] < data["low"])
+    bad = (prices["high"] < prices["low"]) \
+        | (prices["open"] > prices["high"]) | (prices["open"] < prices["low"]) \
+        | (prices["close"] > prices["high"]) | (prices["close"] < prices["low"])
     report["invalid_ohlc"] = {"count": int(bad.sum()), "examples": _examples(data.loc[bad, "time"])}
 
     # 2. Volume zero
     if "tick_volume" in data.columns:
-        zero = data["tick_volume"].fillna(0) == 0
+        zero = pd.to_numeric(data["tick_volume"], errors="coerce").eq(0)
         report["zero_volume"] = {"count": int(zero.sum()), "examples": _examples(data.loc[zero, "time"])}
+    volumes = data[[col for col in ("tick_volume", "real_volume") if col in data]].apply(pd.to_numeric, errors="coerce")
+    invalid_volume = (~np.isfinite(volumes).fillna(False) | (volumes < 0)).any(axis=1)
+    report["invalid_volume"] = {"count": int(invalid_volume.sum()),
+                                "examples": _examples(data.loc[invalid_volume, "time"])}
 
     # 3. Horários duplicados
-    dup = data["time"].duplicated(keep="first")
+    dup = data["time"].duplicated(keep="first") & ~invalid_time
     report["duplicate_time"] = {"count": int(dup.sum()), "examples": _examples(data.loc[dup, "time"])}
 
     # 4. Lacunas dentro do pregão (somente intradiário)
-    unique = data.loc[~dup, "time"].reset_index(drop=True)
+    unique = data.loc[~dup & ~invalid_time, "time"].sort_values().reset_index(drop=True)
     if bar_minutes < 1440 and len(unique) > 1:
         start, end = _parse_hhmm(session_start), _parse_hhmm(session_end)
         step = pd.Timedelta(minutes=bar_minutes)
@@ -76,8 +93,9 @@ def check_quality(df: pd.DataFrame, bar_minutes: int = 1, session_start: str = "
 
     # 5. Barras por dia
     per_day = unique.dt.date.value_counts()
-    report["bars_per_day"] = {"days": int(len(per_day)), "min": int(per_day.min()),
-                              "max": int(per_day.max()), "mean": round(float(per_day.mean()), 1)}
+    if not per_day.empty:
+        report["bars_per_day"] = {"days": int(len(per_day)), "min": int(per_day.min()),
+                                  "max": int(per_day.max()), "mean": round(float(per_day.mean()), 1)}
     return report
 
 
@@ -86,10 +104,20 @@ def summarize(report: dict) -> str:
     return (f"{report['rows']} barras; OHLC inválido: {report['invalid_ohlc']['count']}; "
             f"volume zero: {report['zero_volume']['count']}; duplicadas: {report['duplicate_time']['count']}; "
             f"lacunas no pregão: {report['gaps']['count']}; barras/dia: {report['bars_per_day']['min']}"
-            f"–{report['bars_per_day']['max']}")
+            f"–{report['bars_per_day']['max']}; OHLC ausente/não finito: {report.get('nonfinite_ohlc', {}).get('count', 0)}; "
+            f"horários inválidos: {report.get('invalid_time', {}).get('count', 0)}; "
+            f"fora de ordem: {report.get('unordered_time', {}).get('count', 0)}; "
+            f"volume inválido: {report.get('invalid_volume', {}).get('count', 0)}")
+
+
+def blocks_price_analysis(report: dict) -> bool:
+    """Preços e cronologia inválidos impedem métricas; volume/gaps têm diagnóstico próprio."""
+    return any(report.get(key, {}).get("count", 0) for key in
+               ("invalid_ohlc", "nonfinite_ohlc", "invalid_time", "unordered_time", "duplicate_time"))
 
 
 def has_problems(report: Optional[dict]) -> bool:
     if not report:
         return False
-    return any(report[k]["count"] for k in ("invalid_ohlc", "zero_volume", "duplicate_time", "gaps"))
+    return blocks_price_analysis(report) or any(report.get(k, {}).get("count", 0)
+                                               for k in ("zero_volume", "invalid_volume", "gaps"))

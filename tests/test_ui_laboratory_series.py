@@ -30,6 +30,41 @@ def test_real_series_area_is_separate_from_demo_and_ledger_filters(panel):
     assert panel.filter_bar.winfo_manager()
 
 
+def test_pivot_pair_tooltip_discloses_events_separately_from_bars(panel, snapshots):
+    from types import SimpleNamespace
+    from mt5_extracao.laboratory import service
+    series = open_series(panel)
+    result = service.analyze(snapshots, feature_ids=["structure.fractals_5_strict_top", "momentum.rsi_14"],
+                             as_of="2025-02-01T00:00:00Z")
+    series.set_report(result)
+    chart = series.panels["relations"].chart
+    text = chart.hover[0](SimpleNamespace(inaxes=chart.figure.axes[0], xdata=1, ydata=0))
+    assert "eventos distintos (confirmações representadas)" in text and "contagem de barras não mede eventos" in text
+    series.detail_channel.set(result["channels"][0]["id"])
+    series._channel_changed(redraw=False)
+    assert "disponível no fechamento nominal" in series.channel_details.cget("text")
+
+
+def test_source_refresh_button_prevents_duplicate_jobs_and_recovers_after_error(panel, monkeypatch):
+    series = open_series(panel)
+    panel.pump(lambda: not getattr(series, "_loading_sources", True))
+    jobs = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: jobs.append((work, done)))
+    for _ in range(3):
+        series.reload_button.invoke()
+    assert len(jobs) == 1
+    assert series.reload_button.instate(["disabled"])
+    assert series.reload_button.cget("text") == "Lendo fontes…"
+    jobs[0][1](None, RuntimeError("fonte temporariamente indisponível"))
+    assert series.reload_button.instate(["!disabled"])
+    assert "temporariamente indisponível" in series.status.cget("text")
+    series.reload_button.invoke()
+    assert len(jobs) == 2
+    jobs[1][1]([], None)
+    assert not series._loading_sources and series.reload_button.instate(["!disabled"])
+    assert "Base sem séries" in series.status.cget("text")
+
+
 def test_all_views_render_frozen_report_and_small_screen_can_scroll_wide(panel, snapshots):
     series = open_series(panel)
     report = analysis(snapshots, strategy_key="ema_atr")
@@ -56,6 +91,8 @@ def test_chart_maximize_restore_uses_same_report_and_current_monitor(panel, snap
     series = open_series(panel)
     series.set_report(analysis(snapshots))
     identity = series.report["analysis_id"]
+    if panel.ui.root.winfo_screenwidth() < 1280 or panel.ui.root.winfo_screenheight() < 800:
+        pytest.skip("Tela física menor que o monitor simulado; o WM limita a janela (runner Windows).")
     monkeypatch.setattr(laboratory_series, "monitor_geometry", lambda _: (0, 0, 1280, 800))
     chart = series.panels["price"]
     chart.expand()
@@ -109,6 +146,76 @@ def test_no_profile_does_not_fabricate_an_exportable_preset(panel, snapshots):
     assert "Nenhum perfil nativo" in series.status.cget("text")
 
 
+def test_stored_m7_draws_as_synthetic_and_stays_out_of_native_capture(panel):
+    from types import SimpleNamespace
+    import pandas as pd
+    from mt5_extracao.analytics import resampling
+    from mt5_extracao.laboratory import service
+    from tests.test_analytics_calendar import m1_bars
+
+    panel.db.save_ohlcv_data("EURUSD", "1 minuto", m1_bars(pd.date_range("2026-09-14 00:00", periods=7, freq="min")))
+    resampling.resample_symbol(panel.db, "EURUSD", ["M7"], symbol_info=SimpleNamespace(name="EURUSD"))
+    series = open_series(panel)
+
+    def listed():
+        return series.tf_list.size() > 0 and any(
+            "sintético" in series.tf_list.get(i) for i in range(series.tf_list.size()))
+
+    panel.pump(listed, 5)
+    labels = [series.tf_list.get(i) for i in range(series.tf_list.size())]
+    assert "M7 · sintético" in labels
+    assert "M1" in labels
+    series.tf_list.selection_clear(0, "end")
+    synthetic = labels.index("M7 · sintético")
+    native = labels.index("M1")
+    series.tf_list.selection_set(native)
+    series.tf_list.selection_set(synthetic)
+    series.analyze()
+    assert "não entram na captura nativa" in series.status.cget("text")
+    series.tf_list.selection_clear(0, "end")
+    series.tf_list.selection_set(synthetic)
+    series.analyze()
+    panel.pump(lambda: series.derived_read is not None and not series.pending, 5)
+    assert series.report is None
+    title = series.panels["price"].chart.figure.axes[0].get_title(loc="left")
+    assert "sintético" in title and "não é tempo do MT5" in title
+    assert len(series.panels["price"].chart.figure.axes[0].collections) == 2
+    relations = series.panels["relations"].chart.figure.axes[0].texts[0].get_text()
+    assert "não entram neste recorte" in relations
+    with pytest.raises(ValueError, match="timeframes distintos"):
+        service.capture_selection(panel.db, symbol="EURUSD", timeframes_selected=["M7"])
+    series.export()
+    assert "não se exporta como estudo" in series.status.cget("text")
+
+
+def test_two_synthetic_timeframes_share_the_shorter_close(panel):
+    from types import SimpleNamespace
+    import pandas as pd
+    from mt5_extracao.analytics import resampling
+    from tests.test_analytics_calendar import m1_bars
+
+    panel.db.save_ohlcv_data("EURUSD", "1 minuto", m1_bars(
+        pd.date_range("2026-09-14 00:00", periods=18, freq="min")))
+    resampling.resample_symbol(panel.db, "EURUSD", ["M7", "M9"], symbol_info=SimpleNamespace(name="EURUSD"))
+    series = open_series(panel)
+    panel.pump(lambda: series.tf_list.size() and "M9 · sintético" in [
+        series.tf_list.get(i) for i in range(series.tf_list.size())], 5)
+    labels = [series.tf_list.get(i) for i in range(series.tf_list.size())]
+    series.tf_list.selection_clear(0, "end")
+    series.tf_list.selection_set(labels.index("M7 · sintético"))
+    series.tf_list.selection_set(labels.index("M9 · sintético"))
+    series.analyze()
+    panel.pump(lambda: series.report is not None and not series.pending, 5)
+    assert series.report is not None, series.status.cget("text")
+    assert series.derived_read is None
+    assert series.report["grid_timeframe"] == "M7" and series.report["synthetic"] is True
+    assert "não é tempo do MT5" in series.panels["price"].chart.figure.axes[0].get_title(loc="left")
+    axes = series.panels["price"].chart.figure.axes
+    assert len(axes) > 1 and axes[0].get_shared_x_axes().joined(axes[0], axes[1])
+    series.open_presets()
+    assert "não vai ao gerador" in series.status.cget("text")
+
+
 def test_visual_reduction_preserves_rare_events_and_conflicts_not_as_neutral():
     from mt5_extracao.ui.laboratory_series import timeline_bins
     import numpy as np
@@ -141,6 +248,9 @@ def test_large_monitor_does_not_force_wide_layout_into_compact_window(panel, mon
     monkeypatch.setattr(laboratory_series, "monitor_geometry", lambda _: (0, 0, 2200, 1400))
     panel.ui.root.geometry(geometry)
     panel.ui.root.update()
+    width, height = (int(part) for part in geometry.split("x"))
+    if (panel.ui.root.winfo_width(), panel.ui.root.winfo_height()) != (width, height):
+        pytest.skip("O gerenciador de janelas não aplicou a geometria pedida (tela física menor/ocupada).")
     series._display_initialized = False
     series.on_show()
     assert series.extended.get() is expected
@@ -218,3 +328,279 @@ def test_monitor_discovery_uses_window_anchor_and_releases_backend(panel, monkey
     assert monitor_geometry(root) == (-2048, 0, 2048, 1200)
     assert seen == [(root.winfo_rootx() + root.winfo_width() // 2,
                      root.winfo_rooty() + root.winfo_height() // 2), "closed"]
+
+
+def test_empty_channels_show_reason_instead_of_gray_area(panel, snapshots):
+    # SINTÉTICO: força canais sem valores; a UI deve exibir motivo/ação, não só área cinza.
+    series = open_series(panel)
+    report = analysis(snapshots)
+    for channel in report["channels"]:
+        channel["values"] = [None] * len(report["times"])
+        channel["directions"] = [None] * len(report["times"])
+        channel["diagnosis"] = dict(code="WARMUP_EXCEEDS_WINDOW", message="M15: 3 barras.", action="Antecipe o início.")
+    for pair in report["pairs"]:
+        pair["correlation"] = None
+    series.set_report(report)
+    assert "Antecipe o início" in series.status.cget("text")
+    texts = [text.get_text() for key in ("relations", "timeline") for ax in
+             series.panels[key].chart.figure.axes for text in ax.texts]
+    texts += [text.get_text() for key in ("relations", "timeline") for text in series.panels[key].chart.figure.texts]
+    assert sum("Antecipe o início" in text for text in texts) == 2
+
+
+def test_single_bar_segment_stays_visible(panel, snapshots):
+    series = open_series(panel)
+    report = analysis(snapshots)
+    channel = report["channels"][0]
+    channel["values"] = [None] * len(report["times"])
+    channel["values"][5] = 42.0
+    series.set_report(report)
+    feature = series.panels["price"].chart.figure.axes[1]
+    assert any(line.get_marker() == "o" for line in feature.lines)
+
+
+def test_compare_list_is_empty_until_the_user_adds_another_strategy(panel, monkeypatch):
+    import json
+    from mt5_extracao.strategies import get_strategy
+    from mt5_extracao.ui.laboratory_series import comparison_arguments
+    series = open_series(panel)
+    assert series.compare_list.curselection() == ()
+    assert comparison_arguments("ema_atr", {"fast": 12}, [])["strategy_key"] == "ema_atr"
+    series._inventory = [dict(symbol="X", timeframe="M5")]
+    series.symbol.set("X")
+    series._symbol_changed()
+    series.compare_list.selection_set(series._compare_keys.index("donchian"))
+    seen = {}
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, done: seen.setdefault("work", work))
+    monkeypatch.setattr("mt5_extracao.laboratory.service.capture_selection", lambda *args, **kwargs: [])
+    monkeypatch.setattr("mt5_extracao.laboratory.service.analyze",
+                        lambda snapshots, **kwargs: seen.update(kwargs) or {"analysis_id": "x", "channels": []})
+    series.analyze()
+    seen["work"]()
+    assert [item["key"] if isinstance(item, dict) else item for item in seen["strategies"]] == ["ema_atr", "donchian"]
+    assert seen["strategies"][0]["params"]["fast"] == json.loads(series.params.get())["fast"]
+    assert seen["strategies"][1] == "donchian"
+    series.strategy.set("Sem estratégia")
+    series._strategy_changed()
+    series.compare_list.selection_clear(0, "end")
+    series.compare_list.selection_set(series._compare_keys.index("donchian"))
+    assert comparison_arguments(None, {}, ["donchian"]) == dict(strategies=["donchian"])
+    assert get_strategy("donchian").params  # o serviço aplica o padrão canônico desta chave
+
+
+def test_two_strategies_share_the_price_clock_as_intentions(panel, snapshots):
+    from matplotlib.collections import PathCollection
+    from mt5_extracao.ui.laboratory_series import intention_channels
+    series = open_series(panel)
+    report = analysis(snapshots, strategies=["ema_atr", "donchian"])
+    series.set_report(report)
+    marks = intention_channels(report, series.detail_channel.get(), series.study.removed, series.study.hidden)
+    assert [row["id"] for row in marks] == ["M5:strategy:ema_atr", "M5:strategy:donchian"]
+    ax = series.panels["price"].chart.figure.axes[0]
+    title = ax.get_title(loc="left")
+    assert "intenção" in title and "execução" in title
+    expected = 0
+    for channel in marks:
+        seen = set()
+        for value, end in zip(channel["values"], channel["source_ends"]):
+            if value in (1, -1) and end not in seen:
+                expected += 1
+                seen.add(end)
+    got = sum(len(item.get_offsets()) for item in ax.collections if isinstance(item, PathCollection))
+    assert got == expected and expected > 0
+    legend = [text.get_text() for text in ax.get_legend().get_texts()]
+    assert sum(text.startswith("intenção ·") for text in legend) == 2
+    assert "operação ausente" in series.status.cget("text")
+    assert "execução" in series.notice.message.cget("text")
+    labels = [tick.get_text() for tick in series.panels["timeline"].chart.figure.axes[0].get_yticklabels()]
+    assert len(labels) == 4 and all(label.endswith("· intenção") for label in labels)
+    axes = series.panels["price"].chart.figure.axes
+    assert axes[0].get_xlim() == axes[-1].get_xlim()
+
+
+def test_feature_search_filters_inventory_and_keeps_selection(panel):
+    series = open_series(panel)
+    before = set(series._chosen_features)
+    series.feature_query.set("efficiency")
+    assert all("efficiency" in ident for ident in series._visible_features)
+    series.feature_query.set("")
+    assert series._chosen_features == before
+    assert len(series._visible_features) == len(series.catalog["indicators"])
+
+
+def test_asset_chart_groups_units_toggles_legend_and_annotates(panel, snapshots, tmp_path):
+    from types import SimpleNamespace
+    series = open_series(panel)
+    report = analysis(snapshots)
+    channel = copy.deepcopy(report["channels"][0])
+    channel.update(id="M5:trend.fake_line", rule="price", unit="price_units", name="Linha de preço")
+    report["channels"].append(channel)
+    series.set_report(report)
+    chart = series.panels["price"].chart
+    axes = chart.figure.axes
+    assert len(axes) == 1 + len({row["unit"] for row in report["channels"] if row["rule"] != "price"})
+    assert any(line.get_label().endswith("Linha de preço") for line in axes[0].lines)
+    # Legenda alterna visibilidade sem perder o canal.
+    label = next(line.get_label() for line in axes[0].lines if line.get_label().endswith("Linha de preço"))
+    series._legend_picked(chart, SimpleNamespace(artist=SimpleNamespace(get_label=lambda: label)))
+    assert series.study.hidden == {"M5:trend.fake_line"}
+    assert not any(line.get_label() == label for line in chart.figure.axes[0].lines)
+    ax = chart._price_axis
+    x0, x1 = ax.get_xlim()
+    y = sum(ax.get_ylim()) / 2
+    series.tool.set("Linha horizontal")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=ax, xdata=x0 + 1e-3, ydata=y))
+    series.tool.set("Região")
+    for x in (x0 + (x1 - x0) * .2, x0 + (x1 - x0) * .4):
+        series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x, ydata=y))
+    series.tool.set("Nota")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0, ydata=y))
+    assert "Anotação recusada" in series.status.cget("text")  # nota sem texto
+    series.note_text.set("teste")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0, ydata=y))
+    assert [item["kind"] for item in series.study.items] == ["hline", "region", "note"]
+    series.remove_selected_annotation()
+    series.undo_annotation()
+    path = tmp_path / "estudo.json"
+    series.export_study(str(path))
+    series.study.remove(series.study.items[0]["id"])
+    series.open_study(str(path))
+    assert [item["kind"] for item in series.study.items] == ["hline", "region", "note"]
+    assert series.study.hidden == {"M5:trend.fake_line"}
+
+
+def test_asset_bench_moves_geometry_removes_series_scrolls_units_and_keeps_view(panel, snapshots, tmp_path):
+    from types import SimpleNamespace
+    series = open_series(panel)
+    report = analysis(snapshots)
+    base = report["channels"][0]
+    for index in range(5):  # 6 unidades além do preço: acima do antigo teto de 3
+        channel = copy.deepcopy(base)
+        channel.update(id=f"M5:fake.unit_{index}", unit=f"unit_{index}", name=f"Unidade {index}")
+        report["channels"].append(channel)
+    series.set_report(report)
+    chart = series.panels["price"].chart
+    non_price = {row["unit"] for row in report["channels"] if row["rule"] not in ("price", "candidate")}
+    assert len(chart.figure.axes) == 1 + len(non_price) and len(non_price) > 3
+    frozen, analysis_id = series.report, series.study.analysis_id
+    # Remover série da vista: sem recongelar, e desfazer devolve.
+    series.detail_channel.set("M5:fake.unit_0")
+    series.remove_detail_series()
+    assert series.report is frozen and series.study.analysis_id == analysis_id
+    assert len(chart.figure.axes) == len(non_price)
+    series.undo_annotation()
+    assert len(chart.figure.axes) == 1 + len(non_price)
+    # Criar, selecionar e arrastar uma linha horizontal.
+    ax = chart._price_axis
+    (x0, x1), (y0, y1) = ax.get_xlim(), ax.get_ylim()
+    middle = (y0 + y1) / 2
+    series.tool.set("Linha horizontal")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=ax, xdata=x0, ydata=middle))
+    series.tool.set("Selecionar/mover")
+    ax = chart._price_axis
+    series._chart_clicked(chart, SimpleNamespace(inaxes=ax, xdata=(x0 + x1) / 2, ydata=middle))
+    assert series.study.selected == series.study.items[0]["id"]
+    delta = (y1 - y0) * .1
+    series._chart_released(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=(x0 + x1) / 2, ydata=middle + delta))
+    assert series.study.items[0]["y"] == pytest.approx(middle + delta)
+    series.undo_annotation()
+    assert series.study.items[0]["y"] == pytest.approx(middle)
+    # Borda da região redimensiona só aquele lado.
+    series.tool.set("Região")
+    for frac in (.6, .8):
+        series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0 + (x1 - x0) * frac, ydata=middle))
+    region = series.study.items[-1]
+    series.tool.set("Selecionar/mover")
+    series._chart_clicked(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=region["x1"], ydata=y0 + (y1 - y0) * .9))
+    series._chart_released(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=x0 + (x1 - x0) * .9, ydata=middle))
+    assert series.study.items[-1]["x0"] == region["x0"]
+    assert series.study.items[-1]["x1"] == pytest.approx(x0 + (x1 - x0) * .9)
+    series.undo_annotation()
+    series.undo_annotation()
+    assert series.study.selected is None and len(series.study.items) == 1
+    series.study.select(series.study.items[0]["id"])
+    # Zoom e cursor sobrevivem a ampliar/restaurar e a redesenhos.
+    zoom = (x0 + (x1 - x0) * .25, x0 + (x1 - x0) * .5)
+    chart._price_axis.set_xlim(*zoom)
+    series._cursor_moved(chart, SimpleNamespace(inaxes=chart._price_axis, xdata=zoom[0], ydata=middle))
+    series.panels["price"].expand()
+    detail = series.panels["price"].detail
+    assert detail._price_axis.get_xlim() == pytest.approx(zoom)
+    assert detail._cursors[0].get_visible() and detail._cursors[0].get_xdata()[0] == pytest.approx(zoom[0])
+    assert all(axis.get_xlim() == pytest.approx(zoom) for axis in detail.figure.axes)
+    series.panels["price"].restore()
+    series.panels["price"].redraw()
+    assert chart._price_axis.get_xlim() == pytest.approx(zoom) and series.study.selected is not None
+    # Exportar/reabrir preserva vista, identidade e séries; estudo incompatível é recusado.
+    series.study.remove_series("M5:fake.unit_1")
+    path = tmp_path / "bancada.json"
+    series.export_study(str(path))
+    series.study = None
+    series.set_report(report)
+    series.open_study(str(path))
+    assert series.study.removed == {"M5:fake.unit_1"} and series.study.view["xlim"] == pytest.approx(list(zoom))
+    assert series.study.identity["series"][0]["parameters"] == base["parameters"]
+    other = copy.deepcopy(report)
+    other["channels"] = [row for row in other["channels"] if row["id"] != "M5:fake.unit_1"]
+    series.set_report(other)
+    series.open_study(str(path))
+    assert "séries ausentes" in series.status.cget("text")
+
+
+def test_initial_selection_skips_series_over_the_bar_limit(panel):
+    series = open_series(panel)
+    series._inventory = [
+        dict(symbol="EURUSD", timeframe="M1", rows=30000, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M5", rows=100, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M15", rows=40, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M30", rows=20, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M7", rows=10, synthetic=True),
+    ]
+    series.symbol.set("EURUSD")
+    series._symbol_changed()
+    labels = [series.tf_list.get(i) for i in range(series.tf_list.size())]
+    selected = [labels[i] for i in series.tf_list.curselection()]
+    assert selected == ["M5", "M15", "M30"]
+    assert "M1 · 30000 barras" in labels
+    assert "M7 · sintético" in labels
+    assert "30000" in series.status.cget("text")
+    revision = series._selection_revision
+    series._symbol_changed()
+    assert series._selection_revision == revision
+    assert [labels[i] for i in series.tf_list.curselection()] == selected
+
+
+def test_oversized_selection_fills_the_start_without_loading_the_whole_series(panel, monkeypatch):
+    series = open_series(panel)
+    series._inventory = [
+        dict(symbol="EURUSD", timeframe="M1", rows=96629, synthetic=False),
+        dict(symbol="EURUSD", timeframe="M5", rows=100, synthetic=False),
+    ]
+    series.symbol.set("EURUSD")
+    series._symbol_changed()
+    series.tf_list.selection_clear(0, "end")
+    series.tf_list.selection_set(0)
+    monkeypatch.setattr("mt5_extracao.laboratory.derived.earliest_of_last",
+                        lambda *args, **kwargs: "2026-10-06T02:33:00")
+    monkeypatch.setattr(panel.ui, "run_bg", lambda *args: pytest.fail("não carregar a série inteira"))
+    series.analyze()
+    assert series.start.get() == "2026-10-06T02:33:00"
+    assert "96629" in series.status.cget("text") and "Confira e congele de novo." in series.status.cget("text")
+    assert not series.pending
+
+
+def test_stale_source_reload_does_not_replace_the_inventory(panel, monkeypatch):
+    series = open_series(panel)
+    done = []
+    monkeypatch.setattr(panel.ui, "run_bg", lambda work, callback: done.append(callback))
+    series._inventory = []
+    series.reload()
+    series.on_show()
+    assert len(done) == 1
+    series.reload()
+    assert len(done) == 2
+    done[0]([dict(symbol="OLD", timeframe="M1", rows=1, synthetic=False)], None)
+    assert series._inventory == []
+    done[1]([dict(symbol="EURUSD", timeframe="M5", rows=4, synthetic=False)], None)
+    assert series.symbol.get() == "EURUSD"
+    assert [item["timeframe"] for item in series._inventory] == ["M5"]

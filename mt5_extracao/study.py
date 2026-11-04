@@ -62,17 +62,37 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def bar_returns(close: pd.Series) -> pd.Series:
+    """Retornos sem preenchimento: denominador zero/não finito deixa o par ausente."""
+    values = pd.to_numeric(close, errors="coerce")
+    previous = values.shift(1)
+    result = values / previous.where(previous.ne(0)) - 1
+    return result.where(np.isfinite(values) & np.isfinite(previous) & np.isfinite(result))
+
+
 def summarize(df: pd.DataFrame) -> dict:
     """Resumo do período para os cartões da aba Análise (dicionário vazio se não houver barras)."""
     if df is None or df.empty:
         return {}
     close = df["close"].astype(float)
-    returns = close.pct_change().dropna()
+    returns = bar_returns(close).dropna()
+    return_slots = max(0, len(df) - 1)
+    omitted = return_slots - len(returns)
     times = pd.to_datetime(df["time"])
     days = max(1, times.dt.date.nunique())
     bars_per_year = len(df) / days * 252
     peak = close.cummax()
-    span = (df["high"] - df["low"]) / close
+    span = (df["high"] - df["low"]) / close.where(close.ne(0))
+    drawdown = close / peak.where(peak.ne(0)) - 1
+    reasons = {}
+    if close.iloc[0] == 0:
+        reasons["Retorno no período"] = "primeiro fechamento zero"
+    if omitted or len(returns) < 2:
+        reasons["Volatilidade"] = "retornos indefinidos no período" if omitted else "menos de dois retornos"
+    if not np.isfinite(span).all():
+        reasons["Amplitude média"] = "fechamento zero ou divisão não finita"
+    if not np.isfinite(drawdown).all():
+        reasons["Queda máxima"] = "topo de referência zero ou divisão não finita"
     summary = {
         "bars": int(len(df)),
         "start": times.iloc[0].to_pydatetime(),
@@ -80,38 +100,46 @@ def summarize(df: pd.DataFrame) -> dict:
         "last": float(close.iloc[-1]),
         "high": float(df["high"].max()),
         "low": float(df["low"].min()),
-        "return_pct": float((close.iloc[-1] / close.iloc[0] - 1) * 100) if close.iloc[0] else 0.0,
-        "volatility_pct": float(returns.std(ddof=0) * np.sqrt(bars_per_year) * 100) if len(returns) > 1 else 0.0,
-        "max_drawdown_pct": float((close / peak - 1).min() * 100),
-        "mean_range_pct": float(span.mean() * 100),
+        "return_pct": float((close.iloc[-1] / close.iloc[0] - 1) * 100) if close.iloc[0] else None,
+        "volatility_pct": float(returns.std(ddof=0) * np.sqrt(bars_per_year) * 100) if len(returns) > 1 and not omitted else None,
+        "max_drawdown_pct": float(drawdown.min() * 100) if np.isfinite(drawdown).all() else None,
+        "mean_range_pct": float(span.mean() * 100) if np.isfinite(span).all() else None,
         "up_bars_pct": float((df["close"] > df["open"]).mean() * 100),
         "mean_volume": float(df["tick_volume"].mean()) if "tick_volume" in df.columns else None,
         "mean_spread": float(df["spread"].mean()) if "spread" in df.columns and df["spread"].notna().any() else None,
+        "return_pairs_total": return_slots, "return_pairs_used": len(returns), "return_pairs_excluded": omitted,
+        "unavailable_reasons": reasons,
     }
+    for key, value in summary.items():
+        if isinstance(value, (float, np.floating)) and not np.isfinite(value):
+            summary[key] = None
     return summary
 
 
-def seasonality(df: pd.DataFrame) -> dict:
+def seasonality(df: pd.DataFrame, *, bar_minutes=None) -> dict:
     """
     Retorno médio (%) e amplitude média (%) por hora do dia e por dia da semana:
     {"hour": DataFrame, "weekday": DataFrame}, colunas return_pct, range_pct e bars.
     Em barras diárias ou maiores não há hora do dia: "hour" vem vazio.
     """
-    empty = pd.DataFrame(columns=["return_pct", "range_pct", "bars"])
+    empty = pd.DataFrame(columns=["return_pct", "range_pct", "bars", "return_samples", "range_samples"])
     if df is None or len(df) < 2:
         return {"hour": empty, "weekday": empty}
     times = pd.to_datetime(df["time"])
+    opens, closes = df["open"].astype(float), df["close"].astype(float)
     data = pd.DataFrame({
-        "return_pct": (df["close"].astype(float) / df["open"].astype(float) - 1) * 100,
-        "range_pct": (df["high"] - df["low"]) / df["close"] * 100,
+        "return_pct": (closes / opens.where(opens.ne(0)) - 1) * 100,
+        "range_pct": (df["high"] - df["low"]) / closes.where(closes.ne(0)) * 100,
         "hour": times.dt.hour.values, "weekday": times.dt.weekday.values})
+    data[["return_pct", "range_pct"]] = data[["return_pct", "range_pct"]].replace([np.inf, -np.inf], np.nan)
 
     def by(column):
         grouped = data.groupby(column).agg(return_pct=("return_pct", "mean"), range_pct=("range_pct", "mean"),
-                                           bars=("return_pct", "size"))
+                                           bars=("return_pct", "size"), return_samples=("return_pct", "count"),
+                                           range_samples=("range_pct", "count"))
         return grouped.sort_index()
 
-    intraday = times.dt.hour.nunique() > 1
+    intraday = bar_minutes < 1440 if bar_minutes is not None else times.dt.normalize().duplicated().any()
     return {"hour": by("hour") if intraday else empty, "weekday": by("weekday")}
 
 

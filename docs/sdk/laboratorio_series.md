@@ -7,8 +7,11 @@ comprovam funcionamento em todas as seleções reais do atalho central.
 
 Entrega inicial solicitada em24/10/2026, sobre AIA-02a. A aba **Laboratório →
 Séries e confluências** usa séries reais da base, congeladas por `datasets`.
-Permanece separada de **Relações e aderência**, cuja fixture F18 continua
-explicitamente demonstrativa, e das análises do livro de operações.
+Em **Relações e aderência**, Inventário e a matriz **Indicador × indicador** são
+reais: a matriz é `service.relation_matrix` sobre a análise congelada em Séries
+(a mesma do CLI `laboratory matrix`). Indicador × alvo, linha do tempo, ganhos e
+perdas, convergências e candidatos continuam fixture F18 demonstrativa, pois o
+alvo T18.6 ainda não tem produtor. Análises do livro de operações são separadas.
 
 ## Visões e percurso
 
@@ -66,19 +69,47 @@ python -m mt5_extracao.cli --json laboratory analyze \
   --as-of 2026-10-01T03:00:00Z --out diagnostico-novo.json
 ```
 
+```sh
+python -m mt5_extracao.cli --json laboratory matrix --analysis diagnostico-novo.json --lag 3
+```
+
+`matrix` lê só o JSON exportado (sem base): Spearman dos valores alinhados na
+grade nominal, preditor deslocado `--lag` barras (0, 1, 3 ou 6), com correlação de
+direção, veredito fora da amostra e IC copiados do par do relatório. Célula sem
+efeito traz `reason` distinto: `UNCONFIRMED_EVENT` (pivô provisório),
+`SAME_SERIES` (diagonal com defasagem), `NO_OVERLAP`, `INSUFFICIENT_PAIRS`,
+`CONSTANT_SERIES` (zero válido constante não é ausência) ou o diagnóstico do canal
+vazio (`WARMUP_EXCEEDS_WINDOW`, `INELIGIBLE_DATA`, `NO_VALUES`).
+
+Relógio: `freeze` recusa antes de congelar quando o fuso do servidor não está
+declarado e explica a ação. Um `broker_utc_offset` fixo só é correto se o
+servidor não muda de horário dentro da janela; servidor com horário de verão
+exige `broker_timezone` com `time_basis = utc`, que `datasets.capture` ainda não
+aceita (contrato pendente na frente de Dados).
+
 Os IDs vêm da resposta de `freeze`. `catalog` não abre banco, Tk ou MT5.
 `sources` é leitura; `freeze` é escrita explícita no store canônico, sem tabela
 paralela. `analyze` reabre os manifests e não altera fontes. `--strategy-only`
 dispensa indicadores; sem `--feature`, usa cinco definições padrão do catálogo.
 `--out` e a exportação da UI recusam sobrescrever arquivos existentes.
 
-O escopo de fontes desta visão é `DatabaseManager.data_inventory` com TFs nativos
-do enum, consumidos por `datasets.capture`. Barras derivadas de intervalos
-arbitrários (por exemplo M7/M9), sessões e fatos materializados com disponibilidade
-real continuam no Analytics/BD18a; não são convertidos em tabela legada nem
-misturados a esta reconstrução nominal. A ligação gráfica desses leitores é
-um próximo contrato com a frente de dados. “Sem série compatível” nesta visão
-não significa que a base inteira esteja vazia.
+O congelamento desta visão continua em `DatabaseManager.data_inventory` com TFs
+nativos do enum, consumidos por `datasets.capture`. M7 e M9 não entram nesse
+enum. A leitura gráfica usa o que já está em `_bars_derived`: `laboratory.derived`
+chama `analytics.resampling.latest_bars` e desenha só a última revisão fechada.
+O rótulo é sintético, âncora 00:00 do calendário da corretora, não é tempo do
+MT5. A UI não agrega, não preenche buraco e não mistura esses tempos com a
+captura nativa. Um tempo sozinho é só a leitura, sem indicador. Dois ou mais
+tempos de dia exato comparam a mesma seleção na grade do fechamento mais curto:
+defasagem 0 descreve, defasagens 1/3/6 são candidatas preditivas, e um intervalo
+sem grupo completo não vira candle nem par. CLI: `laboratory derived --relations`.
+A seleção inicial marca só tempos nativos cuja série inteira
+cabe em 20 mil barras; um tempo maior aparece na lista com a contagem e, ao
+congelar sem janela, preenche De com o início das últimas 20 mil barras em
+vez de carregar a série toda. Recarregar as fontes não descarta uma análise
+que ainda está em curso se a seleção marcada não mudou. Sem `--relations`, `laboratory derived` só lê. Sessões e fatos materializados com
+disponibilidade real continuam no Analytics/BD18a. “Sem série compatível”
+nesta visão não significa que a base inteira esteja vazia.
 
 ```python
 from mt5_extracao.laboratory import analyze, capture_selection, catalog
@@ -87,6 +118,52 @@ snapshots = capture_selection(db, symbol="EURUSD", timeframes_selected=["M15", "
 diagnostic = analyze(snapshots, strategy_key="ema_atr",
                      feature_ids=["momentum.rsi_14"], as_of="2026-10-01T03:00:00Z")
 ```
+
+### Descritiva × preditiva (LAB-07)
+
+Cada par traz `relation`: `DESCRIPTIVE` na defasagem 0 (co-movimento) e
+`PREDICTIVE_CANDIDATE` com defasagem 1/3/6 (o preditor antecede o alvo na grade).
+Os preditivos trazem `out_of_sample`: corte cronológico fixo 70/30 (não
+otimizado), correlação e n de ajuste e fora da amostra e `verdict`
+(`HOLDOUT_CONSISTENT`, `HOLDOUT_SIGN_FLIP`, `HOLDOUT_WEAK`, `FIT_WEAK`,
+`WITHIN_NULL`, `NO_GAIN_OVER_PERSISTENCE`, `HOLDOUT_INSUFFICIENT` com menos de 30
+pares). Dois controles no trecho fora da amostra: `null_band_95` (quantil 95% de
+|r| sob deslocamentos circulares do preditor, que preservam autocorrelação e
+retenção) e `naive_holdout_correlation` (o próprio alvo com a mesma defasagem).
+Só é consistente o que supera ambos e cujo `holdout_ci_95` (bootstrap de
+blocos móveis, 200 reamostras, semente fixa) exclui zero; senão `CI_INCLUDES_ZERO`.
+Defasagens preditivas fixas: 1, 3 e 6 barras da grade (`PREDICTIVE_LAGS`). Campos aditivos: o `analysis_id`
+de seleções existentes não muda. Consistente fora da amostra não é previsão
+calibrada, lucro nem validação de estratégia.
+
+Eventos não confirmados: canais de pivô (`structure.*`, fractais e ZigZag causal)
+trazem `events`. Em top/bottom, `basis=confirmation_bar_close`: o valor só existe
+a partir do fechamento da barra de confirmação, nunca na origem; `confirmations`,
+`delay_bars` (mín/mediana/máx origem→confirmação) e
+`bars_since_last_confirmation` expõem atraso e envelhecimento do último pivô
+retido. A saída `provisional` é desenho (`usable=false`): diagnóstico
+`UNCONFIRMED_EVENT` e todos os seus pares saem com `reason=UNCONFIRMED_EVENT`,
+sem correlação. Demais canais têm `events=null`.
+
+### Estudo do gráfico (LAB-08)
+
+A bancada gráfica grava um estudo JSON v2 (`laboratory/annotations.py`):
+`analysis_id`, identidade (ativo, TF da grade, seleção, e por série id/nome/TF/
+unidade/parâmetros/versão/fonte), anotações (`hline`, `vline`, `region`, `note`),
+séries ocultas e removidas da vista e a vista (zoom `xlim` e cursor). Ocultar ou
+remover uma série altera só o estudo, nunca o relatório congelado. Reabrir recusa
+estudo de outra análise ou que cite série ausente; o v1 da prévia anterior ainda
+é lido até a v2 ser aceita.
+
+```sh
+python -m mt5_extracao.cli --json laboratory study \
+  --analysis diagnostico-novo.json --study estudo.json
+```
+
+O comando valida e resume (anotações, séries visíveis/ocultas/removidas, vista)
+sem Tk. O Estudo MT5 (`chart_study`) segue com outra responsabilidade: captura
+e notas sobre o gráfico do terminal; o estudo do Laboratório não o substitui nem
+abre uma janela MT5.
 
 O workflow AIA-01 descobre esses comandos no argparse real e os executa por
 `cli.run`, com os mesmos envelopes/erros, sem shell ou mouse. Não há outro
@@ -189,3 +266,22 @@ Capturas de QA do componente real, em Xvfb próprio (sem conta/terminal):
 
 Detalhe ampliado e tema claro estão na mesma pasta. A validação e seus cortes
 estão na [evidência](../evidencias/T20_22_LABORATORIO_SERIES_20261024.json).
+
+### Contagem de eventos de pivô (28/10/2026)
+
+Canais de fractais/ZigZag acrescentam `event_confirmation_ends`: em cada barra da
+grade, o fechamento nominal da confirmação que sustenta o valor retido. Origem,
+barra de confirmação e disponibilidade nominal do último pivô ficam em
+`events.latest`. Recebimento histórico continua não comprovado.
+
+Cada par acrescenta `event_sample` com `left_events`, `right_events` e
+`unique_event_pairs`. As contagens usam só pares válidos, após lag e exclusões;
+um lado sem pivô tem `None`, não zero. O holdout tem sua própria contagem em
+`out_of_sample.event_sample`. Não são tamanho efetivo de amostra nem prova de
+independência; os controles 70/30 continuam por barras. O hover das relações e
+matrizes mostra essa diferença. Relatórios antigos não recebem contagens
+inferidas. Fórmulas, parâmetros e limiares continuam os mesmos.
+São eventos representados pelos valores dos pares; um evento anterior ao corte
+que continua retido no holdout conta como representado, sem se tornar uma nova
+confirmação. O resumo JSON de `laboratory derived --relations` preserva essas
+contagens e os metadados do canal, sem despejar preços por barra.
