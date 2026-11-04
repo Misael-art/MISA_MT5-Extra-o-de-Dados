@@ -155,11 +155,16 @@ def catalog(db=None):
     return envelope
 
 
-def relations(db, *, symbol=None, timeframe=None, page_size=50, cursor=None):
+def relations(db, *, symbol=None, timeframe=None, analysis_id=None, page_size=50, cursor=None):
     """Índice paginado dos artefatos BD15b; nenhum cálculo, DDL ou origem ativa."""
     selection = dict(kind="saved_feature_relations", symbol=symbol if isinstance(symbol,str) else None,
-                     timeframe=timeframe if isinstance(timeframe,str) else None)
+                     timeframe=timeframe if isinstance(timeframe,str) else None,
+                     analysis_id=analysis_id if isinstance(analysis_id,str) else None)
     try:
+        if analysis_id is not None:
+            import re
+            if not isinstance(analysis_id,str) or not re.fullmatch(r"[a-f0-9]{64}",analysis_id):
+                raise QueryError("BAD_RELATION_ID", "Informe o identificador hexadecimal de64 caracteres do resultado.")
         for key, value in (("symbol", symbol), ("timeframe", timeframe)):
             if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise QueryError("BAD_FILTER", f"{key} precisa ser texto não vazio ou null.")
@@ -171,7 +176,7 @@ def relations(db, *, symbol=None, timeframe=None, page_size=50, cursor=None):
         digest = _selection_hash(selection)
         after, expected = _decode_cursor(cursor, digest) if cursor is not None else (None, None)
         filters, params = [], {}
-        for column, key in (("symbol", "symbol"), ("tf", "timeframe")):
+        for column, key in (("symbol", "symbol"), ("tf", "timeframe"), ("analysis_id", "analysis_id")):
             if selection[key] is not None:
                 filters.append(column+"=:"+key);params[key] = selection[key]
         where = " WHERE "+" AND ".join(filters) if filters else ""
@@ -231,6 +236,30 @@ def relations(db, *, symbol=None, timeframe=None, page_size=50, cursor=None):
     except SQLAlchemyError:
         result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="error", selection=selection, items=[],
             errors=[dict(code="BASE_UNAVAILABLE", message="Não foi possível ler as relações desta base.")])
+    json.dumps(result, allow_nan=False)
+    return result
+
+
+def feature_snapshot(db, manifest_id):
+    """Contratos exatos de uma captura para escolher pares; não completa com definições atuais."""
+    from mt5_extracao.analytics import relation_dto
+    try:
+        snapshot = datasets.load(db, manifest_id)
+        manifest = snapshot.manifest
+        features = []
+        definitions = snapshot.feature_definitions if "feature_definitions" in manifest["frames"] else []
+        for definition in definitions:
+            descriptor = dict(feature_id=definition["feature_id"], algorithm_version=definition["algorithm_version"],
+                unit=definition.get("unit"), value_type=definition.get("value_type"), definition=definition)
+            reason = relation_dto.pair_contract_reason([descriptor])
+            features.append(dict(**descriptor, numeric_contract_compatible=reason is None, reason=reason))
+        result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="ok", manifest_id=snapshot.manifest_id,
+            scope={key:manifest[key] for key in ("symbol","timeframe","source","time","period")},
+            features=features, errors=[], reasons=[] if features else
+                ["A captura não contém versões armazenadas. Selecione as entradas em Séries e confluências e congele novamente."])
+    except (ValueError, KeyError, TypeError, SQLAlchemyError):
+        result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="error", manifest_id=str(manifest_id),
+            features=[], errors=[dict(code="SNAPSHOT_UNAVAILABLE", message="Captura indisponível ou sem integridade; recupere a origem ou congele a seleção novamente.")])
     json.dumps(result, allow_nan=False)
     return result
 

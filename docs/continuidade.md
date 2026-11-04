@@ -4004,3 +4004,71 @@ visual de pares, demais tipos/alvos, exportação e contrato integral BD18b/BD19
 permanecem nas fichas próprias. Qualificação causal/financeira/nativa/Windows
 físico não é inferida. Próxima frente: criação de pares pelo fluxo visual atual,
 com versões/amostra/corte explícitos e persistência pelo mesmo serviço.
+
+
+## Continuidade do roadmap — BD19b-CREATE, 29/10/2026
+
+Branch `codex/criar-relacoes-no-laboratorio`, sobre
+`e6cdf1a72e74766915b55d84e57f433bac248a40`/
+[PR231](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/231).
+Baseline aceito reutilizado112 host/74 PostgreSQL CI e prévia anterior; a
+consulta podia mostrar resultados, mas a criação ainda exigia SDK/CLI.
+
+Criar par, na subvisão Relações salvas, abre o formulário e retorna ao mesmo
+serviço de persistência BD15b. Sem contexto, Selecionar em Séries leva à seleção
+existente. O relatório fornece capturas; `inspect_feature_snapshot` devolve os
+contratos exatos e a compatibilidade numérica, sem catálogo live ou cálculos.
+Corte com fuso, método, defasagem, mínimos, réplicas/semente, blocos/família e
+recursos são explícitos. `query_saved_relations(..., analysis_id=...)`/CLI
+`relation-list --analysis-id` selecionam o resultado confirmado sem percorrer
+todas as páginas; cursores anteriores precisam reiniciar pelo novo recorte.
+[Contrato e fluxo](sdk/api.md#seleção-congelada-para-criar-pares-bd19b-create).
+
+Contraexemplo antes da correção: contrato legado NUMBER com saída congelada
+category/unidade direction_code_-1_0_1 recebeu efeito+1/OK. Cálculo e DTO agora
+compartilham o teste do tipo de saída congelado; esse caso fica sem efeito,
+UNSUPPORTED_VALUE_TYPE. Contratos numéricos válidos antigos continuam legíveis;
+bytes/histórico não são reescritos. A assinatura dos pares avança explicitamente.
+Campos e metadados de uma captura anterior são limpos na troca/erro, e resposta
+obsoleta não restaura escolhas antigas. A política de escrita é criada por
+operação; CLI --persist também recebe o guarda configurado, como os produtores.
+
+Trabalho no run_bg existente, campos desabilitados durante cálculo, cancelamento
+por botão/fechamento/Escape e espera da confirmação. Cancelamento na transação
+não publica parcial; se o commit já ocorreu, o resultado é preservado/exibido.
+Foco inicial, diálogo centralizado, navegação legível Anterior/Próxima e seleção
+do ID salvo. Nenhum executor/store/job alternativo; o novo módulo é apenas o
+componente do formulário da UI.
+
+Primeira integração de contratos52 aprovados/1 falha: captura sem versões não
+possuía feature_definitions; agora responde lista vazia e orientação, sem tratar
+como captura corrompida. Primeira UI32 aprovados/1 falha: estado readonly veio
+como Tcl_Obj no teste; comparação textual corrigida, validação preservada.
+Rodada qualificada35 aprovados. Regressão ampliada165 aprovados/4 PostgreSQL
+pendentes no host; após limpar o contexto na troca de captura e ampliar os
+casos de cancelamento,22 UI aprovados; apresentação de fonte/offset2 aprovados.
+Contagens se sobrepõem, sem soma como suíte única. Timeout60s original, uma
+thread numérica e uma suíte pesada por vez. Um caso PostgreSQL novo segue na
+CI existente; o host não tem servidor isolado para qualificação indireta.
+
+Launcher fonte em QA sintética: começa sem relações, orienta Séries, seleciona
+três versões (inclui o código categórico), congela e abre o formulário. Categoria
+recusada, cancelamento e quota de1B após abrir a tela deixam zero relações;
+quota restaurada salva+1/160 pares e seleciona exatamente o artefato. Repetição
+UNCHANGED preserva o primeiro recibo. Sem mínimos reduzidos automaticamente:
+réplicas29/semente19/corte fixo são parâmetros de QA explícitos. O atraso de3s
+é controlado para inspecionar a espera, sem promessa de latência. Primeiro
+ensaio enviou seleção antes de os controles estarem visíveis; preservado e
+repetido com eventos reais após o layout. Capturas inspecionadas mostram guia,
+categoria, espera, recusa e resultado1280×920/880×760, sem exceções/pendências.
+CLI oficial=SDK, recusa da categoria legada/trava de recursos e recibo inalterado;
+2.060 fatos preservados. Doctor offline16OK/2avisos/0falhas.
+
+Recibos de fonte/pacote/GUI/CLI/CI em
+`state/qa-tmp/laboratory-create-relations/`; SHA remoto, PR e aceite da prévia
+no registro central. A prévia exige276 arquivos conferidos, nova execução e
+comparação com o fonte. Sem negociação, banco privado como fixture, pins
+alterados, merge/release. Outros tipos/alvos, exportação integral e aceites
+causais/financeiros/nativos/Windows físico permanecem abertos. Próxima frente:
+exportar/importar relações com seus contratos e origens pelo mesmo serviço,
+preservando qualificação e recuperação verificável.

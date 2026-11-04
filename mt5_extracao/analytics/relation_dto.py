@@ -187,6 +187,16 @@ def pair_analysis_id(manifest_id, settings, sample_hash, implementation, lineage
     return hashlib.sha256(feature_store._canonical_json(payload, "pair identity").encode()).hexdigest()
 
 
+def pair_contract_reason(descriptors):
+    """Compatibilidade numérica pelo contrato congelado; sem consultar o registry atual."""
+    if any(side.get("value_type") != "NUMBER" or
+           side.get("definition", {}).get("output_kind") not in (None, "number") for side in descriptors):
+        return "UNSUPPORTED_VALUE_TYPE"
+    if any(not side.get("unit") for side in descriptors):
+        return "UNDECLARED_UNIT"
+    return None
+
+
 def build_pair_relation_dto(*, left, right, relation, scope, population, provenance, generated_at_utc,
                             synthetic_fixture=False):
     """DTO2 de séries pareadas; DTO1 de indicador/alvo futuro permanece inalterado."""
@@ -208,8 +218,8 @@ def build_pair_relation_dto(*, left, right, relation, scope, population, provena
     for field in ("effect", "effect_ci_low", "effect_ci_high"):
         if relation[field] is not None and not -1 <= float(relation[field]) <= 1:
             raise ValueError(f"relation.{field} precisa estar entre -1 e 1.")
-    if relation["effect"] is not None and any(side.get("value_type") != "NUMBER" for side in (left, right)):
-        raise ValueError("Coeficiente contínuo exige dois contratos NUMBER explícitos.")
+    if relation["effect"] is not None and pair_contract_reason((left, right)) is not None:
+        raise ValueError("Coeficiente contínuo exige dois contratos NUMBER com saída numérica e unidade declaradas.")
     _required_text(scope, ("symbol", "timeframe", "lag_rule"), "scope")
     lag = scope.get("lag_bars")
     if isinstance(lag, bool) or not isinstance(lag, int) or lag < 0:
