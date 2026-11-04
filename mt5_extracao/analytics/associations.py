@@ -540,8 +540,10 @@ def analyze_pattern_baseline(samples, *, frozen, as_of, alpha, confidence,
     if supplied_hash != hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest():
         raise ValueError("Baseline congelado foi alterado.")
     scope, work = _pattern_frame(samples, cutoff, labels=True)
-    if scope != frozen["scope"] or (work.decision_at_utc <= _utc_timestamp(frozen["fit_as_of_utc"], "fit_as_of_utc")).any():
-        raise ValueError("Avaliação precisa usar a mesma fonte após o ajuste do baseline.")
+    if scope != frozen["scope"]:
+        raise ValueError("Avaliação precisa usar a mesma fonte/horizonte do baseline congelado.")
+    if (work.decision_at_utc <= _utc_timestamp(frozen["fit_as_of_utc"], "fit_as_of_utc")).any():
+        raise ValueError("Avaliação precisa começar após o ajuste do baseline.")
     allowed = set(frozen["strata"])
     excluded = int((~work.stratum_id.isin(allowed)).sum())
     usable = work.loc[work._received & work.stratum_id.isin(allowed)].copy()

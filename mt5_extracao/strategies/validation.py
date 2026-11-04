@@ -66,6 +66,10 @@ def plan_pattern_folds(observations: pd.DataFrame, roles: dict, *, embargo_secon
         raise ValueError("Identidade e sessão de cada observação são obrigatórias.")
     for field in ("decision_at_utc", "feature_available_at_utc"):
         work[field] = _utc_series(work[field], field)
+    if "signal_bar_start_utc" in work:
+        work["signal_bar_start_utc"] = _utc_series(work["signal_bar_start_utc"], "signal_bar_start_utc")
+        if (work["signal_bar_start_utc"] > work["decision_at_utc"]).any():
+            raise ValueError("Barra de sinal não pode começar depois da decisão.")
     for field in ("label_end_utc", "label_available_at_utc"):
         work[field] = _utc_series(work[field], field, allow_missing=True)
     if (work["feature_available_at_utc"] > work["decision_at_utc"]).any():
@@ -78,11 +82,13 @@ def plan_pattern_folds(observations: pd.DataFrame, roles: dict, *, embargo_secon
     for role in ("train", "validation", "holdout"):
         start, end = intervals[role]
         selected = (work["decision_at_utc"] >= start) & (work["decision_at_utc"] < end)
+        if "signal_bar_start_utc" in work:
+            selected &= work["signal_bar_start_utc"] >= start
         next_start = intervals[{"train": "validation", "validation": "holdout"}[role]][0] if role != "holdout" else None
         safe_end = min(end, next_start - pd.Timedelta(seconds=embargo_seconds)) if next_start is not None else end
         embargoed = selected & (work["decision_at_utc"] >= safe_end)
         complete = work["label_end_utc"].notna() & work["label_available_at_utc"].notna()
-        crossed = selected & ~embargoed & complete & (work["label_end_utc"] >= safe_end)
+        crossed = selected & ~embargoed & work["label_end_utc"].notna() & (work["label_end_utc"] >= safe_end)
         received = selected & complete & (work["label_available_at_utc"] <= end)
         scored = selected & ~embargoed & ~crossed & received & (work["label_end_utc"] < end)
         censored = selected & ~embargoed & ~crossed & ~received

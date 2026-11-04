@@ -14,6 +14,35 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P06 — quatro famílias e recibo persistente em revisão — 03/11/2026
+
+Fonte local `codex/t134-p06-fluxo-quatro-familias`, base P05/P04 local, sem
+push/PR enquanto o guarda compartilhado bloquear novas branches remotas. A
+fábrica de quatro famílias gera definições P02 com limiar/horário/lookback
+declarados e referência de rompimento calculada de máximas anteriores. O fluxo
+usa `datasets.Snapshot` e o namespace do manifesto; relógio de barras derivadas
+é usado quando comprovado, senão replay de fechamento é identificado como
+hipótese. Calendário observado é exigido no padrão; `synthetic_utc_day` é só
+ensaio controlado. Acesso ao papel é lançado no ledger antes da avaliação.
+Sinais e desfechos têm IDs separados no `feature_store`, com disponibilidade
+respectiva; recibo e fatos são gravados numa transação. Validação P04 usa apenas
+suporte treinado antes da janela e purga a barra de sinal que cruza a fronteira;
+simulação P05 exige plano e custos tipados ou retorna bloqueio. O preset de
+pesquisa carrega hashes de fonte, definição, planos e código, sem `.set` ou
+autorização de ativação. Testes sintéticos provaram duas bases de mesmo símbolo,
+reinício, zero aprovados, consulta as-of e rollback do recibo. Aprovação
+estatística/econômica e reserva final continuam falsas; CI, dados reais,
+launcher/GUI, Windows físico, MT5 e Tester não foram validados nesta fonte.
+O conjunto dirigido P01–P06/datasets/experimentos passou 89 testes no Linux;
+seis testes do fluxo foram repetidos depois da contagem de negativos.
+Um teste PostgreSQL P06 foi ignorado sem URL local e precisa passar na CI da PR.
+O serviço P06 também é acessível por SDK e pela CLI `experiments pattern-*`:
+criação de campanha, reserva de tentativa, avaliação de snapshot e consulta
+de status. `synthetic_utc_day` exige escolha explícita e só serve para QA.
+Artefatos privados seguem o manifesto existente, sem cópia. Próximo: P07,
+consumidores read-only da mesma avaliação, depois ensaio real elegível e gates
+externos separados.
+
 ## T13.4-P05 — simulação pelo motor existente em revisão — 03/11/2026
 
 Fonte local `codex/t134-p05-simulacao-economica`, baseada em P04 para revisão

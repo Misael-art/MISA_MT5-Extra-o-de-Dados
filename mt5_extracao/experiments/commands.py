@@ -45,11 +45,29 @@ def add_parser(sub):
     p.add_argument("--key", required=True)
     p.add_argument("--role", choices=("train", "validation", "holdout"), default="holdout")
     p.add_argument("--purpose", choices=("evaluation", "tuning"), default="evaluation")
+    p = commands.add_parser("pattern-create", help="registra campanha T13.4 com roster de snapshots congelados")
+    p.add_argument("--file", required=True, help="definição JSON da campanha")
+    p = commands.add_parser("pattern-request", help="reserva tentativa T13.4 sob orçamento da campanha")
+    p.add_argument("--protocol", required=True)
+    p.add_argument("--key", required=True)
+    p.add_argument("--definition", required=True, help="definição JSON tipada da família")
+    p.add_argument("--role", choices=("train", "validation", "holdout"), default="train")
+    p.add_argument("--origin", choices=("manual", "automatic"), default="manual")
+    p.add_argument("--purpose", choices=("evaluation", "tuning"), default="evaluation")
+    p.add_argument("--discard-reason", default="")
+    p = commands.add_parser("pattern-evaluate", help="avalia tentativa admitida no snapshot da campanha; sem ordens")
+    p.add_argument("request_id")
+    p.add_argument("--manifest", required=True)
+    p.add_argument("--session-mode", choices=("observed", "synthetic_utc_day"), default="observed",
+                   help="synthetic_utc_day é exclusivo de QA; não qualifica calendário real")
+    p = commands.add_parser("pattern-status", help="consulta campanha T13.4 e exposição; não recalcula")
+    p.add_argument("protocol_id")
     parser.set_defaults(func=run)
 
 
 def run(args, ctx):
     from .. import cli
+    from .. import sdk
     action = args.experiment_action
     if action == "create":
         definition = _read(args.file)
@@ -63,6 +81,17 @@ def run(args, ctx):
         result = service.evaluate(ctx.db, args.request_id, config=ctx.config)
     elif action == "status":
         result = store.status(ctx.db, args.protocol_id)
+    elif action == "pattern-create":
+        result = sdk.create_pattern_campaign(ctx.db, _read(args.file))
+    elif action == "pattern-request":
+        result = sdk.register_pattern_attempt(ctx.db, args.protocol, args.key, _read(args.definition),
+                                              role=args.role, origin=args.origin, purpose=args.purpose,
+                                              discard_reason=args.discard_reason)
+    elif action == "pattern-evaluate":
+        result = sdk.evaluate_pattern_attempt(ctx.db, args.request_id, args.manifest,
+                                              session_mode=args.session_mode)
+    elif action == "pattern-status":
+        result = sdk.pattern_campaign_status(ctx.db, args.protocol_id)
     else:
         result = service.holdout_access(ctx.db, args.protocol_id, args.key, role=args.role, purpose=args.purpose)
     cli._data(**result)
