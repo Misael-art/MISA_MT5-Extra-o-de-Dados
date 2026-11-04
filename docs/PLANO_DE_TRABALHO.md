@@ -25,6 +25,23 @@ Comando de testes padrão (use o Python do `.venv`):
 
 ## Painel de status
 
+**Atualização de 03/11/2026:** a composição de desenvolvimento reconciliada é
+App E14 `0993ae7`/PR279, HADOUKEN `d4d389e`/PR84 e Safety `27b8599`/PR11.
+P00 e P01–P07 formam uma cadeia local de revisão; GUI C, teste LAB-10 e
+regressão LAB-03 têm branches próprias. Na composição local de QA anterior,
+um SQLite sintético isolado foi lido pelo launcher com entrada isolada da
+branch GUI C até a guia Padrões, com recibo persistido exploratório e zero
+eventos; arquivos de QA removidos. Essa composição não está instalada. A prévia do
+menu segue em `57d13ee`. O guarda central compartilhado ainda impede criar
+remotamente as branches de revisão; no CI de `19627c3`, Linux e os demais
+jobs passaram, enquanto Windows falhou no gráfico estreito. Corretivo
+`3312ea3` publicado; na ponta `0993ae7`, PostgreSQL, instaladores e lint
+passaram, Ubuntu/Windows ainda executavam em 04/11 00:50 UTC.
+S09 2.13 compilou e conciliou Tester/replay com pacote sintético no Linux/Wine;
+DEMO ao vivo, netting, Windows físico e dado real elegível seguem gates próprios.
+O registro de
+fonte, testes e limite está em [continuidade](continuidade.md).
+
 **Atualização de migração — 2026-10-24:** não haverá acesso ao host antigo **nem
 ao SD**. Usar o [bootstrap e recuperação pela internet](../CONTINUAR_AQUI.md);
 as verificações do pacote SD do dia21 são históricas. Código/diagnóstico no
@@ -210,7 +227,19 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T13.3b | Produtores Analytics incrementais, retomáveis e medidos (checkpoint, limites e recuperação) | T13.3, T15.9 | ✅ integrada no [PR116](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/116), merge 814ded9; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T13.2 | Guarda de características com data de disponibilidade e consulta *as-of* (A2) | T13.1 | ✅ integrada no [PR114](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/114), merge 2efdabf; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T13.3 | Perfis de volume, sazonalidade e regimes (A3) | T13.2 | ✅ integrada no [PR115](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/115), merge 2ca2fc0; evidências compatíveis reaproveitadas; Windows físico pendente |
-| T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
+| T13.4 | Hipóteses H01 a H05 e motor amplo de descoberta/avaliação com validação temporal (A4) | T13.3; Dados/F18/F19/F20 por capacidade | Estudo P00 registrado em02/11/2026; P01–P07 implementados localmente em revisão, sem aceite M1; P08–P11 planejados no [roteiro](analytics/DESCOBERTA_PADROES.md). M1 exige quatro famílias ponta a ponta e gates reais/CI próprios; não conclui toda T13.4 |
+| T13.4-P00 | Estudo de arquitetura e roadmap de descoberta de padrões | Pedido do proprietário02/11/2026 | Entrega documental: código/contratos/base em leitura inspecionados, fontes primárias verificadas e repasse pronto; sem motor ou resultado financeiro novo |
+| T13.4-P01 | Catálogo e elegibilidade por família, fonte e período | BD03/04/05, T20.4/6 existentes | Implementação em revisão local: inventário por namespace, qualificação por recorte/família e snapshot compacto pelo store canônico; 57 testes de Dados/qualificação e 17 de relógio/P01 passam no Linux. Publicação/CI/launcher e validação de base real ainda pendentes; relógio variável bloqueado com motivo. |
+| T13.4-P02 | Gramática tipada, referências, eventos e desfechos | P01; BD06/08/18 | Núcleo em revisão local: AST JSON limitada, hash de definição, prefixo=lote após reinício, revisões e desfechos censurados/recebidos; 9 testes sintéticos passam. Features/invalidações não suportadas são recusadas explicitamente. Persistência de campanha P03, integração com snapshots/famílias P06, CI e aceite real pendentes. |
+| T13.4-P03 | Campanha, tentativas, orçamento e reserva auditável | P02; T20.12/24/25 | Implementação em revisão local: protocolo imutável com roster e janelas UTC globais, tentativas serializadas no registro de experimentos, teto agregado e acesso à reserva auditado por fonte. 57 testes de campanha/experimentos passaram no Linux; 1 PostgreSQL foi ignorado sem URL local. CI, publicação e qualificação externa da reserva pendentes. |
+| T13.4-P04 | Baseline e validação temporal com seleção controlada | P03; T20.13/F18 | Implementação em revisão local: cortes UTC globais, purga por intervalo, embargo em segundos, suporte de baseline congelado no treino, inferência pareada por sessão/bloco e Bonferroni da grade inteira. Nulo autocorrelacionado e efeito conhecido testados sinteticamente; P06 ainda precisa ligar avaliação a eventos/snapshots persistidos. Sem qualificação financeira ou da reserva. |
+| T13.4-P05 | Adaptador de simulação e custos explícitos | P02/03; T20.3/5/8/9 | Implementação em revisão local: eventos P02 viram sinais após disponibilidade, com mercado na abertura seguinte, uma posição, stop/alvo/prazo tipados e modelo de custo com fonte/vigência/cenário. Fills, lote, PnL e curvas vêm do backtester existente; ambiguidade stop-first e eventos sem fill são relatados. Ensaios sintéticos não qualificam custo real, portfólio ou `.set` nativo; integração P06/CI pendentes. |
+| T13.4-P06 | Fluxo completo de quatro famílias e preset de pesquisa | P04/05; T19.25/T20.16/17 | Implementação em revisão local: quatro definições tipadas, snapshots por namespace, eventos/desfechos no feature_store e recibo atômico no ledger de experimentos; validação P04 e simulação P05 consomem a mesma tentativa. SDK/CLI `experiments pattern-*` expõem campanha, tentativa, avaliação e status. Preset de pesquisa registra hashes e veda `.set`/ativação. Fluxo sintético suporta zero aprovados, duas bases de mesmo símbolo e reinício. Aceite real, CI e integração de consumidores P07 pendentes. |
+| T13.4-P07 | Laboratório/SDK/CLI/Dashboard e aceite M1 | P06; T13.6/T20.22/23/DASH-06 | Consumidores em revisão local: SDK/CLI, HTML, guia Padrões do Laboratório e Dashboard leem o mesmo recibo persistido com namespace e corte. Dashboard mantém exploração sem falsa aprovação. Ensaios sintéticos de isolamento, reinício e consulta dirigidos; launcher offline com SQLite de QA exibiu estado vazio e recibo persistido exploratório. Amostra real elegível, CI, PR, PostgreSQL e Windows físico ainda pendentes. M1 integral não aceito. |
+| T13.4-P08 | Sequências, geometria, regimes, volume e combinações | M1; T13.4/F18/BD08/12 | Planejada; limites de complexidade, H01–H05 preservadas e sem ajuste futuro |
+| T13.4-P09 | Padrões entre ativos e grupos | P08; BD16/T18.3/4/T20.13 | Planejada; sincronização as-of e validação por ativo/grupo, sem causalidade presumida |
+| T13.4-P10 | Similaridade e descoberta explicável avançada | P08; P09 quando multiativo | Planejada e condicionada a ganho verificável sobre regras simples sob protocolo equivalente |
+| T13.4-P11 | Observação prospectiva e suspensão sem ordens | M1; T13.8/T20.18/19 | Planejada; sinais anteriores aos resultados, retomada e alarmes calibrados; janela futura real própria |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
 | DASH-00 (T13.6/App) | Plano do Dashboard Contínuo de Ativos e Robôs | Pedido do proprietário de 30/10/2026 | ✅ registro documental: [contratos, etapas DASH-01…14 e critérios de aceite](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md); implementação pendente, dependências F13 e aceites MQL5 separados |
@@ -3384,7 +3413,10 @@ A T12.4 começa por ensinar o executor a criar ordens pendentes.
 
 ## Fase 13 — MT5x Analytics: catálogo de evidências sobre ativos
 
-**Situação: planejada. Nada desta fase foi implementado.** Especificação do dono do projeto (2026-10-13), guardada
+**Situação reconciliada em02/11/2026:** T13.2/3/3b integradas conforme o painel;
+T13.1 e consumidores têm aceites delimitados. O motor T13.4 permanece pendente,
+com estudo e recortes P00–P11 no [roteiro ampliado](analytics/DESCOBERTA_PADROES.md).
+O levantamento abaixo conserva contexto histórico. Especificação do dono do projeto (2026-10-13), guardada
 como veio em [analytics/ESPECIFICACAO.md](analytics/ESPECIFICACAO.md) (as seções citadas abaixo como "§" são de lá).
 Esta seção é o plano de implantação: o que já existe no código, onde a especificação e o código divergem, e as
 tarefas na ordem.
@@ -3531,6 +3563,14 @@ real por corretora.
   ativos. Entram como tarefas próprias quando houver dados.
 
 ### T13.4 — Hipóteses H01 a H05 e o motor de avaliação (A4)
+
+**Detalhamento solicitado em02/11/2026:** o
+[estudo e roteiro P00–P11](analytics/DESCOBERTA_PADROES.md) amplia a gramática para
+além de indicadores, preserva H01–H05 e vincula cada incremento aos serviços e
+donos existentes. O proprietário pediu esta entrega primeiro, para outro agente
+implementar. P00 não conclui o motor: M1 exige P01–P07 ponta a ponta; as famílias
+adicionais, hipóteses legadas e observação têm seus aceites P08–P11. O exemplo
+“Infut/5h25/1,3%/0,75%” permanece rascunho até definição de sua semântica.
 
 - **Objetivo:** descrever uma hipótese em um arquivo (condição, janela, desfecho, universo, custos), avaliá-la e
   guardar o resultado com amostra, taxa-base, *lift*, expectativa líquida, intervalo de confiança e resultado fora
@@ -4465,6 +4505,12 @@ contexto correspondem ao pacote real. Isso não aprova o ciclo interrompido.
 App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
 
 ### E14 — proteção comum e auditoria nativa em qualificação
+
+LAB-10, corretivo isolado do teste Tk de monitor em 03/11/2026: o pedido de
+geometria negativa é conferido separadamente do posicionamento que o gerenciador
+real permite. Reproduziu 1 falha no host de um monitor; depois o módulo Séries
+passou 29 testes/1 ignorado. Runtime inalterado. Monitor físico à esquerda,
+atalho e demais LAB-01…10 não são aprovados por esta simulação.
 
 Corretivo separado de inicialização da GUI, 03/11/2026: o chamador de
 `verificar_dependencias_criticas` passa a consumir `(sucesso, faltantes)`,

@@ -1,5 +1,35 @@
 # Retomar MT5X em um host limpo
 
+## Revalidação de GUI, Séries e composição — 04/11/2026
+
+App E14 `0993ae7bdf2e3354afcccf45dd2a22069a8b460c` continua na PR279
+draft; HADOUKEN `d4d389ee0800d209bdba48ab36e392e6907949a4` na PR84
+draft e Safety `27b85992af4b10f4cd7687f370142ac88f515375` detached.
+O manifesto mantém estes pins e `setup_development.py --plan` terminou sem erro;
+o App declarado ali é o bootstrap `65e621a`, distinto do checkout E14 e da prévia.
+A prévia segue em `57d13ee`. No run 41747563787 da PR279, Ubuntu,
+PostgreSQL, instaladores Linux/Windows e lint passaram; Windows pytest ainda
+executava na consulta de 04/11 01:40 UTC. Não há aceite Windows CI final.
+
+GUI C: branch local `codex/gui-dependencias-inicializacao` em `b0733d9`,
+base E14 `0993ae7`; código `bf38e4a`. O launcher oficial foi repetido na
+fonte rebatida `13f6b97` em Linux/Xvfb com configuração e SQLite isolados:
+janela aberta e `quick_check` OK com dependências presentes; ausência simulada
+de `pandas` mostrou diálogo/instalador oficial sem criar banco ou instalar.
+Cinco testes focados passaram e doctor offline deu 16 OK/2 avisos/0 falhas.
+Recibo ampliado na própria branch C; arquivos temporários removidos.
+
+LAB-10 D: branch local `codex/lab-series-monitor-geometry` em `802e5de`,
+base de código C `13f6b97`. O módulo de UI de Séries passou nesta fonte em
+Linux/Xvfb: 29 aprovados, 1 ignorado, 16 avisos de layout, 127,52 s.
+A asserção confere a geometria negativa solicitada e ampliar/restaurar;
+posição física em monitor esquerdo e percurso pelo atalho seguem pendentes.
+C e D não têm branch remota/PR por causa da guarda central compartilhada;
+os SHAs locais estão no registro central. Não foi feito merge, atualização da
+prévia, ensaio DEMO ou Windows físico. Próximo: conferir o resultado Windows
+da PR279, resolver a guarda para publicar incrementos separados e continuar
+os gates funcionais LAB/P01–P07 e operacionais E14 por fonte exata.
+
 ## E14 — largura tardia da comparação no Windows CI — 03/11/2026
 
 Na PR279, App `19627c3c74dc2efafc60b2e417f49fa93d3d71f6`, run
@@ -17,6 +47,199 @@ no marco de publicação; Windows físico e percurso
 pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
+
+## Composição e limites atuais — 03/11/2026
+
+Raiz única `/home/misael/Projects/MT5X`: App `repos/app`, HADOUKEN
+`repos/hadouken`, Safety `repos/safety`. App E14 `0993ae7`/PR279 draft,
+HADOUKEN `d4d389e`/PR84 draft (fonte S09 2.13 `51358a1`) e Safety
+`27b8599` detached/PR11 formam a composição de desenvolvimento; o preparo
+oficial aceita os pins. A prévia instalada ainda é App `57d13ee` e não
+contém o perfil 2.13 ou P01–P07. Os SHAs completos, PRs e próximos passos
+estão no registro central `../.workspace/projects.json` e no manifesto do
+App; textos datados abaixo descrevem fontes anteriores.
+
+E14 S09 2.13: MetaEditor/Wine 0 erros e 0 avisos, 59 arquivos iguais; Tester
+Linux/Wine e replay visual do mesmo pacote sintético conciliaram oito entradas,
+sete ações, quatro alterações de TP pós-fill e a caixa. Recibo público em
+`docs/evidencias/E14_POSTFILL_213_TESTER_REPLAY_20261103.json`; recibos privados
+protegidos na página pessoal existente, ZIP SHA256
+`2a8a6dff51b953a2bf8fe6f8c93904cad086d85ff0000163d004d61c96547080`.
+No SHA anterior `19627c3`, Windows CI falhou só no gráfico estreito, com 4566
+testes aprovados; Linux e demais jobs passaram. O corretivo está em `3312ea3`,
+e os checks da ponta documental `0993ae7` tinham PostgreSQL, instaladores e
+lint aprovados; Ubuntu/Windows ainda executavam na consulta de 04/11 00:50 UTC.
+Não houve DEMO ao vivo,
+netting, Windows físico nem liberação do perfil operacional.
+
+P00–P07 foram recompostos em branches locais separadas sobre E14, com LAB-03
+local dependente de P07. Os testes de padrões/Séries na composição LAB-03
+terminaram com 79 aprovados, três ignorados e uma falha já reproduzida na
+asserção de monitor negativo herdada da base E14 neste host XWayland de um
+monitor. A branch isolada LAB-10 `8822d25`, baseada em GUI C `13f6b97`,
+corrige essa asserção; a fonte anterior passou 29 testes de Séries/1 ignorado,
+e a fonte rebatida passou seis testes focados; falta integrar os aceites entre
+PRs. O fluxo P01–P07 permanece exploratório: CI, fonte real elegível,
+PostgreSQL da campanha, Windows físico e aprovação M1 seguem abertos.
+Na cadeia rebatida sobre `0993ae7`, 51 testes focados de P01–P07/GUI de
+padrões passaram em Linux/Xvfb. `MT5X_TEST_PG_URL` não está configurada neste
+host; os dois testes PostgreSQL próprios desta cadeia não foram executados.
+O inspetor oficial de checkouts confirmou, sem instalar ou atualizar a prévia,
+App local `7544f6b` e pins HADOUKEN/Safety; doctor offline 16 OK/2 avisos/0 falhas.
+O guarda central de push ainda impede publicar as branches de revisão;
+não o contornar. Próximo: publicar esta cadeia após a decisão da guarda, seguir
+recuperação/capacidade/pendentes E14 e aguardar a decisão específica do guarda
+para PRs C/D/P00–P07/LAB.
+
+## LAB-03 — regressão de alinhamento em revisão — 03/11/2026
+
+Branch local `codex/lab03-horarios-alinhamento` sobre P07 local. A correção da
+matriz e dos cabeçalhos já está na fonte desde `22c09f4`, refinada por
+`4ac3a46`; esta revisão acrescenta um teste da matriz real de Horários que
+compara as quatro colunas após rolagem horizontal/vertical e três larguras.
+Três casos Tk dirigidos passaram em Xvfb no host. O defeito histórico da imagem
+privada não foi reproduzido nesta fonte; DPI e monitor físico, percurso pelo
+atalho com eventos elegíveis, Windows físico e PR/CI ainda exigem seus gates.
+Nenhuma imagem privada foi copiada. Próximo: seguir os LAB restantes e E14
+operacional após reconciliar a publicação da cadeia local.
+
+## T13.4-P07 — consumidores de avaliações em revisão — 03/11/2026
+
+Branch local `codex/t134-p07-consumidores-m1` sobre P06; o SHA `e538521`
+abaixo identifica a composição anterior ao rebase de 03/11.
+`analytics.pattern_queries` consulta os recibos P06 já gravados no ledger,
+com namespace da base e corte de disponibilidade, e expõe inspeção dos fatos
+de sinal/desfecho no `feature_store`. SDK, CLI `laboratory pattern-evaluations`
+e `pattern-evaluation`, relatório HTML, guia Padrões do registro de estudos no
+Laboratório e Dashboard usam a mesma leitura. O Dashboard apresenta os recibos
+como exploratórios, ocultos por padrão, sem inventar lift, confiança ou
+aprovação; ausência de resultado é explícita. A consulta não executa pesquisa
+nem ordens. Ensaios sintéticos incluem CLI=SDK, HTML, reinício, corte anterior
+ao registro e o mesmo símbolo em duas bases. Na composição local anterior com
+entrada GUI e teste de monitor à esquerda, 58 testes dirigidos passaram, um foi
+ignorado e o desenho emitiu 17 avisos de layout. `./run.sh --offline --config`
+abriu a GUI em Xvfb isolado com SQLite de QA, e o menu Exibir → Registro de
+estudos → Padrões mostrou o estado vazio sem fabricar avaliação. Com outro
+SQLite sintético, a mesma rota exibiu o recibo persistido `reversal` em
+`SYN / M1`, treino, zero eventos e estado exploratório, após reinício da base.
+Os arquivos temporários de QA foram removidos. Amostra real elegível, CI/PR,
+PostgreSQL e Windows físico permanecem separados.
+Publicação aguarda ajuste específico do guarda central compartilhado para
+branches de revisão; não contornar o hook. A prévia instalada segue em
+`57d13ee`, sem estas mudanças. Artefatos privados permanecem no manifesto
+existente, sem cópia. Próximo: completar gates de P07, revisar documentação
+central e retomar os gaps operacionais E14 da fonte reconciliada.
+
+## T13.4-P06 — fluxo inicial de padrões em revisão — 03/11/2026
+
+Branch local `codex/t134-p06-fluxo-quatro-familias` sobre P05, que por sua vez
+se apoia em P04. `analytics.pattern_families` compila reversão, continuação por
+horário, gap e rompimento/falha na gramática tipada P02, com parâmetros
+explícitos. `analytics.pattern_flow` lê somente snapshots congelados, preserva
+namespace/relógio/sessão, registra acesso por papel antes de ler resultados,
+avalia eventos e desfechos, chama baseline P04 e simulação P05 quando os planos
+congelados permitem. Sinais e desfechos vão para definições distintas do
+`feature_store`; o recibo fica no ledger de experimentos na mesma transação.
+O preset em `presets.research` inclui fonte, definição, planos, resultado e
+hashes de implementação, sem equivalência `.set` nem ativação. Replay com
+fechamento presumido e sessão UTC sintética é marcado como tal, sem aceite
+prospectivo. Ensaios sintéticos cobrem quatro famílias, duas bases de mesmo
+símbolo, reinício, nenhum aprovado, veto a vazamento entre folds e rollback.
+O conjunto P01–P06/datasets/experimentos teve 89 testes aprovados no Linux;
+os seis testes diretos do fluxo foram repetidos após a contagem de negativos.
+O teste transacional PostgreSQL do fluxo foi ignorado sem URL local; a CI da PR
+deverá executá-lo. Nenhum dado real foi usado como fixture.
+SDK e CLI `experiments pattern-create`, `pattern-request`, `pattern-evaluate` e
+`pattern-status` expõem o fluxo no serviço existente, com modo sintético de
+sessão apenas quando escolhido explicitamente para QA. P07 deve ligar os
+consumidores de consulta à avaliação persistida.
+
+## T13.4-P05 — adaptador econômico em revisão — 03/11/2026
+
+Branch local `codex/t134-p05-simulacao-economica` sobre P04 para revisão
+sequencial. `strategies.pattern_adapter` transforma eventos P02 verificados por
+identidade/hash em sinais para `run_backtest`: entrada a mercado na próxima
+abertura após disponibilidade, stop/alvo/prazo tipados e uma posição por ativo.
+O modelo de custos exige origem, vigência, base bid, spread declarado, comissão
+por lado, slippage, moeda e swap explícitos. O motor atual calcula lote, fill,
+PnL, saldo e patrimônio; o adaptador relata evento sem execução e barra ambígua
+com stop-first. Ordens limitadas, concorrência e moeda sem vínculo são recusadas.
+O cenário dos testes é sintético/hipotético; nenhum resultado tem aprovação
+econômica ou equivalência `.set`. Passaram 30 testes de adaptador, backtester e
+eventos P02 no Linux. P06 deve persistir e consumir avaliações.
+
+## T13.4-P04 — validação temporal em revisão — 03/11/2026
+
+Branch local `codex/t134-p04-validacao-temporal` sobre P03. O plano de folds
+aplica as mesmas janelas UTC a todas as fontes, recusa característica futura,
+purga desfechos que cruzam o corte e embarga em tempo real. O baseline congela
+estratos com metadados do treino; só compara pares de evento/controle da mesma
+fonte, sessão e estrato após o corte de ajuste. Bootstrap por blocos de sessões
+produz IC e uma permutação pareada explícita produz p diagnóstico sob hipótese
+de intercambialidade; não implica causalidade. O contexto da campanha conta a
+grade inteira, endpoints e definições extras, inclusive descartes, antes de
+aplicar Bonferroni. Resolução de p insuficiente impede o status OK. P06 ainda
+deve conectar snapshots, eventos e resultados persistidos. CI, dados reais,
+Windows físico e qualificação final da reserva pendentes.
+
+## T13.4-P03 — despacho por tipo de protocolo — 03/11/2026
+
+Na branch local `codex/t134-p03-campanha-reserva`, a validação conjunta do
+Laboratório encontrou uma regressão introduzida ao incluir campanhas de padrões
+no guard do executor BASE: a recusa correta de um protocolo de associações
+perdeu sua mensagem específica. O despacho agora conserva a orientação de
+`laboratory protocol-evaluate` para associações e explica separadamente o fluxo
+de campanha para padrões. Nenhum dos dois tipos chega ao executor de estratégia.
+O caso falho e o novo caso de campanha passaram isolados (2/2); as suítes de
+campanha e protocolo passaram juntas (13/13). Testes com fixtures sintéticas;
+sem CI/PR da branch enquanto o guarda central bloquear novas referências.
+Próximo: incorporar o corretivo nas branches P04–P07 e Laboratório, repetir a
+seleção que falhou e publicar cada incremento quando houver destino autorizado.
+
+## T13.4-P03 — campanha e reserva em revisão — 03/11/2026
+
+Branch local `codex/t134-p03-campanha-reserva` sobre P02 local. O registro de
+experimentos existente recebe protocolo versionado com roster de snapshots,
+cortes globais UTC, endpoints, grade, critérios, semente e orçamento. Tentativas
+idempotentes disputam o teto agregado sob o lock do store; recusas e descartes
+ficam registradas. Acesso por papel e fonte é gravado antes de entregar uma
+reserva; proposta automática posterior à exposição é recusada. Exposição
+externa permanece desconhecida e a reserva não é qualificada como final.
+Passaram 57 testes de campanha e regressão de experimentos no Linux; um teste
+PostgreSQL foi ignorado porque a URL de teste local não está configurada.
+P04 deve validar cortes e purga; P06 deve persistir avaliações/eventos. Sem
+CI, PR, launcher, MT5 ou aceite real desta branch enquanto o guarda central
+impedir publicação separada.
+
+## T13.4-P02 — regras e eventos em revisão — 03/11/2026
+
+Branch `codex/t134-p02-regras-eventos` sobre P01 local. `analytics.hypotheses`
+valida AST JSON, unidade, fração decimal, lado, horizonte e hash imutável;
+`analytics.pattern_engine` avalia barras fechadas por disponibilidade em lote
+e prefixo, com estado reiniciável e fonte/símbolo/TF vinculados. Revisões
+posteriores geram identidade própria sem reescrever eventos anteriores.
+Desfechos futuros ficam separados, censurados até a recepção e sem alegar
+lucro líquido; lacuna sem calendário comprovado também censura. O adaptador
+`SignalSpec` aceita apenas o subconjunto de limiar de `close`, sem equivalência
+MQL5/.set. Nove testes sintéticos passaram. Persistência, campanha, reserva,
+simulação econômica, consumidores e aceite real pertencem às próximas fichas.
+Branch local sem push/PR enquanto o guarda central impedir publicação separada.
+
+## T13.4-P01 — catálogo e elegibilidade em revisão — 03/11/2026
+
+Branch `codex/t134-p01-catalogo-elegibilidade`, baseada no P00 reconciliado.
+`analytics.pattern_catalog` usa `data_inventory`, namespace de `datasets`,
+qualidade/capacidades existentes e evidências de coleta/sessão do snapshot.
+SDK e CLI `laboratory pattern-sources`, `pattern-qualify` e `pattern-freeze`
+expõem a mesma seleção; captura limitada a 20.000 barras pelo store atual.
+Duas bases sintéticas com o mesmo símbolo mantêm namespaces e snapshots
+distintos. O leitor de Dados também aceita horário escalar em base com zona;
+o snapshot dessa base continua bloqueado pelo contrato de offset fixo.
+Passaram 57 testes de Dados/qualificação e 17 de relógio/P01 no Linux local.
+Pesquisa, eventos,
+simulação, dados reais, CI e launcher de GUI ainda não foram aceitos. O push
+da branch documental e das branches de revisão aguarda resolução explícita
+do guarda central compartilhado; não contornar o hook.
 
 ## E14 — auditoria pós-fill 2.13 e resgate privado — 03/11/2026
 
@@ -133,6 +356,22 @@ Composição operacional: App na PR279, HADOUKEN `28099386`/PR84 e Safety
 `27b85992` detached/PR11. O manifesto desta branch fixa esses componentes.
 A prévia instalada ainda aponta para App `57d13ee`; atualizar somente após
 publicação e verificação pelo launcher, preservando as sessões abertas.
+
+## Estudo de descoberta de padrões —02/11/2026
+
+Pedido atual: primeiro estudo/plano/roadmap para outro agente implementar.
+[Roteiro T13.4-P00–P11](docs/analytics/DESCOBERTA_PADROES.md), com inventário
+confirmado, contratos, método, testes, marcos e repasse executável na seção11.
+P00 é somente documental; M1 exige P01–P07 e quatro famílias ponta a ponta.
+Próxima ficha dessa frente: P01 (catálogo/elegibilidade), sem criar motor/store/
+fila paralelos, sem ordens e sem reutilizar autorização DEMO anterior.
+“Infut/5h25” aguarda definição; não bloqueia as famílias genéricas.
+
+Base de origem Appc956305, PR279 operacional ainda aberta/draft; fonte e SHA
+documental atuais ficam no registro central Projects/.workspace. Este estudo
+preserva a frente operacional abaixo e os componentes existentes, sem repins
+ou modificação de runtime/prévia. Não interpretar publicação do plano como
+entrega de inteligência implementada ou aceite econômico.
 
 ## Execução do pilar operacional —01/11/2026
 

@@ -613,14 +613,17 @@ class DatabaseManager:
     def _to_storage(self, times):
         """Horário da corretora (como o MT5 devolve) -> horário gravado no banco."""
         if self.broker_timezone:
-            local = pd.DatetimeIndex(pd.to_datetime(times))
+            converted = pd.to_datetime(times)
+            scalar = isinstance(converted, pd.Timestamp)
+            local = pd.DatetimeIndex([converted] if scalar else converted)
             try:
                 aware = local.tz_localize(self.broker_timezone, ambiguous="infer", nonexistent="raise")
             except Exception as exc:
                 raise ValueError(f"Horário local incompatível com {self.broker_timezone}: hora inexistente ou "
                                  f"repetida sem ordem que a desambigue ({exc}).") from exc
             result = aware.tz_convert("UTC").tz_localize(None)
-            return pd.Series(result, index=getattr(times, "index", None)) if isinstance(times, pd.Series) else result
+            return (result[0] if scalar else pd.Series(result, index=times.index)
+                    if isinstance(times, pd.Series) else result)
         if self.time_basis == "utc":
             return times - pd.Timedelta(hours=self.broker_utc_offset)
         return times
@@ -628,9 +631,12 @@ class DatabaseManager:
     def _from_storage(self, times):
         """Horário gravado no banco -> horário da corretora."""
         if self.broker_timezone:
-            utc = pd.DatetimeIndex(pd.to_datetime(times)).tz_localize("UTC").tz_convert(self.broker_timezone)
+            converted = pd.to_datetime(times)
+            scalar = isinstance(converted, pd.Timestamp)
+            utc = pd.DatetimeIndex([converted] if scalar else converted).tz_localize("UTC").tz_convert(self.broker_timezone)
             result = utc.tz_localize(None)
-            return pd.Series(result, index=getattr(times, "index", None)) if isinstance(times, pd.Series) else result
+            return (result[0] if scalar else pd.Series(result, index=times.index)
+                    if isinstance(times, pd.Series) else result)
         if self.time_basis == "utc":
             return times + pd.Timedelta(hours=self.broker_utc_offset)
         return times
