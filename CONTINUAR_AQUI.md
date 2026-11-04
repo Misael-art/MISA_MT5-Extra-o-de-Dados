@@ -44,6 +44,15 @@ runtime identificado e retorno preservado. Classificação tem domínio inglês
 controlado; idiomas/fontes amplos, Expert, MT5/conta e aceite financeiro seguem
 com gates próprios.
 
+## Frente planejada: Dashboard Contínuo — 30/10/2026
+
+[Plano canônico](mt5_extracao/dashboard/PROMPT_DASHBOARD.md): história visual
+contínua de ativo ou robô, Flask local, evidências point-in-time e HTML offline
+autossuficiente. DASH-00 registra somente a especificação; o próximo incremento
+é DASH-01 (`server.py` + `opener.py`, página vazia no navegador).
+As faixas seguintes e os aceites permanecem pendentes. Não criar motores de
+cálculo/catálogo/publicação paralelos nem presumir T13.4/T13.5/T13.8 concluídas.
+
 ## Instalação inicial
 
 No navegador, baixe o launcher desta branch `codex/novo-host-20261024`:

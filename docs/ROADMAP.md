@@ -1,5 +1,12 @@
 # Roadmap: construtor de bases MT5 completo (Windows + Linux)
 
+**Dashboard Contínuo — plano registrado em 30/10/2026:**
+[Inteligência de Ativos e Robôs](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md)
+detalha a apresentação aditiva da T13.6: narrativa visual contínua, evidências
+temporais, HTML offline e entregas DASH-00…14. DASH-00 é somente documentação;
+implementação e aceites do Dashboard permanecem pendentes, sem promover as
+dependências T13.4/T13.5/T13.8 a concluídas.
+
 **Fechamento em 2026-10-19:** cadeia #108–#117 integrada em master; EXTR-01
 concluída no Linux/Wine com DEMO CLI/UI, recuperação e Cancelar conferidos em
 master. [Evidência e limites](extrator/EXTR-01_VALIDACAO_NATIVA.md). Persistência

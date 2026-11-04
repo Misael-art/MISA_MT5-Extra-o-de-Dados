@@ -211,6 +211,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T13.4 | Hipóteses H01 a H05 e motor de avaliação com validação temporal (A4) | T13.3 | a fazer |
 | T13.5 | Publicador do retrato e leitor MQL5 somente leitura (A5) | T13.3, T12.1 | a fazer |
 | T13.6 | Tela de pesquisa no mt5x e aba "Inteligência do Ativo" no painel do HADOUKEN (A6) | T13.4, T13.5, T12.6 | a fazer |
+| DASH-00 (T13.6/App) | Plano do Dashboard Contínuo de Ativos e Robôs | Pedido do proprietário de 30/10/2026 | ✅ registro documental: [contratos, etapas DASH-01…14 e critérios de aceite](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md); implementação pendente, dependências F13 e aceites MQL5 separados |
 | T13.7 | Estratégia × regime e pilotos opt-in no robô (A7) | T13.5, T12.3 | a fazer |
 | T13.8 | Deriva, alertas e governança das regras (A8) | T13.4, T13.7 | a fazer |
 | T13.9 | PF definido, sem teto artificial e consumo coerente | T6.4, T8.3, T16.4 | ✅ integrada no PR #97; revisão própria, CI final Linux/Windows aprovado e operação no host registrada |
@@ -3553,6 +3554,14 @@ real por corretora.
   própria) e, se não, como um teste reproduz o que o robô veria; CSV ou a cópia em SQLite da §9.3, medindo.
 
 ### T13.6 — Tela de pesquisa no mt5x e aba no painel do HADOUKEN (A6)
+
+**Detalhamento aditivo do App — 30/10/2026:** o
+[Dashboard Contínuo de Ativos e Robôs](../mt5_extracao/dashboard/PROMPT_DASHBOARD.md)
+registra seleção de ativo ou robô, faixas contínuas, leitura canônica point-in-time,
+priorização, exportação HTML autossuficiente, sequência por PR e matriz de aceite.
+DASH-00 conclui somente o registro do plano; DASH-01…14 ainda não implementadas.
+A primeira fatia local não depende da publicação MQL5; hipóteses, governança e
+integração HADOUKEN conservam suas dependências e qualificações originais.
 
 - **Objetivo:** ver as características, as hipóteses e a origem de cada número.
 - **Depende de:** T13.4 e T13.5; T7.2 (tabelas da interface) e T12.6 (abas do painel do HADOUKEN).
