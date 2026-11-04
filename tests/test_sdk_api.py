@@ -85,6 +85,9 @@ SURFACE = {
     "get_strategy": ["key", "params"],
     "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals", "cashflows", "check", "observation_timeframe"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],
+    "pattern_sources": ['db'],
+    "qualify_pattern_source": ['db', 'symbol', 'timeframe', 'family', 'start', 'end'],
+    "freeze_pattern_source": ['db', 'symbol', 'timeframe', 'family', 'start', 'end'],
 }
 
 
