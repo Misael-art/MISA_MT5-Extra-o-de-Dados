@@ -298,6 +298,13 @@ continuam legíveis explicitamente, sem fallback. [Contrato e limites](BD06_CONT
 Outras49 definições e funções compartilhadas conservam granularidade mais ampla;
 não há novo motor/store/cache ou conclusão de BD13 integral.
 
+**Adendo BD13-COMPOSITION (29/10/2026):** identidade de cada receita congelada
+liga operador, contrato e pais; proveniência/source_revision incluem o hash de
+cálculo. Somente componentes usados entram na assinatura; helpers compartilhados
+permanecem conservadores. Envelope2 conserva receita1, sem escrever fatos filhos
+nem alterar versões qualificadas dos retornos. [Contrato e migração](../sdk/api.md#composições-congeladas-bd12-snapshot).
+Materialização/recuperação BD14 e demais famílias continuam na sequência própria.
+
 #### BD14 — materialização e recuperação
 
 **Vinculação:** T19.3/T13.3b/T20.24/25. **Depende de:** BD04/12/13.
