@@ -10,6 +10,7 @@ from pathlib import Path
 from sqlalchemy import inspect, text
 
 log = logging.getLogger(__name__)
+_SCHEMA_LOCK = threading.RLock()
 
 
 class _RSSSampler:
@@ -66,15 +67,21 @@ CREATE TABLE IF NOT EXISTS _analytics_producer_runs (
     rows_inserted BIGINT NOT NULL DEFAULT 0,
     rows_revised BIGINT NOT NULL DEFAULT 0,
     rows_unchanged BIGINT NOT NULL DEFAULT 0,
-    error TEXT
+    error TEXT,
+    configuration_json TEXT
 )
 """
 
 
 def ensure_schema(db):
-    with db.engine.begin() as conn:
+    with _SCHEMA_LOCK, db.engine.begin() as conn:
+        if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
+            conn.exec_driver_sql("BEGIN IMMEDIATE")
         conn.execute(text(_CREATE_CHECKPOINTS))
         conn.execute(text(_CREATE_RUNS))
+        if "configuration_json" not in {column["name"] for column in inspect(conn).get_columns("_analytics_producer_runs")}:
+            clause = "IF NOT EXISTS " if conn.dialect.name == "postgresql" else ""
+            conn.execute(text("ALTER TABLE _analytics_producer_runs ADD COLUMN " + clause + "configuration_json TEXT"))
 
 
 def _utc_now():
@@ -119,7 +126,14 @@ def get_checkpoint(db, symbol, timeframe, family):
     return result
 
 
-def start_run(db, symbol, timeframe, family, algorithm_version, config_hash, source_sequence):
+def start_run(db, symbol, timeframe, family, algorithm_version, config_hash, source_sequence, *, configuration=None):
+    if configuration is not None and not isinstance(configuration, dict):
+        raise ValueError("Configuração do job precisa ser um objeto JSON.")
+    try:
+        configuration_json = None if configuration is None else json.dumps(
+            configuration, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    except (ValueError, TypeError) as exc:
+        raise ValueError("Configuração do job precisa conter somente valores JSON válidos.") from exc
     ensure_schema(db)
     run_id = str(uuid.uuid4())
     started = _utc_now()
@@ -128,11 +142,11 @@ def start_run(db, symbol, timeframe, family, algorithm_version, config_hash, sou
         conn.execute(text(
             "INSERT INTO _analytics_producer_runs "
             "(run_id, symbol, tf, family, algorithm_version, config_hash, source_sequence_start, status, "
-            "started_at_utc, database_bytes_before) VALUES "
-            "(:run_id, :symbol, :tf, :family, :version, :config_hash, :sequence, 'RUNNING', :started, :db_bytes)"),
+            "started_at_utc, database_bytes_before, configuration_json) VALUES "
+            "(:run_id, :symbol, :tf, :family, :version, :config_hash, :sequence, 'RUNNING', :started, :db_bytes, :configuration)"),
             {"run_id": run_id, "symbol": str(symbol), "tf": str(timeframe), "family": str(family),
              "version": str(algorithm_version), "config_hash": str(config_hash), "sequence": source_sequence,
-             "started": started, "db_bytes": db_before})
+             "started": started, "db_bytes": db_before, "configuration": configuration_json})
     return {"run_id": run_id, "started_at_utc": started, "started_monotonic": time.monotonic(),
             "rss_sampler": _RSSSampler(), "database_bytes_before": db_before}
 

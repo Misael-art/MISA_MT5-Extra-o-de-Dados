@@ -18,6 +18,8 @@ SURFACE = {
     "query_catalog": ["db"],
     "define_feature_composite": ["db", "feature_id", "name", "algorithm_version", "operation", "inputs"],
     "query_composite_context": ["db", "manifest_id", "decision_times", "targets", "observation_time"],
+    "materialize_composite_snapshot": ["db", "manifest_id", "targets", "as_of", "batch_size", "write_guard", "cancel_check",
+                                       "timeout_seconds", "max_memory_mb"],
     "get_robot": ["robots", "key"],
     "robot_from_file": ["path"],
     "import_library": ["db", "folder"],

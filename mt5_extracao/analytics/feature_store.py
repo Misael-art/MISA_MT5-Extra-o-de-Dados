@@ -555,13 +555,15 @@ def _value_record(symbol, timeframe, feature_id, algorithm_version, observation_
             "metadata_json": metadata_json}
 
 
-def save_values(db, records, *, transaction_hook=None):
+def save_values(db, records, *, transaction_guard=None, transaction_hook=None):
     """Grava muitos valores numa única transação, com as mesmas regras de ``save_value``.
 
     ``records`` é uma sequência de dicionários com os argumentos de ``save_value``
     (``symbol``, ``timeframe``, ``feature_id``, ``algorithm_version``,
     ``observation_time``, ``value`` e os opcionais). Tudo é validado antes da
-    primeira escrita; um erro não deixa gravação parcial. Devolve a contagem de
+    primeira escrita; um erro não deixa gravação parcial. ``transaction_guard``
+    confere a geração dentro da exclusão de escrita, antes dos valores;
+    ``transaction_hook`` confirma o checkpoint depois deles. Devolve a contagem de
     linhas ``inserted`` (primeira revisão), ``revised`` e ``unchanged``.
     """
     _require_db(db)
@@ -574,13 +576,15 @@ def save_values(db, records, *, transaction_hook=None):
         typed_values.append((args[2], args[3], args[5]))
         rows.append(_value_record(*args, **item))
     counts = {"inserted": 0, "revised": 0, "unchanged": 0}
-    if not rows and transaction_hook is None:
+    if not rows and transaction_guard is None and transaction_hook is None:
         return counts
     ensure_schema(db)
     with db.engine.begin() as conn:
         # Seleção da revisão e inserção pertencem à mesma exclusão de escrita.
         if conn.dialect.name == "sqlite" and not conn.connection.driver_connection.in_transaction:
             conn.exec_driver_sql("BEGIN IMMEDIATE")
+        if transaction_guard is not None:
+            transaction_guard(conn)
         pairs = {(row["feature_id"], row["algorithm_version"]) for row in rows}
         definitions = {}
         for feature_id, version in sorted(pairs):
@@ -686,7 +690,8 @@ def asof_join(decisions, values, *, by=None):
     if missing_keys:
         raise ValueError("values sem dimensões de série: " + ", ".join(sorted(missing_keys)))
     history = values.copy()
-    for name in ("observation_time", "available_at_utc", "valid_until_utc"):
+    for name in ("observation_time", "available_at_utc", "valid_until_utc", *(
+            ("observed_at_utc",) if "observed_at_utc" in history else ())):
         history[name] = pd.to_datetime(history[name].map(
             lambda value: pd.NaT if name == "valid_until_utc" and pd.isna(value)
             else _utc_timestamp(value, name)), utc=True)
@@ -699,9 +704,11 @@ def asof_join(decisions, values, *, by=None):
         for name, value in key.items():
             mask &= history[name] == value
         group = history[mask].sort_values(["available_at_utc", "observation_time"] +
+                                          (["observed_at_utc"] if "observed_at_utc" in history else []) +
                                           (["revision"] if "revision" in history else []))
         # Um lote pode tornar várias observações disponíveis no mesmo instante.
-        # Primeiro escolha a revisão mais nova de cada observação naquele instante;
+        # Mesmo desempate do query_as_of: recebimento e, depois, revisão.
+        # Primeiro escolha a revisão efetiva de cada observação naquele instante;
         # depois mantenha só a observação mais recente do fluxo.
         group = group.drop_duplicates(["available_at_utc", "observation_time"], keep="last")
         newest = group.groupby("available_at_utc", sort=True)["observation_time"].transform("max")
