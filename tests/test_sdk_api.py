@@ -85,6 +85,13 @@ SURFACE = {
     "get_strategy": ["key", "params"],
     "run_backtest": ["df", "strategy", "spec", "config", "start_index", "signals", "cashflows", "check", "observation_timeframe"],
     "validate_strategy": ["df", "key", "spec", "config", "criteria", "params"],
+    "pattern_sources": ['db'],
+    "qualify_pattern_source": ['db', 'symbol', 'timeframe', 'family', 'start', 'end'],
+    "freeze_pattern_source": ['db', 'symbol', 'timeframe', 'family', 'start', 'end'],
+    "create_pattern_campaign": ['db', 'definition'],
+    "register_pattern_attempt": ['db', 'protocol_id', 'key', 'definition', 'role', 'origin', 'purpose', 'discard_reason'],
+    "evaluate_pattern_attempt": ['db', 'request_id', 'data_manifest_id', 'session_mode'],
+    "pattern_campaign_status": ['db', 'protocol_id'],
 }
 
 
