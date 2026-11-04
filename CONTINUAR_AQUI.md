@@ -96,7 +96,8 @@ Branch `codex/lab-series-monitor-geometry`, base local
 monitor à esquerda pede `1024x800+-1024+-50`; neste host de um monitor o
 gerenciador de janelas entrega `(256, 37)`. O teste passou a conferir o pedido
 e o ciclo ampliar/restaurar, sem exigir posição física impossível. Antes falhou
-1/1; depois passaram 29 testes de Séries, 1 ignorado e 17 avisos de layout.
+1/1; depois passaram 29 testes de Séries, 1 ignorado e 16 avisos de layout
+no SHA local `8b110aa`, sobre GUI `4d61e8b`.
 Sem mudança de runtime. Monitor físico negativo, atalho central e os demais
 percursos LAB-01…10 mantêm os aceites próprios do roadmap; esta correção não
 os fecha. Branch/PR remotos dependem da guarda central de revisão.
