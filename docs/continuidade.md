@@ -5753,3 +5753,34 @@ conecta o executor existente; não declarar o pilar completo nem habilitar perfi
 Integração desse pin:55testes SDK/catálogo/Safety aprovados em5,03s; doctor offline
 16OK/2avisos existentes/0falhas. O corretivo dos testes da ponte é a PR274/pai,
 348837e; nenhuma função de negociação foi liberada pela RPC.
+
+## Pilar operacional F04.4 —02/11/2026
+
+F04.4: H178ac146/PR81 liga entradas do SafeExecutor ao journal, opt-in sóTesterDEMO.
+Intenção tem uma tentativa, SENDING é durável antes do envio e resposta observada
+é distinta da gravação confirmada. Consumidor sem vínculo recusa política/journal
+em vigor; liderança mantém arquivo Common exclusivo, sem roubo por pulso vencido.
+154testes H/checker171/17compilações0/0. Tester na fontebb4760a5d7e8e4c6 confirmou
+entrada/resposta/conciliação, duplicata recusada com posição aberta e encerrada,
+uma saída e zero remanescentes; caixa−0,66USD reconciliado. Nove fontes iguais por
+hash. Ordem histórica a mercado pode trazer preço0; o preço real continua exigido
+nos deals. Hashes de vínculo são fixtures explícitas, sem atestação de preset App.
+Safety27b8599 continua detached/candidata1.12 e não distribui o protótipo.
+Proteção na página privada existente, sequência24:177arquivos/oito bancos de QA,
+seis partes/oito anexos; todos os hashes/linhas SQLite conferidos e325blocos
+anteriores preservados. Inclui dois timeouts e três diagnósticos inválidos.
+Próximo: manifesto App e journal geral de gestão, depois ativo/grupo/plano,
+pendentes/consumidores e capacidades restantes. Sem aceite ao vivo/restart/Windows.
+
+A QA usou o código App47ce1e4; o incremento App atual reconcilia documentação e
+pin de desenvolvimento H, preservando referências aceitas, fingerprints/perfis
+aprovados e a autorização DEMO separada do runtime33c2fa1. Fechamento do contrato
+usou a única posição comprovada da fixture; não certifica journal de reduções ou
+posse geral por magic. Recibos de QA/proteção ficam na raiz canônica, em
+state/qa-tmp/operational-pillar/protecao/execucao. Nenhum PLAY nesta frente.
+
+Validação App deste recorte:67testes de SDK/API/documentação/catálogo/Safety
+aprovados em8,14s; doctor offline16OK/2avisos/0falhas. HCI do PR81 verde.
+O CI Linux do App47ce1e4/PR275 passou; Windows estava em andamento na consulta.
+Prévia será atualizada pelo procedimento oficial após SHA remoto confirmado,
+sem trocar a ponte viva do runtime7c51 nem o runtime33c2fa1 da DEMO separada.

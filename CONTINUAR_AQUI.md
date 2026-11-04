@@ -53,6 +53,22 @@ nessa QA. Safety27b8599 continua inalterada/detached e não distribui o protóti
 Próximo: conectar ao SafeExecutor e ao manifesto App, validar percurso nativo;
 depois limites por ativo/grupo/plano, reduções e demais capacidades obrigatórias.
 
+F04.4: H178ac146/PR81 liga entradas do SafeExecutor ao journal, opt-in sóTesterDEMO.
+Intenção tem uma tentativa, SENDING é durável antes do envio e resposta observada
+é distinta da gravação confirmada. Consumidor sem vínculo recusa política/journal
+em vigor; liderança mantém arquivo Common exclusivo, sem roubo por pulso vencido.
+154testes H/checker171/17compilações0/0. Tester na fontebb4760a5d7e8e4c6 confirmou
+entrada/resposta/conciliação, duplicata recusada com posição aberta e encerrada,
+uma saída e zero remanescentes; caixa−0,66USD reconciliado. Nove fontes iguais por
+hash. Ordem histórica a mercado pode trazer preço0; o preço real continua exigido
+nos deals. Hashes de vínculo são fixtures explícitas, sem atestação de preset App.
+Safety27b8599 continua detached/candidata1.12 e não distribui o protótipo.
+Proteção na página privada existente, sequência24:177arquivos/oito bancos de QA,
+seis partes/oito anexos; todos os hashes/linhas SQLite conferidos e325blocos
+anteriores preservados. Inclui dois timeouts e três diagnósticos inválidos.
+Próximo: manifesto App e journal geral de gestão, depois ativo/grupo/plano,
+pendentes/consumidores e capacidades restantes. Sem aceite ao vivo/restart/Windows.
+
 A tarefa DEMO já agendada abaixo continua com runtime33c2fa1 e sua biblioteca
 SA-REF-01 congelada, sem regeneração/repin para o corretivo. Nenhuma autorização
 de negociação é transferida para a nova composição.
