@@ -51,11 +51,71 @@ reutilizada quando as abas não cabem. Claro/escuro usam os tokens existentes.
 Para impedir que um sinal raro desapareça na redução de milhares de colunas da
 linha temporal, cada intervalo visual conserva compra/venda; se houver ambos,
 mostra roxo, **não neutro**. Essa agregação é apenas gráfica, com intervalo na
-dica. Métricas e JSON conservam todos os valores. A matriz não mede valores
-brutos de unidades incompatíveis: a regra direcional e sua legenda são explícitas
-no canal. Isso é uma convenção descritiva, não um gatilho financeiro novo.
+dica. Métricas e JSON conservam todos os valores. A matriz de Séries usa direções
+canônicas; a matriz Indicador × indicador em Relações usa Spearman dos valores
+originais (postos, sem converter unidades). Regra direcional e legenda são
+explícitas no canal. Isso é uma convenção descritiva, não um gatilho financeiro novo.
 
 ## CLI e SDK, sem desktop
+
+### Canais armazenados no Laboratório (BD19a-LAB)
+
+**Atualizar fontes** lê também o catálogo canônico da base. A busca mostra nome,
+ID, versão e unidade de cada definição registrada, inclusive sem fórmula local.
+O filtro de origem separa cálculo local de fatos armazenados; filtrar não apaga
+a seleção. **Limpar seleção** retira também opções ocultas pelo filtro. Para
+analisar somente fatos, escolha **Sem estratégia**, limpe a seleção e marque as
+versões desejadas. Uma versão sem fatos continua visível e produz diagnóstico
+de ausência; nenhum cálculo/materialização é disparado para preenchê-la.
+
+**Congelar e analisar** inclui os pares `(ID, versão)` no snapshot4 existente.
+`service.analyze(..., stored_features=[(ID, versão)])` usa exclusivamente seus
+contratos/histórico com `indicator_context.from_snapshot`. Em cada fechamento da
+grade mais curta, aplica disponibilidade e validade declaradas, inclusive quando
+a publicação ocorre entre fechamentos do TF de origem. Revisões tardias não
+antecipam informação; observação antiga não substitui uma mais recente. Fora
+da janela de cada snapshot o canal fica ausente. Reabrir o JSON não consulta a
+base nem recalcula fórmulas; ID da análise incorpora seleção/versões/manifests
+e código do adaptador. Fórmulas locais e preços mantêm sua base nominal, sem
+certificação point-in-time do conjunto.
+
+Valores numéricos mantêm unidade e parâmetros da versão, sem conversão. Entram
+no gráfico em painel da unidade e nas matrizes de Spearman já existentes.
+Saída categórica/booleana ou tipo não declarado fica fora das métricas numéricas
+com `NON_NUMERIC_STORED_FEATURE`; `raw_values`, estados e `stored_available`
+preservam os fatos. `available` conta valores numéricos na grade, enquanto
+`source_available` conta observações distintas usadas; retenção não cria novas
+observações. `frozen_revision_count` informa revisões capturadas, não amostra
+independente. `source_ends` desses canais representa disponibilidade declarada,
+e `observation_times` conserva o instante descrito pelo fato.
+
+Não há regra direcional inferida: direções permanecem ausentes, pares direcionais
+trazem `NO_DIRECTION_RULE`, e esses canais não geram candidatos/presets ou intenção
+de compra/venda. Pivôs armazenados podem ser desenhados, mas ficam fora das
+relações com `UNVERIFIED_STORED_EVENT` até qualificar identidade/confirmação de
+eventos no adaptador; pivôs locais confirmados conservam seu contrato.
+
+Esta etapa aceita snapshots de TFs nativos. Selecionar esses canais com M7/M9
+sintéticos é recusado antes do trabalho, com orientação; não são ignorados.
+Limites de32 canais,8 TFs,20.000 barras/TF e orçamento do contexto permanecem.
+O botão fica desabilitado durante a análise e o indicador global do `run_bg`
+mostra atividade/tempo decorrido; não estima percentual sem progresso mensurável.
+Visões direcionais sem regra exibem explicação e encaminham para os valores,
+em vez de sugerir ampliar a janela ou deixar apenas uma área cinza.
+
+```sh
+python -m mt5_extracao.cli --json laboratory freeze --symbol EURUSD --tf M5 \
+  --stored-feature ID VERSAO
+python -m mt5_extracao.cli --json laboratory analyze --manifest MANIFEST_ID \
+  --stored-feature ID VERSAO --as-of 2026-10-01T03:00:00Z --out analise.json
+```
+
+Repita `--stored-feature` para várias versões; combine com `--feature` para
+fórmulas locais explícitas. Sem `--feature`, a presença de `--stored-feature`
+seleciona somente fatos, sem acrescentar os cinco indicadores locais padrão.
+`--strategy-only` com fatos é recusado. Sem a opção nova, os padrões anteriores
+permanecem. Essa integração não encerra BD19a completo, compostos/relações BD18b,
+aceite financeiro, prova do relógio da corretora ou Windows físico.
 
 ```sh
 python -m mt5_extracao.cli --json laboratory catalog
@@ -146,9 +206,9 @@ Disponibilidades posteriores permanecem registradas e devem ser filtradas por de
 preenche o início com observações anteriores à janela. A captura recusa mais de200.000 fatos por
 manifesto, limitando a leitura SQL antes da publicação. Não trunca nem publica uma revisão parcial.
 
-Esta etapa fornece a captura/reabertura. Selecionar e analisar esses canais na UI, o adaptador
-causal do relatório e sua qualificação continuam na frente seguinte; `analyze` mantém o consumo
-de fórmulas locais. Barras descritivas não se tornam historicamente point-in-time por incluir fatos.
+Esta etapa fornece a captura/reabertura; o consumo posterior por `analyze` e pela UI está
+descrito em [BD19a-LAB](#canais-armazenados-no-laboratório-bd19a-lab). Barras descritivas não
+se tornam historicamente point-in-time por incluir fatos.
 
 Validação local de29/10:baseline48, rodada final171 testes e mais1 caso de zero/expiração após
 serialização, total172 distintos; compatibilidade de formatos e
@@ -191,7 +251,8 @@ conservam seus resultados. Bancada2.000revisões/500decisões,3 chamadas aquecid
 101ms e congelado68ms, frames numéricos/metadados iguais; carregar o snapshot custou327ms
 separadamente. Amostras se sobrepõem, sem promessa de aceleração universal. Recibos locais
 `state/qa-tmp/catalog-store/frozen-context-*`; doctor offline e prévia têm recibos próprios.
-Seleção/relatório na UI e regras analíticas por tipo continuam na próxima frente.
+Seleção/relatório na UI e os limites por tipo são descritos em
+[BD19a-LAB](#canais-armazenados-no-laboratório-bd19a-lab).
 
 ### Descritiva × preditiva (LAB-07)
 

@@ -48,6 +48,8 @@ def add_parser(sub):
     selected = analyze.add_mutually_exclusive_group()
     selected.add_argument("--feature", action="append", help="feature_id do catálogo; repita para cada indicador")
     selected.add_argument("--strategy-only", action="store_true", help="compara apenas as intenções da estratégia")
+    analyze.add_argument("--stored-feature", action="append", nargs=2, metavar=("ID", "VERSAO"),
+                         help="analisa fatos desta versão congelada; repita para várias")
     analyze.add_argument("--strategy", choices=list(service.REGISTRY))
     analyze.add_argument("--params", default="{}", help="JSON dos parâmetros da estratégia principal")
     analyze.add_argument("--compare", action="append", choices=list(service.REGISTRY),
@@ -154,9 +156,12 @@ def run(args, ctx):
         params = loads(args.params)
         if not isinstance(params, dict):
             raise ValueError("--params exige objeto JSON de parâmetros.")
-        feature_ids = [] if args.strategy_only else args.feature if args.feature is not None else service.DEFAULT_FEATURES
+        stored = args.stored_feature or ()
+        if args.strategy_only and stored:
+            raise ValueError("--strategy-only não combina com --stored-feature; escolha os canais explicitamente.")
+        feature_ids = [] if args.strategy_only else args.feature if args.feature is not None else [] if stored else service.DEFAULT_FEATURES
         extras = [key for key in (args.compare or []) if key != args.strategy]
-        common = dict(feature_ids=feature_ids, as_of=args.as_of)
+        common = dict(feature_ids=feature_ids, as_of=args.as_of, stored_features=stored)
         if extras:
             if args.strategy is None and params:
                 raise ValueError("Parâmetros exigem estratégia explícita.")
