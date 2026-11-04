@@ -35,7 +35,8 @@ eventos; arquivos de QA removidos. Essa composição não está instalada. A pr�
 menu segue em `57d13ee`. O guarda central compartilhado ainda impede criar
 remotamente as branches de revisão; no CI de `19627c3`, Linux e os demais
 jobs passaram, enquanto Windows falhou no gráfico estreito. Corretivo
-`3312ea3` publicado; CI da ponta `0993ae7` ainda sem resultado.
+`3312ea3` publicado; na ponta `0993ae7`, PostgreSQL, instaladores e lint
+passaram, Ubuntu/Windows ainda executavam em 04/11 00:50 UTC.
 S09 2.13 compilou e conciliou Tester/replay com pacote sintético no Linux/Wine;
 DEMO ao vivo, netting, Windows físico e dado real elegível seguem gates próprios.
 O registro de

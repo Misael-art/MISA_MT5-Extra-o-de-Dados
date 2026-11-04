@@ -21,8 +21,9 @@ Padrões pelo launcher; essa composição não está instalada;
 nenhum candidato ou dado real foi aprovado por isso. A branch LAB-03 acrescenta
 regressão de alinhamento. Push/PR dessas branches aguardam ajuste do guarda
 central de publicação. No CI de `19627c3`, Linux e os demais jobs passaram;
-Windows falhou no gráfico estreito. O corretivo está na ponta `0993ae7`, com
-novo CI ainda sem resultado na última consulta. O S09 2.13
+Windows falhou no gráfico estreito. O corretivo está na ponta `0993ae7`:
+PostgreSQL, instaladores e lint passaram; Ubuntu/Windows ainda executavam na
+consulta de 04/11 00:50 UTC. O S09 2.13
 compilou e conciliou backtest/replay no Tester Linux/Wine com pacote sintético;
 DEMO ao vivo, netting, Windows físico e dados reais elegíveis têm aceites separados.
 [Fontes, testes e próximos passos](CONTINUAR_AQUI.md) ·

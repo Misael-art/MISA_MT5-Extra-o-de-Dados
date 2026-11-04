@@ -37,8 +37,9 @@ protegidos na página pessoal existente, ZIP SHA256
 `2a8a6dff51b953a2bf8fe6f8c93904cad086d85ff0000163d004d61c96547080`.
 No SHA anterior `19627c3`, Windows CI falhou só no gráfico estreito, com 4566
 testes aprovados; Linux e demais jobs passaram. O corretivo está em `3312ea3`,
-e os checks da ponta documental `0993ae7` ainda não tinham resultado na última
-consulta. Não houve DEMO ao vivo,
+e os checks da ponta documental `0993ae7` tinham PostgreSQL, instaladores e
+lint aprovados; Ubuntu/Windows ainda executavam na consulta de 04/11 00:50 UTC.
+Não houve DEMO ao vivo,
 netting, Windows físico nem liberação do perfil operacional.
 
 P00–P07 foram recompostos em branches locais separadas sobre E14, com LAB-03
@@ -56,7 +57,7 @@ host; os dois testes PostgreSQL próprios desta cadeia não foram executados.
 O inspetor oficial de checkouts confirmou, sem instalar ou atualizar a prévia,
 App local `7544f6b` e pins HADOUKEN/Safety; doctor offline 16 OK/2 avisos/0 falhas.
 O guarda central de push ainda impede publicar as branches de revisão;
-não o contornar. Próximo: concluir documentação desta composição, seguir
+não o contornar. Próximo: publicar esta cadeia após a decisão da guarda, seguir
 recuperação/capacidade/pendentes E14 e aguardar a decisão específica do guarda
 para PRs C/D/P00–P07/LAB.
 

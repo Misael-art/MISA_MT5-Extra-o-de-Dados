@@ -24,8 +24,9 @@ Tester e replay visual Linux/Wine do mesmo pacote sintético com oito entradas,
 sete ações e quatro TP pós-fill reconciliados. O hash do recibo privado, a
 prova pública e os limites estão no handoff. No SHA App anterior `19627c3`,
 Linux e quatro outros jobs passaram, Windows falhou apenas no gráfico estreito;
-o corretivo `3312ea3` está publicado e o CI da ponta `0993ae7` segue sem
-resultado na última consulta. DEMO ao vivo, netting,
+o corretivo `3312ea3` está publicado; na ponta `0993ae7`, PostgreSQL,
+instaladores e lint passaram, Ubuntu/Windows ainda executavam em 04/11 00:50 UTC.
+DEMO ao vivo, netting,
 Windows físico e liberação operacional não foram feitos.
 
 P00–P07 e LAB-03 foram recompostos como incrementos locais separados sobre
@@ -37,10 +38,11 @@ pelo guarda central; CI, base real elegível, PostgreSQL e M1 seguem pendentes.
 Depois de rebater P00–P07/LAB-03 sobre `0993ae7`, 51 testes focados de
 padrões/consumidor GUI passaram em Linux/Xvfb. A URL de teste PostgreSQL
 não está configurada no host; os dois casos próprios não foram executados.
-O inspetor oficial de checkouts aceitou App local `7544f6b` e pins HADOUKEN/Safety sem
-instalação; doctor offline de desenvolvimento 16 OK/2 avisos/0 falhas.
-SHAs locais por branch no registro central. Próximo: documentação final G e
-gates E14 de recuperação/capacidade, pendentes e riscos agregados.
+O inspetor oficial de checkouts aceitou App local `7544f6b` e pins
+HADOUKEN/Safety sem instalação; doctor offline de desenvolvimento 16 OK,
+2 avisos e 0 falhas. SHAs locais por branch no registro central. Próximo:
+publicar G após a decisão da guarda e continuar os gates E14 de
+recuperação/capacidade, pendentes e riscos agregados.
 
 ## LAB-03 — alinhamento de Horários, regressão local — 03/11/2026
 
