@@ -1,0 +1,71 @@
+{
+  "reviewed_head": "6e7b30e40984f9eaf8a4055f9da792cb34db8e00",
+  "tested_code": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+  "kind": "independent_review_supplied_by_owner",
+  "verdict": "quatro saídas RSI/ATR aceitas no recorte; BD08b parcial; estabilidade geral local ainda pendente",
+  "family_outputs": 4,
+  "total_own_tests": {
+    "passed": 143,
+    "skipped": 0,
+    "failed": 0,
+    "warnings": 0
+  },
+  "runs": [
+    {
+      "kind": "directed",
+      "passed": 140,
+      "skipped": 0,
+      "failed": 0,
+      "warnings": 0,
+      "seconds": 170.89
+    },
+    {
+      "kind": "previous_failures_reexecution",
+      "passed": 3,
+      "skipped": 0,
+      "failed": 0,
+      "warnings": 0,
+      "seconds": 96.85
+    }
+  ],
+  "probes": {
+    "precision_decimal_digits": 60,
+    "scenario_output_comparisons": 32,
+    "counted_as_tests": false
+  },
+  "full_suite_reexecuted_by_reviewer": false,
+  "ci_tested_code": "f6d8a81c04b807b92c786628f0f227d6b4be8967",
+  "documentary_head_has_own_checks": false,
+  "source_hashes": {
+    "parecer_bd08b_wilder_20261024_rev7.md": "0c6309bd70bba18e11e6e9eea7a39d601a8aeb8e3392f2102e8abc3e5671bf6a",
+    "verificacoes.json": "3af049b58d3f3dde88d66bb14662fbb0c2679d11f11082e12d97d5d04e9de747",
+    "probes_bd08b_result.json": "8459fb0b0e83bd243cac04f818e9139dac6250d9f55b9bd664b0c2a05a9c1dee",
+    "manifesto_revisao.json": "d987abc501c6e6362dc8a8bf7afe35c0ff46a17fe1c43963ac9e1f099b2597d9"
+  },
+  "original_local_attempt_preserved": "docs/dados/recibos/recibo_bd08b_wilder_20261023.json",
+  "original_attempt_reclassified_as_passed": false,
+  "remaining_diagnostic": {
+    "snapshots": "T20.4/BD14",
+    "aggregation_cache": "T16.4/T16.5 (agregações e cache F16), qualificação de recursos/cache T20.24/25 e F15 conforme plano",
+    "requirements": [
+      "mesmo SHA e base",
+      "limites originais",
+      "carga do host",
+      "duração por etapa",
+      "dimensão do snapshot"
+    ],
+    "common_cause_established": false
+  },
+  "global_state": {
+    "BD08b": "parcial",
+    "E12": "em_execucao",
+    "M4": "parcial",
+    "M2": "primeiro percurso demonstrado/parcial",
+    "E31": "planejado",
+    "E32.1": "CLI sem exportação"
+  },
+  "merge": false,
+  "activation": false,
+  "physical_windows": false,
+  "native_mt5_parity": false
+}

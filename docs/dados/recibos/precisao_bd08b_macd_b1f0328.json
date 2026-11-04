@@ -1,0 +1,330 @@
+{
+  "reference": "tests/test_bd08b_macd.py::_expected; Decimal60 from exact float inputs",
+  "implementation_signature": "c84a0b67b8e75d5ceaf9f2b59d2314928b54032c3d8c5cb31a2d10de2e15362f",
+  "test_source_sha256": "5bb7ba0bef2d11d28190de0c66585a335dfa539da9bfb0e99d5ab7f340122632",
+  "scenario_output_comparisons": 32,
+  "counted_as_additional_tests": false,
+  "limitations": "observações destas fixtures; sem garantia relativa uniforme perto de zero nem paridade MT5",
+  "results": [
+    {
+      "scenario": "trend",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "a3642e146f882d02223e36f5ecdfaf432f61a88a9237ad456117a5ede5914bd8",
+      "compared_values": 215,
+      "absences_exact": 25,
+      "max_absolute_error": 4.540360945526191e-14,
+      "max_relative_error_all_expected_nonzero": 1.2972460320101518e-13
+    },
+    {
+      "scenario": "trend",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "a3642e146f882d02223e36f5ecdfaf432f61a88a9237ad456117a5ede5914bd8",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.7069568272951648e-14,
+      "max_relative_error_all_expected_nonzero": 7.734162626551731e-14
+    },
+    {
+      "scenario": "trend",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "a3642e146f882d02223e36f5ecdfaf432f61a88a9237ad456117a5ede5914bd8",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 3.2709041672917805e-14,
+      "max_relative_error_all_expected_nonzero": 5.4151499718984455e-06
+    },
+    {
+      "scenario": "trend",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 240,
+      "input_sha256_csv17": "a3642e146f882d02223e36f5ecdfaf432f61a88a9237ad456117a5ede5914bd8",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 4.5322215007912746e-13,
+      "max_relative_error_all_expected_nonzero": 5.415149972494686e-06
+    },
+    {
+      "scenario": "lateral",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "e91cf7558d695962202105ba4825762e3f539f264ddf80ea3c777ca7e447a520",
+      "compared_values": 215,
+      "absences_exact": 25,
+      "max_absolute_error": 5.76282375299715e-14,
+      "max_relative_error_all_expected_nonzero": 5.2749553072795675e-12
+    },
+    {
+      "scenario": "lateral",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "e91cf7558d695962202105ba4825762e3f539f264ddf80ea3c777ca7e447a520",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 4.902793021769941e-14,
+      "max_relative_error_all_expected_nonzero": 1.6211130313247192e-11
+    },
+    {
+      "scenario": "lateral",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "e91cf7558d695962202105ba4825762e3f539f264ddf80ea3c777ca7e447a520",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.4108523172458122e-14,
+      "max_relative_error_all_expected_nonzero": 4.725874763979461e-12
+    },
+    {
+      "scenario": "lateral",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 240,
+      "input_sha256_csv17": "e91cf7558d695962202105ba4825762e3f539f264ddf80ea3c777ca7e447a520",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 1.3336716025792677e-13,
+      "max_relative_error_all_expected_nonzero": 4.725947966884497e-12
+    },
+    {
+      "scenario": "flat",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "cb0bcf5545ae508760572ceea1394aedbeb91290c70216ead7df898635984de9",
+      "compared_values": 215,
+      "absences_exact": 25,
+      "max_absolute_error": 0.0,
+      "max_relative_error_all_expected_nonzero": 0.0
+    },
+    {
+      "scenario": "flat",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "cb0bcf5545ae508760572ceea1394aedbeb91290c70216ead7df898635984de9",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 0.0,
+      "max_relative_error_all_expected_nonzero": 0.0
+    },
+    {
+      "scenario": "flat",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "cb0bcf5545ae508760572ceea1394aedbeb91290c70216ead7df898635984de9",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 0.0,
+      "max_relative_error_all_expected_nonzero": 0.0
+    },
+    {
+      "scenario": "flat",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 240,
+      "input_sha256_csv17": "cb0bcf5545ae508760572ceea1394aedbeb91290c70216ead7df898635984de9",
+      "compared_values": 0,
+      "absences_exact": 240,
+      "max_absolute_error": 0.0,
+      "max_relative_error_all_expected_nonzero": 0.0
+    },
+    {
+      "scenario": "random_walk",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "545c280caf1940ccc7a928cda0cde0049f1942216d415cee019144678f9e180f",
+      "compared_values": 215,
+      "absences_exact": 25,
+      "max_absolute_error": 5.009646275321239e-14,
+      "max_relative_error_all_expected_nonzero": 9.669672698295671e-11
+    },
+    {
+      "scenario": "random_walk",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "545c280caf1940ccc7a928cda0cde0049f1942216d415cee019144678f9e180f",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 3.431670508890994e-14,
+      "max_relative_error_all_expected_nonzero": 9.473034641190728e-12
+    },
+    {
+      "scenario": "random_walk",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "545c280caf1940ccc7a928cda0cde0049f1942216d415cee019144678f9e180f",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.3701145168266702e-14,
+      "max_relative_error_all_expected_nonzero": 2.3776562643897923e-11
+    },
+    {
+      "scenario": "random_walk",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 240,
+      "input_sha256_csv17": "545c280caf1940ccc7a928cda0cde0049f1942216d415cee019144678f9e180f",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.428827813739703e-13,
+      "max_relative_error_all_expected_nonzero": 2.3776086718974742e-11
+    },
+    {
+      "scenario": "scale_0.0001",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "4f8940f889c15c97a18acfe837274907f32bf3dc503686d5ee283176ef1223f2",
+      "compared_values": 215,
+      "absences_exact": 25,
+      "max_absolute_error": 4.729296605469907e-20,
+      "max_relative_error_all_expected_nonzero": 1.1126788954521218e-11
+    },
+    {
+      "scenario": "scale_0.0001",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "4f8940f889c15c97a18acfe837274907f32bf3dc503686d5ee283176ef1223f2",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.5009087864991178e-20,
+      "max_relative_error_all_expected_nonzero": 1.1904302769956596e-11
+    },
+    {
+      "scenario": "scale_0.0001",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "4f8940f889c15c97a18acfe837274907f32bf3dc503686d5ee283176ef1223f2",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.7628125629108615e-20,
+      "max_relative_error_all_expected_nonzero": 3.932785660397934e-12
+    },
+    {
+      "scenario": "scale_0.0001",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 240,
+      "input_sha256_csv17": "4f8940f889c15c97a18acfe837274907f32bf3dc503686d5ee283176ef1223f2",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 3.668999929823966e-13,
+      "max_relative_error_all_expected_nonzero": 3.932216405450845e-12
+    },
+    {
+      "scenario": "scale_100000",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "726e6063787751f15c3a8a253e34b7c395a5a0c49f7ab2be5f14de80d423848b",
+      "compared_values": 215,
+      "absences_exact": 25,
+      "max_absolute_error": 4.582108302806661e-11,
+      "max_relative_error_all_expected_nonzero": 1.157146039299454e-10
+    },
+    {
+      "scenario": "scale_100000",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "726e6063787751f15c3a8a253e34b7c395a5a0c49f7ab2be5f14de80d423848b",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 3.452796669273527e-11,
+      "max_relative_error_all_expected_nonzero": 6.061086551875491e-12
+    },
+    {
+      "scenario": "scale_100000",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 240,
+      "input_sha256_csv17": "726e6063787751f15c3a8a253e34b7c395a5a0c49f7ab2be5f14de80d423848b",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.4146297058382275e-11,
+      "max_relative_error_all_expected_nonzero": 1.7402190292868218e-12
+    },
+    {
+      "scenario": "scale_100000",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 240,
+      "input_sha256_csv17": "726e6063787751f15c3a8a253e34b7c395a5a0c49f7ab2be5f14de80d423848b",
+      "compared_values": 207,
+      "absences_exact": 33,
+      "max_absolute_error": 2.618623888276761e-13,
+      "max_relative_error_all_expected_nonzero": 1.7395017426446298e-12
+    },
+    {
+      "scenario": "missing_close",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 100,
+      "input_sha256_csv17": "0d684df2348a6dcd60a82e5c12b68693fa3ac71bc948fd4b42319dfd8c949918",
+      "compared_values": 49,
+      "absences_exact": 51,
+      "max_absolute_error": 3.90721147844777e-14,
+      "max_relative_error_all_expected_nonzero": 8.190100630231381e-12
+    },
+    {
+      "scenario": "missing_close",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 100,
+      "input_sha256_csv17": "0d684df2348a6dcd60a82e5c12b68693fa3ac71bc948fd4b42319dfd8c949918",
+      "compared_values": 33,
+      "absences_exact": 67,
+      "max_absolute_error": 2.2743433786252742e-14,
+      "max_relative_error_all_expected_nonzero": 6.428339448820276e-11
+    },
+    {
+      "scenario": "missing_close",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 100,
+      "input_sha256_csv17": "0d684df2348a6dcd60a82e5c12b68693fa3ac71bc948fd4b42319dfd8c949918",
+      "compared_values": 33,
+      "absences_exact": 67,
+      "max_absolute_error": 2.372506659701012e-14,
+      "max_relative_error_all_expected_nonzero": 6.377242514777623e-10
+    },
+    {
+      "scenario": "missing_close",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 100,
+      "input_sha256_csv17": "0d684df2348a6dcd60a82e5c12b68693fa3ac71bc948fd4b42319dfd8c949918",
+      "compared_values": 33,
+      "absences_exact": 67,
+      "max_absolute_error": 3.084125228349521e-13,
+      "max_relative_error_all_expected_nonzero": 6.377244314209804e-10
+    },
+    {
+      "scenario": "invalid_ohlc",
+      "feature_id": "momentum.macd_line_12_26_9",
+      "bars": 100,
+      "input_sha256_csv17": "9488659d8e1876bd927e7563b20e70483f3243d9259b398bd37dbb33eec0a8fa",
+      "compared_values": 75,
+      "absences_exact": 25,
+      "max_absolute_error": 3.90721147844777e-14,
+      "max_relative_error_all_expected_nonzero": 9.669672698295671e-11
+    },
+    {
+      "scenario": "invalid_ohlc",
+      "feature_id": "momentum.macd_signal_12_26_9",
+      "bars": 100,
+      "input_sha256_csv17": "9488659d8e1876bd927e7563b20e70483f3243d9259b398bd37dbb33eec0a8fa",
+      "compared_values": 67,
+      "absences_exact": 33,
+      "max_absolute_error": 2.0634666209104186e-14,
+      "max_relative_error_all_expected_nonzero": 6.589134032915703e-12
+    },
+    {
+      "scenario": "invalid_ohlc",
+      "feature_id": "momentum.macd_histogram_12_26_9",
+      "bars": 100,
+      "input_sha256_csv17": "9488659d8e1876bd927e7563b20e70483f3243d9259b398bd37dbb33eec0a8fa",
+      "compared_values": 67,
+      "absences_exact": 33,
+      "max_absolute_error": 1.525801294039823e-14,
+      "max_relative_error_all_expected_nonzero": 2.3776562643897923e-11
+    },
+    {
+      "scenario": "invalid_ohlc",
+      "feature_id": "momentum.macd_histogram_atr_14",
+      "bars": 100,
+      "input_sha256_csv17": "9488659d8e1876bd927e7563b20e70483f3243d9259b398bd37dbb33eec0a8fa",
+      "compared_values": 53,
+      "absences_exact": 47,
+      "max_absolute_error": 1.8974162254594638e-13,
+      "max_relative_error_all_expected_nonzero": 2.3776196674474298e-11
+    }
+  ]
+}

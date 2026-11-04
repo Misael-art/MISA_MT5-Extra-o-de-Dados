@@ -142,7 +142,8 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
         has_pivots = any(ident.startswith("structure.") for ident in ids)
         has_channels = any(ident.startswith("channel.donchian_") for ident in ids)
         has_wilder = bool(set(ids) & indicator_registry.WILDER_IDS)
-        if (has_pivots or has_channels or has_wilder) and not bars.empty:
+        has_macd = bool(set(ids) & indicator_registry.MACD_IDS)
+        if (has_pivots or has_channels or has_wilder or has_macd) and not bars.empty:
             # Não comprimir uma ausência conhecida na janela de pivôs. Gaps de
             # calendário sem barra observada não são candles sintetizados.
             raw_positions = {start: index for index, start in enumerate(raw.bar_start_utc)}
@@ -152,8 +153,10 @@ def materialize(db, symbol, timeframe, *, feature_ids=None, batch_size=5000, wri
                                                  for i, position in enumerate(positions)]
             if has_channels:
                 pivot_bars["_channel_reset_before"] = pivot_bars["_pivot_reset_before"]
-            if has_wilder:
+            if has_wilder or has_macd:
                 pivot_bars["_wilder_reset_before"] = pivot_bars["_pivot_reset_before"]
+            if has_macd:
+                pivot_bars["_macd_reset_before"] = pivot_bars["_pivot_reset_before"]
             raw_chains = producers._prefix_source_revisions(producers._source_tokens(raw))
             # Mesmo inserir uma barra inelegível entre observações antigas muda
             # o prefixo/checkpoint; os tokens elegíveis sozinhos não detectariam isso.

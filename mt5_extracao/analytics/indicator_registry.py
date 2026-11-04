@@ -22,6 +22,15 @@ _WILDER_PARAMETERS = {"period": 14, "method": "RMA_alpha_1_over_period", "seed":
                       "value_basis": "closed_calculation_bar; consecutive_eligible_source_bars"}
 
 
+MACD_IDS = frozenset(("momentum.macd_line_12_26_9", "momentum.macd_signal_12_26_9",
+                      "momentum.macd_histogram_12_26_9", "momentum.macd_histogram_atr_14"))
+_MACD_PARAMETERS = {"fast": 12, "slow": 26, "signal": 9, "ema_alpha": "2/(period+1)",
+                    "seed": "first_observation", "adjust": False, "signal_method": "EMA",
+                    "signal_seed": "first_visible_macd_line",
+                    "missing_policy": "reset_and_reseed_per_dependency",
+                    "value_basis": "closed_calculation_bar; unshifted"}
+
+
 def _definition(feature_id, name, family, formula, parameters, unit, warmup_count, source_id, required_columns,
                 *, denominator=None, algorithm_version=ALGORITHM_VERSION):
     return {
@@ -166,17 +175,20 @@ _DEFINITIONS = (
                 "bars.high_low_close", ("high", "low", "close"), denominator="channel_width"),
     _definition("momentum.macd_line_12_26_9", "MACD line (12, 26, 9)", "momentum",
                 "EMA(close, 12) - EMA(close, 26); adjust=false; min_periods=period",
-                {"fast": 12, "slow": 26, "signal": 9}, "price_units", 26, "bars.close", ("close",)),
+                {**_MACD_PARAMETERS}, "price_units", 26, "bars.close", ("close",), algorithm_version="1.1"),
     _definition("momentum.macd_signal_12_26_9", "MACD signal (12, 26, 9)", "momentum",
                 "EMA(MACD line, 9); adjust=false; min_periods=9",
-                {"fast": 12, "slow": 26, "signal": 9}, "price_units", 34, "bars.close", ("close",)),
+                {**_MACD_PARAMETERS}, "price_units", 34, "bars.close", ("close",), algorithm_version="1.1"),
     _definition("momentum.macd_histogram_12_26_9", "MACD histogram (12, 26, 9)", "momentum",
-                "MACD line - MACD signal", {"fast": 12, "slow": 26, "signal": 9}, "price_units", 34,
-                "bars.close", ("close",)),
+                "MACD line - EMA signal; first seeds; reset on missing close", {**_MACD_PARAMETERS}, "price_units", 34,
+                "bars.close", ("close",), algorithm_version="1.1"),
     _definition("momentum.macd_histogram_atr_14", "MACD histogram / ATR (14)", "momentum",
                 "MACD histogram(12, 26, 9) / ATR(14)",
-                {"fast": 12, "slow": 26, "signal": 9, "atr_period": 14}, "atr_units", 34,
-                "bars.high_low_close", ("high", "low", "close"), denominator="atr"),
+                {**_MACD_PARAMETERS, "atr_period": 14, "atr_method": "RMA_alpha_1_over_period",
+                 "atr_seed": "first_observation", "atr_missing_policy": "reset_and_reseed",
+                 "atr_source_rule": "finite_low_le_close_le_high", "alignment": "same_bar; independent_dependency_warmups"},
+                "atr_units", 34, "bars.high_low_close", ("high", "low", "close"),
+                denominator="atr", algorithm_version="1.1"),
     _definition("price.return_1", "Return (1 bar)", "price", "close[t] / close[t-1] - 1",
                 {"horizon_bars": 1, "price_basis": "close"}, "fraction", 2, "bars.close", ("close",),
                 denominator="previous_close"),
@@ -329,6 +341,62 @@ def _bad_denominator(feature_id, position, bars, close, atr14, bb, kc):
 
 
 
+
+def _iter_macd(bars, selected):
+    """MACD por sequência de fechamentos; ATR normalizador tem aquecimento próprio."""
+    if not selected:
+        return
+    close = _column(bars, "close")
+    valid = np.isfinite(close) if close is not None else pd.Series(False, index=bars.index)
+    reset = bars.get("_macd_reset_before", pd.Series(False, index=bars.index)).fillna(True).astype(bool)
+    calculated = pd.DataFrame(np.nan, index=bars.index, columns=["line", "signal", "histogram"])
+    counts = np.zeros(len(bars), dtype=int)
+    start = None
+    for end in range(len(bars) + 1):
+        good = end < len(bars) and bool(valid.iloc[end])
+        if start is not None and (not good or bool(reset.iloc[end])):
+            calculated.iloc[start:end] = macd(close.iloc[start:end]).to_numpy()
+            counts[start:end] = np.arange(1, end-start+1)
+            start = None
+        if good and start is None:
+            start = end
+    columns = {"momentum.macd_line_12_26_9": "line", "momentum.macd_signal_12_26_9": "signal",
+               "momentum.macd_histogram_12_26_9": "histogram", "momentum.macd_histogram_atr_14": "histogram"}
+    for ident in selected:
+        spec = _BY_ID[ident]
+        normalized = ident == "momentum.macd_histogram_atr_14"
+        # Reusa a variante ATR1.1 aceita, com sequência independente das EMAs.
+        atr_rows = _iter_wilder(bars, ["volatility.atr_14"]) if normalized else None
+        missing = [name for name in spec["required_columns"] if name not in bars]
+        for position, bar_index in enumerate(bars.index):
+            atr = next(atr_rows) if normalized else None
+            value, state, reason = None, "AVAILABLE", None
+            raw = calculated[columns[ident]].iloc[position]
+            if missing:
+                state, reason = "SOURCE_UNAVAILABLE", "MISSING_COLUMNS:" + ",".join(missing)
+            elif not valid.iloc[position]:
+                state, reason = "SOURCE_VALUE_MISSING", "FINITE_CLOSE_REQUIRED"
+            elif normalized and atr["state"] == "SOURCE_VALUE_MISSING":
+                state, reason = atr["state"], "ATR:" + atr["reason"]
+            elif counts[position] < spec["warmup_count"]:
+                state, reason = "WARMUP", "REQUIRES_" + str(spec["warmup_count"]) + "_BARS"
+            elif normalized and atr["state"] != "AVAILABLE":
+                state, reason = atr["state"], "ATR:" + str(atr["reason"])
+            elif normalized and atr["value"] <= 0:
+                state, reason = "INVALID_DENOMINATOR", "ATR_MUST_BE_POSITIVE"
+            else:
+                raw = raw / atr["value"] if normalized else raw
+                if not np.isfinite(raw):
+                    state, reason = "INVALID_RESULT", "FORMULA_RETURNED_NON_FINITE_VALUE"
+                else:
+                    value = float(raw)
+            yield dict(bar_index=bar_index, feature_id=ident, algorithm_version=spec["algorithm_version"],
+                       value=value, state=state, reason=reason,
+                       window_metadata={"source_scope": "causal_prefix_including_known_ineligible_bars",
+                                        "macd_seed": "first_observation", "signal_method": "EMA",
+                                        "missing_policy": "reset_and_reseed_per_dependency"})
+
+
 def _iter_wilder(bars, selected):
     """Qualifica RSI/ATR reutilizando os calculadores legados em segmentos finitos.
 
@@ -479,6 +547,9 @@ def iter_core(bars, *, feature_ids=None):
     unknown = sorted(set(selected) - set(_BY_ID))
     if unknown:
         raise ValueError("Indicadores nativos desconhecidos: " + ", ".join(unknown))
+    macd_ids = [ident for ident in selected if ident in MACD_IDS]
+    yield from _iter_macd(bars, macd_ids)
+    selected = [ident for ident in selected if ident not in MACD_IDS]
     wilder_ids = [ident for ident in selected if ident in WILDER_IDS]
     yield from _iter_wilder(bars, wilder_ids)
     selected = [ident for ident in selected if ident not in WILDER_IDS]

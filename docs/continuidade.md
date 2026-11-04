@@ -2798,3 +2798,68 @@ sem exportação. BD08b ainda não fecha as demais famílias/produtores; BD12 e
 BD13/14 seguem suas dependências. Leitura limitada na origem permanece BD18b;
 200 mil fatos pós-leitura não é proteção de memória. Paridade nativa e demais
 consumidores mantêm aceites separados. Pilar de dados continua parcial.
+
+
+## BD08b — MACD e aceite da sétima revisão (24/10/2026)
+
+O [aceite delimitado RSI/ATR](dados/BD08B_WILDER.md) foi acrescentado sem mudar
+PR206/6e7b30e (rascunho) nem reclassificar sua geral interrompida.143 testes
+próprios do revisor, incluindo23 da família; sonda decimal60 com32 comparações
+contadas separadamente. Três casos anteriores passaram com limites originais;
+diagnóstico T20.4/BD14 e agregação/cache F16/T20.24/25 permanece, sem causa comum
+comprovada. [Recibo rev7](dados/recibos/revisao7_bd08b_wilder_20261024.json).
+
+[PR209 em rascunho](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/209),
+código `b1f0328b41e692bea1cca0ee45981463ba255079`, sobre #206/6e7b30e. Quatro
+saídas MACD com EMA first-seeded, sinal EMA9 e reinício26/34 após fechamento
+inválido ou barra conhecida inelegível. Histograma/ATR usa ATR1.1 com OHLC
+finito/ordenado e aquecimento14 independente. Definições1.1/materialização1.1+hash
+preservam1.0 e registro direto idempotente. Kernels legados/privados inalterados.
+[Contrato MACD](dados/BD08B_MACD.md), [recibo](dados/recibos/recibo_bd08b_macd_20261024.json)
+e [precisão medida](dados/recibos/precisao_bd08b_macd_b1f0328.json).
+
+Resultados separados, com campos nomeados no recibo:
+
+- Baseline6e7b30e integral:3100 aprovados,66 pulados,0 falhas,2 avisos de layout,
+  4340,17s, uma execução. Os três casos antigos passaram, sem apagar a tentativa
+  original.41 dirigidos iniciais também aprovados em31,54s.
+- Família MACD:27 aprovados,0 pulados,0 falhas,0 avisos,22,46s.
+- Dirigidos finais:167 aprovados,0 pulados,0 falhas,0 avisos,224,45s.
+- CI PostgreSQL:73 aprovados,0 pulados,0 falhas,0 avisos,108,06s.
+- CI Ubuntu:2937 aprovados,259 pulados,0 falhas,0 avisos,1603,93s.
+- CI Windows:3091 aprovados,104 pulados,0 falhas,5 avisos,3403,74s;
+  contexto separado3 aprovados,0 pulados,0 falhas,0 avisos,43,97s.
+- Seis checks técnicos aprovados no próprio b1f0328, incluindo lint e dois
+  instaladores. O commit documental posterior usa [skip ci], sem execução própria.
+- Geral final local: encerramento143 perto de97%, sem resumo;3104 marcadores
+  (3035 aprovados,69 pulados,0 falhas observadas; avisos não apurados). Processo
+  não estava vivo após encerrar; causa não estabelecida.92 casos restantes
+  aprovados em processo novo,0 pulados,0 falhas,0 avisos,31,00s. Todos os3196
+  casos foram observados entre processos; não é geral local aprovada em execução
+  única. Diagnóstico de encerramento/ciclo de processos fica com recursos,
+  T20.24/25 e BD14, sem afrouxar limites nem misturar correção alheia.
+
+478 fontes/testes Python congelados por hash. Recursos do processo inteiro da
+família:164064KiB de pico RSS,4513990bytes temporários ao final,23,57s de parede;
+não são custo isolado do produtor nem pico de disco. Doctor final16 OK,2 avisos,
+0 falhas. Tentativas falhas de contrato/metadados e instrumentação preservadas;
+nenhum teste removido nem limite aumentado. Precisão é medida por unidade,
+sem promessa relativa uniforme para histograma próximo de zero.
+
+Baseline em worktree imutável própria e implementação em outra. Instaladores
+obrigatórios usaram destinos XDG temporários; bytes dos atalhos reais foram
+capturados antes e conferidos após cada preparo. Ocorrência histórica RSI/ATR
+sem bytes prévios permanece no recibo antigo. No corte inicial o App era49c662;
+no final éfd6062885e30/T20.22-LAB1, H b730ed4a8df7 e Safetyc5a3e2162cac.
+Atalhos finais SHA59801385… mantêm app-development/run.sh; seus bytes e o canal
+App mudaram durante o turno. Esse estado atual foi conservado, sem restaurar
+49c/562 nem atribuir a ele a causa de143. Raiz/WIP e stat da base principal
+iguais:481120256bytes,mtime_ns1792797912518858963; banco não foi aberto nesta
+frente. Nenhum merge, ativação, acionamento de ponte ou ordem desta frente.
+
+BD08b/E12/M4 e pilar parciais; M2 primeiro percurso demonstrado/parcial,
+E31 planejado e E32.1 CLI sem exportação. Demais famílias mantêm donos/provas.
+BD12→BD13/14 segue o grafo, com assinatura global ainda vigente. BD18b mantém
+leitura limitada na origem:200mil pós-leitura não é proteção de memória.
+Windows físico e paridade nativa pendentes. Composição exige fotografia atual,
+preservando AIA-01 SDK CLI e os avanços posteriores, agora T20.22-LAB1.
