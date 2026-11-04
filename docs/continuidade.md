@@ -5073,3 +5073,16 @@ mesma versão e método declarado. 57 testes do Dashboard passaram (6 novos de
 regime). Browser HTTP com base QA sintética renderizou heatmap e célula do corte
 sem erros de console. Rótulos densos em 24 colunas ficam para DASH-12; AC-06 e
 offline seguem pendentes. Próxima: DASH-05 (volume).
+
+### Reconciliação do Dashboard —01/11/2026 (DASH-05)
+
+O proprietário atribuiu a esta sessão a harmonização serial e o repasse a um
+único sucessor. Preservados os corretivos de outra sessão em d19cd8c e ancestrais,
+sem reset, checkout paralelo ou mudanças em HADOUKEN/Safety. A faixa RVOL lê
+produtores persistidos e seus clocks; fonte, versão, minuto e amostra não se
+misturam. O leitor reconhece same_as_source sem buscar outro TF. Mediana1×,
+realce descritivo, ausências e quebras de tempo são explícitos. Testes e Browser
+com bancada própria ficaram em state/qa-tmp/dashboard/volume-acceptance.json.
+A correção independente da ponte será preservada em commit/PR próprio, sobre
+esta composição. Próxima funcionalidade do Dashboard: DASH-06; não declarar
+surpresa/hipóteses/Windows/offline aceitos sem seus produtores e evidências.
