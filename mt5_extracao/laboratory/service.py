@@ -90,7 +90,7 @@ CLOCK_UNKNOWN = (
     "time_basis = utc, que a captura de snapshots ainda não aceita. Sua seleção foi mantida.")
 
 
-def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None):
+def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None, stored_features=()):
     """Congela somente uma seleção explícita pela API datasets existente."""
     tfs = [timeframes.parse(tf) for tf in timeframes_selected]
     if not tfs or len(tfs) > MAX_TIMEFRAMES or None in tfs or len(set(tfs)) != len(tfs):
@@ -109,7 +109,8 @@ def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None):
             suggested = pd.Timestamp(frame.time.iloc[-MAX_BARS]).isoformat()
             raise ValueError(f"{tf.name}: {len(frame)} barras na janela; o limite é {MAX_BARS}. "
                              f"Informe início a partir de {suggested} (últimas {MAX_BARS} barras) ou um fim anterior.")
-    return [datasets.capture(db, symbol, tf.name, start, end) for tf in sorted(tfs, key=lambda tf: tf.minutes)]
+    return [datasets.capture(db, symbol, tf.name, start, end, stored_features=stored_features)
+            for tf in sorted(tfs, key=lambda tf: tf.minutes)]
 
 
 def _utc(value):

@@ -119,6 +119,46 @@ diagnostic = analyze(snapshots, strategy_key="ema_atr",
                      feature_ids=["momentum.rsi_14"], as_of="2026-10-01T03:00:00Z")
 ```
 
+### Congelar versões persistidas de indicadores (BD19a-SNAPSHOT)
+
+`capture_selection(..., stored_features=[("ID", "VERSAO"), ...])` inclui contratos e histórico
+de revisões no mesmo mecanismo de snapshots. A CLI usa pares explícitos, repetíveis:
+
+```sh
+./run.sh --cli laboratory freeze --symbol QA --tf M5 --stored-feature qa.metric v1
+```
+
+A captura opcional usa formato4; sem `stored_features`, conserva o formato3. Os formatos1/2/3
+continuam legíveis e não recebem fatos da base atual ao serem abertos. Aplicações anteriores ao
+formato4 precisam ser atualizadas para lê-lo. Não há outro banco ou store: os novos papéis usam
+os blocos deduplicados, manifests, exportação e importação existentes.
+
+`snapshot.feature_definitions` devolve os contratos capturados por ID/versão, incluindo unidades,
+parâmetros, tipos e situação dos nomes. `snapshot.feature_history` devolve uma cópia dos fatos,
+com disponibilidade, revisão e qualidade. Modificar essas cópias não altera o snapshot. Versão
+não registrada é recusada; nome legado não é reconstruído nem renomeado. Um snapshot antigo
+sem essas coleções exige nova captura explícita e nunca consulta a base atual para completá-las.
+
+Barras, contratos e fatos são lidos na mesma transação consistente. Congelar indicadores exige
+offset fixo declarado; isso não verifica o relógio real do servidor. A janela inclui as observações
+entre a primeira abertura e o fechamento da última barra selecionada, com todas as suas revisões.
+Disponibilidades posteriores permanecem registradas e devem ser filtradas por decisão; não se
+preenche o início com observações anteriores à janela. A captura recusa mais de200.000 fatos por
+manifesto, limitando a leitura SQL antes da publicação. Não trunca nem publica uma revisão parcial.
+
+Esta etapa fornece a captura/reabertura. Selecionar e analisar esses canais na UI, o adaptador
+causal do relatório e sua qualificação continuam na frente seguinte; `analyze` mantém o consumo
+de fórmulas locais. Barras descritivas não se tornam historicamente point-in-time por incluir fatos.
+
+Validação local de29/10:baseline48, rodada final171 testes e mais1 caso de zero/expiração após
+serialização, total172 distintos; compatibilidade de formatos e
+concorrência WAL, limite, categorias/booleanos, expiração/metadados e rejeição de pacotes incoerentes
+mesmo com hashes recalculados. Launcher/CLI com dados sintéticos: valor atual12→99, snapshot
+antigo12 preservado; exportar/importar/reexportar conserva bytes. Bancada1.000barras/2.000revisões,
+medianas de3 capturas aquecidas: formato3 padrão269ms/80.529bytes; opcional4 com fatos624ms/
+552.682bytes. É custo adicional medido, sem promessa de aceleração. Recibos locais
+`state/qa-tmp/catalog-store/snapshot-*`; sem aceite de conta/MT5/Windows físico ou financeiro.
+
 ### Descritiva × preditiva (LAB-07)
 
 Cada par traz `relation`: `DESCRIPTIVE` na defasagem 0 (co-movimento) e

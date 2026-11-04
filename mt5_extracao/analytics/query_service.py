@@ -101,7 +101,7 @@ def _stored_contract(row):
     return result
 
 
-def definition_catalog(db=None):
+def definition_catalog(db=None, *, connection=None):
     """Fonte única do catálogo registry + definições/versões persistidas. Só lê; não cria schema."""
     registry = {(s["feature_id"], s["algorithm_version"]):s for s in indicator_contracts.contracts()}
     result = {key:dict(s, origin="registry", computable=True, name_status="DECLARED",
@@ -111,7 +111,7 @@ def definition_catalog(db=None):
         if not feature_store._usable(db):
             raise QueryError("BASE_UNAVAILABLE", "Base indisponível; confira a configuração e a conexão.")
         try:
-            stored = feature_store.list_definitions(db)
+            stored = feature_store.list_definitions(db, connection=connection)
         except json.JSONDecodeError as exc:
             raise QueryError("INVALID_DEFINITION", "Metadados de definição inválidos na base; confira o produtor.") from exc
         for row in stored:

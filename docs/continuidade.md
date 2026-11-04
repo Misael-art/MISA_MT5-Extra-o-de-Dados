@@ -3297,3 +3297,34 @@ dependem de BD18b). A próxima frente continua sendo o Laboratório: congelar fa
 e contratos no snapshot existente antes do consumo causal por decisão, preservando
 manifests antigos e a origem da revisão. Não consultar a base atual por baixo de
 uma análise apresentada como congelada.
+
+## Continuidade do roadmap — BD19a-SNAPSHOT, 29/10/2026
+
+Base `34e749d`/PR215, branch `codex/bd19-snapshot-indicadores`. O snapshot existente
+passa a congelar opcionalmente versões persistidas, seus contratos e todas as revisões
+das observações na janela de barras. Formato4 somente com seleção explícita; padrão3
+e leitura1/2/3 preservados. `.feature_history`/`.feature_definitions` devolvem cópias;
+snapshots antigos não consultam a base atual para completar coleções ausentes.
+[Contrato, CLI, limites e medições](sdk/laboratorio_series.md#congelar-versões-persistidas-de-indicadores-bd19a-snapshot).
+
+Leitores do store aceitam a conexão consistente e limite SQL opcional, sem mudar
+os defaults existentes. Barras, definições e fatos usam a mesma transação. Exige
+relógio fixo declarado, não presumido; a declaração não qualifica o servidor real.
+Contratos/ativos/TFs/revisões/UTC/tipos e limites são conferidos ao carregar/importar.
+O decoder conserva o dtype com fuso nas colunas inteiramente NaT; não localiza
+timestamps ingênuos presentes. Schema4 reutiliza tabelas/blocos/manifests existentes.
+
+Baseline48, rodada final171 mais1 caso de zero/expiração após serialização,172 distintos
+aprovados. Launcher oficial/CLI sintético:
+a prévia anterior recusou o argumento novo; o fonte atual congelou, exportou e
+reimportou a seleção. Após corrigir12→99 no store, o manifest anterior e seus bytes
+continuaram12; o novo manifest contém ambas as revisões. WAL comprovou barras e
+fatos da mesma leitura durante correção concorrente. Bancada1.000barras/2.000revisões:
+padrão3 269ms/80.529B, opt-in4 624ms/552.682B (medianas3 chamadas), custo declarado.
+Recibos `state/qa-tmp/catalog-store/snapshot-*`; nenhuma base principal/pesquisa usada
+como fixture. Publicar, conferir SHA e instalar a prévia pelo fluxo habitual.
+
+Próxima etapa: adaptar o contexto para os frames congelados e ligar a seleção
+ID/versão ao relatório e aos seletores do Laboratório. A UI ainda calcula fórmulas
+locais; a captura nova não declara BD19a integral, histórico de preços point-in-time,
+aceite nativo, financeiro ou Windows físico. Preservar esses limites ao integrar.
