@@ -61,7 +61,7 @@ def for_trades(db, trades, *, feature_ids=None, clocks=None):
         query["_trade_row"] = group.index
         part = indicator_context.context(db, query, symbol=symbol, timeframe=timeframe, feature_ids=ids)
         parts.append(part.set_index("_trade_row"))
-    implementation = indicator_materializer.implementation_signature()
+    implementations = indicator_materializer._implementation_signatures(ids)
     columns = {}
     for ident in ids:
         spec = indicator_registry.get_definition(ident)
@@ -71,7 +71,7 @@ def for_trades(db, trades, *, feature_ids=None, clocks=None):
             columns[name] = pd.Series([None] * len(frame), dtype="object")
         columns[ident + "::state"] = "UNAVAILABLE"
         columns[ident + "::reason"] = list(frame.context_reason)
-        columns[ident + "::algorithm_version"] = indicator_materializer.algorithm_version(ident, implementation)
+        columns[ident + "::algorithm_version"] = indicator_materializer.algorithm_version(ident, implementations[ident])
         columns[ident + "::unit"] = spec["unit"]
         columns[ident + "::parameters"] = json.dumps(spec["parameters"], sort_keys=True, separators=(",", ":"))
     output = pd.DataFrame(columns, index=frame.index)

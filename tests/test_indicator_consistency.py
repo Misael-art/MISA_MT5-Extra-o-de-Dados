@@ -77,12 +77,12 @@ def test_overlapping_store_retries_are_idempotent(db):
 def test_global_version_transition_keeps_explicit_legacy_context(db, monkeypatch):
     seed(db, source(25))
     ident = "price.return_1"
-    monkeypatch.setattr(materializer, "implementation_signature", lambda: "1" * 64)
+    monkeypatch.setattr(materializer, "implementation_signature", lambda feature_id=None, **kwargs: "1" * 64)
     materializer.materialize(db, "TEST", "M5", feature_ids=[ident])
     legacy = materializer.algorithm_version(ident)
     original = facts(db)
     decisions = pd.DataFrame({"decision_time": ["2026-09-02T00:00Z"]})
-    monkeypatch.setattr(materializer, "implementation_signature", lambda: "2" * 64)
+    monkeypatch.setattr(materializer, "implementation_signature", lambda feature_id=None, **kwargs: "2" * 64)
     current = indicator_context.context(db, decisions, symbol="TEST", timeframe="M5", feature_ids=[ident])
     assert current.iloc[0][ident + "::state"] != "AVAILABLE"
     pinned = indicator_context.context(db, decisions, symbol="TEST", timeframe="M5", feature_ids=[ident], algorithm_version=legacy)

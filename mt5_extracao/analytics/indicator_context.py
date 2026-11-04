@@ -55,10 +55,10 @@ def _selection(db, feature_ids, algorithm_version):
     if algorithm_version is None and set(ids) - local_ids:
         raise ValueError("Indicador sem implementação local: informe algorithm_version explicitamente; "
                          "consulte as versões em features catalog.")
-    implementation = indicator_materializer.implementation_signature() if algorithm_version is None else None
+    implementations = indicator_materializer._implementation_signatures(ids) if algorithm_version is None else {}
     selected = []
     for ident in ids:
-        version = algorithm_version or indicator_materializer.algorithm_version(ident, implementation)
+        version = algorithm_version or indicator_materializer.algorithm_version(ident, implementations[ident])
         entry = contracts.get((ident, version))
         registered = entry is not None and entry["registered_definition"] is not None
         if not registered and algorithm_version is not None:
