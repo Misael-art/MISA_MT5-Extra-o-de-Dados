@@ -128,7 +128,7 @@ def test_export_remains_independent_of_database_after_generation(tmp_path, monke
     monkeypatch.setattr(generator, "generate", lambda *a, **kw: pytest.fail("não consultar dados"))
     target = tmp_path / "frozen.html"
     document.export(snapshot, target)
-    archived = decode(target.read_text())
+    archived = decode(target.read_text(encoding="utf-8"))
     assert archived["as_of_utc"] == snapshot["as_of_utc"]
     assert archived["sections"][0]["n_observations"] == 3
     assert archived["sections"][0]["visual"]["value"] == -2.5

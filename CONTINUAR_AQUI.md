@@ -10,7 +10,7 @@ o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
 ## Ponta de continuidade em30/10/2026
 
-Retome `codex/dashboard-arquivo-portatil`, sobre DASH-02/PR264, DASH-01/PR263, snapshots/PR262, planejamento DASH-00/PR261, comparação/PR260, retenção/PR259, vários ativos/PR258, Todos/PR257, ordenação/PR256, portabilidade/PR255, conexão/PR254, Expert/PR253 e persistência/PR252, inspetor/PR251, financeiro/PR250, protocolo/PR249, BD06-MACRO/PR248, MEN-PT/PR247, MEN-SOCIAL/PR246 e o corretivo
+Retome `codex/dashboard-regime` (DASH-04), sobre DASH-03/PR265, DASH-02/PR264, DASH-01/PR263, snapshots/PR262, planejamento DASH-00/PR261, comparação/PR260, retenção/PR259, vários ativos/PR258, Todos/PR257, ordenação/PR256, portabilidade/PR255, conexão/PR254, Expert/PR253 e persistência/PR252, inspetor/PR251, financeiro/PR250, protocolo/PR249, BD06-MACRO/PR248, MEN-PT/PR247, MEN-SOCIAL/PR246 e o corretivo
 Windows da PR245. FRED/BCB seguem captura local e fases datadas retrospectivas.
 Fontes sociais aguardam autorização real; português tem
 versão própria e avaliação controlada, sem selo humano/representativo.

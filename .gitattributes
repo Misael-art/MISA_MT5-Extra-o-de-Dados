@@ -3,3 +3,5 @@
 *.py  text eol=lf
 *.ps1 text eol=crlf
 *.bat text eol=crlf
+# Recursos de terceiros conferidos por SHA256 no manifesto: bytes exatos, sem conversão.
+mt5_extracao/dashboard/static/vendor/** -text

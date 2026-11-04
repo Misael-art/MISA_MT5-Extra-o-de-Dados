@@ -5064,3 +5064,12 @@ conferiu dados/detalhe por clique e teclado. file:// foi recusado pela política
 de URL; sem contorno. Aceite offline visual/AC-06 e desenho da surpresa no
 browser seguem pendentes; fixture não é integração real de produtor ausente.
 Próximas faixas independentes: regime e volume, sem novo cálculo/cache.
+
+### Faixa de regime do Dashboard —31/10/2026 (DASH-04)
+
+Sobre DASH-03/PR265, branch codex/dashboard-regime. Heatmap dia × hora a partir
+de regime.state/regime.confidence persistidos, sem cálculo novo; confiança só com
+mesma versão e método declarado. 57 testes do Dashboard passaram (6 novos de
+regime). Browser HTTP com base QA sintética renderizou heatmap e célula do corte
+sem erros de console. Rótulos densos em 24 colunas ficam para DASH-12; AC-06 e
+offline seguem pendentes. Próxima: DASH-05 (volume).

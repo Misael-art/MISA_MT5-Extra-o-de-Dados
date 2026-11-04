@@ -1,0 +1,11 @@
+<template id="regime-controls">
+  <div class="regime-context">
+    <p class="regime-intensity"></p>
+    <p>Cada célula é o <strong>último registro</strong> daquele dia × hora UTC no recorte — não é média, frequência nem probabilidade. TEN tendência · LAT lateral · TRA transição · INC incerto · vazio: sem registro.</p>
+    <p><span aria-hidden="true">▭</span> contorno contínuo: hora do corte, <span class="regime-cut"></span><br>
+       <span aria-hidden="true">●</span> ponto: última observação, <span class="regime-latest"></span><br>
+       <span aria-hidden="true">┅</span> tracejado: célula selecionada (clique ou setas)</p>
+    <div class="regime-hours"><button type="button" data-step="-6" aria-label="Ver seis horas anteriores">←</button><span class="hours-label"></span><button type="button" data-step="6" aria-label="Ver seis horas seguintes">→</button></div>
+    <p class="cell-readout" role="status"></p>
+  </div>
+</template>
