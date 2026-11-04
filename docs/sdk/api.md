@@ -656,3 +656,31 @@ um banco alterado por terceiros. O limite do artefato é16MiB e32 manifests;
 limites de cálculo BD15a, cancelamento e guarda de escrita são preservados.
 Persistir um resultado insuficiente preserva sua inconclusão. Isto não cria
 registro de tentativas, aceitação OOS/financeira, novos jobs ou adaptação da UI.
+
+
+### Consulta de relações salvas no Laboratório (BD19b)
+
+`sdk.query_saved_relations(db, *, symbol=None, timeframe=None, page_size=50,
+cursor=None)` consulta o índice de DTO2 persistidos pelo serviço BD15b. Retorna
+envelope `status`, `items`, `matched`, `selection`, `base`, `page` e `errors`.
+CLI: `analytics features relation-list --symbol QA --tf M1 --page-size 25`;
+`--cursor` percorre a próxima página. Filtros são identidades exatas; vazios na
+GUI mostram todos os recortes da base selecionada.
+
+A consulta reutiliza os cursores/geração do serviço canônico, aplica `LIMIT`
+antes de ler os payloads e processa um artefato por vez. Até200 itens por página
+e200.000 metadados por seleção; acima disso, filtre ativo/timeframe. Base,
+conteúdo ou filtros alterados invalidam o cursor, sem misturar páginas. Não
+cria schema nem executa cálculos. O resumo confere o hash/contrato do artefato;
+a seleção pelo `load_feature_relation` confere também os snapshots de origem.
+Falha de integridade retorna erro sem resultados parciais.
+
+No Laboratório → Relações e aderência → Matriz → Relações salvas, consulte,
+selecione e leia o coeficiente em destaque, séries/versões/unidades, amostra,
+exclusões e qualificação. Detalhes expõem identificação, corte, intervalo e
+origens. Carregamento usa `run_bg`/indicador de processamento existentes;
+respostas antigas não substituem um novo filtro ou seleção. A subvisão é
+somente leitura de resultados persistidos, conserva o selo sintético e não
+recalcula nem promove evidência, lucro, causalidade ou autorização operacional.
+Criação visual de novos pares, demais alvos e exportação completa permanecem
+nas frentes próprias.

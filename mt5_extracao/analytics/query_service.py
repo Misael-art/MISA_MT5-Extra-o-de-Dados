@@ -12,7 +12,7 @@ import json
 import math
 
 import pandas as pd
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from mt5_extracao.analytics import datasets, feature_store, indicator_contracts
@@ -153,6 +153,86 @@ def catalog(db=None):
                     "errors": [{"code": "BASE_UNAVAILABLE", "message": "Não foi possível ler o catálogo da base."}]}
     json.dumps(envelope, allow_nan=False)
     return envelope
+
+
+def relations(db, *, symbol=None, timeframe=None, page_size=50, cursor=None):
+    """Índice paginado dos artefatos BD15b; nenhum cálculo, DDL ou origem ativa."""
+    selection = dict(kind="saved_feature_relations", symbol=symbol if isinstance(symbol,str) else None,
+                     timeframe=timeframe if isinstance(timeframe,str) else None)
+    try:
+        for key, value in (("symbol", symbol), ("timeframe", timeframe)):
+            if value is not None and (not isinstance(value, str) or not value.strip()):
+                raise QueryError("BAD_FILTER", f"{key} precisa ser texto não vazio ou null.")
+            selection[key] = value.strip() if value is not None else None
+        if isinstance(page_size, bool) or not isinstance(page_size, int) or not 1 <= page_size <= 200:
+            raise QueryError("BAD_PAGE_SIZE", "Use page_size entre1 e200 para relações salvas.")
+        if not feature_store._usable(db):
+            raise QueryError("BASE_UNAVAILABLE", "Selecione uma base conectada para consultar relações salvas.")
+        digest = _selection_hash(selection)
+        after, expected = _decode_cursor(cursor, digest) if cursor is not None else (None, None)
+        filters, params = [], {}
+        for column, key in (("symbol", "symbol"), ("tf", "timeframe")):
+            if selection[key] is not None:
+                filters.append(column+"=:"+key);params[key] = selection[key]
+        where = " WHERE "+" AND ".join(filters) if filters else ""
+        collation = '"C"' if db.engine.dialect.name == "postgresql" else "BINARY"
+        columns = [column+" COLLATE "+collation for column in ("symbol", "as_of_utc", "analysis_id")]
+        order = ",".join(columns)
+        items, matched, next_cursor, base = [], 0, None, None
+        with db.consistent_read() as conn:
+            if inspect(conn).has_table(feature_store.RELATIONS_TABLE):
+                base, context = _base(db, connection=conn)
+                scan = hashlib.sha256()
+                statement = text(f"SELECT symbol,as_of_utc,analysis_id,payload_sha256,semantic_sha256 "
+                    f"FROM {feature_store.RELATIONS_TABLE}"+where+" ORDER BY "+order)
+                with conn.execution_options(stream_results=True, max_row_buffer=256).execute(statement, params) as rows:
+                    for row in rows.yield_per(256):
+                        matched += 1
+                        if matched > MAX_SELECTION_ROWS:
+                            raise QueryError("SELECTION_TOO_LARGE", "Mais de200.000 relações; filtre ativo/timeframe.")
+                        scan.update(json.dumps(list(row), ensure_ascii=False, separators=(",", ":")).encode());scan.update(b"\n")
+                generation = _generation(scan.digest(), base, context, {})
+                if expected is not None and expected != generation:
+                    raise QueryError("STALE_CURSOR", "Relações ou base mudaram; atualize sem cursor para não misturar páginas.")
+                page_where = list(filters)
+                if after is not None:
+                    page_where.append("("+",".join(columns)+") > (:key0,:key1,:key2)")
+                    params.update({"key"+str(i):v for i,v in enumerate(after)})
+                condition = " WHERE "+" AND ".join(page_where) if page_where else ""
+                keys = conn.execute(text(f"SELECT symbol,as_of_utc,analysis_id FROM {feature_store.RELATIONS_TABLE}"+
+                    condition+" ORDER BY "+order+" LIMIT :limit"), dict(params, limit=page_size+1)).all()
+                more = len(keys) > page_size
+                for key in keys[:page_size]:
+                    row = conn.execute(text(f"SELECT * FROM {feature_store.RELATIONS_TABLE} WHERE analysis_id=:id"),
+                        {"id":key.analysis_id}).mappings().one()
+                    dto = feature_store._relation_row(row)
+                    def side(name):
+                        value = dto[name]
+                        return dict(feature_id=value["feature_id"], algorithm_version=value["algorithm_version"],
+                            name=value["definition"].get("name") or value["feature_id"], unit=value["unit"])
+                    items.append(dict(analysis_id=key.analysis_id, left=side("left"), right=side("right"),
+                        symbol=dto["scope"]["symbol"], timeframe=dto["scope"]["timeframe"],
+                        lag_bars=dto["scope"]["lag_bars"], as_of=dto["provenance"]["as_of_utc"],
+                        relation=dto["relation"], synthetic_fixture=dto["synthetic_fixture"]))
+                if more:
+                    last = keys[page_size-1]
+                    next_cursor = _encode_cursor(digest, list(last), generation)
+            elif cursor is not None:
+                raise QueryError("STALE_CURSOR", "O acervo de relações não está disponível; recomece sem cursor.")
+        result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="ok", selection=selection, base=base,
+            items=items, matched=matched, page=dict(size=page_size, returned=len(items), next_cursor=next_cursor),
+            reasons=[] if items else ["Nenhuma relação salva neste recorte. Calcule e persista um par antes de consultar."], errors=[])
+    except QueryError as exc:
+        result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="error", selection=selection, items=[],
+            errors=[dict(code=exc.code, message=str(exc))])
+    except (ValueError, KeyError, TypeError):
+        result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="error", selection=selection, items=[],
+            errors=[dict(code="INVALID_RELATION", message="Relação persistida ou origem sem integridade; restaure o artefato original.")])
+    except SQLAlchemyError:
+        result = dict(query_schema_version=QUERY_SCHEMA_VERSION, status="error", selection=selection, items=[],
+            errors=[dict(code="BASE_UNAVAILABLE", message="Não foi possível ler as relações desta base.")])
+    json.dumps(result, allow_nan=False)
+    return result
 
 
 def _definitions_for_selection(versions_by_feature, feature_ids, algorithm_version, entries):

@@ -16,6 +16,7 @@ SURFACE = {
         "minimum_sessions", "bootstrap_replicates", "seed", "block_length_sessions", "tests_counted", "synthetic_fixture",
         "timeout_seconds", "max_memory_mb", "cancel_check", "write_guard"],
     "load_feature_relation": ["db", "analysis_id"],
+    "query_saved_relations": ["db", "symbol", "timeframe", "page_size", "cursor"],
     "recover_producer_jobs": ["db", "symbol", "timeframe", "family"],
     "open_workflow": ["db", "config", "read_account", "config_path", "db_override"],
     "API_VERSION": None, "CONTRACT_VERSION": None,

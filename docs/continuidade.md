@@ -3948,3 +3948,59 @@ incluindo inconclusões; não é registro de tentativas nem qualificação causa
 financeira, MT5/contas ou Windows físico. Próxima frente BD18b/BD19b: consulta e
 consumo das relações persistidas no Laboratório existente. Catálogo/paginação,
 demais tipos/alvos e UI completa continuam nas suas fichas.
+
+
+## Continuidade do roadmap — BD19b-RELATIONS, 29/10/2026
+
+Branch `codex/relacoes-salvas-laboratorio`, sobre
+`31fd6a130d0ff1f4d8201b6f5f80475d5951d69a`/
+[PR230](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/230).
+Os seis checks de produto das PRs229/230 concluíram com sucesso, incluindo
+Linux/Windows completos. Baseline23 testes UI/consulta aprovados. A prévia
+anterior tinha os três artefatos referenciais, mas a Matriz oferecia somente
+indicador×indicador/alvo, sem consumidor dos resultados persistidos.
+
+Agora Matriz → Relações salvas consulta o índice do `query_service` por
+`sdk.query_saved_relations`/CLI `relation-list`. Filtros exatos ativo/TF,
+cursores/geração existentes, fingerprint de metadados em lotes256 e `LIMIT`
+antes de ler um payload por vez. Limites200 itens/página e200.000 metadados;
+base/acervo/filtros alterados invalidam o cursor. Sem DDL, cálculo ou escrita
+na consulta. A seleção usa `sdk.load_feature_relation` para verificar também
+as origens, mantendo versões/unidades, inconclusão e selo sintético.
+[Contrato](sdk/api.md#consulta-de-relações-salvas-no-laboratório-bd19b).
+
+Coeficiente em destaque, população/exclusões e recorte próprio; identificadores
+e inferência ficam no detalhe recolhido. Usa run_bg e o indicador compartilhado,
+sem executor novo. Filtro ou seleção novos invalidam callbacks antigos. Eventos
+repetidos da aba não duplicam uma consulta pendente; notificação de seleção
+não repete a leitura. Vazio/erro limpam os valores anteriores.
+
+Primeira regressão46 aprovados/1 PostgreSQL pendente/1 falha: expectativa antiga
+de sete painéis de detalhes; oitavo acrescentado, mantendo os checks de painéis
+recolhidos e avisos visíveis. Captura real revelou que o contexto de Séries
+empurrava o valor para fora da janela menor. Essa subvisão agora recolhe
+contexto/legenda da análise e os restaura ao sair; o par salvo mostra seu próprio
+recorte. Primeira captura de espera após a mudança terminou antes do registro;
+foi preservada, e a consulta duplicada por evento da aba foi corrigida. O atraso
+controlado de QA é3s; não compõe a medição de leitura.
+
+Regressão ampliada final112 aprovados/3 PostgreSQL pendentes no host, dois avisos
+preexistentes de tight_layout. Contagens se sobrepõem. Timeout60s original,
+uma thread numérica e uma suíte pesada por vez. Um caso novo segue na CI
+PostgreSQL existente; ausência de servidor no host não concede aceite indireto.
+Launcher fonte em QA: três relações, coeficiente+1 e160 pares, ausência de
+valores/zero pares, filtro vazio e referência removida recusada. Zero exceções
+da interface/pendências;1.900 fatos e três artefatos preservados. Barra/aguarde
+e capturas1280×920/880×760 inspecionadas, com valor/unidades/amostra dentro da
+janela menor. Leitura de três resumos mediu1,7–10,4ms, fora do atraso controlado;
+entrada pequena, sem promessa de escala/latência geral.
+
+Recibos de fonte, CLI, pacote instalado, GUI/doctor/CI em
+`state/qa-tmp/laboratory-saved-relations/`; SHA remoto, PR e aceite da prévia
+no registro central. A prévia só é aceita após igualdade fonte/pacote e nova
+inspeção visual. Sem negociação, banco privado como fixture, pins alterados,
+merge/release. Este é o primeiro consumidor passivo dos pares BD15b; criação
+visual de pares, demais tipos/alvos, exportação e contrato integral BD18b/BD19
+permanecem nas fichas próprias. Qualificação causal/financeira/nativa/Windows
+físico não é inferida. Próxima frente: criação de pares pelo fluxo visual atual,
+com versões/amostra/corte explícitos e persistência pelo mesmo serviço.
