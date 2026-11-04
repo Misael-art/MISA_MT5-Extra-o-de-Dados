@@ -10,7 +10,8 @@
       xAxis: {type: "time", axisLabel: {color: colors.muted, formatter: "{dd}/{MM}", hideOverlap: true},
         axisLine: {lineStyle: {color: colors.line}}},
       yAxis: {type: "value", scale: true, name: section.unit || "", nameTextStyle: {color: colors.muted},
-        axisLabel: {color: colors.muted}, splitLine: {lineStyle: {color: colors.line}}},
+        axisLabel: {color: colors.muted, formatter: value => new Intl.NumberFormat("pt-BR").format(value)},
+        splitLine: {lineStyle: {color: colors.line}}},
       tooltip: {trigger: "axis", renderMode: "richText"},
       series: [{type: "line", connectNulls: false, smooth: false, showSymbol: false,
         lineStyle: {color: colors.accent, width: 2},
@@ -18,3 +19,7 @@
     return chart;
   };
 }());
+// Curva de capital do modo Robô: mesma linha temporal, sem preencher lacunas.
+window.MT5XCharts.robot = function (element, section, colors) {
+  return window.MT5XCharts.surprise(element, {...section, unit: "capital do backtest"}, colors);
+};

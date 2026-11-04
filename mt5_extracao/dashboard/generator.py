@@ -19,6 +19,7 @@ GENERATOR_VERSION = "DASH-02/1"
 MAX_FACTS = 20_000
 MAX_BYTES = 8 * 1024 * 1024
 MAX_DAYS = 31
+MAX_ROBOT_RUNS = 5_000
 
 # Mapa do inventário, não um catálogo paralelo de indicadores ou fórmulas.
 CAPABILITY_SOURCES = {
@@ -95,6 +96,7 @@ def _unavailable_surprise(cut):
 
 
 def _read(db, selection, cut):
+    invalidations = []
     if db is None or getattr(db, "engine", None) is None:
         raise ValueError("BASE_UNAVAILABLE: base indisponível.")
     # O contexto e todas as leituras pertencem à mesma transação/imagem.
@@ -141,7 +143,22 @@ def _read(db, selection, cut):
         history = history[history.apply(lambda r: chosen.get(r.feature_id) == r.algorithm_version, axis=1)]
         # Mesma precedência canônica de query_as_of, conservando vencidos para auditoria.
         history = history.sort_values(["available_at_utc", "observed_at_utc", "revision"])
-        history = history.drop_duplicates(["feature_id", "algorithm_version", "observation_time"], keep="last")
+        keys = ["feature_id", "algorithm_version", "observation_time"]
+        # Invalidação retroativa conhecida no corte: última revisão INVALIDATED sobre uma revisão VALID anterior.
+        for _, group in history.groupby(keys, sort=False):
+            last = group.iloc[-1]
+            earlier = group.iloc[:-1]
+            earlier = earlier[earlier["quality"] == "VALID"]
+            if last["quality"] == "INVALIDATED" and not earlier.empty:
+                prior = earlier.iloc[-1]
+                invalidations.append({"kind": "RETROACTIVE_INVALIDATION", "feature_id": last["feature_id"],
+                    "algorithm_version": last["algorithm_version"], "observation_time": _iso(last["observation_time"]),
+                    "previous_revision": int(prior["revision"]), "new_revision": int(last["revision"]),
+                    "previous_available_at_utc": _iso(prior["available_at_utc"]),
+                    "known_at_utc": _iso(last["available_at_utc"]), "source_revision": last["source_revision"],
+                    "previous_value": float(prior["numeric_value"]) if pd.notna(prior["numeric_value"])
+                                      else prior["categorical_value"]})
+        history = history.drop_duplicates(keys, keep="last")
         history = history.sort_values(["feature_id", "algorithm_version", "observation_time"])
     contracts = [{k: d.get(k) for k in ("feature_id", "algorithm_version", "name", "family", "formula", "unit",
                  "timeframe", "availability_rule", "value_type", "output_kind", "metadata_state", "name_status")}
@@ -174,7 +191,7 @@ def _read(db, selection, cut):
                       "reconstructed": metadata.get("reconstructed"),
                       "minute_of_session": metadata.get("minute_of_session"),
                       "source_window_bars": metadata.get("source_window_bars")})
-    return base, context, contracts, facts
+    return base, context, contracts, facts, invalidations
 
 
 def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=None, fixture_label=None):
@@ -198,7 +215,8 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
             "capabilities": _capabilities(), "sections": [_unavailable_surprise(cut.isoformat())],
             "alerts": [], "baseline_snapshot_id": None, "contracts": [], "facts": [], "errors": []}
     try:
-        base, context, contracts, facts = _read(db, selection, cut)
+        base, context, contracts, facts, invalidations = _read(db, selection, cut)
+        data["alerts"] = invalidations
         data["subject"]["base_namespace"] = base["namespace"]
         data["provenance"].update(base=base, time_context=context)
         data.update(contracts=contracts, facts=facts)
@@ -211,9 +229,18 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["capabilities"]["volume"].update(state="AVAILABLE" if has_volume else "NO_DATA",
             reason_code=None if has_volume else "NO_DATA",
             reason="RVOL persistido por fonte/metodologia; demais perfis permanecem auditáveis nos fatos.")
-        data["capabilities"]["regime"].update(state="AVAILABLE" if context_section["default_visible"] else "NO_DATA",
+        data["capabilities"]["regime"].update(state=context_section["display_state"] if context_section["default_visible"] else "NO_DATA",
             reason_code=None if context_section["default_visible"] else "NO_DATA",
             reason="Estado persistido; células são últimos registros por dia/hora UTC, sem agregação estatística.")
+        from mt5_extracao.strategies.validation import load_validations
+        from .sections import validation_sections
+        rows = load_validations(db, [selection["symbol"]], selection["timeframe"], include_result=True)
+        validation = validation_sections(data, rows.to_dict("records"))
+        data["sections"].extend(validation)
+        shown = [s for s in validation if s["status_namespace"] == "validation"]
+        data["capabilities"]["validation"].update(state="AVAILABLE" if shown else "NO_DATA",
+            reason_code=None if shown else "NO_DATA",
+            reason="Vereditos do Filtro C gravados; datas de treino e custos não constam do recibo.")
         data["data_cutoff_utc"] = max((r["observation_time"] for r in facts), default=None)
         data["capabilities"]["identity"].update(state="AVAILABLE", reason_code=None, reason="Identidade lógica preservada.")
         data["capabilities"]["quality"].update(state="AVAILABLE" if facts else "NO_DATA", reason_code=None,
@@ -225,9 +252,102 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["errors"] = [{"code": code, "message": message}]
     data["capabilities"]["surprise"].update(state="DEPENDENCY_PENDING", reason_code="SURPRISE_PRODUCER_MISSING",
         reason=data["sections"][0]["details"]["reason"])
+    from .sections import hypothesis_pending
+    data["sections"].append(hypothesis_pending(data))
     data["capabilities"]["hypotheses"].update(state="DEPENDENCY_PENDING", reason_code="T13_4_PENDING",
         reason="Catálogo de hipóteses estatísticas ainda não implementado; bateria de robô não é aprovação estatística.")
-    return seal(data)
+    from .priority import prioritize
+    return seal(prioritize(data))
+
+
+def generate_robot(db, *, robot_key, as_of, run_id=None, fixture_label=None):
+    """Modo Robô: execução persistida + contexto do ativo/TF dela. Nunca inicia backtest, bateria ou sessão."""
+    from mt5_extracao.robots import store
+    from .sections import (_within_cut, robot_battery_section, robot_no_result_section,
+                           robot_other_runs_section, robot_run_section)
+    if not isinstance(robot_key, str) or not robot_key.strip() or len(robot_key) > 256:
+        raise ValueError("Informe a chave do robô (até256 caracteres).")
+    if run_id is not None and (not isinstance(run_id, str) or not run_id.strip()):
+        raise ValueError("run_id precisa ser texto explícito.")
+    cut = _stamp(as_of, "as_of")
+    # Metadados de todas as execuções (sem curvas/ledger); detalhe completo só da escolhida (DASH-13: <3 s).
+    runs, offset = [], 0
+    while True:
+        page = store.run_index(db, limit=100, offset=offset, robot_key=robot_key)
+        runs.extend(page)
+        if len(page) < 100:
+            break
+        if len(runs) >= MAX_ROBOT_RUNS:
+            raise ValueError("ROBOT_RUNS_LIMIT: robô com mais de5.000 execuções gravadas; recuse em vez de truncar.")
+        offset += 100
+    record = store.load_records(db).get(robot_key)
+    if record is None:
+        # Estratégias Python vêm do registro de código do catálogo (sem varrer pastas nem gravar nada).
+        from mt5_extracao.robots.catalog import python_robots
+        robot = next((r for r in python_robots() if r.key == robot_key), None)
+        if robot is not None:
+            record = {"key": robot.key, "name": robot.name, "kind": robot.kind, "stage": None}
+        elif runs:
+            record = {"key": robot_key, "name": None, "kind": None, "stage": None}
+        else:
+            raise ValueError("ROBOT_NOT_FOUND: robô não encontrado no catálogo nem em execuções gravadas.")
+    known = [r for r in runs if _within_cut(r.get("created_at"), cut)]
+    late = len(runs) - len(known)
+    if run_id is not None:
+        chosen = next((r for r in known if r["run_id"] == run_id), None)
+        if chosen is None:
+            raise ValueError("RUN_NOT_AT_CUT: execução inexistente para o robô ou posterior ao corte.")
+        rule = "explicit_run_id"
+    else:
+        chosen, rule = (known[0] if known else None), "latest_run_known_at_cut"
+    others = [r for r in known if chosen is None or r["run_id"] != chosen["run_id"]]
+    if chosen is not None:
+        chosen = store.load_runs(db, robot_key, run_id=chosen["run_id"])[0]
+    context = None
+    if chosen is not None:
+        try:
+            context = generate(db, symbol=chosen["symbol"], timeframe=chosen["timeframe"], as_of=cut.isoformat(),
+                               fixture_label=fixture_label)
+        except ValueError as exc:
+            context_error = {"code": "ROBOT_CONTEXT_UNAVAILABLE",
+                             "message": "Contexto do ativo/TF da execução indisponível: " + str(exc)}
+        else:
+            context_error = None
+    if context is None:
+        context = generate(None, symbol="—", timeframe="M1", as_of=cut.isoformat(), fixture_label=fixture_label)
+        context["errors"] = []
+        context["sections"] = [s for s in context["sections"] if s["kind"] != "hypothesis"]
+    data = json.loads(_json(context))
+    data.pop("integrity", None)
+    if chosen is not None and context_error is not None:
+        data["errors"] = [context_error]
+    raw_checks = store.load_checks(db, robot_key, runs=[])
+    referenced = {c.get("run_id") for c in raw_checks if c.get("run_id")}
+    # Projeção de PF das baterias exige as métricas das execuções que elas citam; só essas são carregadas.
+    cited = [r for run in referenced for r in store.load_runs(db, robot_key, run_id=run)]
+    checks = [c for c in store.load_checks(db, robot_key, runs=cited) if _within_cut(c.get("created_at"), cut)]
+    identity = {"mode": "robot", "robot_key": robot_key, "robot_name": record.get("name"), "kind": record.get("kind"),
+                "stage": record.get("stage"), "fingerprint": (checks[0].get("fingerprint") or None) if checks else None,
+                "run_id": chosen["run_id"] if chosen else None, "run_selection": rule if chosen else "no_run_at_cut",
+                "symbol": chosen["symbol"] if chosen else None, "timeframe": chosen["timeframe"] if chosen else None,
+                "params": chosen.get("params") if chosen else None}
+    data["subject"] = identity
+    data["selection"] = {**{k: identity[k] for k in ("mode", "robot_key", "run_id", "run_selection", "symbol",
+                                                     "timeframe")},
+                         "start_utc": data["selection"]["start_utc"], "end_utc": data["selection"]["end_utc"],
+                         "as_of_utc": cut.isoformat(), "versions": data["selection"]["versions"]}
+    robot = [robot_run_section(data, record, chosen, others) if chosen else robot_no_result_section(data, record, late)]
+    if checks:
+        robot.append(robot_battery_section(data, checks[0]))
+    if others:
+        robot.append(robot_other_runs_section(data, others))
+    data["sections"] = robot + [s for s in data["sections"] if s["id"] != "surprise"]
+    data["capabilities"]["robots"].update(state="AVAILABLE" if chosen else "NO_DATA",
+        reason_code=None if chosen else "NO_RUN_AT_CUT",
+        reason="Execução persistida em robots.store; outras execuções não são agregadas; bateria não é hipótese.")
+    data["provenance"]["robot_late_runs"] = late
+    from .priority import prioritize
+    return seal(prioritize(data))
 
 
 def seal(data):
@@ -257,9 +377,11 @@ def validate(data):
         raise ValueError("IDs de faixa duplicados.")
     cut = _stamp(data["as_of_utc"], "as_of")
     selection = data["selection"]
-    if (data["subject"].get("mode") != "asset" or selection.get("mode") != "asset"
-            or selection.get("symbol") != data["subject"].get("symbol")
-            or selection.get("timeframe") != data["subject"].get("timeframe")
+    mode = data["subject"].get("mode")
+    same = ("symbol", "timeframe") + (("robot_key", "run_id") if mode == "robot" else ())
+    if (mode not in {"asset", "robot"} or selection.get("mode") != mode
+            or any(selection.get(k) != data["subject"].get(k) for k in same)
+            or (mode == "robot" and not selection.get("robot_key"))
             or _stamp(selection["as_of_utc"], "selection.as_of") != cut):
         raise ValueError("Identidade da seleção diverge da fotografia.")
     states = {"AVAILABLE", "INSUFFICIENT", "UNAVAILABLE", "STALE", "INVALIDATED", "NOT_APPLICABLE"}

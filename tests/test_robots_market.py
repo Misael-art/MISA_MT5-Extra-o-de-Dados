@@ -91,6 +91,20 @@ def test_run_tester_log_capture_keeps_only_bytes_added_during_run(tmp_path):
         mt5_tools.tester_run_log(data, "../outside")
 
 
+def test_run_tester_log_capture_decodes_utf16_agent_log_as_text(tmp_path):
+    # Logs do agente do Tester são UTF-16 com BOM; o log isolado precisa permitir buscar o que o Expert imprimiu.
+    data = tmp_path / "terminal-data"
+    log_dir = data / "Tester" / "Agent-127.0.0.1-3000" / "logs"
+    log_dir.mkdir(parents=True)
+    daily_log = log_dir / "20261101.log"
+    daily_log.write_bytes("anterior\r\n".encode("utf-16"))
+    before = mt5_tools._tester_log_snapshot(data)
+    with daily_log.open("ab") as handle:
+        handle.write("SAREF_DECISION decision=2026.10.01 08:30 side=1 ação\r\n".encode("utf-16-le"))
+    text = mt5_tools.read_log_text(mt5_tools._capture_tester_log(data, before, "r1"))
+    assert "SAREF_DECISION decision=2026.10.01 08:30 side=1 ação" in text and "anterior" not in text
+
+
 def test_pack_contains_only_requested_artifacts(tmp_path):
     robot, source = make_robot(tmp_path)
     result = compile_result(tmp_path)

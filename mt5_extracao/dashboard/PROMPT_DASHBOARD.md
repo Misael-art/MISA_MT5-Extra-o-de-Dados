@@ -580,3 +580,38 @@ uma fórmula do Dashboard. Browser pelo launcher oficial: QA sintética 144 fato
 não comprova AC-01. Windows físico, offline visual/AC-06, produtor de surpresa
 e DASH-06…14 permanecem pendentes. A reconciliação dos agentes preservou os
 corretivos publicados de DASH-04, incluindo recursos vendor e bind Windows.
+
+### Estado de DASH-06…08 — 01/11/2026 (PR268)
+
+- DASH-06 `865c3c9`: hipótese com produtor T13.4 ausente → `T13_4_PENDING`;
+  adaptador e anéis validados só com fixture. Integração real pendente.
+- DASH-07 `4dd016f`: validação walk-forward dos recibos do Filtro C; treino e
+  custos não gravados pelo produtor ficam `NOT_RECORDED`. Sem recibos reais na
+  base compartilhada.
+- DASH-08 `d2f061d`: alertas de invalidação retroativa e regime vencido em âmbar.
+
+Commit publicado não conclui requisito: AC/aceites destas faixas são conferidos
+em DASH-14. Próxima: DASH-09 (ocultas).
+
+### Aceite consolidado — 01/11/2026 (DASH-14, PR268)
+
+Estado por critério, com evidência e limite. "Parcial" não conclui o critério.
+
+| ID | Estado | Evidência | Falta |
+|---|---|---|---|
+| AC-01 | Parcial | Base real, 20 seleções por modo (geração+compilação in-process + `data-ready` por `file://` em Chrome headless Linux, tempo virtual): robô `python:ha_hilo` máx 533 ms, p95 464 ms (frio 380 ms, 1 gráfico); ativo EURUSD H4 máx 333 ms, p95 283 ms (sem gráficos: base sem fatos). Corrigido em DASH-13 o leitor do robô (1,7 s → ~20 ms). | Tempo de abertura do navegador real, ativo com gráficos em base real e host Windows. |
+| AC-02 | Parcial | Ativo, robô com resultado (real), robô sem resultado e várias execuções (testes); narrativa por grupos. | Leitura humana do percurso; presets MQL5 reais. |
+| AC-03 | Parcial | Número/gráfico/rótulo curto por faixa; detalhes recolhidos; prioridade explicada em uma linha. | Revisão humana da carga textual. |
+| AC-04 | Implementado | Ocultas por motivo, expandir/recolher, ocultar/restaurar em um clique (Browser com fixture). | Teste de DOM automatizado além do Browser. |
+| AC-05 | Pendente | Só Linux. | Windows nativo e Wine com mesma fixture. |
+| AC-06 | Parcial | `file://` sem servidor em Chrome headless (teste automatizado) e digest conferido. | Navegador do usuário, rede bloqueada e relógio avançado. |
+| AC-07 | Implementado | Tema sem recarga, gráficos recoloridos/recriados; teste em navegador real cobre o laço corrigido. | Preservação de scroll/detalhes conferida só manualmente. |
+| AC-08 | Parcial | Rótulos diretos, escalas declaradas, legendas na própria faixa. | Tarefa de leitura por inspeção humana. |
+| AC-09 | Implementado | Página contínua, detalhes na própria página. | — |
+| AC-10 | Implementado | `DASH-11/1` com fixtures de grupo, empate, zero, ausência, exploratória e RETIRED; sem futuro. | Novidade real exige baseline (null hoje). |
+| AC-11 | Parcial | Leitura não grava (testes de gerador/robô/UI); nada executado. | Conferência de schemas/MQL5 após uso real prolongado. |
+| AC-12 | Implementado | Identidade, recursos por hash, schema/digest, troca de geração detectada, JSON hostil inerte. | — |
+
+Integrações analíticas ausentes, registradas à parte e sem bloquear o Expert:
+surpresa comparável (produtor inexistente), hipóteses T13.4, recibos reais do
+Filtro C, bateria/preset/fingerprint MQL5 gravados e baseline de novidade.

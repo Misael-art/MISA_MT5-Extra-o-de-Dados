@@ -162,6 +162,41 @@ def test_stale_own_record_is_cleaned_without_signals(managed):
     assert not managed.record_file.exists()
 
 
+def test_dead_pid_from_other_preview_does_not_block_start(managed):
+    # logs/ compartilhado entre prévias: registro de outra raiz e PID já encerrado.
+    gone = subprocess.Popen([sys.executable, '-c', 'pass'])
+    gone.wait(timeout=5)
+    managed.pid_file.write_text(f'{gone.pid}\n')
+    managed.record_file.write_text(json.dumps({'version': 1, 'root': '/outra/previa',
+        'identity': {'pid': gone.pid, 'start_ticks': '1', 'boot_id': 'x', 'uid': os.getuid()},
+        'token': 'b' * 32}))
+    assert run(managed, 'start').returncode == 0
+    assert managed.owned(managed.record()) and managed.port_open()
+
+
+def test_unreadable_pid_file_still_blocks_start(managed):
+    managed.pid_file.write_text('não-é-pid\n')
+    result = run(managed, 'start')
+    assert result.returncode == 1 and 'PID antigo' in result.stderr
+
+
+@pytest.mark.parametrize('value', ['0', '-1'])
+def test_invalid_pid_is_not_proof_of_a_dead_process(managed, value):
+    managed.pid_file.write_text(value)
+    assert managed._pid_file_alive()
+
+
+def test_unreadable_process_identity_does_not_authorize_start(managed, monkeypatch):
+    managed.pid_file.write_text(str(os.getpid()))
+    original = Path.stat
+    def denied(path, *args, **kwargs):
+        if path == Path('/proc') / str(os.getpid()):
+            raise PermissionError('processo não consultável')
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'stat', denied)
+    assert managed._pid_file_alive()
+
+
 def test_disabled_and_invalid_config_are_actionable(managed):
     cfg = managed.config
     cfg.set('BRIDGE', 'enabled', 'false')

@@ -226,3 +226,218 @@ def run_declared(db, config, robot, symbol: str, timeframe: str, start=None, end
     report = compare(python_run["trades"], mql5_run["trades"], float(tf.minutes))
     report.warmup_until = trade_from.strftime("%Y-%m-%d %H:%M:%S")      # início comum da comparação
     return {"report": report, "python_run": python_run, "mql5_run": mql5_run}
+
+
+# --- Reconciliação detalhada (decisão → posição → saída), um para um --------------------------------------
+# Complementa compare(): em vez de casar só o resultado pelo horário de saída, casa cada operação pela
+# entrada (minuto, direção), sem sobrescrever repetições, e devolve uma linha de divergência por operação.
+
+NATIVE_REASONS = {"sl": "stop", "tp": "alvo"}           # rótulos do HDK_TradeExport → rótulos do backtester
+
+
+def read_trade_export(path) -> List[dict]:
+    """Todas as colunas do CSV de operações do HADOUKEN (separador ';'), sem descartar campos."""
+    from . import mql
+    lines = [line for line in mql.read_text(path).splitlines() if line.strip()]
+    if not lines:
+        return []
+    header = [h.strip().lower() for h in lines[0].split(";")]
+    if "entry_time" not in header or "time" not in header:
+        raise ValueError("Exportação sem entry_time/time: não dá para reconciliar por entrada.")
+    return [dict(zip(header, (c.strip() for c in line.split(";")))) for line in lines[1:]]
+
+
+def parse_decision_lines(text: str, prefix: str = "SAREF_DECISION") -> List[dict]:
+    """Linhas de decisão impressas pelo Expert (chave=valor), na ordem do log."""
+    out = []
+    for line in text.splitlines():
+        at = line.find(prefix + " ")
+        if at < 0:
+            continue
+        fields = dict(part.split("=", 1) for part in line[at + len(prefix) + 1:].split() if "=" in part)
+        stamp = line[at + len(prefix) + 1:].split(" side=")[0].split("decision=")[-1]
+        fields["decision"] = stamp
+        out.append(fields)
+    return out
+
+
+def parse_close_lines(text: str) -> dict:
+    """Fechamentos feitos pelo host ("Posição #<ticket> fechada (<motivo>)"), por ticket/posição."""
+    import re
+    closes = {}
+    for match in re.finditer(r"Posição #(\d+) fechada \(([^)]*)\)", text):
+        closes.setdefault(match.group(1), []).append(match.group(2))
+    return closes
+
+
+HOST_REASONS = {"fim do dia": "fim do dia", "saída por sinal": "sinal", "tempo máximo": "tempo"}
+
+
+def _minute(stamp: str) -> datetime:
+    text = str(stamp).strip().replace(".", "-", 2).replace("T", " ")
+    return datetime.strptime(text[:16], "%Y-%m-%d %H:%M")
+
+
+def _num(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+# Tolerâncias explícitas por unidade; nunca aumentadas para aprovar. Ausente/inválido/não finito ≠ igual.
+TOLERANCES = {"price": 5e-6, "volume": 1e-9, "money": 0.005}
+FIELD_GROUPS = {
+    "protection": (("sl", "price"), ("tp", "price")),
+    "execution": (("entry_price", "price"), ("exit_price", "price"), ("volume", "volume")),
+    "financial": (("result", "money"), ("commission", "money"), ("swap", "money"), ("fee", "money")),
+}
+
+
+def _finite(value):
+    import math
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def parse_strategy_events(text: str) -> dict:
+    """Decisões SAREF e sinais do host por origem do log agregado; cópias entre origens não viram colisões."""
+    import re
+    source, events = "log", {"decision": [], "signal": []}
+    seen = {}
+    for line in text.splitlines():
+        header = re.match(r"===== (.+) =====", line.strip())
+        if header:
+            source = header.group(1)
+            continue
+        if "SAREF_DECISION " in line:
+            body = line[line.index("SAREF_DECISION ") + 15:]
+            fields = dict(p.split("=", 1) for p in body.replace("decision=", "decision=", 1).split() if "=" in p)
+            fields["decision"] = body.split(" side=")[0].split("decision=")[-1]
+            kind = "decision"
+        elif "HDK_STRATEGY_SIGNAL " in line:
+            body = line[line.index("HDK_STRATEGY_SIGNAL ") + 20:]
+            fields = dict(p.split("=", 1) for p in body.split() if "=" in p)
+            kind = "signal"
+        else:
+            continue
+        identity = (kind, tuple(sorted(fields.items())))
+        if identity in seen and seen[identity] != source:
+            continue                                     # mesma linha vista em outra origem: cópia
+        seen.setdefault(identity, source)
+        events[kind].append(dict(fields, _source=source))
+    return events
+
+
+def _link(entry_minute, direction, position_id, events):
+    """Cadeia decisão → sinal do host (order) → posição. Tempo sozinho é só candidato."""
+    from datetime import timezone
+    decisions = [d for d in events.get("decision", []) if _minute(d["decision"]) == entry_minute]
+    compatible = [d for d in decisions if d.get("side") == str(direction) and d.get("eligible") == "1"]
+    if not decisions:
+        return "missing", None, "sem decisão no minuto de entrada"
+    if not compatible:
+        return "incompatible", decisions[0], "decisão do minuto é de outro lado ou inelegível"
+    if len(compatible) > 1:
+        return "ambiguous", None, "mais de uma decisão compatível no mesmo minuto e origem"
+    decision = compatible[0]
+    bar_start = int(entry_minute.replace(tzinfo=timezone.utc).timestamp()) - 300
+    signals = [s for s in events.get("signal", []) if s.get("event_at") == str(bar_start)
+               and s.get("direction") == str(direction) and s.get("opened") == "1"]
+    if len(signals) == 1 and position_id and signals[0].get("order") == str(position_id):
+        return "confirmed", decision, "decisão, sinal do host (order) e position_id coincidem"
+    if len(signals) > 1:
+        return "ambiguous", decision, "mais de um sinal aberto do host para a mesma barra"
+    return "candidate_temporal", decision, "só coincidência de minuto/lado; ordem/posição não provadas"
+
+
+def reconcile_trades(python_trades: List[dict], native_rows: List[dict], native_decisions: Optional[List[dict]] = None,
+                     *, host_closes: Optional[dict] = None, events: Optional[dict] = None,
+                     python_costs: Optional[dict] = None, tolerances: Optional[dict] = None) -> dict:
+    """Um para um por (minuto de entrada, direção), sem sobrescrever colisões.
+
+    Compara sinal, proteção, execução e resultado financeiro em grupos separados, com unidade e tolerância
+    declaradas. `python_costs` só informa custos conhecidos do cenário (ex.: zero); sem ele, custos do Python
+    são ausentes e o grupo financeiro não fecha. `events` (parse_strategy_events) prova o vínculo causal.
+    """
+    tol = dict(TOLERANCES, **(tolerances or {}))
+    if events is None:
+        events = {"decision": list(native_decisions or []), "signal": []}
+
+    def key_python(t):
+        return _minute(str(t["entry_time"])), 1 if t["direction"] > 0 else -1
+
+    def key_native(r):
+        return _minute(r["entry_time"]), 1 if r["direction"].lower() in ("buy", "long", "1") else -1
+
+    groups_p, groups_n = {}, {}
+    for t in python_trades:
+        groups_p.setdefault(key_python(t), []).append(t)
+    for r in native_rows:
+        groups_n.setdefault(key_native(r), []).append(r)
+    collisions = sorted({str(k) for k, v in list(groups_p.items()) + list(groups_n.items()) if len(v) > 1})
+    rows, only_python, only_native = [], [], []
+    for key in sorted(set(groups_p) | set(groups_n)):
+        left, right = groups_p.get(key, []), groups_n.get(key, [])
+        for i in range(max(len(left), len(right))):
+            p = left[i] if i < len(left) else None
+            n = right[i] if i < len(right) else None
+            if p is None or n is None:
+                side = only_native if p is None else only_python
+                link = _link(key[0], key[1], n.get("position_id"), events) if n is not None else None
+                side.append(dict(entry=str(key[0]), direction=key[1], reason=(n or p).get("exit_reason"),
+                                 position_id=(n or {}).get("position_id"), link=link[0] if link else None))
+                continue
+            python_values = dict(sl=p.get("stop_price"), tp=p.get("target_price"), entry_price=p.get("entry_price"),
+                                 exit_price=p.get("exit_price"), volume=p.get("volume"), result=p.get("pnl"),
+                                 **{k: (python_costs or {}).get(k) for k in ("commission", "swap", "fee")})
+            comparisons, flags = {}, []
+            for group, fields in FIELD_GROUPS.items():
+                for field, unit in fields:
+                    a, b = _finite(n.get(field)), _finite(python_values.get(field))
+                    if a is None or b is None:
+                        state = "missing_native" if a is None else "missing_python"
+                    else:
+                        state = "equal" if abs(a - b) <= tol[unit] else "different"
+                    comparisons[field] = dict(group=group, unit=unit, tolerance=tol[unit], native=a, python=b,
+                                              diff=None if a is None or b is None else a - b, state=state)
+                    if state != "equal":
+                        flags.append(f"{field}:{state}")
+            native_reason = NATIVE_REASONS.get(n.get("exit_reason", ""), n.get("exit_reason") or "(vazio)")
+            reason_source = "csv" if native_reason not in ("(vazio)", "expert") else None
+            logged = (host_closes or {}).get(str(n.get("position_id")), [])
+            if native_reason in ("(vazio)", "expert") and len(logged) == 1 and logged[0] in HOST_REASONS:
+                native_reason, reason_source = HOST_REASONS[logged[0]], "log_host"
+            if native_reason != p["exit_reason"]:
+                flags.append("exit_reason:different")
+            exit_delta = (_minute(n["time"]) - _minute(str(p["exit_time"]))).total_seconds() / 60
+            if exit_delta:
+                flags.append("exit_minute:different")
+            link, decision, link_note = _link(key[0], key[1], n.get("position_id"), events)
+            groups_state = {g: all(c["state"] == "equal" for c in comparisons.values() if c["group"] == g)
+                            for g in FIELD_GROUPS}
+            groups_state["execution"] = groups_state["execution"] and native_reason == p["exit_reason"] and not exit_delta
+            rows.append(dict(entry=str(key[0]), direction=key[1], position_id=n.get("position_id"),
+                             link=link, link_note=link_note, decision=decision,
+                             native_reason=native_reason, native_reason_source=reason_source,
+                             python_reason=p["exit_reason"], exit_delta_min=exit_delta,
+                             comparisons=comparisons, groups=groups_state, flags=flags,
+                             identical=not flags and link == "confirmed"))
+    summary = dict(
+        python=len(python_trades), native=len(native_rows), paired=len(rows), collisions=collisions,
+        only_python=len(only_python), only_native=len(only_native), tolerances=tol,
+        identical=sum(r["identical"] for r in rows),
+        groups_equal={g: sum(r["groups"][g] for r in rows) for g in ("protection", "execution", "financial")},
+        links={state: sum(r["link"] == state for r in rows)
+               for state in ("confirmed", "candidate_temporal", "ambiguous", "incompatible", "missing")},
+        field_states={f: {st: sum(r["comparisons"][f]["state"] == st for r in rows)
+                          for st in ("equal", "different", "missing_native", "missing_python")}
+                      for fields in FIELD_GROUPS.values() for f, _ in fields},
+        exit_reason_different=sum("exit_reason:different" in r["flags"] for r in rows),
+        exit_minute_different=sum("exit_minute:different" in r["flags"] for r in rows),
+        empty_native_reason=sum(r["native_reason"] == "(vazio)" for r in rows),
+        reason_from_host_log=sum(r["native_reason_source"] == "log_host" for r in rows))
+    return dict(summary=summary, rows=rows, only_python=only_python, only_native=only_native)

@@ -902,6 +902,21 @@ def test_connect_does_not_reopen_a_terminal_that_is_already_open(ui, connecting)
     assert connecting.opened == [] and connecting.tries == 1 and ui.app.mt5_initialized is True
 
 
+def test_connection_warning_releases_task_before_modal_and_shows_launcher_failure(ui, connecting, monkeypatch):
+    import os
+    connecting.ok = False
+    monkeypatch.setenv('MT5X_BRIDGE_START_ERROR', 'PID obsoleto; confira a ponte')
+    observations = []
+    def warning(title, message, **kwargs):
+        observations.append((len(ui.background_activity.pending), message))
+    monkeypatch.setattr('mt5_extracao.ui_manager.messagebox.showwarning', warning)
+    ui.connect_mt5()
+    ui.pump(.8)
+    assert len(observations) == 1 and observations[0][0] == 0
+    if os.name != 'nt':
+        assert 'PID obsoleto' in observations[0][1] and 'logs/mt5_bridge.log' in observations[0][1]
+
+
 def test_delayed_process_is_awaited_once_without_false_failure_or_red_status(ui,connecting,monkeypatch):
     from mt5_extracao.robots import view,mt5_tools
     original=view.open_view;started=[]

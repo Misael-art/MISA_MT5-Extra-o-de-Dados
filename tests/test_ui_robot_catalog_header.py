@@ -55,7 +55,7 @@ def test_search_keeps_room_for_typing_between_header_actions(ui, request):
     panel = ui.robots_panel
     search = next(w for w in panel.filterbar_search.winfo_children() if w.winfo_class() == "TEntry")
     assert search.winfo_width() >= ui.theme.font.measure("0" * 12), (search.winfo_width(), ui.theme.font.measure("0" * 12))
-    for button in (panel.import_button, panel.panel_button):
+    for button in (panel.import_button, panel.dashboard_button, panel.panel_button):
         assert button.winfo_reqwidth() <= button.winfo_width()
         assert button.winfo_rootx() >= panel.page_viewport.canvas.winfo_rootx()
         assert button.winfo_rootx() + button.winfo_width() <= panel.page_viewport.canvas.winfo_rootx() + panel.page_viewport.canvas.winfo_width()

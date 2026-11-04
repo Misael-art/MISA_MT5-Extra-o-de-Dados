@@ -882,10 +882,16 @@ class DatabaseManager:
         if connection is None:
             with self.engine.connect() as conn:
                 return self.find_table_for_symbol(symbol, timeframe_name, connection=conn)
-        timeframe_key = self._normalize_name(timeframe_name)
+        return self.table_for_symbol(connection, symbol, timeframe_name)
+
+    @staticmethod
+    def table_for_symbol(connection, symbol, timeframe_name):
+        """Mesma resolução de find_table_for_symbol sobre uma conexão dada (inclusive somente leitura)."""
+        timeframe_key = DatabaseManager._normalize_name(timeframe_name)
+        has_registry = inspect(connection).has_table("_symbol_tables")
         row = connection.execute(text("SELECT table_name FROM _symbol_tables WHERE symbol = :s AND timeframe = :t"),
-                                 {"s": symbol, "t": timeframe_key}).fetchone()
-        name = row[0] if row else self._normalize_name(f"{symbol}_{timeframe_name}")
+                                 {"s": symbol, "t": timeframe_key}).fetchone() if has_registry else None
+        name = row[0] if row else DatabaseManager._normalize_name(f"{symbol}_{timeframe_name}")
         return name if inspect(connection).has_table(name) else None
 
     def symbols_with_data(self, symbols, timeframe_name):

@@ -166,13 +166,14 @@ def _has_trades_column(conn) -> bool:
     return any(c["name"] == "trades_json" for c in inspect(conn).get_columns("_robot_runs"))
 
 
-def run_index(db,*,limit=50,offset=0):
-    """Página de metadados, sem carregar curvas/ledger ou executar backtest."""
+def run_index(db,*,limit=50,offset=0,robot_key=None):
+    """Página de metadados, sem carregar curvas/ledger ou executar backtest (opcionalmente de um robô)."""
     from sqlalchemy import inspect,text
     if type(limit) is not int or not 1<=limit<=100 or type(offset) is not int or not 0<=offset<=10000000:raise ValueError('Página exige limite1…100 e offset não negativo até10 milhões.')
     if db is None or not inspect(db.engine).has_table('_robot_runs'):return []
     with db.engine.connect() as conn:
-        return [dict(r) for r in conn.execute(text('SELECT run_id,robot_key,symbol,timeframe,source,data_start,data_end,created_at FROM _robot_runs ORDER BY created_at DESC,run_id DESC LIMIT :n OFFSET :o'),dict(n=limit,o=offset)).mappings()]
+        where,params=('',dict(n=limit,o=offset)) if robot_key is None else (' WHERE robot_key = :k',dict(n=limit,o=offset,k=robot_key))
+        return [dict(r) for r in conn.execute(text('SELECT run_id,robot_key,symbol,timeframe,source,data_start,data_end,created_at FROM _robot_runs'+where+' ORDER BY created_at DESC,run_id DESC LIMIT :n OFFSET :o'),params).mappings()]
 
 
 def load_runs(db, robot_key: str = None, *, run_id: str = None) -> list:

@@ -8,9 +8,11 @@ locais, anexos não enviados ou do histórico de uma sessão aberta no computado
 Leia o [roteiro completo](docs/repasse/NOVO_HOST_20261024.md) e entregue ao agente
 o [prompt de retomada](docs/repasse/PROMPT_NOVO_HOST_20261024.md).
 
-## Ponta de continuidade em30/10/2026
+## Ponta de continuidade em01/11/2026
 
-Retome `codex/dashboard-regime` (DASH-04), sobre DASH-03/PR265, DASH-02/PR264, DASH-01/PR263, snapshots/PR262, planejamento DASH-00/PR261, comparação/PR260, retenção/PR259, vários ativos/PR258, Todos/PR257, ordenação/PR256, portabilidade/PR255, conexão/PR254, Expert/PR253 e persistência/PR252, inspetor/PR251, financeiro/PR250, protocolo/PR249, BD06-MACRO/PR248, MEN-PT/PR247, MEN-SOCIAL/PR246 e o corretivo
+Retome `codex/ponte-previa-coesa` (harmonização da ponte/launcher), sobre
+DASH-05/PR267 (`codex/dashboard-volume`, aa969ea), DASH-04/PR266 (d19cd8c),
+DASH-03/PR265, DASH-02/PR264, DASH-01/PR263, snapshots/PR262, planejamento DASH-00/PR261, comparação/PR260, retenção/PR259, vários ativos/PR258, Todos/PR257, ordenação/PR256, portabilidade/PR255, conexão/PR254, Expert/PR253 e persistência/PR252, inspetor/PR251, financeiro/PR250, protocolo/PR249, BD06-MACRO/PR248, MEN-PT/PR247, MEN-SOCIAL/PR246 e o corretivo
 Windows da PR245. FRED/BCB seguem captura local e fases datadas retrospectivas.
 Fontes sociais aguardam autorização real; português tem
 versão própria e avaliação controlada, sem selo humano/representativo.
@@ -48,9 +50,11 @@ com gates próprios.
 
 [Plano canônico](mt5_extracao/dashboard/PROMPT_DASHBOARD.md): história visual
 contínua de ativo ou robô, Flask local, evidências point-in-time e HTML offline
-autossuficiente. DASH-01 entrega servidor/opener/casca e CLI `dashboard`, sem
-iniciar ponte, base ou análise. Próximo: DASH-02 (fotografia/primeira surpresa).
-As faixas e os aceites integrais permanecem pendentes. Não criar motores de
+autossuficiente. A CLI `dashboard` abre a fotografia sem iniciar ponte ou análise.
+Servidor, fotografia, arquivo, regime e volume estão implementados em seus
+recortes; DASH-06…08 (hipótese, validação, vencido/invalidação) têm infraestrutura
+na PR268 com integrações reais pendentes; próxima faixa é DASH-09. Surpresa real depende do produtor canônico.
+As faixas restantes e os aceites integrais permanecem pendentes. Não criar motores de
 cálculo/catálogo/publicação paralelos nem presumir T13.4/T13.5/T13.8 concluídas.
 
 ## Instalação inicial
@@ -92,3 +96,67 @@ Não misturar as posses nem usar uma base antiga para substituir o motor atual.
 Retomar pelo roteiro do novo host; os registros de21/10 que dependiam do SD são
 históricos. Banco e WIP privado não ficam no repositório público. Autenticações
 de Codex/GitHub/corretora são refeitas na conta do proprietário.
+
+## Prompt de continuidade para o agente sucessor — harmonização de01/11
+
+**Atribuição direta do proprietário:** o agente que recebe este prompt é o
+executor responsável **nesta própria sessão**. Não é um pedido para preparar
+outro repasse nem para escolher entre sessões. A frente de harmonização encerrou
+sua implementação; não haverá implementação paralela dela no Dashboard.
+Inicie a leitura e a execução agora, sem pedir confirmação para continuar.
+Esta atribuição inclui as decisões rotineiras de implementação, testes,
+integração, commits, publicação por PR e atualização da prévia já autorizadas.
+Só peça ao proprietário acesso ausente, uma decisão realmente indispensável ou
+uma ação fora da autorização vigente. A inspeção técnica de posse e recursos
+continua obrigatória; ela não exige uma nova confirmação genérica do usuário.
+
+Você é o único responsável por dar sequência ao desenvolvimento nesta composição.
+Use somente `/home/misael/Projects/MT5X`, App em `repos/app`, com seu único `.venv`.
+Leia as instruções AGENTS/RTK, este arquivo, os últimos registros de continuidade,
+roadmap, plano e `mt5_extracao/dashboard/PROMPT_DASHBOARD.md` integralmente. Consulte
+Projects/.workspace/projects.json para branch, SHA, PR, prévia e recibos atuais.
+Não crie clone, worktree, árvore por agente, motor, cache ou estado administrativo
+concorrente. HADOUKEN b730ed4a e Safety3988df13 são pins detached de leitura.
+
+A harmonização preservou d19cd8c (DASH-04/corretivos CI), aa969ea (DASH-05/PR267)
+e o corretivo separado da ponte/launcher. Não reaplique nem descarte esses commits.
+O gerenciador da ponte aceita PID obsoleto somente com processo comprovadamente
+ausente; PID vivo, ilegível ou porta sem posse continuam protegidos. O launcher
+conserva o erro em log e o entrega à UI; o aviso de conexão é posterior ao término
+do callback, sem tarefa falsa aguardando OK. Uma janela antiga não é atualizada
+em memória pela troca da prévia: preserve trabalho/diálogo do usuário e oriente
+reabertura pelo atalho se necessário. Não mate Wine, terminal ou processo alheio.
+
+Menu e área de trabalho devem continuar no mesmo `mt5x/app-development/run.sh`.
+Use o procedimento existente em docs/TESTAR_DESENVOLVIMENTO.md; registre SHA,
+hashes, dados/ambiente compartilhados, retorno e aceite real no recibo existente.
+Não confunda runtime instalado com checkout editável; nunca edite releases.
+O aceite da ponte é comunicação de leitura, não autorização de conta, Tester ou
+negociação. Não crie conta nem use negociação REAL para testar.
+
+Próximo incremento: DASH-06, verificando a existência do produtor de hipóteses;
+se ainda ausente, faça apresentação/estado indisponível honestos e registre
+integração pendente. Depois siga DASH-07…14, inclusive modo Robô, priorização,
+temas, integração Tk e medições fim a fim. Preserve clocks, namespaces e origem.
+Surpresa comparável, hipóteses, Windows físico e aceite visual offline mantêm
+gates próprios; nenhuma fixture ou teste de sintaxe os conclui. Não contorne
+recusa de URL do Browser. CI Windows do pai d19cd8c tinha três falhas fora desta
+faixa: retenção de artefatos, leitura UTF-8 de comparação e layout estreito da
+comparação. Confira o SHA/check atual antes de atribuir ou corrigir uma falha.
+
+Execute DASH-06…14 até a entrega integrada e validada no escopo permitido.
+Não pare após planejamento, scaffolding, primeira faixa ou relatório de estado
+se existir trabalho seguro a executar. Uma dependência analítica ausente,
+check remoto em andamento ou falha comprovadamente anterior não bloqueia as
+partes independentes. Conserve essas pendências e avance inclusive no modo Robô,
+na integração Tk, no arquivo portátil e nos testes de desempenho. Não invente
+produtores, fórmulas ou aceites para fechar um item. Acompanhe a CI nos marcos
+de publicação, sem polling contínuo nem declarar concluído o que ainda não foi
+verificado. Ao atingir um bloqueio real, identifique o requisito e a evidência
+que faltam; continue todo o restante que não depende dele.
+
+Uma tarefa por PR, publicação serial pelo guard, SHA remoto confirmado; sem
+force push, merge automático ou release. Antes de branch/índice/commit/prévia
+ou suíte pesada, confirme que não há outro agente usando o recurso. Uma árvore
+limpa não comprova disponibilidade. Se voltar a haver concorrência, delimite
+posse explicitamente; não substitua o pedido por outro projeto paralelo.

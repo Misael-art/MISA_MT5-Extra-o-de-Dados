@@ -5086,3 +5086,364 @@ com bancada própria ficaram em state/qa-tmp/dashboard/volume-acceptance.json.
 A correção independente da ponte será preservada em commit/PR próprio, sobre
 esta composição. Próxima funcionalidade do Dashboard: DASH-06; não declarar
 surpresa/hipóteses/Windows/offline aceitos sem seus produtores e evidências.
+
+### Ponte, abertura e repasse único —01/11/2026
+
+Harmonização autorizada pelo proprietário, com um sucessor definido. DASH-05
+foi preservado em aa969ea/PR267. A branch filha codex/ponte-previa-coesa mantém
+o corretivo de PID entre prévias separado da faixa: apenas ausência comprovada
+em /proc libera start, sem sinalizar PID alheio; erro de leitura/PID inválido ou
+porta sem posse bloqueiam. Testes de gerenciador:22 aprovados, incluindo PID
+de outra prévia, processo vivo, PID inválido e identidade sem permissão.
+
+O launcher não oculta mais a causa da falha de partida: logs/mt5_bridge.log e
+aviso da UI a conservam. --offline dispensa a ponte. O aviso modal de conexão
+é agendado depois do callback, permitindo ao contador liberar a tarefa antes
+de esperar OK, sem alterar o worker/queue/executor existentes. Regressões de
+conexão/launcher/atividade e diagnóstico executadas no host com QA própria.
+
+Prévia/menu/desktop e recuperação real da ponte seguem o procedimento oficial;
+SHA, hashes, handshake e evidência da janela de QA ficam no recibo existente
+state/development-preview.json e em state/qa-tmp/dashboard/harmonizacao.
+A janela anterior do proprietário é preservada e conserva seu código em memória.
+O prompt único para o próximo agente está em CONTINUAR_AQUI.md, sem outro plano.
+Sem merge/release, pins modificados, conta nova ou negociação. Aceites completos
+do Dashboard, plataformas e capacidades analíticas pendentes continuam separados.
+
+### Faixa de hipótese do Dashboard —01/11/2026 (DASH-06)
+
+Sobre a harmonização/PR268 (`7e15c01`), branch `codex/ponte-previa-coesa`.
+T13.4 continua ausente (`hypotheses.py` inexistente): o gerador emite a faixa
+`hypothesis` indisponível com `T13_4_PENDING`, sem hipótese calculada. O
+adaptador `sections.hypothesis` aceita só o namespace `hypothesis` do DTO de
+`pattern_evaluations`, recusa bateria de robô/relação, estado desconhecido,
+evidência futura, números inválidos e APPROVED sem OOS. APPROVED/VALIDATING
+ficam visíveis; DRAFT/EXPLORATORY/MONITORING/RETIRED ocultas com motivo.
+Anéis: n no centro, lift com 1× = taxa-base (sem preenchimento proporcional),
+IC com método/nível ou anel tracejado "Não informada".
+
+22 testes novos (92 do Dashboard). Browser HTTP com fixture identificada:
+cartão aprovado, em validação sem IC e exploratória oculta, sem erros de console.
+**Infraestrutura validada; integração real pendente do produtor T13.4.**
+Próxima: DASH-07 (validação temporal) a partir dos recibos existentes.
+
+### Faixa de validação do Dashboard —01/11/2026 (DASH-07)
+
+Sobre DASH-06, mesma branch de continuidade. Lê os vereditos canônicos de
+`_strategy_validation` por `load_validations(..., include_result=True)` (opção
+aditiva; projeção de PF preservada), sem recalcular. Uma faixa por estratégia do
+ativo/TF: linha do tempo com só as janelas OOS gravadas por fold; o treino não
+tem datas no recibo e os custos (BacktestConfig) não são gravados — ambos ficam
+`NOT_RECORDED`, nunca inferidos. Filtro C aprovado ≠ hipótese aprovada;
+reprovada fica oculta com motivo. `created_at` é hora local sem fuso: entra só
+se +14 h precede o corte; senão é omitido e contado (`CLOCK_AFTER_CUT`). O
+upsert do recibo não guarda histórico, então cortes antigos podem não ver
+veredito. Leitura não cria tabela.
+
+7 testes novos; Dashboard+validação+PF 142. Browser HTTP com recibos QA:
+5 folds, PF não calculável sem zero, fold além de data_end visível, sem erros.
+Pendências: datas de treino/custos dependem de o produtor gravá-los;
+DASH-08…14.
+
+### Vencido e invalidação retroativa no Dashboard —01/11/2026 (DASH-08)
+
+Sobre DASH-07. O gerador detecta, no histórico já limitado ao corte, revisões
+INVALIDATED sobre revisão VALID anterior e as publica em `alerts`
+(`RETROACTIVE_INVALIDATION`: feature, versão, observação, revisões anterior/nova,
+instantes conhecidos e valor anterior). A página as mostra no topo, em vermelho,
+reservado a esse caso. Invalidação conhecida só após o corte não vaza.
+Regime cujo último estado venceu passa a aparecer como STALE (borda âmbar,
+validade, idade no corte, "não é o estado atual") em vez de ser ocultado; nunca
+recorre ao registro anterior. Último estado INVALIDATED aparece como invalidado,
+sem valor. O teste DASH-04 que ocultava o vencido foi atualizado para essa regra.
+
+3 testes novos/1 revisto (104 do Dashboard + feature store). Browser HTTP com
+fixture: alerta, borda âmbar e nota de validade, sem erros de console.
+Pendências: vencido/invalidação nas faixas de volume seguem a regra própria de
+DASH-05; DASH-09…14.
+
+### Ocultas do Dashboard —01/11/2026 (DASH-09)
+
+Sobre DASH-08. Painel "Evidências ocultas" (ícone de balança com nome acessível)
+ao fim da narrativa: uma linha por motivo (`hidden_reason_code`) com contagem e
+soma de `n`, ou "n não informado"; expandir/recolher em um clique, com a faixa
+rotulada "Oculta · motivo" e sem promoção de estado. Cada faixa visível tem
+"Ocultar faixa" (só apresentação, sem alterar origem) e "Restaurar" em um
+clique; não persiste entre leituras. Gráficos de faixas recolhidas são liberados.
+Browser HTTP com fixture (volume ausente, Filtro C reprovado, exploratórias,
+rascunho): expandir/recolher, ocultar/restaurar, sem erros. Somente JS/CSS.
+
+### Modo Robô do Dashboard —01/11/2026 (DASH-10)
+
+Sobre DASH-09. `generator.generate_robot` e CLI `dashboard --robot CHAVE --as-of
+… [--run ID]`, com o mesmo compilador/validador; fotografias de ativo seguem
+válidas. Identidade: registro `_robots` (MQL5), registro de código
+(`python_robots`, sem varrer pastas) ou execuções gravadas. Execução: `--run`
+explícito ou a mais recente conhecida no corte (`run_selection` declarado);
+`created_at` sem fuso segue a margem +14 h. Outras execuções ficam ocultas,
+listadas e nunca agregadas; bateria aparece como bateria (não hipótese, não
+autorização). Contexto de regime/volume/validação/hipótese vem do ativo/TF da
+execução; contexto ilegível vira erro explícito sem perder o resultado. Robô sem
+resultado continua selecionável. Nada é executado; a leitura não grava.
+
+11 testes novos (Dashboard+CLI verdes). Base real compartilhada, pela CLI:
+`python:ha_hilo` → execução `cee7068e` EURUSD H4, −906,87 (moeda não
+declarada), curva de capital desenhada, outra execução oculta, sem erros.
+Pendências: preset/fingerprint de MQL5 dependem de bateria gravada (base real
+sem `_robots`/baterias); seleção pela interface Tk em DASH-13.
+
+### Priorização explicável do Dashboard —01/11/2026 (DASH-11)
+
+Sobre DASH-10. `dashboard/priority.py` (política `DASH-11/1`, gravada em
+`provenance.priority_policy`) ordena só as faixas visíveis: grupos obrigatórios
+surpresa → resultado do robô → APPROVED → VALIDATING → contexto (o alerta de
+invalidação já fica acima). Dentro do grupo, I×E×N normalizado: I = |ln(razão)|/
+(|ln|+ln 2) para lift, PF OOS e RVOL (sinal preservado); E por amostra
+(n/(n+100) ou n/(n+20)) com IC/OOS 1|0,5 em hipóteses; N basal 0,5 "Sem
+comparação anterior" (sem baseline/cache) ou 1,0 se vencido. Fator não apurado →
+`UNAVAILABLE` sem valor favorável; soma zero sem divisão; desempate impacto →
+evidência → ID. Ocultas `NOT_RANKED`, nunca promovidas; RETIRED só na auditoria.
+Cada faixa explica sua posição em "Ver evidência". O teste de volume que
+fixava a ordem de criação passou a conferir conteúdo.
+
+8 testes novos (119 do Dashboard). Browser com fixture: ordem e explicações
+corretas, sem erros. Pendência: novidade real exige baseline/fotografia anterior
+compatível (`baseline_snapshot_id` segue null).
+
+### Tema, legibilidade e navegador real no Dashboard —01/11/2026 (DASH-12)
+
+Sobre DASH-11. Botão "Tema: automático/claro/escuro" no cabeçalho (só com
+fotografia carregada), via `data-theme` + tokens CSS; escolha guardada em
+localStorage com try/catch (conveniência local). Troca sem recarga nem
+reconsulta: renderers com `mt5xTheme` recolorem mantendo estado; ECharts crus
+são recriados a partir da faixa. Defeito encontrado no Browser e corrigido:
+reinserir a chave durante `Map.forEach` causava laço infinito e congelava a aba.
+Eixo numérico em pt-BR (10.140, não 10,140); `prefers-reduced-motion` respeitado.
+
+Novo `tests/test_dashboard_browser.py`: Chrome headless real abre a página por
+`file://`, conclui a conferência (`data-ready`) e alterna o tema três vezes; é
+pulado sem Chrome. Comprovado que falha com o laço reintroduzido. Browser
+interativo: composição QA (robô, hipótese, validação, regime) nos dois temas.
+Limites: `file://` comprovado só em headless Linux, não no navegador do usuário
+nem Windows; leitor de tela/zoom 200% seguem para o aceite DASH-14.
+
+### Dashboard nas abas Ativos e Robôs —01/11/2026 (DASH-13, integração Tk)
+
+Sobre DASH-12. `UIManager.open_dashboard_for` usa o `run_bg` existente: gera a
+fotografia e sobe o servidor próprio fora da thread da UI; seleção mais nova
+invalida as anteriores (resultado atrasado descartado, nunca misturado) e o
+servidor anterior desta janela é encerrado antes do novo. Ativos: botão
+"Dashboard" com TF explícito; Robôs: botão "Dashboard" ao lado do painel de
+resultados (cabeçalho mantém espaço da busca). Log registra geração e tempo até
+abrir o navegador — **não** mede gráficos utilizáveis (AC-01 segue pendente).
+
+Testes: 5 novos de UI + cabeçalho (10/10); `test_ui_main_window` + Dashboard
+196/197. A falha `test_dense_tabs_reflow_and_assets_remain_reachable_in_a_small_window`
+reproduz sem esta mudança no host (Linux CI do pai aprovado): ambiente local.
+
+### Super ATR SA-REF-01: candidato congelado e gêmeo Python —01/11/2026
+
+Decisão do proprietário: referência G19.15 `flip1/variable2atr/target2r`, EURUSD,
+janela `later` (2026-10-01→10-20 broker). Contrato em
+`mt5_extracao/robots/super_atr_reference.py` (`CONTRACT`), sem confirmação entre
+TFs (SA-01 multi-TF segue próxima etapa). O gêmeo não reimplementa a estratégia:
+importa o estudo G19.15 e o adaptador do header do HADOUKEN fixado `b730ed4a`,
+conferidos byte a byte, e roda só o livro congelado no backtester canônico.
+
+Evidência na base real (sem fixture privada no Git): reproduz exatamente o
+publicado — `later/zero` 102 ciclos, PF 1,03, +473,53 USD; `later/base` 98
+ciclos, PF 0,90, −1.593,62 USD; 330 decisões, 18.717 M1, semente desde
+2026-07-22 (estudo: 07-08) sem efeito no resultado. Riscos de paridade com o
+Expert listados no contrato (semente/20.000 barras, M5 nativo, BID/spread,
+custos). Próximo: variante nativa no template `SuperAtrResearch` e ensaio no
+Strategy Tester pelo fluxo oficial, com reconciliação decisão a decisão.
+
+### Super ATR SA-REF-01 no Strategy Tester e reconciliação —01/11/2026
+
+Variante `InpVariant=1` no template existente `SuperAtrResearch` (SA-01 segue
+padrão 0): sem confirmadores, stop = close M5 ∓ 2×ATR20 da mesma barra (ATR pela
+`CHDKSuperATRAverage` pública, header fixado intocado), alvo 2R e saída diária do
+host, sem saída por virada, ≥100 M5 consecutivos no dia, risco 0,25%, limites
+diários do host em 100% (declarado: o estudo não tem stop diário) e linha
+`SAREF_DECISION` por virada. Gerado pela CLI oficial (`robots new
+--template super-atr-reference`), compilado sem erros/avisos e testado pelo
+`robots backtest` (EURUSD M5, 2026-10-01→10-20, ticks reais, preset
+`SAREF01_G1915_SAREF01`, semente broker 2026-07-23 00:00), em sessão própria.
+
+Resultado nativo: 103 operações, PF 1,007, +105,77 USD (App/Dashboard mostram o
+mesmo do CSV). Reconciliação contra o gêmeo Python (custo zero):
+- decisões: 330/330 iguais em instante e lado; stop ≤0,5 ponto (arredondamento do
+  log); 3 elegíveis só no nativo, todas por lacunas de M1 na base (10-16 22:28 e
+  10-19 00:00 ausentes: o estudo descarta o M5 incompleto e reinicia a idade).
+- operações: 100 pareadas no minuto de entrada, mesma direção, SL ≤0,5 ponto,
+  motivos equivalentes (61 stop, 28 alvo, 11 fim do dia); 94 saem no mesmo
+  minuto, 6 diferem (5 ≤2 min; um alvo +8,5 min) por ticks reais/spread versus
+  OHLC M1 tratado como BID; 3 só nativo e 2 só Python decorrem da mesma lacuna.
+- defeitos encontrados: o log isolado do Tester colava UTF-16 cru em UTF-8
+  (corrigido em `mt5_tools`, com teste); o CSV de operações deixa
+  `exit_reason` vazio na saída de fim do dia (pendente, no HDK_TradeExport).
+Evidência local (não versionada): `state/qa-tmp/super-atr-ref/` (scripts,
+`decisoes.json`, `operacoes.json`, Dashboard). Isto é reprodução e
+reconciliação, não aprovação financeira: o candidato segue sem vantagem após
+custos (G19.15). Próximo: DEMO em sessão própria.
+
+### SA-REF-01: regressões restauradas e presets coerentes —01/11/2026
+
+Revisão do proprietário apontou que o marco anterior foi declarado cedo demais.
+Item 1 (regressões e presets):
+- A sonda C++ do corpo MQL real (`tests/super_atr_research_probe.py`) estava
+  quebrada pela nova assinatura de `MT5XReadCurve`. Restaurada e ampliada:
+  SA-01 (causalidade, revisão, deduplicação) e SA-REF-01 (regras 2R/fim do dia,
+  stop close∓2ATR, idade mínima, sem saída por virada, desarmado sem entradas,
+  gate REAL). Agora roda no pytest (`test_super_atr_native_probe.py`).
+- Recusas de leitura têm motivo explícito (`g_read_reason`) e a variante 1
+  imprime `SAREF_BLOCKED reason=…`; provado o caso `bars_since_seed_above_20000`
+  — risco real para DEMO com a semente 2026-07-23 (base já tem 19.296 M5 até
+  10-23).
+- Presets: `_SAREF01` segue como reprodução histórica, agora rotulado (armado,
+  perda diária/semanal **e drawdown** em 100%, "NÃO usar em DEMO"); novo
+  `demo_preset()` gera `_SAREF01_DEMO` armado explicitamente, com semente
+  declarada e limites do host ≤2%/4%/10%, sem sobrescrever. README/descrição
+  listam o papel de cada preset; a App já mostra os valores do preset escolhido.
+Pendentes da revisão: reconciliação um-a-um com colisões e vínculo
+decisão→ordem→posição, diferenças de capital (fixo × saldo) e de fim do dia
+(última barra × sessão), M1 ausente na base × no Tester, proteção/manifesto da
+reprodução, origem do `exit_reason` vazio, DEMO.
+
+### SA-REF-01: reconciliação um a um e motivo de saída rastreado —01/11/2026
+
+Item 2 da revisão. `robots/parity.py` (mesmo dono do `compare`) ganhou a
+reconciliação detalhada: CSV nativo completo (`read_trade_export`), decisões do
+log (`parse_decision_lines`), fechamentos do host (`parse_close_lines`) e
+`reconcile_trades` um a um por (minuto de entrada, direção), com colisões
+reportadas e nunca sobrescritas, vínculo decisão → `position_id` → saída e uma
+linha de divergência por operação (volume, entrada, saída, SL, TP, custos,
+resultado, motivo, minuto de saída). 5 testes sintéticos.
+
+Resultado real (pareadas 100 de 103/102, colisões 0, 100 posições ligadas à
+decisão): **idênticas 10**; volume difere em 89 (razão 0,95–1,01), TP em 35,
+SL em 8, minuto de saída em 6; motivo agora 100/100 coerente.
+- Motivo vazio: origem localizada. O CSV vem do exportador de sessão da App
+  (`session_export.mqh.tmpl`), que só reconhece `DEAL_REASON_SL/TP`; o
+  fechamento do host tem comentário genérico "HDK close". O host registra no
+  log `Posição #<id> fechada (fim do dia)`; as 11 vazias foram provadas por
+  `position_id` nesse log (fonte `log_host`), não pelo horário.
+- Volume/TP: o host calcula lote por `BaseCapital()` (saldo) × 0,25% /
+  `OrderCalcProfit` no preço da ordem, arredondado para baixo, e TP = 2× a
+  distância a partir da entrada real; o Python usa capital fixo 100k e o open M1.
+  Aproximação com saldo após cada saída reproduz 34/100 (capital fixo 18/100):
+  diferença de contrato confirmada, cálculo exato do saldo do host ainda não.
+- Fim do dia: Python = última barra presente do dia; host = troca de dia na
+  sessão. Os 11 fechamentos coincidem neste recorte; não generaliza.
+- Lacunas: a base da App não tem M1 10-16 22:28 e 10-19 00:00. Se o Tester
+  também não tiver essas M1, seus ticks são ignorados (documentação MT5); ainda
+  não foi conferido o histórico do Tester nesses minutos.
+Evidência local: `state/qa-tmp/super-atr-ref/reconciliacao_detalhada.json`.
+
+### SA-REF-01: reprodução protegida localmente —01/11/2026
+
+Item 3 da revisão. `scripts/sa_ref_reconcile.py` (versionado, sem caminhos
+pessoais: framework, log do agente, CSV e saída por argumento; base pela
+configuração oficial, só leitura) reproduz a reconciliação: 330/330 decisões,
+100 operações pareadas, 10 idênticas, 0 colisões.
+Pacote privado em `state/qa-tmp/super-atr-ref/protecao/` (fora do Git), no
+formato de `scripts/recover_cloud_backup.py`: 31 arquivos — fonte e EX5 do
+Expert, fonte/log/EX5 da sessão (`mt5x_session`, que inclui o fonte original e
+envolve os handlers), presets, `terminal.ini`/`metatester.ini`/sets do Tester
+(sem `common.ini`, que traz o login DEMO), histórico `2026.hcc` e ticks
+`202610.tkc` do Tester, logs (agente, Tester, isolado), relatório, CSV de
+operações, M1 da base até 10-20 (90.873 linhas), Dashboard e reconciliação.
+Proveniência: o fonte incluído pela sessão é idêntico ao da biblioteca e ao
+instalado (`53226c2f…`) e os 38 arquivos da closure HADOUKEN compilados pela
+sessão batem com `research.json`; o EX5 executado é o `mt5x_session.ex5`
+(`bc818064…`), não o `SAREF01_G1915.ex5` (`dab099ec…`).
+ZIP `4945ade5…` (28 MB, 63 partes base64); restauração pela ferramenta oficial
+em pasta nova: 31/31 idênticos (`prova-restauracao.json`).
+Pendente: cópia fora do host pela conta do proprietário (mesmo fluxo da página
+privada existente); conferência das M1 do Tester nas lacunas da base.
+
+### SA-REF-01: preset DEMO conferido no Tester —01/11/2026
+
+`demo_preset` gerou `SAREF01_G1915_SAREF01_DEMO.set` (QA, fora do Git): armado
+explicitamente, semente declarada 2026-09-01T00:00 (barra real; 11.232 M5 até
+10-23, abaixo do limite até meados de dezembro), risco 0,25%, limites do host
+2%/4%/10%. Instalado pelo compile oficial e testado no Tester na mesma janela
+(execução `a0e00b7a…`): 103 operações, +105,77 USD — igual à reprodução, logo a
+troca declarada de semente não altera decisões nesta janela; 0 `SAREF_BLOCKED`;
+limites não acionados (DD 3,5%). No log isolado (agora UTF-8) as linhas
+`SAREF_DECISION` aparecem duas vezes porque ele reúne log do agente e do Tester.
+DEMO ao vivo ainda não iniciada: falta sessão própria com mercado aberto
+(horário pela sessão do símbolo na corretora) para pausa, retomada, reinício,
+recusa, desconexão e não duplicação.
+
+### SA-REF-01: garantias da reconciliação corrigidas e preparação DEMO —01/11/2026
+
+Três defeitos reproduzidos pela revisão, corrigidos:
+1. `identical` ignorava preços, resultado e custos. `parity.reconcile_trades`
+   agora compara em grupos (proteção: SL/TP; execução: entrada, saída, volume,
+   motivo, minuto; financeiro: resultado, comissão, swap, taxa) com unidade e
+   tolerância explícitas (`TOLERANCES`: preço 5e-6, volume 1e-9, dinheiro
+   0,005); ausente/inválido/não finito vira `missing_*`, nunca zero ou igual.
+   Custos do Python só contam como conhecidos quando o cenário declara
+   (`python_costs`, ex.: custo zero do protocolo). 22+ regressões por campo.
+2. Vínculo por minuto escolhia a primeira decisão. Agora `confirmed` exige
+   decisão do mesmo lado e elegível + `HDK_STRATEGY_SIGNAL` aberto do host para a
+   barra + `order` == `position_id`; senão `candidate_temporal`, `ambiguous`,
+   `incompatible` ou `missing`. Cópias da mesma linha em origens distintas do
+   log agregado são um evento; repetição na mesma origem é ambiguidade.
+3. `sa_ref_reconcile.py` abria a base com `create_db_manager` (cria tabelas).
+   Agora usa M1 congeladas do pacote (`--m1-csv`, leitura exata `round_trip`)
+   ou SQLite em `mode=ro` (`--database`), sem criar arquivo/tabela; resolução de
+   tabela extraída em `DatabaseManager.table_for_symbol` (mesma lógica de
+   `find_table_for_symbol`). Testes provam schema/dados intactos e recusa de
+   base inexistente.
+
+Reexecução só com insumos congelados (sem base principal): decisões 330/330
+(mesmo instante e lado); operações 100 pareadas, **vínculo confirmado 100/100**,
+**idênticas 1/100** (não 10). Grupos iguais: proteção 59, execução 4,
+financeiro 1. Campos: SL igual 92, TP 65, entrada 65, saída 57, volume 11,
+resultado 1, custos 100 (zero nos dois). Divergências de contrato seguem:
+lote pelo saldo/preço da ordem do host × capital fixo/open M1 do Python; TP
+ancorado na entrada real; fim do dia por sessão × última barra; ticks reais ×
+OHLC BID; duas M1 ausentes na base (efeito no Tester não conferido).
+Sementes julho × setembro (Tester, mesma janela): 512 decisões e 103 operações
+idênticas em todos os campos registrados (inclusive close, ATR, stop, idade,
+volume, preços, resultado). Alcance: só esta janela; `later` não é intocada.
+
+Exportador de sessão (`session_export.mqh.tmpl`): fechamento pelo Expert vira
+`expert` (stop out e manual também rotulados), sem vazio nem horário presumido;
+a regra específica vem do log do host por `position_id`. Ensaio QA
+`SAREF01_QA_LIMITE` (diário 0,3%, só Tester): CSV `sl` 28/`tp` 10/`expert` 1 e
+recusas do host "risco da ordem maior que o que resta hoje" — recusa por limite
+exercitada no Tester.
+
+Recibo DEMO: preset `SAREF01_DEMO` (semente 2026-09-01T00:00, risco 0,25%,
+2%/4%/10%, armado). Barras: 11.232 M5 reais até 10-23; com margem de 1.000 e
+cota superior de 288 M5 por dia corrido, seguro até 2026-11-18; depois o Expert
+recusa com `SAREF_BLOCKED bars_since_seed_above_20000`. Terminal e MetaTester
+build 6296. EX5 de cada sessão difere (id da sessão no wrapper); fonte incluído
+e closure idênticos. Complemento privado `complemento-01` (16 arquivos, ZIP
+`6e67372f…`, 4 partes) restaurado 16/16; pacote anterior preservado. Cópia
+fora do host pendente do proprietário. DEMO ao vivo não iniciada.
+
+#### Roteiro delimitado da sessão DEMO SA-REF-01 (aguarda autorização explícita)
+
+Pré-condições: conta DEMO própria (nunca REAL), terminal na sessão isolada da
+App, mercado EURUSD aberto pela sessão do símbolo na corretora, data ≤
+2026-11-18 (semente 2026-09-01), preset `SAREF01_G1915_SAREF01_DEMO` instalado
+pelo compile oficial, nenhum outro Expert com o mesmo magic no símbolo.
+1. Início: `mt5x robots start` pelo fluxo oficial com o preset DEMO, EURUSD M5.
+   Conferir no log a primeira `SAREF_DECISION`/`SAREF_BLOCKED`, o gate DEMO e o
+   painel do host; registrar SHA da App, EX5 da sessão e horário.
+2. Observação: decisões, ordens, posições e fechamentos ligados por
+   `position_id`; nenhuma ordem fora de virada elegível.
+3. Casos controlados, um por vez e registrados: pausa e retomada pelo controle
+   oficial; reinício do Expert (decisão corrente pulada, sem segunda entrada);
+   desconexão do terminal/rede com retorno (sem ordem duplicada); recusa por
+   limite com preset QA derivado (≤ limites DEMO), não pelo preset DEMO.
+4. Encerramento: `mt5x robots stop` (PARAR TUDO) ao fim do horário combinado,
+   posição aberta fechada pelo host ou manualmente conforme decisão; exportar
+   operações e logs; reconciliar com `scripts/sa_ref_reconcile.py`.
+5. Interrupção imediata: qualquer ordem sem decisão correspondente, duplicada,
+   em conta não-DEMO, perda diária acima de 2% ou erro de execução repetido.
+Evidência: "shim" (sonda C++), "Tester" e "DEMO observada" ficam separados.

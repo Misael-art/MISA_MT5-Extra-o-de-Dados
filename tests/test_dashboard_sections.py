@@ -83,16 +83,45 @@ def test_confidence_from_other_version_is_not_joined(db):
     assert regime_section(result)["visual"]["cells"][0]["intensity"] is None
 
 
-def test_stale_latest_state_hides_section_without_falling_back(db):
+def test_stale_latest_state_is_shown_as_stale_without_falling_back(db):
+    # DASH-08: vencido aparece em âmbar com idade; nunca recorre ao registro anterior.
     register(db)
     cut, now, before = cut_and_hours()
     save(db, "regime.state", "RANGE", before)
     save(db, "regime.state", "TREND", now, until=cut - pd.Timedelta(minutes=1))
     result = generator.generate(db, symbol="QA", timeframe="M5", as_of=cut)
     section = regime_section(result)
-    assert not section["default_visible"] and section["visual"]["value"] is None
-    assert section["hidden_reason_code"] == "NO_DATA"
-    assert result["capabilities"]["regime"]["state"] == "NO_DATA"
+    assert section["default_visible"] and section["display_state"] == "STALE"
+    assert section["visual"]["value"] == "Tendência"                       # o vencido, não o RANGE anterior
+    assert section["temporal"]["stale"]["expired_minutes_before_cut"] == 1
+    assert result["capabilities"]["regime"]["state"] == "STALE"
+
+
+def test_retroactive_invalidation_raises_top_alert_and_keeps_no_fallback(db):
+    register(db)
+    cut, now, before = cut_and_hours()
+    save(db, "regime.state", "TREND", now)
+    feature_store.save_value(db, "QA", "M5", "regime.state", "v1", now, None, quality="INVALIDATED",
+        available_at=now + pd.Timedelta(minutes=10), observed_at=now + pd.Timedelta(minutes=10),
+        source_revision="qa-correction", metadata={"reconstructed": True})
+    result = generator.generate(db, symbol="QA", timeframe="M5", as_of=cut)
+    alert = result["alerts"][0]
+    assert alert["kind"] == "RETROACTIVE_INVALIDATION" and alert["previous_value"] == "TREND"
+    assert alert["new_revision"] > alert["previous_revision"]
+    section = regime_section(result)
+    assert section["display_state"] == "INVALIDATED" and section["visual"]["value"] is None
+    generator.validate(result)
+
+
+def test_invalidation_known_only_after_cut_does_not_leak(db):
+    register(db)
+    cut, now, before = cut_and_hours()
+    save(db, "regime.state", "TREND", now)
+    feature_store.save_value(db, "QA", "M5", "regime.state", "v1", now, None, quality="INVALIDATED",
+        available_at=cut + pd.Timedelta(minutes=1), observed_at=cut + pd.Timedelta(minutes=1),
+        source_revision="qa-late", metadata={"reconstructed": True})
+    result = generator.generate(db, symbol="QA", timeframe="M5", as_of=cut)
+    assert result["alerts"] == [] and regime_section(result)["display_state"] == "AVAILABLE"
 
 
 def test_no_regime_is_unavailable_not_zero(db):
@@ -161,7 +190,7 @@ def test_volume_keeps_real_ticks_and_weekday_separate(db):
                                 versions={"rvol.reference_sessions": "tick"})
     sections = volume_sections(result)
     assert len(sections) == 3
-    assert [s["visual"]["value"] for s in sections] == [0, 3, 1.2]
+    assert sorted(s["visual"]["value"] for s in sections) == [0, 1.2, 3]       # ordem é da política DASH-11
     assert all(s["n_observations"] is None for s in sections)
 
 

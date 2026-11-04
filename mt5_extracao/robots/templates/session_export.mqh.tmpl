@@ -76,7 +76,12 @@ bool MT5X_Export(const string filename, const long magic)
          {
             rows[at].closed=stamp;
             long reason=HistoryDealGetInteger(deal,DEAL_REASON);
-            rows[at].reason=reason==DEAL_REASON_SL ? "sl" : reason==DEAL_REASON_TP ? "tp" : HistoryDealGetString(deal,DEAL_COMMENT)=="end of test" ? "fim" : "";
+            // Só o que o deal prova: SL/TP/stop out/manual; fechamento pelo Expert vira "expert" (a regra
+            // específica — fim do dia, sinal, tempo — fica no log do host e é ligada por position_id).
+            rows[at].reason=reason==DEAL_REASON_SL ? "sl" : reason==DEAL_REASON_TP ? "tp" :
+               reason==DEAL_REASON_SO ? "stop_out" : reason==DEAL_REASON_EXPERT ? "expert" :
+               (reason==DEAL_REASON_CLIENT || reason==DEAL_REASON_MOBILE || reason==DEAL_REASON_WEB) ? "manual" :
+               HistoryDealGetString(deal,DEAL_COMMENT)=="end of test" ? "fim" : "";
          }
       }
       else rows[at].ambiguous=true;

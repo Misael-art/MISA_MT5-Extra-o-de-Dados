@@ -60,9 +60,15 @@ class RobotsPanel:
         Tooltip(self.import_button, "Robôs MQL5 vêm de um arquivo ou de uma pasta no formato do MT5 (Experts, Include, "
                                     "Presets), como o clone do projeto HADOUKEN. Nada é copiado: o programa só lê.",
                 self.theme)
-        self.panel_button = ttk.Button(bar, text="Painel de resultados", style="Accent.TButton",
+        actions = ttk.Frame(bar, style="Surface.TFrame")
+        actions.grid(row=0, column=3, sticky="e")
+        self.dashboard_button = ttk.Button(actions, text="Dashboard", command=self.open_dashboard)
+        self.dashboard_button.pack(side=tk.LEFT, padx=(0, 8))
+        self.panel_button = ttk.Button(actions, text="Painel de resultados", style="Accent.TButton",
                                        command=ui.open_results_panel)
-        self.panel_button.grid(row=0, column=3, sticky="e")
+        self.panel_button.pack(side=tk.LEFT)
+        Tooltip(self.dashboard_button, "Abre no navegador a história do robô selecionado a partir das execuções já "
+                                       "gravadas. Nenhum backtest, compilação ou sessão é iniciado.", self.theme)
         Tooltip(self.panel_button, "Abre no navegador a visão de conjunto: todos os ativos com base, os timeframes e o "
                                    "resultado de cada robô ou estratégia em cada combinação. Só leitura.", self.theme)
         self.search_var = tk.StringVar()
@@ -206,6 +212,13 @@ class RobotsPanel:
         self._sync_body_viewport()
 
     # --- dados ------------------------------------------------------------------------
+
+    def open_dashboard(self):
+        if not self.selected_key:
+            from tkinter import messagebox
+            messagebox.showinfo("Dashboard", "Selecione um robô no catálogo para abrir o Dashboard.")
+            return
+        self.ui.open_dashboard_for({"mode": "robot", "robot_key": self.selected_key})
 
     def reload(self):
         """Lê o catálogo em segundo plano (arquivos e banco) e redesenha os cards."""

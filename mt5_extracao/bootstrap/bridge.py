@@ -133,6 +133,28 @@ class Bridge:
         self.pid_file.write_text(str(process_identity['pid']) + '\n')
         return record
 
+    def _pid_file_alive(self):
+        """PID ilegível ou vivo bloqueia o start; só um PID sem processo é resto obsoleto.
+
+        O registro de outra prévia (logs/ compartilhado) é descartado por record(),
+        mas isso não comprova que o PID esteja vivo; não basta para recusar para sempre.
+        """
+        try:
+            pid = int(self.pid_file.read_text().strip())
+            if pid <= 0:
+                return True
+        except (OSError, ValueError):
+            return True
+        # identity() devolve None também quando /proc não pode ser lido. Só a
+        # ausência comprovada libera start; erro de permissão continua bloqueando.
+        try:
+            (Path('/proc') / str(pid)).stat()
+        except FileNotFoundError:
+            return False
+        except OSError:
+            return True
+        return True
+
     def _clear(self):
         self.pid_file.unlink(missing_ok=True)
         self.record_file.unlink(missing_ok=True)
@@ -172,7 +194,7 @@ class Bridge:
             raise BridgeError('O processo próprio está ativo, mas a porta não responde. Veja logs/mt5_bridge.log e use stop antes de start.')
         if self.port_open():
             raise BridgeError('A porta da ponte está ocupada sem posse comprovada. Nenhum processo foi alterado; confira host/porta e o serviço existente.')
-        if self.pid_file.exists() and (record is None or identity(record['identity']['pid']) is not None):
+        if self.pid_file.exists() and self._pid_file_alive():
             raise BridgeError('PID antigo ou sem identidade comprovada. Nenhum processo foi alterado; confira logs/mt5_bridge.pid e pare a instância original antes de iniciar.')
         command, env = self._command()
         token = secrets.token_hex(16)

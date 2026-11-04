@@ -510,6 +510,18 @@ def _tester_log_snapshot(data: Path) -> dict:
     return result
 
 
+def _log_chunk_text(content: bytes, bom: bytes, start: int) -> str:
+    """Decodifica o trecho novo pelo encoding do arquivo de origem (UTF-16 com BOM ou UTF-8)."""
+    if bom in (b"\xff\xfe", b"\xfe\xff"):
+        codec = "utf-16-le" if bom == b"\xff\xfe" else "utf-16-be"
+        if start == 0:
+            content = content[2:]
+        elif start % 2:
+            content = content[1:]                       # trecho desalinhado: descarta meio caractere
+        return content.decode(codec, errors="replace")
+    return content.decode("utf-8", errors="replace")
+
+
 def _capture_tester_log(data: Path, before: dict, run_id: str) -> Optional[Path]:
     """Copia para um arquivo por execução somente os bytes novos nos logs do Tester."""
     try:
@@ -531,21 +543,23 @@ def _capture_tester_log(data: Path, before: dict, run_id: str) -> Optional[Path]
             else:
                 start = 0
             with path.open("rb") as handle:
+                bom = handle.read(2)
                 handle.seek(start)
                 content = handle.read()
             if content:
                 relative = path.relative_to(Path(data))
-                chunks.append((relative, content))
+                chunks.append((relative, _log_chunk_text(content, bom, start)))
         if not chunks:
             return None
         target = tester_run_log(data, run_id)
         target.parent.mkdir(parents=True, exist_ok=True)
-        with target.open("wb") as handle:
+        # Um único texto UTF-8: logs do agente são UTF-16 e não podem ser colados como bytes crus.
+        with target.open("w", encoding="utf-8", newline="") as handle:
             for relative, content in chunks:
-                handle.write(f"\n===== {relative.as_posix()} =====\n".encode("utf-8"))
+                handle.write(f"\n===== {relative.as_posix()} =====\n")
                 handle.write(content)
-                if not content.endswith(b"\n"):
-                    handle.write(b"\n")
+                if not content.endswith("\n"):
+                    handle.write("\n")
         return target
     except (OSError, ValueError) as e:
         log.warning(f"Não foi possível guardar um log isolado do Strategy Tester: {e}")
