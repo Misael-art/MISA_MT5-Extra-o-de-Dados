@@ -332,6 +332,7 @@ class SeriesLaboratoryPanel:
         self.reload_button.pack(side=tk.LEFT, padx=4)
         self.observations_button=ttk.Button(actions,text='Séries por janela…',command=self.open_observations)
         self.observations_button.pack(side=tk.LEFT,padx=4)
+        ttk.Button(actions, text="Padrões avaliados…", command=self.open_patterns).pack(side=tk.LEFT, padx=4)
         self.links_button=ttk.Button(actions,text="Fontes, candle e relatório…",command=self.open_links)
         self.links_button.pack(side=tk.LEFT,padx=4)
         ttk.Button(actions,text="Cancelar análise",command=self._analysis_cancel.set).pack(side=tk.LEFT,padx=4)
@@ -470,6 +471,9 @@ class SeriesLaboratoryPanel:
         for variable in (self.params, self.start, self.end):
             variable.trace_add("write", self._changed)
         self.controls.bind("<Configure>", self._layout_controls)
+
+    def open_patterns(self):
+        return self.ui.open_experiment_registry()
 
     def open_observations(self):
         existing=getattr(self,'observations',None)

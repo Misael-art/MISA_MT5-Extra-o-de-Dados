@@ -438,10 +438,25 @@ def pattern_campaign_status(db, protocol_id):
     return experiments.pattern_campaign_status(db, protocol_id)
 
 
+def pattern_evaluations(db, *, protocol_id=None, symbol=None, timeframe=None, as_of=None):
+    """Consulta avaliações T13.4 já persistidas; não abre produtor nem executor."""
+    from mt5_extracao.analytics import pattern_queries
+    return pattern_queries.evaluations(db, protocol_id=protocol_id, symbol=symbol,
+                                       timeframe=timeframe, as_of=as_of)
+
+
+def pattern_evaluation(db, protocol_id, request_id, data_manifest_id, *, as_of=None, include_facts=False):
+    """Inspeção de um recibo e, quando pedido, seus fatos causais persistidos."""
+    from mt5_extracao.analytics import pattern_queries
+    return pattern_queries.evaluation(db, protocol_id, request_id, data_manifest_id,
+                                      as_of=as_of, include_facts=include_facts)
+
+
 __all__ = [
     "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
     "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",
     "pattern_campaign_status",
+    "pattern_evaluations", "pattern_evaluation",
     "preview_backtest_scope", "inspect_backtest_scope", "create_backtest_scope_runner", "compare_backtest_scope",
     "create_super_atr_research_robot",
     "super_atr_capabilities", "materialize_super_atr_snapshot",

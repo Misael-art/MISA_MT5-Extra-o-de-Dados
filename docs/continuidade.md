@@ -14,6 +14,29 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## T13.4-P07 — leitura comum de avaliações em revisão — 03/11/2026
+
+Fonte local `codex/t134-p07-consumidores-m1`, base P06 `e538521`, ainda sem
+push/PR por bloqueio do guarda central de branches. `analytics.pattern_queries`
+lê somente eventos `pattern_evaluated` do ledger e os fatos do feature store
+quando solicitados; namespace, protocolo, tentativa, manifesto e instante de
+disponibilidade não são descartados. SDK/CLI, HTML portátil, guia Padrões do
+Laboratório e Dashboard consomem esse resultado persistido. O Dashboard
+mantém estado exploratório oculto por padrão, sem aprovar estatística,
+economia ou reserva; catálogo vazio é apresentado sem inferir resultados.
+Ensaios locais dirigidos cobrem corte as-of, reinício, filtros, duas bases
+sintéticas com mesmo símbolo e igualdade CLI/SDK. Após integrar a entrada GUI
+offline e o teste de monitor à esquerda, 58 testes dirigidos passaram, um foi
+ignorado e o desenho emitiu 17 avisos de layout. `./run.sh --offline --config`
+abriu a GUI em Xvfb isolado com SQLite de QA; Exibir → Registro de estudos →
+Padrões mostrou estado vazio corretamente. Com outro SQLite sintético, a rota
+exibiu o recibo persistido `reversal`, `SYN / M1`, treino, zero eventos e
+estado exploratório; os arquivos temporários foram removidos. CI, Windows
+físico, PostgreSQL e dados reais elegíveis permanecem gates distintos. A prévia
+instalada é `57d13ee`, sem P07. Recibos e bancos privados permanecem protegidos pelo
+manifesto anterior, sem novo conteúdo publicado. Próximo: gates P07, ensaio
+real limitado quando houver fonte elegível, depois E14 operacional.
+
 ## T13.4-P06 — quatro famílias e recibo persistente em revisão — 03/11/2026
 
 Fonte local `codex/t134-p06-fluxo-quatro-familias`, base P05/P04 local, sem

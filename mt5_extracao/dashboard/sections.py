@@ -162,10 +162,8 @@ def volumes(data):
                              "Nenhum RVOL persistido no recorte; volume ausente não é zero.")]
 
 
-# DASH-06 — hipótese estatística (T13.4). O produtor ainda não existe: o gerador
-# só emite o estado pendente. hypothesis() adapta o DTO de pattern_evaluations
-# (docs/analytics/ESPECIFICACAO.md §7.2/§8) quando ele existir; não calcula
-# lift, IC, amostra mínima nem aprovação.
+# DASH-06 — hipótese estatística (T13.4). P06 grava avaliações de pesquisa;
+# o cartão abaixo conserva esse estado sem derivar lift, IC ou aprovação.
 HYPOTHESIS_STATES = ("DRAFT", "EXPLORATORY", "VALIDATING", "APPROVED", "MONITORING", "RETIRED")
 HYPOTHESIS_VISIBLE = {"APPROVED", "VALIDATING"}
 HYPOTHESIS_HIDDEN = {
@@ -174,14 +172,60 @@ HYPOTHESIS_HIDDEN = {
     "MONITORING": "Em monitoramento: não herda aprovação; aguarda recibo de deriva.",
     "RETIRED": "Retirada na origem; permanece auditável.",
 }
-HYPOTHESIS_PENDING = ("O catálogo de hipóteses estatísticas (T13.4) ainda não existe; nenhuma hipótese foi "
-                      "calculada ou inferida. Aprovação de bateria de robô não é hipótese aprovada.")
+HYPOTHESIS_PENDING = ("Nenhuma avaliação T13.4 persistida para este ativo, tempo e corte. "
+                      "Aprovação de bateria de robô não é hipótese aprovada.")
 
 
 def hypothesis_pending(data):
     section = empty(data, "hypothesis", "hypothesis", "Hipóteses estatísticas", HYPOTHESIS_PENDING)
     section.update(default_visible=True, hidden_reason_code=None, hidden_reason_short=None,
-                   evidence={"reason_code": "T13_4_PENDING"})
+                   evidence={"reason_code": "NO_PATTERN_EVALUATION"})
+    return section
+
+
+def pattern_evaluation(data, item):
+    """Mostra o recibo P06 como pesquisa exploratória, sem inventar taxa ou aprovação."""
+    receipt = item["receipt"]
+    if (receipt.get("source_namespace") != data["subject"]["base_namespace"]
+            or receipt.get("symbol") != data["subject"]["symbol"]
+            or receipt.get("timeframe") != data["subject"]["timeframe"]):
+        raise ValueError("INVALID_SOURCE: avaliação pertence a outro ativo, TF ou base.")
+    if (receipt.get("statistical_approval") is not False
+            or receipt.get("economic_approval") is not False
+            or receipt.get("qualified_final_holdout") is not False):
+        raise ValueError("INVALID_SOURCE: estado de aprovação exige contrato posterior ao P06.")
+    if datetime.fromisoformat(item["available_at_utc"]) > datetime.fromisoformat(data["as_of_utc"]):
+        raise ValueError("FUTURE_EVIDENCE: avaliação disponível após o corte.")
+    ident = receipt["request_id"] + ":" + receipt["data_manifest_id"]
+    section = empty(data, "hypothesis:" + ident, "hypothesis",
+                    "Pesquisa · " + receipt["family"], "Avaliação exploratória; consulte o recibo.")
+    section.update(status_namespace="hypothesis", source_status="EXPLORATORY",
+                   display_state="AVAILABLE", default_visible=False,
+                   hidden_reason_code="STATUS_EXPLORATORY",
+                   hidden_reason_short=HYPOTHESIS_HIDDEN["EXPLORATORY"],
+                   source_refs=[{"protocol_id": receipt["protocol_id"],
+                                 "request_id": receipt["request_id"],
+                                 "data_manifest_id": receipt["data_manifest_id"],
+                                 "source_namespace": receipt["source_namespace"]}],
+                   n_observations=receipt["event_count"], unit="eventos", quality=None,
+                   temporal={"available_at_utc": item["available_at_utc"],
+                             "data_as_of_utc": receipt["as_of_utc"]},
+                   evidence={"negative_count": receipt["negative_count"],
+                             "censored_count": receipt["censored_count"],
+                             "validation": receipt["validation"],
+                             "economic_status": receipt["economic"]["status"],
+                             "statistical_approval": False, "economic_approval": False,
+                             "qualified_final_holdout": False,
+                             "approved_is_recommendation": False},
+                   visual={"value": None, "series": [],
+                           "rings": [{"ring": "sample", "label": "n", "value": receipt["event_count"]},
+                                     {"ring": "lift", "label": "lift", "value": None, "reference": 1.0},
+                                     {"ring": "confidence", "label": "Não informada", "value": None}]},
+                   details={"reason": "Recibo de pesquisa persistido; resultado sem qualificação final.",
+                            "definition_hash": receipt["definition_hash"],
+                            "results_sha256": receipt["results_sha256"],
+                            "signal_feature_id": item["signal_feature_id"],
+                            "outcome_feature_id": item["outcome_feature_id"]})
     return section
 
 
