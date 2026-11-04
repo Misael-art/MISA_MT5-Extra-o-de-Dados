@@ -49,6 +49,9 @@ monitor. A branch isolada LAB-10 `f1a4bc0`, baseada em GUI C `4d61e8b`,
 corrige essa asserção e passou 29 testes de Séries/1 ignorado; falta integrar os aceites entre
 PRs. O fluxo P01–P07 permanece exploratório: CI, fonte real elegível,
 PostgreSQL da campanha, Windows físico e aprovação M1 seguem abertos.
+Na cadeia rebatida sobre `0993ae7`, 51 testes focados de P01–P07/GUI de
+padrões passaram em Linux/Xvfb. `MT5X_TEST_PG_URL` não está configurada neste
+host; os dois testes PostgreSQL próprios desta cadeia não foram executados.
 O guarda central de push ainda impede publicar as branches de revisão;
 não o contornar. Próximo: concluir documentação desta composição, seguir
 recuperação/capacidade/pendentes E14 e aguardar a decisão específica do guarda
