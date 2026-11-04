@@ -155,7 +155,8 @@ def formula_source_hash():
     paths = [*sorted((root / "strategies").glob("*.py")),
              *(root / "analytics" / name for name in ("indicator_registry.py", "indicator_context.py",
                                                      "feature_store.py", "datasets.py")),
-             root / "chart_study" / "catalog.py", Path(__file__).resolve()]
+             root / "chart_study" / "catalog.py", Path(__file__).resolve(),
+             root / "laboratory" / "links.py"]
     return _hash({path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths})
 
 
@@ -195,7 +196,7 @@ CLOCK_UNKNOWN = (
     "time_basis = utc, que a captura de snapshots ainda não aceita. Sua seleção foi mantida.")
 
 
-def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None, stored_features=()):
+def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None, stored_features=(), guard=lambda:None):
     """Congela somente uma seleção explícita pela API datasets existente."""
     tfs = [timeframes.parse(tf) for tf in timeframes_selected]
     if not tfs or len(tfs) > MAX_TIMEFRAMES or None in tfs or len(set(tfs)) != len(tfs):
@@ -214,7 +215,8 @@ def capture_selection(db, *, symbol, timeframes_selected, start=None, end=None, 
             suggested = pd.Timestamp(frame.time.iloc[-MAX_BARS]).isoformat()
             raise ValueError(f"{tf.name}: {len(frame)} barras na janela; o limite é {MAX_BARS}. "
                              f"Informe início a partir de {suggested} (últimas {MAX_BARS} barras) ou um fim anterior.")
-    return [datasets.capture(db, symbol, tf.name, start, end, stored_features=stored_features)
+    guard()
+    return [datasets.capture(db, symbol, tf.name, start, end, stored_features=stored_features,guard=guard)
             for tf in sorted(tfs, key=lambda tf: tf.minutes)]
 
 
@@ -633,8 +635,22 @@ def _resolve_strategies(strategy_key, strategy_params, strategies, symbol, timef
 
 
 def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strategy_params=None,
-            strategies=None, as_of, stored_features=()):
+            strategies=None, as_of, stored_features=(), linked_sources=(), timeline_basis="received",
+            cancel_check=None, timeout_seconds=120, max_memory_mb=1024):
     """Mesmo relatório para SDK/CLI/Tk; não escreve base nem inicia backtests."""
+    import time
+    import math
+    from . import links
+    from mt5_extracao.analytics import indicator_materializer
+    started = dict(started_monotonic=time.monotonic())
+    for value, name, maximum in ((timeout_seconds, "timeout_seconds", 3600), (max_memory_mb, "max_memory_mb", 8192)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not 0 < value <= maximum:
+            raise ValueError(f"{name} precisa ser positivo e até{maximum}.")
+    def guard():
+        # O teto RSS pertence ao novo contrato vinculado; relatórios v1 mantêm o contrato anterior.
+        indicator_materializer._guard(started, None, cancel_check, timeout_seconds,
+                                      max_memory_mb if linked_sources else None)
+    guard()
     snapshots = list(snapshots)
     if not 1 <= len(snapshots) <= MAX_TIMEFRAMES:
         raise ValueError("Informe de 1 a 8 snapshots canônicos.")
@@ -649,9 +665,10 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
     if strategies is not None and len(strategies) == 0:
         strategies = None
     n_strategies = len(strategies) if strategies is not None else bool(strategy_key)
-    if not selected and not stored and not n_strategies:
+    linked = links.normalize(linked_sources, snapshots[0].manifest["symbol"])
+    if not selected and not stored and not n_strategies and not linked:
         raise ValueError("Escolha indicadores ou uma estratégia.")
-    if (len(selected) + len(stored) + n_strategies) * len(snapshots) > MAX_CHANNELS:
+    if (len(selected) + len(stored) + n_strategies) * len(snapshots) + sum(len(s["features"]) for s in linked) > MAX_CHANNELS:
         raise ValueError(f"Seleção excede {MAX_CHANNELS} canais; separe o estudo em recortes explícitos.")
     manifests = [item.manifest for item in snapshots]
     scopes = {(m["symbol"], m["source"]["namespace"], m["source"]["provider"], m["source"]["server"],
@@ -659,16 +676,27 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
     if len(scopes) != 1 or len({m["timeframe"] for m in manifests}) != len(manifests):
         raise ValueError("Compare o mesmo ativo/origem/relógio e somente um snapshot por timeframe.")
     cutoff = _utc(as_of)
+    if linked and (cutoff > pd.Timestamp.now(tz="UTC") or any(m["timeframe"] in ("W1", "MN1") for m in manifests)):
+        raise ValueError("Vínculos exigem corte já ocorrido e TFs de mercado fixos qualificados (até D1).")
     snapshots.sort(key=lambda item: timeframes.parse(item.manifest["timeframe"]).minutes)
     # O schema existente valida limites/tipos e o construtor valida relações entre parâmetros.
     resolved, listed = _resolve_strategies(strategy_key, strategy_params, strategies,
                                            manifests[0]["symbol"], manifests[0]["timeframe"])
     channels, populations = [], []
     for item in snapshots:
+        guard()
         built, population = _channels(item, selected, resolved, cutoff)
         channels.extend(built)
         populations.append(population)
     grid = populations[0]["nominal_closes"]
+    if linked:
+        grid = grid[grid <= cutoff]
+        if not len(grid):
+            raise ValueError("Nenhum candle fechado até o corte escolhido.")
+        populations[0]["prices"] = populations[0]["prices"].iloc[:len(grid)]
+    if linked and len(grid) * ((len(selected)+len(stored)+n_strategies)*len(snapshots)
+                              + sum(len(s["features"]) for s in linked)) > query_service.MAX_SELECTION_ROWS:
+        raise ValueError("Análise vinculada excede200 mil células; reduza canais/recorte.")
     aligned = [_align(channel, grid) for channel in channels]
     if stored:
         for snapshot in snapshots:
@@ -724,7 +752,7 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
     grid_tf = timeframes.parse(populations[0]["timeframe"])
     expected = grid[:-1] + (pd.offsets.MonthBegin(1) if grid_tf.name == "MN1" else pd.Timedelta(minutes=grid_tf.minutes))
     gap_count = int((grid[1:] != expected).sum())
-    return dict(laboratory_version=VERSION, analysis_id=_hash(dict(version=VERSION, source_hash=source_hash, **selection)),
+    report = dict(laboratory_version=VERSION, analysis_id=_hash(dict(version=VERSION, source_hash=source_hash, **selection)),
         grid_gap_count=gap_count,
         formula_source_sha256=source_hash, price_columns=["open", "high", "low", "close"], prices=prices,
         selection=selection, symbol=manifests[0]["symbol"], grid_timeframe=populations[0]["timeframe"],
@@ -735,6 +763,34 @@ def analyze(snapshots, *, feature_ids=DEFAULT_FEATURES, strategy_key=None, strat
                            independent_observations=False, operational_acceptance=False),
         limitations=list(LIMITATIONS) + (["Canais persistidos usam fatos/contratos congelados e disponibilidade declarada "
             "em cada decisão. Fórmulas locais e preços continuam descritivos; nenhuma direção é inferida dos fatos."] if stored else []))
+    if linked:
+        from mt5_extracao.analytics import associations
+        session_grid, _step, _bars = associations._pair_grid(snapshots[0], cutoff)
+        sessions, calendar_receipts = associations._pair_sessions(snapshots[0], session_grid["at"],
+            session_grid["start"], cutoff, guard)
+        additions = links.channels(linked, grid, cutoff, timeline_basis, guard,
+                                   first_open=populations[0]["first_open_utc"])
+        report["channels"].extend(additions)
+        selection.update(linked_sources=links.selection(linked), timeline_basis=timeline_basis)
+        report["laboratory_version"] = links.VERSION
+        report["alignment"] = "nominal_local_channels_and_explicit_frozen_fact_pulses"
+        report["session_ids"] = [value if pd.notna(value) else None for value in sessions]
+        report["calendar_receipts"] = calendar_receipts
+        report["calendar_basis"] = "frozen_calendar_known_at_cut" if calendar_receipts else "NO_FROZEN_CALENDAR"
+        report["analysis_id"] = _hash(dict(version=links.VERSION, source_hash=source_hash, **selection))
+        report["qualification"].update(linked_sources=True, retrospective_publication=timeline_basis == "publication")
+        report["limitations"].extend([
+            "Vínculo objeto→ativo explícito; correlação não demonstra motivo do preço.",
+            "Recebimento: pulso na primeira decisão que conhece o fato; sem carregar contagens.",
+            "Publicação: somente revisão conhecida no corte, sobre a janela descrita; perspectiva retrospectiva.",
+            "Vários objetos/janelas no mesmo candle não são somados: consulte os recibos, reduza o TF ou use publicação.",
+            "Ciclos macroeconômicos exigem fonte vinculada; não são inferidos de preço/volume."])
+        report["crossing_result"] = crossings(report, cancel_check=cancel_check,
+            timeout_seconds=max(.001, timeout_seconds-(time.monotonic()-started["started_monotonic"])),
+            max_memory_mb=max_memory_mb)
+        report["integrity_sha256"] = _hash(report)
+    guard()
+    return report
 
 
 _REPORT_KEYS = ("analysis_id", "selection", "symbol", "grid_timeframe", "times", "channels", "pairs", "populations",
@@ -747,15 +803,127 @@ def load_report(text):
         report = json.loads(text)
     except ValueError as error:
         raise ValueError(f"Arquivo não é uma análise JSON do Laboratório: {error}") from error
-    if not isinstance(report, dict) or report.get("laboratory_version") != VERSION:
-        raise ValueError(f"Análise incompatível: exige laboratory_version {VERSION}.")
+    if not isinstance(report, dict) or report.get("laboratory_version") not in (VERSION, 2):
+        raise ValueError("Análise incompatível: exige laboratory_version1 ou2.")
     missing = [key for key in _REPORT_KEYS if key not in report]
     if missing:
         raise ValueError("Análise incompleta; faltam: " + ", ".join(missing))
-    expected = _hash(dict(version=VERSION, source_hash=report["formula_source_sha256"], **report["selection"]))
+    expected = _hash(dict(version=report["laboratory_version"], source_hash=report["formula_source_sha256"], **report["selection"]))
     if expected != report["analysis_id"]:
         raise ValueError("analysis_id não corresponde à seleção e às fórmulas declaradas; arquivo alterado.")
+    if report["laboratory_version"] == 2:
+        payload = {k: v for k, v in report.items() if k != "integrity_sha256"}
+        cached = report.get("crossing_result")
+        if (report.get("integrity_sha256") != _hash(payload) or not report["selection"].get("linked_sources")
+                or not isinstance(cached, dict) or cached.get("analysis_id") != report["analysis_id"]):
+            raise ValueError("Relatório vinculado alterado ou sem vínculos congelados verificáveis.")
     return report
+
+
+def capture_linked_sources(db, *, target_symbol, selections, cancel_check=None,
+                           timeout_seconds=120, max_memory_mb=1024, frozen_only=False):
+    """Ação explícita de congelar/ligar; não grava fatos nem consulta rede/modelos."""
+    from . import links
+    from mt5_extracao import sdk
+    import time
+    from mt5_extracao.analytics import indicator_materializer
+    started = dict(started_monotonic=time.monotonic())
+    def guard():
+        indicator_materializer._guard(started, None, cancel_check, timeout_seconds, max_memory_mb)
+    if not isinstance(selections, (list, tuple)) or len(selections) > MAX_CHANNELS:
+        raise ValueError("Selecione até32 fontes explícitas para vincular.")
+    if frozen_only and any(not isinstance(item, dict) or "manifest_id" not in item for item in selections):
+        raise ValueError("Análise exige manifest_id de fonte já congelada; capture o snapshot explicitamente antes.")
+    result = []
+    for item in selections:
+        guard()
+        if not isinstance(item, dict) or not {"features", "relationship"} <= set(item):
+            raise ValueError("Vínculo exige features e relationship.")
+        if "manifest_id" in item:
+            if set(item) != {"manifest_id", "features", "relationship"}:
+                raise ValueError("Snapshot já congelado exige somente manifest_id/features/relationship.")
+            snapshot = datasets.load(db, item["manifest_id"])
+        else:
+            if set(item) != {"symbol", "timeframe", "start", "end", "features", "relationship"}:
+                raise ValueError("Fonte exige symbol/timeframe/start/end UTC/features/relationship.")
+            manifest = sdk.capture_feature_snapshot(db, symbol=item["symbol"], timeframe=item["timeframe"],
+                start=item["start"], end=item["end"], stored_features=item["features"],
+                cancel_check=cancel_check, timeout_seconds=timeout_seconds, max_memory_mb=max_memory_mb)
+            snapshot = datasets.load(db, manifest["manifest_id"])
+        result.append(dict(snapshot=snapshot, features=item["features"], target_symbol=target_symbol,
+                           relationship=item["relationship"]))
+        guard()
+    return links.normalize(result, target_symbol)
+
+
+def candle_context(report, index):
+    """Mesmo recorte para cursor, relatório e CLI: recebimento e publicação separados."""
+    if type(index) is not int or not 0 <= index < len(report["times"]):
+        raise ValueError("Escolha um candle da grade congelada.")
+    channels, received, published = [], [], []
+    for channel in report["channels"]:
+        linked = bool(channel.get("linked_source"))
+        channels.append(dict(id=channel["id"], name=channel["name"], timeframe=channel["timeframe"],
+            unit=channel.get("unit"), value=channel["values"][index],
+            raw_value=channel.get("raw_values", channel["values"])[index],
+            state=channel.get("per_bar_states", [None]*len(report["times"]))[index],
+            observation_time=(channel.get("observation_times") or [None]*len(report["times"]))[index],
+            source_end=(channel.get("source_ends") or [None]*len(report["times"]))[index],
+            historical_receipt_proven=linked or channel.get("temporal_basis") == "frozen_declared_available_at",
+            snapshot_manifest_id=channel.get("snapshot_manifest_id"), relationship=channel.get("relationship")))
+        for event in channel.get("receipt_events", []):
+            selected = dict(channel_id=channel["id"], channel_name=channel["name"], **event)
+            if event["receipt_bar_index"] == index:
+                received.append(selected)
+            if event["publication_bar_index"] == index:
+                published.append(selected)
+    return dict(analysis_id=report["analysis_id"], symbol=report["symbol"],
+        timeframe=report["grid_timeframe"], index=index, close_utc=report["times"][index],
+        price=dict(zip(report["price_columns"], report["prices"][index])), channels=channels,
+        market_session=(report.get("session_ids") or [None]*len(report["times"]))[index],
+        calendar_basis=report.get("calendar_basis", "NO_FROZEN_CALENDAR"),
+        received_events=received, publication_windows=published,
+        timeline_basis=report["selection"].get("timeline_basis", "nominal"),
+        price_cause="UNKNOWN_NOT_INFERRED_FROM_CORRELATION")
+
+
+def crossings(report, *, cancel_check=None, timeout_seconds=120, max_memory_mb=1024):
+    """Todos os pares selecionados, pelos cálculos existentes; sem ranking do melhor efeito."""
+    import time
+    import math
+    from mt5_extracao.analytics import indicator_materializer
+    for value, name, maximum in ((timeout_seconds,"timeout_seconds",3600),(max_memory_mb,"max_memory_mb",8192)):
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0 < value <= maximum:
+            raise ValueError(f"{name} precisa ser positivo e até{maximum}.")
+    if report.get("laboratory_version") == 2 and "crossing_result" in report:
+        import copy
+        load_report(json.dumps(report, allow_nan=False))
+        if cancel_check is not None and cancel_check():
+            raise indicator_materializer.Cancelled("Leitura dos cruzamentos cancelada.")
+        return copy.deepcopy(report["crossing_result"])
+    if len(report["channels"]) > MAX_CHANNELS or len(report["times"])*len(report["channels"]) > query_service.MAX_SELECTION_ROWS:
+        raise ValueError("Cruzamentos excedem32 canais/200 mil células; reduza o estudo.")
+    started = dict(started_monotonic=time.monotonic())
+    def guard():
+        indicator_materializer._guard(started, None, cancel_check, timeout_seconds, max_memory_mb)
+    matrices = [relation_matrix(report, lag=lag, _guard=guard) for lag in (0, *PREDICTIVE_LAGS)]
+    targets = [target_matrix(report, horizon=lag, _guard=guard) for lag in PREDICTIVE_LAGS]
+    timelines = []
+    for matrix in matrices:
+        for row in matrix["cells"]:
+            for pair in row:
+                guard()
+                if pair["effect"] is None or pair["left"] == pair["right"]:
+                    continue
+                timeline = stability_windows(report, pair["left"], pair["right"], lag=matrix["lag_bars"])
+                timelines.append(dict(left=pair["left"], right=pair["right"], lag_bars=matrix["lag_bars"],
+                    windows=[dict(start=w["start"], end=w["end"], n_pairs=w["n_pairs"],
+                                  value=w["value"], reason=w["reason"]) for w in timeline["windows"]]))
+    guard()
+    return dict(analysis_id=report["analysis_id"], timeline_basis=report["selection"].get("timeline_basis", "nominal"),
+        matrices=matrices, price_targets=targets, timelines=timelines, method="existing_laboratory_spearman",
+        qualification=report["qualification"], limitations=report["limitations"],
+        same_observation_is_not_independent=True, price_cause="UNKNOWN_NOT_INFERRED_FROM_CORRELATION")
 
 
 MATRIX_REASONS = {
@@ -771,7 +939,17 @@ MATRIX_REASONS = {
 }
 
 
-def relation_matrix(report, *, lag=0):
+def _nominal_mask(report, lag):
+    """Novos relatórios vinculados não comprimem noites/lacunas ao deslocar barras."""
+    mask = pd.Series(True, index=range(len(report["times"])))
+    if report.get("laboratory_version") == 2 and lag:
+        tf = timeframes.parse(report["grid_timeframe"])
+        times = pd.Series(pd.to_datetime(report["times"], utc=True))
+        mask = times.sub(times.shift(lag)).eq(pd.Timedelta(minutes=tf.minutes*lag))
+    return mask
+
+
+def relation_matrix(report, *, lag=0, _guard=lambda:None):
     """Matriz indicador × indicador derivada do relatório congelado (mesma função para SDK/CLI/UI).
 
     Efeito = Spearman dos valores alinhados na grade (preditor deslocado ``lag`` barras); a correlação
@@ -779,19 +957,26 @@ def relation_matrix(report, *, lag=0):
     """
     if lag not in (0, *PREDICTIVE_LAGS):
         raise ValueError(f"Defasagem {lag} fora das fixas do relatório: {(0, *PREDICTIVE_LAGS)}.")
+    if report.get("laboratory_version") == 2 and "crossing_result" in report:
+        import copy
+        load_report(json.dumps(report, allow_nan=False))
+        return copy.deepcopy(next(m for m in report["crossing_result"]["matrices"] if m["lag_bars"] == lag))
     channels = report["channels"]
     pairs = {(p["left"], p["right"], p["lag_bars"]): p for p in report["pairs"]}
     values = {c["id"]: pd.Series([np.nan if v is None else v for v in c["values"]], dtype=float) for c in channels}
     event_frames = {c["id"]: _report_events(c, len(values[c["id"]])) for c in channels}
     blocked = {c["id"]: _channel_block(c) for c in channels}
     cells = []
+    nominal_mask = _nominal_mask(report, lag)
     for left in channels:
+        _guard()
         row = []
         for right in channels:
+            _guard()
             a, b = left["id"], right["id"]
             pair = pairs.get((a, b, lag)) or (pairs.get((b, a, 0)) if lag == 0 else None)
             x, y = values[a].shift(lag), values[b]
-            valid = x.notna() & y.notna()
+            valid = x.notna() & y.notna() & nominal_mask
             reason = ("UNCONFIRMED_EVENT" if "UNCONFIRMED_EVENT" in (blocked[a], blocked[b])
                       else "SAME_SERIES" if a == b and lag else blocked[a] or blocked[b])
             if reason is None:
@@ -882,13 +1067,22 @@ def _channel_block(channel):
     return (channel.get("diagnosis") or {}).get("code")
 
 
-def target_matrix(report, *, horizon=1):
+def target_matrix(report, *, horizon=1, _guard=lambda:None):
     """Indicador × retorno bruto do preço no horizonte fixo. Não é trade, R nem produtor T18.6."""
+    if report.get("laboratory_version") == 2 and "crossing_result" in report:
+        import copy
+        load_report(json.dumps(report, allow_nan=False))
+        found = next((m for m in report["crossing_result"]["price_targets"] if m["lag_bars"] == horizon), None)
+        if found is None:raise ValueError("Horizonte fora dos fixos do relatório.")
+        return copy.deepcopy(found)
     closes = _closes(report)
     target = forward_close_return(closes, horizon)
+    if report.get("laboratory_version") == 2:
+        target = target.where(_nominal_mask(report, horizon).shift(-horizon, fill_value=False))
     target_id = f"price.forward_return:{horizon}"
     cells = []
     for channel in report["channels"]:
+        _guard()
         blocked = _channel_block(channel)
         n, effect, reason, xs, ys = _rank_effect(_numeric(channel["values"]), target)
         if blocked:
@@ -927,6 +1121,7 @@ def stability_windows(report, left_id, right_id, *, lag=0, blocks=4):
         raise ValueError("Canal ausente na análise congelada.")
     times = pd.to_datetime(report["times"])
     x = _numeric(channels[left_id]["values"]).shift(lag)
+    x = x.where(_nominal_mask(report, lag))
     y = _numeric(channels[right_id]["values"])
     if len(x) != len(times) or len(y) != len(times):
         raise ValueError("Canal e grade temporal com tamanhos diferentes.")

@@ -1246,16 +1246,19 @@ class RelationsPanel:
         ranking_note.grid(row=0, column=2, sticky="e", padx=(SPACING["sm"], 0))
         controls.columnconfigure(2, weight=1)
 
-        def resize_timeline_controls(event):
-            if event.width < 1000:
+        def resize_timeline_controls(_event):
+            # A largura requerida do texto pode exceder a área visível no Windows/DPI alto.
+            width = min(controls.winfo_width(), self.notebook.winfo_width())
+            if width < 1000:
                 ranking_note.grid_configure(row=1, column=0, columnspan=3, sticky="w", padx=0)
-                ranking_note.configure(wraplength=max(220, event.width - 24), justify=tk.LEFT)
+                ranking_note.configure(wraplength=max(220, width - 24), justify=tk.LEFT)
             else:
                 ranking_note.grid_configure(row=0, column=2, columnspan=1, sticky="e",
                                             padx=(SPACING["sm"], 0))
-                ranking_note.configure(wraplength=max(220, event.width - 360), justify=tk.RIGHT)
+                ranking_note.configure(wraplength=max(220, width - 360), justify=tk.RIGHT)
 
         controls.bind("<Configure>", resize_timeline_controls, add="+")
+        self.notebook.bind("<Configure>", resize_timeline_controls, add="+")
 
         self.timeline_split, primary, detail = self._split_view(parent)
         primary.columnconfigure(0, weight=1)
@@ -1539,16 +1542,19 @@ class RelationsPanel:
         comparison_note.grid(row=0, column=2, sticky="e", padx=(SPACING["sm"], 0))
         controls.columnconfigure(2, weight=1)
 
-        def resize_convergence_controls(event):
-            if event.width < 1000:
+        def resize_convergence_controls(_event):
+            # A largura requerida do texto pode exceder a área visível no Windows/DPI alto.
+            width = min(controls.winfo_width(), self.notebook.winfo_width())
+            if width < 1000:
                 comparison_note.grid_configure(row=1, column=0, columnspan=3, sticky="w", padx=0)
-                comparison_note.configure(wraplength=max(220, event.width - 24), justify=tk.LEFT)
+                comparison_note.configure(wraplength=max(220, width - 24), justify=tk.LEFT)
             else:
                 comparison_note.grid_configure(row=0, column=2, columnspan=1, sticky="e",
                                                padx=(SPACING["sm"], 0))
-                comparison_note.configure(wraplength=max(220, event.width - 310), justify=tk.RIGHT)
+                comparison_note.configure(wraplength=max(220, width - 310), justify=tk.RIGHT)
 
         controls.bind("<Configure>", resize_convergence_controls, add="+")
+        self.notebook.bind("<Configure>", resize_convergence_controls, add="+")
         note = Notice(parent, "ρ fora da amostra menos a persistência do alvo. Não é R/op. Custos não entram; expectativa líquida de trades não é calculada.",
                       kind="warning", theme=self.theme)
         _fit_label_to_parent(note.message, note, reserve=128)

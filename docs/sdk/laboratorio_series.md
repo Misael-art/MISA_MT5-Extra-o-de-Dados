@@ -420,3 +420,50 @@ São eventos representados pelos valores dos pares; um evento anterior ao corte
 que continua retido no holdout conta como representado, sem se tornar uma nova
 confirmação. O resumo JSON de `laboratory derived --relations` preserva essas
 contagens e os metadados do canal, sem despejar preços por barra.
+## Fontes vinculadas, candle e relatório portátil
+
+Em **Laboratório → Séries e confluências → Fontes, candle e relatório…**, escolha
+versões armazenadas e descreva explicitamente a associação objeto → ativo.
+Depois use **Congelar e analisar**. A seleção pode combinar preço, volume real,
+ticks, indicadores e TFs; cada unidade e versão permanece identificada.
+
+**Recebimento no candle** coloca cada mudança no primeiro fechamento que a
+conhece, sem carregar contagens nos candles seguintes. **Publicação retrospectiva**
+mostra o fim da janela, preservando a disponibilidade posterior; não representa
+informação conhecida na ocasião. Duplo clique no gráfico inspeciona o candle,
+os recebimentos, as janelas publicadas e a proveniência. A matriz pagina todos
+os pares, inclusive TFs diferentes, em defasagens 0/1/3/6; o par selecionado
+mostra estabilidade em quatro blocos. Zero, ausência e constância são distintos.
+
+```python
+from mt5_extracao import sdk
+report = sdk.analyze_laboratory(
+    db, manifest_ids=market_snapshot_ids,
+    linked_selections=[dict(manifest_id=source_snapshot_id,
+                            features=source_feature_versions,
+                            relationship="Associação explicitamente escolhida")],
+    feature_ids=["volume.ticks", "volume.real", "price.return_1"],
+    timeline_basis="received", as_of=cutoff_utc)
+candle = sdk.laboratory_candle(report, 2)
+crossings = sdk.laboratory_crossings(report)
+sdk.export_laboratory_report(report, "cruzamentos.html")
+```
+
+CLI: `laboratory analyze --manifest ID --links links.json --timeline-basis
+received --as-of UTC --out analysis.json`; `links.json` contém a lista de
+`manifest_id/features/relationship` do exemplo. Capture fontes explicitamente
+antes: análise SDK/CLI exige snapshots existentes e não captura implicitamente.
+Use `laboratory candle --analysis analysis.json --index 2`, `laboratory crossings
+--analysis analysis.json` ou `laboratory report --analysis analysis.json --out
+cruzamentos.html`. O HTML é local, autossuficiente, sem envio ou rede; inclui
+gráfico, filtros, matrizes, estabilidade, retornos brutos futuros e cronologia.
+
+Relatórios com vínculos usam versão 2, integridade do conteúdo e estatísticas
+congeladas. Reabertura/exportação não recalcula fórmulas, estatísticas ou modelos.
+Versão 1 continua legível. Limites: 32 canais, 8 TFs, 20 mil barras, 200 mil
+células/revisões; 120 segundos e 1024 MiB por operação. Fontes semanais/mensais
+e M7/M9 sintéticos mantêm seus percursos próprios. Colisões de várias observações
+em um candle ficam indisponíveis numericamente, com recibos preservados.
+Sessões exigem calendário congelado; fases macro exigem fonte categórica datada.
+Categorias não viram números. Correlação não explica causalmente o preço nem
+qualifica negociação, precisão do classificador ou funcionamento nativo.

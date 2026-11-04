@@ -1,5 +1,6 @@
 """Consumidor Tk do Laboratório de séries; cálculo e diagnóstico ficam no SDK."""
 import json
+import threading
 import tkinter as tk
 from tkinter import filedialog, ttk
 
@@ -280,6 +281,7 @@ class SeriesLaboratoryPanel:
         self._columns = None
         self._inventory = []
         self.pending = False
+        self._analysis_cancel=threading.Event()
         self._display_initialized = False
         self.catalog = service.catalog()
         self._build_controls()
@@ -310,6 +312,7 @@ class SeriesLaboratoryPanel:
         self.redraw()
 
     def _build_controls(self):
+        self.linked_selections=[];self.linked_target=None;self.timeline_basis="received";self.links_dialog=None
         actions = ttk.Frame(self.frame)
         actions.pack(fill=tk.X)
         self.analyze_button = ttk.Button(actions, text="Congelar e analisar", command=self.analyze, style="Accent.TButton")
@@ -318,6 +321,9 @@ class SeriesLaboratoryPanel:
         self.reload_button.pack(side=tk.LEFT, padx=4)
         self.observations_button=ttk.Button(actions,text='Séries por janela…',command=self.open_observations)
         self.observations_button.pack(side=tk.LEFT,padx=4)
+        self.links_button=ttk.Button(actions,text="Fontes, candle e relatório…",command=self.open_links)
+        self.links_button.pack(side=tk.LEFT,padx=4)
+        ttk.Button(actions,text="Cancelar análise",command=self._analysis_cancel.set).pack(side=tk.LEFT,padx=4)
         self.extended = tk.BooleanVar(value=False)
         ttk.Checkbutton(actions, text="Visão ampliada", variable=self.extended,
                         command=self._layout).pack(side=tk.LEFT, padx=4)
@@ -635,6 +641,8 @@ class SeriesLaboratoryPanel:
         from mt5_extracao.automation.protocol import loads
         try:
             symbol = self.symbol.get()
+            if self.linked_selections and self.linked_target != symbol:
+                raise ValueError("Os vínculos foram escolhidos para outro ativo. Retire-os ou refaça a associação explicitamente.")
             chosen = [self._tf_items[i] for i in self.tf_list.curselection()] if hasattr(self, "_tf_items") else []
             plan = derived.selection_plan(chosen)
             tfs = [item["timeframe"] for item in chosen]
@@ -647,6 +655,8 @@ class SeriesLaboratoryPanel:
                 raise ValueError(
                     "M7 e M9 não entram na captura nativa. Leia o sintético sozinho ou escolha só tempos do MT5.")
             stored_features = [pair for key, pair in self._stored_choices.items() if key in self._chosen_features]
+            if self.linked_selections and plan != "native":
+                raise ValueError("Vínculos usam snapshots de TFs nativos; M7/M9 continuam no percurso sintético próprio.")
             if stored_features and plan != "native":
                 raise ValueError("Indicadores armazenados usam snapshots nativos nesta etapa; escolha TFs nativos "
                                  "ou consulte o contexto/Analytics do tempo sintético.")
@@ -674,7 +684,7 @@ class SeriesLaboratoryPanel:
                 request_kwargs = comparison_arguments(strategy, params, extras)
                 n_strategies = (len(request_kwargs["strategies"]) if "strategies" in request_kwargs
                                 else bool(request_kwargs.get("strategy_key")))
-                if not feature_ids and not stored_features and not n_strategies:
+                if not feature_ids and not stored_features and not n_strategies and not self.linked_selections:
                     raise ValueError("Escolha indicadores ou uma estratégia para analisar.")
                 gate = "M1" if comparing else tfs[0]
                 if strategy is not None:
@@ -683,7 +693,7 @@ class SeriesLaboratoryPanel:
                     if isinstance(key, str):
                         service.base_composition(key, symbol=symbol, timeframe=gate,
                                                  params=service.get_strategy(key).params)
-                if (len(feature_ids) + len(stored_features) + n_strategies) * len(tfs) > service.MAX_CHANNELS:
+                if (len(feature_ids) + len(stored_features) + n_strategies) * len(tfs) + sum(len(s["features"]) for s in self.linked_selections) > service.MAX_CHANNELS:
                     raise ValueError("Máximo de 32 canais; reduza indicadores ou TFs para este recorte.")
         except (ValueError, AttributeError) as error:
             self.status.configure(text=str(error))
@@ -691,7 +701,9 @@ class SeriesLaboratoryPanel:
         self._request += 1
         request, revision = self._request, self._selection_revision
         start, end = self.start.get() or None, self.end.get() or None
+        linked_selections=json.loads(json.dumps(self.linked_selections));basis=self.timeline_basis
         self.pending = True
+        self._analysis_cancel.clear()
         self.analyze_button.state(["disabled"])
         if plan == "derived" and len(tfs) > 1:
             self.status.configure(text="Comparando as barras já gravadas na grade do tempo mais curto. "
@@ -701,21 +713,30 @@ class SeriesLaboratoryPanel:
         else:
             self.status.configure(text="Congelando a seleção pela API de snapshots e calculando os cruzamentos…")
         def work():
+            from mt5_extracao.analytics.indicator_materializer import Cancelled
+            def guard():
+                if self._analysis_cancel.is_set():raise Cancelled("Análise cancelada; snapshots confirmados preservados.")
+            guard()
             if plan == "derived" and len(tfs) == 1:
                 return derived.read_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end)
             if plan == "derived":
                 return derived.compare_stored(self.ui.app.db_manager, symbol, tfs, start=start, end=end,
                     feature_ids=feature_ids, as_of=pd.Timestamp.now(tz="UTC").isoformat(), **request_kwargs)
             snapshots = service.capture_selection(self.ui.app.db_manager, symbol=symbol,
-                timeframes_selected=tfs, start=start, end=end, stored_features=stored_features)
+                timeframes_selected=tfs, start=start, end=end, stored_features=stored_features,guard=guard)
+            linked=service.capture_linked_sources(self.ui.app.db_manager,target_symbol=symbol,selections=linked_selections,
+                                                  cancel_check=self._analysis_cancel.is_set)
             return service.analyze(snapshots, feature_ids=feature_ids,
-                as_of=pd.Timestamp.now(tz="UTC").isoformat(), stored_features=stored_features, **request_kwargs)
+                as_of=pd.Timestamp.now(tz="UTC").isoformat(), stored_features=stored_features,
+                linked_sources=linked,timeline_basis=basis,cancel_check=self._analysis_cancel.is_set,**request_kwargs)
         def done(report, error):
             if not self.frame.winfo_exists() or request != self._request:
                 return
             self.pending = False
             self.analyze_button.state(["!disabled"])
-            if revision != self._selection_revision:
+            if self._analysis_cancel.is_set():
+                self.status.configure(text="Análise cancelada; resultado anterior e snapshots confirmados preservados.")
+            elif revision != self._selection_revision:
                 self.status.configure(text="Seleção mudou durante o cálculo; resultado antigo não publicado. Analise a seleção atual.")
             elif error:
                 self.status.configure(text=f"Análise indisponível: {error}")
@@ -1091,6 +1112,12 @@ class SeriesLaboratoryPanel:
         chart.canvas.draw_idle()
 
     def _chart_clicked(self, chart, event):
+        if getattr(event,"dblclick",False) and event.xdata is not None and self.report is not None:
+            from matplotlib.dates import num2date
+            dates=pd.to_datetime(self.report["times"],utc=True)
+            index=int(np.argmin(abs(dates-pd.Timestamp(num2date(event.xdata)))))
+            self.open_links(candle=index)
+            return
         tool = self.tool.get()
         if self.study is None or tool == TOOLS[0] or event.inaxes is not getattr(chart, "_price_axis", None) \
                 or event.xdata is None or event.ydata is None:
@@ -1348,6 +1375,15 @@ class SeriesLaboratoryPanel:
         charts.style_axis(ax, self.theme, "Cobertura de cálculo · não certifica a fonte", grid_axis="x")
         chart.draw()
 
+    def open_links(self, candle=None):
+        from .laboratory_links import LaboratoryLinks
+        if self.links_dialog is None or not self.links_dialog.alive():
+            self.links_dialog=LaboratoryLinks(self)
+        else:self.links_dialog.window.lift()
+        if candle is not None:
+            self.links_dialog.tabs.select(self.links_dialog.candle_tab)
+            self.links_dialog.show_candle(candle)
+
     def export(self):
         if self.report is None:
             if self.derived_read is not None:
@@ -1376,6 +1412,11 @@ class SeriesLaboratoryPanel:
             self.status.configure(text=f"Análise não reaberta: {error}")
             return
         self._request += 1  # descarta cálculo em andamento: a análise aberta passa a ser a atual
+        self._analysis_cancel.set()
+        if report.get("laboratory_version") == 2:
+            self.linked_selections=[dict(manifest_id=s["manifest_id"],features=s["features"],relationship=s["relationship"])
+                                    for s in report["selection"]["linked_sources"]]
+            self.linked_target=report["symbol"];self.timeline_basis=report["selection"]["timeline_basis"]
         self.pending = False
         self.analyze_button.state(["!disabled"])
         self.set_report(report)

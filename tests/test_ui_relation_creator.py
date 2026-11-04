@@ -151,7 +151,8 @@ def test_escape_requests_cancellation_before_closing_active_dialog(relations_pan
     creator,_=prepare(panel,root,saved_db)
     queued=[];creator.run_bg=lambda work,done:queued.append((work,done))
     before=count(saved_db);creator.calculate()
-    creator.window.event_generate('<Escape>');root.update()
+    creator.capture_box.focus_force();root.update()
+    creator.capture_box.event_generate('<Escape>');root.update()
     assert creator.alive() and creator.pending and creator._cancel.is_set()
     result,error=panel._call(queued[0][0]);queued[0][1](result,error)
     assert not creator.alive() and count(saved_db)==before
