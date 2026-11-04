@@ -467,3 +467,52 @@ em um candle ficam indisponíveis numericamente, com recibos preservados.
 Sessões exigem calendário congelado; fases macro exigem fonte categórica datada.
 Categorias não viram números. Correlação não explica causalmente o preço nem
 qualifica negociação, precisão do classificador ou funcionamento nativo.
+
+### Avaliação estatística registrada
+
+No diálogo de fontes/cruzamentos, “Registrar protocolo JSON…” congela família,
+janelas e método no ledger de experimentos existente. “Avaliar protocolo
+registrado…” é uma segunda ação, com chave idempotente, espera e cancelamento.
+O recibo vai ao ledger antes de ser apresentado e pode acompanhar o HTML. Abrir
+ou exportar um recibo pronto não repete inferência. Protocolos de relações não
+são pedidos de backtest nem podem ser enviados ao executor de estratégias.
+
+SDK: `register_laboratory_protocol(db, report, definition)` e
+`evaluate_laboratory_protocol(db, report, protocol_id, key="avaliacao-1")`.
+CLI: `laboratory protocol-register --analysis analysis.json --definition
+protocol.json --out registered.json`, depois `laboratory protocol-evaluate
+--analysis analysis.json --protocol ID --key tentativa-1 --out evaluation.json`.
+`laboratory report --analysis analysis.json --evaluation evaluation.json --out
+report.html` incorpora o recibo verificado da mesma análise.
+
+Contrato JSON completo (substitua IDs/horários pelos da análise):
+
+```json
+{
+  "name": "estudo.retorno", "revision": 1,
+  "channels": ["D1:price.return_1"], "horizons": [1, 3, 6],
+  "windows": {
+    "train": {"start": "2024-01-02T00:00Z", "end": "2024-05-01T00:00Z"},
+    "validation": {"start": "2024-05-01T00:00Z", "end": "2024-09-01T00:00Z"},
+    "holdout": {"start": "2024-09-01T00:00Z", "end": "2025-01-01T00:00Z"}
+  },
+  "session_basis": "utc_day_exploratory", "method": "spearman",
+  "bootstrap_replicates": 999, "seed": 7
+}
+```
+
+Janelas [início,fim), cronológicas, sem sobreposição e dentro do recorte.
+Até24 combinações canal×horizonte, três janelas obrigatórias;99…1999 réplicas,
+30 pares/10 sessões mínimos por resultado. Calendário congelado completo permite
+`frozen_calendar`; dias UTC exigem opção exploratória explícita. Pearson ou
+Spearman usam `analytics.associations`, bootstrap em blocos de sessões e
+Bonferroni sobre toda a família, inclusive testes indisponíveis. Fronteiras
+expurgam alvos que terminem fora da própria janela; lacunas não são comprimidas.
+Disponibilidade tardia exclui a característica, inclusive na publicação
+retrospectiva. Estado categórico não é convertido em código contínuo.
+
+Registro é anterior a esta avaliação, mas a análise de origem já foi explorada.
+Acesso externo anterior permanece desconhecido, reserva inédita/predição/lucro
+não recebem qualificação automática. Correção cobre a família, sem controlar
+por inferência toda a busca entre novas revisões. Cancelamento/falha conserva
+acessos no ledger; retomar tentativa admitida sem resultado exige nova chave.

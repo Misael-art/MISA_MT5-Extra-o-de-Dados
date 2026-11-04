@@ -190,6 +190,9 @@ class LaboratoryLinks:
         self.lag=tk.StringVar(value='0');combo=ttk.Combobox(row,textvariable=self.lag,values=['0'],width=5,state='readonly')
         self.lag_box=combo
         combo.pack(side=tk.LEFT);combo.bind('<<ComboboxSelected>>',lambda *_:self.show_matrix())
+        protocol_row=ttk.Frame(frame);protocol_row.pack(fill=tk.X,pady=6)
+        ttk.Button(protocol_row,text="Registrar protocolo JSON…",command=self.register_protocol).pack(side=tk.LEFT)
+        ttk.Button(protocol_row,text="Avaliar protocolo registrado…",command=self.evaluate_protocol).pack(side=tk.LEFT,padx=4)
         self.matrix=self._table(frame,[("left","Preditor / TF",300),("right","Resposta / TF",300),("effect","Spearman",110),("n","Pares",80),("state","Estado / motivo",230)],height=8)
         self.matrix.bind('<<TreeviewSelect>>',self.matrix_selected)
         self.matrix_page=0
@@ -205,6 +208,39 @@ class LaboratoryLinks:
         if message:self.status.configure(text=message)
         if on:self.progress.pack(fill=tk.X);self.progress.start(12)
         else:self.progress.stop();self.progress.pack_forget()
+
+    def register_protocol(self):
+        if self.pending:return
+        report=self.panel.report
+        if report is None:self.status.configure(text='Congele uma análise antes de registrar.');return
+        path=filedialog.askopenfilename(parent=self.window,filetypes=[('Protocolo JSON','*.json')])
+        if not path:return
+        def work():
+            if Path(path).stat().st_size>1024*1024:raise ValueError('Protocolo excede1MiB.')
+            return sdk.register_laboratory_protocol(self.db,report,json.loads(Path(path).read_text(encoding='utf-8')))
+        self._busy(True,'Registrando família e janelas — aguarde…')
+        def done(result,error):
+            if not self.alive():return
+            self._busy(False)
+            if error:self.status.configure(text=f'Protocolo não registrado: {error}');return
+            self.protocol_id=result['protocol_id'];self.status.configure(text='Protocolo registrado. Avaliar é uma ação separada; o relatório de origem já foi exposto.')
+        self.ui.run_bg(work,done)
+
+    def evaluate_protocol(self):
+        if self.pending:return
+        if self.panel.report is None or not getattr(self,'protocol_id',None):self.status.configure(text='Registre o protocolo JSON para esta análise primeiro.');return
+        from tkinter import simpledialog
+        key=simpledialog.askstring('Avaliação registrada','Chave desta avaliação (letras/números/hífen):',parent=self.window)
+        if not key:return
+        report=self.panel.report;self.cancel_event.clear();self._busy(True,'Avaliando família, cortes temporais e bootstrap — aguarde…')
+        def done(result,error):
+            if not self.alive():return
+            self._busy(False)
+            if error:self.status.configure(text=f'Avaliação não concluída: {error}. Acesso permanece no ledger.');return
+            self.evaluation=result;self.status.configure(text=f"Avaliação salva no ledger: {result['tests_counted']} testes com Bonferroni. Exporte HTML para consultar. Sem qualificação de previsão ou reserva inédita.")
+        from mt5_extracao.analytics import producer_jobs
+        memory=min(8192,max(1024,int(producer_jobs.current_rss_bytes()/1024**2)+256))
+        self.ui.run_bg(lambda:sdk.evaluate_laboratory_protocol(self.db,report,self.protocol_id,key=key,cancel_check=self.cancel_event.is_set,max_memory_mb=memory),done)
 
     def calculate(self):
         if self.pending:return
@@ -256,7 +292,9 @@ class LaboratoryLinks:
         def done(result,error):
             if not self.alive():return
             self._busy(False);self.status.configure(text=f"Relatório não exportado: {error}" if error else f"Relatório salvo em {result['path']}. Abra no navegador; nenhuma conexão externa é necessária.")
-        self.ui.run_bg(lambda:sdk.export_laboratory_report(report,path,cancel_check=self.cancel_event.is_set),done)
+        evaluation=getattr(self,'evaluation',None)
+        if evaluation and evaluation['analysis_id']!=report['analysis_id']:evaluation=None
+        self.ui.run_bg(lambda:sdk.export_laboratory_report(report,path,cancel_check=self.cancel_event.is_set,evaluation=evaluation),done)
 
     def _candle(self):
         row=ttk.Frame(self.candle_tab);row.pack(fill=tk.X)

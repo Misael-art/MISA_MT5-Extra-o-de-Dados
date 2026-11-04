@@ -62,6 +62,7 @@ def add_parser(sub):
     report = actions.add_parser("report", help="relatório portátil de análise congelada; sem rede/recalcular fórmulas")
     report.add_argument("--analysis", required=True)
     report.add_argument("--out", required=True, help="arquivo HTML novo")
+    report.add_argument("--evaluation",help="recibo estatístico congelado opcional desta análise")
     report.set_defaults(func=run)
     candle = actions.add_parser("candle", help="preço, séries e recibos de um candle do relatório congelado")
     candle.add_argument("--analysis", required=True)
@@ -85,17 +86,43 @@ def add_parser(sub):
     preset_assets = actions.add_parser("preset-assets", help="mesma revisão de preset já gravada, em ativos diferentes")
     preset_assets.add_argument("--robot", required=True, help="chave do robô; não executa backtest")
     preset_assets.set_defaults(func=run)
+    for action in ('protocol-register','protocol-evaluate'):
+        q=actions.add_parser(action,help='protocolo estatístico explícito; usa ledger/inferência existentes')
+        q.add_argument('--analysis',required=True)
+        if action=='protocol-register':q.add_argument('--definition',required=True)
+        else:
+            q.add_argument('--protocol',required=True);q.add_argument('--key',required=True)
+            q.add_argument('--timeout-seconds',type=float,default=120);q.add_argument('--max-memory-mb',type=float,default=1024)
+        q.add_argument('--out',help='novo recibo JSON; recusa sobrescrever')
+        q.set_defaults(func=run)
 
 
 def run(args, ctx):
     from mt5_extracao import cli
-    if args.laboratory_action in ("report", "candle", "crossings"):
+    if args.laboratory_action in ('protocol-register','protocol-evaluate'):
+        from mt5_extracao import sdk
+        def read(path):
+            p=Path(path).expanduser()
+            if p.stat().st_size>16*1024*1024:raise ValueError('Entrada excede16MiB.')
+            return json.loads(p.read_text(encoding='utf-8'))
+        frozen=service.load_report(json.dumps(read(args.analysis),allow_nan=False))
+        if args.out and Path(args.out).expanduser().exists():raise ValueError('Escolha saída nova antes de registrar/avaliar.')
+        result=(sdk.register_laboratory_protocol(ctx.db,frozen,read(args.definition)) if args.laboratory_action=='protocol-register' else
+                sdk.evaluate_laboratory_protocol(ctx.db,frozen,args.protocol,key=args.key,timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb))
+        if args.out:
+            with Path(args.out).expanduser().open('x',encoding='utf-8') as out:json.dump(result,out,ensure_ascii=False,allow_nan=False)
+    elif args.laboratory_action in ("report", "candle", "crossings"):
         from mt5_extracao import sdk
         path = Path(args.analysis).expanduser()
         if path.stat().st_size > 16*1024*1024:
             raise ValueError("Análise excede16MiB; reduza o recorte antes de exportar.")
         frozen = service.load_report(path.read_text(encoding="utf-8"))
-        result = (sdk.export_laboratory_report(frozen, args.out) if args.laboratory_action == "report" else
+        evaluation=None
+        if getattr(args,'evaluation',None):
+            receipt_path=Path(args.evaluation).expanduser()
+            if receipt_path.stat().st_size>16*1024*1024:raise ValueError('Recibo excede16MiB.')
+            evaluation=json.loads(receipt_path.read_text(encoding='utf-8'))
+        result = (sdk.export_laboratory_report(frozen, args.out, evaluation=evaluation) if args.laboratory_action == "report" else
                   sdk.laboratory_candle(frozen, args.index) if args.laboratory_action == "candle" else
                   sdk.laboratory_crossings(frozen))
     elif args.laboratory_action == "catalog":

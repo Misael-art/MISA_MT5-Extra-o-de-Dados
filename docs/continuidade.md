@@ -4564,3 +4564,18 @@ sem fatos presumidos.23 testes núcleo,6 UI,10 produtor (sobreposição),3 PG;
 doctor16/2/0. Recibos/prévia/SHA no registro central. Continuar protocolo
 estatístico, comparações financeiras e inspetor/Super ATR. Autorizações sociais,
 revisão humana independente e gates MT5 mantêm pendências próprias.
+
+### Protocolo de relações —30/10/2026
+
+`codex/protocolo-correlacoes`, sobre BD06-MACRO/PR248. Registro imutável de
+família e três janelas; inferência `analytics.associations` e ledger de
+experimentos existentes. Alvos canônicos, expurgo nas fronteiras, clocks
+tardios excluídos e Bonferroni contam testes indisponíveis. Corrige tratamento
+booleano de coluna inteiramente ausente no motor de associações. Executor de
+estratégias recusa protocolo de relações com mensagem útil. [Contrato/uso](sdk/laboratorio_series.md#avaliação-estatística-registrada).
+16 testes finais/1 PG;42 regressões aprovadas antes do corretivo de ausência
+(sobreposição). Doctor16/2/0. Launcher oficial registrou/avaliou18 testes,
+espera visível e HTML/recibo; dados de preço próprios sintéticos. Relatório
+já exposto, passado externo desconhecido, reserva inédita/predição/financeiro
+continuam sem qualificação. Versões price.return_1/5/20 preservadas.
+Continuar comparações financeiras compatíveis e inspetor/Super ATR.

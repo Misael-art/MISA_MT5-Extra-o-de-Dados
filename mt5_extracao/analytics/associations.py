@@ -206,7 +206,7 @@ def _numeric_column(series):
     non_null = series.notna()
     wrong_type = pd.Series(False, index=series.index)
     wrong_type.loc[non_null] = series.loc[non_null].map(
-        lambda value: isinstance(value, (bool, np.bool_)) or not isinstance(value, Real))
+        lambda value: isinstance(value, (bool, np.bool_)) or not isinstance(value, Real)).astype(bool)
     numeric = pd.to_numeric(series.where(~wrong_type), errors="coerce")
     invalid = non_null & (wrong_type | numeric.isna() | ~np.isfinite(numeric))
     numeric = numeric.where(np.isfinite(numeric))
