@@ -18,6 +18,18 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## LAB-03 — regressão de alinhamento em revisão — 03/11/2026
+
+Branch local `codex/lab03-horarios-alinhamento` sobre P07 local. A correção da
+matriz e dos cabeçalhos já está na fonte desde `22c09f4`, refinada por
+`4ac3a46`; esta revisão acrescenta um teste da matriz real de Horários que
+compara as quatro colunas após rolagem horizontal/vertical e três larguras.
+Três casos Tk dirigidos passaram em Xvfb no host. O defeito histórico da imagem
+privada não foi reproduzido nesta fonte; DPI e monitor físico, percurso pelo
+atalho com eventos elegíveis, Windows físico e PR/CI ainda exigem seus gates.
+Nenhuma imagem privada foi copiada. Próximo: seguir os LAB restantes e E14
+operacional após reconciliar a publicação da cadeia local.
+
 ## T13.4-P07 — consumidores de avaliações em revisão — 03/11/2026
 
 Branch local `codex/t134-p07-consumidores-m1` sobre P06 `e538521`.
