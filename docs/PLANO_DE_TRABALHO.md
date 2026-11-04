@@ -4279,3 +4279,11 @@ Captura pública64itens/Q8:8 abstenções, P=N=0 com motivos; corte de Q preserv
 SDK/CLI explícitos, cancelamento real e retry sem apagar P/N. Próxima frente:
 MEN-05 catálogo/store/snapshot; MEN-06 Laboratório; MEN-07 segunda fonte; MEN-08
 reconciliação/proteção. [Contrato e limites](dados/PLANO_ESTRUTURA_DADOS.md#1814-classificação-men-04--domínio-controlado-em-inglês).
+
+
+MEN-05: catálogo/consulta Q/P/N reutilizados e snapshot canônico v5 opt-in para
+séries/temas sem OHLCV. Janela UTC explícita, todos os recibos/revisões e
+transporte íntegro; nenhum preço/calendário fictício. Formatos anteriores
+preservados. SDK/CLI de captura/exportação/importação; receptor não ganha fatos
+atuais. [Contrato](dados/PLANO_ESTRUTURA_DADOS.md#1815-catálogo-consulta-e-snapshot-men-05).
+Próximos:MEN-06 Laboratório, MEN-07 segunda fonte, MEN-08 reconciliação/proteção.

@@ -585,3 +585,10 @@ qualificação), capturar Q com modelo declarado, classificar lote explícito,
 conferir P/N tardios, abstenções e leitura sem inferência. Linux foi exercitado
 pelo launcher com QA10/3/2, SIGINT, retomada e fonte pública; não qualifica MT5,
 Wine, hardware Windows nem precisão geral do corpus/idioma português.
+
+
+MEN-05 — Windows físico pendente: capturar tema sem OHLCV por
+`snapshot-capture` com janela UTC e três versões, exportar/importar2× e ler
+contexto de observação fixa antes/depois de P/N. Conferir receptor sem fatos
+atuais e quota com JSON/ação de correção. No Linux, percurso oficial usa cópia
+QA de agregados públicos, sem base privada nem qualificação MT5/Wine/contas.

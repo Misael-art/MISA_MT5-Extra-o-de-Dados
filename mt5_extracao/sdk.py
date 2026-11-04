@@ -201,6 +201,34 @@ def inspect_feature_snapshot(db, manifest_id):
     return query_service.feature_snapshot(db, manifest_id)
 
 
+def capture_feature_snapshot(db, *, symbol, timeframe, start, end, stored_features, feature_only=True,
+                             write_guard=None,cancel_check=None,timeout_seconds=120,max_memory_mb=1024):
+    """Congela versões explícitas; temas podem usar janela UTC sem barras de preço."""
+    import math
+    import time
+    from mt5_extracao.analytics import datasets,indicator_materializer
+    for value,name,maximum in [(timeout_seconds,'timeout_seconds',3600),(max_memory_mb,'max_memory_mb',8192)]:
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<value<=maximum:
+            raise ValueError(f'{name} precisa ser positivo e até{maximum}.')
+    started=dict(started_monotonic=time.monotonic())
+    def guard():indicator_materializer._guard(started,write_guard,cancel_check,timeout_seconds,max_memory_mb)
+    guard();snapshot=datasets.capture(db,symbol,timeframe,start,end,stored_features=stored_features,feature_only=feature_only,guard=guard)
+    return dict(manifest_id=snapshot.manifest_id,manifest=snapshot.manifest)
+
+
+def export_feature_snapshot(db, manifest_id, destination):
+    """Exporta os blocos imutáveis existentes; não busca nem calcula dados."""
+    from mt5_extracao.analytics import datasets
+    return datasets.export_snapshot(db,manifest_id,destination)
+
+
+def import_feature_snapshot(db, source):
+    """Importa no store de snapshots; não povoa fatos atuais nem muda a origem da base."""
+    from mt5_extracao.analytics import datasets
+    snapshot=datasets.import_snapshot(db,source)
+    return dict(manifest_id=snapshot.manifest_id,manifest=snapshot.manifest)
+
+
 def load_feature_relation(db, analysis_id):
     """Lê o resultado original sem executar novamente o cálculo."""
     from mt5_extracao.analytics import feature_store
@@ -233,7 +261,7 @@ __all__ = [
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
     "recover_producer_jobs",
-    "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot",
+    "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot", "capture_feature_snapshot", "export_feature_snapshot", "import_feature_snapshot",
     "export_feature_relation", "import_feature_relation",
     "query_feature_relation_windows", "describe_mention_series", "mention_source_capabilities", "ingest_mention_batch", "collect_mentions", "mention_classifier_capabilities", "classify_mention_batch",
     # catálogo

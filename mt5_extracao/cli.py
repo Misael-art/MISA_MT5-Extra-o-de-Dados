@@ -1799,6 +1799,24 @@ def build_parser():
             q.add_argument("--max-memory-mb", type=float, default=1024)
         q.set_defaults(func=cmd_analytics)
 
+    q = features_sub.add_parser("snapshot-capture", help="congela versões explícitas, inclusive temas sem barras de preço")
+    q.add_argument("--symbol", required=True)
+    q.add_argument("--tf", required=True)
+    q.add_argument("--start", required=True)
+    q.add_argument("--end", required=True, help="fim exclusivo em modo somente séries")
+    q.add_argument("--stored-feature", nargs=2, action="append", required=True, metavar=("FEATURE_ID", "VERSION"))
+    q.add_argument("--with-market-bars", action="store_true", help="inclui OHLCV real existente; usa recorte legado em horário do corretor")
+    q.add_argument("--timeout-seconds",type=float,default=120)
+    q.add_argument("--max-memory-mb",type=float,default=1024)
+    q.set_defaults(func=cmd_analytics)
+    for action in ("snapshot-export", "snapshot-import"):
+        q=features_sub.add_parser(action,help="transporte do snapshot canônico, sem recaptura")
+        if action=="snapshot-export":
+            q.add_argument("--manifest",required=True)
+            q.add_argument("--out",required=True)
+        else:q.add_argument("--source",required=True)
+        q.set_defaults(func=cmd_analytics)
+
     for action in ("relation", "relation-windows"):
         q = features_sub.add_parser(action, help="associa versões congeladas; opcionalmente por janelas móveis")
         q.add_argument("--manifest", required=True)
@@ -2180,6 +2198,21 @@ def cmd_analytics(args, ctx):
             if result['job']['status']!='COMPLETE' or result.get('classification',{}).get('job',{}).get('status','COMPLETE')!='COMPLETE':return EXIT_FAIL
         return EXIT_OK
 
+    if args.features_action in ("snapshot-capture","snapshot-export","snapshot-import"):
+        from mt5_extracao import sdk
+        if args.features_action=="snapshot-capture":
+            from mt5_extracao.resources import guard
+            result=sdk.capture_feature_snapshot(ctx.db,symbol=args.symbol,timeframe=args.tf,start=args.start,end=args.end,
+                stored_features=args.stored_feature,feature_only=not args.with_market_bars,write_guard=guard.make(ctx.db,ctx.config),
+                timeout_seconds=args.timeout_seconds,max_memory_mb=args.max_memory_mb)
+        elif args.features_action=="snapshot-export":
+            path=sdk.export_feature_snapshot(ctx.db,args.manifest,args.out)
+            result=dict(manifest_id=args.manifest,path=str(path))
+        else:result=sdk.import_feature_snapshot(ctx.db,args.source)
+        _data(snapshot=result)
+        _print("Snapshot preservado: "+result['manifest_id']+"; leitura/exportação não recalcula dados.")
+        return EXIT_OK
+
     if args.features_action == "relation-list":
         from mt5_extracao import sdk
         result = sdk.query_saved_relations(ctx.db, symbol=args.symbol, timeframe=args.tf, analysis_id=args.analysis_id,
@@ -2520,6 +2553,9 @@ def _run_command(args, ctx):
     except ValueError as e:
         _err(str(e))
         return EXIT_USAGE
+    except (MemoryError, TimeoutError) as e:
+        _err(str(e)+" Reduza a seleção ou ajuste o orçamento dentro dos limites permitidos e retome a operação.")
+        return EXIT_FAIL
     except (FileNotFoundError, RuntimeError) as e:
         _err(str(e))
         return EXIT_FAIL
