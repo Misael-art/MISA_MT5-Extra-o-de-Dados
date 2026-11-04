@@ -8,7 +8,9 @@ alargamento tardio da página; o contêiner rolável agora reconcilia a largura
 do conteúdo com a área visível também após mudança do filho. Antes 1 falha
 dirigida; depois 24 testes de componentes/comparação aprovados em Xvfb;
 doctor offline 16 OK/2 avisos/0 falhas.
-Publicar o corretivo na mesma PR, conferir CI do SHA novo e validar a tela
+Corretivo `3312ea3d2fc2c318836cf420e84f343c75f98761` publicado na mesma
+PR279, SHA local/remoto/PR conferidos. Run `41747461167` na fila no marco de
+publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 

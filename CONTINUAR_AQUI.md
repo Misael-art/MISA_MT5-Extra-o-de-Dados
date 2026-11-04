@@ -10,10 +10,12 @@ TkAgg deixou canvas de 580 px numa página de 558 px após mudança de escala.
 Um teste novo reproduziu o alargamento tardio no host antes da correção; o
 `ScrollableContent` agora reaplica a largura visível quando o conteúdo muda.
 Depois, 24 testes de componentes e comparação passaram no Linux/Xvfb; doctor
-offline de desenvolvimento 16 OK/2 avisos/0 falhas. O novo
-SHA ainda requer push na mesma PR279 e CI Windows; Windows físico e percurso
+offline de desenvolvimento 16 OK/2 avisos/0 falhas. Corretivo
+`3312ea3d2fc2c318836cf420e84f343c75f98761` publicado na mesma PR279;
+SHA local, remoto e da PR confirmados. CI run `41747461167` estava na fila
+no marco de publicação; Windows físico e percurso
 pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
-pin ou dado privado mudou. Próximo: publicar, conferir SHA/checks e continuar
+pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
 ## E14 — auditoria pós-fill 2.13 e resgate privado — 03/11/2026
