@@ -1,0 +1,68 @@
+{
+  "scope": "GUI dependency startup through official Linux launcher, isolated offline QA",
+  "source_branch": "codex/gui-dependencias-inicializacao",
+  "source_code_commit": "baa24c46f085b8aded4a34041c06c292c66a0db5",
+  "base_app_commit": "19627c3c74dc2efafc60b2e417f49fa93d3d71f6",
+  "platform": "Linux/Xvfb, one virtual monitor",
+  "focused_tests": {
+    "gui_dependency_startup": 5,
+    "gui_plus_monitor_qa": 6,
+    "status": "passed"
+  },
+  "offline_development_doctor": {
+    "ok": 16,
+    "warnings": 2,
+    "failures": 0,
+    "native_probe_performed": false
+  },
+  "present_dependencies": {
+    "entry": "./run.sh --offline --config <isolated QA ini>",
+    "main_window_seen": true,
+    "qa_database_created": true,
+    "qa_database_quick_check": "ok"
+  },
+  "missing_dependency_simulation": {
+    "module": "pandas",
+    "entry": "./run.sh --offline --config <isolated QA ini>",
+    "dialog_seen": true,
+    "installer_action_in_error": true,
+    "missing_package_in_error": true,
+    "database_created": false,
+    "installer_executed": false
+  },
+  "rebased_launcher_qa": {
+    "source_code_commit": "13f6b9753e10971667a6f93a827c5be72f9964f3",
+    "base_app_commit": "0993ae7bdf2e3354afcccf45dd2a22069a8b460c",
+    "platform": "Linux/Xvfb, one virtual monitor",
+    "entry": "./run.sh --offline --config <isolated QA ini>",
+    "present_dependencies": {
+      "main_window_seen": true,
+      "qa_database_created": true,
+      "qa_database_quick_check": "ok"
+    },
+    "missing_pandas_simulation": {
+      "dialog_seen": true,
+      "installer_action_in_error": true,
+      "missing_package_in_error": true,
+      "database_created": false,
+      "installer_executed": false
+    },
+    "focused_gui_tests_passed": 5,
+    "offline_development_doctor": {
+      "ok": 16,
+      "warnings": 2,
+      "failures": 0,
+      "native_probe_performed": false
+    },
+    "qa_temporary_files_removed": true
+  },
+  "limits": {
+    "physical_windows_tested": false,
+    "mt5_wine_used": false,
+    "main_database_used": false,
+    "real_trading": false,
+    "preview_updated": false,
+    "remote_branch_published": false
+  },
+  "next_gate": "publish separate C PR after shared guard decision; CI and physical Windows remain separate"
+}

@@ -6,12 +6,51 @@ import sqlite3
 import json
 import datetime
 import traceback
+import logging
+import time
+from mt5_extracao.bootstrap import doctor as bootstrap_doctor
+
+
+def _preflight_gui_dependencies():
+    """Mostra a correção oficial antes de importar módulos que podem faltar."""
+    if any(argument in ("-h", "--help") for argument in sys.argv[1:]):
+        return
+    missing = [package for module, package in bootstrap_doctor.REQUIRED_MODULES
+               if bootstrap_doctor.check_module(module, package).status == bootstrap_doctor.FAIL]
+    if bootstrap_doctor.check_tkinter().status == bootstrap_doctor.FAIL:
+        missing.append("tkinter")
+    if not missing:
+        return
+    installer = "install.bat" if os.name == "nt" else "./install.sh"
+    message = ("Dependências necessárias indisponíveis: " + ", ".join(missing) +
+               f". Execute {installer} e depois o diagnóstico pelo launcher oficial.")
+    print(message, file=sys.stderr)
+    if "tkinter" not in missing:
+        try:
+            import tkinter as preflight_tk
+            from tkinter import messagebox as preflight_messagebox
+        except ImportError:
+            pass
+        else:
+            try:
+                window = preflight_tk.Tk()
+                try:
+                    window.withdraw()
+                    preflight_messagebox.showerror("Dependências indisponíveis", message)
+                finally:
+                    window.destroy()
+            except preflight_tk.TclError:
+                pass
+    raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    _preflight_gui_dependencies()
+
 import tkinter as tk
 from tkinter import ttk, messagebox
-import logging
 import psutil
 import pandas as pd
-import time
 from mt5_extracao.mt5_connector import MT5Connector
 from mt5_extracao.database_manager import DatabaseManager
 from mt5_extracao.indicator_calculator import IndicatorCalculator
@@ -28,44 +67,16 @@ from mt5_extracao.logging_setup import setup_logging
 setup_logging()
 
 # Função para verificar dependências críticas antes de continuar
-def verificar_dependencias_criticas(offline=False):
+def verificar_dependencias_criticas(offline=False, config_path="config/config.ini"):
     """Verifica se as dependências críticas estão disponíveis"""
-    dependencias_faltantes = []
-
-    # Verificar psutil para detecção de processos
-    try:
-        import psutil
-    except ImportError:
-        try:
-            logging.info("Instalando psutil (necessário para verificar processos)...")
-            import subprocess
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "psutil"])
-            import psutil
-            logging.info("✓ psutil instalado com sucesso")
-        except Exception as e:
-            logging.error(f"Erro ao instalar psutil: {str(e)}")
+    dependencias_faltantes = [package for module, package in bootstrap_doctor.REQUIRED_MODULES
+                             if bootstrap_doctor.check_module(module, package).status == bootstrap_doctor.FAIL]
 
     # MetaTrader5 é essencial: módulo local (Windows) ou ponte RPyC (Linux)
     if not offline:
         from mt5_extracao.mt5_backend import get_mt5
-        if get_mt5("config/config.ini") is None:
+        if get_mt5(config_path) is None:
             dependencias_faltantes.append("MetaTrader5 (Windows: pacote MetaTrader5; Linux: ./scripts/mt5-bridge.sh start)")
-
-    # Outras dependências críticas
-    try:
-        import pandas as pd
-    except ImportError:
-        dependencias_faltantes.append("pandas")
-
-    try:
-        import numpy as np
-    except ImportError:
-        dependencias_faltantes.append("numpy")
-
-    try:
-        from sqlalchemy import create_engine
-    except ImportError:
-        dependencias_faltantes.append("sqlalchemy")
 
     if dependencias_faltantes:
         logging.error(f"Dependências críticas faltando: {', '.join(dependencias_faltantes)}")
@@ -146,8 +157,9 @@ except ImportError as e:
 
 # Função verificar_mt5_em_execucao() removida - Lógica movida para MT5Connector
 class MT5Extracao:
-    def __init__(self, root, offline=False):
+    def __init__(self, root, offline=False, config_path="config/config.ini"):
         self.offline = bool(offline)
+        self.config_path = os.fspath(config_path)
         """
         Inicializa a aplicação principal.
         
@@ -173,10 +185,13 @@ class MT5Extracao:
         
         try:
             # Verificar dependências críticas
-            if not verificar_dependencias_criticas(offline=self.offline):
-                messagebox.showerror("Erro de Dependências", 
-                                   "Uma ou mais dependências críticas não estão instaladas.\n\n"
-                                   "Execute pip install -r requirements.txt e tente novamente.")
+            sucesso, faltantes = verificar_dependencias_criticas(
+                offline=self.offline, config_path=self.config_path)
+            if not sucesso:
+                instalador = "install.bat" if os.name == "nt" else "./install.sh"
+                messagebox.showerror("Erro de Dependências",
+                                     "Dependências indisponíveis: " + ", ".join(faltantes) +
+                                     f"\n\nExecute {instalador} e rode o doctor pelo launcher oficial.")
                 root.after(100, root.destroy)
                 return
                 
@@ -249,7 +264,7 @@ class MT5Extracao:
     def load_config_and_db(self):
         """Carrega configurações e inicializa o DatabaseManager."""
         self.config = configparser.ConfigParser()
-        config_path = "config/config.ini"
+        config_path = self.config_path
         self.config_path = config_path
 
         if not os.path.exists(config_path):
@@ -909,11 +924,15 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Analise sua base local ou conecte ao MetaTrader 5.")
     parser.add_argument("--offline", action="store_true",
                         help="Abre a base local com a conexão MT5 desativada nesta sessão.")
+    parser.add_argument("--config", default="config/config.ini",
+                        help="configuração explícita para sessão offline de QA")
     args = parser.parse_args(argv)
+    if args.config != "config/config.ini" and not args.offline:
+        parser.error("--config alternativo exige --offline.")
     app = None
     try:
         root = tk.Tk()
-        app = MT5Extracao(root, offline=args.offline)
+        app = MT5Extracao(root, offline=args.offline, config_path=args.config)
         root.mainloop()
         return 0
     finally:

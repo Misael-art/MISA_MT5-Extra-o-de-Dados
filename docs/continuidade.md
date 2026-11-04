@@ -304,6 +304,37 @@ novo commit, QA pelo launcher da fonte publicada e Windows físico. Nenhum
 contrato financeiro, pin ou dado privado mudou. Próximo: push na PR279,
 conferência de CI e reconciliação das branches locais dependentes.
 
+## Inicialização da GUI — corretivo local em revisão — 03/11/2026
+
+Branch `codex/gui-dependencias-inicializacao`, rebatida sobre App
+`0993ae7`/PR279; código local `bf38e4a`. O recibo inicial do launcher pertence
+à fonte equivalente anterior `baa24c4`; após o rebase, cinco testes da GUI
+e um de monitor passaram na composição dependente.
+`app.py` testava a tupla `(sucesso, faltantes)` como booleana e ainda tentava
+instalar `psutil` durante a abertura. O script agora confere os módulos
+obrigatórios pelo catálogo do doctor antes dos imports de runtime; o construtor
+consome o primeiro campo, lista os ausentes e orienta executar o instalador
+oficial. Não faz instalação implícita. No host: 23 testes de entrada/offline/
+doctor passaram; `./run.sh --offline --help` passou pelo launcher oficial.
+Ausência foi simulada no teste de subprocesso, sem remover o ambiente único.
+`app.py --offline --config <arquivo>` seleciona configuração de QA explícita;
+o caminho alternativo é recusado fora de offline e o teste confirmou que só
+o banco temporário escolhido foi aberto.
+O launcher `./run.sh --offline --config` abriu a janela em Xvfb próprio e
+criou só o SQLite de QA (`quick_check` OK). Na simulação de `pandas` ausente,
+o mesmo launcher mostrou o diálogo com `./install.sh`, não criou banco e não
+instalou. Recibo em `docs/evidencias/GUI_DEPENDENCY_STARTUP_20261103.json`.
+O percurso pelo launcher foi repetido na fonte rebatida `13f6b975`: janela
+aberta, SQLite isolado com `quick_check` OK e, ao simular ausência de `pandas`,
+diálogo com orientação ao instalador, sem banco ou instalação. Cinco testes
+diretos passaram; doctor offline 16 OK/2 avisos/0 falhas. O diretório de QA
+temporário foi removido. O recibo público distingue as duas fontes.
+Percurso funcional completo da GUI, Windows físico e CI de SHA publicado
+permanecem pendentes. Esta branch ainda não tem PR por causa da guarda central
+de criação de branches remotas; não a apresentar como instalada.
+Doctor offline de desenvolvimento: 16 OK, 2 avisos (pandas-ta opcional e
+integração nativa não sondada), 0 falhas.
+
 ## E14 — cinco falhas Windows CI, corretivo em revisão — 03/11/2026
 
 Fonte: App `a74f539`/PR279, HADOUKEN `28099386`/PR84, Safety `27b85992`

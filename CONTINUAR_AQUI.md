@@ -312,6 +312,35 @@ gates próprios. HADOUKEN `2809938`, Safety `27b8599` e prévia instalada
 `57d13ee` não mudaram. Próximo: publicar na mesma PR279, confirmar SHA remoto,
 checks e rebater a cadeia local dependente sem perder os commits.
 
+## Inicialização da GUI — corretivo local em revisão — 03/11/2026
+
+Branch `codex/gui-dependencias-inicializacao`, rebatida sobre App
+`0993ae7`/PR279; código da GUI em `bf38e4a` local. O recibo inicial do launcher
+pertence à fonte equivalente `baa24c4`; depois do rebase, cinco testes da GUI
+e um de monitor passaram na composição dependente.
+O chamador agora consome `(sucesso, faltantes)`; ausência mostra os nomes e o
+instalador oficial (`./install.sh` ou `install.bat`) e encerra a abertura.
+O pré-voo do script ocorre antes dos imports de runtime, com o catálogo de
+módulos do doctor; não instala pacotes automaticamente. 23 testes de entrada,
+offline e doctor passaram no host. `./run.sh --offline --help` terminou com 0;
+o parâmetro `--config` com `--offline` permite apontar uma sessão de QA para
+configuração/base explícitas sem tocar a base principal. Cinco testes diretos
+passaram. Pelo launcher `./run.sh --offline --config` em Xvfb próprio, a
+dependência presente abriu a janela e criou apenas o SQLite de QA (`quick_check`
+OK). Com `pandas` ausente por simulação no processo, o mesmo launcher mostrou
+o diálogo e a ação `./install.sh`, sem criar banco ou iniciar instalação.
+O percurso pelo mesmo launcher foi repetido na fonte rebatida `13f6b975`:
+janela e SQLite isolado com `quick_check` OK; na simulação de `pandas`
+ausente, diálogo e orientação ao instalador sem banco ou instalação.
+Cinco testes diretos passaram; doctor offline 16 OK/2 avisos/0 falhas.
+O diretório temporário de QA foi removido.
+[Recibo público](docs/evidencias/GUI_DEPENDENCY_STARTUP_20261103.json).
+Windows físico e CI de SHA publicado permanecem pendentes.
+Doctor offline de desenvolvimento: 16 OK, 2 avisos (pandas-ta opcional e integração
+nativa não sondada), 0 falhas.
+Base privada, ponte, terminal, negociação e referências aceitas não foram usados
+como fixture. Publicação desta branch depende da guarda central de PRs separadas.
+
 ## E14 — saneamento do Windows CI em revisão — 03/11/2026
 
 PR279 segue aberta/draft na branch `codex/e14-protecao-comum`. No SHA

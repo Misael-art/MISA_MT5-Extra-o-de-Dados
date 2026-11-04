@@ -66,7 +66,7 @@ events=[]
 def forbidden(*args,**kwargs):raise AssertionError('global SDK resolved during cleanup')
 mt5_backend.get_mt5=forbidden
 app.tk.Tk=lambda:SimpleNamespace(mainloop=lambda:events.append('loop'))
-def create(root,offline=False):
+def create(root,offline=False,config_path="config/config.ini"):
     events.append(offline)
     return SimpleNamespace(mt5_connector=SimpleNamespace(shutdown=lambda:events.append('owned shutdown')))
 app.MT5Extracao=create
@@ -131,7 +131,7 @@ messagebox.showerror=messagebox.showwarning=messagebox.askyesno=forbidden
 import app
 original=app.MT5Extracao
 errors=[];proof={}
-def create(root,offline=False):
+def create(root,offline=False,config_path="config/config.ini"):
     instance=original(root,offline=offline)
     ui=instance.ui_manager
     assert ui is not None and offline
