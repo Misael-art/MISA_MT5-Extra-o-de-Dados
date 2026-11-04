@@ -178,6 +178,15 @@ def dumps(dto):
     return json.dumps(_json_ready(dto), ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
 
 
+def pair_analysis_id(manifest_id, settings, sample_hash, implementation, lineage):
+    """Identidade sem relógio de geração ou orçamento da execução."""
+    import hashlib
+    from mt5_extracao.analytics import feature_store
+    payload = dict(manifest_id=manifest_id, settings=settings, sample_hash=sample_hash,
+                   implementation=implementation, lineage=sorted(lineage))
+    return hashlib.sha256(feature_store._canonical_json(payload, "pair identity").encode()).hexdigest()
+
+
 def build_pair_relation_dto(*, left, right, relation, scope, population, provenance, generated_at_utc,
                             synthetic_fixture=False):
     """DTO2 de séries pareadas; DTO1 de indicador/alvo futuro permanece inalterado."""

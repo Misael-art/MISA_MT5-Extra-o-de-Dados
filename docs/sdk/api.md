@@ -619,3 +619,40 @@ explícito, como em `sdk.run_backtest`. O argumento interno `composition` não
 é promovido ao SDK 1; todos os quinze argumentos e defaults anteriores continuam
 encaminhados ao mesmo produtor. O novo consumidor composto usa o serviço/CLI
 versionado `composition_v1`, descrito em [backtest composto](composed_backtest.md).
+
+
+### Persistência de relações referenciais (BD15b)
+
+`sdk.persist_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0,
+method="pearson", minimum_pairs=30, minimum_sessions=10, bootstrap_replicates=999,
+seed=7, block_length_sessions=None, tests_counted=None, synthetic_fixture=False,
+timeout_seconds=120, max_memory_mb=2048, cancel_check=None, write_guard=None)`
+calcula pelo serviço BD15a e publica um artefato no `analytics.feature_store`.
+Retorna `status` (`INSERTED`/`UNCHANGED`), `analysis_id`, `payload_sha256`,
+`created_at_utc` e o DTO original em `relation`.
+`sdk.load_feature_relation(db, analysis_id)` lê esse DTO sem recalcular.
+
+CLI: acrescente `--persist` a `analytics features relation`. Para recuperar,
+use `analytics features relation-result --analysis-id ID`. Os mesmos argumentos
+globais `--config`/`--db`/`--json` selecionam a base e a apresentação existentes.
+Sem `--persist`, a consulta continua somente leitura e não cria a tabela.
+
+`_feature_relations` é uma tabela aditiva no armazenamento canônico. Resultado,
+hash e referências de todos os manifests ancestrais são confirmados na mesma
+transação; falha/cancelamento deixa nenhum artefato parcial. Escritores repetidos
+ou concorrentes preservam o primeiro resultado e seu relógio de geração. Mesmo
+ID com conteúdo semântico diferente é recusado, sem sobrescrever o original.
+Método, população, parâmetros, defasagem, seed, versões, revisão congelada e
+implementação compõem a identidade; recursos e relógio da execução ficam no
+primeiro recibo e não abrem outra identidade. A repetição sob orçamento diferente
+devolve explicitamente o recibo original. A extração do helper de identidade
+altera a assinatura da implementação de pares; resultados anteriores não são
+reescritos nem promovidos para a nova assinatura.
+
+O carregamento confere hashes, índices, contrato e referências/origens imutáveis.
+Origem ausente exige restauração/importação; não há complemento com dados ativos.
+Hashes verificam consistência dos bytes, não autenticidade criptográfica de
+um banco alterado por terceiros. O limite do artefato é16MiB e32 manifests;
+limites de cálculo BD15a, cancelamento e guarda de escrita são preservados.
+Persistir um resultado insuficiente preserva sua inconclusão. Isto não cria
+registro de tentativas, aceitação OOS/financeira, novos jobs ou adaptação da UI.

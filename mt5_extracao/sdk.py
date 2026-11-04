@@ -116,6 +116,26 @@ def query_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0, m
         max_memory_mb=max_memory_mb, cancel_check=cancel_check)
 
 
+
+def persist_feature_relation(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
+                             minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
+                             tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
+                             cancel_check=None, write_guard=None):
+    """Publica relação congelada e suas referências como um artefato imutável."""
+    from mt5_extracao.analytics import associations
+    return associations.persist_frozen_pair(db, manifest_id, left=left, right=right, as_of=as_of,
+        lag_bars=lag_bars, method=method, minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions,
+        bootstrap_replicates=bootstrap_replicates, seed=seed, block_length_sessions=block_length_sessions,
+        tests_counted=tests_counted, synthetic_fixture=synthetic_fixture, timeout_seconds=timeout_seconds,
+        max_memory_mb=max_memory_mb, cancel_check=cancel_check, write_guard=write_guard)
+
+
+def load_feature_relation(db, analysis_id):
+    """Lê o resultado original sem executar novamente o cálculo."""
+    from mt5_extracao.analytics import feature_store
+    return feature_store.load_pair_relation(db, analysis_id)
+
+
 def recover_producer_jobs(db, *, symbol=None, timeframe=None, family=None):
     """Reconcilia apenas runs de proprietários locais encerrados; fatos e checkpoint são preservados."""
     from mt5_extracao.analytics import producer_jobs
@@ -128,7 +148,7 @@ __all__ = [
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
     "recover_producer_jobs",
-    "query_feature_relation",
+    "query_feature_relation", "persist_feature_relation", "load_feature_relation",
     # catálogo
     "Robot", "load_catalog", "get_robot", "robot_from_file", "import_library",
     # contrato e ponto de partida

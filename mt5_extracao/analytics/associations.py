@@ -473,7 +473,7 @@ def _pair_signature():
             "_snapshot_observations", "_context_rows", "_state", "_value", "_ids", "_version", "records")),
         store=source(feature_store.__file__, ("asof_join", "_utc_timestamp", "_canonical_json")),
         dto=source(relation_dto.__file__, ("build_pair_relation_dto", "_validate_relation", "_required_text",
-            "_finite_optional_number", "_utc_timestamp", "_json_ready")),
+            "_finite_optional_number", "_utc_timestamp", "_json_ready", "pair_analysis_id")),
         snapshot=indicator_materializer._object_source_component(datasets.Snapshot),
         snapshot_reader=hashlib.sha256(Path(datasets.__file__).read_bytes()).hexdigest(),
         eligibility=hashlib.sha256(Path(data_eligibility.__file__).read_bytes()).hexdigest(),
@@ -730,8 +730,7 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
     settings = dict(left=list(pairs[0]), right=list(pairs[1]), as_of=cutoff.isoformat(), lag_bars=lag_bars, method=method,
         minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions, bootstrap_replicates=bootstrap_replicates,
         seed=seed, block_length_sessions=block_length_sessions, tests_counted=tests_counted, synthetic_fixture=synthetic_fixture)
-    analysis_id = hashlib.sha256(feature_store._canonical_json(dict(manifest_id=manifest_id,settings=settings,
-        sample_hash=sample_hash,implementation=implementation,lineage=sorted(lineage)),"pair identity").encode()).hexdigest()
+    analysis_id = relation_dto.pair_analysis_id(manifest_id, settings, sample_hash, implementation, lineage)
     population = dict(n_total=len(sample), n_eligible=int(eligible.sum()), n_distinct_source_pairs=distinct, exclusions=exclusions,
         n_left_sources=int(sample.loc[eligible,["x_"+f for f in ("observation_time","revision","source_revision")]].drop_duplicates().shape[0]),
         n_right_sources=int(sample.loc[eligible,["y_"+f for f in ("observation_time","revision","source_revision")]].drop_duplicates().shape[0]),
@@ -755,3 +754,29 @@ def query_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method
                 "Inferência por blocos depende de hipóteses temporais; seleção de testes e utilidade financeira não qualificadas.",
                 "Nenhuma direção, normalização adicional ou calendário é inferido; versões/recebimentos são os declarados no snapshot."]),
         generated_at_utc=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),synthetic_fixture=synthetic_fixture)
+
+
+
+def persist_frozen_pair(db, manifest_id, *, left, right, as_of, lag_bars=0, method="pearson", minimum_pairs=30,
+                        minimum_sessions=10, bootstrap_replicates=999, seed=7, block_length_sessions=None,
+                        tests_counted=None, synthetic_fixture=False, timeout_seconds=120, max_memory_mb=2048,
+                        cancel_check=None, write_guard=None):
+    """Calcula pelo serviço canônico e publica um único artefato imutável."""
+    import time
+    from mt5_extracao.analytics import feature_store, indicator_materializer, producers
+    run = dict(started_monotonic=time.monotonic())
+    def guard(connection=None):
+        if cancel_check is not None and cancel_check():
+            raise indicator_materializer.Cancelled("Persistência de relação cancelada; nenhum artefato parcial publicado.")
+        if write_guard is not None and (reason := write_guard()):
+            raise producers.WriteBlocked(f"Persistência de relação bloqueada: {reason}.")
+        # A consulta valida os limites antes de chamar o guarda de recursos.
+        if connection is not None:
+            producers._check_limits(run, timeout_seconds, max_memory_mb)
+    guard()
+    dto = query_frozen_pair(db, manifest_id, left=left, right=right, as_of=as_of, lag_bars=lag_bars,
+        method=method, minimum_pairs=minimum_pairs, minimum_sessions=minimum_sessions,
+        bootstrap_replicates=bootstrap_replicates, seed=seed, block_length_sessions=block_length_sessions,
+        tests_counted=tests_counted, synthetic_fixture=synthetic_fixture, timeout_seconds=timeout_seconds,
+        max_memory_mb=max_memory_mb, cancel_check=cancel_check)
+    return feature_store.save_pair_relation(db, dto, transaction_guard=guard)

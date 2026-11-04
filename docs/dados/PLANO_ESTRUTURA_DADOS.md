@@ -406,6 +406,18 @@ causalidade certificada. [API e limites](../sdk/api.md#relações-referenciais-c
 Não persiste relações nem substitui tentativas/OOS, BD15b, cruzamento entre bases
 ou adaptação completa da UI. O mecanismo referencial não depende de negociação.
 
+**Adendo BD15b (29/10/2026):** persistência referencial no `feature_store`
+existente, com tabela aditiva, identidade compartilhada pelo cálculo/DTO,
+hashes e referências de snapshots confirmados atomicamente. `relation --persist`
+e `relation-result`, também no SDK, publicam/leem o resultado original.
+Repetição/concorrência preserva o primeiro recibo; conflito e falta de
+integridade/origem são recusados. Método, defasagem, população e revisões
+ficam preservados. Consulta sem `--persist` continua somente leitura.
+Recursos/relógio ficam no primeiro recibo, fora da identidade semântica.
+Não cria outro store/executor nem certifica o resultado financeiramente.
+Catálogo/paginação de pares, UI completa e demais alvos seguem nas suas fichas.
+[Contrato](../sdk/api.md#persistência-de-relações-referenciais-bd15b).
+
 #### BD16 — expansão das relações e bases cruzadas
 
 **Vinculação:** T18.5/6, isolamento T20.25. **Depende de:** BD03/05/13/BD15b.

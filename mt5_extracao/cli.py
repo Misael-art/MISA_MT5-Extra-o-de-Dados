@@ -1785,6 +1785,7 @@ def build_parser():
     q.add_argument("--left", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
     q.add_argument("--right", nargs=2, required=True, metavar=("FEATURE_ID", "VERSION"))
     q.add_argument("--as-of", required=True, help="corte já ocorrido com fuso explícito")
+    q.add_argument("--persist", action="store_true", help="publica resultado imutável e referências na base selecionada")
     q.add_argument("--lag-bars", type=int, default=0, help="esquerda antecede a direita em N períodos nominais; sem comprimir lacunas")
     q.add_argument("--method", choices=("pearson", "spearman"), default="pearson")
     q.add_argument("--minimum-pairs", type=int, default=30)
@@ -1796,6 +1797,10 @@ def build_parser():
     q.add_argument("--synthetic-fixture", action="store_true", help="identifica dados referenciais sintéticos")
     q.add_argument("--timeout-seconds", type=float, default=120)
     q.add_argument("--max-memory-mb", type=float, default=2048)
+    q.set_defaults(func=cmd_analytics)
+
+    q = features_sub.add_parser("relation-result", help="consulta o resultado persistido pelo identificador, sem recalcular")
+    q.add_argument("--analysis-id", required=True)
     q.set_defaults(func=cmd_analytics)
 
     q = features_sub.add_parser("recover-jobs", help="reconcilia jobs de processos locais encerrados; preserva ativos e desconhecidos")
@@ -2087,14 +2092,24 @@ def cmd_analytics(args, ctx):
     import json
     from mt5_extracao.analytics import feature_store, features
 
-    if args.features_action == "relation":
+    if args.features_action in ("relation", "relation-result"):
         from mt5_extracao import sdk
-        result = sdk.query_feature_relation(ctx.db, args.manifest, left=args.left, right=args.right, as_of=args.as_of,
-            lag_bars=args.lag_bars, method=args.method, minimum_pairs=args.minimum_pairs,
-            minimum_sessions=args.minimum_sessions, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed,
-            block_length_sessions=args.block_length_sessions, tests_counted=args.tests_counted,
-            synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb)
-        _data(relation=result)
+        persistence = None
+        if args.features_action == "relation-result":
+            result = sdk.load_feature_relation(ctx.db, args.analysis_id)
+        else:
+            calculate = sdk.persist_feature_relation if args.persist else sdk.query_feature_relation
+            answer = calculate(ctx.db, args.manifest, left=args.left, right=args.right, as_of=args.as_of,
+                lag_bars=args.lag_bars, method=args.method, minimum_pairs=args.minimum_pairs,
+                minimum_sessions=args.minimum_sessions, bootstrap_replicates=args.bootstrap_replicates, seed=args.seed,
+                block_length_sessions=args.block_length_sessions, tests_counted=args.tests_counted,
+                synthetic_fixture=args.synthetic_fixture, timeout_seconds=args.timeout_seconds, max_memory_mb=args.max_memory_mb)
+            result = answer["relation"] if args.persist else answer
+            if args.persist:
+                persistence = {key: value for key, value in answer.items() if key != "relation"}
+        _data(relation=result, **({"persistence": persistence} if persistence else {}))
+        if persistence:
+            _print(f"Relação {persistence['analysis_id']}: {persistence['status']}.")
         row = result["relation"]
         value = "indisponível" if row["effect"] is None else format(row["effect"], ".6g")
         _print(" × ".join(f"{result[side]['feature_id']}@{result[side]['algorithm_version']} [{result[side]['unit'] or 'unidade não declarada'}]"
