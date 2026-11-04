@@ -5567,3 +5567,79 @@ Fechamento local do recorte App:72 testes dirigidos passaram (4avisos NumPy
 existentes nos dados sintéticos); doctor16/2/0. CI H f7e4cffc e S833edc5
 aprovadas nos checks próprios. A CI do pai App d456d07 ainda tinha Ubuntu/
 Windows em andamento na consulta deste marco; sem alegação de CI integral verde.
+
+### Pilar operacional: E-13/T19.57 — 01/11/2026
+
+HADOUKEN862287771dc3090ebdd4e4d82b51a950300c34de, PR77 sobre PR76:
+os dois hosts recuperam entrada média, R e volume iniciais dos fills da mesma
+ordem finalizada; HistoryOrderSelect explícito antes de ler estado/volume/posse.
+Estado no armazenamento GV existente inclui conta/servidor/magic/ativo/política
+integral e ID de posição, sem perda de IDs acima de2^53. Marcadores legados
+incertos não são apagados. Origem ausente/misturada ou configuração alterada
+com posição não é reinterpretada. Intenção precede pedido; confirmação exige
+saldo, histórico e persistência. BE não afrouxa trailing melhor.
+
+142 testes de plataforma simulada aprovados; check_repo166;12 consumidores
+compilados no MetaEditor Linux/Wine0/0. S09 anteriorff6ed3cbe5ed83c8 observou13
+posições/39deals/9 e4 confirmações das etapas,44inputs e caixa reconciliado.
+A fonte final00ea674bc2250280 foi barrada duas vezes por RAM antes de iniciar;
+aquela prova anterior não a qualifica. Instalação oficial QA E13_initial_position
+preservada:56 arquivos de projeto idênticos por SHA256; seu catálogo inclui ainda
+6 fontes padrão da plataforma e tem fingerprint97e05a3ca28db03f. Não é checkout
+nem outro ambiente de desenvolvimento. Repetição pode usar esse artefato imutável
+pelo mesmo script, independentemente do próximo incremento H. Recibos privados
+em state/qa-tmp/operational-pillar; resumo público na evidência H.
+
+App adiciona scripts/verify_initial_position.py: Session/Budget/inputs/eventos/
+livro existentes, DB e perfil QA próprios, janela limitada e nenhum PLAY.
+A lista pública vem do perfil nativo revisado e recusa inputs novos antes de
+coletá-los. Não atualiza fingerprints aprovados nem cria aceites operacionais.
+Safety permanece833edc5/1.11, sem alteração de header neste recorte. Manifesto
+reconcilia H86228777 e mantém referências aceitas/SA-REF-01/runtime33c2fa1.
+Próximo F-04/05 reutiliza PortfolioRiskGuard histórico; reservas incertas não
+podem ser liberadas só por expirar, nem tickets inteiros persistidos em double.
+
+Validação App após reconciliação:106 casos distintos aprovados (102 no lote e4
+revalidados após limpar/repinar H). Um caso sintético de33.120 barras M1 atingiu
+pytest-timeout60s durante upsert, sob pressão de memória do host; não há suíte
+integral verde deste recorte. Não aumentar timeout nem reduzir asserções para
+contornar o ambiente. Doctor de desenvolvimento16OK/2avisos existentes/0falhas.
+As verificações nativas finais e esse caso aguardam recursos; PR permanece
+rascunho. A composição H/S de desenvolvimento não recebe aceite de perfil.
+
+Fechamento da repetição nativa E-13 em01/11: executada pela prévia oficial
+App5ee3ea3, usando a instalação QA preservada, sem consumir WIP de F-04.
+Snapshot97e05a3ca28db03f contém os56 arquivos de projeto da fonte00ea674bc2250280
+conferidos novamente por SHA256 e6 arquivos padrão adicionais da plataforma.
+Tester Linux/Wine, modelo0 (ticks gerados deM1):13 entradas/13 posições encerradas,
+39deals,9 confirmações da primeira parcial e4 da segunda;44inputs efetivos e
+caixa reconciliados. O recibo atual substitui a pendência de RAM desse ensaio,
+sem atribuir sua prova ao WIP seguinte. Não exerce fill parcial real, desconexão,
+restart de processo, netting compartilhado, outro terminal ou Windows físico.
+
+Proteção independente do primeiro complemento: página privada existente,
+sequência19,13 anexos com SHA256 conferido e395 arquivos restaurados em pasta
+nova, seis bancos com quick_check/contagens idênticas.285 blocos anteriores
+preservados. Fonte de acesso e base principal excluídas. Manifesto/recibos no
+estado QA existente; complemento do último ensaio mantém vínculo próprio.
+
+O caso sintético que excedia60s estava escrevendo dezenas de colunas derivadas
+NULL sem relação com o teste do leitor. A fixture agora usa o schema, os
+recebimentos e o UPSERT canônicos com as mesmas33.120 barras OHLC. O limite60s
+permanece; nenhuma asserção foi removida. A verificação de oportunidade revelou
+que a escala100/volatilidade1 anterior não gerava negócios no contrato EURUSD.
+Os dois cenários usam agora preços1,1/volatilidade0,0001 e pavio0,00005, exigem
+negócios e decisões, stop positivo/protetor e round-trip CSV exato por candle.
+Passaram em17,77s; o round-trip fortalecido passou novamente em4,87s.
+Hdc90af73 atualiza somente a evidência final da PR77; fonte executável86228777
+permanece. A instalação tem53 fontes distintas/56 vínculos de catálogo; todos
+os bytes foram conferidos. Os checks completos deste fechamento ficam no
+recibo final da aplicação, sem reaproveitar uma aprovação de zero negócios.
+
+Fechamento App E-13: lote completo dirigido com107 aprovados/4avisos NumPy
+existentes,27,67s, saída0 e timeout original60s. Inclui as duas fixtures com
+negócios/decisões não vazios, stop protetor e CSV conferido candle a candle.
+JUnit no estado QA existente. Este resultado substitui a pendência do teste
+sintético acima; H142 simulados/12 compilações e Tester final mantêm escopos
+próprios. Prévia atualizada após preservar os SHAs remotos. Não é fechamento
+do pilar ou aprovação do novo fingerprint no compilador de presets.

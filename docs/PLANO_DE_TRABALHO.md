@@ -3729,6 +3729,9 @@ consumidor, configuração e gate está na [matriz canônica do inventário](pro
 T20.8 recebe corretivo individual do executor H/S (margem/prechecks fechados,
 sem reenvio por conexão incerta e SL monotônico). Não conclui reserva agregada,
 gestão completa, gradientes ou o pilar; sequência preserva SA-REF-01 congelada.
+E-13/T19.57 corrige a origem de R e o estado persistente nos dois hosts, com
+parcial+BE/trailing, bloqueio de estado/configuração incompatíveis e ensaio
+Tester próprio. Fonte aprovada e autorização SA-REF-01 não são transferidas.
 
 **T19.0 documental, com adendos. T19.1 com inventário entregue para revisão local em 2026-10-17; T19.2–T19.57 planejadas.**
 O pedido do proprietário integra enriquecimento do histórico extraído e de operações,

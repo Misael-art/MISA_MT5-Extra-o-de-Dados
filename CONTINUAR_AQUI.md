@@ -8,8 +8,13 @@ Recorte inicial T20.8 corrige prechecks do executor, conexão incerta e proteç�
 monotônica. HADOUKEN f7e4cffc/PR76, Safety candidata1.11 833edc5/PR10; App
 reconcilia pins de desenvolvimento sem alterar referências aceitas. Não
 atualizar fingerprints aprovados por conveniência nem afirmar reserva agregada.
-Próximo recorte de gestão: R inicial do host legado pela origem persistente,
-parcial+BE e trailing+TP; seguir depois os marcos do pedido, sem retomar Dashboard.
+E-13/T19.57: HADOUKENdc90af73/PR77 (código86228777) corrige R/volume originais nos dois hosts,
+identidade integral, recuperação de intenção e BE sem afrouxar trailing.142 testes
+simulados e12 compilações0/0. Repetição final do Tester concluída pela fonte QA
+imutável (53 fontes/56 vínculos do catálogo iguais por hash):13 posições/39deals/9 e4 etapas confirmadas,
+44inputs e caixa reconciliados. Tick gerado deM1, sem aceite ao vivo/Windows.
+Safety833edc5 não muda neste recorte. Próximo: F-04/05/10/11/12 no guardião já
+existente no histórico, sem criar outro motor; seguir os demais marcos, sem Dashboard.
 O pilar permanece incompleto. Testes de plataforma simulada, compilação, Tester,
 DEMO e Windows físico mantêm evidências separadas.
 

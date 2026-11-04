@@ -1,5 +1,9 @@
 # T19.57 inicial — parciais e saldo
 
+Estado E-13 em01/11/2026: correção nativa qualificada em ensaio dirigido, com
+referência SA-REF-01 preservada. Os registros de20/10 abaixo conservam seus
+perfis/fontes; a nova fonte não recebe aprovação automática no compilador.
+
 Em preparação, dependente de T19.56/H24 e M149. S09 1.20 exclusivamente Tester DEMO,
 com perfis anteriores1.00/1.10 preservados. UI/Manual: agenda desabilitada, simples
 ou duas etapas; gatilhos em R inicial, uma unidade comum em lotes/fração por agenda,
@@ -86,3 +90,46 @@ Prova dirigida: long/short com1 lote indivisível mantém SL90/110 e perda10;2 l
 reduzem1 e só então habilitam BE.19 testes de parcial/re-simulação aprovados, incluindo
 paridade do modo base. Isso é simulação Python, sem novo aceite de replay ou live;
 o mecanismo nativo compartilhado e suas provas anteriores são reutilizados intactos.
+
+## R inicial e recuperação nos hosts — E-13, 01/11/2026
+
+O risco em R é distância de preço entre a entrada média efetivamente executada
+e o SL original dos deals de entrada. O volume inicial é o total executado da
+mesma ordem finalizada, inclusive fills múltiplos. Não usar o SL corrente.
+`HistoryOrderSelect` carrega explicitamente a ordem antes de conferir estado,
+identidade e volume; deals, saídas e saldo atual precisam reconciliar.
+Múltiplas ordens/contribuições, INOUT ou close-by não são adotados por magic.
+
+Os dois hosts usam o armazenamento GV existente, com SHA256 da identidade de
+conta/servidor/magic/ativo/política completa/POSITION_IDENTIFIER. O ID não é
+ticket transitório. Marcadores legados incertos são preservados e bloqueiam.
+O host legado grava R/entrada/volume/gatilho/fração/BE antes da parcial e recusa
+mudança desses parâmetros com posição. O modular usa o hash integral do preset;
+um estado ausente/incompatível não concede posse da posição.
+
+Uma âncora pendente impede novas entradas, continua proteção e é recuperada por
+leitura, sem reenviar a entrada. Intenções de parcial persistidas antes do pedido
+não são repetidas após restart. Confirmação exige volume, histórico e gravação;
+BE só então, sem afrouxar trailing melhor. Execução parcial/incerta mantém bloqueio.
+
+Para reproduzir a qualificação no Tester DEMO pelo executor canônico:
+
+```bash
+.venv/bin/python scripts/verify_initial_position.py --framework ../hadouken \
+  --out ../../state/qa-tmp/operational-pillar/e13-ensaio-proprio \
+  --from-date 2026-10-12 --to-date 2026-10-16
+```
+
+Destino novo obrigatório; DB/perfil QA separados e capital virtual100000.
+Preset controlado usa lote0,08, etapa1 em0,5R/25% inicial e etapa2 em1R/50% do
+saldo, BE após confirmação. Confere os44inputs efetivos e reconcilia eventos,
+deals e livro. Modelo0 gera ticks de M1; não são ticks reais. A execução não
+qualifica perfil aprovado, não habilita PLAY e não concede autorização DEMO.
+Fonte e limites ficam no recibo privado; resumo público no inventário/evidência.
+
+Prova E-13 final: fonte00ea674bc2250280, instalada para QA com53 fontes distintas e56 vínculos de
+catálogo idênticos por hash; catálogo da instalação97e05a3ca28db03f inclui6 arquivos
+padrão adicionais. Pela prévia App5ee3ea3 e pelo mesmo Session no Tester:
+13 posições encerradas,39deals,9 etapas1 e4 etapas2 confirmadas,44inputs e
+caixa reconciliados. É qualificação dirigida da correção; o compilador de
+perfis aprovados permanece estrito e não recebe novo fingerprint por este ensaio.

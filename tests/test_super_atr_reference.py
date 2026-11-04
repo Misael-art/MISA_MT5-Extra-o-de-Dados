@@ -63,14 +63,21 @@ def test_book_runs_on_synthetic_m1_without_opposite_flip_exits(tmp_path):
     from mt5_extracao.database_manager import DatabaseManager
     from tests.market_data import random_walk
     db = DatabaseManager(db_path=str(tmp_path / "qa.sqlite"))
-    bars = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00")     # janela later + aquecimento, dentro do timeout
-    assert db.save_ohlcv_data("EURUSD", "1 minuto", bars)
+    bars = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00",
+                       start_price=1.1, vol=.0001, wick=.00005)     # janela later + aquecimento, dentro do timeout
+    # Fixture do leitor: mesmo schema/recebimentos/UPSERT canônicos, sem enviar
+    # dezenas de colunas derivadas NULL que este cenário não calcula nem usa.
+    table = db.get_table_name_for_symbol("EURUSD", "1 minuto")
+    assert db._create_table_if_not_exists(table)
+    assert db._upsert_dataframe(table, bars.set_index("time"), origin="test:synthetic-ohlc") == len(bars)
     book = ref.python_book(db, framework(), cost="base")
     assert book["contract"]["id"] == "SA-REF-01" and book["m1_rows"] > 0
+    assert book["trades"] and book["decisions"]  # cenário sem oportunidade não exerce a regra de saída
     import math
     for trade in book["trades"]:
         assert trade["exit_reason"] != "signal"                         # target2r: sem saída por virada
-        # stop do lado protetor da entrada (série sintética pode ter preço baixo: não exigir stop > 0)
+        assert trade["stop_price"] > 0
+        # Preços/volatilidade na escala EURUSD do contrato; stop do lado protetor.
         assert (trade["stop_price"] < trade["entry_price"]) if trade["direction"] > 0 else (trade["stop_price"] > trade["entry_price"])
     for decision in book["decisions"]:
         assert decision["side"] in ("long", "short") and math.isfinite(decision["stop"])
@@ -106,12 +113,19 @@ def test_book_reproduces_from_frozen_csv_without_database(tmp_path):
     framework()
     import gzip
     from tests.market_data import random_walk
-    bars = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00")
+    bars = random_walk(23 * 1440, freq="min", start="2026-09-28 00:00",
+                       start_price=1.1, vol=.0001, wick=.00005)
     frozen = tmp_path / "m1.csv.gz"
     with gzip.open(frozen, "wt", encoding="utf-8") as handle:
         handle.write("time,open,high,low,close\n")
         for row in bars.itertuples(index=False):
             handle.write(f"{str(row.time)[:19]},{row.open!r},{row.high!r},{row.low!r},{row.close!r}\n")
     ref._pinned_study(framework())
-    book = ref.python_book(None, framework(), cost="zero", rows=ref.m1_rows_frozen(frozen))
+    rows = ref.m1_rows_frozen(frozen)
+    assert len(rows) == len(bars)
+    for actual, expected in zip(rows, bars.itertuples(index=False), strict=True):
+        assert actual["time"] == expected.time.value // 60_000_000_000
+        assert all(actual[name] == getattr(expected, name) for name in ("open", "high", "low", "close"))
+    book = ref.python_book(None, framework(), cost="zero", rows=rows)
     assert book["contract"]["id"] == "SA-REF-01" and book["m1_rows"] > 0
+    assert book["trades"] and book["decisions"]
