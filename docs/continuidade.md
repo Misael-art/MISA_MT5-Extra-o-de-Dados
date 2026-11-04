@@ -1,3 +1,17 @@
+## E14 — largura tardia da comparação no Windows CI — 03/11/2026
+
+Na PR279, SHA App `19627c3`, o run `41731727371` aprovou Linux, PostgreSQL,
+instaladores e lint. Windows terminou 4566 aprovados/193 ignorados/1 falha,
+77,74% de cobertura. A única falha foi comparação estreita: canvas TkAgg de
+580 px em viewport de 558 depois da escala. Reproduzido localmente por
+alargamento tardio da página; o contêiner rolável agora reconcilia a largura
+do conteúdo com a área visível também após mudança do filho. Antes 1 falha
+dirigida; depois 24 testes de componentes/comparação aprovados em Xvfb;
+doctor offline 16 OK/2 avisos/0 falhas.
+Publicar o corretivo na mesma PR, conferir CI do SHA novo e validar a tela
+pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
+de pin.
+
 ## E14 — TP em R pós-fill, fonte S09 2.13 — 03/11/2026
 
 PR279 permanece draft, branch `codex/e14-protecao-comum` sobre

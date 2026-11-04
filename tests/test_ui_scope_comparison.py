@@ -63,6 +63,21 @@ def test_themes_scales_metrics_and_narrow_window_keep_actions_reachable(ui,compl
         ui.root.tk.call('tk','scaling',original);view.close()
 
 
+def test_chart_late_native_width_does_not_escape_narrow_page(ui,completed_scope,monkeypatch):
+    db,_,_,plan=completed_scope;monkeypatch.setattr(ui.app,'db_manager',db)
+    view=ScopeComparisonDialog(ui,plan['batch_id']);wait(ui,lambda:not view.pending)
+    try:
+        view.window.geometry('600x500');view.tabs.select(2);ui.pump(.2)
+        viewport=view.views[2].canvas.winfo_width()
+        assert viewport>1
+        view.views[2].canvas.itemconfigure(view.views[2]._window,width=viewport+22)
+        view.curves.widget.configure(width=viewport+22)  # TkAgg pode repor a largura depois de Map/DPI.
+        ui.pump(.2)
+        assert view.curves.widget.winfo_width()<=view.views[2].canvas.winfo_width()
+    finally:
+        view.close()
+
+
 def test_close_cancels_query_and_removes_theme_consumer(ui,completed_scope,monkeypatch):
     db,_,_,plan=completed_scope;monkeypatch.setattr(ui.app,'db_manager',db);entered=threading.Event();cancelled=threading.Event()
     def waiting(db,ident,*,guard):

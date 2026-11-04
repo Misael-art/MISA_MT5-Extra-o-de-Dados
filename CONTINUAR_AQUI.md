@@ -1,5 +1,21 @@
 # Retomar MT5X em um host limpo
 
+## E14 — largura tardia da comparação no Windows CI — 03/11/2026
+
+Na PR279, App `19627c3c74dc2efafc60b2e417f49fa93d3d71f6`, run
+`41731727371`: Linux, PostgreSQL, instaladores e lint passaram; Windows
+terminou com 4566 aprovados, 193 ignorados, 1 falha e cobertura 77,74%.
+A falha única foi `test_themes_scales_metrics_and_narrow_window_keep_actions_reachable`:
+TkAgg deixou canvas de 580 px numa página de 558 px após mudança de escala.
+Um teste novo reproduziu o alargamento tardio no host antes da correção; o
+`ScrollableContent` agora reaplica a largura visível quando o conteúdo muda.
+Depois, 24 testes de componentes e comparação passaram no Linux/Xvfb; doctor
+offline de desenvolvimento 16 OK/2 avisos/0 falhas. O novo
+SHA ainda requer push na mesma PR279 e CI Windows; Windows físico e percurso
+pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
+pin ou dado privado mudou. Próximo: publicar, conferir SHA/checks e continuar
+os gates E14; não declarar o check Windows aprovado antes do novo run.
+
 ## E14 — auditoria pós-fill 2.13 e resgate privado — 03/11/2026
 
 App `codex/e14-protecao-comum`, base `codex/f04-vinculo-presets`, PR279
