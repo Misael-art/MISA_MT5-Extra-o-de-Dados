@@ -1,5 +1,35 @@
 # Retomar MT5X em um host limpo
 
+## Revalidação de GUI, Séries e composição — 04/11/2026
+
+App E14 `0993ae7bdf2e3354afcccf45dd2a22069a8b460c` continua na PR279
+draft; HADOUKEN `d4d389ee0800d209bdba48ab36e392e6907949a4` na PR84
+draft e Safety `27b85992af4b10f4cd7687f370142ac88f515375` detached.
+O manifesto mantém estes pins e `setup_development.py --plan` terminou sem erro;
+o App declarado ali é o bootstrap `65e621a`, distinto do checkout E14 e da prévia.
+A prévia segue em `57d13ee`. No run 41747563787 da PR279, Ubuntu,
+PostgreSQL, instaladores Linux/Windows e lint passaram; Windows pytest ainda
+executava na consulta de 04/11 01:40 UTC. Não há aceite Windows CI final.
+
+GUI C: branch local `codex/gui-dependencias-inicializacao` em `b0733d9`,
+base E14 `0993ae7`; código `bf38e4a`. O launcher oficial foi repetido na
+fonte rebatida `13f6b97` em Linux/Xvfb com configuração e SQLite isolados:
+janela aberta e `quick_check` OK com dependências presentes; ausência simulada
+de `pandas` mostrou diálogo/instalador oficial sem criar banco ou instalar.
+Cinco testes focados passaram e doctor offline deu 16 OK/2 avisos/0 falhas.
+Recibo ampliado na própria branch C; arquivos temporários removidos.
+
+LAB-10 D: branch local `codex/lab-series-monitor-geometry` em `802e5de`,
+base de código C `13f6b97`. O módulo de UI de Séries passou nesta fonte em
+Linux/Xvfb: 29 aprovados, 1 ignorado, 16 avisos de layout, 127,52 s.
+A asserção confere a geometria negativa solicitada e ampliar/restaurar;
+posição física em monitor esquerdo e percurso pelo atalho seguem pendentes.
+C e D não têm branch remota/PR por causa da guarda central compartilhada;
+os SHAs locais estão no registro central. Não foi feito merge, atualização da
+prévia, ensaio DEMO ou Windows físico. Próximo: conferir o resultado Windows
+da PR279, resolver a guarda para publicar incrementos separados e continuar
+os gates funcionais LAB/P01–P07 e operacionais E14 por fonte exata.
+
 ## E14 — largura tardia da comparação no Windows CI — 03/11/2026
 
 Na PR279, App `19627c3c74dc2efafc60b2e417f49fa93d3d71f6`, run
@@ -18,6 +48,49 @@ pelo launcher desta tela seguem aceites separados. Nenhum contrato financeiro,
 pin ou dado privado mudou. Próximo: conferir o CI e continuar
 os gates E14; não declarar o check Windows aprovado antes do novo run.
 
+## Composição e limites atuais — 03/11/2026
+
+Raiz única `/home/misael/Projects/MT5X`: App `repos/app`, HADOUKEN
+`repos/hadouken`, Safety `repos/safety`. App E14 `0993ae7`/PR279 draft,
+HADOUKEN `d4d389e`/PR84 draft (fonte S09 2.13 `51358a1`) e Safety
+`27b8599` detached/PR11 formam a composição de desenvolvimento; o preparo
+oficial aceita os pins. A prévia instalada ainda é App `57d13ee` e não
+contém o perfil 2.13 ou P01–P07. Os SHAs completos, PRs e próximos passos
+estão no registro central `../.workspace/projects.json` e no manifesto do
+App; textos datados abaixo descrevem fontes anteriores.
+
+E14 S09 2.13: MetaEditor/Wine 0 erros e 0 avisos, 59 arquivos iguais; Tester
+Linux/Wine e replay visual do mesmo pacote sintético conciliaram oito entradas,
+sete ações, quatro alterações de TP pós-fill e a caixa. Recibo público em
+`docs/evidencias/E14_POSTFILL_213_TESTER_REPLAY_20261103.json`; recibos privados
+protegidos na página pessoal existente, ZIP SHA256
+`2a8a6dff51b953a2bf8fe6f8c93904cad086d85ff0000163d004d61c96547080`.
+No SHA anterior `19627c3`, Windows CI falhou só no gráfico estreito, com 4566
+testes aprovados; Linux e demais jobs passaram. O corretivo está em `3312ea3`,
+e os checks da ponta documental `0993ae7` tinham PostgreSQL, instaladores e
+lint aprovados; Ubuntu/Windows ainda executavam na consulta de 04/11 00:50 UTC.
+Não houve DEMO ao vivo,
+netting, Windows físico nem liberação do perfil operacional.
+
+P00–P07 foram recompostos em branches locais separadas sobre E14, com LAB-03
+local dependente de P07. Os testes de padrões/Séries na composição LAB-03
+terminaram com 79 aprovados, três ignorados e uma falha já reproduzida na
+asserção de monitor negativo herdada da base E14 neste host XWayland de um
+monitor. A branch isolada LAB-10 `8822d25`, baseada em GUI C `13f6b97`,
+corrige essa asserção; a fonte anterior passou 29 testes de Séries/1 ignorado,
+e a fonte rebatida passou seis testes focados; falta integrar os aceites entre
+PRs. O fluxo P01–P07 permanece exploratório: CI, fonte real elegível,
+PostgreSQL da campanha, Windows físico e aprovação M1 seguem abertos.
+Na cadeia rebatida sobre `0993ae7`, 51 testes focados de P01–P07/GUI de
+padrões passaram em Linux/Xvfb. `MT5X_TEST_PG_URL` não está configurada neste
+host; os dois testes PostgreSQL próprios desta cadeia não foram executados.
+O inspetor oficial de checkouts confirmou, sem instalar ou atualizar a prévia,
+App local `7544f6b` e pins HADOUKEN/Safety; doctor offline 16 OK/2 avisos/0 falhas.
+O guarda central de push ainda impede publicar as branches de revisão;
+não o contornar. Próximo: publicar esta cadeia após a decisão da guarda, seguir
+recuperação/capacidade/pendentes E14 e aguardar a decisão específica do guarda
+para PRs C/D/P00–P07/LAB.
+
 ## LAB-03 — regressão de alinhamento em revisão — 03/11/2026
 
 Branch local `codex/lab03-horarios-alinhamento` sobre P07 local. A correção da
@@ -32,7 +105,8 @@ operacional após reconciliar a publicação da cadeia local.
 
 ## T13.4-P07 — consumidores de avaliações em revisão — 03/11/2026
 
-Branch local `codex/t134-p07-consumidores-m1` sobre P06 `e538521`.
+Branch local `codex/t134-p07-consumidores-m1` sobre P06; o SHA `e538521`
+abaixo identifica a composição anterior ao rebase de 03/11.
 `analytics.pattern_queries` consulta os recibos P06 já gravados no ledger,
 com namespace da base e corte de disponibilidade, e expõe inspeção dos fatos
 de sinal/desfecho no `feature_store`. SDK, CLI `laboratory pattern-evaluations`
@@ -41,8 +115,8 @@ Laboratório e Dashboard usam a mesma leitura. O Dashboard apresenta os recibos
 como exploratórios, ocultos por padrão, sem inventar lift, confiança ou
 aprovação; ausência de resultado é explícita. A consulta não executa pesquisa
 nem ordens. Ensaios sintéticos incluem CLI=SDK, HTML, reinício, corte anterior
-ao registro e o mesmo símbolo em duas bases. Após integrar a entrada GUI
-offline e o teste de monitor à esquerda, 58 testes dirigidos passaram, um foi
+ao registro e o mesmo símbolo em duas bases. Na composição local anterior com
+entrada GUI e teste de monitor à esquerda, 58 testes dirigidos passaram, um foi
 ignorado e o desenho emitiu 17 avisos de layout. `./run.sh --offline --config`
 abriu a GUI em Xvfb isolado com SQLite de QA, e o menu Exibir → Registro de
 estudos → Padrões mostrou o estado vazio sem fabricar avaliação. Com outro

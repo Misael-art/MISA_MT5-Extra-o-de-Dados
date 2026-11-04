@@ -1,3 +1,26 @@
+## Revalidação da composição e dos incrementos locais — 04/11/2026
+
+E14 App `0993ae7`/PR279 draft, HADOUKEN `d4d389e`/PR84 draft e Safety
+`27b8599` detached continuam nos SHAs/pins do registro central. O `--plan`
+oficial terminou; a inspeção anterior aceitou os pins. A prévia instalada
+segue App `57d13ee`.
+No run 41747563787, Ubuntu, PostgreSQL, os instaladores e lint passaram;
+Windows pytest ainda estava em execução em 04/11 01:40 UTC, sem aceite final.
+
+Na branch C `codex/gui-dependencias-inicializacao` `b0733d9`, o launcher
+`./run.sh --offline --config` foi repetido na fonte de código rebatida
+`13f6b97` em Linux/Xvfb com SQLite de QA: janela aberta, `quick_check` OK;
+ausência simulada de `pandas` exibiu a ação do instalador sem criar banco nem
+instalar. Cinco testes GUI passaram; doctor 16 OK/2 avisos/0 falhas. O recibo
+foi ampliado naquela branch e a QA temporária removida. Na branch D
+`codex/lab-series-monitor-geometry` `802e5de`, 29 testes de UI de Séries
+passaram na própria fonte, 1 foi ignorado e houve 16 avisos de layout em
+127,52 s. Monitor esquerdo físico, atalho e Windows físico seguem pendentes.
+As branches C/D não foram publicadas por causa da guarda compartilhada;
+continuar LAB/P01–P07 e E14 sem misturar os incrementos. Próximo: conferir
+Windows CI, publicar PRs distintos quando a guarda permitir e prosseguir
+nos gates independentes.
+
 ## E14 — largura tardia da comparação no Windows CI — 03/11/2026
 
 Na PR279, SHA App `19627c3`, o run `41731727371` aprovou Linux, PostgreSQL,
@@ -14,6 +37,36 @@ publicação. Conferir CI do SHA novo e validar a tela
 pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
 de pin.
 
+## Composição E14 e pesquisa M1 após reconciliação — 03/11/2026
+
+App E14 `0993ae7`/PR279, HADOUKEN `d4d389e`/PR84 (fonte S09 2.13
+`51358a1`) e Safety `27b8599` detached/PR11 são a composição de
+desenvolvimento. O manifesto e o preparador oficial aceitam os pins; a prévia
+instalada permanece App `57d13ee`. Compilação S09 2.13 sem erros/avisos,
+Tester e replay visual Linux/Wine do mesmo pacote sintético com oito entradas,
+sete ações e quatro TP pós-fill reconciliados. O hash do recibo privado, a
+prova pública e os limites estão no handoff. No SHA App anterior `19627c3`,
+Linux e quatro outros jobs passaram, Windows falhou apenas no gráfico estreito;
+o corretivo `3312ea3` está publicado; na ponta `0993ae7`, PostgreSQL,
+instaladores e lint passaram, Ubuntu/Windows ainda executavam em 04/11 00:50 UTC.
+DEMO ao vivo, netting,
+Windows físico e liberação operacional não foram feitos.
+
+P00–P07 e LAB-03 foram recompostos como incrementos locais separados sobre
+E14. O teste composto teve 79 aprovados/três ignorados e uma falha conhecida
+do monitor negativo na base E14; LAB-10 `8822d25` corrigiu a asserção em branch
+própria sobre GUI C `13f6b97`. A fonte anterior passou 29 testes de Séries/1
+ignorado; a fonte rebatida passou seis testes focados. A publicação individual está bloqueada
+pelo guarda central; CI, base real elegível, PostgreSQL e M1 seguem pendentes.
+Depois de rebater P00–P07/LAB-03 sobre `0993ae7`, 51 testes focados de
+padrões/consumidor GUI passaram em Linux/Xvfb. A URL de teste PostgreSQL
+não está configurada no host; os dois casos próprios não foram executados.
+O inspetor oficial de checkouts aceitou App local `7544f6b` e pins
+HADOUKEN/Safety sem instalação; doctor offline de desenvolvimento 16 OK,
+2 avisos e 0 falhas. SHAs locais por branch no registro central. Próximo:
+publicar G após a decisão da guarda e continuar os gates E14 de
+recuperação/capacidade, pendentes e riscos agregados.
+
 ## LAB-03 — alinhamento de Horários, regressão local — 03/11/2026
 
 Fonte local `codex/lab03-horarios-alinhamento` sobre P07. `MatrixTable` já
@@ -27,7 +80,8 @@ privado; publicação da branch depende do guarda compartilhado.
 
 ## T13.4-P07 — leitura comum de avaliações em revisão — 03/11/2026
 
-Fonte local `codex/t134-p07-consumidores-m1`, base P06 `e538521`, ainda sem
+Fonte local `codex/t134-p07-consumidores-m1`, base P06 (o SHA `e538521`
+identifica a composição anterior ao rebase de 03/11), ainda sem
 push/PR por bloqueio do guarda central de branches. `analytics.pattern_queries`
 lê somente eventos `pattern_evaluated` do ledger e os fatos do feature store
 quando solicitados; namespace, protocolo, tentativa, manifesto e instante de
@@ -36,7 +90,8 @@ Laboratório e Dashboard consomem esse resultado persistido. O Dashboard
 mantém estado exploratório oculto por padrão, sem aprovar estatística,
 economia ou reserva; catálogo vazio é apresentado sem inferir resultados.
 Ensaios locais dirigidos cobrem corte as-of, reinício, filtros, duas bases
-sintéticas com mesmo símbolo e igualdade CLI/SDK. Após integrar a entrada GUI
+sintéticas com mesmo símbolo e igualdade CLI/SDK. Na composição local anterior,
+após integrar a entrada GUI
 offline e o teste de monitor à esquerda, 58 testes dirigidos passaram, um foi
 ignorado e o desenho emitiu 17 avisos de layout. `./run.sh --offline --config`
 abriu a GUI em Xvfb isolado com SQLite de QA; Exibir → Registro de estudos →
