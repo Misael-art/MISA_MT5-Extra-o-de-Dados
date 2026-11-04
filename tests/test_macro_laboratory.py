@@ -4,7 +4,7 @@ import json
 import pandas as pd
 import pytest
 
-from mt5_extracao.analytics import datasets,macro_sources
+from mt5_extracao.analytics import datasets,macro_sources,producer_jobs
 from mt5_extracao.laboratory import service,report as portable
 from tests.test_mentions_contract import db
 from tests.test_mention_sources import Response
@@ -14,7 +14,10 @@ from tests.test_mention_sources import Response
 def phase(db,monkeypatch):
     raw=b'observation_date,USREC\n2020-01-01,0\n2020-02-01,0\n2020-03-01,1\n'
     monkeypatch.setattr(macro_sources.requests,'get',lambda *a,**k:Response(None,raw=raw))
-    source=macro_sources.collect(db,source_id='fred.usrec',start='2020-01-01',end='2020-04-01')
+    # O teto é o RSS do processo, como na tela de coleta: numa suíte longa o pytest
+    # já pode passar de 1024 MiB antes desta fixture.
+    budget=min(8192,max(1024,int(producer_jobs.current_rss_bytes()/1024**2)+256))
+    source=macro_sources.collect(db,source_id='fred.usrec',start='2020-01-01',end='2020-04-01',max_memory_mb=budget)
     snap=datasets.capture(db,source['symbol'],'D1','2020-01-01T00:00Z','2020-04-01T00:00Z',stored_features=source['features'],feature_only=True)
     prices=[100.+i*.1 for i in range(95)]
     db.save_ohlcv_data('X','1 dia',pd.DataFrame(dict(time=pd.date_range('2020-01-01',periods=95,freq='D'),
