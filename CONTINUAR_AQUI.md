@@ -1,5 +1,28 @@
 # Retomar MT5X em um host limpo
 
+## Integração no master e prévia — 04/11/2026
+
+Master `784a252` (merge commits, sem force push) recebeu, em ordem, as PRs
+207–208, 210–280, 283–291, 281 (C) e 282 (D). A árvore do master é idêntica
+a `e2388d0`, cujo CI na PR282 passou em Ubuntu (32 min), Windows (2h13),
+PostgreSQL, instaladores Linux/Windows e lint; PR279 (`af40d91`) também
+passou em todas as plataformas. PR209 (pilha bd08b) não faz parte da cadeia
+e segue draft na base original. Correções de Windows integradas: corrida de
+`IntegrityError` no registro de definições SQLite e orçamento de memória do
+fixture LAB por RSS do processo.
+
+Prévia `~/.local/share/mt5x/releases/development-784a25210b04` (350 arquivos
+com hash) ligada em `app-development`; recibo em `state/development-preview.json`.
+O atalho oficial abriu a janela principal sem traceback e iniciou a ponte MT5
+via Wine. PostgreSQL de teste local: contêiner `mt5x-test-pg` (postgres:16,
+127.0.0.1:5432, volume próprio, unless-stopped, 512 MB); use
+`MT5X_TEST_PG_URL` igual ao do CI para a suíte PG (118 aprovados localmente).
+
+Pendentes, fora deste host ou dependentes do usuário: Windows físico, MT5/Tester
+nativo, ensaio DEMO, aceite M1 com dados elegíveis reais, gates operacionais
+E14, percurso manual de Séries LAB-01…10 e compilação/bateria do painel
+`hdk_hadouken_painel`.
+
 ## Revalidação de GUI, Séries e composição — 04/11/2026
 
 App E14 `0993ae7bdf2e3354afcccf45dd2a22069a8b460c` continua na PR279
