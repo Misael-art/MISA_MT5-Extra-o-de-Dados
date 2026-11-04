@@ -80,6 +80,21 @@ def test_healthy_backend_is_reused_without_initializing_preparing_or_shutting_do
     assert not connector.is_initialized and api.active and not api.calls
 
 
+def test_backend_initially_missing_is_resolved_again_without_reinitializing_session(linked,monkeypatch):
+    connector,api,prepared=linked;monkeypatch.setattr(module,'mt5',None);calls=[]
+    def recover(path):calls.append(path);return api
+    monkeypatch.setattr(module,'get_mt5',recover)
+    assert connector.initialize() and len(calls)==1
+    assert not api.calls and not prepared
+
+
+def test_unavailable_backend_readiness_never_initializes_or_prepares_terminal(linked,monkeypatch):
+    connector,api,prepared=linked;monkeypatch.setattr(module,'mt5',None)
+    monkeypatch.setattr(module,'get_mt5',lambda path:None)
+    assert not connector.backend_ready() and not connector.initialize()
+    assert not api.calls and not prepared
+
+
 def test_repeated_initialize_and_local_disconnect_keep_borrowed_session(linked):
     connector, api, prepared = linked
     assert connector.initialize() and connector.initialize()

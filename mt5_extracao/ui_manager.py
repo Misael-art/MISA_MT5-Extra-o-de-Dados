@@ -62,6 +62,8 @@ class UIManager:
         self._filter_job = None
         self._ui_queue = queue.Queue()   # chamadas vindas de outras threads (ver call_in_ui)
         self._terminal_lock = threading.Lock()   # uma abertura do terminal por vez (ver _open_organized_terminal)
+        self._connection_cancel = threading.Event()
+        self.root.bind("<Destroy>",lambda event:self._connection_cancel.set() if event.widget is self.root else None,add="+")
 
         # O que existe na base (preenchido por refresh_inventory)
         self.inventory = []
@@ -2590,10 +2592,18 @@ class UIManager:
             return
         try:
             config = self.app.config
+            if getattr(self,"_connecting",False):
+                if self._connection_terminal_prepared:return
+                self._connection_terminal_prepared=True
             if not mt5_tools.terminal_running(config):
+                from mt5_extracao import connection_help
                 opened = view.open_view(config, db=self.app.db_manager, account=self.prefs.get("account"),
                                         confirm=mt5_tools.confirm_startup)
                 log.info("Visão do MetaTrader 5 ao conectar: " + view.describe(opened))
+                self._connection_startup_deadline=time.monotonic()+connection_help.STARTUP_WAIT_SECONDS
+                self._connection_terminal_ready=connection_help.wait_ready(
+                    lambda:mt5_tools.terminal_running(config),connection_help.STARTUP_WAIT_SECONDS,
+                    cancelled=self._connection_cancel.is_set)
         except Exception as e:
             log.warning(f"Não foi possível abrir o MetaTrader 5 já organizado ({e}). Seguindo com a conexão.")
         finally:
@@ -2621,16 +2631,31 @@ class UIManager:
         from mt5_extracao import connection_help
         from mt5_extracao.robots import mt5_tools, view
         self._connecting = True
+        self._connection_cancel.clear()
+        self._connection_terminal_prepared=False
+        self._connection_terminal_ready=None
+        self._connection_startup_deadline=None
         app, config = self.app, self.app.config
         self.mt5_status_value.config(text="Abrindo e conectando ao MetaTrader 5...")
         self.mt5_status_dot.config(foreground=self.theme.colors["ink2"])
         self.check_button.state(["disabled"])
+        self.mt5_view_button.state(["disabled"])
         self.update_status("Status: abrindo e conectando ao MetaTrader 5 (a base já extraída segue disponível)...")
 
         def work():
             mt5_tools.use_config(config)
             self._install_terminal_hook()       # as reconexões automáticas do conector também passam por ele
             self._open_organized_terminal()     # terminal fechado: abre já organizado, antes de conectar
+            if self._connection_cancel.is_set():return None
+            if self._connection_terminal_ready is False:
+                return connection_help.diagnose(mt5_tools.terminal_running(config),connection_help.internet_ok())
+            backend_ready=getattr(app.mt5_connector,"backend_ready",None)
+            if backend_ready is not None:
+                deadline=self._connection_startup_deadline
+                remaining=(connection_help.STARTUP_WAIT_SECONDS if deadline is None else max(0,deadline-time.monotonic()))
+                if not connection_help.wait_ready(backend_ready,remaining,cancelled=self._connection_cancel.is_set):
+                    return connection_help.diagnose(mt5_tools.terminal_running(config),connection_help.internet_ok(),backend_available=False)
+            if self._connection_cancel.is_set():return None
             connected = bool(app.mt5_connector.initialize(recursion_count=0))
             if connected:
                 app.mt5_initialized = True
@@ -2640,9 +2665,11 @@ class UIManager:
 
         def done(reason, error):
             self._connecting = False
+            if self._connection_cancel.is_set():return
             self.check_button.state(["!disabled"])
+            self.mt5_view_button.state(["!disabled"])
             if error is not None:
-                reason = connection_help.NOT_OPEN
+                reason = connection_help.CONNECTION_ERROR
             self.filter_symbols()
             self.bring_to_front()
             if self.refresh_mt5_status():
@@ -2650,10 +2677,11 @@ class UIManager:
                 self._remember_account()
                 return
             app.mt5_initialized = False
+            reason = reason or connection_help.CONNECTION_ERROR
             text = connection_help.explain(reason, windows=os.name == "nt")
             self.log("Sem conexão com o MetaTrader 5: " + text.replace("\n\n", " ").replace("\n", " "))
             self.update_status("Status: sem conexão com o MetaTrader 5 (" + reason + ")")
-            if reason != connection_help.NO_INTERNET and self._missing_account():
+            if reason == connection_help.NOT_LOGGED and self._missing_account():
                 self._offer_demo_account()      # terminal sem conta nenhuma: oferece abrir a de demonstração
             else:
                 messagebox.showwarning("MetaTrader 5 sem conexão", text, parent=self.root)
@@ -2666,6 +2694,10 @@ class UIManager:
             return self._show_offline_status(quiet)
         colors = self.theme.colors
         if not self._mt5_connected():
+            if getattr(self,"_connecting",False):
+                self.mt5_status_value.config(text="Abrindo e conectando ao MetaTrader 5...")
+                self.mt5_status_dot.config(foreground=colors["ink2"])
+                return False
             if not quiet:
                 self.update_status("Status: sem conexão com o MetaTrader 5")
             self.mt5_status_value.config(text="MetaTrader 5 desconectado")

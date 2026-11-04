@@ -104,6 +104,7 @@ outros itens do plano. O WIP e os dados/backups do proprietário foram preservad
 | T19.14 | Trajetórias temporais de trades e ciclos | T19.1, T16.1/2/3 | ✅ integrada no [PR113](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/113), merge bd5cb6d; evidências compatíveis reaproveitadas; Windows físico pendente |
 | T0.1 | Instaladores automáticos Windows/Linux + bootstrap | — | ✅ concluída |
 | T0.2 | CI (GitHub Actions) com testes e instaladores | T0.1 | ✅ concluída |
+| CONN-STARTUP | Aguardar início assíncrono do MT5/ponte sem falso aviso de abertura | Conector/ciclo nativo/fila UI existentes | Corrigido: espera cooperativa de até60s, uma abertura por tentativa, backend inicialmente ausente resolvido novamente, estado neutro/progresso e diagnóstico de canal separado.71 núcleo/offline,72 recorte anterior e6 cenáriosUI (sobreposição), launcher controlado; cold start nativo/Windows físico não certificados. |
 | T0.3 | Validação manual dos instaladores em máquinas limpas | T0.1 | ⏳ parcial: Linux (família Arch) validado com MT5 real; demais ambientes pendentes (docs/validacao_instaladores.md) |
 | T1.1 | Upsert no banco (reextrair sem erro/duplicata) | — | ✅ concluída |
 | T1.2 | Salvar por bloco + tabela de controle + retomada | T1.1 | ✅ concluída |

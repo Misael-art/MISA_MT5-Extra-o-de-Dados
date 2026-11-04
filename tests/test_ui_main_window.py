@@ -902,6 +902,75 @@ def test_connect_does_not_reopen_a_terminal_that_is_already_open(ui, connecting)
     assert connecting.opened == [] and connecting.tries == 1 and ui.app.mt5_initialized is True
 
 
+def test_delayed_process_is_awaited_once_without_false_failure_or_red_status(ui,connecting,monkeypatch):
+    from mt5_extracao.robots import view,mt5_tools
+    original=view.open_view;started=[]
+    def delayed(*a,**k):
+        result=original(*a,**k);connecting.running=False;started.append(time.monotonic());return result
+    monkeypatch.setattr(view,'open_view',delayed)
+    monkeypatch.setattr(mt5_tools,'terminal_running',lambda config=None:bool(started and time.monotonic()-started[0]>=.4))
+    initialize=ui.app.mt5_connector.initialize
+    ui.app.mt5_connector.prepare_terminal=None
+    def connect(**kwargs):
+        ui.app.mt5_connector.prepare_terminal() # O conector real também chama o gancho.
+        assert mt5_tools.terminal_running()
+        return initialize(**kwargs)
+    ui.app.mt5_connector.initialize=connect
+    ui.connect_mt5();ui.pump(.15);ui.refresh_mt5_status(quiet=True)
+    assert ui._connecting and not connecting.warned and 'Abrindo' in ui.mt5_status_value.cget('text')
+    assert ui.mt5_view_button.instate(['disabled'])
+    ui.notebook.select(1);assert ui.notebook.index('current')==1
+    ui.pump(1.1)
+    assert len(connecting.opened)==1 and connecting.tries==1 and not connecting.warned
+    assert ui.app.mt5_initialized and ui.mt5_view_button.instate(['!disabled'])
+
+
+def test_late_backend_is_resolved_before_single_initialize(ui,connecting):
+    connecting.running=True;ready_at=time.monotonic()+.35;checks=[]
+    def ready():checks.append(True);return time.monotonic()>=ready_at
+    ui.app.mt5_connector.backend_ready=ready
+    ui.connect_mt5();ui.pump(.15)
+    assert ui._connecting and connecting.tries==0 and not connecting.warned
+    ui.pump(1.1)
+    assert len(checks)>=2 and connecting.tries==1 and ui.app.mt5_initialized
+    assert not connecting.opened and not connecting.warned
+
+
+def test_backend_timeout_is_not_reported_as_failure_to_open_or_missing_account(ui,connecting,monkeypatch):
+    from mt5_extracao import connection_help
+    monkeypatch.setattr(connection_help,'STARTUP_WAIT_SECONDS',.1)
+    connecting.running=True;ui.app.mt5_connector.backend_ready=lambda:False
+    monkeypatch.setattr(ui,'_missing_account',lambda:pytest.fail('Falha de transporte não comprova falta de conta.'))
+    ui.connect_mt5();ui.pump(.8)
+    assert connecting.tries==0 and len(connecting.warned)==1
+    assert 'canal de comunicação' in connecting.warned[0] and 'O MetaTrader 5 não abriu.' not in connecting.warned[0]
+    assert ui.check_button.instate(['!disabled']) and not ui._connecting
+
+
+def test_process_timeout_does_not_relaunch_or_start_initialization(ui,connecting,monkeypatch):
+    from mt5_extracao import connection_help
+    from mt5_extracao.robots import view
+    monkeypatch.setattr(connection_help,'STARTUP_WAIT_SECONDS',.1);original=view.open_view
+    def never_ready(*a,**k):
+        result=original(*a,**k);connecting.running=False;return result
+    monkeypatch.setattr(view,'open_view',never_ready)
+    ui.connect_mt5();ui.pump(.8)
+    assert len(connecting.opened)==1 and connecting.tries==0
+    assert len(connecting.warned)==1 and 'prazo de espera' in connecting.warned[0]
+
+
+def test_unexpected_connection_error_does_not_claim_terminal_failed_to_open(ui,connecting):
+    def fail(**kwargs):raise RuntimeError('controlled connection error')
+    ui.app.mt5_connector.initialize=fail;ui.connect_mt5();ui.pump(.8)
+    assert len(connecting.warned)==1 and 'não confirma uma falha de abertura' in connecting.warned[0]
+
+
+def test_cancelling_wait_does_not_initialize_or_warn(ui,connecting):
+    connecting.running=True;ui.app.mt5_connector.backend_ready=lambda:False
+    ui.connect_mt5();ui.pump(.1);ui._connection_cancel.set();ui.pump(.5)
+    assert not ui._connecting and connecting.tries==0 and not connecting.warned
+
+
 @pytest.mark.parametrize("worker_delay", [0.0, 1.0])
 def test_no_internet_is_said_plainly_with_what_to_do(ui, connecting, worker_delay):
     connecting.slow = worker_delay
