@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "task": "LAB-SA-00",
+  "date": "2026-10-24",
+  "scope": "Registro documental do reteste, backlog e prompts independentes; sem correção de runtime.",
+  "repository": "Misael-art/MISA_MT5-Extra-o-de-Dados",
+  "branch": "codex/lab-superatr-frentes",
+  "base": "af717fa90bd4d514fb226622862bca572ae41f88",
+  "previous_runtime": "7c66feda06eb065b5cd591fd22ba5b602cffa624",
+  "previous_pr": 210,
+  "acceptance": {
+    "laboratory": "incomplete_user_retest_reopened",
+    "runtime_fix_delivered": false,
+    "agents_started": false,
+    "financial_acceptance": false
+  },
+  "pending_ids": [
+    "LAB-01",
+    "LAB-02",
+    "LAB-03",
+    "LAB-04",
+    "LAB-05",
+    "LAB-06",
+    "LAB-07",
+    "LAB-08",
+    "LAB-09",
+    "LAB-10",
+    "SA-01",
+    "SA-02"
+  ],
+  "ownership": {
+    "laboratory": "agente independente do Laboratório",
+    "expert": "agente independente do Expert Super ATR",
+    "super_atr_calculation_and_storage": "agente do pilar de dados já existente",
+    "shared_files_and_preview": "composição serial pelo integrador"
+  },
+  "verification": {
+    "before": {
+      "command": "python -m pytest -q tests/test_laboratory_series.py tests/test_sdk_docs.py",
+      "passed": 22,
+      "duration_seconds": 37.59,
+      "exit_code": 0
+    },
+    "after": {
+      "command": "python -m pytest -q tests/test_laboratory_series.py tests/test_sdk_docs.py",
+      "passed": 22,
+      "duration_seconds": 37.09,
+      "exit_code": 0
+    },
+    "doctor": {
+      "ok": 20,
+      "optional_warning": 1,
+      "failures": 0,
+      "exit_code": 0,
+      "probe": false,
+      "environment": "ambiente/configuração existentes, leitura sem conexão MT5"
+    },
+    "markdown_links": {
+      "documents": 8,
+      "relative_links_checked": 252,
+      "broken": [],
+      "method": "Markdown links outside fenced/inline code"
+    },
+    "diff_check": "passed",
+    "runtime_files_changed": 0,
+    "broad_suite_repeated": false,
+    "native_session_started": false,
+    "windows_physical": "pending"
+  },
+  "limits": [
+    "Testes focados não validam os defeitos funcionais reportados pelo proprietário.",
+    "A prévia não foi reinstalada porque o runtime é byte-idêntico ao anterior.",
+    "As imagens privadas do proprietário não foram publicadas.",
+    "Disponibilidade nominal não equivale à disponibilidade histórica certificada.",
+    "Confirmação entre TFs não é probabilidade calibrada ou resultado financeiro."
+  ],
+  "artifacts_sha256": {
+    "docs/PLANO_DE_TRABALHO.md": "a2fe757a74d5452f423b2baeacea9a0ea2267859dda4fce11f10de214b9eabee",
+    "docs/ROADMAP.md": "7f086222af02c3ed19f780a83fd5b872096b8632f7a5d32cf2a339c3b735a6e6",
+    "docs/continuidade.md": "608df75804473c560ee9cba134705aa5553aff8c9b7b12612b45ac48ce82a97b",
+    "docs/propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md": "e179c484b74b6d5ac9c0214ae68b411ae965afc7a52f0f1e8bd480ae53f21d2a",
+    "docs/repasse/PROMPT_EXPERT_SUPER_ATR_MTF_20261024.md": "35acb3ac1c8d147f2abd85e89f18970e507fe0f51788f6730ebbc49eefb15e36",
+    "docs/repasse/PROMPT_LABORATORIO_GRAFICOS_20261024.md": "24ce2434e44f9a6abc4eeb49b73bf4a48afda792fedc1a173deae397de87d226",
+    "docs/repasse/T20_22_LABORATORIO_CONTINUIDADE_20261024.md": "33491d0613b31751448ca96f8354d4fe45abb9aa9025988fef46aae90bea1e80",
+    "docs/sdk/laboratorio_series.md": "a46eaf2df477850008aa70192aaec59a40225e87da00b7677d90363439dce524"
+  }
+}

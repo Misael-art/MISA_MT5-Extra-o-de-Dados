@@ -33,6 +33,29 @@ serviços; um workflow não cria scheduler, executor, cache ou journal financeir
 Indicador estratégico/armazenamento, OMNI e estratégia ficam em frentes próprias,
 sem antecipar sua implementação nesta tarefa.
 
+## Reteste do Laboratório e próximas frentes — 2026-10-24
+
+**Laboratório incompleto; aceite funcional reaberto pelo proprietário após o
+teste no atalho central.** A implementação inicial da PR210 não encerrou os
+percursos. [Backlog completo, donos e critérios de aceite](propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md).
+
+| Frente | Pendências registradas | Dono / sequência |
+|---|---|---|
+| LAB-01/02 | Indicador × indicador e Indicador × alvo com inventário real completo; corrigir geração de Séries/confluências e estado vazio/NaN | Laboratório; começar por reprodução no atalho e integração ao serviço de Dados |
+| LAB-03/04 | Sincronizar cabeçalho de Horários; modernizar Dia do mês e demais visões com valores horizontais, amostra contextual e gradientes intensos→claros | Laboratório; componentes/tema comuns, sem alterar métricas |
+| LAB-05/06 | Mesmo ativo com estratégias/robôs diferentes; mesmo robô e revisão exata de preset em diferentes ativos | Laboratório; runs/contextos comparáveis, sem backtest automático ao abrir |
+| LAB-07/08 | Mesma estratégia entre TFs com relação preditiva distinguida de correlação; gráfico do ativo com todos os indicadores qualificados e ferramentas de estudo | Laboratório; T20.22/23 e contratos de Dados/G19, método temporal próprio |
+| LAB-09/10 | Presets integrados/closure qualificada, SDK/CLI completo, monitores/ampliação e teste real pela entrada central | Laboratório + integrador; preservar pins, config/dados/rollback |
+| SA-01 | Expert Super ATR com confirmação causal entre TFs | Agente paralelo do Expert; contrato versionado antes das regras de operação, risco/executor existentes, primeiro Tester+DEMO |
+| SA-02 | Cálculo e coluna/projeção Super ATR na base, consulta e disponibilidade/revisão | **Agente de Dados já existente**; consumidores não criam storage/cálculo concorrentes |
+
+LAB-SA-00 entrega somente este registro e dois prompts prontos:
+[agente Laboratório](repasse/PROMPT_LABORATORIO_GRAFICOS_20261024.md) e
+[agente Expert Super ATR](repasse/PROMPT_EXPERT_SUPER_ATR_MTF_20261024.md).
+Frentes em paralelo usam branches/worktrees próprias; arquivos compartilhados e
+prévia são compostos serialmente. Cada correção/capacidade tem PR e aceite próprios.
+Super ATR indicador, estratégia e persistência mantêm contratos distintos.
+
 ## Fases
 
 **Pedido do proprietário — 2026-10-21:** planejar TFs em ordem crescente nos
@@ -340,9 +363,11 @@ agentes diferentes, **desde que não editem os mesmos arquivos ao mesmo tempo**
 **G19.7 — Indicadores múltiplos:** dependência de séries revisada e compilada junto ao Expert, conservando bibliotecas anteriores. [Contrato](propostas/G19_7_INDICADORES_AGRUPADOS.md); composição e validação nativa em andamento.
 
 **G19.8 — Distribuição:** composição identificada para o atalho habitual, com ativos gráficos, fingerprint manual e preservação do canal aceito/dados. [Procedimento e evidências](propostas/G19_8_DISTRIBUICAO.md). Validação final em andamento.
-# Laboratório — extensão solicitada em24/10/2026
+## Laboratório — extensão inicial solicitada em24/10/2026
 
-T20.22-LAB1 acrescenta a exploração de séries reais no Laboratório existente:
+**Atualização após o reteste:** implementação parcial, correções e expansões
+pendentes conforme LAB-01…10 acima. T20.22-LAB1 acrescentou a exploração de séries
+reais no Laboratório existente:
 mesma estratégia entre TFs, preço/indicador, matriz direcional, defasagens e
 cobertura, com CLI/SDK e ampliação por monitor. Acesso ao gerador Default/Manual
 reutiliza os contratos operacionais; correlações não aplicam regras automaticamente.

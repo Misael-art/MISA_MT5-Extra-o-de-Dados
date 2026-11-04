@@ -1,5 +1,10 @@
 # Laboratório de séries e confluências — T20.22-LAB1
 
+**Status após teste do proprietário em24/10/2026: incompleto, aceite funcional
+reaberto.** [Pendências e critérios](../propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md).
+Os percursos abaixo descrevem a implementação inicial e seus limites, não
+comprovam funcionamento em todas as seleções reais do atalho central.
+
 Entrega inicial solicitada em24/10/2026, sobre AIA-02a. A aba **Laboratório →
 Séries e confluências** usa séries reais da base, congeladas por `datasets`.
 Permanece separada de **Relações e aderência**, cuja fixture F18 continua

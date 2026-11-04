@@ -1,5 +1,12 @@
 # Continuidade — Laboratório de séries, 24/10/2026
 
+**Reteste posterior do proprietário: aceite funcional reaberto.** A entrega
+inicial abaixo não concluiu o Laboratório. Falhas e ausências foram registradas
+em [LAB-01…10/SA-01/02](../propostas/LAB_SUPER_ATR_PENDENCIAS_20261024.md), com
+prompts de Laboratório e Expert e posse preservada da frente de dados.
+Manter evidências históricas, reproduzir o caso real pelo atalho e corrigir
+os percursos; não inferir aceite pelas capturas QA anteriores.
+
 Frente independente `codex/lab-multiframe`, [PR210](https://github.com/Misael-art/MISA_MT5-Extra-o-de-Dados/pull/210),
 base exata AppPR208/d1c1097067129919b734e67203c363f0662639e2. Implementação
 fd6062885e303b43fe2d20c6a7bf557dc40306c7, refinamento de interface
