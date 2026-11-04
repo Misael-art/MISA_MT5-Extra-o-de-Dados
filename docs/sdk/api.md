@@ -1300,3 +1300,24 @@ de execução real. SL/TP são níveis iniciais registrados; não certificam sto
 modificado/aceito no broker. `sdk.laboratory_candle(report,index,execution=...)`
 e `sdk.export_laboratory_report(report,path,execution=...)` leem esse recibo
 congelado sem refazer indicadores, trades, preços ou custos. [Inspetor](laboratorio_series.md#inspetor-temporal-e-execução-vinculada).
+## Plano revisável de backtest entre tempos gráficos
+
+`sdk.preview_backtest_scope(db, config, robot, symbol, scope="Todos", start=..., end=..., preset=None, manifest_path=None)`
+captura revisões locais, amostra/exclusões e identidade do preset, sem executar.
+Retorna `batch_id` e `signature`. `sdk.inspect_backtest_scope(db, batch_id)` relê
+esse plano no journal existente. `sdk.create_backtest_scope_runner(db, config,
+robot, batch_id)` confere contexto/código/custos/pacote e devolve o `BatchRunner`
+existente; o chamador usa `start()`, `cancel()` e `join()`.
+
+CLI: `robots backtest-plan <robô> --symbol QA --tf Todos --from AAAA-MM-DD --to AAAA-MM-DD`;
+`robots backtest-plan-show --batch-id <id>`; `robots backtest-plan-run <robô>
+--batch-id <id> --confirm-plan <signature>`. Default/Manual nativos usam
+`--preset-package <manifesto>` da revisão exportada, sem alterar seu TF interno.
+Dados Python e parâmetros ficam congelados. Dados locais de MQL5 são referência;
+o plano informa modelo/download nativo, sem prometer revisão/cobertura do Tester.
+Execuções nativas usam as sessões privadas e leases atuais, uma por vez.
+Contexto revisado acompanha cada run em `metrics.backtest_scope`. Retomada não
+reexecuta resultados publicados; prova nativa ausente/divergente exige conciliação.
+`inspect_backtest_scope` inclui `executions` (estado, ID e histórico de cada job)
+e `reason`, projetados do mesmo checkpoint. Capital/custos Python e custos
+observados no relatório nativo têm bases explícitas e distintas em `cost_basis`.

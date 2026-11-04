@@ -15,7 +15,7 @@ def test_timeframe_selector_orders_duration_deduplicates_and_preserves_exact_con
     panel, robot, preset = _tested(ui)
     robot.timeframes = ("H4", "1 hora", "M15", "D1", "H1", "M1", "W1", "MN1", "M30")
     dialog = robot_controls.SelectionDialog(panel.controls, robot, "asset")
-    assert tuple(dialog.tf_combo.cget("values")) == ("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1", "MN1")
+    assert tuple(dialog.tf_combo.cget("values")) == ("M1", "M5", "M15", "M30", "H1", "H4", "D1", "W1", "MN1", "Todos")
     assert dialog.tf.get() == "H1"
     ui.pump(.1)
     assert dialog.window.grab_current() == dialog.window
@@ -35,7 +35,7 @@ def test_python_timeframes_preserve_current_table_and_equivalent_label_after_ref
     ui.symbol_series["WIN$N"] = [dict(symbol="WIN$N", timeframe=value, rows=600) for value in labels]
     detail.timeframe_var.set("H1")
     detail._symbol_changed()
-    assert tuple(detail.timeframe_combo.cget("values")) == ("M1", "M5", "M15", "H1", "H4", "D1")
+    assert tuple(detail.timeframe_combo.cget("values")) == ("M1", "M5", "M15", "H1", "H4", "D1", "Todos")
     assert detail.timeframe_var.get() == "H1"
     ui.symbol_series["WIN$N"] = [dict(symbol="WIN$N", timeframe=value, rows=600) for value in labels if value != "H1"]
     detail._symbol_changed()

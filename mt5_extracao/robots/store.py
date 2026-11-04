@@ -99,6 +99,10 @@ def _save_run(db, run: dict, control=None) -> None:
     from sqlalchemy import text
     if control is not None:
         control.check()
+        getattr(control, "validate_run", lambda run: None)(run)
+        provenance = getattr(control, "provenance", lambda: None)()
+        if provenance is not None:
+            run["metrics"]["backtest_scope"] = provenance
     row = {"run_id": run["run_id"], "robot_key": run["robot_key"], "source": run["source"],
            "symbol": run["symbol"], "timeframe": run["timeframe"], "data_start": run["data_start"],
            "data_end": run["data_end"], "bars": int(run["bars"]),

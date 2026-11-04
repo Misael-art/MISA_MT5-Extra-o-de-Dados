@@ -4744,3 +4744,43 @@ T19.33b exige plano revisável, preset congelado, motivos de exclusão e expans�
 nos mecanismos existentes; seleção múltipla de ativos e comparação filtrada
 continuam frentes próprias. CI da ponta, Windows físico, timeout assíncrono
 Windows herdado e qualificação nativa/financeira permanecem delimitados.
+
+### Backtest com todos os tempos —30/10/2026 (T19.33b)
+
+`codex/backtest-todos-plano`, sobre ordenação/PR256. Todos é escopo de pesquisa,
+sem enviar essa palavra ao motor/terminal e sem habilitar PLAY/REPLAY múltiplos.
+O mesmo serviço prepara revisões locais, parâmetros, preset e janela, lista
+exclusões e grava plano pendente no journal Budget atual, sem admitir jobs.
+Confirmação usa BatchRunner; MQL5 passa por Session/PresetExecution privados e
+lease existente. Default/Manual exportados mantêm revisão/hash e contexto:
+demais TFs são recusados quando o pacote fixa um TF interno.
+
+Retomada confere identidade/código/custos/base/pacote e não repete resultados
+publicados. Dados Python continuam na revisão capturada mesmo após correção
+da base. Guardas de Recursos/orçamento/cancelamento cobrem preparo e execução.
+Contexto revisado acompanha o run na mesma publicação atômica do checkpoint;
+mudança de fonte durante o cálculo recusa publicação. Falta/divergência de prova
+nativa exige conciliação antes de retomar, preservando o resultado já gravado.
+SDK/CLI consultam estados e IDs no mesmo journal. [Contrato e comandos](sdk/api.md#plano-revisável-de-backtest-entre-tempos-gráficos).
+
+19 testes iniciais do recorte e21 após revisão/escala aprovados (sobreposição);
+128 regressões de Budget/runner/controles/presets/SDK/Tk aprovadas. Launcher
+oficial offline executou3 passagens próprias (M1/M5/H1), excluiu M15 por30<250
+barras e manteve contexto congelado. Conferência visual encontrou corte do
+rodapé: botões agora ficam fixos e o conteúdo usa ScrollableContent atual;
+percurso e tabela alcançáveis em600×500/980×680, escalas Tk96/72 e144/72.
+Retomada na própria UI após recarga do catálogo passou, sem duplicar o primeiro
+run; recorte final13 aprovados inclui esse caso e12 contratos SDK (sobreposição).
+Valores de capital/resultado usam a formatação da interface e moeda ausente
+fica explícita, sem converter dados ou inferir unidade da conta.
+Capturas finais, doctor, SHA/PR/prévia e proteção independente ficam no registro
+central e nos recibos próprios; só esses recibos finais qualificam a disponibilização.
+
+O histórico nativo não adquire revisão congelada por haver snapshot local.
+Modelo/download são mostrados no plano; custos/cobertura efetivos dependem do
+relatório e gates do Tester. Validação nativa aqui é contratual/controlada,
+sem conta/negociação/Tester real ou Windows físico. CI da PR256 parou no Windows
+por timeout em recálculo de indicadores (test_analytics_profiles), antes do
+seletor; logs públicos saneados preservados. CI da nova ponta tem estado próprio.
+T20.24/25 (vários ativos/capacidade/retenção) e T20.22/23 (comparação por revisão
+entre TFs) continuam frentes próprias; não há aceite financeiro/preditivo.

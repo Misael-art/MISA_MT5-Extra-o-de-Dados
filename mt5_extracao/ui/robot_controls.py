@@ -26,6 +26,7 @@ class CardControls:
         self.style = ttk.Style(panel.frame)
         self.chosen, self.sessions, self.widgets, self.images = {}, {}, {}, {}
         self.preset_windows = {}
+        self.scope_windows, self.all_timeframes = {}, set()
         self._pulse = None
         self._bright = False
         self._study_busy, self._study_last, self._study_service = False, 0, None
@@ -43,7 +44,11 @@ class CardControls:
         if preset and preset not in robot.presets:
             preset = None
             self.chosen[robot.key] = symbol, timeframe, preset
-        return controls.selection(robot, symbol, timeframe, preset)
+        context = controls.selection(robot, symbol, timeframe, preset)
+        if robot.key in self.all_timeframes:
+            context.update(headline=None, run=None, play_available=False,
+                           reason="Resultados separados por TF; escolha um TF individual para consultar ou executar PLAY/REPLAY.")
+        return context
 
     def _icon(self, action, accent=False, disabled=False):
         color = self.theme.colors["border"] if disabled else self.theme.colors["accent"] if accent else self.theme.colors["ink2"]
@@ -56,7 +61,9 @@ class CardControls:
     def build(self, parent, robot):
         symbol, timeframe, preset = self.chosen[robot.key]
         active = self.sessions.get(robot.key)
-        busy = bool(active and active.active)
+        scope_window = self.scope_windows.get(robot.key)
+        all_tfs = robot.key in self.all_timeframes
+        busy = bool(active and active.active) or bool(scope_window and scope_window.active)
         box = ttk.Frame(parent, style="Surface.TFrame")
         box.pack(fill=tk.X, pady=(8, 0))
         series_row = ttk.Frame(box, style="Surface.TFrame")
@@ -71,7 +78,7 @@ class CardControls:
             selector.grid(row=0, column=column, sticky="ew", padx=(0 if column == 0 else 4, 0))
             if busy:
                 selector.state(["disabled"])
-        chosen = ttk.Label(box, text=f"{symbol or 'Escolha um ativo'} · {timeframe}\n{('Default / Manual · seleção no editor' if self._has_native_presets(robot) else preset or controls.DEFAULT_PRESET)}",
+        chosen = ttk.Label(box, text=f"{symbol or 'Escolha um ativo'} · {'Todos os TFs (backtest)' if all_tfs else timeframe}\n{('Default / Manual · seleção no editor' if self._has_native_presets(robot) else preset or controls.DEFAULT_PRESET)}",
                            style="Muted.TLabel", justify=tk.LEFT, wraplength=260)
         chosen.pack(anchor="w", fill=tk.X, pady=(4, 0))
         chosen.bind("<Configure>", lambda e: chosen.configure(wraplength=max(40, e.width)))
@@ -106,14 +113,15 @@ class CardControls:
         row.bind("<Configure>", fit_actions, add="+")
         context = self.context(robot)
         offline = bool(getattr(self.ui.app, "offline", False))
-        if not context.get("play_available", bool(context["run"])) or busy or offline or self._has_native_presets(robot):
+        if not context.get("play_available", bool(context["run"])) or busy or offline or all_tfs or self._has_native_presets(robot):
             buttons["play"].state(["disabled"])
             buttons["play"].configure(image=self._icon("play", disabled=True))
         for mode in ("replay", "backtest"):
-            if busy or offline:
+            if busy or (offline and not (mode == "backtest" and all_tfs)) or (mode == "replay" and all_tfs):
                 buttons[mode].state(["disabled"])
                 buttons[mode].configure(image=self._icon(mode, disabled=True))
         reason = ("Sessão em andamento · seleção bloqueada até encerrar." if busy else
+                  "Todos é um escopo de backtest. Escolha um TF individual para PLAY ou REPLAY." if all_tfs else
                   "Análise local: reabra sem --offline para usar o MT5." if offline else "Default/Manual · backtest e replay no Tester DEMO; ao vivo indisponível."
                   if self._has_native_presets(robot) else context["reason"])
         hint = ttk.Label(box, text=reason or ("Painel manual · PLAY disponível sem backtest; revisão e proteções mantidas."
@@ -141,6 +149,13 @@ class CardControls:
         self._schedule()
 
     def _select(self, robot, label, value):
+        if label == "Timeframe":
+            from mt5_extracao.robots.backtest_scope import ALL
+            if value == ALL:
+                self.all_timeframes.add(robot.key)
+                self.panel.render()
+                return
+            self.all_timeframes.discard(robot.key)
         selected = list(self.chosen[robot.key])
         selected[{"SELETOR · ativo": 0, "Timeframe": 1, "SELETOR · preset": 2}[label]] = (
             None if label == "SELETOR · preset" and value == controls.DEFAULT_PRESET else value)
@@ -180,6 +195,13 @@ class CardControls:
         return window
 
     def launch(self, robot, mode):
+        if self.sessions.get(robot.key) and self.sessions[robot.key].active:
+            return
+        if robot.key in self.all_timeframes and mode in ("play", "replay"):
+            messagebox.showinfo("Timeframe individual", "Escolha um TF individual para PLAY ou REPLAY.", parent=self.ui.root)
+            return
+        if robot.key in self.all_timeframes and mode == "backtest" and not self._has_native_presets(robot):
+            return self.open_scope(robot)
         if self._has_native_presets(robot):
             if mode == "play":
                 messagebox.showinfo("Perfil nativo", "O piloto permite backtest e replay no Tester DEMO. Ao vivo indisponível.", parent=self.ui.root)
@@ -216,6 +238,23 @@ class CardControls:
         else:
             ExecutionDialog(self, robot, mode)
 
+    def open_scope(self, robot, *, symbol=None, preset=None, start=None, end=None, manifest_path=None, is_current=None):
+        from .backtest_scope import BacktestScopeDialog
+        previous = self.scope_windows.get(robot.key)
+        if previous and previous.exists():
+            previous.window.lift()
+            return previous
+        chosen = self.chosen.get(robot.key)
+        if symbol is None:
+            symbol, _, preset = chosen
+        if is_current is None:
+            is_current = lambda: self.chosen.get(robot.key) == chosen and robot.key in self.all_timeframes
+        dialog = BacktestScopeDialog(self.ui, robot, symbol, preset=preset, start=start, end=end,
+                                    manifest_path=manifest_path, is_current=is_current,
+                                    completed=lambda batch: self.panel.reload())
+        self.scope_windows[robot.key] = dialog
+        return dialog
+
     def start(self, robot, mode, symbol, timeframe, preset, start=None, end=None, account=None, consent=None,
               *, visible=None, window_anchor=None):
         if self.sessions.get(robot.key) and self.sessions[robot.key].active:
@@ -236,6 +275,9 @@ class CardControls:
         session = self.sessions.get(key)
         if session and session.active:
             session.cancel()
+        scope_window = self.scope_windows.get(key)
+        if scope_window and scope_window.active:
+            scope_window.cancel()
 
     def _schedule(self):
         if self._pulse is None:
@@ -307,12 +349,16 @@ class CardControls:
                 return
             for session in active:
                 session.cancel()
+        batches = [window for window in self.scope_windows.values() if window.active]
+        for window in batches:
+            window.cancel()
+        if active or batches:
             self.ui.root.after(200, self._close_when_stopped)
         else:
             self.ui.root.destroy()
 
     def _close_when_stopped(self):
-        if any(s.active for s in self.sessions.values()):
+        if any(s.active for s in self.sessions.values()) or any(window.active for window in self.scope_windows.values()):
             self.ui.root.after(200, self._close_when_stopped)
         else:
             self.ui.root.destroy()
@@ -340,12 +386,13 @@ class SelectionDialog:
         self.count.pack(anchor="w", pady=5)
         footer = ttk.Frame(body)
         footer.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
-        self.tf = tk.StringVar(value=self.timeframe)
+        from mt5_extracao.robots.backtest_scope import ALL
+        self.tf = tk.StringVar(value=ALL if robot.key in controller.all_timeframes else self.timeframe)
         if kind == "asset":
             ttk.Label(footer, text="Timeframe", style="Muted.TLabel").pack(side=tk.LEFT)
             current = (self.timeframe,) if timeframes.parse(self.timeframe) is not None else ()
             choices = timeframes.ordered_unique(current + robot.timeframes + ("M1", "M5", "M15", "H1", "H4", "D1"))
-            self.tf_combo = ttk.Combobox(footer, textvariable=self.tf, state="readonly", width=10, values=choices)
+            self.tf_combo = ttk.Combobox(footer, textvariable=self.tf, state="readonly", width=10, values=choices + [ALL])
             self.tf_combo.pack(side=tk.LEFT, padx=6)
         ttk.Button(footer, text="Aplicar", style="Accent.TButton", command=self.apply).pack(side=tk.RIGHT)
         table = ttk.Frame(body)
@@ -390,7 +437,15 @@ class SelectionDialog:
         if active and active.active:
             return
         value = self.tree.item(chosen[0], "values")[0]
-        selected = ((value, self.tf.get(), self.preset) if self.kind == "asset" else
+        tf = self.tf.get()
+        if self.kind == "asset":
+            from mt5_extracao.robots.backtest_scope import ALL
+            if tf == ALL:
+                self.controller.all_timeframes.add(self.robot.key)
+                tf = self.timeframe
+            else:
+                self.controller.all_timeframes.discard(self.robot.key)
+        selected = ((value, tf, self.preset) if self.kind == "asset" else
                     (self.symbol, self.timeframe, None if value == controls.DEFAULT_PRESET else value))
         self.controller.chosen[self.robot.key] = selected
         self.controller.panel.selected_key = self.robot.key

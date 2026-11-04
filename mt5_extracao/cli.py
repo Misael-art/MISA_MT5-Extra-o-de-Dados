@@ -847,6 +847,46 @@ def _robots_backtest_batch(args, ctx, items):
     return EXIT_FAIL if failed or partial else EXIT_OK
 
 
+def _robots_backtest_scope(args, ctx, items):
+    from mt5_extracao import sdk
+    from mt5_extracao.robots import catalog
+    if args.action == "backtest-plan-show":
+        if not args.batch_id:
+            raise ValueError("Informe --batch-id do plano revisado.")
+        plan = sdk.inspect_backtest_scope(ctx.db, args.batch_id)
+    else:
+        if not args.path:
+            raise ValueError("Informe a chave do robô do plano.")
+        robot = catalog.get_robot(items, args.path)
+        if args.action == "backtest-plan":
+            if not args.symbol or not args.date_from or not args.date_to:
+                raise ValueError("Informe --symbol, --from e --to antes de preparar o plano.")
+            plan = sdk.preview_backtest_scope(ctx.db, ctx.config, robot, args.symbol,
+                scope=args.tf or "Todos", start=args.date_from, end=args.date_to,
+                preset=args.preset, manifest_path=args.preset_package)
+        else:
+            if not args.batch_id:
+                raise ValueError("Informe --batch-id do plano revisado.")
+            plan = sdk.inspect_backtest_scope(ctx.db, args.batch_id)
+            if args.confirm_plan != plan["signature"]:
+                raise ValueError("Revise backtest-plan-show e informe --confirm-plan com a assinatura exata.")
+            batch = sdk.create_backtest_scope_runner(ctx.db, ctx.config, robot, args.batch_id).start()
+            try:
+                while not batch.join(.25):
+                    pass
+            except KeyboardInterrupt:
+                batch.cancel()
+                while not batch.join(.25):
+                    pass
+            _data(backtest_plan=plan, batch_id=batch.batch_id, error=batch.error,
+                  results=[dict(symbol=item["job"].symbol, timeframe=item["job"].timeframe,
+                                run_id=(item["run"] or {}).get("run_id"), error=item["error"]) for item in batch.results])
+            return EXIT_OK if not batch.error and len(batch.results) == plan["eligible"] and all(item["run"] is not None for item in batch.results) else EXIT_FAIL
+    _data(backtest_plan=plan)
+    _print(f"Plano {plan['batch_id']}: {plan['eligible']} elegível(is), {plan['excluded']} excluída(s). Assinatura {plan['signature']}")
+    return EXIT_OK
+
+
 def _robots_backtest(args, ctx, items):
     from mt5_extracao.robots import backtest, catalog
     if args.path and (args.tfs or "," in args.path):
@@ -1534,6 +1574,8 @@ def cmd_robots(args, ctx):
         _print(f"Compile e prove a paridade com a declaração: mt5x robots compile {slug} && "
                f"mt5x robots parity {slug} --symbol <ativo> --tf <timeframe>")
         return EXIT_OK
+    if args.action in ("backtest-plan", "backtest-plan-show", "backtest-plan-run"):
+        return _robots_backtest_scope(args, ctx, items)
     if args.action == "backtest":
         return _robots_backtest(args, ctx, items)
     if args.action in ("install", "compile"):
@@ -2072,7 +2114,7 @@ def build_parser():
 
     p = sub.add_parser("robots", help="catálogo de robôs (MQL5 e Python): tipo, risco e estágio")
     p.add_argument("action", nargs="?", choices=["list", "import", "backtest", "install", "compile", "battery", "validate", "check", "parity", "market",
-                                                    "generate",
+                                                    "generate", "backtest-plan", "backtest-plan-show", "backtest-plan-run",
                                                     "new",
                                                     "start",
                                                     "monitor",
@@ -2085,6 +2127,8 @@ def build_parser():
     p.add_argument("--symbol", help="backtest: ativo; battery: de qual ativo é o backtest avaliado")
     p.add_argument("--symbols", help="backtest: vários ativos separados por vírgula (um teste por ativo)")
     p.add_argument("--batch-id", help="backtest em lote: retoma o checkpoint deste identificador, com os mesmos dados")
+    p.add_argument("--preset-package", help="backtest-plan: pacote Default/Manual exportado no contexto original")
+    p.add_argument("--confirm-plan", help="backtest-plan-run: assinatura exata do plano já revisado")
     p.add_argument("--tfs", help="backtest em lote: vários timeframes separados por vírgula (ex.: M15,H1,D1)")
     p.add_argument("--resume", action="store_true",
                    help="backtest em lote: pula a combinação que já tem execução gravada da mesma configuração")

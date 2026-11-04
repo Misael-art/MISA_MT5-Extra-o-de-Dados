@@ -12,9 +12,18 @@ intacto; seleção disponível e contexto/preset são preservados após atualiza
 e mudança de tema. Valores desconhecidos continuam visíveis no fim, sem serem
 convertidos em TF válido. O diálogo só captura entrada depois de ser mapeado
 pelo gerenciador de janelas, evitando `grab failed: window not viewable`.
-**T19.33b permanece pendente:** Todos, plano revisável, filtro de elegibilidade,
-identidade congelada e expansão no executor existente. Nenhum lote é disparado
-pela simples seleção ou atualização dos TFs.
+**T19.33b (30/10):** Todos é um escopo separado do TF individual. UI/SDK/CLI
+preparam um plano pendente, mostram janela, identidade/revisão/hash do preset,
+amostra, limitações e exclusões; só depois iniciam a fila existente. Dados Python
+e parâmetros são congelados. Retomada preserva resultados e recusa mudança de
+código, pacote, custos ou base. O journal também expõe os estados/IDs das execuções.
+Default/Manual mantêm o contexto original: se o pacote fixa M5, os outros TFs
+ficam excluídos, sem alterar seus parâmetros internos. MQL5 usa Session ou
+PresetExecution privados e lease atual, um job por vez. A série local não
+certifica revisão/cobertura/custos do histórico do Tester; o plano informa modelo
+e eventual download antes da confirmação. PLAY/REPLAY exigem TF individual.
+Nenhum lote é disparado ao selecionar/atualizar TFs. Aceite nativo e Windows
+físico continuam gates próprios. [API e CLI](../sdk/api.md#plano-revisável-de-backtest-entre-tempos-gráficos).
 
 1. Ordenar TFs por duração crescente usando `timeframes.Timeframe`/parser atuais,
    preservando os nomes legíveis da base. Exemplo: M1, M5, M15, M30, H1, H4, D1,

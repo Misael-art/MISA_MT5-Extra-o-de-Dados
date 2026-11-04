@@ -22,6 +22,14 @@ class Interrupted(RuntimeError):
     """Uma execução parcial não pode ser publicada como backtest completo."""
 
 
+def job_key(robot_key, symbol, timeframe):
+    from mt5_extracao.timeframes import parse
+    tf = parse(timeframe)
+    if tf is None:
+        raise ValueError(f"Timeframe inválido: {timeframe}")
+    return hashlib.sha256(_json([robot_key, symbol, tf.name]).encode()).hexdigest()
+
+
 @dataclass(frozen=True)
 class Limits:
     max_jobs: int = 0
@@ -102,8 +110,10 @@ def checkpoint(db, batch_id):
 
 
 class Budget:
-    def __init__(self, db=None, config=None, *, limits=None, sample=None, clock=time.monotonic, batch_id=None):
+    def __init__(self, db=None, config=None, *, limits=None, sample=None, clock=time.monotonic, batch_id=None,
+                 validate_run=None):
         self.db, self.config = db, config
+        self._validate_run = validate_run
         self.limits = limits or Limits.from_config(config)
         self.explicit_id = batch_id is not None
         self.batch_id = batch_id or uuid.uuid4().hex
@@ -166,8 +176,11 @@ class Budget:
             if self._stop.is_set():
                 raise Interrupted(self.reason)
 
-    def prepare(self, jobs, *, start=None, end=None, preset=None, resume_latest=False):
+    def prepare(self, jobs, *, start=None, end=None, preset=None, resume_latest=False,
+                execution=None, context=None, manifest_ids=None, claim=True):
         """Fixa o plano uma vez; retomada relê os mesmos manifests, não a base atual."""
+        if type(claim) is not bool:
+            raise ValueError("A posse do plano exige booleano explícito.")
         from dataclasses import asdict
         from datetime import timedelta
         from mt5_extracao import timeframes
@@ -183,25 +196,34 @@ class Budget:
             tf = timeframes.parse(timeframe)
             if tf is None:
                 raise ValueError(f"Timeframe inválido: {timeframe}")
-            key = hashlib.sha256(_json([robot.key, symbol, tf.name]).encode()).hexdigest()
+            key = job_key(robot.key, symbol, tf)
             if any(entry["key"] == key for entry in entries):
                 raise ValueError("Combinação repetida no lote; remova a duplicata antes de executar.")
             entries.append(dict(key=key, robot=robot.key, symbol=symbol, timeframe=tf.name, kind=robot.kind))
+            if execution is not None:
+                entries[-1]["execution"] = json.loads(_json(execution))
             signatures.append(dict(key=key, robot=robot.key, kind=robot.kind,
                                    fingerprint=catalog.fingerprint(robot) if robot.kind == catalog.MQL5 and hasattr(robot, "files") else "",
                                    preset={k: v for k, v in getattr(robot, "presets", {}).get(preset, {}).items() if k != "__file__"}))
-        signature = hashlib.sha256(_json(dict(jobs=sorted(entries, key=lambda x: x["key"]),
+        if manifest_ids is not None and set(manifest_ids) != {e["key"] for e in entries if e["kind"] == catalog.PYTHON}:
+            raise ValueError("O plano precisa de uma revisão congelada para cada série Python.")
+        signature_data = dict(jobs=sorted(entries, key=lambda x: x["key"]),
                                  sources=sorted(signatures, key=lambda x: x["key"]), code=code, preset=preset,
                                  start=str(start), end=str(end), settings=asdict(research.backtest_config(self.config)),
                                  tester_model=mt5_tools.tester_model(self.config),
-                                 runtime_code=backtest_mod._execution_code_digest())).encode()).hexdigest()
+                                 runtime_code=backtest_mod._execution_code_digest())
+        if context is not None:
+            signature_data["context"] = context
+        if manifest_ids is not None:
+            signature_data["manifest_ids"] = manifest_ids
+        signature = hashlib.sha256(_json(signature_data).encode()).hexdigest()
         previous = checkpoint(self.db, self.batch_id) if self.db is not None else None
         if previous is not None:
             if previous["plan"].get("version") != 1:
                 raise ValueError("Versão de checkpoint desconhecida; use uma versão compatível do aplicativo.")
             if previous["plan"].get("signature") != signature:
                 raise ValueError("Checkpoint de outro plano/código/configuração; use um novo lote.")
-            self.begin(previous["plan"])
+            self.begin(previous["plan"], claim=claim)
             by_key = {entry["key"]: entry for entry in previous["plan"]["jobs"]}
             return [by_key[entry["key"]] for entry in entries]
         native_end = end or datetime.now()
@@ -215,10 +237,20 @@ class Budget:
                 try:
                     source = (entry["symbol"], entry["timeframe"])
                     if source not in manifests:
-                        snapshot = datasets.capture(self.db, *source, start, end)
+                        if manifest_ids is None:
+                            snapshot = datasets.capture(self.db, *source, start, end)
+                        else:
+                            snapshot = datasets.load(self.db, manifest_ids[entry["key"]])
+                            if (snapshot.manifest["symbol"] != entry["symbol"] or
+                                    snapshot.manifest["timeframe"] != entry["timeframe"] or
+                                    any(value is not None and datasets.selection_time(value) != snapshot.manifest["selection"][name]
+                                        for name, value in (("start", start), ("end", end)))):
+                                raise ValueError("Revisão congelada não corresponde à série/período do plano.")
                         manifests[source] = snapshot.manifest_id
                     entry["data_manifest_id"] = manifests[source]
                 except (ValueError, OSError):
+                    if manifest_ids is not None:
+                        raise
                     entry["preparation_error"] = ("Sem revisão utilizável de {} {}; ".format(entry["symbol"], entry["timeframe"]) +
                                                   "confira o histórico e inicie outro lote após corrigir os dados.")
             if entry["kind"] == catalog.MQL5:
@@ -239,14 +271,16 @@ class Budget:
                 if old_data != current_data:
                     continue
                 self.batch_id = candidate["batch_id"]
-                self.begin(old)
+                self.begin(old, claim=claim)
                 by_key = {entry["key"]: entry for entry in old["jobs"]}
                 return [by_key[entry["key"]] for entry in entries]
         plan = dict(version=1, signature=signature, jobs=entries)
-        self.begin(plan)
+        if context is not None:
+            plan["context"] = json.loads(_json(context))
+        self.begin(plan, claim=claim)
         return entries
 
-    def begin(self, plan):
+    def begin(self, plan, *, claim=True):
         """Plano fechado; a identidade inclui as revisões escolhidas pelo chamador."""
         self.check()
         if self.db is None:
@@ -260,6 +294,9 @@ class Budget:
             row = conn.execute(text("SELECT plan_json, owner_json, elapsed FROM _robot_batch_queue WHERE batch_id=:b"), {"b": self.batch_id}).mappings().one()
             if row["plan_json"] != payload:
                 raise ValueError("Checkpoint de outro plano/código/dados; use um novo identificador de lote.")
+            if not claim:
+                self._plan = plan
+                return
             previous = json.loads(row["owner_json"])
             if previous and _alive(previous):
                 raise ValueError("O lote já tem um executor ativo; aguarde o término antes de retomar.")
@@ -277,6 +314,8 @@ class Budget:
 
     def admit(self, key):
         with self._lock:
+            if self.db is not None and not self._claimed:
+                raise ValueError("Assuma o plano pelo executor antes de admitir um job.")
             self.check()
             if self.limits.max_jobs and self._admitted >= self.limits.max_jobs:
                 # O teto de admissões não cancela testes já admitidos.
@@ -370,6 +409,19 @@ class JobBudget:
         if self.parent.db is not None:
             with self.parent._lock:
                 self.parent._record(self.key, self.run_id, state, reason, conn)
+
+    def provenance(self):
+        """Contexto revisado do consumidor, ligado ao mesmo journal e publicação."""
+        plan = self.parent._plan
+        context = plan.get("context", {}).get("provenance") if plan else None
+        if context is None:
+            return None
+        return dict(json.loads(_json(context)), batch_id=self.parent.batch_id,
+                    plan_signature=plan["signature"], job_key=self.key)
+
+    def validate_run(self, run):
+        if self.parent._validate_run is not None:
+            self.parent._validate_run(self.key, run)
 
     @contextmanager
     def publication(self):

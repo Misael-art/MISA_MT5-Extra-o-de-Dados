@@ -1,5 +1,6 @@
 """Painel do robô (aba "Robôs"): visão geral, testes, bateria de segurança e tempo real."""
 import os
+from datetime import datetime
 import tkinter as tk
 from tkinter import ttk
 
@@ -422,7 +423,10 @@ class RobotDetail:
         if current_label in available:
             available = [current_label] + available
         labels = timeframes.ordered_unique(available)
-        self.timeframe_combo.configure(values=labels)
+        from mt5_extracao.robots.backtest_scope import ALL
+        self.timeframe_combo.configure(values=labels + [ALL] if labels else [])
+        if current_label == ALL and labels:
+            return
         if self.timeframe_var.get() not in labels:
             current = timeframes.parse(self.timeframe_var.get())
             equivalent = next((label for label in labels if current is not None
@@ -435,6 +439,15 @@ class RobotDetail:
         robot, symbol, timeframe = self.robot, self.symbol_var.get(), self.timeframe_var.get()
         if not robot or not symbol or not timeframe or self._active_request is not None:
             return
+        from mt5_extracao.robots.backtest_scope import ALL
+        if timeframe == ALL:
+            series = self.ui.symbol_series.get(symbol, [])
+            days = dict(study.PERIODS).get(self.period_var.get())
+            end = max((str(item["end"]) for item in series), default=str(datetime.now()))
+            start = study.period_start(end, days) if days else min((str(item["start"]) for item in series), default=None)
+            return self.ui.robots_panel.controls.open_scope(robot, symbol=symbol, start=start, end=end,
+                is_current=lambda: bool(self.robot and self.robot.key == robot.key)
+                and self.symbol_var.get() == symbol and self.timeframe_var.get() == ALL)
         item = next((i for i in self.ui.symbol_series.get(symbol, []) if i["timeframe"] == timeframe), None)
         days = dict(study.PERIODS).get(self.period_var.get())
         start = study.period_start(item["end"], days) if item else None
@@ -475,6 +488,11 @@ class RobotDetail:
                      f"{run['data_start'][:10]} a {run['data_end'][:10]} · rodado em {run['created_at'][:16]}"]
             from mt5_extracao.composition.presentation import recorded_summary
             notes.extend(recorded_summary(run))
+            scope = m.get("backtest_scope")
+            if scope:
+                identity = scope["preset_identity"]
+                notes.append(f"Preset {identity.get('label') or identity['id']} · revisão {identity['revision'] or 'por conteúdo'} · hash {identity['content_hash']}")
+                notes.append(f"Plano {scope['batch_id']} · janela solicitada {scope['start']} a {scope['end']}")
             if m.get("skipped_min_lot"):
                 notes.append(f"{m['skipped_min_lot']} sinal(is) ignorado(s): lote para o risco abaixo do mínimo.")
             if not m.get("spec_known", True):
