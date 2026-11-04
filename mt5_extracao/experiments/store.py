@@ -142,6 +142,107 @@ def put_request(db, protocol_id, key, payload, alternative_id, error="", discard
     return request(db, request_id)
 
 
+def put_pattern_attempt(db, protocol_id, key, payload, *, discard_reason=""):
+    """Reserva uma alternativa T13.4 sob o lock e o teto da campanha existente."""
+    request_id = digest([protocol_id, key])
+    with transaction(db) as conn:
+        old = conn.execute(text("SELECT request_id FROM _experiment_requests WHERE request_id=:i"), {"i": request_id}).first()
+        if old:
+            current = request(db, request_id, conn)
+            original = {key: value for key, value in current["payload"].items()
+                        if key not in ("planned", "prior_holdout_exposure")}
+            if original != payload:
+                raise ValueError("Chave de tentativa já usada com outro conteúdo.")
+            return current
+        campaign = protocol(db, protocol_id, conn)
+        definition = campaign["definition"]
+        if definition.get("type") != "pattern_campaign_v1":
+            raise ValueError("Tentativa de padrão exige campanha T13.4 registrada.")
+        alternative_id = digest([protocol_id, payload["definition_hash"], payload["candidate_id"]])
+        admitted = conn.execute(text("SELECT DISTINCT alternative_id FROM _experiment_requests "
+                                     "WHERE protocol_id=:p AND state NOT IN ('rejected','discarded')"),
+                                {"p": protocol_id}).scalars().all()
+        planned = payload["definition_hash"] in definition["grid"]
+        scopes = campaign["context"]["campaign_roles"]["holdout"]
+        exposed = bool(accesses(conn, scopes))
+        error = ("Reserva holdout fechada para busca; registre o acesso e aguarde gate temporal." if
+                 payload["role"] == "holdout" and (payload["origin"] == "automatic" or payload["purpose"] == "tuning") else
+                 "Nova busca automática após exposição da reserva recusada." if payload["origin"] == "automatic" and exposed else
+                 "Alternativa automática fora da grade congelada." if payload["origin"] == "automatic" and not planned else
+                 "Orçamento agregado de tentativas esgotado." if alternative_id not in admitted and
+                 len(admitted) >= definition["budget"]["max_attempts"] else "")
+        stored = dict(payload, planned=planned, prior_holdout_exposure=exposed)
+        state = "rejected" if error else "discarded" if discard_reason else "requested"
+        conn.execute(text("INSERT INTO _experiment_requests VALUES(:i,:p,:a,:v,:s,NULL,:b,:e,:t)"),
+                     dict(i=request_id, p=protocol_id, a=alternative_id, v=encoded(stored), s=state,
+                          b="experiment_" + request_id, e=error, t=now()))
+        event(conn, "request:" + request_id, protocol_id, request_id, "request_registered",
+              dict(state=state, origin=payload["origin"], error=error, planned=planned))
+        if exposed:
+            event(conn, "proposal_after_access:" + request_id, protocol_id, request_id,
+                  "proposal_after_access", dict(role="holdout", request_id=request_id))
+    return request(db, request_id)
+
+
+def pattern_role_access(db, protocol_id, role, key, purpose):
+    """Registra acesso a cada fonte antes de entregar resultados de um papel."""
+    with transaction(db) as conn:
+        campaign = protocol(db, protocol_id, conn)
+        if campaign["definition"].get("type") != "pattern_campaign_v1" or role not in campaign["context"]["campaign_roles"]:
+            raise ValueError("Campanha ou papel não registrado.")
+        scopes = campaign["context"]["campaign_roles"][role]
+        for scope in scopes:
+            access(conn, protocol_id, role, scope, key + ":" + digest(scope), purpose)
+    return dict(recorded=True, role=role, scopes=len(scopes), qualified_final_holdout=False)
+
+
+def persist_pattern_evaluation(db, protocol_id, request_id, receipt, records):
+    """Grava revisão de eventos no feature_store e recibo no ledger na mesma transação."""
+    from mt5_extracao.analytics import feature_store
+
+    if not isinstance(receipt, dict) or not isinstance(records, list):
+        raise ValueError("Avaliação e fatos precisam de objetos explícitos.")
+    if receipt.get("protocol_id") != protocol_id or receipt.get("request_id") != request_id:
+        raise ValueError("Recibo de avaliação diverge da tentativa registrada.")
+    suffix = digest([request_id, receipt["data_manifest_id"]])
+    signal_id, outcome_id = "pattern.signal." + suffix, "pattern.outcome." + suffix
+    version = "1"
+    for feature_id, kind in ((signal_id, "signal"), (outcome_id, "outcome")):
+        feature_store.register_definition(
+            db, feature_id, "Padrão de pesquisa: " + kind, version,
+            {"protocol_id": protocol_id, "request_id": request_id,
+             "data_manifest_id": receipt["data_manifest_id"], "source_namespace": receipt["source_namespace"],
+             "kind": kind},
+            [{"kind": "snapshot", "data_manifest_id": receipt["data_manifest_id"]}],
+            family="pattern_" + kind, source_id=receipt["data_manifest_id"],
+            timeframe=receipt["timeframe"], availability_rule="closed_bar_then_received_outcome",
+            value_type="CATEGORY")
+    prepared = []
+    for item in records:
+        if item.get("feature_id") not in {signal_id, outcome_id} or item.get("algorithm_version") != version:
+            raise ValueError("Fato de outra avaliação ou definição no lote.")
+        prepared.append(item)
+    ensure_schema(db)
+    event_id = "pattern_evaluation:" + digest([request_id, receipt["data_manifest_id"], receipt["role"]])
+
+    def finish(conn, _counts):
+        lock(conn)
+        attempt = request(db, request_id, conn)
+        if attempt["protocol_id"] != protocol_id or attempt["state"] != "requested":
+            raise ValueError("Só tentativa registrada e admitida pode receber avaliação.")
+        event(conn, event_id, protocol_id, request_id, "pattern_evaluated", receipt)
+
+    counts = feature_store.save_values(db, prepared, transaction_hook=finish)
+    return dict(signal_feature_id=signal_id, outcome_feature_id=outcome_id,
+                counts=counts, receipt=receipt)
+
+
+def pattern_evaluations(db, protocol_id):
+    """Consulta somente recibos persistidos; consumidores não recalculam pesquisa."""
+    return [row["payload"] for row in status(db, protocol_id)["events"]
+            if row["kind"] == "pattern_evaluated"]
+
+
 def start(conn, item, run_id, identity, execution_id):
     conn.execute(text("INSERT INTO _experiment_executions VALUES(:i,:r,:run,'running',:v,NULL,'',:t)"),
                  dict(i=execution_id, r=item["request_id"], run=run_id, v=encoded(identity), t=now()))
@@ -165,8 +266,9 @@ def status(db, protocol_id):
         requests = [request(db, value, conn) for value in conn.execute(text("SELECT request_id FROM _experiment_requests WHERE protocol_id=:i ORDER BY created_at,request_id"), {"i": protocol_id}).scalars()]
         events = [dict(row) for row in conn.execute(text("SELECT * FROM _experiment_events WHERE protocol_id=:i ORDER BY event_seq"), {"i": protocol_id}).mappings()]
         exposures = {}
-        for role, scope in p["context"]["roles"].items():
-            found = accesses(conn, [scope])
+        roles = p["context"].get("campaign_roles", p["context"].get("roles", {}))
+        for role, scope in roles.items():
+            found = accesses(conn, scope if isinstance(scope, list) else [scope])
             exposures[role] = dict(status="used_for_tuning" if any(v["purpose"] != "evaluation" for v in found) else "access_recorded" if found else "no_recorded_access",
                                    recorded_accesses=len(found), prior_external_exposure="unknown", qualified_final_holdout=False)
     for row in events:

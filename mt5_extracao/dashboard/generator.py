@@ -32,7 +32,7 @@ CAPABILITY_SOURCES = {
     "volume": "analytics.volume_profiles / feature_store",
     "relations": "analytics.query_service.relations / relation_dto",
     "studies": "laboratory.service",
-    "hypotheses": "T13.4 (produtor pendente)",
+    "hypotheses": "analytics.pattern_queries / experiments.store",
     "validation": "strategies.validation / resultados persistidos",
     "robots": "robots.catalog / robots.store",
     "comparisons": "laboratory.financial / resultados comparáveis persistidos",
@@ -241,6 +241,19 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["capabilities"]["validation"].update(state="AVAILABLE" if shown else "NO_DATA",
             reason_code=None if shown else "NO_DATA",
             reason="Vereditos do Filtro C gravados; datas de treino e custos não constam do recibo.")
+        from mt5_extracao.analytics import pattern_queries
+        from .sections import hypothesis_pending, pattern_evaluation
+        evaluations = pattern_queries.evaluations(db, symbol=selection["symbol"],
+                                                   timeframe=selection["timeframe"], as_of=cut)
+        if evaluations:
+            data["sections"].extend(pattern_evaluation(data, item) for item in evaluations)
+        else:
+            data["sections"].append(hypothesis_pending(data))
+        data["capabilities"]["hypotheses"].update(
+            state="AVAILABLE" if evaluations else "NO_DATA",
+            reason_code=None if evaluations else "NO_PATTERN_EVALUATION",
+            reason="Avaliações de pesquisa persistidas; nenhuma constitui aprovação estatística ou econômica."
+                   if evaluations else "Nenhuma avaliação persistida neste ativo, TF e corte.")
         data["data_cutoff_utc"] = max((r["observation_time"] for r in facts), default=None)
         data["capabilities"]["identity"].update(state="AVAILABLE", reason_code=None, reason="Identidade lógica preservada.")
         data["capabilities"]["quality"].update(state="AVAILABLE" if facts else "NO_DATA", reason_code=None,
@@ -252,10 +265,11 @@ def generate(db, *, symbol, timeframe, as_of, start=None, end=None, versions=Non
         data["errors"] = [{"code": code, "message": message}]
     data["capabilities"]["surprise"].update(state="DEPENDENCY_PENDING", reason_code="SURPRISE_PRODUCER_MISSING",
         reason=data["sections"][0]["details"]["reason"])
-    from .sections import hypothesis_pending
-    data["sections"].append(hypothesis_pending(data))
-    data["capabilities"]["hypotheses"].update(state="DEPENDENCY_PENDING", reason_code="T13_4_PENDING",
-        reason="Catálogo de hipóteses estatísticas ainda não implementado; bateria de robô não é aprovação estatística.")
+    if not any(section["kind"] == "hypothesis" for section in data["sections"]):
+        from .sections import hypothesis_pending
+        data["sections"].append(hypothesis_pending(data))
+        data["capabilities"]["hypotheses"].update(state="NO_DATA", reason_code="NO_PATTERN_EVALUATION",
+            reason="Nenhuma avaliação persistida foi lida neste corte.")
     from .priority import prioritize
     return seal(prioritize(data))
 

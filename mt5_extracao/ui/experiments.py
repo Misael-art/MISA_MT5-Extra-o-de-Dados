@@ -27,6 +27,8 @@ class ExperimentsDialog(tk.Toplevel):
         self.snapshot = None
         self.busy = False
         self.items = {}
+        self.pattern_items = {}
+        self.pattern_rows = []
         body = ttk.Frame(self, padding=12)
         body.pack(fill=tk.BOTH, expand=True)
         tools = ttk.Frame(body)
@@ -42,7 +44,7 @@ class ExperimentsDialog(tk.Toplevel):
         self.tabs = ttk.Notebook(body)
         self.tabs.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
         self.pages = {}
-        for name in ("Pedidos", "Dados e reserva", "Protocolo", "Eventos"):
+        for name in ("Pedidos", "Padrões", "Dados e reserva", "Protocolo", "Eventos"):
             page = ttk.Frame(self.tabs, padding=8)
             self.tabs.add(page, text=name)
             self.pages[name] = page
@@ -50,6 +52,19 @@ class ExperimentsDialog(tk.Toplevel):
                                    ("Estado", "Dados", "Origem", "Finalidade"), 5)
         self.requests.bind("<<TreeviewSelect>>", self.select_request)
         self.request_detail = self._text(self.pages["Pedidos"])
+        pattern_filters = ttk.Frame(self.pages["Padrões"])
+        pattern_filters.pack(fill=tk.X, pady=(0, 6))
+        ttk.Label(pattern_filters, text="Família").pack(side=tk.LEFT)
+        self.pattern_family = tk.StringVar(value="Todas")
+        filter_box = ttk.Combobox(pattern_filters, textvariable=self.pattern_family, state="readonly",
+                                  values=("Todas", "reversal", "continuation_time", "gap", "breakout_failure"),
+                                  width=22)
+        filter_box.pack(side=tk.LEFT, padx=6)
+        filter_box.bind("<<ComboboxSelected>>", lambda _event: self._render_patterns())
+        self.patterns = self._tree(self.pages["Padrões"], ("family", "symbol", "role", "events", "state"),
+                                   ("Família", "Ativo / TF", "Papel", "Eventos", "Estado"), 7)
+        self.patterns.bind("<<TreeviewSelect>>", self.select_pattern)
+        self.pattern_detail = self._text(self.pages["Padrões"])
         self.exposure_text = self._text(self.pages["Dados e reserva"])
         self.protocol_text = self._text(self.pages["Protocolo"])
         self.events_text = self._text(self.pages["Eventos"])
@@ -105,8 +120,12 @@ class ExperimentsDialog(tk.Toplevel):
     def _clear(self):
         self.snapshot = None
         self.items = {}
+        self.pattern_items = {}
+        self.pattern_rows = []
         self.requests.delete(*self.requests.get_children())
-        for widget in (self.request_detail, self.exposure_text, self.protocol_text, self.events_text):
+        self.patterns.delete(*self.patterns.get_children())
+        for widget in (self.request_detail, self.pattern_detail, self.exposure_text,
+                       self.protocol_text, self.events_text):
             self._put(widget, "")
 
     def reload(self):
@@ -133,9 +152,11 @@ class ExperimentsDialog(tk.Toplevel):
         self.protocol_id = choice = selected[0]
         self._clear()
         self.note.configure(text="Consultando pedidos e exposição dos dados...")
-        self._job(lambda: store.status(self.db, choice), self._show)
+        from mt5_extracao import sdk
+        self._job(lambda: (store.status(self.db, choice), sdk.pattern_evaluations(self.db, protocol_id=choice)),
+                  lambda value: self._show(*value))
 
-    def _show(self, snapshot):
+    def _show(self, snapshot, patterns=()):
         self.snapshot = snapshot
         p = snapshot["protocol"]
         self.note.configure(text="Consulta de metadados. Execução gravada indica persistência do resultado; livro, aprovação estatística e reserva final exigem validação própria.")
@@ -149,6 +170,8 @@ class ExperimentsDialog(tk.Toplevel):
             self.requests.selection_set(next(iter(self.items)))
         else:
             self._put(self.request_detail, "Nenhum pedido registrado neste protocolo.")
+        self.pattern_rows = list(patterns)
+        self._render_patterns()
         exposure = ["Exposição externa anterior: desconhecida. Ausência de acesso registrado não certifica reserva intocada.",
                     "A contagem inclui intervalos sobrepostos da mesma origem em outros protocolos.",
                     "Reserva final qualificada: não. Aprovação estatística: não. Livro qualificado: não."]
@@ -167,6 +190,26 @@ class ExperimentsDialog(tk.Toplevel):
                          + json.dumps(item["payload"], ensure_ascii=False))
         self._put(self.events_text, "\n\n".join(lines))
 
+    def _render_patterns(self):
+        self.pattern_items = {}
+        self.patterns.delete(*self.patterns.get_children())
+        family = self.pattern_family.get()
+        for index, item in enumerate(self.pattern_rows):
+            receipt = item["receipt"]
+            if family != "Todas" and receipt["family"] != family:
+                continue
+            key = str(index)
+            self.pattern_items[key] = item
+            self.patterns.insert("", tk.END, iid=key, values=(receipt["family"],
+                receipt["symbol"] + " / " + receipt["timeframe"],
+                ROLES.get(receipt["role"], receipt["role"]), receipt["event_count"], "Exploratória"))
+        visible = self.patterns.get_children()
+        if visible:
+            self.patterns.selection_set(visible[0])
+            self.select_pattern()
+        else:
+            self._put(self.pattern_detail, "Nenhuma avaliação persistida neste filtro. A consulta não executa pesquisa.")
+
     def select_request(self, event=None):
         selected = self.requests.selection()
         if not selected or selected[0] not in self.items:
@@ -177,3 +220,16 @@ class ExperimentsDialog(tk.Toplevel):
             f"Alternativa: {item['alternative_id']}\nExecução vinculada: {item['run_id'] or '—'}\n"
             f"Motivo: {item['error'] or 'Sem erro registrado'}\n\nConfiguração efetiva congelada:\n"
             + json.dumps(item["payload"], indent=2, ensure_ascii=False))
+
+    def select_pattern(self, event=None):
+        selected = self.patterns.selection()
+        if not selected or selected[0] not in self.pattern_items:
+            return
+        item = self.pattern_items[selected[0]]
+        receipt = item["receipt"]
+        self._put(self.pattern_detail,
+            "Exploratória · sem aprovação estatística, econômica ou reserva final qualificada.\n"
+            f"Disponível desde: {item['available_at_utc']}\n"
+            f"Fonte: {item['source_namespace']}\n"
+            f"Sinais: {item['signal_feature_id']}\nDesfechos: {item['outcome_feature_id']}\n\n"
+            + json.dumps(receipt, indent=2, ensure_ascii=False))

@@ -585,6 +585,32 @@ def test_volatility_hour_matrix_keeps_full_values_counts_and_keyboard_at_small_w
     assert "Extraia o ativo" in panel._chart_panels["m_heat"].notice.message.cget("text")
 
 
+def test_hour_matrix_header_tracks_body_after_scroll_and_resize(panel):
+    data = pd.DataFrame(
+        {"time_bucket": f"{hour:02d}:00", "volatility_bucket": band, "pnl": float(hour)}
+        for hour in range(24) for band in ("baixa", "média", "alta")
+    )
+    panel._micro_matrix(data, len(data), 0)
+    panel.tabs.select(panel.tab_frames["Microestrutura"])
+    panel._analysis_notebooks["Microestrutura"].select(
+        panel._analysis_views["Microestrutura"]["heat"])
+    matrix = panel.micro_heat_matrix
+    for geometry in ("640x520", "960x650", "700x540"):
+        panel.ui.root.geometry(geometry)
+        panel.frame.master.pack_configure(fill=tk.BOTH, expand=True)
+        panel.pump(lambda: matrix.winfo_viewable(), 2)
+        panel.ui.root.update()
+        for position in (0.0, 0.5, 1.0):
+            matrix.canvas.xview_moveto(position)
+            matrix.canvas.yview_moveto(1.0)
+            panel.ui.root.update()
+            assert abs(matrix.header_canvas.xview()[0] - matrix.canvas.xview()[0]) < 0.002
+            for column, header in enumerate(matrix.headers):
+                body = matrix.row_headers[0] if column == 0 else matrix.cells[0][column - 1]
+                assert abs(header.winfo_rootx() - body.winfo_rootx()) <= 1
+                assert abs(header.winfo_width() - body.winfo_width()) <= 1
+
+
 def test_empty_lens_cannot_be_repopulated_by_context_already_loading(panel, monkeypatch):
     ledger.save_trades(panel.db, "r", _trades(1, 3), robot_key="python:r", symbol="X", timeframe="M5")
     panel.on_show()

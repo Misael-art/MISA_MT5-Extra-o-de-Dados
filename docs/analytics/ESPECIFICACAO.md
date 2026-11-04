@@ -1,5 +1,11 @@
 # MT5x Analytics — Especificação funcional e técnica v1.0
 
+**Detalhamento de 02/11/2026:** o [estudo de descoberta de padrões](DESCOBERTA_PADROES.md)
+confronta esta especificação histórica com o código atual e detalha T13.4-P00–P11.
+As declarações de módulos futuros abaixo são históricas; estados vigentes ficam
+no painel central e na fotografia do estudo. P00 é documental, sem motor ou
+resultados financeiros novos; a implementação será executada por outro agente.
+
 > **Situação:** intenção registrada em 2026-10-13. A entrega A1/T13.1 (calendário observado e barras derivadas)
 > foi implementada; A2 em diante continuam planejadas. O plano de implantação está na Fase 13 de
 > [PLANO_DE_TRABALHO.md](../PLANO_DE_TRABALHO.md), e as regras entregues estão em

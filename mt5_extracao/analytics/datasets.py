@@ -304,6 +304,13 @@ class Snapshot:
         return self._frames["market_calendar"].copy(deep=True)
 
     @property
+    def derived_bars(self):
+        """Evidência de sessão/revisão congelada junto às barras do snapshot."""
+        if self._manifest['schema_version']==FEATURE_ONLY_VERSION:
+            return pd.DataFrame(columns=_DERIVED_FIELDS)
+        return self._frames["derived_bars"].copy(deep=True)
+
+    @property
     def instrument_history(self):
         frame = self._frames.get("instrument_history")
         return frame.copy(deep=True) if frame is not None else None

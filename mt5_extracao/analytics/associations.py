@@ -457,6 +457,143 @@ def adjust_bonferroni(results, *, tests_counted):
     return adjusted
 
 
+def _pattern_scope(samples):
+    scope = _scope(samples, ("source_namespace", "symbol", "timeframe"), "amostras de padrão")
+    horizons = samples["horizon_bars"].dropna().unique()
+    if len(horizons) != 1 or isinstance(horizons[0], (bool, np.bool_)) or int(horizons[0]) != horizons[0] or horizons[0] < 1:
+        raise ValueError("Baseline exige um horizonte inteiro positivo por análise.")
+    return dict(scope, horizon_bars=int(horizons[0]))
+
+
+def _pattern_frame(samples, cutoff, *, labels):
+    if not isinstance(samples, pd.DataFrame):
+        raise ValueError("Amostras de padrão precisam ser um DataFrame.")
+    required = {"source_namespace", "symbol", "timeframe", "horizon_bars", "session_id",
+                "stratum_id", "decision_at_utc", "feature_available_at_utc", "is_pattern"}
+    if labels:
+        required |= {"outcome_value", "label_end_utc", "label_available_at_utc", "outcome_status"}
+    if required - set(samples):
+        raise ValueError("Amostras sem campos de baseline: " + ", ".join(sorted(required - set(samples))))
+    if samples.empty:
+        raise ValueError("Baseline exige amostras com fonte explícita.")
+    scope = _pattern_scope(samples)
+    work = samples.copy().reset_index(drop=True)
+    if not all(isinstance(value, str) and value.strip() for value in work["session_id"]):
+        raise ValueError("Sessão comprovada obrigatória no baseline.")
+    if not all(isinstance(value, str) and value.strip() for value in work["stratum_id"]):
+        raise ValueError("Estrato definido antes do desfecho obrigatório.")
+    if not all(type(value) in (bool, np.bool_) for value in work["is_pattern"]):
+        raise ValueError("is_pattern precisa ser booleano causal.")
+    for field in ("decision_at_utc", "feature_available_at_utc"):
+        work[field] = _utc_series(work[field], field)
+    if (work["decision_at_utc"] > cutoff).any() or (work["feature_available_at_utc"] > work["decision_at_utc"]).any():
+        raise ValueError("Vazamento futuro: decisão ou característica depois do corte.")
+    if labels:
+        for field in ("label_end_utc", "label_available_at_utc"):
+            work[field] = _utc_series(work[field], field, allow_missing=True)
+        if ((work.label_end_utc.notna()) & (work.label_end_utc <= work.decision_at_utc)).any():
+            raise ValueError("Desfecho precisa terminar depois da decisão.")
+        received = (work["outcome_status"].eq("complete") & work.label_end_utc.notna() &
+                    work.label_available_at_utc.notna() & (work.label_end_utc <= cutoff) &
+                    (work.label_available_at_utc <= cutoff) &
+                    (work.label_available_at_utc >= work.label_end_utc))
+        numeric, invalid = _numeric_column(work["outcome_value"])
+        if (received & invalid).any() or (received & numeric.isna()).any():
+            raise ValueError("Desfecho completo exige valor numérico finito.")
+        work["_received"] = received
+        work["_outcome"] = numeric
+    return scope, work
+
+
+def fit_pattern_baseline(train_samples, *, as_of):
+    """Congela suporte por fonte/estrato só com metadados do treino passado."""
+    cutoff = _utc_timestamp(as_of, "as_of")
+    scope, work = _pattern_frame(train_samples, cutoff, labels=False)
+    groups = work.groupby("stratum_id", sort=True)
+    strata = [str(name) for name, group in groups if group.is_pattern.any() and (~group.is_pattern).any()]
+    spec = {"scope": scope, "fit_as_of_utc": cutoff.isoformat(), "strata": strata,
+            "matching": "same_source_session_and_frozen_stratum", "schema_version": 1}
+    spec["fit_hash"] = hashlib.sha256(json.dumps(spec, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return spec
+
+
+def analyze_pattern_baseline(samples, *, frozen, as_of, alpha, confidence,
+                             tests_counted, bootstrap_replicates, seed,
+                             minimum_sessions=10, block_length_sessions=1):
+    """Diferença pareada por sessão/estrato; sem inferir causalidade ou lucro.
+
+    A permutação troca grupos dentro de blocos inteiros de sessões. Seu p-valor
+    exige intercambialidade sob a hipótese nula; permanece diagnóstico quando
+    o desenho observacional não sustenta essa hipótese.
+    """
+    cutoff = _utc_timestamp(as_of, "as_of")
+    tests_counted = _positive_int(tests_counted, "tests_counted")
+    bootstrap_replicates = _positive_int(bootstrap_replicates, "bootstrap_replicates")
+    minimum_sessions = _positive_int(minimum_sessions, "minimum_sessions")
+    block_length_sessions = _positive_int(block_length_sessions, "block_length_sessions")
+    if type(seed) is not int or seed < 0 or type(alpha) not in (float, int) or type(confidence) not in (float, int) or not (0 < alpha < 1 and 0 < confidence < 1):
+        raise ValueError("Semente, alpha e confiança explícitos obrigatórios.")
+    if not isinstance(frozen, dict) or frozen.get("schema_version") != 1 or not isinstance(frozen.get("strata"), list):
+        raise ValueError("Baseline precisa de estratos congelados no treino.")
+    expected = dict(frozen)
+    supplied_hash = expected.pop("fit_hash", None)
+    if supplied_hash != hashlib.sha256(json.dumps(expected, sort_keys=True, separators=(",", ":")).encode()).hexdigest():
+        raise ValueError("Baseline congelado foi alterado.")
+    scope, work = _pattern_frame(samples, cutoff, labels=True)
+    if scope != frozen["scope"]:
+        raise ValueError("Avaliação precisa usar a mesma fonte/horizonte do baseline congelado.")
+    if (work.decision_at_utc <= _utc_timestamp(frozen["fit_as_of_utc"], "fit_as_of_utc")).any():
+        raise ValueError("Avaliação precisa começar após o ajuste do baseline.")
+    allowed = set(frozen["strata"])
+    excluded = int((~work.stratum_id.isin(allowed)).sum())
+    usable = work.loc[work._received & work.stratum_id.isin(allowed)].copy()
+    paired = []
+    for (session, stratum), group in usable.groupby(["session_id", "stratum_id"], sort=True):
+        candidate = group.loc[group.is_pattern, "_outcome"]
+        control = group.loc[~group.is_pattern, "_outcome"]
+        if len(candidate) and len(control):
+            paired.append((session, stratum, float(candidate.mean() - control.mean()), len(candidate), len(control)))
+    result = {"status": "INSUFFICIENT", "scope": scope, "fit_hash": supplied_hash,
+              "as_of_utc": cutoff.isoformat(), "effect": None, "ci_low": None, "ci_high": None,
+              "p_raw": None, "p_adjusted": None, "n_total": len(work),
+              "n_censored": int((~work._received).sum()), "n_outside_frozen_strata": excluded,
+              "n_paired_strata": len(paired), "n_sessions": len({row[0] for row in paired}),
+              "tests_counted": tests_counted, "bootstrap_replicates": bootstrap_replicates,
+              "null_assumption": "paired_block_exchangeability_not_causality", "reason_codes": []}
+    if not paired or result["n_sessions"] < minimum_sessions:
+        result["reason_codes"] = ["NO_COMMON_SUPPORT" if not paired else "MINIMUM_SESSIONS_NOT_MET"]
+        return result
+    if block_length_sessions > result["n_sessions"]:
+        raise ValueError("Bloco de sessões não pode exceder o suporte pareado.")
+    by_session = {}
+    for session, _, difference, candidates, _ in paired:
+        by_session.setdefault(session, []).append((difference, candidates))
+    sessions = sorted(by_session)
+    differences = np.asarray([np.average([part[0] for part in by_session[s]],
+                                          weights=[part[1] for part in by_session[s]]) for s in sessions])
+    observed = float(differences.mean())
+    rng = np.random.default_rng(seed)
+    estimates, null = [], []
+    for _ in range(bootstrap_replicates):
+        sampled = _moving_block_indices(len(sessions), block_length_sessions, rng)
+        estimates.append(float(differences[sampled].mean()))
+        signs = np.ones(len(sessions))
+        for first in range(0, len(sessions), block_length_sessions):
+            signs[first:first + block_length_sessions] = rng.choice((-1.0, 1.0))
+        null.append(float(np.mean(differences * signs)))
+    low, high = np.quantile(estimates, [(1 - confidence) / 2, 1 - (1 - confidence) / 2])
+    p_raw = (1 + sum(abs(value) >= abs(observed) for value in null)) / (bootstrap_replicates + 1)
+    adjusted = adjust_bonferroni([{"p_raw": p_raw}], tests_counted=tests_counted)[0]["p_adjusted"]
+    result.update(effect=observed, ci_low=float(low), ci_high=float(high), p_raw=float(p_raw),
+                  p_adjusted=adjusted, block_length_sessions=block_length_sessions, seed=seed,
+                  confidence_level=float(confidence))
+    if 1 / (bootstrap_replicates + 1) > alpha / tests_counted:
+        result.update(status="INSUFFICIENT_INFERENCE_RESOLUTION", reason_codes=["P_VALUE_GRID_TOO_COARSE"])
+    else:
+        result["status"] = "OK"
+    return result
+
+
 def _pair_signature():
     import platform
     import scipy

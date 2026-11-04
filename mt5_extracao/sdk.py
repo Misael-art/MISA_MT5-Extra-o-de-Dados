@@ -381,7 +381,82 @@ def create_backtest_scope_runner(db, config, robot, batch_id, **kwargs):
     return create_runner(db, config, robot, batch_id, **kwargs)
 
 
+def pattern_sources(db):
+    """Inventário de fontes locais com namespace da base, sem procurar no terminal."""
+    from mt5_extracao.analytics import pattern_catalog
+    return pattern_catalog.sources(db)
+
+
+def qualify_pattern_source(db, *, symbol, timeframe, family, start=None, end=None):
+    """Elegibilidade por recorte/família; consulta sem execução ou captura."""
+    from mt5_extracao.analytics import pattern_catalog
+    return pattern_catalog.qualify(db, symbol=symbol, timeframe=timeframe, family=family,
+                                   start=start, end=end)
+
+
+def freeze_pattern_source(db, *, symbol, timeframe, family, start=None, end=None):
+    """Conserva a seleção compacta no store de snapshots existente."""
+    from mt5_extracao.analytics import pattern_catalog
+    return pattern_catalog.freeze(db, symbol=symbol, timeframe=timeframe, family=family,
+                                  start=start, end=end)
+
+
+def create_pattern_campaign(db, definition):
+    """Registra campanha T13.4 no ledger existente, com roster de snapshots."""
+    from mt5_extracao import experiments
+    return experiments.create_pattern_campaign(db, definition)
+
+
+def register_pattern_attempt(db, protocol_id, key, definition, *, role="train", origin="manual",
+                             purpose="evaluation", discard_reason=""):
+    """Compila definição JSON tipada antes de reservar a tentativa na campanha."""
+    from mt5_extracao import experiments
+    from mt5_extracao.analytics.hypotheses import Definition, compile_definition
+    if isinstance(definition, Definition):
+        compiled = definition
+    elif isinstance(definition, dict):
+        raw = dict(definition)
+        declared_hash = raw.pop("definition_hash", None)
+        compiled = compile_definition(raw)
+        if declared_hash is not None and declared_hash != compiled.definition_hash:
+            raise ValueError("Hash declarado diverge da definição tipada.")
+    else:
+        raise ValueError("Definição T13.4 precisa ser JSON tipado ou Definition.")
+    return experiments.register_pattern_attempt(db, protocol_id, key, compiled, role=role,
+                                                origin=origin, purpose=purpose,
+                                                discard_reason=discard_reason)
+
+
+def evaluate_pattern_attempt(db, request_id, data_manifest_id, *, session_mode="observed"):
+    """Avalia tentativa já admitida contra snapshot congelado; sem ordem nativa."""
+    from mt5_extracao.analytics.pattern_flow import evaluate_registered_attempt
+    return evaluate_registered_attempt(db, request_id, data_manifest_id, session_mode=session_mode)
+
+
+def pattern_campaign_status(db, protocol_id):
+    from mt5_extracao import experiments
+    return experiments.pattern_campaign_status(db, protocol_id)
+
+
+def pattern_evaluations(db, *, protocol_id=None, symbol=None, timeframe=None, as_of=None):
+    """Consulta avaliações T13.4 já persistidas; não abre produtor nem executor."""
+    from mt5_extracao.analytics import pattern_queries
+    return pattern_queries.evaluations(db, protocol_id=protocol_id, symbol=symbol,
+                                       timeframe=timeframe, as_of=as_of)
+
+
+def pattern_evaluation(db, protocol_id, request_id, data_manifest_id, *, as_of=None, include_facts=False):
+    """Inspeção de um recibo e, quando pedido, seus fatos causais persistidos."""
+    from mt5_extracao.analytics import pattern_queries
+    return pattern_queries.evaluation(db, protocol_id, request_id, data_manifest_id,
+                                      as_of=as_of, include_facts=include_facts)
+
+
 __all__ = [
+    "pattern_sources", "qualify_pattern_source", "freeze_pattern_source",
+    "create_pattern_campaign", "register_pattern_attempt", "evaluate_pattern_attempt",
+    "pattern_campaign_status",
+    "pattern_evaluations", "pattern_evaluation",
     "preview_backtest_scope", "inspect_backtest_scope", "create_backtest_scope_runner", "compare_backtest_scope",
     "create_super_atr_research_robot",
     "super_atr_capabilities", "materialize_super_atr_snapshot",
