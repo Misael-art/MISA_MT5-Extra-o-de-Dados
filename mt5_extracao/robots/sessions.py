@@ -140,6 +140,17 @@ def _private_config(config, directory):
     return child
 
 
+def visual_tester_ini(config):
+    """metatester.ini do visualizador. `ROBOTS.replay_visual_speed` (1 lento … 100 sem espera) só muda a
+    reprodução na tela, nunca ticks, ordens ou resultado; vazio mantém o padrão nativo."""
+    speed = (config.get("ROBOTS", "replay_visual_speed", fallback="").strip()
+             if isinstance(config, configparser.ConfigParser) else "")
+    if speed and not (speed.isdigit() and 1 <= int(speed) <= 100):
+        raise ValueError("replay_visual_speed deve ser inteiro de 1 a 100 ou vazio.")
+    return ("[Visualization]\r\nchartmode=1\r\n" + (f"speed={int(speed)}\r\n" if speed else "") +
+            (Path(__file__).parent / "templates" / "visual_tester.ini.tmpl").read_text(encoding="utf-8"))
+
+
 def prepare(config, robot, directory, symbol, *, require_source=True, check=None, _child=None):
     """Cópias privadas, sem links graváveis, senhas em INI ou argumentos de login."""
     if require_source and not robot.has_source:
@@ -222,7 +233,7 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
     visual.parent.mkdir(parents=True, exist_ok=True)
     # IsVisible isolado é ignorado pelo build nativo: preservar também o
     # grafo de docking, sem preferências, identidades ou caminhos do host.
-    text = "[Visualization]\r\nchartmode=1\r\n" + (Path(__file__).parent / "templates" / "visual_tester.ini.tmpl").read_text(encoding="utf-8")
+    text = visual_tester_ini(config)
     if check is not None:
         check(path=visual, reserve_bytes=len(text.encode("utf-16")))
     visual.write_bytes(text.encode("utf-16"))
@@ -230,8 +241,12 @@ def prepare(config, robot, directory, symbol, *, require_source=True, check=None
 
 
 def telemetry_source(robot, filename, account=None, trades_filename=None, lease_filename=None, common_namespace=None,
-                     input_receipt=None, chart_control=None, runtime_binding=None):
-    """Preserva timers da estratégia; em conta, cria heartbeat próprio quando ela não usa timer."""
+                     input_receipt=None, chart_control=None, runtime_binding=None, session_control=None,
+                     control_queue_once=False):
+    """Preserva timers da estratégia; em conta, cria heartbeat próprio quando ela não usa timer.
+
+    `session_control` (id da sessão) acrescenta o canal de pausa/liquidação por arquivo de `session_control`.
+    """
     import re
     source_graph = "\n".join(mql.read_text(Path(p)) for p in dict.fromkeys([robot.path] + robot.files)
                              if Path(p).suffix.lower() in (".mq5", ".mqh"))
@@ -322,8 +337,16 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
   return stamp>0 && age>=-2 && age<=15;
 }}
 '''
+    poll = "MT5X_CtlPoll(); " if session_control else ""
     wrappers = "\n".join(f"void {name}({args}) {{ if(!({guard})) {{ ExpertRemove(); return; }} "
-                           f"MT5X_{name}({call}); MT5X_Publish(); }}" for name, args, call in events)
+                           f"{poll}MT5X_{name}({call}); MT5X_Publish(); }}" for name, args, call in events)
+    if session_control:
+        from . import session_control as control
+        common_code += control.prelude()
+        control_code = control.source(session_control, magic_expr, tester_queue=control_queue_once)
+        undefs += "\n#undef OrderSend\n#undef OrderSendAsync\n#undef OrderCheck"
+    else:
+        control_code = ""
     receipt_source = ""
     if input_receipt is not None:
         from . import native_inputs
@@ -350,16 +373,16 @@ long MT5X_CommonFind(const string filter,string &name,const int flags=0) {{
     if input_receipt is not None:
         init_call += " if(result==INIT_SUCCEEDED && !MT5X_RecordInputs()) return INIT_FAILED;"
     init_call += f" if(result==INIT_SUCCEEDED) {{ {timer_start} MT5X_Chart(); MT5X_Publish(); }} return result;"
-    wrappers += f"\nint OnInit() {{ if(!({guard})) return INIT_FAILED; {init_call} }}"
+    wrappers += f"\nint OnInit() {{ if(!({guard})) return INIT_FAILED; {'MT5X_CtlInit(); ' if session_control else ''}{init_call} }}"
     if own_timer:
-        wrappers += f"\nvoid OnTimer() {{ if(!({guard})) {{ ExpertRemove(); return; }} MT5X_Publish(); }}"
+        wrappers += f"\nvoid OnTimer() {{ if(!({guard})) {{ ExpertRemove(); return; }} {poll}MT5X_Publish(); }}"
     if deinit or own_timer:
         wrappers += f"\nvoid OnDeinit(const int reason) {{ " + ("EventKillTimer(); " if own_timer else "") + (f"if({guard}) MT5X_OnDeinit(reason); " if deinit else "") + "}"
     observer = ""
     if trades_filename:
         observer = (Path(__file__).parent / "templates" / "session_export.mqh.tmpl").read_text(encoding="utf-8")
         wrappers += f'\ndouble OnTester() {{ double result={"MT5X_OnTester()" if tester else "0"}; MT5X_Export("{trades_filename}",{magic_expr}); return result; }}'
-    lease_code += receipt_source
+    lease_code += receipt_source + control_code
     # Atualização de estado limitada a ~4Hz de parede, sem importar o relógio histórico.
     source = f'''{common_code}
 {definitions}
@@ -404,6 +427,9 @@ void MT5X_Publish() {{
         source = source.replace("ulong MT5X_Last=0;", native + "\nulong MT5X_Last=0;")
         source = source.replace("MT5X_Last=now;", "MT5X_Last=now; MT5X_AgentPoll();")
     return source
+
+
+COMPILE_CACHE = ".compile-cache"   # binários de indicadores por chave de fontes; regenerável, fora das sessões
 
 
 def session_root(config):
@@ -471,10 +497,14 @@ class Session:
         self.report = self.directory / "relatorio.json"
         self.observed_seconds = 0.0
         self.currency = str((account or {}).get("currency") or "")
+        self._retain_budget_artifacts()
+
+    def _retain_budget_artifacts(self):
+        """Mesmo vínculo na construção ou quando o Budget é admitido no worker."""
         control = (self.native_options or {}).get("control")
         retain = getattr(control, "retain_artifacts", None)
         if retain is not None:
-            common = mt5_tools.common_files_dir(config)
+            common = mt5_tools.common_files_dir(self.config)
             files = [str((common / name).absolute()) for name in
                      (self.telemetry_file, self.trades_file, self.input_receipt_file, self.lease_file)] if common is not None else []
             retain(files=files, directories=[str(self.directory.absolute())])
@@ -673,6 +703,27 @@ class Session:
         except (OSError, ValueError, TypeError, AttributeError, IndexError):
             return controls.activity_state(self.active), None, None
 
+    def _prepare_visual_runtime(self):
+        # Runner externo possui seu ambiente. O interceptador de presets só
+        # confere INI/inputs e delega à Session, que continua dona do launcher.
+        own_launcher = (self.native_options is None or self.native_options.get("run") is None
+                        or self.native_options.get("run_uses_session_launcher") is True)
+        if (self.visible or self.mode == "play") and not paths.is_windows() and own_launcher:
+            # O compilador trabalha nos arquivos privados do SDK, pelo prefixo
+            # já disponível. Só o terminal interativo inicia o Wine visual.
+            # Não trocar de escopo enquanto restar processo próprio de compilação.
+            if owned_processes(self.child_config, ("terminal64.exe", "MetaEditor64.exe", "metatester64.exe"),
+                               strict=True, launchers=True):
+                raise RuntimeError("O compilador próprio ainda não encerrou; preserve a sessão antes de abrir o terminal visual.")
+            self._check_cancel()
+            from functools import partial
+            from .session_wine import Runtime
+            self.visual_runtime = Runtime(mt5_tools.wine_prefix(self.config), self.directory)
+            self.visual_runtime.prepare(partial(_copy_file, check=self._check_cancel))
+            self.child_config["MT5"]["wine_prefix"] = str(self.visual_runtime.prefix)
+            if self.mode != "play":
+                mt5_tools.register_native_context(self)
+
     def _prepare_expert(self, *, allow_binary=False, compiled_override=None):
         """Preparação única dos executores existentes; o binário legado não ganha observador fictício."""
         self._check_cancel()
@@ -686,17 +737,6 @@ class Session:
         self.child_config = prepare(self.config, self.robot, self.directory, self.symbol,
                                     require_source=not allow_binary, check=self._check_cancel,
                                     _child=self.child_config)
-        # Um runner injetado já é dono do processo/ambiente e não passa pelo
-        # launcher visual abaixo. Preservar esse contrato (inclusive sem Wine real).
-        own_launcher = self.native_options is None or self.native_options.get("run") is None
-        if (self.visible or self.mode == "play") and not paths.is_windows() and own_launcher:
-            from functools import partial
-            from .session_wine import Runtime
-            self.visual_runtime = Runtime(mt5_tools.wine_prefix(self.config), self.directory)
-            self.visual_runtime.prepare(partial(_copy_file, check=self._check_cancel))
-            self.child_config["MT5"]["wine_prefix"] = str(self.visual_runtime.prefix)
-            if self.mode != "play":
-                mt5_tools.register_native_context(self)
         self.child_config._mt5x_session = self
         self._check_cancel()
         dependency_run = (self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
@@ -706,7 +746,8 @@ class Session:
         failed = None
         if mt5_tools.indicator_dependencies(dependency_plan):
             failed = mt5_tools.compile_indicator_dependencies(dependency_plan, mt5_tools.find_metaeditor(self.child_config),
-                                                              mt5_tools.wine_prefix(self.child_config), dependency_run)
+                                                              mt5_tools.wine_prefix(self.child_config), dependency_run,
+                                                              cache=Path(session_root(self.config)) / COMPILE_CACHE)
         if failed is not None:
             raise RuntimeError(failed.summary)
         if self.input_fields is not None and (not self.robot.has_source or compiled_override is not None):
@@ -721,6 +762,7 @@ class Session:
             target = mt5_tools.install_plan(self.robot, self.directory)[0].target.with_suffix(".ex5")
             _copy_file(origin, target, check=self._check_cancel)
             self.instrumented = False
+            self._prepare_visual_runtime()
             return target
         plan = mt5_tools.install_plan(self.robot, self.directory)
         wrapper = plan[0].target.with_name("mt5x_session.mq5")
@@ -740,7 +782,10 @@ class Session:
                                           input_receipt=({"filename": self.input_receipt_file, "session_id": self.id,
                                                           "fields": self.input_fields} if self.input_fields is not None else None),
                                           chart_control=self.id if self.chart_control else None,
-                                          runtime_binding=runtime), encoding="utf-8")
+                                          runtime_binding=runtime,
+                                          session_control=(self.id if self.mode == "play" or
+                                                           (self.native_options or {}).get("session_control") else None),
+                                          control_queue_once=self.mode != "play"), encoding="utf-8")
         result = mt5_tools.compile_source(wrapper, mt5_tools.find_metaeditor(self.child_config),
                                           mt5_tools.wine_prefix(self.child_config),
                                           run=(self.native_options.get("run") if self.native_options is not None and self.native_options.get("run") is not None else
@@ -772,6 +817,7 @@ class Session:
                 retain(files=[str(scoped/"runtime_binding.txt"),str(scoped/"runtime_bound.txt")])
             self._verify_runtime_artifacts()
         self.instrumented = True
+        self._prepare_visual_runtime()
         return wrapper
 
     def _runtime_source_hashes(self):
@@ -817,6 +863,10 @@ class Session:
             _copy_file(bound,copy,check=self._check_cancel)
             self.runtime_binding_receipt = native_inputs.read_runtime_receipt(copy,self.runtime_binding_manifest)
             receipt["runtime_binding"] = self.runtime_binding_receipt
+            from . import native_journal
+            journal = native_journal.capture(common,self.directory,self.runtime_binding_receipt,receipt["values"])
+            if journal is not None:
+                receipt["portfolio_journal"] = journal
         if self.record is None:
             raise ValueError("Execução nativa ausente; recibo não pode aprovar um resultado inexistente.")
         store.save_native_input_receipt(self.db, self.record["run_id"], receipt,
@@ -852,10 +902,6 @@ class Session:
                 self.account = current
             wrapper = self._prepare_expert(allow_binary=self.native_options is not None,
                                            compiled_override=self.native_options.get("compiled_override") if self.native_options else None)
-            if self.visual_runtime is not None:
-                # Compilador encerrado. O lançamento consulta novamente os monitores
-                # e inicializa seu desktop sem herdar uma tela retirada nesse intervalo.
-                self.visual_runtime.stop()
             # Usar o nome próprio: a recompilação automática do MT5 pode regenerar
             # o binário original, sem os observadores, ao abrir uma instalação nova.
             self._check_cancel()
@@ -908,6 +954,8 @@ class Session:
                                                     is_running=lambda: bool(owned_processes(self.child_config)))
                 else:
                     call = dict(options)
+                    call.pop("run_uses_session_launcher",None)  # controle da Session, não parâmetro do Tester
+                    call.pop("session_control", None)  # canal de encerramento: consumido pelo wrapper
                     call.update(config=self.child_config, timeframe=self.timeframe, start=self.start, end=self.end,
                                 run=options.get("run") or self._run_command,
                                 export_trades=False,

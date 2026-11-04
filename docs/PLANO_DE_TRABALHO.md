@@ -4463,3 +4463,107 @@ referências aceitas e SA-REF-01 permanecem preservadas.
 Conferência isolada do material preservado: os44 inputs carregados e o ack do
 contexto correspondem ao pacote real. Isso não aprova o ciclo interrompido.
 App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
+
+### E14 — proteção comum e auditoria nativa em qualificação
+
+Corretivo de portabilidade do CI no App, 03/11/2026: o SHA remoto `a74f539`
+teve 5 falhas Windows (lease de arquivo lido pelo teste enquanto travado,
+duas decodificações UTF-8 implícitas, menu de catálogo 4 px comprimido e
+gráfico de comparação 870 px em viewport 558 px). Ajustes de teste e layout
+estão em revisão na mesma PR279; checks do SHA sucessor ainda não são aceite.
+O teste focal local passou 5/5 antes e depois da mudança; 64/64 testes dos cinco
+módulos afetados passaram no host e doctor offline deu 16/2/0. A suíte integral
+foi interrompida com sinal 143 após 6%; não há alegação de gate amplo verde.
+Só o novo Windows CI verifica essas regressões específicas do runner. Windows físico,
+MT5/Wine e qualificação operacional permanecem separados.
+
+S09v2.11/perfil13 compõe59 inputs no mesmo adaptador/executor/journal: SL pontos/
+ATR14 fechado, TP pontos/R planejado, trailing pontos/ATR por barra, BE por gatilho,
+alvo virtual ATR limitado por R real, saídas por sessão/sinal e orientação.
+Prioridade: risco → sessão → tempo → alvo virtual → sinal oposto → parcial/BE →
+trailing/BE. Preserva TP e média ponderada/R/volume iniciais; mudanças de preset
+valem na próxima sessão. ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas.
+`planned_r_v1` pré-fill é distinto do `fixed_r` Python pós-fill, ainda pendente.
+
+O recibo histórico agora preserva preço/volume e SL/TP do deal e da ordem em
+17 dígitos científicos, vinculando tickets inteiros64, posição e estado final.
+R de gestão é média ponderada dos deals menos o DEAL_SL do IN original. O CSV
+arredondado e o SL pedido não substituem esse dado. Perfil13 exige histórico
+completo em todos os fills e recusa o formato anterior para esse aceite.
+Comparações de representação da mesma cotação mantêm o limite8ulp e menos de
+meio ponto; R é calculado com os bits do histórico, nunca com o stop movido.
+O teste cobre os dois casos que têm o MESMO CSV/pedido: SL normalizado pelo
+broker ou preservado sem arredondamento, produzindo R inicial diferente.
+
+Auditoria final reconcilia o diário, publica hash/contexto e cruza decisões,
+pedidos imutáveis, efeitos e fills. Ações sem decisão/efeito ou intenções pendentes
+não aprovam resultado. Heartbeat mantém exclusão/identidade/líder sem reprojetar
+reservas; toda barreira financeira continua lendo o journal completo.
+
+Candidato2.11 fingerprint2e0a4bf209628c86,56 fontes/SHA256
+b927af079a64ea02c7429e8a1f80489916e306ece02ff0628cf2d76506f8086a.
+166 testes H completos em81,069s,171 fontes inalteradas/checker171. App585 testes
+em130,60s/28 módulos, incluindo consumidores de eventos anteriores; doctor offline
+16OK/2avisos/0falhas.17 consumidores com compilações válidas0/0 (15 observações
+idênticas reaproveitadas e dois consumidores recompilados). Wrapper59 compilado0/0.
+Na fonte2.11, seis backtests cada tick conciliados: ATR com7trailing/2BE, alvo
+dinâmico com2closes, saída por sessão, saída por sinal, normal e invertido com
+2parciais cada. Todos com diário encerrado e recursos liberados; ticks reais
+não informados. Replay ATR após o corretivo Appf8cb06f coincidiu com o MESMO
+pacote/banco:3posições/6deals/7trailing/2BE, diário3entradas/9ações encerradas e
+recursos liberados,153,275s. As falhas anterioresRAM85%/180s foram preservadas.
+O launcher compila no perfil SDK próprio antes de inicializar o Wine visual,
+com prova de saída do compilador, sem reiniciar o prefixo compartilhado.
+216regressões/11módulos passaram em52,91s e doctor16OK/2avisos/0falhas sem probe.
+Atalho real2.11 também criou/exportou/reabriu Manualv2/59inputs em6,49s; imagens
+da própria janela conferidas. Chamada direta UI/API agora admite e finaliza
+seu job no mesmo Budget configurado; runner com controle existente o conserva.
+Pacote/artefatos e run_id ficam ligados à tentativa; retomada preserva backtest/
+replay, recusa de recursos antecede o MQL e falha no checkpoint é explícita.
+167testes/14módulos em145,31s, inclusive famílias anteriores e agentes. A chamada
+real do botão Backtest no atalhoef0f429 confirmou pacote/banco originais,
+59inputs,3posições/7deals/1parcial/2BE/5trailing, diário3entradas/8ações encerradas,
+caixa1,46USD e recursos liberados,175,747s. Replay pelo botão atingiu180s e
+liberou recursos; comparação não aprovada. A primeira janela reaberta manteve
+o contexto padrão01→02nov/100000 e não teve operações: não exercitada; receita
+corrigida repôs12→13out/10000 pelos widgets, sem alterar o recibo anterior.
+Revisão posterior ligou o retentor já existente também à admissão tardia do
+Budget, protegendo perfil que falhe antes de publicar run:347regressões/22módulos
+em212,93s e doctor16OK/2avisos/0falhas sem probe. Evidência anterior na tela é
+limpa após falha nova; permanece consultável no banco. Regressão reproduzida e
+6casos Tk/7,83s passaram após o corretivo final de apresentação. Fonte MQL não mudou.
+CI App28d: Linux passou; Windows7falhas/4522passaram/193não executados. Shim MQL
+long do teste corrigido para int64 explícito;29testes/5,09s no Linux, Windows pendente.
+
+Na fonteH989534c3/2.10/ecbff494a15d51b9: managed OHLC1min backtest/replay
+coincidiram em53,411s/89,347s. Manualv2 criado/exportado/reaberto no Tk do atalho
+foi consumido pelo SDK no MESMO banco/pacote: cada tick/replay coincidiram em
+68,091s/170,452s;3posições/7deals/1parcial/BE2/trailing5, caixa1,46USD,
+diário3entradas/8ações conciliado e recursos liberados. Ticks reais não informados.
+Botões de execução da UI ainda não exercitados; houve override só no processo de
+QA para editar/exportar, e recusa visual do perfil bloqueado observada.
+
+Alvo dinâmico2.10 também confirmou dois fechamentos em cada tick e replay,
+caixa−0,96USD. O ensaio ATR terminou no MT5 em69,372s, mas o auditor recusou R
+calculado com SL do CSV: o SL histórico mantém bits que a formatação8 perde.
+A correção ce96 da comparação decimal isolada não bastava. Recibos originais,
+falhas e pares anteriores são preservados por fonte; source2.11 resolve a falta
+do dado histórico, com qualificação nativa própria ainda necessária.
+
+Perfil continua bloqueado (revisão qualificadaNone). Safety27b8599 detached,
+SA-REF-01/runtime33c2fa1 e referências preservados; protótipo não distribuído.
+Nenhum PLAY nem autorização DEMO transferida. Página privada canônica seq35:
+último delta245arquivos/dois bancos/quatro sessões restaurados da nuvem, todos
+os hashes/contagens de TODAS as tabelas conferidos. Ensaios financeiros2.11
+posteriores à coleta estão no próximo delta. Credenciais/contas/configurações/logs brutos não integram o
+resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
+execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
+ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
+
+Encerramento por sessão sem interface (`session.pause`/`resume`/`close_out`) e
+cache de indicadores/velocidade do visualizador em App57d13ee. Replay pela UI
+179,3 s aprovado e 181,6 s interrompido no mesmo orçamento180: não repetível,
+revisão segue None. Detalhes em continuidade, "Encerramento por sessão sem interface".
+Em03/11 o painel nativo do HADOUKEN `2809938` passou a redesenhar no máximo a cada
+250 ms de relógio real no Tester; replay pela UI 3/3 dentro de180 s e perfil2.11
+qualificado (fingerprint527e696bdcc9f147). DEMO/netting/Windows físico seguem pendentes.

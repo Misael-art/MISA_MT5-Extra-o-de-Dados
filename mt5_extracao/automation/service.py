@@ -73,6 +73,9 @@ class Workflow:
                 dict(method="session.status", required=[], optional=["session"]),
                 dict(method="session.wait", required=["session"], optional=["until", "timeout"], until=["running", "ready", "finished"]),
                 dict(method="session.stop", required=["session"], description="STOP próprio, sem liquidar posições"),
+                dict(method="session.pause", required=["session"], optional=["timeout"], description="PLAY: recusa novas aberturas; gestão segue"),
+                dict(method="session.resume", required=["session"], optional=["timeout"], description="PLAY: volta a aceitar aberturas"),
+                dict(method="session.close_out", required=["session"], optional=["timeout"], description="PLAY: pausa, remove pendentes e fecha por ticket só a exposição da sessão; encerra só se comprovar zero"),
                 dict(method="chart.list", required=["session"]),
                 dict(method="chart.open", required=["session", "symbol", "timeframe"], description="gráfico adicional sem Expert"),
                 dict(method="chart.close", required=["session", "chart"], description="somente auxiliar próprio"),
@@ -144,7 +147,8 @@ class Workflow:
             if self.config_path is None:
                 raise ValueError("cli.run exige config_path explícito; SDK em memória pode chamar os serviços diretamente.")
             return run_cli(params["arguments"], config_path=self.config_path, db_override=self.db_override)
-        if method in ("session.review", "session.open", "session.status", "session.wait", "session.stop"):
+        if method in ("session.review", "session.open", "session.status", "session.wait", "session.stop",
+                      "session.pause", "session.resume", "session.close_out"):
             return getattr(self.controller, method.split(".")[1])(params)
         if method == "chart.receipt":
             protocol.fields(params, ("session",))

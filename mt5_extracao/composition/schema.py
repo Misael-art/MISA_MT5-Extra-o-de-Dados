@@ -110,6 +110,23 @@ class Composition:
             _fail("context.timeframe", "série desconhecida; informe timeframe MT5 explícito. Renko requer contrato próprio.")
         for slot, modes in MODULE_PARAMETERS.items():
             _module(value[slot], modes, slot)
+        if value["profit_exit"]["mode"]=="dynamic_atr_v1":
+            p=value["profit_exit"]["params"]
+            if p["maximum_r"]<p["minimum_r"]:
+                _fail("profit_exit.params", "alvo dinâmico exige 0 < minimum_r <= maximum_r.")
+        protection = value["protection"]
+        if protection["mode"] == "managed_v1":
+            p = protection["params"]
+            active, inactive = (("stop_points", "stop_atr") if p["stop_mode"] == 0 else ("stop_atr", "stop_points"))
+            if p[active] <= 0 or p[inactive] != 0:
+                _fail("protection.params", f"{active} deve ser positivo e {inactive} deve ser zero (inativo).")
+            if p["trailing_mode"] == 0:
+                if any(p[key] != 0 for key in ("trailing_points", "trailing_atr", "trailing_trigger_r")):
+                    _fail("protection.params", "trailing desligado exige distâncias e gatilho zero.")
+            else:
+                active, inactive = (("trailing_points", "trailing_atr") if p["trailing_mode"] == 1 else ("trailing_atr", "trailing_points"))
+                if p[active] <= 0 or p[inactive] != 0:
+                    _fail("protection.params", f"{active} deve ser positivo e {inactive} deve ser zero (inativo).")
         if type(value["filters"]) is not list:
             _fail("filters", "informe uma lista ordenada de filtros.")
         seen = set()
@@ -118,6 +135,8 @@ class Composition:
             if module["mode"] in seen:
                 _fail(f"filters.{i}", "filtro duplicado; mantenha uma regra por tipo.")
             seen.add(module["mode"])
+        if protection["mode"]=="managed_v1" and protection["params"]["exit_on_session_end"] and "session_v1" not in seen:
+            _fail("protection.params.exit_on_session_end", "saída de sessão exige um filtro session_v1 com janela/dias explícitos.")
         if type(value["execution_order"]) is not list or value["execution_order"] != list(EXECUTION_ORDER):
             _fail("execution_order", "precedência incompatível; use sinal fechado → filtros → dimensionamento → próxima abertura.")
         _object(value["bar_policy"], ("intrabar_priority", "position_limit"), "bar_policy")

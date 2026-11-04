@@ -39,6 +39,8 @@ def test_themes_scales_metrics_and_narrow_window_keep_actions_reachable(ui,compl
     try:
         for scale in (96/72,144/72):
             ui.root.tk.call('tk','scaling',scale)
+            for chart in (view.summary_chart,view.matrix_chart,view.curves):
+                chart.widget.configure(width=700)  # TkAgg pode pedir a largura nativa após mudar DPI
             view.window.geometry('600x500');ui.toggle_theme();ui.pump(.2)
             left,top=view.window.winfo_rootx(),view.window.winfo_rooty();right,bottom=left+view.window.winfo_width(),top+view.window.winfo_height()
             assert view.refresh.winfo_viewable() and left<=view.refresh.winfo_rootx()<right
@@ -59,6 +61,21 @@ def test_themes_scales_metrics_and_narrow_window_keep_actions_reachable(ui,compl
         assert not view.summary_chart.figure.axes[0].patches
     finally:
         ui.root.tk.call('tk','scaling',original);view.close()
+
+
+def test_chart_late_native_width_does_not_escape_narrow_page(ui,completed_scope,monkeypatch):
+    db,_,_,plan=completed_scope;monkeypatch.setattr(ui.app,'db_manager',db)
+    view=ScopeComparisonDialog(ui,plan['batch_id']);wait(ui,lambda:not view.pending)
+    try:
+        view.window.geometry('600x500');view.tabs.select(2);ui.pump(.2)
+        viewport=view.views[2].canvas.winfo_width()
+        assert viewport>1
+        view.views[2].canvas.itemconfigure(view.views[2]._window,width=viewport+22)
+        view.curves.widget.configure(width=viewport+22)  # TkAgg pode repor a largura depois de Map/DPI.
+        ui.pump(.2)
+        assert view.curves.widget.winfo_width()<=view.views[2].canvas.winfo_width()
+    finally:
+        view.close()
 
 
 def test_close_cancels_query_and_removes_theme_consumer(ui,completed_scope,monkeypatch):

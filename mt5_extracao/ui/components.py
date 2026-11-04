@@ -714,6 +714,11 @@ class ScrollableContent(ttk.Frame):
         # Mantém o agendamento marcado durante o cálculo para não reentrar pelo Configure.
         self.content.update_idletasks()
         self._geometry_sync = None
+        # Um filho TkAgg pode repor a largura nativa após Map ou mudança de DPI,
+        # sem novo Configure no viewport. Reancora a página à largura visível.
+        width = self.canvas.winfo_width()
+        if int(float(self.canvas.itemcget(self._window, "width"))) != width:
+            self.canvas.itemconfigure(self._window, width=width)
         inset = 2 * int(self.canvas.cget("highlightthickness"))
         height = max(self.content.winfo_reqheight(), self.canvas.winfo_height() - inset)
         if int(float(self.canvas.itemcget(self._window, "height"))) != height:

@@ -43,3 +43,55 @@ serviço T19.23/perfil S09/carregamento/Default/Manual/UI continuam pendentes.
 Este módulo Python não habilita execução nativa por sidecar. Broker stops/freeze
 são checados no executor nativo; o modelo Python não os certifica. Windows físico
 é pendência específica, sem ordens ao vivo ou campanha numérica nova.
+
+## E14 — proteção comum nativa em qualificação
+
+O resultado do perfil2.10 exige a cópia do diário canônico identificado pelo hash
+final emitido pelo Expert, com contexto do pacote, pedidos imutáveis e ações
+conciliadas. O App confere SL/TP, R original, gatilhos, reduções e fills; ações
+sem decisão correspondente e intenções pendentes impedem aprovação. A aba
+“Proteção e saídas” mostra pedido e efeito confirmado. Backtest e replay comparam
+as decisões de gestão, preservando os vínculos reais antes de projetar tickets
+variáveis. Cada modalidade declara oportunidade e aceite separadamente.
+
+O novo S09 v2.10 acrescenta `protection.managed_v1`, separado dos perfis
+congelados. O perfil exige pacote/sessão vinculados e continua bloqueado até
+qualificação nativa. O adaptador Python genérico recusa esse modo; a declaração
+do schema ou um sidecar importado não concede suporte.
+
+Exemplo do objeto `protection`, para usuário/agente preparar um Manual:
+
+```json
+{"mode":"managed_v1","params":{"stop_mode":1,"stop_points":0,"stop_atr":2,
+"trailing_mode":2,"trailing_points":0,"trailing_atr":1.5,"trailing_trigger_r":0.5,
+"breakeven_trigger_r":1,"exit_on_opposite":true,"exit_on_session_end":false}}
+```
+
+`stop_mode`:0 pontos,1 ATR; `trailing_mode`:0 desligado,1 pontos,2 ATR.
+Distância ativa deve ser positiva; distâncias inativas devem ser zero. Trailing
+desligado exige gatilho zero. O ATR14 de Wilder usa as últimas250 barras
+fechadas, com semente na mais antiga da janela; atualiza somente na nova barra.
+Distâncias iniciais são quantizadas para fora do tick **antes** do lote/risco.
+Distância abaixo do mínimo nativo, especificação ou ATR ausentes recusam entrada.
+
+Trailing amostra cotação uma vez por barra fechada e só melhora SL. BE por
+gatilho usa R real inicial e cobre o preço médio ponderado no primeiro nível
+negociável favorável; não cobre custos nem garante execução exata. Parcial/BE
+existentes conservam sua confirmação por saldo/histórico. R nunca é recalculado
+pelo stop movido. Toda alteração conserva o TP físico e usa intenção estável
+do mesmo journal; resultado incerto não autoriza reenvio.
+
+`exit_on_session_end=true` exige `filters.session_v1` explícito. Janela, dias e
+exclusão podem solicitar saída; a cota de novos ciclos não solicita fechamento.
+Saída por sinal usa a orientação configurada e não reverte na mesma barra.
+Precedência: risco → sessão → tempo → alvo virtual → sinal oposto → parcial/BE
+confirmados → trailing/BE por gatilho. Pausa mantém a gestão; STOP não prova
+liquidação. Reinício só recupera exposição com prova do mesmo vínculo/preset.
+
+Na UI: criar um Manual a partir do novo Default, ativar **Configurar SL, TP,
+trailing e BE**, escolher os modos e salvar revisão. Campos da estratégia que
+ficaram inativos são desabilitados; valores carregados continuam conferidos.
+Orientação pode ser normal/invertida sem ativar trailing ou BE. A API usa a
+mesma composição/compilador. Revisão salva vale na próxima sessão; a janela em
+execução mantém seus inputs. A prévia de lote com SL ATR fica indisponível até
+haver contexto nativo; não substitui risco e margem efetivos do Tester.

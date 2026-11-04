@@ -159,7 +159,10 @@ def test_resource_kernel_lease_survives_age_and_recovers_after_own_process_exit(
     finally:
         child.terminate();child.communicate(timeout=10)
     with actions.exclusive(folder,'recovered own crashed child'):
-        assert json.loads(path.read_text(encoding='utf-8'))['state']=='active'
+        # No Windows, o byte travado não pode ser lido por outro handle.
+        assert path.is_file()
+        if os.name != 'nt':
+            assert json.loads(path.read_text(encoding='utf-8'))['state']=='active'
     assert path.exists() and json.loads(path.read_text(encoding='utf-8'))['state']=='released'
 
 

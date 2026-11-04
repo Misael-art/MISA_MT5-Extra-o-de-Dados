@@ -58,6 +58,14 @@ INPUT_LABELS.update({"InpMagicNumber":"Magic", "InpDailyLossPct":"Perda máxima 
  "InpHiLoPeriod":"Período HiLo (barras)", "InpHiLoOffset":"Deslocamento HiLo (somente 0)", "InpStopBufferPoints":"Folga do stop (pontos)",
  "InpTrailLine":"Média do stop e guard (1 a 10)", "InpOffsetAtr":"Offset do stop (ATR14)",
  "InpExportTrades":"Exportação adicional do Expert"})
+INPUT_LABELS.update({"InpStopMode":"SL inicial (0 pontos / 1 ATR)","InpStopATR":"SL inicial (ATR14)",
+ "InpTargetMode":"TP (0 pontos / 1 R planejado / 2 ATR virtual / 3 R pós-fill)","InpTargetR":"TP (R conforme modalidade)",
+ "InpTrailingMode":"Trailing (0 desligado / 1 pontos / 2 ATR)","InpTrailingPoints":"Trailing (pontos)",
+ "InpTrailingATR":"Trailing (ATR14)","InpTrailingTriggerR":"Gatilho trailing (R inicial real)",
+ "InpBreakevenTriggerR":"Gatilho BE (R inicial real)","InpExitOnOpposite":"Sair no sinal oposto",
+ "InpExitOnSessionEnd":"Sair fora da sessão","InpDynamicTargetATR":"Alvo virtual (ATR14)",
+ "InpDynamicTargetMinR":"Alvo virtual mínimo (R real)","InpDynamicTargetMaxR":"Alvo máximo/TP contingência (R)"})
+INPUT_LABELS["InpOrientation"]="Orientação (0 normal / 1 invertida)"
 
 class NameDialog:
     def __init__(self,parent,robot,current,callback,*,rename=False):
@@ -123,6 +131,11 @@ class PresetWorkflow:
         self.atr_enabled=not self.pullback and profile_level>=7
         self.session_available=not self.pullback and profile_level>=8
         self.cooldown_available=not self.pullback and profile_level>=9
+        self.common_protection_available=False;self.postfill_available=False
+        if robot.key==native.ROBOT_KEY:
+            capabilities=native.native_adapter(native.default_composition(robot,symbol=self.symbol,timeframe=self.timeframe),robot).describe("ui-capabilities")["capabilities"]
+            self.common_protection_available="managed_v1" in capabilities["modules"]["protection"]
+            self.postfill_available="postfill_r_v1" in capabilities["modules"]["profit_exit"]
         self.symbol_info=None;self.preview_error=False;self.source_compatible=True
         self.execution=None;self.last_evidence=None;self.name_dialog=None;self.artifacts={}
         self.status=tk.StringVar(value="Lendo Default e seleção…")
@@ -148,6 +161,7 @@ class PresetWorkflow:
             self.fields[key]=value;self.entries.append(entry)
         for col in range(3):form.columnconfigure(col,weight=1)
         self.save=ttk.Button(form,text="Salvar revisão",command=self.save_revision);self.save.grid(row=5 if self.pullback or self.stoch or self.madrid else 3,column=2,sticky="e")
+        if self.common_protection_available:self.build_protection_fields(body)
         if self.lots_enabled:
             lots=ttk.LabelFrame(body,text="Lotes · uma única entrada",padding=12);lots.pack(fill=tk.X,padx=12,pady=4)
             fields=ttk.Frame(lots);fields.pack(fill=tk.X)
@@ -278,6 +292,7 @@ class PresetWorkflow:
         self.atr_context=self.tree("ATR · horizonte conhecido",("instante conhecido","semente de origem","barra fechada","ATR base congelado","ATR atual","prazo (s)")) if self.atr_enabled else None
         self.session_events=self.tree("Sessão · entradas e cota",("origem","instante servidor","evento","dia de sessão","ciclos preenchidos","entrada permitida","motivo")) if self.session_available else None
         self.cooldown_events=self.tree("Espera · fechamento confirmado",("origem","instante conhecido","fechamento total","libera em","espera (s)","entrada permitida","motivo")) if self.cooldown_available else None
+        self.protection_events=self.tree("Proteção e saídas · confirmação",("instante servidor","ação","posição","SL anterior","SL confirmado","TP mantido","alvo virtual","reduzido","saldo","pedido","efeito")) if self.common_protection_available else None
         details=DetailsPanel(body,"Identidade e arquivo do preset",expanded=False,information=True);details.pack(fill=tk.X,padx=12,pady=6)
         self.details=ttk.Label(details.body,text="",wraplength=830,style="Muted.TLabel");self.details.pack(fill=tk.X)
         foot=ttk.Frame(body,padding=12);foot.pack(fill=tk.X)
@@ -303,6 +318,62 @@ class PresetWorkflow:
                 if isinstance(child,ttk.Label) and int(child.cget("wraplength") or 0)>0:child.configure(wraplength=max(120,event.width-48))
                 walk(child)
         walk(self.body)
+    def build_protection_fields(self,body):
+        box=ttk.LabelFrame(body,text="Proteção comum e alvo · próxima sessão",padding=12);box.pack(fill=tk.X,padx=12,pady=4)
+        ttk.Label(box,text="Orientação do sinal · vale também com proteção padrão").pack(anchor="w")
+        self.signal_orientation=tk.StringVar(value="Normal")
+        self.orientation_combo=ttk.Combobox(box,textvariable=self.signal_orientation,values=("Normal","Invertida"),state="readonly",width=20)
+        self.orientation_combo.pack(anchor="w",pady=(0,6));self.signal_orientation.trace_add("write",lambda *_:self.mark_dirty())
+        self.common_on=tk.BooleanVar(value=False)
+        self.common_toggle=ttk.Checkbutton(box,text="Configurar SL, TP, trailing e BE neste preset",variable=self.common_on);self.common_toggle.pack(anchor="w")
+        ttk.Label(box,text="Ao ativar, os campos SL/TP da estratégia ficam inativos. ATR14 de Wilder usa as últimas250 barras fechadas. Trailing só aperta, uma vez por barra; BE usa preço médio inicial, sem cobrir custos. R planejado usa o risco antes do fill; R pós-fill usa preço médio e SL originais dos fills, com TP planejado de contingência até a alteração confirmada. Alvo ATR virtual é recalculado por barra entre mínimo/máximo em R real. Gaps/slippage podem mudar o preço executado.",wraplength=850).pack(fill=tk.X,pady=4)
+        form=ttk.Frame(box);form.pack(fill=tk.X);self.common_fields={};self.common_widgets={}
+        definitions=(("stop_mode","SL inicial","Pontos",("Pontos","ATR14")),("stop_points","SL inicial (pontos)","100",()),
+          ("stop_atr","SL inicial (ATR)","2",()),("target_mode","Modalidade do alvo","Pontos",("Pontos","R planejado","ATR virtual")+(("R pós-fill",) if self.postfill_available else ())),
+          ("target_points","TP fixo (pontos)","200",()),("target_r","TP (múltiplo de R)","2",()),
+          ("target_atr","Alvo virtual (ATR)","2",()),("target_min_r","Mínimo virtual (R real)","2",()),
+          ("target_max_r","Máximo / TP contingência (R)","4",()),
+          ("trailing_mode","Trailing por barra","Desligado",("Desligado","Pontos","ATR14")),
+          ("trailing_points","Trailing (pontos)","100",()),("trailing_atr","Trailing (ATR)","2",()),
+          ("trailing_trigger_r","Gatilho trailing (R inicial real)","0",()),("breakeven_trigger_r","BE (R inicial real; 0 desliga)","0",()))
+        groups=[]
+        for key,label,value,choices in definitions:
+            field=ttk.Frame(form);groups.append(field);ttk.Label(field,text=label,wraplength=220).pack(anchor="w")
+            var=tk.StringVar(value=value);self.common_fields[key]=var
+            widget=ttk.Combobox(field,textvariable=var,values=choices,state="readonly",width=20) if choices else ttk.Entry(field,textvariable=var,width=20)
+            widget.pack(fill=tk.X);self.common_widgets[key]=widget
+            var.trace_add("write",lambda *_:self.mark_dirty())
+        self.flow(form,groups);self.common_on.trace_add("write",lambda *_:self.mark_dirty())
+        self.common_exits={};self.common_exit_widgets=[]
+        for key,label in (("exit_on_opposite","Encerrar no sinal fechado oposto; sem reversão na mesma barra"),
+                          ("exit_on_session_end","Encerrar fora da janela/dia/exclusão de Entradas; exige filtro de sessão ativo")):
+            var=tk.BooleanVar(value=False);self.common_exits[key]=var
+            widget=ttk.Checkbutton(box,text=label,variable=var);widget.pack(anchor="w",pady=2);self.common_exit_widgets.append(widget)
+            var.trace_add("write",lambda *_:self.mark_dirty())
+
+    def protection_selection(self,data):
+        if not self.common_on.get():
+            data["protection"]={"mode":"strategy_default","params":{}}
+            data["profit_exit"]={"mode":"strategy_default","params":{}}
+            return
+        f=self.common_fields
+        number=lambda key:float(f[key].get().replace(",","."))
+        stop_mode=("Pontos","ATR14").index(f["stop_mode"].get())
+        trailing_mode=("Desligado","Pontos","ATR14").index(f["trailing_mode"].get())
+        data["protection"]={"mode":"managed_v1","params":{
+            "stop_mode":stop_mode,"stop_points":number("stop_points") if stop_mode==0 else 0,
+            "stop_atr":number("stop_atr") if stop_mode==1 else 0,"trailing_mode":trailing_mode,
+            "trailing_points":number("trailing_points") if trailing_mode==1 else 0,
+            "trailing_atr":number("trailing_atr") if trailing_mode==2 else 0,
+            "trailing_trigger_r":number("trailing_trigger_r") if trailing_mode else 0,
+            "breakeven_trigger_r":number("breakeven_trigger_r"),
+            **{key:var.get() for key,var in self.common_exits.items()}}}
+        fixed_r=f["target_mode"].get()=="R planejado"
+        postfill_r=f["target_mode"].get()=="R pós-fill"
+        key="target_r" if fixed_r or postfill_r else "target_points"
+        data["profit_exit"]=({"mode":"dynamic_atr_v1","params":dict(atr_multiplier=number("target_atr"),minimum_r=number("target_min_r"),maximum_r=number("target_max_r"))}
+                             if f["target_mode"].get()=="ATR virtual" else {"mode":"postfill_r_v1" if postfill_r else "planned_r_v1" if fixed_r else "fixed_points","params":{key:number(key)}})
+
     def build_session_fields(self,body):
         box=ttk.LabelFrame(body,text="Entradas · horários, dias e ciclos por sessão",padding=12);box.pack(fill=tk.X,padx=12,pady=4)
         self.session_on=tk.BooleanVar(value=False);self.session_fields={};self.session_widgets=[]
@@ -371,6 +442,22 @@ class PresetWorkflow:
         self.export.state(["disabled" if busy or not loaded or self.dirty else "!disabled"])
         editable=is_manual and not busy and self.source_compatible
         for entry in self.entries:entry.configure(state="normal" if editable else "disabled")
+        if self.common_protection_available:
+            self.orientation_combo.configure(state="readonly" if editable else "disabled")
+            self.common_toggle.state(["!disabled" if editable else "disabled"])
+            enabled=editable and self.common_on.get()
+            stop_atr=self.common_fields["stop_mode"].get()=="ATR14";target_r=self.common_fields["target_mode"].get() in ("R planejado","R pós-fill")
+            target_dynamic=self.common_fields["target_mode"].get()=="ATR virtual"
+            trailing=self.common_fields["trailing_mode"].get()
+            inactive={"stop_points":stop_atr,"stop_atr":not stop_atr,"target_points":target_r or target_dynamic,"target_r":not target_r,
+                      "target_atr":not target_dynamic,"target_min_r":not target_dynamic,"target_max_r":not target_dynamic,
+                      "trailing_points":trailing!="Pontos","trailing_atr":trailing!="ATR14","trailing_trigger_r":trailing=="Desligado"}
+            for key,widget in self.common_widgets.items():
+                widget.configure(state=("readonly" if isinstance(widget,ttk.Combobox) else "normal") if enabled and not inactive.get(key,False) else "disabled")
+            for widget in self.common_exit_widgets:widget.state(["!disabled" if enabled else "disabled"])
+            if self.common_on.get():
+                for key in ("stop_points","target_points"):
+                    self.entries[[name for name,_ in self.strategy_fields].index(key)].configure(state="disabled")
         if self.lots_enabled:
             self.lot_combo.configure(state="readonly" if editable else "disabled")
             self.fixed_entry.configure(state="normal" if editable and self.lot_mode.get()=="Volume fixo" else "disabled")
@@ -449,6 +536,23 @@ class PresetWorkflow:
         source=item.manifest["native"]["robot"]
         self.source_compatible=source["version"]==self.robot.version and source["fingerprint"]==(native_adapter_profile(self.robot))[0]
         for key,_ in self.strategy_fields:self.fields[key].set(str(item.composition.to_dict()["strategy"]["params"][key]))
+        if self.common_protection_available:
+            data=item.composition.to_dict();p=data["protection"];t=data["profit_exit"]
+            self.signal_orientation.set("Invertida" if data["orientation"]["mode"]=="inverted" else "Normal")
+            self.common_on.set(p["mode"]!="strategy_default" or t["mode"]!="strategy_default")
+            params=p["params"] if p["mode"]=="managed_v1" else {}
+            defaults=dict(stop_mode=0,stop_points=p["params"].get("stop_points",data["strategy"]["params"]["stop_points"]),stop_atr=2,
+                          target_points=t["params"].get("target_points",data["strategy"]["params"]["target_points"]),target_r=t["params"].get("target_r",2),
+                          target_atr=t["params"].get("atr_multiplier",2),target_min_r=t["params"].get("minimum_r",2),target_max_r=t["params"].get("maximum_r",4),
+                          trailing_mode=0,trailing_points=100,trailing_atr=2,trailing_trigger_r=0,breakeven_trigger_r=0)
+            defaults.update(params)
+            for key,var in self.common_exits.items():var.set(params.get(key,False))
+            for key,var in self.common_fields.items():
+                value=defaults.get(key)
+                if key=="stop_mode":value=("Pontos","ATR14")[defaults[key]]
+                elif key=="target_mode":value="ATR virtual" if t["mode"]=="dynamic_atr_v1" else "R pós-fill" if t["mode"]=="postfill_r_v1" else "R planejado" if t["mode"]=="planned_r_v1" else "Pontos"
+                elif key=="trailing_mode":value=("Desligado","Pontos","ATR14")[defaults[key]]
+                var.set(str(value))
         if self.lots_enabled:
             sizing=item.composition.to_dict()["sizing"]
             self.lot_mode.set("Volume fixo" if sizing["mode"]=="fixed_volume" else "Por risco")
@@ -499,6 +603,7 @@ class PresetWorkflow:
                                     f"Arquivo: {item.name.filename}\nConfiguração: {item.composition.config_hash}\n"
                                     f"Origem Default: {item.identity.default_origin or item.identity.id}"))
         if self.partials_enabled:self.protection.configure(text="Risco até 0,5% · uma posição · SL obrigatório · parcial só após redução/histórico confirmados; trailing indisponível."+(" Pullback: metade em 1R; BE somente após confirmação." if self.pullback else ""))
+        if self.common_protection_available:self.protection.configure(text="Uma posição · risco até0,5% do saldo · prioridade: risco → sessão → tempo → alvo R pós-fill quando disponível → alvo virtual → sinal oposto → parcial/BE → trailing/BE por gatilho. SL obrigatório e TP planejado de contingência até confirmação. Alterações valem na próxima sessão; stops não garantem perda exata em gaps.")
         if self.stoch:self.protection.configure(text="Uma posição · SL obrigatório na EMA com offset · Move Guard só aperta em barra fechada. Alvo opcional desde o fechamento do sinal; 0 desliga. Parciais/BE indisponíveis. Tester DEMO; aceite operacional pendente.")
         if self.ha_hilo:self.protection.configure(text="Uma posição · SL inicial na linha HiLo com folga · sem TP ou trailing. Sinal oposto tenta fechar; entrada inversa exige posição encerrada e proteções satisfeitas. Pode ficar sem posição. Tester DEMO; aceite pendente.")
         if self.madrid:self.protection.configure(text="Uma posição · SL na média com offset ATR · Move Guard só aperta em barra fechada. TP obrigatório fixado em M1 ± afastamento; pontos 0 usa ATR. Sem ciclo persistente, TP móvel ou parciais/BE. Tester DEMO; aceite pendente.")
@@ -550,6 +655,9 @@ class PresetWorkflow:
                 params.update({key:int(var.get()) for key,var in self.atr_fields.items()});mode="temporal_atr_v1"
             data["conditional_policy"]={"mode":mode,"params":params}
         if self.session_available:data["filters"]=self.session_selection()
+        if self.common_protection_available:
+            self.protection_selection(data)
+            data["orientation"]={"mode":"inverted" if self.signal_orientation.get()=="Invertida" else "normal","params":{}}
         return Composition(data)
     def refresh_preview(self):
         if not self.lots_enabled or self.current is None:return
@@ -566,6 +674,10 @@ class PresetWorkflow:
                 self.partial_preview.set("Métade do volume inicial em 1R; saldo protegido; BE somente após confirmação. Agenda fixa neste perfil.")
                 raise SizingPreviewUnavailable("SL depende do fundo/topo confirmado e da cotação de entrada; lote, parcial e risco são validados no Tester.")
             stop=data["protection"]["params"]["stop_points"] if data["protection"]["mode"]=="fixed_points" else data["strategy"]["params"]["stop_points"]
+            if data["protection"]["mode"]=="managed_v1":
+                if data["protection"]["params"]["stop_mode"]==1:
+                    raise SizingPreviewUnavailable("SL depende do ATR14 fechado disponível na entrada; lote e risco serão calculados antes do envio no Tester.")
+                stop=data["protection"]["params"]["stop_points"]
             value=preview_sizing(data["sizing"],info=self.symbol_info,stop_points=stop,deposit=context.deposit)
             requested="calculado por risco" if value["requested"] is None else str(value["requested"])
             self.lot_preview.set(f"Prévia no capital inicial: solicitado {requested} → {value['effective']} lotes. "
@@ -593,6 +705,7 @@ class PresetWorkflow:
         if self.atr_context is not None:self.atr_context.delete(*self.atr_context.get_children())
         if self.session_events is not None:self.session_events.delete(*self.session_events.get_children())
         if self.cooldown_events is not None:self.cooldown_events.delete(*self.cooldown_events.get_children())
+        if self.protection_events is not None:self.protection_events.delete(*self.protection_events.get_children())
     def clone_dialog(self):
         if self.current is None or self.pending or self.dirty:return
         self.name_dialog=NameDialog(self.window,self.robot,self.current,self.clone_named)
@@ -611,7 +724,7 @@ class PresetWorkflow:
     def save_revision(self):
         try:
             comp=self.composition_from_fields();current=self.current
-        except ValueError as error:self.status.set("Confira períodos/pontos inteiros. "+str(error));return
+        except ValueError as error:self.status.set("Confira os parâmetros e as combinações do preset. "+str(error));return
         def action():
             item=manual.save_revision(self.db,self.robot,current.identity.id,comp,expected_revision=current.identity.revision)
             store.select_preset(self.db,self.robot.key,self.symbol,self.timeframe,item.identity.id,item.identity.revision)
@@ -667,7 +780,9 @@ class PresetWorkflow:
         self.work(action,prepared)
     def completed(self,job):
         if job.evidence:self.show_evidence(job.evidence,job.session.record["metrics"])
-        else:self.result.set("Conferência pendente: "+(job.error or job.status));self.status.set(job.error or job.status)
+        else:
+            self.clear_result()
+            self.result.set("Conferência pendente: "+(job.error or job.status));self.status.set(job.error or job.status)
         self.controller.panel.reload()
     def cancel(self):
         if self.execution:self.execution.cancel();self.status.set("Cancelando somente esta sessão…")
@@ -713,6 +828,9 @@ class PresetWorkflow:
         if "partials" in proof:
             confirmed=sum(r["state"]=="confirmed" for r in proof["partials"])
             self.result.set(self.result.get()+f"\nParciais confirmadas: {confirmed}; saldo e custos por fill nas abas próprias." if confirmed else self.result.get()+"\nNenhuma parcial confirmada neste ensaio; sem aceite dessa capacidade.")
+        if "protection_events" in proof:
+            count=len(proof["protection_events"])
+            self.result.set(self.result.get()+f"\nProteção/saídas conferidas com os pedidos e fills: {count}. "+("Replay conciliado neste cenário." if proof.get("protection_acceptance") else "Aceite das modalidades ainda pendente."))
         if "temporal_events" in proof:
             count=sum(r["state"]=="confirmed" for r in proof["temporal_events"])
             self.result.set(self.result.get()+f"\nSaídas temporais confirmadas: {count}."+("" if count else " Sem aceite dessa capacidade neste ensaio."))
@@ -735,6 +853,12 @@ class PresetWorkflow:
         expected=self.current.manifest["native"]["expected_native_inputs"]
         for key,value in proof["inputs"]["values"].items():self.inputs.insert("","end",values=(("Offset além da banda (pontos)" if self.vwap and key=="InpStopPoints" else INPUT_LABELS.get(key,key)),expected.get(key,"—"),value))
         def clock(value):return datetime.fromtimestamp(value,timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        if self.protection_events is not None:
+            labels={"protection":"SL · trailing/BE","target":"Alvo virtual","exit":"Saída por política"}
+            for row in proof.get("protection_events",[]):
+                self.protection_events.insert("","end",values=(clock(row["at"]),labels[row["kind"]]+(" · "+row["exit_kind"] if row.get("exit_kind") else ""),
+                    str(row["position"]),row.get("before","—"),row.get("requested","—"),row.get("tp","—"),row.get("target","—"),
+                    row["confirmed"],row["remaining"],str(row["request_id"]),"SL observado" if row["effect"] == 3 else "Redução confirmada"))
         for row in proof["signals"]:self.signals.insert("","end",values=(clock(row["event_at"]),clock(row["confirmed_at"]),clock(row["available_at"]),"Compra" if row["direction"]>0 else "Venda","Sim" if row["opened"] else "Recusada",row["reason"]))
         if self.sizing is not None:
             for row in proof.get("sizing",[]):

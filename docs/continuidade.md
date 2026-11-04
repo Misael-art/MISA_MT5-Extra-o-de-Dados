@@ -1,3 +1,117 @@
+## E14 — largura tardia da comparação no Windows CI — 03/11/2026
+
+Na PR279, SHA App `19627c3`, o run `41731727371` aprovou Linux, PostgreSQL,
+instaladores e lint. Windows terminou 4566 aprovados/193 ignorados/1 falha,
+77,74% de cobertura. A única falha foi comparação estreita: canvas TkAgg de
+580 px em viewport de 558 depois da escala. Reproduzido localmente por
+alargamento tardio da página; o contêiner rolável agora reconcilia a largura
+do conteúdo com a área visível também após mudança do filho. Antes 1 falha
+dirigida; depois 24 testes de componentes/comparação aprovados em Xvfb;
+doctor offline 16 OK/2 avisos/0 falhas.
+Corretivo `3312ea3d2fc2c318836cf420e84f343c75f98761` publicado na mesma
+PR279, SHA local/remoto/PR conferidos. Run `41747461167` na fila no marco de
+publicação. Conferir CI do SHA novo e validar a tela
+pelo launcher e em Windows físico separadamente. Sem mudança financeira ou
+de pin.
+
+## E14 — TP em R pós-fill, fonte S09 2.13 — 03/11/2026
+
+PR279 permanece draft, branch `codex/e14-protecao-comum` sobre
+`codex/f04-vinculo-presets`; App
+`f36395334e431517752c5872c221aa6110228d49` confirmado no remoto.
+A fonte HADOUKEN
+`51358a16c1685cd79f4ffec0c8da464b72e10f5a` e seu recibo de compilação
+`d4d389ee0800d209bdba48ab36e392e6907949a4` estão na PR84; o manifesto
+de desenvolvimento fixa o segundo SHA. Safety segue em `27b8599` detached.
+O App acrescenta o perfil S09 2.13/15 e concilia alteração de TP pós-fill
+com intenção, journal, preço executável, tick, risco inicial e fills; trailing
+posterior mantém o TP confirmado. O perfil 2.12/14 permanece identificado
+separadamente. A fonte 2.13 compilou no MetaEditor/Wine (59 arquivos iguais,
+0 erros, 0 avisos). No Tester Linux/Wine, pacote Manual sintético EURUSD/M5
+14–16/10/2026, modelo 0: backtest e replay visual terminaram com oito entradas,
+sete ações conciliadas e quatro alterações pós-fill; o replay confirmou
+`reference_match`, caixa e journal. Os 109 testes dirigidos de perfil, UI e
+auditoria passaram. Recibo público:
+`docs/evidencias/E14_POSTFILL_213_TESTER_REPLAY_20261103.json`.
+
+O banco e os artefatos privados da QA foram protegidos no mecanismo pessoal de
+recuperação já registrado: ZIP SHA256
+`2a8a6dff51b953a2bf8fe6f8c93904cad086d85ff0000163d004d61c96547080`,
+50 arquivos, seis partes; todos os sete anexos foram relidos remotamente por
+hash/tamanho, e o verificador oficial recompôs e extraiu os 50 arquivos.
+`qa.sqlite` passou `quick_check`. Configuração de conta, histórico e caches
+não integram o pacote. A prévia instalada segue `57d13ee`; ela não contém
+este perfil. Tester DEMO não é DEMO ao vivo: não houve aceite netting, Windows
+físico ou liberação operacional. CI App no novo SHA e demais gates E14 continuam
+independentes. Próximo: conferir o CI da PR279 e retomar
+recuperação/capacidade e pendentes.
+
+
+## E14 — perfil S09 2.12 integrado para desenvolvimento — 03/11/2026
+
+PR279 draft, branch `codex/e14-protecao-comum` sobre
+`codex/f04-vinculo-presets`, publicou App
+`1310be9b80fa67d7a42f6a24661c69d2ee76529e`, SHA local/remoto/PR
+conferidos. O manifesto fixa HADOUKEN
+`8a11fcfeed9292b54432b4b5c6d5a02bcbb50807`/PR84, fonte S09 2.12
+`f99ebde132c10bb078e78796e7ef048082ba07cc`, e Safety `27b8599`/PR11
+para desenvolvimento. O perfil S09 2.11 conserva identidade própria; 2.12
+requer fingerprint, revisão e 59 inputs exatos. `postfill_r_v1` é distinto de
+R planejado e `fixed_r` Python, mapeia InpTargetMode=3 e segue restrito ao
+Strategy Tester DEMO com pacote vinculado. 44 testes de perfil/UI e 97 de
+composição/execução de preset passaram; o Manual de QA exportou/reabriu a
+escolha. A inspeção oficial aceitou App/HADOUKEN/Safety e `--plan` passou.
+A prévia instalada permanece App `57d13ee`. Duas checagens H 2.12 passaram;
+o recibo novo da PR84 comprova MetaEditor/Wine 0 erros/0 avisos e 59 arquivos
+do plano iguais por bytes na fonte 2.12. Tester/replay 2.12, atalho, CI App
+novo, Windows físico, netting e DEMO seguem
+pendentes. Não houve novo dado privado retido nem liberação operacional.
+Próximo: Tester/replay sob orçamento e Windows CI; a cascata local LAB/T13.4
+já incorporou a base E14, mas permanece sem PR pela guarda compartilhada;
+recibos antigos seguem no manifesto e no resgate independente.
+
+## E14 — rerun Windows e dois controles ainda estreitos — 03/11/2026
+
+PR279, branch `codex/e14-protecao-comum`, base
+`codex/f04-vinculo-presets`; App remoto `d68e125`, HADOUKEN `2809938`/PR84,
+Safety `27b8599` detached/PR11. O attempt 2 do run 41668845297 terminou com
+4552 aprovados, 193 ignorados, 2 falhas e cobertura 77,74%; os jobs Linux,
+PostgreSQL, instaladores e lint passaram. As três falhas originais de lease e
+UTF-8 não reapareceram. O catálogo ainda cortou o botão (331 px requeridos,
+294 alocados); TkAgg conservou 672 px num viewport de 558. O attempt 1 tinha
+parado no timeout de 60 s do lote de 6 ativos, sem qualificar o restante.
+
+O corretivo local aloca uma linha inteira por grupo de ações quando estreito
+e ajusta canvases da comparação à página em mudanças de DPI/tema. Regressão
+sintética de largura do botão falhou antes e passou depois; 10 testes dirigidos
+de catálogo e comparação passaram em Xvfb. Ainda faltam SHA remoto/checks do
+novo commit, QA pelo launcher da fonte publicada e Windows físico. Nenhum
+contrato financeiro, pin ou dado privado mudou. Próximo: push na PR279,
+conferência de CI e reconciliação das branches locais dependentes.
+
+## E14 — cinco falhas Windows CI, corretivo em revisão — 03/11/2026
+
+Fonte: App `a74f539`/PR279, HADOUKEN `28099386`/PR84, Safety `27b85992`
+detached/PR11. O check Windows desse App terminou com 5 falhas, 4549 aprovados
+e 193 ignorados; os demais checks obrigatórios passaram. A leitura do `.lock`
+no teste falhava porque o kernel Windows veda ler seu byte travado, embora a
+exclusão e a recuperação após saída do processo funcionassem. Duas asserções
+decodificavam UTF-8 pela página de código local. No Tk, o botão Importar perdia
+4 px e os gráficos da comparação conservavam 870 px num viewport de 558 px.
+O corretivo mantém a prova de exclusão e estado final, fixa UTF-8 nos testes,
+distribui as ações em duas colunas estreitas e deixa os gráficos ocuparem a
+largura do viewport. No host Linux, 64 testes pertinentes passaram e o doctor
+offline informou 16 OK/2 avisos/0 falhas. A suíte integral terminou com sinal
+143 após 6%, sem causa provada; outras suítes de projetos distintos estavam
+em execução ao conferir os processos. O CI do novo SHA será registrado
+separadamente; não inferir Windows físico, MT5/Wine ou aceite financeiro.
+
+Prévia `57d13ee` é anterior à fonte E14; não a confundir com o checkout ou com
+uma mudança instalada. T13.4-P00 permanece em `codex/plano-descoberta-padroes`/
+`63fd9cf`, só documentação, e não integra esta PR. O guarda central de push
+exige continuidade registrada e hoje impede criar aquela branch remota;
+resolução explícita pendente. O preparo oficial aceita os pins da branch E14.
+
 ## Novo host sem o disco antigo ou SD — 2026-10-24
 
 O proprietário confirmou que **não levará o SDCard**. A retomada atual é pela
@@ -5836,3 +5950,146 @@ referências aceitas e SA-REF-01 permanecem preservadas.
 Conferência isolada do material preservado: os44 inputs carregados e o ack do
 contexto correspondem ao pacote real. Isso não aprova o ciclo interrompido.
 App:254 testes pertinentes passaram em29,72s; doctor16OK/2avisos/0falhas.
+
+### E14 — proteção comum e auditoria nativa em qualificação
+
+S09v2.11/perfil13 compõe59 inputs no mesmo adaptador/executor/journal: SL pontos/
+ATR14 fechado, TP pontos/R planejado, trailing pontos/ATR por barra, BE por gatilho,
+alvo virtual ATR limitado por R real, saídas por sessão/sinal e orientação.
+Prioridade: risco → sessão → tempo → alvo virtual → sinal oposto → parcial/BE →
+trailing/BE. Preserva TP e média ponderada/R/volume iniciais; mudanças de preset
+valem na próxima sessão. ATR usa HDK_Atr/Wilder14 nas últimas250 barras fechadas.
+`planned_r_v1` pré-fill é distinto do `fixed_r` Python pós-fill, ainda pendente.
+
+O recibo histórico agora preserva preço/volume e SL/TP do deal e da ordem em
+17 dígitos científicos, vinculando tickets inteiros64, posição e estado final.
+R de gestão é média ponderada dos deals menos o DEAL_SL do IN original. O CSV
+arredondado e o SL pedido não substituem esse dado. Perfil13 exige histórico
+completo em todos os fills e recusa o formato anterior para esse aceite.
+Comparações de representação da mesma cotação mantêm o limite8ulp e menos de
+meio ponto; R é calculado com os bits do histórico, nunca com o stop movido.
+O teste cobre os dois casos que têm o MESMO CSV/pedido: SL normalizado pelo
+broker ou preservado sem arredondamento, produzindo R inicial diferente.
+
+Auditoria final reconcilia o diário, publica hash/contexto e cruza decisões,
+pedidos imutáveis, efeitos e fills. Ações sem decisão/efeito ou intenções pendentes
+não aprovam resultado. Heartbeat mantém exclusão/identidade/líder sem reprojetar
+reservas; toda barreira financeira continua lendo o journal completo.
+
+Candidato2.11 fingerprint2e0a4bf209628c86,56 fontes/SHA256
+b927af079a64ea02c7429e8a1f80489916e306ece02ff0628cf2d76506f8086a.
+166 testes H completos em81,069s,171 fontes inalteradas/checker171. App585 testes
+em130,60s/28 módulos, incluindo consumidores de eventos anteriores; doctor offline
+16OK/2avisos/0falhas.17 consumidores com compilações válidas0/0 (15 observações
+idênticas reaproveitadas e dois consumidores recompilados). Wrapper59 compilado0/0.
+Na fonte2.11, seis backtests cada tick conciliados: ATR com7trailing/2BE, alvo
+dinâmico com2closes, saída por sessão, saída por sinal, normal e invertido com
+2parciais cada. Todos com diário encerrado e recursos liberados; ticks reais
+não informados. Replay ATR após o corretivo Appf8cb06f coincidiu com o MESMO
+pacote/banco:3posições/6deals/7trailing/2BE, diário3entradas/9ações encerradas e
+recursos liberados,153,275s. As falhas anterioresRAM85%/180s foram preservadas.
+O launcher compila no perfil SDK próprio antes de inicializar o Wine visual,
+com prova de saída do compilador, sem reiniciar o prefixo compartilhado.
+216regressões/11módulos passaram em52,91s e doctor16OK/2avisos/0falhas sem probe.
+Atalho real2.11 também criou/exportou/reabriu Manualv2/59inputs em6,49s; imagens
+da própria janela conferidas. Chamada direta UI/API agora admite e finaliza
+seu job no mesmo Budget configurado; runner com controle existente o conserva.
+Pacote/artefatos e run_id ficam ligados à tentativa; retomada preserva backtest/
+replay, recusa de recursos antecede o MQL e falha no checkpoint é explícita.
+167testes/14módulos em145,31s, inclusive famílias anteriores e agentes. A chamada
+real do botão Backtest no atalhoef0f429 confirmou pacote/banco originais,
+59inputs,3posições/7deals/1parcial/2BE/5trailing, diário3entradas/8ações encerradas,
+caixa1,46USD e recursos liberados,175,747s. Replay pelo botão atingiu180s e
+liberou recursos; comparação não aprovada. A primeira janela reaberta manteve
+o contexto padrão01→02nov/100000 e não teve operações: não exercitada; receita
+corrigida repôs12→13out/10000 pelos widgets, sem alterar o recibo anterior.
+Revisão posterior ligou o retentor já existente também à admissão tardia do
+Budget, protegendo perfil que falhe antes de publicar run:347regressões/22módulos
+em212,93s e doctor16OK/2avisos/0falhas sem probe. Evidência anterior na tela é
+limpa após falha nova; permanece consultável no banco. Regressão reproduzida e
+6casos Tk/7,83s passaram após o corretivo final de apresentação. Fonte MQL não mudou.
+CI App28d: Linux passou; Windows7falhas/4522passaram/193não executados. Shim MQL
+long do teste corrigido para int64 explícito;29testes/5,09s no Linux, Windows pendente.
+
+Na fonteH989534c3/2.10/ecbff494a15d51b9: managed OHLC1min backtest/replay
+coincidiram em53,411s/89,347s. Manualv2 criado/exportado/reaberto no Tk do atalho
+foi consumido pelo SDK no MESMO banco/pacote: cada tick/replay coincidiram em
+68,091s/170,452s;3posições/7deals/1parcial/BE2/trailing5, caixa1,46USD,
+diário3entradas/8ações conciliado e recursos liberados. Ticks reais não informados.
+Botões de execução da UI ainda não exercitados; houve override só no processo de
+QA para editar/exportar, e recusa visual do perfil bloqueado observada.
+
+Alvo dinâmico2.10 também confirmou dois fechamentos em cada tick e replay,
+caixa−0,96USD. O ensaio ATR terminou no MT5 em69,372s, mas o auditor recusou R
+calculado com SL do CSV: o SL histórico mantém bits que a formatação8 perde.
+A correção ce96 da comparação decimal isolada não bastava. Recibos originais,
+falhas e pares anteriores são preservados por fonte; source2.11 resolve a falta
+do dado histórico, com qualificação nativa própria ainda necessária.
+
+Perfil continua bloqueado (revisão qualificadaNone). Safety27b8599 detached,
+SA-REF-01/runtime33c2fa1 e referências preservados; protótipo não distribuído.
+Nenhum PLAY nem autorização DEMO transferida. Página privada canônica seq35:
+último delta245arquivos/dois bancos/quatro sessões restaurados da nuvem, todos
+os hashes/contagens de TODAS as tabelas conferidos. Ensaios financeiros2.11
+posteriores à coleta estão no próximo delta. Credenciais/contas/configurações/logs brutos não integram o
+resgate. Fatos por fonte em E14_COMMON_POSITION_20261102.json. Pilar segue em
+execução: TP R pós-fill, recuperação/capacidade/pendentes, SA-01, orçamento
+ativo/grupo/plano, gradientes, probabilístico e aceites DEMO/netting/Windows físico.
+
+### Encerramento por sessão sem interface e orçamento do replay visual —02/11/2026
+
+App `d26808d`/`57d13ee` (PR279, branch de continuidade). HADOUKEN `adc5ecd` e
+Safety `27b8599` sem alteração; SA-REF-01 e referências preservados.
+
+**Encerramento programático.** `robots/session_control.py` entra no wrapper da
+Session: fila Common `mt5x_session_<uuid>_control.txt` → resposta do próprio
+Expert em `..._control_ack.txt`. PAUSE/RESUME recusam aberturas em `OrderCheck`
+(antes da reserva do executor) e `OrderSend` com 10017; gestão, SL/TP e
+fechamentos seguem. FLATTEN remove pendentes e fecha por ticket só a exposição
+com magic + símbolo + abertura desde o início da sessão (gravado em Common e
+relido em reinício). Mesmo magic anterior ao início é ambíguo: intocado e impede
+`closed`. Outro magic/símbolo só é contado. Serviço `session.pause`,
+`session.resume`, `session.close_out`; este só revoga o lease com zero exposição
+própria e ambígua comprovada pelo Expert, senão mantém supervisão. Tester nativo
+(Expert de QA, EURUSD M5 12/10, cada tick): após PAUSE 5/5 aberturas recusadas em
+`OrderCheck` e `OrderSend`; RESUME reabriu; FLATTEN 5 `close` + 1 `remove` (10009);
+1 posição + 1 pendente de outro magic preservadas; caso ambíguo `closed=false`
+sem tocar os tickets 2/4. Recibos `ctl-native-{own,ambiguous}-v3`. Conta DEMO
+não exercitada: precisa de nova autorização e janela. Roteiro em
+[demo_operacional](sdk/demo_operacional.md#encerramento-autorizado-pelo-roteiro).
+
+**Replay visual pela UI (180 s inalterados).** Decomposição medida: wrapper
+50–65 s (recompilado por sessão, pois carrega o UUID; mantido), indicadores de
+estudo ~19 s, terminal/autorização 18–38 s, teste visual S09 85–99 s contra 22 s
+sem visualização. Corretivos: cache de `.ex5` dos indicadores
+(`mt5x_sessions/.compile-cache`, chave = todas as fontes do plano + MetaEditor,
+só compilação 0/0) e `ROBOTS.replay_visual_speed` opcional (1–100; vazio =
+padrão nativo). A velocidade reduz o QA leve de 35 s para 1,3 s, mas não o S09:
+o custo é a renderização do próprio Expert no visualizador (HADOUKEN). Jornada
+real dos botões na prévia `57d13ee`: backtest 105,4/92,5 s aprovado duas vezes;
+replay 179,3 s aprovado (`reference_match`, ciclo funcional, 59 inputs, diário e
+caixa conciliados) e 181,6 s interrompido. Não é repetível:
+`PROTECTION_HADOUKEN_REVISION` continua None e o perfil segue bloqueado.
+Próximo: medir e reduzir o trabalho visual por tick do painel HADOUKEN em escopo
+próprio, ou decisão do proprietário sobre o orçamento do replay visual. Recibos
+`session-control/gui{,2,3}`. 606 testes App/22 módulos e regressões dirigidas passaram.
+
+### Painel nativo com quadro limitado e perfil S09 2.11 qualificado —03/11/2026
+
+HADOUKEN `2809938` (branch `codex/e14-protecao-comum`). O S09 recalculava
+(`Fill`/`Render`) e redesenhava o painel em cada tick e em cada segundo simulado
+do Tester visual; sem visualização o painel nem existe, por isso 22 s contra
+85–99 s. `CHDKNativeBaseAdapter.RenderPanelTick` e `PanelPeriodic` no Tester
+redesenham no máximo a cada `HDK_PANEL_FRAME_MS` (250 ms de relógio real);
+eventos do gráfico e a barra observada continuam imediatos e ao vivo o timer de
+1 s não muda. Decisão, gestão e ordens não dependem do painel. Contrato C++ com o
+método real (`test_native_panel`), check_repo e 166 testes HADOUKEN.
+
+Novo pacote exportado pela própria UI (59 inputs, fingerprint `527e696bdcc9f147`)
+e jornada real dos botões na prévia `57d13ee`, orçamento180 s inalterado:
+teste visual 49,7 s; replay 122,2/123,6/139,7 s, todos com `reference_match`,
+ciclo funcional, diário e caixa conciliados; backtest 87,0/73,7/83,5 s.
+Recibos `session-control/gui{4,5,6}`. `PROTECTION_APPROVED_FINGERPRINT` e
+`PROTECTION_HADOUKEN_REVISION` passam ao candidato medido; o fingerprint anterior
+`2e0a4bf209628c86` continua nas evidências. Manifesto do novo host aponta o
+HADOUKEN `2809938`. Pendentes: DEMO do `session.close_out`, netting e Windows físico.

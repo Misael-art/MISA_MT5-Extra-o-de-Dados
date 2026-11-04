@@ -8,7 +8,7 @@ from ..robots import mql
 from ..composition.partials import stages,reduction
 
 PARTIAL=re.compile(r'S09_PARTIAL event_at=(\d+) at=(\d+) stage=(\d+) state=(\w+) before=([^ ]+) requested=([^ ]+) filled=([^ ]+) remaining=([^ ]+) stop_before=([^ ]+) stop_after=([^ ]+) be_requested=([01]) be_confirmed=([01]) position=(\d+) history_reduction=([^ ]+) price=([^ ]+) net=([^ ]+) costs=([^\s]+)')
-DEAL=re.compile(r'S09_DEAL position=(\d+) deal=(\d+) at_msc=(\d+) entry=(\d+) type=(\d+) volume=([^ ]+) price=([^ ]+) profit=([^ ]+) commission=([^ ]+) swap=([^ ]+) fee=([^ ]+) digits=(\d+)')
+DEAL=re.compile(r'S09_DEAL position=(\d+) deal=(\d+) at_msc=(\d+) entry=(\d+) type=(\d+) volume=([^ ]+) price=([^ ]+) profit=([^ ]+) commission=([^ ]+) swap=([^ ]+) fee=([^ ]+) digits=(\d+)([^\r\n]*)')
 
 def _finite(value):
     number=float(value)
@@ -17,17 +17,53 @@ def _finite(value):
 
 def _clock(ms):return datetime.fromtimestamp(ms/1000,timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
 
+
+def _same_quote(left,right,digits):
+    if left==right:return True
+    return (type(digits) is int and 0<=digits<=8 and math.isfinite(left) and math.isfinite(right)
+            and abs(left-right)<=8*max(math.ulp(left),math.ulp(right))
+            and abs(left-right)<10.0**(-digits)/2 and round(left,digits)==round(right,digits))
+
+
+def _same_price(native,display,digits):
+    return _same_quote(native,display,digits) and (native==display or round(display,digits)==display)
+
+
+def _history_fields(tail):
+    pairs=[part.split('=',1) for part in tail.split()]
+    if not pairs:return {}
+    fields=dict(pairs) if all(len(p)==2 for p in pairs) else {}
+    legacy={'order','entry_sl','order_sl','order_state','order_position'}
+    full=legacy|{'entry_tp','order_tp'}
+    if len(fields)!=len(pairs) or set(fields) not in (legacy,full):
+        raise ValueError('Metadados históricos do fill incompletos/desconhecidos; preserve a sessão.')
+    output={}
+    for key,value in fields.items():
+        if key in ('order','order_state','order_position'):
+            if not re.fullmatch(r'0|[1-9]\d*',value) or int(value)>=2**64:
+                raise ValueError('Identificador/estado histórico do fill inválido.')
+            output[key]=int(value)
+        else:
+            output[key]=_finite(value)
+            if output[key]<0:raise ValueError('SL/TP histórico do fill inválido.')
+    # O formato anterior arredondava SL a8 decimais e não continha TP.
+    # Não promover esses campos antigos a uma prova lossless de R inicial.
+    return output if set(fields)==full else {}
+
+
 def read_events(directory,plan,signals,sizing,ledger):
     text='\n'.join(mql.read_text(p) for p in (Path(directory)/'Tester').glob('Agent-*/logs/*.log'))
     if "S09_PARTIAL_ANCHOR missing" in text:raise ValueError("Âncora da parcial ausente; preserve identidade/risco antes de retomar.")
     deals=[];partials=[]
     for m in DEAL.finditer(text):
-        pid,ticket,at,entry,side,*values,digits=m.groups()
+        pid,ticket,at,entry,side,*values,digits,tail=m.groups()
         volume,price,profit,commission,swap,fee=map(_finite,values)
         if int(entry) not in (0,1) or int(side) not in (0,1) or volume<=0 or price<=0 or not 0<=int(digits)<=8:
             raise ValueError('Fill nativo incompatível com posição única sem adição/reversão.')
         deals.append(dict(position=int(pid),deal=int(ticket),at_msc=int(at),entry=int(entry),type=int(side),
-                          volume=volume,price=price,profit=profit,commission=commission,swap=swap,fee=fee,digits=int(digits)))
+                          volume=volume,price=price,profit=profit,commission=commission,swap=swap,fee=fee,digits=int(digits),**_history_fields(tail)))
+    if len(deals)!=text.count('S09_DEAL'):
+        raise ValueError('Fill nativo truncado ou fora do contrato; preserve o diário.')
     if len({d['deal'] for d in deals})!=len(deals):raise ValueError('Fill nativo duplicado; preserve a sessão.')
     grouped=defaultdict(list)
     for row in deals:grouped[row['position']].append(row)
@@ -48,7 +84,8 @@ def read_events(directory,plan,signals,sizing,ledger):
         quantum=Decimal(10)**(-opened['digits'])
         if (total!=Decimal(str(opened['volume'])) or opened['volume']!=expected['volume']
                 or opened['volume']!=signal['filled_volume'] or Decimal(str(expected['pnl']))!=net
-                or opened['price']!=expected['entry_price'] or abs(price-Decimal(str(expected['exit_price'])))>quantum/2):
+                or not (_same_price(opened['price'],expected['entry_price'],opened['digits']) if 'entry_tp' in opened else opened['price']==expected['entry_price'])
+                or abs(price-Decimal(str(expected['exit_price'])))>quantum/2):
             raise ValueError('Volume/preço/custos dos fills não reconciliam com a posição/CSV/saldo.')
         by_origin[signal['event_at']]=(pid,opened,exits,expected)
     schedule=stages(plan);state={};last_stage={};matched_deals=set()
@@ -75,7 +112,8 @@ def read_events(directory,plan,signals,sizing,ledger):
         else:
             if not previous or previous['state']!='pending' or previous['before']!=before or previous['requested']!=requested:
                 raise ValueError('Confirmação parcial sem intenção própria correspondente.')
-            matching=[d for d in exits if d['at_msc']//1000==at and d['volume']==filled and d['price']==price]
+            matching=[d for d in exits if d['at_msc']//1000==at and d['volume']==filled and
+                      (_same_price(d['price'],price,d['digits']) if 'entry_tp' in d else d['price']==price)]
             if len(matching)!=1:raise ValueError('Redução não corresponde a um fill histórico inequívoco.')
             deal=matching[0];actual_cost=sum((Decimal(str(deal[k])) for k in ('commission','swap','fee')),Decimal(0))
             if deal['deal'] in matched_deals:raise ValueError('Fill reutilizado por mais de uma etapa parcial.')

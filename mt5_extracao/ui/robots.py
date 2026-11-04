@@ -176,13 +176,22 @@ class RobotsPanel:
         if stacked:
             for column in range(4):
                 self.filterbar.columnconfigure(column, weight=1)
-            self.filterbar_search.grid_configure(row=1, column=0, columnspan=4, padx=0, pady=(8, 0))
+            # No Windows os botões ttk podem pedir mais de metade da faixa.
+            # Cada ação recebe a largura inteira antes da busca e dos filtros.
+            self.import_button.grid_configure(row=0, column=0, columnspan=4)
+            self.dashboard_button.master.grid_configure(row=1, column=0, columnspan=4,
+                                                        sticky="w", pady=(8, 0))
+            self.filterbar_search.grid_configure(row=2, column=0, columnspan=4,
+                                                 padx=0, pady=(8, 0))
             for index, cell in enumerate(self.filter_cells):
-                cell.grid_configure(row=2 + index // 2, column=(index % 2) * 2, columnspan=2,
+                cell.grid_configure(row=3 + index // 2, column=(index % 2) * 2, columnspan=2,
                                     padx=(0, 8 if index % 2 == 0 else 0), pady=(8, 0))
         else:
             for column, weight in enumerate((0, 1, 1, 0)):
                 self.filterbar.columnconfigure(column, weight=weight)
+            self.import_button.grid_configure(row=0, column=0, columnspan=1)
+            self.dashboard_button.master.grid_configure(row=0, column=3, columnspan=1,
+                                                        sticky="e", pady=0)
             self.filterbar_search.grid_configure(row=0, column=1, columnspan=2, padx=12, pady=0)
             for index, cell in enumerate(self.filter_cells):
                 cell.grid_configure(row=1, column=index, columnspan=1,

@@ -110,6 +110,13 @@ def test_execution_registered_for_existing_stop_and_zero_activity_is_not_accepta
     view.execution=None;view.clear_result();view.consult()
     assert view.last_evidence==proof and view.artifacts.get("artifact_directory")
     assert not view.files.instate(["disabled"])
+    view.completed(SimpleNamespace(evidence=None,error="synthetic replay timeout",status="failed"))
+    view.update_buttons()
+    assert view.last_evidence is None and not view.artifacts
+    assert not view.inputs.get_children() and view.files.instate(["disabled"])
+    assert "synthetic replay timeout" in view.result.get()
+    # Histórico continua no banco; consultá-lo é uma ação explícita.
+    view.consult();assert view.last_evidence==proof
 
 
 def test_actions_reflow_inside_small_viewport_without_clipping(view):
