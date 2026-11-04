@@ -4380,3 +4380,8 @@ App7c51bc4/PR272:182testes dirigidos, doctor16OK/2avisos/0falhas; prévia338arqu
 conferidos e CLI pelo launcher com indisponibilidade explícita. Ponte atualizada
 com posse; cálculo de conta não qualificado sem conta carregada. QA F04 privada
 restaurada:137arquivos/seis bancos, cinco anexos na página existente/seq21.
+
+**F04.2:** H6c960fde/PR79 persiste reservas, contador e tombstones com SHA256;
+GVs são projeção, recuperação ambígua bloqueia.149testes H/checker170, compilação
+0/0 e sete checks de I/O no Tester sem ordens. Safety27b8599 não distribui esse
+protótipo. Vínculo completo da intenção e consumo/reconciliação continuam abertos.

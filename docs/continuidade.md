@@ -5694,3 +5694,23 @@ persistente de intenção/ator; conciliar ordem/deal/posição/histórico antes 
 consumir reserva; limites de ativo/grupo/plano/margem e integração ao executor.
 Depois seguir SuperATR próprio/presets, gradientes e probabilístico; pilar
 continua incompleto. Não retomar Dashboard nem transferir autorização de DEMO.
+
+## Pilar operacional F04.2 —02/11/2026
+
+H6c960fde/PR79 acrescenta persistência ao guardião de reservas já existente.
+Journal Common com SHA256 integral é a fonte; GVs são reconstruídas sob trava,
+com contador e tombstones preservados. Conta/servidor ficam fixos na transação;
+SENDING/incerteza não vencem por tempo, IDs conhecidos não são apagados por
+callback repetido e uma intenção encerrada não é reaberta. Truncamento, projeção
+órfã e `.pending` interrompido bloqueiam nova aquisição sem fallback vazio.
+
+149testes Tools em64,388s, checker170, consumidor de contrato0erros/0avisos.
+Tester Linux/Wine pela fonte32dbce9ba2e9e96f: sete checks de I/O reais, zero deals
+de negociação e caixa reconciliado. Modelo0 gerado deM1. O ensaio apaga somente
+sua projeção e arquivos próprios; não demonstra reinício de processo/energia.
+Safety27b8599/1.12 fica detached e inalterada; módulo experimental ainda fora da
+distribuição e sem ligação ao envio. Manifesto de desenvolvimento reconcilia H,
+preservando referências aceitas e a DEMO runtime33c2fa1. Próximo: intenção estável
+vinculada a sessão/ator/preset/fonte e consumo reconciliado no executor canônico.
+Integração do pin:55testes SDK/catálogo/Safety aprovados em4,99s; doctor offline
+16OK/2avisos existentes/0falhas. Nenhum arquivo distribuído Safety mudou.
