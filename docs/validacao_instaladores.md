@@ -592,3 +592,11 @@ MEN-05 — Windows físico pendente: capturar tema sem OHLCV por
 contexto de observação fixa antes/depois de P/N. Conferir receptor sem fatos
 atuais e quota com JSON/ação de correção. No Linux, percurso oficial usa cópia
 QA de agregados públicos, sem base privada nem qualificação MT5/Wine/contas.
+
+
+MEN-06 — Windows físico pendente: abrir Laboratório → Séries e confluências →
+Séries por janela, conferir números grandes/Q/P/N e abstenções, fonte/versão/
+estado, fonte sem OHLCV, média com lacuna, espera/cancelamento/erro, ampliação e
+janela menor; importar snapshot sem publicar fatos e usar formulário de relação
+com grade suportada. Linux foi validado com launcher oficial, entradas QA
+separadas e agregados públicos congelados; sem conexão nativa ou negociação.

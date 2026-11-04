@@ -188,7 +188,8 @@ class RelationCreator:
             origin, clock = scope["source"], scope["time"]
             offset = clock.get("broker_utc_offset_hours")
             offset_text = "não declarado" if offset is None else f"UTC{float(offset):+g}"
-            self.scope.configure(text=f"{scope['symbol']} / {scope['timeframe']} · {scope['period']['rows']} barras da captura\n"
+            rows_kind='fatos/revisões de séries; sem barras de mercado' if scope.get('snapshot_schema_version')==5 else 'barras da captura'
+            self.scope.configure(text=f"{scope['symbol']} / {scope['timeframe']} · {scope['period']['rows']} {rows_kind}\n"
                 f"{scope['period']['first']} a {scope['period']['last']} · relógio da captura {clock.get('consumer_basis') or 'não declarado'}\n"
                 f"Fonte: {origin.get('provider') or 'não declarada'} · servidor: {origin.get('server') or 'não declarado'} · offset da captura: {offset_text}")
             for item in result["features"]:

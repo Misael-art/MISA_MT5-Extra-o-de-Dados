@@ -1162,3 +1162,38 @@ explícito ao contexto do snapshot e um `decision_time` até seu último recibo
 congelado. Um snapshot capturado antes de P/N conserva somente Q/pendências,
 mesmo após novas classificações/revisões na base atual. Não existe fallback
 para fato/modelo/rede atual ao reabrir ou transportar.
+
+
+### Séries por janela no Laboratório (MEN-06)
+
+`stored_series_sources(db)` descobre símbolos/TFs com fatos, inclusive temas sem
+OHLCV. `query_stored_observations` lê somente o snapshot e aplica disponibilidade
+pelo `feature_store.asof_join`, por observação exata, sem retenção entre janelas.
+
+```python
+query_stored_observations(db, manifest_id, *, as_of, mean_period=3,
+                         write_guard=None, cancel_check=None,
+                         timeout_seconds=120, max_memory_mb=1024)
+```
+
+Retorna `times/channels` com valores, estados, revisão, disponibilidade,
+fonte/versão/parâmetros e metadados, além da SMA de
+`mt5_extracao.strategies.indicators.sma` (hash da implementação e período).
+Ausência, classificação pendente e janelas sem cobertura interrompem a média.
+Não reamostra, não preenche zero, não chama rede/modelo e não cria índice de
+atenção. A média é derivação exploratória do indicador existente, sem quarta
+medida primária. Eixo por janela de publicação, visto retrospectivamente no
+corte explícito: não afirma conhecimento histórico naquele eixo nem sinal de
+compra/venda. Limites:20mil janelas,32 séries,200mil células; UI limita6 séries
+por gráfico para legibilidade. Grade completa/alinhada UTC; lacunas permanecem
+vazias. Categorias/booleanos não são convertidos em números para gráficos/médias.
+
+CLI: `analytics features stored-sources`; `stored-observations --manifest ID
+--as-of UTC [--mean-period 3]`. No Laboratório → Séries e confluências →
+**Séries por janela…**, selecione fonte/TF/versões, janela UTC e corte. Congelar e
+ler usa os serviços de snapshots existentes; Abrir snapshot importa sem
+publicar fatos atuais. Valores Q/P/N, estados, fonte, classificação/abstenções,
+versão e disponibilidade ficam no detalhe, com espera indeterminada e
+cancelamento. Criar relação abre o formulário canônico; dados sem grade de
+mercado não ganham relação operacional por inferência. Relações com indicadores
+em grade suportada continuam no motor existente e mantêm seus limites.

@@ -229,6 +229,20 @@ def import_feature_snapshot(db, source):
     return dict(manifest_id=snapshot.manifest_id,manifest=snapshot.manifest)
 
 
+def stored_series_sources(db):
+    """Inventário de símbolos/TFs com fatos armazenados; não exige OHLCV."""
+    from mt5_extracao.laboratory import service
+    return service.stored_series_sources(db)
+
+
+def query_stored_observations(db,manifest_id,*,as_of,mean_period=3,write_guard=None,cancel_check=None,
+                               timeout_seconds=120,max_memory_mb=1024):
+    """Lê janelas congeladas no corte explícito e a SMA canônica, sem rede/modelo."""
+    from mt5_extracao.laboratory import service
+    return service.stored_observations(db,manifest_id,as_of=as_of,mean_period=mean_period,write_guard=write_guard,
+        cancel_check=cancel_check,timeout_seconds=timeout_seconds,max_memory_mb=max_memory_mb)
+
+
 def load_feature_relation(db, analysis_id):
     """Lê o resultado original sem executar novamente o cálculo."""
     from mt5_extracao.analytics import feature_store
@@ -261,7 +275,7 @@ __all__ = [
     # consulta de dados analíticos (futura API, sem servidor)
     "query_series", "query_catalog", "define_feature_composite", "query_composite_context", "materialize_composite_snapshot",
     "recover_producer_jobs",
-    "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot", "capture_feature_snapshot", "export_feature_snapshot", "import_feature_snapshot",
+    "query_feature_relation", "persist_feature_relation", "load_feature_relation", "query_saved_relations", "inspect_feature_snapshot", "capture_feature_snapshot", "export_feature_snapshot", "import_feature_snapshot", "stored_series_sources", "query_stored_observations",
     "export_feature_relation", "import_feature_relation",
     "query_feature_relation_windows", "describe_mention_series", "mention_source_capabilities", "ingest_mention_batch", "collect_mentions", "mention_classifier_capabilities", "classify_mention_batch",
     # catálogo

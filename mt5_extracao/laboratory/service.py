@@ -25,6 +25,106 @@ VERSION = 1
 MAX_CHANNELS = 32
 MAX_BARS = 20_000
 MAX_TIMEFRAMES = 8
+
+
+def stored_series_sources(db):
+    """Inventário passivo dos fatos; temas não precisam constar nas tabelas OHLCV."""
+    from sqlalchemy import inspect,text
+    from mt5_extracao.analytics import feature_store
+    if db is None or not inspect(db.engine).has_table(feature_store.VALUES_TABLE):return []
+    with db.engine.connect() as conn:
+        rows=conn.execute(text(f'SELECT symbol,tf,COUNT(DISTINCT observation_time) AS rows,'
+            f'MIN(observation_time) AS first,MAX(observation_time) AS last FROM {feature_store.VALUES_TABLE} '
+            'GROUP BY symbol,tf ORDER BY symbol,tf')).mappings().all()
+    result=[]
+    for row in rows:
+        tf=timeframes.parse(row['tf'])
+        if tf is None or tf.minutes is None:continue
+        first=pd.Timestamp(row['first']);last=pd.Timestamp(row['last'])
+        result.append(dict(symbol=row['symbol'],timeframe=tf.name,rows=int(row['rows']),
+            start=first.isoformat(),end=(last+pd.Timedelta(minutes=tf.minutes)).isoformat()))
+    return result
+
+
+def stored_observations(db,manifest_id,*,as_of,mean_period=3,write_guard=None,cancel_check=None,
+                        timeout_seconds=120,max_memory_mb=1024):
+    """Projeção por observação no corte, com asof_join/SMA canônicos; sem mercado/rede.
+
+    O eixo é a janela de publicação, visto retrospectivamente no corte escolhido.
+    Isso não declara que os valores eram conhecidos naquela janela.
+    """
+    import math
+    import time
+    from mt5_extracao.analytics import feature_store,indicator_materializer
+    from mt5_extracao.strategies.indicators import sma
+    if type(mean_period) is not int or not 1<=mean_period<=500:
+        raise ValueError('Período da média precisa ser inteiro entre1 e500.')
+    for value,name,maximum in [(timeout_seconds,'timeout_seconds',3600),(max_memory_mb,'max_memory_mb',8192)]:
+        if isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or not 0<value<=maximum:
+            raise ValueError(f'{name} precisa ser positivo e até{maximum}.')
+    started=dict(started_monotonic=time.monotonic())
+    def guard():indicator_materializer._guard(started,write_guard,cancel_check,timeout_seconds,max_memory_mb)
+    guard();cutoff=feature_store._utc_timestamp(as_of,'as_of')
+    if cutoff>pd.Timestamp.now(tz='UTC'):raise ValueError('Corte precisa já ter ocorrido.')
+    snapshot=datasets.load(db,manifest_id);manifest=snapshot.manifest;tf=timeframes.parse(manifest['timeframe'])
+    first,end=snapshot.feature_window_utc
+    if tf.minutes is None:raise ValueError('Exploração por janela exige resolução fixa declarada.')
+    step=pd.Timedelta(minutes=tf.minutes)
+    if (end-first)%step or first.value%step.value:
+        raise ValueError('Grade de janelas precisa ser completa e alinhada em UTC; ajuste início/fim sem reamostrar valores.')
+    size=int((end-first)//pd.Timedelta(minutes=tf.minutes))
+    definitions=snapshot.feature_definitions
+    if not 0<size<=MAX_BARS or not 1<=len(definitions)<=MAX_CHANNELS or size*len(definitions)>query_service.MAX_SELECTION_ROWS:
+        raise ValueError('Seleção excede20 mil janelas/32 séries/200 mil células; reduza o recorte antes de congelar.')
+    grid=pd.date_range(first,periods=size,freq=pd.Timedelta(minutes=tf.minutes));history=snapshot.feature_history
+    if not history.empty and not history.observation_time.isin(grid).all():
+        raise ValueError('Há observações fora da grade declarada; não se reamostra contagens implicitamente.')
+    channels=[]
+    import inspect
+    mean_source=hashlib.sha256(Path(inspect.getsourcefile(sma)).read_bytes()).hexdigest()
+    for definition in definitions:
+        guard();ident,version=definition['feature_id'],definition['algorithm_version']
+        source=history[(history.feature_id==ident)&(history.algorithm_version==version)].copy()
+        if source.empty:
+            joined=pd.DataFrame(index=grid)
+        else:
+            keys=['symbol','tf','feature_id','algorithm_version','observation_time']
+            decisions=source[keys].drop_duplicates().assign(decision_time=cutoff)
+            joined=feature_store.asof_join(decisions,source,by=keys).set_index('observation_time').reindex(grid)
+        values=[];receipts=[];qualities=[];metadata=[];revisions=[];display_values=[]
+        for _,row in joined.iterrows():
+            quality=row.get('quality');numeric=row.get('numeric_value')
+            valid=definition.get('value_type')=='NUMBER' and isinstance(quality,str) and quality not in ('UNAVAILABLE','INVALIDATED') and pd.notna(numeric)
+            values.append(float(numeric) if valid else None)
+            category=row.get('categorical_value')
+            display_values.append(float(numeric) if valid else category if isinstance(category,str) else None)
+            qualities.append(quality if isinstance(quality,str) else 'NOT_AVAILABLE_AT_CUT')
+            stamp=row.get('available_at_utc');receipts.append(stamp.isoformat() if pd.notna(stamp) else None)
+            raw=row.get('metadata_json');metadata.append(json.loads(raw) if isinstance(raw,str) else {})
+            revision=row.get('revision');revisions.append(int(revision) if pd.notna(revision) else None)
+        guard();numeric=pd.Series(values,index=grid,dtype=float)
+        mean=sma(numeric,mean_period)
+        # A disponibilidade derivada é o máximo dos pais exatos. Lacuna/pendência
+        # invalida a janela; não há preenchimento de zero nem retenção de valor.
+        mean_received=[]
+        for index,value in enumerate(mean):
+            parents=receipts[max(0,index-mean_period+1):index+1]
+            mean_received.append(max(parents) if pd.notna(value) and all(parents) else None)
+        channels.append(dict(feature_id=ident,algorithm_version=version,name=definition['name'],unit=definition['unit'],
+            value_type=definition.get('value_type'),source_id=definition.get('source_id'),parameters=definition.get('parameters',{}),
+            values=values,display_values=display_values,qualities=qualities,available_at=receipts,revisions=revisions,metadata=metadata,
+            mean=[float(v) if pd.notna(v) else None for v in mean],mean_available_at=mean_received,
+            mean_period=mean_period,mean_implementation=dict(function='mt5_extracao.strategies.indicators.sma',source_sha256=mean_source),
+            available=int(numeric.notna().sum())))
+    guard();result=dict(kind='frozen_stored_observations',manifest_id=manifest_id,symbol=manifest['symbol'],timeframe=tf.name,
+        as_of=cutoff.isoformat(),times=[t.isoformat() for t in grid],channels=channels,source=manifest['source'],
+        temporal_basis='publication_windows_seen_retrospectively_at_explicit_cut',
+        limitations=['Valores e médias vistos no corte; o eixo da publicação não comprova conhecimento histórico.',
+            'Ausência/pendência interrompe a média; nenhuma reamostragem, retenção ou zero inventado.',
+            'Abstenções não são neutralidade. Qualificação do classificador permanece limitada ao recibo.',
+            'Sem grade de mercado, causalidade, intenção de negociação ou utilidade financeira certificadas.'])
+    json.dumps(result,allow_nan=False)
+    return result
 DEFAULT_FEATURES = ("momentum.rsi_14", "volatility.atr_pct_14", "volatility.bb_20_position",
                     "volatility.kc_20_position", "trend.efficiency_ratio_20")
 LIMITATIONS = (

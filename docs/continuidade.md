@@ -4376,3 +4376,30 @@ agora entrega JSON e orientação de correção. Não se mudou a classificação
 se atribuiu precisão geral à fonte. Próximos:MEN-06 UI/indicadores/relações,
 MEN-07 segunda fonte, MEN-08 regressão/proteção independente. Sem aceite nativo,
 Windows físico, conta, negociação ou Expert por estes testes.
+
+
+### MEN-06 — leitura por janela no Laboratório, 29/10/2026
+
+Sobre MEN-05/PR241 (`9431916768d84d0e0c592a0bdd18df44b88ae5c3`), branch
+`codex/mencoes-laboratorio`. `Séries por janela…` fica dentro do Laboratório
+existente; temas são descobertos sem OHLCV. Não há módulo/produto Strator nem
+novo engine/store/executor. SDK projeta recibos por observação/corte usando
+`asof_join`; SMA é a função canônica, com período/hash/maior disponibilidade dos
+pais. Não preenche lacunas/pendências com zero, não reamostra, não invoca rede/
+classificador e não declara conhecimento histórico pela posição no eixo.
+
+Cartões legíveis, unidades/versões/estados, abstenções junto a P/N e detalhe de
+proveniência. Populações diferentes não formam tripla nos cartões. Barra local
+indeterminada, mesmo run_bg global; cancelamento/erro preservam último resultado.
+Exportação/importação aguardam gravação atômica; importação não publica fatos
+atuais. Gráfico amplia pelo componente existente, seis séries por gráfico;
+leitura limitada a20mil janelas/32 séries/200mil células, com janela explícita.
+
+Fonte pelo launcher oficial em QA própria:1.000.001/250.000/50.000 sintéticos,
+SMA/lacunas, ampliação,820×680, espera/cancelamento/erro/reabertura. Snapshot
+público HN Q8/P0/N0 e8 abstenções reaberto sem rede/modelo. Relação pelo formulário
+canônico salva em+1,88 pares/11 sessões; referência nula0 também testada pelo
+motor atual, sem qualquer condição de lucro.2.540 fatos e namespace preservados.
+Snapshots sem mercado são apresentados como fatos/revisões, não barras.
+Próximos:segunda fonte MEN-07 e fechamento/proteção MEN-08; não é conclusão de
+cruzamentos BD16/17/F18/LAB, Expert, conta, MT5/Wine ou Windows físico.
