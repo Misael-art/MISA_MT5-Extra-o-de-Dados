@@ -99,7 +99,11 @@ esse monitor físico não existe. A asserção agora confere a solicitação e o
 ciclo ampliar/restaurar. 29 testes do módulo passaram, 1 foi ignorado e houve
 16 avisos de layout na fonte anterior `8b110aa`. Após rebase sobre GUI
 `13f6b97`, o ajuste `d023c2f` passou seis testes GUI/monitor focados;
-não houve edição de produto. A posição física negativa,
+não houve edição de produto.
+Na ponta local `8822d253`, o módulo completo de UI de Séries passou em
+Linux/Xvfb: 29 aprovados, 1 ignorado e 16 avisos de layout em 127,52 s.
+O ignorado e os avisos não foram contados como verificações aprovadas.
+O monitor físico negativo,
 o percurso pelo atalho e os itens LAB-01…10 continuam com seus gates no roadmap.
 Base local é o corretivo da GUI, ainda sem PR remoto pela guarda central.
 
