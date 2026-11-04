@@ -3271,3 +3271,29 @@ fosse conhecida em todas as barras anteriores. O corpo dos detalhes do inventár
 foi conferido em1280×850 completando a rolagem após a expansão. Capturas anteriores
 foram antecipadas durante a atualização geométrica e não provavam esse corpo;
 o percurso completo está nos recibos locais, sem inferir um defeito a partir delas.
+
+## Continuidade do roadmap — BD19c2-PERSISTED, 29/10/2026
+
+Base `37120d2`/PR214, branch própria `codex/bd19-contexto-persistido`. O contexto
+por decisão e a projeção/CSV ainda rejeitavam IDs persistidos fora do registry;
+uma categoria válida em versão antiga podia sair vazia apesar de AVAILABLE.
+O adaptador existente agora resolve IDs/contratos pelo leitor canônico, preserva
+tipos e exige versão explícita sem fórmula local. O padrão legado continua na
+implementação atual; versões não são escolhidas pela data nem misturadas.
+
+Reutiliza histórico completo e `asof_join` para cada decisão; correção tardia não
+vaza ao passado nem substitui observação posterior. Leitura explícita também
+aceita M1/W1/MN1 sem exigir materialização local; fatos sem definição não recebem
+um contrato presumido. Exportador atômico/guards preservados. [Contrato e provas](dados/BD19C1_CLI.md#bd19c2-persisted--contexto-e-csv-de-definições-persistidas).
+Baseline24, rodada final119 distintos aprovados; doctor offline16/2/0. Launcher
+oficial/CLI sobre fixture sintética própria: contexto12 percent e categoria `buy`
+preservada no CSV. Bancada5.000fatos/500decisões: frames numéricos idênticos,
+medianas de contexto187→148ms/projeção195→167ms nesta rodada, sem ganho universal
+declarado. Recibos em `state/qa-tmp/catalog-store/context-*`.
+
+Atualizar e conferir a prévia do SHA publicado pelo launcher oficial. Não há aceite
+nativo, financeiro, Windows físico nem do BD19c2 completo (compostos/relações
+dependem de BD18b). A próxima frente continua sendo o Laboratório: congelar fatos
+e contratos no snapshot existente antes do consumo causal por decisão, preservando
+manifests antigos e a origem da revisão. Não consultar a base atual por baixo de
+uma análise apresentada como congelada.

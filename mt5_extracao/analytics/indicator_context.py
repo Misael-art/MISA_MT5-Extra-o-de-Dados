@@ -3,7 +3,8 @@ import json
 
 import pandas as pd
 
-from mt5_extracao.analytics import feature_store, indicator_materializer, indicator_registry, resampling
+from mt5_extracao import timeframes
+from mt5_extracao.analytics import feature_store, indicator_materializer, indicator_registry, query_service, resampling
 
 
 def records(frame):
@@ -25,48 +26,85 @@ def _state(row):
     return "UNAVAILABLE", "NO_VALUE_AVAILABLE_AT_DECISION"
 
 
-def _contract(contracts, ident, version, explicit_version):
-    persisted = contracts.get((ident, version))
-    if persisted is not None:
-        return persisted
-    if explicit_version is not None:
-        raise ValueError(f"Característica não registrada: {ident}@{version}. Confira a versão disponível no store.")
-    return indicator_registry.get_definition(ident)
+def _selection(db, feature_ids, algorithm_version):
+    """Mesmo catálogo da consulta pública; o padrão legado continua na implementação local atual."""
+    entries = query_service.definition_catalog(db)
+    contracts = {(item["feature_id"], item["algorithm_version"]):item for item in entries}
+    local_ids = {item["feature_id"] for item in indicator_registry.definitions()}
+    if feature_ids is None:
+        ids = sorted(local_ids)
+    else:
+        if (not isinstance(feature_ids, (list, tuple, set, frozenset)) or
+                not feature_ids or not all(isinstance(ident, str) and ident.strip() for ident in feature_ids)):
+            raise ValueError("Selecione uma lista de IDs não vazios do catálogo.")
+        ids = sorted({ident.strip() for ident in feature_ids})
+    if algorithm_version is not None:
+        if not isinstance(algorithm_version, str) or not algorithm_version.strip():
+            raise ValueError("algorithm_version precisa ser texto não vazio.")
+        algorithm_version = algorithm_version.strip()
+    known = {item["feature_id"] for item in entries}
+    unknown = set(ids) - known
+    if unknown:
+        raise ValueError("Características desconhecidas no catálogo: " + ", ".join(sorted(unknown)))
+    if algorithm_version is None and set(ids) - local_ids:
+        raise ValueError("Indicador sem implementação local: informe algorithm_version explicitamente; "
+                         "consulte as versões em features catalog.")
+    implementation = indicator_materializer.implementation_signature() if algorithm_version is None else None
+    selected = []
+    for ident in ids:
+        version = algorithm_version or indicator_materializer.algorithm_version(ident, implementation)
+        entry = contracts.get((ident, version))
+        registered = entry is not None and entry["registered_definition"] is not None
+        if not registered and algorithm_version is not None:
+            raise ValueError(f"Característica não registrada: {ident}@{version}. Confira a versão disponível no store.")
+        spec = entry if registered else indicator_registry.get_definition(ident)
+        selected.append((ident, version, spec, registered))
+    return selected
+
+
+def _value(numeric, category, state):
+    if state != "AVAILABLE":
+        return None
+    value = category if pd.isna(numeric) else numeric
+    return value if pd.notna(value) else None
+
+
+def _timeframe(value, explicit_version):
+    # Ler fatos existentes não exige que o materializador local saiba produzir esse TF.
+    parsed = timeframes.parse(value)
+    if explicit_version is not None and parsed in (timeframes.Timeframe.M1, timeframes.Timeframe.W1,
+                                                   timeframes.Timeframe.MN1):
+        return parsed.name
+    return resampling.parse_target(value).label
 
 
 def context(db, decisions, *, symbol, timeframe, feature_ids=None, algorithm_version=None):
     """Uma linha por decisão, com valor/estado/proveniência; exige horários com fuso.
 
     Nenhuma associação/aderência é calculada. A versão atual inclui o hash de
-    implementação da materialização; versões antigas podem ser solicitadas.
+    implementação da materialização; versões registradas podem ser solicitadas.
+    Um indicador sem implementação local exige algorithm_version explícito.
     """
-    ids = indicator_materializer.selected_features(feature_ids)
-    timeframe = resampling.parse_target(timeframe).label
+    selected = _selection(db, feature_ids, algorithm_version)
+    timeframe = _timeframe(timeframe, algorithm_version)
     frame = decisions.copy().reset_index(drop=True)
     if "decision_time" not in frame:
         raise ValueError("Informe decision_time com fuso para consultar os indicadores.")
     frame["decision_time"] = [feature_store._utc_timestamp(value, "decision_time") for value in frame.decision_time]
     frame["_context_order"] = range(len(frame))
     frame["symbol"], frame["tf"] = symbol, timeframe
-    implementation = indicator_materializer.implementation_signature()
-    contracts = {(item["feature_id"], item["algorithm_version"]): item for item in feature_store.list_definitions(db)}
     columns = {}
-    for ident in ids:
-        version = algorithm_version or indicator_materializer.algorithm_version(ident, implementation)
-        spec = _contract(contracts, ident, version, algorithm_version)
+    for ident, version, spec, registered in selected:
         history = feature_store.query_history(db, symbol=symbol, timeframe=timeframe, feature_id=ident,
                                               algorithm_version=version)
+        if not registered and not history.empty:
+            raise ValueError(f"Fatos sem definição registrada: {ident}@{version}. Confira o produtor.")
         joined = feature_store.asof_join(frame[["decision_time", "_context_order", "symbol", "tf"]], history)
         joined = joined.sort_values("_context_order").reset_index(drop=True)
         prefix = ident + "::"
         states = [_state(row) for row in joined.to_dict("records")]
-        values = []
-        for row, (state, _reason) in zip(joined.to_dict("records"), states):
-            value = row.get("numeric_value")
-            if pd.isna(value):
-                value = row.get("categorical_value")
-            values.append(value if state == "AVAILABLE" and pd.notna(value) else None)
-        columns[prefix + "value"] = values
+        columns[prefix + "value"] = [_value(numeric, category, state) for numeric, category, (state, _reason)
+                                      in zip(joined.numeric_value, joined.categorical_value, states)]
         columns[prefix + "state"] = [state for state, _reason in states]
         columns[prefix + "reason"] = [reason for _state_, reason in states]
         columns[prefix + "algorithm_version"] = version
@@ -83,23 +121,21 @@ def projection(db, *, symbol, timeframe, as_of, feature_ids=None, algorithm_vers
     A consulta de contexto é por decisão; esta projeção exporta fatos históricos,
     sem preencher uma observação ausente com o valor de outra barra.
     """
-    ids = indicator_materializer.selected_features(feature_ids)
-    timeframe = resampling.parse_target(timeframe).label
-    implementation = indicator_materializer.implementation_signature()
-    contracts = {(item["feature_id"], item["algorithm_version"]): item for item in feature_store.list_definitions(db)}
+    selected = _selection(db, feature_ids, algorithm_version)
+    timeframe = _timeframe(timeframe, algorithm_version)
     parts = []
-    for ident in ids:
-        version = algorithm_version or indicator_materializer.algorithm_version(ident, implementation)
-        spec = _contract(contracts, ident, version, algorithm_version)
+    for ident, version, spec, registered in selected:
         rows = feature_store.query_as_of(db, as_of, symbol=symbol, timeframe=timeframe, feature_id=ident,
                                          algorithm_version=version, start=start, end=end)
         if rows.empty:
             continue
+        if not registered:
+            raise ValueError(f"Fatos sem definição registrada: {ident}@{version}. Confira o produtor.")
         part = rows.set_index("observation_time")
         states = [_state(row) for row in rows.to_dict("records")]
         out = pd.DataFrame(index=part.index)
-        out["value"] = [row.numeric_value if state == "AVAILABLE" else None
-                        for row, (state, _reason) in zip(rows.itertuples(), states)]
+        out["value"] = [_value(numeric, category, state) for numeric, category, (state, _reason)
+                        in zip(rows.numeric_value, rows.categorical_value, states)]
         out["state"] = [state for state, _reason in states]
         out["reason"] = [reason for _state_, reason in states]
         out["algorithm_version"] = version

@@ -1842,8 +1842,8 @@ def build_parser():
         q.add_argument("--symbol", required=True)
         q.add_argument("--tf", required=True)
         q.add_argument("--as-of", required=True, help="instante com fuso, por exemplo 2026-10-14T17:25:00Z")
-        q.add_argument("--features", help="IDs do registry separados por vírgula; padrão: todos")
-        q.add_argument("--algorithm-version", help="versão antiga explícita; padrão: implementação atual")
+        q.add_argument("--features", help="IDs do catálogo separados por vírgula; padrão: registry local")
+        q.add_argument("--algorithm-version", help="versão registrada explícita; obrigatória sem fórmula local")
         if action == "export":
             q.add_argument("--out", required=True, help="destino CSV")
             q.add_argument("--from", dest="date_from")
